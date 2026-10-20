@@ -105,9 +105,9 @@ describe("squeal status --wait <ms>", WAITS, () => {
     expect(code).toBe(0);
     expect(stderr).toBe("");
     const [status, verdict] = stdout.split(/\n\n(?=Returned )/);
-    expect(status).toMatch(/^Revision: 3\nKnown failures: 0\n/);
+    expect(status).toMatch(/^Revision: 3\nKnown failures: 0; the daemon has not listed[^\n]*\n/);
     expect(verdict).toMatch(
-      /^Returned on quiet: nothing pending at revision 3 after \d+\.\d s\. Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed[^\n]*\n$/,
+      /^Returned on quiet: nothing pending at revision 3 after \d+\.\d s\. Worktree: known failures 0; the daemon has not listed this worktree's test files yet\n$/,
     );
     expect(elapsed).toBeGreaterThanOrEqual(400);
     expect(elapsed).toBeLessThan(2_000);
@@ -132,7 +132,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
     expect(code).toBe(0);
     expect(last(stdout)).toMatch(
-      /^Returned on news: 1 transition since the wait started, at revision 3 after \d+\.\d s\. Worktree: known failures 1 \(1 test\); checks 1 running \(1 test\), 0 queued; the daemon has not listed this worktree's test files yet, so these counts are not complete$/,
+      /^Returned on news: 1 transition since the wait started, at revision 3 after \d+\.\d s\. Worktree: known failures 1 \(1 test\); the daemon has not listed this worktree's test files yet$/,
     );
     expect(stdout).toContain("  FAIL  src/a.test.ts > adds\n");
     expect(elapsed).toBeLessThan(2_000);
@@ -145,7 +145,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
     expect(code).toBe(0);
     expect(last(stdout)).toMatch(
-      /^Returned on timeout after \d+\.\d s: 2 checks \(2 tests\) pending at revision 3\. Worktree: known failures 0; checks 2 running \(2 tests\), 0 queued; the daemon has not listed[^\n]*$/,
+      /^Returned on timeout after \d+\.\d s: 2 checks \(2 tests\) pending at revision 3\. Worktree: known failures 0; the daemon has not listed this worktree's test files yet$/,
     );
     expect(elapsed).toBeGreaterThanOrEqual(590);
     expect(elapsed).toBeLessThan(1_500);
@@ -171,7 +171,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
     expect(snapshot).toEqual(readStatus(repo.main, { now: () => NOW }));
     expect(wait).toEqual({ outcome: "timeout", waitedMs: expect.any(Number), transitions: 0 });
     expect(stderr).toMatch(
-      /^Returned on timeout after \d+\.\d s: 1 check \(1 test\) pending at revision 3\. Worktree: known failures 0; checks 1 running \(1 test\), 0 queued; the daemon has not listed[^\n]*\n$/,
+      /^Returned on timeout after \d+\.\d s: 1 check \(1 test\) pending at revision 3\. Worktree: known failures 0; the daemon has not listed this worktree's test files yet\n$/,
     );
   });
 
@@ -249,8 +249,7 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
     expect(last(stdout)).toBe(
       "Returned without a daemon: no daemon has validated since 2026-10-06T11:59:00.000Z: " +
         "its heartbeat stopped and nothing listens on its socket; results are as of revision 3. " +
-        "Worktree: known failures 0; checks 0 running, 0 queued; the daemon has not listed this " +
-        "worktree's test files yet, so these counts are not complete",
+        "Worktree: known failures 0; the daemon has not listed this worktree's test files yet",
     );
     expect(stdout).toContain("Daemon: no daemon running since 2026-10-06T11:59:00.000Z\n");
     // A daemon a hook just spawned gets the settle time to record its heartbeat.
@@ -266,8 +265,7 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
     expect(code).toBe(0);
     expect(last(stdout)).toBe(
       "Returned without a daemon: no daemon is running; results are as of revision 3. " +
-        "Worktree: known failures 0; checks 1 running (1 test), 0 queued; the daemon has not listed " +
-        "this worktree's test files yet, so these counts are not complete",
+        "Worktree: known failures 0; the daemon has not listed this worktree's test files yet",
     );
     expect(elapsed).toBeLessThan(2_000);
   });

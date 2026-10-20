@@ -173,6 +173,10 @@ describe("readStatus", () => {
       counts: { current: 7, pending: 2, stale: 1, unknown: 1 },
       fileLevelCounts: { current: 2, pending: 0, stale: 0, unknown: 0 },
       testFilesWithoutChecks: { pending: 1, unknown: 1 },
+      // Row 011-26: the keyed files by class; `src/broken.test.ts` has checks and no key row.
+      testFileCounts: { current: 1, pending: 2, stale: 0, unknown: 2 },
+      testFilesByPhase: { running: 1, queued: 1 },
+      testsByPhase: { running: 1, queued: 1 },
       runsOpen: 0,
       unknownTestFiles: {
         total: 2,
@@ -264,7 +268,7 @@ describe("readStatus", () => {
 
     expect(text).toMatchInlineSnapshot(`
       "Revision: 2 · abc1234d + 0, dirty
-      Known failures: 2 (1 test, 1 test file that did not load)
+      Known failures: 2 (1 test, 1 test file that did not load); not current: 4 of 5 test files (1 running, 1 queued, 2 unknown), 4 tests (1 running, 1 queued, 1 stale, 1 unknown)
         FAIL  src/auth.test.ts > auth > expired token
               expected 401, received 500
               at src/auth.ts:12:5, observed at revision 2, current
@@ -327,6 +331,22 @@ describe("readStatus", () => {
       }
     }
     store.knownStates.upsertMany(states);
+    // Each file's key row, as the daemon writes them, so the line counts the files (row 011-26).
+    store.testFileKeys.upsertMany(
+      (
+        [
+          ["src/a.test.ts", null],
+          ["src/b.test.ts", "running"],
+          ["src/c.test.ts", "queued"],
+        ] as const
+      ).map(([path, pending]) => ({
+        worktreeId: repo.mainId,
+        testFile: { project: "", path: path as never },
+        key: `key-${path}` as never,
+        revision: 187,
+        pending,
+      })),
+    );
     store.checkpoints.start({
       id: "cp-170",
       worktreeId: repo.mainId,
@@ -341,7 +361,8 @@ describe("readStatus", () => {
 
     expect(lines.slice(0, 4)).toEqual([
       "Revision: 187 · abc1234d + 0",
-      "Known failures: 0",
+      // Row 011-26 (gh-45): the vision's line, then what is not current.
+      "Known failures: 0; not current: 2 of 3 test files (1 running, 1 queued), 13 tests (2 running, 11 queued)",
       "Affected checks: 47 passed (46 tests, 1 test file loaded), 3 running (2 tests, 1 test file loaded), 12 queued (11 tests, 1 test file loaded)",
       "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 187; `squeal run --all` requests one)",
     ]);
@@ -401,7 +422,7 @@ describe("readStatus", () => {
     expect(status.testFilesListed).toBe(false);
     expect(formatStatus(status, NOW).split("\n").slice(0, 3)).toEqual([
       "Revision: 0",
-      "Known failures: 0",
+      "Known failures: 0; the daemon has not listed this worktree's test files yet",
       "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
     ]);
 
@@ -681,7 +702,7 @@ describe("readStatus", () => {
     const lines = formatStatus(status, NOW).split("\n");
     expect(lines.slice(0, 4)).toEqual([
       "Revision: 0",
-      "Known failures: 0",
+      "Known failures: 0; the daemon has not listed this worktree's test files yet",
       "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
       "Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)",
     ]);

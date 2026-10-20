@@ -1,7 +1,8 @@
 import { isRecord } from "../fs/index.js";
-import { isInstalledLockfile } from "../keys/index.js";
+import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { readHeader } from "../state/index.js";
 import { withDeath } from "../status/died.js";
+import { openRuns } from "../status/open-runs.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
 import {
   type Consumer,
@@ -63,12 +64,15 @@ export function readLiveHeader(
   since: RevisionNumber | null = null,
   keys?: readonly TestFileKeyRecord[],
 ): StatusHeader {
-  const header = readHeader(store, worktreeId, states, keys);
+  const worktree = store.worktrees.get(worktreeId);
+  // Row 011-26: the files the live daemon's open runs hold count running, as status counts them (C15).
+  const runs = openRuns(store, worktree, worktreeLiveness(worktree, now));
+  const open = new Set(runs.flatMap((run) => run.testFiles.map(testFileId)));
+  const header = readHeader(store, worktreeId, states, keys, undefined, open);
   const changes = changedSince(store, worktreeId, header.revision, since);
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path),
   );
-  const worktree = store.worktrees.get(worktreeId);
   return {
     ...header,
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
