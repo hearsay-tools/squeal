@@ -102,8 +102,8 @@ export function execute(
   return JSON.parse(readFileSync(outFile, "utf8")) as Record<string, CaseOutput>;
 }
 
-/** The block ranges every run of the side recorded for `file`. */
-export function coverageAt(side: Side, file: string): Range[] {
+/** The block ranges each run of the side recorded for `file`, one list per process. */
+export function coverageAt(side: Side, file: string): Range[][] {
   const dir = join(side.dir, "coverage");
   return existsSync(dir) ? coverageOf(dir, pathToFileURL(file).href) : [];
 }

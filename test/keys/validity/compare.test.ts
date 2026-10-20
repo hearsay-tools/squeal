@@ -138,6 +138,22 @@ describe("the comparison, under a change unmade", SLOW, () => {
     expect(wordingChanges(result)).toEqual(["a load error"]);
   });
 
+  it("passes an unchanged meaning in code only the decisions run, at both trees (review of cand/0.1.228, B1)", async () => {
+    const path = "src/core/scheduler/ledger.ts";
+    const result = await compare(
+      edited(
+        path,
+        "const { store, worktreeId, now } = this.context;\n    let hits",
+        "const { store, worktreeId, now: readTime } = this.context;\n    const now = readTime;\n    let hits",
+      ),
+      only("accept"),
+    );
+    expect(result.fired).toBe(true);
+    expect(result.cases.every((c) => c.outputsEqual)).toBe(true);
+    expect(result.uncovered).toEqual([]);
+    expect(failures(result, release)).toEqual([]);
+  });
+
   it("passes a summary-only change and lists the wording, every kind equal (11->12)", async () => {
     const result = await compare(reworded());
     expect(result.fired).toBe(true);
