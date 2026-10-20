@@ -44,7 +44,9 @@ function backlogTier(run: { workers: number | undefined; files: readonly unknown
   return { granted: run.workers !== undefined, wide: run.files.length > 4 };
 }
 
-describe("scheduler: a revision of 10 or more keyed paths is catch-up (C4 step 4, task 011-22)", () => {
+describe("scheduler: a revision of 10 or more keyed paths is catch-up (C4 step 4, task 011-22)", {
+  timeout: 120_000,
+}, () => {
   it("1. runs a 12-source change's 480 files as a backlog tier: a grant, more than a tier of 4, within 120 s", async () => {
     const { side } = await started();
     side.runner.hold();

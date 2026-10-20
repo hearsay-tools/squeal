@@ -80,6 +80,8 @@ export class CatchUpRunner implements RunnerAdapter {
   /** Runs in flight. */
   active = 0;
   readonly failing = new Set<string>();
+  /** Called with a run's files as it starts. */
+  beforeRun: ((files: readonly TestFileRef[]) => void) | null = null;
   declare readonly lane?: (testFile: TestFileRef) => string;
   declare readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
   declare readonly besideBacklog?: (testFile: TestFileRef) => boolean;
@@ -146,6 +148,7 @@ export class CatchUpRunner implements RunnerAdapter {
       completed: [],
     };
     this.runs.push(run);
+    this.beforeRun?.(files);
     this.active += 1;
     const signals = [this.#cancels ? options.signal : undefined, options.stop].filter(
       (s) => s !== undefined,
