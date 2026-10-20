@@ -34,7 +34,7 @@ describe("a Vitest instance that does not observe (task 001-431)", () => {
     vi.stubEnv("NODE_OPTIONS", options);
     const observer = off();
     expect(observer.start()).toStrictEqual({});
-    expect(observer.injected).toStrictEqual({});
+    expect(observer.injectedFor("")).toStrictEqual({});
   });
 
   it("puts UNOBSERVED in place of another Squeal's settings, NODE_OPTIONS left without its recorder", () => {
@@ -43,13 +43,14 @@ describe("a Vitest instance that does not observe (task 001-431)", () => {
     expect(off().start()).toStrictEqual({ env: { SQUEAL_OBSERVE: UNOBSERVED } });
   });
 
-  it("takes another Squeal's recorder out of NODE_OPTIONS, and keeps both out of the hash", () => {
+  it("leaves NODE_OPTIONS out of the env option under another Squeal's recorder: each project gets it once resolved", () => {
     vi.stubEnv("SQUEAL_OBSERVE", OUTER);
     vi.stubEnv("NODE_OPTIONS", `--import ${pathToFileURL(recorder).href} ${OWN}`);
     const observer = off();
-    const env = { NODE_OPTIONS: OWN, SQUEAL_OBSERVE: UNOBSERVED };
+    // A top-level NODE_OPTIONS would override a root config's own (review wave 6, B2).
+    const env = { SQUEAL_OBSERVE: UNOBSERVED };
     expect(observer.start()).toStrictEqual({ env });
-    expect(observer.injected).toStrictEqual(env);
+    expect(observer.injectedFor("")).toStrictEqual(env);
     expect(observer.active).toBe(false);
   });
 });

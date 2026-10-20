@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import type { Vitest } from "vitest/node";
 import type { AbsolutePath, ObservedInputs, TestFileRef } from "../../core/types/index.js";
+import { ownNodeOptions } from "../node-test/recorders.js";
 import {
   observedInputs,
   observeEnv,
@@ -25,12 +26,19 @@ import type { WorktreePaths } from "./paths.js";
  * Each instance writes into its own directory under the daemon's temp
  * directory, read and emptied after each run. An instance that does not
  * observe keeps another Squeal's recorder, inherited when a test runs this
- * one, out of its workers instead (`unobservedEnv`, task 001-431).
+ * one, out of its workers instead (`unobservedEnv`, task 001-431): the
+ * settings through the `env` option, `NODE_OPTIONS` per project once the
+ * config resolved, so a config's own value stays the project's in the
+ * workers and in the hash (review wave 6, B2).
  */
 export class VitestObserver {
   #out: AbsolutePath | null = null;
   /** The env the current instance's workers got from the recorder, or in place of another Squeal's. */
   #injected: Record<string, string> = {};
+  /** The inherited `NODE_OPTIONS` without another Squeal's recorder, for an instance that does not observe. */
+  #cleaned: string | undefined;
+  /** The projects that got `#cleaned` for want of a `NODE_OPTIONS` of their config's. */
+  #filled = new Set<string>();
   #recorder: AbsolutePath | null | undefined;
 
   constructor(
@@ -58,9 +66,12 @@ export class VitestObserver {
     return this.active ? `${base}+observe.${RECORDER_VERSION}` : base;
   }
 
-  /** What the recorder added to, or took out of, the current instance's env: left out of the environment hash. */
-  get injected(): Readonly<Record<string, string>> {
-    return this.#injected;
+  /** What the recorder added to, or took out of, `project`'s env: left out of its environment hash. */
+  injectedFor(project: string): Readonly<Record<string, string>> {
+    const cleaned = this.#cleaned;
+    return cleaned !== undefined && this.#filled.has(project)
+      ? { ...this.#injected, NODE_OPTIONS: cleaned }
+      : this.#injected;
   }
 
   /** The `env` option of the next instance: `{}` when it neither observes nor inherits a recorder. */
@@ -68,8 +79,10 @@ export class VitestObserver {
     this.stop();
     const recorder = this.enabled() ? this.#find() : null;
     if (recorder === null) {
-      this.#injected = unobservedEnv(process.env);
-      return Object.keys(this.#injected).length === 0 ? {} : { env: this.#injected };
+      const { NODE_OPTIONS: cleaned, ...settings } = unobservedEnv(process.env);
+      this.#cleaned = cleaned;
+      this.#injected = settings;
+      return Object.keys(settings).length === 0 ? {} : { env: settings };
     }
     const out = mkdtempSync(join(tmpdir(), "squeal-observe-"));
     this.#out = out;
@@ -81,8 +94,17 @@ export class VitestObserver {
     return { env: this.#injected };
   }
 
-  /** After `standalone()`: a project's own `env.NODE_OPTIONS` gets the recorder first. */
+  /**
+   * After `standalone()`: a project's own `env.NODE_OPTIONS` gets the
+   * recorder first. Without one, under another Squeal's recorder, a
+   * config's own value loses that recorder and every project that inherits
+   * none, from its config or the root's, gets the inherited value without it.
+   */
   configure(vitest: Vitest): void {
+    if (this.#cleaned !== undefined) {
+      this.#unobserve(vitest, this.#cleaned);
+      return;
+    }
     const recorder = this.#recorder;
     if (this.#out === null || !recorder) return;
     for (const project of vitest.projects) {
@@ -104,6 +126,23 @@ export class VitestObserver {
     if (this.#out !== null) rmSync(this.#out, { recursive: true, force: true });
     this.#out = null;
     this.#injected = {};
+    this.#cleaned = undefined;
+    this.#filled.clear();
+  }
+
+  #unobserve(vitest: Vitest, cleaned: string): void {
+    const own = (env: Record<string, unknown> | undefined) => {
+      const options = env?.NODE_OPTIONS;
+      if (env === undefined || typeof options !== "string") return false;
+      env.NODE_OPTIONS = ownNodeOptions(options) ?? "";
+      return true;
+    };
+    const root = own(vitest.config.env as Record<string, unknown> | undefined);
+    for (const project of vitest.projects) {
+      if (own(project.config.env as Record<string, unknown> | undefined) || root) continue;
+      project.config.env = { ...project.config.env, NODE_OPTIONS: cleaned };
+      this.#filled.add(project.name);
+    }
   }
 
   /**
