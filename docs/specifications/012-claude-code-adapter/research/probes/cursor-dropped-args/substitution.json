@@ -1,0 +1,1 @@
+{"hook_event_name":"preToolUse","tool_name":"Write","tool_input":{"content":"see `echo RAN-FROM-FILE-CONTENT >&2` and $(echo RAN-DOLLAR-PAREN >&2)"}}

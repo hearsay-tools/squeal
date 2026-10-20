@@ -1,0 +1,1 @@
+{"hook_event_name":"preToolUse","tool_name":"Write","tool_input":{"file_path":"/w/plugin.yaml","old_string":"version: 0.25.17","new_string":"version: 0.25.18"},"cwd":"/w"}

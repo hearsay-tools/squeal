@@ -13,3 +13,4 @@ Started: 2026-10-17, forked from `../001-core-loop/spec.md` at `cdd72a91` by the
 Every accepted deviation is a dated line here and an edit to the section of `spec.md` it changes (`docs/process.md`, step 6).
 
 - 2026-10-17: forked from 001 at `cdd72a91`. 001's text lifted verbatim (tagged paragraphs); the notes and the sections 001 did not have are new and change no rule.
+- 2026-10-20 (task 012-01, the human: "we need a row and fix it"): CC1 adds the rule that every hook entry's `command`, run without its `args` and with a payload on stdin, runs nothing and exits 0. Cursor CLI 2026.10 imports the plugin and drops `args`, so PreToolUse ran the payload as a shell script (`research/cursor-dropped-args.md`). Turning the plugin off through `enabledPlugins` was declined, since it turns Squeal off in Claude Code too.
