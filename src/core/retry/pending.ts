@@ -2,6 +2,7 @@ import { testFileId } from "../keys/index.js";
 import type {
   PendingRetries,
   PendingRetry,
+  RunRecord,
   Store,
   TestFileKeyRecord,
   TestFileRef,
@@ -11,12 +12,14 @@ import { type RetryRecord, readRetries } from "./records.js";
 
 /**
  * Spec 001 D6 (001-368): the requests pending at the worktree's current keys,
- * one entry per test file, as status lists them; `{}` when none is.
+ * one entry per test file, as status lists them; `{}` when none is. `runs`,
+ * the live daemon's open ones, say since when a file's run is open.
  */
 export function pendingRetriesOf(
   store: Store,
   keys: readonly TestFileKeyRecord[],
   load: () => HostLoad = hostLoad,
+  runs: readonly RunRecord[] = [],
 ): { pendingRetries?: PendingRetries } {
   const current = new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
   const byFile = new Map<string, RetryRecord[]>();
@@ -26,7 +29,17 @@ export function pendingRetriesOf(
     byFile.set(id, [...(byFile.get(id) ?? []), r]);
   }
   if (byFile.size === 0) return {};
-  const retries = [...byFile.values()].map(entry);
+  const running = new Map(
+    keys.filter((k) => k.pending === "running").map((k) => [testFileId(k.testFile), k]),
+  );
+  const retries = [...byFile.values()].map((records) => {
+    const id = testFileId((records[0] as RetryRecord).testFile);
+    // Row 011-27: its run is open while the live daemon's run holds the file.
+    const run = running.has(id)
+      ? runs.find((r) => r.testFiles.some((f) => testFileId(f) === id))
+      : undefined;
+    return { ...entry(records), ...(run === undefined ? {} : { runningSince: run.startedAt }) };
+  });
   const { oneMinute, cpus } = load();
   return { pendingRetries: { retries, loadAverage: oneMinute, cpus } };
 }
