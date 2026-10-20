@@ -712,7 +712,7 @@ class TierScheduler implements Scheduler {
   ): Promise<EndedRun> {
     const { context } = this.#started();
     const ignored = await this.#warmUp.read(context, tier, ran);
-    // The completion barrier (task 001-168): a touch since selection withholds the run.
+    // The completion barrier (task 001-168): a touch since selection withholds the files keying it.
     const inputs = await unstableInputs(context, tier);
     const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
     return { tier, ran, ignored, inputs, installMoved, slow };
@@ -733,17 +733,30 @@ class TierScheduler implements Scheduler {
     const observed =
       environment === undefined || read === undefined ? read : { ...read, environment };
     const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
-    const report = withheldForTouch(ran, touched);
+    // Task 013-02 (D2 of 013-01): the files whose keys name a touched path, as a content change.
+    const isTouched = new Set(touched);
+    const named = (paths: readonly RelativePath[] = []) => paths.filter((p) => isTouched.has(p));
+    const touchedOf = (ran: Tier["files"][number]) => [
+      ...named(ran.inputs),
+      ...named(observed?.growth.get(ran.file.id)?.growth),
+    ];
+    const barred = tier.files.filter((ran) => touchedOf(ran).length > 0);
+    const barredPaths = [...new Set(barred.flatMap(touchedOf))].sort();
+    const report = withheldForTouch(
+      ran,
+      barredPaths,
+      barred.map(({ file }) => file.ref),
+    );
     // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
     // again as a moved install does, its previous state standing, and a second leaves it
     // `unknown`, per file whatever tier it shares (review 007-31, B1).
     const withheld: string[] = [];
-    const withhold = touched.length === 0 ? null : this.#withholds.record(tier.files);
-    if (withhold === null) this.#withholds.clear(tier.files);
-    else {
+    const withhold = barred.length === 0 ? null : this.#withholds.record(barred);
+    this.#withholds.clear(tier.files.filter((ran) => !barred.includes(ran)));
+    if (withhold !== null) {
       const notes = [
-        withholdNote(touched, withhold.again, true),
-        withholdNote(touched, withhold.exhausted, false),
+        withholdNote(barredPaths, withhold.again, true),
+        withholdNote(barredPaths, withhold.exhausted, false),
       ];
       withheld.push(...notes.filter((note) => note !== null));
     }
