@@ -1,8 +1,9 @@
 import type { Vitest } from "vitest/node";
 import { pathsReason } from "../../core/text.js";
-import type { AbsolutePath, RelativePath, RunReport, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath, RunReport, TestFileRef } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
 import { refKey } from "./results.js";
+import type { Sorted } from "./touched.js";
 
 /*
  * Task 001-146: what a run's report keeps once `SourceStamps` found bytes
@@ -79,14 +80,56 @@ export function withoutFiles(
 }
 
 /**
- * Task 001-159: `report` without any of `testFiles`, since `touched` were
- * written during the run and ended as they were. Any cache the run read
- * may hold their other bytes, so no file of it is stored.
+ * Task 013-02 (V5 as amended 2026-10-20): the run's test files that may have
+ * read `touched` through a cache of the instance. An input read once: all
+ * of them. A module path, per project of the run whose environments hold a
+ * module of it: the files whose importer walk reaches one, or every file of
+ * the run in that project when none does (a computed `import()`, a setup
+ * file, `vi.importActual`, a `__mocks__` file). A project whose graphs hold
+ * no module of it loses nothing: its containers never served those bytes.
+ */
+export function mayHaveReadTouched(
+  vitest: Vitest,
+  touched: Sorted,
+  testFiles: readonly TestFileRef[],
+  paths: WorktreePaths,
+): TestFileRef[] {
+  if (touched.inputs.length > 0) return [...testFiles];
+  const index = touched.index;
+  if (index === null || touched.modules.length === 0) return [];
+  const tainted = new Set<string>();
+  for (const project of vitest.projects) {
+    const files = testFiles.filter((ref) => ref.project === project.name);
+    if (files.length === 0) continue;
+    const environments = Object.values(project.vite.environments);
+    for (const file of touched.modules) {
+      type Node = ReturnType<typeof index.start>[number];
+      const queue: Node[] = environments.flatMap((environment) => index.start(environment, file));
+      if (queue.length === 0) continue;
+      const reached = new Set<string>();
+      const seen = new Set<Node>();
+      for (let node = queue.pop(); node !== undefined; node = queue.pop()) {
+        if (seen.has(node)) continue;
+        seen.add(node);
+        if (node.file !== null) reached.add(node.file);
+        queue.push(...node.importers);
+      }
+      const hit = files.filter((ref) => reached.has(paths.toAbsolute(ref.path)));
+      for (const ref of hit.length > 0 ? hit : files) tainted.add(refKey(ref));
+    }
+  }
+  return testFiles.filter((ref) => tainted.has(refKey(ref)));
+}
+
+/**
+ * Task 001-159: `report` without `dropped`, since `touched` were written
+ * during the run and ended as they were: a cache the run read may hold
+ * their other bytes. Task 013-02: `touched` are the paths that counted.
  */
 export function withoutTouched(
   report: RunReport,
-  testFiles: readonly TestFileRef[],
-  touched: readonly RelativePath[],
+  dropped: readonly TestFileRef[],
+  touched: readonly string[],
 ): RunReport {
   const reason = pathsReason(
     `${UNKEYED}, since `,
@@ -95,7 +138,7 @@ export function withoutTouched(
       `${one ? "was" : "were"} written during this run and ended as ${one ? "it was" : "they were"}`,
     "task 001-159",
   );
-  return dropFiles(report, testFiles, reason);
+  return dropFiles(report, dropped, reason);
 }
 
 function dropFiles(report: RunReport, dropped: readonly TestFileRef[], reason: string): RunReport {
