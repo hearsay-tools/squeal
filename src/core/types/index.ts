@@ -8,6 +8,7 @@ export * from "./policy.js";
 export type * from "./revision.js";
 export * from "./runner.js";
 export * from "./scheduler.js";
+export type * from "./standing.js";
 export * from "./state.js";
 export type * from "./status.js";
 export * from "./store.js";

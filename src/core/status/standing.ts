@@ -6,6 +6,7 @@ import { promotedIds } from "../scheduler/promotions.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { laneFor, slowView } from "../scheduler/slow.js";
 import { type FileClass, fileClassOf, readHeader } from "../state/index.js";
+import type { LoadNow, Standing } from "../types/index.js";
 import {
   type AbsolutePath,
   type DaemonLiveness,
@@ -15,12 +16,13 @@ import {
   type Policy,
   type ProjectName,
   type RunRecord,
+  type StatusHeader,
   type Store,
+  type TestFileKeyRecord,
   type TestFileRef,
   type UnknownTestFile,
   type WorktreeId,
 } from "../types/index.js";
-import type { LoadNow, Standing } from "./next-step.js";
 import { claimantOf, openRunsOf } from "./open-runs.js";
 import { type Facts, once, setupsOf, unknownStanding } from "./standing-facts.js";
 import { checksByFile, unknownReasons } from "./unknown-files.js";
@@ -78,14 +80,40 @@ export function readNamedFiles(
   now: EpochMs,
   load: () => LoadNow = hostLoad,
 ): readonly NamedFile[] {
-  const states = store.knownStates.list(worktreeId);
-  const keys = store.testFileKeys.list(worktreeId);
+  return standingsOf(store, worktreeId, root, daemon, now, load)(files);
+}
+
+/** What a caller already read of the worktree in its read transaction (row 011-29). */
+export interface WorktreeReads {
+  readonly states: readonly KnownState[];
+  readonly keys: readonly TestFileKeyRecord[];
+  readonly header: StatusHeader;
+  /** The live daemon's open runs, `openRunsOf`'s. */
+  readonly runs: readonly RunRecord[];
+}
+
+/**
+ * `readNamedFiles` over any files of the worktree, from one read: status's
+ * `Outstanding:` groups pass the rows its snapshot read (`reads`), so no
+ * state is decoded twice (row 011-29).
+ */
+export function standingsOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  root: AbsolutePath,
+  daemon: DaemonLiveness,
+  now: EpochMs,
+  load: () => LoadNow = hostLoad,
+  reads?: WorktreeReads,
+): (files: readonly TestFileRef[]) => readonly NamedFile[] {
+  const states = reads?.states ?? store.knownStates.list(worktreeId);
+  const keys = reads?.keys ?? store.testFileKeys.list(worktreeId);
   const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
   const checks = checksByFile(states);
   const policy = readPolicy(root);
-  const runs = openRunsOf(store, worktreeId, daemon);
+  const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
   const promoted = promotedOf(store, worktreeId, daemon, now);
-  const header = readHeader(store, worktreeId, states, keys);
+  const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
@@ -101,53 +129,59 @@ export function readNamedFiles(
         ).length,
     ),
   };
-  return files.map((ref): NamedFile => {
-    const row = rows.get(testFileId(ref));
-    const own = checks.get(testFileId(ref)) ?? [];
-    const state = fileClassOf(row, own);
-    if (state === "current") return { testFile: ref, state, ...verdictOf(own) };
-    // The order rule (design 011-24 section 3): a run of its key elsewhere is waited for, not retried.
-    const key = row?.key ?? null;
-    const claimant =
-      state === "pending" || key === null ? null : claimantOf(store, worktreeId, ref, key, now);
-    const claim: Standing | null =
-      claimant === null
-        ? null
-        : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
-    if (state === "stale") {
-      const verdict = verdictOf(own);
-      const standing: Standing = claim ?? {
-        kind: "stale",
-        verdict: verdict.verdict ?? null,
-        lookupOnly: facts.lookupOnly,
-        notCurrent: facts.notCurrent(),
-      };
-      return { testFile: ref, state, ...verdict, standing };
-    }
-    if (state === "unknown") {
-      if (row === undefined) return { testFile: ref, state };
-      const unknown = reasons.of(row, own);
-      return { testFile: ref, state, unknown, standing: claim ?? unknownStanding(unknown, facts) };
-    }
-    const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
-    const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
-    const run = running ? runOf(runs, ref) : undefined;
-    const setup = isSlowLane(lane) ? setups.get(ref.project) : undefined;
-    const pending: PendingReason = running
-      ? {
-          kind: "running",
-          lane,
-          since: run?.startedAt ?? null,
-          ...(run === undefined ? {} : { files: run.testFiles.length }),
-          ...(setup === undefined ? {} : { setup }),
-        }
-      : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
-    if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
-      const promotedReason: PendingReason = { ...pending, promoted: true };
-      return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
-    }
-    return { testFile: ref, state, pending, standing: pending };
-  });
+  return (files) =>
+    files.map((ref): NamedFile => {
+      const row = rows.get(testFileId(ref));
+      const own = checks.get(testFileId(ref)) ?? [];
+      const state = fileClassOf(row, own);
+      if (state === "current") return { testFile: ref, state, ...verdictOf(own) };
+      // The order rule (design 011-24 section 3): a run of its key elsewhere is waited for, not retried.
+      const key = row?.key ?? null;
+      const claimant =
+        state === "pending" || key === null ? null : claimantOf(store, worktreeId, ref, key, now);
+      const claim: Standing | null =
+        claimant === null
+          ? null
+          : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
+      if (state === "stale") {
+        const verdict = verdictOf(own);
+        const standing: Standing = claim ?? {
+          kind: "stale",
+          verdict: verdict.verdict ?? null,
+          lookupOnly: facts.lookupOnly,
+          notCurrent: facts.notCurrent(),
+        };
+        return { testFile: ref, state, ...verdict, standing };
+      }
+      if (state === "unknown") {
+        if (row === undefined) return { testFile: ref, state };
+        const unknown = reasons.of(row, own);
+        return {
+          testFile: ref,
+          state,
+          unknown,
+          standing: claim ?? unknownStanding(unknown, facts),
+        };
+      }
+      const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
+      const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
+      const run = running ? runOf(runs, ref) : undefined;
+      const setup = isSlowLane(lane) ? setups.get(ref.project) : undefined;
+      const pending: PendingReason = running
+        ? {
+            kind: "running",
+            lane,
+            since: run?.startedAt ?? null,
+            ...(run === undefined ? {} : { files: run.testFiles.length }),
+            ...(setup === undefined ? {} : { setup }),
+          }
+        : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
+      if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
+        const promotedReason: PendingReason = { ...pending, promoted: true };
+        return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
+      }
+      return { testFile: ref, state, pending, standing: pending };
+    });
 }
 
 /**

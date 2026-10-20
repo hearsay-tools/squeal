@@ -5,6 +5,7 @@ import { worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { pendingRetriesOf, withRecorded } from "../retry/index.js";
+import { hostLoad } from "../retry/load.js";
 import { readHeader, testFileKeyOf } from "../state/index.js";
 import { META_STORE_RECOVERED, readTransaction } from "../store/index.js";
 import {
@@ -33,6 +34,8 @@ import { withDeath } from "./died.js";
 import { statusIdentity } from "./identity.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 import { openRuns } from "./open-runs.js";
+import { outstandingOf } from "./outstanding.js";
+import { once } from "./standing-facts.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
 export interface StatusOptions extends StatusStoreOptions {
@@ -126,6 +129,19 @@ function snapshot(
   const header = readHeader(store, worktreeId, states, keys, undefined, openFiles(runs));
   // Task 001-404: each failure says how old its run is and the load it ran under.
   const knownFailures = withRecorded(store, worktreeId, states, header.revision);
+  const load = once(hostLoad);
+  const retries = pendingRetriesOf(store, keys, load, runs);
+  const checkpoint = openCheckpoint(store, worktreeId, daemon);
+  const at = worktree?.root ?? root;
+  // Row 011-29: the groups `Outstanding:` prints, from the rows read above.
+  const outstanding = outstandingOf(
+    store,
+    worktreeId,
+    at,
+    { states, keys, header, runs, daemon, ...retries, ...checkpoint },
+    now,
+    load,
+  );
 
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -143,12 +159,13 @@ function snapshot(
     storeSchemaVersion: store.schemaVersion,
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
-    ...openCheckpoint(store, worktreeId, daemon),
-    ...vitestExcluded(worktree?.root ?? root),
-    ...configProblemsOf(worktree?.root ?? root),
-    ...pendingRetriesOf(store, keys, undefined, runs),
-    ...unknownTestFilesOf(store, worktreeId, states, keys, worktree?.root ?? root, now),
+    ...checkpoint,
+    ...vitestExcluded(at),
+    ...configProblemsOf(at),
+    ...retries,
+    ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),
     ...(daemon.state === "alive" ? { runsOpen: runs.length } : {}),
+    outstanding,
   };
 }
 

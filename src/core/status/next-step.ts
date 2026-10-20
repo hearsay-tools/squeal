@@ -1,6 +1,6 @@
 import { loadText } from "../retry/text.js";
 import { timeText } from "../text.js";
-import { type EpochMs, isSlowLane, SLOW_LANE_PREFIX } from "../types/index.js";
+import { isSlowLane, SLOW_LANE_PREFIX, type Standing } from "../types/index.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20; `tasks/011-24/design.md`
@@ -10,16 +10,7 @@ import { type EpochMs, isSlowLane, SLOW_LANE_PREFIX } from "../types/index.js";
  * why. The named class lines and the verdict line's groups read it.
  */
 
-/** The host's load now, as `hostLoad` reads it. */
-export interface LoadNow {
-  readonly oneMinute: number | null;
-  readonly cpus: number;
-}
-
-/** A project's global setup the store knows of: its file, `""` when its error named none. */
-export interface KnownSetup {
-  readonly file: string;
-}
+export type { KnownSetup, LoadNow, Standing } from "../types/index.js";
 
 /** A file `retry` runs once: how many of the worktree's test files are not current, what `run --all --wait` runs. */
 interface Retryable {
@@ -27,59 +18,13 @@ interface Retryable {
 }
 
 /**
- * Where a test file without a verdict stands, one state a file (the order
- * rule: another worktree's claim is tested before stale and unknown). The
- * pending kinds are `PendingReason`'s, each count of files additive.
- */
-export type Standing =
-  | { readonly kind: "no-daemon"; readonly since: EpochMs | null; readonly revision: number }
-  | { readonly kind: "unlisted"; readonly revision: number; readonly callBoundMs: number }
-  | ({
-      readonly kind: "stale";
-      readonly verdict: "pass" | "fail" | "skip" | null;
-      readonly lookupOnly: boolean;
-    } & Retryable)
-  | ({ readonly kind: "never-run"; readonly lookupOnly: boolean } & Retryable)
-  /** Timed out in a tier of its own (C4); `load` while it is at or above the CPU count. */
-  | ({
-      readonly kind: "timed-out";
-      readonly reason: string;
-      readonly load: LoadNow | null;
-    } & Retryable)
-  /** Ran and recorded nothing, or no result for a reason kept as words only. */
-  | ({ readonly kind: "no-result"; readonly reason: string } & Retryable)
-  | { readonly kind: "setup-failed" }
-  /** No key, or a runner call failed: the runner's message. */
-  | { readonly kind: "runner"; readonly reason: string }
-  | { readonly kind: "no-install"; readonly command: string | null }
-  | {
-      readonly kind: "running";
-      readonly lane: string;
-      readonly since: EpochMs | null;
-      /** The test files of its open run; one, or absent, is a run of its own. */
-      readonly files?: number;
-      /** A slow file's project's global setup, when the store knows it has one (gh-46). */
-      readonly setup?: KnownSetup;
-    }
-  | {
-      readonly kind: "queued";
-      readonly lane: string;
-      readonly behind: EpochMs | null;
-      /** The test files of the tier it is queued behind. */
-      readonly files?: number;
-      readonly promoted?: boolean;
-    }
-  | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
-  | { readonly kind: "slow"; readonly pausesOnly?: true }
-  | { readonly kind: "checkpoint" };
-
-/**
  * What advances a group of files: `retry` runs them once (`again`: a
  * one-file rerun of a running slow file after an environment failure);
  * `command` names Squeal's own (`said`: the reason already names it),
  * `shell` another tool's; `none` says why nothing runs them sooner, or
  * nothing when nothing is needed. In `text`, `{command}` stands for the
- * command in backticks, `{squeal}` for the CLI and `{it}` for "it" or "them".
+ * command in backticks, `{squeal}` for the CLI, `{it}` for "it" or "them"
+ * and `{its}` for "its" or "their".
  */
 export type Step =
   | {
@@ -94,7 +39,7 @@ export type Step =
   | { readonly kind: "none"; readonly text: string };
 
 export interface NextStep {
-  /** The class line's reason; `{it}` for "it" or "them". */
+  /** The class line's reason; `{it}` for "it" or "them", `{its}` for "its" or "their". */
   readonly reason: string;
   /** The verdict line's, shorter; its command follows it unless it names `{command}`. */
   readonly short: string;
@@ -143,7 +88,7 @@ export function nextStep(s: Standing, context: StepContext = { named: true }): N
     }
     case "never-run":
       return {
-        reason: `never run at its inputs, nothing queued {it}${lookupOnly(s.lookupOnly)}`,
+        reason: `never run at {its} inputs, nothing queued {it}${lookupOnly(s.lookupOnly)}`,
         short: "never run, nothing queued {it}",
         step: retry(s),
       };

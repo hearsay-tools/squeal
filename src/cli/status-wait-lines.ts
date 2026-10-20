@@ -6,6 +6,7 @@ import {
   failureCountText,
   formatStatus,
   notCurrentText,
+  type StatusFormatOptions,
   splitByValidity,
 } from "../core/status/index.js";
 import { plural } from "../core/text.js";
@@ -31,9 +32,18 @@ export function waitLine(wait: EndedWait, command = "squeal"): string {
   return `${line}${slow}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
 }
 
-/** `status --wait`'s human text: the snapshot, then last its verdict (issue 26). */
-export function waitText(wait: EndedWait, now: EpochMs, command = "squeal"): string {
-  return `${formatStatus(wait.result, now, command)}\n${waitLine(wait, command)}\n`;
+/**
+ * `status --wait`'s human text: status's default text, or with `--full` the
+ * full one, then last its verdict (issue 26; 011 C6 as amended 2026-10-20,
+ * row 011-29).
+ */
+export function waitText(
+  wait: EndedWait,
+  now: EpochMs,
+  command = "squeal",
+  options: StatusFormatOptions = {},
+): string {
+  return `${formatStatus(wait.result, now, command, options)}${waitLine(wait, command)}\n`;
 }
 
 function ownLine(wait: EndedWait, command: string): string {
@@ -61,8 +71,10 @@ function ownLine(wait: EndedWait, command: string): string {
 
 /**
  * Lessons, defect 32: the line says what the wait held for, the test files
- * the edits since revision N re-keyed, and what else is pending or changed,
- * which did not hold it.
+ * the edits since revision N re-keyed, and what else changed, which did not
+ * hold it. Row 011-29 (gh-41): a quiet one says it holds for those files
+ * only while the rest of the worktree has work outstanding, which the
+ * worktree part counts.
  */
 function editLine(edit: StatusWaitEdit, wait: EndedWait, at: string, after: string): string {
   const files = `${plural(edit.testFiles, "test file")} the edits since revision ${edit.since} re-keyed`;
@@ -70,15 +82,27 @@ function editLine(edit: StatusWaitEdit, wait: EndedWait, at: string, after: stri
     edit.otherTransitions > 0
       ? `; ${plural(edit.otherTransitions, "transition")} of other checks`
       : "";
-  const pending = anyPending(wait.result) ? `; ${pendingText(wait.result)} in all` : "";
   switch (wait.outcome) {
-    case "quiet":
-      return `Returned on quiet: nothing the edits since revision ${edit.since} re-keyed is pending (${plural(edit.testFiles, "test file")}) ${at} ${after}${pending}${others}`;
+    case "quiet": {
+      const rest =
+        anyPending(wait.result) || (wait.result.outstanding ?? []).length > 0
+          ? "; this wait does not hold for the rest of the worktree"
+          : "";
+      return `Returned on quiet: ${quietText(edit)}, ${at} ${after}${rest}${others}`;
+    }
     case "news":
-      return `Returned on news: ${newsText(wait, files)}, ${at} ${after}${pending}${others}`;
+      return `Returned on news: ${newsText(wait, files)}, ${at} ${after}${others}`;
     default:
-      return `Returned on timeout ${after}: ${edit.pending} of the ${files} pending ${at}${pending}${others}`;
+      return `Returned on timeout ${after}: ${edit.pending} of the ${files} pending ${at}${others}`;
   }
+}
+
+/** `none of the 91 test files the edits since revision 1 re-keyed is pending`. */
+function quietText(edit: StatusWaitEdit): string {
+  const since = `the edits since revision ${edit.since} re-keyed`;
+  if (edit.testFiles === 0) return `${since} no test file`;
+  if (edit.testFiles === 1) return `the 1 test file ${since} is not pending`;
+  return `none of the ${edit.testFiles} test files ${since} is pending`;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { RECORDED_UNKNOWN_TEXT, recordedText, waitsText } from "../retry/index.js";
+import { RECORDED_UNKNOWN_TEXT, recordedText } from "../retry/index.js";
 import {
   formatCheck,
   fullSuiteText,
@@ -7,41 +7,43 @@ import {
   slowTierText,
 } from "../state/index.js";
 import { excludedFilesText, excludedProjectsText, plural } from "../text.js";
-import type {
-  DaemonNote,
-  EpochMs,
-  StatusResult,
-  StatusSnapshot,
-  StatusUnavailable,
-} from "../types/index.js";
+import type { EpochMs, StatusResult, StatusSnapshot, StatusUnavailable } from "../types/index.js";
 import {
   countedText,
   earlierFailuresLines,
   failureCountText,
   knownFailureCounts,
   notCurrentText,
-  partsSuffix,
   splitByValidity,
 } from "./checks.js";
 import { configProblemsLine } from "./config-problems.js";
-import { DEATH_CAUSE, deathText } from "./died.js";
-import { shortCommit, statusRevisionText, worktreeLine } from "./identity.js";
-import { unknownFilesLines } from "./unknown-files.js";
-import { workLine } from "./work-line.js";
+import { statusRevisionText } from "./identity.js";
+import { outstandingLines } from "./outstanding-text.js";
+import { detailLines, hiddenParts } from "./status-detail.js";
 
 export { shortCommit } from "./identity.js";
 
 export interface StatusFormatOptions {
-  /** `squeal status --notes`: every note in full, none grouped (task 001-222). */
+  /** `squeal status --full`: every outstanding group, then the detail block (row 011-29). */
+  readonly full?: boolean;
+  /** `squeal status --notes`: `--full` with every note in full, none grouped (task 001-222). */
   readonly allNotes?: boolean;
+  /**
+   * The directory, relative to the worktree root, a printed command names
+   * its paths from: the cwd `status` ran in (`fromBase`). Absent, the root.
+   */
+  readonly base?: string;
 }
 
 /**
- * Human rendering of `squeal status`. The first lines reproduce the vision
- * example ("The desired experience"): revision, known failures (each listed
- * under the count), affected check counts, and the full-suite checkpoint,
- * worded as a request as delivered headers word it (lessons, surprise 7).
- * Details follow after a blank line. `command` is how the text names the CLI
+ * Human rendering of `squeal status`, led by its verdict (011 C6 as amended
+ * 2026-10-20, row 011-29). The first lines reproduce the vision example
+ * ("The desired experience"): revision, known failures (each listed under
+ * the count), affected check counts, and the full-suite checkpoint, worded
+ * as a request as delivered headers word it (lessons, surprise 7). Then the
+ * outstanding work, a group a line with what advances it, the coverage
+ * lines, and a `More:` line naming what `--full` adds after a blank line:
+ * the detail block (`detailLines`). `command` is how the text names the CLI
  * (`SQUEAL_COMMAND`, or the Codex command under Codex).
  */
 export function formatStatus(
@@ -51,6 +53,8 @@ export function formatStatus(
   options: StatusFormatOptions = {},
 ): string {
   if (!result.available) return formatUnavailable(result, command);
+  const allNotes = options.allNotes === true;
+  const full = allNotes || options.full === true;
   const lines = [
     `Revision: ${statusRevisionText(result)}`,
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
@@ -72,55 +76,28 @@ export function formatStatus(
           : []
         : [`        ${recordedText(f.recorded, result.worktreeId, now)}`]),
     ]),
-    ...retryLines(result),
     `Affected checks: ${affected(result, command)}`,
-    ...workLine(result, command),
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
-    ...checkpointLine(result, now, command),
+    ...owedLine(result),
     ...slowLine(result, command),
+    ...outstandingLines(result, now, command, {
+      all: full,
+      ...(options.base === undefined ? {} : { base: options.base }),
+    }),
     ...configProblemsLine(result, command),
     ...excludedLine(result),
-    "",
-    worktreeLine(result),
-    daemonLine(result, now, command),
-    inheritedLine(result),
-    ...result.inherited.sources.map(
-      (s) =>
-        `  ${s.count}${partsSuffix(s.count, s.fileLevelCount)} from ${s.worktreeRoot ?? s.worktreeId} at ${shortCommit(s.commit)}`,
-    ),
-    ...(result.breakdown.testFilesWithoutChecks === 0
-      ? []
-      : [
-          `Test files without checks: ${result.testFilesWithoutChecks.pending} pending, ${result.testFilesWithoutChecks.unknown} unknown`,
-        ]),
-    ...unknownFilesLines(result),
-    `Closure method: ${result.closureMethod}`,
-    `Store schema: ${result.storeSchemaVersion}`,
-    ...notes(result, command, options.allNotes === true),
+    ...(full
+      ? ["", ...detailLines(result, now, command, allNotes)]
+      : [`More: \`${command} status --full\` adds ${listText(hiddenParts(result, command))}`]),
   ];
   return `${lines.join("\n")}\n`;
 }
 
-/**
- * Spec 001 D6 (001-368): each pending retry and what it waits for, with the
- * load now. Its FAIL is still among the known failures above.
- */
-function retryLines(s: StatusSnapshot): string[] {
-  const pending = s.pendingRetries;
-  if (pending === undefined) return [];
-  const load = { oneMinute: pending.loadAverage, cpus: pending.cpus };
-  return [
-    `Pending retries: ${pending.retries.length}`,
-    ...pending.retries.map((r) => {
-      const where =
-        r.claimedBy === null || r.claimedBy === s.worktreeId
-          ? ""
-          : ", queued by another worktree's daemon";
-      // Row 011-27: a file with no result runs at once, so its reason, given or not, says nothing.
-      const asked = r.noResult === true ? "no result at its inputs" : r.reason;
-      return `  ${r.testFile.path} (${asked}): ${waitsText(r.noResult === true ? "environment" : r.reason, load, r.runningSince ?? null)}${where}`;
-    }),
-  ];
+/** `a, b and c`. */
+function listText(parts: readonly string[]): string {
+  return parts.length < 2
+    ? parts.join("")
+    : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
 /** Spec 004 D8: the slow-tier line, as delivered headers print it, when slow files are declared. */
@@ -147,96 +124,18 @@ function excludedLine(s: StatusSnapshot): string[] {
 }
 
 /**
- * Says where current results come from, and at 0 that none was reused, so the
- * line never reads as nothing being current (lessons, defect 27).
+ * Task 001-219: the checkpoint a stopped daemon owes the next. One in
+ * progress is an outstanding group (row 011-29).
  */
-function inheritedLine(s: StatusSnapshot): string {
-  return s.inherited.count === 0
-    ? "Inherited from other worktrees: none (every current result here was run in this worktree)"
-    : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}${partsSuffix(s.inherited.count, s.inheritedFileLevelCount)}`;
-}
-
-/**
- * Task 001-217: the checkpoint in progress, with what it has done, and how
- * to wait for it; task 001-219: the one a stopped daemon owes the next.
- */
-function checkpointLine(s: StatusSnapshot, now: EpochMs, command: string): string[] {
+function owedLine(s: StatusSnapshot): string[] {
   const checkpoint = s.checkpoint;
-  if (checkpoint === undefined) return [];
+  if (checkpoint === undefined || !checkpoint.owed) return [];
   const what =
     checkpoint.kind === "run-all"
       ? `\`run --all\` requested at revision ${checkpoint.revision}`
       : `the baseline from revision ${checkpoint.revision}`;
   const done = `${checkpoint.done} of ${plural(checkpoint.total, "test file")} done`;
-  if (checkpoint.owed) {
-    return [
-      `Checkpoint owed: ${what}, ${done} when its daemon stopped; the next daemon resumes it`,
-    ];
-  }
-  const started = `started ${age(now - checkpoint.startedAt)} ago`;
-  return [
-    `Checkpoint in progress: ${what}, ${started}: ${done} (\`${command} run --all --wait\` waits for it)`,
-  ];
-}
-
-/**
- * Status's own notes, then the daemon's with time and revision. Unless
- * `all`, two or more notes of stopped processes of one kind fold into one
- * line counting them by command (task 001-222); 001-212's detail of each
- * stays behind `status --notes`. So do a daemon's exit notes of one text,
- * one per start of an idle worktree's daemon: the latest is listed with how
- * many there were (task 001-413).
- */
-function notes(s: StatusSnapshot, command: string, all: boolean): string[] {
-  const exits = new Map<string, DaemonNote[]>();
-  for (const note of all ? [] : s.daemonNotes) {
-    if (note.exitOf !== undefined) exits.set(note.text, [...(exits.get(note.text) ?? []), note]);
-  }
-  const stamped = (n: DaemonNote) => {
-    const at = new Date(n.at).toISOString();
-    const text =
-      n.revision === null ? `${at}: ${n.text}` : `${at}, revision ${n.revision}: ${n.text}`;
-    const same = n.exitOf === undefined ? [] : (exits.get(n.text) ?? []);
-    const [first] = same;
-    if (same.length < 2 || first === undefined) return text;
-    const since = new Date(first.at).toISOString();
-    return `${text} (${same.length} notes since ${since}; \`${command} status --notes\` lists each)`;
-  };
-  const groups = new Map<string, DaemonNote[]>();
-  const kept: DaemonNote[] = [];
-  for (const note of s.daemonNotes) {
-    const exit = note.exitOf === undefined ? undefined : exits.get(note.text);
-    if (exit !== undefined && exit[exit.length - 1] !== note) continue;
-    const what = all ? undefined : note.stopped?.what;
-    if (what === undefined) kept.push(note);
-    else groups.set(what, [...(groups.get(what) ?? []), note]);
-  }
-  const folded: string[] = [];
-  for (const [what, list] of groups) {
-    const [only] = list;
-    if (list.length === 1 && only !== undefined) kept.push(only);
-    else folded.push(foldedText(what, list, command));
-  }
-  kept.sort((a, b) => a.at - b.at);
-  const lines = [...s.notes, ...kept.map(stamped), ...folded];
-  return lines.length === 0 ? [] : ["Notes:", ...lines.map((note) => `  ${note}`)];
-}
-
-function foldedText(what: string, list: readonly DaemonNote[], command: string): string {
-  const counts = new Map<string, number>();
-  for (const line of list.flatMap((note) => note.stopped?.commands ?? [])) {
-    counts.set(line, (counts.get(line) ?? 0) + 1);
-  }
-  const total = [...counts.values()].reduce((sum, n) => sum + n, 0);
-  const byCommand = [...counts]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([line, n]) => `${n} × ${line}`);
-  const since = new Date(Math.min(...list.map((note) => note.at))).toISOString();
-  const processes = total === 1 ? "1 process" : `${total} processes`;
-  return (
-    `stopped ${processes} ${what}, in ${plural(list.length, "note")} since ${since}: ` +
-    `${byCommand.join("; ")} (\`${command} status --notes\` lists each)`
-  );
+  return [`Checkpoint owed: ${what}, ${done} when its daemon stopped; the next daemon resumes it`];
 }
 
 export function formatUnavailable(result: StatusUnavailable, command = "squeal"): string {
@@ -297,29 +196,4 @@ function freshText(s: StatusSnapshot): string {
   return running === 0
     ? ""
     : `; ${plural(files, "test file")} without checks yet: ${running} running, ${files - running} queued`;
-}
-
-function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
-  if (s.daemon.state === "alive") {
-    return `Daemon: running, last heartbeat ${age(now - s.daemon.lastHeartbeatAt)} ago`;
-  }
-  // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
-  if (s.daemon.stopped === true) {
-    return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
-  }
-  const down =
-    s.daemon.since === null
-      ? "Daemon: no daemon running"
-      : `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
-  // Task 001-263: a daemon that died without its stop note is named, with what it was running.
-  if (s.daemon.died === undefined) return down;
-  return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;
-}
-
-function age(ms: number): string {
-  const seconds = Math.max(0, Math.round(ms / 1000));
-  if (seconds < 120) return `${seconds} s`;
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 120) return `${minutes} min`;
-  return `${Math.round(minutes / 60)} h`;
 }
