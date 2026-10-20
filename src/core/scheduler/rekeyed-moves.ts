@@ -186,6 +186,22 @@ export function adoptsAtFirstCommit(
   return predecessor === undefined || readMoves(store, worktreeId)?.writer !== predecessor;
 }
 
+/**
+ * By `testFileId`: the earliest and the latest revision of each file's open
+ * move, as the record stands; empty with none. Whoever wrote it: a restart
+ * orders the work it hands over from them (011 C4, task 011-33).
+ */
+export function openMoves(
+  store: Store,
+  worktreeId: WorktreeId,
+): Map<string, readonly [RevisionNumber, RevisionNumber]> {
+  const open = new Map<string, readonly [RevisionNumber, RevisionNumber]>();
+  for (const [id, file] of Object.entries(readMoves(store, worktreeId)?.files ?? {})) {
+    if (file.open !== null) open.set(id, file.open);
+  }
+  return open;
+}
+
 /** The record's commit sequence, which a wait reads with its start view; `null` with no record. */
 export function movesSeq(store: Store, worktreeId: WorktreeId): number | null {
   return readMoves(store, worktreeId)?.seq ?? null;
