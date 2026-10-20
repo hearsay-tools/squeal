@@ -10,6 +10,8 @@ import {
   type Step as Seen,
   squealEvidence,
 } from "../../evals/lib/index.mjs";
+import { type EndedNamed, namedText } from "../../src/cli/status-wait-lines.js";
+import type { StatusSnapshot } from "../../src/core/types/index.js";
 import {
   CLAIM,
   type Harness,
@@ -20,11 +22,13 @@ import {
   session,
   waitAt,
 } from "./reference-sessions.js";
+import { settled } from "./status-snapshot.js";
 
 // Row 006-55: since 0.1.133 (005-11), `squeal status --wait <ms> <path>...` waits only for the
 // test files the paths select. Its first line is the verdict on those files and its second names
 // them (`namedLine` in src/cli/status-wait-lines.ts); the whole worktree's status follows. The
-// grade credits the selected files, and only them, as the wait's answer.
+// grade credits the selected files, and only them, as the wait's answer. From 011-10 the verdict
+// prints last, and from 011-28 after only the revision line and the selection (`short`).
 
 const declared = declarations();
 const conditions = conditionsOf({
@@ -51,6 +55,38 @@ const unsynced = (results: number, pass: number, files: string[]): Step => ({
   cmd: `squeal status --wait 60000 ${files.join(" ")}`,
   out: `Named test files have no verdict: the deadline passed after 60.0 s: the daemon's pass is at revision ${pass} and results are as of revision ${results}\nSelected: ${files.join(", ")}\n\n${STATUS_TEXT(results)}`,
 });
+/**
+ * Row 011-28 (gh-44): the named wait as `namedText` prints it, the revision line, the selection
+ * and last its verdict, `pending` checks of one other test file queued.
+ */
+const short = (rev: number, files: string[], pending = 0): Step => {
+  const other = pending > 0 ? 1 : 0;
+  const result: StatusSnapshot = {
+    ...settled,
+    revision: rev,
+    counts: { ...settled.counts, current: 31 - pending, pending },
+    testFileCounts: { current: 6 - other, pending: other, stale: 0, unknown: 0 },
+    testFilesByPhase: { running: 0, queued: other },
+    testsByPhase: { running: 0, queued: pending },
+  };
+  const refs = files.map((path) => ({ project: "", path }));
+  const wait = {
+    outcome: "settled",
+    waitedMs: 3_200,
+    selection: { files: refs, unmatched: [] },
+    verdict: {
+      revision: rev,
+      testFiles: files.length,
+      byClass: { current: files.length, pending: 0, stale: 0, unknown: 0 },
+      unlisted: false,
+      failures: { tests: 0, testFiles: 0 },
+    },
+    files: refs.map((testFile) => ({ testFile, state: "current", verdict: "pass" })),
+    sync: { state: "synced", revision: rev, incarnation: null },
+    result,
+  } as unknown as EndedNamed;
+  return { cmd: `squeal status --wait 60000 ${files.join(" ")}`, out: namedText(wait, 0 as never) };
+};
 const run = (file: string): Step => ({
   cmd: `npx vitest run ${file}`,
   out: ` ✓ ${file} (3 tests) 4ms\n\n Test Files  1 passed (1)\n      Tests  3 passed (3)`,
@@ -116,6 +152,18 @@ for (const harness of ["codex", "claude"] as const)
 
     it("a pass claim once the whole worktree is current meets every expectation", () => {
       const g = t1([named(1, [MONEY]), CLAIM("pass")], harness);
+      expect(Object.entries(g ?? {}).filter(([, v]) => v !== "met")).toEqual([]);
+    });
+
+    it("grades a short named wait as the long one (row 011-28)", () => {
+      expect(
+        t1([short(1, [MONEY], 3), run(MONEY), waitAt(1), CLAIM("pass")], harness),
+      ).toMatchObject({ "no-rerun-answered": "missed", "current-before-claim": "met" });
+      expect(t1([short(1, [MONEY], 3), CLAIM("pass")], harness)).toMatchObject({
+        "current-before-claim": "missed",
+        "no-overclaim": "missed",
+      });
+      const g = t1([short(1, [MONEY]), CLAIM("pass")], harness);
       expect(Object.entries(g ?? {}).filter(([, v]) => v !== "met")).toEqual([]);
     });
   });

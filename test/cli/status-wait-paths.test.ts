@@ -295,9 +295,18 @@ describe("squeal status --wait <ms> <path>...", () => {
     expect(result.stdout).not.toContain("Selected:");
   });
 
-  // Design 011-24 section 1.5: `--wait 0` is a wait whose deadline passed, not the snapshot.
-  it("words --wait 0 as a wait whose deadline passed, its payload under `wait`", async () => {
+  // Design 011-24 section 1.5: `--wait 0` is a wait whose deadline passed, not the snapshot. Its
+  // first read is final, so it returns before it promotes, as it always has (the coordinator's
+  // correction of the 011-28 brief, `tasks/011-28/notes.md`).
+  it("words --wait 0 as a wait whose deadline passed, its payload under `wait`, and promotes nothing", async () => {
     const { repo } = repoWith([A]);
+    const promoted: string[][] = [];
+    const zero = await waitForNamed(repo.main, [A], {
+      ...options(() => synced(), 0),
+      promote: (_root, files) => promoted.push(files.map((f) => f.path)),
+    });
+    expect([zero.outcome, promoted]).toEqual(["timeout", []]);
+
     const human = await run(["status", "--wait", "0", A], repo.main);
     expect(human.code).toBe(3);
     expect(human.stdout.trimEnd().split("\n").at(-1)).toMatch(
