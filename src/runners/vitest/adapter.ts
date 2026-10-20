@@ -447,13 +447,15 @@ export class VitestAdapter implements RunnerAdapter {
         paths: this.paths,
         runnerVersion: this.#node.version,
         adapterVersion: this.#observer.adapterVersion(this.adapterVersion),
-        injected: { ...this.#childEnv, ...this.#observer.injected },
       };
       const envs: RunnerEnvironment[] = [];
       for (const project of vitest.projects) {
         const inputs = await projectInputs(vitest, project);
         envs.push({
-          ...projectEnvironment(project, inputs, context),
+          ...projectEnvironment(project, inputs, {
+            ...context,
+            injected: { ...this.#childEnv, ...this.#observer.injectedFor(project.name) },
+          }),
           packages: await environmentPackages(project, inputs, this.paths),
         });
       }
