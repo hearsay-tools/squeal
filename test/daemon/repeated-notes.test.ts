@@ -64,7 +64,7 @@ describe("notes repeated by every daemon start (001-413)", () => {
       expect(stops.map((n) => n.text)).toEqual(Array(STARTS).fill("daemon stopped: signal"));
 
       const result = readStatus(repo.root as AbsolutePath, { now: () => Date.now() });
-      const text = formatStatus(result, Date.now()).split("\n");
+      const text = formatStatus(result, Date.now(), "squeal", { full: true }).split("\n");
       const since = new Date(stops[0]?.at ?? 0).toISOString();
       expect(text.filter((line) => line.includes("daemon stopped: signal"))).toEqual([
         expect.stringMatching(

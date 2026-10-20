@@ -28,7 +28,7 @@ describe("HEAD and dirty without a recorded revision", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(status).toMatchObject({ revision: 0, head: SHA, dirty: null });
-    expect(formatStatus(status, NOW)).toContain(
+    expect(formatStatus(status, NOW, "squeal", { full: true })).toContain(
       `\nWorktree: ${repo.main} (HEAD abc1234, dirty state not known: no daemon is validating)\n`,
     );
   });
@@ -51,7 +51,7 @@ describe("HEAD and dirty without a recorded revision", () => {
     seedStore(repo);
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
     expect(status).toMatchObject({ head: null, dirty: null });
-    expect(formatStatus(status, NOW)).toContain(
+    expect(formatStatus(status, NOW, "squeal", { full: true })).toContain(
       `\nWorktree: ${repo.main} (HEAD no commit, dirty state not known: no daemon is validating)\n`,
     );
 
@@ -86,7 +86,7 @@ describe("HEAD and dirty without a recorded revision", () => {
       dirtyObservedAt: null,
       headMovedSince: 1,
     });
-    expect(formatStatus(status, NOW)).toContain(
+    expect(formatStatus(status, NOW, "squeal", { full: true })).toContain(
       `\nWorktree: ${repo.main} (HEAD 0123456, moved since revision 1; dirty state not known until the next pass)\n`,
     );
 

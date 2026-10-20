@@ -18,6 +18,7 @@ import {
   type EpochMs,
   type InheritedSource,
   type KnownState,
+  type LoadNow,
   PAYLOAD_SCHEMA_VERSION,
   parseCheckpointProgress,
   type RunRecord,
@@ -40,6 +41,8 @@ import { unknownTestFilesOf } from "./unknown-files.js";
 
 export interface StatusOptions extends StatusStoreOptions {
   readonly now?: () => EpochMs;
+  /** The host's load, for a retry's and a timed-out file's text; `hostLoad` by default. */
+  readonly load?: () => LoadNow;
 }
 
 /**
@@ -56,7 +59,7 @@ export const HEARTBEAT_GRACE_INTERVALS = 2;
 export function readStatus(cwd: AbsolutePath, options: StatusOptions = {}): StatusResult {
   const now = options.now ?? Date.now;
   const result = withStatusStore(cwd, options, ({ store, root }) =>
-    buildSnapshot(store, root, now()),
+    buildSnapshot(store, root, now(), options.load),
   );
   return withConfigProblems(result, cwd);
 }
@@ -91,8 +94,13 @@ export function createStatusBuilder(
 }
 
 /** The D7 snapshot of the worktree at `root` from an open store, read in one read transaction. */
-export function buildSnapshot(store: Store, root: AbsolutePath, now: EpochMs): StatusSnapshot {
-  return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now));
+export function buildSnapshot(
+  store: Store,
+  root: AbsolutePath,
+  now: EpochMs,
+  load: () => LoadNow = hostLoad,
+): StatusSnapshot {
+  return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now, load));
 }
 
 function snapshot(
@@ -100,6 +108,7 @@ function snapshot(
   worktreeId: WorktreeId,
   root: AbsolutePath,
   now: EpochMs,
+  hostLoadNow: () => LoadNow = hostLoad,
 ): StatusSnapshot {
   const worktree = store.worktrees.get(worktreeId);
   const revision = store.revisions.latest(worktreeId);
@@ -129,7 +138,7 @@ function snapshot(
   const header = readHeader(store, worktreeId, states, keys, undefined, openFiles(runs));
   // Task 001-404: each failure says how old its run is and the load it ran under.
   const knownFailures = withRecorded(store, worktreeId, states, header.revision);
-  const load = once(hostLoad);
+  const load = once(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
   const at = worktree?.root ?? root;

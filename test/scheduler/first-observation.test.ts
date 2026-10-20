@@ -194,7 +194,7 @@ describe(
       }
       expect(h.header().testFilesWithoutChecks).toMatchObject({ pending: 0, unknown: 2 });
       // Task 001-403: status names each file, why, and paths it read that no earlier run had.
-      const status = formatStatus(readStatus(repo.main), Date.now());
+      const status = formatStatus(readStatus(repo.main), Date.now(), "squeal", { full: true });
       expect(status).toContain("Test files without a result: 2 (");
       for (const pool of POOLS) {
         expect(status).toMatch(

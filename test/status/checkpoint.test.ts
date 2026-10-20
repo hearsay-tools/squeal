@@ -101,9 +101,11 @@ describe("status names the checkpoint in progress (task 001-217)", () => {
     expect(lines[2]).toBe(
       "Affected checks: 0 passed, 0 running, 0 queued; 160 test files without checks yet: 30 running, 130 queued",
     );
-    expect(lines).toContain(
-      "Checkpoint in progress: the baseline from revision 3, started 90 s ago: 40 of 200 test files done (`squeal run --all --wait` waits for it)",
-    );
+    // Row 011-29: an outstanding group, before the groups of the files it runs.
+    expect(lines.slice(lines.indexOf("Outstanding:"), lines.indexOf("Outstanding:") + 2)).toEqual([
+      "Outstanding:",
+      "  a checkpoint in progress: the baseline from revision 3, started 90 s ago: 40 of 200 test files done; `squeal run --all --wait` waits for it",
+    ]);
   });
 
   it("calls a baseline a run --all joined explicit, and says nothing once the checkpoint ended", () => {
@@ -112,7 +114,7 @@ describe("status names the checkpoint in progress (task 001-217)", () => {
     worktree(repo, store, true);
     seedBaseline(repo, store, { kind: "run-all" });
     expect(formatStatus(status(repo), NOW)).toContain(
-      "Checkpoint in progress: `run --all` requested at revision 3, started 90 s ago",
+      "  a checkpoint in progress: `run --all` requested at revision 3, started 90 s ago",
     );
 
     store.checkpoints.finish("cp-1", "completed", NOW);
@@ -180,7 +182,7 @@ describe("status folds stopped-process notes by command (task 001-222)", () => {
     const repo = fakeRepo();
     const store = seedStore(repo);
     seedNotes(repo, store);
-    const text = formatStatus(status(repo), NOW);
+    const text = formatStatus(status(repo), NOW, "squeal", { full: true });
     const notes = text.slice(text.indexOf("Notes:")).split("\n");
     expect(notes).toEqual([
       "Notes:",
@@ -199,7 +201,7 @@ describe("status folds stopped-process notes by command (task 001-222)", () => {
     const shell = 'sh -c "a; b (c)"';
     stopNote(store, repo, 3_000, TIER, [shell]);
     stopNote(store, repo, 2_000, TIER, [shell, "node a.mjs"]);
-    const text = formatStatus(status(repo), NOW);
+    const text = formatStatus(status(repo), NOW, "squeal", { full: true });
     expect(text).toContain(
       `stopped 3 processes ${TIER}, in 2 notes since 2026-10-10T11:59:57.000Z: ` +
         `2 × ${shell}; 1 × node a.mjs (`,
@@ -214,7 +216,7 @@ describe("status folds stopped-process notes by command (task 001-222)", () => {
     for (const at of [3_000, 2_000]) {
       appendNote(store, repo.mainId, { at: NOW - at, revision: 4, text: prose });
     }
-    const text = formatStatus(status(repo), NOW);
+    const text = formatStatus(status(repo), NOW, "squeal", { full: true });
     expect(text).toContain(`  2026-10-10T11:59:57.000Z, revision 4: ${prose}\n`);
     expect(text).toContain(`  2026-10-10T11:59:58.000Z, revision 4: ${prose}\n`);
     expect(text).not.toContain("lists each");
@@ -229,7 +231,7 @@ describe("status folds stopped-process notes by command (task 001-222)", () => {
     for (const at of [3_000, 2_000]) {
       appendNote(store, repo.mainId, { at: NOW - at, revision: 4, text, stopped: malformed });
     }
-    const out = formatStatus(status(repo), NOW);
+    const out = formatStatus(status(repo), NOW, "squeal", { full: true });
     expect(out).toContain(`  2026-10-10T11:59:57.000Z, revision 4: ${text}\n`);
     expect(out).not.toContain("lists each");
   });

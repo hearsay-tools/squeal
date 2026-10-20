@@ -45,8 +45,9 @@ describe.each(PLUGINS)("an explicit squeal stop, $name", (plugin) => {
     expect(start.text).toContain(STOPPED);
     await sleep(NO_DAEMON_MS);
     expect(await e.ping(e.main)).toBeNull();
+    // Row 011-29: the default text's `Outstanding:` line says so, `--full`'s `Daemon:` line too.
     const status = await e.cli(e.main, ["status"]);
-    expect(status.stdout).toContain("Daemon: stopped by request (`");
+    expect(status.stdout).toMatch(/^ {2}no daemon has validated[^\n]*; stopped by request \(`/m);
 
     e.write(e.main, "math", MATH("+"));
     await e.hook("post-tool-batch", e.main);
