@@ -4,10 +4,11 @@
 // and the rules that read it.
 /**
  * Squeal saying no daemon validates (the T4 knob's state); a named wait's or snapshot's verdict
- * line says it alone in its short text (row 011-28).
+ * line says it alone in its short text (row 011-28), and status's default text as its first
+ * `Outstanding:` group (row 011-29).
  */
 export const NO_DAEMON =
-  /Not validated: no daemon|Returned without a daemon|^Daemon: no daemon|No daemon (?:is running|has validated)|no daemon is validating|A daemon is starting|^Named test files have no verdict(?: at revision \d+)?: no daemon/m;
+  /Not validated: no daemon|Returned without a daemon|^Daemon: no daemon|No daemon (?:is running|has validated)|no daemon is validating|A daemon is starting|^Named test files have no verdict(?: at revision \d+)?: no daemon|^ {2}no daemon has validated/m;
 
 /**
  * Another program's reply in place of Squeal's, one per call it answered (row 006-62): the
@@ -154,7 +155,9 @@ export function squealEvidence(text, from, failures = 0) {
     known: listed ? Number(listed[1]) : null,
     checks: checksOf(t),
     ...(selected.length > 0 ? { selected } : {}),
-    ...(/^Pending retries: \d+/m.test(t) ? { pendingRetries: pendingRetriesOf(t) } : {}),
+    ...(/^Pending retries: \d+|^ {2}\d+ test files? with a pending retry /m.test(t)
+      ? { pendingRetries: pendingRetriesOf(t) }
+      : {}),
   };
   const before = typeof failures === "number" ? { named: [], unnamed: failures } : failures;
   return settled(step, failingAfter(before, step));
@@ -267,10 +270,16 @@ function selectedOf(t) {
 
 /**
  * The test files a status lists under `Pending retries:` (spec 001 D7 as amended for 001-368;
- * row 006-53), as `  test/a.test.ts (environment): runs at once`.
+ * row 006-53), as `  test/a.test.ts (environment): runs at once`; from row 011-29 its
+ * `Outstanding:` groups, `  2 test files with a pending retry (load): a, b; runs at ...`, whose
+ * files past "and N more" are not named.
  */
 function pendingRetriesOf(t) {
-  return [...t.matchAll(/^\s+(\S+) \((?:load|environment)\): /gm)].map((m) => m[1]);
+  const listed = [...t.matchAll(/^\s+(\S+) \((?:load|environment)\): /gm)].map((m) => m[1]);
+  const grouped = [
+    ...t.matchAll(/^ {2}\d+ test files? with a pending retry \([^)]*\): (.+?); /gm),
+  ].flatMap((m) => m[1].replace(/ and \d+ more$/, "").split(", "));
+  return [...listed, ...grouped];
 }
 
 /** A header's counts, each of which may name its parts: `30 current (23 tests, 7 test files loaded)`. */
@@ -301,9 +310,16 @@ const NONE_NOT_CURRENT =
   /known failures:? .*; (?:all \d+ test files? current|\d+ test files? current|the daemon (?:listed no test files|has not listed this worktree's test files))/im;
 
 /**
+ * Status's default text from row 011-29 (011 C6 as amended 2026-10-20): its `More:` line names
+ * what `--full` adds, the test files without checks among it.
+ */
+const MORE = /^More: `[^`]*status --full` adds /m;
+
+/**
  * Pending, stale and unknown counts in a delivered header, a status or, without either, the
  * not-current clause of a wait's verdict line (row 011-26), or `null` for none. The clause counts
- * test files and tests apart, so a file and its tests both count.
+ * test files and tests apart, so a file and its tests both count. Status's default text (row
+ * 011-29) has no `Test files without checks:` line, so its counts are its clause's.
  */
 function countsOf(t) {
   let pending;
@@ -312,12 +328,13 @@ function countsOf(t) {
   const header = HEADER.exec(t);
   const news = NEWS.exec(t)?.[1];
   const affected = /^Affected checks: (.*)$/m.exec(t)?.[1];
+  const short = MORE.test(t) && !/^Test files without checks: /m.test(t) && NOT_CURRENT.test(t);
   if (header) [pending, stale, unknown] = [header[2], header[3], header[4]].map(Number);
   else if (news !== undefined) {
     [pending, stale, unknown] = ["pending", "stale", "unknown"].map((v) =>
       count(new RegExp(`(\\d+) ${v}\\b`), news),
     );
-  } else if (affected !== undefined && !/^none counted/.test(affected)) {
+  } else if (affected !== undefined && !/^none counted/.test(affected) && !short) {
     pending = count(/(\d+) running/, affected) + count(/(\d+) queued/, affected);
     stale = count(/(\d+) stale/, affected);
     unknown = count(/(\d+) unknown/, affected);
