@@ -12,6 +12,7 @@ import {
 } from "../types/index.js";
 import { owedStrict, resumeOwed } from "./checkpoint-requests.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
+import { cutAtStart } from "./edit-cut.js";
 import { block, type Failures } from "./failures.js";
 import { durationOf, type FileState } from "./files.js";
 import { handover } from "./handover.js";
@@ -99,6 +100,9 @@ function readRefined(store: Store, worktreeId: WorktreeId): RevisionNumber | nul
  * when every revision that reached it holds 10 keyed paths or more
  * (`isCatchUp`, 011 C4 step 4 as amended 2026-10-20, task 011-22): each
  * revision is counted on its own, never their union (review wave 5, B3).
+ * Of a smaller revision's reach, what the edit cut does not keep is
+ * catch-up, by the runner's `affected` for its paths (`cutAtStart`, task
+ * 011-25).
  */
 export async function baseline(
   context: SchedulerContext,
@@ -187,15 +191,30 @@ export async function baseline(
   const changed = new Set([...unseen.flatMap((paths) => [...paths]), ...handed.changed]);
   const recent = new Set(handed.first);
   const catchUp = new Set(handed.catchUp);
+  const direct = new Set<string>();
+  const missed = new Set(misses.map((file) => file.id));
   for (const paths of unseen) {
-    const reached = isCatchUp(context, ledger, paths) ? catchUp : recent;
-    for (const id of ledger.recentOf(paths)) reached.add(id);
+    const large = isCatchUp(context, ledger, paths);
+    const reached = ledger.recentOf(paths);
+    // A small revision keeps its namesakes and the shortest direct importers (011-25): the
+    // runner is asked only when the revision reached a file that runs, so never under
+    // lookup-only, where only a predecessor's queued work runs (011-33).
+    const cut =
+      lookupOnly || large || ![...reached].some((id) => missed.has(id))
+        ? null
+        : await cutAtStart(context, ledger, paths, bound);
+    for (const id of cut?.direct ?? []) direct.add(id);
+    for (const id of cut?.reached ?? reached) {
+      const kept = !large && (cut === null || cut.kept === null || cut.kept.has(id));
+      (kept ? recent : catchUp).add(id);
+    }
   }
   for (const file of misses) {
     // A predecessor's queued work is handed over whatever the policy (011 C4, task 011-33).
     if (lookupOnly && !handed.pending.has(file.id)) continue;
     const first = recent.has(file.id);
-    ledger.enqueue(file, priorityOf(file, changed), false, first, !first && catchUp.has(file.id));
+    const priority = priorityOf(file, changed, direct);
+    ledger.enqueue(file, priority, false, first, !first && catchUp.has(file.id));
   }
   restoreReruns(context, ledger);
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
