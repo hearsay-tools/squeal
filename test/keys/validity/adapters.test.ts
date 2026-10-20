@@ -64,6 +64,42 @@ describe("each adapter's comparison (risk 3)", SLOW, () => {
     for (const line of reported) expect(line).toMatch(/\(the candidate stores more\)$/);
   });
 
+  it("fails Vitest's when the errors it reads change a stored fingerprint (review of cand/0.1.232, B1)", async () => {
+    const result = await compare(
+      edited(
+        "src/runners/vitest/results.ts",
+        'name: error.name ?? "Error",',
+        'name: "ChangedAssertionKind",',
+      ),
+      only("adapter:vitest"),
+    );
+    expect(fired(result)).toEqual(["vitest"]);
+    const differing = result.cases.filter((c) => !c.outputsEqual).map((c) => c.name);
+    expect(differing).toEqual([
+      "a failing test and a file that fails to load store their fingerprints (review of cand/0.1.232, B1)",
+    ]);
+    const failed = failures(result, release());
+    expect(failed).toEqual([
+      expect.stringMatching(
+        /^adapter:vitest case "a failing test .*:test\/broken\.test\.ts.*:test\/fails\.test\.ts.* raise VITEST_ADAPTER_VERSION/,
+      ),
+    ]);
+  });
+
+  it("passes a change to the errors' wording that keeps every fingerprint (review of cand/0.1.232, B1)", async () => {
+    const result = await compare(
+      edited(
+        "src/runners/vitest/results.ts",
+        "stack: error.stack ? paths.relativizeText(error.stack) : null,",
+        "stack: null,",
+      ),
+      only("adapter:vitest"),
+    );
+    expect(fired(result)).toEqual(["vitest"]);
+    expect(result.cases.every((c) => c.outputsEqual)).toBe(true);
+    expect(failures(result, release())).toEqual([]);
+  });
+
   it("fires none for a change to Vitest's width hints", async () => {
     const result = await compare(
       edited(
