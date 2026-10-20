@@ -6,14 +6,17 @@ import type { Case, CaseKind } from "./case.js";
 import { CASES } from "./cases/index.js";
 import { compareTrees, failures, wordingChanges } from "./compare.js";
 import { extractTree, lastRelease, type Overlay, ROOT } from "./trees.js";
+// The validity path's entries and the harness, statically: esbuild reads them in a process no
+// recorder sees (011 C12), so this import is what re-runs this file when one of them changes.
+import "./driver.js";
 
 /*
  * Task 011-39 (011 C3, task 011-37 sections 3 and 6): the candidate against
  * the last release, read from its tag with `git archive` into a temporary
- * directory. The self-tests compare the last release with this checkout under
- * an overlay, a change unmade. The bundles import the validity path through
- * `driver.ts`, which this file's closure holds, so Squeal re-runs it when one
- * of them changes.
+ * directory. The self-tests compare this checkout with itself under an
+ * overlay, a change unmade, so they hold whatever the checkout changed since
+ * the release. The bundles import the validity path through `driver.ts`,
+ * which this file's closure holds, so Squeal re-runs it when one changes.
  */
 
 let work: string;
@@ -47,8 +50,9 @@ const lineOf = (path: string, text: string) =>
     .split("\n")
     .findIndex((line) => line.includes(text)) + 1;
 
-const compare = (overlay: Overlay, cases: readonly Case[] = CASES) =>
-  compareTrees({ baseline: tree, cases, overlay, work: join(work, `run-${runs++}`) });
+/** This checkout against itself under `overlay`. */
+const compare = (overlay: Overlay, cases: readonly Case[] = CASES, baseline = ROOT) =>
+  compareTrees({ baseline, cases, overlay, work: join(work, `run-${runs++}`) });
 
 /** The corpus's cases of `kinds`: a self-test runs the kinds its change reaches. */
 const only = (...kinds: CaseKind[]) => CASES.filter((c) => kinds.includes(c.kind));
@@ -56,10 +60,29 @@ const only = (...kinds: CaseKind[]) => CASES.filter((c) => kinds.includes(c.kind
 // A full comparison bundles twice and runs the corpus in four child processes.
 const SLOW = { timeout: 120_000 };
 
+/** A wording-only change: it fires the comparison and moves no output. */
+const reworded = () =>
+  edited(
+    "src/core/state/fingerprint.ts",
+    '"error after its tests ran: "',
+    '"error once its tests ran: "',
+  );
+
 describe("the candidate against the last release", SLOW, () => {
   it("keeps every stored meaning, or raises", async () => {
-    const result = await compare({});
+    const result = await compare({}, CASES, tree);
     expect(failures(result, release)).toEqual([]);
+  });
+
+  it("runs every case at the release's tree and at the candidate", async () => {
+    const result = await compare(reworded(), CASES, tree);
+    expect(result.fired).toBe(true);
+    const thrown = result.cases.flatMap((c) =>
+      [c.baseline.error, c.candidate.error].flatMap((e) =>
+        e === undefined ? [] : [`${c.name}: ${e}`],
+      ),
+    );
+    expect(thrown).toEqual([]);
   });
 });
 
@@ -116,10 +139,7 @@ describe("the comparison, under a change unmade", SLOW, () => {
   });
 
   it("passes a summary-only change and lists the wording, every kind equal (11->12)", async () => {
-    const path = "src/core/state/fingerprint.ts";
-    const result = await compare(
-      edited(path, '"error after its tests ran: "', '"error once its tests ran: "'),
-    );
+    const result = await compare(reworded());
     expect(result.fired).toBe(true);
     expect(failures(result, release)).toEqual([]);
     expect(wordingChanges(result)).toEqual(["an error after the tests ran"]);
