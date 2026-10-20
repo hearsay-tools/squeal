@@ -174,9 +174,12 @@ class Daemon {
    * wait for them (task 001-367).
    */
   readonly #children = new EscapedChildren(this.#token);
-  /** A `squeal stop` was accepted: no tier starts, and those in flight are cancelled (D10). */
+  /**
+   * A `squeal stop` or a step-down was accepted: no tier starts, and those in
+   * flight are cancelled (D10; row 011-31).
+   */
   #stopRequested = false;
-  /** The cancel of the tiers in flight a stop began (`#cancelTiers`). */
+  /** The cancel of the tiers in flight a stop or a step-down began (`#cancelTiers`). */
   #cancelling: Promise<void> = Promise.resolve();
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
@@ -579,10 +582,13 @@ class Daemon {
             () => void this.#shutdown("stop-requested", 0, "daemon stopped: squeal stop"),
           );
         },
-        onStepDown: (version) =>
+        // Row 011-31 (C9 as amended 2026-10-20): a step-down cancels its tiers as a stop does.
+        onStepDown: (version) => {
+          this.#cancelTiers();
           setImmediate(
             () => void this.#shutdown("superseded", 0, stepDownNote(this.#version, version)),
-          ),
+          );
+        },
         onFailure: (error) =>
           void this.#shutdown("start-failed", 1, `daemon exited: socket failed: ${error.message}`),
         // Caught by the desk, which serves on (review wave-13ak, B1).
@@ -675,8 +681,9 @@ class Daemon {
   }
 
   /**
-   * D10 as amended (task 001-367): a `squeal stop` cancels the tiers in
-   * flight in every lane, as a timeout stops one, and no other starts. A
+   * D10 as amended (task 001-367; row 011-31, C9 as amended 2026-10-20): a
+   * `squeal stop` or a step-down cancels the tiers in flight in every lane,
+   * as a timeout stops one, and no other starts. A
    * runner that cannot cancel (node:test, pytest) has its processes, every
    * carrier of this daemon's mark, stopped after `CANCEL_GRACE_MS` (D12), so
    * its run ends; what did not complete stays queued for the next daemon.
@@ -701,7 +708,7 @@ class Daemon {
   /**
    * Spec 001 D10 and the review's shutdown order: `loop.close()` (waits for
    * the tier in flight, abandons the open checkpoint; cancels it after a
-   * stop, `#cancelTiers`), `runner.close()`, what
+   * stop or a step-down, `#cancelTiers`), `runner.close()`, what
    * the tests left running (D12), the
    * temp directory once its leftovers are gone, `setDaemon(null)`,
    * `store.close()`. Then the socket, which closing unlinks, and last the

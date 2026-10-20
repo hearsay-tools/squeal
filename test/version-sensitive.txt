@@ -110,14 +110,16 @@ test/scheduler/edit-beside-backlog
 test/scheduler/backlog-slots
 test/scheduler/slots-backlog-turn
 # A daemon started on a node:test project: its results, its slow tier and
-# capacity mark, the version probe of each project's Node at startup, and
-# two overlapping runs of its lane through the sweep.
+# capacity mark, the version probe of each project's Node at startup, two
+# overlapping runs of its lane through the sweep, and a step-down's cancel
+# of its tier (row 011-31).
 test/integration/slow-spawn
 test/integration/capacity-project
 test/daemon/composite-runner
 test/daemon/died-startup
 test/daemon/repeated-notes
 test/daemon/escaped-run-mark
+test/daemon/step-down-lanes
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
 test/e2e/slow-node-test
