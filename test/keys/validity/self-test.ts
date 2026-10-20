@@ -5,6 +5,7 @@ import { afterAll, beforeAll, expect } from "vitest";
 import type { Case, CaseKind } from "./case.js";
 import { CASES } from "./cases/index.js";
 import { type Comparison, compareTrees } from "./compare.js";
+import type { Install } from "./lock.js";
 import { extractTree, lastRelease, type Overlay, ROOT } from "./trees.js";
 
 /*
@@ -40,8 +41,13 @@ export interface Comparisons {
   release(): string;
   /** Its tree, extracted. */
   tree(): string;
-  /** This checkout against `baseline`, itself by default, under `overlay`. */
-  compare(overlay: Overlay, cases?: readonly Case[], baseline?: string): Promise<Comparison>;
+  /** This checkout against `baseline`, itself by default, under `overlay`; `install` as `compareTrees` takes it. */
+  compare(
+    overlay: Overlay,
+    cases?: readonly Case[],
+    baseline?: string,
+    install?: Install | null,
+  ): Promise<Comparison>;
 }
 
 /** Registers the work directory's setup and removal; call at a test file's top level. */
@@ -64,7 +70,13 @@ export function comparisons(): Comparisons {
   return {
     release: () => release,
     tree: () => join(dir(), "release"),
-    compare: (overlay, cases = CASES, baseline = ROOT) =>
-      compareTrees({ baseline, cases, overlay, work: join(dir(), `run-${runs++}`) }),
+    compare: (overlay, cases = CASES, baseline = ROOT, install) =>
+      compareTrees({
+        baseline,
+        cases,
+        overlay,
+        work: join(dir(), `run-${runs++}`),
+        ...(install === undefined ? {} : { install }),
+      }),
   };
 }
