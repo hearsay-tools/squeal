@@ -23,6 +23,7 @@ export const MOVES: Readonly<Record<CaseKind, string>> = {
   rows: FORMAT,
   accept: FORMAT,
   assemble: FORMAT,
+  store: FORMAT,
   observe: "RECORDER_VERSION (src/runners/observe/runtime.ts)",
 };
 

@@ -68,12 +68,58 @@ export interface AssembleInput {
   readonly closures: readonly { readonly path: string; readonly imports: readonly string[] }[];
 }
 
+/** One file of a finished tier, and what the ledger holds of it when the tier is recorded. */
+export interface StoreFile {
+  readonly path: string;
+  /** The file's key now: the one it ran under (default), or one an edit moved it to. */
+  readonly key?: "ran" | "moved";
+  /** The tier that holds it: this one (default), another (a newer run), or none. */
+  readonly running?: "ran" | "other" | null;
+  /** The key of its current results: none (default), or one of the above. */
+  readonly result?: "ran" | "moved" | null;
+  /** The ledger still holds it as selected; default true. */
+  readonly held?: boolean;
+  /** What must hold still during the run. */
+  readonly inputs?: readonly string[];
+  readonly forced?: boolean;
+  /** Paths the run read beyond its closure (`ObservedGrowth`); `firstSeen` among them. */
+  readonly growth?: { readonly growth: readonly string[]; readonly firstSeen?: readonly string[] };
+}
+
+/** A finished tier recorded as the scheduler records one: each file's decision. */
+export interface StoreInput {
+  readonly files: readonly StoreFile[];
+  readonly end?: RunReport["end"];
+  /** The files the run completed, each with one passing test. */
+  readonly completed: readonly string[];
+  /** The runner's withholds (`RunReport.withheld`). */
+  readonly withheld?: readonly string[];
+  /**
+   * Paths written during the run whose bytes hash as before: the completion
+   * barrier withholds the files whose inputs name one (013-02).
+   */
+  readonly touched?: readonly string[];
+  /** Files the barrier withheld once already at the key they ran under (007-30). */
+  readonly touchedBefore?: readonly string[];
+  /** Paths whose content changed during the run. */
+  readonly changed?: readonly string[];
+  /** The install moved: the whole tier is queued again (`true`), or these files. */
+  readonly requeue?: true | readonly string[];
+  /** A backlog tier an edit cancelled. */
+  readonly cancelled?: boolean;
+  /** The global setup failed before these files started. */
+  readonly startup?: readonly string[];
+  /** Files whose run loaded environment files their key lacked (003-43). */
+  readonly environment?: readonly string[];
+}
+
 export type Case = { readonly name: string; readonly why: string } & (
   | { readonly kind: "key"; readonly input: KeyInput }
   | { readonly kind: "rows"; readonly input: RowsInput }
   | { readonly kind: "observe"; readonly input: ObserveInput }
   | { readonly kind: "accept"; readonly input: AcceptInput }
   | { readonly kind: "assemble"; readonly input: AssembleInput }
+  | { readonly kind: "store"; readonly input: StoreInput }
 );
 
 export type CaseKind = Case["kind"];
