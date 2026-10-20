@@ -1,4 +1,5 @@
 import { testFileId } from "../../../../src/core/keys/index.js";
+import type { ObservedGrowth, TierObservations } from "../../../../src/core/scheduler/observed.js";
 import { Withholds, withheldForTouch } from "../../../../src/core/scheduler/stability.js";
 import type { CheckKey, RunReport, TestFileRef } from "../../../../src/core/types/index.js";
 import type { StoreFile, StoreInput } from "../case.js";
@@ -88,5 +89,28 @@ export function recorded(input: StoreInput): {
   return {
     report,
     requeue: new Set([...again, ...(input.requeue ?? []).map((p) => testFileId(refOf(p)))]),
+  };
+}
+
+/** What the run read beyond its keys, by `testFileId`, as `prepareObserved` gives it. */
+export function observationsOf(input: StoreInput): TierObservations {
+  const growth = new Map<string, ObservedGrowth>();
+  for (const f of input.files) {
+    if (f.growth === undefined) continue;
+    const { growth: paths, firstSeen = [] } = f.growth;
+    growth.set(testFileId(refOf(f.path)), { add: paths, growth: paths, firstSeen });
+  }
+  const environment =
+    input.environment === undefined
+      ? undefined
+      : {
+          files: new Map(input.environment.map((p) => [testFileId(refOf(p)), ["env.json"]])),
+          changes: [],
+        };
+  return {
+    growth,
+    changed: new Set(),
+    touched: new Set(),
+    ...(environment ? { environment } : {}),
   };
 }
