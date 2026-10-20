@@ -53,3 +53,9 @@ Done when, each red on main first where it can be (the research's tests 4 to 7, 
 3. 300 node:test files of about 50 ms run in at most 1.2 times today's single-tier time, with fewer record commits than files.
 4. Another daemon's waiter gets its share within one slot's file of the holder, not one tier.
 5. A pytest lane runs one batch per slot (light files packed, a heavy file alone); measure a small real pytest fixture's backlog against today's tiers and record it, with the load, in the notes.
+
+## W4r: 011-21 slice 2, re-review of the repaired cand/0.1.225
+
+Use /reviewer. Shape: review, bounded. Pinned to the `cand/0.1.225` SHA named in the resume; the repair is `1fb03098..<sha>`. Read `reviews/wave-4.md` (Wave 4, slice 2: S2-B1, S2-B2, S2-S1) and append a "Slice 2 re-review" section to it.
+
+Check only that: S2-B1 is closed (`SlotRecords.record` handles each slot's outcome from its creation, so a failed record never rejects unhandled while a later slot's reads are pending; `slot-records.test.ts`'s unhandled-rejection case is red without it, and your `SQLITE_BUSY` probe exits 0); S2-B2 is closed (`RunQueue.backlogTurn` lets the fifth-tier turn take a backlog file in a lane of slots; `slots-backlog-turn.test.ts` is red without it, and your fairness probe selects a backlog file fifth); S2-S1 is closed (test 4 of `edit-beside-backlog` holds the backlog's crash behind an explicit barrier, and tests 3 and 4 fail with `supersededIn` disabled); the `KEY_FORMAT_VERSION` 16 re-pin, `test/version-sensitive.txt` and the bundles match the tree. The coordinator's gate on this SHA is reported in the resume. Anything outside the three findings is recorded for a later row, not a blocker.

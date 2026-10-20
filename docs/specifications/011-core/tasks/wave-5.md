@@ -19,3 +19,15 @@ Questions:
 Isolation and load: as R1 in `tasks/wave-3.md`: scratch clones by commit SHA, a scratch `HOME`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and store, never the real pool directory, a real session or a real store except read-only. Hold live measurements while the one-minute load is above 8 on 24 and record the load beside every number; replays from recorded durations need no hold. Owns: `research/catch-up.md`, `research/probes/catch-up/`.
 
 Done when: the findings file answers 1 to 4 and ends with a recommendation for each row, the C4 sentences it would change, and each slice's done-when as tests.
+
+## W1: 011-22, a revision of 10 or more keyed sources runs as catch-up on the backlog's route
+
+Use /worker. Shape: slice. Read board row 011-22, spec 011 C4 steps 4 and 5 as amended 2026-10-20 (`status.md`), `research/catch-up.md` (findings 1, 2 and 4, the Recommendation and 011-22's done-when), and `tasks/011-21/notes.md` (slots, `busyLanes`, the backlog turn). Base: `cand/0.1.225` (slots), rebased onto main once it lands.
+
+Outcome: a revision that changes 10 or more keyed paths puts the files it re-keys in a catch-up group between the first and the second, on the backlog's route (pool grant, 120 s wall, slots for node:test and pytest), failing first then shortest first, cancelled by a later edit in a Vitest lane and run beside in a node:test or pytest lane; the four-tiers turn takes catch-up first.
+
+Seams: `RunQueue` (`src/core/scheduler/queue.ts`: the groups, `ordered`, `hasFirstGroup`, `tierSelected`, `backlogTurn`), where a revision's re-key enqueues its files (`revision.ts`, `batch.ts`, `head-move.ts`, `bootstrap.ts`; the count of keyed paths a revision changed), `selectTier`'s `backlog` test (`tiers.ts`), and the cancel of a backlog tier (`Scheduler.handleBatch`). Raise `KEY_FORMAT_VERSION` to 17 only if a guarded source changes, and pin the printed hash.
+
+Owns: those files, their tests, new tests under `test/scheduler/`. Write `tasks/011-22/notes.md`. Leave the board, `status.md`, `spec.md`, versions and `plugins/*/dist` to the coordinator. Verify with `npm run lint`, `npm run typecheck` and `squeal run --all --wait`, and paste its output; do not run `npm run build`. `run-reads-fidelity` and `observe-fidelity` fail under the Squeal daemon (001-390); name them, do not fix them.
+
+Done when, each red on main first where it can be: 011-22's done-when 1 to 8 in `research/catch-up.md` as tests, with a fake runner of fixed durations and an injected pool; and done-when 9, the cezar replay (`research/probes/catch-up/replay-733.mjs`) on the slice's selection, recorded with the load in the notes. A live cezar measurement is the coordinator's, below load 8.
