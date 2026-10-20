@@ -162,7 +162,7 @@ describe("bundled Codex hooks name a CLI the agent's shell runs", () => {
     const status = shell(`${wait} status`);
     expect(status.stderr).toBe("");
     expect(status.status).toBe(0);
-    expect(status.stdout).toMatch(/^Revision: 1\nKnown failures: 0\n/);
+    expect(status.stdout).toMatch(/^Revision: 1\nKnown failures: 0; all 1 test file current\n/);
 
     r.apply(r.fail());
     const report = await context("post-tool-use", "post-tool-use");

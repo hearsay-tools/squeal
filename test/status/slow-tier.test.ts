@@ -319,7 +319,9 @@ describe("the slow-tier line (spec 004 D8)", () => {
     expect(lines[2]).toBe(
       "Slow tier: 2 test files; 1 pending, waiting for the agent to pause; 1 not run at revision 2. Squeal runs the pending ones after the fast tests and has not queued the rest; `squeal run --slow --wait 60000` waits for their results.",
     );
-    expect(lines[3]).toBe("Known failures: 0");
+    expect(lines[3]).toBe(
+      "Known failures: 0; not current: 3 of 3 test files (1 queued, 2 unknown)",
+    );
     expect(slowLine(status(s))).toBe(lines[2]);
     const snapshot = readStatus(s.repo.main, { now: () => NOW }) as StatusSnapshot;
     expect(snapshot.slowTier).toEqual(registration.header.slowTier);
