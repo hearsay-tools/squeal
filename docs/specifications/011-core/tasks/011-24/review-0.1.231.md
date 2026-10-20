@@ -1,0 +1,13 @@
+# Review of cand/0.1.231, the format-20 bundle
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.231` SHA named in the spawn; the range is from the base named in the spawn to that SHA. It holds two rows cherry-picked with `-x`: 011-26 (three commits) and 011-27 (six commits), the key format commit (20, with 19 read as one), this brief and the release commit (version 0.1.231 and the bundles). Under the human's interim rule (2026-10-20), rows with guarded changes ship together with one key raise until 011-41 lands.
+
+Read board rows 011-26 and 011-27, their briefs (`tasks/011-24/briefs.md`), `tasks/011-24/design.md` sections 2, 3 and 5 (R1, R2) with their "most likely false" lines, spec 011 C5, C6 and C15 as amended 2026-10-20, 005 D2, the two `notes.md` files, and 011 `status.md`'s 2026-10-20 lines for 011-26 (the file class in `src/core/state/file-class.ts`, the third JSON field `testsByPhase`). Check that:
+- every known-failures line carries one not-current clause: status, the registration header, Stop, and both waits' verdict lines, plain and `--json`. `all N test files current` prints only with a live daemon, the files listed and the runner part done. The test-file classes agree with the named wait's for each case R1's "most likely false" lists;
+- every selected file without a verdict names its next step per design section 3's table, one test per row. A stale file whose key another live worktree is running names that run, not `retry`. `retry` without `--reason` runs a stale, never-run or timed-out file once, and is refused for a counted failure;
+- format 19 can be read as 20. 011-26 changes only how `readHeader` counts. 011-27 adds a `cause` to the unknown records' meta row and changes no key or result row. Give your reading for each. `test/keys/validity/compare.test.ts` reports the raise against the last release; its uncovered lines in `scheduler/unknown-files.ts` and `ledger.ts` `markUnknown` are 011-41's to cover, not this bundle's;
+- 011-42's read budget holds (`test/cli/wait-reads.test.ts`), and `status-wait-paths.ts` changes only the unmatched base (011-44 owns `selectNamedFiles`' closure read);
+- the two rows merge cleanly in `status-wait-lines.ts`, `format-status.ts`, `snapshot.ts`, `types/status.ts` and `test/status/status.test.ts`, each keeping both rows' intent;
+- the eval pins round-trip the real formatters, plain and hook JSON.
+
+Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree; name each file that fails loaded and passes alone. `test/daemon/handover.test.ts:72` failed once, unattributed, in 0.1.229's review: say if it fails here. Write `reviews/format-20.md` with a PASS or FAIL verdict and commit it.
