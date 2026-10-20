@@ -37,7 +37,7 @@ function options(sync: () => SyncState, timeoutMs: number, settleMs = 0): NamedW
 async function command(root: string, opts: NamedWaitOptions) {
   let stdout = "";
   const io: CliIo = { stdout: (t) => (stdout += t), stderr: () => {}, cwd: root, env: {} };
-  const code = await namedWaitCommand([A], false, io, opts);
+  const code = await namedWaitCommand([A], { json: false }, io, opts);
   // Issue 26: the verdict is the last line.
   return { code, last: stdout.trimEnd().split("\n").at(-1) ?? "" };
 }

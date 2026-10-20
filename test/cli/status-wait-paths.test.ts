@@ -237,17 +237,30 @@ describe("waitForNamed", () => {
 });
 
 describe("squeal status --wait <ms> <path>...", () => {
-  it("gives the selected files' verdict last, after the snapshot, and exits 0 (issue 26)", async () => {
+  // Row 011-28 (005 D2 as amended 2026-10-20, gh-44's E1): the revision line, the selection, last
+  // the verdict (issue 26); the worktree's status only with --full.
+  it("prints the revision, the selection and last their verdict, 3 lines, and exits 0", async () => {
     const { repo } = repoWith([B], [A]);
     const result = await run(["status", "--wait", "3000", A], repo.main);
     expect(result.code).toBe(0);
-    expect(result.stdout).toMatch(/^Revision: 4\n/);
-    const [selected, verdict, end] = result.stdout.split("\n").slice(-3);
-    expect(selected).toBe(`Selected: ${A}`);
-    expect(verdict).toMatch(
-      /^Named test files at revision 4: no known failures; 1 test file, each with a current result, after \d+\.\d s\. Worktree: known failures 0; not current: 1 of 2 test files \(1 queued\), 1 test \(1 queued\)$/,
-    );
-    expect(end).toBe("");
+    expect(result.stdout.split("\n")).toEqual([
+      "Revision: 4",
+      `Selected: ${A}`,
+      expect.stringMatching(
+        /^Named test files at revision 4: no known failures; 1 test file, each with a current result, after \d+\.\d s\. Worktree: known failures 0; not current: 1 of 2 test files \(1 queued\), 1 test \(1 queued\)$/,
+      ),
+      "",
+    ]);
+  });
+
+  it("prints the worktree's status before the selection with --full, as before 011-28", async () => {
+    const { repo } = repoWith([B], [A]);
+    const result = await run(["status", "--wait", "3000", "--full", A], repo.main);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toMatch(/^Revision: 4\nKnown failures: 0; [^\n]*\nAffected checks: /);
+    const [blank, selected, verdict, end] = result.stdout.split("\n").slice(-4);
+    expect([blank, selected, end]).toEqual(["", `Selected: ${A}`, ""]);
+    expect(verdict).toMatch(/^Named test files at revision 4: no known failures; /);
   });
 
   it("lists a selected failure in full and exits 1; --json carries the verdict", async () => {
@@ -282,10 +295,17 @@ describe("squeal status --wait <ms> <path>...", () => {
     expect(result.stdout).not.toContain("Selected:");
   });
 
-  it("refuses paths without --wait", async () => {
-    const { repo } = repoWith([], [A]);
-    const result = await run(["status", A], repo.main);
-    expect(result.code).toBe(2);
-    expect(result.stderr).toContain("takes paths only with --wait <ms>");
+  // Design 011-24 section 1.5: `--wait 0` is a wait whose deadline passed, not the snapshot.
+  it("words --wait 0 as a wait whose deadline passed, its payload under `wait`", async () => {
+    const { repo } = repoWith([A]);
+    const human = await run(["status", "--wait", "0", A], repo.main);
+    expect(human.code).toBe(3);
+    expect(human.stdout.trimEnd().split("\n").at(-1)).toMatch(
+      /^Named test files have no verdict: the deadline passed after 0\.\d s: /,
+    );
+    const json = await run(["status", "--json", "--wait", "0", A], repo.main);
+    const payload = JSON.parse(json.stdout);
+    expect(payload.wait).toMatchObject({ outcome: "timeout", code: 3 });
+    expect(payload.named).toBeUndefined();
   });
 });

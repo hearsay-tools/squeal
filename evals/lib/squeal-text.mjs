@@ -2,9 +2,12 @@
 // evidence"): its revision and counts, and each check it names with that check's own provenance,
 // as `squeal status`, a registration and a delivery word them. `evidence.mjs` keeps the timeline
 // and the rules that read it.
-/** Squeal saying no daemon validates (the T4 knob's state). */
+/**
+ * Squeal saying no daemon validates (the T4 knob's state); a named wait's or snapshot's verdict
+ * line says it alone in its short text (row 011-28).
+ */
 export const NO_DAEMON =
-  /Not validated: no daemon|Returned without a daemon|^Daemon: no daemon|No daemon (?:is running|has validated)|no daemon is validating|A daemon is starting/m;
+  /Not validated: no daemon|Returned without a daemon|^Daemon: no daemon|No daemon (?:is running|has validated)|no daemon is validating|A daemon is starting|^Named test files have no verdict(?: at revision \d+)?: no daemon/m;
 
 /**
  * Another program's reply in place of Squeal's, one per call it answered (row 006-62): the
@@ -133,7 +136,9 @@ export function squealEvidence(text, from, failures = 0) {
         !/no slow test files listed|sources changed since|have not tested|pending|queued|running|not run/.test(
           tier,
         );
-  const listed = /^Known failures: (\d+)/m.exec(t);
+  // A named wait's short text (row 011-28) has no `Known failures:` line; its verdict line ends
+  // with the worktree's.
+  const listed = /^Known failures: (\d+)/m.exec(t) ?? /\bWorktree: known failures (\d+)/.exec(t);
   const selected = selectedOf(t);
   const step = {
     k: "squeal",
@@ -239,8 +244,12 @@ export function currentCheck(s, c) {
   return c.observed === null || c.observed === s.revision;
 }
 
-/** A named-files wait's verdict line, when each selected test file has a current result. */
-const NAMED = /^Named test files at revision \d+: .*, each with a current result, after /m;
+/**
+ * A named-files wait's verdict line, when each selected test file has a current result; a
+ * snapshot's (`status <path>...`, row 011-28) names no time after it.
+ */
+const NAMED =
+  /^Named test files at revision \d+: .*, each with a current result(?:, after |[.;] |$)/m;
 
 /**
  * The test files a `status --wait <ms> <path>...` answered (spec 005 D2, row 006-55): those its
