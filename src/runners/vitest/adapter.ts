@@ -28,7 +28,7 @@ import { exclusion } from "./exclude.js";
 import { Gate, type Hold } from "./gate.js";
 import { importClosure, missingCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
-import { mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
+import { mayHaveReadTouched, mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
 import { VitestObserver } from "./observe.js";
 import { noteOnce, withoutOptimizer } from "./optimizer.js";
 import { closurePackages, environmentPackages } from "./packages.js";
@@ -47,6 +47,7 @@ import { abandon, buildReport, execute, writeRunLog } from "./run.js";
 import { invalidateStale, SourceStamps } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
 import { closeRejected, startupFailure, withStartup } from "./startup.js";
+import { sortTouched, Touches } from "./touched.js";
 import { VITEST_ADAPTER_VERSION } from "./version.js";
 import { Widths } from "./width.js";
 
@@ -79,11 +80,12 @@ export class VitestAdapter implements RunnerAdapter {
   #unsure: AbsolutePath[] = [];
   /**
    * Task 001-159: files touched with their bytes ending as they were, since
-   * the current instance began to start. The next call replaces it; a run
-   * that hears of one before it ends is not stored, whoever wrote it (task
-   * 001-168).
+   * the current instance began to start, whoever wrote them (task 001-168).
+   * Task 013-02: one the instance could have read replaces it at the next
+   * call and withholds a run's files that may have read it; any other is
+   * forgotten once the calls in flight when it was heard have returned.
    */
-  #touched: RelativePath[] = [];
+  readonly #touches = new Touches();
   /** The current instance's projects' own `maxWorkers`, each run sized under them (task 001-378). */
   #widths: Widths | null = null;
   /** Installed lockfiles the current instance started with. */
@@ -161,7 +163,7 @@ export class VitestAdapter implements RunnerAdapter {
     const current = () => (generation === this.#generation ? this.#collector : null);
     const env = { ...this.#childEnv, ...this.#observer.start().env };
     // Touches heard from here on are after this start read the disk; a failed start keeps all.
-    const heard = this.#touched.length;
+    const heard = this.#touches.mark();
     const sources = new SourceStamps(this.paths);
     const config = await ConfigStamps.take(this.paths, this.#configFiles);
     const excluded = [...this.#exclude()];
@@ -196,7 +198,7 @@ export class VitestAdapter implements RunnerAdapter {
       this.#configFiles = configFiles(vitest);
       this.#config = config;
       this.#unsure = await config.unsure(this.#configFiles);
-      this.#touched = this.#touched.slice(heard);
+      this.#touches.since(heard);
       this.#excluded = excludedStamp(excluded, excludedFiles);
       this.#excludedFile = createInputMatcher(excludedFiles);
       for (const problem of await unknown) {
@@ -224,32 +226,63 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   #part<T>(fn: (vitest: Vitest, hold: Hold) => Promise<T>): Promise<T> {
-    return this.#gate.part(async (hold) => fn(await this.#instance(hold), hold));
+    return this.#gate.part(this.#call(async (hold) => fn(await this.#instance(hold), hold)));
+  }
+
+  /** `fn` as one call in flight of its lane (task 013-02, `Touches`). */
+  #call<T>(fn: (hold: Hold) => Promise<T>): (hold: Hold) => Promise<T> {
+    return (hold) => this.#touches.call(() => fn(hold));
   }
 
   /**
    * The instance a call of a lane uses; it is not replaced until the call
-   * returns. One unsure of its inputs is replaced once per call.
+   * returns. One unsure of its inputs is replaced once per call, and one a
+   * pending touch counts for at once.
    */
   async #instance(hold: Hold): Promise<Vitest> {
     let replaced = false;
-    const stale = () =>
-      this.#observer.stale() || (!replaced && this.#unsure.length > 0) || this.#touched.length > 0;
+    const stale = async (vitest: Vitest) =>
+      this.#observer.stale() ||
+      (!replaced && this.#unsure.length > 0) ||
+      (await this.#counts(vitest));
     for (;;) {
       if (this.#closed) throw new Error("vitest adapter: closed");
       // Policy `observe.runtimeInputs` moved: the workers' env is set at creation.
-      if (this.#vitest !== null && !stale()) return this.#vitest;
+      const current = this.#vitest;
+      if (current !== null && !(await stale(current))) return current;
       // A failed recreate or a hung run leaves no instance; the next call retries.
       await hold.exclusive(async () => {
         if (this.#closed) return;
         if (this.#vitest === null) this.#vitest = await this.#start();
-        else if (stale()) {
+        else if (await stale(this.#vitest)) {
           replaced = true;
           await this.#recreate(this.#vitest);
         }
       });
     }
   }
+
+  /**
+   * Task 013-02: whether a pending touch is one `vitest` could have read.
+   * Sorted again at each call, since a transform in flight when it was heard
+   * records its reads only as it completes; one that does not count is
+   * forgotten once every call in flight then has returned.
+   */
+  async #counts(vitest: Vitest): Promise<boolean> {
+    const pending = this.#touches.pending();
+    if (pending.length === 0) return false;
+    const sorted = await sortTouched(
+      vitest,
+      pending.map(this.#absolute),
+      this.#lockfiles,
+      this.paths,
+    );
+    const counted = new Set([...sorted.inputs, ...sorted.modules]);
+    this.#touches.forget(new Set(pending.filter((path) => !counted.has(this.#absolute(path)))));
+    return counted.size > 0;
+  }
+
+  readonly #absolute = (path: RelativePath): AbsolutePath => this.paths.toAbsolute(path);
 
   /**
    * Task 001-146: invalidates what moved since Vite read it. Task 001-157:
@@ -277,17 +310,17 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   /**
-   * A `touch` (task 001-159) is heard at once, so a run in flight is not
-   * stored, and the instance is replaced before the next call: every
-   * project and environment's transforms and module graph and the global
-   * setup go with it. No project counts as recreated for it: the files are
-   * the bytes they were, so the environment and the listing are too, and a
-   * listing now could find a file the watcher has not reconciled yet, which
-   * then never makes a revision.
+   * A `touch` (task 001-159) is heard at once, not behind the run in flight.
+   * One the instance could have read (task 013-02) withholds the files of a
+   * run in flight that may have read it, and replaces the instance at the
+   * next call: every project and environment's transforms and module graph
+   * and the global setup go with it. No project counts as recreated for it:
+   * the files are the bytes they were, so the environment and the listing
+   * are too, and a listing now could find a file the watcher has not
+   * reconciled yet, which then never makes a revision.
    */
   invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
-    const touched = paths.filter((p) => p.kind === "touch").map((p) => p.path);
-    this.#touched.push(...touched);
+    this.#touches.hear(paths.filter((p) => p.kind === "touch").map((p) => p.path));
     const changed = paths.filter((p) => p.kind !== "touch");
     if (changed.length === 0) return Promise.resolve({ recreatedProjects: [] });
     return this.#invalidate(changed);
@@ -429,96 +462,116 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
-    return this.#gate.run(async (hold) => {
-      // Task 001-146: drops what moved since Vite read it. Task 001-157: an
-      // instance unsure of what it read once is then replaced.
-      await this.#invalidateStale(await this.#instance(hold));
-      const vitest = await this.#instance(hold);
-      const specs = testFiles.map((ref) =>
-        findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path)),
-      );
-      const collector = new RunCollector(testFiles, this.paths);
-      if (specs.length === 0) {
-        const empty = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
-        writeRunLog(options, collector, empty);
-        return empty;
-      }
-      // D11 Capacity (task 001-378): the tier's grant, under each project's own width.
-      this.#widths?.apply(vitest, options.workers ?? this.#maxWorkers);
-      const exitCode = process.exitCode;
-      const unsure = this.#unsure;
-      const loadedSince = Date.now();
-      const started = performance.now();
-      this.#collector = collector;
-      this.#running = true;
-      try {
-        let execution = await execute(vitest, specs, options.timeoutMs, collector, options.signal);
-        // Task 001-146: bytes the run read that moved since; the files that may have run them.
-        const ran = await this.#invalidateStale(vitest, loadedSince);
-        const moved = [...new Set([...ran, ...unsure])].sort();
-        this.#running = false;
-        // Task 001-159: touched after this run's instance began to start, so heard during the run.
-        const heard = [...new Set(this.#touched)];
-        const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
-        const rejected = execution.rejected;
-        const startup =
-          rejected === undefined
-            ? null
-            : startupFailure(vitest, specs, collector, rejected.error, this.paths);
-        if (execution.hung || broken !== null || rejected !== undefined) {
-          // The runner part may be using the instance: it is dropped once that call returns.
-          const ran = execution;
-          execution = await hold.exclusive(async () => {
-            if (this.#vitest !== vitest) return ran;
-            this.#vitest = null;
-            // The workers ignore cancellation. Abandon the instance; the next call starts a new one.
-            if (ran.hung) abandon(vitest, collector);
-            else if (broken !== null) return closeBroken(vitest, collector, broken);
-            // Task 001-382: a rejected run leaves a global setup Vitest will not run again.
-            else await closeRejected(vitest, collector);
-            return ran;
-          });
+    return this.#gate.run(
+      this.#call(async (hold) => {
+        // Task 001-146: drops what moved since Vite read it. Task 001-157: an
+        // instance unsure of what it read once is then replaced.
+        await this.#invalidateStale(await this.#instance(hold));
+        const vitest = await this.#instance(hold);
+        const specs = testFiles.map((ref) =>
+          findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path)),
+        );
+        const collector = new RunCollector(testFiles, this.paths);
+        if (specs.length === 0) {
+          const empty = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
+          writeRunLog(options, collector, empty);
+          return empty;
         }
-        // Spec 001 D11 Fidelity (task 001-390): a signature of the recorder this run used says so.
-        const built = withRecorderSignatures(
-          withStartup(
-            buildReport(collector, execution, Math.round(performance.now() - started)),
-            startup,
-          ),
-          {
-            files: this.#observer.files,
-            inNodeOptions: this.#observer.active,
-            relativize: (text) => this.paths.relativizeText(text),
-          },
-        );
-        const observed = this.#observer.take(built.completedFiles);
-        // Review wave-13e B1: a path the run wrote itself counts too. Writing its bytes proves
-        // nothing about which bytes a cache served the run.
-        const touched = heard.sort();
-        // A warm-up's reads are what the recorder saw, ignored paths too, of every completed
-        // file (tasks 001-307, 001-312).
-        const reads =
-          observed !== undefined && options.observeIgnored === true
-            ? { reads: readsOfEvery(observed, built.completedFiles) }
-            : {};
-        const kept = withoutFiles(
-          observed === undefined ? built : { ...built, observed, ...reads },
-          mayHaveRun(vitest, moved, testFiles, this.paths),
-          moved,
-          this.paths,
-        );
-        const report = touched.length === 0 ? kept : withoutTouched(kept, testFiles, touched);
-        // One persisted note for status, besides the crash's delivered line (D5).
-        if (broken !== null && report.failure !== null) this.#note(report.failure);
-        writeRunLog(options, collector, report);
-        return report;
-      } finally {
-        this.#running = false;
-        this.#collector = null;
-        // Spec 001 D4: "`process.exitCode` is reset after each run."
-        process.exitCode = exitCode;
-      }
-    });
+        // D11 Capacity (task 001-378): the tier's grant, under each project's own width.
+        this.#widths?.apply(vitest, options.workers ?? this.#maxWorkers);
+        const exitCode = process.exitCode;
+        const unsure = this.#unsure;
+        const loadedSince = Date.now();
+        const started = performance.now();
+        this.#collector = collector;
+        this.#running = true;
+        try {
+          let execution = await execute(
+            vitest,
+            specs,
+            options.timeoutMs,
+            collector,
+            options.signal,
+          );
+          // Task 001-146: bytes the run read that moved since; the files that may have run them.
+          const ran = await this.#invalidateStale(vitest, loadedSince);
+          const moved = [...new Set([...ran, ...unsure])].sort();
+          this.#running = false;
+          // Task 001-159: touched after this run's instance began to start, and not forgotten since.
+          // Task 013-02: sorted now, when the run's transforms have recorded what they read.
+          const touched = await sortTouched(
+            vitest,
+            this.#touches.pending().map(this.#absolute),
+            this.#lockfiles,
+            this.paths,
+          );
+          const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
+          const rejected = execution.rejected;
+          const startup =
+            rejected === undefined
+              ? null
+              : startupFailure(vitest, specs, collector, rejected.error, this.paths);
+          if (execution.hung || broken !== null || rejected !== undefined) {
+            // The runner part may be using the instance: it is dropped once that call returns.
+            const ran = execution;
+            execution = await hold.exclusive(async () => {
+              if (this.#vitest !== vitest) return ran;
+              this.#vitest = null;
+              // The workers ignore cancellation. Abandon the instance; the next call starts a new one.
+              if (ran.hung) abandon(vitest, collector);
+              else if (broken !== null) return closeBroken(vitest, collector, broken);
+              // Task 001-382: a rejected run leaves a global setup Vitest will not run again.
+              else await closeRejected(vitest, collector);
+              return ran;
+            });
+          }
+          // Spec 001 D11 Fidelity (task 001-390): a signature of the recorder this run used says so.
+          const built = withRecorderSignatures(
+            withStartup(
+              buildReport(collector, execution, Math.round(performance.now() - started)),
+              startup,
+            ),
+            {
+              files: this.#observer.files,
+              inNodeOptions: this.#observer.active,
+              relativize: (text) => this.paths.relativizeText(text),
+            },
+          );
+          const observed = this.#observer.take(built.completedFiles);
+          // A warm-up's reads are what the recorder saw, ignored paths too, of every completed
+          // file (tasks 001-307, 001-312).
+          const reads =
+            observed !== undefined && options.observeIgnored === true
+              ? { reads: readsOfEvery(observed, built.completedFiles) }
+              : {};
+          const kept = withoutFiles(
+            observed === undefined ? built : { ...built, observed, ...reads },
+            mayHaveRun(vitest, moved, testFiles, this.paths),
+            moved,
+            this.paths,
+          );
+          // Review wave-13e B1: a path the run wrote itself counts too. Writing its bytes proves
+          // nothing about which bytes a cache served the run.
+          const counted = [...touched.inputs, ...touched.modules].map(
+            (file) => this.paths.toRelative(file) ?? file,
+          );
+          const report = withoutTouched(
+            kept,
+            mayHaveReadTouched(vitest, touched, testFiles, this.paths),
+            counted.sort(),
+          );
+          // One persisted note for status, besides the crash's delivered line (D5).
+          if (broken !== null && report.failure !== null) this.#note(report.failure);
+          writeRunLog(options, collector, report);
+          return report;
+        } finally {
+          this.#running = false;
+          this.#collector = null;
+          // Spec 001 D4: "`process.exitCode` is reset after each run."
+          process.exitCode = exitCode;
+        }
+      }),
+    );
   }
 
   close(): Promise<void> {
