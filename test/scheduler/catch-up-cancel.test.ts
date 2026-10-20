@@ -118,6 +118,13 @@ describe("scheduler: a later edit cancels catch-up or runs beside it (C4 step 4,
     await side.scheduler.idle();
     const before = side.runner.runs.length;
 
+    // The catch-up slots hold until the edit's run starts, so they are in flight beside it
+    // however slow the host: on a loaded CI runner all 24 files ended before the edit's
+    // tier started (main CI 39413164976).
+    side.runner.hold();
+    side.runner.beforeRun = (started) => {
+      if (started.some((f) => f.path === "test/e0.test.ts")) side.runner.release();
+    };
     await side.edit("watch", ...TWELVE);
     await expect.poll(() => side.runner.active, { timeout: 30_000 }).toBe(4);
     const first = side.runner.runs[before];
