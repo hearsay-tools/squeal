@@ -116,8 +116,9 @@ function retryLines(s: StatusSnapshot): string[] {
         r.claimedBy === null || r.claimedBy === s.worktreeId
           ? ""
           : ", queued by another worktree's daemon";
-      const asked = r.noResult === true ? `${r.reason}, no result at its inputs` : r.reason;
-      return `  ${r.testFile.path} (${asked}): ${waitsText(r.noResult === true ? "environment" : r.reason, load)}${where}`;
+      // Row 011-27: a file with no result runs at once, so its reason, given or not, says nothing.
+      const asked = r.noResult === true ? "no result at its inputs" : r.reason;
+      return `  ${r.testFile.path} (${asked}): ${waitsText(r.noResult === true ? "environment" : r.reason, load, r.runningSince ?? null)}${where}`;
     }),
   ];
 }
