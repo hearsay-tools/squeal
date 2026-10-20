@@ -8,12 +8,14 @@ import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./he
 
 /*
  * Issue 10 (task 011-06, research `001-core-loop/research/issue-10.md`,
- * `probes/issue-10/drive-touch.sh`): a build rewrote a tracked file no test
- * reads with its own bytes while the edited test ran. The Vitest adapter
- * heard the touch and withheld the run (task 001-159), and the scheduler
- * left the file `unknown` at its current key with nothing queued, so the
- * edit never got a result. Now the withheld file is queued again as a
- * content discard is, counted toward `MAX_DISCARDS`.
+ * `probes/issue-10/drive-touch.sh`): a build rewrote a tracked file with its
+ * own bytes while the edited test ran. The Vitest adapter heard the touch
+ * and withheld the run (task 001-159), and the scheduler left the file
+ * `unknown` at its current key with nothing queued, so the edit never got a
+ * result. Now the withheld file is queued again as a content discard is,
+ * counted toward `MAX_DISCARDS`. Since task 013-02 the adapter withholds
+ * only for a file the instance could have read, so the test loads it
+ * through a computed `import()`, which no key names.
  */
 
 const HELD = "test/held.test.ts";
@@ -44,6 +46,9 @@ async function rig(policy: Partial<Policy> = {}): Promise<Rig> {
       `import { value } from "../src/held.ts";`,
       `const length = (path: string) => (existsSync(path) ? readFileSync(path, "utf8").length : 0);`,
       `it("holds", async () => {`,
+      // Through Vite, by a specifier it cannot see: no key names it (task 013-02).
+      `  const { built } = await import(/* @vite-ignore */ ["..", "dist", "out.js"].join("/"));`,
+      `  expect(built).toBe(true);`,
       `  appendFileSync(${JSON.stringify(started)}, "x");`,
       `  const run = length(${JSON.stringify(started)});`,
       `  while (length(${JSON.stringify(released)}) < run) await new Promise((r) => setTimeout(r, 10));`,
