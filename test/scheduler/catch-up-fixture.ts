@@ -32,6 +32,8 @@ import { RecordingSink } from "./recording-sink.js";
  */
 
 export interface CatchUpFile {
+  /** `""` when absent; project p's environment file is `p.config.json`, the root's `config.json`. */
+  readonly project?: string;
   readonly path: string;
   /** The duration its results report, in ms. */
   readonly ms: number;
@@ -51,7 +53,15 @@ export interface CatchUpRun {
   completed: readonly TestFileRef[];
 }
 
-type Hooks = Pick<CatchUpOptions, "lane" | "tierWidth" | "besideBacklog" | "backlogSlot">;
+type Hooks = Pick<CatchUpOptions, "lane" | "tierWidth" | "besideBacklog" | "backlogSlot"> & {
+  /** `false`: a run ignores its `signal`, as node:test and pytest do; only `stop` ends it. */
+  readonly cancels?: boolean;
+};
+
+const refOf = (file: CatchUpFile): TestFileRef => ({
+  project: file.project ?? "",
+  path: file.path,
+});
 
 /** `promise`, or the abort of `signal`, whichever comes first. */
 function until(promise: Promise<unknown>, signal: AbortSignal | undefined): Promise<unknown> {
@@ -76,13 +86,16 @@ export class CatchUpRunner implements RunnerAdapter {
   declare readonly backlogSlot?: (testFile: TestFileRef) => number | null;
   #gate: { shut: Promise<void>; open: () => void } | null = null;
   readonly #byPath: ReadonlyMap<string, CatchUpFile>;
+  readonly #cancels: boolean;
 
   constructor(
     private readonly files: readonly CatchUpFile[],
-    hooks: Hooks = {},
+    { cancels = true, ...hooks }: Hooks = {},
   ) {
     this.#byPath = new Map(files.map((f) => [f.path, f]));
-    Object.assign(this, hooks);
+    this.#cancels = cancels;
+    for (const [name, hook] of Object.entries(hooks))
+      if (hook !== undefined) Object.assign(this, { [name]: hook });
   }
 
   /** Later runs wait until `release` or their cancel. */
@@ -111,17 +124,16 @@ export class CatchUpRunner implements RunnerAdapter {
     paths: [testFile.path, ...(this.#byPath.get(testFile.path)?.imports ?? [])],
   });
   enumerate = async () => [];
-  testFiles = async () => this.files.map((f) => ({ project: "", path: f.path }));
-  environment = async () => [
-    {
-      project: "",
+  testFiles = async () => this.files.map(refOf);
+  environment = async () =>
+    [...new Set(this.files.map((f) => f.project ?? ""))].map((project) => ({
+      project,
       runnerName: "catch-up",
       runnerVersion: "1",
       adapterVersion: "1",
       resolvedConfig: "{}",
-      files: ["config.json"],
-    },
-  ];
+      files: [configOf(project)],
+    }));
   close = async () => {};
 
   async run(files: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
@@ -135,7 +147,9 @@ export class CatchUpRunner implements RunnerAdapter {
     };
     this.runs.push(run);
     this.active += 1;
-    const signals = [options.signal, options.stop].filter((s) => s !== undefined);
+    const signals = [this.#cancels ? options.signal : undefined, options.stop].filter(
+      (s) => s !== undefined,
+    );
     const signal = signals.length > 0 ? AbortSignal.any(signals) : undefined;
     try {
       const gate = this.#gate?.shut;
@@ -172,7 +186,12 @@ export class CatchUpRunner implements RunnerAdapter {
       results: run.completed.map((testFile) => {
         const failing = this.failing.has(testFile.path);
         return {
-          check: { kind: "test" as const, project: "", testPath: testFile.path, fullName: "runs" },
+          check: {
+            kind: "test" as const,
+            project: testFile.project,
+            testPath: testFile.path,
+            fullName: "runs",
+          },
           outcome: failing ? ("fail" as const) : ("pass" as const),
           durationMs: this.#byPath.get(testFile.path)?.ms ?? 1,
           location: null,
@@ -198,7 +217,13 @@ export interface CatchUpOptions {
   readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
   readonly besideBacklog?: (testFile: TestFileRef) => boolean;
   readonly backlogSlot?: (testFile: TestFileRef) => number | null;
+  /** `false`: runs ignore a cancel, as node:test's and pytest's do. */
+  readonly cancels?: boolean;
 }
+
+/** Project `project`'s environment file. */
+export const configOf = (project: string) =>
+  project === "" ? "config.json" : `${project}.config.json`;
 
 export interface CatchUpRepo {
   readonly main: string;
@@ -209,8 +234,9 @@ export interface CatchUpRepo {
 
 /** A repository holding `files`, the sources they import and `config.json`, and one worktree beside. */
 export function catchUpRepo(files: readonly CatchUpFile[]): CatchUpRepo {
-  const extra: Record<string, string> = { "config.json": "{}\n" };
+  const extra: Record<string, string> = {};
   for (const file of files) {
+    extra[configOf(file.project ?? "")] = "{}\n";
     extra[file.path] = `// ${file.path}\n`;
     for (const source of file.imports) extra[source] = `// ${source}\n`;
   }
@@ -256,7 +282,14 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     },
   });
   const beat = setInterval(() => store.worktrees.heartbeat(worktreeId, Date.now()), 12_000);
-  const runner = new CatchUpRunner(options.files, options);
+  const { lane, tierWidth, besideBacklog, backlogSlot, cancels } = options;
+  const runner = new CatchUpRunner(options.files, {
+    ...(lane === undefined ? {} : { lane }),
+    ...(tierWidth === undefined ? {} : { tierWidth }),
+    ...(besideBacklog === undefined ? {} : { besideBacklog }),
+    ...(backlogSlot === undefined ? {} : { backlogSlot }),
+    ...(cancels === undefined ? {} : { cancels }),
+  });
   const policy: Policy = {
     ...DEFAULT_POLICY,
     ...options.policy,

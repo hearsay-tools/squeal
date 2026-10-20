@@ -43,6 +43,8 @@ export interface TierFile {
   readonly forced: boolean;
   /** Queued as work an edit caused (D5 step 4): a re-queue after a timeout keeps it so (task 001-179). */
   readonly recent?: boolean;
+  /** Queued as catch-up (C4 step 4 as amended 2026-10-20): a cancel's re-queue keeps it so (011-22). */
+  readonly catchUp?: boolean;
   /** Another worktree's result could stand for it: it waits on a claim of its key (`claimOf`, task 001-205). */
   readonly waits?: boolean;
 }
@@ -175,6 +177,7 @@ export function selectTier(
     }
     const forced = ledger.queue.isForced(ref);
     const recent = ledger.queue.isRecent(ref);
+    const catchUp = ledger.queue.isCatchUp(ref);
     // A lane of slots runs the backlog's files there, each with its permit: an edit's tier takes
     // only the edit's work (task 011-21 slice 2), except on the backlog's turn after four tiers of
     // the first group, which takes them as it does in any lane (review wave-4 slice 2, B2).
@@ -216,7 +219,7 @@ export function selectTier(
     size = Math.min(cap, slot ?? cap);
     const checkpointId = ledger.checkpoints.idFor(ref);
     const inputs = keys.stabilityPaths(ref);
-    picked.push({ file, key, inputs, checkpointId, forced, recent, waits });
+    picked.push({ file, key, inputs, checkpointId, forced, recent, waits, catchUp });
   }
   const width = slot !== null ? 1 : backlog ? widest(context, picked) : 0;
   const taken = picked.length > 0 && backlog ? context.capacity?.take(width) : null;
@@ -458,7 +461,8 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<M
  *   No revision may follow a touch, so `unknown` before the limit would
  *   leave an edited file without a result until its key moved.
  * - Not completed in a backlog tier an edit cancelled, a run that otherwise
- *   ended `completed`: queued again, uncounted (task 001-124).
+ *   ended `completed`: queued again, uncounted (task 001-124), catch-up
+ *   still when it was (task 011-22).
  * - Any input changed on disk since selection, or in a revision during the
  *   run: discarded and re-queued (D5 stability check). Returns those paths so
  *   the caller reconciles them; the watcher may not have reported them yet.
@@ -530,7 +534,7 @@ export function recordTier(
     changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report.end, context.now());
-    for (const { file, key, inputs, checkpointId, forced, recent } of tier.files) {
+    for (const { file, key, inputs, checkpointId, forced, recent, catchUp } of tier.files) {
       // A newer run has the file at another key (an edit's tier beside this backlog tier, task
       // 011-21): its state is that run's, and this run's outcome is superseded (review wave-4 B1).
       if (supersededIn(file, key)) continue;
@@ -542,8 +546,9 @@ export function recordTier(
         continue;
       }
       if (queued || (cancelled && !completed.has(file.id))) {
+        // Catch-up that did not run stays catch-up (C4 step 4 as amended 2026-10-20, task 011-22).
         if (file.key !== null && file.blocked === null) {
-          ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced);
+          ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced, false, catchUp === true);
         }
         continue;
       }
