@@ -341,10 +341,10 @@ export async function invalidateStale(
   return stale;
 }
 
-type Environment = Vitest["projects"][number]["vite"]["environments"][string];
+export type Environment = Vitest["projects"][number]["vite"]["environments"][string];
 
 /** Every environment of every project server, once each. */
-function environments(vitest: Vitest): Set<Environment> {
+export function environments(vitest: Vitest): Set<Environment> {
   return new Set(vitest.projects.flatMap((p) => Object.values(p.vite.environments)));
 }
 
@@ -385,7 +385,7 @@ function virtualInputs(
  * `cleanUrl`, and without the `\0` a plugin marks a virtual ID with. `null`
  * when it names none.
  */
-function sourceOf(id: string, paths: WorktreePaths): AbsolutePath | null {
+export function sourceOf(id: string, paths: WorktreePaths): AbsolutePath | null {
   const file = id.replace(/^\0/, "").replace(/[?#].*$/s, "") as AbsolutePath;
   return file.startsWith("/") && paths.isProjectFile(file) ? file : null;
 }

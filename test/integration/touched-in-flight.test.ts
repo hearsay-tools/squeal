@@ -2,7 +2,6 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { MAX_DISCARDS } from "../../src/core/scheduler/ledger.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import {
   BASE,
@@ -16,15 +15,12 @@ import {
 
 /*
  * Task 001-159: a touch heard while a run is in flight. When something else
- * wrote the file, the run may have read its other bytes from any cache, so
- * none of its files is stored. When the completion barrier withholds it
- * too, no revision follows, so the files run once more with a note naming
- * the file (task 007-30). A file the run writes itself on every run counts
- * too (review wave-13e B1, task 001-168): each withheld run is queued
- * again, counted toward `MAX_DISCARDS` (issue 10, task 011-06), and at the
- * limit its files are unknown with a reason that names the file, as task
- * 001-146 does for a file that moved during a run. An unknown file has no
- * stored state.
+ * wrote a file the run loaded, a cache may have served the run its other
+ * bytes, so the files that reach it are not stored (task 013-02). When the
+ * completion barrier withholds the run too, no revision follows, so the
+ * files run once more with a note naming the file (task 007-30). A file
+ * the run writes itself on every run and reads with `fs` is in no cache
+ * and no key, so it withholds nothing.
  *
  * `test/holds.test.ts` appends to `flags/started` (git-ignored) and waits
  * until `flags/heard` is as long; with `self` it first rewrites
@@ -92,9 +88,6 @@ async function touchDuringRun(h: Harness, path: string, rewrite: boolean, times 
   await h.scheduler.idle();
 }
 
-const reason = (path: string) =>
-  new RegExp(`${path} was written during this run and ended as it was.*task 001-159`);
-
 /** The reasons `markUnknown` stored for `path`. */
 const reasons = (h: Harness, path: string) =>
   h.sink
@@ -152,12 +145,12 @@ describe("a touch heard during a run (task 001-159)", () => {
 });
 
 describe("a test file that rewrites a worktree file with its own bytes on every run", () => {
-  // Review wave-13e B1: writing the bytes proves nothing about what a cache served the run, so
-  // its own touch withholds it like any other (task 001-168). The skill's reports reference
-  // names the remedy: write outside the worktree or under an ignored path, or declare the file.
-  // Task 011-06: each withheld run is queued again, so its touch is heard during every run.
+  // Task 013-02 (V5 as amended 2026-10-20): it reads the file with `fs`, so no module of the
+  // instance names it and the runner withholds nothing. Nor does the completion barrier: no key
+  // names it, observed or not, since the recorder leaves out a path the test wrote. Review
+  // wave-13e B1's own write of a file it loads is `touched-own-write.test.ts`.
   it.each([true, false])(
-    "is unknown with a reason naming the file when its touch is heard during each run (observe %s)",
+    "is stored from its first run, no module naming the file (observe %s)",
     SLOW,
     async (observe) => {
       const repo = createRepo(files(true));
@@ -166,12 +159,13 @@ describe("a test file that rewrites a worktree file with its own bytes on every 
         runnerPartBesideRun: true,
         observe,
       });
-      await touchDuringRun(h, "fixtures/data.txt", false, MAX_DISCARDS);
-      expect(h.runsOf("test/holds.test.ts")).toHaveLength(MAX_DISCARDS);
-      expect(stored(h)).toEqual([]);
-      expect(reasons(h, "test/holds.test.ts")).toEqual([
-        expect.stringMatching(reason("fixtures/data.txt")),
+      await touchDuringRun(h, "fixtures/data.txt", false);
+      expect(h.runsOf("test/holds.test.ts")).toHaveLength(1);
+      expect(stored(h)).toEqual([
+        ["", "test/holds.test.ts", "current", "pass"],
+        ["", "test/other.test.ts", "current", "pass"],
       ]);
+      expect(reasons(h, "test/holds.test.ts")).toEqual([]);
     },
   );
 });
