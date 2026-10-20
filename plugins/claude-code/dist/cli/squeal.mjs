@@ -7150,7 +7150,7 @@ function loadPerCpu(wait = {}) {
   return (load()[0] ?? 0) / Math.max(1, cpus());
 }
 async function waitForCapacity(wait) {
-  const sleep14 = wait.sleep ?? delay;
+  const sleep15 = wait.sleep ?? delay;
   const now = wait.now ?? (() => performance.now());
   const recheckMs = wait.recheckMs ?? 15e3;
   const perCpu2 = () => loadPerCpu(wait);
@@ -7161,7 +7161,7 @@ async function waitForCapacity(wait) {
     if (current3 <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
     const left = wait.maxDeferMs - waitedMs;
     if (left <= 0) return { waitedMs, ranUnderLoad: current3 };
-    await sleep14(Math.min(recheckMs, left));
+    await sleep15(Math.min(recheckMs, left));
   }
 }
 var init_guard = __esm({
@@ -48588,7 +48588,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.232";
+  if (true) return "0.1.233";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -55776,6 +55776,7 @@ function newsOf(start2, states, revision) {
 // src/cli/status-wait-lines.ts
 init_keys();
 init_state3();
+init_identity();
 init_text();
 
 // src/cli/named-file-lines.ts
@@ -56221,20 +56222,24 @@ function slowTierText2(snapshot3, command) {
 var NAMED_FILES_SHOWN = 10;
 function namedLine(wait, command = "squeal") {
   const { verdict, selection } = wait;
+  const snapshot3 = wait.snapshot === true;
   const after = `after ${(wait.waitedMs / 1e3).toFixed(1)} s`;
   const none2 = (why2) => `Named test files have no verdict: ${why2}`;
+  const noneAt = (why2) => snapshot3 ? `Named test files have no verdict at revision ${verdict.revision}: ${why2}` : none2(why2);
   let line;
   switch (wait.outcome) {
     case "unmatched":
       line = `No verdict: ${unmatchedText(selection)}`;
       break;
-    case "no-daemon":
-      line = none2(
-        `${noDaemonText(wait.result.daemon, wait.down)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`
+    case "no-daemon": {
+      const asOf = snapshot3 ? "" : `; results are as of revision ${verdict.revision}`;
+      line = noneAt(
+        `${noDaemonText(wait.result.daemon, wait.down)}${asOf}; \`${command} start\` starts one`
       );
       break;
+    }
     case "slow":
-      line = none2(`every selected test file is slow: ${pauseText(wait, command)}`);
+      line = noneAt(`every selected test file is slow: ${pauseText(wait, command)}`);
       break;
     case "timeout": {
       const paused = new Set((wait.leftForPause ?? []).map(testFileId));
@@ -56242,8 +56247,9 @@ function namedLine(wait, command = "squeal") {
       const groups = reasonGroups(holding, command, wait.selection.base);
       const why2 = noVerdictText(verdict);
       const held2 = why2 === null ? "no result yet" : groups === "" ? why2 : `${why2}: ${groups}`;
+      const unsynced = unsyncedText(wait.sync, verdict.revision, snapshot3);
       line = none2(
-        `the deadline passed ${after}: ${unsyncedText(wait.sync, verdict.revision) ?? held2}`
+        snapshot3 ? unsynced ?? held2 : `the deadline passed ${after}: ${unsynced ?? held2}`
       );
       break;
     }
@@ -56254,7 +56260,7 @@ function namedLine(wait, command = "squeal") {
         command,
         wait.selection.base
       );
-      line = why2 === null ? `Named test files at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result, ${after}` : none2(groups === "" ? why2 : `${why2}: ${groups}`);
+      line = why2 === null ? `Named test files at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result${snapshot3 ? "" : `, ${after}`}` : none2(groups === "" ? why2 : `${why2}: ${groups}`);
     }
   }
   const pause = (wait.leftForPause ?? []).length > 0 && (wait.outcome === "settled" || wait.outcome === "timeout") ? `; ${pauseText(wait, command)}` : "";
@@ -56279,7 +56285,7 @@ function selectedLine(wait) {
   const more = files2.length > NAMED_FILES_SHOWN ? ` and ${files2.length - NAMED_FILES_SHOWN} more` : "";
   return `Selected: ${shown}${more}`;
 }
-function namedText(wait, now, command = "squeal") {
+function namedText(wait, now, command = "squeal", options = {}) {
   const selected = selectedLine(wait);
   const lines = [
     ...selected === null ? [] : [selected],
@@ -56287,8 +56293,10 @@ function namedText(wait, now, command = "squeal") {
     ...namedClassLines(wait, command),
     namedLine(wait, command)
   ];
-  return `${formatStatus(wait.result, now, command)}
-${lines.join("\n")}
+  const head = options.full === true ? `${formatStatus(wait.result, now, command, { allNotes: options.allNotes === true })}
+` : `Revision: ${statusRevisionText(wait.result)}
+`;
+  return `${head}${lines.join("\n")}
 `;
 }
 function namedClassLines(wait, command = "squeal") {
@@ -56296,7 +56304,10 @@ function namedClassLines(wait, command = "squeal") {
   if (wait.outcome === "settled" && verdictCode(wait.verdict) !== 3) return [];
   return classLines(wait.files, command, wait.selection.base);
 }
-function unsyncedText(sync, revision) {
+function unsyncedText(sync, revision, snapshot3) {
+  if (sync.state === "pending" && snapshot3) {
+    return `results are as of revision ${revision}; the daemon has not stored its pass over the latest edits`;
+  }
   if (sync.state === "pending") {
     return `the daemon has not stored its pass over the edits made before the wait; results are as of revision ${revision}`;
   }
@@ -56757,37 +56768,40 @@ async function waitForNamed(cwd, paths, options) {
 function namedCode(wait) {
   return wait.outcome === "settled" ? verdictCode(wait.verdict) : 3;
 }
-async function namedWaitCommand(paths, json3, io, options) {
-  const env = io.env ?? process.env;
+async function namedWaitCommand(paths, how, io, options) {
   const wait = await waitForNamed(io.cwd ?? process.cwd(), paths, options);
+  return printNamed(wait, how, io, options.now);
+}
+function printNamed(wait, how, io, now) {
   if (wait.outcome === "unavailable") {
     const { result } = wait;
-    io.stdout(json3 ? `${JSON.stringify(result, null, 2)}
-` : formatStatus(result, options.now()));
+    io.stdout(how.json ? `${JSON.stringify(result, null, 2)}
+` : formatStatus(result, now()));
     return 3;
   }
   const code = namedCode(wait);
-  const command = statusCommand(env);
-  if (json3) {
-    const payload = {
-      outcome: wait.outcome,
-      waitedMs: Math.round(wait.waitedMs),
-      code,
-      testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
-      unmatched: wait.selection.unmatched,
-      leftForPause: wait.leftForPause ?? [],
-      verdict: wait.verdict
-    };
-    io.stdout(`${JSON.stringify({ ...wait.result, wait: payload }, null, 2)}
+  const command = statusCommand(io.env ?? process.env);
+  if (!how.json) {
+    io.stdout(namedText(wait, now(), command, how));
+    return code;
+  }
+  const payload = {
+    outcome: wait.snapshot === true ? "snapshot" : wait.outcome,
+    waitedMs: Math.round(wait.waitedMs),
+    code,
+    testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
+    unmatched: wait.selection.unmatched,
+    leftForPause: wait.leftForPause ?? [],
+    verdict: wait.verdict
+  };
+  const field = wait.snapshot === true ? "named" : "wait";
+  io.stdout(`${JSON.stringify({ ...wait.result, [field]: payload }, null, 2)}
 `);
-    const selected = selectedLine(wait);
-    const lines = [...selected === null ? [] : [selected], ...namedClassLines(wait, command)];
-    io.stderr(`${lines.map((line) => `${line}
+  const selected = selectedLine(wait);
+  const lines = [...selected === null ? [] : [selected], ...namedClassLines(wait, command)];
+  io.stderr(`${lines.map((line) => `${line}
 `).join("")}${namedLine(wait, command)}
 `);
-  } else {
-    io.stdout(namedText(wait, options.now(), command));
-  }
   return code;
 }
 
@@ -56957,13 +56971,13 @@ function slowWaitCode(wait) {
   if (wait.outcome === "no-daemon") return 3;
   return wait.outcome === "timeout" && (wait.slow?.pending.length ?? 0) > 0 ? 3 : 0;
 }
-async function statusWaitCommand(timeoutMs, json3, io, holdSlow = false, paths = []) {
+async function statusWaitCommand(timeoutMs, json3, io, holdSlow = false, paths = [], named = {}) {
   const now = io.now ?? Date.now;
   const env = io.env ?? process.env;
   if (paths.length > 0) {
     const pollMs = STATUS_WAIT_POLL_MS;
     const settleMs = STATUS_WAIT_SETTLE_MS;
-    return namedWaitCommand(paths, json3, io, {
+    return namedWaitCommand(paths, { ...named, json: json3 }, io, {
       timeoutMs,
       pollMs,
       settleMs,
@@ -58258,10 +58272,75 @@ function parseSetupArgs(args2) {
   };
 }
 
+// src/cli/status-paths.ts
+import { setTimeout as sleep13 } from "node:timers/promises";
+init_fs();
+init_keys();
+async function readNamedSnapshot(cwd, paths, options) {
+  const started2 = performance.now();
+  const elapsed = () => performance.now() - started2;
+  const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
+  const pollMs = options.pollMs ?? SYNC_POLL_MS;
+  let sync;
+  try {
+    const found2 = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, ({ root }) => {
+      sync = (options.sync ?? syncDaemon)(root, pollMs);
+      return { root };
+    });
+    if ("available" in found2) return { outcome: "unavailable", waitedMs: elapsed(), result: found2 };
+    for (; ; ) {
+      const state = sync?.current().state;
+      const left = settleMs - elapsed();
+      if (state === "synced" || left <= 0) break;
+      await (state === "unsupported" ? sleep13(left) : pollPause(Math.min(pollMs, left), sync));
+    }
+    const read5 = withStatusStore(
+      cwd,
+      { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS },
+      (context) => readOnce2(context, cwd, paths, sync, options.now())
+    );
+    if ("available" in read5) return { outcome: "unavailable", waitedMs: elapsed(), result: read5 };
+    return { ...read5, waitedMs: elapsed() };
+  } finally {
+    sync?.stop();
+  }
+}
+function readOnce2({ store, root }, cwd, paths, sync, now) {
+  const id2 = worktreeIdFor(root);
+  const selection = selectNamedFiles(store, id2, root, cwd, paths);
+  const all = readClasses(store, id2, selection.files);
+  const record = store.worktrees.get(id2)?.daemon ?? null;
+  const liveness2 = daemonLiveness(record, now);
+  const current3 = sync?.current() ?? { state: "unsupported" };
+  const ready = liveness2.state === "alive" && (current3.state === "synced" ? all.revision >= current3.revision && !all.unlisted : current3.state === "unsupported");
+  const paused = new Set(
+    ready ? pauseOnlyIds(store, id2, root, selection.files, liveness2, now) : []
+  );
+  const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
+  const held2 = selection.files.filter((f) => !paused.has(testFileId(f)));
+  const classes = paused.size === 0 ? all : readClasses(store, id2, held2);
+  const outcome2 = liveness2.state !== "alive" ? "no-daemon" : ready && selection.unmatched.length > 0 ? "unmatched" : ready && held2.length === 0 ? "slow" : ready && classes.byClass.pending === 0 && !classes.unlisted ? "settled" : "timeout";
+  const result = buildSnapshot(store, root, now);
+  return {
+    outcome: outcome2,
+    selection,
+    leftForPause,
+    verdict: readVerdict(store, id2, held2),
+    files: readNamedFiles(store, id2, root, selection.files, result.daemon, now),
+    result,
+    sync: current3,
+    snapshot: true
+  };
+}
+async function namedSnapshotCommand(paths, how, io, options) {
+  const snapshot3 = await readNamedSnapshot(io.cwd ?? process.cwd(), paths, options);
+  return printNamed(snapshot3, how, io, options.now);
+}
+
 // src/cli/stop.ts
 import { realpathSync as realpathSync21 } from "node:fs";
 import { resolve as resolve21 } from "node:path";
-import { setTimeout as sleep13 } from "node:timers/promises";
+import { setTimeout as sleep14 } from "node:timers/promises";
 
 // src/core/daemon/leftovers.ts
 import { readdirSync as readdirSync21, readFileSync as readFileSync38 } from "node:fs";
@@ -58368,7 +58447,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
       );
       return 1;
     }
-    await sleep13(50);
+    await sleep14(50);
   }
   stoppedMark(root, tree, io);
   const lock2 = await lockFreed(root, daemon, bounds.lockMs);
@@ -58439,7 +58518,7 @@ async function leftoversGone(marks, ms2) {
   for (; ; ) {
     const left = await leftovers(marks);
     if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep13(100);
+    await sleep14(100);
   }
 }
 function seconds2(ms2) {
@@ -58454,7 +58533,7 @@ async function lockFreed(root, daemon, ms2) {
     if (missing(path) || daemon !== null && gone2(root, daemon)) return { state: "free" };
     const probe = probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
-    await sleep13(50);
+    await sleep14(50);
   }
 }
 function gone2(root, daemon) {
@@ -58763,13 +58842,18 @@ Usage:
   squeal status [--notes] [--json]
                                 Current validation state of this worktree; --notes
                                 lists every stopped-process note in full
+  squeal status <path>... [--full] [--json]
+                                The verdict of the test files the paths select (a test
+                                file, or a file in test files' closures) now, if the
+                                daemon stores its pass over your edits within 750 ms:
+                                exit 0, 1 on known failures, 3 without one; --full
+                                prints this worktree's status first
   squeal status --wait <ms> [--json]
                                 Wait up to <ms> until nothing is pending at the current
                                 revision or a check changed, then print status
-  squeal status --wait <ms> <path>... [--json]
-                                Wait up to <ms> for the test files the paths select (a
-                                test file, or a file in test files' closures), then give
-                                their verdict: exit 0, 1 on known failures, 3 without one
+  squeal status --wait <ms> <path>... [--full] [--json]
+                                Wait up to <ms> for the test files the paths select,
+                                then give their verdict as status <path>... does
   squeal why <check> [--include-logs] [--json]
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints
@@ -58896,14 +58980,18 @@ function status(args2, io) {
   if (typeof wait === "string") return usage2("status", wait, io);
   const { waitMs } = wait;
   const allNotes = wait.rest.includes("--notes");
-  const rest = wait.rest.filter((arg) => arg !== "--notes");
+  const full = allNotes || wait.rest.includes("--full");
+  const rest = wait.rest.filter((arg) => arg !== "--notes" && arg !== "--full");
   const parsed = parseArgs("status", rest, io);
   if (parsed === null) return 2;
-  if (waitMs !== null) return statusWaitCommand(waitMs, parsed.json, io, false, parsed.positional);
-  if (parsed.positional.length > 0) {
-    return usage2("status", "takes paths only with --wait <ms>", io);
-  }
+  const named = { full, allNotes };
   const now = io.now ?? Date.now;
+  if (waitMs !== null) {
+    return statusWaitCommand(waitMs, parsed.json, io, false, parsed.positional, named);
+  }
+  if (parsed.positional.length > 0) {
+    return namedSnapshotCommand(parsed.positional, { ...named, json: parsed.json }, io, { now });
+  }
   const cwd = io.cwd ?? process.cwd();
   const result = readStatus(cwd, { now, busyRetryMs: CLI_READ_RETRY_MS });
   const env = io.env ?? process.env;
