@@ -26,11 +26,21 @@ export type SyncState =
 
 export interface DaemonSync {
   current(): SyncState;
+  /** Settles once `current` left `pending`; a stub without it is read at the wait's next poll. */
+  readonly answered?: Promise<void>;
   /** Stops asking; a request on the wire still ends within the CLI socket timeout. */
   stop(): void;
 }
 
 const UNSUPPORTED: SyncState = { state: "unsupported" };
+
+/**
+ * How often a wait's sync asks the daemon whether its pass is stored (task
+ * 011-42): a question on the daemon's socket, not a read of the store, so it
+ * keeps the 250 ms the wait's store poll gave up, and the wait reads the
+ * store as soon as it answers (`pollPause`).
+ */
+export const SYNC_POLL_MS = 250;
 
 /**
  * Lessons, defect 30: a wait that started right after an edit read the
@@ -44,7 +54,7 @@ export function syncDaemon(root: AbsolutePath, pollMs: number): DaemonSync {
   let current: SyncState = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
-  void (async () => {
+  const answered = (async () => {
     for (;;) {
       const outcome = await syncOnce(root, pollMs, isStopped);
       if (outcome !== "again") return outcome;
@@ -59,10 +69,27 @@ export function syncDaemon(root: AbsolutePath, pollMs: number): DaemonSync {
   );
   return {
     current: () => current,
+    answered,
     stop: () => {
       stopped = true;
     },
   };
+}
+
+/**
+ * A wait's pause between two reads of the store: `ms`, or less when `sync`
+ * is pending and answers first, so the read that decides on its answer is
+ * not a poll later (task 011-42: a quiet wait ended a second late).
+ */
+export async function pollPause(ms: number, sync: DaemonSync | undefined): Promise<void> {
+  if (sync?.answered === undefined || sync.current().state !== "pending") {
+    await sleep(ms);
+    return;
+  }
+  const abort = new AbortController();
+  const timer = sleep(ms, undefined, { signal: abort.signal }).catch(() => {});
+  await Promise.race([timer, sync.answered]);
+  abort.abort();
 }
 
 async function syncOnce(
