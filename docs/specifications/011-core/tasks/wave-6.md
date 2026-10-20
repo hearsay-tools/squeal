@@ -55,3 +55,13 @@ Questions:
 Isolation and load: as R1 (scratch clones by SHA, scratch `HOME` and XDG dirs, stores read only from a copy, no live measurement). Owns: `research/edit-cut.md`, `research/probes/edit-cut/`.
 
 Done when: the findings file answers 1 to 4, ends with a recommendation that names what happens in a repository with no naming convention, the C4 sentences it would change, and the slice's done-when as tests (replacing or extending `central-edits.md`'s 1 to 10).
+
+## W3: 011-25, an edit keeps its namesakes and the shortest direct importers; the rest is catch-up
+
+Use /worker. Shape: code. Read board row 011-25, spec 011 C4 step 4 and "Explicit checkpoints" as amended 2026-10-20 for 011-25 (the human chose cut (n+K)), `research/edit-cut.md` (its recommendation, the namesake definition and the slice's done-when 1 to 11) and `research/central-edits.md` (the three seams: `applyRunnerPart` demotes through `Queue.toCatchUp(ref, keyedAt)`, today's rule when `affected` fails or is abandoned, a start calls `affected` per unrefined revision), `reviews/wave-5.md` (how catch-up classifies a revision; `Entry.recentBy`). Base: main at or after this brief's commit.
+
+Do the C4 rule: a revision of fewer than 10 keyed paths keeps as an edit's work its added and edited test files, each changed source's namesakes among the files it re-keyed (or, when a source has none, the runner's direct importers of it), and the `runner.tierSize` shortest other direct importers by last-known duration; every other file it re-keys is catch-up. No runner adapter changes (`affected` already splits direct and transitive). The namesake matcher is one pure function with its own tests, so row 011-43 can later make its patterns configurable.
+
+Tests first, red before: `edit-cut.md`'s done-when 1 to 10 in `test/scheduler/` (the `catch-up-fixture.ts` shape, a fake runner whose `affected` returns a direct and transitive split); 011-22's catch-up and wave-5 classification tests stay green. Done-when 11 (the cezar replay) is optional here and noted in your notes if skipped.
+
+Release: the scheduler sources are guarded, so this row raises the key format. Do not bump the version or re-pin; the coordinators bundle it into the next guarded release (011 `status.md`, 011-37: guarded rows ship together until 011-41). Expected failures: `key-format.test.ts` and the bundle-drift tests; say so. Not yours: 011-38's files beyond a call site (`keying.ts`, `ledger.ts`, `stored-keys.ts` changed in the format-18 bundle; rebase onto main if it has landed). Done when: the tests pass, lint and typecheck are clean, `squeal run --all --wait` is pasted, and `tasks/011-25/notes.md` names the seams, the tests and any namesake case the research did not cover.
