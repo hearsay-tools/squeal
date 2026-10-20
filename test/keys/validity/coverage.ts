@@ -13,7 +13,10 @@ import { ROOT } from "./trees.js";
  * modules' names apart maps to no changed source line, so neither needs a case.
  * V8's block coverage (`NODE_V8_COVERAGE`) reports every function of the
  * script, a never-called one with count 0, so the innermost range at a line's
- * first character says whether the block it lies in ran.
+ * first character says whether the block it lies in ran in that process. A
+ * line ran when it ran in any process: each report is read on its own, since a
+ * process that never called a function, or skipped a branch V8 reports for it
+ * alone, holds a range at least as small as the one where it ran.
  */
 
 export interface Range {
@@ -22,9 +25,9 @@ export interface Range {
   readonly count: number;
 }
 
-/** The block ranges V8 wrote under `dir` for the script at `url`. */
-export function coverageOf(dir: string, url: string): Range[] {
-  const ranges: Range[] = [];
+/** The block ranges V8 wrote under `dir` for the script at `url`, one list per process that loaded it. */
+export function coverageOf(dir: string, url: string): Range[][] {
+  const reports: Range[][] = [];
   for (const name of readdirSync(dir).filter((n) => n.endsWith(".json"))) {
     const report = JSON.parse(readFileSync(join(dir, name), "utf8")) as {
       result: {
@@ -33,13 +36,14 @@ export function coverageOf(dir: string, url: string): Range[] {
       }[];
     };
     for (const script of report.result.filter((s) => s.url === url)) {
-      for (const fn of script.functions) {
-        for (const r of fn.ranges)
-          ranges.push({ start: r.startOffset, end: r.endOffset, count: r.count });
-      }
+      reports.push(
+        script.functions.flatMap((fn) =>
+          fn.ranges.map((r) => ({ start: r.startOffset, end: r.endOffset, count: r.count })),
+        ),
+      );
     }
   }
-  return ranges;
+  return reports;
 }
 
 /** The count of the innermost range holding `offset`; 0 outside every range. */
@@ -57,8 +61,12 @@ function countAt(ranges: readonly Range[], offset: number): number {
   return best?.count ?? 0;
 }
 
-/** Of `lines` (1-based) of `text`, those holding code whose block never ran. Blank lines hold none. */
-export function unrun(text: string, ranges: readonly Range[], lines: Iterable<number>): number[] {
+/** Of `lines` (1-based) of `text`, those holding code whose block ran in none of `reports`. Blank lines hold none. */
+export function unrun(
+  text: string,
+  reports: readonly (readonly Range[])[],
+  lines: Iterable<number>,
+): number[] {
   const all = text.split("\n");
   const starts: number[] = [];
   let at = 0;
@@ -71,7 +79,8 @@ export function unrun(text: string, ranges: readonly Range[], lines: Iterable<nu
     const line = all[n - 1] ?? "";
     const indent = line.search(/\S/);
     if (indent < 0) continue;
-    if (countAt(ranges, (starts[n - 1] ?? 0) + indent) === 0) out.push(n);
+    const offset = (starts[n - 1] ?? 0) + indent;
+    if (reports.every((ranges) => countAt(ranges, offset) === 0)) out.push(n);
   }
   return out;
 }
