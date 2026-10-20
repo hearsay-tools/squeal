@@ -18850,10 +18850,11 @@ function withoutSquealRecorders(tokens) {
   return kept2;
 }
 function projectEnv(project, inherited) {
-  const { NODE_TEST_CONTEXT: _, [OBSERVE_VARIABLE]: __, ...base } = inherited;
+  const { NODE_TEST_CONTEXT: _, [OBSERVE_VARIABLE]: outer, ...base } = inherited;
   const options = base.NODE_OPTIONS === void 0 ? void 0 : ownNodeOptions(base.NODE_OPTIONS);
   if (options === void 0) delete base.NODE_OPTIONS;
   else base.NODE_OPTIONS = options;
+  if (outer !== void 0) base[OBSERVE_VARIABLE] = UNOBSERVED;
   return { ...base, ...project.env };
 }
 function ownNodeOptions(options) {
@@ -18866,7 +18867,7 @@ function ownNodeOptions(options) {
 function asWritten(token) {
   return /[ "]/.test(token) ? quoteNodeOption(token) : token;
 }
-var RECORDERS, OBSERVE_VARIABLE, PRELOAD_FLAGS;
+var RECORDERS, OBSERVE_VARIABLE, UNOBSERVED, PRELOAD_FLAGS;
 var init_recorders = __esm({
   "src/runners/node-test/recorders.ts"() {
     "use strict";
@@ -18878,6 +18879,7 @@ var init_recorders = __esm({
       "/src/runners/node-test/runtime/recorder.cjs"
     ];
     OBSERVE_VARIABLE = "SQUEAL_OBSERVE";
+    UNOBSERVED = JSON.stringify({ out: "" });
     PRELOAD_FLAGS = /* @__PURE__ */ new Set(["--require", "-r", "--import"]);
   }
 });
@@ -18902,6 +18904,14 @@ function observeEnv(recorder, settings, inherited) {
     NODE_OPTIONS: options === "" ? option : `${option} ${options}`,
     [OBSERVE_VARIABLE2]: JSON.stringify(settings)
   };
+}
+function unobservedEnv(inherited) {
+  const env = {};
+  const options = inherited.NODE_OPTIONS;
+  const own = options === void 0 ? void 0 : ownNodeOptions(options);
+  if (own !== options) env.NODE_OPTIONS = own ?? "";
+  if (inherited[OBSERVE_VARIABLE2] !== void 0) env[OBSERVE_VARIABLE2] = UNOBSERVED;
+  return env;
 }
 var RECORDER_VERSION, OBSERVE_VARIABLE2, CANDIDATES;
 var init_runtime = __esm({
@@ -20118,7 +20128,7 @@ var init_observe2 = __esm({
       paths;
       enabled;
       #out = null;
-      /** The env the current instance's workers got from the recorder. */
+      /** The env the current instance's workers got from the recorder, or in place of another Squeal's. */
       #injected = {};
       #recorder;
       /** The current instance records. */
@@ -20137,16 +20147,18 @@ var init_observe2 = __esm({
       adapterVersion(base) {
         return this.active ? `${base}+observe.${RECORDER_VERSION}` : base;
       }
-      /** What the recorder added to the current instance's env: left out of the environment hash. */
+      /** What the recorder added to, or took out of, the current instance's env: left out of the environment hash. */
       get injected() {
         return this.#injected;
       }
-      /** The `env` option of the next instance, or `{}` when it does not observe. */
+      /** The `env` option of the next instance: `{}` when it neither observes nor inherits a recorder. */
       start() {
         this.stop();
-        if (!this.enabled()) return {};
-        const recorder = this.#find();
-        if (recorder === null) return {};
+        const recorder = this.enabled() ? this.#find() : null;
+        if (recorder === null) {
+          this.#injected = unobservedEnv(process.env);
+          return Object.keys(this.#injected).length === 0 ? {} : { env: this.#injected };
+        }
         const out2 = mkdtempSync2(join55(tmpdir3(), "squeal-observe-"));
         this.#out = out2;
         const temp = tmpdir3();
