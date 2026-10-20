@@ -110,3 +110,48 @@ None.
 Repair B1 before landing this bundle. Preserve `fileClassOf`, the three header fields, claim-before-retry ordering, optional reasons only for no-result runs, and unmatched-path selection behavior. Do not add any full-worktree state read to a wait poll. Re-review the command-rendering delta and its follow-the-command regression.
 
 For R3/R4, reuse `nextStep` and the single not-current formatter. Carry invocation context to every command-producing surface, including JSON. Keep the setup-list limitation explicit. 011-41 still needs validity-corpus cases for the structured unknown meta rows; it must not treat the present format raise as that coverage proof.
+
+## Re-review
+
+Candidate: `35a4969aa308e663fadcbf4d3481ca80c140c407`. Bounded to B1 by parent request `a9b37840-a284-4ef1-9668-90ed1d4efae3`; repair `ffd405ade`, rebuilt CLI bundles `35a4969aa`. The original FAIL above remains the first-round record.
+
+**PASS**: B1 resolved; 0 remaining blockers, 0 should-fix findings, 0 nits in the bounded re-review.
+
+### Verification output
+
+```text
+$ git rev-parse HEAD
+35a4969aa308e663fadcbf4d3481ca80c140c407
+$ npm ci
+added 196 packages, and audited 197 packages in 7s
+found 0 vulnerabilities
+$ npm run lint
+> biome check .
+Checked 1541 files in 563ms. No fixes applied.
+$ npm run typecheck
+> tsc --noEmit
+```
+
+All three commands exited 0. npm repeated the six install-script allowlist warnings. The committed candidate tree was clean before the targeted checks below.
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/cli test/status test/keys test/harness/plugin.test.ts test/harness/codex/plugin.test.ts test/harness/opencode/package.test.ts test/harness/pi/package.test.ts --maxWorkers=4
+ Test Files  140 passed (140)
+      Tests  1090 passed (1090)
+   Start at  18:51:04
+   Duration  85.48s (tests 93%, import 5%, transform 2%)
+```
+
+Exit 0. This includes the new subdirectory regression as committed, `test/cli/wait-reads.test.ts`, all requested CLI/status/key tests, and all four plugin bundle tests.
+
+No full suite was run in this re-review: the source delta is confined to `src/cli` and `src/core/status/next-step-text.ts`, the parent's explicit condition for targeted verification. No build was run, per the assignment; the four bundle-fidelity tests check the committed CLI bundles against temporary builds. The first-round full-suite result above is evidence at the old candidate only.
+
+### B1 disposition and repair boundaries
+
+- **Proven resolved.** `selectNamedFiles` carries the invocation's root-relative `base`; `fromBase` converts each root-relative test-file path into an argument relative to that directory. `namedClassLines`, both settled and timeout verdict groups, and `namedWaitCommand`'s JSON entries all pass the same base into their command renderer. The printed display paths stay root-relative. From `tests/`, the repaired commands name `a.test.ts`, `n.test.ts` and `../src/u.test.ts`.
+- The new regression at `test/cli/next-step-rows.test.ts` seeds a stale `tests/a.test.ts`, never-run `tests/n.test.ts`, and stale parent-directory `src/u.test.ts`. It checks the two plain class lines, both verdict-line command groups, and each JSON-entry command through `fileEntry`. It then invokes every printed JSON command through the real `retryCommand` from `tests/` and asserts `readRetries` holds each selected file at `doneKey(path)` with `noResult: true`. Inspection confirms the real JSON command wrapper supplies `wait.selection.base`, matching the test's call.
+- The regression is discriminating. With only `fromBase` temporarily replaced by `return path`, the new test exited 1 at its plain class-line assertion (`next-step-rows.test.ts:229`). Output: `Test Files 1 failed (1); Tests 1 failed | 12 skipped (13)`. The exact source bytes were restored before candidate verification; the same regression passed in the 140-file committed-candidate run. This deliberate mutation run is evidence about the regression, not a passing check of the candidate.
+- A separate production-function probe passed for an outside-root cwd: selecting a test by its absolute path keeps an absolute `selection.base`, and `fromBase` retains that test's root-relative reading. The probe also checked root/omitted-base mappings and a file above the invocation directory. This preserves the outside-root behavior the re-review requested; it does not add a root fallback to selection.
+- `git diff 8b8673e72 35a4969aa -- . ':!docs'` names exactly nine files: the four specified source files (`named-file-lines.ts`, `status-wait-lines.ts`, `status-wait-paths.ts`, `next-step-text.ts`), `next-step-rows.test.ts`, and the Claude Code, Codex, OpenCode and Pi `dist/cli/squeal.mjs` bundles. No scheduler, keys, stored results, version or other product source changed. In `status-wait-paths.ts`, the repair adds `base` to selection and propagates it to JSON commands; the path-selection and valid-closure walk are unchanged. The earlier unmatched-base metadata remains. 011-44 still owns the closure read.
+
+No new blocking finding, should-fix or nit arose within this bounded repair. The first review's format-19/read-as-20 reading and explicit 011-41 coverage deferral stand.
