@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { Case } from "./case.js";
+import type { Case, CaseKind } from "./case.js";
 import { CASES } from "./cases/index.js";
 import { compareTrees, failures, wordingChanges } from "./compare.js";
 import { extractTree, lastRelease, type Overlay, ROOT } from "./trees.js";
@@ -50,17 +50,26 @@ const lineOf = (path: string, text: string) =>
 const compare = (overlay: Overlay, cases: readonly Case[] = CASES) =>
   compareTrees({ baseline: tree, cases, overlay, work: join(work, `run-${runs++}`) });
 
-describe("the candidate against the last release", () => {
+/** The corpus's cases of `kinds`: a self-test runs the kinds its change reaches. */
+const only = (...kinds: CaseKind[]) => CASES.filter((c) => kinds.includes(c.kind));
+
+// A full comparison bundles twice and runs the corpus in four child processes.
+const SLOW = { timeout: 120_000 };
+
+describe("the candidate against the last release", SLOW, () => {
   it("keeps every stored meaning, or raises", async () => {
     const result = await compare({});
     expect(failures(result, release)).toEqual([]);
   });
 });
 
-describe("the comparison, under a change unmade", () => {
+describe("the comparison, under a change unmade", SLOW, () => {
   it("reports differing keys without failing", async () => {
     const path = "src/core/keys/check-key.ts";
-    const result = await compare(edited(path, '"squeal-check-key/2"', '"squeal-check-key/9"'));
+    const result = await compare(
+      edited(path, '"squeal-check-key/2"', '"squeal-check-key/9"'),
+      only("key"),
+    );
     expect(result.fired).toBe(true);
     expect(result.cases.filter((c) => c.kind === "key").every((c) => !c.keysEqual)).toBe(true);
     expect(failures(result, release)).toEqual([]);
@@ -70,6 +79,7 @@ describe("the comparison, under a change unmade", () => {
     const path = "src/core/scheduler/records.ts";
     const result = await compare(
       edited(path, "if (skipped !== true) return listed;", "if (skipped !== null) return listed;"),
+      only("rows"),
     );
     const differing = result.cases.filter((c) => !c.outputsEqual).map((c) => c.name);
     expect(differing).toEqual(["a module skip"]);
@@ -97,12 +107,15 @@ describe("the comparison, under a change unmade", () => {
   it("passes the same change once a case runs it, and lists the duration with the wording", async () => {
     const path = "src/core/scheduler/records.ts";
     const text = "    durationMs: 0,\n    location,";
-    const result = await compare(edited(path, text, "    durationMs: 1,\n    location,"));
+    const result = await compare(
+      edited(path, text, "    durationMs: 1,\n    location,"),
+      only("rows"),
+    );
     expect(failures(result, release)).toEqual([]);
     expect(wordingChanges(result)).toEqual(["a load error"]);
   });
 
-  it("passes a summary-only change and lists the wording (11->12)", async () => {
+  it("passes a summary-only change and lists the wording, every kind equal (11->12)", async () => {
     const path = "src/core/state/fingerprint.ts";
     const result = await compare(
       edited(path, '"error after its tests ran: "', '"error once its tests ran: "'),
@@ -110,5 +123,45 @@ describe("the comparison, under a change unmade", () => {
     expect(result.fired).toBe(true);
     expect(failures(result, release)).toEqual([]);
     expect(wordingChanges(result)).toEqual(["an error after the tests ran"]);
+  });
+
+  it("fails when the recorder stops recording stat'ed paths, naming its version (risk 2)", async () => {
+    const path = "src/runners/observe/fs.cjs";
+    const stats = '["stat", "statSync", "lstat", "lstatSync", "exists", "existsSync"]';
+    const result = await compare(
+      edited(path, `for (const name of ${stats})`, "for (const name of [])"),
+    );
+    expect(result.fired).toBe(true);
+    const differing = result.cases.filter((c) => !c.outputsEqual).map((c) => c.name);
+    expect(differing).toEqual(["a stat, a read and a listing"]);
+    expect(result.uncovered).toEqual([]);
+    expect(failures(result, release)).toEqual([
+      expect.stringMatching(
+        /^observe case "a stat, a read and a listing": .* raise RECORDER_VERSION/,
+      ),
+    ]);
+  });
+
+  it("reports a raised format's differing cases without failing it, until the alarm (011-41)", async () => {
+    const records = "src/core/scheduler/records.ts";
+    const format = "src/core/keys/key-format.ts";
+    const raised = /KEY_FORMAT_VERSION = (\d+);/.exec(read(format))?.[1];
+    const result = await compare({
+      ...edited(
+        records,
+        "if (skipped !== true) return listed;",
+        "if (skipped !== null) return listed;",
+      ),
+      ...edited(
+        format,
+        `KEY_FORMAT_VERSION = ${raised};`,
+        `KEY_FORMAT_VERSION = ${Number(raised) + 1};`,
+      ),
+    });
+    expect(result.versions.candidate).toBe(result.versions.baseline + 1);
+    expect(result.cases.filter((c) => !c.outputsEqual).map((c) => c.name)).toEqual([
+      "a module skip",
+    ]);
+    expect(failures(result, release)).toEqual([]);
   });
 });
