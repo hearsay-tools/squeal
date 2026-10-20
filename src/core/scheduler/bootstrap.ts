@@ -14,6 +14,7 @@ import { owedStrict, resumeOwed } from "./checkpoint-requests.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { block, type Failures } from "./failures.js";
 import { durationOf, type FileState } from "./files.js";
+import { handover } from "./handover.js";
 import { takeHeldFiles } from "./held.js";
 import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
@@ -41,6 +42,9 @@ import { runnerPartBound } from "./runner-work-bound.js";
  * 4. One checkpoint of kind `baseline` over the misses and the unkeyed
  *    files, run in tiers or, with `baseline.onStart: "lookup-only"`,
  *    abandoned unless empty. An unkeyed file ends it `abandoned` (D5).
+ *    Whatever the policy, a miss whose row the last daemon left `queued` or
+ *    `running` is queued, in the group its open re-key moves give it, and a
+ *    pending re-run too (`handover`, 011 C4 as amended 2026-10-20, 011-33).
  *
  * What the last daemon of this worktree knew comes back from the store:
  * known checks and failures from `known_states`, the previous key from
@@ -176,23 +180,24 @@ export async function baseline(
     ledger.revision.number,
     [...misses, ...unkeyed, ...forced].map((file) => file.ref),
   );
-  if (policy.baseline.onStart === "lookup-only") {
-    ledger.checkpoints.finish("abandoned");
-  } else {
-    // What no runner saw change is its revision's edit here, catch-up from 10 keyed paths (011-22).
-    const changed = new Set(unseen.flatMap((paths) => [...paths]));
-    const recent = new Set<string>();
-    const catchUp = new Set<string>();
-    for (const paths of unseen) {
-      const reached = isCatchUp(context, ledger, paths) ? catchUp : recent;
-      for (const id of ledger.recentOf(paths)) reached.add(id);
-    }
-    for (const file of misses) {
-      const first = recent.has(file.id);
-      ledger.enqueue(file, priorityOf(file, changed), false, first, !first && catchUp.has(file.id));
-    }
+  const lookupOnly = policy.baseline.onStart === "lookup-only";
+  if (lookupOnly) ledger.checkpoints.finish("abandoned");
+  const handed = handover(context, ledger, previousKeys);
+  // What no runner saw change is its revision's edit here, catch-up from 10 keyed paths (011-22).
+  const changed = new Set([...unseen.flatMap((paths) => [...paths]), ...handed.changed]);
+  const recent = new Set(handed.first);
+  const catchUp = new Set(handed.catchUp);
+  for (const paths of unseen) {
+    const reached = isCatchUp(context, ledger, paths) ? catchUp : recent;
+    for (const id of ledger.recentOf(paths)) reached.add(id);
   }
-  restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
+  for (const file of misses) {
+    // A predecessor's queued work is handed over whatever the policy (011 C4, task 011-33).
+    if (lookupOnly && !handed.pending.has(file.id)) continue;
+    const first = recent.has(file.id);
+    ledger.enqueue(file, priorityOf(file, changed), false, first, !first && catchUp.has(file.id));
+  }
+  restoreReruns(context, ledger);
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   resumeOwed(ledger, owed);
   if (failures.size > 0) block(ledger, failures);

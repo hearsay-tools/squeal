@@ -96,6 +96,19 @@ describe("a pending re-run survives a daemon restart", SLOW, () => {
     expect(third.runner.runs).toEqual([]);
   });
 
+  it("re-runs it under a lookup-only baseline too: a predecessor queued it (011-33, Q5 (a))", async () => {
+    const { repo, store } = await failThenExit();
+    rmSync(repo.marker);
+
+    const second = await openHarness(repo.main, store, repo.commonDir, {
+      policy: { baseline: { onStart: "lookup-only" } },
+    });
+    await second.scheduler.start();
+    await second.scheduler.idle();
+    expect(second.runsOf(FLAKY)).toHaveLength(1);
+    expect(second.sink.stateOf(flips)).toMatchObject({ outcome: "pass", validity: "current" });
+  });
+
   it("drops the re-run when the file's key moved before it ran: the new key runs unforced", async () => {
     const { repo, store, first } = await failThenExit();
     const before = first.keyOf(FLAKY);
