@@ -85,8 +85,24 @@ describe("scheduler: catch-up's place in the order (C4 step 4, task 011-22)", {
       if (paths.every((p) => p.startsWith("test/f"))) return "catch-up";
       return paths.every((p) => p.startsWith("test/b")) ? "backlog" : "mixed";
     };
-    const runs = effective(side, 0).map(kind);
-    expect(runs.slice(0, 6)).toEqual(["edit", "edit", "edit", "edit", "catch-up", "edit"]);
+    const runs = effective(side, 0);
+    expect(runs.slice(0, 6).map(kind)).toEqual([
+      "edit",
+      "edit",
+      "edit",
+      "edit",
+      "catch-up",
+      "edit",
+    ]);
+    // The turn's tier takes the backlog's grant; the edit's tiers take none (review W4r).
+    expect(runs.slice(0, 6).map((run) => run.workers !== undefined)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+    ]);
   });
 
   describe("6. a queued catch-up file moves to the first group", () => {

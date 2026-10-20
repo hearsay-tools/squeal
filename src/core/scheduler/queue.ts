@@ -294,8 +294,8 @@ export class RunQueue {
    * once, catch-up first. A promoted entry (C15) is of the first group and
    * leads it, failing files included. Fast entries only.
    */
-  ordered(durationOf: DurationOf = () => null): TestFileRef[] {
-    return sorted(this.#fast(), durationOf, this.backlogTurn(), this.#ranks());
+  ordered(durationOf: DurationOf = () => null, turn = this.backlogTurn()): TestFileRef[] {
+    return sorted(this.#fast(), durationOf, turn, this.#ranks());
   }
 
   /** The backlog comes first once: `RECENT_TIERS_PER_BACKLOG_TIER` tiers of the first group ran. */
