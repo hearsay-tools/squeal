@@ -1,4 +1,5 @@
 import { type Hasher, StatCache, sameStat } from "../hash/index.js";
+import { testFileId } from "../keys/index.js";
 import { type BatchDiff, diffCandidates, statCandidates } from "../revision/index.js";
 import { listPaths, pathsReason } from "../text.js";
 import type { CheckKey, RelativePath, RunReport, TestFileRef } from "../types/index.js";
@@ -71,15 +72,23 @@ export function touchedUnchanged(
 }
 
 /**
- * Review wave-13e B2 (task 001-168): `report` with no file completed, since
+ * Review wave-13e B2 (task 001-168): `report` without `files`, since
  * `touched` were written while it was in flight and ended as they were. A
  * cache may have served the run their other bytes, and the watcher's batch
  * may reach the runner only after the tier is recorded, so the barrier
- * withholds the run as a touch the runner heard does: its files are
- * `unknown` with a reason naming the paths.
+ * withholds them as a touch the runner heard does: their files are
+ * `unknown` with a reason naming the paths. Task 013-02 (D2 of 013-01): only
+ * `files`, those whose keys name a touched path, as a content change
+ * discards them; the runner's own withholds of the rest stand. Without
+ * `files`, every file of the run.
  */
-export function withheldForTouch(report: RunReport, touched: readonly RelativePath[]): RunReport {
+export function withheldForTouch(
+  report: RunReport,
+  touched: readonly RelativePath[],
+  files?: readonly TestFileRef[],
+): RunReport {
   if (touched.length === 0) return report;
+  if (files?.length === 0) return report;
   const reason = pathsReason(
     "squeal: the run may have executed bytes no check key names, since ",
     touched,
@@ -87,13 +96,22 @@ export function withheldForTouch(report: RunReport, touched: readonly RelativePa
       `${one ? "was" : "were"} written while this run was in flight and ended as ${one ? "it was" : "they were"}`,
     "task 001-168",
   );
-  const { fileDurations, observed, withheld, ...rest } = report;
+  const gone = files === undefined ? null : new Set(files.map(testFileId));
+  const kept = (ref: TestFileRef) => gone !== null && !gone.has(testFileId(ref));
+  const { fileDurations, observed, reads, withheld, ...rest } = report;
+  const stillWithheld = withheld?.filter(kept) ?? [];
   return {
     ...rest,
-    completedFiles: [],
-    results: [],
-    fileErrors: [],
+    completedFiles: report.completedFiles.filter(kept),
+    results: report.results.filter((r) =>
+      kept({ project: r.check.project, path: r.check.testPath }),
+    ),
+    fileErrors: report.fileErrors.filter((e) => kept(e.testFile)),
     failure: report.failure === null ? reason : `${report.failure}\n${reason}`,
+    ...(fileDurations ? { fileDurations: fileDurations.filter((d) => kept(d.testFile)) } : {}),
+    ...(observed ? { observed: observed.filter((o) => kept(o.testFile)) } : {}),
+    ...(reads ? { reads: reads.filter((o) => kept(o.testFile)) } : {}),
+    ...(stillWithheld.length > 0 ? { withheld: stillWithheld } : {}),
   };
 }
 
