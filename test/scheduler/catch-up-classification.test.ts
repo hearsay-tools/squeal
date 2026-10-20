@@ -195,16 +195,17 @@ describe("scheduler: catch-up counts one revision's keyed paths (review wave 5)"
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const { invalidate } = side.runner;
+    const { invalidate, affected } = side.runner;
     Object.assign(side.runner, {
       invalidate: async (paths: readonly InvalidatedPath[]) => {
         if (paths.some((p) => p.path === "src/a.ts")) await held;
         return invalidate();
       },
-      affected: async (paths: readonly string[]) => ({
-        direct: paths.includes("src/a.ts") ? [{ project: "", path: target.path }] : [],
-        transitive: [],
-      }),
+      affected: async (paths: readonly string[]) => {
+        const { direct, transitive } = await affected(paths);
+        const named = paths.includes("src/a.ts") ? [{ project: "", path: target.path }] : [];
+        return { direct: [...direct, ...named], transitive };
+      },
     });
     const before = side.runner.runs.length;
     // Revision A, small; its runner part waits while revision B, the target and 10 added tests, lands.
