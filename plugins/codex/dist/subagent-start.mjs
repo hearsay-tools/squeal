@@ -991,6 +991,47 @@ function formatCheck(check) {
   return check.kind === "test" ? `${project}${check.testPath} > ${check.fullName}` : `${project}${check.testPath}${FILE_LEVEL}`;
 }
 
+// src/core/state/file-class.ts
+function fileClassOf(row, own) {
+  const has = (validity) => own.some((s) => s.validity === validity);
+  const queued = row !== void 0 && row.key !== null && row.pending !== null;
+  const unkeyed = row === void 0 || row.key === null;
+  if (queued || has("pending")) return "pending";
+  if (unkeyed || own.length === 0 || has("unknown")) return "unknown";
+  return has("stale") ? "stale" : "current";
+}
+function countNotCurrent(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    if (state.check.kind === "setup") continue;
+    const id = testFileKeyOf(state.check);
+    const own = checks.get(id);
+    if (own === void 0) checks.set(id, [state]);
+    else own.push(state);
+  }
+  const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const testFilesByPhase = { running: 0, queued: 0 };
+  const testsByPhase = { running: 0, queued: 0 };
+  for (const row of keys) {
+    const id = testFileId(row.testFile);
+    const own = checks.get(id) ?? [];
+    const fileClass = fileClassOf(row, own);
+    testFileCounts[fileClass]++;
+    if (fileClass !== "pending") continue;
+    const running = openFiles2.has(id) || row.pending === "running" || own.some(isRunning);
+    testFilesByPhase[running ? "running" : "queued"]++;
+  }
+  const filePhase = new Map(keys.map((row) => [testFileId(row.testFile), row.pending]));
+  for (const state of states) {
+    if (state.check.kind !== "test" || state.validity !== "pending") continue;
+    const id = testFileKeyOf(state.check);
+    const phase = openFiles2.has(id) ? "running" : state.pendingPhase ?? filePhase.get(id) ?? "queued";
+    testsByPhase[phase]++;
+  }
+  return { testFileCounts, testFilesByPhase, testsByPhase };
+}
+var isRunning = (state) => state.pendingPhase === "running";
+
 // src/core/state/flaky.ts
 var FLAKY_META_KEY = "flaky-checks";
 function readFlakyNotes(store) {
@@ -1240,7 +1281,7 @@ function consumerInTurn(store, worktreeId) {
 }
 
 // src/core/state/header.ts
-function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow) {
+function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow, openFiles2) {
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
@@ -1276,6 +1317,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     counts,
     fileLevelCounts,
     testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
+    ...countNotCurrent(states, keys, openFiles2),
     fullSuite: {
       atCurrentRevision: !awaiting && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,
@@ -1546,6 +1588,50 @@ function earlierFailuresLines({ pending, stale }) {
     `Earlier failures: ${pending} pending rerun, ${stale} stale (not counted until a rerun fails)`
   ];
 }
+function notCurrentText(header) {
+  const files2 = header.testFileCounts;
+  if (files2 === void 0) return "";
+  if (header.testFilesListed === false) {
+    return "; the daemon has not listed this worktree's test files yet";
+  }
+  const unlisted = header.runnerPartPending === true ? [`revision ${header.revision} is not listed yet, so test files it adds are not counted`] : [];
+  return `; ${[filesText2(header, files2, unlisted.length > 0), ...unlisted].join("; ")}`;
+}
+function filesText2(header, files2, unlisted) {
+  const total = files2.current + files2.pending + files2.stale + files2.unknown;
+  if (total > files2.current) {
+    const fileParts = partsText({
+      ...splitPending(files2.pending, header.testFilesByPhase),
+      stale: files2.stale,
+      unknown: files2.unknown
+    });
+    const tests = testsText(header);
+    return `not current: ${total - files2.current} of ${plural(total, "test file")} (${fileParts})${tests}`;
+  }
+  if (total === 0) return "the daemon listed no test files";
+  if (unlisted) return `${plural(total, "test file")} current`;
+  if (header.daemon?.state !== "alive" || header.awaitingInstall === true) {
+    return `${plural(total, "test file")} current as of revision ${header.revision}`;
+  }
+  return `all ${plural(total, "test file")} current`;
+}
+function testsText({ counts, fileLevelCounts: fileLevel, testsByPhase }) {
+  const tests = (validity) => counts[validity] - (fileLevel?.[validity] ?? 0);
+  const parts = {
+    ...splitPending(tests("pending"), testsByPhase),
+    stale: tests("stale"),
+    unknown: tests("unknown")
+  };
+  const total = parts.running + parts.queued + parts.stale + parts.unknown;
+  return total === 0 ? "" : `, ${plural(total, "test")} (${partsText(parts)})`;
+}
+function splitPending(pending, phases) {
+  return phases === void 0 ? { running: 0, queued: pending } : { ...phases };
+}
+var NOT_CURRENT = ["running", "queued", "stale", "unknown"];
+function partsText(parts) {
+  return NOT_CURRENT.filter((part) => parts[part] > 0).map((part) => `${parts[part]} ${part}`).join(", ");
+}
 
 // src/core/delivery/collapse.ts
 function checkName(check) {
@@ -1618,7 +1704,7 @@ function isRecord2(value) {
 }
 
 // src/core/retry/pending.ts
-function pendingRetriesOf(store, keys, load = hostLoad) {
+function pendingRetriesOf(store, keys, load = hostLoad, runs = []) {
   const current2 = new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
   const byFile = /* @__PURE__ */ new Map();
   for (const r of readRetries(store)) {
@@ -1627,7 +1713,14 @@ function pendingRetriesOf(store, keys, load = hostLoad) {
     byFile.set(id, [...byFile.get(id) ?? [], r]);
   }
   if (byFile.size === 0) return {};
-  const retries = [...byFile.values()].map(entry2);
+  const running = new Map(
+    keys.filter((k) => k.pending === "running").map((k) => [testFileId(k.testFile), k])
+  );
+  const retries = [...byFile.values()].map((records) => {
+    const id = testFileId(records[0].testFile);
+    const run = running.has(id) ? runs.find((r) => r.testFiles.some((f) => testFileId(f) === id)) : void 0;
+    return { ...entry2(records), ...run === void 0 ? {} : { runningSince: run.startedAt } };
+  });
   const { oneMinute, cpus } = load();
   return { pendingRetries: { retries, loadAverage: oneMinute, cpus } };
 }
@@ -4256,30 +4349,6 @@ function unavailable(reason, detail) {
 }
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
-// src/core/status/open-runs.ts
-function openRuns(store, worktree, daemon) {
-  const record = worktree?.daemon ?? null;
-  if (worktree === null || record === null || daemon.state !== "alive") return [];
-  return store.runs.inFlight(worktree.id, record.startedAt);
-}
-function claimantOf(store, worktreeId, ref, key, now) {
-  if (!store.testFileKeys.claimed(worktreeId, key, { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS })) {
-    return null;
-  }
-  const id = testFileId(ref);
-  for (const worktree of store.worktrees.list()) {
-    if (worktree.id === worktreeId || worktree.daemon === null) continue;
-    const { heartbeatAt, heartbeatIntervalMs } = worktree.daemon;
-    if (heartbeatAt < now - HEARTBEAT_GRACE_INTERVALS * heartbeatIntervalMs) continue;
-    const row = store.testFileKeys.list(worktree.id, [ref])[0];
-    if (row?.key !== key || row.pending !== "running") continue;
-    const runs = store.runs.inFlight(worktree.id, worktree.daemon.startedAt);
-    const run = runs.find((r) => r.testFiles.some((f) => testFileId(f) === id)) ?? null;
-    return { worktree, run };
-  }
-  return null;
-}
-
 // src/core/scheduler/unknown-files.ts
 function unknownFilesMetaKey(worktreeId) {
   return worktreeMetaKey("unknownFiles", worktreeId);
@@ -4294,12 +4363,18 @@ function readUnknownFiles(store, worktreeId) {
     return /* @__PURE__ */ new Map();
   }
   if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
-  const entries = value.filter(isEntry);
+  const entries = value.filter(isEntry).map(knownCause);
   return new Map(entries.map((e) => [testFileId(e.testFile), e]));
 }
+var CAUSES = ["timeout", "install", "runner", "setup"];
 function isEntry(value) {
   if (!isRecord(value) || !isRecord(value.testFile)) return false;
   return typeof value.testFile.path === "string" && typeof value.testFile.project === "string" && (value.key === null || typeof value.key === "string") && typeof value.reason === "string" && typeof value.ran === "boolean" && Array.isArray(value.samples) && value.samples.every((p) => typeof p === "string") && typeof value.revision === "number" && typeof value.at === "number";
+}
+function knownCause(entry3) {
+  if (entry3.cause === void 0 || CAUSES.includes(entry3.cause)) return entry3;
+  const { cause: _cause, ...rest } = entry3;
+  return rest;
 }
 
 // src/core/status/unknown-files.ts
@@ -4338,24 +4413,39 @@ function unknownReasons(store, worktreeId, states, root, now) {
   };
   const reason = (row, own) => {
     const summary = own.find((s) => s.validity === "unknown")?.summary ?? null;
-    if (summary !== null) return summary;
+    if (summary !== null) return { reason: summary };
     if (row.key === null) {
-      return "no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked";
+      return {
+        reason: "no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked",
+        cause: "runner"
+      };
     }
-    if (setups.has(row.testFile.project)) return "its project's global setup failed";
+    if (setups.has(row.testFile.project)) {
+      return { reason: "its project's global setup failed", cause: "setup" };
+    }
     const claimant = claimantOf(store, worktreeId, row.testFile, row.key, now);
-    if (claimant !== null) return `${claimant.worktree.root}'s daemon is running its key`;
-    if (own.length > 0) return null;
-    return isLookupOnly() ? "never run at this key: the baseline is lookup-only, so nothing queued it" : "never run at this key, and nothing queued it";
+    if (claimant !== null)
+      return { reason: `${claimant.worktree.root}'s daemon is running its key` };
+    if (own.length > 0) return { reason: null };
+    return {
+      reason: isLookupOnly() ? "never run at this key: the baseline is lookup-only, so nothing queued it" : "never run at this key, and nothing queued it",
+      cause: "never-run"
+    };
   };
   return {
     of(row, own) {
       const entry3 = recorded.get(testFileId(row.testFile));
       if (entry3 !== void 0 && entry3.key === row.key) {
-        const { ran, reason: reason2, samples } = entry3;
-        return { testFile: row.testFile, ran, reason: reason2, samples };
+        const { ran, reason: reason2, samples, cause } = entry3;
+        return {
+          testFile: row.testFile,
+          ran,
+          reason: reason2,
+          samples,
+          ...cause === void 0 ? {} : { cause }
+        };
       }
-      return { testFile: row.testFile, ran: false, reason: reason(row, own), samples: [] };
+      return { testFile: row.testFile, ran: false, samples: [], ...reason(row, own) };
     }
   };
 }
@@ -4384,7 +4474,6 @@ function snapshot(store, worktreeId, root, now) {
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
-  const header = readHeader(store, worktreeId, states, keys);
   const notes = [];
   if (worktree === null) {
     notes.push("this worktree is not registered in the store; no daemon has run here");
@@ -4403,6 +4492,7 @@ function snapshot(store, worktreeId, root, now) {
     )
   );
   const runs = openRuns(store, worktree, daemon);
+  const header = readHeader(store, worktreeId, states, keys, void 0, openFiles(runs));
   const knownFailures = withRecorded(store, worktreeId, states, header.revision);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -4423,7 +4513,7 @@ function snapshot(store, worktreeId, root, now) {
     ...openCheckpoint(store, worktreeId, daemon),
     ...vitestExcluded(worktree?.root ?? root),
     ...configProblemsOf(worktree?.root ?? root),
-    ...pendingRetriesOf(store, keys),
+    ...pendingRetriesOf(store, keys, void 0, runs),
     ...unknownTestFilesOf(store, worktreeId, states, keys, worktree?.root ?? root, now),
     ...daemon.state === "alive" ? { runsOpen: runs.length } : {}
   };
@@ -4535,6 +4625,30 @@ function recoveryNote(raw) {
   }
 }
 
+// src/core/status/open-runs.ts
+function openRuns(store, worktree, daemon) {
+  const record = worktree?.daemon ?? null;
+  if (worktree === null || record === null || daemon.state !== "alive") return [];
+  return store.runs.inFlight(worktree.id, record.startedAt);
+}
+function claimantOf(store, worktreeId, ref, key, now) {
+  if (!store.testFileKeys.claimed(worktreeId, key, { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS })) {
+    return null;
+  }
+  const id = testFileId(ref);
+  for (const worktree of store.worktrees.list()) {
+    if (worktree.id === worktreeId || worktree.daemon === null) continue;
+    const { heartbeatAt, heartbeatIntervalMs } = worktree.daemon;
+    if (heartbeatAt < now - HEARTBEAT_GRACE_INTERVALS * heartbeatIntervalMs) continue;
+    const row = store.testFileKeys.list(worktree.id, [ref])[0];
+    if (row?.key !== key || row.pending !== "running") continue;
+    const runs = store.runs.inFlight(worktree.id, worktree.daemon.startedAt);
+    const run = runs.find((r) => r.testFiles.some((f) => testFileId(f) === id)) ?? null;
+    return { worktree, run };
+  }
+  return null;
+}
+
 // src/core/delivery/liveness.ts
 function daemonLiveness(record, now, lastHeartbeatAt = null) {
   if (record === null) return { state: "down", since: lastHeartbeatAt };
@@ -4547,12 +4661,14 @@ function worktreeLiveness(worktree, now) {
   return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
 }
 function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
-  const header = readHeader(store, worktreeId, states, keys);
+  const worktree = store.worktrees.get(worktreeId);
+  const runs = openRuns(store, worktree, worktreeLiveness(worktree, now));
+  const open = new Set(runs.flatMap((run) => run.testFiles.map(testFileId)));
+  const header = readHeader(store, worktreeId, states, keys, void 0, open);
   const changes = changedSince(store, worktreeId, header.revision, since);
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
   );
-  const worktree = store.worktrees.get(worktreeId);
   return {
     ...header,
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
@@ -5214,8 +5330,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     ...headerLines(header, command),
     // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
     ...header.optimizerOff === void 0 ? [] : [header.optimizerOff],
-    // Spec 011 C6 as amended (gh-34): status's count and words.
-    `Known failures: ${failureCountText(splitByValidity(knownFailures).current.map((f) => f.check))}`,
+    // Spec 011 C6 as amended (gh-34, gh-45): status's count and words.
+    `Known failures: ${failureCountText(splitByValidity(knownFailures).current.map((f) => f.check))}${notCurrentText(header)}`,
     ...earlierFailuresLines(knownFailureCounts(knownFailures))
   ].join("\n");
   const blocks = knownFailures.map(
@@ -5486,7 +5602,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.230";
+  if (true) return "0.1.231";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
