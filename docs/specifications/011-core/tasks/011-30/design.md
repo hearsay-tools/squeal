@@ -20,6 +20,8 @@ Evidence tags follow `docs/process.md`: `verified by experiment`, `read in sourc
 
 One recommendation each. The spec text below follows the recommendations.
 
+**Decided 2026-10-20 by the human:** Q1 (a), Q3 (a), Q4 (a), Q5 (a); Q2 (a) as the coordinator's default, which the human did not change. The spec text below is in 011 C4, C8 and C9 (`status.md` 2026-10-20). R1 to R4 are board rows 011-31 to 011-34.
+
 | # | Question | Options | Recommendation |
 | --- | --- | --- | --- |
 | Q1 | What does a step-down do with its tiers in flight? | (a) Cancel them as `stop` does. Results already stored stay, the rest is queued for the successor. (b) Wait with a bound B, then cancel. (c) Wait for them, and raise the successor's lock wait to at least `runner.timeoutMs`. | (a). It is bounded the way `stop` is: the successor answered 1.3 s after a `stop` in the probe. The old tier's results are almost always under a key format the successor does not read. Section 1. |
