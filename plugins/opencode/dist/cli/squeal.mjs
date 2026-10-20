@@ -1354,13 +1354,14 @@ var KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 18;
+    KEY_FORMAT_VERSION = 19;
     KEY_FORMATS_READ_AS_ONE = {
       13: "004-81: a slow file's artifact leaves its closure",
       14: "001-366: the backlog's width and wall budget",
       15: "011-21: the edit tier beside the backlog",
       16: "011-21: slots, their records committed together",
-      17: "011-22 and 011-23: catch-up's order, the keys stored since the last read"
+      17: "011-22 and 011-23: catch-up's order, the keys stored since the last read",
+      18: "013-02, 001-365, 011-31 and 011-33: the touch rule and barrier, a step-down's cancel, the handover"
     };
   }
 });
@@ -12491,6 +12492,132 @@ var init_checkpoint_requests = __esm({
   }
 });
 
+// src/core/scheduler/namesakes.ts
+import { posix as posix9 } from "node:path";
+function languageOf(path) {
+  if (SCRIPT.test(path)) return "script";
+  return path.endsWith(".py") ? "python" : null;
+}
+function testedName(path, language) {
+  const base = posix9.basename(path);
+  if (language === "python") {
+    const match3 = MARKED_PYTHON.exec(base);
+    return match3 === null ? null : match3[1] ?? match3[2] ?? null;
+  }
+  const match2 = MARKED_SCRIPT.exec(base);
+  if (match2 !== null) return match2[1] ?? null;
+  const inTests = posix9.basename(posix9.dirname(path)) === "__tests__";
+  return inTests && SCRIPT.test(base) ? base.replace(SCRIPT, "") : null;
+}
+function conventionalDirs(source) {
+  const dir2 = posix9.dirname(source);
+  const dirs = /* @__PURE__ */ new Set([dir2, posix9.join(dir2, "__tests__")]);
+  const segments2 = source.split("/");
+  const at2 = segments2.indexOf("src");
+  if (at2 >= 0 && at2 < segments2.length - 1) {
+    const prefix = segments2.slice(0, at2);
+    const below2 = segments2.slice(at2 + 1, -1);
+    for (const tree of ["test", "tests"]) dirs.add(posix9.join(...prefix, tree, ...below2));
+  }
+  return dirs;
+}
+function namesakesOf(source, testFiles) {
+  const language = languageOf(source);
+  if (language === null) return [];
+  const name2 = posix9.basename(source).replace(/\.[^.]+$/, "");
+  if (name2 === "index") return [];
+  const named = [...new Set(testFiles)].filter(
+    (path) => path !== source && testedName(path, language) === name2
+  );
+  const dirs = conventionalDirs(source);
+  const near = named.filter((path) => dirs.has(posix9.dirname(path)));
+  if (near.length > 0) return near;
+  return named.length === 1 ? named : [];
+}
+var SCRIPT, MARKED_SCRIPT, MARKED_PYTHON;
+var init_namesakes = __esm({
+  "src/core/scheduler/namesakes.ts"() {
+    "use strict";
+    SCRIPT = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
+    MARKED_SCRIPT = /^(.+)\.(?:test|spec)\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
+    MARKED_PYTHON = /^test_(.+)\.py$|^(.+)_test\.py$/;
+  }
+});
+
+// src/core/scheduler/edit-cut.ts
+async function fetchEditCut(context, testFiles, paths, affected2, bound) {
+  const { keys, runner } = context;
+  const byPath = /* @__PURE__ */ new Map();
+  for (const ref2 of testFiles)
+    byPath.set(ref2.path, [...byPath.get(ref2.path) ?? [], testFileId(ref2)]);
+  const reached = new Set([...affected2.direct, ...affected2.transitive].map(testFileId));
+  for (const ref2 of keys.index.reverse.referencing(paths)) reached.add(testFileId(ref2));
+  const namesakes = /* @__PURE__ */ new Map();
+  const bare = /* @__PURE__ */ new Set();
+  for (const path of new Set(paths)) {
+    if (byPath.has(path) || keys.index.reverse.referencing([path]).length === 0) continue;
+    const ids = namesakesOf(path, byPath.keys()).flatMap((name2) => byPath.get(name2) ?? []);
+    namesakes.set(path, ids);
+    if (!ids.some((id2) => reached.has(id2))) bare.add(path);
+  }
+  const direct = affected2.direct.map(testFileId);
+  if (bare.size === 0) return { namesakes, bare, fallback: /* @__PURE__ */ new Set() };
+  if (bare.size === namesakes.size) return { namesakes, bare, fallback: new Set(direct) };
+  const own = await tryRunner(
+    context,
+    `affected (${listPaths([...bare])})`,
+    () => bound.call(() => runner.affected([...bare]))
+  );
+  return { namesakes, bare, fallback: new Set(own === null ? direct : own.direct.map(testFileId)) };
+}
+function editWork(context, ledger, cut, changed, direct) {
+  const reached = ledger.recentOf(changed, direct);
+  const kept2 = /* @__PURE__ */ new Set();
+  for (const file of ledger.files.values()) if (changed.has(file.ref.path)) kept2.add(file.id);
+  for (const [source, ids] of cut.namesakes) {
+    const own = ids.filter((id2) => reached.has(id2));
+    const fallback = cut.bare.has(source) ? cut.fallback : direct;
+    for (const id2 of own.length > 0 ? own : fallback) kept2.add(id2);
+  }
+  const others = [...direct].filter((id2) => !kept2.has(id2)).map((id2) => ledger.files.get(id2)).filter((file) => file !== void 0).sort(shortestFirst);
+  for (const file of others.slice(0, context.policy.runner.tierSize)) kept2.add(file.id);
+  return { kept: kept2, reached };
+}
+function demote(ledger, ids, kept2, revision) {
+  for (const id2 of ids) {
+    const file = ledger.files.get(id2);
+    if (file !== void 0 && !kept2.has(id2)) ledger.queue.toCatchUp(file.ref, revision);
+  }
+}
+function shortestFirst(a, b) {
+  const x = a.durationMs ?? Number.POSITIVE_INFINITY;
+  const y = b.durationMs ?? Number.POSITIVE_INFINITY;
+  return x === y ? compare(a.id, b.id) : x < y ? -1 : 1;
+}
+async function cutAtStart(context, ledger, paths, bound) {
+  const list2 = [...paths];
+  const affected2 = await tryRunner(
+    context,
+    `affected (${listPaths(list2)})`,
+    () => bound.call(() => context.runner.affected(list2))
+  );
+  if (affected2 === null) return { kept: null, reached: ledger.recentOf(paths), direct: /* @__PURE__ */ new Set() };
+  const direct = new Set(affected2.direct.map(testFileId));
+  const refs2 = [...ledger.files.values()].map((file) => file.ref);
+  const cut = await fetchEditCut(context, refs2, list2, affected2, bound);
+  return { ...editWork(context, ledger, cut, paths, direct), direct };
+}
+var init_edit_cut = __esm({
+  "src/core/scheduler/edit-cut.ts"() {
+    "use strict";
+    init_fs();
+    init_keys();
+    init_context();
+    init_namesakes();
+    init_notes2();
+  }
+});
+
 // src/core/scheduler/handover.ts
 function handover(context, ledger, previous) {
   const { store, worktreeId } = context;
@@ -12626,14 +12753,23 @@ async function baseline(context, ledger, unseen = []) {
   const changed = /* @__PURE__ */ new Set([...unseen.flatMap((paths) => [...paths]), ...handed.changed]);
   const recent = new Set(handed.first);
   const catchUp = new Set(handed.catchUp);
+  const direct = /* @__PURE__ */ new Set();
+  const missed = new Set(misses.map((file) => file.id));
   for (const paths of unseen) {
-    const reached = isCatchUp(context, ledger, paths) ? catchUp : recent;
-    for (const id2 of ledger.recentOf(paths)) reached.add(id2);
+    const large = isCatchUp(context, ledger, paths);
+    const reached = ledger.recentOf(paths);
+    const cut = lookupOnly || large || ![...reached].some((id2) => missed.has(id2)) ? null : await cutAtStart(context, ledger, paths, bound);
+    for (const id2 of cut?.direct ?? []) direct.add(id2);
+    for (const id2 of cut?.reached ?? reached) {
+      const kept2 = !large && (cut === null || cut.kept === null || cut.kept.has(id2));
+      (kept2 ? recent : catchUp).add(id2);
+    }
   }
   for (const file of misses) {
     if (lookupOnly && !handed.pending.has(file.id)) continue;
     const first2 = recent.has(file.id);
-    ledger.enqueue(file, priorityOf(file, changed), false, first2, !first2 && catchUp.has(file.id));
+    const priority = priorityOf(file, changed, direct);
+    ledger.enqueue(file, priority, false, first2, !first2 && catchUp.has(file.id));
   }
   restoreReruns(context, ledger);
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
@@ -12692,6 +12828,7 @@ var init_bootstrap = __esm({
     init_types();
     init_checkpoint_requests();
     init_context();
+    init_edit_cut();
     init_failures();
     init_files();
     init_handover();
@@ -13820,6 +13957,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     );
     if (closure !== null) closures.push(closure);
   }
+  const cut = affected2 === null || content.catchUp === true ? void 0 : await fetchEditCut(context, refsOf(ledger, listed3), paths, affected2, bound);
   return {
     revision,
     retrying,
@@ -13829,6 +13967,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     direct: new Set((affected2?.direct ?? []).map(testFileId)),
     ...content.catchUp === true ? { catchUp: true } : {},
     ...content.recent === void 0 ? {} : { recent: content.recent },
+    ...cut === void 0 ? {} : { cut },
     reresolved: [...reresolve.values()],
     closures
   };
@@ -13872,13 +14011,21 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile, keyedAt)
   };
   ledger.settle(touched.values(), changed, options);
   settleFailures(ledger, part.failures, part.retrying, changed, options);
+  if (!catchUp && keyedAt !== void 0 && part.cut !== void 0) {
+    const { kept: kept2, reached } = editWork(context, ledger, part.cut, changed, part.direct);
+    demote(ledger, [...reached, ...(part.recent ?? []).map(testFileId)], kept2, keyedAt);
+  }
   return stale;
+}
+function refsOf(ledger, listed3) {
+  return listed3 ?? [...ledger.files.values()].map((file) => file.ref);
 }
 var init_refinement = __esm({
   "src/core/scheduler/refinement.ts"() {
     "use strict";
     init_keys();
     init_context();
+    init_edit_cut();
     init_failures();
     init_notes2();
     init_omitted_test_files();
@@ -48158,7 +48305,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.228";
+  if (true) return "0.1.229";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -53459,12 +53606,12 @@ function readOrEmpty(path) {
 init_policy2();
 init_fs();
 init_glob();
-import { posix as posix9 } from "node:path";
+import { posix as posix10 } from "node:path";
 function excludeInto(runners, glob2, files2, isVitest) {
   const into = [];
   if (runners.vitest && files2.some(isVitest)) into.push({ runner: "vitest", glob: glob2 });
   for (const p of runners.nodeTest) {
-    const lists = matcher2(p.include.map((g2) => posix9.join(p.cwd, g2)));
+    const lists = matcher2(p.include.map((g2) => posix10.join(p.cwd, g2)));
     if (!files2.some(lists)) continue;
     const relative23 = p.cwd === "" ? glob2 : glob2.startsWith(`${p.cwd}/`) ? glob2.slice(p.cwd.length + 1) : null;
     if (relative23 !== null) into.push({ runner: "nodeTest", project: p.name, glob: relative23 });
@@ -53479,7 +53626,7 @@ function excludeKeys(proposal) {
 }
 function excludeTargets(plan, testFiles, globs2) {
   const cwd = new Map(plan.runners.nodeTest.map((p) => [p.name, p.cwd]));
-  const of = (t) => t.runner === "vitest" ? t.glob : posix9.join(cwd.get(t.project) ?? "", t.glob);
+  const of = (t) => t.runner === "vitest" ? t.glob : posix10.join(cwd.get(t.project) ?? "", t.glob);
   return globs2.flatMap((glob2) => {
     const group = plan.slow.groups.find((g2) => g2.exclude?.globs.includes(glob2) === true);
     if (group?.exclude != null) return group.exclude.into.filter((t) => of(t) === glob2);
@@ -53546,7 +53693,7 @@ function matcher2(globs2) {
 
 // src/cli/setup/gates.ts
 import { readFileSync as readFileSync32, writeFileSync as writeFileSync11 } from "node:fs";
-import { posix as posix10 } from "node:path";
+import { posix as posix11 } from "node:path";
 var GATE_WAIT_MS = 11e4;
 var BEGIN2 = /^<!-- squeal:begin v\d+/;
 var END3 = /^<!-- squeal:end -->/;
@@ -53574,7 +53721,7 @@ function commandPattern(nodeTest) {
   return new RegExp(`(?<![\\w-])(?:${commands.join("|")})`);
 }
 function isInstructionFile(path) {
-  return ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"].includes(posix10.basename(path));
+  return ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"].includes(posix11.basename(path));
 }
 function isAgentFile(path) {
   return /^\.(claude|agents|codex)\//.test(path) && path.endsWith(".md");
@@ -53787,11 +53934,11 @@ import { join as join93 } from "node:path";
 
 // src/cli/setup/candidates.ts
 init_glob();
-import { posix as posix12 } from "node:path";
+import { posix as posix13 } from "node:path";
 
 // src/cli/setup/build-outputs.ts
 init_fs();
-import { join as join90, posix as posix11 } from "node:path";
+import { join as join90, posix as posix12 } from "node:path";
 var FIELDS3 = ["bin", "main", "module", "exports", "files"];
 async function buildOutputCandidates(facts, dir2, files2) {
   const manifest = nearestManifest(facts, dir2);
@@ -53832,7 +53979,7 @@ function fieldCandidates(manifest) {
       const dir2 = rule === "files" ? /\.\w+$/.test(clean) || /[*?{[]/.test(clean) ? null : clean : parts2.length > 1 ? parts2[0] : null;
       if (dir2 === null || dir2 === "" || dir2 === "..") continue;
       found2.push({
-        path: posix11.join(manifest.dir, dir2),
+        path: posix12.join(manifest.dir, dir2),
         rule,
         detail: `${where2} ${rule} "${value}"`,
         weak: rule === "files"
@@ -53854,11 +54001,11 @@ function buildCandidates(facts, manifest) {
     for (const part of text2.split(/&&|;|\|\|/)) {
       const words = part.trim().split(/\s+/);
       const flag2 = words.findIndex((w2) => ["--outDir", "--outdir", "-o"].includes(w2));
-      let out2 = flag2 === -1 ? null : posix11.join(manifest.dir, words[flag2 + 1] ?? "");
+      let out2 = flag2 === -1 ? null : posix12.join(manifest.dir, words[flag2 + 1] ?? "");
       if (flag2 === -1 && words[0] === "tsc") {
         const project = words.findIndex((w2) => w2 === "-p" || w2 === "--project");
         const tsconfig = project === -1 ? "tsconfig.json" : words[project + 1] ?? "tsconfig.json";
-        out2 = outDir(facts, posix11.join(manifest.dir, tsconfig), 0);
+        out2 = outDir(facts, posix12.join(manifest.dir, tsconfig), 0);
       }
       if (out2 === null || out2 === "." || out2 === "") continue;
       const path = out2.replace(/\/+$/, "");
@@ -53873,16 +54020,16 @@ function buildCandidates(facts, manifest) {
   return found2;
 }
 function outDir(facts, tsconfig, depth) {
-  const path = tsconfig.endsWith(".json") ? tsconfig : posix11.join(tsconfig, "tsconfig.json");
+  const path = tsconfig.endsWith(".json") ? tsconfig : posix12.join(tsconfig, "tsconfig.json");
   const text2 = readText(join90(facts.root, path));
   if (text2 === null || depth > 4) return null;
   const parsed = readJson(join90(facts.root, path));
   const options = isRecord(parsed) ? parsed.compilerOptions : null;
   const dir2 = isRecord(options) && typeof options.outDir === "string" ? options.outDir : null;
   const value = dir2 ?? /"outDir"\s*:\s*"([^"]+)"/.exec(text2)?.[1] ?? null;
-  if (value !== null) return posix11.join(posix11.dirname(path), value);
+  if (value !== null) return posix12.join(posix12.dirname(path), value);
   const extended = /"extends"\s*:\s*"(\.[^"]+)"/.exec(text2)?.[1];
-  return extended === void 0 ? null : outDir(facts, posix11.join(posix11.dirname(path), extended), depth + 1);
+  return extended === void 0 ? null : outDir(facts, posix12.join(posix12.dirname(path), extended), depth + 1);
 }
 async function namedCandidates(facts, manifest, files2, found2) {
   const literals = files2.map((file) => ({ file, strings: stringLiterals(facts, file) }));
@@ -53897,7 +54044,7 @@ async function namedCandidates(facts, manifest, files2, found2) {
   const out2 = [];
   for (const dir2 of [.../* @__PURE__ */ new Set([...inPackage, ...found2.map((f) => f.path)])].sort()) {
     const hits = literals.flatMap(({ file, strings: strings5 }) => {
-      const hit = strings5.find((s) => names2(facts, posix11.dirname(file), manifest.dir, s, dir2));
+      const hit = strings5.find((s) => names2(facts, posix12.dirname(file), manifest.dir, s, dir2));
       return hit === void 0 ? [] : [{ file, hit }];
     });
     if (hits.length === 0) continue;
@@ -53917,10 +54064,10 @@ async function ignoredAncestors(facts, pkg, literals) {
   for (const { file, strings: strings5 } of literals) {
     for (const s of strings5) {
       if (!s.includes("/") || s.startsWith("/") || s.includes("${")) continue;
-      const bases4 = /^\.\.?\//.test(s) ? [posix11.dirname(file)] : [posix11.dirname(file), pkg, ""];
+      const bases4 = /^\.\.?\//.test(s) ? [posix12.dirname(file)] : [posix12.dirname(file), pkg, ""];
       for (const base of bases4) {
-        const path = posix11.join(base, s);
-        if (!path.startsWith("../")) chains.add(posix11.dirname(path));
+        const path = posix12.join(base, s);
+        if (!path.startsWith("../")) chains.add(posix12.dirname(path));
       }
     }
   }
@@ -53945,7 +54092,7 @@ function stringLiterals(facts, file) {
 }
 function names2(facts, from, pkg, s, dir2) {
   if (s === "" || s.startsWith("/") || s.includes("${")) return false;
-  const under2 = (base) => posix11.join(base, s).startsWith(`${dir2}/`);
+  const under2 = (base) => posix12.join(base, s).startsWith(`${dir2}/`);
   if (/^\.\.?\//.test(s) && under2(from)) return true;
   if (![from, pkg, ""].some(under2)) return false;
   const tail = s.replace(/^(\.\.?\/)+/, "");
@@ -53960,7 +54107,7 @@ var NODE_TEST2 = "node:test project";
 async function slowCandidates(facts, policy, runners) {
   const projects2 = runners.nodeTest.map((p) => ({
     name: p.name,
-    files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix12.join(p.cwd, g2)))),
+    files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix13.join(p.cwd, g2)))),
     slow: policy.nodeTest.some((q) => q.name === p.name && q.slow === true)
   }));
   const universe = [.../* @__PURE__ */ new Set([...facts.testFiles.paths, ...projects2.flatMap((p) => p.files)])];
@@ -53970,7 +54117,7 @@ async function slowCandidates(facts, policy, runners) {
   };
   for (const file of universe) {
     if (file.split("/").slice(0, -1).includes("e2e")) add2(file, "under a directory named e2e");
-    if (posix12.basename(file).includes(".e2e.")) add2(file, "named *.e2e.*");
+    if (posix13.basename(file).includes(".e2e.")) add2(file, "named *.e2e.*");
   }
   const known2 = new Set(universe);
   const unresolvedScripts = [];
@@ -53990,7 +54137,7 @@ async function slowCandidates(facts, policy, runners) {
   for (const file of universe) if (isDeclared(file)) add2(file, "declared slow");
   const byDir = /* @__PURE__ */ new Map();
   for (const file of [...reasons.keys()].sort()) {
-    const dir2 = posix12.dirname(file);
+    const dir2 = posix13.dirname(file);
     byDir.set(dir2, [...byDir.get(dir2) ?? [], file]);
   }
   const outputs = /* @__PURE__ */ new Map();
@@ -54036,7 +54183,7 @@ function scriptFiles(facts, manifest, name2, universe, depth) {
   const parsed = parseTestScript(text2);
   if (parsed !== null && typeof parsed !== "string") {
     return facts.tracked.filter(
-      globMatcher(parsed.include.map((g2) => posix12.join(manifest.dir, g2)))
+      globMatcher(parsed.include.map((g2) => posix13.join(manifest.dir, g2)))
     );
   }
   const npm = /^npm run (\S+)(?: (?:-w|--workspace)(?: |=)(\S+))?\s*$/.exec(text2);
@@ -54046,7 +54193,7 @@ function scriptFiles(facts, manifest, name2, universe, depth) {
   }
   const vitest = /^vitest run((?: [^-\s]\S*)+)\s*$/.exec(text2);
   if (vitest !== null) {
-    const prefixes = vitest[1].trim().split(/\s+/).map((p) => posix12.join(manifest.dir, p));
+    const prefixes = vitest[1].trim().split(/\s+/).map((p) => posix13.join(manifest.dir, p));
     return universe.filter(
       (file) => prefixes.some((p) => file === p || file.startsWith(`${p.replace(/\/$/, "")}/`))
     );
@@ -54088,7 +54235,7 @@ init_config();
 init_config_values();
 init_discover();
 init_command();
-import { posix as posix13 } from "node:path";
+import { posix as posix14 } from "node:path";
 var CONFIG_NAMES = /* @__PURE__ */ new Set([
   "pytest.toml",
   ".pytest.toml",
@@ -54113,7 +54260,7 @@ function seedPytest(root, tracked, env) {
     const nested = dirs.filter((d) => d !== dir2 && (dir2 === "" || d.startsWith(`${dir2}/`)));
     const entry4 = seededEntry(name2, dir2, config, nested);
     projects2.push(entry4);
-    const from = config === null ? `${posix13.join(dir2, "tests")}/ beside pyproject.toml` : rel(root, config);
+    const from = config === null ? `${posix14.join(dir2, "tests")}/ beside pyproject.toml` : rel(root, config);
     notes2.push(`seeded pytest project "${name2}" from ${from}`);
     const project = { ...entry4, args: [], env: {} };
     const refused = refusedFlags(inheritedArgs(found2, env), project);
@@ -54141,11 +54288,11 @@ function seededEntry(name2, dir2, config, nested) {
   const pythonFiles = value("python_files") ?? PYTHON_FILES2;
   const bases4 = testpaths.length === 0 ? [""] : testpaths;
   const include = bases4.flatMap(
-    (base) => pythonFiles.map((pattern2) => posix13.join(base, "**", pattern2))
+    (base) => pythonFiles.map((pattern2) => posix14.join(base, "**", pattern2))
   );
   const exclude = testpaths.length === 0 ? [
     ...(value("norecursedirs") ?? NORECURSEDIRS2).map((d) => `**/${d}/**`),
-    ...nested.map((d) => `${posix13.relative(dir2, d)}/**`)
+    ...nested.map((d) => `${posix14.relative(dir2, d)}/**`)
   ] : [];
   return {
     name: name2,
@@ -54157,14 +54304,14 @@ function seededEntry(name2, dir2, config, nested) {
 function projectDirs(root, tracked) {
   const dirs = /* @__PURE__ */ new Set();
   for (const path of tracked) {
-    const name2 = posix13.basename(path);
+    const name2 = posix14.basename(path);
     if (!CONFIG_NAMES.has(name2)) continue;
-    const dir2 = posix13.dirname(path) === "." ? "" : posix13.dirname(path);
+    const dir2 = posix14.dirname(path) === "." ? "" : posix14.dirname(path);
     if (SKIPPED2.test(dir2)) continue;
     const cwd = toAbsolute(root, dir2);
     const config = findPytestConfig(root, cwd);
     const holds2 = config?.rootdir === cwd && config.holds === "pytest";
-    const tests = `${posix13.join(dir2, "tests")}/`;
+    const tests = `${posix14.join(dir2, "tests")}/`;
     if (holds2 || name2 === "pyproject.toml" && tracked.some((p) => p.startsWith(tests))) {
       dirs.add(dir2);
     }
@@ -54172,7 +54319,7 @@ function projectDirs(root, tracked) {
   return [...dirs].sort();
 }
 function rel(root, config) {
-  return posix13.relative(root, config.path);
+  return posix14.relative(root, config.path);
 }
 
 // src/cli/setup/pytest.ts
@@ -54239,10 +54386,10 @@ function writePytestSeed(root, plan) {
 init_policy2();
 init_glob();
 import { statSync as statSync18 } from "node:fs";
-import { join as join92, posix as posix14 } from "node:path";
+import { join as join92, posix as posix15 } from "node:path";
 function testFileUniverse(facts, projects2) {
   const inProjects = projects2.map((p) => {
-    const under2 = (globs2) => matcher3(globs2.map((g2) => posix14.join(p.cwd ?? "", g2)));
+    const under2 = (globs2) => matcher3(globs2.map((g2) => posix15.join(p.cwd ?? "", g2)));
     const include = under2(p.include);
     const exclude = under2(p.exclude ?? []);
     return (path) => include(path) && !exclude(path);
