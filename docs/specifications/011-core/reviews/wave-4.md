@@ -831,3 +831,71 @@ The comment says the count assertion still fails records that stop gathering. Th
 ### What fits and next inputs
 
 The changed test still checks 300 single-file runs, all stored passes, a single run for each tier control and fewer commits than files; it passes at the exact candidate with the CI branch enabled. Earlier product, stale-run and timing-control findings stay settled. No additional product repair is required by this bounded check. Carry S2o-S1 into test-quality work; do not cite this overhead test as proof that removing the configured gather delay must fail. This append follows `e678a174` and changes the findings file alone.
+
+
+## Slice 2, commit-budget re-check
+
+**PASS 7cbbd8370f69c439f466f0637e0a67b99337b402**. S2o-S1 closed; zero blockers and zero new findings. Bounded test-only check of `39bee6e5..7cbbd837`, requested 2026-10-20. The earlier product verdict and the other settled findings remain unchanged.
+
+### Verification output
+
+HEAD matched the requested candidate and the tree was clean before and after the focused test. The diff changes only `test/scheduler/backlog-slots-overhead.test.ts`: each slot pass must now use at most `FILES * 0.6`, or 180 commits, and its comments explain that budget. Product code, bundles and key sources are unchanged. Node v24.21.0, 24 CPUs; sampled host load was 15.01–22.18 during these checks. No general gates or full suite were repeated for this bounded check. Branch CI 39390627789 was still in progress when queried; the verdict below uses the reviewer's focused evidence.
+
+```text
+$ git rev-parse HEAD
+7cbbd8370f69c439f466f0637e0a67b99337b402
+$ git status --porcelain
+(no output)
+$ CI=1 flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/backlog-slots-overhead.test.ts --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/efeadf4c-ff0f-41d8-9c00-80cdea0f47ef
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  10:04:06
+   Duration  108.24s (tests 98%, transform 2%)
+Exit 0.
+```
+
+A disposable detached worktree at this exact candidate changed only `SLOT_GATHER_MS` from 25 to 0 and `SLOT_GATHER_COMMITS` from 3 to 0. The test was unchanged. The same CI-enabled command then failed at the new commit budget:
+
+```text
+$ CI=1 flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/backlog-slots-overhead.test.ts --maxWorkers=4
+RUN  v5.0.3 /tmp/w4-budget-mutation
+
+stdout | test/scheduler/backlog-slots-overhead.test.ts > scheduler: a node:test backlog in one-file slots, per-file overhead (task 011-21 slice 2) > 3. runs 300 files of about 50 ms within 1.2 times one tier's time, with fewer commits than files
+011-21 slots: 300 files in 27120 ms in 300 runs and 241 commits, 23458 ms in 300 runs and 229 commits; one tier 25761 ms in 1 runs, 19968 ms in 1 runs (best 1.17 times)
+
+ ❯ test/scheduler/backlog-slots-overhead.test.ts (1 test | 1 failed) 127529ms
+   ❯ scheduler: a node:test backlog in one-file slots, per-file overhead (task 011-21 slice 2) (1)
+     × 3. runs 300 files of about 50 ms within 1.2 times one tier's time, with fewer commits than files 127527ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/scheduler/backlog-slots-overhead.test.ts > scheduler: a node:test backlog in one-file slots, per-file overhead (task 011-21 slice 2) > 3. runs 300 files of about 50 ms within 1.2 times one tier's time, with fewer commits than files
+AssertionError: expected 241 to be less than or equal to 180
+ ❯ test/scheduler/backlog-slots-overhead.test.ts:77:28
+     75|       // Records that gather commit 71 to 148 times a pass, here and o…
+     76|       // commit 224 to 226 times (review wave-4, slice 2 overhead chec…
+     77|       expect(pass.commits).toBeLessThanOrEqual(FILES * 0.6);
+       |                            ^
+     78|     }
+     79|     // 1.2 on this host (1.09 measured). A 4-vCPU CI runner took 1.45 …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  10:05:55
+   Duration  130.41s (tests 98%, transform 2%)
+Exit 1 (intentional zero-gather control).
+```
+
+The zero-gather passes used **241 and 229 commits**, both above 180. The first failed at `backlog-slots-overhead.test.ts:77`, `expected 241 to be less than or equal to 180`. Its best timing ratio was still only 1.17, so the red result discriminates gathering independently of the relaxed timing ratio. No setup, state or teardown failure substituted for that assertion. The disposable worktree was removed before this append; the reviewer changed no candidate code or test.
+
+### Closure and next inputs
+
+**S2o-S1 — closed, proven for the requested control.** The normal candidate passes the same test that rejects the zero-gather mutation. The 180-commit budget allows headroom over the earlier normal 71–148 observations while rejecting both this control's 229–241 and the previous control's 224–226. The CI-only 1.6 timing tolerance is acceptable with this separate batching discriminator; the local 1.2 threshold remains unchanged. This does not convert CI's timing allowance into proof of the local 1.2 performance goal.
+
+Preserve the commit budget, both timing branches and the single-file/run assertions. When changing the batching strategy or recalibrating this fixture, compare normal and zero-gather modes again rather than relaxing the budget from a timing failure alone. No further repair is needed for this bounded check; earlier unrelated notes remain as previously recorded. This findings-only append follows `e1cb0be7`.
