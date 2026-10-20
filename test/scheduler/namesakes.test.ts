@@ -17,9 +17,9 @@ describe("namesakesOf (C4 step 4, task 011-25)", () => {
   });
 
   it("finds a file of its name in its __tests__, with or without .test", () => {
-    expect(namesakesOf("lib/a/b.js", ["lib/a/__tests__/b.js", "lib/a/__tests__/c.test.js"])).toEqual(
-      ["lib/a/__tests__/b.js"],
-    );
+    expect(
+      namesakesOf("lib/a/b.js", ["lib/a/__tests__/b.js", "lib/a/__tests__/c.test.js"]),
+    ).toEqual(["lib/a/__tests__/b.js"]);
     expect(namesakesOf("lib/a/b.js", ["lib/a/__tests__/b.test.ts"])).toEqual([
       "lib/a/__tests__/b.test.ts",
     ]);
@@ -28,9 +28,9 @@ describe("namesakesOf (C4 step 4, task 011-25)", () => {
   it("finds a mirrored test/x/b.test.ts for src/x/b.ts, under a package too", () => {
     const tests = ["test/x/b.test.ts", "test/y/b.test.ts"];
     expect(namesakesOf("src/x/b.ts", tests)).toEqual(["test/x/b.test.ts"]);
-    expect(namesakesOf("packages/p/src/b.ts", ["packages/p/tests/b.test.ts", "test/b.test.ts"])).toEqual(
-      ["packages/p/tests/b.test.ts"],
-    );
+    expect(
+      namesakesOf("packages/p/src/b.ts", ["packages/p/tests/b.test.ts", "test/b.test.ts"]),
+    ).toEqual(["packages/p/tests/b.test.ts"]);
   });
 
   it("finds the only c.test.ts of the tree for src/deep/c.ts", () => {
@@ -46,7 +46,9 @@ describe("namesakesOf (C4 step 4, task 011-25)", () => {
     expect(namesakesOf("pkg/d.py", ["pkg/d_test.py", "pkg/test_e.py"])).toEqual(["pkg/d_test.py"]);
     expect(namesakesOf("pkg/d.py", ["pkg/test_d.py"])).toEqual(["pkg/test_d.py"]);
     // A sibling wins over the only one elsewhere: the anywhere match is a fallback.
-    expect(namesakesOf("pkg/d.py", ["pkg/d_test.py", "tests/test_d.py"])).toEqual(["pkg/d_test.py"]);
+    expect(namesakesOf("pkg/d.py", ["pkg/d_test.py", "tests/test_d.py"])).toEqual([
+      "pkg/d_test.py",
+    ]);
     // A mirrored pytest tree below `src/`.
     expect(namesakesOf("src/pkg/d.py", ["tests/pkg/test_d.py", "tests/other/test_d.py"])).toEqual([
       "tests/pkg/test_d.py",
@@ -58,9 +60,9 @@ describe("namesakesOf (C4 step 4, task 011-25)", () => {
   });
 
   it("gives an index file none, however its directory's tests are named", () => {
-    expect(namesakesOf("src/keys/index.ts", ["src/keys/index.test.ts", "test/index.test.ts"])).toEqual(
-      [],
-    );
+    expect(
+      namesakesOf("src/keys/index.ts", ["src/keys/index.test.ts", "test/index.test.ts"]),
+    ).toEqual([]);
   });
 
   it("matches within a language only, and gives a non-code source none", () => {

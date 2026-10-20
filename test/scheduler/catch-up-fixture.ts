@@ -39,8 +39,10 @@ export interface CatchUpFile {
   readonly ms: number;
   /** What a run of it takes, in ms; 0 when absent. */
   readonly realMs?: number;
-  /** Source paths its closure holds beside itself. */
+  /** Source paths its closure holds beside itself, each imported in one hop. */
   readonly imports: readonly string[];
+  /** Source paths its closure holds that it reaches through another module (task 011-25). */
+  readonly through?: readonly string[];
 }
 
 export interface CatchUpRun {
@@ -120,11 +122,17 @@ export class CatchUpRunner implements RunnerAdapter {
   }
 
   invalidate = async () => ({ recreatedProjects: [] });
-  affected = async () => ({ direct: [], transitive: [] });
-  closure = async (testFile: TestFileRef) => ({
-    testFile,
-    paths: [testFile.path, ...(this.#byPath.get(testFile.path)?.imports ?? [])],
-  });
+  /** The runner's split (task 011-25): a changed file or a one-hop import is direct, `through` transitive. */
+  affected = async (changed: readonly string[]) => {
+    const hit = (paths: readonly string[] = []) => paths.some((path) => changed.includes(path));
+    const direct = this.files.filter((f) => changed.includes(f.path) || hit(f.imports));
+    const transitive = this.files.filter((f) => !direct.includes(f) && hit(f.through));
+    return { direct: direct.map(refOf), transitive: transitive.map(refOf) };
+  };
+  closure = async (testFile: TestFileRef) => {
+    const file = this.#byPath.get(testFile.path);
+    return { testFile, paths: [testFile.path, ...(file?.imports ?? []), ...(file?.through ?? [])] };
+  };
   enumerate = async () => [];
   testFiles = async () => this.files.map(refOf);
   environment = async () =>
@@ -222,6 +230,8 @@ export interface CatchUpOptions {
   readonly backlogSlot?: (testFile: TestFileRef) => number | null;
   /** `false`: runs ignore a cancel, as node:test's and pytest's do. */
   readonly cancels?: boolean;
+  /** `SchedulerOptions.runnerPartMs`: the bound on one runner-part call. */
+  readonly runnerPartMs?: number;
 }
 
 /** Project `project`'s environment file. */
@@ -235,13 +245,21 @@ export interface CatchUpRepo {
   readonly poolDir: string;
 }
 
-/** A repository holding `files`, the sources they import and `config.json`, and one worktree beside. */
-export function catchUpRepo(files: readonly CatchUpFile[]): CatchUpRepo {
+/**
+ * A repository holding `files`, the sources they import, `config.json` and
+ * the `others` paths (a declared input, say), and one worktree beside.
+ */
+export function catchUpRepo(
+  files: readonly CatchUpFile[],
+  others: readonly string[] = [],
+): CatchUpRepo {
   const extra: Record<string, string> = {};
+  for (const path of others) extra[path] = `// ${path}\n`;
   for (const file of files) {
     extra[configOf(file.project ?? "")] = "{}\n";
     extra[file.path] = `// ${file.path}\n`;
-    for (const source of file.imports) extra[source] = `// ${source}\n`;
+    for (const source of [...file.imports, ...(file.through ?? [])])
+      extra[source] = `// ${source}\n`;
   }
   const { main, other } = claimRepo(0, extra, 1);
   const pool = realpathSync(mkdtempSync(join(tmpdir(), "squeal-catch-up-pool-")));
@@ -314,6 +332,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     runsDir: storePaths(commonDir).runsDir,
     head: () => readHead(root),
     capacity: { dir: repo.poolDir, hostSlots: options.hostSlots },
+    ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
   });
   onTestFinished(async () => {
     clearInterval(beat);
