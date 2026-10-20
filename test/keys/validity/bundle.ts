@@ -44,11 +44,16 @@ const under = (path: string, dir: string) => path === dir || path.startsWith(`${
 
 /**
  * Harness modules a tree that predates a move reads in their place (task
- * 011-37 section 3): while the tree lacks `needs`, its bundle reads `before`,
- * which asks the same of the code where it was. Each goes once the last
- * release carries the move.
+ * 011-37 section 3): while the tree lacks `needs`, or `needs` exports no
+ * function `exports`, its bundle reads `before`, which asks the same of the
+ * code where it was. Each goes once the last release carries the move.
  */
-const BEFORE_MOVES: readonly { module: string; needs: string; before: string }[] = [
+const BEFORE_MOVES: readonly {
+  module: string;
+  needs: string;
+  exports?: string;
+  before: string;
+}[] = [
   {
     module: "harness/accept-rule.ts",
     needs: "src/core/scheduler/accept.ts",
@@ -59,14 +64,24 @@ const BEFORE_MOVES: readonly { module: string; needs: string; before: string }[]
     needs: "src/core/scheduler/store-decision.ts",
     before: "harness/store-traced.ts",
   },
+  {
+    module: "harness/barrier.ts",
+    needs: "src/core/scheduler/stability.ts",
+    exports: "barredByTouch",
+    before: "harness/barrier-scheduler.ts",
+  },
 ];
 
 /** The harness module `tree` reads for `target`, when a move it predates replaces it. */
 function beforeMove(tree: string, target: string): string | undefined {
   const ts = target.replace(/\.js$/, ".ts");
   const move = BEFORE_MOVES.find((m) => join(VALIDITY, m.module) === ts);
-  if (move === undefined || existsSync(join(tree, move.needs))) return undefined;
-  return join(VALIDITY, move.before);
+  if (move === undefined) return undefined;
+  const needs = join(tree, move.needs);
+  const exported = new RegExp(`^export function ${move.exports}\\b`, "m");
+  const moved =
+    existsSync(needs) && (move.exports === undefined || exported.test(readFileSync(needs, "utf8")));
+  return moved ? undefined : join(VALIDITY, move.before);
 }
 
 /** `tree`'s file for the candidate's `src/` path `path`, `.js` read as the `.ts` beside it. */

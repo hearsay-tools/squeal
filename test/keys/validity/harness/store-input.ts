@@ -1,17 +1,18 @@
 import { testFileId } from "../../../../src/core/keys/index.js";
 import type { ObservedGrowth, TierObservations } from "../../../../src/core/scheduler/observed.js";
-import { Withholds, withheldForTouch } from "../../../../src/core/scheduler/stability.js";
+import { Withholds } from "../../../../src/core/scheduler/stability.js";
 import type { CheckKey, RunReport, TestFileRef } from "../../../../src/core/types/index.js";
 import type { StoreFile, StoreInput } from "../case.js";
+import { barredByTouch } from "./barrier.js";
 import { REPORT } from "./shared.js";
 
 /*
  * What a `store` case's tier ran under and reported, at either tree: the
  * keys of each file, and the report after the completion barrier with the
  * files it queues again, built as `Scheduler.#record` builds them
- * (`scheduler.ts`, tasks 001-168, 007-30, 013-02). The narrowing to the
- * files whose inputs name a touched path is the scheduler's, outside the
- * entries; the withhold itself is `withheldForTouch`'s.
+ * (`scheduler.ts`, tasks 001-168, 007-30, 013-02). The barrier is
+ * `barredByTouch`'s (`stability.ts`, row 011-47); which of the files it
+ * bars run once more is the scheduler's, mirrored here.
  */
 
 export const refOf = (path: string): TestFileRef => ({ project: "", path });
@@ -66,23 +67,16 @@ export function recorded(input: StoreInput): {
           },
         }),
   };
-  const touched = new Set(input.touched ?? []);
-  const named = (paths: readonly string[] = []) => paths.filter((path) => touched.has(path));
-  const touchedOf = (file: StoreFile) => [...named(file.inputs), ...named(file.growth?.growth)];
-  const barred = input.files.filter((file) => touchedOf(file).length > 0);
-  const paths = [...new Set(barred.flatMap(touchedOf))].sort();
-  const report = withheldForTouch(
-    ran,
-    paths,
-    barred.map((file) => refOf(file.path)),
-  );
   const ranOf = (path: string) => ({
     file: { id: testFileId(refOf(path)), ref: refOf(path) },
     key: keyOf("ran", path),
   });
+  const files = input.files.map((f) => ({ ...ranOf(f.path), inputs: f.inputs ?? [] }));
+  const { growth } = observationsOf(input);
+  const { report, barred } = barredByTouch(ran, files, input.touched ?? [], growth);
   const withholds = new Withholds();
   withholds.record((input.touchedBefore ?? []).map(ranOf));
-  const withhold = barred.length === 0 ? null : withholds.record(barred.map((f) => ranOf(f.path)));
+  const withhold = barred.length === 0 ? null : withholds.record(barred);
   if (input.requeue === true) return { report, requeue: true };
   if (withhold === null && input.requeue === undefined) return { report, requeue: false };
   const again = [...(withhold?.again ?? []).map(({ file }) => file.id)];
