@@ -1,0 +1,37 @@
+#!/bin/sh
+# Every hooks.json entry's command (spec 012 CC1). Without arguments it exits 0
+# before it reads anything: a harness that keeps an entry's command and drops
+# its args, as Cursor CLI does, runs nothing and never reads the hook payload on
+# stdin as a script. With them it execs its arguments, so the hook's Node
+# process has the harness as its parent. A first argument --if-squeal, the
+# per-tool hooks', first tests in sh, with no git or other process, for
+# squeal.config.json or a store from $CLAUDE_PROJECT_DIR or else the working
+# directory, and exits 0 silently without Squeal (task 001-93).
+[ "$#" -gt 0 ] || exit 0
+if [ "$1" = --if-squeal ]; then
+  shift
+  s() {
+    [ -n "$1" ] || return 1
+    d=$1
+    [ -f "$d/squeal.config.json" ] && return 0
+    while [ ! -e "$d/.git" ]; do
+      [ -n "$d" ] || return 1
+      d=${d%/*}
+    done
+    [ -f "$d/squeal.config.json" ] && return 0
+    g=$d/.git
+    if [ -f "$g" ]; then
+      l=
+      IFS= read -r l <"$g"
+      g=${l#gitdir:}
+      g=${g#"${g%%[! ]*}"}
+      case $g in /*) ;; *) g=$d/$g ;; esac
+      c=
+      [ -f "$g/commondir" ] && IFS= read -r c <"$g/commondir"
+      case $c in "") ;; /*) g=$c ;; *) g=$g/$c ;; esac
+    fi
+    [ -e "$g/squeal" ]
+  }
+  { s "$CLAUDE_PROJECT_DIR" || s "$PWD"; } 2>/dev/null || exit 0
+fi
+exec "$@"
