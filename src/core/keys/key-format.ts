@@ -15,7 +15,7 @@
  * itself re-keys every check once and no row stored under a version-hashed key
  * is trusted.
  */
-export const KEY_FORMAT_VERSION = 18;
+export const KEY_FORMAT_VERSION = 19;
 
 /**
  * The formats read as the current one, each with the row whose change raised
@@ -32,6 +32,7 @@ export const KEY_FORMATS_READ_AS_ONE: Readonly<Record<number, string>> = {
   15: "011-21: the edit tier beside the backlog",
   16: "011-21: slots, their records committed together",
   17: "011-22 and 011-23: catch-up's order, the keys stored since the last read",
+  18: "013-02, 001-365, 011-31 and 011-33: the touch rule and barrier, a step-down's cancel, the handover",
 };
 
 /**
@@ -57,4 +58,5 @@ export const KEY_SOURCES_HASHES: Readonly<Record<number, string>> = {
   16: "174eed89ebcf5d3fad6942b3c4c1c2a8a02bfede2f719bb7b038d90ec0be5804",
   17: "e89738c4684948d7dd43972cf679d3c429e6edb0d3a85156e1062fee67da9353",
   18: "64d0b3f3ce56d61e23fbeff015d773c59361d0d51a10d31133f3a1002c95ede0",
+  19: "95d5bf44b71390c0dccbfd3aa87e5b67df3dde26884acc50343c7fc86f2ce483",
 };
