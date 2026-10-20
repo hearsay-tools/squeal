@@ -1,7 +1,11 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { readNamedSnapshot } from "../../src/cli/status-paths.js";
+import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { STATUS_WAIT_SETTLE_MS } from "../../src/cli/status-wait.js";
+import { namedLine } from "../../src/cli/status-wait-lines.js";
+import { namedCode } from "../../src/cli/status-wait-paths.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
 import type { RevisionNumber } from "../../src/core/types/index.js";
 import { type Answer, closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
@@ -200,5 +204,60 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
       "Revision: 4",
       expect.stringMatching(/^No verdict: no test file's closure holds src\/none\.ts\. Worktree: /),
     ]);
+  });
+});
+
+/** A sync that stores its pass at `revision` after `answerMs`, and says when it answered. */
+function answersAfter(answerMs: number, revision = 4) {
+  return (): DaemonSync => {
+    const at = performance.now() + answerMs;
+    const state = (): SyncState =>
+      performance.now() >= at
+        ? { state: "synced", revision: revision as RevisionNumber, incarnation: null }
+        : { state: "pending" };
+    return {
+      current: state,
+      answered: new Promise((r) => setTimeout(r, answerMs)),
+      stop: () => {},
+    };
+  };
+}
+
+async function snapshotOf(root: string, paths: string[], sync: () => DaemonSync) {
+  const read = await readNamedSnapshot(root as never, paths, { now: () => NOW, sync });
+  if (read.outcome === "unavailable") throw new Error("unavailable");
+  return { read, line: namedLine(read), code: namedCode(read) };
+}
+
+describe("readNamedSnapshot (row 011-28)", () => {
+  it("gives no verdict when the daemon's pass lands after 750 ms, and does not wait for it", async () => {
+    const { repo } = repoWith([], [A]);
+    const { read, line, code } = await snapshotOf(repo.main, [A], answersAfter(1_500));
+    expect(code).toBe(3);
+    expect(line).toMatch(
+      /^Named test files have no verdict: results are as of revision 4; the daemon has not stored its pass over the latest edits\. /,
+    );
+    expect(read.waitedMs).toBeGreaterThanOrEqual(STATUS_WAIT_SETTLE_MS - 5);
+    expect(read.waitedMs).toBeLessThan(1_500);
+  });
+
+  it("gives no verdict when the stored pass is past the revision it read", async () => {
+    const { repo } = repoWith([], [A]);
+    const { line, code } = await snapshotOf(repo.main, [A], answersAfter(0, 5));
+    expect(code).toBe(3);
+    expect(line).toMatch(
+      /^Named test files have no verdict: the daemon's pass is at revision 5 and results are as of revision 4\. /,
+    );
+  });
+
+  it("answers at once with a selected file pending, naming no deadline", async () => {
+    const { repo } = repoWith([B], [A]);
+    const { read, line, code } = await snapshotOf(repo.main, [A, B], answersAfter(0));
+    expect(code).toBe(3);
+    expect(read.waitedMs).toBeLessThan(STATUS_WAIT_SETTLE_MS);
+    expect(line).toMatch(
+      /^Named test files have no verdict: 1 test file still pending at revision 4: /,
+    );
+    expect(line).not.toContain("deadline");
   });
 });
