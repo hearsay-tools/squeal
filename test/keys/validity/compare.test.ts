@@ -26,11 +26,6 @@ const reworded = () =>
   );
 
 describe("the candidate against the last release", SLOW, () => {
-  it("keeps every stored meaning, or raises", async () => {
-    const result = await compare({}, CASES, tree());
-    expect(failures(result, release())).toEqual([]);
-  });
-
   it("runs every case at the release's tree and at the candidate", async () => {
     const result = await compare(reworded(), CASES, tree());
     expect(result.fired).toBe(true);
@@ -174,26 +169,50 @@ describe("the comparison, under a change unmade", SLOW, () => {
     ]);
   });
 
-  it("reports a raised format's differing cases without failing it, until the alarm (011-41)", async () => {
-    const records = "src/core/scheduler/records.ts";
+  /** The format raised by one, with the formats read as one left as they are or emptied. */
+  const raised = (emptied: boolean) => {
     const format = "src/core/keys/key-format.ts";
-    const raised = /KEY_FORMAT_VERSION = (\d+);/.exec(read(format))?.[1];
-    const result = await compare({
-      ...edited(
-        records,
-        "if (skipped !== true) return listed;",
-        "if (skipped !== null) return listed;",
-      ),
-      ...edited(
-        format,
-        `KEY_FORMAT_VERSION = ${raised};`,
-        `KEY_FORMAT_VERSION = ${Number(raised) + 1};`,
-      ),
-    });
-    expect(result.versions.candidate).toBe(result.versions.baseline + 1);
+    const value = Number(/KEY_FORMAT_VERSION = (\d+);/.exec(read(format))?.[1]);
+    const text = read(format).replace(
+      `KEY_FORMAT_VERSION = ${value};`,
+      `KEY_FORMAT_VERSION = ${value + 1};`,
+    );
+    const list = /(KEY_FORMATS_READ_AS_ONE[^=]*= )\{[^}]*\}/;
+    return { [format]: emptied ? text.replace(list, "$1{}") : text };
+  };
+  const skipRows = () =>
+    edited(
+      "src/core/scheduler/records.ts",
+      "if (skipped !== true) return listed;",
+      "if (skipped !== null) return listed;",
+    );
+
+  it("passes a raised format with a case whose outputs differ and no format read as one (D6)", async () => {
+    const result = await compare({ ...skipRows(), ...raised(true) }, only("rows"));
+    const global = result.alarms.find((a) => a.component.name === "global");
+    expect(Number(global?.versions.candidate)).toBe(Number(global?.versions.baseline) + 1);
     expect(result.cases.filter((c) => !c.outputsEqual).map((c) => c.name)).toEqual([
       "a module skip",
     ]);
     expect(failures(result, release())).toEqual([]);
+  });
+
+  it("fails a raise no case's outputs differ (D6)", async () => {
+    const result = await compare({ ...reworded(), ...raised(true) }, only("rows"));
+    expect(result.fired).toBe(true);
+    expect(failures(result, release())).toEqual([
+      expect.stringMatching(
+        /^KEY_FORMAT_VERSION .* moved from \d+ at .* a raise needs a case whose outputs differ/,
+      ),
+    ]);
+  });
+
+  it("fails a raised format that leaves formats read as one (risk 6)", async () => {
+    const result = await compare({ ...skipRows(), ...raised(false) }, only("rows"));
+    expect(failures(result, release())).toEqual([
+      expect.stringMatching(
+        /^KEY_FORMAT_VERSION moved for a change of stored meaning, .* empty KEY_FORMATS_READ_AS_ONE, which lists 13, /,
+      ),
+    ]);
   });
 });

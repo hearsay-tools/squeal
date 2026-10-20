@@ -1,41 +1,54 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { bundleDriver } from "./bundle.js";
-import type { Case, CaseKind } from "./case.js";
+import { bundleDriver, bundleEntries } from "./bundle.js";
+import type { Case } from "./case.js";
+import { COMPONENTS, type Component, componentOf } from "./components.js";
 import { changedLines, changedSources, mappedLines, unrun } from "./coverage.js";
-import { coverageAt, execute, prepare, runtimeTexts, type Side, type SideName } from "./sides.js";
-import { dependencyLines, formatVersionOf, type Overlay, ROOT } from "./trees.js";
+import {
+  coverageAt,
+  execute,
+  prepare,
+  RUNTIME,
+  type Side,
+  type SideName,
+  textsOf,
+} from "./sides.js";
+import { dependencyLines, type Overlay, ROOT, readAsOneOf, versionOf } from "./trees.js";
 import { type CaseVerdict, same, verdictOf } from "./verdict.js";
 
 export type { CaseVerdict } from "./verdict.js";
+export { failures, reportedChanges, wordingChanges } from "./verdict.js";
 
 /*
- * The comparison (011 C3, task 011-37 section 3): the driver bundled at the
- * last release and at the candidate; when the two differ, every case run at
- * both, outputs compared where keys are equal, and every changed line
- * required to have run in some case.
+ * The comparison (011 C3, task 011-37 sections 2 and 3): each component's
+ * entries bundled at the last release and at the candidate, the alarm; when
+ * one fires, every case run at both through one driver bundle that holds
+ * them all, outputs compared where keys are equal, and every changed line
+ * required to have run in some case, held to the components whose entries
+ * hold it.
  */
 
-const FORMAT = "KEY_FORMAT_VERSION (src/core/keys/key-format.ts)";
-
-/** The version a kind's differing outputs ask to raise. */
-export const MOVES: Readonly<Record<CaseKind, string>> = {
-  key: FORMAT,
-  rows: FORMAT,
-  accept: FORMAT,
-  assemble: FORMAT,
-  store: FORMAT,
-  observe: "RECORDER_VERSION (src/runners/observe/runtime.ts)",
-};
+/** One component's alarm. */
+export interface Alarm {
+  readonly component: Component;
+  /** Its version as each tree states it. */
+  readonly versions: { readonly baseline: string; readonly candidate: string };
+  /** Its entries' emitted code, its text files or its packages' lock lines differ. */
+  readonly fired: boolean;
+  /** Each tree's lock lines of the packages its entries import, and the bundler's, when they differ. */
+  readonly dependencies: { readonly baseline: string[]; readonly candidate: string[] } | null;
+  /** Its changed lines no case ran, `source:line (side file:line)`. */
+  readonly uncovered: readonly string[];
+}
 
 export interface Comparison {
-  readonly versions: { readonly baseline: number; readonly candidate: number };
-  /** The bundles' text, the packages they import or the recorder's runtime differ. */
+  readonly alarms: readonly Alarm[];
+  /** Some alarm fired, so the corpus ran. */
   readonly fired: boolean;
-  /** Each tree's package lines, when they differ. */
-  readonly dependencies: { readonly baseline: string[]; readonly candidate: string[] } | null;
+  /** The formats the candidate reads as its own (`KEY_FORMATS_READ_AS_ONE`). */
+  readonly readAsOne: readonly number[];
   readonly cases: readonly CaseVerdict[];
-  /** Changed lines no case ran, `source:line (side file:line)`. */
+  /** Every changed line no case ran, whatever holds it. */
   readonly uncovered: readonly string[];
 }
 
@@ -51,9 +64,47 @@ export interface CompareOptions {
   readonly work: string;
 }
 
-/** Bundles both trees and, when they differ, runs the corpus at both and checks coverage. */
+/** A changed line no case ran, and the sources it was emitted from. */
+interface Unrun {
+  readonly sources: readonly string[];
+  readonly text: string;
+}
+
+/** What one component's entries hold at each tree, and whether its alarm fires. */
+async function alarmOf(
+  component: Component,
+  baseline: string,
+  candidate: string,
+  overlay: Overlay,
+) {
+  const bundles = {
+    baseline: await bundleEntries(baseline, component.entries),
+    candidate: await bundleEntries(candidate, component.entries, overlay),
+  };
+  const texts = {
+    baseline: textsOf(baseline, component.texts),
+    candidate: textsOf(candidate, component.texts, overlay),
+  };
+  const deps = {
+    baseline: dependencyLines(baseline, bundles.baseline.packages),
+    candidate: dependencyLines(candidate, bundles.candidate.packages, overlay),
+  };
+  const dependencies = same(deps.baseline, deps.candidate) ? null : deps;
+  const fired =
+    bundles.baseline.text !== bundles.candidate.text ||
+    dependencies !== null ||
+    !same(Object.fromEntries(texts.baseline), Object.fromEntries(texts.candidate));
+  const holds = new Set([...bundles.baseline.inputs, ...bundles.candidate.inputs]);
+  const versions = {
+    baseline: versionOf(baseline, component),
+    candidate: versionOf(candidate, component, overlay),
+  };
+  return { component, versions, fired, dependencies, holds, texts };
+}
+
+/** Bundles each component's entries at both trees and, when one differs, runs the corpus and checks coverage. */
 export async function compareTrees(options: CompareOptions): Promise<Comparison> {
-  const { baseline, work, cases } = options;
+  const { baseline, work } = options;
   const candidate = options.candidate ?? ROOT;
   const overlay = options.overlay ?? {};
   mkdirSync(work, { recursive: true });
@@ -61,29 +112,30 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
   if (!existsSync(join(work, "node_modules"))) {
     symlinkSync(join(ROOT, "node_modules"), join(work, "node_modules"), "dir");
   }
-  const versions = {
-    baseline: formatVersionOf(baseline),
-    candidate: formatVersionOf(candidate, overlay),
-  };
+  const found = await Promise.all(
+    COMPONENTS.map((component) => alarmOf(component, baseline, candidate, overlay)),
+  );
+  const readAsOne = readAsOneOf(candidate, overlay);
+  const fired = found.some((a) => a.fired);
+  if (!fired) {
+    const alarms = found.map(({ holds: _, texts: __, ...alarm }) => ({ ...alarm, uncovered: [] }));
+    return { alarms, fired, readAsOne, cases: [], uncovered: [] };
+  }
+  // An adapter's cases run real runners: only when its own alarm fired.
+  const firedKind = (c: Case) =>
+    !c.kind.startsWith("adapter:") ||
+    found.some((a) => a.fired && a.component === componentOf(c.kind));
+  const cases = options.cases.filter(firedKind);
+
   const bundles = {
     baseline: await bundleDriver(baseline, join(work, "baseline/driver.mjs")),
     candidate: await bundleDriver(candidate, join(work, "candidate/driver.mjs"), overlay),
   };
-  const runtime = { baseline: runtimeTexts(baseline), candidate: runtimeTexts(candidate, overlay) };
-  const deps = {
-    baseline: dependencyLines(baseline, bundles.baseline.packages),
-    candidate: dependencyLines(candidate, bundles.candidate.packages),
-  };
-  const dependencies = same(deps.baseline, deps.candidate) ? null : deps;
-  const fired =
-    bundles.baseline.text !== bundles.candidate.text ||
-    dependencies !== null ||
-    !same(Object.fromEntries(runtime.baseline), Object.fromEntries(runtime.candidate));
-  if (!fired) return { versions, fired, dependencies, cases: [], uncovered: [] };
-
+  const recorder = (name: SideName) =>
+    found.find((a) => a.component.texts.some((t) => t.path === RUNTIME))?.texts[name] ?? new Map();
   const sides: Record<SideName, Side> = {
-    baseline: prepare(work, "baseline", baseline, bundles.baseline, runtime.baseline),
-    candidate: prepare(work, "candidate", candidate, bundles.candidate, runtime.candidate),
+    baseline: prepare(work, "baseline", baseline, bundles.baseline, recorder("baseline")),
+    candidate: prepare(work, "candidate", candidate, bundles.candidate, recorder("candidate")),
   };
   const runtimeDir = (side: Side) => join(side.dir, "observe");
   const outputs = {
@@ -107,8 +159,17 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
   const verdicts = cases.map((c) =>
     verdictOf(c, outputs.baseline[c.name] ?? {}, outputs.candidate[c.name] ?? {}),
   );
-  const uncovered = [...uncoveredInBundles(work, sides, overlay), ...uncoveredInRuntime(sides)];
-  return { versions, fired, dependencies, cases: verdicts, uncovered };
+  const inBundles = uncoveredInBundles(work, sides, overlay);
+  const alarms = found.map(({ holds, texts, ...alarm }) => {
+    const pathOf = (source: string) => source.slice(0, source.lastIndexOf(":"));
+    const held = inBundles.filter((u) => u.sources.some((s) => holds.has(pathOf(s))));
+    const inTexts = uncoveredInTexts(work, alarm.component, texts, sides);
+    return { ...alarm, uncovered: [...held, ...inTexts].map((u) => u.text) };
+  });
+  const uncovered = [
+    ...new Set([...inBundles.map((u) => u.text), ...alarms.flatMap((a) => a.uncovered)]),
+  ];
+  return { alarms, fired, readAsOne, cases: verdicts, uncovered };
 }
 
 /**
@@ -131,14 +192,14 @@ function uncoveredInBundles(
   work: string,
   sides: Record<SideName, Side>,
   overlay: Overlay,
-): string[] {
+): Unrun[] {
   const bundles = changedLines(sides.baseline.file, sides.candidate.file);
   const sources = changedSources(
     { map: sides.baseline.bundle.map, tree: sides.baseline.tree },
     { map: sides.candidate.bundle.map, tree: sides.candidate.tree, overlay },
     join(work, "diff"),
   );
-  const out: string[] = [];
+  const out: Unrun[] = [];
   for (const [name, lines] of [
     ["baseline", bundles.removed],
     ["candidate", bundles.added],
@@ -149,87 +210,59 @@ function uncoveredInBundles(
       (mapped.get(line) ?? []).filter((at) => sources[name].has(at));
     const required = lines.filter((line) => changedFrom(line).length > 0);
     for (const line of unrun(side.bundle.text, coverageAt(side, side.file), required)) {
-      out.push(`${changedFrom(line).join(", ")} (${name} bundle line ${line})`);
+      const sources = changedFrom(line);
+      out.push({ sources, text: `${sources.join(", ")} (${name} bundle line ${line})` });
     }
   }
   return out;
 }
 
-const COMMENT = /^\s*(?:\/\/|\/\*|\*)/;
+const COMMENT = /^\s*(?:\/\/|\/\*|\*|#)/;
 
-/** Each changed code line of the recorder's runtime that ran in no case, at the side that holds it. */
-function uncoveredInRuntime(sides: Record<SideName, Side>): string[] {
-  const out: string[] = [];
-  const paths = new Set([...sides.baseline.runtime.keys(), ...sides.candidate.runtime.keys()]);
-  for (const path of paths) {
-    const [from, to] = [sides.baseline.runtime.get(path), sides.candidate.runtime.get(path)];
-    const text = (file: string | undefined) =>
-      file === undefined ? "" : readFileSync(file, "utf8");
-    if (text(from) === text(to)) continue;
-    const all = (file: string) =>
-      text(file)
-        .split("\n")
-        .map((_, i) => i + 1);
+/**
+ * Each changed code line of `component`'s text files that ran in no case,
+ * at the side that holds it. Only the recorder's runtime runs in a case
+ * (the `observe` kind), from its copy beside the side's driver; a line of
+ * any other text file has run in none.
+ */
+function uncoveredInTexts(
+  work: string,
+  component: Component,
+  texts: Record<SideName, ReadonlyMap<string, string>>,
+  sides: Record<SideName, Side>,
+): Unrun[] {
+  const out: Unrun[] = [];
+  const dir = join(work, "texts", component.name.replace(/\W/g, "-"));
+  mkdirSync(dir, { recursive: true });
+  for (const path of new Set([...texts.baseline.keys(), ...texts.candidate.keys()])) {
+    const [a, b] = [texts.baseline.get(path), texts.candidate.get(path)];
+    if (a === b) continue;
+    const fileOf = (name: SideName, text: string | undefined) => {
+      if (text === undefined) return undefined;
+      const copy = sides[name].runtime.get(path);
+      if (copy !== undefined) return copy;
+      const file = join(dir, `${name}-${path.replace(/\//g, "_")}`);
+      writeFileSync(file, text);
+      return file;
+    };
+    const [from, to] = [fileOf("baseline", a), fileOf("candidate", b)];
+    const all = (text: string) => text.split("\n").map((_, i) => i + 1);
     const changed =
       from !== undefined && to !== undefined
         ? changedLines(from, to)
-        : { removed: from === undefined ? [] : all(from), added: to === undefined ? [] : all(to) };
-    for (const [name, file, lines] of [
-      ["baseline", from, changed.removed],
-      ["candidate", to, changed.added],
+        : { removed: a === undefined ? [] : all(a), added: b === undefined ? [] : all(b) };
+    for (const [name, file, text, lines] of [
+      ["baseline", from, a, changed.removed],
+      ["candidate", to, b, changed.added],
     ] as const) {
-      if (file === undefined) continue;
-      const source = text(file).split("\n");
+      if (file === undefined || text === undefined) continue;
+      const source = text.split("\n");
       const code = lines.filter((n) => !COMMENT.test(source[n - 1] ?? ""));
-      for (const line of unrun(text(file), coverageAt(sides[name], file), code)) {
-        out.push(`${path}:${line} (${name} runtime)`);
+      const ran = sides[name].runtime.has(path) ? coverageAt(sides[name], file) : [];
+      for (const line of unrun(text, ran, code)) {
+        out.push({ sources: [`${path}:${line}`], text: `${path}:${line} (${name} runtime)` });
       }
     }
   }
   return out;
-}
-
-/**
- * Why the comparison fails, empty when it passes. Under the last release's
- * version, outputs at equal keys must be equal and every changed line must
- * have run. A raised version is reported, not failed: until the alarm
- * replaces the guard (row 011-41), the guard forces a raise for any change,
- * and this comparison is the evidence that a raised format reads as one.
- */
-export function failures(c: Comparison, ref: string): string[] {
-  if (c.versions.candidate !== c.versions.baseline) return [];
-  const out: string[] = [];
-  if (c.dependencies !== null) {
-    const only = (a: string[], b: string[]) => a.filter((l) => !b.includes(l));
-    out.push(
-      `the packages the bundle imports, or esbuild, moved since ${ref} ` +
-        `(${only(c.dependencies.baseline, c.dependencies.candidate).join(", ")} -> ` +
-        `${only(c.dependencies.candidate, c.dependencies.baseline).join(", ")}): ` +
-        "the last release must be bundled from its own lock",
-    );
-  }
-  for (const v of c.cases.filter((v) => !v.outputsEqual)) {
-    const thrown = v.baseline.error ?? v.candidate.error;
-    const what =
-      thrown === undefined
-        ? `equal keys, different outputs at ${ref} and the candidate`
-        : `throws at ${v.baseline.error === undefined ? "the candidate" : ref} only: ${thrown}`;
-    out.push(`${v.kind} case "${v.name}": ${what}; raise ${MOVES[v.kind]}`);
-  }
-  if (c.uncovered.length > 0) {
-    out.push(
-      `changed lines no case runs, each needing a case under test/keys/validity/cases/: ${c.uncovered.join("; ")}`,
-    );
-  }
-  return out;
-}
-
-/** The wording that differs at equal keys and outputs: listed, never failed. */
-export function wordingChanges(c: Comparison): string[] {
-  return c.cases.filter((v) => v.keysEqual && v.outputsEqual && !v.wordingEqual).map((v) => v.name);
-}
-
-/** Outputs that differ and ask no raise (the `store` kind's direction), by case: listed, never failed. */
-export function reportedChanges(c: Comparison): string[] {
-  return c.cases.flatMap((v) => v.reported.map((line) => `${v.kind} case "${v.name}": ${line}`));
 }

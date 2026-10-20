@@ -33,8 +33,14 @@ try {
     kinds.length === 0 ? CASES : CASES.filter((c) => kinds.includes(c.kind as CaseKind));
   const started = Date.now();
   const result = await compareTrees({ baseline, candidate, cases, work: join(work, "run") });
+  const versions = result.alarms
+    .map(
+      (a) =>
+        `${a.component.name} ${a.versions.baseline}->${a.versions.candidate}${a.fired ? " fired" : ""}`,
+    )
+    .join(", ");
   console.log(
-    `${baselineRef} (format ${result.versions.baseline}) -> ${candidateRef} (format ${result.versions.candidate}), ${Date.now() - started} ms, fired: ${result.fired}`,
+    `${baselineRef} -> ${candidateRef}, ${Date.now() - started} ms, fired: ${result.fired} (${versions})`,
   );
   for (const v of result.cases) {
     const keys = v.keysEqual ? "keys equal" : "keys differ";
@@ -57,10 +63,12 @@ try {
   console.log(`wording: ${JSON.stringify(wordingChanges(result))}`);
   for (const line of reportedChanges(result)) console.log(`  reported: ${line}`);
   console.log(`uncovered: ${result.uncovered.length}`);
-  for (const line of failures(
-    { ...result, versions: { baseline: 0, candidate: 0 } },
-    baselineRef,
-  )) {
+  // Each version held at the baseline's, so a raise between two past releases still shows every check.
+  const held = result.alarms.map((a) => ({
+    ...a,
+    versions: { baseline: a.versions.baseline, candidate: a.versions.baseline },
+  }));
+  for (const line of failures({ ...result, alarms: held }, baselineRef)) {
     console.log(`  verdict under one format: ${line.slice(0, 400)}`);
   }
 } finally {
