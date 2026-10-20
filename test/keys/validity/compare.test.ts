@@ -1,14 +1,10 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { Case, CaseKind } from "./case.js";
+import { describe, expect, it } from "vitest";
 import { CASES } from "./cases/index.js";
-import { compareTrees, failures, wordingChanges } from "./compare.js";
-import { extractTree, lastRelease, type Overlay, ROOT } from "./trees.js";
+import { failures, wordingChanges } from "./compare.js";
 // The validity path's entries and the harness, statically: esbuild reads them in a process no
 // recorder sees (011 C12), so this import is what re-runs this file when one of them changes.
 import "./driver.js";
+import { comparisons, edited, lineOf, only, read, SLOW } from "./self-test.js";
 
 /*
  * Task 011-39 (011 C3, task 011-37 sections 3 and 6): the candidate against
@@ -19,46 +15,7 @@ import "./driver.js";
  * which this file's closure holds, so Squeal re-runs it when one changes.
  */
 
-let work: string;
-let release: string;
-let tree: string;
-let runs = 0;
-
-beforeAll(() => {
-  work = mkdtempSync(join(tmpdir(), "squeal-validity-"));
-  release = lastRelease();
-  tree = join(work, "release");
-  extractTree(release, tree);
-});
-
-afterAll(() => {
-  if (work !== undefined) rmSync(work, { recursive: true, force: true });
-});
-
-const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
-
-/** `path` with `from` replaced by `to`, which must apply. */
-function edited(path: string, from: string, to: string): Overlay {
-  const before = read(path);
-  expect(before, `the edit of ${path} no longer applies`).toContain(from);
-  return { [path]: before.replace(from, to) };
-}
-
-/** The 1-based line of `path` holding `text`. */
-const lineOf = (path: string, text: string) =>
-  read(path)
-    .split("\n")
-    .findIndex((line) => line.includes(text)) + 1;
-
-/** This checkout against itself under `overlay`. */
-const compare = (overlay: Overlay, cases: readonly Case[] = CASES, baseline = ROOT) =>
-  compareTrees({ baseline, cases, overlay, work: join(work, `run-${runs++}`) });
-
-/** The corpus's cases of `kinds`: a self-test runs the kinds its change reaches. */
-const only = (...kinds: CaseKind[]) => CASES.filter((c) => kinds.includes(c.kind));
-
-// A full comparison bundles twice and runs the corpus in four child processes.
-const SLOW = { timeout: 120_000 };
+const { compare, release, tree } = comparisons();
 
 /** A wording-only change: it fires the comparison and moves no output. */
 const reworded = () =>
@@ -70,12 +27,12 @@ const reworded = () =>
 
 describe("the candidate against the last release", SLOW, () => {
   it("keeps every stored meaning, or raises", async () => {
-    const result = await compare({}, CASES, tree);
-    expect(failures(result, release)).toEqual([]);
+    const result = await compare({}, CASES, tree());
+    expect(failures(result, release())).toEqual([]);
   });
 
   it("runs every case at the release's tree and at the candidate", async () => {
-    const result = await compare(reworded(), CASES, tree);
+    const result = await compare(reworded(), CASES, tree());
     expect(result.fired).toBe(true);
     const thrown = result.cases.flatMap((c) =>
       [c.baseline.error, c.candidate.error].flatMap((e) =>
@@ -95,7 +52,7 @@ describe("the comparison, under a change unmade", SLOW, () => {
     );
     expect(result.fired).toBe(true);
     expect(result.cases.filter((c) => c.kind === "key").every((c) => !c.keysEqual)).toBe(true);
-    expect(failures(result, release)).toEqual([]);
+    expect(failures(result, release())).toEqual([]);
   });
 
   it("fails on dropped skip rows (9->10), naming the case and the version to raise", async () => {
@@ -106,7 +63,7 @@ describe("the comparison, under a change unmade", SLOW, () => {
     );
     const differing = result.cases.filter((c) => !c.outputsEqual).map((c) => c.name);
     expect(differing).toEqual(["a module skip"]);
-    expect(failures(result, release)).toEqual([
+    expect(failures(result, release())).toEqual([
       expect.stringMatching(/^rows case "a module skip": .* raise KEY_FORMAT_VERSION/),
     ]);
   });
@@ -122,7 +79,7 @@ describe("the comparison, under a change unmade", SLOW, () => {
       expect.stringMatching(`^${path}:${line} \\(baseline`),
       expect.stringMatching(`^${path}:${line} \\(candidate`),
     ]);
-    expect(failures(result, release)).toEqual([
+    expect(failures(result, release())).toEqual([
       expect.stringContaining(`changed lines no case runs, each needing a case`),
     ]);
   });
@@ -134,7 +91,7 @@ describe("the comparison, under a change unmade", SLOW, () => {
       edited(path, text, "    durationMs: 1,\n    location,"),
       only("rows"),
     );
-    expect(failures(result, release)).toEqual([]);
+    expect(failures(result, release())).toEqual([]);
     expect(wordingChanges(result)).toEqual(["a load error"]);
   });
 
@@ -151,13 +108,13 @@ describe("the comparison, under a change unmade", SLOW, () => {
     expect(result.fired).toBe(true);
     expect(result.cases.every((c) => c.outputsEqual)).toBe(true);
     expect(result.uncovered).toEqual([]);
-    expect(failures(result, release)).toEqual([]);
+    expect(failures(result, release())).toEqual([]);
   });
 
   it("passes a summary-only change and lists the wording, every kind equal (11->12)", async () => {
     const result = await compare(reworded());
     expect(result.fired).toBe(true);
-    expect(failures(result, release)).toEqual([]);
+    expect(failures(result, release())).toEqual([]);
     expect(wordingChanges(result)).toEqual(["an error after the tests ran"]);
   });
 
@@ -171,7 +128,7 @@ describe("the comparison, under a change unmade", SLOW, () => {
     const differing = result.cases.filter((c) => !c.outputsEqual).map((c) => c.name);
     expect(differing).toEqual(["a stat, a read and a listing"]);
     expect(result.uncovered).toEqual([]);
-    expect(failures(result, release)).toEqual([
+    expect(failures(result, release())).toEqual([
       expect.stringMatching(
         /^observe case "a stat, a read and a listing": .* raise RECORDER_VERSION/,
       ),
@@ -198,6 +155,6 @@ describe("the comparison, under a change unmade", SLOW, () => {
     expect(result.cases.filter((c) => !c.outputsEqual).map((c) => c.name)).toEqual([
       "a module skip",
     ]);
-    expect(failures(result, release)).toEqual([]);
+    expect(failures(result, release())).toEqual([]);
   });
 });
