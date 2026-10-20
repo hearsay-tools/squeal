@@ -49,8 +49,11 @@ describe("squeal retry on an unknown file, on a real daemon (011 C5, gh-36)", SL
 
     const after = cli(["status", "--wait", "120000", CRASH]);
     expect(await after.exited, after.stdout()).toEqual({ code: 0, signal: null });
-    expect(after.stdout()).toContain("Affected checks: 2 passed (1 test, 1 test file loaded)");
+    // Row 011-28: the named wait prints the selection, its verdict last.
+    expect(after.stdout()).toContain(
+      "Named test files at revision 0: no known failures; 1 test file, each with a current result,",
+    );
     // Only the named file ran: the tier's other files, unknown since the crash, are not re-run.
-    expect(after.stdout()).toContain("5 test files without a result, none queued");
+    expect(after.stdout()).toContain("not current: 5 of 6 test files (5 unknown)");
   });
 });
