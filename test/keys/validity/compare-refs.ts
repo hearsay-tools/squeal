@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CaseKind } from "./case.js";
 import { CASES } from "./cases/index.js";
-import { compareTrees, failures, wordingChanges } from "./compare.js";
+import { compareTrees, failures, reportedChanges, wordingChanges } from "./compare.js";
 import { execute, type Side } from "./sides.js";
 import { extractTree } from "./trees.js";
 
@@ -55,6 +55,7 @@ try {
       );
   }
   console.log(`wording: ${JSON.stringify(wordingChanges(result))}`);
+  for (const line of reportedChanges(result)) console.log(`  reported: ${line}`);
   console.log(`uncovered: ${result.uncovered.length}`);
   for (const line of failures(
     { ...result, versions: { baseline: 0, candidate: 0 } },
