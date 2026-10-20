@@ -34,6 +34,21 @@ export const KEYS_SINCE = `
   SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
   WHERE recorded_at > ? GROUP BY key`;
 
+/**
+ * `ResultRepo.copyNewest`'s copy (task 011-38): every row of one key under
+ * another, with its provenance and record time, only while the other holds
+ * no row. One statement, so a set another daemon stores there meanwhile is
+ * never mixed with the copy.
+ */
+const COPY_SET = `
+  INSERT INTO results (check_id, key, outcome, duration_ms, location_path, location_line,
+    location_column, fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id,
+    recorded_at, last_used_at)
+  SELECT check_id, ?, outcome, duration_ms, location_path, location_line, location_column,
+    fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id, recorded_at,
+    last_used_at
+  FROM results WHERE key = ? AND NOT EXISTS (SELECT 1 FROM results WHERE key = ?)`;
+
 export function createResultRepo(conn: Connection): ResultRepo {
   return {
     byKey: (key, usedAt = Date.now()) => {
@@ -97,6 +112,16 @@ export function createResultRepo(conn: Connection): ResultRepo {
         ) ?? { n: 0 },
         "n",
       ),
+    copyNewest: (key, from) => {
+      if (from.length === 0) return false;
+      const newest = conn.get(
+        `SELECT key FROM results WHERE key IN (${from.map(() => "?").join(", ")})
+         GROUP BY key ORDER BY MAX(recorded_at) DESC, key LIMIT 1`,
+        ...from,
+      );
+      if (newest === null) return false;
+      return conn.run(COPY_SET, key, str(newest, "key"), key) > 0;
+    },
     keysSince: (since) =>
       conn
         .all(KEYS_SINCE, since)
