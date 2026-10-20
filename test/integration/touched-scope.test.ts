@@ -138,7 +138,7 @@ describe(
       expect(r.h.header()).toMatchObject({ counts: { pending: 0, unknown: 0 } });
     });
 
-    it("withholds the run of every file its tier's keys name for a path one of them loads (T1 and T2, 11)", async () => {
+    it("withholds only the file that loads the path, which ends unknown (T1 and T2, 11)", async () => {
       const r = await rig();
       await r.h.scheduler.start();
       await touchDuring(r, "dist/gen.js", 1);
@@ -146,12 +146,13 @@ describe(
       releaseAll(r.h);
       await r.h.scheduler.idle();
 
-      // Without D2 the barrier withholds the whole tier: each file ran twice and is unknown.
-      expect(runs(r.h)).toEqual([2, 2, 2]);
-      expect(stored(r.h)).toEqual([]);
+      // D2: the barrier withholds only the file whose key names the path, as the runner does.
+      expect(runs(r.h)).toEqual([2, 1, 1]);
+      expect(stored(r.h)).toEqual(current.slice(1));
       expect(reasons(r.h, "test/slow1.test.ts")).toEqual([
         expect.stringMatching(/dist\/gen\.js was written during this run.*task 001-159/s),
       ]);
+      expect(reasons(r.h, "test/slow2.test.ts")).toEqual([]);
     });
   },
 );

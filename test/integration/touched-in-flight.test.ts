@@ -1,15 +1,16 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { readDaemonNotes } from "../../src/core/notes.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import {
   BASE,
   createRepo,
+  type ScheduledRun,
   scheduledRuns,
   slowOptions,
   stored,
-  withheldByBarrier,
   withSlowLanes,
 } from "./stamps-repo.js";
 
@@ -88,6 +89,41 @@ async function touchDuringRun(h: Harness, path: string, rewrite: boolean, times 
   await h.scheduler.idle();
 }
 
+/**
+ * `withheldByBarrier` for `holds` alone: the barrier withheld its first run
+ * and it ran once more, with a note naming `src/mod.ts`; none of that run's
+ * results for it reached the store. `other` shared the run and stored it
+ * (task 013-02, D2), so the run's id is among the puts.
+ */
+function holdsWithheld(h: Harness, runs: readonly ScheduledRun[], puts: () => string[]): void {
+  const notes = readDaemonNotes(h.store, h.worktreeId).map((note) => note.text);
+  expect(notes).toContainEqual(
+    expect.stringMatching(
+      /src\/mod\.ts was written while .*test\/holds\.test\.ts.* runs once more.*001-168/,
+    ),
+  );
+  const ran = runs.filter((run) => run.files.some((f) => f.path === "test/holds.test.ts"));
+  expect(ran.length).toBe(2);
+  expect(puts()).toEqual([ran[1]?.runId]);
+  expect(runs.filter((run) => run.files.some((f) => f.path === "test/other.test.ts"))).toEqual([
+    ran[0],
+  ]);
+}
+
+/** The run ids of what `putMany` is given for `holds` from now on. */
+function holdsPuts(h: Harness): () => string[] {
+  const spy = vi.spyOn(h.store.results, "putMany");
+  return () => [
+    ...new Set(
+      spy.mock.calls.flatMap(([records]) =>
+        records
+          .filter((r) => r.check.testPath === "test/holds.test.ts")
+          .map((r) => r.provenance.runId),
+      ),
+    ),
+  ];
+}
+
 /** The reasons `markUnknown` stored for `path`. */
 const reasons = (h: Harness, path: string) =>
   h.sink
@@ -97,7 +133,7 @@ const reasons = (h: Harness, path: string) =>
 
 describe("a touch heard during a run (task 001-159)", () => {
   it.each([true, false])(
-    "stores none of the run's files when another wrote it (observe %s)",
+    "stores none of the run's files that loaded it when another wrote it (observe %s)",
     SLOW,
     async (observe) => {
       const repo = createRepo(files(false));
@@ -107,20 +143,21 @@ describe("a touch heard during a run (task 001-159)", () => {
         observe,
       });
       const runs = scheduledRuns(h);
+      const puts = holdsPuts(h);
       await touchDuringRun(h, "src/mod.ts", true);
 
-      // What is stored is the run once more's, on the bytes on disk (task 007-30).
+      // What is stored is the run once more's, on the bytes on disk (task 007-30); `other`
+      // reaches no module of the path and its key does not name it (task 013-02, D2).
       expect(stored(h)).toEqual([
         ["", "test/holds.test.ts", "current", "pass"],
         ["", "test/other.test.ts", "current", "pass"],
       ]);
-      withheldByBarrier(h, runs, "test/holds.test.ts");
-      withheldByBarrier(h, runs, "test/other.test.ts");
+      holdsWithheld(h, runs, puts);
     },
   );
 
   // Spec 004 D2: the slow instance hears it at once, not before its next run.
-  it("stores none of a slow run's files", SLOW, async () => {
+  it("stores none of a slow run's files that loaded it", SLOW, async () => {
     const repo = createRepo(files(false));
     const { slotDir, ...options } = slowOptions(["test/holds.test.ts", "test/other.test.ts"]);
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
@@ -129,18 +166,19 @@ describe("a touch heard during a run (task 001-159)", () => {
     });
     const lanes = withSlowLanes(h, repo.main, slotDir, async () => {});
     const runs = scheduledRuns(h);
+    const puts = holdsPuts(h);
     await touchDuringRun(h, "src/mod.ts", true);
 
     // Spec 004 D2 as amended (004-34): an idle slow tier takes up to `slow.maxParallel` files,
-    // so both ran in the one slow run that heard the touch, then once more (task 007-30).
+    // so both ran in the one slow run that heard the touch; the one reaching it ran once more
+    // (tasks 007-30, 013-02).
     expect(lanes.made()).toBe(1);
-    expect(runs.filter((run) => run.files.length === 2)).toHaveLength(2);
+    expect(runs.map((run) => run.files.length)).toEqual([2, 1]);
     expect(stored(h)).toEqual([
       ["", "test/holds.test.ts", "current", "pass"],
       ["", "test/other.test.ts", "current", "pass"],
     ]);
-    withheldByBarrier(h, runs, "test/holds.test.ts");
-    withheldByBarrier(h, runs, "test/other.test.ts");
+    holdsWithheld(h, runs, puts);
   });
 });
 
