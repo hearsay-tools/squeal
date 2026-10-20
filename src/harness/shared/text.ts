@@ -4,6 +4,7 @@ import {
   earlierFailuresLines,
   formatCheck,
   knownFailureCounts,
+  notCurrentText,
   splitByValidity,
 } from "../../core/status/index.js";
 import { plural } from "../../core/text.js";
@@ -38,7 +39,7 @@ export function statusText(
   return [
     `SQUEAL · status at revision ${header.revision}`,
     ...headerLines(header, command),
-    knownFailuresLine(failures, command),
+    knownFailuresLine(failures, command, header),
   ].join("\n");
 }
 
@@ -46,16 +47,17 @@ export function statusText(
  * Task 001-222: the count, then the failures by name, or the first
  * `NAMED_FAILURES` and where the rest are listed. Spec 011 C6 as amended
  * (gh-34): only current failures are counted and named; earlier ones pending
- * a rerun or stale get status's line after it.
+ * a rerun or stale get status's line after it. With `header`, the count ends
+ * with what is not current (gh-45, row 011-26).
  */
 export function knownFailuresLine(
   failures: readonly { readonly check: CheckId; readonly validity: Validity }[],
   command: string = SQUEAL_COMMAND,
+  header?: StatusHeader,
 ): string {
   const current = splitByValidity(failures).current.map((f) => f.check);
-  return [countLine(current, command), ...earlierFailuresLines(knownFailureCounts(failures))].join(
-    "\n",
-  );
+  const count = `${countLine(current, command)}${header === undefined ? "" : notCurrentText(header)}`;
+  return [count, ...earlierFailuresLines(knownFailureCounts(failures))].join("\n");
 }
 
 function countLine(failures: readonly CheckId[], command: string): string {

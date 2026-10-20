@@ -102,7 +102,6 @@ function snapshot(
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
-  const header = readHeader(store, worktreeId, states, keys);
 
   const notes: string[] = [];
   if (worktree === null) {
@@ -124,6 +123,7 @@ function snapshot(
     ),
   );
   const runs = openRuns(store, worktree, daemon);
+  const header = readHeader(store, worktreeId, states, keys, undefined, openFiles(runs));
   // Task 001-404: each failure says how old its run is and the load it ran under.
   const knownFailures = withRecorded(store, worktreeId, states, header.revision);
 

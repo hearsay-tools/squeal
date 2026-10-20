@@ -7,6 +7,7 @@ import {
   earlierFailuresLines,
   failureCountText,
   knownFailureCounts,
+  notCurrentText,
   splitByValidity,
 } from "../status/checks.js";
 import { cap, plural } from "../text.js";
@@ -368,8 +369,8 @@ export function formatRegistration(
     ...headerLines(header, command),
     // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
     ...(header.optimizerOff === undefined ? [] : [header.optimizerOff]),
-    // Spec 011 C6 as amended (gh-34): status's count and words.
-    `Known failures: ${failureCountText(splitByValidity(knownFailures).current.map((f) => f.check))}`,
+    // Spec 011 C6 as amended (gh-34, gh-45): status's count and words.
+    `Known failures: ${failureCountText(splitByValidity(knownFailures).current.map((f) => f.check))}${notCurrentText(header)}`,
     ...earlierFailuresLines(knownFailureCounts(knownFailures)),
   ].join("\n");
   const blocks = knownFailures.map((f: KnownFailure) =>

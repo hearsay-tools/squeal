@@ -4,6 +4,7 @@ import {
   countedText,
   failureCountText,
   formatStatus,
+  notCurrentText,
   splitByValidity,
 } from "../core/status/index.js";
 import { plural } from "../core/text.js";
@@ -318,25 +319,13 @@ function lapseText(lapse: HeartbeatLapse | undefined): string {
 
 /**
  * Issue 26: a wait's verdict line ends with the worktree's known failures and
- * its checks running and queued, as status counts them, so a `tail` keeps them.
+ * what is not current, as status's `Known failures` line says them (011 C6
+ * as amended 2026-10-20, gh-45), so a `tail` keeps them.
  */
 function worktreeText(snapshot: StatusSnapshot): string {
   // Current failures only, as the `Known failures` headline counts them (011 C6, 011-15).
   const current = splitByValidity(snapshot.knownFailures).current;
-  const failures = `. Worktree: known failures ${failureCountText(current.map((f) => f.check))}`;
-  const unlisted =
-    snapshot.testFilesListed === false
-      ? "; the daemon has not listed this worktree's test files yet, so these counts are not complete"
-      : "";
-  const { pendingByPhase, fileLevelByPhase, testFilesWithoutChecksRunning } = snapshot.breakdown;
-  const checks = `${countedText(pendingByPhase.running, "running", fileLevelByPhase?.running)}, ${countedText(pendingByPhase.queued, "queued", fileLevelByPhase?.queued)}`;
-  const files = snapshot.testFilesWithoutChecks.pending;
-  const running = Math.min(files, testFilesWithoutChecksRunning ?? 0);
-  const without =
-    files === 0
-      ? ""
-      : `; ${plural(files, "test file")} without checks: ${running} running, ${files - running} queued`;
-  return `${failures}; checks ${checks}${without}${unlisted}`;
+  return `. Worktree: known failures ${failureCountText(current.map((f) => f.check))}${notCurrentText(snapshot)}`;
 }
 
 function anyPending(snapshot: StatusSnapshot): boolean {
