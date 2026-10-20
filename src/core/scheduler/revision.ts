@@ -28,9 +28,9 @@ export interface ContentRekey {
   /** The revision is catch-up (`isCatchUp`): its runner part queues no edit's work either. */
   readonly catchUp?: boolean;
   /**
-   * The files the content part made recent: catch-up instead when the
-   * runner part, which lists the test files the revision added, finds it is
-   * (review wave 5, B1).
+   * The files the content part left recent: those this revision made so are
+   * catch-up instead when the runner part, which lists the test files the
+   * revision added, finds it is (`Queue.toCatchUp`, review wave 5, B1).
    */
   readonly recent?: readonly TestFileRef[];
 }
@@ -108,11 +108,8 @@ export function rekeyContent(
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  const wasRecent = new Set(touched.filter((ref) => ledger.queue.isRecent(ref)).map(testFileId));
   ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
-  const recent = touched.filter(
-    (ref) => !wasRecent.has(testFileId(ref)) && ledger.queue.isRecent(ref),
-  );
+  const recent = touched.filter((ref) => ledger.queue.isRecent(ref));
   return {
     rekeyed,
     environment: inputs || policy.environment,

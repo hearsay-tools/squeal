@@ -1,6 +1,6 @@
 import { compare } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
-import type { RelativePath, TestFileRef } from "../types/index.js";
+import type { RelativePath, RevisionNumber, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
 import { Promotions, type PublishedPromotion } from "./promotions.js";
 
@@ -59,6 +59,11 @@ interface Entry {
   forced: boolean;
   /** Queued by a revision's edit: its closure changed or it was added (`Ledger.settle`). */
   recent: boolean;
+  /**
+   * The revisions whose edits made it recent, `null` for one with none; it
+   * stays recent while one is left (`toCatchUp`, review wave 5, B1).
+   */
+  readonly recentBy: Set<RevisionNumber | null>;
   /**
    * Queued by a revision of `CATCH_UP_KEYED_PATHS` keyed paths or more (spec 011 C4 step 4 as
    * amended 2026-10-20, task 011-22): catch-up while it is not recent or promoted.
@@ -164,7 +169,14 @@ export class RunQueue {
    * catch-up until then unless it is recent or promoted too (C4 step 4 as
    * amended 2026-10-20, task 011-22).
    */
-  add(ref: TestFileRef, priority: Priority, forced = false, recent = false, catchUp = false): void {
+  add(
+    ref: TestFileRef,
+    priority: Priority,
+    forced = false,
+    recent = false,
+    catchUp = false,
+    by: RevisionNumber | null = null,
+  ): void {
     this.#promotions.settle(this.#queued);
     const id = testFileId(ref);
     const entry = this.#entries.get(id);
@@ -172,6 +184,7 @@ export class RunQueue {
       entry.priority = Math.min(entry.priority, priority) as Priority;
       entry.forced ||= forced;
       entry.recent ||= recent;
+      if (recent) entry.recentBy.add(by);
       entry.catchUp ||= catchUp;
       return;
     }
@@ -181,6 +194,7 @@ export class RunQueue {
       seq: this.#seq++,
       forced,
       recent,
+      recentBy: new Set(recent ? [by] : []),
       catchUp,
       evidence: NO_EVIDENCE,
     });
@@ -234,15 +248,16 @@ export class RunQueue {
   }
 
   /**
-   * A recent entry becomes catch-up: its revision turned out catch-up once
-   * its runner part listed the test files it added (review wave 5, B1). A
-   * promotion keeps it in the first group.
+   * `revision` made a recent entry so and turned out catch-up once its
+   * runner part listed the test files it added (review wave 5, B1): the
+   * entry is catch-up unless another revision's edit, or one with none,
+   * made it recent too. A promotion keeps it in the first group.
    */
-  toCatchUp(ref: TestFileRef): void {
+  toCatchUp(ref: TestFileRef, revision: RevisionNumber): void {
     const entry = this.#entries.get(testFileId(ref));
-    if (entry === undefined) return;
-    entry.recent = false;
+    if (entry === undefined || !entry.recentBy.delete(revision)) return;
     entry.catchUp = true;
+    if (entry.recentBy.size === 0) entry.recent = false;
   }
 
   remove(ref: TestFileRef): boolean {
