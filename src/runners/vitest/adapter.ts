@@ -49,7 +49,6 @@ import { invalidateStructural } from "./stale.js";
 import { closeRejected, startupFailure, withStartup } from "./startup.js";
 import { sortTouched, Touches } from "./touched.js";
 import { VITEST_ADAPTER_VERSION } from "./version.js";
-import { Widths } from "./width.js";
 
 /**
  * Vitest adapter over one warm `vitest/node` instance per worktree.
@@ -59,6 +58,22 @@ import { Widths } from "./width.js";
  * closes the instance (a start, a recreate, a broken or hung instance
  * dropped, `close`) waits for both and holds both.
  */
+/**
+ * What the adapter tells of each instance it starts and asks before each run
+ * (task 011-37 section 5, row 011-40): the width a run takes. Width changes
+ * nothing a check stores (`maxWorkers` left the environment hash at format
+ * 10, task 001-378), so it is answered outside this class, whose code a
+ * stored result's meaning rests on (`VitestWidths`, `index.ts`).
+ */
+export interface VitestHints {
+  /** `vitest` started: its configs' widths are each run's ceilings. */
+  started(vitest: Vitest): void;
+  /** Sizes `vitest`'s next run for `workers`, a tier's grant; absent, the instance's own width. */
+  size(vitest: Vitest, workers: number | undefined): void;
+}
+
+const NO_HINTS: VitestHints = { started: () => {}, size: () => {} };
+
 export class VitestAdapter implements RunnerAdapter {
   readonly name = "vitest";
   readonly adapterVersion = VITEST_ADAPTER_VERSION;
@@ -86,8 +101,8 @@ export class VitestAdapter implements RunnerAdapter {
    * forgotten once the calls in flight when it was heard have returned.
    */
   readonly #touches = new Touches();
-  /** The current instance's projects' own `maxWorkers`, each run sized under them (task 001-378). */
-  #widths: Widths | null = null;
+  /** Told of each instance, and asked to size each run (`VitestHints`, row 011-40). */
+  readonly #hints: VitestHints;
   /** Installed lockfiles the current instance started with. */
   #lockfiles = new Set<AbsolutePath>();
   /** The next start imports `vitest/node` again: the installed dependencies changed. */
@@ -106,7 +121,6 @@ export class VitestAdapter implements RunnerAdapter {
   readonly #optimizer: (projects: readonly string[]) => void;
   readonly #observer: VitestObserver;
   readonly #childEnv: Readonly<Record<string, string>>;
-  readonly #maxWorkers: number | undefined;
   readonly #exclude: () => readonly string[];
   readonly #excludeFiles: () => readonly string[];
   /** Policy `vitest.excludeProjects` and `vitest.exclude` as the current instance started with them (tasks 001-349, 004-81). */
@@ -121,11 +135,10 @@ export class VitestAdapter implements RunnerAdapter {
    * `observe` is policy `observe.runtimeInputs`, read before each call
    * (task 001-132); absent, nothing is observed. `childEnv` goes into every
    * worker's env beside the recorder's and, like it, stays out of the
-   * environment hash (D12, task 001-142). `maxWorkers` is the width of a
-   * run without a grant (spec 004 D2: the slow tier's instance), under the
-   * project's own as a grant is (D11, task 001-378). `optimizer` hears, at
-   * each start, the projects whose config turns the dependency optimizer on,
-   * none included (task 001-181). `exclude` is policy
+   * environment hash (D12, task 001-142). `hints` sizes each run (D11, task
+   * 001-378; `VitestWidths`); absent, a run takes its configs' own width.
+   * `optimizer` hears, at each start, the projects whose config turns the
+   * dependency optimizer on, none included (task 001-181). `exclude` is policy
    * `vitest.excludeProjects`, read at each start (task 001-349);
    * `excludeFiles` is policy `vitest.exclude`, read at each start too (spec
    * 004 D7, task 004-81).
@@ -136,7 +149,7 @@ export class VitestAdapter implements RunnerAdapter {
     note: (text: string) => void = () => {},
     observe: () => boolean = () => false,
     childEnv: Readonly<Record<string, string>> = {},
-    maxWorkers?: number,
+    hints: VitestHints = NO_HINTS,
     optimizer: (projects: readonly string[]) => void = () => {},
     exclude: () => readonly string[] = () => [],
     excludeFiles: () => readonly string[] = () => [],
@@ -147,7 +160,7 @@ export class VitestAdapter implements RunnerAdapter {
     this.#optimizer = optimizer;
     this.#sources = new SourceStamps(paths);
     this.#childEnv = childEnv;
-    this.#maxWorkers = maxWorkers;
+    this.#hints = hints;
     this.#note = note;
     this.#observer = new VitestObserver(paths, observe);
   }
@@ -193,7 +206,7 @@ export class VitestAdapter implements RunnerAdapter {
       await vitest.standalone();
       this.#observer.configure(vitest);
       this.#tempDirs = instanceTempDirs(vitest);
-      this.#widths = new Widths(vitest);
+      this.#hints.started(vitest);
       this.#lockfiles = await this.#installedLockfiles(vitest);
       this.#configFiles = configFiles(vitest);
       this.#config = config;
@@ -422,25 +435,6 @@ export class VitestAdapter implements RunnerAdapter {
     return this.#omitted;
   }
 
-  /**
-   * Spec 004 D2 (review 001-394 B2): the files a slow run starts at once,
-   * under each project's own `maxWorkers` (001 D11 Runner ceiling). The
-   * slow instance has the same configs, so this instance's are read. None
-   * started yet: all of them.
-   */
-  slowWidth(testFiles: readonly TestFileRef[]): number {
-    return this.#widths?.atOnce(testFiles) ?? testFiles.length;
-  }
-
-  /**
-   * Spec 011 C4 step 5 (task 001-366): the workers a backlog tier holding
-   * `testFile` runs with at `grant`, under its project's own `maxWorkers`.
-   * No instance yet: `grant`.
-   */
-  tierWidth(testFile: TestFileRef, grant: number): number {
-    return this.#widths?.of(testFile.project, grant) ?? grant;
-  }
-
   environment(): Promise<readonly RunnerEnvironment[]> {
     return this.#part(async (vitest) => {
       const context = {
@@ -480,7 +474,7 @@ export class VitestAdapter implements RunnerAdapter {
           return empty;
         }
         // D11 Capacity (task 001-378): the tier's grant, under each project's own width.
-        this.#widths?.apply(vitest, options.workers ?? this.#maxWorkers);
+        this.#hints.size(vitest, options.workers);
         const exitCode = process.exitCode;
         const unsure = this.#unsure;
         const loadedSince = Date.now();

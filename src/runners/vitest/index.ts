@@ -1,8 +1,9 @@
 import { realpathSync } from "node:fs";
-import type { AbsolutePath, RunnerAdapter } from "../../core/types/index.js";
+import type { AbsolutePath, RunnerAdapter, TestFileRef } from "../../core/types/index.js";
 import { VitestAdapter } from "./adapter.js";
-import { loadVitest } from "./load.js";
+import { loadVitest, type VitestNode } from "./load.js";
 import { WorktreePaths } from "./paths.js";
+import { VitestWidths } from "./width.js";
 
 export { VITEST_ADAPTER_VERSION } from "./version.js";
 
@@ -59,17 +60,49 @@ export interface VitestAdapterOptions {
  */
 export async function createVitestAdapter(options: VitestAdapterOptions): Promise<RunnerAdapter> {
   const root = realpathSync(options.root);
-  const adapter = new VitestAdapter(
+  const adapter = new SizedVitestAdapter(
+    new VitestWidths(options.maxWorkers),
     new WorktreePaths(root),
     await loadVitest(root),
     options.note,
     options.observe,
     options.childEnv,
-    options.maxWorkers,
     options.optimizer,
     options.excludeProjects,
     options.exclude,
   );
   await adapter.open();
   return adapter;
+}
+
+/**
+ * The adapter, the scheduler's width questions answered from its hints
+ * (task 011-37 section 5, row 011-40): width changes nothing a check
+ * stores, so `adapter.ts` holds none of it.
+ */
+class SizedVitestAdapter extends VitestAdapter {
+  readonly #widths: VitestWidths;
+
+  constructor(
+    widths: VitestWidths,
+    paths: WorktreePaths,
+    vitest: VitestNode,
+    note?: (text: string) => void,
+    observe?: () => boolean,
+    childEnv?: Readonly<Record<string, string>>,
+    optimizer?: (projects: readonly string[]) => void,
+    exclude?: () => readonly string[],
+    excludeFiles?: () => readonly string[],
+  ) {
+    super(paths, vitest, note, observe, childEnv, widths, optimizer, exclude, excludeFiles);
+    this.#widths = widths;
+  }
+
+  slowWidth(testFiles: readonly TestFileRef[]): number {
+    return this.#widths.slowWidth(testFiles);
+  }
+
+  tierWidth(testFile: TestFileRef, grant: number): number {
+    return this.#widths.tierWidth(testFile, grant);
+  }
 }
