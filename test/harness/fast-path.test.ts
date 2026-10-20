@@ -8,8 +8,9 @@ import { runtimeDir } from "./bundle-helpers.js";
 
 /*
  * Task 001-93: PreToolUse runs on every tool, so in a repository without
- * Squeal its command exits from `sh` before Node starts. The test runs the
- * exact script hooks.json ships, with the Node command replaced by `echo ran`.
+ * Squeal its command exits from `sh` before Node starts. The test spawns the
+ * file hooks.json names, as Claude Code does with `args` (exec form), with the
+ * entry's own first argument and the Node command replaced by `echo ran`.
  * Fixtures live under /tmp, since the test temp dir can sit inside a checkout
  * of this repository, whose store would make every walk up find Squeal.
  */
@@ -18,15 +19,18 @@ interface HookCommand {
   readonly command: string;
   readonly args: readonly string[];
 }
-const hooksJson = JSON.parse(
-  readFileSync(join(REPO_ROOT, "plugins/claude-code/hooks/hooks.json"), "utf8"),
-) as { hooks: Record<string, { hooks: HookCommand[] }[]> };
+const PLUGIN = join(REPO_ROOT, "plugins/claude-code");
+const hooksJson = JSON.parse(readFileSync(join(PLUGIN, "hooks/hooks.json"), "utf8")) as {
+  hooks: Record<string, { hooks: HookCommand[] }[]>;
+};
 const commandOf = (event: string): HookCommand => {
   const hook = hooksJson.hooks[event]?.[0]?.hooks[0];
   if (hook === undefined) throw new Error(`no ${event} hook`);
   return hook;
 };
-const [flag, script, name] = commandOf("PreToolUse").args;
+const ROOT = `\${CLAUDE_PLUGIN_ROOT}`;
+const run = commandOf("PreToolUse").command.replace(ROOT, PLUGIN);
+const [flag] = commandOf("PreToolUse").args;
 
 interface Run {
   readonly stdout: string;
@@ -43,7 +47,7 @@ function fastPath(project: string | undefined, cwd = runtimeDir()): Promise<Run>
       PATH: process.env.PATH ?? "",
       ...(project === undefined ? {} : { CLAUDE_PROJECT_DIR: project }),
     };
-    const child = spawn("sh", [flag ?? "", script ?? "", name ?? "", "echo", "ran"], { env, cwd });
+    const child = spawn(run, [flag ?? "", "echo", "ran"], { env, cwd });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (b: Buffer) => (stdout += b.toString("utf8")));
@@ -77,14 +81,33 @@ const SILENT = { stdout: "", stderr: "", code: 0 };
 const RAN = { stdout: "ran\n", stderr: "", code: 0 };
 
 describe("the per-tool hooks' sh fast path (task 001-93)", () => {
-  it("is the same script for PreToolUse and PostToolBatch, and ends by running Node", () => {
+  it("is the same file and flag for PreToolUse and PostToolBatch, and ends by running Node", () => {
     for (const event of ["PreToolUse", "PostToolBatch"]) {
       const { command, args } = commandOf(event);
-      expect(command, event).toBe("sh");
-      expect(args.slice(0, 3), event).toEqual([flag, script, name]);
-      expect(args.slice(3, 5), event).toEqual(["node", "--disable-warning=ExperimentalWarning"]);
+      expect(command, event).toBe(`${ROOT}/hooks/run`);
+      expect(args.slice(0, 3), event).toEqual([
+        "--if-squeal",
+        "node",
+        "--disable-warning=ExperimentalWarning",
+      ]);
     }
-    expect(script).toMatch(/exec "\$@"$/);
+    expect(readFileSync(run, "utf8")).toMatch(/\nexec "\$@"\n$/);
+  });
+
+  it("execs its arguments, so the hook's process has the harness as its parent (012 CC1)", async () => {
+    const r = repository();
+    r.store();
+    const ppid = ["-e", "process.stdout.write(String(process.ppid))"];
+    for (const first of [[flag ?? ""], []]) {
+      const out = await new Promise<string>((resolve, reject) => {
+        const child = spawn(run, [...first, process.execPath, ...ppid], { cwd: r.main });
+        let stdout = "";
+        child.stdout.on("data", (b: Buffer) => (stdout += b.toString("utf8")));
+        child.on("error", reject);
+        child.on("close", () => resolve(stdout));
+      });
+      expect(out, first.join(" ")).toBe(String(process.pid));
+    }
   });
 
   it("exits 0 silently in a repository with neither config nor store", async () => {
