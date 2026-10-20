@@ -12545,17 +12545,19 @@ var init_namesakes = __esm({
 });
 
 // src/core/scheduler/edit-cut.ts
-async function fetchEditCut(context, testFiles, paths, affected2, bound) {
+async function fetchEditCut(context, testFiles, paths, affected2, bound, closures = []) {
   const { keys, runner } = context;
   const byPath = /* @__PURE__ */ new Map();
   for (const ref2 of testFiles)
     byPath.set(ref2.path, [...byPath.get(ref2.path) ?? [], testFileId(ref2)]);
   const reached = new Set([...affected2.direct, ...affected2.transitive].map(testFileId));
   for (const ref2 of keys.index.reverse.referencing(paths)) reached.add(testFileId(ref2));
+  const fetched = new Set(closures.flatMap((closure) => closure.paths));
+  const held2 = (path) => fetched.has(path) || keys.index.reverse.referencing([path]).length > 0;
   const namesakes = /* @__PURE__ */ new Map();
   const bare = /* @__PURE__ */ new Set();
   for (const path of new Set(paths)) {
-    if (byPath.has(path) || keys.index.reverse.referencing([path]).length === 0) continue;
+    if (byPath.has(path) || !held2(path)) continue;
     const ids = namesakesOf(path, byPath.keys()).flatMap((name2) => byPath.get(name2) ?? []);
     namesakes.set(path, ids);
     if (!ids.some((id2) => reached.has(id2))) bare.add(path);
@@ -13957,7 +13959,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     );
     if (closure !== null) closures.push(closure);
   }
-  const cut = affected2 === null || content.catchUp === true ? void 0 : await fetchEditCut(context, refsOf(ledger, listed3), paths, affected2, bound);
+  const cut = affected2 === null || content.catchUp === true ? void 0 : await fetchEditCut(context, refsOf(ledger, listed3), paths, affected2, bound, closures);
   return {
     revision,
     retrying,
@@ -20119,6 +20121,7 @@ var VitestObserver;
 var init_observe2 = __esm({
   "src/runners/vitest/observe.ts"() {
     "use strict";
+    init_recorders();
     init_observe();
     VitestObserver = class {
       constructor(paths, enabled) {
@@ -20130,6 +20133,10 @@ var init_observe2 = __esm({
       #out = null;
       /** The env the current instance's workers got from the recorder, or in place of another Squeal's. */
       #injected = {};
+      /** The inherited `NODE_OPTIONS` without another Squeal's recorder, for an instance that does not observe. */
+      #cleaned;
+      /** The projects that got `#cleaned` for want of a `NODE_OPTIONS` of their config's. */
+      #filled = /* @__PURE__ */ new Set();
       #recorder;
       /** The current instance records. */
       get active() {
@@ -20147,17 +20154,20 @@ var init_observe2 = __esm({
       adapterVersion(base) {
         return this.active ? `${base}+observe.${RECORDER_VERSION}` : base;
       }
-      /** What the recorder added to, or took out of, the current instance's env: left out of the environment hash. */
-      get injected() {
-        return this.#injected;
+      /** What the recorder added to, or took out of, `project`'s env: left out of its environment hash. */
+      injectedFor(project) {
+        const cleaned = this.#cleaned;
+        return cleaned !== void 0 && this.#filled.has(project) ? { ...this.#injected, NODE_OPTIONS: cleaned } : this.#injected;
       }
       /** The `env` option of the next instance: `{}` when it neither observes nor inherits a recorder. */
       start() {
         this.stop();
         const recorder = this.enabled() ? this.#find() : null;
         if (recorder === null) {
-          this.#injected = unobservedEnv(process.env);
-          return Object.keys(this.#injected).length === 0 ? {} : { env: this.#injected };
+          const { NODE_OPTIONS: cleaned, ...settings2 } = unobservedEnv(process.env);
+          this.#cleaned = cleaned;
+          this.#injected = settings2;
+          return Object.keys(settings2).length === 0 ? {} : { env: settings2 };
         }
         const out2 = mkdtempSync2(join55(tmpdir3(), "squeal-observe-"));
         this.#out = out2;
@@ -20167,8 +20177,17 @@ var init_observe2 = __esm({
         this.#injected = observeEnv(recorder, settings, process.env.NODE_OPTIONS);
         return { env: this.#injected };
       }
-      /** After `standalone()`: a project's own `env.NODE_OPTIONS` gets the recorder first. */
+      /**
+       * After `standalone()`: a project's own `env.NODE_OPTIONS` gets the
+       * recorder first. Without one, under another Squeal's recorder, a
+       * config's own value loses that recorder and every project that inherits
+       * none, from its config or the root's, gets the inherited value without it.
+       */
       configure(vitest) {
+        if (this.#cleaned !== void 0) {
+          this.#unobserve(vitest, this.#cleaned);
+          return;
+        }
         const recorder = this.#recorder;
         if (this.#out === null || !recorder) return;
         for (const project of vitest.projects) {
@@ -20188,6 +20207,22 @@ var init_observe2 = __esm({
         if (this.#out !== null) rmSync9(this.#out, { recursive: true, force: true });
         this.#out = null;
         this.#injected = {};
+        this.#cleaned = void 0;
+        this.#filled.clear();
+      }
+      #unobserve(vitest, cleaned) {
+        const own = (env) => {
+          const options = env?.NODE_OPTIONS;
+          if (env === void 0 || typeof options !== "string") return false;
+          env.NODE_OPTIONS = ownNodeOptions(options) ?? "";
+          return true;
+        };
+        const root = own(vitest.config.env);
+        for (const project of vitest.projects) {
+          if (own(project.config.env) || root) continue;
+          project.config.env = { ...project.config.env, NODE_OPTIONS: cleaned };
+          this.#filled.add(project.name);
+        }
       }
       /**
        * The recorder file. A build that did not copy it (`tsc` alone, which
@@ -21857,14 +21892,16 @@ var init_adapter = __esm({
           const context = {
             paths: this.paths,
             runnerVersion: this.#node.version,
-            adapterVersion: this.#observer.adapterVersion(this.adapterVersion),
-            injected: { ...this.#childEnv, ...this.#observer.injected }
+            adapterVersion: this.#observer.adapterVersion(this.adapterVersion)
           };
           const envs = [];
           for (const project of vitest.projects) {
             const inputs2 = await projectInputs(vitest, project);
             envs.push({
-              ...projectEnvironment(project, inputs2, context),
+              ...projectEnvironment(project, inputs2, {
+                ...context,
+                injected: { ...this.#childEnv, ...this.#observer.injectedFor(project.name) }
+              }),
               packages: await environmentPackages(project, inputs2, this.paths)
             });
           }
