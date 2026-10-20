@@ -20,6 +20,7 @@ import { runCommand } from "./run.js";
 import { SETUP_USAGE, setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
+import { namedSnapshotCommand } from "./status-paths.js";
 import { statusWaitCommand, waitConsumer } from "./status-wait.js";
 import { stopCommand } from "./stop.js";
 import { updateCommand } from "./update.js";
@@ -189,22 +190,29 @@ function commandHelp(command: string): string {
  * Exit codes for both commands: 0 with an answer, 1 when the store cannot
  * answer (status unavailable, no matching check), 2 on a usage error. Known
  * failures do not change the exit code: status reports, policy decides.
- * `status --wait` also exits 0 when its wait timed out. `status --wait <ms>
- * <path>...` exits as spec 005 D1 for the files the paths select (D2).
+ * `status --wait` also exits 0 when its wait timed out. `status [--wait <ms>]
+ * <path>...` exits as spec 005 D1 for the files the paths select (D2, as
+ * amended 2026-10-20 for the form without `--wait`). `--full` prints the
+ * worktree's status before a named answer, and `--notes` implies it (row
+ * 011-28); `squeal status` prints it in full already.
  */
 function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const wait = takeWait(args);
   if (typeof wait === "string") return usage("status", wait, io);
   const { waitMs } = wait;
   const allNotes = wait.rest.includes("--notes");
-  const rest = wait.rest.filter((arg) => arg !== "--notes");
+  const full = allNotes || wait.rest.includes("--full");
+  const rest = wait.rest.filter((arg) => arg !== "--notes" && arg !== "--full");
   const parsed = parseArgs("status", rest, io);
   if (parsed === null) return 2;
-  if (waitMs !== null) return statusWaitCommand(waitMs, parsed.json, io, false, parsed.positional);
-  if (parsed.positional.length > 0) {
-    return usage("status", "takes paths only with --wait <ms>", io);
-  }
+  const named = { full, allNotes };
   const now = io.now ?? Date.now;
+  if (waitMs !== null) {
+    return statusWaitCommand(waitMs, parsed.json, io, false, parsed.positional, named);
+  }
+  if (parsed.positional.length > 0) {
+    return namedSnapshotCommand(parsed.positional, { ...named, json: parsed.json }, io, { now });
+  }
   const cwd = io.cwd ?? process.cwd();
   const result = readStatus(cwd, { now, busyRetryMs: CLI_READ_RETRY_MS });
   const env = io.env ?? process.env;
