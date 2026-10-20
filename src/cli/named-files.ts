@@ -1,24 +1,28 @@
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/index.js";
+import { hostLoad } from "../core/retry/load.js";
 import { claimBoundMs } from "../core/scheduler/claims.js";
 import { promotedIds } from "../core/scheduler/promotions.js";
 import { runnerPartBoundMs } from "../core/scheduler/runner-work-bound.js";
 import { laneFor, slowView } from "../core/scheduler/slow.js";
 import { readHeader } from "../core/state/index.js";
 import { checksByFile, claimantOf, openRunsOf, unknownReasons } from "../core/status/index.js";
-import type {
-  AbsolutePath,
-  DaemonLiveness,
-  EpochMs,
-  KnownState,
-  Policy,
-  ProjectName,
-  RunRecord,
-  Store,
-  TestFileRef,
-  UnknownTestFile,
-  WorktreeId,
+import type { LoadNow, Standing } from "../core/status/next-step.js";
+import {
+  type AbsolutePath,
+  type DaemonLiveness,
+  type EpochMs,
+  isSlowLane,
+  type KnownState,
+  type Policy,
+  type ProjectName,
+  type RunRecord,
+  type Store,
+  type TestFileRef,
+  type UnknownTestFile,
+  type WorktreeId,
 } from "../core/types/index.js";
+import { type Facts, once, setupsOf, unknownStanding } from "./named-standing.js";
 import { type FileClass, fileClassOf } from "./verdict.js";
 
 /*
@@ -35,20 +39,13 @@ export type NamedVerdict = "pass" | "fail" | "skip";
  * tier running in its lane; another worktree's run of its key (C7); the slow
  * tier's turn (004 D2); the revision's runner part (C4); or nothing known,
  * `queued`. A queued one is `promoted` while a named wait's promotion
- * the live daemon published holds it (011-11, 011-13).
+ * the live daemon published holds it (011-11, 011-13). Row 011-27: a run's
+ * and a tier's count of test files, and a running slow file's global setup.
  */
-export type PendingReason =
-  | { readonly kind: "running"; readonly lane: string; readonly since: EpochMs | null }
-  | {
-      readonly kind: "queued";
-      readonly lane: string;
-      readonly behind: EpochMs | null;
-      readonly promoted?: boolean;
-    }
-  | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
-  /** A slow file the slow tier has not started; `pausesOnly` under `slow.trigger: "idle"` (004-80). */
-  | { readonly kind: "slow"; readonly pausesOnly?: true }
-  | { readonly kind: "unlisted"; readonly revision: number; readonly callBoundMs: number };
+export type PendingReason = Extract<
+  Standing,
+  { readonly kind: "running" | "queued" | "claim" | "slow" | "unlisted" }
+>;
 
 export interface NamedFile {
   readonly testFile: TestFileRef;
@@ -58,6 +55,12 @@ export interface NamedFile {
   readonly pending?: PendingReason;
   /** With `unknown`: why, as status names it (`unknownReasons`). */
   readonly unknown?: UnknownTestFile;
+  /**
+   * Row 011-27: where a file without a verdict stands, for its next step
+   * (`nextStep`): a `stale` or `unknown` one's other worktree's claim first
+   * (design 011-24 section 3, the order rule), else its own state.
+   */
+  readonly standing?: Standing;
 }
 
 /**
@@ -73,6 +76,7 @@ export function readNamedFiles(
   files: readonly TestFileRef[],
   daemon: DaemonLiveness,
   now: EpochMs,
+  load: () => LoadNow = hostLoad,
 ): readonly NamedFile[] {
   const states = store.knownStates.list(worktreeId);
   const keys = store.testFileKeys.list(worktreeId);
@@ -84,28 +88,76 @@ export function readNamedFiles(
   const header = readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
+  const setups = setupsOf(states);
+  const facts: Facts = {
+    lookupOnly: policy.baseline.onStart === "lookup-only",
+    installCommand: header.installCommand ?? null,
+    load: once(load),
+    // What `run --all --wait` runs, from the rows and states read above: no further read.
+    notCurrent: once(
+      () =>
+        keys.filter(
+          (row) => fileClassOf(row, checks.get(testFileId(row.testFile)) ?? []) !== "current",
+        ).length,
+    ),
+  };
   return files.map((ref): NamedFile => {
     const row = rows.get(testFileId(ref));
     const own = checks.get(testFileId(ref)) ?? [];
     const state = fileClassOf(row, own);
-    if (state === "current" || state === "stale")
-      return { testFile: ref, state, ...verdictOf(own) };
+    if (state === "current") return { testFile: ref, state, ...verdictOf(own) };
+    // The order rule (design 011-24 section 3): a run of its key elsewhere is waited for, not retried.
+    const key = row?.key ?? null;
+    const claimant =
+      state === "pending" || key === null ? null : claimantOf(store, worktreeId, ref, key, now);
+    const claim: Standing | null =
+      claimant === null
+        ? null
+        : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
+    if (state === "stale") {
+      const verdict = verdictOf(own);
+      const standing: Standing = claim ?? {
+        kind: "stale",
+        verdict: verdict.verdict ?? null,
+        lookupOnly: facts.lookupOnly,
+        notCurrent: facts.notCurrent(),
+      };
+      return { testFile: ref, state, ...verdict, standing };
+    }
     if (state === "unknown") {
-      return row === undefined
-        ? { testFile: ref, state }
-        : { testFile: ref, state, unknown: reasons.of(row, own) };
+      if (row === undefined) return { testFile: ref, state };
+      const unknown = reasons.of(row, own);
+      return { testFile: ref, state, unknown, standing: claim ?? unknownStanding(unknown, facts) };
     }
     const running = row?.pending === "running" || own.some((s) => s.pendingPhase === "running");
     const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
+    const run = running ? runOf(runs, ref) : undefined;
+    const setup = isSlowLane(lane) ? setups.get(ref.project) : undefined;
     const pending: PendingReason = running
-      ? { kind: "running", lane, since: runOf(runs, ref)?.startedAt ?? null }
-      : (unlisted ??
-        queuedReason(store, worktreeId, ref, row?.key ?? null, lane, runs, policy, now));
+      ? {
+          kind: "running",
+          lane,
+          since: run?.startedAt ?? null,
+          ...(run === undefined ? {} : { files: run.testFiles.length }),
+          ...(setup === undefined ? {} : { setup }),
+        }
+      : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
     if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
-      return { testFile: ref, state, pending: { ...pending, promoted: true } };
+      const promotedReason: PendingReason = { ...pending, promoted: true };
+      return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
     }
-    return { testFile: ref, state, pending };
+    return { testFile: ref, state, pending, standing: pending };
   });
+}
+
+/**
+ * A claim's bound: the waiter's runs from when its daemon first saw the
+ * claim, which only that daemon knows and is no later than now, so now plus
+ * the bound is a true "at most". The claimant's run start says nothing: its
+ * own policy, not this one, bounds its run (review wave-1.11 B1, re-review).
+ */
+function claimBound(policy: Policy, now: EpochMs): EpochMs {
+  return now + claimBoundMs(policy.runner.timeoutMs);
 }
 
 /**
@@ -186,17 +238,14 @@ function queuedReason(
 ): PendingReason {
   const claimant = key === null ? null : claimantOf(store, worktreeId, ref, key, now);
   if (claimant !== null) {
-    // The waiter's bound runs from when its daemon first saw the claim, which only that
-    // daemon knows and is no later than now, so now plus the bound is a true "at most".
-    // The claimant's run start says nothing: its own policy, not this one, bounds its run
-    // (review wave-1.11 B1, re-review).
-    const until = now + claimBoundMs(policy.runner.timeoutMs);
-    return { kind: "claim", worktree: claimant.worktree.root, until };
+    return { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
   }
   const tier = runs.find((run) =>
     run.testFiles.some((f) => laneFor(policy, f, runnerLaneOf(policy, f.project)) === lane),
   );
-  if (tier !== undefined) return { kind: "queued", lane, behind: tier.startedAt };
+  if (tier !== undefined) {
+    return { kind: "queued", lane, behind: tier.startedAt, files: tier.testFiles.length };
+  }
   if (slowView(policy).isSlow(ref)) {
     return policy.slow.trigger === "idle" ? { kind: "slow", pausesOnly: true } : { kind: "slow" };
   }

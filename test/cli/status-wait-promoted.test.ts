@@ -72,7 +72,7 @@ function promoteB(store: Store, worktreeId: string, until: number, at = NOW - 1_
   );
 }
 
-const behind = `behind the vitest tier running since ${clock(STARTED)}`;
+const behind = `behind the vitest tier of 1 test file running since ${clock(STARTED)}`;
 
 describe("a named wait says when the daemon promoted a pending file (011-13)", () => {
   it("queued, promoted, behind the lane's tier while the promotion holds", async () => {
@@ -81,12 +81,12 @@ describe("a named wait says when the daemon promoted a pending file (011-13)", (
 
     const { wait, text } = await timedOut(repo.main, [A, B]);
 
-    expect(text).toContain(`${B}: queued, promoted, ${behind}\n`);
+    expect(text).toContain(`  1 queued, promoted, ${behind}: ${B}; `);
     expect(text.trimEnd().split("\n").at(-1)).toContain(`1 queued, promoted, ${behind}.`);
     const entry = wait.files.find((f) => f.testFile.path === B);
     expect(entry && fileEntry(entry, "squeal").reason).toBe(`queued, promoted, ${behind}`);
     // The running file is not promoted by being named beside it.
-    expect(text).toContain(`${A}: running since ${clock(STARTED)} in the vitest lane`);
+    expect(text).toContain(`  1 running since ${clock(STARTED)} in the vitest lane: ${A}\n`);
   });
 
   it("queued after the deadline", async () => {
@@ -95,18 +95,18 @@ describe("a named wait says when the daemon promoted a pending file (011-13)", (
 
     const { text } = await timedOut(repo.main, [B]);
 
-    expect(text).toContain(`${B}: queued ${behind}\n`);
+    expect(text).toContain(`  1 queued ${behind}: ${B}; `);
     expect(text).not.toContain("promoted");
   });
 
   it("queued from an older daemon, which publishes nothing, and from a predecessor's row", async () => {
     const older = behindA();
-    expect((await timedOut(older.repo.main, [B])).text).toContain(`${B}: queued ${behind}\n`);
+    expect((await timedOut(older.repo.main, [B])).text).toContain(`  1 queued ${behind}: ${B}; `);
 
     const successor = behindA();
     promoteB(successor.store, successor.repo.mainId, NOW + 60_000, DAEMON_STARTED - 1);
     const { text } = await timedOut(successor.repo.main, [B]);
-    expect(text).toContain(`${B}: queued ${behind}\n`);
+    expect(text).toContain(`  1 queued ${behind}: ${B}; `);
     expect(text).not.toContain("promoted");
   });
 
@@ -116,6 +116,6 @@ describe("a named wait says when the daemon promoted a pending file (011-13)", (
 
     const { text } = await timedOut(repo.main, [B]);
 
-    expect(text).toContain(`Pending (1): ${B}: queued, promoted\n`);
+    expect(text).toContain(`Pending (1):\n  1 queued, promoted: ${B}\n`);
   });
 });
