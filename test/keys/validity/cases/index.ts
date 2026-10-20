@@ -1,6 +1,21 @@
 import type { Case } from "../case.js";
+import { INHERIT } from "./accept/inherit.js";
+import { SLOW_INHERIT } from "./accept/slow.js";
+import { DECLARED } from "./assemble/declared.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
+import { OBSERVED_READS } from "./observe/reads.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
 
-/** The corpus: every case, run at both trees when the comparison fires. A case joins with the change that needs it. */
-export const CASES: readonly Case[] = [...GOLDEN_KEYS, ...GOLDEN_ROWS];
+/**
+ * The corpus: every case, run at both trees when the comparison fires. A case
+ * joins with the change that needs it, under `cases/<kind>/`, and is not
+ * deleted while its kind exists.
+ */
+export const CASES: readonly Case[] = [
+  ...GOLDEN_KEYS,
+  ...GOLDEN_ROWS,
+  ...OBSERVED_READS,
+  ...INHERIT,
+  ...SLOW_INHERIT,
+  ...DECLARED,
+];
