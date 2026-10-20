@@ -9,6 +9,7 @@ import {
 import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
 import { formatStatus } from "../../src/core/status/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { statusText } from "../../src/harness/shared/text.js";
 import { squealEvidence as mainEvidence } from "./fixtures/squeal-text-c6320866.mjs";
 import { settled } from "./status-snapshot.js";
 
@@ -18,6 +19,7 @@ import { settled } from "./status-snapshot.js";
 const status = (s: StatusSnapshot) => formatStatus(s, 2_000 as never);
 const header = (s: StatusSnapshot) =>
   formatRegistration({ header: s, knownFailures: s.knownFailures } as never);
+const stop = (s: StatusSnapshot) => statusText(s, s.knownFailures);
 /**
  * A change delivery's header, the news form from 001-407 on: non-zero counts only. It carries
  * the slow-tier line when the slow tier changed, as it does here.
@@ -123,6 +125,9 @@ const owes = (s: StatusSnapshot) =>
 const formatters = [
   ["status", status, "pull"],
   ["registration's header", header, "push"],
+  // Row 011-26: Stop's status text, its `Known failures:` line naming the failures and what is
+  // not current.
+  ["Stop's status text", stop, "push"],
   ["change delivery's news header (task 001-407)", news, "push"],
 ] as const;
 const wrappings = [
