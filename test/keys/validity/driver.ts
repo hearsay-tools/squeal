@@ -1,12 +1,14 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { Case, CaseOutput } from "./case.js";
 import { decideCase, runCase } from "./harness.js";
 
 /*
  * The bundle's entry (task 011-37 section 3). It re-exports the validity
  * path's entries (section 2), so the bundle holds them whole and a line no
- * case runs shows in the coverage.
+ * case runs shows in the coverage. Imported, it runs nothing: the comparison
+ * test imports it so its closure holds the entries and the harness.
  *
  *   node driver.mjs run <cases.json> <out.json> <scratch> <runtime>
  *     runs every case at this tree; case i writes under <scratch>/<i>.
@@ -27,8 +29,9 @@ export * as schema from "../../../src/core/store/schema.js";
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-const [mode, casesPath, outPath, scratch, other] = process.argv.slice(2);
-if (casesPath !== undefined && outPath !== undefined && scratch !== undefined && other) {
+const [script, mode, casesPath, outPath, scratch, other] = process.argv.slice(1);
+const main = script !== undefined && import.meta.url === pathToFileURL(script).href;
+if (main && casesPath !== undefined && outPath !== undefined && scratch !== undefined && other) {
   const cases = JSON.parse(readFileSync(casesPath, "utf8")) as Case[];
   const out: Record<string, CaseOutput> = {};
   for (const [at, c] of cases.entries()) {
