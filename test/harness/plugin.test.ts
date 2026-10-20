@@ -73,13 +73,18 @@ describe("hooks/hooks.json", () => {
     ]);
   });
 
-  it("runs each bundle under the plugin root with node, the per-tool hooks behind sh", () => {
+  it("runs each bundle under the plugin root with node through hooks/run, per-tool ones behind sh", () => {
+    // 012 CC1 as amended 2026-10-20: every command is one file, harmless without its args
+    // (dropped-args.test.ts), kept out of bin/, which is on the Bash tool's path.
+    accessSync(join(PLUGIN, "hooks/run"), constants.X_OK);
     // Task 001-93: hooks that fire per tool call first test for Squeal in sh (fast-path.test.ts).
     const PER_TOOL = new Set(["PreToolUse", "PostToolBatch"]);
     for (const { event, hook } of all) {
       expect(hook.type).toBe("command");
-      const node = PER_TOOL.has(event) ? hook.args.slice(3) : [hook.command, ...hook.args];
-      expect(hook.command, event).toBe(PER_TOOL.has(event) ? "sh" : "node");
+      expect(hook.command, event).toBe(`\${CLAUDE_PLUGIN_ROOT}/hooks/run`);
+      const [first, ...rest] = hook.args;
+      if (PER_TOOL.has(event)) expect(first, event).toBe("--if-squeal");
+      const node = PER_TOOL.has(event) ? rest : hook.args;
       expect(node, event).toHaveLength(3);
       expect(node.slice(0, 2)).toEqual(["node", "--disable-warning=ExperimentalWarning"]);
       expect(node[2]).toMatch(/^\$\{CLAUDE_PLUGIN_ROOT\}\/dist\/[a-z-]+\.mjs$/);
