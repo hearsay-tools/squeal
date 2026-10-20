@@ -36,6 +36,10 @@ jobs:
         shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 011-39: `test/keys/validity/compare.test.ts` reads the last release from its tag, the
+          # newest `squeal--v*` that is an ancestor of HEAD: every tag, and the history to it.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -105,6 +109,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 011-39: the last release's tag and the history to it, as for the Node 22 shards.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
