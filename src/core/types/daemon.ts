@@ -123,11 +123,11 @@ export interface StopRequest {
 
 /**
  * A hook whose Squeal version is newer than the daemon's (lessons, defect
- * 26). A daemon older than `version` answers, lets a tier in flight finish
- * and exits with reason `superseded`, so the next hook starts a current
- * one; an equal or newer daemon answers and keeps running. A daemon from
- * before this request answers "unknown request type", and the hook sends
- * `stop` instead.
+ * 26). A daemon older than `version` answers, cancels its tiers in flight
+ * (row 011-31) and exits with reason `superseded`, so the next hook starts a
+ * current one; an equal or newer daemon answers and keeps running. The hook
+ * sends `stop` after an accepted step-down, and instead of it to a daemon
+ * from before this request, which answers "unknown request type".
  */
 export interface StepDownRequest {
   readonly type: "step-down";
