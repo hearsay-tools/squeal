@@ -72,12 +72,13 @@ describe("scheduler: a node:test backlog in one-file slots, per-file overhead (t
     for (const pass of slots) {
       expect(pass.pass).toHaveLength(FILES);
       expect(pass.pass.every((run) => run.files.length === 1)).toBe(true);
-      expect(pass.commits).toBeLessThan(FILES);
+      // Records that gather commit 71 to 148 times a pass, here and on CI; without the gather they
+      // commit 224 to 226 times (review wave-4, slice 2 overhead check).
+      expect(pass.commits).toBeLessThanOrEqual(FILES * 0.6);
     }
     // 1.2 on this host (1.09 measured). A 4-vCPU CI runner took 1.45 (branch CI 39388147377): each
-    // slot's selection and record share its few CPUs with the files, so there the bound is 1.6;
-    // the commit count above still fails records that stop gathering (one commit per file at a
-    // 50 ms sink, `tasks/011-21/notes.md`).
+    // slot's selection and record share its few CPUs with the files, so there the bound is 1.6,
+    // and the commit budget above is what fails records that stop gathering.
     expect(best(slots)).toBeLessThanOrEqual(best(tiers) * (process.env.CI ? 1.6 : 1.2));
   });
 });
