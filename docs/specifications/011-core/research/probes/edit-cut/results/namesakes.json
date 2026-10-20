@@ -1,0 +1,330 @@
+{
+ "cezar agent revisions": {
+  "pairs": {
+   "sibling": {
+    "one": 156,
+    "several": 0,
+    "none": 138
+   },
+   "__tests__": {
+    "one": 0,
+    "several": 0,
+    "none": 294
+   },
+   "mirror": {
+    "one": 0,
+    "several": 0,
+    "none": 294
+   },
+   "pytest": {
+    "one": 0,
+    "several": 0,
+    "none": 294
+   },
+   "anywhere": {
+    "one": 157,
+    "several": 28,
+    "none": 109
+   },
+   "rule (n)": {
+    "one": 169,
+    "several": 0,
+    "none": 125
+   }
+  },
+  "distinct": {
+   "sibling": {
+    "one": 45,
+    "several": 0,
+    "none": 46
+   },
+   "__tests__": {
+    "one": 0,
+    "several": 0,
+    "none": 91
+   },
+   "mirror": {
+    "one": 0,
+    "several": 0,
+    "none": 91
+   },
+   "pytest": {
+    "one": 0,
+    "several": 0,
+    "none": 91
+   },
+   "anywhere": {
+    "one": 49,
+    "several": 12,
+    "none": 30
+   },
+   "rule (n)": {
+    "one": 54,
+    "several": 0,
+    "none": 37
+   }
+  }
+ },
+ "cezar central (200 or more present files re-keyed)": {
+  "pairs": {
+   "sibling": {
+    "one": 105,
+    "several": 0,
+    "none": 19
+   },
+   "__tests__": {
+    "one": 0,
+    "several": 0,
+    "none": 124
+   },
+   "mirror": {
+    "one": 0,
+    "several": 0,
+    "none": 124
+   },
+   "pytest": {
+    "one": 0,
+    "several": 0,
+    "none": 124
+   },
+   "anywhere": {
+    "one": 91,
+    "several": 16,
+    "none": 17
+   },
+   "rule (n)": {
+    "one": 105,
+    "several": 0,
+    "none": 19
+   }
+  },
+  "distinct": {
+   "sibling": {
+    "one": 26,
+    "several": 0,
+    "none": 8
+   },
+   "__tests__": {
+    "one": 0,
+    "several": 0,
+    "none": 34
+   },
+   "mirror": {
+    "one": 0,
+    "several": 0,
+    "none": 34
+   },
+   "pytest": {
+    "one": 0,
+    "several": 0,
+    "none": 34
+   },
+   "anywhere": {
+    "one": 20,
+    "several": 8,
+    "none": 6
+   },
+   "rule (n)": {
+    "one": 26,
+    "several": 0,
+    "none": 8
+   }
+  }
+ },
+ "squeal agent revisions": {
+  "pairs": {
+   "sibling": {
+    "one": 0,
+    "several": 0,
+    "none": 263
+   },
+   "__tests__": {
+    "one": 0,
+    "several": 0,
+    "none": 263
+   },
+   "mirror": {
+    "one": 8,
+    "several": 0,
+    "none": 255
+   },
+   "pytest": {
+    "one": 0,
+    "several": 0,
+    "none": 263
+   },
+   "anywhere": {
+    "one": 101,
+    "several": 13,
+    "none": 149
+   },
+   "rule (n)": {
+    "one": 102,
+    "several": 0,
+    "none": 161
+   }
+  },
+  "distinct": {
+   "sibling": {
+    "one": 0,
+    "several": 0,
+    "none": 89
+   },
+   "__tests__": {
+    "one": 0,
+    "several": 0,
+    "none": 89
+   },
+   "mirror": {
+    "one": 6,
+    "several": 0,
+    "none": 83
+   },
+   "pytest": {
+    "one": 0,
+    "several": 0,
+    "none": 89
+   },
+   "anywhere": {
+    "one": 37,
+    "several": 7,
+    "none": 45
+   },
+   "rule (n)": {
+    "one": 38,
+    "several": 0,
+    "none": 51
+   }
+  }
+ },
+ "squeal central (200 or more present files re-keyed)": {
+  "pairs": {
+   "sibling": {
+    "one": 0,
+    "several": 0,
+    "none": 116
+   },
+   "__tests__": {
+    "one": 0,
+    "several": 0,
+    "none": 116
+   },
+   "mirror": {
+    "one": 1,
+    "several": 0,
+    "none": 115
+   },
+   "pytest": {
+    "one": 0,
+    "several": 0,
+    "none": 116
+   },
+   "anywhere": {
+    "one": 37,
+    "several": 7,
+    "none": 72
+   },
+   "rule (n)": {
+    "one": 37,
+    "several": 0,
+    "none": 79
+   }
+  },
+  "distinct": {
+   "sibling": {
+    "one": 0,
+    "several": 0,
+    "none": 31
+   },
+   "__tests__": {
+    "one": 0,
+    "several": 0,
+    "none": 31
+   },
+   "mirror": {
+    "one": 1,
+    "several": 0,
+    "none": 30
+   },
+   "pytest": {
+    "one": 0,
+    "several": 0,
+    "none": 31
+   },
+   "anywhere": {
+    "one": 14,
+    "several": 3,
+    "none": 14
+   },
+   "rule (n)": {
+    "one": 14,
+    "several": 0,
+    "none": 17
+   }
+  }
+ },
+ "mvp": {
+  "sibling": {
+   "one": 58,
+   "several": 0,
+   "none": 171
+  },
+  "__tests__": {
+   "one": 0,
+   "several": 0,
+   "none": 229
+  },
+  "mirror": {
+   "one": 0,
+   "several": 0,
+   "none": 229
+  },
+  "pytest": {
+   "one": 0,
+   "several": 0,
+   "none": 229
+  },
+  "anywhere": {
+   "one": 66,
+   "several": 0,
+   "none": 163
+  },
+  "rule (n)": {
+   "one": 66,
+   "several": 0,
+   "none": 163
+  }
+ },
+ "mvpAll": {
+  "sibling": {
+   "one": 149,
+   "several": 0,
+   "none": 656
+  },
+  "__tests__": {
+   "one": 0,
+   "several": 0,
+   "none": 805
+  },
+  "mirror": {
+   "one": 0,
+   "several": 0,
+   "none": 805
+  },
+  "pytest": {
+   "one": 0,
+   "several": 0,
+   "none": 805
+  },
+  "anywhere": {
+   "one": 161,
+   "several": 5,
+   "none": 639
+  },
+  "rule (n)": {
+   "one": 164,
+   "several": 0,
+   "none": 641
+  }
+ }
+}

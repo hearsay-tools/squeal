@@ -1,0 +1,14 @@
+squeal at dbe345510ccac4a0e632207e2f41b7d341931ef5: 737 test files, exact 609, recall 0.949, precision 1.000
+closure paths the static graph misses, by how many closures hold them:
+  64 src/runners/observe/recorder.cjs
+  47 src/runners/node-test/runtime/recorder.cjs
+  47 src/runners/node-test/runtime/reporter.mjs
+  31 src/runners/observe/spawn.cjs
+  29 src/runners/observe/fs.cjs
+  25 src/runners/observe/preloads.cjs
+  13 src/core/daemon-loop/head.ts
+  13 src/core/daemon-loop/index.ts
+  13 src/core/daemon/composite-runner.ts
+  13 src/core/daemon/daemon.ts
+  13 src/core/daemon/desk.ts
+  13 src/core/daemon/escaped.ts
