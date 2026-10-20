@@ -7,8 +7,8 @@ import { versionName } from "./components.js";
 /*
  * The verdict (011 C3, task 011-37 sections 3 and 6). One case's outputs at
  * the two trees: equal keys must give equal outputs, a fingerprint read
- * through `sameFingerprint`; the `store` kind reads by direction (risk 4,
- * amended 2026-10-20). Each component's version: unchanged, its cases must
+ * through `sameFingerprint`; the `store` and `adapter:vitest` kinds read by
+ * direction (risk 4, amended 2026-10-20). Each component's version: unchanged, its cases must
  * agree and its changed lines must have run; raised, one of its cases must
  * differ (D6), and a raised format empties the formats read as one (risk 6).
  */
@@ -22,6 +22,8 @@ export interface CaseVerdict {
   readonly wordingEqual: boolean;
   /** Outputs that differ and ask no raise, each why: listed, never failed. */
   readonly reported: readonly string[];
+  /** Under a kind's direction, each file that asks the raise. */
+  readonly raised: readonly string[];
   readonly baseline: CaseOutput;
   readonly candidate: CaseOutput;
 }
@@ -43,47 +45,119 @@ export function same(a: unknown, b: unknown, field?: string): boolean {
   return false;
 }
 
-/** One file's decision as the `store` harness names it (`harness/store.ts`). */
-interface Decided {
-  readonly path: string;
-  readonly decision: string;
-  readonly grown: boolean;
-  readonly current: boolean;
+/** A file as a direction reads it: where its rows are stored (null when not), its state, all it reports. */
+interface Filed {
+  readonly stored: string | null;
+  readonly state: string;
+  readonly outputs: unknown;
 }
 
-const STORED = "store at ";
-
-const decisionsOf = (output: CaseOutput): readonly Decided[] =>
-  isRecord(output.outputs) && Array.isArray(output.outputs.decisions)
-    ? (output.outputs.decisions as Decided[])
-    : [];
-
 /**
- * The `store` kind by direction, as D1 (a) reads decisions over the last
- * release's store: rows the last release stores and the candidate would
- * refuse are rows the candidate would find and trust, so that file asks a
- * raise. A file the candidate stores and the last release did not (013-02's
- * narrowed barrier, 17 to 18), one stored under another key (a re-key of
- * its checks), and one neither stores but each decides otherwise change no
- * stored row: each is reported. Stored alike under one key, any other
- * difference (current, growth kept) asks a raise.
+ * D1 (a) reads stored rows, so a kind whose outputs say per file whether
+ * its rows are stored reads by direction (risk 4, amended 2026-10-20).
+ * Rows the last release stores and the candidate would refuse are rows the
+ * candidate would find and trust: that file asks a raise, as one stored
+ * alike whose other outputs differ does. A file only the candidate stores
+ * (013-02's narrowed barrier, 17 to 18), one stored under another key (a
+ * re-key of its checks), and one neither stores change no row a release
+ * stored: each is reported.
  */
-function storeDirection(baseline: CaseOutput, candidate: CaseOutput) {
+function byDirection(before: ReadonlyMap<string, Filed>, after: ReadonlyMap<string, Filed>) {
   const raise: string[] = [];
   const reported: string[] = [];
-  const at = new Map(decisionsOf(candidate).map((d) => [d.path, d]));
-  const paths = new Set([...decisionsOf(baseline).map((d) => d.path), ...at.keys()]);
-  const before = new Map(decisionsOf(baseline).map((d) => [d.path, d]));
-  for (const path of paths) {
-    const [b, c] = [before.get(path), at.get(path)];
-    if (same(b, c)) continue;
-    const told = `${path}: ${b?.decision ?? "absent"} at the last release, ${c?.decision ?? "absent"} at the candidate`;
-    const [bStored, cStored] = [b, c].map((d) => d?.decision.startsWith(STORED) === true);
-    if (bStored && cStored && b?.decision !== c?.decision) reported.push(`${told} (a re-key)`);
-    else if (bStored) raise.push(told);
-    else if (cStored) reported.push(`${told} (the candidate stores more)`);
+  for (const file of new Set([...before.keys(), ...after.keys()])) {
+    const [b, c] = [before.get(file), after.get(file)];
+    if (same(b?.outputs, c?.outputs)) continue;
+    const told = `${file}: ${b?.state ?? "absent"} at the last release, ${c?.state ?? "absent"} at the candidate`;
+    const [bStored, cStored] = [b?.stored ?? null, c?.stored ?? null];
+    if (bStored !== null && cStored !== null) {
+      if (bStored === cStored) raise.push(`${told}, its other outputs differing`);
+      else reported.push(`${told} (a re-key)`);
+    } else if (bStored !== null) raise.push(told);
+    else if (cStored !== null) reported.push(`${told} (the candidate stores more)`);
     else reported.push(`${told} (neither stores)`);
   }
+  return { raise, reported };
+}
+
+/** The `store` harness's decisions (`harness/store.ts`), by path: stored where a decision says `store at`. */
+function decided(output: CaseOutput): Map<string, Filed> {
+  const decisions = isRecord(output.outputs) ? output.outputs.decisions : undefined;
+  const all = Array.isArray(decisions) ? (decisions as { path: string; decision: string }[]) : [];
+  return new Map(
+    all.map((d) => [
+      d.path,
+      {
+        stored: d.decision.startsWith("store at ") ? d.decision : null,
+        state: d.decision,
+        outputs: d,
+      },
+    ]),
+  );
+}
+
+/** One run as the `adapter:vitest` harness reports it (`harness/vitest.ts`), each file `project:path`. */
+interface Reported {
+  readonly completed: readonly string[];
+  readonly withheld: readonly string[];
+  readonly results: readonly { readonly check: string; readonly outcome: string }[];
+  readonly loadErrors: readonly string[];
+}
+
+const fileOf = (check: string) => {
+  const { project, testPath } = JSON.parse(check) as { project: string; testPath: string };
+  return `${project}:${testPath}`;
+};
+
+/**
+ * The `adapter:vitest` harness's runs, by run and file: the scheduler
+ * stores a run's completed files (`recordsForFile`), each with its results
+ * and its load error.
+ */
+function ranFiles(output: CaseOutput): Map<string, Filed> {
+  const runs = isRecord(output.outputs) ? output.outputs.runs : undefined;
+  const filed = new Map<string, Filed>();
+  (Array.isArray(runs) ? (runs as Reported[]) : []).forEach((run, i) => {
+    const results = run.results.map((r) => [fileOf(r.check), r] as const);
+    const files = [...run.completed, ...run.withheld, ...results.map(([file]) => file)];
+    for (const file of new Set(files)) {
+      const state = run.completed.includes(file)
+        ? "completed"
+        : run.withheld.includes(file)
+          ? "withheld"
+          : "reported";
+      const own = results.filter(([f]) => f === file).map(([, r]) => r);
+      const loadError = run.loadErrors.includes(file);
+      filed.set(`run ${i + 1}, ${file}`, {
+        stored: state === "completed" ? state : null,
+        state,
+        outputs: { state, results: own, loadError },
+      });
+    }
+  });
+  return filed;
+}
+
+/** A kind read by direction: its files, and what of its outputs must be equal whatever any file says. */
+interface Direction {
+  readonly files: (output: CaseOutput) => Map<string, Filed>;
+  readonly whole?: (output: CaseOutput) => string;
+}
+
+const runCount = (output: CaseOutput) => {
+  const runs = isRecord(output.outputs) ? output.outputs.runs : undefined;
+  return `${Array.isArray(runs) ? runs.length : 0} runs`;
+};
+
+const DIRECTIONS: Partial<Record<CaseKind, Direction>> = {
+  store: { files: decided },
+  "adapter:vitest": { files: ranFiles, whole: runCount },
+};
+
+function directionOf(read: Direction, baseline: CaseOutput, candidate: CaseOutput) {
+  const { raise, reported } = byDirection(read.files(baseline), read.files(candidate));
+  const [b, c] = [read.whole?.(baseline), read.whole?.(candidate)];
+  if (b !== c) raise.push(`${b} at the last release, ${c} at the candidate`);
   return { raise, reported };
 }
 
@@ -91,8 +165,9 @@ export function verdictOf(c: Case, baseline: CaseOutput, candidate: CaseOutput):
   // A case that throws at one tree only differs whatever its keys.
   const errorsEqual = same(baseline.error, candidate.error);
   const keysEqual = errorsEqual && same(baseline.keys, candidate.keys);
+  const read = DIRECTIONS[c.kind];
   const direction =
-    c.kind === "store" && keysEqual ? storeDirection(baseline, candidate) : undefined;
+    read !== undefined && keysEqual ? directionOf(read, baseline, candidate) : undefined;
   const outputsEqual =
     errorsEqual &&
     (!keysEqual ||
@@ -106,6 +181,7 @@ export function verdictOf(c: Case, baseline: CaseOutput, candidate: CaseOutput):
     outputsEqual,
     wordingEqual: same(baseline.wording, candidate.wording),
     reported: direction?.reported ?? [],
+    raised: direction?.raise ?? [],
     baseline,
     candidate,
   };
@@ -150,7 +226,7 @@ function componentFailures(c: Comparison, alarm: Alarm, ref: string): string[] {
     const thrown = v.baseline.error ?? v.candidate.error;
     const what =
       thrown === undefined
-        ? `equal keys, different outputs at ${ref} and the candidate`
+        ? `equal keys, different outputs at ${ref} and the candidate${v.raised.length > 0 ? ` (${v.raised.join("; ")})` : ""}`
         : `throws at ${v.baseline.error === undefined ? "the candidate" : ref} only: ${thrown}`;
     out.push(`${v.kind} case "${v.name}": ${what}; raise ${name}`);
   }
@@ -176,7 +252,7 @@ export function wordingChanges(c: Comparison): string[] {
   return c.cases.filter((v) => v.keysEqual && v.outputsEqual && !v.wordingEqual).map((v) => v.name);
 }
 
-/** Outputs that differ and ask no raise (the `store` kind's direction), by case: listed, never failed. */
+/** Outputs that differ and ask no raise (a kind's direction), by case: listed, never failed. */
 export function reportedChanges(c: Comparison): string[] {
   return c.cases.flatMap((v) => v.reported.map((line) => `${v.kind} case "${v.name}": ${line}`));
 }
