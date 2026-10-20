@@ -45,7 +45,9 @@ The expected failures, all until the coordinator raises the format and rebuilds 
 
 - `test/keys/key-format.test.ts`: `KEY_FORMAT_VERSION > is bumped whenever the guarded sources change`, and `an adapter-only bump > of src/runners/node-test/version.ts keeps the global pin` and `> of src/runners/vitest/version.ts keeps the global pin`. Both adapter-only tests compare with the pinned hash.
 - `test/keys/validity/compare.test.ts`: `the candidate against the last release > keeps every stored meaning, or raises`. It reports `changed lines no case runs` in `src/core/scheduler/unknown-files.ts` (the `cause` field and `knownCause`) and `src/core/scheduler/ledger.ts` (`markUnknown`'s `cause`). Under 011-39's decision 4, a raised format is reported, not failed, so the bundled release's raise clears it. Once R4 (011-41) replaces the guard, these lines need a case under `test/keys/validity/cases/`. They write the `unknownFiles` meta row, which no key or result reads.
-- The bundle-drift tests, named from the checkpoint below.
+- The four bundle-drift tests, each `cli/squeal.mjs differs from the build` (`test/harness/bundle-helpers.ts:122`): `test/harness/plugin.test.ts` ``bundles > are committed exactly as `npm run build` produces them``, `test/harness/codex/plugin.test.ts` ``committed Codex plugin > has the bundles exactly as `npm run build:plugin` produces them``, `test/harness/opencode/package.test.ts` `the OpenCode package > has the bundles ...` and `test/harness/pi/package.test.ts` `the Pi package > has the bundles ...`. `npm run build` was not run, per the brief.
+
+The 001-390 fidelity tests fail on main too: `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`.
 
 ## One test per row of section 3's table
 
@@ -76,8 +78,8 @@ The expected failures, all until the coordinator raises the format and rebuilds 
 ## What the design did not foresee, and the choice made
 
 1. **The unlisted row in a named wait names no command.** The design's `` `squeal status --wait 60000` waits for it `` is a pathless wait on the whole worktree, the wrong advice inside a named wait, whose reason already gives the per-call bound. `nextStep(s, { named: false })`, which R4's `Outstanding:` will use, keeps it.
-2. **A slow file under `slow.trigger: "idle"` keeps its wording on the verdict line**: `1 slow, run when the agent pauses or on \`squeal run --slow\``, which 004-80 pinned, where `continuous` gives the design's `1 slow: \`squeal run --slow\``.
-3. **The verdict line keeps `noVerdictText`'s parenthetical before the groups**: `1 test file without a current result at revision 2 (1 stale): 1 stale, nothing queued it: \`squeal retry tests/a.test.ts\``. The design's sample drops `(1 stale)`, but `noVerdictText` is in `verdict.ts`, 011-26's file. Dropping it when the rows merge is one line there.
+2. **A slow file under `slow.trigger: "idle"` keeps its wording on the verdict line**: `` 1 slow, run when the agent pauses or on `squeal run --slow` ``, which 004-80 pinned, where `continuous` gives the design's `` 1 slow: `squeal run --slow` ``.
+3. **The verdict line keeps `noVerdictText`'s parenthetical before the groups**: `` 1 test file without a current result at revision 2 (1 stale): 1 stale, nothing queued it: `squeal retry tests/a.test.ts` ``. The design's sample drops `(1 stale)`, but `noVerdictText` is in `verdict.ts`, 011-26's file. Dropping it when the rows merge is one line there.
 4. **Commands print root-relative paths, and `retry` resolves its arguments against the cwd.** From a subdirectory, a printed `squeal retry src/x.test.ts` misses its file, as in gh-39. Not changed, since the design rejected a root fallback (one argument would mean two files). Printing cwd-relative paths would need the cwd in `namedText`, which is R3's (`status-wait-lines.ts`).
 5. **A reasonless retry's record says `environment`** (above). Status's pending-retry line for a no-result run no longer names its reason (`(no result at its inputs)` for `(load, no result at its inputs)`), since that reason never meant anything for such a file.
 6. **`--json` values, not only shape**: a pending entry's `reason` is now the class line's reason for that file, for example `queued; no run is open and nothing recorded holds it` where it was `queued`. A stale entry gains a `reason`, and every entry may gain `next` and `command`. `status --json`'s `unknownTestFiles` entries gain `cause`.
@@ -88,3 +90,7 @@ The expected failures, all until the coordinator raises the format and rebuilds 
 ## Type changes (all additive)
 
 `UnknownTestFile.cause?: UnknownCause` and the type `UnknownCause` (`src/core/types/status.ts`); `PendingRetry.runningSince?: EpochMs`; `UnknownFileRecord.cause?: RecordedCause` (`src/core/scheduler/unknown-files.ts`); `Ledger.markUnknown`'s options gain `cause`; `block(..., cause = "runner")`; `NamedFile.standing?: Standing`; `PendingReason` `running.files?`, `running.setup?`, `queued.files?`; `NamedFileEntry.next?`, `command?`; `NamedSelection.unmatchedPaths?: UnmatchedPath[]`; `readNamedFiles(..., load?)`, `pendingRetriesOf(..., runs?)`, `waitsText(..., runningSince?)`.
+
+## Verification
+
+`npm ci`, `npm run lint` (`Checked 1528 files ... No fixes applied.`) and `npm run typecheck` are clean. `squeal run --all --wait`, checkpoint 38cb1cbe, completed at revision 42 (HEAD bef82c12, clean): 753 test files, 7,125 checks passed, 11 known failures. Ten are the expected ones above: four bundle drift, three key-format, `compare.test.ts` and the two 001-390 fidelity tests. The eleventh, `test/harness/opencode-dispose.test.ts` `serve: an abort of the new turn, then the old Stop's answer, stores nothing`, killed a held Stop at +2018 ms against a +2000 ms deadline at revision 14, 1.77 load per CPU. This row changes no harness file. `squeal retry --reason load` ran it again at the same inputs and it passed: a flake under load.
