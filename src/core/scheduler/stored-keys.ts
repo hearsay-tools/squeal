@@ -1,3 +1,4 @@
+import type { KeyIndex } from "../keys/index.js";
 import type { CheckKey, EpochMs } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
@@ -29,6 +30,11 @@ export const STORED_KEYS_OVERLAP_MS = 120_000;
  * provenance, another worktree's unconfirmed fail stays held (C5), and a
  * file policy left unqueued stays so. A read that finds nothing new writes
  * nothing (task 001-412).
+ *
+ * Its files match at the formats C3 reads as one too (C4 step 3 as amended
+ * 2026-10-20, task 011-38): a row a daemon a release behind stores after the
+ * upgrade is copied to the file's key by the lookup, which reads those
+ * formats again for the files matched.
  */
 export class StoredKeys {
   /** When the previous read began; at first, the scheduler's start, before its baseline's lookup. */
@@ -52,12 +58,16 @@ export class StoredKeys {
       .keysSince(since)
       .filter(({ key, recordedAt }) => this.#seen.get(key) !== recordedAt);
     const keys = new Set(fresh.map(({ key }) => key));
+    const { index } = context.keys;
     const refs =
       keys.size === 0
         ? []
-        : [...ledger.files.values()].filter((file) => withoutResult(file, keys)).map((f) => f.ref);
+        : [...ledger.files.values()]
+            .filter((file) => withoutResult(file, keys, index))
+            .map((f) => f.ref);
     if (refs.length > 0) {
       const restore = ledger.hold(refs);
+      ledger.rereadFormats(refs);
       try {
         ledger.settle(refs, NOTHING_CHANGED, { queueMisses: false });
         ledger.commit();
@@ -72,14 +82,13 @@ export class StoredKeys {
   }
 }
 
-/** `file`'s key is among `keys`, and it holds no result there, nor runs or crashed there. */
-function withoutResult(file: FileState, keys: ReadonlySet<CheckKey>): boolean {
+/**
+ * `file`'s key, or its key at a format read as one, is among `keys`, and it
+ * holds no result there, nor runs or crashed there.
+ */
+function withoutResult(file: FileState, keys: ReadonlySet<CheckKey>, index: KeyIndex): boolean {
   const { key } = file;
-  return (
-    key !== null &&
-    keys.has(key) &&
-    key !== file.resultKey &&
-    key !== file.runningKey &&
-    key !== file.unknownKey
-  );
+  if (key === null || key === file.resultKey || key === file.runningKey) return false;
+  if (key === file.unknownKey) return false;
+  return keys.has(key) || (index.keysReadAsOne(key)?.keys.some((k) => keys.has(k)) ?? false);
 }
