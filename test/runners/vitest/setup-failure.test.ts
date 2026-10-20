@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readVerdict, verdictCode } from "../../../src/cli/verdict.js";
 import { formatDelta } from "../../../src/core/delivery/index.js";
+import { readUnknownFiles } from "../../../src/core/scheduler/unknown-files.js";
 import {
   failureCountText,
   formatCheck,
@@ -129,6 +130,10 @@ describe("a global setup that throws once", SLOW, () => {
     expect(blocked.failures).toEqual({ tests: 0, testFiles: 0, setups: 1 });
     expect(blocked.byClass.unknown).toBe(ALL_TEST_FILES.length);
     expect(verdictCode(blocked)).toBe(3);
+    // Row 011-27: each file it kept from running is recorded with the setup as its cause.
+    const causes = [...readUnknownFiles(store, h.worktreeId).values()].map((r) => r.cause);
+    expect(causes.length).toBeGreaterThan(0);
+    expect(new Set(causes)).toEqual(new Set(["setup"]));
 
     // The next revision recreates nothing it need not: the closed instance's successor runs the setup.
     const math = join(repo.main, "src/math.ts");

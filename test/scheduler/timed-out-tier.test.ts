@@ -1,7 +1,9 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { testFileId } from "../../src/core/keys/index.js";
+import { readUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
 import type { TestCheckId } from "../../src/core/types/index.js";
 import { createRepo, openHarness, openRepoStore, type RecordedRun } from "./helpers.js";
 
@@ -121,6 +123,9 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
     expect(unknown).toHaveLength(1);
     expect(unknown[0]?.testFiles.map((f) => f.path)).toEqual([HANG]);
     expect(unknown[0]?.reason).toBe(`timed out after ${TIMEOUT_MS / 1000} s`);
+    // Row 011-27: its record says it timed out by a structured cause, not only by its words.
+    const records = [...readUnknownFiles(store, worktreeIdFor(repo.main)).values()];
+    expect(records.find((r) => r.testFile.path === HANG)?.cause).toBe("timeout");
     // The hanging file never completed, so it has no checks: it counts among the files without.
     expect(h.header().counts).toMatchObject({ pending: 0, unknown: 0 });
     expect(h.header().testFilesWithoutChecks).toMatchObject({ pending: 0, unknown: 1 });

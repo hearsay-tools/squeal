@@ -10,6 +10,7 @@ import type {
   StatusSnapshot,
   Store,
   TestFileKeyRecord,
+  UnknownCause,
   UnknownTestFile,
   UnknownTestFiles,
   WorktreeId,
@@ -93,28 +94,47 @@ export function unknownReasons(
     lookupOnly ??= root !== undefined && readPolicy(root).baseline.onStart === "lookup-only";
     return lookupOnly;
   };
-  const reason = (row: TestFileKeyRecord, own: readonly KnownState[]): string | null => {
+  const reason = (
+    row: TestFileKeyRecord,
+    own: readonly KnownState[],
+  ): { reason: string | null; cause?: UnknownCause } => {
     const summary = own.find((s) => s.validity === "unknown")?.summary ?? null;
-    if (summary !== null) return summary;
+    if (summary !== null) return { reason: summary };
     if (row.key === null) {
-      return "no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked";
+      return {
+        reason:
+          "no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked",
+        cause: "runner",
+      };
     }
-    if (setups.has(row.testFile.project)) return "its project's global setup failed";
+    if (setups.has(row.testFile.project)) {
+      return { reason: "its project's global setup failed", cause: "setup" };
+    }
     const claimant = claimantOf(store, worktreeId, row.testFile, row.key, now);
-    if (claimant !== null) return `${claimant.worktree.root}'s daemon is running its key`;
-    if (own.length > 0) return null;
-    return isLookupOnly()
-      ? "never run at this key: the baseline is lookup-only, so nothing queued it"
-      : "never run at this key, and nothing queued it";
+    if (claimant !== null)
+      return { reason: `${claimant.worktree.root}'s daemon is running its key` };
+    if (own.length > 0) return { reason: null };
+    return {
+      reason: isLookupOnly()
+        ? "never run at this key: the baseline is lookup-only, so nothing queued it"
+        : "never run at this key, and nothing queued it",
+      cause: "never-run",
+    };
   };
   return {
     of(row, own) {
       const entry = recorded.get(testFileId(row.testFile));
       if (entry !== undefined && entry.key === row.key) {
-        const { ran, reason, samples } = entry;
-        return { testFile: row.testFile, ran, reason, samples };
+        const { ran, reason, samples, cause } = entry;
+        return {
+          testFile: row.testFile,
+          ran,
+          reason,
+          samples,
+          ...(cause === undefined ? {} : { cause }),
+        };
       }
-      return { testFile: row.testFile, ran: false, reason: reason(row, own), samples: [] };
+      return { testFile: row.testFile, ran: false, samples: [], ...reason(row, own) };
     },
   };
 }
