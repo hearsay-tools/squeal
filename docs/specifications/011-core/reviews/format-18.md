@@ -125,3 +125,48 @@ Repair B1 in the coverage reader and comparison self-tests only. Re-review that 
 011-40/011-41 still own the accept/store extraction, retired-check comparison, the barrier/adapter cases at 17 and 18, and enforcement of coverage and raise-needs-a-difference. Keep the single lookup path and D1(a)'s candidate decisions over both stores. Do not infer complete coverage from `failures()` returning an empty list for different format versions.
 
 011-25's newer namesake/direct-importer policy is outside this bundle. Its implementation should apply the same classification to handover and start baselines, which currently use closure reach for a small revision. This review evaluates 011-33 against its assigned 011-30 design and brief, not the pending policy row's implementation.
+
+## Re-review
+
+Candidate: `50a234ce618d60cc4c7d0d7464faccb143f12573` (`cand/0.1.228`). **PASS: B1 resolved; 0 remaining blockers, 0 new findings.** This bounded re-review supersedes the initial FAIL verdict above.
+
+The non-doc delta from `8a4af878` is exactly repair commit `50a234ce`: five files under `test/keys/validity/` (`coverage.ts`, its new test, `sides.ts`, `compare.ts` and its test). `git diff --exit-code 8a4af878 50a234ce^ -- . ':!docs'` exited 0. The rebase from `00a99166` to released main `f30ce4e8` changes only `docs/board.md` and the 011-42 review. The nearest ancestral release is now `squeal--v0.1.227`; the passing cross-release test uses it. No product or bundle change reopens the settled product review.
+
+Verification against the clean pinned candidate:
+
+```text
+$ git rev-parse HEAD
+50a234ce618d60cc4c7d0d7464faccb143f12573
+
+$ npm ci
+added 196 packages, and audited 197 packages in 8s
+found 0 vulnerabilities
+
+$ npm run lint
+> biome check .
+Checked 1520 files in 653ms. No fixes applied.
+
+$ npm run typecheck
+> tsc --noEmit
+
+$ npx vitest run test/keys --maxWorkers=2
+Test Files  19 passed (19)
+     Tests  184 passed (184)
+  Duration  19.45s
+```
+
+The dependency install retains the same deprecation and six install-script warnings recorded above. Build and the independent full suite were deliberately not repeated, as the re-review instruction requires. The original full-run evidence and its standalone failure checks remain recorded above. Squeal's separate status returned on quiet with zero running or queued checks and the same two pre-existing recorder-fidelity failures.
+
+B1's two repairs fit the guidance:
+
+- `coverageOf` preserves one range list per report. `unrun` resolves the innermost range within each list, then treats a line as executed if any report executed it. `sides.ts` carries that shape through both bundle and runtime coverage. The new unit tests cover the zero-count function beside a positive one in both orders, an unexecuted inner branch beside a taken branch in both orders, and genuinely unexecuted lines, including an empty report list.
+- After the candidate decides over each store, `compareTrees` additionally runs the release's decision against its own store for coverage. That call's returned outputs are discarded. The verdicts still use the previously collected candidate decisions over both stores, preserving D1(a).
+- The new `Ledger.probe` overlay regression asserts equal outputs, no uncovered lines and no comparison failures. It passed in the requested key suite. Independent throwaway copies of the three harness modules also verified sensitivity without editing the candidate:
+
+| Harness variant | Compared outputs | Uncovered lines | Comparison |
+| --- | --- | --- | --- |
+| Repaired | Equal | None | Pass |
+| Flatten report ranges before selecting coverage | Equal | Baseline `ledger.ts:316`; candidate `316` and `317` | Fail |
+| Omit the release's coverage-only decision | Equal | Baseline `ledger.ts:316` | Fail |
+
+Both halves are necessary to resolve the reproduced false rejection. The remaining 011-40/011-41 work and the settled product paths retain the scope recorded above.
