@@ -1,4 +1,3 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import { worktreeIdFor } from "../core/fs/index.js";
 import {
   answerMoves,
@@ -24,7 +23,13 @@ import type {
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
-import { type DaemonSync, type SyncState, syncDaemon } from "./status-sync.js";
+import {
+  type DaemonSync,
+  pollPause,
+  SYNC_POLL_MS,
+  type SyncState,
+  syncDaemon,
+} from "./status-sync.js";
 import {
   type EditWindow,
   editWindow,
@@ -159,9 +164,10 @@ export type StatusWait =
 /**
  * Spec 001 D7: "`squeal status --wait <ms>` blocks until nothing is pending
  * at the current revision or a new transition is recorded, then prints the
- * snapshot". Reads the store every `pollMs`. Without a validating daemon
- * nothing pending can finish, so once the settle time passed with no daemon
- * alive it returns `no-daemon` instead of `quiet` or a long timeout; a
+ * snapshot". Reads the store every `pollMs`, and once its sync answers.
+ * Without a validating daemon nothing pending can finish, so once the settle
+ * time passed with no daemon alive it returns `no-daemon` instead of `quiet`
+ * or a long timeout; a
  * daemon a hook just spawned has the settle time to record its heartbeat.
  * Pending includes the runner part of the current revision (D2 as amended).
  *
@@ -252,7 +258,7 @@ export async function waitForStatus(
         const revision = store.revisions.latest(id)?.number ?? 0;
         syncing.heard ??= lastHeard(store, id, revision, session, agent);
         const heard = syncing.heard;
-        syncing.sync ??= startSync(root, pollMs);
+        syncing.sync ??= startSync(root, Math.min(pollMs, SYNC_POLL_MS));
         const current = syncing.sync.current();
         if (current.state === "synced" && !syncing.fallback) {
           const seq = movesSeq(store, id);
@@ -361,7 +367,7 @@ export async function waitForStatus(
         return { ...read, waitedMs: elapsed() };
       }
       const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await sleep(Math.min(pollMs, remaining));
+      if (remaining > 0) await pollPause(Math.min(pollMs, remaining), syncing.sync);
     }
   } finally {
     syncing.sync?.stop();

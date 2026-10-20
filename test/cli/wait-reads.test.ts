@@ -1,9 +1,10 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import type { DaemonSync } from "../../src/cli/status-sync.js";
-import { waitForStatus } from "../../src/cli/status-wait.js";
+import { STATUS_WAIT_POLL_MS, waitForStatus } from "../../src/cli/status-wait.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import type { openStore as OpenStore } from "../../src/core/store/index.js";
 import type { RevisionNumber } from "../../src/core/types/index.js";
@@ -17,7 +18,8 @@ import { A, answering, B, key, NOW, repoWith, SLOW_FILE } from "./status-wait-fi
  * once a second, and a poll that cannot end it reads no known state it does
  * not hold for. Each wait here runs 2.5 s: polls at 0, 1 and 2 s and the
  * deadline's at 2.5 s, one more just before it when the deadline's timer
- * fires a fraction early (`wait-clock.ts`), where a 250 ms poll made 11.
+ * fires a fraction early (`wait-clock.ts`), and one when its sync answers,
+ * where a 250 ms poll made 11.
  */
 
 vi.mock("../../src/core/store/index.js", async (importOriginal) => {
@@ -41,10 +43,15 @@ afterEach(() => {
 
 const io = (cwd: string): CliIo => ({ stdout: () => {}, stderr: () => {}, cwd, now: () => NOW });
 
+/** `answering`'s daemon, which also says when it answered, as `syncDaemon` does. */
+function announcing(sync: () => DaemonSync, answerMs: number): () => DaemonSync {
+  return () => ({ ...sync(), answered: sleep(answerMs + 10) });
+}
+
 /** The polls between a wait's first read and the one that ended it. */
 function between<T>(polls: readonly T[]): readonly T[] {
   expect(polls.length).toBeGreaterThanOrEqual(3);
-  expect(polls.length).toBeLessThanOrEqual(5);
+  expect(polls.length).toBeLessThanOrEqual(6);
   return polls.slice(1, -1);
 }
 
@@ -107,6 +114,53 @@ describe("a wait polls once a second and reads only what decides it (C6, 011-42)
     expect(wait.outcome).toBe("timeout");
     // Reviews/011-42.md: `pauseOnlyIds` read every state on each poll that found the wait ready.
     for (const poll of between(sessions)) expect(poll.reads).not.toContain("states");
+  });
+
+  // CI on cand/0.1.227: a quiet wait read its sync's answer a poll late and ended 2 s in.
+  it("status --wait reads the store when its sync answers, not a poll later", async () => {
+    const { repo, store } = repoWith([], [A]);
+    const { sync } = answering(store, repo.mainId, [], undefined, 50);
+
+    const wait = await waitForStatus(repo.main, {
+      timeoutMs: WAIT_MS,
+      now: () => NOW,
+      sync: announcing(sync, 50),
+    });
+
+    expect(wait.outcome).toBe("quiet");
+    expect(wait.waitedMs).toBeLessThan(STATUS_WAIT_POLL_MS);
+  });
+
+  it("status --wait <path> reads the store when its sync answers, not a poll later", async () => {
+    const { repo, store } = repoWith([], [A]);
+    const { sync } = answering(store, repo.mainId, [], undefined, 50);
+
+    const wait = await waitForNamed(repo.main, [A], {
+      timeoutMs: WAIT_MS,
+      pollMs: STATUS_WAIT_POLL_MS,
+      settleMs: 0,
+      now: () => NOW,
+      sync: announcing(sync, 50),
+    });
+
+    expect(wait.outcome).toBe("settled");
+    expect(wait.waitedMs).toBeLessThan(STATUS_WAIT_POLL_MS);
+  });
+
+  it("status --wait polls once a second after its sync answered", async () => {
+    const { repo, store } = repoWith([A], [B]);
+    const { sync } = answering(store, repo.mainId, [A], undefined, 50);
+    sessions.length = 0;
+
+    const wait = await waitForStatus(repo.main, {
+      timeoutMs: WAIT_MS,
+      now: () => NOW,
+      sync: announcing(sync, 50),
+    });
+
+    expect(wait.outcome).toBe("timeout");
+    // An answered sync wakes no other read.
+    between(sessions);
   });
 
   it("run --all --wait reads the checkpoint and the revision until it ends, and the verdict at the deadline", async () => {
