@@ -1354,7 +1354,7 @@ var KEY_FORMAT_VERSION;
 var init_key_format = __esm({
   "src/core/keys/key-format.ts"() {
     "use strict";
-    KEY_FORMAT_VERSION = 16;
+    KEY_FORMAT_VERSION = 17;
   }
 });
 
@@ -4913,6 +4913,7 @@ function createResultRepo(conn) {
       ) ?? { n: 0 },
       "n"
     ),
+    keysSince: (since) => conn.all(KEYS_SINCE, since).map((row) => ({ key: str(row, "key"), recordedAt: num(row, "recorded_at") })),
     putMany: (records) => conn.transaction(() => {
       for (const r of records) {
         const p = r.provenance;
@@ -4975,7 +4976,7 @@ function toResult(row) {
     }
   };
 }
-var OUTCOMES3, SELECT_RESULTS, FAILURE_WHERE;
+var OUTCOMES3, SELECT_RESULTS, KEYS_SINCE, FAILURE_WHERE;
 var init_results = __esm({
   "src/core/store/repos/results.ts"() {
     "use strict";
@@ -4986,6 +4987,9 @@ var init_results = __esm({
   FROM results r
   JOIN checks c ON c.id = r.check_id
   LEFT JOIN failure_texts f ON f.id = r.failure_id`;
+    KEYS_SINCE = `
+  SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
+  WHERE recorded_at > ? GROUP BY key`;
     FAILURE_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND (? IS NULL OR r.recorded_at >= ?)`;
   }
 });
@@ -8260,9 +8264,24 @@ function toInvalidatedPath(change2) {
   const kind = change2.oldHash === null ? "add" : change2.newHash === null ? "delete" : "change";
   return { path: change2.path, kind };
 }
+function isCatchUp(context, ledger, paths) {
+  if (paths.size < CATCH_UP_KEYED_PATHS) return false;
+  const { keys } = context;
+  const testFiles = new Set([...ledger.files.values()].map((file) => file.ref.path));
+  let keyed = 0;
+  for (const path of paths) {
+    if (testFiles.has(path) || keys.isDeclaredInput(path) || keys.index.reverse.referencing([path]).length > 0) {
+      keyed += 1;
+      if (keyed >= CATCH_UP_KEYED_PATHS) return true;
+    }
+  }
+  return false;
+}
 function rekeyContent(context, ledger, revision) {
   const { keys } = context;
   const changes = revision.changes;
+  const paths = new Set(changes.map((c) => c.path));
+  const catchUp = isCatchUp(context, ledger, paths);
   const touched = keys.rekeyListings(changes).map((c) => c.testFile);
   const policy = reloadPolicy(context, ledger, changes);
   touched.push(...policy.changes.map((c) => c.testFile));
@@ -8272,8 +8291,8 @@ function rekeyContent(context, ledger, revision) {
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs2) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  ledger.settle(touched, new Set(changes.map((c) => c.path)), { keyedAt: revision.number });
-  return { rekeyed, environment: inputs2 || policy.environment };
+  ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
+  return { rekeyed, environment: inputs2 || policy.environment, catchUp };
 }
 function reloadPolicy(context, ledger, changes) {
   const policy = context.reloadPolicy(changes);
@@ -8372,6 +8391,7 @@ function storeClosures(context, refs2) {
     }
   });
 }
+var CATCH_UP_KEYED_PATHS;
 var init_revision2 = __esm({
   "src/core/scheduler/revision.ts"() {
     "use strict";
@@ -8381,6 +8401,7 @@ var init_revision2 = __esm({
     init_notes2();
     init_omitted_test_files();
     init_runner_work_bound();
+    CATCH_UP_KEYED_PATHS = 10;
   }
 });
 
@@ -9923,18 +9944,31 @@ function priorityOf(file, changed, direct = NO_DIRECT_IMPORTERS) {
   if (direct.has(file.id)) return Priority.direct;
   return file.resultKey === null ? Priority.neverRun : Priority.transitive;
 }
-function sorted(entries3, durationOf2, first, promoted, ranked = false) {
+function sorted(entries3, durationOf2, turn, promoted, ranked = false) {
   const evidence = (entry4) => ranked ? entry4.evidence.size : 0;
   const rank2 = (entry4) => promoted.get(entry4) ?? Number.POSITIVE_INFINITY;
-  const group = (entry4) => Number(entry4.recent || promoted.has(entry4));
+  const order = GROUP_ORDER[turn ? "turn" : "edits"];
+  const groups = /* @__PURE__ */ new Map();
+  const classes = /* @__PURE__ */ new Map();
   const durations2 = /* @__PURE__ */ new Map();
   for (const entry4 of entries3) {
-    durations2.set(entry4, durationOf2(entry4.ref) ?? unknownDuration(entry4.priority));
+    const group2 = groupOf(entry4, promoted.has(entry4));
+    const catchUp = group2 === Group.catchUp;
+    groups.set(entry4, order.indexOf(group2));
+    classes.set(entry4, catchUp ? Number(entry4.priority !== Priority.failing) : entry4.priority);
+    const unknown = catchUp ? Number.POSITIVE_INFINITY : unknownDuration(entry4.priority);
+    durations2.set(entry4, durationOf2(entry4.ref) ?? unknown);
   }
+  const group = (entry4) => groups.get(entry4) ?? 0;
+  const classOf = (entry4) => classes.get(entry4) ?? 0;
   const duration2 = (entry4) => durations2.get(entry4) ?? Number.POSITIVE_INFINITY;
   return [...entries3].sort(
-    (a, b) => first * (group(b) - group(a)) || byDuration(rank2(a), rank2(b)) || a.priority - b.priority || evidence(b) - evidence(a) || byDuration(duration2(a), duration2(b)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
+    (a, b) => group(a) - group(b) || byDuration(rank2(a), rank2(b)) || classOf(a) - classOf(b) || evidence(b) - evidence(a) || byDuration(duration2(a), duration2(b)) || a.seq - b.seq || compare(a.ref.project, b.ref.project) || compare(a.ref.path, b.ref.path)
   ).map((entry4) => entry4.ref);
+}
+function groupOf(entry4, promoted) {
+  if (entry4.recent || promoted) return Group.first;
+  return entry4.catchUp ? Group.catchUp : Group.second;
 }
 function unknownDuration(priority) {
   return priority === Priority.edited ? 0 : Number.POSITIVE_INFINITY;
@@ -9942,7 +9976,7 @@ function unknownDuration(priority) {
 function byDuration(a, b) {
   return a === b ? 0 : a < b ? -1 : 1;
 }
-var Priority, NO_DIRECT_IMPORTERS, RECENT_TIERS_PER_BACKLOG_TIER, NO_EVIDENCE, NOTHING_SLOW, RunQueue;
+var Priority, NO_DIRECT_IMPORTERS, Group, RECENT_TIERS_PER_BACKLOG_TIER, NO_EVIDENCE, NOTHING_SLOW, RunQueue, GROUP_ORDER;
 var init_queue = __esm({
   "src/core/scheduler/queue.ts"() {
     "use strict";
@@ -9951,6 +9985,7 @@ var init_queue = __esm({
     init_promotions();
     Priority = { failing: 0, edited: 1, direct: 2, transitive: 3, neverRun: 4 };
     NO_DIRECT_IMPORTERS = /* @__PURE__ */ new Set();
+    Group = { first: 0, catchUp: 1, second: 2 };
     RECENT_TIERS_PER_BACKLOG_TIER = 4;
     NO_EVIDENCE = /* @__PURE__ */ new Set();
     NOTHING_SLOW = () => false;
@@ -10006,15 +10041,22 @@ var init_queue = __esm({
       isFirstGroup(ref2) {
         return this.isRecent(ref2) || this.isPromoted(ref2);
       }
+      /** Catch-up (C4 step 4 as amended 2026-10-20, task 011-22): queued so, and not of the first group. */
+      isCatchUp(ref2) {
+        const entry4 = this.#entries.get(testFileId(ref2));
+        return entry4 !== void 0 && this.#groupOf(entry4) === Group.catchUp;
+      }
       has(ref2) {
         return this.#entries.has(testFileId(ref2));
       }
       /**
        * Queues a test file, or raises the priority of its entry. A `forced` entry
        * (`run --all --force`) runs even when its key has a result. A `recent`
-       * entry stays recent until it leaves the queue.
+       * entry stays recent until it leaves the queue, and a `catchUp` one is
+       * catch-up until then unless it is recent or promoted too (C4 step 4 as
+       * amended 2026-10-20, task 011-22).
        */
-      add(ref2, priority, forced = false, recent = false) {
+      add(ref2, priority, forced = false, recent = false, catchUp = false) {
         this.#promotions.settle(this.#queued);
         const id2 = testFileId(ref2);
         const entry4 = this.#entries.get(id2);
@@ -10022,6 +10064,7 @@ var init_queue = __esm({
           entry4.priority = Math.min(entry4.priority, priority);
           entry4.forced ||= forced;
           entry4.recent ||= recent;
+          entry4.catchUp ||= catchUp;
           return;
         }
         this.#entries.set(id2, {
@@ -10030,6 +10073,7 @@ var init_queue = __esm({
           seq: this.#seq++,
           forced,
           recent,
+          catchUp,
           evidence: NO_EVIDENCE
         });
       }
@@ -10114,21 +10158,24 @@ var init_queue = __esm({
         this.#recentTiers = tookBacklog || !waiting ? 0 : this.#recentTiers + 1;
       }
       /**
-       * Recent entries first, then priority, then shortest last known duration
-       * with unknown ones last (an `edited` entry's unknown one first, as
-       * `joinSpan` counts it 0: 011 C4 as amended, gh-31), then first queued, then project and path. Spec
-       * 001 D5 step 4 as amended (task 001-100, defect 19): work an edit caused
-       * runs ahead of the baseline, an environment change or `run --all`, "within
+       * Recent entries first, then catch-up, then the rest; within a group
+       * priority, then shortest last known duration with unknown ones last (an
+       * `edited` entry's unknown one first, as `joinSpan` counts it 0: 011 C4 as
+       * amended, gh-31), then first queued, then project and path. Spec 001 D5
+       * step 4 as amended (task 001-100, defect 19): work an edit caused runs
+       * ahead of the baseline, an environment change or `run --all`, "within
        * each group D5's order stands"; "within a class, shortest last known
        * duration first, so a slow integration file never delays the edited
-       * module's own unit test." After `RECENT_TIERS_PER_BACKLOG_TIER` tiers of
-       * recent entries only (`tierSelected`), the backlog comes first once.
-       * A promoted entry (C15) is of the first group and leads it, failing
-       * files included. Fast entries only.
+       * module's own unit test." Catch-up (011 C4 step 4 as amended 2026-10-20,
+       * task 011-22) has two classes, failing and the rest, each shortest first
+       * with unknown durations last: "the edited, direct and transitive classes
+       * do not divide it." After `RECENT_TIERS_PER_BACKLOG_TIER` tiers of
+       * recent entries only (`tierSelected`), the second group comes first
+       * once, catch-up first. A promoted entry (C15) is of the first group and
+       * leads it, failing files included. Fast entries only.
        */
-      ordered(durationOf2 = () => null) {
-        const first = this.backlogTurn() ? -1 : 1;
-        return sorted(this.#fast(), durationOf2, first, this.#ranks());
+      ordered(durationOf2 = () => null, turn = this.backlogTurn()) {
+        return sorted(this.#fast(), durationOf2, turn, this.#ranks());
       }
       /** The backlog comes first once: `RECENT_TIERS_PER_BACKLOG_TIER` tiers of the first group ran. */
       backlogTurn() {
@@ -10145,7 +10192,7 @@ var init_queue = __esm({
         return sorted(
           [...this.#entries.values()].filter((entry4) => this.#isSlow(entry4.ref)),
           durationOf2,
-          1,
+          false,
           this.#ranks(),
           ranked
         );
@@ -10156,6 +10203,9 @@ var init_queue = __esm({
       #firstGroup(entry4) {
         return entry4.recent || this.#promotions.rankOf(testFileId(entry4.ref)) !== null;
       }
+      #groupOf(entry4) {
+        return groupOf(entry4, this.#promotions.rankOf(testFileId(entry4.ref)) !== null);
+      }
       /** Each promoted entry's request order, for `sorted`. */
       #ranks() {
         const ranks = /* @__PURE__ */ new Map();
@@ -10165,6 +10215,10 @@ var init_queue = __esm({
         }
         return ranks;
       }
+    };
+    GROUP_ORDER = {
+      edits: [Group.first, Group.catchUp, Group.second],
+      turn: [Group.catchUp, Group.second, Group.first]
     };
   }
 });
@@ -10733,9 +10787,12 @@ var init_ledger = __esm({
       file(ref2) {
         return this.files.get(testFileId(ref2));
       }
-      /** The queue in run order: D5 step 4 classes, shortest last known duration first within one. */
-      ordered() {
-        return this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null);
+      /**
+       * The queue in run order: D5 step 4 classes, shortest last known duration
+       * first within one; `turn` false orders it as if the backlog's turn were not due.
+       */
+      ordered(turn = this.queue.backlogTurn()) {
+        return this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null, turn);
       }
       /**
        * The slow class of the queue in the order the slow tier runs it (spec 004
@@ -10776,7 +10833,8 @@ var init_ledger = __esm({
        * of its closure, or the runner named it a direct importer: work an edit
        * caused, which runs ahead of the rest (D5 step 4 as amended, task
        * 001-100). An environment input is in no closure, so the files an install
-       * or a config change re-keys are not.
+       * or a config change re-keys are not. With `catchUp` such a miss is
+       * catch-up instead (011 C4 step 4 as amended 2026-10-20, task 011-22).
        */
       settle(refs2, changed, options = {}) {
         const misses = [];
@@ -10819,7 +10877,10 @@ var init_ledger = __esm({
             this.queue.remove(ref2);
             this.#syncPhase(file);
           } else if (options.queueMisses !== false) {
-            this.enqueue(file, priorityOf(file, changed, options.direct), false, recent.has(file.id));
+            const reached = recent.has(file.id);
+            const catchUp = reached && options.catchUp === true;
+            const priority = priorityOf(file, changed, options.direct);
+            this.enqueue(file, priority, false, reached && !catchUp, catchUp);
           }
         }
         this.#rank(changed, misses);
@@ -10931,8 +10992,8 @@ var init_ledger = __esm({
         }
         return held2.length > 0;
       }
-      enqueue(file, priority, forced = false, recent = false) {
-        this.queue.add(file.ref, priority, forced, recent);
+      enqueue(file, priority, forced = false, recent = false, catchUp = false) {
+        this.queue.add(file.ref, priority, forced, recent, catchUp);
         this.#syncPhase(file);
       }
       /** Takes `file` out of the queue; whether it was queued. */
@@ -11789,11 +11850,13 @@ import { join as join38 } from "node:path";
 function laneOf(context, ref2) {
   return laneFor(context.policy, ref2, context.runner.lane?.(ref2) ?? "");
 }
-function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
+function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), turnDue = ledger.queue.backlogTurn()) {
   const { keys, policy } = context;
   const picked = [];
   ledger.claims.begin();
   const backlog = !ledger.queue.hasFirstGroup((ref2) => !busy.has(laneOf(context, ref2)));
+  const turn = !backlog && turnDue;
+  let turnTier = false;
   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
   const offer = backlog ? context.capacity?.offer(size) ?? defaultHostSlots2() : 0;
   const wall = backlog ? new BacklogWall(backlogBudget(policy.runner.timeoutMs)) : null;
@@ -11802,7 +11865,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   let lane = null;
   let slot2 = null;
   let skipped2 = false;
-  for (const ref2 of ledger.ordered()) {
+  for (const ref2 of ledger.ordered(turnDue)) {
     if (picked.length >= size) break;
     const at2 = laneOf(context, ref2);
     if (busy.has(at2) || lane !== null && at2 !== lane) continue;
@@ -11815,7 +11878,8 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
     }
     const forced = ledger.queue.isForced(ref2);
     const recent = ledger.queue.isRecent(ref2);
-    if (!backlog && !ledger.queue.isFirstGroup(ref2) && !ledger.queue.backlogTurn() && backlogSlot(context, ref2) !== null) {
+    const catchUp = ledger.queue.isCatchUp(ref2);
+    if (!backlog && !ledger.queue.isFirstGroup(ref2) && !turn && backlogSlot(context, ref2) !== null) {
       skipped2 = true;
       continue;
     }
@@ -11831,12 +11895,15 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
     }
     const cap2 = Math.min(size, file.tierCap ?? size);
     if (picked.length >= cap2) continue;
-    if (!backlog) {
+    if (picked.length === 0 && (backlog || turn && !ledger.queue.isFirstGroup(ref2))) {
+      turnTier = !backlog;
+      slot2 = backlogSlot(context, ref2);
+    } else if (slot2 !== null && !joinsSlot(picked, file, (r) => partOf(context, r))) break;
+    if (!backlog && slot2 === null) {
       const joined = joinSpan(span, file.durationMs);
       if (joined === null) continue;
       span = joined;
-    } else if (picked.length === 0) slot2 = backlogSlot(context, ref2);
-    else if (slot2 !== null && !joinsSlot(picked, file, (r) => partOf(context, r))) break;
+    }
     if (slot2 === null && wall !== null && !wall.take(file.durationMs, tierWidth(context, ref2, offer), partOf(context, ref2)))
       break;
     tookBacklog ||= !recent && !ledger.queue.isPromoted(ref2);
@@ -11844,16 +11911,17 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
     size = Math.min(cap2, slot2 ?? cap2);
     const checkpointId = ledger.checkpoints.idFor(ref2);
     const inputs2 = keys.stabilityPaths(ref2);
-    picked.push({ file, key: key2, inputs: inputs2, checkpointId, forced, recent, waits });
+    picked.push({ file, key: key2, inputs: inputs2, checkpointId, forced, recent, waits, catchUp });
   }
-  const width = slot2 !== null ? 1 : backlog ? widest(context, picked) : 0;
-  const taken2 = picked.length > 0 && backlog ? context.capacity?.take(width) : null;
+  const granted = backlog || turnTier;
+  const width = slot2 !== null ? 1 : granted ? widest(context, picked) : 0;
+  const taken2 = picked.length > 0 && granted ? context.capacity?.take(width) : null;
   if (taken2 === WAIT_FOR_CAPACITY) {
     ledger.commit();
-    return null;
+    return turnTier ? selectTier(context, ledger, busy, false) : null;
   }
   const lease = taken2 ? widthLease(taken2, width) : taken2;
-  if (slot2 === null && lease && lease.grant < Math.min(width, offer)) {
+  if (backlog && slot2 === null && lease && lease.grant < Math.min(width, offer)) {
     const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
     const keep = picked.findIndex(
       (p) => !fits.take(
@@ -11866,7 +11934,8 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   }
   let tier = null;
   try {
-    tier = picked.length === 0 ? null : startTier(context, ledger, picked, backlog, lease ?? void 0);
+    const cancellable = backlog || turnTier && slot2 !== null;
+    tier = picked.length === 0 ? null : startTier(context, ledger, picked, cancellable, lease ?? void 0);
   } finally {
     if (tier === null) lease?.release();
   }
@@ -11877,7 +11946,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set()) {
   ledger.commit();
   const settled = picked.some((p) => !ledger.queue.has(p.file.ref));
   const slots = skipped2 && picked.length === 0 && !ledger.queue.hasFirstGroup((r) => !busy.has(laneOf(context, r)));
-  return settled || slots ? selectTier(context, ledger, busy) : null;
+  return settled || slots ? selectTier(context, ledger, busy, turnDue) : null;
 }
 function supersededIn(file, key2) {
   if (file.runningKey !== null && file.runningKey !== key2) return true;
@@ -12025,7 +12094,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
   const unstable = (path) => changedOnDisk.has(path) || duringRun.has(path) || observed.changed.has(path);
   store.transaction(() => {
     store.runs.finish(tier.runId, report2.end, context.now());
-    for (const { file, key: key2, inputs: inputs2, checkpointId, forced, recent } of tier.files) {
+    for (const { file, key: key2, inputs: inputs2, checkpointId, forced, recent, catchUp } of tier.files) {
       if (supersededIn(file, key2)) continue;
       ledger.setRunning(file, null);
       if (ledger.files.get(file.id) !== file) continue;
@@ -12036,7 +12105,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
       }
       if (queued || cancelled && !completed.has(file.id)) {
         if (file.key !== null && file.blocked === null) {
-          ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced);
+          ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced, false, catchUp === true);
         }
         continue;
       }
@@ -12388,8 +12457,16 @@ async function baseline(context, ledger, changed = NOTHING_CHANGED) {
     ledger.checkpoints.finish("abandoned");
   } else {
     const recent = ledger.recentOf(changed);
+    const catchUp = isCatchUp(context, ledger, changed);
     for (const file of misses) {
-      ledger.enqueue(file, priorityOf(file, changed), false, recent.has(file.id));
+      const reached = recent.has(file.id);
+      ledger.enqueue(
+        file,
+        priorityOf(file, changed),
+        false,
+        reached && !catchUp,
+        reached && catchUp
+      );
     }
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
@@ -13572,6 +13649,7 @@ async function fetchRunnerPart(context, ledger, revision, content, carried, touc
     environments: environments2,
     listed: listed3,
     direct: new Set((affected2?.direct ?? []).map(testFileId)),
+    ...content.catchUp === true ? { catchUp: true } : {},
     reresolved: [...reresolve.values()],
     closures
   };
@@ -13606,7 +13684,8 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile, keyedAt)
   touch(part.reresolved);
   ledger.settle(touched.values(), changed, {
     direct: part.direct,
-    ...keyedAt === void 0 ? {} : { keyedAt }
+    ...keyedAt === void 0 ? {} : { keyedAt },
+    ...part.catchUp === true ? { catchUp: true } : {}
   });
   settleFailures(ledger, part.failures, part.retrying, changed);
   return stale;
@@ -14357,6 +14436,54 @@ var init_slow_tier = __esm({
   }
 });
 
+// src/core/scheduler/stored-keys.ts
+function withoutResult(file, keys) {
+  const { key: key2 } = file;
+  return key2 !== null && keys.has(key2) && key2 !== file.resultKey && key2 !== file.runningKey && key2 !== file.unknownKey;
+}
+var STORED_KEYS_OVERLAP_MS, StoredKeys;
+var init_stored_keys = __esm({
+  "src/core/scheduler/stored-keys.ts"() {
+    "use strict";
+    init_context();
+    STORED_KEYS_OVERLAP_MS = 12e4;
+    StoredKeys = class {
+      /** When the previous read began; at first, the scheduler's start, before its baseline's lookup. */
+      #readAt;
+      /** The keys the reads within the overlap returned, at their newest record time. */
+      #seen = /* @__PURE__ */ new Map();
+      constructor(start2) {
+        this.#readAt = start2;
+      }
+      /**
+       * Settles this worktree's files at the keys stored since the last read, and
+       * commits. A busy store's error leaves the ledger as the store holds it
+       * (`Ledger.hold`) and the read to the next one (task 001-422).
+       */
+      adopt(context, ledger) {
+        const since = this.#readAt - STORED_KEYS_OVERLAP_MS;
+        const readAt = context.now();
+        const fresh = context.store.results.keysSince(since).filter(({ key: key2, recordedAt }) => this.#seen.get(key2) !== recordedAt);
+        const keys = new Set(fresh.map(({ key: key2 }) => key2));
+        const refs2 = keys.size === 0 ? [] : [...ledger.files.values()].filter((file) => withoutResult(file, keys)).map((f) => f.ref);
+        if (refs2.length > 0) {
+          const restore2 = ledger.hold(refs2);
+          try {
+            ledger.settle(refs2, NOTHING_CHANGED, { queueMisses: false });
+            ledger.commit();
+          } catch (error) {
+            restore2();
+            throw error;
+          }
+        }
+        this.#readAt = readAt;
+        for (const [key2, at2] of this.#seen) if (at2 <= since) this.#seen.delete(key2);
+        for (const { key: key2, recordedAt } of fresh) this.#seen.set(key2, recordedAt);
+      }
+    };
+  }
+});
+
 // src/core/scheduler/warm-up.ts
 var WarmUp;
 var init_warm_up = __esm({
@@ -14460,12 +14587,14 @@ var init_scheduler2 = __esm({
     init_slow3();
     init_slow_tier();
     init_stability();
+    init_stored_keys();
     init_tiers();
     init_warm_up();
     TierScheduler = class {
       constructor(options) {
         this.options = options;
         this.#install = new InstallStamps(options.root);
+        this.#storedKeys = new StoredKeys((options.now ?? Date.now)());
         this.#busy = options.busyWaits === void 0 ? null : new BusyResume(options.busyWaits, () => {
           if (this.#stalled && !this.#failed) this.#pump();
         });
@@ -14540,6 +14669,8 @@ var init_scheduler2 = __esm({
       #capacity;
       /** The pump's resume after a busy store (task 001-422); `null` without `busyWaits`. */
       #busy;
+      /** The keys other worktrees stored since the last read (spec 011 C4 step 3, task 011-23). */
+      #storedKeys;
       async start() {
         await this.#lock.run(async () => {
           if (this.#context) throw new Error("squeal scheduler: started twice");
@@ -14636,6 +14767,7 @@ var init_scheduler2 = __esm({
       async #pass(context, ledger, batch) {
         if (ledger.confirmHeld()) ledger.commit();
         if (batch.trigger === "interval" && takeRetries(context, ledger)) ledger.commit();
+        this.#adopt(context, ledger);
         const { applied, touched } = await reconcileBatch(context, ledger, batch);
         const install = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
         if (install || batch.trigger === "interval") {
@@ -14650,6 +14782,16 @@ var init_scheduler2 = __esm({
         this.#slow.preempt();
         this.#cancelBacklogs(applied.revision);
         this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
+      }
+      /**
+       * Spec 011 C4 step 3 as amended (task 011-23): files with no result at
+       * their key take what other worktrees stored there since the last read.
+       * Not while runner work waits: keys would come from a revision the runner
+       * has not invalidated yet, as a tier's would.
+       */
+      #adopt(context, ledger) {
+        if (this.#runnerWork.size > 0 || this.#runnerWork.refining) return;
+        this.#storedKeys.adopt(context, ledger);
       }
       /**
        * Cancels each backlog tier in flight that `revision`, or with `null` the
@@ -14900,6 +15042,7 @@ var init_scheduler2 = __esm({
                   return null;
                 }
                 if (this.#runnerWork.size > 0) return "runner-work";
+                this.#adopt(context, ledger);
                 const tier = selectTier(context, ledger, this.#busyLanes());
                 if (tier === null) return null;
                 this.#fly(tier, install.stamp, null);
@@ -47639,7 +47782,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.225";
+  if (true) return "0.1.226";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
