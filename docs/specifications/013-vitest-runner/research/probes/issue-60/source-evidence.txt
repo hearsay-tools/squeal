@@ -1,0 +1,52 @@
+Sources read 2026-10-20 UTC.
+
+Vitest 5.0.3 fetched by npm install (README command):
+https://registry.npmjs.org/vitest/-/vitest-5.0.3.tgz
+node_modules/vitest/dist/chunks/index.DpLw24bj.js:12180-12196
+  async _initializeGlobalSetup() {
+    if (this._globalSetups) return;
+    this._globalSetups = await loadGlobalSetupFiles(this.runner, this.config.globalSetup);
+    for (const globalSetupFile of this._globalSetups) {
+      const teardown = await globalSetupFile.setup?.(this);
+      if (teardown == null || !!globalSetupFile.teardown) continue;
+      if (typeof teardown !== "function") throw new TypeError(`invalid return value in globalSetup file ${globalSetupFile.file}. Must return a function`);
+      globalSetupFile.teardown = teardown;
+    }
+  }
+  async _teardownGlobalSetup() {
+    if (!this._globalSetups) return;
+    for (const globalSetupFile of [...this._globalSetups].reverse()) await globalSetupFile.teardown?.();
+  }
+Same file:21282-21286 calls project._initializeGlobalSetup() for the run projects and root project.
+
+Cezar source fetched with each of these commands (content decoded with base64 --decode):
+gh api 'repos/hearsay-tools/cezarion/contents/packages/web/e2e/environment.ts?ref=5fb37b19b93d6401eb1c41cfbc110ccdc092456e' --jq .content
+gh api 'repos/hearsay-tools/cezarion/contents/packages/web/e2e/vitest.config.ts?ref=5fb37b19b93d6401eb1c41cfbc110ccdc092456e' --jq .content
+gh api 'repos/hearsay-tools/cezarion/contents/squeal.config.json?ref=5fb37b19b93d6401eb1c41cfbc110ccdc092456e' --jq .content
+
+packages/web/e2e/vitest.config.ts:10 describes plain Node tests driving agent-browser.
+packages/web/e2e/vitest.config.ts:29:
+    globalSetup: ['./environment.ts', './workspace-registry.ts'],
+packages/web/e2e/environment.ts:35-38:
+/** Prepare browser E2E even when Vitest is driven directly by Squeal. */
+export async function setup(): Promise<() => void> {
+  try {
+    const { stdout, stderr } = await exec('sh', [resolve(root, '.ai/scripts/test-env-up.sh')], {
+packages/web/e2e/environment.ts:60:
+  return useSocketSafeTmpdir()
+squeal.config.json:34,43:
+    "packages/web/e2e/*.e2e.ts": [
+      "packages/web/src/**",
+
+Squeal issue:
+gh issue view 60 --repo hearsay-tools/squeal --json number,title,body,url,comments
+https://github.com/hearsay-tools/squeal/issues/60
+Comments 6302454362 and 6302569352 contain the incident and recovery evidence.
+
+Squeal source:
+git rev-parse HEAD
+cc7047f2b232df419cd6025841c5005d38aece34 (package version 0.1.233)
+git diff squeal--v0.1.232 HEAD -- src/runners/vitest src/core/scheduler/inputs.ts
+(no output; the latter path does not exist; no Vitest-adapter diff)
+Actual declared-input assembly: src/core/scheduler/keying.ts:342 calls
+assembleClosure(runner, this.#declared.for(runner.testFile.path), observed).
