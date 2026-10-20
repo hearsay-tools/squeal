@@ -47803,7 +47803,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.226";
+  if (true) return "0.1.227";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -49108,23 +49108,18 @@ function fileClassOf(row, own) {
   if (unkeyed || own.length === 0 || has("unknown")) return "unknown";
   return has("stale") ? "stale" : "current";
 }
+function readClasses(store, worktreeId, files2 = null) {
+  const only = files2 ?? void 0;
+  const states = store.knownStates.list(worktreeId, only);
+  return tally(store, worktreeId, files2, states, store.testFileKeys.list(worktreeId, only)).classes;
+}
 function readVerdict(store, worktreeId, files2 = null) {
   const states = store.knownStates.list(worktreeId);
-  const keys = store.testFileKeys.list(worktreeId);
-  const header = readHeader(store, worktreeId, states, keys);
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    const id2 = testFileKeyOf(state.check);
-    checks.set(id2, [...checks.get(id2) ?? [], state]);
-  }
-  const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
-  const ids = files2 === null ? [...rows.keys()] : [...new Set(files2.map(testFileId))];
-  const byClass = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const keys = store.testFileKeys.list(worktreeId, files2 ?? void 0);
+  const { classes, ids, rows, checks } = tally(store, worktreeId, files2, states, keys);
   const failures = { tests: 0, testFiles: 0 };
   for (const id2 of ids) {
-    const own = checks.get(id2) ?? [];
-    byClass[fileClassOf(rows.get(id2), own)]++;
-    for (const state of own) {
+    for (const state of checks.get(id2) ?? []) {
       if (state.outcome === "fail") failures[state.check.kind === "test" ? "tests" : "testFiles"]++;
     }
   }
@@ -49132,13 +49127,28 @@ function readVerdict(store, worktreeId, files2 = null) {
   const setups = states.filter(
     (s) => s.check.kind === "setup" && s.outcome === "fail" && (files2 === null || projects2.has(s.check.project))
   ).length;
-  return {
+  return { ...classes, failures: setups > 0 ? { ...failures, setups } : failures };
+}
+function tally(store, worktreeId, files2, states, keys) {
+  const header = readHeader(store, worktreeId, states, keys);
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const id2 = testFileKeyOf(state.check);
+    const own = checks.get(id2);
+    if (own === void 0) checks.set(id2, [state]);
+    else own.push(state);
+  }
+  const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+  const ids = files2 === null ? [...rows.keys()] : [...new Set(files2.map(testFileId))];
+  const byClass = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  for (const id2 of ids) byClass[fileClassOf(rows.get(id2), checks.get(id2) ?? [])]++;
+  const classes = {
     revision: header.revision,
     testFiles: ids.length,
     byClass,
-    unlisted: header.runnerPartPending === true || header.awaitingInstall === true,
-    failures: setups > 0 ? { ...failures, setups } : failures
+    unlisted: header.runnerPartPending === true || header.awaitingInstall === true
   };
+  return { classes, ids, rows, checks };
 }
 function verdictCode(verdict) {
   if (verdict.unlisted || verdict.byClass.current < verdict.testFiles) return 3;
@@ -54802,10 +54812,10 @@ init_store3();
 init_text();
 
 // src/cli/status-wait.ts
-import { setTimeout as sleep11 } from "node:timers/promises";
 init_fs();
 init_rekeyed_moves();
 init_state3();
+import { setTimeout as sleep11 } from "node:timers/promises";
 
 // src/cli/status-command.ts
 import { fileURLToPath as fileURLToPath13 } from "node:url";
@@ -54902,11 +54912,13 @@ function editWindow(store, worktreeId, heard, revision, rekeyed) {
   const owed = new Set(
     kept2.filter((file) => file.resolved !== true).map((file) => testFileId(file.testFile))
   );
-  const ids = new Set(refs2.map(testFileId));
+  const files2 = new Map(refs2.map((ref2) => [testFileId(ref2), ref2]));
+  const ids = new Set(files2.keys());
   return {
     since: kept2.length === 0 ? heard : first,
     revision,
     ids,
+    files: [...files2.values()],
     slow: new Set(refs2.filter((ref2) => isSlow?.(ref2) === true).map(testFileId)),
     resolved: new Set([...ids].filter((id2) => !owed.has(id2)))
   };
@@ -54924,6 +54936,42 @@ function windowRefined(window2, header) {
 function splitNews(window2, entries3) {
   const own = entries3.filter((entry4) => window2.ids.has(testFileId(testFileOf(entry4.check)))).length;
   return { own, other: entries3.length - own };
+}
+
+// src/cli/status-wait-held.ts
+init_keys();
+init_state3();
+function startView(states) {
+  const all = states.map(toStartView);
+  const byFile = /* @__PURE__ */ new Map();
+  for (const entry4 of all) {
+    const id2 = testFileKeyOf(entry4.check);
+    const own = byFile.get(id2);
+    if (own === void 0) byFile.set(id2, [entry4]);
+    else own.push(entry4);
+  }
+  return { all, byFile };
+}
+function readHeld(store, worktreeId, start2, files2) {
+  const only = files2 ?? void 0;
+  const states = store.knownStates.list(worktreeId, only);
+  const keys = store.testFileKeys.list(worktreeId, only);
+  const header = readHeader(store, worktreeId, states, keys);
+  const view = files2 === null ? start2.all : [...new Set(files2.map(testFileId))].flatMap((id2) => start2.byFile.get(id2) ?? []);
+  return { header, states, keys, news: newsOf(view, states, header.revision) };
+}
+function toStartView(state) {
+  return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt: 0 };
+}
+function newsOf(start2, states, revision) {
+  return planDelta({
+    view: start2,
+    states,
+    isBaselineFinding: () => false,
+    toldAt: 0,
+    rootOf: () => null,
+    revision
+  }).entries;
 }
 
 // src/cli/status-wait-lines.ts
@@ -55443,13 +55491,16 @@ async function listening(paths) {
 // src/cli/status-wait-paths.ts
 function selectNamedFiles(store, worktreeId, root, cwd, paths) {
   const rows = store.testFileKeys.list(worktreeId);
-  const closures = validClosures(store, worktreeId, rows);
+  let closures;
   const selected = /* @__PURE__ */ new Map();
   const unmatched = [];
   for (const path of paths) {
     const rel2 = worktreePath(root, cwd, path);
     const own = rows.filter((row) => row.testFile.path === rel2);
-    const hits = rel2 === null ? [] : own.length > 0 ? own : rows.filter((row) => closures.get(row)?.has(rel2) === true);
+    const hits = rel2 === null ? [] : own.length > 0 ? own : rows.filter((row) => {
+      closures ??= validClosures(store, worktreeId, rows);
+      return closures.get(row)?.has(rel2) === true;
+    });
     if (hits.length === 0) unmatched.push(rel2 ?? path);
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
   }
@@ -55508,7 +55559,7 @@ async function waitForNamed(cwd, paths, options) {
         const id2 = worktreeIdFor(root);
         sync ??= options.sync(root, options.pollMs);
         const selection = selectNamedFiles(store, id2, root, cwd, paths);
-        const all = readVerdict(store, id2, selection.files);
+        const all = readClasses(store, id2, selection.files);
         const settled = final || elapsed() >= options.settleMs;
         watch2 ??= watchDaemon(id2, { downMs: options.downMs });
         const record = store.worktrees.get(id2)?.daemon ?? null;
@@ -55524,8 +55575,8 @@ async function waitForNamed(cwd, paths, options) {
         }
         const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
         const held2 = selection.files.filter((f) => !paused.has(testFileId(f)));
-        const verdict = leftForPause.length === 0 ? all : readVerdict(store, id2, held2);
-        const outcome2 = settled && daemon.state === "down" ? "no-daemon" : ready && selection.unmatched.length > 0 ? "unmatched" : ready && held2.length === 0 ? "slow" : ready && verdict.byClass.pending === 0 && !verdict.unlisted ? "settled" : final ? "timeout" : null;
+        const classes = leftForPause.length === 0 ? all : readClasses(store, id2, held2);
+        const outcome2 = settled && daemon.state === "down" ? "no-daemon" : ready && selection.unmatched.length > 0 ? "unmatched" : ready && held2.length === 0 ? "slow" : ready && classes.byClass.pending === 0 && !classes.unlisted ? "settled" : final ? "timeout" : null;
         if (outcome2 === null) {
           if (ready && !promoted) {
             promoted = true;
@@ -55537,6 +55588,7 @@ async function waitForNamed(cwd, paths, options) {
           }
           return null;
         }
+        const verdict = readVerdict(store, id2, held2);
         const result = buildSnapshot(store, root, options.now());
         const files2 = readNamedFiles(
           store,
@@ -55617,7 +55669,7 @@ function pendingSlow(store, worktreeId, states, keys) {
   if (view === null) return /* @__PURE__ */ new Map();
   const files2 = classifySlowFiles(states, keys, view.isSlow);
   return new Map(
-    [...files2].filter(([, file]) => file.class === "pending").map(([id2, file]) => [id2, file.ref.path])
+    [...files2].filter(([, file]) => file.class === "pending").map(([id2, file]) => [id2, file.ref])
   );
 }
 function heldSlowLeft(held2, states, keys) {
@@ -55634,7 +55686,7 @@ function heldSlowLeft(held2, states, keys) {
     rows.add(id2);
     if (row.pending !== null) pending.add(id2);
   }
-  return [...pending].filter((id2) => rows.has(id2)).map((id2) => held2.get(id2)).sort();
+  return [...pending].filter((id2) => rows.has(id2)).map((id2) => held2.get(id2).path).sort();
 }
 function heldSlowNews(held2, entries3, counted) {
   return entries3.filter((entry4) => {
@@ -55644,7 +55696,7 @@ function heldSlowNews(held2, entries3, counted) {
 }
 
 // src/cli/status-wait.ts
-var STATUS_WAIT_POLL_MS = 250;
+var STATUS_WAIT_POLL_MS = 1e3;
 var STATUS_WAIT_SETTLE_MS = 750;
 async function waitForStatus(cwd, options) {
   const now = options.now ?? Date.now;
@@ -55665,14 +55717,17 @@ async function waitForStatus(cwd, options) {
       const busyTimeoutMs = final ? STATUS_BUSY_TIMEOUT_MS : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
       const read5 = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
         const id2 = worktreeIdFor(root);
-        const states = store.knownStates.list(id2);
-        const header = readHeader(store, id2, states);
         if (start2 === null) {
-          start2 = states.map(toStartView);
+          const states = store.knownStates.list(id2);
+          start2 = startView(states);
           syncing.sinceSeq = movesSeq(store, id2) ?? 0;
+          if (options.holdSlow === true) {
+            syncing.slow = pendingSlow(store, id2, states, store.testFileKeys.list(id2));
+          }
         }
-        const news = newsOf(start2, states, header.revision);
-        syncing.heard ??= lastHeard(store, id2, header.revision, session2, agent);
+        const view = start2;
+        const revision = store.revisions.latest(id2)?.number ?? 0;
+        syncing.heard ??= lastHeard(store, id2, revision, session2, agent);
         const heard = syncing.heard;
         syncing.sync ??= startSync(root, pollMs);
         const current3 = syncing.sync.current();
@@ -55697,39 +55752,38 @@ async function waitForStatus(cwd, options) {
           if (syncing.fallback) syncing.window = void 0;
         }
         const window2 = syncing.window;
-        const keys = window2 === void 0 && options.holdSlow !== true ? [] : store.testFileKeys.list(id2);
-        if (options.holdSlow === true) syncing.slow ??= pendingSlow(store, id2, states, keys);
         const held2 = syncing.slow;
-        const slowLeft = held2 === void 0 ? [] : heldSlowLeft(held2, states, keys);
+        const heldFiles = held2 === void 0 ? [] : [...held2.values()];
         const settled = final || elapsed() >= settleMs;
         watch2 ??= watchDaemon(id2, { downMs: options.downMs });
         const daemon = watch2.judge(store.worktrees.get(id2)?.daemon ?? null, now());
+        const naming = window2 === void 0 && (current3.state === "pending" || current3.state === "synced" && !syncing.fallback);
+        const files2 = window2 !== void 0 ? [...window2.files, ...heldFiles] : naming ? heldFiles : null;
+        const seen = naming && heldFiles.length === 0 ? null : readHeld(store, id2, view, files2);
+        const slowLeft = held2 === void 0 || seen === null ? [] : heldSlowLeft(held2, seen.states, seen.keys);
         let transitions;
         let quiet;
-        let edit;
         let slowNews = 0;
-        if (window2 !== void 0) {
-          const split2 = splitNews(window2, news);
-          const pending = heldPending(window2, keys);
-          slowNews = held2 === void 0 ? 0 : heldSlowNews(held2, news, window2.ids);
-          transitions = split2.own + slowNews;
-          quiet = header.revision >= window2.revision && windowRefined(window2, header) && pending === 0;
-          edit = {
-            since: window2.since,
-            testFiles: window2.ids.size,
-            pending,
-            otherTransitions: split2.other - slowNews
-          };
-        } else if (current3.state === "pending" || current3.state === "synced" && !syncing.fallback) {
+        if (window2 !== void 0 && seen !== null) {
+          slowNews = held2 === void 0 ? 0 : heldSlowNews(held2, seen.news, window2.ids);
+          transitions = splitNews(window2, seen.news).own + slowNews;
+          quiet = seen.header.revision >= window2.revision && windowRefined(window2, seen.header) && heldPending(window2, seen.keys) === 0;
+        } else if (naming || seen === null) {
           transitions = 0;
           quiet = false;
         } else {
-          transitions = news.length;
-          quiet = isSynced(current3, header.revision, settled) && !isPending(header);
+          transitions = seen.news.length;
+          quiet = isSynced(current3, seen.header.revision, settled) && !isPending(seen.header);
         }
         quiet &&= slowLeft.length === 0 && daemon.state === "alive";
         const outcome2 = transitions > 0 ? "news" : settled && daemon.state === "down" ? "no-daemon" : quiet ? "quiet" : final ? "timeout" : null;
         if (outcome2 === null) return null;
+        const edit = window2 === void 0 ? void 0 : {
+          since: window2.since,
+          testFiles: window2.ids.size,
+          pending: seen === null ? 0 : heldPending(window2, seen.keys),
+          otherTransitions: splitNews(window2, readHeld(store, id2, view, null).news).other - slowNews
+        };
         const result = buildSnapshot(store, root, now());
         const slow = held2 === void 0 ? {} : { slow: { held: held2.size, pending: slowLeft, transitions: slowNews } };
         const lapse = watch2.lapse();
@@ -55760,19 +55814,6 @@ async function waitForStatus(cwd, options) {
 function isSynced(current3, revision, settled) {
   if (current3.state === "synced") return revision >= current3.revision;
   return current3.state === "unsupported" && settled;
-}
-function toStartView(state) {
-  return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt: 0 };
-}
-function newsOf(start2, states, revision) {
-  return planDelta({
-    view: start2,
-    states,
-    isBaselineFinding: () => false,
-    toldAt: 0,
-    rootOf: () => null,
-    revision
-  }).entries;
 }
 function waitConsumer(env) {
   const session2 = env.CLAUDE_CODE_SESSION_ID ?? env.CODEX_SESSION_ID ?? null;
@@ -56117,7 +56158,8 @@ async function taken(socketPath, first, io) {
 var USAGE4 = "usage: squeal run --all|--fast [--force] [--wait [<ms>]]\n       squeal run --slow [--wait <ms>]\n";
 var RECORD_WAIT_MS2 = 1e4;
 var POLL_MS2 = 100;
-var STORE_POLL_MS = 250;
+var STORE_POLL_MS = 1e3;
+var PING_POLLS = 5;
 async function runCommand(args2, io, internal = {}) {
   const flags2 = new Set(args2);
   const lanes = runLanes(flags2);
@@ -56253,7 +56295,7 @@ function filesText2(root, checkpoint) {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
     const listed3 = laneFiles(store, checkpoint) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row) => row.testFile);
     const rest = listed3.filter((file) => !requested.has(testFileId(file)));
-    return readVerdict(store, checkpoint.worktreeId, rest).byClass.current;
+    return readClasses(store, checkpoint.worktreeId, rest).byClass.current;
   });
   return `${toRun2} to run${current3 === null ? "" : `, ${current3} already current`}`;
 }
@@ -56298,23 +56340,26 @@ function inStore(root, read5) {
 }
 async function ended(root, socketPath, checkpoint, deadline) {
   for (let polls = 0; ; polls++) {
-    const seen = inStore(root, (store) => {
-      const end = store.checkpoints.get(checkpoint.id)?.end ?? null;
-      const revision = store.revisions.latest(checkpoint.worktreeId)?.number ?? 0;
-      if (revision > checkpoint.revision) return { kind: "moved", revision };
-      if (end === "abandoned") return { kind: "abandoned" };
-      const verdict = readVerdict(store, checkpoint.worktreeId, laneFiles(store, checkpoint));
-      const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
-      return end === "completed" && settled ? { kind: "ended", verdict } : verdict;
-    });
+    const seen = inStore(root, (store) => pollCheckpoint(store, checkpoint, deadline));
     if (seen === null) return { kind: "stopped" };
-    if ("kind" in seen) return seen;
-    if (Date.now() >= deadline) return { kind: "deadline", verdict: seen };
-    if (polls % 20 === 19 && await askDaemon(socketPath, { type: "ping" }) === null) {
+    if (seen !== "open") return seen;
+    if (polls % PING_POLLS === PING_POLLS - 1 && await askDaemon(socketPath, { type: "ping" }) === null) {
       return { kind: "stopped" };
     }
     await sleep13(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
   }
+}
+function pollCheckpoint(store, checkpoint, deadline) {
+  const end = store.checkpoints.get(checkpoint.id)?.end ?? null;
+  const revision = store.revisions.latest(checkpoint.worktreeId)?.number ?? 0;
+  if (revision > checkpoint.revision) return { kind: "moved", revision };
+  if (end === "abandoned") return { kind: "abandoned" };
+  const late = Date.now() >= deadline;
+  if (end !== "completed" && !late) return "open";
+  const verdict = readVerdict(store, checkpoint.worktreeId, laneFiles(store, checkpoint));
+  const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
+  if (end === "completed" && settled) return { kind: "ended", verdict };
+  return late ? { kind: "deadline", verdict } : "open";
 }
 
 // src/cli/setup/command.ts
