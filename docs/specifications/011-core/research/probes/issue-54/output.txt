@@ -1,0 +1,87 @@
+
+ RUN  v5.0.3 <worktree>
+
+stdout | docs/specifications/011-core/research/probes/issue-54/probe.test.ts > issue 54: a passing same-key load retry replaces the failure > drops the failing run from failures and why
+==== BEFORE retry: result rows [{"outcome":"fail","key":"13b164a38a5d","runId":"4086a9d4-108a-4fe5-8514-d69a529ab894","revision":0,"recordedAt":1792514640689}]
+failing run 4086a9d4-108a-4fe5-8514-d69a529ab894, log dir <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main/.git/squeal/runs/4086a9d4-108a-4fe5-8514-d69a529ab894, load per CPU kept: 3.33
+---- squeal failures (before)
+Failures in this worktree (1 failure, newest first):
+  FAIL  2026-10-20T16:44:00.689Z  test/flaky.test.ts > flips
+        <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main (this worktree), revision 0, commit 95603d9, clean, 6 ms, run 4086a9d4-108a-4fe5-8514-d69a529ab894
+        AssertionError: expected true to be false // Object.is equality @ test/flaky.test.ts:4:142
+
+squeal why "<check>" prints a failure's full output.
+
+---- squeal why (before)
+Check: test/flaky.test.ts > flips
+Worktree: <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main
+Revision: none recorded
+
+Known state: FAIL, current, observed at revision 0, commit 95603d9
+  Summary: expected true to be false // Object.is equality; diff (- Expected, + Received): - false | + true
+  Location: test/flaky.test.ts:4:142
+  Fingerprint: AssertionError: expected true to be false // Object.is equality @ test/flaky.test.ts:4:142
+
+History (1 transition, oldest first):
+  revision 0  2026-10-20T16:44:00.694Z  first seen FAIL
+
+Durations (1 result, 0 pass / 1 fail): 6 ms
+Results (1, newest first):
+  FAIL  2026-10-20T16:44:00.689Z  <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main (this worktree), revision 0, commit 95603d9, clean
+        run 4086a9d4-108a-4fe5-8514-d69a529ab894, 6 ms, key 13b164a38a5d
+        log: <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main/.git/squeal/runs/4086a9d4-108a-4fe5-8514-d69a529ab894
+        expected true to be false // Object.is equality; diff (- Expected, + Received): - false | + true
+        AssertionError: expected true to be false // Object.is equality
+            at test/flaky.test.ts:4:142
+        - Expected
+        + Received
+        
+        - false
+        + true
+
+Run log: <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main/.git/squeal/runs/4086a9d4-108a-4fe5-8514-d69a529ab894/vitest.log
+  Run 4086a9d4-108a-4fe5-8514-d69a529ab894 in <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of test/flaky.test.ts from it.
+
+
+stdout | docs/specifications/011-core/research/probes/issue-54/probe.test.ts > issue 54: a passing same-key load retry replaces the failure > drops the failing run from failures and why
+==== AFTER passing load retry: result rows [{"outcome":"pass","key":"13b164a38a5d","runId":"5f05a61a-984b-4c1a-b4e5-5290f541008f","revision":0,"recordedAt":1792514641191}]
+---- squeal failures (after)
+No stored failures in this worktree.
+
+---- squeal why (after)
+Check: test/flaky.test.ts > flips
+Worktree: <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main
+Revision: none recorded
+
+Known state: PASS, current, observed at revision 0, commit 95603d9
+  Location: test/flaky.test.ts:4:1
+  Flaky: FAIL -> PASS under the same inputs (key 13b164a38a5d, 2026-10-20T16:44:01.192Z)
+    the FAIL it replaced: expected true to be false // Object.is equality; diff (- Expected, + Received): - false | + true
+
+History (2 transitions, oldest first):
+  revision 0  2026-10-20T16:44:00.694Z  first seen FAIL
+  revision 0  2026-10-20T16:44:01.193Z  FAIL -> PASS
+
+Durations (1 result, 1 pass / 0 fail): 2 ms
+Results (1, newest first):
+  PASS  2026-10-20T16:44:01.191Z  <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main (this worktree), revision 0, commit 95603d9, clean
+        run 5f05a61a-984b-4c1a-b4e5-5290f541008f, 2 ms, key 13b164a38a5d
+        log: <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main/.git/squeal/runs/5f05a61a-984b-4c1a-b4e5-5290f541008f
+
+Run log: <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main/.git/squeal/runs/5f05a61a-984b-4c1a-b4e5-5290f541008f/vitest.log
+  Run 5f05a61a-984b-4c1a-b4e5-5290f541008f in <worktree>/test/fixtures/scheduler/.tmp/01f19ae6-f025-4356-a2a4-3b5c2a22e888/main (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of test/flaky.test.ts from it.
+
+---- flaky note (meta flaky-checks) {"key":"13b164a38a5dcc9ce5f6a3cd40e1d4b372d5b62d3837c3c3f2404ddfa09ace51","from":"fail","to":"pass","fromWorktreeId":"33105f7919cb610b","toWorktreeId":"33105f7919cb610b","at":1792514641192,"failure":"expected true to be false // Object.is equality; diff (- Expected, + Received): - false | + true"}
+---- retries (meta retries) [{"id":"c6d4ad0d-b83c-4372-bb88-3a49fbc1f3dc","testFile":{"project":"","path":"test/flaky.test.ts"},"key":"13b164a38a5dcc9ce5f6a3cd40e1d4b372d5b62d3837c3c3f2404ddfa09ace51","session":"s1","reason":"load","askedAt":1792514641039,"askedIn":"33105f7919cb610b","claim":{"worktreeId":"33105f7919cb610b","at":1792514641041},"end":{"outcome":"passed","at":1792514641192,"worktreeId":"33105f7919cb610b","runId":"5f05a61a-984b-4c1a-b4e5-5290f541008f"}}]
+---- failing run still in runs table: true; log dir on disk: true; load kept in failed-run-loads: 3.33
+---- transitions [{"worktreeId":"33105f7919cb610b","check":{"kind":"test","project":"","testPath":"test/flaky.test.ts","fullName":"flips"},"kind":"first-seen-fail","from":null,"to":"fail","fromFingerprint":null,"toFingerprint":"AssertionError: expected true to be false // Object.is equality @ test/flaky.test.ts:4:142","revision":0,"at":1792514640694},{"worktreeId":"33105f7919cb610b","check":{"kind":"test","project":"","testPath":"test/flaky.test.ts","fullName":"flips"},"kind":"fail-to-pass","from":"fail","to":"pass","fromFingerprint":"AssertionError: expected true to be false // Object.is equality @ test/flaky.test.ts:4:142","toFingerprint":null,"revision":0,"at":1792514641193}]
+
+ ✓ docs/specifications/011-core/research/probes/issue-54/probe.test.ts > issue 54: a passing same-key load retry replaces the failure > drops the failing run from failures and why 1112ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  18:43:58
+   Duration  2.65s (transform 46%, tests 44%, import 9%)
+
