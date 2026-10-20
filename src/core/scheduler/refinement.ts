@@ -14,7 +14,13 @@ import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
-import { applyListing, type ContentRekey, storeClosures, toInvalidatedPath } from "./revision.js";
+import {
+  applyListing,
+  type ContentRekey,
+  isCatchUp,
+  storeClosures,
+  toInvalidatedPath,
+} from "./revision.js";
 import { RunnerPartBound, runnerPartBound, runnerPartBoundMs } from "./runner-work-bound.js";
 
 /**
@@ -34,6 +40,8 @@ export interface RunnerPart {
   readonly direct: ReadonlySet<string>;
   /** The revision is catch-up (`ContentRekey.catchUp`, task 011-22). */
   readonly catchUp?: boolean;
+  /** `ContentRekey.recent`: the files the content part made recent. */
+  readonly recent?: readonly TestFileRef[];
   /** Every test file whose closure was asked for, whether or not the runner answered. */
   readonly reresolved: readonly TestFileRef[];
   readonly closures: readonly RunnerClosure[];
@@ -166,6 +174,7 @@ export async function fetchRunnerPart(
     listed,
     direct: new Set((affected?.direct ?? []).map(testFileId)),
     ...(content.catchUp === true ? { catchUp: true } : {}),
+    ...(content.recent === undefined ? {} : { recent: content.recent }),
     reresolved: [...reresolve.values()],
     closures,
   };
@@ -233,11 +242,22 @@ export async function applyRunnerPart(
   touchKeys(await keys.trackUntracked());
   storeClosures(context, resolved);
   touch(part.reresolved);
-  ledger.settle(touched.values(), changed, {
+  // The listing and the closures count what the content part could not (review wave 5, B1).
+  const catchUp =
+    part.catchUp === true || (keyedAt !== undefined && isCatchUp(context, ledger, changed));
+  if (catchUp && part.catchUp !== true) {
+    // A file a later revision reached may be its edit's work: it stays recent.
+    const later = ledger.recentOf(changedMeanwhile);
+    for (const ref of part.recent ?? []) {
+      if (!later.has(testFileId(ref))) ledger.queue.toCatchUp(ref);
+    }
+  }
+  const options = {
     direct: part.direct,
     ...(keyedAt === undefined ? {} : { keyedAt }),
-    ...(part.catchUp === true ? { catchUp: true } : {}),
-  });
-  settleFailures(ledger, part.failures, part.retrying, changed);
+    ...(catchUp ? { catchUp: true } : {}),
+  };
+  ledger.settle(touched.values(), changed, options);
+  settleFailures(ledger, part.failures, part.retrying, changed, options);
   return stale;
 }

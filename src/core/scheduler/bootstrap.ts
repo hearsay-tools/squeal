@@ -59,12 +59,12 @@ import { runnerPartBound } from "./runner-work-bound.js";
  *
  * `scan` is step 1, which needs no runner: the `start` revision and the
  * revision the ledger starts at. It returns the paths no runner has seen
- * change: those of the `start` revision and of every revision after the
- * refined one (`refinedMetaKey`), which an earlier daemon stored and never
- * refined, as one that exited at a reinstall did (task 001-113). The
- * baseline queues them as edits (D5 step 4).
+ * change, one set per revision: those of the `start` revision and of every
+ * revision after the refined one (`refinedMetaKey`), which an earlier daemon
+ * stored and never refined, as one that exited at a reinstall did (task
+ * 001-113). The baseline queues them as edits (D5 step 4).
  */
-export async function scan(context: SchedulerContext, ledger: Ledger): Promise<Set<RelativePath>> {
+export async function scan(context: SchedulerContext, ledger: Ledger): Promise<UnseenChanges> {
   const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
   const refined = readRefined(store, worktreeId) ?? latest?.number ?? 0;
@@ -73,12 +73,10 @@ export async function scan(context: SchedulerContext, ledger: Ledger): Promise<S
     revision === null
       ? { number: 0, ...(await context.head()) }
       : { number: revision.number, head: revision.head, dirty: revision.dirty };
-  const changed = new Set<RelativePath>();
-  if (revision === null) return changed;
-  for (const { changes } of store.revisions.range(worktreeId, refined, revision.number)) {
-    for (const change of changes) changed.add(change.path);
-  }
-  return changed;
+  if (revision === null) return [];
+  return store.revisions
+    .range(worktreeId, refined, revision.number)
+    .map(({ changes }) => new Set(changes.map((change) => change.path)));
 }
 
 /** `null` when absent or not a number, as the header reads it. */
@@ -90,17 +88,18 @@ function readRefined(store: Store, worktreeId: WorktreeId): RevisionNumber | nul
 
 /**
  * Steps 2 to 4: environments, listing, keys, lookup and the baseline
- * checkpoint. `changed` holds the paths no runner saw change: those `scan`
- * returned and those revisions changed while the daemon waited for an
- * install. A miss they edited or whose closure they touch is queued recent,
- * ahead of the rest (review wave 11, S2; D5 step 4), or as catch-up when
- * they hold 10 keyed paths or more, as one revision's would (`isCatchUp`,
- * 011 C4 step 4 as amended 2026-10-20, task 011-22).
+ * checkpoint. `unseen` holds the paths no runner saw change, by revision:
+ * those `scan` returned and those revisions changed while the daemon waited
+ * for an install. A miss they edited or whose closure they touch is queued
+ * recent, ahead of the rest (review wave 11, S2; D5 step 4), or as catch-up
+ * when every revision that reached it holds 10 keyed paths or more
+ * (`isCatchUp`, 011 C4 step 4 as amended 2026-10-20, task 011-22): each
+ * revision is counted on its own, never their union (review wave 5, B3).
  */
 export async function baseline(
   context: SchedulerContext,
   ledger: Ledger,
-  changed: ReadonlySet<RelativePath> = NOTHING_CHANGED,
+  unseen: UnseenChanges = [],
 ): Promise<void> {
   const { store, keys, worktreeId, policy } = context;
   const bound = runnerPartBound(context);
@@ -180,18 +179,17 @@ export async function baseline(
   if (policy.baseline.onStart === "lookup-only") {
     ledger.checkpoints.finish("abandoned");
   } else {
-    // What no runner saw change is one revision's edit here, catch-up from 10 keyed paths (011-22).
-    const recent = ledger.recentOf(changed);
-    const catchUp = isCatchUp(context, ledger, changed);
+    // What no runner saw change is its revision's edit here, catch-up from 10 keyed paths (011-22).
+    const changed = new Set(unseen.flatMap((paths) => [...paths]));
+    const recent = new Set<string>();
+    const catchUp = new Set<string>();
+    for (const paths of unseen) {
+      const reached = isCatchUp(context, ledger, paths) ? catchUp : recent;
+      for (const id of ledger.recentOf(paths)) reached.add(id);
+    }
     for (const file of misses) {
-      const reached = recent.has(file.id);
-      ledger.enqueue(
-        file,
-        priorityOf(file, changed),
-        false,
-        reached && !catchUp,
-        reached && catchUp,
-      );
+      const first = recent.has(file.id);
+      ledger.enqueue(file, priorityOf(file, changed), false, first, !first && catchUp.has(file.id));
     }
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");
@@ -265,3 +263,9 @@ function restore(file: FileState, known: Known | undefined): void {
   file.checks = [...known.checks];
   file.failing = known.failing;
 }
+
+/**
+ * The paths no runner saw change, one set per revision (`scan`): the
+ * catch-up threshold is a revision's (011 C4 step 4, review wave 5, B3).
+ */
+export type UnseenChanges = ReadonlySet<RelativePath>[];

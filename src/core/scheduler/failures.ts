@@ -1,6 +1,6 @@
 import type { ProjectName, RelativePath, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
-import type { Ledger } from "./ledger.js";
+import type { Ledger, SettleOptions } from "./ledger.js";
 
 /**
  * Failed runner calls of one revision, by project; `null` is every project.
@@ -14,15 +14,20 @@ export function failed(failures: Failures, project: ProjectName | null, reason: 
   if (!failures.has(project)) failures.set(project, reason);
 }
 
-/** Blocks the files of failed projects; with no failure, settles the files a previous one blocked. */
+/**
+ * Blocks the files of failed projects; with no failure, settles the files a
+ * previous one blocked, as the revision's own settle did (`options`: its
+ * direct importers and whether it is catch-up, review wave 5, B2).
+ */
 export function settleFailures(
   ledger: Ledger,
   failures: Failures,
   retrying: boolean,
   changed: ReadonlySet<RelativePath>,
+  options: SettleOptions = {},
 ): void {
   if (failures.size > 0) block(ledger, failures);
-  else if (retrying) ledger.settle(unblock(ledger), changed);
+  else if (retrying) ledger.settle(unblock(ledger), changed, options);
 }
 
 /**

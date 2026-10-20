@@ -13,6 +13,7 @@ import {
 } from "../types/index.js";
 import { awaitingInstallNote } from "./awaiting-install.js";
 import { reconcileBatch } from "./batch.js";
+import type { UnseenChanges } from "./bootstrap.js";
 import type { SchedulerContext } from "./context.js";
 import { installCommand } from "./install-command.js";
 import type { Ledger } from "./ledger.js";
@@ -172,8 +173,8 @@ export function startWaiting(
 /**
  * A batch while waiting: its revision is recorded with nothing left for the
  * runner, so no header counts a runner part as pending, and its paths are
- * added to `changed`, which the baseline reads as edits (review wave 11,
- * S2). Returns whether the wait goes on. When it ends, the ledger forgets the files `startWaiting`
+ * added to `unseen` as one revision's, which the baseline reads as edits
+ * (review wave 11, S2; review wave 5, B3). Returns whether the wait goes on. When it ends, the ledger forgets the files `startWaiting`
  * added, so the baseline retires the ones a listing no longer holds; the
  * caller runs it, as today's recreate starts validation after an install.
  */
@@ -181,12 +182,12 @@ export async function reconcileWaiting(
   context: SchedulerContext,
   ledger: Ledger,
   batch: CandidateBatch,
-  changed: Set<RelativePath>,
+  unseen: UnseenChanges,
 ): Promise<boolean> {
   const { applied } = await reconcileBatch(context, ledger, batch);
   if (applied !== null) {
     ledger.commit({ refined: applied.revision.number });
-    for (const change of applied.revision.changes) changed.add(change.path);
+    unseen.push(new Set(applied.revision.changes.map((change) => change.path)));
   }
   const missing = await missingInstall(context.root);
   if (missing !== null) {

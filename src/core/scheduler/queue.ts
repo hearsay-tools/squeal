@@ -233,6 +233,18 @@ export class RunQueue {
     this.#promotions.clear();
   }
 
+  /**
+   * A recent entry becomes catch-up: its revision turned out catch-up once
+   * its runner part listed the test files it added (review wave 5, B1). A
+   * promotion keeps it in the first group.
+   */
+  toCatchUp(ref: TestFileRef): void {
+    const entry = this.#entries.get(testFileId(ref));
+    if (entry === undefined) return;
+    entry.recent = false;
+    entry.catchUp = true;
+  }
+
   remove(ref: TestFileRef): boolean {
     return this.#entries.delete(testFileId(ref));
   }

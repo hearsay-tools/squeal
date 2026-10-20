@@ -21,7 +21,7 @@ import {
 } from "../types/index.js";
 import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
-import { baseline, scan } from "./bootstrap.js";
+import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
 import { BusyResume } from "./busy-resume.js";
 import { TierCapacity } from "./capacity.js";
 import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
@@ -144,7 +144,7 @@ class TierScheduler implements Scheduler {
   /** No runner call until an install (`awaitsInstall`, task 001-100). */
   #awaitingInstall = false;
   /** Paths no runner saw change: edits the baseline queues recent (review wave 11, S2; `scan`). */
-  #waitChanges = new Set<RelativePath>();
+  #waitChanges: UnseenChanges = [];
   /** The install went under this scheduler: it stores nothing more (`#reinstall`, task 001-113). */
   #reinstalled = false;
   #reinstallTold = false;
@@ -335,9 +335,9 @@ class TierScheduler implements Scheduler {
   /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
   async #baseline(context: SchedulerContext, ledger: Ledger): Promise<void> {
     stopWaiting(context);
-    const changed = this.#waitChanges;
-    this.#waitChanges = new Set();
-    await baseline(context, ledger, changed);
+    const unseen = this.#waitChanges;
+    this.#waitChanges = [];
+    await baseline(context, ledger, unseen);
   }
 
   /**

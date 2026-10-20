@@ -27,6 +27,12 @@ export interface ContentRekey {
   readonly environment: boolean;
   /** The revision is catch-up (`isCatchUp`): its runner part queues no edit's work either. */
   readonly catchUp?: boolean;
+  /**
+   * The files the content part made recent: catch-up instead when the
+   * runner part, which lists the test files the revision added, finds it is
+   * (review wave 5, B1).
+   */
+  readonly recent?: readonly TestFileRef[];
 }
 
 /**
@@ -44,8 +50,10 @@ export const CATCH_UP_KEYED_PATHS = 10;
  * daemon start's first pass). The files it re-keys, the edited ones and the
  * runner's direct importers included, are then catch-up: a group between
  * an edit's work and the rest that runs on the backlog's route, which a
- * later edit cancels or runs beside. A path added since the last listing
- * counts once a closure or a declared input names it.
+ * later edit cancels or runs beside. A test file added since the last
+ * listing counts once the runner part lists it, and another added path once
+ * a closure or a declared input names it (`applyRunnerPart`, review wave 5,
+ * B1).
  */
 export function isCatchUp(
   context: SchedulerContext,
@@ -100,8 +108,17 @@ export function rekeyContent(
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
+  const wasRecent = new Set(touched.filter((ref) => ledger.queue.isRecent(ref)).map(testFileId));
   ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
-  return { rekeyed, environment: inputs || policy.environment, catchUp };
+  const recent = touched.filter(
+    (ref) => !wasRecent.has(testFileId(ref)) && ledger.queue.isRecent(ref),
+  );
+  return {
+    rekeyed,
+    environment: inputs || policy.environment,
+    catchUp,
+    ...(recent.length > 0 ? { recent } : {}),
+  };
 }
 
 /**
