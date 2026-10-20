@@ -161,6 +161,7 @@ export function startWaiting(
   ledger.markUnknown(
     files.map((file) => ({ file, key: null })),
     AWAITING_INSTALL_REASON,
+    { cause: "install" },
   );
   store.transaction(() => {
     recordWait(store, worktreeId, missing);

@@ -33,7 +33,12 @@ import { endRerun } from "./rerun.js";
 import { dropRetry, lapseRetry } from "./retries.js";
 import { SetupFailures } from "./setup.js";
 import { slowView } from "./slow.js";
-import { recordUnknownFiles, samplesOf, type UnknownFileRecord } from "./unknown-files.js";
+import {
+  type RecordedCause,
+  recordUnknownFiles,
+  samplesOf,
+  type UnknownFileRecord,
+} from "./unknown-files.js";
 
 /** Results `applyResults` made current, owed to the sink at the next commit. */
 interface Applied {
@@ -441,12 +446,14 @@ export class Ledger {
    * is stored under a key; the files' checks become `unknown` at this revision.
    * Spec 001 D5: a checkpoint containing an `unknown` file ends `abandoned`.
    * Task 001-403: each file's reason is kept in `meta` for status, `ran`
-   * when its run completed and stored nothing, with a few `samples` paths.
+   * when its run completed and stored nothing, with a few `samples` paths,
+   * and its `cause` where the reason's words alone do not say what advances
+   * it (row 011-27).
    */
   markUnknown(
     entries: readonly { file: FileState; key: CheckKey | null; samples?: Iterable<RelativePath> }[],
     reason: string,
-    { ran = false }: { readonly ran?: boolean } = {},
+    { ran = false, cause }: { readonly ran?: boolean; readonly cause?: RecordedCause } = {},
   ): void {
     if (entries.length === 0) return;
     for (const { file, key, samples } of entries) {
@@ -456,6 +463,7 @@ export class Ledger {
         reason,
         ran,
         samples: samplesOf(samples ?? []),
+        ...(cause === undefined ? {} : { cause }),
       });
       file.unknownKey = key;
       if (key === file.key) this.#discharge(file);
