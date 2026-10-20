@@ -75,3 +75,4 @@ Holds preserved: 001-381 stays the owner of cancelling or splitting a running ti
 - `npm run typecheck`: `tsc --noEmit`, exit 0.
 - `npm run build`: exit 0; no tracked bundle drift.
 - `git diff --check`: exit 0.
+- `squeal run --all --wait` (session CLI absolute path from the primer): checkpoint did not finish within the ten-minute allowance. The first request exited 3 after a documentation revision; the replacement joined the baseline. Final sampled `squeal status` output at 13:49 UTC: `Known failures: 3 (3 tests)`; 114 test files still pending. Failures: `opencode-dispose.test.ts` held Stop at +2011 ms against +2000 ms; `node-test/run-reads-fidelity.test.ts` and `vitest/observe-fidelity.test.ts` recorder-signature assertions. These match the existing board's 011-42 load-sensitive/001-390 daemon-only findings. No passing full-suite verdict is claimed. No product repair or extra independent suite was run for this documentation landing.
