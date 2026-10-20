@@ -62,7 +62,12 @@ export function decideAccept(input: AcceptInput, stored: string, scratch: string
       root,
       now: () => 3_000,
       policy: loadPolicy(root).policy,
-      keys: { declaredFor: () => input.declared ?? [], cache: { hashOf: () => undefined } },
+      keys: {
+        declaredFor: () => input.declared ?? [],
+        cache: { hashOf: () => undefined },
+        // From format 18 a miss reads the formats read as one first (011-38); none here.
+        index: { keysReadAsOne: () => null },
+      },
     } as unknown as SchedulerContext;
     const ledger = new Ledger(context);
     // Format 12's probe took the file's state first and read the policy's slow files (004-81).
