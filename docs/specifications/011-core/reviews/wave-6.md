@@ -230,3 +230,124 @@ Dispatch two bounded repairs before landing:
 2. **Vitest/recorder owner:** `observe.ts`, the sanitization helper and environment-hash boundary as needed, plus env/fidelity regressions for B2. Preserve project-owned config before excluding injected values; test runtime behavior as well as metadata. Keep `UNOBSERVED` understood by the old outer hook and add nothing in ordinary runs.
 
 Neither repair requires changing the namesake policy, pool grants, cancellation, slot shape, 120 s backlog budget or handover policy. The coordinator owns the candidate's version/pin/bundles and any board/status updates. Re-pin and rebuild the repaired candidate, run the combined gate, then request a re-review bounded to B1/B2 and the repair delta. The current candidate is not ready to land even if a repeated ordinary suite is green.
+
+
+## Re-review
+
+Verdict: **PASS 08836914a7410ffc7e91f1d5e2818469217a8be5**. **0 remaining blockers, 0 should-fix, 0 nits.** B1 and B2 are closed. The independent full gate has two failures, recorded below; PASS is this bounded review's judgment, not a claim that the gate passed.
+
+Scope: R3r of `tasks/wave-6.md`, repair range `2fb497da..08836914`: B1 (`4a06ee34`), B2 (`4d8fea2a`), and the re-pin/build/brief (`08836914`). The original review above remains the record for `2b1818e0`. No product, board or status edits by this reviewer.
+
+### Re-review verification output
+
+Fetched origin and checked out the supplied SHA detached. All repository checks ran at that exact candidate on a clean tracked tree, before appending this section. Installed from the lockfile. The first `npm ci` failed with `ENOTEMPTY` while removing generated `node_modules/.vite`; clearing that directory and retrying completed successfully. No dependency or lockfile edits were made.
+
+```text
+$ git rev-parse HEAD
+08836914a7410ffc7e91f1d5e2818469217a8be5
+$ git status --short
+(no output)
+
+$ npm ci
+added 196 packages, and audited 197 packages in 12s
+found 0 vulnerabilities
+(exit 0; the same six allowScripts notices as the original review)
+
+$ npm run lint
+> squeal@0.1.229 lint
+> biome check .
+Checked 1530 files in 898ms. No fixes applied.
+
+$ npm run typecheck
+> squeal@0.1.229 typecheck
+> tsc --noEmit
+
+$ npm run build
+> squeal@0.1.229 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+> squeal@0.1.229 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+
+$ git status --short
+(no output; lint/typecheck/build completed without errors, all four bundles match)
+
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/bcdc57ae-ecee-4834-83dd-419e7edea579
+
+FAIL test/daemon/handover.test.ts > a step-down with released bundles of other versions (B1) > a 0.1.32 daemon, a current hook, then a released 0.1.31 hook: a current daemon serves
+AssertionError: expected [ 'alive' ] to deeply equal [ 'spawned' ]
+  test/daemon/handover.test.ts:72:23
+
+FAIL test/harness/opencode-dispose.test.ts > a report held while dispose meets newer input > serve: an abort of the new turn, then the old Stop's answer, stores nothing
+Error: before the new turn's request, the plugin killed the held Stop at +2283,
+at or after its idle deadline (+2000)
+marks, ms since the first idle: idle +0, stop +46, dispose +122,
+input +1106, kill +2283; the held Stop's deadline: +2000
+  test/harness/opencode/held-stop.ts:210:27
+  test/harness/opencode-dispose.test.ts:172:9
+attempt 1 of 3 missed its barriers: kill +2272, deadline +2000
+attempt 2 of 3 missed its barriers: kill +2026, deadline +2000
+
+Test Files  2 failed | 770 passed | 1 skipped (773)
+     Tests  2 failed | 6460 passed | 10 skipped (6472)
+  Start at  16:39:49
+  Duration  1256.91s (tests 97%, import 2%, transform 1%)
+(exit 1)
+```
+
+The locked run was 14:39:48–15:00:46 UTC. One-minute host load was 23.03 at start and 33.36 at end; an intermediate sample at 14:41:26 was 71.28. All files other than the two failures and skip passed, including both repair regression files, key-format guard, existing env/observation tests and scheduler coverage. No second full proof or pass-alone recovery was substituted.
+
+Verification context, outside B1/B2:
+
+- **Unverified cause and candidate attribution:** `test/daemon/handover.test.ts:72` observed `alive` instead of the expected `spawned` at the first current hook, before the later handover assertions. This re-review establishes the failed assertion, not a product cause or an explanation from host load. It does not reopen the settled scheduler handover review. A later investigation can trace the hook/ensure decision for this released-version fixture if needed.
+- **Unverified scenario assertion and candidate attribution:** `test/harness/opencode-dispose.test.ts:172` exhausted all three barrier attempts at +2272, +2026 and +2283 ms, each beyond the held Stop's +2000 ms deadline. The abort/old-answer scenario was not established. This is the same shape as the original independent run and the coordinator's supplied gate, not a completed assertion of report storage behavior. A later test investigation can establish the barriers under controlled host conditions before drawing a product conclusion.
+
+The coordinator supplied its separate 771-pass/1-fail/1-skip gate on this SHA, with the same OpenCode barrier shape. Separately checked branch CI [run 39440872635](https://github.com/hearsay-tools/squeal/actions/runs/39440872635): `headSha` is `08836914a7410ffc7e91f1d5e2818469217a8be5`, `status: completed`, `conclusion: success`. This is additional evidence; it does not replace or make this reviewer's local gate green.
+
+### Re-review discriminating checks
+
+Used a fresh `git archive 08836914` scratch copy linked to this checkout's installed dependencies. The original two scheduler probes and four real-adapter probes were reconstructed from the original review's scenarios. Candidate source files were unchanged for candidate runs; revert controls changed only the scratch copy. Restored files were byte-compared with the candidate before the fidelity run. The scratch tree and all throwaway probes were deleted before this report edit.
+
+```text
+$ npx vitest run --config probe.config.ts
+Test Files  4 passed (4)
+     Tests  12 passed (12)
+(exit 0; original 2 scheduler + 4 adapter probes, and both new 3-case regression files)
+
+$ npx vitest run --config probe.config.ts test/review-inherit.test.ts
+Test Files  1 passed (1)
+     Tests  2 passed (2)
+(exit 0; root NODE_OPTIONS beside own/none projects, with and without extends)
+
+$ # Only edit-cut.ts and refinement.ts restored to 2fb497da in scratch
+$ npx vitest run --config probe.config.ts test/scheduler/edit-cut-new-source.test.ts
+Test Files  1 failed (1)
+     Tests  3 failed (3)
+(exit 1; namesake, bare fallback, and mixed known/new-source expectations)
+
+$ # Candidate scheduler restored; only adapter.ts and observe.ts at 2fb497da
+$ npx vitest run --config probe.config.ts test/runners/vitest/unobserved-project-env.test.ts
+Test Files  1 failed (1)
+     Tests  2 failed | 1 passed (3)
+(exit 1; both root cases fail, the independent-project control passes)
+
+$ # Exact candidate restored; actual recorder loaded into the outer Vitest process
+$ NODE_OPTIONS='--import file://<scratch>/src/runners/observe/recorder.cjs' \
+  SQUEAL_OBSERVE='{"out":"<output>","root":"<scratch>","skip":[]}' \
+  npx vitest run --config fidelity.config.ts -t 'names the recorder'
+Test Files  2 passed (2)
+     Tests  2 passed | 3 skipped (5)
+(exit 0; exactly the original Vitest and node:test fidelity cases)
+```
+
+### Previously blocking findings
+
+**B1 closed, proven.** `refinement.ts:180` passes its freshly fetched `closures` to `fetchEditCut`. `edit-cut.ts:56` forms the held-source predicate from those closures and the stored reverse index before applying the cut. The original 9000 ms namesake probe now keeps the namesake; the no-namesake probe keeps all seven direct importers with no catch-up. The real adapter control still demonstrates the old `src/a.ts` closure becoming `src/a.js` after add/invalidate, with the existing test directly affected. The three new regressions also cover a new bare source beside a known source's namesake and all fail without this repair. The extra bare-source `affected` call remains last in the runner part, under the same bound and outside the apply transaction. Demotion and per-revision reasons are unchanged.
+
+**B2 closed, proven.** `observe.ts:79` passes only the `UNOBSERVED` settings through the non-observing instance's `env` option. `configure` at `observe.ts:103` cleans inherited options after config resolution; `#unobserve` at line 133 preserves explicit root/project options and fills only projects lacking them. `injectedFor` at line 70 and `adapter.ts:457` exclude that synthetic fill per project, without dropping a project's own same-valued options from the hash. The worker probe sees `--conditions=project`, the explicit config is equal plain/nested, and identical config bytes resolving alpha versus beta remain distinct. Multi-project and root-inheritance controls preserve both runtime values and resolved configs. Both root regressions fail when this repair is reverted. The ordinary no-recorder path, observing path and original actual-outer-recorder fidelity cases remain covered and pass.
+
+### What fits and next-wave inputs
+
+No new blocking, should-fix or nit findings in the bounded repair delta. The format remains 19, with source pin `a74de9c9929ca4334d457a352a0b8348ebd63429a8ff248062d115594114bd9f`; the exact-tree guard passes and all four rebuilt committed bundles match. The repair adds no status/delivery claims or transaction-side runner calls. The settled policy, budgets, matcher, promotion and startup conclusions above remain valid.
+
+No further B1/B2 fix row is required. Future scheduler rows must continue passing freshly fetched closures into the edit cut before applying them, with runner calls bounded outside the transaction. Future Vitest rows must retain project-specific injection metadata and config precedence; a project's explicit `NODE_OPTIONS` remains a hash input even when equal to inherited flags. The two local gate failures above remain verification context for the coordinator and any later investigation; neither is a proven break of B1/B2. Landing and board/status decisions remain the coordinator's.
