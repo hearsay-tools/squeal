@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import { plural } from "../text.js";
 import type { NextStep, Step } from "./next-step.js";
 
@@ -50,6 +51,18 @@ export function reasonWords(next: NextStep, paths: readonly string[], command: s
     command,
     paths.length === 1 ? "it" : "them",
   );
+}
+
+/**
+ * `path`, relative to the worktree root, as a command run from `base` names
+ * it: `base` is the directory the selection's paths were resolved against,
+ * relative to the root (`""` the root itself). An absolute `base`, outside the
+ * root, keeps the root's reading. `squeal retry` resolves its arguments
+ * against the cwd, so a printed command must too (review of cand/0.1.231, B1).
+ */
+export function fromBase(base: string | undefined, path: string): string {
+  if (base === undefined || base === "" || posix.isAbsolute(base)) return path;
+  return posix.relative(base, path);
 }
 
 /** The group's command with its paths, for the verdict line and `--json`; `null` for none. */
