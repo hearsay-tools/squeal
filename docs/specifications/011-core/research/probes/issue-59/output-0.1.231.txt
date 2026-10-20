@@ -1,0 +1,52 @@
+load 10.07 on 24 CPUs
+scratch /tmp/i59-5D8Wli; squeal 0.1.231
+=== phase S (startup): start, then at once a named wait with one nonexistent path
+Squeal daemon spawned for /tmp/i59-5D8Wli/repo
+
+Revision: 0
+=== S1 real + nonexistent, at startup: squeal status --json --wait 60000 test/slow.test.ts test/nope.test.ts
+exit 3; elapsed .628028902 s
+{"outcome":"unmatched","waitedMs":521,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+stderr:
+  No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 2 of 2 test files (2 running)
+=== S2 same call again: squeal status --json --wait 60000 test/slow.test.ts test/nope.test.ts
+exit 3; elapsed .367330898 s
+{"outcome":"unmatched","waitedMs":271,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+stderr:
+  No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 2 of 2 test files (2 running)
+=== checkpoint
+Checkpoint b05eb5a9-4339-475a-9ec0-76a3bf0a980a completed at revision 0: no known failures; 2 test files, 0 already current, 2 run by the baseline checkpoint 7bfe0e3d-36fd-4aed-941c-09f2ef02cb59 it joined
+Checkpoint b05eb5a9-4339-475a-9ec0-76a3bf0a980a started at revision 0: 2 test files to run, 0 already current, joining the baseline checkpoint 7bfe0e3d-36fd-4aed-941c-09f2ef02cb59 already running them (0 of 2 test files done); it ends when that one ends
+
+=== phase A: edit test/slow.test.ts (8 s run), then at once the mixed wait, twice
+=== A1 real pending + nonexistent: squeal status --json --wait 60000 test/slow.test.ts test/nope.test.ts
+exit 3; elapsed .373175261 s
+{"outcome":"unmatched","waitedMs":271,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":1,"unlisted":false}
+stderr:
+  No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 1 of 2 test files (1 running), 1 test (1 running)
+=== A2 same call again: squeal status --json --wait 60000 test/slow.test.ts test/nope.test.ts
+exit 3; elapsed .373853520 s
+{"outcome":"unmatched","waitedMs":270,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":1,"unlisted":false}
+stderr:
+  No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 1 of 2 test files (1 running), 1 test (1 running)
+=== A3 corrected selection, after A1/A2 (file may be mid-run): squeal status --json --wait 60000 test/slow.test.ts test/fast.test.ts
+exit 0; elapsed 8.393096545 s
+{"outcome":"settled","waitedMs":8289,"code":0,"unmatched":[],"testFiles":["test/slow.test.ts:current","test/fast.test.ts:current"],"byClass":{"current":2,"pending":0,"stale":0,"unknown":0},"revision":1,"unlisted":false}
+stderr:
+  Selected: test/slow.test.ts, test/fast.test.ts
+  Named test files at revision 1: no known failures; 2 test files, each with a current result, after 8.3 s. Worktree: known failures 0; all 2 test files current
+=== phase B: edit again, then at once the corrected wait
+=== B1 corrected selection: squeal status --json --wait 60000 test/slow.test.ts test/fast.test.ts
+exit 0; elapsed 8.385794438 s
+{"outcome":"settled","waitedMs":8288,"code":0,"unmatched":[],"testFiles":["test/slow.test.ts:current","test/fast.test.ts:current"],"byClass":{"current":2,"pending":0,"stale":0,"unknown":0},"revision":2,"unlisted":false}
+stderr:
+  Selected: test/slow.test.ts, test/fast.test.ts
+  Named test files at revision 2: no known failures; 2 test files, each with a current result, after 8.3 s. Worktree: known failures 0; all 2 test files current
+=== phase C: edit again, then the nonexistent path alone
+=== C1 nonexistent alone: squeal status --json --wait 60000 test/nope.test.ts
+exit 3; elapsed .362480530 s
+{"outcome":"unmatched","waitedMs":266,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":[],"byClass":{"current":0,"pending":0,"stale":0,"unknown":0},"revision":3,"unlisted":false}
+stderr:
+  No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 1 of 2 test files (1 running), 1 test (1 running)
+=== stop
+Squeal daemon stopped for /tmp/i59-5D8Wli/repo

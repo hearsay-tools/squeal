@@ -1,0 +1,28 @@
+load 7.92 on 24 CPUs
+scratch /tmp/i59s-y2SbkH; squeal 0.1.232; 300 generated test files
+Squeal daemon spawned for /tmp/i59s-y2SbkH/repo
+=== call 1 at +.285731634 s: exit 3; elapsed 2.398257373 s
+{"outcome":"unmatched","waitedMs":2293,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+  stderr: No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 302 of 302 test files (200 running, 102 queued)
+=== call 2 at +3.091327250 s: exit 3; elapsed .498388710 s
+{"outcome":"unmatched","waitedMs":326,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+  stderr: No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 302 of 302 test files (200 running, 102 queued)
+=== call 3 at +4.008734775 s: exit 3; elapsed .439469732 s
+{"outcome":"unmatched","waitedMs":298,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+  stderr: No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 302 of 302 test files (200 running, 102 queued)
+=== call 4 at +4.850909803 s: exit 3; elapsed .441212849 s
+{"outcome":"unmatched","waitedMs":289,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+  stderr: No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 302 of 302 test files (200 running, 102 queued)
+=== call 5 at +5.679508393 s: exit 3; elapsed .803445916 s
+{"outcome":"unmatched","waitedMs":608,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+  stderr: No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 102 of 302 test files (102 running)
+=== call 6 at +6.928575769 s: exit 3; elapsed .732907851 s
+{"outcome":"unmatched","waitedMs":586,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+  stderr: No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 102 of 302 test files (102 running)
+=== call 7 at +8.063047582 s: exit 3; elapsed .406244185 s
+{"outcome":"unmatched","waitedMs":287,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+  stderr: No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 102 of 302 test files (102 running)
+=== call 8 at +8.840338942 s: exit 3; elapsed .386347712 s
+{"outcome":"unmatched","waitedMs":279,"code":3,"unmatched":["test/nope.test.ts"],"testFiles":["test/slow.test.ts:pending"],"byClass":{"current":0,"pending":1,"stale":0,"unknown":0},"revision":0,"unlisted":false}
+  stderr: No verdict: no test file's closure holds test/nope.test.ts. Worktree: known failures 0; not current: 102 of 302 test files (102 running)
+Squeal daemon stopped for /tmp/i59s-y2SbkH/repo
