@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createFsHasher, StatCache } from "../../src/core/hash/index.js";
 import { reconcile, statCandidates } from "../../src/core/revision/index.js";
+import type { InvalidatedPath } from "../../src/core/types/index.js";
 import {
   type CatchUpFile,
   type CatchUpOptions,
@@ -24,13 +25,13 @@ import {
  */
 const TWELVE = sources(12);
 
-function options(files: readonly CatchUpFile[]): CatchUpOptions {
-  return { files, hostSlots: 4, tierSize: 4 };
+function options(files: readonly CatchUpFile[], tierSize = 4): CatchUpOptions {
+  return { files, hostSlots: 4, tierSize };
 }
 
-async function started(files: CatchUpFile[]) {
+async function started(files: CatchUpFile[], tierSize?: number) {
   const repo = catchUpRepo(files);
-  const side = catchUpSide(repo, repo.main, options(files));
+  const side = catchUpSide(repo, repo.main, options(files, tierSize));
   await side.scheduler.start();
   await side.scheduler.idle();
   return { repo, side };
@@ -181,5 +182,49 @@ describe("scheduler: catch-up counts one revision's keyed paths (review wave 5)"
     const runs = runsAfter(side.runner.runs, 0);
     expect(runs.flatMap((r) => r.paths)).toHaveLength(24);
     expect(runs.every((r) => !r.granted && r.paths.length <= 4)).toBe(true);
+  });
+
+  it("B1. keeps recent a file an earlier revision's runner part reached after the catch-up revision's content part", async () => {
+    // f000 imports src/a.ts; the runner names the target a direct importer of src/a.ts too. An
+    // edit's tier of 1 takes no catch-up file beside the first group's.
+    const files = testFiles(1, ["src/a.ts"], () => 100);
+    const target: CatchUpFile = { path: "test/target.test.ts", ms: 100, imports: ["src/x.ts"] };
+    files.push(target);
+    const { side } = await started(files, 1);
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { invalidate } = side.runner;
+    Object.assign(side.runner, {
+      invalidate: async (paths: readonly InvalidatedPath[]) => {
+        if (paths.some((p) => p.path === "src/a.ts")) await held;
+        return invalidate();
+      },
+      affected: async (paths: readonly string[]) => ({
+        direct: paths.includes("src/a.ts") ? [{ project: "", path: target.path }] : [],
+        transitive: [],
+      }),
+    });
+    const before = side.runner.runs.length;
+    // Revision A, small; its runner part waits while revision B, the target and 10 added tests, lands.
+    await side.edit("watch", "src/a.ts");
+    const more = added(10);
+    files.push(...more);
+    await side.edit("watch", target.path, ...more.map((f) => f.path));
+    release();
+    await side.scheduler.idle();
+    const runs = runsAfter(side.runner.runs, before);
+    expect(runs.flatMap((r) => r.paths)).toHaveLength(12);
+    const ran = (path: string) => runs.find((r) => r.paths.includes(path));
+    // The two revisions' edits first, in edit tiers of 1, then the additions as catch-up.
+    expect(runs.slice(0, 2).every((r) => !r.granted && r.paths.length === 1)).toBe(true);
+    expect(
+      runs
+        .slice(0, 2)
+        .flatMap((r) => r.paths)
+        .sort(),
+    ).toEqual(["test/f000.test.ts", target.path]);
+    for (const f of more) expect(ran(f.path)).toMatchObject({ granted: true });
   });
 });

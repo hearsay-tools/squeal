@@ -255,7 +255,7 @@ export class Ledger {
         const reached = recent.has(file.id);
         const catchUp = reached && options.catchUp === true;
         const priority = priorityOf(file, changed, options.direct);
-        this.enqueue(file, priority, false, reached && !catchUp, catchUp);
+        this.enqueue(file, priority, false, reached && !catchUp, catchUp, options.keyedAt);
       }
     }
     this.#rank(changed, misses);
@@ -385,8 +385,9 @@ export class Ledger {
     forced = false,
     recent = false,
     catchUp = false,
+    by?: RevisionNumber,
   ): void {
-    this.queue.add(file.ref, priority, forced, recent, catchUp);
+    this.queue.add(file.ref, priority, forced, recent, catchUp, by ?? null);
     this.#syncPhase(file);
   }
 

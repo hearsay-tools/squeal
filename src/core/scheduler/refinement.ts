@@ -40,7 +40,7 @@ export interface RunnerPart {
   readonly direct: ReadonlySet<string>;
   /** The revision is catch-up (`ContentRekey.catchUp`, task 011-22). */
   readonly catchUp?: boolean;
-  /** `ContentRekey.recent`: the files the content part made recent. */
+  /** `ContentRekey.recent`: the files the content part left recent. */
   readonly recent?: readonly TestFileRef[];
   /** Every test file whose closure was asked for, whether or not the runner answered. */
   readonly reresolved: readonly TestFileRef[];
@@ -245,12 +245,9 @@ export async function applyRunnerPart(
   // The listing and the closures count what the content part could not (review wave 5, B1).
   const catchUp =
     part.catchUp === true || (keyedAt !== undefined && isCatchUp(context, ledger, changed));
-  if (catchUp && part.catchUp !== true) {
-    // A file a later revision reached may be its edit's work: it stays recent.
-    const later = ledger.recentOf(changedMeanwhile);
-    for (const ref of part.recent ?? []) {
-      if (!later.has(testFileId(ref))) ledger.queue.toCatchUp(ref);
-    }
+  if (catchUp && part.catchUp !== true && keyedAt !== undefined) {
+    // What another revision's edit made recent stays so (`Queue.toCatchUp`).
+    for (const ref of part.recent ?? []) ledger.queue.toCatchUp(ref, keyedAt);
   }
   const options = {
     direct: part.direct,
