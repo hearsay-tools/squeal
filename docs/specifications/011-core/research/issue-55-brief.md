@@ -1,0 +1,5 @@
+# Issue 55 reproduction
+
+Use /researcher. Bound this investigation to 20 minutes. Read issue #55 in hearsay-tools/squeal, vision, and 011 C6/C7 (related C13). Determine whether file-level `squeal why` is CPU-bound on a store with about 10 checks and 35 results each, and document a likely seam without implementing a fix. Start at `src/core/status/why.ts` and the CLI why entry. Prefer a disposable seeded store; never mutate an existing store or run a suite.
+
+Own only `docs/specifications/011-core/research/issue-55.md` and throwaway probes under `research/probes/issue-55/`. No product, board, spec.md, status.md or skill edits. Existing holds stand. Check one-minute host load against CPU count immediately before live reproduction; if above, skip and say "not reproduced, because" with numbers. Record Squeal version, host load, exact commands, timings and whether it reproduced; distinguish synthetic evidence from the incident. Tag evidence by source. Commit findings and intended probes, remove generated databases. Do not build or run full tests for this docs-only task. No delegation. Return commit and limitations.
