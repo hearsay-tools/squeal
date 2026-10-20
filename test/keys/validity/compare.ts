@@ -140,6 +140,10 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
       if (outputs[name][c]?.error === undefined) outputs[name][c] = output;
     }
   }
+  // For coverage only: the release decides over its own store too, so a line
+  // its decisions removed is held to the same proof. Its outputs are dropped;
+  // the compared ones stay D1 (a)'s (review of cand/0.1.228, B1).
+  execute(work, sides.baseline, "decide", cases, join(sides.baseline.dir, "run"), "decide-own");
   const verdicts = cases.map((c) =>
     verdictOf(c, outputs.baseline[c.name] ?? {}, outputs.candidate[c.name] ?? {}),
   );
