@@ -1,0 +1,26 @@
+# 2026-10-20T13:35:01Z  15:35:01 up 6 days,  4:23,  7 users,  load average: 43.47, 22.69, 23.41
+# nproc 24; node v24.21.0; squeal package.json 0.1.228; commit ea76593b
+$ npx vitest run -c docs/specifications/011-core/research/probes/issue-51/vitest.config.ts --reporter=verbose
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/7fae8031-c2d7-48f3-9bf5-12a8da712f89
+
+stdout | docs/specifications/011-core/research/probes/issue-51/large-requeue.probe.ts > gh-51 probe: a named wait behind a 303-file requeue > without a promotion, the last file waits for the whole requeue
+no-promotion: tier in flight holds 122 of 303
+
+stdout | docs/specifications/011-core/research/probes/issue-51/large-requeue.probe.ts > gh-51 probe: a named wait behind a 303-file requeue > without a promotion, the last file waits for the whole requeue
+no-promotion: tiers=7 sizes=[122,52,39,32,28,25,5] firstCancelled=false lastFileTier=6 filesRunAhead=298
+
+ ✓ docs/specifications/011-core/research/probes/issue-51/large-requeue.probe.ts > gh-51 probe: a named wait behind a 303-file requeue > without a promotion, the last file waits for the whole requeue 3144ms
+stdout | docs/specifications/011-core/research/probes/issue-51/large-requeue.probe.ts > gh-51 probe: a named wait behind a 303-file requeue > with a promotion, the named file leads the tier after the one in flight
+promoted: tier in flight holds 122 of 303; LAST in it: false
+
+stdout | docs/specifications/011-core/research/probes/issue-51/large-requeue.probe.ts > gh-51 probe: a named wait behind a 303-file requeue > with a promotion, the named file leads the tier after the one in flight
+promoted: tiers=8 sizes=[122,4,51,39,32,28,25,2] firstCancelled=false lastFileTier=1 filesRunAhead=122
+
+ ✓ docs/specifications/011-core/research/probes/issue-51/large-requeue.probe.ts > gh-51 probe: a named wait behind a 303-file requeue > with a promotion, the named file leads the tier after the one in flight 4032ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  15:35:03
+   Duration  9.42s (tests 78%, transform 18%, import 4%)
+
