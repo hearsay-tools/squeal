@@ -1,5 +1,4 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { planDelta, readHeader } from "../core/delivery/index.js";
 import { worktreeIdFor } from "../core/fs/index.js";
 import {
   answerMoves,
@@ -16,15 +15,12 @@ import {
 } from "../core/status/index.js";
 import type {
   AbsolutePath,
-  DeltaEntry,
   EpochMs,
-  KnownState,
   RelativePath,
   RevisionNumber,
   StatusResult,
   StatusSnapshot,
   StatusUnavailable,
-  ViewEntry,
 } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
@@ -37,6 +33,7 @@ import {
   splitNews,
   windowRefined,
 } from "./status-wait-edit.js";
+import { readHeld, type StartView, startView } from "./status-wait-held.js";
 import { waitLine, waitText } from "./status-wait-lines.js";
 import { namedWaitCommand } from "./status-wait-paths.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
@@ -47,8 +44,8 @@ import {
   watchDaemon,
 } from "./wait-liveness.js";
 
-/** How often `status --wait` reads the store. */
-export const STATUS_WAIT_POLL_MS = 250;
+/** How often `status --wait` reads the store (C6 as amended, task 011-42). */
+export const STATUS_WAIT_POLL_MS = 1_000;
 
 /**
  * The shortest wait that may end without a daemon, which a daemon a hook
@@ -216,7 +213,7 @@ export async function waitForStatus(
   const agent = options.agent ?? null;
   const started = performance.now();
   const elapsed = () => performance.now() - started;
-  let start: readonly ViewEntry[] | null = null;
+  let start: StartView | null = null;
   let watch: DaemonWatch | undefined;
   // Started at the first read, which finds the root; a box, since the read is a callback.
   const syncing: {
@@ -242,14 +239,18 @@ export async function waitForStatus(
         : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
       const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
         const id = worktreeIdFor(root);
-        const states = store.knownStates.list(id);
-        const header = readHeader(store, id, states);
         if (start === null) {
-          start = states.map(toStartView);
+          // The edit's files are not known yet: the start view is every state (task 011-42).
+          const states = store.knownStates.list(id);
+          start = startView(states);
           syncing.sinceSeq = movesSeq(store, id) ?? 0;
+          if (options.holdSlow === true) {
+            syncing.slow = pendingSlow(store, id, states, store.testFileKeys.list(id));
+          }
         }
-        const news = newsOf(start, states, header.revision);
-        syncing.heard ??= lastHeard(store, id, header.revision, session, agent);
+        const view = start;
+        const revision = store.revisions.latest(id)?.number ?? 0;
+        syncing.heard ??= lastHeard(store, id, revision, session, agent);
         const heard = syncing.heard;
         syncing.sync ??= startSync(root, pollMs);
         const current = syncing.sync.current();
@@ -277,43 +278,40 @@ export async function waitForStatus(
           if (syncing.fallback) syncing.window = undefined;
         }
         const window = syncing.window;
-        const keys =
-          window === undefined && options.holdSlow !== true ? [] : store.testFileKeys.list(id);
-        if (options.holdSlow === true) syncing.slow ??= pendingSlow(store, id, states, keys);
         const held = syncing.slow;
-        const slowLeft = held === undefined ? [] : heldSlowLeft(held, states, keys);
+        const heldFiles = held === undefined ? [] : [...held.values()];
         const settled = final || elapsed() >= settleMs;
         watch ??= watchDaemon(id, { downMs: options.downMs });
         const daemon = watch.judge(store.worktrees.get(id)?.daemon ?? null, now());
+        // Which files are the edit's is not known yet: no check's news is the edit's.
+        const naming =
+          window === undefined &&
+          (current.state === "pending" || (current.state === "synced" && !syncing.fallback));
+        // Task 011-42: a poll reads the files it holds for; the fallback holds for every one.
+        const files =
+          window !== undefined ? [...window.files, ...heldFiles] : naming ? heldFiles : null;
+        // A window of no files still reads the revision and its runner part.
+        const seen = naming && heldFiles.length === 0 ? null : readHeld(store, id, view, files);
+        const slowLeft =
+          held === undefined || seen === null ? [] : heldSlowLeft(held, seen.states, seen.keys);
         // Never quiet before the pass, not even at the deadline: that would be defect 30 again.
         let transitions: number;
         let quiet: boolean;
-        let edit: StatusWaitEdit | undefined;
         // The held files' own news, outside the edit's window: named as theirs (review wave-13ak, S1).
         let slowNews = 0;
-        if (window !== undefined) {
-          const split = splitNews(window, news);
-          const pending = heldPending(window, keys);
-          slowNews = held === undefined ? 0 : heldSlowNews(held, news, window.ids);
-          transitions = split.own + slowNews;
+        if (window !== undefined && seen !== null) {
+          slowNews = held === undefined ? 0 : heldSlowNews(held, seen.news, window.ids);
+          transitions = splitNews(window, seen.news).own + slowNews;
           quiet =
-            header.revision >= window.revision && windowRefined(window, header) && pending === 0;
-          edit = {
-            since: window.since,
-            testFiles: window.ids.size,
-            pending,
-            otherTransitions: split.other - slowNews,
-          };
-        } else if (
-          current.state === "pending" ||
-          (current.state === "synced" && !syncing.fallback)
-        ) {
-          // Which files are the edit's is not known yet: no check's news is the edit's.
+            seen.header.revision >= window.revision &&
+            windowRefined(window, seen.header) &&
+            heldPending(window, seen.keys) === 0;
+        } else if (naming || seen === null) {
           transitions = 0;
           quiet = false;
         } else {
-          transitions = news.length;
-          quiet = isSynced(current, header.revision, settled) && !isPending(header);
+          transitions = seen.news.length;
+          quiet = isSynced(current, seen.header.revision, settled) && !isPending(seen.header);
         }
         // A lapsed heartbeat decides nothing: the daemon may be mid-run (review wave 4.5, S2; 004-66).
         quiet &&= slowLeft.length === 0 && daemon.state === "alive";
@@ -328,6 +326,17 @@ export async function waitForStatus(
                   ? "timeout"
                   : null;
         if (outcome === null) return null;
+        // The wait ends: the other checks' transitions it names read every state, once.
+        const edit: StatusWaitEdit | undefined =
+          window === undefined
+            ? undefined
+            : {
+                since: window.since,
+                testFiles: window.ids.size,
+                pending: seen === null ? 0 : heldPending(window, seen.keys),
+                otherTransitions:
+                  splitNews(window, readHeld(store, id, view, null).news).other - slowNews,
+              };
         const result = buildSnapshot(store, root, now());
         const slow =
           held === undefined
@@ -366,25 +375,6 @@ export async function waitForStatus(
 function isSynced(current: SyncState, revision: RevisionNumber, settled: boolean): boolean {
   if (current.state === "synced") return revision >= current.revision;
   return current.state === "unsupported" && settled;
-}
-
-function toStartView(state: KnownState): ViewEntry {
-  return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt: 0 };
-}
-
-function newsOf(
-  start: readonly ViewEntry[],
-  states: readonly KnownState[],
-  revision: RevisionNumber,
-): readonly DeltaEntry[] {
-  return planDelta({
-    view: start,
-    states,
-    isBaselineFinding: () => false,
-    toldAt: 0,
-    rootOf: () => null,
-    revision,
-  }).entries;
 }
 
 /**

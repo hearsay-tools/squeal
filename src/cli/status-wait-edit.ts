@@ -8,6 +8,7 @@ import type {
   StatusHeader,
   Store,
   TestFileKeyRecord,
+  TestFileRef,
   WorktreeId,
 } from "../core/types/index.js";
 
@@ -57,6 +58,8 @@ export interface EditWindow {
   readonly revision: RevisionNumber;
   /** `testFileId`s of the files the window's revisions re-keyed. */
   readonly ids: ReadonlySet<string>;
+  /** Those files, one ref per id: what a poll reads the states of (task 011-42). */
+  readonly files: readonly TestFileRef[];
   /** Of those, the ones the wait does not hold for: slow files (spec 004 D9, as Stop). */
   readonly slow: ReadonlySet<string>;
   /**
@@ -98,11 +101,13 @@ export function editWindow(
   const owed = new Set(
     kept.filter((file) => file.resolved !== true).map((file) => testFileId(file.testFile)),
   );
-  const ids = new Set(refs.map(testFileId));
+  const files = new Map(refs.map((ref) => [testFileId(ref), ref]));
+  const ids = new Set(files.keys());
   return {
     since: kept.length === 0 ? heard : first,
     revision,
     ids,
+    files: [...files.values()],
     slow: new Set(refs.filter((ref) => isSlow?.(ref) === true).map(testFileId)),
     resolved: new Set([...ids].filter((id) => !owed.has(id))),
   };
