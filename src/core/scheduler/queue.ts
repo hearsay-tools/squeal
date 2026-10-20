@@ -20,6 +20,10 @@ export type Priority = (typeof Priority)[keyof typeof Priority];
 
 const NO_DIRECT_IMPORTERS: ReadonlySet<string> = new Set();
 
+/** C4 step 4's groups (as amended 2026-10-20, task 011-22): an edit's work, catch-up, the rest. */
+const Group = { first: 0, catchUp: 1, second: 2 } as const;
+type Group = (typeof Group)[keyof typeof Group];
+
 /**
  * The starvation bound (task 001-107, review wave 11 N3; D5 step 4 as
  * amended): after this many tiers in a row of recent work only while the
@@ -55,6 +59,11 @@ interface Entry {
   forced: boolean;
   /** Queued by a revision's edit: its closure changed or it was added (`Ledger.settle`). */
   recent: boolean;
+  /**
+   * Queued by a revision of `CATCH_UP_KEYED_PATHS` keyed paths or more (spec 011 C4 step 4 as
+   * amended 2026-10-20, task 011-22): catch-up while it is not recent or promoted.
+   */
+  catchUp: boolean;
   /** Tokens that ranked a slow entry (004 D2's evidence), gathered until it leaves the queue. */
   evidence: ReadonlySet<string>;
 }
@@ -138,6 +147,12 @@ export class RunQueue {
     return this.isRecent(ref) || this.isPromoted(ref);
   }
 
+  /** Catch-up (C4 step 4 as amended 2026-10-20, task 011-22): queued so, and not of the first group. */
+  isCatchUp(ref: TestFileRef): boolean {
+    const entry = this.#entries.get(testFileId(ref));
+    return entry !== undefined && this.#groupOf(entry) === Group.catchUp;
+  }
+
   has(ref: TestFileRef): boolean {
     return this.#entries.has(testFileId(ref));
   }
@@ -145,9 +160,11 @@ export class RunQueue {
   /**
    * Queues a test file, or raises the priority of its entry. A `forced` entry
    * (`run --all --force`) runs even when its key has a result. A `recent`
-   * entry stays recent until it leaves the queue.
+   * entry stays recent until it leaves the queue, and a `catchUp` one is
+   * catch-up until then unless it is recent or promoted too (C4 step 4 as
+   * amended 2026-10-20, task 011-22).
    */
-  add(ref: TestFileRef, priority: Priority, forced = false, recent = false): void {
+  add(ref: TestFileRef, priority: Priority, forced = false, recent = false, catchUp = false): void {
     this.#promotions.settle(this.#queued);
     const id = testFileId(ref);
     const entry = this.#entries.get(id);
@@ -155,6 +172,7 @@ export class RunQueue {
       entry.priority = Math.min(entry.priority, priority) as Priority;
       entry.forced ||= forced;
       entry.recent ||= recent;
+      entry.catchUp ||= catchUp;
       return;
     }
     this.#entries.set(id, {
@@ -163,6 +181,7 @@ export class RunQueue {
       seq: this.#seq++,
       forced,
       recent,
+      catchUp,
       evidence: NO_EVIDENCE,
     });
   }
@@ -259,21 +278,24 @@ export class RunQueue {
   }
 
   /**
-   * Recent entries first, then priority, then shortest last known duration
-   * with unknown ones last (an `edited` entry's unknown one first, as
-   * `joinSpan` counts it 0: 011 C4 as amended, gh-31), then first queued, then project and path. Spec
-   * 001 D5 step 4 as amended (task 001-100, defect 19): work an edit caused
-   * runs ahead of the baseline, an environment change or `run --all`, "within
+   * Recent entries first, then catch-up, then the rest; within a group
+   * priority, then shortest last known duration with unknown ones last (an
+   * `edited` entry's unknown one first, as `joinSpan` counts it 0: 011 C4 as
+   * amended, gh-31), then first queued, then project and path. Spec 001 D5
+   * step 4 as amended (task 001-100, defect 19): work an edit caused runs
+   * ahead of the baseline, an environment change or `run --all`, "within
    * each group D5's order stands"; "within a class, shortest last known
    * duration first, so a slow integration file never delays the edited
-   * module's own unit test." After `RECENT_TIERS_PER_BACKLOG_TIER` tiers of
-   * recent entries only (`tierSelected`), the backlog comes first once.
-   * A promoted entry (C15) is of the first group and leads it, failing
-   * files included. Fast entries only.
+   * module's own unit test." Catch-up (011 C4 step 4 as amended 2026-10-20,
+   * task 011-22) has two classes, failing and the rest, each shortest first
+   * with unknown durations last: "the edited, direct and transitive classes
+   * do not divide it." After `RECENT_TIERS_PER_BACKLOG_TIER` tiers of
+   * recent entries only (`tierSelected`), the second group comes first
+   * once, catch-up first. A promoted entry (C15) is of the first group and
+   * leads it, failing files included. Fast entries only.
    */
   ordered(durationOf: DurationOf = () => null): TestFileRef[] {
-    const first = this.backlogTurn() ? -1 : 1;
-    return sorted(this.#fast(), durationOf, first, this.#ranks());
+    return sorted(this.#fast(), durationOf, this.backlogTurn(), this.#ranks());
   }
 
   /** The backlog comes first once: `RECENT_TIERS_PER_BACKLOG_TIER` tiers of the first group ran. */
@@ -292,7 +314,7 @@ export class RunQueue {
     return sorted(
       [...this.#entries.values()].filter((entry) => this.#isSlow(entry.ref)),
       durationOf,
-      1,
+      false,
       this.#ranks(),
       ranked,
     );
@@ -306,6 +328,10 @@ export class RunQueue {
     return entry.recent || this.#promotions.rankOf(testFileId(entry.ref)) !== null;
   }
 
+  #groupOf(entry: Entry): Group {
+    return groupOf(entry, this.#promotions.rankOf(testFileId(entry.ref)) !== null);
+  }
+
   /** Each promoted entry's request order, for `sorted`. */
   #ranks(): ReadonlyMap<Entry, number> {
     const ranks = new Map<Entry, number>();
@@ -317,33 +343,48 @@ export class RunQueue {
   }
 }
 
+/** Each group's place in the order, the second group's turn (`backlogTurn`) or not. */
+const GROUP_ORDER: Readonly<Record<"edits" | "turn", readonly Group[]>> = {
+  edits: [Group.first, Group.catchUp, Group.second],
+  turn: [Group.catchUp, Group.second, Group.first],
+};
+
 /**
- * `RunQueue.ordered`'s sort; `first` is 1 for recent entries first, -1 for
- * the backlog first. `promoted` holds each promoted entry's request order:
- * of the first group, ahead of its other classes (C15). `ranked` orders a
- * class by evidence before duration (004 D2).
+ * `RunQueue.ordered`'s sort; `turn` puts the second group first, catch-up
+ * leading it. `promoted` holds each promoted entry's request order: of the
+ * first group, ahead of its other classes (C15). `ranked` orders a class by
+ * evidence before duration (004 D2).
  */
 function sorted(
   entries: readonly Entry[],
   durationOf: DurationOf,
-  first: 1 | -1,
+  turn: boolean,
   promoted: ReadonlyMap<Entry, number>,
   ranked = false,
 ): TestFileRef[] {
   const evidence = (entry: Entry) => (ranked ? entry.evidence.size : 0);
   const rank = (entry: Entry) => promoted.get(entry) ?? Number.POSITIVE_INFINITY;
-  const group = (entry: Entry) => Number(entry.recent || promoted.has(entry));
+  const order = GROUP_ORDER[turn ? "turn" : "edits"];
+  const groups = new Map<Entry, number>();
+  const classes = new Map<Entry, number>();
   const durations = new Map<Entry, number>();
   for (const entry of entries) {
-    durations.set(entry, durationOf(entry.ref) ?? unknownDuration(entry.priority));
+    const group = groupOf(entry, promoted.has(entry));
+    const catchUp = group === Group.catchUp;
+    groups.set(entry, order.indexOf(group));
+    classes.set(entry, catchUp ? Number(entry.priority !== Priority.failing) : entry.priority);
+    const unknown = catchUp ? Number.POSITIVE_INFINITY : unknownDuration(entry.priority);
+    durations.set(entry, durationOf(entry.ref) ?? unknown);
   }
+  const group = (entry: Entry) => groups.get(entry) ?? 0;
+  const classOf = (entry: Entry) => classes.get(entry) ?? 0;
   const duration = (entry: Entry) => durations.get(entry) ?? Number.POSITIVE_INFINITY;
   return [...entries]
     .sort(
       (a, b) =>
-        first * (group(b) - group(a)) ||
+        group(a) - group(b) ||
         byDuration(rank(a), rank(b)) ||
-        a.priority - b.priority ||
+        classOf(a) - classOf(b) ||
         evidence(b) - evidence(a) ||
         byDuration(duration(a), duration(b)) ||
         a.seq - b.seq ||
@@ -351,6 +392,12 @@ function sorted(
         compare(a.ref.path, b.ref.path),
     )
     .map((entry) => entry.ref);
+}
+
+/** An entry's group: the first when recent or `promoted` (C15), else catch-up or the second. */
+function groupOf(entry: Entry, promoted: boolean): Group {
+  if (entry.recent || promoted) return Group.first;
+  return entry.catchUp ? Group.catchUp : Group.second;
 }
 
 /**

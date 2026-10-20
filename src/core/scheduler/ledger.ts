@@ -64,6 +64,12 @@ export interface SettleOptions {
    * is the baseline's, a backlog's or a run's, and records nothing.
    */
   readonly keyedAt?: RevisionNumber;
+  /**
+   * `changed` is a catch-up revision's (`isCatchUp`, spec 011 C4 step 4 as
+   * amended 2026-10-20, task 011-22): the misses an edit's work would be
+   * are queued as catch-up instead.
+   */
+  readonly catchUp?: boolean;
 }
 
 /**
@@ -187,7 +193,8 @@ export class Ledger {
    * of its closure, or the runner named it a direct importer: work an edit
    * caused, which runs ahead of the rest (D5 step 4 as amended, task
    * 001-100). An environment input is in no closure, so the files an install
-   * or a config change re-keys are not.
+   * or a config change re-keys are not. With `catchUp` such a miss is
+   * catch-up instead (011 C4 step 4 as amended 2026-10-20, task 011-22).
    */
   settle(
     refs: Iterable<TestFileRef>,
@@ -242,7 +249,10 @@ export class Ledger {
         this.queue.remove(ref);
         this.#syncPhase(file);
       } else if (options.queueMisses !== false) {
-        this.enqueue(file, priorityOf(file, changed, options.direct), false, recent.has(file.id));
+        const reached = recent.has(file.id);
+        const catchUp = reached && options.catchUp === true;
+        const priority = priorityOf(file, changed, options.direct);
+        this.enqueue(file, priority, false, reached && !catchUp, catchUp);
       }
     }
     this.#rank(changed, misses);
@@ -366,8 +376,14 @@ export class Ledger {
     return held.length > 0;
   }
 
-  enqueue(file: FileState, priority: Priority, forced = false, recent = false): void {
-    this.queue.add(file.ref, priority, forced, recent);
+  enqueue(
+    file: FileState,
+    priority: Priority,
+    forced = false,
+    recent = false,
+    catchUp = false,
+  ): void {
+    this.queue.add(file.ref, priority, forced, recent, catchUp);
     this.#syncPhase(file);
   }
 
