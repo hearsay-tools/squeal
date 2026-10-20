@@ -64,7 +64,7 @@ The removal itself queued no run of `gone` (its key did not change, so revision 
 
 ## Recommendation for Squeal
 
-Treat #53 as confirmed on 0.1.228 and 0.1.229 by mechanism: a running daemon keeps running, counting and accepting retries for a `nodeTest` project removed from `squeal.config.json` until it restarts. The workaround today is `squeal stop` then `squeal start` (verified above). A fix needs a C10 rule first, for the coordinator to propose: what a revision that adds or removes a `nodeTest` or `pytest` project does to the composite runner, the files and states of the removed project (forgotten, or kept and marked as outside the current configuration, as the issue offers), queued and running work, and retries. Vitest's recreate-on-`observe.runtimeInputs` path (`spec.md:252`) is the nearest precedent.
+Treat #53 as reproduced on 0.1.229, with the same relevant source in 0.1.228: a running daemon keeps running, counting and accepting retries for a `nodeTest` project removed from `squeal.config.json` until it restarts. The workaround today is `squeal stop` then `squeal start` (verified above). A fix needs a C10 rule first, for the coordinator to propose: what a revision that adds or removes a `nodeTest` or `pytest` project does to the composite runner, the files and states of the removed project (forgotten, or kept and marked as outside the current configuration, as the issue offers), queued and running work, and retries. Vitest's recreate-on-`observe.runtimeInputs` path (`spec.md:252`) is the nearest precedent.
 
 ## Limitations and open questions
 
