@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CASES } from "./cases/index.js";
-import { failures, wordingChanges } from "./compare.js";
+import { failures, reportedChanges, wordingChanges } from "./compare.js";
 // The validity path's entries and the harness, statically: esbuild reads them in a process no
 // recorder sees (011 C12), so this import is what re-runs this file when one of them changes.
 import "./driver.js";
@@ -109,6 +109,45 @@ describe("the comparison, under a change unmade", SLOW, () => {
     expect(result.cases.every((c) => c.outputsEqual)).toBe(true);
     expect(result.uncovered).toEqual([]);
     expect(failures(result, release())).toEqual([]);
+  });
+
+  it("reports a file the candidate stores and the last release withheld, without failing (17->18)", async () => {
+    const result = await compare(
+      edited(
+        "src/core/scheduler/stability.ts",
+        "const barred = files.filter((ran) => touchedOf(ran).length > 0);",
+        "const barred = files.filter(() => false);",
+      ),
+      only("store"),
+    );
+    expect(result.cases.every((c) => c.outputsEqual)).toBe(true);
+    expect(failures(result, release())).toEqual([]);
+    expect(reportedChanges(result)).toEqual([
+      expect.stringMatching(
+        /T1\)": test\/slow1.test.ts: requeue .*, store at ran:.* \(the candidate stores more\)$/,
+      ),
+      expect.stringMatching(
+        /T2\)": test\/slow1.test.ts: unknown .*, store at ran:.* \(the candidate stores more\)$/,
+      ),
+    ]);
+  });
+
+  it("reports a file stored under another key as a re-key, without failing", async () => {
+    const result = await compare(
+      edited(
+        "src/core/scheduler/store-decision.ts",
+        'if (growth === undefined) return { kind: "store", at: "ran", current: file.key === key };',
+        'if (growth === undefined) return { kind: "store", at: "grown", current: file.key === key };',
+      ),
+      only("store"),
+    );
+    expect(result.cases.every((c) => c.outputsEqual)).toBe(true);
+    expect(failures(result, release())).toEqual([]);
+    expect(reportedChanges(result)).toContainEqual(
+      expect.stringMatching(
+        /test\/stored.test.ts: store at ran:.*, store at moved:.* \(a re-key\)$/,
+      ),
+    );
   });
 
   it("passes a summary-only change and lists the wording, every kind equal (11->12)", async () => {
