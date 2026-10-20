@@ -145,9 +145,13 @@ export function normalized(text: string): string {
   return text.replace(/^\/\/ \S+\.(?:ts|js|mjs|cjs|json)$/gm, "");
 }
 
-/** The driver bundled against `tree`, with `overlay`'s texts in place of its files. */
-export const bundleDriver = (tree: string, outfile: string, overlay: Overlay = {}) =>
-  bundleModule(tree, DRIVER, outfile, overlay);
+/** The driver bundled against `tree`, with `overlay`'s texts in place of its files, by `bundler`. */
+export const bundleDriver = (
+  tree: string,
+  outfile: string,
+  overlay: Overlay = {},
+  bundler: typeof build = build,
+) => bundleModule(tree, DRIVER, outfile, overlay, bundler);
 
 /** A component's entries, `entries` relative to `test/keys/validity/`, bundled against `tree`. */
 export const bundleEntries = (tree: string, entries: string, overlay: Overlay = {}) =>
@@ -162,14 +166,20 @@ function targetOf(tree: string, overlay: Overlay): string | undefined {
 }
 
 /** `module`, a validity module, bundled against `tree` with `overlay`'s texts in place of its files. */
-async function bundleModule(tree: string, module: string, outfile: string, overlay: Overlay) {
+async function bundleModule(
+  tree: string,
+  module: string,
+  outfile: string,
+  overlay: Overlay,
+  bundler: typeof build = build,
+) {
   const shipped = bundleOptions(join(tree, "dist"));
   const { platform, format } = shipped;
   const target = targetOf(tree, overlay) ?? shipped.target;
   if (platform === undefined || format === undefined || target === undefined) {
     throw new Error("the shipped build names no platform, format or target");
   }
-  const result = await build({
+  const result = await bundler({
     absWorkingDir: ROOT,
     entryPoints: [module],
     outfile,

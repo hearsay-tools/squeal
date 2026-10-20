@@ -4,6 +4,7 @@ import { bundleDriver, bundleEntries } from "./bundle.js";
 import type { Case } from "./case.js";
 import { COMPONENTS, type Component, componentOf } from "./components.js";
 import { changedLines, changedSources, mappedLines, unrun } from "./coverage.js";
+import { esbuildOf, type Install, installLock } from "./lock.js";
 import {
   coverageAt,
   execute,
@@ -45,6 +46,8 @@ export interface Comparison {
   readonly alarms: readonly Alarm[];
   /** Some alarm fired, so the corpus ran. */
   readonly fired: boolean;
+  /** The packages moved, and the last release's lock was installed into its tree for its side (risk 9). */
+  readonly installed: boolean;
   /** The formats the candidate reads as its own (`KEY_FORMATS_READ_AS_ONE`). */
   readonly readAsOne: readonly number[];
   readonly cases: readonly CaseVerdict[];
@@ -62,6 +65,8 @@ export interface CompareOptions {
   readonly cases: readonly Case[];
   /** An empty directory for bundles, runs and stores. */
   readonly work: string;
+  /** Installs the last release's lock when the packages moved; `null` reports that it must be (risk 9). */
+  readonly install?: Install | null;
 }
 
 /** A changed line no case ran, and the sources it was emitted from. */
@@ -119,8 +124,11 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
   const fired = found.some((a) => a.fired);
   if (!fired) {
     const alarms = found.map(({ holds: _, texts: __, ...alarm }) => ({ ...alarm, uncovered: [] }));
-    return { alarms, fired, readAsOne, cases: [], uncovered: [] };
+    return { alarms, fired, installed: false, readAsOne, cases: [], uncovered: [] };
   }
+  const install = options.install === undefined ? installLock : options.install;
+  const installed = install !== null && found.some((a) => a.dependencies !== null);
+  if (installed) install(baseline);
   // An adapter's cases run real runners: only when its own alarm fired.
   const firedKind = (c: Case) =>
     !c.kind.startsWith("adapter:") ||
@@ -128,7 +136,14 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
   const cases = options.cases.filter(firedKind);
 
   const bundles = {
-    baseline: await bundleDriver(baseline, join(work, "baseline/driver.mjs")),
+    baseline: installed
+      ? await bundleDriver(
+          baseline,
+          join(work, "baseline/driver.mjs"),
+          {},
+          await esbuildOf(baseline),
+        )
+      : await bundleDriver(baseline, join(work, "baseline/driver.mjs")),
     candidate: await bundleDriver(candidate, join(work, "candidate/driver.mjs"), overlay),
   };
   const recorder = (name: SideName) =>
@@ -137,6 +152,9 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
     baseline: prepare(work, "baseline", baseline, bundles.baseline, recorder("baseline")),
     candidate: prepare(work, "candidate", candidate, bundles.candidate, recorder("candidate")),
   };
+  // The installed release resolves its packages from its own tree, Vitest among them.
+  if (installed)
+    symlinkSync(join(baseline, "node_modules"), join(sides.baseline.dir, "node_modules"), "dir");
   const runtimeDir = (side: Side) => join(side.dir, "observe");
   const outputs = {
     baseline: execute(work, sides.baseline, "run", cases, runtimeDir(sides.baseline)),
@@ -169,7 +187,7 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
   const uncovered = [
     ...new Set([...inBundles.map((u) => u.text), ...alarms.flatMap((a) => a.uncovered)]),
   ];
-  return { alarms, fired, readAsOne, cases: verdicts, uncovered };
+  return { alarms, fired, installed, readAsOne, cases: verdicts, uncovered };
 }
 
 /**
