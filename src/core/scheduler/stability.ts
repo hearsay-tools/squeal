@@ -121,6 +121,37 @@ export interface Ran {
   readonly key: CheckKey;
 }
 
+/** A tier's file as the barrier reads it: what must hold still during its run (`TierFile.inputs`). */
+export interface Barred extends Ran {
+  readonly inputs: readonly RelativePath[];
+}
+
+/**
+ * Task 013-02 (D2 of 013-01): the completion barrier over a tier. A file is
+ * barred when its keys name a path `touched` holds, among its inputs or
+ * what its run read beyond them (`growth`, by file id), as a content change
+ * of that path would re-key it; `withheldForTouch` withholds the barred
+ * files, naming the paths they name, and the rest of the run stands.
+ */
+export function barredByTouch<T extends Barred>(
+  report: RunReport,
+  files: readonly T[],
+  touched: readonly RelativePath[],
+  growth?: ReadonlyMap<string, { readonly growth: readonly RelativePath[] }>,
+): { readonly report: RunReport; readonly barred: T[]; readonly paths: RelativePath[] } {
+  const isTouched = new Set(touched);
+  const named = (paths: readonly RelativePath[] = []) => paths.filter((p) => isTouched.has(p));
+  const touchedOf = (ran: T) => [...named(ran.inputs), ...named(growth?.get(ran.file.id)?.growth)];
+  const barred = files.filter((ran) => touchedOf(ran).length > 0);
+  const paths = [...new Set(barred.flatMap(touchedOf))].sort();
+  const withheld = withheldForTouch(
+    report,
+    paths,
+    barred.map(({ file }) => file.ref),
+  );
+  return { report: withheld, barred, paths };
+}
+
 /** A withheld tier's files: those withheld at their key for the first time, and the rest. */
 export interface Withheld<T extends Ran> {
   readonly again: readonly T[];
