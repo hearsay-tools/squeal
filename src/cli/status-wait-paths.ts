@@ -1,6 +1,5 @@
 import { realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
 import { daemonLiveness } from "../core/delivery/index.js";
 import { worktreeIdFor } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
@@ -26,7 +25,7 @@ import type { CliIo } from "./main.js";
 import { fileEntry, type NamedFileEntry } from "./named-file-lines.js";
 import { type NamedFile, pauseOnlyIds, readNamedFiles } from "./named-files.js";
 import { statusCommand } from "./status-command.js";
-import type { DaemonSync, SyncState } from "./status-sync.js";
+import { type DaemonSync, pollPause, SYNC_POLL_MS, type SyncState } from "./status-sync.js";
 import { namedClassLines, namedLine, namedText, selectedLine } from "./status-wait-lines.js";
 import { ownPathFiles, type PromoteNamed, promoteNamed } from "./status-wait-promote.js";
 import { type FileVerdict, readClasses, readVerdict, verdictCode } from "./verdict.js";
@@ -241,7 +240,7 @@ export async function waitForNamed(
         : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
       const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root }) => {
         const id = worktreeIdFor(root);
-        sync ??= options.sync(root, options.pollMs);
+        sync ??= options.sync(root, Math.min(options.pollMs, SYNC_POLL_MS));
         const selection = selectNamedFiles(store, id, root, cwd, paths);
         // Task 011-42: a poll reads the selected files' states only; the verdict, once it ends.
         const all = readClasses(store, id, selection.files);
@@ -320,7 +319,7 @@ export async function waitForNamed(
       }
       first = false;
       const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await sleep(Math.min(options.pollMs, remaining));
+      if (remaining > 0) await pollPause(Math.min(options.pollMs, remaining), sync);
     }
   } finally {
     sync?.stop();
