@@ -1,0 +1,6 @@
+{
+  "nodeTest": [
+    { "name": "keep", "cwd": "keep", "include": ["*.test.mjs"] },
+    { "name": "gone", "cwd": "gone", "include": ["*.test.mjs"] }
+  ]
+}
