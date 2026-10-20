@@ -1,5 +1,6 @@
 import type { TestProject, Vitest } from "vitest/node";
 import type { TestFileRef } from "../../core/types/index.js";
+import type { VitestHints } from "./adapter.js";
 
 /**
  * The `maxWorkers` a project runs a tier with (spec 001 D11 Capacity, task
@@ -92,5 +93,45 @@ export class Widths {
         (project.config as Sized).maxWorkers = tierWidth(want, own);
       }
     }
+  }
+}
+
+/**
+ * The adapter's hints (task 011-37 section 5, row 011-40): the widths of the
+ * instance it started last, each run sized under them, and the scheduler's
+ * width questions answered from them. `maxWorkers` is the width of a run
+ * without a grant (spec 004 D2: the slow tier's instance), under the
+ * project's own as a grant is (D11, task 001-378).
+ */
+export class VitestWidths implements VitestHints {
+  #widths: Widths | null = null;
+
+  constructor(readonly maxWorkers?: number) {}
+
+  started(vitest: Vitest): void {
+    this.#widths = new Widths(vitest);
+  }
+
+  size(vitest: Vitest, workers: number | undefined): void {
+    this.#widths?.apply(vitest, workers ?? this.maxWorkers);
+  }
+
+  /**
+   * Spec 004 D2 (review 001-394 B2): the files a slow run starts at once,
+   * under each project's own `maxWorkers` (001 D11 Runner ceiling). The
+   * slow instance has the same configs, so this instance's are read. None
+   * started yet: all of them.
+   */
+  slowWidth(testFiles: readonly TestFileRef[]): number {
+    return this.#widths?.atOnce(testFiles) ?? testFiles.length;
+  }
+
+  /**
+   * Spec 011 C4 step 5 (task 001-366): the workers a backlog tier holding
+   * `testFile` runs with at `grant`, under its project's own `maxWorkers`.
+   * No instance yet: `grant`.
+   */
+  tierWidth(testFile: TestFileRef, grant: number): number {
+    return this.#widths?.of(testFile.project, grant) ?? grant;
   }
 }
