@@ -1,0 +1,34 @@
+$ sh -n < plain.json; echo $?
+0
+$ sh -n < redirect-span.json; echo $?
+sh: 1: Syntax error: end of file unexpected
+2
+$ sh -n < odd-backtick.json; echo $?
+sh: 1: Syntax error: EOF in backquote substitution
+2
+$ env -i PATH=/usr/bin:/bin HOME=$PWD/home sh < substitution.json; echo $?
+RAN-FROM-FILE-CONTENT
+RAN-DOLLAR-PAREN
+sh: 1: {hook_event_name:preToolUse,tool_name:Write,tool_input:{content:see  and }}: not found
+127
+$ env -i PATH=/usr/bin:/bin HOME=$PWD/home sh < plain.json; echo $?
+sh: 1: {hook_event_name:preToolUse,tool_name:Write,tool_input:{file_path:/w/plugin.yaml,old_string:version: 0.25.17,new_string:version: 0.25.18},cwd:/w}: not found
+127
+$ node < session-end.json; echo $?
+[stdin]:1
+{"hook_event_name":"sessionEnd","conversation_id":"c"}
+                  ^
+Expected ';', '}' or <eof>
+
+SyntaxError: Unexpected token ':'
+    at makeContextifyScript (node:internal/vm:194:14)
+    at compileScript (node:internal/process/execution:388:10)
+    at evalTypeScript (node:internal/process/execution:260:22)
+    at node:internal/main/eval_stdin:51:5
+    at ReadStream.<anonymous> (node:internal/process/execution:205:5)
+    at ReadStream.emit (node:events:514:28)
+    at endReadableNT (node:internal/streams/readable:1764:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+
+Node.js v24.21.0
+1

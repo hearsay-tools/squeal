@@ -1,0 +1,30 @@
+# Excerpts of the installed cursor-agent bundles (minified), read 2026-10-20.
+
+# Claude Code hook entry -> Cursor hook: keeps type, command, timeout, matcher; `args` is never read
+# 2026.10.16-e3cb207/index.js, offset 3507136
+function l(t,e){const r={loop_limit:null,failClosed:!1};return e&&"*"!==e&&(r.matcher=e),void 0!==t.timeout&&(r.timeout=t.timeout),"prompt"===t.type?t.prompt?{type:"prompt",prompt:t.prompt,...r}:null:t.command?{type:"command",command:t.command,...r}:null}
+
+# the same converter in the older installed build
+# 2026.10.01-e373342/index.js, offset 3943853
+function l(e,t){const r={loop_limit:null,failClosed:!1};return t&&"*"!==t&&(r.matcher=t),void 0!==e.timeout&&(r.timeout=e.timeout),"prompt"===e.type?e.prompt?{type:"prompt",prompt:e.prompt,...r}:null:e.command?{type:"command",command:e.command,...r}:null}
+
+# the Claude Code events Cursor maps; PostToolBatch and SubagentStart are not among them
+# 2026.10.16-e3cb207/index.js, offset 3506590
+s={PreToolUse:n.preToolUse,PermissionRequest:null,PostToolUse:n.postToolUse,UserPromptSubmit:n.beforeSubmitPrompt,Stop:n.stop,SubagentStop:n.subagentStop,SessionStart:n.sessionStart,SessionEnd:n.sessionEnd,PreCompact:n.preCompact,Notification:null}
+
+# payload transport: stdin, or else a heredoc
+# 2026.10.16-e3cb207/190.index.js, offset 60826
+getCommandHookPayloadTransportMode(){return"stdin"===this.options?.commandHookPayloadTransport?"stdin":"argv_heredoc"}
+
+# the heredoc form: either way the payload is the command's stdin
+# 2026.10.16-e3cb207/190.index.js, offset 75763
+`${t.command} <<'CURSOR_HOOK_EOF'\n${i}\nCURSOR_HOOK_EOF`
+
+# the plugin root reaches the command in its environment
+# 2026.10.16-e3cb207/190.index.js, offset 76182
+void 0!==n&&(P.CURSOR_PLUGIN_ROOT=n,P.CLAUDE_PLUGIN_ROOT=n)
+
+# exit 2 blocks the tool, with stderr as the message
+# 2026.10.16-e3cb207/index.js, offset 3519636
+function F(t,e,r){const n=t.trim(),s=e.trim();return n||(s?`Hook blocked with message: ${s}`:`Hook "${r}" blocked this action (exit code 2) but provided no reason.`)}
+

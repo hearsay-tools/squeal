@@ -1,0 +1,13 @@
+# cursor-agent 2026.10.16-e3cb207, print session of Cezar task toolkit-dev 3ce877c6 (third edit retry, 2026-10-20),
+# its `analytics.track` lines naming plugin squeal, copied during the diagnosis; the task and its logs were deleted afterwards.
+# The 2:blocked line is the Edit that failed with `sh: 1: Syntax error: end of file unexpected`.
+2026-10-20T14:11:58.163Z {"eventName":"cli.hook.executed","props":{"platform":"cli","hookStep":"preToolUse","hookSource":"claude-plugin","hookType":"command","status":"failed","latencyMs":841,"payloadSizeBytes":894,"errorClass":"exit_nonzero","failClosed":false,"exitCode":127,"transportMode":"stdin","plugin":"squeal","marketplace":"hearsay"}}
+2026-10-20T14:11:58.599Z {"eventName":"cli.hook.executed","props":{"platform":"cli","hookStep":"preToolUse","hookSource":"claude-plugin","hookType":"command","status":"blocked","latencyMs":105,"payloadSizeBytes":3726,"failClosed":false,"exitCode":2,"transportMode":"stdin","plugin":"squeal","marketplace":"hearsay"}}
+2026-10-20T14:12:03.057Z {"eventName":"cli.hook.executed","props":{"platform":"cli","hookStep":"preToolUse","hookSource":"claude-plugin","hookType":"command","status":"failed","latencyMs":104,"payloadSizeBytes":1012,"errorClass":"exit_nonzero","failClosed":false,"exitCode":127,"transportMode":"stdin","plugin":"squeal","marketplace":"hearsay"}}
+2026-10-20T14:12:05.525Z {"eventName":"cli.hook.executed","props":{"platform":"cli","hookStep":"preToolUse","hookSource":"claude-plugin","hookType":"command","status":"failed","latencyMs":107,"payloadSizeBytes":1251,"errorClass":"exit_nonzero","failClosed":false,"exitCode":127,"transportMode":"stdin","plugin":"squeal","marketplace":"hearsay"}}
+2026-10-20T14:12:10.180Z {"eventName":"cli.hook.executed","props":{"platform":"cli","hookStep":"preToolUse","hookSource":"claude-plugin","hookType":"command","status":"failed","latencyMs":125,"payloadSizeBytes":1251,"errorClass":"exit_nonzero","failClosed":false,"exitCode":127,"transportMode":"stdin","plugin":"squeal","marketplace":"hearsay"}}
+2026-10-20T14:12:15.550Z {"eventName":"cli.hook.executed","props":{"platform":"cli","hookStep":"sessionEnd","hookSource":"claude-plugin","hookType":"command","status":"failed","latencyMs":236,"payloadSizeBytes":735,"errorClass":"exit_nonzero","failClosed":false,"exitCode":1,"transportMode":"stdin","plugin":"squeal","marketplace":"hearsay"}}
+
+# exit codes of Squeal's hooks in the cursor-agent logs of Cezar task toolkit-dev f358836d (the other Cursor task on this host that ran them, 2026-10-20)
+f358836d preToolUse exit 127: 52, sessionEnd exit 1: 3, sessionStart exit 1: 2
+# 3ce877c6, read before its deletion: every preToolUse exited 127 (15 in its first session) or 2 (each blocked Edit); sessionEnd exited 1.

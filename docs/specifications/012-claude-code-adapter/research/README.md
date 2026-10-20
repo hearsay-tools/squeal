@@ -6,3 +6,4 @@ Links only. The findings behind this spec were written for 001 and stay in `../.
 - [uncovered-suites](../../001-core-loop/research/uncovered-suites.md)
 - [uncovered-trust](../../001-core-loop/research/uncovered-trust.md)
 - [primer-skill-writing](../../001-core-loop/research/primer-skill-writing.md)
+- [cursor-dropped-args](cursor-dropped-args.md): Cursor CLI imports the plugin and drops `args`, so PreToolUse is a bare `sh` that runs the payload (2026-10-20, row 012-01)

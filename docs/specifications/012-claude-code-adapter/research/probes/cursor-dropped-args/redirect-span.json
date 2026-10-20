@@ -1,0 +1,1 @@
+{"hook_event_name":"preToolUse","tool_name":"Write","tool_input":{"file_path":"/w/filing.md","content":"File it in `<owner>/<repo>` with the `friction-log` label.\n"},"cwd":"/w"}

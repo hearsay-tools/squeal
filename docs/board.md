@@ -823,6 +823,10 @@ Spec: `specifications/011-core/spec.md`. Sections referenced as C1 to C14; a 001
 
 Spec: `specifications/012-claude-code-adapter/spec.md`. Sections referenced as CC1 to CC4; the hook contract is 011 C8. No row was open at the split; new rows take `012-NN`. Candidates, none authorized: the Later items prefixed 012 and the spec's Known seams.
 
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 012-01 hook entries stay harmless when a harness drops `args` (Cursor CLI) | planned (approved by the human 2026-10-20: "we need a row and fix it") | CC1 as amended 2026-10-20, from `research/cursor-dropped-args.md`. Cursor CLI 2026.10 runs the installed Claude Code plugins' hooks but keeps only `command`, so our PreToolUse becomes a bare `sh` that runs the JSON payload as a script. When an edited file holds a span like `` `<owner>/<repo>` ``, the payload fails to parse, exits 2, and Cursor blocks the Edit; that is how toolkit-dev task `3ce877c6` stalled. When a payload parses, its `$(...)` and backtick spans run before the tool does. The Node entries become a bare `node` that exits 1. Give every entry a `command` that, on its own, runs nothing and exits 0, and keep the exec form. Brief `specifications/012-claude-code-adapter/tasks/012-01/brief.md`. | Every `hooks.json` entry's `command`, run alone under `sh -c` and the heredoc form with the probe's payloads on stdin, exits 0 silently and runs no substitution; with its `args`, the fast-path cases and the 10 ms p95 hold; the plugin tests assert the new shape. |
+
 ## Feature 013: Vitest runner
 
 Spec: `specifications/013-vitest-runner/spec.md`. Sections referenced as V1 to V10. No row was open at the split; new rows take `013-NN`. Candidates, none authorized: the spec's Known seams.
