@@ -29,7 +29,7 @@ import { statusCommand } from "./status-command.js";
 import type { DaemonSync, SyncState } from "./status-sync.js";
 import { namedClassLines, namedLine, namedText, selectedLine } from "./status-wait-lines.js";
 import { ownPathFiles, type PromoteNamed, promoteNamed } from "./status-wait-promote.js";
-import { type FileVerdict, readVerdict, verdictCode } from "./verdict.js";
+import { type FileVerdict, readClasses, readVerdict, verdictCode } from "./verdict.js";
 import {
   type DaemonWatch,
   type DownReason,
@@ -66,7 +66,8 @@ export function selectNamedFiles(
   paths: readonly string[],
 ): NamedSelection {
   const rows = store.testFileKeys.list(worktreeId);
-  const closures = validClosures(store, worktreeId, rows);
+  // Read only for a path no test file has: every stored closure is a large read (task 011-42).
+  let closures: ReturnType<typeof validClosures> | undefined;
   const selected = new Map<string, TestFileRef>();
   const unmatched: string[] = [];
   for (const path of paths) {
@@ -77,7 +78,10 @@ export function selectNamedFiles(
         ? []
         : own.length > 0
           ? own
-          : rows.filter((row) => closures.get(row)?.has(rel) === true);
+          : rows.filter((row) => {
+              closures ??= validClosures(store, worktreeId, rows);
+              return closures.get(row)?.has(rel) === true;
+            });
     if (hits.length === 0) unmatched.push(rel ?? path);
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
   }
@@ -239,7 +243,8 @@ export async function waitForNamed(
         const id = worktreeIdFor(root);
         sync ??= options.sync(root, options.pollMs);
         const selection = selectNamedFiles(store, id, root, cwd, paths);
-        const all = readVerdict(store, id, selection.files);
+        // Task 011-42: a poll reads the selected files' states only; the verdict, once it ends.
+        const all = readClasses(store, id, selection.files);
         const settled = final || elapsed() >= options.settleMs;
         watch ??= watchDaemon(id, { downMs: options.downMs });
         const record = store.worktrees.get(id)?.daemon ?? null;
@@ -260,7 +265,7 @@ export async function waitForNamed(
         }
         const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
         const held = selection.files.filter((f) => !paused.has(testFileId(f)));
-        const verdict = leftForPause.length === 0 ? all : readVerdict(store, id, held);
+        const classes = leftForPause.length === 0 ? all : readClasses(store, id, held);
         const outcome: NamedWaitOutcome | null =
           settled && daemon.state === "down"
             ? "no-daemon"
@@ -268,7 +273,7 @@ export async function waitForNamed(
               ? "unmatched"
               : ready && held.length === 0
                 ? "slow"
-                : ready && verdict.byClass.pending === 0 && !verdict.unlisted
+                : ready && classes.byClass.pending === 0 && !classes.unlisted
                   ? "settled"
                   : final
                     ? "timeout"
@@ -285,6 +290,7 @@ export async function waitForNamed(
           }
           return null;
         }
+        const verdict = readVerdict(store, id, held);
         const result = buildSnapshot(store, root, options.now());
         const files = readNamedFiles(
           store,

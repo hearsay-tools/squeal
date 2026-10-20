@@ -24,6 +24,7 @@ import {
   failuresText,
   gapText,
   noVerdictText,
+  readClasses,
   readVerdict,
   verdictCode,
 } from "./verdict.js";
@@ -34,7 +35,10 @@ const USAGE =
 /** Without `--wait`, how long to wait for the scheduler to record the checkpoint. */
 const RECORD_WAIT_MS = 10_000;
 const POLL_MS = 100;
-const STORE_POLL_MS = 250;
+/** How often `--wait` reads the store (C6 as amended, task 011-42). */
+const STORE_POLL_MS = 1_000;
+/** Every this many polls, `--wait` asks whether the daemon is still there: every 5 s. */
+const PING_POLLS = 5;
 
 /** How a waited checkpoint ended for the CLI (spec 005 D1). */
 type Outcome =
@@ -235,7 +239,7 @@ function filesText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
       laneFiles(store, checkpoint) ??
       store.testFileKeys.list(checkpoint.worktreeId).map((row) => row.testFile);
     const rest = listed.filter((file) => !requested.has(testFileId(file)));
-    return readVerdict(store, checkpoint.worktreeId, rest).byClass.current;
+    return readClasses(store, checkpoint.worktreeId, rest).byClass.current;
   });
   return `${toRun} to run${current === null ? "" : `, ${current} already current`}`;
 }
@@ -319,9 +323,12 @@ function inStore<T>(root: AbsolutePath, read: (store: Store) => T): T | null {
 }
 
 /**
- * Polls the store until the checkpoint ended and none of the worktree's test
- * files is pending (a new failure's re-run, spec 001 D6 as amended), a newer
- * revision was recorded, `deadline` passed, or the daemon went away.
+ * Polls the store once a second until the checkpoint ended and none of the
+ * worktree's test files is pending (a new failure's re-run, spec 001 D6 as
+ * amended), a newer revision was recorded, `deadline` passed, or the daemon
+ * went away. A poll reads the checkpoint's end and the latest revision, and
+ * the verdict only once the checkpoint ended or at the deadline (C6 as
+ * amended, task 011-42).
  */
 async function ended(
   root: AbsolutePath,
@@ -330,22 +337,37 @@ async function ended(
   deadline: number,
 ): Promise<Outcome> {
   for (let polls = 0; ; polls++) {
-    const seen = inStore(root, (store): Outcome | FileVerdict => {
-      const end = store.checkpoints.get(checkpoint.id)?.end ?? null;
-      const revision = store.revisions.latest(checkpoint.worktreeId)?.number ?? 0;
-      if (revision > checkpoint.revision) return { kind: "moved", revision };
-      if (end === "abandoned") return { kind: "abandoned" };
-      const verdict = readVerdict(store, checkpoint.worktreeId, laneFiles(store, checkpoint));
-      const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
-      return end === "completed" && settled ? { kind: "ended", verdict } : verdict;
-    });
+    const seen = inStore(root, (store) => pollCheckpoint(store, checkpoint, deadline));
     if (seen === null) return { kind: "stopped" };
-    if ("kind" in seen) return seen;
-    if (Date.now() >= deadline) return { kind: "deadline", verdict: seen };
+    if (seen !== "open") return seen;
     // A killed daemon never ends its checkpoint; check that it is still there now and then.
-    if (polls % 20 === 19 && (await askDaemon(socketPath, { type: "ping" })) === null) {
+    if (
+      polls % PING_POLLS === PING_POLLS - 1 &&
+      (await askDaemon(socketPath, { type: "ping" })) === null
+    ) {
       return { kind: "stopped" };
     }
     await sleep(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
   }
+}
+
+/**
+ * One poll of `ended`: the outcome, or `open` while the checkpoint runs, or
+ * it completed with a test file still pending, before `deadline`.
+ */
+function pollCheckpoint(
+  store: Store,
+  checkpoint: CheckpointRecord,
+  deadline: number,
+): Outcome | "open" {
+  const end = store.checkpoints.get(checkpoint.id)?.end ?? null;
+  const revision = store.revisions.latest(checkpoint.worktreeId)?.number ?? 0;
+  if (revision > checkpoint.revision) return { kind: "moved", revision };
+  if (end === "abandoned") return { kind: "abandoned" };
+  const late = Date.now() >= deadline;
+  if (end !== "completed" && !late) return "open";
+  const verdict = readVerdict(store, checkpoint.worktreeId, laneFiles(store, checkpoint));
+  const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
+  if (end === "completed" && settled) return { kind: "ended", verdict };
+  return late ? { kind: "deadline", verdict } : "open";
 }

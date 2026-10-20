@@ -6,6 +6,7 @@ import type {
   RelativePath,
   Store,
   TestFileKeyRecord,
+  TestFileRef,
   WorktreeId,
 } from "../core/types/index.js";
 
@@ -20,8 +21,8 @@ import type {
  * that stops calling it slow does not discharge it (review wave-13ak, B2).
  */
 
-/** The slow files a wait holds for, by `testFileId`, with their paths. */
-export type HeldSlow = ReadonlyMap<string, RelativePath>;
+/** The slow files a wait holds for, by `testFileId`. */
+export type HeldSlow = ReadonlyMap<string, TestFileRef>;
 
 /** The worktree's slow files pending now; none without a slow file declared. */
 export function pendingSlow(
@@ -34,9 +35,7 @@ export function pendingSlow(
   if (view === null) return new Map();
   const files = classifySlowFiles(states, keys, view.isSlow);
   return new Map(
-    [...files]
-      .filter(([, file]) => file.class === "pending")
-      .map(([id, file]) => [id, file.ref.path]),
+    [...files].filter(([, file]) => file.class === "pending").map(([id, file]) => [id, file.ref]),
   );
 }
 
@@ -65,7 +64,7 @@ export function heldSlowLeft(
   }
   return [...pending]
     .filter((id) => rows.has(id))
-    .map((id) => held.get(id) as RelativePath)
+    .map((id) => (held.get(id) as TestFileRef).path)
     .sort();
 }
 
