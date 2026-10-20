@@ -38,12 +38,15 @@ const ENVIRONMENT_ENCODING = "squeal-environment/1";
  * `hashOf` hashes the runner files, normally `StatCache.hashOf`, so they get
  * the same file hash as closure paths (D3: "One definition everywhere"). `null`
  * is an absent file. `undefined` is a path the caller never hashed; it throws
- * rather than encoding an unknown file as absent.
+ * rather than encoding an unknown file as absent. `format` is the key format
+ * to hash under: a format read as one (`KEY_FORMATS_READ_AS_ONE`, task
+ * 011-38) gives the hash a daemon at that format computed.
  */
 export function environmentHash(
   core: CoreEnvironmentInputs,
   runner: RunnerEnvironment,
   hashOf: (path: RelativePath) => FileHash | null | undefined,
+  format: number = KEY_FORMAT_VERSION,
 ): EnvironmentHash {
   const files = [...new Set(runner.files)].sort(compare).map((path) => {
     const hash = hashOf(path);
@@ -56,7 +59,7 @@ export function environmentHash(
   });
   const encoded = JSON.stringify([
     ENVIRONMENT_ENCODING,
-    KEY_FORMAT_VERSION,
+    format,
     core.nodeVersion,
     core.platform,
     core.arch,

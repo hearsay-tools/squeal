@@ -46,6 +46,18 @@ interface Keyed {
   /** The installed-dependency segment of the key (task 001-105). */
   dependencies: string;
   key: CheckKey | null;
+  /** `keysReadAsOne`'s keys, computed at the first call for `key` and those environments. */
+  readAsOne?: {
+    readonly key: CheckKey;
+    readonly environments: readonly EnvironmentHash[];
+    readonly keys: readonly CheckKey[];
+  };
+}
+
+/** A test file and its keys at the formats read as one (`KeyIndex.keysReadAsOne`). */
+export interface KeysReadAsOne {
+  readonly testFile: TestFileRef;
+  readonly keys: readonly CheckKey[];
 }
 
 /**
@@ -70,6 +82,10 @@ export class KeyIndex {
   private readonly keyed = new Map<string, Keyed>();
   private readonly paths = new Map<RelativePath, PathEntry>();
   private readonly environments = new Map<ProjectName, EnvironmentHash>();
+  /** Each project's environment hashes at the formats read as one (task 011-38). */
+  private readonly readAsOne = new Map<ProjectName, readonly EnvironmentHash[]>();
+  /** The test file each current key belongs to, by `testFileId`. */
+  private readonly ids = new Map<CheckKey, string>();
 
   constructor(private readonly hashOf: HashSource) {}
 
@@ -85,8 +101,17 @@ export class KeyIndex {
     return this.environments.get(project);
   }
 
-  /** Sets a project's environment hash and re-keys its test files. */
-  setEnvironment(project: ProjectName, envHash: EnvironmentHash): KeyChange[] {
+  /**
+   * Sets a project's environment hash and re-keys its test files.
+   * `readAsOne` holds its hashes at the formats read as one; a provisional
+   * hash has none.
+   */
+  setEnvironment(
+    project: ProjectName,
+    envHash: EnvironmentHash,
+    readAsOne: readonly EnvironmentHash[] = [],
+  ): KeyChange[] {
+    this.readAsOne.set(project, readAsOne);
     if (this.environments.get(project) === envHash) return [];
     this.environments.set(project, envHash);
     return this.recompute(this.reverse.testFiles().filter((ref) => ref.project === project));
@@ -96,16 +121,19 @@ export class KeyIndex {
    * Sets the environment hash of each project in `environments` and the
    * installed-dependency segment of each of their test files, then re-keys
    * once each test file whose project hash or segment moved, so no key
-   * passes through a mix of old and new inputs (task 001-105).
+   * passes through a mix of old and new inputs (task 001-105). `readAsOne`
+   * holds each project's hashes at the formats read as one (task 011-38).
    */
   setInstalled(
     environments: ReadonlyMap<ProjectName, EnvironmentHash>,
     dependenciesOf: (testFile: TestFileRef) => string,
+    readAsOne: ReadonlyMap<ProjectName, readonly EnvironmentHash[]> = new Map(),
   ): KeyChange[] {
     const moved = new Set<ProjectName>();
     for (const [project, envHash] of environments) {
       if (this.environments.get(project) !== envHash) moved.add(project);
       this.environments.set(project, envHash);
+      this.readAsOne.set(project, readAsOne.get(project) ?? []);
     }
     const changed = this.reverse.testFiles().filter((ref) => {
       const keyed = this.keyed.get(testFileId(ref));
@@ -149,6 +177,7 @@ export class KeyIndex {
     const keyed = this.keyed.get(id);
     if (!keyed) return false;
     this.keyed.delete(id);
+    if (keyed.key !== null) this.ids.delete(keyed.key);
     this.reverse.remove(testFile);
     this.release(keyed.closure.paths);
     return true;
@@ -164,6 +193,27 @@ export class KeyIndex {
     return this.recompute(this.reverse.referencing(changed));
   }
 
+  /**
+   * The test file whose current key is `key`, with its keys at the formats
+   * read as one (spec 011 C3 as amended 2026-10-20, task 011-38), computed
+   * over the segments the index holds, once per key. `null` when no test
+   * file holds `key` now.
+   */
+  keysReadAsOne(key: CheckKey): KeysReadAsOne | null {
+    const id = this.ids.get(key);
+    const keyed = id === undefined ? undefined : this.keyed.get(id);
+    if (keyed === undefined || keyed.key !== key) return null;
+    const { testFile } = keyed.closure;
+    const environments = this.readAsOne.get(testFile.project) ?? [];
+    let memo = keyed.readAsOne;
+    if (memo?.key !== key || memo.environments !== environments) {
+      const keys = environments.flatMap((envHash) => this.keyOf(keyed, envHash) ?? []);
+      memo = { key, environments, keys };
+      keyed.readAsOne = memo;
+    }
+    return { testFile, keys: memo.keys };
+  }
+
   private recompute(testFiles: readonly TestFileRef[]): KeyChange[] {
     const changes: KeyChange[] = [];
     for (const testFile of testFiles) {
@@ -173,6 +223,9 @@ export class KeyIndex {
       const key = this.keyOf(keyed, envHash);
       if (key === keyed.key) continue;
       changes.push({ testFile, previous: keyed.key, key });
+      const id = testFileId(testFile);
+      if (keyed.key !== null && this.ids.get(keyed.key) === id) this.ids.delete(keyed.key);
+      if (key !== null) this.ids.set(key, id);
       keyed.key = key;
     }
     return changes;

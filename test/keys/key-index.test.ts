@@ -125,6 +125,31 @@ describe("KeyIndex", () => {
     expect(index.removeTestFile(a)).toBe(false);
   });
 
+  it("answers a current key's test file with its keys at the formats read as one (011-38)", () => {
+    const table = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1" });
+    const index = new KeyIndex(table.hashOf);
+    const closure = closureOf(a, ["src/x.ts"]);
+    index.setClosure(closure);
+    index.setInstalled(new Map([["unit", "env18"]]), () => "", new Map([["unit", ["e16", "e17"]]]));
+    const at = (env: string) => checkKey(env, closure, (path) => table.hashOf(path) ?? null);
+    const key = index.key(a) ?? "";
+    expect(key).toBe(at("env18"));
+    expect(index.keysReadAsOne(key)).toEqual({ testFile: a, keys: [at("e16"), at("e17")] });
+
+    // A key no test file holds now has none: an earlier key, or a forgotten file's.
+    table.hashes.set("src/x.ts", "x2");
+    index.rekey(["src/x.ts"]);
+    expect(index.keysReadAsOne(key)).toBeNull();
+    const moved = index.key(a) ?? "";
+    expect(index.keysReadAsOne(moved)?.keys).toEqual([at("e16"), at("e17")]);
+    // A provisional environment has no formats read as one.
+    index.setEnvironment("unit", "provisional");
+    const provisional = index.key(a) ?? "";
+    expect(index.keysReadAsOne(provisional)).toEqual({ testFile: a, keys: [] });
+    index.removeTestFile(a);
+    expect(index.keysReadAsOne(provisional)).toBeNull();
+  });
+
   it("returns untracked closure paths and keys the test file only once they are hashed", () => {
     const { table, index } = setup();
     const c = ref("test/c.test.ts");
