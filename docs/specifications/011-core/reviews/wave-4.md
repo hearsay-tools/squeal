@@ -553,3 +553,151 @@ Repair S2-B1 and S2-B2 before landing this candidate; include S2-S1 in the focus
 Re-review the repair delta against both blocker scenarios, with the existing departure/stop, throughput, pool-cap, Vitest-cancel and stale-run cases kept green. No new runner capability or store schema is needed. The known forced-queue promotion gap and delayed failure-confirmation observation in slice 1's notes predate this range; they are not additional findings here. A continuing first-group stream starving confirmation because of S2-B2 is the new regression.
 
 The subsequent 011-22 pull/re-key classification and 011-23 cross-worktree adoption work remain separate rows. Neither should be used to absorb these slot correctness repairs.
+
+
+## Slice 2 re-review
+
+**PASS c141fa8fc3b16492106f7f1ed9ece4a7ff321bbf**. Zero blockers, zero should-fix items, zero nits; one nonblocking follow-up note. W4r of `tasks/wave-4.md`, reviewed 2026-10-20. Bounded repair range: `1fb03098..c141fa8f`. S2-B1, S2-B2's starvation scenario and S2-S1 are closed. The settled slice 1 and slice 2 findings above were not re-prosecuted.
+
+### Verification output
+
+The reviewer checked out the exact candidate, with no tracked or untracked changes. The following checks ran there; each exited 0. Build regenerated all four plugin bundles without any tracked drift. The findings append is made separately on top of `origin/main`, as W4r requests.
+
+```text
+$ git rev-parse HEAD
+c141fa8fc3b16492106f7f1ed9ece4a7ff321bbf
+$ git status --porcelain
+(no output)
+```
+
+```text
+$ npm ci
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 196 packages, and audited 197 packages in 7s
+
+32 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm warn install-scripts 6 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+npm warn install-scripts   @parcel/watcher@2.6.0 (install: node scripts/build-from-source.js)
+npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp-build-optional-packages)
+npm warn install-scripts   opencode-ai@1.18.35 (postinstall: node ./postinstall.mjs)
+npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+```
+
+```text
+$ npm run lint
+
+> squeal@0.1.225 lint
+> biome check .
+
+Checked 1474 files in 686ms. No fixes applied.
+```
+
+```text
+$ npm run typecheck
+
+> squeal@0.1.225 typecheck
+> tsc --noEmit
+```
+
+```text
+$ npm run build
+
+> squeal@0.1.225 build
+> tsc -p tsconfig.build.json && npm run build:plugin
+
+
+> squeal@0.1.225 build:plugin
+> tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
+```
+
+The coordinator reports the following independent locked full gate at this exact candidate, exit 0. This is coordinator evidence, not a second reviewer full run. The resume explicitly says to repeat it only if the delta gives reason to doubt it. The small repair delta and focused checks below give no such reason; no second full suite or Squeal checkpoint was run for W4r.
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+ Test Files  745 passed | 1 skipped
+      Tests  6327 passed | 9 skipped
+   Duration  848.92s (tests 98%, import 2%)
+Exit 0 (coordinator-reported).
+```
+
+The reviewer's own focused locked run at the clean candidate covered both new regressions, all four edit-beside-backlog cases and the key-format guard:
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/slot-records.test.ts test/scheduler/slots-backlog-turn.test.ts test/scheduler/edit-beside-backlog.test.ts test/keys/key-format.test.ts --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/efeadf4c-ff0f-41d8-9c00-80cdea0f47ef
+
+
+ Test Files  4 passed (4)
+      Tests  39 passed (39)
+   Start at  09:31:31
+   Duration  50.17s (tests 94%, transform 5%, import 1%)
+Exit 0.
+```
+
+After these checks, HEAD still matched the candidate, `git diff --exit-code` exited 0, and `git status --porcelain` printed nothing. Disposable probes and the mutation worktree were removed before writing this append.
+
+Squeal was also queried after returning to the documentation base. It reported no verdict for the findings file because no test closure reads it, the two known daemon-only recorder-fidelity failures (001-390), and its baseline still running. Those observations are at the documentation base, not candidate verification; they do not replace either locked run above.
+
+### Previously blocking findings
+
+**S2-B1 — closed, proven.** `src/core/scheduler/slot-records.ts:67` attaches `outcome.catch` immediately, before either gathering or draining can reject it. The original rejected outcome still reaches the handled public promise; the catch only prevents the premature unhandled event. A plain Node child process imported the candidate's `SlotRecords` and `Mutex`, opened two real SQLite connections, held `BEGIN IMMEDIATE` on one and attempted an insert on the other with `busy_timeout=1`. A sibling's reads stayed pending for 150 ms. Both public calls were immediately passed to `Promise.allSettled`. The child asserted the first rejection's `errcode === 5`, the sibling's fulfillment, one sibling record and one commit:
+
+```text
+SQLITE_BUSY rejected to caller; good sibling recorded once; commits=1; exit 0
+```
+
+In the disposable worktree, removing only the new outcome handler made the new `slot-records.test.ts` case fail at line 91 with `[Error: record failed]` instead of an empty unhandled-rejection list. Existing failed-record, failed-read and failed-commit cases pass at the candidate.
+
+**S2-B2 — starvation scenario closed, proven.** `RunQueue.backlogTurn()` exposes the same counter used by queue ordering; `selectTier` no longer skips the ordered backlog on that turn. The original selector scenario was repeated with the real `RunQueue`, `newFileState`, `StatCache` and `selectTier`, one backlog file waiting and one recent file added before every selection, all unforced:
+
+```text
+Selected tiers: [["edit0"],["edit1"],["edit2"],["edit3"],["backlog"],["edit4"]]
+Fifth tier advances backlog; exit 0
+```
+
+Removing only `!ledger.queue.backlogTurn()` from the skip restored six edits, with `edit4` instead of backlog fifth, and the probe exited 1. The new real-scheduler `slots-backlog-turn.test.ts` passes at the candidate; without that condition it started only seven runs (one held slot plus six edits), then failed its eighth-start assertion at line 48. This directly discriminates the reported starvation. The capacity classification of the fairness turn is the separate note below.
+
+### Previously nonblocking finding
+
+**S2-S1 — closed, proven.** `test/scheduler/edit-beside-backlog.test.ts:119` now holds the old run's crash report behind a promise. Case 4 releases it only after the newer PASS is observed and the old run is confirmed open (`:317`–`:319`); `onTestFinished` also releases it on assertion failure. Its completion order no longer depends on the sleep lead.
+
+In a disposable detached candidate worktree, the two fixes were removed independently at their respective source sites and `supersededIn` was disabled. The same focused mutation run confirmed all four regressions fail for the intended properties:
+
+```text
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/slot-records.test.ts test/scheduler/slots-backlog-turn.test.ts test/scheduler/edit-beside-backlog.test.ts -t 'leaves no rejection|runs a backlog file|3\.|4\.' --maxWorkers=4
+slot-records:91: unhandled list contains Error("record failed").
+slots-backlog-turn:48: started.length is 7, expected at least 8.
+edit-beside-backlog case 3:283: pending is queued, expected running.
+edit-beside-backlog case 4:325: outcome is unknown, expected pass.
+ Test Files  3 failed (3)
+      Tests  4 failed | 6 skipped (10)
+   Duration  36.75s (tests 86%, transform 12%, import 2%)
+Exit 1 (intentional mutation).
+```
+
+Cases 3 and 4 both reach their state assertions; neither red result is a setup or ordering prerequisite failure. The four test cases pass in the unmodified candidate's focused run above.
+
+### Follow-up note
+
+**S2r-N1 — proven behavior, nonblocking under the explicit W4r scope: the fairness turn retains the existing edit-tier capacity classification.** Location: `src/core/scheduler/tiers.ts:153`, `:206`, `:222`; `test/scheduler/slots-backlog-turn.test.ts:26`. While edits remain queued, `backlog` remains false even when the fifth selection takes a backlog-only file. It therefore has no `slot` marker and does not call `capacity.take(1)`. A capacity spy added to the selector probe recorded zero permit requests through all six selections, including the fifth. The new scheduler regression deliberately runs that turn beside a held slot at `tierSize=1`.
+
+C4's fifth-selection requirement is satisfied; this note does not reopen its starvation scenario. The repair preserves the earlier tier route for fairness, rather than making the fairness turn an ordinary permitted slot as the original suggested repair proposed. C10's slot-budget treatment of that turn deserves a separate row, especially before widening pull/re-key work. One worker can make queue priority and execution/capacity classification explicit, then add a capacity-spy regression with W slots held and edits queued, covering both single-file node:test and packed pytest turns. W4r expressly sends anything outside its three closure checks to a later row.
+
+### What fits
+
+- The two product fixes change only early outcome handling and whether the selector skips the owed turn. They add no runner interface, schema or transaction boundary.
+- Queue ordering and admission use the same `backlogTurn` predicate. The new regression exercises the scheduler, rather than slicing queue order alone.
+- The original stale-run guard remains unchanged; its two opposite completion orders are demonstrably covered after the barrier repair.
+- `KEY_FORMAT_VERSION` remains 16, the pin passes `key-format.test.ts`, `slots-backlog-turn` is in `test/version-sensitive.txt`, and all four committed plugin bundles rebuild without drift.
+
+### Inputs for the next wave
+
+No further repair is required for W4r's three closure checks. Keep immediate rejection handling on both the input-read and outcome promises; keep the backlog-turn predicate shared with queue order; preserve the explicit crash barrier and both stale-run state assertions. Carry S2r-N1 as a separate capacity follow-up, without claiming the fifth-turn test proves slot-width or permit accounting. The previously settled runner, recording, departure, pool, pytest and Vitest boundaries above remain the inputs to 011-22 and 011-23.
