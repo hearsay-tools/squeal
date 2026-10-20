@@ -20,7 +20,7 @@ import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
 import { priorityOf } from "./queue.js";
 import { restoreReruns } from "./rerun.js";
-import { readEnvironments, resolveClosures } from "./revision.js";
+import { isCatchUp, readEnvironments, resolveClosures } from "./revision.js";
 import { runnerPartBound } from "./runner-work-bound.js";
 
 /**
@@ -93,7 +93,9 @@ function readRefined(store: Store, worktreeId: WorktreeId): RevisionNumber | nul
  * checkpoint. `changed` holds the paths no runner saw change: those `scan`
  * returned and those revisions changed while the daemon waited for an
  * install. A miss they edited or whose closure they touch is queued recent,
- * ahead of the rest (review wave 11, S2; D5 step 4).
+ * ahead of the rest (review wave 11, S2; D5 step 4), or as catch-up when
+ * they hold 10 keyed paths or more, as one revision's would (`isCatchUp`,
+ * 011 C4 step 4 as amended 2026-10-20, task 011-22).
  */
 export async function baseline(
   context: SchedulerContext,
@@ -178,9 +180,18 @@ export async function baseline(
   if (policy.baseline.onStart === "lookup-only") {
     ledger.checkpoints.finish("abandoned");
   } else {
+    // What no runner saw change is one revision's edit here, catch-up from 10 keyed paths (011-22).
     const recent = ledger.recentOf(changed);
+    const catchUp = isCatchUp(context, ledger, changed);
     for (const file of misses) {
-      ledger.enqueue(file, priorityOf(file, changed), false, recent.has(file.id));
+      const reached = recent.has(file.id);
+      ledger.enqueue(
+        file,
+        priorityOf(file, changed),
+        false,
+        reached && !catchUp,
+        reached && catchUp,
+      );
     }
   }
   restoreReruns(context, ledger, policy.baseline.onStart !== "lookup-only");

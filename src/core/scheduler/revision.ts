@@ -1,5 +1,11 @@
 import { type KeyChange, testFileId } from "../keys/index.js";
-import type { FileChange, InvalidatedPath, Revision, TestFileRef } from "../types/index.js";
+import type {
+  FileChange,
+  InvalidatedPath,
+  RelativePath,
+  Revision,
+  TestFileRef,
+} from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
@@ -19,6 +25,48 @@ export interface ContentRekey {
   readonly rekeyed: readonly TestFileRef[];
   /** An environment input changed: the runner's environment is read again. */
   readonly environment: boolean;
+  /** The revision is catch-up (`isCatchUp`): its runner part queues no edit's work either. */
+  readonly catchUp?: boolean;
+}
+
+/**
+ * Spec 011 C4 step 4 as amended 2026-10-20 (task 011-22, the human's
+ * threshold): a revision that changes this many keyed paths or more causes
+ * no edit's work. On cezar the largest agent revision no build wrote
+ * changed 8, the smallest large HEAD move 12 (`research/catch-up.md`).
+ */
+export const CATCH_UP_KEYED_PATHS = 10;
+
+/**
+ * Whether `paths`, what one revision changed, hold `CATCH_UP_KEYED_PATHS`
+ * keyed paths: a test file, a path of a closure or a declared input,
+ * whatever the revision's trigger (a `git pull`, a checkout, a merge or a
+ * daemon start's first pass). The files it re-keys, the edited ones and the
+ * runner's direct importers included, are then catch-up: a group between
+ * an edit's work and the rest that runs on the backlog's route, which a
+ * later edit cancels or runs beside. A path added since the last listing
+ * counts once a closure or a declared input names it.
+ */
+export function isCatchUp(
+  context: SchedulerContext,
+  ledger: Ledger,
+  paths: ReadonlySet<RelativePath>,
+): boolean {
+  if (paths.size < CATCH_UP_KEYED_PATHS) return false;
+  const { keys } = context;
+  const testFiles = new Set([...ledger.files.values()].map((file) => file.ref.path));
+  let keyed = 0;
+  for (const path of paths) {
+    if (
+      testFiles.has(path) ||
+      keys.isDeclaredInput(path) ||
+      keys.index.reverse.referencing([path]).length > 0
+    ) {
+      keyed += 1;
+      if (keyed >= CATCH_UP_KEYED_PATHS) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -40,6 +88,8 @@ export function rekeyContent(
 ): ContentRekey {
   const { keys } = context;
   const changes = revision.changes;
+  const paths = new Set(changes.map((c) => c.path));
+  const catchUp = isCatchUp(context, ledger, paths);
   // First: a listing reads the tracked files as this revision left them (task 001-132).
   const touched: TestFileRef[] = keys.rekeyListings(changes).map((c) => c.testFile);
   const policy = reloadPolicy(context, ledger, changes);
@@ -50,8 +100,8 @@ export function rekeyContent(
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  ledger.settle(touched, new Set(changes.map((c) => c.path)), { keyedAt: revision.number });
-  return { rekeyed, environment: inputs || policy.environment };
+  ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
+  return { rekeyed, environment: inputs || policy.environment, catchUp };
 }
 
 /**

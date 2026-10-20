@@ -32,6 +32,8 @@ export interface RunnerPart {
   readonly listed: readonly TestFileRef[] | null | undefined;
   /** `testFileId`s of the runner's direct importers (D5 step 4). */
   readonly direct: ReadonlySet<string>;
+  /** The revision is catch-up (`ContentRekey.catchUp`, task 011-22). */
+  readonly catchUp?: boolean;
   /** Every test file whose closure was asked for, whether or not the runner answered. */
   readonly reresolved: readonly TestFileRef[];
   readonly closures: readonly RunnerClosure[];
@@ -163,6 +165,7 @@ export async function fetchRunnerPart(
     environments,
     listed,
     direct: new Set((affected?.direct ?? []).map(testFileId)),
+    ...(content.catchUp === true ? { catchUp: true } : {}),
     reresolved: [...reresolve.values()],
     closures,
   };
@@ -233,6 +236,7 @@ export async function applyRunnerPart(
   ledger.settle(touched.values(), changed, {
     direct: part.direct,
     ...(keyedAt === undefined ? {} : { keyedAt }),
+    ...(part.catchUp === true ? { catchUp: true } : {}),
   });
   settleFailures(ledger, part.failures, part.retrying, changed);
   return stale;
