@@ -20,6 +20,9 @@ import { appendRevisions, type FakeRepo, fakeRepo, seedStore } from "./helpers.j
 const NOW = Date.UTC(2026, 9, 18, 12, 0, 0);
 const NONE = { checkpointId: null };
 const EARLIER = "Earlier failures: 2 pending rerun, 1 stale (not counted until a rerun fails)";
+/** Row 011-26 (gh-45): what is not current; `current`'s same-key re-run queues its file. */
+const NOT_CURRENT =
+  "; not current: 4 of 4 test files (3 queued, 1 stale), 3 tests (2 queued, 1 stale)";
 
 const file = (name: string): TestFileRef => ({ project: "", path: `src/${name}.test.ts` });
 
@@ -99,7 +102,7 @@ describe("known failures by validity (task 011-15)", () => {
     expect(snapshot.knownFailures).toHaveLength(4);
     const lines = formatStatus(snapshot, NOW).split("\n");
     expect(lines.slice(1, 4)).toEqual([
-      "Known failures: 1 (1 test)",
+      `Known failures: 1 (1 test)${NOT_CURRENT}`,
       EARLIER,
       "  FAIL  src/current.test.ts > current",
     ]);
@@ -124,7 +127,7 @@ describe("known failures by validity (task 011-15)", () => {
     const delivery = createDelivery(store, { status: fixedStatus() });
     const consumer: Consumer = { worktreeId: wt, sessionId: "s1", agentId: "main" };
     const text = formatRegistration(await delivery.register(consumer), undefined, "squeal", NOW);
-    expect(text).toContain(`\nKnown failures: 1 (1 test)\n${EARLIER}\n`);
+    expect(text).toContain(`\nKnown failures: 1 (1 test)${NOT_CURRENT}\n${EARLIER}\n`);
     expect(text).toContain("FAIL  src/stale.test.ts > stale");
   });
 
@@ -138,7 +141,7 @@ describe("known failures by validity (task 011-15)", () => {
     );
     const snapshot = snapshotOf(repo);
     expect(statusText(snapshot, snapshot.knownFailures).split("\n").slice(-2)).toEqual([
-      "Known failures: 1 (src/current.test.ts > current)",
+      `Known failures: 1 (src/current.test.ts > current)${NOT_CURRENT}`,
       EARLIER,
     ]);
   });

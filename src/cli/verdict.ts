@@ -1,5 +1,5 @@
 import { testFileId } from "../core/keys/index.js";
-import { readHeader, testFileKeyOf } from "../core/state/index.js";
+import { type FileClass, fileClassOf, readHeader, testFileKeyOf } from "../core/state/index.js";
 import { type CheckCounts, checkPartsText, unknownFileText } from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type {
@@ -9,30 +9,11 @@ import type {
   Store,
   TestFileKeyRecord,
   TestFileRef,
-  Validity,
   WorktreeId,
 } from "../core/types/index.js";
 
-/** A test file as the verdict counts it: `current` only when every check it has is. */
-export type FileClass = Exclude<Validity, "current"> | "current";
-
-/**
- * `row`'s class from its checks `own` (`readVerdict`): `pending` while
- * queued or running or any check is, else `unknown` while unkeyed, without
- * checks or with an unknown check, else `stale` with a stale check, else
- * `current`. A file the worktree does not list (`row` undefined) is `unknown`.
- */
-export function fileClassOf(
-  row: TestFileKeyRecord | undefined,
-  own: readonly KnownState[],
-): FileClass {
-  const has = (validity: Validity) => own.some((s) => s.validity === validity);
-  const queued = row !== undefined && row.key !== null && row.pending !== null;
-  const unkeyed = row === undefined || row.key === null;
-  if (queued || has("pending")) return "pending";
-  if (unkeyed || own.length === 0 || has("unknown")) return "unknown";
-  return has("stale") ? "stale" : "current";
-}
+/* Row 011-26: the class moved to `src/core/state`, where `readHeader` counts by it. */
+export { type FileClass, fileClassOf } from "../core/state/index.js";
 
 /**
  * How a set of test files stands at the worktree's current revision: how
