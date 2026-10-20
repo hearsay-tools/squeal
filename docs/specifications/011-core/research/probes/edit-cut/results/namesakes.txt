@@ -1,0 +1,97 @@
+
+== cezar, agent revisions: 293 revisions, 320 (revision, changed keyed source) pairs, 294 of them code
+code sources, per pair: 294
+  sibling    one  156  several    0  none  138  (one 53 %)
+  __tests__  one    0  several    0  none  294  (one 0 %)
+  mirror     one    0  several    0  none  294  (one 0 %)
+  pytest     one    0  several    0  none  294  (one 0 %)
+  anywhere   one  157  several   28  none  109  (one 53 %)
+  rule (n)   one  169  several    0  none  125  (one 57 %)
+code sources, distinct: 91
+  sibling    one   45  several    0  none   46  (one 49 %)
+  __tests__  one    0  several    0  none   91  (one 0 %)
+  mirror     one    0  several    0  none   91  (one 0 %)
+  pytest     one    0  several    0  none   91  (one 0 %)
+  anywhere   one   49  several   12  none   30  (one 54 %)
+  rule (n)   one   54  several    0  none   37  (one 59 %)
+  the picked namesake in the revision's re-keyed files: {"direct":147,"not re-keyed":10,"edited":14,"outside":3}
+  distinct code sources with no namesake under rule (n) (43): packages/cezar/dist/index.js, packages/cezar/dist/task-cli/discovery.js, packages/cezar/src/index.ts, packages/cezar/dist/runs/store.js, packages/web/vitest.setup.ts, packages/web/e2e/agent-browser.ts, .github/scripts/apply-friction-intake.cjs, .github/scripts/friction-policy.cjs, .github/scripts/jev-friction-intake.cjs, packages/contract/src/automations.ts, packages/cezar/src/server/server.ts, packages/cezar/scripts/mock-runner-crash.mjs, packages/cezar/src/core/runner-runtime.ts, packages/web/e2e/settings-bookmarklets.e2e.ts, packages/cezar/dist/contract/index.js, .github/scripts/fixtures/failure-harness.cjs, packages/contract/src/github.ts, packages/web/e2e/github-pr-review.e2e.ts, packages/cezar/src/server/forge/types.ts, packages/cezar/scripts/mock-claude.mjs, .github/scripts/merge-recommendation-policy.cjs, .github/scripts/merge-recommendation-github.cjs, .github/scripts/merge-recommendation-report.cjs, .github/scripts/merge-recommendation.cjs, packages/cezar/src/core/cursor-print-tool-catalog.ts, packages/cezar/scripts/probe-cursor-print.mjs, packages/web/e2e/tab-coordination.e2e.ts, packages/web/e2e/diff-scroll.e2e.ts, packages/web/e2e/smoke.e2e.ts, packages/web/e2e/zz-808-repro.e2e.ts, packages/web/e2e/hold-request.mjs, packages/web/e2e/font-teardown.e2e.ts, packages/web/e2e/new-task-picker-layout.e2e.ts, packages/web/e2e/worker-relationships.e2e.ts, packages/cezar/scripts/mock-nudge.mjs, packages/cezar/src/ci-wait/tools.ts, packages/cezar/src/core/harness-parity.testkit.ts, packages/cezar/src/workflows/waits-parity.testkit.ts, packages/cezar/dist/core/cursor-print-tool-catalog.js, packages/web/e2e/zz-handoff-probe.e2e.ts, …
+  several (0): 
+  non-code keyed sources changed (never a namesake): 15: AGENTS.md, packages/web/e2e/README.md, .github/workflows/friction-intake.yml, .github/workflows/issue-intake.yml, .github/workflows/report-workflow-failure.yml, .github/workflows/nightly.yml, docs/sdlc/ci.md, .ai/upstream/LEDGER.md, .ai/upstream/ledger.yaml, BACKWARD_COMPATIBILITY.md, packages/cezar/src/core/__fixtures__/cursor/print-tools-2026.10.16-e3cb207.txt, AGENT_PROTOCOL.md, packages/cezar/src/core/__fixtures__/cursor/README.md, packages/cezar/src/core/__fixtures__/cursor/print-qualification.md, squeal.config.json
+
+== cezar, central (200 or more present files re-keyed): 62 revisions, 130 (revision, changed keyed source) pairs, 124 of them code
+code sources, per pair: 124
+  sibling    one  105  several    0  none   19  (one 85 %)
+  __tests__  one    0  several    0  none  124  (one 0 %)
+  mirror     one    0  several    0  none  124  (one 0 %)
+  pytest     one    0  several    0  none  124  (one 0 %)
+  anywhere   one   91  several   16  none   17  (one 73 %)
+  rule (n)   one  105  several    0  none   19  (one 85 %)
+code sources, distinct: 34
+  sibling    one   26  several    0  none    8  (one 76 %)
+  __tests__  one    0  several    0  none   34  (one 0 %)
+  mirror     one    0  several    0  none   34  (one 0 %)
+  pytest     one    0  several    0  none   34  (one 0 %)
+  anywhere   one   20  several    8  none    6  (one 59 %)
+  rule (n)   one   26  several    0  none    8  (one 76 %)
+  the picked namesake in the revision's re-keyed files: {"direct":97,"edited":8}
+  distinct code sources with no namesake under rule (n) (9): packages/contract/src/automations.ts, packages/cezar/scripts/mock-runner-crash.mjs, packages/cezar/src/core/runner-runtime.ts, packages/contract/src/github.ts, packages/web/e2e/github-pr-review.e2e.ts, packages/cezar/src/server/forge/types.ts, packages/cezar/src/core/cursor-print-tool-catalog.ts, packages/cezar/src/ci-wait/tools.ts, packages/cezar/src/core/harness-parity.testkit.ts
+  several (0): 
+  non-code keyed sources changed (never a namesake): 6: .ai/upstream/LEDGER.md, .ai/upstream/ledger.yaml, BACKWARD_COMPATIBILITY.md, packages/cezar/src/core/__fixtures__/cursor/print-tools-2026.10.16-e3cb207.txt, packages/cezar/src/core/__fixtures__/cursor/README.md, packages/cezar/src/core/__fixtures__/cursor/print-qualification.md
+
+== squeal, agent revisions: 238 revisions, 324 (revision, changed keyed source) pairs, 263 of them code
+code sources, per pair: 263
+  sibling    one    0  several    0  none  263  (one 0 %)
+  __tests__  one    0  several    0  none  263  (one 0 %)
+  mirror     one    8  several    0  none  255  (one 3 %)
+  pytest     one    0  several    0  none  263  (one 0 %)
+  anywhere   one  101  several   13  none  149  (one 38 %)
+  rule (n)   one  102  several    0  none  161  (one 39 %)
+code sources, distinct: 89
+  sibling    one    0  several    0  none   89  (one 0 %)
+  __tests__  one    0  several    0  none   89  (one 0 %)
+  mirror     one    6  several    0  none   83  (one 7 %)
+  pytest     one    0  several    0  none   89  (one 0 %)
+  anywhere   one   37  several    7  none   45  (one 42 %)
+  rule (n)   one   38  several    0  none   51  (one 43 %)
+  the picked namesake in the revision's re-keyed files: {"direct":25,"not re-keyed":56,"transitive":18,"outside":2,"edited":3}
+  distinct code sources with no namesake under rule (n) (51): src/core/scheduler/bootstrap.ts, src/cli/verdict.ts, src/cli/run.ts, src/cli/status-wait-held.ts, src/cli/status-wait-slow.ts, src/runners/vitest/moved.ts, src/runners/vitest/adapter.ts, src/core/scheduler/stability.ts, src/core/scheduler/scheduler.ts, src/core/daemon/daemon.ts, plugins/opencode/dist/hooks/opencode.mjs, src/core/keys/index.ts, src/core/scheduler/keying.ts, src/core/store/repos/results.ts, src/core/types/store.ts, src/core/scheduler/ledger.ts, src/core/scheduler/stored-keys.ts, plugins/claude-code/dist/cli/squeal.mjs, plugins/claude-code/dist/post-tool-batch.mjs, plugins/claude-code/dist/session-end.mjs, plugins/pi/dist/cli/squeal.mjs, plugins/pi/dist/worker.mjs, plugins/opencode/dist/cli/squeal.mjs, plugins/opencode/dist/hooks/after.mjs, plugins/opencode/dist/hooks/before.mjs, plugins/opencode/dist/hooks/end-turn.mjs, plugins/opencode/dist/hooks/end.mjs, plugins/opencode/dist/hooks/prompt.mjs, plugins/opencode/dist/hooks/register.mjs, plugins/opencode/dist/hooks/wait.mjs, src/core/daemon/runner.ts, src/core/scheduler/tiers.ts, src/core/types/runner.ts, test/scheduler/wall-fixture.ts, src/core/scheduler/refinement.ts, src/core/scheduler/revision.ts, src/core/scheduler/install.ts, plugins/codex/dist/interrupt.mjs, plugins/codex/dist/session-end.mjs, plugins/codex/dist/subagent-start.mjs, …
+  several (0): 
+  non-code keyed sources changed (never a namesake): 20: docs/specifications/011-core/research/probes/issue-41/.gitignore, test/version-sensitive.txt, plugins/codex/skills/squeal/SKILL.md, .claude/settings.json, CLAUDE.md, install.sh, package-lock.json, package.json, plugins/claude-code/.claude-plugin/plugin.json, plugins/claude-code/package.json, plugins/codex/.codex-plugin/plugin.json, plugins/opencode/package.json, plugins/pi/package.json, plugins/codex/skills/squeal/references/commands.md, squeal.config.json
+
+== squeal, central (200 or more present files re-keyed): 63 revisions, 132 (revision, changed keyed source) pairs, 116 of them code
+code sources, per pair: 116
+  sibling    one    0  several    0  none  116  (one 0 %)
+  __tests__  one    0  several    0  none  116  (one 0 %)
+  mirror     one    1  several    0  none  115  (one 1 %)
+  pytest     one    0  several    0  none  116  (one 0 %)
+  anywhere   one   37  several    7  none   72  (one 32 %)
+  rule (n)   one   37  several    0  none   79  (one 32 %)
+code sources, distinct: 31
+  sibling    one    0  several    0  none   31  (one 0 %)
+  __tests__  one    0  several    0  none   31  (one 0 %)
+  mirror     one    1  several    0  none   30  (one 3 %)
+  pytest     one    0  several    0  none   31  (one 0 %)
+  anywhere   one   14  several    3  none   14  (one 45 %)
+  rule (n)   one   14  several    0  none   17  (one 45 %)
+  the picked namesake in the revision's re-keyed files: {"direct":21,"transitive":16}
+  distinct code sources with no namesake under rule (n) (17): src/core/scheduler/bootstrap.ts, src/runners/vitest/moved.ts, src/runners/vitest/adapter.ts, src/core/scheduler/stability.ts, src/core/scheduler/scheduler.ts, src/core/keys/index.ts, src/core/scheduler/keying.ts, src/core/store/repos/results.ts, src/core/types/store.ts, src/core/scheduler/ledger.ts, src/core/scheduler/stored-keys.ts, src/core/daemon/runner.ts, src/core/scheduler/tiers.ts, src/core/types/runner.ts, src/core/scheduler/refinement.ts, src/core/scheduler/revision.ts, src/core/scheduler/install.ts
+  several (0): 
+  non-code keyed sources changed (never a namesake): 8: install.sh, package-lock.json, package.json, plugins/claude-code/.claude-plugin/plugin.json, plugins/claude-code/package.json, plugins/codex/.codex-plugin/plugin.json, plugins/opencode/package.json, plugins/pi/package.json
+
+== mvp-unveiled-july26 (Vitest layout, no closures in its store): 342 test files at HEAD, 229 distinct code sources its watch revisions changed
+code sources, distinct: 229
+  sibling    one   58  several    0  none  171  (one 25 %)
+  __tests__  one    0  several    0  none  229  (one 0 %)
+  mirror     one    0  several    0  none  229  (one 0 %)
+  pytest     one    0  several    0  none  229  (one 0 %)
+  anywhere   one   66  several    0  none  163  (one 29 %)
+  rule (n)   one   66  several    0  none  163  (one 29 %)
+  no namesake: apps/web/app/components/GuestFooter.tsx, apps/web/app/components/admin/event-admin-types.ts, apps/web/app/components/discovery/EventDiscoveryShell.tsx, apps/web/app/components/discovery/EventFeedPage.stories.tsx, apps/web/app/components/discovery/FeaturedPartnersStrip.tsx, apps/web/app/components/stories/fixtures.ts, apps/web/app/lib/admin-content.ts, apps/web/app/lib/admin-event-input.ts, apps/web/app/lib/copy.ts, apps/web/app/lib/event-feed-content.ts, apps/web/app/lib/event-feed-route.ts, apps/web/app/lib/member-app-route.ts, apps/web/app/routes/[locale]/_middleware.tsx, apps/web/app/routes/[locale]/api/events/map.ts, apps/web/app/routes/[locale]/discover.tsx, apps/web/app/routes/[locale]/events/[id].tsx, apps/web/app/routes/[locale]/events/[id]/book.tsx, apps/web/app/routes/[locale]/events/index.tsx, apps/web/app/routes/[locale]/events/map.tsx, apps/web/app/routes/[locale]/friends/index.tsx, apps/web/app/routes/[locale]/notifications/index.tsx, apps/web/app/routes/[locale]/partners/[id].tsx, apps/web/app/routes/[locale]/saved/index.tsx, apps/web/app/routes/discover.tsx, apps/web/app/routes/sitemap.xml.ts
+every code source under src/app/lib at HEAD (layout): 805
+  sibling    one  149  several    0  none  656  (one 19 %)
+  __tests__  one    0  several    0  none  805  (one 0 %)
+  mirror     one    0  several    0  none  805  (one 0 %)
+  pytest     one    0  several    0  none  805  (one 0 %)
+  anywhere   one  161  several    5  none  639  (one 20 %)
+  rule (n)   one  164  several    0  none  641  (one 20 %)

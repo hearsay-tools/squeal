@@ -1,0 +1,217 @@
+
+== cezar, central (200 or more re-keyed): 62 revisions (p50 / p90 / max)
+rule            size  edit files      own result s    (n)  next edit waits s  all results s
+today              4  221 / 234 / 466 6 / 75 / 1062     62  124 / 143 / 145    1554 / 1957 / 2208
+(a)                4  10 / 150 / 173  6 / 75 / 1062     62  6 / 132 / 158      842 / 1488 / 1972
+(n)                4  2 / 5 / 48      5 / 69 / 745      62  6 / 8 / 125        607 / 1003 / 1501
+(nd)               4  2 / 5 / 48      5 / 69 / 745      62  6 / 8 / 125        607 / 1003 / 1501
+(n+4)              4  5 / 8 / 52      6 / 74 / 746      62  6 / 8 / 125        610 / 1024 / 1502
+(n+12)             4  10 / 15 / 60    6 / 75 / 750      62  6 / 11 / 124       635 / 1024 / 1506
+(a) kit            4  10 / 16 / 52    6 / 75 / 767      62  6 / 28 / 133       636 / 1024 / 1522
+today             12  221 / 234 / 466 6 / 83 / 795      62  174 / 186 / 193    972 / 1060 / 1335
+(a)               12  10 / 150 / 173  6 / 83 / 795      62  6 / 136 / 169      836 / 1316 / 1391
+(n)               12  2 / 5 / 48      5 / 69 / 328      62  6 / 8 / 155        607 / 1003 / 1197
+(n+12)            12  10 / 15 / 60    6 / 83 / 331      62  6 / 9 / 155        637 / 1024 / 1391
+
+== cezar, every agent revision: 291 revisions (p50 / p90 / max)
+rule            size  edit files      own result s    (n)  next edit waits s  all results s
+today              4  8 / 221 / 466   4 / 64 / 1062    201  3 / 140 / 267      55 / 1584 / 2208
+(a)                4  1 / 10 / 173    4 / 64 / 1062    201  4 / 19 / 244       34 / 940 / 1972
+(n)                4  1 / 5 / 84      3 / 32 / 745     201  4 / 6 / 244        34 / 628 / 1501
+(nd)               4  1 / 5 / 84      3 / 32 / 745     201  4 / 6 / 244        34 / 628 / 1501
+(n+4)              4  1 / 6 / 87      4 / 32 / 746     201  4 / 8 / 244        34 / 662 / 1502
+(n+12)             4  1 / 10 / 87     4 / 39 / 750     201  4 / 8 / 244        34 / 662 / 1506
+(a) kit            4  1 / 10 / 87     4 / 39 / 767     201  4 / 10 / 244       34 / 662 / 1522
+today             12  8 / 221 / 466   4 / 32 / 795     201  3 / 176 / 267      49 / 976 / 1335
+(a)               12  1 / 10 / 173    4 / 32 / 795     201  4 / 19 / 244       34 / 940 / 1391
+(n)               12  1 / 5 / 84      3 / 32 / 631     201  4 / 6 / 244        34 / 628 / 1197
+(n+12)            12  1 / 10 / 87     4 / 32 / 631     201  4 / 8 / 244        34 / 648 / 1391
+
+== cezar, exposure: 66 agent revisions whose re-keyed files failed afterwards (8 central)
+  the first failing file under today's rule: {"outside":27,"edited test":23,"namesake":3,"other direct":7,"transitive":6}
+  carried failures (failing before the revision) among them: 20 of 101 failing files
+  today 4      first failure later than today in 0 of 66: by p50 0 s, max 0 s; earlier in 0
+  (a) 4        first failure later than today in 18 of 66: by p50 5 s, max 34 s; earlier in 4
+  (n) 4        first failure later than today in 18 of 66: by p50 5 s, max 65 s; earlier in 6
+  (nd) 4       first failure later than today in 18 of 66: by p50 5 s, max 65 s; earlier in 6
+  (n+4) 4      first failure later than today in 19 of 66: by p50 5 s, max 63 s; earlier in 4
+  (n+12) 4     first failure later than today in 19 of 66: by p50 5 s, max 65 s; earlier in 4
+  (a) kit 4    first failure later than today in 19 of 66: by p50 5 s, max 76 s; earlier in 4
+  today 12     first failure later than today in 1 of 66: by p50 1 s, max 1 s; earlier in 9
+  (a) 12       first failure later than today in 18 of 66: by p50 5 s, max 34 s; earlier in 5
+  (n) 12       first failure later than today in 18 of 66: by p50 5 s, max 65 s; earlier in 6
+  (n+12) 12    first failure later than today in 19 of 66: by p50 5 s, max 63 s; earlier in 4
+  new failures (no failing file of the revision failed before it): 47 revisions; the first new failing file under today's rule: {"outside":9,"edited test":22,"namesake":3,"other direct":7,"transitive":6}
+  new, today 4      later than today in 0 of 47: p50 0 s, max 0 s, sum 0 s; earlier in 0
+  new, (a) 4        later than today in 7 of 47: p50 1 s, max 5 s, sum 13 s; earlier in 5
+  new, (n) 4        later than today in 7 of 47: p50 1 s, max 65 s, sum 134 s; earlier in 7
+  new, (nd) 4       later than today in 7 of 47: p50 1 s, max 65 s, sum 134 s; earlier in 7
+  new, (n+4) 4      later than today in 8 of 47: p50 1 s, max 63 s, sum 76 s; earlier in 5
+  new, (n+12) 4     later than today in 8 of 47: p50 1 s, max 65 s, sum 78 s; earlier in 5
+  new, (a) kit 4    later than today in 8 of 47: p50 1 s, max 76 s, sum 89 s; earlier in 5
+  new, today 12     later than today in 1 of 47: p50 1 s, max 1 s, sum 1 s; earlier in 9
+  new, (a) 12       later than today in 7 of 47: p50 1 s, max 5 s, sum 13 s; earlier in 6
+  new, (n) 12       later than today in 7 of 47: p50 1 s, max 65 s, sum 134 s; earlier in 7
+  new, (n+12) 12    later than today in 8 of 47: p50 1 s, max 63 s, sum 76 s; earlier in 5
+  new, (n) 4 against (a) 4: later in 2 of 47 (66a59a96 r21 +65 s, other direct; bccd1abc r2 +62 s, other direct); earlier in 3
+  new, (a) kit 4 against (a) 4: later in 1 of 47 (bccd1abc r2 +76 s, other direct); earlier in 0
+  new, (n+4) 4 against (a) 4: later in 1 of 47 (bccd1abc r2 +63 s, other direct); earlier in 0
+  new, (n+12) 4 against (a) 4: later in 1 of 47 (bccd1abc r2 +65 s, other direct); earlier in 0
+  new, (nd) 4 against (a) 4: later in 2 of 47 (66a59a96 r21 +65 s, other direct; bccd1abc r2 +62 s, other direct); earlier in 3
+  14f3cd0d r12      5 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 23, (a) 4 23, (n) 4 23, (nd) 4 23, (n+4) 4 23, (n+12) 4 23, (a) kit 4 23, today 12 23, (a) 12 23, (n) 12 23, (n+12) 12 23
+  20f9e9ba r3       7 files, 3 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 16, (a) 4 16, (n) 4 16, (nd) 4 16, (n+4) 4 16, (n+12) 4 16, (a) kit 4 16, today 12 16, (a) 12 16, (n) 12 16, (n+12) 12 16
+  33032bc5 r2       4 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 5, (a) 4 5, (n) 4 5, (nd) 4 5, (n+4) 4 5, (n+12) 4 5, (a) kit 4 5, today 12 5, (a) 12 5, (n) 12 5, (n+12) 12 5
+  52bc6c9a r1       5 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 6, (a) 4 6, (n) 4 6, (nd) 4 6, (n+4) 4 6, (n+12) 4 6, (a) kit 4 6, today 12 6, (a) 12 6, (n) 12 6, (n+12) 12 6
+  52bc6c9a r5      43 files, 1 failing (0 carried), first: namesake, first new: namesake; classes namesake; first failure s today 4 11, (a) 4 11, (n) 4 11, (nd) 4 11, (n+4) 4 11, (n+12) 4 11, (a) kit 4 11, today 12 11, (a) 12 11, (n) 12 11, (n+12) 12 11
+  5788e80c r4       1 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  5788e80c r6       3 files, 3 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  5788e80c r8      44 files, 3 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  5788e80c r9      45 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  5788e80c r13      7 files, 1 failing (1 carried), first: edited test, first new: -; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  5788e80c r24      7 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  5788e80c r27      3 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  66a59a96 r21    234 files, 1 failing (0 carried), first: other direct, first new: other direct; classes other direct; first failure s today 4 1, (a) 4 1, (n) 4 66, (nd) 4 66, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 66, (n+12) 12 1
+  66a59a96 r22      4 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 2, (a) 4 2, (n) 4 2, (nd) 4 2, (n+4) 4 2, (n+12) 4 2, (a) kit 4 2, today 12 2, (a) 12 2, (n) 12 2, (n+12) 12 2
+  66a59a96 r26    222 files, 1 failing (0 carried), first: transitive, first new: transitive; classes transitive; first failure s today 4 1, (a) 4 2, (n) 4 1, (nd) 4 1, (n+4) 4 2, (n+12) 4 2, (a) kit 4 2, today 12 1, (a) 12 2, (n) 12 1, (n+12) 12 2
+  66a59a96 r28    234 files, 10 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 9, (a) 4 4, (n) 4 3, (nd) 4 3, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4, today 12 9, (a) 12 4, (n) 12 3, (n+12) 12 4
+  66a59a96 r34    201 files, 2 failing (0 carried), first: transitive, first new: transitive; classes transitive; first failure s today 4 745, (a) 4 597, (n) 4 597, (nd) 4 597, (n+4) 4 597, (n+12) 4 597, (a) kit 4 597, today 12 311, (a) 12 597, (n) 12 597, (n+12) 12 597
+  6c9474d5 r4      41 files, 1 failing (0 carried), first: transitive, first new: transitive; classes transitive; first failure s today 4 28, (a) 4 28, (n) 4 28, (nd) 4 28, (n+4) 4 28, (n+12) 4 28, (a) kit 4 28, today 12 13, (a) 12 28, (n) 12 28, (n+12) 12 28
+  6f0fed80 r5      42 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  6f0fed80 r6      42 files, 2 failing (0 carried), first: edited test, first new: edited test; classes edited test,outside; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  6f0fed80 r7      42 files, 3 failing (0 carried), first: edited test, first new: edited test; classes edited test,outside; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  6f0fed80 r8      42 files, 3 failing (0 carried), first: edited test, first new: edited test; classes edited test,outside; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  6f0fed80 r9      42 files, 2 failing (0 carried), first: transitive, first new: transitive; classes transitive; first failure s today 4 6, (a) 4 6, (n) 4 2, (nd) 4 2, (n+4) 4 6, (n+12) 4 6, (a) kit 4 6, today 12 5, (a) 12 6, (n) 12 2, (n+12) 12 6
+  6f0fed80 r10     42 files, 2 failing (0 carried), first: other direct, first new: other direct; classes other direct,namesake; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  6f0fed80 r11     42 files, 2 failing (0 carried), first: other direct, first new: other direct; classes other direct,namesake; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  6f0fed80 r12     42 files, 2 failing (0 carried), first: other direct, first new: other direct; classes other direct,namesake; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  6f0fed80 r13     42 files, 1 failing (0 carried), first: transitive, first new: transitive; classes transitive; first failure s today 4 4, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4, today 12 1, (a) 12 4, (n) 12 4, (n+12) 12 4
+  992623c5 r1       7 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 32, (a) 4 32, (n) 4 32, (nd) 4 32, (n+4) 4 32, (n+12) 4 32, (a) kit 4 32, today 12 32, (a) 12 32, (n) 12 32, (n+12) 12 32
+  992623c5 r2      80 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 32, (a) 4 66, (n) 4 66, (nd) 4 66, (n+4) 4 66, (n+12) 4 66, (a) kit 4 66, today 12 32, (a) 12 66, (n) 12 66, (n+12) 12 66
+  ab49f08d r1      45 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  ab49f08d r6      42 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  ab49f08d r9      45 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  ab49f08d r11     45 files, 2 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 3, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4, today 12 1, (a) 12 4, (n) 12 4, (n+12) 12 4
+  ab49f08d r14     45 files, 1 failing (0 carried), first: namesake, first new: namesake; classes namesake; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  ab49f08d r17     45 files, 3 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  ab49f08d r18     45 files, 2 failing (0 carried), first: transitive, first new: transitive; classes transitive,outside; first failure s today 4 2, (a) 4 3, (n) 4 3, (nd) 4 3, (n+4) 4 3, (n+12) 4 3, (a) kit 4 3, today 12 1, (a) 12 3, (n) 12 3, (n+12) 12 3
+  ab49f08d r19     45 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 3, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4, today 12 1, (a) 12 4, (n) 12 4, (n+12) 12 4
+  b20a0d00 r2       7 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 2, (a) 4 2, (n) 4 2, (nd) 4 2, (n+4) 4 2, (n+12) 4 2, (a) kit 4 2, today 12 2, (a) 12 2, (n) 12 2, (n+12) 12 2
+  b20a0d00 r4     218 files, 2 failing (0 carried), first: other direct, first new: other direct; classes other direct,namesake; first failure s today 4 6, (a) 4 6, (n) 4 6, (nd) 4 6, (n+4) 4 6, (n+12) 4 6, (a) kit 4 6, today 12 6, (a) 12 6, (n) 12 6, (n+12) 12 6
+  b20a0d00 r19    221 files, 5 failing (0 carried), first: namesake, first new: namesake; classes namesake; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1, today 12 1, (a) 12 1, (n) 12 1, (n+12) 12 1
+  b7555ac0 r4       5 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 4, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4, today 12 4, (a) 12 4, (n) 12 4, (n+12) 12 4
+  b7555ac0 r19      7 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 3, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 3, (a) 12 8, (n) 12 8, (n+12) 12 8
+  b7555ac0 r20      7 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 3, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 3, (a) 12 8, (n) 12 8, (n+12) 12 8
+  b7555ac0 r26      7 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 3, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 3, (a) 12 8, (n) 12 8, (n+12) 12 8
+  b7555ac0 r27      7 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 3, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 3, (a) 12 8, (n) 12 8, (n+12) 12 8
+  b7555ac0 r30     15 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 17, (a) 4 21, (n) 4 12, (nd) 4 12, (n+4) 4 21, (n+12) 4 21, (a) kit 4 21, today 12 3, (a) 12 21, (n) 12 12, (n+12) 12 21
+  b7555ac0 r31      8 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 3, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 3, (a) 12 8, (n) 12 8, (n+12) 12 8
+  b7555ac0 r32      3 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 2, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 2, (a) 12 8, (n) 12 8, (n+12) 12 8
+  b7555ac0 r33      3 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 2, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 2, (a) 12 8, (n) 12 8, (n+12) 12 8
+  b7555ac0 r37      3 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 2, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 2, (a) 12 8, (n) 12 8, (n+12) 12 8
+  b7555ac0 r40     12 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 4, (a) 4 24, (n) 4 24, (nd) 4 24, (n+4) 4 24, (n+12) 4 24, (a) kit 4 24, today 12 4, (a) 12 24, (n) 12 24, (n+12) 12 24
+  b7555ac0 r41     12 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 4, (a) 4 24, (n) 4 24, (nd) 4 24, (n+4) 4 24, (n+12) 4 24, (a) kit 4 24, today 12 4, (a) 12 24, (n) 12 24, (n+12) 12 24
+  b7555ac0 r65      5 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 2, (a) 4 2, (n) 4 2, (nd) 4 2, (n+4) 4 2, (n+12) 4 2, (a) kit 4 2, today 12 2, (a) 12 2, (n) 12 2, (n+12) 12 2
+  b7555ac0 r71      7 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 3, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 3, (a) 12 8, (n) 12 8, (n+12) 12 8
+  ba5234dc r32      6 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 30, (a) 4 17, (n) 4 17, (nd) 4 17, (n+4) 4 17, (n+12) 4 17, (a) kit 4 17, today 12 30, (a) 12 17, (n) 12 17, (n+12) 12 17
+  bccd1abc r2     222 files, 1 failing (0 carried), first: other direct, first new: other direct; classes other direct; first failure s today 4 5, (a) 4 5, (n) 4 67, (nd) 4 67, (n+4) 4 68, (n+12) 4 70, (a) kit 4 81, today 12 3, (a) 12 3, (n) 12 67, (n+12) 12 68
+  bccd1abc r8     222 files, 1 failing (0 carried), first: other direct, first new: other direct; classes other direct; first failure s today 4 11, (a) 4 11, (n) 4 11, (nd) 4 11, (n+4) 4 11, (n+12) 4 11, (a) kit 4 11, today 12 11, (a) 12 11, (n) 12 11, (n+12) 12 11
+  f4451e53 r1       3 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 10, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 10, (a) 12 8, (n) 12 8, (n+12) 12 8
+  f4451e53 r2       3 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 8, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 8, (a) 12 8, (n) 12 8, (n+12) 12 8
+  f4451e53 r3       3 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 8, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 8, (a) 12 8, (n) 12 8, (n+12) 12 8
+  f4451e53 r4       3 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 8, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 8, (a) 12 8, (n) 12 8, (n+12) 12 8
+  f4451e53 r5       3 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 8, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 8, (a) 12 8, (n) 12 8, (n+12) 12 8
+  f4451e53 r6       3 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 8, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 8, (a) 12 8, (n) 12 8, (n+12) 12 8
+  f4451e53 r7       3 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 8, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 8, (a) 12 8, (n) 12 8, (n+12) 12 8
+  f4451e53 r10      5 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 8, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 8, (a) 12 8, (n) 12 8, (n+12) 12 8
+  f4451e53 r18      3 files, 2 failing (1 carried), first: outside, first new: outside; classes outside; first failure s today 4 8, (a) 4 8, (n) 4 8, (nd) 4 8, (n+4) 4 8, (n+12) 4 8, (a) kit 4 8, today 12 8, (a) 12 8, (n) 12 8, (n+12) 12 8
+
+== squeal, central (200 or more re-keyed): 63 revisions (p50 / p90 / max)
+rule            size  edit files      own result s    (n)  next edit waits s  all results s
+today              4  238 / 511 / 594 10 / 306 / 1027   30  22 / 28 / 28       734 / 1107 / 1330
+(a)                4  1 / 9 / 43      5 / 130 / 229     30  6 / 6 / 23         262 / 276 / 456
+(n)                4  1 / 4 / 42      1 / 20 / 74       30  6 / 6 / 26         262 / 268 / 508
+(nd)               4  1 / 4 / 42      5 / 130 / 223     30  6 / 6 / 26         260 / 268 / 508
+(n+4)              4  1 / 6 / 43      2 / 20 / 74       30  6 / 6 / 23         262 / 275 / 456
+(n+12)             4  1 / 10 / 43     2 / 20 / 83       30  6 / 6 / 23         262 / 276 / 456
+(a) kit            4  1 / 9 / 43      5 / 130 / 229     30  6 / 6 / 23         262 / 276 / 456
+
+== squeal, every agent revision: 237 revisions (p50 / p90 / max)
+rule            size  edit files      own result s    (n)  next edit waits s  all results s
+today              4  18 / 242 / 594  8 / 48 / 1027    132  19 / 29 / 33       137 / 764 / 1330
+(a)                4  1 / 3 / 43      8 / 48 / 229     132  6 / 9 / 24         79 / 262 / 456
+(n)                4  1 / 2 / 42      6 / 20 / 74      132  6 / 9 / 26         79 / 262 / 508
+(nd)               4  1 / 2 / 42      8 / 45 / 223     132  6 / 9 / 26         79 / 262 / 508
+(n+4)              4  1 / 4 / 43      6 / 20 / 74      132  6 / 9 / 24         79 / 262 / 456
+(n+12)             4  1 / 4 / 43      7 / 24 / 83      132  6 / 9 / 24         79 / 262 / 456
+(a) kit            4  1 / 3 / 43      8 / 48 / 229     132  6 / 9 / 24         79 / 262 / 456
+
+== squeal, exposure: 47 agent revisions whose re-keyed files failed afterwards (28 central)
+  the first failing file under today's rule: {"edited test":14,"transitive":13,"outside":18,"other direct":2}
+  carried failures (failing before the revision) among them: 50 of 92 failing files
+  today 4      first failure later than today in 0 of 47: by p50 0 s, max 0 s; earlier in 0
+  (a) 4        first failure later than today in 26 of 47: by p50 44 s, max 81 s; earlier in 3
+  (n) 4        first failure later than today in 27 of 47: by p50 47 s, max 105 s; earlier in 4
+  (nd) 4       first failure later than today in 27 of 47: by p50 44 s, max 78 s; earlier in 4
+  (n+4) 4      first failure later than today in 26 of 47: by p50 47 s, max 105 s; earlier in 3
+  (n+12) 4     first failure later than today in 26 of 47: by p50 47 s, max 105 s; earlier in 3
+  (a) kit 4    first failure later than today in 26 of 47: by p50 44 s, max 81 s; earlier in 3
+  new failures (no failing file of the revision failed before it): 28 revisions; the first new failing file under today's rule: {"edited test":9,"transitive":5,"outside":12,"other direct":2}
+  new, today 4      later than today in 0 of 28: p50 0 s, max 0 s, sum 0 s; earlier in 0
+  new, (a) 4        later than today in 9 of 28: p50 47 s, max 63 s, sum 384 s; earlier in 6
+  new, (n) 4        later than today in 10 of 28: p50 47 s, max 105 s, sum 521 s; earlier in 7
+  new, (nd) 4       later than today in 10 of 28: p50 47 s, max 78 s, sum 461 s; earlier in 7
+  new, (n+4) 4      later than today in 9 of 28: p50 47 s, max 105 s, sum 444 s; earlier in 6
+  new, (n+12) 4     later than today in 9 of 28: p50 47 s, max 105 s, sum 444 s; earlier in 6
+  new, (a) kit 4    later than today in 9 of 28: p50 47 s, max 63 s, sum 384 s; earlier in 6
+  new, (n) 4 against (a) 4: later in 6 of 28 (2851919a r9 +78 s, other direct; ced54ecc r17 +2 s, transitive; f096238b r33 +58 s, outside; f096238b r34 +2 s, transitive; f096238b r62 +2 s, transitive; f096238b r134 +1 s, outside); earlier in 2
+  new, (a) kit 4 against (a) 4: later in 0 of 28 (); earlier in 0
+  new, (n+4) 4 against (a) 4: later in 5 of 28 (ced54ecc r17 +2 s, transitive; f096238b r33 +58 s, outside; f096238b r34 +2 s, transitive; f096238b r62 +2 s, transitive; f096238b r134 +1 s, outside); earlier in 0
+  new, (n+12) 4 against (a) 4: later in 5 of 28 (ced54ecc r17 +2 s, transitive; f096238b r33 +58 s, outside; f096238b r34 +2 s, transitive; f096238b r62 +2 s, transitive; f096238b r134 +1 s, outside); earlier in 0
+  new, (nd) 4 against (a) 4: later in 1 of 28 (2851919a r9 +78 s, other direct); earlier in 2
+  0fa8fd82 r1       1 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 4, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4
+  0fa8fd82 r9     238 files, 1 failing (0 carried), first: transitive, first new: transitive; classes transitive; first failure s today 4 207, (a) 4 48, (n) 4 47, (nd) 4 47, (n+4) 4 48, (n+12) 4 48, (a) kit 4 48
+  0fa8fd82 r13    238 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 11, (a) 4 48, (n) 4 47, (nd) 4 47, (n+4) 4 48, (n+12) 4 48, (a) kit 4 48
+  2851919a r9     117 files, 1 failing (0 carried), first: other direct, first new: other direct; classes other direct; first failure s today 4 2, (a) 4 2, (n) 4 80, (nd) 4 80, (n+4) 4 2, (n+12) 4 2, (a) kit 4 2
+  2851919a r10    121 files, 1 failing (1 carried), first: transitive, first new: -; classes transitive; first failure s today 4 2, (a) 4 83, (n) 4 70, (nd) 4 70, (n+4) 4 72, (n+12) 4 83, (a) kit 4 83
+  2b0ee2d1 r2       1 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 20, (a) 4 20, (n) 4 20, (nd) 4 20, (n+4) 4 20, (n+12) 4 20, (a) kit 4 20
+  2b0ee2d1 r4     250 files, 1 failing (0 carried), first: transitive, first new: transitive; classes transitive; first failure s today 4 52, (a) 4 52, (n) 4 52, (nd) 4 52, (n+4) 4 52, (n+12) 4 52, (a) kit 4 52
+  2b0ee2d1 r10    254 files, 2 failing (1 carried), first: transitive, first new: outside; classes transitive,outside; first failure s today 4 4, (a) 4 63, (n) 4 63, (nd) 4 63, (n+4) 4 63, (n+12) 4 63, (a) kit 4 63
+  2b0ee2d1 r15      2 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 9, (a) 4 9, (n) 4 9, (nd) 4 9, (n+4) 4 9, (n+12) 4 9, (a) kit 4 9
+  2b0ee2d1 r22    251 files, 2 failing (2 carried), first: transitive, first new: -; classes transitive,outside; first failure s today 4 5, (a) 4 58, (n) 4 58, (nd) 4 58, (n+4) 4 58, (n+12) 4 58, (a) kit 4 58
+  2b0ee2d1 r27    233 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 5, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  2b0ee2d1 r29    233 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 5, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  2b0ee2d1 r30      3 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 9, (a) 4 9, (n) 4 9, (nd) 4 9, (n+4) 4 9, (n+12) 4 9, (a) kit 4 9
+  5a4cd50f r8       3 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 1, (a) 4 21, (n) 4 21, (nd) 4 21, (n+4) 4 21, (n+12) 4 21, (a) kit 4 21
+  5a4cd50f r12      2 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 19, (a) 4 19, (n) 4 19, (nd) 4 19, (n+4) 4 19, (n+12) 4 19, (a) kit 4 19
+  5a4cd50f r14      2 files, 1 failing (1 carried), first: edited test, first new: -; classes edited test; first failure s today 4 19, (a) 4 19, (n) 4 19, (nd) 4 19, (n+4) 4 19, (n+12) 4 19, (a) kit 4 19
+  5a4cd50f r20    106 files, 1 failing (1 carried), first: edited test, first new: -; classes edited test; first failure s today 4 19, (a) 4 19, (n) 4 19, (nd) 4 19, (n+4) 4 19, (n+12) 4 19, (a) kit 4 19
+  5a4cd50f r27    104 files, 3 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 26, (a) 4 89, (n) 4 89, (nd) 4 89, (n+4) 4 89, (n+12) 4 89, (a) kit 4 89
+  ced54ecc r2       2 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1
+  ced54ecc r8     237 files, 2 failing (0 carried), first: other direct, first new: other direct; classes other direct,outside; first failure s today 4 1, (a) 4 1, (n) 4 1, (nd) 4 1, (n+4) 4 1, (n+12) 4 1, (a) kit 4 1
+  ced54ecc r17    512 files, 3 failing (0 carried), first: transitive, first new: transitive; classes transitive; first failure s today 4 41, (a) 4 5, (n) 4 7, (nd) 4 5, (n+4) 4 7, (n+12) 4 7, (a) kit 4 5
+  f096238b r13    308 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 49, (a) 4 37, (n) 4 37, (nd) 4 37, (n+4) 4 37, (n+12) 4 37, (a) kit 4 37
+  f096238b r19    594 files, 2 failing (2 carried), first: transitive, first new: -; classes transitive; first failure s today 4 4, (a) 4 29, (n) 4 78, (nd) 4 23, (n+4) 4 78, (n+12) 4 87, (a) kit 4 29
+  f096238b r20    232 files, 3 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 2, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  f096238b r33    233 files, 2 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 10, (a) 4 57, (n) 4 115, (nd) 4 57, (n+4) 4 115, (n+12) 4 115, (a) kit 4 57
+  f096238b r34    511 files, 6 failing (4 carried), first: transitive, first new: transitive; classes transitive,outside; first failure s today 4 1, (a) 4 5, (n) 4 7, (nd) 4 5, (n+4) 4 7, (n+12) 4 7, (a) kit 4 5
+  f096238b r56    232 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 2, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  f096238b r60    232 files, 2 failing (0 carried), first: outside, first new: outside; classes outside,transitive; first failure s today 4 5, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  f096238b r62    511 files, 5 failing (4 carried), first: transitive, first new: transitive; classes transitive,outside; first failure s today 4 1, (a) 4 5, (n) 4 7, (nd) 4 5, (n+4) 4 7, (n+12) 4 7, (a) kit 4 5
+  f096238b r69    511 files, 5 failing (5 carried), first: transitive, first new: -; classes transitive,outside; first failure s today 4 2, (a) 4 5, (n) 4 7, (nd) 4 5, (n+4) 4 7, (n+12) 4 7, (a) kit 4 5
+  f096238b r96    233 files, 1 failing (1 carried), first: transitive, first new: -; classes transitive; first failure s today 4 48, (a) 4 51, (n) 4 51, (nd) 4 51, (n+4) 4 51, (n+12) 4 51, (a) kit 4 51
+  f096238b r101     2 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 5, (a) 4 5, (n) 4 5, (nd) 4 5, (n+4) 4 5, (n+12) 4 5, (a) kit 4 5
+  f096238b r102     2 files, 1 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 5, (a) 4 5, (n) 4 5, (nd) 4 5, (n+4) 4 5, (n+12) 4 5, (a) kit 4 5
+  f096238b r105   511 files, 2 failing (2 carried), first: transitive, first new: -; classes transitive; first failure s today 4 4, (a) 4 5, (n) 4 7, (nd) 4 5, (n+4) 4 7, (n+12) 4 7, (a) kit 4 5
+  f096238b r117   232 files, 5 failing (0 carried), first: outside, first new: outside; classes outside; first failure s today 4 2, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  f096238b r126   511 files, 1 failing (1 carried), first: transitive, first new: -; classes transitive; first failure s today 4 1, (a) 4 5, (n) 4 7, (nd) 4 5, (n+4) 4 7, (n+12) 4 7, (a) kit 4 5
+  f096238b r127   308 files, 1 failing (1 carried), first: outside, first new: -; classes outside; first failure s today 4 4, (a) 4 37, (n) 4 37, (nd) 4 37, (n+4) 4 37, (n+12) 4 37, (a) kit 4 37
+  f096238b r134   237 files, 4 failing (3 carried), first: outside, first new: outside; classes outside; first failure s today 4 2, (a) 4 46, (n) 4 47, (nd) 4 46, (n+4) 4 47, (n+12) 4 47, (a) kit 4 46
+  f096238b r135   232 files, 4 failing (4 carried), first: outside, first new: -; classes outside; first failure s today 4 2, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  f096238b r136   232 files, 4 failing (4 carried), first: outside, first new: -; classes outside; first failure s today 4 2, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  f096238b r137   232 files, 4 failing (4 carried), first: outside, first new: -; classes outside; first failure s today 4 2, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  f096238b r138   232 files, 4 failing (4 carried), first: outside, first new: -; classes outside; first failure s today 4 2, (a) 4 49, (n) 4 49, (nd) 4 49, (n+4) 4 49, (n+12) 4 49, (a) kit 4 49
+  f096238b r139     2 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 4, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4
+  f096238b r140     2 files, 1 failing (1 carried), first: edited test, first new: -; classes edited test; first failure s today 4 4, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4
+  f096238b r153     2 files, 1 failing (0 carried), first: edited test, first new: edited test; classes edited test; first failure s today 4 4, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4
+  f096238b r154     2 files, 1 failing (1 carried), first: edited test, first new: -; classes edited test; first failure s today 4 4, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4
+  f096238b r155     2 files, 1 failing (1 carried), first: edited test, first new: -; classes edited test; first failure s today 4 4, (a) 4 4, (n) 4 4, (nd) 4 4, (n+4) 4 4, (n+12) 4 4, (a) kit 4 4

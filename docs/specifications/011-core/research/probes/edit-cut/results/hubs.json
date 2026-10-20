@@ -1,0 +1,5133 @@
+{
+ "packages/cezar/src/runs/store.ts": {
+  "fixture": [
+   "packages/cezar/src/artifacts/lifecycle.test.ts",
+   "packages/cezar/src/automations/schedule-runner.test.ts",
+   "packages/cezar/src/automations/task-template.test.ts",
+   "packages/cezar/src/core/harness-autosave-settlement.test.ts",
+   "packages/cezar/src/core/harness-parity.test.ts",
+   "packages/cezar/src/core/skill-resume-parity.test.ts",
+   "packages/cezar/src/core/workflow-ask-parity.test.ts",
+   "packages/cezar/src/delegation/capacity.test.ts",
+   "packages/cezar/src/delegation/conversation-service.test.ts",
+   "packages/cezar/src/delegation/destruction-results.test.ts",
+   "packages/cezar/src/delegation/input.test.ts",
+   "packages/cezar/src/delegation/policy.test.ts",
+   "packages/cezar/src/delegation/provision-workflows.test.ts",
+   "packages/cezar/src/delegation/results.test.ts",
+   "packages/cezar/src/delegation/routes.test.ts",
+   "packages/cezar/src/delegation/service.test.ts",
+   "packages/cezar/src/delegation/workspace.test.ts",
+   "packages/cezar/src/runs/archive-on-merge.test.ts",
+   "packages/cezar/src/runs/ci-wait-store.test.ts",
+   "packages/cezar/src/runs/history-readers.test.ts",
+   "packages/cezar/src/runs/human-ask-summary.test.ts",
+   "packages/cezar/src/runs/repo-handle-recovery.test.ts",
+   "packages/cezar/src/runs/run-claims.test.ts",
+   "packages/cezar/src/runs/run-index.test.ts",
+   "packages/cezar/src/runs/run-store-benchmark-fixture.test.ts",
+   "packages/cezar/src/runs/store-claims.test.ts",
+   "packages/cezar/src/runs/store-database.test.ts",
+   "packages/cezar/src/runs/store-live-set.test.ts",
+   "packages/cezar/src/runs/waits-store.test.ts",
+   "packages/cezar/src/runs/webhook.test.ts",
+   "packages/cezar/src/server/agent-config-api.test.ts",
+   "packages/cezar/src/server/agent-profiles-api.test.ts",
+   "packages/cezar/src/server/application-update.test.ts",
+   "packages/cezar/src/server/archive-on-merge-boot.test.ts",
+   "packages/cezar/src/server/archive-on-merge.test.ts",
+   "packages/cezar/src/server/artifacts-api.test.ts",
+   "packages/cezar/src/server/attachments-api.test.ts",
+   "packages/cezar/src/server/auto-resume-api.test.ts",
+   "packages/cezar/src/server/automations-api.test.ts",
+   "packages/cezar/src/server/automations-gate.test.ts",
+   "packages/cezar/src/server/bc-route-inventory.test.ts",
+   "packages/cezar/src/server/checkout.test.ts",
+   "packages/cezar/src/server/cockpit-address.test.ts",
+   "packages/cezar/src/server/config-api.test.ts",
+   "packages/cezar/src/server/continue-run.test.ts",
+   "packages/cezar/src/server/create-project-api.test.ts",
+   "packages/cezar/src/server/fs-browse.test.ts",
+   "packages/cezar/src/server/git-changes.test.ts",
+   "packages/cezar/src/server/github-checks-api.test.ts",
+   "packages/cezar/src/server/github-comment-counts-api.test.ts",
+   "packages/cezar/src/server/github-comments-api.test.ts",
+   "packages/cezar/src/server/github-item-api.test.ts",
+   "packages/cezar/src/server/github-merge-api.test.ts",
+   "packages/cezar/src/server/github-pr-changes-api.test.ts",
+   "packages/cezar/src/server/github-ref-status-api.test.ts",
+   "packages/cezar/src/server/github-search-api.test.ts",
+   "packages/cezar/src/server/group-pick.test.ts",
+   "packages/cezar/src/server/health-forge.test.ts",
+   "packages/cezar/src/server/health-topic.test.ts",
+   "packages/cezar/src/server/host-guard.test.ts",
+   "packages/cezar/src/server/inbox-gate.test.ts",
+   "packages/cezar/src/server/live-routes.test.ts",
+   "packages/cezar/src/server/models-api.test.ts",
+   "packages/cezar/src/server/nonblocking-discovery.test.ts",
+   "packages/cezar/src/server/open-in-cli-resume.test.ts",
+   "packages/cezar/src/server/open-in-file.test.ts",
+   "packages/cezar/src/server/open-in-project.test.ts",
+   "packages/cezar/src/server/origin-guard.test.ts",
+   "packages/cezar/src/server/patch-run.test.ts",
+   "packages/cezar/src/server/permissions-api.test.ts",
+   "packages/cezar/src/server/preview-socket.test.ts",
+   "packages/cezar/src/server/project-warmup.test.ts",
+   "packages/cezar/src/server/projects-api.test.ts",
+   "packages/cezar/src/server/provider-action-gating.test.ts",
+   "packages/cezar/src/server/provider-auth-runtime.test.ts",
+   "packages/cezar/src/server/providers-api.test.ts",
+   "packages/cezar/src/server/query-repeat-parity.test.ts",
+   "packages/cezar/src/server/queued-messages.test.ts",
+   "packages/cezar/src/server/read-run.test.ts",
+   "packages/cezar/src/server/ref-status-invalidation.test.ts",
+   "packages/cezar/src/server/repo-branches-api.test.ts",
+   "packages/cezar/src/server/repo-branches-witness.test.ts",
+   "packages/cezar/src/server/repo-branches.test.ts",
+   "packages/cezar/src/server/repo-pull.test.ts",
+   "packages/cezar/src/server/request-validation.test.ts",
+   "packages/cezar/src/server/route-parity.test.ts",
+   "packages/cezar/src/server/run-event-feed.test.ts",
+   "packages/cezar/src/server/run-ownership-controls.test.ts",
+   "packages/cezar/src/server/run-store-unavailable.test.ts",
+   "packages/cezar/src/server/run-summaries-api.test.ts",
+   "packages/cezar/src/server/runs-index-api.test.ts",
+   "packages/cezar/src/server/skills-update-api.test.ts",
+   "packages/cezar/src/server/sse-headers.test.ts",
+   "packages/cezar/src/server/start-run-idempotent.test.ts",
+   "packages/cezar/src/server/start-run-todo.test.ts",
+   "packages/cezar/src/server/start-run.test.ts",
+   "packages/cezar/src/server/task-webhook-api.test.ts",
+   "packages/cezar/src/server/todos-start.test.ts",
+   "packages/cezar/src/server/typed-client.test.ts",
+   "packages/cezar/src/server/ui-state-api.test.ts",
+   "packages/cezar/src/server/ui-state.test.ts",
+   "packages/cezar/src/server/usage-scope.test.ts",
+   "packages/cezar/src/server/versioned-surface.test.ts",
+   "packages/cezar/src/server/workspace-api.test.ts",
+   "packages/cezar/src/server/workspace-events.test.ts",
+   "packages/cezar/src/server/worktrees-api.test.ts",
+   "packages/cezar/src/session-signal-cli.test.ts",
+   "packages/cezar/src/workflows/agent-profile-wiring.test.ts",
+   "packages/cezar/src/workflows/agent-tmpdir.test.ts",
+   "packages/cezar/src/workflows/auto-resume.test.ts",
+   "packages/cezar/src/workflows/automations-prompt.test.ts",
+   "packages/cezar/src/workflows/autonomous-nudge-guards.test.ts",
+   "packages/cezar/src/workflows/autosave-gate.test.ts",
+   "packages/cezar/src/workflows/autosave-report.test.ts",
+   "packages/cezar/src/workflows/check-stop-kill.test.ts",
+   "packages/cezar/src/workflows/codex-startup-cancel.test.ts",
+   "packages/cezar/src/workflows/continuation-tools.test.ts",
+   "packages/cezar/src/workflows/continue-unarchive.test.ts",
+   "packages/cezar/src/workflows/cursor-bootstrap-continue.test.ts",
+   "packages/cezar/src/workflows/cursor-transport.test.ts",
+   "packages/cezar/src/workflows/dead-owner-claims.test.ts",
+   "packages/cezar/src/workflows/delegation-integration.test.ts",
+   "packages/cezar/src/workflows/delegation-reconcile.test.ts",
+   "packages/cezar/src/workflows/delegation-transcript-reads.test.ts",
+   "packages/cezar/src/workflows/fixture-cleanup.test.ts",
+   "packages/cezar/src/workflows/held-human-input-liveness.test.ts",
+   "packages/cezar/src/workflows/maintenance-claims.test.ts",
+   "packages/cezar/src/workflows/model-identity-wiring.test.ts",
+   "packages/cezar/src/workflows/pasted-attachments.test.ts",
+   "packages/cezar/src/workflows/permissions.test.ts",
+   "packages/cezar/src/workflows/pi-teardown.test.ts",
+   "packages/cezar/src/workflows/prelaunch-cancel.test.ts",
+   "packages/cezar/src/workflows/pump-repo-cache.test.ts",
+   "packages/cezar/src/workflows/recover-autonomous.test.ts",
+   "packages/cezar/src/workflows/recover-followups.test.ts",
+   "packages/cezar/src/workflows/recover-session-failure.test.ts",
+   "packages/cezar/src/workflows/recovery-order.test.ts",
+   "packages/cezar/src/workflows/retention-wiring.test.ts",
+   "packages/cezar/src/workflows/run-isolation.test.ts",
+   "packages/cezar/src/workflows/run-lease.test.ts",
+   "packages/cezar/src/workflows/run-preview.test.ts",
+   "packages/cezar/src/workflows/run-settlement.test.ts",
+   "packages/cezar/src/workflows/run.test.ts",
+   "packages/cezar/src/workflows/skill-resume-continuation.test.ts",
+   "packages/cezar/src/workflows/stopped-composer.test.ts",
+   "packages/cezar/src/workflows/system-prompt.test.ts",
+   "packages/cezar/src/workflows/team-skill-materialize.test.ts",
+   "packages/cezar/src/workflows/worker-destroy.test.ts",
+   "packages/cezar/src/workflows/worker-wait-durability.test.ts",
+   "packages/cezar/src/workflows/worker-waits.test.ts",
+   "packages/cezar/src/workflows/workspace-semaphore.test.ts",
+   "packages/cezar/src/workflows/worktree-setup-run.test.ts"
+  ],
+  "rows": [
+   {
+    "file": "packages/cezar/scripts/benchmark-run-store-fixture.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 0,
+    "uses": 1,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/scripts/benchmark-run-store.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "type RunRecord",
+     "type RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 6,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/scripts/benchmark-stuck-destroys.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 4,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/scripts/seed-archive-profile.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/artifacts/lifecycle.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/automations/schedule-runner.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 4,
+    "title": "ScheduleRunner"
+   },
+   {
+    "file": "packages/cezar/src/automations/task-template.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 12,
+    "title": "automation task templates"
+   },
+   {
+    "file": "packages/cezar/src/automations/task-template.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 4,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/conversation-answer-delivery.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 7,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/harness-autosave-settlement.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "harness parity — settlement during blocked autosave"
+   },
+   {
+    "file": "packages/cezar/src/core/harness-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 14,
+    "uses": 7,
+    "title": "harness parity — seam tier"
+   },
+   {
+    "file": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 7,
+    "uses": 16,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/skill-resume-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 7,
+    "title": "harness parity — skill system prompt on Continue (#790)"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-ask-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "intermediate workflow ASK parity — #427"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-followup-parity.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 2,
+    "title": "mid-turn human follow-up parity — #486"
+   },
+   {
+    "file": "packages/cezar/src/delegation/capacity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "runRecordSchema",
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "workerCapacity"
+   },
+   {
+    "file": "packages/cezar/src/delegation/capacity.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/conversation-service.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 4,
+    "title": "worker inbox contract"
+   },
+   {
+    "file": "packages/cezar/src/delegation/conversations.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 1,
+    "title": "conversation settlement"
+   },
+   {
+    "file": "packages/cezar/src/delegation/conversations.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 0,
+    "uses": 1,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/destroy-observation.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/destruction-results.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 7,
+    "title": "verified destruction retains results through explicit history deletion"
+   },
+   {
+    "file": "packages/cezar/src/delegation/input.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 2,
+    "uses": 13,
+    "title": "attributed input queue"
+   },
+   {
+    "file": "packages/cezar/src/delegation/input.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/policy.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "runRecordSchema",
+     "type RunRecord"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": "parent-only delegation policy"
+   },
+   {
+    "file": "packages/cezar/src/delegation/policy.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/provision-workflows.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 11,
+    "uses": 8,
+    "title": "manager session delegation lifecycle"
+   },
+   {
+    "file": "packages/cezar/src/delegation/provision.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 6,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/readiness.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/results.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 4,
+    "title": "parent-owned collected worker results"
+   },
+   {
+    "file": "packages/cezar/src/delegation/results.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord",
+     "type RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/routes.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "authenticated delegation HTTP family"
+   },
+   {
+    "file": "packages/cezar/src/delegation/scratch-cleanup.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/service.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 10,
+    "uses": 4,
+    "title": "delegation service durable authority"
+   },
+   {
+    "file": "packages/cezar/src/delegation/service.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 2,
+    "uses": 4,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/service.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 21,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/workspace.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 7,
+    "title": "owned workspace committed isolation"
+   },
+   {
+    "file": "packages/cezar/src/delegation/workspace.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 8,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/index.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 45,
+    "uses": 7,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/preview/host.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 6,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/runs/archive-on-merge.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 3,
+    "uses": 5,
+    "title": "authoritative archive associations"
+   },
+   {
+    "file": "packages/cezar/src/runs/arm-repo-handle.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 2,
+    "title": "armRepoHandle (#945)"
+   },
+   {
+    "file": "packages/cezar/src/runs/arm-repo-handle.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/runs/ci-wait-store.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 10,
+    "title": "atomic CI wait checkpoints"
+   },
+   {
+    "file": "packages/cezar/src/runs/client-request.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 6,
+    "title": "clientRequestHash"
+   },
+   {
+    "file": "packages/cezar/src/runs/delegation-state.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "runRecordSchema"
+    ],
+    "otherSrc": 3,
+    "uses": 24,
+    "title": "delegation schemas"
+   },
+   {
+    "file": "packages/cezar/src/runs/delegation-state.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/runs/history-readers.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 5,
+    "title": "history readers"
+   },
+   {
+    "file": "packages/cezar/src/runs/human-ask-summary.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 8,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/runs/repo-handle-recovery.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 5,
+    "title": "live repository identity recovery"
+   },
+   {
+    "file": "packages/cezar/src/runs/retention-enforce.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": "reclaimWorktrees (real git, #483)"
+   },
+   {
+    "file": "packages/cezar/src/runs/retention-rematerialize.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "rematerializeReclaimedWorktree (#483)"
+   },
+   {
+    "file": "packages/cezar/src/runs/retention.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunRecord",
+     "type RunStatus"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "selectReclaimableWorktrees (#483)"
+   },
+   {
+    "file": "packages/cezar/src/runs/retention.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord",
+     "type RunStatus",
+     "type RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 7,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/runs/run-claims.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 5,
+    "title": "claims held by another process"
+   },
+   {
+    "file": "packages/cezar/src/runs/run-index.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 4,
+    "uses": 6,
+    "title": "the cold window agrees with the store"
+   },
+   {
+    "file": "packages/cezar/src/runs/run-index.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "decodeRunRecord",
+     "holdsWorkerWait",
+     "LEGACY_INDEX_FILE",
+     "reconcileLoadedRun",
+     "rescopeRun",
+     "parseRunRecords",
+     "type RepoHandle",
+     "type RunRecord"
+    ],
+    "otherSrc": 4,
+    "uses": 1,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/runs/run-row.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "isLiveStatus"
+   },
+   {
+    "file": "packages/cezar/src/runs/run-row.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/runs/run-store-benchmark-fixture.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "parseRunRecords",
+     "reconcileLoadedRun",
+     "upgradeLegacyWaits"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "run-store benchmark fixture"
+   },
+   {
+    "file": "packages/cezar/src/runs/run-store.testkit.ts",
+    "cls": "testkit",
+    "runtime": false,
+    "names": [
+     "type RunRecord",
+     "type RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 4,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/runs/session-transport.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "runRecordSchema"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": "stored session transport"
+   },
+   {
+    "file": "packages/cezar/src/runs/store-claims.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RUN_IN_USE_ELSEWHERE",
+     "RunStore",
+     "RunWriteRefusedError",
+     "type RunRecord"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "open leaves another live store\\"
+   },
+   {
+    "file": "packages/cezar/src/runs/store-database.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "LEGACY_INDEX_BACKUP_FILE",
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 3,
+    "uses": 10,
+    "title": "importing runs.json"
+   },
+   {
+    "file": "packages/cezar/src/runs/store-history-compression.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 8,
+    "title": "RunStore history compression"
+   },
+   {
+    "file": "packages/cezar/src/runs/store-import.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "LEGACY_INDEX_BACKUP_FILE",
+     "RunStore",
+     "__setLegacyImportHookForTests"
+    ],
+    "otherSrc": 3,
+    "uses": 14,
+    "title": "fields this cezar does not know (the raw-record codec)"
+   },
+   {
+    "file": "packages/cezar/src/runs/store-live-set.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 5,
+    "title": "open"
+   },
+   {
+    "file": "packages/cezar/src/runs/store-order.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 4,
+    "title": "runs with the same createdAt"
+   },
+   {
+    "file": "packages/cezar/src/runs/store-run-window.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "ARCHIVED_WINDOW",
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 4,
+    "title": "RunStore.listRunSummaries({ archivedWindow })"
+   },
+   {
+    "file": "packages/cezar/src/runs/store-transcript-facts.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 12,
+    "title": "RunStore transcript facts (#880)"
+   },
+   {
+    "file": "packages/cezar/src/runs/store.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "runRecordSchema",
+     "type RunRecord"
+    ],
+    "otherSrc": 4,
+    "uses": 161,
+    "title": "RunStore save lifecycle (#124)"
+   },
+   {
+    "file": "packages/cezar/src/runs/ui-event-sink.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "delta coalescing (fake timers)"
+   },
+   {
+    "file": "packages/cezar/src/runs/waits-store.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "parseRunRecords",
+     "RunStore",
+     "workerWaitEntry",
+     "type RunRecord"
+    ],
+    "otherSrc": 4,
+    "uses": 13,
+    "title": "upgrade-on-read of legacy wait fields"
+   },
+   {
+    "file": "packages/cezar/src/runs/webhook.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 4,
+    "title": "TaskWebhook"
+   },
+   {
+    "file": "packages/cezar/src/runs/webhook.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord",
+     "type RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 5,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/agent-config-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "the agent-config API"
+   },
+   {
+    "file": "packages/cezar/src/server/agent-profiles-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 3,
+    "title": "agent profiles API"
+   },
+   {
+    "file": "packages/cezar/src/server/api-types.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunEvent"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": "the shapes that cannot come from a route are still mirrored faithfully"
+   },
+   {
+    "file": "packages/cezar/src/server/application-update.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 6,
+    "title": "application update routes"
+   },
+   {
+    "file": "packages/cezar/src/server/archive-on-merge-boot.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 7,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/archive-on-merge.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/archive-on-merge.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type ArchiveOnMergeSnapshot",
+     "type RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/artifacts-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "task file links"
+   },
+   {
+    "file": "packages/cezar/src/server/attachments-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "attachment routes (#950)"
+   },
+   {
+    "file": "packages/cezar/src/server/auto-resume-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "per-task auto-resume cancellation"
+   },
+   {
+    "file": "packages/cezar/src/server/automations-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 12,
+    "uses": 6,
+    "title": "GitHub automation API"
+   },
+   {
+    "file": "packages/cezar/src/server/automations-gate.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "automations gate (#801)"
+   },
+   {
+    "file": "packages/cezar/src/server/bc-route-inventory.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 2,
+    "title": "BACKWARD_COMPATIBILITY.md §2 route inventory"
+   },
+   {
+    "file": "packages/cezar/src/server/checkout.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "checkout — repo reference parsing"
+   },
+   {
+    "file": "packages/cezar/src/server/cockpit-address.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 2,
+    "title": "startServer cockpit address"
+   },
+   {
+    "file": "packages/cezar/src/server/cold-repo-handles.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RepoHandle"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "bounded cold repository discovery"
+   },
+   {
+    "file": "packages/cezar/src/server/cold-repo-handles.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RepoHandle"
+    ],
+    "otherSrc": 1,
+    "uses": 1,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/config-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 7,
+    "title": "the config API"
+   },
+   {
+    "file": "packages/cezar/src/server/continue-run.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "POST /api/v1/runs/:id/continue override"
+   },
+   {
+    "file": "packages/cezar/src/server/contract-parity.runs.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": "src/contract/runs.ts matches the runs routes exactly"
+   },
+   {
+    "file": "packages/cezar/src/server/create-project-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "new-project routes"
+   },
+   {
+    "file": "packages/cezar/src/server/forge/draft-pr-autosave.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "createDraftPr pre-PR autosave (#471 follow-up)"
+   },
+   {
+    "file": "packages/cezar/src/server/forge/types.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/fs-browse.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "GET /api/v1/fs/browse (step 4.1)"
+   },
+   {
+    "file": "packages/cezar/src/server/git-changes.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 3,
+    "uses": 6,
+    "title": "collectChanges — structured diff vs base"
+   },
+   {
+    "file": "packages/cezar/src/server/github-checks-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "the github checks API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-comment-counts-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "the paged github list and comment counts API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-comments-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "the github comments API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-item-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "the github item API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-merge-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "the GitHub merge API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-pr-changes-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "the GitHub PR changes API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-ref-status-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "the github ref-status API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-search-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "the github search API"
+   },
+   {
+    "file": "packages/cezar/src/server/group-pick.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "POST /api/v1/groups/:groupId/pick — review gate"
+   },
+   {
+    "file": "packages/cezar/src/server/health-forge.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 5,
+    "title": "GET /api/v1/health — forge + capabilities"
+   },
+   {
+    "file": "packages/cezar/src/server/health-topic.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "health topic + cache (live-server path)"
+   },
+   {
+    "file": "packages/cezar/src/server/host-guard.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "host-header guard (DNS rebinding)"
+   },
+   {
+    "file": "packages/cezar/src/server/inbox-gate.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "inbox gate (#471)"
+   },
+   {
+    "file": "packages/cezar/src/server/live-routes.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 4,
+    "title": "finite multi-run catch-up"
+   },
+   {
+    "file": "packages/cezar/src/server/models-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "workspace model catalog API"
+   },
+   {
+    "file": "packages/cezar/src/server/nonblocking-discovery.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/open-in-cli-resume.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 3,
+    "title": "POST /api/v1/runs/:id/open-in — agent CLI resume vs fresh launch"
+   },
+   {
+    "file": "packages/cezar/src/server/open-in-file.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "POST /api/v1/runs/:id/open-in — target "
+   },
+   {
+    "file": "packages/cezar/src/server/open-in-project.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "POST /api/v1/open-in — the project folder in a local app"
+   },
+   {
+    "file": "packages/cezar/src/server/origin-guard.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 5,
+    "title": "request-origin guard (#426)"
+   },
+   {
+    "file": "packages/cezar/src/server/patch-run.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "PATCH /api/v1/runs/:id"
+   },
+   {
+    "file": "packages/cezar/src/server/permissions-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "permission decision API (hearsay-tools/cezarion#1049)"
+   },
+   {
+    "file": "packages/cezar/src/server/preview-boot-sweep.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 4,
+    "title": "sweepRegisteredPreviewLeftovers"
+   },
+   {
+    "file": "packages/cezar/src/server/preview-socket.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "the preview WebSocket"
+   },
+   {
+    "file": "packages/cezar/src/server/project-context.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 14,
+    "uses": 15,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/project-warmup.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "startServer project warm-up"
+   },
+   {
+    "file": "packages/cezar/src/server/projects-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 7,
+    "uses": 3,
+    "title": "workspace projects API"
+   },
+   {
+    "file": "packages/cezar/src/server/provider-action-gate.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "provider action gate"
+   },
+   {
+    "file": "packages/cezar/src/server/provider-action-gate.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/provider-action-gating.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 4,
+    "uses": 7,
+    "title": "provider action gating"
+   },
+   {
+    "file": "packages/cezar/src/server/provider-auth-runtime.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 4,
+    "title": "watchProviderRuntimeAuthFailures"
+   },
+   {
+    "file": "packages/cezar/src/server/provider-auth-runtime.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunEvent",
+     "type RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 6,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/providers-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 5,
+    "title": "workspace provider API"
+   },
+   {
+    "file": "packages/cezar/src/server/query-repeat-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "a repeated query key stays 200 (c.req.query took the first value)"
+   },
+   {
+    "file": "packages/cezar/src/server/queued-messages.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type QueuedMessage",
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "queued prompt stack routes (#472)"
+   },
+   {
+    "file": "packages/cezar/src/server/read-run.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "read receipts (#unread-done-items)"
+   },
+   {
+    "file": "packages/cezar/src/server/ref-status-invalidation.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "a reference cezar changes itself is forgotten, not waited out"
+   },
+   {
+    "file": "packages/cezar/src/server/repo-branches-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 4,
+    "title": "the repo branches API"
+   },
+   {
+    "file": "packages/cezar/src/server/repo-branches-witness.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "branchOwnerOf",
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "deleting an empty branch whose commits another ref keeps (issue 08)"
+   },
+   {
+    "file": "packages/cezar/src/server/repo-branches.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "branchOwnerOf",
+     "type RunRecord",
+     "type RunStatus"
+    ],
+    "otherSrc": 3,
+    "uses": 1,
+    "title": "the branch classifier (issue 08 §A)"
+   },
+   {
+    "file": "packages/cezar/src/server/repo-branches.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type BranchOwner",
+     "type RunStatus"
+    ],
+    "otherSrc": 4,
+    "uses": 1,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/repo-pull.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "project checkout pull"
+   },
+   {
+    "file": "packages/cezar/src/server/request-validation.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "request validation bounds (#429)"
+   },
+   {
+    "file": "packages/cezar/src/server/route-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/p/default)"
+   },
+   {
+    "file": "packages/cezar/src/server/run-event-feed.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "bounded persisted feed"
+   },
+   {
+    "file": "packages/cezar/src/server/run-ownership-controls.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RUN_IN_USE_ELSEWHERE",
+     "RunStore"
+    ],
+    "otherSrc": 6,
+    "uses": 8,
+    "title": "controls on a run another cezar process owns"
+   },
+   {
+    "file": "packages/cezar/src/server/run-store-unavailable.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 5,
+    "title": "a project whose run store cannot be opened"
+   },
+   {
+    "file": "packages/cezar/src/server/run-summaries-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 4,
+    "title": "run summaries API"
+   },
+   {
+    "file": "packages/cezar/src/server/runs-index-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 6,
+    "title": "workspace runs index API"
+   },
+   {
+    "file": "packages/cezar/src/server/server.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "ARCHIVED_WINDOW",
+     "type RepoHandle",
+     "type RunEvent",
+     "type RunRecord",
+     "type RunStatus",
+     "type RunStore"
+    ],
+    "otherSrc": 108,
+    "uses": 8,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/skills-update-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "workspace skills update API"
+   },
+   {
+    "file": "packages/cezar/src/server/sse-headers.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "SSE responses defeat intermediary buffering"
+   },
+   {
+    "file": "packages/cezar/src/server/start-run-idempotent.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "POST /api/v1/runs clientRequestId"
+   },
+   {
+    "file": "packages/cezar/src/server/start-run-todo.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "POST /api/v1/runs todoId"
+   },
+   {
+    "file": "packages/cezar/src/server/start-run.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 5,
+    "title": "POST /api/v1/runs systemPrompt"
+   },
+   {
+    "file": "packages/cezar/src/server/task-webhook-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 6,
+    "uses": 4,
+    "title": "task webhook API"
+   },
+   {
+    "file": "packages/cezar/src/server/todos-start.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "POST /api/v1/todos/:id/start"
+   },
+   {
+    "file": "packages/cezar/src/server/typed-client.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "createCezarClient<AppType>"
+   },
+   {
+    "file": "packages/cezar/src/server/ui-state-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "the ui-state API — skillUsage (#408)"
+   },
+   {
+    "file": "packages/cezar/src/server/ui-state.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 2,
+    "title": "PUT /api/v1/ui-state — promptTemplates"
+   },
+   {
+    "file": "packages/cezar/src/server/usage-scope.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 4,
+    "title": "usage SSE fan-out is scoped per project"
+   },
+   {
+    "file": "packages/cezar/src/server/versioned-surface.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "the versioned API surface"
+   },
+   {
+    "file": "packages/cezar/src/server/workspace-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "the workspace settings API (step 2.7)"
+   },
+   {
+    "file": "packages/cezar/src/server/workspace-events.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 7,
+    "title": "GET /api/v1/workspace/events"
+   },
+   {
+    "file": "packages/cezar/src/server/worktrees-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 4,
+    "title": "the worktrees API"
+   },
+   {
+    "file": "packages/cezar/src/session-signal-cli.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 3,
+    "title": "SIGHUP when the terminal closes (hearsay-tools/cezarion#915)"
+   },
+   {
+    "file": "packages/cezar/src/task-cli/cli.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 7,
+    "uses": 2,
+    "title": "cez task"
+   },
+   {
+    "file": "packages/cezar/src/task-cli/cockpit.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/agent-profile-wiring.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "RunManager agent-profile resolution"
+   },
+   {
+    "file": "packages/cezar/src/workflows/agent-tmpdir.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 6,
+    "title": "RunManager — task-scoped agent TMPDIR (#785)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/auto-resume.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "a run stopped by a usage limit resumes itself"
+   },
+   {
+    "file": "packages/cezar/src/workflows/automations-prompt.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "automations prompt part and cockpit address (#774)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/autonomous-nudge-guards.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "autonomous nudge priority and lifecycle guards"
+   },
+   {
+    "file": "packages/cezar/src/workflows/autosave-gate.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "periodic autosave gate (#471)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/autosave-report.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "autosave report in the handoff and cockpit (#1004)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/check-stop-kill.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 2,
+    "title": "Stop on a workflow check (#496)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/ci-wait-registration.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunRecord"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "CI registration guards before and after metadata lookup"
+   },
+   {
+    "file": "packages/cezar/src/workflows/codex-startup-cancel.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "Stop before the first Codex turn (#493)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/continuation-tools.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "a resumed session keeps its workflow step tools"
+   },
+   {
+    "file": "packages/cezar/src/workflows/continue-unarchive.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "continueRun unarchives"
+   },
+   {
+    "file": "packages/cezar/src/workflows/cursor-bootstrap-continue.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 4,
+    "title": "Continue after a Cursor bootstrap crash"
+   },
+   {
+    "file": "packages/cezar/src/workflows/cursor-transport.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "Cursor print workflow transport"
+   },
+   {
+    "file": "packages/cezar/src/workflows/dead-owner-claims.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "a crashed owner\\"
+   },
+   {
+    "file": "packages/cezar/src/workflows/delegation-integration.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 4,
+    "title": "public delegation completion integration"
+   },
+   {
+    "file": "packages/cezar/src/workflows/delegation-reconcile.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 10,
+    "title": "terminal delegation checkpoint reconciliation (#661)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/delegation-reconcile.testkit.ts",
+    "cls": "testkit",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/delegation-transcript-reads.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "delegation paths read no transcript (#880)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/fixture-cleanup.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/fixture-cleanup.testkit.ts",
+    "cls": "testkit",
+    "runtime": false,
+    "names": [
+     "type RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/held-human-input-liveness.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "held human input liveness bound (#486)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/maintenance-claims.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RUN_IN_USE_ELSEWHERE",
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 10,
+    "title": "claims that admit work on a finished run"
+   },
+   {
+    "file": "packages/cezar/src/workflows/model-identity-wiring.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 3,
+    "title": "model identity wiring (dry run)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/pasted-attachments.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 6,
+    "title": "HANDOFF_INSTRUCTIONS pasted-attachments note"
+   },
+   {
+    "file": "packages/cezar/src/workflows/permissions.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "human permission lifecycle"
+   },
+   {
+    "file": "packages/cezar/src/workflows/pi-teardown.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "Pi provider failure survives teardown (#73)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/prelaunch-cancel.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "Stop during CI-tool prelaunch setup (#493)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/pump-repo-cache.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "scheduler repository probe budget (#364)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/recover-autonomous.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 5,
+    "title": "recover() and the autonomous flag (#489)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/recover-followups.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "recover() and the follow-up ceiling (#471)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/recover-session-failure.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 3,
+    "title": "recover() contains backend session failures (#562)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/recovery-order.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "recover() with tied runs in a one-slot project"
+   },
+   {
+    "file": "packages/cezar/src/workflows/retention-wiring.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 1,
+    "uses": 4,
+    "title": "worktree retention fires on a terminal transition (#483)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run-isolation.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 5,
+    "title": "RunManager repository-root isolation"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run-lease.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 3,
+    "title": "RunManager repository-root lease scheduling"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run-preview.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "RunManager.registerPreviewServer (#781)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run-settlement.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type StepState"
+    ],
+    "otherSrc": 2,
+    "uses": 4,
+    "title": "successful run settlement (#473)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord",
+     "type StepState"
+    ],
+    "otherSrc": 7,
+    "uses": 41,
+    "title": "appendTurnText"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "RUN_IN_USE_ELSEWHERE",
+     "type CommitSource",
+     "type QueuedMessage",
+     "type RunRecord",
+     "type RunStore",
+     "type StepState",
+     "type WakeCounters"
+    ],
+    "otherSrc": 69,
+    "uses": 5,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/skill-resume-continuation.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 8,
+    "uses": 3,
+    "title": "skill resume continuation follow-ups (#790 review)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/stopped-composer.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 5,
+    "title": "stopped composer engine"
+   },
+   {
+    "file": "packages/cezar/src/workflows/system-prompt.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 4,
+    "uses": 5,
+    "title": "resolveExtraSystemPrompt"
+   },
+   {
+    "file": "packages/cezar/src/workflows/team-skill-materialize.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 3,
+    "title": "team directory skills never land in the main checkout (#1024)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-destroy.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 12,
+    "uses": 14,
+    "title": "worker termination barrier"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait-capacity.test.ts",
+    "cls": "fixture",
+    "runtime": false,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 2,
+    "uses": 1,
+    "title": "worker waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait-durability.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "worker waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait.test.ts",
+    "cls": "fixture",
+    "runtime": false,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 5,
+    "uses": 1,
+    "title": "worker waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "RunStore",
+     "type RunRecord"
+    ],
+    "otherSrc": 8,
+    "uses": 8,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-waits.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 5,
+    "uses": 2,
+    "title": "worker waits in the wait list"
+   },
+   {
+    "file": "packages/cezar/src/workflows/workspace-semaphore.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 7,
+    "title": "workspace semaphore across RunManagers (step 2.5)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worktree-setup-run.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 2,
+    "uses": 5,
+    "title": "worktree setup on task start (#917)"
+   },
+   {
+    "file": "packages/cezar/test/e2e/serve-port.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunStore"
+    ],
+    "otherSrc": 0,
+    "uses": 3,
+    "title": null
+   }
+  ],
+  "viaKit": [
+   "packages/cezar/src/automations/automation-cli.test.ts",
+   "packages/cezar/src/core/ci-tools.test.ts",
+   "packages/cezar/src/core/claude-cli-runner.test.ts",
+   "packages/cezar/src/core/codex-permission-recovery.test.ts",
+   "packages/cezar/src/core/codex-permissions.test.ts",
+   "packages/cezar/src/core/codex-provider-failure.test.ts",
+   "packages/cezar/src/core/conversation-batch-ack.test.ts",
+   "packages/cezar/src/core/conversation-delivery.test.ts",
+   "packages/cezar/src/core/conversation-questions.test.ts",
+   "packages/cezar/src/core/conversation-resume.test.ts",
+   "packages/cezar/src/core/cursor-acp-runner.test.ts",
+   "packages/cezar/src/core/dry-run-backends.test.ts",
+   "packages/cezar/src/core/harness-autosave-branch.test.ts",
+   "packages/cezar/src/core/harness-autosave.test.ts",
+   "packages/cezar/src/core/omp-input-pipe.test.ts",
+   "packages/cezar/src/core/owned-attach-placement.test.ts",
+   "packages/cezar/src/core/owned-input-delivery.test.ts",
+   "packages/cezar/src/core/owned-input-failure.test.ts",
+   "packages/cezar/src/core/runner-shutdown-parity.test.ts",
+   "packages/cezar/src/core/unread-input.test.ts",
+   "packages/cezar/src/core/workflow-autonomous-parity.test.ts",
+   "packages/cezar/src/core/workflow-final-message-parity.test.ts",
+   "packages/cezar/src/core/workflow-no-progress-parity.test.ts",
+   "packages/cezar/src/core/workflow-timeout-parity.test.ts",
+   "packages/cezar/src/core/worktree-setup-parity.test.ts",
+   "packages/cezar/src/delegation/cli.test.ts",
+   "packages/cezar/src/delegation/context.test.ts",
+   "packages/cezar/src/delegation/destroy-observation.test.ts",
+   "packages/cezar/src/delegation/discovery.test.ts",
+   "packages/cezar/src/delegation/provision.test.ts",
+   "packages/cezar/src/delegation/scratch-cleanup.test.ts",
+   "packages/cezar/src/delegation/service.testkit.test.ts",
+   "packages/cezar/src/discovery/cli.test.ts",
+   "packages/cezar/src/headless-repo-handle.test.ts",
+   "packages/cezar/src/runs/agent-tmpdir.test.ts",
+   "packages/cezar/src/server/cockpit-ownership.test.ts",
+   "packages/cezar/src/server/delegation-cleanup.test.ts",
+   "packages/cezar/src/server/finishability.test.ts",
+   "packages/cezar/src/server/project-context-repo-handle.test.ts",
+   "packages/cezar/src/server/project-context.test.ts",
+   "packages/cezar/src/server/run-relationships.test.ts",
+   "packages/cezar/src/task-cli/watch.test.ts",
+   "packages/cezar/src/workflows/ci-wait-failure-parity.test.ts",
+   "packages/cezar/src/workflows/ci-wait-parity.test.ts",
+   "packages/cezar/src/workflows/ci-wait-refusal.test.ts",
+   "packages/cezar/src/workflows/ci-wait.test.ts",
+   "packages/cezar/src/workflows/conversation-batch.test.ts",
+   "packages/cezar/src/workflows/conversation-resume-wait.test.ts",
+   "packages/cezar/src/workflows/human-waits.test.ts",
+   "packages/cezar/src/workflows/immediate-delivery.test.ts",
+   "packages/cezar/src/workflows/monitoring-channel-order.test.ts",
+   "packages/cezar/src/workflows/monitoring-turn.test.ts",
+   "packages/cezar/src/workflows/scoped-recovery.test.ts",
+   "packages/cezar/src/workflows/unread-liveness.test.ts",
+   "packages/cezar/src/workflows/waits-parity.test.ts",
+   "packages/cezar/src/workflows/waits-wake.test.ts",
+   "packages/cezar/src/workflows/worker-inbox-liveness.test.ts",
+   "packages/cezar/src/workflows/worker-location-evidence.test.ts",
+   "packages/cezar/src/workflows/worker-parent-attention.test.ts",
+   "packages/cezar/src/workflows/worker-questions.test.ts",
+   "packages/cezar/src/workflows/worker-reboot-parity.test.ts",
+   "packages/cezar/src/workflows/worker-restart-parity.test.ts",
+   "packages/cezar/src/workflows/worker-wait-continuation.test.ts",
+   "packages/cezar/src/workflows/worker-wait-conversations.test.ts",
+   "packages/cezar/test/e2e/delegation.test.ts",
+   "packages/cezar/test/e2e/package-cli.test.ts"
+  ]
+ },
+ "packages/cezar/src/workflows/run.ts": {
+  "fixture": [
+   "packages/cezar/src/core/harness-autosave-branch.test.ts",
+   "packages/cezar/src/core/harness-autosave-settlement.test.ts",
+   "packages/cezar/src/core/harness-parity.test.ts",
+   "packages/cezar/src/core/pi-runner.test.ts",
+   "packages/cezar/src/core/skill-resume-parity.test.ts",
+   "packages/cezar/src/core/workflow-ask-parity.test.ts",
+   "packages/cezar/src/core/workflow-autonomous-parity.test.ts",
+   "packages/cezar/src/core/workflow-final-message-parity.test.ts",
+   "packages/cezar/src/delegation/input.test.ts",
+   "packages/cezar/src/server/archive-on-merge-boot.test.ts",
+   "packages/cezar/src/server/automations-api.test.ts",
+   "packages/cezar/src/server/project-context-warm.test.ts",
+   "packages/cezar/src/server/providers-api.test.ts",
+   "packages/cezar/src/server/repo-branches-api.test.ts",
+   "packages/cezar/src/server/run-ownership-controls.test.ts",
+   "packages/cezar/src/server/start-run-idempotent.test.ts",
+   "packages/cezar/src/workflows/auto-resume.test.ts",
+   "packages/cezar/src/workflows/autonomous-nudge-guards.test.ts",
+   "packages/cezar/src/workflows/autosave-gate.test.ts",
+   "packages/cezar/src/workflows/codex-startup-cancel.test.ts",
+   "packages/cezar/src/workflows/delegation-integration.test.ts",
+   "packages/cezar/src/workflows/delegation-reconcile.test.ts",
+   "packages/cezar/src/workflows/delegation-transcript-reads.test.ts",
+   "packages/cezar/src/workflows/human-waits.test.ts",
+   "packages/cezar/src/workflows/monitoring-turn.test.ts",
+   "packages/cezar/src/workflows/pasted-attachments.test.ts",
+   "packages/cezar/src/workflows/permissions.test.ts",
+   "packages/cezar/src/workflows/pi-teardown.test.ts",
+   "packages/cezar/src/workflows/prelaunch-cancel.test.ts",
+   "packages/cezar/src/workflows/pump-repo-cache.test.ts",
+   "packages/cezar/src/workflows/run-settlement.test.ts",
+   "packages/cezar/src/workflows/skill-resume-continuation.test.ts",
+   "packages/cezar/src/workflows/system-prompt.test.ts",
+   "packages/cezar/src/workflows/waits-parity.test.ts",
+   "packages/cezar/src/workflows/waits-wake.test.ts",
+   "packages/cezar/src/workflows/worker-destroy.test.ts",
+   "packages/cezar/src/workflows/worker-waits.test.ts"
+  ],
+  "rows": [
+   {
+    "file": "packages/cezar/scripts/benchmark-stuck-destroys.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 4,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/automations/task-template.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 7,
+    "title": "automation task templates"
+   },
+   {
+    "file": "packages/cezar/src/automations/task-template.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type RunManager",
+     "type StartRunInput"
+    ],
+    "otherSrc": 5,
+    "uses": 4,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/conversation-answer-delivery.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 2,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/harness-autosave-branch.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "AUTOSAVE_INTERVAL_MS"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "harness parity — autosave on an agent-checked-out branch (#1004)"
+   },
+   {
+    "file": "packages/cezar/src/core/harness-autosave-settlement.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "harness parity — settlement during blocked autosave"
+   },
+   {
+    "file": "packages/cezar/src/core/harness-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "appendTurnText"
+    ],
+    "otherSrc": 14,
+    "uses": 2,
+    "title": "harness parity — seam tier"
+   },
+   {
+    "file": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 7,
+    "uses": 19,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/pi-runner.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "appendTurnText"
+    ],
+    "otherSrc": 5,
+    "uses": 1,
+    "title": "createRunner returns the pi runner"
+   },
+   {
+    "file": "packages/cezar/src/core/skill-resume-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager",
+     "skillSystemPrompt"
+    ],
+    "otherSrc": 4,
+    "uses": 5,
+    "title": "harness parity — skill system prompt on Continue (#790)"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-ask-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "AUTONOMOUS_ASK_NOTE"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": "intermediate workflow ASK parity — #427"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-autonomous-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "AUTONOMOUS_ASK_NOTE",
+     "MAX_AUTO_CONTINUES"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "autonomous turn-end parity — #426"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-final-message-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "NO_WAIT_NO_REPLY_NOTE",
+     "NO_WAIT_NUDGE_NOTE"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "silent-tail seam — mapper emits reasoning/tool with no later message (#544)"
+   },
+   {
+    "file": "packages/cezar/src/delegation/input.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 11,
+    "title": "attributed input queue"
+   },
+   {
+    "file": "packages/cezar/src/delegation/provision-workflows.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 12,
+    "uses": 3,
+    "title": "manager session delegation lifecycle"
+   },
+   {
+    "file": "packages/cezar/src/delegation/service.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 11,
+    "uses": 2,
+    "title": "delegation service durable authority"
+   },
+   {
+    "file": "packages/cezar/src/delegation/service.testkit.ts",
+    "cls": "testkit",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/service.ts",
+    "cls": "source",
+    "runtime": false,
+    "names": [
+     "type DelegationExecutionSettings",
+     "type RunManager"
+    ],
+    "otherSrc": 21,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/delegation/workspace.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "owned workspace committed isolation"
+   },
+   {
+    "file": "packages/cezar/src/index.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 45,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/runs/store-history-compression.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 2,
+    "title": "RunStore history compression"
+   },
+   {
+    "file": "packages/cezar/src/server/agent-config-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "the agent-config API"
+   },
+   {
+    "file": "packages/cezar/src/server/agent-profiles-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 6,
+    "uses": 2,
+    "title": "agent profiles API"
+   },
+   {
+    "file": "packages/cezar/src/server/application-update.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 6,
+    "uses": 5,
+    "title": "application update routes"
+   },
+   {
+    "file": "packages/cezar/src/server/archive-on-merge-boot.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 7,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/artifacts-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "task file links"
+   },
+   {
+    "file": "packages/cezar/src/server/attachments-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type PastedContent",
+     "type RunManager",
+     "type StartRunInput"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "attachment routes (#950)"
+   },
+   {
+    "file": "packages/cezar/src/server/auto-resume-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "per-task auto-resume cancellation"
+   },
+   {
+    "file": "packages/cezar/src/server/automations-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 12,
+    "uses": 6,
+    "title": "GitHub automation API"
+   },
+   {
+    "file": "packages/cezar/src/server/automations-gate.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 3,
+    "title": "automations gate (#801)"
+   },
+   {
+    "file": "packages/cezar/src/server/bc-route-inventory.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 6,
+    "uses": 2,
+    "title": "BACKWARD_COMPATIBILITY.md §2 route inventory"
+   },
+   {
+    "file": "packages/cezar/src/server/checkout.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 2,
+    "title": "checkout — repo reference parsing"
+   },
+   {
+    "file": "packages/cezar/src/server/cockpit-address.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 3,
+    "title": "startServer cockpit address"
+   },
+   {
+    "file": "packages/cezar/src/server/config-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 4,
+    "title": "the config API"
+   },
+   {
+    "file": "packages/cezar/src/server/continue-run.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "POST /api/v1/runs/:id/continue override"
+   },
+   {
+    "file": "packages/cezar/src/server/create-project-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 2,
+    "title": "new-project routes"
+   },
+   {
+    "file": "packages/cezar/src/server/fs-browse.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "GET /api/v1/fs/browse (step 4.1)"
+   },
+   {
+    "file": "packages/cezar/src/server/git-changes.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "collectChanges — structured diff vs base"
+   },
+   {
+    "file": "packages/cezar/src/server/github-checks-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "the github checks API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-comment-counts-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "the paged github list and comment counts API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-comments-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "the github comments API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-item-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "the github item API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-merge-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "the GitHub merge API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-pr-changes-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "the GitHub PR changes API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-ref-status-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "the github ref-status API"
+   },
+   {
+    "file": "packages/cezar/src/server/github-search-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "the github search API"
+   },
+   {
+    "file": "packages/cezar/src/server/group-pick.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "POST /api/v1/groups/:groupId/pick — review gate"
+   },
+   {
+    "file": "packages/cezar/src/server/health-forge.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 4,
+    "title": "GET /api/v1/health — forge + capabilities"
+   },
+   {
+    "file": "packages/cezar/src/server/health-topic.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "health topic + cache (live-server path)"
+   },
+   {
+    "file": "packages/cezar/src/server/host-guard.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "host-header guard (DNS rebinding)"
+   },
+   {
+    "file": "packages/cezar/src/server/inbox-gate.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "inbox gate (#471)"
+   },
+   {
+    "file": "packages/cezar/src/server/live-routes.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 3,
+    "title": "finite multi-run catch-up"
+   },
+   {
+    "file": "packages/cezar/src/server/models-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 9,
+    "title": "workspace model catalog API"
+   },
+   {
+    "file": "packages/cezar/src/server/nonblocking-discovery.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/open-in-cli-resume.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 6,
+    "uses": 2,
+    "title": "POST /api/v1/runs/:id/open-in — agent CLI resume vs fresh launch"
+   },
+   {
+    "file": "packages/cezar/src/server/open-in-file.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "POST /api/v1/runs/:id/open-in — target "
+   },
+   {
+    "file": "packages/cezar/src/server/open-in-project.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "POST /api/v1/open-in — the project folder in a local app"
+   },
+   {
+    "file": "packages/cezar/src/server/origin-guard.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager",
+     "type StartRunInput"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "request-origin guard (#426)"
+   },
+   {
+    "file": "packages/cezar/src/server/patch-run.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "PATCH /api/v1/runs/:id"
+   },
+   {
+    "file": "packages/cezar/src/server/permissions-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "permission decision API (hearsay-tools/cezarion#1049)"
+   },
+   {
+    "file": "packages/cezar/src/server/preview-socket.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 2,
+    "title": "the preview WebSocket"
+   },
+   {
+    "file": "packages/cezar/src/server/project-context-warm.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 6,
+    "title": "ProjectContexts.warmAll"
+   },
+   {
+    "file": "packages/cezar/src/server/project-context.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 14,
+    "uses": 10,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/project-warmup.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 3,
+    "title": "startServer project warm-up"
+   },
+   {
+    "file": "packages/cezar/src/server/projects-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 8,
+    "uses": 2,
+    "title": "workspace projects API"
+   },
+   {
+    "file": "packages/cezar/src/server/provider-action-gating.test.ts",
+    "cls": "fixture",
+    "runtime": false,
+    "names": [
+     "RunManager",
+     "type StartRunInput"
+    ],
+    "otherSrc": 5,
+    "uses": 5,
+    "title": "provider action gating"
+   },
+   {
+    "file": "packages/cezar/src/server/providers-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 4,
+    "title": "workspace provider API"
+   },
+   {
+    "file": "packages/cezar/src/server/query-repeat-parity.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "a repeated query key stays 200 (c.req.query took the first value)"
+   },
+   {
+    "file": "packages/cezar/src/server/queued-messages.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "queued prompt stack routes (#472)"
+   },
+   {
+    "file": "packages/cezar/src/server/read-run.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "read receipts (#unread-done-items)"
+   },
+   {
+    "file": "packages/cezar/src/server/ref-status-invalidation.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "a reference cezar changes itself is forgotten, not waited out"
+   },
+   {
+    "file": "packages/cezar/src/server/repo-branches-api.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 5,
+    "title": "the repo branches API"
+   },
+   {
+    "file": "packages/cezar/src/server/repo-pull.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "project checkout pull"
+   },
+   {
+    "file": "packages/cezar/src/server/request-validation.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager",
+     "type StartRunInput"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "request validation bounds (#429)"
+   },
+   {
+    "file": "packages/cezar/src/server/route-parity.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 2,
+    "title": "project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/p/default)"
+   },
+   {
+    "file": "packages/cezar/src/server/run-ownership-controls.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 6,
+    "uses": 4,
+    "title": "controls on a run another cezar process owns"
+   },
+   {
+    "file": "packages/cezar/src/server/run-store-unavailable.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 6,
+    "uses": 2,
+    "title": "a project whose run store cannot be opened"
+   },
+   {
+    "file": "packages/cezar/src/server/run-summaries-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "run summaries API"
+   },
+   {
+    "file": "packages/cezar/src/server/runs-index-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 6,
+    "uses": 2,
+    "title": "workspace runs index API"
+   },
+   {
+    "file": "packages/cezar/src/server/server.ts",
+    "cls": "source",
+    "runtime": true,
+    "names": [
+     "isUntouchedCancelledRun",
+     "toPastedContent",
+     "type PastedContent",
+     "type RunManager"
+    ],
+    "otherSrc": 108,
+    "uses": 8,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/server/skills-update-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 2,
+    "title": "workspace skills update API"
+   },
+   {
+    "file": "packages/cezar/src/server/sse-headers.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "SSE responses defeat intermediary buffering"
+   },
+   {
+    "file": "packages/cezar/src/server/start-run-idempotent.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "POST /api/v1/runs clientRequestId"
+   },
+   {
+    "file": "packages/cezar/src/server/start-run-todo.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager",
+     "type StartRunInput"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "POST /api/v1/runs todoId"
+   },
+   {
+    "file": "packages/cezar/src/server/start-run.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager",
+     "type StartRunInput"
+    ],
+    "otherSrc": 2,
+    "uses": 4,
+    "title": "POST /api/v1/runs systemPrompt"
+   },
+   {
+    "file": "packages/cezar/src/server/task-webhook-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager",
+     "type StartRunInput"
+    ],
+    "otherSrc": 7,
+    "uses": 3,
+    "title": "task webhook API"
+   },
+   {
+    "file": "packages/cezar/src/server/todos-start.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager",
+     "type StartRunInput"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "POST /api/v1/todos/:id/start"
+   },
+   {
+    "file": "packages/cezar/src/server/typed-client.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 2,
+    "title": "createCezarClient<AppType>"
+   },
+   {
+    "file": "packages/cezar/src/server/ui-state-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "the ui-state API — skillUsage (#408)"
+   },
+   {
+    "file": "packages/cezar/src/server/ui-state.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "PUT /api/v1/ui-state — promptTemplates"
+   },
+   {
+    "file": "packages/cezar/src/server/usage-scope.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 2,
+    "title": "usage SSE fan-out is scoped per project"
+   },
+   {
+    "file": "packages/cezar/src/server/versioned-surface.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 2,
+    "title": "the versioned API surface"
+   },
+   {
+    "file": "packages/cezar/src/server/workspace-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "the workspace settings API (step 2.7)"
+   },
+   {
+    "file": "packages/cezar/src/server/workspace-events.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 6,
+    "uses": 2,
+    "title": "GET /api/v1/workspace/events"
+   },
+   {
+    "file": "packages/cezar/src/server/worktrees-api.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 2,
+    "title": "the worktrees API"
+   },
+   {
+    "file": "packages/cezar/src/task-cli/cli.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 7,
+    "uses": 2,
+    "title": "cez task"
+   },
+   {
+    "file": "packages/cezar/src/task-cli/cockpit.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/agent-profile-wiring.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 4,
+    "title": "RunManager agent-profile resolution"
+   },
+   {
+    "file": "packages/cezar/src/workflows/agent-tmpdir.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunManager",
+     "agentDirectories"
+    ],
+    "otherSrc": 3,
+    "uses": 5,
+    "title": "RunManager — task-scoped agent TMPDIR (#785)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/auto-resume.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "AUTO_RESUME_GRACE_MS",
+     "AUTO_RESUME_MISSED_WINDOW_MS",
+     "MAX_AUTO_RESUMES",
+     "RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "a run stopped by a usage limit resumes itself"
+   },
+   {
+    "file": "packages/cezar/src/workflows/automations-prompt.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "automations prompt part and cockpit address (#774)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/autonomous-nudge-guards.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "AUTONOMOUS_NUDGE",
+     "NO_WAIT_NO_REPLY_NOTE",
+     "NO_WAIT_NUDGE_NOTE",
+     "RunManager"
+    ],
+    "otherSrc": 1,
+    "uses": 4,
+    "title": "autonomous nudge priority and lifecycle guards"
+   },
+   {
+    "file": "packages/cezar/src/workflows/autosave-gate.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "AUTOSAVE_INTERVAL_MS",
+     "periodicAutosaveEnabled"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "periodic autosave gate (#471)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/codex-startup-cancel.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 5,
+    "title": "Stop before the first Codex turn (#493)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/continuation-tools.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "a resumed session keeps its workflow step tools"
+   },
+   {
+    "file": "packages/cezar/src/workflows/continue-unarchive.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "continueRun unarchives"
+   },
+   {
+    "file": "packages/cezar/src/workflows/cursor-bootstrap-continue.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 1,
+    "uses": 2,
+    "title": "Continue after a Cursor bootstrap crash"
+   },
+   {
+    "file": "packages/cezar/src/workflows/cursor-transport.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 2,
+    "title": "Cursor print workflow transport"
+   },
+   {
+    "file": "packages/cezar/src/workflows/delegation-integration.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 4,
+    "title": "public delegation completion integration"
+   },
+   {
+    "file": "packages/cezar/src/workflows/delegation-reconcile.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 7,
+    "title": "terminal delegation checkpoint reconciliation (#661)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/delegation-transcript-reads.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "delegation paths read no transcript (#880)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/fixture-cleanup.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 0,
+    "uses": 7,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/held-human-input-liveness.test.ts",
+    "cls": "fixture",
+    "runtime": false,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "held human input liveness bound (#486)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/human-waits.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "MAX_AUTO_CONTINUES"
+    ],
+    "otherSrc": 9,
+    "uses": 0,
+    "title": "human waits (hearsay-tools/cezarion#1234)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/maintenance-claims.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "claims that admit work on a finished run"
+   },
+   {
+    "file": "packages/cezar/src/workflows/model-identity-wiring.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 1,
+    "uses": 2,
+    "title": "model identity wiring (dry run)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/monitoring-turn.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "AUTONOMOUS_ASK_NOTE"
+    ],
+    "otherSrc": 6,
+    "uses": 0,
+    "title": "${backend} monitoring turn"
+   },
+   {
+    "file": "packages/cezar/src/workflows/pasted-attachments.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager",
+     "contentBlocksOf",
+     "mediaTypeFor",
+     "pastedAttachmentsNote",
+     "pastedAttachmentsText",
+     "toPastedContent",
+     "type PastedContent"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "HANDOFF_INSTRUCTIONS pasted-attachments note"
+   },
+   {
+    "file": "packages/cezar/src/workflows/permissions.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 1,
+    "uses": 4,
+    "title": "human permission lifecycle"
+   },
+   {
+    "file": "packages/cezar/src/workflows/pi-teardown.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 1,
+    "uses": 3,
+    "title": "Pi provider failure survives teardown (#73)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/prelaunch-cancel.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 4,
+    "uses": 3,
+    "title": "Stop during CI-tool prelaunch setup (#493)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/pump-repo-cache.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "scheduler repository probe budget (#364)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/retention-wiring.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "worktree retention fires on a terminal transition (#483)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run-lease.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 1,
+    "uses": 5,
+    "title": "RunManager repository-root lease scheduling"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run-preview.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 6,
+    "title": "RunManager.registerPreviewServer (#781)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run-settlement.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 3,
+    "title": "successful run settlement (#473)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/run.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "appendTurnText",
+     "trackTurnTail",
+     "RunManager"
+    ],
+    "otherSrc": 7,
+    "uses": 27,
+    "title": "appendTurnText"
+   },
+   {
+    "file": "packages/cezar/src/workflows/skill-resume-continuation.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager",
+     "skillSystemPrompt"
+    ],
+    "otherSrc": 8,
+    "uses": 2,
+    "title": "skill resume continuation follow-ups (#790 review)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/skill-system-prompt.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "expandRegistrySlashSkill",
+     "expandRegistrySlashSkillText",
+     "skillSystemPrompt"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": "skillSystemPrompt — installed-path hint for worktree agents"
+   },
+   {
+    "file": "packages/cezar/src/workflows/stopped-composer.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "stopped composer engine"
+   },
+   {
+    "file": "packages/cezar/src/workflows/system-prompt.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager",
+     "composeSystemPrompt",
+     "makeRunTitle",
+     "resolveExtraSystemPrompt",
+     "skillSystemPrompt"
+    ],
+    "otherSrc": 4,
+    "uses": 4,
+    "title": "resolveExtraSystemPrompt"
+   },
+   {
+    "file": "packages/cezar/src/workflows/team-skill-materialize.test.ts",
+    "cls": "fixture",
+    "runtime": false,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 6,
+    "uses": 2,
+    "title": "team directory skills never land in the main checkout (#1024)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/waits-parity.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "claudeScheduleWakeupDelay",
+     "MAX_AUTO_CONTINUES",
+     "MAX_WAKE_DELIVERY_ATTEMPTS",
+     "NO_WAIT_NOTE",
+     "NO_WAIT_NUDGE_NOTE",
+     "WAITS_DISCARDED_NOTE",
+     "WAKE_DELIVERY_CAP_NOTE",
+     "WAKE_SESSION_CLOSED_ERROR"
+    ],
+    "otherSrc": 10,
+    "uses": 0,
+    "title": "wait list on every native runner wire (hearsay-tools/cezarion#1233)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/waits-wake.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "MAX_WAKE_DELIVERY_ATTEMPTS",
+     "WAITS_DISCARDED_NOTE",
+     "WAKE_DELIVERY_CAP_NOTE"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": "wakes beside questions, footers and slots (hearsay-tools/cezarion#1233)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-destroy.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 12,
+    "uses": 15,
+    "title": "worker termination barrier"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait-capacity.test.ts",
+    "cls": "subject",
+    "runtime": false,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 2,
+    "uses": 2,
+    "title": "worker waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait-durability.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 3,
+    "title": "worker waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait.test.ts",
+    "cls": "subject",
+    "runtime": false,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 5,
+    "uses": 2,
+    "title": "worker waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "RunManager"
+    ],
+    "otherSrc": 8,
+    "uses": 5,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-waits.test.ts",
+    "cls": "fixture",
+    "runtime": true,
+    "names": [
+     "IDLE_TIMEOUT_MS"
+    ],
+    "otherSrc": 5,
+    "uses": 0,
+    "title": "worker waits in the wait list"
+   },
+   {
+    "file": "packages/cezar/src/workflows/workspace-semaphore.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 6,
+    "title": "workspace semaphore across RunManagers (step 2.5)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worktree-setup-run.test.ts",
+    "cls": "type only",
+    "runtime": false,
+    "names": [
+     "type RunManager"
+    ],
+    "otherSrc": 3,
+    "uses": 2,
+    "title": "worktree setup on task start (#917)"
+   }
+  ],
+  "viaKit": [
+   "packages/cezar/src/automations/automation-cli.test.ts",
+   "packages/cezar/src/core/ci-tools.test.ts",
+   "packages/cezar/src/core/claude-cli-runner.test.ts",
+   "packages/cezar/src/core/codex-permission-recovery.test.ts",
+   "packages/cezar/src/core/codex-permissions.test.ts",
+   "packages/cezar/src/core/codex-provider-failure.test.ts",
+   "packages/cezar/src/core/conversation-batch-ack.test.ts",
+   "packages/cezar/src/core/conversation-delivery.test.ts",
+   "packages/cezar/src/core/conversation-questions.test.ts",
+   "packages/cezar/src/core/conversation-resume.test.ts",
+   "packages/cezar/src/core/cursor-acp-runner.test.ts",
+   "packages/cezar/src/core/dry-run-backends.test.ts",
+   "packages/cezar/src/core/harness-autosave.test.ts",
+   "packages/cezar/src/core/omp-input-pipe.test.ts",
+   "packages/cezar/src/core/owned-attach-placement.test.ts",
+   "packages/cezar/src/core/owned-input-delivery.test.ts",
+   "packages/cezar/src/core/owned-input-failure.test.ts",
+   "packages/cezar/src/core/runner-shutdown-parity.test.ts",
+   "packages/cezar/src/core/unread-input.test.ts",
+   "packages/cezar/src/core/workflow-followup-parity.test.ts",
+   "packages/cezar/src/core/workflow-no-progress-parity.test.ts",
+   "packages/cezar/src/core/workflow-timeout-parity.test.ts",
+   "packages/cezar/src/core/worktree-setup-parity.test.ts",
+   "packages/cezar/src/delegation/cli.test.ts",
+   "packages/cezar/src/delegation/context.test.ts",
+   "packages/cezar/src/delegation/conversation-service.test.ts",
+   "packages/cezar/src/delegation/destroy-observation.test.ts",
+   "packages/cezar/src/delegation/destruction-results.test.ts",
+   "packages/cezar/src/delegation/discovery.test.ts",
+   "packages/cezar/src/delegation/provision.test.ts",
+   "packages/cezar/src/delegation/results.test.ts",
+   "packages/cezar/src/delegation/routes.test.ts",
+   "packages/cezar/src/delegation/scratch-cleanup.test.ts",
+   "packages/cezar/src/delegation/service.testkit.test.ts",
+   "packages/cezar/src/discovery/cli.test.ts",
+   "packages/cezar/src/server/delegation-cleanup.test.ts",
+   "packages/cezar/src/server/finishability.test.ts",
+   "packages/cezar/src/server/run-relationships.test.ts",
+   "packages/cezar/src/task-cli/watch.test.ts",
+   "packages/cezar/src/workflows/autosave-report.test.ts",
+   "packages/cezar/src/workflows/check-stop-kill.test.ts",
+   "packages/cezar/src/workflows/ci-wait-failure-parity.test.ts",
+   "packages/cezar/src/workflows/ci-wait-parity.test.ts",
+   "packages/cezar/src/workflows/ci-wait-refusal.test.ts",
+   "packages/cezar/src/workflows/ci-wait-registration.test.ts",
+   "packages/cezar/src/workflows/ci-wait.test.ts",
+   "packages/cezar/src/workflows/conversation-batch.test.ts",
+   "packages/cezar/src/workflows/conversation-resume-wait.test.ts",
+   "packages/cezar/src/workflows/dead-owner-claims.test.ts",
+   "packages/cezar/src/workflows/fixture-cleanup.test.ts",
+   "packages/cezar/src/workflows/immediate-delivery.test.ts",
+   "packages/cezar/src/workflows/monitoring-channel-order.test.ts",
+   "packages/cezar/src/workflows/recover-autonomous.test.ts",
+   "packages/cezar/src/workflows/recover-followups.test.ts",
+   "packages/cezar/src/workflows/recover-session-failure.test.ts",
+   "packages/cezar/src/workflows/recovery-order.test.ts",
+   "packages/cezar/src/workflows/run-isolation.test.ts",
+   "packages/cezar/src/workflows/scoped-recovery.test.ts",
+   "packages/cezar/src/workflows/unread-liveness.test.ts",
+   "packages/cezar/src/workflows/worker-inbox-liveness.test.ts",
+   "packages/cezar/src/workflows/worker-location-evidence.test.ts",
+   "packages/cezar/src/workflows/worker-parent-attention.test.ts",
+   "packages/cezar/src/workflows/worker-questions.test.ts",
+   "packages/cezar/src/workflows/worker-reboot-parity.test.ts",
+   "packages/cezar/src/workflows/worker-restart-parity.test.ts",
+   "packages/cezar/src/workflows/worker-wait-continuation.test.ts",
+   "packages/cezar/src/workflows/worker-wait-conversations.test.ts"
+  ]
+ },
+ "packages/cezar/src/core/harness-parity.testkit.ts": {
+  "fixture": [],
+  "rows": [
+   {
+    "file": "packages/cezar/src/core/ci-tools.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "driveSeam",
+     "seedOpencodeMockSession"
+    ],
+    "otherSrc": 7,
+    "uses": 0,
+    "title": "wait tool definitions"
+   },
+   {
+    "file": "packages/cezar/src/core/codex-permission-recovery.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "exemptionFor",
+     "HARNESS_ADAPTERS",
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "native permission recovery (hearsay-tools/cezarion#1049)"
+   },
+   {
+    "file": "packages/cezar/src/core/codex-permissions.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "driveSeam",
+     "waitFor"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": "Codex managed permissions (#708)"
+   },
+   {
+    "file": "packages/cezar/src/core/codex-provider-failure.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "driveRun",
+     "driveSeam"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": "Codex 0.147 provider completion (#83)"
+   },
+   {
+    "file": "packages/cezar/src/core/conversation-answer-delivery.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "ANSWER_DELIVERY_CRITERIA",
+     "HARNESS_ADAPTERS",
+     "exemptionFor",
+     "promptFor",
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 4,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/conversation-batch-ack.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/conversation-delivery.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/conversation-questions.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/conversation-resume.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/cursor-acp-runner.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 4,
+    "uses": 0,
+    "title": "Cursor ACP runner"
+   },
+   {
+    "file": "packages/cezar/src/core/dry-run-backends.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "driveSeam"
+    ],
+    "otherSrc": 5,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/harness-autosave-branch.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "withOwnedInputRun",
+     "waitFor"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": "harness parity — autosave on an agent-checked-out branch (#1004)"
+   },
+   {
+    "file": "packages/cezar/src/core/harness-autosave-settlement.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS",
+     "withOwnedInputRun",
+     "waitFor"
+    ],
+    "otherSrc": 4,
+    "uses": 0,
+    "title": "harness parity — settlement during blocked autosave"
+   },
+   {
+    "file": "packages/cezar/src/core/harness-autosave.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "withOwnedInputRun",
+     "waitFor"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "harness parity — autosave cleanup (#495)"
+   },
+   {
+    "file": "packages/cezar/src/core/harness-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "withOwnedInputRun",
+     "withSkillParentRun",
+     "promptFor",
+     "driveRun",
+     "driveSeam",
+     "lastIndexWhere",
+     "textEvents",
+     "exemptionFor",
+     "HARNESS_ADAPTERS",
+     "SHUTDOWN_CRITERIA",
+     "PERMISSION_CRITERIA",
+     "WORKFLOW_TIMEOUT_CRITERIA",
+     "NO_PROGRESS_CRITERIA",
+     "AUTONOMOUS_CRITERIA",
+     "FINAL_MESSAGE_CRITERIA",
+     "WORKER_PROGRESS_WAIT_CRITERIA",
+     "WORKFLOW_ASK_CRITERIA",
+     "FOLLOWUP_CRITERIA",
+     "ANSWER_DELIVERY_CRITERIA",
+     "SKILL_RESUME_CRITERIA",
+     "WORKTREE_SETUP_CRITERIA",
+     "PARITY_EXEMPTIONS",
+     "PINNED_SESSION_ID",
+     "seedOpencodeMockSession",
+     "type RunObservation",
+     "type ScenarioName",
+     "type SeamObservation",
+     "waitFor"
+    ],
+    "otherSrc": 15,
+    "uses": 0,
+    "title": "harness parity — seam tier"
+   },
+   {
+    "file": "packages/cezar/src/core/omp-input-pipe.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS",
+     "exemptionFor",
+     "driveSeam",
+     "promptFor",
+     "waitFor"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "OMP native input pipe"
+   },
+   {
+    "file": "packages/cezar/src/core/owned-input-delivery.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "driveSeam",
+     "promptFor",
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/owned-input-delivery.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/owned-input-failure.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/core/runner-shutdown-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS",
+     "SHUTDOWN_CRITERIA",
+     "promptFor"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "runner shutdown parity (hearsay-tools/cezarion#843)"
+   },
+   {
+    "file": "packages/cezar/src/core/skill-resume-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS",
+     "PINNED_SESSION_ID",
+     "SKILL_RESUME_CRITERIA",
+     "driveSeam",
+     "promptFor",
+     "waitFor"
+    ],
+    "otherSrc": 5,
+    "uses": 0,
+    "title": "harness parity — skill system prompt on Continue (#790)"
+   },
+   {
+    "file": "packages/cezar/src/core/unread-input.test.ts",
+    "cls": "subject",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS",
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": "unread agent input is resubmitted (#505)"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-ask-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "driveRun",
+     "promptFor",
+     "waitFor",
+     "WORKFLOW_ASK_CRITERIA"
+    ],
+    "otherSrc": 4,
+    "uses": 0,
+    "title": "intermediate workflow ASK parity — #427"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-autonomous-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "AUTONOMOUS_CRITERIA",
+     "driveRun",
+     "driveSeam",
+     "exemptionFor",
+     "promptFor",
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": "autonomous turn-end parity — #426"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-final-message-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "FINAL_MESSAGE_CRITERIA",
+     "HARNESS_ADAPTERS",
+     "driveSeam",
+     "exemptionFor",
+     "promptFor",
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": "silent-tail seam — mapper emits reasoning/tool with no later message (#544)"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-followup-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "driveRun",
+     "exemptionFor",
+     "FOLLOWUP_CRITERIA",
+     "promptFor",
+     "waitFor"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "mid-turn human follow-up parity — #486"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-no-progress-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "NO_PROGRESS_CRITERIA",
+     "driveSeam",
+     "exemptionFor",
+     "waitFor",
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "managed open-turn inactivity — #470"
+   },
+   {
+    "file": "packages/cezar/src/core/workflow-timeout-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "driveSeam",
+     "waitFor",
+     "withOwnedInputRun",
+     "WORKFLOW_TIMEOUT_CRITERIA"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "workflow wall-clock policy — #470"
+   },
+   {
+    "file": "packages/cezar/src/core/worktree-setup-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "WORKTREE_SETUP_CRITERIA",
+     "driveRun"
+    ],
+    "otherSrc": 1,
+    "uses": 0,
+    "title": "harness parity — worktree setup note (#917)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/ci-wait-failure-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 5,
+    "uses": 0,
+    "title": "CI wait failure history through every native runner (hearsay-tools/cezarion#994)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/ci-wait-refusal.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 7,
+    "uses": 0,
+    "title": "R27 CI registration beside worker waits — #713, hearsay-tools/cezarion#1235"
+   },
+   {
+    "file": "packages/cezar/src/workflows/ci-wait.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 4,
+    "uses": 0,
+    "title": "CI wait lifecycle through real runner turns"
+   },
+   {
+    "file": "packages/cezar/src/workflows/human-waits.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 10,
+    "uses": 0,
+    "title": "human waits (hearsay-tools/cezarion#1234)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/monitoring-channel-order.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS",
+     "driveSeam"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "${backend} channel order"
+   },
+   {
+    "file": "packages/cezar/src/workflows/monitoring-channel-order.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/monitoring-turn.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 7,
+    "uses": 0,
+    "title": "${backend} monitoring turn"
+   },
+   {
+    "file": "packages/cezar/src/workflows/monitoring-turn.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/waits-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "exemptionFor",
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 11,
+    "uses": 0,
+    "title": "wait list on every native runner wire (hearsay-tools/cezarion#1233)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/waits-parity.testkit.ts",
+    "cls": "testkit",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 0,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/waits-wake.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 4,
+    "uses": 0,
+    "title": "wakes beside questions, footers and slots (hearsay-tools/cezarion#1233)"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-location-evidence.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 4,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-parent-attention.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 6,
+    "uses": 0,
+    "title": "${backend} worker parent attention"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-reboot-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 4,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-restart-parity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 9,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait-capacity.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 2,
+    "uses": 0,
+    "title": "worker waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait-conversations.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": "parent and worker conversation waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait-durability.test.ts",
+    "cls": "testkit user",
+    "runtime": false,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 4,
+    "uses": 0,
+    "title": "worker waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 5,
+    "uses": 0,
+    "title": "worker waits through RunManager"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-wait.testkit.ts",
+    "cls": "testkit",
+    "runtime": false,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 9,
+    "uses": 0,
+    "title": null
+   },
+   {
+    "file": "packages/cezar/src/workflows/worker-waits.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "HARNESS_ADAPTERS"
+    ],
+    "otherSrc": 6,
+    "uses": 0,
+    "title": "worker waits in the wait list"
+   },
+   {
+    "file": "packages/cezar/src/workflows/worktree-setup-run.test.ts",
+    "cls": "testkit user",
+    "runtime": true,
+    "names": [
+     "withOwnedInputRun"
+    ],
+    "otherSrc": 3,
+    "uses": 0,
+    "title": "worktree setup on task start (#917)"
+   }
+  ],
+  "viaKit": [
+   "packages/cezar/src/delegation/scratch-cleanup.test.ts",
+   "packages/cezar/src/server/finishability.test.ts",
+   "packages/cezar/src/workflows/ci-wait-parity.test.ts",
+   "packages/cezar/src/workflows/ci-wait-registration.test.ts",
+   "packages/cezar/src/workflows/conversation-batch.test.ts",
+   "packages/cezar/src/workflows/conversation-resume-wait.test.ts",
+   "packages/cezar/src/workflows/delegation-transcript-reads.test.ts",
+   "packages/cezar/src/workflows/immediate-delivery.test.ts",
+   "packages/cezar/src/workflows/scoped-recovery.test.ts",
+   "packages/cezar/src/workflows/unread-liveness.test.ts",
+   "packages/cezar/src/workflows/worker-inbox-liveness.test.ts",
+   "packages/cezar/src/workflows/worker-questions.test.ts",
+   "packages/cezar/src/workflows/worker-wait-continuation.test.ts"
+  ]
+ }
+}
