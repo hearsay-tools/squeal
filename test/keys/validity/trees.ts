@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { compare } from "../../../src/core/fs/index.js";
+import { type Component, FORMAT_FILE } from "./components.js";
 
 /*
  * The two trees the comparison runs (011 C3, task 011-37 section 3): the
@@ -44,13 +45,24 @@ export function extractTree(ref: string, into: string, root = ROOT): void {
   execFileSync("tar", ["-x", "-C", into], { input: tar });
 }
 
-/** `KEY_FORMAT_VERSION` as the tree's source states it. */
-export function formatVersionOf(tree: string, overlay: Overlay = {}): number {
-  const path = "src/core/keys/key-format.ts";
-  const text = overlay[path] ?? readFileSync(join(tree, path), "utf8");
-  const value = /KEY_FORMAT_VERSION = (\d+);/.exec(text)?.[1];
-  if (value === undefined) throw new Error(`${path}: no KEY_FORMAT_VERSION in ${tree}`);
-  return Number(value);
+/** `path`'s text in `tree`, `overlay`'s in place. */
+const textAt = (tree: string, path: string, overlay: Overlay) =>
+  overlay[path] ?? readFileSync(join(tree, path), "utf8");
+
+/** `component`'s version as the tree's source states it: the format's number, an adapter's string. */
+export function versionOf(tree: string, component: Component, overlay: Overlay = {}): string {
+  const { path, constant } = component.version;
+  const value = new RegExp(`${constant} = "?([^";]+)"?;`).exec(textAt(tree, path, overlay))?.[1];
+  if (value === undefined) throw new Error(`${path}: no ${constant} in ${tree}`);
+  return value;
+}
+
+/** The formats `KEY_FORMATS_READ_AS_ONE` lists in the tree's source. */
+export function readAsOneOf(tree: string, overlay: Overlay = {}): number[] {
+  const text = textAt(tree, FORMAT_FILE, overlay);
+  const list = /KEY_FORMATS_READ_AS_ONE[^=]*= \{([^}]*)\}/.exec(text)?.[1];
+  if (list === undefined) throw new Error(`${FORMAT_FILE}: no KEY_FORMATS_READ_AS_ONE in ${tree}`);
+  return [...list.matchAll(/^\s*(\d+):/gm)].map((m) => Number(m[1]));
 }
 
 interface LockEntry {
@@ -84,8 +96,12 @@ export function packageOf(specifier: string): string {
  * a bundle imports, and of the bundler, sorted. Two trees with equal lists run
  * one bundle's externals from the same install.
  */
-export function dependencyLines(tree: string, imported: Iterable<string>): string[] {
-  const lock = JSON.parse(readFileSync(join(tree, "package-lock.json"), "utf8")) as {
+export function dependencyLines(
+  tree: string,
+  imported: Iterable<string>,
+  overlay: Overlay = {},
+): string[] {
+  const lock = JSON.parse(textAt(tree, "package-lock.json", overlay)) as {
     packages: Record<string, LockEntry>;
   };
   const seen = new Set<string>();

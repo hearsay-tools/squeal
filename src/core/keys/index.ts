@@ -25,7 +25,7 @@ export {
   isInstalledLockfile,
 } from "./environment.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
-export { KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE, KEY_SOURCES_HASHES } from "./key-format.js";
+export { KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE } from "./key-format.js";
 export { type ClosureUpdate, type KeyChange, KeyIndex, type KeysReadAsOne } from "./key-index.js";
 export {
   ancestorListings,
