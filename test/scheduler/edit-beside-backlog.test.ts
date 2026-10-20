@@ -85,7 +85,7 @@ const now = () => performance.now();
 
 /** A harness over the daemon's node:test runner, not started; `runs` times each run. */
 async function harness(
-  probe: { readonly crashBacklog?: boolean } = {},
+  probe: { readonly crashBacklog?: Promise<void> } = {},
 ): Promise<{ h: Harness; runs: TimedRun[] }> {
   const dir = join(mkdtempSync(join(tmpdir(), "squeal-beside-")), "squeal-uid");
   onTestFinished(() => rmSync(join(dir, ".."), { recursive: true, force: true }));
@@ -114,15 +114,10 @@ async function harness(
         runs.push(run);
         const ran = await nodeTest.run(files, options);
         // The backlog's run of the re-keyed file reported as a crash once it ends (review wave-4 B1),
-        // and not before the edit's run stored its PASS, however loaded the host.
-        const crashed = probe.crashBacklog === true && runs.find((r) => holds(r, REKEYED)) === run;
-        for (
-          let held = 0;
-          crashed && held < 60_000 && outcome(opened(), REKEYED) !== "pass";
-          held += 25
-        ) {
-          await new Promise((resolve) => setTimeout(resolve, 25));
-        }
+        // held until the test releases it, so the order does not rest on the host's load (S2-S1).
+        const crashed =
+          probe.crashBacklog !== undefined && runs.find((r) => holds(r, REKEYED)) === run;
+        if (crashed) await probe.crashBacklog;
         const report: RunReport = crashed
           ? { ...ran, end: "crashed", completedFiles: [], results: [], failure: "probe crash" }
           : ran;
@@ -132,12 +127,7 @@ async function harness(
       },
     },
   });
-  let h: Harness | null = null;
-  const opened = () => {
-    if (h === null) throw new Error("the harness is not open");
-    return h;
-  };
-  h = await openHarness(repo.main, store, repo.commonDir, {
+  const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
     backlogTierSize: 8,
     adapters: [timed],
@@ -306,7 +296,12 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
   it("4. keeps the edit's PASS when the backlog's run of the file then ends crashed (review wave-4 B1)", {
     timeout: 120_000,
   }, async () => {
-    const { h, runs } = await harness({ crashBacklog: true });
+    let release: () => void = () => {};
+    const crash = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    onTestFinished(release);
+    const { h, runs } = await harness({ crashBacklog: crash });
     let ranUnder: CheckKey | null = null;
     // The edit makes the re-keyed file sleep 3 s less, so its new run ends before the backlog's.
     const { backlog } = await editDuringBacklog(h, runs, async () => {
@@ -317,9 +312,10 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
       return at;
     });
     const again = () => runs.find((run) => run !== backlog && holds(run, REKEYED));
-    // The edit's run stores its PASS before the backlog's run of the file ends.
+    // The edit's run stores its PASS while the backlog's run of the file is held open.
     await expect.poll(() => outcome(h, REKEYED), { timeout: 60_000, interval: 25 }).toBe("pass");
     expect(backlog.end).toBeNull();
+    release();
     await h.scheduler.idle();
     expect(backlog.report?.end).toBe("crashed");
     const edit = again();
