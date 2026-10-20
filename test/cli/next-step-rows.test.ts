@@ -90,7 +90,7 @@ describe("a stale or unknown selected file names what advances it (011-27)", () 
     const { repo, store, id } = keyed(...paths);
 
     expect(named(store, id, repo.main, paths).lines[1]).toBe(
-      `  4 never run at its inputs, nothing queued them: ${paths.join(", ")}; \`squeal retry <test file>...\` runs each once, \`squeal run --all --wait\` runs all 4 test files not current here`,
+      `  4 never run at their inputs, nothing queued them: ${paths.join(", ")}; \`squeal retry <test file>...\` runs each once, \`squeal run --all --wait\` runs all 4 test files not current here`,
     );
   });
 

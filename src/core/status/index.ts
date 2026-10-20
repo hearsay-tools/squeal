@@ -25,7 +25,7 @@ export {
   formatFailures,
   readFailures,
 } from "./failures.js";
-export { formatStatus, formatUnavailable } from "./format-status.js";
+export { formatStatus, formatUnavailable, type StatusFormatOptions } from "./format-status.js";
 export { formatWhy } from "./format-why.js";
 export {
   CLI_READ_RETRY_MS,

@@ -22,6 +22,7 @@ import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
 import { namedSnapshotCommand } from "./status-paths.js";
 import { statusWaitCommand, waitConsumer } from "./status-wait.js";
+import { baseOf } from "./status-wait-paths.js";
 import { stopCommand } from "./stop.js";
 import { updateCommand } from "./update.js";
 import { takeWait } from "./wait-arg.js";
@@ -30,18 +31,22 @@ import { warmupCommand } from "./warmup.js";
 const HELP = `squeal: continuous validation for coding agents. Push transitions, pull state.
 
 Usage:
-  squeal status [--notes] [--json]
-                                Current validation state of this worktree; --notes
-                                lists every stopped-process note in full
+  squeal status [--full] [--notes] [--json]
+                                Current validation state of this worktree: its verdict,
+                                known failures and outstanding work, each with what
+                                advances it; --full adds the worktree, daemon,
+                                inheritance, each file without a result and the notes;
+                                --notes is --full with every note in full
   squeal status <path>... [--full] [--json]
                                 The verdict of the test files the paths select (a test
                                 file, or a file in test files' closures) now, if the
                                 daemon stores its pass over your edits within 750 ms:
                                 exit 0, 1 on known failures, 3 without one; --full
                                 prints this worktree's status first
-  squeal status --wait <ms> [--json]
+  squeal status --wait <ms> [--full] [--json]
                                 Wait up to <ms> until nothing is pending at the current
-                                revision or a check changed, then print status
+                                revision or a check changed, then print status (--full:
+                                in full) and last the line saying why it returned
   squeal status --wait <ms> <path>... [--full] [--json]
                                 Wait up to <ms> for the test files the paths select,
                                 then give their verdict as status <path>... does
@@ -199,7 +204,8 @@ function commandHelp(command: string): string {
  * <path>...` exits as spec 005 D1 for the files the paths select (D2, as
  * amended 2026-10-20 for the form without `--wait`). `--full` prints the
  * worktree's status before a named answer, and `--notes` implies it (row
- * 011-28); `squeal status` prints it in full already.
+ * 011-28); on `squeal status` and the pathless wait it adds the detail
+ * block to the default text (row 011-29).
  */
 function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const wait = takeWait(args);
@@ -226,8 +232,9 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
     : (codexStatusLine(cwd, env) ??
       piStatusLine(cwd, env, fileURLToPath(import.meta.url)) ??
       opencodeStatusLine(cwd, env));
+  const base = result.available ? baseOf(result.worktreeRoot, cwd) : "";
   const human = () =>
-    `${formatStatus(result, now(), statusCommand(env), { allNotes })}${harness ?? ""}`;
+    `${formatStatus(result, now(), statusCommand(env), { full, allNotes, base })}${harness ?? ""}`;
   io.stdout(parsed.json ? json(result) : human());
   return result.available ? 0 : 1;
 }
