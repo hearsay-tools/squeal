@@ -144,6 +144,8 @@ The rest of the bullet stands, except under decision D2, where its barrier sente
 
 ## Decisions for the human
 
+**Decided 2026-10-20 by the human:** D1, D2 and D3 as defaulted. V5 and 011 C2 are amended (013 and 011 `status.md`, 2026-10-20); the code row is 013-02.
+
 - **D1.** Accept the narrowed rule: a touch counts only when the instance could have read the path, it withholds the reaching files, and it replaces the instance only when it counts. Default: yes.
 - **D2.** Narrow the completion barrier to the files whose keys name the touched path, in the same code row. Default: yes, as its own commit. With no, the adapter's narrowing shows only for touches no key of the tier names, gh-33's case included.
 - **D3.** Count `tsconfig*.json`, `jsconfig*.json` and `.env*` as instance inputs by name, though their edit does not replace the instance today. This is conservative, and a touch of them is rare. Default: yes.
