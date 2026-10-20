@@ -86,9 +86,18 @@ describe("projectEnv", () => {
     expect(env).toEqual({ PATH: "/bin", SQUEAL_OBSERVE: UNOBSERVED });
   });
 
-  it("adds no settings where none were inherited", () => {
+  it("adds no SQUEAL_OBSERVE where none was inherited", () => {
     const env = projectEnv(project(), { PATH: "/bin", NODE_OPTIONS: `--require ${OBSERVE}` });
-    expect(env).toEqual({ PATH: "/bin" });
+    expect(env).toStrictEqual({ PATH: "/bin" });
+  });
+
+  it("gives an ordinary run's processes the env it inherited, no SQUEAL_OBSERVE, NODE_OPTIONS as it was", () => {
+    const inherited = {
+      PATH: "/bin",
+      NODE_OPTIONS: "--require ./setup.cjs --max-old-space-size=4096",
+    };
+    expect(projectEnv(project(), inherited)).toStrictEqual(inherited);
+    expect(projectEnv(project(), { PATH: "/bin" })).toStrictEqual({ PATH: "/bin" });
   });
 
   it("keeps the rest of an inherited NODE_OPTIONS, quoted as Node reads it", () => {
