@@ -1,0 +1,75 @@
+{
+ "rows": [
+  {
+   "re-keyed": "1-4",
+   "revisions": 59,
+   "files": 153,
+   "edit under (a)": 33,
+   "catch-up under (a)": 120,
+   "of which outside": 120,
+   "edit under (c)": 33,
+   "own: edited/direct/transitive/outside/absent": "29/0/0/0/0"
+  },
+  {
+   "re-keyed": "5-12",
+   "revisions": 107,
+   "files": 741,
+   "edit under (a)": 171,
+   "catch-up under (a)": 570,
+   "of which outside": 548,
+   "edit under (c)": 193,
+   "own: edited/direct/transitive/outside/absent": "58/10/0/0/0"
+  },
+  {
+   "re-keyed": "13-24",
+   "revisions": 9,
+   "files": 137,
+   "edit under (a)": 36,
+   "catch-up under (a)": 101,
+   "of which outside": 97,
+   "edit under (c)": 40,
+   "own: edited/direct/transitive/outside/absent": "8/2/0/0/0"
+  },
+  {
+   "re-keyed": "25-49",
+   "revisions": 48,
+   "files": 2062,
+   "edit under (a)": 78,
+   "catch-up under (a)": 1984,
+   "of which outside": 1530,
+   "edit under (c)": 126,
+   "own: edited/direct/transitive/outside/absent": "32/9/0/0/0"
+  },
+  {
+   "re-keyed": "50-99",
+   "revisions": 2,
+   "files": 172,
+   "edit under (a)": 0,
+   "catch-up under (a)": 172,
+   "of which outside": 172,
+   "edit under (c)": 0,
+   "own: edited/direct/transitive/outside/absent": "0/0/0/0/0"
+  },
+  {
+   "re-keyed": "100-199",
+   "revisions": 4,
+   "files": 464,
+   "edit under (a)": 98,
+   "catch-up under (a)": 366,
+   "of which outside": 46,
+   "edit under (c)": 191,
+   "own: edited/direct/transitive/outside/absent": "0/10/0/0/0"
+  },
+  {
+   "re-keyed": "200+",
+   "revisions": 62,
+   "files": 14185,
+   "edit under (a)": 2001,
+   "catch-up under (a)": 12184,
+   "of which outside": 825,
+   "edit under (c)": 5299,
+   "own: edited/direct/transitive/outside/absent": "20/90/0/0/0"
+  }
+ ],
+ "lost": []
+}

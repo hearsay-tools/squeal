@@ -1,0 +1,17 @@
+small revisions (<= 49 re-keyed): 225; outside files by revisions reached:
+  108 root:test:unit:.github/scripts/change-surface-readers.test.cjs median 0.6 s
+  83 server:packages/cezar/src/contract-import-boundaries.test.ts median 1.1 s
+  76 web:packages/web/src/design-guardian.test.ts median 0.7 s
+  76 root:test:unit:.github/scripts/cockpit-test-sequencer.test.cjs median 0.4 s
+  61 server:packages/cezar/src/pid-file.testkit.test.ts median 0.6 s
+  56 server:packages/cezar/src/git-worktree-release.test.ts median 0.2 s
+  56 server:packages/cezar/src/runs/history-readers.test.ts median 0.5 s
+  47 web:packages/web/src/test/e2e-wait-discipline.test.ts median 1.9 s
+  39 root:test:unit:.github/scripts/ci.workflow.test.cjs median 1.6 s
+  37 root:test:unit:.github/scripts/automated-code-review.workflow.test.cjs median 3.0 s
+  37 root:test:unit:.github/scripts/automated-review.test.cjs median 0.1 s
+  37 root:test:unit:.github/scripts/change-surface.test.cjs median 0.3 s
+  37 root:test:unit:.github/scripts/ci-dispatch.workflow.test.cjs median 6.7 s
+  37 root:test:unit:.github/scripts/ci-package-manager.test.cjs median 2.2 s
+  37 root:test:unit:.github/scripts/ci-sweep-patterns.test.cjs median 0.1 s
+transitive in small: 480 file slots, 56 files

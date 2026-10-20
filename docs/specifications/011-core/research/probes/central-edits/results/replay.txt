@@ -1,0 +1,59 @@
+┌─────────┬────────────────────────────────────┬───────────┬────────────────────────┬─────────────────────────┬────────────────────────┬──────────────────────┬───────────────────┬──────────────────────────────┬────────────────────────────────┐
+│ (index) │ rule                               │ revisions │ edit files p50/p90/max │ first own s p50/p90/max │ last own s p50/p90/max │ all s p50/p90/max    │ mean result s p50 │ next edit wait s p50/p90/max │ longest uncancelled tier s max │
+├─────────┼────────────────────────────────────┼───────────┼────────────────────────┼─────────────────────────┼────────────────────────┼──────────────────────┼───────────────────┼──────────────────────────────┼────────────────────────────────┤
+│ 0       │ 'today, tierSize 4'                │ 61        │ '221 / 235 / 466'      │ '3 / 64 / 650'          │ '6 / 71 / 1062'        │ '1554 / 1957 / 2208' │ '178'             │ '124 / 143 / 145'            │ '535'                          │
+│ 1       │ 'today, tierSize 12'               │ 61        │ '221 / 235 / 466'      │ '3 / 26 / 267'          │ '6 / 75 / 795'         │ '964 / 1060 / 1335'  │ '94'              │ '174 / 186 / 193'            │ '535'                          │
+│ 2       │ '(a) edited + direct, tierSize 4'  │ 61        │ '10 / 150 / 173'       │ '3 / 64 / 650'          │ '6 / 71 / 1062'        │ '839 / 1488 / 1972'  │ '145'             │ '6 / 132 / 158'              │ '535'                          │
+│ 3       │ '(a) edited + direct, tierSize 12' │ 61        │ '10 / 150 / 173'       │ '3 / 26 / 267'          │ '6 / 75 / 795'         │ '774 / 1316 / 1391'  │ '145'             │ '6 / 136 / 169'              │ '535'                          │
+│ 4       │ '(a) cap 12 direct, tierSize 12'   │ 61        │ '10 / 12 / 16'         │ '3 / 63 / 452'          │ '6 / 75 / 744'         │ '631 / 1000 / 1391'  │ '127'             │ '6 / 8 / 58'                 │ '387'                          │
+│ 5       │ '(c) depth ≤ 2, tierSize 4'        │ 61        │ '39 / 217 / 237'       │ '4 / 64 / 650'          │ '6 / 71 / 1062'        │ '1363 / 1783 / 1963' │ '717'             │ '123 / 146 / 161'            │ '535'                          │
+└─────────┴────────────────────────────────────┴───────────┴────────────────────────┴─────────────────────────┴────────────────────────┴──────────────────────┴───────────────────┴──────────────────────────────┴────────────────────────────────┘
+ba5234dc r13
+  today, tierSize 4                  files 215 edit 215: own 39 to 112 s, all 1969 s, mean 1257 s, next edit waits 137.4 s
+  today, tierSize 12                 files 215 edit 215: own 39 to 112 s, all 1335 s, mean 797 s, next edit waits 178.1 s
+  (a) edited + direct, tierSize 4    files 215 edit 77: own 39 to 112 s, all 1972 s, mean 1272 s, next edit waits 136.2 s
+  (a) edited + direct, tierSize 12   files 215 edit 77: own 39 to 112 s, all 1387 s, mean 858 s, next edit waits 169.2 s
+  (a) cap 12 direct, tierSize 12     files 215 edit 16: own 39 to 112 s, all 711 s, mean 227 s, next edit waits 9.8 s
+  (c) depth ≤ 2, tierSize 4          files 215 edit 194: own 39 to 112 s, all 1963 s, mean 1270 s, next edit waits 137.8 s
+bccd1abc r3
+  today, tierSize 4                  files 222 edit 222: own 64 to 64 s, all 1957 s, mean 408 s, next edit waits 142.6 s
+  today, tierSize 12                 files 222 edit 222: own 26 to 26 s, all 1022 s, mean 283 s, next edit waits 167.4 s
+  (a) edited + direct, tierSize 4    files 222 edit 150: own 64 to 64 s, all 1488 s, mean 413 s, next edit waits 114.3 s
+  (a) edited + direct, tierSize 12   files 222 edit 150: own 26 to 26 s, all 1316 s, mean 337 s, next edit waits 126.7 s
+  (a) cap 12 direct, tierSize 12     files 222 edit 12: own 63 to 63 s, all 598 s, mean 113 s, next edit waits 5.9 s
+  (c) depth ≤ 2, tierSize 4          files 222 edit 217: own 64 to 64 s, all 1783 s, mean 425 s, next edit waits 146.1 s
+bccd1abc r7
+  today, tierSize 4                  files 223 edit 223: own 4 to 4 s, all 1927 s, mean 414 s, next edit waits 144.0 s
+  today, tierSize 12                 files 223 edit 223: own 4 to 4 s, all 1025 s, mean 289 s, next edit waits 167.0 s
+  (a) edited + direct, tierSize 4    files 223 edit 150: own 4 to 4 s, all 1490 s, mean 419 s, next edit waits 114.2 s
+  (a) edited + direct, tierSize 12   files 223 edit 150: own 4 to 4 s, all 1318 s, mean 343 s, next edit waits 126.5 s
+  (a) cap 12 direct, tierSize 12     files 223 edit 13: own 4 to 4 s, all 602 s, mean 116 s, next edit waits 5.9 s
+  (c) depth ≤ 2, tierSize 4          files 223 edit 217: own 4 to 4 s, all 1785 s, mean 434 s, next edit waits 145.9 s
+ba5234dc r44
+  today, tierSize 4                  files 245 edit 245: own 69 to 1062 s, all 1695 s, mean 404 s, next edit waits 120.2 s
+  today, tierSize 12                 files 245 edit 245: own 27 to 795 s, all 954 s, mean 281 s, next edit waits 172.3 s
+  (a) edited + direct, tierSize 4    files 245 edit 173: own 69 to 1062 s, all 1339 s, mean 399 s, next edit waits 124.8 s
+  (a) edited + direct, tierSize 12   files 245 edit 173: own 27 to 795 s, all 1071 s, mean 296 s, next edit waits 149.9 s
+  (a) cap 12 direct, tierSize 12     files 245 edit 12: own 54 to 744 s, all 744 s, mean 88 s, next edit waits 5.9 s
+  (c) depth ≤ 2, tierSize 4          files 245 edit 237: own 69 to 1062 s, all 1665 s, mean 420 s, next edit waits 120.7 s
+66a59a96 r20
+  today, tierSize 4                  files 221 edit 221: own 1 to 39 s, all 1545 s, mean 178 s, next edit waits 123.3 s
+  today, tierSize 12                 files 221 edit 221: own 1 to 25 s, all 977 s, mean 106 s, next edit waits 172.2 s
+  (a) edited + direct, tierSize 4    files 221 edit 16: own 1 to 39 s, all 635 s, mean 146 s, next edit waits 6.2 s
+  (a) edited + direct, tierSize 12   files 221 edit 16: own 1 to 25 s, all 648 s, mean 159 s, next edit waits 6.4 s
+  (a) cap 12 direct, tierSize 12     files 221 edit 12: own 1 to 75 s, all 609 s, mean 124 s, next edit waits 5.9 s
+  (c) depth ≤ 2, tierSize 4          files 221 edit 39: own 1 to 39 s, all 1363 s, mean 825 s, next edit waits 123.1 s
+ba5234dc r1
+  today, tierSize 4                  files 466 edit 466: own 1 to 1 s, all 2208 s, mean 314 s, next edit waits 123.3 s
+  today, tierSize 12                 files 466 edit 466: own 1 to 1 s, all 1146 s, mean 192 s, next edit waits 152.2 s
+  (a) edited + direct, tierSize 4    files 466 edit 22: own 1 to 1 s, all 864 s, mean 214 s, next edit waits 10.4 s
+  (a) edited + direct, tierSize 12   files 466 edit 22: own 1 to 1 s, all 850 s, mean 201 s, next edit waits 10.7 s
+  (a) cap 12 direct, tierSize 12     files 466 edit 14: own 1 to 1 s, all 676 s, mean 74 s, next edit waits 5.9 s
+  (c) depth ≤ 2, tierSize 4          files 466 edit 237: own 1 to 1 s, all 1689 s, mean 873 s, next edit waits 113.3 s
+b7555ac0 r99
+  today, tierSize 4                  files 223 edit 223: own 1 to 1 s, all 1936 s, mean 178 s, next edit waits 139.2 s
+  today, tierSize 12                 files 223 edit 223: own 1 to 1 s, all 946 s, mean 89 s, next edit waits 175.5 s
+  (a) edited + direct, tierSize 4    files 223 edit 4: own 1 to 1 s, all 1002 s, mean 127 s, next edit waits 5.9 s
+  (a) edited + direct, tierSize 12   files 223 edit 4: own 1 to 1 s, all 1002 s, mean 127 s, next edit waits 5.9 s
+  (a) cap 12 direct, tierSize 12     files 223 edit 4: own 1 to 1 s, all 1002 s, mean 127 s, next edit waits 5.9 s
+  (c) depth ≤ 2, tierSize 4          files 223 edit 7: own 1 to 1 s, all 1005 s, mean 129 s, next edit waits 5.9 s

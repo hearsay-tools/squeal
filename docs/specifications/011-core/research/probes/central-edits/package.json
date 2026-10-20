@@ -1,0 +1,10 @@
+{
+  "name": "central-edits-probe",
+  "private": true,
+  "type": "module",
+  "description": "THROWAWAY probe for 011-core/research/central-edits.md",
+  "dependencies": {
+    "es-module-lexer": "2.3.1",
+    "rolldown": "1.1.5"
+  }
+}

@@ -1,0 +1,112 @@
+own test files: 110; a run started for 93, a result recorded for 93
+  wait to its run's start  s p50 227 p90 744 max 31984
+  wait to its first result s p50 300 p90 817 max 31985
+edit tier in flight when the revision landed: 41 of 62; its time left s p50 82 p90 546 max 593
+5788e80c r15   10-19T20:13:55 in flight 2f edit 51s left; own github-poller.test.ts start 6 result 9; prompts.test.ts start 6 result 9; scheduler.test.ts start 9 result 15; task-template.test.ts start 6 result 9; types.test.ts start 6 result 9
+66a59a96 r1    10-14T23:13:14 in flight -; own codex-app-server-runner.test.ts start 21 result 26; runner-runtime.test.ts start 798 result 827
+66a59a96 r2    10-14T23:14:19 in flight -; own codex-app-server-runner.test.ts start 687 result 690; runner-runtime.test.ts start 733 result 762
+66a59a96 r3    10-14T23:14:42 in flight 4f edit 582s left; own runner-runtime.test.ts start 710 result 739
+66a59a96 r4    10-14T23:14:47 in flight 4f edit 577s left; own codex-app-server-runner.test.ts start 659 result 662
+66a59a96 r5    10-14T23:14:52 in flight 4f edit 571s left; own codex-app-server-runner.test.ts start 653 result 656
+66a59a96 r6    10-14T23:15:13 in flight 4f edit 551s left; own cursor-print-process.test.ts start 632 result 633; opencode-server-runner.test.ts start 637 result 648
+66a59a96 r7    10-14T23:15:18 in flight 4f edit 546s left; own codex-app-server-runner.test.ts start 628 result 631; cursor-print-process.test.ts start 627 result 628; opencode-server-runner.test.ts start 631 result 642; runner-runtime.test.ts start 674 result 703
+66a59a96 r9    10-14T23:17:49 in flight 4f edit 394s left; own codex-app-server-runner.test.ts start 476 result 479; cursor-print-process.test.ts start 475 result 476; opencode-server-runner.test.ts start 480 result 491; runner-runtime.test.ts start 522 result 551
+66a59a96 r10   10-14T23:18:21 in flight 4f edit 362s left; own cursor-print-process.test.ts start 443 result 444; runner-runtime.test.ts start 491 result 520
+66a59a96 r11   10-14T23:18:28 in flight 4f edit 356s left; own cursor-print-process.test.ts start 437 result 438; runner-runtime.test.ts start 484 result 513
+66a59a96 r12   10-14T23:18:52 in flight 4f edit 331s left; own runner-runtime.test.ts start 459 result 488
+66a59a96 r13   10-14T23:19:55 in flight 4f edit 268s left; own codex-app-server-runner.test.ts start 350 result 354
+66a59a96 r14   10-14T23:20:57 in flight 4f edit 206s left; own runner-runtime.test.ts start 334 result 363
+66a59a96 r15   10-14T23:21:59 in flight 4f edit 144s left; own codex-app-server-runner.test.ts start 227 result 230; runner-runtime.test.ts start 273 result 302
+66a59a96 r17   10-14T23:23:01 in flight 4f edit 82s left; own runner-runtime.test.ts start 211 result 240
+66a59a96 r18   10-14T23:23:32 in flight 4f edit 52s left; own codex-app-server-runner.test.ts start 134 result 137; cursor-print-process.test.ts start 133 result 134; opencode-server-runner.test.ts start 138 result 149; runner-runtime.test.ts start 180 result 209
+66a59a96 r19   10-14T23:24:03 in flight 4f edit 21s left; own codex-app-server-runner.test.ts start 103 result 106; runner-runtime.test.ts start 149 result 178
+66a59a96 r20   10-14T23:24:24 in flight -; own codex-app-server-runner.test.ts start 82 result 85; cursor-print-process.test.ts start 81 result 82; opencode-server-runner.test.ts start 86 result 97; runner-runtime.test.ts start 128 result 157
+66a59a96 r21   10-14T23:25:20 in flight -; own codex-app-server-runner.test.ts start 26 result 29; runner-runtime.test.ts start 72 result 101
+66a59a96 r24   10-14T23:28:35 in flight 2f edit 349s left; own zz-887-debug.test.ts start - result -
+66a59a96 r25   10-14T23:29:06 in flight 2f edit 318s left; own zz-887-debug.test.ts start - result -
+66a59a96 r26   10-14T23:29:37 in flight 2f edit 287s left; own zz-887-debug.test.ts start - result -; codex-startup.test.ts start 299 result 300
+66a59a96 r27   10-14T23:30:52 in flight 2f edit 212s left; own runner-runtime.test.ts start 225 result 229; codex-startup.test.ts start 224 result 225
+66a59a96 r28   10-14T23:32:22 in flight 2f edit 122s left; own codex-app-server-runner.test.ts start 135 result 139; runner-runtime.test.ts start 135 result 139
+66a59a96 r29   10-14T23:38:06 in flight -; own git-worktree.test.ts start 21 result 46
+66a59a96 r32   10-14T23:42:11 in flight 2f edit 593s left; own git-worktree.test.ts start - result -
+66a59a96 r34   10-14T23:43:13 in flight 2f edit 532s left; own cursor-print-process.test.ts start 532 result 1133
+729119b9 r1    10-15T20:25:00 in flight -; own github-item-detail.test.tsx start - result -
+729119b9 r2    10-15T20:25:42 in flight -; own git-worktree.test.ts start - result -; github.test.ts start - result -
+b20a0d00 r1    10-19T11:59:57 in flight -; own cursor-cli-flags.test.ts start 4 result 6
+b20a0d00 r3    10-19T12:00:42 in flight -; own cursor-print-capabilities.test.ts start 3 result 5
+b20a0d00 r4    10-19T12:01:00 in flight -; own cursor-print-runner.test.ts start 2 result 11
+b20a0d00 r5    10-19T12:01:13 in flight -; own cursor-print-runner.test.ts start 2 result 8; cursor-runner.test.ts start 2 result 8
+b20a0d00 r6    10-19T12:01:50 in flight 4f edit 54s left; own cursor-cli-flags.test.ts start 54 result 55; cursor-model-catalog.test.ts start 54 result 55
+b20a0d00 r7    10-19T12:01:55 in flight 4f edit 50s left; own cursor-model-catalog.test.ts start 50 result 51
+b20a0d00 r10   10-19T12:03:47 in flight -; own cursor-acp-runner.test.ts start 2 result 29; cursor-cli-flags.test.ts start 2 result 14; cursor-print-capabilities.test.ts start 14 result 16
+b20a0d00 r19   10-19T12:08:08 in flight 2f edit 41s left; own cursor-acp-runner.test.ts start 108 result 122; cursor-model-catalog.test.ts start 41 result 102; cursor-print-capabilities.test.ts start 102 result 108; cursor-print-runner.test.ts start 102 result 122; cursor-runner.test.ts start 41 result 102
+b20a0d00 r20   10-19T12:10:59 in flight 4f edit 6s left; own cursor-acp-runner.test.ts start - result -; cursor-model-catalog.test.ts start - result -; cursor-print-capabilities.test.ts start - result -; cursor-print-runner.test.ts start - result -; cursor-runner.test.ts start - result -
+b7555ac0 r99   10-19T21:14:57 in flight 4f edit 1s left; own cursor-cli-flags.test.ts start 1660 result 1672
+b7555ac0 r100  10-19T21:15:08 in flight 4f edit 1s left; own turn-end.test.ts start 1649 result 1661
+ba5234dc r1    10-19T08:38:42 in flight -; own attention.test.ts start 31984 result 31985; waits.test.ts start 30409 result 30410
+ba5234dc r2    10-19T08:39:11 in flight -; own run.test.ts start 376 result 1693; waits.test.ts start 22307 result 22312
+ba5234dc r13   10-19T14:26:38 in flight 1f edit 48s left, 1f edit 533s left; own conversation-answer-delivery.test.ts start 552 result 632; conversation-delivery.test.ts start 533 result 552; ci-wait.test.ts start 552 result 632; immediate-delivery.test.ts start 552 result 632
+ba5234dc r44   10-19T19:11:33 in flight 1f edit 390s left; own store.test.ts start 469 result 475; run.test.ts start 967 result 1569
+bccd1abc r1    10-14T23:13:05 in flight -; own store.test.ts start 801 result 817
+bccd1abc r2    10-14T23:13:21 in flight -; own store.test.ts start 785 result 801
+bccd1abc r3    10-14T23:14:01 in flight -; own store.test.ts start 744 result 760
+bccd1abc r4    10-14T23:14:38 in flight 4f edit 568s left; own store.test.ts start 707 result 723
+bccd1abc r5    10-14T23:15:42 in flight 4f edit 505s left; own store.test.ts start 644 result 660
+bccd1abc r6    10-14T23:16:13 in flight 4f edit 473s left; own store.test.ts start 612 result 628
+bccd1abc r7    10-14T23:17:46 in flight 4f edit 381s left; own store-transcript-facts.test.ts start 460 result 467
+bccd1abc r8    10-14T23:18:17 in flight 4f edit 349s left; own store.test.ts start 488 result 504
+f3ab1acc r2    10-19T22:16:38 in flight 4f edit 0s left, 1f edit 0s left; own run.test.ts start - result -
+f3ab1acc r3    10-19T22:18:53 in flight 4f edit 0s left; own run.test.ts start - result -
+fde08e76 r1    10-15T09:02:09 in flight -; own workspace.test.ts start 218 result 302; git-worktree-lock.test.ts start 196 result 204
+fde08e76 r3    10-15T09:05:22 in flight -; own stall1059.scratch.test.ts start - result -; workspace.test.ts start 25 result 109
+fde08e76 r4    10-15T09:23:36 in flight 4f edit 289s left; own workspace.test.ts start - result -
+fde08e76 r5    10-15T09:25:38 in flight 4f edit 166s left; own git-worktree-lock.test.ts start 166 result 171
+fde08e76 r6    10-15T09:26:09 in flight 4f edit 135s left; own git-worktree-lock.test.ts start 136 result 140
+fde08e76 r7    10-15T09:26:39 in flight 4f edit 105s left; own git-worktree-lock.test.ts start 105 result 110
+fde08e76 r9    10-15T09:30:58 in flight -; own git-worktree-lock.test.ts start - result -
+
+edit tiers in flight at a revision: 44; of only catch-up files under (a) 26 (7071 s left in sum), holding an edit's file 12 (4430 s), unclassified 6 (100 s)
+  5788e80c r15     51 s left: unknown,unknown
+  66a59a96 r3     582 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r4     577 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r5     571 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r6     551 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r7     546 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r9     394 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r10    362 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r11    356 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r12    331 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r13    268 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r14    206 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r15    144 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r17     82 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r18     52 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r19     21 s left: catch-up,catch-up,catch-up,catch-up
+  66a59a96 r24    349 s left: catch-up,catch-up
+  66a59a96 r25    318 s left: catch-up,catch-up
+  66a59a96 r26    287 s left: catch-up,catch-up
+  66a59a96 r27    212 s left: catch-up,catch-up
+  66a59a96 r28    122 s left: catch-up,catch-up
+  66a59a96 r32    593 s left: edit,catch-up
+  66a59a96 r34    532 s left: edit,catch-up
+  b20a0d00 r6      54 s left: edit,edit,catch-up,catch-up
+  b20a0d00 r7      50 s left: edit,edit,catch-up,catch-up
+  b20a0d00 r19     41 s left: catch-up,catch-up
+  b20a0d00 r20      6 s left: catch-up,catch-up,catch-up,catch-up
+  b7555ac0 r99      1 s left: unknown,unknown,unknown,unknown
+  b7555ac0 r100     1 s left: unknown,unknown,catch-up,unknown
+  ba5234dc r13     48 s left: unknown
+  ba5234dc r13    533 s left: edit
+  ba5234dc r44    390 s left: edit
+  bccd1abc r4     568 s left: edit,edit,edit,edit
+  bccd1abc r5     505 s left: edit,edit,edit,edit
+  bccd1abc r6     473 s left: edit,edit,edit,edit
+  bccd1abc r7     381 s left: edit,edit,edit,edit
+  bccd1abc r8     349 s left: edit,edit,edit,edit
+  f3ab1acc r2       0 s left: unknown,unknown,unknown,unknown
+  f3ab1acc r2       0 s left: unknown
+  f3ab1acc r3       0 s left: edit,edit,catch-up,edit
+  fde08e76 r4     289 s left: catch-up,catch-up,catch-up,catch-up
+  fde08e76 r5     166 s left: catch-up,catch-up,catch-up,catch-up
+  fde08e76 r6     135 s left: catch-up,catch-up,catch-up,catch-up
+  fde08e76 r7     105 s left: catch-up,catch-up,catch-up,catch-up

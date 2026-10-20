@@ -1,0 +1,2 @@
+results/direct.json 110 lost under cap 12: 16 server:packages/cezar/src/core/opencode-server-runner.test.ts server:packages/cezar/src/workflows/run.test.ts server:packages/cezar/src/runs/store.test.ts
+results/direct-all.json 268 lost under cap 12: 18 server:packages/cezar/src/automations/scheduler.test.ts server:packages/cezar/src/automations/store.test.ts server:packages/cezar/src/core/opencode-server-runner.test.ts server:packages/cezar/src/workflows/run.test.ts server:packages/cezar/src/runs/store.test.ts

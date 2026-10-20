@@ -1,0 +1,1292 @@
+[
+ {
+  "rev": "5788e80c r15",
+  "at": "2026-10-19T20:13:55.553Z",
+  "inFlight": [
+   {
+    "files": 2,
+    "edit": true,
+    "leftS": 51.026,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/automations/github-poller.test.ts",
+    "startS": 5.728,
+    "resultS": 8.977
+   },
+   {
+    "id": "server:packages/cezar/src/automations/prompts.test.ts",
+    "startS": 5.728,
+    "resultS": 8.977
+   },
+   {
+    "id": "server:packages/cezar/src/automations/scheduler.test.ts",
+    "startS": 9.023,
+    "resultS": 14.889
+   },
+   {
+    "id": "server:packages/cezar/src/automations/task-template.test.ts",
+    "startS": 5.728,
+    "resultS": 8.977
+   },
+   {
+    "id": "server:packages/cezar/src/automations/types.test.ts",
+    "startS": 5.728,
+    "resultS": 8.977
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r1",
+  "at": "2026-10-14T23:13:14.564Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 20.63,
+    "resultS": 26.476
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 797.761,
+    "resultS": 826.834
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r2",
+  "at": "2026-10-14T23:14:19.547Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 686.593,
+    "resultS": 689.815
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 732.778,
+    "resultS": 761.851
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r3",
+  "at": "2026-10-14T23:14:42.312Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 581.628,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 710.013,
+    "resultS": 739.086
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r4",
+  "at": "2026-10-14T23:14:47.165Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 576.775,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 658.975,
+    "resultS": 662.197
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r5",
+  "at": "2026-10-14T23:14:52.864Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 571.076,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 653.276,
+    "resultS": 656.498
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r6",
+  "at": "2026-10-14T23:15:13.207Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 550.733,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-process.test.ts",
+    "startS": 631.602,
+    "resultS": 632.748
+   },
+   {
+    "id": "server:packages/cezar/src/core/opencode-server-runner.test.ts",
+    "startS": 636.507,
+    "resultS": 647.526
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r7",
+  "at": "2026-10-14T23:15:18.284Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 545.656,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 627.856,
+    "resultS": 631.078
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-process.test.ts",
+    "startS": 626.525,
+    "resultS": 627.671
+   },
+   {
+    "id": "server:packages/cezar/src/core/opencode-server-runner.test.ts",
+    "startS": 631.43,
+    "resultS": 642.449
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 674.041,
+    "resultS": 703.114
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r9",
+  "at": "2026-10-14T23:17:49.958Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 393.982,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 476.182,
+    "resultS": 479.404
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-process.test.ts",
+    "startS": 474.851,
+    "resultS": 475.997
+   },
+   {
+    "id": "server:packages/cezar/src/core/opencode-server-runner.test.ts",
+    "startS": 479.756,
+    "resultS": 490.775
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 522.367,
+    "resultS": 551.44
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r10",
+  "at": "2026-10-14T23:18:21.709Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 362.231,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-process.test.ts",
+    "startS": 443.1,
+    "resultS": 444.246
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 490.616,
+    "resultS": 519.689
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r11",
+  "at": "2026-10-14T23:18:28.190Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 355.75,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-process.test.ts",
+    "startS": 436.619,
+    "resultS": 437.765
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 484.135,
+    "resultS": 513.208
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r12",
+  "at": "2026-10-14T23:18:52.987Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 330.953,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 459.338,
+    "resultS": 488.411
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r13",
+  "at": "2026-10-14T23:19:55.656Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 268.284,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 350.484,
+    "resultS": 353.706
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r14",
+  "at": "2026-10-14T23:20:57.969Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 205.971,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 334.356,
+    "resultS": 363.429
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r15",
+  "at": "2026-10-14T23:21:59.455Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 144.485,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 226.685,
+    "resultS": 229.907
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 272.87,
+    "resultS": 301.943
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r17",
+  "at": "2026-10-14T23:23:01.498Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 82.442,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 210.827,
+    "resultS": 239.9
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r18",
+  "at": "2026-10-14T23:23:32.168Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 51.772,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 133.972,
+    "resultS": 137.194
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-process.test.ts",
+    "startS": 132.641,
+    "resultS": 133.787
+   },
+   {
+    "id": "server:packages/cezar/src/core/opencode-server-runner.test.ts",
+    "startS": 137.546,
+    "resultS": 148.565
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 180.157,
+    "resultS": 209.23
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r19",
+  "at": "2026-10-14T23:24:03.178Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 20.762,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 102.962,
+    "resultS": 106.184
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 149.147,
+    "resultS": 178.22
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r20",
+  "at": "2026-10-14T23:24:24.030Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 82.11,
+    "resultS": 85.332
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-process.test.ts",
+    "startS": 80.779,
+    "resultS": 81.925
+   },
+   {
+    "id": "server:packages/cezar/src/core/opencode-server-runner.test.ts",
+    "startS": 85.684,
+    "resultS": 96.703
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 128.295,
+    "resultS": 157.368
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r21",
+  "at": "2026-10-14T23:25:20.154Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 25.986,
+    "resultS": 29.208
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 72.171,
+    "resultS": 101.244
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r24",
+  "at": "2026-10-14T23:28:35.385Z",
+  "inFlight": [
+   {
+    "files": 2,
+    "edit": true,
+    "leftS": 349.049,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/zz-887-debug.test.ts",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r25",
+  "at": "2026-10-14T23:29:06.874Z",
+  "inFlight": [
+   {
+    "files": 2,
+    "edit": true,
+    "leftS": 317.56,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/zz-887-debug.test.ts",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r26",
+  "at": "2026-10-14T23:29:37.867Z",
+  "inFlight": [
+   {
+    "files": 2,
+    "edit": true,
+    "leftS": 286.567,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/zz-887-debug.test.ts",
+    "startS": null,
+    "resultS": null
+   },
+   {
+    "id": "server:packages/cezar/src/core/codex-startup.test.ts",
+    "startS": 298.865,
+    "resultS": 299.828
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r27",
+  "at": "2026-10-14T23:30:52.709Z",
+  "inFlight": [
+   {
+    "files": 2,
+    "edit": true,
+    "leftS": 211.725,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 225.204,
+    "resultS": 228.802
+   },
+   {
+    "id": "server:packages/cezar/src/core/codex-startup.test.ts",
+    "startS": 224.023,
+    "resultS": 224.986
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r28",
+  "at": "2026-10-14T23:32:22.807Z",
+  "inFlight": [
+   {
+    "files": 2,
+    "edit": true,
+    "leftS": 121.627,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/codex-app-server-runner.test.ts",
+    "startS": 135.106,
+    "resultS": 138.704
+   },
+   {
+    "id": "server:packages/cezar/src/core/runner-runtime.test.ts",
+    "startS": 135.106,
+    "resultS": 138.704
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r29",
+  "at": "2026-10-14T23:38:06.002Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/git-worktree.test.ts",
+    "startS": 21.044,
+    "resultS": 45.567
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r32",
+  "at": "2026-10-14T23:42:11.949Z",
+  "inFlight": [
+   {
+    "files": 2,
+    "edit": true,
+    "leftS": 593.35,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/git-worktree.test.ts",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ },
+ {
+  "rev": "66a59a96 r34",
+  "at": "2026-10-14T23:43:13.201Z",
+  "inFlight": [
+   {
+    "files": 2,
+    "edit": true,
+    "leftS": 532.098,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-process.test.ts",
+    "startS": 532.109,
+    "resultS": 1132.681
+   }
+  ]
+ },
+ {
+  "rev": "729119b9 r1",
+  "at": "2026-10-15T20:25:00.842Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "web:packages/web/src/components/github-item-detail.test.tsx",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ },
+ {
+  "rev": "729119b9 r2",
+  "at": "2026-10-15T20:25:42.595Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/git-worktree.test.ts",
+    "startS": null,
+    "resultS": null
+   },
+   {
+    "id": "server:packages/cezar/src/server/forge/github.test.ts",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ },
+ {
+  "rev": "b20a0d00 r1",
+  "at": "2026-10-19T11:59:57.044Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-cli-flags.test.ts",
+    "startS": 4.405,
+    "resultS": 6.076
+   }
+  ]
+ },
+ {
+  "rev": "b20a0d00 r3",
+  "at": "2026-10-19T12:00:42.905Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-capabilities.test.ts",
+    "startS": 2.539,
+    "resultS": 4.902
+   }
+  ]
+ },
+ {
+  "rev": "b20a0d00 r4",
+  "at": "2026-10-19T12:01:00.165Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-runner.test.ts",
+    "startS": 2.391,
+    "resultS": 11.323
+   }
+  ]
+ },
+ {
+  "rev": "b20a0d00 r5",
+  "at": "2026-10-19T12:01:13.166Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-runner.test.ts",
+    "startS": 2.339,
+    "resultS": 8.356
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-runner.test.ts",
+    "startS": 2.339,
+    "resultS": 8.356
+   }
+  ]
+ },
+ {
+  "rev": "b20a0d00 r6",
+  "at": "2026-10-19T12:01:50.933Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 54.168,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-cli-flags.test.ts",
+    "startS": 54.173,
+    "resultS": 55.109
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-model-catalog.test.ts",
+    "startS": 54.173,
+    "resultS": 55.109
+   }
+  ]
+ },
+ {
+  "rev": "b20a0d00 r7",
+  "at": "2026-10-19T12:01:55.157Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 49.944,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-model-catalog.test.ts",
+    "startS": 49.949,
+    "resultS": 50.885
+   }
+  ]
+ },
+ {
+  "rev": "b20a0d00 r10",
+  "at": "2026-10-19T12:03:47.619Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-acp-runner.test.ts",
+    "startS": 2.162,
+    "resultS": 29.091
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-cli-flags.test.ts",
+    "startS": 2.162,
+    "resultS": 13.736
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-capabilities.test.ts",
+    "startS": 13.967,
+    "resultS": 16.313
+   }
+  ]
+ },
+ {
+  "rev": "b20a0d00 r19",
+  "at": "2026-10-19T12:08:08.312Z",
+  "inFlight": [
+   {
+    "files": 2,
+    "edit": true,
+    "leftS": 40.974,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-acp-runner.test.ts",
+    "startS": 108.325,
+    "resultS": 122.028
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-model-catalog.test.ts",
+    "startS": 41.071,
+    "resultS": 101.756
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-capabilities.test.ts",
+    "startS": 101.965,
+    "resultS": 108.17
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-runner.test.ts",
+    "startS": 101.965,
+    "resultS": 122.028
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-runner.test.ts",
+    "startS": 41.071,
+    "resultS": 101.756
+   }
+  ]
+ },
+ {
+  "rev": "b20a0d00 r20",
+  "at": "2026-10-19T12:10:59.385Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 6.318,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-acp-runner.test.ts",
+    "startS": null,
+    "resultS": null
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-model-catalog.test.ts",
+    "startS": null,
+    "resultS": null
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-capabilities.test.ts",
+    "startS": null,
+    "resultS": null
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-print-runner.test.ts",
+    "startS": null,
+    "resultS": null
+   },
+   {
+    "id": "server:packages/cezar/src/core/cursor-runner.test.ts",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ },
+ {
+  "rev": "b7555ac0 r99",
+  "at": "2026-10-19T21:14:57.425Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 0.589,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/cursor-cli-flags.test.ts",
+    "startS": 1660.165,
+    "resultS": 1671.779
+   }
+  ]
+ },
+ {
+  "rev": "b7555ac0 r100",
+  "at": "2026-10-19T21:15:08.352Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 0.652,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/workflows/turn-end.test.ts",
+    "startS": 1649.238,
+    "resultS": 1660.852
+   }
+  ]
+ },
+ {
+  "rev": "ba5234dc r1",
+  "at": "2026-10-19T08:38:42.698Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "contract:packages/contract/src/attention.test.ts",
+    "startS": 31983.795,
+    "resultS": 31984.784
+   },
+   {
+    "id": "contract:packages/contract/src/waits.test.ts",
+    "startS": 30408.751,
+    "resultS": 30409.734
+   }
+  ]
+ },
+ {
+  "rev": "ba5234dc r2",
+  "at": "2026-10-19T08:39:11.339Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/workflows/run.test.ts",
+    "startS": 376.086,
+    "resultS": 1693.115
+   },
+   {
+    "id": "server:packages/cezar/src/workflows/waits.test.ts",
+    "startS": 22306.76,
+    "resultS": 22312.426
+   }
+  ]
+ },
+ {
+  "rev": "ba5234dc r13",
+  "at": "2026-10-19T14:26:38.124Z",
+  "inFlight": [
+   {
+    "files": 1,
+    "edit": true,
+    "leftS": 47.549,
+    "end": "completed"
+   },
+   {
+    "files": 1,
+    "edit": true,
+    "leftS": 533.345,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/core/conversation-answer-delivery.test.ts",
+    "startS": 552.281,
+    "resultS": 631.907
+   },
+   {
+    "id": "server:packages/cezar/src/core/conversation-delivery.test.ts",
+    "startS": 533.372,
+    "resultS": 551.83
+   },
+   {
+    "id": "server:packages/cezar/src/workflows/ci-wait.test.ts",
+    "startS": 552.281,
+    "resultS": 631.907
+   },
+   {
+    "id": "server:packages/cezar/src/workflows/immediate-delivery.test.ts",
+    "startS": 552.281,
+    "resultS": 631.907
+   }
+  ]
+ },
+ {
+  "rev": "ba5234dc r44",
+  "at": "2026-10-19T19:11:33.132Z",
+  "inFlight": [
+   {
+    "files": 1,
+    "edit": true,
+    "leftS": 389.916,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/runs/store.test.ts",
+    "startS": 469.011,
+    "resultS": 474.994
+   },
+   {
+    "id": "server:packages/cezar/src/workflows/run.test.ts",
+    "startS": 967.462,
+    "resultS": 1568.657
+   }
+  ]
+ },
+ {
+  "rev": "bccd1abc r1",
+  "at": "2026-10-14T23:13:05.470Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/runs/store.test.ts",
+    "startS": 800.577,
+    "resultS": 816.703
+   }
+  ]
+ },
+ {
+  "rev": "bccd1abc r2",
+  "at": "2026-10-14T23:13:21.531Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/runs/store.test.ts",
+    "startS": 784.516,
+    "resultS": 800.642
+   }
+  ]
+ },
+ {
+  "rev": "bccd1abc r3",
+  "at": "2026-10-14T23:14:01.693Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/runs/store.test.ts",
+    "startS": 744.354,
+    "resultS": 760.48
+   }
+  ]
+ },
+ {
+  "rev": "bccd1abc r4",
+  "at": "2026-10-14T23:14:38.961Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 568.218,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/runs/store.test.ts",
+    "startS": 707.086,
+    "resultS": 723.212
+   }
+  ]
+ },
+ {
+  "rev": "bccd1abc r5",
+  "at": "2026-10-14T23:15:42.139Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 505.04,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/runs/store.test.ts",
+    "startS": 643.908,
+    "resultS": 660.034
+   }
+  ]
+ },
+ {
+  "rev": "bccd1abc r6",
+  "at": "2026-10-14T23:16:13.788Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 473.391,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/runs/store.test.ts",
+    "startS": 612.259,
+    "resultS": 628.385
+   }
+  ]
+ },
+ {
+  "rev": "bccd1abc r7",
+  "at": "2026-10-14T23:17:46.364Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 380.815,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/runs/store-transcript-facts.test.ts",
+    "startS": 459.651,
+    "resultS": 466.832
+   }
+  ]
+ },
+ {
+  "rev": "bccd1abc r8",
+  "at": "2026-10-14T23:18:17.860Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 349.319,
+    "end": "timed-out"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/runs/store.test.ts",
+    "startS": 488.187,
+    "resultS": 504.313
+   }
+  ]
+ },
+ {
+  "rev": "f3ab1acc r2",
+  "at": "2026-10-19T22:16:38.597Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 0,
+    "end": null
+   },
+   {
+    "files": 1,
+    "edit": true,
+    "leftS": 0.195,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/workflows/run.test.ts",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ },
+ {
+  "rev": "f3ab1acc r3",
+  "at": "2026-10-19T22:18:53.818Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 0,
+    "end": null
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/workflows/run.test.ts",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ },
+ {
+  "rev": "fde08e76 r1",
+  "at": "2026-10-15T09:02:09.778Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/delegation/workspace.test.ts",
+    "startS": 218.39,
+    "resultS": 302.422
+   },
+   {
+    "id": "server:packages/cezar/src/git-worktree-lock.test.ts",
+    "startS": 196.404,
+    "resultS": 203.712
+   }
+  ]
+ },
+ {
+  "rev": "fde08e76 r3",
+  "at": "2026-10-15T09:05:22.829Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/delegation/stall1059.scratch.test.ts",
+    "startS": null,
+    "resultS": null
+   },
+   {
+    "id": "server:packages/cezar/src/delegation/workspace.test.ts",
+    "startS": 25.339,
+    "resultS": 109.371
+   }
+  ]
+ },
+ {
+  "rev": "fde08e76 r4",
+  "at": "2026-10-15T09:23:36.018Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 288.704,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/delegation/workspace.test.ts",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ },
+ {
+  "rev": "fde08e76 r5",
+  "at": "2026-10-15T09:25:38.660Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 166.062,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/git-worktree-lock.test.ts",
+    "startS": 166.293,
+    "resultS": 170.964
+   }
+  ]
+ },
+ {
+  "rev": "fde08e76 r6",
+  "at": "2026-10-15T09:26:09.372Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 135.35,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/git-worktree-lock.test.ts",
+    "startS": 135.581,
+    "resultS": 140.252
+   }
+  ]
+ },
+ {
+  "rev": "fde08e76 r7",
+  "at": "2026-10-15T09:26:39.878Z",
+  "inFlight": [
+   {
+    "files": 4,
+    "edit": true,
+    "leftS": 104.844,
+    "end": "completed"
+   }
+  ],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/git-worktree-lock.test.ts",
+    "startS": 105.075,
+    "resultS": 109.746
+   }
+  ]
+ },
+ {
+  "rev": "fde08e76 r9",
+  "at": "2026-10-15T09:30:58.293Z",
+  "inFlight": [],
+  "own": [
+   {
+    "id": "server:packages/cezar/src/git-worktree-lock.test.ts",
+    "startS": null,
+    "resultS": null
+   }
+  ]
+ }
+]

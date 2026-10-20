@@ -1,0 +1,26 @@
+graph at a8042ec3: 1721 code files, 0 did not parse: 
+┌───────────────────────────┬───────┬───────┬────────┬───────────┐
+│ (index)                   │ files │ exact │ recall │ precision │
+├───────────────────────────┼───────┼───────┼────────┼───────────┤
+│ server                    │ 463   │ 269   │ 0.9255 │ 0.9999    │
+│ test:unit                 │ 10    │ 8     │ 0.8476 │ 1         │
+│ root:test:unit            │ 45    │ 3     │ 1      │ 0.0252    │
+│ api-client                │ 2     │ 2     │ 1      │ 1         │
+│ contract                  │ 13    │ 13    │ 1      │ 1         │
+│ web                       │ 262   │ 156   │ 0.9461 │ 0.9946    │
+│ test:package              │ 13    │ 0     │ 0.193  │ 0.8905    │
+│ all, written at this head │ 418   │ 151   │ 0.9423 │ 0.9985    │
+│ all                       │ 808   │ 451   │ 0.9256 │ 0.9965    │
+└───────────────────────────┴───────┴───────┴────────┴───────────┘
+server packages/cezar/src/artifacts/lifecycle.test.ts stored 61 reach 60 both 60 missing packages/cezar/src/runs/transcript-facts-worker.ts extra 
+server packages/cezar/src/ci-wait/controller.test.ts stored 20 reach 18 both 18 missing packages/cezar/src/ci-wait/__fixtures__/controller-owner.mjs packages/cezar/src/ci-wait/mcp.ts extra 
+server packages/cezar/src/runs/ci-wait-store.test.ts stored 64 reach 63 both 63 missing packages/cezar/src/runs/transcript-facts-worker.ts extra 
+server packages/cezar/src/runs/client-request.test.ts stored 63 reach 62 both 62 missing packages/cezar/src/runs/transcript-facts-worker.ts extra 
+server packages/cezar/src/server/run-event-feed.test.ts stored 65 reach 64 both 64 missing packages/cezar/src/runs/transcript-facts-worker.ts extra 
+test:unit packages/cezar/test/unit/codex-reasoning-summary.test.ts stored 53 reach 35 both 35 missing packages/contract/src/agent-config.ts packages/contract/src/agent-profiles.ts packages/contract/src/artifacts.ts packages/contract/src/ask.ts packages/contract/src/attention.ts packages/contract/src/automation-schedule.ts packages/contract/src/automations.ts packages/contract/src/events.ts packages/contract/src/github.ts packages/contract/src/index.ts packages/contract/src/live-coordination.ts packages/contract/src/live.ts packages/contract/src/projects.ts packages/contract/src/repo.ts packages/contract/src/runs.ts packages/contract/src/skills.ts packages/contract/src/workflows.ts packages/contract/src/zoned-time.ts extra 
+test:unit packages/cezar/test/unit/planner.test.ts stored 98 reach 84 both 84 missing packages/contract/src/agent-config.ts packages/contract/src/artifacts.ts packages/contract/src/ask.ts packages/contract/src/attention.ts packages/contract/src/automation-schedule.ts packages/contract/src/automations.ts packages/contract/src/github.ts packages/contract/src/index.ts packages/contract/src/live-coordination.ts packages/contract/src/live.ts packages/contract/src/repo.ts packages/contract/src/runs.ts packages/contract/src/skills.ts packages/contract/src/workflows.ts extra 
+server packages/cezar/src/automations/schedule-runner.test.ts stored 70 reach 69 both 69 missing packages/cezar/src/runs/transcript-facts-worker.ts extra 
+server packages/cezar/src/automations/task-template.test.ts stored 72 reach 71 both 71 missing packages/cezar/src/runs/transcript-facts-worker.ts extra 
+server packages/cezar/src/core/claude-model-catalog.test.ts stored 34 reach 31 both 31 missing packages/cezar/scripts/mock-claude.mjs packages/cezar/scripts/mock-nudge.mjs packages/cezar/scripts/mock-silent-tail.mjs extra 
+server packages/cezar/src/core/claude-ui-mapper.test.ts stored 33 reach 30 both 30 missing packages/cezar/scripts/mock-claude.mjs packages/cezar/scripts/mock-nudge.mjs packages/cezar/scripts/mock-silent-tail.mjs extra 
+server packages/cezar/src/core/codex-app-server-runner.test.ts stored 40 reach 35 both 35 missing packages/cezar/scripts/mock-codex-app-server.mjs packages/cezar/scripts/mock-deferred-turn-start.mjs packages/cezar/scripts/mock-nudge.mjs packages/cezar/scripts/mock-silent-tail.mjs packages/cezar/src/core/__fixtures__/codex/mock-codex-app-server.mjs extra 
