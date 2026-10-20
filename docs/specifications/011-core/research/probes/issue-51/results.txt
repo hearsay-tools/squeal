@@ -23,4 +23,3 @@ promoted: tiers=8 sizes=[122,4,51,39,32,28,25,2] firstCancelled=false lastFileTi
       Tests  2 passed (2)
    Start at  15:35:03
    Duration  9.42s (tests 78%, transform 18%, import 4%)
-
