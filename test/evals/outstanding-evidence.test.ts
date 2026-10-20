@@ -90,6 +90,18 @@ describe.each([
       });
     });
 
+    it("names a named project's files of a pending retry by path, as `Pending retries:` did", () => {
+      // Review of cand/0.1.234, should-fix: a group line leads each path with its project.
+      const [retry, ...rest] = busy.outstanding ?? [];
+      if (retry === undefined) throw new Error("no retry group");
+      const projects = files(2, 90).map((f) => ({ ...f, project: "unit" }));
+      const text = format({ ...busy, outstanding: [{ ...retry, files: projects }, ...rest] });
+      expect(text).toMatch(/ \(load\): unit: test\/f90\.test\.ts, unit: test\/f91\.test\.ts; /);
+      expect(squealEvidence(wrap(text), "pull")).toMatchObject({
+        pendingRetries: ["test/f90.test.ts", "test/f91.test.ts"],
+      });
+    });
+
     it("reads a down daemon from its Outstanding group", () => {
       const text = format(down);
       expect(text).not.toMatch(/^Daemon: /m);

@@ -272,13 +272,16 @@ function selectedOf(t) {
  * The test files a status lists under `Pending retries:` (spec 001 D7 as amended for 001-368;
  * row 006-53), as `  test/a.test.ts (environment): runs at once`; from row 011-29 its
  * `Outstanding:` groups, `  2 test files with a pending retry (load): a, b; runs at ...`, whose
- * files past "and N more" are not named.
+ * files past "and N more" are not named, each by its path without its project.
  */
 function pendingRetriesOf(t) {
   const listed = [...t.matchAll(/^\s+(\S+) \((?:load|environment)\): /gm)].map((m) => m[1]);
   const grouped = [
     ...t.matchAll(/^ {2}\d+ test files? with a pending retry \([^)]*\): (.+?); /gm),
-  ].flatMap((m) => m[1].replace(/ and \d+ more$/, "").split(", "));
+  ]
+    .flatMap((m) => m[1].replace(/ and \d+ more$/, "").split(", "))
+    // A group leads a named project's path with the project (`unit: test/a.test.ts`).
+    .map((f) => f.slice(f.lastIndexOf(": ") + 1).trimStart());
   return [...listed, ...grouped];
 }
 
