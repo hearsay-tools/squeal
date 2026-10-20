@@ -10,6 +10,7 @@ import type {
   TestFileRef,
 } from "../types/index.js";
 import { type SchedulerContext, tryRunner } from "./context.js";
+import { demote, type EditCut, editWork, fetchEditCut } from "./edit-cut.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
@@ -42,6 +43,12 @@ export interface RunnerPart {
   readonly catchUp?: boolean;
   /** `ContentRekey.recent`: the files the content part left recent. */
   readonly recent?: readonly TestFileRef[];
+  /**
+   * The edit cut (`fetchEditCut`, task 011-25); absent when `affected`
+   * gave no answer or the revision is catch-up, so every reached file stays
+   * an edit's work or is catch-up as before.
+   */
+  readonly cut?: EditCut;
   /** Every test file whose closure was asked for, whether or not the runner answered. */
   readonly reresolved: readonly TestFileRef[];
   readonly closures: readonly RunnerClosure[];
@@ -166,6 +173,11 @@ export async function fetchRunnerPart(
     );
     if (closure !== null) closures.push(closure);
   }
+  // Last, so an abandoned call for the bare sources costs no closure (011-25).
+  const cut =
+    affected === null || content.catchUp === true
+      ? undefined
+      : await fetchEditCut(context, refsOf(ledger, listed), paths, affected, bound);
   return {
     revision,
     retrying,
@@ -175,6 +187,7 @@ export async function fetchRunnerPart(
     direct: new Set((affected?.direct ?? []).map(testFileId)),
     ...(content.catchUp === true ? { catchUp: true } : {}),
     ...(content.recent === undefined ? {} : { recent: content.recent }),
+    ...(cut === undefined ? {} : { cut }),
     reresolved: [...reresolve.values()],
     closures,
   };
@@ -256,5 +269,18 @@ export async function applyRunnerPart(
   };
   ledger.settle(touched.values(), changed, options);
   settleFailures(ledger, part.failures, part.retrying, changed, options);
+  if (!catchUp && keyedAt !== undefined && part.cut !== undefined) {
+    // The rest of a small revision's reach is catch-up (011 C4 step 4 as amended for 011-25).
+    const { kept, reached } = editWork(context, ledger, part.cut, changed, part.direct);
+    demote(ledger, [...reached, ...(part.recent ?? []).map(testFileId)], kept, keyedAt);
+  }
   return stale;
+}
+
+/** The test files as the runner part's listing leaves them. */
+function refsOf(
+  ledger: Ledger,
+  listed: readonly TestFileRef[] | null | undefined,
+): readonly TestFileRef[] {
+  return listed ?? [...ledger.files.values()].map((file) => file.ref);
 }
