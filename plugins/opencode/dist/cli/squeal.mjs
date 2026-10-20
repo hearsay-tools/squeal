@@ -56305,6 +56305,9 @@ function namedClassLines(wait, command = "squeal") {
   return classLines(wait.files, command, wait.selection.base);
 }
 function unsyncedText(sync, revision, snapshot3) {
+  if (sync.state === "unsupported" && snapshot3) {
+    return `results are as of revision ${revision}; the daemon did not answer its sync, so they may not hold the latest edits`;
+  }
   if (sync.state === "pending" && snapshot3) {
     return `results are as of revision ${revision}; the daemon has not stored its pass over the latest edits`;
   }
@@ -58312,7 +58315,7 @@ function readOnce2({ store, root }, cwd, paths, sync, now) {
   const record = store.worktrees.get(id2)?.daemon ?? null;
   const liveness2 = daemonLiveness(record, now);
   const current3 = sync?.current() ?? { state: "unsupported" };
-  const ready = liveness2.state === "alive" && (current3.state === "synced" ? all.revision >= current3.revision && !all.unlisted : current3.state === "unsupported");
+  const ready = liveness2.state === "alive" && current3.state === "synced" && all.revision >= current3.revision && !all.unlisted;
   const paused = new Set(
     ready ? pauseOnlyIds(store, id2, root, selection.files, liveness2, now) : []
   );
