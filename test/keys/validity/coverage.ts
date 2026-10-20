@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import type { SourceMap } from "./bundle.js";
+import { ROOT } from "./trees.js";
 
 /*
  * The coverage proof (task 011-37 section 3; 011-35 Q4, risk 1): every line
@@ -119,10 +120,13 @@ function vlq(segment: string): number[] {
   return values;
 }
 
-/** A bundle's source path as both sides name it: relative to its tree when under it. */
+/**
+ * A bundle's source path as both sides name it: relative to its tree when
+ * under it, else to this checkout, where the harness both sides run lives.
+ */
 function named(path: string, tree: string): string {
-  const shown = path.startsWith(`${tree}${sep}`) ? relative(tree, path) : path;
-  return shown.split(sep).join("/");
+  const base = [tree, ROOT].find((dir) => path.startsWith(`${dir}${sep}`));
+  return (base === undefined ? path : relative(base, path)).split(sep).join("/");
 }
 
 /** Every `path:line` (1-based) each generated line (1-based) was emitted from. */
