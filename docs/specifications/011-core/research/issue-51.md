@@ -4,6 +4,8 @@ Researcher, 2026-10-20, worktree `cez/7fae8031` at ea76593b (`package.json` 0.1.
 
 Environment: host 24 CPUs (`nproc`); one-minute load 13.52 at the start (below the CPU count, so a probe was allowed), 17.55 at the first probe run, 43.47 when the recorded run started (`results.txt` header; above the CPU count, so no further live run was made). The probe is synthetic and in-process: a fake runner, a real store and a real scheduler, with no Vitest child processes and no timings in its assertions; the load does not change the order it checks. `npm ci --ignore-scripts` in this worktree, Vitest 5.0.3. No build, no suite. The original cezar session was not replayed: its store, daemon log and timings are not available here.
 
+Coordinator review: the recorded run at load 43.47 exceeded 24 CPUs and should have been skipped under the task instruction. Its output is preserved as qualified synthetic evidence, not a compliant live reproduction of the incident. No further live reproduction was run. The inference that the original delay was entirely a running tier is plausible, not proven without the original store and daemon log.
+
 ## Answers
 
 | # | Question | Answer | Tag |
@@ -66,3 +68,10 @@ Holds preserved: 001-381 stays the owner of cancelling or splitting a running ti
 - Prior research: `research/issue-40.md` sections 2 and the "Promoted label not seen" note.
 - Source at ea76593b: `src/cli/status-wait-paths.ts`, `src/cli/status-wait-promote.ts`, `src/cli/named-files.ts`, `src/cli/named-file-lines.ts`, `src/core/scheduler/promotions.ts`, `src/core/scheduler/scheduler.ts`, `src/core/scheduler/queue.ts`; tests `test/scheduler/promotion.test.ts`, `test/scheduler/catch-up-order.test.ts`, `test/scheduler/catch-up-fixture.ts`.
 - Probe: `probes/issue-51/` (README, probe, config, `results.txt`). Command: `npx vitest run -c docs/specifications/011-core/research/probes/issue-51/vitest.config.ts --reporter=verbose`.
+
+## Coordinator documentation checks
+
+- `npm run lint`: `Checked 1520 files in 1437ms. No fixes applied.`
+- `npm run typecheck`: `tsc --noEmit`, exit 0.
+- `npm run build`: exit 0; no tracked bundle drift.
+- `git diff --check`: exit 0.
