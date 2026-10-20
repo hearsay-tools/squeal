@@ -80,3 +80,9 @@ Read W3 above, spec 011 C4 step 4 and "Explicit checkpoints" as amended 2026-10-
 - `KEY_FORMAT_VERSION` 19 is right against the released 18 (0.1.228), format 18 joins `KEY_FORMATS_READ_AS_ONE` rightly (neither row changes a stored result's meaning), and the bundles match the tree.
 
 Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree; a file that fails loaded and passes alone is named. Write `reviews/wave-6.md` with a PASS or FAIL verdict and commit it.
+
+## R3r: re-review of the repaired cand/0.1.229
+
+Use /reviewer. Shape: review, bounded. Pinned to the `cand/0.1.229` SHA named in the resume; the repair is `2fb497da..<sha>` (after your findings commit, cherry-picked as 2fb497da: the coordinator's two fixes and the re-pin). Read `reviews/wave-6.md` (B1, B2) and append a "Re-review" section to it.
+
+Check only that: B1 is closed (`fetchEditCut` counts a changed path a closure the runner part fetched holds as a source, so a new source keeps its namesake, or with none every direct importer; `test/scheduler/edit-cut-new-source.test.ts`'s three cases fail with the fix reverted, and your scheduler probes pass); B2 is closed (an instance that does not observe passes only `UNOBSERVED` through the `env` option, a config's own `env.NODE_OPTIONS` keeps its value in the workers and the hash, root or project, and only a project that inherits none gets the cleaned value, left out of its hash alone; `test/runners/vitest/unobserved-project-env.test.ts`'s root cases fail with the fix reverted, and your four adapter probes pass); the original 001-431 fidelity cases still pass under an outer recorder; the format-19 re-pin and the bundles match the tree. The coordinator's gate on this SHA is reported in the resume. Anything outside B1 and B2 is recorded for a later row, not a blocker.
