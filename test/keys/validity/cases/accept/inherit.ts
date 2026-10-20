@@ -59,6 +59,15 @@ export const INHERIT: readonly Case[] = [
     runs: [{ worktree: "B", report: failed, recordedAt: 1_000 }],
     receiver: "B",
   }),
+  accept(
+    "another worktree's pass at a format read as one",
+    "011-38: a miss copies the newest set stored at a format read as one to the key, and it stands as stored",
+    {
+      runs: [{ worktree: "A", report: passed, recordedAt: 1_000 }],
+      receiver: "B",
+      readAsOne: true,
+    },
+  ),
   accept("a miss", "001-205: a miss may wait on another worktree's claim", {
     runs: [],
     receiver: "B",

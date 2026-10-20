@@ -1,7 +1,6 @@
 import { testFileId } from "../keys/index.js";
 import { fsRankSource, SlowRanker } from "../slow/rank.js";
 import { metaTokenRecords, publishSlowEvidence, readSlowEvidence } from "../slow/rank-store.js";
-import { heldFailure } from "../state/index.js";
 import {
   type CheckId,
   type CheckKey,
@@ -13,6 +12,7 @@ import {
   type TestFileKeyRecord,
   type TestFileRef,
 } from "../types/index.js";
+import { acceptedAt, currentChecks, type ReadAsOne } from "./accept.js";
 import { Checkpoints } from "./checkpoints.js";
 import { Claims } from "./claims.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
@@ -131,6 +131,11 @@ export class Ledger {
   readonly #ranker: SlowRanker;
   /** The key each file was last read at under the formats read as one, by `testFileId` (task 011-38). */
   readonly #readAsOne = new Map<string, CheckKey>();
+  /** The formats read as one, as `acceptedAt` reads them: the key index's keys, this daemon's reads. */
+  readonly #listed: ReadAsOne = {
+    keys: (key) => this.context.keys.index.keysReadAsOne(key),
+    read: this.#readAsOne,
+  };
 
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
@@ -299,12 +304,8 @@ export class Ledger {
   }
 
   /**
-   * The stored results of `key` that may stand for its file: every hit, unless
-   * one is another worktree's fail this worktree has not
-   * confirmed (spec 001 D6 as amended, task 001-170, `heldFailure`), when
-   * there is none: the file is a miss and runs here, and its local result
-   * replaces the shared row. The store holds one result per check and key,
-   * so a mixed set is never partly this worktree's own.
+   * The stored results of `key` that may stand for its file (`acceptedAt`):
+   * when there are none, the file is a miss and runs here.
    */
   lookup(key: CheckKey): readonly ResultRecord[] {
     return this.probe(key).hits;
@@ -312,39 +313,12 @@ export class Ledger {
 
   /**
    * `lookup`, and whether a miss may wait on another worktree's claim of
-   * `key` (task 001-205): only when no result is stored, so none was
-   * withheld (001-170). A slow file inherits as any file (004 D6 as amended
-   * 2026-10-18, task 004-81). A miss first copies a set stored at a format
-   * read as one (`#copyReadAsOne`).
+   * `key` (task 001-205): the accept rule's (`acceptedAt`), the formats read
+   * as one once per file and key in this daemon (task 011-38).
    */
   probe(key: CheckKey): { hits: readonly ResultRecord[]; mayWait: boolean } {
     const { store, worktreeId, now } = this.context;
-    let hits = store.results.byKey(key, now());
-    if (hits.length === 0 && this.#copyReadAsOne(key)) hits = store.results.byKey(key, now());
-    if (hits.length === 0) return { hits, mayWait: true };
-    if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) {
-      return { hits, mayWait: false };
-    }
-    const held = heldFailure(store, worktreeId, hits) !== undefined;
-    return { hits: held ? [] : hits, mayWait: false };
-  }
-
-  /**
-   * Spec 011 C4 step 3 as amended 2026-10-20 (task 011-38): "A key with no
-   * result is first read at the formats C3 reads as one, once per file and
-   * key in a daemon". The newest set stored at one is copied to `key`
-   * (`ResultRepo.copyNewest`, C7) in a statement of its own, so the write
-   * lock is held for one copy at a time. True when it copied a set. A busy
-   * store's error leaves the read to the next lookup.
-   */
-  #copyReadAsOne(key: CheckKey): boolean {
-    const found = this.context.keys.index.keysReadAsOne(key);
-    if (found === null || found.keys.length === 0) return false;
-    const id = testFileId(found.testFile);
-    if (this.#readAsOne.get(id) === key) return false;
-    const copied = this.context.store.results.copyNewest(key, found.keys);
-    this.#readAsOne.set(id, key);
-    return copied;
+    return acceptedAt(store, worktreeId, key, now, this.#listed);
   }
 
   /**
@@ -368,7 +342,7 @@ export class Ledger {
   /**
    * Makes `results` the current results of `file` under `key`: from a run of
    * this worktree or a lookup hit. Checks of the previous results that are
-   * not among them are retired (D8).
+   * not among them are retired (D8, `currentChecks`).
    */
   applyResults(
     file: FileState,
@@ -377,11 +351,10 @@ export class Ledger {
     checkpointId: string | null,
   ): void {
     if (results.length > 0) this.#applied.push({ results, checkpointId });
-    const next = results.map((r) => r.check);
-    const kept = new Set(next.map(checkId));
-    this.#retired.push(...file.checks.filter((check) => !kept.has(checkId(check))));
+    const { checks, retired } = currentChecks(file.checks, results);
+    this.#retired.push(...retired);
     file.resultKey = key;
-    file.checks = next;
+    file.checks = checks;
     file.failing = results.some((r) => r.outcome === "fail");
     file.durationMs = durationOf(results) ?? file.durationMs;
     file.unknownKey = null;

@@ -8,7 +8,15 @@ import { createStateSink } from "../../../../src/core/state/sink.js";
 import type { TestFileKeyRecord, WorktreeId } from "../../../../src/core/types/index.js";
 import type { AcceptInput, CaseOutput } from "../case.js";
 import { acceptRule } from "./accept-rule.js";
-import { KEY, provenance, REPORT, scratchStore, verdictOf, writeTree } from "./shared.js";
+import {
+  KEY,
+  LISTED_KEY,
+  provenance,
+  REPORT,
+  scratchStore,
+  verdictOf,
+  writeTree,
+} from "./shared.js";
 
 /*
  * The upgrade itself (011 C3; task 011-37 D1 a): each tree stores the same
@@ -26,7 +34,7 @@ export function writeAccept(input: AcceptInput, scratch: string): CaseOutput {
     for (const [at, run] of input.runs.entries()) {
       const records = recordsForFile({
         ref: input.testFile,
-        key: KEY,
+        key: input.readAsOne ? LISTED_KEY : KEY,
         report: { ...REPORT, completedFiles: [input.testFile], ...run.report },
         previousChecks: run.previousChecks ?? [],
         provenance: provenance(run.worktree, run.recordedAt, `run-${at}`),
@@ -61,8 +69,11 @@ export function decideAccept(input: AcceptInput, stored: string, scratch: string
       keys: {
         declaredFor: () => input.declared ?? [],
         cache: { hashOf: () => undefined },
-        // From format 18 a miss reads the formats read as one first (011-38); none here.
-        index: { keysReadAsOne: () => null },
+        // From format 18 a miss reads the formats read as one first (011-38).
+        index: {
+          keysReadAsOne: () =>
+            input.readAsOne ? { testFile: input.testFile, keys: [LISTED_KEY] } : null,
+        },
       },
     } as unknown as SchedulerContext;
     const probe = acceptRule(context, input.testFile, KEY, input.current ?? []);
