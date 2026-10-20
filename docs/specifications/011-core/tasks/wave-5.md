@@ -41,3 +41,16 @@ Outcome: each reconciliation pass and each tier selection read the keys stored s
 Owns: a new module under `src/core/scheduler/` for the read and its watermark, the results repository query it needs, the reconciliation hook in `src/core/daemon-loop/`, their tests. Write `tasks/011-23/notes.md`. Leave the board, `status.md`, `spec.md`, versions and `plugins/*/dist` to the coordinator. Raise `KEY_FORMAT_VERSION` only if a guarded source changes; W1 may raise it too, the coordinator reconciles. Verify with `npm run lint`, `npm run typecheck` and `squeal run --all --wait`, and paste its output; do not run `npm run build`. `run-reads-fidelity` and `observe-fidelity` fail under the Squeal daemon (001-390); name them, do not fix them.
 
 Done when, each red on main first where it can be: 011-23's done-when 1 to 4 in `research/catch-up.md` as tests, plus the overlap margin measured or bounded in the notes; done-when 5, cezar live, is the coordinator's below load 8.
+
+## W3: 011-22 and 011-23, review of cand/0.1.226
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.226` SHA named in the spawn; the range is `origin/main..<sha>`: W1's seven commits (011-22, catch-up), W2's six (011-23, adoption), the release commit (version 0.1.226, `KEY_FORMAT_VERSION` 17 re-pinned for both, the bundles) and this brief. W1 and W2 were written apart on `c141fa8f` and meet here in `scheduler.ts`.
+
+Read W1 and W2 above, spec 011 C4 steps 3, 4 and 5 as amended 2026-10-20 (`status.md`), C5, C10 and C15, `research/catch-up.md`, `tasks/011-22/notes.md` and `tasks/011-23/notes.md`. Check that:
+- a revision of 10 or more keyed paths, and only such a revision, queues catch-up, whatever its trigger, the daemon start included; the count happens once per revision and reaches the runner part's direct importers;
+- catch-up runs on the backlog's route (grant, wall, slots), after the first group and ahead of the rest of the second, failing then shortest first; a later edit cancels a catch-up Vitest tier and its remainder stays catch-up, or runs beside node:test and pytest slots; the fifth-tier turn takes catch-up first, with the backlog's grant and slot, and yields to edits on the pool; a named wait still promotes;
+- adoption reads only keys recorded since the last read with the 120 s look-back, uses `results_by_time`, writes nothing on a pass with nothing new, keeps provenance, holds an unconfirmed fail (C5), queues nothing policy did not queue, and restores the ledger when a busy store fails the commit;
+- the two slices compose: an adopted file never runs again as catch-up, a catch-up file another worktree just stored is adopted rather than run, and the pump's adoption before `selectTier` does not starve or reorder catch-up;
+- `KEY_FORMAT_VERSION` 17 is right against the released 16 (0.1.225).
+
+Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree; a file that fails loaded and passes alone is named. Write `reviews/wave-5.md` with a PASS or FAIL verdict and commit it.
