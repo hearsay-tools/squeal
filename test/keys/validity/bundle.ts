@@ -54,6 +54,11 @@ const BEFORE_MOVES: readonly { module: string; needs: string; before: string }[]
     needs: "src/core/scheduler/accept.ts",
     before: "harness/accept-rule-ledger.ts",
   },
+  {
+    module: "harness/store.ts",
+    needs: "src/core/scheduler/store-decision.ts",
+    before: "harness/store-traced.ts",
+  },
 ];
 
 /** The harness module `tree` reads for `target`, when a move it predates replaces it. */
