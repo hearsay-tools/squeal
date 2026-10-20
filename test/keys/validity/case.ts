@@ -117,6 +117,17 @@ export interface StoreInput {
   readonly environment?: readonly string[];
 }
 
+/** A fixture the Vitest adapter runs, each run held until the paths it names are heard touched. */
+export interface VitestInput {
+  /** The fixture's files: `$STARTED` and `$HOLD` stand for the held runs' markers, as string literals. */
+  readonly files: Readonly<Record<string, string>>;
+  /** In turn on one adapter: the files run, and the paths touched once one of them started. */
+  readonly runs: readonly {
+    readonly files: readonly TestFileRef[];
+    readonly touched: readonly string[];
+  }[];
+}
+
 export type Case = { readonly name: string; readonly why: string } & (
   | { readonly kind: "key"; readonly input: KeyInput }
   | { readonly kind: "rows"; readonly input: RowsInput }
@@ -124,6 +135,7 @@ export type Case = { readonly name: string; readonly why: string } & (
   | { readonly kind: "accept"; readonly input: AcceptInput }
   | { readonly kind: "assemble"; readonly input: AssembleInput }
   | { readonly kind: "store"; readonly input: StoreInput }
+  | { readonly kind: "adapter:vitest"; readonly input: VitestInput }
 );
 
 export type CaseKind = Case["kind"];

@@ -8,6 +8,7 @@ import { assemble } from "./harness/assemble.js";
 import { observe } from "./harness/observe.js";
 import { KEY, provenance, REPORT, scratchStore, verdictOf, wordingOf } from "./harness/shared.js";
 import { storeCase } from "./harness/store.js";
+import { vitestCase } from "./harness/vitest.js";
 
 /*
  * One function per case kind (task 011-37 section 3). Bundled once against
@@ -67,6 +68,8 @@ export async function runCase(c: Case, scratch: string, runtime: string): Promis
       return assemble(c.input, scratch);
     case "store":
       return storeCase(c.input, scratch);
+    case "adapter:vitest":
+      return vitestCase(c.input, scratch);
   }
 }
 
