@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readNamedSnapshot } from "../../src/cli/status-paths.js";
@@ -8,6 +9,7 @@ import { namedLine } from "../../src/cli/status-wait-lines.js";
 import { namedCode } from "../../src/cli/status-wait-paths.js";
 import { socketPathFor } from "../../src/core/daemon/index.js";
 import type { RevisionNumber } from "../../src/core/types/index.js";
+import { check, state } from "../status/helpers.js";
 import { type Answer, closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import { A, ADDS, B, C, fail, INCARNATION, NOW, ref, repoWith } from "./status-wait-fixture.js";
 
@@ -225,6 +227,25 @@ describe("squeal status <path>... (005 D2 as amended, gh-42)", () => {
     expect(result.stdout).toMatch(
       /\n\nSelected: src\/a\.test\.ts\nNamed test files at revision 4: /,
     );
+  });
+
+  it("names --full's commands from the directory the paths were given in", async () => {
+    // Review of cand/0.1.234, B1: the full status's commands resolve as `retry` reads its arguments.
+    const { repo, store } = repoWith([], [A, B]);
+    store.knownStates.upsertMany([
+      state(repo.mainId, check(B, "holds"), {
+        validity: "stale",
+        pendingPhase: null,
+        observedAt: 3,
+      }),
+    ]);
+    await daemon(repo.mainId, 4);
+    mkdirSync(join(repo.main, "src"), { recursive: true });
+
+    const result = await run(["status", "--full", "a.test.ts"], join(repo.main, "src"));
+
+    expect(result.stdout).toContain("`squeal retry b.test.ts`");
+    expect(result.stdout).not.toContain("squeal retry src/b.test.ts");
   });
 
   it("exits 3 with D2's text for a path that selects nothing", async () => {
