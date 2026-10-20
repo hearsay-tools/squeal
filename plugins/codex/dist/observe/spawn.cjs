@@ -14,7 +14,8 @@
 // shares its parent's env (B4); such a Worker with a `--require` of its own
 // gets the recorder's in its `execArgv`, ahead of it, the shared env left as
 // it is. A child whose env carries another Squeal's settings, a test starting
-// its own Squeal, is left to that recorder.
+// its own Squeal, is left to that recorder; one that does not observe passes
+// `UNOBSERVED`, so its processes run with no recorder (task 001-431).
 "use strict";
 const childProcess = require("node:child_process");
 const path = require("node:path");
@@ -76,7 +77,7 @@ function optionsAt(name, args) {
  * `record(kind, p)`, `scoped(p)`, `self` the recorder's path, `variable` the
  * settings' env name, `settings`.
  */
-/** Whether `value`, a child's settings, names a recorder output other than `out`. */
+/** Whether `value`, a child's settings, names a recorder output other than `out`: `UNOBSERVED`'s empty one too. */
 function foreign(value, out) {
   try {
     const parsed = JSON.parse(value);
