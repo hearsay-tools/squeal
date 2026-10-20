@@ -772,3 +772,62 @@ The disposable worktree was removed before this findings append. No candidate im
 ### What fits and inputs for the next wave
 
 Both stale-state completion orders remain covered; the added barrier removes case 3's sleep-based ordering assumption without weakening its state assertions. Slot mode passes while the tier control misses the 15% bound by 12.9 percentage points. No further repair is needed for these two bounded checks. Carry S2t-N1 into a test-cleanup row and keep the earlier S2r-N1 capacity note separate. This append follows the prior `ed35b8ce` re-review commit on the branch rooted at `origin/main`; the coordinator must retain both findings commits when integrating them.
+
+
+## Slice 2, CI overhead check
+
+**PASS 39bee6e575a5ed527a30300ca459374771cd6e03**. Zero blockers, one proven nonblocking should-fix. Bounded test-only check of `0e23edf7..39bee6e5`, requested 2026-10-20 after branch CI 39388147377. The requested no-gather discrimination was **not** confirmed: setting the gather delay to zero still passes this test on this host. No product/spec break is proven by that observation, so it does not block the candidate under the reviewer rules.
+
+### Verification output
+
+HEAD matched the exact candidate; the tree was clean before and after its focused check. The delta changes only the CI timing tolerance and its comment in `test/scheduler/backlog-slots-overhead.test.ts`; product code, bundles and key sources are unchanged. Node v24.21.0, 24 CPUs; sampled host load during these checks ranged from 21.31 to 45.55. General gates and the full suite were not repeated for this bounded test-only check.
+
+```text
+$ git rev-parse HEAD
+39bee6e575a5ed527a30300ca459374771cd6e03
+$ git status --porcelain
+(no output)
+$ CI=true flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/scheduler/backlog-slots-overhead.test.ts --maxWorkers=4
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/efeadf4c-ff0f-41d8-9c00-80cdea0f47ef
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:52:31
+   Duration  171.95s (tests 97%, transform 3%)
+Exit 0.
+```
+
+In a disposable detached candidate worktree, the sole behavioral mutation was replacing `const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs)` with `const gather = 0` in `SlotRecords.record`. The overhead test also wrote its already-computed timings and commit counts to a scratch JSON file; its workload, assertions and thresholds were unchanged. Running the same command with `CI=true` produced:
+
+```text
+RUN  v5.0.3 /tmp/w4-overhead-mutation
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  09:55:24
+   Duration  134.57s (tests 96%, transform 4%)
+Exit 0 (the intentional control unexpectedly passes).
+
+Zero-gather measurements:
+slots: 24687.211473 ms / 226 commits; 22713.333080 ms / 224 commits.
+tiers: 26535.047247 ms / 1 commit; 19224.817227 ms / 1 commit.
+best slots / best tiers: 1.181459.
+```
+
+The disposable worktree was removed before appending this review. A direct `SlotRecords` bypass was not run: the allowed zero-delay control already answers the requested question negatively. Setting zero delay retains opportunistic batching of records that happen to be ready together; that is precisely why the existing count assertion can pass.
+
+### Should-fix
+
+**S2o-S1 — proven: the current commit-count assertion does not reliably protect the relaxed CI bound against loss of the configured gather window.** Location: `test/scheduler/backlog-slots-overhead.test.ts:75`, `:79`, `:81`.
+
+The comment says the count assertion still fails records that stop gathering. The zero-delay control instead made 226 and 224 commits for 300 files, both below 300, and its best timing ratio was 1.18146. It passes the new CI branch and would also satisfy the unchanged 1.2 threshold numerically on this host. The mutation therefore exposes an existing weakness of this discriminator; raising the CI bound did not create the entire weakness. Passing this control does not prove a performance regression: that run still batches incidentally and meets the host's timing target. It disproves the claim that this test reliably rejects loss of the intentional gather delay.
+
+**Judgment:** the 1.6 CI tolerance needs a stronger batching discriminator as a should-fix; the present `commits < files` assertion is insufficient justification on its own. A CI noise allowance is supported by the actual failed run, whose logs I read with `gh run view 39388147377 --log-failed`: slots took 27937 ms / 82 commits and 21267 ms / 71 commits; tiers took 30035 ms and 14627 ms. Batching was active in that run despite the 1.45 timing ratio, and the reference varied by over 2×. A strict timing ratio on a loaded runner cannot by itself settle whether gathering works.
+
+**One-worker fix:** retain the CI timing allowance if needed, then replace the merely-less-than-300 assertion with a calibrated batching budget that separates normal gathering from the no-delay control, or add a deterministic gated integration discriminator of the gather window. The normal evidence is 71–82 commits in this CI failure and 75–148 in the slice notes, against 224–226 here without the window; choose and verify the budget against both modes rather than deriving it from this single host run alone. Keep the non-CI 1.2 check and describe CI's assertion as a noise tolerance, not proof of the 1.2 goal. Update the comment so it claims only what the counterfactual demonstrates.
+
+### What fits and next inputs
+
+The changed test still checks 300 single-file runs, all stored passes, a single run for each tier control and fewer commits than files; it passes at the exact candidate with the CI branch enabled. Earlier product, stale-run and timing-control findings stay settled. No additional product repair is required by this bounded check. Carry S2o-S1 into test-quality work; do not cite this overhead test as proof that removing the configured gather delay must fail. This append follows `e678a174` and changes the findings file alone.
