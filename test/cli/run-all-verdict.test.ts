@@ -134,7 +134,7 @@ function daemonFor(
   );
 }
 
-async function run(argv: string[], cwd: string) {
+async function run(argv: string[], cwd: string, env?: CliIo["env"]) {
   let stdout = "";
   let stderr = "";
   const io: CliIo = {
@@ -145,6 +145,7 @@ async function run(argv: string[], cwd: string) {
       stderr += text;
     },
     cwd,
+    ...(env === undefined ? {} : { env }),
   };
   const code = await main(argv, io);
   return { code, stdout, stderr, first: stdout.split("\n")[0], second: stdout.split("\n")[1] };
@@ -281,7 +282,8 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     );
     await daemonFor(w.socket, w.checkpoint([A, B]));
     later(50, () => finish(w.store, "abandoned"));
-    const result = await run(["run", "--all", "--wait"], w.root);
+    // No harness session in env: the text names the plain `squeal` command, under Codex too.
+    const result = await run(["run", "--all", "--wait"], w.root, {});
     const named = `${B}: ran, nothing recorded: ${reason} (paths: runs/1-artifacts, runs/2-artifacts)`;
     expect(result.first).toBe(
       `Checkpoint c1 has no verdict: it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped). Without a result: ${named}`,
