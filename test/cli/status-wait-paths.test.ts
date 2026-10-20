@@ -245,7 +245,7 @@ describe("squeal status --wait <ms> <path>...", () => {
     const [selected, verdict, end] = result.stdout.split("\n").slice(-3);
     expect(selected).toBe(`Selected: ${A}`);
     expect(verdict).toMatch(
-      /^Named test files at revision 4: no known failures; 1 test file, each with a current result, after \d+\.\d s\. Worktree: known failures 0; checks 0 running, 1 queued \(1 test\)$/,
+      /^Named test files at revision 4: no known failures; 1 test file, each with a current result, after \d+\.\d s\. Worktree: known failures 0; not current: 1 of 2 test files \(1 queued\), 1 test \(1 queued\)$/,
     );
     expect(end).toBe("");
   });

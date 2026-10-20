@@ -55,6 +55,8 @@ describe("delivery header and status", () => {
     const { revision, counts, fileLevelCounts, testFilesWithoutChecks, fullSuite, daemon } = status;
     const { testFilesListed, inheritedCount, inheritedFileLevelCount } = status;
     const { refinedRevision, runnerPartPending } = status;
+    // Row 011-26: the test files by class and phase, the same in both.
+    const { testFileCounts, testFilesByPhase, testsByPhase } = status;
     // Only delivered headers name the revision's changed files (task 001-85).
     const { changedPaths, ...header } = registration.header;
     expect(changedPaths).toEqual([]);
@@ -69,6 +71,9 @@ describe("delivery header and status", () => {
       inheritedFileLevelCount,
       refinedRevision,
       runnerPartPending,
+      testFileCounts,
+      testFilesByPhase,
+      testsByPhase,
       daemon,
     }).toEqual(header);
     expect(registration.header).toMatchObject({ testFilesListed: true, inheritedCount: 1 });

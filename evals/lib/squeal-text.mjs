@@ -278,7 +278,24 @@ const HEADER = new RegExp(
 const NEWS =
   /^Revision \d+(?: · [^:]*)?: (no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\./m;
 
-/** Pending, stale and unknown counts in a delivered header or a status, or `null` for none. */
+/**
+ * The clause after a `Known failures:` count, or after a wait verdict line's `known failures`,
+ * from row 011-26 (011 C6 as amended 2026-10-20): `not current: 8 of 10 test files (2 queued, 6
+ * stale), 80 tests (20 queued, 60 stale)`, its test files' parts, then its tests'. A count may
+ * hold its own `; ` (Stop's `and 2 more; \`squeal status\` lists every one`), so the clause is
+ * the last on its line.
+ */
+const NOT_CURRENT =
+  /known failures:? .*; not current: \d+ of \d+ test files? \(([^)]*)\)(?:, \d+ tests? \(([^)]*)\))?/im;
+/** The same clause when nothing is counted as not current: all current, or no test files listed. */
+const NONE_NOT_CURRENT =
+  /known failures:? .*; (?:all \d+ test files? current|\d+ test files? current|the daemon (?:listed no test files|has not listed this worktree's test files))/im;
+
+/**
+ * Pending, stale and unknown counts in a delivered header, a status or, without either, the
+ * not-current clause of a wait's verdict line (row 011-26), or `null` for none. The clause counts
+ * test files and tests apart, so a file and its tests both count.
+ */
 function countsOf(t) {
   let pending;
   let stale;
@@ -295,7 +312,14 @@ function countsOf(t) {
     pending = count(/(\d+) running/, affected) + count(/(\d+) queued/, affected);
     stale = count(/(\d+) stale/, affected);
     unknown = count(/(\d+) unknown/, affected);
-  } else return null;
+  } else if (NOT_CURRENT.test(t)) {
+    const [, files, tests = ""] = NOT_CURRENT.exec(t);
+    const both = (re) => count(re, files) + count(re, tests);
+    pending = both(/(\d+) running/) + both(/(\d+) queued/);
+    stale = both(/(\d+) stale/);
+    unknown = both(/(\d+) unknown/);
+  } else if (NONE_NOT_CURRENT.test(t)) [pending, stale, unknown] = [0, 0, 0];
+  else return null;
   // Both classes in a full header and a status; a news header names only the non-zero ones. A
   // header ends the sentence with a period, a status with its line (review 001-423, B2).
   const files = /Test files without checks: ([^.\n]*)/.exec(t)?.[1];

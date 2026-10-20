@@ -198,6 +198,25 @@ export interface StatusHeader {
    */
   readonly fileLevelCounts?: ValidityCounts;
   readonly testFilesWithoutChecks: TestFileCounts;
+  /**
+   * Every listed test file by class, as a named wait classes it: `current`
+   * only when every check it has is (spec 011 C6 as amended 2026-10-20,
+   * gh-45, row 011-26). Set by `readHeader`; absent, `Known failures` says
+   * nothing of what is not current.
+   */
+  readonly testFileCounts?: ValidityCounts;
+  /**
+   * The `pending` test files of `testFileCounts` by phase: running while
+   * their row, a check or an open run of the live daemon holds them (C15),
+   * else queued. Set by `readHeader`.
+   */
+  readonly testFilesByPhase?: Readonly<Record<PendingPhase, number>>;
+  /**
+   * The pending tests among `counts.pending` by phase, as
+   * `testFilesByPhase` reads it; file-level checks are counted as their
+   * files. Set by `readHeader`.
+   */
+  readonly testsByPhase?: Readonly<Record<PendingPhase, number>>;
   readonly fullSuite: FullSuiteState;
   /**
    * Whether a daemon is validating, from the heartbeat in `worktrees.daemon`.

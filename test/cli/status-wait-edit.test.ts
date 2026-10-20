@@ -44,7 +44,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
       edit: { since: 4, testFiles: 1, pending: 0, otherTransitions: 0 },
     });
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on quiet: nothing the edits since revision 4 re-keyed is pending \(1 test file\) at revision 4 after \d+\.\d s; 2 checks \(2 tests\) pending in all\. Worktree: known failures 0; checks 0 running, 2 queued \(2 tests\)$/,
+      /^Returned on quiet: nothing the edits since revision 4 re-keyed is pending \(1 test file\) at revision 4 after \d+\.\d s; 2 checks \(2 tests\) pending in all\. Worktree: known failures 0; not current: 2 of 3 test files \(2 queued\), 2 tests \(2 queued\)$/,
     );
   });
 

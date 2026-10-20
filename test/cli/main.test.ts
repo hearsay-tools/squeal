@@ -66,7 +66,8 @@ describe("squeal status", () => {
     expect(stderr).toBe("");
     expect(stdout.split("\n").slice(0, 8)).toEqual([
       "Revision: 3",
-      "Known failures: 1 (1 test)",
+      // Row 011-26 (gh-45): what is not current, here that nothing is listed.
+      "Known failures: 1 (1 test); the daemon has not listed this worktree's test files yet",
       "  FAIL  src/a.test.ts > adds",
       "        expected 3, received 4",
       "        observed at revision 3, current",
