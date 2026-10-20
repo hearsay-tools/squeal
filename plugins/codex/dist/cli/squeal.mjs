@@ -8291,11 +8291,8 @@ function rekeyContent(context, ledger, revision) {
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs2) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  const wasRecent = new Set(touched.filter((ref2) => ledger.queue.isRecent(ref2)).map(testFileId));
   ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
-  const recent = touched.filter(
-    (ref2) => !wasRecent.has(testFileId(ref2)) && ledger.queue.isRecent(ref2)
-  );
+  const recent = touched.filter((ref2) => ledger.queue.isRecent(ref2));
   return {
     rekeyed,
     environment: inputs2 || policy.environment,
@@ -10065,7 +10062,7 @@ var init_queue = __esm({
        * catch-up until then unless it is recent or promoted too (C4 step 4 as
        * amended 2026-10-20, task 011-22).
        */
-      add(ref2, priority, forced = false, recent = false, catchUp = false) {
+      add(ref2, priority, forced = false, recent = false, catchUp = false, by = null) {
         this.#promotions.settle(this.#queued);
         const id2 = testFileId(ref2);
         const entry4 = this.#entries.get(id2);
@@ -10073,6 +10070,7 @@ var init_queue = __esm({
           entry4.priority = Math.min(entry4.priority, priority);
           entry4.forced ||= forced;
           entry4.recent ||= recent;
+          if (recent) entry4.recentBy.add(by);
           entry4.catchUp ||= catchUp;
           return;
         }
@@ -10082,6 +10080,7 @@ var init_queue = __esm({
           seq: this.#seq++,
           forced,
           recent,
+          recentBy: new Set(recent ? [by] : []),
           catchUp,
           evidence: NO_EVIDENCE
         });
@@ -10130,15 +10129,16 @@ var init_queue = __esm({
         this.#promotions.clear();
       }
       /**
-       * A recent entry becomes catch-up: its revision turned out catch-up once
-       * its runner part listed the test files it added (review wave 5, B1). A
-       * promotion keeps it in the first group.
+       * `revision` made a recent entry so and turned out catch-up once its
+       * runner part listed the test files it added (review wave 5, B1): the
+       * entry is catch-up unless another revision's edit, or one with none,
+       * made it recent too. A promotion keeps it in the first group.
        */
-      toCatchUp(ref2) {
+      toCatchUp(ref2, revision) {
         const entry4 = this.#entries.get(testFileId(ref2));
-        if (entry4 === void 0) return;
-        entry4.recent = false;
+        if (entry4 === void 0 || !entry4.recentBy.delete(revision)) return;
         entry4.catchUp = true;
+        if (entry4.recentBy.size === 0) entry4.recent = false;
       }
       remove(ref2) {
         return this.#entries.delete(testFileId(ref2));
@@ -10900,7 +10900,7 @@ var init_ledger = __esm({
             const reached = recent.has(file.id);
             const catchUp = reached && options.catchUp === true;
             const priority = priorityOf(file, changed, options.direct);
-            this.enqueue(file, priority, false, reached && !catchUp, catchUp);
+            this.enqueue(file, priority, false, reached && !catchUp, catchUp, options.keyedAt);
           }
         }
         this.#rank(changed, misses);
@@ -11012,8 +11012,8 @@ var init_ledger = __esm({
         }
         return held2.length > 0;
       }
-      enqueue(file, priority, forced = false, recent = false, catchUp = false) {
-        this.queue.add(file.ref, priority, forced, recent, catchUp);
+      enqueue(file, priority, forced = false, recent = false, catchUp = false, by) {
+        this.queue.add(file.ref, priority, forced, recent, catchUp, by ?? null);
         this.#syncPhase(file);
       }
       /** Takes `file` out of the queue; whether it was queued. */
@@ -13699,11 +13699,8 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile, keyedAt)
   storeClosures(context, resolved2);
   touch(part.reresolved);
   const catchUp = part.catchUp === true || keyedAt !== void 0 && isCatchUp(context, ledger, changed);
-  if (catchUp && part.catchUp !== true) {
-    const later = ledger.recentOf(changedMeanwhile);
-    for (const ref2 of part.recent ?? []) {
-      if (!later.has(testFileId(ref2))) ledger.queue.toCatchUp(ref2);
-    }
+  if (catchUp && part.catchUp !== true && keyedAt !== void 0) {
+    for (const ref2 of part.recent ?? []) ledger.queue.toCatchUp(ref2, keyedAt);
   }
   const options = {
     direct: part.direct,
