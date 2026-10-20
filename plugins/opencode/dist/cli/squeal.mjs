@@ -55360,7 +55360,7 @@ function pauseOnlyIds(store, worktreeId, root, files2, daemon, now) {
   const rows = new Map(
     store.testFileKeys.list(worktreeId, slow).map((row) => [testFileId(row.testFile), row])
   );
-  const checks = checksByFile(store.knownStates.list(worktreeId));
+  const checks = checksByFile(store.knownStates.list(worktreeId, slow));
   const runs = openRunsOf(store, worktreeId, daemon);
   const ids = /* @__PURE__ */ new Set();
   for (const ref2 of slow) {
