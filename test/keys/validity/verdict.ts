@@ -1,12 +1,16 @@
 import { isRecord } from "../../../src/core/fs/index.js";
 import { sameFingerprint } from "../../../src/core/state/fingerprint.js";
 import type { Case, CaseKind, CaseOutput } from "./case.js";
+import type { Alarm, Comparison } from "./compare.js";
+import { versionName } from "./components.js";
 
 /*
- * How one case's outputs at the two trees are read (011 C3, task 011-37
- * section 3): equal keys must give equal outputs, a fingerprint read through
- * `sameFingerprint`; the `store` kind reads by direction (risk 4, amended
- * 2026-10-20).
+ * The verdict (011 C3, task 011-37 sections 3 and 6). One case's outputs at
+ * the two trees: equal keys must give equal outputs, a fingerprint read
+ * through `sameFingerprint`; the `store` kind reads by direction (risk 4,
+ * amended 2026-10-20). Each component's version: unchanged, its cases must
+ * agree and its changed lines must have run; raised, one of its cases must
+ * differ (D6), and a raised format empties the formats read as one (risk 6).
  */
 
 export interface CaseVerdict {
@@ -105,4 +109,74 @@ export function verdictOf(c: Case, baseline: CaseOutput, candidate: CaseOutput):
     baseline,
     candidate,
   };
+}
+
+const only = (a: readonly string[], b: readonly string[]) => a.filter((l) => !b.includes(l));
+
+/** Why `alarm`'s component fails, empty when it passes. */
+function componentFailures(c: Comparison, alarm: Alarm, ref: string): string[] {
+  const { component, versions } = alarm;
+  const name = versionName(component);
+  const own = c.cases.filter((v) => component.kinds.includes(v.kind));
+  const differing = own.filter((v) => !v.outputsEqual);
+  if (versions.candidate !== versions.baseline) {
+    const out: string[] = [];
+    if (differing.length === 0) {
+      const kinds = component.kinds.length === 0 ? "no" : `no ${component.kinds.join(", ")}`;
+      out.push(
+        `${name} moved from ${versions.baseline} at ${ref} to ${versions.candidate}, and ${kinds} case's outputs differ: ` +
+          "a raise needs a case whose outputs differ (task 011-37 D6); add the case under " +
+          `test/keys/validity/cases/ that shows the change of stored meaning, or keep ${versions.baseline}`,
+      );
+    }
+    if (component.name === "global" && c.readAsOne.length > 0) {
+      out.push(
+        `KEY_FORMAT_VERSION moved for a change of stored meaning, so no earlier format reads as ${versions.candidate}: ` +
+          `empty KEY_FORMATS_READ_AS_ONE, which lists ${c.readAsOne.join(", ")} (011 C3, task 011-37 risk 6)`,
+      );
+    }
+    return out;
+  }
+  const out: string[] = [];
+  if (alarm.dependencies !== null) {
+    const { baseline, candidate } = alarm.dependencies;
+    out.push(
+      `${name}: the packages its entries import, or esbuild, moved since ${ref} ` +
+        `(${only(baseline, candidate).join(", ")} -> ${only(candidate, baseline).join(", ")}): ` +
+        "the last release must be bundled from its own lock",
+    );
+  }
+  for (const v of differing) {
+    const thrown = v.baseline.error ?? v.candidate.error;
+    const what =
+      thrown === undefined
+        ? `equal keys, different outputs at ${ref} and the candidate`
+        : `throws at ${v.baseline.error === undefined ? "the candidate" : ref} only: ${thrown}`;
+    out.push(`${v.kind} case "${v.name}": ${what}; raise ${name}`);
+  }
+  if (alarm.uncovered.length > 0) {
+    out.push(
+      `${name}: changed lines no case runs, each needing a case under test/keys/validity/cases/: ${alarm.uncovered.join("; ")}`,
+    );
+  }
+  return out;
+}
+
+/**
+ * Why the comparison fails, empty when it passes, per component. An empty
+ * list under a raised version proves no coverage: a raise is held to D6
+ * and the list's rule, not to its changed lines (the review of format 18).
+ */
+export function failures(c: Comparison, ref: string): string[] {
+  return c.alarms.flatMap((alarm) => componentFailures(c, alarm, ref));
+}
+
+/** The wording that differs at equal keys and outputs: listed, never failed. */
+export function wordingChanges(c: Comparison): string[] {
+  return c.cases.filter((v) => v.keysEqual && v.outputsEqual && !v.wordingEqual).map((v) => v.name);
+}
+
+/** Outputs that differ and ask no raise (the `store` kind's direction), by case: listed, never failed. */
+export function reportedChanges(c: Comparison): string[] {
+  return c.cases.flatMap((v) => v.reported.map((line) => `${v.kind} case "${v.name}": ${line}`));
 }

@@ -5,10 +5,11 @@ import type { Case, CaseOutput } from "./case.js";
 import { decideCase, runCase } from "./harness.js";
 
 /*
- * The bundle's entry (task 011-37 section 3). It re-exports the validity
- * path's entries (section 2), so the bundle holds them whole and a line no
- * case runs shows in the coverage. Imported, it runs nothing: the comparison
- * test imports it so its closure holds the entries and the harness.
+ * The bundle's entry (task 011-37 section 3). It re-exports every
+ * component's entries (`components.ts`, section 2), so the bundle holds them
+ * whole and a line no case runs shows in the coverage. Imported, it runs
+ * nothing: the comparison tests import it so their closure holds the
+ * entries and the harness.
  *
  *   node driver.mjs run <cases.json> <out.json> <scratch> <runtime>
  *     runs every case at this tree; case i writes under <scratch>/<i>.
@@ -16,16 +17,11 @@ import { decideCase, runCase } from "./harness.js";
  *     decides, at this tree, over what a run at either tree stored under <stored>/<i>.
  */
 
-export * as keys from "../../../src/core/keys/index.js";
-export { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
-export * as records from "../../../src/core/scheduler/records.js";
-export * as stability from "../../../src/core/scheduler/stability.js";
-export * as storeResults from "../../../src/core/scheduler/store-results.js";
-export { classify, stateFromResult } from "../../../src/core/state/derive.js";
-export { describeFailure } from "../../../src/core/state/fingerprint.js";
-export { heldFailure } from "../../../src/core/state/inherited.js";
-export * as results from "../../../src/core/store/repos/results.js";
-export * as schema from "../../../src/core/store/schema.js";
+export * as global from "./entries/global.js";
+export * as nodeTest from "./entries/node-test.js";
+export * as pytest from "./entries/pytest.js";
+export * as recorder from "./entries/recorder.js";
+export * as vitest from "./entries/vitest.js";
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 

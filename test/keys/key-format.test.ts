@@ -1,248 +1,70 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join, posix } from "node:path";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { compare } from "../../src/core/fs/index.js";
-import {
-  environmentHash,
-  KEY_FORMAT_VERSION,
-  KEY_SOURCES_HASHES,
-} from "../../src/core/keys/index.js";
+import { environmentHash, KEY_FORMAT_VERSION } from "../../src/core/keys/index.js";
 import type { CoreEnvironmentInputs, RunnerEnvironment } from "../../src/core/types/index.js";
-import {
-  bundledDependencies,
-  EXEMPT,
-  GUARDED_WITHIN,
-  guardedFiles,
-  guardedImportsOfExempt,
-  isExempt,
-  keySourcesHash,
-  type Overlay,
-  ROOT,
-} from "./key-sources.js";
+import { CASES } from "./validity/cases/index.js";
+import { failures } from "./validity/compare.js";
+import { COMPONENTS, GLOBAL, versionName } from "./validity/components.js";
+// The validity path's entries and the harness, statically: esbuild reads them in a process no
+// recorder sees (011 C12), so this import is what re-runs this file when one of them changes.
+import "./validity/driver.js";
+import { comparisons, edited, read, SLOW } from "./validity/self-test.js";
+import { ROOT, versionOf } from "./validity/trees.js";
 
-const PIN = "src/core/keys/key-format.ts";
-const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
+/*
+ * The alarm (011 C3, C12 and C14 as amended 2026-10-20, task 011-37
+ * sections 2 and 6, row 011-41), in place of the guard of task 001-203:
+ * `KEY_FORMAT_VERSION`, each adapter's version and `RECORDER_VERSION` move
+ * only when the validity path's outputs differ from the last release's. A
+ * release whose emitted code on the path is the last one's runs no case and
+ * keeps every version; one whose code moved keeps them while every case
+ * agrees and every changed line ran; a raise needs a case whose outputs
+ * differ, and a raised format reads no earlier one as its own.
+ */
 
-/** The real tree with `path`'s text edited by `edit`, which must change it. */
-function edited(path: string, edit: (text: string) => string): Overlay {
-  const before = read(path);
-  const after = edit(before);
-  expect(after, `the edit of ${path} no longer applies`).not.toBe(before);
-  return { [path]: after };
-}
+const { compare, release, tree } = comparisons();
 
-const replaced = (path: string, from: string, to: string) =>
-  edited(path, (text) => text.replace(from, to));
-
-/** The relative imports from guarded sources into exempt ones, each with why it keys, runs or records nothing. */
-const SEAMS = [
-  // The dispatcher's commands, none of which keys, runs or records; `squeal daemon` is guarded.
-  "src/cli/main.ts -> src/cli/codex/status.ts", // the Codex status line: renders the store
-  "src/cli/main.ts -> src/cli/failures.ts", // `squeal failures`: reads the store (001-409)
-  "src/cli/main.ts -> src/cli/init.ts", // `squeal init`: writes the user's config files
-  "src/cli/main.ts -> src/cli/opencode/status.ts", // the OpenCode status line: renders the store
-  "src/cli/main.ts -> src/cli/pi/status.ts", // the Pi status line: renders the store
-  "src/cli/main.ts -> src/cli/remove.ts", // `squeal remove`: stops daemons, deletes the store
-  "src/cli/main.ts -> src/cli/retry.ts", // `squeal retry`: a request in the store (001-368)
-  "src/cli/main.ts -> src/cli/run.ts", // `squeal run`: asks a daemon for a checkpoint or the slow tier
-  "src/cli/main.ts -> src/cli/setup/command.ts", // `squeal setup`: reads the repository and writes instruction files and the config
-  "src/cli/main.ts -> src/cli/start.ts", // `squeal start`: starts a daemon through core/daemon/ensure.ts
-  "src/cli/main.ts -> src/cli/status-command.ts", // `squeal status`: reads the store
-  "src/cli/main.ts -> src/cli/status-wait.ts", // `squeal status --wait`: polls the store
-  "src/cli/main.ts -> src/cli/stop.ts", // `squeal stop`: asks a daemon to exit
-  "src/cli/main.ts -> src/cli/update.ts", // `squeal update`: updates the plugin through each harness's CLI
-  "src/cli/main.ts -> src/cli/wait-arg.ts", // parses `--wait <ms>`
-  "src/cli/main.ts -> src/cli/warmup.ts", // `squeal warmup`: starts a daemon and waits for a checkpoint through run.ts
-  "src/cli/main.ts -> src/core/status/index.ts", // `squeal status` and `why`: read the store and render it
-  // Whether a daemon is alive, to start one: never what it stores.
-  "src/core/daemon/ensure.ts -> src/core/delivery/liveness.ts",
-  // Consumer expiry and departed harnesses.
-  "src/core/daemon/lifecycle.ts -> src/core/delivery/index.ts",
-  // The format version, which every environment hash holds directly.
-  "src/core/keys/environment.ts -> src/core/keys/key-format.ts",
-  "src/core/keys/index.ts -> src/core/keys/key-format.ts",
-  // When another worktree's claim goes stale decides who runs a file, not what it records (001-205).
-  "src/core/scheduler/claims.ts -> src/core/status/snapshot.ts",
-  // Whether HEAD moved decides when a commit is recorded for headers to show, not what a key holds (001-406).
-  "src/core/scheduler/head-move.ts -> src/core/status/git-head.ts",
-  // Whether a retry's claimant is alive decides who runs it, not what it records (001-368).
-  "src/core/scheduler/retries.ts -> src/core/delivery/liveness.ts",
-  // Whether a consumer is in a turn decides when the slow tier runs, not what it records.
-  "src/core/scheduler/slow-trigger.ts -> src/core/delivery/turn.ts",
-  // Whether this session's waiting Stop entry ran decides where Stop waits, not what it records (001-297).
-  "src/core/slow/stop-wait.ts -> src/core/delivery/slots.ts",
-  "src/core/state/slow.ts -> src/core/delivery/slots.ts",
-  // The adapters' own versions (D4).
-  "src/runners/node-test/adapter.ts -> src/runners/node-test/version.ts",
-  "src/runners/vitest/adapter.ts -> src/runners/vitest/version.ts",
-  "src/runners/vitest/index.ts -> src/runners/vitest/version.ts",
-];
-
-describe("KEY_FORMAT_VERSION", () => {
-  it("is bumped whenever the guarded sources change", () => {
-    const current = keySourcesHash();
-    expect(
-      KEY_SOURCES_HASHES[KEY_FORMAT_VERSION],
-      `the guarded sources changed: bump KEY_FORMAT_VERSION in ${PIN} ` +
-        `and pin "${current}" under the new version in KEY_SOURCES_HASHES`,
-    ).toBe(current);
+describe("KEY_FORMAT_VERSION", SLOW, () => {
+  it("moves only when the validity path's outputs differ from the last release's", async () => {
+    const result = await compare({}, CASES, tree());
+    expect(failures(result, release())).toEqual([]);
   });
 
-  it("pins one distinct hash per version, 1 to the current one", () => {
-    const versions = Object.keys(KEY_SOURCES_HASHES).map(Number);
-    expect(versions).toEqual(Array.from({ length: KEY_FORMAT_VERSION }, (_, i) => i + 1));
-    expect(new Set(Object.values(KEY_SOURCES_HASHES)).size).toBe(versions.length);
+  it("names a version in its own file, which each component's entries pin", () => {
+    for (const component of COMPONENTS) {
+      expect(versionOf(ROOT, component), versionName(component)).toMatch(/^\d+$/);
+    }
+    expect(versionOf(ROOT, GLOBAL)).toBe(String(KEY_FORMAT_VERSION));
   });
 });
 
-describe("the guard", () => {
-  const pinned = keySourcesHash();
-
-  // Review wave 13m, B1: a predecessor without the completion barrier passed the guard.
-  it.each([
-    [
-      "the completion barrier",
-      "src/core/scheduler/stability.ts",
-      "if (touched.length === 0) return report;",
-      "if (touched.length >= 0) return report;",
-    ],
-    [
-      "recordsForFile",
-      "src/core/scheduler/records.ts",
-      "      outcome: result.outcome,\n",
-      '      outcome: "pass",\n',
-    ],
-    [
-      "recordTier",
-      "src/core/scheduler/tiers.ts",
-      'report.end === "completed";',
-      'report.end !== "completed";',
-    ],
-    ["the slow-file classifier", "src/core/slow/classify.ts", "export", "export /* */"],
-    ["the daemon's entry", "src/cli/daemon.ts", "ownsProcess: true", "ownsProcess: false"],
-    ["the build", "src/harness/build.ts", 'target: "node22.13"', 'target: "node24"'],
-    ["the bundler's options", "tsconfig.json", '"strict": true', '"strict": false'],
-  ])("fails on a change to %s", (_, path, from, to) => {
-    expect(keySourcesHash(ROOT, replaced(path, from, to))).not.toBe(pinned);
-  });
-
-  it("fails on a new source, a deleted one and a rename", () => {
-    const moved = "src/core/scheduler/stability.ts";
-    expect(keySourcesHash(ROOT, { "src/core/state/new.ts": "export {};\n" })).not.toBe(pinned);
-    expect(keySourcesHash(ROOT, { [moved]: null })).not.toBe(pinned);
-    const renamed = { [moved]: null, "src/core/scheduler/barrier.ts": read(moved) };
-    expect(keySourcesHash(ROOT, renamed)).not.toBe(pinned);
-  });
-
-  it("holds on a change to an exempt file, a new one included, and on CRLF line endings", () => {
-    for (const path of [
-      "src/core/status/format-status.ts",
-      "src/core/delivery/format.ts",
-      "src/cli/status-wait-lines.ts",
-      "src/harness/shared/text.ts",
-      PIN,
-    ]) {
-      expect(
-        keySourcesHash(
-          ROOT,
-          edited(path, (text) => `${text}// note\n`),
-        ),
-        path,
-      ).toBe(pinned);
-    }
-    expect(keySourcesHash(ROOT, { "src/core/status/new.ts": "export {};\n" })).toBe(pinned);
-    const crlf = edited("src/core/keys/environment.ts", (text) => text.replaceAll("\n", "\r\n"));
-    expect(keySourcesHash(ROOT, crlf)).toBe(pinned);
-  });
-
-  it("holds on a version-only package.json change, in the root and the plugin", () => {
-    const bump = (text: string) => text.replace(/"version": "[^"]+"/, '"version": "9.9.9"');
-    expect(keySourcesHash(ROOT, edited("package.json", bump))).toBe(pinned);
-    expect(keySourcesHash(ROOT, edited("plugins/claude-code/package.json", bump))).toBe(pinned);
-    const lock = edited("package-lock.json", (text) =>
-      text.replace(
-        /"name": "squeal",\n(\s*)"version": "[^"]+"/g,
-        '"name": "squeal",\n$1"version": "9.9.9"',
-      ),
-    );
-    expect(keySourcesHash(ROOT, lock)).toBe(pinned);
-  });
-
-  it("fails on a bundled dependency's lock entry, a transitive one included, and holds on a tool's", () => {
-    const entry = (location: string, field: string, value: string) =>
-      edited("package-lock.json", (text) => {
-        const lock = JSON.parse(text) as { packages: Record<string, Record<string, unknown>> };
-        lock.packages[location] = { ...lock.packages[location], [field]: value };
-        return `${JSON.stringify(lock, null, 2)}\n`;
-      });
-    expect(
-      keySourcesHash(ROOT, entry("node_modules/enhanced-resolve", "version", "5.99.0")),
-    ).not.toBe(pinned);
-    expect(keySourcesHash(ROOT, entry("node_modules/tapable", "integrity", "sha512-x"))).not.toBe(
-      pinned,
-    );
-    expect(keySourcesHash(ROOT, entry("node_modules/esbuild", "version", "0.99.0"))).not.toBe(
-      pinned,
-    );
-    expect(keySourcesHash(ROOT, entry("node_modules/@biomejs/biome", "version", "9.0.0"))).toBe(
-      pinned,
-    );
-  });
-
-  it("fingerprints what the bundles embed, never the build's externals or the root", () => {
-    const locations = bundledDependencies(read("package-lock.json")).map((line) =>
-      line.slice(0, line.lastIndexOf("@")),
-    );
-    for (const name of ["acorn", "chokidar", "enhanced-resolve", "es-module-lexer", "tapable"]) {
-      expect(locations).toContain(`node_modules/${name}`);
-    }
-    expect(locations).toContain("node_modules/esbuild");
-    for (const name of ["vitest", "@parcel/watcher", "@biomejs/biome", "typescript", ""]) {
-      expect(locations).not.toContain(name === "" ? "" : `node_modules/${name}`);
-    }
-  });
-
-  it("names a reason for every exemption, and each names a path that exists", () => {
-    for (const [path, reason] of Object.entries({ ...EXEMPT, ...GUARDED_WITHIN })) {
-      expect(reason.length, path).toBeGreaterThan(10);
-      expect(existsSync(join(ROOT, path)), path).toBe(true);
-    }
-    expect(guardedFiles()).toEqual(expect.arrayContaining(Object.keys(GUARDED_WITHIN)));
-  });
-
-  // An exempt file stays exempt only while no guarded file needs it to key, run or record.
-  it("lets guarded sources import exempt ones only through these named seams", () => {
-    expect(guardedImportsOfExempt()).toEqual(SEAMS);
-  });
-
-  // Review wave 13n, S3: the daemon's start and the builds are scanned too.
-  it.each(Object.keys(GUARDED_WITHIN))(
-    "catches a helper %s newly imports from an exempt file",
-    (from) => {
-      const helper = posix.join(posix.dirname(from), "extracted-helper.ts");
-      const overlay: Overlay = {
-        ...edited(from, (text) => `import "./extracted-helper.js";\n${text}`),
-        [helper]: "export {};\n",
-      };
-      expect(isExempt(helper)).toBe(true);
-      expect(guardedImportsOfExempt(ROOT, overlay)).toEqual(
-        [...SEAMS, `${from} -> ${helper}`].sort(compare),
-      );
-    },
-  );
-});
-
-// Review wave 13m, S1: an adapter bump alone re-keys its own runner and passes the guard.
+// Review wave 13m, S1: an adapter bump alone re-keys its own runner, and moves no other version.
 describe("an adapter-only bump", () => {
   const VERSIONS = {
     vitest: ["src/runners/vitest/version.ts", "VITEST_ADAPTER_VERSION"],
     "node:test": ["src/runners/node-test/version.ts", "NODE_TEST_ADAPTER_VERSION"],
+    pytest: ["src/runners/pytest/version.ts", "PYTEST_ADAPTER_VERSION"],
   } as const;
 
-  it.each(Object.values(VERSIONS))("of %s keeps the global pin", (path, name) => {
-    const bump = replaced(path, `${name} = "`, `${name} = "1`);
-    expect(keySourcesHash(ROOT, bump)).toBe(KEY_SOURCES_HASHES[KEY_FORMAT_VERSION]);
-  });
+  it.each(Object.entries(VERSIONS))(
+    "of %s fires no alarm, and fails its own verdict alone for want of a differing case (D6)",
+    async (name, [path, constant]) => {
+      const bump = edited(path, `${constant} = "`, `${constant} = "1`);
+      const result = await compare(bump, []);
+      expect(result.fired).toBe(false);
+      expect(failures(result, release())).toEqual([
+        expect.stringMatching(
+          new RegExp(
+            `^${constant} .* moved from \\d+ at .* a raise needs a case whose outputs differ`,
+          ),
+        ),
+      ]);
+      const moved = result.alarms.filter((a) => a.versions.baseline !== a.versions.candidate);
+      expect(moved.map((a) => a.component.name)).toEqual([name]);
+    },
+    SLOW.timeout,
+  );
 
   it.each(Object.values(VERSIONS))("%s holds that constant and nothing else", (path, name) => {
     const code = read(path)
@@ -253,10 +75,13 @@ describe("an adapter-only bump", () => {
 
   it("moves only that runner's keys", () => {
     // No runner's code names another's version, so only its own environments carry it.
+    const runners = readdirSync(join(ROOT, "src/runners"), { recursive: true, encoding: "utf8" })
+      .filter((path) => /\.(ts|cjs|mjs)$/.test(path))
+      .map((path) => `src/runners/${path.split("\\").join("/")}`);
     for (const [path, name] of Object.values(VERSIONS)) {
       const own = path.replace("version.ts", "");
-      for (const other of guardedFiles().filter((p) => p.startsWith("src/runners/"))) {
-        if (!other.startsWith(own)) expect(read(other).includes(name), other).toBe(false);
+      for (const other of runners.filter((p) => !p.startsWith(own))) {
+        expect(read(other).includes(name), other).toBe(false);
       }
     }
     const core: CoreEnvironmentInputs = {
@@ -283,5 +108,32 @@ describe("an adapter-only bump", () => {
     const [vitestAfter, nodeAfter] = keys("3");
     expect(vitestAfter).not.toBe(vitestBefore);
     expect(nodeAfter).toBe(nodeBefore);
+  });
+});
+
+describe("the alarm", SLOW, () => {
+  it("fires on a change to the build's target, which the shipped bundles are built at", async () => {
+    const result = await compare(
+      edited("src/harness/build.ts", 'target: "node22.13"', 'target: "node16"'),
+      [],
+    );
+    expect(result.alarms.filter((a) => a.fired).map((a) => a.component.name)).toEqual(
+      COMPONENTS.map((c) => c.name),
+    );
+  });
+
+  it("fires on no change outside the entries: status, delivery, the CLI and the harnesses", async () => {
+    const note = (path: string) => ({ [path]: `${read(path)}export const note = 1;\n` });
+    const result = await compare(
+      {
+        ...note("src/core/status/format-status.ts"),
+        ...note("src/core/delivery/format.ts"),
+        ...note("src/cli/status-wait-lines.ts"),
+        ...note("src/harness/shared/text.ts"),
+      },
+      [],
+    );
+    expect(result.fired).toBe(false);
+    expect(failures(result, release())).toEqual([]);
   });
 });

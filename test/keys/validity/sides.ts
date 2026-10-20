@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Bundle } from "./bundle.js";
 import type { Case, CaseOutput } from "./case.js";
+import type { Component } from "./components.js";
 import { coverageOf, type Range } from "./coverage.js";
 import type { Overlay } from "./trees.js";
 
@@ -32,17 +33,29 @@ export interface Side {
   readonly runtime: ReadonlyMap<string, string>;
 }
 
-/** The tree's runtime files, tree-relative, with `overlay`'s texts in place. */
-export function runtimeTexts(tree: string, overlay: Overlay = {}): Map<string, string> {
-  const texts = new Map<string, string>();
-  const names = existsSync(join(tree, RUNTIME)) ? readdirSync(join(tree, RUNTIME)) : [];
-  for (const name of names.filter((n) => n.endsWith(".cjs"))) {
-    texts.set(`${RUNTIME}/${name}`, readFileSync(join(tree, RUNTIME, name), "utf8"));
+/**
+ * The tree's files `texts` names, tree-relative, with `overlay`'s texts in
+ * place: a component's files out of esbuild's reach, compared as text.
+ */
+export function textsOf(
+  tree: string,
+  texts: Component["texts"],
+  overlay: Overlay = {},
+): Map<string, string> {
+  const found = new Map<string, string>();
+  for (const { path: dir, suffixes } of texts) {
+    const holds = (name: string) => suffixes.some((suffix) => name.endsWith(suffix));
+    const names = existsSync(join(tree, dir)) ? readdirSync(join(tree, dir)) : [];
+    for (const name of names.filter(holds)) {
+      found.set(`${dir}/${name}`, readFileSync(join(tree, dir, name), "utf8"));
+    }
+    for (const [path, text] of Object.entries(overlay)) {
+      if (path.startsWith(`${dir}/`) && !path.slice(dir.length + 1).includes("/") && holds(path)) {
+        found.set(path, text);
+      }
+    }
   }
-  for (const [path, text] of Object.entries(overlay)) {
-    if (path.startsWith(`${RUNTIME}/`) && path.endsWith(".cjs")) texts.set(path, text);
-  }
-  return texts;
+  return found;
 }
 
 /** Writes a side's driver and runtime under `work/<name>`. */
