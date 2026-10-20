@@ -135,6 +135,13 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * backlog tier is split with the other daemons that have its keys pending
  * (`Claims.backlogSize`).
  *
+ * The second group's turn after four tiers of the first (C4 step 4, catch-up
+ * first) is selected while an edit's work is queued, so it is never
+ * cancelled and holds `runner.tierSize` files of a comparable time; it still
+ * takes the backlog's grant, and in a lane of slots it is one slot (review
+ * W4r of wave 4, task 011-22). Where the pool makes it wait, the edit's tier
+ * goes first and the turn comes after it.
+ *
  * A backlog tier takes its grant from the per-user pool after its files are
  * picked and before `startTier` claims their keys, so a daemon that waits for
  * capacity holds no claim (D11 Capacity, task 001-376). It asks for no more
@@ -148,11 +155,16 @@ export function selectTier(
   context: SchedulerContext,
   ledger: Ledger,
   busy: ReadonlySet<string> = new Set(),
+  turnDue = ledger.queue.backlogTurn(),
 ): Tier | null {
   const { keys, policy } = context;
   const picked: TierFile[] = [];
   ledger.claims.begin();
   const backlog = !ledger.queue.hasFirstGroup((ref) => !busy.has(laneOf(context, ref)));
+  /** The second group's turn after four tiers of the first (C4 step 4): it leads `ordered`. */
+  const turn = !backlog && turnDue;
+  /** The tier is the turn's: it took a file of the second group first. */
+  let turnTier = false;
   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
   // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
   const offer = backlog ? (context.capacity?.offer(size) ?? defaultHostSlots()) : 0;
@@ -164,7 +176,7 @@ export function selectTier(
   let slot: number | null = null;
   /** A backlog file left to a lane's slots by an edit's tier. */
   let skipped = false;
-  for (const ref of ledger.ordered()) {
+  for (const ref of ledger.ordered(turnDue)) {
     if (picked.length >= size) break;
     const at = laneOf(context, ref);
     if (busy.has(at) || (lane !== null && at !== lane)) continue;
@@ -184,7 +196,7 @@ export function selectTier(
     if (
       !backlog &&
       !ledger.queue.isFirstGroup(ref) &&
-      !ledger.queue.backlogTurn() &&
+      !turn &&
       backlogSlot(context, ref) !== null
     ) {
       skipped = true;
@@ -202,12 +214,15 @@ export function selectTier(
     }
     const cap = Math.min(size, file.tierCap ?? size);
     if (picked.length >= cap) continue;
-    if (!backlog) {
+    if (picked.length === 0 && (backlog || (turn && !ledger.queue.isFirstGroup(ref)))) {
+      turnTier = !backlog;
+      slot = backlogSlot(context, ref);
+    } else if (slot !== null && !joinsSlot(picked, file, (r) => partOf(context, r))) break;
+    if (!backlog && slot === null) {
       const joined = joinSpan(span, file.durationMs);
       if (joined === null) continue;
       span = joined;
-    } else if (picked.length === 0) slot = backlogSlot(context, ref);
-    else if (slot !== null && !joinsSlot(picked, file, (r) => partOf(context, r))) break;
+    }
     if (
       slot === null &&
       wall !== null &&
@@ -221,14 +236,16 @@ export function selectTier(
     const inputs = keys.stabilityPaths(ref);
     picked.push({ file, key, inputs, checkpointId, forced, recent, waits, catchUp });
   }
-  const width = slot !== null ? 1 : backlog ? widest(context, picked) : 0;
-  const taken = picked.length > 0 && backlog ? context.capacity?.take(width) : null;
+  const granted = backlog || turnTier;
+  const width = slot !== null ? 1 : granted ? widest(context, picked) : 0;
+  const taken = picked.length > 0 && granted ? context.capacity?.take(width) : null;
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
-    return null;
+    // The turn holds no edit's tier back on the pool: that tier goes, and the turn comes after it.
+    return turnTier ? selectTier(context, ledger, busy, false) : null;
   }
   const lease = taken ? widthLease(taken, width) : taken;
-  if (slot === null && lease && lease.grant < Math.min(width, offer)) {
+  if (backlog && slot === null && lease && lease.grant < Math.min(width, offer)) {
     // Granted less than offered (another daemon took permits meanwhile): the prefix that fits.
     const fits = new BacklogWall(backlogBudget(policy.runner.timeoutMs));
     const keep = picked.findIndex(
@@ -243,8 +260,12 @@ export function selectTier(
   }
   let tier: Tier | null = null;
   try {
+    // The turn's slot is a slot as any other; its runner cannot cancel it (C4 step 5).
+    const cancellable = backlog || (turnTier && slot !== null);
     tier =
-      picked.length === 0 ? null : startTier(context, ledger, picked, backlog, lease ?? undefined);
+      picked.length === 0
+        ? null
+        : startTier(context, ledger, picked, cancellable, lease ?? undefined);
   } finally {
     // The tier owns the lease once it starts; until then it is returned here (review 001-384, B2).
     if (tier === null) lease?.release();
@@ -261,7 +282,7 @@ export function selectTier(
     skipped &&
     picked.length === 0 &&
     !ledger.queue.hasFirstGroup((r) => !busy.has(laneOf(context, r)));
-  return settled || slots ? selectTier(context, ledger, busy) : null;
+  return settled || slots ? selectTier(context, ledger, busy, turnDue) : null;
 }
 
 /**

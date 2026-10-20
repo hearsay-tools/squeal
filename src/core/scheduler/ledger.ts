@@ -145,9 +145,12 @@ export class Ledger {
     return this.files.get(testFileId(ref));
   }
 
-  /** The queue in run order: D5 step 4 classes, shortest last known duration first within one. */
-  ordered(): TestFileRef[] {
-    return this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null);
+  /**
+   * The queue in run order: D5 step 4 classes, shortest last known duration
+   * first within one; `turn` false orders it as if the backlog's turn were not due.
+   */
+  ordered(turn = this.queue.backlogTurn()): TestFileRef[] {
+    return this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null, turn);
   }
 
   /**
