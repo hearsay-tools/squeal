@@ -3,6 +3,7 @@ import { squealEvidence } from "../../evals/lib/index.mjs";
 import {
   type EndedNamed,
   type EndedWait,
+  type NamedTextOptions,
   namedText,
   waitText,
 } from "../../src/cli/status-wait-lines.js";
@@ -118,6 +119,20 @@ const countsOf = (s: StatusSnapshot) => ({
   stale: s.counts.stale,
   unknown: s.counts.unknown + s.testFilesWithoutChecks.unknown,
 });
+/**
+ * `s` with its pending slow files among its test files' counts, as `readHeader` counts every
+ * listed file (row 011-26); `slowPending` above leaves them out.
+ */
+const slowCounted = (s: StatusSnapshot): StatusSnapshot => {
+  const slow = s.slowTier?.pending ?? 0;
+  const files = s.testFileCounts;
+  if (slow === 0 || files === undefined) return s;
+  return {
+    ...s,
+    testFileCounts: { ...files, current: files.current - slow, pending: files.pending + slow },
+    testFilesByPhase: { running: 0, queued: (s.testFilesByPhase?.queued ?? 0) + slow },
+  };
+};
 /** Whether anything in the snapshot is pending, stale or unknown, the slow tier included. */
 const owes = (s: StatusSnapshot) =>
   Object.values(countsOf(s)).some((n) => n > 0) || (s.slowTier?.pending ?? 0) > 0;
@@ -147,8 +162,11 @@ const wait = (s: StatusSnapshot) =>
     } as EndedWait,
     2_000 as never,
   );
-/** `status --wait <ms> <path>`'s text on the money test file, settled, its verdict last (011-10). */
-const named = (s: StatusSnapshot) =>
+/**
+ * `status --wait <ms> <path>`'s text on the money test file, settled, its verdict last (011-10):
+ * from row 011-28 the revision line and the selection, the worktree's status only with `--full`.
+ */
+const named = (s: StatusSnapshot, how: NamedTextOptions = {}, snapshot = false) =>
   namedText(
     {
       outcome: down(s) ? "no-daemon" : "settled",
@@ -164,14 +182,19 @@ const named = (s: StatusSnapshot) =>
       files: [{ testFile: { project: "", path: "test/money.test.ts" }, state: "current" }],
       sync: { state: "synced", revision: 3 },
       result: s,
+      ...(snapshot ? { snapshot: true } : {}),
     } as unknown as EndedNamed,
     2_000 as never,
+    "squeal",
+    how,
   );
+/** Row 011-28: `status <path>`, the same answer from one read, worded as a snapshot. */
+const snapshotNamed = (s: StatusSnapshot) => named(s, {}, true);
 /**
  * Row 011-12 (011 C15): a named wait that timed out lists the selected files by class before
  * its verdict, each pending one with what holds it and each current one with its verdict.
  */
-const timedOut = (s: StatusSnapshot) =>
+const timedOut = (s: StatusSnapshot, how: NamedTextOptions = {}) =>
   namedText(
     {
       outcome: down(s) ? "no-daemon" : "timeout",
@@ -214,7 +237,15 @@ const timedOut = (s: StatusSnapshot) =>
       result: s,
     } as unknown as EndedNamed,
     2_000 as never,
+    "squeal",
+    how,
   );
+/** The named forms as an agent runs them, short from row 011-28 (005 D2 as amended 2026-10-20). */
+const shortNamed = [
+  ["status --wait <ms> <path>", named],
+  ["timed-out status --wait <ms> <path>", timedOut],
+  ["status <path>", snapshotNamed],
+] as const;
 /** What a text says of the worktree, apart from the files it credits. */
 const worktree = (e: ReturnType<typeof squealEvidence>) => {
   const { revision, pending, stale, unknown, slow, daemon, known, failures, verdict } = e ?? {};
@@ -247,12 +278,16 @@ describe("squealEvidence", () => {
 
   // Row 011-10 (issue 26): a wait prints its verdict last, after the snapshot; its text says of
   // the worktree what the status it prints says, as text and in a hook's JSON (review wave-1.9
-  // S1). Row 011-12: so does a named wait that lists the selected files by class.
+  // S1). Row 011-12: so does a named wait that lists the selected files by class; from row
+  // 011-28 a named wait prints the status only with `--full`.
   for (const [name, s] of variants)
     for (const [form, format] of [
       ["status --wait", wait],
-      ["status --wait <ms> <path>", named],
-      ["timed-out status --wait <ms> <path>", timedOut],
+      ["status --wait --full <ms> <path>", (t: StatusSnapshot) => named(t, { full: true })],
+      [
+        "timed-out status --wait --full <ms> <path>",
+        (t: StatusSnapshot) => timedOut(t, { full: true }),
+      ],
     ] as const)
       for (const [wrapped, wrap] of wrappings)
         it(`reads a ${name} ${form} as the status it prints, ${wrapped}`, () => {
@@ -269,11 +304,7 @@ describe("squealEvidence", () => {
   const notCurrent = (e: { pending?: unknown; stale?: unknown; unknown?: unknown } | null) =>
     [e?.pending, e?.stale, e?.unknown].some((n) => typeof n === "number" && n > 0);
   for (const [name, s] of variants)
-    for (const [form, format] of [
-      ["status --wait", wait],
-      ["status --wait <ms> <path>", named],
-      ["timed-out status --wait <ms> <path>", timedOut],
-    ] as const)
+    for (const [form, format] of [["status --wait", wait], ...shortNamed] as const)
       for (const [wrapped, wrap] of wrappings)
         it(`reads what is not current from a ${name} ${form}'s verdict line alone, ${wrapped}`, () => {
           const line = format(s).trimEnd().split("\n").at(-1) ?? "";
@@ -283,12 +314,37 @@ describe("squealEvidence", () => {
           if (notCurrent(countsOf(s))) expect(e?.verdict).not.toBe("pass");
         });
 
-  for (const [wrapped, wrap] of wrappings)
-    it(`credits the selected file of a named wait whose verdict prints last, ${wrapped}`, () => {
-      const e = squealEvidence(wrap(named({ ...settled, knownFailures: [failure] })), "pull");
-      expect(e).toMatchObject({ files: ["test/money.test.ts"], failing: ["test/money.test.ts"] });
-      expect(e?.verdict).toBe("fail");
-    });
+  // Row 011-28 (gh-44): a named wait's short text, the revision line, the selection and its
+  // verdict, says of the worktree through its verdict line's clause what the status says: its
+  // revision, its known failures, whether a daemon validates, and the same verdict. The clause
+  // counts every listed test file, slow ones too, as `readHeader` does (`slowCounted`).
+  for (const [name, s] of variants)
+    for (const [form, format] of shortNamed)
+      for (const [wrapped, wrap] of wrappings)
+        it(`reads a ${name} ${form}'s short text as the worktree's status, ${wrapped}`, () => {
+          const t = slowCounted(s);
+          const text = format(t);
+          expect(text).toMatch(/^Revision: 3\n/);
+          expect(text).not.toContain("Affected checks:");
+          const e = squealEvidence(wrap(text), "pull");
+          const full = squealEvidence(wrap(status(t)), "pull");
+          expect(e).toMatchObject({ revision: 3, daemon: full?.daemon, known: full?.known });
+          expect(e?.verdict).toBe(full?.verdict);
+          expect(notCurrent(e)).toBe(owes(t));
+        });
+
+  for (const [form, format] of [
+    ["status --wait <ms> <path>", named],
+    ["status <path>", snapshotNamed],
+  ] as const)
+    for (const [wrapped, wrap] of wrappings)
+      it(`credits the selected file of a ${form} whose verdict prints last, ${wrapped}`, () => {
+        const e = squealEvidence(wrap(format({ ...settled, knownFailures: [failure] })), "pull");
+        expect(e).toMatchObject({ files: ["test/money.test.ts"], failing: ["test/money.test.ts"] });
+        expect(e?.verdict).toBe("fail");
+        const clean = squealEvidence(wrap(format(settled)), "pull");
+        expect(clean).toMatchObject({ files: ["test/money.test.ts"], verdict: "pass" });
+      });
 
   it("is not current before the daemon listed the test files", () => {
     const e = squealEvidence(header({ ...settled, testFilesListed: false }), "push");

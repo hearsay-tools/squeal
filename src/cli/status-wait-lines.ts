@@ -1,5 +1,6 @@
 import { testFileId } from "../core/keys/index.js";
 import { runnerPartText, slowWaitText } from "../core/state/index.js";
+import { statusRevisionText } from "../core/status/identity.js";
 import {
   countedText,
   failureCountText,
@@ -169,24 +170,34 @@ const NAMED_FILES_SHOWN = 10;
  * A timeout counts the pending files by what holds them (011 C15,
  * `reasonGroups`). A path that selects nothing says D2's text. The slow
  * files left for a pause are named after the verdict, or are the reason for
- * none when they are all it selected (task 004-78, `pauseText`).
+ * none when they are all it selected (task 004-78, `pauseText`). A snapshot
+ * (`status <path>...` without `--wait`, row 011-28) names no deadline and no
+ * time, and names its revision once.
  */
 export function namedLine(wait: EndedNamed, command = "squeal"): string {
   const { verdict, selection } = wait;
+  const snapshot = wait.snapshot === true;
   const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
   const none = (why: string) => `Named test files have no verdict: ${why}`;
+  // A snapshot's reason that names no revision of its own (005 D2 as amended 2026-10-20).
+  const noneAt = (why: string) =>
+    snapshot
+      ? `Named test files have no verdict at revision ${verdict.revision}: ${why}`
+      : none(why);
   let line: string;
   switch (wait.outcome) {
     case "unmatched":
       line = `No verdict: ${unmatchedText(selection)}`;
       break;
-    case "no-daemon":
-      line = none(
-        `${noDaemonText(wait.result.daemon, wait.down)}; results are as of revision ${verdict.revision}; \`${command} start\` starts one`,
+    case "no-daemon": {
+      const asOf = snapshot ? "" : `; results are as of revision ${verdict.revision}`;
+      line = noneAt(
+        `${noDaemonText(wait.result.daemon, wait.down)}${asOf}; \`${command} start\` starts one`,
       );
       break;
+    }
     case "slow":
-      line = none(`every selected test file is slow: ${pauseText(wait, command)}`);
+      line = noneAt(`every selected test file is slow: ${pauseText(wait, command)}`);
       break;
     case "timeout": {
       const paused = new Set((wait.leftForPause ?? []).map(testFileId));
@@ -194,8 +205,9 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       const groups = reasonGroups(holding, command, wait.selection.base);
       const why = noVerdictText(verdict);
       const held = why === null ? "no result yet" : groups === "" ? why : `${why}: ${groups}`;
+      const unsynced = unsyncedText(wait.sync, verdict.revision, snapshot);
       line = none(
-        `the deadline passed ${after}: ${unsyncedText(wait.sync, verdict.revision) ?? held}`,
+        snapshot ? (unsynced ?? held) : `the deadline passed ${after}: ${unsynced ?? held}`,
       );
       break;
     }
@@ -209,7 +221,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       );
       line =
         why === null
-          ? `Named test files at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result, ${after}`
+          ? `Named test files at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result${snapshot ? "" : `, ${after}`}`
           : none(groups === "" ? why : `${why}: ${groups}`);
     }
   }
@@ -258,11 +270,26 @@ export function selectedLine(wait: EndedNamed): string | null {
   return `Selected: ${shown}${more}`;
 }
 
+/** How `namedText` prints the worktree's status (row 011-28). */
+export interface NamedTextOptions {
+  /** `--full`: the worktree's status before the selection, as before row 011-28. */
+  readonly full?: boolean;
+  /** `--notes`: that status with every note in full (task 001-222). */
+  readonly allNotes?: boolean;
+}
+
 /**
- * `status --wait <ms> <path>...`'s human text: the snapshot, the selected
- * files and their failures in full, then last their verdict (issue 26).
+ * `status [--wait <ms>] <path>...`'s human text (005 D2 as amended
+ * 2026-10-20, gh-44): the revision line, the selected files and their
+ * failures in full, the class lines, then last their verdict (issue 26).
+ * With `full`, the worktree's status in place of the revision line.
  */
-export function namedText(wait: EndedNamed, now: EpochMs, command = "squeal"): string {
+export function namedText(
+  wait: EndedNamed,
+  now: EpochMs,
+  command = "squeal",
+  options: NamedTextOptions = {},
+): string {
   const selected = selectedLine(wait);
   const lines = [
     ...(selected === null ? [] : [selected]),
@@ -270,7 +297,11 @@ export function namedText(wait: EndedNamed, now: EpochMs, command = "squeal"): s
     ...namedClassLines(wait, command),
     namedLine(wait, command),
   ];
-  return `${formatStatus(wait.result, now, command)}\n${lines.join("\n")}\n`;
+  const head =
+    options.full === true
+      ? `${formatStatus(wait.result, now, command, { allNotes: options.allNotes === true })}\n`
+      : `Revision: ${statusRevisionText(wait.result)}\n`;
+  return `${head}${lines.join("\n")}\n`;
 }
 
 /**
@@ -286,9 +317,13 @@ export function namedClassLines(wait: EndedNamed, command = "squeal"): string[] 
 
 /**
  * Review wave-1, B1: why a named wait's deadline came before the revision
- * holding the edits made before it, or `null` when it did not.
+ * holding the edits made before it, or `null` when it did not; a snapshot's
+ * sync, after its 750 ms (row 011-28).
  */
-function unsyncedText(sync: SyncState, revision: number): string | null {
+function unsyncedText(sync: SyncState, revision: number, snapshot: boolean): string | null {
+  if (sync.state === "pending" && snapshot) {
+    return `results are as of revision ${revision}; the daemon has not stored its pass over the latest edits`;
+  }
   if (sync.state === "pending") {
     return `the daemon has not stored its pass over the edits made before the wait; results are as of revision ${revision}`;
   }
