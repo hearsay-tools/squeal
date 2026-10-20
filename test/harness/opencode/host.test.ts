@@ -13,19 +13,19 @@ import { outsideGit } from "../bundle-helpers.js";
 
 /*
  * Spec 008 D4: the plugin's init checks, in OpenCode's process. The fast path
- * answers as 001 D9's `sh` test in the Claude Code plugin's hooks.json does,
+ * answers as 001 D9's `sh` test in the Claude Code plugin's hooks/run does,
  * on the same layouts.
  */
 
-/** The `s()` function of hooks.json's per-tool fast path. */
+/** The `s()` function of hooks/run's per-tool fast path. */
 const SH_TEST = (() => {
-  const hooks = readFileSync(
-    resolve(import.meta.dirname, "../../../plugins/claude-code/hooks/hooks.json"),
+  const run = readFileSync(
+    resolve(import.meta.dirname, "../../../plugins/claude-code/hooks/run"),
     "utf8",
   );
-  const match = /s\(\) \{.*?\[ -e \\"\$g\/squeal\\" \]; \}/.exec(hooks);
-  if (match === null) throw new Error("hooks.json has no fast-path s()");
-  return JSON.parse(`"${match[0]}"`) as string;
+  const match = /^ *s\(\) \{\n[\s\S]*?\n *\}$/m.exec(run);
+  if (match === null) throw new Error("hooks/run has no fast-path s()");
+  return match[0];
 })();
 
 const shSays = (dir: string): boolean => {
@@ -78,7 +78,7 @@ function layouts(): Record<string, string> {
 }
 
 describe("usesSquealAt", () => {
-  it("answers as hooks.json's sh fast path on every layout", () => {
+  it("answers as hooks/run's sh fast path on every layout", () => {
     const answers = Object.entries(layouts()).map(([name, dir]) => [
       name,
       usesSquealAt(dir),
