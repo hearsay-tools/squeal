@@ -4,18 +4,26 @@
 
 ## squeal status
 
-Prints the current state of this worktree. It reads the store and needs no daemon.
+Prints the current state of this worktree, its verdict first. It reads the store and needs no daemon.
 
 ```text
 Revision: 187
-Known failures: 0
-Affected checks: 47 passed (40 tests, 7 test files loaded), 3 running (3 tests), 12 queued (10 tests, 2 test files loaded)
-Full-suite checkpoint: none completed at revision 187; last completed at revision 170
+Known failures: 0; not current: 27 of 290 test files (3 running, 24 unknown), 3 tests (3 running)
+Affected checks: 47 passed (40 tests, 7 test files loaded), 3 running (3 tests), 0 queued
+Full-suite checkpoint: none completed since revision 170 (the counts are for revision 187; `squeal run --all` requests one)
+Outstanding:
+  3 test files in the vitest tier of 3 test files running since 12:04:20: test/cart.test.ts, test/money.test.ts, test/tax.test.ts; no command runs them sooner (a running tier is not interrupted)
+  24 test files never run at their inputs, nothing queued them (the baseline is lookup-only): test/api.test.ts, test/auth.test.ts, test/billing.test.ts and 21 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 27 test files not current here
+More: `squeal status --full` adds the worktree and daemon
 ```
 
-`Known failures: 0` with pending checks means "no known failures yet": the current revision is not fully validated. The skill's step 4 says what to claim from it. When slow files are among the checks running and queued, `Affected checks` names them, a few by path and the rest by count, and `squeal run --slow --wait 60000`, which waits for their results.
+`Known failures: 0` with test files not current means "no known failures yet": the current revision is not fully validated. The skill's step 4 says what to claim from it. When slow files are among the checks running and queued, `Affected checks` names them, a few by path and the rest by count, and `squeal run --slow --wait 60000`, which waits for their results.
 
-`squeal status --json` gives the same snapshot as a versioned JSON object.
+`Outstanding:` groups the test files that are not current by what holds them, and each group ends with the command that advances it, or says that none does and why: no daemon validates (`squeal start`), files never run or stale at their inputs (`squeal retry <test file>...`, or `squeal run --all --wait` for all of them), a running tier, a queue, another worktree's run of the same inputs, a pending retry, a checkpoint in progress. It shows at most six groups and three paths a group, and counts the rest. Slow files the `Slow tier:` line counts are not repeated there. Run a group's command only when you need that result now; results still arrive with your next tool call. With every test file current, there is no `Outstanding:` block.
+
+`More:` names what `squeal status --full` adds after it: the worktree and daemon, the results inherited from other worktrees and where from, each test file without a result with its reason, and Squeal's notes. `squeal status --notes` is `--full` with each note listed on its own line.
+
+`squeal status --json` gives the same snapshot as a versioned JSON object; its `outstanding` field holds the groups, each with what holds it (`standing`) and all of its `files`.
 
 In a Codex or Pi shell, status adds a line starting `Codex:` or `Pi:` when no Squeal consumer of this session is registered in this worktree: Squeal's hooks or Pi extension do not run in the session, or have not registered it yet. The line names the step that enables them (trusting the hooks, installing the Pi package); tell the user, and leave the step to them.
 
@@ -23,11 +31,11 @@ In a Codex or Pi shell, status adds a line starting `Codex:` or `Pi:` when no Sq
 
 Results arrive with your next tool call, so by default keep working. Only when you need a result before your next step, for example before saying the task is done, run `squeal status --wait 60000`. It replaces `sleep` and polling.
 
-It returns once the test files your edits re-keyed since Squeal last told you something have their results (a pass, a failure, a skip, or unknown with a reason), or as soon as one of their checks changed (a new failure or a recovery), and at the latest after the given milliseconds; then it prints status, and last the line saying why it returned. An edit to an environment input (the Vitest config, a setup file, the installed lockfile) re-keys every test file, and a pytest project's config or a sync of its environment every file of that project, so its wait holds for all of them. A baseline, a backlog, slow files and other worktrees' work do not hold it, and other checks' changes do not end it: the line names them and what else is pending. When slow files are not current, a quiet line says so and names `squeal run --slow --wait 60000`, which waits for their results, joining a slow file already running.
+It returns once the test files your edits re-keyed since Squeal last told you something have their results (a pass, a failure, a skip, or unknown with a reason), or as soon as one of their checks changed (a new failure or a recovery), and at the latest after the given milliseconds; then it prints status as `squeal status` does (`--full` adds the same detail), and last the line saying why it returned. An edit to an environment input (the Vitest config, a setup file, the installed lockfile) re-keys every test file, and a pytest project's config or a sync of its environment every file of that project, so its wait holds for all of them. A baseline, a backlog, slow files and other worktrees' work do not hold it, and other checks' changes do not end it: the line counts them, and the `Outstanding:` block above it says what else is not current. When slow files are not current, a quiet line says so and names `squeal run --slow --wait 60000`, which waits for their results, joining a slow file already running.
 
 Its last line says why it returned, with the revision and the time waited, then the worktree's known failures and its checks running and queued:
 
-- `Returned on quiet`: none of the test files your edits re-keyed is pending. Quiet says no result your edits owe is outstanding, not that they passed: read the outcome in the snapshot it prints.
+- `Returned on quiet`: none of the test files your edits re-keyed is pending; while other test files are not current, it adds `this wait does not hold for the rest of the worktree`. Quiet says no result your edits owe is outstanding, not that they passed: read the outcome in the snapshot it prints.
 - `Returned on news`: a check of those files changed; read it as you would a SQUEAL message.
 - `Returned on timeout`: some of those files are still pending, and the line says how many. Wait again, or say so; a timeout is no reason to run those files yourself.
 - `Returned without a daemon: no daemon has validated since <time>; results are as of revision N`: nothing gets validated, so results are as old as that revision, whatever the files hold now. Run `squeal start` and wait again, or run the tests yourself. The wait starts no daemon.

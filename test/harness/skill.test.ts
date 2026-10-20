@@ -293,7 +293,7 @@ describe("the squeal skill", () => {
       `Affected checks: ${counts([
         [47, "passed", 7],
         [3, "running", 0],
-        [12, "queued", 2],
+        [0, "queued", 0],
       ])}\n`,
     );
     expect(read("reports.md")).toContain(
