@@ -1,12 +1,11 @@
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { isRecord } from "../../../src/core/fs/index.js";
 import { sameFingerprint } from "../../../src/core/state/fingerprint.js";
-import { type Bundle, bundleDriver } from "./bundle.js";
+import { bundleDriver } from "./bundle.js";
 import type { Case, CaseKind, CaseOutput } from "./case.js";
-import { changedLines, changedSources, coverageOf, mappedLines, unrun } from "./coverage.js";
+import { changedLines, changedSources, mappedLines, unrun } from "./coverage.js";
+import { coverageAt, execute, prepare, runtimeTexts, type Side, type SideName } from "./sides.js";
 import { dependencyLines, formatVersionOf, type Overlay, ROOT } from "./trees.js";
 
 /*
@@ -16,17 +15,22 @@ import { dependencyLines, formatVersionOf, type Overlay, ROOT } from "./trees.js
  * required to have run in some case.
  */
 
+const FORMAT = "KEY_FORMAT_VERSION (src/core/keys/key-format.ts)";
+
 /** The version a kind's differing outputs ask to raise. */
 export const MOVES: Readonly<Record<CaseKind, string>> = {
-  key: "KEY_FORMAT_VERSION (src/core/keys/key-format.ts)",
-  rows: "KEY_FORMAT_VERSION (src/core/keys/key-format.ts)",
+  key: FORMAT,
+  rows: FORMAT,
+  accept: FORMAT,
+  assemble: FORMAT,
+  observe: "RECORDER_VERSION (src/runners/observe/runtime.ts)",
 };
 
 export interface CaseVerdict {
   readonly name: string;
   readonly kind: CaseKind;
   readonly keysEqual: boolean;
-  /** Outputs equal where keys are; `true` when keys differ, since nothing stored is found then. */
+  /** Outputs equal where keys are, and no case threw at one tree only. */
   readonly outputsEqual: boolean;
   readonly wordingEqual: boolean;
   readonly baseline: CaseOutput;
@@ -35,12 +39,12 @@ export interface CaseVerdict {
 
 export interface Comparison {
   readonly versions: { readonly baseline: number; readonly candidate: number };
-  /** The bundles' text or the packages they import differ. */
+  /** The bundles' text, the packages they import or the recorder's runtime differ. */
   readonly fired: boolean;
   /** Each tree's package lines, when they differ. */
   readonly dependencies: { readonly baseline: string[]; readonly candidate: string[] } | null;
   readonly cases: readonly CaseVerdict[];
-  /** Changed lines no case ran, `source:line (bundle side:line)`. */
+  /** Changed lines no case ran, `source:line (side file:line)`. */
   readonly uncovered: readonly string[];
 }
 
@@ -71,49 +75,6 @@ export function same(a: unknown, b: unknown, field?: string): boolean {
     return [...keys].every((k) => same(a[k], b[k], k));
   }
   return false;
-}
-
-interface SideRun {
-  readonly tree: string;
-  readonly map: Bundle["map"];
-  readonly bundle: Bundle;
-  readonly file: string;
-  readonly outputs: Record<string, CaseOutput>;
-  readonly coverage: ReturnType<typeof coverageOf>;
-}
-
-function prepare(work: string, side: string, bundle: Bundle): string {
-  const dir = join(work, side);
-  mkdirSync(dir, { recursive: true });
-  const file = join(dir, "driver.mjs");
-  writeFileSync(file, bundle.text);
-  return file;
-}
-
-/** Runs every case at one side's bundle, under V8 coverage, with HOME and XDG_* inside `work`. */
-function run(work: string, side: string, file: string, cases: readonly Case[]) {
-  const dir = join(work, side);
-  const home = join(work, "home");
-  const casesFile = join(dir, "cases.json");
-  const outFile = join(dir, "out.json");
-  const coverage = join(dir, "coverage");
-  writeFileSync(casesFile, JSON.stringify(cases));
-  const child = spawnSync(process.execPath, [file, casesFile, outFile, join(dir, "scratch")], {
-    cwd: dir,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      HOME: home,
-      XDG_CONFIG_HOME: join(home, ".config"),
-      XDG_CACHE_HOME: join(home, ".cache"),
-      XDG_DATA_HOME: join(home, ".local/share"),
-      XDG_STATE_HOME: join(home, ".local/state"),
-      NODE_V8_COVERAGE: coverage,
-    },
-  });
-  if (child.status !== 0) throw new Error(`the ${side} driver failed:\n${child.stderr}`);
-  const outputs = JSON.parse(readFileSync(outFile, "utf8")) as Record<string, CaseOutput>;
-  return { outputs, coverage: coverageOf(coverage, pathToFileURL(file).href) };
 }
 
 function verdictOf(c: Case, baseline: CaseOutput, candidate: CaseOutput): CaseVerdict {
@@ -150,48 +111,96 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
     baseline: await bundleDriver(baseline, join(work, "baseline/driver.mjs")),
     candidate: await bundleDriver(candidate, join(work, "candidate/driver.mjs"), overlay),
   };
+  const runtime = { baseline: runtimeTexts(baseline), candidate: runtimeTexts(candidate, overlay) };
   const deps = {
     baseline: dependencyLines(baseline, bundles.baseline.packages),
     candidate: dependencyLines(candidate, bundles.candidate.packages),
   };
   const dependencies = same(deps.baseline, deps.candidate) ? null : deps;
-  const fired = bundles.baseline.text !== bundles.candidate.text || dependencies !== null;
+  const fired =
+    bundles.baseline.text !== bundles.candidate.text ||
+    dependencies !== null ||
+    !same(Object.fromEntries(runtime.baseline), Object.fromEntries(runtime.candidate));
   if (!fired) return { versions, fired, dependencies, cases: [], uncovered: [] };
 
-  const trees = { baseline, candidate };
-  const sides = {} as Record<"baseline" | "candidate", SideRun>;
-  for (const side of ["baseline", "candidate"] as const) {
-    const file = prepare(work, side, bundles[side]);
-    sides[side] = {
-      tree: trees[side],
-      map: bundles[side].map,
-      bundle: bundles[side],
-      file,
-      ...run(work, side, file, cases),
-    };
+  const sides: Record<SideName, Side> = {
+    baseline: prepare(work, "baseline", baseline, bundles.baseline, runtime.baseline),
+    candidate: prepare(work, "candidate", candidate, bundles.candidate, runtime.candidate),
+  };
+  const runtimeDir = (side: Side) => join(side.dir, "observe");
+  const outputs = {
+    baseline: execute(work, sides.baseline, "run", cases, runtimeDir(sides.baseline)),
+    candidate: execute(work, sides.candidate, "run", cases, runtimeDir(sides.candidate)),
+  };
+  // D1 (a): the candidate decides over the store each tree wrote from the same runs.
+  for (const name of ["baseline", "candidate"] as const) {
+    const stored = join(sides[name].dir, "run");
+    const decided = execute(work, sides.candidate, "decide", cases, stored, `decide-${name}`);
+    for (const [c, output] of Object.entries(decided)) {
+      if (outputs[name][c]?.error === undefined) outputs[name][c] = output;
+    }
   }
   const verdicts = cases.map((c) =>
-    verdictOf(c, sides.baseline.outputs[c.name] ?? {}, sides.candidate.outputs[c.name] ?? {}),
+    verdictOf(c, outputs.baseline[c.name] ?? {}, outputs.candidate[c.name] ?? {}),
   );
-  return { versions, fired, dependencies, cases: verdicts, uncovered: uncoveredOf(work, sides) };
+  const uncovered = [...uncoveredInBundles(work, sides), ...uncoveredInRuntime(sides)];
+  return { versions, fired, dependencies, cases: verdicts, uncovered };
 }
 
-/** Each changed line that ran in no case, at the side that holds it. */
-function uncoveredOf(work: string, sides: Record<"baseline" | "candidate", SideRun>): string[] {
+/** Each changed bundle line from a changed source line that ran in no case, at the side that holds it. */
+function uncoveredInBundles(work: string, sides: Record<SideName, Side>): string[] {
   const bundles = changedLines(sides.baseline.file, sides.candidate.file);
-  const sources = changedSources(sides.baseline, sides.candidate, join(work, "diff"));
+  const sources = changedSources(
+    { map: sides.baseline.bundle.map, tree: sides.baseline.tree },
+    { map: sides.candidate.bundle.map, tree: sides.candidate.tree },
+    join(work, "diff"),
+  );
   const out: string[] = [];
-  for (const [side, lines] of [
+  for (const [name, lines] of [
     ["baseline", bundles.removed],
     ["candidate", bundles.added],
   ] as const) {
-    const { tree, bundle, coverage } = sides[side];
-    const mapped = mappedLines(bundle.map, tree);
+    const side = sides[name];
+    const mapped = mappedLines(side.bundle.map, side.tree);
     const changedFrom = (line: number) =>
-      (mapped.get(line) ?? []).filter((at) => sources[side].has(at));
+      (mapped.get(line) ?? []).filter((at) => sources[name].has(at));
     const required = lines.filter((line) => changedFrom(line).length > 0);
-    for (const line of unrun(bundle.text, coverage, required)) {
-      out.push(`${changedFrom(line).join(", ")} (${side} bundle line ${line})`);
+    for (const line of unrun(side.bundle.text, coverageAt(side, side.file), required)) {
+      out.push(`${changedFrom(line).join(", ")} (${name} bundle line ${line})`);
+    }
+  }
+  return out;
+}
+
+const COMMENT = /^\s*(?:\/\/|\/\*|\*)/;
+
+/** Each changed code line of the recorder's runtime that ran in no case, at the side that holds it. */
+function uncoveredInRuntime(sides: Record<SideName, Side>): string[] {
+  const out: string[] = [];
+  const paths = new Set([...sides.baseline.runtime.keys(), ...sides.candidate.runtime.keys()]);
+  for (const path of paths) {
+    const [from, to] = [sides.baseline.runtime.get(path), sides.candidate.runtime.get(path)];
+    const text = (file: string | undefined) =>
+      file === undefined ? "" : readFileSync(file, "utf8");
+    if (text(from) === text(to)) continue;
+    const all = (file: string) =>
+      text(file)
+        .split("\n")
+        .map((_, i) => i + 1);
+    const changed =
+      from !== undefined && to !== undefined
+        ? changedLines(from, to)
+        : { removed: from === undefined ? [] : all(from), added: to === undefined ? [] : all(to) };
+    for (const [name, file, lines] of [
+      ["baseline", from, changed.removed],
+      ["candidate", to, changed.added],
+    ] as const) {
+      if (file === undefined) continue;
+      const source = text(file).split("\n");
+      const code = lines.filter((n) => !COMMENT.test(source[n - 1] ?? ""));
+      for (const line of unrun(text(file), coverageAt(sides[name], file), code)) {
+        out.push(`${path}:${line} (${name} runtime)`);
+      }
     }
   }
   return out;
@@ -217,10 +226,12 @@ export function failures(c: Comparison, ref: string): string[] {
     );
   }
   for (const v of c.cases.filter((v) => !v.outputsEqual)) {
-    out.push(
-      `${v.kind} case "${v.name}": equal keys, different outputs at ${ref} and the candidate; ` +
-        `raise ${MOVES[v.kind]}`,
-    );
+    const thrown = v.baseline.error ?? v.candidate.error;
+    const what =
+      thrown === undefined
+        ? `equal keys, different outputs at ${ref} and the candidate`
+        : `throws at ${v.baseline.error === undefined ? "the candidate" : ref} only: ${thrown}`;
+    out.push(`${v.kind} case "${v.name}": ${what}; raise ${MOVES[v.kind]}`);
   }
   if (c.uncovered.length > 0) {
     out.push(
