@@ -174,7 +174,7 @@ describe("a config that turns the optimizer on (001-176)", () => {
     expect(registered).toContain(optimizerOffNote([""]));
     expect(once(registered)).toBe(1);
     const status = readStatus(h.root);
-    expect(once(formatStatus(status, Date.now()))).toBe(1);
+    expect(once(formatStatus(status, Date.now(), "squeal", { full: true }))).toBe(1);
   });
 
   it(
@@ -203,7 +203,9 @@ describe("a config that turns the optimizer on (001-176)", () => {
         OPTIMIZER_OFF_NOTE,
       );
       // Status keeps it among the dated notes: what an earlier config did.
-      expect(formatStatus(readStatus(h.root), Date.now())).toContain(OPTIMIZER_OFF_NOTE);
+      expect(formatStatus(readStatus(h.root), Date.now(), "squeal", { full: true })).toContain(
+        OPTIMIZER_OFF_NOTE,
+      );
 
       // Turned on again, the header tells it again.
       h.write("vitest.config.ts", config);

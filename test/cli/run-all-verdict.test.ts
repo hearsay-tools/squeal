@@ -286,8 +286,10 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     expect(result.first).toBe(
       `Checkpoint c1 has no verdict: it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped). Without a result: ${named}`,
     );
-    expect(result.stdout).toContain(`\nTest files without a result: 1 (`);
-    expect(result.stdout).toContain(`\n  ${named}\n`);
+    // Row 011-29: status's default text names it in its outstanding group, with its retry.
+    expect(result.stdout).toContain(
+      `\n  1 test file ran, nothing recorded: ${reason}: ${B}; \`squeal retry ${B}\` runs it once\n`,
+    );
     expect(result.code).toBe(3);
   });
 

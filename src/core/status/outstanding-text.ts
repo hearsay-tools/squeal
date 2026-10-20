@@ -43,7 +43,7 @@ export function outstandingLines(
   command: string,
   options: OutstandingTextOptions = {},
 ): string[] {
-  const groups = s.outstanding ?? [];
+  const groups = groupsOf(s);
   if (groups.length === 0) return [];
   const shown = options.all === true ? groups : groups.slice(0, OUTSTANDING_GROUPS_SHOWN);
   const rest = groups.slice(shown.length);
@@ -59,6 +59,21 @@ export function outstandingLines(
     ...shown.map((g) => `  ${groupLine(g, s, now, command, options.base)}`),
     ...more,
   ];
+}
+
+/**
+ * The snapshot's groups; one from before the field, or built without a
+ * store, still says what its own fields do: no daemon, or the files not
+ * listed yet.
+ */
+function groupsOf(s: StatusSnapshot): readonly OutstandingGroup[] {
+  if (s.outstanding !== undefined) return s.outstanding;
+  if (s.daemon.state !== "alive") {
+    return [
+      { standing: { kind: "no-daemon", since: s.daemon.since, revision: s.revision }, files: [] },
+    ];
+  }
+  return s.testFilesListed === false ? [{ standing: { kind: "listing" }, files: [] }] : [];
 }
 
 function groupLine(

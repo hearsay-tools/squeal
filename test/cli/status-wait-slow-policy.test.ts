@@ -46,7 +46,7 @@ async function docsOnly(stop: Record<string, unknown>, trigger = "continuous", q
 }
 
 const EDIT =
-  /^Returned on quiet: nothing the edits since revision 4 re-keyed is pending \(1 test file\) at revision 4 after \d+\.\d s/;
+  /^Returned on quiet: the 1 test file the edits since revision 4 re-keyed is not pending, at revision 4 after \d+\.\d s/;
 
 describe("the quiet `status --wait` line follows `stop.requireSlowSuite` (004-71)", () => {
   it("off: says the slow files are not required before the agent finishes", async () => {
