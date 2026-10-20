@@ -87,7 +87,7 @@ export function failStartup(
   for (const project of projects) failed(failures, project, notStartedReason(startup));
   // A forced file stays queued through `block`; here it would start the failing setup again.
   const waiting = (file: FileState) => inTier.has(file.id) || ledger.queue.has(file.ref);
-  for (const file of block(ledger, failures, waiting)) ledger.queue.remove(file.ref);
+  for (const file of block(ledger, failures, waiting, "setup")) ledger.queue.remove(file.ref);
   for (const project of projects) {
     const check = { kind: "setup", project, testPath: startup.setupFile ?? "" } as const;
     ledger.setups.fail(check, startup.error, commit);

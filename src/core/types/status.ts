@@ -581,7 +581,23 @@ export interface UnknownTestFile {
   readonly reason: string | null;
   /** A few of the paths that kept it from holding still, for a first-seen growth. */
   readonly samples: readonly RelativePath[];
+  /**
+   * Row 011-27: why, structured where the words alone do not say what
+   * advances it; absent for a reason with no step of its own and for a
+   * record from a daemon before it.
+   */
+  readonly cause?: UnknownCause;
 }
+
+/**
+ * Why a test file has no result at its key, as its next step needs it (row
+ * 011-27): `timeout`, its tier of its own timed out (C4); `install`, no
+ * dependencies are installed; `runner`, it has no key or a runner call
+ * failed; `setup`, its project's global setup failed; `never-run`, its key
+ * never had a result and nothing queued it. The scheduler records each but
+ * `never-run` with the file (`RecordedCause`); status derives the rest.
+ */
+export type UnknownCause = "timeout" | "install" | "runner" | "setup" | "never-run";
 
 /** `StatusSnapshot.pendingRetries`. */
 export interface PendingRetries {
@@ -602,6 +618,8 @@ export interface PendingRetry {
   /** The worktree whose daemon queued its run; `null` while none has. */
   readonly claimedBy: WorktreeId | null;
   readonly requests: number;
+  /** Row 011-27: when the live daemon's open run holding it started. */
+  readonly runningSince?: EpochMs;
 }
 
 /**
