@@ -89,7 +89,7 @@ entries.
 
 **Q5 (read in source code; not run).** `recordFlips` stores one note per `checkIdentity` and replaces
 an existing one (`kept.delete(id); kept.set(id, note)`). In the incident the check flipped twice,
-at revision 1 and revision 2, at different keys. Only the later flip's note can remain, which
+at revision 1 and revision 2; whether the keys differed was not verified. Only the later flip's note can remain, which
 matches the single `Flaky` line the issue quotes (key `a6489248b526`).
 
 **Q6 (read in spec).** `spec.md` C6 (amendment 2026-10-15, tasks 001-403 to 001-411): `squeal failures`
