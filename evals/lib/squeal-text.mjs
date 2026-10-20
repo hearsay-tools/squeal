@@ -276,9 +276,7 @@ function selectedOf(t) {
  */
 function pendingRetriesOf(t) {
   const listed = [...t.matchAll(/^\s+(\S+) \((?:load|environment)\): /gm)].map((m) => m[1]);
-  const grouped = [
-    ...t.matchAll(/^ {2}\d+ test files? with a pending retry \([^)]*\): (.+?); /gm),
-  ]
+  const grouped = [...t.matchAll(/^ {2}\d+ test files? with a pending retry \([^)]*\): (.+?); /gm)]
     .flatMap((m) => m[1].replace(/ and \d+ more$/, "").split(", "))
     // A group leads a named project's path with the project (`unit: test/a.test.ts`).
     .map((f) => f.slice(f.lastIndexOf(": ") + 1).trimStart());
