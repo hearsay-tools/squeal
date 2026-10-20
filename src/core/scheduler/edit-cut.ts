@@ -4,6 +4,7 @@ import type {
   AffectedTestFiles,
   RelativePath,
   RevisionNumber,
+  RunnerClosure,
   TestFileRef,
 } from "../types/index.js";
 import { type SchedulerContext, tryRunner } from "./context.js";
@@ -30,7 +31,9 @@ export interface EditCut {
 /**
  * The cut of a revision that changed `paths`, given the runner's `affected`
  * for them. A source is a changed path that is no test file and that a
- * closure holds; a declared input or a path no closure holds has no
+ * closure holds, stored or among the runner part's `closures` (review wave
+ * 6, B1: a source an import first resolves to now, as a new `src/a.js`
+ * beside `src/a.ts`); a declared input or a path no closure holds has no
  * importers to keep. When some sources have no namesake the revision
  * reaches and others do, the runner is asked again for the bare ones alone,
  * since `affected` answers for its paths together; with no answer every
@@ -42,6 +45,7 @@ export async function fetchEditCut(
   paths: readonly RelativePath[],
   affected: AffectedTestFiles,
   bound: RunnerPartBound,
+  closures: readonly RunnerClosure[] = [],
 ): Promise<EditCut> {
   const { keys, runner } = context;
   const byPath = new Map<RelativePath, string[]>();
@@ -49,10 +53,13 @@ export async function fetchEditCut(
     byPath.set(ref.path, [...(byPath.get(ref.path) ?? []), testFileId(ref)]);
   const reached = new Set([...affected.direct, ...affected.transitive].map(testFileId));
   for (const ref of keys.index.reverse.referencing(paths)) reached.add(testFileId(ref));
+  const fetched = new Set(closures.flatMap((closure) => closure.paths));
+  const held = (path: RelativePath) =>
+    fetched.has(path) || keys.index.reverse.referencing([path]).length > 0;
   const namesakes = new Map<RelativePath, readonly string[]>();
   const bare = new Set<RelativePath>();
   for (const path of new Set(paths)) {
-    if (byPath.has(path) || keys.index.reverse.referencing([path]).length === 0) continue;
+    if (byPath.has(path) || !held(path)) continue;
     const ids = namesakesOf(path, byPath.keys()).flatMap((name) => byPath.get(name) ?? []);
     namesakes.set(path, ids);
     if (!ids.some((id) => reached.has(id))) bare.add(path);
