@@ -4,13 +4,15 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
+import { readMemory } from "../../src/core/daemon/idle-gc.js";
 
 /*
  * Row 011-69 (research `daemon-memory.md` 2): the idle GC's real effect. A
  * plain full GC frees a dropped allocation but V8 keeps its pages; the
  * daemon's last-resort GC gives them back. Private memory is read from
- * `/proc`, so Linux only. A fresh process: the test worker's own heap would
- * hide the drop.
+ * `/proc`, so only where `readMemory` reads it (review 0.1.241 S1: Linux
+ * without `/proc` falls back to RSS). A fresh process: the test worker's own
+ * heap would hide the drop.
  */
 
 const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
@@ -26,7 +28,7 @@ interface ChildReport {
   readonly workerGc: string;
 }
 
-describe.runIf(process.platform === "linux")("the real idle GC (row 011-69)", () => {
+describe.runIf(readMemory().kind === "private")("the real idle GC (row 011-69)", () => {
   it("lowers private memory a plain GC left after a large allocation was freed", async () => {
     const { stdout } = await promisify(execFile)(
       process.execPath,
