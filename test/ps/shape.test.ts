@@ -54,6 +54,7 @@ const daemon: PsDaemon = {
         cpuMs: 300,
         privateBytes: 4_096_000,
         swapBytes: 0,
+        skipped: { cpuPct: 0, privateBytes: 0, swapBytes: 0 },
         list: [
           {
             pid: 3704800,
@@ -96,9 +97,20 @@ const snapshot: PsSnapshot = {
     privateBytes: 2_691_386_572,
     memoryShare: 7.7,
     swapBytes: 276_824_064,
+    skipped: { cpuPct: 1, privateBytes: 0, swapBytes: 1 },
     pool: { slots: 23, held: 1 },
   },
-  repositories: [{ commonDir: "/home/user/projects/alpha/.git", current: true, daemons: [daemon] }],
+  repositories: [
+    {
+      commonDir: "/home/user/projects/alpha/.git",
+      current: true,
+      cpuPct: 43,
+      privateBytes: 2_691_386_572,
+      swapBytes: 276_824_064,
+      skipped: { cpuPct: 1, privateBytes: 0, swapBytes: 1 },
+      daemons: [daemon],
+    },
+  ],
   orphans: [{ pid: 2242955, comm: "chrome", startedAt: null, flags: [] }],
   files: [
     {
@@ -136,10 +148,14 @@ test("the JSON keeps exactly the shipped keys at every level, with null kept", (
     ),
   );
   expect(keys(json.squeal)).toEqual(
-    sorted("daemons testProcesses cpuPct cpuShare privateBytes memoryShare swapBytes pool"),
+    sorted("daemons testProcesses cpuPct cpuShare privateBytes memoryShare swapBytes skipped pool"),
   );
   expect(keys(json.squeal.pool)).toEqual(sorted("slots held"));
-  expect(keys(json.repositories[0])).toEqual(sorted("commonDir current daemons"));
+  expect(keys(json.squeal.skipped)).toEqual(sorted("cpuPct privateBytes swapBytes"));
+  expect(keys(json.repositories[0])).toEqual(
+    sorted("commonDir current cpuPct privateBytes swapBytes skipped daemons"),
+  );
+  expect(keys(json.repositories[0].skipped)).toEqual(sorted("cpuPct privateBytes swapBytes"));
   const d = json.repositories[0].daemons[0];
   expect(keys(d)).toEqual(
     sorted(
@@ -160,7 +176,10 @@ test("the JSON keeps exactly the shipped keys at every level, with null kept", (
     ),
   );
   expect(p.swapBytes).toBeNull();
-  expect(keys(p.descendants)).toEqual(sorted("count cpuPct cpuMs privateBytes swapBytes list"));
+  expect(keys(p.descendants)).toEqual(
+    sorted("count cpuPct cpuMs privateBytes swapBytes skipped list"),
+  );
+  expect(keys(p.descendants.skipped)).toEqual(sorted("cpuPct privateBytes swapBytes"));
   expect(keys(p.descendants.list[0])).toEqual(
     sorted("pid comm cpuPct cpuMs privateBytes swapBytes"),
   );
