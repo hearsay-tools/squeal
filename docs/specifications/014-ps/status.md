@@ -1,6 +1,6 @@
 # 014 squeal ps: status
 
-Stage: draft (research)
+Stage: draft (spec written 2026-10-21 from 014-01 to 014-03; awaits the human's review before any board wave)
 Started: 2026-10-21
 
 ## Decisions so far
@@ -10,7 +10,9 @@ Started: 2026-10-21
 
 ## Open questions
 
-- Research topics 014-01 to 014-03 (`research/README.md`). The spec is written from their findings.
+- D9: should the daemon record its last use (`daemon-used:<id>` in `meta` with each heartbeat), so that `past-idle` and `past-unused` are exact? Coordinator's recommendation: yes, as its own first-wave row. Without it both flags are left out.
+- D10: Linux only in this spec, macOS later? Coordinator's recommendation: yes; no macOS host is available to test on.
+- The coordinator's assumptions above, now written as D1 (host default, `--repo`), D8 (`--json`, `v: 1`) and D10.
 
 ## Amendment log
 
