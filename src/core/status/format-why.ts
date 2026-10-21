@@ -18,6 +18,7 @@ import type {
 } from "../types/index.js";
 import { durationsText } from "./durations.js";
 import { formatUnavailable, shortCommit } from "./format-status.js";
+import { locationText } from "./test-frame.js";
 
 const INDENT = "        ";
 
@@ -180,7 +181,8 @@ function stateLines(why: WhyReport, s: KnownState | null): string[] {
   }
   if (s.summary !== null) lines.push(`  Summary: ${s.summary}`);
   if (s.location !== null) {
-    lines.push(`  Location: ${s.location.path}:${s.location.line}:${s.location.column}`);
+    // 011 C5 as amended 2026-10-21 (gh-67): the test-file frame beside a helper's location.
+    lines.push(`  Location: ${locationText(s.location, why.testFileFrame)}`);
   }
   if (s.fingerprint !== null) lines.push(`  Fingerprint: ${s.fingerprint}`);
   return lines;

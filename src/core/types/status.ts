@@ -7,6 +7,7 @@ import type {
   RelativePath,
   RevisionNumber,
   SourceLocation,
+  TestFileFrame,
   WorktreeId,
 } from "./common.js";
 import type { CheckKey, ClosureMethod, TestFileRef } from "./keys.js";
@@ -384,6 +385,12 @@ export interface KnownFailure {
   readonly fingerprint: DiagnosticFingerprint;
   readonly location: SourceLocation | null;
   /**
+   * When `location` is not in the check's own test file: the first frame in
+   * that file, read from the stored row at the failure's key (011 C5 as
+   * amended 2026-10-21, gh-67). Absent when there is none or no such row.
+   */
+  readonly testFileFrame?: TestFileFrame;
+  /**
    * Where its stored result was recorded, the load then, and the retry asked
    * at its key (spec 001 D6, 001-368): the facts a session that meets the
    * failure at registration is given. Absent when no stored result stands
@@ -707,6 +714,13 @@ export interface WhyReport {
   readonly worktreeRoots: Readonly<Record<WorktreeId, AbsolutePath>>;
   /** Known state in this worktree; `null` when it has none. */
   readonly knownState: KnownState | null;
+  /**
+   * For a failing known state whose `location` is not in the check's own
+   * test file: the first frame in that file, read from the stored result
+   * behind the state (011 C5 as amended 2026-10-21, gh-67). Absent when
+   * there is none or no stored result is identifiably behind it.
+   */
+  readonly testFileFrame?: TestFileFrame;
   /** Transitions of the check in this worktree, oldest first. */
   readonly history: readonly Transition[];
   /**
