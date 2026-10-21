@@ -71,14 +71,21 @@ export function heldStop(
   return heartbeat !== undefined && heartbeat > mark.at ? null : mark;
 }
 
-/** `live` with `stopped` set while the worktree's stopped mark holds (`heldStop`). */
+/**
+ * `live` with `stopped` set while the worktree's stopped mark holds
+ * (`heldStop`). Not while a daemon a hook spawned is starting (row 011-20):
+ * a mark `squeal stop` left after that hook found none is void at the
+ * daemon's first heartbeat, and a start that outlives its grace is no longer
+ * starting (`asTold`).
+ */
 export function asStopped(
   store: Store,
   worktreeId: WorktreeId,
   worktree: WorktreeRecord | null | undefined,
   live: DaemonLiveness,
 ): DaemonLiveness {
-  if (live.state !== "down" || heldStop(store, worktreeId, worktree, live) === null) return live;
+  if (live.state !== "down" || live.startingSince !== undefined) return live;
+  if (heldStop(store, worktreeId, worktree, live) === null) return live;
   return { ...live, stopped: true };
 }
 
