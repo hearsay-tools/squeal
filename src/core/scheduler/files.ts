@@ -27,6 +27,13 @@ export interface FileState {
   keyedAt: RevisionNumber | null;
   /** Key of the results last applied for this worktree; `null` when there are none. */
   resultKey: CheckKey | null;
+  /**
+   * How many times results were applied for this worktree (`applyResults`):
+   * a yield's mark ends at the next one, not at `resultKey` alone, since a
+   * forced file is cut while it already has a result at its key (row 011-51,
+   * review `reviews/0.1.237.md`).
+   */
+  resultsApplied: number;
   /** Checks of those results: what the state sink knows for this file. */
   checks: CheckId[];
   /** Whether any of those results is a `fail`. D5 runs these first. */
@@ -90,6 +97,7 @@ export function newFileState(ref: TestFileRef): FileState {
     key: null,
     keyedAt: null,
     resultKey: null,
+    resultsApplied: 0,
     checks: [],
     failing: false,
     durationMs: null,
