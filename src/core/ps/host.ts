@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
-import { loadUserConfig } from "../daemon/user-config.js";
+import { loadConfigFile, positiveInteger } from "../daemon/config-file.js";
+import { defaultHostSlots, userConfigPath } from "../daemon/user-config.js";
 import type { AbsolutePath } from "../types/index.js";
 import type { HostTotals, PsPlaces, ReadPool, Sample } from "./model.js";
 import type { PsHost } from "./shape.js";
@@ -61,9 +62,7 @@ export function memoryShare(privateBytes: number | null, host: PsHost): number |
 const PERMIT = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
 
 export const readPool: ReadPool = (source, places, daemons) => {
-  // 011 C10: `capacity.hostSlots`, else the CPUs less one, through the loader that never throws.
-  const { config } = loadUserConfig({ env: { HOME: places.home }, cpus: source.host().cpus });
-  const slots = config.capacity.hostSlots;
+  const slots = hostSlotsOf(userConfigFile(places), source.host().cpus);
   const locks = source.locks();
   if (locks === null) return { pool: { slots, held: null }, permits: new Map(), foreign: [] };
   const holders = new Map<string, Set<number>>();
@@ -87,6 +86,26 @@ export const readPool: ReadPool = (source, places, daemons) => {
   }
   return { pool: { slots, held }, permits, foreign };
 };
+
+/**
+ * The user-level config file (011 C10). From the home directory until
+ * `PsPlaces` names it, which the wave 1 integration adds; this is the one
+ * line it changes.
+ */
+export function userConfigFile(places: PsPlaces): AbsolutePath {
+  return userConfigPath({ HOME: places.home });
+}
+
+/**
+ * `capacity.hostSlots` of the file at `path`, else the CPUs less one, by the
+ * loader that never throws (011 C10). `ps` reads no other key, and notes no
+ * problem: the daemons note theirs.
+ */
+function hostSlotsOf(path: AbsolutePath, cpus: number): number {
+  const shape = { capacity: { hostSlots: positiveInteger, projects: () => null } };
+  const defaults = { capacity: { hostSlots: defaultHostSlots(cpus) } };
+  return loadConfigFile(path, shape, defaults).value.capacity.hostSlots;
+}
 
 /**
  * The permit files of the pool's directories: `squeal` in the runtime
