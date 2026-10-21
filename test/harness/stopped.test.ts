@@ -138,6 +138,37 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     expect(text(start)).toContain(`${STOPPED}; a hook starts one at the next edit, or run`);
   });
 
+  it("says a daemon is starting when the stop's mark lands while its SessionStart spawns one (row 011-20)", async () => {
+    const r = squealRepo(gitRepo());
+    r.apply(r.pass());
+    await runHook("session-start", recorded("session-start", r.root), recording().deps);
+    // The daemon went, the stop printed its tree before, and the agent edited in the gap.
+    r.store.worktrees.setDaemon(r.worktreeId, null);
+    const tree = await stopTree(r.root as AbsolutePath);
+    writeFileSync(join(r.root, "a.txt"), "edited\n");
+    const { calls, deps } = recording();
+    const spawning: HookDeps = {
+      ...deps,
+      ensureDaemon: async (root, options) => {
+        // `squeal stop` leaves its mark after the socket went: after this hook found none.
+        expect(leaveStoppedMark(root, Date.now() + 1, tree)).toBeNull();
+        return deps.ensureDaemon?.(root, options) ?? "spawned";
+      },
+    };
+
+    const start = await runHook(
+      "session-start",
+      recorded("session-start", r.root, { session_id: "another-session" }),
+      spawning,
+    );
+    const batch = await hook(r, "post-tool-batch", deps);
+
+    expect(calls).toHaveLength(2);
+    expect(text(start)).toContain("A daemon is starting");
+    expect(text(start)).not.toContain(STOPPED);
+    expect(text(batch)).not.toContain(STOPPED);
+  });
+
   it("starts one at the first boundary after an edit, and the mark is gone", async () => {
     const r = await stopped();
     const { calls, deps } = recording();
