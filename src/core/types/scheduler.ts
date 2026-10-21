@@ -1,5 +1,6 @@
 import type { CommitSha, EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
 import type { TestFileRef } from "./keys.js";
+import type { CancelCause } from "./runner.js";
 import { worktreeMetaKey } from "./store.js";
 import type { CheckpointKind, CheckpointLane, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
@@ -359,4 +360,6 @@ export interface Scheduler {
 export interface SchedulerCloseOptions {
   /** Cancel every tier in flight, as a timeout stops one; what it cut short stays queued. */
   readonly cancel?: boolean;
+  /** What the cancel's runs name as its cause (row 011-56); absent, a neutral text. */
+  readonly cause?: Extract<CancelCause, "stop" | "step-down">;
 }

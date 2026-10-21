@@ -103,15 +103,19 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     for (const [at, run] of input.runs.entries()) {
       writeFileSync(hold, "");
       rmSync(started, { force: true });
+      const cancel = run.cancel === undefined ? null : new AbortController();
       const options = {
         runId: `validity-${at}`,
         logDir: join(scratch, "logs"),
         timeoutMs: null,
+        ...(cancel === null ? {} : { signal: cancel.signal }),
         ...(run.fileEndedThrows === true ? { fileEnded: throwing } : {}),
       };
       const report = adapter.run(run.files, options);
       await until(() => existsSync(started), "a held test file to start");
       await adapter.invalidate(run.touched.map((path) => ({ path, kind: "touch" as const })));
+      // Row 011-56: cancelled while held, the held file does not complete.
+      cancel?.abort(run.cancel);
       rmSync(hold, { force: true });
       reports.push(await report);
       hinted(adapter, run.files);
