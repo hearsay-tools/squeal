@@ -12,6 +12,8 @@ import type { ProcessRow } from "./source.js";
 
 /** One false orphan showed on a single sample (`research/should-not-be-up.md` 1). */
 const ORPHAN_WINDOW_MS = 1_000;
+/** A test's own marked child lives for its test, seconds; a daemon's orphan lives on (`lessons.md` P8). */
+const ORPHAN_AGE_MS = 60_000;
 /** C13: the reaper's grace and rounds come well within it. */
 const OVERDUE_MS = 60_000;
 const NODE_COMMS: ReadonlySet<string> = new Set(["MainThread", "node"]);
@@ -100,8 +102,9 @@ export function orphans(c: ProcessContext): PsOrphan[] {
 
 /**
  * D7 `orphan-test-process`: a mark no live daemon's token owns, on both
- * readings at least a second apart, by the same process. While any
- * daemon's token is unread, a mark may be its, so none is claimed.
+ * readings at least a second apart, by the same process, at least a minute
+ * old at the first (014-28). While any daemon's token is unread, a mark may
+ * be its, so none is claimed; a younger process is named, not claimed.
  */
 function orphanTestProcesses(c: ProcessContext): { pid: number; reason: string }[] {
   const { model } = c;
@@ -130,6 +133,16 @@ function orphanTestProcesses(c: ProcessContext): { pid: number; reason: string }
     const a = model.first.sample.table.get(pid);
     const b = model.second.sample.table.get(pid);
     if (before.get(pid) !== mark || a === undefined || a.startTicks !== b?.startTicks) continue;
+    // `now` is the first reading's, so the floor holds on both.
+    const age = c.ageOf(a);
+    if (age === null || age < ORPHAN_AGE_MS) {
+      const why =
+        age === null
+          ? NO_BOOT
+          : `process ${pid}'s mark names no live daemon, but it is ${duration(age)} old, under ${ORPHAN_AGE_MS / 1000} s`;
+      c.name("flag orphan-test-process", why);
+      continue;
+    }
     const token = mark.split(":")[0];
     found.push({ pid, reason: `its mark's token ${token} names no live daemon, on both samples` });
   }
