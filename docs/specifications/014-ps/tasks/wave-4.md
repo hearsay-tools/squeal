@@ -21,3 +21,11 @@ Use /reviewer. Shape: review. Pinned to the candidate SHA the dispatch names. **
 ## 014-30 dogfood, round 2
 
 Use /worker. Shape: finish. After wave 4 is released. **Outcome:** `lessons.md` gains a "Round 2" section that says whether goals 3, 4 and 6 now hold on this host. **Steps:** the round 1 method and scripts (`lessons.md` For the next worker, `/tmp/dogfood-014-15/bin/` if it is still there): three samples 10 minutes apart, two share windows, goal 6's timed runs, every flag judged. **Rules:** as 014-15. **Owns:** `lessons.md`.
+
+Round 2 specifics (coordinator, 2026-10-21, after the release):
+
+- **Bundle:** the released 0.1.248 (tag `squeal--v0.1.248`, bb3e3b540). While the installed plugins still read 0.1.247, run a pinned copy of the tag (`git archive squeal--v0.1.248 plugins/claude-code` into a new directory under `/tmp/dogfood-014-30/`), never a worktree's build, and say which copy each number came from.
+- **Goal 3:** compare Squeal's CPU and memory share with the round 1 independent measure (`share.py`). A share marked `at least` holds when the independent value is at or above it and `unknown` names the cause (D4, D6, `reviews/wave-4.md` B3).
+- **Goal 4:** judge every flag again, and read the store sidecars before and after each sample (no `-wal` or `-shm` created). `leftover-temp` either lists only Squeal's own directories that every use read proves unused, or withholds them into one `unknown` entry (D7, B2). Report how often it withholds on this host, and why (the unreadable processes by name), with the count and size withheld: the human weighs that cost.
+- **Goal 6:** five timed runs of the whole command, with the load, the process count and the daemon count of each.
+- Never run an end command `ps` prints. Send no signal and connect to no socket. Write only under `/tmp/dogfood-014-30/` and `lessons.md`.
