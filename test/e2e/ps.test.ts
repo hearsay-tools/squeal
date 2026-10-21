@@ -14,7 +14,9 @@ import { describe, expect, it } from "vitest";
 import { psCommand } from "../../src/cli/ps.js";
 import { currentUid } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { createProcSource } from "../../src/core/ps/proc.js";
 import type { PsSnapshot } from "../../src/core/ps/shape.js";
+import type { PsSource } from "../../src/core/ps/source.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { runtimeDir } from "../harness/bundle-helpers.js";
 import { e2eSuite, PLUGINS, until } from "./harness.js";
@@ -24,6 +26,7 @@ import {
   daemonIn,
   filesState,
   killed,
+  ownProcesses,
   psJson,
   scratchEnv,
   shippedPs,
@@ -31,6 +34,7 @@ import {
   startDaemon,
   storeFiles,
   whileStopped,
+  withUnknownDaemon,
 } from "./ps-support.js";
 import { SLOW_TUNING } from "./slow-shape.js";
 
@@ -197,9 +201,11 @@ describe("squeal ps --leftovers on real processes (spec 014 D7)", () => {
    * `ps` in-process, not the bundle: the shipped CLI reads `/tmp` on purpose
    * and no TMPDIR moves it (D7), and on a shared host `/tmp` holds other
    * leftovers. A scratch directory stands in for `/tmp`
-   * (`PsCommandOptions.tempDir`); the processes are the host's own.
+   * (`PsCommandOptions.tempDir`). The processes are real, the test's own
+   * (`PsCommandOptions.sourceFor`): a daemon of the host is none of them
+   * (`reviews/wave-3.md` S1).
    */
-  async function sourcePs(args: readonly string[], scratch: string) {
+  async function sourcePs(args: readonly string[], scratch: string, source: PsSource) {
     let stdout = "";
     let stderr = "";
     const io = {
@@ -216,35 +222,47 @@ describe("squeal ps --leftovers on real processes (spec 014 D7)", () => {
         TMPDIR: join(scratch, "tmp"),
       },
     };
-    const code = await psCommand(args, io, { tempDir: join(scratch, "tmp") });
+    const code = await psCommand(args, io, {
+      tempDir: join(scratch, "tmp"),
+      sourceFor: () => source,
+    });
     return { code, stdout, stderr };
   }
 
-  it("lists an old unused temp directory alone, never one a child works in", async () => {
-    const scratch = runtimeDir();
-    const keys = join(scratch, "tmp", `squeal-${currentUid()}`, "tmp");
-    const held = join(keys, "held by a child");
-    const unused = join(keys, "0123456789abcdef");
-    for (const dir of [held, unused, join(scratch, "home"), join(scratch, "run")]) {
-      mkdirSync(dir, { recursive: true });
-    }
-    for (const dir of [held, unused]) writeFileSync(join(dir, "file"), "x");
-    const child = spawn("sleep", ["300"], { cwd: held, stdio: "ignore" });
-    try {
-      await once(child, "spawn");
-      const then = (Date.now() - TWO_HOURS_MS) / 1000;
-      for (const dir of [held, unused]) utimesSync(dir, then, then);
+  it.each([
+    ["the host's daemons", (source: PsSource) => source],
+    ["a host daemon of unknown root", withUnknownDaemon],
+  ])(
+    "lists an old unused temp directory alone, never one a child works in, beside %s",
+    async (_, host) => {
+      const scratch = runtimeDir();
+      const keys = join(scratch, "tmp", `squeal-${currentUid()}`, "tmp");
+      const held = join(keys, "held by a child");
+      const unused = join(keys, "0123456789abcdef");
+      for (const dir of [held, unused, join(scratch, "home"), join(scratch, "run")]) {
+        mkdirSync(dir, { recursive: true });
+      }
+      for (const dir of [held, unused]) writeFileSync(join(dir, "file"), "x");
+      const child = spawn("sleep", ["300"], { cwd: held, stdio: "ignore" });
+      try {
+        await once(child, "spawn");
+        if (child.pid === undefined) throw new Error("the child has no pid");
+        const source = ownProcesses(host(createProcSource()), [process.pid, child.pid]);
+        const then = (Date.now() - TWO_HOURS_MS) / 1000;
+        for (const dir of [held, unused]) utimesSync(dir, then, then);
 
-      expect(await sourcePs(["--leftovers"], scratch)).toEqual({
-        code: 0,
-        stdout: `${unused}\n`,
-        stderr: "",
-      });
-      const json = await sourcePs(["--json"], scratch);
-      const shape = JSON.parse(json.stdout) as PsSnapshot;
-      expect(shape.files.filter((f) => f.flag === "leftover-temp")).toMatchObject([{ count: 1 }]);
-    } finally {
-      child.kill();
-    }
-  }, 60_000);
+        expect(await sourcePs(["--leftovers"], scratch, source)).toEqual({
+          code: 0,
+          stdout: `${unused}\n`,
+          stderr: "",
+        });
+        const json = await sourcePs(["--json"], scratch, source);
+        const shape = JSON.parse(json.stdout) as PsSnapshot;
+        expect(shape.files.filter((f) => f.flag === "leftover-temp")).toMatchObject([{ count: 1 }]);
+      } finally {
+        child.kill();
+      }
+    },
+    60_000,
+  );
 });
