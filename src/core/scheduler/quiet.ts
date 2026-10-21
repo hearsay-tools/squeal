@@ -1,11 +1,6 @@
-import {
-  type EpochMs,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { type EpochMs, type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
+import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { laneOf } from "./tiers.js";
 
@@ -82,13 +77,21 @@ export class BacklogQuiet {
   }
 }
 
-/** Calls `BacklogQuiet.queued` once for each lane of `refs`, the files a revision's re-key queued. */
-export function quietQueued(context: SchedulerContext, refs: Iterable<TestFileRef>): void {
+/**
+ * Calls `BacklogQuiet.queued` once for each lane of `misses` that is
+ * queued: what a revision's content re-key or runner part settled
+ * (`Ledger.settle`). A miss its runner cannot run is not queued.
+ */
+export function quietQueued(
+  context: SchedulerContext,
+  ledger: Ledger,
+  misses: readonly FileState[],
+): void {
   const { quiet } = context;
   if (quiet === undefined) return;
   const now = context.now();
   const lanes = new Set<string>();
-  for (const ref of refs) lanes.add(laneOf(context, ref));
+  for (const { ref } of misses) if (ledger.queue.has(ref)) lanes.add(laneOf(context, ref));
   for (const lane of lanes) quiet.queued(lane, now);
 }
 
