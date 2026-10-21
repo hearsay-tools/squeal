@@ -47,8 +47,7 @@ export class RunCollector {
 
   /**
    * `ended` hears each requested file whose module ended in a final state
-   * before any cancel, as it ends (`RunOptions.fileEnded`, row 011-54). It
-   * runs inside Vitest's reporter hook, so it must not throw.
+   * before any cancel, as it ends (`RunOptions.fileEnded`, row 011-54).
    */
   constructor(
     requested: readonly TestFileRef[],
@@ -108,13 +107,26 @@ export class RunCollector {
     };
     this.modules.set(refKey(ref), end);
     this.log.push(`MODULE ${module.state()} ${label(ref)}`);
-    if (endedInTime(end)) this.ended?.(ref);
+    if (endedInTime(end)) this.#tell(ref);
     for (const error of module.errors()) {
       this.log.push(indent(`file-level error: ${errorText(error)}`));
     }
     for (const { name, errors } of suites) {
       for (const error of errors)
         this.log.push(indent(`suite-level error (${name}): ${errorText(error)}`));
+    }
+  }
+
+  /**
+   * Tells `ended` of `ref`. It runs inside Vitest's reporter hook, where a
+   * throw is an unhandled reporter error that ends the run crashed and
+   * stores nothing (D12), so its error goes to the run log and the run goes on.
+   */
+  #tell(ref: TestFileRef): void {
+    try {
+      this.ended?.(ref);
+    } catch (error) {
+      this.note(`fileEnded of ${label(ref)} threw: ${String(error)}`);
     }
   }
 

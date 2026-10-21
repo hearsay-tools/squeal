@@ -121,10 +121,14 @@ export interface StoreInput {
 export interface VitestInput {
   /** The fixture's files: `$STARTED` and `$HOLD` stand for the held runs' markers, as string literals. */
   readonly files: Readonly<Record<string, string>>;
-  /** In turn on one adapter: the files run, and the paths touched once one of them started. */
+  /**
+   * In turn on one adapter: the files run, the paths touched once one of
+   * them started, and whether its `fileEnded` callback throws (row 011-54).
+   */
   readonly runs: readonly {
     readonly files: readonly TestFileRef[];
     readonly touched: readonly string[];
+    readonly fileEndedThrows?: boolean;
   }[];
 }
 
