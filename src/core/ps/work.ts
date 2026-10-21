@@ -1,4 +1,5 @@
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
+import { daemonUsedMetaKey, readDaemonUsed } from "../daemon/last-use.js";
 import { readPolicy } from "../daemon/policy.js";
 import { isRecord } from "../fs/index.js";
 import {
@@ -172,6 +173,20 @@ function readOne(
     };
   });
 
+  // D9: the worktree's row, read as this daemon's only from the start its row records.
+  const usedText = get(db, "SELECT value FROM meta WHERE key = ?", daemonUsedMetaKey(id))?.value;
+  const lastUse =
+    startedAt === null
+      ? null
+      : readDaemonUsed(typeof usedText === "string" ? usedText : null, startedAt);
+  if (lastUse === null && record !== null)
+    name(
+      "lastUsedAt",
+      typeof usedText === "string"
+        ? `its ${daemonUsedMetaKey(id)} is a predecessor's or ${UNKNOWN} (D9)`
+        : "its daemon records no last use: a release before D9 (D9)",
+    );
+
   const root = d.root ?? (row === null ? null : strOrNull(row, "root"));
   if (root === null) name("settings", "its root is unknown: the defaults stand in");
   return {
@@ -185,8 +200,7 @@ function readOne(
     consumers,
     departedAt: meta("departed", "departedAt", finiteNumber, null),
     slowWaiting: slow === null ? null : slow.waits,
-    // D9: wired after 014-08, which records it.
-    lastUse: null,
+    lastUse,
     settings: settingsOf(root),
   };
 }
