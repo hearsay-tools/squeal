@@ -51,8 +51,10 @@ export class TierYields {
    *   edit's work that came during its run or a promoted file is queued in
    *   its lane, or `revision` makes the lane's runner part wait for the run,
    *   when its estimated remainder exceeds `YIELD_REMAINDER_MS`.
-   * The scheduler cannot see which modules of a run have ended, so every
-   * file of a tier counts as unfinished.
+   * The runner reports which modules ended only with the run's report, so a
+   * tier some of whose files may have ended is not cancelled by the first
+   * rule unless every file of it was re-keyed; it yields only by the third
+   * (C4 step 5 as corrected 2026-10-21, review `reviews/0.1.237.md` B2).
    */
   check(
     context: SchedulerContext,
@@ -132,7 +134,11 @@ export class TierYields {
   }
 }
 
-/** The revisions during its run changed an input of every file of `tier` (`Tier.changes`). */
+/**
+ * The revisions during its run changed an input of every file of `tier`
+ * (`Tier.changes`), those that may have ended too: the runner names them
+ * only in the run's report.
+ */
 function superseded(tier: Tier): boolean {
   return tier.files.every((f) => f.inputs.some((path) => tier.changes.has(path)));
 }
@@ -179,8 +185,9 @@ function recreates(
 }
 
 /**
- * The tier's estimated remainder: the largest last-known duration among its
- * files, a file with none counting 0, less the time it has run.
+ * The tier's estimated remainder: the largest last-known duration among
+ * every file of it, ended or not, a file with none counting 0, less the time
+ * it has run.
  */
 function remainder(context: SchedulerContext, tier: Tier): number {
   const longest = Math.max(0, ...tier.files.map(({ file }) => file.durationMs ?? 0));
