@@ -79,10 +79,8 @@ test("a holder killed with SIGKILL returns its permits to the pool", {
       now: () => clock,
     });
     try {
-      // Every permit is the holder's: this daemon runs on its free worker.
-      const before = pool.acquire(200);
-      expect(before?.grant).toBe(1);
-      before?.release();
+      // Every permit is the holder's: this daemon gets none and waits (row 011-96).
+      expect(pool.acquire(200)).toBeNull();
 
       child.kill("SIGKILL");
       await closed;

@@ -112,25 +112,27 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
     const inFlight = () => runs.filter((r) => r.end === null).flatMap((r) => r.files).length;
     await expect.poll(inFlight, { timeout: 30_000 }).toBeGreaterThanOrEqual(4);
 
-    // Another daemon of the user: its free worker, and it waits for the rest of its share of 2.
+    // Another daemon of the user: no free worker (row 011-96), so it waits for its share of 2.
+    // Processes only: the slots, not the CPU gate, are under test (row 011-98).
     const other = createPermitPool({
       dir: poolDir,
       owner: { pid: process.pid, worktreeId: "other-daemon" },
       hostSlots: 4,
+      cores: null,
     });
     onTestFinished(() => other.close());
-    expect(other.acquire(2)?.grant).toBe(1);
+    expect(other.acquire(2)).toBeNull();
     const waitedFrom = Date.now();
     let share: PoolLease | null = null;
     while (share === null && Date.now() - waitedFrom < 30_000) {
-      share = other.acquire(1);
+      share = other.acquire(2);
       if (share === null) await sleep(50);
     }
     const waited = Date.now() - waitedFrom;
     console.log(
       `011-21 slots: the waiter got its share after ${waited} ms (a slot's file ${SLOT_MS} ms)`,
     );
-    expect(share?.grant).toBe(1);
+    expect(share?.grant).toBeGreaterThanOrEqual(1);
     expect(waited).toBeLessThanOrEqual(SLOT_MS + 1_000);
 
     other.close();

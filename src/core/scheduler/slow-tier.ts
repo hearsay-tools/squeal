@@ -222,9 +222,8 @@ export class SlowTier {
       // Every file another worktree runs: the pump waits on the claims, not the slot (task 001-205).
       if (selected === "claimed") return null;
       if (selected === WAIT_FOR_CAPACITY) {
-        // Another lane's tier has the daemon's free worker and no pool permit is free: its end pumps.
+        // No pool permit it may take is free: the pump looks again within CAPACITY_RECHECK_MS (011-96).
         this.#publish({ kind: "waiting", for: "slot" });
-        this.#arm();
         return null;
       }
       if (selected === null) return "again";
