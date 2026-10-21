@@ -121,6 +121,12 @@ export interface RunnerEnvironment {
    */
   readonly files: readonly RelativePath[];
   /**
+   * The files the key definition before task 011-85 listed in place of
+   * `files`, where they differ: every Vitest project's config files. A
+   * lookup reads the keys over them as one (011 C3, C14). Absent otherwise.
+   */
+  readonly formerFiles?: readonly RelativePath[];
+  /**
    * Installed packages every test file of the project can load: the runner
    * itself, and what the setup and `globalSetup` closures and the config
    * files import (D3, task 001-105). Absent when the runner does not report
