@@ -60,7 +60,9 @@ export class TierYields {
    * A file has ended when the runner named it (`Tier.ended`, row 011-54,
    * review `reviews/0.1.237.md` B2); a runner that names none leaves every
    * file unfinished, so its tier is cancelled by the first rule only when
-   * every file of it was re-keyed.
+   * every file of it was re-keyed. A backlog tier cancelled by either of the
+   * first two rules starts its lane's wait for quiet (`BacklogQuiet`, row
+   * 011-82); a backlog slot, whose runner cannot cancel, starts none.
    */
   check(
     context: SchedulerContext,
@@ -76,6 +78,8 @@ export class TierYields {
         if (decision === "yield")
           for (const { file, key } of unfinished(tier))
             this.#cut.set(file.id, { key, applied: file.resultsApplied });
+        else if (tier.kind === "backlog" && tier.slot !== true)
+          context.quiet?.cancelled(tier.lane, context.now());
         tier.cancel?.abort(decision);
       }
       const standing = typeof decision === "string" ? { kind: "yields" as const } : decision;
