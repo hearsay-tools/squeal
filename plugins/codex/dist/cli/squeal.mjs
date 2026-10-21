@@ -8041,6 +8041,7 @@ function newFileState(ref2) {
     key: null,
     keyedAt: null,
     resultKey: null,
+    resultsApplied: 0,
     checks: [],
     failing: false,
     durationMs: null,
@@ -9669,6 +9670,7 @@ var init_ledger = __esm({
         const { checks, retired } = currentChecks(file.checks, results2);
         this.#retired.push(...retired);
         file.resultKey = key2;
+        file.resultsApplied += 1;
         file.checks = checks;
         file.failing = results2.some((r) => r.outcome === "fail");
         file.durationMs = durationOf(results2) ?? file.durationMs;
@@ -11742,7 +11744,12 @@ var init_yields = __esm({
     init_tiers();
     YIELD_REMAINDER_MS = 3e4;
     TierYields = class {
-      /** The key a yield cut each file at, by `testFileId`, until its result lands or its key moves. */
+      /**
+       * The key a yield cut each file at and its `resultsApplied` then, by
+       * `testFileId`, until a result lands at that key after the cut or its key
+       * moves. A forced file already has a result at its key when it is cut, so
+       * `resultKey` alone would end the mark at once (review `reviews/0.1.237.md`).
+       */
       #cut = /* @__PURE__ */ new Map();
       /** What each tier in flight does for a wait in its lane, by run id, as last published. */
       #standing = /* @__PURE__ */ new Map();
@@ -11756,8 +11763,10 @@ var init_yields = __esm({
        *   edit's work that came during its run or a promoted file is queued in
        *   its lane, or `revision` makes the lane's runner part wait for the run,
        *   when its estimated remainder exceeds `YIELD_REMAINDER_MS`.
-       * The scheduler cannot see which modules of a run have ended, so every
-       * file of a tier counts as unfinished.
+       * The runner reports which modules ended only with the run's report, so a
+       * tier some of whose files may have ended is not cancelled by the first
+       * rule unless every file of it was re-keyed; it yields only by the third
+       * (C4 step 5 as corrected 2026-10-21, review `reviews/0.1.237.md` B2).
        */
       check(context, ledger, tiers, revision) {
         this.#forget(ledger);
@@ -11766,7 +11775,8 @@ var init_yields = __esm({
           const decision = this.#decide(context, ledger, tier, revision);
           if (decision === "cancel" || decision === "yield") {
             if (decision === "yield")
-              for (const { file, key: key2 } of tier.files) this.#cut.set(file.id, key2);
+              for (const { file, key: key2 } of tier.files)
+                this.#cut.set(file.id, { key: key2, applied: file.resultsApplied });
             tier.cancel?.abort();
           }
           const standing = typeof decision === "string" ? { kind: "yields" } : decision;
@@ -11789,15 +11799,17 @@ var init_yields = __esm({
         if (!waitedFor(context, ledger, tier, revision)) return null;
         if (cancel2 === null || tier.slot === true) return { kind: "runner" };
         if (tier.kind === "turn") return { kind: "turn" };
-        if (tier.files.some(({ file, key: key2 }) => this.#cut.get(file.id) === key2)) return { kind: "cut" };
+        if (tier.files.some(({ file, key: key2 }) => this.#cut.get(file.id)?.key === key2))
+          return { kind: "cut" };
         const remainderMs = remainder(context, tier);
         return remainderMs > YIELD_REMAINDER_MS ? "yield" : { kind: "remainder", remainderMs };
       }
-      /** Drops the marks of files whose result landed at the key cut, or whose key moved. */
+      /** Drops the marks of files whose result landed at the key cut after the cut, or whose key moved. */
       #forget(ledger) {
-        for (const [id2, key2] of this.#cut) {
+        for (const [id2, cut] of this.#cut) {
           const file = ledger.files.get(id2);
-          if (file === void 0 || file.key !== key2 || file.resultKey === key2) this.#cut.delete(id2);
+          const landed = file?.resultKey === cut.key && file.resultsApplied > cut.applied;
+          if (file === void 0 || file.key !== cut.key || landed) this.#cut.delete(id2);
         }
       }
       /** Records `standing` for `runId`; whether it changed. */
