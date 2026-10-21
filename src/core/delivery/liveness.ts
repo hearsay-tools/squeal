@@ -180,14 +180,17 @@ export function tellLiveness(store: Store, consumer: Consumer, told: ToldLivenes
  * is starting" at `startingSince`, a down daemon that has not heartbeat since
  * is still starting, `startingSince` set, until `DAEMON_START_GRACE_MS`
  * passed. A heartbeat after the spawn ends the start: a daemon that came up
- * and stopped is down.
+ * and stopped is down. A starting daemon is not stopped (row 011-20): the
+ * stopped mark a `squeal stop` left while the hook spawned it is void at its
+ * first heartbeat (`heldStop`).
  */
 export function asTold(live: DaemonLiveness, told: ToldLiveness, at: EpochMs): DaemonLiveness {
   if (live.state === "alive" || typeof told !== "object") return live;
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
-  return { ...live, startingSince };
+  const { stopped: _void, ...starting } = live;
+  return { ...starting, startingSince };
 }
 
 /** `header` with its daemon's liveness `asTold`. */

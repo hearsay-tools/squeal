@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DAEMON_START_GRACE_MS } from "../../src/core/delivery/index.js";
+import { markStopped } from "../../src/core/delivery/stopped.js";
+import type { EpochMs } from "../../src/core/types/index.js";
 import {
   type HookDeps,
   type HookResult,
@@ -123,6 +125,44 @@ describe("SessionStart after spawning a daemon", () => {
     const out = await batch(r, T + 2_000);
     expect(context(out)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
     expect(context(out)).toContain("No daemon has validated since 2026-01-02T14:02:00.100Z");
+  });
+});
+
+/*
+ * Row 011-20: `squeal stop` leaves its mark once the socket went, so a
+ * SessionStart in between finds none and spawns; the mark lands while it
+ * waits for the heartbeat. The daemon it spawned voids the mark at its first
+ * heartbeat (task 011-08), so it is told as starting, and the mark only once
+ * the start's grace passed.
+ */
+describe("a stop's mark that lands while a SessionStart spawns", () => {
+  async function markedWhileStarting(): Promise<{ r: SquealRepo; start: HookResult }> {
+    const r = squealRepo();
+    r.apply(r.pass());
+    r.daemon("none");
+    const mark = () => markStopped(r.store, r.worktreeId, (T + 1) as EpochMs, null);
+    const start = await runHook(
+      "session-start",
+      recorded("session-start", r.root),
+      deps("spawned", T, mark),
+    );
+    return { r, start };
+  }
+
+  it("says a daemon is starting, and nothing while it starts", async () => {
+    const { r, start } = await markedWhileStarting();
+    expect(context(start)).toContain(` ${STARTING}`);
+    expect(context(start)).not.toContain("stopped by request");
+    expect((await batch(r, T + 1_000)).stdout).toBe("");
+    expect((await batch(r, T + DAEMON_START_GRACE_MS)).stdout).toBe("");
+  });
+
+  it("says the daemon is stopped by request, once, when no heartbeat came within the grace", async () => {
+    const { r } = await markedWhileStarting();
+    const late = await batch(r, T + DAEMON_START_GRACE_MS + 1);
+    expect(context(late)).toMatch(/^SQUEAL · the daemon is stopped by request at revision 1\n/);
+    expect(context(late)).toContain("The daemon is stopped by request (`squeal stop`)");
+    expect((await batch(r, T + DAEMON_START_GRACE_MS + 2)).stdout).toBe("");
   });
 });
 
