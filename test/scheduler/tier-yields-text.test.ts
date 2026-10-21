@@ -79,13 +79,16 @@ describe("the wait says whether the tier yields (spec 011 C15 as amended 2026-10
     const file = named(side);
     expect(file.standing).toMatchObject({ yields: { kind: "remainder" } });
 
-    const reason =
-      /; the tier does not yield: its estimated remainder was (1\d|20) s, not over 30 s/;
+    // The remainder falls as the tier runs: at most its files' 20 s, at least 0, however loaded.
+    const reason = /; the tier does not yield: its estimated remainder was (\d+) s, not over 30 s/;
+    const seconds = (text: string | undefined) => Number(reason.exec(text ?? "")?.[1] ?? NaN);
     // The first line is the header, `Pending (1):`.
     const [, line] = classLines([file], "squeal");
     expect(line).toMatch(reason);
+    expect(seconds(line)).toBeLessThanOrEqual(20);
     const entry = fileEntry(file, "squeal");
     expect(entry.reason).toMatch(reason);
+    expect(seconds(entry.reason)).toBeLessThanOrEqual(20);
     expect(entry.next).toBe(
       "no command runs it sooner (a running tier that does not yield is waited for)",
     );
