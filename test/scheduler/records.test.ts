@@ -45,7 +45,13 @@ const report = (patch: Partial<RunReport>): RunReport => ({
 });
 
 describe("recordsForFile", () => {
-  it("puts the module's time outside its tests on the file-level check (review wave 4.5, N1)", () => {
+  /*
+   * Row 013-03 (gh-62): the file-level check records the whole module's
+   * time, its tests included, so `why` and its durations show what the file
+   * costs; it was the time outside its tests (review wave 4.5, N1), 3.5 s on
+   * a 112 s file.
+   */
+  it("puts the whole module's time on the file-level check (013-03)", () => {
     const fileCheck = { kind: "file", project: "", testPath: file.path };
     const records = recordsForFile({
       ref: file,
@@ -67,7 +73,7 @@ describe("recordsForFile", () => {
     expect(records.map((r) => [r.check, r.durationMs])).toEqual([
       [test("adds"), 2],
       [test("subs"), 3],
-      [fileCheck, 300],
+      [fileCheck, 305],
     ]);
   });
 
@@ -162,6 +168,27 @@ describe("recordsForFile", () => {
     expect(records.map((r) => [r.check.kind, r.outcome])).toEqual([
       ["test", "pass"],
       ["file", "fail"],
+    ]);
+  });
+
+  it("puts the whole module's time on a failing file-level check too (013-03)", () => {
+    const records = recordsForFile({
+      ref: file,
+      key: "k3",
+      report: report({
+        results: [
+          { check: test("adds"), outcome: "pass", durationMs: 2, location: null, errors: [] },
+        ],
+        fileErrors: [{ testFile: file, errors: [importError] }],
+        fileDurations: [{ testFile: file, durationMs: 40 }],
+      }),
+      previousChecks: [test("adds")],
+      provenance,
+      describe: describeFailure,
+    });
+    expect(records.map((r) => [r.check.kind, r.outcome, r.durationMs])).toEqual([
+      ["test", "pass", 2],
+      ["file", "fail", 40],
     ]);
   });
 
