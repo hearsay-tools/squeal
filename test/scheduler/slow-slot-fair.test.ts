@@ -1,0 +1,173 @@
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { readDaemonNotes } from "../../src/core/notes.js";
+import { readSlowActivity } from "../../src/core/slow/state.js";
+import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
+
+/*
+ * Task 004-84, spec 004 D3 as amended: the load guard decides whether the
+ * slow lane runs, never which worktree runs it. Two daemons of two
+ * repositories share one slot directory of one permit, as cezar's
+ * `slow.maxParallel: 1`; the load is injected. `a` is past its
+ * `slow.maxDeferMs` (100 ms) and runs file after file; `b` is fresh, its
+ * budget the default 10 minutes.
+ */
+
+const probes = vi.hoisted(() => ({ count: 0 }));
+
+vi.mock("../../src/core/slow/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/slow/index.js")>();
+  return {
+    ...actual,
+    slowSlotHeld: (...args: Parameters<typeof actual.slowSlotHeld>) => {
+      probes.count += 1;
+      return actual.slowSlotHeld(...args);
+    },
+  };
+});
+
+const OVER = 8;
+const UNDER = 0.5;
+const PAST_BUDGET_MS = 100;
+
+function slotDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "squeal-004-84-slot-"));
+  onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+  return dir;
+}
+
+/** A daemon of its own repository of `count` slow files over the shared `dir`, under `load` per CPU. */
+function daemon(
+  dir: string,
+  { count, load, maxDeferMs }: { count: number; load: number; maxDeferMs?: number },
+): Side & { reads: () => number } {
+  const { main } = claimRepo(count);
+  const include = Array.from({ length: count }, (_, i) => fileName(i));
+  let reads = 0;
+  const s = side(main, {
+    count,
+    policy: {
+      slow: {
+        ...DEFAULT_POLICY.slow,
+        include,
+        maxParallel: 1,
+        ...(maxDeferMs === undefined ? {} : { maxDeferMs }),
+      },
+    },
+    slow: {
+      slotDir: dir,
+      recheckMs: 25,
+      load: () => {
+        reads += 1;
+        return [load];
+      },
+      cpus: () => 1,
+    },
+  });
+  return { ...s, reads: () => reads };
+}
+
+/** Logs each run of `s` as `name` in `order`. */
+function logRuns(s: Side, name: string, order: string[]): void {
+  s.runner.during = () => {
+    order.push(name);
+  };
+}
+
+const ranUnderLoad = (s: Side) =>
+  readDaemonNotes(s.store, s.worktreeId).filter((n) => n.text.includes("ran under load")).length;
+
+const marks = (dir: string) => readdirSync(dir).filter((name) => name.startsWith("slow.wait."));
+
+describe("the load guard never picks the worktree (task 004-84)", { timeout: 30_000 }, () => {
+  it("a fresh daemon waits at the slot and runs a slow file at the next handover", async () => {
+    const dir = slotDir();
+    const order: string[] = [];
+    const a = daemon(dir, { count: 4, load: OVER, maxDeferMs: PAST_BUDGET_MS });
+    logRuns(a, "a", order);
+    a.runner.hold();
+    await a.scheduler.start();
+    await expect.poll(() => a.runner.active, { timeout: 5_000 }).toBe(1);
+    expect(ranUnderLoad(a)).toBe(1);
+
+    const b = daemon(dir, { count: 2, load: OVER });
+    logRuns(b, "b", order);
+    await b.scheduler.start();
+    await expect
+      .poll(() => readSlowActivity(b.store, b.worktreeId), { timeout: 5_000 })
+      .toEqual({ kind: "waiting", for: "slot" });
+    expect(marks(dir)).toHaveLength(1);
+
+    // `a`'s file ends; were `a` to take the slot again, its next file would hold.
+    a.runner.release();
+    a.runner.hold();
+    await expect.poll(() => b.runner.runs.length, { timeout: 5_000 }).toBeGreaterThan(0);
+    expect(order.slice(0, 2)).toEqual(["a", "b"]);
+    // The handover ran it without a guard wait: no budget spent, so no note.
+    expect(ranUnderLoad(b)).toBe(0);
+  });
+
+  it("a guard wait gives way once another worktree takes the slot", async () => {
+    const dir = slotDir();
+    const order: string[] = [];
+    const b = daemon(dir, { count: 2, load: OVER });
+    logRuns(b, "b", order);
+    await b.scheduler.start();
+    await expect
+      .poll(() => readSlowActivity(b.store, b.worktreeId), { timeout: 5_000 })
+      .toEqual({ kind: "waiting", for: "load" });
+
+    const a = daemon(dir, { count: 4, load: OVER, maxDeferMs: PAST_BUDGET_MS });
+    logRuns(a, "a", order);
+    a.runner.hold();
+    await a.scheduler.start();
+    await expect.poll(() => a.runner.active, { timeout: 5_000 }).toBe(1);
+    await expect
+      .poll(() => readSlowActivity(b.store, b.worktreeId), { timeout: 5_000 })
+      .toEqual({ kind: "waiting", for: "slot" });
+
+    a.runner.release();
+    a.runner.hold();
+    await expect.poll(() => b.runner.runs.length, { timeout: 5_000 }).toBeGreaterThan(0);
+    expect(order.slice(0, 2)).toEqual(["a", "b"]);
+  });
+
+  it("with the slot free and the load above the threshold, a slow file still defers", async () => {
+    const dir = slotDir();
+    const b = daemon(dir, { count: 2, load: OVER });
+    await b.scheduler.start();
+    await expect.poll(() => b.reads(), { timeout: 5_000 }).toBeGreaterThanOrEqual(5);
+    await delay(200);
+    expect(b.runner.runs).toEqual([]);
+    expect(readSlowActivity(b.store, b.worktreeId)).toEqual({ kind: "waiting", for: "load" });
+    expect(marks(dir)).toEqual([]);
+  });
+
+  it("below the threshold nothing changes: the slot is handed over file by file, unprobed", async () => {
+    const dir = slotDir();
+    const before = probes.count;
+    const order: string[] = [];
+    const a = daemon(dir, { count: 3, load: UNDER, maxDeferMs: PAST_BUDGET_MS });
+    logRuns(a, "a", order);
+    a.runner.hold();
+    await a.scheduler.start();
+    await expect.poll(() => a.runner.active, { timeout: 5_000 }).toBe(1);
+
+    const b = daemon(dir, { count: 2, load: UNDER });
+    logRuns(b, "b", order);
+    await b.scheduler.start();
+    await expect
+      .poll(() => readSlowActivity(b.store, b.worktreeId), { timeout: 5_000 })
+      .toEqual({ kind: "waiting", for: "slot" });
+
+    a.runner.release();
+    await expect.poll(() => order.length, { timeout: 5_000 }).toBe(5);
+    expect(order).toEqual(["a", "b", "a", "b", "a"]);
+    expect(ranUnderLoad(a) + ranUnderLoad(b)).toBe(0);
+    expect(probes.count).toBe(before);
+  });
+});

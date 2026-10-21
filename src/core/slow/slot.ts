@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { currentUid, preparePrivateDir, userTmpDir } from "../daemon/paths.js";
@@ -99,6 +99,41 @@ export function acquireSlowSlot(request: SlowSlotRequest): SlowSlot | null {
   };
 }
 
+/**
+ * Every one of the user's `permits` slow-slot permits is held: a taker now
+ * would get none. Task 004-84: a slow tier whose load guard would wait
+ * checks it first, since while another worktree holds the slot the wait
+ * lowers no load, and the tier waits at the slot instead. Each permit is
+ * locked and let go at once, without writing its holder; a missing
+ * directory holds none.
+ */
+export function slowSlotHeld(request: Omit<SlowSlotRequest, "owner" | "signal" | "want">): boolean {
+  const { dir } = request;
+  if (!existsSync(dir)) return false;
+  preparePrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
+  const permits = Math.max(1, request.permits ?? 1);
+  for (let i = 0; i < permits; i++) {
+    if (permitFree(join(dir, permitFile(i)))) return false;
+  }
+  return true;
+}
+
+/** Permit `path` is not held: its exclusive lock was taken and released. */
+function permitFree(path: AbsolutePath): boolean {
+  const db = new DatabaseSync(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("BEGIN EXCLUSIVE");
+    db.exec("ROLLBACK");
+    return true;
+  } catch (error) {
+    if (isBusy(error)) return false;
+    throw error;
+  } finally {
+    db.close();
+  }
+}
+
 /** Permit `i`'s lock file: `slow.lock` first, as the one slot was. */
 function permitFile(i: number): string {
   return i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`;
@@ -145,7 +180,9 @@ const WAITER_PREFIX = "slow.wait.";
 /**
  * How long a waiter's mark counts: twice the slow tier's 15 s recheck, so a
  * daemon still retrying keeps it fresh and one that stopped wanting the slot
- * (it died, its load guard waits, its trigger went) is soon ignored.
+ * (it died, its fast work came first, its trigger went) is soon ignored. A
+ * daemon whose load guard waits leaves no mark, since it waits only while
+ * the slot is free (task 004-84).
  */
 export const SLOT_WAITER_FRESH_MS = 30_000;
 
@@ -160,6 +197,7 @@ function waiterPath(dir: AbsolutePath, worktreeId: WorktreeId): AbsolutePath {
  * each retry. A holder between files that finds another worktree's fresh
  * mark skips one turn (`othersWaitingForSlot`), so the slot is handed over
  * file by file: the holder takes it on its next pass only if the waiter did not.
+ * The waiter takes it at the handover without a new load guard wait (task 004-84).
  */
 export function markSlotWaiter(dir: AbsolutePath, worktreeId: WorktreeId): void {
   writeFileSync(waiterPath(dir, worktreeId), `${worktreeId}\n`, { mode: 0o600 });
