@@ -1,4 +1,4 @@
-import { chmodSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -10,7 +10,14 @@ import {
   settleSnapshot,
   waitSettled,
 } from "../../evals/lib/index.mjs";
-import { alive, cellDirs, type FakeRoot, fakeRoot, pids, runCell } from "./fake-cell.js";
+import {
+  cellDirs,
+  FAKE_DAEMON,
+  type FakeRoot,
+  fakeRoot,
+  removeRoot,
+  runCell,
+} from "./fake-cell.js";
 
 // 006-33, 006-35: a scenario's second turn. Its arguments in both harnesses, the bounded wait for
 // Squeal to settle (D10: a load-deferred slow tier has not started), and through the real
@@ -230,7 +237,7 @@ const [cmd, ...rest] = process.argv.slice(2);
 const root = process.cwd();
 const log = process.env.FAKE_LOG;
 const pidFile = join(root, ".git/squeal/fake.pid");
-if (cmd === "daemon") setInterval(() => {}, 1000);
+if (cmd === "daemon") ${FAKE_DAEMON}
 else if (cmd === "start") {
   mkdirSync(join(root, ".git/squeal"), { recursive: true });
   const d = spawn(process.execPath, [fileURLToPath(import.meta.url), "daemon", root], { detached: true, stdio: "ignore" });
@@ -282,10 +289,7 @@ if (codex) {
 
 const roots: FakeRoot[] = [];
 afterEach(() => {
-  for (const f of roots.splice(0)) {
-    for (const pid of pids(f, "daemons")) if (alive(pid)) process.kill(pid, "SIGKILL");
-    rmSync(f.dir, { recursive: true, force: true });
-  }
+  for (const f of roots.splice(0)) removeRoot(f);
 });
 
 /** A fake evals root whose harnesses and Squeal take turns. */

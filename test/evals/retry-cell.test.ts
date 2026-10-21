@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -10,7 +10,7 @@ import {
   scenarioOf,
   situationOf,
 } from "../../evals/lib/index.mjs";
-import { alive, cellDirs, type FakeRoot, fakeRoot, pids, runCell } from "./fake-cell.js";
+import { cellDirs, type FakeRoot, fakeRoot, removeRoot, runCell } from "./fake-cell.js";
 
 // 006-53: the retry scenarios' knobs through run-cell with fakes (a fake Squeal that logs what
 // each command met), and every other scenario's fixture and environment left as they were.
@@ -19,10 +19,7 @@ const REPO = join(import.meta.dirname, "../..");
 const RETRY = ["a9-env-retry", "a10-retry-real", "a11-inherited-flake"];
 const roots: FakeRoot[] = [];
 afterEach(() => {
-  for (const f of roots.splice(0)) {
-    for (const pid of pids(f, "daemons")) if (alive(pid)) process.kill(pid, "SIGKILL");
-    rmSync(f.dir, { recursive: true, force: true });
-  }
+  for (const f of roots.splice(0)) removeRoot(f);
 });
 
 interface Call {
