@@ -453,7 +453,7 @@ export class SlowTier {
     lease: PoolLease | undefined,
   ): Tier | null {
     return context.store.transaction(() => {
-      const tier = startTier(context, ledger, picked, false, lease);
+      const tier = startTier(context, ledger, picked, "slow", lease);
       const first = tier?.files[0];
       if (tier === null || first === undefined) return null;
       const lastDurationMs = longest(tier.files.map(({ file }) => file.durationMs));
