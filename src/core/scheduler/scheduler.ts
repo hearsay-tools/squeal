@@ -232,7 +232,7 @@ class TierScheduler implements Scheduler {
       const ledger = new Ledger(context);
       // Notes written during the baseline carry its revision.
       this.#ledger = ledger;
-      this.#waitChanges = await scan(context, ledger);
+      this.#waitChanges = await scan(context, ledger, options.resumesRest === true);
       // A daemon killed while waiting left its flag (review wave 11, N5); this one decides again.
       stopWaiting(context);
       const missing = await missingInstall(options.root);
@@ -361,7 +361,7 @@ class TierScheduler implements Scheduler {
     stopWaiting(context);
     const unseen = this.#waitChanges;
     this.#waitChanges = [];
-    await baseline(context, ledger, unseen);
+    await baseline(context, ledger, unseen, this.options.resumesRest === true);
   }
 
   /**

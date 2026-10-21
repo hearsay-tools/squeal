@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { PoolCapacity } from "../capacity/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
+import { resumesRest } from "../delivery/liveness.js";
 import { linkedWorktreeDir } from "../fs/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { slowSlotDir } from "../slow/index.js";
@@ -157,6 +158,8 @@ class Daemon {
   readonly #token = randomUUID();
   /** The incarnation registered before this daemon's (`predecessorIncarnation`, task 001-268). */
   #predecessor: string | null | undefined = undefined;
+  /** Its start resumes a rest (`resumesRest`, read before it registers; row 011-91). */
+  #resumesRest = false;
   readonly #version = squealVersion();
   #phase: DaemonPhase = "starting";
   #policy: Policy = DEFAULT_POLICY;
@@ -376,6 +379,8 @@ class Daemon {
       const existing = store.worktrees.get(id);
       // Before this registration replaces it: whose rows this daemon's ledger finds (001-268).
       this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id));
+      // Its heartbeat below ends the rest: whether it resumes one is read first (011 C9).
+      this.#resumesRest = resumesRest(store, existing);
       store.testFileKeys.releaseRunning(id);
       if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id));
       else store.meta.set(daemonExitMetaKey(id), this.#incarnation());
@@ -538,6 +543,7 @@ class Daemon {
         // Its registration's: the writer of the re-key moves a wait trusts (task 001-268).
         incarnation: this.#incarnation(),
         ...(this.#predecessor === undefined ? {} : { predecessor: this.#predecessor }),
+        ...(this.#resumesRest ? { resumesRest: true } : {}),
         runsDir: storePaths(commonDir).runsDir,
         describeFailure,
         now: this.#now,
