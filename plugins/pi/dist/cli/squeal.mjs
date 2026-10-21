@@ -7176,7 +7176,7 @@ var init_test_frame = __esm({
     "use strict";
     V8_FRAME = /^\s*at (.+?)\s*$/;
     V8_POSITION = /^(.+):(\d+):(\d+)$/;
-    PYTEST_ENTRY = /^([^\s:]+):(\d+):(?: |$)/;
+    PYTEST_ENTRY = /^(\S[^:]*):(\d+):(?: |$)/;
     NATIVE_ENTRY = /^\s*File "(.+)", line (\d+)/;
   }
 });
