@@ -1,0 +1,238 @@
+
+### 20:53:55Z load 42.83 43.74 43.99 pool {'slots': 12, 'held': 8}
+ 2487318 claude draining 60m left    c0 quiet 204.3m run 2.7m pend 6 tiers [] slow {"kind":"waiting","for":"slot"} runAll True permits 0 539+0 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 33.9m run 1.4m pend 81 tiers [('fast', 4, False)] slow null runAll False permits 0 1057+1052 MiB stop[..C] df65774b
+ 3207871 codex  serving              c1 quiet 25.1m run 161.9m pend 0 tiers [] slow null runAll False permits 0 531+0 MiB stop[-] f1ca49e6
+ 2815027 claude serving              c1 quiet 7.3m run 0.1m pend 200 tiers [('fast', 2, True)] slow None runAll True permits 1 792+353 MiB stop[-] f98df774
+ 2470877 claude serving              c1 quiet 6.1m run 0.5m pend 248 tiers [('fast', 4, False)] slow null runAll False permits 0 1288+980 MiB stop[-] 2686d16a
+ 2459908 codex  serving              c1 quiet 4.7m run 0.1m pend 2 tiers [] slow {"kind":"waiting","for":"load"} runAll False permits 0 627+0 MiB stop[-] 12bfdcf5
+ 3250068 claude serving              c1 quiet 3.8m run 2.2m pend 89 tiers [('fast', 3, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1187+645 MiB stop[-] 14929e5a
+ 3983406 claude serving              c1 quiet 2.3m run Nonem pend 0 tiers [] slow None runAll False permits 0 95+0 MiB stop[-] 3800fd79
+ 2883814 claude serving              c1 quiet 1.1m run Nonem pend 0 tiers [] slow None runAll False permits 0 106+0 MiB stop[-] 59808a4f
+ 4115697 codex  serving              c1 quiet 0.8m run 51.1m pend 0 tiers [] slow null runAll False permits 0 508+0 MiB stop[-] 6562319e
+ 4127207 codex  serving              c1 quiet 0.6m run 5.6m pend 0 tiers [] slow None runAll False permits 0 459+0 MiB stop[-] d08aba4e
+ 3934572 claude serving              c1 quiet 0.4m run 0.4m pend 40 tiers [('fast', 16, True)] slow None runAll False permits 2 945+387 MiB stop[-] b14fece4
+ 3933209 claude serving              c1 quiet -0.0m run 0.0m pend 80 tiers [('fast', 81, False)] slow None runAll False permits 3 979+194 MiB stop[-] 2b1ead99
+ 4024974 claude serving              c1 quiet 0.0m run Nonem pend 0 tiers [] slow None runAll False permits 0 99+0 MiB stop[-] d125b5ec
+ 4040380 codex  serving              c1 quiet 0.0m run Nonem pend 0 tiers [] slow None runAll False permits 0 471+0 MiB stop[-] c7e89594
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 1057 MiB daemon + 1052 MiB tests, 0 pool permits
+no store at /tmp/squeal-opencode-rnwhxU/proj/.git: 1 daemons skipped
+
+### 20:55:38Z load 51.50 46.72 45.06 pool {'slots': 12, 'held': 8}
+ 2487318 claude draining 60m left    c0 quiet 206.0m run 1.6m pend 5 tiers [('slow', 1, True)] slow {"kind":"running","path":"packages/web/e2e/task-views-layout.e2e.ts","since":1792616041466,"lastDurationMs":73353.35314699999} runAll True permits 1 606+16 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 35.6m run 3.1m pend 81 tiers [('fast', 4, False)] slow null runAll False permits 0 1057+1004 MiB stop[..C] df65774b
+ 3207871 codex  serving              c1 quiet 26.8m run 163.6m pend 0 tiers [] slow null runAll False permits 0 531+0 MiB stop[-] f1ca49e6
+ 2815027 claude serving              c1 quiet 9.0m run 1.8m pend 200 tiers [('fast', 2, True)] slow None runAll True permits 1 800+307 MiB stop[-] f98df774
+ 2470877 claude serving              c1 quiet 7.8m run 2.2m pend 248 tiers [('fast', 4, False)] slow null runAll False permits 0 1288+1096 MiB stop[-] 2686d16a
+ 3983406 claude serving              c1 quiet 4.1m run Nonem pend 0 tiers [] slow None runAll False permits 0 96+0 MiB stop[-] 3800fd79
+ 4115697 codex  serving              c1 quiet 2.5m run 52.8m pend 0 tiers [] slow null runAll False permits 0 510+0 MiB stop[-] 6562319e
+ 4127207 codex  serving              c1 quiet 2.3m run 7.4m pend 0 tiers [] slow None runAll False permits 0 460+0 MiB stop[-] d08aba4e
+ 2459908 codex  serving              c1 quiet 1.1m run 1.8m pend 2 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 521+0 MiB stop[-] 12bfdcf5
+ 2883814 claude serving              c1 quiet 0.7m run Nonem pend 0 tiers [] slow None runAll False permits 0 107+0 MiB stop[-] 59808a4f
+ 4024974 claude serving              c1 quiet 0.6m run Nonem pend 0 tiers [] slow None runAll False permits 0 99+0 MiB stop[-] d125b5ec
+ 3934572 claude serving              c1 quiet 0.4m run 0.4m pend 42 tiers [('fast', 43, False)] slow None runAll False permits 2 945+1570 MiB stop[-] b14fece4
+ 3250068 claude serving              c1 quiet 0.1m run 3.9m pend 89 tiers [('fast', 3, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1173+463 MiB stop[-] 14929e5a
+ 4040380 codex  serving              c1 quiet 0.1m run Nonem pend 0 tiers [] slow None runAll False permits 0 421+0 MiB stop[-] c7e89594
+ 3933209 claude serving              c1 quiet 0.0m run 0.1m pend 39 tiers [('fast', 22, False)] slow None runAll False permits 2 962+1017 MiB stop[-] 2b1ead99
+  311199 ?      serving              c0 quiet Nonem run -0.0m pend 0 tiers [] slow None runAll False permits 0 126+0 MiB stop[-] repo
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 1057 MiB daemon + 1004 MiB tests, 0 pool permits
+no store at /tmp/squeal-e2e-NAmWWV/repo/.git: 3 daemons skipped
+
+### 20:57:20Z load 33.38 41.29 43.25 pool {'slots': 12, 'held': 11}
+ 2487318 claude draining 59m left    c0 quiet 207.7m run 1.7m pend 5 tiers [] slow {"kind":"waiting","for":"slot"} runAll True permits 0 532+0 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 37.3m run 4.8m pend 81 tiers [('fast', 4, False)] slow null runAll False permits 0 1057+533 MiB stop[..C] df65774b
+ 3207871 codex  serving              c1 quiet 28.5m run 165.4m pend 0 tiers [] slow null runAll False permits 0 532+0 MiB stop[-] f1ca49e6
+ 2815027 claude serving              c1 quiet 10.7m run 1.5m pend 198 tiers [('fast', 2, True)] slow None runAll True permits 1 792+107 MiB stop[-] f98df774
+ 2470877 claude serving              c1 quiet 9.5m run 3.9m pend 248 tiers [('fast', 4, False)] slow null runAll False permits 0 1289+684 MiB stop[-] 2686d16a
+ 3983406 claude serving              c1 quiet 5.8m run Nonem pend 0 tiers [] slow None runAll False permits 0 97+0 MiB stop[-] 3800fd79
+ 4115697 codex  serving              c1 quiet 4.2m run 54.5m pend 0 tiers [] slow null runAll False permits 0 511+0 MiB stop[-] 6562319e
+ 4127207 codex  serving              c1 quiet 4.0m run 9.1m pend 0 tiers [] slow None runAll False permits 0 466+0 MiB stop[-] d08aba4e
+ 2459908 codex  serving              c1 quiet 2.8m run 1.6m pend 1 tiers [('slow', 1, False)] slow {"kind":"running","path":"packages/web/e2e/github-layout.e2e.ts","since":1792616144040,"lastDurationMs":236252.987812} runAll False permits 1 605+1169 MiB stop[-] 12bfdcf5
+ 3250068 claude serving              c1 quiet 1.5m run 0.7m pend 86 tiers [('fast', 3, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1188+483 MiB stop[-] 14929e5a
+ 4024974 claude serving              c1 quiet 0.6m run Nonem pend 0 tiers [] slow None runAll False permits 0 100+0 MiB stop[-] d125b5ec
+ 3933209 claude serving              c1 quiet 0.2m run 0.0m pend 66 tiers [('fast', 67, False)] slow None runAll False permits 2 965+114 MiB stop[-] 2b1ead99
+ 4040380 codex  serving              c1 quiet 0.1m run Nonem pend 0 tiers [] slow None runAll False permits 0 479+0 MiB stop[-] c7e89594
+ 3934572 claude serving              c1 quiet -0.0m run -0.0m pend 62 tiers [('fast', 62, False)] slow None runAll False permits 5 948+0 MiB stop[-] b14fece4
+ 2883814 claude serving              c1 quiet -0.0m run Nonem pend 0 tiers [] slow None runAll False permits 0 107+0 MiB stop[-] 59808a4f
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 1057 MiB daemon + 533 MiB tests, 0 pool permits
+
+### 20:59:03Z load 28.23 37.80 41.83 pool {'slots': 12, 'held': 8}
+ 2487318 claude draining 60m left    c0 quiet 209.4m run 0.9m pend 4 tiers [('slow', 1, True)] slow {"kind":"running","path":"packages/web/e2e/tab-coordination.e2e.ts","since":1792616291766,"lastDurationMs":104427.438456} runAll True permits 1 603+713 MiB stop[-] cezar
+  476728 claude serving              c1 quiet 44.1m run 11560.2m pend 0 tiers [] slow None runAll False permits 0 203+0 MiB stop[ABC] squeal
+ 2796376 claude serving              c1 quiet 39.0m run 6.5m pend 81 tiers [('fast', 4, False)] slow null runAll False permits 0 1058+216 MiB stop[..C] df65774b
+ 2815027 claude serving              c1 quiet 12.4m run 1.1m pend 0 tiers [('fast', 198, True)] slow None runAll True permits 1 795+60 MiB stop[-] f98df774
+ 2470877 claude serving              c1 quiet 11.2m run 5.6m pend 248 tiers [('fast', 4, False)] slow null runAll False permits 0 1288+177 MiB stop[-] 2686d16a
+ 2459908 codex  serving              c1 quiet 4.5m run 1.0m pend 1 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 518+0 MiB stop[-] 12bfdcf5
+ 3933209 claude serving              c1 quiet 1.5m run 0.7m pend 39 tiers [('fast', 24, False)] slow None runAll False permits 2 965+858 MiB stop[-] 2b1ead99
+ 4115697 codex  serving              c1 quiet 0.7m run 56.2m pend 0 tiers [] slow null runAll False permits 0 511+0 MiB stop[-] 6562319e
+ 4024974 claude serving              c1 quiet 0.4m run Nonem pend 0 tiers [] slow None runAll False permits 0 101+0 MiB stop[-] d125b5ec
+ 3934572 claude serving              c1 quiet 0.2m run 0.3m pend 40 tiers [('fast', 27, False)] slow None runAll True permits 2 950+110 MiB stop[-] b14fece4
+ 3250068 claude serving              c1 quiet 0.2m run 2.4m pend 86 tiers [('fast', 3, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1184+470 MiB stop[-] 14929e5a
+ 4127207 codex  serving              c1 quiet 0.1m run 10.8m pend 0 tiers [] slow None runAll False permits 0 466+0 MiB stop[-] d08aba4e
+ 3983406 claude serving              c1 quiet 0.1m run Nonem pend 0 tiers [] slow None runAll False permits 0 99+0 MiB stop[-] 3800fd79
+  472874 codex  serving              c1 quiet -0.0m run 167.1m pend 0 tiers [] slow null runAll False permits 0 650+0 MiB stop[-] f1ca49e6
+option A: 1 daemons, 203 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 1 daemons, 203 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 2 daemons, 1261 MiB daemon + 216 MiB tests, 0 pool permits
+
+### 21:00:46Z load 27.62 35.05 40.42 pool {'slots': 12, 'held': 8}
+ 2487318 claude draining 60m left    c0 quiet 211.2m run 1.3m pend 4 tiers [] slow {"kind":"waiting","for":"slot"} runAll True permits 0 532+0 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 40.7m run 8.2m pend 81 tiers [('fast', 4, False)] slow null runAll False permits 0 1058+284 MiB stop[..C] df65774b
+ 2815027 claude serving              c1 quiet 14.1m run 2.8m pend 0 tiers [('fast', 198, True)] slow None runAll True permits 1 793+282 MiB stop[-] f98df774
+ 2470877 claude serving              c1 quiet 12.9m run 7.3m pend 248 tiers [('fast', 4, False)] slow null runAll False permits 0 1288+266 MiB stop[-] 2686d16a
+ 3933209 claude serving              c1 quiet 3.2m run 0.8m pend 25 tiers [('fast', 11, False)] slow None runAll False permits 2 966+276 MiB stop[-] 2b1ead99
+ 4115697 codex  serving              c1 quiet 2.4m run 57.9m pend 0 tiers [] slow null runAll False permits 0 511+0 MiB stop[-] 6562319e
+ 3934572 claude serving              c1 quiet 1.9m run 0.6m pend 31 tiers [('fast', 7, True)] slow None runAll True permits 2 950+930 MiB stop[-] b14fece4
+  472874 codex  serving              c1 quiet 1.7m run 168.8m pend 0 tiers [] slow null runAll False permits 0 459+0 MiB stop[-] f1ca49e6
+ 3983406 claude serving              c1 quiet 1.1m run Nonem pend 0 tiers [] slow None runAll False permits 0 99+0 MiB stop[-] 3800fd79
+ 2459908 codex  serving              c1 quiet 0.9m run 1.2m pend 0 tiers [('slow', 1, False)] slow {"kind":"running","path":"packages/web/e2e/touch-targets.e2e.ts","since":1792616373336,"lastDurationMs":274801.95717700006} runAll False permits 1 601+1094 MiB stop[-] 12bfdcf5
+  513375 claude serving              c1 quiet 0.3m run Nonem pend 0 tiers [] slow None runAll False permits 0 831+0 MiB stop[-] a3cb47dd
+ 3250068 claude serving              c1 quiet 0.2m run 4.2m pend 86 tiers [('fast', 3, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1177+455 MiB stop[-] 14929e5a
+ 4024974 claude serving              c1 quiet 0.0m run Nonem pend 0 tiers [] slow None runAll False permits 0 101+0 MiB stop[-] d125b5ec
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 1058 MiB daemon + 284 MiB tests, 0 pool permits
+
+### 21:02:28Z load 19.02 29.47 37.84 pool {'slots': 12, 'held': 8}
+ 2487318 claude draining 59m left    c0 quiet 212.9m run 3.0m pend 4 tiers [] slow {"kind":"waiting","for":"slot"} runAll True permits 0 532+0 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 42.4m run 1.6m pend 81 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 614+0 MiB stop[..C] df65774b
+ 2470877 claude serving              c1 quiet 14.6m run 1.1m pend 156 tiers [('fast', 92, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 1 1290+0 MiB stop[-] 2686d16a
+ 3933209 claude serving              c1 quiet 4.9m run 1.0m pend 17 tiers [('fast', 4, False)] slow None runAll False permits 1 966+196 MiB stop[-] 2b1ead99
+ 4115697 codex  serving              c1 quiet 4.1m run 59.6m pend 0 tiers [] slow null runAll False permits 0 511+0 MiB stop[-] 6562319e
+ 3934572 claude serving              c1 quiet 3.6m run 0.9m pend 17 tiers [('fast', 3, True)] slow None runAll True permits 1 952+250 MiB stop[-] b14fece4
+  472874 codex  serving              c1 quiet 3.4m run 170.5m pend 0 tiers [] slow null runAll False permits 0 463+0 MiB stop[-] f1ca49e6
+ 3983406 claude serving              c1 quiet 2.9m run Nonem pend 0 tiers [] slow None runAll False permits 0 100+0 MiB stop[-] 3800fd79
+ 2459908 codex  serving              c1 quiet 2.6m run 2.9m pend 0 tiers [('slow', 1, False)] slow {"kind":"running","path":"packages/web/e2e/touch-targets.e2e.ts","since":1792616373336,"lastDurationMs":274801.95717700006} runAll False permits 1 603+1084 MiB stop[-] 12bfdcf5
+ 3250068 claude serving              c1 quiet 1.9m run 5.9m pend 86 tiers [('fast', 3, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1175+177 MiB stop[-] 14929e5a
+ 2815027 claude serving              c1 quiet 0.8m run 4.5m pend 0 tiers [('fast', 198, True)] slow None runAll True permits 1 797+83 MiB stop[-] f98df774
+ 4024974 claude serving              c1 quiet 0.5m run Nonem pend 0 tiers [] slow None runAll False permits 0 102+0 MiB stop[-] d125b5ec
+  513375 claude serving              c1 quiet 0.3m run 0.2m pend 96 tiers [('fast', 83, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 1 985+249 MiB stop[-] a3cb47dd
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 614 MiB daemon + 0 MiB tests, 0 pool permits
+
+### 21:04:11Z load 45.52 35.74 39.19 pool {'slots': 12, 'held': 6}
+ 2487318 claude draining 60m left    c0 quiet 214.6m run 4.7m pend 4 tiers [] slow {"kind":"waiting","for":"slot"} runAll True permits 0 530+0 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 44.1m run 0.0m pend 80 tiers [('slow', 1, False)] slow {"kind":"running","path":"packages/web/e2e/inbox.e2e.ts","since":1792616649257,"lastDurationMs":1101.919019} runAll False permits 1 723+0 MiB stop[..C] df65774b
+ 2470877 claude serving              c1 quiet 16.3m run 1.4m pend 120 tiers [('fast', 36, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 0 1289+396 MiB stop[-] 2686d16a
+ 3933209 claude serving              c1 quiet 6.7m run 1.4m pend 11 tiers [('fast', 3, False)] slow None runAll False permits 1 966+247 MiB stop[-] 2b1ead99
+ 3934572 claude serving              c1 quiet 5.4m run 0.8m pend 12 tiers [('fast', 2, True)] slow None runAll True permits 1 951+285 MiB stop[-] b14fece4
+  472874 codex  serving              c1 quiet 5.1m run 172.2m pend 0 tiers [] slow null runAll False permits 0 466+0 MiB stop[-] f1ca49e6
+ 3983406 claude serving              c1 quiet 4.6m run Nonem pend 0 tiers [] slow None runAll False permits 0 101+0 MiB stop[-] 3800fd79
+ 2459908 codex  serving              c1 quiet 4.3m run 0.0m pend 0 tiers [] slow null runAll False permits 0 626+0 MiB stop[-] 12bfdcf5
+ 3250068 claude serving              c1 quiet 3.6m run 7.6m pend 86 tiers [('fast', 3, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1185+238 MiB stop[-] 14929e5a
+ 2815027 claude serving              c1 quiet 2.5m run 6.2m pend 0 tiers [('fast', 198, True)] slow None runAll True permits 1 793+75 MiB stop[-] f98df774
+  605539 claude serving              c1 quiet 1.2m run 0.8m pend 13 tiers [('fast', 8, True)] slow None runAll False permits 0 864+485 MiB stop[-] 7c4582b2
+ 4115697 codex  serving              c1 quiet 0.5m run 61.4m pend 0 tiers [] slow null runAll False permits 0 511+0 MiB stop[-] 6562319e
+ 4024974 claude serving              c1 quiet -0.0m run Nonem pend 0 tiers [] slow None runAll False permits 0 101+0 MiB stop[-] d125b5ec
+  513375 claude serving              c1 quiet -0.0m run 0.5m pend 90 tiers [('fast', 33, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 0 1208+304 MiB stop[-] a3cb47dd
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 723 MiB daemon + 0 MiB tests, 1 pool permits
+no store at /tmp/squeal-e2e-vTliKE/repo/.git: 1 daemons skipped
+
+### 21:05:53Z load 32.09 34.76 38.54 pool {'slots': 12, 'held': 7}
+ 2487318 claude draining 60m left    c0 quiet 216.3m run 1.4m pend 3 tiers [('slow', 1, True)] slow {"kind":"running","path":"packages/web/e2e/selection-states.e2e.ts","since":1792616669964,"lastDurationMs":115669.89827399999} runAll True permits 1 470+1204 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 45.8m run 1.4m pend 80 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 622+0 MiB stop[..C] df65774b
+ 2470877 claude serving              c1 quiet 18.0m run 0.9m pend 104 tiers [('fast', 16, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 1 988+246 MiB stop[-] 2686d16a
+ 3933209 claude serving              c1 quiet 8.4m run 0.1m pend 5 tiers [('fast', 2, False)] slow None runAll False permits 1 966+246 MiB stop[-] 2b1ead99
+ 3934572 claude serving              c1 quiet 7.1m run 1.1m pend 5 tiers [('fast', 3, True)] slow None runAll True permits 2 950+215 MiB stop[-] b14fece4
+  472874 codex  serving              c1 quiet 6.8m run 173.9m pend 0 tiers [] slow null runAll False permits 0 467+0 MiB stop[-] f1ca49e6
+ 3983406 claude serving              c1 quiet 6.3m run Nonem pend 0 tiers [] slow None runAll False permits 0 100+0 MiB stop[-] 3800fd79
+ 3250068 claude serving              c1 quiet 5.3m run 1.4m pend 82 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 640+0 MiB stop[-] 14929e5a
+ 2815027 claude serving              c1 quiet 4.2m run 7.9m pend 0 tiers [('fast', 198, True)] slow None runAll True permits 1 799+922 MiB stop[-] f98df774
+  605539 claude serving              c1 quiet 2.9m run 0.7m pend 7 tiers [('fast', 2, False)] slow None runAll False permits 0 865+438 MiB stop[-] 7c4582b2
+ 4115697 codex  serving              c1 quiet 2.2m run 63.1m pend 0 tiers [] slow null runAll False permits 0 511+0 MiB stop[-] 6562319e
+ 2459908 codex  serving              c1 quiet 0.7m run 1.8m pend 0 tiers [] slow null runAll False permits 0 366+0 MiB stop[-] 12bfdcf5
+  513375 claude serving              c1 quiet 0.1m run 0.4m pend 127 tiers [('fast', 95, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 1 1469+274 MiB stop[-] a3cb47dd
+ 4024974 claude serving              c1 quiet 0.0m run Nonem pend 0 tiers [] slow None runAll False permits 0 102+0 MiB stop[-] d125b5ec
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 622 MiB daemon + 0 MiB tests, 0 pool permits
+
+### 21:07:36Z load 44.12 38.70 39.58 pool {'slots': 12, 'held': 6}
+ 2487318 claude draining 58m left    c0 quiet 218.0m run 0.2m pend 2 tiers [('slow', 1, True)] slow {"kind":"running","path":"packages/web/e2e/task-thread.e2e.ts","since":1792616842342,"lastDurationMs":119342.314601} runAll True permits 1 515+872 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 47.6m run 0.3m pend 79 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 565+0 MiB stop[..C] df65774b
+ 2470877 claude serving              c1 quiet 19.7m run 0.3m pend 97 tiers [('fast', 7, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 1 870+384 MiB stop[-] 2686d16a
+ 3934572 claude serving              c1 quiet 8.8m run 1.5m pend 2 tiers [('fast', 1, True)] slow None runAll True permits 0 950+230 MiB stop[-] b14fece4
+  472874 codex  serving              c1 quiet 8.5m run 175.6m pend 0 tiers [] slow null runAll False permits 0 467+0 MiB stop[-] f1ca49e6
+ 3983406 claude serving              c1 quiet 8.0m run Nonem pend 0 tiers [] slow None runAll False permits 0 101+0 MiB stop[-] 3800fd79
+ 3250068 claude serving              c1 quiet 7.0m run 0.5m pend 81 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 735+0 MiB stop[-] 14929e5a
+ 2815027 claude serving              c1 quiet 5.9m run 9.6m pend 0 tiers [('fast', 198, True)] slow None runAll True permits 1 665+159 MiB stop[-] f98df774
+ 4115697 codex  serving              c1 quiet 3.9m run 64.8m pend 0 tiers [] slow null runAll False permits 0 512+0 MiB stop[-] 6562319e
+ 2459908 codex  serving              c1 quiet 2.4m run 3.5m pend 0 tiers [] slow null runAll False permits 0 358+0 MiB stop[-] 12bfdcf5
+  605539 claude serving              c1 quiet 0.1m run 1.1m pend 3 tiers [] slow None runAll False permits 0 472+0 MiB stop[-] 7c4582b2
+  513375 claude serving              c1 quiet 0.1m run 1.0m pend 101 tiers [('fast', 82, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1473+631 MiB stop[-] a3cb47dd
+  783376 claude serving              c1 quiet 0.0m run -0.0m pend 90 tiers [] slow None runAll False permits 0 507+0 MiB stop[-] 5c664a42
+ 3933209 claude serving              c1 quiet -0.0m run 1.9m pend 1 tiers [('fast', 2, False)] slow None runAll False permits 1 966+127 MiB stop[-] 2b1ead99
+ 4024974 claude serving              c1 quiet 0.0m run Nonem pend 0 tiers [] slow None runAll False permits 0 102+0 MiB stop[-] d125b5ec
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 565 MiB daemon + 0 MiB tests, 0 pool permits
+
+### 21:09:18Z load 39.38 38.89 39.58 pool {'slots': 12, 'held': 9}
+ 2487318 claude draining 60m left    c0 quiet 219.7m run 1.9m pend 2 tiers [('slow', 1, True)] slow {"kind":"running","path":"packages/web/e2e/task-thread.e2e.ts","since":1792616842342,"lastDurationMs":119342.314601} runAll True permits 1 508+1185 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 49.3m run 2.0m pend 79 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 462+0 MiB stop[..C] df65774b
+ 2470877 claude serving              c1 quiet 21.4m run 0.2m pend 92 tiers [('fast', 5, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 1 864+465 MiB stop[-] 2686d16a
+ 3934572 claude serving              c1 quiet 10.6m run 0.7m pend 0 tiers [] slow None runAll False permits 0 950+0 MiB stop[-] b14fece4
+  472874 codex  serving              c1 quiet 10.2m run 177.3m pend 0 tiers [] slow null runAll False permits 0 468+0 MiB stop[-] f1ca49e6
+ 3983406 claude serving              c1 quiet 9.7m run Nonem pend 0 tiers [] slow None runAll False permits 0 101+0 MiB stop[-] 3800fd79
+ 3250068 claude serving              c1 quiet 8.7m run 2.2m pend 81 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 628+0 MiB stop[-] 14929e5a
+ 2815027 claude serving              c1 quiet 7.6m run 1.3m pend 21 tiers [('fast', 20, True)] slow None runAll True permits 3 665+339 MiB stop[-] f98df774
+ 2459908 codex  serving              c1 quiet 4.1m run 5.2m pend 0 tiers [] slow null runAll False permits 0 356+0 MiB stop[-] 12bfdcf5
+  783376 claude serving              c1 quiet 0.7m run 1.3m pend 54 tiers [('fast', 20, True)] slow None runAll False permits 1 616+245 MiB stop[-] 5c664a42
+  605539 claude serving              c1 quiet 0.7m run 0.6m pend 15 tiers [('fast', 54, False)] slow None runAll True permits 1 616+63 MiB stop[-] 7c4582b2
+  796553 claude serving              c1 quiet 0.4m run Nonem pend 0 tiers [] slow None runAll False permits 0 94+0 MiB stop[-] 5b680467
+ 4115697 codex  serving              c1 quiet 0.4m run 66.5m pend 0 tiers [] slow null runAll False permits 0 512+0 MiB stop[-] 6562319e
+ 4024974 claude serving              c1 quiet 0.3m run Nonem pend 0 tiers [] slow None runAll False permits 0 102+0 MiB stop[-] d125b5ec
+  513375 claude serving              c1 quiet 0.2m run 1.4m pend 92 tiers [('fast', 44, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1490+0 MiB stop[-] a3cb47dd
+ 3933209 claude serving              c1 quiet 0.1m run 0.9m pend 0 tiers [] slow None runAll False permits 0 967+0 MiB stop[-] 2b1ead99
+  862279 claude serving              c0 quiet -0.0m run 11570.4m pend 0 tiers [] slow None runAll False permits 0 193+0 MiB stop[-] squeal
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 462 MiB daemon + 0 MiB tests, 0 pool permits
+
+### 21:11:01Z load 22.97 32.94 37.34 pool {'slots': 12, 'held': 7}
+ 2487318 claude draining 60m left    c0 quiet 221.4m run 0.2m pend 1 tiers [('slow', 1, True)] slow {"kind":"running","path":"packages/web/e2e/quick-list.e2e.ts","since":1792617049675,"lastDurationMs":125670.454879} runAll True permits 1 450+938 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 51.0m run 0.9m pend 78 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 594+0 MiB stop[..C] df65774b
+ 2470877 claude serving              c1 quiet 23.1m run 0.2m pend 88 tiers [('fast', 4, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 863+473 MiB stop[-] 2686d16a
+  472874 codex  serving              c1 quiet 11.9m run 179.0m pend 0 tiers [] slow null runAll False permits 0 468+0 MiB stop[-] f1ca49e6
+ 3983406 claude serving              c1 quiet 11.4m run Nonem pend 0 tiers [] slow None runAll False permits 0 105+0 MiB stop[-] 3800fd79
+ 3250068 claude serving              c1 quiet 10.4m run 0.3m pend 79 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 778+0 MiB stop[-] 14929e5a
+  783376 claude serving              c1 quiet 2.4m run 1.3m pend 40 tiers [('fast', 14, True)] slow None runAll False permits 1 618+80 MiB stop[-] 5c664a42
+  605539 claude serving              c1 quiet 2.4m run 0.7m pend 3 tiers [('fast', 12, True)] slow None runAll True permits 1 615+93 MiB stop[-] 7c4582b2
+ 4115697 codex  serving              c1 quiet 2.1m run 68.2m pend 0 tiers [] slow null runAll False permits 0 512+0 MiB stop[-] 6562319e
+ 3933209 claude serving              c1 quiet 1.8m run 2.6m pend 0 tiers [] slow None runAll False permits 0 579+0 MiB stop[-] 2b1ead99
+ 4024974 claude serving              c1 quiet 1.7m run Nonem pend 0 tiers [] slow None runAll False permits 0 103+0 MiB stop[-] d125b5ec
+ 2459908 codex  serving              c1 quiet 0.3m run 6.9m pend 0 tiers [] slow null runAll False permits 0 361+0 MiB stop[-] 12bfdcf5
+ 2815027 claude serving              c1 quiet 0.2m run 0.5m pend 0 tiers [] slow None runAll False permits 0 666+0 MiB stop[-] f98df774
+  513375 claude serving              c1 quiet 0.2m run 0.1m pend 88 tiers [('fast', 3, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 2 1476+913 MiB stop[-] a3cb47dd
+  796553 claude serving              c1 quiet -0.0m run Nonem pend 0 tiers [] slow None runAll False permits 0 96+0 MiB stop[-] 5b680467
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 594 MiB daemon + 0 MiB tests, 0 pool permits
+
+### 21:12:43Z load 37.15 34.55 37.43 pool {'slots': 12, 'held': 8}
+ 2487318 claude draining 59m left    c0 quiet 223.1m run 1.9m pend 1 tiers [('slow', 1, True)] slow {"kind":"running","path":"packages/web/e2e/quick-list.e2e.ts","since":1792617049675,"lastDurationMs":125670.454879} runAll True permits 1 438+1384 MiB stop[-] cezar
+ 2796376 claude serving              c1 quiet 52.7m run 2.6m pend 78 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 462+0 MiB stop[..C] df65774b
+ 2470877 claude serving              c1 quiet 24.9m run 0.4m pend 84 tiers [('fast', 4, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 3 873+731 MiB stop[-] 2686d16a
+  472874 codex  serving              c1 quiet 13.6m run 180.7m pend 0 tiers [] slow null runAll False permits 0 468+0 MiB stop[-] f1ca49e6
+ 3983406 claude serving              c1 quiet 13.1m run Nonem pend 0 tiers [] slow None runAll False permits 0 104+0 MiB stop[-] 3800fd79
+ 3250068 claude serving              c1 quiet 12.2m run 2.0m pend 79 tiers [] slow {"kind":"waiting","for":"slot"} runAll False permits 0 627+0 MiB stop[-] 14929e5a
+  783376 claude serving              c1 quiet 4.1m run 1.3m pend 22 tiers [('fast', 18, True)] slow None runAll False permits 3 614+296 MiB stop[-] 5c664a42
+  605539 claude serving              c1 quiet 4.1m run 1.1m pend 0 tiers [('fast', 3, True)] slow None runAll True permits 1 621+244 MiB stop[-] 7c4582b2
+ 4115697 codex  serving              c1 quiet 3.9m run 69.9m pend 0 tiers [] slow null runAll False permits 0 512+0 MiB stop[-] 6562319e
+ 3933209 claude serving              c1 quiet 3.5m run 4.3m pend 0 tiers [] slow None runAll False permits 0 585+0 MiB stop[-] 2b1ead99
+ 2459908 codex  serving              c1 quiet 2.0m run 8.6m pend 0 tiers [] slow null runAll False permits 0 363+0 MiB stop[-] 12bfdcf5
+ 4024974 claude serving              c1 quiet 1.7m run Nonem pend 0 tiers [] slow None runAll False permits 0 101+0 MiB stop[-] d125b5ec
+  796553 claude serving              c1 quiet 0.4m run Nonem pend 0 tiers [] slow None runAll False permits 0 105+0 MiB stop[-] 5b680467
+  513375 claude serving              c1 quiet 0.4m run 0.2m pend 125 tiers [('fast', 4, False)] slow {"kind":"waiting","for":"fast"} runAll False permits 0 1605+370 MiB stop[-] a3cb47dd
+option A: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option B: 0 daemons, 0 MiB daemon + 0 MiB tests, 0 pool permits
+option C: 1 daemons, 462 MiB daemon + 0 MiB tests, 0 pool permits
