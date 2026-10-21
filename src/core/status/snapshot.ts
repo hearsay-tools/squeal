@@ -1,5 +1,6 @@
 import { readPolicy } from "../daemon/policy.js";
 import { vitestDetected } from "../daemon/runner.js";
+import { withTestFileFrames } from "../delivery/attribution.js";
 import { asStopped } from "../delivery/stopped.js";
 import { worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
@@ -140,7 +141,11 @@ function snapshot(
   const held = openFiles(runs);
   const header = readHeader(store, worktreeId, states, keys, undefined, held);
   // Task 001-404: each failure says how old its run is and the load it ran under.
-  const knownFailures = withRecorded(store, worktreeId, states, header.revision);
+  const knownFailures = withTestFileFrames(
+    store,
+    worktreeId,
+    withRecorded(store, worktreeId, states, header.revision),
+  );
   const load = once(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
