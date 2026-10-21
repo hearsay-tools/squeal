@@ -59,6 +59,7 @@ For development, load this directory for one session: `claude --plugin-dir plugi
 | `hooks/run` | Every entry's `command`. Without its `args` it exits 0 before reading anything, so a harness that drops them (Cursor CLI) runs nothing (spec 012 CC1). With them it `exec`s them, after the per-tool hooks' `--if-squeal` test for Squeal. |
 | `dist/*.mjs` | One bundle per hook, Node built-ins only. Sources: `src/harness/claude-code/`. |
 | `dist/cli/squeal.mjs`, `bin/squeal` | The CLI on the Bash tool's PATH, and the daemon the hooks spawn. |
+| `dist/cli/ps.mjs` | `squeal ps` alone, which `bin/squeal` and `bin/squeal-launcher` run for `ps`, so it loads only its own code (spec 014 goal 6). Any other command goes to `squeal.mjs`. |
 | `bin/squeal-launcher` | The terminal's `squeal`, copied by `install.sh`: runs the installed plugin's CLI. The same file as the Codex plugin's. |
 | `dist/cli/front-desk.mjs` | The daemon's socket worker thread, loaded beside the CLI. |
 | `skills/squeal/SKILL.md` | When and how to pull `squeal status`, wait with `squeal status --wait`, `squeal why`, `squeal run --all`; policy keys. |

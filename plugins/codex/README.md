@@ -44,6 +44,7 @@ A launcher that starts threads through `codex app-server`, as Cezar does, can de
 | `hooks/hooks.json` | SessionStart, UserPromptSubmit, PreToolUse (`*`), PostToolUse (`*`), Stop, SubagentStart, SubagentStop: `timeout: 2`. Interrupt and SessionEnd: `timeout: 3`, their clamp. Each command is one string, since Codex drops `args`. PreToolUse and PostToolUse run behind a `sh` test of `$PWD` that exits before Node starts in a repository with neither `squeal.config.json` nor a store. |
 | `dist/*.mjs` | One bundle per hook, built from `src/harness/codex/`. |
 | `dist/cli/squeal.mjs` | The CLI the hooks spawn as the daemon, with `dist/cli/front-desk.mjs` beside it. |
+| `dist/cli/ps.mjs` | `squeal ps` alone, which `bin/squeal-launcher` runs for `ps`, so it loads only its own code (spec 014 goal 6). |
 | `skills/squeal/` | The skill, copied by the build from `plugins/claude-code/skills/squeal/`. |
 | `bin/squeal-launcher` | The terminal's `squeal`, copied by `install.sh`: runs the installed plugin's CLI. The same file as the Claude Code plugin's. |
 | `.codex-plugin/plugin.json` | The manifest. The build writes its `version` from the root `package.json`. |

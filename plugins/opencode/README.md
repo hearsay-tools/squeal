@@ -1,6 +1,6 @@
 # Squeal package for OpenCode
 
-Spec 008 D1, D2, D4 and D6. This directory is an OpenCode plugin package: `package.json` names `./dist/plugin.mjs` as its `exports["./server"]`, the module shape `opencode plugin` loads, and `engines.opencode`. `dist/` is committed and built by `npm run build:plugin` (`src/harness/opencode/build.ts`): the plugin `plugin.mjs`, the bridge, one entry per request kind under `hooks/` (`register.mjs`, `prompt.mjs`, `before.mjs`, `after.mjs`, `stop.mjs`, `end-turn.mjs`, `wait.mjs`, `end.mjs`, `ping.mjs`), the CLI and daemon under `cli/`, and the runtime files. `bin/squeal` runs this package's CLI; `bin/squeal-launcher` is the launcher every plugin ships.
+Spec 008 D1, D2, D4 and D6. This directory is an OpenCode plugin package: `package.json` names `./dist/plugin.mjs` as its `exports["./server"]`, the module shape `opencode plugin` loads, and `engines.opencode`. `dist/` is committed and built by `npm run build:plugin` (`src/harness/opencode/build.ts`): the plugin `plugin.mjs`, the bridge, one entry per request kind under `hooks/` (`register.mjs`, `prompt.mjs`, `before.mjs`, `after.mjs`, `stop.mjs`, `end-turn.mjs`, `wait.mjs`, `end.mjs`, `ping.mjs`), the CLI and daemon under `cli/` with `squeal ps` alone as `cli/ps.mjs`, and the runtime files. `bin/squeal` runs this package's CLI, and `cli/ps.mjs` for `ps` (spec 014 goal 6); `bin/squeal-launcher` is the launcher every plugin ships.
 
 ## Install
 
