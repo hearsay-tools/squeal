@@ -111,7 +111,7 @@ describe("a serving daemon's work", () => {
     expect(work.lastUse).toBeNull();
   });
 
-  test("open runs and checkpoints only since the daemon started, oldest first", () => {
+  test("open runs and checkpoints only since the daemon started, oldest first, by lane", () => {
     serve(800, alpha);
     writeStore(alpha, daemonRecord(alpha), (store) => {
       // Left open 21.6 h before by an earlier daemon (`research/daemon-discovery.md` 3).
@@ -150,11 +150,21 @@ describe("a serving daemon's work", () => {
         testFiles: files("a", "b"),
         startedAt: STARTED_AT + 4_000,
       });
+      store.checkpoints.start({
+        id: "cp-fast",
+        worktreeId: alpha.id,
+        revision: 3,
+        kind: "run-all",
+        testFiles: files("a"),
+        startedAt: STARTED_AT + 4_500,
+        lane: "fast",
+      });
       run(store, "edit", STARTED_AT + 5_000, { testFiles: files("a", "b") });
       run(store, "ended", STARTED_AT + 6_000, { ended: true });
       run(store, "tier", STARTED_AT + 7_000, { checkpointId: "cp-slow" });
       run(store, "both", STARTED_AT + 8_000, { checkpointId: "cp-both" });
       run(store, "slow", STARTED_AT + 9_000, { testFiles: files("test/e2e/x.test.ts") });
+      run(store, "fastcp", STARTED_AT + 9_500, { checkpointId: "cp-fast" });
       publishSlowActivity(store, alpha.id, {
         kind: "running",
         path: "test/e2e/x.test.ts",
@@ -164,7 +174,8 @@ describe("a serving daemon's work", () => {
     });
     const work = workOf(800);
     expect(work.tiers).toEqual([
-      { runId: "edit", lane: null, files: 2, startedAt: STARTED_AT + 5_000, checkpointId: null },
+      // The slow tier names the run it starts, so any other is the fast lane's.
+      { runId: "edit", lane: "fast", files: 2, startedAt: STARTED_AT + 5_000, checkpointId: null },
       {
         runId: "tier",
         lane: "slow",
@@ -174,16 +185,24 @@ describe("a serving daemon's work", () => {
       },
       {
         runId: "both",
-        lane: null,
+        lane: "fast",
         files: 1,
         startedAt: STARTED_AT + 8_000,
         checkpointId: "cp-both",
       },
       { runId: "slow", lane: "slow", files: 1, startedAt: STARTED_AT + 9_000, checkpointId: null },
+      {
+        runId: "fastcp",
+        lane: "fast",
+        files: 1,
+        startedAt: STARTED_AT + 9_500,
+        checkpointId: "cp-fast",
+      },
     ]);
     expect(work.checkpoints).toEqual([
       { id: "cp-slow", startedAt: STARTED_AT + 1_000, lane: "slow", files: 3 },
       { id: "cp-both", startedAt: STARTED_AT + 4_000, lane: null, files: 2 },
+      { id: "cp-fast", startedAt: STARTED_AT + 4_500, lane: "fast", files: 1 },
     ]);
     expect(work.slowWaiting).toBe(true);
   });
@@ -388,9 +407,12 @@ test("meta values of a format it does not know read as null, and unknown names e
       startedAt: STARTED_AT + 1,
     });
     store.meta.set(worktreeMetaKey("checkpointLanes", alpha.id), "nope");
+    // With the slow-tier row unreadable, the store cannot tell this run's lane.
+    run(store, "edit", STARTED_AT + 2);
   });
   const { work, unknown } = read();
   expect(work.get(800)).toMatchObject({ departedAt: null, slowWaiting: null });
+  expect(work.get(800)?.tiers.map((t) => [t.runId, t.lane])).toEqual([["edit", null]]);
   expect(work.get(800)?.checkpoints).toEqual([
     { id: "cp", startedAt: STARTED_AT + 1, lane: null, files: 1 },
   ]);
