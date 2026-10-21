@@ -1,4 +1,12 @@
-import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
@@ -224,4 +232,66 @@ describe("the launcher", () => {
       expect(statSync(copy).mode & 0o111).toBe(0o111);
     },
   );
+});
+
+/*
+ * Spec 005 D3 as amended 2026-10-21 (row 005-73): as <PLUGIN_DATA>/bin/squeal,
+ * the launcher also runs Squeal's copies beside it, which a Codex install of
+ * another version does not delete.
+ */
+describe("the launcher in the plugin data directory", () => {
+  /** The data directory as Codex's SessionStart leaves it: the launcher and a copy of each version. */
+  function kept(m: Machine, versions: readonly string[]): string {
+    const data = join(m.codexHome, "plugins", "data", "squeal-hearsay");
+    for (const v of versions) {
+      const cli = join(data, "versions", v, "dist", "cli", "squeal.mjs");
+      mkdirSync(join(cli, ".."), { recursive: true });
+      writeFileSync(
+        cli,
+        `console.log(JSON.stringify({ version: "${v}", harness: "copy", args: process.argv.slice(2) }));\n`,
+      );
+    }
+    mkdirSync(join(data, "bin"), { recursive: true });
+    writeFileSync(join(data, "bin", "squeal"), readFileSync(LAUNCHER, "utf8"));
+    chmodSync(join(data, "bin", "squeal"), 0o755);
+    return join(data, "bin", "squeal");
+  }
+  const run = (m: Machine, launcher: string) => {
+    const r = m.sh([launcher, "status"]);
+    return { ...r, ran: JSON.parse(r.stdout) as { version: string; harness: string } };
+  };
+
+  it("runs the copy over the cache's plugin of the same version, and says nothing", () => {
+    const m = machine();
+    codexInstalls(m, ["0.1.250"]);
+    const r = run(m, kept(m, ["0.1.249", "0.1.250"]));
+    expect(r.ran).toMatchObject({ version: "0.1.250", harness: "copy" });
+    expect(r.stderr).toBe("");
+  });
+
+  it("runs a newer installed plugin, and names the session's older copy", () => {
+    const m = machine();
+    codexInstalls(m, ["0.1.250"]);
+    const r = run(m, kept(m, ["0.1.249"]));
+    expect(r.ran).toMatchObject({ version: "0.1.250", harness: "codex" });
+    expect(r.stderr).toBe(
+      "squeal: running squeal 0.1.250; Codex sessions started on 0.1.249 run 0.1.249 until they restart.\n",
+    );
+  });
+
+  it("runs the newest copy when no plugin is installed, as while Codex replaces its cache", () => {
+    const m = machine();
+    const r = run(m, kept(m, ["0.1.249", "0.1.250"]));
+    expect(r.ran).toMatchObject({ version: "0.1.250", harness: "copy" });
+    expect(r.stderr).toBe("");
+  });
+
+  it("sees no copies as the plugin's own launcher, with versions/ beside its plugin root", () => {
+    const m = machine();
+    codexInstalls(m, ["0.1.250"]);
+    const root = join(m.codexHome, "plugins", "cache", "hearsay", "squeal", "0.1.250");
+    mkdirSync(join(root, "versions", "0.1.251", "dist", "cli"), { recursive: true });
+    const r = m.sh([join(root, "bin", "squeal-launcher"), "status"]);
+    expect(JSON.parse(r.stdout)).toMatchObject({ version: "0.1.250", harness: "codex" });
+  });
 });

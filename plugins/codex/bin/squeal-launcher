@@ -9,16 +9,20 @@
 # the Pi and OpenCode packages install.sh unpacks under
 # ${XDG_DATA_HOME:-~/.local/share}/squeal/pi and .../squeal/opencode give theirs
 # (spec 009 D1, 008 D1). When they differ it runs the newest, since no hook
-# of an older plugin can replace a newer daemon. Every plugin ships this same
-# file; `squeal update` re-copies it when the format line above grows.
+# of an older plugin can replace a newer daemon. As <PLUGIN_DATA>/bin/squeal,
+# which Codex's SessionStart writes, it also sees Squeal's copies beside it in
+# <PLUGIN_DATA>/versions/<version>/, which a Codex install does not delete, and
+# runs a copy over an installed plugin of the same version (spec 005 D3 as
+# amended 2026-10-21). Every plugin ships this same file; `squeal update`
+# re-copies it when the format line above grows.
 set -eu
 command -v node >/dev/null 2>&1 || {
   echo "squeal: Node 22.13 or later is needed, and node is not on the PATH" >&2
   exit 1
 }
 cli=$(node -e '
-const { existsSync, readFileSync, readdirSync } = require("node:fs");
-const { basename, join, sep } = require("node:path");
+const { existsSync, readFileSync, readdirSync, realpathSync } = require("node:fs");
+const { basename, dirname, join, sep } = require("node:path");
 const env = process.env;
 const home = env.HOME ?? "";
 const cliOf = (dir) => join(dir, "dist", "cli", "squeal.mjs");
@@ -31,6 +35,11 @@ const compare = (a, b) => {
   }
   return 0;
 };
+const newestIn = (dir) =>
+  readdirSync(dir)
+    .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(dir, v))))
+    .sort(compare)
+    .at(-1);
 const found = [];
 try {
   const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");
@@ -51,23 +60,23 @@ try {
 } catch {}
 try {
   const cache = join(env.CODEX_HOME ?? join(home, ".codex"), "plugins", "cache", "hearsay", "squeal");
-  const version = readdirSync(cache)
-    .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(cache, v))))
-    .sort(compare)
-    .at(-1);
+  const version = newestIn(cache);
   if (version) found.push({ harness: "Codex", version, dir: join(cache, version) });
 } catch {}
 for (const [harness, name] of [["Pi", "pi"], ["OpenCode", "opencode"]]) {
   try {
     const packages = join(env.XDG_DATA_HOME || join(home, ".local", "share"), "squeal", name);
-    const version = readdirSync(packages)
-      .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(packages, v))))
-      .sort(compare)
-      .at(-1);
+    const version = newestIn(packages);
     if (version) found.push({ harness, version, dir: join(packages, version) });
   } catch {}
 }
-if (found.length === 0) {
+let kept;
+try {
+  const versions = join(dirname(dirname(realpathSync(process.argv[1]))), "versions");
+  const version = newestIn(versions);
+  if (version) kept = { version, dir: join(versions, version) };
+} catch {}
+if (found.length === 0 && kept === undefined) {
   process.stderr.write(
     "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi or OpenCode. Install it:\n" +
       "  claude plugin marketplace add hearsay-tools/marketplace && claude plugin install squeal@hearsay\n" +
@@ -76,13 +85,19 @@ if (found.length === 0) {
   );
   process.exit(1);
 }
-const run = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a));
-if (found.some((f) => f.version !== run.version)) {
+const newest = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a), found[0]);
+if (found.some((f) => f.version !== newest.version)) {
   const has = found.map((f, i) => `${f.harness} has ${i === 0 ? "squeal " : ""}${f.version}`);
   process.stderr.write(
-    `squeal: ${has.slice(0, -1).join(", ")} and ${has.at(-1)}; running ${run.version}. Run squeal update to bring them to one version.\n`,
+    `squeal: ${has.slice(0, -1).join(", ")} and ${has.at(-1)}; running ${newest.version}. Run squeal update to bring them to one version.\n`,
+  );
+}
+const run = newest === undefined || (kept && compare(kept.version, newest.version) >= 0) ? kept : newest;
+if (kept && compare(kept.version, run.version) < 0) {
+  process.stderr.write(
+    `squeal: running squeal ${run.version}; Codex sessions started on ${kept.version} run ${kept.version} until they restart.\n`,
   );
 }
 process.stdout.write(cliOf(run.dir));
-') || exit $?
+' "$0") || exit $?
 exec node --disable-warning=ExperimentalWarning "$cli" "$@"
