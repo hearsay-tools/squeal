@@ -75,6 +75,33 @@ describe("waitForCapacity: the load guard (spec 004 D3)", () => {
     expect(waited).toEqual({ waitedMs: 0, ranUnderLoad: 2.5 });
   });
 
+  test("gives way when asked, before a sleep, keeping the time waited (task 004-84)", async () => {
+    const { deps, sleeps } = host([[0, 8]]);
+    let asked = 0;
+    const waited = await waitForCapacity({
+      maxLoadPerCpu: 1,
+      maxDeferMs: 600_000,
+      giveWay: () => ++asked === 3,
+      ...deps,
+    });
+    expect(sleeps).toEqual([15_000, 15_000]);
+    expect(waited).toEqual({ waitedMs: 30_000, ranUnderLoad: null, gaveWay: true });
+  });
+
+  test("is not asked to give way below the threshold or with the budget spent", async () => {
+    let asked = 0;
+    const giveWay = () => ++asked > 0;
+    const below = host([[0, 2]]);
+    expect(
+      await waitForCapacity({ maxLoadPerCpu: 1, maxDeferMs: 600_000, giveWay, ...below.deps }),
+    ).toEqual({ waitedMs: 0, ranUnderLoad: null });
+    const spent = host([[0, 10]]);
+    expect(
+      await waitForCapacity({ maxLoadPerCpu: 1, maxDeferMs: 0, giveWay, ...spent.deps }),
+    ).toEqual({ waitedMs: 0, ranUnderLoad: 2.5 });
+    expect(asked).toBe(0);
+  });
+
   test("divides by at least one CPU", async () => {
     const { deps } = host([[0, 0.5]], 0);
     const waited = await waitForCapacity({ maxLoadPerCpu: 1, maxDeferMs: 600_000, ...deps });
