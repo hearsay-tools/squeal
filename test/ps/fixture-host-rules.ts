@@ -65,26 +65,26 @@ export interface HostRules {
 export function writeHostRules(host: SnapshotHost): HostRules {
   const tmp = host.places.tempDir;
   const keys = join(tmp, `squeal-${host.places.uid}`, "tmp");
-  const cwd = oldDir(join(tmp, "squeal-e2e-cwd"));
-  const arg = oldDir(join(tmp, "squeal-e2e-arg"));
-  const option = oldDir(join(tmp, "squeal-e2e-opt"));
+  const cwd = oldDir(join(tmp, "squeal-e2e-cwdAAA"));
+  const arg = oldDir(join(tmp, "squeal-e2e-argAAA"));
+  const option = oldDir(join(tmp, "squeal-e2e-optAAA"));
   const key = oldDir(join(keys, "00000000000000aa"));
-  const free = oldDir(join(tmp, "squeal-e2e-free"));
+  const free = oldDir(join(tmp, "squeal-e2e-freeAA"));
   const freeKey = oldDir(join(keys, "00000000000000bb"));
   // A working directory below the leftover: the subdirectory is made first, then the leftover aged.
   mkdirSync(join(cwd, "work"));
   oldDir(cwd);
-  const space = oldDir(join(tmp, "squeal-e2e-a b"));
-  const equals = oldDir(join(tmp, "squeal-e2e-a=b"));
-  const colon = oldDir(join(tmp, "squeal-e2e-a:b"));
-  const single = oldDir(join(tmp, "squeal-e2e-it's"));
-  const double = oldDir(join(tmp, 'squeal-e2e-say "hi"'));
+  const space = oldDir(join(tmp, "squeal-e2e-AAAAAA b"));
+  const equals = oldDir(join(tmp, "squeal-e2e-AAAAAA=b"));
+  const colon = oldDir(join(tmp, "squeal-e2e-AAAAAA:b"));
+  const single = oldDir(join(tmp, "squeal-e2e-ITITIT's"));
+  const double = oldDir(join(tmp, 'squeal-e2e-SAYSAY "hi"'));
   const quotedKey = oldDir(join(keys, `00000000000000cc it's "a=b:c"`));
   const colonKey = oldDir(join(keys, "00000000000000dd a:b"));
   const neighbors = [
-    oldDir(join(tmp, "squeal-e2e-a")),
-    oldDir(join(tmp, "squeal-e2e-it")),
-    oldDir(join(tmp, "squeal-e2e-say")),
+    oldDir(join(tmp, "squeal-e2e-AAAAAA")),
+    oldDir(join(tmp, "squeal-e2e-ITITIT")),
+    oldDir(join(tmp, "squeal-e2e-SAYSAY")),
     oldDir(join(keys, "00000000000000cc")),
     oldDir(join(keys, "00000000000000dd")),
   ];
