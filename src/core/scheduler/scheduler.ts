@@ -19,7 +19,6 @@ import {
   type SlowSuiteRequest,
   type TestFileRef,
 } from "../types/index.js";
-import { cancelsBacklog } from "./backlog.js";
 import { reconcileBatch } from "./batch.js";
 import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
 import { BusyResume } from "./busy-resume.js";
@@ -66,6 +65,7 @@ import {
   unstableInputs,
 } from "./tiers.js";
 import { WarmUp } from "./warm-up.js";
+import { TierYields } from "./yields.js";
 
 /** A tier in flight: its lane is busy until `done` (`busyLanes`), which never rejects. */
 interface InFlight {
@@ -105,7 +105,7 @@ class TierScheduler implements Scheduler {
     closed: () => this.#closed,
     pump: () => this.#pump(),
     backgroundError: (subject, error) => this.#backgroundError(subject, error),
-    applied: () => this.#cancelBacklogs(null),
+    applied: () => this.#cutTiers(null),
   });
   readonly #slow: SlowTier;
   #context: SchedulerContext | null = null;
@@ -115,9 +115,11 @@ class TierScheduler implements Scheduler {
   #draining: Promise<void> | null = null;
   /**
    * The tiers in flight by run id: one per lane, or an edit's beside a backlog tier (`busyLanes`,
-   * task 011-21); a backlog tier carries its `cancel`.
+   * task 011-21); one whose runner cancels carries its `cancel`.
    */
   readonly #inFlight = new Map<string, InFlight>();
+  /** Which tiers in flight a revision, a runner part or a promotion cancels (C4 step 5, row 011-51). */
+  readonly #yields = new TierYields();
   /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
   readonly #slotRecords = new SlotRecords<EndedRun, Recorded>({
     lock: this.#lock,
@@ -305,8 +307,8 @@ class TierScheduler implements Scheduler {
       return;
     }
     this.#slow.preempt();
-    // The runner part waits for the runner: a backlog tier yields to an edit (task 001-124).
-    this.#cancelBacklogs(applied.revision);
+    // The runner part waits for the runner: a tier in flight may yield first (C4 step 5, row 011-51).
+    this.#cutTiers(applied.revision);
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
   }
 
@@ -322,14 +324,20 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Cancels each backlog tier in flight that `revision`, or with `null` the
-   * runner part just applied, gives way to (`cancelsBacklog`, task 001-364).
+   * Cancels each tier in flight that `revision`, or with `null` the runner
+   * part just applied or a promotion, cuts (`TierYields`, C4 step 5 as
+   * amended 2026-10-21, row 011-51; a backlog tier's `cancelsBacklog`, task
+   * 001-364). A backlog slot whose run ended is no longer in flight.
    */
-  #cancelBacklogs(revision: Revision | null): void {
+  #cutTiers(revision: Revision | null): void {
     const { context, ledger } = this.#started();
-    for (const { tier } of this.#inFlight.values()) {
-      if (tier.cancel && cancelsBacklog(context, ledger, revision, tier)) tier.cancel.abort();
-    }
+    const running = [...this.#inFlight.values()].filter(({ ran }) => !ran);
+    this.#yields.check(
+      context,
+      ledger,
+      running.map(({ tier }) => tier),
+      revision,
+    );
   }
 
   /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
@@ -434,13 +442,16 @@ class TierScheduler implements Scheduler {
   /**
    * Spec 011 C15: a named wait promotes `testFiles` for `withinMs` on this
    * daemon's clock. Only the order of queued files changes; the pump takes
-   * a promoted file at the next tier boundary of a free lane.
+   * a promoted file at the next tier boundary of a free lane, and the tier
+   * in flight there may yield to it (C4 step 5 as amended 2026-10-21, row
+   * 011-51).
    */
   async promote(testFiles: readonly TestFileRef[], withinMs: number): Promise<void> {
     if (this.#closed || !this.#context) return;
     await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       ledger.queue.promote(testFiles, context.now() + withinMs);
+      this.#cutTiers(null);
     });
     this.#pump();
   }
@@ -535,9 +546,10 @@ class TierScheduler implements Scheduler {
    * as amended, task 001-140): a tier holds the files of one lane, and a
    * lane with a tier in flight waits while the others run theirs. Selection
    * and recording hold the lock; the runs and the stability re-stat do not,
-   * so batches are reconciled while tiers are in flight. An edit's tier in
-   * flight is never cancelled by a new revision; a backlog tier is, and its
-   * unfinished files are queued again (task 001-124).
+   * so batches are reconciled while tiers are in flight. A backlog tier in
+   * flight is cancelled by an edit (task 001-124), and any but the backlog's
+   * turn may yield (C4 step 5 as amended 2026-10-21, row 011-51); their
+   * unfinished files are queued again.
    *
    * The runner work queued meanwhile is applied in arrival order beside the
    * tiers in flight, not after them (`#drain`). A tier is never selected
@@ -764,6 +776,7 @@ class TierScheduler implements Scheduler {
     // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
     const moved = context.store.transaction(() => {
       this.#warmUp.record(context, ignored);
+      this.#yields.ended(context, tier);
       const result = recordTier(
         context,
         ledger,
@@ -899,13 +912,13 @@ class TierScheduler implements Scheduler {
   /**
    * An edit's fast work goes before a slow file (spec 004 D2 as amended):
    * runner work, a refinement in flight included, a recent fast file queued,
-   * or an edit's tier in flight. A backlog tier carries its `cancel`.
+   * or an edit's tier in flight, the backlog's turn included.
    */
   #editPending(): boolean {
     const work = this.#runnerWork;
     if (work.size > 0 || work.refining || this.#ledger?.queue.hasFirstGroup()) return true;
     return [...this.#inFlight.values()].some(
-      ({ tier }) => tier.cancel === null && !isSlowLane(tier.lane),
+      ({ tier }) => tier.kind !== "backlog" && !isSlowLane(tier.lane),
     );
   }
 
@@ -941,6 +954,7 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       endTier(context, ledger, tier);
+      this.#yields.ended(context, tier);
       for (const { file, key } of tier.files) {
         // A newer run has the file at another key: it is that run's (review wave-4 B1).
         if (supersededIn(file, key)) continue;

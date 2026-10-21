@@ -67,7 +67,18 @@ export interface Tier {
   readonly files: readonly TierFile[];
   /** The stat cache entries of every input when the tier was selected. */
   readonly snapshot: StatCache;
-  /** A backlog tier, which an edit cancels (`Scheduler.handleBatch`); `null` for an edit's tier. */
+  /**
+   * What the tier is (`TierKind`): which rules of C4 step 5 may cancel it in
+   * flight. `startTier` always sets it; absent, the tier counts as an edit's.
+   */
+  readonly kind?: TierKind;
+  /** When it started, on the scheduler's clock: its estimated remainder runs from here (`TierYields`). */
+  readonly startedAt?: number;
+  /**
+   * Aborted to cancel the tier in flight (`TierYields`, spec 011 C4 step 5
+   * as amended 2026-10-21, row 011-51): a backlog tier's always; any other
+   * but a slow one when its runner cancels a run (`cancels`). `null` otherwise.
+   */
   readonly cancel: AbortController | null;
   /** A backlog or checkpoint tier's grant from the per-user pool, returned when it ends (`endTier`). */
   readonly lease?: PoolLease;
@@ -80,6 +91,16 @@ export interface Tier {
    */
   readonly slot?: boolean;
 }
+
+/**
+ * What a tier is, for C4 step 5 as amended 2026-10-21 (row 011-51):
+ * `backlog`, selected while no work of the first group was queued, or a
+ * backlog slot (the turn's included), which an edit's work cancels; `turn`,
+ * the backlog's turn after four tiers of the first group, which only a
+ * revision that supersedes it cancels; `edit`, any other fast tier, which
+ * yields too; `slow`, a slow tier (spec 004 D2), which nothing cancels.
+ */
+export type TierKind = "backlog" | "turn" | "edit" | "slow";
 
 /**
  * The lane of `ref` (`RunnerAdapter.lane`): one tier at a time per lane, so
@@ -264,11 +285,9 @@ export function selectTier(
   let tier: Tier | null = null;
   try {
     // The turn's slot is a slot as any other; its runner cannot cancel it (C4 step 5).
-    const cancellable = backlog || (turnTier && slot !== null);
+    const kind = backlog || (turnTier && slot !== null) ? "backlog" : turnTier ? "turn" : "edit";
     tier =
-      picked.length === 0
-        ? null
-        : startTier(context, ledger, picked, cancellable, lease ?? undefined);
+      picked.length === 0 ? null : startTier(context, ledger, picked, kind, lease ?? undefined);
   } finally {
     // The tier owns the lease once it starts; until then it is returned here (review 001-384, B2).
     if (tier === null) lease?.release();
@@ -315,15 +334,16 @@ function widest(context: SchedulerContext, picked: readonly TierFile[]): number 
  * their `running` phases, which are this worktree's claims, and the run row
  * (D8 as amended, task 001-205: a check before the transaction let two
  * daemons take one key). Then the stability snapshot. `null` when every file
- * settled or stayed queued; what settled is committed. `cancellable` for a
- * backlog tier, which an edit cancels; never for an edit's or a slow tier.
+ * settled or stayed queued; what settled is committed. `kind` says which
+ * rules of C4 step 5 may cancel it (`TierKind`); a backlog tier gets its
+ * cancel, and any other but a slow one when its runner cancels (`cancels`).
  * `lease` is a backlog tier's grant, kept for as many files as start.
  */
 export function startTier(
   context: SchedulerContext,
   ledger: Ledger,
   picked: readonly TierFile[],
-  cancellable: boolean,
+  kind: TierKind,
   lease?: PoolLease,
 ): Tier | null {
   const { store, keys } = context;
@@ -336,6 +356,8 @@ export function startTier(
     }
     const checkpointId = files.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
     const runId = randomUUID();
+    const slot = kind === "backlog" && backlogSlot(context, first.file.ref) !== null;
+    const cancellable = kind === "backlog" || (kind !== "slow" && cancels(context, first.file.ref));
     const tier: Tier = {
       runId,
       logDir: join(context.runsDir, runId),
@@ -349,10 +371,12 @@ export function startTier(
         keys.cache,
         files.flatMap((p) => p.inputs),
       ),
+      kind,
+      startedAt: context.now(),
       cancel: cancellable ? new AbortController() : null,
       ...(lease === undefined ? {} : { lease }),
       loadPerCpu: tierLoad(context),
-      ...(cancellable && backlogSlot(context, first.file.ref) !== null ? { slot: true } : {}),
+      ...(slot ? { slot: true } : {}),
     };
     lease?.shrinkTo(files.length);
     for (const { file, key } of files) {
@@ -373,6 +397,15 @@ export function startTier(
     ledger.commit();
     return tier;
   });
+}
+
+/**
+ * Whether the runner of `ref`'s lane cancels a run in flight: one that runs
+ * its backlog in tiers, not in slots (Vitest; C4 step 5: "a runner that
+ * cannot cancel (node:test, pytest) runs its backlog in slots").
+ */
+export function cancels(context: SchedulerContext, ref: TestFileRef): boolean {
+  return backlogSlot(context, ref) === null;
 }
 
 /**
@@ -471,9 +504,10 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<M
  *   which it is `unknown` with the runner's reason (issue 10, task 011-06).
  *   No revision may follow a touch, so `unknown` before the limit would
  *   leave an edited file without a result until its key moved.
- * - Not completed in a backlog tier an edit cancelled, a run that otherwise
- *   ended `completed`: queued again, uncounted (task 001-124), catch-up
- *   still when it was (task 011-22).
+ * - Not completed in a tier a revision, an edit or a promotion cancelled
+ *   (C4 step 5), a run that otherwise ended `completed`: queued again,
+ *   uncounted (task 001-124), an edit's work, catch-up or promoted still
+ *   when it was (tasks 011-22, 011-51).
  * - Any input changed on disk since selection, or in a revision during the
  *   run: discarded and re-queued (D5 stability check). Returns those paths so
  *   the caller reconciles them; the watcher may not have reported them yet.
@@ -550,9 +584,11 @@ export function recordTier(
         continue;
       }
       if (decision.kind === "requeue") {
-        // Catch-up that did not run stays catch-up (C4 step 4 as amended 2026-10-20, task 011-22).
+        // What did not run keeps its class: an edit's work, catch-up (C4 step 4 as amended
+        // 2026-10-20, task 011-22), or promoted, which `Promotions` holds while it is queued (011-51).
         if (file.key !== null && file.blocked === null) {
-          ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced, false, catchUp === true);
+          const priority = priorityOf(file, NOTHING_CHANGED);
+          ledger.enqueue(file, priority, forced, recent === true, catchUp === true);
         }
         continue;
       }
