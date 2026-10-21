@@ -102,7 +102,7 @@ Include spec text as drafts and the rejected options. Owns `tasks/011-64/` only,
 
 Use /worker. Shape: survey, a design draft for the human. Outcome: `tasks/011-62/design.md`, which the human can accept as a C10 amendment (and C4, C6 or C9 where touched).
 
-Read: board row 011-62; spec 011 C4, C6, C9, C10 and `status.md`; 003 D1 and D7; `research/issue-53.md` with its probes. Seams, read only: `src/core/scheduler/workspaces.ts`, `src/core/scheduler/omitted-test-files.ts`, `src/core/state/file-class.ts`, `src/core/state/state.ts`, `src/core/status/standing.ts`, `src/core/types/policy.ts`.
+Read: board row 011-62; spec 011 C4, C6, C9, C10 and `status.md`; 003 D1 and D7; `research/issue-53.md` with its probes. Seams, read only: `src/core/scheduler/revision.ts`, `src/core/daemon/node-test-runners.ts`, `src/core/daemon/daemon.ts`, `src/cli/retry.ts` (the ones `research/issue-53.md` names), `src/core/state/file-class.ts`, `src/core/status/standing.ts`.
 
 Answer, each with an evidence tag and one recommendation:
 
