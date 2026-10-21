@@ -1864,10 +1864,10 @@ function pathsReason(lead, paths, verb, task) {
   return `${lead}${plural(paths.length, "file")} ${verb(false)} (${task}): ${listPaths(paths)}; every path: ${all2}`;
 }
 function excludedProjectsText(entries3) {
-  const quoted2 = (list2, join107) => {
+  const quoted2 = (list2, join108) => {
     const all2 = list2.map((entry4) => JSON.stringify(entry4));
     const last = all2.pop();
-    return all2.length === 0 ? last : `${all2.join(", ")} ${join107} ${last}`;
+    return all2.length === 0 ? last : `${all2.join(", ")} ${join108} ${last}`;
   };
   const names5 = entries3.filter((entry4) => !entry4.includes("*"));
   const patterns = entries3.filter((entry4) => entry4.includes("*"));
@@ -17398,9 +17398,9 @@ var init_readdirp = __esm({
       }
       // Synchronous in dirent mode; returns a promise only when stats are needed.
       _formatEntry(dirent, path) {
-        const basename26 = this._isDirent ? dirent.name : dirent;
-        const fullPath = pjoin(path, basename26);
-        const entry4 = { path: fullPath.slice(this._relStart), fullPath, basename: basename26 };
+        const basename27 = this._isDirent ? dirent.name : dirent;
+        const fullPath = pjoin(path, basename27);
+        const entry4 = { path: fullPath.slice(this._relStart), fullPath, basename: basename27 };
         if (this._isDirent) {
           entry4.dirent = dirent;
           return entry4;
@@ -17941,9 +17941,9 @@ var init_handler = __esm({
       _watchWithNodeFs(path, listener) {
         const opts = this.fsw.options;
         const directory = sp.dirname(path);
-        const basename26 = sp.basename(path);
+        const basename27 = sp.basename(path);
         const parent2 = this.fsw._getWatchedDir(directory);
-        parent2.add(basename26);
+        parent2.add(basename27);
         const absolutePath = sp.resolve(path);
         const options = {
           persistent: opts.persistent
@@ -17953,7 +17953,7 @@ var init_handler = __esm({
         let closer;
         if (opts.usePolling) {
           const enableBin = opts.interval !== opts.binaryInterval;
-          options.interval = enableBin && isBinaryPath(basename26) ? opts.binaryInterval : opts.interval;
+          options.interval = enableBin && isBinaryPath(basename27) ? opts.binaryInterval : opts.interval;
           closer = setFsWatchFileListener(path, absolutePath, options, {
             listener,
             rawEmitter: this.fsw._emitRaw
@@ -17975,11 +17975,11 @@ var init_handler = __esm({
         if (this.fsw.closed) {
           return;
         }
-        const dirname41 = sp.dirname(file);
-        const basename26 = sp.basename(file);
-        const parent2 = this.fsw._getWatchedDir(dirname41);
+        const dirname42 = sp.dirname(file);
+        const basename27 = sp.basename(file);
+        const parent2 = this.fsw._getWatchedDir(dirname42);
         let prevStats = stats;
-        if (parent2.has(basename26))
+        if (parent2.has(basename27))
           return;
         const listener = async (path, newStats) => {
           if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5))
@@ -18004,9 +18004,9 @@ var init_handler = __esm({
                 prevStats = newStats2;
               }
             } catch (error) {
-              this.fsw._remove(dirname41, basename26);
+              this.fsw._remove(dirname42, basename27);
             }
-          } else if (parent2.has(basename26)) {
+          } else if (parent2.has(basename27)) {
             const at2 = newStats.atimeMs;
             const mt = newStats.mtimeMs;
             if (!at2 || at2 <= mt || mt !== prevStats.mtimeMs) {
@@ -30800,7 +30800,7 @@ var require_CachedInputFileSystem = __commonJS({
   "node_modules/enhanced-resolve/lib/CachedInputFileSystem.js"(exports, module2) {
     "use strict";
     var { nextTick } = __require("process");
-    var dirname41 = (path) => {
+    var dirname42 = (path) => {
       let idx = path.length - 1;
       while (idx >= 0) {
         const char = path.charCodeAt(idx);
@@ -31225,12 +31225,12 @@ var require_CachedInputFileSystem = __commonJS({
           this.purge();
         } else if (typeof what === "string" || Buffer.isBuffer(what) || what instanceof URL || typeof what === "number") {
           const strWhat = typeof what !== "string" ? what.toString() : what;
-          this.purge(dirname41(strWhat));
+          this.purge(dirname42(strWhat));
         } else {
           const set = /* @__PURE__ */ new Set();
           for (const item of what) {
             const strItem = typeof item !== "string" ? item.toString() : item;
-            set.add(dirname41(strItem));
+            set.add(dirname42(strItem));
           }
           this.purge(set);
         }
@@ -32681,7 +32681,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(maybePath);
     };
-    var join107 = (rootPath, request) => {
+    var join108 = (rootPath, request) => {
       if (!request) return normalize8(rootPath);
       const requestType = getType(request);
       switch (requestType) {
@@ -32708,7 +32708,7 @@ var require_path = __commonJS({
       }
       return posixNormalize(rootPath);
     };
-    var dirname41 = (maybePath) => {
+    var dirname42 = (maybePath) => {
       switch (getType(maybePath)) {
         case PathType.AbsoluteWin:
           return path.win32.dirname(maybePath);
@@ -32726,7 +32726,7 @@ var require_path = __commonJS({
           cacheEntry = inner.get(request);
           if (cacheEntry !== void 0) return cacheEntry;
         }
-        cacheEntry = join107(rootPath, request);
+        cacheEntry = join108(rootPath, request);
         inner.set(request, cacheEntry);
         return cacheEntry;
       };
@@ -32737,7 +32737,7 @@ var require_path = __commonJS({
       const fn = (maybePath) => {
         const cacheEntry = cache2.get(maybePath);
         if (cacheEntry !== void 0) return cacheEntry;
-        const result = dirname41(maybePath);
+        const result = dirname42(maybePath);
         cache2.set(maybePath, result);
         return result;
       };
@@ -32834,7 +32834,7 @@ var require_path = __commonJS({
     module2.exports.createCachedDirname = createCachedDirname;
     module2.exports.createCachedJoin = createCachedJoin;
     module2.exports.deprecatedInvalidSegmentRegEx = deprecatedInvalidSegmentRegEx;
-    module2.exports.dirname = dirname41;
+    module2.exports.dirname = dirname42;
     module2.exports.getType = getType;
     module2.exports.invalidSegmentRegEx = invalidSegmentRegEx;
     module2.exports.isFileURL = isFileURL;
@@ -32842,7 +32842,7 @@ var require_path = __commonJS({
     module2.exports.isRelativeRequest = isRelativeRequest;
     module2.exports.isSubPath = isSubPath;
     module2.exports.isWindowsPath = isWindowsPath;
-    module2.exports.join = join107;
+    module2.exports.join = join108;
     module2.exports.normalize = normalize8;
     module2.exports.toPath = toPath;
   }
@@ -38857,7 +38857,7 @@ var require_ResolverFactory = __commonJS({
     var TsconfigPathsPlugin = require_TsconfigPathsPlugin();
     var UnsafeCachePlugin = require_UnsafeCachePlugin();
     var UseFilePlugin = require_UseFilePlugin();
-    var { PathType, getType, join: join107, toPath } = require_path();
+    var { PathType, getType, join: join108, toPath } = require_path();
     function processPnpApiOption(option) {
       if (option === void 0 && /** @type {NodeJS.ProcessVersions & { pnp: string }} */
       versions.pnp) {
@@ -38912,7 +38912,7 @@ var require_ResolverFactory = __commonJS({
           "The 'packageMap' option needs an absolute 'configFile' in an environment without a working directory"
         );
       }
-      return join107(cwd(), file);
+      return join108(cwd(), file);
     }
     function normalizePackageMap(packageMap) {
       if (packageMap === void 0) return null;
@@ -49859,7 +49859,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.245";
+  if (true) return "0.1.247";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -59813,10 +59813,29 @@ init_state3();
 import { fileURLToPath as fileURLToPath13 } from "node:url";
 
 // src/harness/codex/command.ts
-import { join as join104 } from "node:path";
+import { existsSync as existsSync37 } from "node:fs";
+import { join as join105 } from "node:path";
+
+// src/harness/shared/version-copies.ts
+import { basename as basename26, dirname as dirname41, join as join104 } from "node:path";
+var CLI = join104("dist", "cli", "squeal.mjs");
+var SKILL = join104("skills", "squeal", "SKILL.md");
+var LAUNCHER_SOURCE = join104("bin", "squeal-launcher");
+var LAUNCHER = join104("bin", "squeal");
+function dataLauncher(data2) {
+  return join104(data2, LAUNCHER);
+}
+function dataOfCopy(cli) {
+  const versions = dirname41(dirname41(dirname41(dirname41(cli))));
+  return cli.endsWith(`/${CLI}`) && basename26(versions) === "versions" ? dirname41(versions) : null;
+}
+
+// src/harness/codex/command.ts
 function codexCommand(env, bundleCli) {
+  const data2 = env.PLUGIN_DATA === void 0 || env.PLUGIN_DATA === "" ? dataOfCopy(bundleCli) : env.PLUGIN_DATA;
+  if (data2 !== null && existsSync37(dataLauncher(data2))) return shellWord(dataLauncher(data2));
   const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join104(root, "dist/cli/squeal.mjs");
+  const cli = root === void 0 || root === "" ? bundleCli : join105(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
@@ -62391,30 +62410,30 @@ import {
   chmodSync as chmodSync3,
   constants as constants4,
   copyFileSync as copyFileSync2,
-  existsSync as existsSync37,
+  existsSync as existsSync38,
   mkdtempSync as mkdtempSync5,
   readdirSync as readdirSync28,
   readFileSync as readFileSync44,
   rmSync as rmSync14
 } from "node:fs";
 import { tmpdir as tmpdir7 } from "node:os";
-import { delimiter as delimiter5, join as join106 } from "node:path";
+import { delimiter as delimiter5, join as join107 } from "node:path";
 
 // src/cli/update-packages.ts
 init_fs();
 import { readFileSync as readFileSync43 } from "node:fs";
-import { join as join105, resolve as resolve24 } from "node:path";
+import { join as join106, resolve as resolve24 } from "node:path";
 function packagesHome(harness, env) {
-  return join105(env.XDG_DATA_HOME || join105(env.HOME ?? "", ".local", "share"), "squeal", harness);
+  return join106(env.XDG_DATA_HOME || join106(env.HOME ?? "", ".local", "share"), "squeal", harness);
 }
 function piPackage(env) {
   const home = env.HOME ?? "";
-  let agent = env.PI_CODING_AGENT_DIR || join105(home, ".pi", "agent");
+  let agent = env.PI_CODING_AGENT_DIR || join106(home, ".pi", "agent");
   if (agent === "~") agent = home;
-  else if (agent.startsWith("~/")) agent = join105(home, agent.slice(2));
+  else if (agent.startsWith("~/")) agent = join106(home, agent.slice(2));
   let packages = [];
   try {
-    const file = JSON.parse(readFileSync43(join105(agent, "settings.json"), "utf8"));
+    const file = JSON.parse(readFileSync43(join106(agent, "settings.json"), "utf8"));
     if (isRecord(file)) packages = file.packages;
   } catch {
     return null;
@@ -62426,7 +62445,7 @@ function piPackage(env) {
     const dir2 = resolve24(agent, source);
     if (resolve24(dir2, "..") !== resolve24(packagesHome("pi", env))) continue;
     try {
-      const manifest = JSON.parse(readFileSync43(join105(dir2, "package.json"), "utf8"));
+      const manifest = JSON.parse(readFileSync43(join106(dir2, "package.json"), "utf8"));
       if (isRecord(manifest) && typeof manifest.version === "string")
         versions.push(manifest.version);
     } catch {
@@ -62436,13 +62455,13 @@ function piPackage(env) {
   return newest === void 0 ? null : { version: newest };
 }
 function openCodePackage(env) {
-  const link = join105(packagesHome("opencode", env), "current");
+  const link = join106(packagesHome("opencode", env), "current");
   const spec = `file:${link}`;
-  const config = join105(env.XDG_CONFIG_HOME || join105(env.HOME ?? "", ".config"), "opencode");
+  const config = join106(env.XDG_CONFIG_HOME || join106(env.HOME ?? "", ".config"), "opencode");
   const listed5 = ["opencode.json", "opencode.jsonc", "config.json"].some((name2) => {
     let text3;
     try {
-      text3 = readFileSync43(join105(config, name2), "utf8");
+      text3 = readFileSync43(join106(config, name2), "utf8");
     } catch {
       return false;
     }
@@ -62456,7 +62475,7 @@ function openCodePackage(env) {
   });
   if (!listed5) return null;
   try {
-    const manifest = JSON.parse(readFileSync43(join105(link, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync43(join106(link, "package.json"), "utf8"));
     return isRecord(manifest) && typeof manifest.version === "string" ? { version: manifest.version } : null;
   } catch {
     return null;
@@ -62553,9 +62572,9 @@ function updateTargets(cwd, env, io) {
   return targets;
 }
 function runInstallSh(flag3, cwd, env, io) {
-  const dir2 = mkdtempSync5(join106(tmpdir7(), "squeal-update-"));
+  const dir2 = mkdtempSync5(join107(tmpdir7(), "squeal-update-"));
   try {
-    const script = join106(dir2, "install.sh");
+    const script = join107(dir2, "install.sh");
     const url = env.SQUEAL_INSTALL_SH ?? LATEST_INSTALL_SH;
     return run3(["curl", "-fsSL", "-o", script, url], cwd, env, io) && run3(["sh", script, flag3], cwd, env, io);
   } finally {
@@ -62597,12 +62616,12 @@ function launcherFormat(path) {
   }
 }
 function recopyLauncher(env, io) {
-  const target = join106(env.SQUEAL_BIN_DIR ?? join106(env.HOME ?? "", ".local", "bin"), "squeal");
+  const target = join107(env.SQUEAL_BIN_DIR ?? join107(env.HOME ?? "", ".local", "bin"), "squeal");
   const current3 = launcherFormat(target);
   if (current3 === null) return;
   let newest = null;
   for (const dir2 of pluginDirs(env)) {
-    const path = join106(dir2, "bin", "squeal-launcher");
+    const path = join107(dir2, "bin", "squeal-launcher");
     const format = launcherFormat(path);
     if (format !== null && format > (newest?.format ?? current3)) newest = { path, format };
   }
@@ -62615,10 +62634,10 @@ function recopyLauncher(env, io) {
 function pluginDirs(env) {
   const home = env.HOME ?? "";
   const dirs = [];
-  const config = env.CLAUDE_CONFIG_DIR ?? join106(home, ".claude");
+  const config = env.CLAUDE_CONFIG_DIR ?? join107(home, ".claude");
   try {
     const file = JSON.parse(
-      readFileSync44(join106(config, "plugins", "installed_plugins.json"), "utf8")
+      readFileSync44(join107(config, "plugins", "installed_plugins.json"), "utf8")
     );
     const entries3 = isRecord(file) && isRecord(file.plugins) ? file.plugins[PLUGIN_ID] : null;
     for (const entry4 of Array.isArray(entries3) ? entries3 : []) {
@@ -62626,17 +62645,17 @@ function pluginDirs(env) {
     }
   } catch {
   }
-  const cache2 = join106(
-    env.CODEX_HOME ?? join106(home, ".codex"),
+  const cache2 = join107(
+    env.CODEX_HOME ?? join107(home, ".codex"),
     "plugins",
     "cache",
     MARKETPLACE_NAME,
     PLUGIN_NAME
   );
-  if (existsSync37(cache2)) for (const version2 of readdirSync28(cache2)) dirs.push(join106(cache2, version2));
+  if (existsSync38(cache2)) for (const version2 of readdirSync28(cache2)) dirs.push(join107(cache2, version2));
   for (const packages of [packagesHome("pi", env), packagesHome("opencode", env)]) {
-    if (existsSync37(packages))
-      for (const version2 of readdirSync28(packages)) dirs.push(join106(packages, version2));
+    if (existsSync38(packages))
+      for (const version2 of readdirSync28(packages)) dirs.push(join107(packages, version2));
   }
   return dirs;
 }
@@ -62644,7 +62663,7 @@ function onPath2(name2, env) {
   return (env.PATH ?? "").split(delimiter5).some((dir2) => {
     if (dir2 === "") return false;
     try {
-      accessSync3(join106(dir2, name2), constants4.X_OK);
+      accessSync3(join107(dir2, name2), constants4.X_OK);
       return true;
     } catch {
       return false;
