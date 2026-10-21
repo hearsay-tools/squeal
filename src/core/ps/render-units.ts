@@ -22,8 +22,9 @@ export function count(n: number, one: string, many = `${one}s`): string {
   return `${thousands(n)} ${n === 1 ? one : many}`;
 }
 
+/** A whole number with a comma every three digits, as `en-US` writes it, without `Intl`'s start-up (014-23). */
 export function thousands(n: number): string {
-  return n.toLocaleString("en-US");
+  return String(n).replace(/\B(?=(\d{3})+$)/g, ",");
 }
 
 /** A percent in a sentence: whole above 10, one decimal below. */
