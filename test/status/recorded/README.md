@@ -48,3 +48,5 @@ How they were made, on 2026-10-21:
 4. Each stream was kept without its `import` events, with `<root>` for the temp root.
 
 Long and short reports name paths from pytest's cwd (`frames/test_frames.py:6:`); native ones name absolute paths, which `relativizeText` makes root-relative (`py/frames/test_frames.py`); `--tb=line` keeps only the `E` line.
+
+`pytest-tb-<style>-space.jsonl` (review 0.1.243 B1) were made the same way on 2026-10-21, with the two files under `<root>/py/test frames/` instead of `frames/`, for `long`, `short` and `native`, and `"test frames/test_frames.py"` as pytest's argument.
