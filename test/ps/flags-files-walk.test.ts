@@ -5,8 +5,16 @@ import type { CliIo } from "../../src/cli/main.js";
 import { psCommand } from "../../src/cli/ps.js";
 import { flag } from "../../src/core/ps/flags.js";
 import { fileFlags } from "../../src/core/ps/flags-files.js";
+import type { PsModel } from "../../src/core/ps/model.js";
 import type { PsSnapshot } from "../../src/core/ps/shape.js";
-import { dirAged, HOUR, type ModelHost, modelHost, modelOf } from "./fixture-model.js";
+import {
+  dirAged,
+  modelOf as fixtureModel,
+  HOUR,
+  type ModelHost,
+  type ModelSpec,
+  modelHost,
+} from "./fixture-model.js";
 import { fakeWindow, NOW, snapshotHost } from "./fixture-snapshot.js";
 
 /*
@@ -19,6 +27,17 @@ vi.mock("node:fs", async (original) => {
   const fs = await original<typeof import("node:fs")>();
   return { ...fs, readdirSync: vi.fn(fs.readdirSync), lstatSync: vi.fn(fs.lstatSync) };
 });
+
+/**
+ * The fixture's model, read as a Linux host reads its own processes: every
+ * process's arguments and open files can be read, and none is open. The
+ * fixture gives `null` for both, which `leftover-temp` takes for a failed read.
+ */
+function modelOf(spec: ModelSpec): PsModel {
+  const model = fixtureModel(spec);
+  const cmdline = (pid: number) => model.source.cmdline(pid) ?? [];
+  return { ...model, source: { ...model.source, cmdline, fds: () => [] } };
+}
 
 const DU = "`squeal ps --leftovers | xargs -d '\\n' du -sch --` sums them";
 

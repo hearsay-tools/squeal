@@ -12,14 +12,17 @@ import { storePaths } from "../store/index.js";
 import type { AbsolutePath } from "../types/index.js";
 import { dateOf } from "./flags-text.js";
 import type { PsModel } from "./model.js";
+import { bytes as sizeText } from "./render-units.js";
 import type { PsFileFlag, PsUnknown } from "./shape.js";
 
 /*
  * Spec 014 D7 `leftover-temp` (tasks 014-10, 014-22, 014-25, 014-23): the
  * temp directories Squeal made that no live daemon's key names and no
  * process uses, and their size with `--full`. Read by `readdir`, `lstat`
- * and the source alone; nothing here removes a file. `flags-files.ts`
- * groups it with the other file flags.
+ * and the source alone; nothing here removes a file. A directory is listed
+ * only when every use read held; otherwise `unknown` names it
+ * (`reviews/wave-4.md` B2). `flags-files.ts` groups it with the other file
+ * flags.
  */
 
 /** D7 `leftover-temp`: an mtime older than this, so no test or daemon is making it now. */
@@ -63,9 +66,11 @@ export interface Leftovers {
  * D7 `leftover-temp`: a directory of this user with a name Squeal makes, a
  * key directory of `<temp>/squeal-<uid>/tmp/`, a daemon's fallback
  * `<temp>/squeal-<uid>-<key>-XXXXXX` or a `MADE` name, that no live
- * daemon's key names, no process has as its working directory or in its
- * arguments, and that changed more than an hour ago (`lessons.md` P1). No
- * such name holds a newline, which `--leftovers`, one path per line, needs.
+ * daemon's key names, that changed more than an hour ago (`lessons.md` P1),
+ * and that `unusedPaths` proves no process uses. When a use read fails, no
+ * directory is flagged: one `unknown` entry gives their count, their size
+ * when known, the failed reads and their paths (B2). No such name holds a
+ * newline, which `--leftovers`, one path per line, needs.
  */
 export function leftoverTemp(
   model: PsModel,
@@ -102,15 +107,24 @@ export function leftoverTemp(
     if (model.now - stat.mtimeMs > LEFTOVER_AGE_MS) old.set(path, stat);
   }
   if (old.size === 0) return none;
-  const paths = unusedPaths(model, keyDirs, [...old.keys()], unknown);
-  if (paths === null) {
+  const use = unusedPaths(model, keyDirs, [...old.keys()]);
+  if (use === null) {
     const why = "the working directories of processes cannot be read (D10)";
     unknown.push({ what: "flag leftover-temp", why });
     return none;
   }
+  const paths = use.unused;
   if (paths.length === 0) return none;
   const limit = options.sizeEntries ?? SIZE_WALK_ENTRIES;
   const bytes = options.full === true ? sizeOf(paths, old, limit) : null;
+  const count = paths.length === 1 ? "1 directory" : `${paths.length} directories`;
+  if (use.unread.length > 0) {
+    // What no read proves unused is no flag and no line of `--leftovers`: `unknown` gives the paths to judge (B2).
+    const size = bytes === null ? "" : `, ${sizeText(bytes)},`;
+    const why = `${count} under ${places.tempDir} that no readable process uses${size} ${paths.length === 1 ? "is" : "are"} not listed, since ${use.unread.join(" and ")}`;
+    unknown.push({ what: "flag leftover-temp", why, paths });
+    return none;
+  }
   if (bytes === null) {
     const why =
       options.full === true
@@ -119,7 +133,6 @@ export function leftoverTemp(
     unknown.push({ what: "files leftover-temp bytes", why });
   }
   const oldest = Math.min(...paths.map((path) => old.get(path)?.mtimeMs ?? model.now));
-  const count = paths.length === 1 ? "1 directory" : `${paths.length} directories`;
   return {
     flag: {
       flag: "leftover-temp",
@@ -159,24 +172,32 @@ function liveKeys(model: PsModel): Set<string> | string {
   return keys;
 }
 
+interface UseCheck {
+  /** The candidates no read shows in use, sorted. */
+  readonly unused: AbsolutePath[];
+  /** The reads that failed, so the non-use of `unused` is not proved; empty when every read held. */
+  readonly unread: readonly string[];
+}
+
 /**
- * The `candidates` no process of this user uses, sorted; `null` when
- * working directories cannot be read. A directory is used when a working
- * directory, an argument, a listening unix socket or an open file is it or
- * lies under it, or an argument is `<option>=` and such a path. A path is
- * cut at `/` alone, since a name may hold a space, a quote, `=` or `:`, and
- * no argument is read as shell text (`reviews/wave-2.md` B2). The reads go
- * cheapest first and stop once every candidate is used: the open files of
- * 176 processes, about 4,100 descriptors, cost 32 to 43 ms CPU at load 28
- * (`lessons.md` P5). Sockets or open files that cannot be read count as no
- * use, and `unknown` names them, as D10 names a platform's missing reads.
+ * Which `candidates` no process of this user uses; `null` when working
+ * directories cannot be read. A directory is used when a working
+ * directory, an argument, a bound unix socket of any kind or an open file
+ * is it or lies under it, or an argument is `<option>=` and such a path. A
+ * path is cut at `/` alone, since a name may hold a space, a quote, `=` or
+ * `:`, and no argument is read as shell text (`reviews/wave-2.md` B2). The
+ * reads go cheapest first and stop once every candidate is used: the open
+ * files of 176 processes, about 4,100 descriptors, cost 32 to 43 ms CPU at
+ * load 28 (`lessons.md` P5). A read that fails proves nothing unused, so
+ * it is kept for `unread` (`reviews/wave-4.md` B2). A missing working
+ * directory is no failed read: on Linux the open files of such a process
+ * cannot be read either, and that read names it.
  */
 function unusedPaths(
   model: PsModel,
   keyDirs: AbsolutePath,
   candidates: readonly AbsolutePath[],
-  unknown: PsUnknown[],
-): AbsolutePath[] | null {
+): UseCheck | null {
   const { places, source } = model;
   // The host's table: the second reads only the processes the window measures (`reviews/wave-2.md` B1).
   const pids = [...model.first.sample.table.values()]
@@ -197,39 +218,56 @@ function unusedPaths(
     if (top === `squeal-${places.uid}` && sub === "tmp" && key !== undefined && key !== "")
       unused.delete(join(keyDirs, key));
   };
+  const unread = new Set<number>();
   for (const cwd of cwds.values()) use(named(cwd));
   for (const pid of pids) {
     if (unused.size === 0) break;
-    for (const arg of source.cmdline(pid) ?? []) {
+    const args = source.cmdline(pid);
+    if (args === null) unread.add(pid);
+    for (const arg of args ?? []) {
       // The path itself, or the value of `<option>=<path>`; a path's own `=` is no option's.
       const path = named(arg);
       use(path.startsWith(at) ? path : named(arg.slice(arg.indexOf("=") + 1)));
     }
   }
-  if (unused.size > 0) {
-    const listeners = source.unixListeners();
-    if (listeners === null) {
-      const why =
-        "the listening unix sockets cannot be read (D10); a directory a socket is bound under counts as unused";
-      unknown.push({ what: "flag leftover-temp sockets", why });
-    }
-    for (const listener of listeners ?? []) use(named(listener.path));
-  }
-  let read = 0;
+  // Every bound name, datagram and unconnected sockets too, not only listeners (`reviews/wave-4.md` B2).
+  const sockets = unused.size === 0 ? [] : source.unixSockets();
+  for (const path of sockets ?? []) use(named(path));
   for (const pid of pids) {
     if (unused.size === 0) break;
     const fds = source.fds(pid);
-    if (fds === null) continue;
-    read += 1;
+    if (fds === null) unread.add(pid);
     // A file deleted since it was opened reads `<path> (deleted)`; the cut at `/` keeps its directory.
-    for (const target of fds) use(named(target));
+    for (const target of fds ?? []) use(named(target));
   }
-  if (unused.size > 0 && read === 0) {
-    const why =
-      "the open files of processes cannot be read (D10); a directory a file is open under counts as unused";
-    unknown.push({ what: "flag leftover-temp open files", why });
+  if (unused.size === 0) return { unused: [], unread: [] };
+  return { unused: [...unused].sort(), unread: failedReads(model, sockets === null, unread) };
+}
+
+/** How many processes a failed read names before it says how many more. */
+const NAMED = 5;
+
+/**
+ * The failed use reads: the sockets, and each process whose arguments or
+ * open files could not be read and that is still there. One that left, a
+ * zombie, or a pid another process took since, holds nothing; one table
+ * read tells them apart.
+ */
+function failedReads(model: PsModel, socketsUnread: boolean, pids: ReadonlySet<number>): string[] {
+  const reasons = socketsUnread ? ["the bound unix sockets cannot be read (D10)"] : [];
+  const first = model.first.sample.table;
+  const now = pids.size === 0 ? new Map() : model.source.processTable([...pids]);
+  const there = [...pids].filter((pid) => {
+    const row = now.get(pid);
+    return row !== undefined && row.state !== "Z" && row.startTicks === first.get(pid)?.startTicks;
+  });
+  if (there.length > 0) {
+    const names = there.slice(0, NAMED).map((pid) => `${pid} ${first.get(pid)?.comm ?? "?"}`);
+    const more = there.length > NAMED ? ` and ${there.length - NAMED} more` : "";
+    const n = there.length === 1 ? "1 process cannot" : `${there.length} processes cannot`;
+    reasons.push(`${n} be read: ${names.join(", ")}${more}`);
   }
-  return [...unused].sort();
+  return reasons;
 }
 
 /**
