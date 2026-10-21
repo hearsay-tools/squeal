@@ -261,7 +261,7 @@ describe("squeal ps", () => {
   });
 });
 
-describe("squeal ps with the real flags (reviews/wave-2.md B1)", () => {
+describe("squeal ps with the real flags (reviews/wave-2.md B1, B2)", () => {
   test("--leftovers lists the unused directories, never one a process works in or names in an argument", async () => {
     const rules = writeHostRules(host);
     const { code, stdout, stderr } = await ps(["--leftovers"], { options: { flag: realFlag } });
