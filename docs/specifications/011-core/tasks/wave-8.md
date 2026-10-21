@@ -1,6 +1,6 @@
 # Wave 8: triage round 9, groups A to F
 
-The human, 2026-10-21: digest groups A to F as recommended, follow-ups 011-54 to 011-57 and 011-51's test 10 approved; at most three of this coordinator's workers at once. Catch-up speed stays first (the human, 2026-10-19). W1, W2 and W3 own disjoint files and run in parallel. The rest of the wave (011-55, 011-59 to 011-62, 011-64, 011-65, 011-67, 011-68, 013-04, 005-72) is briefed as slots free; 011-66 waits for 011-32, 011-34 and 014's daemon changes.
+The human, 2026-10-21: digest groups A to F as recommended, follow-ups 011-54 to 011-57 and 011-51's test 10 approved; at most three of this coordinator's workers at once. Catch-up speed stays first (the human, 2026-10-19). W1, W2 and W3 own disjoint files and run in parallel; W4 takes W3's slot. The rest of the wave (011-55, 011-61, 011-62, 011-64, 011-65, 011-67, 011-68, 013-04, 005-72) is briefed as slots free; 011-66 waits for 011-32, 011-34 and 014's daemon changes.
 
 Every brief: base main at or after the commit that adds this file; no version bump; no key-format change (if `test/keys/key-format.test.ts` asks for one, stop and say so); the verdict is `squeal run --all --wait`, and a file that fails under load and passes alone is named in your summary.
 
@@ -39,3 +39,17 @@ Seam: the outcome chain at `src/cli/status-wait-paths.ts:328`; `namedSnapshotCom
 Tests first, red before: the row's done-when. Owns: `src/cli/status-wait*.ts`, `status-paths.ts`, `named-*.ts`, `verdict.ts`, `wait-arg.ts`, the `--help` text, `commands.md` in every plugin copy, `promotions.ts` for the label only, their tests. Not yours: `src/core/status/` (W2), `src/runners/`, other `src/core/scheduler/` files (W1), spec text, the board, bundles.
 
 Done when: the row's tests are red before and green after; existing `test/cli/` wait tests pass unchanged or each change is named with its reason; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass, their output in your summary.
+
+## W4: 011-60 and 011-59, a failed import records its target, and a timeout records its own origin
+
+Use /worker. Shape: slice, two rows on two seams, one commit each. Read board rows 011-60 and 011-59, `research/issue-56.md` (F1, F2, Recommendation), `research/issue-66.md` (Q1, Recommendation), spec 011 C3, C5, C7 and C12.
+
+Outcome: a child's failed import of a missing `file:` or relative target records that path, so creating it re-keys the file; a timed-out or crashed check records origin `own` with no inherited commit.
+
+Seam, 011-60: the resolve hook in `src/runners/observe/recorder.cjs` (lines 186 to 205 at the research's commit). First edit, a lead: when `nextResolve` throws for a `file:` specifier, or a relative one resolved against the parent URL, record that exact path as a read, then rethrow. Guess no candidates for bare or extensionless specifiers. The "matches no file" note is out of scope.
+
+Seam, 011-59: `unknownState` in `src/core/state/derive.ts` keeps `origin` and `commit` from the state before the timeout. First edit, a lead: set origin `own` and drop the inherited commit there. Part (b) only: no new origin line on UNKNOWN notices.
+
+Tests first, red before: the rows' done-when on the board (011-60 end to end with a real child process, as `probes/issue-56/`). Owns: `src/runners/observe/`, `src/core/state/derive.ts`, their tests. Not yours: `src/core/scheduler/`, `src/runners/vitest/` (W1), `src/core/status/` (W2), `src/cli/`, `src/core/delivery/` (ask if a test shows it needs a change), spec text, the board, bundles.
+
+Done when: both rows' tests are red before and green after; existing `test/runners/observe/` and `test/state/` tests pass unchanged or each change is named with its reason; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
