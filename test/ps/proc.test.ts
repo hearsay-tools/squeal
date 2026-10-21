@@ -123,8 +123,10 @@ describe("per-process reads", () => {
       vi.spyOn(console, m),
     );
     try {
-      const marks = PROCESSES.map((p) => source.markOf(p.pid));
-      for (const [i, p] of PROCESSES.entries()) {
+      // Root reads a mode-000 environ, so the unreadable fixture has no fixed answer there.
+      const checked = PROCESSES.filter((p) => !(isRoot && p.environ === "unreadable"));
+      const marks = checked.map((p) => source.markOf(p.pid));
+      for (const [i, p] of checked.entries()) {
         const env = typeof p.environ === "object" && p.environ !== null ? p.environ : {};
         expect(marks[i]).toBe(env.SQUEAL_DAEMON_CHILD ?? null);
       }
