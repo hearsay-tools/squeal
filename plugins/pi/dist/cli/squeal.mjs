@@ -56444,10 +56444,17 @@ var DarwinSource = class {
       cpus: this.#os.availableParallelism()
     };
   }
-  /** Rows by pid; a line that does not parse (a header, a cut line, a `-` value) is left out. */
+  /**
+   * Rows by pid; a line that does not parse (a header, a cut line, a `-`
+   * value) is left out. A `ps` that failed throws: no table is no snapshot
+   * (D1's exit 3), never a host without daemons (`reviews/wave-2.md` B4).
+   */
   #read() {
+    const output = this.#run("env", PS);
+    if (output === null)
+      throw new Error("the process table cannot be read: ps failed, is missing or timed out");
     const lines = /* @__PURE__ */ new Map();
-    for (const text3 of (this.#run("env", PS) ?? "").split("\n")) {
+    for (const text3 of output.split("\n")) {
       const line = this.#line(text3);
       if (line !== null) lines.set(line.row.pid, line);
     }
@@ -56864,20 +56871,25 @@ function fallbackKey(name2, uid) {
 }
 function usedPaths(model, keyDirs) {
   const { places, source } = model;
-  const pids2 = [...model.second.sample.table.values()].filter((row2) => row2.uid === null || row2.uid === places.uid).map((row2) => row2.pid);
+  const pids2 = [...model.first.sample.table.values()].filter((row2) => row2.uid === null || row2.uid === places.uid).map((row2) => row2.pid);
   const cwds = source.cwds(pids2);
   if (cwds === null) return null;
-  const texts = [...cwds.values()];
-  for (const pid of pids2) texts.push(...source.cmdline(pid) ?? []);
   const at2 = `${places.tempDir}/squeal-`;
-  const within2 = /^([^/\s'"=:]+)(?:\/tmp\/([^/\s'"=:]+))?/;
+  const real2 = realOr4(places.tempDir);
+  const named = (text3) => text3.startsWith(`${real2}/`) ? `${places.tempDir}${text3.slice(real2.length)}` : text3;
   const used = /* @__PURE__ */ new Set();
-  for (const text3 of texts) {
-    for (let i3 = text3.indexOf(at2); i3 >= 0; i3 = text3.indexOf(at2, i3 + 1)) {
-      const m = within2.exec(text3.slice(i3 + places.tempDir.length + 1));
-      if (m === null) continue;
-      used.add(join99(places.tempDir, m[1] ?? ""));
-      if (m[2] !== void 0) used.add(join99(keyDirs, m[2]));
+  const use = (path) => {
+    if (!path.startsWith(at2)) return;
+    const [top = "", sub, key2] = path.slice(places.tempDir.length + 1).split("/", 3);
+    used.add(join99(places.tempDir, top));
+    if (top === `squeal-${places.uid}` && sub === "tmp" && key2 !== void 0 && key2 !== "")
+      used.add(join99(keyDirs, key2));
+  };
+  for (const cwd of cwds.values()) use(named(cwd));
+  for (const pid of pids2) {
+    for (const arg of source.cmdline(pid) ?? []) {
+      const path = named(arg);
+      use(path.startsWith(at2) ? path : named(arg.slice(arg.indexOf("=") + 1)));
     }
   }
   return used;
@@ -57001,10 +57013,11 @@ function orphans(c) {
   const byPid = /* @__PURE__ */ new Map();
   const add2 = (pid, flag3, reason2) => byPid.set(pid, [...byPid.get(pid) ?? [], { flag: flag3, reason: reason2, command: `kill ${pid}` }]);
   for (const { pid, reason: reason2 } of orphanTestProcesses(c)) add2(pid, "orphan-test-process", reason2);
-  for (const row2 of table.values()) {
+  const host = model.first.sample.table;
+  for (const row2 of host.values()) {
     if (!NODE_COMMS2.has(row2.comm) || row2.uid !== null && row2.uid !== model.places.uid) continue;
     if (!(model.source.cmdline(row2.pid) ?? []).some((a) => WAITER.test(a))) continue;
-    const parent2 = table.get(row2.ppid);
+    const parent2 = host.get(row2.ppid);
     if (parent2 === void 0) add2(row2.pid, "orphan-waiter", `its parent ${row2.ppid} is gone`);
     else if (row2.ppid === 1 || parent2.comm === "systemd")
       add2(
@@ -57014,10 +57027,10 @@ function orphans(c) {
       );
   }
   for (const { pid, path } of model.pool.foreign)
-    if (table.has(pid) || model.first.sample.table.has(pid))
+    if (table.has(pid) || host.has(pid))
       add2(pid, "foreign-permit", `it holds the pool permit ${path} and is no daemon`);
   return [...byPid].map(([pid, flags2]) => {
-    const row2 = table.get(pid) ?? model.first.sample.table.get(pid);
+    const row2 = table.get(pid) ?? host.get(pid);
     return {
       pid,
       comm: row2?.comm ?? "",
@@ -57789,24 +57802,25 @@ function daemonLines(d, at2) {
   ];
 }
 function processLines(p, at2, full) {
-  const own = [p.cpuPct, p.descendants.cpuPct];
-  const children = p.descendants.count === 0 ? [] : [`+${count(p.descendants.count, "child", "children")}`];
+  const d = p.descendants;
+  const and = (own, sum) => d.count === 0 ? own : own === null || sum === null ? null : own + sum;
+  const children = d.count === 0 ? [] : [`+${count(d.count, "child", "children")}`];
   const lines = [
     row(p.flags.length > 0 ? "! " : "  ", {
       state: `  ${p.lane ?? p.runner ?? "test"}`,
       pid: String(p.pid),
       detail: detailOf(p),
       up: age(p.startedAt, at2),
-      cpu: percent(known2(own)),
-      time: cpuTime3(known2([p.cpuMs, p.descendants.cpuMs])),
-      memory: bytes(known2([p.privateBytes, p.descendants.privateBytes]), true),
-      swap: bytes(known2([p.swapBytes, p.descendants.swapBytes]), true),
+      cpu: percent(and(p.cpuPct, d.cpuPct)),
+      time: cpuTime3(and(p.cpuMs, d.cpuMs)),
+      memory: bytes(and(p.privateBytes, d.privateBytes), true),
+      swap: bytes(and(p.swapBytes, d.swapBytes), true),
       work: [...p.escaped ? ["escaped"] : [], `nice ${p.nice}`, ...children].join(", ")
     }),
     ...flagLines(p.flags)
   ];
   if (!full) return lines;
-  for (const c of p.descendants.list ?? [])
+  for (const c of d.list ?? [])
     lines.push(
       row("  ", {
         state: `    ${c.comm}`,
