@@ -31,8 +31,13 @@ type Decision = "cancel" | "yield" | TierYield | null;
  * published for status in one `yields` meta row of the worktree (C15).
  */
 export class TierYields {
-  /** The key a yield cut each file at, by `testFileId`, until its result lands or its key moves. */
-  readonly #cut = new Map<string, CheckKey>();
+  /**
+   * The key a yield cut each file at and its `resultsApplied` then, by
+   * `testFileId`, until a result lands at that key after the cut or its key
+   * moves. A forced file already has a result at its key when it is cut, so
+   * `resultKey` alone would end the mark at once (review `reviews/0.1.237.md`).
+   */
+  readonly #cut = new Map<string, { key: CheckKey; applied: number }>();
   /** What each tier in flight does for a wait in its lane, by run id, as last published. */
   readonly #standing = new Map<string, TierYield>();
 
@@ -61,7 +66,8 @@ export class TierYields {
       const decision = this.#decide(context, ledger, tier, revision);
       if (decision === "cancel" || decision === "yield") {
         if (decision === "yield")
-          for (const { file, key } of tier.files) this.#cut.set(file.id, key);
+          for (const { file, key } of tier.files)
+            this.#cut.set(file.id, { key, applied: file.resultsApplied });
         tier.cancel?.abort();
       }
       const standing = typeof decision === "string" ? { kind: "yields" as const } : decision;
@@ -91,16 +97,18 @@ export class TierYields {
     if (!waitedFor(context, ledger, tier, revision)) return null;
     if (cancel === null || tier.slot === true) return { kind: "runner" };
     if (tier.kind === "turn") return { kind: "turn" };
-    if (tier.files.some(({ file, key }) => this.#cut.get(file.id) === key)) return { kind: "cut" };
+    if (tier.files.some(({ file, key }) => this.#cut.get(file.id)?.key === key))
+      return { kind: "cut" };
     const remainderMs = remainder(context, tier);
     return remainderMs > YIELD_REMAINDER_MS ? "yield" : { kind: "remainder", remainderMs };
   }
 
-  /** Drops the marks of files whose result landed at the key cut, or whose key moved. */
+  /** Drops the marks of files whose result landed at the key cut after the cut, or whose key moved. */
   #forget(ledger: Ledger): void {
-    for (const [id, key] of this.#cut) {
+    for (const [id, cut] of this.#cut) {
       const file = ledger.files.get(id);
-      if (file === undefined || file.key !== key || file.resultKey === key) this.#cut.delete(id);
+      const landed = file?.resultKey === cut.key && file.resultsApplied > cut.applied;
+      if (file === undefined || file.key !== cut.key || landed) this.#cut.delete(id);
     }
   }
 
