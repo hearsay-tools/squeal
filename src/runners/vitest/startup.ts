@@ -8,6 +8,7 @@ import type {
   RunReport,
   StartupFailure,
 } from "../../core/types/index.js";
+import { closeEmptied } from "./empty-closed.js";
 import type { WorktreePaths } from "./paths.js";
 import type { RunCollector } from "./reporter.js";
 import { toCheckError } from "./results.js";
@@ -117,13 +118,14 @@ export function withStartup(report: RunReport, startup: StartupFailure | null): 
   return { ...report, failure, startupFailure: startup };
 }
 
-/** Closes the instance of a run that rejected; the caller starts a new one on its next call. */
+/**
+ * Closes the instance of a run that rejected, and empties it once closed (task
+ * 013-06); the caller starts a new one on its next call.
+ */
 export async function closeRejected(vitest: Vitest, collector: RunCollector): Promise<void> {
-  await vitest
-    .close()
-    .catch((error: unknown) =>
-      collector.note(`close() of an instance whose run rejected failed: ${String(error)}`),
-    );
+  await closeEmptied(vitest).catch((error: unknown) =>
+    collector.note(`close() of an instance whose run rejected failed: ${String(error)}`),
+  );
 }
 
 /** `config.globalSetup`, which Vitest resolves to absolute paths. */
