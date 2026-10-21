@@ -32,9 +32,12 @@ export const CODEX_PLUGIN: PluginBuild = {
  * so its `squeal` examples run as the command the primer names. One line
  * rather than a rewrite of every `squeal ` example in four files: the copy
  * stays its source plus this line, and each example still reads as a command.
+ * Spec 005 D3 as amended 2026-10-21: that command is the launcher in the
+ * plugin data directory once Squeal keeps its copies there, and the line
+ * names this version's copy of the skill, which a plugin update leaves.
  */
 export const CODEX_SKILL_NOTE =
-  'Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names, `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too.';
+  'Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names. That is the launcher `<plugin data>/bin/squeal`, in the plugin data directory where Squeal keeps a copy of each version; before the first copy, it is `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too. A plugin update deletes the plugin root of the version a session started on; this skill stays readable at `<plugin data>/versions/<version>/skills/squeal/`, the path the SessionStart message names.';
 
 const SKILL_TITLE = "# Squeal\n";
 

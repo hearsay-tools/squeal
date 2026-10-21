@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { statusCommand } from "../../../src/cli/status-command.js";
 import { codexCommand } from "../../../src/harness/codex/command.js";
 import { type CodexHookName, runCodexHook } from "../../../src/harness/codex/index.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
@@ -31,6 +32,22 @@ describe("codexCommand", () => {
     expect(codexCommand({ PLUGIN_ROOT: "" }, "/p/dist/cli/squeal.mjs")).toBe(
       'node --disable-warning=ExperimentalWarning "/p/dist/cli/squeal.mjs"',
     );
+  });
+
+  it("names the launcher in the plugin data directory once it exists (005 D3 as amended 2026-10-21)", () => {
+    const data = join(mkdtempSync("/tmp/sq-cmd-data-"), "squeal-hearsay");
+    const root = "/home/u/.codex/plugins/cache/hearsay/squeal/0.1.243";
+    const copy = join(data, "versions", "0.1.243", "dist", "cli", "squeal.mjs");
+    const env = { PLUGIN_ROOT: root, PLUGIN_DATA: data };
+    const cached = `node --disable-warning=ExperimentalWarning "${root}/dist/cli/squeal.mjs"`;
+    expect(codexCommand(env, copy)).toBe(cached);
+    mkdirSync(join(data, "bin"), { recursive: true });
+    writeFileSync(join(data, "bin", "squeal"), "");
+    expect(codexCommand(env, copy)).toBe(`"${data}/bin/squeal"`);
+    // A CLI the launcher ran from the copy, in a Codex shell without PLUGIN_DATA.
+    expect(statusCommand({ CODEX_SESSION_ID: "019a" }, copy)).toBe(`"${data}/bin/squeal"`);
+    expect(statusCommand({ CODEX_SESSION_ID: "019a" }, `${root}/dist/cli/squeal.mjs`)).toBe(cached);
+    rmSync(join(data, ".."), { recursive: true, force: true });
   });
 
   it("single-quotes a path the shell would expand inside double quotes", () => {
