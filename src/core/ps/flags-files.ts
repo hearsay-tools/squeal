@@ -30,9 +30,13 @@ const LEFTOVER_AGE_MS = 60 * 60_000;
  * 3,500 leftover directories of one file each cost 120 to 140 ms CPU at
  * load 56, about half of it the walk, against goal 6's 0.3 s for the whole
  * snapshot. Past it the size is unknown, never a partial sum; the count
- * needs no walk.
+ * needs no walk. The walk runs with `--full` only (014-23): no check that
+ * reads nothing tells whether it will finish, and in 014-15 it passed the
+ * bound in every sample, for 125 ms each (`lessons.md` P3).
  */
 export const SIZE_WALK_ENTRIES = 10_000;
+/** The command `unknown` gives for the size the walk did not sum. */
+const DU = "`squeal ps --leftovers | xargs -d '\\n' du -sch --` sums them";
 /** A key directory, `<key>`, or one moved aside, `<key>.old-<8 hex>` (`daemon/scratch.ts`). */
 const KEY_DIR = /^([0-9a-f]{16})(?:\.old-[0-9a-f]{8})?$/;
 /**
@@ -55,10 +59,16 @@ export interface FileFindings {
   readonly unknown: readonly PsUnknown[];
 }
 
-/** `sizeEntries` bounds the size walk; tests lower it. */
-export function fileFlags(model: PsModel, sizeEntries = SIZE_WALK_ENTRIES): FileFindings {
+export interface FileFlagOptions {
+  /** `--full`: the size walk of `leftover-temp` runs; without it the size is unknown. */
+  readonly full?: boolean;
+  /** Bounds the size walk; tests lower it. */
+  readonly sizeEntries?: number;
+}
+
+export function fileFlags(model: PsModel, options: FileFlagOptions = {}): FileFindings {
   const unknown: PsUnknown[] = [];
-  const left = leftoverTemp(model, sizeEntries, unknown);
+  const left = leftoverTemp(model, options, unknown);
   return {
     files: [
       ...staleSockets(model, unknown),
@@ -129,7 +139,7 @@ interface Leftovers {
  * arguments, and that changed more than an hour ago (`lessons.md` P1). No
  * such name holds a newline, which `--leftovers`, one path per line, needs.
  */
-function leftoverTemp(model: PsModel, sizeEntries: number, unknown: PsUnknown[]): Leftovers {
+function leftoverTemp(model: PsModel, options: FileFlagOptions, unknown: PsUnknown[]): Leftovers {
   const none: Leftovers = { flag: null, paths: [] };
   const keys = liveKeys(model);
   if (typeof keys === "string") {
@@ -153,11 +163,11 @@ function leftoverTemp(model: PsModel, sizeEntries: number, unknown: PsUnknown[])
       .filter((name) => MADE.test(name) || unkeyed(fallback, name))
       .map((name) => join(places.tempDir, name)),
   ];
-  const old = new Map<AbsolutePath, number>();
+  const old = new Map<AbsolutePath, Stats>();
   for (const path of candidates) {
     const stat = lstatOrNull(path);
     if (stat === null || !stat.isDirectory() || stat.uid !== places.uid) continue;
-    if (model.now - stat.mtimeMs > LEFTOVER_AGE_MS) old.set(path, stat.mtimeMs);
+    if (model.now - stat.mtimeMs > LEFTOVER_AGE_MS) old.set(path, stat);
   }
   if (old.size === 0) return none;
   const paths = unusedPaths(model, keyDirs, [...old.keys()], unknown);
@@ -167,12 +177,16 @@ function leftoverTemp(model: PsModel, sizeEntries: number, unknown: PsUnknown[])
     return none;
   }
   if (paths.length === 0) return none;
-  const bytes = sizeOf(paths, sizeEntries);
+  const limit = options.sizeEntries ?? SIZE_WALK_ENTRIES;
+  const bytes = options.full === true ? sizeOf(paths, old, limit) : null;
   if (bytes === null) {
-    const why = `the size walk stopped at ${sizeEntries} entries; \`squeal ps --leftovers | xargs -d '\\n' du -sch --\` sums them`;
+    const why =
+      options.full === true
+        ? `the size walk stops at ${limit} entries; ${DU}`
+        : `the size walk runs with --full only; ${DU}`;
     unknown.push({ what: "files leftover-temp bytes", why });
   }
-  const oldest = Math.min(...paths.map((path) => old.get(path) ?? model.now));
+  const oldest = Math.min(...paths.map((path) => old.get(path)?.mtimeMs ?? model.now));
   const count = paths.length === 1 ? "1 directory" : `${paths.length} directories`;
   return {
     flag: {
@@ -286,10 +300,22 @@ function unusedPaths(
   return [...unused].sort();
 }
 
-/** The bytes of the files below `dirs`; `null` past `limit` entries. */
-function sizeOf(dirs: readonly AbsolutePath[], limit: number): number | null {
-  const stack = [...dirs];
+/**
+ * The bytes of the files below `dirs`; `null` past `limit` entries. A
+ * directory's links less two are at most its entries: ext4, xfs and tmpfs
+ * count its subdirectories there, btrfs none. So when the `lstat` of `dirs`
+ * already shows more than `limit`, the walk cannot finish and reads nothing.
+ */
+function sizeOf(
+  dirs: readonly AbsolutePath[],
+  stats: ReadonlyMap<AbsolutePath, Stats>,
+  limit: number,
+): number | null {
   let entries = 0;
+  for (const dir of dirs) entries += Math.max(0, (stats.get(dir)?.nlink ?? 2) - 2);
+  if (entries > limit) return null;
+  const stack = [...dirs];
+  entries = 0;
   let bytes = 0;
   for (let dir = stack.pop(); dir !== undefined; dir = stack.pop()) {
     let dirents: Dirent[];
