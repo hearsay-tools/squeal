@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { shellWord } from "../../../src/core/delivery/index.js";
@@ -101,8 +101,8 @@ describe("a tier on A's daemon after A's cache directory is deleted (005-73)", (
     const answer = await ping(socket, 1_000);
     const daemon = answer?.pid;
     expect(answer?.squealVersion).toBe(A);
-    const args = readFileSync(`/proc/${daemon}/cmdline`, "utf8").split("\0");
-    expect(args).toContain(join(m.data, "versions", A, "dist", "cli", "squeal.mjs"));
+    const args = execFileSync("ps", ["-o", "args=", "-p", String(daemon)], { encoding: "utf8" });
+    expect(args).toContain(` ${join(m.data, "versions", A, "dist", "cli", "squeal.mjs")} daemon `);
 
     m.install(B);
     m.remove(A);
