@@ -307,7 +307,8 @@ class Daemon {
           ? null
           : {
               revision: this.#loop.scheduler.status().revision,
-              busy: this.#loop.scheduler.busy(),
+              inUse: this.#loop.scheduler.inUse(),
+              queued: this.#loop.scheduler.queued(),
             },
       // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
       observedChanged: () =>
