@@ -78,6 +78,8 @@ From the store, without the daemon (`research/daemon-discovery.md` 3):
 - **Departure and drain:** `departed:<id>` and `slow-tier:<id>`.
 - **Last use:** the time the daemon was last used (D9). Until the daemon records it, the idle and unused clocks exist only in its memory.
 
+A row whose start is earlier than the lock holder's process start is a predecessor's (D2's start rule, `ownStartOn`): the daemon is `starting`, and the row's record, token, runs, checkpoints and last use are not read as its own, so the predecessor's escaped processes are not attributed to it (`reviews/wave-1.md` B1). The consumers and the pending count are the worktree's and stay.
+
 The settings each rule needs (`daemon.idleExitMinutes`, `daemon.unusedExitMinutes`, `runner.timeoutMs`) come from the daemon's own `squeal.config.json`, through the loader that never throws (C10). Each daemon has its own values.
 
 ### D4. Measurement
