@@ -36,6 +36,7 @@ import { statusIdentity } from "./identity.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 import { openRuns } from "./open-runs.js";
 import { outstandingOf } from "./outstanding.js";
+import { pendingTestFilesOf } from "./phase-files.js";
 import { once } from "./standing-facts.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
@@ -135,7 +136,8 @@ function snapshot(
     ),
   );
   const runs = openRuns(store, worktree, daemon);
-  const header = readHeader(store, worktreeId, states, keys, undefined, openFiles(runs));
+  const held = openFiles(runs);
+  const header = readHeader(store, worktreeId, states, keys, undefined, held);
   // Task 001-404: each failure says how old its run is and the load it ran under.
   const knownFailures = withRecorded(store, worktreeId, states, header.revision);
   const load = once(hostLoadNow);
@@ -163,7 +165,7 @@ function snapshot(
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
-    breakdown: breakdown(states, keys, openFiles(runs)),
+    breakdown: breakdown(states, keys, held),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
@@ -175,6 +177,7 @@ function snapshot(
     ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),
     ...(daemon.state === "alive" ? { runsOpen: runs.length } : {}),
     outstanding,
+    pendingTestFiles: pendingTestFilesOf(states, keys, held),
   };
 }
 

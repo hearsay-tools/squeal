@@ -11,7 +11,7 @@ import type {
 } from "./common.js";
 import type { CheckKey, ClosureMethod, TestFileRef } from "./keys.js";
 import type { DaemonNote } from "./scheduler.js";
-import type { OutstandingGroup } from "./standing.js";
+import type { OutstandingGroup, PendingTestFiles } from "./standing.js";
 import type {
   DiagnosticFingerprint,
   FlakyNote,
@@ -572,6 +572,13 @@ export interface StatusSnapshot extends StatusHeader {
    * outstanding.
    */
   readonly outstanding?: readonly OutstandingGroup[];
+  /**
+   * Row 011-58 (gh-61; 011 C6): the running and the queued test files,
+   * slow ones included, the first `PHASE_FILES_LISTED` of each phase in path
+   * order with how many more there are, beside `testFilesByPhase`'s counts.
+   * Absent from payloads before the field.
+   */
+  readonly pendingTestFiles?: PendingTestFiles;
   /**
    * Row 011-07: what the policy loader reports for `squeal.config.json`, as
    * `setup --check` names it (011 C6, C10). Absent for a valid or missing config.
