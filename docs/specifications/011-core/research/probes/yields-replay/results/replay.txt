@@ -1,0 +1,68 @@
+window 2026-10-14T19:55:38.694Z .. 2026-10-21T12:53:22.000Z (0.1.237 released); fast Vitest tiers 2540, backlog-sized 739; tiers with an event 307
+revisions reaching a fast file or recreating during a tier: 352 (edit's work 329, catch-up 23, recreate 20); named-wait episodes behind a tier: 131 (waits 168)
+load at the events: p50 40.55, p90 72.3, below 8: 8 of 483
+
+rule | Y | source | free cancels (files cut) | yields (files cut, file-s lost) | refused: fair / remainder | lane-s freed | edit's wait for the tier p50/p90/sum | named wait behind the tier p50/p90/sum | named verdict, shift p50/p90 | named verdict, next p50/p90
+236 | 0 | est | 0 (0) | 0 (0, 0) | 0 / 0 | 0 | 45.6/488.6/49702 | 71.4/343.9/16672 | 430.1/3576.9 | 430.1/3576.9
+237 | 0 | est | 53 (117) | 124 (750, 17278) | 3 / 70 | 23863 | 3.1/10.5/10048 | 3.1/70.6/3671 | 292.7/3576.9 | 72.3/666.3
+237 | 15 | est | 54 (118) | 91 (222, 16639) | 2 / 111 | 23315 | 3.1/19.7/10489 | 3.1/76.5/4020 | 292.7/3576.9 | 76.4/666.3
+237 | 30 | est | 54 (118) | 81 (198, 15719) | 2 / 122 | 23075 | 3.1/29.8/10589 | 3.1/76.5/4174 | 306.8/3576.9 | 81.9/730.5
+237 | 60 | est | 54 (118) | 66 (159, 12983) | 1 / 139 | 22691 | 3.1/35.4/11001 | 3.1/78.1/4211 | 306.8/3576.9 | 126.9/925.7
+237 | 120 | est | 54 (118) | 55 (134, 10616) | 1 / 153 | 21829 | 3.1/64.9/11287 | 10.6/98.3/4816 | 321.6/3576.9 | 145.3/999
+237 | 0 | wall | 53 (117) | 128 (763, 17440) | 3 / 66 | 23940 | 3.1/10.3/10035 | 3.1/70.6/3607 | 292.7/3576.9 | 72.3/646.3
+237 | 15 | wall | 54 (118) | 92 (224, 16681) | 2 / 110 | 23345 | 3.1/19.7/10489 | 3.1/76.5/3990 | 292.7/3576.9 | 76.3/666.3
+237 | 30 | wall | 54 (118) | 81 (198, 15719) | 2 / 122 | 23075 | 3.1/29.8/10589 | 3.1/76.5/4174 | 306.8/3576.9 | 81.9/730.5
+237 | 60 | wall | 54 (118) | 66 (159, 12983) | 1 / 139 | 22691 | 3.1/35.4/11001 | 3.1/78.1/4211 | 306.8/3576.9 | 126.9/925.7
+237 | 120 | wall | 54 (118) | 55 (134, 10616) | 1 / 153 | 21829 | 3.1/64.9/11287 | 10.6/98.3/4816 | 321.6/3576.9 | 145.3/999
+54 | 0 | est | 56 (129) | 122 (741, 17081) | 3 / 68 | 23846 | 3.1/10.3/10064 | 3.1/70.6/3671 | 292.7/3576.9 | 72.3/666.3
+54 | 15 | est | 58 (131) | 89 (217, 16531) | 2 / 105 | 23435 | 3.1/11.9/10199 | 3.1/76.5/4020 | 292.7/3576.9 | 76.4/666.3
+54 | 30 | est | 58 (131) | 80 (195, 15639) | 2 / 115 | 23218 | 3.1/13.7/10276 | 3.1/76.5/4174 | 306.8/3576.9 | 81.9/730.5
+54 | 60 | est | 58 (131) | 65 (156, 12902) | 1 / 132 | 22834 | 3.1/29.8/10688 | 3.1/78.1/4211 | 306.8/3576.9 | 126.9/925.7
+54 | 120 | est | 58 (131) | 55 (134, 10616) | 1 / 143 | 22023 | 3.1/33.9/10901 | 10.6/98.3/4816 | 321.6/3576.9 | 145.3/999
+54 | 0 | wall | 56 (129) | 126 (754, 17243) | 3 / 64 | 23923 | 3.1/9.8/10050 | 3.1/70.6/3607 | 292.7/3576.9 | 72.3/646.3
+54 | 15 | wall | 58 (131) | 90 (219, 16574) | 2 / 104 | 23465 | 3.1/11.9/10199 | 3.1/76.5/3990 | 292.7/3576.9 | 76.3/666.3
+54 | 30 | wall | 58 (131) | 80 (195, 15639) | 2 / 115 | 23218 | 3.1/13.7/10276 | 3.1/76.5/4174 | 306.8/3576.9 | 81.9/730.5
+54 | 60 | wall | 58 (131) | 65 (156, 12902) | 1 / 132 | 22834 | 3.1/29.8/10688 | 3.1/78.1/4211 | 306.8/3576.9 | 126.9/925.7
+54 | 120 | wall | 58 (131) | 55 (134, 10616) | 1 / 143 | 22023 | 3.1/33.9/10901 | 10.6/98.3/4816 | 321.6/3576.9 | 145.3/999
+54u | 0 | est | 56 (129) | 116 (736, 16704) | 3 / 76 | 23601 | 3.1/11.9/10647 | 3.1/70.6/3698 | 292.7/3576.9 | 72.6/666.3
+54u | 15 | est | 58 (131) | 86 (212, 16095) | 2 / 110 | 23170 | 3.1/13.7/10767 | 3.1/76.5/4082 | 292.7/3576.9 | 77.2/730.5
+54u | 30 | est | 58 (131) | 77 (190, 15202) | 2 / 120 | 22953 | 3.1/29.1/10844 | 3.1/76.5/4236 | 306.8/3576.9 | 81.9/787.2
+54u | 60 | est | 58 (131) | 63 (152, 12537) | 1 / 136 | 22604 | 3.1/43.4/11255 | 3.5/78.1/4239 | 306.8/3576.9 | 128.2/925.7
+54u | 120 | est | 58 (131) | 54 (131, 10555) | 1 / 146 | 21821 | 3.1/77.7/11469 | 10.6/98.3/4816 | 321.6/3576.9 | 145.3/999
+54u | 0 | wall | 56 (129) | 120 (749, 16866) | 3 / 72 | 23678 | 3.1/11.9/10633 | 3.1/70.6/3635 | 292.7/3576.9 | 72.6/646.3
+54u | 15 | wall | 58 (131) | 87 (214, 16137) | 2 / 109 | 23200 | 3.1/13.7/10767 | 3.1/76.5/4052 | 292.7/3576.9 | 76.4/730.5
+54u | 30 | wall | 58 (131) | 77 (190, 15202) | 2 / 120 | 22953 | 3.1/29.1/10844 | 3.1/76.5/4236 | 306.8/3576.9 | 81.9/787.2
+54u | 60 | wall | 58 (131) | 63 (152, 12537) | 1 / 136 | 22604 | 3.1/43.4/11255 | 3.5/78.1/4239 | 306.8/3576.9 | 128.2/925.7
+54u | 120 | wall | 58 (131) | 54 (131, 10555) | 1 / 146 | 21821 | 3.1/77.7/11469 | 10.6/98.3/4816 | 321.6/3576.9 | 145.3/999
+
+237 at 30 s, est: free, tiers <= 4 files 54 (cut 118, lost 0 file-s and 0 lane-s run again, lane freed 7394 s); free, backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+  yields to edit: tiers <= 4 files 28 (cut 85, lost 4536 file-s and 2285 lane-s run again, lane freed 6690 s); backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+  yields to named: tiers <= 4 files 38 (cut 84, lost 8184 file-s and 4790 lane-s run again, lane freed 6741 s); backlog-sized 15 (cut 29, lost 2999 file-s and 2051 lane-s run again, lane freed 2250 s)
+  yields to recreate: tiers <= 4 files 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s); backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+54 at 30 s, est: free, tiers <= 4 files 58 (cut 131, lost 0 file-s and 0 lane-s run again, lane freed 7588 s); free, backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+  yields to edit: tiers <= 4 files 27 (cut 82, lost 4456 file-s and 2259 lane-s run again, lane freed 6639 s); backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+  yields to named: tiers <= 4 files 38 (cut 84, lost 8184 file-s and 4790 lane-s run again, lane freed 6741 s); backlog-sized 15 (cut 29, lost 2999 file-s and 2051 lane-s run again, lane freed 2250 s)
+  yields to recreate: tiers <= 4 files 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s); backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+237 at 60 s, est: free, tiers <= 4 files 54 (cut 118, lost 0 file-s and 0 lane-s run again, lane freed 7394 s); free, backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+  yields to edit: tiers <= 4 files 24 (cut 74, lost 3884 file-s and 1761 lane-s run again, lane freed 6343 s); backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+  yields to named: tiers <= 4 files 28 (cut 66, lost 6677 file-s and 3638 lane-s run again, lane freed 6737 s); backlog-sized 14 (cut 19, lost 2421 file-s and 1994 lane-s run again, lane freed 2217 s)
+  yields to recreate: tiers <= 4 files 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s); backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+237 at 30 s, wall: free, tiers <= 4 files 54 (cut 118, lost 0 file-s and 0 lane-s run again, lane freed 7394 s); free, backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+  yields to edit: tiers <= 4 files 28 (cut 85, lost 4536 file-s and 2285 lane-s run again, lane freed 6690 s); backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+  yields to named: tiers <= 4 files 38 (cut 84, lost 8184 file-s and 4790 lane-s run again, lane freed 6741 s); backlog-sized 15 (cut 29, lost 2999 file-s and 2051 lane-s run again, lane freed 2250 s)
+  yields to recreate: tiers <= 4 files 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s); backlog-sized 0 (cut 0, lost 0 file-s and 0 lane-s run again, lane freed 0 s)
+
+Vitest module duration / store estimate, every file run with both: p10 1.000, p50 1.000, p90 1.000 (n 22723)
+one-file run wall / store estimate: p10 1.001, p50 1.006, p90 1.616 (n 149)
+  estimate 0 to 10 s: wall - estimate p50 0.61 s, p90 1.22 s, max 3.34 s (n 48)
+  estimate 10 to 30 s: wall - estimate p50 0.76 s, p90 2.06 s, max 3.12 s (n 12)
+  estimate 30 to any s: wall - estimate p50 0.47 s, p90 0.97 s, max 3.18 s (n 89)
+wall source: a one-file run's wall, else the estimate + 1.1 s
+rule 237, yield checks 203: over 30 s by estimate 81, by wall 81, decisions that differ 0; remainder wall - estimate {"n":203,"p50":1.1,"p90":1.1,"max":3.2,"sum":139}
+rule 54, yield checks 195: over 30 s by estimate 80, by wall 80, decisions that differ 0; remainder wall - estimate {"n":195,"p50":1.1,"p90":1.1,"max":3.2,"sum":137}
+
+named episodes before 08:12Z (running-tier-yields.md's copy): 67; recorded verdict over 1,800 s: 17 of 131
+named episodes, all: 131; verdict recorded (236) p50 430.1, p90 3576.9; shift: 237 p50 306.8, p90 3576.9, 54 p50 306.8, p90 3576.9, 54u p50 306.8, p90 3576.9; next: 237 p50 81.9, p90 730.5, 54 p50 81.9, p90 730.5
+named episodes, behind a tier of <= 4 files: 84; verdict recorded (236) p50 429.3, p90 1271.6; shift: 237 p50 231.4, p90 1155.4, 54 p50 231.4, p90 1155.4, 54u p50 231.4, p90 1155.4; next: 237 p50 72.3, p90 603.6, 54 p50 72.3, p90 603.6
+named episodes, behind a backlog-sized tier: 47; verdict recorded (236) p50 469.4, p90 23611.2; shift: 237 p50 469.4, p90 23050.7, 54 p50 469.4, p90 23050.7, 54u p50 469.4, p90 23050.7; next: 237 p50 277.5, p90 1083.6, 54 p50 277.5, p90 1083.6
+episodes where 237 and 54 differ at 30 s: 0
