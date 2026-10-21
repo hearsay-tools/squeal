@@ -140,6 +140,14 @@ export const VITEST_RUNS: readonly Case[] = [
     { files: BASIC, runs: [{ files: SLOW, touched: [], fileEndedThrows: true }] },
   ),
   vitest(
+    "a run cancelled with a cause completes none of its held files (row 011-56)",
+    "011-56: a cancel's text names its cause, which is wording; what the cancelled run completes is stored",
+    {
+      files: BASIC,
+      runs: [{ files: [SLOW2].filter((r) => r !== undefined), touched: [], cancel: "yield" }],
+    },
+  ),
+  vitest(
     "a failing test and a file that fails to load store their fingerprints (review of cand/0.1.232, B1)",
     "a failure's fingerprint decides whether a later fail is the same failure (001 D6), so a change to how the adapter reads Vitest's errors changes what is stored",
     {
