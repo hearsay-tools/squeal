@@ -1,0 +1,4 @@
+candidate test/keys/own-versions.test.ts exit=0 secs=1 load=43.92
+      Tests  5 passed (5)
+candidate test/runners/vitest/project-config.test.ts exit=0 secs=3 load=43.92
+      Tests  3 passed (3)

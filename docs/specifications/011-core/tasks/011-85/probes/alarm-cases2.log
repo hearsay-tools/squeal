@@ -1,0 +1,9 @@
+
+ RUN  v5.0.3 /tmp/squeal-011-85/repo
+
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  22:31:19
+   Duration  31.42s (tests 77%, transform 20%, import 2%)
+

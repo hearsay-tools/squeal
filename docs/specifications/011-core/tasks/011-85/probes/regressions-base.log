@@ -1,0 +1,9 @@
+base test/keys/own-versions.test.ts exit=1 secs=1 load=41.77
+     × keeps it across a raise of the root's version 31ms
+     × keeps it across a raise of a workspace's version 12ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed | 3 passed (5)
+base test/runners/vitest/project-config.test.ts exit=1 secs=3 load=41.77
+     × an edit of e2e/vitest.config.ts re-keys "import { defineConfig } from \"vitest/config\";\nimport { shared } from \"../shared.config.ts\";\n// edited\nexport default defineConfig({\n  test: { name: \"e2e\", include: [\"*.e2e.test.ts\"], globalSetup: [\"./boot.ts\"], ...shared },\n});\n" 486ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 2 passed (3)

@@ -1,0 +1,499 @@
+diff --git a/src/core/keys/environment.ts b/src/core/keys/environment.ts
+index e2755b6ed..b8afb2de1 100644
+--- a/src/core/keys/environment.ts
++++ b/src/core/keys/environment.ts
+@@ -14,6 +14,7 @@ import {
+   HIDDEN_LOCKFILE,
+   packageFoldersFingerprint,
+   staleHiddenLockfile,
++  withoutOwnVersions,
+ } from "./hidden-lockfile.js";
+ import { KEY_FORMAT_VERSION } from "./key-format.js";
+ import type { PackageScans } from "./package-scans.js";
+@@ -22,6 +23,9 @@ import { InstalledGraph } from "./packages.js";
+ /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
+ const ENVIRONMENT_ENCODING = "squeal-environment/1";
+ 
++/** The installed-dependency encoding of a trusted hidden lockfile (task 011-85). */
++const INSTALLED_ENCODING = "squeal-installed/2";
++
+ /**
+  * Environment hash of one runner project in one worktree.
+  *
+@@ -209,7 +213,9 @@ export async function installedDependencies(
+   const { dir, format, content } = found;
+   const stale = format.path === HIDDEN_LOCKFILE ? staleHiddenLockfile(dir, content) : null;
+   const hash = createHash("sha256").update(`${format.path}\0`);
+-  if (stale === null) hash.update(content);
++  if (stale === null && format.path === HIDDEN_LOCKFILE) {
++    hash.update(`${INSTALLED_ENCODING}\0${withoutOwnVersions(content)}`);
++  } else if (stale === null) hash.update(content);
+   else hash.update(`stale\0${packageFoldersFingerprint(dir, content)}`);
+   const patches = createHash("sha256");
+   if (format.patches !== null) {
+diff --git a/src/core/keys/hidden-lockfile.ts b/src/core/keys/hidden-lockfile.ts
+index 785f7ad47..79dc1caa5 100644
+--- a/src/core/keys/hidden-lockfile.ts
++++ b/src/core/keys/hidden-lockfile.ts
+@@ -74,6 +74,25 @@ export function packageFoldersFingerprint(dir: AbsolutePath, content: Buffer): s
+     .digest("hex");
+ }
+ 
++/**
++ * Probe for 011-85: the hidden lockfile without the root's and the
++ * workspaces' own versions, so a version raise keeps the fingerprint. Every
++ * entry under a `node_modules` folder stays whole. Only for a file
++ * `staleHiddenLockfile` trusts, which parsed.
++ */
++export function withoutOwnVersions(content: Buffer): string {
++  const parsed: unknown = JSON.parse(content.toString("utf8"));
++  if (!isRecord(parsed)) return JSON.stringify(parsed);
++  const { name: _name, version: _version, ...rest } = parsed;
++  if (!isRecord(rest.packages)) return JSON.stringify(rest);
++  const packages: Record<string, unknown> = {};
++  for (const [path, entry] of Object.entries(rest.packages)) {
++    const own = path === "" || (insideInstall(path) && !isInstalledFolder(path));
++    packages[path] = own && isRecord(entry) ? { ...entry, version: undefined } : entry;
++  }
++  return JSON.stringify({ ...rest, packages });
++}
++
+ /** The lockfile's `packages` map, or `null` when it is not JSON. */
+ function listedPackages(content: Buffer): Record<string, unknown> | null {
+   let parsed: unknown;
+diff --git a/src/runners/vitest/project.ts b/src/runners/vitest/project.ts
+index b74ce0697..7eebaea66 100644
+--- a/src/runners/vitest/project.ts
++++ b/src/runners/vitest/project.ts
+@@ -3,10 +3,19 @@ import type { TestProject, Vitest } from "vitest/node";
+ import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
+ import { type ImportClosure, importClosure, missingCandidates } from "./graph.js";
+ 
+-/** The config file of a project and of the root, plus their `configFileDependencies`. */
++/** Every project's config file and the root's, plus their `configFileDependencies`. */
+ export function configFiles(vitest: Vitest): Set<AbsolutePath> {
++  return collect([vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]);
++}
++
++/** Probe for 011-85: the root's config file and this project's, plus their `configFileDependencies`. */
++export function projectConfigFiles(vitest: Vitest, project: TestProject): Set<AbsolutePath> {
++  return collect([vitest.vite.config, project.vite.config]);
++}
++
++function collect(configs: readonly TestProject["vite"]["config"][]): Set<AbsolutePath> {
+   const files = new Set<AbsolutePath>();
+-  for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
++  for (const config of configs) {
+     if (config.configFile) files.add(config.configFile);
+     for (const dep of config.configFileDependencies) files.add(dep);
+   }
+@@ -42,7 +51,7 @@ export async function projectInputs(vitest: Vitest, project: TestProject): Promi
+     ...missingCandidates(setup, extensions),
+     ...missingCandidates(globalSetup, extensions),
+   ]);
+-  return { configFiles: configFiles(vitest), setup, globalSetup, missing };
++  return { configFiles: projectConfigFiles(vitest, project), setup, globalSetup, missing };
+ }
+ 
+ /** True when a change to `path` affects every test file of the project. */
+diff --git a/test/keys/own-versions.test.ts b/test/keys/own-versions.test.ts
+new file mode 100644
+index 000000000..f5ad659c1
+--- /dev/null
++++ b/test/keys/own-versions.test.ts
+@@ -0,0 +1,104 @@
++import { lutimesSync, rmSync, symlinkSync, utimesSync } from "node:fs";
++import { join } from "node:path";
++import { afterEach, beforeEach, describe, expect, it } from "vitest";
++import { installedDependencies } from "../../src/core/keys/index.js";
++import { tempDir, writeFile } from "../hash/git-repo.js";
++
++/*
++ * Probe 011-85, regressions 1 to 3 and the change itself: npm's hidden
++ * lockfile keys the install, never the root's or a workspace's own version.
++ */
++
++const INSTALLED = new Date("2026-09-10T00:00:00Z");
++const LOCKED = new Date("2026-09-12T00:00:00Z");
++const pkg = (name: string, version: string) => JSON.stringify({ name, version });
++
++const LOCKFILE = {
++  name: "app",
++  version: "1.4.0",
++  lockfileVersion: 3,
++  requires: true,
++  packages: {
++    "node_modules/a": { version: "1.0.0", integrity: "sha512-a1" },
++    "node_modules/ws": { resolved: "packages/ws", link: true },
++    "packages/ws": { name: "ws", version: "0.3.0", dependencies: { a: "^1.0.0" } },
++  },
++};
++type Lockfile = typeof LOCKFILE & { packages: Record<string, Record<string, unknown>> };
++
++describe("the installed-dependency fingerprint and own versions (011-85)", () => {
++  let dir: ReturnType<typeof tempDir>;
++  let root: string;
++  beforeEach(() => {
++    dir = tempDir();
++    root = dir.path;
++    writeFile(root, "node_modules/a/package.json", pkg("a", "1.0.0"));
++    writeFile(root, "packages/ws/package.json", pkg("ws", "0.3.0"));
++    writeFile(root, "packages/other/package.json", pkg("other", "0.1.0"));
++    symlinkSync("../packages/ws", join(root, "node_modules/ws"));
++    utimesSync(join(root, "node_modules/a"), INSTALLED, INSTALLED);
++    lutimesSync(join(root, "node_modules/ws"), INSTALLED, INSTALLED);
++    lock(LOCKFILE);
++  });
++  afterEach(() => dir.cleanup());
++
++  function lock(content: unknown): void {
++    writeFile(root, "node_modules/.package-lock.json", JSON.stringify(content));
++    utimesSync(join(root, "node_modules/.package-lock.json"), LOCKED, LOCKED);
++  }
++  const edited = (edit: (l: Lockfile) => void) => {
++    const copy = structuredClone(LOCKFILE) as Lockfile;
++    edit(copy);
++    return copy;
++  };
++  const fingerprint = async () => {
++    const read = await installedDependencies(root, root);
++    expect(read.note).toBeNull();
++    return read.fingerprint;
++  };
++
++  it("keeps it across a raise of the root's version", async () => {
++    const before = await fingerprint();
++    lock(edited((l) => { l.version = "1.5.0"; }));
++    expect(await fingerprint()).toBe(before);
++  });
++
++  it("keeps it across a raise of a workspace's version", async () => {
++    const before = await fingerprint();
++    lock(edited((l) => { l.packages["packages/ws"]!.version = "0.4.0"; }));
++    expect(await fingerprint()).toBe(before);
++  });
++
++  it("moves it for an upgrade under node_modules: a version or an integrity (regression 1)", async () => {
++    const before = await fingerprint();
++    lock(edited((l) => { l.packages["node_modules/a"]!.version = "1.0.1"; }));
++    const version = await fingerprint();
++    lock(edited((l) => { l.packages["node_modules/a"]!.integrity = "sha512-a2"; }));
++    const integrity = await fingerprint();
++    expect(new Set([before, version, integrity]).size).toBe(3);
++  });
++
++  it("moves it for a workspace added or a link retargeted (regression 2)", async () => {
++    const before = await fingerprint();
++    lock(edited((l) => { l.packages["packages/other"] = { name: "other", version: "0.1.0" }; }));
++    const added = await fingerprint();
++    lock(edited((l) => { l.packages["node_modules/ws"]!.resolved = "packages/other"; }));
++    const retargeted = await fingerprint();
++    lock(edited((l) => { l.packages["packages/ws"]!.dependencies = { a: "^1.0.1" }; }));
++    const edges = await fingerprint();
++    expect(new Set([before, added, retargeted, edges]).size).toBe(4);
++  });
++
++  it("still keys a stale lockfile by its package folders (regression 3, 001-104)", async () => {
++    writeFile(root, "node_modules/b/package.json", pkg("b", "1.0.0"));
++    utimesSync(join(root, "node_modules/b"), INSTALLED, INSTALLED);
++    const stale = await installedDependencies(root, root);
++    expect(stale.note).toMatch(/not listed in it: node_modules\/b/);
++    lock(edited((l) => { l.version = "1.5.0"; }));
++    expect((await installedDependencies(root, root)).fingerprint).toBe(stale.fingerprint);
++    rmSync(join(root, "node_modules/b"), { recursive: true });
++    writeFile(root, "node_modules/b/package.json", pkg("b", "1.0.1"));
++    utimesSync(join(root, "node_modules/b"), INSTALLED, INSTALLED);
++    expect((await installedDependencies(root, root)).fingerprint).not.toBe(stale.fingerprint);
++  });
++});
+diff --git a/test/keys/validity/case.ts b/test/keys/validity/case.ts
+index dc19ebbb4..07b6b201b 100644
+--- a/test/keys/validity/case.ts
++++ b/test/keys/validity/case.ts
+@@ -23,6 +23,8 @@ export interface KeyInput {
+   readonly closure: readonly string[];
+   /** The test file's installed-dependency segment. */
+   readonly dependencies?: string;
++  /** Probe 011-85: an install written under the scratch directory, its fingerprint the core's input. */
++  readonly installed?: Readonly<Record<string, string>>;
+ }
+ 
+ /** A run's report of one test file, and the checks its previous key held. */
+@@ -137,6 +139,8 @@ export interface VitestInput {
+     readonly cancelBefore?: string;
+     readonly fileEndedThrows?: boolean;
+   }[];
++  /** Probe 011-85: each project's environment files, read as keys. */
++  readonly environment?: true;
+ }
+ 
+ export type Case = { readonly name: string; readonly why: string } & (
+diff --git a/test/keys/validity/cases/adapter/environment.ts b/test/keys/validity/cases/adapter/environment.ts
+new file mode 100644
+index 000000000..3211afdda
+--- /dev/null
++++ b/test/keys/validity/cases/adapter/environment.ts
+@@ -0,0 +1,28 @@
++import type { Case } from "../../case.js";
++
++/* Probe 011-85: two projects, each with its own config file, and the root's. */
++
++const config = (name: string) =>
++  `export default { test: { name: "${name}", include: ["*.test.ts"] } };\n`;
++const test = (name: string) => `import { it } from "vitest";\nit("${name}", () => {});\n`;
++
++export const VITEST_ENVIRONMENT: readonly Case[] = [
++  {
++    kind: "adapter:vitest",
++    name: "two projects' environment files",
++    why: "011-85: a project's environment holds the root's config file and its own, not its sibling's",
++    input: {
++      environment: true,
++      files: {
++        "package.json": '{ "name": "validity-projects", "private": true, "type": "module" }\n',
++        "vitest.config.ts":
++          'export default { test: { projects: ["a/vitest.config.ts", "b/vitest.config.ts"] } };\n',
++        "a/vitest.config.ts": config("a"),
++        "a/a.test.ts": test("a"),
++        "b/vitest.config.ts": config("b"),
++        "b/b.test.ts": test("b"),
++      },
++      runs: [],
++    },
++  },
++];
+diff --git a/test/keys/validity/cases/index.ts b/test/keys/validity/cases/index.ts
+index 3fb87acf0..abd50207a 100644
+--- a/test/keys/validity/cases/index.ts
++++ b/test/keys/validity/cases/index.ts
+@@ -1,3 +1,5 @@
++import { INSTALLED_KEYS } from "./key/installed.js";
++import { VITEST_ENVIRONMENT } from "./adapter/environment.js";
+ import type { Case } from "../case.js";
+ import { INHERIT } from "./accept/inherit.js";
+ import { RETIRED } from "./accept/retired.js";
+@@ -17,6 +19,8 @@ import { STORE_TIERS } from "./store/tier.js";
+  */
+ export const CASES: readonly Case[] = [
+   ...GOLDEN_KEYS,
++  ...INSTALLED_KEYS,
++  ...VITEST_ENVIRONMENT,
+   ...GOLDEN_ROWS,
+   ...OBSERVED_READS,
+   ...INHERIT,
+diff --git a/test/keys/validity/cases/key/installed.ts b/test/keys/validity/cases/key/installed.ts
+new file mode 100644
+index 000000000..8ac66cd95
+--- /dev/null
++++ b/test/keys/validity/cases/key/installed.ts
+@@ -0,0 +1,39 @@
++import type { Case } from "../../case.js";
++import { GOLDEN_KEYS } from "./golden.js";
++
++/* Probe 011-85: a trusted hidden lockfile with the root's and a workspace's own versions. */
++
++const [golden] = GOLDEN_KEYS;
++if (golden?.kind !== "key") throw new Error("golden key case missing");
++
++const lockfile = {
++  name: "app",
++  version: "1.4.0",
++  lockfileVersion: 3,
++  requires: true,
++  packages: {
++    "node_modules/a": { version: "1.0.0", integrity: "sha512-a" },
++    "packages/w": { name: "w", version: "2.0.0", dependencies: { a: "^1.0.0" } },
++  },
++};
++
++export const INSTALLED_KEYS: readonly Case[] = [
++  {
++    kind: "key",
++    name: "a trusted hidden lockfile",
++    why: "011-85: the installed-dependency input without the root's and the workspaces' own versions",
++    input: {
++      ...golden.input,
++      installed: {
++        "node_modules/a/package.json": '{"name":"a","version":"1.0.0"}',
++        "node_modules/.package-lock.json": JSON.stringify(lockfile),
++      },
++    },
++  },
++  {
++    kind: "key",
++    name: "an installed pnpm lockfile",
++    why: "011-85: every other lockfile format keys its file whole, as before",
++    input: { ...golden.input, installed: { "node_modules/.pnpm/lock.yaml": "lockfileVersion: '9.0'\n" } },
++  },
++];
+diff --git a/test/keys/validity/harness.ts b/test/keys/validity/harness.ts
+index 14f84b9f2..e460fc4aa 100644
+--- a/test/keys/validity/harness.ts
++++ b/test/keys/validity/harness.ts
+@@ -1,12 +1,25 @@
+ import { join } from "node:path";
+-import { CLOSURE_METHOD, checkKey, environmentHash } from "../../../src/core/keys/index.js";
++import {
++  CLOSURE_METHOD,
++  checkKey,
++  environmentHash,
++  installedDependencies,
++} from "../../../src/core/keys/index.js";
+ import { recordsForFile } from "../../../src/core/scheduler/records.js";
+ import { describeFailure } from "../../../src/core/state/fingerprint.js";
+ import type { Case, CaseOutput, KeyInput, RowsInput } from "./case.js";
+ import { decideAccept, writeAccept } from "./harness/accept.js";
+ import { assemble } from "./harness/assemble.js";
+ import { observe } from "./harness/observe.js";
+-import { KEY, provenance, REPORT, scratchStore, verdictOf, wordingOf } from "./harness/shared.js";
++import {
++  KEY,
++  provenance,
++  REPORT,
++  scratchStore,
++  verdictOf,
++  wordingOf,
++  writeTree,
++} from "./harness/shared.js";
+ import { storeCase } from "./harness/store.js";
+ import { vitestCase } from "./harness/vitest.js";
+ 
+@@ -18,9 +31,15 @@ import { vitestCase } from "./harness/vitest.js";
+  * old one kept for the last release until it carries the move.
+  */
+ 
+-function key(input: KeyInput): CaseOutput {
++async function key(input: KeyInput, scratch: string): Promise<CaseOutput> {
+   const hashOf = (path: string) => input.hashes[path] ?? null;
+-  const env = environmentHash(input.core, input.runner, hashOf);
++  let core = input.core;
++  if (input.installed !== undefined) {
++    const root = writeTree(join(scratch, "install"), input.installed);
++    const installed = await installedDependencies(root, root);
++    core = { ...core, installedDependencies: installed.fingerprint };
++  }
++  const env = environmentHash(core, input.runner, hashOf);
+   const closure = {
+     testFile: input.testFile,
+     paths: input.closure,
+@@ -57,7 +76,7 @@ function rows(input: RowsInput, scratch: string): CaseOutput {
+ export async function runCase(c: Case, scratch: string, runtime: string): Promise<CaseOutput> {
+   switch (c.kind) {
+     case "key":
+-      return key(c.input);
++      return key(c.input, scratch);
+     case "rows":
+       return rows(c.input, join(scratch, "store"));
+     case "observe":
+diff --git a/test/keys/validity/harness/vitest.ts b/test/keys/validity/harness/vitest.ts
+index dcb4e8f25..51e4c1436 100644
+--- a/test/keys/validity/harness/vitest.ts
++++ b/test/keys/validity/harness/vitest.ts
+@@ -98,8 +98,12 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
+   const root = writeTree(join(scratch, "worktree"), files);
+   const adapter = new VitestAdapter(new WorktreePaths(root), await loadVitest(root));
+   const reports: RunReport[] = [];
++  let environments: unknown;
+   try {
+     await adapter.open();
++    if (input.environment === true) {
++      environments = (await adapter.environment()).map((e) => [e.project, e.files]);
++    }
+     for (const [at, run] of input.runs.entries()) {
+       writeFileSync(hold, "");
+       rmSync(started, { force: true });
+@@ -130,6 +134,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
+     await adapter.close();
+   }
+   return {
++    ...(environments === undefined ? {} : { keys: { environments } }),
+     outputs: { runs: reports.map(storedOf) },
+     wording: { failures: reports.map((r) => r.failure) },
+   };
+diff --git a/test/runners/vitest/project-config.test.ts b/test/runners/vitest/project-config.test.ts
+new file mode 100644
+index 000000000..332425844
+--- /dev/null
++++ b/test/runners/vitest/project-config.test.ts
+@@ -0,0 +1,81 @@
++import { createHash } from "node:crypto";
++import { readFileSync } from "node:fs";
++import { join } from "node:path";
++import { describe, expect, it } from "vitest";
++import { environmentHash } from "../../../src/core/keys/environment.js";
++import type { RunnerEnvironment } from "../../../src/core/types/index.js";
++import { openFixture, SLOW } from "./helpers.js";
++
++/*
++ * Probe 011-85, regression 5: a project's environment holds the root's config
++ * file, its own and their dependencies, never a sibling's.
++ */
++
++const core = {
++  squealVersion: "0",
++  nodeVersion: "0",
++  platform: "p",
++  arch: "a",
++  installedDependencies: "",
++  env: {},
++};
++
++function digest(root: string, env: RunnerEnvironment): string {
++  return environmentHash(core, env, (path) => {
++    try {
++      return createHash("sha256").update(readFileSync(join(root, path))).digest("hex");
++    } catch {
++      return null;
++    }
++  });
++}
++
++const E2E = (extra: string) => `import { defineConfig } from "vitest/config";
++import { shared } from "../shared.config.ts";
++${extra}
++export default defineConfig({
++  test: { name: "e2e", include: ["*.e2e.test.ts"], globalSetup: ["./boot.ts"], ...shared },
++});
++`;
++const ROOT = (extra: string) => `import { defineConfig } from "vitest/config";
++import { shared } from "./shared.config.ts";
++${extra}
++export default defineConfig({
++  test: {
++    projects: [
++      { test: { name: "server", include: ["test/server.test.ts"] } },
++      { test: { name: "web", include: ["test/web.test.ts"] } },
++      "e2e/vitest.config.ts",
++    ],
++    ...shared,
++  },
++});
++`;
++
++describe("each project's config files (011-85)", () => {
++  it.each([
++    ["e2e/vitest.config.ts", E2E("// edited"), ["e2e"]],
++    ["vitest.config.ts", ROOT("// edited"), ["e2e", "server", "web"]],
++    ["shared.config.ts", "export const shared = {}; // edited\n", ["e2e", "server", "web"]],
++  ])("an edit of %s re-keys %j", SLOW, async (path, text, moved) => {
++    const fx = await openFixture("five-projects", {
++      "shared.config.ts": "export const shared = {};\n",
++      "vitest.config.ts": ROOT(""),
++      "e2e/vitest.config.ts": E2E(""),
++    });
++    try {
++      const hashes = async () =>
++        Object.fromEntries(
++          (await fx.adapter.environment()).map((env) => [env.project, digest(fx.root, env)]),
++        );
++      const before = await hashes();
++      fx.write(path, text);
++      await fx.adapter.invalidate([{ path, kind: "change" }]);
++      const after = await hashes();
++      const changed = Object.keys(after).filter((p) => after[p] !== before[p]).sort();
++      expect(changed).toEqual(moved);
++    } finally {
++      await fx.adapter.close();
++    }
++  });
++});
