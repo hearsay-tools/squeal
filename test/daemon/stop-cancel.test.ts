@@ -11,8 +11,10 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { storePaths } from "../../src/core/store/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
+import { CANCELLED, cancelled } from "../../src/runners/vitest/run.js";
 import { recorded } from "../harness/helpers.js";
 import {
   daemonSuite,
@@ -113,6 +115,18 @@ function commandOf(pid: string): string {
   }
 }
 
+/** The failures of this repository's cancelled Vitest runs, from each run's `report.json` (row 011-56). */
+function vitestCancels(repo: Pick<FixtureRepo, "commonDir">): string[] {
+  const runs = storePaths(repo.commonDir).runsDir;
+  return readdirSync(runs).flatMap((id) => {
+    if (!existsSync(join(runs, id, "vitest.log"))) return [];
+    const { report } = JSON.parse(readFileSync(join(runs, id, "report.json"), "utf8")) as {
+      report: { failure: string | null };
+    };
+    return report.failure?.startsWith(CANCELLED) === true ? [report.failure] : [];
+  });
+}
+
 async function stopDaemon(repo: FixtureRepo) {
   const started = performance.now();
   const stop = spawnCli(suite.cli, ["stop", repo.root], { cwd: "/", env: repo.env });
@@ -159,10 +173,11 @@ describe.runIf(process.platform === "linux")(
       expect(await ping(repo.socketPath, 500)).toBeNull();
       expect(existsSync(`/proc/${child}`)).toBe(false);
       expect(holders(repo.root)).toEqual([]);
-      // The shutdown's note names the stop.
+      // The shutdown's note names the stop, and so does the cancelled run (row 011-56).
       expect(readNotes(repo).some((note) => note.startsWith("daemon stopped: squeal stop"))).toBe(
         true,
       );
+      expect(vitestCancels(repo)).toEqual([cancelled("stop")]);
     });
 
     it("starts no slow file once a stop during the departure drain is accepted", async () => {
