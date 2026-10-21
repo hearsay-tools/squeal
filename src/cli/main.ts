@@ -14,6 +14,7 @@ import { failuresCommand } from "./failures.js";
 import { init } from "./init.js";
 import { opencodeStatusLine } from "./opencode/status.js";
 import { piStatusLine } from "./pi/status.js";
+import { psCommand } from "./ps.js";
 import { removeCommand } from "./remove.js";
 import { retryCommand } from "./retry.js";
 import { runCommand } from "./run.js";
@@ -101,6 +102,14 @@ Usage:
                                 reason or none
   squeal retry --cancel <test file>...
                                 Withdraw a pending retry
+  squeal ps [--repo] [--full] [--json]
+                                Every Squeal daemon of this user on this host, with its
+                                test processes, their CPU and memory over 2 s, the host's
+                                totals, and what should not be up, each with the command
+                                that would end it; --repo: this repository only; --full
+                                adds each test's child processes; exit 0, 1 with a flag,
+                                3 on a platform other than Linux and macOS
+  squeal ps --leftovers         Every leftover temp path, one per line
   squeal stop [root]            Stop this worktree's daemon
   squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
                                 daemon, delete the store and temp directories; --config
@@ -149,6 +158,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   start: startCommand,
   run: runCommand,
   retry: retryCommand,
+  ps: psCommand,
   stop: stopCommand,
   remove: removeCommand,
   update: updateCommand,
