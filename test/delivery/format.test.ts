@@ -347,11 +347,14 @@ describe("formatDelta", () => {
         to: "fail",
         summary: "x".repeat(300),
         location: { path: "src/f.ts", line: i, column: 1 },
+        // Row 011-76, test 5: the test-file frame each one names keeps under the cap.
+        testFileFrame: { path: `tests/f${i}.test.ts`, line: 84, column: 15 },
       }),
     );
     entries.push(recovery);
     const text = formatDelta(delta(entries));
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
+    expect(text).toContain("\n      at src/f.ts:0:1, called from tests/f0.test.ts:84:15\n");
     const shown = text.split("\n").filter((l) => l.startsWith("FAIL  ")).length;
     expect(shown).toBeGreaterThan(10);
     const [last, blank, why] = text.split("\n").slice(-3);
@@ -477,9 +480,14 @@ describe("formatRegistration", () => {
   });
 
   it(`caps the message at ${MESSAGE_CAP_CHARS} characters`, () => {
-    const many = Array.from({ length: 2_000 }, (_, i) => failure(i, "y".repeat(300)));
+    // Row 011-76, test 5: with the test-file frame each failure names.
+    const many = Array.from({ length: 2_000 }, (_, i) => ({
+      ...failure(i, "y".repeat(300)),
+      testFileFrame: { path: `tests/f${i}.test.ts`, line: 84, column: 15 },
+    }));
     const text = formatRegistration(registration(many));
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);
+    expect(text).toContain("\n      at src/f.ts:1:1, called from tests/f0.test.ts:84:15\n");
     const shown = text.split("\n").filter((l) => l.startsWith("FAIL  ")).length;
     expect(text.split("\n").at(-3)).toBe(
       `Not shown: ${2_000 - shown} more known failures (${2_000 - shown} tests). \`squeal status\` lists every known failure.`,
