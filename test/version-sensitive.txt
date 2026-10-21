@@ -137,6 +137,9 @@ test/e2e/pi-update
 # OpenCode host has a minimum Node (`src/harness/opencode/host.ts`).
 test/harness/opencode/bridge
 
+# A node:test tier of a daemon run from Squeal's copy of its version (005-73).
+test/harness/codex/version-copies-tier
+
 # `node --test --test-reporter=tap`, its TAP failures parsed per scenario.
 test/evals/atomic-scenarios
 # `node --test` in the eval ground truth, its summary read.

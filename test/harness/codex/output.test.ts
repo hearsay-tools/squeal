@@ -68,4 +68,36 @@ describe("capContext", () => {
     expect(capped.length).toBeLessThanOrEqual(CONTEXT_CAP_CHARS);
     expect(capped.endsWith("`squeal status` has the rest.")).toBe(true);
   });
+
+  /*
+   * Spec 005 D3 as amended 2026-10-21 (row 005-73): SessionStart and
+   * SubagentStart put the kept skill's line before the primer, and it counts
+   * against the cap with the primer.
+   */
+  const skill =
+    "Squeal's skill for this session, kept across plugin updates: `/home/u/.codex/plugins/data/squeal-hearsay/versions/0.1.243/skills/squeal/SKILL.md`.";
+
+  it("puts a kept line before the trailing primer, as its own paragraph", () => {
+    expect(capContext(`header\n\n${PRIMER}`, "squeal", skill)).toBe(
+      `header\n\n${skill}\n\n${PRIMER}`,
+    );
+    // After `compact` the text is the primer alone; with no primer the line goes last.
+    expect(capContext(PRIMER, "squeal", skill)).toBe(`${skill}\n\n${PRIMER}`);
+    expect(capContext("news", "squeal", skill)).toBe(`news\n\n${skill}`);
+  });
+
+  it("counts the kept line against the cap and keeps it whole with the primer", () => {
+    const command = '"/home/u/.codex/plugins/data/squeal-hearsay/bin/squeal"';
+    const tail = `\n\n${skill}\n\n${primer(command)}`;
+    // Within the cap without the line, over it with the line: the line's characters count.
+    const head = "x".repeat(CONTEXT_CAP_CHARS - primer(command).length - 2);
+    expect(`${head}\n\n${primer(command)}`.length).toBe(CONTEXT_CAP_CHARS);
+    const capped = capContext(`${head}\n\n${primer(command)}`, command, skill);
+    expect(capped.length).toBeLessThanOrEqual(CONTEXT_CAP_CHARS);
+    expect(capped.endsWith(tail)).toBe(true);
+    expect(capped).toContain(`\`${command} status\` has the rest.`);
+    const long = capContext(`${lines(600)}\n\n${primer(command)}`, command, skill);
+    expect(long.length).toBeLessThanOrEqual(CONTEXT_CAP_CHARS);
+    expect(long.endsWith(tail)).toBe(true);
+  });
 });

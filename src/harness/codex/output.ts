@@ -21,25 +21,39 @@ const cutLine = (command: string) =>
 /**
  * `text` within `CONTEXT_CAP_CHARS`. A longer one is cut at a line boundary
  * and says so; a trailing primer (`trailingPrimer`) is kept whole, since the shared formats cap
- * at 10,000 characters with the primer last. `command` is how the texts name
- * the CLI (`codexCommand`).
+ * at 10,000 characters with the primer last. `keep`, a paragraph put before
+ * that primer, is kept whole with it: the line naming the kept skill (spec
+ * 005 D3 as amended 2026-10-21). `command` is how the texts name the CLI
+ * (`codexCommand`).
  */
-export function capContext(text: string, command: string = SQUEAL_COMMAND): string {
-  if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const tail = trailingPrimer(text);
+export function capContext(text: string, command: string = SQUEAL_COMMAND, keep = ""): string {
+  // A text that is the primer alone, as after `compact`, has no blank line before it.
+  const primer = trailingPrimer(`\n\n${text}`).slice(2);
+  const head = text.slice(0, text.length - primer.length).replace(/\n\n$/, "");
+  const kept = [keep, primer].filter((p) => p !== "").join("\n\n");
+  const tail = head === "" || kept === "" ? kept : `\n\n${kept}`;
+  if (head.length + tail.length <= CONTEXT_CAP_CHARS) return `${head}${tail}`;
   const cut = cutLine(command);
   const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
-  const head = text.slice(0, text.length - tail.length).slice(0, room);
-  const line = head.lastIndexOf("\n");
-  return `${line > 0 ? head.slice(0, line) : head}\n${cut}${tail}`;
+  const start = head.slice(0, room);
+  const line = start.lastIndexOf("\n");
+  return `${line > 0 ? start.slice(0, line) : start}\n${cut}${tail}`;
 }
 
 export type ContextEvent = "SessionStart" | "SubagentStart" | "UserPromptSubmit" | "PostToolUse";
 
-/** Context the model reads before its next step. */
-export function additionalContext(event: ContextEvent, text: string, command?: string): object {
+/** Context the model reads before its next step; `keep` as `capContext` keeps it. */
+export function additionalContext(
+  event: ContextEvent,
+  text: string,
+  command?: string,
+  keep?: string,
+): object {
   return {
-    hookSpecificOutput: { hookEventName: event, additionalContext: capContext(text, command) },
+    hookSpecificOutput: {
+      hookEventName: event,
+      additionalContext: capContext(text, command, keep),
+    },
   };
 }
 
