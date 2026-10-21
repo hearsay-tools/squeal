@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { currentUid, preparePrivateDir, userTmpDir } from "../daemon/paths.js";
+import { pathToFileURL } from "node:url";
+import { checkPrivateDir, currentUid, preparePrivateDir, userTmpDir } from "../daemon/paths.js";
 import { isBusy } from "../store/index.js";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
 
@@ -116,6 +117,87 @@ export function slowSlotHeld(request: Omit<SlowSlotRequest, "owner" | "signal" |
     if (permitFree(join(dir, permitFile(i)))) return false;
   }
   return true;
+}
+
+/**
+ * What a held permit's lock file records of its holder (row 011-58, gh-58):
+ * the row `takePermit` wrote; `missing`, none; `unreadable`, a row or a
+ * file that does not read as one.
+ */
+export type PermitRecord =
+  | {
+      readonly kind: "holder";
+      readonly pid: number;
+      readonly worktreeId: WorktreeId;
+      readonly since: number;
+    }
+  | { readonly kind: "missing" | "unreadable" };
+
+/** One held permit: its lock file's name, `slow.lock` or `slow.<i>.lock`, and its record. */
+export interface HeldPermit {
+  readonly file: string;
+  readonly record: PermitRecord;
+}
+
+/**
+ * Each of the user's first `permits` slow-slot permits that is held now,
+ * with the holder its lock file records (row 011-58, gh-58; spec 004 D2,
+ * which lets several daemons hold permits at once). Each is tested as
+ * `slowSlotHeld` tests it, and a held one's `holder` row is read through
+ * SQLite's `immutable` URI, which takes no lock, since the holder's
+ * exclusive lock keeps every other reader out. A missing directory or
+ * permit file holds none, and none is created; a file the test cannot lock
+ * nor read as a database is held, `unreadable`. Throws when the directory
+ * is not the user's private one.
+ */
+export function heldPermits(
+  request: Omit<SlowSlotRequest, "owner" | "signal" | "want">,
+): readonly HeldPermit[] {
+  const { dir } = request;
+  if (!existsSync(dir)) return [];
+  checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
+  const held: HeldPermit[] = [];
+  for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
+    const file = permitFile(i);
+    const path = join(dir, file);
+    if (!existsSync(path)) continue;
+    let free: boolean;
+    try {
+      free = permitFree(path);
+    } catch {
+      held.push({ file, record: { kind: "unreadable" } });
+      continue;
+    }
+    if (!free) held.push({ file, record: permitRecord(path) });
+  }
+  return held;
+}
+
+/** The `holder` row of permit `path`, read without a lock. */
+function permitRecord(path: AbsolutePath): PermitRecord {
+  let db: DatabaseSync;
+  try {
+    db = new DatabaseSync(new URL(`${pathToFileURL(path).href}?immutable=1`), { readOnly: true });
+  } catch {
+    return { kind: "unreadable" };
+  }
+  try {
+    const row = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
+    if (row === undefined) return { kind: "missing" };
+    const { pid, worktree_id: worktreeId, since } = row;
+    if (!Number.isSafeInteger(pid) || typeof worktreeId !== "string") return { kind: "unreadable" };
+    if (!Number.isSafeInteger(since)) return { kind: "unreadable" };
+    return {
+      kind: "holder",
+      pid: pid as number,
+      worktreeId: worktreeId as WorktreeId,
+      since: since as number,
+    };
+  } catch (error) {
+    return { kind: String(error).includes("no such table") ? "missing" : "unreadable" };
+  } finally {
+    db.close();
+  }
 }
 
 /** Permit `path` is not held: its exclusive lock was taken and released. */
