@@ -7,8 +7,14 @@ import {
 import type { WorktreeId } from "../types/index.js";
 import type { CapacityOptions } from "./options.js";
 
-/** The tier may not start yet: the daemon's free worker is another lane's and no permit is free. */
+/** The tier may not start yet: no permit it may take is free. */
 export const WAIT_FOR_CAPACITY = "wait";
+
+/**
+ * A daemon whose tier the pool refused looks again at least this often, and
+ * when one of its tiers ends (011 C10 as amended 2026-10-21, row 011-96).
+ */
+export const CAPACITY_RECHECK_MS = 2_000;
 
 /**
  * A scheduler's side of the per-user pool (spec 001 D11 Capacity, task
@@ -22,6 +28,7 @@ export class TierCapacity {
   readonly #dir: string;
   readonly #note: (message: string) => void;
   #failed: string | null = null;
+  #refused = false;
 
   constructor(options: CapacityOptions, worktreeId: WorktreeId, note: (message: string) => void) {
     const { dir, refreshMs, hostSlots, project } = options;
@@ -41,6 +48,7 @@ export class TierCapacity {
     try {
       const lease = this.#pool.acquire(want, lane);
       this.#failed = null;
+      if (lease === null) this.#refused = true;
       return lease ?? WAIT_FOR_CAPACITY;
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -52,6 +60,16 @@ export class TierCapacity {
       this.#failed = reason;
       return null;
     }
+  }
+
+  /**
+   * A tier was refused since the last call: its daemon is a waiter, and the
+   * pump looks again within `CAPACITY_RECHECK_MS` (row 011-96).
+   */
+  refused(): boolean {
+    const refused = this.#refused;
+    this.#refused = false;
+    return refused;
   }
 
   /**

@@ -256,7 +256,7 @@ export interface RunOptions {
   /**
    * The tier's grant from the per-user pool (spec 001 D11 Capacity, task
    * 001-376): how many test processes a backlog or checkpoint tier may run,
-   * the daemon's free worker included. Absent for an edit's tier, which runs
+   * one permit each (row 011-96). Absent for an edit's tier, which runs
    * at `runner.tierSize`, and without a pool. Adapters size their runs from
    * it from task 001-378 on.
    */

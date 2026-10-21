@@ -23,7 +23,7 @@ import {
 import { reconcileBatch } from "./batch.js";
 import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
 import { BusyResume } from "./busy-resume.js";
-import { TierCapacity } from "./capacity.js";
+import { CAPACITY_RECHECK_MS, TierCapacity } from "./capacity.js";
 import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
@@ -696,6 +696,7 @@ class TierScheduler implements Scheduler {
             continue;
           }
           if (await this.#quietWake()) continue;
+          if (await this.#capacityWake()) continue;
           if (this.#inFlight.size === 0 && !this.#woken) break;
           await this.#nextEvent();
         }
@@ -922,13 +923,30 @@ class TierScheduler implements Scheduler {
     const { context, ledger } = this.#started();
     const ms = quietSleepMs(context, ledger);
     if (ms === null) return false;
+    await this.#eventOrAfter(ms);
+    return true;
+  }
+
+  /**
+   * A tier the pool refused waits as a waiter (011 C10 as amended
+   * 2026-10-21, row 011-96): the pump looks again when a tier of this daemon
+   * ends, on `#notify`, or after `CAPACITY_RECHECK_MS`. False when the pool
+   * refused none since the last look.
+   */
+  async #capacityWake(): Promise<boolean> {
+    if (this.#capacity?.refused() !== true) return false;
+    await this.#eventOrAfter(CAPACITY_RECHECK_MS);
+    return true;
+  }
+
+  /** Settles on `#notify` or after `ms`, whichever comes first. */
+  async #eventOrAfter(ms: number): Promise<void> {
     const stop = new AbortController();
     try {
       await Promise.race([this.#nextEvent(), delay(ms, undefined, { signal: stop.signal })]);
     } finally {
       stop.abort();
     }
-    return true;
   }
 
   /** Settles when `#notify` is called; at once when it was since the pump's last pass began. */
