@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { shellWord } from "../../../src/core/delivery/index.js";
 import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import { ping } from "../../daemon/helpers.js";
+import { ping, waitFor } from "../../daemon/helpers.js";
 import { runBundle, runtimeDir } from "../bundle-helpers.js";
 import {
   A,
@@ -96,6 +96,11 @@ describe("a tier on A's daemon after A's cache directory is deleted (005-73)", (
     const launcher = shellWord(join(m.data, "bin", "squeal"));
     const shell = (command: string) =>
       m.shell(command, root, { XDG_RUNTIME_DIR: runtime, CODEX_SESSION_ID: "019a0000-0000" });
+    // The baseline checkpoint: a `status --wait` before any edit returns on quiet without
+    // holding for it, which CI's runner reached first (cand/0.1.247, run 39668199233).
+    await waitFor(async () => (await ping(socket, 500))?.phase === "ready", 60_000, "daemon ready");
+    const baseline = shell(`${launcher} run --all --wait 60000`);
+    expect(baseline.status, `${baseline.stdout}${baseline.stderr}`).toBe(0);
     const first = shell(`${launcher} ${WAIT}`);
     expect(first.stdout, first.stderr).toMatch(/\nKnown failures: 0; all 1 test file current\n/);
     const answer = await ping(socket, 1_000);
