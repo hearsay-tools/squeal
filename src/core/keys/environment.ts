@@ -13,7 +13,9 @@ import type {
 import {
   HIDDEN_LOCKFILE,
   packageFoldersFingerprint,
+  parseHiddenLockfile,
   staleHiddenLockfile,
+  withoutOwnVersions,
 } from "./hidden-lockfile.js";
 import { KEY_FORMAT_VERSION } from "./key-format.js";
 import type { PackageScans } from "./package-scans.js";
@@ -21,6 +23,9 @@ import { InstalledGraph } from "./packages.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
 const ENVIRONMENT_ENCODING = "squeal-environment/1";
+
+/** The whole fingerprint's encoding of a trusted hidden lockfile, without own versions (task 011-85). */
+const INSTALLED_ENCODING = "squeal-installed/2";
 
 /**
  * Environment hash of one runner project in one worktree.
@@ -197,7 +202,9 @@ export interface InstalledDependencies {
  * Task 001-104: npm's hidden lockfile stands for the install only while npm
  * itself would trust it (`staleHiddenLockfile`). Otherwise the package
  * folders are fingerprinted instead, so an install that bypassed the file
- * still re-keys, and the note says so. `note` is `null` otherwise.
+ * still re-keys, and the note says so. `note` is `null` otherwise. Task
+ * 011-85: a trusted hidden lockfile enters without the root's and the
+ * workspaces' own versions (`withoutOwnVersions`), so a release keeps it.
  */
 export async function installedDependencies(
   projectRoot: AbsolutePath,
@@ -207,10 +214,13 @@ export async function installedDependencies(
   const found = await locateLockfile(projectRoot, worktreeRoot);
   if (found === null) return { fingerprint: "none", note: null, graph: null, patches: "none" };
   const { dir, format, content } = found;
-  const stale = format.path === HIDDEN_LOCKFILE ? staleHiddenLockfile(dir, content) : null;
+  const npm = format.path === HIDDEN_LOCKFILE;
+  const hidden = npm ? parseHiddenLockfile(content) : null;
+  const stale = npm ? staleHiddenLockfile(dir, hidden) : null;
   const hash = createHash("sha256").update(`${format.path}\0`);
-  if (stale === null) hash.update(content);
-  else hash.update(`stale\0${packageFoldersFingerprint(dir, content)}`);
+  if (stale !== null) hash.update(`stale\0${packageFoldersFingerprint(dir, hidden)}`);
+  else if (hidden !== null) hash.update(`${INSTALLED_ENCODING}\0${withoutOwnVersions(hidden)}`);
+  else hash.update(content);
   const patches = createHash("sha256");
   if (format.patches !== null) {
     const patchesDir = join(dir, format.patches);
