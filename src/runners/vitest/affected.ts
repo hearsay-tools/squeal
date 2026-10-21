@@ -47,7 +47,7 @@ export async function affectedTestFiles(
 
   let related: readonly TestSpecification[];
   try {
-    related = await relatedSpecifications(vitest, changed);
+    related = await relatedSpecifications(vitest, specs, changed);
   } catch {
     // Vitest's walk rejects when any test file fails to transform (a syntax
     // error mid-edit). Our walk skips such files, so it answers instead.
