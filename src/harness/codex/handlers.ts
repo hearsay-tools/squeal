@@ -1,4 +1,5 @@
 import { readPolicy } from "../../core/daemon/policy.js";
+import { usesSqueal } from "../shared/context.js";
 import { deliver } from "../shared/deliver.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
 import { isRegistered, withContext } from "../shared/hook.js";
@@ -8,6 +9,7 @@ import { stopTurn } from "../shared/stop.js";
 import { stopSlow } from "../shared/stop-slow.js";
 import type { CodexHandler } from "./hook.js";
 import type { CodexHookInput } from "./input.js";
+import { keepCodexVersion, skillLine } from "./kept.js";
 import { additionalContext, block, deny } from "./output.js";
 
 /*
@@ -25,10 +27,17 @@ function sessionSource(input: CodexHookInput): { source?: string } {
   return source === undefined ? {} : { source };
 }
 
-/** SessionStart: ensure the daemon, register, inject the header and the primer. */
+/**
+ * SessionStart: keep this version's copy (spec 005 D3 as amended 2026-10-21)
+ * in a repository that uses Squeal, so the daemon it ensures runs from the
+ * copy; register, inject the header, the copy's skill line and the primer.
+ */
 export const sessionStart: CodexHandler = async (input, location, deps) => {
-  const text = await startSession({ ...input, ...sessionSource(input) }, location, deps);
-  return text === null ? null : additionalContext("SessionStart", text, deps.command);
+  const kept = usesSqueal(location) ? keepCodexVersion(deps) : deps;
+  const text = await startSession({ ...input, ...sessionSource(input) }, location, kept);
+  return text === null
+    ? null
+    : additionalContext("SessionStart", text, kept.command, skillLine(kept));
 };
 
 /**
@@ -134,7 +143,9 @@ export const subagentStart: CodexHandler = async (input, location, deps) => {
     location,
     deps,
   );
-  return text === null ? null : additionalContext("SubagentStart", text, deps.command);
+  return text === null
+    ? null
+    : additionalContext("SubagentStart", text, deps.command, skillLine(deps));
 };
 
 /** SubagentStop: unregister `(session_id, agent_id)`; the parent's view is untouched. */
