@@ -47,8 +47,9 @@ export interface DarwinOs {
 /** `time=` prints hundredths of a second. */
 const CLOCK_TICKS = 100;
 /**
- * D10's one table read. `env` runs it with `LC_TIME=C`, so `lstart` prints
- * `%c` as `Tue Oct 21 10:23:45 2026` in any locale; `LC_ALL` would override it.
+ * D10's one table read; `uid=` keeps another user's daemons out (D2). `env`
+ * runs it with `LC_TIME=C`, so `lstart` prints `%c` as
+ * `Tue Oct 21 10:23:45 2026` in any locale; `LC_ALL` would override it.
  */
 const PS: readonly string[] = [
   "-u",
@@ -57,10 +58,10 @@ const PS: readonly string[] = [
   "ps",
   "-axww",
   "-o",
-  "pid=,ppid=,pgid=,nice=,time=,rss=,lstart=,command=",
+  "pid=,ppid=,pgid=,uid=,nice=,time=,rss=,lstart=,command=",
 ];
 const ROW =
-  /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(-?\d+)\s+(\S+)\s+(\d+)\s+[A-Z][a-z]{2}\s+([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})(?:\s+(.*))?$/;
+  /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(-?\d+)\s+(\S+)\s+(\d+)\s+[A-Z][a-z]{2}\s+([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})(?:\s+(.*))?$/;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** `M:SS.cc` on macOS, minutes past 59 included; `[[DD-]HH:]MM:SS` elsewhere. */
 const TIME = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d{2})(?:\.(\d+))?$/;
@@ -204,6 +205,7 @@ class DarwinSource implements PsSource {
       pid,
       ppid,
       pgid,
+      uid,
       nice,
       time = "",
       rss,
@@ -230,7 +232,7 @@ class DarwinSource implements PsSource {
         startTicks: Math.round(((start - (this.#boot ?? 0)) * CLOCK_TICKS) / 1000),
         cpuTicks,
         nice: Number(nice),
-        uid: null,
+        uid: Number(uid),
       },
       args,
       rssBytes: Number(rss) * 1024,
