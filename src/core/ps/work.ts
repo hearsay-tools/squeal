@@ -11,6 +11,7 @@ import {
   type WorktreeMetaRow,
   worktreeMetaKey,
 } from "../types/index.js";
+import { ownStartOn } from "./discover.js";
 import type { ConsumerState, DaemonSettings, DaemonWork, FoundDaemon, ReadWork } from "./model.js";
 import type { PsCheckpoint, PsTier, PsUnknown } from "./shape.js";
 import type { ProcessTable } from "./source.js";
@@ -36,6 +37,7 @@ export const readWork: ReadWork = (source, table, daemons) => {
   const work = new Map<number, DaemonWork>();
   const unknown: PsUnknown[] = [];
   const namespace = source.pidNamespace();
+  const ownStart = ownStartOn(source);
   for (const [path, group] of byStore(daemons)) {
     const db = openReadOnly(path);
     if (typeof db === "string") {
@@ -47,7 +49,7 @@ export const readWork: ReadWork = (source, table, daemons) => {
       db.exec("BEGIN");
       for (const d of group) {
         try {
-          work.set(d.row.pid, readOne(db, d, table, namespace, unknown));
+          work.set(d.row.pid, readOne(db, d, table, namespace, ownStart, unknown));
         } catch (error) {
           const why = `its store ${path} cannot be read: ${message(error)}`;
           unknown.push({ what: `daemon ${d.row.pid} work`, why });
@@ -92,6 +94,7 @@ function readOne(
   d: FoundDaemon,
   table: ProcessTable,
   namespace: string | null,
+  ownStart: ReturnType<typeof ownStartOn>,
   unknown: PsUnknown[],
 ): DaemonWork {
   const id = d.worktreeId as WorktreeId;
@@ -112,8 +115,18 @@ function readOne(
   // A cleared record keeps its start time and version (`WorktreeRepo.setDaemon`).
   const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
   const version = row === null ? null : strOrNull(row, "daemon_version");
+  // A predecessor's row under a lock holder that has not registered yet (D2, `starting`):
+  // its token, runs and last use are the predecessor's, never this daemon's.
+  const theirs = startedAt !== null && ownStart(d, startedAt) === false;
+  if (theirs)
+    name(
+      "work",
+      `its row is a predecessor's: its token and last use are ${UNKNOWN} until it registers`,
+    );
   const token =
-    startedAt === null ? null : meta("daemonToken", "token", tokenOf(startedAt, version), null);
+    startedAt === null || theirs
+      ? null
+      : meta("daemonToken", "token", tokenOf(startedAt, version), null);
   const record = row === null ? null : recordOf(row, token);
 
   const counts = new Map(
@@ -125,7 +138,7 @@ function readOne(
     if (lanes === undefined) lanes = meta("checkpointLanes", "checkpoint lanes", lanesOf, {});
     return lanes?.[checkpointId] ?? null;
   };
-  const since = startedAt ?? Number.POSITIVE_INFINITY;
+  const since = theirs ? Number.POSITIVE_INFINITY : (startedAt ?? Number.POSITIVE_INFINITY);
   const tiers = all(db, OPEN_RUNS, id, since).map((r): PsTier => {
     const checkpointId = strOrNull(r, "checkpoint_id");
     const paths = testFiles(r).map((f) => (isRecord(f) ? f.path : undefined));
@@ -176,10 +189,10 @@ function readOne(
   // D9: the worktree's row, read as this daemon's only from the start its row records.
   const usedText = get(db, "SELECT value FROM meta WHERE key = ?", daemonUsedMetaKey(id))?.value;
   const lastUse =
-    startedAt === null
+    startedAt === null || theirs
       ? null
       : readDaemonUsed(typeof usedText === "string" ? usedText : null, startedAt);
-  if (lastUse === null && record !== null)
+  if (lastUse === null && record !== null && !theirs)
     name(
       "lastUsedAt",
       typeof usedText === "string"
