@@ -264,4 +264,6 @@ export interface PsUnknown {
   /** `daemon 3704612 lastUsedAt`, `flag hung`, `host cpuPressure`, ... */
   readonly what: string;
   readonly why: string;
+  /** The directories `leftover-temp` cannot tell unused, so it lists them nowhere else (`reviews/wave-4.md` B2). */
+  readonly paths?: readonly string[];
 }
