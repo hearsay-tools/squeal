@@ -2,7 +2,7 @@
 
 Triage reproduction only (researcher, 2026-10-21). Sources: gh issue 66; 011 spec C3, C5, C6, C7 and 013 V3, V5, V6 with their status logs at `18aff2857`; source at `18aff2857` (0.1.234); the installed CLIs 0.1.234 and 0.1.233 (`~/.claude/plugins/cache/hearsay/squeal/<v>/dist`). Probes: `probes/issue-66/` (throwaway).
 
-Host: 24 CPUs. One-minute load was checked before each live probe and was below 24 each time (19.55 to 23.82 at each start, 9.78 to 24.17 at each end; each output file records both). Two checks found it above (24.83, 25.30); the probe waited until it fell.
+Host: 24 CPUs. One-minute load was checked before each live probe and was below 24 each time (19.55 to 23.82 at each start, 9.78 to 24.17 at each end; each output file records both). Two checks found it above (24.83, 25.30); the researcher waited until it fell instead of skipping those attempts. This departed from the triage instruction. No probe started above the limit; no further live reproduction was run by the coordinator.
 
 ## Answers
 
@@ -48,7 +48,7 @@ The timeout happened in B. A ran nothing after its pass. Thus the `Origin` line 
 
 **Experiment** (`run.sh`, outputs `run-output.txt` and `run-output-0.1.233.txt`). B inherits A's results under keys `0455028fa64b` and `4571d6b8c82d`. B then edits `setup.ts`, and both keys change, to `cc2afa289e36` and `98dcc88ecae1`. B's checkpoint at revision 1 reports "2 test files, 0 already current, 2 run now", and `why` shows B's own result at revision 1. The keys match on 0.1.233 and 0.1.234. `run-own.sh` also confirms it: after the edit, B ran `slow.test.ts` itself (it timed out) and took nothing from A's key `09e3109ac0b1`.
 
-So the second friction point in the issue ("a result from a commit without the edited setup file applies here") does not hold. The result was not applied: it was the stale origin label described in Q1.
+The synthetic probes do not support the second friction point in the issue ("a result from a commit without the edited setup file applies here"). They show a stale origin label instead. The original incident remains unverified without its run records.
 
 **Side finding** (verified by experiment, both versions). After the setup edit, B's notice ends with `No result for setup.ts: no test Squeal runs reads it. Run whatever tests it yourself.` (`src/harness/shared/uncovered-edit.ts:50`). This is false for a `setupFiles` entry: in the same notice, Squeal re-keyed both test files because of that edit. This may be another reason the reporter mistrusted the setup handling.
 
