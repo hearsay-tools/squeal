@@ -5,7 +5,13 @@ import { recordsForFile } from "../../../../src/core/scheduler/records.js";
 import { stateFromResult } from "../../../../src/core/state/derive.js";
 import { describeFailure } from "../../../../src/core/state/fingerprint.js";
 import { createStateSink } from "../../../../src/core/state/sink.js";
-import type { TestFileKeyRecord, WorktreeId } from "../../../../src/core/types/index.js";
+import type {
+  ResultRecord,
+  StateSink,
+  Store,
+  TestFileKeyRecord,
+  WorktreeId,
+} from "../../../../src/core/types/index.js";
 import type { AcceptInput, CaseOutput } from "../case.js";
 import { acceptRule } from "./accept-rule.js";
 import {
@@ -26,11 +32,15 @@ import {
  * decisions are compared.
  */
 
-/** Stores `input.runs` in a store under `scratch`, each applied to its own worktree's states. */
+/**
+ * Stores `input.runs` in a store under `scratch`, each applied to its own
+ * worktree's states, then the receiver's timeout when `input.unknown` is set.
+ */
 export function writeAccept(input: AcceptInput, scratch: string): CaseOutput {
   const store = scratchStore(join(scratch, "store"));
   try {
     const sink = createStateSink(store, { now: () => 2_000 });
+    const stored: ResultRecord[] = [];
     for (const [at, run] of input.runs.entries()) {
       const records = recordsForFile({
         ref: input.testFile,
@@ -42,7 +52,9 @@ export function writeAccept(input: AcceptInput, scratch: string): CaseOutput {
       });
       store.results.putMany(records);
       sink.applyResults(run.worktree as WorktreeId, 1, records, { checkpointId: null });
+      stored.push(...records);
     }
+    if (input.unknown !== undefined) timeOut(store, sink, input, stored, input.unknown);
     return {};
   } finally {
     store.close();
@@ -100,9 +112,47 @@ export function decideAccept(input: AcceptInput, stored: string, scratch: string
         mayWait: probe.mayWait,
         states,
         retired: probe.retired,
+        ...(input.unknown === undefined ? {} : { unknown: unknownStates(store, worktreeId) }),
       },
     };
   } finally {
     store.close();
   }
+}
+
+/**
+ * The receiver's own timeout or crash after it took the runs' results
+ * (011-59), with the tree's own code: its checks become unknown at its next
+ * revision, and nothing is stored under the key.
+ */
+function timeOut(
+  store: Store,
+  sink: StateSink,
+  input: AcceptInput,
+  records: readonly ResultRecord[],
+  reason: string,
+) {
+  const worktreeId = input.receiver as WorktreeId;
+  sink.applyResults(worktreeId, 1, records, { checkpointId: null });
+  const { number } = store.revisions.append({
+    worktreeId,
+    createdAt: 2_000,
+    head: "1bc146f0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    dirty: true,
+    trigger: "watch",
+    changes: [],
+  });
+  sink.markUnknown(worktreeId, number, [input.testFile], reason);
+}
+
+/**
+ * The checks a timeout left unknown in the receiver, and the rows at the key.
+ * Their origin and commit are left out: UNKNOWN is never stored under a key
+ * (D12), so no lookup reads them.
+ */
+function unknownStates(store: Store, worktreeId: WorktreeId) {
+  const states = store.knownStates
+    .list(worktreeId)
+    .map((s) => ({ check: s.check, outcome: s.outcome, validity: s.validity }));
+  return { states, atKey: store.results.byKey(KEY, 3_000).map(verdictOf) };
 }
