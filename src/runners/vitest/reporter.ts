@@ -45,9 +45,15 @@ export class RunCollector {
   readonly #requested: Map<string, TestFileRef>;
   readonly #names = new WeakMap<TestModule, Map<string, string>>();
 
+  /**
+   * `ended` hears each requested file whose module ended in a final state
+   * before any cancel, as it ends (`RunOptions.fileEnded`, row 011-54). It
+   * runs inside Vitest's reporter hook, so it must not throw.
+   */
   constructor(
     requested: readonly TestFileRef[],
     readonly paths: WorktreePaths,
+    readonly ended?: (testFile: TestFileRef) => void,
   ) {
     this.#requested = new Map(requested.map((r) => [refKey(r), r]));
   }
@@ -93,14 +99,16 @@ export class RunCollector {
     if (!ref) return;
     const suites = suiteErrors(module);
     const errors = [...module.errors(), ...suites.flatMap((s) => s.errors)];
-    this.modules.set(refKey(ref), {
+    const end: ModuleEnd = {
       ref,
       state: module.state(),
       errors,
       afterCancel: this.cancelRequested,
       durationMs: moduleDuration(module),
-    });
+    };
+    this.modules.set(refKey(ref), end);
     this.log.push(`MODULE ${module.state()} ${label(ref)}`);
+    if (endedInTime(end)) this.ended?.(ref);
     for (const error of module.errors()) {
       this.log.push(indent(`file-level error: ${errorText(error)}`));
     }
@@ -145,6 +153,14 @@ export class RunCollector {
     const prefix = consolePrefix(type, ref === null ? null : label(ref));
     for (const line of content.replace(/\n$/, "").split("\n")) this.log.push(`${prefix}${line}`);
   }
+}
+
+/**
+ * A module that ended in a final state before any cancel: what the report
+ * completes, unless the run then crashes (`buildReport`).
+ */
+export function endedInTime(module: ModuleEnd): boolean {
+  return !module.afterCancel && module.state !== "pending" && module.state !== "queued";
 }
 
 /**
