@@ -1,0 +1,1202 @@
+{
+ "storePath": "/home/agent/projects/cezar/.git/squeal/store.sqlite",
+ "from": "2026-10-14T19:10:00.000Z",
+ "to": "2026-10-21T19:10:00.000Z",
+ "runsInWindow": 6584,
+ "runHoursInWindow": 84.4,
+ "testFiles": [
+  {
+   "project": "api-client",
+   "n": 2
+  },
+  {
+   "project": "contract",
+   "n": 14
+  },
+  {
+   "project": "e2e",
+   "n": 87
+  },
+  {
+   "project": "root:test:unit",
+   "n": 53
+  },
+  {
+   "project": "server",
+   "n": 521
+  },
+  {
+   "project": "test:package",
+   "n": 13
+  },
+  {
+   "project": "test:unit",
+   "n": 11
+  },
+  {
+   "project": "web",
+   "n": 277
+  }
+ ],
+ "events": [
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 30,
+   "at": "2026-10-14T22:32:23.016Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/visual-ready.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 12,
+   "runs": 33,
+   "filesPicked": 46,
+   "distinctFilesOfProjects": 20,
+   "runHours": 0.14
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 34,
+   "at": "2026-10-14T22:44:49.538Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 0,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 35,
+   "at": "2026-10-14T22:45:00.435Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 0,
+   "runs": 2,
+   "filesPicked": 5,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0.01
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 36,
+   "at": "2026-10-14T22:45:23.896Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 1,
+   "runs": 6,
+   "filesPicked": 16,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 38,
+   "at": "2026-10-14T22:45:58.078Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 0,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 39,
+   "at": "2026-10-14T22:46:07.196Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 0,
+   "runs": 1,
+   "filesPicked": 3,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 40,
+   "at": "2026-10-14T22:46:26.777Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 2,
+   "runs": 3,
+   "filesPicked": 9,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0.17
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 41,
+   "at": "2026-10-14T22:48:06.807Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 3,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 42,
+   "at": "2026-10-14T22:51:16.024Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 6,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 52,
+   "at": "2026-10-14T22:57:27.192Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 12,
+   "runs": 16,
+   "filesPicked": 28,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0.15
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 68,
+   "at": "2026-10-14T23:09:27.530Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 0,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 69,
+   "at": "2026-10-14T23:09:34.348Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 7,
+   "runs": 5,
+   "filesPicked": 10,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0.18
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 77,
+   "at": "2026-10-14T23:16:47.366Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/visual-ready.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 33,
+   "runs": 37,
+   "filesPicked": 42,
+   "distinctFilesOfProjects": 28,
+   "runHours": 0.35
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 79,
+   "at": "2026-10-14T23:50:13.665Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 240,
+   "runs": 39,
+   "filesPicked": 42,
+   "distinctFilesOfProjects": 21,
+   "runHours": 0.4
+  },
+  {
+   "worktree": "f4451e5305ccac83",
+   "revision": 19,
+   "at": "2026-10-15T01:48:26.068Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "agent-a1",
+   "windowMinutes": 1,
+   "runs": 5,
+   "filesPicked": 15,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0.01
+  },
+  {
+   "worktree": "f4451e5305ccac83",
+   "revision": 20,
+   "at": "2026-10-15T01:49:35.239Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "agent-a1",
+   "windowMinutes": 240,
+   "runs": 5,
+   "filesPicked": 7,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "20f9e9bad475763f",
+   "revision": 1,
+   "at": "2026-10-15T08:28:47.450Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "web"
+   ],
+   "paths": [
+    "packages/web/vitest.setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "agent-ae",
+   "windowMinutes": 0,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "20f9e9bad475763f",
+   "revision": 2,
+   "at": "2026-10-15T08:28:55.348Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "web"
+   ],
+   "paths": [
+    "packages/web/vitest.setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "agent-ae",
+   "windowMinutes": 7,
+   "runs": 5,
+   "filesPicked": 246,
+   "distinctFilesOfProjects": 245,
+   "runHours": 0.11
+  },
+  {
+   "worktree": "20f9e9bad475763f",
+   "revision": 3,
+   "at": "2026-10-15T08:35:36.160Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "web"
+   ],
+   "paths": [
+    "packages/web/vitest.setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "agent-ae",
+   "windowMinutes": 0,
+   "runs": 1,
+   "filesPicked": 4,
+   "distinctFilesOfProjects": 4,
+   "runHours": 0
+  },
+  {
+   "worktree": "20f9e9bad475763f",
+   "revision": 4,
+   "at": "2026-10-15T08:35:46.011Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "web"
+   ],
+   "paths": [
+    "packages/web/vitest.setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "agent-ae",
+   "windowMinutes": 5,
+   "runs": 4,
+   "filesPicked": 10,
+   "distinctFilesOfProjects": 7,
+   "runHours": 0.02
+  },
+  {
+   "worktree": "20f9e9bad475763f",
+   "revision": 5,
+   "at": "2026-10-15T08:40:32.872Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "web"
+   ],
+   "paths": [
+    "packages/web/vitest.setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "agent-ae",
+   "windowMinutes": 6,
+   "runs": 5,
+   "filesPicked": 246,
+   "distinctFilesOfProjects": 245,
+   "runHours": 0.04
+  },
+  {
+   "worktree": "20f9e9bad475763f",
+   "revision": 6,
+   "at": "2026-10-15T08:46:12.119Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "web"
+   ],
+   "paths": [
+    "packages/web/vitest.setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "agent-ae",
+   "windowMinutes": 3,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "20f9e9bad475763f",
+   "revision": 7,
+   "at": "2026-10-15T08:49:21.216Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "web"
+   ],
+   "paths": [
+    "packages/web/vitest.setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "agent-ae",
+   "windowMinutes": 240,
+   "runs": 65,
+   "filesPicked": 66,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0.43
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 80,
+   "at": "2026-10-15T19:40:11.224Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "api-client",
+    "contract",
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    ".ai/scripts/resolve-browser-launch.mjs",
+    "packages/cezar/vitest.config.ts",
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/e2e/workspace-registry.ts",
+    "packages/web/vitest.setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 240,
+   "runs": 250,
+   "filesPicked": 831,
+   "distinctFilesOfProjects": 324,
+   "runHours": 2.73
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 91,
+   "at": "2026-10-19T06:52:33.914Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "api-client",
+    "contract",
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/e2e/environment.ts",
+    "packages/web/vite.config.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 0,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 92,
+   "at": "2026-10-19T06:52:35.066Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    ".ai/scripts/resolve-browser-launch.mjs"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 41,
+   "runs": 198,
+   "filesPicked": 793,
+   "distinctFilesOfProjects": 1,
+   "runHours": 0.72
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 93,
+   "at": "2026-10-19T07:33:34.241Z",
+   "trigger": "watch",
+   "cause": "installed lockfile changed",
+   "projects": [
+    "api-client",
+    "contract",
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "node_modules/.pnpm/lock.yaml"
+   ],
+   "lockfile": [
+    "node_modules/.pnpm/lock.yaml 968a1b626e>50fb00ea7d"
+   ],
+   "previousLockfile": null,
+   "root": "cezar",
+   "windowMinutes": 240,
+   "runs": 46,
+   "filesPicked": 132,
+   "distinctFilesOfProjects": 101,
+   "runHours": 0.93
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 98,
+   "at": "2026-10-19T21:14:38.967Z",
+   "trigger": "interval",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": "50fb00ea7d",
+   "root": "cezar",
+   "windowMinutes": 240,
+   "runs": 137,
+   "filesPicked": 926,
+   "distinctFilesOfProjects": 81,
+   "runHours": 1.29
+  },
+  {
+   "worktree": "5022c74ca15ccad0",
+   "revision": 1,
+   "at": "2026-10-21T06:57:23.697Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "packages/cezar/vitest.setup.ts",
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/vitest.setup.ts",
+    "scripts/test-git-env.mjs"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "7c144ff7",
+   "windowMinutes": 7,
+   "runs": 12,
+   "filesPicked": 32,
+   "distinctFilesOfProjects": 24,
+   "runHours": 0.19
+  },
+  {
+   "worktree": "12edd02053652b64",
+   "revision": 1,
+   "at": "2026-10-21T06:58:15.583Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "packages/cezar/vitest.setup.ts",
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/vitest.setup.ts",
+    "scripts/test-git-env.mjs"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "0a8f1055",
+   "windowMinutes": 137,
+   "runs": 46,
+   "filesPicked": 128,
+   "distinctFilesOfProjects": 82,
+   "runHours": 1.66
+  },
+  {
+   "worktree": "d50aa3798e7ecb76",
+   "revision": 1,
+   "at": "2026-10-21T06:58:57.067Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "packages/cezar/vitest.setup.ts",
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/vitest.setup.ts",
+    "scripts/test-git-env.mjs"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "e10ce669",
+   "windowMinutes": 43,
+   "runs": 22,
+   "filesPicked": 48,
+   "distinctFilesOfProjects": 23,
+   "runHours": 0.75
+  },
+  {
+   "worktree": "acb0a81e8f4c8cbd",
+   "revision": 1,
+   "at": "2026-10-21T07:02:42.496Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "packages/cezar/vitest.setup.ts",
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/vitest.setup.ts",
+    "scripts/test-git-env.mjs"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "f1ca49e6",
+   "windowMinutes": 7,
+   "runs": 9,
+   "filesPicked": 155,
+   "distinctFilesOfProjects": 135,
+   "runHours": 0.25
+  },
+  {
+   "worktree": "c12ea9066ecf78ec",
+   "revision": 1,
+   "at": "2026-10-21T07:03:21.468Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "packages/cezar/vitest.setup.ts",
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/vitest.setup.ts",
+    "scripts/test-git-env.mjs"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "12bfdcf5",
+   "windowMinutes": 28,
+   "runs": 16,
+   "filesPicked": 95,
+   "distinctFilesOfProjects": 85,
+   "runHours": 0.56
+  },
+  {
+   "worktree": "5022c74ca15ccad0",
+   "revision": 5,
+   "at": "2026-10-21T07:04:42.501Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/e2e/failure-setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "7c144ff7",
+   "windowMinutes": 27,
+   "runs": 5,
+   "filesPicked": 14,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0.51
+  },
+  {
+   "worktree": "e7d66589d8329e6d",
+   "revision": 1,
+   "at": "2026-10-21T07:05:40.165Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "packages/cezar/vitest.setup.ts",
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/e2e/failure-setup.ts",
+    "packages/web/vitest.setup.ts",
+    "scripts/test-git-env.mjs"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "6562319e",
+   "windowMinutes": 7,
+   "runs": 19,
+   "filesPicked": 86,
+   "distinctFilesOfProjects": 60,
+   "runHours": 0.11
+  },
+  {
+   "worktree": "acb0a81e8f4c8cbd",
+   "revision": 8,
+   "at": "2026-10-21T07:09:23.666Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "api-client",
+    "contract",
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "packages/web/e2e/environment.ts",
+    "packages/web/e2e/vitest.config.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "f1ca49e6",
+   "windowMinutes": 2,
+   "runs": 2,
+   "filesPicked": 30,
+   "distinctFilesOfProjects": 30,
+   "runHours": 0.02
+  },
+  {
+   "worktree": "acb0a81e8f4c8cbd",
+   "revision": 9,
+   "at": "2026-10-21T07:11:05.862Z",
+   "trigger": "interval",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/environment.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "f1ca49e6",
+   "windowMinutes": 23,
+   "runs": 29,
+   "filesPicked": 163,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0.49
+  },
+  {
+   "worktree": "e7d66589d8329e6d",
+   "revision": 9,
+   "at": "2026-10-21T07:12:37.628Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "6562319e",
+   "windowMinutes": 240,
+   "runs": 130,
+   "filesPicked": 875,
+   "distinctFilesOfProjects": 53,
+   "runHours": 2.86
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 111,
+   "at": "2026-10-21T07:15:18.284Z",
+   "trigger": "start",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e",
+    "server",
+    "web"
+   ],
+   "paths": [
+    "packages/cezar/vitest.setup.ts",
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/e2e/failure-setup.ts",
+    "packages/web/vitest.setup.ts",
+    "scripts/test-git-env.mjs"
+   ],
+   "lockfile": [],
+   "previousLockfile": "50fb00ea7d",
+   "root": "cezar",
+   "windowMinutes": 135,
+   "runs": 47,
+   "filesPicked": 96,
+   "distinctFilesOfProjects": 92,
+   "runHours": 0.91
+  },
+  {
+   "worktree": "5022c74ca15ccad0",
+   "revision": 7,
+   "at": "2026-10-21T07:31:15.950Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "7c144ff7",
+   "windowMinutes": 240,
+   "runs": 60,
+   "filesPicked": 218,
+   "distinctFilesOfProjects": 34,
+   "runHours": 1.24
+  },
+  {
+   "worktree": "c12ea9066ecf78ec",
+   "revision": 10,
+   "at": "2026-10-21T07:31:17.883Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/e2e/failure-setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "12bfdcf5",
+   "windowMinutes": 2,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "c12ea9066ecf78ec",
+   "revision": 11,
+   "at": "2026-10-21T07:33:13.543Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "12bfdcf5",
+   "windowMinutes": 240,
+   "runs": 109,
+   "filesPicked": 532,
+   "distinctFilesOfProjects": 57,
+   "runHours": 3.35
+  },
+  {
+   "worktree": "acb0a81e8f4c8cbd",
+   "revision": 17,
+   "at": "2026-10-21T07:33:46.677Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/e2e/failure-setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "f1ca49e6",
+   "windowMinutes": 1,
+   "runs": 1,
+   "filesPicked": 136,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "acb0a81e8f4c8cbd",
+   "revision": 18,
+   "at": "2026-10-21T07:34:41.386Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "f1ca49e6",
+   "windowMinutes": 240,
+   "runs": 377,
+   "filesPicked": 1145,
+   "distinctFilesOfProjects": 25,
+   "runHours": 2.8
+  },
+  {
+   "worktree": "d50aa3798e7ecb76",
+   "revision": 17,
+   "at": "2026-10-21T07:42:17.482Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/e2e/failure-setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "e10ce669",
+   "windowMinutes": 1,
+   "runs": 0,
+   "filesPicked": 0,
+   "distinctFilesOfProjects": 0,
+   "runHours": 0
+  },
+  {
+   "worktree": "d50aa3798e7ecb76",
+   "revision": 19,
+   "at": "2026-10-21T07:43:35.283Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "e10ce669",
+   "windowMinutes": 240,
+   "runs": 86,
+   "filesPicked": 1014,
+   "distinctFilesOfProjects": 26,
+   "runHours": 2.95
+  },
+  {
+   "worktree": "12edd02053652b64",
+   "revision": 5,
+   "at": "2026-10-21T09:14:51.373Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts",
+    "packages/web/e2e/failure-setup.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "0a8f1055",
+   "windowMinutes": 240,
+   "runs": 62,
+   "filesPicked": 116,
+   "distinctFilesOfProjects": 48,
+   "runHours": 1.11
+  },
+  {
+   "worktree": "9fcc5087284c342d",
+   "revision": 1,
+   "at": "2026-10-21T09:24:41.427Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "df65774b",
+   "windowMinutes": 240,
+   "runs": 265,
+   "filesPicked": 2169,
+   "distinctFilesOfProjects": 5,
+   "runHours": 3.45
+  },
+  {
+   "worktree": "b7555ac0d0f19f40",
+   "revision": 112,
+   "at": "2026-10-21T09:30:40.989Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": "50fb00ea7d",
+   "root": "cezar",
+   "windowMinutes": 240,
+   "runs": 79,
+   "filesPicked": 90,
+   "distinctFilesOfProjects": 61,
+   "runHours": 0.83
+  },
+  {
+   "worktree": "bfc9f21f0311d884",
+   "revision": 46,
+   "at": "2026-10-21T09:51:10.172Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "dcbd676a",
+   "windowMinutes": 240,
+   "runs": 202,
+   "filesPicked": 2067,
+   "distinctFilesOfProjects": 0,
+   "runHours": 3.96
+  },
+  {
+   "worktree": "acb0a81e8f4c8cbd",
+   "revision": 41,
+   "at": "2026-10-21T12:50:13.938Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/environment.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "f1ca49e6",
+   "windowMinutes": 240,
+   "runs": 123,
+   "filesPicked": 136,
+   "distinctFilesOfProjects": 66,
+   "runHours": 0.48
+  },
+  {
+   "worktree": "8f5cd516de892f90",
+   "revision": 1,
+   "at": "2026-10-21T13:33:28.234Z",
+   "trigger": "watch",
+   "cause": "runner file changed",
+   "projects": [
+    "e2e"
+   ],
+   "paths": [
+    "packages/web/e2e/agent-browser.ts"
+   ],
+   "lockfile": [],
+   "previousLockfile": null,
+   "root": "6a5e5c80",
+   "windowMinutes": 240,
+   "runs": 114,
+   "filesPicked": 516,
+   "distinctFilesOfProjects": 51,
+   "runHours": 2.2
+  }
+ ]
+}

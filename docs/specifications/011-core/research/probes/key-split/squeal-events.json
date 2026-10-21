@@ -1,0 +1,222 @@
+{
+ "storePath": "/home/agent/projects/squeal/.git/squeal/store.sqlite",
+ "from": "2026-10-14T19:10:00.000Z",
+ "to": "2026-10-21T19:10:00.000Z",
+ "runsInWindow": 813,
+ "runHoursInWindow": 6.7,
+ "testFiles": [
+  {
+   "project": "",
+   "n": 970
+  }
+ ],
+ "events": [
+  {
+   "worktree": "da51f2d33f157616",
+   "revision": 55,
+   "at": "2026-10-21T01:05:54.510Z",
+   "trigger": "watch",
+   "cause": "installed lockfile added or removed",
+   "projects": [
+    ""
+   ],
+   "paths": [
+    "node_modules/.package-lock.json"
+   ],
+   "lockfile": [
+    "node_modules/.package-lock.json b09dac54c8>-"
+   ],
+   "previousLockfile": null,
+   "root": "07e4a729",
+   "windowMinutes": 240,
+   "runs": 97,
+   "filesPicked": 787,
+   "distinctFilesOfProjects": 772,
+   "runHours": 0.24
+  },
+  {
+   "worktree": "1c2b8b3b5fd7edbe",
+   "revision": 24,
+   "at": "2026-10-21T10:08:18.692Z",
+   "trigger": "watch",
+   "cause": "installed lockfile added or removed",
+   "projects": [
+    ""
+   ],
+   "paths": [
+    "node_modules/.package-lock.json"
+   ],
+   "lockfile": [
+    "node_modules/.package-lock.json 00eed0eef3>-"
+   ],
+   "previousLockfile": null,
+   "root": "03d89750",
+   "windowMinutes": 104,
+   "runs": 18,
+   "filesPicked": 556,
+   "distinctFilesOfProjects": 161,
+   "runHours": 0.14
+  },
+  {
+   "worktree": "15c0d83e3be76464",
+   "revision": 27,
+   "at": "2026-10-21T10:16:45.714Z",
+   "trigger": "watch",
+   "cause": "installed lockfile added or removed",
+   "projects": [
+    ""
+   ],
+   "paths": [
+    "node_modules/.package-lock.json"
+   ],
+   "lockfile": [
+    "node_modules/.package-lock.json 6b06668fbb>-"
+   ],
+   "previousLockfile": null,
+   "root": "04a258b0",
+   "windowMinutes": 120,
+   "runs": 123,
+   "filesPicked": 1224,
+   "distinctFilesOfProjects": 777,
+   "runHours": 1.01
+  },
+  {
+   "worktree": "1c2b8b3b5fd7edbe",
+   "revision": 48,
+   "at": "2026-10-21T11:52:11.071Z",
+   "trigger": "watch",
+   "cause": "installed lockfile added or removed",
+   "projects": [
+    ""
+   ],
+   "paths": [
+    "node_modules/.package-lock.json"
+   ],
+   "lockfile": [
+    "node_modules/.package-lock.json 6b06668fbb>-"
+   ],
+   "previousLockfile": "00eed0eef3",
+   "root": "03d89750",
+   "windowMinutes": 62,
+   "runs": 114,
+   "filesPicked": 937,
+   "distinctFilesOfProjects": 783,
+   "runHours": 0.68
+  },
+  {
+   "worktree": "15c0d83e3be76464",
+   "revision": 38,
+   "at": "2026-10-21T12:16:45.426Z",
+   "trigger": "watch",
+   "cause": "installed lockfile added or removed",
+   "projects": [
+    ""
+   ],
+   "paths": [
+    "node_modules/.package-lock.json"
+   ],
+   "lockfile": [
+    "node_modules/.package-lock.json 2d0f5fe8ce>-"
+   ],
+   "previousLockfile": "6b06668fbb",
+   "root": "04a258b0",
+   "windowMinutes": 240,
+   "runs": 30,
+   "filesPicked": 708,
+   "distinctFilesOfProjects": 629,
+   "runHours": 0.63
+  },
+  {
+   "worktree": "1c2b8b3b5fd7edbe",
+   "revision": 64,
+   "at": "2026-10-21T12:54:28.688Z",
+   "trigger": "watch",
+   "cause": "installed lockfile added or removed",
+   "projects": [
+    ""
+   ],
+   "paths": [
+    "node_modules/.package-lock.json"
+   ],
+   "lockfile": [
+    "node_modules/.package-lock.json 612b9e1499>-"
+   ],
+   "previousLockfile": "6b06668fbb",
+   "root": "03d89750",
+   "windowMinutes": 99,
+   "runs": 172,
+   "filesPicked": 1072,
+   "distinctFilesOfProjects": 602,
+   "runHours": 0.42
+  },
+  {
+   "worktree": "1c2b8b3b5fd7edbe",
+   "revision": 92,
+   "at": "2026-10-21T14:33:53.908Z",
+   "trigger": "watch",
+   "cause": "installed lockfile added or removed",
+   "projects": [
+    ""
+   ],
+   "paths": [
+    "node_modules/.package-lock.json"
+   ],
+   "lockfile": [
+    "node_modules/.package-lock.json 612b9e1499>-"
+   ],
+   "previousLockfile": "612b9e1499",
+   "root": "03d89750",
+   "windowMinutes": 240,
+   "runs": 16,
+   "filesPicked": 535,
+   "distinctFilesOfProjects": 450,
+   "runHours": 0.36
+  },
+  {
+   "worktree": "cb11ef0a86eae845",
+   "revision": 37,
+   "at": "2026-10-21T18:15:51.022Z",
+   "trigger": "watch",
+   "cause": "installed lockfile added or removed",
+   "projects": [
+    ""
+   ],
+   "paths": [
+    "node_modules/.package-lock.json"
+   ],
+   "lockfile": [
+    "node_modules/.package-lock.json c3ca173c41>-"
+   ],
+   "previousLockfile": null,
+   "root": "5c664a42",
+   "windowMinutes": 240,
+   "runs": 104,
+   "filesPicked": 832,
+   "distinctFilesOfProjects": 815,
+   "runHours": 0.48
+  },
+  {
+   "worktree": "1c2b8b3b5fd7edbe",
+   "revision": 110,
+   "at": "2026-10-21T18:56:33.003Z",
+   "trigger": "start",
+   "cause": "installed lockfile changed",
+   "projects": [
+    ""
+   ],
+   "paths": [
+    "node_modules/.package-lock.json"
+   ],
+   "lockfile": [
+    "node_modules/.package-lock.json e573142f33>7ba6fb67c9"
+   ],
+   "previousLockfile": "612b9e1499",
+   "root": "03d89750",
+   "windowMinutes": 240,
+   "runs": 12,
+   "filesPicked": 555,
+   "distinctFilesOfProjects": 555,
+   "runHours": 0.2
+  }
+ ]
+}
