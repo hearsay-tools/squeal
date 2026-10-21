@@ -61,6 +61,14 @@ export interface SchedulerOptions {
    */
   readonly predecessor?: string | null;
   /**
+   * The start resumes a rest (spec 011 C9 as amended 2026-10-21, row
+   * 011-91): the daemon before it stopped unused and no heartbeat came
+   * after. Whatever `baseline.onStart`, the baseline queues what the start
+   * revision and each unrefined revision reached, a file hashed for the
+   * first time counting as added by the start revision. Absent: no rest.
+   */
+  readonly resumesRest?: boolean;
+  /**
    * The full extra-file list whenever it grows. Called while a batch is being
    * handled: hand it to `ChangeFeed.setExtraFiles` without awaiting, because
    * the feed delivers the next batch only after this one.
