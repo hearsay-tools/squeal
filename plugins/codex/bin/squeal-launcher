@@ -1,5 +1,5 @@
 #!/bin/sh
-# squeal-launcher format 4
+# squeal-launcher format 5
 # Squeal on the terminal's PATH (spec 005 D3): install.sh copies this file to
 # ~/.local/bin/squeal. At each call it finds the installed plugin's CLI and runs
 # it with Node, so a plugin update needs no launcher update. Claude Code's
@@ -102,4 +102,7 @@ if (kept && compare(kept.version, run.version) < 0) {
 }
 process.stdout.write(cliOf(run.dir));
 ' "$0") || exit $?
+# `ps` runs the bundle of its own beside the CLI, which loads only its code (spec 014
+# goal 6); an older plugin has none.
+[ "${1-}" = ps ] && [ -f "${cli%/*}/ps.mjs" ] && cli="${cli%/*}/ps.mjs"
 exec node --disable-warning=ExperimentalWarning "$cli" "$@"

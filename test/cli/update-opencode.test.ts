@@ -190,11 +190,11 @@ describe("squeal update in OpenCode", { timeout: 60_000 }, () => {
 
   it("re-copies the launcher from the OpenCode package when its copy has a newer format", async () => {
     const m = installed("0.1.176");
-    m.publish("0.1.177", laterLauncher(5));
+    m.publish("0.1.177", laterLauncher(6));
     const r = await update(m);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain(`Copied the launcher (format 4, now 5) to ${launcherOf(m)}\n`);
-    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(5));
+    expect(r.stdout).toContain(`Copied the launcher (format 5, now 6) to ${launcherOf(m)}\n`);
+    expect(readFileSync(launcherOf(m), "utf8")).toBe(laterLauncher(6));
   });
 
   it("re-copies the launcher 0.1.177 installed, format 3, which never finds OpenCode's package (review 008-16 S3)", async () => {
@@ -208,7 +208,7 @@ describe("squeal update in OpenCode", { timeout: 60_000 }, () => {
     const r = await update(m);
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("OpenCode: Squeal 0.1.178, was 0.1.177\n");
-    expect(r.stdout).toContain(`Copied the launcher (format 3, now 4) to ${launcherOf(m)}\n`);
+    expect(r.stdout).toContain(`Copied the launcher (format 3, now 5) to ${launcherOf(m)}\n`);
     expect(readFileSync(launcherOf(m), "utf8")).toBe(readFileSync(LAUNCHER, "utf8"));
     expect(squealVersion(m)).toBe("0.1.178");
   });
