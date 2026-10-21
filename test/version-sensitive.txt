@@ -126,6 +126,7 @@ test/daemon/step-down-lanes
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
 test/e2e/slow-node-test
+test/e2e/codex-upgrade
 
 # Installs its fixture with the bundled npm: npm 10.9.9 on Node 22.23 crashed
 # there while Node 24 passed (`ci-test-time.md` 3).
