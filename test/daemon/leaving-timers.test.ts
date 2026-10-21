@@ -52,7 +52,7 @@ describe("a daemon whose only consumer's SubagentStop was killed (task 001-416)"
       active: () => {},
       lastUsed: () => clock,
       used: () => {},
-      work: () => ({ revision: 1, busy: false }),
+      work: () => ({ revision: 1, inUse: false }),
       note: () => {},
       log: () => {},
       shutdown: (reason) => {

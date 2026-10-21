@@ -135,6 +135,11 @@ export class SlowTier {
     private readonly options: SlowTierOptions = {},
   ) {}
 
+  /** A `run --slow` request is open: the daemon is in use while slow files are pending (row 011-92). */
+  get requested(): boolean {
+    return this.#requested;
+  }
+
   /**
    * `run --slow`: the pending slow files run behind fast work, whatever the
    * turns and the load (trigger b; D3 as amended 2026-10-14, task 004-59). A
