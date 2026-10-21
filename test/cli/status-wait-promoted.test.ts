@@ -7,7 +7,7 @@ import { testFileId } from "../../src/core/keys/index.js";
 import { publishPromotions } from "../../src/core/scheduler/promotions.js";
 import type { EpochMs, RevisionNumber, Store } from "../../src/core/types/index.js";
 import { check, state } from "../status/helpers.js";
-import { A, B, key, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import { A, B, key, later, NOW, ref, repoWith } from "./status-wait-fixture.js";
 
 /*
  * Task 011-13 (011 C15): a pending selected file the live daemon published as
@@ -87,6 +87,34 @@ describe("a named wait says when the daemon promoted a pending file (011-13)", (
     expect(entry && fileEntry(entry, "squeal").reason).toBe(`queued, promoted, ${behind}`);
     // The running file is not promoted by being named beside it.
     expect(text).toContain(`  1 running since ${clock(STARTED)} in the vitest lane: ${A}\n`);
+  });
+
+  it("queued, promoted, behind the lane's tier when its own promotion ends with the wait (011-63)", async () => {
+    // gh-51 3: the promotion lasts until the wait's deadline, which its last read is at or after.
+    const { repo, store } = behindA();
+    const started = performance.now();
+    const now = () => (NOW + Math.round(performance.now() - started)) as EpochMs;
+    const wait = await waitForNamed(repo.main, [B], {
+      timeoutMs: 200,
+      pollMs: 20,
+      settleMs: 0,
+      now,
+      sync: sync(),
+      // As the daemon does: until its own clock plus the time left (011-11), published (011-13).
+      promote: (_root, files, withinMs) =>
+        later(0, () => {
+          const until = (now() + Math.round(withinMs)) as EpochMs;
+          publishPromotions(store, repo.mainId, [{ files: files.map(testFileId), until }], now());
+        }),
+    });
+    if (wait.outcome === "unavailable") throw new Error("unavailable");
+
+    expect(wait.outcome).toBe("timeout");
+    const text = namedText(wait, now());
+    expect(text).toContain(`  1 queued, promoted, ${behind}: ${B}; `);
+    expect(text.trimEnd().split("\n").at(-1)).toContain(
+      `still pending at revision 4: 1 queued, promoted, ${behind}. Worktree: `,
+    );
   });
 
   it("queued after the deadline", async () => {

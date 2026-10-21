@@ -14,6 +14,7 @@ import { pauseOnlyIds, readNamedFiles } from "./named-files.js";
 import { type DaemonSync, pollPause, SYNC_POLL_MS, syncDaemon } from "./status-sync.js";
 import { STATUS_WAIT_SETTLE_MS } from "./status-wait.js";
 import {
+  decidedOutcome,
   type NamedPrint,
   type NamedWait,
   type NamedWaitOutcome,
@@ -106,13 +107,7 @@ function readOnce(
   const outcome: NamedWaitOutcome =
     liveness.state !== "alive"
       ? "no-daemon"
-      : ready && selection.unmatched.length > 0
-        ? "unmatched"
-        : ready && held.length === 0
-          ? "slow"
-          : ready && classes.byClass.pending === 0 && !classes.unlisted
-            ? "settled"
-            : "timeout";
+      : ((ready ? decidedOutcome(selection, held, classes) : null) ?? "timeout");
   const result = buildSnapshot(store, root, now);
   return {
     outcome,
