@@ -7,8 +7,9 @@ import { type FixtureProject, openFixture, ref, SLOW } from "./helpers.js";
 
 /*
  * Spec 001 D11 Capacity, task 001-378: a backlog or checkpoint tier's
- * Vitest workers are its grant (`RunOptions.workers`), at least 2 unless the
- * project set 1, never above the project's own `maxWorkers`. A run without a
+ * Vitest workers are its grant (`RunOptions.workers`), at least 2 for a
+ * project with `isolate: false` unless it set 1 (011 C10 as amended
+ * 2026-10-21, row 011-97), never above the project's own `maxWorkers`. A run without a
  * grant (an edit's tier) runs as the project's config says. Probe P1: the
  * warm instance is resized, not recreated. Each file records its
  * `VITEST_POOL_ID`, which runs from 1 to the run's `maxWorkers`.
@@ -78,11 +79,49 @@ describe("vitest adapter: workers from the grant (001-378)", SLOW, () => {
     expect(await widest(fx)).toBe(2);
   });
 
-  it("holds a project's ceiling of 1, and floors any other grant at 2", async () => {
+  it("holds a project's ceiling of 1, runs an isolated project at a grant of 1, and floors isolate: false at 2", async () => {
     const one = await fixture(", maxWorkers: 1");
     expect(await widest(one, 4)).toBe(1);
     const unset = await fixture();
-    expect(await widest(unset, 1)).toBe(2);
+    expect(await widest(unset, 1)).toBe(1);
+    // One worker would take every file of a project that does not isolate them (row 011-97).
+    const shared = await fixture(", isolate: false");
+    expect(await widest(shared, 1)).toBe(2);
+    const sharedOne = await fixture(", isolate: false, maxWorkers: 1");
+    expect(await widest(sharedOne, 4)).toBe(1);
+  });
+
+  /*
+   * Row 011-97's risk: Vitest's `groupSpecs` puts an isolated project of
+   * group 0 whose config says 1 into a last group of its own, and throws when
+   * two projects of one group resolve to different widths. A project with
+   * neither its own `maxWorkers` nor the root's reads the root's written
+   * width, so at a grant of 1 it would run at 1 beside an `isolate: false`
+   * project at 2. Its tier never runs so: the `isolate: false` file makes
+   * the tier's floor 2, which it waits for.
+   */
+  it("runs an isolated project's files alone at 1 beside an isolate: false project of one group, and both at 2", async () => {
+    const projects = `import { defineConfig } from "vitest/config";
+export default defineConfig({ test: { projects: [
+  { extends: true, test: { name: "a", include: ["test/w/*.test.ts"] } },
+  { extends: true, test: { name: "b", include: ["test/v/*.test.ts"], isolate: false, maxWorkers: 3 } },
+] } });
+`;
+    const files: Record<string, string> = { "vitest.config.ts": projects };
+    const a: TestFileRef[] = [];
+    const b: TestFileRef[] = [];
+    for (let i = 0; i < 4; i++) {
+      files[`test/w/a${i}.test.ts`] = recorder(`a${i}`);
+      files[`test/v/b${i}.test.ts`] = recorder(`b${i}`);
+      a.push(ref(`test/w/a${i}.test.ts`, "a"));
+      b.push(ref(`test/v/b${i}.test.ts`, "b"));
+    }
+    const fx = await openFixture("basic", files);
+    expect(Math.max(...(await workerIds(fx, a, 1)).values())).toBe(1);
+    expect(fx.adapter.tierWidth?.(a[0] ?? ref("x"), 1)).toBe(1);
+    expect(fx.adapter.tierWidth?.(b[0] ?? ref("x"), 1)).toBe(2);
+    const both = await workerIds(fx, [...a, ...b], 2);
+    expect(Math.max(...both.values())).toBeLessThanOrEqual(2);
   });
 
   it("holds each project's own ceiling, inherited from the root or its own", async () => {
@@ -182,10 +221,12 @@ export default defineConfig({ test: { maxWorkers: 3, projects: [
  * pool's offer: `tierWidth` under the project's own `maxWorkers`.
  */
 describe("vitest adapter: the backlog tier's width it reports (001-366)", SLOW, () => {
-  it("is the offer under the project's ceiling, at least 2, and a ceiling of 1 kept", async () => {
+  it("is the offer under the project's ceiling, at least 2 for isolate: false, and a ceiling of 1 kept", async () => {
     const four = await fixture(", maxWorkers: 4");
     expect(four.adapter.tierWidth?.(refs[0] ?? ref("x"), 23)).toBe(4);
-    expect(four.adapter.tierWidth?.(refs[0] ?? ref("x"), 1)).toBe(2);
+    expect(four.adapter.tierWidth?.(refs[0] ?? ref("x"), 1)).toBe(1);
+    const shared = await fixture(", isolate: false, maxWorkers: 4");
+    expect(shared.adapter.tierWidth?.(refs[0] ?? ref("x"), 1)).toBe(2);
     const unset = await fixture();
     expect(unset.adapter.tierWidth?.(refs[0] ?? ref("x"), 23)).toBe(23);
     const one = await fixture(", maxWorkers: 1");
