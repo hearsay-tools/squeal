@@ -5,9 +5,8 @@ import { describe, expect, it } from "vitest";
 import { nodeFloor } from "../../../src/harness/build.js";
 import {
   findNode,
-  MIN_NODE,
   meetsMinimum,
-  NODE_FLOOR,
+  minimumNode,
   nodeOnPath,
   usesSquealAt,
 } from "../../../src/harness/opencode/host.js";
@@ -118,9 +117,8 @@ describe("finding Node", () => {
   });
 
   it("holds Node to Squeal's minimum, engines.node's floor (011-86)", () => {
-    expect(NODE_FLOOR).toBe(nodeFloor());
-    const [major = 0, minor = 0] = MIN_NODE;
-    expect(`${major}.${minor}`).toBe(nodeFloor());
+    expect(minimumNode()).toBe(nodeFloor());
+    const [major = 0, minor = 0] = nodeFloor().split(".").map(Number);
     expect(meetsMinimum(`${major}.${minor}.0`)).toBe(true);
     expect(meetsMinimum(`${major + 1}.0.0\n`)).toBe(true);
     if (minor > 0) expect(meetsMinimum(`${major}.${minor - 1}.99`)).toBe(false);
