@@ -79,4 +79,4 @@ For development, load this directory for one session: `claude --plugin-dir plugi
 - The waiter runs only for the main agent of an attended interactive session (`CLAUDE_CODE_SESSION_ATTENDED=1`, `CLAUDE_CODE_ENTRYPOINT` not `sdk-cli`), one per consumer through a lock in `<store>/locks/waiter-*.sqlite`. Every prompt re-arms it, since Claude Code runs no Stop after an interrupted turn; a second waiter exits at once on the lock. A waiter that times out records its consumer as heard from. UserPromptSubmit records the consumer as heard from too, and in an interactive session re-registers one the daemon expired, speaking only when the registration lists known failures.
 - `SQUEAL_HOOK_DEBUG=1` prints a swallowed hook error on stderr; `SQUEAL_WAITER_TIMEOUT_MS` shortens the waiter; `SQUEAL_CLI` overrides the CLI that the hooks and `squeal start` spawn as the daemon. All three are for tests and debugging.
 
-Requires Node 22.13 or later on the PATH that Claude Code hooks see.
+Requires Node 22.19 or later on the PATH that Claude Code hooks see.

@@ -78,6 +78,22 @@ export function rootVersion(): string {
 }
 
 /**
+ * Squeal's Node floor, `22.19` of `engines.node` (`>=22.19`) in `manifest`, by
+ * default the root `package.json`: its one source (011-86). The bundles'
+ * target and the OpenCode plugin's check read it here; any other shape throws.
+ */
+export function nodeFloor(
+  manifest: string = readFileSync(join(REPO_ROOT, "package.json"), "utf8"),
+): string {
+  const range = (JSON.parse(manifest) as { engines?: { node?: unknown } }).engines?.node;
+  const floor = typeof range === "string" ? /^>=(\d+\.\d+)$/.exec(range)?.[1] : undefined;
+  if (floor === undefined) {
+    throw new Error(`engines.node is ${JSON.stringify(range)}, not >=<major>.<minor>`);
+  }
+  return floor;
+}
+
+/**
  * Writes `version` into each of `files` under `pluginDir` that exists, keeping
  * the rest of each manifest. Claude Code updates an installed plugin only when
  * its manifest's version changes (001-76).
@@ -111,8 +127,12 @@ export function bundleOptions(plugin: PluginBuild, outdir: string): BuildOptions
     bundle: true,
     platform: "node",
     format: "esm",
-    target: "node22.13",
-    define: { __SQUEAL_VERSION__: JSON.stringify(rootVersion()) },
+    target: `node${nodeFloor()}`,
+    define: {
+      __SQUEAL_VERSION__: JSON.stringify(rootVersion()),
+      // The CLI reaches the OpenCode plugin's host module (`squeal opencode status`).
+      __SQUEAL_NODE_FLOOR__: JSON.stringify(nodeFloor()),
+    },
     // CommonJS dependencies (enhanced-resolve) require Node builtins; ESM output has no require.
     banner: {
       js: 'import { createRequire as __squealCreateRequire } from "node:module";\nconst require = __squealCreateRequire(import.meta.url);',
