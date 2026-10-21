@@ -198,6 +198,7 @@ describe("the window: CPU from time= over two reads", () => {
       privateBytes: 160_000 * 1024,
       swapBytes: null,
       reapedBy: null,
+      left: false,
     });
     expect(costs.get(5120)?.cpuPct).toBe(50);
     expect(costs.get(4810)?.cpuPct).toBe(1);
