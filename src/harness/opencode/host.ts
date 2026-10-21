@@ -30,15 +30,19 @@ function manifestFloor(): string {
   return floor;
 }
 
-/** Squeal's minimum Node as `major.minor`, `engines.node` in the root `package.json` (011-86). */
-export const NODE_FLOOR: string =
-  typeof __SQUEAL_NODE_FLOOR__ === "string" ? __SQUEAL_NODE_FLOOR__ : manifestFloor();
+let floor: string | undefined;
 
-/** `NODE_FLOOR` as numbers. */
-export const MIN_NODE: readonly [number, number] = [
-  Number(NODE_FLOOR.split(".")[0]),
-  Number(NODE_FLOOR.split(".")[1]),
-];
+/**
+ * Squeal's minimum Node as `major.minor`, `engines.node` in the root
+ * `package.json` (011-86): the bundles' `define`, else `manifestFloor`. Read
+ * at first use, never at import: the CLI imports this module for
+ * `usesSquealAt` alone, and the daemon tests run copies of the `tsc` build
+ * whose manifest names only a version (`buildAt`).
+ */
+export function minimumNode(): string {
+  floor ??= typeof __SQUEAL_NODE_FLOOR__ === "string" ? __SQUEAL_NODE_FLOOR__ : manifestFloor();
+  return floor;
+}
 
 /** How long the plugin waits for `node -p process.versions.node` at init. */
 export const NODE_PROBE_MS = 2_000;
@@ -101,12 +105,13 @@ export function nodeOnPath(path: string | undefined): string | null {
   return null;
 }
 
-/** Whether `version` (`process.versions.node`) is at least `MIN_NODE`. */
+/** Whether `version` (`process.versions.node`) is at least `minimumNode()`. */
 export function meetsMinimum(version: string): boolean {
   const [major, minor] = version.trim().split(".").map(Number);
   if (major === undefined || minor === undefined || Number.isNaN(major) || Number.isNaN(minor))
     return false;
-  return major > MIN_NODE[0] || (major === MIN_NODE[0] && minor >= MIN_NODE[1]);
+  const [leastMajor = 0, leastMinor = 0] = minimumNode().split(".").map(Number);
+  return major > leastMajor || (major === leastMajor && minor >= leastMinor);
 }
 
 /** Runs `node -p process.versions.node`; its output, or `null` on a failure or past `timeoutMs`. */
@@ -139,7 +144,7 @@ export function nodeVersion(node: string, timeoutMs = NODE_PROBE_MS): Promise<st
 }
 
 /**
- * D4: a Node of at least `MIN_NODE` on `PATH`, looked up once at init, never
+ * D4: a Node of at least `minimumNode()` on `PATH`, looked up once at init, never
  * `process.execPath`, which is OpenCode. `null` when there is none.
  */
 export async function findNode(
