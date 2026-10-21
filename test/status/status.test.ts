@@ -275,6 +275,11 @@ describe("readStatus", () => {
           files: [{ project: "", path: "src/empty.test.ts" }],
         },
       ],
+      // Row 011-58 (gh-61): the running and queued files beside `testFilesByPhase`.
+      pendingTestFiles: {
+        running: { files: [{ project: "", path: "src/math.test.ts" }], omitted: 0 },
+        queued: { files: [{ project: "", path: "src/empty.test.ts" }], omitted: 0 },
+      },
     } satisfies StatusSnapshot);
   });
 
@@ -300,6 +305,8 @@ describe("readStatus", () => {
               recorded at an unknown time and load: the result that produced it is no longer identifiable in the store
       Affected checks: 4 passed (3 tests, 1 test file loaded), 1 running (1 test), 1 queued (1 test), 1 skipped (1 test), 1 stale (1 test), 1 unknown (1 test)
       Full-suite checkpoint: none completed since revision 1 (the counts are for revision 2; \`squeal run --all\` requests one)
+      Running: 1 test file: src/math.test.ts
+      Queued: 1 test file: src/empty.test.ts
       Outstanding:
         1 test file without a result: no reason was kept: src/util.test.ts; \`squeal retry src/util.test.ts\` runs it once
         1 test file never run at its inputs, nothing queued it: src/never.test.ts; \`squeal retry src/never.test.ts\` runs it once
