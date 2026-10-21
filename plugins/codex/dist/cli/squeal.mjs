@@ -20800,6 +20800,32 @@ var init_affected = __esm({
   }
 });
 
+// src/runners/vitest/empty-closed.ts
+async function closeEmptied(vitest) {
+  const targets = await Promise.resolve(vitest).then(closedTargets).catch(() => []);
+  await vitest.close();
+  await Promise.resolve(targets).then(emptyClosed).catch(() => 0);
+}
+function closedTargets(vitest) {
+  const listed5 = Array.isArray(vitest.projects) ? vitest.projects : [];
+  const projects2 = /* @__PURE__ */ new Set([vitest.getRootProject(), ...listed5]);
+  const servers2 = /* @__PURE__ */ new Set([vitest.vite, ...[...projects2].map((project) => project.vite)]);
+  const environments2 = [...servers2].flatMap((server) => Object.values(server?.environments ?? {}));
+  const targets = [...environments2, ...servers2, ...projects2, vitest.logger, vitest];
+  return [...new Set(targets)].filter((t) => typeof t === "object" && t !== null);
+}
+function emptyClosed(targets) {
+  for (const target of targets) {
+    for (const key2 of Reflect.ownKeys(target)) Reflect.deleteProperty(target, key2);
+  }
+  return targets.length;
+}
+var init_empty_closed = __esm({
+  "src/runners/vitest/empty-closed.ts"() {
+    "use strict";
+  }
+});
+
 // src/runners/vitest/results.ts
 import { loadavg as loadavg3 } from "node:os";
 function toCheckError(error, paths) {
@@ -21104,7 +21130,7 @@ function runnerFailure(collector, files2) {
   return error === void 0 ? null : errorText(error).split("\n")[0] ?? "";
 }
 async function closeBroken(vitest, collector, broken) {
-  await vitest.close().catch(
+  await closeEmptied(vitest).catch(
     (error) => collector.note(`close() of a broken instance failed: ${String(error)}`)
   );
   return {
@@ -21145,6 +21171,7 @@ function underAny(path, dirs) {
 var init_broken = __esm({
   "src/runners/vitest/broken.ts"() {
     "use strict";
+    init_empty_closed();
     init_reporter();
   }
 });
@@ -22795,7 +22822,7 @@ function withStartup(report2, startup) {
   return { ...report2, failure: failure2, startupFailure: startup };
 }
 async function closeRejected(vitest, collector) {
-  await vitest.close().catch(
+  await closeEmptied(vitest).catch(
     (error) => collector.note(`close() of an instance whose run rejected failed: ${String(error)}`)
   );
 }
@@ -22823,6 +22850,7 @@ var init_startup = __esm({
     "use strict";
     init_fs();
     init_fingerprint();
+    init_empty_closed();
     init_results2();
   }
 });
@@ -22953,6 +22981,7 @@ var init_adapter = __esm({
     init_affected();
     init_broken();
     init_config_stamps();
+    init_empty_closed();
     init_environment2();
     init_exclude();
     init_gate();
@@ -23190,7 +23219,7 @@ var init_adapter = __esm({
       /** Inside `Gate.exclusive`. */
       async #recreate(old) {
         this.#vitest = null;
-        await old?.close();
+        if (old !== null) await closeEmptied(old);
         this.#vitest = await this.#start();
         return this.#vitest;
       }
@@ -23340,6 +23369,8 @@ var init_adapter = __esm({
                 this.#lockfiles,
                 this.paths
               );
+              const reran = mayHaveRun(vitest, moved2, testFiles2, this.paths);
+              const reread = mayHaveReadTouched(vitest, touched, testFiles2, this.paths);
               const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
               const rejected = execution.rejected;
               const startup = rejected === void 0 ? null : startupFailure(vitest, specs, collector, rejected.error, this.paths);
@@ -23369,18 +23400,14 @@ var init_adapter = __esm({
               const reads = observed !== void 0 && options.observeIgnored === true ? { reads: readsOfEvery(observed, built.completedFiles) } : {};
               const kept2 = withoutFiles(
                 observed === void 0 ? built : { ...built, observed, ...reads },
-                mayHaveRun(vitest, moved2, testFiles2, this.paths),
+                reran,
                 moved2,
                 this.paths
               );
               const counted2 = [...touched.inputs, ...touched.modules].map(
                 (file) => this.paths.toRelative(file) ?? file
               );
-              const report2 = withoutTouched(
-                kept2,
-                mayHaveReadTouched(vitest, touched, testFiles2, this.paths),
-                counted2.sort()
-              );
+              const report2 = withoutTouched(kept2, reread, counted2.sort());
               if (broken !== null && report2.failure !== null) this.#note(report2.failure);
               writeRunLog(options, collector, report2);
               return report2;
@@ -23398,7 +23425,7 @@ var init_adapter = __esm({
           this.#closed = true;
           const vitest = this.#vitest;
           this.#vitest = null;
-          await vitest?.close();
+          if (vitest !== null) await closeEmptied(vitest);
           this.#observer.stop();
         });
       }
@@ -49860,7 +49887,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.249";
+  if (true) return "0.1.250";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
