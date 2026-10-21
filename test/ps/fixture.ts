@@ -27,6 +27,8 @@ export interface FixtureProcess {
   readonly ageS: number;
   /** Lifetime CPU in percent of one CPU, from the probe's `lifeCpuPct`. */
   readonly lifeCpuPct: number;
+  /** The ticks of the children it waited for (`cutime + cstime`); none by default. */
+  readonly childTicks?: number;
   readonly cmdline: readonly string[];
   /** `null`: no environ file; `"unreadable"`: mode 000, as another user's is. */
   readonly environ?: Readonly<Record<string, string>> | "unreadable" | null;
@@ -64,8 +66,8 @@ export function statLine(p: FixtureProcess): string {
     0,
     utime,
     stime,
-    0,
-    0,
+    (p.childTicks ?? 0) - Math.floor((p.childTicks ?? 0) / 4),
+    Math.floor((p.childTicks ?? 0) / 4),
     20 + p.nice,
     p.nice,
     12,

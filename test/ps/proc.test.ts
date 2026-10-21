@@ -14,6 +14,7 @@ import {
   PROCESSES,
   SS_XLE,
   startTicksOf,
+  writeProcess,
   writeTree,
 } from "./fixture.js";
 
@@ -59,6 +60,7 @@ describe("process table", () => {
       state: "S",
       startTicks: startTicksOf(daemon),
       cpuTicks: cpuTicksOf(daemon).utime + cpuTicksOf(daemon).stime,
+      childTicks: 0,
       nice: 0,
       uid: process.getuid?.() ?? null,
     });
@@ -77,6 +79,18 @@ describe("process table", () => {
   test("with pids, reads only those, and a missing one is absent", () => {
     const table = source.processTable([2353452, 4242, 99999]);
     expect([...table.keys()]).toEqual([2353452]);
+  });
+
+  test("the children's times are cutime + cstime, fields 16 and 17 (task 014-21)", () => {
+    writeProcess(root, { ...fixture(349493), pid: 6000, childTicks: 1_234 });
+    expect(source.processTable([6000]).get(6000)?.childTicks).toBe(1_234);
+  });
+
+  test("with since, also each process whose pid it does not hold: those born after it", () => {
+    const first = source.processTable();
+    writeProcess(root, { ...fixture(2353452), pid: 6001 });
+    const table = source.processTable([2353452], first);
+    expect([...table.keys()].sort((a, b) => a - b)).toEqual([6001, 2353452]);
   });
 
   test("an unreadable or garbled stat is absent, never a throw", () => {
