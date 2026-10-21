@@ -69,6 +69,21 @@ describe("testFileFrame on V8 stacks (011-76 tests 1 to 3)", () => {
     });
   });
 
+  it("reads a path with parentheses, as a route group's", () => {
+    const stack = [
+      "Error: boom",
+      "    at signIn (app/(auth)/sign-in.ts:7:11)",
+      "    at Object.<anonymous> (app/(auth)/login.test.ts:12:3)",
+      "    at app/(auth)/login.test.ts:30:1",
+    ].join("\n");
+    const errors = [error(stack, { path: "app/(auth)/sign-in.ts", line: 7, column: 11 })];
+    expect(testFileFrame(check("app/(auth)/login.test.ts"), errors)).toEqual({
+      path: "app/(auth)/login.test.ts",
+      line: 12,
+      column: 3,
+    });
+  });
+
   it("names none when the location is in the test file", () => {
     const stack = "Error: boom\n    at test/a.test.ts:9:5\n    at test/a.test.ts:20:3";
     const errors = [error(stack, { path: "test/a.test.ts", line: 9, column: 5 })];

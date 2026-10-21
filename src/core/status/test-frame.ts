@@ -14,8 +14,11 @@ import type {
  * text the runner reported. It is never stored and never guessed.
  */
 
-/** V8: `at <function> (<path>:<line>:<column>)` or `at <path>:<line>:<column>`. */
-const V8_FRAME = /^\s*at (?:.*\()?(.+?):(\d+):(\d+)\)?\s*$/;
+/** A V8 frame: `at <function> (<position>)` or `at <position>`. */
+const V8_FRAME = /^\s*at (.+?)\s*$/;
+
+/** A V8 position, `<path>:<line>:<column>`; the path may hold parentheses, as a route group's. */
+const V8_POSITION = /^(.+):(\d+):(\d+)$/;
 
 /** pytest's long and short tracebacks begin an entry `<path>:<line>: `, the path from pytest's cwd. */
 const PYTEST_ENTRY = /^([^\s:]+):(\d+):(?: |$)/;
@@ -29,10 +32,20 @@ interface Position {
   readonly column?: number;
 }
 
+/** The position a V8 frame names: inside the parentheses after the first ` (`, else the rest. */
+function v8Position(frame: string): Position | null {
+  const open = frame.indexOf(" (");
+  const where = open !== -1 && frame.endsWith(")") ? frame.slice(open + 2, -1) : frame;
+  const match = V8_POSITION.exec(where);
+  if (match === null) return null;
+  return { path: match[1] as string, line: Number(match[2]), column: Number(match[3]) };
+}
+
 function positions(stack: string): Position[] {
   return stack.split("\n").flatMap((text): Position[] => {
     const v8 = V8_FRAME.exec(text);
-    if (v8 !== null) return [{ path: v8[1] as string, line: Number(v8[2]), column: Number(v8[3]) }];
+    const position = v8 === null ? null : v8Position(v8[1] as string);
+    if (position !== null) return [position];
     const entry = PYTEST_ENTRY.exec(text) ?? NATIVE_ENTRY.exec(text);
     return entry === null ? [] : [{ path: entry[1] as string, line: Number(entry[2]) }];
   });
