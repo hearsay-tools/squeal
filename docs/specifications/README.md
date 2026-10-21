@@ -28,3 +28,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 011 | Core (observation, keys, scheduling, state, status, store, daemon, policy, adapter contracts; from 001) | shipped |
 | 012 | Claude Code adapter (hook events, idle waiter, packaging; from 001 D9) | shipped |
 | 013 | Vitest runner adapter (instance, invalidation, closure, runs, gate; from 001 D4) | shipped |
+| 014 | squeal ps (every daemon and test process with CPU and memory, the host totals, what should not be up) | draft |
