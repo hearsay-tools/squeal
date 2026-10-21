@@ -142,9 +142,12 @@ describe("process table: one ps per read", () => {
     expect(table.get(816)?.comm).toBe("");
   });
 
-  test("a failed ps is an empty table, and nothing of an earlier read survives it", () => {
-    f.source.processTable();
+  test("a failed ps throws, never an empty host; a ps that lists nothing is an empty table (reviews/wave-2.md B4)", () => {
     f.ps = null;
+    expect(() => f.source.processTable()).toThrow(
+      "the process table cannot be read: ps failed, is missing or timed out",
+    );
+    f.ps = "";
     expect(f.source.processTable().size).toBe(0);
     expect(f.source.cmdline(4810)).toBeNull();
     expect(f.source.memory(4810)).toBeNull();
