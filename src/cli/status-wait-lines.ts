@@ -192,7 +192,9 @@ const NAMED_FILES_SHOWN = 10;
  * checkpoint's, printed last (issue 26) after the line naming them
  * (`selectedLine`), then the worktree's known failures and outstanding work.
  * A timeout counts the pending files by what holds them (011 C15,
- * `reasonGroups`). A path that selects nothing says D2's text. The slow
+ * `reasonGroups`). A path that selects nothing says D2's text, alone when no
+ * path selects a file, else beside the verdict on the files the others
+ * select, which it leaves without a clean one (row 011-63). The slow
  * files left for a pause are named after the verdict, or are the reason for
  * none when they are all it selected (task 004-78, `pauseText`). A snapshot
  * (`status <path>...` without `--wait`, row 011-28) names no deadline and no
@@ -208,6 +210,11 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
     snapshot
       ? `Named test files have no verdict at revision ${verdict.revision}: ${why}`
       : none(why);
+  // Row 011-63 (gh-59): the paths that select nothing, beside the verdict on what the others select.
+  let beside =
+    wait.outcome === "unmatched" || selection.unmatched.length === 0
+      ? ""
+      : `; ${unmatchedText(selection)}`;
   let line: string;
   switch (wait.outcome) {
     case "unmatched":
@@ -243,10 +250,19 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
         command,
         wait.selection.base,
       );
-      line =
-        why === null
-          ? `Named test files at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result${snapshot ? "" : `, ${after}`}`
-          : none(groups === "" ? why : `${why}: ${groups}`);
+      const counted = `${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result${snapshot ? "" : `, ${after}`}`;
+      if (verdictCode(verdict) === 0 && beside !== "") {
+        // Row 011-63: with no failure among them, a path that selects nothing is why there is no verdict.
+        line = none(
+          `${unmatchedText(selection)}; the test files the other paths select at revision ${verdict.revision}: ${counted}`,
+        );
+        beside = "";
+      } else {
+        line =
+          why === null
+            ? `Named test files at revision ${verdict.revision}: ${counted}`
+            : none(groups === "" ? why : `${why}: ${groups}`);
+      }
     }
   }
   const pause =
@@ -254,7 +270,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
     (wait.outcome === "settled" || wait.outcome === "timeout")
       ? `; ${pauseText(wait, command)}`
       : "";
-  return `${line}${pause}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+  return `${line}${beside}${pause}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
 }
 
 /**
