@@ -1,6 +1,6 @@
 # W1 of wave 8: 013-03, 011-54, 011-56, worker notes (2026-10-21)
 
-Brief W1 of `../wave-8.md`. Base `f5ae8567`. Commits in row order: `143adbca` (013-03), `52155bd3` and `6dbeb79b` (011-54), `3eccb80d` and `882a83e4` (011-56; the second is `daemon.ts` alone, so it can be redone on cand/0.1.238's version). The coordinator agreed every file outside the brief's ownership on 2026-10-21; each commit names it.
+Brief W1 of `../wave-8.md`. Base `f5ae8567`. Commits in row order: `143adbca` (013-03), `52155bd3`, `6dbeb79b` and `f75494b8` (011-54), `3eccb80d` and `882a83e4` (011-56; the second is `daemon.ts` alone, so it can be redone on cand/0.1.238's version). The coordinator agreed every file outside the brief's ownership on 2026-10-21; each commit names it.
 
 ## 013-03: what the probe found
 
@@ -36,7 +36,7 @@ Issue 62's 3.5 s was the file-level check's value: `recordsForFile` stored `max(
 
 ## Facts found on the way
 
-- The key-format alarm requires every changed line of the Vitest bundle to run in an `adapter:vitest` case, and no case cancelled a run or passed `fileEnded`. `test/keys/validity/case.ts` now has `cancel` and `fileEndedThrows` on a run, and `harness/vitest.ts` applies them. `cases/adapter/vitest.ts` has one case for each. The compared outputs did not change: the failure text is wording.
+- The key-format alarm requires every changed line of the Vitest bundle to run in an `adapter:vitest` case, and no case cancelled a run or passed `fileEnded`. `test/keys/validity/case.ts` now has `cancel` and `fileEndedThrows` on a run, and `harness/vitest.ts` applies them. `cases/adapter/vitest.ts` has one case for each. The compared outputs did not change: the failure text is wording. `adapters.test.ts` pins which cases differ when a skip reads as a pass, so the new cases run only files with no skipped test (`f75494b8`).
 - One edit's tier takes two files only within `SHARE_RATIO` (4) of each other. A test that wants one tier of 100 s and 20 s files gets two tiers.
 - `tier-ended-files.test.ts` wraps `CatchUpRunner.run` to report ends, so `catch-up-fixture.ts` is unchanged.
 
