@@ -9,12 +9,14 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  rmSync,
   statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { leftoverProcesses } from "../../evals/lib/index.mjs";
 
 export const TOKEN = "made-up-anthropic-token-0123456789abcdef";
 export const PROXY_KEY = "made-up-proxy-key-0123456789abcdefghij";
@@ -29,6 +31,36 @@ const write = (p: string, s: string, mode?: number) => {
   writeFileSync(p, s);
   if (mode) chmodSync(p, mode);
 };
+
+/**
+ * The `daemon` command of every fake Squeal, a block that needs `root`, the daemon's repository.
+ * It leads its own session and carries no mark of Squeal's, as `runCell` gives the runner only
+ * the cell's variables, so Squeal's stop of a test's leftovers never finds it: only the runner's
+ * teardown and the test's own stopped it. A runner killed, a runner that crashed because its root
+ * was removed under it, or a test process killed with its cancelled run, each left one running
+ * with nothing to stop it: two for over an hour (014 lessons, P10). So it ends by itself
+ * (014-32): once its root is gone, or once the test process that made the cell (`FAKE_OWNER`) has
+ * ended. That process is known by its start time, so a pid reused meanwhile does not keep the
+ * daemon alive.
+ */
+export const FAKE_DAEMON = `{
+  const { existsSync, readFileSync } = await import("node:fs");
+  const owner = Number(process.env.FAKE_OWNER);
+  // The owner's start time while it runs; null once it has ended or waits as a zombie.
+  const life = () => {
+    try {
+      const stat = readFileSync("/proc/" + owner + "/stat", "utf8");
+      const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+      return fields[0] === "Z" || fields[0] === "X" ? null : fields[19];
+    } catch {
+      try { process.kill(owner, 0); return "alive, no /proc"; } catch { return null; }
+    }
+  };
+  const born = owner > 0 ? life() : null;
+  setInterval(() => {
+    if (!existsSync(root) || (born !== null && life() !== born)) process.exit(0);
+  }, 500);
+}`;
 
 const FAKE_SQUEAL = `import { spawn } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -66,7 +98,7 @@ if (process.env.FAKE_INHERITED && !existsSync(store) && ((cmd === "status" && re
   db.prepare("INSERT INTO meta VALUES ('failed-run-loads', ?)").run(JSON.stringify({ r1: loadavg()[0] / availableParallelism() }));
   db.close();
 }
-if (cmd === "daemon") setInterval(() => {}, 1000);
+if (cmd === "daemon") ${FAKE_DAEMON}
 else if (cmd === "start") {
   mkdirSync(join(root, ".git/squeal"), { recursive: true });
   if (!process.env.FAKE_INHERITED) writeFileSync(join(root, ".git/squeal/store.sqlite"), "store");
@@ -178,6 +210,7 @@ export function fakeRoot(): FakeRoot {
     ANTHROPIC_AUTH_TOKEN: TOKEN,
     FAKEPROXY_API_KEY: PROXY_KEY,
     FAKE_LOG: log,
+    FAKE_OWNER: String(process.pid), // the test process: its cells' fake daemons end with it
   };
   return { dir, root, log, env, commit };
 }
@@ -211,6 +244,24 @@ export function runCell(
   return new Promise((resolve) =>
     child.on("close", (code, signal) => resolve({ code, signal, output })),
   );
+}
+
+/**
+ * Tears a fake root down (014-32): kills every process whose command line names a path under it,
+ * its fake daemons and harnesses whatever their logs hold, then removes it, a locked cell too. A
+ * runner still running, as after a test's timeout, fails on its missing root; its fake daemon
+ * ends by itself (`FAKE_DAEMON`).
+ */
+export function removeRoot(f: FakeRoot): void {
+  for (const { pid } of leftoverProcesses(f.dir)) {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      // It ended after the scan.
+    }
+  }
+  if (existsSync(f.dir)) execFileSync("chmod", ["-R", "u+w", f.dir]);
+  rmSync(f.dir, { recursive: true, force: true });
 }
 
 /** Every cell directory under the root: `cells/<commit>/<run>/<id>`. */

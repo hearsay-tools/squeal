@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearScratch } from "../../evals/lib/index.mjs";
-import { cellDirs, type FakeRoot, fakeRoot, runCell, TOKEN } from "./fake-cell.js";
+import { cellDirs, type FakeRoot, fakeRoot, removeRoot, runCell, TOKEN } from "./fake-cell.js";
 
 // Review 006-09 B1, with made-up tokens only: a link that survives cleanup is retained evidence
 // the scan cannot vouch for, whatever its target holds, so it fails the cell. The link's target is
@@ -142,10 +142,7 @@ const root = () => {
   return f;
 };
 afterEach(() => {
-  for (const f of roots.splice(0)) {
-    execFileSync("chmod", ["-R", "u+w", f.dir]);
-    rmSync(f.dir, { recursive: true, force: true });
-  }
+  for (const f of roots.splice(0)) removeRoot(f);
 });
 const ARGS = ["t1-thousands", "p0", "claude", "claude-haiku-5-5", "1"];
 const LINK = "work/packages/a/locked/leak.txt";

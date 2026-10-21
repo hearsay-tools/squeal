@@ -1,5 +1,4 @@
-import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -11,6 +10,7 @@ import {
   leaks,
   PROXY_KEY,
   pids,
+  removeRoot,
   runCell,
   STATUS_JSON,
   TOKEN,
@@ -25,12 +25,7 @@ const root = () => {
   return f;
 };
 afterEach(() => {
-  for (const f of roots.splice(0)) {
-    execFileSync("chmod", ["-R", "u+w", f.dir]); // the locked cell
-    for (const pid of [...pids(f, "daemons"), ...pids(f, "harness")])
-      if (alive(pid)) process.kill(pid, "SIGKILL");
-    rmSync(f.dir, { recursive: true, force: true });
-  }
+  for (const f of roots.splice(0)) removeRoot(f);
 });
 const CELL = ["t1-thousands", "p0"];
 const json = (p: string) => JSON.parse(readFileSync(p, "utf8"));
