@@ -1,0 +1,34 @@
+diff --git a/src/core/scheduler/scheduler.ts b/src/core/scheduler/scheduler.ts
+index b396a1be6..b7446b70e 100644
+--- a/src/core/scheduler/scheduler.ts
++++ b/src/core/scheduler/scheduler.ts
+@@ -952,7 +952,11 @@ class TierScheduler implements Scheduler {
+       this.#yields.ended(context, tier);
+       for (const { file, key } of tier.files) {
+         // A newer run has the file at another key: it is that run's (review wave-4 B1).
+-        if (supersededIn(file, key)) continue;
++        if (supersededIn(file, key)) {
++          // Row 011-71: as `recordTier`, the tier's own claim ends.
++          if (file.runningKey === key) ledger.setRunning(file, null);
++          continue;
++        }
+         ledger.setRunning(file, null);
+         if (ledger.files.get(file.id) === file) {
+           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
+diff --git a/src/core/scheduler/tiers.ts b/src/core/scheduler/tiers.ts
+index 47ec69986..77f560b7e 100644
+--- a/src/core/scheduler/tiers.ts
++++ b/src/core/scheduler/tiers.ts
+@@ -576,7 +576,11 @@ export function recordTier(
+       const decision = storeDecision(entry, end, ledger.files.get(file.id) === file);
+       // A newer run has the file at another key (an edit's tier beside this backlog tier, task
+       // 011-21): its state is that run's, and this run's outcome is superseded (review wave-4 B1).
+-      if (decision.kind === "superseded") continue;
++      if (decision.kind === "superseded") {
++        // Row 011-71: a store hit at the newer key took no claim; this tier's own one ends here.
++        if (file.runningKey === key) ledger.setRunning(file, null);
++        continue;
++      }
+       ledger.setRunning(file, null);
+       if (decision.kind === "gone") continue;
+       if (decision.kind === "withheld") {
