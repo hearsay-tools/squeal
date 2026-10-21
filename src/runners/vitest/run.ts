@@ -71,7 +71,11 @@ export async function execute(
   collector: RunCollector,
   signal?: AbortSignal,
 ): Promise<RunExecution> {
-  if (signal?.aborted) return { end: "completed", failure: cancelled(signal.reason), hung: false };
+  if (signal?.aborted) {
+    const failure = cancelled(signal.reason);
+    collector.note(failure);
+    return { end: "completed", failure, hung: false };
+  }
   const run = vitest.runTestSpecifications([...specs]).then(
     (): RunExecution => ({ end: "completed", failure: null, hung: false }),
     (error: unknown): RunExecution => ({
