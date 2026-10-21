@@ -48983,7 +48983,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.235";
+  if (true) return "0.1.236";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -49847,10 +49847,10 @@ function known(store, worktreeId, check) {
   return store.knownStates.get(worktreeId, check) !== null || store.transitions.history(worktreeId, check).length > 0 || store.results.listForCheck(check, 1).length > 0;
 }
 function resolve4(store, worktreeId, query) {
-  const named = [
+  const named = distinct([
     ...store.knownStates.list(worktreeId).map((s) => s.check),
     ...held(store, worktreeId)
-  ].filter((check, i3, all) => all.findIndex((c) => sameCheck(c, check)) === i3).map((check) => ({ check, name: formatCheck(check) }));
+  ]).map((check) => ({ check, name: formatCheck(check) }));
   const stem = query.endsWith("...") ? query.slice(0, -3) : null;
   let matches4 = named.filter(
     (n) => n.name.includes(query) || stem !== null && n.name.startsWith(stem)
@@ -49889,8 +49889,14 @@ function held(store, worktreeId) {
     ({ key: key2 }) => store.results.byKey(key2, 0).filter((r) => heldFailure(store, worktreeId, [r], failureKeys2) !== void 0).map((r) => r.check)
   );
 }
-function sameCheck(a, b) {
-  return checkIdentity(a) === checkIdentity(b);
+function distinct(checks) {
+  const seen = /* @__PURE__ */ new Set();
+  return checks.filter((check) => {
+    const identity3 = checkIdentity(check);
+    if (seen.has(identity3)) return false;
+    seen.add(identity3);
+    return true;
+  });
 }
 function report({ store, root, commonDir }, check, includeLogs, session2) {
   const worktreeId = worktreeIdFor(root);
