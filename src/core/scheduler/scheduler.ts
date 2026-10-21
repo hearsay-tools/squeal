@@ -533,7 +533,7 @@ class TierScheduler implements Scheduler {
 
   close(options: SchedulerCloseOptions = {}): Promise<void> {
     // Task 001-367: a stop cancels the tiers in flight, under a close already begun too.
-    if (options.cancel === true) this.#stop.abort();
+    if (options.cancel === true) this.#stop.abort(options.cause);
     this.#closing ??= this.#close();
     return this.#closing;
   }

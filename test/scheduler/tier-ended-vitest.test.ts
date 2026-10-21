@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
+import { cancelled } from "../../src/runners/vitest/run.js";
 import { git } from "../hash/git-repo.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 import { CUT_WITHIN_MS, SETTLE_MS } from "./tier-yields-fixture.js";
@@ -83,7 +84,7 @@ it(
     await h.scheduler.idle();
 
     const [cut, rerun] = h.runsOf(HELD).slice(-2);
-    expect(cut?.report.failure).toContain("run cancelled");
+    expect(cut?.report.failure).toContain(cancelled("supersession"));
     expect(cut?.report.completedFiles.map((f) => f.path)).toEqual([MATH]);
     expect(rerun?.report.completedFiles.map((f) => f.path)).toEqual([HELD]);
     expect(h.runsOf(MATH).slice(-1)[0]).toBe(cut);
