@@ -1,4 +1,7 @@
 #!/bin/sh
 # The Squeal CLI on the OpenCode agent shell's PATH (spec 008 D2): the plugin's shell.env puts
-# this directory first, so `squeal` there is this package's.
-exec node --disable-warning=ExperimentalWarning "$(dirname "$0")/../dist/cli/squeal.mjs" "$@"
+# this directory first, so `squeal` there is this package's. `ps` runs its own bundle, which
+# loads only its code (spec 014 goal 6).
+cli=squeal
+[ "${1-}" = ps ] && cli=ps
+exec node --disable-warning=ExperimentalWarning "$(dirname "$0")/../dist/cli/$cli.mjs" "$@"
