@@ -1,0 +1,26 @@
+17:52:23 rev 0 wall 62s stored 128 before nulls after 29s cancelled
+17:53:27 rev 2 wall 3s stored 9 before 5s after 2s cancelled (after a cancel)
+17:53:31 rev 3 wall 17s stored 45 before 2s after 16s cancelled (after a cancel)
+17:53:59 rev 4 wall 25s stored 44 before 12s after 21s cancelled (after a cancel)
+17:54:25 rev 5 wall 37s stored 24 before 5s after 33s cancelled (after a cancel)
+17:55:03 rev 6 wall 3s stored 15 before 5s after 2s cancelled (after a cancel)
+17:56:55 rev 13 wall 15s stored 1 before 6s after 14s cancelled (after a cancel)
+17:57:12 rev 14 wall 7s stored 0 before 3s after 5s cancelled (after a cancel)
+17:57:24 rev 15 wall 57s stored 123 before 7s after 55s cancelled (after a cancel)
+17:58:21 rev 16 wall 11s stored 0 before 2s after 9s cancelled (after a cancel)
+17:58:35 rev 17 wall 15s stored 4 before 5s after 14s cancelled (after a cancel)
+17:58:51 rev 18 wall 7s stored 0 before 2s after 6s cancelled (after a cancel)
+17:59:04 rev 19 wall 12s stored 10 before 7s after 10s cancelled (after a cancel)
+17:59:16 rev 20 wall 16s stored 23 before 2s after 14s cancelled (after a cancel)
+17:59:52 rev 21 wall 50s stored 70 before 22s after 47s cancelled (after a cancel)
+18:00:48 rev 22 wall 22s stored 5 before 9s after 20s cancelled (after a cancel)
+18:01:19 rev 23 wall 25s stored 35 before 11s after 22s cancelled (after a cancel)
+18:02:08 rev 24 wall 18s stored 7 before 27s after 16s cancelled (after a cancel)
+18:02:26 rev 25 wall 7s stored 3 before 2s after 4s cancelled (after a cancel)
+18:02:33 rev 26 wall 8s stored 2 before 3s after 5s cancelled (after a cancel)
+18:02:59 rev 28 wall 111s stored 200 before 5s after 146s ended (after a cancel)
+18:04:51 rev 28 wall 167s stored 0 before 117s after 34s cancelled
+18:07:40 rev 33 wall 75s stored 2 before 5s after 53s cancelled (after a cancel)
+Q 10 s after a cancel: holds 17 of 23 batches, 3400 picks, 423 s of batch time, 466 stored files deferred
+Q 20 s after a cancel: holds 19 of 23 batches, 3800 picks, 473 s of batch time, 545 stored files deferred
+Q 30 s after a cancel: holds 21 of 23 batches, 4200 picks, 541 s of batch time, 622 stored files deferred

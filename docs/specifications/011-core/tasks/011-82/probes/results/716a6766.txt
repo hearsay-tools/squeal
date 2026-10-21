@@ -1,0 +1,93 @@
+# 716a6766 (worktree 5d085b7529e2247a, Squeal 0.1.240): the output of the host-load coordinator's wt.mjs,
+# run 2026-10-21 about 18:10Z on the squeal store, read-only; copied from task 3800fd79's transcript line 207.
+# The worktree was removed later and prune dropped its rows and run logs. Times are UTC.
+[Object: null prototype] {
+  id: '5d085b7529e2247a',
+  root: '/home/agent/projects/squeal/.ai/cezar/worktrees/716a6766-fe79-4c64-8274-9c6b8d18ace0'
+}
+rev 1 17:52:52 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/cache-fixture.ts
+rev 2 17:53:22 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/version-copies.test.ts
+rev 3 17:53:29 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/version-copies.test.ts
+rev 4 17:53:47 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/version-copies.test.ts
+rev 5 17:54:20 watch head=f17bb8e8 dirty=1 n=1 test/harness/shared/version-copies.test.ts
+rev 6 17:54:58 watch head=f17bb8e8 dirty=1 n=1 test/harness/plugin-data-claude-code.test.ts
+rev 7 17:55:05 watch head=f17bb8e8 dirty=1 n=1 test/harness/plugin-data-claude-code.test.ts
+rev 8 17:55:43 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/version-copies-tier.test.ts
+rev 9 17:55:54 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/version-copies-tier.test.ts
+rev 10 17:56:08 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/tmp-red-tier.test.ts
+rev 11 17:56:14 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/tmp-red-tier.test.ts
+rev 12 17:56:24 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/version-copies-tier.test.ts
+rev 13 17:56:49 watch head=f17bb8e8 dirty=1 n=1 src/harness/shared/version-copies.ts
+rev 14 17:57:09 watch head=f17bb8e8 dirty=1 n=1 src/harness/shared/version-copies.ts
+rev 15 17:57:17 watch head=f17bb8e8 dirty=1 n=1 test/harness/shared/version-copies.test.ts
+rev 16 17:58:19 watch head=f17bb8e8 dirty=1 n=1 src/harness/codex/kept.ts
+rev 17 17:58:30 watch head=f17bb8e8 dirty=1 n=2 src/harness/codex/command.ts src/harness/shared/version-copies.ts
+rev 18 17:58:49 watch head=f17bb8e8 dirty=1 n=3 src/harness/codex/handlers.ts src/harness/codex/main.ts src/harness/codex/output.ts
+rev 19 17:58:57 watch head=f17bb8e8 dirty=1 n=8 src/harness/codex/command.ts src/harness/codex/handlers.ts src/harness/codex/kept.ts src/harness/codex/output.ts test/harness/codex/version-copies-tier.test.ts test/harness/codex/version-copies.test.ts
+rev 20 17:59:14 watch head=f17bb8e8 dirty=1 n=1 plugins/codex/bin/squeal-launcher
+rev 21 17:59:30 watch head=f17bb8e8 dirty=1 n=1 src/harness/codex/build.ts
+rev 22 18:00:39 watch head=f17bb8e8 dirty=1 n=4 plugins/claude-code/bin/squeal-launcher plugins/opencode/bin/squeal-launcher plugins/pi/bin/squeal-launcher test/harness/codex/version-copies.test.ts
+rev 23 18:01:08 watch head=f17bb8e8 dirty=1 n=1 test/cli/launcher.test.ts
+rev 24 18:01:41 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/output.test.ts
+rev 25 18:02:24 watch head=f17bb8e8 dirty=1 n=1 test/version-sensitive.txt
+rev 26 18:02:30 watch head=f17bb8e8 dirty=1 n=1 test/version-sensitive.txt
+rev 27 18:02:38 watch head=f17bb8e8 dirty=1 n=1 src/cli/status-command.ts
+rev 28 18:02:54 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/command.test.ts
+rev 29 18:05:25 watch head=d914877f dirty=1 n=1 test/e2e/codex-upgrade.test.ts
+rev 30 18:05:45 watch head=d914877f dirty=1 n=1 test/e2e/codex-upgrade.test.ts
+rev 31 18:05:45 watch head=d914877f dirty=1 n=1 test/e2e/codex-upgrade.test.ts
+rev 32 18:06:07 watch head=d914877f dirty=1 n=1 test/e2e/codex-upgrade.test.ts
+rev 33 18:07:35 watch head=6c3de336 dirty=1 n=1 test/harness/codex/version-copies-tier.test.ts
+rev 34 18:08:33 watch head=64da6a82 dirty=1 n=1 docs/specifications/005-agent-adoption/tasks/005-73-notes.md
+rev 35 18:08:52 watch head=64da6a82 dirty=1 n=2 src/harness/shared/version-copies.ts test/harness/shared/version-copies.test.ts
+rev 36 18:08:53 watch head=64da6a82 dirty=1 n=1 test/harness/shared/version-copies.test.ts
+run rev=0 17:52:23 files=200 62s completed cp=y resultRows=1038 keys=128
+run rev=2 17:53:26 files=4 1s completed cp=y resultRows=99 keys=4
+run rev=2 17:53:27 files=200 3s completed cp=y resultRows=115 keys=9
+run rev=3 17:53:30 files=1 1s completed cp=n resultRows=6 keys=1
+run rev=3 17:53:31 files=200 17s completed cp=y resultRows=522 keys=45
+run rev=4 17:53:48 files=4 11s completed cp=y resultRows=18 keys=4
+run rev=4 17:53:59 files=200 25s completed cp=y resultRows=219 keys=44
+run rev=5 17:54:24 files=4 1s completed cp=y resultRows=22 keys=3
+run rev=5 17:54:25 files=200 37s completed cp=y resultRows=117 keys=24
+run rev=6 17:55:02 files=4 1s completed cp=y resultRows=36 keys=4
+run rev=6 17:55:03 files=200 3s completed cp=y resultRows=211 keys=15
+run rev=7 17:55:06 files=4 70s completed cp=y resultRows=0 keys=0
+run rev=11 17:56:16 files=4 34s completed cp=y resultRows=8 keys=3
+run rev=13 17:56:50 files=4 5s completed cp=y resultRows=49 keys=4
+run rev=13 17:56:55 files=200 15s completed cp=y resultRows=2 keys=1
+run rev=14 17:57:10 files=4 2s completed cp=n resultRows=23 keys=4
+run rev=14 17:57:12 files=200 7s completed cp=y resultRows=0 keys=0
+run rev=15 17:57:19 files=4 5s completed cp=y resultRows=134 keys=4
+run rev=15 17:57:24 files=200 57s completed cp=y resultRows=1107 keys=123
+run rev=16 17:58:21 files=200 11s completed cp=y resultRows=0 keys=0
+run rev=17 17:58:32 files=4 1s completed cp=n resultRows=74 keys=4
+run rev=17 17:58:33 files=4 1s completed cp=n resultRows=27 keys=4
+run rev=17 17:58:35 files=200 15s completed cp=y resultRows=31 keys=4
+run rev=18 17:58:50 files=4 1s completed cp=y resultRows=67 keys=4
+run rev=18 17:58:51 files=200 7s completed cp=y resultRows=0 keys=0
+run rev=19 17:58:59 files=4 3s completed cp=n resultRows=17 keys=4
+run rev=19 17:59:02 files=4 1s completed cp=n resultRows=67 keys=4
+run rev=19 17:59:02 files=4 1s completed cp=n resultRows=25 keys=4
+run rev=19 17:59:04 files=200 12s completed cp=y resultRows=60 keys=10
+run rev=20 17:59:16 files=200 16s completed cp=y resultRows=232 keys=23
+run rev=21 17:59:32 files=4 2s completed cp=n resultRows=20 keys=4
+run rev=21 17:59:34 files=4 3s completed cp=y resultRows=19 keys=3
+run rev=21 17:59:37 files=4 15s completed cp=y resultRows=40 keys=4
+run rev=21 17:59:52 files=200 50s completed cp=y resultRows=882 keys=70
+run rev=22 18:00:42 files=4 5s completed cp=n resultRows=42 keys=4
+run rev=22 18:00:48 files=200 22s completed cp=y resultRows=50 keys=5
+run rev=23 18:01:10 files=4 9s completed cp=n resultRows=54 keys=4
+run rev=23 18:01:19 files=200 25s completed cp=y resultRows=321 keys=35
+run rev=24 18:01:44 files=4 23s completed cp=y resultRows=40 keys=4
+run rev=24 18:02:08 files=200 18s completed cp=y resultRows=73 keys=7
+run rev=25 18:02:26 files=200 7s completed cp=y resultRows=17 keys=3
+run rev=26 18:02:33 files=200 8s completed cp=y resultRows=12 keys=2
+run rev=27 18:02:41 files=4 1s completed cp=n resultRows=24 keys=4
+run rev=27 18:02:42 files=4 15s completed cp=n resultRows=51 keys=4
+run rev=28 18:02:57 files=4 2s completed cp=n resultRows=59 keys=4
+run rev=28 18:02:59 files=200 111s completed cp=y resultRows=2615 keys=200
+run rev=28 18:04:51 files=200 167s completed cp=y resultRows=0 keys=0
+run rev=33 18:07:37 files=1 3s completed cp=n resultRows=2 keys=1
+run rev=33 18:07:40 files=200 75s completed cp=y resultRows=11 keys=2
+run rev=36 18:08:56 files=4 5s completed cp=n resultRows=32 keys=4
