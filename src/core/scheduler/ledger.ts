@@ -108,6 +108,12 @@ export class Ledger {
   broken = false;
   /** The last test file listing failed; the next revision lists again. */
   listingFailed = false;
+  /**
+   * A departure drain pauses the backlog (011 C9 as amended 2026-10-21, row
+   * 011-93): `ordered` and `fastQueued` hold only the drain's files, and the
+   * paused ones stay queued for the next daemon.
+   */
+  backlogPaused = false;
   /** Global setups that failed to start a run, and their outcomes owed to the sink (task 001-382). */
   readonly setups = new SetupFailures();
 
@@ -159,10 +165,23 @@ export class Ledger {
 
   /**
    * The queue in run order: D5 step 4 classes, shortest last known duration
-   * first within one; `turn` false orders it as if the backlog's turn were not due.
+   * first within one; `turn` false orders it as if the backlog's turn were
+   * not due. While the backlog is paused, only the drain's files.
    */
   ordered(turn = this.queue.backlogTurn()): TestFileRef[] {
-    return this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null, turn);
+    const ordered = this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null, turn);
+    return this.backlogPaused ? ordered.filter((ref) => this.#drains(ref)) : ordered;
+  }
+
+  /** Whether a fast file `where` holds is queued to run: while the backlog is paused, a drain's. */
+  fastQueued(where: (ref: TestFileRef) => boolean = () => true): boolean {
+    return this.queue.hasFast((ref) => where(ref) && (!this.backlogPaused || this.#drains(ref)));
+  }
+
+  /** A file a drain runs: an edit's work or a promoted file, the open explicit checkpoint's, a re-run. */
+  #drains(ref: TestFileRef): boolean {
+    if (this.queue.isFirstGroup(ref) || this.file(ref)?.rerunPending === true) return true;
+    return this.checkpoints.active?.explicit === true && this.checkpoints.idFor(ref) !== null;
   }
 
   /**
