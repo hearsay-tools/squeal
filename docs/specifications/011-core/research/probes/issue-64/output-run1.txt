@@ -1,0 +1,53 @@
+load 13.64 on 24 CPUs; 2026-10-21T01:17:11Z
+scratch /tmp/i64-x81K2a; squeal 0.1.233
+Squeal daemon spawned for /tmp/i64-x81K2a/repo
+
+Revision: 0
+=== phase A: baseline checkpoint of the 30 existing checks
+Checkpoint 56e5e9ba-7d94-4fd0-ab54-13c1bf665c8c completed at revision 0: no known failures; 1 test file, 0 already current, 1 run by the baseline checkpoint aa75bd45-9b88-46ba-9c3d-898fd913e1b4 it joined
+Checkpoint 56e5e9ba-7d94-4fd0-ab54-13c1bf665c8c started at revision 0: 1 test file to run, 0 already current, joining the baseline checkpoint aa75bd45-9b88-46ba-9c3d-898fd913e1b4 already running them (0 of 1 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 0; all 1 test file current
+Affected checks: 31 passed (30 tests, 1 test file loaded), 0 running, 0 queued
+phase A wall: 13.708992679 s
+=== CLI surface: any selector within one file?
+Usage:
+  squeal run --all [--force] [--wait]
+                                Request a full-suite checkpoint from the daemon; both
+                                lanes, fast files first
+  squeal run --fast [--force] [--wait]
+                                A checkpoint of the fast lane only, which is not a
+                                full-suite checkpoint
+  squeal run --slow [--wait <ms>]
+                                Run the slow lane once no fast work is pending; with
+                                --wait, then wait as status --wait does. --fast --slow
+                                is --all
+(status --help: no name/pattern selector)
+=== phase B: append two new checks (new 1 red, new 2 green); named wait on the file
+Revision: 1 · 66bfdbf6 + 1, dirty
+Selected: test/parity.test.ts
+  FAIL  test/parity.test.ts > parity > new 1
+        expected 1 to be 2 // Object.is equality; diff (- Expected, + Received): - 2 | + 1
+        at test/parity.test.ts:8:33, observed at revision 1, current
+Named test files at revision 1: 1 known failure: 1 test; 1 test file, each with a current result, after 25.4 s. Worktree: known failures 1 (1 test); all 1 test file current
+phase B daemon red wall (edit to verdict): 25.571677230 s
+=== phase C: a check name in place of a path
+Revision: 1 · 66bfdbf6 + 1, dirty
+No verdict: no test file's closure holds test/parity.test.ts > parity > new 1. Worktree: known failures 1 (1 test); all 1 test file current
+exit 0
+=== control: vitest -t on the two new checks (unmanaged, what the issue wants the daemon to own)
+ ❯ test/parity.test.ts (32 tests | 1 failed | 30 skipped) 15ms
+     × new 1 12ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  test/parity.test.ts > parity > new 1
+      Tests  1 failed | 1 passed | 30 skipped (32)
+   Duration  283ms (transform 22ms, setup 0ms, import 43ms, tests 15ms, environment 0ms)
+control wall: 1.166025385 s
+=== control: full file (what the daemon runs)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 31 passed (32)
+   Duration  12.27s (transform 18ms, setup 0ms, import 36ms, tests 12.04s, environment 0ms)
+full-file wall: 13.188609401 s
+=== stop
+Squeal daemon stopped for /tmp/i64-x81K2a/repo
