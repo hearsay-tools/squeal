@@ -223,6 +223,13 @@ function queuedStep(s: Extract<Standing, { kind: "queued" }>, context: StepConte
   const promoted = s.promoted === true;
   if (s.behind === null) {
     if (promoted) return same("queued, promoted", { kind: "none", text: "" });
+    if (s.quietUntil !== undefined) {
+      // Row 011-82: C4 step 5's wait for quiet after an edit or a revision cancelled the backlog.
+      return same(
+        `queued: the ${laneText(s.lane)} lane waits for quiet until ${timeText(s.quietUntil)}, 20 s after the last edit that queued a file of it, since an edit cancelled its backlog tier`,
+        { kind: "command", args: "run --all", text: "{command} ends the wait" },
+      );
+    }
     return {
       reason: "queued; no run is open and nothing recorded holds {it}",
       short: "queued, nothing recorded holds {it}",

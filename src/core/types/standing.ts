@@ -89,6 +89,12 @@ export type Standing =
       readonly promoted?: boolean;
       /** Promoted: whether that tier yields to it (row 011-51); absent from an older daemon. */
       readonly yields?: TierYield;
+      /**
+       * Not promoted, with no tier running in its lane: when its lane's wait
+       * for quiet after a backlog tier's cancel ends (C4 step 5 as amended
+       * 2026-10-21, row 011-82); absent with no wait, or from an older daemon.
+       */
+      readonly quietUntil?: EpochMs;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
   | {
