@@ -14,6 +14,7 @@ import type {
 } from "../../../../src/core/types/index.js";
 import type { AcceptInput, CaseOutput } from "../case.js";
 import { acceptRule } from "./accept-rule.js";
+import { type Keyed, keyedOver } from "./keyed.js";
 import {
   KEY,
   LISTED_KEY,
@@ -32,11 +33,19 @@ import {
  * decisions are compared.
  */
 
+/** The key the tree computes over `input.installed` (011-85 R4), else the fixed one. */
+async function keyedFor(input: AcceptInput, scratch: string): Promise<Keyed | null> {
+  if (input.installed === undefined) return null;
+  return keyedOver(input.testFile, input.installed, join(scratch, "worktree"));
+}
+
 /**
  * Stores `input.runs` in a store under `scratch`, each applied to its own
  * worktree's states, then the receiver's timeout when `input.unknown` is set.
  */
-export function writeAccept(input: AcceptInput, scratch: string): CaseOutput {
+export async function writeAccept(input: AcceptInput, scratch: string): Promise<CaseOutput> {
+  const keyed = await keyedFor(input, join(scratch, "install"));
+  keyed?.close();
   const store = scratchStore(join(scratch, "store"));
   try {
     const sink = createStateSink(store, { now: () => 2_000 });
@@ -44,7 +53,7 @@ export function writeAccept(input: AcceptInput, scratch: string): CaseOutput {
     for (const [at, run] of input.runs.entries()) {
       const records = recordsForFile({
         ref: input.testFile,
-        key: input.readAsOne ? LISTED_KEY : KEY,
+        key: keyed?.key ?? (input.readAsOne ? LISTED_KEY : KEY),
         report: { ...REPORT, completedFiles: [input.testFile], ...run.report },
         previousChecks: run.previousChecks ?? [],
         provenance: provenance(run.worktree, run.recordedAt, `run-${at}`),
@@ -63,11 +72,18 @@ export function writeAccept(input: AcceptInput, scratch: string): CaseOutput {
 
 /**
  * The receiver's lookup of the key over the store under `stored`: accepted
- * or held, the states its rows give, and the checks they retire.
+ * or held, the states its rows give, and the checks they retire. Over an
+ * install, the key and the keys read as one are the tree's own.
  */
-export function decideAccept(input: AcceptInput, stored: string, scratch: string): CaseOutput {
+export async function decideAccept(
+  input: AcceptInput,
+  stored: string,
+  scratch: string,
+): Promise<CaseOutput> {
+  const keyed = await keyedFor(input, join(scratch, "install"));
   const store = scratchStore(join(stored, "store"));
   try {
+    const own = keyed?.key ?? KEY;
     const root = writeTree(join(scratch, "worktree"), {
       "squeal.config.json": JSON.stringify(input.policy ?? {}),
     });
@@ -82,17 +98,17 @@ export function decideAccept(input: AcceptInput, stored: string, scratch: string
         declaredFor: () => input.declared ?? [],
         cache: { hashOf: () => undefined },
         // From format 18 a miss reads the formats read as one first (011-38).
-        index: {
+        index: keyed?.keys.index ?? {
           keysReadAsOne: () =>
             input.readAsOne ? { testFile: input.testFile, keys: [LISTED_KEY] } : null,
         },
       },
     } as unknown as SchedulerContext;
-    const probe = acceptRule(context, input.testFile, KEY, input.current ?? []);
+    const probe = acceptRule(context, input.testFile, own, input.current ?? []);
     const key: TestFileKeyRecord = {
       worktreeId,
       testFile: input.testFile,
-      key: KEY,
+      key: own,
       revision: 1,
       pending: null,
     };
@@ -117,6 +133,7 @@ export function decideAccept(input: AcceptInput, stored: string, scratch: string
     };
   } finally {
     store.close();
+    keyed?.close();
   }
 }
 

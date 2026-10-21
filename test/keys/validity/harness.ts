@@ -95,6 +95,10 @@ export async function runCase(c: Case, scratch: string, runtime: string): Promis
 }
 
 /** This tree's decision over what `runCase` stored for `c` at `stored`, `undefined` for a kind with none. */
-export function decideCase(c: Case, stored: string, scratch: string): CaseOutput | undefined {
+export async function decideCase(
+  c: Case,
+  stored: string,
+  scratch: string,
+): Promise<CaseOutput | undefined> {
   return c.kind === "accept" ? decideAccept(c.input, stored, scratch) : undefined;
 }
