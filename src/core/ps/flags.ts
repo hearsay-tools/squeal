@@ -363,15 +363,18 @@ function deadConsumers(c: FlagContext, pid: number): string[] {
 
 /**
  * D7 `duplicate`: two daemon processes of one root, flagged on the one
- * without the lock once its wait is past the `no-lock` bound. Where the
- * holder cannot be told, each is flagged once all have waited so long, and
- * its command names every pid (D10).
+ * without the lock once its wait is past the `no-lock` bound; two that each
+ * hold a lock of it are flagged at once. Where the holder cannot be told,
+ * each is flagged once all have waited so long, and its command names
+ * every pid (D10). Two that both wait are each `no-lock`'s.
  */
 function duplicates(c: FlagContext): Map<number, PsFlag[]> {
   const byRoot = new Map<AbsolutePath, FoundDaemon[]>();
   for (const d of c.model.discovery.daemons)
     if (d.root !== null) byRoot.set(d.root, [...(byRoot.get(d.root) ?? []), d]);
   const out = new Map<number, PsFlag[]>();
+  const add = (d: FoundDaemon, reason: string, command: string) =>
+    out.set(d.row.pid, [{ flag: "duplicate", reason, command }]);
   for (const [root, group] of byRoot) {
     if (group.length < 2) continue;
     const waited = (d: FoundDaemon) => {
@@ -379,22 +382,35 @@ function duplicates(c: FlagContext): Map<number, PsFlag[]> {
       if (age === null) c.name(`daemon ${d.row.pid} flag duplicate`, NO_BOOT);
       return age !== null && age > (d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS);
     };
+    const others = (d: FoundDaemon) =>
+      group
+        .filter((o) => o !== d)
+        .map((o) => o.row.pid)
+        .join(", ");
     const holders = group.filter((d) => d.holdsLock === true);
-    const known = group.every((d) => d.holdsLock !== null);
-    const others = (d: FoundDaemon) => group.filter((o) => o !== d).map((o) => o.row.pid);
-    if (known && holders.length === 1) {
-      const holder = holders[0]?.row.pid;
-      for (const d of group) {
-        if (d.holdsLock || !waited(d)) continue;
-        const reason = `daemon ${holder} holds the lock of its root ${root}`;
-        out.set(d.row.pid, [{ flag: "duplicate", reason, command: `kill ${d.row.pid}` }]);
-      }
-    } else if (group.every(waited)) {
-      for (const d of group) {
-        const reason = `daemon ${others(d).join(", ")} has its root ${root} too; which holds the lock is unknown`;
-        const command = `kill ${d.row.pid}  # or ${others(d).join(", ")}: whichever holds no lock`;
-        out.set(d.row.pid, [{ flag: "duplicate", reason, command }]);
-      }
+    if (group.some((d) => d.holdsLock === null)) {
+      if (!group.every(waited)) continue;
+      for (const d of group)
+        add(
+          d,
+          `daemon ${others(d)} has its root ${root} too; which holds the lock is unknown`,
+          `kill ${d.row.pid}  # or ${others(d)}: whichever holds no lock`,
+        );
+    } else if (holders.length === 1) {
+      for (const d of group)
+        if (!d.holdsLock && waited(d))
+          add(
+            d,
+            `daemon ${holders[0]?.row.pid} holds the lock of its root ${root}`,
+            `kill ${d.row.pid}`,
+          );
+    } else if (holders.length > 1) {
+      for (const d of holders)
+        add(
+          d,
+          `daemon ${others(d)} holds a lock of its root ${root} too`,
+          `kill ${d.row.pid}  # or ${others(d)}: keep one`,
+        );
     }
   }
   return out;

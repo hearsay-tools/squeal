@@ -64,6 +64,27 @@ it("a serving daemon of the installed release has no flag and no unknown", () =>
   expect(findings.unknown).toEqual([]);
 });
 
+it("a starting daemon under its predecessor's row takes none of that row's state as its own", () => {
+  const d = daemonAt(4100, { ageS: 3 });
+  const predecessor = workOf(d, {
+    record: null,
+    recordedStartedAt: NOW - 3 * HOUR,
+    token: null,
+    lastUse: null,
+    departedAt: NOW - 2 * HOUR,
+    consumers: [consumer({ alive: false })],
+  });
+  const findings = one(d, predecessor);
+  expect(names(findings, 4100)).toEqual([]);
+  expect(findings.states.size).toBe(0);
+  expect(findings.unknown).toEqual([
+    {
+      what: "flag orphan-test-process",
+      why: "the token of daemon 4100 is unread, so a mark may be its",
+    },
+  ]);
+});
+
 describe("root-gone", () => {
   it("flags a missing root, and a missing gitdir of a linked worktree, with kill", () => {
     const gone = daemonAt(4100, { root: join(host.base, "removed") });
@@ -217,6 +238,32 @@ describe("no-lock and duplicate", () => {
       }),
     );
     expect([...findings.daemons.values()].flat()).toEqual([]);
+  });
+
+  it("flags two holders of one root at once, and leaves two waiters to no-lock", () => {
+    const a = daemonAt(4100);
+    const b = daemonAt(4101, { root: a.root });
+    const both = flag(
+      modelOf({
+        host,
+        daemons: [
+          { daemon: a, first: workOf(a) },
+          { daemon: b, first: workOf(b) },
+        ],
+      }),
+    );
+    expect(both.daemons.get(4101)).toEqual([
+      {
+        flag: "duplicate",
+        reason: `daemon 4100 holds a lock of its root ${a.root} too`,
+        command: "kill 4101  # or 4100: keep one",
+      },
+    ]);
+    expect(names(both, 4100)).toEqual(["duplicate"]);
+    const c = daemonAt(4102, { holdsLock: false, ageS: 60 });
+    const d = daemonAt(4103, { root: c.root, holdsLock: false, ageS: 60 });
+    const waiting = flag(modelOf({ host, daemons: [{ daemon: c }, { daemon: d }] }));
+    expect([names(waiting, 4102), names(waiting, 4103)]).toEqual([["no-lock"], ["no-lock"]]);
   });
 
   it("without lock state names both pids, and names the rules it cannot evaluate", () => {
