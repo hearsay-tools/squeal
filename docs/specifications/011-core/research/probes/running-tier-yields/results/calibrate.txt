@@ -1,0 +1,19 @@
+single-file runs over 5 s, wallOverModule: {"n":123,"p10":1.001,"p50":1.004,"p90":1.086}
+single-file runs over 5 s, wallOverChecks: {"n":108,"p10":1.001,"p50":1.004,"p90":1.084}
+single-file runs over 5 s, moduleOverChecks: {"n":108,"p10":1,"p50":1,"p90":1}
+single-file runs over 5 s, overheadS: {"n":123,"p10":0.343,"p50":0.482,"p90":1.142}
+single-file runs over 5 s, fileRowShare: {"n":108,"p10":0.002,"p50":0.005,"p90":0.088}
+multi-file runs over 5 s, wallOverMaxModule: {"n":825,"p10":1.005,"p50":1.07,"p90":2.776}
+multi-file runs over 5 s, wallOverMaxChecks: {"n":775,"p10":1.005,"p50":1.08,"p90":3.8}
+multi-file runs over 5 s, small_wallOverMaxModule: {"n":620,"p10":1.005,"p50":1.05,"p90":1.315}
+multi-file runs over 5 s, small_wallOverSumModule: {"n":620,"p10":0.31,"p50":0.432,"p90":0.783}
+longest single-file runs:
+{"path":"harness-parity.test.ts","wall":593.151,"module":592.680706296,"checks":null,"fileRow":null}
+{"path":"harness-parity.test.ts","wall":590.137,"module":589.4687379730001,"checks":589.4687379730001,"fileRow":46.276371681999066}
+{"path":"monitoring-turn.test.ts","wall":578.865,"module":577.210765456,"checks":577.210765456,"fileRow":1.418469670000137}
+{"path":"harness-parity.test.ts","wall":578.465,"module":577.85483344,"checks":577.85483344,"fileRow":49.560143046000505}
+{"path":"harness-parity.test.ts","wall":560.421,"module":559.788999695,"checks":559.788999695,"fileRow":44.36797775999963}
+{"path":"harness-parity.test.ts","wall":541.677,"module":541.182464668,"checks":541.182464668,"fileRow":44.5938528830008}
+{"path":"harness-parity.test.ts","wall":541.405,"module":540.9150401669999,"checks":null,"fileRow":null}
+{"path":"waits-claude-parity.test.ts","wall":532.465,"module":531.2676198280001,"checks":531.2676198280001,"fileRow":1.257711437000311}
+harness-codex-parity: []

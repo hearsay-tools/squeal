@@ -1,0 +1,36 @@
+10-20T22:05:14 CKPT 031441 rev=0 baseline n=25 end=abandoned at 10-20T22:05:14
+10-21T07:02:37 CKPT e3aa1a rev=0 baseline n=7 end=abandoned at 10-21T07:02:37
+10-21T07:03:21 REV 1 watch head=99ab0c71 changes=32 .github/scripts/friction-intake.test.cjs .github/scripts/friction-policy.cjs AGENTS.md
+10-21T07:04:07 RUN 7770836f rev=1 n=33 cp=- end=completed wall=40.8s until 10-21T07:04:48 
+10-21T07:04:49 RUN ca4682e8 rev=1 n=27 cp=- end=completed wall=13.0s until 10-21T07:05:02 
+10-21T07:04:52 REV 2 watch head=99ab0c71 changes=2 packages/cezar/src/workflows/waits-parity-cells.testkit.ts packages/cezar/src/workflows/waits-parity.testkit.ts
+10-21T07:05:03 RUN 138c6786 rev=2 n=4 cp=- end=completed wall=173.9s until 10-21T07:07:57 waits-parity.test.ts,human-waits.test.ts,worker-waits.test.ts,waits-wake.test.ts
+10-21T07:05:03 RUN 6bb359a9 rev=2 n=1 cp=- end=completed wall=2.8s until 10-21T07:05:06 change-surface-readers.test.cjs
+10-21T07:05:26 REV 3 watch head=99ab0c71 changes=1 packages/cezar/src/workflows/waits-parity-cells.testkit.ts
+10-21T07:05:59 RUN 592c16b9 rev=3 n=1 cp=- end=completed wall=4.0s until 10-21T07:06:03 change-surface-readers.test.cjs
+10-21T07:06:52 REV 4 interval head=99ab0c71 changes=1 packages/cezar/src/workflows/waits-parity-cells.testkit.ts
+10-21T07:06:59 RUN f756738a rev=4 n=1 cp=- end=completed wall=4.9s until 10-21T07:07:04 change-surface-readers.test.cjs
+10-21T07:07:20 REV 5 watch head=99ab0c71 changes=1 .ai/specs/2026-10-17-unified-waits.md
+10-21T07:08:05 RUN f5d9a6fc rev=5 n=4 cp=- end=completed wall=55.2s until 10-21T07:09:00 waits-parity.test.ts,check-stop-kill.test.ts,run-relationships.test.ts,delegation-transcript-reads.test.ts
+10-21T07:08:43 REV 6 watch head=99ab0c71 changes=1 packages/cezar/src/workflows/waits-parity-cells.testkit.ts
+10-21T07:08:58 RUN 3f2ad44e rev=6 n=1 cp=- end=completed wall=6.8s until 10-21T07:09:05 change-surface-readers.test.cjs
+10-21T07:09:02 RUN bfc2def0 rev=6 n=4 cp=- end=completed wall=53.0s until 10-21T07:09:55 waits-parity.test.ts,cli.test.ts,worktrees-api.test.ts,unread-input.test.ts
+10-21T07:09:57 RUN 34a80467 rev=6 n=4 cp=- end=completed wall=452.6s until 10-21T07:17:29 waits-omp-parity.test.ts,waits-pi-parity.test.ts,waits-codex-parity.test.ts,waits-opencode-parity.test.ts
+10-21T07:10:26 REV 7 watch head=99ab0c71 changes=1 packages/cezar/src/workflows/run.ts
+10-21T07:10:36 RUN cb4c89ac rev=7 n=1 cp=- end=completed wall=5.0s until 10-21T07:10:41 change-surface-readers.test.cjs
+10-21T07:17:29 RUN 525b4ad2 rev=7 n=4 cp=- end=completed wall=4.3s until 10-21T07:17:34 pump-repo-cache.test.ts,skill-system-prompt.test.ts,permissions.test.ts,codex-startup-cancel.test.ts
+10-21T07:17:34 RUN e07b37dc rev=7 n=4 cp=- end=timed-out wall=604.0s until 10-21T07:27:38 run.test.ts,ci-wait-failure-parity.test.ts,waits-cursor-parity.test.ts,waits-claude-parity.test.ts
+10-21T07:27:41 RUN 13b7282e rev=7 n=4 cp=- end=timed-out wall=601.3s until 10-21T07:37:42 waits-cursor-parity.test.ts,workflow-autonomous-parity.test.ts,harness-parity.test.ts,workflow-no-progress-parity.test.ts
+10-21T07:29:00 REV 8 watch head=cadff2ba changes=1 packages/cezar/src/workflows/waits-parity-cells.testkit.ts
+10-21T07:29:08 RUN ab5c9a14 rev=8 n=1 cp=- end=completed wall=5.9s until 10-21T07:29:14 change-surface-readers.test.cjs
+10-21T07:30:00 REV 9 watch head=cadff2ba changes=1 packages/cezar/src/workflows/waits-parity-cells.testkit.ts
+10-21T07:30:06 RUN f141339c rev=9 n=1 cp=- end=completed wall=4.1s until 10-21T07:30:10 change-surface-readers.test.cjs
+10-21T07:31:17 REV 10 watch head=999b9bb2 changes=21 .ai/specs/2026-09-25-task-webhook-handoff.md AGENTS.md BACKWARD_COMPATIBILITY.md
+10-21T07:33:13 REV 11 watch head=999b9bb2 changes=1 packages/web/e2e/agent-browser.ts
+10-21T07:38:59 RUN 447f6b09 rev=11 n=4 cp=- end=completed wall=401.1s until 10-21T07:45:40 waits-cursor-parity.test.ts,waits-omp-parity.test.ts,waits-pi-parity.test.ts,waits-codex-parity.test.ts
+10-21T07:39:00 RUN aa5f7118 rev=11 n=1 cp=- end=completed wall=5.3s until 10-21T07:39:05 change-surface-readers.test.cjs
+10-21T07:45:42 RUN 6c0192ce rev=11 n=4 cp=- end=completed wall=110.1s until 10-21T07:47:32 waits-parity.test.ts,worker-restart-parity.test.ts,worker-reboot-parity.test.ts,workflow-ask-parity.test.ts
+10-21T07:47:33 RUN 2f66fd19 rev=11 n=4 cp=- end=completed wall=243.0s until 10-21T07:51:36 waits-opencode-parity.test.ts,model-identity-wiring.test.ts,worker-wait.test.ts,service.test.ts
+10-21T07:51:36 RUN 2fd211dc rev=11 n=1 cp=- end=completed wall=532.5s until 10-21T08:00:29 waits-claude-parity.test.ts
+10-21T08:00:29 RUN 7e3dd2e7 rev=11 n=1 cp=- end=timed-out wall=600.8s until 10-21T08:10:30 harness-parity.test.ts
+10-21T08:10:32 RUN ff488deb rev=11 n=4 cp=- end=null wall=-s until - ci-wait-parity.test.ts,skill-resume-parity.test.ts,workflow-final-message-parity.test.ts,runner-shutdown-parity.test.ts
