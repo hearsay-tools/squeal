@@ -39,6 +39,11 @@ const TESTS = {
     'import { version } from "bumped";\nimport { expect, it } from "vitest";\nit("loads bumped", () => {\n  expect(version).toMatch(/^\\d/);\n});\n',
 };
 
+const SPAWNS = {
+  "test/spawns.test.ts":
+    'import { execFileSync } from "node:child_process";\nimport { expect, it } from "vitest";\nit("spawns", () => {\n  expect(typeof execFileSync).toBe("function");\n});\n',
+};
+
 describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
   for (const rows of ["kept", "cleared"] as const) {
     it(`a second worktree with another install runs only the test file whose package changed (test_files rows ${rows})`, async () => {
@@ -78,6 +83,33 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
       });
     });
   }
+  // Task 011-85, R1: the root's own version is no input, so a file keyed by the whole fingerprint
+  // (its closure imports `child_process`) is inherited too.
+  it("a second worktree whose install differs only in the root's version runs no test file", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    for (const [path, content] of Object.entries({ ...TESTS, ...SPAWNS })) {
+      writeFileSync(join(repo.main, path), content);
+    }
+    git(repo.main, ["add", "-A"]);
+    git(repo.main, ["commit", "-qm", "packages"]);
+    writeInstall(repo.main, FIRST, "1.4.0");
+    const a = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
+    await a.scheduler.start();
+    await a.scheduler.idle();
+
+    const root = addWorktree(repo.main, repo.dir, "second");
+    writeInstall(root, FIRST, "1.5.0");
+    const b = await openHarness(root, store, repo.commonDir, { tierSize: 10 });
+    await b.scheduler.start();
+    await b.scheduler.idle();
+
+    expect(b.runner.runs.flatMap((r) => r.files.map((f) => f.path))).toEqual([]);
+    for (const path of [...ALL_TEST_FILES, ...Object.keys({ ...TESTS, ...SPAWNS })]) {
+      expect(b.keyOf(path)).toBe(a.keyOf(path));
+    }
+  });
+
   it("an install in place under a running scheduler runs only the test file whose package changed", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
