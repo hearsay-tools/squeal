@@ -28,7 +28,7 @@ export interface PermitPoolOptions extends PoolCapacity {
 
 /** One backlog or checkpoint tier's grant, held until the tier ends. */
 export interface PoolLease {
-  /** The workers the tier may run: its permits, and the daemon's free worker when it had it. */
+  /** The workers the tier may run: its permits. */
   readonly grant: number;
   readonly permits: number;
   /**
@@ -47,9 +47,9 @@ export type PoolLane = "fast" | "slow";
 export interface PermitPool {
   /**
    * The grant for a tier of `lane` that wants `want` workers, or `null` when
-   * it may not start yet: the daemon's free worker is another lane's tier's
-   * and no permit is free. Never blocks; that other tier's end is the next
-   * chance. When it throws it holds nothing it took.
+   * it may not start yet: no permit it may take is free. The daemon is then
+   * a waiter, marked, holding nothing for that tier. Never blocks; the caller
+   * looks again (011 C10, row 011-96). When it throws it holds nothing it took.
    */
   acquire(want: number, lane?: PoolLane): PoolLease | null;
   /**
@@ -57,8 +57,8 @@ export interface PermitPool {
    * step 5, task 001-366): the fair share less what this daemon's tiers
    * hold, under the project's cap. It reads the marks only, so permits taken
    * since without a mark, or left free for an older waiter, may make the
-   * grant smaller. `0` when the daemon's free worker is taken and no share
-   * is left. Throws as `acquire` does when the marks cannot be read.
+   * grant smaller. `0` when no share is left. Throws as `acquire` does when
+   * the marks cannot be read.
    */
   offer(want: number, lane?: PoolLane): number;
   /** Releases every lease and clears the mark. */
@@ -84,7 +84,6 @@ export function createPermitPool(options: PermitPoolOptions): PermitPool {
 
 interface Lease {
   readonly permits: DatabaseSync[];
-  free: boolean;
   /** The workers its tier wants, kept above its grant while it waits (review 001-384, B1). */
   want: number;
 }
@@ -94,22 +93,25 @@ interface Lease {
  * extended to backlog and checkpoint tiers of every lane, one pool per user
  * in the slot's directory.
  *
- * - The pool is `hostSlots − 1` permits, each `pool.<i>.lock` taken as
+ * - The pool is `hostSlots` permits, each `pool.<i>.lock` taken as
  *   `takePermit` takes a slow permit: the OS returns it when its holder dies.
- *   With each daemon's free worker beside them a lone daemon runs `hostSlots`.
+ *   Every backlog worker holds one: there is no free worker beside them
+ *   (011 C10 as amended 2026-10-21, row 011-96).
  * - At each tier boundary a daemon reads the fresh marks (`readMarks`) and
  *   takes at most its fair share (`fairShares`), less what its other lanes'
  *   tiers hold. It leaves free what the waiters older than itself lack, the
  *   longest waiter first: it takes those permits too, to count what is free,
  *   and returns them at once.
- * - A daemon that gets less than its share is a waiter from then until it
- *   gets it; its mark says since when. A held permit is never taken back.
+ * - A daemon that gets less than its share, or nothing while it holds
+ *   nothing, is a waiter from then until it gets it; its mark says since
+ *   when. A held permit is never taken back.
  * - The mark states the daemon's demand, what its tiers want, apart from
- *   what they hold, so a waiter that runs on its free worker still counts
- *   for its whole tier (review 001-384, B1).
- * - The mark is written at each boundary and refreshed while a lease is
- *   held, and cleared when the last lease goes. The waiter's age is kept
- *   across that gap between tiers, and forgotten after 30 s without a lease.
+ *   what they hold, so a waiter still counts for its whole tier (review
+ *   001-384, B1).
+ * - The mark is written at each boundary and each look, refreshed while a
+ *   lease is held, and cleared when the last lease goes. The waiter's age is
+ *   kept across that gap between tiers, and forgotten after 30 s without a
+ *   lease or a look.
  * - A mark that cannot be written fails the acquisition, which returns what
  *   it took; after a shrink or a release the refresh writes it again
  *   (review 001-384, B2).
@@ -143,11 +145,7 @@ class LockFilePool implements PermitPool {
     }
     this.#idleSince = null;
     const wanted = Math.max(1, Math.floor(want));
-    const { others, inUse, demand, shares, free, entitled, target } = this.#share(
-      wanted,
-      lane,
-      now,
-    );
+    const { others, inUse, demand, shares, entitled, target } = this.#share(wanted, lane, now);
     const slow = lane === "slow";
     const rank = this.#since ?? now;
     // Task 004-61: a contended pool serves fast lanes first. A fast lane's tier leaves free only
@@ -160,15 +158,16 @@ class LockFilePool implements PermitPool {
     };
     const reserve = others
       .filter(ahead)
-      .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 1) - o.grant), 0);
-    const permits = this.#take(Math.max(0, target - (free ? 1 : 0)), reserve);
-    const grant = permits.length + (free ? 1 : 0);
+      .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 0) - o.grant), 0);
+    const permits = this.#take(target, reserve);
+    const grant = permits.length;
     const since = this.#since;
     const slowWaiting = this.#slowWaiting;
     const mark = this.#mark;
-    this.#since = grant >= Math.max(entitled, free ? 1 : 0) ? null : (since ?? now);
+    // One that holds nothing and gets nothing waits even at a share of 0, so it is served first later.
+    this.#since = grant >= Math.max(entitled, inUse === 0 ? 1 : 0) ? null : (since ?? now);
     this.#slowWaiting = this.#since !== null && slow && (since === null || slowWaiting);
-    const lease: Lease = { permits, free, want: wanted };
+    const lease: Lease = { permits, want: wanted };
     if (grant > 0) this.#leases.add(lease);
     try {
       this.#publish(demand, inUse + grant);
@@ -181,7 +180,11 @@ class LockFilePool implements PermitPool {
       this.#mark = mark;
       throw error;
     }
-    if (grant === 0) return null;
+    if (grant === 0) {
+      // A look counts as a lease for the waiter's age: one that stops looking forgets it after 30 s.
+      if (this.#leases.size === 0) this.#idleSince = now;
+      return null;
+    }
     this.#startRefresh();
     return this.#handle(lease);
   }
@@ -199,7 +202,7 @@ class LockFilePool implements PermitPool {
     this.#clear();
   }
 
-  /** What a tier of `wanted` workers is entitled to now, and what it may take with the free worker. */
+  /** What a tier of `wanted` workers is entitled to now, and what it may take. */
   #share(wanted: number, lane: PoolLane, now: number) {
     const { dir, owner, project } = this.#options;
     const others = readMarks(dir, owner.worktreeId, now);
@@ -213,8 +216,7 @@ class LockFilePool implements PermitPool {
       ...(project === undefined ? {} : { project }),
     };
     const shares = fairShares(this.#hostSlots, [me, ...others]);
-    const free = [...this.#leases].every((lease) => !lease.free);
-    const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 1) - inUse));
+    const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 0) - inUse));
     let target = entitled;
     if (project !== undefined) {
       // No preemption: what the project's other daemons hold now stays theirs.
@@ -222,8 +224,7 @@ class LockFilePool implements PermitPool {
       const held = theirs.reduce((sum, o) => sum + o.grant, 0);
       target = Math.min(target, Math.max(0, project.slots - held - inUse));
     }
-    if (free) target = Math.max(1, target);
-    return { others, inUse, demand, shares, free, entitled, target };
+    return { others, inUse, demand, shares, entitled, target };
   }
 
   /**
@@ -235,7 +236,7 @@ class LockFilePool implements PermitPool {
     const { dir, owner } = this.#options;
     const held: DatabaseSync[] = [];
     try {
-      for (let i = 0; i < this.#hostSlots - 1 && held.length < count + reserve; i++) {
+      for (let i = 0; i < this.#hostSlots && held.length < count + reserve; i++) {
         const db = takePermit(join(dir, poolPermitFile(i)), owner);
         if (db !== null) held.push(db);
       }
@@ -259,8 +260,7 @@ class LockFilePool implements PermitPool {
       },
       shrinkTo(workers) {
         const wanted = Math.max(1, Math.floor(workers));
-        const keep = Math.max(lease.free ? 0 : 1, wanted - (lease.free ? 1 : 0));
-        for (const db of lease.permits.splice(keep)) db.close();
+        for (const db of lease.permits.splice(wanted)) db.close();
         lease.want = wanted;
         pool.#republish();
       },
@@ -350,5 +350,5 @@ class LockFilePool implements PermitPool {
 }
 
 function grantOf(lease: Lease): number {
-  return lease.permits.length + (lease.free ? 1 : 0);
+  return lease.permits.length;
 }

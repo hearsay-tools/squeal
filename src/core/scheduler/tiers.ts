@@ -182,10 +182,11 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * picked and before `startTier` claims their keys, so a daemon that waits for
  * capacity holds no claim (D11 Capacity, task 001-376). It asks for no more
  * workers than its runner runs it with, and a grant below the offer trims
- * the picked tail to the same rule at the grant (task 001-366). It waits only while
- * another lane's backlog tier of this daemon has its free worker and no
- * permit is free: that tier's end wakes the pump. An edit's tier takes no
- * grant and never waits on the pool.
+ * the picked tail to the same rule at the grant (task 001-366). It waits while
+ * no permit it may take is free, holding none: the pump looks again when a
+ * tier of this daemon ends and at least every `CAPACITY_RECHECK_MS` (011 C10
+ * as amended 2026-10-21, row 011-96). An edit's tier takes no grant and
+ * never waits on the pool.
  */
 export function selectTier(
   context: SchedulerContext,

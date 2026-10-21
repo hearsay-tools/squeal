@@ -7,7 +7,7 @@ import type { Demand } from "./share.js";
 
 /** A daemon's mark in the pool's directory: its backlog demand and what it holds. */
 export interface PoolMark extends Demand {
-  /** The workers its backlog tiers run with now, the free one included. */
+  /** The workers its backlog tiers run with now: its permits. */
   readonly grant: number;
 }
 

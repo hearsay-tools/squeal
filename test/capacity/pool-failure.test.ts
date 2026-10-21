@@ -49,11 +49,15 @@ function capacity(notes: string[]): TierCapacity {
   return tiers;
 }
 
-/** The pool's only permit (hostSlots 2) is free: nothing holds its lock. */
-function permitFree(): boolean {
-  const db = takePermit(join(dir, poolPermitFile(0)), { pid: process.pid, worktreeId: "probe" });
-  db?.close();
-  return db !== null;
+/** How many of the pool's two permits (hostSlots 2, row 011-96) nothing holds. */
+function freePermits(): number {
+  let free = 0;
+  for (const i of [0, 1]) {
+    const db = takePermit(join(dir, poolPermitFile(i)), { pid: process.pid, worktreeId: "probe" });
+    db?.close();
+    if (db !== null) free++;
+  }
+  return free;
 }
 
 function competitor(): PermitPool {
@@ -76,7 +80,7 @@ describe("a pool whose mark cannot be written", () => {
     expect(tiers.take(200)).toBeNull();
     expect(notes).toHaveLength(1);
     expect(notes[0]).toMatch(/EISDIR.*tiers run without a grant/);
-    // Nothing leaked: another daemon takes the only permit beside its free worker.
+    // Nothing leaked: another daemon takes both permits.
     const other = competitor().acquire(200);
     expect(other?.grant).toBe(2);
     other?.release();
@@ -95,7 +99,7 @@ describe("a pool whose mark cannot be written", () => {
     const unblock = obstructMark();
     expect(() => lease.shrinkTo(1)).not.toThrow();
     expect(lease.grant).toBe(1);
-    expect(permitFree()).toBe(true);
+    expect(freePermits()).toBe(1);
     expect(() => lease.release()).not.toThrow();
     unblock();
   });
@@ -105,9 +109,9 @@ describe("a pool whose mark cannot be written", () => {
     const laneOne = tiers.take(1);
     if (laneOne === null || laneOne === WAIT_FOR_CAPACITY) throw new Error("expected a lease");
     const unblock = obstructMark();
-    // Lane two would take the one permit; the mark fails, so it runs ungranted and holds none.
+    // Lane two would take the other permit; the mark fails, so it runs ungranted and holds none.
     expect(tiers.take(200)).toBeNull();
-    expect(permitFree()).toBe(true);
+    expect(freePermits()).toBe(1);
     unblock();
     laneOne.release();
     const next = tiers.take(200);

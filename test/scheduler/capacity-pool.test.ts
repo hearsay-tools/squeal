@@ -1,8 +1,11 @@
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { createPermitPool } from "../../src/core/capacity/index.js";
+import { createPermitPool, readMarks } from "../../src/core/capacity/index.js";
+import { CAPACITY_RECHECK_MS } from "../../src/core/scheduler/capacity.js";
 import type {
   NodeTestProject,
   RunOptions,
@@ -17,11 +20,11 @@ import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
  * grant from the per-user pool, an edit's tier runs at `runner.tierSize`
  * without one, so another daemon's work never delays delivery.
  *
- * The pool here has 2 slots: one permit, held with another daemon's free
- * worker by a simulated daemon. A Vitest backlog tier is held on this
- * daemon's free worker; an edit to a node:test file, another lane, must run
- * beside it. Were the edit's tier to ask the pool it would find the free
- * worker taken and no permit free, and wait for the held tier.
+ * The pool here has 2 slots, each a permit (011 C10 as amended 2026-10-21,
+ * row 011-96): one held by a simulated daemon, the other by this daemon's
+ * Vitest backlog tier; an edit to a node:test file, another lane, must run
+ * beside it. Were the edit's tier to ask the pool it would find no permit
+ * free, and wait for the held tier.
  */
 
 const NT: NodeTestProject = {
@@ -57,7 +60,7 @@ function ntOutcome(store: Store, worktreeId: WorktreeId): string | undefined {
 }
 
 describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, () => {
-  it("runs an edit's tier without a grant while the pool and the daemon's free worker are taken", async () => {
+  it("runs an edit's tier without a grant while the pool is taken", async () => {
     const dir = join(mkdtempSync(join(tmpdir(), "squeal-capacity-pool-")), "squeal-uid");
     onTestFinished(() => rmSync(join(dir, ".."), { recursive: true, force: true }));
     const repo = createRepo("basic");
@@ -82,16 +85,16 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
     for (const run of runs) expect(run.options.workers).toBeGreaterThanOrEqual(1);
     expect(Math.max(...runs.map((r) => r.options.workers ?? 0))).toBeLessThanOrEqual(2);
 
-    // Another daemon of the user takes the whole pool.
+    // Another daemon of the user takes one permit.
     const other = createPermitPool({
       dir,
       owner: { pid: process.pid, worktreeId: "other-daemon" },
       hostSlots: 2,
     });
     onTestFinished(() => other.close());
-    expect(other.acquire(200)?.grant).toBe(2);
+    expect(other.acquire(1)?.grant).toBe(1);
 
-    // A Vitest backlog tier, held on this daemon's free worker.
+    // A Vitest backlog tier, held on the other permit.
     let release = () => {};
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -121,4 +124,63 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
     release();
     await h.scheduler.idle();
   });
+
+  it("a backlog tier that finds no permit holds no claim, looks again every few seconds, and starts after a release", async () => {
+    const dir = join(mkdtempSync(join(tmpdir(), "squeal-capacity-wait-")), "squeal-uid");
+    onTestFinished(() => rmSync(join(dir, ".."), { recursive: true, force: true }));
+    // Another daemon of the user holds the whole pool before this one starts.
+    const other = createPermitPool({
+      dir,
+      owner: { pid: process.pid, worktreeId: "other-daemon" },
+      hostSlots: 2,
+    });
+    onTestFinished(() => other.close());
+    const held = other.acquire(200);
+    expect(held?.permits).toBe(2);
+    const repo = createRepo("basic");
+    const store = openRepoStore(repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 4,
+      backlogTierSize: 50,
+      capacity: { dir, hostSlots: 2 },
+    });
+    const runs: { at: number; options: RunOptions }[] = [];
+    h.gate.before = (_files, options) => {
+      runs.push({ at: performance.now(), options });
+    };
+    await h.scheduler.start();
+
+    // The baseline is the backlog's: it waits, marked, with no run and no key claimed.
+    const own = () => readMarks(dir, "reader", Date.now()).find((m) => m.id === h.worktreeId);
+    await expect.poll(() => own()?.since ?? null, { timeout: 30_000 }).not.toBeNull();
+    expect(own()?.grant).toBe(0);
+    // Each look rewrites the mark: a pump that looked in a loop would rewrite it constantly.
+    const mark = markFile(dir, h.worktreeId);
+    const looks = new Set<number>();
+    const until = performance.now() + CAPACITY_RECHECK_MS + 500;
+    while (performance.now() < until) {
+      looks.add(statSync(mark).mtimeMs);
+      await delay(25);
+    }
+    expect(looks.size).toBeLessThanOrEqual(3);
+    expect(runs).toEqual([]);
+    const running = store.testFileKeys.list(h.worktreeId).filter((r) => r.pending === "running");
+    expect(running).toEqual([]);
+
+    // The holder's tier ends: no event of this daemon's, so its next look starts the baseline.
+    const releasedAt = performance.now();
+    held?.release();
+    await expect.poll(() => runs.length, { timeout: 30_000 }).toBeGreaterThan(0);
+    expect(runs[0]?.at ?? Number.POSITIVE_INFINITY).toBeLessThan(
+      releasedAt + CAPACITY_RECHECK_MS + 4_000,
+    );
+    expect(runs[0]?.options.workers).toBe(2);
+    await h.scheduler.idle();
+  });
 });
+
+/** The file of `worktreeId`'s mark in the pool's directory, named as `marks.ts` names it. */
+function markFile(dir: string, worktreeId: string): string {
+  const name = createHash("sha256").update(worktreeId).digest("hex").slice(0, 16);
+  return join(dir, `pool.mark.${name}`);
+}
