@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
-import { measure, sumCosts, takeSample } from "../../src/core/ps/measure.js";
+import { below, measure, sumCosts, takeSample } from "../../src/core/ps/measure.js";
 import type { ProcessOwner } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import { attribute } from "../../src/core/ps/processes.js";
@@ -44,6 +44,7 @@ describe("CPU over the window", () => {
       cpuMs: 4_900,
       privateBytes: 150 * MIB,
       swapBytes: 0,
+      reapedBy: null,
     });
   });
 
@@ -72,18 +73,22 @@ describe("CPU over the window", () => {
       cpuMs: 2_900,
       privateBytes: null,
       swapBytes: null,
+      reapedBy: null,
     });
     expect(reads.get("status") ?? 0).toBe(0);
   });
 
-  test("a process seen in the second sample only has null window CPU and its memory now", () => {
-    const { source } = fakeSource([worker]);
-    const costs = measure(source, sampleOf(0, []), sampleOf(2_000, [worker]), [worker.pid]);
+  test("a process born in the window, in the second sample only: all its CPU is the window's, and its memory now", () => {
+    const born = { ...worker, cpuTicks: 90, childTicks: 10 };
+    const { source } = fakeSource([born]);
+    const costs = measure(source, sampleOf(0, []), sampleOf(2_000, [born]), [worker.pid]);
+    // 90 ticks of its own and 10 of children it waited for, in 2 s.
     expect(costs.get(worker.pid)).toEqual({
-      cpuPct: null,
-      cpuMs: 2_900,
+      cpuPct: 50,
+      cpuMs: 900,
       privateBytes: 150 * MIB,
       swapBytes: 0,
+      reapedBy: null,
     });
   });
 
@@ -101,6 +106,7 @@ describe("CPU over the window", () => {
       cpuMs: 2_900,
       privateBytes: null,
       swapBytes: null,
+      reapedBy: null,
     });
     expect(reads.get("status") ?? 0).toBe(0);
   });
@@ -114,6 +120,80 @@ describe("CPU over the window", () => {
       measure(source, sampleOf(5, [worker]), sampleOf(5, [worker]), [worker.pid]).get(worker.pid)
         ?.cpuPct,
     ).toBeNull();
+  });
+});
+
+describe("the CPU of processes that start or end in the window (task 014-21)", () => {
+  // A daemon, its fork worker, the worker's git, at 100 ticks per second over a 2 s window.
+  const daemon = { pid: 800, ppid: 1, startTicks: 100, cpuTicks: 5_000, childTicks: 700 };
+  const fork = { pid: 801, ppid: 800, startTicks: 9_000, cpuTicks: 300, childTicks: 20 };
+  const git = { pid: 802, ppid: 801, startTicks: 9_900, cpuTicks: 40, childTicks: 0 };
+  const rows = [daemon.pid, fork.pid, git.pid];
+  const cpuOf = (first: FakeProcess[], second: FakeProcess[], pids = rows) =>
+    measure(fakeSource(second).source, sampleOf(0, first), sampleOf(2_000, second), pids);
+
+  test("a child that starts and ends between the two samples counts in its parent's CPU: its children's times grew by its life", () => {
+    // The daemon used 20 ticks itself; a worker it waited for used 150 and was never seen.
+    const costs = cpuOf([daemon], [{ ...daemon, cpuTicks: 5_020, childTicks: 850 }], [daemon.pid]);
+    expect(costs.get(daemon.pid)).toMatchObject({ cpuPct: 85, cpuMs: 50_200, reapedBy: null });
+  });
+
+  test("a row that ended in the window: its CPU in it counts in the ancestor that waited for it, not its life before it", () => {
+    // The worker had 320 ticks with its children's at the first sample and 420 at its end.
+    const later = { ...daemon, cpuTicks: 5_010, childTicks: 700 + 420 + 50 };
+    const costs = cpuOf([daemon, fork, git], [later]);
+    // The git, ended too, had 40; the worker waited for it, so its 50 ticks at the end are in the 420.
+    expect(costs.get(fork.pid)).toMatchObject({ cpuPct: null, reapedBy: daemon.pid });
+    expect(costs.get(git.pid)).toMatchObject({ cpuPct: null, reapedBy: daemon.pid });
+    // 10 own, and 470 the children grew less the 320 and 40 they had: 120 ticks in 2 s.
+    expect(costs.get(daemon.pid)?.cpuPct).toBe(60);
+  });
+
+  test("a child born in the window counts all its ticks in its nearest row, here a row that lived through it", () => {
+    const born = { pid: 803, ppid: 801, startTicks: 10_050, cpuTicks: 30, childTicks: 6 };
+    const costs = cpuOf([daemon, fork], [daemon, { ...fork, cpuTicks: 340 }, born]);
+    // The worker's own 40 and the git it started, 36 with what that git waited for.
+    expect(costs.get(fork.pid)?.cpuPct).toBe(38);
+    expect(costs.get(daemon.pid)?.cpuPct).toBe(0);
+    expect(costs.has(born.pid)).toBe(false);
+  });
+
+  test("a process below a row that is no row, a daemon's own git, adds its growth to the daemon's row", () => {
+    const own = { pid: 810, ppid: 800, startTicks: 9_990, cpuTicks: 4, childTicks: 0 };
+    const costs = cpuOf([daemon, own], [daemon, { ...own, cpuTicks: 24 }], [daemon.pid]);
+    expect(costs.get(daemon.pid)?.cpuPct).toBe(10);
+  });
+
+  test("a process that ended and no measured process waited for, an escaped browser, comes off no row and is named by reapedBy", () => {
+    const browser = { pid: 900, ppid: 1, startTicks: 9_500, cpuTicks: 800, childTicks: 0 };
+    const costs = cpuOf([daemon, browser], [daemon], [daemon.pid, browser.pid]);
+    expect(costs.get(browser.pid)).toMatchObject({ cpuPct: null, reapedBy: null });
+    expect(costs.get(daemon.pid)?.cpuPct).toBe(0);
+  });
+
+  test("a source without children's times (D10): a child that ended is left out, never taken off its parent", () => {
+    const blind = (p: FakeProcess) => ({ ...p, childTicks: null });
+    const costs = cpuOf(
+      [blind(daemon), blind(fork)],
+      [blind({ ...daemon, cpuTicks: 5_040 })],
+      [daemon.pid, fork.pid],
+    );
+    expect(costs.get(fork.pid)).toMatchObject({ cpuPct: null, reapedBy: null });
+    expect(costs.get(daemon.pid)?.cpuPct).toBe(20);
+  });
+
+  test("children waited for outside the tree add nothing, never less: a row's CPU is at least its own", () => {
+    // The worker's git was left to the init process when the worker ended first: 40 ticks come off, none came in.
+    const costs = cpuOf(
+      [daemon, fork, git],
+      [{ ...daemon, cpuTicks: 5_010, childTicks: 700 + 320 }],
+    );
+    expect(costs.get(daemon.pid)?.cpuPct).toBe(5);
+  });
+
+  test("below gives the pids and every process under them, once each", () => {
+    const table = sampleOf(0, [daemon, fork, git, { pid: 5, ppid: 1 }]).table;
+    expect(below(table, [daemon.pid, fork.pid]).sort()).toEqual([800, 801, 802]);
   });
 });
 
@@ -173,8 +253,8 @@ describe("sumCosts", () => {
   test("sums each value over the processes that have one; null only when none has", () => {
     expect(
       sumCosts([
-        { cpuPct: 12, cpuMs: 100, privateBytes: 10, swapBytes: null },
-        { cpuPct: null, cpuMs: 5, privateBytes: 20, swapBytes: null },
+        { cpuPct: 12, cpuMs: 100, privateBytes: 10, swapBytes: null, reapedBy: null },
+        { cpuPct: null, cpuMs: 5, privateBytes: 20, swapBytes: null, reapedBy: 1 },
       ]),
     ).toEqual({ cpuPct: 12, cpuMs: 105, privateBytes: 30, swapBytes: null });
     expect(sumCosts([])).toEqual({ cpuPct: 0, cpuMs: 0, privateBytes: 0, swapBytes: 0 });

@@ -64,9 +64,10 @@ class ProcSource implements PsSource {
     return seconds === undefined ? null : Number(seconds) * 1000;
   }
 
-  processTable(pids?: readonly number[]): ProcessTable {
+  processTable(pids?: readonly number[], since?: ProcessTable): ProcessTable {
     const table = new Map<number, ProcessRow>();
-    for (const pid of pids ?? this.#pids()) {
+    const born = since === undefined ? [] : this.#pids().filter((pid) => !since.has(pid));
+    for (const pid of pids === undefined ? this.#pids() : new Set([...pids, ...born])) {
       const row = this.#row(pid);
       if (row !== null) table.set(pid, row);
     }
@@ -228,15 +229,17 @@ class ProcSource implements PsSource {
     const close = text.lastIndexOf(")");
     if (open < 0 || close < open) return null;
     const f = text.slice(close + 2).split(" ");
-    const [ppid, pgid, utime, stime, nice, startTicks] = [
+    const [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks] = [
       f[1],
       f[2],
       f[11],
       f[12],
+      f[13],
+      f[14],
       f[16],
       f[19],
     ].map(Number);
-    const numbers = [ppid, pgid, utime, stime, nice, startTicks];
+    const numbers = [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks];
     if (!numbers.every(Number.isInteger)) return null;
     return {
       pid,
@@ -246,6 +249,7 @@ class ProcSource implements PsSource {
       state: f[0] ?? null,
       startTicks: startTicks ?? 0,
       cpuTicks: (utime ?? 0) + (stime ?? 0),
+      childTicks: (cutime ?? 0) + (cstime ?? 0),
       nice: nice ?? 0,
       uid: this.#uid(pid),
     };
