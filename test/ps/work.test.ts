@@ -308,6 +308,33 @@ describe("phases' work", () => {
     expect(phases().get(800)).toBe("starting");
   });
 
+  test("starting under a predecessor's row: its token, open runs and last use are not this daemon's", () => {
+    // A SIGKILLed daemon's row stays until its successor registers, 1.2 to 12.1 s after it starts.
+    serve(800, alpha);
+    const before = STARTED_AT - HOUR;
+    const theirs = daemonRecord(alpha, { startedAt: before, heartbeatAt: before + 60_000 });
+    writeStore(alpha, theirs, (store) => {
+      run(store, "theirs", before + 1_000);
+      store.checkpoints.start({
+        id: "their-checkpoint",
+        worktreeId: alpha.id,
+        revision: 1,
+        kind: "run-all",
+        testFiles: files("test/a.test.ts"),
+        startedAt: before + 2_000,
+      });
+      recordDaemonUsed(store, alpha.id, { usedAt: before + 5_000, activeAt: before + 5_000 });
+    });
+    const { work, unknown } = read();
+    const own = work.get(800);
+    expect(own?.recordedStartedAt).toBe(before);
+    expect([own?.token, own?.tiers, own?.checkpoints, own?.lastUse]).toEqual([null, [], [], null]);
+    expect(unknown).toEqual([
+      { what: "daemon 800 work", why: expect.stringContaining("a predecessor's") },
+    ]);
+    expect(phases().get(800)).toBe("starting");
+  });
+
   test("a waiting daemon's row is the lock holder's: only the holder of a duplicate root is read", () => {
     serve(800, alpha);
     writeProcesses(host, [daemonProcess({ pid: 801, root: alpha.root })]);
