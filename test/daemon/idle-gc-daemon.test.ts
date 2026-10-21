@@ -107,6 +107,8 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
       60_000,
       "the fast baseline, then 2 s quiet",
     );
+    // The slow file waits at the permit the test holds, before the clock moves.
+    await waitFor(() => waiters(slotDir).includes(repo.worktreeId), 30_000, "the slot waiter");
     await delay(300);
     expect(gc).not.toHaveBeenCalled();
 
@@ -126,8 +128,7 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
       expect.stringMatching(/^no tier for 60 s: a last-resort GC took .* MiB in a \d+ ms pause$/),
     ]);
     expect(outcome(repo, SLOW_FILE)).toBeUndefined();
-    // The slow file waits at the permit the test holds, not at the host's.
-    await waitFor(() => waiters(slotDir).includes(repo.worktreeId), 30_000, "the slot waiter");
+    expect(waiters(slotDir)).toContain(repo.worktreeId);
     offset += 61_000;
     await delay(500);
     expect(gc).toHaveBeenCalledTimes(1);
