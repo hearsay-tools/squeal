@@ -33,7 +33,16 @@ const LEFTOVER_AGE_MS = 60 * 60_000;
  * needs no walk.
  */
 export const SIZE_WALK_ENTRIES = 10_000;
-const KEY = /^[0-9a-f]{16}$/;
+/** A key directory, `<key>`, or one moved aside, `<key>.old-<8 hex>` (`daemon/scratch.ts`). */
+const KEY_DIR = /^([0-9a-f]{16})(?:\.old-[0-9a-f]{8})?$/;
+/**
+ * The other names Squeal makes under the temp directory, each `mkdtemp`'s
+ * six letters and digits after its prefix: `squeal-e2e-` (`test/e2e/harness.ts`),
+ * `squeal-e2e-oc-` (`test/e2e/opencode-fixture.ts`), `squeal-e2e-pi-`
+ * (`test/e2e/pi-fixture.ts`) and `squeal-update-` (`cli/update.ts`). Never
+ * `squeal-e2e-cache`, `squeal-evals-<uid>` or an agent's `squeal-review-*`.
+ */
+const MADE = /^squeal-(?:e2e-(?:oc-|pi-)?|update-)[A-Za-z0-9]{6}$/;
 const LOCK_FILE = /^[0-9a-f]{16}\.sqlite$/;
 const WAITER_LOCK = /^waiter-.+\.sqlite$/;
 const PERMIT = /^pool\.(\d+)\.lock$/;
@@ -113,11 +122,12 @@ interface Leftovers {
 }
 
 /**
- * D7 `leftover-temp`: a key directory of `<temp>/squeal-<uid>/tmp/`, or a
- * `<temp>/squeal-*` directory but `squeal-<uid>`, of this user, that no
- * live daemon's key names, no process has as its working directory or in
- * its arguments, and that changed more than an hour ago. A name holding a
- * newline is never listed, since `--leftovers` is read one path per line.
+ * D7 `leftover-temp`: a directory of this user with a name Squeal makes, a
+ * key directory of `<temp>/squeal-<uid>/tmp/`, a daemon's fallback
+ * `<temp>/squeal-<uid>-<key>-XXXXXX` or a `MADE` name, that no live
+ * daemon's key names, no process has as its working directory or in its
+ * arguments, and that changed more than an hour ago (`lessons.md` P1). No
+ * such name holds a newline, which `--leftovers`, one path per line, needs.
  */
 function leftoverTemp(model: PsModel, sizeEntries: number, unknown: PsUnknown[]): Leftovers {
   const none: Leftovers = { flag: null, paths: [] };
@@ -129,15 +139,20 @@ function leftoverTemp(model: PsModel, sizeEntries: number, unknown: PsUnknown[])
   const { places } = model;
   const userDir = join(places.tempDir, `squeal-${places.uid}`);
   const keyDirs = join(userDir, "tmp");
+  // `squeal-<uid>-<key>-XXXXXX`: a daemon's own temp directory where the shared one was refused.
+  const fallback = new RegExp(`^squeal-${places.uid}-([0-9a-f]{16})-[A-Za-z0-9]{6}$`);
+  const unkeyed = (pattern: RegExp, name: string): boolean => {
+    const key = pattern.exec(name)?.[1];
+    return key !== undefined && !keys.has(key);
+  };
   const candidates = [
     ...names(keyDirs)
-      .filter((name) => !keys.has(name.split(".old-")[0] ?? ""))
+      .filter((name) => unkeyed(KEY_DIR, name))
       .map((name) => join(keyDirs, name)),
     ...names(places.tempDir)
-      .filter((name) => name.startsWith("squeal-") && name !== `squeal-${places.uid}`)
-      .filter((name) => !keys.has(fallbackKey(name, places.uid) ?? ""))
+      .filter((name) => MADE.test(name) || unkeyed(fallback, name))
       .map((name) => join(places.tempDir, name)),
-  ].filter((path) => !path.includes("\n"));
+  ];
   const old = new Map<AbsolutePath, number>();
   for (const path of candidates) {
     const stat = lstatOrNull(path);
@@ -197,13 +212,6 @@ function liveKeys(model: PsModel): Set<string> | string {
     keys.add(key.slice(0, 16));
   }
   return keys;
-}
-
-/** `squeal-<uid>-<key>-XXXXXX`, a daemon's own temp directory where the shared one was refused. */
-function fallbackKey(name: string, uid: number): string | null {
-  const prefix = `squeal-${uid}-`;
-  const key = name.startsWith(prefix) ? name.slice(prefix.length, prefix.length + 16) : "";
-  return KEY.test(key) ? key : null;
 }
 
 /**
