@@ -1,0 +1,25 @@
+# /proc/709144, read 2026-10-21T16:08:16Z
+    PID    PPID     ELAPSED STAT WCHAN                CMD
+ 709144    1049    02:04:42 Ssl  ep_poll              /home/agent/.nvm/versions/node/v24.21.0/bin/node /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.238/dist/cli/squeal.mjs daemon /home/agent/p
+children: 0
+## threads by name and wchan
+      1 DelayedTaskSche ep_poll
+      1 MainThread ep_poll
+      1 SignalInspector futex_wait_queue
+      4 V8Worker futex_wait_queue
+      1 WorkerThread ep_poll
+      4 libuv-worker futex_wait_queue
+     60 rolldown-worker futex_wait_queue
+## fds by target
+      5 /dev/null
+      1 /home/agent/projects/squeal/.git/squeal/locks/b3025782c392379a.sqlite
+      1 /home/agent/projects/squeal/.git/squeal/locks/b3025782c392379a.sqlite-journal
+      1 /home/agent/projects/squeal/.git/squeal/store.sqlite
+      1 /home/agent/projects/squeal/.git/squeal/store.sqlite-shm
+      1 /home/agent/projects/squeal/.git/squeal/store.sqlite-wal
+      4 anon_inode:[eventfd]
+      4 anon_inode:[eventpoll]
+      4 anon_inode:[io_uring]
+      1 anon_inode:inotify
+     10 pipe:
+      1 socket:

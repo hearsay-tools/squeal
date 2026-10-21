@@ -1,0 +1,154 @@
+{
+ "keyRow": [
+  {
+   "key": "70e64e1d27e81804ca21df53f4325780a4ef8596486bea6433ed24ccd73fbf9e",
+   "revision": 6,
+   "pending": "running"
+  }
+ ],
+ "pendingRows": [
+  {
+   "pending": null,
+   "n": 783
+  },
+  {
+   "pending": "running",
+   "n": 1
+  }
+ ],
+ "fileState": [
+  {
+   "outcome": "pass",
+   "validity": "pending",
+   "pending_phase": "running",
+   "observed_at": 5,
+   "origin_kind": "inherited",
+   "origin_worktree": "15c0d83e3be76464",
+   "origin_commit": "d7344427b76e7cc0776d830cc5a61aa05788f6ff"
+  }
+ ],
+ "runsWithFile": [
+  {
+   "id": "9bfab4d5-b316-4674-848a-67c8b70ad434",
+   "revision": 4,
+   "started_at": 1792591814368,
+   "ended_at": 1792591825346,
+   "end_state": "completed"
+  }
+ ],
+ "openRuns": [],
+ "lastRunEnd": [
+  {
+   "at": 1792595715936
+  }
+ ],
+ "runsRev4to6": [
+  {
+   "id": "14dd5f12-4250-4055-b990-261577feb8d3",
+   "revision": 4,
+   "started_at": 1792591802853,
+   "ended_at": 1792591814042,
+   "end_state": "completed"
+  },
+  {
+   "id": "9bfab4d5-b316-4674-848a-67c8b70ad434",
+   "revision": 4,
+   "started_at": 1792591814368,
+   "ended_at": 1792591825346,
+   "end_state": "completed"
+  },
+  {
+   "id": "f466e18c-2fce-4682-9f18-fe1b78e6dc7d",
+   "revision": 5,
+   "started_at": 1792591825535,
+   "ended_at": 1792591840382,
+   "end_state": "completed"
+  },
+  {
+   "id": "abec9b22-042f-42d8-adfd-d6b20f829ff9",
+   "revision": 6,
+   "started_at": 1792591840872,
+   "ended_at": 1792592443409,
+   "end_state": "timed-out"
+  },
+  {
+   "id": "11429cd8-9bab-49ff-9abe-87fa9544a640",
+   "revision": 6,
+   "started_at": 1792592443817,
+   "ended_at": 1792592661996,
+   "end_state": "completed"
+  }
+ ],
+ "revisions3to6": [
+  {
+   "number": 3,
+   "created_at": 1792591700060,
+   "changes": "[{\"path\":\"src/runners/observe/recorder.cjs\",\"oldHash\":\"9cd25129431f477a6287cda9b4a2b627da0f0523\",\"newHash\":\"79c66e0130178b530e2e8963f97fb71cf14a1d10\"}]"
+  },
+  {
+   "number": 4,
+   "created_at": 1792591721865,
+   "changes": "[{\"path\":\"test/runners/observe/absent-script.test.ts\",\"oldHash\":null,\"newHash\":\"e0b8dec7c9342bf6e473812d55cb353f352f1a90\"}]"
+  },
+  {
+   "number": 5,
+   "created_at": 1792591822570,
+   "changes": "[{\"path\":\"src/runners/observe/recorder.cjs\",\"oldHash\":\"79c66e0130178b530e2e8963f97fb71cf14a1d10\",\"newHash\":\"69b545c3fc261bc8d28feb2a5bed25cf5c575151\"}]"
+  },
+  {
+   "number": 6,
+   "created_at": 1792591836326,
+   "changes": "[{\"path\":\"src/runners/observe/recorder.cjs\",\"oldHash\":\"69b545c3fc261bc8d28feb2a5bed25cf5c575151\",\"newHash\":\"79c66e0130178b530e2e8963f97fb71cf14a1d10\"}]"
+  }
+ ],
+ "checkpoints": [
+  {
+   "id": "ebbd3808-4da9-47b3-a982-98713e72cbdf",
+   "revision": 17,
+   "kind": "run-all",
+   "started_at": 1792594583166,
+   "completed_at": null,
+   "end_state": null
+  },
+  {
+   "id": "f83aa413-dd48-4c33-86b1-2541afc6adc5",
+   "revision": 2,
+   "kind": "baseline",
+   "started_at": 1792591696846,
+   "completed_at": 1792593337074,
+   "end_state": "abandoned"
+  },
+  {
+   "id": "9c8b5c1d-ca02-4e26-976a-6665250cdcdd",
+   "revision": 12,
+   "kind": "run-all",
+   "started_at": 1792593337075,
+   "completed_at": 1792594583166,
+   "end_state": "abandoned"
+  }
+ ],
+ "fileResultsInWorktreeOrAtKey": [],
+ "inheritedKey": [
+  {
+   "key": "7e55680db9141da4",
+   "worktree_id": "15c0d83e3be76464",
+   "revision": 28,
+   "commit_sha": "d7344427b76e7cc0776d830cc5a61aa05788f6ff"
+  }
+ ],
+ "closureHasRecorder": [
+  {
+   "has": 1
+  }
+ ],
+ "meta": [
+  {
+   "key": "checkpoint.b3025782c392379a",
+   "value": "{\"id\":\"ebbd3808-4da9-47b3-a982-98713e72cbdf\",\"kind\":\"run-all\",\"revision\":17,\"startedAt\":1792594583166,\"done\":281,\"total\":282}"
+  },
+  {
+   "key": "rekeyed.b3025782c392379a",
+   "value": "{\"\\u0000test/daemon/composite-runner.test.ts\":[6,6]}"
+  }
+ ]
+}
