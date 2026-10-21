@@ -39,6 +39,13 @@ const TSX_VERSION = installedVersion("tsx");
  * it (2026-10-13; Node 24's npm 11 does).
  */
 export const VITE_VERSION = installedVersion("vite");
+/**
+ * Vite's bundler, named for the same reason as Vite: a fresh `--prefer-offline`
+ * install takes the newest `rolldown` the cache's packument lists, and drops
+ * its native binding without a word when the binding's packument is older
+ * (spec 014, `research/shipped-plugin-timeout.md`).
+ */
+export const ROLLDOWN_VERSION = installedVersion("rolldown");
 
 function installedVersion(name: string): string {
   const manifest = join(REPO_ROOT, "node_modules", name, "package.json");

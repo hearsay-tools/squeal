@@ -17,7 +17,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { StatusResult } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
-import { VITE_VERSION } from "./install.js";
+import { ROLLDOWN_VERSION, VITE_VERSION } from "./install.js";
 import { copyPlugin, type HookName, PLUGINS } from "./plugins.js";
 
 /*
@@ -127,6 +127,8 @@ describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (ki
         "--legacy-peer-deps",
         `vitest@${VITEST_VERSION}`,
         `vite@${VITE_VERSION}`,
+        // A stale cached binding packument would leave Vite without its native binding (install.ts).
+        `rolldown@${ROLLDOWN_VERSION}`,
       ],
       { cwd: project, stdio: "pipe" },
     );
