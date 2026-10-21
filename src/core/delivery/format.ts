@@ -10,6 +10,7 @@ import {
   notCurrentText,
   splitByValidity,
 } from "../status/checks.js";
+import { atText } from "../status/test-frame.js";
 import { cap, plural } from "../text.js";
 import type {
   CheckId,
@@ -21,7 +22,6 @@ import type {
   KnownOutcome,
   Registration,
   RetiredEntry,
-  SourceLocation,
   TransitionEntry,
 } from "../types/index.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
@@ -87,10 +87,6 @@ function whyLine(check: CheckId, command: string): string {
   return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
 
-function at(location: SourceLocation): string {
-  return `at ${location.path}:${location.line}:${location.column}`;
-}
-
 /**
  * Lessons, defect 22 (task 001-112): a tool boundary that may have edited
  * while no daemon validates, and none was started, says so, since any change
@@ -133,7 +129,7 @@ function entryBlock(entry: TransitionEntry, revision: number): Block {
     [
       failed ? seenLine(entry, revision) : change(entry),
       entry.summary === null ? null : cap(entry.summary, SUMMARY_MAX_CHARS),
-      entry.location === null ? null : at(entry.location),
+      entry.location === null ? null : atText(entry.location, entry.testFileFrame),
       ...(failed ? [touchesLine(entry), loadLine(entry)] : [recoveryProvenance(entry, revision)]),
       entry.flaky === undefined ? null : capitalize(flakyText(entry.flaky)),
       entry.retry === undefined ? null : capitalize(retryText(entry.retry)),
@@ -378,7 +374,7 @@ export function formatRegistration(
       `FAIL  ${checkName(f.check)}`,
       [
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
-        f.location === null ? null : at(f.location),
+        f.location === null ? null : atText(f.location, f.testFileFrame),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
         f.recorded === undefined
           ? f.recordedUnknown === true

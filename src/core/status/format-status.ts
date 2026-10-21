@@ -22,6 +22,7 @@ import { outstandingLines } from "./outstanding-text.js";
 import { phaseLines } from "./phase-files.js";
 import { slowSlotLines } from "./slot-holders.js";
 import { detailLines, hiddenParts } from "./status-detail.js";
+import { atText } from "./test-frame.js";
 
 export { shortCommit } from "./identity.js";
 
@@ -66,9 +67,7 @@ export function formatStatus(
       `  FAIL  ${formatCheck(f.check)}`,
       ...(f.summary === "" ? [] : [`        ${f.summary}`]),
       `        ${[
-        ...(f.location === null
-          ? []
-          : [`at ${f.location.path}:${f.location.line}:${f.location.column}`]),
+        ...(f.location === null ? [] : [atText(f.location, f.testFileFrame)]),
         `observed at revision ${f.observedAt}`,
         f.validity,
       ].join(", ")}`,
