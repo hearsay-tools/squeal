@@ -26,3 +26,15 @@ Read the 004-85 board row, 004 D8, 011 C6 as amended 2026-10-20 and `../../011-c
 Owns the new test file only. Leave alone: every `src/` file (a needed product change is a finding for the coordinator, not an edit), 004-84's files, the board, the specs, `package.json` versions and `plugins/*/dist`. No `npm run build`.
 
 Done when: the three cases pass on the baseline, and a mutation that puts the held slow files back into `Outstanding:` fails them (say how you checked); `npm run lint`, `npm run typecheck` and `squeal run --all --wait` green (paste its output).
+
+## Review of cand/0.1.235
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.235` SHA named in the spawn; the range is from the base named there to that SHA. It holds 004-84 (four commits), 004-85 (one test commit), the coordinator's D3 amendment and `status.md` line, the release commit (0.1.235 and the bundles) and this section, all cherry-picked with `-x`. Key format 20 is expected unchanged.
+
+Read rows 004-84 and 004-85, the sections above, D2 and D3 as amended 2026-10-21, `status.md`'s 2026-10-21 line and both rows' `notes.md`. Check that:
+- with two daemons under load above `slow.maxLoadPerCpu`, one past its budget and one fresh, the fresh one runs within one handover; with the slot free and the load high a file still defers; below the threshold nothing changes. The "most likely false" claim: that the slot probe (`slowSlotHeld`, which locks and releases each permit) never makes a daemon that holds or is taking the slot lose its turn or run a second file, and never leaves a permit or holder row wrong. Try to break it, with two real daemons if a probe needs them, in a throwaway repo with `HOME` and `XDG_*` pointed there;
+- a marked waiter that takes the slot under load runs one file (D2's width) and carries no load note; time at the slot spends no `slow.maxDeferMs`;
+- 004-85's tests pass on this candidate and fail when the held slow files return to `Outstanding:`;
+- D3 as amended says what the code does.
+
+Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree; name each file that fails loaded and passes alone. Write `reviews/0.1.235.md` with a PASS or FAIL verdict and commit it.
