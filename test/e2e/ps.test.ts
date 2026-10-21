@@ -98,26 +98,22 @@ describe("squeal ps beside a real daemon (spec 014 Testing)", () => {
     const env = scratchEnv(e);
     const pid = await startDaemon(e, env);
 
-    const seen = await until(
-      "a snapshot of the slow tier with a test process",
-      60_000,
-      async () => {
-        const daemon = daemonIn((await psJson(e, env, ["--repo"])).shape, pid);
-        const tier = daemon?.work.tiers.find((t) => t.lane === "slow");
-        return daemon !== null && tier !== undefined && daemon.processes.length > 0
-          ? { daemon, tier }
-          : null;
-      },
-    );
+    // The slow file sleeps 30 s, so a snapshot inside the tier comes well before 60 s.
+    const seen = await until("a snapshot of the slow tier's test process", 60_000, async () => {
+      const daemon = daemonIn((await psJson(e, env, ["--repo"])).shape, pid);
+      const tier = daemon?.work.tiers.find((t) => t.lane === "slow");
+      const served = daemon?.processes.filter((p) => p.runId === tier?.runId) ?? [];
+      return daemon !== null && tier !== undefined && served.length > 0
+        ? { daemon, tier, served }
+        : null;
+    });
     expect(seen.tier.files).toBe(1);
-    const served = seen.daemon.processes.filter((p) => p.runId === seen.tier.runId);
-    expect(served.length).toBeGreaterThan(0);
     for (const p of seen.daemon.processes) {
       // Its own child or below, as the ppid tree says (D5's owner rule).
       expect(ancestors(p.pid)).toContain(pid);
       expect(p).toMatchObject({ escaped: false, flags: [] });
     }
-    for (const p of served) expect(p).toMatchObject({ lane: "slow:vitest", runner: "vitest" });
+    for (const p of seen.served) expect(p).toMatchObject({ lane: "slow:vitest", runner: "vitest" });
   }, 180_000);
 
   it("flags its socket stale-socket after a SIGKILL", async (ctx) => {
@@ -198,10 +194,10 @@ describe("squeal ps beside a real daemon (spec 014 Testing)", () => {
 
 describe("squeal ps --leftovers on real processes (spec 014 D7)", () => {
   /**
-   * `ps` from the source, since the shipped CLI reads `/tmp`, which this host
-   * shares: its leftovers would be listed too. The scratch temp directory
-   * stands in for `/tmp` (`PsCommandOptions.tempDir`); the processes are the
-   * host's own.
+   * `ps` in-process, not the bundle: the shipped CLI reads `/tmp` on purpose
+   * and no TMPDIR moves it (D7), and on a shared host `/tmp` holds other
+   * leftovers. A scratch directory stands in for `/tmp`
+   * (`PsCommandOptions.tempDir`); the processes are the host's own.
    */
   async function sourcePs(args: readonly string[], scratch: string) {
     let stdout = "";
