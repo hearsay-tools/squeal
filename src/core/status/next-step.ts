@@ -1,6 +1,7 @@
 import { loadText } from "../retry/text.js";
 import { timeText } from "../text.js";
 import { isSlowLane, SLOW_LANE_PREFIX, type Standing, type TierYield } from "../types/index.js";
+import { slotHoldersText } from "./slot-holders.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20; `tasks/011-24/design.md`
@@ -171,7 +172,9 @@ export function nextStep(s: Standing, context: StepContext = { named: true }): N
     }
     case "slow": {
       const when = s.pausesOnly === true ? "when the agent pauses" : "after the fast tests";
-      const reason = `slow, run ${when} or on {command}`;
+      // Row 011-58 (gh-58): while the daemon waits for the slow slot, who holds it.
+      const slot = s.slot === undefined ? "" : `; slow slot: ${slotHoldersText(s.slot)}`;
+      const reason = `slow, run ${when} or on {command}${slot}`;
       return {
         reason,
         // Under `slow.trigger: "idle"` the verdict line keeps when it runs (004-80).

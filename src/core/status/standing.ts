@@ -17,6 +17,7 @@ import {
   type Policy,
   type ProjectName,
   type RunRecord,
+  type SlowSlotHolders,
   type StatusHeader,
   type Store,
   type TestFileKeyRecord,
@@ -25,6 +26,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { claimantOf, openRunsOf } from "./open-runs.js";
+import { slowSlotOf } from "./slot-holders.js";
 import { type Facts, once, setupsOf, unknownStanding } from "./standing-facts.js";
 import { checksByFile, unknownReasons } from "./unknown-files.js";
 
@@ -91,6 +93,8 @@ export interface WorktreeReads {
   readonly header: StatusHeader;
   /** The live daemon's open runs, `openRunsOf`'s. */
   readonly runs: readonly RunRecord[];
+  /** `slowSlotOf`'s, `null` when it found none; read when a slow file needs it, absent. */
+  readonly slowSlot?: SlowSlotHolders | null;
 }
 
 /**
@@ -119,6 +123,12 @@ export function standingsOf(
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
+  const alive = daemon.state === "alive";
+  const slot = once(() =>
+    reads?.slowSlot === undefined
+      ? slowSlotOf(store, worktreeId, root, header, alive, now)
+      : (reads.slowSlot ?? undefined),
+  );
   const facts: Facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
     installCommand: header.installCommand ?? null,
@@ -187,6 +197,14 @@ export function standingsOf(
           ...(tier === undefined ? {} : { yields: tier }),
         };
         return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
+      }
+      if (pending.kind === "slow") {
+        // Row 011-58 (gh-58): while the daemon waits for the slot, who holds it.
+        const held = slot();
+        if (held !== undefined) {
+          const waiting: PendingReason = { ...pending, slot: held };
+          return { testFile: ref, state, pending: waiting, standing: waiting };
+        }
       }
       if (pending.kind === "unlisted" && promoted.has(testFileId(ref))) {
         // C15: "; the run yields" when the run the runner part waits for is cancelled for it.
