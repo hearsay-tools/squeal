@@ -3,10 +3,24 @@ import type { TestProject, Vitest } from "vitest/node";
 import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
 import { type ImportClosure, importClosure, missingCandidates } from "./graph.js";
 
-/** The config file of a project and of the root, plus their `configFileDependencies`. */
+/** Every project's config file and the root's, plus their `configFileDependencies`. */
 export function configFiles(vitest: Vitest): Set<AbsolutePath> {
+  return collect([vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]);
+}
+
+/**
+ * The root's config file and this project's, plus their
+ * `configFileDependencies`, never a sibling's (011 C3, task 011-85 R2):
+ * Vitest loads each `projects` entry as its own config, so a sibling's file
+ * changes no option this project receives.
+ */
+export function projectConfigFiles(vitest: Vitest, project: TestProject): Set<AbsolutePath> {
+  return collect([vitest.vite.config, project.vite.config]);
+}
+
+function collect(configs: readonly TestProject["vite"]["config"][]): Set<AbsolutePath> {
   const files = new Set<AbsolutePath>();
-  for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
+  for (const config of configs) {
     if (config.configFile) files.add(config.configFile);
     for (const dep of config.configFileDependencies) files.add(dep);
   }
@@ -42,7 +56,7 @@ export async function projectInputs(vitest: Vitest, project: TestProject): Promi
     ...missingCandidates(setup, extensions),
     ...missingCandidates(globalSetup, extensions),
   ]);
-  return { configFiles: configFiles(vitest), setup, globalSetup, missing };
+  return { configFiles: projectConfigFiles(vitest, project), setup, globalSetup, missing };
 }
 
 /** True when a change to `path` affects every test file of the project. */
