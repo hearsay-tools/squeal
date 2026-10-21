@@ -2,6 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { currentUid, userTmpDir } from "../../src/core/daemon/paths.js";
@@ -12,6 +13,7 @@ import {
   othersWaitingForSlot,
   SLOT_WAITER_FRESH_MS,
   slowSlotDir,
+  slowSlotHeld,
 } from "../../src/core/slow/index.js";
 
 const register = fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url));
@@ -246,5 +248,33 @@ describe("a waiter's mark hands the slot over between files (spec 004 D2, lesson
     expect(acquireSlowSlot({ dir, owner })).toBeNull();
     slot?.release();
     expect(othersWaitingForSlot(dir, "b")).toBe(true);
+  });
+});
+
+describe("slowSlotHeld: every permit is taken (task 004-84)", () => {
+  test("a missing directory holds none and is not made", () => {
+    expect(slowSlotHeld({ dir, permits: 2 })).toBe(false);
+    expect(() => statSync(dir)).toThrow();
+  });
+
+  test("held only while every permit is, and the probe takes none", () => {
+    const first = acquireSlowSlot({ dir, owner, permits: 2 });
+    expect(slowSlotHeld({ dir, permits: 2 })).toBe(false);
+    const second = acquireSlowSlot({ dir, owner, permits: 2 });
+    expect(slowSlotHeld({ dir, permits: 2 })).toBe(true);
+    second?.release();
+    const third = acquireSlowSlot({ dir, owner, permits: 2 });
+    expect(third?.permits).toBe(1);
+    third?.release();
+    first?.release();
+  });
+
+  test("a free permit's last holder stays recorded", () => {
+    acquireSlowSlot({ dir, owner: { pid: 1, worktreeId: "a" } })?.release();
+    expect(slowSlotHeld({ dir })).toBe(false);
+    const db = new DatabaseSync(join(dir, "slow.lock"));
+    const rows = db.prepare("SELECT worktree_id FROM holder").all();
+    db.close();
+    expect(rows).toEqual([{ worktree_id: "a" }]);
   });
 });
