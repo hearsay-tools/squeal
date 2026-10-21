@@ -75,6 +75,13 @@ export interface Tier {
   /** When it started, on the scheduler's clock: its estimated remainder runs from here (`TierYields`). */
   readonly startedAt?: number;
   /**
+   * The ids of its files whose module ended during the run, as the runner
+   * names them (`RunOptions.fileEnded`, row 011-54): `TierYields` reads the
+   * others as unfinished. Results still wait for the report. Absent or
+   * empty: every file is unfinished.
+   */
+  readonly ended?: Set<string>;
+  /**
    * Aborted to cancel the tier in flight (`TierYields`, spec 011 C4 step 5
    * as amended 2026-10-21, row 011-51): a backlog tier's always; any other
    * but a slow one when its runner cancels a run (`cancels`). `null` otherwise.
@@ -373,6 +380,7 @@ export function startTier(
       ),
       kind,
       startedAt: context.now(),
+      ended: new Set(),
       cancel: cancellable ? new AbortController() : null,
       ...(lease === undefined ? {} : { lease }),
       loadPerCpu: tierLoad(context),
@@ -429,18 +437,24 @@ function startable(ledger: Ledger, p: TierFile): TierFile[] {
 /**
  * Runs a tier; with `observeIgnored`, for a warm-up (task 001-307). `stop`,
  * a `squeal stop`, cancels it whatever its kind, as an edit cancels a
- * backlog tier (D10, task 001-367). Never rejects: a runner that throws is a
- * crash (D12).
+ * backlog tier (D10, task 001-367). Each file the runner names as ended
+ * joins `Tier.ended`, then `onFileEnd` hears of it (row 011-54). Never
+ * rejects: a runner that throws is a crash (D12).
  */
 export async function executeTier(
   context: SchedulerContext,
   tier: Tier,
   observeIgnored = false,
   stop?: AbortSignal,
+  onFileEnd?: () => void,
 ): Promise<RunReport> {
   const started = context.now();
   const signals = [tier.cancel?.signal, stop].filter((signal) => signal !== undefined);
   const signal = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
+  const fileEnded = (ref: TestFileRef) => {
+    tier.ended?.add(testFileId(ref));
+    onFileEnd?.();
+  };
   try {
     return await context.runner.run(
       tier.files.map((f) => f.file.ref),
@@ -453,6 +467,7 @@ export async function executeTier(
         lane: tier.lane,
         ...(observeIgnored ? { observeIgnored } : {}),
         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
+        fileEnded,
       },
     );
   } catch (error) {
