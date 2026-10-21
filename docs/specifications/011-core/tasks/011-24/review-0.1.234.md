@@ -13,3 +13,12 @@ Read row 011-29, its brief (`tasks/011-24/briefs.md`), `tasks/011-24/design.md` 
 - HELP, the three `commands.md` copies and the evals parser say what the code prints, and the eval pins round-trip the real formatters, plain and hook JSON.
 
 Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree; name each file that fails loaded and passes alone. Write `reviews/0.1.234.md` with a PASS or FAIL verdict and commit it.
+
+## Re-review after the coordinator repair (2026-10-21)
+
+Use /reviewer. Shape: review, narrow. Pinned to the repaired `cand/0.1.234` SHA named in the spawn; the delta is `2e0f83b6b..` that SHA: the repair of `reviews/0.1.234.md` B1 (`17af2b302`, bundles `a2ade87aa`, tests `b6a2ad300` and `013dec0b9`), S1 (`0c4a4ad5d`), S2 (`314eeeec4`), your review file and this section. Check that:
+- B1 is closed: `status <path> --full`, `--notes` and a named wait with either print the full status, detail included and no `More:` line, and their commands resolve from the caller's directory, including a file outside it; the pathless forms are unchanged;
+- S1's two tests pass with `CODEX_SESSION_ID` set and without it; S2's parser returns bare paths for a named project's retry group, plain and in hook JSON, and an empty-project group as before;
+- the rebuilt bundles match `npm run build`.
+
+Run the locked full suite once in the candidate tree. Append a "Re-review" section to `reviews/0.1.234.md` with PASS or FAIL and commit it. Do not widen the review past this delta.
