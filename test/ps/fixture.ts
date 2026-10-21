@@ -280,6 +280,12 @@ export function writeHost(root: string): void {
   const proc = join(root, "proc");
   mkdirSync(join(proc, "pressure"), { recursive: true });
   mkdirSync(join(proc, "self", "ns"), { recursive: true });
+  mkdirSync(join(proc, "net"));
+  // No socket is bound: a socket read that fails withholds every leftover (B2).
+  writeFileSync(
+    join(proc, "net", "unix"),
+    "Num       RefCount Protocol Flags    Type St Inode Path\n",
+  );
   writeFileSync(join(proc, "loadavg"), "43.21 36.57 38.82 31/3218 2354001\n");
   writeFileSync(
     join(proc, "pressure", "cpu"),
