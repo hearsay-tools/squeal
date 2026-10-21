@@ -938,10 +938,10 @@ Spec: `specifications/014-ps/spec.md`, approved by the human 2026-10-21 (D9 as i
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 014-10 flags | running (worker ae84206e, opus xhigh) | D7: `flags.ts`, the 18 flags and 2 information states with their end commands, quoted; the `--leftovers` list. | One flagged and one healthy case per flag (the fifth column of `research/should-not-be-up.md` 1). |
-| 014-11 the output and `squeal ps` | running (worker 5231c98c, opus xhigh) | D1, D8: the snapshot that runs the stages inside the window, `render.ts`, `src/cli/ps.ts`, its `main.ts` entry and help text, exit codes 0, 1, 2 and 3. | Render tests against the D8 layout; CLI tests for every flag and exit code. |
-| 014-12 the macOS source | running (worker 300fddb7, opus xhigh) | D10: `darwin.ts` over an injected command runner; `ps`, `vm_stat`, `sysctl` and `lsof` parsers; the flags it does not evaluate named in `unknown`. | Parser tests against fixture outputs; no test on a Mac (the human, 2026-10-21). |
-| 014-13 review of wave 2 | planned | `/reviewer` on the candidate. | `reviews/wave-2.md` committed. |
+| 014-10 flags | in review (cand/0.1.240) | D7: `flags.ts`, the 18 flags and 2 information states with their end commands, quoted; the `--leftovers` list. | One flagged and one healthy case per flag (the fifth column of `research/should-not-be-up.md` 1). |
+| 014-11 the output and `squeal ps` | in review (cand/0.1.240) | D1, D8: the snapshot that runs the stages inside the window, `render.ts`, `src/cli/ps.ts`, its `main.ts` entry and help text, exit codes 0, 1, 2 and 3. | Render tests against the D8 layout; CLI tests for every flag and exit code. |
+| 014-12 the macOS source | in review (cand/0.1.240) | D10: `darwin.ts` over an injected command runner; `ps`, `vm_stat`, `sysctl` and `lsof` parsers; the flags it does not evaluate named in `unknown`. | Parser tests against fixture outputs; no test on a Mac (the human, 2026-10-21). |
+| 014-13 review of wave 2 | running (worker 2976ee91, codex gpt-6.1-sol high, pinned 29ef2f053) | `/reviewer` on the candidate. | `reviews/wave-2.md` committed. |
 
 ### Wave 3: proof (after 014-13)
 
