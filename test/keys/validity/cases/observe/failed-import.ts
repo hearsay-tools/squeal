@@ -10,6 +10,7 @@ export const FAILED_IMPORTS: readonly Case[] = [
     input: {
       files: {
         "scripts/present.mjs": "export {};\n",
+        "scripts/pre.cjs": "",
         "test/imports.test.js": "// the test file the script works for\n",
       },
       testFile: "test/imports.test.js",
@@ -22,7 +23,8 @@ export const FAILED_IMPORTS: readonly Case[] = [
         "esm(\"import 'missing-package';\");",
         "esm(\"import 'file://host:port/bad.mjs';\");",
         "esm(\"import './scripts/present.mjs';\");",
-        'spawnSync(process.execPath, ["scripts/entry.cjs"]);',
+        // a missing entry under a `--require` recorder resolves with no parent URL
+        'spawnSync(process.execPath, ["--require", "./scripts/pre.cjs", "scripts/entry.cjs"]);',
         'try { require("./scripts/required.cjs"); } catch {}',
       ].join("\n"),
     },
