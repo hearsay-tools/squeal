@@ -15,10 +15,53 @@ import {
  * C4 step 5 as amended 2026-10-21): a yield cuts each file at its key once,
  * so repeated saves cannot cancel the same files without end; the backlog's
  * turn after four tiers of the first group yields to nothing but a revision
- * whose results it would discard.
+ * whose results it would discard. Review `reviews/0.1.237.md` B1: a file
+ * `run --all --force` queued already has a result at its key, which is no
+ * result after the cut; a mark ends only at one, or when the key moves.
  */
 const SLOW = [1, 2, 3, 4].map((i) => `test/s${i}.test.ts`);
 const isSlow = (path: string) => SLOW.includes(path);
+
+const H = "test/h.test.ts";
+const [Q1, Q2] = ["test/q1.test.ts", "test/q2.test.ts"];
+
+/**
+ * A known failing file of 120 s and two of 1 ms, run once; then
+ * `run --all --force` runs the failing one first, alone and held, and a
+ * named wait on `Q1` cuts it. Returns once it runs again at its key, held.
+ */
+async function forcedAndCut() {
+  const files: CatchUpFile[] = [
+    { path: H, ms: 120_000, imports: ["src/h.ts"] },
+    { path: Q1, ms: 1, imports: ["src/q1.ts"] },
+    { path: Q2, ms: 1, imports: ["src/q2.ts"] },
+  ];
+  const repo = catchUpRepo(files);
+  // Tiers of one file, so the two short ones stay queued behind it.
+  const side = catchUpSide(repo, repo.main, {
+    files,
+    hostSlots: 8,
+    tierSize: 1,
+    backlogTierSize: 1,
+  });
+  side.runner.failing.add(H);
+  await side.scheduler.start();
+  await side.scheduler.idle();
+  const base = side.runner.runs.length;
+  const gate = holdRuns(side.runner, (path) => path === H);
+  const checkpoint = await side.scheduler.requestFullSuite({ force: true });
+  const first = await heldRun(side, H, base);
+  // Its result at this key stays current while the forced run is pending.
+  expect(side.current(H)).toBe(true);
+
+  await side.scheduler.promote([ref(Q1)], 60_000);
+  await expect.poll(() => first.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+  const again = await heldRun(side, H, side.runner.runs.indexOf(first) + 1);
+  expect(completions(side, Q1, base)).toBe(1);
+  // The second short file is still queued behind it.
+  expect(completions(side, Q2, base)).toBe(0);
+  return { side, base, gate, checkpoint, again };
+}
 
 describe("a running tier yields once per file and key (spec 011 C4 step 5 as amended 2026-10-21)", {
   timeout: 120_000,
@@ -98,5 +141,57 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
     gate.stop();
     await side.scheduler.idle();
     expect(files.every((f) => side.current(f.path))).toBe(true);
+  });
+
+  it("a forced file a yield cut is not cut again at its key: its old result is no result after the cut", async () => {
+    const { side, base, gate, checkpoint, again } = await forcedAndCut();
+
+    // A second named wait: before review 0.1.237 B1 it cut the file again, at the same key.
+    await side.scheduler.promote([ref(Q2)], 60_000);
+    await pause(SETTLE_MS);
+    expect(again.cancelled).toBe(false);
+    expect(again.endedAt).toBeNull();
+    expect(side.current(H)).toBe(true);
+
+    gate.stop();
+    await side.scheduler.idle();
+    expect(completions(side, H, base)).toBe(1);
+    expect(side.store.checkpoints.get(checkpoint.id)?.end).toBe("completed");
+    expect([H, Q1, Q2].every((path) => side.current(path))).toBe(true);
+  });
+
+  it("a result accepted after the cut ends the mark: the next forced run at that key yields", async () => {
+    const { side, base, gate, again } = await forcedAndCut();
+    // The run at the key cut ends and stores; the runs after it are held again.
+    side.runner.release();
+    await side.scheduler.idle();
+    expect(again.completed.map((f) => f.path)).toEqual([H]);
+    expect(completions(side, H, base)).toBe(1);
+
+    const next = side.runner.runs.length;
+    const checkpoint = await side.scheduler.requestFullSuite({ force: true });
+    const third = await heldRun(side, H, next);
+    await side.scheduler.promote([ref(Q1)], 60_000);
+    await expect.poll(() => third.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+
+    gate.stop();
+    await side.scheduler.idle();
+    expect(side.store.checkpoints.get(checkpoint.id)?.end).toBe("completed");
+    expect([H, Q1, Q2].every((path) => side.current(path))).toBe(true);
+  });
+
+  it("a key move ends the mark: the file a yield cut yields again at its new key", async () => {
+    const { side, gate, again } = await forcedAndCut();
+    // An edit re-keys all of the run at the key cut: the supersession cancels it.
+    await side.edit("watch", "src/h.ts");
+    await expect.poll(() => again.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    const moved = await heldRun(side, H, side.runner.runs.indexOf(again) + 1);
+
+    await side.scheduler.promote([ref(Q2)], 60_000);
+    await expect.poll(() => moved.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+
+    gate.stop();
+    await side.scheduler.idle();
+    expect([H, Q1, Q2].every((path) => side.current(path))).toBe(true);
   });
 });
