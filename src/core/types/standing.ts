@@ -1,5 +1,6 @@
 import type { EpochMs } from "./common.js";
 import type { TestFileRef } from "./keys.js";
+import type { PendingPhase } from "./state.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20): where a test file without a
@@ -121,3 +122,16 @@ export interface OutstandingGroup {
   readonly standing: OutstandingStanding;
   readonly files: readonly TestFileRef[];
 }
+
+/**
+ * The first test files of one phase, path order, and how many the list
+ * leaves out (row 011-58, gh-61; 011 C6): `files` and `omitted` add up to
+ * the phase's count in `testFilesByPhase`.
+ */
+export interface PhaseFiles {
+  readonly files: readonly TestFileRef[];
+  readonly omitted: number;
+}
+
+/** The pending test files by phase, as `testFilesByPhase` counts them (row 011-58). */
+export type PendingTestFiles = Readonly<Record<PendingPhase, PhaseFiles>>;
