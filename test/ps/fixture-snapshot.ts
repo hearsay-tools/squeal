@@ -1,6 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { vi } from "vitest";
+import type { Flag } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { PsDaemon, PsSnapshot, PsTestProcess } from "../../src/core/ps/shape.js";
 import type { PsSource } from "../../src/core/ps/source.js";
@@ -22,6 +23,18 @@ import {
   writeProcesses,
   writeStore,
 } from "./fixture-stores.js";
+
+/** The findings of a host where nothing is flagged: the stand-in for `flag` where the flags are not under test. */
+export const noFlags: Flag = () => ({
+  daemons: new Map(),
+  states: new Map(),
+  processes: new Map(),
+  orphans: [],
+  files: [],
+  unflagged: [],
+  leftovers: [],
+  unknown: [],
+});
 
 /*
  * Fixtures for the snapshot and the command (spec 014 D1, D4, D8; task
