@@ -16,6 +16,7 @@ New in `src/core/slow/guard.ts`: `CapacityWait.giveWay` and `CapacityWaited.gave
 ## Decisions the brief did not settle
 
 1. **"Another worktree holds the slot" means that every permit is held.** In that state, `acquireSlowSlot` would get none. With `slow.maxParallel` above 1 and one permit free, a new file adds load, so the guard still decides. The alternative is to treat a single permit held by another worktree as "held". Then the slow lane runs one file at a time for the whole user under load. That alternative also needs a daemon past its budget to wait at the slot instead of taking a free permit. I did not build it. It changes more than the brief's seam, and cezar runs `slow.maxParallel: 1`, where both readings are the same.
+   The coordinator accepted this default on 2026-10-21. It touches D3's "Above `slow.maxLoadPerCpu` (default 1.0) the file waits …". The proposed addition below says "every permit of the slot" for this reason.
 2. **The slot is checked inside the guard, before each sleep.** So it is checked only when the load is above `slow.maxLoadPerCpu` and budget is left. This covers two cases with one check: the slot is held when the guard starts, and another worktree takes the slot during the wait. Below the threshold, nothing checks the slot. The test proves this with a spy. A daemon past its budget never checks either, because the guard returns at the bound first.
 3. **The check locks each permit and releases it at once, with `BEGIN EXCLUSIVE` then `ROLLBACK`.** It does not write the holder row, so gh-58's holder diagnostics keep the real last holder. Cost: a taker that tries at the exact moment of the check misses. It retries at `SLOW_RECHECK_MS`, and as a marked waiter it then skips the guard.
 4. **A marked waiter skips the guard, as `run --slow` does.** It spends no budget and gets no "ran under load" note. It reads the load once for D2's width, so under load it runs one file. The note says the guard waited `slow.maxDeferMs`, and that is not true at a handover.
@@ -43,5 +44,5 @@ D2's slot paragraph still holds: "A daemon that cannot take the slot within its 
 
 ## For the next worker or the coordinator
 
-- The version bump and `plugins/*/dist` are not in this row. Until the rebuild, the three bundle-drift tests fail: `test/harness/plugin.test.ts`, `test/harness/pi/package.test.ts` and `test/harness/opencode/package.test.ts`.
-- Decision 1 is open if the human wants a user-wide limit of one slow file under load when `slow.maxParallel` is above 1.
+- The version bump and `plugins/*/dist` are not in this row. Until the rebuild, the four bundle-drift tests fail: `test/harness/plugin.test.ts`, `test/harness/codex/plugin.test.ts`, `test/harness/pi/package.test.ts` and `test/harness/opencode/package.test.ts`.
+- If the human later wants a user-wide limit of one slow file under load with `slow.maxParallel` above 1, that is a new row (decision 1).
