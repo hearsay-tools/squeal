@@ -1,7 +1,7 @@
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
-import { startDaemon } from "../../src/core/daemon/daemon.js";
+import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
 import type { GcFunction } from "../../src/core/daemon/idle-gc.js";
 import { readHeader } from "../../src/core/delivery/index.js";
 import { acquireSlowSlot, slowSlotDir } from "../../src/core/slow/index.js";
@@ -13,6 +13,11 @@ import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor, withStore } 
  * asks for the GC, and its start scan's end starts the quiet. A slow file
  * waits for the slow lane's one permit, which the test holds, as the 7 quiet
  * daemons of 011-52 waited on the slow lane: work queued, no tier, idle.
+ *
+ * The slow lane takes its permit in `slowSlotDir()` of the daemon's process,
+ * which is this test's, not in that of the daemon's `env`. So the test points
+ * its own runtime dir at the repository's: else the daemon would use the
+ * host's real slot, which live daemons hold on a busy host and none on CI.
  */
 
 const LAST_RESORT = { type: "major", execution: "sync", flavor: "last-resort" };
@@ -27,6 +32,20 @@ const outcome = (repo: FixtureRepo, path: string) =>
         .find((s) => s.check.kind === "test" && s.check.testPath === path)?.outcome,
   );
 
+/** The worktrees with a slot waiter's mark in `dir` (`markSlotWaiter` writes the id). */
+function waiters(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((name) => name.startsWith("slow.wait."))
+    .map((name) => {
+      try {
+        return readFileSync(join(dir, name), "utf8").trim();
+      } catch {
+        return ""; // Another daemon's mark, gone since the listing.
+      }
+    });
+}
+
 describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => {
   it("collects 60 s after its last tier with a slow file queued, and again only after a tier", async () => {
     const repo = createFixtureRepo({
@@ -38,12 +57,23 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
       },
     });
     onTestFinished(repo.cleanup);
+    const hostSlotDir = slowSlotDir();
+    vi.stubEnv("XDG_RUNTIME_DIR", repo.runtimeDir);
+    const slotDir = slowSlotDir();
+    expect(slotDir).toBe(slowSlotDir(repo.env));
+    expect(slotDir).not.toBe(hostSlotDir);
     const slot = acquireSlowSlot({
-      dir: slowSlotDir(repo.env),
+      dir: slotDir,
       owner: { pid: process.pid, worktreeId: "0123456789abcdef" },
     });
     expect(slot).not.toBeNull();
-    onTestFinished(() => slot?.release());
+    let running: RunningDaemon | null = null;
+    // The env goes back only once the daemon stopped: its slow tier clears its mark at close.
+    onTestFinished(async () => {
+      await running?.stop("stop-requested");
+      slot?.release();
+      vi.unstubAllEnvs();
+    });
     let offset = 0;
     const gc = vi.fn<GcFunction>();
     const lines: string[] = [];
@@ -56,9 +86,7 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
       timings: { checkMs: 50 },
     });
     if ("reason" in daemon) throw new Error(daemon.message);
-    onTestFinished(async () => {
-      await daemon.stop("stop-requested");
-    });
+    running = daemon;
     await daemon.ready;
     // Quiet for 2 s: the five files current, only the slow file queued, no run
     // open. Under load a later tier (a first observation's re-run) would
@@ -98,6 +126,8 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
       expect.stringMatching(/^no tier for 60 s: a last-resort GC took .* MiB in a \d+ ms pause$/),
     ]);
     expect(outcome(repo, SLOW_FILE)).toBeUndefined();
+    // The slow file waits at the permit the test holds, not at the host's.
+    await waitFor(() => waiters(slotDir).includes(repo.worktreeId), 30_000, "the slot waiter");
     offset += 61_000;
     await delay(500);
     expect(gc).toHaveBeenCalledTimes(1);
