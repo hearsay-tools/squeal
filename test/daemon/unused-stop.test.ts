@@ -1,4 +1,4 @@
-import { realpathSync } from "node:fs";
+import { appendFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readHeader } from "../../src/core/delivery/index.js";
@@ -40,6 +40,13 @@ const { fixture, daemon } = suite;
 /** 3 s: the daemon checks every 5 s, so the stop comes within about 8 s of the last use. */
 const UNUSED = { "squeal.config.json": JSON.stringify({ daemon: { unusedExitMinutes: 0.05 } }) };
 const UNUSED_NOTE = /daemon stopped: no edit, run, wait or request for 3 s/;
+/** The unused bound under `baseline.onStart: "lookup-only"` (row 011-91). */
+const LOOKUP_ONLY = {
+  "squeal.config.json": JSON.stringify({
+    daemon: { unusedExitMinutes: 0.05 },
+    baseline: { onStart: "lookup-only" },
+  }),
+};
 const SILENT = { stdout: "", stderr: "", exitCode: 0 };
 const self = () => findHarnessProcess({ ppid: process.pid });
 
@@ -67,6 +74,23 @@ async function baselineDone(repo: FixtureRepo, worktreeId = repo.worktreeId): Pr
 const recordOf = (repo: FixtureRepo, worktreeId: string) =>
   withStore(repo, (store) => store.worktrees.get(worktreeId)?.daemon ?? null);
 
+/** Whether every check of `path` is current, passing or failing. */
+const current = (repo: FixtureRepo, path: string) =>
+  withStore(repo, (store) => {
+    const states = store.knownStates.list(repo.worktreeId).filter((s) => s.check.testPath === path);
+    return states.length > 0 && states.every((s) => s.validity === "current");
+  });
+
+/** The daemon's exit within 30 s, or a throw with its diagnosis. */
+async function exitOf(repo: FixtureRepo, spawned: SpawnedProcess) {
+  const exit = await Promise.race([
+    spawned.exited,
+    new Promise<null>((done) => setTimeout(() => done(null), 30_000)),
+  ]);
+  if (exit === null) throw new Error(`still running\n${diagnose(repo, spawned)}`);
+  return exit;
+}
+
 describe("the unused stop (task 001-415)", SLOW, () => {
   it("stops a daemon whose consumer stays registered, and the next hook starts it again", async () => {
     const repo = fixture(UNUSED);
@@ -78,12 +102,7 @@ describe("the unused stop (task 001-415)", SLOW, () => {
     await runHook("session-start", recorded("session-start", repo.root), d);
     await baselineDone(repo);
 
-    const exit = await Promise.race([
-      spawned.exited,
-      new Promise<null>((done) => setTimeout(() => done(null), 30_000)),
-    ]);
-    if (exit === null) throw new Error(`still running\n${diagnose(repo, spawned)}`);
-    expect(exit).toEqual({ code: 0, signal: null });
+    expect(await exitOf(repo, spawned)).toEqual({ code: 0, signal: null });
     expect(readNotes(repo).filter((n) => UNUSED_NOTE.test(n))).toHaveLength(1);
     const sessions = withStore(repo, (s) => s.consumers.list(repo.worktreeId));
     expect(sessions).toHaveLength(1);
@@ -106,6 +125,24 @@ describe("the unused stop (task 001-415)", SLOW, () => {
       "a daemon registered and serving again",
     );
     expect(again.socketPath).toBe(repo.socketPath);
+  });
+
+  it("lookup-only: the edit that wakes the resting daemon runs, the other files stay as they were (row 011-91)", async () => {
+    const repo = fixture(LOOKUP_ONLY);
+    vi.stubEnv("XDG_RUNTIME_DIR", repo.runtimeDir);
+    const spawned = daemon(repo);
+    await waitReady(repo, spawned);
+    const d = deps(repo);
+    await runHook("session-start", recorded("session-start", repo.root), d);
+    expect(await exitOf(repo, spawned)).toEqual({ code: 0, signal: null });
+    expect(readNotes(repo).filter((n) => UNUSED_NOTE.test(n))).toHaveLength(1);
+
+    // The agent edits during the rest; its tool boundary starts the next daemon.
+    appendFileSync(join(repo.root, "test/plain.test.ts"), "// edited during the rest\n");
+    await runHook("post-tool-batch", recorded("post-tool-batch", repo.root), d);
+    await waitFor(() => current(repo, "test/plain.test.ts"), 60_000, "the edited file run");
+    // The lookup-only hold stands for every file the start did not reach.
+    expect(current(repo, "test/math.test.ts")).toBe(false);
   });
 
   it("a worktree subagent's SubagentStop lets its daemon stop while its parent stays registered", async () => {
