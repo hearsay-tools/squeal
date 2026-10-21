@@ -1014,7 +1014,7 @@ Spec: `specifications/014-ps/spec.md`, approved by the human 2026-10-21 (D9 as i
 | 014-27 the work text prints a predecessor's departure | done (released in 0.1.248, bb3e3b540; worker b14fece4; the round 2 dogfood 014-30 judges the done-when on this host) | `lessons.md` P7: 7 of 10 departures in sample 1 predated their daemon's start. | `lessons.md` P7's done-when. |
 | 014-28 `orphan-test-process` flags a test's transient child | done (released in 0.1.248, bb3e3b540; worker 7c4582b2; the round 2 dogfood 014-30 judges the done-when on this host) | `lessons.md` P8: one flag on a process 0 s old, gone 6 s later. | `lessons.md` P8's done-when. |
 | 014-29 review of wave 4 | done (round 2 PASS at a8ba68050, `reviews/wave-4-r2.md`, `/reviewer` b5e50015; round 1 FAIL at 563a80619, `reviews/wave-4.md`; full gate red only on opencode-dispose, row 008-38, alone too) | `/reviewer` on the candidate. | `reviews/wave-4.md` committed. |
-| 014-30 dogfood, round 2 | next (0.1.248 released; the installed plugins still read 0.1.247, so it runs a pinned copy of the tag) | The round 1 method on the released bundle. | `lessons.md` "Round 2": goals 3, 4 and 6 judged with numbers; the spec moves to `shipped` when every goal holds with no blocker. |
+| 014-30 dogfood, round 2 | running (worker 08ab1784, opus xhigh; on the released 0.1.248, from a pinned copy of the tag while the installed plugins read 0.1.247) | The round 1 method on the released bundle. | `lessons.md` "Round 2": goals 3, 4 and 6 judged with numbers; the spec moves to `shipped` when every goal holds with no blocker. |
 
 ## Later
 
