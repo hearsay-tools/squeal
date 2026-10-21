@@ -7,6 +7,7 @@ import {
   markRest,
 } from "../delivery/index.js";
 import { type BusyWaits, storePaths } from "../store/index.js";
+import { plural } from "../text.js";
 import {
   type AbsolutePath,
   type DaemonExitReason,
@@ -104,8 +105,16 @@ export interface TimerContext {
    */
   readonly lastUsed?: () => EpochMs;
   readonly used?: (at: EpochMs) => void;
-  /** The scheduler's revision and whether it has work (`Scheduler.busy`); `null` before it starts. */
-  readonly work?: () => { readonly revision: number; readonly busy: boolean } | null;
+  /**
+   * The scheduler's revision, whether it is in use (`Scheduler.inUse`) and
+   * the test files it has queued (`Scheduler.queued`, absent: none); `null`
+   * before it starts.
+   */
+  readonly work?: () => {
+    readonly revision: number;
+    readonly inUse: boolean;
+    readonly queued?: number;
+  } | null;
   /**
    * A `nodeTest` project's observed keys changed since the last call that
    * returned true: queue a runner-only refinement. False while nothing takes
@@ -172,10 +181,12 @@ export interface TimerContext {
  * heartbeat first drops the consumers whose recorded harness process is gone.
  *
  * Task 001-415 (the human, 2026-10-15): a daemon whose worktree has a
- * consumer registered and that saw no edit, no tier queued or running, no
- * wait and no request for `daemon.unusedExitMinutes` stops, reason `idle`,
- * with one note; a registered consumer is no use, so a session that idles
- * for hours, or a subagent whose SubagentStop never ran, keeps no daemon.
+ * consumer registered and that saw no edit, no wait, no request and no work
+ * they caused queued or running (`Scheduler.inUse`; the backlog is no use,
+ * row 011-92) for `daemon.unusedExitMinutes` stops, reason `idle`, with one
+ * note naming the test files it leaves queued; a registered consumer is no
+ * use, so a session that idles for hours, or a subagent whose SubagentStop
+ * never ran, keeps no daemon.
  * It marks the rest first (`markRest`), so its consumers hear
  * nothing of it, and the next hook boundary starts it again. A drain keeps
  * its own bound.
@@ -243,7 +254,7 @@ export function startTimers(context: TimerContext): () => void {
   const unused = (at: EpochMs) => {
     if (context.lastUsed === undefined || presence.draining === true) return;
     const work = context.work?.() ?? null;
-    if (work !== null && (work.busy || work.revision !== seenRevision)) {
+    if (work !== null && (work.inUse || work.revision !== seenRevision)) {
       seenRevision = work.revision;
       context.used?.(at);
       return;
@@ -253,7 +264,7 @@ export function startTimers(context: TimerContext): () => void {
     const registered = store.consumers.list(worktreeId).length;
     if (registered === 0) return;
     markRest(store, worktreeId, at);
-    context.shutdown("idle", unusedText(unusedMs, registered));
+    context.shutdown("idle", unusedText(unusedMs, registered, work?.queued ?? 0));
   };
   /** Counts the worktree's consumers; true when there is none. */
   const countPresence = (at: EpochMs): boolean => {
@@ -391,11 +402,12 @@ function boundText(pending: string, idleMs: number): string {
     : `daemon stopped: still pending ${after}: ${pending}; the next daemon resumes what is owed`;
 }
 
-function unusedText(unusedMs: number, registered: number): string {
+function unusedText(unusedMs: number, registered: number, queued: number): string {
   const sessions = registered === 1 ? "1 session registered" : `${registered} sessions registered`;
+  const left = queued === 0 ? "" : ` and ${plural(queued, "test file")} queued`;
   return (
     `daemon stopped: no edit, run, wait or request for ${duration(unusedMs)} ` +
-    `(daemon.unusedExitMinutes), with ${sessions}; the next hook starts it again`
+    `(daemon.unusedExitMinutes), with ${sessions}${left}; the next hook starts it again`
   );
 }
 

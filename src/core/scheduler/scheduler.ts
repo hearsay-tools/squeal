@@ -495,12 +495,21 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Work queued or running, slow files included: the daemon is in use while
-   * it has any (D10 as amended, task 001-415).
+   * Use is the work an edit, a request or a wait caused (011 C9 as amended
+   * 2026-10-21, row 011-92): an edit's work and a promoted file
+   * (`#editPending`), what is owed (`owedWork`), an open `run --slow`
+   * request. The backlog is no use, queued or running.
    */
-  busy(): boolean {
-    if (this.#closed) return false;
-    return this.#inFlight.size > 0 || !this.#isIdle() || this.slowPending();
+  inUse(): boolean {
+    if (this.#closed || !this.#ledger) return false;
+    if (this.#slow.requested && this.slowPending()) return true;
+    return this.#editPending() || this.owedWork() !== null;
+  }
+
+  queued(): number {
+    if (this.#closed || !this.#ledger) return 0;
+    const { queue } = this.#ledger;
+    return queue.fastSize + queue.slowSize;
   }
 
   slowPending(): boolean {
