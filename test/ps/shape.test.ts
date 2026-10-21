@@ -175,3 +175,19 @@ test("without --full the unflagged file counts are null, and the JSON keeps the 
   expect(keys(json)).toContain("unflaggedFiles");
   expect(json.unflaggedFiles).toBeNull();
 });
+
+test("four unflagged waiter lock files with no flag: counted, zero flags, no end command", () => {
+  const quiet: PsSnapshot = {
+    ...snapshot,
+    repositories: [],
+    orphans: [],
+    files: [],
+    unflaggedFiles: [{ kind: "waiter-lock", count: 4 }],
+    flags: 0,
+  };
+  const json = JSON.parse(JSON.stringify(quiet));
+  expect(json.flags).toBe(0);
+  expect(json.files).toEqual([]);
+  expect(json.unflaggedFiles).toEqual([{ kind: "waiter-lock", count: 4 }]);
+  expect(keys(json.unflaggedFiles[0])).toEqual(sorted("kind count"));
+});
