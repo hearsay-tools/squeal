@@ -552,7 +552,11 @@ ${added}`;
 import { spawn as spawn2 } from "node:child_process";
 import { accessSync, constants, existsSync, readFileSync, statSync } from "node:fs";
 import { delimiter as delimiter2, dirname, isAbsolute, join } from "node:path";
-var MIN_NODE = [22, 13];
+var floor;
+function minimumNode() {
+  floor ??= true ? "22.19" : manifestFloor();
+  return floor;
+}
 var NODE_PROBE_MS = 2e3;
 var isFile = (path) => {
   try {
@@ -601,7 +605,8 @@ function meetsMinimum(version) {
   const [major, minor] = version.trim().split(".").map(Number);
   if (major === void 0 || minor === void 0 || Number.isNaN(major) || Number.isNaN(minor))
     return false;
-  return major > MIN_NODE[0] || major === MIN_NODE[0] && minor >= MIN_NODE[1];
+  const [leastMajor = 0, leastMinor = 0] = minimumNode().split(".").map(Number);
+  return major > leastMajor || major === leastMajor && minor >= leastMinor;
 }
 function nodeVersion(node, timeoutMs = NODE_PROBE_MS) {
   return new Promise((resolve2) => {
@@ -639,7 +644,7 @@ async function findNode(env) {
 
 // src/harness/opencode/plugin.ts
 var LOG_SERVICE = "squeal";
-var NO_NODE_LOG = "Squeal: no Node 22.13 or later on the PATH, so Squeal is off in this OpenCode process.";
+var NO_NODE_LOG = `Squeal: no Node ${minimumNode()} or later on the PATH, so Squeal is off in this OpenCode process.`;
 function squealPlugin(options) {
   return async (input) => {
     try {
