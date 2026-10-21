@@ -77,6 +77,11 @@ function hinted(adapter: RunnerAdapter, files: readonly TestFileRef[]): void {
   if (first !== undefined) adapter.tierWidth?.(first, 2);
 }
 
+/** A `fileEnded` callback that throws: the run must still complete (row 011-54). */
+const throwing = () => {
+  throw new Error("fileEnded throws (validity case)");
+};
+
 /** Runs `input`'s runs in turn on one adapter over its fixture, under `scratch`. */
 export async function vitestCase(input: VitestInput, scratch: string): Promise<CaseOutput> {
   const markers = join(scratch, "markers");
@@ -98,7 +103,12 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     for (const [at, run] of input.runs.entries()) {
       writeFileSync(hold, "");
       rmSync(started, { force: true });
-      const options = { runId: `validity-${at}`, logDir: join(scratch, "logs"), timeoutMs: null };
+      const options = {
+        runId: `validity-${at}`,
+        logDir: join(scratch, "logs"),
+        timeoutMs: null,
+        ...(run.fileEndedThrows === true ? { fileEnded: throwing } : {}),
+      };
       const report = adapter.run(run.files, options);
       await until(() => existsSync(started), "a held test file to start");
       await adapter.invalidate(run.touched.map((path) => ({ path, kind: "touch" as const })));
