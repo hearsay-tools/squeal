@@ -1,0 +1,56 @@
+load 21.02 on 24 CPUs
+scratch /tmp/i65-OikQOw; squeal 0.1.234; jq jq-1.7
+Squeal daemon spawned for /tmp/i65-OikQOw/repo
+
+Revision: 0
+Checkpoint 92cf0b02-1246-4e32-bad4-08395a8f8cf1 completed at revision 0: 1 known failure: 1 test; 2 test files, 0 already current, 2 run by the baseline checkpoint a2e077f9-30ee-4190-ad5b-d6a2cc77d916 it joined
+Checkpoint 92cf0b02-1246-4e32-bad4-08395a8f8cf1 started at revision 0: 2 test files to run, 0 already current, joining the baseline checkpoint a2e077f9-30ee-4190-ad5b-d6a2cc77d916 already running them (0 of 2 test files done); it ends when that one ends
+=== snapshot: squeal status --json test/pass.test.ts test/fail.test.ts
+exit 1
+top-level keys holding testFiles: ["breakdown","named"]
+stderr:
+  Selected: test/pass.test.ts, test/fail.test.ts
+  Named test files at revision 0: 1 known failure: 1 test; 2 test files, each with a current result. Worktree: known failures 1 (1 test); all 2 test files current
+=== wait: squeal status --wait 30000 --json test/pass.test.ts test/fail.test.ts
+exit 1
+top-level keys holding testFiles: ["breakdown","wait"]
+stderr:
+  Selected: test/pass.test.ts, test/fail.test.ts
+  Named test files at revision 0: 1 known failure: 1 test; 2 test files, each with a current result, after 0.3 s. Worktree: known failures 1 (1 test); all 2 test files current
+=== jq -r '.named.testFiles[] | "\(.path) \(.state) \(.verdict // "-")"' snapshot.json
+jq exit 0; 2 lines
+  test/pass.test.ts current pass
+  test/fail.test.ts current fail
+=== jq -r '.wait.testFiles[] | "\(.path) \(.state) \(.verdict // "-")"' snapshot.json
+jq exit 5; 1 lines
+  jq: error (at /tmp/i65-OikQOw/snapshot.json:158): Cannot iterate over null (null)
+=== jq -r '.named.testFiles[] | "\(.path) \(.state) \(.verdict // "-")"' wait.json
+jq exit 5; 1 lines
+  jq: error (at /tmp/i65-OikQOw/wait.json:158): Cannot iterate over null (null)
+=== jq -r '.wait.testFiles[] | "\(.path) \(.state) \(.verdict // "-")"' wait.json
+jq exit 0; 2 lines
+  test/pass.test.ts current pass
+  test/fail.test.ts current fail
+=== the issue's filter: jq -r '.named.testFiles[]? | select(.state != "current" or .verdict != "pass") | .path' snapshot.json
+jq exit 0; 1 lines
+  test/fail.test.ts
+same filter with jq -e: exit 0
+=== the issue's filter: jq -r '.wait.testFiles[]? | select(.state != "current" or .verdict != "pass") | .path' snapshot.json
+jq exit 0; 0 lines
+same filter with jq -e: exit 4
+=== snapshot.json has named: true; has wait: false
+=== the issue's filter: jq -r '.named.testFiles[]? | select(.state != "current" or .verdict != "pass") | .path' wait.json
+jq exit 0; 0 lines
+same filter with jq -e: exit 4
+=== the issue's filter: jq -r '.wait.testFiles[]? | select(.state != "current" or .verdict != "pass") | .path' wait.json
+jq exit 0; 1 lines
+  test/fail.test.ts
+same filter with jq -e: exit 0
+=== wait.json has named: false; has wait: true
+=== payload of each form, testFiles shown
+{"outcome":"snapshot","code":1,"testFiles":[{"path":"test/pass.test.ts","state":"current","verdict":"pass"},{"path":"test/fail.test.ts","state":"current","verdict":"fail"}]}
+{"outcome":"settled","code":1,"testFiles":[{"path":"test/pass.test.ts","state":"current","verdict":"pass"},{"path":"test/fail.test.ts","state":"current","verdict":"fail"}]}
+=== same keys inside the two payloads: true
+=== stop
+Squeal daemon stopped for /tmp/i65-OikQOw/repo
+load after 21.43
