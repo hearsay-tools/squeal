@@ -1,0 +1,9 @@
+# gh-63 probe run, 2026-10-21T01:13:08Z, commit 894238b11 (package.json 0.1.234), node v24.21.0, Vitest 5.0.3
+# load before run: 15.99 15.81 17.60 on 24 CPUs
+A superseded: rev2 tiers=[reg | slow1+slow2+slow3+slow4] regRev2InOwnTier=true slowTierSize=4 slowCancelled=false slowCompleted=4 slowEnd=2975ms regRev3Start=2983ms regRev3Tier=1 slowRerunTiers=1 slowRerunFiles=4 allCurrent=true
+ ✓ docs/specifications/011-core/research/probes/issue-63/superseded-tier.probe.ts > gh-63 probe: a named wait behind a superseded edit tier > A: the fix re-keys the running slow tier too (superseded tier) 9281ms
+B not superseded: rev2 tiers=[reg | slow1+slow2+slow3+slow4] regRev2InOwnTier=true slowTierSize=4 slowCancelled=false slowCompleted=4 slowEnd=2961ms regRev3Start=2967ms regRev3Tier=1 slowRerunTiers=0 slowRerunFiles=0 allCurrent=true
+ ✓ docs/specifications/011-core/research/probes/issue-63/superseded-tier.probe.ts > gh-63 probe: a named wait behind a superseded edit tier > B: the fix re-keys only the regression file (tier not superseded) 6250ms
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+# load after run: 24.21 17.70 18.19
