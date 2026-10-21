@@ -1,5 +1,5 @@
 import type { AbsolutePath, EpochMs } from "../types/index.js";
-import { discover } from "./discover.js";
+import { discover, lockedAgain } from "./discover.js";
 import { hostTotals, readPool } from "./host.js";
 import { below, measure, takeSample } from "./measure.js";
 import type {
@@ -21,11 +21,13 @@ import { readWork } from "./work.js";
 /*
  * Spec 014 D1, D4 (task 014-11): one `squeal ps` snapshot. The window opens
  * at the first sample, and every other read runs inside it (D4): discovery,
- * the stores, the marks, the pool and the host. The rest of the window is
- * waited out, and the second sample closes it. That second reading reads
- * Squeal's processes, their stores and their marks again, so the flags that
- * confirm on two samples (D7) have both; the rules of the whole host read
- * the first, which holds every process. For the CPU it also reads every
+ * the stores, the marks and the host. The rest of the window is waited out,
+ * and the second sample closes it. That second reading reads Squeal's
+ * processes, `/proc/locks`, their stores and their marks again, so the flags
+ * that confirm on two samples (D7) have both, and a lock either reading
+ * shows is held (`lessons.md` P9): the phases, the socket owners and the
+ * pool read both. The rules of the whole host read the first sample, which
+ * holds every process. For the CPU it also reads every
  * process below Squeal's and each one born in the window (D4), which the
  * flags do not see. The CPU is over the monotonic window; the phases and
  * ages are against the epoch clock read at the first sample. Nothing here
@@ -67,24 +69,29 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
   const { source, places } = o;
   const first = takeSample(source);
   const now = o.now();
-  const discovery = discover(source, first.table, places);
-  const work = readWork(source, first.table, discovery.daemons);
-  const attribution = attribute(source, first.table, ownersOf(discovery.daemons, work.work));
-  const pool = readPool(source, places, new Set(discovery.daemons.map((d) => d.row.pid)));
+  const locks = source.locks();
+  const found = discover(source, first.table, places, locks);
+  const work = readWork(source, first.table, found.daemons);
+  const attribution = attribute(source, first.table, ownersOf(found.daemons, work.work));
   const reading = source.host();
   const bootTime = source.bootTime();
   await o.wait(Math.max(0, o.sampleMs - (performance.now() - first.atMs)));
 
-  const pids = followed(discovery, work.work, attribution);
+  const pids = followed(found, work.work, attribution);
   // The CPU reads what lies below Squeal's processes, and what was born there (D4).
-  const tree = below(first.table, measured(discovery, attribution));
+  const tree = below(first.table, measured(found, attribution));
   const read = takeSample(
     source,
     [...new Set([...pids, ...tree])],
     tree.length > 0 ? first.table : undefined,
   );
   // The memory right after that read (`lessons.md` P4): the stores below take tens of ms.
-  const costs = measure(source, first, read, measured(discovery, attribution));
+  const costs = measure(source, first, read, measured(found, attribution));
+  // One read can miss a held lock; a read right after it misses the same one, 2 s later it does not.
+  const locksAgain = source.locks();
+  const discovery = lockedAgain(source, found, locksAgain);
+  const daemonPids = new Set(discovery.daemons.map((d) => d.row.pid));
+  const pool = readPool(source, places, daemonPids, [locks, locksAgain]);
   const second = { ...read, table: only(read.table, pids) };
   const live = discovery.daemons.filter(
     (d) => second.table.get(d.row.pid)?.startTicks === d.row.startTicks,

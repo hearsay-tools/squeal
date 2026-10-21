@@ -1,11 +1,19 @@
-import { rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { flag } from "../../src/core/ps/flags.js";
 import type { Flag, PsModel } from "../../src/core/ps/model.js";
+import type { PsFlag } from "../../src/core/ps/shape.js";
 import { takeSnapshot } from "../../src/core/ps/snapshot.js";
 import { writeHostRules } from "./fixture-host-rules.js";
 import { fakeWindow, type SnapshotHost, snapshotHost } from "./fixture-snapshot.js";
-import { type FixtureRepo, makeRepo } from "./fixture-stores.js";
+import {
+  daemonProcess,
+  type FixtureRepo,
+  lockLine,
+  makeRepo,
+  writeProcesses,
+} from "./fixture-stores.js";
 
 /*
  * Spec 014 D7 through the assembled snapshot (`reviews/wave-2.md` B1, B2 and
@@ -74,5 +82,83 @@ describe("the host-wide rules read the whole host, and a used name whole (review
       },
     ]);
     expect(shape.orphans.map((o) => o.pid)).not.toContain(rules.liveParent);
+  });
+});
+
+describe("a held lock one /proc/locks read misses (lessons.md P9)", () => {
+  // The fixture's bundle is not on disk, so each daemon is `install-gone` too.
+  const lockClaims = (flags: readonly PsFlag[] = []) =>
+    flags.filter((f) => f.flag === "no-lock" || f.flag === "duplicate");
+
+  /**
+   * Daemon 800 holds its lock and permit `pool.0.lock`, and its socket file is
+   * there; 801, of the same root, holds no lock. Unless `missed`, `/proc/locks`
+   * shows 800's two locks only from the window's end.
+   */
+  async function window(missed: boolean) {
+    const pool = join(host.places.runtimeDir ?? "", "squeal");
+    mkdirSync(pool);
+    writeFileSync(join(pool, "pool.0.lock"), "");
+    const socket = join(host.places.runtimeDir ?? "", `squeal-${alpha.id}.sock`);
+    writeFileSync(socket, "");
+    writeProcesses(host, [daemonProcess({ pid: 801, root: alpha.root })]);
+    const locks = join(host.base, "proc", "locks");
+    const permit = lockLine(2, 800, host.source.fileKey(join(pool, "pool.0.lock")) ?? "");
+    const held = `${readFileSync(locks, "utf8")}${permit}\n`;
+    writeFileSync(locks, missed ? "" : held);
+    const w = fakeWindow(() => writeFileSync(locks, held));
+    const { shape } = await takeSnapshot({
+      source: host.source,
+      places: host.places,
+      flag,
+      full: false,
+      repo: false,
+      sampleMs: 2_000,
+      now: w.now,
+      wait: w.wait,
+    });
+    return { shape, socket };
+  }
+
+  for (const missed of [true, false])
+    test(`${missed ? "the first reading misses it, the second shows it" : "both readings show it"}: 800 serves with its work, socket and permit, and only 801 is waiting, no-lock and the duplicate`, async () => {
+      const { shape } = await window(missed);
+      const daemons = new Map(shape.repositories.flatMap((r) => r.daemons).map((d) => [d.pid, d]));
+      expect(daemons.get(800)).toMatchObject({ phase: "serving", state: "serving", permits: 1 });
+      expect(daemons.get(800)?.work.pending).not.toBeNull();
+      expect(lockClaims(daemons.get(800)?.flags)).toEqual([]);
+      expect(daemons.get(801)).toMatchObject({ phase: "waiting", permits: 0 });
+      expect(lockClaims(daemons.get(801)?.flags)).toEqual([
+        {
+          flag: "no-lock",
+          reason: "it has waited 65 s for its lock, past 40 s",
+          command: "kill 801",
+        },
+        {
+          flag: "duplicate",
+          reason: `daemon 800 holds the lock of its root ${alpha.root}`,
+          command: "kill 801",
+        },
+      ]);
+      expect(shape.files.filter((f) => f.flag === "stale-socket")).toEqual([]);
+      expect(shape.squeal.pool).toMatchObject({ held: 1 });
+      expect(shape.unknown.filter((u) => u.what === "daemon 800 work")).toEqual([]);
+    });
+
+  test("a lock both readings miss: the daemon waits, is no-lock past 40 s, and its socket is stale", async () => {
+    const locks = join(host.base, "proc", "locks");
+    writeFileSync(locks, "");
+    const socket = join(host.places.runtimeDir ?? "", `squeal-${alpha.id}.sock`);
+    writeFileSync(socket, "");
+    const { shape } = await snap();
+    const daemon = shape.repositories[0]?.daemons.find((d) => d.pid === 800);
+    expect(daemon).toMatchObject({ phase: "waiting" });
+    expect(lockClaims(daemon?.flags).map((f) => [f.flag, f.command])).toEqual([
+      ["no-lock", "kill 800"],
+    ]);
+    expect(shape.files.filter((f) => f.flag === "stale-socket").map((f) => f.path)).toEqual([
+      socket,
+    ]);
+    expect(shape.squeal.pool).toMatchObject({ held: 0 });
   });
 });
