@@ -194,6 +194,43 @@ describe("squeal ps", () => {
     }
   });
 
+  test("its places: the user config follows XDG_CONFIG_HOME, and no runtime dir without XDG_RUNTIME_DIR", async () => {
+    const flag = vi.fn(noFlags);
+    let stdout = "";
+    const window = fakeWindow();
+    const io: CliIo = {
+      stdout: (t) => {
+        stdout += t;
+      },
+      stderr: () => {},
+      cwd: alpha.root,
+      now: window.now,
+      env: { HOME: host.places.home, XDG_CONFIG_HOME: join(host.base, "config") },
+    };
+    const options = {
+      platform: "linux",
+      sourceFor: () => host.source,
+      wait: window.wait,
+      flag,
+    } as const;
+    expect(
+      await psCommand(["--json"], io, {
+        ...options,
+        tempDir: host.places.tempDir,
+        uid: host.places.uid,
+      }),
+    ).toBe(0);
+    expect(flag.mock.calls[0]?.[0].places).toEqual({
+      uid: host.places.uid,
+      home: host.places.home,
+      userConfig: join(host.base, "config", "squeal", "config.json"),
+      runtimeDir: null,
+      tempDir: host.places.tempDir,
+      commonDir: alpha.commonDir,
+    });
+    expect(JSON.parse(stdout)).toMatchObject({ v: PS_SHAPE_VERSION });
+  });
+
   test("starts no daemon and writes no store: a repository without one has none after it", async () => {
     const gamma = makeRepo(host.base, "gamma");
     const runtime = readdirSync(host.places.runtimeDir ?? "");
