@@ -1,0 +1,107 @@
+{
+ "pid": "3704612",
+ "bytes": 5503330,
+ "wallMs": 206.6,
+ "cpuMs": 185.7,
+ "status": {
+  "VmRSS": "2288340 kB",
+  "RssAnon": "2220092 kB",
+  "RssFile": "68248 kB",
+  "VmData": "4339624 kB",
+  "VmSwap": "12560 kB",
+  "Threads": "72"
+ },
+ "rows": [
+  {
+   "kind": "anon 256 KiB-32 MiB",
+   "mappings": 6595,
+   "rssMiB": 1718.9,
+   "privateMiB": 1718.9,
+   "swapMiB": 10.8
+  },
+  {
+   "kind": "[anon:mimalloc]",
+   "mappings": 25,
+   "rssMiB": 261.2,
+   "privateMiB": 261.2,
+   "swapMiB": 0.9
+  },
+  {
+   "kind": "[heap]",
+   "mappings": 1,
+   "rssMiB": 108.9,
+   "privateMiB": 108.9,
+   "swapMiB": 0
+  },
+  {
+   "kind": "anon <256 KiB",
+   "mappings": 544,
+   "rssMiB": 66.5,
+   "privateMiB": 66.5,
+   "swapMiB": 0.5
+  },
+  {
+   "kind": "node binary",
+   "mappings": 9,
+   "rssMiB": 53.9,
+   "privateMiB": 0.1,
+   "swapMiB": 0
+  },
+  {
+   "kind": "anon >=32 MiB",
+   "mappings": 82,
+   "rssMiB": 11.3,
+   "privateMiB": 11.3,
+   "swapMiB": 0
+  },
+  {
+   "kind": "native addon (.node)",
+   "mappings": 17,
+   "rssMiB": 9.6,
+   "privateMiB": 0.9,
+   "swapMiB": 0
+  },
+  {
+   "kind": "shared libs",
+   "mappings": 40,
+   "rssMiB": 4.2,
+   "privateMiB": 0.1,
+   "swapMiB": 0
+  },
+  {
+   "kind": "other file",
+   "mappings": 25,
+   "rssMiB": 0.2,
+   "privateMiB": 0.1,
+   "swapMiB": 0
+  },
+  {
+   "kind": "[stack]",
+   "mappings": 1,
+   "rssMiB": 0.1,
+   "privateMiB": 0.1,
+   "swapMiB": 0
+  },
+  {
+   "kind": "[vdso]",
+   "mappings": 1,
+   "rssMiB": 0,
+   "privateMiB": 0,
+   "swapMiB": 0
+  },
+  {
+   "kind": "[vvar]",
+   "mappings": 1,
+   "rssMiB": 0,
+   "privateMiB": 0,
+   "swapMiB": 0
+  },
+  {
+   "kind": "[vsyscall]",
+   "mappings": 1,
+   "rssMiB": 0,
+   "privateMiB": 0,
+   "swapMiB": 0
+  }
+ ]
+}

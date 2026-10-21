@@ -1,0 +1,33 @@
+round 1 load1 43.03 processes 617 daemons 22 marked 37
+  stat all, sync                             wall    29.9 ms  cpu    38.9 ms
+  cmdline all, sync                          wall    19.1 ms  cpu    18.4 ms
+  cmdline all, async                         wall   135.7 ms  cpu   117.3 ms
+  cmdline of comm node (125), sync           wall     4.8 ms  cpu     2.9 ms
+  environ all, sync                          wall    14.9 ms  cpu    14.6 ms
+  environ all, async                         wall    53.7 ms  cpu    55.9 ms
+  status of ours (59), sync                  wall     3.2 ms  cpu     3.2 ms
+  children of daemons' tasks (22), sync      wall    20.6 ms  cpu    20.8 ms
+  smaps_rollup of ours (59), sync            wall  1217.6 ms  cpu    1163 ms
+  host files                                 wall     0.3 ms  cpu     0.3 ms
+round 2 load1 43.03 processes 647 daemons 23 marked 38
+  stat all, sync                             wall      20 ms  cpu    19.7 ms
+  cmdline all, sync                          wall    56.3 ms  cpu    14.1 ms
+  cmdline all, async                         wall   125.2 ms  cpu   133.2 ms
+  cmdline of comm node (132), sync           wall    34.3 ms  cpu     4.9 ms
+  environ all, sync                          wall    38.4 ms  cpu    15.5 ms
+  environ all, async                         wall    67.5 ms  cpu    54.3 ms
+  status of ours (61), sync                  wall     2.1 ms  cpu     2.1 ms
+  children of daemons' tasks (23), sync      wall    15.3 ms  cpu    17.9 ms
+  smaps_rollup of ours (61), sync            wall  1224.4 ms  cpu    1115 ms
+  host files                                 wall     0.3 ms  cpu     0.3 ms
+round 3 load1 43.03 processes 617 daemons 23 marked 35
+  stat all, sync                             wall    18.7 ms  cpu    16.6 ms
+  cmdline all, sync                          wall    38.4 ms  cpu    13.8 ms
+  cmdline all, async                         wall    78.1 ms  cpu     142 ms
+  cmdline of comm node (126), sync           wall    10.5 ms  cpu     7.1 ms
+  environ all, sync                          wall    34.7 ms  cpu    14.5 ms
+  environ all, async                         wall    31.7 ms  cpu      32 ms
+  status of ours (58), sync                  wall     2.3 ms  cpu     2.4 ms
+  children of daemons' tasks (23), sync      wall    19.6 ms  cpu    19.2 ms
+  smaps_rollup of ours (58), sync            wall  1567.7 ms  cpu  1197.2 ms
+  host files                                 wall     0.2 ms  cpu     0.2 ms
