@@ -5,10 +5,10 @@ import { isRecord, linkedWorktreeDir } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { phaseOn } from "./discover.js";
-import { fileFlags } from "./flags-files.js";
+import { type FileFlagOptions, fileFlags } from "./flags-files.js";
 import { orphans, overdue, type ProcessContext } from "./flags-processes.js";
 import { duration, NO_BOOT, shellQuote } from "./flags-text.js";
-import type { DaemonWork, Flag, FoundDaemon, PhaseOf } from "./model.js";
+import type { DaemonWork, FlagFindings, FoundDaemon, PhaseOf, PsModel } from "./model.js";
 import type { PsFlag, PsFlagName, PsUnknown } from "./shape.js";
 import { type ProcessRow, ticksToMs } from "./source.js";
 
@@ -38,7 +38,7 @@ interface FlagContext extends ProcessContext {
   readonly phase: PhaseOf;
 }
 
-export const flag: Flag = (model) => {
+export const flag = (model: PsModel, options: FileFlagOptions = {}): FlagFindings => {
   const unknown: PsUnknown[] = [];
   const named = new Set<string>();
   const name = (what: string, why: string): void => {
@@ -74,7 +74,7 @@ export const flag: Flag = (model) => {
   }
   for (const [pid, flags] of duplicates(c)) add(pid, flags);
 
-  const files = fileFlags(model);
+  const files = fileFlags(model, options);
   return {
     daemons,
     states,
