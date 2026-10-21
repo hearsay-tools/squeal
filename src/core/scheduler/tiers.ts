@@ -182,7 +182,9 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * picked and before `startTier` claims their keys, so a daemon that waits for
  * capacity holds no claim (D11 Capacity, task 001-376). It asks for no more
  * workers than its runner runs it with, and a grant below the offer trims
- * the picked tail to the same rule at the grant (task 001-366). It waits while
+ * the picked tail to the same rule at the grant (task 001-366), and no fewer
+ * than its runner runs it with at a grant of 1 (`fewest`, row 011-97: a
+ * Vitest project with `isolate: false` runs 2). It waits while
  * no permit it may take is free, holding none: the pump looks again when a
  * tier of this daemon ends and at least every `CAPACITY_RECHECK_MS` (011 C10
  * as amended 2026-10-21, row 011-96). An edit's tier takes no grant and
@@ -278,7 +280,8 @@ export function selectTier(
   }
   const granted = backlog || turnTier;
   const width = slot !== null ? 1 : granted ? widest(context, picked) : 0;
-  const taken = picked.length > 0 && granted ? context.capacity?.take(width) : null;
+  const least = slot !== null ? 1 : fewest(context, picked);
+  const taken = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least) : null;
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     // The turn holds no edit's tier back on the pool: that tier goes, and the turn comes after it.
@@ -336,6 +339,15 @@ function partOf(context: SchedulerContext, ref: TestFileRef): string {
 /** The workers a backlog tier of `picked` asks the pool for: no more than its runner runs it with. */
 function widest(context: SchedulerContext, picked: readonly TierFile[]): number {
   const widths = picked.map((p) => tierWidth(context, p.file.ref, picked.length));
+  return Math.min(picked.length, Math.max(1, ...widths));
+}
+
+/**
+ * The fewest permits a backlog tier of `picked` may hold (row 011-97): the
+ * workers its runner runs it with at a grant of 1, at most one per file.
+ */
+function fewest(context: SchedulerContext, picked: readonly TierFile[]): number {
+  const widths = picked.map((p) => tierWidth(context, p.file.ref, 1));
   return Math.min(picked.length, Math.max(1, ...widths));
 }
 
@@ -447,8 +459,11 @@ function startable(ledger: Ledger, p: TierFile): TierFile[] {
  * Runs a tier; with `observeIgnored`, for a warm-up (task 001-307). `stop`,
  * a `squeal stop`, cancels it whatever its kind, as an edit cancels a
  * backlog tier (D10, task 001-367). Each file the runner names as ended
- * joins `Tier.ended`, then `onFileEnd` hears of it (row 011-54). Never
- * rejects: a runner that throws is a crash (D12).
+ * joins `Tier.ended`, then `onFileEnd` hears of it (row 011-54). A tier
+ * holds only what it runs: once its files that have not ended are fewer
+ * than its lease's permits, the lease returns the rest (011 C10 as amended
+ * 2026-10-21, row 011-97). Never rejects: a runner that throws is a crash
+ * (D12).
  */
 export async function executeTier(
   context: SchedulerContext,
@@ -462,6 +477,8 @@ export async function executeTier(
   const signal = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
   const fileEnded = (ref: TestFileRef) => {
     tier.ended?.add(testFileId(ref));
+    const left = tier.files.filter(({ file }) => tier.ended?.has(file.id) !== true).length;
+    if (left > 0) tier.lease?.shrinkTo(left);
     onFileEnd?.();
   };
   try {

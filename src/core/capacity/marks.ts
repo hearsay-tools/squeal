@@ -32,6 +32,7 @@ export function writeMark(dir: AbsolutePath, mark: PoolMark): void {
     since: mark.since,
     project: mark.project ?? null,
     ...(mark.slow === true ? { slow: true } : {}),
+    ...(mark.least !== undefined && mark.least > 1 ? { least: mark.least } : {}),
   };
   writeFileSync(`${path}.tmp`, `${JSON.stringify(body)}\n`, { mode: 0o600 });
   renameSync(`${path}.tmp`, path);
@@ -74,10 +75,17 @@ export function readMarks(dir: AbsolutePath, worktreeId: WorktreeId, now: number
 function parseMark(text: string): PoolMark | null {
   const raw: unknown = JSON.parse(text);
   if (typeof raw !== "object" || raw === null) return null;
-  const { id, want, grant, since, project, slow } = raw as Record<string, unknown>;
+  const { id, want, grant, since, project, slow, least } = raw as Record<string, unknown>;
   if (typeof id !== "string" || !isCount(want) || !isCount(grant)) return null;
   if (since !== null && typeof since !== "number") return null;
-  const mark = { id, want, grant, since, ...(slow === true ? { slow: true } : {}) };
+  const mark = {
+    id,
+    want,
+    grant,
+    since,
+    ...(slow === true ? { slow: true } : {}),
+    ...(isCount(least) && least > 1 ? { least } : {}),
+  };
   if (project === null || project === undefined) return mark;
   const p = project as Record<string, unknown>;
   if (typeof p.id !== "string" || !isCount(p.slots)) return mark;

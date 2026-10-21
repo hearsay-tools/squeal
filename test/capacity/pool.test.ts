@@ -260,6 +260,25 @@ describe("the per-user permit pool", () => {
     expect(tier(a, 5)?.grant).toBe(2);
   });
 
+  // Row 011-97: an isolate: false Vitest tier runs 2 workers at a grant of 1.
+  test("a tier that runs no fewer than 2 workers takes 2 permits or none, and waits marked with its least", () => {
+    const a = daemon("a", { hostSlots: 3 });
+    const b = daemon("b", { hostSlots: 3 });
+    const held = tier(a, 2);
+    expect(held?.permits).toBe(2);
+    clock += 1_000;
+    expect(b.acquire(5, "fast", 2)).toBeNull();
+    expect(markOf("b")).toEqual({ want: 5, grant: 0 });
+    expect(readMarks(dir, "reader", Date.now()).find((m) => m.id === "b")?.least).toBe(2);
+    held?.release();
+    clock += 1_000;
+    const lease = b.acquire(5, "fast", 2);
+    expect(lease?.permits).toBe(3);
+    // A tier of one file runs one worker, whatever its floor.
+    lease?.release();
+    expect(b.acquire(1, "fast", 2)?.permits).toBe(1);
+  });
+
   test("a capped project's daemons together stay within its slots", () => {
     const project = { id: "/repo/p", slots: 4 };
     const p1 = daemon("p1", { hostSlots: 8, project });

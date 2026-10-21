@@ -11,6 +11,11 @@ export interface Demand {
    * is served before it. Absent, a fast lane's, as an older daemon's mark reads.
    */
   readonly slow?: boolean;
+  /**
+   * The fewest workers its waiting tier runs with (row 011-97: a Vitest
+   * project with `isolate: false` runs 2 at a grant of 1). Absent, 1.
+   */
+  readonly least?: number;
   /** Its project, when the user caps the project's daemons together (`capacity.projects`). */
   readonly project?: { readonly id: string; readonly slots: number };
 }
@@ -27,7 +32,8 @@ export interface Demand {
  * longest waiters. With fewer slots than daemons the others' share is 0:
  * no daemon runs a backlog worker without a permit (011 C10 as amended
  * 2026-10-21, row 011-96), and a daemon left with none waits, so it is a
- * longest waiter at the next division.
+ * longest waiter at the next division. A share below its demand's `least`
+ * is raised to it from the most junior shares (`raiseToLeast`).
  */
 export function fairShares(hostSlots: number, demands: readonly Demand[]): Map<string, number> {
   const senior = [...demands].sort(bySeniority);
@@ -48,10 +54,39 @@ export function fairShares(hostSlots: number, demands: readonly Demand[]): Map<s
     );
     for (const [id, share] of shares) capped.set(id, share);
   }
-  return waterFill(
+  const shares = waterFill(
     hostSlots,
     senior.map((d) => ({ id: d.id, want: capped.get(d.id) ?? 1 })),
   );
+  raiseToLeast(senior, shares, capped);
+  return shares;
+}
+
+/**
+ * A tier that runs no fewer than `least` workers can use no share below it
+ * (row 011-97). In seniority order, such a share is raised to `least` from
+ * the most junior shares. Where those hold too little it stays as it is:
+ * the tier waits, and is raised once it is senior to enough of them.
+ */
+function raiseToLeast(
+  senior: readonly Demand[],
+  shares: Map<string, number>,
+  capped: ReadonlyMap<string, number>,
+): void {
+  senior.forEach((demand, i) => {
+    const share = shares.get(demand.id) ?? 0;
+    const least = Math.min(demand.least ?? 1, capped.get(demand.id) ?? 1);
+    if (share === 0 || share >= least) return;
+    const juniors = senior.slice(i + 1).reverse();
+    if (juniors.reduce((sum, j) => sum + (shares.get(j.id) ?? 0), 0) < least - share) return;
+    let short = least - share;
+    for (const junior of juniors) {
+      const taken = Math.min(short, shares.get(junior.id) ?? 0);
+      shares.set(junior.id, (shares.get(junior.id) ?? 0) - taken);
+      short -= taken;
+    }
+    shares.set(demand.id, least);
+  });
 }
 
 /**
