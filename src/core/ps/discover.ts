@@ -4,7 +4,7 @@ import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import { lockFileFor, storePaths } from "../store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/index.js";
-import type { Discover, FoundDaemon, PhaseOf, PsPlaces, SocketFile } from "./model.js";
+import type { Discover, Discovery, FoundDaemon, PhaseOf, PsPlaces, SocketFile } from "./model.js";
 import type { PsUnknown } from "./shape.js";
 import { type LockEntry, type ProcessRow, type PsSource, ticksToMs } from "./source.js";
 
@@ -29,9 +29,8 @@ const CACHE_INSTALL = /\/\.(claude|codex)\/plugins\/cache\/[^/]+\/squeal\/([^/]+
 /** The npm packages of the Pi and OpenCode plugins carry no version in their path. */
 const PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
 
-export const discover: Discover = (source, table, places) => {
+export const discover: Discover = (source, table, places, locks = source.locks()) => {
   const unknown: PsUnknown[] = [];
-  const locks = source.locks();
   if (locks === null) {
     const why = "they cannot be read: a phase is serving by its heartbeat, or unknown (D10)";
     unknown.push({ what: "daemon lock holders", why });
@@ -56,6 +55,32 @@ export const discover: Discover = (source, table, places) => {
   }
   return { daemons, sockets: socketFiles(source, places, daemons), unknown };
 };
+
+/**
+ * D2 step 3 again, with `locks` read at the window's end (`lessons.md` P9).
+ * One `/proc/locks` read returns a page per `read()`, and a held lock can
+ * fall between two pages while other locks change; a read right after the
+ * first misses the same lock far more often than chance, so the second is
+ * 2 s later. A lock either reading shows is held: a daemon holds no lock
+ * only when both miss it, and a socket file is its daemon's when either
+ * shows that daemon's lock.
+ */
+export function lockedAgain(
+  source: PsSource,
+  discovery: Discovery,
+  locks: readonly LockEntry[] | null,
+): Discovery {
+  if (locks === null || discovery.daemons.every((d) => d.holdsLock !== false)) return discovery;
+  const daemons = discovery.daemons.map((d) =>
+    d.holdsLock === false && holds(source, d.row.pid, d.lockPath, locks) === true
+      ? { ...d, holdsLock: true }
+      : d,
+  );
+  const sockets = discovery.sockets.map((s) =>
+    s.daemonPid === null ? { ...s, daemonPid: holderOf(daemons, s.worktreeId) } : s,
+  );
+  return { ...discovery, daemons, sockets };
+}
 
 /**
  * Whether a row's start names `daemon`, over `source`'s boot time and tick
@@ -214,17 +239,21 @@ function socketFiles(
         // Removed since the listing: there is no file to report.
         continue;
       }
-      const daemon = daemons.find((d) => d.worktreeId === worktreeId && (d.holdsLock ?? true));
       sockets.push({
         path,
         worktreeId,
         mtimeMs: stat.mtimeMs,
-        daemonPid: daemon?.row.pid ?? null,
+        daemonPid: holderOf(daemons, worktreeId),
         listening: listeners === null ? null : listeners.some((l) => l.fileInode === stat.ino),
       });
     }
   }
   return sockets;
+}
+
+/** The live daemon of `worktreeId` that holds its lock; where locks cannot be read (D10), any daemon of it. */
+function holderOf(daemons: readonly FoundDaemon[], worktreeId: WorktreeId): number | null {
+  return daemons.find((d) => d.worktreeId === worktreeId && (d.holdsLock ?? true))?.row.pid ?? null;
 }
 
 function names(dir: AbsolutePath): string[] {

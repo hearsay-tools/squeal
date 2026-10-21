@@ -19,7 +19,14 @@ import type {
   PsUnflaggedFiles,
   PsUnknown,
 } from "./shape.js";
-import type { CpuTimes, HostReading, ProcessRow, ProcessTable, PsSource } from "./source.js";
+import type {
+  CpuTimes,
+  HostReading,
+  LockEntry,
+  ProcessRow,
+  ProcessTable,
+  PsSource,
+} from "./source.js";
 
 /*
  * Spec 014 D11: the model the `squeal ps` stages pass, and each stage's
@@ -62,7 +69,10 @@ export interface FoundDaemon {
   readonly lockPath: AbsolutePath | null;
   readonly commonDir: AbsolutePath | null;
   readonly storePath: AbsolutePath | null;
-  /** Whether `/proc/locks` shows it holding its lock; `null` without locks (D10). */
+  /**
+   * Whether `/proc/locks` shows it holding its lock: `false` only when both
+   * readings of the window miss it (`lessons.md` P9); `null` without locks (D10).
+   */
   readonly holdsLock: boolean | null;
 }
 
@@ -239,8 +249,13 @@ export interface FlagFindings {
 
 // The stages (D11). Each module exports one function of its type.
 
-/** `discover.ts` (014-06). */
-export type Discover = (source: PsSource, table: ProcessTable, places: PsPlaces) => Discovery;
+/** `discover.ts` (014-06): `locks` is the window's first `/proc/locks` reading, read when not given. */
+export type Discover = (
+  source: PsSource,
+  table: ProcessTable,
+  places: PsPlaces,
+  locks?: readonly LockEntry[] | null,
+) => Discovery;
 /** `work.ts` (014-06): one read-only `node:sqlite` connection per store, never `openStore`. */
 export type ReadWork = (
   source: PsSource,
