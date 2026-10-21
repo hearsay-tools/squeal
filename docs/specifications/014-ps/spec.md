@@ -187,7 +187,7 @@ A flagged row starts with `!` and has its reason and an `ends it:` line under it
                      descendants: { count, cpuPct, cpuMs, privateBytes, swapBytes, list }, flags } ],
       flags: [ { flag, reason, command } ] } ] } ],
   orphans: [ { pid, comm, startedAt, flags } ],
-  files: [ { flag, path, count, bytes, command } ],
+  files: [ { flag, reason, path, count, bytes, command } ],
   unflaggedFiles: [ { kind, count } ] | null,
   flags: number, unknown: [ { what, why } ] }
 ```
