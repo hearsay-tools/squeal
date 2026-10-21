@@ -1,0 +1,3 @@
+rep 1	load 24.36	start-to-socket 439 ms	start-to-verdict 22124 ms	priv 918 MiB
+rep 2	load 25.92	start-to-socket 324 ms	start-to-verdict 24829 ms	priv 1060 MiB
+rep 3	load 28.15	start-to-socket 439 ms	start-to-verdict 18782 ms	priv 922 MiB

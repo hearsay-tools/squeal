@@ -1,0 +1,15 @@
+daemons 19  private 14670 MiB (14.33 GiB)  swap 970 MiB  heap256 8984 MiB
+
+all: 19 daemons, private 14670 MiB, swap 970 MiB
+  reducer (heap256 -> 190): saves 6061 MiB = 5.92 GiB
+  last-resort GC (heap256 -> 126): saves 6909 MiB = 6.75 GiB
+  last-resort GC (heap256 -> 250): saves 5341 MiB = 5.22 GiB
+  last-resort GC (heap256 -> 400): saves 3769 MiB = 3.68 GiB
+  exit: saves 15640 MiB = 15.27 GiB (daemon only; its test processes come on top)
+
+quiet>=30min: 7 daemons, private 5209 MiB, swap 616 MiB
+  reducer (heap256 -> 190): saves 1771 MiB = 1.73 GiB
+  last-resort GC (heap256 -> 126): saves 2091 MiB = 2.04 GiB
+  last-resort GC (heap256 -> 250): saves 1471 MiB = 1.44 GiB
+  last-resort GC (heap256 -> 400): saves 874 MiB = 0.85 GiB
+  exit: saves 5825 MiB = 5.69 GiB (daemon only; its test processes come on top)

@@ -1,0 +1,27 @@
+instances 2
+synthetic: --element:[1]-->
+synthetic:(GC roots) --element:[10]-->
+synthetic:(Global handles) --internal:154-->
+closure:onWarn --internal:context-->
+object:system / Context --context:partialEnv-->
+object:PartialEnvironment --property:_options-->
+object:Object --property:plugins-->
+object:Array --element:[11]-->
+object:Object --property:resolveId-->
+closure:resolveId --internal:context-->
+object:system / Context --context:ctx-->
+=> Vitest
+
+synthetic: --element:[1]-->
+synthetic:(GC roots) --element:[10]-->
+synthetic:(Global handles) --internal:1-->
+closure:onWarn --internal:context-->
+object:system / Context --context:partialEnv-->
+object:PartialEnvironment --property:_options-->
+object:Object --property:plugins-->
+object:Array --element:[6]-->
+object:Object --property:resolveId-->
+closure:resolveId --internal:context-->
+object:system / Context --context:ctx-->
+=> Vitest
+

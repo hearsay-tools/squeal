@@ -1,0 +1,3 @@
+{"cycle":1,"load1":"18.02","openCounts":{"Vitest":1,"TestProject":6,"ModuleGraph":18,"ModuleNode":347},"closedCounts":{"Vitest":1,"TestProject":6,"ModuleGraph":18,"ModuleNode":347},"heapUsedMiB":45,"privMiB":382}
+{"cycle":2,"load1":"17.30","openCounts":{"Vitest":2,"TestProject":12,"ModuleGraph":36,"ModuleNode":694},"closedCounts":{"Vitest":2,"TestProject":12,"ModuleGraph":36,"ModuleNode":694},"heapUsedMiB":67,"privMiB":443}
+{"cycle":3,"load1":"19.91","openCounts":{"Vitest":3,"TestProject":18,"ModuleGraph":54,"ModuleNode":1041},"closedCounts":{"Vitest":3,"TestProject":18,"ModuleGraph":54,"ModuleNode":1041},"heapUsedMiB":89,"privMiB":485}

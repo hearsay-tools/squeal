@@ -1,0 +1,5 @@
+Revision: 9 · a1b8e326 + 9, dirty
+Selected: packages/cezar/src/core/model-identity.test.ts
+Stale (1):
+  1 last passed at other inputs, nothing queued it (the baseline is lookup-only): server: packages/cezar/src/core/model-identity.test.ts; `squeal retry packages/cezar/src/core/model-identity.test.ts` runs it once
+Named test files have no verdict: 1 test file without a current result at revision 9 (1 stale): 1 stale, nothing queued it: `squeal retry packages/cezar/src/core/model-identity.test.ts`. Worktree: known failures 0; not current: 824 of 829 test files (1 running, 230 queued, 3 stale, 590 unknown), 92 tests (36 running, 56 stale)

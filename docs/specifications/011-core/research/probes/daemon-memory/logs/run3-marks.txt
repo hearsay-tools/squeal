@@ -1,0 +1,19 @@
+12:42:54 probe-start    23.41 priv 15.3 hT 11.5 phys 10 used 7.5 ext 3.8 new 4 old {'size': 5.2, 'used': 4.8} 
+12:43:11 baseline       21.37 priv 859 hT 447.3 phys 447.6 used 287 ext 64.1 new 128 old {'size': 278.2, 'used': 235.7} 
+12:43:47 T1             21.75 priv 883.6 hT 473.9 phys 474.1 used 382.7 ext 84 new 128 old {'size': 303.9, 'used': 303.2} 
+12:43:57 gc-before      20.05 priv 883.6 hT 473.9 phys 474.1 used 382.8 ext 84 new 128 old {'size': 303.9, 'used': 303.2} 
+12:43:57 gc-after       20.05 priv 876.6 hT 307.7 phys 307.9 used 191.4 ext 84 new 1 old {'size': 266.2, 'used': 155} 42.7
+12:43:59 gc-after-2s    20.05 priv 876.6 hT 307.7 phys 307.9 used 191.5 ext 84 new 1 old {'size': 266.2, 'used': 155} 
+12:44:11 T2             18.67 priv 890.2 hT 452.1 phys 452.4 used 320.2 ext 61.3 new 128 old {'size': 283.9, 'used': 282.6} 
+12:44:26 T3             17.31 priv 903.1 hT 409.1 phys 398.9 used 191.1 ext 61.7 new 128 old {'size': 240.9, 'used': 154.9} 
+12:45:26 quiet-1m       20.74 priv 891.3 hT 381 phys 370.8 used 202.9 ext 61.7 new 128 old {'size': 213.7, 'used': 149.3} 
+12:49:27 quiet-5m       29.43 priv 620.1 hT 209.3 phys 200.8 used 179.6 ext 59.6 new 4 old {'size': 170.7, 'used': 146.3} 
+12:59:28 quiet-15m      16.85 priv 627.1 hT 209.8 phys 204.8 used 179.7 ext 61.6 new 4 old {'size': 170.9, 'used': 145.3} 
+13:14:29 quiet-30m      27.77 priv 628.5 hT 211.3 phys 207 used 184.7 ext 59.6 new 4 old {'size': 172.4, 'used': 151.1} 
+13:14:30 gc-before      27.77 priv 628.5 hT 211.3 phys 207 used 184.7 ext 59.6 new 4 old {'size': 172.4, 'used': 151.1} 
+13:14:30 gc-after       27.77 priv 628.5 hT 206.5 phys 202.3 used 177.2 ext 59.6 new 1 old {'size': 170.7, 'used': 143.9} 57.2
+13:14:32 gc-after-2s    27.77 priv 628.5 hT 206.5 phys 202.3 used 177.2 ext 59.6 new 1 old {'size': 170.7, 'used': 143.9} 
+13:14:45 warm-1         27.61 priv 853 hT 417 phys 415.5 used 214.8 ext 87.8 new 128 old {'size': 253.7, 'used': 157.5} 
+13:15:08 warm-2         25.76 priv 867.4 hT 437.8 phys 437.8 used 332.5 ext 75.4 new 128 old {'size': 273.9, 'used': 273.1} 
+13:15:31 warm-3         25.75 priv 980.3 hT 446.5 phys 443.8 used 215.2 ext 74.6 new 128 old {'size': 282.7, 'used': 159.1} 
+13:15:59 touched-1      35.43 priv 997.3 hT 371.7 phys 369 used 230.3 ext 60.5 new 128 old {'size': 195.9, 'used': 178.7} 

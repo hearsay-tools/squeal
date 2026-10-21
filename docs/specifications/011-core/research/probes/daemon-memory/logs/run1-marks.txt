@@ -1,0 +1,6 @@
+11:42:17 probe-start    23.23 priv 15.5 hT 11.5 phys 10 used 7.5 ext 3.8 new 4 old {'size': 5.2, 'used': 4.8} 
+11:44:48 baseline       30.78 priv 719.8 hT 416 phys 414 used 214.2 ext 63.7 new 128 old {'size': 249.7, 'used': 151.4} 
+11:54:49 T1             58.27 priv 782.6 hT 375.3 phys 343.2 used 208.1 ext 86.7 new 128 old {'size': 196.7, 'used': 154.5} 
+12:05:47 gc-before      70.51 priv 785.4 hT 376.6 phys 329.6 used 210.9 ext 84.3 new 128 old {'size': 196.4, 'used': 155.4} 
+12:05:47 gc-after       70.51 priv 785.4 hT 376.1 phys 329.1 used 203.6 ext 84.3 new 128 old {'size': 195.9, 'used': 155.3} 85.3
+12:05:49 gc-after-2s    70.51 priv 785.4 hT 376.1 phys 329.1 used 203.1 ext 106 new 128 old {'size': 195.9, 'used': 155.3} 

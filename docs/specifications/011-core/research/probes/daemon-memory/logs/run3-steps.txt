@@ -1,0 +1,14 @@
+12:42:55Z load 23.41 daemon 1759807 started
+12:43:11Z load 21.37 baseline: Known failures: 0; not current: 829 of 829 test files (829 unknown)
+12:43:47Z load 21.75 T1 4983 ms
+12:43:57Z load 20.05 gc after T1
+12:44:11Z load 18.67 T2 3248 ms
+12:44:26Z load 17.31 T3 4758 ms
+12:45:26Z load 20.74 quiet 1 min
+12:49:27Z load 29.43 quiet 5 min
+12:59:28Z load 16.85 quiet 15 min
+13:14:29Z load 27.77 quiet 30 min
+13:14:30Z load 27.77 gc when quiet
+13:14:45Z load 27.61 warm-1 4562 ms
+13:15:08Z load 25.76 warm-2 2982 ms
+13:15:31Z load 25.75 warm-3 2721 ms

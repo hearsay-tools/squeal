@@ -1,0 +1,6 @@
+{"label":"bare","load1":"23.94","pauseMs":18,"privMiB":36,"heapUsedMiB":16,"heapTotalMiB":18,"heap256":14,"mimalloc":4,"glibc":6,"anonOther":11}
+{"label":"walked+run","load1":"22.05","pauseMs":null,"privMiB":791,"heapUsedMiB":274,"heapTotalMiB":376,"heap256":409,"mimalloc":308,"glibc":13,"anonOther":61}
+{"label":"regular-gc","load1":"22.05","pauseMs":36,"privMiB":791,"heapUsedMiB":146,"heapTotalMiB":352,"heap256":409,"mimalloc":308,"glibc":14,"anonOther":59}
+{"label":"last-resort-gc","load1":"22.05","pauseMs":154,"privMiB":486,"heapUsedMiB":126,"heapTotalMiB":138,"heap256":110,"mimalloc":308,"glibc":16,"anonOther":51}
+{"label":"last-resort+5s","load1":"21.56","pauseMs":null,"privMiB":490,"heapUsedMiB":129,"heapTotalMiB":142,"heap256":113,"mimalloc":308,"glibc":16,"anonOther":52}
+{"label":"closed+last-resort","load1":"21.56","pauseMs":44,"privMiB":482,"heapUsedMiB":125,"heapTotalMiB":130,"heap256":106,"mimalloc":308,"glibc":16,"anonOther":51}

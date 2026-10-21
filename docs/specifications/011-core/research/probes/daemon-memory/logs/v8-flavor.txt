@@ -1,0 +1,2 @@
+{"flavor":"regular","start":15,"churned":194,"heapChurned":224,"pauseMs":23,"after":170,"heapAfter":137,"after5s":170}
+{"flavor":"last-resort","start":15,"churned":213,"heapChurned":216,"pauseMs":85,"after":19,"heapAfter":8,"after5s":19}
