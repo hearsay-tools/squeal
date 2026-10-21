@@ -15,6 +15,7 @@ import type {
   PsPool,
   PsSnapshot,
   PsTier,
+  PsUnflaggedFiles,
   PsUnknown,
 } from "./shape.js";
 import type { CpuTimes, HostReading, ProcessRow, ProcessTable, PsSource } from "./source.js";
@@ -194,6 +195,8 @@ export interface FlagFindings {
   readonly processes: ReadonlyMap<number, readonly PsFlag[]>;
   readonly orphans: readonly PsOrphan[];
   readonly files: readonly PsFileFlag[];
+  /** The files that never get a flag, counted by kind; the snapshot keeps them with `--full` only (D7). */
+  readonly unflagged: readonly PsUnflaggedFiles[];
   /** Every leftover path, for `--leftovers`. */
   readonly leftovers: readonly AbsolutePath[];
   readonly unknown: readonly PsUnknown[];
