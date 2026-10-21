@@ -4,6 +4,7 @@ import type { Connection } from "./connection.js";
 import type { StorePaths } from "./paths.js";
 import { prune } from "./prune.js";
 import { createConsumerRepo, createViewRepo } from "./repos/consumers.js";
+import { createFailureRepo } from "./repos/failures.js";
 import { createResultRepo } from "./repos/results.js";
 import { createCheckpointRepo, createRunRepo } from "./repos/runs.js";
 import { createKnownStateRepo, createTransitionRepo } from "./repos/states.js";
@@ -68,6 +69,7 @@ export function createStore(conn: Connection, schemaVersion: number, paths: Stor
     testFileKeys: createTestFileKeyRepo(conn),
     checks: createCheckRepo(conn),
     results: createResultRepo(conn),
+    failures: createFailureRepo(conn),
     runs: createRunRepo(conn),
     checkpoints: createCheckpointRepo(conn),
     knownStates: createKnownStateRepo(conn),
