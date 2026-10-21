@@ -935,6 +935,14 @@ export interface FailureEntry {
   readonly runId: string;
 }
 
+/** What `squeal failures` was asked for (row 011-75, spec 011 C6 as amended for 011-64). */
+export interface FailuresSelection {
+  /** Root-relative test files or directories, as typed from the working directory; `.` the root. */
+  readonly paths: readonly RelativePath[];
+  /** `--check` texts; a check matches when its printed name holds one. */
+  readonly checks: readonly string[];
+}
+
 /**
  * Recent failures from the shared store, newest first, read with no daemon
  * (task 001-409, spec 001 D8): this worktree's, or every worktree's.
@@ -949,6 +957,8 @@ export interface FailuresReport {
   readonly allWorktrees: boolean;
   /** `--since`: the earliest record time listed; `null` for any time. */
   readonly since: EpochMs | null;
+  /** The test files, directories and check-name parts given (row 011-75); empty lists select all. */
+  readonly selection: FailuresSelection;
   /** At most `limit` entries, newest first. */
   readonly failures: readonly FailureEntry[];
   /** Failures matching in all; more than `failures.length` when capped. */

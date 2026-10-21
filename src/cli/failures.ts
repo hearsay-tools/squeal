@@ -1,8 +1,19 @@
-import { CLI_READ_RETRY_MS, formatFailures, readFailures } from "../core/status/index.js";
+import { failurePaths } from "../core/status/failures.js";
+import {
+  CLI_READ_RETRY_MS,
+  FAILURES_LIMIT,
+  formatFailures,
+  readFailures,
+} from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 
-const USAGE = "usage: squeal failures [--all-worktrees] [--since <duration>] [--json]\n";
+const USAGE =
+  "usage: squeal failures [<test file or directory>...] [--check <text>]... [--limit <n>]\n" +
+  "                       [--all-worktrees] [--since <duration>] [--json]\n";
+
+/** The options that take a value, as `--name <value>` or `--name=<value>`. */
+const VALUE_OPTIONS = ["--since", "--check", "--limit"] as const;
 
 const UNIT_MS: Readonly<Record<string, number>> = {
   s: 1_000,
@@ -15,31 +26,51 @@ const UNIT_MS: Readonly<Record<string, number>> = {
  * `squeal failures` (task 001-409): stored failing results, newest first,
  * from the shared store; starts no daemon. Exit 0 with an answer, 1 when
  * the store cannot answer, 2 on a usage error. Failures listed do not
- * change the exit code, as `status`.
+ * change the exit code, as `status`. Row 011-75 (spec 011 C6 as amended for
+ * 011-64): test files or directories, `--check` and `--limit` select.
  */
 export function failuresCommand(args: readonly string[], io: CliIo): number {
   let json = false;
   let allWorktrees = false;
   let sinceText: string | null = null;
+  let limitText: string | null = null;
+  const checks: string[] = [];
+  const paths: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
-    if (arg === "--json") json = true;
+    const option = VALUE_OPTIONS.find((name) => arg === name || arg.startsWith(`${name}=`));
+    if (option !== undefined) {
+      const value = arg === option ? (args[++i] ?? "") : arg.slice(option.length + 1);
+      if (option === "--since") sinceText = value;
+      else if (option === "--limit") limitText = value;
+      else checks.push(value);
+    } else if (arg === "--json") json = true;
     else if (arg === "--all-worktrees") allWorktrees = true;
-    else if (arg === "--since") {
-      sinceText = args[i + 1] ?? "";
-      i++;
-    } else if (arg.startsWith("--since=")) sinceText = arg.slice("--since=".length);
-    else return usage(`unexpected argument "${arg}"`, io);
+    else if (arg.startsWith("-")) return usage(`unexpected argument "${arg}"`, io);
+    else paths.push(arg);
   }
   const now = io.now ?? Date.now;
   const window = sinceText === null ? null : durationMs(sinceText);
   if (sinceText !== null && window === null) {
     return usage(`--since takes a duration such as 90s, 30m, 2h or 1d, not "${sinceText}"`, io);
   }
+  const limit = limitText === null ? undefined : positiveInteger(limitText);
+  if (limit === null) {
+    return usage(`--limit takes a positive whole number such as 50, not "${limitText}"`, io);
+  }
+  if (checks.includes("")) return usage("--check takes a part of a check name", io);
+  const cwd = io.cwd ?? process.cwd();
+  const selected = failurePaths(cwd, paths);
+  if ("outside" in selected) {
+    return usage(`"${selected.outside}" is outside the worktree ${selected.root}`, io);
+  }
   const since: EpochMs | null = window === null ? null : now() - window;
-  const report = readFailures(io.cwd ?? process.cwd(), {
+  const report = readFailures(cwd, {
     allWorktrees,
     since,
+    paths: selected.paths,
+    checks,
+    limit: limit ?? FAILURES_LIMIT,
     busyRetryMs: CLI_READ_RETRY_MS,
   });
   io.stdout(json ? `${JSON.stringify(report, null, 2)}\n` : formatFailures(report));
@@ -51,6 +82,12 @@ export function durationMs(text: string): number | null {
   const match = /^(\d+)([smhd])$/.exec(text.trim());
   const unit = match?.[2] === undefined ? undefined : UNIT_MS[match[2]];
   return match === null || unit === undefined ? null : Number(match[1]) * unit;
+}
+
+/** A whole number of at least 1; `null` for anything else. */
+function positiveInteger(text: string): number | null {
+  const n = Number(text);
+  return /^\d+$/.test(text) && n >= 1 && Number.isSafeInteger(n) ? n : null;
 }
 
 function usage(problem: string, io: CliIo): number {
