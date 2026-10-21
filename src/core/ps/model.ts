@@ -288,10 +288,12 @@ export type Attribute = (
 ) => Attribution;
 /** `host.ts` (014-07). */
 export type HostTotals = (first: HostReading, second: HostReading) => PsHost;
+/** `readings`: the window's `/proc/locks` readings in order; one read when not given. */
 export type ReadPool = (
   source: PsSource,
   places: PsPlaces,
   daemons: ReadonlySet<number>,
+  readings?: readonly (readonly LockEntry[] | null)[],
 ) => PoolReading;
 /** `flags.ts` (014-10). */
 export type Flag = (model: PsModel) => FlagFindings;

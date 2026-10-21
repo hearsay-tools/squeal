@@ -5,7 +5,7 @@ import { defaultHostSlots } from "../daemon/user-config.js";
 import type { AbsolutePath } from "../types/index.js";
 import type { HostTotals, PsPlaces, ReadPool, Sample } from "./model.js";
 import type { PsHost } from "./shape.js";
-import { ticksToMs } from "./source.js";
+import { type LockEntry, ticksToMs } from "./source.js";
 
 /*
  * Spec 014 D6 (task 014-07): the host over the window, Squeal's shares of
@@ -13,8 +13,10 @@ import { ticksToMs } from "./source.js";
  * the window's end; its busy CPU is the difference of the two. A permit is
  * held while its holder keeps SQLite's exclusive lock on it, a write lock
  * in `/proc/locks` (`takePermit`, 004 D2); a read lock is a check on its
- * way, and a blocked request waits. Without locks (D10) nobody's permits
- * are known.
+ * way, and a blocked request waits. One read can miss a held lock
+ * (`lessons.md` P9), so the pool reads the window's two: a permit either
+ * shows is held, by the holders of the latest that shows it. Without locks
+ * (D10) nobody's permits are known.
  */
 
 export const hostTotals: HostTotals = (first, second) => {
@@ -61,16 +63,13 @@ export function memoryShare(privateBytes: number | null, host: PsHost): number |
 
 const PERMIT = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
 
-export const readPool: ReadPool = (source, places, daemons) => {
+export const readPool: ReadPool = (source, places, daemons, readings = [source.locks()]) => {
   const slots = hostSlotsOf(places.userConfig, source.host().cpus);
-  const locks = source.locks();
-  if (locks === null) return { pool: { slots, held: null }, permits: new Map(), foreign: [] };
+  if ((readings[0] ?? null) === null)
+    return { pool: { slots, held: null }, permits: new Map(), foreign: [] };
   const holders = new Map<string, Set<number>>();
-  for (const lock of locks) {
-    if (lock.blocked || lock.access !== "write" || lock.pid === null) continue;
-    const pids = holders.get(lock.file) ?? new Set<number>();
-    holders.set(lock.file, pids.add(lock.pid));
-  }
+  for (const locks of readings)
+    for (const [file, pids] of holdersOf(locks ?? [])) holders.set(file, pids);
   let held = 0;
   const permits = new Map<number, number>();
   const foreign: { pid: number; path: AbsolutePath }[] = [];
@@ -86,6 +85,17 @@ export const readPool: ReadPool = (source, places, daemons) => {
   }
   return { pool: { slots, held }, permits, foreign };
 };
+
+/** The processes that hold each locked file: its write locks, not the requests blocked behind them. */
+function holdersOf(locks: readonly LockEntry[]): Map<string, Set<number>> {
+  const holders = new Map<string, Set<number>>();
+  for (const lock of locks) {
+    if (lock.blocked || lock.access !== "write" || lock.pid === null) continue;
+    const pids = holders.get(lock.file) ?? new Set<number>();
+    holders.set(lock.file, pids.add(lock.pid));
+  }
+  return holders;
+}
 
 /**
  * `capacity.hostSlots` of the file at `path`, else the CPUs less one, by the
