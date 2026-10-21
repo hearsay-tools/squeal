@@ -130,12 +130,22 @@ export interface Sample {
 }
 
 export interface ProcessCost {
-  /** Over the window; `null` when the process was in one sample only. */
+  /**
+   * Over the window, with the CPU of each of its children that ended in the
+   * window or was born in it and is no row of its own (D4); `null` when the
+   * process was in the first sample only.
+   */
   readonly cpuPct: number | null;
   /** Cumulative, at its last sample. */
   readonly cpuMs: number;
   readonly privateBytes: number | null;
   readonly swapBytes: number | null;
+  /**
+   * When it ended in the window: the process whose `cpuPct` counts its CPU
+   * in the window, the nearest ancestor that lived through it; `null` while
+   * it lives, or when no process `ps` measures waited for it.
+   */
+  readonly reapedBy: number | null;
 }
 
 /** D5: what ties processes to a daemon. */
@@ -217,8 +227,16 @@ export type ReadWork = (
 ) => { readonly work: ReadonlyMap<number, DaemonWork>; readonly unknown: readonly PsUnknown[] };
 /** D2's phase table (014-06). */
 export type PhaseOf = (daemon: FoundDaemon, work: DaemonWork | null, now: EpochMs) => DaemonPhase;
-/** `measure.ts` (014-07). */
-export type TakeSample = (source: PsSource, pids?: readonly number[]) => Sample;
+/**
+ * `measure.ts` (014-07): with `since`, the processes born after it too (D4).
+ * `Measure`'s second sample holds every process below its `pids` in the
+ * first, and those born since it.
+ */
+export type TakeSample = (
+  source: PsSource,
+  pids?: readonly number[],
+  since?: ProcessTable,
+) => Sample;
 export type Measure = (
   source: PsSource,
   first: Sample,

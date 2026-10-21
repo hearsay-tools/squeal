@@ -180,8 +180,13 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
   return { ...shape, unknown: unknownOf({ shape, named, costs: covered }) };
 }
 
-function costOf(cost: ProcessCost | undefined): ProcessCost | Record<keyof ProcessCost, null> {
-  return cost ?? { cpuPct: null, cpuMs: null, privateBytes: null, swapBytes: null };
+/** The values of a cost the shape keeps. */
+type Cost = Pick<ProcessCost, "cpuPct" | "cpuMs" | "privateBytes" | "swapBytes">;
+
+function costOf(cost: ProcessCost | undefined): Cost | Record<keyof Cost, null> {
+  if (cost === undefined) return { cpuPct: null, cpuMs: null, privateBytes: null, swapBytes: null };
+  const { cpuPct, cpuMs, privateBytes, swapBytes } = cost;
+  return { cpuPct, cpuMs, privateBytes, swapBytes };
 }
 
 function workOf(work: DaemonWork | null, now: EpochMs, draining: boolean): PsWork {

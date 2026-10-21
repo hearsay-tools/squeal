@@ -29,6 +29,13 @@ export interface ProcessRow {
   readonly startTicks: number;
   /** User plus system CPU it used, in clock ticks (`stat` fields 14 and 15). */
   readonly cpuTicks: number;
+  /**
+   * User plus system CPU of the children it waited for, in clock ticks
+   * (`stat` fields 16 and 17, `cutime + cstime`): a child that ended adds its
+   * whole life, its own waited-for children's included. `null` where the
+   * platform does not give it (D10).
+   */
+  readonly childTicks: number | null;
   /** `stat` field 19. */
   readonly nice: number;
   /** Its owner; `null` when it cannot be read. */
@@ -104,12 +111,16 @@ export interface PsSource {
   readonly memoryKind: MemoryKind;
   /** Whether `markOf` reads marks at all. When not, a lane is `null` and an escaped process has no owner (D10). */
   readonly readsMarks: boolean;
-  /** Ticks per second of `startTicks` and `cpuTicks`. */
+  /** Ticks per second of `startTicks`, `cpuTicks` and `childTicks`. */
   clockTicks(): number;
   /** When the host booted; `null` when it cannot be read. */
   bootTime(): EpochMs | null;
-  /** Every process, or only `pids`. One `stat` scan on Linux (D2 step 1). */
-  processTable(pids?: readonly number[]): ProcessTable;
+  /**
+   * Every process, or only `pids`. One `stat` scan on Linux (D2 step 1).
+   * With `since`, also each process whose pid `since` does not hold: one
+   * born after that read (D4). A pid reused since then is not found.
+   */
+  processTable(pids?: readonly number[], since?: ProcessTable): ProcessTable;
   /** Its arguments; `null` when it left or they cannot be read. */
   cmdline(pid: number): readonly string[] | null;
   /**

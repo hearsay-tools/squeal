@@ -118,10 +118,18 @@ export function snapshotHost(): SnapshotHost {
   };
 }
 
-/** `p` with `ticks` more CPU ticks: its `stat` rewritten, as at the window's end. */
-export function addTicks(host: FixtureHost, p: FixtureProcess, ticks: number): FixtureProcess {
+/**
+ * `p` with `ticks` more CPU ticks, and `childTicks` as the ticks of the
+ * children it waited for: its `stat` rewritten, as at the window's end.
+ */
+export function addTicks(
+  host: FixtureHost,
+  p: FixtureProcess,
+  ticks: number,
+  childTicks = p.childTicks ?? 0,
+): FixtureProcess {
   const total = Math.round(p.lifeCpuPct * p.ageS) + ticks;
-  const later = { ...p, lifeCpuPct: total / p.ageS };
+  const later = { ...p, lifeCpuPct: total / p.ageS, childTicks };
   writeFileSync(join(host.base, "proc", String(p.pid), "stat"), statLine(later));
   return later;
 }
