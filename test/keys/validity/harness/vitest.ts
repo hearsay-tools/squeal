@@ -82,6 +82,20 @@ const throwing = () => {
   throw new Error("fileEnded throws (validity case)");
 };
 
+/** `open()` with `TMPDIR` at `tmp`, when given, as `test/runners/vitest/broken.test.ts` starts one. */
+async function withTmpDir(tmp: string | null, open: () => Promise<void>): Promise<void> {
+  if (tmp === null) return open();
+  mkdirSync(tmp, { recursive: true });
+  const previous = process.env.TMPDIR;
+  process.env.TMPDIR = tmp;
+  try {
+    await open();
+  } finally {
+    if (previous === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = previous;
+  }
+}
+
 /** Runs `input`'s runs in turn on one adapter over its fixture, under `scratch`. */
 export async function vitestCase(input: VitestInput, scratch: string): Promise<CaseOutput> {
   const markers = join(scratch, "markers");
@@ -98,8 +112,10 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
   const root = writeTree(join(scratch, "worktree"), files);
   const adapter = new VitestAdapter(new WorktreePaths(root), await loadVitest(root));
   const reports: RunReport[] = [];
+  // Row 013-06: a case that removes its instance's temp directory starts it under one of its own.
+  const tmp = input.runs.some((run) => run.removeTempDir === true) ? join(scratch, "tmp") : null;
   try {
-    await adapter.open();
+    await withTmpDir(tmp, () => adapter.open());
     for (const [at, run] of input.runs.entries()) {
       writeFileSync(hold, "");
       rmSync(started, { force: true });
@@ -114,8 +130,10 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
         ...(cancel === null ? {} : { signal: cancel.signal }),
         ...(run.fileEndedThrows === true ? { fileEnded: throwing } : {}),
       };
+      if (run.removeTempDir === true && tmp !== null) rmSync(tmp, { recursive: true, force: true });
       const report = adapter.run(run.files, options);
-      if (!early) {
+      // A run whose instance lost its temp directory fails to load before any file starts.
+      if (!early && run.removeTempDir !== true) {
         await until(() => existsSync(started), "a held test file to start");
         await adapter.invalidate(run.touched.map((path) => ({ path, kind: "touch" as const })));
         // Row 011-56: cancelled while held, the held file does not complete.

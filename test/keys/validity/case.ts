@@ -127,8 +127,9 @@ export interface VitestInput {
    * In turn on one adapter: the files run, the paths touched once one of
    * them started, the reason the run is then cancelled with, if any (row
    * 011-56), or the reason its signal was aborted with before it started
-   * (review 0.1.239 B2), and whether its `fileEnded` callback throws (row
-   * 011-54).
+   * (review 0.1.239 B2), whether its `fileEnded` callback throws (row
+   * 011-54), and whether the instance's temp directory is removed before it,
+   * so it starts no test file and touches nothing (row 013-06).
    */
   readonly runs: readonly {
     readonly files: readonly TestFileRef[];
@@ -136,6 +137,7 @@ export interface VitestInput {
     readonly cancel?: string;
     readonly cancelBefore?: string;
     readonly fileEndedThrows?: boolean;
+    readonly removeTempDir?: boolean;
   }[];
 }
 
