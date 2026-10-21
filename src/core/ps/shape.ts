@@ -27,6 +27,8 @@ export interface PsSnapshot {
   /** Flagged processes no live daemon owns: `orphan-test-process`, `orphan-waiter`, `foreign-permit` (D7). */
   readonly orphans: readonly PsOrphan[];
   readonly files: readonly PsFileFlag[];
+  /** With `--full`: the files that never get a flag, counted by kind (D7); `null` without it. */
+  readonly unflaggedFiles: readonly PsUnflaggedFiles[] | null;
   /** Every flag of the snapshot: on daemons, processes, orphans and files. */
   readonly flags: number;
   readonly unknown: readonly PsUnknown[];
@@ -224,6 +226,14 @@ export interface PsFileFlag {
   readonly count: number;
   readonly bytes: number | null;
   readonly command: string;
+}
+
+/** Files whose lock the OS frees when the holder dies, so they never get a flag (D7). */
+export type PsUnflaggedKind = "lock" | "waiter-lock" | "surplus-permit" | "session-root";
+
+export interface PsUnflaggedFiles {
+  readonly kind: PsUnflaggedKind;
+  readonly count: number;
 }
 
 /** A value `ps` could not read, or a rule it did not evaluate, and why (D8, D9, D10). */
