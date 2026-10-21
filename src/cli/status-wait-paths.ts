@@ -34,7 +34,13 @@ import {
   selectedLine,
 } from "./status-wait-lines.js";
 import { ownPathFiles, type PromoteNamed, promoteNamed } from "./status-wait-promote.js";
-import { type FileVerdict, readClasses, readVerdict, verdictCode } from "./verdict.js";
+import {
+  type FileClasses,
+  type FileVerdict,
+  readClasses,
+  readVerdict,
+  verdictCode,
+} from "./verdict.js";
 import {
   type DaemonWatch,
   type DownReason,
@@ -203,10 +209,28 @@ function realOrNull(path: string): string | null {
 
 /**
  * Spec 005 D2's path form: `settled`, no selected file it holds for pending;
- * `unmatched`, a path selects nothing; `slow`, every selected file runs only
- * on a pause (task 004-78), so there is nothing to hold for.
+ * `unmatched`, no path selects a file; `slow`, every selected file runs only
+ * on a pause (task 004-78), so there is nothing to hold for. Row 011-63
+ * (gh-59): a path that selects nothing beside one that selects a file is
+ * named beside the other outcomes (`selection.unmatched`).
  */
 export type NamedWaitOutcome = "settled" | "unmatched" | "slow" | "no-daemon" | "timeout";
+
+/**
+ * The outcome of a read whose selection is decided, `null` while a file it
+ * holds for is pending. Row 011-63 (gh-59, the human 2026-10-21): a path that
+ * selects nothing ends the wait only when no path selects a file, so the
+ * files the others select keep their promotion and give their verdict.
+ */
+export function decidedOutcome(
+  selection: NamedSelection,
+  held: readonly TestFileRef[],
+  classes: FileClasses,
+): "settled" | "unmatched" | "slow" | null {
+  if (selection.files.length === 0) return "unmatched";
+  if (held.length === 0) return "slow";
+  return classes.byClass.pending === 0 && !classes.unlisted ? "settled" : null;
+}
 
 export type NamedWait =
   | {
@@ -243,9 +267,10 @@ export type NamedWait =
     };
 
 /**
- * The `wait` field `status --json --wait <ms> <path>...` adds to the
- * snapshot, and the `named` field of `status --json <path>...`, whose
- * outcome is `snapshot` (row 011-28).
+ * The `selection` field both `status --json --wait <ms> <path>...` and
+ * `status --json <path>...` add to the snapshot (row 011-63, gh-65), whose
+ * outcome is `snapshot` for the latter; also the wait's `wait` field and the
+ * snapshot's `named` field (row 011-28), kept.
  */
 export interface NamedWaitPayload {
   readonly outcome: NamedWaitOutcome | "snapshot";
@@ -299,6 +324,8 @@ export async function waitForNamed(
 ): Promise<NamedWait> {
   const started = performance.now();
   const elapsed = () => performance.now() - started;
+  // The deadline on the store's clock, for the promotion's lifetime and the last read (row 011-63).
+  const deadline = options.now() + options.timeoutMs;
   let sync: DaemonSync | undefined;
   let watch: DaemonWatch | undefined;
   let first = true;
@@ -338,18 +365,11 @@ export async function waitForNamed(
         const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
         const held = selection.files.filter((f) => !paused.has(testFileId(f)));
         const classes = leftForPause.length === 0 ? all : readClasses(store, id, held);
+        const decided = ready ? decidedOutcome(selection, held, classes) : null;
         const outcome: NamedWaitOutcome | null =
           settled && daemon.state === "down"
             ? "no-daemon"
-            : ready && selection.unmatched.length > 0
-              ? "unmatched"
-              : ready && held.length === 0
-                ? "slow"
-                : ready && classes.byClass.pending === 0 && !classes.unlisted
-                  ? "settled"
-                  : final
-                    ? "timeout"
-                    : null;
+            : (decided ?? (final ? "timeout" : null));
         if (outcome === null) {
           // Spec 011 C15: once, at the first read whose selection is decided, beside it.
           if (ready && !promoted) {
@@ -358,20 +378,17 @@ export async function waitForNamed(
               selection.files,
               paths.map((p) => worktreePath(root, cwd, p)),
             );
-            (options.promote ?? promoteNamed)(root, own, options.timeoutMs - elapsed());
+            // On the clock the daemon adds it to, so the promotion lasts at least to `deadline`.
+            (options.promote ?? promoteNamed)(root, own, deadline - options.now());
           }
           return null;
         }
         const verdict = readVerdict(store, id, held);
         const result = buildSnapshot(store, root, options.now());
-        const files = readNamedFiles(
-          store,
-          id,
-          root,
-          selection.files,
-          result.daemon,
-          options.now(),
-        );
+        // Row 011-63 (gh-51 3): a read at the deadline names what held each file as of
+        // its last millisecond, while the promotion this wait sent still held it.
+        const at = Math.min(options.now(), deadline - 1) as EpochMs;
+        const files = readNamedFiles(store, id, root, selection.files, result.daemon, at);
         const lapse = watch.lapse();
         return {
           outcome,
@@ -399,9 +416,15 @@ export async function waitForNamed(
   }
 }
 
-/** Spec 005 D1 for the selected files: their verdict once settled, else 3. */
+/**
+ * Spec 005 D1 for the selected files: their verdict once settled, else 3.
+ * Row 011-63 (gh-59): a path that selects nothing leaves no clean verdict,
+ * so 3, but a known failure among the files the others select is still 1.
+ */
 export function namedCode(wait: Extract<NamedWait, { result: StatusSnapshot }>): 0 | 1 | 3 {
-  return wait.outcome === "settled" ? verdictCode(wait.verdict) : 3;
+  if (wait.outcome !== "settled") return 3;
+  const code = verdictCode(wait.verdict);
+  return code === 0 && wait.selection.unmatched.length > 0 ? 3 : code;
 }
 
 /** How a named wait or snapshot prints (`printNamed`). */
@@ -428,10 +451,11 @@ export async function namedWaitCommand(
  * 011-28): the revision line, or with `--full` the worktree's status, then
  * the line naming the selected files and their failures in full, then last
  * the verdict on them (issue 26); with `--json` the naming and verdict lines
- * go to stderr and stdout is the snapshot plus a `wait` field
- * (`NamedWaitPayload`), `named` for a snapshot. Returns D1's code for the
- * selected files only: 0, 1 with known failures among them, 3 without a
- * verdict, an unreadable store included.
+ * go to stderr and stdout is the snapshot plus a `selection` field
+ * (`NamedWaitPayload`) in both forms (row 011-63, gh-65), and the same
+ * payload under `wait`, or `named` for a snapshot, as before. Returns D1's
+ * code for the selected files only: 0, 1 with known failures among them, 3
+ * without a verdict, an unreadable store included.
  */
 export function printNamed(
   wait: NamedWait,
@@ -460,7 +484,8 @@ export function printNamed(
     verdict: wait.verdict,
   };
   const field = wait.snapshot === true ? "named" : "wait";
-  io.stdout(`${JSON.stringify({ ...wait.result, [field]: payload }, null, 2)}\n`);
+  const json = { ...wait.result, [field]: payload, selection: payload };
+  io.stdout(`${JSON.stringify(json, null, 2)}\n`);
   const selected = selectedLine(wait);
   const lines = [...(selected === null ? [] : [selected]), ...namedClassLines(wait, command)];
   io.stderr(`${lines.map((line) => `${line}\n`).join("")}${namedLine(wait, command)}\n`);
