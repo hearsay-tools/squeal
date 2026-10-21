@@ -5,7 +5,6 @@ import {
   count,
   cpus,
   cpuTime,
-  known,
   ofGib,
   percent,
   share,
@@ -30,7 +29,9 @@ import type {
  * repository, the processes no daemon owns and the files no process uses.
  * A flagged row starts with `!`, with its reason and the command that would
  * end it under it. A value `ps` could not read prints as `?` in a column and
- * as `unknown` in a sentence, never as 0.
+ * as `unknown` in a sentence, never as 0. A sum that leaves an unknown value
+ * out is a lower bound: `at least` in a sentence, a `+` after it in a column
+ * (014-24).
  */
 
 /** A state wider than its column takes a line of its own above its row. */
@@ -103,35 +104,33 @@ function hostLine(h: PsHost): string {
 
 function squealLine(s: PsSnapshot): string {
   const q: PsSqueal = s.squeal;
-  const ofBusy = q.cpuShare === null ? "share of busy unknown" : `${share(q.cpuShare)} of busy`;
-  const cpu = q.cpuPct === null ? "CPU unknown" : `CPU ${cpus(q.cpuPct)} CPUs (${ofBusy})`;
-  const used = q.memoryShare === null ? "share of used unknown" : `${share(q.memoryShare)} of used`;
+  const out = q.skipped;
+  const ofBusy = lower(q.cpuShare, out.cpuPct, (v) => `${share(v)} of busy`);
+  const cpu = lower(q.cpuPct, out.cpuPct, (v) => `${cpus(v)} CPUs`);
+  const used = lower(q.memoryShare, out.privateBytes, (v) => `${share(v)} of used`);
   const kind = s.memory === "rss" ? "RSS" : "memory";
   const rss = s.memory === "rss" ? ", shared pages counted more than once" : "";
-  const memory = `${kind} ${bytes(q.privateBytes)} (${used})${rss}`;
-  const swap = q.swapBytes === null ? "swap unknown" : `${bytes(q.swapBytes)} swap`;
+  const amount = lower(q.privateBytes, out.privateBytes, (v) => bytes(v)) ?? "unknown";
+  const memory = `${kind} ${amount} (${used ?? "share of used unknown"})${rss}`;
+  const swap = lower(q.swapBytes, out.swapBytes, (v) => `${bytes(v)} swap`) ?? "swap unknown";
   const pool =
     q.pool.held === null
       ? `pool ${q.pool.slots} permits, held unknown`
       : `pool ${q.pool.held} of ${count(q.pool.slots, "permit")}`;
-  return `Squeal  ${cpu} · ${memory} + ${swap} · ${pool}`;
+  const busy = ofBusy ?? "share of busy unknown";
+  return `Squeal  ${cpu === null ? "CPU unknown" : `CPU ${cpu} (${busy})`} · ${memory} + ${swap} · ${pool}`;
 }
 
 function repositoryBlock(r: PsRepository, s: PsSnapshot, full: boolean): string[] {
   const name = r.commonDir === null ? "repository unknown" : r.commonDir.replace(/\/\.git$/, "");
-  const all = r.daemons.flatMap((d) => [
-    d,
-    ...d.processes,
-    ...d.processes.map((p) => p.descendants),
-  ]);
-  const cpu = known(all.map((x) => x.cpuPct));
-  const memory = known(all.map((x) => x.privateBytes));
+  const cpu = lower(r.cpuPct, r.skipped.cpuPct, cpus) ?? "unknown";
+  const memory = lower(r.privateBytes, r.skipped.privateBytes, (v) => bytes(v)) ?? "unknown";
   const lines = [
     [
       `${name}${r.current ? " (this repository)" : ""}`,
       count(r.daemons.length, "daemon"),
-      `CPU ${cpu === null ? "unknown" : cpus(cpu)}`,
-      `${s.memory === "rss" ? "RSS" : "memory"} ${bytes(memory)}`,
+      `CPU ${cpu}`,
+      `${s.memory === "rss" ? "RSS" : "memory"} ${memory}`,
     ].join(" · "),
     row("  ", {
       state: "STATE",
@@ -180,6 +179,9 @@ function processLines(p: PsTestProcess, at: number, full: boolean): string[] {
   // Its own value without descendants; with them, unknown when either part is (`reviews/wave-2.md` B3).
   const and = (own: number | null, sum: number | null): number | null =>
     d.count === 0 ? own : own === null || sum === null ? null : own + sum;
+  // A lower bound when the descendants' sum leaves an unknown value out (014-24).
+  const plus = (text: string, out: number): string =>
+    out > 0 && text !== UNKNOWN ? `${text}+` : text;
   const children = d.count === 0 ? [] : [`+${count(d.count, "child", "children")}`];
   const lines = [
     row(p.flags.length > 0 ? "! " : "  ", {
@@ -187,10 +189,10 @@ function processLines(p: PsTestProcess, at: number, full: boolean): string[] {
       pid: String(p.pid),
       detail: detailOf(p),
       up: age(p.startedAt, at),
-      cpu: percent(and(p.cpuPct, d.cpuPct)),
+      cpu: plus(percent(and(p.cpuPct, d.cpuPct)), d.skipped.cpuPct),
       time: cpuTime(and(p.cpuMs, d.cpuMs)),
-      memory: bytes(and(p.privateBytes, d.privateBytes), true),
-      swap: bytes(and(p.swapBytes, d.swapBytes), true),
+      memory: plus(bytes(and(p.privateBytes, d.privateBytes), true), d.skipped.privateBytes),
+      swap: plus(bytes(and(p.swapBytes, d.swapBytes), true), d.skipped.swapBytes),
       work: [...(p.escaped ? ["escaped"] : []), `nice ${p.nice}`, ...children].join(", "),
     }),
     ...flagLines(p.flags),
@@ -249,6 +251,11 @@ function workOf(d: PsDaemon, at: number): string {
   if (d.consumers.length > 0) parts.push(count(d.consumers.length, "session"));
   if (w.departedAt !== null) parts.push(`session left ${age(w.departedAt, at)} ago`);
   return parts.length === 0 ? "idle" : parts.join("; ");
+}
+
+/** `value` as `text` gives it, after `at least` when its sum left `out` unknown values out; `null` when unknown. */
+function lower(value: number | null, out: number, text: (v: number) => string): string | null {
+  return value === null ? null : `${out > 0 ? "at least " : ""}${text(value)}`;
 }
 
 function detailOf(p: PsTestProcess): string {
