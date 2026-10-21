@@ -80,6 +80,26 @@ describe("the skill's waits (005-68)", () => {
     }
   });
 
+  /*
+   * Row 011-63 (gh-59, gh-65, gh-51): a path that selects nothing beside one
+   * that selects a file, the selection's one JSON path, and the promotion at
+   * a wait's deadline.
+   */
+  it("says in every copy of `commands.md` how a mixed selection exits and where both forms put the selection", () => {
+    for (const dir of COPIES) {
+      const commands = read(dir, "references/commands.md");
+      expect(commands).toContain(
+        "the wait still holds for the files the other paths select, and exits 1 with a known failure among them, else 3.",
+      );
+      expect(commands).toContain(
+        "With `--json`, stdout is the snapshot with a `selection` field, and the lines go to stderr",
+      );
+      expect(commands).toContain("so one filter on `selection.testFiles` reads both forms");
+      expect(commands).toContain("says `queued, promoted`, also when the wait times out.");
+      expect(commands).not.toContain("A path that selects nothing exits 3 with");
+    }
+  });
+
   /* Task 004-66, at the coordinator's request: `run --slow --wait` without a verdict exits 3. */
   it("gives `run --slow --wait`'s exit 3 in `commands.md`", () => {
     expect(read(claude, "references/commands.md")).toContain(

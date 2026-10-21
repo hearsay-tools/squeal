@@ -41,15 +41,19 @@ Usage:
                                 The verdict of the test files the paths select (a test
                                 file, or a file in test files' closures) now, if the
                                 daemon stores its pass over your edits within 750 ms:
-                                exit 0, 1 on known failures, 3 without one; --full
-                                prints this worktree's status first
+                                exit 0, 1 on known failures, 3 without one; a path
+                                that selects nothing is named beside it, exit 3 unless
+                                a selected file fails; --full prints this worktree's
+                                status first; --json: the files and their verdicts in
+                                selection.testFiles
   squeal status --wait <ms> [--full] [--json]
                                 Wait up to <ms> until nothing is pending at the current
                                 revision or a check changed, then print status (--full:
                                 in full) and last the line saying why it returned
   squeal status --wait <ms> <path>... [--full] [--json]
                                 Wait up to <ms> for the test files the paths select,
-                                then give their verdict as status <path>... does
+                                then give their verdict as status <path>... does,
+                                --json in selection.testFiles too
   squeal why <check> [--include-logs] [--json]
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints
