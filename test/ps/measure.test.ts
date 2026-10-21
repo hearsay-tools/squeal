@@ -45,7 +45,9 @@ describe("CPU over the window", () => {
       privateBytes: 150 * MIB,
       swapBytes: 0,
       reapedBy: null,
+      reaperUnknown: false,
       left: false,
+      childCpuUnread: false,
     });
   });
 
@@ -75,7 +77,9 @@ describe("CPU over the window", () => {
       privateBytes: null,
       swapBytes: null,
       reapedBy: null,
+      reaperUnknown: false,
       left: true,
+      childCpuUnread: false,
     });
     expect(reads.get("status") ?? 0).toBe(0);
   });
@@ -91,7 +95,9 @@ describe("CPU over the window", () => {
       privateBytes: 150 * MIB,
       swapBytes: 0,
       reapedBy: null,
+      reaperUnknown: false,
       left: false,
+      childCpuUnread: false,
     });
   });
 
@@ -118,7 +124,9 @@ describe("CPU over the window", () => {
       privateBytes: null,
       swapBytes: null,
       reapedBy: null,
+      reaperUnknown: false,
       left: true,
+      childCpuUnread: false,
     });
     expect(reads.get("status") ?? 0).toBe(0);
   });
@@ -152,13 +160,16 @@ describe("the CPU of processes that start or end in the window (task 014-21)", (
 
   test("a row that ended in the window: its CPU in it counts in the ancestor that waited for it, not its life before it", () => {
     // The worker had 320 ticks with its children's at the first sample and 420 at its end.
-    const later = { ...daemon, cpuTicks: 5_010, childTicks: 700 + 420 + 50 };
-    const costs = cpuOf([daemon, fork, git], [later]);
-    // The git, ended too, had 40; the worker waited for it, so its 50 ticks at the end are in the 420.
-    expect(costs.get(fork.pid)).toMatchObject({ cpuPct: null, reapedBy: daemon.pid });
-    expect(costs.get(git.pid)).toMatchObject({ cpuPct: null, reapedBy: daemon.pid });
-    // 10 own, and 470 the children grew less the 320 and 40 they had: 120 ticks in 2 s.
-    expect(costs.get(daemon.pid)?.cpuPct).toBe(60);
+    const later = { ...daemon, cpuTicks: 5_010, childTicks: 700 + 420 };
+    const costs = cpuOf([daemon, fork], [later], [daemon.pid, fork.pid]);
+    expect(costs.get(fork.pid)).toMatchObject({
+      cpuPct: null,
+      reapedBy: daemon.pid,
+      reaperUnknown: false,
+    });
+    // 10 own, and 420 the children grew less the 320 the worker had: 110 ticks in 2 s.
+    expect(costs.get(daemon.pid)?.cpuPct).toBeCloseTo(55);
+    expect(sumCosts([...costs.values()]).skipped.cpuPct).toBe(0);
   });
 
   test("a child born in the window counts all its ticks in its nearest row, here a row that lived through it", () => {
@@ -191,7 +202,9 @@ describe("the CPU of processes that start or end in the window (task 014-21)", (
       [daemon.pid, fork.pid],
     );
     expect(costs.get(fork.pid)).toMatchObject({ cpuPct: null, reapedBy: null });
-    expect(costs.get(daemon.pid)?.cpuPct).toBe(20);
+    // Its 20 ticks are its own only: a lower bound (reviews/wave-4.md S1).
+    expect(costs.get(daemon.pid)).toMatchObject({ cpuPct: 20, childCpuUnread: true });
+    expect(sumCosts([...costs.values()])).toMatchObject({ cpuPct: 20, skipped: { cpuPct: 2 } });
   });
 
   test("children waited for outside the tree add nothing, never less: a row's CPU is at least its own", () => {
@@ -201,6 +214,51 @@ describe("the CPU of processes that start or end in the window (task 014-21)", (
       [{ ...daemon, cpuTicks: 5_010, childTicks: 700 + 320 }],
     );
     expect(costs.get(daemon.pid)?.cpuPct).toBe(5);
+    expect(costs.get(git.pid)).toMatchObject({ reapedBy: null, reaperUnknown: true });
+    expect(sumCosts([...costs.values()]).skipped.cpuPct).toBe(1);
+  });
+
+  test("a worker that ended without waiting for its browser: no sample shows who waited for the browser, so the CPU is a lower bound and its sums leave it out (reviews/wave-4.md B3)", () => {
+    // The worker used 100 ticks and ended first; the daemon waited for its 420; the init process may have waited for the browser.
+    const costs = cpuOf([daemon, fork, git], [{ ...daemon, cpuTicks: 5_010, childTicks: 1_120 }]);
+    // 10 own, and 420 less the 320 and 40 the two had: exact had the worker waited for the browser, less had it not.
+    expect(costs.get(daemon.pid)).toMatchObject({ cpuPct: 35, reaperUnknown: false });
+    expect(costs.get(daemon.pid)?.cpuPct).toBeGreaterThanOrEqual(5);
+    expect(costs.get(fork.pid)).toMatchObject({ reapedBy: daemon.pid, reaperUnknown: false });
+    expect(costs.get(git.pid)).toMatchObject({ cpuPct: null, reapedBy: null, reaperUnknown: true });
+    expect(sumCosts([...costs.values()])).toMatchObject({ cpuPct: 35, skipped: { cpuPct: 1 } });
+  });
+
+  test("a parent whose children's times grew less than its ended children had, or that is a zombie, did not wait for each: they are unsure", () => {
+    // The daemon's times grew 100, the worker had 320: some other process reaped it, or none.
+    const little = cpuOf(
+      [daemon, fork],
+      [{ ...daemon, cpuTicks: 5_010, childTicks: 800 }],
+      [daemon.pid, fork.pid],
+    );
+    expect(little.get(fork.pid)).toMatchObject({ reapedBy: null, reaperUnknown: true });
+    expect(little.get(daemon.pid)?.cpuPct).toBe(5);
+    // A zombie's children went to another process when it ended.
+    const zombie = cpuOf(
+      [daemon, fork],
+      [{ ...daemon, cpuTicks: 5_010, childTicks: 1_120, state: "Z" }],
+      [daemon.pid, fork.pid],
+    );
+    expect(zombie.get(fork.pid)).toMatchObject({ reapedBy: null, reaperUnknown: true });
+    expect(sumCosts([...zombie.values()]).skipped.cpuPct).toBe(1);
+  });
+
+  test("a process that is no row and ended after its parent did marks the row that holds the bound", () => {
+    // The daemon's own helper and its git, no rows: the helper's 60 came in, both its 50 and the git's 8 came off.
+    const helper = { pid: 810, ppid: 800, startTicks: 9_990, cpuTicks: 40, childTicks: 10 };
+    const own = { pid: 811, ppid: 810, startTicks: 9_995, cpuTicks: 8, childTicks: 0 };
+    const costs = cpuOf(
+      [daemon, helper, own],
+      [{ ...daemon, cpuTicks: 5_010, childTicks: 760 }],
+      [daemon.pid],
+    );
+    expect(costs.get(daemon.pid)).toMatchObject({ cpuPct: 6, reaperUnknown: true });
+    expect(sumCosts([...costs.values()]).skipped.cpuPct).toBe(1);
   });
 
   test("below gives the pids and every process under them, once each", () => {
@@ -262,11 +320,32 @@ describe("takeSample", () => {
 });
 
 describe("sumCosts", () => {
+  // A live process, a worker that ended under its daemon, and an escaped browser that ended under no measured process.
+  const live = {
+    cpuPct: 10,
+    cpuMs: 1,
+    privateBytes: 100,
+    swapBytes: 0,
+    reapedBy: null,
+    reaperUnknown: false,
+    left: false,
+    childCpuUnread: false,
+  };
+  const reaped = {
+    ...live,
+    cpuPct: null,
+    privateBytes: null,
+    swapBytes: null,
+    reapedBy: 800,
+    left: true,
+  };
+  const lost = { ...reaped, reapedBy: null };
+
   test("sums each value over the processes that have one; null only when none has", () => {
     expect(
       sumCosts([
-        { cpuPct: 12, cpuMs: 100, privateBytes: 10, swapBytes: null, reapedBy: null, left: false },
-        { cpuPct: null, cpuMs: 5, privateBytes: 20, swapBytes: null, reapedBy: null, left: false },
+        { ...live, cpuPct: 12, cpuMs: 100, privateBytes: 10, swapBytes: null },
+        { ...live, cpuPct: null, cpuMs: 5, privateBytes: 20, swapBytes: null },
       ]),
     ).toEqual({
       cpuPct: 12,
@@ -284,25 +363,6 @@ describe("sumCosts", () => {
     });
   });
 
-  // A live process, a worker that ended under its daemon, and an escaped browser that ended under no measured process.
-  const live = {
-    cpuPct: 10,
-    cpuMs: 1,
-    privateBytes: 100,
-    swapBytes: 0,
-    reapedBy: null,
-    left: false,
-  };
-  const reaped = {
-    ...live,
-    cpuPct: null,
-    privateBytes: null,
-    swapBytes: null,
-    reapedBy: 800,
-    left: true,
-  };
-  const lost = { ...reaped, reapedBy: null };
-
   test("one that ended adds no memory and its reaper holds its CPU: only a CPU no row holds is left out (014-24)", () => {
     expect(sumCosts([live, reaped, lost])).toEqual({
       cpuPct: 10,
@@ -310,6 +370,17 @@ describe("sumCosts", () => {
       privateBytes: 100,
       swapBytes: 0,
       skipped: { cpuPct: 1, privateBytes: 0, swapBytes: 0 },
+    });
+  });
+
+  test("a CPU that is a lower bound is left out in part: an unsure reaper, or children's times unread (reviews/wave-4.md B3, S1)", () => {
+    const unsure = { ...lost, reaperUnknown: true };
+    const below = { ...live, reaperUnknown: true };
+    const blind = { ...live, childCpuUnread: true };
+    expect(sumCosts([live, unsure, below, blind])).toMatchObject({
+      cpuPct: 30,
+      privateBytes: 300,
+      skipped: { cpuPct: 3, privateBytes: 0, swapBytes: 0 },
     });
   });
 
