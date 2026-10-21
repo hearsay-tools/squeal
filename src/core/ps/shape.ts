@@ -128,7 +128,7 @@ export interface PsWork {
   readonly departedAt: EpochMs | null;
   /** While `draining`: the time until `daemon.idleExitMinutes` after the departure. */
   readonly drainLeftMs: number | null;
-  /** D9 `daemon-used:<id>`; `null` for a release that does not record it. */
+  /** D9: the last use the daemon records with its heartbeat; `null` for a release that does not. */
   readonly lastUsedAt: EpochMs | null;
 }
 
@@ -310,7 +310,7 @@ export interface Discovery {
 export interface DaemonWork {
   /** Its row's daemon record; `null` when the row names none (`stopping` with the lock held, D2). */
   readonly record: DaemonRecord | null;
-  /** `daemon-token:<id>`: what its test processes' marks start with (D5). */
+  /** Its `daemonToken` meta row (`WORKTREE_META_ROWS`): what its test processes' marks start with (D5). */
   readonly token: string | null;
   readonly pending: number | null;
   readonly running: number | null;
@@ -318,7 +318,7 @@ export interface DaemonWork {
   readonly checkpoint: PsCheckpoint | null;
   readonly consumers: readonly ConsumerState[];
   readonly departedAt: EpochMs | null;
-  /** `slow-tier:<id>`: slow work waits; `null` when it cannot be read. */
+  /** Its `slowTier` meta row: slow work waits; `null` when it cannot be read. */
   readonly slowWaiting: boolean | null;
   /** D9; `null` for a release that does not record it. */
   readonly lastUse: { readonly usedAt: EpochMs; readonly activeAt: EpochMs } | null;
@@ -336,11 +336,11 @@ export interface ConsumerState {
   readonly sessionId: string;
   readonly agentId: string;
   readonly lastSeenAt: EpochMs;
-  /** `harness-process:<id>`; `null` when none was recorded. */
+  /** Its `harnessProcess` meta row; `null` when none was recorded. */
   readonly harness: HarnessProcess | null;
   /** By the process table and the PID namespace; `null` when unknown. */
   readonly alive: boolean | null;
-  /** `consumer-version:<id>`. */
+  /** Its `consumerVersion` meta row. */
   readonly version: string | null;
 }
 
