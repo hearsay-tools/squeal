@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { vi } from "vitest";
 import { createProcSource } from "../../src/core/ps/proc.js";
+import type { PsDaemon, PsSnapshot, PsTestProcess } from "../../src/core/ps/shape.js";
 import type { PsSource } from "../../src/core/ps/source.js";
 import type { DaemonRecord, EpochMs, Store } from "../../src/core/types/index.js";
 import { BOOT_SECONDS, type FixtureProcess, statLine } from "./fixture.js";
@@ -174,3 +175,173 @@ export function gitChild(pid: number, ppid: number): FixtureProcess {
 }
 
 export { DAEMON_AGE_S, STARTED_AT };
+
+const GIB = 2 ** 30;
+const MIB = 2 ** 20;
+const MINUTE = 60_000;
+/** When the D8 example was taken. */
+export const EXAMPLE_AT: EpochMs = 1_792_600_000_000;
+
+/** A test process of the D8 example's shape. */
+export function exampleProcess(overrides: Partial<PsTestProcess> = {}): PsTestProcess {
+  return {
+    pid: 3704700,
+    lane: "vitest",
+    runner: "vitest",
+    runId: "r1",
+    files: null,
+    escaped: false,
+    cpuPct: 10,
+    cpuMs: 27_000,
+    privateBytes: 300 * MIB,
+    swapBytes: 0,
+    nice: 10,
+    startedAt: EXAMPLE_AT - 4 * MINUTE,
+    descendants: {
+      count: 2,
+      cpuPct: 2,
+      cpuMs: 2_000,
+      privateBytes: 10 * MIB,
+      swapBytes: 0,
+      list: null,
+    },
+    flags: [],
+    ...overrides,
+  };
+}
+
+/** A daemon of the D8 example's shape: serving, a fast tier of 200 files. */
+export function exampleDaemon(overrides: Partial<PsDaemon> = {}): PsDaemon {
+  return {
+    pid: 3704612,
+    phase: "serving",
+    state: "serving",
+    worktreeId: "f1ca49e6aa00bb11",
+    root: "/home/user/projects/cezar",
+    version: "0.1.235",
+    harness: "codex",
+    startedAt: EXAMPLE_AT - 39 * MINUTE,
+    cpuPct: 30,
+    cpuMs: 702_000,
+    privateBytes: 2.2 * GIB,
+    swapBytes: 264 * MIB,
+    permits: 1,
+    work: {
+      pending: 0,
+      running: 200,
+      tiers: [
+        {
+          runId: "r1",
+          lane: "fast",
+          files: 200,
+          startedAt: EXAMPLE_AT - MINUTE,
+          checkpointId: null,
+        },
+      ],
+      checkpoints: [],
+      departedAt: null,
+      drainLeftMs: null,
+      lastUsedAt: EXAMPLE_AT - MINUTE,
+    },
+    consumers: [],
+    processes: [],
+    flags: [],
+    ...overrides,
+  };
+}
+
+/** The D8 example as a shape: three daemons of one repository, a stale socket and the leftovers. */
+export function exampleSnapshot(overrides: Partial<PsSnapshot> = {}): PsSnapshot {
+  const idle = exampleDaemon().work;
+  return {
+    v: 1,
+    at: EXAMPLE_AT,
+    sampleMs: 2_000,
+    platform: "linux",
+    memory: "private",
+    host: {
+      load: [36.8, 41.3, 51.1],
+      cpus: 24,
+      cpuPressure: 45.2,
+      memoryPressure: { some: 0.64, full: 0.52 },
+      memTotal: 47 * GIB,
+      memAvailable: 14.3 * GIB,
+      swapTotal: 4 * GIB,
+      swapUsed: 4 * GIB,
+      busyCpuPct: 92,
+    },
+    squeal: {
+      daemons: 3,
+      testProcesses: 1,
+      cpuPct: 810,
+      cpuShare: 36.4,
+      privateBytes: 21 * GIB,
+      memoryShare: 64.2,
+      swapBytes: GIB,
+      pool: { slots: 12, held: 3 },
+    },
+    repositories: [
+      {
+        commonDir: "/home/user/projects/cezar/.git",
+        current: true,
+        daemons: [
+          exampleDaemon({ processes: [exampleProcess()] }),
+          exampleDaemon({
+            pid: 2721938,
+            state: "draining 22m left",
+            worktreeId: "aee4a33f00000000",
+            startedAt: EXAMPLE_AT - 61 * MINUTE,
+            cpuPct: 16,
+            cpuMs: 550_000,
+            privateBytes: 1.1 * GIB,
+            swapBytes: 80 * MIB,
+            work: {
+              ...idle,
+              tiers: [],
+              pending: 120,
+              departedAt: EXAMPLE_AT - 38 * MINUTE,
+              drainLeftMs: 22 * MINUTE,
+            },
+          }),
+          exampleDaemon({
+            pid: 3241641,
+            state: "older (session 3212240 holds it)",
+            worktreeId: "70b80c8e00000000",
+            version: "0.1.234",
+            harness: "claude",
+            startedAt: EXAMPLE_AT - 49 * MINUTE,
+            cpuPct: 12,
+            cpuMs: 351_000,
+            privateBytes: 821 * MIB,
+            swapBytes: 0,
+            work: { ...idle, tiers: [] },
+          }),
+        ],
+      },
+    ],
+    orphans: [],
+    files: [
+      {
+        flag: "stale-socket",
+        reason:
+          "no live daemon of worktree fd5a859b8ca77ef9 holds its lock; changed 2026-10-16 20:36",
+        path: "/run/user/1001/squeal-fd5a859b8ca77ef9.sock",
+        count: 1,
+        bytes: null,
+        command: "rm /run/user/1001/squeal-fd5a859b8ca77ef9.sock",
+      },
+      {
+        flag: "leftover-temp",
+        reason: "no live daemon's key names them and no process uses them, older than 1 h",
+        path: null,
+        count: 3_530,
+        bytes: 6.4 * GIB,
+        command: "squeal ps --leftovers | xargs -d '\\n' rm -rf --",
+      },
+    ],
+    unflaggedFiles: null,
+    flags: 2,
+    unknown: [],
+    ...overrides,
+  };
+}
