@@ -33,6 +33,7 @@ import {
 } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
+import { recordDaemonUsed } from "./last-use.js";
 import {
   type DaemonTimings,
   type ObservedSeen,
@@ -352,7 +353,8 @@ class Daemon {
    * baseline rewrites them (D10 as amended, task 001-205). A predecessor's
    * shutdown mark goes (task 001-274); if this daemon's own shutdown already
    * began, its mark replaces it in the same transaction, since `#markExit`
-   * had no registration to describe then (task 001-276).
+   * had no registration to describe then (task 001-276). The heartbeat's last
+   * use replaces the predecessor's too (spec 014 D9).
    */
   #register(): void {
     const { store, worktreeId: id, root, commonDir } = this.opened;
@@ -379,6 +381,7 @@ class Daemon {
         squealVersion: this.#version,
         token: this.#token,
       });
+      recordDaemonUsed(store, id, { usedAt: this.#lastUsed, activeAt: this.#lastActive });
     });
     this.#registered = true;
   }

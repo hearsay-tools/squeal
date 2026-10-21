@@ -17,6 +17,7 @@ import {
   type Store,
   type WorktreeId,
 } from "../types/index.js";
+import { recordDaemonUsed } from "./last-use.js";
 import { SlicedWrites } from "./sliced-writes.js";
 
 /** How often the daemon does its periodic work. Every field has a default. */
@@ -288,7 +289,7 @@ export function startTimers(context: TimerContext): () => void {
     });
   const heartbeat = () =>
     retries.run("the heartbeat", [
-      ["heartbeat", () => store.worktrees.heartbeat(worktreeId, now())],
+      ["heartbeat", () => beat(context, now())],
       ["harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir })],
       ["leaving check", () => dropLeft(store, worktreeId, now(), { locksDir })],
     ]);
@@ -339,6 +340,24 @@ export function startTimers(context: TimerContext): () => void {
     clearTimeout(first);
     retries.stop();
   };
+}
+
+/**
+ * The heartbeat at `at`, and with it the daemon's last use (spec 014 D9), in
+ * one write. The use is recorded only while the worktree has a daemon record,
+ * which the heartbeat moves: a row whose worktree a prune took would outlive
+ * it.
+ */
+function beat(context: TimerContext, at: EpochMs): void {
+  const { store, worktreeId } = context;
+  store.transaction(() => {
+    store.worktrees.heartbeat(worktreeId, at);
+    if (context.lastUsed === undefined || !store.worktrees.get(worktreeId)?.daemon) return;
+    recordDaemonUsed(store, worktreeId, {
+      usedAt: context.lastUsed(),
+      activeAt: context.lastActive(),
+    });
+  });
 }
 
 const SLOW_FILES = "slow files";
