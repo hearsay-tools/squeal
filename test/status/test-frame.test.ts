@@ -171,3 +171,37 @@ describe("testFileFrame on recorded pytest reports (011-76 test 2)", () => {
     expect(of("line", "test_helper_assert")).toBeNull();
   });
 });
+
+/*
+ * Review 0.1.243 B1: a project directory with a space, `test frames/`. Long
+ * and short reports name `test frames/test_frames.py:6:`, which the entry
+ * pattern must read; recorded as above, from `<root>/py`, with `--tb=<style>
+ * "test frames/test_frames.py"` (`recorded/README.md`).
+ */
+describe("testFileFrame on recorded pytest reports of a path with a space (review 0.1.243 B1)", () => {
+  const ROOT = "/w/root" as AbsolutePath;
+  const paths = new WorktreePaths(ROOT);
+  const testFile = {
+    project: "py" as ProjectName,
+    path: "py/test frames/test_frames.py" as RelativePath,
+  };
+
+  function of(style: string, test: string): ReturnType<typeof testFileFrame> {
+    const text = readFileSync(
+      join(import.meta.dirname, "recorded", `pytest-tb-${style}-space.jsonl`),
+      "utf8",
+    );
+    const events = parsePytestEvents(text.replaceAll("<root>", ROOT));
+    const files = [{ testFile, real: join(ROOT, testFile.path) as AbsolutePath }];
+    const read = readBatch(events, files, join(ROOT, "py") as AbsolutePath, paths);
+    const result = read.files[0]?.results.find((r) => r.check.fullName === test);
+    if (result === undefined) throw new Error(`no result for ${test} in ${style}`);
+    return testFileFrame(check(testFile.path, test), result.errors);
+  }
+
+  it.each(["long", "short", "native"])("names the test function's line in a %s report", (style) => {
+    expect(of(style, "test_helper_assert")).toEqual({ path: testFile.path, line: 6 });
+    expect(of(style, "test_helper_raise")).toEqual({ path: testFile.path, line: 10 });
+    expect(of(style, "test_own_assert")).toBeNull();
+  });
+});
