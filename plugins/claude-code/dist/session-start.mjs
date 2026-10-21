@@ -2,8 +2,8 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/harness/shared/context.ts
-import { existsSync as existsSync6 } from "node:fs";
-import { join as join11 } from "node:path";
+import { existsSync as existsSync7 } from "node:fs";
+import { join as join12 } from "node:path";
 
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
@@ -413,10 +413,10 @@ function cap(text, max) {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 function excludedProjectsText(entries) {
-  const quoted = (list, join15) => {
+  const quoted = (list, join16) => {
     const all = list.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join15} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join16} ${last}`;
   };
   const names = entries.filter((entry3) => !entry3.includes("*"));
   const patterns = entries.filter((entry3) => entry3.includes("*"));
@@ -4373,6 +4373,17 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot.ts
+import {
+  copyFileSync,
+  existsSync as existsSync6,
+  mkdtempSync,
+  readdirSync as readdirSync2,
+  rmSync as rmSync4,
+  statSync,
+  writeFileSync
+} from "node:fs";
+import { tmpdir as tmpdir2 } from "node:os";
+import { isAbsolute as isAbsolute5, join as join11 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/daemon/paths.ts
@@ -4422,6 +4433,90 @@ function currentUid() {
 }
 
 // src/core/slow/slot.ts
+var SLOW_LOCK_FILE = "slow.lock";
+function slowSlotDir(env = process.env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute5(xdg) ? join11(xdg, "squeal") : userTmpDir();
+}
+function heldPermits(request) {
+  const { dir } = request;
+  if (!existsSync6(dir)) return [];
+  checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
+  const held = [];
+  for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
+    const file = permitFile(i);
+    const path = join11(dir, file);
+    if (!existsSync6(path)) continue;
+    let free;
+    try {
+      free = permitFree(path);
+    } catch {
+      held.push({ file, record: { kind: "unreadable" } });
+      continue;
+    }
+    if (!free) held.push({ file, record: permitRecord(path) });
+  }
+  return held;
+}
+function permitRecord(path) {
+  let scratch;
+  try {
+    scratch = mkdtempSync(join11(tmpdir2(), "squeal-permit-"));
+  } catch {
+    return { kind: "unreadable" };
+  }
+  try {
+    const copy = join11(scratch, "permit.sqlite");
+    copyFileSync(path, copy);
+    return holderRow(copy);
+  } catch {
+    return { kind: "unreadable" };
+  } finally {
+    rmSync4(scratch, { recursive: true, force: true });
+  }
+}
+function holderRow(path) {
+  let db;
+  try {
+    db = new DatabaseSync4(path, { readOnly: true });
+  } catch {
+    return { kind: "unreadable" };
+  }
+  try {
+    const row = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
+    if (row === void 0) return { kind: "missing" };
+    const { pid, worktree_id: worktreeId, since } = row;
+    if (!Number.isSafeInteger(pid) || typeof worktreeId !== "string") return { kind: "unreadable" };
+    if (!Number.isSafeInteger(since)) return { kind: "unreadable" };
+    return {
+      kind: "holder",
+      pid,
+      worktreeId,
+      since
+    };
+  } catch (error) {
+    return { kind: String(error).includes("no such table") ? "missing" : "unreadable" };
+  } finally {
+    db.close();
+  }
+}
+function permitFree(path) {
+  const db = new DatabaseSync4(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("BEGIN EXCLUSIVE");
+    db.exec("ROLLBACK");
+    return true;
+  } catch (error) {
+    if (isBusy(error)) return false;
+    throw error;
+  } finally {
+    db.close();
+  }
+}
+function permitFile(i) {
+  return i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`;
+}
 var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/scheduler/slow.ts
@@ -4531,6 +4626,77 @@ function isYield(value) {
   const { kind, remainderMs } = value;
   if (kind === "remainder") return typeof remainderMs === "number";
   return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner";
+}
+
+// src/core/status/slot-holders.ts
+function pidRuns(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM";
+  }
+}
+function slowSlotOf(store, worktreeId, root, header, alive, now) {
+  const tier = header.slowTier;
+  if (!alive || tier === void 0 || tier.pending === 0) return void 0;
+  if (tier.activity?.kind !== "waiting" || tier.activity.for !== "slot") return void 0;
+  const permits = readPolicy(root).slow.maxParallel;
+  let held;
+  try {
+    held = heldPermits({ dir: slowSlotDir(), permits });
+  } catch {
+    return void 0;
+  }
+  const groups = /* @__PURE__ */ new Map();
+  for (const { record } of held) {
+    const id = record.kind === "holder" ? `${record.pid}\0${record.worktreeId}` : `\0${record.kind}`;
+    const group = groups.get(id);
+    if (group === void 0) groups.set(id, { record, permits: 1 });
+    else {
+      group.permits++;
+      if (record.kind === "holder" && group.record.kind === "holder") {
+        if (record.since < group.record.since) group.record = record;
+      }
+    }
+  }
+  const holders = [...groups.values()].map(
+    ({ record, permits: n }) => holderOf(store, worktreeId, record, n, now)
+  );
+  return { permits, holders: holders.sort(longestFirst) };
+}
+function holderOf(store, own, record, permits, now) {
+  if (record.kind !== "holder") return { kind: record.kind, permits };
+  const live = pidRuns(record.pid);
+  const root = store.worktrees.get(record.worktreeId)?.root ?? null;
+  return {
+    kind: live ? "live" : "stale",
+    permits,
+    pid: record.pid,
+    worktreeId: record.worktreeId,
+    root,
+    ...record.worktreeId === own ? { self: true } : {},
+    since: record.since,
+    heldMs: Math.max(0, now - record.since),
+    ...live && root !== null && record.worktreeId !== own ? slowWork(store, record.worktreeId) : {}
+  };
+}
+function slowWork(store, worktreeId) {
+  const view = worktreeSlowView(store, worktreeId);
+  if (view === null) return {};
+  const keys = store.testFileKeys.list(worktreeId).filter((row) => view.isSlow(row.testFile));
+  const states = store.knownStates.list(
+    worktreeId,
+    keys.map((row) => row.testFile)
+  );
+  const tier = readSlowTier(store, worktreeId, states, keys, view);
+  const activity = tier.activity;
+  const running = activity?.kind === "running" ? { running: activity.paths ?? [activity.path] } : {};
+  return { ...running, pending: tier.pending };
+}
+function longestFirst(a, b) {
+  const since = (h) => h.kind === "live" || h.kind === "stale" ? h.since : Infinity;
+  return since(a) - since(b);
 }
 
 // src/core/status/standing-facts.ts
@@ -4657,6 +4823,10 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
+  const alive = daemon.state === "alive";
+  const slot2 = once(
+    () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive, now) : reads.slowSlot ?? void 0
+  );
   const facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
     installCommand: header.installCommand ?? null,
@@ -4715,6 +4885,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
         ...tier === void 0 ? {} : { yields: tier }
       };
       return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
+    }
+    if (pending.kind === "slow") {
+      const held = slot2();
+      if (held !== void 0) {
+        const waiting = { ...pending, slot: held };
+        return { testFile: ref, state, pending: waiting, standing: waiting };
+      }
     }
     if (pending.kind === "unlisted" && promoted.has(testFileId(ref))) {
       const run2 = yieldIn(runs, lane, policy, yields);
@@ -4790,7 +4967,9 @@ function groupId(s) {
     case "running":
       return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)}`;
+    case "unlisted":
+      return `unlisted ${yieldId(s.yields)}`;
     case "claim":
       return `claim ${s.worktree}`;
     case "stale":
@@ -4804,6 +4983,10 @@ function groupId(s) {
     default:
       return s.kind;
   }
+}
+function yieldId(tier) {
+  if (tier === void 0) return "-";
+  return tier.kind === "remainder" ? `remainder ${Math.round(tier.remainderMs / 1e3)}` : tier.kind;
 }
 function widest(a, b) {
   if (a.kind === "running" && b.kind === "running") {
@@ -4872,9 +5055,8 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
     if (slow.isSlow(file.testFile) && !held) continue;
     add(standing, file.testFile);
   }
-  if (header.runnerPartPending === true && !groups.has(groupId(unlisted(header, policy)))) {
-    add(unlisted(header, policy), null);
-  }
+  const said = [...groups.values()].some((g) => g.standing.kind === "unlisted");
+  if (header.runnerPartPending === true && !said) add(unlisted(header, policy), null);
   if (reads.checkpoint !== void 0 && !reads.checkpoint.owed) {
     add({ kind: "checkpoint" }, null);
   }
@@ -4901,6 +5083,36 @@ function retryStandings(pending, worktreeId) {
     });
   }
   return retries;
+}
+
+// src/core/status/phase-files.ts
+var PHASE_FILES_LISTED = 100;
+function pendingTestFilesOf(states, keys, openFiles2) {
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    if (state.check.kind === "setup") continue;
+    const id = testFileKeyOf(state.check);
+    const own = checks.get(id);
+    if (own === void 0) checks.set(id, [state]);
+    else own.push(state);
+  }
+  const running = [];
+  const queued = [];
+  for (const row of keys) {
+    const id = testFileId(row.testFile);
+    const own = checks.get(id) ?? [];
+    if (fileClassOf(row, own) !== "pending") continue;
+    const runs = openFiles2.has(id) || row.pending === "running" || own.some((s) => s.pendingPhase === "running");
+    (runs ? running : queued).push(row.testFile);
+  }
+  return { running: listed(running), queued: listed(queued) };
+}
+function listed(files2) {
+  const sorted = files2.sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
+  return {
+    files: sorted.slice(0, PHASE_FILES_LISTED),
+    omitted: Math.max(0, sorted.length - PHASE_FILES_LISTED)
+  };
 }
 
 // src/core/status/snapshot.ts
@@ -4945,17 +5157,19 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
     )
   );
   const runs = openRuns(store, worktree, daemon);
-  const header = readHeader(store, worktreeId, states, keys, void 0, openFiles(runs));
+  const held = openFiles(runs);
+  const header = readHeader(store, worktreeId, states, keys, void 0, held);
   const knownFailures = withRecorded(store, worktreeId, states, header.revision);
   const load = once(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
   const at2 = worktree?.root ?? root;
+  const slowSlot = slowSlotOf(store, worktreeId, at2, header, daemon.state === "alive", now);
   const outstanding = outstandingOf(
     store,
     worktreeId,
     at2,
-    { states, keys, header, runs, daemon, ...retries, ...checkpoint },
+    { states, keys, header, runs, daemon, slowSlot: slowSlot ?? null, ...retries, ...checkpoint },
     now,
     load
   );
@@ -4970,7 +5184,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
-    breakdown: breakdown(states, keys, openFiles(runs)),
+    breakdown: breakdown(states, keys, held),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
     notes,
@@ -4981,7 +5195,9 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
     ...retries,
     ...unknownTestFilesOf(store, worktreeId, states, keys, at2, now),
     ...daemon.state === "alive" ? { runsOpen: runs.length } : {},
-    outstanding
+    outstanding,
+    pendingTestFiles: pendingTestFilesOf(states, keys, held),
+    ...slowSlot === void 0 ? {} : { slowSlot }
   };
 }
 function vitestExcluded(root) {
@@ -5699,9 +5915,9 @@ function changedText(paths) {
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
 function incompleteText(header) {
-  const listed2 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
+  const listed3 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(header.revision))} is pending; test files it adds are not counted yet.` : "";
-  return `${listed2}${runnerPart}`;
+  return `${listed3}${runnerPart}`;
 }
 function daemonText(header, command) {
   const awaiting = awaitingInstallText(header);
@@ -5839,7 +6055,7 @@ function locate(cwd) {
   return commonDir === null ? null : { root, commonDir };
 }
 function usesSqueal(location2) {
-  return existsSync6(storePaths(location2.commonDir).database) || existsSync6(join11(location2.root, "squeal.config.json"));
+  return existsSync7(storePaths(location2.commonDir).database) || existsSync7(join12(location2.root, "squeal.config.json"));
 }
 function openContext(input, location2, options = {}) {
   const store = openStore(location2.commonDir, {
@@ -5869,8 +6085,8 @@ function openContext(input, location2, options = {}) {
 }
 
 // src/harness/shared/coverage.ts
-import { existsSync as existsSync7 } from "node:fs";
-import { join as join12, posix as posix4 } from "node:path";
+import { existsSync as existsSync8 } from "node:fs";
+import { join as join13, posix as posix4 } from "node:path";
 var VITEST_ONLY = {
   vitest: true,
   vitestConfig: null,
@@ -5885,7 +6101,7 @@ function coverageOf(context) {
   const others = [...policy.nodeTest, ...policy.pytest];
   const otherNames = new Set(others.map((project) => project.name));
   const vitest = others.length === 0 || vitestDetected(context.root);
-  const listed2 = vitest ? keys : keys.filter((row) => otherNames.has(row.testFile.project));
+  const listed3 = vitest ? keys : keys.filter((row) => otherNames.has(row.testFile.project));
   const view = slowPolicyView(policy);
   return {
     vitest,
@@ -5895,7 +6111,7 @@ function coverageOf(context) {
     nodeTest: policy.nodeTest.map(fromRoot),
     pytest: policy.pytest.map(fromRoot),
     slow: view === null ? null : {
-      files: keys.length === 0 ? null : listed2.filter((row) => view.isSlow(row.testFile)).length,
+      files: keys.length === 0 ? null : listed3.filter((row) => view.isSlow(row.testFile)).length,
       requireSlowSuite: policy.stop.requireSlowSuite,
       pausesOnly: policy.slow.trigger === "idle"
     }
@@ -5914,7 +6130,7 @@ function fromRoot({
 function vitestConfig(root) {
   for (const name of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync7(join12(root, `${name}${extension}`))) return `${name}${extension}`;
+      if (existsSync8(join13(root, `${name}${extension}`))) return `${name}${extension}`;
     }
   }
   return null;
@@ -5971,7 +6187,7 @@ function failure(code, message) {
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync8, mkdirSync as mkdirSync5 } from "node:fs";
+import { existsSync as existsSync9, mkdirSync as mkdirSync5 } from "node:fs";
 async function probeDaemon(root, timeoutMs, options = {}) {
   try {
     return (await locateDaemon(root, timeoutMs, options)).probe;
@@ -6028,7 +6244,7 @@ async function ensureDaemon(root, options = {}) {
   }
   const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync8(cli)) return "unavailable";
+  if (cli === null || !existsSync9(cli)) return "unavailable";
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return "unavailable";
@@ -6055,18 +6271,18 @@ function daemonCliEntry(cli, env = process.env) {
 
 // src/core/daemon/version.ts
 import { readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname4, join as join13 } from "node:path";
+import { dirname as dirname4, join as join14 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.240";
+  if (true) return "0.1.242";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname4(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join13(dir, "package.json"));
+    const version = readVersion(join14(dir, "package.json"));
     if (version !== null) return version;
     const parent = dirname4(dir);
     if (parent === dir) return null;
@@ -6241,7 +6457,7 @@ var REVISION = "A revision is Squeal's number for each saved change to this work
 function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
   const names = runnerNames(coverage);
   const sentences = (covers, naming, wait) => [
-    `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
+    `${PRIMER_OPENING}${listed2(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed2(names, "or")} to learn whether your edits broke something.`,
     waitSentence(command, naming, wait),
     ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow),
     "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
@@ -6292,7 +6508,7 @@ function runnerNames(coverage) {
     ...pytest ? ["pytest"] : []
   ];
 }
-function listed(words, conjunction) {
+function listed2(words, conjunction) {
   if (words.length <= 2) return words.join(` ${conjunction} `);
   return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
 }
@@ -6316,7 +6532,7 @@ function coversSentence(coverage, node) {
   }
   const files2 = coverage.slow?.files;
   const slow = coverage.slow === null ? "" : files2 === null || files2 === void 0 ? ", with slow test files not counted yet" : `, with ${files2} slow test ${files2 === 1 ? "file" : "files"} at the daemon's last listing`;
-  return `Squeal covers ${listed(suites, "and")}${slow}.`;
+  return `Squeal covers ${listed2(suites, "and")}${slow}.`;
 }
 function excluded(coverage) {
   const entries = coverage.vitestExcluded ?? [];
@@ -6332,9 +6548,9 @@ function notCovered(coverage) {
 function named(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;
   if (shown === 0) return `${entries.length} ${nouns}`;
-  const listed2 = entries.slice(0, shown);
+  const listed3 = entries.slice(0, shown);
   const rest = entries.length - shown;
-  const tail = rest > 0 ? [...listed2, `${rest} more`] : listed2;
+  const tail = rest > 0 ? [...listed3, `${rest} more`] : listed3;
   const last = tail.pop();
   return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
@@ -6448,15 +6664,15 @@ import { fileURLToPath as fileURLToPath2 } from "node:url";
 // src/harness/shared/session-root.ts
 import { createHash as createHash5 } from "node:crypto";
 import {
-  existsSync as existsSync9,
+  existsSync as existsSync10,
   lstatSync as lstatSync3,
-  readdirSync as readdirSync2,
+  readdirSync as readdirSync3,
   readFileSync as readFileSync7,
   renameSync as renameSync2,
-  rmSync as rmSync4,
-  writeFileSync
+  rmSync as rmSync5,
+  writeFileSync as writeFileSync2
 } from "node:fs";
-import { join as join14 } from "node:path";
+import { join as join15 } from "node:path";
 var AGENT_SEPARATOR = "\0";
 function rootKey(input) {
   return input.agent_id === void 0 ? input.session_id : `${input.session_id}${AGENT_SEPARATOR}${input.agent_id}`;
@@ -6486,8 +6702,8 @@ function forgetRoot(input, roots) {
   roots?.delete(rootKey(input));
 }
 function sessionRootFiles(env) {
-  const dir = join14(runtimeDir(env), "squeal-sessions");
-  const path = (key) => join14(dir, keyFile(key));
+  const dir = join15(runtimeDir(env), "squeal-sessions");
+  const path = (key) => join15(dir, keyFile(key));
   return {
     get: (key) => {
       try {
@@ -6501,18 +6717,18 @@ function sessionRootFiles(env) {
         preparePrivateDir(dir, currentUid(), "session root directory");
         const file = path(key);
         const temp = `${file}.${process.pid}.tmp`;
-        writeFileSync(temp, JSON.stringify({ root: location2.root, commonDir: location2.commonDir }));
+        writeFileSync2(temp, JSON.stringify({ root: location2.root, commonDir: location2.commonDir }));
         renameSync2(temp, file);
       } catch {
       }
     },
     delete: (key) => {
       try {
-        rmSync4(path(key), { force: true });
+        rmSync5(path(key), { force: true });
         if (key.includes(AGENT_SEPARATOR)) return;
         const agents = `${keyFile(key)}-`;
-        for (const name of readdirSync2(dir)) {
-          if (name.startsWith(agents)) rmSync4(join14(dir, name), { force: true });
+        for (const name of readdirSync3(dir)) {
+          if (name.startsWith(agents)) rmSync5(join15(dir, name), { force: true });
         }
       } catch {
       }
@@ -6534,7 +6750,7 @@ function readKept(file) {
   if (!isRecord(kept) || typeof kept.root !== "string" || typeof kept.commonDir !== "string") {
     return null;
   }
-  return existsSync9(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
+  return existsSync10(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
 }
 
 // src/harness/shared/test-command.ts
