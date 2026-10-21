@@ -84,6 +84,7 @@ export interface Discovery {
 export interface DaemonWork {
   /** Its row's daemon record; `null` when the row names none (`stopping` with the lock held, D2). */
   readonly record: DaemonRecord | null;
+  readonly recordedStartedAt: EpochMs | null;
   /** Its `daemonToken` meta row (`WORKTREE_META_ROWS`): what its test processes' marks start with (D5). */
   readonly token: string | null;
   readonly pending: number | null;
@@ -213,7 +214,7 @@ export type ReadWork = (
   daemons: readonly FoundDaemon[],
 ) => { readonly work: ReadonlyMap<number, DaemonWork>; readonly unknown: readonly PsUnknown[] };
 /** D2's phase table (014-06). */
-export type PhaseOf = (daemon: FoundDaemon, work: DaemonWork | null) => DaemonPhase;
+export type PhaseOf = (daemon: FoundDaemon, work: DaemonWork | null, now: EpochMs) => DaemonPhase;
 /** `measure.ts` (014-07). */
 export type TakeSample = (source: PsSource, pids?: readonly number[]) => Sample;
 export type Measure = (
