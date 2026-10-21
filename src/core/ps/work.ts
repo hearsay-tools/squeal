@@ -128,10 +128,12 @@ function readOne(
   const tiers = all(db, OPEN_RUNS, id, since).map((r): PsTier => {
     const checkpointId = strOrNull(r, "checkpoint_id");
     const paths = testFiles(r).map((f) => (isRecord(f) ? f.path : undefined));
+    // Its checkpoint's one lane, else the slow tier's own record of its run; `null` without either.
     const slowRun = paths.some((p) => typeof p === "string" && slow?.running.includes(p));
+    const lane = slow === null ? null : slowRun ? "slow" : "fast";
     return {
       runId: str(r, "id"),
-      lane: (checkpointId === null ? null : laneOf(checkpointId)) ?? (slowRun ? "slow" : null),
+      lane: (checkpointId === null ? null : laneOf(checkpointId)) ?? lane,
       files: paths.length,
       startedAt: num(r, "started_at"),
       checkpointId,
@@ -223,7 +225,11 @@ function recordOf(row: Row, token: string | null): DaemonRecord | null {
   };
 }
 
-/** `slow-tier:<id>` (004 D8): whether slow work waits, and the files a slow run holds. */
+/**
+ * The `slowTier` row (004 D8): whether slow work waits, and the files of the
+ * slow run. The slow tier publishes those in the transaction that starts its
+ * run (`scheduler/slow-tier.ts`), the only start besides the fast lane's.
+ */
 const slowOf: Decode<{ readonly waits: boolean; readonly running: readonly unknown[] }> = (v) => {
   if (v === null) return { waits: false, running: [] };
   if (!isRecord(v)) return undefined;
@@ -232,7 +238,7 @@ const slowOf: Decode<{ readonly waits: boolean; readonly running: readonly unkno
   return { waits: true, running: Array.isArray(v.paths) ? v.paths : [v.path] };
 };
 
-/** `checkpoint-lanes.<id>`: the lane of each one-lane checkpoint (task 004-61). */
+/** The `checkpointLanes` row: the lane of each one-lane checkpoint (task 004-61). */
 const lanesOf: Decode<Record<string, string>> = (v) => {
   if (!isRecord(v)) return undefined;
   const lanes: Record<string, string> = {};
