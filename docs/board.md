@@ -853,7 +853,7 @@ Spec: `specifications/011-core/spec.md`. Sections referenced as C1 to C14; a 001
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 011-52 research: one daemon per repository instead of one per worktree | planned | `research/daemon-scope-brief.md`: where a daemon's memory goes (per worktree or shared), whether Vitest still needs the root as cwd, designs (lifecycle fixes, a smaller heap, a repository daemon with runner processes per worktree) with their savings on the 2026-10-21 population, what each changes for handover, failure, destroy and scheduling, worktree usage from the stores since 2026-10-13, prior art. Revisits `001-core-loop/research/host-capacity.md` 4C (no broker, 2026-10-13) with the 014 memory figures. Authorizes no design. | `research/daemon-scope.md` committed with every question tagged or "not determined, because", and a recommendation with its numbers. |
+| 011-52 research: one daemon per repository instead of one per worktree | running (researcher 6c991e7a, opus high, dispatched 2026-10-21 at load 27 on 24 CPUs) | `research/daemon-scope-brief.md`: where a daemon's memory goes (per worktree or shared), whether Vitest still needs the root as cwd, designs (lifecycle fixes, a smaller heap, a repository daemon with runner processes per worktree) with their savings on the 2026-10-21 population, what each changes for handover, failure, destroy and scheduling, worktree usage from the stores since 2026-10-13, prior art. Revisits `001-core-loop/research/host-capacity.md` 4C (no broker, 2026-10-13) with the 014 memory figures. Authorizes no design. | `research/daemon-scope.md` committed with every question tagged or "not determined, because", and a recommendation with its numbers. |
 
 ## Feature 012: Claude Code adapter
 
