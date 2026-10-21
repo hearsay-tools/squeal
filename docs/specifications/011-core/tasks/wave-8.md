@@ -112,3 +112,17 @@ Answer, each with an evidence tag and one recommendation:
 4. Whether the rule moves a key or a stored row's meaning (011-37's rules), and the code row: seams, owners, done-when as tests.
 
 Include spec text as drafts and the rejected options. Owns `tasks/011-62/` only, probes under `tasks/011-62/probes/` in a throwaway repo under `/tmp` with a scratch `HOME` and `XDG_*`, only at a one-minute load below 24; no full suite, no build. Not yours: spec text, `status.md`, the board, product code. Done when `design.md` is committed. Stop: the human's dated acceptance.
+
+## W8: 011-65, a signal close, then a start under `lookup-only`, hands the queued work over (tests only)
+
+Use /worker. Shape: slice, tests only. Read board row 011-65, `research/issue-50.md` (finding 1, Recommendation), spec 011 C4 and C9 as amended for 011-30 to 011-33, `tasks/011-30/design.md` section 3.
+
+Outcome: a test proves that work queued or running when a daemon closes by a signal, or by `sessions-gone`, is queued again by a start at the same revision under `lookup-only`.
+
+Seam: `handover` in `src/core/scheduler/handover.ts` (it reads `pending !== null`), `#close` in `scheduler.ts`, `ownSignals` in `src/cli/daemon.ts`. First edit, a lead: copy the shape of `test/daemon/restart-handover.test.ts` (the `stop` path) into a new `test/daemon/restart-handover-signal.test.ts`, closing by SIGTERM in one case and by `sessions-gone` in another; `probes/issue-50/probe.sh graceful` is the scenario.
+
+If a test is red on main, keep it as `it.fails` with the observed behaviour in a comment, stop, and say so: a fix row follows, not a fix here.
+
+Owns: the new test file and any helper it needs under `test/daemon/`. Not yours: `src/`, the existing tests, spec text, the board, bundles.
+
+Done when: the new tests pass on main, or are marked and reported as above; `npm run lint`, `npm run typecheck` and `squeal status --wait 60000 test/daemon/restart-handover-signal.test.ts` pass, their output in your summary.
