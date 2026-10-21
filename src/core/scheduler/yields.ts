@@ -1,4 +1,5 @@
 import {
+  type CancelCause,
   type CheckKey,
   type EpochMs,
   type Revision,
@@ -21,8 +22,11 @@ import { laneOf, type Tier, type TierFile } from "./tiers.js";
  */
 export const YIELD_REMAINDER_MS = 30_000;
 
-/** What C4 step 5 does with a tier in flight now: cancel it, cut it as a yield, or what it says. */
-type Decision = "cancel" | "yield" | TierYield | null;
+/**
+ * What C4 step 5 does with a tier in flight now: cancel it for one of the
+ * causes it names (row 011-56), a yield among them, or what it says.
+ */
+type Decision = Extract<CancelCause, "supersession" | "backlog" | "yield"> | TierYield | null;
 
 /**
  * Spec 011 C4 step 5 as amended 2026-10-21 (row 011-51): which fast tiers in
@@ -68,11 +72,11 @@ export class TierYields {
     let changed = false;
     for (const tier of tiers) {
       const decision = this.#decide(context, ledger, tier, revision);
-      if (decision === "cancel" || decision === "yield") {
+      if (typeof decision === "string") {
         if (decision === "yield")
           for (const { file, key } of unfinished(tier))
             this.#cut.set(file.id, { key, applied: file.resultsApplied });
-        tier.cancel?.abort();
+        tier.cancel?.abort(decision);
       }
       const standing = typeof decision === "string" ? { kind: "yields" as const } : decision;
       changed = this.#set(tier.runId, standing) || changed;
@@ -94,9 +98,9 @@ export class TierYields {
     const { cancel } = tier;
     if (tier.kind === "slow") return null;
     if (cancel?.signal.aborted === true) return { kind: "yields" };
-    if (cancel !== null && superseded(tier)) return "cancel";
+    if (cancel !== null && superseded(tier)) return "supersession";
     if (tier.kind === "backlog" && cancel !== null) {
-      if (cancelsBacklog(context, ledger, revision, tier)) return "cancel";
+      if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
     }
     if (!waitedFor(context, ledger, tier, revision)) return null;
     if (cancel === null || tier.slot === true) return { kind: "runner" };
