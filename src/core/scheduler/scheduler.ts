@@ -1,3 +1,4 @@
+import { setTimeout as delay } from "node:timers/promises";
 import { createFsHasher, readObjectFormat } from "../hash/index.js";
 import { appendNote } from "../notes.js";
 import { hostLoad } from "../retry/index.js";
@@ -43,6 +44,7 @@ import { Mutex } from "./mutex.js";
 import { prepareObserved } from "./observed.js";
 import type { SchedulerOptions } from "./options.js";
 import { priorityOf } from "./queue.js";
+import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
 import { RERUN_CAP } from "./rerun.js";
 import { takeRetries } from "./retries.js";
 import { retryRunner } from "./revision.js";
@@ -120,6 +122,10 @@ class TierScheduler implements Scheduler {
   readonly #inFlight = new Map<string, InFlight>();
   /** Which tiers in flight a revision, a runner part or a promotion cancels (C4 step 5, row 011-51). */
   readonly #yields = new TierYields();
+  /** The lanes that wait for quiet after a backlog tier's cancel (C4 step 5, row 011-82). */
+  readonly #quiet = new BacklogQuiet((ends, at) =>
+    publishQuiet(this.options.store, this.options.worktreeId, ends, at),
+  );
   /** A check of the tiers in flight a file's end queued under the lock, not run yet (row 011-54). */
   #endCheck = false;
   /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
@@ -230,6 +236,7 @@ class TierScheduler implements Scheduler {
         ...(options.incarnation === undefined ? {} : { incarnation: options.incarnation }),
         ...(options.predecessor === undefined ? {} : { predecessor: options.predecessor }),
         ...(this.#capacity === null ? {} : { capacity: this.#capacity }),
+        quiet: this.#quiet,
       };
       const ledger = new Ledger(context);
       ledger.backlogPaused = this.#backlogPaused;
@@ -408,6 +415,8 @@ class TierScheduler implements Scheduler {
       const { policy } = this.#started().context;
       const only = lane === undefined ? undefined : { lane, isSlow: slowView(policy).isSlow };
       const record = queueFullSuite(ledger, force, warmUp, only);
+      // Row 011-82: the caller asked for the backlog; it starts at the next tier boundary.
+      this.#quiet.end(this.#started().context.now());
       if (warmUp) this.#warmUp.start(this.#started().context, ledger, record);
       return record;
     };
@@ -686,6 +695,7 @@ class TierScheduler implements Scheduler {
             await this.#claimWake();
             continue;
           }
+          if (await this.#quietWake()) continue;
           if (this.#inFlight.size === 0 && !this.#woken) break;
           await this.#nextEvent();
         }
@@ -901,6 +911,24 @@ class TierScheduler implements Scheduler {
     } finally {
       stop.abort();
     }
+  }
+
+  /**
+   * A lane with a fast file queued waits for quiet (C4 step 5 as amended
+   * 2026-10-21, row 011-82): the pump looks again at the wait's end, at most
+   * `QUIET_RECHECK_MS` on, or on `#notify`. False when no such lane waits.
+   */
+  async #quietWake(): Promise<boolean> {
+    const { context, ledger } = this.#started();
+    const ms = quietSleepMs(context, ledger);
+    if (ms === null) return false;
+    const stop = new AbortController();
+    try {
+      await Promise.race([this.#nextEvent(), delay(ms, undefined, { signal: stop.signal })]);
+    } finally {
+      stop.abort();
+    }
+    return true;
   }
 
   /** Settles when `#notify` is called; at once when it was since the pump's last pass began. */
