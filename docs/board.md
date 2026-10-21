@@ -882,7 +882,7 @@ Spec: `specifications/014-ps/spec.md`, approved by the human 2026-10-21 (D9 as i
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 014-04 the platform source, the Linux reader and the model types | planned | D11: `src/core/ps/source.ts` (the interface every stage reads through), `proc.ts` (Linux, over an injectable root), `shape.ts` (the D8 JSON `v: 1` and the internal model the stages pass); fixture `/proc` trees from the 014-02 probe logs. No CLI entry. | Reader tests over fixtures, a process vanishing between reads and an unreadable `environ` included; lint, typecheck, Squeal verdict. |
+| 014-04 the platform source, the Linux reader and the model types | running (worker 9f6ca37e, opus xhigh) | D11: `src/core/ps/source.ts` (the interface every stage reads through), `proc.ts` (Linux, over an injectable root), `shape.ts` (the D8 JSON `v: 1` and the internal model the stages pass); fixture `/proc` trees from the 014-02 probe logs. No CLI entry. | Reader tests over fixtures, a process vanishing between reads and an unreadable `environ` included; lint, typecheck, Squeal verdict. |
 | 014-05 review of wave 0 | planned | `/reviewer` on the candidate: the interface against D2 to D10's needs, read-only and no environment value leaving `markOf`. | `reviews/wave-0.md` committed. |
 
 ### Wave 1: discovery, measurement, the last-use record (parallel, on disjoint seams; after 014-05)
