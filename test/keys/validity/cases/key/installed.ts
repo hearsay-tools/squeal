@@ -17,6 +17,23 @@ const lockfile = {
   },
 };
 
+/** An importer with a linked workspace package and a registry dependency (R3). */
+const pnpm = [
+  "lockfileVersion: '9.0'",
+  "",
+  "importers:",
+  "",
+  "  .:",
+  "    dependencies:",
+  "      w:",
+  "        specifier: ^2.0.0",
+  "        version: link:packages/w",
+  "      a:",
+  "        specifier: ^1.0.0",
+  "        version: 1.0.0",
+  "",
+].join("\n");
+
 /** The folders first, the hidden lockfile last, so npm would trust it. */
 const npm: Readonly<Record<string, string>> = {
   "node_modules/a/package.json": '{"name":"a","version":"1.0.0"}',
@@ -44,7 +61,13 @@ export const INSTALLED_KEYS: readonly Case[] = [
   {
     kind: "key",
     name: "an installed pnpm lockfile",
-    why: "011-85: another lockfile format keys its file",
-    input: over({ "node_modules/.pnpm/lock.yaml": "lockfileVersion: '9.0'\n" }),
+    why: "011-85 (R3): pnpm's lock.yaml without a linked dependency's range",
+    input: over({ "node_modules/.pnpm/lock.yaml": pnpm }),
+  },
+  {
+    kind: "key",
+    name: "an installed yarn state",
+    why: "011-85: every other lockfile format keys its file whole",
+    input: over({ "node_modules/.yarn-state.yml": "__metadata:\n  version: 1\n" }),
   },
 ];
