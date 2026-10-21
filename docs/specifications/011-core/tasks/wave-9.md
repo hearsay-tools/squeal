@@ -37,3 +37,15 @@ Tests first, red before: R2's tests 1 to 5 in the design. Test 2's pytest cases 
 Owns: `src/core/status/test-frame.ts`, `src/core/delivery/attribution.ts`, `src/core/delivery/format.ts` (the `at` line), `src/core/status/format-status.ts` (known failures), `src/core/status/why.ts` and `format-why.ts` (`Location:`), the additive `testFileFrame?` on `TransitionEntry`, `KnownFailure` and `WhyReport`, their tests. Not yours: `src/core/status/failures.ts` and `src/cli/failures.ts` (011-75, held on `w9/011-75`), every adapter, spec text, the board, bundles, version.
 
 Done when: tests 1 to 5 are red before and green after; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+## R1: review of cand/0.1.243
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.243` SHA named in the spawn; the range is `origin/main..<sha>`: W2 (011-71: the fix, `superseded-claim.test.ts`, its `version-sensitive.txt` line), W1 (011-75) and W3 (011-76) cherry-picked onto 0.1.242 without conflict, and the release commit (0.1.243, bundles; no key-format or `RECORDER_VERSION` change).
+
+Read W1 to W3 above, `research/stuck-tier.md`, `tasks/011-64/design.md` sections 1, 2 and 5 (R1, R2), spec 011 C5 and C6 as amended for 011-64, and `tasks/011-75/notes.md`, `tasks/011-76/notes.md`. Check that:
+- 011-71: a superseded file's claim is cleared only when it is still at the tier's own key, in `recordTier` and in `#requeue`, so review wave-4 B1 holds; the three tests fail with each hunk reverted;
+- 011-75: the selection runs in SQL through `results_by_failure` (`EXPLAIN QUERY PLAN`); a path typed in a subdirectory selects the same root-relative path in other worktrees; the exit 2 cases; `--check` matches the printed name through the one formatter;
+- 011-76: `testFileFrame` is pure and reads V8, node:test and pytest stacks; the frame comes from the stored row at the failure's key and only when that row fails at the same location; `location`, fingerprints and keys do not move; the 10,000-character cap holds; the one `snapshot.ts` line is the agreed one;
+- the key format and `RECORDER_VERSION` are rightly unchanged, the version is raised in all eight places, and the bundles match the tree.
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. `test/e2e/shipped-plugin.test.ts` fails on this host from a stale npm cache (row 014-17); name it, not a blocker. A file that fails loaded and passes alone is named. Write `reviews/0.1.243.md` with a PASS or FAIL verdict and commit it.
