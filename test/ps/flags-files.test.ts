@@ -158,6 +158,37 @@ describe("leftover-temp", () => {
     expect(findings.leftovers).toEqual([free]);
   });
 
+  it.each([
+    ["a space", "a b", "a"],
+    ["a single quote", "it's", "it"],
+    ["a double quote", 'say "hi"', "say"],
+    ["an equals sign", "a=b", "a"],
+    ["a colon", "a:b", "a"],
+  ])(
+    "a name with %s is used whole as a working directory, an argument or an <option>=<path>; the name it starts with is not (reviews/wave-2.md B2)",
+    (_, name, neighbor) => {
+      const dirs = (end: string) => [
+        join(host.places.tempDir, `squeal-e2e-${end}`),
+        keyDir(`00000000000000aa ${end}`),
+      ];
+      const uses = [
+        (dir: string) => ({ cwd: dir }),
+        (dir: string) => ({ cmdline: ["cat", join(dir, "file")] }),
+        (dir: string) => ({ cmdline: ["node", `--dir=${dir}`] }),
+      ];
+      const processes = uses.flatMap((use, u) =>
+        dirs(`${u}-${name}`).map((dir, d) => ({
+          pid: 700 + 2 * u + d,
+          ...use(dirAged(dir, 2 * HOUR)),
+        })),
+      );
+      const unused = uses.flatMap((_, u) =>
+        dirs(`${u}-${neighbor}`).map((dir) => dirAged(dir, 2 * HOUR)),
+      );
+      expect(flag(modelOf({ host, processes })).leftovers).toEqual(unused.sort());
+    },
+  );
+
   it("is not evaluated without working directories, nor with a daemon of unknown key", () => {
     dirAged(keyDir("00000000000000aa"), 2 * HOUR);
     const blind = flag(modelOf({ host, cwds: false }));
