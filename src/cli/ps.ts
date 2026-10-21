@@ -99,6 +99,9 @@ export async function psCommand(
   const { shape, leftovers } = snapshot;
   if (parsed.leftovers) {
     io.stdout(leftovers.map((path) => `${path}\n`).join(""));
+    // A leftover rule that withheld or could not evaluate a directory says so: an empty stdout is never silent.
+    for (const u of shape.unknown.filter((u) => u.what === "flag leftover-temp"))
+      io.stderr(`squeal ps --leftovers: ${u.why}\n`);
     return 0;
   }
   io.stdout(parsed.json ? `${JSON.stringify(shape)}\n` : render(shape, { full: parsed.full }));
