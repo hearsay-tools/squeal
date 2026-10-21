@@ -20,11 +20,12 @@ import {
 import { KEY_FORMAT_VERSION } from "./key-format.js";
 import type { PackageScans } from "./package-scans.js";
 import { InstalledGraph } from "./packages.js";
+import { PNPM_LOCKFILE, withoutLinkedSpecifiers } from "./pnpm-lockfile.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
 const ENVIRONMENT_ENCODING = "squeal-environment/1";
 
-/** The whole fingerprint's encoding of a trusted hidden lockfile, without own versions (task 011-85). */
+/** The whole fingerprint's encoding of a trusted hidden lockfile and of pnpm's (task 011-85). */
 const INSTALLED_ENCODING = "squeal-installed/2";
 
 /**
@@ -126,7 +127,7 @@ const LOCKFILES: readonly { readonly path: string; readonly patches: string | nu
   { path: ".pnp.cjs", patches: ".yarn/patches" },
   { path: ".pnp.js", patches: ".yarn/patches" },
   { path: "node_modules/.yarn-integrity", patches: "patches" },
-  { path: "node_modules/.pnpm/lock.yaml", patches: null },
+  { path: PNPM_LOCKFILE, patches: null },
   { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
   { path: "bun.lock", patches: "patches" },
   { path: "bun.lockb", patches: "patches" },
@@ -204,7 +205,9 @@ export interface InstalledDependencies {
  * folders are fingerprinted instead, so an install that bypassed the file
  * still re-keys, and the note says so. `note` is `null` otherwise. Task
  * 011-85: a trusted hidden lockfile enters without the root's and the
- * workspaces' own versions (`withoutOwnVersions`), so a release keeps it.
+ * workspaces' own versions (`withoutOwnVersions`), and pnpm's without a
+ * linked dependency's range (`withoutLinkedSpecifiers`), so a release keeps
+ * them.
  */
 export async function installedDependencies(
   projectRoot: AbsolutePath,
@@ -220,7 +223,9 @@ export async function installedDependencies(
   const hash = createHash("sha256").update(`${format.path}\0`);
   if (stale !== null) hash.update(`stale\0${packageFoldersFingerprint(dir, hidden)}`);
   else if (hidden !== null) hash.update(`${INSTALLED_ENCODING}\0${withoutOwnVersions(hidden)}`);
-  else hash.update(content);
+  else if (format.path === PNPM_LOCKFILE) {
+    hash.update(`${INSTALLED_ENCODING}\0${withoutLinkedSpecifiers(content.toString("utf8"))}`);
+  } else hash.update(content);
   const patches = createHash("sha256");
   if (format.patches !== null) {
     const patchesDir = join(dir, format.patches);
