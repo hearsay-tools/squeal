@@ -261,6 +261,32 @@ describe("runner and files", () => {
     });
   });
 
+  test("a project's own --basetemp in its args is not Squeal's: the files follow the last one", () => {
+    // `run.ts` puts Squeal's basetemp after the project's args and overrides (task 007-37).
+    const pytest: FakeProcess = {
+      pid: 702,
+      ppid: DAEMON,
+      comm: "python3",
+      cmdline: [
+        "/usr/bin/python3",
+        "-m",
+        "pytest",
+        "-p",
+        "squeal_pytest",
+        "--basetemp=/home/user/project/.tmp",
+        "-o",
+        "cache_dir=/home/user/project/.git/squeal/pytest",
+        "--basetemp=/tmp/squeal-pytest/x/0",
+        "tests/test_a.py",
+      ],
+      mark: `${TOKEN}:pytest`,
+    };
+    expect(run([daemon, pytest], [owner(DAEMON, TOKEN)]).processes[0]).toMatchObject({
+      runner: "pytest",
+      files: ["tests/test_a.py"],
+    });
+  });
+
   test("a process that left before its command line was read has no runner and no files", () => {
     const gone = { ...forkWorker, cmdline: null };
     expect(run([daemon, gone], [owner(DAEMON, TOKEN)]).processes[0]).toMatchObject({
