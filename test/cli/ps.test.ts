@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
@@ -6,6 +6,7 @@ import { type PsCommandOptions, psCommand } from "../../src/cli/ps.js";
 import { flag as realFlag } from "../../src/core/ps/flags.js";
 import type { Flag } from "../../src/core/ps/model.js";
 import { PS_SHAPE_VERSION, type PsSnapshot } from "../../src/core/ps/shape.js";
+import { outsideGit } from "../harness/bundle-helpers.js";
 import { writeHostRules } from "../ps/fixture-host-rules.js";
 import {
   fakeWindow,
@@ -130,8 +131,8 @@ describe("squeal ps", () => {
   });
 
   test("--repo outside a repository is a usage error, exit 2", async () => {
-    const outside = join(host.base, "nowhere");
-    mkdirSync(outside);
+    // Outside any repository, whatever TMPDIR is (`reviews/wave-2.md` N3).
+    const outside = outsideGit();
     const { code, stdout, stderr } = await ps(["--repo"], { cwd: outside });
     expect(code).toBe(2);
     expect(stdout).toBe("");
@@ -139,9 +140,7 @@ describe("squeal ps", () => {
   });
 
   test("runs outside a repository too, without --repo: every daemon, none of them current", async () => {
-    const outside = join(host.base, "nowhere");
-    mkdirSync(outside);
-    const { code, stdout } = await ps(["--json"], { cwd: outside });
+    const { code, stdout } = await ps(["--json"], { cwd: outsideGit() });
     expect(code).toBe(0);
     const shape = JSON.parse(stdout) as PsSnapshot;
     expect(shape.repositories.map((r) => r.current)).toEqual([false, false]);
