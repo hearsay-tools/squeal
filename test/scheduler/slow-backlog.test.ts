@@ -119,3 +119,63 @@ describe(
     });
   },
 );
+
+/** The fast test files whose rows the store leaves `queued`. */
+const queuedRows = (h: Harness) =>
+  h.store.testFileKeys
+    .list(h.worktreeId)
+    .filter((row) => row.pending === "queued" && !SLOW_FILES.includes(row.testFile.path))
+    .map((row) => row.testFile.path);
+
+describe("a departure drain runs its session's work (011 C9, 004 D2, row 011-93)", SLOW, () => {
+  it("runs the slow files before the paused backlog, whose files stay queued", async () => {
+    const h = await open();
+    const backlog = holdFirstFast(h);
+    await h.scheduler.start();
+    await waitFor(() => backlog.held, 60_000);
+    h.scheduler.pauseBacklog(true);
+    backlog.release();
+    await waitFor(() => !h.scheduler.slowPending(), 60_000);
+    await h.scheduler.idle();
+    // The held tier stored; no other fast tier ran, and its two files stay queued for the next daemon.
+    expect(h.runner.runs.filter((run) => !isSlow(run.files))).toHaveLength(1);
+    expect(
+      slowRuns(h)
+        .flatMap((run) => run.files.map((f) => f.path))
+        .sort(),
+    ).toEqual(SLOW_FILES);
+    expect(h.scheduler.queued()).toBe(2);
+    expect(queuedRows(h)).toHaveLength(2);
+    expect(h.scheduler.owedWork()).toBeNull();
+  });
+
+  it("runs an open run --all's fast files in the drain", async () => {
+    const h = await open();
+    const backlog = holdFirstFast(h);
+    await h.scheduler.start();
+    await waitFor(() => backlog.held, 60_000);
+    await h.scheduler.requestFullSuite();
+    h.scheduler.pauseBacklog(true);
+    backlog.release();
+    await waitFor(() => h.scheduler.owedWork() === null && !h.scheduler.slowPending(), 60_000);
+    await h.scheduler.idle();
+    expect(h.scheduler.queued()).toBe(0);
+    expect(queuedRows(h)).toEqual([]);
+  });
+
+  it("ends the pause when a session registers: the backlog runs again", async () => {
+    const h = await open();
+    const backlog = holdFirstFast(h);
+    await h.scheduler.start();
+    await waitFor(() => backlog.held, 60_000);
+    h.scheduler.pauseBacklog(true);
+    backlog.release();
+    await waitFor(() => !h.scheduler.slowPending(), 60_000);
+    await h.scheduler.idle();
+    expect(h.scheduler.queued()).toBe(2);
+    h.scheduler.pauseBacklog(false);
+    await waitFor(() => h.scheduler.queued() === 0, 60_000);
+    await h.scheduler.idle();
+    expect(h.runner.runs.filter((run) => !isSlow(run.files))).toHaveLength(3);
+  });
+});
