@@ -1,0 +1,14 @@
+{"tree":"candidate"}
+{"root":"repo","project":"","files":["vitest.config.ts"]}
+{"root":".probe-five","project":"api-client","files":["vitest.config.ts"]}
+{"root":".probe-five","project":"contract","files":["vitest.config.ts"]}
+{"root":".probe-five","project":"e2e","files":["e2e/vitest.config.ts","vitest.config.ts"]}
+{"root":".probe-five","project":"server","files":["vitest.config.ts"]}
+{"root":".probe-five","project":"web","files":["vitest.config.ts"]}
+{"tree":"base"}
+{"root":"repo","project":"","files":["vitest.config.ts"]}
+{"root":".probe-five","project":"api-client","files":["e2e/vitest.config.ts","vitest.config.ts"]}
+{"root":".probe-five","project":"contract","files":["e2e/vitest.config.ts","vitest.config.ts"]}
+{"root":".probe-five","project":"e2e","files":["e2e/vitest.config.ts","vitest.config.ts"]}
+{"root":".probe-five","project":"server","files":["e2e/vitest.config.ts","vitest.config.ts"]}
+{"root":".probe-five","project":"web","files":["e2e/vitest.config.ts","vitest.config.ts"]}
