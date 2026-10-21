@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createDelivery,
   formatDelta,
@@ -31,6 +34,18 @@ import {
   states,
   status,
 } from "./slow-tier-seed.js";
+
+// Row 011-58: a status read while the daemon waits for the slow slot reads the slot's
+// directory; it is a temporary one here, never the host's.
+let runtime: string;
+beforeEach(() => {
+  runtime = mkdtempSync(join(tmpdir(), "squeal-slow-tier-status-"));
+  vi.stubEnv("XDG_RUNTIME_DIR", runtime);
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+  rmSync(runtime, { recursive: true, force: true });
+});
 
 /*
  * Spec 004 D8: headers and `squeal status` carry one slow-tier line when the
