@@ -1,4 +1,13 @@
-import { readdirSync, readFileSync } from "node:fs";
+import {
+  type Dirent,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, normalize, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -39,12 +48,25 @@ const NAMES_NODE_TEST = new RegExp(
 const RUNS_NODE_TEST = new RegExp([["NodeTest", "Project\\s*="].join(""), QUOTED_TEST].join("|"));
 const IMPORT_FROM = /from\s+["'](\.[^"']+)["']/g;
 
-/** Repository-relative `.ts` files under `test/`, outside the fixtures Vitest excludes. */
-function sources(): string[] {
-  return readdirSync(join(ROOT, "test"), { recursive: true, encoding: "utf8" })
-    .map((path) => join("test", path).split(sep).join("/"))
-    .filter((path) => path.endsWith(".ts") && !path.startsWith("test/fixtures/"))
-    .sort();
+const listDir = (dir: string): Dirent[] => readdirSync(dir, { withFileTypes: true });
+
+/**
+ * `root`-relative `.ts` files under `test/`, outside the fixtures Vitest
+ * excludes. It never lists `test/fixtures/`: a scheduler test removes its
+ * scratch repository there at any time (014-18).
+ */
+function sources(root: string = ROOT, list: (dir: string) => Dirent[] = listDir): string[] {
+  const found: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of list(join(root, dir))) {
+      const path = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) {
+        if (path !== "test/fixtures") walk(path);
+      } else if (path.endsWith(".ts")) found.push(path);
+    }
+  };
+  walk("test");
+  return found.sort();
 }
 
 /** Vitest's positional filter (5.0.3, `filterFiles`): the root-relative path contains it, any case. */
@@ -115,6 +137,25 @@ describe("the version-sensitive list (spec 010 D4)", () => {
   it("has no entry that selects no test file", () => {
     expect(ENTRIES.length).toBeGreaterThan(0);
     expect(ENTRIES.filter((entry) => !TESTS.some((path) => matches(entry, path)))).toEqual([]);
+  });
+
+  it("never lists test/fixtures, where a directory may go during the walk (014-18)", () => {
+    const root = mkdtempSync(join(tmpdir(), "sq-014-18-"));
+    try {
+      const scratch = join(root, "test/fixtures/scheduler/.tmp/run/main/.git");
+      mkdirSync(scratch, { recursive: true });
+      writeFileSync(join(scratch, "hook.ts"), "");
+      writeFileSync(join(root, "test/a.test.ts"), "");
+      // Another file's cleanup: the scratch repository goes right after its parent is listed.
+      const list = (dir: string): Dirent[] => {
+        const entries = listDir(dir);
+        if (dir === dirname(scratch)) rmSync(scratch, { recursive: true });
+        return entries;
+      };
+      expect(sources(root, list)).toEqual(["test/a.test.ts"]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("names in its header each helper that reads the Node version and each file importing one", () => {
