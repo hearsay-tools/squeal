@@ -20,8 +20,11 @@ const V8_FRAME = /^\s*at (.+?)\s*$/;
 /** A V8 position, `<path>:<line>:<column>`; the path may hold parentheses, as a route group's. */
 const V8_POSITION = /^(.+):(\d+):(\d+)$/;
 
-/** pytest's long and short tracebacks begin an entry `<path>:<line>: `, the path from pytest's cwd. */
-const PYTEST_ENTRY = /^([^\s:]+):(\d+):(?: |$)/;
+/**
+ * pytest's long and short tracebacks begin an entry `<path>:<line>: `, the path from pytest's cwd;
+ * it may hold spaces (review 0.1.243 B1), never a leading one, which a source or `E` line has.
+ */
+const PYTEST_ENTRY = /^(\S[^:]*):(\d+):(?: |$)/;
 
 /** pytest's native traceback: `File "<path>", line <n>`, absolute, so root-relative once stored. */
 const NATIVE_ENTRY = /^\s*File "(.+)", line (\d+)/;
