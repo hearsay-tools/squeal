@@ -111,9 +111,10 @@ export function createStateSink(store: Store, options: StateSinkOptions = {}): S
       store.transaction(() => {
         const { previous, keyOf, commit } = begin(worktreeId);
         const files = new Set(testFiles.map(testFileId));
+        const head = store.revisions.get(worktreeId, revision)?.head ?? null;
         const next = [...previous.values()]
           .filter((s) => files.has(testFileKeyOf(s.check)))
-          .map((s) => unknownState(s, revision, keyOf(s), reason));
+          .map((s) => unknownState(s, revision, keyOf(s), reason, head));
         return commit(revision, next, null);
       }),
 
