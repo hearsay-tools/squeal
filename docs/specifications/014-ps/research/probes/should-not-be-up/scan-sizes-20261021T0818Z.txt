@@ -1,0 +1,61 @@
+at 2026-10-21T08:18:50Z  load 41.60 39.07 39.51  some avg10=38.51 avg60=38.80 avg300=34.90 total=66296878667  processes 591
+installed: {'claude-code': '0.1.235', 'codex': '0.1.235'}
+     PID VERSION  HARNESS        AGE    RSS LOCK CONS  QUIET ROOT
+ 2696595 0.1.235  codex          84m  1125M yes     1   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/5a8b81b6-81b0-4e05-8245-f3ca03353f76
+ 2721938 0.1.235  codex          82m  1043M yes     0   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/7c144ff7-78b9-47e7-b70c-401220d1d97f
+ 2741583 0.1.235  codex          82m   820M yes     1   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/0a8f1055-ee60-4d40-aca1-018c12f60ca9
+ 2776538 0.1.235  codex          81m  1376M yes     1   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/e10ce669-2c97-4c02-80ad-172e2524dcbf
+ 2860458 0.1.235  codex          79m   930M yes     1   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/14f4eac4-c407-4a84-913b-455c7d6cb5ab
+ 2974521 0.1.235  codex          76m  1374M yes     1   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/12bfdcf5-3199-46d0-b0c6-f5f7603cdd5d
+ 3058908 0.1.235  codex          75m   868M yes     1   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/6562319e-c809-41bb-87a0-89861d012cd6
+ 3241641 0.1.234  claude-code    71m   600M yes     1   7.5m /home/agent/projects/cezar/.ai/cezar/worktrees/70b80c8e-6251-4b7d-b28e-23edcb720aa4
+ 3546894 0.1.235  codex          64m   626M yes     0   1.5m /home/agent/projects/cezar/.ai/cezar/worktrees/6a5e5c80-692a-436f-9d14-3acf238bb50e
+ 3699153 0.1.235  claude-code    61m   589M yes     1   0.0m /home/agent/projects/cezar
+ 3704612 0.1.235  codex          61m  2223M yes     1   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/f1ca49e6-a062-4dee-a40d-da404bf87248
+ 4099030 0.1.235  codex          54m  1160M yes     0   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/25bebea2-6e4f-492b-81d8-315ce7efa64b
+ 4102450 0.1.235  codex          54m  1147M yes     0   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/ee6ef330-de85-4fc6-80fb-02d7b875fcff
+  349493 0.1.235  claude-code    43m   154M yes     1   7.6m /home/agent/projects/squeal/.ai/cezar/worktrees/04a258b0-a3bd-47de-ad4b-4268b06949a9
+ 1326051 0.1.235  claude-code    23m   150M yes     1   6.5m /home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7
+ 2091149 0.1.235  claude-code     7m   158M yes     1   0.1m /home/agent/projects/squeal/.ai/cezar/worktrees/120dbf3e-a422-4599-9994-f0b0cbf8ad92
+ 2091490 0.1.235  claude-code     7m   714M yes     1   0.0m /home/agent/projects/squeal/.ai/cezar/worktrees/1da25396-2fe1-4f50-9bba-549bf0262a79
+ 2128703 0.1.235  claude-code     7m  1159M yes     1   0.0m /home/agent/projects/cezar/.ai/cezar/worktrees/dcbd676a-fb9b-48eb-81fe-15f2292e4dc9
+ 2144348 0.1.235  claude-code     6m   143M yes     1   0.1m /home/agent/projects/squeal/.ai/cezar/worktrees/c53634e9-7b09-4a72-b73a-4158701df73a
+ 2145215 0.1.235  claude-code     6m   146M yes     1   0.0m /home/agent/projects/squeal/.ai/cezar/worktrees/1f95370c-537a-4ec3-a636-77ffa41cb265
+ 2145899 0.1.235  claude-code     6m   142M yes     1   0.2m /home/agent/projects/squeal/.ai/cezar/worktrees/e850756d-ff2f-4143-a23c-662dba07aa41
+test processes: 38 (1 without a live daemon)
+permits held: {'pool.0.lock': [2721938], 'pool.1.lock': [2741583], 'pool.2.lock': [4102450]}
+FLAGS
+  [draining (info)] daemon 2721938 0.1.235 /home/agent/projects/cezar/.ai/cezar/worktrees/7c144ff7-78b9-47e7-b70c-401220d1d97f
+      last consumer left 9.6 min ago; slow lane {"kind":"waiting","for":"fast"}; exits by rule when the slow files ran or at 60 min (50 min left)
+      end: squeal stop /home/agent/projects/cezar/.ai/cezar/worktrees/7c144ff7-78b9-47e7-b70c-401220d1d97f
+  [older-release] daemon 3241641 0.1.234 /home/agent/projects/cezar/.ai/cezar/worktrees/70b80c8e-6251-4b7d-b28e-23edcb720aa4
+      claude-code installs 0.1.235; consumer versions ['0.1.234']; an older consumer is registered, so no step-down is asked (C9)
+      end: squeal stop /home/agent/projects/cezar/.ai/cezar/worktrees/70b80c8e-6251-4b7d-b28e-23edcb720aa4
+  [draining (info)] daemon 3546894 0.1.235 /home/agent/projects/cezar/.ai/cezar/worktrees/6a5e5c80-692a-436f-9d14-3acf238bb50e
+      last consumer left 38.3 min ago; slow lane {"kind":"waiting","for":"slot"}; exits by rule when the slow files ran or at 60 min (22 min left)
+      end: squeal stop /home/agent/projects/cezar/.ai/cezar/worktrees/6a5e5c80-692a-436f-9d14-3acf238bb50e
+  [draining (info)] daemon 4099030 0.1.235 /home/agent/projects/cezar/.ai/cezar/worktrees/25bebea2-6e4f-492b-81d8-315ce7efa64b
+      last consumer left 13.3 min ago; slow lane {"kind":"waiting","for":"fast"}; exits by rule when the slow files ran or at 60 min (47 min left)
+      end: squeal stop /home/agent/projects/cezar/.ai/cezar/worktrees/25bebea2-6e4f-492b-81d8-315ce7efa64b
+  [draining (info)] daemon 4102450 0.1.235 /home/agent/projects/cezar/.ai/cezar/worktrees/ee6ef330-de85-4fc6-80fb-02d7b875fcff
+      last consumer left 29.2 min ago; slow lane {"kind":"waiting","for":"fast"}; exits by rule when the slow files ran or at 60 min (31 min left)
+      end: squeal stop /home/agent/projects/cezar/.ai/cezar/worktrees/ee6ef330-de85-4fc6-80fb-02d7b875fcff
+  [orphan-test-process] process 2473972 (/home/agent/.nvm/versions/node/v24.21.0/bin/node --experimen)
+      carries 889d4a42-e840-474a-96e3-3a70100ff4e1:vitest; no live daemon owns it; parent 2472017, age 2 s
+      end: kill 2473972
+  [stale-socket] /run/user/1001/squeal-fd5a859b8ca77ef9.sock
+      no live daemon of worktree fd5a859b8ca77ef9; created 2026-10-16 20:29:45
+      end: rm /run/user/1001/squeal-fd5a859b8ca77ef9.sock
+  [stale-pool-mark] /run/user/1001/squeal/pool.mark.ad526a8130061fbb
+      109.7 h old; readers skip marks older than 30 s
+      end: rm /run/user/1001/squeal/pool.mark.ad526a8130061fbb
+  [leftover-temp-dirs] /tmp/squeal-1001/tmp
+      3446 of 3467 key dirs belong to no live daemon; oldest 2026-10-14; 149 MiB
+      end: rm -rf /tmp/squeal-1001/tmp/<key> for each listed key
+  [leftover-e2e-fixtures] /tmp/squeal-e2e-*
+      84 of 84 fixture dirs used by no live process
+      end: rm -rf /tmp/squeal-e2e-<id> for each
+  [stale-session-root] /run/user/1001/squeal-sessions
+      2 session root files name a missing root
+      end: none needed: ignored when read
+timings ms: {'proc_table_ms': 69.9, 'locks_ms': 20.2, 'unix_ms': 1.7, 'store_ms:/home/agent/projects/squeal/.git': 6.9, 'store_ms:/home/agent/projects/cezar/.git': 10.7, 'daemon_fds_and_stores_ms': 25.7, 'test_process_scan_ms': 20.8, 'files_ms': 426.9, 'total_ms': 572.6}
