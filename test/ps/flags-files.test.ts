@@ -118,7 +118,7 @@ describe("leftover-temp", () => {
     const a = dirAged(keyDir("00000000000000aa"), 2 * HOUR, 100);
     const b = dirAged(keyDir("00000000000000bb.old-1a2b3c4d"), 3 * HOUR, 20);
     const e2e = dirAged(join(host.places.tempDir, "squeal-e2e-Ab12Cd"), 5 * HOUR, 7);
-    const findings = flag(modelOf({ host }));
+    const findings = flag(modelOf({ host }), { full: true });
     expect(findings.leftovers).toEqual([a, b, e2e].sort());
     expect(findings.files).toEqual([
       {
@@ -268,7 +268,7 @@ describe("leftover-temp", () => {
         701: [`${join(deleted, "x")} (deleted)`],
       },
     });
-    const findings = flag(model);
+    const findings = flag(model, { full: true });
     expect(findings.leftovers).toEqual([free]);
     expect(findings.unknown).toEqual([]);
   });
@@ -286,7 +286,7 @@ describe("leftover-temp", () => {
     const processes = [{ pid: 700 }];
     const { model } = seen(modelOf({ host, processes }), { listeners: null });
     const blind = { ...model, source: { ...model.source, fds: () => null } };
-    const findings = flag(blind);
+    const findings = flag(blind, { full: true });
     expect(findings.leftovers).toEqual([free]);
     expect(findings.unknown).toEqual([
       {
@@ -328,12 +328,12 @@ describe("leftover-temp", () => {
     // Aged again: the files moved its mtime to the real clock, which is past the fixture's.
     dirAged(dir, 2 * HOUR);
     const model = modelOf({ host });
-    expect(fileFlags(model, 6).files[0]?.bytes).toBe(35);
-    const past = fileFlags(model, 5);
+    expect(fileFlags(model, { full: true, sizeEntries: 6 }).files[0]?.bytes).toBe(35);
+    const past = fileFlags(model, { full: true, sizeEntries: 5 });
     expect(past.files[0]?.bytes).toBeNull();
     expect(past.unknown).toContainEqual({
       what: "files leftover-temp bytes",
-      why: "the size walk stopped at 5 entries; `squeal ps --leftovers | xargs -d '\\n' du -sch --` sums them",
+      why: "the size walk stops at 5 entries; `squeal ps --leftovers | xargs -d '\\n' du -sch --` sums them",
     });
   });
 
@@ -349,7 +349,7 @@ describe("leftover-temp", () => {
     const model = modelOf({ host, daemons: [live.entry], processes });
     const wall = performance.now();
     const cpu = process.cpuUsage();
-    const findings = flag(model);
+    const findings = flag(model, { full: true });
     const used = process.cpuUsage(cpu);
     const cpuMs = (used.user + used.system) / 1000;
     const wallMs = performance.now() - wall;
