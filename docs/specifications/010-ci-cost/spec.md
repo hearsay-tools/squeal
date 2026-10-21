@@ -52,7 +52,7 @@ A newer push cancels a superseded run on `cand/*` and on pull requests. Main run
 
 ### D4. One full Node version
 
-The full suite runs on Node 22. It is the engines floor (`>=22.13`), it had the only real one-version defect (npm 10.9.9 crashing on an e2e install, `ci-test-time.md` 3), and it has the larger flake share. Node 24 runs only the version-sensitive test files.
+The full suite runs on Node 22. It is the engines floor (`>=22.19` since row 011-86, which the job pins literally: `node-version: 22` installed the newest 22.x, so a break on the floor passed CI, review 0.1.239 B1), it had the only real one-version defect (npm 10.9.9 crashing on an e2e install, `ci-test-time.md` 3), and it has the larger flake share. Node 24 runs only the version-sensitive test files.
 
 Those files are listed in `test/version-sensitive.txt`, which the workflow reads (44 files at 010-10). The list started from `ci-test-time.md` 3, 47 files and 144 s of file time:
 

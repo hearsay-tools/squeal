@@ -68,7 +68,7 @@ Rewritten 2026-10-09 after `research/cli-distribution.md` (005-05), on the human
 
 **`install.sh`**, once per machine: `curl -fsSL <url>/install.sh | sh`. Its URL and where it is hosted, this repository at a release tag or the hub, are a wave-0 check (005-04); either way it is pinned to a release. It is POSIX `sh` and idempotent, needs no sudo, asks nothing (under a pipe, stdin is the script), and prints each command before running it. Steps:
 
-1. Check for Node 22.13 or later, which the hooks need anyway. Without it, stop and say so.
+1. Check for Node 22.19 or later, which the hooks need anyway. Without it, stop and say so. (Amended 2026-10-22, the human, row 011-86: the floor was 22.13, which CI never ran; `engines.node` in `package.json` is its one source, and `install.sh` and the launchers hold it in one variable each.)
 2. For each of `claude` and `codex` on the PATH (none found: stop and say so), add the hub marketplace and install `squeal@hearsay` at user scope with that harness's own CLI: `claude plugin marketplace add hearsay-tools/marketplace` and `claude plugin install squeal@hearsay`; `codex plugin marketplace add` and `codex plugin add squeal@hearsay`. It writes nothing under `~/.claude` or `~/.codex` itself (002 D1).
 3. Copy the launcher from the installed plugin to `~/.local/bin/squeal` (`SQUEAL_BIN_DIR` overrides). When that directory is not on the PATH, say how to add it.
 4. Print the next step: `squeal setup` in a repository.
