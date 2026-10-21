@@ -57,8 +57,10 @@ export interface HostRules {
 /**
  * Old directories under the temp directory and its key directory: one a
  * process works in, one an argument names, one an `<option>=<path>`
- * argument names, and one nobody uses; and two waiters, one whose parent
- * is gone and one whose parent lives.
+ * argument names, and one nobody uses; the same with a space, both quotes,
+ * `=` and `:` in the name (`reviews/wave-2.md` B2), each beside an unused
+ * neighbor its name starts with; and two waiters, one whose parent is gone
+ * and one whose parent lives.
  */
 export function writeHostRules(host: SnapshotHost): HostRules {
   const tmp = host.places.tempDir;
@@ -72,6 +74,20 @@ export function writeHostRules(host: SnapshotHost): HostRules {
   // A working directory below the leftover: the subdirectory is made first, then the leftover aged.
   mkdirSync(join(cwd, "work"));
   oldDir(cwd);
+  const space = oldDir(join(tmp, "squeal-e2e-a b"));
+  const equals = oldDir(join(tmp, "squeal-e2e-a=b"));
+  const colon = oldDir(join(tmp, "squeal-e2e-a:b"));
+  const single = oldDir(join(tmp, "squeal-e2e-it's"));
+  const double = oldDir(join(tmp, 'squeal-e2e-say "hi"'));
+  const quotedKey = oldDir(join(keys, `00000000000000cc it's "a=b:c"`));
+  const colonKey = oldDir(join(keys, "00000000000000dd a:b"));
+  const neighbors = [
+    oldDir(join(tmp, "squeal-e2e-a")),
+    oldDir(join(tmp, "squeal-e2e-it")),
+    oldDir(join(tmp, "squeal-e2e-say")),
+    oldDir(join(keys, "00000000000000cc")),
+    oldDir(join(keys, "00000000000000dd")),
+  ];
   writeProcesses(host, [
     plain(700, 1, { cwd: join(cwd, "work") }),
     plain(701, 1, { cmdline: ["bash", join(arg, "run.sh")] }),
@@ -80,9 +96,20 @@ export function writeHostRules(host: SnapshotHost): HostRules {
       cmdline: ["python3", "-m", "pytest", `--basetemp=${option}`],
     }),
     plain(703, 1, { cwd: key }),
+    plain(704, 1, { cwd: space }),
+    plain(705, 1, { comm: "node", cmdline: [NODE, `--dir=${equals}`] }),
+    plain(706, 1, { cmdline: ["ls", colon] }),
+    plain(707, 1, { cmdline: ["cat", join(single, "x")] }),
+    plain(708, 1, { cwd: double }),
+    plain(709, 1, { cmdline: ["vitest", `--root=${join(quotedKey, "sub")}`] }),
+    plain(710, 1, { cwd: colonKey }),
     waiter(720, 999),
     plain(722, 1, {}),
     waiter(721, 722),
   ]);
-  return { leftovers: [free, freeKey].sort(), goneParent: 720, liveParent: 721 };
+  return {
+    leftovers: [free, freeKey, ...neighbors].sort(),
+    goneParent: 720,
+    liveParent: 721,
+  };
 }

@@ -8,7 +8,7 @@ import { fakeWindow, type SnapshotHost, snapshotHost } from "./fixture-snapshot.
 import { type FixtureRepo, makeRepo } from "./fixture-stores.js";
 
 /*
- * Spec 014 D7 through the assembled snapshot (`reviews/wave-2.md` B1 and
+ * Spec 014 D7 through the assembled snapshot (`reviews/wave-2.md` B1, B2 and
  * input 2): the real `flag` over the model the window builds, never a
  * stand-in. The second sample holds Squeal's processes only, so a rule of
  * the whole host must read the first.
@@ -42,7 +42,7 @@ async function snap(f: Flag = flag) {
   });
 }
 
-describe("the host-wide rules read the whole host (reviews/wave-2.md B1)", () => {
+describe("the host-wide rules read the whole host, and a used name whole (reviews/wave-2.md B1, B2)", () => {
   test("a directory a process works in, or names in an argument or an <option>=<path>, is no leftover; an unused one is", async () => {
     const rules = writeHostRules(host);
     const real = vi.fn(flag);
