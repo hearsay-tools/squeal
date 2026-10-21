@@ -327,17 +327,12 @@ class TierScheduler implements Scheduler {
    * Cancels each tier in flight that `revision`, or with `null` the runner
    * part just applied or a promotion, cuts (`TierYields`, C4 step 5 as
    * amended 2026-10-21, row 011-51; a backlog tier's `cancelsBacklog`, task
-   * 001-364). A backlog slot whose run ended is no longer in flight.
+   * 001-364).
    */
   #cutTiers(revision: Revision | null): void {
     const { context, ledger } = this.#started();
-    const running = [...this.#inFlight.values()].filter(({ ran }) => !ran);
-    this.#yields.check(
-      context,
-      ledger,
-      running.map(({ tier }) => tier),
-      revision,
-    );
+    const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
+    this.#yields.check(context, ledger, tiers, revision);
   }
 
   /** The baseline, at start or at the install that ends a wait; the wait ends in the store with it. */
