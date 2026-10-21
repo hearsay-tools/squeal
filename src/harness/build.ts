@@ -119,6 +119,8 @@ export function bundleOptions(plugin: PluginBuild, outdir: string): BuildOptions
       ...hookEntries(plugin).map((name) => ({ in: `${plugin.entriesDir}/${name}.ts`, out: name })),
       // `bin/squeal` runs this; hooks spawn it as the daemon.
       { in: "src/cli/index.ts", out: "cli/squeal" },
+      // `squeal ps` alone, which `bin/squeal` and the launcher run (spec 014 goal 6).
+      { in: "src/cli/ps-index.ts", out: "cli/ps" },
       // The daemon's socket worker, found beside the CLI by `prepareFrontDesk`.
       { in: "src/core/daemon/front-desk.ts", out: "cli/front-desk" },
     ],

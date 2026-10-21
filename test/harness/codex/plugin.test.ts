@@ -87,7 +87,7 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     }
   }, 60_000);
 
-  // Seventeen `node --check` processes in turn: past 5 s under a loaded full suite (task 001-309).
+  // Eighteen `node --check` processes in turn: past 5 s under a loaded full suite (task 001-309).
   it("gives every bundle a require for CommonJS dependencies, and each parses (003-12)", () => {
     const files = readdirSync(built.dir, { recursive: true, encoding: "utf8" }).filter(
       (f) => f.endsWith(".mjs") || f.endsWith(".cjs"),
@@ -108,7 +108,8 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     ]);
     for (const file of runtime) execFileSync(process.execPath, ["--check", join(built.dir, file)]);
     const bundles = files.filter((f) => !verbatim(f));
-    expect(bundles).toHaveLength(CONTRACT.length + 2);
+    // The hooks, the CLI, its socket worker and `ps` alone (spec 014 goal 6).
+    expect(bundles).toHaveLength(CONTRACT.length + 3);
     for (const file of bundles) {
       const path = join(built.dir, file);
       expect(readFileSync(path, "utf8"), file).toMatch(
