@@ -40,7 +40,7 @@ So the daemon's red took about 21 times the focused run and about 1.9 times one 
 
 ## Honest distinction
 
-- The probe proves the mechanism: no selection inside a file, so the daemon runs the whole file, and its new-failure confirmation runs it again before a named wait returns.
+- The probe proves the mechanism: no selection inside a file, so the daemon runs the whole file, and the measured delay is consistent with two whole-file runs. The confirmation run as the cause remains inferred; the scratch store was not inspected.
 - The probe does not prove the 387 s. The fixture is 12 s on an idle-enough host, one file, no tier mates, no backlog, no other worktree's claim. 387 s may include tier sharing, queue order, load and the confirmation re-run of a far larger file; none of these was observed for the incident.
 - `vitest -t` in the control is the unmanaged runner the issue's first criterion forbids as a fix. It is used here only to measure what a focused run costs.
 
