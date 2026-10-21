@@ -307,6 +307,7 @@ function sourceOf(
     locks: () => locks,
     fileKey: () => null,
     unixListeners: () => null,
+    unixSockets: () => [],
     pidNamespace: () => "pid:[1]",
     host: () => {
       throw new Error("the flags read no host totals");

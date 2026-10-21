@@ -231,6 +231,29 @@ describe("locks and listeners", () => {
     expect(createProcSource({ root, run: () => null }).unixListeners()).toBeNull();
   });
 
+  test("unixSockets gives every bound name of /proc/net/unix, datagram and unconnected included, and is null without it (B2)", () => {
+    writeFileSync(
+      join(root, "proc", "net", "unix"),
+      [
+        "Num       RefCount Protocol Flags    Type St Inode Path",
+        "0000000000000000: 00000002 00000000 00010000 0001 01 205499193 /tmp/squeal-1000/tmp/1e2484abf6bcdf96/cez ci/ipc",
+        "0000000000000000: 00000002 00000000 00000000 0002 01  7519 /tmp/squeal-1000/tmp/00000000000000aa/dgram",
+        "0000000000000000: 00000003 00000000 00000000 0001 03 1057291940",
+        "0000000000000000: 00000002 00000000 00010000 0001 01 1057291937 @/tmp/.X11-unix/X0",
+        "0000000000000000: 00000002 00000000 00000000 0005 01 44012 relative.sock",
+        "",
+      ].join("\n"),
+    );
+    expect(source.unixSockets()).toEqual([
+      "/tmp/squeal-1000/tmp/1e2484abf6bcdf96/cez ci/ipc",
+      "/tmp/squeal-1000/tmp/00000000000000aa/dgram",
+      "@/tmp/.X11-unix/X0",
+      "relative.sock",
+    ]);
+    unlinkSync(join(root, "proc", "net", "unix"));
+    expect(source.unixSockets()).toBeNull();
+  });
+
   test("fileKey is null for a missing file", () => {
     expect(source.fileKey(join(root, "missing.lock"))).toBeNull();
   });
