@@ -969,9 +969,9 @@ Spec: `specifications/014-ps/spec.md`, approved by the human 2026-10-21 (D9 as i
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 014-14 integration and e2e | running (worker 2f4e22ba, opus xhigh; brief `tasks/wave-3.md`) | The spec's Testing: a real daemon in a scratch repository with isolated `HOME`, `XDG_RUNTIME_DIR` and `TMPDIR` (`serving`, its socket, its test processes; `stale-socket` after SIGKILL; `root-gone`); the no-side-effects test; an e2e case of the shipped bundle's `squeal ps --json`. | Green under the full-run lock. |
+| 014-14 integration and e2e | in review (cand/014-14 at 7b8669b57, with the 014-17 pin; test-only, no version; worker 2f4e22ba) | The spec's Testing: a real daemon in a scratch repository with isolated `HOME`, `XDG_RUNTIME_DIR` and `TMPDIR` (`serving`, its socket, its test processes; `stale-socket` after SIGKILL; `root-gone`); the no-side-effects test; an e2e case of the shipped bundle's `squeal ps --json`. | Green under the full-run lock. |
 | 014-15 dogfood on this host | planned | Run `squeal ps` during ordinary work, compare with `ps`, `top` and `/proc` by hand, measure goal 6 with the load. | `lessons.md` written; the spec moves to `shipped` when its goals hold. |
-| 014-16 review of wave 3 | planned | `/reviewer` on the candidate. | `reviews/wave-3.md` committed. |
+| 014-16 review of wave 3 | running (`/reviewer` 1c5a389b, codex gpt-6.1-sol high, on 7b8669b57) | `/reviewer` on the candidate. | `reviews/wave-3.md` committed. |
 
 ## Later
 
