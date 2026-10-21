@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -72,6 +72,35 @@ function linked(repo: FixtureRepo, name: string): FixtureRepo {
   writeFileSync(lockPath, "");
   return { root, commonDir: repo.commonDir, id, lockPath, storePath: repo.storePath };
 }
+/** The files a writer that died after `commit` leaves: the database file without it, the -wal with it, no -shm. */
+function crashImage(repo: FixtureRepo, commit: (store: Store) => void): void {
+  const files = [repo.storePath, `${repo.storePath}-wal`];
+  const writer = openStore(repo.commonDir);
+  if (isStoreOpenFailure(writer)) throw new Error(JSON.stringify(writer));
+  let image: Buffer[];
+  try {
+    commit(writer);
+    image = files.map((f) => readFileSync(f));
+  } finally {
+    // Its clean close checkpoints and removes -wal and -shm; the image is written back over it.
+    writer.close();
+  }
+  for (const [i, f] of files.entries()) writeFileSync(f, image[i] ?? "");
+}
+/** The heartbeat a WAL reader reads from a copy of `repo`'s store files, which it may extend. */
+function heartbeatOfCopy(repo: FixtureRepo): number {
+  const dir = join(host.base, "copy");
+  mkdirSync(dir);
+  for (const suffix of ["", "-wal"])
+    copyFileSync(`${repo.storePath}${suffix}`, join(dir, `store.sqlite${suffix}`));
+  const db = new DatabaseSync(join(dir, "store.sqlite"), { readOnly: true });
+  try {
+    const row = db.prepare("SELECT daemon_heartbeat_at AS at FROM worktrees WHERE id = ?");
+    return Number(row.get(repo.id)?.at);
+  } finally {
+    db.close();
+  }
+}
 function openRun(store: Store, repo: FixtureRepo, id: string): void {
   store.runs.start({
     id,
@@ -113,6 +142,36 @@ describe("a read creates no file", () => {
     } finally {
       writer.close();
     }
+  });
+
+  test("a crash image, a -wal with a commit newer than the file and no -shm, is unknown, never the old value", () => {
+    serve(alpha);
+    writeStore(alpha, daemonRecord(alpha));
+    const newer = daemonRecord(alpha, { heartbeatAt: STARTED_AT + 120_000 });
+    crashImage(alpha, (store) => store.worktrees.setDaemon(alpha.id, newer));
+    const before = listing(alpha);
+    expect(before).toEqual(["locks", "store.sqlite", "store.sqlite-wal"]);
+    expect(heartbeatOfCopy(alpha)).toBe(newer.heartbeatAt);
+
+    const { work, unknown } = read();
+    expect(work.has(800)).toBe(false);
+    expect(unknown).toEqual([
+      {
+        what: "daemon 800 work",
+        why: `its store ${alpha.storePath} has a WAL whose commits cannot be read without creating its -shm`,
+      },
+    ]);
+    expect(listing(alpha)).toEqual(before);
+  });
+
+  test("an empty -wal without -shm, as a connection opens, is read from the file and left as it was", () => {
+    serve(alpha);
+    writeStore(alpha, daemonRecord(alpha));
+    writeFileSync(`${alpha.storePath}-wal`, "");
+    const before = listing(alpha);
+
+    expect(read().work.get(800)?.record).toEqual(daemonRecord(alpha));
+    expect(listing(alpha)).toEqual(before);
   });
 
   test("a store that changes while it is read without its WAL is unknown, never a mix", () => {
