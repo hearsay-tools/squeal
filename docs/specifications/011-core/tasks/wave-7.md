@@ -41,3 +41,16 @@ Tests first, red before: tests 1 to 9 of the findings' list, in `test/scheduler/
 Owns: `src/core/scheduler/`, `src/core/status/next-step.ts`, their new tests. Not yours: `src/core/status/why.ts` (011-50, in review), the runners' adapters beyond the cancel they already expose, spec text, the board. No version bump and no key-format change.
 
 Done when: tests 1 to 9 are red before and green after; the existing `test/scheduler/` tests pass unchanged or each change is named in your summary with its reason; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass, their output in your summary.
+
+## W2r: 011-51 repair of `reviews/0.1.237.md` (B1, B2, B3, S1)
+
+Use /worker. Shape: repair. Read `reviews/0.1.237.md` (B1 to B3, S1, "Inputs for the coordinator"), spec 011 C4 step 5 as corrected 2026-10-21 (B2: the supersession cancel and the remainder take every file of the tier), `tasks/011-51/notes.md`. Base: the commit that adds this brief on `cez/04a258b0`; it carries the coordinator's B1 fix 71e3c2a3 (`FileState.resultsApplied`, the mark keeps the count at the cut).
+
+- B1: the fix is in. Add the review's scheduler regression to `test/scheduler/tier-yields-fairness.test.ts` (a 120 s known failing file first in `run --all --force`, two 1 ms files queued, two promotions: one cut, not two), red on d7344427, plus checks that a result accepted after the cut and a key move each end the mark.
+- B2: no code change; the spec now matches decision 1. Update the comments in `src/core/scheduler/yields.ts` that cite the old wording, and add a test that a tier whose re-keyed files are not all of it yields only under the 30 s rule (a short remainder: no cancel; a long one: one yield).
+- B3: adapt `test/scheduler/revision-lag.test.ts` as the review says: an explicit barrier for revision creation beside a run, the early-cancel case in its own test; keep the 500 ms checks, revision order, pending honesty and final current results. Name the change in `tasks/011-51/notes.md`.
+- S1: `heldRun`'s poll gets an explicit long budget; the text test's remainder assertion takes a range the rule bounds, or an injected clock.
+
+Owns: `src/core/scheduler/yields.ts` (comments only, unless B1's tests show a defect), `test/scheduler/tier-yields*.ts`, `test/scheduler/revision-lag.test.ts`, `tasks/011-51/notes.md`. Not yours: other `src/`, spec text, the board, bundles, version.
+
+Done when: the new tests are red where the review says and green after; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass (bundle drift excepted), output in your summary.
