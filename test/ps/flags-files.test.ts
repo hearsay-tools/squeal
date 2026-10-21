@@ -1,18 +1,23 @@
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createDarwinSource } from "../../src/core/ps/darwin.js";
 import { flag } from "../../src/core/ps/flags.js";
 import { fileFlags } from "../../src/core/ps/flags-files.js";
 import type { PsModel, SocketFile } from "../../src/core/ps/model.js";
+import { createProcSource } from "../../src/core/ps/proc.js";
+import type { PsUnknown } from "../../src/core/ps/shape.js";
 import {
   dirAged,
+  modelOf as fixtureModel,
   foundDaemon,
   HOUR,
   type ModelHost,
+  type ModelSpec,
   makeRoot,
   modelHost,
-  modelOf,
   NOW,
   UID,
   workOf,
@@ -21,6 +26,17 @@ import {
 import { countingSource } from "./fixture-samples.js";
 
 /* Spec 014 D7, the files: each flag's flagged case and the healthy one it could take for it. */
+
+/**
+ * The fixture's model, read as a Linux host reads its own processes: every
+ * process's arguments and open files can be read, and none is open. The
+ * fixture gives `null` for both, which `leftover-temp` takes for a failed read.
+ */
+function modelOf(spec: ModelSpec): PsModel {
+  const model = fixtureModel(spec);
+  const cmdline = (pid: number) => model.source.cmdline(pid) ?? [];
+  return { ...model, source: { ...model.source, cmdline, fds: () => [] } };
+}
 
 let host: ModelHost;
 beforeEach(() => {
@@ -238,31 +254,49 @@ describe("leftover-temp", () => {
     expect(findings.leftovers).toEqual([join(link, "squeal-e2e-freeAA")]);
   });
 
-  /** `model` whose source gives these listening sockets and open files, and counts its reads. */
+  /**
+   * `model` whose source gives these bound sockets and open files (`null`:
+   * they cannot be read), and these pids as zombies at a second read, and
+   * counts its reads.
+   */
   function seen(
     model: PsModel,
-    uses: { listeners?: readonly string[] | null; fds?: Readonly<Record<number, string[]>> },
+    uses: {
+      sockets?: readonly string[] | null;
+      fds?: Readonly<Record<number, readonly string[] | null>>;
+      zombies?: readonly number[];
+    },
   ) {
-    const listeners =
-      uses.listeners === null
-        ? null
-        : (uses.listeners ?? []).map((path, i) => ({ path, socketInode: i, fileInode: i }));
     const { source, reads } = countingSource({
       ...model.source,
-      unixListeners: () => listeners,
-      fds: (pid) => uses.fds?.[pid] ?? [],
+      unixSockets: () => (uses.sockets === undefined ? [] : uses.sockets),
+      fds: (pid) => {
+        const fds = uses.fds?.[pid];
+        return fds === undefined ? [] : fds;
+      },
+      processTable: (pids) =>
+        new Map(
+          [...model.source.processTable(pids)].map(([pid, row]) => [
+            pid,
+            uses.zombies?.includes(pid) === true ? { ...row, state: "Z" } : row,
+          ]),
+        ),
     });
     return { model: { ...model, source }, reads };
   }
 
-  it("leaves a directory a live process listens under, or holds a file open under, alone (lessons.md P5)", () => {
+  /** The `unknown` entry of the candidates `leftover-temp` cannot tell unused (B2). */
+  const withheld = (findings: { unknown: readonly PsUnknown[] }) =>
+    findings.unknown.find((u) => u.what === "flag leftover-temp");
+
+  it("leaves a directory a socket is bound under, or a file is open under, alone (lessons.md P5)", () => {
     const socket = dirAged(keyDir("00000000000000aa"), 2 * HOUR);
     const open = dirAged(keyDir("00000000000000bb"), 2 * HOUR);
     const deleted = dirAged(join(host.places.tempDir, "squeal-e2e-AbC123"), 2 * HOUR);
     const free = dirAged(keyDir("00000000000000cc"), 2 * HOUR);
     const processes = [{ pid: 700 }, { pid: 701 }];
     const { model } = seen(modelOf({ host, processes }), {
-      listeners: [join(socket, "cez-ci-1", "ipc"), "@abstract", "relative.sock"],
+      sockets: [join(socket, "cez-ci-1", "ipc"), "@abstract", "relative.sock"],
       fds: {
         700: ["/dev/null", "socket:[42]", join(open, "log.txt")],
         701: [`${join(deleted, "x")} (deleted)`],
@@ -273,31 +307,116 @@ describe("leftover-temp", () => {
     expect(findings.unknown).toEqual([]);
   });
 
+  it("leaves a directory a real process has a datagram socket bound under alone (reviews/wave-4.md B2)", async () => {
+    const dir = keyDir("00000000000000aa");
+    mkdirSync(dir, { recursive: true });
+    const child = spawn(
+      "python3",
+      [
+        "-c",
+        "import socket, sys\ns = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)\ns.bind(sys.argv[1])\nprint('bound', flush=True)\nsys.stdin.read()",
+        join(dir, "d"),
+      ],
+      { stdio: ["pipe", "pipe", "inherit"] },
+    );
+    try {
+      await new Promise<void>((resolve, reject) => {
+        child.stdout.once("data", () => resolve());
+        child.once("error", reject);
+        child.once("exit", (code) => reject(new Error(`python3 exited ${code}`)));
+      });
+      dirAged(dir, 2 * HOUR);
+      const free = dirAged(keyDir("00000000000000bb"), 2 * HOUR);
+      const real = createProcSource();
+      const model = modelOf({ host, processes: [{ pid: 700 }] });
+      const bound = {
+        ...model,
+        source: { ...model.source, unixSockets: () => real.unixSockets() },
+      };
+      const findings = flag(bound);
+      expect(findings.leftovers).toEqual([free]);
+      expect(withheld(findings)).toBeUndefined();
+    } finally {
+      child.kill();
+    }
+  });
+
   it("reads no socket or open file once working directories and arguments use every candidate", () => {
     const cwd = dirAged(keyDir("00000000000000aa"), 2 * HOUR);
     const processes = [{ pid: 700, cwd }, { pid: 701 }];
     const { model, reads } = seen(modelOf({ host, processes }), {});
     expect(flag(model).leftovers).toEqual([]);
-    expect([reads.get("unixListeners"), reads.get("fds")]).toEqual([undefined, undefined]);
+    expect([reads.get("unixSockets"), reads.get("fds")]).toEqual([undefined, undefined]);
   });
 
-  it("still lists without the sockets or the open files, and names what it could not read", () => {
+  it("withholds what no readable process uses when one live process's open files cannot be read, and names them (reviews/wave-4.md B2)", () => {
+    const used = dirAged(keyDir("00000000000000aa"), 2 * HOUR);
+    const a = dirAged(keyDir("00000000000000bb"), 2 * HOUR);
+    const b = dirAged(join(host.places.tempDir, "squeal-e2e-AbC123"), 2 * HOUR);
+    const processes = [
+      { pid: 700, cwd: used },
+      { pid: 701, comm: "gpg-agent" },
+    ];
+    const { model } = seen(modelOf({ host, processes }), { fds: { 701: null } });
+    const findings = flag(model);
+    expect(findings.leftovers).toEqual([]);
+    expect(findings.files).toEqual([]);
+    expect(withheld(findings)).toEqual({
+      what: "flag leftover-temp",
+      why: `2 directories under ${host.places.tempDir} that no readable process uses are not listed, since 1 process cannot be read: 701 gpg-agent`,
+      paths: [b, a].sort(),
+    });
+  });
+
+  it("counts a process that left, a zombie and a reused pid as no failed read", () => {
     const free = dirAged(keyDir("00000000000000aa"), 2 * HOUR);
-    const processes = [{ pid: 700 }];
-    const { model } = seen(modelOf({ host, processes }), { listeners: null });
-    const blind = { ...model, source: { ...model.source, fds: () => null } };
-    const findings = flag(blind, { full: true });
+    const processes = [{ pid: 700 }, { pid: 701 }, { pid: 702 }];
+    const model = modelOf({ host, processes, goneBySecond: [700] });
+    const { model: read } = seen(model, {
+      fds: { 700: null, 701: null, 702: null },
+      zombies: [701],
+    });
+    const reused = {
+      ...read,
+      source: {
+        ...read.source,
+        processTable: (pids?: readonly number[]) =>
+          new Map(
+            [...read.source.processTable(pids)].map(([pid, row]) => [
+              pid,
+              pid === 702 ? { ...row, startTicks: row.startTicks + 1 } : row,
+            ]),
+          ),
+      },
+    };
+    const findings = flag(reused);
     expect(findings.leftovers).toEqual([free]);
-    expect(findings.unknown).toEqual([
-      {
-        what: "flag leftover-temp sockets",
-        why: "the listening unix sockets cannot be read (D10); a directory a socket is bound under counts as unused",
-      },
-      {
-        what: "flag leftover-temp open files",
-        why: "the open files of processes cannot be read (D10); a directory a file is open under counts as unused",
-      },
-    ]);
+    expect(withheld(findings)).toBeUndefined();
+  });
+
+  it("names the first five processes it cannot read, then how many more", () => {
+    dirAged(keyDir("00000000000000aa"), 2 * HOUR);
+    const pids = [701, 702, 703, 704, 705, 706, 707, 708];
+    const processes = pids.map((pid) => ({ pid, comm: "sshd" }));
+    const fds = Object.fromEntries(pids.map((pid) => [pid, null]));
+    const { model } = seen(modelOf({ host, processes }), { fds });
+    expect(withheld(flag(model))?.why).toMatch(
+      /since 8 processes cannot be read: 701 sshd, 702 sshd, 703 sshd, 704 sshd, 705 sshd and 3 more$/,
+    );
+  });
+
+  it("withholds every candidate when the bound sockets cannot be read, as on macOS, with the size under --full", () => {
+    // D10: the macOS source reads no bound socket, so there no directory is listed.
+    expect(createDarwinSource({ run: () => null }).unixSockets()).toBeNull();
+    const free = dirAged(keyDir("00000000000000aa"), 2 * HOUR, 2048);
+    const { model } = seen(modelOf({ host, processes: [{ pid: 700 }] }), { sockets: null });
+    const findings = flag(model, { full: true });
+    expect([findings.leftovers, findings.files]).toEqual([[], []]);
+    expect(withheld(findings)).toEqual({
+      what: "flag leftover-temp",
+      why: `1 directory under ${host.places.tempDir} that no readable process uses, 2 KiB, is not listed, since the bound unix sockets cannot be read (D10)`,
+      paths: [free],
+    });
   });
 
   it("is not evaluated without working directories, nor with a daemon of unknown key", () => {
