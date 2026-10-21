@@ -64,6 +64,12 @@ export interface AcceptInput {
   readonly declared?: readonly string[];
   /** The reason the receiver's own timeout or crash, after it took the runs' results, makes the file unknown (011-59). */
   readonly unknown?: string;
+  /**
+   * The runs are stored at the key each tree computes for the file in a
+   * worktree with this install, and the receiver looks up its own key there
+   * with its own keys read as one (task 011-85 R4).
+   */
+  readonly installed?: Readonly<Record<string, string>>;
 }
 
 /** A fixture repository keyed as a daemon keys it. */

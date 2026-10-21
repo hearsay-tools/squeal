@@ -37,7 +37,7 @@ if (main && casesPath !== undefined && outPath !== undefined && scratch !== unde
     try {
       const output =
         mode === "decide"
-          ? decideCase(c, join(other, String(at)), dir)
+          ? await decideCase(c, join(other, String(at)), dir)
           : await runCase(c, dir, other);
       if (output !== undefined) out[c.name] = output;
     } catch (error) {
