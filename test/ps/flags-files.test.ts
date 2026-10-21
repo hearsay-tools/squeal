@@ -183,6 +183,8 @@ describe("leftover-temp", () => {
   it("names the size unknown past the walk's bound instead of a partial sum", () => {
     const dir = dirAged(keyDir("00000000000000aa"), 2 * HOUR);
     for (let i = 0; i < 5; i++) writeFileSync(join(dir, `f${i}`), "12345");
+    // Aged again: the files moved its mtime to the real clock, which is past the fixture's.
+    dirAged(dir, 2 * HOUR);
     const model = modelOf({ host });
     expect(fileFlags(model, 6).files[0]?.bytes).toBe(35);
     const past = fileFlags(model, 5);
