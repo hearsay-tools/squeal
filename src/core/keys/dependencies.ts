@@ -13,6 +13,39 @@ export interface DependencyKeys {
   readonly environment: string;
   /** The installed-dependency segment of one test file's key. */
   of(packages: RunnerPackages | undefined): string;
+  /**
+   * Under the key definition before task 011-85, which a lookup reads as one
+   * (011 C3): its environment input, and the segment a test file keyed by
+   * the whole fingerprint read then. `null` (or absent) where that
+   * definition's fingerprint is this one's.
+   */
+  readonly former?: FormerDependencies | null;
+}
+
+/** `DependencyKeys.former`. */
+export interface FormerDependencies {
+  readonly environment: string;
+  /** A test file whose segment is `from` read `to`; every other segment is its own. */
+  readonly segment: { readonly from: string; readonly to: string };
+}
+
+/**
+ * The keys below, with what the key definition before task 011-85 read in
+ * their place where its fingerprint differs (`InstalledDependencies.former`,
+ * 011 C3): the former fingerprint where the environment holds the whole one,
+ * else the same scoped input, and `whole:<former>` for a test file keyed by
+ * the whole fingerprint. Every other segment is the same under both.
+ */
+export function dependencyKeys(
+  installed: InstalledDependencies,
+  environment: RunnerPackages | undefined,
+): DependencyKeys {
+  const keys = currentKeys(installed, environment);
+  const { fingerprint, former = null } = installed;
+  if (former === null) return keys;
+  const input = keys.environment === fingerprint ? former : keys.environment;
+  const segment = { from: `whole:${fingerprint}`, to: `whole:${former}` };
+  return { ...keys, former: { environment: input, segment } };
 }
 
 /**
@@ -30,7 +63,7 @@ export interface DependencyKeys {
  * opaque package outside the runner's own closure, the environment hash
  * holds the whole fingerprint and no test file adds anything.
  */
-export function dependencyKeys(
+function currentKeys(
   installed: InstalledDependencies,
   environment: RunnerPackages | undefined,
 ): DependencyKeys {

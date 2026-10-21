@@ -1,4 +1,5 @@
 import type { Case } from "../case.js";
+import { FORMER } from "./accept/former.js";
 import { INHERIT } from "./accept/inherit.js";
 import { RETIRED } from "./accept/retired.js";
 import { SLOW_INHERIT } from "./accept/slow.js";
@@ -26,6 +27,7 @@ export const CASES: readonly Case[] = [
   ...RETIRED,
   ...SLOW_INHERIT,
   ...UNKNOWN_AFTER,
+  ...FORMER,
   ...DECLARED,
   ...STORE_TIERS,
   ...VITEST_RUNS,

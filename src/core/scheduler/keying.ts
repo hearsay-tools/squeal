@@ -9,6 +9,7 @@ import {
   type DeclaredInputs,
   type DependencyKeys,
   environmentHash,
+  formerReadAsOne,
   gitEntryByKind,
   inputGlobs,
   KEY_FORMATS_READ_AS_ONE,
@@ -17,6 +18,7 @@ import {
   Listings,
   listedDirectory,
   ObservedSets,
+  type ReadAsOne,
   sameInputs,
   testFileId,
   type UnmatchedInputs,
@@ -194,7 +196,8 @@ export class WorktreeKeys {
    * Sets the environment hash of every project from runner output (D3). The
    * runner files and each project's installed lockfile are hashed first; the
    * lockfile is looked up from the project's root (review N8). Each project
-   * gets its hashes at the formats read as one too (011 C3, task 011-38).
+   * gets its hashes at the formats read as one too (011 C3, task 011-38), and
+   * under the definition before task 011-85 (`formerReadAsOne`, 011-90).
    */
   async setEnvironments(environments: readonly RunnerEnvironment[]): Promise<KeyChange[]> {
     const { squealVersion, env } = this.options;
@@ -207,25 +210,29 @@ export class WorktreeKeys {
     }
     this.#dependencies = await this.#lockfiles.set(environments);
     const lockPaths = this.#lockfiles.paths();
-    await this.track([...this.#environmentFiles, ...lockPaths]);
+    const formerFiles = environments.flatMap((environment) => environment.formerFiles ?? []);
+    await this.track([...this.#environmentFiles, ...formerFiles, ...lockPaths]);
     await this.#watchIgnored(lockPaths);
 
     const hashOf = (path: RelativePath) => this.cache.hashOf(path);
     const hashes = new Map<ProjectName, EnvironmentHash>();
-    const readAsOne = new Map<ProjectName, EnvironmentHash[]>();
+    const readAsOne = new Map<ProjectName, ReadAsOne[]>();
     const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
     for (const environment of environments) {
+      const dependencies = this.#dependencies.get(environment.project);
       const core = coreEnvironmentInputs({
         squealVersion,
-        installedDependencies: this.#dependencies.get(environment.project)?.environment ?? "none",
+        installedDependencies: dependencies?.environment ?? "none",
         allowlist: policy.env.allowlist,
         ...(env === undefined ? {} : { env }),
       });
       hashes.set(environment.project, environmentHash(core, environment, hashOf));
-      readAsOne.set(
-        environment.project,
-        formats.map((format) => environmentHash(core, environment, hashOf, format)),
-      );
+      readAsOne.set(environment.project, [
+        ...formats.map((format) => ({
+          environment: environmentHash(core, environment, hashOf, format),
+        })),
+        ...formerReadAsOne(core, environment, dependencies, hashOf),
+      ]);
     }
     // Task 001-105: each test file's packages are keyed against the new install.
     return this.index.setInstalled(
