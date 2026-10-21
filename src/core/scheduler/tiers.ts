@@ -591,7 +591,11 @@ export function recordTier(
       const decision = storeDecision(entry, end, ledger.files.get(file.id) === file);
       // A newer run has the file at another key (an edit's tier beside this backlog tier, task
       // 011-21): its state is that run's, and this run's outcome is superseded (review wave-4 B1).
-      if (decision.kind === "superseded") continue;
+      if (decision.kind === "superseded") {
+        // A store hit at the newer key took no claim: this tier's own one ends here (row 011-71).
+        if (file.runningKey === key) ledger.setRunning(file, null);
+        continue;
+      }
       ledger.setRunning(file, null);
       if (decision.kind === "gone") continue;
       if (decision.kind === "withheld") {
