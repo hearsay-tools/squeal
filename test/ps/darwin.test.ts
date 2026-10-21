@@ -198,7 +198,10 @@ describe("the window: CPU from time= over two reads", () => {
       privateBytes: 160_000 * 1024,
       swapBytes: null,
       reapedBy: null,
+      reaperUnknown: false,
       left: false,
+      // `ps` reads no children's times (D10): a lower bound.
+      childCpuUnread: true,
     });
     expect(costs.get(5120)?.cpuPct).toBe(50);
     expect(costs.get(4810)?.cpuPct).toBe(1);

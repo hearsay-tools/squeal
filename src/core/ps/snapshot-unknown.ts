@@ -63,18 +63,36 @@ export function unknownOf({ shape, named, costs }: UnknownInput): PsUnknown[] {
       `${were(seenOnce)} in one sample of the window only: ${pids(seenOnce)}${waitedFor(reaped.length, seenOnce.length)}`,
     );
   const lost = seenOnce.filter(([, c]) => (c?.reapedBy ?? null) === null);
-  if (lost.length > 0)
+  // An unsure reaper (`reviews/wave-4.md` B3): one that ended, or the row that holds the bound for one below it that is no row.
+  const unsure = entries.filter(([, c]) => c?.reaperUnknown === true);
+  const outside = lost.filter(([, c]) => c?.reaperUnknown !== true);
+  const ended = unsure.filter(([, c]) => c?.cpuPct === null);
+  const holding = unsure.filter(([, c]) => c?.cpuPct !== null);
+  const parts = [
+    ...(outside.length === 0
+      ? []
+      : [
+          `${counted(outside)} in one sample only, which no process ps measures waited for: ${pids(outside)}`,
+        ]),
+    ...(ended.length === 0
+      ? []
+      : [`${counted(ended)} that ended ${afterParent(ended.length)}: ${pids(ended)}`]),
+    ...(holding.length === 0
+      ? []
+      : [`processes below ${counted(holding)} that ended ${afterParent(2)}: ${pids(holding)}`]),
+  ];
+  if (parts.length > 0)
     name(
       "squeal cpuPct",
-      `a lower bound: it leaves out the CPU in the window of ${counted(lost)} in one sample only, which no process ps measures waited for: ${pids(lost)}`,
+      `a lower bound: it leaves out the CPU in the window of ${parts.join("; and of ")}`,
     );
   // One gone at the second sample holds none, so a sum adds 0 for it (014-24).
   const noMemory = entries.filter(([, c]) => c === null || c.privateBytes === null);
-  const ended = noMemory.filter(([, c]) => c?.left === true);
-  if (ended.length > 0)
+  const left = noMemory.filter(([, c]) => c?.left === true);
+  if (left.length > 0)
     name(
       "processes privateBytes",
-      `${counted(ended)} ended in the window, so ${ended.length === 1 ? "it holds" : "they hold"} none: ${pids(ended)}`,
+      `${counted(left)} ended in the window, so ${left.length === 1 ? "it holds" : "they hold"} none: ${pids(left)}`,
     );
   const unread = noMemory.filter(([, c]) => c?.left !== true);
   if (unread.length > 0)
@@ -137,6 +155,13 @@ function waitedFor(reaped: number, once: number): string {
   if (reaped === 0) return "";
   const whom = reaped < once ? `${reaped} of them` : once === 1 ? "it" : "them";
   return `; the ancestor that waited for ${whom} counts ${once === 1 ? "its" : "their"} CPU`;
+}
+
+/** Why no sample shows the process that waited for `n` processes that ended. */
+function afterParent(n: number): string {
+  return n === 1
+    ? "after its parent did, or under one whose children's times grew too little, so no sample shows which process waited for it"
+    : "after their parents did, or under ones whose children's times grew too little, so no sample shows which processes waited for them";
 }
 
 function counted(entries: readonly unknown[]): string {
