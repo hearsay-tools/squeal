@@ -188,14 +188,38 @@ function install(settings) {
 
   module_.syncBuiltinESMExports();
 
+  /** The exact path a `file:` or relative specifier names; null for a bare one (011-60). */
+  const named = (specifier, parentURL) => {
+    if (typeof specifier !== "string") return null;
+    const base = typeof parentURL === "string" && parentURL.startsWith("file:") ? parentURL : null;
+    if (specifier.startsWith("file:")) return new URL(specifier);
+    if (!/^\.{0,2}\//.test(specifier)) return null;
+    if (base !== null) return new URL(specifier, base);
+    return path.isAbsolute(specifier) ? specifier : null;
+  };
+  const withoutQuery = (url) => new URL(url.href.replace(/[?#].*$/, ""));
+
   if (typeof module_.registerHooks === "function") {
     module_.registerHooks({
       resolve(specifier, context, nextResolve) {
-        const resolved = nextResolve(specifier, context);
+        let resolved;
+        try {
+          resolved = nextResolve(specifier, context);
+        } catch (error) {
+          // A missing target enters the closure as absent, so creating it re-keys the file.
+          // No candidate is guessed: an extensionless target records the path it names, a bare one nothing.
+          try {
+            const target = named(specifier, context?.parentURL);
+            if (target !== null) record("f", target instanceof URL ? withoutQuery(target) : target);
+          } catch {
+            // never the test's failure
+          }
+          throw error;
+        }
         if (typeof resolved?.url === "string" && resolved.url.startsWith("file:")) {
           try {
             // Node resolves through symlinks already
-            record("f", new URL(resolved.url.replace(/[?#].*$/, "")), true);
+            record("f", withoutQuery(new URL(resolved.url)), true);
           } catch {
             // never the test's failure
           }
