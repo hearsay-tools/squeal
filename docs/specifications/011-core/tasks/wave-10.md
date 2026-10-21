@@ -27,3 +27,15 @@ Seam: `git grep -n '22\.13' -- ':!docs' ':!package-lock.json'` lists today's pla
 Owns: those files, the floor case in `test/cli/install-sh.test.ts`, the new test. Not yours: spec text and the board (the coordinator amends specs 001, 003, 005, 010 and 011), bundles, version.
 
 Done when: with only `engines.node` raised, the floor test fails and lists every place; after, it passes; `install.sh` stops on 22.18 with the new floor; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+## R1: review of cand/0.1.249
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.249` SHA named in the spawn; the range is `origin/main..<sha>`: W1 (011-20, two commits from `cez/f98df774`), W2 (011-86, from `cez/c0e11c37`) and the release commit (0.1.249, bundles).
+
+Read W1 and W2 above, `tasks/011-20/notes.md`, `tasks/011-86/notes.md`, board rows 011-20, 010-33 and 011-86, spec 011 C8 and C9 on the stop mark and the starting daemon, and spec 010 D4. Check that:
+- 011-20: a daemon a hook spawned and still starting voids the mark, and after `DAEMON_START_GRACE_MS` with no heartbeat a held mark is told again; no later liveness-only delta says "stopped by request" under a "starting" header; the e2e forces the late-mark order through the `stop-mark` pause and still proves 001-340;
+- 011-86: `engines.node` is the one source; the floor test fails with only `engines.node` raised and names every place; `install.sh` stops below 22.19; the key-format alarm fires on an `engines.node` change and not on a version raise; the target change leaves the key format unchanged, as the notes claim;
+- CI's Node 22 shards run v22.19.x, and `stop-gap.test.ts` passes there;
+- the version is raised in all eight places and the bundles match the tree.
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. A file that fails loaded and passes alone is named; `slow-slot-fair.test.ts` failed alone at load 52 on 0.1.247, outside that range. Write `reviews/0.1.249.md` with a PASS or FAIL verdict and commit it.
