@@ -60,6 +60,8 @@ export interface AcceptInput {
   readonly policy?: Readonly<Record<string, unknown>>;
   /** The existing files its declared inputs select (format 12 read them, 004 D6). */
   readonly declared?: readonly string[];
+  /** The reason the receiver's own timeout or crash, after it took the runs' results, makes the file unknown (011-59). */
+  readonly unknown?: string;
 }
 
 /** A fixture repository keyed as a daemon keys it. */
