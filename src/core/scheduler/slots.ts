@@ -42,7 +42,7 @@ export function busyLanes(
   for (const tier of inFlight) held.set(tier.lane, [...(held.get(tier.lane) ?? []), tier]);
   const busy = new Set<string>();
   for (const [lane, tiers] of held) {
-    const backlog = tiers.filter((tier) => tier.cancel !== null);
+    const backlog = tiers.filter((tier) => tier.kind === "backlog");
     const edit = backlog.length < tiers.length;
     const queued = ledger.queue.hasFirstGroup((ref) => laneOf(context, ref) === lane);
     const lead = backlog[0]?.files[0]?.file.ref;
