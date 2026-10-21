@@ -6,3 +6,7 @@ Links only. The findings behind this spec were written for 001 and stay in `../.
 - [cezar-e2e-setup](../../001-core-loop/research/cezar-e2e-setup.md)
 - [revert-restore-pass](../../001-core-loop/research/revert-restore-pass.md)
 - [revert-restore-pass-2](../../001-core-loop/research/revert-restore-pass-2.md)
+
+## Briefs for new topics
+
+- [vitest-close-leak-brief](vitest-close-leak-brief.md) (013-05): whether Squeal's recreate and slow-lane drain leak a whole Vitest instance in a daemon, which versions leak, and the fix Squeal can make (the human, 2026-10-21, after 011-53). Findings go to `vitest-close-leak.md`.
