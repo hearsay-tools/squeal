@@ -169,3 +169,9 @@ Check only that:
 - The bundles match the tree, and the version stays 0.1.239.
 
 The coordinator's full gate on 2b3b75047 is reported in the resume. Run only the files above, on both Node versions. Anything outside B1 and B2 is recorded for a later row, not a blocker.
+
+## R2c: check of the key-format case on cand/0.1.239
+
+Use /reviewer. Shape: review, bounded. Pinned to `cand/0.1.239` at c9eae56c1. CI on 2b3b75047 failed `test/keys/key-format.test.ts`: no validity case ran `src/runners/vitest/run.ts` lines 75 to 78, the B2 repair. The range `2b3b75047..c9eae56c1` is your re-review commit, the coordinator's C6 wording fix (docs), and one test commit: `cancelBefore` in `test/keys/validity/case.ts`, the harness's early abort in `harness/vitest.ts`, one case in `cases/adapter/vitest.ts`.
+
+Check only that: the range changes no file under `src/` and no bundle; the new case runs the early-abort branch, and the alarm passes on Node 22.13 and 24; with the case removed, the alarm fails on those lines; the harness change leaves every other case's compared outputs unchanged; `test/keys/` passes. Append a "Check of c9eae56c1" section with PASS or FAIL to `reviews/0.1.239.md` and commit it. Nothing outside this range is a blocker.
