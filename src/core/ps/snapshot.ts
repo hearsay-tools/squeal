@@ -87,7 +87,7 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
   );
   // The memory right after that read (`lessons.md` P4): the stores below take tens of ms.
   const costs = measure(source, first, read, measured(found, attribution));
-  // One read can miss a held lock; a read right after it misses the same one, 2 s later it does not.
+  // One read can miss a held lock, and a read right after it often misses the same one (`lessons.md` P9).
   const locksAgain = source.locks();
   const discovery = lockedAgain(source, found, locksAgain);
   const daemonPids = new Set(discovery.daemons.map((d) => d.row.pid));
