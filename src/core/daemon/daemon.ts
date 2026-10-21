@@ -581,14 +581,14 @@ class Daemon {
         requestPromotion: (testFiles, withinMs) => this.#requestPromotion(testFiles, withinMs),
         // The tiers stop now, under a shutdown already begun too; the shutdown after the answer.
         onStop: () => {
-          this.#cancelTiers();
+          this.#cancelTiers("stop");
           setImmediate(
             () => void this.#shutdown("stop-requested", 0, "daemon stopped: squeal stop"),
           );
         },
         // Row 011-31 (C9 as amended 2026-10-20): a step-down cancels its tiers as a stop does.
         onStepDown: (version) => {
-          this.#cancelTiers();
+          this.#cancelTiers("step-down");
           setImmediate(
             () => void this.#shutdown("superseded", 0, stepDownNote(this.#version, version)),
           );
@@ -692,12 +692,12 @@ class Daemon {
    * carrier of this daemon's mark, stopped after `CANCEL_GRACE_MS` (D12), so
    * its run ends; what did not complete stays queued for the next daemon.
    */
-  #cancelTiers(): void {
+  #cancelTiers(cause: "stop" | "step-down"): void {
     if (this.#stopRequested) return;
     this.#stopRequested = true;
     const loop = this.#loop;
     if (loop === null) return;
-    const closed = loop.close({ cancel: true }).then(
+    const closed = loop.close({ cancel: true, cause }).then(
       () => true,
       () => true,
     );
