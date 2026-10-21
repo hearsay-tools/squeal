@@ -158,3 +158,14 @@ Questions:
 4. The fix's seam and done-when as tests.
 
 Isolation: read only. No signal, `squeal stop`, `retry` or `run` on that daemon or worktree; no edits there. Probes only on scratch clones by SHA with a scratch `HOME`, `XDG_*` and store, at a one-minute load below 24. Owns `research/stuck-tier.md`, `research/probes/stuck-tier/`. Not yours: product code, spec text, `status.md`, the board. Done when the findings file answers 1 to 4 with evidence tags and ends with one recommendation.
+
+## R2r: re-review of the repaired cand/0.1.239
+
+Use /reviewer. Shape: review, bounded. Pinned to `cand/0.1.239` at 2b3b75047; the repair is `5216be24c..2b3b75047`: the coordinator's fix (B1 and B2), your findings commit, and the rebuilt bundles. Read `reviews/0.1.239.md` (B1, B2) and append a "Re-review" section to it.
+
+Check only that:
+- B1 is closed: `permitRecord` in `src/core/slow/slot.ts` reads the holder row from a private copy of the permit file, which needs no lock and no URI; a live holder reads as `holder` on Node 22.13 (`/tmp/node-v22.13.0-linux-x64/bin/node`) and on 24; the missing and unreadable states, several permits and the private-directory checks hold; the copy is removed on every path; `test/slow/slot-holders.test.ts` fails on 22.13 with the fix reverted.
+- B2 is closed: a signal aborted before `execute` writes the cause note; `test/runners/vitest/cancel-cause.test.ts`'s new case covers each named cause and the unknown one, with no result and no completed file, and fails with the fix reverted.
+- The bundles match the tree, and the version stays 0.1.239.
+
+The coordinator's full gate on 2b3b75047 is reported in the resume. Run only the files above, on both Node versions. Anything outside B1 and B2 is recorded for a later row, not a blocker.
