@@ -75,4 +75,24 @@ describe("vitest adapter: a cancelled run names its cause (row 011-56)", SLOW, (
     expect(log[1]).toContain(`end: completed (${cancelled("yield")})`);
     expect(log).toContain(`squeal: ${cancelled("yield")}`);
   });
+
+  it("when the signal was aborted before the run started, for each cause and none (review 0.1.239 B2)", async () => {
+    const fx = await openFixture("basic");
+    for (const reason of [...CAUSES, undefined]) {
+      const controller = new AbortController();
+      controller.abort(reason);
+      const options = fx.runOptions({ signal: controller.signal });
+
+      const report = await fx.adapter.run([ref("test/strings.test.ts")], options);
+
+      const text = cancelled(controller.signal.reason);
+      expect(text).toBe(reason === undefined ? CANCELLED : cancelled(reason));
+      expect(report.failure).toBe(text);
+      expect(report.completedFiles).toEqual([]);
+      expect(report.results).toEqual([]);
+      const log = readFileSync(join(options.logDir, "vitest.log"), "utf8").split("\n");
+      expect(log[1]).toContain(`end: completed (${text})`);
+      expect(log).toContain(`squeal: ${text}`);
+    }
+  });
 });
