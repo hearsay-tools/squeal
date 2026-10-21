@@ -15,6 +15,7 @@ import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
+import { quietQueued } from "./quiet.js";
 import {
   applyListing,
   type ContentRekey,
@@ -267,7 +268,7 @@ export async function applyRunnerPart(
     ...(keyedAt === undefined ? {} : { keyedAt }),
     ...(catchUp ? { catchUp: true } : {}),
   };
-  ledger.settle(touched.values(), changed, options);
+  quietQueued(context, ledger, ledger.settle(touched.values(), changed, options));
   settleFailures(ledger, part.failures, part.retrying, changed, options);
   if (!catchUp && keyedAt !== undefined && part.cut !== undefined) {
     // The rest of a small revision's reach is catch-up (011 C4 step 4 as amended for 011-25).
