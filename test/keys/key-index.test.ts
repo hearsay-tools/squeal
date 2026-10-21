@@ -130,7 +130,8 @@ describe("KeyIndex", () => {
     const index = new KeyIndex(table.hashOf);
     const closure = closureOf(a, ["src/x.ts"]);
     index.setClosure(closure);
-    index.setInstalled(new Map([["unit", "env18"]]), () => "", new Map([["unit", ["e16", "e17"]]]));
+    const readAsOne = [{ environment: "e16" }, { environment: "e17" }];
+    index.setInstalled(new Map([["unit", "env18"]]), () => "", new Map([["unit", readAsOne]]));
     const at = (env: string) => checkKey(env, closure, (path) => table.hashOf(path) ?? null);
     const key = index.key(a) ?? "";
     expect(key).toBe(at("env18"));
@@ -148,6 +149,28 @@ describe("KeyIndex", () => {
     expect(index.keysReadAsOne(provisional)).toEqual({ testFile: a, keys: [] });
     index.removeTestFile(a);
     expect(index.keysReadAsOne(provisional)).toBeNull();
+  });
+
+  it("reads an entry's segment in place of the one it replaces, every other segment as its own (011-90)", () => {
+    const table = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1", "test/b.test.ts": "b1" });
+    const index = new KeyIndex(table.hashOf);
+    const [ca, cb] = [closureOf(a, ["src/x.ts"]), closureOf(b, [])];
+    const segmentOf = (ref: TestFileRef) => (ref.path === a.path ? "whole:now" : "scoped");
+    index.setClosure(ca, segmentOf(a));
+    index.setClosure(cb, segmentOf(b));
+    const former = { environment: "former", segment: { from: "whole:now", to: "whole:then" } };
+    const readAsOne = [{ environment: "e19" }, former];
+    index.setInstalled(new Map([["unit", "env20"]]), segmentOf, new Map([["unit", readAsOne]]));
+    const at = (env: string, closure: Closure, segment: string) =>
+      checkKey(env, closure, (path) => table.hashOf(path) ?? null, segment);
+    expect(index.keysReadAsOne(index.key(a) ?? "")?.keys).toEqual([
+      at("e19", ca, "whole:now"),
+      at("former", ca, "whole:then"),
+    ]);
+    expect(index.keysReadAsOne(index.key(b) ?? "")?.keys).toEqual([
+      at("e19", cb, "scoped"),
+      at("former", cb, "scoped"),
+    ]);
   });
 
   it("returns untracked closure paths and keys the test file only once they are hashed", () => {

@@ -1,9 +1,9 @@
 import { fileURLToPath } from "node:url";
 import type { TestProject } from "vitest/node";
-import { compare } from "../../core/fs/index.js";
-import type { RelativePath, RunnerEnvironment } from "../../core/types/index.js";
+import { compare, sameList } from "../../core/fs/index.js";
+import type { AbsolutePath, RelativePath, RunnerEnvironment } from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
-import { globalSetupFiles, type ProjectInputs } from "./project.js";
+import { configFiles, globalSetupFiles, type ProjectInputs } from "./project.js";
 
 export interface EnvironmentContext {
   readonly paths: WorktreePaths;
@@ -24,7 +24,9 @@ export interface EnvironmentContext {
  * and its `configFileDependencies`, the closure of every `setupFiles` and
  * `globalSetup` entry". The adapter lists the files, and every resolution
  * candidate of a missing import of those closures, as a test file's closure
- * does (task 001-424); the core hashes them, a missing one as absent.
+ * does (task 001-424); the core hashes them, a missing one as absent. Where
+ * every project's config files, which the key definition before task 011-85
+ * listed, give another list, it is `formerFiles` (011 C3, C14).
  */
 export function projectEnvironment(
   project: TestProject,
@@ -32,9 +34,28 @@ export function projectEnvironment(
   context: EnvironmentContext,
 ): RunnerEnvironment {
   const { paths } = context;
+  const files = environmentFiles(inputs.configFiles, inputs, paths);
+  const former = environmentFiles(configFiles(project.vitest), inputs, paths);
+  return {
+    project: project.name,
+    runnerName: "vitest",
+    runnerVersion: context.runnerVersion,
+    adapterVersion: context.adapterVersion,
+    resolvedConfig: canonicalConfig(project, paths, context.injected),
+    files,
+    ...(sameList(former, files) ? {} : { formerFiles: former }),
+  };
+}
+
+/** The project files among `configs` and the setup closures, relative and sorted. */
+function environmentFiles(
+  configs: ReadonlySet<AbsolutePath>,
+  inputs: ProjectInputs,
+  paths: WorktreePaths,
+): RelativePath[] {
   const files = new Set<RelativePath>();
   const inputFiles = [
-    ...inputs.configFiles,
+    ...configs,
     ...inputs.setup.files,
     ...inputs.globalSetup.files,
     ...inputs.missing,
@@ -43,14 +64,7 @@ export function projectEnvironment(
     const rel = paths.toRelative(file);
     if (rel !== null && paths.isProjectFile(file)) files.add(rel);
   }
-  return {
-    project: project.name,
-    runnerName: "vitest",
-    runnerVersion: context.runnerVersion,
-    adapterVersion: context.adapterVersion,
-    resolvedConfig: canonicalConfig(project, paths, context.injected),
-    files: [...files].sort(compare),
-  };
+  return [...files].sort(compare);
 }
 
 /**
