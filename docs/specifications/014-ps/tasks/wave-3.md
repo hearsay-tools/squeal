@@ -17,3 +17,11 @@ Use /worker. Shape: finish. **Outcome:** `lessons.md` says, with evidence, wheth
 ## 014-16 review of wave 3
 
 Use /reviewer. Shape: review. Pinned to 014-14's candidate SHA. **Check, each finding labelled proven, plausible or unverified:** the cases prove Testing's Integration, No side effects and Proof; each counterfactual; the isolation (no write under the real `HOME`, no signal to a process the test did not start). **Rules:** change no code; `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once, with the load; the e2e file alone; write only `reviews/wave-3.md` and commit it.
+
+## 014-18, 014-19, 014-20 test races
+
+Use /worker. Shape: repair. **Outcome:** the three test races of board rows 014-18, 014-19 and 014-20 closed, one commit each. **Read:** the three board rows; `reviews/wave-3.md` S1. **Leads:**
+- 014-18: `sources()` in `test/version-sensitive.test.ts` walks all of `test/` and filters `test/fixtures/` only after it reads it; skip `test/fixtures` before descending.
+- 014-19: the leftover case of `test/e2e/ps.test.ts` passes `sourceFor` a real `createProcSource()` whose `processTable` keeps only the test's own pids and the held child; real cwd and argument reads, the real flags and the exact assertions stay.
+- 014-20: the `DRIVER` of `test/daemon/died-startup.test.ts` writes a temporary file and renames it.
+**Owns:** those three files and `test/e2e/ps-support.ts`. No `src/` edit, no build, no version. **Done when:** a regression per row that fails before its fix where one can be made deterministic (014-18: a directory removed during the walk; 014-19: an injected daemon with an unknown root), else the reason in the commit body; `squeal run --all --wait` green; `test/e2e/ps.test.ts` alone green twice, with the load.
