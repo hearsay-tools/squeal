@@ -29,3 +29,15 @@ Tests first, red before: a new `test/status/why-scale.test.ts` seeds about 20,00
 Owns: `src/core/status/why.ts`, the new test. Not yours: other `src/core/status/` files, the store, spec text, the board. No version bump and no key-format change: the coordinator bundles the row and raises the version.
 
 Done when: the new test is red before and green after; `test/status/why-*.test.ts` pass unchanged; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass, their output in your summary.
+
+## W2: 011-51, a running tier yields to a newer revision or a named wait
+
+Use /worker. Shape: slice. Read board row 011-51, spec 011 C4 step 5 and C15 (Rank, the wait's reasons) as amended 2026-10-21, and `research/running-tier-yields.md` (sections 1, 2 and "The slice's done-when, as tests"). Base: main at or after the commit that adds this brief.
+
+Do the rule as C4 step 5 now states: a fast Vitest tier in flight is cancelled by a revision that re-keys every unfinished file of it; any tier but the backlog's turn yields, once per file and key, to an edit's work, a promoted file or a runner part waiting for the run, when its estimated remainder exceeds 30 s. Seam: `selectTier` and `#cancelBacklogs` in `src/core/scheduler/scheduler.ts`, `cancelsBacklog` in `backlog.ts`, `cancel` in `tiers.ts` (today `null` for an edit's tier). First edit: give an edit's tier a cancel and route both rules through one decision beside `cancelsBacklog`. Cut files are re-queued with their class (edit's work, catch-up, promoted), which the re-queue drops today. The wait's text: `src/core/status/next-step.ts`.
+
+Tests first, red before: tests 1 to 9 of the findings' list, in `test/scheduler/` (test 9 with real Vitest child processes, as `lanes.test.ts`; it runs at any load). Test 10's live replay is the coordinator's after landing, not yours.
+
+Owns: `src/core/scheduler/`, `src/core/status/next-step.ts`, their new tests. Not yours: `src/core/status/why.ts` (011-50, in review), the runners' adapters beyond the cancel they already expose, spec text, the board. No version bump and no key-format change.
+
+Done when: tests 1 to 9 are red before and green after; the existing `test/scheduler/` tests pass unchanged or each change is named in your summary with its reason; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass, their output in your summary.
