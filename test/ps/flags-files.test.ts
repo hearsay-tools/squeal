@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { rmSync, writeFileSync } from "node:fs";
+import { rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { flag } from "../../src/core/ps/flags.js";
@@ -188,6 +188,23 @@ describe("leftover-temp", () => {
       expect(flag(modelOf({ host, processes })).leftovers).toEqual(unused.sort());
     },
   );
+
+  it("reads a use under the temp directory's real path, as the kernel gives a working directory", () => {
+    const link = join(host.base, "tmp-link");
+    symlinkSync(host.places.tempDir, link);
+    const places = { ...host.places, tempDir: link };
+    dirAged(join(host.places.tempDir, "squeal-e2e-cwd"), 2 * HOUR);
+    dirAged(join(host.places.tempDir, "squeal-e2e-arg"), 2 * HOUR);
+    dirAged(keyDir("00000000000000aa"), 2 * HOUR);
+    dirAged(join(host.places.tempDir, "squeal-e2e-free"), 2 * HOUR);
+    const processes = [
+      { pid: 700, cwd: join(host.places.tempDir, "squeal-e2e-cwd", "sub") },
+      { pid: 701, cmdline: ["node", `--dir=${join(host.places.tempDir, "squeal-e2e-arg")}`] },
+      { pid: 702, cwd: keyDir("00000000000000aa") },
+    ];
+    const findings = flag(modelOf({ host: { ...host, places }, processes }));
+    expect(findings.leftovers).toEqual([join(link, "squeal-e2e-free")]);
+  });
 
   it("is not evaluated without working directories, nor with a daemon of unknown key", () => {
     dirAged(keyDir("00000000000000aa"), 2 * HOUR);

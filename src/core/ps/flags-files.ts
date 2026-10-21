@@ -225,6 +225,10 @@ function usedPaths(model: PsModel, keyDirs: AbsolutePath): Set<AbsolutePath> | n
   const cwds = source.cwds(pids);
   if (cwds === null) return null;
   const at = `${places.tempDir}/squeal-`;
+  // The kernel gives a working directory resolved: `/tmp` reads `/private/tmp` on macOS.
+  const real = realOr(places.tempDir);
+  const named = (text: string): string =>
+    text.startsWith(`${real}/`) ? `${places.tempDir}${text.slice(real.length)}` : text;
   const used = new Set<AbsolutePath>();
   const use = (path: string): void => {
     if (!path.startsWith(at)) return;
@@ -233,11 +237,12 @@ function usedPaths(model: PsModel, keyDirs: AbsolutePath): Set<AbsolutePath> | n
     if (top === `squeal-${places.uid}` && sub === "tmp" && key !== undefined && key !== "")
       used.add(join(keyDirs, key));
   };
-  for (const cwd of cwds.values()) use(cwd);
+  for (const cwd of cwds.values()) use(named(cwd));
   for (const pid of pids) {
     for (const arg of source.cmdline(pid) ?? []) {
       // The path itself, or the value of `<option>=<path>`; a path's own `=` is no option's.
-      use(arg.startsWith(at) ? arg : arg.slice(arg.indexOf("=") + 1));
+      const path = named(arg);
+      use(path.startsWith(at) ? path : named(arg.slice(arg.indexOf("=") + 1)));
     }
   }
   return used;
