@@ -165,6 +165,10 @@ class DarwinSource implements PsSource {
     return null;
   }
 
+  unixSockets(): readonly string[] | null {
+    return null;
+  }
+
   pidNamespace(): string | null {
     return null;
   }
