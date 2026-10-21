@@ -126,3 +126,35 @@ If a test is red on main, keep it as `it.fails` with the observed behaviour in a
 Owns: the new test file and any helper it needs under `test/daemon/`. Not yours: `src/`, the existing tests, spec text, the board, bundles.
 
 Done when: the new tests pass on main, or are marked and reported as above; `npm run lint`, `npm run typecheck` and `squeal status --wait 60000 test/daemon/restart-handover-signal.test.ts` pass, their output in your summary.
+
+## R2: review of cand/0.1.239
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.239` SHA named in the spawn; the range is `origin/main..<sha>`: W1 (013-03, 011-54, 011-56), W2 (011-58, 011-57), W3 (011-63), 011-59 from W4 (`fix(state)` only; 011-60 is deferred and stays on `w8/w4`), W8's test (011-65), the coordinator's amendments commit and the release commit (0.1.239, bundles; no key-format or `RECORDER_VERSION` change).
+
+Read W1 to W4 and W8 above, the amendments commit (011 C4 step 5, C5, C6, C15; 004 D8; 005 D2; 013 V4), the wave 8 line in `status.md`, and `tasks/011-54/notes.md`, `tasks/011-58/notes.md`, `tasks/011-63/notes.md`. Check that:
+- the supersession cancel and the 30 s remainder count only the tier's files that have not ended (`unfinished` in `yields.ts`); the runner reports `fileEnded` during the run; a callback that throws ends no run;
+- the file-level check stores the whole file's time, and the scheduler's estimate does not count it twice;
+- every cancel names its cause in the failure, the log header and a note, and an unknown cause reads `run cancelled`;
+- the status lists (10 running, 5 queued, 100 each in `pendingTestFiles` with `omitted`) and the slow-slot holder read take no lock and keep `schemaVersion` 1; the `immutable=1` read in `slot-holders.ts` works on Node 22.13, CI's floor;
+- a named wait holds for its matched files; a mixed selection's exit and `selection.testFiles` match `commands.md`; `NAMED` in `evals/lib/squeal-text.mjs` still parses the mixed wait's line, round-tripped through the real formatter;
+- a timed-out or crashed check records origin `own`;
+- 011-65's test proves the handover after SIGTERM and `sessions-gone`;
+- the key format and `RECORDER_VERSION` are rightly unchanged (011-37's rules), the version is raised in all eight places, and the bundles match the tree.
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. The coordinator's gate: 815 files passed; only `test/e2e/shipped-plugin.test.ts` failed (both cases at 60 s), which fails on tag `squeal--v0.1.238` on this host too (row 014-17, host state). Name it; it is a blocker only if you trace it to this range. A file that fails loaded and passes alone is named. Write `reviews/0.1.239.md` with a PASS or FAIL verdict and commit it.
+
+## R3: 011-71, why a Vitest tier stayed `running` with no child process
+
+Use /researcher. Shape: research. Read board row 011-71, spec 011 C4 (step 5, the completion barrier), C9 (the stopped-process sweep) and C15; `research/running-tier-yields.md` section 1 (the cancel seam). Base: main at or after the commit that adds this brief.
+
+Outcome: the cause of the stuck tier, proven from the live daemon, and the fix row's done-when as tests.
+
+Evidence: daemon pid 709144 (released 0.1.238, `~/.claude/plugins/cache/hearsay/squeal/0.1.238/dist/cli/squeal.mjs`), worktree `/home/agent/projects/squeal/.ai/cezar/worktrees/da98547c-a743-4d9a-9601-c98a432a718f`, revision 17; the status JSON and `/proc` state at `.ai/cezar/t/04a258b0/stuck-tier-w4/`. Seams to read: `src/core/scheduler/scheduler.ts` (`#cancelBacklogs`, the tier's end), `yields.ts`, `src/runners/vitest/gate.ts`, `run.ts`, the per-file timeout, `src/core/daemon/` (the sweep), at tag `squeal--v0.1.238`.
+
+Questions:
+1. What the daemon is waiting on: its run rows, open runs, run logs and notes (store read-only, `node:sqlite`, `readOnly: true`), `/proc/709144/` (fds, threads, wchan), `squeal status --json` in that worktree.
+2. Which path lost the end: the yields, the sweep (58 processes stopped there), the gate, the timeout, or another. Why the per-file timeout did not fire.
+3. A test that reproduces it on a scratch clone, without the live daemon.
+4. The fix's seam and done-when as tests.
+
+Isolation: read only. No signal, `squeal stop`, `retry` or `run` on that daemon or worktree; no edits there. Probes only on scratch clones by SHA with a scratch `HOME`, `XDG_*` and store, at a one-minute load below 24. Owns `research/stuck-tier.md`, `research/probes/stuck-tier/`. Not yours: product code, spec text, `status.md`, the board. Done when the findings file answers 1 to 4 with evidence tags and ends with one recommendation.
