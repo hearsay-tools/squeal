@@ -10,7 +10,7 @@ import {
 import { cancelsBacklog } from "./backlog.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
-import { laneOf, type Tier } from "./tiers.js";
+import { laneOf, type Tier, type TierFile } from "./tiers.js";
 
 /**
  * A running tier yields only when its estimated remainder exceeds this (spec
@@ -43,18 +43,20 @@ export class TierYields {
 
   /**
    * Cancels each of `tiers` that C4 step 5 cancels after `revision`, the
-   * revision just stored (`null`: a runner part applied or a promotion came):
+   * revision just stored (`null`: a runner part applied, a promotion came or
+   * a file ended):
    * - any, when the revisions during its run changed an input of every file
-   *   of it, whose results the stability check would discard;
+   *   of it that has not ended, whose results the stability check would
+   *   discard;
    * - a backlog tier, as `cancelsBacklog` says;
    * - any but the backlog's turn yields, once per file and key, while an
    *   edit's work that came during its run or a promoted file is queued in
    *   its lane, or `revision` makes the lane's runner part wait for the run,
    *   when its estimated remainder exceeds `YIELD_REMAINDER_MS`.
-   * The runner reports which modules ended only with the run's report, so a
-   * tier some of whose files may have ended is not cancelled by the first
-   * rule unless every file of it was re-keyed; it yields only by the third
-   * (C4 step 5 as corrected 2026-10-21, review `reviews/0.1.237.md` B2).
+   * A file has ended when the runner named it (`Tier.ended`, row 011-54,
+   * review `reviews/0.1.237.md` B2); a runner that names none leaves every
+   * file unfinished, so its tier is cancelled by the first rule only when
+   * every file of it was re-keyed.
    */
   check(
     context: SchedulerContext,
@@ -68,7 +70,7 @@ export class TierYields {
       const decision = this.#decide(context, ledger, tier, revision);
       if (decision === "cancel" || decision === "yield") {
         if (decision === "yield")
-          for (const { file, key } of tier.files)
+          for (const { file, key } of unfinished(tier))
             this.#cut.set(file.id, { key, applied: file.resultsApplied });
         tier.cancel?.abort();
       }
@@ -99,7 +101,7 @@ export class TierYields {
     if (!waitedFor(context, ledger, tier, revision)) return null;
     if (cancel === null || tier.slot === true) return { kind: "runner" };
     if (tier.kind === "turn") return { kind: "turn" };
-    if (tier.files.some(({ file, key }) => this.#cut.get(file.id)?.key === key))
+    if (unfinished(tier).some(({ file, key }) => this.#cut.get(file.id)?.key === key))
       return { kind: "cut" };
     const remainderMs = remainder(context, tier);
     return remainderMs > YIELD_REMAINDER_MS ? "yield" : { kind: "remainder", remainderMs };
@@ -134,13 +136,22 @@ export class TierYields {
   }
 }
 
+/** The files of `tier` whose module has not ended, as far as the runner said (`Tier.ended`). */
+function unfinished(tier: Tier): TierFile[] {
+  const { ended } = tier;
+  if (ended === undefined || ended.size === 0) return [...tier.files];
+  return tier.files.filter(({ file }) => !ended.has(file.id));
+}
+
 /**
  * The revisions during its run changed an input of every file of `tier`
- * (`Tier.changes`), those that may have ended too: the runner names them
- * only in the run's report.
+ * that has not ended (`Tier.changes`); a tier whose files have all ended
+ * is never superseded, its run is over.
  */
 function superseded(tier: Tier): boolean {
-  return tier.files.every((f) => f.inputs.some((path) => tier.changes.has(path)));
+  if (tier.changes.size === 0) return false;
+  const left = unfinished(tier);
+  return left.length > 0 && left.every((f) => f.inputs.some((path) => tier.changes.has(path)));
 }
 
 /**
@@ -186,11 +197,11 @@ function recreates(
 
 /**
  * The tier's estimated remainder: the largest last-known duration among
- * every file of it, ended or not, a file with none counting 0, less the time
+ * its files that have not ended, a file with none counting 0, less the time
  * it has run.
  */
 function remainder(context: SchedulerContext, tier: Tier): number {
-  const longest = Math.max(0, ...tier.files.map(({ file }) => file.durationMs ?? 0));
+  const longest = Math.max(0, ...unfinished(tier).map(({ file }) => file.durationMs ?? 0));
   return longest - (context.now() - (tier.startedAt ?? context.now()));
 }
 

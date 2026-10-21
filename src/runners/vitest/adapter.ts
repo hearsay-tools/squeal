@@ -467,7 +467,7 @@ export class VitestAdapter implements RunnerAdapter {
         const specs = testFiles.map((ref) =>
           findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path)),
         );
-        const collector = new RunCollector(testFiles, this.paths);
+        const collector = new RunCollector(testFiles, this.paths, options.fileEnded);
         if (specs.length === 0) {
           const empty = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
           writeRunLog(options, collector, empty);
