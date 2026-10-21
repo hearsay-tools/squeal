@@ -1,0 +1,28 @@
+# load before the first (failed, file:// refused) run:  17:11:28 up 7 days,  6:00,  7 users,  load average: 22.13, 27.22, 31.24
+# load before this run: 17:12:04 load average: 25.78, 27.42, 31.13 (above the brief's 24; see the findings file)
+# getconf _NPROCESSORS_ONLN: 24
+== codex codex-cli 0.160.1
+Added marketplace `probe` from http://127.0.0.1:50459/mkt.git.
+Installed marketplace root: /home/squeal-e2e/.codex/.tmp/marketplaces/probe
+Added plugin `probe` from marketplace `probe`.
+Installed plugin root: /home/squeal-e2e/.codex/plugins/cache/probe/probe/1.0.0
+-- codex after install 1.0.0
+/home/squeal-e2e/.codex/plugins/cache/probe/probe/1.0.0 inode=1611260605 .claude-plugin .codex-plugin skills 
+Upgraded marketplace `probe` to the latest configured revision.
+Installed marketplace root: /home/squeal-e2e/.codex/.tmp/marketplaces/probe
+-- codex after marketplace upgrade to 1.0.1
+/home/squeal-e2e/.codex/plugins/cache/probe/probe/1.0.1 inode=575222527 .claude-plugin .codex-plugin skills 
+old skill path: gone
+open handle still reads: ---
+name: probe
+description: probe skill
+---
+probe
+Upgraded marketplace `probe` to the latest configured revision.
+Installed marketplace root: /home/squeal-e2e/.codex/.tmp/marketplaces/probe
+-- codex after a commit that keeps 1.0.1
+/home/squeal-e2e/.codex/plugins/cache/probe/probe/1.0.1 inode=1611137122 .claude-plugin .codex-plugin skills 
+== claude 2.1.300 (Claude Code)
+Adding marketplace…✘ Failed to add marketplace: Failed to clone marketplace repository: Cloning into '/home/squeal-e2e/.claude/plugins/marketplaces/temp_git_1792595526767_mxehsw..clone'...
+fatal: dumb http transport does not support shallow capabilities
+
