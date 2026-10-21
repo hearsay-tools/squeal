@@ -320,6 +320,8 @@ class Daemon {
       // Task 001-219: so are an explicit checkpoint and a new failure's re-run.
       owedWork: () =>
         this.#loop !== null && this.#phase !== "stopping" ? this.#loop.scheduler.owedWork() : null,
+      // Row 011-93: the drain runs its session's work and leaves the backlog queued.
+      pauseBacklog: (on) => this.#loop?.scheduler.pauseBacklog(on),
       idleGc: () => {
         if (this.#phase !== "stopping") this.#idleGc.check();
       },

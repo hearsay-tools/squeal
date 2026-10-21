@@ -341,6 +341,13 @@ export interface Scheduler {
   /** Test files queued, fast and slow: what an unused stop leaves to the next daemon (row 011-92). */
   queued(): number;
   /**
+   * A departure drain runs only its session's work (011 C9 as amended
+   * 2026-10-21, row 011-93): with `true` the backlog stays queued for the
+   * next daemon and the slow tier yields the slot to another worktree's
+   * fresh mark; `false`, a session registered, ends the pause.
+   */
+  pauseBacklog(on: boolean): void;
+  /**
    * What the worktree is owed and the last session's departure drains
    * before the exit, as the drain's notes name it: an explicit checkpoint
    * open, or a new failure's re-run queued or running (task 001-219).
