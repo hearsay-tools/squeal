@@ -18,6 +18,13 @@ export const ref = (path: string, project = ""): TestFileRef => ({ project, path
  */
 export const CUT_WITHIN_MS = 30_000;
 
+/**
+ * A held run starts within this after the edit or request that queues it:
+ * the revision's store work, its runner part and the grant, at load 70 on
+ * 24 CPUs (review `reviews/0.1.237.md` S1: Vitest's default poll is 1 s).
+ */
+export const START_WITHIN_MS = 30_000;
+
 /** A pause after which a cancel that was going to come has come, at the same load. */
 export const SETTLE_MS = 1_500;
 
@@ -42,7 +49,9 @@ export function holdRuns(runner: CatchUpRunner, held: (path: string) => boolean)
 /** The run of `path` in flight once one has started after the `after` runs; it is held there. */
 export async function heldRun(side: CatchUpSide, path: string, after: number): Promise<CatchUpRun> {
   await expect
-    .poll(() => side.runner.runs.slice(after).some((r) => holds(r, path) && r.endedAt === null))
+    .poll(() => side.runner.runs.slice(after).some((r) => holds(r, path) && r.endedAt === null), {
+      timeout: START_WITHIN_MS,
+    })
     .toBe(true);
   const run = side.runner.runs.slice(after).find((r) => holds(r, path) && r.endedAt === null);
   if (run === undefined) throw new Error(`no run of ${path} in flight`);
