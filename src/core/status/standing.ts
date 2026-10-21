@@ -3,6 +3,7 @@ import { testFileId } from "../keys/index.js";
 import { hostLoad } from "../retry/load.js";
 import { claimBoundMs } from "../scheduler/claims.js";
 import { promotedIds } from "../scheduler/promotions.js";
+import { publishedQuiet } from "../scheduler/quiet.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { laneFor, slowView } from "../scheduler/slow.js";
 import { publishedYields } from "../scheduler/yields.js";
@@ -119,6 +120,7 @@ export function standingsOf(
   const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
   const promoted = promotedOf(store, worktreeId, daemon, now);
   const yields = yieldsOf(store, worktreeId, daemon);
+  const quiet = quietOf(store, worktreeId, daemon, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -188,6 +190,14 @@ export function standingsOf(
             ...(setup === undefined ? {} : { setup }),
           }
         : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
+      // Row 011-82: no tier runs in its lane, which waits for quiet; the wait holds no promoted file.
+      const quietUntil = pending.kind === "queued" ? quiet.get(pending.lane) : undefined;
+      if (pending.kind === "queued" && pending.behind === null && quietUntil !== undefined) {
+        if (!promoted.has(testFileId(ref))) {
+          const held: PendingReason = { ...pending, quietUntil };
+          return { testFile: ref, state, pending: held, standing: held };
+        }
+      }
       if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
         // Row 011-51: whether the tier it is queued behind yields to it, as the daemon published.
         const tier = pending.behind === null ? undefined : yieldIn(runs, lane, policy, yields);
@@ -294,6 +304,21 @@ function yieldsOf(
   const record = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (record === null || daemon.state !== "alive") return new Map();
   return publishedYields(store, worktreeId, record.startedAt);
+}
+
+/**
+ * When each lane's wait for quiet ends, as the live daemon published it
+ * (`publishedQuiet`, row 011-82); none without one, or from an older daemon.
+ */
+function quietOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  daemon: DaemonLiveness,
+  now: EpochMs,
+): ReadonlyMap<string, EpochMs> {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null || daemon.state !== "alive") return new Map();
+  return publishedQuiet(store, worktreeId, record.startedAt, now);
 }
 
 /** Whether the open run of `lane` yields, as `yields` holds it; `undefined` when not known. */
