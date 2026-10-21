@@ -11,7 +11,7 @@ import type {
 } from "./common.js";
 import type { CheckKey, ClosureMethod, TestFileRef } from "./keys.js";
 import type { DaemonNote } from "./scheduler.js";
-import type { OutstandingGroup, PendingTestFiles } from "./standing.js";
+import type { OutstandingGroup, PendingTestFiles, SlowSlotHolders } from "./standing.js";
 import type {
   DiagnosticFingerprint,
   FlakyNote,
@@ -579,6 +579,13 @@ export interface StatusSnapshot extends StatusHeader {
    * Absent from payloads before the field.
    */
   readonly pendingTestFiles?: PendingTestFiles;
+  /**
+   * Row 011-58 (gh-58; 004 D2 and D8): while the live daemon's slow tier
+   * waits for the per-user slow slot, each held permit's holder: worktree,
+   * pid, time held, running files and pending count, or that its record is
+   * stale, missing or unreadable. Absent otherwise.
+   */
+  readonly slowSlot?: SlowSlotHolders;
   /**
    * Row 011-07: what the policy loader reports for `squeal.config.json`, as
    * `setup --check` names it (011 C6, C10). Absent for a valid or missing config.

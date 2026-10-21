@@ -20,6 +20,7 @@ import { configProblemsLine } from "./config-problems.js";
 import { statusRevisionText } from "./identity.js";
 import { outstandingLines } from "./outstanding-text.js";
 import { phaseLines } from "./phase-files.js";
+import { slowSlotLines } from "./slot-holders.js";
 import { detailLines, hiddenParts } from "./status-detail.js";
 
 export { shortCommit } from "./identity.js";
@@ -81,6 +82,7 @@ export function formatStatus(
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...owedLine(result),
     ...slowLine(result, command),
+    ...slowSlotLines(result),
     // Row 011-58 (gh-61): which files run and which wait, after the vision's lines.
     ...phaseLines(result),
     ...outstandingLines(result, now, command, {
