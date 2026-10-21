@@ -270,14 +270,14 @@ function parseList(raw) {
 }
 function toNote(item) {
   if (typeof item !== "object" || item === null) return [];
-  const { at: at2, revision, text } = item;
-  if (typeof at2 !== "number" || typeof text !== "string") return [];
+  const { at, revision, text } = item;
+  if (typeof at !== "number" || typeof text !== "string") return [];
   if (revision !== null && typeof revision !== "number") return [];
   const { stopped: rawStopped, exitOf, topic } = item;
   const stopped = stoppedOf(rawStopped);
   return [
     {
-      at: at2,
+      at,
       revision,
       text,
       ...stopped === void 0 ? {} : { stopped },
@@ -466,20 +466,20 @@ function projectEntries(value, path, fields, required, withDefaults3, check) {
   const kept = [];
   const problems = [];
   value.forEach((entry3, index) => {
-    const at2 = `${path}[${index}]`;
-    const problem = entryProblem(entry3, at2, kept, fields, required, check);
+    const at = `${path}[${index}]`;
+    const problem = entryProblem(entry3, at, kept, fields, required, check);
     if (problem === null) kept.push(withDefaults3(entry3));
     else problems.push(problem);
   });
   return { kept, problems };
 }
-function entryProblem(entry3, at2, kept, fields, required, check) {
+function entryProblem(entry3, at, kept, fields, required, check) {
   if (!isRecord(entry3))
-    return `"${at2}" must be an object, got ${JSON.stringify(entry3)}; it is skipped`;
+    return `"${at}" must be an object, got ${JSON.stringify(entry3)}; it is skipped`;
   const named = nonEmptyString(entry3.name) === null ? entry3.name : null;
   const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
   for (const key of Object.keys(entry3)) {
-    if (!Object.hasOwn(fields, key)) return `unknown key "${at2}.${key}"; ${skipped}`;
+    if (!Object.hasOwn(fields, key)) return `unknown key "${at}.${key}"; ${skipped}`;
   }
   for (const [key, field] of Object.entries(fields)) {
     const given = entry3[key];
@@ -487,12 +487,12 @@ function entryProblem(entry3, at2, kept, fields, required, check) {
     const expected = field(given);
     if (expected === null) continue;
     const why = typeof expected === "object" ? expected.problem : `must be ${expected}, got ${given === void 0 ? "undefined" : JSON.stringify(given)}`;
-    return `"${at2}.${key}" ${why}; ${skipped}`;
+    return `"${at}.${key}" ${why}; ${skipped}`;
   }
   const across = check?.(entry3) ?? null;
-  if (across !== null) return `"${at2}.${across.key}" ${across.problem}; ${skipped}`;
+  if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
   if (kept.some((project) => project.name === named)) {
-    return `"${at2}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+    return `"${at}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
   }
   return null;
 }
@@ -753,11 +753,11 @@ function describeFailure(errors, fallback) {
   };
 }
 function renormalizeFingerprint(fingerprint) {
-  const at2 = fingerprint.lastIndexOf(" @ ");
-  if (at2 < 0) return fingerprint;
-  let text = fingerprint.slice(0, at2);
+  const at = fingerprint.lastIndexOf(" @ ");
+  if (at < 0) return fingerprint;
+  let text = fingerprint.slice(0, at);
   for (let next = normalize(text); next !== text; next = normalize(text)) text = next;
-  return `${text}${fingerprint.slice(at2)}`;
+  return `${text}${fingerprint.slice(at)}`;
 }
 function sameFingerprint(a, b) {
   if (a === b) return true;
@@ -821,8 +821,8 @@ function entry(check, fingerprint) {
   return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
 }
 function current(e) {
-  const at2 = e.lastIndexOf("\0");
-  return `${e.slice(0, at2 + 1)}${renormalizeFingerprint(e.slice(at2 + 1))}`;
+  const at = e.lastIndexOf("\0");
+  return `${e.slice(0, at + 1)}${renormalizeFingerprint(e.slice(at + 1))}`;
 }
 function read(store, worktreeId) {
   const raw = store.meta.get(baselineMetaKey(worktreeId));
@@ -852,8 +852,8 @@ function read2(store, worktreeId) {
     if (!isRecord(value) || !Array.isArray(value.snapshots) || !isRecord(value.slots)) return EMPTY;
     const snapshots = value.snapshots.map(toKeys);
     const slots = {};
-    for (const [slot2, at2] of Object.entries(value.slots)) {
-      if (typeof at2 === "number" && snapshots[at2] !== void 0) slots[slot2] = at2;
+    for (const [slot2, at] of Object.entries(value.slots)) {
+      if (typeof at === "number" && snapshots[at] !== void 0) slots[slot2] = at;
     }
     return { snapshots, slots };
   } catch {
@@ -864,9 +864,9 @@ var identity = (keys) => JSON.stringify(Object.entries(keys).sort(([a], [b]) => 
 function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept }) {
   const recorded = read2(store, worktreeId);
   const named = /* @__PURE__ */ new Map();
-  for (const [at2, index] of Object.entries(recorded.slots)) {
+  for (const [at, index] of Object.entries(recorded.slots)) {
     const keys = recorded.snapshots[index];
-    if (keys !== void 0 && kept.has(at2) && (resumed || at2 !== slot2)) named.set(at2, keys);
+    if (keys !== void 0 && kept.has(at) && (resumed || at !== slot2)) named.set(at, keys);
   }
   if (!resumed) {
     const keys = {};
@@ -878,14 +878,14 @@ function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept }) {
   const snapshots = [];
   const indexOf = /* @__PURE__ */ new Map();
   const slots = {};
-  for (const [at2, keys] of named) {
+  for (const [at, keys] of named) {
     const id = identity(keys);
     let index = indexOf.get(id);
     if (index === void 0) {
       index = snapshots.push(keys) - 1;
       indexOf.set(id, index);
     }
-    slots[at2] = index;
+    slots[at] = index;
   }
   store.meta.set(registeredKeysMetaKey(worktreeId), JSON.stringify({ snapshots, slots }));
 }
@@ -1427,8 +1427,8 @@ function durationText(ms) {
   const rest = seconds % 60;
   return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
 }
-function clockText(at2) {
-  const date = new Date(at2);
+function clockText(at) {
+  const date = new Date(at);
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
@@ -2234,8 +2234,8 @@ function prune(conn, worktrees, paths, options) {
 function dropPrunable(conn, cutoff) {
   const ids = conn.read(() => conn.all(`SELECT rowid AS id FROM results WHERE ${PRUNABLE}`, cutoff)).map((row) => num(row, "id"));
   let removed = 0;
-  for (let at2 = 0; at2 < ids.length; at2 += DELETE_BATCH) {
-    const batch = JSON.stringify(ids.slice(at2, at2 + DELETE_BATCH));
+  for (let at = 0; at < ids.length; at += DELETE_BATCH) {
+    const batch = JSON.stringify(ids.slice(at, at + DELETE_BATCH));
     removed += conn.transaction(
       () => conn.run(
         `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE}`,
@@ -2332,25 +2332,25 @@ function createConsumerRepo(conn) {
      * with the current known state on registration, so entries left by an
      * earlier registration of the same consumer are dropped.
      */
-    register: (consumer, at2) => conn.transaction(() => {
+    register: (consumer, at) => conn.transaction(() => {
       unregister(consumer);
       conn.run(
         `INSERT INTO consumers (worktree_id, session_id, agent_id, registered_at, last_seen_at)
            VALUES (?, ?, ?, ?, ?)`,
         ...consumerParams(consumer),
-        at2,
-        at2
+        at,
+        at
       );
-      return { consumer, registeredAt: at2, lastSeenAt: at2, lastDeliveredAt: null };
+      return { consumer, registeredAt: at, lastSeenAt: at, lastDeliveredAt: null };
     }),
-    touch: (consumer, at2, delivered) => {
+    touch: (consumer, at, delivered) => {
       conn.run(
         `UPDATE consumers SET last_seen_at = ?,
            last_delivered_at = CASE WHEN ? THEN ? ELSE last_delivered_at END
          WHERE ${WHERE_CONSUMER}`,
-        at2,
+        at,
         delivered ? 1 : 0,
-        at2,
+        at,
         ...consumerParams(consumer)
       );
     },
@@ -2424,9 +2424,88 @@ function toView(row) {
   };
 }
 
+// src/core/store/repos/failures.ts
+var FAILING_ROWS = `results r INDEXED BY results_by_failure CROSS JOIN checks c ON c.id = r.check_id`;
+function where2({ worktreeId, since, paths, checks }) {
+  const sql = ["r.failure_id IS NOT NULL", "r.outcome = 'fail'"];
+  const params = [];
+  if (worktreeId !== null) {
+    sql.push("r.worktree_id = ?");
+    params.push(worktreeId);
+  }
+  if (since !== null) {
+    sql.push("r.recorded_at >= ?");
+    params.push(since);
+  }
+  if (paths.length > 0) {
+    sql.push(`EXISTS (SELECT 1 FROM json_each(?) p WHERE c.test_path = p.value
+      OR substr(c.test_path, 1, length(p.value) + 1) = p.value || '/')`);
+    params.push(JSON.stringify(paths));
+  }
+  if (checks !== null) {
+    sql.push(`r.check_id IN (SELECT k.id FROM json_each(?) j JOIN checks k
+      ON k.project = json_extract(j.value, '$[0]') AND k.test_path = json_extract(j.value, '$[1]')
+      AND k.kind = json_extract(j.value, '$[2]') AND k.full_name = json_extract(j.value, '$[3]'))`);
+    params.push(JSON.stringify(checks.map(checkParams)));
+  }
+  return { sql: sql.join(" AND "), params };
+}
+var FAILURE_STATEMENTS = {
+  list: (selection, limit) => {
+    const w = where2(selection);
+    return {
+      sql: `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM ${FAILING_ROWS}
+        LEFT JOIN failure_texts f ON f.id = r.failure_id
+        WHERE ${w.sql} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
+      params: [...w.params, limit]
+    };
+  },
+  count: (selection) => {
+    const w = where2(selection);
+    return { sql: `SELECT COUNT(*) AS n FROM ${FAILING_ROWS} WHERE ${w.sql}`, params: w.params };
+  },
+  failingChecks: (selection) => {
+    const w = where2(selection);
+    return {
+      sql: `SELECT DISTINCT ${CHECK_COLUMNS} FROM ${FAILING_ROWS} WHERE ${w.sql}
+        ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      params: w.params
+    };
+  }
+};
+function createFailureRepo(conn) {
+  const all = ({ sql, params }) => conn.all(sql, ...params);
+  return {
+    list: (selection, limit) => all(FAILURE_STATEMENTS.list(selection, limit)).map(toResult),
+    count: (selection) => num(all(FAILURE_STATEMENTS.count(selection))[0] ?? { n: 0 }, "n"),
+    failingChecks: (selection) => all(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom)
+  };
+}
+var OUTCOMES3 = ["pass", "fail", "skip"];
+function toResult(row) {
+  return {
+    check: checkFrom(row),
+    key: str(row, "key"),
+    outcome: oneOf2(row, "outcome", OUTCOMES3),
+    durationMs: num(row, "duration_ms"),
+    location: location(row),
+    fingerprint: strOrNull(row, "fingerprint"),
+    summary: strOrNull(row, "summary"),
+    errors: row.errors === null ? [] : json(row, "errors"),
+    provenance: {
+      worktreeId: str(row, "worktree_id"),
+      revision: num(row, "revision"),
+      commit: strOrNull(row, "commit_sha"),
+      dirty: bool(row, "dirty"),
+      runId: str(row, "run_id"),
+      recordedAt: num(row, "recorded_at")
+    }
+  };
+}
+
 // src/core/store/repos/results.ts
 import { createHash as createHash2 } from "node:crypto";
-var OUTCOMES3 = ["pass", "fail", "skip"];
+var OUTCOMES4 = ["pass", "fail", "skip"];
 var SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
   FROM results r
@@ -2457,7 +2536,7 @@ function createResultRepo(conn) {
       return conn.all(
         `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
         key
-      ).map(toResult);
+      ).map(toResult2);
     },
     checksForKey: (key) => conn.all(
       `SELECT ${CHECK_COLUMNS} FROM results r JOIN checks c ON c.id = r.check_id
@@ -2471,7 +2550,7 @@ function createResultRepo(conn) {
         `${SELECT_RESULTS} WHERE r.check_id = ? ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT 1`,
         id
       );
-      return row === null ? null : toResult(row);
+      return row === null ? null : toResult2(row);
     },
     listForCheck: (check, limit) => {
       const id = findCheckId(conn, check);
@@ -2481,13 +2560,13 @@ function createResultRepo(conn) {
            ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
         id,
         limit
-      ).map(toResult);
+      ).map(toResult2);
     },
     listFailures: (filter, limit) => conn.all(
       `${SELECT_RESULTS} WHERE ${FAILURE_WHERE} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
       ...failureParams(filter),
       limit
-    ).map(toResult),
+    ).map(toResult2),
     countFailures: (filter) => num(
       conn.get(
         `SELECT COUNT(*) AS n FROM results r WHERE ${FAILURE_WHERE}`,
@@ -2549,11 +2628,11 @@ var FAILURE_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND
 function failureParams({ worktreeId, since }) {
   return [worktreeId, worktreeId, since, since];
 }
-function toResult(row) {
+function toResult2(row) {
   return {
     check: checkFrom(row),
     key: str(row, "key"),
-    outcome: oneOf2(row, "outcome", OUTCOMES3),
+    outcome: oneOf2(row, "outcome", OUTCOMES4),
     durationMs: num(row, "duration_ms"),
     location: location(row),
     fingerprint: strOrNull(row, "fingerprint"),
@@ -2590,8 +2669,8 @@ function createRunRepo(conn) {
       );
       return { ...record, endedAt: null, end: null };
     },
-    finish: (id, end, at2) => {
-      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at2, id);
+    finish: (id, end, at) => {
+      conn.run("UPDATE runs SET end_state = ?, ended_at = ? WHERE id = ?", end, at, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM runs WHERE id = ?", id);
@@ -2640,8 +2719,8 @@ function createCheckpointRepo(conn) {
       if (record.lane !== void 0) writeLane(conn, record.worktreeId, record.id, record.lane);
       return { ...record, completedAt: null, end: null };
     },
-    finish: (id, end, at2) => {
-      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at2, id);
+    finish: (id, end, at) => {
+      conn.run("UPDATE checkpoints SET end_state = ?, completed_at = ? WHERE id = ?", end, at, id);
     },
     get: (id) => {
       const row = conn.get("SELECT * FROM checkpoints WHERE id = ?", id);
@@ -2715,7 +2794,7 @@ function toCheckpoint(row) {
 }
 
 // src/core/store/repos/states.ts
-var OUTCOMES4 = ["pass", "fail", "skip", "unknown"];
+var OUTCOMES5 = ["pass", "fail", "skip", "unknown"];
 var VALIDITIES = ["current", "pending", "stale", "unknown"];
 var PENDING = ["queued", "running"];
 var KINDS = [
@@ -2810,7 +2889,7 @@ function toKnownState(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES4),
+    outcome: oneOf2(row, "outcome", OUTCOMES5),
     validity: oneOf2(row, "validity", VALIDITIES),
     pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
     observedAt: numOrNull(row, "observed_at"),
@@ -2859,8 +2938,8 @@ function toTransition(row) {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
     kind: oneOf2(row, "kind", KINDS),
-    from: oneOfOrNull(row, "from_outcome", OUTCOMES4),
-    to: oneOf2(row, "to_outcome", OUTCOMES4),
+    from: oneOfOrNull(row, "from_outcome", OUTCOMES5),
+    to: oneOf2(row, "to_outcome", OUTCOMES5),
     fromFingerprint: strOrNull(row, "from_fingerprint"),
     toFingerprint: strOrNull(row, "to_fingerprint"),
     revision: num(row, "revision"),
@@ -3229,10 +3308,10 @@ function createWorktreeRepo(conn) {
       );
       if (d !== null) writeToken(id, d);
     },
-    heartbeat: (id, at2) => {
+    heartbeat: (id, at) => {
       conn.run(
         "UPDATE worktrees SET daemon_heartbeat_at = ? WHERE id = ? AND daemon_socket IS NOT NULL",
-        at2,
+        at,
         id
       );
     },
@@ -3308,6 +3387,7 @@ function createStore(conn, schemaVersion, paths) {
     testFileKeys: createTestFileKeyRepo(conn),
     checks: createCheckRepo(conn),
     results: createResultRepo(conn),
+    failures: createFailureRepo(conn),
     runs: createRunRepo(conn),
     checkpoints: createCheckpointRepo(conn),
     knownStates: createKnownStateRepo(conn),
@@ -3422,12 +3502,12 @@ function recover(paths, options) {
     const again = connect(paths, { ...options, checkIntegrity: true });
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
-    const at2 = now();
-    const movedTo = moveAside(paths.database, at2);
+    const at = now();
+    const movedTo = moveAside(paths.database, at);
     const fresh2 = connect(paths, { ...options, checkIntegrity: false });
     if ("corrupt" in fresh2) return { reason: "corrupt", movedTo };
     if (!isStoreOpenFailure(fresh2)) {
-      const note = JSON.stringify({ at: at2, movedTo, reason: again.corrupt });
+      const note = JSON.stringify({ at, movedTo, reason: again.corrupt });
       fresh2.transaction(() => fresh2.meta.set(META_STORE_RECOVERED, note));
     }
     return fresh2;
@@ -3436,13 +3516,70 @@ function recover(paths, options) {
     lock.close();
   }
 }
-function moveAside(database, at2) {
-  let movedTo = `${database}.corrupt-${at2}`;
-  for (let n = 1; existsSync3(movedTo); n++) movedTo = `${database}.corrupt-${at2}-${n}`;
+function moveAside(database, at) {
+  let movedTo = `${database}.corrupt-${at}`;
+  for (let n = 1; existsSync3(movedTo); n++) movedTo = `${database}.corrupt-${at}-${n}`;
   renameSync(database, movedTo);
   if (existsSync3(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
   rmSync2(`${database}-shm`, { force: true });
   return movedTo;
+}
+
+// src/core/status/test-frame.ts
+var V8_FRAME = /^\s*at (.+?)\s*$/;
+var V8_POSITION = /^(.+):(\d+):(\d+)$/;
+var PYTEST_ENTRY = /^(\S[^:]*):(\d+):(?: |$)/;
+var NATIVE_ENTRY = /^\s*File "(.+)", line (\d+)/;
+function v8Position(frame) {
+  const open = frame.indexOf(" (");
+  const where3 = open !== -1 && frame.endsWith(")") ? frame.slice(open + 2, -1) : frame;
+  const match = V8_POSITION.exec(where3);
+  if (match === null) return null;
+  return { path: match[1], line: Number(match[2]), column: Number(match[3]) };
+}
+function positions(stack) {
+  return stack.split("\n").flatMap((text) => {
+    const v8 = V8_FRAME.exec(text);
+    const position = v8 === null ? null : v8Position(v8[1]);
+    if (position !== null) return [position];
+    const entry3 = PYTEST_ENTRY.exec(text) ?? NATIVE_ENTRY.exec(text);
+    return entry3 === null ? [] : [{ path: entry3[1], line: Number(entry3[2]) }];
+  });
+}
+function prefixOf(found2, location2) {
+  const named = found2.find(
+    (p) => p.line === location2.line && (p.column === void 0 || p.column === location2.column) && (p.path === location2.path || location2.path.endsWith(`/${p.path}`))
+  );
+  return named === void 0 ? null : location2.path.slice(0, -named.path.length);
+}
+function testFileFrame(check, errors) {
+  const first = errors[0];
+  const location2 = first?.location ?? null;
+  const stack = first?.stack ?? null;
+  if (check.kind === "setup" || check.testPath === "" || location2 === null || stack === null) {
+    return null;
+  }
+  if (location2.path === check.testPath) return null;
+  const found2 = positions(stack);
+  const prefix = prefixOf(found2, location2);
+  if (prefix === null) return null;
+  const frame = found2.find((p) => `${prefix}${p.path}` === check.testPath);
+  if (frame === void 0) return null;
+  return {
+    path: check.testPath,
+    line: frame.line,
+    ...frame.column === void 0 ? {} : { column: frame.column }
+  };
+}
+function positionText({ path, line, column }) {
+  return column === void 0 ? `${path}:${line}` : `${path}:${line}:${column}`;
+}
+function locationText(location2, frame) {
+  const at = positionText(location2);
+  return frame === void 0 ? at : `${at}, called from ${positionText(frame)}`;
+}
+function atText(location2, frame) {
+  return `at ${locationText(location2, frame)}`;
 }
 
 // src/core/delivery/closure.ts
@@ -3495,20 +3632,20 @@ function seesEveryChange(store, worktreeId, r) {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   return r.scanned !== void 0 && daemon?.startedAt === r.scanned;
 }
-function tellRegistered(store, consumer, revision, { at: at2, scanned }) {
-  const parked = unpark(store, consumer, at2);
+function tellRegistered(store, consumer, revision, { at, scanned }) {
+  const parked = unpark(store, consumer, at);
   const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
   recordRegisteredKeys(store, consumer.worktreeId, slot(consumer), {
     resumed: parked !== null,
-    kept: registeredSlots(store, consumer.worktreeId, at2)
+    kept: registeredSlots(store, consumer.worktreeId, at)
   });
   return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
 }
-function registeredSlots(store, worktreeId, at2) {
+function registeredSlots(store, worktreeId, at) {
   const slots = new Set(Object.keys(readAll(store, registeredMetaKey(worktreeId))));
   for (const [k, v] of Object.entries(readAll(store, parkedMetaKey(worktreeId)))) {
-    if (isRecord(v) && isNumber2(v.leftTime) && v.leftTime >= at2 - CONSUMER_EXPIRY_MS) slots.add(k);
+    if (isRecord(v) && isNumber2(v.leftTime) && v.leftTime >= at - CONSUMER_EXPIRY_MS) slots.add(k);
   }
   return slots;
 }
@@ -3523,7 +3660,7 @@ function back(parked, revision, scanned) {
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
-function park(store, consumer, at2, { said, uncovered } = { said: false, uncovered: [] }) {
+function park(store, consumer, at, { said, uncovered } = { said: false, uncovered: [] }) {
   const key = registeredMetaKey(consumer.worktreeId);
   const current2 = registration(store, consumer);
   if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
@@ -3533,29 +3670,29 @@ function park(store, consumer, at2, { said, uncovered } = { said: false, uncover
     ...said ? { said: true } : {},
     ...uncovered.length > 0 ? { uncovered } : {}
   };
-  writeParked(store, consumer, at2, { ...current2, leftAt, leftTime: at2, ...told });
+  writeParked(store, consumer, at, { ...current2, leftAt, leftTime: at, ...told });
 }
-function unpark(store, consumer, at2) {
+function unpark(store, consumer, at) {
   const value = readAll(store, parkedMetaKey(consumer.worktreeId))[slot(consumer)];
   if (value === void 0) return null;
-  writeParked(store, consumer, at2, null);
+  writeParked(store, consumer, at, null);
   const r = toRegistration(value);
   if (r === null || !isRecord(value) || !isNumber2(value.leftAt) || !isNumber2(value.leftTime)) {
     return null;
   }
-  if (value.leftTime < at2 - CONSUMER_EXPIRY_MS) return null;
+  if (value.leftTime < at - CONSUMER_EXPIRY_MS) return null;
   const told = {
     ...value.said === true ? { said: true } : {},
     ...Array.isArray(value.uncovered) ? { uncovered: value.uncovered.filter((p) => typeof p === "string") } : {}
   };
   return { ...r, leftAt: value.leftAt, leftTime: value.leftTime, ...told };
 }
-function writeParked(store, consumer, at2, value) {
+function writeParked(store, consumer, at, value) {
   const key = parkedMetaKey(consumer.worktreeId);
   const all = readAll(store, key);
   const next = {};
   for (const [k, v] of Object.entries(all)) {
-    if (isRecord(v) && isNumber2(v.leftTime) && v.leftTime >= at2 - CONSUMER_EXPIRY_MS) next[k] = v;
+    if (isRecord(v) && isNumber2(v.leftTime) && v.leftTime >= at - CONSUMER_EXPIRY_MS) next[k] = v;
   }
   if (value === null) delete next[slot(consumer)];
   else next[slot(consumer)] = value;
@@ -3592,13 +3729,16 @@ function attribute(store, consumer, entries, revision) {
   const from = registration(store, consumer);
   const changesOf = closureChanges(store, consumer, revision);
   const before = from === null ? null : beforeEditsFor(store, consumer.worktreeId, slot(consumer), from.since);
+  const frameOf = testFileFrames(store, consumer.worktreeId);
   return entries.map((entry3) => {
     if (entry3.kind === "fail-retired" || entry3.to !== "fail") return entry3;
     const load = loadOf(store, consumer.worktreeId, entry3);
     const firstSeen = entry3.kind === "first-seen-fail" && entry3.from === null && before !== null;
+    const frame = frameOf(entry3.check, entry3.location);
     const facts = {
       ...load === void 0 ? {} : { loadAverage: load },
-      ...firstSeen ? { beforeEdits: before(entry3.check) } : {}
+      ...firstSeen ? { beforeEdits: before(entry3.check) } : {},
+      ...frame === void 0 ? {} : { testFileFrame: frame }
     };
     const told = changesOf(entry3.check);
     return { ...entry3, ...told === void 0 ? {} : { changesInClosure: told }, ...facts };
@@ -3615,10 +3755,35 @@ function closureChanges(store, consumer, revision) {
     return touched?.length === 0 && !sure ? void 0 : touched;
   };
 }
+function testFileFrames(store, worktreeId) {
+  const keys = readFailureKeys(store, worktreeId);
+  const rows = /* @__PURE__ */ new Map();
+  return (check, location2) => {
+    const identity2 = checkIdentity(check);
+    const key = keys.get(identity2);
+    if (key === void 0 || location2 === null) return void 0;
+    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
+    const row = rows.get(key)?.find((r) => r.outcome === "fail" && checkIdentity(r.check) === identity2);
+    const thrown = row?.errors[0]?.location ?? null;
+    if (row === void 0 || thrown === null || !samePosition(thrown, location2)) return void 0;
+    return testFileFrame(check, row.errors) ?? void 0;
+  };
+}
+function samePosition(a, b) {
+  return a.path === b.path && a.line === b.line && a.column === b.column;
+}
+function withTestFileFrames(store, worktreeId, failures) {
+  if (failures.length === 0) return failures;
+  const frameOf = testFileFrames(store, worktreeId);
+  return failures.map((f) => {
+    const frame = frameOf(f.check, f.location);
+    return frame === void 0 ? f : { ...f, testFileFrame: frame };
+  });
+}
 function withClosureChanges(store, consumer, failures, revision) {
   if (failures.length === 0) return failures;
   const changesOf = closureChanges(store, consumer, revision);
-  return failures.map((f) => {
+  return withTestFileFrames(store, consumer.worktreeId, failures).map((f) => {
     const paths = changesOf(f.check);
     return paths === void 0 || paths.length === 0 ? f : { ...f, changesInClosure: paths };
   });
@@ -3688,10 +3853,10 @@ function beforeFailing(history, state) {
   if (state.outcome !== "fail" || last?.to !== "fail" || !sameFingerprint(last.toFingerprint, state.fingerprint)) {
     return null;
   }
-  const at2 = history.findLastIndex((t) => t.kind !== "fail-changed");
-  const entered = history[at2];
+  const at = history.findLastIndex((t) => t.kind !== "fail-changed");
+  const entered = history[at];
   if (entered?.from == null) return null;
-  const passed = entered.from === "unknown" ? passBeforeUnknown(history, at2) : null;
+  const passed = entered.from === "unknown" ? passBeforeUnknown(history, at) : null;
   return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
 }
 function passBeforeUnknown(history, end) {
@@ -3947,10 +4112,10 @@ function recordHarness(store, consumer, harness) {
 function leavingMetaKey(worktreeId) {
   return worktreeMetaKey("leaving", worktreeId);
 }
-function markLeaving(store, consumer, at2) {
+function markLeaving(store, consumer, at) {
   const key = leavingMetaKey(consumer.worktreeId);
-  if (at2 === null && readSlot(store, key, consumer) === void 0) return;
-  writeSlot(store, key, consumer, at2 === null ? null : { at: at2 });
+  if (at === null && readSlot(store, key, consumer) === void 0) return;
+  writeSlot(store, key, consumer, at === null ? null : { at });
 }
 function isLeaving(store, consumer) {
   return readSlot(store, leavingMetaKey(consumer.worktreeId), consumer) !== void 0;
@@ -4354,8 +4519,8 @@ function promotedIds(store, worktreeId, daemonStartedAt, now) {
   const raw = store.meta.get(promotionsMetaKey(worktreeId));
   if (raw === null) return /* @__PURE__ */ new Set();
   try {
-    const { at: at2, promotions } = JSON.parse(raw);
-    if (typeof at2 !== "number" || at2 < daemonStartedAt || !Array.isArray(promotions)) {
+    const { at, promotions } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt || !Array.isArray(promotions)) {
       return /* @__PURE__ */ new Set();
     }
     const live = promotions.filter(
@@ -4433,8 +4598,8 @@ function publishedYields(store, worktreeId, daemonStartedAt) {
   const raw = store.meta.get(yieldsMetaKey(worktreeId));
   if (raw === null) return /* @__PURE__ */ new Map();
   try {
-    const { at: at2, tiers } = JSON.parse(raw);
-    if (typeof at2 !== "number" || at2 < daemonStartedAt) return /* @__PURE__ */ new Map();
+    const { at, tiers } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt) return /* @__PURE__ */ new Map();
     if (typeof tiers !== "object" || tiers === null) return /* @__PURE__ */ new Map();
     return new Map(
       Object.entries(tiers).filter((entry3) => isYield(entry3[1]))
@@ -4981,16 +5146,20 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
   const header = readHeader(store, worktreeId, states, keys, void 0, held);
-  const knownFailures = withRecorded(store, worktreeId, states, header.revision);
+  const knownFailures = withTestFileFrames(
+    store,
+    worktreeId,
+    withRecorded(store, worktreeId, states, header.revision)
+  );
   const load = once(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
-  const at2 = worktree?.root ?? root;
-  const slowSlot = slowSlotOf(store, worktreeId, at2, header, daemon.state === "alive", now);
+  const at = worktree?.root ?? root;
+  const slowSlot = slowSlotOf(store, worktreeId, at, header, daemon.state === "alive", now);
   const outstanding = outstandingOf(
     store,
     worktreeId,
-    at2,
+    at,
     { states, keys, header, runs, daemon, slowSlot: slowSlot ?? null, ...retries, ...checkpoint },
     now,
     load
@@ -5012,10 +5181,10 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
     notes,
     daemonNotes: readDaemonNotes(store, worktreeId),
     ...checkpoint,
-    ...vitestExcluded(at2),
-    ...configProblemsOf(at2),
+    ...vitestExcluded(at),
+    ...configProblemsOf(at),
     ...retries,
-    ...unknownTestFilesOf(store, worktreeId, states, keys, at2, now),
+    ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),
     ...daemon.state === "alive" ? { runsOpen: runs.length } : {},
     outstanding,
     pendingTestFiles: pendingTestFilesOf(states, keys, held),
@@ -5120,10 +5289,10 @@ function breakdown(states, keys, running) {
 function recoveryNote(raw) {
   if (raw === null) return null;
   try {
-    const { at: at2, movedTo } = JSON.parse(raw);
-    const when = typeof at2 === "number" ? ` at ${new Date(at2).toISOString()}` : "";
-    const where2 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
-    return `store was recovered from corruption${when}; the baseline was lost${where2}`;
+    const { at, movedTo } = JSON.parse(raw);
+    const when = typeof at === "number" ? ` at ${new Date(at).toISOString()}` : "";
+    const where3 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
+    return `store was recovered from corruption${when}; the baseline was lost${where3}`;
   } catch {
     return `store was recovered from corruption; the baseline was lost (${raw})`;
   }
@@ -5193,10 +5362,10 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
   };
 }
-function asRested(store, worktree, live, at2) {
+function asRested(store, worktree, live, at) {
   if (live.state !== "down" || live.startingSince !== void 0 || worktree === null) return live;
   if (live.stopped === true) return live;
-  if (restState(store, worktree, at2) !== "quiet") return live;
+  if (restState(store, worktree, at) !== "quiet") return live;
   const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
   return spawnedAt === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt };
 }
@@ -5221,40 +5390,40 @@ function toldLiveness(store, consumer) {
 function tellLiveness(store, consumer, told) {
   writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
 }
-function asTold(live, told, at2) {
+function asTold(live, told, at) {
   if (live.state === "alive" || typeof told !== "object") return live;
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
-  if (heartbeatSince || at2 - startingSince > DAEMON_START_GRACE_MS) return live;
+  if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
   return { ...live, startingSince };
 }
-function withTold(header, told, at2) {
-  return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at2) };
+function withTold(header, told, at) {
+  return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at) };
 }
-function livenessChange(store, consumer, at2) {
+function livenessChange(store, consumer, at) {
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
   const live = asStopped(
     store,
     consumer.worktreeId,
     worktree,
-    asTold(worktreeLiveness(worktree, at2), told, at2)
+    asTold(worktreeLiveness(worktree, at), told, at)
   );
   if (live.state === "down" && live.stopped !== true) {
     if (live.startingSince !== void 0) return null;
-    const rest = restState(store, worktree, at2);
+    const rest = restState(store, worktree, at);
     if (rest === "quiet") return null;
     if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
   }
   return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
 }
-function restState(store, worktree, at2) {
+function restState(store, worktree, at) {
   if (worktree === null || worktree.daemon !== null) return null;
   const rest = readRest(store, worktree.id);
   if (rest === null || rest.at < (worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY)) {
     return null;
   }
-  if (rest.spawnedAt === void 0 || at2 - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
+  if (rest.spawnedAt === void 0 || at - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
   return "overdue";
 }
 function readRest(store, worktreeId) {
@@ -5389,8 +5558,8 @@ function owedScope(store, consumer) {
   };
 }
 function fromTestFileId(id) {
-  const at2 = id.indexOf("\0");
-  return { project: id.slice(0, at2), path: id.slice(at2 + 1) };
+  const at = id.indexOf("\0");
+  return { project: id.slice(0, at), path: id.slice(at + 1) };
 }
 function waitedFor(state, entry3, keys) {
   if (state.turn !== "idle") return false;
@@ -5430,14 +5599,14 @@ function recordUncoveredTold(store, consumer, told) {
 }
 
 // src/core/delivery/expiry.ts
-function drop(store, consumer, at2) {
-  park(store, consumer, at2, {
+function drop(store, consumer, at) {
+  park(store, consumer, at, {
     said: editsSaid(store, consumer),
     uncovered: uncoveredTold(store, consumer)
   });
   store.consumers.unregister(consumer);
   forget(store, consumer);
-  store.meta.set(departedMetaKey(consumer.worktreeId), String(at2));
+  store.meta.set(departedMetaKey(consumer.worktreeId), String(at));
 }
 function departedMetaKey(worktreeId) {
   return worktreeMetaKey("departed", worktreeId);
@@ -5534,27 +5703,27 @@ function createDelivery(store, options) {
       if (!atLatest(consumer, atRevision)) return null;
       if (heardFrom && readTurn(store, consumer).turn === "idle") startTurn(store, consumer);
       if (heardFrom && !stop) markLeaving(store, consumer, null);
-      const at2 = now();
+      const at = now();
       const states = store.knownStates.list(consumer.worktreeId);
       const selection = select(states);
       if (selection === "silent") return null;
-      const delta = plan(consumer, states, at2, selection.only);
+      const delta = plan(consumer, states, at, selection.only);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
-      const changed = liveness2 ? livenessChange(store, consumer, at2) : null;
+      const changed = liveness2 ? livenessChange(store, consumer, at) : null;
       if (changed !== null) tellLiveness(store, consumer, changed.state);
       const news = delta.entries.length > 0 || changed !== null;
       const notes = liveness2 || idle && news ? editNotes(store, consumer, states, news) : null;
       const delivered = news || liveness2 && !stop && notes?.sawEdit !== void 0;
-      if (heardFrom || delivered) store.consumers.touch(consumer, at2, delivered);
+      if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
       if (!delivered) {
         if (selection.trim !== null) writeTurn(store, consumer, selection.trim);
         return null;
       }
       if (idle) startTurn(store, consumer);
       const told = toldRevision(store, consumer);
-      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states, told);
-      const live = withTold(read4, toldLiveness(store, consumer), at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at, states, told);
+      const live = withTold(read4, toldLiveness(store, consumer), at);
       tellRevision(store, consumer, live.revision);
       const { entries, header, stillFailing } = annotate(
         store,
@@ -5605,19 +5774,19 @@ function createDelivery(store, options) {
   }
   return {
     register: async (consumer, { inTurn = false, atStart = false, startingSince } = {}) => store.transaction(() => {
-      const at2 = now();
+      const at = now();
       const registered = store.consumers.get(consumer) !== null;
-      store.consumers.register(consumer, at2);
+      store.consumers.register(consumer, at);
       forgetStopWait(store, consumer);
       markLeaving(store, consumer, null);
       const states = store.knownStates.list(consumer.worktreeId);
       store.views.writeMany(
         consumer,
-        states.map((s) => toView2(s, at2))
+        states.map((s) => toView2(s, at))
       );
       const told = startingSince === void 0 ? null : { startingSince };
-      const read4 = readLiveHeader(store, consumer.worktreeId, at2, states);
-      const live = told === null ? read4 : withTold(read4, told, at2);
+      const read4 = readLiveHeader(store, consumer.worktreeId, at, states);
+      const live = told === null ? read4 : withTold(read4, told, at);
       const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
       const header = withDependencies(
         store,
@@ -5632,7 +5801,7 @@ function createDelivery(store, options) {
       if (!registered) {
         const alive = atStart && header.daemon?.state === "alive";
         const resumed = tellRegistered(store, consumer, header.revision, {
-          at: at2,
+          at,
           scanned: scannedDaemon(store, consumer.worktreeId, alive)
         });
         startEdits(store, consumer, header.revision, resumed?.said === true);
@@ -5668,13 +5837,13 @@ function createDelivery(store, options) {
       if (store.consumers.get(consumer) === null) return true;
       if (!atLatest(consumer, atRevision)) return false;
       const states = store.knownStates.list(consumer.worktreeId);
-      const at2 = now();
+      const at = now();
       endTurn(
         store,
         consumer,
         states,
-        plan(consumer, states, at2, null).entries,
-        handoff ? at2 : null
+        plan(consumer, states, at, null).entries,
+        handoff ? at : null
       );
       return true;
     }),
@@ -5702,9 +5871,9 @@ function createDelivery(store, options) {
 var MISSING_INSTALLS_SHOWN = 3;
 function awaitingInstallSentence(missing, command) {
   const more = missing.length - MISSING_INSTALLS_SHOWN;
-  const where2 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+  const where3 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
   const install = command === void 0 ? "Install them" : `Run \`${command}\` to install them`;
-  return `No dependencies are installed ${where2}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
+  return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
 }
 
 // src/core/delivery/provenance.ts
@@ -5733,8 +5902,8 @@ function beforeEditsText(before) {
       return `no baseline result, may predate your edits${settle}`;
     }
     case "fail": {
-      const where2 = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
-      return `it also failed before your edits (${where2} at ${commitText(before.commit)})`;
+      const where3 = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
+      return `it also failed before your edits (${where3} at ${commitText(before.commit)})`;
     }
     default:
       return null;
@@ -5873,9 +6042,6 @@ function shellWord(text) {
 function whyLine(check, command) {
   return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
-function at(location2) {
-  return `at ${location2.path}:${location2.line}:${location2.column}`;
-}
 function block2(head, lines, counted) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
   return { text: [head, ...body].join("\n"), counted };
@@ -5887,7 +6053,7 @@ function entryBlock(entry3, revision) {
     [
       failed2 ? seenLine(entry3, revision) : change(entry3),
       entry3.summary === null ? null : cap(entry3.summary, SUMMARY_MAX_CHARS),
-      entry3.location === null ? null : at(entry3.location),
+      entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
       ...failed2 ? [touchesLine(entry3), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
       entry3.flaky === void 0 ? null : capitalize2(flakyText(entry3.flaky)),
       entry3.retry === void 0 ? null : capitalize2(retryText(entry3.retry))
@@ -6214,10 +6380,10 @@ function npmCommand(words, context) {
   return script === null ? null : vitestCommand(script);
 }
 function nodeTestCommand(words, context) {
-  const at2 = words.indexOf("--test");
-  if (at2 === -1) return null;
-  const argv = words.slice(1, at2);
-  const args = words.slice(at2 + 1);
+  const at = words.indexOf("--test");
+  if (at === -1) return null;
+  const argv = words.slice(1, at);
+  const args = words.slice(at + 1);
   if (args.length === 0) return null;
   const project = context.nodeTest.find(
     (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
@@ -6332,8 +6498,8 @@ function filesText2(files2) {
   if (files2.length <= NAMED_FILES) return files2.map((f) => f.path).join(", ");
   const byDir = /* @__PURE__ */ new Map();
   for (const { path } of files2) {
-    const at2 = path.lastIndexOf("/");
-    const dir = at2 === -1 ? "./" : path.slice(0, at2 + 1);
+    const at = path.lastIndexOf("/");
+    const dir = at === -1 ? "./" : path.slice(0, at + 1);
     byDir.set(dir, (byDir.get(dir) ?? 0) + 1);
   }
   return [...byDir].map(([dir, count]) => `${dir} (${count})`).join(", ");
@@ -6465,7 +6631,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.244";
+  if (true) return "0.1.245";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

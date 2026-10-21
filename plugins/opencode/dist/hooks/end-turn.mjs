@@ -2247,9 +2247,88 @@ function toView(row) {
   };
 }
 
+// src/core/store/repos/failures.ts
+var FAILING_ROWS = `results r INDEXED BY results_by_failure CROSS JOIN checks c ON c.id = r.check_id`;
+function where2({ worktreeId, since, paths, checks }) {
+  const sql = ["r.failure_id IS NOT NULL", "r.outcome = 'fail'"];
+  const params = [];
+  if (worktreeId !== null) {
+    sql.push("r.worktree_id = ?");
+    params.push(worktreeId);
+  }
+  if (since !== null) {
+    sql.push("r.recorded_at >= ?");
+    params.push(since);
+  }
+  if (paths.length > 0) {
+    sql.push(`EXISTS (SELECT 1 FROM json_each(?) p WHERE c.test_path = p.value
+      OR substr(c.test_path, 1, length(p.value) + 1) = p.value || '/')`);
+    params.push(JSON.stringify(paths));
+  }
+  if (checks !== null) {
+    sql.push(`r.check_id IN (SELECT k.id FROM json_each(?) j JOIN checks k
+      ON k.project = json_extract(j.value, '$[0]') AND k.test_path = json_extract(j.value, '$[1]')
+      AND k.kind = json_extract(j.value, '$[2]') AND k.full_name = json_extract(j.value, '$[3]'))`);
+    params.push(JSON.stringify(checks.map(checkParams)));
+  }
+  return { sql: sql.join(" AND "), params };
+}
+var FAILURE_STATEMENTS = {
+  list: (selection, limit) => {
+    const w = where2(selection);
+    return {
+      sql: `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM ${FAILING_ROWS}
+        LEFT JOIN failure_texts f ON f.id = r.failure_id
+        WHERE ${w.sql} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
+      params: [...w.params, limit]
+    };
+  },
+  count: (selection) => {
+    const w = where2(selection);
+    return { sql: `SELECT COUNT(*) AS n FROM ${FAILING_ROWS} WHERE ${w.sql}`, params: w.params };
+  },
+  failingChecks: (selection) => {
+    const w = where2(selection);
+    return {
+      sql: `SELECT DISTINCT ${CHECK_COLUMNS} FROM ${FAILING_ROWS} WHERE ${w.sql}
+        ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      params: w.params
+    };
+  }
+};
+function createFailureRepo(conn) {
+  const all = ({ sql, params }) => conn.all(sql, ...params);
+  return {
+    list: (selection, limit) => all(FAILURE_STATEMENTS.list(selection, limit)).map(toResult),
+    count: (selection) => num(all(FAILURE_STATEMENTS.count(selection))[0] ?? { n: 0 }, "n"),
+    failingChecks: (selection) => all(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom)
+  };
+}
+var OUTCOMES3 = ["pass", "fail", "skip"];
+function toResult(row) {
+  return {
+    check: checkFrom(row),
+    key: str(row, "key"),
+    outcome: oneOf2(row, "outcome", OUTCOMES3),
+    durationMs: num(row, "duration_ms"),
+    location: location(row),
+    fingerprint: strOrNull(row, "fingerprint"),
+    summary: strOrNull(row, "summary"),
+    errors: row.errors === null ? [] : json(row, "errors"),
+    provenance: {
+      worktreeId: str(row, "worktree_id"),
+      revision: num(row, "revision"),
+      commit: strOrNull(row, "commit_sha"),
+      dirty: bool(row, "dirty"),
+      runId: str(row, "run_id"),
+      recordedAt: num(row, "recorded_at")
+    }
+  };
+}
+
 // src/core/store/repos/results.ts
 import { createHash as createHash2 } from "node:crypto";
-var OUTCOMES3 = ["pass", "fail", "skip"];
+var OUTCOMES4 = ["pass", "fail", "skip"];
 var SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
   FROM results r
@@ -2280,7 +2359,7 @@ function createResultRepo(conn) {
       return conn.all(
         `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
         key
-      ).map(toResult);
+      ).map(toResult2);
     },
     checksForKey: (key) => conn.all(
       `SELECT ${CHECK_COLUMNS} FROM results r JOIN checks c ON c.id = r.check_id
@@ -2294,7 +2373,7 @@ function createResultRepo(conn) {
         `${SELECT_RESULTS} WHERE r.check_id = ? ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT 1`,
         id
       );
-      return row === null ? null : toResult(row);
+      return row === null ? null : toResult2(row);
     },
     listForCheck: (check, limit) => {
       const id = findCheckId(conn, check);
@@ -2304,13 +2383,13 @@ function createResultRepo(conn) {
            ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
         id,
         limit
-      ).map(toResult);
+      ).map(toResult2);
     },
     listFailures: (filter, limit) => conn.all(
       `${SELECT_RESULTS} WHERE ${FAILURE_WHERE} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
       ...failureParams(filter),
       limit
-    ).map(toResult),
+    ).map(toResult2),
     countFailures: (filter) => num(
       conn.get(
         `SELECT COUNT(*) AS n FROM results r WHERE ${FAILURE_WHERE}`,
@@ -2372,11 +2451,11 @@ var FAILURE_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND
 function failureParams({ worktreeId, since }) {
   return [worktreeId, worktreeId, since, since];
 }
-function toResult(row) {
+function toResult2(row) {
   return {
     check: checkFrom(row),
     key: str(row, "key"),
-    outcome: oneOf2(row, "outcome", OUTCOMES3),
+    outcome: oneOf2(row, "outcome", OUTCOMES4),
     durationMs: num(row, "duration_ms"),
     location: location(row),
     fingerprint: strOrNull(row, "fingerprint"),
@@ -2538,7 +2617,7 @@ function toCheckpoint(row) {
 }
 
 // src/core/store/repos/states.ts
-var OUTCOMES4 = ["pass", "fail", "skip", "unknown"];
+var OUTCOMES5 = ["pass", "fail", "skip", "unknown"];
 var VALIDITIES = ["current", "pending", "stale", "unknown"];
 var PENDING = ["queued", "running"];
 var KINDS = [
@@ -2633,7 +2712,7 @@ function toKnownState(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES4),
+    outcome: oneOf2(row, "outcome", OUTCOMES5),
     validity: oneOf2(row, "validity", VALIDITIES),
     pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
     observedAt: numOrNull(row, "observed_at"),
@@ -2682,8 +2761,8 @@ function toTransition(row) {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
     kind: oneOf2(row, "kind", KINDS),
-    from: oneOfOrNull(row, "from_outcome", OUTCOMES4),
-    to: oneOf2(row, "to_outcome", OUTCOMES4),
+    from: oneOfOrNull(row, "from_outcome", OUTCOMES5),
+    to: oneOf2(row, "to_outcome", OUTCOMES5),
     fromFingerprint: strOrNull(row, "from_fingerprint"),
     toFingerprint: strOrNull(row, "to_fingerprint"),
     revision: num(row, "revision"),
@@ -3131,6 +3210,7 @@ function createStore(conn, schemaVersion, paths) {
     testFileKeys: createTestFileKeyRepo(conn),
     checks: createCheckRepo(conn),
     results: createResultRepo(conn),
+    failures: createFailureRepo(conn),
     runs: createRunRepo(conn),
     checkpoints: createCheckpointRepo(conn),
     knownStates: createKnownStateRepo(conn),
@@ -3266,6 +3346,53 @@ function moveAside(database, at) {
   if (existsSync3(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
   rmSync2(`${database}-shm`, { force: true });
   return movedTo;
+}
+
+// src/core/status/test-frame.ts
+var V8_FRAME = /^\s*at (.+?)\s*$/;
+var V8_POSITION = /^(.+):(\d+):(\d+)$/;
+var PYTEST_ENTRY = /^(\S[^:]*):(\d+):(?: |$)/;
+var NATIVE_ENTRY = /^\s*File "(.+)", line (\d+)/;
+function v8Position(frame) {
+  const open = frame.indexOf(" (");
+  const where3 = open !== -1 && frame.endsWith(")") ? frame.slice(open + 2, -1) : frame;
+  const match = V8_POSITION.exec(where3);
+  if (match === null) return null;
+  return { path: match[1], line: Number(match[2]), column: Number(match[3]) };
+}
+function positions(stack) {
+  return stack.split("\n").flatMap((text) => {
+    const v8 = V8_FRAME.exec(text);
+    const position = v8 === null ? null : v8Position(v8[1]);
+    if (position !== null) return [position];
+    const entry3 = PYTEST_ENTRY.exec(text) ?? NATIVE_ENTRY.exec(text);
+    return entry3 === null ? [] : [{ path: entry3[1], line: Number(entry3[2]) }];
+  });
+}
+function prefixOf(found, location2) {
+  const named2 = found.find(
+    (p) => p.line === location2.line && (p.column === void 0 || p.column === location2.column) && (p.path === location2.path || location2.path.endsWith(`/${p.path}`))
+  );
+  return named2 === void 0 ? null : location2.path.slice(0, -named2.path.length);
+}
+function testFileFrame(check, errors) {
+  const first = errors[0];
+  const location2 = first?.location ?? null;
+  const stack = first?.stack ?? null;
+  if (check.kind === "setup" || check.testPath === "" || location2 === null || stack === null) {
+    return null;
+  }
+  if (location2.path === check.testPath) return null;
+  const found = positions(stack);
+  const prefix = prefixOf(found, location2);
+  if (prefix === null) return null;
+  const frame = found.find((p) => `${prefix}${p.path}` === check.testPath);
+  if (frame === void 0) return null;
+  return {
+    path: check.testPath,
+    line: frame.line,
+    ...frame.column === void 0 ? {} : { column: frame.column }
+  };
 }
 
 // src/core/delivery/closure.ts
@@ -3415,13 +3542,16 @@ function attribute(store, consumer, entries, revision) {
   const from = registration(store, consumer);
   const changesOf = closureChanges(store, consumer, revision);
   const before = from === null ? null : beforeEditsFor(store, consumer.worktreeId, slot(consumer), from.since);
+  const frameOf = testFileFrames(store, consumer.worktreeId);
   return entries.map((entry3) => {
     if (entry3.kind === "fail-retired" || entry3.to !== "fail") return entry3;
     const load = loadOf(store, consumer.worktreeId, entry3);
     const firstSeen = entry3.kind === "first-seen-fail" && entry3.from === null && before !== null;
+    const frame = frameOf(entry3.check, entry3.location);
     const facts = {
       ...load === void 0 ? {} : { loadAverage: load },
-      ...firstSeen ? { beforeEdits: before(entry3.check) } : {}
+      ...firstSeen ? { beforeEdits: before(entry3.check) } : {},
+      ...frame === void 0 ? {} : { testFileFrame: frame }
     };
     const told = changesOf(entry3.check);
     return { ...entry3, ...told === void 0 ? {} : { changesInClosure: told }, ...facts };
@@ -3438,10 +3568,35 @@ function closureChanges(store, consumer, revision) {
     return touched?.length === 0 && !sure ? void 0 : touched;
   };
 }
+function testFileFrames(store, worktreeId) {
+  const keys = readFailureKeys(store, worktreeId);
+  const rows = /* @__PURE__ */ new Map();
+  return (check, location2) => {
+    const identity2 = checkIdentity(check);
+    const key = keys.get(identity2);
+    if (key === void 0 || location2 === null) return void 0;
+    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
+    const row = rows.get(key)?.find((r) => r.outcome === "fail" && checkIdentity(r.check) === identity2);
+    const thrown = row?.errors[0]?.location ?? null;
+    if (row === void 0 || thrown === null || !samePosition(thrown, location2)) return void 0;
+    return testFileFrame(check, row.errors) ?? void 0;
+  };
+}
+function samePosition(a, b) {
+  return a.path === b.path && a.line === b.line && a.column === b.column;
+}
+function withTestFileFrames(store, worktreeId, failures) {
+  if (failures.length === 0) return failures;
+  const frameOf = testFileFrames(store, worktreeId);
+  return failures.map((f) => {
+    const frame = frameOf(f.check, f.location);
+    return frame === void 0 ? f : { ...f, testFileFrame: frame };
+  });
+}
 function withClosureChanges(store, consumer, failures, revision) {
   if (failures.length === 0) return failures;
   const changesOf = closureChanges(store, consumer, revision);
-  return failures.map((f) => {
+  return withTestFileFrames(store, consumer.worktreeId, failures).map((f) => {
     const paths = changesOf(f.check);
     return paths === void 0 || paths.length === 0 ? f : { ...f, changesInClosure: paths };
   });
@@ -4755,7 +4910,11 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
   const header = readHeader(store, worktreeId, states, keys, void 0, held);
-  const knownFailures = withRecorded(store, worktreeId, states, header.revision);
+  const knownFailures = withTestFileFrames(
+    store,
+    worktreeId,
+    withRecorded(store, worktreeId, states, header.revision)
+  );
   const load = once(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
@@ -4896,8 +5055,8 @@ function recoveryNote(raw) {
   try {
     const { at, movedTo } = JSON.parse(raw);
     const when = typeof at === "number" ? ` at ${new Date(at).toISOString()}` : "";
-    const where2 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
-    return `store was recovered from corruption${when}; the baseline was lost${where2}`;
+    const where3 = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
+    return `store was recovered from corruption${when}; the baseline was lost${where3}`;
   } catch {
     return `store was recovered from corruption; the baseline was lost (${raw})`;
   }
@@ -5519,7 +5678,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.244";
+  if (true) return "0.1.245";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
