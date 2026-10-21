@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/index.js";
-import { CANCELLED } from "../../src/runners/vitest/run.js";
+import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
 import { waitFor } from "../watcher/helpers.js";
 import { suite } from "./backlog-suite.js";
 import { openHarness, openRepoStore } from "./helpers.js";
@@ -117,7 +117,7 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
           `the edit's tier ran ${next.files.length} files, then ${rest.length} more tiers`,
       );
       expect(cancelled.files).toHaveLength(200);
-      expect(cancelled.report.failure).toBe(CANCELLED);
+      expect(cancelled.report.failure).toBe(cancelText("backlog"));
       expect(kept.length).toBeGreaterThanOrEqual(20);
       expect(kept.length).toBeLessThan(200);
       expect(next.files.length).toBeLessThanOrEqual(4);

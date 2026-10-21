@@ -123,11 +123,13 @@ export interface VitestInput {
   readonly files: Readonly<Record<string, string>>;
   /**
    * In turn on one adapter: the files run, the paths touched once one of
-   * them started, and whether its `fileEnded` callback throws (row 011-54).
+   * them started, the reason the run is then cancelled with, if any (row
+   * 011-56), and whether its `fileEnded` callback throws (row 011-54).
    */
   readonly runs: readonly {
     readonly files: readonly TestFileRef[];
     readonly touched: readonly string[];
+    readonly cancel?: string;
     readonly fileEndedThrows?: boolean;
   }[];
 }

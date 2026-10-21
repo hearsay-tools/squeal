@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { CANCELLED } from "../../src/runners/vitest/run.js";
+import { cancelled } from "../../src/runners/vitest/run.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -129,7 +129,7 @@ describe(
       await expect.poll(() => h.header().refinedRevision, { timeout: 60_000 }).toBe(newer);
       expect(existsSync(hold)).toBe(true);
       const cut = h.runsOf(HELD)[1];
-      expect(cut?.report.failure).toContain(CANCELLED);
+      expect(cut?.report.failure).toContain(cancelled("yield"));
       expect(cut?.report.completedFiles).toEqual([]);
       // The sweep: the cut run's worker is gone.
       await expect.poll(() => alive(pid), { timeout: 60_000 }).toBe(false);
