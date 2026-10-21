@@ -123,12 +123,20 @@ function nearest(
   return null;
 }
 
-/** Its mark's run, else its lane's one open run of its daemon (D5). */
+/**
+ * D5 "from its mark's `#<runId>` or its lane's one open run". A tier's lane
+ * is the store's class, `fast`, `slow` or `null` (the coordinator,
+ * 2026-10-21): a mark's lane is `slow` when it starts with `slow:`, else
+ * `fast`. With no tier of that class, a daemon's lone tier of unknown class
+ * is the run; two of one class are the daemon's to tell apart.
+ */
 function runOf(mark: Mark, owner: ProcessOwner): string | null {
   if (mark.runId !== null) return mark.runId;
-  if (mark.lane === null) return null;
-  const open = owner.tiers.filter((t) => t.lane === mark.lane);
-  return open.length === 1 ? (open[0]?.runId ?? null) : null;
+  const lane = mark.lane?.startsWith("slow:") === true ? "slow" : "fast";
+  const ofLane = owner.tiers.filter((t) => t.lane === lane);
+  if (ofLane.length > 0) return ofLane.length === 1 ? (ofLane[0]?.runId ?? null) : null;
+  const [only] = owner.tiers;
+  return owner.tiers.length === 1 && only?.lane === null ? only.runId : null;
 }
 
 const VITEST_WORKER = /\/vitest\/dist\/workers\/[^/]+\.js$/;
