@@ -1,0 +1,22 @@
+instances 2
+synthetic: --element:[1]-->
+synthetic:(GC roots) --element:[10]-->
+synthetic:(Global handles) --internal:3-->
+closure:resolveSubpathImports --internal:context-->
+object:system / Context --context:partialEnv-->
+object:PartialEnvironment --property:_options-->
+object:Object --property:plugins-->
+object:Array --element:[4]-->
+object:Object --property:transform-->
+closure:transform --internal:context-->
+object:system / Context --context:ctx-->
+=> Vitest
+
+synthetic: --element:[1]-->
+synthetic:(GC roots) --element:[19]-->
+synthetic:(Stack roots) --internal:38-->
+object:Array --element:[0]-->
+object:TestSpecification --property:project-->
+object:TestProject --property:vitest-->
+=> Vitest
+

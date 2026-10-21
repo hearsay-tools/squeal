@@ -1,0 +1,11 @@
+Revision: 0
+Known failures: 0; not current: 831 of 831 test files (831 unknown)
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 not run at revision 0. Squeal has not queued them; `squeal run --slow --wait 60000` waits for its result.
+Outstanding:
+  830 test files never run at their inputs, nothing queued them (the baseline is lookup-only): api-client: packages/api-client/src/protocol/tool-display.test.ts, api-client: packages/api-client/src/utils/project-scope.test.ts, contract: packages/contract/src/attention.test.ts and 827 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 831 test files not current here
+Not run: Vitest test files matching "packages/web/e2e/**", excluded by squeal.config.json
+More: `squeal status --full` adds the worktree and daemon, the 831 test files without a result one by one and 4 notes
+
+Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 19.5 s; this wait does not hold for the rest of the worktree; 1 slow file is not current; this repository does not require it before you finish; `squeal run --slow --wait 60000` waits for its result. Worktree: known failures 0; not current: 831 of 831 test files (831 unknown)

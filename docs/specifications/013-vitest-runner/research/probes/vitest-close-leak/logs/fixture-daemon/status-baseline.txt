@@ -1,0 +1,8 @@
+Revision: 0
+Known failures: 0; all 4 test files current
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Slow tier: 1 test file; 1 current at revision 0. Squeal runs them after the fast tests.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+
+Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 0.3 s. Worktree: known failures 0; all 4 test files current

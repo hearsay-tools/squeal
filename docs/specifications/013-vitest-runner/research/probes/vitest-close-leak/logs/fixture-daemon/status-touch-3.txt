@@ -1,0 +1,3 @@
+Revision: 6 · 9072d60e + 6, dirty
+Selected: test/m3.test.ts
+Named test files at revision 6: no known failures; 1 test file, each with a current result, after 1.3 s. Worktree: known failures 0; all 4 test files current

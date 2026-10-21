@@ -1,0 +1,4 @@
+{
+  "slow": { "include": ["test/slow.test.ts"], "maxWorkers": 1, "maxParallel": 1 },
+  "daemon": { "idleExitMinutes": 240 }
+}
