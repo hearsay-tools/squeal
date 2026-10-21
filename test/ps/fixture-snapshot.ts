@@ -15,6 +15,7 @@ import {
   HOME,
   lockLine,
   makeHost,
+  makeRepo,
   NODE,
   STARTED_AT,
   writeLocks,
@@ -344,4 +345,84 @@ export function exampleSnapshot(overrides: Partial<PsSnapshot> = {}): PsSnapshot
     unknown: [],
     ...overrides,
   };
+}
+
+/** The cost host: what is Squeal's, so a test can state what the window read. */
+export interface CostHost {
+  readonly daemons: readonly number[];
+  readonly testProcesses: number;
+  /** The daemons, their test processes and those processes' children. */
+  readonly squeal: readonly number[];
+}
+
+/**
+ * The 650-process host of the cost bound (spec 014 goal 6, Testing) with
+ * the shape of the 2026-10-21 host (`research/process-measurement.md` 5):
+ * 25 daemons that hold their locks and have their stores, each with an open
+ * run, one fork worker and its `git`; an escaped browser for 5 of them; and
+ * the rest of the host's processes, a quarter of them Node main threads,
+ * whose arguments discovery reads.
+ */
+export function writeCostHost(host: SnapshotHost): CostHost {
+  const daemons: number[] = [];
+  const squeal: number[] = [];
+  const processes: FixtureProcess[] = [
+    {
+      pid: 1049,
+      ppid: 1,
+      pgid: 1049,
+      comm: "systemd",
+      nice: 0,
+      ageS: 600,
+      lifeCpuPct: 1,
+      cmdline: ["systemd"],
+    },
+  ];
+  let testProcesses = 0;
+  for (let d = 0; d < 25; d++) {
+    const repo = makeRepo(host.base, `p${d}`);
+    const pid = 300_000 + d * 10;
+    const token = `00000000-0000-4000-8000-${String(d).padStart(12, "0")}`;
+    host.serve(pid, repo, {
+      record: daemonRecord(repo, { token }),
+      fill: (store) => startRun(store, repo, `run-${d}`, STARTED_AT + 10_000, 40),
+    });
+    processes.push(forkWorker(pid + 1, pid, `${token}:vitest`), gitChild(pid + 2, pid + 1));
+    daemons.push(pid);
+    squeal.push(pid, pid + 1, pid + 2);
+    testProcesses += 1;
+    if (d % 5 === 0) {
+      processes.push({
+        pid: pid + 3,
+        ppid: 1049,
+        pgid: pid + 3,
+        comm: "chrome",
+        nice: 10,
+        ageS: 60,
+        lifeCpuPct: 20,
+        cmdline: ["/usr/bin/google-chrome", "--no-first-run"],
+        environ: { SQUEAL_DAEMON_CHILD: `${token}:slow:vitest` },
+        memoryKb: { anon: 80_000, shmem: 26_000, swap: 0 },
+      });
+      squeal.push(pid + 3);
+      testProcesses += 1;
+    }
+  }
+  for (let i = 0; processes.length + daemons.length < 650; i++) {
+    const pid = 10_000 + i;
+    processes.push({
+      pid,
+      ppid: i % 3 === 0 ? 1049 : 10_000 + Math.floor(i / 3),
+      pgid: pid,
+      comm: i % 4 === 0 ? "MainThread" : "bash",
+      nice: 0,
+      ageS: 600,
+      lifeCpuPct: 1,
+      cmdline: i % 4 === 0 ? [NODE, `${HOME}/tools/server.js`] : ["bash", "-l"],
+      environ: { HOME, PATH: "/usr/bin", TERM: "xterm" },
+      memoryKb: { anon: 5_000, shmem: 0, swap: 0 },
+    });
+  }
+  writeProcesses(host, processes);
+  return { daemons, testProcesses, squeal };
 }
