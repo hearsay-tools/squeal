@@ -1,0 +1,17 @@
+test/keys/environment.test.ts exit=0 secs=3 load=61.92       Tests  29 passed (29)
+test/keys/hidden-lockfile.test.ts exit=0 secs=2 load=61.92       Tests  10 passed (10)
+test/keys/install-inheritance.test.ts exit=0 secs=9 load=61.76       Tests  3 passed (3)
+test/keys/packages.test.ts exit=0 secs=2 load=61.22       Tests  20 passed (20)
+test/keys/worktree.test.ts exit=0 secs=3 load=60.24       Tests  3 passed (3)
+test/integration/key-stability.test.ts exit=0 secs=4 load=60.24       Tests  3 passed (3)
+test/runners/vitest/packages.test.ts exit=0 secs=4 load=62.54       Tests  5 passed (5)
+test/runners/vitest/exclude-projects-filter.test.ts exit=1 secs=4 load=63.14       Tests  1 failed | 8 passed (9)
+ FAIL  test/runners/vitest/exclude-projects-filter.test.ts > survivors re-key only when their environment's inputs change (001-370, review S1) > excluding e2e: file-based, so its config file leaves every environment
+AssertionError: expected false to be true // Object.is equality
+- Expected
++ Received
+test/runners/vitest/edge-cases.test.ts exit=0 secs=4 load=61.77       Tests  6 passed (6)
+test/runners/vitest/invalidation.test.ts exit=0 secs=4 load=60.02       Tests  6 passed (6)
+test/runners/vitest/touched-scope.test.ts exit=0 secs=7 load=60.02       Tests  11 passed (11)
+test/scheduler/validity.test.ts exit=0 secs=11 load=55.70       Tests  4 passed (4)
+test/scheduler/formats-read-as-one.test.ts exit=0 secs=4 load=51.58       Tests  3 passed (3)
