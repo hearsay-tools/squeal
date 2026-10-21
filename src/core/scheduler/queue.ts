@@ -135,7 +135,8 @@ export class RunQueue {
    * (their keys settled), whichever comes first. A promoted queued file is
    * work of the first group and leads it, the earlier request first; one
    * queued again while the promotion lasts (an edit during the wait) is
-   * promoted too. Nothing is cancelled and nothing joins a running tier.
+   * promoted too. Nothing joins a running tier; the tier may yield to it
+   * (`TierYields`, C4 step 5 as amended 2026-10-21, row 011-51).
    */
   promote(refs: readonly TestFileRef[], until: number): void {
     this.#promotions.add(refs, until, this.#queued);
@@ -283,10 +284,32 @@ export class RunQueue {
 
   /**
    * `hasRecent`, promoted entries included (C15): the tier is an edit's.
-   * Not what cancels a backlog tier, which promotion never does.
+   * Not what cancels a backlog tier outright: a promotion makes a tier
+   * yield (`TierYields`, row 011-51).
    */
   hasFirstGroup(where: (ref: TestFileRef) => boolean = () => true): boolean {
     return this.#fast().some((entry) => this.#firstGroup(entry) && where(entry.ref));
+  }
+
+  /**
+   * Some entry `where` holds was made recent by a revision after `revision`:
+   * an edit's work that came while a tier selected at `revision` runs (C4
+   * step 5 as amended 2026-10-21, row 011-51).
+   */
+  hasRecentAfter(revision: RevisionNumber, where: (ref: TestFileRef) => boolean): boolean {
+    return this.#fast().some(
+      (entry) =>
+        entry.recent &&
+        where(entry.ref) &&
+        [...entry.recentBy].some((by) => by !== null && by > revision),
+    );
+  }
+
+  /** Whether a promoted fast entry `where` holds is queued (C15; row 011-51). */
+  hasPromoted(where: (ref: TestFileRef) => boolean): boolean {
+    return this.#fast().some(
+      (entry) => where(entry.ref) && this.#promotions.rankOf(testFileId(entry.ref)) !== null,
+    );
   }
 
   /** Some fast entry `where` holds is queued (task 001-140: one of a free lane). */
