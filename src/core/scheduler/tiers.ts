@@ -166,6 +166,11 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * backlog tier is split with the other daemons that have its keys pending
  * (`Claims.backlogSize`).
  *
+ * A lane that waits for quiet after its backlog tier's cancel
+ * (`BacklogQuiet`, C4 step 5 as amended 2026-10-21, row 011-82) takes no
+ * backlog tier: its files stay queued, as a busy lane's do. Its edit's work
+ * and the turn below start as before.
+ *
  * The second group's turn after four tiers of the first (C4 step 4, catch-up
  * first) is selected while an edit's work is queued, so it is never
  * cancelled and holds `runner.tierSize` files of a comparable time; it still
@@ -207,10 +212,13 @@ export function selectTier(
   let slot: number | null = null;
   /** A backlog file left to a lane's slots by an edit's tier. */
   let skipped = false;
+  const now = context.now();
   for (const ref of ledger.ordered(turnDue)) {
     if (picked.length >= size) break;
     const at = laneOf(context, ref);
     if (busy.has(at) || (lane !== null && at !== lane)) continue;
+    // A lane that waits for quiet after its backlog tier's cancel starts no backlog tier (row 011-82).
+    if (backlog && context.quiet?.waits(at, now) === true) continue;
     const file = ledger.file(ref);
     const key = file?.key ?? null;
     if (!file || key === null || file.blocked !== null) {
