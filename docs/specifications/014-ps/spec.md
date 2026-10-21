@@ -183,10 +183,11 @@ A flagged row starts with `!` and has its reason and an `ends it:` line under it
       flags: [ { flag, reason, command } ] } ] } ],
   orphans: [ { pid, comm, startedAt, flags } ],
   files: [ { flag, path, count, bytes, command } ],
+  unflaggedFiles: [ { kind, count } ] | null,
   flags: number, unknown: [ { what, why } ] }
 ```
 
-`memory` says what every `privateBytes` holds: `rss` on macOS (D10), where sums count shared pages more than once. `orphans` holds the flagged processes no live daemon owns (`orphan-test-process`, `orphan-waiter`, `foreign-permit`), which have no daemon block. A key that holds a list has a plural name. `pending` and `running` count `test_file_keys`. `flags` counts every flag of the snapshot.
+`memory` says what every `privateBytes` holds: `rss` on macOS (D10), where sums count shared pages more than once. `orphans` holds the flagged processes no live daemon owns (`orphan-test-process`, `orphan-waiter`, `foreign-permit`), which have no daemon block. A key that holds a list has a plural name. `pending` and `running` count `test_file_keys`. `flags` counts every flag of the snapshot. `unflaggedFiles` counts, by kind (`lock`, `waiter-lock`, `surplus-permit`, `session-root`), the files that never get a flag (D7); it is `null` without `--full`, as `descendants.list` is.
 
 A value that `ps` could not read is `null`, and `unknown` names it. It never reads as zero (vision, principle 2).
 
