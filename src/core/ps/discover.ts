@@ -1,11 +1,12 @@
 import { readdirSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
+import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import { lockFileFor, storePaths } from "../store/index.js";
-import type { AbsolutePath, WorktreeId } from "../types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/index.js";
 import type { Discover, FoundDaemon, PhaseOf, PsPlaces, SocketFile } from "./model.js";
 import type { PsUnknown } from "./shape.js";
-import type { LockEntry, ProcessRow, PsSource } from "./source.js";
+import { type LockEntry, type ProcessRow, type PsSource, ticksToMs } from "./source.js";
 
 /*
  * Spec 014 D2: every live daemon of the user, without a registry and without
@@ -15,6 +16,8 @@ import type { LockEntry, ProcessRow, PsSource } from "./source.js";
  * it by worktree id. Its start time never ties it to a store row.
  */
 
+/** `btime` is whole seconds, so a process start read from it is up to 1 s early. */
+const START_MARGIN_MS = 1_000;
 /** D2 step 1: Node 24 names its main thread `MainThread`; older Node, `node`. */
 const NODE_COMMS: ReadonlySet<string> = new Set(["MainThread", "node"]);
 const SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
@@ -53,13 +56,39 @@ export const discover: Discover = (source, table, places) => {
   return { daemons, sockets: socketFiles(source, places, daemons), unknown };
 };
 
-/** D2's phase table. Without a readable store, a lock holder may be serving or stopping. */
-export const phaseOf: PhaseOf = (daemon, work) => {
-  if (daemon.holdsLock === null) return "unknown";
-  if (!daemon.holdsLock) return "waiting";
-  if (work === null) return "unknown";
-  return work.record === null ? "stopping" : "serving";
-};
+/**
+ * D2's phase table, over `source`'s boot time and tick rate, read once. A
+ * row's start names a daemon only when it is no earlier than the process
+ * start (less `START_MARGIN_MS`): its own registration is 1.2 to 12.1 s
+ * later, so the start time excludes a predecessor's row and never ties one.
+ * Without lock state (D10), only its own fresh heartbeat says serving.
+ */
+export function phaseOn(source: PsSource): PhaseOf {
+  const boot = source.bootTime();
+  const ticks = source.clockTicks();
+  return (daemon, work, now) => {
+    if (daemon.holdsLock === false) return "waiting";
+    if (work === null) return "unknown";
+    const own = (startedAt: EpochMs): boolean | null =>
+      boot === null
+        ? null
+        : startedAt >= boot + ticksToMs(daemon.row.startTicks, ticks) - START_MARGIN_MS;
+    const record = work.record;
+    if (daemon.holdsLock === null) {
+      const fresh =
+        record !== null &&
+        record.heartbeatAt >= now - HEARTBEAT_GRACE_INTERVALS * record.heartbeatIntervalMs;
+      return fresh && own(record.startedAt) === true ? "serving" : "unknown";
+    }
+    // Locked and not yet registered: a fresh worktree has no start, a predecessor's is earlier.
+    const recorded = work.recordedStartedAt;
+    if (recorded === null) return "starting";
+    const mine = own(recorded);
+    if (mine === null) return "unknown";
+    if (!mine) return "starting";
+    return record === null ? "stopping" : "serving";
+  };
+}
 
 /** The index of `daemon` right after a Squeal script; `-1` when the arguments are not a daemon's. */
 function daemonVerbAt(args: readonly string[]): number {
