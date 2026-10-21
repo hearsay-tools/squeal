@@ -4,6 +4,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { recordedDaemon } from "../core/daemon/ensure.js";
 import { type DaemonMarks, type Leftover, leftovers, marksOf } from "../core/daemon/leftovers.js";
 import { acquireDaemonLock } from "../core/daemon/lock.js";
+import { pauseAt } from "../core/daemon/test-pause.js";
 import {
   findWorktreeRoot,
   lstatOrNull,
@@ -79,6 +80,8 @@ export async function stopCommand(
     }
     await sleep(50);
   }
+  // Row 011-20: a hook between the socket and the mark finds no mark and may spawn.
+  pauseAt("stop-mark");
   stoppedMark(root, tree, io);
   const lock = await lockFreed(root, daemon, bounds.lockMs);
   const after = seconds(bounds.lockMs);
