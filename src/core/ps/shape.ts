@@ -64,10 +64,13 @@ export interface PsSqueal {
 }
 
 /**
- * How many processes' values a sum leaves out because they are unknown:
- * with any, the sum is a lower bound (D8). A process that ended in the
- * window holds no memory and adds 0, and its CPU in the window counts in
- * the ancestor that waited for it (D4): neither is left out.
+ * How many processes' values a sum leaves out, whole or in part: with any,
+ * the sum is a lower bound (D8). A value is left out whole when it is
+ * unknown, and in part when it is a lower bound itself: a CPU whose reaper
+ * the two samples do not show, or whose children's times are unread
+ * (`reviews/wave-4.md` B3, S1). A process that ended in the window holds no
+ * memory and adds 0, and its CPU in the window counts in the ancestor that
+ * waited for it (D4): neither is left out.
  */
 export interface PsSkipped {
   readonly cpuPct: number;
