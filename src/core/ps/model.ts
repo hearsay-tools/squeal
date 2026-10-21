@@ -87,8 +87,8 @@ export interface DaemonWork {
   readonly token: string | null;
   readonly pending: number | null;
   readonly running: number | null;
-  readonly tier: readonly PsTier[];
-  readonly checkpoint: PsCheckpoint | null;
+  readonly tiers: readonly PsTier[];
+  readonly checkpoints: readonly PsCheckpoint[];
   readonly consumers: readonly ConsumerState[];
   readonly departedAt: EpochMs | null;
   /** Its `slowTier` meta row: slow work waits; `null` when it cannot be read. */
@@ -139,7 +139,7 @@ export interface ProcessOwner {
   readonly pid: number;
   /** `null` when unread: then only ancestry ties a process to it. */
   readonly token: string | null;
-  readonly tier: readonly PsTier[];
+  readonly tiers: readonly PsTier[];
 }
 
 export interface TestProcessModel {

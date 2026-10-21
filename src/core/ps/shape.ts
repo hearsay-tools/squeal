@@ -105,8 +105,9 @@ export interface PsWork {
   /** `test_file_keys` that are `running`. */
   readonly running: number | null;
   /** Its open runs since it started (D3), oldest first; empty when none is. */
-  readonly tier: readonly PsTier[];
-  readonly checkpoint: PsCheckpoint | null;
+  readonly tiers: readonly PsTier[];
+  /** Its open checkpoints since it started, oldest first: a `run --all` and a `run --fast` can overlap. */
+  readonly checkpoints: readonly PsCheckpoint[];
   readonly departedAt: EpochMs | null;
   /** While `draining`: the time until `daemon.idleExitMinutes` after the departure. */
   readonly drainLeftMs: number | null;
@@ -124,7 +125,7 @@ export interface PsTier {
   readonly checkpointId: string | null;
 }
 
-/** The open checkpoint since it started (D3). */
+/** An open checkpoint: `checkpoints` with `completed_at IS NULL` since the daemon started (D3). */
 export interface PsCheckpoint {
   readonly id: string;
   readonly startedAt: EpochMs;
