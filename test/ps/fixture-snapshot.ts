@@ -11,8 +11,10 @@ import {
   daemonRecord,
   type FixtureHost,
   type FixtureRepo,
+  HOME,
   lockLine,
   makeHost,
+  NODE,
   STARTED_AT,
   writeLocks,
   writeProcesses,
@@ -115,6 +117,60 @@ export function writeCpuTimes(host: FixtureHost, busy: number, idle: number): vo
     join(host.base, "proc", "stat"),
     [`cpu  ${busy} 0 0 ${idle} 0 0 0 0 0 0`, "intr 1 2 3", `btime ${BOOT_SECONDS}`, ""].join("\n"),
   );
+}
+
+/** An open run of `repo` since `startedAt`, of `files` test files. */
+export function startRun(
+  store: Store,
+  repo: FixtureRepo,
+  id: string,
+  startedAt: EpochMs,
+  files = 1,
+): void {
+  store.runs.start({
+    id,
+    worktreeId: repo.id,
+    revision: 1,
+    testFiles: Array.from({ length: files }, (_, i) => ({
+      project: "default",
+      path: `test/${i}.test.ts`,
+    })),
+    checkpointId: null,
+    logDir: "/tmp/runs",
+    startedAt,
+  });
+}
+
+/** A Vitest fork worker of daemon `ppid`, its mark `<token>:<lane>`. */
+export function forkWorker(pid: number, ppid: number, mark: string | null): FixtureProcess {
+  return {
+    pid,
+    ppid,
+    pgid: ppid,
+    comm: "MainThread",
+    nice: 10,
+    ageS: 240,
+    lifeCpuPct: 5,
+    cmdline: [NODE, `${HOME}/projects/alpha/node_modules/vitest/dist/workers/forks.js`],
+    environ: mark === null ? {} : { SQUEAL_DAEMON_CHILD: mark, NODE_ENV: "test" },
+    memoryKb: { anon: 150_000, shmem: 10_000, swap: 2_000 },
+  };
+}
+
+/** A test's child without a mark: a `git` its test ran. */
+export function gitChild(pid: number, ppid: number): FixtureProcess {
+  return {
+    pid,
+    ppid,
+    pgid: ppid,
+    comm: "git",
+    nice: 10,
+    ageS: 2,
+    lifeCpuPct: 50,
+    cmdline: ["git", "status"],
+    environ: { GIT_DIR: "/x/.git" },
+    memoryKb: { anon: 4_000, shmem: 0, swap: 0 },
+  };
 }
 
 export { DAEMON_AGE_S, STARTED_AT };
