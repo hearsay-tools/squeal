@@ -4,10 +4,12 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { currentUid } from "../core/daemon/paths.js";
 import { userConfigPath } from "../core/daemon/user-config.js";
 import { findWorktreeRoot, resolveCommonDir } from "../core/fs/index.js";
+import { createDarwinSource } from "../core/ps/darwin.js";
+import { flag } from "../core/ps/flags.js";
 import type { Flag, PsPlaces } from "../core/ps/model.js";
 import { createProcSource } from "../core/ps/proc.js";
 import { render } from "../core/ps/render.js";
-import { noFlags, SAMPLE_MS, type Snapshot, takeSnapshot } from "../core/ps/snapshot.js";
+import { SAMPLE_MS, type Snapshot, takeSnapshot } from "../core/ps/snapshot.js";
 import type { PsSource } from "../core/ps/source.js";
 import type { AbsolutePath } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
@@ -28,6 +30,8 @@ const USAGE = "usage: squeal ps [--repo] [--full] [--json]\n       squeal ps --l
 /** The source of each platform `ps` covers (D10). */
 const SOURCES: Partial<Record<NodeJS.Platform, () => PsSource>> = {
   linux: () => createProcSource(),
+  // Built untested: nobody has run it on a Mac (the human, 2026-10-21).
+  darwin: () => createDarwinSource(),
 };
 
 /** What tests replace: the platform and its source, the flags, the wait and the paths of the host. */
@@ -77,7 +81,7 @@ export async function psCommand(
     snapshot = await takeSnapshot({
       source,
       places: placesOf(io.env ?? process.env, commonDir, options),
-      flag: options.flag ?? noFlags,
+      flag: options.flag ?? flag,
       full: parsed.full,
       repo: parsed.repo,
       // The leftover walk needs no CPU window.

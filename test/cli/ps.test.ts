@@ -5,8 +5,13 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { type PsCommandOptions, psCommand } from "../../src/cli/ps.js";
 import type { Flag } from "../../src/core/ps/model.js";
 import { PS_SHAPE_VERSION, type PsSnapshot } from "../../src/core/ps/shape.js";
-import { noFlags } from "../../src/core/ps/snapshot.js";
-import { fakeWindow, NOW, type SnapshotHost, snapshotHost } from "../ps/fixture-snapshot.js";
+import {
+  fakeWindow,
+  NOW,
+  noFlags,
+  type SnapshotHost,
+  snapshotHost,
+} from "../ps/fixture-snapshot.js";
 import { type FixtureRepo, makeRepo } from "../ps/fixture-stores.js";
 
 /*
@@ -65,6 +70,8 @@ async function ps(args: string[], o: { cwd?: string; options?: PsCommandOptions 
     wait: window.wait,
     tempDir: host.places.tempDir,
     uid: host.places.uid,
+    // The fixture's bundles are not on disk, so the real flags would say `install-gone`.
+    flag: noFlags,
     ...o.options,
   });
   return { code, stdout, stderr, waits: window.waits };

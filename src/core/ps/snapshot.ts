@@ -54,18 +54,6 @@ export interface Snapshot {
   readonly leftovers: readonly AbsolutePath[];
 }
 
-/** The flags until the coordinator wires `flag` of `flags.ts` (014-10): none. */
-export const noFlags: Flag = () => ({
-  daemons: new Map(),
-  states: new Map(),
-  processes: new Map(),
-  orphans: [],
-  files: [],
-  unflagged: [],
-  leftovers: [],
-  unknown: [],
-});
-
 export async function takeSnapshot(options: SnapshotOptions): Promise<Snapshot> {
   const read = await readWindow(options);
   const findings = options.flag(read.model);

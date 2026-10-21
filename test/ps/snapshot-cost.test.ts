@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
-import { noFlags, takeSnapshot } from "../../src/core/ps/snapshot.js";
+import { flag } from "../../src/core/ps/flags.js";
+import { takeSnapshot } from "../../src/core/ps/snapshot.js";
 import { countingSource } from "./fixture-samples.js";
 import {
   type CostHost,
@@ -50,7 +51,7 @@ describe("one snapshot on a host of 650 processes and 25 daemons", () => {
     const { shape } = await takeSnapshot({
       source,
       places: host.places,
-      flag: noFlags,
+      flag,
       full: false,
       repo: false,
       sampleMs: 2_000,
