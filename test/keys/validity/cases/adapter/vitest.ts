@@ -135,6 +135,11 @@ export const VITEST_RUNS: readonly Case[] = [
     },
   ),
   vitest(
+    "a fileEnded callback that throws ends no run and loses no result (row 011-54)",
+    "011-54: a throw inside Vitest's reporter hook would end the run crashed and store nothing; the adapter notes it and the run completes",
+    { files: BASIC, runs: [{ files: SLOW, touched: [], fileEndedThrows: true }] },
+  ),
+  vitest(
     "a failing test and a file that fails to load store their fingerprints (review of cand/0.1.232, B1)",
     "a failure's fingerprint decides whether a later fail is the same failure (001 D6), so a change to how the adapter reads Vitest's errors changes what is stored",
     {
