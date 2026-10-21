@@ -5,9 +5,11 @@ import { isRecord, linkedWorktreeDir } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { phaseOn } from "./discover.js";
-import { fileFlags, shellQuote } from "./flags-files.js";
-import type { DaemonWork, Flag, FoundDaemon, PhaseOf, PsModel } from "./model.js";
-import type { PsFlag, PsFlagName, PsOrphan, PsUnknown } from "./shape.js";
+import { fileFlags } from "./flags-files.js";
+import { orphans, overdue, type ProcessContext } from "./flags-processes.js";
+import { duration, NO_BOOT, shellQuote } from "./flags-text.js";
+import type { DaemonWork, Flag, FoundDaemon, PhaseOf } from "./model.js";
+import type { PsFlag, PsFlagName, PsUnknown } from "./shape.js";
 import { type ProcessRow, ticksToMs } from "./source.js";
 
 /*
@@ -26,24 +28,14 @@ const AWAIT_LOCK_MS = 130_000;
 /** C9: a departure grace of 3 s and a check of 5 s at most, so a minute is past any. */
 const DEPARTURE_MS = 60_000;
 const NOT_INSTALLED_MS = 60 * 60_000;
-/** One false orphan showed on a single sample (`research/should-not-be-up.md` 1). */
-const ORPHAN_WINDOW_MS = 1_000;
-/** C13: the reaper's grace and rounds come well within it. */
-const OVERDUE_MS = 60_000;
-const NODE_COMMS: ReadonlySet<string> = new Set(["MainThread", "node"]);
-const WAITER = /\/dist\/waiter\.mjs$/;
 /** `<plugins>/cache/<marketplace>/squeal/<version>/...` of a Claude Code or Codex install. */
 const CACHE = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/[^/]+\//;
 const NO_LOCKS = "the source has no lock state (D10)";
 const NO_MARKS = "the source reads no marks (D10)";
-const NO_BOOT = "the boot time cannot be read, so no process has an age";
 
-interface Context {
-  readonly model: PsModel;
+/** What every rule of `flag` shares: the model, process ages, `unknown`, and D2's phase. */
+interface FlagContext extends ProcessContext {
   readonly phase: PhaseOf;
-  readonly ageOf: (row: ProcessRow) => number | null;
-  readonly startOf: (row: ProcessRow) => EpochMs | null;
-  readonly name: (what: string, why: string) => void;
 }
 
 export const flag: Flag = (model) => {
@@ -69,7 +61,7 @@ export const flag: Flag = (model) => {
     const start = startOf(row);
     return start === null ? null : model.now - start;
   };
-  const c: Context = { model, phase: phaseOn(source), ageOf, startOf, name };
+  const c: FlagContext = { model, phase: phaseOn(source), ageOf, startOf, name };
 
   const daemons = new Map<number, PsFlag[]>();
   const states = new Map<number, string>();
@@ -114,7 +106,7 @@ function ownDeparture(work: DaemonWork | null): EpochMs | null {
   return work.departedAt >= work.record.startedAt ? work.departedAt : null;
 }
 
-function daemonFlags(c: Context, d: FoundDaemon): { flags: PsFlag[]; state: string | null } {
+function daemonFlags(c: FlagContext, d: FoundDaemon): { flags: PsFlag[]; state: string | null } {
   const { model } = c;
   const pid = d.row.pid;
   const work = model.second.work.get(pid) ?? model.first.work.get(pid) ?? null;
@@ -197,7 +189,7 @@ function bundleOf(script: string): string {
  * or cannot be told.
  */
 function olderOf(
-  c: Context,
+  c: FlagContext,
   d: FoundDaemon,
   work: DaemonWork | null,
 ): { readonly reason: string } | string | null {
@@ -266,7 +258,7 @@ function codexNewest(plugins: string, marketplace: string): string | null {
 }
 
 /** D7 `hung`: serving, with a heartbeat past two intervals, on both readings. */
-function hungOf(c: Context, d: FoundDaemon): string | null {
+function hungOf(c: FlagContext, d: FoundDaemon): string | null {
   const { model } = c;
   let age = 0;
   for (const reading of [model.first, model.second]) {
@@ -288,7 +280,7 @@ function hungOf(c: Context, d: FoundDaemon): string | null {
  * heartbeat. A drain past its bound is past its departure too.
  */
 function lifeOf(
-  c: Context,
+  c: FlagContext,
   pid: number,
   work: DaemonWork,
   intervalMs: number,
@@ -345,7 +337,7 @@ function lifeOf(
  * consumer first (`dropGoneHarnesses`), and the store keeps no time of
  * death, so a consumer gone since the last heartbeat is the healthy case.
  */
-function deadConsumers(c: Context, pid: number): string[] {
+function deadConsumers(c: FlagContext, pid: number): string[] {
   const first = c.model.first.work.get(pid) ?? null;
   const second = c.model.second.work.get(pid) ?? null;
   if (first?.record == null || second?.record == null) return [];
@@ -375,7 +367,7 @@ function deadConsumers(c: Context, pid: number): string[] {
  * holder cannot be told, each is flagged once all have waited so long, and
  * its command names every pid (D10).
  */
-function duplicates(c: Context): Map<number, PsFlag[]> {
+function duplicates(c: FlagContext): Map<number, PsFlag[]> {
   const byRoot = new Map<AbsolutePath, FoundDaemon[]>();
   for (const d of c.model.discovery.daemons)
     if (d.root !== null) byRoot.set(d.root, [...(byRoot.get(d.root) ?? []), d]);
@@ -408,124 +400,6 @@ function duplicates(c: Context): Map<number, PsFlag[]> {
   return out;
 }
 
-/**
- * D7 `overdue-test-process`: a process carrying a mark, not its daemon's
- * own child, older than `runner.timeoutMs` plus a minute. The flag sits on
- * the test process whose row lists it, a descendant included.
- */
-function overdue(c: Context): Map<number, PsFlag[]> {
-  const { model } = c;
-  const out = new Map<number, PsFlag[]>();
-  if (!model.source.readsMarks) return out;
-  const table = model.second.sample.table;
-  for (const p of model.second.attribution.processes) {
-    const work = model.second.work.get(p.daemonPid) ?? model.first.work.get(p.daemonPid);
-    if (work === undefined || !Number.isFinite(work.settings.timeoutMs)) continue;
-    const bound = work.settings.timeoutMs + OVERDUE_MS;
-    for (const pid of [p.pid, ...p.descendants]) {
-      const row = table.get(pid);
-      if (row === undefined || row.ppid === p.daemonPid) continue;
-      const age = c.ageOf(row);
-      if (age === null) c.name("flag overdue-test-process", NO_BOOT);
-      if (age === null || age <= bound) continue;
-      if (pid !== p.pid && model.source.markOf(pid) === null) continue;
-      const who =
-        pid === p.pid
-          ? "it is"
-          : `its descendant ${pid} (${row.comm}) carries its mark, is not its daemon's child, and is`;
-      const reason = `${who} ${duration(age)} old, past runner.timeoutMs plus ${OVERDUE_MS / 1000} s`;
-      out.set(p.pid, [
-        ...(out.get(p.pid) ?? []),
-        { flag: "overdue-test-process", reason, command: `kill ${pid}` },
-      ]);
-    }
-  }
-  return out;
-}
-
-/** D7's flagged processes no live daemon owns: `orphan-test-process`, `orphan-waiter`, `foreign-permit`. */
-function orphans(c: Context): PsOrphan[] {
-  const { model } = c;
-  const table = model.second.sample.table;
-  const byPid = new Map<number, PsFlag[]>();
-  const add = (pid: number, flag: PsFlagName, reason: string) =>
-    byPid.set(pid, [...(byPid.get(pid) ?? []), { flag, reason, command: `kill ${pid}` }]);
-
-  for (const { pid, reason } of orphanTestProcesses(c)) add(pid, "orphan-test-process", reason);
-  for (const row of table.values()) {
-    if (!NODE_COMMS.has(row.comm) || (row.uid !== null && row.uid !== model.places.uid)) continue;
-    if (!(model.source.cmdline(row.pid) ?? []).some((a) => WAITER.test(a))) continue;
-    const parent = table.get(row.ppid);
-    if (parent === undefined) add(row.pid, "orphan-waiter", `its parent ${row.ppid} is gone`);
-    else if (row.ppid === 1 || parent.comm === "systemd")
-      add(
-        row.pid,
-        "orphan-waiter",
-        `its parent is ${parent.comm} ${row.ppid}: its session is gone`,
-      );
-  }
-  for (const { pid, path } of model.pool.foreign)
-    if (table.has(pid) || model.first.sample.table.has(pid))
-      add(pid, "foreign-permit", `it holds the pool permit ${path} and is no daemon`);
-
-  return [...byPid].map(([pid, flags]) => {
-    const row = table.get(pid) ?? model.first.sample.table.get(pid);
-    return {
-      pid,
-      comm: row?.comm ?? "",
-      startedAt: row === undefined ? null : c.startOf(row),
-      flags,
-    };
-  });
-}
-
-/**
- * D7 `orphan-test-process`: a mark no live daemon's token owns, on both
- * readings at least a second apart, by the same process. While any
- * daemon's token is unread, a mark may be its, so none is claimed.
- */
-function orphanTestProcesses(c: Context): { pid: number; reason: string }[] {
-  const { model } = c;
-  if (!model.source.readsMarks) return [];
-  for (const d of model.discovery.daemons) {
-    const pid = d.row.pid;
-    if ([model.first, model.second].some((r) => (r.work.get(pid)?.token ?? null) === null)) {
-      c.name(
-        "flag orphan-test-process",
-        `the token of daemon ${pid} is unread, so a mark may be its`,
-      );
-      return [];
-    }
-  }
-  const windowMs = model.second.sample.atMs - model.first.sample.atMs;
-  if (windowMs < ORPHAN_WINDOW_MS) {
-    c.name(
-      "flag orphan-test-process",
-      `the samples are ${Math.round(windowMs)} ms apart, under 1 s`,
-    );
-    return [];
-  }
-  const before = new Map(model.first.attribution.unowned.map((u) => [u.pid, u.mark]));
-  const found: { pid: number; reason: string }[] = [];
-  for (const { pid, mark } of model.second.attribution.unowned) {
-    const a = model.first.sample.table.get(pid);
-    const b = model.second.sample.table.get(pid);
-    if (before.get(pid) !== mark || a === undefined || a.startTicks !== b?.startTicks) continue;
-    const token = mark.split(":")[0];
-    found.push({ pid, reason: `its mark's token ${token} names no live daemon, on both samples` });
-  }
-  return found;
-}
-
 function within(path: string, dir: string): boolean {
   return path.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
-}
-
-/** `45 s`, `12m`, `3h 05m`. */
-function duration(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  if (s < 120) return `${s} s`;
-  const m = Math.floor(s / 60);
-  if (m < 120) return `${m}m`;
-  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
 }
