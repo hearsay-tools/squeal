@@ -41,6 +41,7 @@ interface At {
   readonly root?: string | null;
   readonly script?: string;
   readonly version?: string;
+  readonly worktreeId?: string;
 }
 
 /** A daemon of an existing root, run from the installed Claude Code bundle. */
@@ -264,6 +265,46 @@ describe("no-lock and duplicate", () => {
     const d = daemonAt(4103, { root: c.root, holdsLock: false, ageS: 60 });
     const waiting = flag(modelOf({ host, daemons: [{ daemon: c }, { daemon: d }] }));
     expect([names(waiting, 4102), names(waiting, 4103)]).toEqual([["no-lock"], ["no-lock"]]);
+  });
+
+  it("two holders of one lock file are the two readings': the lock passed, neither is a duplicate, and a third that waited is (lessons.md P9)", () => {
+    const a = daemonAt(4100, { worktreeId: "00000000000a0a0a" });
+    const b = daemonAt(4101, { root: a.root, worktreeId: "00000000000a0a0a", awaitLock: true });
+    const passed = flag(
+      modelOf({
+        host,
+        daemons: [
+          { daemon: a, first: workOf(a) },
+          { daemon: b, first: workOf(b) },
+        ],
+      }),
+    );
+    expect([names(passed, 4100), names(passed, 4101)]).toEqual([[], []]);
+    const c = daemonAt(4102, {
+      root: a.root,
+      worktreeId: "00000000000a0a0a",
+      holdsLock: false,
+      ageS: 60,
+    });
+    const waited = flag(
+      modelOf({
+        host,
+        daemons: [{ daemon: a, first: workOf(a) }, { daemon: b, first: workOf(b) }, { daemon: c }],
+      }),
+    );
+    expect(waited.daemons.get(4102)).toEqual([
+      {
+        flag: "no-lock",
+        reason: "it has waited 60 s for its lock, past 40 s",
+        command: "kill 4102",
+      },
+      {
+        flag: "duplicate",
+        reason: `daemons 4100, 4101 held the lock of its root ${a.root} in turn`,
+        command: "kill 4102",
+      },
+    ]);
+    expect([names(waited, 4100), names(waited, 4101)]).toEqual([[], []]);
   });
 
   it("without lock state names both pids, and names the rules it cannot evaluate", () => {
