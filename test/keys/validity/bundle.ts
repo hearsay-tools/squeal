@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { isBuiltin } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { build, type Plugin } from "esbuild";
+import { nodeFloor } from "../../../src/harness/build.js";
 import { bundleOptions } from "../../../src/harness/claude-code/build.js";
 import { COMPONENTS, FORMAT_FILE } from "./components.js";
 import { type Overlay, packageOf, ROOT } from "./trees.js";
@@ -158,11 +159,19 @@ export const bundleEntries = (tree: string, entries: string, overlay: Overlay = 
   bundleModule(tree, join(VALIDITY, entries), join(VALIDITY, "entries.mjs"), overlay);
 
 const BUILD = "src/harness/build.ts";
+const MANIFEST = "package.json";
 
-/** The target `tree`'s own build names (`bundleOptions`), so a moved target shows in the emitted code. */
-function targetOf(tree: string, overlay: Overlay): string | undefined {
+/**
+ * The target `tree`'s own build names (`bundleOptions`), so a moved target
+ * shows in the emitted code: the literal its build held until 011-86, else
+ * `node` and the floor of its `package.json`'s `engines.node` (`nodeFloor`).
+ */
+function targetOf(tree: string, overlay: Overlay): string {
   const text = overlay[BUILD] ?? readFileSync(join(tree, BUILD), "utf8");
-  return /\btarget: "([^"]+)"/.exec(text)?.[1];
+  const literal = /\btarget: "([^"]+)"/.exec(text)?.[1];
+  if (literal !== undefined) return literal;
+  const manifest = overlay[MANIFEST] ?? readFileSync(join(tree, MANIFEST), "utf8");
+  return `node${nodeFloor(manifest)}`;
 }
 
 /** `module`, a validity module, bundled against `tree` with `overlay`'s texts in place of its files. */
@@ -173,11 +182,10 @@ async function bundleModule(
   overlay: Overlay,
   bundler: typeof build = build,
 ) {
-  const shipped = bundleOptions(join(tree, "dist"));
-  const { platform, format } = shipped;
-  const target = targetOf(tree, overlay) ?? shipped.target;
-  if (platform === undefined || format === undefined || target === undefined) {
-    throw new Error("the shipped build names no platform, format or target");
+  const { platform, format } = bundleOptions(join(tree, "dist"));
+  const target = targetOf(tree, overlay);
+  if (platform === undefined || format === undefined) {
+    throw new Error("the shipped build names no platform or format");
   }
   const result = await bundler({
     absWorkingDir: ROOT,
