@@ -33,7 +33,8 @@ export const discover: Discover = (source, table, places) => {
   const unknown: PsUnknown[] = [];
   const locks = source.locks();
   if (locks === null) {
-    unknown.push({ what: "daemon phases", why: "the lock holders cannot be read" });
+    const why = "they cannot be read: a phase is serving by its heartbeat, or unknown (D10)";
+    unknown.push({ what: "daemon lock holders", why });
   }
   const daemons: FoundDaemon[] = [];
   for (const row of table.values()) {
