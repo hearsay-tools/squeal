@@ -39,3 +39,15 @@ Read the three designs' decisions and code rows, spec 011 C3, C4, C6, C7, C9, C1
 - the version is raised in all eight places and the bundles match the tree.
 
 Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. Known load-sensitive files: `opencode-dispose.test.ts` (008-38), `slow-slot-fair.test.ts`, `vacant-wait.test.ts`, `node-test/graph-cost.test.ts`; a file that fails loaded and passes alone is named. Write `reviews/0.1.251.md` with a PASS or FAIL verdict and commit it.
+
+## RP1: repair of cand/0.1.251, three Node 22 CI failures
+
+Use /worker. Shape: repair. Base: `cand/0.1.251` at `3ec1999dc` (main `08cb64a51` with 0.1.250, rows 011-87 to 011-95, the release commit). CI run 39695184172 (the same rows on 0.1.249, Node 22 shard 3/3, 4 vCPUs) failed three tests that main's CI passes; run 39696846845 is the same on this base.
+
+1. `test/scheduler/backlog-quiet-vitest.test.ts` test 8 (011-94, new): timed out at 120 s.
+2. `test/scheduler/edit-cut-route.test.ts` test 6, "starts the next edit's node:test tier beside the cut's catch-up slots, with no permit": `expected 0 to be greater than 0`.
+3. `test/scheduler/backlog-slots-overhead.test.ts` test 3: 29.4 s against a bound of 25.5 s (also failed once under load in W4's checkpoint).
+
+For each, find whether a row of this candidate causes it (start with 011-94's `selectTier`, the pump's 1 s wake and `yields.ts`, and 011-93's `Ledger.fastQueued`), and prove it: the file on the candidate and with the suspect commit reverted, both alone and on 4 CPUs (`taskset -c 0-3`), with the load beside each. Fix a regression at its cause in the row's code. Make a test deterministic only when the defect is the test's own timing, and never widen a bound to pass a slower product. Commit on your branch, one commit per cause.
+
+Owns: the files of the cause you prove and these three tests. Not yours: the release commit, bundles, version, spec, board. Rules as in this file's header: tests first, `npm ci` first, `squeal run --all --wait` as the verdict, a file that fails under load and passes alone named. Done when each of the three has a named cause, its fix or test commit is red before and green after, and lint, typecheck and `squeal run --all --wait` pass, their output in your final message with the whole report.
