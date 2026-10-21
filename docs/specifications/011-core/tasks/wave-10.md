@@ -39,3 +39,13 @@ Read W1 and W2 above, `tasks/011-20/notes.md`, `tasks/011-86/notes.md`, board ro
 - the version is raised in all eight places and the bundles match the tree.
 
 Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. A file that fails loaded and passes alone is named; `slow-slot-fair.test.ts` failed alone at load 52 on 0.1.247, outside that range. Write `reviews/0.1.249.md` with a PASS or FAIL verdict and commit it.
+
+## Q1: quality scan of waves 8 to 10
+
+Use /quality. Shape: survey. The human, 2026-10-22: a read-only scan now, code rows later.
+
+Stretch: `squeal--v0.1.240..squeal--v0.1.249`, the rows of this coordinator's waves 8 to 10: 013-03, 011-54, 011-56 to 011-59, 011-63, 011-65 (0.1.242), 011-71, 011-75, 011-76 (0.1.245), 005-73 (0.1.247), 011-20, 011-86 (0.1.249). Other rows in the range (011-69 in 0.1.244, spec 014's waves in 0.1.246 and 0.1.248) are context: name a duplicate they share with a row above, nothing else of theirs.
+
+Read `docs/vision.md`, `docs/styleguide.md`, the rows on the board and their notes under `tasks/`, and the `status.md` lines of 011, 005 and 013 dated 2026-10-20 to 2026-10-22. Leads, not rulings: the four launchers kept identical by hand (005-73, 005-74, 005-75 all edit them); `nodeFloor` and `rootVersion` both reading `package.json` in `src/harness/build.ts`; the yield and supersession paths of 011-54 and 011-71 in the scheduler; `testFileFrame` beside the existing location code in `src/core/status/`.
+
+Write `docs/specifications/011-core/quality/2026-10.md` and commit that file alone. No board, spec or code edits. Run no full suite: the host is loaded; a single test file to prove a duplicate is fine.
