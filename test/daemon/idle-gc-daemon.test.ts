@@ -60,16 +60,39 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
       await daemon.stop("stop-requested");
     });
     await daemon.ready;
+    // Quiet for 2 s: the five files current, only the slow file queued, no run
+    // open. Under load a later tier (a first observation's re-run) would
+    // otherwise start the quiet again after the clock moved.
+    let quietAt = 0;
     await waitFor(
-      () => withStore(repo, (store) => readHeader(store, repo.worktreeId).counts.current >= 5),
+      () =>
+        withStore(repo, (store) => {
+          const { counts } = readHeader(store, repo.worktreeId);
+          const quiet =
+            counts.current >= 5 &&
+            counts.pending <= 1 &&
+            store.runs.inFlight(repo.worktreeId, 0).length === 0;
+          if (!quiet) quietAt = 0;
+          else if (quietAt === 0) quietAt = Date.now();
+          return quiet && Date.now() - quietAt >= 2_000;
+        }),
       60_000,
-      "the fast baseline",
+      "the fast baseline, then 2 s quiet",
     );
     await delay(300);
     expect(gc).not.toHaveBeenCalled();
 
-    offset += 61_000;
-    await waitFor(() => gc.mock.calls.length > 0, 10_000, "the idle GC");
+    // Under load a later tier (a first observation's re-run) may still run, or
+    // end after the clock moved and start the quiet again: move it until it held.
+    await waitFor(
+      async () => {
+        offset += 61_000;
+        await delay(200);
+        return gc.mock.calls.length > 0;
+      },
+      60_000,
+      "the idle GC",
+    );
     expect(gc.mock.calls).toEqual([[LAST_RESORT]]);
     expect(lines.filter((line) => line.includes("last-resort GC"))).toEqual([
       expect.stringMatching(/^no tier for 60 s: a last-resort GC took .* MiB in a \d+ ms pause$/),
