@@ -955,6 +955,12 @@ Spec: `specifications/014-ps/spec.md`, approved by the human 2026-10-21 (D9 as i
 | 014-13 review of wave 2 | round 1 FAIL at 29ef2f053 (`reviews/wave-2.md`: B1 the second sample's subset table makes an in-use directory a leftover and drops an orphan waiter; B2 `usedPaths` cuts paths at spaces, quotes and `=`; B3 a null worker cost prints 0; B4 a failed macOS `ps` reads as an empty host); repair 014-13r running, then re-review | `/reviewer` on the candidate. | `reviews/wave-2.md` committed. |
 | 014-13r repair of wave 2 | running (worker 96fa9572, opus xhigh, on cand/0.1.240) | B1 to B4 and N3 of `reviews/wave-2.md`, brief `tasks/wave-2.md` 014-13r. | Real-flag snapshot and CLI regressions; `squeal run --all --wait` green. |
 
+### Found during 014
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 014-17 shipped-plugin e2e times out on this host | planned (`/researcher`; blocks 014-14 here, not landings) | `test/e2e/shipped-plugin.test.ts`, both passing-baseline cases (Claude Code PostToolBatch, Codex PostToolUse), time out at their 60 s bound on this host since about 15:00 UTC 2026-10-21: alone at load 4 to 16 on 29ef2f053 (0.1.240 candidate), on 9bce4f189 (0.1.239 candidate) and on tag `squeal--v0.1.238`. The same code passed here at 12:19 and 14:37 UTC, and CI passes it on 29ef2f053, so host state changed, not the code. The test isolates `XDG_RUNTIME_DIR` and `/tmp` paths and passes the real `HOME`. | The cause named with evidence (what in the host or `HOME` state stops the shipped daemon's baseline), and either the host fixed or the test isolated from it; the test passes alone here again. |
+
 ### Wave 3: proof (after 014-13)
 
 | Task | Status | Scope | Done when |
