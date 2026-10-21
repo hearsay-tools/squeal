@@ -1,6 +1,6 @@
 # Wave 15: slow-slot fairness under the load guard, and the status line that names the wait (004-84, 004-85)
 
-The human, 2026-10-21: take 004-84 and 004-85 after 011-29 ships. Spec: D2, D3 and D8 (`spec.md`), 011 C6 as amended 2026-10-20. Board rows 004-84 and 004-85 hold the evidence and the contract.
+The human, 2026-10-21: take 004-84 and 004-85 after 011-29 ships. They run side by side on disjoint files and ship in one release. Spec: D2, D3 and D8 (`spec.md`), 011 C6 as amended 2026-10-20. Board rows 004-84 and 004-85 hold the evidence and the contract.
 
 ## 004-84
 
@@ -19,4 +19,10 @@ Done when:
 
 ## 004-85
 
-Briefed after 011-29 lands. 011-29 removes `src/core/status/work-line.ts`, which printed the `Idle:` line, and leaves slow files the `Slow tier:` line counts out of `Outstanding:`. The row then needs its regressions over the landed text: every queued file slow and held for load, then for the slot, gives no `Idle` line and names the wait once; a queued fast file with nothing running keeps its line.
+Use /worker. Shape: slice, tests only. Outcome: regressions prove that status, after 011-29 (0.1.234), never reads as a stuck daemon when only slow files wait: 011-29 deleted `src/core/status/work-line.ts`, which printed `Idle: nothing is running and no run is open; N queued`, and `Outstanding:` leaves out the slow files the `Slow tier:` line counts (`src/core/status/outstanding.ts:106`).
+
+Read the 004-85 board row, 004 D8, 011 C6 as amended 2026-10-20 and `../../011-core/tasks/011-29/notes.md` ("The groups"). Seam: a new `test/status/slow-only-wait.test.ts` over `test/status/slow-tier-seed.ts`, through `readStatus` and `formatStatus`, and the pathless wait's text through `waitText`. First edit: every queued file slow and held for the load guard, then for the slot held by another worktree; each prints no `Idle` line, no `Outstanding:` group for those files, and names the wait once, in the `Slow tier:` line. Then the control: a fast file queued with nothing running still prints its `Outstanding:` queued group.
+
+Owns the new test file only. Leave alone: every `src/` file (a needed product change is a finding for the coordinator, not an edit), 004-84's files, the board, the specs, `package.json` versions and `plugins/*/dist`. No `npm run build`.
+
+Done when: the three cases pass on the baseline, and a mutation that puts the held slow files back into `Outstanding:` fails them (say how you checked); `npm run lint`, `npm run typecheck` and `squeal run --all --wait` green (paste its output).
