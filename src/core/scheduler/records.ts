@@ -49,11 +49,11 @@ export interface FileRecordsInput {
  * fails the file-level check, not the tests that passed. A file with no
  * file-level error records a `pass` for its file-level check.
  *
- * The file-level check carries the file's time outside its test cases
- * (collection, setup, `beforeAll`, `afterAll`) when the runner reports a file
- * duration, so the durations of a file's results add up to the whole file:
- * D5 step 4 orders by it, after a run and after a lookup alike (review wave
- * 4.5, N1).
+ * The file-level check carries the whole file's time, its tests included,
+ * when the runner reports a file duration, so `why` shows what the file
+ * costs (row 013-03, gh-62: one cezar file read 3.5 s, its time outside its
+ * tests, where its run took 112 s); `durationOf` reads it for D5 step 4,
+ * after a run and after a lookup alike.
  *
  * A file whose module skipped itself (`RunReport.skippedFiles`, spec 007 D6:
  * "a module-level skip skips the file's known checks") records `skip` for
@@ -66,10 +66,8 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
   const inFile = (check: CheckId) => check.project === ref.project && check.testPath === ref.path;
   const records: ResultRecord[] = [];
   const ran = new Set<string>();
-  let testsMs = 0;
   for (const result of fileResults(input, inFile)) {
     ran.add(checkId(result.check));
-    testsMs += result.durationMs;
     const failure =
       result.outcome === "fail"
         ? describe(result.errors, result.location)
@@ -94,10 +92,10 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
   const errors = report.fileErrors
     .filter((e) => e.testFile.project === ref.project && e.testFile.path === ref.path)
     .flatMap((e) => e.errors.map((error): CheckError => ({ ...error, phase })));
-  const fileMs = report.fileDurations?.find(
-    (d) => d.testFile.project === ref.project && d.testFile.path === ref.path,
-  )?.durationMs;
-  const outsideTestsMs = fileMs === undefined ? 0 : Math.max(0, fileMs - testsMs);
+  const fileMs =
+    report.fileDurations?.find(
+      (d) => d.testFile.project === ref.project && d.testFile.path === ref.path,
+    )?.durationMs ?? 0;
   if (errors.length === 0) {
     // Spec 001 D6: "The file-level check of a test file records `pass`
     // whenever the file loads, so a fixed import or syntax error closes with
@@ -106,7 +104,7 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
       check: fileCheck(ref),
       key,
       outcome: "pass",
-      durationMs: outsideTestsMs,
+      durationMs: fileMs,
       location: null,
       summary: null,
       fingerprint: null,
@@ -132,7 +130,7 @@ export function recordsForFile(input: FileRecordsInput): ResultRecord[] {
       records.push(failed(check));
     }
   }
-  records.push({ ...failed(fileCheck(ref)), durationMs: outsideTestsMs });
+  records.push({ ...failed(fileCheck(ref)), durationMs: fileMs });
   return records;
 }
 
