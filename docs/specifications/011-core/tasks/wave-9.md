@@ -49,3 +49,9 @@ Read W1 to W3 above, `research/stuck-tier.md`, `tasks/011-64/design.md` sections
 - the key format and `RECORDER_VERSION` are rightly unchanged, the version is raised in all eight places, and the bundles match the tree.
 
 Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. `test/e2e/shipped-plugin.test.ts` fails on this host from a stale npm cache (row 014-17); name it, not a blocker. A file that fails loaded and passes alone is named. Write `reviews/0.1.243.md` with a PASS or FAIL verdict and commit it.
+
+## R1r: re-review of the repaired cand/0.1.243
+
+Use /reviewer. Shape: review, bounded. Pinned to `cand/0.1.243` at 72afa68c1; the repair is `5ed4a1c6b..72afa68c1`: the coordinator's fix (`PYTEST_ENTRY` in `src/core/status/test-frame.ts`), the recorded `test/status/recorded/pytest-tb-{long,short,native}-space.jsonl` with their README line and test, your findings commit, and the rebuilt bundles. Read `reviews/0.1.243.md` (B1, "Inputs for the repair") and append a "Re-review" section.
+
+Check only that: B1 is closed (long and short reports of `test frames/test_frames.py` give the frame at lines 6 and 10, the test's own failure gives none, and the new cases fail with the fix reverted); the pattern still reads no source line or `E` line as an entry; the recordings come from a real pytest 9.1.1 run and name no host path; the bundles match the tree and the version stays 0.1.243. Then run the independent full suite once, `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, after `npm ci`, with the checks your Inputs list. Name 014-17 and any file that fails loaded and passes alone. Anything outside B1 is recorded for a later row, not a blocker.
