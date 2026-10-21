@@ -88,6 +88,23 @@ const SLOW = [1, 2, 3].map((n) => ref(`test/slow${n}.test.ts`));
 const [, SLOW2, SLOW3] = SLOW;
 const EVERY = [SLOW2, SLOW3, ref("test/computed.test.ts")].filter((r) => r !== undefined);
 
+/** A global setup that says it started, then throws (task 001-382). */
+const REJECTING: Readonly<Record<string, string>> = {
+  "package.json": BASIC["package.json"] ?? "",
+  "vitest.config.ts":
+    'export default { test: { include: ["test/*.test.ts"], globalSetup: ["./boot.ts"] } };\n',
+  "boot.ts": [
+    'import { writeFileSync } from "node:fs";',
+    "export default function setup() {",
+    '  writeFileSync($STARTED, "");',
+    '  throw new Error("bootstrap");',
+    "}",
+    "",
+  ].join("\n"),
+  "test/one.test.ts":
+    'import { expect, it } from "vitest";\nit("never runs", () => expect(1).toBe(1));\n',
+};
+
 export const VITEST_RUNS: readonly Case[] = [
   vitest(
     "a touched module withholds the files that reach it (013-01 test 2)",
@@ -157,6 +174,23 @@ export const VITEST_RUNS: readonly Case[] = [
     {
       files: BASIC,
       runs: [{ files: [SLOW2].filter((r) => r !== undefined), touched: [], cancelBefore: "stop" }],
+    },
+  ),
+  vitest(
+    "a run whose global setup throws stores nothing, and its instance is closed (row 013-06)",
+    "001-382: a rejected run's instance is closed, so the next run calls the setup again; 013-06 empties it once closed",
+    { files: REJECTING, runs: [{ files: [ref("test/one.test.ts")], touched: [] }] },
+  ),
+  vitest(
+    "a run whose instance lost its temp directory stores nothing, and its instance is closed (row 013-06)",
+    "001 D5 (lessons, defect 12): a runner failure is a crash, never a fail stored under a key; 013-06 empties the broken instance once closed",
+    // A held file with no skip, so a change to how a skip is read leaves this case alone.
+    {
+      files: FAILING,
+      runs: [
+        { files: [ref("test/held.test.ts")], touched: [] },
+        { files: [ref("test/held.test.ts")], touched: [], removeTempDir: true },
+      ],
     },
   ),
   vitest(
