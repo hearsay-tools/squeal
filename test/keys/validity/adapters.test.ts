@@ -104,8 +104,8 @@ describe("each adapter's comparison (risk 3)", SLOW, () => {
     const result = await compare(
       edited(
         "src/runners/vitest/width.ts",
-        "const width = Math.max(2, Math.floor(want));",
-        "const width = Math.max(3, Math.floor(want));",
+        "const width = Math.max(floor, Math.floor(want));",
+        "const width = Math.max(floor + 1, Math.floor(want));",
       ),
       [],
     );

@@ -4,18 +4,31 @@ import type { VitestHints } from "./adapter.js";
 
 /**
  * The `maxWorkers` a project runs a tier with (spec 001 D11 Capacity, task
- * 001-378): `want` workers, at least 2, never above the project's own
- * `ceiling`. A project that set 1 runs at 1: with `isolate: false` one worker
- * then takes every file of the project, which a width of 2 would change. No
+ * 001-378): `want` workers, at least `floor`, never above the project's own
+ * `ceiling`. The floor is 2 for a project with `isolate: false`, where one
+ * worker would take every file of the project, and 1 for any other (011 C10
+ * as amended 2026-10-21, row 011-97). A project that set 1 runs at 1. No
  * `want` is the project's own value (`undefined`: Vitest's default).
  */
 export function tierWidth(
   want: number | undefined,
   ceiling: number | undefined,
+  floor = 1,
 ): number | undefined {
   if (want === undefined || ceiling === 1) return ceiling;
-  const width = Math.max(2, Math.floor(want));
+  const width = Math.max(floor, Math.floor(want));
   return ceiling === undefined ? width : Math.min(width, ceiling);
+}
+
+/**
+ * At a width of 1 Vitest hands one worker every file of a project that
+ * does not isolate them (`groupSpecs`: "Non-isolated single worker can
+ * receive all files at once"); a vm pool's `isolate: false` comes from its
+ * own resolution, and its files still run one per request.
+ */
+function batches(project: TestProject): boolean {
+  const { isolate, pool } = project.config;
+  return isolate === false && pool !== "vmThreads" && pool !== "vmForks";
 }
 
 /**
@@ -33,24 +46,39 @@ type Sized = { maxWorkers: number | undefined };
  * Where a run puts a project's files (Vitest's `groupSpecs`): by
  * `sequence.groupOrder`, each group only once the one before it ended, and
  * an isolated project of order 0 that set 1 into a last group of its own.
+ * A width of 1 written into a config moves such a project there too; a run
+ * that wide starts one file at a time wherever it goes (row 011-97).
  */
 type Group = number | "sequential";
 
 export class Widths {
   readonly #root: number | undefined;
-  readonly #projects: ReadonlyMap<TestProject, number | undefined>;
-  /** By project name: its own ceiling, else the root's, and its group. */
-  readonly #byName: ReadonlyMap<string, { ceiling: number | undefined; group: Group }>;
+  /** The root's floor: 2 when a project that reads the root's width batches its files. */
+  readonly #rootFloor: number;
+  readonly #projects: ReadonlyMap<TestProject, { own: number | undefined; floor: number }>;
+  /** By project name: its own ceiling, else the root's, its floor and its group. */
+  readonly #byName: ReadonlyMap<
+    string,
+    { ceiling: number | undefined; floor: number; group: Group }
+  >;
 
   constructor(vitest: Vitest) {
     this.#root = vitest.config.maxWorkers;
-    this.#projects = new Map(vitest.projects.map((p) => [p, p.config.maxWorkers]));
+    // Vitest throws when two projects of one group resolve to different widths, so every project
+    // that reads the root's width runs at the root's floor (row 011-97).
+    const readsRoot = (p: TestProject) =>
+      p.config === vitest.config || p.config.maxWorkers === undefined;
+    this.#rootFloor = vitest.projects.some((p) => readsRoot(p) && batches(p)) ? 2 : 1;
+    const floorOf = (p: TestProject) => (readsRoot(p) ? this.#rootFloor : batches(p) ? 2 : 1);
+    this.#projects = new Map(
+      vitest.projects.map((p) => [p, { own: p.config.maxWorkers, floor: floorOf(p) }]),
+    );
     this.#byName = new Map(
       vitest.projects.map((p) => {
         const own = p.config.maxWorkers;
         const order = p.config.sequence.groupOrder;
         const group = p.config.isolate && order === 0 && own === 1 ? "sequential" : order;
-        return [p.name, { ceiling: own ?? this.#root, group }];
+        return [p.name, { ceiling: own ?? this.#root, floor: floorOf(p), group }];
       }),
     );
   }
@@ -65,7 +93,7 @@ export class Widths {
   atOnce(testFiles: readonly TestFileRef[]): number {
     const first = testFiles[0] === undefined ? undefined : this.#byName.get(testFiles[0].project);
     if (first === undefined) return testFiles.length;
-    const width = tierWidth(testFiles.length, first.ceiling) ?? testFiles.length;
+    const width = tierWidth(testFiles.length, first.ceiling, first.floor) ?? testFiles.length;
     let count = 0;
     for (const { project } of testFiles) {
       if (count >= width || this.#byName.get(project)?.group !== first.group) break;
@@ -76,21 +104,22 @@ export class Widths {
 
   /**
    * The workers a run of `project`'s files takes at a grant of `grant` (spec
-   * 011 C4 step 5, task 001-366): `tierWidth` under its own ceiling. An
-   * unknown project's run fails on its own: `grant`, at least 2.
+   * 011 C4 step 5, task 001-366): `tierWidth` under its own ceiling and
+   * floor. An unknown project's run fails on its own: `grant`, at least 1.
    */
   of(project: string, grant: number): number {
-    return tierWidth(grant, this.#byName.get(project)?.ceiling) ?? Math.max(2, grant);
+    const known = this.#byName.get(project);
+    return tierWidth(grant, known?.ceiling, known?.floor) ?? Math.max(1, grant);
   }
 
   /** Sizes `vitest`'s next run for `want` workers. */
   apply(vitest: Vitest, want: number | undefined): void {
     // The root project's config is the instance's; a project without a value of its own reads it.
-    (vitest.config as Sized).maxWorkers = tierWidth(want, this.#root);
+    (vitest.config as Sized).maxWorkers = tierWidth(want, this.#root, this.#rootFloor);
     for (const project of vitest.projects) {
-      const own = this.#projects.get(project);
-      if (project.config !== vitest.config && own !== undefined) {
-        (project.config as Sized).maxWorkers = tierWidth(want, own);
+      const sized = this.#projects.get(project);
+      if (project.config !== vitest.config && sized?.own !== undefined) {
+        (project.config as Sized).maxWorkers = tierWidth(want, sized.own, sized.floor);
       }
     }
   }

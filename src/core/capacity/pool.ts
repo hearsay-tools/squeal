@@ -46,12 +46,14 @@ export type PoolLane = "fast" | "slow";
 
 export interface PermitPool {
   /**
-   * The grant for a tier of `lane` that wants `want` workers, or `null` when
-   * it may not start yet: no permit it may take is free. The daemon is then
-   * a waiter, marked, holding nothing for that tier. Never blocks; the caller
-   * looks again (011 C10, row 011-96). When it throws it holds nothing it took.
+   * The grant for a tier of `lane` that wants `want` workers and runs no
+   * fewer than `least` (default 1, row 011-97), or `null` when it may not
+   * start yet: fewer than `least` permits it may take are free. The daemon
+   * is then a waiter, marked, holding nothing for that tier. Never blocks;
+   * the caller looks again (011 C10, row 011-96). When it throws it holds
+   * nothing it took.
    */
-  acquire(want: number, lane?: PoolLane): PoolLease | null;
+  acquire(want: number, lane?: PoolLane, least?: number): PoolLease | null;
   /**
    * The grant `acquire(want)` would give now, taking nothing (spec 011 C4
    * step 5, task 001-366): the fair share less what this daemon's tiers
@@ -124,6 +126,8 @@ class LockFilePool implements PermitPool {
   #since: number | null = null;
   /** Every acquisition waiting since `#since` was a slow lane's. */
   #slowWaiting = false;
+  /** The waiting tier's fewest workers, in the mark while it waits (row 011-97). */
+  #least = 1;
   #idleSince: number | null = null;
   #timer: NodeJS.Timeout | null = null;
   #mark: PoolMark | null = null;
@@ -135,7 +139,7 @@ class LockFilePool implements PermitPool {
     this.#now = options.now ?? Date.now;
   }
 
-  acquire(want: number, lane: PoolLane = "fast"): PoolLease | null {
+  acquire(want: number, lane: PoolLane = "fast", least = 1): PoolLease | null {
     if (this.#closed) return null;
     const { dir } = this.#options;
     preparePrivateDir(dir, this.#options.uid ?? currentUid(), "capacity pool directory");
@@ -145,7 +149,13 @@ class LockFilePool implements PermitPool {
     }
     this.#idleSince = null;
     const wanted = Math.max(1, Math.floor(want));
-    const { others, inUse, demand, shares, entitled, target } = this.#share(wanted, lane, now);
+    const fewest = Math.min(wanted, Math.max(1, Math.floor(least)));
+    const { others, inUse, demand, shares, entitled, target } = this.#share(
+      wanted,
+      lane,
+      now,
+      fewest,
+    );
     const slow = lane === "slow";
     const rank = this.#since ?? now;
     // Task 004-61: a contended pool serves fast lanes first. A fast lane's tier leaves free only
@@ -159,14 +169,18 @@ class LockFilePool implements PermitPool {
     const reserve = others
       .filter(ahead)
       .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 0) - o.grant), 0);
-    const permits = this.#take(target, reserve);
+    const permits = target < fewest ? [] : this.#take(target, reserve);
+    // A tier that runs `fewest` workers on fewer permits would run more than it holds.
+    if (permits.length < fewest) for (const db of permits.splice(0)) db.close();
     const grant = permits.length;
     const since = this.#since;
     const slowWaiting = this.#slowWaiting;
+    const previousLeast = this.#least;
     const mark = this.#mark;
     // One that holds nothing and gets nothing waits even at a share of 0, so it is served first later.
     this.#since = grant >= Math.max(entitled, inUse === 0 ? 1 : 0) ? null : (since ?? now);
     this.#slowWaiting = this.#since !== null && slow && (since === null || slowWaiting);
+    this.#least = this.#since === null ? 1 : fewest;
     const lease: Lease = { permits, want: wanted };
     if (grant > 0) this.#leases.add(lease);
     try {
@@ -177,6 +191,7 @@ class LockFilePool implements PermitPool {
       for (const db of permits.splice(0)) db.close();
       this.#since = since;
       this.#slowWaiting = slowWaiting;
+      this.#least = previousLeast;
       this.#mark = mark;
       throw error;
     }
@@ -202,8 +217,8 @@ class LockFilePool implements PermitPool {
     this.#clear();
   }
 
-  /** What a tier of `wanted` workers is entitled to now, and what it may take. */
-  #share(wanted: number, lane: PoolLane, now: number) {
+  /** What a tier of `wanted` workers, `least` at the fewest, is entitled to now, and what it may take. */
+  #share(wanted: number, lane: PoolLane, now: number, least = 1) {
     const { dir, owner, project } = this.#options;
     const others = readMarks(dir, owner.worktreeId, now);
     const inUse = this.#inUse();
@@ -213,6 +228,7 @@ class LockFilePool implements PermitPool {
       want: demand,
       since: this.#since,
       ...(lane === "slow" ? { slow: true } : {}),
+      ...(least > 1 ? { least } : {}),
       ...(project === undefined ? {} : { project }),
     };
     const shares = fairShares(this.#hostSlots, [me, ...others]);
@@ -260,7 +276,10 @@ class LockFilePool implements PermitPool {
       },
       shrinkTo(workers) {
         const wanted = Math.max(1, Math.floor(workers));
-        for (const db of lease.permits.splice(wanted)) db.close();
+        const returned = lease.permits.splice(wanted);
+        for (const db of returned) db.close();
+        // A tier's tail calls this at each file's end (row 011-97): no change writes no mark.
+        if (returned.length === 0 && lease.want === wanted) return;
         lease.want = wanted;
         pool.#republish();
       },
@@ -303,6 +322,7 @@ class LockFilePool implements PermitPool {
       grant,
       since: this.#since,
       ...(this.#since !== null && this.#slowWaiting ? { slow: true } : {}),
+      ...(this.#since !== null && this.#least > 1 ? { least: this.#least } : {}),
       ...(project === undefined ? {} : { project }),
     };
     writeMark(dir, this.#mark);
