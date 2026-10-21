@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -60,6 +60,28 @@ describe("vitest adapter: each file's end during the run (row 011-54)", SLOW, ()
     const report = await running;
     expect(ended).toEqual([QUICK, HELD]);
     expect(report.completedFiles).toEqual([ref(HELD), ref(QUICK)]);
+  });
+
+  /*
+   * Vitest catches a reporter hook that throws as an unhandled reporter
+   * error, which would end the run crashed and store nothing (D12).
+   */
+  it("ends no run and loses no result when the callback throws", async () => {
+    const fx = await openFixture();
+    const options = fx.runOptions({
+      fileEnded: () => {
+        throw new Error("boom 011-54");
+      },
+    });
+
+    const report = await fx.adapter.run([ref(QUICK)], options);
+
+    expect(report.end).toBe("completed");
+    expect(report.failure).toBeNull();
+    expect(report.completedFiles).toEqual([ref(QUICK)]);
+    expect(report.results.length).toBeGreaterThan(0);
+    const log = readFileSync(join(options.logDir, "vitest.log"), "utf8");
+    expect(log).toContain(`squeal: fileEnded of ${QUICK} threw: Error: boom 011-54`);
   });
 
   it("does not name a file whose module ends after a cancel", async () => {
