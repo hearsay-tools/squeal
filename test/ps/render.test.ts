@@ -9,7 +9,7 @@ import {
   share,
   thousands,
 } from "../../src/core/ps/render-units.js";
-import type { PsFlag } from "../../src/core/ps/shape.js";
+import type { PsFlag, PsTestProcess } from "../../src/core/ps/shape.js";
 import { EXAMPLE_AT, exampleDaemon, exampleProcess, exampleSnapshot } from "./fixture-snapshot.js";
 
 /*
@@ -215,6 +215,38 @@ describe("unknown values print as unknown, never 0", () => {
       "  serving            3704612  ?         ?                 ?     ?         ?  ?       ?     work unknown",
     );
     expect(text.at(-2)).toBe("Unknown: 1 value; --full names each");
+  });
+
+  describe("a test process's columns (reviews/wave-2.md B3)", () => {
+    const none = { count: 0, cpuPct: 0, cpuMs: 0, privateBytes: 0, swapBytes: 0, list: null };
+    const rowOf = (p: PsTestProcess, memory: "private" | "rss" = "private") => {
+      const daemons = [exampleDaemon({ processes: [p] })];
+      const s = exampleSnapshot({
+        memory,
+        repositories: [{ commonDir: "/r/.git", current: false, daemons }],
+      });
+      return lines(brief(s)).find((l) => l.includes(" 3704700 "));
+    };
+
+    test("a worker that left during the window, without descendants: its unread CPU and memory are unknown", () => {
+      const vanished = { cpuPct: null, privateBytes: null, swapBytes: null, descendants: none };
+      expect(rowOf(exampleProcess(vanished))).toBe(
+        "    vitest           3704700  fork worker                4m     ?     0m27s  ?       ?     nice 10",
+      );
+    });
+
+    test("an RSS worker without descendants: its swap is unknown", () => {
+      expect(rowOf(exampleProcess({ swapBytes: null, descendants: none }), "rss")).toBe(
+        "    vitest           3704700  fork worker                4m   10%     0m27s  300M    ?     nice 10",
+      );
+    });
+
+    test("with descendants, a column is unknown when the worker's value or their sum is", () => {
+      const descendants = { ...exampleProcess().descendants, swapBytes: null };
+      expect(rowOf(exampleProcess({ cpuPct: null, swapBytes: 0, descendants }))).toBe(
+        "    vitest           3704700  fork worker                4m     ?     0m29s  310M    ?     nice 10, +2 children",
+      );
+    });
   });
 
   test("on macOS, memory is RSS and says it counts shared pages more than once", () => {
