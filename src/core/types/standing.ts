@@ -25,13 +25,33 @@ interface Retryable {
 }
 
 /**
+ * Whether the tier a promoted file is queued behind yields to it (spec 011
+ * C4 step 5 and C15 as amended 2026-10-21, row 011-51), as its daemon last
+ * found: `yields`, it cancelled the tier; else why not: `remainder`, the
+ * tier's estimated remainder was `remainderMs`, 30 s or less; `cut`, it holds
+ * a file a yield already cut at its key; `turn`, it is the backlog's turn
+ * after four tiers of the first group; `runner`, its runner runs each tier
+ * to its end (node:test, pytest).
+ */
+export type TierYield =
+  | { readonly kind: "yields" }
+  | { readonly kind: "remainder"; readonly remainderMs: number }
+  | { readonly kind: "cut" | "turn" | "runner" };
+
+/**
  * Where a test file without a verdict stands, one state a file (the order
  * rule: another worktree's claim is tested before stale and unknown). The
  * pending kinds are `PendingReason`'s, each count of files additive.
  */
 export type Standing =
   | { readonly kind: "no-daemon"; readonly since: EpochMs | null; readonly revision: number }
-  | { readonly kind: "unlisted"; readonly revision: number; readonly callBoundMs: number }
+  | {
+      readonly kind: "unlisted";
+      readonly revision: number;
+      readonly callBoundMs: number;
+      /** A selected file is promoted and the run the runner part waits for yields (row 011-51). */
+      readonly yields?: TierYield;
+    }
   | ({
       readonly kind: "stale";
       readonly verdict: "pass" | "fail" | "skip" | null;
@@ -66,6 +86,8 @@ export type Standing =
       /** The test files of the tier it is queued behind. */
       readonly files?: number;
       readonly promoted?: boolean;
+      /** Promoted: whether that tier yields to it (row 011-51); absent from an older daemon. */
+      readonly yields?: TierYield;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
   | { readonly kind: "slow"; readonly pausesOnly?: true }
