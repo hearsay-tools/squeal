@@ -1,7 +1,7 @@
 import { rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { discover, phaseOn } from "../../src/core/ps/discover.js";
+import { discover, lockedAgain, phaseOn } from "../../src/core/ps/discover.js";
 import type { DaemonWork, FoundDaemon } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { PsSource } from "../../src/core/ps/source.js";
@@ -358,6 +358,86 @@ describe("socket files (D2 step 4)", () => {
     sock(tempSockets, alpha.id);
     const places = { ...host.places, runtimeDir: tempSockets };
     expect(discover(source, source.processTable(), places).sockets).toHaveLength(1);
+  });
+});
+
+describe("the second reading at the window's end (lessons.md P9)", () => {
+  /** 540 holds alpha's lock, 541 waits behind it, and 542 holds beta's; each has its socket file. */
+  const setUp = () => {
+    writeProcesses(host, [
+      daemonProcess({ pid: 540, root: alpha.root, lockPath: alpha.lockPath }),
+      daemonProcess({ pid: 541, root: alpha.root, lockPath: alpha.lockPath, awaitLock: true }),
+      daemonProcess({ pid: 542, root: beta.root, lockPath: beta.lockPath }),
+    ]);
+    for (const id of [alpha.id, beta.id])
+      writeFileSync(join(host.places.runtimeDir ?? "", `squeal-${id}.sock`), "");
+  };
+  const held = (d: { daemons: readonly FoundDaemon[] }) =>
+    d.daemons.map((x) => [x.row.pid, x.holdsLock]);
+  const owners = (d: { sockets: readonly { worktreeId: string; daemonPid: number | null }[] }) =>
+    d.sockets.map((x) => [x.worktreeId, x.daemonPid]);
+
+  test("a lock the first reading misses and the second shows is held, and its socket is its daemon's", () => {
+    setUp();
+    // The first reading lost 540's line between two pages; 541's request still waits.
+    writeLocks(host, [
+      lockLine(1, 541, key(alpha.lockPath), true),
+      lockLine(2, 542, key(beta.lockPath)),
+    ]);
+    const first = run();
+    expect(held(first)).toEqual([
+      [540, false],
+      [541, false],
+      [542, true],
+    ]);
+    const again = [
+      lockLine(1, 540, key(alpha.lockPath)),
+      lockLine(1, 541, key(alpha.lockPath), true),
+    ];
+    writeLocks(host, again);
+    const both = lockedAgain(source, first, source.locks());
+    // 542's lock, missing from the second reading, stays held: either reading is enough.
+    expect(held(both)).toEqual([
+      [540, true],
+      [541, false],
+      [542, true],
+    ]);
+    expect(owners(both).sort()).toEqual(
+      [
+        [alpha.id, 540],
+        [beta.id, 542],
+      ].sort(),
+    );
+    expect(both.unknown).toBe(first.unknown);
+  });
+
+  test("a lock both readings miss is not held, and its socket has no daemon", () => {
+    setUp();
+    writeLocks(host, [lockLine(1, 542, key(beta.lockPath))]);
+    const first = run();
+    const both = lockedAgain(source, first, source.locks());
+    expect(held(both)).toEqual([
+      [540, false],
+      [541, false],
+      [542, true],
+    ]);
+    expect(owners(both).sort()).toEqual(
+      [
+        [alpha.id, null],
+        [beta.id, 542],
+      ].sort(),
+    );
+  });
+
+  test("without a second reading, or when every daemon holds its lock, the discovery is the first", () => {
+    setUp();
+    writeLocks(host, [lockLine(1, 542, key(beta.lockPath))]);
+    const first = run();
+    expect(lockedAgain(source, first, null)).toBe(first);
+    rmSync(join(host.base, "proc", "541"), { recursive: true });
+    writeLocks(host, [lockLine(1, 540, key(alpha.lockPath)), lockLine(2, 542, key(beta.lockPath))]);
+    const all = run();
+    expect(lockedAgain(source, all, [])).toBe(all);
   });
 });
 
