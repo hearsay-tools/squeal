@@ -2,7 +2,7 @@ import { rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CANCELLED } from "../../src/runners/vitest/run.js";
+import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
 import { waitFor } from "../watcher/helpers.js";
 import { completions, suite } from "./backlog-suite.js";
 import { type Harness, openHarness, openRepoStore } from "./helpers.js";
@@ -78,7 +78,7 @@ describe("a backlog tier and a revision no file of it reads (task 001-364)", () 
 
     const [cancelled, next] = tiers;
     expect(cancelled?.files).toHaveLength(30);
-    expect(cancelled?.report.failure).toBe(CANCELLED);
+    expect(cancelled?.report.failure).toBe(cancelText("backlog"));
     expect(cancelled?.report.completedFiles.length).toBeLessThan(30);
     expect(next?.files.map((f) => f.path)).toContain(added);
     expect(h.runsOf(added)).toHaveLength(1);

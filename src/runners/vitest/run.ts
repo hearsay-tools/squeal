@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { SerializedError, TestSpecification, Vitest } from "vitest/node";
 import { compare } from "../../core/fs/index.js";
 import type {
+  CancelCause,
   FileLevelError,
   ProjectName,
   RelativePath,
@@ -23,7 +24,26 @@ type CancelReason = Parameters<Vitest["cancelCurrentRun"]>[0];
 const TIMEOUT_REASON = "squeal-timeout" as CancelReason;
 const CANCEL_REASON = "squeal-cancel" as CancelReason;
 /** `RunReport.failure` of a run the scheduler cancelled: some files did not complete. */
-export const CANCELLED = "run cancelled: an edit arrived during a backlog tier";
+export const CANCELLED = "run cancelled";
+
+/** What follows `CANCELLED` for each cause the scheduler names (row 011-56). */
+const CANCEL_CAUSES: Readonly<Record<CancelCause, string>> = {
+  supersession: "the revisions during it changed an input of every file that had not ended",
+  backlog: "an edit arrived during a backlog tier",
+  yield: "it yielded to an edit's work, a promoted file or a runner part waiting for it",
+  stop: "squeal stop",
+  "step-down": "the daemon stepped down for newer hooks",
+};
+
+/**
+ * `RunReport.failure` of a run cancelled with `reason`, its signal's: the
+ * cause it names, or `CANCELLED` alone for a reason it does not know, as an
+ * older caller's `abort()`.
+ */
+export function cancelled(reason: unknown): string {
+  const known = typeof reason === "string" && Object.hasOwn(CANCEL_CAUSES, reason);
+  return known ? `${CANCELLED}: ${CANCEL_CAUSES[reason as CancelCause]}` : CANCELLED;
+}
 
 export interface RunExecution {
   readonly end: RunEnd;
@@ -40,8 +60,9 @@ export interface RunExecution {
  * On timeout or abort: cancel, then cancel again to force-kill workers (a
  * busy loop ignores the first), then give up on the instance. A timeout ends
  * the run `timed-out`; an abort (task 001-124) keeps the run's own end with
- * `CANCELLED` as its failure, and the scheduler queues the files that did
- * not complete again.
+ * `cancelled` of the signal's reason as its failure and a note in the run
+ * log (row 011-56), and the scheduler queues the files that did not
+ * complete again.
  */
 export async function execute(
   vitest: Vitest,
@@ -50,7 +71,7 @@ export async function execute(
   collector: RunCollector,
   signal?: AbortSignal,
 ): Promise<RunExecution> {
-  if (signal?.aborted) return { end: "completed", failure: CANCELLED, hung: false };
+  if (signal?.aborted) return { end: "completed", failure: cancelled(signal.reason), hung: false };
   const run = vitest.runTestSpecifications([...specs]).then(
     (): RunExecution => ({ end: "completed", failure: null, hung: false }),
     (error: unknown): RunExecution => ({
@@ -66,7 +87,8 @@ export async function execute(
   collector.cancelRequested = true;
   const timedOut = first === "timeout";
   const reason = timedOut ? TIMEOUT_REASON : CANCEL_REASON;
-  const failure = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : CANCELLED;
+  const failure = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : cancelled(signal?.reason);
+  if (!timedOut) collector.note(failure);
   // A cancelled run that crashed meanwhile stays crashed: nothing in it is trusted (D12).
   // A rejection during either grace keeps its marker, so the instance is closed (review
   // wave-13bp B1).

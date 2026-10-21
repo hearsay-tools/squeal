@@ -210,7 +210,8 @@ export interface RunOptions {
    * amended, task 001-124). The run stops as on a timeout: files whose module
    * ended before the cancel are completed, and the report's end is the run's
    * own. An adapter that cannot cancel runs to the end. A `squeal stop`
-   * aborts it too, for every tier (D10, task 001-367).
+   * aborts it too, for every tier (D10, task 001-367). Its `reason` is the
+   * `CancelCause` when the scheduler names one (row 011-56).
    */
   readonly signal?: AbortSignal;
   /**
@@ -258,6 +259,16 @@ export interface RunOptions {
    */
   readonly fileEnded?: (testFile: TestFileRef) => void;
 }
+
+/**
+ * Why the scheduler cancelled a run, the `reason` of `RunOptions.signal`
+ * (row 011-56): `supersession`, the revisions during it changed an input of
+ * every file that had not ended; `backlog`, an edit arrived during a backlog
+ * tier (`cancelsBacklog`); `yield`, the tier yielded to an edit's work, a
+ * promoted file or a runner part waiting for it (spec 011 C4 step 5);
+ * `stop` and `step-down`, the daemon's (D10, C9).
+ */
+export type CancelCause = "supersession" | "backlog" | "yield" | "stop" | "step-down";
 
 /** The lane of a slow file is this and its runner's lane (spec 004 D2, task 004-18). */
 export const SLOW_LANE_PREFIX = "slow:";

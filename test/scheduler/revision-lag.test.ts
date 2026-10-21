@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isPending } from "../../src/core/state/index.js";
-import { CANCELLED } from "../../src/runners/vitest/run.js";
+import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -128,7 +128,7 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
     // The 5 s run ended at the cancel, its file not completed (011 C4 step 5 as amended 2026-10-21).
     const [cancelled, ...after] = h.runner.runs.slice(runsBefore);
     expect(cancelled?.files.map((f) => f.path)).toEqual([BARREL]);
-    expect(cancelled?.report.failure).toContain(CANCELLED);
+    expect(cancelled?.report.failure).toContain(cancelText("supersession"));
     expect(cancelled?.report.completedFiles).toEqual([]);
     // Then each test file once, to its end, at the new key.
     const ran = after.flatMap((run) => run.report.completedFiles.map((f) => f.path));
