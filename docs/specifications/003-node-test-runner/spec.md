@@ -73,6 +73,8 @@ Observed closure: the recorder is a `module.registerHooks` resolve hook, loaded 
 
 The daemon holds one `RunnerAdapter` per configured or detected runner behind a composite in `src/core/daemon/`: `testFiles()` and `environment()` concatenate, `affected()` and `invalidate()` fan out and merge, `run()` dispatches by project, `close()` closes each. `RunnerAdapter` is unchanged. A run spanning several adapters runs their parts one after another and merges the reports: the end is the worst part's, completed files and results are kept per part, since the scheduler trusts a file only when it is listed as completed. Vitest counts as detected when a `vitest.config.*`, `vitest.workspace.*`, `vitest.projects.*` or `vite.config.*` file sits at the root, or `vitest` is in the root `package.json` dependencies; resolving from the root does not count, so a node:test-only repository never runs its files under Vitest's default include. The runner-failure note "project without Vitest" applies only when no runner is configured or detected. Status, reports, `squeal why` and the store need no change: a node:test check is a check.
 
+Amended 2026-10-21 (the human, 011 row 011-62): The runners built per configured project follow a reload of `squeal.config.json` (011 C10 as amended, 011-62).
+
 ### D8. Policy and amendments to 001
 
 001 D11 gains the `nodeTest` key of D1 and loses the sentence that a project without Vitest is a runner failure, replaced by D7's rule. 001 D4's add, delete and manifest rules stay Vitest's; D3's closure definition gains "for node:test, as 003 D3 defines it". `runner.timeoutMs` and `runner.tierSize` apply to both runners.
