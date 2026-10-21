@@ -101,6 +101,14 @@ function byStore(daemons: readonly FoundDaemon[]): Map<AbsolutePath, FoundDaemon
  * read. A `-wal` with frames and no `-shm`, as a crash leaves it, may hold
  * commits the file lacks, which only a reader that creates `-shm` recovers:
  * that store is unknown (the wave 4 review).
+ *
+ * One limit stays (review N1). The store's last connection can close, and
+ * remove both files, between this check and the reader's first read, about
+ * 0.1 ms later; the reader then makes them again. Its read is still right,
+ * and SQLite takes the files as its own. No open mode of `node:sqlite`
+ * avoids it: `readonly_shm` still makes `-wal`, and `nolock` and
+ * `unix-none` read no WAL store. Only a read lock on the database file
+ * taken before the check would, and Node has no `fcntl`.
  */
 function openReadOnly(path: AbsolutePath): { db: DatabaseSync; file: BigIntStats | null } | string {
   let db: DatabaseSync | undefined;
