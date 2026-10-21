@@ -83,6 +83,22 @@ const FAILING: Readonly<Record<string, string>> = {
   ].join("\n"),
 };
 
+/**
+ * Row 011-95: Vitest includes `e2e/`, which the case's `vitest.exclude` leaves
+ * out. The run's files hold no skip, so a change to how a skip is read leaves
+ * the case alone.
+ */
+const INCLUDES_E2E: Readonly<Record<string, string>> = {
+  ...BASIC,
+  "test/held.test.ts": HELD_ONLY,
+  "vitest.config.ts":
+    'export default { test: { include: ["test/**/*.test.ts", "e2e/**/*.test.ts"], setupFiles: ["test/setup.ts"], testTimeout: 60_000 } };\n',
+};
+
+/** Revision `n` of an excluded test file. */
+const e2eTest = (n: number) =>
+  `import { expect, it } from "vitest";\nit("e2e ${n}", () => expect(${n}).toBe(${n}));\n`;
+
 const ref = (path: string, project = ""): TestFileRef => ({ project, path });
 const SLOW = [1, 2, 3].map((n) => ref(`test/slow${n}.test.ts`));
 const [, SLOW2, SLOW3] = SLOW;
@@ -202,6 +218,21 @@ export const VITEST_RUNS: readonly Case[] = [
         {
           files: [ref("test/held.test.ts"), ref("test/fails.test.ts"), ref("test/broken.test.ts")],
           touched: ["dist/unrelated.js"],
+        },
+      ],
+    },
+  ),
+  vitest(
+    "an excluded test file added and changed twice during a run withholds nothing (row 011-95)",
+    "011-95 (013 V7 as amended 2026-10-21): the related walk loads only the test files Squeal lists, so a file vitest.exclude leaves out that Vitest's include matches is never loaded, and its writes during a run no longer withhold every file of it",
+    {
+      files: INCLUDES_E2E,
+      exclude: ["e2e/**"],
+      runs: [
+        {
+          files: [ref("test/held.test.ts"), ref("test/computed.test.ts")],
+          touched: [],
+          edits: [1, 2, 3].map((n) => ({ path: "e2e/x.test.ts", text: e2eTest(n) })),
         },
       ],
     },

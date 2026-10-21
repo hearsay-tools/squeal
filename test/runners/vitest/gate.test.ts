@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Vitest } from "vitest/node";
+import type { TestSpecification, Vitest } from "vitest/node";
 import type { AbsolutePath } from "../../../src/core/types/index.js";
 import { Gate } from "../../../src/runners/vitest/gate.js";
 import { relatedSpecifications } from "../../../src/runners/vitest/related.js";
@@ -91,31 +91,37 @@ describe("vitest adapter: the related walk beside a run (001-150)", () => {
     const config: { related?: string[] } = {};
     const vitest = {
       config,
-      // As Vitest's `runFiles` does in its `finally`, while the walk awaits its glob.
-      getRelevantTestSpecifications: async () => {
-        delete config.related;
-        return ["every spec"];
+      specifications: {
+        // As Vitest's `runFiles` does in its `finally`, while the walk awaits its transforms.
+        filterTestsBySource: async () => {
+          delete config.related;
+          return ["every spec"];
+        },
       },
     } as unknown as Vitest;
-    await expect(relatedSpecifications(vitest, ["/w/src/a.ts" as AbsolutePath])).rejects.toThrow(
-      "a run ended during the related walk",
-    );
+    await expect(
+      relatedSpecifications(vitest, [], ["/w/src/a.ts" as AbsolutePath]),
+    ).rejects.toThrow("a run ended during the related walk");
   });
 
   it("answers and clears config.related when no run ended", async () => {
     const config: { related?: string[] } = {};
-    const seen: (string[] | undefined)[] = [];
+    const seen: unknown[] = [];
     const vitest = {
       config,
-      getRelevantTestSpecifications: async () => {
-        seen.push(config.related);
-        return ["one spec"];
+      specifications: {
+        filterTestsBySource: async (specs: unknown[]) => {
+          seen.push(config.related, specs);
+          return ["one spec"];
+        },
       },
     } as unknown as Vitest;
-    expect(await relatedSpecifications(vitest, ["/w/src/a.ts" as AbsolutePath])).toEqual([
+    // The walk hands Vitest the listed specifications only (011-95).
+    const listed = ["listed spec"] as unknown as TestSpecification[];
+    expect(await relatedSpecifications(vitest, listed, ["/w/src/a.ts" as AbsolutePath])).toEqual([
       "one spec",
     ]);
-    expect(seen).toEqual([["/w/src/a.ts"]]);
+    expect(seen).toEqual([["/w/src/a.ts"], ["listed spec"]]);
     expect("related" in config).toBe(false);
   });
 });
