@@ -82,3 +82,18 @@ Questions:
 4. Whether 30 s still holds on this evidence.
 
 Isolation: scratch clones by SHA; a scratch `HOME`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and store; a real store only read-only (`node:sqlite`, `readOnly: true`). Owns `research/yields-replay.md`, `research/probes/yields-replay/`. Not yours: product code, spec text, `status.md`, the board. Done when the findings file answers 1 to 4, gives the load beside every live number, and ends with a recommendation.
+
+## W6: 011-64 design, past failures by test file and check, and a replaced failure kept
+
+Use /worker. Shape: survey, a design draft for the human. Outcome: `tasks/011-64/design.md`, which the human can accept as amendments to 011 C5, C6 and C7.
+
+Read: board row 011-64; spec 011 C5, C6, C7 and `status.md`; `research/issue-67.md`, `research/issue-54.md` with their probes; row 011-50 (`why` in seconds). Seams, read only: `src/core/status/failures.ts`, `why.ts`, `format-why.ts`, `src/core/store/repos/results.ts`, `src/core/store/schema.ts`, `src/core/store/prune.ts`, `src/core/state/flaky.ts`, `src/core/retry/load.ts`, `src/cli/failures.ts`.
+
+Answer, each with an evidence tag and one recommendation:
+
+1. `failures` by test file or check, with a limit, done in SQL: the arguments, the index it needs, and the cost on a store of cezar's size (read-only copy).
+2. The test-file frame beside `location` when a helper's frame wins today: where the frame comes from, for Vitest, node:test and pytest.
+3. A failure a passing retry replaced at the same key: whether it stays referenced, so prune keeps its run and log; what `failures` and `why` show for it; what a second flip keeps; the store growth bound.
+4. Whether any of this moves the key format or a stored row's meaning (011-37's rules), and the code rows: seams, owners, done-when as tests.
+
+Include spec text as drafts and the rejected options. Owns `tasks/011-64/` only, probes under `tasks/011-64/probes/` on scratch stores and a read-only copy of a real one (`node:sqlite`, `readOnly: true`), with a scratch `HOME` and `XDG_*`; live runs only at a one-minute load below 24; no full suite, no build. Not yours: spec text, `status.md`, the board, product code. Done when `design.md` is committed. Stop: the human's dated acceptance.
