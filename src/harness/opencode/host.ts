@@ -8,8 +8,37 @@ import { delimiter, dirname, isAbsolute, join } from "node:path";
  * `node:fs`, `node:path` and `node:child_process`.
  */
 
-/** Squeal's minimum Node, `engines.node` in the root `package.json`. */
-export const MIN_NODE: readonly [number, number] = [22, 13];
+/**
+ * The floor of `engines.node`, set by the bundles' esbuild `define`
+ * (`nodeFloor` in src/harness/build.ts). Undeclared under `tsc` and Vitest,
+ * where `typeof` reads it as `undefined` and `manifestFloor` reads it.
+ */
+declare const __SQUEAL_NODE_FLOOR__: string | undefined;
+
+/**
+ * `engines.node`'s floor in the root `package.json`, three directories above
+ * this module in `src/` and in the `tsc` build alike. The bundles never read
+ * it: their `define` holds the floor.
+ */
+function manifestFloor(): string {
+  const manifest = readFileSync(join(import.meta.dirname, "../../../package.json"), "utf8");
+  const range = (JSON.parse(manifest) as { engines?: { node?: unknown } }).engines?.node;
+  const floor = typeof range === "string" ? /^>=(\d+\.\d+)$/.exec(range)?.[1] : undefined;
+  if (floor === undefined) {
+    throw new Error(`engines.node is ${JSON.stringify(range)}, not >=<major>.<minor>`);
+  }
+  return floor;
+}
+
+/** Squeal's minimum Node as `major.minor`, `engines.node` in the root `package.json` (011-86). */
+export const NODE_FLOOR: string =
+  typeof __SQUEAL_NODE_FLOOR__ === "string" ? __SQUEAL_NODE_FLOOR__ : manifestFloor();
+
+/** `NODE_FLOOR` as numbers. */
+export const MIN_NODE: readonly [number, number] = [
+  Number(NODE_FLOOR.split(".")[0]),
+  Number(NODE_FLOOR.split(".")[1]),
+];
 
 /** How long the plugin waits for `node -p process.versions.node` at init. */
 export const NODE_PROBE_MS = 2_000;

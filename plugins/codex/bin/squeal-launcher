@@ -16,8 +16,10 @@
 # amended 2026-10-21). Every plugin ships this same file; `squeal update`
 # re-copies it when the format line above grows.
 set -eu
+# Squeal's Node floor, engines.node in package.json (011-86).
+NODE_FLOOR=22.19
 command -v node >/dev/null 2>&1 || {
-  echo "squeal: Node 22.13 or later is needed, and node is not on the PATH" >&2
+  echo "squeal: Node $NODE_FLOOR or later is needed, and node is not on the PATH" >&2
   exit 1
 }
 cli=$(node -e '

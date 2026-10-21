@@ -50,4 +50,4 @@ A launcher that starts threads through `codex app-server`, as Cezar does, can de
 
 `dist/` and `skills/` are committed and built by `npm run build:plugin`; a change to `dist/` raises the root version (`npm run check:version`).
 
-Requires Node 22.13 or later on the `PATH` Codex hooks see. Linux; hooks run with `bash -c` in the thread's working directory.
+Requires Node 22.19 or later on the `PATH` Codex hooks see. Linux; hooks run with `bash -c` in the thread's working directory.

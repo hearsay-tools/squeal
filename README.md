@@ -17,7 +17,7 @@ Status: spec 001 (core loop, Vitest, Claude Code) shipped 2026-10-06; see [docs/
 
 ## Install
 
-Once per machine, with Node 22.13 or later and any of Claude Code, Codex and Pi on the `PATH`:
+Once per machine, with Node 22.19 or later and any of Claude Code, Codex and Pi on the `PATH`:
 
 ```sh
 curl -fsSL https://github.com/hearsay-tools/squeal/releases/latest/download/install.sh | sh
