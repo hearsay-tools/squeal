@@ -25,7 +25,7 @@ Red step, with only `engines.node` raised to `>=22.19`: 14 places listed (`ci.ym
 
 ## Left for others
 
-- **Bundles:** all four `plugins/*/dist` drift: the CLI bundles carry the new target and define, and the OpenCode `plugin.mjs` carries the new log line. The coordinator rebuilds them.
+- **Bundles:** only `plugins/opencode/dist/plugin.mjs` drifts: `minimumNode()` with the floor `"22.19"` and the new log line (checked by building the OpenCode dist into a temp directory and comparing). The CLI bundles and the Claude Code, Codex and Pi plugins build byte-identical. The CLI imports nothing that reads the floor, so esbuild drops it, and the `node22.19` target emits the same code as `node22.13`. The coordinator rebuilds the OpenCode bundle, and that change needs a version raise.
 - **Specs and decisions** still say 22.13: 001 spec line 153, 003 line 70, 005 line 71, 010 D4 line 55, 011 lines 206 and 211, `docs/decisions/0002-content-keyed-shared-store.md` line 29.
 - **Launcher format** stays 4. Installed launchers keep "22.13" in their no-node message until a later format raise; the message shows only when no `node` is on the PATH.
 - **Not changed, outside the scan:** `test/evals/squeal-refusals.test.ts` `LAUNCHER_NODE` is sample launcher output; the grader matches any version. `test/fixtures/{opencode,pi}/launcher-0.1.17x` are copies of old launchers. `test/helpers/pi.ts` keeps Pi's own `[22, 19]`.
