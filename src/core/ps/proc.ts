@@ -183,6 +183,15 @@ class ProcSource implements PsSource {
     return listeners;
   }
 
+  unixSockets(): readonly string[] | null {
+    const text = this.#read("net/unix");
+    if (text === null) return null;
+    // `Num RefCount Protocol Flags Type St Inode Path`: only a bound socket has the path, after its inode.
+    return text
+      .split("\n")
+      .flatMap((line) => /^\s*[0-9a-f]+:(?:\s+[0-9A-F]+){5}\s+\d+ (.+)$/.exec(line)?.[1] ?? []);
+  }
+
   pidNamespace(): string | null {
     return this.#link("self/ns/pid");
   }

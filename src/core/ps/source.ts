@@ -142,6 +142,12 @@ export interface PsSource {
   fileKey(path: string): string | null;
   /** Every listening unix socket; `null` without `ss` (D2 step 4). */
   unixListeners(): readonly UnixListener[] | null;
+  /**
+   * The name every bound unix socket of the host was bound at, listening or
+   * not, stream or datagram, as `/proc/net/unix` gives it: an abstract name
+   * starts with `@`. `null` when it cannot be read (D7 `leftover-temp`).
+   */
+  unixSockets(): readonly string[] | null;
   /** The PID namespace pids mean something in, as a consumer's harness process records it; `null` without one. */
   pidNamespace(): string | null;
   host(): HostReading;
