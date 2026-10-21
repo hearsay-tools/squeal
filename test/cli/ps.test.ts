@@ -3,8 +3,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { type PsCommandOptions, psCommand } from "../../src/cli/ps.js";
+import { flag as realFlag } from "../../src/core/ps/flags.js";
 import type { Flag } from "../../src/core/ps/model.js";
 import { PS_SHAPE_VERSION, type PsSnapshot } from "../../src/core/ps/shape.js";
+import { writeHostRules } from "../ps/fixture-host-rules.js";
 import {
   fakeWindow,
   NOW,
@@ -256,6 +258,26 @@ describe("squeal ps", () => {
     await ps([], { cwd: gamma.root });
     expect(existsSync(gamma.storePath)).toBe(false);
     expect(readdirSync(host.places.runtimeDir ?? "")).toEqual(runtime);
+  });
+});
+
+describe("squeal ps with the real flags (reviews/wave-2.md B1)", () => {
+  test("--leftovers lists the unused directories, never one a process works in or names in an argument", async () => {
+    const rules = writeHostRules(host);
+    const { code, stdout, stderr } = await ps(["--leftovers"], { options: { flag: realFlag } });
+    expect([code, stderr]).toEqual([0, ""]);
+    expect(stdout).toBe(rules.leftovers.map((path) => `${path}\n`).join(""));
+  });
+
+  test("--json has the waiter whose parent is gone as an orphan, not the one whose parent lives", async () => {
+    const rules = writeHostRules(host);
+    const { code, stdout } = await ps(["--json"], { options: { flag: realFlag } });
+    expect(code).toBe(1);
+    const shape = JSON.parse(stdout) as PsSnapshot;
+    expect(shape.orphans.map((o) => [o.pid, o.flags.map((f) => f.flag)])).toEqual([
+      [rules.goneParent, ["orphan-waiter"]],
+    ]);
+    expect(shape.files.find((f) => f.flag === "leftover-temp")?.count).toBe(rules.leftovers.length);
   });
 });
 
