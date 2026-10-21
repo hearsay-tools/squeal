@@ -1,9 +1,9 @@
-  PID  PPID  PGID NI      TIME    RSS STARTED                      COMMAND
- 4810     1  4810   0   1:02.31 104528 Tue Oct 21 09:40:07 2026     /Users/user/.nvm/versions/node/v24.21.0/bin/node /Users/user/.claude/plugins/cache/hearsay/squeal/0.1.238/dist/cli/squeal.mjs daemon /Users/user/projects/alpha
+  PID  PPID  PGID   UID NI      TIME    RSS STARTED                      COMMAND
+ 4810     1  4810   501   0   1:02.31 104528 Tue Oct 21 09:40:07 2026     /Users/user/.nvm/versions/node/v24.21.0/bin/node /Users/user/.claude/plugins/cache/hearsay/squeal/0.1.238/dist/cli/squeal.mjs daemon /Users/user/projects/alpha
 
   812     1
-  813     1   813   0         -      - Tue Oct 21 10:00:00 2026     /usr/libexec/hidden
-  814     1   814   0   0:00.01   1024 Tue Foo 21 10:00:00 2026     /usr/libexec/badmonth
-  815     1   815   0   0:00.01   1024 Tue Oct 32 10:00:00 2026     /usr/libexec/badday
-  816     1   816   0   0:00.01   1024 Tue Oct 21 10:00:00 2026
- 5233  5120  5120  10   0:03.12 153188 Tue Oct 21 10:20:02 2026     /Users/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve /Users/user/projects/beta/node_modules/vitest/dist/workers/forks.js
+  813     1   813   501   0         -      - Tue Oct 21 10:00:00 2026     /usr/libexec/hidden
+  814     1   814   501   0   0:00.01   1024 Tue Foo 21 10:00:00 2026     /usr/libexec/badmonth
+  815     1   815   501   0   0:00.01   1024 Tue Oct 32 10:00:00 2026     /usr/libexec/badday
+  816     1   816   501   0   0:00.01   1024 Tue Oct 21 10:00:00 2026
+ 5233  5120  5120   501  10   0:03.12 153188 Tue Oct 21 10:20:02 2026     /Users/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve /Users/user/projects/beta/node_modules/vitest/dist/workers/forks.js

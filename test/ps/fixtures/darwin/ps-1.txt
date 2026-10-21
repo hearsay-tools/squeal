@@ -1,9 +1,10 @@
-    1     0     1   0  52:13.07  14240 Mon Oct 13 08:01:12 2026     /sbin/launchd
-  612     1   612   0   0:41.85  25664 Mon Oct 13 08:01:40 2026     /usr/libexec/logd
- 4810     1  4810   0   1:02.31 104528 Tue Oct 21 09:40:07 2026     /Users/user/.nvm/versions/node/v24.21.0/bin/node /Users/user/.claude/plugins/cache/hearsay/squeal/0.1.238/dist/cli/squeal.mjs daemon /Users/user/projects/alpha
- 5120     1  5120   0   0:20.66  98304 Tue Oct 21 10:15:51 2026     node /Users/user/.codex/plugins/cache/hearsay/squeal/0.1.237/dist/cli/squeal.mjs daemon /Users/user/projects/beta --await-lock
- 5233  5120  5120  10   0:03.12 153188 Tue Oct 21 10:20:02 2026     /Users/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve /Users/user/projects/beta/node_modules/vitest/dist/workers/forks.js
- 5240  5233  5120  10   0:00.02   4112 Tue Oct 21 10:20:05 2026     git status --porcelain  -z
- 5301  4810  4810   0   0:00.00      0 Tue Oct 21 10:20:06 2026     <defunct>
- 6001  5998  6001  -5 125:07.40 812000 Wed Oct 15 14:02:33 2026     /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --type=renderer
- 7002     1  7002   0   0:00.01   2048 Tue Oct  7 09:05:00 2026     /usr/sbin/cron
+    1     0     1     0   0  52:13.07  14240 Mon Oct 13 08:01:12 2026     /sbin/launchd
+  612     1   612     0   0   0:41.85  25664 Mon Oct 13 08:01:40 2026     /usr/libexec/logd
+ 4810     1  4810   501   0   1:02.31 104528 Tue Oct 21 09:40:07 2026     /Users/user/.nvm/versions/node/v24.21.0/bin/node /Users/user/.claude/plugins/cache/hearsay/squeal/0.1.238/dist/cli/squeal.mjs daemon /Users/user/projects/alpha
+ 5120     1  5120   501   0   0:20.66  98304 Tue Oct 21 10:15:51 2026     node /Users/user/.codex/plugins/cache/hearsay/squeal/0.1.237/dist/cli/squeal.mjs daemon /Users/user/projects/beta --await-lock
+ 5233  5120  5120   501  10   0:03.12 153188 Tue Oct 21 10:20:02 2026     /Users/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve /Users/user/projects/beta/node_modules/vitest/dist/workers/forks.js
+ 5240  5233  5120   501  10   0:00.02   4112 Tue Oct 21 10:20:05 2026     git status --porcelain  -z
+ 5301  4810  4810   501   0   0:00.00      0 Tue Oct 21 10:20:06 2026     <defunct>
+ 8120     1  8120   502   0   0:12.40  96256 Tue Oct 21 08:55:30 2026     /Users/other/.nvm/versions/node/v24.21.0/bin/node /Users/other/.claude/plugins/cache/hearsay/squeal/0.1.238/dist/cli/squeal.mjs daemon /Users/other/projects/gamma
+ 6001  5998  6001   501  -5 125:07.40 812000 Wed Oct 15 14:02:33 2026     /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --type=renderer
+ 7002     1  7002     0   0   0:00.01   2048 Tue Oct  7 09:05:00 2026     /usr/sbin/cron
