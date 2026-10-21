@@ -310,7 +310,7 @@ describe("phases (D2 step 3 and its table)", () => {
     const [d] = discovery.daemons;
     expect(d).toMatchObject({ worktreeId: alpha.id, idFrom: "root-hash", holdsLock: null });
     expect(discovery.unknown).toEqual([
-      { what: "daemon phases", why: expect.stringContaining("lock") },
+      { what: "daemon lock holders", why: expect.stringContaining("heartbeat") },
     ]);
   });
 });
