@@ -26,7 +26,7 @@ Not retried: slow.test.ts is not a test file Squeal has keyed in this worktree.
 [exit 1]
 $ squeal status --wait 60000 slow.test.ts  (in a)
 Revision: 0
-Selected: 
+Selected:
 Named test files have no verdict: no daemon is running; results are as of revision 0; `squeal start` starts one. Worktree: known failures 0; the daemon has not listed this worktree's test files yet
 [exit 3]
 == 4. B change notice and status
