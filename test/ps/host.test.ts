@@ -2,13 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import {
-  cpuShare,
-  hostTotals,
-  memoryShare,
-  readPool,
-  userConfigFile,
-} from "../../src/core/ps/host.js";
+import { cpuShare, hostTotals, memoryShare, readPool } from "../../src/core/ps/host.js";
 import type { PsPlaces } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { HostReading, LockEntry } from "../../src/core/ps/source.js";
@@ -137,6 +131,7 @@ describe("readPool", () => {
     places = {
       uid: 1000,
       home: join(dir, "home"),
+      userConfig: join(dir, "xdg", "squeal", "config.json"),
       runtimeDir: join(dir, "run"),
       tempDir: join(dir, "tmp"),
       commonDir: null,
@@ -205,9 +200,8 @@ describe("readPool", () => {
   });
 
   test("the host's slots are capacity.hostSlots of the user-level config file, else the CPUs less one", () => {
-    // The file's path, named here: the integration that adds `PsPlaces.userConfig` sets it to this.
-    const configFile = join(dir, "home", ".config", "squeal", "config.json");
-    expect(userConfigFile(places)).toBe(configFile);
+    // `PsPlaces.userConfig`, not the home directory: a user with `XDG_CONFIG_HOME` keeps their file.
+    const configFile = places.userConfig;
     const { source } = fakeSource([], { locks: [], fileKeys: keys() });
     expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0 });
     mkdirSync(dirname(configFile), { recursive: true });

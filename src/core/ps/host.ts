@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfigFile, positiveInteger } from "../daemon/config-file.js";
-import { defaultHostSlots, userConfigPath } from "../daemon/user-config.js";
+import { defaultHostSlots } from "../daemon/user-config.js";
 import type { AbsolutePath } from "../types/index.js";
 import type { HostTotals, PsPlaces, ReadPool, Sample } from "./model.js";
 import type { PsHost } from "./shape.js";
@@ -62,7 +62,7 @@ export function memoryShare(privateBytes: number | null, host: PsHost): number |
 const PERMIT = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
 
 export const readPool: ReadPool = (source, places, daemons) => {
-  const slots = hostSlotsOf(userConfigFile(places), source.host().cpus);
+  const slots = hostSlotsOf(places.userConfig, source.host().cpus);
   const locks = source.locks();
   if (locks === null) return { pool: { slots, held: null }, permits: new Map(), foreign: [] };
   const holders = new Map<string, Set<number>>();
@@ -86,15 +86,6 @@ export const readPool: ReadPool = (source, places, daemons) => {
   }
   return { pool: { slots, held }, permits, foreign };
 };
-
-/**
- * The user-level config file (011 C10). From the home directory until
- * `PsPlaces` names it, which the wave 1 integration adds; this is the one
- * line it changes.
- */
-export function userConfigFile(places: PsPlaces): AbsolutePath {
-  return userConfigPath({ HOME: places.home });
-}
 
 /**
  * `capacity.hostSlots` of the file at `path`, else the CPUs less one, by the
