@@ -330,11 +330,16 @@ export interface Scheduler {
    */
   slowPending(): boolean;
   /**
-   * Work queued or running, slow files included: while it has any the daemon
-   * is in use and its unused stop waits (001 D10 as amended, task 001-415).
-   * False before the scheduler started and once it closed.
+   * The daemon is in use (011 C9 as amended 2026-10-21, row 011-92): an
+   * edit's work, a promoted file, an open explicit checkpoint, an open `run
+   * --slow` request or a new failure's re-run is queued or running. The
+   * backlog is no use, queued or running, slow files no request asked for
+   * included, so the unused stop does not wait for it. False before the
+   * scheduler started and once it closed.
    */
-  busy(): boolean;
+  inUse(): boolean;
+  /** Test files queued, fast and slow: what an unused stop leaves to the next daemon (row 011-92). */
+  queued(): number;
   /**
    * What the worktree is owed and the last session's departure drains
    * before the exit, as the drain's notes name it: an explicit checkpoint
