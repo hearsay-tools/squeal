@@ -308,6 +308,7 @@ var init_store = __esm({
       daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
       daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
       daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
+      daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
       daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
       slowTier: { prefix: "slow-tier:", owner: "slow/state" },
       slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
@@ -49195,7 +49196,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.237";
+  if (true) return "0.1.238";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -52512,6 +52513,17 @@ async function gone(entries3) {
   return left;
 }
 
+// src/core/daemon/last-use.ts
+init_fs();
+init_types();
+function daemonUsedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonUsed", worktreeId);
+}
+function recordDaemonUsed(store, worktreeId, used) {
+  const value = { v: 1, usedAt: used.usedAt, activeAt: used.activeAt };
+  store.meta.set(daemonUsedMetaKey(worktreeId), JSON.stringify(value));
+}
+
 // src/core/daemon/lifecycle.ts
 import { existsSync as existsSync12 } from "node:fs";
 
@@ -53125,7 +53137,7 @@ function startTimers(context) {
     }
   });
   const heartbeat = () => retries.run("the heartbeat", [
-    ["heartbeat", () => store.worktrees.heartbeat(worktreeId, now())],
+    ["heartbeat", () => beat(context, now())],
     ["harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir })],
     ["leaving check", () => dropLeft(store, worktreeId, now(), { locksDir })]
   ]);
@@ -53169,6 +53181,17 @@ function startTimers(context) {
     clearTimeout(first);
     retries.stop();
   };
+}
+function beat(context, at2) {
+  const { store, worktreeId } = context;
+  store.transaction(() => {
+    store.worktrees.heartbeat(worktreeId, at2);
+    if (context.lastUsed === void 0 || !store.worktrees.get(worktreeId)?.daemon) return;
+    recordDaemonUsed(store, worktreeId, {
+      usedAt: context.lastUsed(),
+      activeAt: context.lastActive()
+    });
+  });
 }
 var SLOW_FILES = "slow files";
 function drainable(context) {
@@ -54024,7 +54047,8 @@ var Daemon = class {
    * baseline rewrites them (D10 as amended, task 001-205). A predecessor's
    * shutdown mark goes (task 001-274); if this daemon's own shutdown already
    * began, its mark replaces it in the same transaction, since `#markExit`
-   * had no registration to describe then (task 001-276).
+   * had no registration to describe then (task 001-276). The heartbeat's last
+   * use replaces the predecessor's too (spec 014 D9).
    */
   #register() {
     const { store, worktreeId: id2, root, commonDir } = this.opened;
@@ -54050,6 +54074,7 @@ var Daemon = class {
         squealVersion: this.#version,
         token: this.#token
       });
+      recordDaemonUsed(store, id2, { usedAt: this.#lastUsed, activeAt: this.#lastActive });
     });
     this.#registered = true;
   }
