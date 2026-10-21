@@ -11,6 +11,7 @@ import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { unmatchedInputNotes } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
+import { quietQueued } from "./quiet.js";
 import { type RunnerPartBound, runnerPartBound } from "./runner-work-bound.js";
 
 /** Review, inputs for wave 2: "`oldHash === null` is `add`, `newHash === null` is `delete`, else `change`". */
@@ -108,7 +109,8 @@ export function rekeyContent(
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
+  const misses = ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
+  quietQueued(context, ledger, misses);
   const recent = touched.filter((ref) => ledger.queue.isRecent(ref));
   return {
     rekeyed,
