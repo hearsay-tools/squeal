@@ -1,9 +1,10 @@
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
+import { markSlotWaiter, SLOT_WAITER_FRESH_MS } from "../../src/core/slow/index.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
@@ -169,5 +170,43 @@ describe("the load guard never picks the worktree (task 004-84)", { timeout: 30_
     expect(order).toEqual(["a", "b", "a", "b", "a"]);
     expect(ranUnderLoad(a) + ranUnderLoad(b)).toBe(0);
     expect(probes.count).toBe(before);
+  });
+});
+
+/*
+ * 011 C9 and 004 D2 as amended 2026-10-21 (row 011-84, code row 011-93): a
+ * draining daemon leaves no waiter mark and takes no permit while another
+ * worktree's mark is fresh, so a live session's slow files never wait
+ * behind a departed one's.
+ */
+describe("a draining daemon yields the slot (row 011-93)", { timeout: 30_000 }, () => {
+  it("takes no permit and writes no mark while another worktree's mark is fresh, then takes one", async () => {
+    const dir = slotDir();
+    // A live session's daemon in another worktree waits for the slot.
+    markSlotWaiter(dir, "feedfacefeedface");
+    const [other] = marks(dir);
+    const a = daemon(dir, { count: 2, load: UNDER });
+    a.scheduler.pauseBacklog(true);
+    await a.scheduler.start();
+    await expect
+      .poll(() => readSlowActivity(a.store, a.worktreeId), { timeout: 5_000 })
+      .toEqual({ kind: "waiting", for: "slot" });
+    await delay(200);
+    expect(a.runner.runs).toEqual([]);
+    expect(marks(dir)).toEqual([other]);
+
+    // The other daemon stopped refreshing its mark: once it is stale the drain runs.
+    const stale = (Date.now() - SLOT_WAITER_FRESH_MS - 1_000) / 1000;
+    utimesSync(join(dir, other ?? ""), stale, stale);
+    await expect.poll(() => a.runner.runs.length, { timeout: 5_000 }).toBeGreaterThan(0);
+    expect(marks(dir)).toEqual([other]);
+  });
+
+  it("a daemon that is not draining takes the free slot beside the same mark", async () => {
+    const dir = slotDir();
+    markSlotWaiter(dir, "feedfacefeedface");
+    const a = daemon(dir, { count: 2, load: UNDER });
+    await a.scheduler.start();
+    await expect.poll(() => a.runner.runs.length, { timeout: 5_000 }).toBeGreaterThan(0);
   });
 });

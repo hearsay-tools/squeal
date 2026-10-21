@@ -117,6 +117,12 @@ export class SlowTier {
   #slotMissedSince: EpochMs | null = null;
   /** This worktree's waiter's mark is in the slot's directory. */
   #marked = false;
+  /**
+   * A departure drain (011 C9 and 004 D2 as amended 2026-10-21, row
+   * 011-93): it leaves no waiter mark and takes no permit while another
+   * worktree's mark is fresh, so a live session's slow files go first.
+   */
+  draining = false;
   /** The last pass took the slot: its next skips one turn for another worktree's mark. */
   #tookLast = false;
   #slotNoted = false;
@@ -201,7 +207,8 @@ export class SlowTier {
     const { maxParallel } = context.policy.slow;
     const load = guard.ranUnderLoad;
     const want = guard.idle && this.host.fastIdle() ? Math.min(maxParallel, refs.length) : 1;
-    const yieldTurn = this.#tookLast && othersWaitingForSlot(dir, context.worktreeId);
+    const yieldTurn =
+      (this.#tookLast || this.draining) && othersWaitingForSlot(dir, context.worktreeId);
     const owner = { pid: process.pid, worktreeId: context.worktreeId };
     const slot = yieldTurn ? null : acquireSlowSlot({ dir, owner, permits: maxParallel, want });
     if (slot === null) return this.#waitAtSlot(context, dir, yieldTurn);
@@ -233,7 +240,8 @@ export class SlowTier {
    * 2026-10-09), its fast backlog (a baseline, a checkpoint, `run --all`)
    * queued or running unless a `run --slow` request is open (D2 as amended
    * 2026-10-14, task 004-60), so a warm-up's slow files never contend with
-   * its fast ones.
+   * its fast ones. During a departure drain only the drain's fast work
+   * counts: the paused backlog is not pending (`fastIdle`, row 011-93).
    */
   #fastFirst(): boolean {
     return this.host.editPending() || (!this.#requested && !this.host.fastIdle());
@@ -241,12 +249,17 @@ export class SlowTier {
 
   /**
    * Another worktree holds the slot, or this one yields its turn: the files
-   * wait at the slot, marked as a waiter, and retry at `SLOW_RECHECK_MS`.
+   * wait at the slot, marked as a waiter unless draining, and retry at
+   * `SLOW_RECHECK_MS`.
    */
   #waitAtSlot(context: SchedulerContext, dir: AbsolutePath, yielded: boolean): null {
     this.#tookLast = false;
-    markSlotWaiter(dir, context.worktreeId);
-    this.#marked = true;
+    if (this.draining) {
+      this.#unmark(dir, context.worktreeId);
+    } else {
+      markSlotWaiter(dir, context.worktreeId);
+      this.#marked = true;
+    }
     this.#publish({ kind: "waiting", for: "slot" });
     if (!yielded) this.#slotMissed(context, dir);
     this.#arm();

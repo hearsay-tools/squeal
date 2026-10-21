@@ -17,7 +17,9 @@ import { delay, waitFor } from "./helpers.js";
  * session left with slow files pending drains them before it exits, for at
  * most `daemon.idleExitMinutes`; a session that registers during the drain
  * cancels the exit. Driven through the real timers with a test clock and a
- * stand-in for `Scheduler.slowPending`.
+ * stand-in for `Scheduler.slowPending`. Row 011-93 (011 C9 as amended
+ * 2026-10-21): the drain pauses the backlog, and that registration ends the
+ * pause.
  */
 
 const WT = "0123456789abcdef";
@@ -37,6 +39,8 @@ interface Timed {
   advance(ms: number): void;
   pending(value: boolean): void;
   owed(value: string | null): void;
+  /** Each `pauseBacklog` call, in order. */
+  readonly pauses: boolean[];
   /** Activity the idle timer saw. */
   readonly lastActive: () => number;
 }
@@ -51,6 +55,7 @@ function timed(): Timed {
   let owed: string | null = null;
   const exits: Timed["exits"] = [];
   const notes: string[] = [];
+  const pauses: boolean[] = [];
   const presence: Presence = { since: clock, lastPresentAt: null };
   stops.push(
     startTimers({
@@ -70,6 +75,7 @@ function timed(): Timed {
       },
       slowPending: () => pending,
       owedWork: () => owed,
+      pauseBacklog: (on) => pauses.push(on),
       note: (text) => notes.push(text),
       log: () => {},
       shutdown: (reason, text) => exits.push({ reason, text }),
@@ -89,6 +95,7 @@ function timed(): Timed {
     owed: (value) => {
       owed = value;
     },
+    pauses,
     lastActive: () => lastActive,
   };
 }
@@ -131,6 +138,20 @@ describe("the departure drains pending slow files (task 004-29)", () => {
     await waitFor(() => t.exits.length > 0, 2_000, "the departure exit");
     expect(t.exits[0]?.text).toMatch(/no session registered for 3 s after its last one ended/);
     expect(t.notes).toEqual([]);
+    expect(t.pauses).toEqual([]);
+  });
+
+  it("pauses the backlog when the drain starts; a session that registers ends the pause (row 011-93)", async () => {
+    const t = timed();
+    await leave(t);
+    expect(t.pauses).toEqual([]);
+    t.advance(3_100);
+    await waitFor(() => t.notes.length > 0, 2_000, "the drain note");
+    expect(t.pauses).toEqual([true]);
+    t.store.consumers.register(S2, 1);
+    await waitFor(() => t.presence.draining === false, 2_000, "the drain cancelled");
+    await delay(60);
+    expect(t.pauses).toEqual([true, false]);
   });
 
   it("a session that registers during the drain cancels the exit; the daemon serves on", async () => {

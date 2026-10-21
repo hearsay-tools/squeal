@@ -137,6 +137,12 @@ export interface TimerContext {
    */
   readonly owedWork?: () => string | null;
   /**
+   * The drain runs only its session's work (`Scheduler.pauseBacklog`, row
+   * 011-93): `true` when it starts, `false` when a session registers during
+   * it. Absent: the drain runs the whole queue.
+   */
+  readonly pauseBacklog?: (on: boolean) => void;
+  /**
    * Spec 011 C9 (row 011-69): each check asks for the last-resort GC, which
    * runs once no tier ran for 60 s (`IdleGc.check`). Absent: none.
    */
@@ -270,6 +276,7 @@ export function startTimers(context: TimerContext): () => void {
   const countPresence = (at: EpochMs): boolean => {
     if (store.consumers.list(worktreeId).length > 0) {
       presence.lastPresentAt = at;
+      if (presence.draining === true) context.pauseBacklog?.(false);
       presence.draining = false;
       context.active(at);
       return false;
@@ -299,6 +306,7 @@ export function startTimers(context: TimerContext): () => void {
       } else if (presence.draining !== true) {
         presence.draining = true;
         presence.drainingFor = pending;
+        context.pauseBacklog?.(true);
         const them = pending === SLOW_FILES ? "them" : "that work";
         context.note(
           `the last session ended with ${pending} pending; this daemon runs ${them} before it ` +

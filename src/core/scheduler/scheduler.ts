@@ -159,6 +159,8 @@ class TierScheduler implements Scheduler {
   readonly #busy: BusyResume | null;
   /** The keys other worktrees stored since the last read (spec 011 C4 step 3, task 011-23). */
   readonly #storedKeys: StoredKeys;
+  /** A departure drain paused the backlog (`pauseBacklog`, row 011-93). */
+  #backlogPaused = false;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
@@ -230,6 +232,7 @@ class TierScheduler implements Scheduler {
         ...(this.#capacity === null ? {} : { capacity: this.#capacity }),
       };
       const ledger = new Ledger(context);
+      ledger.backlogPaused = this.#backlogPaused;
       // Notes written during the baseline carry its revision.
       this.#ledger = ledger;
       this.#waitChanges = await scan(context, ledger, options.resumesRest === true);
@@ -504,6 +507,21 @@ class TierScheduler implements Scheduler {
     if (this.#closed || !this.#ledger) return false;
     if (this.#slow.requested && this.slowPending()) return true;
     return this.#editPending() || this.owedWork() !== null;
+  }
+
+  /**
+   * A departure drain runs only its session's work (011 C9 as amended
+   * 2026-10-21, row 011-93): the backlog stays queued, the slow lane waits
+   * only for the drain's fast work (004 D2), and the slow tier yields the
+   * slot to another worktree's fresh mark. `false` ends the pause.
+   */
+  pauseBacklog(on: boolean): void {
+    if (this.#closed || this.#backlogPaused === on) return;
+    this.#backlogPaused = on;
+    if (this.#ledger) this.#ledger.backlogPaused = on;
+    this.#slow.draining = on;
+    this.#slow.preempt();
+    this.#pump();
   }
 
   queued(): number {
@@ -839,7 +857,7 @@ class TierScheduler implements Scheduler {
   #freeLaneQueued(): boolean {
     const { context, ledger } = this.#started();
     const busy = this.#busyLanes();
-    return ledger.queue.hasFast((ref) => !busy.has(laneOf(context, ref)));
+    return ledger.fastQueued((ref) => !busy.has(laneOf(context, ref)));
   }
 
   /** The lanes no tier may start in now. */
@@ -932,7 +950,7 @@ class TierScheduler implements Scheduler {
    */
   #hasWork(): boolean {
     if (this.#awaitingInstall || this.#reinstalled) return false;
-    return this.#runnerWork.size > 0 || (this.#ledger?.queue.fastSize ?? 0) > 0;
+    return this.#runnerWork.size > 0 || this.#ledger?.fastQueued() === true;
   }
 
   /**
@@ -948,10 +966,13 @@ class TierScheduler implements Scheduler {
     );
   }
 
-  /** No fast work pending or running: an idle slow tier may take several files (D2). */
+  /**
+   * No fast work pending or running: an idle slow tier may take several
+   * files (D2). During a drain, the paused backlog is not pending (row 011-93).
+   */
   #fastIdle(): boolean {
     const work = this.#runnerWork;
-    if (work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0) return false;
+    if (work.size > 0 || work.refining || this.#ledger?.fastQueued() === true) return false;
     return this.#lanes().every(isSlowLane);
   }
 
