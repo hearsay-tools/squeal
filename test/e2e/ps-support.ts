@@ -3,9 +3,10 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node
 import { createServer } from "node:net";
 import { join } from "node:path";
 import { expect } from "vitest";
-import { socketPathFor } from "../../src/core/daemon/paths.js";
+import { currentUid, socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { PsDaemon, PsSnapshot } from "../../src/core/ps/shape.js";
+import type { ProcessRow, PsSource } from "../../src/core/ps/source.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { type E2E, until } from "./harness.js";
 
@@ -15,7 +16,8 @@ import { type E2E, until } from "./harness.js";
  * hooks, the daemon they spawn and every `squeal ps` get HOME and TMPDIR
  * under the fixture, beside its private XDG_RUNTIME_DIR, so nothing of
  * theirs reaches the real HOME. The host's other daemons share /proc, so a
- * case reads the fixture daemon's entries only, by its pid or with `--repo`.
+ * case reads the fixture daemon's entries only, by its pid or with `--repo`,
+ * or reads a table of the test's own processes (`ownProcesses`).
  */
 
 /** HOME and TMPDIR under the fixture's directory. */
@@ -166,5 +168,57 @@ export function countingSocket(path: string): Promise<CountingSocket> {
         close: () => new Promise((done) => server.close(() => done())),
       }),
     );
+  });
+}
+
+/**
+ * `source` with `reads` in place of its own. Every other read is the
+ * source's own, bound to it: a `ProcSource`'s methods read its private
+ * fields, which an object spread does not copy.
+ */
+function overriding(source: PsSource, reads: Partial<PsSource>): PsSource {
+  return new Proxy(source, {
+    get(target, key) {
+      if (Object.hasOwn(reads, key)) return Reflect.get(reads, key);
+      const value: unknown = Reflect.get(target, key);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
+/**
+ * `source` whose table of every process holds `pids` alone, the test's own
+ * processes, so no other daemon of the host is a premise of the case: one
+ * whose root or repository cannot be read makes every temp key unknown (D7,
+ * `reviews/wave-3.md` S1). Working directories and arguments are read for real.
+ */
+export function ownProcesses(source: PsSource, pids: readonly number[]): PsSource {
+  return overriding(source, { processTable: (only) => source.processTable(only ?? pids) });
+}
+
+/** Past the kernel's largest `pid_max` (2^22), so no process has it. */
+const UNKNOWN_DAEMON = 2_147_483_000;
+
+/** `source` with one more daemon of this user, whose root is relative: unknown (D2 step 2). */
+export function withUnknownDaemon(source: PsSource): PsSource {
+  const row: ProcessRow = {
+    pid: UNKNOWN_DAEMON,
+    ppid: 1,
+    pgid: UNKNOWN_DAEMON,
+    comm: "node",
+    state: "S",
+    startTicks: 0,
+    cpuTicks: 0,
+    nice: 0,
+    uid: currentUid(),
+  };
+  const args = ["node", "/opt/squeal/dist/cli/squeal.mjs", "daemon", "relative/root"];
+  return overriding(source, {
+    processTable: (pids) => {
+      const table = new Map(source.processTable(pids));
+      if (pids === undefined || pids.includes(UNKNOWN_DAEMON)) table.set(UNKNOWN_DAEMON, row);
+      return table;
+    },
+    cmdline: (pid) => (pid === UNKNOWN_DAEMON ? args : source.cmdline(pid)),
   });
 }
