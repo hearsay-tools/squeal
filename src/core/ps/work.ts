@@ -1,4 +1,6 @@
+import { type BigIntStats, existsSync, statSync } from "node:fs";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 import { daemonUsedMetaKey, readDaemonUsed } from "../daemon/last-use.js";
 import { readPolicy } from "../daemon/policy.js";
 import { isRecord } from "../fs/index.js";
@@ -18,12 +20,12 @@ import type { ProcessTable } from "./source.js";
 
 /*
  * Spec 014 D3: what a daemon's store says of it, without the daemon. Each
- * store is read once, through one `{ readOnly: true }` connection in one
- * read transaction, never through `openStore`, which migrates an older store
- * and so would make the daemon serving it exit (011 C7). The columns read
- * are schema V1's; a meta value of a format this release does not know reads
- * as `null`, and `unknown` names it. A waiting daemon is not read: its
- * worktree's row is the lock holder's.
+ * store is read once, through one read-only connection in one read
+ * transaction, never through `openStore`, which migrates an older store and
+ * so would make the daemon serving it exit (011 C7). The read creates no
+ * file (goal 4, 014-26). The columns read are schema V1's; a meta value of a
+ * format this release does not know reads as `null`, and `unknown` names it.
+ * A waiting daemon is not read: its worktree's row is the lock holder's.
  */
 
 /** A WAL reader waits only for a writer's recovery; a busy store is unknown, not waited on. */
@@ -39,26 +41,36 @@ export const readWork: ReadWork = (source, table, daemons) => {
   const namespace = source.pidNamespace();
   const ownStart = ownStartOn(source);
   for (const [path, group] of byStore(daemons)) {
-    const db = openReadOnly(path);
-    if (typeof db === "string") {
-      for (const d of group) unknown.push({ what: `daemon ${d.row.pid} work`, why: db });
+    const store = openReadOnly(path);
+    if (typeof store === "string") {
+      for (const d of group) unknown.push({ what: `daemon ${d.row.pid} work`, why: store });
       continue;
     }
+    const { db, file } = store;
+    const read = new Map<number, DaemonWork>();
+    const named: PsUnknown[] = [];
     try {
       // One committed state for every daemon of the store.
       db.exec("BEGIN");
       for (const d of group) {
         try {
-          work.set(d.row.pid, readOne(db, d, table, namespace, ownStart, unknown));
+          read.set(d.row.pid, readOne(db, d, table, namespace, ownStart, named));
         } catch (error) {
           const why = `its store ${path} cannot be read: ${message(error)}`;
-          unknown.push({ what: `daemon ${d.row.pid} work`, why });
+          named.push({ what: `daemon ${d.row.pid} work`, why });
         }
       }
       db.exec("COMMIT");
     } finally {
       db.close();
     }
+    if (file !== null && changed(path, file)) {
+      const why = `its store ${path} changed while it was read without its WAL`;
+      for (const d of group) unknown.push({ what: `daemon ${d.row.pid} work`, why });
+      continue;
+    }
+    for (const [pid, w] of read) work.set(pid, w);
+    unknown.push(...named);
   }
   return { work, unknown };
 };
@@ -73,19 +85,49 @@ function byStore(daemons: readonly FoundDaemon[]): Map<AbsolutePath, FoundDaemon
   return stores;
 }
 
-/** The connection, or why there is none. */
-function openReadOnly(path: AbsolutePath): DatabaseSync | string {
+/**
+ * The connection, or why there is none. SQLite's WAL reader creates `-wal`
+ * and `-shm` when they are missing (`lessons.md` P6). Without either, no
+ * connection holds the store, so its database file has every commit: it is
+ * read `immutable`, which opens no other file, and `file` is the file's
+ * state, which `changed` checks after the read.
+ */
+function openReadOnly(path: AbsolutePath): { db: DatabaseSync; file: BigIntStats | null } | string {
   let db: DatabaseSync | undefined;
   try {
-    db = new DatabaseSync(path, { readOnly: true });
+    const file = statSync(path, { bigint: true });
+    const held = existsSync(`${path}-wal`) && existsSync(`${path}-shm`);
+    db = new DatabaseSync(held ? path : immutable(path), { readOnly: true });
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
     const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
-    if (version >= READS_SCHEMA) return db;
+    if (version >= READS_SCHEMA) return { db, file: held ? null : file };
     db.close();
     return `its store ${path} is at schema ${version}, which has no tables yet`;
   } catch (error) {
     db?.close();
     return `its store ${path} cannot be read: ${message(error)}`;
+  }
+}
+
+function immutable(path: AbsolutePath): URL {
+  const url = pathToFileURL(path);
+  url.search = "immutable=1";
+  return url;
+}
+
+/** A writer that opened the store and checkpointed into its file during an `immutable` read. */
+function changed(path: AbsolutePath, before: BigIntStats): boolean {
+  try {
+    const after = statSync(path, { bigint: true });
+    return (
+      after.ino !== before.ino ||
+      after.size !== before.size ||
+      after.mtimeNs !== before.mtimeNs ||
+      after.ctimeNs !== before.ctimeNs
+    );
+  } catch {
+    // Gone since: nothing read from it stands.
+    return true;
   }
 }
 
