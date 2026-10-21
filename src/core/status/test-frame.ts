@@ -81,12 +81,17 @@ export function testFileFrame(check: CheckId, errors: readonly CheckError[]): Te
 }
 
 /** `<path>:<line>[:<column>]`. */
-export function positionText({ path, line, column }: TestFileFrame): string {
+function positionText({ path, line, column }: TestFileFrame): string {
   return column === undefined ? `${path}:${line}` : `${path}:${line}:${column}`;
 }
 
-/** `at <location>`, then `, called from <frame>` when the failure has one. */
-export function atText(location: SourceLocation, frame: TestFileFrame | undefined): string {
-  const at = `at ${positionText(location)}`;
+/** `<location>`, then `, called from <frame>` when the failure has one. */
+export function locationText(location: SourceLocation, frame: TestFileFrame | undefined): string {
+  const at = positionText(location);
   return frame === undefined ? at : `${at}, called from ${positionText(frame)}`;
+}
+
+/** `at <location>[, called from <frame>]`, as a failure prints it. */
+export function atText(location: SourceLocation, frame: TestFileFrame | undefined): string {
+  return `at ${locationText(location, frame)}`;
 }

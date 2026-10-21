@@ -32,6 +32,7 @@ import {
 import { durationsOf } from "./durations.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
 import { runLogOf } from "./run-log.js";
+import { testFileFrame } from "./test-frame.js";
 import { type WhySession, whyClosureChanges } from "./why-closure.js";
 import { replacement, unshownLog } from "./why-log.js";
 import { namesFile, whyRankedBy } from "./why-rank.js";
@@ -183,6 +184,8 @@ function report(
   const since = observedSince(store, worktreeId, knownState?.observedAt ?? null);
   const shown = shownResult(worktreeId, knownState, key, all, heldFailure, since);
   const replacedAtKey = replacement(store, knownState, key, all, shown);
+  // 011 C5 as amended 2026-10-21 (gh-67): read from the result behind the state, never another's.
+  const frame = shown?.outcome === "fail" ? testFileFrame(check, shown.errors) : null;
   const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
   // B2 (review wave-2b): a re-run's first error, only while it is of the current key.
@@ -209,6 +212,7 @@ function report(
     check,
     worktreeRoots,
     knownState,
+    ...(frame === null ? {} : { testFileFrame: frame }),
     history: store.transitions.history(worktreeId, check),
     results,
     durations: durationsOf(all),
