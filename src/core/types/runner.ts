@@ -246,6 +246,17 @@ export interface RunOptions {
    * it from task 001-378 on.
    */
   readonly workers?: number;
+  /**
+   * Called as each test file of the run ends, before the report, by a
+   * runner that knows (Vitest: `onTestModuleEnd`, row 011-54): a file whose
+   * module ended in a final state before any cancel. The scheduler's
+   * supersession cancel and yield remainder take only the files not named
+   * (spec 011 C4 step 5). It stores nothing: results wait for the report,
+   * the completion barrier and the stability check, and a file named here
+   * may still be left out of `completedFiles` (a crash, a withheld file).
+   * A runner that never calls it leaves every file of the run unfinished.
+   */
+  readonly fileEnded?: (testFile: TestFileRef) => void;
 }
 
 /** The lane of a slow file is this and its runner's lane (spec 004 D2, task 004-18). */
