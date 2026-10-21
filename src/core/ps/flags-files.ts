@@ -160,13 +160,12 @@ function leftoverTemp(model: PsModel, sizeEntries: number, unknown: PsUnknown[])
     if (model.now - stat.mtimeMs > LEFTOVER_AGE_MS) old.set(path, stat.mtimeMs);
   }
   if (old.size === 0) return none;
-  const used = usedPaths(model, keyDirs);
-  if (used === null) {
+  const paths = unusedPaths(model, keyDirs, [...old.keys()], unknown);
+  if (paths === null) {
     const why = "the working directories of processes cannot be read (D10)";
     unknown.push({ what: "flag leftover-temp", why });
     return none;
   }
-  const paths = [...old.keys()].filter((path) => !used.has(path)).sort();
   if (paths.length === 0) return none;
   const bytes = sizeOf(paths, sizeEntries);
   if (bytes === null) {
@@ -215,16 +214,23 @@ function liveKeys(model: PsModel): Set<string> | string {
 }
 
 /**
- * The temp directories that some process of this user has as its working
- * directory or names in an argument; `null` when working directories
- * cannot be read. A directory is used when a working directory or an
- * argument is it or lies under it, or an argument is `<option>=` and such
- * a path. A path is cut at `/` alone, since a name may hold a space, a
- * quote, `=` or `:`, and no argument is read as shell text
- * (`reviews/wave-2.md` B2). One pass over each text, so the cost does not
- * grow with the candidates.
+ * The `candidates` no process of this user uses, sorted; `null` when
+ * working directories cannot be read. A directory is used when a working
+ * directory, an argument, a listening unix socket or an open file is it or
+ * lies under it, or an argument is `<option>=` and such a path. A path is
+ * cut at `/` alone, since a name may hold a space, a quote, `=` or `:`, and
+ * no argument is read as shell text (`reviews/wave-2.md` B2). The reads go
+ * cheapest first and stop once every candidate is used: the open files of
+ * 176 processes, about 4,100 descriptors, cost 32 to 43 ms CPU at load 28
+ * (`lessons.md` P5). Sockets or open files that cannot be read count as no
+ * use, and `unknown` names them, as D10 names a platform's missing reads.
  */
-function usedPaths(model: PsModel, keyDirs: AbsolutePath): Set<AbsolutePath> | null {
+function unusedPaths(
+  model: PsModel,
+  keyDirs: AbsolutePath,
+  candidates: readonly AbsolutePath[],
+  unknown: PsUnknown[],
+): AbsolutePath[] | null {
   const { places, source } = model;
   // The host's table: the second reads only the processes the window measures (`reviews/wave-2.md` B1).
   const pids = [...model.first.sample.table.values()]
@@ -237,23 +243,47 @@ function usedPaths(model: PsModel, keyDirs: AbsolutePath): Set<AbsolutePath> | n
   const real = realOr(places.tempDir);
   const named = (text: string): string =>
     text.startsWith(`${real}/`) ? `${places.tempDir}${text.slice(real.length)}` : text;
-  const used = new Set<AbsolutePath>();
+  const unused = new Set(candidates);
   const use = (path: string): void => {
     if (!path.startsWith(at)) return;
     const [top = "", sub, key] = path.slice(places.tempDir.length + 1).split("/", 3);
-    used.add(join(places.tempDir, top));
+    unused.delete(join(places.tempDir, top));
     if (top === `squeal-${places.uid}` && sub === "tmp" && key !== undefined && key !== "")
-      used.add(join(keyDirs, key));
+      unused.delete(join(keyDirs, key));
   };
   for (const cwd of cwds.values()) use(named(cwd));
   for (const pid of pids) {
+    if (unused.size === 0) break;
     for (const arg of source.cmdline(pid) ?? []) {
       // The path itself, or the value of `<option>=<path>`; a path's own `=` is no option's.
       const path = named(arg);
       use(path.startsWith(at) ? path : named(arg.slice(arg.indexOf("=") + 1)));
     }
   }
-  return used;
+  if (unused.size > 0) {
+    const listeners = source.unixListeners();
+    if (listeners === null) {
+      const why =
+        "the listening unix sockets cannot be read (D10); a directory a socket is bound under counts as unused";
+      unknown.push({ what: "flag leftover-temp sockets", why });
+    }
+    for (const listener of listeners ?? []) use(named(listener.path));
+  }
+  let read = 0;
+  for (const pid of pids) {
+    if (unused.size === 0) break;
+    const fds = source.fds(pid);
+    if (fds === null) continue;
+    read += 1;
+    // A file deleted since it was opened reads `<path> (deleted)`; the cut at `/` keeps its directory.
+    for (const target of fds) use(named(target));
+  }
+  if (unused.size > 0 && read === 0) {
+    const why =
+      "the open files of processes cannot be read (D10); a directory a file is open under counts as unused";
+    unknown.push({ what: "flag leftover-temp open files", why });
+  }
+  return [...unused].sort();
 }
 
 /** The bytes of the files below `dirs`; `null` past `limit` entries. */
