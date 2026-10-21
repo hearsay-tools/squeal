@@ -2,9 +2,10 @@ import { expect, test } from "vitest";
 import { PS_SHAPE_VERSION, type PsDaemon, type PsSnapshot } from "../../src/core/ps/shape.js";
 
 /*
- * Spec 014 D8 (task 014-04): the keys of `squeal ps --json` `v: 1`. The
- * literal below must type-check as the shape, and every key D8 lists stays
- * in its JSON with `null` kept, never dropped and never read as zero.
+ * Spec 014 D8 with its 2026-10-21 amendments (task 014-04): the keys of
+ * `squeal ps --json` `v: 1`. The literal below must type-check as the
+ * shape, and the JSON keeps exactly these keys, `null` included: a value
+ * that could not be read is never dropped and never reads as zero.
  */
 
 const daemon: PsDaemon = {
@@ -24,8 +25,10 @@ const daemon: PsDaemon = {
   work: {
     pending: 200,
     running: 12,
-    tier: [],
-    checkpoint: null,
+    tiers: [
+      { runId: "r1", lane: null, files: 200, startedAt: 1_792_000_150_000, checkpointId: null },
+    ],
+    checkpoints: [{ id: "c1", startedAt: 1_792_000_140_000, lane: "fast", files: 600 }],
     departedAt: null,
     drainLeftMs: null,
     lastUsedAt: null,
@@ -46,17 +49,26 @@ const daemon: PsDaemon = {
       nice: 10,
       startedAt: 1_792_000_100_000,
       descendants: {
-        count: 2,
+        count: 1,
         cpuPct: 1,
         cpuMs: 300,
         privateBytes: 4_096_000,
         swapBytes: 0,
-        list: null,
+        list: [
+          {
+            pid: 3704800,
+            comm: "git",
+            cpuPct: 1,
+            cpuMs: 300,
+            privateBytes: 4_096_000,
+            swapBytes: 0,
+          },
+        ],
       },
       flags: [],
     },
   ],
-  flags: [],
+  flags: [{ flag: "hung", reason: "heartbeat 4m old, interval 30s", command: "kill 3704612" }],
 };
 
 const snapshot: PsSnapshot = {
@@ -87,7 +99,7 @@ const snapshot: PsSnapshot = {
     pool: { slots: 23, held: 1 },
   },
   repositories: [{ commonDir: "/home/user/projects/alpha/.git", current: true, daemons: [daemon] }],
-  orphans: [],
+  orphans: [{ pid: 2242955, comm: "chrome", startedAt: null, flags: [] }],
   files: [
     {
       flag: "stale-socket",
@@ -97,106 +109,58 @@ const snapshot: PsSnapshot = {
       command: "rm /run/user/1000/squeal-fd5a859b8ca77ef9.sock",
     },
   ],
-  flags: 1,
+  flags: 2,
   unknown: [
     { what: "daemon 3704612 lastUsedAt", why: "its release does not record its last use (D9)" },
   ],
 };
 
-test("the JSON carries every key D8 lists, at every level, with null kept", () => {
+const keys = (value: object) => Object.keys(value).sort();
+const sorted = (list: string) => list.split(" ").sort();
+
+test("the JSON keeps exactly the shipped keys at every level, with null kept", () => {
   const json = JSON.parse(JSON.stringify(snapshot));
   expect(json).toEqual(snapshot);
-  expect(Object.keys(json)).toEqual(
-    expect.arrayContaining([
-      "v",
-      "at",
-      "sampleMs",
-      "platform",
-      "host",
-      "squeal",
-      "repositories",
-      "files",
-      "flags",
-      "unknown",
-    ]),
+  expect(json.v).toBe(1);
+  expect(keys(json)).toEqual(
+    sorted("v at sampleMs platform memory host squeal repositories orphans files flags unknown"),
   );
-  expect(Object.keys(json.host)).toEqual(
-    expect.arrayContaining([
-      "load",
-      "cpus",
-      "cpuPressure",
-      "memoryPressure",
-      "memTotal",
-      "memAvailable",
-      "swapTotal",
-      "swapUsed",
-      "busyCpuPct",
-    ]),
+  expect(keys(json.host)).toEqual(
+    sorted(
+      "load cpus cpuPressure memoryPressure memTotal memAvailable swapTotal swapUsed busyCpuPct",
+    ),
   );
-  expect(Object.keys(json.squeal)).toEqual(
-    expect.arrayContaining([
-      "daemons",
-      "testProcesses",
-      "cpuPct",
-      "cpuShare",
-      "privateBytes",
-      "memoryShare",
-      "swapBytes",
-      "pool",
-    ]),
+  expect(keys(json.squeal)).toEqual(
+    sorted("daemons testProcesses cpuPct cpuShare privateBytes memoryShare swapBytes pool"),
   );
-  expect(Object.keys(json.squeal.pool)).toEqual(["slots", "held"]);
-  expect(Object.keys(json.repositories[0])).toEqual(["commonDir", "current", "daemons"]);
+  expect(keys(json.squeal.pool)).toEqual(sorted("slots held"));
+  expect(keys(json.repositories[0])).toEqual(sorted("commonDir current daemons"));
   const d = json.repositories[0].daemons[0];
-  expect(Object.keys(d)).toEqual(
-    expect.arrayContaining([
-      "pid",
-      "phase",
-      "state",
-      "worktreeId",
-      "root",
-      "version",
-      "harness",
-      "startedAt",
-      "cpuPct",
-      "cpuMs",
-      "privateBytes",
-      "swapBytes",
-      "work",
-      "consumers",
-      "processes",
-      "flags",
-    ]),
+  expect(keys(d)).toEqual(
+    sorted(
+      "pid phase state worktreeId root version harness startedAt cpuPct cpuMs privateBytes swapBytes permits work consumers processes flags",
+    ),
   );
-  expect(Object.keys(d.work)).toEqual(
-    expect.arrayContaining([
-      "pending",
-      "running",
-      "tier",
-      "checkpoint",
-      "departedAt",
-      "drainLeftMs",
-      "lastUsedAt",
-    ]),
+  expect(keys(d.work)).toEqual(
+    sorted("pending running tiers checkpoints departedAt drainLeftMs lastUsedAt"),
   );
   expect(d.work.lastUsedAt).toBeNull();
-  expect(Object.keys(d.consumers[0])).toEqual(["harnessPid", "alive", "version"]);
-  expect(Object.keys(d.processes[0])).toEqual(
-    expect.arrayContaining([
-      "pid",
-      "lane",
-      "runner",
-      "files",
-      "cpuPct",
-      "cpuMs",
-      "privateBytes",
-      "swapBytes",
-      "nice",
-      "startedAt",
-      "descendants",
-    ]),
+  expect(keys(d.work.tiers[0])).toEqual(sorted("runId lane files startedAt checkpointId"));
+  expect(keys(d.work.checkpoints[0])).toEqual(sorted("id startedAt lane files"));
+  expect(keys(d.consumers[0])).toEqual(sorted("harnessPid alive version"));
+  const p = d.processes[0];
+  expect(keys(p)).toEqual(
+    sorted(
+      "pid lane runner runId files escaped cpuPct cpuMs privateBytes swapBytes nice startedAt descendants flags",
+    ),
   );
-  expect(d.processes[0].swapBytes).toBeNull();
-  expect(Object.keys(json.files[0])).toEqual(["flag", "path", "count", "bytes", "command"]);
-  expect(json.v).toBe(1);
+  expect(p.swapBytes).toBeNull();
+  expect(keys(p.descendants)).toEqual(sorted("count cpuPct cpuMs privateBytes swapBytes list"));
+  expect(keys(p.descendants.list[0])).toEqual(
+    sorted("pid comm cpuPct cpuMs privateBytes swapBytes"),
+  );
+  expect(keys(d.flags[0])).toEqual(sorted("flag reason command"));
+  expect(keys(json.orphans[0])).toEqual(sorted("pid comm startedAt flags"));
+  expect(keys(json.files[0])).toEqual(sorted("flag path count bytes command"));
+  expect(keys(json.unknown[0])).toEqual(sorted("what why"));
 });
