@@ -1,17 +1,22 @@
-import { worktreeIdFor } from "../fs/index.js";
+import { realpathSync } from "node:fs";
+import { relative, resolve } from "node:path";
+import { findWorktreeRoot, toRelative, worktreeIdFor } from "../fs/index.js";
 import { formatCheck } from "../state/index.js";
 import { cap, plural } from "../text.js";
 import {
   type AbsolutePath,
   type EpochMs,
+  type FailureSelection,
   type FailuresResult,
+  type FailuresSelection,
   PAYLOAD_SCHEMA_VERSION,
+  type RelativePath,
 } from "../types/index.js";
 import { formatUnavailable, shortCommit } from "./format-status.js";
 import { type StatusStoreOptions, withStatusStore } from "./open.js";
 import { WHY_RESULT_LIMIT } from "./why.js";
 
-/** Most failures `squeal failures` lists, as many as `why` lists results. */
+/** Most failures `squeal failures` lists by default, as many as `why` lists results. */
 export const FAILURES_LIMIT = WHY_RESULT_LIMIT;
 
 /** Longest fingerprint a human line prints; `--json` carries it whole. */
@@ -22,21 +27,90 @@ export interface FailuresOptions extends StatusStoreOptions {
   readonly allWorktrees?: boolean;
   /** Only failures recorded at or after this time (`--since`). */
   readonly since?: EpochMs | null;
+  /** Root-relative test files or directories (`failurePaths`); `.` the root. */
+  readonly paths?: readonly RelativePath[];
+  /** `--check`: only checks whose printed name holds one of these texts. */
+  readonly checks?: readonly string[];
+  /** Most failures listed (`--limit`); default `FAILURES_LIMIT`. */
+  readonly limit?: number;
+}
+
+/**
+ * The paths given to `squeal failures`, read from `cwd` as `status <path>`
+ * reads them, root-relative (row 011-75): against `cwd`, or its real path
+ * when `cwd` reaches the worktree through a symlink. `outside` is the first
+ * path outside the worktree. Outside any worktree the paths stay as given,
+ * and the read says the store is unavailable.
+ */
+export function failurePaths(
+  cwd: AbsolutePath,
+  paths: readonly string[],
+):
+  | { readonly paths: readonly RelativePath[] }
+  | { readonly outside: string; readonly root: AbsolutePath } {
+  const root = findWorktreeRoot(cwd);
+  if (root === null) return { paths };
+  const resolved: RelativePath[] = [];
+  for (const path of paths) {
+    const rel = worktreePath(root, cwd, path);
+    if (rel === null) return { outside: path, root };
+    resolved.push(rel);
+  }
+  return { paths: resolved };
+}
+
+function worktreePath(root: AbsolutePath, cwd: AbsolutePath, path: string): RelativePath | null {
+  for (const base of [cwd, realOrNull(cwd)]) {
+    if (base === null) continue;
+    const absolute = resolve(base, path);
+    if (relative(root, absolute) === "") return ".";
+    const rel = toRelative(root, absolute);
+    if (rel !== null) return rel;
+  }
+  return null;
+}
+
+function realOrNull(path: AbsolutePath): AbsolutePath | null {
+  try {
+    return realpathSync(path);
+  } catch {
+    return null;
+  }
 }
 
 /**
  * `squeal failures` for the worktree containing `cwd` (task 001-409): the
- * stored failing results, newest first, at most `FAILURES_LIMIT`. Reads the
- * shared store in one read transaction (D7, D8) and starts no daemon.
+ * stored failing results, newest first, at most `limit`. Reads the shared
+ * store in one read transaction (D7, D8) and starts no daemon. Row 011-75:
+ * the paths and `--check` texts select in the store's query, through
+ * `results_by_failure`; a text is matched against the failing checks'
+ * printed names, so check names keep one formatter (C5).
  */
 export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): FailuresResult {
   const allWorktrees = options.allWorktrees ?? false;
   const since = options.since ?? null;
+  const selection: FailuresSelection = { paths: options.paths ?? [], checks: options.checks ?? [] };
+  const limit = options.limit ?? FAILURES_LIMIT;
   return withStatusStore(cwd, options, ({ store, root }) => {
     const worktreeId = worktreeIdFor(root);
     const roots = new Map(store.worktrees.list().map((w) => [w.id, w.root]));
-    const filter = { worktreeId: allWorktrees ? null : worktreeId, since };
-    const failures = store.results.listFailures(filter, FAILURES_LIMIT).map((r) => ({
+    const base: FailureSelection = {
+      worktreeId: allWorktrees ? null : worktreeId,
+      since,
+      paths: selection.paths.includes(".") ? [] : selection.paths,
+      checks: null,
+    };
+    const texts = selection.checks;
+    const filter =
+      texts.length === 0
+        ? base
+        : {
+            ...base,
+            checks: store.failures
+              .failingChecks(base)
+              .filter((check) => texts.some((text) => formatCheck(check).includes(text))),
+          };
+    const failures = store.failures.list(filter, limit).map((r) => ({
       check: r.check,
       worktreeId: r.provenance.worktreeId,
       worktreeRoot: roots.get(r.provenance.worktreeId) ?? null,
@@ -56,9 +130,10 @@ export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): 
       worktreeRoot: roots.get(worktreeId) ?? root,
       allWorktrees,
       since,
+      selection,
       failures,
-      total: store.results.countFailures(filter),
-      limit: FAILURES_LIMIT,
+      total: store.failures.count(filter),
+      limit,
     };
   });
 }
@@ -67,7 +142,8 @@ export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): 
 export function formatFailures(report: FailuresResult): string {
   if (!report.available) return formatUnavailable(report);
   const scope = report.allWorktrees ? "every worktree" : "this worktree";
-  const window = report.since === null ? "" : ` since ${new Date(report.since).toISOString()}`;
+  const since = report.since === null ? "" : ` since ${new Date(report.since).toISOString()}`;
+  const window = `${selectionText(report.selection)}${since}`;
   if (report.total === 0) return `No stored failures in ${scope}${window}.\n`;
   const count =
     report.total > report.failures.length
@@ -88,4 +164,13 @@ export function formatFailures(report: FailuresResult): string {
   }
   lines.push("", 'squeal why "<check>" prints a failure\'s full output.');
   return `${lines.join("\n")}\n`;
+}
+
+/** ` for <paths>, checks holding "<text>" or "<text>"`, or nothing when every failure is selected. */
+function selectionText({ paths, checks }: FailuresSelection): string {
+  const parts = [...paths];
+  if (checks.length > 0) {
+    parts.push(`checks holding ${checks.map((text) => JSON.stringify(text)).join(" or ")}`);
+  }
+  return parts.length === 0 ? "" : ` for ${parts.join(", ")}`;
 }

@@ -59,10 +59,14 @@ Usage:
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints
                                 that log's lines from the check's test file
-  squeal failures [--all-worktrees] [--since <duration>] [--json]
+  squeal failures [<test file or directory>...] [--check <text>]... [--limit <n>]
+                  [--all-worktrees] [--since <duration>] [--json]
                                 Stored failing results of this worktree, or every
                                 worktree's, newest first: check, worktree, revision,
-                                commit, time, duration, fingerprint; --since 2h
+                                commit, time, duration, fingerprint; paths select
+                                the checks of those test files or below those
+                                directories, --check those whose name holds the
+                                text; --limit lists more than 20; --since 2h
                                 lists only the last two hours
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
