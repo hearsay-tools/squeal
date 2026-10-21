@@ -162,6 +162,7 @@ var WORKTREE_META_ROWS = {
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
+  quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
@@ -666,6 +667,9 @@ var CLOSURE_METHOD = "static imports plus declared inputs";
 // src/core/keys/hidden-lockfile.ts
 var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
 
+// src/core/keys/pnpm-lockfile.ts
+var PNPM_LOCKFILE = "node_modules/.pnpm/lock.yaml";
+
 // src/core/keys/environment.ts
 var LOCKFILES = [
   { path: HIDDEN_LOCKFILE, patches: "patches" },
@@ -673,7 +677,7 @@ var LOCKFILES = [
   { path: ".pnp.cjs", patches: ".yarn/patches" },
   { path: ".pnp.js", patches: ".yarn/patches" },
   { path: "node_modules/.yarn-integrity", patches: "patches" },
-  { path: "node_modules/.pnpm/lock.yaml", patches: null },
+  { path: PNPM_LOCKFILE, patches: null },
   { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
   { path: "bun.lock", patches: "patches" },
   { path: "bun.lockb", patches: "patches" }
@@ -4731,6 +4735,27 @@ function knownCause(entry3) {
 import { constants } from "node:fs";
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
+// src/core/scheduler/quiet.ts
+function quietMetaKey(worktreeId) {
+  return worktreeMetaKey("quiet", worktreeId);
+}
+function publishedQuiet(store, worktreeId, daemonStartedAt, now) {
+  const raw = store.meta.get(quietMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const { at, lanes } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt) return /* @__PURE__ */ new Map();
+    if (typeof lanes !== "object" || lanes === null) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(lanes).filter(
+        (entry3) => typeof entry3[1] === "number" && entry3[1] > now
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+
 // src/core/scheduler/yields.ts
 function yieldsMetaKey(worktreeId) {
   return worktreeMetaKey("yields", worktreeId);
@@ -4947,6 +4972,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
   const promoted = promotedOf(store, worktreeId, daemon, now);
   const yields = yieldsOf(store, worktreeId, daemon);
+  const quiet = quietOf(store, worktreeId, daemon, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -5005,6 +5031,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ...run === void 0 ? {} : { files: run.testFiles.length },
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now);
+    const quietUntil = pending.kind === "queued" ? quiet.get(pending.lane) : void 0;
+    if (pending.kind === "queued" && pending.behind === null && quietUntil !== void 0) {
+      if (!promoted.has(testFileId(ref))) {
+        const held = { ...pending, quietUntil };
+        return { testFile: ref, state, pending: held, standing: held };
+      }
+    }
     if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
       const tier = pending.behind === null ? void 0 : yieldIn(runs, lane, policy, yields);
       const promotedReason = {
@@ -5043,6 +5076,11 @@ function yieldsOf(store, worktreeId, daemon) {
   const record = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Map();
   return publishedYields(store, worktreeId, record.startedAt);
+}
+function quietOf(store, worktreeId, daemon, now) {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Map();
+  return publishedQuiet(store, worktreeId, record.startedAt, now);
 }
 function yieldIn(runs, lane, policy, yields) {
   const run = runIn(runs, lane, policy);
@@ -5095,7 +5133,7 @@ function groupId(s) {
     case "running":
       return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
@@ -5566,12 +5604,15 @@ function spawnedAfterRest(store, worktreeId, at) {
 }
 function restState(store, worktree, at) {
   if (worktree === null || worktree.daemon !== null) return null;
-  const rest = readRest(store, worktree.id);
-  if (rest === null || rest.at < (worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY)) {
-    return null;
-  }
+  const rest = restAfterHeartbeats(store, worktree);
+  if (rest === null) return null;
   if (rest.spawnedAt === void 0 || at - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
   return "overdue";
+}
+function restAfterHeartbeats(store, worktree) {
+  const rest = readRest(store, worktree.id);
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
+  return rest === null || rest.at < heartbeat ? null : rest;
 }
 function readRest(store, worktreeId) {
   const text = store.meta.get(daemonRestMetaKey(worktreeId));
@@ -6408,7 +6449,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.250";
+  if (true) return "0.1.251";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

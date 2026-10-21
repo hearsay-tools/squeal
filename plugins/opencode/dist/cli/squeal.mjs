@@ -318,6 +318,7 @@ var init_store = __esm({
       heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
       promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
       yields: { prefix: "yields:", owner: "scheduler/yields" },
+      quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
       rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
       rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
       optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
@@ -1209,6 +1210,14 @@ var init_packages = __esm({
 // src/core/keys/dependencies.ts
 import { createHash as createHash4 } from "node:crypto";
 function dependencyKeys(installed, environment) {
+  const keys = currentKeys(installed, environment);
+  const { fingerprint, former = null } = installed;
+  if (former === null) return keys;
+  const input = keys.environment === fingerprint ? former : keys.environment;
+  const segment = { from: `whole:${fingerprint}`, to: `whole:${former}` };
+  return { ...keys, former: { environment: input, segment } };
+}
+function currentKeys(installed, environment) {
   const { graph, fingerprint } = installed;
   if (graph === null || environment === void 0 || isOpaque(environment)) {
     return { environment: fingerprint, of: () => "" };
@@ -1252,8 +1261,8 @@ var init_dependencies = __esm({
 import { createHash as createHash5 } from "node:crypto";
 import { lstatSync as lstatSync2, readdirSync as readdirSync2, readFileSync as readFileSync4, readlinkSync } from "node:fs";
 import { isAbsolute as isAbsolute3, join as join7 } from "node:path";
-function staleHiddenLockfile(dir2, content) {
-  const listed5 = listedPackages(content);
+function staleHiddenLockfile(dir2, lockfile) {
+  const listed5 = lockfile === null ? null : packagesIn(lockfile);
   if (listed5 === null) return "not valid JSON";
   const lockTime = lstatSync2(join7(dir2, HIDDEN_LOCKFILE)).mtimeMs;
   const folders = packageFolders(dir2, workspaces(listed5));
@@ -1271,22 +1280,31 @@ function staleHiddenLockfile(dir2, content) {
   const reasons = parts2.filter(([, paths]) => paths.length > 0).map(([label2, paths]) => `${label2}: ${example(paths)}`);
   return reasons.length === 0 ? null : reasons.join("; ");
 }
-function packageFoldersFingerprint(dir2, content) {
-  const folders = packageFolders(dir2, workspaces(listedPackages(content) ?? {}));
+function packageFoldersFingerprint(dir2, lockfile) {
+  const folders = packageFolders(dir2, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
   folders.sort((a, b) => compare(a.path, b.path));
   const entries3 = folders.map(
     ({ path, link }) => link ? [path, "link", readlinkSync(join7(dir2, path))] : [path, ...nameAndVersion(dir2, path)]
   );
   return createHash5("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries3])).digest("hex");
 }
-function listedPackages(content) {
+function parseHiddenLockfile(content) {
   let parsed2;
   try {
     parsed2 = JSON.parse(content.toString("utf8"));
   } catch {
     return null;
   }
-  return isRecord(parsed2) && isRecord(parsed2.packages) ? parsed2.packages : {};
+  return isRecord(parsed2) ? parsed2 : {};
+}
+function withoutOwnVersions(lockfile) {
+  const { name: _name, version: _version, ...rest } = lockfile;
+  const own = (path, entry4) => (path === "" || isWorkspace(path)) && isRecord(entry4) ? { ...entry4, version: void 0 } : entry4;
+  const packages = isRecord(rest.packages) ? Object.fromEntries(Object.entries(rest.packages).map(([path, e]) => [path, own(path, e)])) : rest.packages;
+  return JSON.stringify({ ...rest, packages });
+}
+function packagesIn(lockfile) {
+  return isRecord(lockfile.packages) ? lockfile.packages : {};
 }
 function isInstalledFolder(path) {
   return insideInstall(path) && (path.startsWith("node_modules/") || path.includes("/node_modules/"));
@@ -1294,8 +1312,11 @@ function isInstalledFolder(path) {
 function insideInstall(path) {
   return path !== "" && !isAbsolute3(path) && path !== ".." && !path.startsWith("../");
 }
+function isWorkspace(path) {
+  return insideInstall(path) && !isInstalledFolder(path);
+}
 function workspaces(listed5) {
-  return Object.keys(listed5).filter((path) => insideInstall(path) && !isInstalledFolder(path));
+  return Object.keys(listed5).filter(isWorkspace);
 }
 function packageFolders(dir2, workspaceFolders) {
   const folders = [];
@@ -1369,6 +1390,23 @@ var init_key_format = __esm({
   }
 });
 
+// src/core/keys/pnpm-lockfile.ts
+function withoutLinkedSpecifiers(text3) {
+  const lines = text3.split("\n");
+  return lines.filter((line, at2) => !linkedSpecifier(line, lines[at2 + 1] ?? "")).join("\n");
+}
+function linkedSpecifier(line, next) {
+  const indent2 = /^( +)specifier: /.exec(line)?.[1];
+  return indent2 !== void 0 && next.startsWith(`${indent2}version: link:`);
+}
+var PNPM_LOCKFILE;
+var init_pnpm_lockfile = __esm({
+  "src/core/keys/pnpm-lockfile.ts"() {
+    "use strict";
+    PNPM_LOCKFILE = "node_modules/.pnpm/lock.yaml";
+  }
+});
+
 // src/core/keys/environment.ts
 import { createHash as createHash6 } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
@@ -1432,17 +1470,24 @@ async function installedDependencies(projectRoot, worktreeRoot2, scans) {
   const found3 = await locateLockfile(projectRoot, worktreeRoot2);
   if (found3 === null) return { fingerprint: "none", note: null, graph: null, patches: "none" };
   const { dir: dir2, format, content } = found3;
-  const stale = format.path === HIDDEN_LOCKFILE ? staleHiddenLockfile(dir2, content) : null;
+  const npm = format.path === HIDDEN_LOCKFILE;
+  const hidden = npm ? parseHiddenLockfile(content) : null;
+  const stale = npm ? staleHiddenLockfile(dir2, hidden) : null;
   const hash2 = createHash6("sha256").update(`${format.path}\0`);
-  if (stale === null) hash2.update(content);
-  else hash2.update(`stale\0${packageFoldersFingerprint(dir2, content)}`);
+  if (stale !== null) hash2.update(`stale\0${packageFoldersFingerprint(dir2, hidden)}`);
+  else if (hidden !== null) hash2.update(`${INSTALLED_ENCODING}\0${withoutOwnVersions(hidden)}`);
+  else if (format.path === PNPM_LOCKFILE) {
+    hash2.update(`${INSTALLED_ENCODING}\0${withoutLinkedSpecifiers(content.toString("utf8"))}`);
+  } else hash2.update(content);
+  const filtered = stale === null && (hidden !== null || format.path === PNPM_LOCKFILE);
+  const former = filtered ? createHash6("sha256").update(`${format.path}\0`).update(content) : null;
   const patches = createHash6("sha256");
   if (format.patches !== null) {
     const patchesDir = join8(dir2, format.patches);
     for (const path of await listEntries(patchesDir)) {
       const bytes2 = await readIfFile(join8(patchesDir, path));
       if (bytes2 === null) continue;
-      for (const target of [hash2, patches]) {
+      for (const target of [hash2, patches, ...former === null ? [] : [former]]) {
         target.update(`\0${path}\0${bytes2.byteLength}\0`).update(bytes2);
       }
     }
@@ -1452,7 +1497,13 @@ async function installedDependencies(projectRoot, worktreeRoot2, scans) {
   const listed5 = format.path === HIDDEN_LOCKFILE && stale === null ? packagesOf(content) : null;
   const base = resolve2(dir2) === resolve2(worktreeRoot2) ? "" : toRelative(worktreeRoot2, dir2);
   const graph = listed5 === null || base === null ? null : new InstalledGraph(dir2, base, listed5, scans);
-  return { fingerprint: hash2.digest("hex"), note, graph, patches: patches.digest("hex") };
+  return {
+    fingerprint: hash2.digest("hex"),
+    former: former?.digest("hex") ?? null,
+    note,
+    graph,
+    patches: patches.digest("hex")
+  };
 }
 function packagesOf(content) {
   try {
@@ -1489,7 +1540,7 @@ async function listEntries(dir2) {
     throw error;
   }
 }
-var ENVIRONMENT_ENCODING, LOCKFILES;
+var ENVIRONMENT_ENCODING, INSTALLED_ENCODING, LOCKFILES;
 var init_environment = __esm({
   "src/core/keys/environment.ts"() {
     "use strict";
@@ -1497,18 +1548,42 @@ var init_environment = __esm({
     init_hidden_lockfile();
     init_key_format();
     init_packages();
+    init_pnpm_lockfile();
     ENVIRONMENT_ENCODING = "squeal-environment/1";
+    INSTALLED_ENCODING = "squeal-installed/2";
     LOCKFILES = [
       { path: HIDDEN_LOCKFILE, patches: "patches" },
       { path: "node_modules/.yarn-state.yml", patches: null },
       { path: ".pnp.cjs", patches: ".yarn/patches" },
       { path: ".pnp.js", patches: ".yarn/patches" },
       { path: "node_modules/.yarn-integrity", patches: "patches" },
-      { path: "node_modules/.pnpm/lock.yaml", patches: null },
+      { path: PNPM_LOCKFILE, patches: null },
       { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
       { path: "bun.lock", patches: "patches" },
       { path: "bun.lockb", patches: "patches" }
     ];
+  }
+});
+
+// src/core/keys/former.ts
+function formerReadAsOne(core, environment, dependencies, hashOf2) {
+  const former = dependencies?.former ?? null;
+  if (former === null && environment.formerFiles === void 0) return [];
+  const inputs2 = former === null ? core : { ...core, installedDependencies: former.environment };
+  const runner = { ...environment, files: environment.formerFiles ?? environment.files };
+  const segment = former === null ? {} : { segment: former.segment };
+  return [KEY_FORMAT_VERSION, ...Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number)].filter((format) => format <= FORMER_LAST_FORMAT).map((format) => ({
+    environment: environmentHash(inputs2, runner, hashOf2, format),
+    ...segment
+  }));
+}
+var FORMER_LAST_FORMAT;
+var init_former = __esm({
+  "src/core/keys/former.ts"() {
+    "use strict";
+    init_environment();
+    init_key_format();
+    FORMER_LAST_FORMAT = 20;
   }
 });
 
@@ -1622,7 +1697,7 @@ var init_key_index = __esm({
       keyed = /* @__PURE__ */ new Map();
       paths = /* @__PURE__ */ new Map();
       environments = /* @__PURE__ */ new Map();
-      /** Each project's environment hashes at the formats read as one (task 011-38). */
+      /** Each project's environment hashes at the formats and definitions read as one (011-38, 011-90). */
       readAsOne = /* @__PURE__ */ new Map();
       /** The test file each current key belongs to, by `testFileId`. */
       ids = /* @__PURE__ */ new Map();
@@ -1651,7 +1726,8 @@ var init_key_index = __esm({
        * installed-dependency segment of each of their test files, then re-keys
        * once each test file whose project hash or segment moved, so no key
        * passes through a mix of old and new inputs (task 001-105). `readAsOne`
-       * holds each project's hashes at the formats read as one (task 011-38).
+       * holds each project's hashes at the formats read as one (task 011-38) and
+       * under the definition before task 011-85 (011-90).
        */
       setInstalled(environments2, dependenciesOf, readAsOne = /* @__PURE__ */ new Map()) {
         const moved2 = /* @__PURE__ */ new Set();
@@ -1715,9 +1791,10 @@ var init_key_index = __esm({
       }
       /**
        * The test file whose current key is `key`, with its keys at the formats
-       * read as one (spec 011 C3 as amended 2026-10-20, task 011-38), computed
-       * over the segments the index holds, once per key. `null` when no test
-       * file holds `key` now.
+       * read as one (spec 011 C3 as amended 2026-10-20, task 011-38) and under
+       * the definition before task 011-85 (011-90), computed over the segments
+       * the index holds, each entry's segment rule applied, once per key. `null`
+       * when no test file holds `key` now.
        */
       keysReadAsOne(key2) {
         const id2 = this.ids.get(key2);
@@ -1727,7 +1804,9 @@ var init_key_index = __esm({
         const environments2 = this.readAsOne.get(testFile.project) ?? [];
         let memo2 = keyed.readAsOne;
         if (memo2?.key !== key2 || memo2.environments !== environments2) {
-          const keys = environments2.flatMap((envHash) => this.keyOf(keyed, envHash) ?? []);
+          const keys = environments2.flatMap(
+            (entry4) => this.keyOf(keyed, entry4.environment, entry4.segment) ?? []
+          );
           memo2 = { key: key2, environments: environments2, keys };
           keyed.readAsOne = memo2;
         }
@@ -1749,14 +1828,15 @@ var init_key_index = __esm({
         }
         return changes;
       }
-      /** `null` while any closure path is untracked. */
-      keyOf(keyed, envHash) {
+      /** `null` while any closure path is untracked. `rule` replaces the installed-dependency segment it names. */
+      keyOf(keyed, envHash, rule) {
         const segments2 = [];
         for (const entry4 of keyed.entries) {
           if (entry4.hash === void 0) return null;
           segments2.push(entry4.segment);
         }
-        return keyFromSegments(envHash, keyed.closure.testFile, segments2, keyed.dependencies);
+        const dependencies = rule?.from === keyed.dependencies ? rule.to : keyed.dependencies;
+        return keyFromSegments(envHash, keyed.closure.testFile, segments2, dependencies);
       }
       /** The entry of `path` with one more reference; a new entry reads the hash. */
       acquire(path) {
@@ -1829,6 +1909,7 @@ var init_keys = __esm({
     init_closure();
     init_dependencies();
     init_environment();
+    init_former();
     init_glob();
     init_key_format();
     init_key_index();
@@ -8139,6 +8220,64 @@ var init_capacity = __esm({
   }
 });
 
+// src/core/scheduler/backlog.ts
+function cancelsBacklog(context, ledger, revision, tier) {
+  if (queuesEdit(context, ledger, tier)) return true;
+  const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
+  return revision?.changes.some((change2) => inputs2.has(change2.path)) ?? false;
+}
+function queuesEdit(context, ledger, tier) {
+  return ledger.queue.hasRecent((ref2) => laneOf(context, ref2) === tier.lane);
+}
+function backlogBudget(timeoutMs) {
+  return timeoutMs === null ? BACKLOG_TIER_BUDGET_MS : Math.min(BACKLOG_TIER_BUDGET_MS, timeoutMs / 2);
+}
+function wallEstimate(sum, longest2, width) {
+  return sum / width + (1 - 1 / width) * longest2;
+}
+var BACKLOG_TIER_BUDGET_MS, BacklogWall;
+var init_backlog = __esm({
+  "src/core/scheduler/backlog.ts"() {
+    "use strict";
+    init_tiers();
+    BACKLOG_TIER_BUDGET_MS = 12e4;
+    BacklogWall = class {
+      constructor(budget) {
+        this.budget = budget;
+      }
+      budget;
+      #parts = /* @__PURE__ */ new Map();
+      #first = null;
+      /**
+       * Whether a file of `durationMs`, `null` when unknown and counted 0, joins
+       * a tier where its part runs `width` wide; it is counted when it does.
+       */
+      take(durationMs2, width, part = "") {
+        const was = this.#parts.get(part) ?? { count: 0, sum: 0, longest: 0, width: Infinity };
+        const w2 = Math.max(1, Math.min(was.width, Math.floor(width)));
+        const next = {
+          count: was.count + 1,
+          sum: was.sum + (durationMs2 ?? 0),
+          longest: Math.max(was.longest, durationMs2 ?? 0),
+          width: w2
+        };
+        const firstRound = (this.#first ?? part) === part && this.#parts.size <= 1 && was.count < w2;
+        if (!firstRound && this.#estimate(part, next) > this.budget) return false;
+        this.#first ??= part;
+        this.#parts.set(part, next);
+        return true;
+      }
+      /** The tier's wall estimate with `part` as `next`: its parts' estimates summed. */
+      #estimate(part, next) {
+        let total = wallEstimate(next.sum, next.longest, next.width);
+        for (const [name2, p] of this.#parts)
+          if (name2 !== part) total += wallEstimate(p.sum, p.longest, p.width);
+        return total;
+      }
+    };
+  }
+});
+
 // src/core/scheduler/capacity.ts
 function widthLease(lease, width) {
   return {
@@ -9674,6 +9813,26 @@ function tellLiveness(store, consumer, told) {
 function markRest(store, worktreeId, at2) {
   store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ at: at2 }));
 }
+function resumesRest(store, worktree) {
+  return worktree !== null && restAfterHeartbeats(store, worktree) !== null;
+}
+function restAfterHeartbeats(store, worktree) {
+  const rest = readRest(store, worktree.id);
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
+  return rest === null || rest.at < heartbeat ? null : rest;
+}
+function readRest(store, worktreeId) {
+  const text3 = store.meta.get(daemonRestMetaKey(worktreeId));
+  if (text3 === null) return null;
+  try {
+    const rest = JSON.parse(text3);
+    if (!isRecord(rest) || typeof rest.at !== "number") return null;
+    const spawnedAt = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
+    return { at: rest.at, ...spawnedAt };
+  } catch {
+    return null;
+  }
+}
 function revisionMetaKey(worktreeId) {
   return worktreeMetaKey("revisionTold", worktreeId);
 }
@@ -9975,6 +10134,12 @@ var init_ledger = __esm({
       broken = false;
       /** The last test file listing failed; the next revision lists again. */
       listingFailed = false;
+      /**
+       * A departure drain pauses the backlog (011 C9 as amended 2026-10-21, row
+       * 011-93): `ordered` and `fastQueued` hold only the drain's files, and the
+       * paused ones stay queued for the next daemon.
+       */
+      backlogPaused = false;
       /** Global setups that failed to start a run, and their outcomes owed to the sink (task 001-382). */
       setups = new SetupFailures();
       #dirty = /* @__PURE__ */ new Set();
@@ -10007,10 +10172,21 @@ var init_ledger = __esm({
       }
       /**
        * The queue in run order: D5 step 4 classes, shortest last known duration
-       * first within one; `turn` false orders it as if the backlog's turn were not due.
+       * first within one; `turn` false orders it as if the backlog's turn were
+       * not due. While the backlog is paused, only the drain's files.
        */
       ordered(turn = this.queue.backlogTurn()) {
-        return this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null, turn);
+        const ordered = this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null, turn);
+        return this.backlogPaused ? ordered.filter((ref2) => this.#drains(ref2)) : ordered;
+      }
+      /** Whether a fast file `where` holds is queued to run: while the backlog is paused, a drain's. */
+      fastQueued(where3 = () => true) {
+        return this.queue.hasFast((ref2) => where3(ref2) && (!this.backlogPaused || this.#drains(ref2)));
+      }
+      /** A file a drain runs: an edit's work or a promoted file, the open explicit checkpoint's, a re-run. */
+      #drains(ref2) {
+        if (this.queue.isFirstGroup(ref2) || this.file(ref2)?.rerunPending === true) return true;
+        return this.checkpoints.active?.explicit === true && this.checkpoints.idFor(ref2) !== null;
       }
       /**
        * The slow class of the queue in the order the slow tier runs it (spec 004
@@ -11441,7 +11617,8 @@ function rekeyContent(context, ledger, revision) {
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs2) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
+  const misses = ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
+  quietQueued(context, ledger, misses);
   const recent = touched.filter((ref2) => ledger.queue.isRecent(ref2));
   return {
     rekeyed,
@@ -11556,6 +11733,7 @@ var init_revision2 = __esm({
     init_failures2();
     init_notes2();
     init_omitted_test_files();
+    init_quiet();
     init_runner_work_bound();
     CATCH_UP_KEYED_PATHS = 10;
   }
@@ -11769,10 +11947,12 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), turnDue =
   let lane = null;
   let slot2 = null;
   let skipped2 = false;
+  const now = context.now();
   for (const ref2 of ledger.ordered(turnDue)) {
     if (picked.length >= size) break;
     const at2 = laneOf(context, ref2);
     if (busy.has(at2) || lane !== null && at2 !== lane) continue;
+    if (backlog && context.quiet?.waits(at2, now) === true) continue;
     const file = ledger.file(ref2);
     const key2 = file?.key ?? null;
     if (!file || key2 === null || file.blocked !== null) {
@@ -12137,59 +12317,99 @@ var init_tiers = __esm({
   }
 });
 
-// src/core/scheduler/backlog.ts
-function cancelsBacklog(context, ledger, revision, tier) {
-  if (queuesEdit(context, ledger, tier)) return true;
-  const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
-  return revision?.changes.some((change2) => inputs2.has(change2.path)) ?? false;
+// src/core/scheduler/quiet.ts
+function quietQueued(context, ledger, misses) {
+  const { quiet } = context;
+  if (quiet === void 0) return;
+  const now = context.now();
+  const lanes = /* @__PURE__ */ new Set();
+  for (const { ref: ref2 } of misses) if (ledger.queue.has(ref2)) lanes.add(laneOf(context, ref2));
+  for (const lane of lanes) quiet.queued(lane, now);
 }
-function queuesEdit(context, ledger, tier) {
-  return ledger.queue.hasRecent((ref2) => laneOf(context, ref2) === tier.lane);
+function quietSleepMs(context, ledger) {
+  const { quiet } = context;
+  if (quiet === void 0) return null;
+  const now = context.now();
+  const ends = quiet.ends(now);
+  if (ends.size === 0) return null;
+  let earliest = null;
+  for (const [lane, until] of ends) {
+    if (!ledger.queue.hasFast((ref2) => laneOf(context, ref2) === lane)) continue;
+    earliest = earliest === null ? until : Math.min(earliest, until);
+  }
+  return earliest === null ? null : Math.min(QUIET_RECHECK_MS, Math.max(0, earliest - now));
 }
-function backlogBudget(timeoutMs) {
-  return timeoutMs === null ? BACKLOG_TIER_BUDGET_MS : Math.min(BACKLOG_TIER_BUDGET_MS, timeoutMs / 2);
+function quietMetaKey(worktreeId) {
+  return worktreeMetaKey("quiet", worktreeId);
 }
-function wallEstimate(sum, longest2, width) {
-  return sum / width + (1 - 1 / width) * longest2;
+function publishQuiet(store, worktreeId, ends, at2) {
+  const key2 = quietMetaKey(worktreeId);
+  if (ends.size === 0) store.meta.delete(key2);
+  else store.meta.set(key2, JSON.stringify({ at: at2, lanes: Object.fromEntries(ends) }));
 }
-var BACKLOG_TIER_BUDGET_MS, BacklogWall;
-var init_backlog = __esm({
-  "src/core/scheduler/backlog.ts"() {
+function publishedQuiet(store, worktreeId, daemonStartedAt, now) {
+  const raw = store.meta.get(quietMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const { at: at2, lanes } = JSON.parse(raw);
+    if (typeof at2 !== "number" || at2 < daemonStartedAt) return /* @__PURE__ */ new Map();
+    if (typeof lanes !== "object" || lanes === null) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(lanes).filter(
+        (entry4) => typeof entry4[1] === "number" && entry4[1] > now
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+var BACKLOG_QUIET_MS, QUIET_RECHECK_MS, BacklogQuiet;
+var init_quiet = __esm({
+  "src/core/scheduler/quiet.ts"() {
     "use strict";
+    init_types();
     init_tiers();
-    BACKLOG_TIER_BUDGET_MS = 12e4;
-    BacklogWall = class {
-      constructor(budget) {
-        this.budget = budget;
+    BACKLOG_QUIET_MS = 2e4;
+    QUIET_RECHECK_MS = 1e3;
+    BacklogQuiet = class {
+      constructor(publish = () => {
+      }) {
+        this.publish = publish;
       }
-      budget;
-      #parts = /* @__PURE__ */ new Map();
-      #first = null;
-      /**
-       * Whether a file of `durationMs`, `null` when unknown and counted 0, joins
-       * a tier where its part runs `width` wide; it is counted when it does.
-       */
-      take(durationMs2, width, part = "") {
-        const was = this.#parts.get(part) ?? { count: 0, sum: 0, longest: 0, width: Infinity };
-        const w2 = Math.max(1, Math.min(was.width, Math.floor(width)));
-        const next = {
-          count: was.count + 1,
-          sum: was.sum + (durationMs2 ?? 0),
-          longest: Math.max(was.longest, durationMs2 ?? 0),
-          width: w2
-        };
-        const firstRound = (this.#first ?? part) === part && this.#parts.size <= 1 && was.count < w2;
-        if (!firstRound && this.#estimate(part, next) > this.budget) return false;
-        this.#first ??= part;
-        this.#parts.set(part, next);
-        return true;
+      publish;
+      /** When each lane's wait ends, on the scheduler's clock; an end not after now is no wait. */
+      #until = /* @__PURE__ */ new Map();
+      /** A revision or an edit's work cancelled the backlog tier of `lane` at `now`: its wait starts. */
+      cancelled(lane, now) {
+        this.#until.set(lane, now + BACKLOG_QUIET_MS);
+        this.#told(now);
       }
-      /** The tier's wall estimate with `part` as `next`: its parts' estimates summed. */
-      #estimate(part, next) {
-        let total = wallEstimate(next.sum, next.longest, next.width);
-        for (const [name2, p] of this.#parts)
-          if (name2 !== part) total += wallEstimate(p.sum, p.longest, p.width);
-        return total;
+      /** A revision's re-key queued a test file of `lane` at `now`: a wait of the lane starts again. */
+      queued(lane, now) {
+        if (!this.waits(lane, now)) return;
+        this.#until.set(lane, now + BACKLOG_QUIET_MS);
+        this.#told(now);
+      }
+      /** `squeal run --all`: every wait ends. */
+      end(now) {
+        if (this.#until.size === 0) return;
+        this.#until.clear();
+        this.#told(now);
+      }
+      /** Whether `lane` waits for quiet at `now`. */
+      waits(lane, now) {
+        const until = this.#until.get(lane);
+        if (until === void 0) return false;
+        if (until > now) return true;
+        this.#until.delete(lane);
+        return false;
+      }
+      /** The end of each wait after `now`, by lane. */
+      ends(now) {
+        return new Map([...this.#until].filter(([, until]) => until > now));
+      }
+      #told(now) {
+        this.publish(this.ends(now), now);
       }
     };
   }
@@ -12285,7 +12505,9 @@ var init_yields = __esm({
        * A file has ended when the runner named it (`Tier.ended`, row 011-54,
        * review `reviews/0.1.237.md` B2); a runner that names none leaves every
        * file unfinished, so its tier is cancelled by the first rule only when
-       * every file of it was re-keyed.
+       * every file of it was re-keyed. A backlog tier cancelled by either of the
+       * first two rules starts its lane's wait for quiet (`BacklogQuiet`, row
+       * 011-82); a backlog slot, whose runner cannot cancel, starts none.
        */
       check(context, ledger, tiers, revision) {
         this.#forget(ledger);
@@ -12296,6 +12518,8 @@ var init_yields = __esm({
             if (decision === "yield")
               for (const { file, key: key2 } of unfinished(tier))
                 this.#cut.set(file.id, { key: key2, applied: file.resultsApplied });
+            else if (tier.kind === "backlog" && tier.slot !== true)
+              context.quiet?.cancelled(tier.lane, context.now());
             tier.cancel?.abort(decision);
           }
           const standing = typeof decision === "string" ? { kind: "yields" } : decision;
@@ -12407,6 +12631,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
   const promoted = promotedOf(store, worktreeId, daemon, now);
   const yields = yieldsOf(store, worktreeId, daemon);
+  const quiet = quietOf(store, worktreeId, daemon, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -12465,6 +12690,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ...run4 === void 0 ? {} : { files: run4.testFiles.length },
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now);
+    const quietUntil = pending.kind === "queued" ? quiet.get(pending.lane) : void 0;
+    if (pending.kind === "queued" && pending.behind === null && quietUntil !== void 0) {
+      if (!promoted.has(testFileId(ref2))) {
+        const held2 = { ...pending, quietUntil };
+        return { testFile: ref2, state, pending: held2, standing: held2 };
+      }
+    }
     if (pending.kind === "queued" && promoted.has(testFileId(ref2))) {
       const tier = pending.behind === null ? void 0 : yieldIn(runs, lane, policy, yields);
       const promotedReason = {
@@ -12527,6 +12759,11 @@ function yieldsOf(store, worktreeId, daemon) {
   if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Map();
   return publishedYields(store, worktreeId, record.startedAt);
 }
+function quietOf(store, worktreeId, daemon, now) {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Map();
+  return publishedQuiet(store, worktreeId, record.startedAt, now);
+}
 function yieldIn(runs, lane, policy, yields) {
   const run4 = runIn(runs, lane, policy);
   return run4 === void 0 ? void 0 : yields.get(run4.id);
@@ -12579,6 +12816,7 @@ var init_standing = __esm({
     init_load();
     init_claims();
     init_promotions();
+    init_quiet();
     init_runner_work_bound();
     init_slow3();
     init_yields();
@@ -12597,7 +12835,7 @@ function groupId(s) {
     case "running":
       return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
@@ -14065,21 +14303,24 @@ var init_handover = __esm({
 
 // src/core/scheduler/bootstrap.ts
 import { randomUUID as randomUUID6 } from "node:crypto";
-async function scan(context, ledger) {
+async function scan(context, ledger, resumesRest2 = false) {
   const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
   const refined = readRefined2(store, worktreeId) ?? latest?.number ?? 0;
-  const revision = await keys.bootstrap(context.head) ?? latest;
+  const started2 = await keys.bootstrap(context.head);
+  const revision = started2 ?? latest;
   ledger.revision = revision === null ? { number: 0, ...await context.head() } : { number: revision.number, head: revision.head, dirty: revision.dirty };
-  if (revision === null) return [];
-  return store.revisions.range(worktreeId, refined, revision.number).map(({ changes }) => new Set(changes.map((change2) => change2.path)));
+  const unseen = revision === null ? [] : store.revisions.range(worktreeId, refined, revision.number).map(({ changes }) => new Set(changes.map((change2) => change2.path)));
+  if (!resumesRest2 || keys.seededAtStart.length === 0) return unseen;
+  const startPaths = started2 === null ? [] : [...unseen.pop() ?? []];
+  return [...unseen, /* @__PURE__ */ new Set([...startPaths, ...keys.seededAtStart])];
 }
 function readRefined2(store, worktreeId) {
   const raw = store.meta.get(refinedMetaKey(worktreeId));
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
 }
-async function baseline(context, ledger, unseen = []) {
+async function baseline(context, ledger, unseen = [], resumesRest2 = false) {
   const { store, keys, worktreeId, policy } = context;
   const bound = runnerPartBound(context);
   const failures = /* @__PURE__ */ new Map();
@@ -14150,6 +14391,7 @@ async function baseline(context, ledger, unseen = []) {
   );
   const lookupOnly2 = policy.baseline.onStart === "lookup-only";
   if (lookupOnly2) ledger.checkpoints.finish("abandoned");
+  const holds3 = lookupOnly2 && !resumesRest2;
   const handed = handover(context, ledger, previousKeys);
   const changed2 = /* @__PURE__ */ new Set([...unseen.flatMap((paths) => [...paths]), ...handed.changed]);
   const recent = new Set(handed.first);
@@ -14159,7 +14401,7 @@ async function baseline(context, ledger, unseen = []) {
   for (const paths of unseen) {
     const large = isCatchUp(context, ledger, paths);
     const reached = ledger.recentOf(paths);
-    const cut = lookupOnly2 || large || ![...reached].some((id2) => missed.has(id2)) ? null : await cutAtStart(context, ledger, paths, bound);
+    const cut = holds3 || large || ![...reached].some((id2) => missed.has(id2)) ? null : await cutAtStart(context, ledger, paths, bound);
     for (const id2 of cut?.direct ?? []) direct.add(id2);
     for (const id2 of cut?.reached ?? reached) {
       const kept2 = !large && (cut === null || cut.kept === null || cut.kept.has(id2));
@@ -14167,7 +14409,8 @@ async function baseline(context, ledger, unseen = []) {
     }
   }
   for (const file of misses) {
-    if (lookupOnly2 && !handed.pending.has(file.id)) continue;
+    const reached = resumesRest2 && (recent.has(file.id) || catchUp.has(file.id));
+    if (lookupOnly2 && !handed.pending.has(file.id) && !reached) continue;
     const first2 = recent.has(file.id);
     const priority = priorityOf(file, changed2, direct);
     ledger.enqueue(file, priority, false, first2, !first2 && catchUp.has(file.id));
@@ -14841,6 +15084,8 @@ var init_keying = __esm({
       options;
       cache;
       index;
+      /** The paths the last `bootstrap` hashed for the first time, without a revision (row 011-91). */
+      seededAtStart = [];
       isDeclaredInput = (path) => this.#isDeclared(path);
       #runnerClosures = /* @__PURE__ */ new Map();
       #environments = /* @__PURE__ */ new Map();
@@ -14921,9 +15166,10 @@ var init_keying = __esm({
           revision = await this.reconcile({ trigger: "start", paths }, head);
         }
         const linked = await linkedFiles(this.options.root, listed5, this.extraFiles());
-        await this.#seed(
-          [...listed5, ...linked].filter((path) => this.cache.hashOf(path) === void 0)
+        this.seededAtStart = [...listed5, ...linked].filter(
+          (path) => this.cache.hashOf(path) === void 0
         );
+        await this.#seed(this.seededAtStart);
         this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
         return revision;
       }
@@ -14936,7 +15182,8 @@ var init_keying = __esm({
        * Sets the environment hash of every project from runner output (D3). The
        * runner files and each project's installed lockfile are hashed first; the
        * lockfile is looked up from the project's root (review N8). Each project
-       * gets its hashes at the formats read as one too (011 C3, task 011-38).
+       * gets its hashes at the formats read as one too (011 C3, task 011-38), and
+       * under the definition before task 011-85 (`formerReadAsOne`, 011-90).
        */
       async setEnvironments(environments2) {
         const { squealVersion: squealVersion2, env } = this.options;
@@ -14949,24 +15196,28 @@ var init_keying = __esm({
         }
         this.#dependencies = await this.#lockfiles.set(environments2);
         const lockPaths = this.#lockfiles.paths();
-        await this.track([...this.#environmentFiles, ...lockPaths]);
+        const formerFiles = environments2.flatMap((environment) => environment.formerFiles ?? []);
+        await this.track([...this.#environmentFiles, ...formerFiles, ...lockPaths]);
         await this.#watchIgnored(lockPaths);
         const hashOf2 = (path) => this.cache.hashOf(path);
         const hashes = /* @__PURE__ */ new Map();
         const readAsOne = /* @__PURE__ */ new Map();
         const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
         for (const environment of environments2) {
+          const dependencies = this.#dependencies.get(environment.project);
           const core = coreEnvironmentInputs({
             squealVersion: squealVersion2,
-            installedDependencies: this.#dependencies.get(environment.project)?.environment ?? "none",
+            installedDependencies: dependencies?.environment ?? "none",
             allowlist: policy.env.allowlist,
             ...env === void 0 ? {} : { env }
           });
           hashes.set(environment.project, environmentHash(core, environment, hashOf2));
-          readAsOne.set(
-            environment.project,
-            formats.map((format) => environmentHash(core, environment, hashOf2, format))
-          );
+          readAsOne.set(environment.project, [
+            ...formats.map((format) => ({
+              environment: environmentHash(core, environment, hashOf2, format)
+            })),
+            ...formerReadAsOne(core, environment, dependencies, hashOf2)
+          ]);
         }
         return this.index.setInstalled(
           hashes,
@@ -15410,7 +15661,7 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile, keyedAt)
     ...keyedAt === void 0 ? {} : { keyedAt },
     ...catchUp ? { catchUp: true } : {}
   };
-  ledger.settle(touched.values(), changed2, options);
+  quietQueued(context, ledger, ledger.settle(touched.values(), changed2, options));
   settleFailures(ledger, part.failures, part.retrying, changed2, options);
   if (!catchUp && keyedAt !== void 0 && part.cut !== void 0) {
     const { kept: kept2, reached } = editWork(context, ledger, part.cut, changed2, part.direct);
@@ -15430,6 +15681,7 @@ var init_refinement = __esm({
     init_failures2();
     init_notes2();
     init_omitted_test_files();
+    init_quiet();
     init_revision2();
     init_runner_work_bound();
   }
@@ -15790,6 +16042,12 @@ var init_slow_tier = __esm({
       #slotMissedSince = null;
       /** This worktree's waiter's mark is in the slot's directory. */
       #marked = false;
+      /**
+       * A departure drain (011 C9 and 004 D2 as amended 2026-10-21, row
+       * 011-93): it leaves no waiter mark and takes no permit while another
+       * worktree's mark is fresh, so a live session's slow files go first.
+       */
+      draining = false;
       /** The last pass took the slot: its next skips one turn for another worktree's mark. */
       #tookLast = false;
       #slotNoted = false;
@@ -15802,6 +16060,10 @@ var init_slow_tier = __esm({
       #preemptions = 0;
       /** What this tier last published, as stored, so `close` clears only its own. */
       #published = null;
+      /** A `run --slow` request is open: the daemon is in use while slow files are pending (row 011-92). */
+      get requested() {
+        return this.#requested;
+      }
       /**
        * `run --slow`: the pending slow files run behind fast work, whatever the
        * turns and the load (trigger b; D3 as amended 2026-10-14, task 004-59). A
@@ -15856,7 +16118,7 @@ var init_slow_tier = __esm({
         const { maxParallel } = context.policy.slow;
         const load = guard.ranUnderLoad;
         const want = guard.idle && this.host.fastIdle() ? Math.min(maxParallel, refs2.length) : 1;
-        const yieldTurn = this.#tookLast && othersWaitingForSlot(dir2, context.worktreeId);
+        const yieldTurn = (this.#tookLast || this.draining) && othersWaitingForSlot(dir2, context.worktreeId);
         const owner2 = { pid: process.pid, worktreeId: context.worktreeId };
         const slot2 = yieldTurn ? null : acquireSlowSlot({ dir: dir2, owner: owner2, permits: maxParallel, want });
         if (slot2 === null) return this.#waitAtSlot(context, dir2, yieldTurn);
@@ -15885,19 +16147,25 @@ var init_slow_tier = __esm({
        * 2026-10-09), its fast backlog (a baseline, a checkpoint, `run --all`)
        * queued or running unless a `run --slow` request is open (D2 as amended
        * 2026-10-14, task 004-60), so a warm-up's slow files never contend with
-       * its fast ones.
+       * its fast ones. During a departure drain only the drain's fast work
+       * counts: the paused backlog is not pending (`fastIdle`, row 011-93).
        */
       #fastFirst() {
         return this.host.editPending() || !this.#requested && !this.host.fastIdle();
       }
       /**
        * Another worktree holds the slot, or this one yields its turn: the files
-       * wait at the slot, marked as a waiter, and retry at `SLOW_RECHECK_MS`.
+       * wait at the slot, marked as a waiter unless draining, and retry at
+       * `SLOW_RECHECK_MS`.
        */
       #waitAtSlot(context, dir2, yielded) {
         this.#tookLast = false;
-        markSlotWaiter(dir2, context.worktreeId);
-        this.#marked = true;
+        if (this.draining) {
+          this.#unmark(dir2, context.worktreeId);
+        } else {
+          markSlotWaiter(dir2, context.worktreeId);
+          this.#marked = true;
+        }
         this.#publish({ kind: "waiting", for: "slot" });
         if (!yielded) this.#slotMissed(context, dir2);
         this.#arm();
@@ -16300,6 +16568,7 @@ var init_warm_up = __esm({
 });
 
 // src/core/scheduler/scheduler.ts
+import { setTimeout as delay4 } from "node:timers/promises";
 function createScheduler(options) {
   return new TierScheduler(options);
 }
@@ -16330,6 +16599,7 @@ var init_scheduler2 = __esm({
     init_mutex();
     init_observed2();
     init_queue();
+    init_quiet();
     init_rerun();
     init_retries();
     init_revision2();
@@ -16389,6 +16659,10 @@ var init_scheduler2 = __esm({
       #inFlight = /* @__PURE__ */ new Map();
       /** Which tiers in flight a revision, a runner part or a promotion cancels (C4 step 5, row 011-51). */
       #yields = new TierYields();
+      /** The lanes that wait for quiet after a backlog tier's cancel (C4 step 5, row 011-82). */
+      #quiet = new BacklogQuiet(
+        (ends, at2) => publishQuiet(this.options.store, this.options.worktreeId, ends, at2)
+      );
       /** A check of the tiers in flight a file's end queued under the lock, not run yet (row 011-54). */
       #endCheck = false;
       /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
@@ -16428,6 +16702,8 @@ var init_scheduler2 = __esm({
       #busy;
       /** The keys other worktrees stored since the last read (spec 011 C4 step 3, task 011-23). */
       #storedKeys;
+      /** A departure drain paused the backlog (`pauseBacklog`, row 011-93). */
+      #backlogPaused = false;
       async start() {
         await this.#lock.run(async () => {
           if (this.#context) throw new Error("squeal scheduler: started twice");
@@ -16467,11 +16743,13 @@ var init_scheduler2 = __esm({
             ...options.runnerPartMs === void 0 ? {} : { runnerPartMs: options.runnerPartMs },
             ...options.incarnation === void 0 ? {} : { incarnation: options.incarnation },
             ...options.predecessor === void 0 ? {} : { predecessor: options.predecessor },
-            ...this.#capacity === null ? {} : { capacity: this.#capacity }
+            ...this.#capacity === null ? {} : { capacity: this.#capacity },
+            quiet: this.#quiet
           };
           const ledger = new Ledger(context);
+          ledger.backlogPaused = this.#backlogPaused;
           this.#ledger = ledger;
-          this.#waitChanges = await scan(context, ledger);
+          this.#waitChanges = await scan(context, ledger, options.resumesRest === true);
           stopWaiting(context);
           const missing2 = await missingInstall(options.root);
           this.#awaitingInstall = missing2 !== null;
@@ -16582,7 +16860,7 @@ var init_scheduler2 = __esm({
         stopWaiting(context);
         const unseen = this.#waitChanges;
         this.#waitChanges = [];
-        await baseline(context, ledger, unseen);
+        await baseline(context, ledger, unseen, this.options.resumesRest === true);
       }
       /**
        * The install went while the scheduler runs (`npm ci` removes
@@ -16623,6 +16901,7 @@ var init_scheduler2 = __esm({
           const { policy } = this.#started().context;
           const only2 = lane === void 0 ? void 0 : { lane, isSlow: slowView(policy).isSlow };
           const record2 = queueFullSuite(ledger, force, warmUp2, only2);
+          this.#quiet.end(this.#started().context.now());
           if (warmUp2) this.#warmUp.start(this.#started().context, ledger, record2);
           return record2;
         };
@@ -16699,12 +16978,34 @@ var init_scheduler2 = __esm({
         return new Promise((resolve25) => this.#idle.push(resolve25));
       }
       /**
-       * Work queued or running, slow files included: the daemon is in use while
-       * it has any (D10 as amended, task 001-415).
+       * Use is the work an edit, a request or a wait caused (011 C9 as amended
+       * 2026-10-21, row 011-92): an edit's work and a promoted file
+       * (`#editPending`), what is owed (`owedWork`), an open `run --slow`
+       * request. The backlog is no use, queued or running.
        */
-      busy() {
-        if (this.#closed) return false;
-        return this.#inFlight.size > 0 || !this.#isIdle() || this.slowPending();
+      inUse() {
+        if (this.#closed || !this.#ledger) return false;
+        if (this.#slow.requested && this.slowPending()) return true;
+        return this.#editPending() || this.owedWork() !== null;
+      }
+      /**
+       * A departure drain runs only its session's work (011 C9 as amended
+       * 2026-10-21, row 011-93): the backlog stays queued, the slow lane waits
+       * only for the drain's fast work (004 D2), and the slow tier yields the
+       * slot to another worktree's fresh mark. `false` ends the pause.
+       */
+      pauseBacklog(on) {
+        if (this.#closed || this.#backlogPaused === on) return;
+        this.#backlogPaused = on;
+        if (this.#ledger) this.#ledger.backlogPaused = on;
+        this.#slow.draining = on;
+        this.#slow.preempt();
+        this.#pump();
+      }
+      queued() {
+        if (this.#closed || !this.#ledger) return 0;
+        const { queue } = this.#ledger;
+        return queue.fastSize + queue.slowSize;
       }
       slowPending() {
         if (this.#closed || !this.#ledger) return false;
@@ -16847,6 +17148,7 @@ var init_scheduler2 = __esm({
                 await this.#claimWake();
                 continue;
               }
+              if (await this.#quietWake()) continue;
               if (this.#inFlight.size === 0 && !this.#woken) break;
               await this.#nextEvent();
             }
@@ -16989,7 +17291,7 @@ var init_scheduler2 = __esm({
       #freeLaneQueued() {
         const { context, ledger } = this.#started();
         const busy = this.#busyLanes();
-        return ledger.queue.hasFast((ref2) => !busy.has(laneOf(context, ref2)));
+        return ledger.fastQueued((ref2) => !busy.has(laneOf(context, ref2)));
       }
       /** The lanes no tier may start in now. */
       #busyLanes() {
@@ -17026,6 +17328,23 @@ var init_scheduler2 = __esm({
         } finally {
           stop2.abort();
         }
+      }
+      /**
+       * A lane with a fast file queued waits for quiet (C4 step 5 as amended
+       * 2026-10-21, row 011-82): the pump looks again at the wait's end, at most
+       * `QUIET_RECHECK_MS` on, or on `#notify`. False when no such lane waits.
+       */
+      async #quietWake() {
+        const { context, ledger } = this.#started();
+        const ms2 = quietSleepMs(context, ledger);
+        if (ms2 === null) return false;
+        const stop2 = new AbortController();
+        try {
+          await Promise.race([this.#nextEvent(), delay4(ms2, void 0, { signal: stop2.signal })]);
+        } finally {
+          stop2.abort();
+        }
+        return true;
       }
       /** Settles when `#notify` is called; at once when it was since the pump's last pass began. */
       #nextEvent() {
@@ -17068,7 +17387,7 @@ var init_scheduler2 = __esm({
        */
       #hasWork() {
         if (this.#awaitingInstall || this.#reinstalled) return false;
-        return this.#runnerWork.size > 0 || (this.#ledger?.queue.fastSize ?? 0) > 0;
+        return this.#runnerWork.size > 0 || this.#ledger?.fastQueued() === true;
       }
       /**
        * An edit's fast work goes before a slow file (spec 004 D2 as amended):
@@ -17082,10 +17401,13 @@ var init_scheduler2 = __esm({
           ({ tier }) => tier.kind !== "backlog" && !isSlowLane(tier.lane)
         );
       }
-      /** No fast work pending or running: an idle slow tier may take several files (D2). */
+      /**
+       * No fast work pending or running: an idle slow tier may take several
+       * files (D2). During a drain, the paused backlog is not pending (row 011-93).
+       */
       #fastIdle() {
         const work = this.#runnerWork;
-        if (work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0) return false;
+        if (work.size > 0 || work.refining || this.#ledger?.fastQueued() === true) return false;
         return this.#lanes().every(isSlowLane);
       }
       /**
@@ -20645,8 +20967,14 @@ var init_graph = __esm({
 // src/runners/vitest/project.ts
 import { basename as basename12, dirname as dirname22, join as join52 } from "node:path";
 function configFiles(vitest) {
+  return collect([vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]);
+}
+function projectConfigFiles(vitest, project) {
+  return collect([vitest.vite.config, project.vite.config]);
+}
+function collect(configs) {
   const files2 = /* @__PURE__ */ new Set();
-  for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
+  for (const config of configs) {
     if (config.configFile) files2.add(config.configFile);
     for (const dep of config.configFileDependencies) files2.add(dep);
   }
@@ -20662,7 +20990,7 @@ async function projectInputs(vitest, project) {
     ...missingCandidates(setup, extensions),
     ...missingCandidates(globalSetup, extensions)
   ]);
-  return { configFiles: configFiles(vitest), setup, globalSetup, missing: missing2 };
+  return { configFiles: projectConfigFiles(vitest, project), setup, globalSetup, missing: missing2 };
 }
 function isProjectInput(inputs2, path) {
   return inputs2.configFiles.has(path) || inputs2.setup.files.has(path) || inputs2.globalSetup.files.has(path) || inputs2.missing.has(path);
@@ -20707,12 +21035,13 @@ var init_project = __esm({
 });
 
 // src/runners/vitest/related.ts
-async function relatedSpecifications(vitest, changed2) {
+async function relatedSpecifications(vitest, listed5, changed2) {
   if (changed2.length === 0) return [];
   const related = [...changed2];
   vitest.config.related = related;
   try {
-    const specs = await vitest.getRelevantTestSpecifications();
+    const specifications = vitest.specifications;
+    const specs = await specifications.filterTestsBySource([...listed5]);
     if (vitest.config.related !== related) {
       throw new Error("vitest adapter: a run ended during the related walk and reset it");
     }
@@ -20744,7 +21073,7 @@ async function affectedTestFiles(vitest, specs, changed2) {
   };
   let related;
   try {
-    related = await relatedSpecifications(vitest, changed2);
+    related = await relatedSpecifications(vitest, specs, changed2);
   } catch {
     related = await walkRelated(specs, changed2);
   }
@@ -21268,9 +21597,22 @@ var init_config_stamps = __esm({
 import { fileURLToPath as fileURLToPath6 } from "node:url";
 function projectEnvironment(project, inputs2, context) {
   const { paths } = context;
+  const files2 = environmentFiles(inputs2.configFiles, inputs2, paths);
+  const former = environmentFiles(configFiles(project.vitest), inputs2, paths);
+  return {
+    project: project.name,
+    runnerName: "vitest",
+    runnerVersion: context.runnerVersion,
+    adapterVersion: context.adapterVersion,
+    resolvedConfig: canonicalConfig(project, paths, context.injected),
+    files: files2,
+    ...sameList(former, files2) ? {} : { formerFiles: former }
+  };
+}
+function environmentFiles(configs, inputs2, paths) {
   const files2 = /* @__PURE__ */ new Set();
   const inputFiles = [
-    ...inputs2.configFiles,
+    ...configs,
     ...inputs2.setup.files,
     ...inputs2.globalSetup.files,
     ...inputs2.missing
@@ -21279,14 +21621,7 @@ function projectEnvironment(project, inputs2, context) {
     const rel2 = paths.toRelative(file);
     if (rel2 !== null && paths.isProjectFile(file)) files2.add(rel2);
   }
-  return {
-    project: project.name,
-    runnerName: "vitest",
-    runnerVersion: context.runnerVersion,
-    adapterVersion: context.adapterVersion,
-    resolvedConfig: canonicalConfig(project, paths, context.injected),
-    files: [...files2].sort(compare)
-  };
+  return [...files2].sort(compare);
 }
 function canonicalConfig(project, paths, injected = {}) {
   const {
@@ -49887,7 +50222,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.250";
+  if (true) return "0.1.251";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -50094,6 +50429,12 @@ function queuedStep(s, context) {
   const promoted = s.promoted === true;
   if (s.behind === null) {
     if (promoted) return same("queued, promoted", { kind: "none", text: "" });
+    if (s.quietUntil !== void 0) {
+      return same(
+        `queued: the ${laneText(s.lane)} lane waits for quiet until ${timeText(s.quietUntil)}, 20 s after the last edit that queued a file of it, since an edit cancelled its backlog tier`,
+        { kind: "command", args: "run --all", text: "{command} ends the wait" }
+      );
+    }
     return {
       reason: "queued; no run is open and nothing recorded holds {it}",
       short: "queued, nothing recorded holds {it}",
@@ -52236,6 +52577,7 @@ function codexStatusLine(cwd, env) {
 }
 
 // src/core/daemon/daemon.ts
+init_liveness();
 init_fs();
 init_notes();
 init_slow2();
@@ -53748,6 +54090,7 @@ init_liveness();
 
 // src/core/daemon/lifecycle.ts
 init_store3();
+init_text();
 init_types();
 
 // src/core/daemon/sliced-writes.ts
@@ -53882,7 +54225,7 @@ function startTimers(context) {
   const unused = (at2) => {
     if (context.lastUsed === void 0 || presence.draining === true) return;
     const work = context.work?.() ?? null;
-    if (work !== null && (work.busy || work.revision !== seenRevision)) {
+    if (work !== null && (work.inUse || work.revision !== seenRevision)) {
       seenRevision = work.revision;
       context.used?.(at2);
       return;
@@ -53891,11 +54234,12 @@ function startTimers(context) {
     const registered = store.consumers.list(worktreeId).length;
     if (registered === 0) return;
     markRest(store, worktreeId, at2);
-    context.shutdown("idle", unusedText(unusedMs, registered));
+    context.shutdown("idle", unusedText(unusedMs, registered, work?.queued ?? 0));
   };
   const countPresence = (at2) => {
     if (store.consumers.list(worktreeId).length > 0) {
       presence.lastPresentAt = at2;
+      if (presence.draining === true) context.pauseBacklog?.(false);
       presence.draining = false;
       context.active(at2);
       return false;
@@ -53922,6 +54266,7 @@ function startTimers(context) {
     } else if (presence.draining !== true) {
       presence.draining = true;
       presence.drainingFor = pending;
+      context.pauseBacklog?.(true);
       const them = pending === SLOW_FILES ? "them" : "that work";
       context.note(
         `the last session ended with ${pending} pending; this daemon runs ${them} before it exits, for at most ${duration(idleMs)} (daemon.idleExitMinutes)`
@@ -53999,9 +54344,10 @@ function boundText(pending, idleMs) {
   const after = `${duration(idleMs)} after its last session ended (daemon.idleExitMinutes)`;
   return pending === SLOW_FILES ? `daemon stopped: slow files were still pending ${after}` : `daemon stopped: still pending ${after}: ${pending}; the next daemon resumes what is owed`;
 }
-function unusedText(unusedMs, registered) {
+function unusedText(unusedMs, registered, queued) {
   const sessions = registered === 1 ? "1 session registered" : `${registered} sessions registered`;
-  return `daemon stopped: no edit, run, wait or request for ${duration(unusedMs)} (daemon.unusedExitMinutes), with ${sessions}; the next hook starts it again`;
+  const left = queued === 0 ? "" : ` and ${plural(queued, "test file")} queued`;
+  return `daemon stopped: no edit, run, wait or request for ${duration(unusedMs)} (daemon.unusedExitMinutes), with ${sessions}${left}; the next hook starts it again`;
 }
 function stepDownNote(own, hook) {
   return `daemon stopped: hooks at Squeal ${hook} are newer than this daemon (${own}); their daemon starts once this one exits`;
@@ -54682,6 +55028,8 @@ var Daemon = class {
   #token = randomUUID7();
   /** The incarnation registered before this daemon's (`predecessorIncarnation`, task 001-268). */
   #predecessor = void 0;
+  /** Its start resumes a rest (`resumesRest`, read before it registers; row 011-91). */
+  #resumesRest = false;
   #version = squealVersion();
   #phase = "starting";
   #policy = DEFAULT_POLICY;
@@ -54794,7 +55142,8 @@ var Daemon = class {
       },
       work: () => this.#loop === null || this.#phase === "stopping" ? null : {
         revision: this.#loop.scheduler.status().revision,
-        busy: this.#loop.scheduler.busy()
+        inUse: this.#loop.scheduler.inUse(),
+        queued: this.#loop.scheduler.queued()
       },
       // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
       observedChanged: () => this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
@@ -54803,6 +55152,8 @@ var Daemon = class {
       slowPending: () => this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.slowPending(),
       // Task 001-219: so are an explicit checkpoint and a new failure's re-run.
       owedWork: () => this.#loop !== null && this.#phase !== "stopping" ? this.#loop.scheduler.owedWork() : null,
+      // Row 011-93: the drain runs its session's work and leaves the backlog queued.
+      pauseBacklog: (on) => this.#loop?.scheduler.pauseBacklog(on),
       idleGc: () => {
         if (this.#phase !== "stopping") this.#idleGc.check();
       },
@@ -54858,6 +55209,7 @@ var Daemon = class {
     store.transaction(() => {
       const existing = store.worktrees.get(id2);
       this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id2));
+      this.#resumesRest = resumesRest(store, existing);
       store.testFileKeys.releaseRunning(id2);
       if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id2));
       else store.meta.set(daemonExitMetaKey(id2), this.#incarnation());
@@ -54996,6 +55348,7 @@ var Daemon = class {
         // Its registration's: the writer of the re-key moves a wait trusts (task 001-268).
         incarnation: this.#incarnation(),
         ...this.#predecessor === void 0 ? {} : { predecessor: this.#predecessor },
+        ...this.#resumesRest ? { resumesRest: true } : {},
         runsDir: storePaths2(commonDir).runsDir,
         describeFailure: describeFailure2,
         now: this.#now,
