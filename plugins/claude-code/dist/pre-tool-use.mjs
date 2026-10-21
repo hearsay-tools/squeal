@@ -3528,7 +3528,7 @@ function moveAside(database, at) {
 // src/core/status/test-frame.ts
 var V8_FRAME = /^\s*at (.+?)\s*$/;
 var V8_POSITION = /^(.+):(\d+):(\d+)$/;
-var PYTEST_ENTRY = /^([^\s:]+):(\d+):(?: |$)/;
+var PYTEST_ENTRY = /^(\S[^:]*):(\d+):(?: |$)/;
 var NATIVE_ENTRY = /^\s*File "(.+)", line (\d+)/;
 function v8Position(frame) {
   const open = frame.indexOf(" (");
