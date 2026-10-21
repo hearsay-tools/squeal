@@ -642,10 +642,10 @@ function cap(text, max) {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 function excludedProjectsText(entries) {
-  const quoted = (list, join13) => {
+  const quoted = (list, join14) => {
     const all = list.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join13} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join14} ${last}`;
   };
   const names = entries.filter((entry3) => !entry3.includes("*"));
   const patterns = entries.filter((entry3) => entry3.includes("*"));
@@ -5642,45 +5642,6 @@ function shellWord(text) {
   return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
 }
 
-// src/harness/shared/coverage.ts
-var VITEST_ONLY = {
-  vitest: true,
-  vitestConfig: null,
-  nodeTest: [],
-  slow: null
-};
-
-// src/core/daemon/version.ts
-import { readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname4, join as join10 } from "node:path";
-import { fileURLToPath } from "node:url";
-var UNKNOWN_VERSION = "0.0.0-unknown";
-var PACKAGE_NAME = "squeal";
-function squealVersion() {
-  if (true) return "0.1.245";
-  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
-}
-function manifestVersion(module) {
-  let dir = dirname4(fileURLToPath(module));
-  for (; ; ) {
-    const version = readVersion(join10(dir, "package.json"));
-    if (version !== null) return version;
-    const parent = dirname4(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-function readVersion(path) {
-  try {
-    const parsed = JSON.parse(readFileSync6(path, "utf8"));
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const { name, version } = parsed;
-    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
-  } catch {
-    return null;
-  }
-}
-
 // src/harness/shared/context.ts
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
@@ -5712,6 +5673,45 @@ function openContext(input, location2, options = {}) {
   } catch (error) {
     store.close();
     throw error;
+  }
+}
+
+// src/harness/shared/coverage.ts
+var VITEST_ONLY = {
+  vitest: true,
+  vitestConfig: null,
+  nodeTest: [],
+  slow: null
+};
+
+// src/core/daemon/version.ts
+import { readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname4, join as join10 } from "node:path";
+import { fileURLToPath } from "node:url";
+var UNKNOWN_VERSION = "0.0.0-unknown";
+var PACKAGE_NAME = "squeal";
+function squealVersion() {
+  if (true) return "0.1.247";
+  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
+}
+function manifestVersion(module) {
+  let dir = dirname4(fileURLToPath(module));
+  for (; ; ) {
+    const version = readVersion(join10(dir, "package.json"));
+    if (version !== null) return version;
+    const parent = dirname4(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function readVersion(path) {
+  try {
+    const parsed = JSON.parse(readFileSync6(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const { name, version } = parsed;
+    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+  } catch {
+    return null;
   }
 }
 
@@ -5895,6 +5895,56 @@ function bashCommand(input) {
 // src/harness/shared/stop-slow.ts
 var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
 
+// src/harness/shared/version-copies.ts
+import {
+  chmodSync as chmodSync2,
+  copyFileSync as copyFileSync2,
+  cpSync,
+  existsSync as existsSync6,
+  mkdirSync as mkdirSync4,
+  readdirSync as readdirSync3,
+  readFileSync as readFileSync7,
+  renameSync as renameSync2,
+  rmSync as rmSync4
+} from "node:fs";
+import { basename, dirname as dirname5, join as join11 } from "node:path";
+var CLI = join11("dist", "cli", "squeal.mjs");
+var SKILL = join11("skills", "squeal", "SKILL.md");
+var LAUNCHER_SOURCE = join11("bin", "squeal-launcher");
+var LAUNCHER = join11("bin", "squeal");
+function dataLauncher(data) {
+  return join11(data, LAUNCHER);
+}
+function copyOf(data, version) {
+  return join11(data, "versions", version);
+}
+function keptCli(data, version) {
+  const cli = join11(copyOf(data, version), CLI);
+  return existsSync6(cli) ? cli : null;
+}
+function dataOfCopy(cli) {
+  const versions = dirname5(dirname5(dirname5(dirname5(cli))));
+  return cli.endsWith(`/${CLI}`) && basename(versions) === "versions" ? dirname5(versions) : null;
+}
+
+// src/harness/codex/command.ts
+import { existsSync as existsSync7 } from "node:fs";
+import { join as join12 } from "node:path";
+function codexCommand(env, bundleCli) {
+  const data = env.PLUGIN_DATA === void 0 || env.PLUGIN_DATA === "" ? dataOfCopy(bundleCli) : env.PLUGIN_DATA;
+  if (data !== null && existsSync7(dataLauncher(data))) return shellWord(dataLauncher(data));
+  const root = env.PLUGIN_ROOT;
+  const cli = root === void 0 || root === "" ? bundleCli : join12(root, "dist/cli/squeal.mjs");
+  return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+}
+
+// src/harness/codex/kept.ts
+var set = (value) => value === void 0 || value === "" ? null : value;
+function keptCodexCli(env, version = squealVersion()) {
+  const data = set(env.PLUGIN_DATA);
+  return data === null ? null : keptCli(data, version);
+}
+
 // src/harness/codex/handlers.ts
 var subagentStop = (input, location2, deps) => input.agent_id === void 0 ? Promise.resolve(null) : withContext(input, location2, deps, async (context) => {
   if (isRegistered(context)) await context.delivery.unregister(context.consumer);
@@ -5902,21 +5952,21 @@ var subagentStop = (input, location2, deps) => input.agent_id === void 0 ? Promi
 });
 
 // src/harness/codex/main.ts
-import { readFileSync as readFileSync8 } from "node:fs";
+import { readFileSync as readFileSync9 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/shared/session-root.ts
 import { createHash as createHash3 } from "node:crypto";
 import {
-  existsSync as existsSync6,
+  existsSync as existsSync8,
   lstatSync as lstatSync3,
-  readdirSync as readdirSync3,
-  readFileSync as readFileSync7,
-  renameSync as renameSync2,
-  rmSync as rmSync4,
+  readdirSync as readdirSync4,
+  readFileSync as readFileSync8,
+  renameSync as renameSync3,
+  rmSync as rmSync5,
   writeFileSync as writeFileSync2
 } from "node:fs";
-import { join as join11 } from "node:path";
+import { join as join13 } from "node:path";
 var AGENT_SEPARATOR = "\0";
 function rootKey(input) {
   return input.agent_id === void 0 ? input.session_id : `${input.session_id}${AGENT_SEPARATOR}${input.agent_id}`;
@@ -5946,8 +5996,8 @@ function forgetRoot(input, roots) {
   roots?.delete(rootKey(input));
 }
 function sessionRootFiles(env) {
-  const dir = join11(runtimeDir(env), "squeal-sessions");
-  const path = (key) => join11(dir, keyFile(key));
+  const dir = join13(runtimeDir(env), "squeal-sessions");
+  const path = (key) => join13(dir, keyFile(key));
   return {
     get: (key) => {
       try {
@@ -5962,17 +6012,17 @@ function sessionRootFiles(env) {
         const file = path(key);
         const temp = `${file}.${process.pid}.tmp`;
         writeFileSync2(temp, JSON.stringify({ root: location2.root, commonDir: location2.commonDir }));
-        renameSync2(temp, file);
+        renameSync3(temp, file);
       } catch {
       }
     },
     delete: (key) => {
       try {
-        rmSync4(path(key), { force: true });
+        rmSync5(path(key), { force: true });
         if (key.includes(AGENT_SEPARATOR)) return;
         const agents = `${keyFile(key)}-`;
-        for (const name of readdirSync3(dir)) {
-          if (name.startsWith(agents)) rmSync4(join11(dir, name), { force: true });
+        for (const name of readdirSync4(dir)) {
+          if (name.startsWith(agents)) rmSync5(join13(dir, name), { force: true });
         }
       } catch {
       }
@@ -5990,19 +6040,11 @@ function hash(text) {
 function readKept(file) {
   const stat = lstatSync3(file, { throwIfNoEntry: false });
   if (stat === void 0 || !stat.isFile() || stat.uid !== currentUid()) return null;
-  const kept = JSON.parse(readFileSync7(file, "utf8"));
+  const kept = JSON.parse(readFileSync8(file, "utf8"));
   if (!isRecord(kept) || typeof kept.root !== "string" || typeof kept.commonDir !== "string") {
     return null;
   }
-  return existsSync6(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
-}
-
-// src/harness/codex/command.ts
-import { join as join12 } from "node:path";
-function codexCommand(env, bundleCli) {
-  const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join12(root, "dist/cli/squeal.mjs");
-  return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+  return existsSync8(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
 }
 
 // src/harness/codex/input.ts
@@ -6061,10 +6103,10 @@ async function runCodexHandler(name, handler, stdin, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync8(0, "utf8");
+    stdin = readFileSync9(0, "utf8");
   } catch {
   }
-  const cli = fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url));
+  const cli = keptCodexCli(process.env) ?? fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url));
   const result = await runCodexHandler(name, handler, stdin, {
     env: process.env,
     sessionRoots: sessionRootFiles(process.env),
