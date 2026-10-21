@@ -16,3 +16,6 @@ None. The first run on a Mac is owed to `lessons.md` (D10).
 ## Amendment log
 
 Every accepted deviation is a dated line here and an edit to the section of `spec.md` it changes (`docs/process.md`, step 6).
+
+- 2026-10-21, 014-04 (worker 9f6ca37e), accepted by the coordinator: D8 amended. Added `memory` (`private` or `rss`), `orphans[]`, `daemon.permits`, `process.runId`, `escaped` and `flags`, the tier, checkpoint and descendants objects, and `unknown` as `[{ what, why }]`; `work.tier` and `work.checkpoint` became the arrays `work.tiers` and `work.checkpoints`, since a key holding a list is plural. The shipped keys are D8's block and `src/core/ps/shape.ts`.
+- 2026-10-21, 014-04, accepted by the coordinator: D11 amended. The stage model and stage signatures live in `src/core/ps/model.ts`, so `shape.ts` holds only the D8 contract (465 lines in one file, over the styleguide's signal).

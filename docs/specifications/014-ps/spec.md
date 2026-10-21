@@ -167,21 +167,26 @@ Files no live process uses
 
 A flagged row starts with `!` and has its reason and an `ends it:` line under it. The numbers above are an example; their layout is the contract, and the worker who builds D8 settles the column widths.
 
-`--json` prints one object. It is versioned (styleguide), and `render` is a layer on top of it:
+`--json` prints one object. It is versioned (styleguide), and `render` is a layer on top of it. The types are `src/core/ps/shape.ts` (`PS_SHAPE_VERSION` 1), as amended for 014-04:
 
 ```text
-{ v: 1, at, sampleMs, platform,
-  host: { load, cpus, cpuPressure, memoryPressure, memTotal, memAvailable, swapTotal, swapUsed, busyCpuPct },
+{ v: 1, at, sampleMs, platform, memory: "private" | "rss",
+  host: { load, cpus, cpuPressure, memoryPressure: { some, full }, memTotal, memAvailable, swapTotal, swapUsed, busyCpuPct },
   squeal: { daemons, testProcesses, cpuPct, cpuShare, privateBytes, memoryShare, swapBytes, pool: { slots, held } },
   repositories: [ { commonDir, current, daemons: [ {
-      pid, phase, state, worktreeId, root, version, harness, startedAt, cpuPct, cpuMs, privateBytes, swapBytes,
-      work: { pending, running, tier, checkpoint, departedAt, drainLeftMs, lastUsedAt },
+      pid, phase, state, worktreeId, root, version, harness, startedAt, cpuPct, cpuMs, privateBytes, swapBytes, permits,
+      work: { pending, running, tiers: [ { runId, lane, files, startedAt, checkpointId } ],
+              checkpoints: [ { id, startedAt, lane, files } ], departedAt, drainLeftMs, lastUsedAt },
       consumers: [ { harnessPid, alive, version } ],
-      processes: [ { pid, lane, runner, files, cpuPct, cpuMs, privateBytes, swapBytes, nice, startedAt, descendants } ],
+      processes: [ { pid, lane, runner, runId, files, escaped, cpuPct, cpuMs, privateBytes, swapBytes, nice, startedAt,
+                     descendants: { count, cpuPct, cpuMs, privateBytes, swapBytes, list }, flags } ],
       flags: [ { flag, reason, command } ] } ] } ],
+  orphans: [ { pid, comm, startedAt, flags } ],
   files: [ { flag, path, count, bytes, command } ],
-  flags: number, unknown: [ <what could not be read, and why> ] }
+  flags: number, unknown: [ { what, why } ] }
 ```
+
+`memory` says what every `privateBytes` holds: `rss` on macOS (D10), where sums count shared pages more than once. `orphans` holds the flagged processes no live daemon owns (`orphan-test-process`, `orphan-waiter`, `foreign-permit`), which have no daemon block. A key that holds a list has a plural name. `pending` and `running` count `test_file_keys`. `flags` counts every flag of the snapshot.
 
 A value that `ps` could not read is `null`, and `unknown` names it. It never reads as zero (vision, principle 2).
 
@@ -211,7 +216,8 @@ On macOS (`process.platform` is `darwin`), from `research/daemon-discovery.md` 5
 - `src/core/ps/source.ts`: the interface between the platform and the rest: process table, per-process reads, locks, host files.
 - `src/core/ps/proc.ts`: the Linux source, reading `/proc` under a root path that tests replace with a fixture tree.
 - `src/core/ps/darwin.ts`: the macOS source (D10), over an injected command runner that tests replace with fixture outputs.
-- `src/core/ps/discover.ts` (D2), `work.ts` (D3), `measure.ts` (D4), `processes.ts` (D5), `host.ts` (D6), `flags.ts` (D7), `shape.ts` (the D8 types), `render.ts` (the D8 text).
+- `src/core/ps/shape.ts`: the D8 JSON types only, the public and versioned contract. `src/core/ps/model.ts`: the model the stages pass and one function type per stage; it imports from `shape.ts`, never the reverse (014-04).
+- `src/core/ps/discover.ts` (D2), `work.ts` (D3), `measure.ts` (D4), `processes.ts` (D5), `host.ts` (D6), `flags.ts` (D7), `render.ts` (the D8 text).
 - `src/cli/ps.ts`: argument parsing, the sample and the exit code; an entry in `main.ts` and its help text.
 - D9's heartbeat write belongs to the daemon (`src/core/daemon/`).
 
