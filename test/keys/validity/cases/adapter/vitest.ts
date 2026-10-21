@@ -137,7 +137,11 @@ export const VITEST_RUNS: readonly Case[] = [
   vitest(
     "a fileEnded callback that throws ends no run and loses no result (row 011-54)",
     "011-54: a throw inside Vitest's reporter hook would end the run crashed and store nothing; the adapter notes it and the run completes",
-    { files: BASIC, runs: [{ files: SLOW, touched: [], fileEndedThrows: true }] },
+    // A held file with no skip, so a change to how a skip is read leaves this case alone.
+    {
+      files: FAILING,
+      runs: [{ files: [ref("test/held.test.ts")], touched: [], fileEndedThrows: true }],
+    },
   ),
   vitest(
     "a run cancelled with a cause completes none of its held files (row 011-56)",
