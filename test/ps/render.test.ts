@@ -9,7 +9,7 @@ import {
   share,
   thousands,
 } from "../../src/core/ps/render-units.js";
-import type { PsFlag, PsTestProcess } from "../../src/core/ps/shape.js";
+import type { PsDaemon, PsFlag, PsTestProcess } from "../../src/core/ps/shape.js";
 import {
   EXAMPLE_AT,
   exampleDaemon,
@@ -28,6 +28,7 @@ import {
  */
 
 const MIB = 2 ** 20;
+const MINUTE = 60_000;
 const lines = (text: string) => text.split("\n");
 const brief = (s = exampleSnapshot()) => render(s, { full: false });
 
@@ -141,6 +142,35 @@ describe("a sum that leaves an unknown value out is a lower bound (task 014-24)"
     expect(lines(brief(s)).find((l) => l.includes(" 3704700 "))).toBe(
       "    vitest           3704700  fork worker                4m   10%     0m29s  300M    0     nice 10, +2 children",
     );
+  });
+});
+
+describe("the departure in the work text (task 014-27, lessons.md P7)", () => {
+  const consumer = { harnessPid: 3212240, alive: true, version: "0.1.235" };
+  const workOf = (overrides: Partial<PsDaemon>) => {
+    const daemons = [exampleDaemon({ work: { ...exampleDaemon().work, tiers: [] }, ...overrides })];
+    const s = exampleSnapshot({ repositories: [exampleRepository("/r/.git", false, daemons)] });
+    const row = lines(brief(s)).find((l) => l.includes(" 3704612 ")) ?? "";
+    return row.slice(row.indexOf("264M") + 6);
+  };
+  const departed = (minutesAgo: number) => ({
+    ...exampleDaemon().work,
+    tiers: [],
+    departedAt: EXAMPLE_AT - minutesAgo * MINUTE,
+  });
+
+  test("a daemon with a consumer and a departure before its start prints no session left", () => {
+    expect(workOf({ consumers: [consumer], work: departed(20 * 60) })).toBe("1 session");
+  });
+
+  test("a departure before its start is a predecessor's, and a consumer that came after a departure holds it: neither prints", () => {
+    expect(workOf({ work: departed(20 * 60) })).toBe("idle");
+    expect(workOf({ consumers: [consumer], work: departed(5) })).toBe("1 session");
+  });
+
+  test("its own departure, after its start and with no consumer, prints; with its start unknown, none does", () => {
+    expect(workOf({ work: departed(5) })).toBe("session left 5m ago");
+    expect(workOf({ startedAt: null, work: departed(5) })).toBe("idle");
   });
 });
 
