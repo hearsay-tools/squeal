@@ -63,7 +63,7 @@ export function unknownOf({ shape, named, costs }: UnknownInput): PsUnknown[] {
   if (noMemory.length > 0)
     name(
       "processes privateBytes",
-      `${counted(noMemory)} left before their memory was read: ${pids(noMemory)}`,
+      `${counted(noMemory)} left before ${noMemory.length === 1 ? "its" : "their"} memory was read: ${pids(noMemory)}`,
     );
   const noSwap = entries.filter(
     ([, c]) => c !== null && c.privateBytes !== null && c.swapBytes === null,
