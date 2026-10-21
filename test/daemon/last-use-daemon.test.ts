@@ -20,8 +20,13 @@ import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor, withStore } 
  * `#lastUsed` alone. No consumer registers, so nothing else moves them.
  */
 
+/** The row as `ps` reads it, against the start its daemon record holds. */
 const read = (repo: FixtureRepo): DaemonUsed | null =>
-  withStore(repo, (store) => readDaemonUsed(store.meta.get(daemonUsedMetaKey(repo.worktreeId))));
+  withStore(repo, (store) => {
+    const startedAt = store.worktrees.get(repo.worktreeId)?.daemon?.startedAt;
+    if (startedAt === undefined) return null;
+    return readDaemonUsed(store.meta.get(daemonUsedMetaKey(repo.worktreeId)), startedAt);
+  });
 
 /** The row once it held one value over 6 heartbeats and checks of 50 ms. */
 async function settled(repo: FixtureRepo): Promise<DaemonUsed> {
