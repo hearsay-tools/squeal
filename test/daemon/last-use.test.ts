@@ -16,7 +16,8 @@ import { delay, waitFor } from "./helpers.js";
  * Spec 014 D9 (row 014-08): with each heartbeat the daemon records when it
  * was last used and last active, `daemon-used:<worktree id>` in `meta`, so
  * `squeal ps` can read what only the daemon's memory held. Its reader knows
- * `{ v: 1, usedAt, activeAt }` and nothing else.
+ * `{ v: 1, usedAt, activeAt }` and nothing else, and reads a row a
+ * predecessor left as none: a daemon's use is never before its start.
  */
 
 const WT = "0123456789abcdef";
@@ -31,11 +32,39 @@ describe("the last-use row (spec 014 D9)", () => {
     recordDaemonUsed(store, WT, { usedAt: 2_000, activeAt: 1_500 });
     const value = store.meta.get(daemonUsedMetaKey(WT));
     expect(JSON.parse(value ?? "null")).toEqual({ v: 1, usedAt: 2_000, activeAt: 1_500 });
-    expect(readDaemonUsed(value)).toEqual({ usedAt: 2_000, activeAt: 1_500 });
+    expect(readDaemonUsed(value, 1_000)).toEqual({ usedAt: 2_000, activeAt: 1_500 });
+  });
+
+  it("reads a row a predecessor left under a daemon of a release that writes none as none", () => {
+    const store = open(fakeCommonDir());
+    const record = (startedAt: number) => ({
+      socketPath: "/tmp/squeal.sock",
+      startedAt,
+      heartbeatAt: startedAt,
+      heartbeatIntervalMs: 5_000,
+      squealVersion: "0.0.0",
+    });
+    store.worktrees.upsert(worktree(WT, "/wt", { daemon: record(1_000) }));
+    recordDaemonUsed(store, WT, { usedAt: 4_000, activeAt: 3_000 });
+    const read = () =>
+      readDaemonUsed(
+        store.meta.get(daemonUsedMetaKey(WT)),
+        store.worktrees.get(WT)?.daemon?.startedAt ?? 0,
+      );
+    expect(read()).toEqual({ usedAt: 4_000, activeAt: 3_000 });
+
+    // The older release registers and leaves the row as it found it.
+    store.worktrees.setDaemon(WT, record(5_000));
+    expect(read()).toBeNull();
+    // Its own start is this daemon's first use: the row it writes at registration.
+    expect(readDaemonUsed('{"v":1,"usedAt":5000,"activeAt":5000}', 5_000)).toEqual({
+      usedAt: 5_000,
+      activeAt: 5_000,
+    });
   });
 
   it("reads a v: 1 value with a key added beside its own", () => {
-    expect(readDaemonUsed('{"v":1,"usedAt":5,"activeAt":4,"later":true}')).toEqual({
+    expect(readDaemonUsed('{"v":1,"usedAt":5,"activeAt":4,"later":true}', 0)).toEqual({
       usedAt: 5,
       activeAt: 4,
     });
@@ -61,7 +90,7 @@ describe("the last-use row (spec 014 D9)", () => {
       '{"v":1,"usedAt":5.5,"activeAt":4}',
       '{"v":1,"usedAt":1e400,"activeAt":4}',
     ]) {
-      expect(readDaemonUsed(value), String(value)).toBeNull();
+      expect(readDaemonUsed(value, 0), String(value)).toBeNull();
     }
   });
 });
@@ -123,7 +152,7 @@ function beating(registered: boolean): Beating {
     store,
     clocks,
     logged,
-    read: () => readDaemonUsed(store.meta.get(daemonUsedMetaKey(WT))),
+    read: () => readDaemonUsed(store.meta.get(daemonUsedMetaKey(WT)), 1_000),
   };
 }
 
