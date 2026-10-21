@@ -1,0 +1,197 @@
+{
+  "interrupt": {
+    "onRegression": true
+  },
+  "stop": {
+    "blockOnKnownFailures": false,
+    "requireFullSuite": false,
+    "requireSlowSuite": false,
+    "waitMs": 0
+  },
+  "baseline": {
+    "onStart": "lookup-only"
+  },
+  "inputs": {
+    "packages/cezar/src/contract-import-boundaries.test.ts": [
+      "packages/cezar/src/**/*.ts",
+      "packages/cezar/test/**/*.ts",
+      "packages/web/src/**/*.{ts,tsx}",
+      "packages/web/e2e/**/*.ts",
+      "packages/api-client/src/**/*.ts",
+      "packages/contract/src/**/*.ts"
+    ],
+    "packages/cezar/src/contract-subpaths.test.ts": [
+      "packages/contract/src/**",
+      "packages/contract/package.json",
+      "packages/api-client/src/**",
+      "packages/api-client/package.json"
+    ],
+    "packages/web/src/test/card-2-contrast.test.ts": [
+      "packages/web/src/**/*.tsx",
+      "packages/web/src/test/card-2-contrast.baseline.json",
+      "packages/web/src/styles/index.css"
+    ],
+    "packages/web/e2e/*.e2e.ts": [
+      "packages/contract/src/**",
+      "packages/contract/package.json",
+      "packages/api-client/src/**",
+      "packages/api-client/package.json",
+      "packages/cezar/src/**",
+      "packages/cezar/scripts/**",
+      "packages/cezar/package.json",
+      "packages/cezar/tsconfig.json",
+      "packages/web/src/**",
+      "packages/web/public/**",
+      "packages/web/index.html",
+      "packages/web/scripts/**",
+      "packages/web/vite.config.ts",
+      "packages/web/package.json",
+      "package.json",
+      "pnpm-workspace.yaml",
+      ".ai/scripts/test-env-up.sh",
+      ".ai/scripts/build-e2e.sh",
+      ".ai/scripts/e2e-served-repo.mjs",
+      ".ai/scripts/e2e-lanes.mjs",
+      ".ai/browsers/agent-browser.md",
+      "packages/web/e2e/**/*.{ts,mjs}",
+      "packages/web/e2e/fixtures/**"
+    ],
+    ".github/scripts/*.test.cjs": [
+      ".github/workflows/**",
+      ".github/scripts/**"
+    ],
+    ".github/scripts/automated-code-review.workflow.test.cjs": [
+      ".github/codex/prompts/review.md",
+      ".github/schemas/review-findings.schema.json",
+      "AGENTS.md"
+    ],
+    ".github/scripts/issue-intake.workflow.test.cjs": [
+      ".github/codex/prompts/issue-intake.md",
+      ".github/schemas/issue-intake.schema.json"
+    ],
+    ".github/scripts/issue-template.test.cjs": [
+      ".github/ISSUE_TEMPLATE/task.yml"
+    ],
+    ".github/scripts/ci.workflow.test.cjs": [
+      ".ai/agentic.config.json",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "docs/sdlc/ci.md",
+      "package.json"
+    ],
+    ".github/scripts/cockpit-test-sequencer.test.cjs": [
+      "packages/web/e2e/**"
+    ],
+    ".github/scripts/e2e-fetch.test.cjs": [
+      "packages/web/e2e/fetch-setup.mjs"
+    ],
+    ".github/scripts/e2e-runner.test.cjs": [
+      ".ai/scripts/e2e.sh"
+    ],
+    ".github/scripts/upstream-ledger.test.cjs": [
+      ".ai/upstream/**"
+    ],
+    ".github/scripts/vitest-actions-report.test.cjs": [
+      "vitest.config.ts"
+    ],
+    ".github/scripts/transcript-facts-responsiveness.workflow.test.cjs": [
+      "packages/cezar/scripts/measure-transcript-facts-*.mjs"
+    ],
+    "scripts/squeal-browser.test.mjs": [
+      "package.json",
+      "vitest.config.ts",
+      "packages/*/vitest.config.ts",
+      "packages/web/e2e/vitest.config.ts",
+      "packages/web/e2e/smoke.e2e.ts",
+      "packages/web/e2e/environment.ts",
+      ".ai/scripts/test-env-up.sh"
+    ],
+    "scripts/test-changed.test.mjs": [
+      "scripts/test-changed.mjs",
+      ".github/scripts/change-surface.cjs",
+      ".github/scripts/fixtures/docs-path-cases.cjs",
+      "package.json"
+    ],
+    ".github/scripts/change-surface-readers.test.cjs": [
+      "packages/**",
+      "squeal.config.json"
+    ],
+    "packages/cezar/src/pid-file.testkit.test.ts": [
+      "packages/cezar/src/**/*.test.ts",
+      "packages/cezar/src/**/*.testkit.ts",
+      "packages/cezar/test/**/*.ts"
+    ],
+    "packages/cezar/src/test-task-env.test.ts": [
+      "scripts/test-git-env.mjs"
+    ],
+    "packages/cezar/test/unit/cursor-hang-stdin.test.ts": [
+      "packages/cezar/scripts/mock-cursor-hang-stdin.mjs"
+    ],
+    "packages/cezar/test/unit/test-env-launcher.test.ts": [
+      ".ai/scripts/test-env-up.sh",
+      ".ai/scripts/test-env-down.sh",
+      ".ai/scripts/build-e2e.sh",
+      ".ai/scripts/resolve-browser-launch.mjs",
+      ".ai/scripts/e2e-served-repo.mjs",
+      ".ai/scripts/e2e-lanes.mjs",
+      ".ai/browsers/agent-browser.md"
+    ],
+    "packages/cezar/test/unit/web-typecheck.test.ts": [
+      "package.json",
+      "packages/web/package.json",
+      "packages/cezar/package.json"
+    ]
+  },
+  "env": {
+    "allowlist": []
+  },
+  "runner": {
+    "tierSize": 4,
+    "timeoutMs": 600000
+  },
+  "nodeTest": [
+    {
+      "name": "test:unit",
+      "cwd": "packages/cezar",
+      "argv": [
+        "--import",
+        "../../scripts/test-git-env.mjs",
+        "--import",
+        "tsx"
+      ],
+      "include": [
+        "test/unit/*.test.ts"
+      ]
+    },
+    {
+      "name": "root:test:unit",
+      "argv": [
+        "--import",
+        "./scripts/test-git-env.mjs"
+      ],
+      "include": [
+        ".github/scripts/*.test.cjs",
+        "scripts/*.test.mjs"
+      ]
+    }
+  ],
+  "slow": {
+    "include": [
+      "packages/cezar/src/agent-config/model-settings/shared.test.ts"
+    ],
+    "maxWorkers": 1,
+    "maxParallel": 1
+  },
+  "daemon": {
+    "idleExitMinutes": 240
+  },
+  "store": {
+    "retentionDays": 7,
+    "maxSizeMb": null
+  },
+  "vitest": {
+    "exclude": [
+      "packages/web/e2e/**"
+    ]
+  }
+}

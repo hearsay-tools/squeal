@@ -1,0 +1,3 @@
+Revision: 5 · 1413cf05 + 5, dirty
+Selected: packages/cezar/src/agent-config/model-settings/shared.test.ts
+Named test files at revision 5: no known failures; 1 test file, each with a current result, after 5.7 s. Worktree: known failures 0; not current: 825 of 831 test files (825 unknown)

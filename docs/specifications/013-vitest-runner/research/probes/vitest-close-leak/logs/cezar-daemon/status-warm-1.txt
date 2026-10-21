@@ -1,0 +1,3 @@
+Revision: 1 · 1413cf05 + 1, dirty
+Selected: packages/cezar/src/core/cursor-cli-flags.test.ts
+Named test files at revision 1: no known failures; 1 test file, each with a current result, after 4.6 s. Worktree: known failures 0; not current: 827 of 831 test files (827 unknown)

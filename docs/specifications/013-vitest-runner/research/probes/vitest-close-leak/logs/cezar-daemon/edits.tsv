@@ -1,0 +1,7 @@
+15:03:29Z	warm-1	packages/cezar/src/core/cursor-cli-flags.test.ts	4746	21.26
+15:03:51Z	touch-1	packages/cezar/src/core/cursor-cli-flags.test.ts	15550	21.25
+15:04:14Z	touch-2	packages/cezar/src/core/cursor-cli-flags.test.ts	16846	21.60
+15:04:37Z	touch-3	packages/cezar/src/core/cursor-cli-flags.test.ts	15788	20.87
+15:04:48Z	slow-1	packages/cezar/src/agent-config/model-settings/shared.test.ts	5845	19.53
+15:04:58Z	slow-2	packages/cezar/src/agent-config/model-settings/shared.test.ts	4291	19.23
+15:05:10Z	slow-3	packages/cezar/src/agent-config/model-settings/shared.test.ts	5583	20.28

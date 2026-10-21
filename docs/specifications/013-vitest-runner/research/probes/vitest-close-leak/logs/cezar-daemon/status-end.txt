@@ -1,0 +1,9 @@
+Revision: 7 · 1413cf05 + 7, dirty
+Known failures: 0; not current: 825 of 831 test files (825 unknown)
+Affected checks: 67 passed (61 tests, 6 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 7; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 current at revision 7. Squeal runs them after the fast tests.
+Outstanding:
+  825 test files never run at their inputs, nothing queued them (the baseline is lookup-only): api-client: packages/api-client/src/protocol/tool-display.test.ts, api-client: packages/api-client/src/utils/project-scope.test.ts, contract: packages/contract/src/attention.test.ts and 822 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 825 test files not current here
+Not run: Vitest test files matching "packages/web/e2e/**", excluded by squeal.config.json
+More: `squeal status --full` adds the worktree and daemon, the 825 test files without a result one by one and 3 notes

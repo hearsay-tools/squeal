@@ -1,0 +1,9 @@
+{"versions":{"vitest":"4.1.10","vite":"8.1.4","rolldown":"1.1.5"},"mode":"break","cycle":3,"failed":0,"alive":1,"load1":"21.57","heapUsedMiB":19,"privMiB":79}
+{"versions":{"vitest":"5.0.3","vite":"8.3.2","rolldown":"1.2.12"},"mode":"break","cycle":3,"failed":0,"alive":1,"load1":"20.41","heapUsedMiB":19,"privMiB":82}
+{"versions":{"vitest":"5.0.5","vite":"8.3.5","rolldown":"1.2.15"},"mode":"break","cycle":3,"failed":0,"alive":1,"load1":"20.41","heapUsedMiB":19,"privMiB":79}
+{"versions":{"vitest":"4.1.12","vite":"8.3.5","rolldown":"1.2.15"},"mode":"break","cycle":3,"failed":0,"alive":1,"load1":"20.41","heapUsedMiB":19,"privMiB":79}
+{"versions":{"vitest":"4.1.10","vite":"7.3.7","rolldown":"none"},"mode":"break","cycle":3,"failed":0,"alive":1,"load1":"20.41","heapUsedMiB":18,"privMiB":53}
+{"versions":{"vitest":"4.1.10","vite":"8.1.4","rolldown":"1.1.5"},"mode":"break-noplugins","cycle":3,"failed":0,"alive":3,"load1":"24.59","heapUsedMiB":19,"privMiB":81}
+{"versions":{"vitest":"5.0.3","vite":"8.3.2","rolldown":"1.2.12"},"mode":"break-noplugins","cycle":3,"failed":0,"alive":3,"load1":"24.59","heapUsedMiB":20,"privMiB":82}
+{"versions":{"vitest":"5.0.5","vite":"8.3.5","rolldown":"1.2.15"},"mode":"break-noplugins","cycle":3,"failed":0,"alive":3,"load1":"24.63","heapUsedMiB":20,"privMiB":84}
+{"versions":{"vitest":"4.1.12","vite":"8.3.5","rolldown":"1.2.15"},"mode":"break-noplugins","cycle":3,"failed":0,"alive":3,"load1":"24.63","heapUsedMiB":19,"privMiB":79}

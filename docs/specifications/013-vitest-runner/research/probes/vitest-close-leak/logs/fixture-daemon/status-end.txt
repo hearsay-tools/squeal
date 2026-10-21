@@ -1,0 +1,6 @@
+Revision: 9 · 9072d60e + 9, dirty
+Known failures: 0; all 4 test files current
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 9; `squeal run --all` requests one)
+Slow tier: 1 test file; 1 current at revision 9. Squeal runs them after the fast tests.
+More: `squeal status --full` adds the worktree and daemon
