@@ -131,6 +131,39 @@ describe("leftover-temp", () => {
     ]);
   });
 
+  it("lists only the names Squeal makes, each as the code that makes it names it (lessons.md P1)", () => {
+    const tmp = host.places.tempDir;
+    const made = [
+      keyDir("00000000000000aa"), // daemon/scratch.ts
+      keyDir("00000000000000bb.old-0a1b2c3d"), // daemon/scratch.ts, moved aside
+      join(tmp, `squeal-${UID}-00000000000000cc-AbC123`), // daemon/scratch.ts, the fallback
+      join(tmp, "squeal-e2e-AbC123"), // test/e2e/harness.ts
+      join(tmp, "squeal-e2e-oc-AbC123"), // test/e2e/opencode-fixture.ts
+      join(tmp, "squeal-e2e-pi-AbC123"), // test/e2e/pi-fixture.ts
+      join(tmp, "squeal-update-AbC123"), // cli/update.ts
+    ].map((dir) => dirAged(dir, 2 * HOUR, 3));
+    for (const dir of [
+      join(tmp, "squeal-review-x"),
+      join(tmp, "squeal-review-014-13-r2"),
+      join(tmp, `squeal-evals-${UID}`),
+      join(tmp, "squeal-e2e-cache"),
+      join(tmp, "squeal-e2e-AbC12"),
+      join(tmp, "squeal-e2e-AbC1234"),
+      join(tmp, "squeal-update-AbC-12"),
+      join(tmp, `squeal-${UID}-00000000000000cc`),
+      join(tmp, `squeal-${UID + 1}-00000000000000cc-AbC123`),
+      join(tmp, "squeal-001-428-1001"),
+      join(tmp, "sq-AbC123"),
+      keyDir("not-a-key"),
+      keyDir("00000000000000AA"),
+      keyDir("00000000000000aa.old-x"),
+    ])
+      dirAged(dir, 2 * HOUR, 3);
+    const findings = flag(modelOf({ host }));
+    expect(findings.leftovers).toEqual(made.sort());
+    expect(findings.files[0]?.count).toBe(made.length);
+  });
+
   it("leaves a live daemon's key, its moved-aside copy and its own fallback directory alone", () => {
     const live = liveDaemon(4100);
     dirAged(keyDir(live.key), 5 * HOUR);
@@ -159,17 +192,17 @@ describe("leftover-temp", () => {
   });
 
   it.each([
-    ["a space", "a b", "a"],
-    ["a single quote", "it's", "it"],
-    ["a double quote", 'say "hi"', "say"],
-    ["an equals sign", "a=b", "a"],
-    ["a colon", "a:b", "a"],
+    ["a space", " b"],
+    ["a single quote", "'s"],
+    ["a double quote", ' "hi"'],
+    ["an equals sign", "=b"],
+    ["a colon", ":b"],
   ])(
     "a name with %s is used whole as a working directory, an argument or an <option>=<path>; the name it starts with is not (reviews/wave-2.md B2)",
-    (_, name, neighbor) => {
-      const dirs = (end: string) => [
-        join(host.places.tempDir, `squeal-e2e-${end}`),
-        keyDir(`00000000000000aa ${end}`),
+    (_, suffix) => {
+      const dirs = (u: number) => [
+        join(host.places.tempDir, `squeal-e2e-AbC12${u}`),
+        keyDir(`00000000000000a${u}`),
       ];
       const uses = [
         (dir: string) => ({ cwd: dir }),
@@ -177,14 +210,12 @@ describe("leftover-temp", () => {
         (dir: string) => ({ cmdline: ["node", `--dir=${dir}`] }),
       ];
       const processes = uses.flatMap((use, u) =>
-        dirs(`${u}-${name}`).map((dir, d) => ({
+        dirs(u).map((dir, d) => ({
           pid: 700 + 2 * u + d,
-          ...use(dirAged(dir, 2 * HOUR)),
+          ...use(dirAged(`${dir}${suffix}`, 2 * HOUR)),
         })),
       );
-      const unused = uses.flatMap((_, u) =>
-        dirs(`${u}-${neighbor}`).map((dir) => dirAged(dir, 2 * HOUR)),
-      );
+      const unused = uses.flatMap((_, u) => dirs(u).map((dir) => dirAged(dir, 2 * HOUR)));
       expect(flag(modelOf({ host, processes })).leftovers).toEqual(unused.sort());
     },
   );
@@ -193,17 +224,17 @@ describe("leftover-temp", () => {
     const link = join(host.base, "tmp-link");
     symlinkSync(host.places.tempDir, link);
     const places = { ...host.places, tempDir: link };
-    dirAged(join(host.places.tempDir, "squeal-e2e-cwd"), 2 * HOUR);
-    dirAged(join(host.places.tempDir, "squeal-e2e-arg"), 2 * HOUR);
+    dirAged(join(host.places.tempDir, "squeal-e2e-cwdAAA"), 2 * HOUR);
+    dirAged(join(host.places.tempDir, "squeal-e2e-argAAA"), 2 * HOUR);
     dirAged(keyDir("00000000000000aa"), 2 * HOUR);
-    dirAged(join(host.places.tempDir, "squeal-e2e-free"), 2 * HOUR);
+    dirAged(join(host.places.tempDir, "squeal-e2e-freeAA"), 2 * HOUR);
     const processes = [
-      { pid: 700, cwd: join(host.places.tempDir, "squeal-e2e-cwd", "sub") },
-      { pid: 701, cmdline: ["node", `--dir=${join(host.places.tempDir, "squeal-e2e-arg")}`] },
+      { pid: 700, cwd: join(host.places.tempDir, "squeal-e2e-cwdAAA", "sub") },
+      { pid: 701, cmdline: ["node", `--dir=${join(host.places.tempDir, "squeal-e2e-argAAA")}`] },
       { pid: 702, cwd: keyDir("00000000000000aa") },
     ];
     const findings = flag(modelOf({ host: { ...host, places }, processes }));
-    expect(findings.leftovers).toEqual([join(link, "squeal-e2e-free")]);
+    expect(findings.leftovers).toEqual([join(link, "squeal-e2e-freeAA")]);
   });
 
   it("is not evaluated without working directories, nor with a daemon of unknown key", () => {
