@@ -1,11 +1,11 @@
 import { rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { discover, phaseOf } from "../../src/core/ps/discover.js";
+import { discover, phaseOn } from "../../src/core/ps/discover.js";
 import type { DaemonWork, FoundDaemon } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { PsSource } from "../../src/core/ps/source.js";
-import { writeProcess } from "./fixture.js";
+import { BOOT_SECONDS, UPTIME_SECONDS, writeProcess } from "./fixture.js";
 import {
   cacheScript,
   daemonProcess,
@@ -192,8 +192,20 @@ describe("identity (D2)", () => {
 });
 
 describe("phases (D2 step 3 and its table)", () => {
-  const work = (record: DaemonWork["record"]): DaemonWork => ({
-    record,
+  /** Daemon 500's start in epoch ms: the fixture's boot time plus its start ticks. */
+  const START = (BOOT_SECONDS + UPTIME_SECONDS - 600) * 1000;
+  const NOW = START + 600_000;
+  const record = (startedAt: number, heartbeatAt = NOW - 1_000) => ({
+    socketPath: "/run/user/1000/squeal-x.sock",
+    startedAt,
+    heartbeatAt,
+    heartbeatIntervalMs: 5_000,
+    squealVersion: "0.1.235",
+  });
+  type Recorded = DaemonWork["record"];
+  const work = (r: Recorded, recordedStartedAt = r?.startedAt ?? null): DaemonWork => ({
+    record: r,
+    recordedStartedAt,
     token: null,
     pending: 0,
     running: 0,
@@ -205,23 +217,63 @@ describe("phases (D2 step 3 and its table)", () => {
     lastUse: null,
     settings: { idleExitMinutes: 60, unusedExitMinutes: 30, timeoutMs: 600_000 },
   });
-  const record = {
-    socketPath: "/run/user/1000/squeal-x.sock",
-    startedAt: 1,
-    heartbeatAt: 2,
-    heartbeatIntervalMs: 5_000,
-    squealVersion: "0.1.235",
+  /** Daemon 500, holding alpha's lock unless `held` is false. */
+  const holder = (on: PsSource = source, held = true): FoundDaemon => {
+    writeProcesses(host, [daemonProcess({ pid: 500, root: alpha.root, lockPath: alpha.lockPath })]);
+    writeLocks(host, held ? [lockLine(1, 500, key(alpha.lockPath))] : []);
+    const d = discover(on, on.processTable(), host.places).daemons[0];
+    if (d === undefined) throw new Error("no daemon 500");
+    return d;
   };
 
-  test("serving holds its lock and its row names it; stopping holds it with no record", () => {
-    writeProcesses(host, [daemonProcess({ pid: 500, root: alpha.root, lockPath: alpha.lockPath })]);
-    writeLocks(host, [lockLine(1, 500, key(alpha.lockPath))]);
-    const d = daemonOf(500);
+  // Its own registration is 1.2 to 12.1 s after its process start; one before it is not its own.
+  test.each([
+    ["its own record: serving", work(record(START + 3_000)), "serving"],
+    ["its own, within btime's 1 s: serving", work(record(START - 500)), "serving"],
+    ["its record cleared, its start kept: stopping", work(null, START + 3_000), "stopping"],
+    ["a fresh worktree with no row: starting", work(null, null), "starting"],
+    ["a predecessor's cleared record: starting", work(null, START - 60_000), "starting"],
+    ["a SIGKILLed predecessor's record: starting", work(record(START - 60_000)), "starting"],
+    ["no readable store: unknown", null, "unknown"],
+  ] as const)("holding its lock, %s", (_, w, phase) => {
+    const d = holder();
     expect(d.holdsLock).toBe(true);
-    expect(phaseOf(d, work(record))).toBe("serving");
-    expect(phaseOf(d, work(null))).toBe("stopping");
-    // Holding the lock with no readable store: serving and stopping cannot be told apart.
-    expect(phaseOf(d, null)).toBe("unknown");
+    expect(phaseOn(source)(d, w, NOW)).toBe(phase);
+  });
+
+  test("an unreadable boot time is unknown wherever the rule needs the process start", () => {
+    const noBoot = Object.assign(withoutLocks(source), {
+      locks: () => source.locks(),
+      fds: (pid: number) => source.fds(pid),
+      fileKey: (path: string) => source.fileKey(path),
+      bootTime: () => null,
+    });
+    const d = holder(noBoot);
+    const phase = phaseOn(noBoot);
+    expect(phase(d, work(record(START + 3_000)), NOW)).toBe("unknown");
+    expect(phase(d, work(null, START + 3_000), NOW)).toBe("unknown");
+    expect(phase(d, work(null, null), NOW)).toBe("starting");
+  });
+
+  test("without lock state (D10): serving on its own fresh heartbeat, else unknown", () => {
+    const bare = withoutLocks(source);
+    const d = holder(bare);
+    expect(d.holdsLock).toBeNull();
+    const phase = phaseOn(bare);
+    expect(phase(d, work(record(START + 3_000)), NOW)).toBe("serving");
+    // Two intervals of 5 s and a little more.
+    expect(phase(d, work(record(START + 3_000, NOW - 10_001)), NOW)).toBe("unknown");
+    expect(phase(d, work(null, START + 3_000), NOW)).toBe("unknown");
+    expect(phase(d, work(null, null), NOW)).toBe("unknown");
+    expect(phase(d, work(record(START - 60_000)), NOW)).toBe("unknown");
+    expect(phase(d, null, NOW)).toBe("unknown");
+  });
+
+  test("holding no lock is waiting, whatever the row says", () => {
+    const d = holder(source, false);
+    expect(d.holdsLock).toBe(false);
+    expect(phaseOn(source)(d, null, NOW)).toBe("waiting");
+    expect(phaseOn(source)(d, work(record(START + 3_000)), NOW)).toBe("waiting");
   });
 
   test("waiting holds no lock: a request blocked behind the holder is not one", () => {
@@ -235,10 +287,7 @@ describe("phases (D2 step 3 and its table)", () => {
       // A lock 511 holds on another file is not its daemon lock.
       lockLine(2, 511, key(beta.lockPath)),
     ]);
-    const waiter = daemonOf(511);
-    expect(waiter.holdsLock).toBe(false);
-    expect(phaseOf(waiter, null)).toBe("waiting");
-    expect(phaseOf(waiter, work(record))).toBe("waiting");
+    expect(daemonOf(511).holdsLock).toBe(false);
   });
 
   test("a duplicate root: both found under one id, one holds the lock", () => {
@@ -254,13 +303,12 @@ describe("phases (D2 step 3 and its table)", () => {
     ]);
   });
 
-  test("a source without fds or locks (D10): the root hash, and the unknown phase", () => {
+  test("a source without fds or locks (D10): the root hash, and phases named unknown", () => {
     writeProcesses(host, [daemonProcess({ pid: 530, root: alpha.root, lockPath: beta.lockPath })]);
     const bare = withoutLocks(source);
     const discovery = discover(bare, bare.processTable(), host.places);
     const [d] = discovery.daemons;
     expect(d).toMatchObject({ worktreeId: alpha.id, idFrom: "root-hash", holdsLock: null });
-    expect(phaseOf(d as FoundDaemon, work(record))).toBe("unknown");
     expect(discovery.unknown).toEqual([
       { what: "daemon phases", why: expect.stringContaining("lock") },
     ]);

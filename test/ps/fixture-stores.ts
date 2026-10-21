@@ -11,7 +11,13 @@ import {
   storePaths,
 } from "../../src/core/store/index.js";
 import type { DaemonRecord, Store } from "../../src/core/types/index.js";
-import { type FixtureProcess, writeHost, writeProcess } from "./fixture.js";
+import {
+  BOOT_SECONDS,
+  type FixtureProcess,
+  UPTIME_SECONDS,
+  writeHost,
+  writeProcess,
+} from "./fixture.js";
 
 /*
  * Fixture hosts for discovery and work (spec 014 D2, D3; task 014-06): real
@@ -24,8 +30,10 @@ import { type FixtureProcess, writeHost, writeProcess } from "./fixture.js";
 export const HOME = "/home/user";
 export const NODE = `${HOME}/.nvm/versions/node/v24.21.0/bin/node`;
 export const PID_NAMESPACE = "pid:[4026531836]";
-/** When the fixture daemons registered: 2026-10-21 08:00 UTC. */
-export const STARTED_AT = 1_792_569_600_000;
+/** How long the fixture daemons have run. */
+export const DAEMON_AGE_S = 600;
+/** When they registered: 5 s after their process start, as a daemon does (D2). */
+export const STARTED_AT = (BOOT_SECONDS + UPTIME_SECONDS - DAEMON_AGE_S + 5) * 1000;
 export const HEARTBEAT_MS = 5_000;
 
 export interface FixtureRepo {
@@ -97,7 +105,7 @@ export function daemonProcess(o: DaemonOptions): FixtureProcess {
     pgid: o.pid,
     comm: o.comm ?? "MainThread",
     nice: 0,
-    ageS: o.ageS ?? 600,
+    ageS: o.ageS ?? DAEMON_AGE_S,
     lifeCpuPct: 2,
     cmdline: [
       NODE,
