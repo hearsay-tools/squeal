@@ -1,0 +1,117 @@
+date: 2026-10-21T03:22:53+02:00
+load before: 13.96 18.93 18.97; nproc 24
+== versions
+0.1.234
+commit 115e08d
+== 1. A full suite: own PASS
+$ squeal run --all --wait  (in a)
+Checkpoint 312dec2f-a4d2-4a10-adcf-62658f5c6596 completed at revision 0: no known failures; 2 test files, 0 already current, 2 run by the baseline checkpoint 4e0983d3-36e5-4ede-b481-d5a722751c10 it joined
+Checkpoint 312dec2f-a4d2-4a10-adcf-62658f5c6596 started at revision 0: 2 test files to run, 0 already current, joining the baseline checkpoint 4e0983d3-36e5-4ede-b481-d5a722751c10 already running them (0 of 2 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+More: `squeal status --full` adds the worktree and daemon and 1 note
+[exit 0]
+== 2. B registers and inherits
+$ hook session-start.mjs (in b)
+{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: 0 current, 0 pending, 0 stale, 0 unknown. The daemon has not listed this worktree's test files yet; these counts are not complete. Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one).\nKnown failures: 0; the daemon has not listed this worktree's test files yet\n\nSqueal runs this repository's Vitest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run Vitest to learn whether your edits broke something. Wait only when you need a result before your next step: `squeal status --wait 60000 <path>...` for the verdict on files you just changed; before you finish, `squeal status --wait 60000` or a checkpoint, `squeal run --all --wait`. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: `squeal retry <file> --reason load|environment`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest (vitest.config.ts). Squeal does not cover typecheck, build or any other test suite: run those yourself."}}
+[exit 0]
+$ squeal status --wait 60000  (in b)
+Revision: 0
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+More: `squeal status --full` adds the worktree and daemon, the 4 current results inherited from 1 worktree and 1 note
+
+Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 0.5 s. Worktree: known failures 0; all 2 test files current
+[exit 0]
+$ hook post-tool-batch.mjs (in b)
+
+[exit 0]
+$ squeal why slow.test.ts  (in b)
+Check: slow.test.ts (file-level)
+Worktree: /tmp/issue66-own-0.1.234/b
+Revision: none recorded
+
+Known state: PASS, current, observed at revision 0, commit 115e08d
+  Origin: inherited from /tmp/issue66-own-0.1.234/a at 115e08d
+
+History: no transitions in this worktree
+
+Durations (1 result, 1 pass / 0 fail): 21 ms
+Results (1, newest first):
+  PASS  2026-10-21T01:23:03.238Z  /tmp/issue66-own-0.1.234/a, revision 0, commit 115e08d, clean
+        run c4a8b020-e709-48b0-b6ab-b8a70f33b836, 21 ms, key 09e3109ac0b1
+        log: /tmp/issue66-own-0.1.234/a/.git/squeal/runs/c4a8b020-e709-48b0-b6ab-b8a70f33b836
+
+Run log: /tmp/issue66-own-0.1.234/a/.git/squeal/runs/c4a8b020-e709-48b0-b6ab-b8a70f33b836/vitest.log
+  Run c4a8b020-e709-48b0-b6ab-b8a70f33b836 in /tmp/issue66-own-0.1.234/a (inherited) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of slow.test.ts from it.
+[exit 0]
+== 3. B edits setup.ts; B's own run of slow.test.ts times out
+$ squeal run --all --wait  (in b)
+Checkpoint c1745157-da67-4245-b71b-d7843d7a5f13 has no verdict: revision 1 was recorded after the checkpoint's revision 0
+Checkpoint c1745157-da67-4245-b71b-d7843d7a5f13 started at revision 0: 0 test files to run, 0 already current
+
+Revision: 1 · 115e08d7 + 1, dirty
+Known failures: 0; not current: 2 of 2 test files (2 running), 2 tests (2 running)
+Affected checks: 0 passed, 4 running (2 tests, 2 test files loaded), 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+Outstanding:
+  2 test files in the vitest tier of 2 test files running since 03:23:05: flag.test.ts, slow.test.ts; no command runs them sooner (a running tier is not interrupted)
+More: `squeal status --full` adds the worktree and daemon
+[exit 3]
+== 4. B change notice, status, why
+$ hook post-tool-batch.mjs (in b)
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · revision 1\nRevision 1 · 115e08d7 + 1, dirty: 4 pending (2 tests, 2 test files loaded).\nSqueal saw your edit and queued 2 test files; results arrive with later tool calls, and passing ones stay silent.\nNo result for setup.ts: no test Squeal runs reads it. Run whatever tests it yourself."}}
+[exit 0]
+$ squeal status  (in b)
+Revision: 1 · 115e08d7 + 1, dirty
+Known failures: 0; not current: 2 of 2 test files (2 running), 2 tests (2 running)
+Affected checks: 0 passed, 4 running (2 tests, 2 test files loaded), 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+Outstanding:
+  2 test files in the vitest tier of 2 test files running since 03:23:05: flag.test.ts, slow.test.ts; no command runs them sooner (a running tier is not interrupted)
+More: `squeal status --full` adds the worktree and daemon
+[exit 0]
+$ squeal status --full  (in b)
+Revision: 1 · 115e08d7 + 1, dirty
+Known failures: 0; not current: 2 of 2 test files (2 running), 2 tests (2 running)
+Affected checks: 0 passed, 4 running (2 tests, 2 test files loaded), 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+Outstanding:
+  2 test files in the vitest tier of 2 test files running since 03:23:05: flag.test.ts, slow.test.ts; no command runs them sooner (a running tier is not interrupted)
+
+Worktree: /tmp/issue66-own-0.1.234/b (HEAD 115e08d, dirty at revision 1)
+Daemon: running, last heartbeat 2 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+[exit 0]
+$ squeal why slow.test.ts  (in b)
+Check: slow.test.ts (file-level)
+Worktree: /tmp/issue66-own-0.1.234/b
+Revision: 1 · 115e08d7 + 1, dirty
+
+Known state: PASS, pending (running), observed at revision 0, commit 115e08d
+  Origin: inherited from /tmp/issue66-own-0.1.234/a at 115e08d
+  Changed since revision 0: setup.ts (revision 1)
+
+History: no transitions in this worktree
+
+Durations (1 result, 1 pass / 0 fail): 21 ms
+Results (1, newest first):
+  PASS  2026-10-21T01:23:03.238Z  /tmp/issue66-own-0.1.234/a, revision 0, commit 115e08d, clean
+        run c4a8b020-e709-48b0-b6ab-b8a70f33b836, 21 ms, key 09e3109ac0b1
+        log: /tmp/issue66-own-0.1.234/a/.git/squeal/runs/c4a8b020-e709-48b0-b6ab-b8a70f33b836
+
+Run log: /tmp/issue66-own-0.1.234/a/.git/squeal/runs/c4a8b020-e709-48b0-b6ab-b8a70f33b836/vitest.log
+  Run c4a8b020-e709-48b0-b6ab-b8a70f33b836 in /tmp/issue66-own-0.1.234/a (inherited) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of slow.test.ts from it.
+[exit 0]
+== stop daemons
+Squeal daemon stopped for /tmp/issue66-own-0.1.234/a
+Squeal daemon stopped for /tmp/issue66-own-0.1.234/b
+load after: 12.57 18.38 18.79

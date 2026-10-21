@@ -1,0 +1,99 @@
+date: 2026-10-21T03:20:51+02:00
+load before: 21.53 20.79 19.44; nproc 24
+== commit db15d92
+== 1. B registers; A and B daemons start together
+$ hook session-start.mjs (in b)
+
+[exit 0]
+$ squeal status --wait 30000  (in b)
+Revision: 0
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+More: `squeal status --full` adds the worktree and daemon and 2 notes
+
+Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 0.8 s. Worktree: known failures 0; all 2 test files current
+[exit 0]
+== 2. B delivery (B's pass enters the view)
+$ hook post-tool-batch.mjs (in b)
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: 4 current (2 tests, 2 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0.\nKnown failures: 0; all 2 test files current\n\nSqueal runs this repository's Vitest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run Vitest to learn whether your edits broke something. Wait only when you need a result before your next step: `squeal status --wait 60000 <path>...` for the verdict on files you just changed; before you finish, `squeal status --wait 60000` or a checkpoint, `squeal run --all --wait`. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: `squeal retry <file> --reason load|environment`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest (vitest.config.ts). Squeal does not cover typecheck, build or any other test suite: run those yourself."}}
+[exit 0]
+== 3. wait for A's timeout
+$ squeal run --all --wait  (in a)
+Checkpoint 7cc7a32b-a7bd-4f59-9e9a-8cde6c96304d has no verdict: it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped). Without a result: slow.test.ts: no result: timed out after 2 s
+Checkpoint 7cc7a32b-a7bd-4f59-9e9a-8cde6c96304d started at revision 0: 2 test files to run, 0 already current, joining the baseline checkpoint 8d7a2213-85b5-4d43-96d9-a08484177333 already running them (0 of 2 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 0; not current: 1 of 2 test files (1 unknown)
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  1 test file timed out after 2 s; Squeal does not run it again at these inputs by itself: slow.test.ts; `squeal retry slow.test.ts` runs it once
+More: `squeal status --full` adds the worktree and daemon, the 1 test file without a result one by one and 1 note
+[exit 3]
+$ squeal why slow.test.ts  (in a)
+Check: slow.test.ts (file-level)
+Worktree: /tmp/issue66-race/a
+Revision: none recorded
+
+Known state: none in this worktree
+
+History: no transitions in this worktree
+
+Durations (1 result, 1 pass / 0 fail): 39 ms
+Results (1, newest first):
+  PASS  2026-10-21T01:21:01.613Z  /tmp/issue66-race/b, revision 0, commit db15d92, clean
+        run ce19f67b-72aa-47dd-980d-c11bf59ef8dc, 39 ms, key 5e0bdcefc413
+        log: /tmp/issue66-race/a/.git/squeal/runs/ce19f67b-72aa-47dd-980d-c11bf59ef8dc
+
+Run log: unknown, this worktree has no known state of the check and holds no failure of it
+[exit 0]
+== 4. B delivery after A's timeout
+$ hook post-tool-batch.mjs (in b)
+
+[exit 0]
+$ squeal status  (in b)
+Revision: 0
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+More: `squeal status --full` adds the worktree and daemon and 2 notes
+[exit 0]
+$ squeal status --full  (in b)
+Revision: 0
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue66-race/b (HEAD db15d92, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 3 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-10-21T01:21:01.022Z, revision 0: node_modules/.package-lock.json does not describe the installed packages (newer than it: node_modules/@jridgewell/resolve-uri and 17 more); dependencies are keyed by their package.json files until npm rewrites it
+[exit 0]
+$ squeal why slow.test.ts  (in b)
+Check: slow.test.ts (file-level)
+Worktree: /tmp/issue66-race/b
+Revision: none recorded
+
+Known state: PASS, current, observed at revision 0, commit db15d92
+
+History: no transitions in this worktree
+
+Durations (1 result, 1 pass / 0 fail): 39 ms
+Results (1, newest first):
+  PASS  2026-10-21T01:21:01.613Z  /tmp/issue66-race/b (this worktree), revision 0, commit db15d92, clean
+        run ce19f67b-72aa-47dd-980d-c11bf59ef8dc, 39 ms, key 5e0bdcefc413
+        log: /tmp/issue66-race/a/.git/squeal/runs/ce19f67b-72aa-47dd-980d-c11bf59ef8dc
+
+Run log: /tmp/issue66-race/a/.git/squeal/runs/ce19f67b-72aa-47dd-980d-c11bf59ef8dc/vitest.log
+  Run ce19f67b-72aa-47dd-980d-c11bf59ef8dc in /tmp/issue66-race/b (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of slow.test.ts from it.
+[exit 0]
+== stop daemons
+Squeal daemon stopped for /tmp/issue66-race/a
+Squeal daemon stopped for /tmp/issue66-race/b
+load after: 22.42 21.09 19.56
