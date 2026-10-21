@@ -1,6 +1,6 @@
 # Wave 8: triage round 9, groups A to F
 
-The human, 2026-10-21: digest groups A to F as recommended, follow-ups 011-54 to 011-57 and 011-51's test 10 approved; at most three of this coordinator's workers at once. Catch-up speed stays first (the human, 2026-10-19). W1, W2 and W3 own disjoint files and run in parallel; W4 takes W3's slot. The rest of the wave (011-55, 011-61, 011-62, 011-64, 011-65, 011-67, 011-68, 013-04, 005-72) is briefed as slots free; 011-66 waits for 011-32, 011-34 and 014's daemon changes.
+The human, 2026-10-21: digest groups A to F as recommended, follow-ups 011-54 to 011-57 and 011-51's test 10 approved; at most three of this coordinator's workers at once. Catch-up speed stays first (the human, 2026-10-19). W1, W2 and W3 own disjoint files and run in parallel; W4 takes W3's slot and W5 W2's. The rest of the wave (011-55, 011-62, 011-64, 011-65, 011-67, 011-68, 013-04, 005-72) is briefed as slots free; 011-66 waits for 011-32, 011-34 and 014's daemon changes.
 
 Every brief: base main at or after the commit that adds this file; no version bump; no key-format change (if `test/keys/key-format.test.ts` asks for one, stop and say so); the verdict is `squeal run --all --wait`, and a file that fails under load and passes alone is named in your summary.
 
@@ -53,3 +53,18 @@ Seam, 011-59: `unknownState` in `src/core/state/derive.ts` keeps `origin` and `c
 Tests first, red before: the rows' done-when on the board (011-60 end to end with a real child process, as `probes/issue-56/`). Owns: `src/runners/observe/`, `src/core/state/derive.ts`, their tests. Not yours: `src/core/scheduler/`, `src/runners/vitest/` (W1), `src/core/status/` (W2), `src/cli/`, `src/core/delivery/` (ask if a test shows it needs a change), spec text, the board, bundles.
 
 Done when: both rows' tests are red before and green after; existing `test/runners/observe/` and `test/state/` tests pass unchanged or each change is named with its reason; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+## W5: 011-61 design, validation holds while the index has unmerged paths, and a hold bound to a command
+
+Use /worker. Shape: survey, a design draft for the human. Outcome: `tasks/011-61/design.md`, which the human can accept as one amendment to 011 C9 (and C2, C6 or C8 where touched).
+
+Read: board row 011-61; spec 011 C2, C6, C8, C9 and `status.md`; `research/issue-68.md` with `probes/issue-68/`, `research/issue-49.md`; rows 011-08 (stop until the next edit) and 011-30 (handoff). Seams, read only: `src/core/hash/git-index.ts`, `src/core/watcher/paths.ts`, `src/core/daemon-loop/head.ts`, `src/core/scheduler/head-move.ts`, `src/cli/stop.ts`, `src/cli/stopped-mark.ts`.
+
+Answer, each with an evidence tag and one recommendation:
+
+1. What starts and ends the unmerged hold. The resolved write is a revision while the path is still unmerged, and `git add` makes none (issue-68, "For the spec"): an index observation that re-plans the held revision, conflict markers in the bytes, or both. Rebase, cherry-pick and `stash pop` conflicts too.
+2. What status, the hooks and a named wait say during the hold: one line naming the paths, and no false FAIL or recovery.
+3. The command-bound hold (gh-49): process lifetime against a time window, expiry, explicit resume, what a crash of the command leaves, and how it differs from `squeal stop`.
+4. The code rows: seams, owners, the done-when as tests.
+
+Include spec text as drafts and the rejected options. Owns `tasks/011-61/` only, probes under `tasks/011-61/probes/` in a throwaway repo under `/tmp` with `HOME` and `XDG_*` there, only while the one-minute load is below 24; no full suite, no build. Not yours: spec text, `status.md`, the board, product code. Done when `design.md` is committed. Stop: the human's dated acceptance.
