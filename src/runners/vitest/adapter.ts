@@ -23,6 +23,7 @@ import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
+import { closeEmptied } from "./empty-closed.js";
 import { projectEnvironment } from "./environment.js";
 import { exclusion } from "./exclude.js";
 import { Gate, type Hold } from "./gate.js";
@@ -317,7 +318,7 @@ export class VitestAdapter implements RunnerAdapter {
   /** Inside `Gate.exclusive`. */
   async #recreate(old: Vitest | null): Promise<Vitest> {
     this.#vitest = null;
-    await old?.close();
+    if (old !== null) await closeEmptied(old);
     this.#vitest = await this.#start();
     return this.#vitest;
   }
@@ -501,6 +502,9 @@ export class VitestAdapter implements RunnerAdapter {
             this.#lockfiles,
             this.paths,
           );
+          // Task 013-06: read before a close below empties the instance.
+          const reran = mayHaveRun(vitest, moved, testFiles, this.paths);
+          const reread = mayHaveReadTouched(vitest, touched, testFiles, this.paths);
           const broken = runnerFailure(collector, { paths: this.paths, tempDirs: this.#tempDirs });
           const rejected = execution.rejected;
           const startup =
@@ -542,7 +546,7 @@ export class VitestAdapter implements RunnerAdapter {
               : {};
           const kept = withoutFiles(
             observed === undefined ? built : { ...built, observed, ...reads },
-            mayHaveRun(vitest, moved, testFiles, this.paths),
+            reran,
             moved,
             this.paths,
           );
@@ -551,11 +555,7 @@ export class VitestAdapter implements RunnerAdapter {
           const counted = [...touched.inputs, ...touched.modules].map(
             (file) => this.paths.toRelative(file) ?? file,
           );
-          const report = withoutTouched(
-            kept,
-            mayHaveReadTouched(vitest, touched, testFiles, this.paths),
-            counted.sort(),
-          );
+          const report = withoutTouched(kept, reread, counted.sort());
           // One persisted note for status, besides the crash's delivered line (D5).
           if (broken !== null && report.failure !== null) this.#note(report.failure);
           writeRunLog(options, collector, report);
@@ -576,7 +576,8 @@ export class VitestAdapter implements RunnerAdapter {
       this.#closed = true;
       const vitest = this.#vitest;
       this.#vitest = null;
-      await vitest?.close();
+      // A slow pass's instance among them (spec 004 D2, `withSlowInstance`).
+      if (vitest !== null) await closeEmptied(vitest);
       this.#observer.stop();
     });
   }
