@@ -116,18 +116,19 @@ function readOne(
   const startedAt = row === null ? null : numOrNull(row, "daemon_started_at");
   const version = row === null ? null : strOrNull(row, "daemon_version");
   // A predecessor's row under a lock holder that has not registered yet (D2, `starting`):
-  // its token, runs and last use are the predecessor's, never this daemon's.
+  // its record, token, runs and last use are the predecessor's, never this daemon's.
+  // `recordedStartedAt` keeps its start, which tells `starting` (D2).
   const theirs = startedAt !== null && ownStart(d, startedAt) === false;
   if (theirs)
     name(
       "work",
-      `its row is a predecessor's: its token and last use are ${UNKNOWN} until it registers`,
+      `its row is a predecessor's: its record, token and last use are ${UNKNOWN} until it registers`,
     );
   const token =
     startedAt === null || theirs
       ? null
       : meta("daemonToken", "token", tokenOf(startedAt, version), null);
-  const record = row === null ? null : recordOf(row, token);
+  const record = row === null || theirs ? null : recordOf(row, token);
 
   const counts = new Map(
     all(db, PENDING, id).map((r) => [str(r, "pending"), num(r, "n")] as const),
@@ -192,7 +193,7 @@ function readOne(
     startedAt === null || theirs
       ? null
       : readDaemonUsed(typeof usedText === "string" ? usedText : null, startedAt);
-  if (lastUse === null && record !== null && !theirs)
+  if (lastUse === null && record !== null)
     name(
       "lastUsedAt",
       typeof usedText === "string"

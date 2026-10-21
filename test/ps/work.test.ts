@@ -10,6 +10,7 @@ import { recordHarness } from "../../src/core/delivery/harness-process.js";
 import { discover, phaseOn } from "../../src/core/ps/discover.js";
 import type { DaemonWork } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
+import { attribute } from "../../src/core/ps/processes.js";
 import type { PsSource } from "../../src/core/ps/source.js";
 import { readWork } from "../../src/core/ps/work.js";
 import { publishSlowActivity } from "../../src/core/slow/state.js";
@@ -23,6 +24,7 @@ import {
   lockLine,
   makeHost,
   makeRepo,
+  NODE,
   PID_NAMESPACE,
   STARTED_AT,
   withoutLocks,
@@ -308,10 +310,19 @@ describe("phases' work", () => {
     expect(phases().get(800)).toBe("starting");
   });
 
-  test("starting under a predecessor's row: its token, open runs and last use are not this daemon's", () => {
+  test("starting under a predecessor's row: its record, token, runs and last use are not this daemon's, nor are its escaped processes", () => {
     // A SIGKILLed daemon's row stays until its successor registers, 1.2 to 12.1 s after it starts.
     serve(800, alpha);
     const before = STARTED_AT - HOUR;
+    // The predecessor's test process, escaped to init, still carries its token.
+    const escaped = {
+      ...daemonProcess({ pid: 900, root: alpha.root }),
+      ppid: 1,
+      comm: "node",
+      cmdline: [NODE, "worker.js"],
+      environ: { SQUEAL_DAEMON_CHILD: `${daemonRecord(alpha).token}:slow:vitest` },
+    };
+    writeProcesses(host, [escaped]);
     const theirs = daemonRecord(alpha, { startedAt: before, heartbeatAt: before + 60_000 });
     writeStore(alpha, theirs, (store) => {
       run(store, "theirs", before + 1_000);
@@ -328,11 +339,21 @@ describe("phases' work", () => {
     const { work, unknown } = read();
     const own = work.get(800);
     expect(own?.recordedStartedAt).toBe(before);
-    expect([own?.token, own?.tiers, own?.checkpoints, own?.lastUse]).toEqual([null, [], [], null]);
+    expect([own?.record, own?.token, own?.tiers, own?.checkpoints, own?.lastUse]).toEqual([
+      null,
+      null,
+      [],
+      [],
+      null,
+    ]);
     expect(unknown).toEqual([
       { what: "daemon 800 work", why: expect.stringContaining("a predecessor's") },
     ]);
     expect(phases().get(800)).toBe("starting");
+    // The owners as the snapshot assembles them, from the work it accepted.
+    const owners = [{ pid: 800, token: own?.token ?? null, tiers: own?.tiers ?? [] }];
+    const attribution = attribute(source, source.processTable(), owners);
+    expect(attribution.processes.map((p) => p.pid)).not.toContain(900);
   });
 
   test("a waiting daemon's row is the lock holder's: only the holder of a duplicate root is read", () => {
