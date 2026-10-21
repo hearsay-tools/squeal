@@ -31,11 +31,14 @@ export function recordDaemonUsed(store: Store, worktreeId: WorktreeId, used: Dae
 }
 
 /**
- * The last use a `daemonUsed` row holds; `null` for no value and for any
- * value it does not know: not JSON, not `v: 1`, or a time that is not a
- * non-negative integer. Keys beside its own are left alone.
+ * The last use a `daemonUsed` row holds for the daemon its record says
+ * started at `startedAt` (`daemon_started_at`); `null` for no value and for
+ * any value it does not know: not JSON, not `v: 1`, or a time that is not a
+ * non-negative integer. Keys beside its own are left alone. A use before
+ * `startedAt` is a predecessor's, under a daemon of a release that writes
+ * none: `null` too, since a daemon's use starts at its start.
  */
-export function readDaemonUsed(value: string | null): DaemonUsed | null {
+export function readDaemonUsed(value: string | null, startedAt: EpochMs): DaemonUsed | null {
   if (value === null) return null;
   let parsed: unknown;
   try {
@@ -45,7 +48,7 @@ export function readDaemonUsed(value: string | null): DaemonUsed | null {
   }
   if (!isRecord(parsed) || parsed.v !== 1) return null;
   const { usedAt, activeAt } = parsed;
-  if (!isEpochMs(usedAt) || !isEpochMs(activeAt)) return null;
+  if (!isEpochMs(usedAt) || !isEpochMs(activeAt) || usedAt < startedAt) return null;
   return { usedAt, activeAt };
 }
 
