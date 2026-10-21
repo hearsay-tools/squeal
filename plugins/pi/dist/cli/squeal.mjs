@@ -6515,10 +6515,18 @@ var init_paths3 = __esm({
 
 // src/core/slow/slot.ts
 import { createHash as createHash8 } from "node:crypto";
-import { existsSync as existsSync5, readdirSync as readdirSync3, rmSync as rmSync3, statSync as statSync2, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync as existsSync5,
+  mkdtempSync,
+  readdirSync as readdirSync3,
+  rmSync as rmSync3,
+  statSync as statSync2,
+  writeFileSync
+} from "node:fs";
+import { tmpdir as tmpdir2 } from "node:os";
 import { isAbsolute as isAbsolute7, join as join15 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
-import { pathToFileURL } from "node:url";
 function slowSlotDir(env = process.env) {
   const xdg = env.XDG_RUNTIME_DIR;
   return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? join15(xdg, "squeal") : userTmpDir();
@@ -6585,9 +6593,26 @@ function heldPermits(request) {
   return held2;
 }
 function permitRecord(path) {
+  let scratch;
+  try {
+    scratch = mkdtempSync(join15(tmpdir2(), "squeal-permit-"));
+  } catch {
+    return { kind: "unreadable" };
+  }
+  try {
+    const copy = join15(scratch, "permit.sqlite");
+    copyFileSync(path, copy);
+    return holderRow(copy);
+  } catch {
+    return { kind: "unreadable" };
+  } finally {
+    rmSync3(scratch, { recursive: true, force: true });
+  }
+}
+function holderRow(path) {
   let db;
   try {
-    db = new DatabaseSync3(new URL(`${pathToFileURL(path).href}?immutable=1`), { readOnly: true });
+    db = new DatabaseSync3(path, { readOnly: true });
   } catch {
     return { kind: "unreadable" };
   }
@@ -10192,7 +10217,7 @@ var init_paths4 = __esm({
 // src/core/watcher/links.ts
 import { createHash as createHash12 } from "node:crypto";
 import { copyFile, lstat as lstat2, mkdir, rm, stat as stat2 } from "node:fs/promises";
-import { tmpdir as tmpdir2 } from "node:os";
+import { tmpdir as tmpdir3 } from "node:os";
 import { join as join21 } from "node:path";
 async function isSymlink(abs) {
   try {
@@ -10212,7 +10237,7 @@ async function isLinkedDir(abs) {
 }
 function ignoredAsDirectories(root, links) {
   if (links.length === 0) return Promise.resolve(/* @__PURE__ */ new Set());
-  const scratch = join21(tmpdir2(), `squeal-links-${hashOf(root)}`);
+  const scratch = join21(tmpdir3(), `squeal-links-${hashOf(root)}`);
   const previous = scratchQueue.get(scratch) ?? Promise.resolve();
   const run4 = previous.then(() => askAsDirectories(root, scratch, links));
   const settled = run4.then(
@@ -18937,7 +18962,7 @@ var init_parcel_backend = __esm({
 // src/core/watcher/backend.ts
 import { createRequire } from "node:module";
 import { join as join46 } from "node:path";
-import { pathToFileURL as pathToFileURL2 } from "node:url";
+import { pathToFileURL } from "node:url";
 function createWatcherBackend(platform) {
   return platform === "darwin" ? createParcelBackend(loadParcel) : chokidarBackend;
 }
@@ -18951,7 +18976,7 @@ async function loadParcel(root) {
     } catch {
       throw own;
     }
-    return (await import(pathToFileURL2(resolved2).href)).default;
+    return (await import(pathToFileURL(resolved2).href)).default;
   }
 }
 var init_backend = __esm({
@@ -19988,7 +20013,7 @@ var init_recorders = __esm({
 
 // src/runners/observe/runtime.ts
 import { existsSync as existsSync16 } from "node:fs";
-import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL3 } from "node:url";
+import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL2 } from "node:url";
 function observeRecorder(module2 = new URL(import.meta.url)) {
   for (const candidate of CANDIDATES) {
     const recorder = fileURLToPath5(new URL(`${candidate}recorder.cjs`, module2));
@@ -19997,7 +20022,7 @@ function observeRecorder(module2 = new URL(import.meta.url)) {
   return null;
 }
 function recorderOption(recorder, inherited) {
-  return inherited !== void 0 && holdsRequire(inherited) ? `--require ${quoteNodeOption(recorder)}` : `--import ${quoteNodeOption(pathToFileURL3(recorder).href)}`;
+  return inherited !== void 0 && holdsRequire(inherited) ? `--require ${quoteNodeOption(recorder)}` : `--import ${quoteNodeOption(pathToFileURL2(recorder).href)}`;
 }
 function observeEnv(recorder, settings, inherited) {
   const options = (inherited === void 0 ? void 0 : ownNodeOptions(inherited))?.trim() ?? "";
@@ -21116,7 +21141,7 @@ var init_gate = __esm({
 // src/runners/vitest/load.ts
 import { createRequire as createRequire2 } from "node:module";
 import { join as join54 } from "node:path";
-import { pathToFileURL as pathToFileURL4 } from "node:url";
+import { pathToFileURL as pathToFileURL3 } from "node:url";
 async function loadVitest(root) {
   let resolved2;
   try {
@@ -21127,7 +21152,7 @@ async function loadVitest(root) {
       `vitest/node does not resolve from ${root} (${reason2}); Squeal runs only the project's own Vitest`
     );
   }
-  return await import(pathToFileURL4(resolved2).href);
+  return await import(pathToFileURL3(resolved2).href);
 }
 var init_load2 = __esm({
   "src/runners/vitest/load.ts"() {
@@ -21237,8 +21262,8 @@ var init_moved = __esm({
 });
 
 // src/runners/vitest/observe.ts
-import { mkdtempSync as mkdtempSync2, rmSync as rmSync9 } from "node:fs";
-import { tmpdir as tmpdir3 } from "node:os";
+import { mkdtempSync as mkdtempSync3, rmSync as rmSync9 } from "node:fs";
+import { tmpdir as tmpdir4 } from "node:os";
 import { join as join55, sep as sep6 } from "node:path";
 var VitestObserver;
 var init_observe2 = __esm({
@@ -21292,9 +21317,9 @@ var init_observe2 = __esm({
           this.#injected = settings2;
           return Object.keys(settings2).length === 0 ? {} : { env: settings2 };
         }
-        const out2 = mkdtempSync2(join55(tmpdir3(), "squeal-observe-"));
+        const out2 = mkdtempSync3(join55(tmpdir4(), "squeal-observe-"));
         this.#out = out2;
-        const temp = tmpdir3();
+        const temp = tmpdir4();
         const contains = `${this.paths.root}${sep6}`.startsWith(`${temp}${sep6}`);
         const settings = { out: out2, root: this.paths.root, skip: contains ? [] : [temp] };
         this.#injected = observeEnv(recorder, settings, process.env.NODE_OPTIONS);
@@ -21747,7 +21772,11 @@ function cancelled(reason2) {
   return known2 ? `${CANCELLED}: ${CANCEL_CAUSES[reason2]}` : CANCELLED;
 }
 async function execute(vitest, specs, timeoutMs, collector, signal2) {
-  if (signal2?.aborted) return { end: "completed", failure: cancelled(signal2.reason), hung: false };
+  if (signal2?.aborted) {
+    const failure3 = cancelled(signal2.reason);
+    collector.note(failure3);
+    return { end: "completed", failure: failure3, hung: false };
+  }
   const run4 = vitest.runTestSpecifications([...specs]).then(
     () => ({ end: "completed", failure: null, hung: false }),
     (error) => ({
@@ -34589,7 +34618,7 @@ var require_pathToFileURL = __commonJS({
       }
       return filepath;
     }
-    function pathToFileURL6(filepath, options) {
+    function pathToFileURL5(filepath, options) {
       const windows = options && options.windows !== void 0 ? options.windows : isWindows2;
       if (windows && filepath.startsWith("\\\\")) {
         const hostnameEndIndex = filepath.indexOf("\\", 2);
@@ -34613,7 +34642,7 @@ var require_pathToFileURL = __commonJS({
       url.pathname = encodePathChars(filepath, windows);
       return url;
     }
-    module2.exports = pathToFileURL6;
+    module2.exports = pathToFileURL5;
   }
 });
 
@@ -34623,7 +34652,7 @@ var require_packageMap = __commonJS({
     "use strict";
     var fileURLToPath15 = require_fileURLToPath();
     var { isInside, normalize: normalize8 } = require_path();
-    var pathToFileURL6 = require_pathToFileURL();
+    var pathToFileURL5 = require_pathToFileURL();
     function createError(message2, code) {
       const error = (
         /** @type {Error & { code: string }} */
@@ -34664,7 +34693,7 @@ var require_packageMap = __commonJS({
           "ERR_INVALID_PACKAGE_MAP"
         );
       }
-      const base = pathToFileURL6(configFilePath);
+      const base = pathToFileURL5(configFilePath);
       const packages = /* @__PURE__ */ new Map();
       const idsByPath = /* @__PURE__ */ new Map();
       for (const id2 of Object.keys(rawPackages)) {
@@ -39820,10 +39849,10 @@ var init_events = __esm({
 
 // src/runners/node-test/run/observed.ts
 import { realpathSync as realpathSync8 } from "node:fs";
-import { fileURLToPath as fileURLToPath8, pathToFileURL as pathToFileURL5 } from "node:url";
+import { fileURLToPath as fileURLToPath8, pathToFileURL as pathToFileURL4 } from "node:url";
 function observedClosure(testFile, absolute, graphs2, preloads, paths) {
   const edges = graphs2.flatMap(parseEdges);
-  const entry4 = pathToFileURL5(real(absolute)).href;
+  const entry4 = pathToFileURL4(real(absolute)).href;
   const children = /* @__PURE__ */ new Map();
   for (const { parent: parent2, url } of edges) {
     if (parent2 === null) continue;
@@ -39945,7 +39974,7 @@ var init_process = __esm({
 
 // src/runners/node-test/run/reads.ts
 import { mkdirSync as mkdirSync9 } from "node:fs";
-import { tmpdir as tmpdir4 } from "node:os";
+import { tmpdir as tmpdir5 } from "node:os";
 import { join as join63, sep as sep13 } from "node:path";
 var NodeTestReads;
 var init_reads = __esm({
@@ -39973,7 +40002,7 @@ var init_reads = __esm({
       env(env, absolute) {
         const options = env.NODE_OPTIONS?.trim() ?? "";
         const option = recorderOption(this.recorder, options);
-        const temp = tmpdir4();
+        const temp = tmpdir5();
         const skip = `${this.root}${sep13}`.startsWith(`${temp}${sep13}`) ? [] : [temp];
         const settings = { out: this.out, root: this.root, skip, file: absolute };
         return {
@@ -47207,7 +47236,7 @@ var init_enumerate2 = __esm({
 import {
   existsSync as existsSync26,
   mkdirSync as mkdirSync11,
-  mkdtempSync as mkdtempSync3,
+  mkdtempSync as mkdtempSync4,
   readdirSync as readdirSync18,
   realpathSync as realpathSync14,
   rmSync as rmSync10,
@@ -47230,7 +47259,7 @@ function runBytecode(cacheDir, root, kept2) {
 function runScratch(parent2) {
   mkdirSync11(parent2, { recursive: true });
   sweep(parent2);
-  const dir2 = mkdtempSync3(join76(parent2, "run-"));
+  const dir2 = mkdtempSync4(join76(parent2, "run-"));
   return { dir: dir2, remove: () => rmSync10(dir2, { recursive: true, force: true }) };
 }
 function linkPoints(root, kept2) {
@@ -47672,7 +47701,7 @@ var init_report2 = __esm({
 // src/runners/pytest/run/run.ts
 import { createHash as createHash22 } from "node:crypto";
 import { existsSync as existsSync27, mkdirSync as mkdirSync12, writeFileSync as writeFileSync8 } from "node:fs";
-import { tmpdir as tmpdir5 } from "node:os";
+import { tmpdir as tmpdir6 } from "node:os";
 import { delimiter as delimiter3, join as join80, relative as relative17, sep as sep21 } from "node:path";
 import { fileURLToPath as fileURLToPath12 } from "node:url";
 async function runPytest(options) {
@@ -47871,7 +47900,7 @@ function refusal(note, started2) {
 }
 function defaultCacheDir(root, project) {
   const id2 = createHash22("sha256").update(`${root}\0${project.name}`).digest("hex").slice(0, 16);
-  return join80(tmpdir5(), "squeal-pytest", id2);
+  return join80(tmpdir6(), "squeal-pytest", id2);
 }
 function pytestRuntimeDir(module2 = new URL(import.meta.url)) {
   const tried = [];
@@ -53742,7 +53771,7 @@ import {
   linkSync,
   lstatSync as lstatSync4,
   mkdirSync as mkdirSync7,
-  mkdtempSync,
+  mkdtempSync as mkdtempSync2,
   readdirSync as readdirSync10,
   readFileSync as readFileSync17,
   renameSync as renameSync4,
@@ -53778,7 +53807,7 @@ function prepareScratch(scratch, uid = currentUid()) {
   try {
     preparePrivateDir(scratch.userDir, uid, "temp directory");
   } catch (error) {
-    const tempDir = mkdtempSync(fallbackPrefix(scratch));
+    const tempDir = mkdtempSync2(fallbackPrefix(scratch));
     const text2 = error instanceof Error ? error.message : String(error);
     return {
       scratch: { ...scratch, tempDir },
@@ -59456,14 +59485,14 @@ import {
   accessSync as accessSync3,
   chmodSync as chmodSync3,
   constants as constants4,
-  copyFileSync,
+  copyFileSync as copyFileSync2,
   existsSync as existsSync36,
-  mkdtempSync as mkdtempSync4,
+  mkdtempSync as mkdtempSync5,
   readdirSync as readdirSync22,
   readFileSync as readFileSync40,
   rmSync as rmSync14
 } from "node:fs";
-import { tmpdir as tmpdir6 } from "node:os";
+import { tmpdir as tmpdir7 } from "node:os";
 import { delimiter as delimiter5, join as join101 } from "node:path";
 
 // src/cli/update-packages.ts
@@ -59619,7 +59648,7 @@ function updateTargets(cwd, env, io) {
   return targets;
 }
 function runInstallSh(flag2, cwd, env, io) {
-  const dir2 = mkdtempSync4(join101(tmpdir6(), "squeal-update-"));
+  const dir2 = mkdtempSync5(join101(tmpdir7(), "squeal-update-"));
   try {
     const script = join101(dir2, "install.sh");
     const url = env.SQUEAL_INSTALL_SH ?? LATEST_INSTALL_SH;
@@ -59673,7 +59702,7 @@ function recopyLauncher(env, io) {
     if (format !== null && format > (newest?.format ?? current3)) newest = { path, format };
   }
   if (newest === null) return;
-  copyFileSync(newest.path, target);
+  copyFileSync2(newest.path, target);
   chmodSync3(target, 493);
   io.stdout(`Copied the launcher (format ${current3}, now ${newest.format}) to ${target}
 `);
