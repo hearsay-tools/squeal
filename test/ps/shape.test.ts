@@ -109,6 +109,7 @@ const snapshot: PsSnapshot = {
       command: "rm /run/user/1000/squeal-fd5a859b8ca77ef9.sock",
     },
   ],
+  unflaggedFiles: [{ kind: "lock", count: 1560 }],
   flags: 2,
   unknown: [
     { what: "daemon 3704612 lastUsedAt", why: "its release does not record its last use (D9)" },
@@ -123,7 +124,9 @@ test("the JSON keeps exactly the shipped keys at every level, with null kept", (
   expect(json).toEqual(snapshot);
   expect(json.v).toBe(1);
   expect(keys(json)).toEqual(
-    sorted("v at sampleMs platform memory host squeal repositories orphans files flags unknown"),
+    sorted(
+      "v at sampleMs platform memory host squeal repositories orphans files unflaggedFiles flags unknown",
+    ),
   );
   expect(keys(json.host)).toEqual(
     sorted(
@@ -163,4 +166,12 @@ test("the JSON keeps exactly the shipped keys at every level, with null kept", (
   expect(keys(json.orphans[0])).toEqual(sorted("pid comm startedAt flags"));
   expect(keys(json.files[0])).toEqual(sorted("flag path count bytes command"));
   expect(keys(json.unknown[0])).toEqual(sorted("what why"));
+  expect(keys(json.unflaggedFiles[0])).toEqual(sorted("kind count"));
+});
+
+test("without --full the unflagged file counts are null, and the JSON keeps the null", () => {
+  const plain: PsSnapshot = { ...snapshot, unflaggedFiles: null };
+  const json = JSON.parse(JSON.stringify(plain));
+  expect(keys(json)).toContain("unflaggedFiles");
+  expect(json.unflaggedFiles).toBeNull();
 });
