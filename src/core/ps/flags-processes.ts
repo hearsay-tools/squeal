@@ -69,10 +69,12 @@ export function orphans(c: ProcessContext): PsOrphan[] {
     byPid.set(pid, [...(byPid.get(pid) ?? []), { flag, reason, command: `kill ${pid}` }]);
 
   for (const { pid, reason } of orphanTestProcesses(c)) add(pid, "orphan-test-process", reason);
-  for (const row of table.values()) {
+  // The host's table: the second reads only the processes the window measures (`reviews/wave-2.md` B1).
+  const host = model.first.sample.table;
+  for (const row of host.values()) {
     if (!NODE_COMMS.has(row.comm) || (row.uid !== null && row.uid !== model.places.uid)) continue;
     if (!(model.source.cmdline(row.pid) ?? []).some((a) => WAITER.test(a))) continue;
-    const parent = table.get(row.ppid);
+    const parent = host.get(row.ppid);
     if (parent === undefined) add(row.pid, "orphan-waiter", `its parent ${row.ppid} is gone`);
     else if (row.ppid === 1 || parent.comm === "systemd")
       add(
@@ -82,11 +84,11 @@ export function orphans(c: ProcessContext): PsOrphan[] {
       );
   }
   for (const { pid, path } of model.pool.foreign)
-    if (table.has(pid) || model.first.sample.table.has(pid))
+    if (table.has(pid) || host.has(pid))
       add(pid, "foreign-permit", `it holds the pool permit ${path} and is no daemon`);
 
   return [...byPid].map(([pid, flags]) => {
-    const row = table.get(pid) ?? model.first.sample.table.get(pid);
+    const row = table.get(pid) ?? host.get(pid);
     return {
       pid,
       comm: row?.comm ?? "",

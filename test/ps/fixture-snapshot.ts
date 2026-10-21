@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { vi } from "vitest";
 import type { Flag } from "../../src/core/ps/model.js";
@@ -437,5 +437,16 @@ export function writeCostHost(host: SnapshotHost): CostHost {
     });
   }
   writeProcesses(host, processes);
+  // Old leftover directories, so `leftover-temp` reads every process's working directory and arguments.
+  const keys = join(host.places.tempDir, `squeal-${host.places.uid}`, "tmp");
+  for (let i = 0; i < LEFTOVERS; i++) {
+    const dir = join(keys, i.toString(16).padStart(16, "0"));
+    mkdirSync(dir, { recursive: true });
+    const at = new Date(NOW - 2 * 60 * MINUTE);
+    utimesSync(dir, at, at);
+  }
   return { daemons, testProcesses, squeal };
 }
+
+/** The cost host's leftover directories; the walk of 3,500 is `flags-files.test.ts`'s. */
+export const LEFTOVERS = 100;

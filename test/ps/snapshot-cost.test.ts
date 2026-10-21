@@ -6,6 +6,7 @@ import { countingSource } from "./fixture-samples.js";
 import {
   type CostHost,
   fakeWindow,
+  LEFTOVERS,
   type SnapshotHost,
   snapshotHost,
   writeCostHost,
@@ -14,10 +15,10 @@ import {
 /*
  * Spec 014 goal 6 and Testing (task 014-11, `reviews/wave-1.md` input 4):
  * the cost of the whole snapshot on a host of 650 processes and 25 daemons,
- * discovery, both store reads, the pool and the host included. The reads
- * inside the window hide in its 2 s; those after it, and the CPU of all of
- * them, add to the command's cost. The live measure with the load is the
- * dogfood row's (014-15).
+ * discovery, both store reads, the pool, the host and the flags over 100
+ * old leftover directories included. The reads inside the window hide in
+ * its 2 s; those after it, and the CPU of all of them, add to the command's
+ * cost. The live measure with the load is the dogfood row's (014-15).
  */
 
 let host: SnapshotHost;
@@ -74,10 +75,15 @@ describe("one snapshot on a host of 650 processes and 25 daemons", () => {
     // Inside the window: one scan of the table, the arguments of Node main threads only.
     expect(inside.get("processTable")).toBe(1);
     expect(inside.get("cmdline") ?? 0).toBeLessThan(250);
-    // After it: Squeal's processes only, never the host's 650 again.
+    // After it: the table and the memory of Squeal's processes only, never the host's 650 again.
     expect(reads.get("processTable")).toBe(tree.squeal.length);
     expect(reads.get("memory")).toBe(tree.squeal.length);
     expect(reads.get("markOf") ?? 0).toBeLessThanOrEqual(tree.squeal.length);
+    // The host-wide flags read the first table's processes (`reviews/wave-2.md` B1): one cwd read,
+    // and the arguments of each process for the leftovers and of each Node process for the waiters.
+    expect(shape.files.find((f) => f.flag === "leftover-temp")?.count).toBe(LEFTOVERS);
+    expect(reads.get("cwds")).toBe(1);
+    expect(reads.get("cmdline") ?? 0).toBeLessThanOrEqual(2 * 650);
 
     const insideMs = Number(waited - opened) / 1e6;
     const outsideMs = Number(closed - waited) / 1e6;
