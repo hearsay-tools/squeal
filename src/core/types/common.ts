@@ -53,3 +53,15 @@ export interface SourceLocation {
   readonly line: number;
   readonly column: number;
 }
+
+/**
+ * The first frame of a failure's stack in its check's own test file, shown
+ * beside a `location` in another file (011 C5 as amended 2026-10-21, gh-67).
+ * Read from the stored stack when shown, never stored. pytest's tracebacks
+ * name no column.
+ */
+export interface TestFileFrame {
+  readonly path: RelativePath;
+  readonly line: number;
+  readonly column?: number;
+}
