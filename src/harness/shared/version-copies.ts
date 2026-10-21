@@ -85,7 +85,8 @@ export interface KeepOptions {
  */
 export function keepVersion({ root, data, version }: KeepOptions): string | null {
   const dir = copyOf(data, version);
-  if (!existsSync(join(root, CLI))) return null;
+  // A version that is no plain release, such as `UNKNOWN_VERSION`, is never pruned: no copy.
+  if (!VERSION.test(version) || !existsSync(join(root, CLI))) return null;
   try {
     const versions = join(data, "versions");
     let made = false;
@@ -95,7 +96,7 @@ export function keepVersion({ root, data, version }: KeepOptions): string | null
       rmSync(part, { recursive: true, force: true });
       for (const name of COPIED) {
         if (existsSync(join(root, name))) {
-          cpSync(join(root, name), join(part, name), { recursive: true });
+          cpSync(join(root, name), join(part, name), { recursive: true, dereference: true });
         }
       }
       try {

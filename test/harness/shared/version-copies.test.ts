@@ -123,6 +123,15 @@ describe("keepVersion", () => {
     expect(readFileSync(join(data, "bin", "squeal"), "utf8")).toBe("#!/bin/sh\n# 0.1.7\n");
   });
 
+  it("keeps no copy of a version that is no plain release", () => {
+    const data = join(tempDir("squeal-data-"), "squeal-hearsay");
+    expect(
+      keepVersion({ root: plugin("0.0.0-unknown"), data, version: "0.0.0-unknown" }),
+    ).toBeNull();
+    expect(keepVersion({ root: plugin("0.1.5"), data, version: "../0.1.5" })).toBeNull();
+    expect(existsSync(data)).toBe(false);
+  });
+
   it("returns null and leaves nothing behind when the data directory cannot be made", () => {
     const blocked = join(tempDir("squeal-data-"), "blocked");
     writeFileSync(blocked, "a file\n");
