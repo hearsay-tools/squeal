@@ -7352,7 +7352,8 @@ function heldStop(store, worktreeId, worktree, live) {
   return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
 }
 function asStopped(store, worktreeId, worktree, live) {
-  if (live.state !== "down" || heldStop(store, worktreeId, worktree, live) === null) return live;
+  if (live.state !== "down" || live.startingSince !== void 0) return live;
+  if (heldStop(store, worktreeId, worktree, live) === null) return live;
   return { ...live, stopped: true };
 }
 async function treePrint(root, timeoutMs) {
@@ -49859,7 +49860,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.248";
+  if (true) return "0.1.249";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -62525,6 +62526,7 @@ function carries(pid, needle) {
 
 // src/cli/stop.ts
 init_lock();
+init_test_pause();
 init_fs();
 init_store3();
 var STOP_BOUNDS = { socketMs: 6e4, lockMs: 3e4, leftoversMs: 1e4 };
@@ -62564,6 +62566,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
     }
     await sleep15(50);
   }
+  pauseAt("stop-mark");
   stoppedMark(root, tree, io);
   const lock2 = await lockFreed(root, daemon, bounds.lockMs);
   const after = seconds2(bounds.lockMs);
