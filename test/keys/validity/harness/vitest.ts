@@ -110,7 +110,18 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     ]),
   );
   const root = writeTree(join(scratch, "worktree"), files);
-  const adapter = new VitestAdapter(new WorktreePaths(root), await loadVitest(root));
+  const exclude = input.exclude ?? [];
+  const adapter = new VitestAdapter(
+    new WorktreePaths(root),
+    await loadVitest(root),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    () => exclude,
+  );
   const reports: RunReport[] = [];
   // Row 013-06: a case that removes its instance's temp directory starts it under one of its own.
   const tmp = input.runs.some((run) => run.removeTempDir === true) ? join(scratch, "tmp") : null;
@@ -140,6 +151,13 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
       if (!early && run.removeTempDir !== true) {
         await until(() => existsSync(started), "a held test file to start");
         await adapter.invalidate(run.touched.map((path) => ({ path, kind: "touch" as const })));
+        // Row 011-95: a revision's runner part during the run.
+        for (const edit of run.edits ?? []) {
+          const kind = existsSync(join(root, edit.path)) ? "change" : "add";
+          writeTree(root, { [edit.path]: edit.text });
+          await adapter.invalidate([{ path: edit.path, kind }]);
+          await adapter.affected([edit.path]);
+        }
         // Row 011-56: cancelled while held, the held file does not complete.
         cancel?.abort(run.cancel);
       }
