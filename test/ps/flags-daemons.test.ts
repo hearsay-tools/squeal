@@ -112,6 +112,16 @@ describe("install-gone", () => {
       command: `squeal stop ${d.root}`,
     });
   });
+  it("quotes a root with a space and a quote in its squeal stop", () => {
+    const root = join(host.base, "it's a root");
+    mkdirSync(join(root, ".git"), { recursive: true });
+    const script = join(
+      host.places.home,
+      ".claude/plugins/cache/hearsay/squeal/0.1.230/dist/cli/squeal.mjs",
+    );
+    const [f] = one(daemonAt(4100, { root, script })).daemons.get(4100) ?? [];
+    expect(f?.command).toBe(`squeal stop '${host.base}/it'\\''s a root'`);
+  });
 });
 
 describe("older", () => {
