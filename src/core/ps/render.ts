@@ -249,8 +249,14 @@ function workOf(d: PsDaemon, at: number): string {
   if (w.pending === null) parts.push("work unknown");
   else if (w.pending > 0) parts.push(`${w.pending} pending`);
   if (d.consumers.length > 0) parts.push(count(d.consumers.length, "session"));
-  if (w.departedAt !== null) parts.push(`session left ${age(w.departedAt, at)} ago`);
+  if (ownDeparture(d)) parts.push(`session left ${age(w.departedAt, at)} ago`);
   return parts.length === 0 ? "idle" : parts.join("; ");
+}
+
+/** D7's own departure (014-27): no session holds it, and the last left after it started, not a predecessor's. */
+function ownDeparture(d: PsDaemon): boolean {
+  const left = d.work.departedAt;
+  return left !== null && d.consumers.length === 0 && d.startedAt !== null && left >= d.startedAt;
 }
 
 /** `value` as `text` gives it, after `at least` when its sum left `out` unknown values out; `null` when unknown. */
