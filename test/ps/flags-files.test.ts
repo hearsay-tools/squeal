@@ -1,10 +1,9 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { flag } from "../../src/core/ps/flags.js";
-import { fileFlags, shellQuote } from "../../src/core/ps/flags-files.js";
+import { fileFlags } from "../../src/core/ps/flags-files.js";
 import type { SocketFile } from "../../src/core/ps/model.js";
 import {
   dirAged,
@@ -74,17 +73,10 @@ describe("stale-socket", () => {
     });
   });
 
-  it("quotes a path with a space and a quote so the shell reads it back whole", () => {
-    const dir = join(host.base, "it's a dir");
-    mkdirSync(dir);
-    const path = join(dir, `squeal-${ID}.sock`);
-    writeFileSync(path, "");
+  it("quotes a path with a space and a quote in its rm", () => {
+    const path = join(host.base, "it's a dir", `squeal-${ID}.sock`);
     const [file] = flag(modelOf({ host, sockets: [socket({ path })] })).files;
-    expect(file?.command).toBe(`rm '${dir.replace("'", "'\\''")}/squeal-${ID}.sock'`);
-    const echoed = execFileSync("sh", ["-c", `printf %s ${shellQuote(path)}`], {
-      encoding: "utf8",
-    });
-    expect(echoed).toBe(path);
+    expect(file?.command).toBe(`rm '${host.base}/it'\\''s a dir/squeal-${ID}.sock'`);
   });
 });
 

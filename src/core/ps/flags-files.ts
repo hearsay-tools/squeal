@@ -10,7 +10,8 @@ import {
 import { join } from "node:path";
 import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
 import { storePaths } from "../store/index.js";
-import type { AbsolutePath, EpochMs } from "../types/index.js";
+import type { AbsolutePath } from "../types/index.js";
+import { dateOf, shellQuote } from "./flags-text.js";
 import type { PsModel, PsPlaces } from "./model.js";
 import type { PsFileFlag, PsUnflaggedFiles, PsUnflaggedKind, PsUnknown } from "./shape.js";
 
@@ -37,12 +38,6 @@ const LOCK_FILE = /^[0-9a-f]{16}\.sqlite$/;
 const WAITER_LOCK = /^waiter-.+\.sqlite$/;
 const PERMIT = /^pool\.(\d+)\.lock$/;
 const MARK = /^pool\.mark\.[^.]+$/;
-const SAFE_WORD = /^[\w@%+=:,./-]+$/;
-
-/** Every path of an end command goes through this: a word the shell reads back as `word`. */
-export function shellQuote(word: string): string {
-  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
-}
 
 export interface FileFindings {
   readonly files: readonly PsFileFlag[];
@@ -341,9 +336,4 @@ function realOr(path: AbsolutePath): AbsolutePath {
     // A root that is gone hashes as its daemon named it.
     return path;
   }
-}
-
-/** An epoch time as `YYYY-MM-DD HH:MM UTC`. */
-export function dateOf(ms: EpochMs): string {
-  return `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
