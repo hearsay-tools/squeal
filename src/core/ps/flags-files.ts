@@ -214,7 +214,8 @@ function fallbackKey(name: string, uid: number): string | null {
  */
 function usedPaths(model: PsModel, keyDirs: AbsolutePath): Set<AbsolutePath> | null {
   const { places, source } = model;
-  const pids = [...model.second.sample.table.values()]
+  // The host's table: the second reads only the processes the window measures (`reviews/wave-2.md` B1).
+  const pids = [...model.first.sample.table.values()]
     .filter((row) => row.uid === null || row.uid === places.uid)
     .map((row) => row.pid);
   const cwds = source.cwds(pids);
