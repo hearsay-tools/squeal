@@ -167,7 +167,7 @@ export function workOf(
   daemon: FoundDaemon,
   over: Partial<DaemonWork> & { readonly recordOver?: Partial<DaemonRecord> } = {},
 ): DaemonWork {
-  const start = NOW - (UPTIME_SECONDS * CLOCK_TICKS - daemon.row.startTicks) * (1000 / CLOCK_TICKS);
+  const start = BOOT_MS + daemon.row.startTicks * (1000 / CLOCK_TICKS);
   const { recordOver, ...rest } = over;
   const record: DaemonRecord = {
     socketPath: `/run/user/${UID}/squeal-${daemon.worktreeId}.sock`,
