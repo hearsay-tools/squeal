@@ -868,7 +868,7 @@ Spec: `specifications/013-vitest-runner/spec.md`. Sections referenced as V1 to V
 
 ## Feature 014: squeal ps
 
-Spec: `specifications/014-ps/` (draft; research first). One snapshot of every live daemon and every test process Squeal started, with CPU and memory, the host totals and Squeal's share, and flags for what should not be up, each naming the command that ends it; it changes nothing (the human, 2026-10-21, `status.md`). New rows take `014-NN`.
+Spec: `specifications/014-ps/spec.md`, approved by the human 2026-10-21 (D9 as its own row; D10 with an untested macOS fallback). Sections referenced as D1 to D11. One snapshot of every live daemon and every test process Squeal started, with CPU and memory, the host totals and Squeal's share, and flags for what should not be up, each naming the command that ends it; it changes nothing (the human, 2026-10-21, `status.md`). New rows take `014-NN`.
 
 ### Research (done; briefs and findings in `specifications/014-ps/research/`)
 
@@ -877,6 +877,39 @@ Spec: `specifications/014-ps/` (draft; research first). One snapshot of every li
 | 014-01 finding every daemon and what it can say | done (b49dad7b8, researcher c53634e9) | `research/daemon-discovery-brief.md`: sockets, `/proc`, stores, the pool or a registry as the list of live daemons; pid, root, version and harness of each; its current work from the store; which socket request is read-only; macOS. | `research/daemon-discovery.md` committed, every question tagged. |
 | 014-02 measuring the processes and the host | done (e0a0f5cf9, researcher 1f95370c) | `research/process-measurement-brief.md`: CPU over a sample, RSS against PSS, each test process tied to its daemon, lane and file, descendants, the host totals and Squeal's share, a snapshot's cost; macOS. | `research/process-measurement.md` committed, every question tagged. |
 | 014-03 what should not be up, and how others list it | done (6501c2f78, researcher e850756d) | `research/should-not-be-up-brief.md`: the states to flag from lessons, defects and exit rules, each with a read-only rule, its false alarms and its end command; the host checked now; prior art for columns, grouping and JSON. | `research/should-not-be-up.md` committed, every question tagged. |
+
+### Wave 0: the shared seam (one worker; brief `specifications/014-ps/tasks/wave-0.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 014-04 the platform source, the Linux reader and the model types | planned | D11: `src/core/ps/source.ts` (the interface every stage reads through), `proc.ts` (Linux, over an injectable root), `shape.ts` (the D8 JSON `v: 1` and the internal model the stages pass); fixture `/proc` trees from the 014-02 probe logs. No CLI entry. | Reader tests over fixtures, a process vanishing between reads and an unreadable `environ` included; lint, typecheck, Squeal verdict. |
+| 014-05 review of wave 0 | planned | `/reviewer` on the candidate: the interface against D2 to D10's needs, read-only and no environment value leaving `markOf`. | `reviews/wave-0.md` committed. |
+
+### Wave 1: discovery, measurement, the last-use record (parallel, on disjoint seams; after 014-05)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 014-06 discovery and work | planned | D2, D3: `discover.ts` (cmdline scan, lock fd, `/proc/locks`, `ss -xle` when present, phases) and `work.ts` (one read-only `node:sqlite` connection per store, never `openStore`; the time-bounded open runs and checkpoints, consumers, marks, each daemon's settings). | Tests over fixtures, an older and a newer `user_version` store included; a test that the store's bytes and mtime do not change. |
+| 014-07 measurement, test processes, host | planned | D4, D5, D6: `measure.ts` (two samples 2 s apart, private memory and swap), `processes.ts` (ppid tree, mark, token owner, runner and files, descendants), `host.ts` (load, pressure, memory, busy CPU, shares, the pool's permits). | Tests over fixtures; the cost bound of the spec's Testing. |
+| 014-08 the daemon records its last use | planned | D9: `daemon-used:<id>` `{ v: 1, usedAt, activeAt }` in `meta` with each heartbeat; 011 C9 amended by the coordinator at landing. A bundle change: the version is raised at integration. | A daemon test reads the key after a request and after an edit; no migration. |
+| 014-09 review of wave 1 | planned | `/reviewer` on the candidate. | `reviews/wave-1.md` committed. |
+
+### Wave 2: flags, the command, macOS (parallel; after 014-09)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 014-10 flags | planned | D7: `flags.ts`, the 18 flags and 2 information states with their end commands, quoted; the `--leftovers` list. | One flagged and one healthy case per flag (the fifth column of `research/should-not-be-up.md` 1). |
+| 014-11 the output and `squeal ps` | planned | D1, D8: the snapshot that runs the stages inside the window, `render.ts`, `src/cli/ps.ts`, its `main.ts` entry and help text, exit codes 0, 1, 2 and 3. | Render tests against the D8 layout; CLI tests for every flag and exit code. |
+| 014-12 the macOS source | planned | D10: `darwin.ts` over an injected command runner; `ps`, `vm_stat`, `sysctl` and `lsof` parsers; the flags it does not evaluate named in `unknown`. | Parser tests against fixture outputs; no test on a Mac (the human, 2026-10-21). |
+| 014-13 review of wave 2 | planned | `/reviewer` on the candidate. | `reviews/wave-2.md` committed. |
+
+### Wave 3: proof (after 014-13)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 014-14 integration and e2e | planned | The spec's Testing: a real daemon in a scratch repository with isolated `HOME`, `XDG_RUNTIME_DIR` and `TMPDIR` (`serving`, its socket, its test processes; `stale-socket` after SIGKILL; `root-gone`); the no-side-effects test; an e2e case of the shipped bundle's `squeal ps --json`. | Green under the full-run lock. |
+| 014-15 dogfood on this host | planned | Run `squeal ps` during ordinary work, compare with `ps`, `top` and `/proc` by hand, measure goal 6 with the load. | `lessons.md` written; the spec moves to `shipped` when its goals hold. |
+| 014-16 review of wave 3 | planned | `/reviewer` on the candidate. | `reviews/wave-3.md` committed. |
 
 ## Later
 
