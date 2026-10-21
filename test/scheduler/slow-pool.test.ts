@@ -56,7 +56,7 @@ describe("slow tiers take their workers from the per-user pool (task 001-386)", 
     for (const run of slowRuns(h)) expect(run.options.workers).toBe(2 * run.files.length);
   });
 
-  it("runs one file at a time on the daemon's free worker while another daemon holds the pool", async () => {
+  it("runs one file at a time on the one permit another daemon leaves free", async () => {
     const poolDir = join(tempDir("pool"), "squeal-uid");
     const other = createPermitPool({
       dir: poolDir,
@@ -65,8 +65,9 @@ describe("slow tiers take their workers from the per-user pool (task 001-386)", 
     });
     onTestFinished(() => other.close());
     const lease = other.acquire(200);
-    lease?.shrinkTo(200);
-    expect(lease?.grant).toBe(8);
+    // Every worker is a permit (011 C10 as amended 2026-10-21, row 011-96): one is left free.
+    lease?.shrinkTo(7);
+    expect(lease?.grant).toBe(7);
     const h = await open(poolDir);
     await h.scheduler.start();
     await waitFor(() => slowRuns(h).flatMap((r) => r.files).length === 3, 60_000);

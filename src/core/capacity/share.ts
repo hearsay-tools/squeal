@@ -16,7 +16,7 @@ export interface Demand {
 }
 
 /**
- * Each daemon's fair share of the host's `hostSlots`, in workers, at least 1.
+ * Each daemon's fair share of the host's `hostSlots`, in workers.
  *
  * Spec 001 D11 Capacity (task 001-376): the host's slots divided by the
  * daemons with backlog work, and the slots one daemon cannot use go to the
@@ -24,8 +24,10 @@ export interface Demand {
  * share gets what it wants and the rest is shared again among the others
  * (`waterFill`). A capped project's daemons are first shared its slots the
  * same way. What an equal division leaves over goes one slot each to the
- * longest waiters. The floor of 1 is the free backlog worker every daemon
- * has without a permit.
+ * longest waiters. With fewer slots than daemons the others' share is 0:
+ * no daemon runs a backlog worker without a permit (011 C10 as amended
+ * 2026-10-21, row 011-96), and a daemon left with none waits, so it is a
+ * longest waiter at the next division.
  */
 export function fairShares(hostSlots: number, demands: readonly Demand[]): Map<string, number> {
   const senior = [...demands].sort(bySeniority);
@@ -46,12 +48,10 @@ export function fairShares(hostSlots: number, demands: readonly Demand[]): Map<s
     );
     for (const [id, share] of shares) capped.set(id, share);
   }
-  const shares = waterFill(
+  return waterFill(
     hostSlots,
     senior.map((d) => ({ id: d.id, want: capped.get(d.id) ?? 1 })),
   );
-  for (const [id, share] of shares) shares.set(id, Math.max(1, share));
-  return shares;
 }
 
 /**
