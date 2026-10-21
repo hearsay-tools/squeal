@@ -145,6 +145,21 @@ describe("orphan-test-process", () => {
     });
   });
 
+  it("claims none under 60 s old at the first reading, a test's own marked child, and names it", () => {
+    // `lessons.md` P8: a process up 0 s, gone 6 s later, was flagged.
+    const young = flag(model({ processes: [{ ...orphan, ageS: 5 }], attribution: unowned }));
+    expect(young.orphans).toEqual([]);
+    expect(young.unknown).toContainEqual({
+      what: "flag orphan-test-process",
+      why: "process 7000's mark names no live daemon, but it is 5 s old, under 60 s",
+    });
+    const old = flag(model({ processes: [{ ...orphan, ageS: 61 }], attribution: unowned }));
+    expect(old.orphans.map((o) => [o.pid, o.flags.map((f) => f.flag)])).toEqual([
+      [7000, ["orphan-test-process"]],
+    ]);
+    expect(old.unknown.filter((u) => u.what === "flag orphan-test-process")).toEqual([]);
+  });
+
   it("claims none while a daemon's token is unread, and names it", () => {
     const unread = workOf(daemon, { token: null });
     const findings = flag(
