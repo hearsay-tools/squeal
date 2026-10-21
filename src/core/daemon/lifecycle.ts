@@ -127,6 +127,11 @@ export interface TimerContext {
    * Absent or `null`: nothing.
    */
   readonly owedWork?: () => string | null;
+  /**
+   * Spec 011 C9 (row 011-69): each check asks for the last-resort GC, which
+   * runs once no tier ran for 60 s (`IdleGc.check`). Absent: none.
+   */
+  readonly idleGc?: () => void;
   readonly note: (text: string) => void;
   readonly log: (line: string) => void;
   /**
@@ -178,6 +183,8 @@ export interface TimerContext {
  * Task 003-26: with `nodeTest` projects, the shared observed keys are read
  * every `observedMs`, and a change asks for a runner-only refinement. What it
  * queues is not activity: the idle and departure exits never wait for it.
+ *
+ * Row 011-69 (spec 011 C9): each check also asks for the idle last-resort GC.
  */
 export function startTimers(context: TimerContext): () => void {
   const { store, worktreeId, now, timings } = context;
@@ -229,6 +236,7 @@ export function startTimers(context: TimerContext): () => void {
       }
     });
     attempt("unused check", () => unused(at));
+    attempt("idle GC", () => context.idleGc?.());
   };
   /** The revision the last unused check saw: a new one is an edit. */
   let seenRevision: number | null = null;
