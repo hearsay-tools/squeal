@@ -15,12 +15,20 @@ export interface CapacityWait {
   readonly sleep?: (ms: number) => Promise<unknown>;
   /** Milliseconds on a monotonic clock. Default `performance.now`. */
   readonly now?: () => number;
+  /**
+   * Asked before each sleep, while the load is above the threshold and the
+   * budget lasts: `true` ends the wait with `gaveWay`. Task 004-84: another
+   * worktree holds the slot, so the wait would lower no load.
+   */
+  readonly giveWay?: () => boolean;
 }
 
 export interface CapacityWaited {
   readonly waitedMs: number;
   /** The load per CPU the file runs under when it ran at the bound, still above the threshold; else `null`. */
   readonly ranUnderLoad: number | null;
+  /** `giveWay` ended the wait: the file does not run now. */
+  readonly gaveWay?: true;
 }
 
 /** The 1-minute load average per CPU, as the guard reads it. */
@@ -49,6 +57,7 @@ export async function waitForCapacity(wait: CapacityWait): Promise<CapacityWaite
     if (current <= wait.maxLoadPerCpu) return { waitedMs, ranUnderLoad: null };
     const left = wait.maxDeferMs - waitedMs;
     if (left <= 0) return { waitedMs, ranUnderLoad: current };
+    if (wait.giveWay?.() === true) return { waitedMs, ranUnderLoad: null, gaveWay: true };
     await sleep(Math.min(recheckMs, left));
   }
 }

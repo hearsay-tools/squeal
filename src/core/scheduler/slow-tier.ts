@@ -9,6 +9,7 @@ import {
   SLOW_LOCK_FILE,
   type SlowSlot,
   slowSlotDir,
+  slowSlotHeld,
   waitForCapacity,
 } from "../slow/index.js";
 import { publishSlowActivity, readSlowActivity } from "../slow/state.js";
@@ -172,6 +173,9 @@ export class SlowTier {
    * waits before the slot is taken, so a wait never holds it, and the slot is
    * handed over between files (D2, lessons defect 2): a worktree that misses
    * it leaves a waiter's mark, and one that finds another's mark skips one turn.
+   * The guard decides whether the slow lane runs, never which worktree runs
+   * it (D3 as amended, task 004-84): it waits only while the slot is free,
+   * and a marked waiter takes the slot at a handover without a new wait.
    */
   async next(): Promise<SlowNext> {
     const preemptions = this.#preemptions;
@@ -183,23 +187,19 @@ export class SlowTier {
       return null;
     }
     if (preemptions !== this.#preemptions) return "again";
-    const guard = this.#requested ? this.#skipGuard(context) : await this.#waitForCapacity(context);
+    const guard =
+      this.#requested || this.#marked
+        ? this.#skipGuard(context)
+        : await this.#waitForCapacity(context, dir);
     if (guard === "preempted" || preemptions !== this.#preemptions) return "again";
+    if (guard === "held") return this.#waitAtSlot(context, dir, false);
     const { maxParallel } = context.policy.slow;
     const load = guard.ranUnderLoad;
     const want = guard.idle && this.host.fastIdle() ? Math.min(maxParallel, refs.length) : 1;
     const yieldTurn = this.#tookLast && othersWaitingForSlot(dir, context.worktreeId);
     const owner = { pid: process.pid, worktreeId: context.worktreeId };
     const slot = yieldTurn ? null : acquireSlowSlot({ dir, owner, permits: maxParallel, want });
-    if (slot === null) {
-      this.#tookLast = false;
-      markSlotWaiter(dir, context.worktreeId);
-      this.#marked = true;
-      this.#publish({ kind: "waiting", for: "slot" });
-      if (!yieldTurn) this.#slotMissed(context, dir);
-      this.#arm();
-      return null;
-    }
+    if (slot === null) return this.#waitAtSlot(context, dir, yieldTurn);
     this.#tookLast = true;
     this.#unmark(dir, context.worktreeId);
     this.#slotMissedSince = null;
@@ -232,6 +232,20 @@ export class SlowTier {
    */
   #fastFirst(): boolean {
     return this.host.editPending() || (!this.#requested && !this.host.fastIdle());
+  }
+
+  /**
+   * Another worktree holds the slot, or this one yields its turn: the files
+   * wait at the slot, marked as a waiter, and retry at `SLOW_RECHECK_MS`.
+   */
+  #waitAtSlot(context: SchedulerContext, dir: AbsolutePath, yielded: boolean): null {
+    this.#tookLast = false;
+    markSlotWaiter(dir, context.worktreeId);
+    this.#marked = true;
+    this.#publish({ kind: "waiting", for: "slot" });
+    if (!yielded) this.#slotMissed(context, dir);
+    this.#arm();
+    return null;
   }
 
   #unmark(dir: AbsolutePath, worktreeId: WorktreeId): void {
@@ -301,8 +315,10 @@ export class SlowTier {
   /**
    * An open `run --slow` request skips the load guard (D3 as amended
    * 2026-10-14, task 004-59): no wait, no budget spent, no "ran under load"
-   * note. The load is still read once, since D2's idle width needs it below
-   * `slow.maxLoadPerCpu`: under load the request runs one file at a time.
+   * note. So does a marked waiter, which takes the slot at a handover (task
+   * 004-84): its file replaces the one that ran, so the wait would lower no
+   * load. The load is still read once, since D2's idle width needs it below
+   * `slow.maxLoadPerCpu`: under load the tier runs one file at a time.
    */
   #skipGuard(context: SchedulerContext): Guarded {
     const load = loadPerCpu({
@@ -312,8 +328,15 @@ export class SlowTier {
     return { ranUnderLoad: null, idle: load <= context.policy.slow.maxLoadPerCpu };
   }
 
-  /** The load guard (D3) with the pass's remaining budget; the load it runs under at the bound. */
-  async #waitForCapacity(context: SchedulerContext): Promise<Guarded | "preempted"> {
+  /**
+   * The load guard (D3) with the pass's remaining budget; the load it runs
+   * under at the bound. `"held"` when every permit of the slot in `dir` is
+   * held before or during the wait (task 004-84): the files wait at the slot.
+   */
+  async #waitForCapacity(
+    context: SchedulerContext,
+    dir: AbsolutePath,
+  ): Promise<Guarded | "preempted" | "held"> {
     const { slow } = context.policy;
     const budget = this.#budgetMs ?? slow.maxDeferMs;
     const wait = new AbortController();
@@ -328,9 +351,11 @@ export class SlowTier {
           this.#publish({ kind: "waiting", for: "load" });
           return delay(ms, undefined, { signal: wait.signal });
         },
+        giveWay: () => slowSlotHeld({ dir, permits: slow.maxParallel }),
         ...(this.options.load === undefined ? {} : { load: this.options.load }),
         ...(this.options.cpus === undefined ? {} : { cpus: this.options.cpus }),
       });
+      if (waited.gaveWay === true) return "held";
       return { ranUnderLoad: waited.ranUnderLoad, idle: waited.ranUnderLoad === null };
     } catch (error) {
       if (wait.signal.aborted) return "preempted";
