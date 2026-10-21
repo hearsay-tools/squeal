@@ -13,6 +13,7 @@ import type {
   PsHost,
   PsOrphan,
   PsPool,
+  PsSkipped,
   PsSnapshot,
   PsTier,
   PsUnflaggedFiles,
@@ -146,6 +147,17 @@ export interface ProcessCost {
    * it lives, or when no process `ps` measures waited for it.
    */
   readonly reapedBy: number | null;
+  /** Not in the second sample, or a zombie in it: it ended in the window and holds no memory (014-24). */
+  readonly left: boolean;
+}
+
+/** `sumCosts`: each value over the processes that have one (D4), and what each sum leaves out. */
+export interface CostSum {
+  readonly cpuPct: number | null;
+  readonly cpuMs: number;
+  readonly privateBytes: number | null;
+  readonly swapBytes: number | null;
+  readonly skipped: PsSkipped;
 }
 
 /** D5: what ties processes to a daemon. */

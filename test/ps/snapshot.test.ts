@@ -187,6 +187,7 @@ describe("a serving daemon with a fork worker", () => {
             cpuMs: 1_200,
             privateBytes: 4_000 * KIB,
             swapBytes: 0,
+            skipped: { cpuPct: 0, privateBytes: 0, swapBytes: 0 },
             list: null,
           },
           flags: [],
@@ -201,6 +202,13 @@ describe("a serving daemon with a fork worker", () => {
       cpuPct: 160,
       privateBytes: (100_000 + 160_000 + 4_000) * KIB,
       swapBytes: 2_000 * KIB,
+      skipped: { cpuPct: 0, privateBytes: 0, swapBytes: 0 },
+    });
+    expect(repository).toMatchObject({
+      cpuPct: 160,
+      privateBytes: (100_000 + 160_000 + 4_000) * KIB,
+      swapBytes: 2_000 * KIB,
+      skipped: { cpuPct: 0, privateBytes: 0, swapBytes: 0 },
     });
     // 4,416 busy ticks in 2 s are 22.08 CPUs; Squeal used 1.6 of them.
     expect(shape.squeal.cpuShare).toBeCloseTo((160 / 2_208) * 100);
@@ -279,6 +287,53 @@ describe("Squeal's CPU counts what ends in the window (task 014-21, lessons.md P
     // The git's 40 ticks in 1 s of life, in 2 s; it is no descendant of the first reading's.
     expect(p).toMatchObject({ pid: 801, cpuPct: 20, descendants: { count: 0 } });
     expect(shape.squeal.cpuPct).toBe(20);
+  });
+});
+
+describe("memory a descendant left (task 014-24, lessons.md P4)", () => {
+  test("a head whose only descendant left by the second sample keeps its own memory: the descendant adds 0, and unknown names it", async () => {
+    host.serve(800, alpha);
+    writeProcesses(host, [forkWorker(801, 800, `${TOKEN}:vitest`), gitChild(802, 801)]);
+    const { shape } = await snap(() => {
+      rmSync(join(host.base, "proc", "802"), { recursive: true });
+    });
+    const p = shape.repositories[0]?.daemons[0]?.processes[0];
+    expect(p).toMatchObject({ pid: 801, privateBytes: 160_000 * KIB, swapBytes: 2_000 * KIB });
+    expect(p?.descendants).toMatchObject({
+      count: 1,
+      cpuPct: 0,
+      privateBytes: 0,
+      swapBytes: 0,
+      skipped: { cpuPct: 0, privateBytes: 0, swapBytes: 0 },
+    });
+    expect(shape.squeal.skipped).toEqual({ cpuPct: 0, privateBytes: 0, swapBytes: 0 });
+    expect(shape.unknown).toContainEqual({
+      what: "processes privateBytes",
+      why: "1 process ended in the window, so it holds none: pid 802",
+    });
+    expect(shape.unknown.map((u) => u.what)).not.toContain("squeal privateBytes");
+  });
+
+  test("the memory is read right after the second stat read, before the stores and the marks are read again", async () => {
+    host.serve(800, alpha);
+    writeProcesses(host, [forkWorker(801, 800, `${TOKEN}:vitest`)]);
+    const calls: string[] = [];
+    const source = new Proxy(host.source, {
+      get(target, key, receiver) {
+        const value = Reflect.get(target, key, receiver);
+        if (typeof value !== "function") return value;
+        return (...args: unknown[]) => {
+          calls.push(String(key));
+          return value.apply(target, args);
+        };
+      },
+    });
+    await snap(() => calls.push("wait"), { source });
+    const after = calls.slice(calls.indexOf("wait"));
+    const memory = after.lastIndexOf("memory");
+    expect(after.indexOf("processTable")).toBeLessThan(after.indexOf("memory"));
+    expect(memory).toBeLessThan(after.indexOf("pidNamespace"));
+    expect(memory).toBeLessThan(after.indexOf("markOf"));
   });
 });
 
@@ -556,7 +611,7 @@ describe("what is unknown (D8): one entry per cause", () => {
         },
         {
           what: "processes privateBytes",
-          why: "2 processes left before their memory was read: pid 801, 802",
+          why: "2 processes ended in the window, so they hold none: pid 801, 802",
         },
       ]),
     );

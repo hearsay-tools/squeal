@@ -83,6 +83,8 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
     [...new Set([...pids, ...tree])],
     tree.length > 0 ? first.table : undefined,
   );
+  // The memory right after that read (`lessons.md` P4): the stores below take tens of ms.
+  const costs = measure(source, first, read, measured(discovery, attribution));
   const second = { ...read, table: only(read.table, pids) };
   const live = discovery.daemons.filter(
     (d) => second.table.get(d.row.pid)?.startTicks === d.row.startTicks,
@@ -108,7 +110,7 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
       { ...reading, cpuTime: first.cpuTime },
       { ...reading, cpuTime: second.cpuTime },
     ),
-    costs: measure(source, first, read, measured(discovery, attribution)),
+    costs,
     bootTime,
     unknown: [...discovery.unknown, ...work.unknown, ...again.unknown, ...blind(first.table, tree)],
   };

@@ -24,6 +24,7 @@ export interface FakeProcess {
   readonly pid: number;
   readonly ppid: number;
   readonly comm?: string;
+  readonly state?: string;
   readonly startTicks?: number;
   readonly cpuTicks?: number;
   /** `null`: the source reads none (D10). */
@@ -40,7 +41,7 @@ export function rowOf(p: FakeProcess): ProcessRow {
     ppid: p.ppid,
     pgid: p.pid,
     comm: p.comm ?? "node",
-    state: "S",
+    state: p.state ?? "S",
     startTicks: p.startTicks ?? 1_000,
     cpuTicks: p.cpuTicks ?? 0,
     childTicks: p.childTicks === undefined ? 0 : p.childTicks,

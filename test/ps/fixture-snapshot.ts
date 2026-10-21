@@ -3,7 +3,13 @@ import { join } from "node:path";
 import { vi } from "vitest";
 import type { Flag } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
-import type { PsDaemon, PsSnapshot, PsTestProcess } from "../../src/core/ps/shape.js";
+import type {
+  PsDaemon,
+  PsRepository,
+  PsSkipped,
+  PsSnapshot,
+  PsTestProcess,
+} from "../../src/core/ps/shape.js";
 import type { PsSource } from "../../src/core/ps/source.js";
 import type { DaemonRecord, EpochMs, Store } from "../../src/core/types/index.js";
 import { BOOT_SECONDS, type FixtureProcess, statLine } from "./fixture.js";
@@ -204,6 +210,32 @@ const MINUTE = 60_000;
 /** When the D8 example was taken. */
 export const EXAMPLE_AT: EpochMs = 1_792_600_000_000;
 
+/** A sum that leaves nothing out (014-24). */
+export const NO_SKIP: PsSkipped = { cpuPct: 0, privateBytes: 0, swapBytes: 0 };
+
+/** A repository of `daemons`, its totals summed from their rows; `skipped` as given. */
+export function exampleRepository(
+  commonDir: string | null,
+  current: boolean,
+  daemons: readonly PsDaemon[],
+  skipped: PsSkipped = NO_SKIP,
+): PsRepository {
+  const all = daemons.flatMap((d) => [d, ...d.processes, ...d.processes.map((p) => p.descendants)]);
+  const sum = (values: readonly (number | null)[]): number | null => {
+    const known = values.filter((v): v is number => v !== null);
+    return known.length === 0 ? null : known.reduce((a, b) => a + b, 0);
+  };
+  return {
+    commonDir,
+    current,
+    cpuPct: sum(all.map((x) => x.cpuPct)),
+    privateBytes: sum(all.map((x) => x.privateBytes)),
+    swapBytes: sum(all.map((x) => x.swapBytes)),
+    skipped,
+    daemons,
+  };
+}
+
 /** A test process of the D8 example's shape. */
 export function exampleProcess(overrides: Partial<PsTestProcess> = {}): PsTestProcess {
   return {
@@ -225,6 +257,7 @@ export function exampleProcess(overrides: Partial<PsTestProcess> = {}): PsTestPr
       cpuMs: 2_000,
       privateBytes: 10 * MIB,
       swapBytes: 0,
+      skipped: NO_SKIP,
       list: null,
     },
     flags: [],
@@ -300,46 +333,43 @@ export function exampleSnapshot(overrides: Partial<PsSnapshot> = {}): PsSnapshot
       privateBytes: 21 * GIB,
       memoryShare: 64.2,
       swapBytes: GIB,
+      skipped: NO_SKIP,
       pool: { slots: 12, held: 3 },
     },
     repositories: [
-      {
-        commonDir: "/home/user/projects/cezar/.git",
-        current: true,
-        daemons: [
-          exampleDaemon({ processes: [exampleProcess()] }),
-          exampleDaemon({
-            pid: 2721938,
-            state: "draining 22m left",
-            worktreeId: "aee4a33f00000000",
-            startedAt: EXAMPLE_AT - 61 * MINUTE,
-            cpuPct: 16,
-            cpuMs: 550_000,
-            privateBytes: 1.1 * GIB,
-            swapBytes: 80 * MIB,
-            work: {
-              ...idle,
-              tiers: [],
-              pending: 120,
-              departedAt: EXAMPLE_AT - 38 * MINUTE,
-              drainLeftMs: 22 * MINUTE,
-            },
-          }),
-          exampleDaemon({
-            pid: 3241641,
-            state: "older (session 3212240 holds it)",
-            worktreeId: "70b80c8e00000000",
-            version: "0.1.234",
-            harness: "claude",
-            startedAt: EXAMPLE_AT - 49 * MINUTE,
-            cpuPct: 12,
-            cpuMs: 351_000,
-            privateBytes: 821 * MIB,
-            swapBytes: 0,
-            work: { ...idle, tiers: [] },
-          }),
-        ],
-      },
+      exampleRepository("/home/user/projects/cezar/.git", true, [
+        exampleDaemon({ processes: [exampleProcess()] }),
+        exampleDaemon({
+          pid: 2721938,
+          state: "draining 22m left",
+          worktreeId: "aee4a33f00000000",
+          startedAt: EXAMPLE_AT - 61 * MINUTE,
+          cpuPct: 16,
+          cpuMs: 550_000,
+          privateBytes: 1.1 * GIB,
+          swapBytes: 80 * MIB,
+          work: {
+            ...idle,
+            tiers: [],
+            pending: 120,
+            departedAt: EXAMPLE_AT - 38 * MINUTE,
+            drainLeftMs: 22 * MINUTE,
+          },
+        }),
+        exampleDaemon({
+          pid: 3241641,
+          state: "older (session 3212240 holds it)",
+          worktreeId: "70b80c8e00000000",
+          version: "0.1.234",
+          harness: "claude",
+          startedAt: EXAMPLE_AT - 49 * MINUTE,
+          cpuPct: 12,
+          cpuMs: 351_000,
+          privateBytes: 821 * MIB,
+          swapBytes: 0,
+          work: { ...idle, tiers: [] },
+        }),
+      ]),
     ],
     orphans: [],
     files: [

@@ -1,4 +1,4 @@
-import type { Measure, ProcessCost, TakeSample } from "./model.js";
+import type { CostSum, Measure, ProcessCost, TakeSample } from "./model.js";
 import { type ProcessTable, ticksToMs } from "./source.js";
 
 /*
@@ -23,7 +23,8 @@ import { type ProcessTable, ticksToMs } from "./source.js";
  * window. A process that ended and that no measured process waited for (an
  * escaped browser, a daemon) is left out, and `reapedBy` says so. The
  * memory is the source's (`RssAnon + RssShmem` and `VmSwap` on Linux), read
- * after the second sample for the processes still in it.
+ * right after the second sample for the processes still in it: one that
+ * left by then holds none (014-24).
  */
 
 /** One table read and the host's CPU times, at the middle of the read on a monotonic clock. */
@@ -120,7 +121,9 @@ export const measure: Measure = (source, first, second, pids) => {
     const own = now === undefined ? null : now.cpuTicks - (before?.cpuTicks ?? now.cpuTicks);
     // Children that ended may have been waited for outside the tree; they add none, never less.
     const ticks = own === null || own < 0 ? null : own + Math.max(0, counted.get(pid) ?? 0);
-    const memory = now === undefined ? null : source.memory(pid);
+    // A zombie ended: it holds no memory, though its stat stays until it is waited for.
+    const ended = now === undefined || now.state === "Z";
+    const memory = ended ? null : source.memory(pid);
     costs.set(pid, {
       cpuPct:
         ticks === null || windowMs <= 0 ? null : (ticksToMs(ticks, clockTicks) / windowMs) * 100,
@@ -128,6 +131,7 @@ export const measure: Measure = (source, first, second, pids) => {
       privateBytes: memory?.bytes ?? null,
       swapBytes: memory?.swapBytes ?? null,
       reapedBy: reapedBy.get(pid) ?? null,
+      left: ended,
     });
   }
   return costs;
@@ -135,18 +139,36 @@ export const measure: Measure = (source, first, second, pids) => {
 
 /**
  * D4 "Totals sum the same two values": each value sums the processes that
- * have one, and is `null` only when some process has none and no process
- * has one. A process seen once adds its CPU time but no window CPU.
+ * have one, and `skipped` counts those whose unknown value it leaves out
+ * (D8). A process that ended in the window adds no memory, and its CPU in
+ * it counts in the ancestor that waited for it: neither is left out. A
+ * value is `null` only when it leaves some out and has none. A process seen
+ * once adds its CPU time but no window CPU.
  */
-export function sumCosts(costs: readonly ProcessCost[]): Omit<ProcessCost, "reapedBy"> {
-  const sum = (values: readonly (number | null)[]): number | null => {
-    const known = values.filter((v): v is number => v !== null);
-    return known.length === 0 && values.length > 0 ? null : known.reduce((a, b) => a + b, 0);
+export function sumCosts(costs: readonly ProcessCost[]): CostSum {
+  const sum = (value: (c: ProcessCost) => number | null, held: (c: ProcessCost) => boolean) => {
+    const known = costs.flatMap((c) => value(c) ?? []);
+    const skipped = costs.filter((c) => value(c) === null && !held(c)).length;
+    const total = known.length === 0 && skipped > 0 ? null : known.reduce((a, b) => a + b, 0);
+    return { total, skipped };
   };
+  const cpu = sum(
+    (c) => c.cpuPct,
+    (c) => c.reapedBy !== null,
+  );
+  const memory = sum(
+    (c) => c.privateBytes,
+    (c) => c.left,
+  );
+  const swap = sum(
+    (c) => c.swapBytes,
+    (c) => c.left,
+  );
   return {
-    cpuPct: sum(costs.map((c) => c.cpuPct)),
+    cpuPct: cpu.total,
     cpuMs: costs.reduce((a, c) => a + c.cpuMs, 0),
-    privateBytes: sum(costs.map((c) => c.privateBytes)),
-    swapBytes: sum(costs.map((c) => c.swapBytes)),
+    privateBytes: memory.total,
+    swapBytes: swap.total,
+    skipped: { cpuPct: cpu.skipped, privateBytes: memory.skipped, swapBytes: swap.skipped },
   };
 }
