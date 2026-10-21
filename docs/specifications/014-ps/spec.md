@@ -39,7 +39,9 @@ squeal ps --leftovers
 - `--repo` keeps the daemons, test processes, flags and files of the current repository only. The host totals stay.
 - `--full` also lists the descendants of each test process, one per line. It also counts the files that never get a flag (D7, last paragraph).
 - `--json` prints the D8 shape and nothing else.
-- `--leftovers` prints the path of every leftover file and directory of D7, one per line, and nothing else. The D7 end commands use it.
+- `--leftovers` prints the path of every leftover directory of D7, one per line, and nothing else. The D7 end commands use it. It takes no other option, runs without the 2 s window and exits 0 (014-11).
+- `--repo` outside a repository is a usage error, exit 2: exit 1 already means that a flag holds. It keeps a stale socket only when the current repository has a lock file of its worktree id, and it drops orphans, pool marks and leftover directories, which no repository owns. The Squeal totals count only the daemons it keeps (014-11).
+- A snapshot that throws exits 3 with its error on stderr, never 1. The line for a platform `ps` does not cover goes to stderr too, so stdout stays clean for `--json` (014-11).
 - `ps` needs no daemon, no store write and no harness. It is not a hook, and no delivery or primer mentions it.
 
 ### D2. Discovery
@@ -142,6 +144,8 @@ Two states are information, never flags, and each says why:
 
 On 2026-10-21, at load 24 to 42, the list flagged no live daemon. It found 4 draining daemons, 1 older daemon held by its session, 1 stale socket, 1 stale pool mark and 3,530 leftover directories (`research/should-not-be-up.md` 2). Two flags need a second sample: `hung` and `orphan-test-process` are confirmed by a second read at the end of the CPU window, because one false orphan showed on a single sample.
 
+Rules the table leaves open, as 014-10 built them: an open checkpoint is drain work, as slow work is (001-219), and a departure older than the daemon's own start is its predecessor's; `past-idle` reads `activeAt` and `past-unused` reads `usedAt`, as `lifecycle.ts` does, each with two heartbeat intervals of grace and on a `serving` daemon only; `dead-consumer` needs the harness gone on both readings and a heartbeat between them that kept the consumer, since the store keeps no time of death; `older` reads the installed version from the daemon's own install (`installed_plugins.json` or the Codex cache), for Claude Code and Codex only; on Linux a duplicate's waiter gets `duplicate` with `no-lock` after that bound; `hung`'s command is `kill <pid>; sleep 5; kill -9 <pid>`; `not-installed` counts a plugin-cache script under the home directory, or anything under `~/.local`, as installed; an overdue descendant is flagged on its head test process's row; a socket with a listener but no daemon of its id is named in `unknown`, never flagged; `leftover-temp` counts only this user's directories, never lists a name with a newline, stops with an `unknown` entry at a daemon whose root is unknown, and sums sizes over at most 10,000 entries (`null` past them, never a partial sum). `leftover-temp` is a flag like the others: it counts in the first line and the exit code (014-11, the coordinator's reading of this table over the D8 example).
+
 Files whose lock the OS frees when the holder dies never get a flag: lock files, waiter lock files, permit files above the pool's size, and session-root files. `--full` counts them.
 
 Each end command quotes its paths for the shell. A flag never runs its command.
@@ -151,7 +155,7 @@ Each end command quotes its paths for the shell. A flag never runs its command.
 The first line is the answer: `squeal ps · 21 daemons, 38 test processes · no flags`, or `· 2 flags` followed by the flags' names. Then the host line, the Squeal line, one block per repository and the files section:
 
 ```text
-squeal ps · 21 daemons, 38 test processes · 1 flag: stale-socket
+squeal ps · 21 daemons, 38 test processes · 2 flags: stale-socket, leftover-temp
 Host    load 36.8 41.3 51.1 on 24 CPUs · CPU pressure 45% · memory 32.7 of 47.0 GiB used, swap 4.0 of 4.0 GiB
 Squeal  CPU 8.1 CPUs (36% of busy) · memory 21.0 GiB (65% of used) + 1.0 GiB swap · pool 3 of 12 permits
 
@@ -166,7 +170,7 @@ Squeal  CPU 8.1 CPUs (36% of busy) · memory 21.0 GiB (65% of used) + 1.0 GiB sw
 Files no live process uses
   ! stale-socket  /run/user/1001/squeal-fd5a859b8ca77ef9.sock (2026-10-16)
       ends it: rm /run/user/1001/squeal-fd5a859b8ca77ef9.sock
-  leftover-temp   3,530 directories, 6.4 GiB
+  ! leftover-temp  3,530 directories, 6.4 GiB
       ends it: squeal ps --leftovers | xargs -d '\n' rm -rf --
 ```
 
@@ -208,7 +212,7 @@ Linux gets the full design of D2 to D7. macOS gets a fallback built from `ps` an
 
 On macOS (`process.platform` is `darwin`), from `research/daemon-discovery.md` 5 and `research/process-measurement.md` 4, all `inferred`:
 
-- **Processes:** one `ps -axww -o pid=,ppid=,pgid=,nice=,time=,rss=,lstart=,command=` per sample, two samples 2 s apart. The CPU is the difference in `time` over the window. Never `%cpu`, which on macOS is a decaying average.
+- **Processes:** one `ps -axww -o pid=,ppid=,pgid=,uid=,nice=,time=,rss=,lstart=,command=` per sample, two samples 2 s apart, run as `env -u LC_ALL LC_TIME=C ps ...` so that `lstart` parses in any locale (014-12). `uid=` keeps another user's daemons out, as on Linux. `ps` gives no argument boundaries: the command is split at single spaces, so a daemon root with a space in it reads wrong; the process name is the base name of the first word, and no state (zombie) is read. The CPU is the difference in `time` over the window. Never `%cpu`, which on macOS is a decaying average.
 - **Daemons:** from the command line, as in D2 step 1. The worktree id is the hash of the root (`worktreeIdFor`), and the store is in the root's common directory. The lock state is unknown. The phase is `serving` when the store row's record is the daemon's own (D2's start rule) and its heartbeat is within two intervals of the snapshot's clock, and `unknown` otherwise; never `starting`, `stopping` or `waiting`.
 - **Memory:** RSS per process, labelled RSS. The totals are summed RSS, and they say that they count shared pages more than once. Swap per process is `null`.
 - **Test processes:** by the ppid tree only. The mark is not read, so the lane is `null` and an escaped process is not attributed.
