@@ -354,6 +354,7 @@ export class Ledger {
     const { checks, retired } = currentChecks(file.checks, results);
     this.#retired.push(...retired);
     file.resultKey = key;
+    file.resultsApplied += 1;
     file.checks = checks;
     file.failing = results.some((r) => r.outcome === "fail");
     file.durationMs = durationOf(results) ?? file.durationMs;
