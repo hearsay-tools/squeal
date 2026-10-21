@@ -873,9 +873,9 @@ Spec: `specifications/014-ps/` (draft; research first). One snapshot of every li
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 014-01 finding every daemon and what it can say | planned | `research/daemon-discovery-brief.md`: sockets, `/proc`, stores, the pool or a registry as the list of live daemons; pid, root, version and harness of each; its current work from the store; which socket request is read-only; macOS. | `research/daemon-discovery.md` committed, every question tagged. |
-| 014-02 measuring the processes and the host | planned | `research/process-measurement-brief.md`: CPU over a sample, RSS against PSS, each test process tied to its daemon, lane and file, descendants, the host totals and Squeal's share, a snapshot's cost; macOS. | `research/process-measurement.md` committed, every question tagged. |
-| 014-03 what should not be up, and how others list it | planned | `research/should-not-be-up-brief.md`: the states to flag from lessons, defects and exit rules, each with a read-only rule, its false alarms and its end command; the host checked now; prior art for columns, grouping and JSON. | `research/should-not-be-up.md` committed, every question tagged. |
+| 014-01 finding every daemon and what it can say | running (researcher c53634e9, opus high) | `research/daemon-discovery-brief.md`: sockets, `/proc`, stores, the pool or a registry as the list of live daemons; pid, root, version and harness of each; its current work from the store; which socket request is read-only; macOS. | `research/daemon-discovery.md` committed, every question tagged. |
+| 014-02 measuring the processes and the host | running (researcher 1f95370c, opus high) | `research/process-measurement-brief.md`: CPU over a sample, RSS against PSS, each test process tied to its daemon, lane and file, descendants, the host totals and Squeal's share, a snapshot's cost; macOS. | `research/process-measurement.md` committed, every question tagged. |
+| 014-03 what should not be up, and how others list it | running (researcher e850756d, opus high) | `research/should-not-be-up-brief.md`: the states to flag from lessons, defects and exit rules, each with a read-only rule, its false alarms and its end command; the host checked now; prior art for columns, grouping and JSON. | `research/should-not-be-up.md` committed, every question tagged. |
 
 ## Later
 
