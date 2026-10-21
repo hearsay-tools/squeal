@@ -656,6 +656,10 @@ function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+// src/harness/shared/context.ts
+import { existsSync as existsSync6 } from "node:fs";
+import { join as join11 } from "node:path";
+
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
@@ -696,10 +700,10 @@ function cap(text, max) {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 function excludedProjectsText(entries) {
-  const quoted = (list, join16) => {
+  const quoted = (list, join17) => {
     const all = list.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join16} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join17} ${last}`;
   };
   const names = entries.filter((entry3) => !entry3.includes("*"));
   const patterns = entries.filter((entry3) => entry3.includes("*"));
@@ -6420,9 +6424,46 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
   );
 }
 
+// src/harness/shared/context.ts
+function locate(cwd) {
+  const root = findWorktreeRoot(cwd);
+  if (root === null) return null;
+  const commonDir = resolveCommonDir(root);
+  return commonDir === null ? null : { root, commonDir };
+}
+function usesSqueal(location2) {
+  return existsSync6(storePaths(location2.commonDir).database) || existsSync6(join11(location2.root, "squeal.config.json"));
+}
+function openContext(input, location2, options = {}) {
+  const store = openStore(location2.commonDir, {
+    create: false,
+    busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS
+  });
+  if (isStoreOpenFailure(store)) return null;
+  try {
+    const consumer = {
+      worktreeId: worktreeIdFor(location2.root),
+      sessionId: input.session_id,
+      agentId: input.agent_id ?? MAIN_AGENT
+    };
+    const now = options.now ?? Date.now;
+    const delivery = createDelivery(store, {
+      status: createStatusBuilder(store, { now }),
+      now,
+      ...options.pollIntervalMs === void 0 ? {} : { pollIntervalMs: options.pollIntervalMs },
+      ...options.harnessProcess === void 0 ? {} : { harnessProcess: options.harnessProcess },
+      ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion }
+    });
+    return { ...location2, store, delivery, consumer, close: () => store.close() };
+  } catch (error) {
+    store.close();
+    throw error;
+  }
+}
+
 // src/harness/shared/coverage.ts
-import { existsSync as existsSync6 } from "node:fs";
-import { join as join11, posix as posix4 } from "node:path";
+import { existsSync as existsSync7 } from "node:fs";
+import { join as join12, posix as posix4 } from "node:path";
 var VITEST_ONLY = {
   vitest: true,
   vitestConfig: null,
@@ -6466,7 +6507,7 @@ function fromRoot({
 function vitestConfig(root) {
   for (const name of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync6(join11(root, `${name}${extension}`))) return `${name}${extension}`;
+      if (existsSync7(join12(root, `${name}${extension}`))) return `${name}${extension}`;
     }
   }
   return null;
@@ -6523,7 +6564,7 @@ function failure(code, message) {
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync7, mkdirSync as mkdirSync4 } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync4 } from "node:fs";
 async function probeDaemon(root, timeoutMs, options = {}) {
   try {
     return (await locateDaemon(root, timeoutMs, options)).probe;
@@ -6580,7 +6621,7 @@ async function ensureDaemon(root, options = {}) {
   }
   const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync7(cli)) return "unavailable";
+  if (cli === null || !existsSync8(cli)) return "unavailable";
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return "unavailable";
@@ -6607,18 +6648,18 @@ function daemonCliEntry(cli, env = process.env) {
 
 // src/core/daemon/version.ts
 import { readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname4, join as join12 } from "node:path";
+import { dirname as dirname4, join as join13 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.245";
+  if (true) return "0.1.247";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname4(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join12(dir, "package.json"));
+    const version = readVersion(join13(dir, "package.json"));
     if (version !== null) return version;
     const parent = dirname4(dir);
     if (parent === dir) return null;
@@ -6729,45 +6770,6 @@ async function ensureToRegister(location2, deps, context) {
   const at = (deps.now ?? Date.now)();
   if (await ensure(location2, deps, context) !== "spawned") return void 0;
   return await settle(context, deps) ? void 0 : at;
-}
-
-// src/harness/shared/context.ts
-import { existsSync as existsSync8 } from "node:fs";
-import { join as join13 } from "node:path";
-function locate(cwd) {
-  const root = findWorktreeRoot(cwd);
-  if (root === null) return null;
-  const commonDir = resolveCommonDir(root);
-  return commonDir === null ? null : { root, commonDir };
-}
-function usesSqueal(location2) {
-  return existsSync8(storePaths(location2.commonDir).database) || existsSync8(join13(location2.root, "squeal.config.json"));
-}
-function openContext(input, location2, options = {}) {
-  const store = openStore(location2.commonDir, {
-    create: false,
-    busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS
-  });
-  if (isStoreOpenFailure(store)) return null;
-  try {
-    const consumer = {
-      worktreeId: worktreeIdFor(location2.root),
-      sessionId: input.session_id,
-      agentId: input.agent_id ?? MAIN_AGENT
-    };
-    const now = options.now ?? Date.now;
-    const delivery = createDelivery(store, {
-      status: createStatusBuilder(store, { now }),
-      now,
-      ...options.pollIntervalMs === void 0 ? {} : { pollIntervalMs: options.pollIntervalMs },
-      ...options.harnessProcess === void 0 ? {} : { harnessProcess: options.harnessProcess },
-      ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion }
-    });
-    return { ...location2, store, delivery, consumer, close: () => store.close() };
-  } catch (error) {
-    store.close();
-    throw error;
-  }
 }
 
 // src/harness/shared/harness-process.ts
@@ -6985,22 +6987,82 @@ function submitPrompt(input, location2, deps, options) {
 // src/harness/shared/stop-slow.ts
 var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
 
+// src/harness/shared/version-copies.ts
+import {
+  chmodSync as chmodSync2,
+  copyFileSync as copyFileSync2,
+  cpSync,
+  existsSync as existsSync9,
+  mkdirSync as mkdirSync5,
+  readdirSync as readdirSync3,
+  readFileSync as readFileSync7,
+  renameSync as renameSync2,
+  rmSync as rmSync4
+} from "node:fs";
+import { basename, dirname as dirname5, join as join14 } from "node:path";
+var CLI = join14("dist", "cli", "squeal.mjs");
+var SKILL = join14("skills", "squeal", "SKILL.md");
+var LAUNCHER_SOURCE = join14("bin", "squeal-launcher");
+var LAUNCHER = join14("bin", "squeal");
+function dataLauncher(data) {
+  return join14(data, LAUNCHER);
+}
+function copyOf(data, version) {
+  return join14(data, "versions", version);
+}
+function keptCli(data, version) {
+  const cli = join14(copyOf(data, version), CLI);
+  return existsSync9(cli) ? cli : null;
+}
+function dataOfCopy(cli) {
+  const versions = dirname5(dirname5(dirname5(dirname5(cli))));
+  return cli.endsWith(`/${CLI}`) && basename(versions) === "versions" ? dirname5(versions) : null;
+}
+
+// src/harness/codex/command.ts
+import { existsSync as existsSync10 } from "node:fs";
+import { join as join15 } from "node:path";
+function codexCommand(env, bundleCli) {
+  const data = env.PLUGIN_DATA === void 0 || env.PLUGIN_DATA === "" ? dataOfCopy(bundleCli) : env.PLUGIN_DATA;
+  if (data !== null && existsSync10(dataLauncher(data))) return shellWord(dataLauncher(data));
+  const root = env.PLUGIN_ROOT;
+  const cli = root === void 0 || root === "" ? bundleCli : join15(root, "dist/cli/squeal.mjs");
+  return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+}
+
+// src/harness/codex/kept.ts
+var set = (value) => value === void 0 || value === "" ? null : value;
+function keptCodexCli(env, version = squealVersion()) {
+  const data = set(env.PLUGIN_DATA);
+  return data === null ? null : keptCli(data, version);
+}
+
 // src/harness/codex/output.ts
 var CONTEXT_CAP_CHARS = 8e3;
 var cutLine = (command) => `SQUEAL \xB7 cut to fit a Codex hook; \`${command} status\` has the rest.`;
-function capContext(text, command = SQUEAL_COMMAND) {
-  if (text.length <= CONTEXT_CAP_CHARS) return text;
-  const tail = trailingPrimer(text);
+function capContext(text, command = SQUEAL_COMMAND, keep = "") {
+  const primer2 = trailingPrimer(`
+
+${text}`).slice(2);
+  const head = text.slice(0, text.length - primer2.length).replace(/\n\n$/, "");
+  const kept = [keep, primer2].filter((p) => p !== "").join("\n\n");
+  const tail = head === "" || kept === "" ? kept : `
+
+${kept}`;
+  if (head.length + tail.length <= CONTEXT_CAP_CHARS) return `${head}${tail}`;
   const cut = cutLine(command);
   const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
-  const head = text.slice(0, text.length - tail.length).slice(0, room);
-  const line = head.lastIndexOf("\n");
-  return `${line > 0 ? head.slice(0, line) : head}
+  const start = head.slice(0, room);
+  const line = start.lastIndexOf("\n");
+  return `${line > 0 ? start.slice(0, line) : start}
 ${cut}${tail}`;
 }
-function additionalContext(event, text, command) {
+function additionalContext(event, text, command, keep) {
   return {
-    hookSpecificOutput: { hookEventName: event, additionalContext: capContext(text, command) }
+    hookSpecificOutput: {
+      hookEventName: event,
+      additionalContext: capContext(text, command, keep)
+    }
   };
 }
 
@@ -7011,21 +7073,21 @@ var userPromptSubmit = async (input, location2, deps) => {
 };
 
 // src/harness/codex/main.ts
-import { readFileSync as readFileSync8 } from "node:fs";
+import { readFileSync as readFileSync9 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/shared/session-root.ts
 import { createHash as createHash4 } from "node:crypto";
 import {
-  existsSync as existsSync9,
+  existsSync as existsSync11,
   lstatSync as lstatSync3,
-  readdirSync as readdirSync3,
-  readFileSync as readFileSync7,
-  renameSync as renameSync2,
-  rmSync as rmSync4,
+  readdirSync as readdirSync4,
+  readFileSync as readFileSync8,
+  renameSync as renameSync3,
+  rmSync as rmSync5,
   writeFileSync as writeFileSync2
 } from "node:fs";
-import { join as join14 } from "node:path";
+import { join as join16 } from "node:path";
 var AGENT_SEPARATOR = "\0";
 function rootKey(input) {
   return input.agent_id === void 0 ? input.session_id : `${input.session_id}${AGENT_SEPARATOR}${input.agent_id}`;
@@ -7055,8 +7117,8 @@ function forgetRoot(input, roots) {
   roots?.delete(rootKey(input));
 }
 function sessionRootFiles(env) {
-  const dir = join14(runtimeDir(env), "squeal-sessions");
-  const path = (key) => join14(dir, keyFile(key));
+  const dir = join16(runtimeDir(env), "squeal-sessions");
+  const path = (key) => join16(dir, keyFile(key));
   return {
     get: (key) => {
       try {
@@ -7071,17 +7133,17 @@ function sessionRootFiles(env) {
         const file = path(key);
         const temp = `${file}.${process.pid}.tmp`;
         writeFileSync2(temp, JSON.stringify({ root: location2.root, commonDir: location2.commonDir }));
-        renameSync2(temp, file);
+        renameSync3(temp, file);
       } catch {
       }
     },
     delete: (key) => {
       try {
-        rmSync4(path(key), { force: true });
+        rmSync5(path(key), { force: true });
         if (key.includes(AGENT_SEPARATOR)) return;
         const agents = `${keyFile(key)}-`;
-        for (const name of readdirSync3(dir)) {
-          if (name.startsWith(agents)) rmSync4(join14(dir, name), { force: true });
+        for (const name of readdirSync4(dir)) {
+          if (name.startsWith(agents)) rmSync5(join16(dir, name), { force: true });
         }
       } catch {
       }
@@ -7099,19 +7161,11 @@ function hash(text) {
 function readKept(file) {
   const stat = lstatSync3(file, { throwIfNoEntry: false });
   if (stat === void 0 || !stat.isFile() || stat.uid !== currentUid()) return null;
-  const kept = JSON.parse(readFileSync7(file, "utf8"));
+  const kept = JSON.parse(readFileSync8(file, "utf8"));
   if (!isRecord(kept) || typeof kept.root !== "string" || typeof kept.commonDir !== "string") {
     return null;
   }
-  return existsSync9(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
-}
-
-// src/harness/codex/command.ts
-import { join as join15 } from "node:path";
-function codexCommand(env, bundleCli) {
-  const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join15(root, "dist/cli/squeal.mjs");
-  return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+  return existsSync11(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
 }
 
 // src/harness/codex/input.ts
@@ -7170,10 +7224,10 @@ async function runCodexHandler(name, handler, stdin, deps) {
 async function runMain(name, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync8(0, "utf8");
+    stdin = readFileSync9(0, "utf8");
   } catch {
   }
-  const cli = fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url));
+  const cli = keptCodexCli(process.env) ?? fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url));
   const result = await runCodexHandler(name, handler, stdin, {
     env: process.env,
     sessionRoots: sessionRootFiles(process.env),
