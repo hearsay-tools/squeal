@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -10,7 +10,7 @@ import {
   scenarioOf,
   situationOf,
 } from "../../evals/lib/index.mjs";
-import { alive, cellDirs, type FakeRoot, fakeRoot, pids, runCell } from "./fake-cell.js";
+import { cellDirs, type FakeRoot, fakeRoot, removeRoot, runCell } from "./fake-cell.js";
 import { CLAIM, graded, type Harness, regradedForms, type Step } from "./reference-sessions.js";
 import { HELD_OPENING, runSlowResult, SLOW_SESSIONS } from "./slow-sessions.js";
 
@@ -23,10 +23,7 @@ import { HELD_OPENING, runSlowResult, SLOW_SESSIONS } from "./slow-sessions.js";
 
 const roots: FakeRoot[] = [];
 afterEach(() => {
-  for (const f of roots.splice(0)) {
-    for (const pid of pids(f, "daemons")) if (alive(pid)) process.kill(pid, "SIGKILL");
-    rmSync(f.dir, { recursive: true, force: true });
-  }
+  for (const f of roots.splice(0)) removeRoot(f);
 });
 
 describe("the load-hold knob", { timeout: 30_000 }, () => {
