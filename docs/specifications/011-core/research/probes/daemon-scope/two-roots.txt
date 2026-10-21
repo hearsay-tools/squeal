@@ -1,0 +1,27 @@
+load1 23.92  node v24.21.0  vitest 4.1.10
+== bare
+{"label":"start","cwd":"/home/agent/projects/squeal/.ai/cezar/worktrees/6c991e7a-0221-485d-ab61-9879b13736b1/docs/specifications/011-core/research/probes/daemon-scope","privMiB":16,"heapUsedMiB":7,"heapTotalMiB":12,"externalMiB":4,"load1":"23.92"}
+== one
+{"label":"start","cwd":"/home/agent/projects/squeal/.ai/cezar/worktrees/6c991e7a-0221-485d-ab61-9879b13736b1/docs/specifications/011-core/research/probes/daemon-scope","privMiB":16,"heapUsedMiB":7,"heapTotalMiB":12,"externalMiB":4,"load1":"23.92"}
+ ✓ test/cwd.test.mjs (1 test) 5ms
+ ✓ test/plain.test.mjs (1 test) 4ms
+{"label":"A with cwd A","root":"/tmp/ds-scope-8rhzjp/a","files":["test/cwd.test.mjs:pass","test/plain.test.mjs:pass"],"ms":248}
+{"label":"after A with cwd A","cwd":"/tmp/ds-scope-8rhzjp/a","privMiB":65,"heapUsedMiB":18,"heapTotalMiB":36,"externalMiB":39,"load1":"23.92"}
+{"label":"after close","cwd":"/tmp/ds-scope-8rhzjp/a","privMiB":65,"heapUsedMiB":18,"heapTotalMiB":36,"externalMiB":39,"load1":"23.92"}
+== two
+{"label":"start","cwd":"/home/agent/projects/squeal/.ai/cezar/worktrees/6c991e7a-0221-485d-ab61-9879b13736b1/docs/specifications/011-core/research/probes/daemon-scope","privMiB":16,"heapUsedMiB":7,"heapTotalMiB":12,"externalMiB":4,"load1":"23.92"}
+ ✓ test/plain.test.mjs (1 test) 4ms
+ ✓ test/cwd.test.mjs (1 test) 3ms
+{"label":"A with cwd A","root":"/tmp/ds-scope-8rhzjp/a","files":["test/plain.test.mjs:pass","test/cwd.test.mjs:pass"],"ms":233}
+{"label":"after A with cwd A","cwd":"/tmp/ds-scope-8rhzjp/a","privMiB":65,"heapUsedMiB":19,"heapTotalMiB":36,"externalMiB":39,"load1":"23.92"}
+ ✓ test/plain.test.mjs (1 test) 3ms
+   × the cwd is this project's root 8ms
+ FAIL  test/cwd.test.mjs > the cwd is this project's root
+AssertionError: expected 'a' to be 'b' // Object.is equality
+{"label":"B with cwd A","root":"/tmp/ds-scope-8rhzjp/b","files":["test/plain.test.mjs:pass","test/cwd.test.mjs:fail"],"ms":215}
+{"label":"after B with cwd A","cwd":"/tmp/ds-scope-8rhzjp/a","privMiB":74,"heapUsedMiB":19,"heapTotalMiB":37,"externalMiB":39,"load1":"23.92"}
+ ✓ test/plain.test.mjs (1 test) 3ms
+ ✓ test/cwd.test.mjs (1 test) 4ms
+{"label":"B with cwd B","root":"/tmp/ds-scope-8rhzjp/b","files":["test/plain.test.mjs:pass","test/cwd.test.mjs:pass"],"ms":208}
+{"label":"after B with cwd B","cwd":"/tmp/ds-scope-8rhzjp/b","privMiB":79,"heapUsedMiB":20,"heapTotalMiB":37,"externalMiB":39,"load1":"23.92"}
+{"label":"after close","cwd":"/tmp/ds-scope-8rhzjp/b","privMiB":79,"heapUsedMiB":20,"heapTotalMiB":37,"externalMiB":39,"load1":"23.92"}

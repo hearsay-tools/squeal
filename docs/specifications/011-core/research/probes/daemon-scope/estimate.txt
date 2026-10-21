@@ -1,0 +1,24 @@
+snapshot 2026-10-21T09:28:40Z load ['26.74', '25.51', '26.00']; production daemons 19
+  daemons private 14670 MiB + swap 970; test processes private 2930 + swap 0
+  JS heap (256 KiB mappings) 8984 MiB; mimalloc 3081
+  /home/agent/projects/cezar/.git: 13 daemons, 16911 MiB with swap and test processes
+  /home/agent/projects/squeal/.git: 6 daemons, 1659 MiB with swap and test processes
+(a) no consumer, or no revision for 30+ min: 7 daemons, 6033 MiB incl. swap and test processes
+     3704612 cons 1 last rev 114 min, slow {"kind":"running","path":"packages/web/e2e/touch-targets.e2e.ts","since":1792574901613,"lastDurationMs":203894.86852800002}, 1702 MiB
+     2974521 cons 1 last rev 74 min, slow {"kind":"waiting","for":"slot"}, 1388 MiB
+     3058908 cons 1 last rev 109 min, slow {"kind":"waiting","for":"slot"}, 1012 MiB
+     655286 cons 0 last rev 117 min, slow {"kind":"waiting","for":"slot"}, 686 MiB
+     2860458 cons 1 last rev 148 min, slow {"kind":"waiting","for":"slot"}, 681 MiB
+     3699153 cons 0 last rev 133 min, slow {"kind":"waiting","for":"slot"}, 523 MiB
+     1350700 cons 0 last rev 794 min, slow null, 41 MiB
+    of which no consumer at all: 3 daemons, 1250 MiB
+(b) heap cap 256 MiB: at most 5269 MiB (heap above the cap; the live set is not known)
+(b) heap cap 512 MiB: at most 2941 MiB (heap above the cap; the live set is not known)
+(b) heap cap 768 MiB: at most 1255 MiB (heap above the cap; the live set is not known)
+(b) heap cap 1024 MiB: at most 348 MiB (heap above the cap; the live set is not known)
+(c) /home/agent/projects/cezar/.git: 13 daemons -> 1 daemon + 12 runner children: saves 540 MiB
+(c) /home/agent/projects/squeal/.git: 6 daemons -> 1 daemon + 3 runner children: saves 315 MiB
+(d) as (c), minus 12 slow-lane children x 45 = 540 MiB more cost
+(c) /home/agent/projects/cezar/.git: 13 daemons -> 1 daemon + 12 runner children: saves 768 MiB
+(c) /home/agent/projects/squeal/.git: 6 daemons -> 1 daemon + 3 runner children: saves 372 MiB
+(d) as (c), minus 12 slow-lane children x 26.0 = 312 MiB more cost

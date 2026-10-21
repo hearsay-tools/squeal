@@ -1,0 +1,24 @@
+== /home/agent/projects/cezar/.git  worktrees with activity since 10-13: 59 (in worktrees table now: 33); revisions kept for 32
+  activity span h (first to last event): n=59 p25=0.1 median=1.2 p75=2.5 p90=13.0 max=157.5
+  live at once (span covers instant, 10-min grid 10-14T19:55Z..10-21T09:28Z): median=1 p90=5 max=16
+  active at once (an event in the last 30 min): median=0 p90=3 max=17
+  span time past 30 min of quiet (no revision, run start or end): 65% of 328 worktree-hours
+  revisions whose HEAD another worktree had within 24 h: 319/488
+  current keys: 11064 distinct over 28656 worktree rows; 2861 keys held by 2+ worktrees, covering 20453 rows (71%)
+  worktrees in test_file_keys: 33
+== /home/agent/projects/squeal/.git  worktrees with activity since 10-13: 28 (in worktrees table now: 27); revisions kept for 19
+  activity span h (first to last event): n=28 p25=0.0 median=0.0 p75=0.3 p90=2.5 max=192.7
+  live at once (span covers instant, 10-min grid 10-13T08:43Z..10-21T09:29Z): median=1 p90=1 max=5
+  active at once (an event in the last 30 min): median=0 p90=1 max=6
+  span time past 30 min of quiet (no revision, run start or end): 50% of 203 worktree-hours
+  revisions whose HEAD another worktree had within 24 h: 49/613
+  current keys: 4202 distinct over 5742 worktree rows; 1540 keys held by 2+ worktrees, covering 3080 rows (54%)
+  worktrees in test_file_keys: 12
+== /home/agent/projects/mvp-unveiled-july26/.git  worktrees with activity since 10-13: 10 (in worktrees table now: 11); revisions kept for 10
+  activity span h (first to last event): n=10 p25=0.3 median=5.6 p75=67.1 p90=74.0 max=74.0
+  live at once (span covers instant, 10-min grid 10-13T10:13Z..10-19T08:25Z): median=2 p90=2 max=4
+  active at once (an event in the last 30 min): median=0 p90=0 max=6
+  span time past 30 min of quiet (no revision, run start or end): 97% of 236 worktree-hours
+  revisions whose HEAD another worktree had within 24 h: 37/157
+  current keys: 0 distinct over 0 worktree rows; None keys held by 2+ worktrees, covering 0 rows (0%)
+  worktrees in test_file_keys: 0
