@@ -122,6 +122,38 @@ export interface FailureFilter {
   readonly since: EpochMs | null;
 }
 
+/**
+ * Which stored failures `squeal failures` reads (row 011-75, spec 011 C6 as
+ * amended 2026-10-21 for 011-64). Each field narrows the rows; a failure
+ * matches when it passes every one.
+ */
+export interface FailureSelection {
+  /** Only results this worktree produced; `null` for every worktree. */
+  readonly worktreeId: WorktreeId | null;
+  /** Only results recorded at or after this time; `null` for any time. */
+  readonly since: EpochMs | null;
+  /**
+   * Root-relative test files or directories; a check matches when its test
+   * path is one of them or lies below one. Empty for every path.
+   */
+  readonly paths: readonly RelativePath[];
+  /** Only these checks' failures (`FailureRepo.failingChecks`); `null` for every check. */
+  readonly checks: readonly CheckId[] | null;
+}
+
+/**
+ * The stored failing results, read through `results_by_failure` (row 011-75).
+ * Off the key-format alarm's path, unlike `ResultRepo` (011-64, section 4).
+ */
+export interface FailureRepo {
+  /** Failing results of `selection`, newest first by record time, at most `limit`. Read only. */
+  list(selection: FailureSelection, limit: number): readonly ResultRecord[];
+  /** How many failing results match `selection`, for "newest N of M". */
+  count(selection: FailureSelection): number;
+  /** The checks with a failing result matching `selection`, sorted; a `--check` text is matched against their printed names. */
+  failingChecks(selection: FailureSelection): readonly CheckId[];
+}
+
 /** A key with results, and when its newest one was recorded (`ResultRepo.keysSince`). */
 export interface StoredKey {
   readonly key: CheckKey;
@@ -359,6 +391,7 @@ export interface Store {
   readonly testFileKeys: TestFileKeyRepo;
   readonly checks: CheckRepo;
   readonly results: ResultRepo;
+  readonly failures: FailureRepo;
   readonly runs: RunRepo;
   readonly checkpoints: CheckpointRepo;
   readonly knownStates: KnownStateRepo;

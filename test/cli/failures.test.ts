@@ -169,6 +169,7 @@ describe("squeal failures (task 001-409)", () => {
       worktreeRoot: b.root,
       allWorktrees: true,
       since: NOW - 60 * MINUTE,
+      selection: { paths: [], checks: [] },
       total: 2,
       limit: FAILURES_LIMIT,
       failures: [
@@ -246,7 +247,8 @@ describe("squeal failures (task 001-409)", () => {
 
   it("is in the help", () => {
     expect(run(["--help"], fakeRepo().main).stdout).toContain(
-      "squeal failures [--all-worktrees] [--since <duration>] [--json]",
+      "squeal failures [<test file or directory>...] [--check <text>]... [--limit <n>]\n" +
+        "                  [--all-worktrees] [--since <duration>] [--json]\n",
     );
   });
 });
