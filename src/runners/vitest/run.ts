@@ -11,7 +11,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../core/types/index.js";
-import { errorText, type RunCollector } from "./reporter.js";
+import { endedInTime, errorText, type RunCollector } from "./reporter.js";
 import { compareRefs, refKey, toCheckError } from "./results.js";
 
 /** After the first cancel, Vitest waits for running tests; a second cancel kills the workers. */
@@ -168,7 +168,7 @@ export function buildReport(
     end === "crashed"
       ? []
       : [...collector.modules.values()]
-          .filter((m) => !m.afterCancel && m.state !== "pending" && m.state !== "queued")
+          .filter(endedInTime)
           .map((m) => m.ref)
           .sort(compareRefs);
   const completedKeys = new Set(completed.map(refKey));
