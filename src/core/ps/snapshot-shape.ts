@@ -90,7 +90,8 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
 
   const daemonOf = (d: FoundDaemon): PsDaemon => {
     const pid = d.row.pid;
-    const work = first.work.get(pid) ?? null;
+    // A lock the first `/proc/locks` reading missed has its store read at the second (`lessons.md` P9).
+    const work = first.work.get(pid) ?? second.work.get(pid) ?? null;
     const own = phase(d, work, model.now);
     const state = findings.states.get(pid) ?? own;
     return {

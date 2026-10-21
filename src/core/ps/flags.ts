@@ -47,7 +47,8 @@ export const flag = (model: PsModel, options: FileFlagOptions = {}): FlagFinding
     unknown.push({ what, why });
   };
   const { source } = model;
-  if (source.locks() === null)
+  // The pool reads the window's `/proc/locks` readings: no permit is known only without them.
+  if (model.pool.pool.held === null)
     for (const what of ["flag no-lock", "flag hung", "flag foreign-permit", "phase stopping"])
       name(what, NO_LOCKS);
   if (!source.readsMarks)
