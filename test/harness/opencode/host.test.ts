@@ -2,9 +2,12 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { nodeFloor } from "../../../src/harness/build.js";
 import {
   findNode,
+  MIN_NODE,
   meetsMinimum,
+  NODE_FLOOR,
   nodeOnPath,
   usesSquealAt,
 } from "../../../src/harness/opencode/host.js";
@@ -114,11 +117,14 @@ describe("finding Node", () => {
     expect(nodeOnPath(undefined)).toBeNull();
   });
 
-  it("holds Node to Squeal's minimum, 22.13", () => {
-    expect(meetsMinimum("22.13.0")).toBe(true);
-    expect(meetsMinimum("24.3.0\n")).toBe(true);
-    expect(meetsMinimum("22.12.9")).toBe(false);
-    expect(meetsMinimum("20.19.0")).toBe(false);
+  it("holds Node to Squeal's minimum, engines.node's floor (011-86)", () => {
+    expect(NODE_FLOOR).toBe(nodeFloor());
+    const [major = 0, minor = 0] = MIN_NODE;
+    expect(`${major}.${minor}`).toBe(nodeFloor());
+    expect(meetsMinimum(`${major}.${minor}.0`)).toBe(true);
+    expect(meetsMinimum(`${major + 1}.0.0\n`)).toBe(true);
+    if (minor > 0) expect(meetsMinimum(`${major}.${minor - 1}.99`)).toBe(false);
+    expect(meetsMinimum(`${major - 1}.99.0`)).toBe(false);
     expect(meetsMinimum("garbage")).toBe(false);
   });
 

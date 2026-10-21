@@ -6,7 +6,7 @@
   "license": "UNLICENSED",
   "type": "module",
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22.19"
   },
   "bin": {
     "squeal": "dist/cli/index.js"

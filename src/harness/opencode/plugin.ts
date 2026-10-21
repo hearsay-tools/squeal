@@ -1,6 +1,6 @@
 import type { OcClient, OcPlugin } from "./api.js";
 import { squealHooks } from "./hooks.js";
-import { findNode, usesSquealAt } from "./host.js";
+import { findNode, NODE_FLOOR, usesSquealAt } from "./host.js";
 import type { OcKind } from "./protocol.js";
 
 export {
@@ -15,8 +15,7 @@ export { WAIT_DEADLINE_MS } from "./turns.js";
 /** `client.app.log`'s service name. */
 export const LOG_SERVICE = "squeal";
 /** The line logged when no Node of Squeal's minimum is on the PATH (D4). */
-export const NO_NODE_LOG =
-  "Squeal: no Node 22.13 or later on the PATH, so Squeal is off in this OpenCode process.";
+export const NO_NODE_LOG = `Squeal: no Node ${NODE_FLOOR} or later on the PATH, so Squeal is off in this OpenCode process.`;
 
 export interface SquealPluginOptions {
   /** The bridge entry of each request kind, `dist/hooks/<kind>.mjs` (D1, D4). */
