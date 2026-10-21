@@ -5,6 +5,7 @@ import { SLOW_INHERIT } from "./accept/slow.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
 import { DECLARED } from "./assemble/declared.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
+import { FAILED_IMPORTS } from "./observe/failed-import.js";
 import { OBSERVED_READS } from "./observe/reads.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
 import { STORE_TIERS } from "./store/tier.js";
@@ -18,6 +19,7 @@ export const CASES: readonly Case[] = [
   ...GOLDEN_KEYS,
   ...GOLDEN_ROWS,
   ...OBSERVED_READS,
+  ...FAILED_IMPORTS,
   ...INHERIT,
   ...RETIRED,
   ...SLOW_INHERIT,
