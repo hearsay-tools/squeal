@@ -448,6 +448,13 @@ describe("repositories (D1)", () => {
     expect(shape.host).toEqual(all.shape.host);
     expect(shape.unknown.map((u) => u.what)).toContain("daemon 810 settings");
     expect(shape.unknown.map((u) => u.what)).not.toContain("daemon 800 settings");
+    vi.restoreAllMocks();
+    const nowhere = await snap(() => {}, { flag: () => findings, repo: true });
+    expect([nowhere.shape.repositories, nowhere.shape.files, nowhere.shape.flags]).toEqual([
+      [],
+      [],
+      0,
+    ]);
     expect(all.shape.flags).toBe(7);
   });
 });

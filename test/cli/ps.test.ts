@@ -194,6 +194,18 @@ describe("squeal ps", () => {
     }
   });
 
+  test("a snapshot that fails has no answer: its error on stderr, exit 3, never 1", async () => {
+    const broken = {
+      ...host.source,
+      processTable: () => {
+        throw new Error("the process table cannot be read");
+      },
+    };
+    const { code, stdout, stderr } = await ps([], { options: { sourceFor: () => broken } });
+    expect([code, stdout]).toEqual([3, ""]);
+    expect(stderr).toBe("squeal ps: no snapshot: the process table cannot be read\n");
+  });
+
   test("its places: the user config follows XDG_CONFIG_HOME, and no runtime dir without XDG_RUNTIME_DIR", async () => {
     const flag = vi.fn(noFlags);
     let stdout = "";
