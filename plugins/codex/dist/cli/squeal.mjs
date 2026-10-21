@@ -57212,6 +57212,9 @@ var DarwinSource = class {
   unixListeners() {
     return null;
   }
+  unixSockets() {
+    return null;
+  }
   pidNamespace() {
     return null;
   }
@@ -57531,6 +57534,53 @@ function duration2(ms2) {
   return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
 }
 
+// src/core/ps/render-units.ts
+var KIB = 1024;
+var MIB = KIB * 1024;
+var GIB = MIB * 1024;
+var UNKNOWN = "?";
+function count(n, one, many = `${one}s`) {
+  return `${thousands(n)} ${n === 1 ? one : many}`;
+}
+function thousands(n) {
+  return String(n).replace(/\B(?=(\d{3})+$)/g, ",");
+}
+function share(value) {
+  return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
+}
+function percent(value) {
+  return value === null ? UNKNOWN : `${Math.round(value)}%`;
+}
+function cpus2(value) {
+  return (value / 100).toFixed(1);
+}
+function bytes(n, column = false) {
+  if (n === null) return column ? UNKNOWN : "unknown";
+  if (n === 0) return "0";
+  const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
+  return column ? `${value}${unit}` : `${value} ${unit}iB`;
+}
+function ofGib(part, whole) {
+  return `${(part / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
+}
+function age(since, at2) {
+  return since === null ? UNKNOWN : duration3(at2 - since);
+}
+function duration3(ms2) {
+  const s = Math.max(0, Math.floor(ms2 / 1e3));
+  if (s < 60) return `${s}s`;
+  if (s < 100 * 60) return `${Math.floor(s / 60)}m`;
+  if (s < 48 * 3600) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
+}
+function cpuTime2(ms2) {
+  if (ms2 === null) return UNKNOWN;
+  const s = Math.floor(ms2 / 1e3);
+  const two = (n) => String(n).padStart(2, "0");
+  if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
+  return `${Math.floor(s / 3600)}h${two(Math.floor(s / 60) % 60)}m`;
+}
+
 // src/core/ps/flags-leftovers.ts
 var LEFTOVER_AGE_MS = 60 * 6e4;
 var SIZE_WALK_ENTRIES = 1e4;
@@ -57563,21 +57613,28 @@ function leftoverTemp(model, options, unknown) {
     if (model.now - stat7.mtimeMs > LEFTOVER_AGE_MS) old.set(path, stat7);
   }
   if (old.size === 0) return none2;
-  const paths = unusedPaths(model, keyDirs, [...old.keys()], unknown);
-  if (paths === null) {
+  const use = unusedPaths(model, keyDirs, [...old.keys()]);
+  if (use === null) {
     const why2 = "the working directories of processes cannot be read (D10)";
     unknown.push({ what: "flag leftover-temp", why: why2 });
     return none2;
   }
+  const paths = use.unused;
   if (paths.length === 0) return none2;
   const limit = options.sizeEntries ?? SIZE_WALK_ENTRIES;
   const bytes2 = options.full === true ? sizeOf(paths, old, limit) : null;
+  const count2 = paths.length === 1 ? "1 directory" : `${paths.length} directories`;
+  if (use.unread.length > 0) {
+    const size = bytes2 === null ? "" : `, ${bytes(bytes2)},`;
+    const why2 = `${count2} under ${places.tempDir} that no readable process uses${size} ${paths.length === 1 ? "is" : "are"} not listed, since ${use.unread.join(" and ")}`;
+    unknown.push({ what: "flag leftover-temp", why: why2, paths });
+    return none2;
+  }
   if (bytes2 === null) {
     const why2 = options.full === true ? `the size walk stops at ${limit} entries; ${DU}` : `the size walk runs with --full only; ${DU}`;
     unknown.push({ what: "files leftover-temp bytes", why: why2 });
   }
   const oldest = Math.min(...paths.map((path) => old.get(path)?.mtimeMs ?? model.now));
-  const count2 = paths.length === 1 ? "1 directory" : `${paths.length} directories`;
   return {
     flag: {
       flag: "leftover-temp",
@@ -57606,7 +57663,7 @@ function liveKeys(model) {
   }
   return keys;
 }
-function unusedPaths(model, keyDirs, candidates, unknown) {
+function unusedPaths(model, keyDirs, candidates) {
   const { places, source } = model;
   const pids2 = [...model.first.sample.table.values()].filter((row2) => row2.uid === null || row2.uid === places.uid).map((row2) => row2.pid);
   const cwds = source.cwds(pids2);
@@ -57622,35 +57679,44 @@ function unusedPaths(model, keyDirs, candidates, unknown) {
     if (top === `squeal-${places.uid}` && sub === "tmp" && key2 !== void 0 && key2 !== "")
       unused.delete(join99(keyDirs, key2));
   };
+  const unread = /* @__PURE__ */ new Set();
   for (const cwd of cwds.values()) use(named(cwd));
   for (const pid of pids2) {
     if (unused.size === 0) break;
-    for (const arg of source.cmdline(pid) ?? []) {
+    const args2 = source.cmdline(pid);
+    if (args2 === null) unread.add(pid);
+    for (const arg of args2 ?? []) {
       const path = named(arg);
       use(path.startsWith(at2) ? path : named(arg.slice(arg.indexOf("=") + 1)));
     }
   }
-  if (unused.size > 0) {
-    const listeners = source.unixListeners();
-    if (listeners === null) {
-      const why2 = "the listening unix sockets cannot be read (D10); a directory a socket is bound under counts as unused";
-      unknown.push({ what: "flag leftover-temp sockets", why: why2 });
-    }
-    for (const listener of listeners ?? []) use(named(listener.path));
-  }
-  let read5 = 0;
+  const sockets = unused.size === 0 ? [] : source.unixSockets();
+  for (const path of sockets ?? []) use(named(path));
   for (const pid of pids2) {
     if (unused.size === 0) break;
     const fds = source.fds(pid);
-    if (fds === null) continue;
-    read5 += 1;
-    for (const target of fds) use(named(target));
+    if (fds === null) unread.add(pid);
+    for (const target of fds ?? []) use(named(target));
   }
-  if (unused.size > 0 && read5 === 0) {
-    const why2 = "the open files of processes cannot be read (D10); a directory a file is open under counts as unused";
-    unknown.push({ what: "flag leftover-temp open files", why: why2 });
+  if (unused.size === 0) return { unused: [], unread: [] };
+  return { unused: [...unused].sort(), unread: failedReads(model, sockets === null, unread) };
+}
+var NAMED = 5;
+function failedReads(model, socketsUnread, pids2) {
+  const reasons = socketsUnread ? ["the bound unix sockets cannot be read (D10)"] : [];
+  const first = model.first.sample.table;
+  const now = pids2.size === 0 ? /* @__PURE__ */ new Map() : model.source.processTable([...pids2]);
+  const there = [...pids2].filter((pid) => {
+    const row2 = now.get(pid);
+    return row2 !== void 0 && row2.state !== "Z" && row2.startTicks === first.get(pid)?.startTicks;
+  });
+  if (there.length > 0) {
+    const names5 = there.slice(0, NAMED).map((pid) => `${pid} ${first.get(pid)?.comm ?? "?"}`);
+    const more = there.length > NAMED ? ` and ${there.length - NAMED} more` : "";
+    const n = there.length === 1 ? "1 process cannot" : `${there.length} processes cannot`;
+    reasons.push(`${n} be read: ${names5.join(", ")}${more}`);
   }
-  return [...unused].sort();
+  return reasons;
 }
 function sizeOf(dirs, stats, limit) {
   let entries3 = 0;
@@ -58339,6 +58405,11 @@ var ProcSource = class {
     }
     return listeners;
   }
+  unixSockets() {
+    const text3 = this.#read("net/unix");
+    if (text3 === null) return null;
+    return text3.split("\n").flatMap((line) => /^\s*[0-9a-f]+:(?:\s+[0-9A-F]+){5}\s+\d+ (.+)$/.exec(line)?.[1] ?? []);
+  }
   pidNamespace() {
     return this.#link("self/ns/pid");
   }
@@ -58357,7 +58428,7 @@ var ProcSource = class {
       memAvailable: meminfo.get("MemAvailable") ?? null,
       swapTotal,
       swapUsed: swapTotal !== null && swapFree !== void 0 ? swapTotal - swapFree : null,
-      cpuTime: cpuTime2(this.#read("stat")),
+      cpuTime: cpuTime3(this.#read("stat")),
       cpus: this.#cpus()
     };
   }
@@ -58448,60 +58519,13 @@ function pressure(text3) {
     values.set(m[1] ?? "", Number(m[2]));
   return values;
 }
-function cpuTime2(text3) {
+function cpuTime3(text3) {
   const line = /^cpu\s+(.*)$/m.exec(text3 ?? "")?.[1];
   if (line === void 0) return null;
   const ticks = line.trim().split(/\s+/).slice(0, 8).map(Number);
   if (ticks.length < 5 || !ticks.every(Number.isFinite)) return null;
   const total = ticks.reduce((a, b) => a + b, 0);
   return { busy: total - (ticks[3] ?? 0) - (ticks[4] ?? 0), total };
-}
-
-// src/core/ps/render-units.ts
-var KIB = 1024;
-var MIB = KIB * 1024;
-var GIB = MIB * 1024;
-var UNKNOWN = "?";
-function count(n, one, many = `${one}s`) {
-  return `${thousands(n)} ${n === 1 ? one : many}`;
-}
-function thousands(n) {
-  return String(n).replace(/\B(?=(\d{3})+$)/g, ",");
-}
-function share(value) {
-  return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
-}
-function percent(value) {
-  return value === null ? UNKNOWN : `${Math.round(value)}%`;
-}
-function cpus2(value) {
-  return (value / 100).toFixed(1);
-}
-function bytes(n, column = false) {
-  if (n === null) return column ? UNKNOWN : "unknown";
-  if (n === 0) return "0";
-  const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
-  return column ? `${value}${unit}` : `${value} ${unit}iB`;
-}
-function ofGib(part, whole) {
-  return `${(part / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
-}
-function age(since, at2) {
-  return since === null ? UNKNOWN : duration3(at2 - since);
-}
-function duration3(ms2) {
-  const s = Math.max(0, Math.floor(ms2 / 1e3));
-  if (s < 60) return `${s}s`;
-  if (s < 100 * 60) return `${Math.floor(s / 60)}m`;
-  if (s < 48 * 3600) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86400)}d`;
-}
-function cpuTime3(ms2) {
-  if (ms2 === null) return UNKNOWN;
-  const s = Math.floor(ms2 / 1e3);
-  const two = (n) => String(n).padStart(2, "0");
-  if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
-  return `${Math.floor(s / 3600)}h${two(Math.floor(s / 60) % 60)}m`;
 }
 
 // src/core/ps/render.ts
@@ -58620,7 +58644,7 @@ function daemonLines(d, at2) {
       version: version2,
       up: age(d.startedAt, at2),
       cpu: percent(d.cpuPct),
-      time: cpuTime3(d.cpuMs),
+      time: cpuTime2(d.cpuMs),
       memory: bytes(d.privateBytes, true),
       swap: bytes(d.swapBytes, true),
       work: workOf(d, at2)
@@ -58640,7 +58664,7 @@ function processLines(p, at2, full) {
       detail: detailOf(p),
       up: age(p.startedAt, at2),
       cpu: plus(percent(and(p.cpuPct, d.cpuPct)), d.skipped.cpuPct),
-      time: cpuTime3(and(p.cpuMs, d.cpuMs)),
+      time: cpuTime2(and(p.cpuMs, d.cpuMs)),
       memory: plus(bytes(and(p.privateBytes, d.privateBytes), true), d.skipped.privateBytes),
       swap: plus(bytes(and(p.swapBytes, d.swapBytes), true), d.skipped.swapBytes),
       work: [...p.escaped ? ["escaped"] : [], `nice ${p.nice}`, ...children].join(", ")
@@ -58656,7 +58680,7 @@ function processLines(p, at2, full) {
         detail: "",
         up: "",
         cpu: percent(c.cpuPct),
-        time: cpuTime3(c.cpuMs),
+        time: cpuTime2(c.cpuMs),
         memory: bytes(c.privateBytes, true),
         swap: bytes(c.swapBytes, true),
         work: ""
@@ -58849,21 +58873,34 @@ var measure = (source, first, second, pids2) => {
   const count2 = (home, ticks) => {
     if (home !== null) counted2.set(home, (counted2.get(home) ?? 0) + ticks);
   };
-  const reapedBy = /* @__PURE__ */ new Map();
+  const endedUnder = /* @__PURE__ */ new Map();
   for (const pid of tree) {
     const before = first.table.get(pid);
     if (before === void 0) continue;
     const after = second.table.get(pid);
     if (after !== void 0 && after.startTicks === before.startTicks) {
-      const home2 = homeOf(pid);
-      if (!rows.has(pid)) count2(home2, after.cpuTicks - before.cpuTicks);
-      count2(home2, (after.childTicks ?? 0) - (before.childTicks ?? 0));
+      const home = homeOf(pid);
+      if (!rows.has(pid)) count2(home, after.cpuTicks - before.cpuTicks);
+      count2(home, (after.childTicks ?? 0) - (before.childTicks ?? 0));
       continue;
     }
-    const waited = (first.table.get(before.ppid)?.childTicks ?? null) !== null;
-    const home = waited ? homeOf(before.ppid) : null;
-    count2(home, -(before.cpuTicks + (before.childTicks ?? 0)));
-    reapedBy.set(pid, home);
+    endedUnder.set(before.ppid, [...endedUnder.get(before.ppid) ?? [], before]);
+  }
+  const reapedBy = /* @__PURE__ */ new Map();
+  const unsure = /* @__PURE__ */ new Set();
+  for (const [ppid, ended2] of endedUnder) {
+    const parent2 = first.table.get(ppid);
+    const home = homeOf(ppid);
+    if (parent2 === void 0 || parent2.childTicks === null || home === null) continue;
+    const had = ended2.reduce((n, p) => n + p.cpuTicks + (p.childTicks ?? 0), 0);
+    count2(home, -had);
+    const later = second.table.get(ppid);
+    const grew = later === void 0 || later.childTicks === null ? null : later.childTicks - parent2.childTicks;
+    const waited = lived(ppid) && later?.state !== "Z" && grew !== null && grew >= had;
+    for (const p of ended2) {
+      if (waited) reapedBy.set(p.pid, home);
+      else unsure.add(rows.has(p.pid) ? p.pid : home);
+    }
   }
   for (const [pid, after] of second.table) {
     if (first.table.get(pid)?.startTicks === after.startTicks) continue;
@@ -58886,29 +58923,31 @@ var measure = (source, first, second, pids2) => {
       privateBytes: memory?.bytes ?? null,
       swapBytes: memory?.swapBytes ?? null,
       reapedBy: reapedBy.get(pid) ?? null,
-      left: ended2
+      reaperUnknown: unsure.has(pid),
+      left: ended2,
+      childCpuUnread: ticks !== null && now?.childTicks === null
     });
   }
   return costs;
 };
 function sumCosts(costs) {
-  const sum = (value, held2) => {
+  const sum = (value, out2) => {
     const known2 = costs.flatMap((c) => value(c) ?? []);
-    const skipped2 = costs.filter((c) => value(c) === null && !held2(c)).length;
+    const skipped2 = costs.filter(out2).length;
     const total = known2.length === 0 && skipped2 > 0 ? null : known2.reduce((a, b) => a + b, 0);
     return { total, skipped: skipped2 };
   };
   const cpu = sum(
     (c) => c.cpuPct,
-    (c) => c.reapedBy !== null
+    (c) => c.cpuPct === null ? c.reapedBy === null : c.reaperUnknown || c.childCpuUnread
   );
   const memory = sum(
     (c) => c.privateBytes,
-    (c) => c.left
+    (c) => c.privateBytes === null && !c.left
   );
   const swap = sum(
     (c) => c.swapBytes,
-    (c) => c.left
+    (c) => c.swapBytes === null && !c.left
   );
   return {
     cpuPct: cpu.total,
@@ -59039,7 +59078,7 @@ var LISTED = 10;
 function unknownOf({ shape, named, costs }) {
   const all2 = /* @__PURE__ */ new Map();
   const name2 = (what, why2) => {
-    if (!all2.has(what)) all2.set(what, { what, why: why2 });
+    if (!all2.has(what)) all2.set(what, named.find((u) => u.what === what) ?? { what, why: why2 });
   };
   for (const u of named) name2(u.what, u.why);
   const { host, squeal } = shape;
@@ -59070,17 +59109,28 @@ function unknownOf({ shape, named, costs }) {
       `${were(seenOnce)} in one sample of the window only: ${pids(seenOnce)}${waitedFor3(reaped.length, seenOnce.length)}`
     );
   const lost = seenOnce.filter(([, c]) => (c?.reapedBy ?? null) === null);
-  if (lost.length > 0)
+  const unsure = entries3.filter(([, c]) => c?.reaperUnknown === true);
+  const outside2 = lost.filter(([, c]) => c?.reaperUnknown !== true);
+  const ended2 = unsure.filter(([, c]) => c?.cpuPct === null);
+  const holding = unsure.filter(([, c]) => c?.cpuPct !== null);
+  const parts2 = [
+    ...outside2.length === 0 ? [] : [
+      `${counted(outside2)} in one sample only, which no process ps measures waited for: ${pids(outside2)}`
+    ],
+    ...ended2.length === 0 ? [] : [`${counted(ended2)} that ended ${afterParent(ended2.length)}: ${pids(ended2)}`],
+    ...holding.length === 0 ? [] : [`processes below ${counted(holding)} that ended ${afterParent(2)}: ${pids(holding)}`]
+  ];
+  if (parts2.length > 0)
     name2(
       "squeal cpuPct",
-      `a lower bound: it leaves out the CPU in the window of ${counted(lost)} in one sample only, which no process ps measures waited for: ${pids(lost)}`
+      `a lower bound: it leaves out the CPU in the window of ${parts2.join("; and of ")}`
     );
   const noMemory = entries3.filter(([, c]) => c === null || c.privateBytes === null);
-  const ended2 = noMemory.filter(([, c]) => c?.left === true);
-  if (ended2.length > 0)
+  const left = noMemory.filter(([, c]) => c?.left === true);
+  if (left.length > 0)
     name2(
       "processes privateBytes",
-      `${counted(ended2)} ended in the window, so ${ended2.length === 1 ? "it holds" : "they hold"} none: ${pids(ended2)}`
+      `${counted(left)} ended in the window, so ${left.length === 1 ? "it holds" : "they hold"} none: ${pids(left)}`
     );
   const unread = noMemory.filter(([, c]) => c?.left !== true);
   if (unread.length > 0)
@@ -59128,6 +59178,9 @@ function waitedFor3(reaped, once2) {
   if (reaped === 0) return "";
   const whom = reaped < once2 ? `${reaped} of them` : once2 === 1 ? "it" : "them";
   return `; the ancestor that waited for ${whom} counts ${once2 === 1 ? "its" : "their"} CPU`;
+}
+function afterParent(n) {
+  return n === 1 ? "after its parent did, or under one whose children's times grew too little, so no sample shows which process waited for it" : "after their parents did, or under ones whose children's times grew too little, so no sample shows which processes waited for them";
 }
 function counted(entries3) {
   return entries3.length === 1 ? "1 process" : `${entries3.length} processes`;
@@ -59365,7 +59418,10 @@ function openReadOnly(path) {
   let db;
   try {
     const file = statSync22(path, { bigint: true });
-    const held2 = existsSync36(`${path}-wal`) && existsSync36(`${path}-shm`);
+    const wal = statSync22(`${path}-wal`, { throwIfNoEntry: false });
+    const held2 = wal !== void 0 && existsSync36(`${path}-shm`);
+    if (!held2 && (wal?.size ?? 0) > 0)
+      return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
     db = new DatabaseSync6(held2 ? path : immutable(path), { readOnly: true });
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
     const version2 = Number(db.prepare("PRAGMA user_version").get()?.user_version);
@@ -59733,6 +59789,9 @@ ${USAGE3}`);
   if (parsed2.leftovers) {
     io.stdout(leftovers2.map((path) => `${path}
 `).join(""));
+    for (const u of shape.unknown.filter((u2) => u2.what === "flag leftover-temp"))
+      io.stderr(`squeal ps --leftovers: ${u.why}
+`);
     return 0;
   }
   io.stdout(parsed2.json ? `${JSON.stringify(shape)}
