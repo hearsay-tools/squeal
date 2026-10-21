@@ -192,6 +192,13 @@ export interface InstalledDependencies {
   readonly graph: InstalledGraph | null;
   /** Hash of the patches directory the package manager applies; part of `fingerprint` too. */
   readonly patches: string;
+  /**
+   * The fingerprint the key definition before task 011-85 took: npm's
+   * trusted hidden lockfile or pnpm's `lock.yaml` whole, then the patches.
+   * `null` (or absent) where it is `fingerprint`. A lookup reads the keys
+   * over it as one (011 C3).
+   */
+  readonly former?: string | null;
 }
 
 /**
@@ -226,13 +233,15 @@ export async function installedDependencies(
   else if (format.path === PNPM_LOCKFILE) {
     hash.update(`${INSTALLED_ENCODING}\0${withoutLinkedSpecifiers(content.toString("utf8"))}`);
   } else hash.update(content);
+  const filtered = stale === null && (hidden !== null || format.path === PNPM_LOCKFILE);
+  const former = filtered ? createHash("sha256").update(`${format.path}\0`).update(content) : null;
   const patches = createHash("sha256");
   if (format.patches !== null) {
     const patchesDir = join(dir, format.patches);
     for (const path of await listEntries(patchesDir)) {
       const bytes = await readIfFile(join(patchesDir, path));
       if (bytes === null) continue;
-      for (const target of [hash, patches]) {
+      for (const target of [hash, patches, ...(former === null ? [] : [former])]) {
         target.update(`\0${path}\0${bytes.byteLength}\0`).update(bytes);
       }
     }
@@ -247,7 +256,13 @@ export async function installedDependencies(
   const base = resolve(dir) === resolve(worktreeRoot) ? "" : toRelative(worktreeRoot, dir);
   const graph =
     listed === null || base === null ? null : new InstalledGraph(dir, base, listed, scans);
-  return { fingerprint: hash.digest("hex"), note, graph, patches: patches.digest("hex") };
+  return {
+    fingerprint: hash.digest("hex"),
+    former: former?.digest("hex") ?? null,
+    note,
+    graph,
+    patches: patches.digest("hex"),
+  };
 }
 
 /** The `packages` map of a hidden lockfile, or `null` when it has none. */

@@ -12,7 +12,7 @@ export {
   type UnmatchedInputs,
   unmatchedInputs,
 } from "./closure.js";
-export { type DependencyKeys, dependencyKeys } from "./dependencies.js";
+export { type DependencyKeys, dependencyKeys, type FormerDependencies } from "./dependencies.js";
 export {
   type CoreEnvironmentOptions,
   coreEnvironmentInputs,
@@ -24,9 +24,16 @@ export {
   installedDependenciesFingerprint,
   isInstalledLockfile,
 } from "./environment.js";
+export { formerReadAsOne } from "./former.js";
 export { createInputMatcher, globToRegExp } from "./glob.js";
 export { KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE } from "./key-format.js";
-export { type ClosureUpdate, type KeyChange, KeyIndex, type KeysReadAsOne } from "./key-index.js";
+export {
+  type ClosureUpdate,
+  type KeyChange,
+  KeyIndex,
+  type KeysReadAsOne,
+  type ReadAsOne,
+} from "./key-index.js";
 export {
   ancestorListings,
   GIT_ENTRY,
