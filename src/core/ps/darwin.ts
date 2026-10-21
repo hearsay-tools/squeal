@@ -104,12 +104,14 @@ class DarwinSource implements PsSource {
     return this.#boot;
   }
 
-  processTable(pids?: readonly number[]): ProcessTable {
-    if (pids?.length === 0) return new Map();
+  processTable(pids?: readonly number[], since?: ProcessTable): ProcessTable {
+    if (pids?.length === 0 && since === undefined) return new Map();
     this.#last = this.#read();
     const wanted = pids === undefined ? null : new Set(pids);
     const table = new Map<number, ProcessRow>();
-    for (const [pid, line] of this.#last) if (wanted?.has(pid) ?? true) table.set(pid, line.row);
+    for (const [pid, line] of this.#last)
+      if ((wanted?.has(pid) ?? true) || (since !== undefined && !since.has(pid)))
+        table.set(pid, line.row);
     return table;
   }
 
@@ -239,6 +241,8 @@ class DarwinSource implements PsSource {
         state: null,
         startTicks: Math.round(((start - (this.#boot ?? 0)) * CLOCK_TICKS) / 1000),
         cpuTicks,
+        // `time=` is the process's own; `-S`, which adds the children's, would hide it.
+        childTicks: null,
         nice: Number(nice),
         uid: Number(uid),
       },

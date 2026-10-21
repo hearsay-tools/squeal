@@ -93,6 +93,7 @@ describe("process table: one ps per read", () => {
       state: null,
       startTicks: (local(10, 21, 9, 40, 7) - BOOT) / 10,
       cpuTicks: 6_231,
+      childTicks: null,
       nice: 0,
       uid: 501,
     });
@@ -196,6 +197,7 @@ describe("the window: CPU from time= over two reads", () => {
       cpuMs: 4_920,
       privateBytes: 160_000 * 1024,
       swapBytes: null,
+      reapedBy: null,
     });
     expect(costs.get(5120)?.cpuPct).toBe(50);
     expect(costs.get(4810)?.cpuPct).toBe(1);
