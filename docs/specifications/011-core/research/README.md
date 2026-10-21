@@ -25,4 +25,5 @@ Links only. The findings behind this spec were written for 001 and stay in `../.
 - [issue-20-brief](issue-20-brief.md): setup failures under Squeal's own tmp root (gh-20; the human, 2026-10-17: reproduce first). Findings go to `issue-20-reproduction.md`.
 - [issue-33-dist-brief](issue-33-dist-brief.md): whether a `dist` rewrite drops runs that loaded the same bytes (gh-33; the human, 2026-10-20: one researcher). Findings go to `issue-33-dist.md`.
 - [key-format-guard-brief](key-format-guard-brief.md): when a check key should change across releases, and a mechanism that decides it (the human, 2026-10-20). Findings go to `key-format-guard.md`.
+- [daemon-scope-brief](daemon-scope-brief.md) (011-52): one daemon per repository instead of one per worktree, from the 2026-10-21 memory figures and usage since 2026-10-13 (the human, 2026-10-21). Findings go to `daemon-scope.md`.
 - [backlog-wall-budget](backlog-wall-budget.md) (001-366; brief `../tasks/wave-3.md` R1)
