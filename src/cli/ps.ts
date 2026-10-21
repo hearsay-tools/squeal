@@ -7,7 +7,7 @@ import { findWorktreeRoot, resolveCommonDir } from "../core/fs/index.js";
 import type { Flag, PsPlaces } from "../core/ps/model.js";
 import { createProcSource } from "../core/ps/proc.js";
 import { render } from "../core/ps/render.js";
-import { noFlags, SAMPLE_MS, takeSnapshot } from "../core/ps/snapshot.js";
+import { noFlags, SAMPLE_MS, type Snapshot, takeSnapshot } from "../core/ps/snapshot.js";
 import type { PsSource } from "../core/ps/source.js";
 import type { AbsolutePath } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
@@ -18,8 +18,9 @@ import type { CliIo } from "./main.js";
  * host, their test processes and the host's totals, and the flags of what
  * should not be up. It needs no daemon and starts none; it writes no store,
  * signals no process and connects to no socket. It exits 0 without a flag,
- * 1 with any, 2 on a usage error and 3 on a platform other than Linux and
- * macOS, Squeal's code for no verdict (D10).
+ * 1 with any, 2 on a usage error, and 3, Squeal's code for no verdict, on a
+ * platform other than Linux and macOS (D10) or when no snapshot could be
+ * taken.
  */
 
 const USAGE = "usage: squeal ps [--repo] [--full] [--json]\n       squeal ps --leftovers\n";
@@ -71,17 +72,27 @@ export async function psCommand(
     io.stderr(`squeal ps --repo: ${resolve(cwd)} is not inside a git repository\n\n${USAGE}`);
     return 2;
   }
-  const { shape, leftovers } = await takeSnapshot({
-    source,
-    places: placesOf(io.env ?? process.env, commonDir, options),
-    flag: options.flag ?? noFlags,
-    full: parsed.full,
-    repo: parsed.repo,
-    // The leftover walk needs no CPU window.
-    sampleMs: parsed.leftovers ? 0 : SAMPLE_MS,
-    now: io.now ?? Date.now,
-    wait: options.wait ?? ((ms) => sleep(ms)),
-  });
+  let snapshot: Snapshot;
+  try {
+    snapshot = await takeSnapshot({
+      source,
+      places: placesOf(io.env ?? process.env, commonDir, options),
+      flag: options.flag ?? noFlags,
+      full: parsed.full,
+      repo: parsed.repo,
+      // The leftover walk needs no CPU window.
+      sampleMs: parsed.leftovers ? 0 : SAMPLE_MS,
+      now: io.now ?? Date.now,
+      wait: options.wait ?? ((ms) => sleep(ms)),
+    });
+  } catch (error) {
+    // Exit 1 says a flag holds; a snapshot that failed has no answer.
+    io.stderr(
+      `squeal ps: no snapshot: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    return 3;
+  }
+  const { shape, leftovers } = snapshot;
   if (parsed.leftovers) {
     io.stdout(leftovers.map((path) => `${path}\n`).join(""));
     return 0;

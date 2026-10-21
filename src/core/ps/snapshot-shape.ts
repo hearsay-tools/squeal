@@ -141,7 +141,7 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
     ...processes.flatMap((p) => [p.pid, ...(below.get(p.pid) ?? [])]),
   ];
   const total = sumCosts(pids.flatMap((pid) => costs.get(pid) ?? []));
-  const ids = o.repo && current !== null ? worktreeIdsOf(current) : null;
+  const ids = !o.repo ? null : current === null ? new Set<string>() : worktreeIdsOf(current);
   const files =
     ids === null
       ? findings.files
@@ -151,7 +151,7 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
   const shape: Omit<PsSnapshot, "unknown"> = {
     v: PS_SHAPE_VERSION,
     at: model.now,
-    sampleMs: second.sample.atMs - first.sample.atMs,
+    sampleMs: Math.round(second.sample.atMs - first.sample.atMs),
     platform: model.source.platform,
     memory: model.source.memoryKind,
     host: r.host,
