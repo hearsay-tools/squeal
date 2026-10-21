@@ -9,7 +9,7 @@ import {
   type PsFlag,
   type PsFlagName,
 } from "../../src/core/ps/shape.js";
-import { noFlags, type SnapshotOptions, takeSnapshot } from "../../src/core/ps/snapshot.js";
+import { type SnapshotOptions, takeSnapshot } from "../../src/core/ps/snapshot.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { BOOT_SECONDS, UPTIME_SECONDS } from "./fixture.js";
 import { fakeSource } from "./fixture-samples.js";
@@ -19,6 +19,7 @@ import {
   forkWorker,
   gitChild,
   NOW,
+  noFlags,
   type SnapshotHost,
   STARTED_AT,
   snapshotHost,
