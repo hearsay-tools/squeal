@@ -128,6 +128,7 @@ export function fakeSource(
     },
     fileKey: (path) => options.fileKeys?.[path] ?? null,
     unixListeners: () => null,
+    unixSockets: () => [],
     pidNamespace: () => null,
     host() {
       count("host");
