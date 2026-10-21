@@ -23,6 +23,8 @@ export interface KeyInput {
   readonly closure: readonly string[];
   /** The test file's installed-dependency segment. */
   readonly dependencies?: string;
+  /** An install written under the case's scratch directory, whose fingerprint replaces `core`'s (011-85). */
+  readonly installed?: Readonly<Record<string, string>>;
 }
 
 /** A run's report of one test file, and the checks its previous key held. */
