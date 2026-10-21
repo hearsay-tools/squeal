@@ -576,6 +576,27 @@ var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/capacity/pool.ts
+var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
+
+// src/core/slow/rank.ts
+var MAX_READ_BYTES = 1024 * 1024;
+
+// src/core/scheduler/queue.ts
+var Group = { first: 0, catchUp: 1, second: 2 };
+var GROUP_ORDER = {
+  edits: [Group.first, Group.catchUp, Group.second],
+  turn: [Group.catchUp, Group.second, Group.first]
+};
+
+// src/core/scheduler/rekeyed-moves.ts
+var MOVES_RETENTION_MS = 60 * 6e4;
+
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
