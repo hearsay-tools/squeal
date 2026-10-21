@@ -1,0 +1,193 @@
+$ cat /proc/loadavg; nproc
+11.14 17.28 25.35 4/3270 3794380
+24
+
+$ node failures-sql.mjs
+store /tmp/t64/cezar-store.sqlite; 2026-10-21T15:18:29.526Z; runs 7; file packages/cezar/src/core/harness-parity.test.ts; check part "autosave"
+
+== today: list, this worktree: 20 rows; median 71.8 ms, min 65.3, max 74.3; load 11.14
+   plan: SCAN r USING INDEX results_by_time
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+
+== today: list, every worktree: 20 rows; median 21.3 ms, min 20.8, max 22.2; load 11.14
+   plan: SCAN r USING INDEX results_by_time
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+
+== today: count, this worktree: 115 rows; median 90.1 ms, min 87.2, max 102.7; load 11.14
+   plan: SCAN r
+
+== today: count, every worktree: 1065 rows; median 88.1 ms, min 86.1, max 90.5; load 11.14
+   plan: SCAN r
+
+== failed: list, every worktree: 20 rows; median 21.2 ms, min 20.1, max 22.2; load 11.14
+   plan: SCAN r USING INDEX results_by_time
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+
+== failed: count, every worktree: 1065 rows; median 94.4 ms, min 83.8, max 102.8; load 11.14
+   plan: SCAN r
+
+== failed: list, this worktree: 20 rows; median 70.7 ms, min 64.2, max 85.8; load 11.14
+   plan: SCAN r USING INDEX results_by_time
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+
+== failed+file: list, every worktree: 1 rows; median 9.7 ms, min 9.0, max 12.4; load 11.14
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN checks USING COVERING INDEX sqlite_autoindex_checks_1
+   plan: REUSE LIST SUBQUERY 1
+   plan: SEARCH r USING INDEX results_by_check_time (check_id=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+== failed+file: count, every worktree: 1 rows; median 8.8 ms, min 8.2, max 10.3; load 11.14
+   plan: SEARCH r USING INDEX results_by_check_time (check_id=?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN checks USING COVERING INDEX sqlite_autoindex_checks_1
+
+== failed+dir: list, every worktree: 100 rows; median 107.1 ms, min 99.9, max 116.4; load 11.14
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN checks USING COVERING INDEX sqlite_autoindex_checks_1
+   plan: REUSE LIST SUBQUERY 1
+   plan: SEARCH r USING INDEX results_by_check_time (check_id=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+== failed+check: list, every worktree: 14 rows; median 15.8 ms, min 15.1, max 17.0; load 11.14
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN c2 USING COVERING INDEX sqlite_autoindex_checks_1
+   plan: REUSE LIST SUBQUERY 1
+   plan: SEARCH r USING INDEX results_by_check_time (check_id=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+== failed+check: count, every worktree: 14 rows; median 17.1 ms, min 15.9, max 18.0; load 11.14
+   plan: SEARCH r USING INDEX results_by_check_time (check_id=?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN c2 USING COVERING INDEX sqlite_autoindex_checks_1
+
+== failed: list all, every worktree (--limit 1000): 1000 rows; median 198.7 ms, min 185.1, max 215.2; load 11.14
+   plan: SCAN r USING INDEX results_by_time
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+
+== indexed: list, every worktree: 20 rows; median 2.6 ms, min 2.4, max 3.2; load 10.56
+   plan: SEARCH r USING INDEX results_by_failure (failure_id>?)
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+== indexed: count, every worktree: 1065 rows; median 0.8 ms, min 0.6, max 1.0; load 10.56
+   plan: SEARCH r USING INDEX results_by_failure (failure_id>?)
+
+== indexed: list, this worktree: 20 rows; median 1.0 ms, min 1.0, max 1.2; load 10.56
+   plan: SEARCH r USING INDEX results_by_failure (failure_id>?)
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+== indexed: count, this worktree: 115 rows; median 0.7 ms, min 0.7, max 0.7; load 10.56
+   plan: SEARCH r USING INDEX results_by_failure (failure_id>?)
+
+== indexed+file: list, every worktree: 1 rows; median 4.5 ms, min 4.4, max 4.9; load 10.56
+   plan: SEARCH r USING INDEX results_by_failure (failure_id>?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN checks USING COVERING INDEX sqlite_autoindex_checks_1
+   plan: CREATE BLOOM FILTER
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+== indexed+dir: list, every worktree: 100 rows; median 9.5 ms, min 9.1, max 10.3; load 10.56
+   plan: SEARCH r USING INDEX results_by_failure (failure_id>?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN checks USING COVERING INDEX sqlite_autoindex_checks_1
+   plan: CREATE BLOOM FILTER
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+== indexed+dir: count, every worktree: 443 rows; median 6.4 ms, min 6.0, max 7.1; load 10.56
+   plan: SEARCH r USING INDEX results_by_failure (failure_id>?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN checks USING COVERING INDEX sqlite_autoindex_checks_1
+   plan: CREATE BLOOM FILTER
+
+== indexed+check: list, every worktree: 14 rows; median 15.3 ms, min 14.7, max 16.3; load 10.56
+   plan: SEARCH r USING INDEX results_by_failure (failure_id>?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN c2 USING COVERING INDEX sqlite_autoindex_checks_1
+   plan: CREATE BLOOM FILTER
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+== indexed: list all, every worktree (--limit 1000): 1000 rows; median 22.8 ms, min 21.2, max 25.5; load 10.56
+   plan: SEARCH r USING INDEX results_by_failure (failure_id>?)
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+== file without failure_id: list, every worktree: 1 rows; median 9.3 ms, min 8.9, max 9.9; load 10.56
+   plan: SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+   plan: LIST SUBQUERY 1
+   plan: SCAN checks USING COVERING INDEX sqlite_autoindex_checks_1
+   plan: REUSE LIST SUBQUERY 1
+   plan: SEARCH r USING INDEX results_by_check_time (check_id=?)
+   plan: SEARCH f USING INDEX sqlite_autoindex_failure_texts_1 (id=?) LEFT-JOIN
+   plan: USE TEMP B-TREE FOR ORDER BY
+
+$ node check-filter.mjs; CHECK=harness-parity node check-filter.mjs
+2026-10-21T15:18:35.876Z load 10.56: 828 failing checks, "autosave" lists 14; median 5.2 ms (failing checks read 3.4 ms)
+2026-10-21T15:18:35.976Z load 10.56: 828 failing checks, "harness-parity" lists 2; median 5.5 ms (failing checks read 3.7 ms)
+
+$ node frames.mjs
+  513  all
+   92  file: helper location, own test-file frame in stack text: false
+   92  file: location in another file
+    3  file: location in own test file
+   15  file: no location, own test-file frame in stack text: false
+   15  file: no location
+   95  file: stack text's frame = location (mapped alike)
+    5  project contract
+  126  project e2e
+   20  project root:test:unit
+  203  project server
+   35  project test:package
+    6  project test:unit
+  118  project web
+   31  test: helper location, own test-file frame in stack text: false
+   60  test: helper location, own test-file frame in stack text: true
+   91  test: location in another file
+  291  test: location in own test file
+   21  test: no location, own test-file frame in stack text: false
+   21  test: no location
+  382  test: stack text's frame = location (mapped alike)
+examples of a helper location:
+  {"project":"e2e","test":"packages/web/e2e/quick-list.e2e.ts","location":"packages/web/e2e/agent-browser.ts:512:13","ownFrame":"packages/web/e2e/quick-list.e2e.ts:1372:20"}
+  {"project":"e2e","test":"packages/web/e2e/tab-coordination.e2e.ts","location":"packages/web/e2e/poll.ts:68:38","ownFrame":"packages/web/e2e/tab-coordination.e2e.ts:72:7"}
+  {"project":"e2e","test":"packages/web/e2e/tab-coordination.e2e.ts","location":"packages/web/e2e/poll.ts:68:38","ownFrame":"packages/web/e2e/tab-coordination.e2e.ts:72:7"}
+  {"project":"e2e","test":"packages/web/e2e/tab-coordination.e2e.ts","location":"packages/web/e2e/agent-browser.ts:835:67","ownFrame":null}
+  {"project":"e2e","test":"packages/web/e2e/tab-coordination.e2e.ts","location":"packages/web/e2e/poll.ts:68:38","ownFrame":"packages/web/e2e/tab-coordination.e2e.ts:72:7"}
+  {"project":"e2e","test":"packages/web/e2e/tab-coordination.e2e.ts","location":"packages/web/e2e/poll.ts:68:38","ownFrame":"packages/web/e2e/tab-coordination.e2e.ts:72:7"}
+
+$ (cd $ROOT && node docs/specifications/011-core/tasks/011-64/probes/reach.mjs)
+test/keys/validity/entries/global.ts: 93 files; seams reached: src/core/store/repos/results.ts, src/core/store/schema.ts, src/core/state/flaky.ts, src/core/state/rerun-first.ts, src/core/state/producers.ts, src/core/scheduler/store-results.ts, src/core/state/derive.ts, src/core/state/fingerprint.ts, src/core/state/index.ts
+test/keys/validity/entries/vitest.ts: 82 files; seams reached: src/runners/vitest/results.ts, src/core/state/fingerprint.ts
+test/keys/validity/entries/node-test.ts: 72 files; seams reached: src/runners/node-test/run/errors.ts
+test/keys/validity/entries/pytest.ts: 62 files; seams reached: src/runners/pytest/run/report.ts
+test/keys/validity/entries/recorder.ts: 30 files; seams reached: none
+
+$ (cd $ROOT && <tsx> docs/specifications/011-core/tasks/011-64/probes/replaced-prune.ts)
+after the fail: results fail@run-fail; failures listed 1; failure texts 1; run-fail row kept, log kept; flaky note none
+after the passing retry at the same key: results pass@run-pass; failures listed 0; failure texts 1; run-fail row kept, log kept; flaky note {"key":"k1","from":"fail","to":"pass","fromWorktreeId":"fc1550b9de251876","toWorktreeId":"fc1550b9de251876","at":1792583941000,"failure":"boom"}
+after the hourly prune ({"resultsRemoved":0,"runsRemoved":0,"checkpointsRemoved":0,"checksRemoved":0,"worktreesRemoved":0,"bytesAfter":176128}): results pass@run-pass; failures listed 0; failure texts 0; run-fail row kept, log kept; flaky note {"key":"k1","from":"fail","to":"pass","fromWorktreeId":"fc1550b9de251876","toWorktreeId":"fc1550b9de251876","at":1792583941000,"failure":"boom"}
+after a prune 8 days later ({"resultsRemoved":0,"runsRemoved":1,"checkpointsRemoved":0,"checksRemoved":0,"worktreesRemoved":0,"bytesAfter":176128}): results pass@run-pass; failures listed 0; failure texts 0; run-fail row gone, log gone; flaky note {"key":"k1","from":"fail","to":"pass","fromWorktreeId":"fc1550b9de251876","toWorktreeId":"fc1550b9de251876","at":1792583941000,"failure":"boom"}
+
+$ cat /proc/loadavg
+10.56 17.06 25.24 5/3288 3796728
