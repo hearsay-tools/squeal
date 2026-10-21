@@ -1,8 +1,14 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { cpuShare, hostTotals, memoryShare, readPool } from "../../src/core/ps/host.js";
+import {
+  cpuShare,
+  hostTotals,
+  memoryShare,
+  readPool,
+  userConfigFile,
+} from "../../src/core/ps/host.js";
 import type { PsPlaces } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { HostReading, LockEntry } from "../../src/core/ps/source.js";
@@ -198,15 +204,25 @@ describe("readPool", () => {
     expect(reading.foreign).toEqual([{ pid: 4242, path: join(tempPool, "pool.0.lock") }]);
   });
 
-  test("the host's slots are capacity.hostSlots of the user-level config, else the CPUs less one", () => {
+  test("the host's slots are capacity.hostSlots of the user-level config file, else the CPUs less one", () => {
+    // The file's path, named here: the integration that adds `PsPlaces.userConfig` sets it to this.
+    const configFile = join(dir, "home", ".config", "squeal", "config.json");
+    expect(userConfigFile(places)).toBe(configFile);
     const { source } = fakeSource([], { locks: [], fileKeys: keys() });
     expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0 });
-    mkdirSync(join(places.home, ".config", "squeal"), { recursive: true });
+    mkdirSync(dirname(configFile), { recursive: true });
     writeFileSync(
-      join(places.home, ".config", "squeal", "config.json"),
-      JSON.stringify({ capacity: { hostSlots: 12 } }),
+      configFile,
+      JSON.stringify({
+        capacity: { hostSlots: 12, projects: { "/home/user/projects/alpha": { slots: 4 } } },
+      }),
     );
     expect(readPool(source, places, new Set()).pool).toEqual({ slots: 12, held: 0 });
+    // A value the loader does not take is the default, as the daemons read it.
+    writeFileSync(configFile, JSON.stringify({ capacity: { hostSlots: 0 } }));
+    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0 });
+    writeFileSync(configFile, "{");
+    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0 });
   });
 
   test("without /proc/locks (D10) nobody's permits are known: held is null, not zero", () => {
