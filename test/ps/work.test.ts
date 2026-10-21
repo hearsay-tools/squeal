@@ -3,6 +3,7 @@ import { readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { daemonUsedMetaKey, recordDaemonUsed } from "../../src/core/daemon/last-use.js";
 import { recordVersion } from "../../src/core/delivery/consumer-version.js";
 import { departedMetaKey } from "../../src/core/delivery/expiry.js";
 import { recordHarness } from "../../src/core/delivery/harness-process.js";
@@ -310,7 +311,9 @@ describe("phases' work", () => {
   test("a waiting daemon's row is the lock holder's: only the holder of a duplicate root is read", () => {
     serve(800, alpha);
     writeProcesses(host, [daemonProcess({ pid: 801, root: alpha.root })]);
-    writeStore(alpha, daemonRecord(alpha));
+    writeStore(alpha, daemonRecord(alpha), (store) =>
+      recordDaemonUsed(store, alpha.id, { usedAt: STARTED_AT, activeAt: STARTED_AT }),
+    );
     const result = read();
     expect([...result.work.keys()]).toEqual([800]);
     expect(result.unknown).toEqual([]);
@@ -419,6 +422,7 @@ test("meta values of a format it does not know read as null, and unknown names e
     store.meta.set(worktreeMetaKey("slowTier", alpha.id), JSON.stringify({ kind: "dreaming" }));
     store.meta.set(worktreeMetaKey("harnessProcess", alpha.id), JSON.stringify({ "s1\nmain": 7 }));
     store.meta.set(worktreeMetaKey("consumerVersion", alpha.id), "[");
+    store.meta.set(daemonUsedMetaKey(alpha.id), "{");
     // A lane map it cannot read leaves the lane of an open checkpoint unknown.
     store.checkpoints.start({
       id: "cp",
@@ -453,6 +457,47 @@ test("meta values of a format it does not know read as null, and unknown names e
     "daemon 800 consumer s1 harness",
     "daemon 800 consumer versions",
     "daemon 800 departedAt",
+    "daemon 800 lastUsedAt",
     "daemon 800 slowWaiting",
   ]);
+});
+
+describe("D9: the last use its daemon records", () => {
+  test("read from the start its row records", () => {
+    serve(800, alpha);
+    writeStore(alpha, daemonRecord(alpha), (store) =>
+      recordDaemonUsed(store, alpha.id, {
+        usedAt: STARTED_AT + 5_000,
+        activeAt: STARTED_AT + 2_000,
+      }),
+    );
+    const { work, unknown } = read();
+    expect(work.get(800)?.lastUse).toEqual({
+      usedAt: STARTED_AT + 5_000,
+      activeAt: STARTED_AT + 2_000,
+    });
+    expect(unknown).toEqual([]);
+  });
+
+  test("a predecessor's row, older than the start its row records, reads null and is named", () => {
+    serve(800, alpha);
+    writeStore(alpha, daemonRecord(alpha), (store) =>
+      recordDaemonUsed(store, alpha.id, { usedAt: STARTED_AT - 1, activeAt: STARTED_AT - 1 }),
+    );
+    const { work, unknown } = read();
+    expect(work.get(800)?.lastUse).toBeNull();
+    expect(unknown).toEqual([
+      { what: "daemon 800 lastUsedAt", why: expect.stringContaining("predecessor") },
+    ]);
+  });
+
+  test("no row, from a release before D9, reads null and is named", () => {
+    serve(800, alpha);
+    writeStore(alpha, daemonRecord(alpha));
+    const { work, unknown } = read();
+    expect(work.get(800)?.lastUse).toBeNull();
+    expect(unknown).toEqual([
+      { what: "daemon 800 lastUsedAt", why: expect.stringContaining("release before D9") },
+    ]);
+  });
 });
