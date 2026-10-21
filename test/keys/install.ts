@@ -23,12 +23,14 @@ const LOCKED = new Date("2026-09-12T00:00:00Z");
  * Writes an npm install at `root` the way `npm ci` leaves it: each package
  * folder with its files, then `node_modules/.package-lock.json` listing each
  * with an integrity derived from its version, newer than every folder
- * (task 001-104's rule). Locations are relative to `root`. Writing again
- * over an install bumps it in place.
+ * (task 001-104's rule), and the root's `name` and `version` at its top, as
+ * npm copies them (task 011-85). Locations are relative to `root`. Writing
+ * again over an install bumps it in place.
  */
 export function writeInstall(
   root: string,
   packages: Readonly<Record<string, FixturePackage>>,
+  version = "1.0.0",
 ): void {
   const listed: Record<string, unknown> = { "": { name: "app" } };
   for (const [location, pkg] of Object.entries(packages)) {
@@ -51,7 +53,8 @@ export function writeInstall(
     listed[location] = { ...entry, integrity: `sha512-${name}-${pkg.version}` };
   }
   touchFolders(root);
-  writeFile(root, "node_modules/.package-lock.json", JSON.stringify({ packages: listed }));
+  const lockfile = { name: "app", version, lockfileVersion: 3, requires: true, packages: listed };
+  writeFile(root, "node_modules/.package-lock.json", JSON.stringify(lockfile));
   utimesSync(join(root, "node_modules/.package-lock.json"), LOCKED, LOCKED);
 }
 
