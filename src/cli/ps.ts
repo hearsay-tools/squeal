@@ -81,7 +81,7 @@ export async function psCommand(
     snapshot = await takeSnapshot({
       source,
       places: placesOf(io.env ?? process.env, commonDir, options),
-      flag: options.flag ?? flag,
+      flag: options.flag ?? ((model) => flag(model, { full: parsed.full })),
       full: parsed.full,
       repo: parsed.repo,
       // The leftover walk needs no CPU window.
