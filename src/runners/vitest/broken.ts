@@ -1,6 +1,7 @@
 import { sep } from "node:path";
 import type { SerializedError, Vitest } from "vitest/node";
 import type { AbsolutePath } from "../../core/types/index.js";
+import { closeEmptied } from "./empty-closed.js";
 import type { WorktreePaths } from "./paths.js";
 import { errorText, type RunCollector } from "./reporter.js";
 import type { RunExecution } from "./run.js";
@@ -42,18 +43,16 @@ export function runnerFailure(collector: RunCollector, files: InstanceFiles): st
  * Closes an instance `runnerFailure` found broken and returns the run's
  * execution as a crash. Spec 001 D5: a runner failure, never a `fail`
  * stored under a key (lessons, defect 12). The caller starts a new instance
- * on its next call.
+ * on its next call. A close that resolves empties the instance (task 013-06).
  */
 export async function closeBroken(
   vitest: Vitest,
   collector: RunCollector,
   broken: string,
 ): Promise<RunExecution> {
-  await vitest
-    .close()
-    .catch((error: unknown) =>
-      collector.note(`close() of a broken instance failed: ${String(error)}`),
-    );
+  await closeEmptied(vitest).catch((error: unknown) =>
+    collector.note(`close() of a broken instance failed: ${String(error)}`),
+  );
   return {
     end: "crashed",
     failure: `the Vitest instance failed to load modules and is recreated: ${broken}`,
