@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { departedMetaKey } from "../../src/core/delivery/expiry.js";
 import type { Flag, FlagFindings, PsModel } from "../../src/core/ps/model.js";
+import { render } from "../../src/core/ps/render.js";
 import {
   PS_SHAPE_VERSION,
   type PsFileFlag,
@@ -12,7 +13,7 @@ import {
 import { type SnapshotOptions, takeSnapshot } from "../../src/core/ps/snapshot.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { BOOT_SECONDS, UPTIME_SECONDS } from "./fixture.js";
-import { fakeSource } from "./fixture-samples.js";
+import { type FakeProcess, fakeSource } from "./fixture-samples.js";
 import {
   addTicks,
   fakeWindow,
@@ -275,6 +276,40 @@ describe("Squeal's CPU counts what ends in the window (task 014-21, lessons.md P
     });
   });
 
+  test("a worker that ended without waiting for its git: no sample shows who waited for the git, so Squeal's, the repository's and the descendants' CPU are lower bounds (reviews/wave-4.md B3)", async () => {
+    const daemon = host.serve(800, alpha, { process: { childTicks: 700 } });
+    writeProcesses(host, [
+      { ...forkWorker(801, 800, `${TOKEN}:vitest`), childTicks: 20 },
+      { ...gitChild(803, 801), lifeCpuPct: 20 },
+    ]);
+    const { shape } = await snap(() => {
+      // The worker had 1,220 ticks at the first sample and used 100 more; the daemon waited for it, the init process may have waited for the git.
+      rmSync(join(host.base, "proc", "801"), { recursive: true });
+      rmSync(join(host.base, "proc", "803"), { recursive: true });
+      addTicks(host, daemon, 10, 700 + 1_320);
+    });
+    const repository = shape.repositories[0];
+    // 10 own, and 1,320 less the 1,220 and 40 the two had: exact had the worker waited for the git.
+    expect(repository?.daemons[0]?.cpuPct).toBe(35);
+    const unsure = { cpuPct: 1, privateBytes: 0, swapBytes: 0 };
+    expect(shape.squeal).toMatchObject({ cpuPct: 35, skipped: unsure });
+    expect(repository).toMatchObject({ cpuPct: 35, skipped: unsure });
+    expect(repository?.daemons[0]?.processes[0]?.descendants).toMatchObject({
+      count: 1,
+      cpuPct: null,
+      skipped: unsure,
+    });
+    expect(shape.unknown).toContainEqual({
+      what: "squeal cpuPct",
+      why: "a lower bound: it leaves out the CPU in the window of 1 process that ended after its parent did, or under one whose children's times grew too little, so no sample shows which process waited for it: pid 803",
+    });
+    const lines = render(shape, { full: false }).split("\n");
+    expect(lines.find((l) => l.startsWith("Squeal "))).toMatch(
+      /^Squeal {2}CPU at least 0\.\d CPUs/,
+    );
+    expect(lines.find((l) => l.startsWith(alpha.root))).toMatch(/ · CPU at least 0\.\d · /);
+  });
+
   test("a child born in the window and alive at its end counts all its CPU in its nearest row", async () => {
     const daemon = host.serve(800, alpha);
     const worker = forkWorker(801, 800, `${TOKEN}:vitest`);
@@ -293,9 +328,12 @@ describe("Squeal's CPU counts what ends in the window (task 014-21, lessons.md P
 describe("memory a descendant left (task 014-24, lessons.md P4)", () => {
   test("a head whose only descendant left by the second sample keeps its own memory: the descendant adds 0, and unknown names it", async () => {
     host.serve(800, alpha);
-    writeProcesses(host, [forkWorker(801, 800, `${TOKEN}:vitest`), gitChild(802, 801)]);
+    const worker = forkWorker(801, 800, `${TOKEN}:vitest`);
+    writeProcesses(host, [worker, gitChild(802, 801)]);
     const { shape } = await snap(() => {
+      // The worker waited for its git's 100 ticks.
       rmSync(join(host.base, "proc", "802"), { recursive: true });
+      addTicks(host, worker, 0, 100);
     });
     const p = shape.repositories[0]?.daemons[0]?.processes[0];
     expect(p).toMatchObject({ pid: 801, privateBytes: 160_000 * KIB, swapBytes: 2_000 * KIB });
@@ -338,16 +376,29 @@ describe("memory a descendant left (task 014-24, lessons.md P4)", () => {
 });
 
 describe("a source without children's times (D10)", () => {
-  test("names Squeal's CPU a lower bound, once", async () => {
+  test("names Squeal's CPU a lower bound, once, and the Squeal and repository lines show it (reviews/wave-4.md S1)", async () => {
     const daemonArgs = ["node", cacheScript("claude", "0.1.235"), "daemon", "/gone/a"];
-    const { source } = fakeSource(
-      [
-        { pid: 700, ppid: 1, comm: "node", cmdline: daemonArgs, childTicks: null },
-        { pid: 701, ppid: 700, cmdline: ["node", "x.js"], childTicks: null },
-      ],
-      { readsMarks: false },
+    const daemon: FakeProcess = { pid: 700, ppid: 1, comm: "node", cmdline: daemonArgs };
+    const processes = [
+      { ...daemon, childTicks: null },
+      { pid: 701, ppid: 700, cmdline: ["node", "x.js"], childTicks: null },
+    ];
+    const { source } = fakeSource(processes, { readsMarks: false });
+    const { shape } = await snap(
+      () => {
+        // The daemon used 40 ticks; a child that ended in it would add none.
+        processes[0] = { ...daemon, childTicks: null, cpuTicks: 40 };
+      },
+      { source, places: { ...host.places, uid: 1000 } },
     );
-    const { shape } = await snap(() => {}, { source, places: { ...host.places, uid: 1000 } });
+    expect(shape.squeal.cpuPct).toBe(20);
+    expect(shape.squeal.skipped.cpuPct).toBeGreaterThan(0);
+    expect(shape.repositories[0]?.skipped.cpuPct).toBeGreaterThan(0);
+    const lines = render(shape, { full: false }).split("\n");
+    expect(lines.find((l) => l.startsWith("Squeal "))).toMatch(/^Squeal {2}CPU at least 0\.2 CPUs/);
+    expect(lines.find((l) => l.startsWith("repository unknown"))).toMatch(
+      / · CPU at least 0\.2 · /,
+    );
     expect(shape.unknown.filter((u) => u.what === "squeal cpuPct")).toEqual([
       {
         what: "squeal cpuPct",
@@ -591,14 +642,16 @@ describe("repositories (D1)", () => {
 
 describe("what is unknown (D8): one entry per cause", () => {
   test("a process that left during the window: its window CPU and memory, once each with the count", async () => {
-    host.serve(800, alpha);
+    const daemon = host.serve(800, alpha);
     writeProcesses(host, [
       forkWorker(801, 800, `${TOKEN}:vitest`),
       forkWorker(802, 800, `${TOKEN}:vitest`),
     ]);
     const { shape } = await snap(() => {
+      // The daemon waited for both workers' 1,200 ticks each.
       rmSync(join(host.base, "proc", "801"), { recursive: true });
       rmSync(join(host.base, "proc", "802"), { recursive: true });
+      addTicks(host, daemon, 0, 2_400);
     });
     const p = shape.repositories[0]?.daemons[0]?.processes[0];
     expect(p).toMatchObject({ cpuPct: null, privateBytes: null, swapBytes: null });

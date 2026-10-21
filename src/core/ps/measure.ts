@@ -1,5 +1,5 @@
 import type { CostSum, Measure, ProcessCost, TakeSample } from "./model.js";
-import { type ProcessTable, ticksToMs } from "./source.js";
+import { type ProcessRow, type ProcessTable, ticksToMs } from "./source.js";
 
 /*
  * Spec 014 D4 (tasks 014-07, 014-21): what each process costs. The CPU is
@@ -20,11 +20,20 @@ import { type ProcessTable, ticksToMs } from "./source.js";
  * - a process below a row that is no row (a daemon's `git`) adds its growth.
  *
  * Each counts in the row of its nearest ancestor that lived through the
- * window. A process that ended and that no measured process waited for (an
- * escaped browser, a daemon) is left out, and `reapedBy` says so. The
- * memory is the source's (`RssAnon + RssShmem` and `VmSwap` on Linux), read
- * right after the second sample for the processes still in it: one that
- * left by then holds none (014-24).
+ * window. The ticks a process that ended had come off only under a parent
+ * whose children's times are read. That parent waited for it when it lived
+ * through the window, is no zombie, and its children's times grew by at
+ * least what its ended children had: `reapedBy` names the row that holds
+ * its CPU. Otherwise the two samples do not show which process waited for
+ * it, as when its parent ended too (`reviews/wave-4.md` B3): its ticks
+ * still come off, so the CPU is a lower bound, and `reaperUnknown` says
+ * so. One that ended under no row that lived (an escaped browser, a
+ * daemon) is left out. A row's CPU is never less than its own growth. On
+ * a source without children's times (D10) a row's CPU leaves out each
+ * child that ended, and `childCpuUnread` says so. The memory is the
+ * source's (`RssAnon + RssShmem` and `VmSwap` on Linux), read right after
+ * the second sample for the processes still in it: one that left by then
+ * holds none (014-24).
  */
 
 /** One table read and the host's CPU times, at the middle of the read on a monotonic clock. */
@@ -88,7 +97,8 @@ export const measure: Measure = (source, first, second, pids) => {
   const count = (home: number | null, ticks: number): void => {
     if (home !== null) counted.set(home, (counted.get(home) ?? 0) + ticks);
   };
-  const reapedBy = new Map<number, number | null>();
+  // The processes that ended, by their parent at the first sample.
+  const endedUnder = new Map<number, ProcessRow[]>();
   for (const pid of tree) {
     const before = first.table.get(pid);
     if (before === undefined) continue;
@@ -99,11 +109,28 @@ export const measure: Measure = (source, first, second, pids) => {
       count(home, (after.childTicks ?? 0) - (before.childTicks ?? 0));
       continue;
     }
-    // It ended: the process that waited for it holds its whole life in its children's times.
-    const waited = (first.table.get(before.ppid)?.childTicks ?? null) !== null;
-    const home = waited ? homeOf(before.ppid) : null;
-    count(home, -(before.cpuTicks + (before.childTicks ?? 0)));
-    reapedBy.set(pid, home);
+    endedUnder.set(before.ppid, [...(endedUnder.get(before.ppid) ?? []), before]);
+  }
+  const reapedBy = new Map<number, number>();
+  const unsure = new Set<number>();
+  for (const [ppid, ended] of endedUnder) {
+    const parent = first.table.get(ppid);
+    const home = homeOf(ppid);
+    if (parent === undefined || parent.childTicks === null || home === null) continue;
+    // The process that waited for one holds its whole life in its children's times.
+    const had = ended.reduce((n, p) => n + p.cpuTicks + (p.childTicks ?? 0), 0);
+    count(home, -had);
+    const later = second.table.get(ppid);
+    const grew =
+      later === undefined || later.childTicks === null
+        ? null
+        : later.childTicks - parent.childTicks;
+    // A zombie's children went to another process when it ended.
+    const waited = lived(ppid) && later?.state !== "Z" && grew !== null && grew >= had;
+    for (const p of ended) {
+      if (waited) reapedBy.set(p.pid, home);
+      else unsure.add(rows.has(p.pid) ? p.pid : home);
+    }
   }
   for (const [pid, after] of second.table) {
     if (first.table.get(pid)?.startTicks === after.startTicks) continue;
@@ -131,7 +158,9 @@ export const measure: Measure = (source, first, second, pids) => {
       privateBytes: memory?.bytes ?? null,
       swapBytes: memory?.swapBytes ?? null,
       reapedBy: reapedBy.get(pid) ?? null,
+      reaperUnknown: unsure.has(pid),
       left: ended,
+      childCpuUnread: ticks !== null && now?.childTicks === null,
     });
   }
   return costs;
@@ -139,30 +168,32 @@ export const measure: Measure = (source, first, second, pids) => {
 
 /**
  * D4 "Totals sum the same two values": each value sums the processes that
- * have one, and `skipped` counts those whose unknown value it leaves out
- * (D8). A process that ended in the window adds no memory, and its CPU in
- * it counts in the ancestor that waited for it: neither is left out. A
+ * have one, and `skipped` counts those whose value it leaves out, whole or
+ * in part (D8). A process that ended in the window adds no memory, and its
+ * CPU in it counts in the ancestor that waited for it: neither is left out.
+ * A CPU is left out in part when it is a lower bound: a reaper the samples
+ * do not show, or children's times unread (`reviews/wave-4.md` B3, S1). A
  * value is `null` only when it leaves some out and has none. A process seen
  * once adds its CPU time but no window CPU.
  */
 export function sumCosts(costs: readonly ProcessCost[]): CostSum {
-  const sum = (value: (c: ProcessCost) => number | null, held: (c: ProcessCost) => boolean) => {
+  const sum = (value: (c: ProcessCost) => number | null, out: (c: ProcessCost) => boolean) => {
     const known = costs.flatMap((c) => value(c) ?? []);
-    const skipped = costs.filter((c) => value(c) === null && !held(c)).length;
+    const skipped = costs.filter(out).length;
     const total = known.length === 0 && skipped > 0 ? null : known.reduce((a, b) => a + b, 0);
     return { total, skipped };
   };
   const cpu = sum(
     (c) => c.cpuPct,
-    (c) => c.reapedBy !== null,
+    (c) => (c.cpuPct === null ? c.reapedBy === null : c.reaperUnknown || c.childCpuUnread),
   );
   const memory = sum(
     (c) => c.privateBytes,
-    (c) => c.left,
+    (c) => c.privateBytes === null && !c.left,
   );
   const swap = sum(
     (c) => c.swapBytes,
-    (c) => c.left,
+    (c) => c.swapBytes === null && !c.left,
   );
   return {
     cpuPct: cpu.total,

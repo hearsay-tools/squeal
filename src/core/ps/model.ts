@@ -144,11 +144,21 @@ export interface ProcessCost {
   /**
    * When it ended in the window: the process whose `cpuPct` counts its CPU
    * in the window, the nearest ancestor that lived through it; `null` while
-   * it lives, or when no process `ps` measures waited for it.
+   * it lives, or when the two samples do not show that one `ps` measures
+   * waited for it.
    */
   readonly reapedBy: number | null;
+  /**
+   * The two samples do not show which process waited for it, or for a
+   * process below it that is no row, so its CPU in the window may be in
+   * no row: it ended after its parent did, or under a parent whose
+   * children's times grew too little (`reviews/wave-4.md` B3).
+   */
+  readonly reaperUnknown: boolean;
   /** Not in the second sample, or a zombie in it: it ended in the window and holds no memory (014-24). */
   readonly left: boolean;
+  /** Its children's times are unread (D10): its `cpuPct` leaves out each child that ended in the window. */
+  readonly childCpuUnread: boolean;
 }
 
 /** `sumCosts`: each value over the processes that have one (D4), and what each sum leaves out. */
