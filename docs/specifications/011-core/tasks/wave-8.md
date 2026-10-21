@@ -97,3 +97,18 @@ Answer, each with an evidence tag and one recommendation:
 4. Whether any of this moves the key format or a stored row's meaning (011-37's rules), and the code rows: seams, owners, done-when as tests.
 
 Include spec text as drafts and the rejected options. Owns `tasks/011-64/` only, probes under `tasks/011-64/probes/` on scratch stores and a read-only copy of a real one (`node:sqlite`, `readOnly: true`), with a scratch `HOME` and `XDG_*`; live runs only at a one-minute load below 24; no full suite, no build. Not yours: spec text, `status.md`, the board, product code. Done when `design.md` is committed. Stop: the human's dated acceptance.
+
+## W7: 011-62 design, a configuration reload drops removed projects
+
+Use /worker. Shape: survey, a design draft for the human. Outcome: `tasks/011-62/design.md`, which the human can accept as a C10 amendment (and C4, C6 or C9 where touched).
+
+Read: board row 011-62; spec 011 C4, C6, C9, C10 and `status.md`; 003 D1 and D7; `research/issue-53.md` with its probes. Seams, read only: `src/core/scheduler/workspaces.ts`, `src/core/scheduler/omitted-test-files.ts`, `src/core/state/file-class.ts`, `src/core/state/state.ts`, `src/core/status/standing.ts`, `src/core/types/policy.ts`.
+
+Answer, each with an evidence tag and one recommendation:
+
+1. What a reload is today: which configuration changes the daemon notices without a restart, and which it reads only at start.
+2. A removed project: what its stored results, states, queued work, open runs, retries and the `failures` list do, and what status says, until and after the reload.
+3. A renamed or changed project (new include or exclude, a moved root): which of these the same rule covers, and which need their own.
+4. Whether the rule moves a key or a stored row's meaning (011-37's rules), and the code row: seams, owners, done-when as tests.
+
+Include spec text as drafts and the rejected options. Owns `tasks/011-62/` only, probes under `tasks/011-62/probes/` in a throwaway repo under `/tmp` with a scratch `HOME` and `XDG_*`, only at a one-minute load below 24; no full suite, no build. Not yours: spec text, `status.md`, the board, product code. Done when `design.md` is committed. Stop: the human's dated acceptance.
