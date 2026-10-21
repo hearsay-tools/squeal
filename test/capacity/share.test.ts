@@ -44,6 +44,24 @@ describe("fairShares", () => {
     ).toEqual({ a: 0, b: 1, c: 1 });
   });
 
+  // Row 011-97: an isolate: false Vitest tier runs 2 workers at a grant of 1, so a share of 1 is no use to it.
+  test("a share below its demand's least is raised to it from the most junior shares", () => {
+    expect(
+      shares(3, [
+        { id: "a", want: 9, since: null },
+        { id: "b", want: 9, since: null },
+        { id: "c", want: 9, since: 5, least: 2 },
+      ]),
+    ).toEqual({ a: 1, b: 0, c: 2 });
+    // The longest waiter has only seniors above it: its share stays, too small to run, until it is one.
+    expect(
+      shares(2, [
+        { id: "a", want: 9, since: 3 },
+        { id: "b", want: 9, since: 5, least: 2 },
+      ]),
+    ).toEqual({ a: 1, b: 1 });
+  });
+
   test("a capped project's daemons share its slots, and the rest of the host goes to the others", () => {
     const project = { id: "/repo/p", slots: 6 };
     expect(

@@ -43,10 +43,18 @@ export class TierCapacity {
     });
   }
 
-  /** The grant for a tier of `want` files; `null` when the pool failed and the tier runs ungranted. */
-  take(want: number, lane: PoolLane = "fast"): PoolLease | typeof WAIT_FOR_CAPACITY | null {
+  /**
+   * The grant for a tier of `want` files that runs no fewer than `least`
+   * workers (row 011-97); `null` when the pool failed and the tier runs
+   * ungranted.
+   */
+  take(
+    want: number,
+    lane: PoolLane = "fast",
+    least = 1,
+  ): PoolLease | typeof WAIT_FOR_CAPACITY | null {
     try {
-      const lease = this.#pool.acquire(want, lane);
+      const lease = this.#pool.acquire(want, lane, least);
       this.#failed = null;
       if (lease === null) this.#refused = true;
       return lease ?? WAIT_FOR_CAPACITY;
