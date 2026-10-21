@@ -56,11 +56,13 @@ The daemon's phase comes from these sources:
 
 | Phase | Rule |
 |---|---|
-| `serving` | holds its lock, and its store row names it |
+| `serving` | holds its lock, and its store row's record names it: the record's start is at or after the process start minus 1 s |
+| `starting` | holds its lock, and the row has no record of it: no row start, or a start earlier than the process start minus 1 s (the previous daemon's, or a SIGKILLed predecessor's record not yet replaced). A daemon takes its lock before it opens the store and registers |
+| `stopping` | holds its lock, its row has no record, and the row's kept start is its own (C9 clears the record before the lock goes) |
 | `waiting` | holds no lock (a loser's retry or a `--await-lock` successor) |
-| `stopping` | holds its lock, and its row has no socket (C9 clears the record before the lock goes) |
+| `unknown` | the lock is held but the store cannot be read, or the boot time cannot be read where the rule needs the process start, or the source has no lock state (D10) |
 
-A process's start time never ties it to a store row, because the row's `daemon_started_at` is 1.2 to 12.1 s later than the process start. Only the held lock ties them.
+A process's start time never ties it to a store row, because the row's `daemon_started_at` is 1.2 to 12.1 s later than the process start. Only the held lock ties them; the start time only excludes (014-06). `discover.ts` exports `phaseOn(source)`, which reads the boot time and the tick rate once and returns the phase function `(daemon, work, now)`.
 
 Identity: the pid and the start time come from `stat`. The version and the harness come from the script path (`.../{.claude,.codex}/plugins/cache/hearsay/squeal/<version>/...`), with the row's `daemon_version` as the fallback for a checkout's `dist`. The root comes from the command line, and the repository from the lock path's common directory.
 
@@ -70,7 +72,7 @@ From the store, without the daemon (`research/daemon-discovery.md` 3):
 
 - **Heartbeat:** its age, against two of the row's intervals.
 - **Pending:** the count of `test_file_keys` that are `queued` and `running`.
-- **Running tier:** `runs` with `end_state IS NULL AND started_at >= daemon_started_at`, with its lane, its file count and its start. The time bound matters: on 2026-10-21 one worktree had a run open for 21.6 h under a daemon 59 min old.
+- **Running tier:** `runs` with `end_state IS NULL AND started_at >= daemon_started_at`, with its lane, its file count and its start. The lane is `fast`, `slow` or `null`, the store's vocabulary and that of a checkpoint: the checkpoint's one lane when it has one, else `slow` when the `slow-tier` row names the run's files, else `fast` while that row can be read, else `null` (014-06). The time bound matters: on 2026-10-21 one worktree had a run open for 21.6 h under a daemon 59 min old.
 - **Checkpoint:** `checkpoints` with `completed_at IS NULL`, with the same time bound.
 - **Consumers:** each `consumers` row, with its harness process from `harness-process:<id>`, alive or gone by `/proc/<pid>/stat` and its start time, and its hook version from `consumer-version:<id>`.
 - **Departure and drain:** `departed:<id>` and `slow-tier:<id>`.
@@ -92,6 +94,7 @@ Built from the same `stat` scan (`research/process-measurement.md` 3):
 
 - **Owner:** the daemon is the nearest daemon ancestor in the ppid tree. When there is none, the owner is the daemon whose token (`daemon-token:<id>` in its store) the process's `SQUEAL_DAEMON_CHILD` mark carries. That links a process that escaped its daemon, such as a test's browser.
 - **Lane:** the part of the mark after the token (`vitest`, `slow:vitest`, `<lane>#<runId>`).
+- **Run:** the mark's `#<runId>`; else the daemon's only open tier whose lane is the mark's class (`slow` for a lane that starts with `slow:`, else `fast`); else the daemon's one open tier when its lane is `null`; else `null` (014-07).
 - **Runner and files:** from the command line. A Vitest fork worker ends in `vitest/dist/workers/forks.js`, and its files are those of its tier's open run, not per worker. A node:test process names its file after `--test ...`, and a pytest batch names its files after `--basetemp=<dir>`.
 - **Nice:** field 19 of `stat`. Ionice is not read, because Node has no binding and it would cost a spawn.
 - **Descendants:** a test process's descendants without a mark (a test's `git`, servers or browsers) are summed into it as `+N children`, with their CPU and memory. `--full` lists them.
@@ -103,7 +106,7 @@ From `research/process-measurement.md` 4:
 
 - `/proc/loadavg`; `/proc/pressure/cpu` `some avg10` and `/proc/pressure/memory` `some` and `full avg10`; `MemTotal`, `MemAvailable` and swap from `/proc/meminfo`, read at every snapshot; and `os.availableParallelism()`, which follows the CPU affinity and a cgroup's `cpu.max`.
 - Squeal's CPU share is Squeal's CPU over the window divided by the host's busy CPU from `/proc/stat` over the same window. Squeal's memory share is Squeal's private memory divided by `MemTotal - MemAvailable`. Swap is stated apart.
-- **The capacity pool:** the host's slots (C10), and the permits each daemon holds, from the `/proc/locks` holders of `pool.<i>.lock` and `slow*.lock`.
+- **The capacity pool:** the host's slots (C10: `capacity.hostSlots` of the user-level config file, which `PsPlaces.userConfig` names and which follows `XDG_CONFIG_HOME`), and the permits each daemon holds, from the `/proc/locks` holders of `pool.<i>.lock` and `slow*.lock`.
 
 ### D7. Flags
 
@@ -195,7 +198,7 @@ A value that `ps` could not read is `null`, and `unknown` names it. It never rea
 
 The past-idle and past-unused rules need the time the daemon was last used. Today that time is only in the daemon's memory (`#lastUsed`, `#lastActive`), and no request returns it. A `squeal status` over the socket leaves no trace in the store, so a rule built from store proxies would fire early (`research/should-not-be-up.md` open questions).
 
-The daemon writes `daemon-used:<worktree id>` in `meta` with each heartbeat: `{ v: 1, usedAt, activeAt }`. That is one key in the write it already does, and it needs no migration. `ps` reads it when present. For a daemon of a release without it, the two flags are not evaluated, `lastUsedAt` is `null`, and `unknown` names the daemon. This changes 011 C9; the row that adds it amends C9's text.
+The daemon writes `daemon-used:<worktree id>` in `meta` with each heartbeat: `{ v: 1, usedAt, activeAt }`. The row is the worktree's, not one daemon's: `readDaemonUsed(value, startedAt)` reads `null` when `usedAt` is earlier than the start the row records, so a row a predecessor left, under a daemon of a release that writes none, never reads as that daemon's (014-08). That is one key in the write it already does, and it needs no migration. `ps` reads it when present. For a daemon of a release without it, the two flags are not evaluated, `lastUsedAt` is `null`, and `unknown` names the daemon. This changes 011 C9; the row that adds it amends C9's text.
 
 ### D10. Platforms
 
@@ -204,7 +207,7 @@ Linux gets the full design of D2 to D7. macOS gets a fallback built from `ps` an
 On macOS (`process.platform` is `darwin`), from `research/daemon-discovery.md` 5 and `research/process-measurement.md` 4, all `inferred`:
 
 - **Processes:** one `ps -axww -o pid=,ppid=,pgid=,nice=,time=,rss=,lstart=,command=` per sample, two samples 2 s apart. The CPU is the difference in `time` over the window. Never `%cpu`, which on macOS is a decaying average.
-- **Daemons:** from the command line, as in D2 step 1. The worktree id is the hash of the root (`worktreeIdFor`), and the store is in the root's common directory. The lock state is unknown. The phase is `serving` when the store row's heartbeat is within two intervals, and `unknown` otherwise.
+- **Daemons:** from the command line, as in D2 step 1. The worktree id is the hash of the root (`worktreeIdFor`), and the store is in the root's common directory. The lock state is unknown. The phase is `serving` when the store row's record is the daemon's own (D2's start rule) and its heartbeat is within two intervals of the snapshot's clock, and `unknown` otherwise; never `starting`, `stopping` or `waiting`.
 - **Memory:** RSS per process, labelled RSS. The totals are summed RSS, and they say that they count shared pages more than once. Swap per process is `null`.
 - **Test processes:** by the ppid tree only. The mark is not read, so the lane is `null` and an escaped process is not attributed.
 - **Host:** `os.loadavg()`, `os.availableParallelism()`, `os.totalmem()`, used memory from `vm_stat`, and swap from `sysctl vm.swapusage`. There is no pressure (`null`). The host's busy CPU comes from two `os.cpus()` samples over the window.
