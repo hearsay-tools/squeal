@@ -33,6 +33,7 @@ import {
 } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
+import { type GcFunction, IdleGc } from "./idle-gc.js";
 import { recordDaemonUsed } from "./last-use.js";
 import {
   type DaemonTimings,
@@ -94,6 +95,8 @@ export interface DaemonOptions {
    * no project cap. The pool is the slow slot's directory under `env`.
    */
   readonly capacity?: PoolCapacity;
+  /** How the daemon finds V8's `gc` for its idle GC (row 011-69). Default `exposeGc`. */
+  readonly gc?: () => GcFunction | null;
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
@@ -192,6 +195,8 @@ class Daemon {
   readonly #observedSeen: ObservedSeen = {};
   /** What waits for a busy store, the pass's, the pump's and the timers' writes (task 001-422). */
   readonly #busyWaits: BusyWaits;
+  /** Spec 011 C9 (row 011-69): one last-resort GC once no tier ran for 60 s. */
+  readonly #idleGc: IdleGc;
   #exit: Promise<DaemonExit> | null = null;
   /** `#register` committed: only then has its shutdown a mark to write (task 001-276). */
   #registered = false;
@@ -215,6 +220,12 @@ class Daemon {
     this.#busyWaits = new BusyWaits({
       now: this.#now,
       note: (text) => this.#note(text, undefined, undefined, BUSY_TOPIC),
+    });
+    this.#idleGc = new IdleGc({
+      now: this.#now,
+      note: (text) => this.#note(text),
+      log: this.#log,
+      ...(options.gc === undefined ? {} : { lookup: options.gc }),
     });
     this.#repositoryRoot = repositoryRootOf(opened.root, opened.commonDir);
     this.#capacity = capacityReader({
@@ -305,6 +316,9 @@ class Daemon {
       // Task 001-219: so are an explicit checkpoint and a new failure's re-run.
       owedWork: () =>
         this.#loop !== null && this.#phase !== "stopping" ? this.#loop.scheduler.owedWork() : null,
+      idleGc: () => {
+        if (this.#phase !== "stopping") this.#idleGc.check();
+      },
       note: (text) => this.#note(text),
       log: this.#log,
       busyWaits: this.#busyWaits,
@@ -488,14 +502,17 @@ class Daemon {
         latestNote: (topic) =>
           readDaemonNotes(store, this.opened.worktreeId).findLast((n) => n.topic === topic)?.text,
       });
-      const runner = afterEachRun(
-        createCompositeRunner([
-          ...(vitestRunner === null ? [] : [withSlowInstance(vitestRunner, slowVitest)]),
-          ...nodeTestRunners,
-          ...pytestRunners,
-        ]),
-        this.#children,
-        ({ text, stopped }) => this.#note(text, stopped),
+      // Row 011-69: each run, of any lane, is a tier the idle GC waits for.
+      const runner = this.#idleGc.track(
+        afterEachRun(
+          createCompositeRunner([
+            ...(vitestRunner === null ? [] : [withSlowInstance(vitestRunner, slowVitest)]),
+            ...nodeTestRunners,
+            ...pytestRunners,
+          ]),
+          this.#children,
+          ({ text, stopped }) => this.#note(text, stopped),
+        ),
       );
       this.#vitest = vitestRunner;
       this.#runner = runner;
@@ -550,6 +567,8 @@ class Daemon {
       // this daemon registers its consumer while it runs.
       this.#lastActive = this.#now();
       this.#lastUsed = this.#lastActive;
+      // The idle GC's quiet too, unless a tier runs.
+      this.#idleGc.ready();
       if (this.#phase === "starting") this.#setPhase("ready");
       this.#log(`serving ${root} on ${this.#socketPath}`);
     } catch (error) {
