@@ -1,0 +1,27 @@
+== Q2 toCheckError.location: {"path":"test/harness-parity.testkit.ts","line":823,"column":40}
+== Q2 fingerprint: AssertionError: expected 'idle' to be 'saved' @ test/harness-parity.testkit.ts:823:40
+== Q2 stored stack keeps test frame: true
+== Q1 failures --json: exit 0 total 32 listed 20 limit 20
+== Q1 target file in list: false
+== Q1 keys per failure: check,worktreeId,worktreeRoot,revision,commit,dirty,recordedAt,durationMs,fingerprint,summary,runId
+== Q1 human first lines:
+Failures in every worktree (newest 20 of 32, newest first):
+  FAIL  2026-10-21T11:29:00.000Z  test/other-29.test.ts > other
+        /home/agent/projects/squeal/.ai/cezar/t/4084a021/squeal-issue67-uZM4D5 (this worktree), revision 4, commit abc123, dirty, 12 ms, run run-o-29
+        AssertionError: expected 'idle' to be 'saved' @ test/harness-parity.testkit.ts:823:40
+== Q1 failures test/harness-autosave.test.ts: exit 2; squeal failures: unexpected argument "test/harness-autosave.test.ts"
+== Q1 failures --all-worktrees --limit 100: exit 2; squeal failures: unexpected argument "--limit"
+== Q1 failures --check autosave: exit 2; squeal failures: unexpected argument "--check"
+== Q3 why --json exit 0 
+== Q3 why results: 20 fail: 0
+== Q3 why human exit 0 has test frame 84:15: false has FAIL line: false
+== Q3 why human head:
+Check: test/harness-autosave.test.ts > autosave > saves after idle
+Worktree: /home/agent/projects/squeal/.ai/cezar/t/4084a021/squeal-issue67-uZM4D5
+Revision: none recorded
+
+Known state: none in this worktree
+
+History: no transitions in this worktree
+
+== store dir: /home/agent/projects/squeal/.ai/cezar/t/4084a021/squeal-issue67-uZM4D5/.git
