@@ -54,7 +54,7 @@ sleep 1; log "running before the delete: $(tr '\n' ' ' < "$T/started")"
 PID=$(pgrep -f "plugin-a/dist/cli/squeal.mjs daemon $R" | head -1)
 log "daemon pid=$PID cmd: $(tr '\0' ' ' < /proc/$PID/cmdline)"
 pgrep -P "$PID" | while read -r c; do echo "  child $c: $(tr '\0' ' ' < /proc/$c/cmdline | cut -c1-300)"; done
-grep -h -o '/tmp/sq72[^ ]*plugin-a[^ "]*' /proc/$PID/environ /proc/*/environ 2>/dev/null | sort -u | sed 's/^/  env-ref| /' | head
+grep -h -o '/tmp/sq72[^ ]*plugin-a[^ "]*' /proc/$PID/environ 2>/dev/null | sort -u | sed 's/^/  env-ref| /' | head
 sq "$A" status 2>&1 | sed 's/^/  pre| /' | head -15
 rm -rf "$T/plugin-a"; log "deleted plugin-a"
 sq "$A" status 2>&1 | sed 's/^/  old-cli| /' | head -5; log "old CLI exit ${PIPESTATUS[0]}"
