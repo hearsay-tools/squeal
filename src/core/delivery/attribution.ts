@@ -1,7 +1,9 @@
 import { loadPolicy } from "../daemon/policy.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { passedRetry } from "../retry/index.js";
+import { readFailureKeys } from "../slow/state.js";
 import { beforeEditsFor, checkIdentity, readFlakyNotes, testFileOf } from "../state/index.js";
+import { testFileFrame } from "../status/test-frame.js";
 import type {
   CheckId,
   CheckKey,
@@ -12,8 +14,10 @@ import type {
   RelativePath,
   ResultRecord,
   RevisionNumber,
+  SourceLocation,
   StatusHeader,
   Store,
+  TestFileFrame,
   TransitionEntry,
   WorktreeId,
 } from "../types/index.js";
@@ -59,7 +63,8 @@ function loadOf(store: Store, worktreeId: WorktreeId, entry: TransitionEntry): n
  * be the agent's (`changedAfter`, task 001-96). "None of the files changed here" also
  * needs `seesEveryChange`. A slow file's failure reads as any file's (spec 004 D8
  * as amended 2026-10-18, task 004-81). A failure first observed by this
- * consumer gets its baseline (`beforeEdits`, 011 C5 as amended, gh-32).
+ * consumer gets its baseline (`beforeEdits`, 011 C5 as amended, gh-32), and
+ * each one its test-file frame (`testFileFrames`, gh-67).
  */
 export function attribute(
   store: Store,
@@ -72,13 +77,16 @@ export function attribute(
   const changesOf = closureChanges(store, consumer, revision);
   const before =
     from === null ? null : beforeEditsFor(store, consumer.worktreeId, slot(consumer), from.since);
+  const frameOf = testFileFrames(store, consumer.worktreeId);
   return entries.map((entry) => {
     if (entry.kind === "fail-retired" || entry.to !== "fail") return entry;
     const load = loadOf(store, consumer.worktreeId, entry);
     const firstSeen = entry.kind === "first-seen-fail" && entry.from === null && before !== null;
+    const frame = frameOf(entry.check, entry.location);
     const facts = {
       ...(load === undefined ? {} : { loadAverage: load }),
       ...(firstSeen ? { beforeEdits: before(entry.check) } : {}),
+      ...(frame === undefined ? {} : { testFileFrame: frame }),
     };
     const told = changesOf(entry.check);
     return { ...entry, ...(told === undefined ? {} : { changesInClosure: told }), ...facts };
@@ -107,11 +115,55 @@ export function closureChanges(store: Store, consumer: Consumer, revision: Revis
 }
 
 /**
+ * A reader of a failure's test-file frame in `worktreeId` (011 C5 as amended
+ * 2026-10-21, gh-67): read from the stored row at the key the state sink
+ * recorded for the failure (`readFailureKeys`) when that row is the
+ * failure's, a fail at `location`. `undefined` when there is no such row
+ * (replaced, pruned, or a setup check, which has none) or no frame. Each
+ * key's rows are read once.
+ */
+export function testFileFrames(store: Store, worktreeId: WorktreeId) {
+  const keys = readFailureKeys(store, worktreeId);
+  const rows = new Map<CheckKey, readonly ResultRecord[]>();
+  return (check: CheckId, location: SourceLocation | null): TestFileFrame | undefined => {
+    const identity = checkIdentity(check);
+    const key = keys.get(identity);
+    if (key === undefined || location === null) return undefined;
+    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
+    const row = rows
+      .get(key)
+      ?.find((r) => r.outcome === "fail" && checkIdentity(r.check) === identity);
+    const thrown = row?.errors[0]?.location ?? null;
+    if (row === undefined || thrown === null || !samePosition(thrown, location)) return undefined;
+    return testFileFrame(check, row.errors) ?? undefined;
+  };
+}
+
+function samePosition(a: SourceLocation, b: SourceLocation): boolean {
+  return a.path === b.path && a.line === b.line && a.column === b.column;
+}
+
+/** `failures`, each with its test-file frame when it has one (`testFileFrames`). */
+export function withTestFileFrames(
+  store: Store,
+  worktreeId: WorktreeId,
+  failures: readonly KnownFailure[],
+): readonly KnownFailure[] {
+  if (failures.length === 0) return failures;
+  const frameOf = testFileFrames(store, worktreeId);
+  return failures.map((f) => {
+    const frame = frameOf(f.check, f.location);
+    return frame === undefined ? f : { ...f, testFileFrame: frame };
+  });
+}
+
+/**
  * 011 C5 as amended (gh-32): a registration's known failures with the
  * closure paths changed since the session first registered, when there are
  * any: a session that resumes or compacts keeps its registration revision.
  * A slow file's are kept too, as `attribute` keeps them (004 D8 as amended
- * 2026-10-18, task 004-81).
+ * 2026-10-18, task 004-81). Each also gets its test-file frame
+ * (`withTestFileFrames`, gh-67), as `attribute` gives a delivered failure.
  */
 export function withClosureChanges(
   store: Store,
@@ -121,7 +173,7 @@ export function withClosureChanges(
 ): readonly KnownFailure[] {
   if (failures.length === 0) return failures;
   const changesOf = closureChanges(store, consumer, revision);
-  return failures.map((f) => {
+  return withTestFileFrames(store, consumer.worktreeId, failures).map((f) => {
     const paths = changesOf(f.check);
     return paths === undefined || paths.length === 0 ? f : { ...f, changesInClosure: paths };
   });

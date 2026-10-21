@@ -7,6 +7,7 @@ import type {
   RelativePath,
   RevisionNumber,
   SourceLocation,
+  TestFileFrame,
   WorktreeId,
 } from "./common.js";
 import type { CheckKey } from "./keys.js";
@@ -99,6 +100,12 @@ export interface TransitionEntry {
   readonly originRoot?: AbsolutePath;
   readonly summary: string | null;
   readonly location: SourceLocation | null;
+  /**
+   * For a failure whose `location` is not in its check's own test file: the
+   * first frame in that file, read from the stored row behind it (011 C5 as
+   * amended 2026-10-21, gh-67). Absent when there is none or no such row.
+   */
+  readonly testFileFrame?: TestFileFrame;
   /**
    * True for a `first-seen-fail` first observed by the worktree's baseline
    * checkpoint. Spec 001 D6: "Failures first observed by the baseline run
