@@ -1,0 +1,527 @@
+{
+  "startedAt": "2026-10-21T20:31:43.710Z",
+  "windowSeconds": 10.064,
+  "loadavgStart": "67.52 51.56 38.72 89/4315 3373774",
+  "loadavgEnd": "65.27 51.60 38.87 48/4201 3382059",
+  "cpuPressureSomeAvg10": [
+    65.35,
+    64.32
+  ],
+  "cpus": 24,
+  "userConfig": {
+    "capacity": {
+      "hostSlots": 12
+    }
+  },
+  "hostCores": {
+    "busy": 23.44,
+    "user": 6.8,
+    "nice": 9.75,
+    "system": 6.68,
+    "softirq": 0.01,
+    "iowait": 0.01
+  },
+  "pool": {
+    "permitsHeldStart": 12,
+    "permitsHeldEnd": 12,
+    "holdersEnd": [
+      {
+        "file": "pool.0.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "pool.1.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "pool.10.lock",
+        "pid": 2336748
+      },
+      {
+        "file": "pool.2.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "pool.3.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "pool.4.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "pool.5.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "pool.6.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "pool.7.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "pool.8.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "pool.9.lock",
+        "pid": 2815027
+      },
+      {
+        "file": "slow.lock",
+        "pid": 2487318
+      }
+    ],
+    "marksStart": [
+      {
+        "v": 1,
+        "id": "a52875c657b3abc7",
+        "want": 200,
+        "grant": 11,
+        "since": null,
+        "project": null,
+        "ageMs": 4195,
+        "fresh": true
+      },
+      {
+        "v": 1,
+        "id": "b7555ac0d0f19f40",
+        "want": 1,
+        "grant": 1,
+        "since": null,
+        "project": null,
+        "ageMs": 65,
+        "fresh": true
+      },
+      {
+        "v": 1,
+        "id": "cb11ef0a86eae845",
+        "want": 200,
+        "grant": 2,
+        "since": 1792614644466,
+        "project": null,
+        "ageMs": 9244,
+        "fresh": true
+      },
+      {
+        "v": 1,
+        "id": "0d9838316ea0931b",
+        "want": 200,
+        "grant": 1,
+        "since": 1792614683719,
+        "project": null,
+        "ageMs": 10000,
+        "fresh": true
+      }
+    ],
+    "marksEnd": [
+      {
+        "v": 1,
+        "id": "a52875c657b3abc7",
+        "want": 200,
+        "grant": 11,
+        "since": null,
+        "project": null,
+        "ageMs": 4253,
+        "fresh": true
+      },
+      {
+        "v": 1,
+        "id": "b7555ac0d0f19f40",
+        "want": 1,
+        "grant": 1,
+        "since": null,
+        "project": null,
+        "ageMs": 125,
+        "fresh": true
+      },
+      {
+        "v": 1,
+        "id": "cb11ef0a86eae845",
+        "want": 200,
+        "grant": 2,
+        "since": 1792614644466,
+        "project": null,
+        "ageMs": 9300,
+        "fresh": true
+      },
+      {
+        "v": 1,
+        "id": "0d9838316ea0931b",
+        "want": 200,
+        "grant": 1,
+        "since": 1792614683719,
+        "project": null,
+        "ageMs": 56,
+        "fresh": true
+      }
+    ]
+  },
+  "sessionDaemons": 16,
+  "scratchDaemons": 0,
+  "daemonsWithSlots": 7,
+  "slotProcesses": 22,
+  "slotProcessesWithoutMark": 6,
+  "processesBelowSlots": 21,
+  "markedOutsideAnyDaemonTree": 6,
+  "sessionTreeCores": 13.3,
+  "scratchTreeCores": 0,
+  "daemons": [
+    {
+      "pid": 2815027,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/squeal/.ai/cezar/worktrees/f98df774-32c5-4bdd-a35c-9c4801d3b535",
+      "worktreeId": "a52875c657b3abc7",
+      "slotProcesses": 11,
+      "lanes": {
+        "vitest": 11
+      },
+      "processesBelowSlots": 9,
+      "belowComms": {
+        "MainThread": 8,
+        "node": 1
+      },
+      "treeCores": 6.45,
+      "daemonOwnCores": 0.4,
+      "permits": {
+        "pool": 10,
+        "slow": 0
+      },
+      "mark": {
+        "v": 1,
+        "id": "a52875c657b3abc7",
+        "want": 200,
+        "grant": 11,
+        "since": null,
+        "project": null,
+        "ageMs": 4253,
+        "fresh": true
+      }
+    },
+    {
+      "pid": 2470877,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/cezar/.ai/cezar/worktrees/2686d16a-0f39-45fd-9bdb-7ff0a5d534d9",
+      "worktreeId": "f67bcfc377160542",
+      "slotProcesses": 3,
+      "lanes": {
+        "vitest": 3
+      },
+      "processesBelowSlots": 6,
+      "belowComms": {
+        "MainThread": 3,
+        "esbuild": 2,
+        "ps": 1
+      },
+      "treeCores": 2.01,
+      "daemonOwnCores": 0.22,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 2336748,
+      "version": "0.1.244",
+      "scratch": false,
+      "worktree": "/home/agent/projects/squeal/.ai/cezar/worktrees/5c664a42-040c-41d3-ac73-d4b7714d9c99",
+      "worktreeId": "cb11ef0a86eae845",
+      "slotProcesses": 2,
+      "lanes": {
+        "vitest": 2
+      },
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 1.45,
+      "daemonOwnCores": 0.35,
+      "permits": {
+        "pool": 1,
+        "slow": 0
+      },
+      "mark": {
+        "v": 1,
+        "id": "cb11ef0a86eae845",
+        "want": 200,
+        "grant": 2,
+        "since": 1792614644466,
+        "project": null,
+        "ageMs": 9300,
+        "fresh": true
+      }
+    },
+    {
+      "pid": 3301520,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/squeal/.ai/cezar/worktrees/b5e50015-448a-432a-a91c-a0bfc773f45e",
+      "worktreeId": "0d9838316ea0931b",
+      "slotProcesses": 2,
+      "lanes": {
+        "vitest": 2
+      },
+      "processesBelowSlots": 2,
+      "belowComms": {
+        "MainThread": 2
+      },
+      "treeCores": 1.1,
+      "daemonOwnCores": 0.26,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": {
+        "v": 1,
+        "id": "0d9838316ea0931b",
+        "want": 200,
+        "grant": 1,
+        "since": 1792614683719,
+        "project": null,
+        "ageMs": 56,
+        "fresh": true
+      }
+    },
+    {
+      "pid": 2434767,
+      "version": "0.1.244",
+      "scratch": false,
+      "worktree": "/home/agent/projects/cezar/.ai/cezar/worktrees/1f58ba92-32f3-4d82-a192-b79ae4639d9d",
+      "worktreeId": "8fa93fb26767a0d1",
+      "slotProcesses": 2,
+      "lanes": {
+        "vitest": 2
+      },
+      "processesBelowSlots": 1,
+      "belowComms": {
+        "MainThread": 1
+      },
+      "treeCores": 0.98,
+      "daemonOwnCores": 0.06,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 2796376,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/cezar/.ai/cezar/worktrees/df65774b-67a3-4022-9c82-01f0c3b73fe2",
+      "worktreeId": "9fcc5087284c342d",
+      "slotProcesses": 1,
+      "lanes": {
+        "vitest": 1
+      },
+      "processesBelowSlots": 1,
+      "belowComms": {
+        "esbuild": 1
+      },
+      "treeCores": 0.65,
+      "daemonOwnCores": 0.15,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 2487318,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/cezar",
+      "worktreeId": "b7555ac0d0f19f40",
+      "slotProcesses": 1,
+      "lanes": {
+        "slow:vitest": 1
+      },
+      "processesBelowSlots": 2,
+      "belowComms": {
+        "agent-browser-l": 1,
+        "MainThread": 1
+      },
+      "treeCores": 0.55,
+      "daemonOwnCores": 0.16,
+      "permits": {
+        "pool": 0,
+        "slow": 1
+      },
+      "mark": {
+        "v": 1,
+        "id": "b7555ac0d0f19f40",
+        "want": 1,
+        "grant": 1,
+        "since": null,
+        "project": null,
+        "ageMs": 125,
+        "fresh": true
+      }
+    },
+    {
+      "pid": 2884773,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/squeal/.ai/cezar/worktrees/1b974d50-cb7e-4b23-9e41-e651331dc127",
+      "worktreeId": "25a14774ab60f72c",
+      "slotProcesses": 0,
+      "lanes": {},
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 0.04,
+      "daemonOwnCores": 0,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 3207871,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/cezar/.ai/cezar/worktrees/f1ca49e6-a062-4dee-a40d-da404bf87248",
+      "worktreeId": "acb0a81e8f4c8cbd",
+      "slotProcesses": 0,
+      "lanes": {},
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 0.03,
+      "daemonOwnCores": 0.02,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 3250068,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/cezar/.ai/cezar/worktrees/14929e5a-b903-4202-88ae-fb19b9f3cf91",
+      "worktreeId": "03442a37d87b05ff",
+      "slotProcesses": 0,
+      "lanes": {},
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 0.03,
+      "daemonOwnCores": 0.03,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 2883124,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/squeal/.ai/cezar/worktrees/2d4519aa-100f-448b-a2d0-18503980fa0e",
+      "worktreeId": "3032a0e28dbc9da4",
+      "slotProcesses": 0,
+      "lanes": {},
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 0.01,
+      "daemonOwnCores": 0.01,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 2345938,
+      "version": "0.1.244",
+      "scratch": false,
+      "worktree": "/home/agent/projects/squeal/.ai/cezar/worktrees/3800fd79-307e-4023-98e6-6c1f41b01ffa",
+      "worktreeId": "f0f935ca59f92a77",
+      "slotProcesses": 0,
+      "lanes": {},
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 0,
+      "daemonOwnCores": 0,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 2459908,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/cezar/.ai/cezar/worktrees/12bfdcf5-3199-46d0-b0c6-f5f7603cdd5d",
+      "worktreeId": "c12ea9066ecf78ec",
+      "slotProcesses": 0,
+      "lanes": {},
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 0,
+      "daemonOwnCores": 0,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 2469723,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/squeal/.ai/cezar/worktrees/d08aba4e-ba82-461f-8659-8477d4e19901",
+      "worktreeId": "245a101e1cf50f18",
+      "slotProcesses": 0,
+      "lanes": {},
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 0,
+      "daemonOwnCores": 0,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 2645221,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/cezar/.ai/cezar/worktrees/6562319e-c809-41bb-87a0-89861d012cd6",
+      "worktreeId": "e7d66589d8329e6d",
+      "slotProcesses": 0,
+      "lanes": {},
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 0,
+      "daemonOwnCores": 0,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    },
+    {
+      "pid": 2883814,
+      "version": "0.1.245",
+      "scratch": false,
+      "worktree": "/home/agent/projects/squeal/.ai/cezar/worktrees/59808a4f-9ee1-4bff-8cb1-a7586f44578a",
+      "worktreeId": "a0e2e9697347e03b",
+      "slotProcesses": 0,
+      "lanes": {},
+      "processesBelowSlots": 0,
+      "belowComms": {},
+      "treeCores": 0,
+      "daemonOwnCores": 0,
+      "permits": {
+        "pool": 0,
+        "slow": 0
+      },
+      "mark": null
+    }
+  ]
+}
