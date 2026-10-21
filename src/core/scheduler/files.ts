@@ -39,10 +39,9 @@ export interface FileState {
   /** Whether any of those results is a `fail`. D5 runs these first. */
   failing: boolean;
   /**
-   * Last known run time: the sum of `durationMs` over the results last
-   * applied, from this worktree's run or a lookup hit; the file-level check
-   * carries the time outside the test cases (`recordsForFile`). `null` when
-   * unknown.
+   * Last known run time: `durationOf` the results last applied, from this
+   * worktree's run or a lookup hit; the file-level check carries the whole
+   * file (`recordsForFile`, row 013-03). `null` when unknown.
    * D5 step 4 runs the shortest first within a class.
    */
   durationMs: number | null;
@@ -153,8 +152,19 @@ export function checkId(check: CheckId): string {
   return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
 }
 
-/** A file's run time from its results; `null` without results. */
+/**
+ * A file's run time from its results; `null` without results. The
+ * file-level check holds the whole file (row 013-03); one an older daemon
+ * stored holds only the time outside its tests, so the file reads at least
+ * the sum of its tests.
+ */
 export function durationOf(results: readonly ResultRecord[]): number | null {
   if (results.length === 0) return null;
-  return results.reduce((sum, result) => sum + result.durationMs, 0);
+  let fileMs = 0;
+  let testsMs = 0;
+  for (const result of results) {
+    if (result.check.kind === "file") fileMs = Math.max(fileMs, result.durationMs);
+    else testsMs += result.durationMs;
+  }
+  return Math.max(fileMs, testsMs);
 }
