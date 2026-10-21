@@ -33,6 +33,8 @@ set -eu
 
 # The release this script belongs to; the Pi package comes from its tag.
 SQUEAL_VERSION=0.1.248
+# Squeal's Node floor, engines.node in package.json (011-86).
+NODE_FLOOR=22.19
 PLUGIN=squeal@hearsay
 HUB=hearsay-tools/marketplace
 SOURCE=https://github.com/hearsay-tools/squeal/archive/refs/tags
@@ -72,10 +74,16 @@ forget() {
   fi
 }
 
+# Compares the version node --version prints, the one the failure names, with
+# the floor.
 check_node() {
-  has node || fail "Squeal needs Node 22.13 or later, and node is not on the PATH"
-  node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 13) ? 0 : 1)' ||
-    fail "Squeal needs Node 22.13 or later; this is Node $(node --version)"
+  has node || fail "Squeal needs Node $NODE_FLOOR or later, and node is not on the PATH"
+  node_version=$(node --version 2>&1) || true
+  node -e '
+const [a, b] = process.argv[1].replace(/^v/, "").split(".").map(Number);
+const [x, y] = process.argv[2].split(".").map(Number);
+process.exit(a > x || (a === x && b >= y) ? 0 : 1);
+' "$node_version" "$NODE_FLOOR" || fail "Squeal needs Node $NODE_FLOOR or later; this is Node $node_version"
 }
 
 # "<version> <dir>" of the newest installed plugin, or nothing. $1: claude (user

@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { nodeFloor } from "../../src/harness/build.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import {
   INSTALL_SH,
@@ -15,6 +16,20 @@ import {
 
 const SCRIPT = readFileSync(INSTALL_SH, "utf8");
 const LAST = SCRIPT.slice(SCRIPT.trimEnd().lastIndexOf("\n") + 1);
+
+const [MAJOR = 0, MINOR = 0] = nodeFloor().split(".").map(Number);
+
+/** A `node` first on `m`'s PATH that says it is `version` and runs this Node for the rest. */
+function nodeSaying(m: Machine, version: string): void {
+  const dir = join(m.root, "node-says");
+  mkdirSync(dir);
+  writeFileSync(
+    join(dir, "node"),
+    `#!/bin/sh\n[ "$1" = --version ] && { echo v${version}; exit 0; }\nexec "${process.execPath}" "$@"\n`,
+  );
+  chmodSync(join(dir, "node"), 0o755);
+  m.env.PATH = `${dir}:${m.env.PATH}`;
+}
 
 /** Runs the installed launcher as the user's terminal would. */
 function squeal(m: Machine, ...args: string[]) {
@@ -116,18 +131,26 @@ describe("install.sh", { timeout: 30_000 }, () => {
     expect(existsSync(launcherOf(m))).toBe(false);
   });
 
-  it("stops when Node is older than 22.13", () => {
+  it("stops when Node is older than the floor, engines.node (011-86)", () => {
     const m = machine();
     m.publish("0.1.134");
-    const fake = join(m.root, "old-node");
-    mkdirSync(fake);
-    writeFileSync(join(fake, "node"), '#!/bin/sh\n[ "$1" = --version ] && echo v22.12.0\nexit 1\n');
-    chmodSync(join(fake, "node"), 0o755);
-    m.env.PATH = `${fake}:${m.env.PATH}`;
+    const below = MINOR > 0 ? `${MAJOR}.${MINOR - 1}.99` : `${MAJOR - 1}.99.99`;
+    nodeSaying(m, below);
     const r = install(m);
     expect(r.status).toBe(1);
-    expect(r.stderr).toContain("Squeal needs Node 22.13 or later; this is Node v22.12.0");
+    expect(r.stderr).toContain(`Squeal needs Node ${nodeFloor()} or later; this is Node v${below}`);
     expect(m.calls()).toEqual([]);
+  });
+
+  it("installs on the floor itself, and on the next major's first release", () => {
+    for (const version of [`${nodeFloor()}.0`, `${MAJOR + 1}.0.0`]) {
+      const m = machine();
+      m.publish("0.1.134");
+      nodeSaying(m, version);
+      const r = install(m);
+      expect(r.stderr, version).toBe("");
+      expect(r.status, version).toBe(0);
+    }
   });
 
   it("leaves a squeal that is not the launcher alone", () => {

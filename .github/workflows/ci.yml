@@ -42,7 +42,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # 010-33, 011-86: engines.node's floor itself, literal, because setup-node
+          # resolves `22` to the newest 22.x, so a break on the floor passed CI.
+          node-version: "22.19"
           cache: npm
       - run: npm ci
       # Spec 007: the pytest fixtures sync uv environments on both Pythons; on CI an absent
