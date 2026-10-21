@@ -46,14 +46,20 @@ export interface FixtureHost {
 export function makeHost(): FixtureHost {
   const base = realpathSync(mkdtempSync(join(tmpdir(), "squeal-ps-host-")));
   writeHost(base);
-  const uid = process.getuid?.() ?? 1000;
-  const runtimeDir = join(base, "run");
-  const tempDir = join(base, "tmp");
-  mkdirSync(runtimeDir);
-  mkdirSync(join(tempDir, `squeal-${uid}`), { recursive: true });
+  const places = placesUnder(base);
+  mkdirSync(places.runtimeDir ?? "");
+  mkdirSync(join(places.tempDir, `squeal-${places.uid}`), { recursive: true });
+  return { base, places };
+}
+
+/** Every `PsPlaces` of these tests: this user's, under `base`. */
+export function placesUnder(base: string): PsPlaces {
   return {
-    base,
-    places: { uid, home: join(base, "home"), runtimeDir, tempDir, commonDir: null },
+    uid: process.getuid?.() ?? 1000,
+    home: join(base, "home"),
+    runtimeDir: join(base, "run"),
+    tempDir: join(base, "tmp"),
+    commonDir: null,
   };
 }
 
