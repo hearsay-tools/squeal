@@ -1,0 +1,1 @@
+{ "runner": { "timeoutMs": 2000 }, "observe": { "runtimeInputs": false } }

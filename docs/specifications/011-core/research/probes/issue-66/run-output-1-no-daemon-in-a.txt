@@ -1,0 +1,151 @@
+date: 2026-10-21T03:18:37+02:00
+load before: 23.61 20.15 19.05; nproc 24
+== versions
+0.1.234
+vitest/5.0.5 linux-x64 node-v24.21.0
+6c677c4
+== 1. A full suite
+$ squeal run --all --wait  (in a)
+No verdict: no daemon running for /tmp/issue66-probe/a; start one with squeal start
+[exit 3]
+== 2. B registers, runs nothing
+$ hook session-start.mjs (in b)
+[exit 0]
+$ squeal status --wait 60000  (in b)
+Revision: 0
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+More: `squeal status --full` adds the worktree and daemon and 1 note
+
+Returned on quiet: nothing pending at revision 0 after 1.0 s. Worktree: known failures 0; all 2 test files current
+[exit 0]
+== 3. A: slow flag on, retry slow.test.ts
+$ squeal retry slow.test.ts --reason environment  (in a)
+Not retried: slow.test.ts is not a test file Squeal has keyed in this worktree.
+[exit 1]
+$ squeal status --wait 60000 slow.test.ts  (in a)
+Revision: 0
+Selected: 
+Named test files have no verdict: no daemon is running; results are as of revision 0; `squeal start` starts one. Worktree: known failures 0; the daemon has not listed this worktree's test files yet
+[exit 3]
+== 4. B change notice and status
+$ hook post-tool-batch.mjs (in b)
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: 4 current (2 tests, 2 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0.\nKnown failures: 0; all 2 test files current\n\nSqueal runs this repository's Vitest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run Vitest to learn whether your edits broke something. Wait only when you need a result before your next step: `squeal status --wait 60000 <path>...` for the verdict on files you just changed; before you finish, `squeal status --wait 60000` or a checkpoint, `squeal run --all --wait`. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: `squeal retry <file> --reason load|environment`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest (vitest.config.ts). Squeal does not cover typecheck, build or any other test suite: run those yourself."}}[exit 0]
+$ squeal status  (in b)
+Revision: 0
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+More: `squeal status --full` adds the worktree and daemon and 1 note
+[exit 0]
+$ squeal status --full  (in b)
+Revision: 0
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+
+Worktree: /tmp/issue66-probe/b (HEAD 6c677c4, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+[exit 0]
+$ squeal why slow.test.ts  (in b)
+Check: slow.test.ts (file-level)
+Worktree: /tmp/issue66-probe/b
+Revision: none recorded
+
+Known state: PASS, current, observed at revision 0, commit 6c677c4
+
+History: no transitions in this worktree
+
+Durations (1 result, 1 pass / 0 fail): 21 ms
+Results (1, newest first):
+  PASS  2026-10-21T01:18:47.263Z  /tmp/issue66-probe/b (this worktree), revision 0, commit 6c677c4, clean
+        run 8179eef2-5dc2-45d8-8817-fa86a208a710, 21 ms, key 4571d6b8c82d
+        log: /tmp/issue66-probe/a/.git/squeal/runs/8179eef2-5dc2-45d8-8817-fa86a208a710
+
+Run log: /tmp/issue66-probe/a/.git/squeal/runs/8179eef2-5dc2-45d8-8817-fa86a208a710/vitest.log
+  Run 8179eef2-5dc2-45d8-8817-fa86a208a710 in /tmp/issue66-probe/b (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of slow.test.ts from it.
+[exit 0]
+== 5. B edits setup.ts
+$ squeal run --all --wait  (in b)
+Checkpoint c2c7ed8b-bf1f-462a-afe0-6578fe2886ca completed at revision 1: no known failures; 2 test files, 0 already current, 2 run now
+Checkpoint c2c7ed8b-bf1f-462a-afe0-6578fe2886ca started at revision 1: 2 test files to run, 0 already current
+
+Revision: 1 · 6c677c4e + 1, dirty
+Known failures: 0; all 2 test files current
+Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 1
+More: `squeal status --full` adds the worktree and daemon
+[exit 0]
+<anonymous_script>:1
+$ squeal status --json  (in b)
+^
+
+SyntaxError: Unexpected token '$', "$ squeal s"... is not valid JSON
+    at JSON.parse (<anonymous>)
+    at [eval]:1:14
+    at runScriptInThisContext (node:internal/vm:219:10)
+    at node:internal/process/execution:451:12
+    at [eval]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:449:60)
+    at evalFunction (node:internal/process/execution:283:30)
+    at evalTypeScript (node:internal/process/execution:295:3)
+    at node:internal/main/eval_string:71:3
+
+Node.js v24.21.0
+$ squeal why flag.test.ts  (in b)
+Check: flag.test.ts (file-level)
+Worktree: /tmp/issue66-probe/b
+Revision: 1 · 6c677c4e + 1, dirty
+
+Known state: PASS, current, observed at revision 1, commit 6c677c4
+
+History: no transitions in this worktree
+
+Durations (2 results, 2 pass / 0 fail): min 18 ms, median 18 ms, p95 22 ms, max 22 ms
+Results (2, newest first):
+  PASS  2026-10-21T01:18:52.653Z  /tmp/issue66-probe/b (this worktree), revision 1, commit 6c677c4, dirty
+        run 2a2d1566-ab73-4e94-b7b7-2694fe520b43, 22 ms, key cc2afa289e36
+        log: /tmp/issue66-probe/a/.git/squeal/runs/2a2d1566-ab73-4e94-b7b7-2694fe520b43
+  PASS  2026-10-21T01:18:47.263Z  /tmp/issue66-probe/b (this worktree), revision 0, commit 6c677c4, clean
+        run 8179eef2-5dc2-45d8-8817-fa86a208a710, 18 ms, key 0455028fa64b
+        log: /tmp/issue66-probe/a/.git/squeal/runs/8179eef2-5dc2-45d8-8817-fa86a208a710
+
+Run log: /tmp/issue66-probe/a/.git/squeal/runs/2a2d1566-ab73-4e94-b7b7-2694fe520b43/vitest.log
+  Run 2a2d1566-ab73-4e94-b7b7-2694fe520b43 in /tmp/issue66-probe/b (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of flag.test.ts from it.
+[exit 0]
+$ squeal why slow.test.ts  (in b)
+Check: slow.test.ts (file-level)
+Worktree: /tmp/issue66-probe/b
+Revision: 1 · 6c677c4e + 1, dirty
+
+Known state: PASS, current, observed at revision 1, commit 6c677c4
+
+History: no transitions in this worktree
+
+Durations (2 results, 2 pass / 0 fail): min 21 ms, median 21 ms, p95 21 ms, max 21 ms
+Results (2, newest first):
+  PASS  2026-10-21T01:18:52.653Z  /tmp/issue66-probe/b (this worktree), revision 1, commit 6c677c4, dirty
+        run 2a2d1566-ab73-4e94-b7b7-2694fe520b43, 21 ms, key 98dcc88ecae1
+        log: /tmp/issue66-probe/a/.git/squeal/runs/2a2d1566-ab73-4e94-b7b7-2694fe520b43
+  PASS  2026-10-21T01:18:47.263Z  /tmp/issue66-probe/b (this worktree), revision 0, commit 6c677c4, clean
+        run 8179eef2-5dc2-45d8-8817-fa86a208a710, 21 ms, key 4571d6b8c82d
+        log: /tmp/issue66-probe/a/.git/squeal/runs/8179eef2-5dc2-45d8-8817-fa86a208a710
+
+Run log: /tmp/issue66-probe/a/.git/squeal/runs/2a2d1566-ab73-4e94-b7b7-2694fe520b43/vitest.log
+  Run 2a2d1566-ab73-4e94-b7b7-2694fe520b43 in /tmp/issue66-probe/b (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of slow.test.ts from it.
+[exit 0]
+$ hook post-tool-batch.mjs (in b)
+{"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · revision 1\nRevision 1 · 6c677c4e + 1, dirty: no check pending, stale or unknown.\nSqueal saw your edit; all 2 test files it re-keyed are current, and passing results stay silent.\nNo result for setup.ts: no test Squeal runs reads it. Run whatever tests it yourself."}}[exit 0]
+== stop daemons
+No daemon running for /tmp/issue66-probe/a
+Squeal daemon stopped for /tmp/issue66-probe/b
+load after: 21.02 19.80 18.96
