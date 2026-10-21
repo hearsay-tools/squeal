@@ -973,8 +973,12 @@ class TierScheduler implements Scheduler {
       endTier(context, ledger, tier);
       this.#yields.ended(context, tier);
       for (const { file, key } of tier.files) {
-        // A newer run has the file at another key: it is that run's (review wave-4 B1).
-        if (supersededIn(file, key)) continue;
+        // A newer run has the file at another key: it is that run's (review wave-4 B1). A store
+        // hit at that key took no claim, so this tier's own one ends here (row 011-71).
+        if (supersededIn(file, key)) {
+          if (file.runningKey === key) ledger.setRunning(file, null);
+          continue;
+        }
         ledger.setRunning(file, null);
         if (ledger.files.get(file.id) === file) {
           ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
