@@ -154,13 +154,14 @@ function isPytest(args: readonly string[]): boolean {
 
 /**
  * The files a node:test process names after `--test` and its options, and
- * a pytest batch after `--basetemp=<dir>`. `null` for a Vitest worker, whose
- * files are its tier's, and for any other process.
+ * a pytest batch after the last `--basetemp=<dir>`, Squeal's own, which
+ * follows the project's args (task 007-37). `null` for a Vitest worker,
+ * whose files are its tier's, and for any other process.
  */
 function filesOf(args: readonly string[]): readonly string[] | null {
   const runner = runnerOf(args);
   if (runner === "pytest")
-    return args.slice(args.findIndex((a) => a.startsWith("--basetemp=")) + 1);
+    return args.slice(args.findLastIndex((a) => a.startsWith("--basetemp=")) + 1);
   if (runner === "node-test")
     return args.slice(args.indexOf("--test") + 1).filter((a) => !a.startsWith("-"));
   return null;
