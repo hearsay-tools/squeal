@@ -157,16 +157,50 @@ describe("owner", () => {
 });
 
 describe("lane and run", () => {
-  test("the run is the mark's #<runId>, else its lane's one open run of the daemon", () => {
-    const own = { ...forkWorker, mark: `${TOKEN}:vitest#run-b` };
-    const tiers = [tier("run-a", "vitest"), tier("run-b", "vitest"), tier("run-s", "slow:vitest")];
-    const byMark = run([daemon, own], [owner(DAEMON, TOKEN, tiers)]).processes[0];
-    expect(byMark).toMatchObject({ lane: "vitest", runId: "run-b" });
+  // A tier's lane is the store's class, `fast`, `slow` or `null` (the coordinator, 2026-10-21).
+  const runIdOf = (mark: string, tiers: readonly PsTier[]): string | null | undefined =>
+    run([daemon, { ...forkWorker, mark }], [owner(DAEMON, TOKEN, tiers)]).processes[0]?.runId;
 
-    const slow = { ...forkWorker, mark: `${TOKEN}:slow:vitest` };
-    expect(run([daemon, slow], [owner(DAEMON, TOKEN, tiers)]).processes[0]?.runId).toBe("run-s");
-    // Two open runs of its lane, and no `#`: which one it serves is the daemon's to know.
-    expect(run([daemon, forkWorker], [owner(DAEMON, TOKEN, tiers)]).processes[0]?.runId).toBeNull();
+  test("(a) the run is the mark's #<runId> first, whatever tiers are open", () => {
+    const tiers = [tier("run-a", "fast"), tier("run-s", "slow")];
+    expect(runIdOf(`${TOKEN}:vitest#run-b`, tiers)).toBe("run-b");
+  });
+
+  test("(b) else the daemon's one open tier of the mark's class: slow for a `slow:` lane, fast for any other or none", () => {
+    const tiers = [tier("run-f", "fast"), tier("run-s", "slow"), tier("run-n", null)];
+    expect(runIdOf(`${TOKEN}:slow:vitest`, tiers)).toBe("run-s");
+    expect(runIdOf(`${TOKEN}:vitest`, tiers)).toBe("run-f");
+    expect(runIdOf(`${TOKEN}:`, tiers)).toBe("run-f");
+    expect(runIdOf(TOKEN, tiers)).toBe("run-f");
+    // The process keeps the mark's own lane.
+    const slow = run(
+      [daemon, { ...forkWorker, mark: `${TOKEN}:slow:vitest` }],
+      [owner(DAEMON, TOKEN, tiers)],
+    ).processes[0];
+    expect(slow?.lane).toBe("slow:vitest");
+  });
+
+  test("(b) two open tiers of its class, and no `#`: which one it serves is the daemon's to know", () => {
+    expect(runIdOf(`${TOKEN}:vitest`, [tier("run-a", "fast"), tier("run-b", "fast")])).toBeNull();
+    expect(
+      runIdOf(`${TOKEN}:vitest`, [
+        tier("run-a", "fast"),
+        tier("run-b", "fast"),
+        tier("run-n", null),
+      ]),
+    ).toBeNull();
+  });
+
+  test("(c) else the daemon's one open tier, when the store cannot tell its class", () => {
+    expect(runIdOf(`${TOKEN}:slow:vitest`, [tier("run-n", null)])).toBe("run-n");
+    expect(runIdOf(`${TOKEN}:vitest`, [tier("run-n", null)])).toBe("run-n");
+  });
+
+  test("(d) else none: no tier of its class, and no lone tier of unknown class", () => {
+    expect(runIdOf(`${TOKEN}:vitest`, [])).toBeNull();
+    expect(runIdOf(`${TOKEN}:vitest`, [tier("run-s", "slow")])).toBeNull();
+    expect(runIdOf(`${TOKEN}:vitest`, [tier("run-s", "slow"), tier("run-n", null)])).toBeNull();
+    expect(runIdOf(`${TOKEN}:slow:vitest`, [tier("run-n", null), tier("run-m", null)])).toBeNull();
   });
 
   test("parseMark reads `<token>`, `<token>:<lane>` and `<token>:<lane>#<runId>`; an empty lane is none", () => {
