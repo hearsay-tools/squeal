@@ -222,3 +222,148 @@ The numbers continue after 014-20; the coordinator assigns the final ones.
 - The scripts are in `/tmp/dogfood-014-15/bin/` while this host keeps `/tmp`: `sample.sh <n> <cwd>`, `reader.py`, `compare.py`, `flagcheck.py`, `share.py <bundle> <seconds> <out>`, `goal6.py`. They read only; `flagcheck.py` and `share.py` open stores `mode=ro`, which has the same WAL behaviour as P6. To re-run a row's done-when on this host, run `sample.sh` three times 10 minutes apart and `share.py` twice, with the load.
 - The live host changes fast: the cezar restart at about 19:09 UTC changed the daemon count from 16 to 5 and back within 12 minutes. Run each check by hand within seconds of the snapshot it checks.
 - Each flag judgement above names its sample; the raw outputs (`text.txt`, `text-full.txt`, `text-repo.txt`, `ps.json`, `flagcheck.txt`, `compare.txt`) are in `s1` to `s3`.
+
+## Round 2 (014-30)
+
+Task 014-30, 2026-10-21, 22:18 to 22:49 UTC. The released 0.1.248 run on this host during ordinary work, with the round 1 method: three samples 10 minutes apart, two 60 s share windows, five timed runs per sample, and every flag judged by hand within 4 s of its snapshot. In sample 1 the check crashed after 15 daemons; after a script fix it ran again 56 s late for the rest and for the files. Two checks are new: 30 paired runs that put an independent tree count around each `ps` run, and a read of every store's `-wal` and `-shm` before and after each sample. Inputs: the brief in `tasks/wave-4.md` (014-30 and its "Round 2 specifics"), `spec.md` D3 to D10 as amended for wave 4, and round 1 above.
+
+### Verdict
+
+Goal 3 holds now. Goal 4 holds, except one false flag whose end command kills a serving daemon (P9). The `leftover-temp` rule never ran, so P1 and P5 could not be judged live. Goal 6's CPU still fails.
+
+- **Goal 3, the CPU share.** Over two 60 s windows, three `ps` runs averaged 0.94 and 1.02 of the daemons' process-tree CPU, 5.6 and 0.4 points under the tree share. In round 1 they averaged 0.43 and 0.53. In 20 paired runs, the CPU rate over `ps`'s 2 s window was 1.00 of the tree rate over a window that encloses it (median; 0.95 to 1.54). All 11 saved lower-bound runs named their cause in `unknown` (`squeal cpuPct`). The memory share was within 1.5 points of `/proc` in the 3 samples.
+- **Goal 4, the flags.** No `-wal` or `-shm` was created in 4 checks, and `strace` showed no write, removal, connection or signal. Every flag but one was true. Daemon 3586980 served for 24 min, but in 2 of 32 saved snapshots it read `waiting` and was flagged `no-lock` with `ends it: kill 3586980`. One `/proc/locks` read misses a lock that is held, in 1.8% and 3.0% of reads (P9). `leftover-temp` was not evaluated in any of the 38 runs that judge the whole host. Two leaked fake daemons of an evals test have no readable repository, and D7 then stops the rule (P10). By hand, the rule would have withheld every candidate in 3 of 3 samples: 182 to 196 directories, 84.8 to 84.9 MiB, because of 8 unreadable processes of an SSH session.
+- **Goal 6, the cost.** One snapshot used 0.38 to 0.51 s of CPU in 15 of 15 runs, against 0.3 s. Node start-up alone (`--version`) used 0.15 to 0.19 s. Wall time was 2.26 to 2.71 s. It was over 2.5 s in 4 of 15 runs, all in sample 1 at load 52 to 54. The load was 41 to 82, against 12 to 40 in round 1. None of these runs read the leftover rule's open files, so a run that evaluates the rule costs more.
+
+In my reading the spec does not move to `shipped` yet. Goal 6 fails with numbers, and P9 prints a `kill` for a healthy daemon. Two new defects follow as proposed rows; none is fixed here.
+
+| Goal or row | Holds? | Evidence |
+| --- | --- | --- |
+| 3. Squeal's CPU and memory share | Yes | Windows: 0.94 and 1.02 of the tree count; pairs: median 1.00 of the tree rate; memory share 53.2 / 51.7, 54.3 / 53.9, 57.5 / 56.1% (`ps` / `/proc`) |
+| 4. Each D7 state flagged; changes nothing | Partly | No sidecar created, no write call; one false `no-lock` (P9); `leftover-temp` and `orphan-test-process` not evaluated in any run (P10) |
+| 6. At most 2.5 s wall and 0.3 s CPU | Wall mostly; CPU no | 15 runs at load 41 to 82, 558 to 778 processes, 18 to 21 daemons: CPU 0.38 to 0.51 s |
+| P1, 014-22 Squeal's names only | Not judged live | The rule never ran. By hand, its names take 273 key directories and 5 `squeal-e2e-*` directories. They exclude the 307 other `/tmp/squeal-*` entries, among them `squeal-evals-1001` and `squeal-e2e-cache`, and 2,359 to 2,369 `/tmp/sq-*` |
+| P2, 014-21 the CPU share | Yes | Goal 3 above; the mean of each window's three runs was within 10 points of the tree count (5.6 and 0.4) |
+| P3, 014-23 goal 6's CPU | No | Goal 6 above |
+| P4, 014-24 `?` memory | Yes | 30 of 150 test-process rows in 7 `--json` snapshots read `?`. Every one was a head that ended in the window: 28 were in one `stat` reading only, and `ps` named the other 2 as ended before the memory read. No row was `?` because of a descendant (17 of 47 rows in round 1) |
+| P5, 014-25 sockets and open files as uses | Not judged live | The rule never ran. By hand, no old candidate was in use by any read (160 to 172 bound unix names) |
+| P6, 014-26 no WAL file created | Yes, on the WAL path | 12 to 15 stores, each with `-wal` and `-shm` before and after every sample. The `immutable=1` path never ran, because no store lacked its `-wal` |
+| P7, 014-27 own departure only | Yes | `session left` was printed only for a daemon with no session and its own departure: 2, 4 and 3 daemons in the samples. 10 daemons with a predecessor's departure printed none, and so did 3250068 in sample 1, whose own departure a session still held |
+| P8, 014-28 the orphan age floor | Not judged live | `orphan-test-process` was not evaluated in any run (P10) |
+
+D10's first run on a Mac is still owed.
+
+### Setup
+
+| Item | Value |
+| --- | --- |
+| Command | `node /tmp/dogfood-014-30/bundle-0.1.248/plugins/claude-code/dist/cli/squeal.mjs ps …`, the output of `git archive squeal--v0.1.248 plugins/claude-code` (tag at bb3e3b540), sha256 `0e05c55a439f94bd…`. At 22:19 UTC both Claude Code scopes already read 0.1.248, and `diff -r` found this `dist` byte-identical to the installed `~/.claude/plugins/cache/hearsay/squeal/0.1.248/dist`. Every number below comes from the pinned copy. The source of `src/core/ps/` and `src/cli/ps.ts` has not changed since the tag |
+| Host | Linux 6.8.0-147, 24 CPUs, Node v24.21.0, 47 GiB, 4 GiB swap, all of it used. Other coordinators' work held the load at 41 to 82 and the CPU pressure at 35 to 67% |
+| Independent reads | The round 1 scripts, copied to `/tmp/dogfood-014-30/bin/` and changed in four ways. `reader.py` also reads the children's times. `flagcheck.py` applies D7 as amended for wave 4 (the names, the four use reads, the unreadable processes) and opens a store only when its `-wal` and `-shm` both exist. `share.py` records `skipped` and `unknown`. The new scripts are `sidecars.py` and `sidediff.py` (the sidecar listing), `pair.py` (the paired runs), `locks-exp.mjs` (the `/proc/locks` experiment), `judge.py` (P4, P7 and the leftover outcome per snapshot), and `prof.py` |
+| Rules kept | No end command was run, no signal was sent, and no socket was opened. `strace` traced only my own `ps` run. My files went under `/tmp/dogfood-014-30/`, except this file. The `flagcheck.py` store reads opened only stores whose sidecars existed |
+| Raw data | `/tmp/dogfood-014-30/`: `s0` (traced run), `s1` to `s3`, `share-{1,2}.{json,txt}`, `pairs.json`, `pairs-2.json`, `locks-exp/run{1,2}.json`, `prof/`, `bin/`, `drive.log`. It is not committed; this file keeps the numbers |
+
+| Sample | UTC | Load 1/5/15 min | CPU pressure | Processes | Daemons, `ps` / `/proc` | Test processes, `ps` / marked heads in `/proc` |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 22:22:22 | 46.8 50.3 50.5 | 46% | 659 | 17 / 17 | 21 / 17 |
+| 2 | 22:32:22 | 79.8 68.7 59.6 | 67% | 641 | 20 / 20 | 23 / 20 |
+| 3 | 22:42:22 | 41.7 54.7 58.0 | 35% | 570 | 19 / 19 | 23 / 21 |
+
+Each daemon's values matched the reader in the same 2 s. CPU time was within 90 ms, private memory within 1 MiB for 55 of 56 daemons (the other was 2.9 MiB), and swap was equal. A daemon with no test process read within 6.5 points of the reader's own CPU plus its children's growth. The test processes `ps` lists beyond the reader's are processes that left between the two second readings, 144 to 225 ms apart.
+
+### Goal 3: Squeal's share
+
+The round 1 tree count (`share.py`) over two 60 s windows, with three `ps --json` runs inside each:
+
+| Window (UTC) | Load | Host busy | Nice (user time) | Daemon trees | `ps` runs inside the window | Mean of the runs |
+| --- | --- | --- | --- | --- | --- | --- |
+| 22:42:46 to 22:43:46 | 41.9 | 21.30 CPUs | 9.51 CPUs, 45% | 15.30 CPUs, 72%; 18 daemons at both ends, 46 descendants exited | at least 14.89, 14.91, at least 13.30 CPUs: 65.0%, 67.9%, 65.9% of busy | 14.37 CPUs, 0.94 of the trees; 66.3% against 71.8% |
+| 22:44:07 to 22:45:07 | 49.9 | 22.37 CPUs | 10.80 CPUs, 48% | 16.80 CPUs, 75%; 18 daemons, 36 exited | at least 17.81, 16.38, 17.18 CPUs: 77.5%, 69.7%, 77.0% | 17.13 CPUs, 1.02 of the trees; 74.7% against 75.1% |
+
+The processes that lived through a whole minute used only 3.0 and 2.4 CPUs. The count of processes that end inside the window, which round 1 found missing, is now in `ps`. Five of the six runs were marked `at least`, and `unknown` named the left-out processes each time.
+
+Two of those runs read above the window's 60 s tree rate, by 1.0 and 0.4 CPUs. A 2 s sample can be above a 60 s mean, so the paired runs decide the lower bound. Each pair takes a tree count from before `node` starts to after it exits, 2.3 to 3.0 s around `ps`'s 2.0 s window. An enclosing window holds at least the CPU of the window inside it. 30 pairs, 22:45:47 to 22:47:34 UTC, at load 58 to 71:
+
+- 20 pairs counted the escaped trees too. `ps`'s CPU rate was 0.95 to 1.54 of the tree rate: median 1.00, mean 1.06. The 12 pairs where my count has no known gap averaged 1.02.
+- `ps`'s CPU-seconds exceeded the enclosing count in 3 of those 20 pairs, by 0.1, 0.5 and 4.5 CPU-seconds. The 4.5 came in a pair where 2 daemons started or ended; my count drops such a daemon's tree. The 0.5 came where my escaped-tree count was −6.8 CPU-seconds: an escaped tree ended under `systemd --user`, which my count cannot see. 0.1 CPU-seconds is 10 ticks.
+- The first 10 pairs did not count escaped trees and did not record daemon changes. One of them read 32.6 against 19.4 CPU-seconds, and its cause was not resolved.
+
+Memory, `ps --json` against the reader in the same 2 s: private memory 12.97 / 12.96, 15.29 / 15.29 and 14.28 / 14.33 GiB. The shares were 53.2 / 51.7, 54.3 / 53.9 and 57.5 / 56.1%. The share differences come from `MemAvailable` read at different moments: in sample 1, 24.40 against 25.10 GiB used. Swap was equal. The host values matched `/proc` read in the same 2 s.
+
+### Goal 4: the flags and side effects
+
+| Flag or state | Where | Judged | Evidence |
+| --- | --- | --- | --- |
+| `older` | s1: 2470877, 2796376; s2: these and 3250068; s3: 2796376 | True | Version 0.1.245, older than the 0.1.248 that Claude Code installs; no consumer |
+| `older (session N holds it)` | s1: 10 daemons; s2: 6; s3: 5 | True | 0.1.245 or 0.1.247; each consumer's harness was alive and registered with that older version |
+| `draining Nm left` | s1: 2; s2: 4; s3: 2 | True | No consumer, an own departure, slow work waiting or running; the minutes are 60 less the departure's age |
+| `root-gone`, `install-gone`, `not-installed` on 1310860 and 1310869 | Every run | True | Root and bundle missing, root under `/tmp`, 60 to 86 min old. They are the evals test's fake daemons (P10) |
+| `root-gone`, `install-gone` on fake daemons 1 s old (3771342, 3773206 and two more) | s1, timed runs 4 and 5 | True at the read, transient | Cells of an evals test (pin 63f403d6d) were being removed. The processes had left by sample 2 |
+| `no-lock` on 3586980, `ends it: kill 3586980` | s3: `ps` at 22:42:29 and timed run 4 at 22:42:41 | False | 3586980 (14e074b8, 0.1.248 claude, 24 min) held its lock file's WRITE lock in the `/proc/locks` copy of sample 3, and read `serving` in the other 30 saved snapshots, including runs 2 s before and after (P9) |
+| Socket `/tmp/squeal-1001/squeal-7e639bd37a6400af.sock` | s2, the `--full --json` run | Named in `unknown`, not flagged: right | It had a listener but no daemon of its id, and it was gone a few seconds later. D7 names such a socket and never flags it |
+
+The flags `ps` did not print were absent by hand too, in samples 1 to 3: `stale-socket`, `stale-pool-mark` (every mark at most 10 s old), `duplicate`, `hung` (heartbeats at most 5.4 s old against 5 s), `foreign-permit` and `orphan-waiter`. Once, `dead-consumer` was true by hand and not in `ps`: in sample 3, the harness of daemon 469239 (the main checkout's) left within 3 s after the snapshot. That is under the two heartbeat intervals the flag needs. `orphan-test-process` was not evaluated (P10). The pool read 8, 4 and 5 permits; by hand that was 7, 3 and 4, plus the holder of `slow.lock`.
+
+`leftover-temp` was not evaluated in any of the 38 runs that judge the whole host; the 3 `--repo` runs drop it. 19 runs show the reason directly: 7 `--json`, 6 `--json` in the share windows, 3 `--full` and 3 `--leftovers`. It was "the temp key of daemon 1310860 is unknown: its root or repository cannot be read". The other 19 runs listed the two fake daemons, at which D7 stops. `--leftovers` printed no line, wrote that reason to stderr and exited 0. The by-hand check of D7 as amended, within 4 s of each `--json` snapshot:
+
+| Sample | Candidates by name, old | Unused by every read | Size | Bound unix names read | Unreadable processes still there |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 231, 182 | 182 | 84.8 MiB, 2,780 entries | 160 | 8 |
+| 2 | 232, 183 | 183 | 84.8 MiB, 2,780 entries | 168 | 8 |
+| 3 | 245, 196 | 196 | 84.9 MiB, 2,862 entries | 172 | 8 |
+
+The 8 processes were the same in each sample: 5 `sshd`, `sftp-server`, `gpg-agent` and `(sd-pam)`, all of uid 1001, each with `fd` unreadable (EACCES). So with the fake daemons gone, `ps` would have withheld every candidate into one `unknown` entry in 3 of 3 samples: 182 to 196 directories, about 85 MiB. This is inferred from the rule and the reads; `ps` never printed it. On this host an SSH session was open in every sample, so the rule lists nothing. The human weighs that cost (D7 names it).
+
+Side effects:
+
+- **Sidecars.** `sidecars.py` listed 12 to 15 stores before each sample, after its `ps` runs, and at its end: the stores each live process held open, plus the stores `ps` named. No `-wal` or `-shm` appeared in samples 0 to 3. The differences between the listings were tests' scratch stores that came and went, a database file a live daemon wrote, and once a test store's `-wal` that its own process removed. Every store `ps` read had both sidecars, so `ps` took the WAL reader path every time.
+- **System calls.** One `ps --json` under `strace -f`, at 22:21:56 UTC and load 41. It opened each of the 2 stores twice: the database `O_RDONLY`, and `-wal` and `-shm` `O_RDWR|O_CREAT`, both present before and after (SQLite's WAL reader). No `unlink`, `rename`, `mkdir`, `rmdir`, `truncate`, `chmod`, `utimensat`, `connect` or signal call ran. The only `bind` was `ss`'s netlink socket, and the only spawn was `ss -xle`.
+
+### Goal 6: the cost of one snapshot
+
+Five timed `squeal ps` runs per sample, one after another, with the load before each:
+
+| Sample | UTC | Load 1 min | CPU pressure | Processes | Daemons | Test processes | Wall s | CPU s |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 22:22:36 | 53.1 | 60% | 743 | 18 | 19 | 2.60 | 0.49 |
+| 1 | 22:22:38 | 53.1 | 60% | 746 | 19 | 17 | 2.61 | 0.47 |
+| 1 | 22:22:41 | 52.0 | 58% | 742 | 18 | 22 | 2.71 | 0.51 |
+| 1 | 22:22:44 | 52.0 | 65% | 749 | 20 | 22 | 2.51 | 0.46 |
+| 1 | 22:22:46 | 53.6 | 68% | 778 | 20 | 22 | 2.39 | 0.48 |
+| 2 | 22:32:35 | 81.8 | 65% | 654 | 21 | 22 | 2.31 | 0.43 |
+| 2 | 22:32:37 | 81.8 | 65% | 620 | 21 | 23 | 2.34 | 0.45 |
+| 2 | 22:32:40 | 78.1 | 62% | 615 | 20 | 23 | 2.38 | 0.41 |
+| 2 | 22:32:42 | 78.1 | 56% | 619 | 20 | 26 | 2.34 | 0.48 |
+| 2 | 22:32:44 | 76.0 | 56% | 635 | 20 | 26 | 2.34 | 0.44 |
+| 3 | 22:42:34 | 43.9 | 39% | 564 | 18 | 17 | 2.26 | 0.39 |
+| 3 | 22:42:36 | 42.4 | 37% | 558 | 18 | 17 | 2.29 | 0.42 |
+| 3 | 22:42:39 | 42.4 | 37% | 570 | 18 | 18 | 2.28 | 0.38 |
+| 3 | 22:42:41 | 41.1 | 36% | 558 | 18 | 18 | 2.31 | 0.39 |
+| 3 | 22:42:43 | 41.1 | 38% | 598 | 18 | 23 | 2.34 | 0.43 |
+
+The CPU is user plus system time from `/usr/bin/time`, and the maximum RSS was 84 to 89 MiB. At similar load, round 1's sample 3 (load 39 to 40) used 0.47 to 0.60 s, and this round's sample 3 (load 41 to 44) used 0.38 to 0.43 s: about 0.1 s less. At load 12, round 1 used 0.35 to 0.39 s. This host was never that quiet tonight, so whether 0.248 meets 0.3 s at that load is not measured. Node start-up of the same bundle (`--version`) used 0.15 to 0.19 s of CPU, over half of goal 6's 0.3 s.
+
+One run under `node --cpu-prof` at 22:24 UTC, at load 71, with 768 processes and 18 daemons: 2.90 s wall and 0.69 s CPU. The busy samples split as follows. Module compile was 24%. The stores (`readWork`) were 16%, of which `.all()` was about half. The process table was 12%, discovery 9%, GC 3%, and render and the flags 3%. The other 31% were `/proc` reads outside those functions and module loading. Measured read-only with Python's `sqlite3`, `OPEN_RUNS` now runs once per store and reading, at 1.8 ms on this repository's store (1,448 runs) and 4.3 ms on cezar's (6,102). The pending count takes 0.4 ms per daemon. The leftover rule's use reads did not run here (P10); wave 4 measured its open-file reads at 32 to 43 ms CPU at load 28.
+
+### Other observations
+
+- **Fake daemons of the evals tests.** `test/evals/fake-cell.ts` writes a fake `squeal.mjs` for each cell's pinned plugin. Its `daemon` command runs `setInterval` forever, spawned detached, and the cell's stop sends SIGTERM to the pid in `.git/squeal/fake.pid`. Processes 1310860 and 1310869 started at 21:22:00 UTC from cells pinned to ed5423b04. They ran at nice 10, like Squeal's test processes, under `systemd --user`, and outlived their cell, whose key directory `/tmp/squeal-1001/tmp/664f3e2feab7361c` is gone. They were still there at 22:48, 86 min later. They match D2's command-line rule, so `ps` lists them as daemons of "repository unknown" and flags them, as it should. Because neither their key nor their token can be read, `leftover-temp` and `orphan-test-process` are not evaluated for the whole host while they live (P10).
+- **The main checkout's daemon** (`a6b4acd9`) was again short-lived. In sample 3, daemon 469239 was 10 to 14 s old and left inside the `--repo` run's window, which then read its CPU and memory as `?`. Round 1 saw the same twice. It is for 011 to watch.
+- **`unknown` grows long.** On this host, every snapshot named 11 to 14 values. The text prints only their count, so the reason `leftover-temp` did not run shows only with `--full`. No row is proposed.
+
+### Proposed rows
+
+The numbers continue after P8; the coordinator assigns the final ones.
+
+| Row | Problem, with the evidence | Done when |
+| --- | --- | --- |
+| P9 `no-lock` and `waiting` come from one `/proc/locks` read that can miss a held lock | 3586980 served for 24 min and held its lock file's WRITE lock. In 2 of 32 saved snapshots it read `waiting` and was flagged `no-lock` with `ends it: kill 3586980`. It read `serving` 2 s before and after. Mechanism: `/proc/locks` held 270 to 340 lines, 18 to 22 KB, and each `read()` returns one page (4,039 to 4,083 bytes). So `readFileSync` takes about 5 reads, and SQLite's locks change between them. In two runs of `locks-exp.mjs` (22:44 and 22:48 UTC, load 41 and 56), 9 of 500 and 30 of 1,000 `readFileSync` reads missed a daemon's lock-file lock that was held before and after the loop (16 daemons; 7 different daemons were missed). `discover.ts` reads `/proc/locks` once per snapshot, and the phase and `no-lock` rest on that read. Unlike `hung` and `orphan-test-process`, `no-lock` needs no second sample. The same read decides `duplicate`'s waiter and the pool's `held`. `stale-socket` is guarded by `ss`'s listener check while `ss` is present | A `discover.test.ts` or `flags.test.ts` case: a source whose first `locks()` lacks a daemon's held lock and whose second has it gives `serving` and no flag. A daemon is `waiting` only when its lock is missing from both readings (D2 amendment). On this host, over 30 snapshots, no `no-lock` falls on a daemon that serves in the runs before and after |
+| P10 the evals test's fake daemons outlive their cell, and while they live two host-wide rules do not run | 1310860 and 1310869, `squeal.mjs daemon <root>` from `test/evals/fake-cell.ts` (`FAKE_SQUEAL`), ran 86+ min after their cell was removed. In all 38 runs that judge the whole host they turned off `leftover-temp` and `orphan-test-process` (D7, as specified). The test's stop path SIGTERMs `.git/squeal/fake.pid`, and why it did not run for these two cells is not known. A run killed mid-test is likely (inferred). Owner: the evals tests (006), not 014. One decision is 014's: whether a daemon whose root is gone and whose repository cannot be read should still stop those two rules for the whole host (D7 now), or be skipped by them. Skipping lists its key directory too, if it has one | The fake daemon exits when its root is gone or its test process ends, for example by checking its root in its interval. A test case removes a cell mid-run and finds no fake daemon left. On this host, after a full suite, `squeal ps` lists no root under `squeal-evals-cell-*`. The D7 decision is written in `status.md` |
+
+P3 (014-23) stays open: its done-when, five runs at ordinary load at most 0.3 s of CPU, did not hold at load 41 to 82. Node start-up alone is over half the bound at that load. Whether the bound or the design moves is the coordinator's or the human's decision.
+
+### For the next worker
+
+- The scripts are in `/tmp/dogfood-014-30/bin/` while this host keeps `/tmp`. `sample.sh <n> <cwd>` takes one sample with the pinned bundle. `drive.sh <epoch of sample 1> <cwd>` takes samples 2 and 3 and both share windows. `pair.py <bundle> <runs> <out>` runs the paired check, and `locks-exp.mjs <reads>` the `/proc/locks` check. `judge.py`, `goal6.py`, `sharesum.py` and `prof.py` make the tables. They only read, and `flagcheck.py` opens a store only when its `-wal` and `-shm` exist.
+- Judge P1, P5 and P8 live once the fake daemons are gone. `squeal ps --full --json` then shows the withheld `leftover-temp` entry, or the flag, and `flagcheck.py` gives the by-hand set to compare.
+- A 2 s `ps` sample is not bounded by a 60 s mean. Check a lower bound against a count that encloses the same run (`pair.py`), not against the share window.
