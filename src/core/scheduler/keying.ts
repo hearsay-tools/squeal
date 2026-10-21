@@ -78,6 +78,8 @@ const PROVISIONAL_ENVIRONMENT = "squeal-provisional-environment/1";
 export class WorktreeKeys {
   readonly cache: StatCache;
   readonly index: KeyIndex;
+  /** The paths the last `bootstrap` hashed for the first time, without a revision (row 011-91). */
+  seededAtStart: readonly RelativePath[] = [];
   readonly isDeclaredInput = (path: RelativePath): boolean => this.#isDeclared(path);
   readonly #runnerClosures = new Map<string, RunnerClosure>();
   readonly #environments = new Map<ProjectName, RunnerEnvironment>();
@@ -179,9 +181,10 @@ export class WorktreeKeys {
     }
     // Task 001-166: the files the change feed walks under a symlinked directory git lists.
     const linked = await linkedFiles(this.options.root, listed, this.extraFiles());
-    await this.#seed(
-      [...listed, ...linked].filter((path) => this.cache.hashOf(path) === undefined),
+    this.seededAtStart = [...listed, ...linked].filter(
+      (path) => this.cache.hashOf(path) === undefined,
     );
+    await this.#seed(this.seededAtStart);
     this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
     return revision;
   }

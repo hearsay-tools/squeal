@@ -266,12 +266,27 @@ export function restState(
   at: EpochMs,
 ): "quiet" | "overdue" | null {
   if (worktree === null || worktree.daemon !== null) return null;
-  const rest = readRest(store, worktree.id);
-  if (rest === null || rest.at < (worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY)) {
-    return null;
-  }
+  const rest = restAfterHeartbeats(store, worktree);
+  if (rest === null) return null;
   if (rest.spawnedAt === undefined || at - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
   return "overdue";
+}
+
+/**
+ * Whether a daemon starting on `worktree` resumes a rest: read before it
+ * registers, the rest mark is later than every heartbeat the row records
+ * (spec 011 C9 as amended 2026-10-21, row 011-91).
+ */
+export function resumesRest(store: Store, worktree: WorktreeRecord | null): boolean {
+  return worktree !== null && restAfterHeartbeats(store, worktree) !== null;
+}
+
+/** The worktree's rest when no heartbeat its row records came after it, else `null`. */
+function restAfterHeartbeats(store: Store, worktree: WorktreeRecord): Rest | null {
+  const rest = readRest(store, worktree.id);
+  const heartbeat =
+    worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
+  return rest === null || rest.at < heartbeat ? null : rest;
 }
 
 function readRest(store: Store, worktreeId: WorktreeId): Rest | null {

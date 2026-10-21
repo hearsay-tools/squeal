@@ -232,6 +232,8 @@ export interface CatchUpOptions {
   readonly cancels?: boolean;
   /** `SchedulerOptions.runnerPartMs`: the bound on one runner-part call. */
   readonly runnerPartMs?: number;
+  /** `SchedulerOptions.resumesRest`: the start resumes a rest (row 011-91). */
+  readonly resumesRest?: boolean;
 }
 
 /** Project `project`'s environment file. */
@@ -333,6 +335,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     head: () => readHead(root),
     capacity: { dir: repo.poolDir, hostSlots: options.hostSlots },
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
+    ...(options.resumesRest === undefined ? {} : { resumesRest: options.resumesRest }),
   });
   onTestFinished(async () => {
     clearInterval(beat);
