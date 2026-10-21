@@ -116,6 +116,15 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
     };
   };
 
+  // The daemons, their test processes and those processes' descendants: what a total sums.
+  const below = new Map(first.attribution.processes.map((p) => [p.pid, p.descendants]));
+  const pidsOf = (daemons: readonly PsDaemon[]): number[] => [
+    ...daemons.map((d) => d.pid),
+    ...daemons.flatMap((d) => d.processes).flatMap((p) => [p.pid, ...(below.get(p.pid) ?? [])]),
+  ];
+  const totalOf = (daemons: readonly PsDaemon[]) =>
+    sumCosts(pidsOf(daemons).flatMap((pid) => costs.get(pid) ?? []));
+
   const current = model.places.commonDir;
   const blocks = new Map<AbsolutePath | null, PsDaemon[]>();
   for (const d of model.discovery.daemons) {
@@ -123,24 +132,25 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
     blocks.set(d.commonDir, [...group, daemonOf(d)]);
   }
   const repositories = [...blocks]
-    .map(
-      ([commonDir, daemons]): PsRepository => ({
+    .map(([commonDir, daemons]): PsRepository => {
+      const { cpuPct, privateBytes, swapBytes, skipped } = totalOf(daemons);
+      return {
         commonDir,
         current: commonDir !== null && commonDir === current,
-        daemons: daemons.sort((a, b) => cpuOf([b]) - cpuOf([a]) || a.pid - b.pid),
-      }),
-    )
+        cpuPct,
+        privateBytes,
+        swapBytes,
+        skipped,
+        daemons: daemons.sort((a, b) => cpuOf(b) - cpuOf(a) || a.pid - b.pid),
+      };
+    })
     .filter((repository) => !o.repo || repository.current)
-    .sort((a, b) => Number(b.current) - Number(a.current) || cpuOf(b.daemons) - cpuOf(a.daemons));
+    .sort((a, b) => Number(b.current) - Number(a.current) || (b.cpuPct ?? 0) - (a.cpuPct ?? 0));
 
   const daemons = repositories.flatMap((repository) => repository.daemons);
   const processes = daemons.flatMap((d) => d.processes);
-  const below = new Map(first.attribution.processes.map((p) => [p.pid, p.descendants]));
-  const pids = [
-    ...daemons.map((d) => d.pid),
-    ...processes.flatMap((p) => [p.pid, ...(below.get(p.pid) ?? [])]),
-  ];
-  const total = sumCosts(pids.flatMap((pid) => costs.get(pid) ?? []));
+  const pids = pidsOf(daemons);
+  const total = totalOf(daemons);
   const ids = !o.repo ? null : current === null ? new Set<string>() : worktreeIdsOf(current);
   const files =
     ids === null
@@ -163,6 +173,7 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
       privateBytes: total.privateBytes,
       memoryShare: memoryShare(total.privateBytes, r.host),
       swapBytes: total.swapBytes,
+      skipped: total.skipped,
       pool: model.pool.pool,
     },
     repositories,
@@ -206,13 +217,10 @@ function workOf(work: DaemonWork | null, now: EpochMs, draining: boolean): PsWor
   };
 }
 
-/** The CPU of daemons and their processes over the sample; what is unknown counts as none. */
-function cpuOf(daemons: readonly PsDaemon[]): number {
-  let cpu = 0;
-  for (const d of daemons) {
-    cpu += d.cpuPct ?? 0;
-    for (const p of d.processes) cpu += (p.cpuPct ?? 0) + (p.descendants.cpuPct ?? 0);
-  }
+/** The CPU of a daemon and its processes over the sample; what is unknown counts as none. */
+function cpuOf(d: PsDaemon): number {
+  let cpu = d.cpuPct ?? 0;
+  for (const p of d.processes) cpu += (p.cpuPct ?? 0) + (p.descendants.cpuPct ?? 0);
   return cpu;
 }
 
