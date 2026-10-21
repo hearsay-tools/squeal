@@ -60,8 +60,9 @@ describe("the OpenCode package", () => {
     expect(readFileSync(join(OPENCODE_PLUGIN_DIR, "bin", "squeal-launcher"), "utf8")).toBe(
       readFileSync(join(REPO_ROOT, "plugins/pi/bin/squeal-launcher"), "utf8"),
     );
+    // Which bundle it runs for each command: test/harness/ps-bundle.test.ts.
     expect(readFileSync(join(OPENCODE_PLUGIN_DIR, "bin", "squeal"), "utf8")).toContain(
-      '"$(dirname "$0")/../dist/cli/squeal.mjs"',
+      '"$(dirname "$0")/../dist/cli/$cli.mjs"',
     );
   });
 });
