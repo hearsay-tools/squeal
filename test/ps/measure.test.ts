@@ -179,6 +179,27 @@ describe("sumCosts", () => {
     ).toEqual({ cpuPct: 12, cpuMs: 105, privateBytes: 30, swapBytes: null });
     expect(sumCosts([])).toEqual({ cpuPct: 0, cpuMs: 0, privateBytes: 0, swapBytes: 0 });
   });
+
+  test("a test process's descendants are summed into it: the fixture fork worker's git", () => {
+    const root = mkdtempSync(join(tmpdir(), "squeal-ps-sum-"));
+    try {
+      writeTree(root);
+      const source = createProcSource({ root });
+      const first = takeSample(source);
+      const attribution = attribute(source, first.table, [
+        { pid: 2091490, token: "6500d1d2-7ae8-4039-a08e-1b231205f5c8", tiers: [] },
+      ]);
+      const worker = attribution.processes.find((p) => p.pid === 2353452);
+      expect(worker?.descendants).toEqual([2353500]);
+      const costs = measure(source, first, takeSample(source), worker?.descendants ?? []);
+      expect(sumCosts([...costs.values()])).toMatchObject({
+        privateBytes: 4_000 * 1024,
+        swapBytes: 0,
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("cost on a host of 650 processes (spec 014 Testing, goal 6)", () => {
