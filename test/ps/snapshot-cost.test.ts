@@ -74,6 +74,8 @@ describe("one snapshot on a host of 650 processes and 25 daemons", () => {
 
     // Inside the window: one scan of the table, the arguments of Node main threads only.
     expect(inside.get("processTable")).toBe(1);
+    // `/proc/locks` once at each end of the window (`lessons.md` P9), shared by the phases and the pool.
+    expect([inside.get("locks"), reads.get("locks")]).toEqual([1, 1]);
     expect(inside.get("cmdline") ?? 0).toBeLessThan(250);
     // After it: the table and the memory of Squeal's processes only, never the host's 650 again.
     expect(reads.get("processTable")).toBe(tree.squeal.length);
