@@ -18,8 +18,9 @@ import {
 /*
  * Spec 014 D10: the macOS source, built from `ps`, `vm_stat`, `sysctl`,
  * `lsof` and `node:os`, all *inferred*: nobody has run it on a Mac. Each
- * `processTable` is one `ps`; a process's arguments and RSS are those of
- * the last one, so no read spawns per process. Each `host` is one `vm_stat`
+ * `processTable` is one `ps`, and throws when it fails; a process's
+ * arguments and RSS are those of the last one, so no read spawns per
+ * process. Each `host` is one `vm_stat`
  * and one `sysctl`, each `cwds` one `lsof`. It reads no marks, fds, locks
  * or listening sockets: those are `null`, and the stages name them in
  * `unknown`. Every spawn goes through the runner, without a shell.
@@ -187,10 +188,17 @@ class DarwinSource implements PsSource {
     };
   }
 
-  /** Rows by pid; a line that does not parse (a header, a cut line, a `-` value) is left out. */
+  /**
+   * Rows by pid; a line that does not parse (a header, a cut line, a `-`
+   * value) is left out. A `ps` that failed throws: no table is no snapshot
+   * (D1's exit 3), never a host without daemons (`reviews/wave-2.md` B4).
+   */
   #read(): ReadonlyMap<number, PsLine> {
+    const output = this.#run("env", PS);
+    if (output === null)
+      throw new Error("the process table cannot be read: ps failed, is missing or timed out");
     const lines = new Map<number, PsLine>();
-    for (const text of (this.#run("env", PS) ?? "").split("\n")) {
+    for (const text of output.split("\n")) {
       const line = this.#line(text);
       if (line !== null) lines.set(line.row.pid, line);
     }
