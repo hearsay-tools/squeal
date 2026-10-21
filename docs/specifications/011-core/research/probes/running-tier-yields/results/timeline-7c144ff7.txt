@@ -1,0 +1,45 @@
+10-21T01:26:59 CKPT 2797c3 rev=0 baseline n=85 end=abandoned at 10-21T01:26:59
+10-21T06:56:25 CKPT ba0a77 rev=0 baseline n=83 end=abandoned at 10-21T06:56:25
+10-21T06:57:23 REV 1 watch head=3389b90d changes=10 packages/cezar/src/contract-import-boundaries.test.ts packages/cezar/src/server/git.test.ts packages/cezar/src/workflows/fixture-cleanup.test.ts
+10-21T06:57:43 RUN 697aad49 rev=1 n=2 cp=- end=completed wall=22.9s until 10-21T06:58:05 worker-restart-parity.test.ts,ci-wait.test.ts
+10-21T06:58:02 REV 2 watch head=3389b90d changes=1 AGENTS.md
+10-21T06:58:05 RUN cbd144e8 rev=2 n=1 cp=- end=completed wall=2.7s until 10-21T06:58:08 ci.workflow.test.cjs
+10-21T06:58:05 RUN 4729854a rev=2 n=1 cp=- end=completed wall=4.6s until 10-21T06:58:10 automated-code-review.workflow.test.cjs
+10-21T06:58:06 RUN b78a6e9d rev=2 n=6 cp=- end=completed wall=86.1s until 10-21T06:59:32 
+10-21T06:59:32 RUN c9f3b90d rev=2 n=3 cp=- end=completed wall=71.8s until 10-21T07:00:44 provision-workflows.test.ts,worker-wait-capacity.test.ts,waits-codex-parity.test.ts
+10-21T07:00:41 REV 3 watch head=c23641d6 changes=5 packages/cezar/src/workflows/run.ts packages/cezar/src/workflows/waits-parity-cells.testkit.ts packages/cezar/src/workflows/waits-parity.testkit.ts
+10-21T07:00:50 RUN 8c447f97 rev=3 n=4 cp=- end=completed wall=3.3s until 10-21T07:00:53 waits.test.ts,pump-repo-cache.test.ts,permissions.test.ts,skill-system-prompt.test.ts
+10-21T07:00:51 RUN c23d44dd rev=3 n=1 cp=- end=completed wall=3.8s until 10-21T07:00:55 change-surface-readers.test.cjs
+10-21T07:00:54 RUN 0f3e1e75 rev=3 n=4 cp=- end=completed wall=2.4s until 10-21T07:00:56 run-settlement.test.ts,git-worktree-release.test.ts,old-engine-removed.test.ts,capacity.test.ts
+10-21T07:00:57 RUN 5188e922 rev=3 n=4 cp=- end=completed wall=86.9s until 10-21T07:02:24 waits-parity.test.ts,human-waits.test.ts,worker-waits.test.ts,waits-wake.test.ts
+10-21T07:02:26 RUN 47a09391 rev=3 n=4 cp=- end=completed wall=366.6s until 10-21T07:08:32 waits-pi-parity.test.ts,waits-omp-parity.test.ts,waits-codex-parity.test.ts,waits-opencode-parity.test.ts
+10-21T07:04:04 REV 4 watch head=c23641d6 changes=1 AGENTS.md
+10-21T07:04:12 RUN f8bfa8b2 rev=4 n=1 cp=- end=completed wall=9.4s until 10-21T07:04:22 ci.workflow.test.cjs
+10-21T07:04:13 RUN 369393c0 rev=4 n=1 cp=- end=completed wall=9.2s until 10-21T07:04:22 automated-code-review.workflow.test.cjs
+10-21T07:04:42 REV 5 watch head=a6da92c3 changes=6 packages/web/e2e/README.md packages/web/e2e/agent-browser.ts packages/web/e2e/failure-setup.ts
+10-21T07:09:13 RUN 0797721f rev=5 n=4 cp=- end=completed wall=37.8s until 10-21T07:09:51 agent-browser-failure.test.ts,agent-browser-wait-value.test.ts,automations-api.test.ts,task-webhook-api.test.ts
+10-21T07:09:14 RUN 6e1a3db9 rev=5 n=1 cp=- end=completed wall=3.9s until 10-21T07:09:18 change-surface-readers.test.cjs
+10-21T07:09:54 RUN 7f5ee7e0 rev=5 n=4 cp=- end=timed-out wall=601.8s until 10-21T07:19:55 ci-wait-failure-parity.test.ts,waits-cursor-parity.test.ts,run.test.ts,waits-claude-parity.test.ts
+10-21T07:19:56 RUN 19a4327e rev=5 n=4 cp=- end=timed-out wall=601.0s until 10-21T07:29:57 harness-parity.test.ts,workflow-autonomous-parity.test.ts,worker-questions.test.ts,worker-parent-attention.test.ts
+10-21T07:29:59 RUN 7a7a9a89 rev=5 n=1 cp=- end=timed-out wall=602.3s until 10-21T07:40:01 waits-claude-parity.test.ts
+10-21T07:30:59 REV 6 watch head=01da9eeb changes=16 .ai/specs/2026-09-25-task-webhook-handoff.md AGENTS.md BACKWARD_COMPATIBILITY.md
+10-21T07:31:15 REV 7 watch head=01da9eeb changes=1 packages/web/e2e/agent-browser.ts
+10-21T07:40:43 RUN e6aadd6e rev=7 n=1 cp=- end=timed-out wall=602.8s until 10-21T07:50:46 harness-parity.test.ts
+10-21T07:40:44 RUN 34d7ef29 rev=7 n=1 cp=- end=completed wall=4.8s until 10-21T07:40:48 change-surface-readers.test.cjs
+10-21T07:40:44 RUN d49f7867 rev=7 n=1 cp=- end=completed wall=9.5s until 10-21T07:40:53 ci.workflow.test.cjs
+10-21T07:40:47 RUN e0d81460 rev=7 n=1 cp=- end=completed wall=9.0s until 10-21T07:40:55 automated-code-review.workflow.test.cjs
+10-21T07:50:47 RUN 97b83e54 rev=7 n=2 cp=- end=completed wall=245.3s until 10-21T07:54:53 task-webhook-api.test.ts,worker-questions.test.ts
+10-21T07:54:55 RUN dd4a7166 rev=7 n=47 cp=- end=completed wall=47.6s until 10-21T07:55:42 
+10-21T07:55:43 RUN 764bd2cf rev=7 n=38 cp=- end=completed wall=44.5s until 10-21T07:56:27 
+10-21T07:56:28 RUN 2518d27a rev=7 n=27 cp=- end=completed wall=61.6s until 10-21T07:57:30 
+10-21T07:57:31 RUN 5ead19b0 rev=7 n=17 cp=- end=completed wall=66.4s until 10-21T07:58:37 
+10-21T07:58:37 RUN 86994721 rev=7 n=11 cp=- end=completed wall=53.6s until 10-21T07:59:31 
+10-21T07:59:31 RUN 316cf891 rev=7 n=5 cp=- end=completed wall=60.5s until 10-21T08:00:32 
+10-21T08:00:33 RUN 2e37d1cc rev=7 n=4 cp=- end=completed wall=64.5s until 10-21T08:01:37 autosave-report.test.ts,system-prompt.test.ts,worktrees-api.test.ts,model-identity-wiring.test.ts
+10-21T08:01:37 RUN f72b60db rev=7 n=3 cp=- end=completed wall=36.6s until 10-21T08:02:14 auto-resume.test.ts,repo-pull.test.ts,session-signal-cli.test.ts
+10-21T08:02:14 RUN 8c9e198e rev=7 n=3 cp=- end=completed wall=107.0s until 10-21T08:04:01 destruction-results.test.ts,pasted-attachments.test.ts,service.test.ts
+10-21T08:04:02 RUN 90050f81 rev=7 n=2 cp=- end=completed wall=80.9s until 10-21T08:05:23 worktree-setup-run.test.ts,workspace.test.ts
+10-21T08:05:23 RUN 4438c656 rev=7 n=2 cp=- end=completed wall=108.3s until 10-21T08:07:11 provision-workflows.test.ts,worker-waits.test.ts
+10-21T08:07:12 RUN e68381a7 rev=7 n=2 cp=- end=completed wall=105.6s until 10-21T08:08:58 workflow-followup-parity.test.ts,workflow-timeout-parity.test.ts
+10-21T08:08:58 RUN 1a6c59f3 rev=7 n=2 cp=- end=completed wall=175.1s until 10-21T08:11:53 workflow-no-progress-parity.test.ts,waits-pi-parity.test.ts
+10-21T08:11:55 RUN ddca329a rev=7 n=2 cp=- end=null wall=-s until - waits-omp-parity.test.ts,workflow-final-message-parity.test.ts

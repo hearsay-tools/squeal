@@ -1,0 +1,59 @@
+span 2026-10-14T19:55:38.694Z .. 2026-10-21T08:12:35.991Z; fast Vitest runs 1870 (1731 with a report), worktrees 53; run wall {"n":1870,"p50":9.1,"p90":229.9,"max":612.8,"sum":140079}
+runs over 60 s: 489, over 300 s: 152; Vitest-lane time in runs over 60 s: 125114 of 140079 s
+revisions during a fast Vitest tier: 263, reaching a fast Vitest file or recreating: 233; tiers hit 125 of 1870
+ (b) supersedes a file of the tier: 134; cancelled today 22; residual (tier end - event) of the uncancelled {"n":112,"p50":121.6,"p90":562.6,"max":599.8,"sum":24048}
+     of which every unfinished file superseded: 93; cancelled today 7; residual (tier end - event) of the uncancelled {"n":86,"p50":121.6,"p90":562.6,"max":596.9,"sum":18085}
+ (a) reaches only other files: 90; cancelled today 11; residual (tier end - event) of the uncancelled {"n":79,"p50":126.3,"p90":505.4,"max":599.8,"sum":13852}
+ (c') recreates the instance: 21; cancelled today 8; residual (tier end - event) of the uncancelled {"n":13,"p50":148.4,"p90":520.1,"max":525.6,"sum":2703}
+     catch-up revisions among them: 20; cancelled today 5; residual (tier end - event) of the uncancelled {"n":15,"p50":82.4,"p90":510,"max":542.3,"sum":2521}
+a cancel at each uncancelled event: keeps 133 files, cuts 512, throws away 68051 file-seconds
+named waits on a fast Vitest file in the span: 706; asked while a fast tier ran: 200; with no named file blocked by it: 104
+episodes all: 66 (waits 96)
+  behind the tier {"n":66,"p50":95.5,"p90":359.3,"max":563.5,"sum":9406}
+  first named verdict today {"n":66,"p50":467,"p90":1399.8,"max":36806,"sum":184800}
+  first named verdict under cancel {"n":66,"p50":62.2,"p90":524.1,"max":603.9,"sum":8175}
+  cancel at the first wait (tiers <= 4 files): cuts 106 files, 12510 file-seconds; keeps 41
+episodes tier of <= 4 files: 47 (waits 75)
+  behind the tier {"n":47,"p50":113,"p90":470.1,"max":563.5,"sum":8024}
+  first named verdict today {"n":47,"p50":469.1,"p90":1083.6,"max":36806,"sum":82510}
+  first named verdict under cancel {"n":47,"p50":45.5,"p90":378.7,"max":603.9,"sum":4685}
+  cancel at the first wait (tiers <= 4 files): cuts 106 files, 12510 file-seconds; keeps 41
+episodes tier of > 4 files: 19 (waits 21)
+  behind the tier {"n":19,"p50":45.9,"p90":160.6,"max":283.9,"sum":1382}
+  first named verdict today {"n":19,"p50":423.8,"p90":31933.4,"max":32139.6,"sum":102290}
+  first named verdict under cancel {"n":19,"p50":68.2,"p90":556.3,"max":603.9,"sum":3490}
+  cancel at the first wait (tiers <= 4 files): cuts 0 files, 0 file-seconds; keeps 0
+episodes a named file failing before: 32 (waits 53)
+  behind the tier {"n":32,"p50":113,"p90":470.1,"max":558.6,"sum":5565}
+  first named verdict today {"n":32,"p50":375.4,"p90":718,"max":1399.8,"sum":13664}
+  first named verdict under cancel {"n":32,"p50":13.7,"p90":74.3,"max":329.5,"sum":1366}
+  cancel at the first wait (tiers <= 4 files): cuts 65 files, 6984 file-seconds; keeps 22
+fairness: consecutive runs of one file hit by an event: {"1":1302,"2":405,"3":22,"4":10,"5+":2}
+YIELD_S 0: free cancels 46, yields 52, refused by fairness 16; files cut 425, lost file-seconds (yields only) 4803
+  edit's wait for the tier {"n":233,"p50":3.1,"p90":14.7,"max":594.7,"sum":6780}; named wait behind the tier {"n":66,"p50":4.2,"p90":256.4,"max":563.5,"sum":4405}
+YIELD_S 15: free cancels 46, yields 34, refused by fairness 15; files cut 183, lost file-seconds (yields only) 4586
+  edit's wait for the tier {"n":233,"p50":3.1,"p90":20.3,"max":594.7,"sum":6857}; named wait behind the tier {"n":66,"p50":16,"p90":256.4,"max":563.5,"sum":4493}
+YIELD_S 30: free cancels 46, yields 29, refused by fairness 14; files cut 169, lost file-seconds (yields only) 4454
+  edit's wait for the tier {"n":233,"p50":3.1,"p90":20.3,"max":594.7,"sum":6893}; named wait behind the tier {"n":66,"p50":18.1,"p90":256.4,"max":563.5,"sum":4508}
+YIELD_S 60: free cancels 46, yields 22, refused by fairness 12; files cut 154, lost file-seconds (yields only) 3771
+  edit's wait for the tier {"n":233,"p50":3.1,"p90":30.5,"max":594.7,"sum":7074}; named wait behind the tier {"n":66,"p50":27.3,"p90":184.3,"max":563.5,"sum":4417}
+YIELD_S 120: free cancels 47, yields 17, refused by fairness 12; files cut 145, lost file-seconds (yields only) 2707
+  edit's wait for the tier {"n":233,"p50":3.1,"p90":114.1,"max":594.7,"sum":7549}; named wait behind the tier {"n":66,"p50":30.8,"p90":184.3,"max":563.5,"sum":4487}
+YIELD_S 30 (unknown or overdue counts long): free cancels 45, yields 46, refused by fairness 21; files cut 623, lost file-seconds (yields only) 6615
+  edit's wait for the tier {"n":233,"p50":3.1,"p90":3.5,"max":594.7,"sum":4180}; named wait behind the tier {"n":66,"p50":3.1,"p90":184.3,"max":563.5,"sum":3717}
+YIELD_S 60 (unknown or overdue counts long): free cancels 45, yields 40, refused by fairness 19; files cut 611, lost file-seconds (yields only) 6292
+  edit's wait for the tier {"n":233,"p50":3.1,"p90":5.6,"max":594.7,"sum":4216}; named wait behind the tier {"n":66,"p50":3.1,"p90":184.3,"max":563.5,"sum":3824}
+named episodes: after the tier until the first named verdict {"n":66,"p50":321.9,"p90":1082.6,"max":36512,"sum":175394}
+today, leave: behind {"n":66,"p50":95.5,"p90":359.3,"max":563.5,"sum":9406}
+after the tier: next run is the named file's in 47 of 66; a wait open at the boundary in 37; next is named when open 29, when not open 18 of 29
+  runs between {"n":66,"p50":0,"p90":2,"max":6,"sum":35}; their wall {"n":66,"p50":0,"p90":369.2,"max":932.2,"sum":5378}; timed-out runs between 2; named file needed a later run 6
+  tier end to the named file's run start {"n":66,"p50":1.2,"p90":401.8,"max":1042.6,"sum":7380}; that run's start to its end {"n":66,"p50":184.2,"p90":604,"max":36511.5,"sum":168015}
+named episodes at YIELD_S 30: {"yielded":34,"estLow":10,"estUnknown":9,"short":13}
+LEAVE (today): edit's wait for the tier {"n":233,"p50":63.9,"p90":520.1,"max":599.8,"sum":39064}; named wait behind the tier {"n":66,"p50":95.5,"p90":359.3,"max":563.5,"sum":9406}
+CANCEL ALWAYS: files cut 1572, lost file-seconds 81796 (upper bound: a tier cancelled once is counted at every event)
+incident episode {"wt":"9db3c096","run":"6ef53f43","at":"2026-10-20T23:00:10.702Z","waits":1,"src":"codex","tierFiles":1,"named":6,"failing":false,"firstFile":"waits-claude-parity.test.ts","behindS":8.883,"todayS":395.617,"cancelS":99.69571281399998,"estRemainingS":5.676620175000004,"superseded":false,"cut":{"kept":0,"lost":1,"lostWork":16.34}}
+incident episode {"wt":"9db3c096","run":"cbaed8fa","at":"2026-10-20T23:04:43.549Z","waits":1,"src":"codex","tierFiles":4,"named":2,"failing":false,"firstFile":"waits-cursor-parity.test.ts","behindS":122.77,"todayS":321.596,"cancelS":109.276048106,"estRemainingS":189.97379739899998,"superseded":false,"cut":{"kept":3,"lost":1,"lostWork":263.666}}
+incident episode {"wt":"9db3c096","run":"c3f37b1d","at":"2026-10-20T23:07:03.691Z","waits":1,"src":"codex","tierFiles":4,"named":15,"failing":true,"firstFile":"waits-opencode-parity.test.ts","behindS":181.454,"todayS":375.404,"cancelS":74.332013093,"estRemainingS":240.49905823399996,"superseded":false,"cut":{"kept":0,"lost":4,"lostWork":68.028}}
+incident episode {"wt":"5022c74c","run":"47a09391","at":"2026-10-21T07:04:19.249Z","waits":2,"src":"codex","tierFiles":4,"named":1,"failing":true,"firstFile":"automations-api.test.ts","behindS":253.749,"todayS":332.356,"cancelS":21.61472420700001,"estRemainingS":261.10002660399994,"superseded":false,"cut":{"kept":0,"lost":4,"lostWork":451.232}}
+incident episode {"wt":"c12ea906","run":"34a80467","at":"2026-10-21T07:12:46.051Z","waits":3,"src":"codex","tierFiles":4,"named":6,"failing":false,"firstFile":"ci-wait-failure-parity.test.ts","behindS":283.682,"todayS":892.413,"cancelS":74.586439291,"estRemainingS":198.64132883200003,"superseded":false,"cut":{"kept":0,"lost":4,"lostWork":675.58}}
+incident episode {"wt":"c12ea906","run":"13b7282e","at":"2026-10-21T07:33:39.980Z","waits":1,"src":"codex","tierFiles":4,"named":9,"failing":false,"firstFile":"waits-codex-parity.test.ts","behindS":242.852,"todayS":720.979,"cancelS":49.371804205000004,"estRemainingS":219.42683344,"superseded":false,"cut":{"kept":1,"lost":3,"lostWork":1075.284}}

@@ -1,0 +1,3 @@
+waits 1588, named with a test path 828, claude 604, codex 984
+range 2026-10-06T13:02:27.093Z .. 2026-10-21T08:25:52.881Z
+named: behind tier 48, not listed 8
