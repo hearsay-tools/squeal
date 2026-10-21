@@ -25,3 +25,15 @@ Tests first, red before: the findings' section 4 list. Move `probes/stuck-tier/s
 Owns: `src/core/scheduler/tiers.ts` and `scheduler.ts` (these two paths only), the new tests. Not yours: `yields.ts`, the runners, `startTier`'s transaction (an open question, a later row), spec text, the board, bundles, version.
 
 Done when: the new tests are red before and green after; `test/scheduler/` passes unchanged; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass, their output in your summary.
+
+## W3: 011-76, the test-file frame beside `location`
+
+Use /worker. Shape: slice. Read board row 011-76, `tasks/011-64/design.md` sections 2 and 5 (R2), spec 011 C5 and C6 as amended 2026-10-21 for 011-64. Base: the reviewed `cand/0.1.239` commit named in the spawn.
+
+Seam: a new pure `testFileFrame` in `src/core/status/test-frame.ts`, read from the stored stack. First edit, a lead: the function and its unit tests (R2's tests 2 and 3), then `src/core/delivery/attribution.ts` gives each failing entry and known failure the frame from the stored row at its key.
+
+Tests first, red before: R2's tests 1 to 5 in the design. Test 2's pytest cases use fixtures from a real pytest run, one per traceback style; say how you made them.
+
+Owns: `src/core/status/test-frame.ts`, `src/core/delivery/attribution.ts`, `src/core/delivery/format.ts` (the `at` line), `src/core/status/format-status.ts` (known failures), `src/core/status/why.ts` and `format-why.ts` (`Location:`), the additive `testFileFrame?` on `TransitionEntry`, `KnownFailure` and `WhyReport`, their tests. Not yours: `src/core/status/failures.ts` and `src/cli/failures.ts` (011-75, held on `w9/011-75`), every adapter, spec text, the board, bundles, version.
+
+Done when: tests 1 to 5 are red before and green after; `npm run lint`, `npm run typecheck` and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
