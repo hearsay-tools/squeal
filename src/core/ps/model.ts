@@ -31,6 +31,8 @@ export interface PsPlaces {
   readonly uid: number;
   /** The plugin caches and `installed_plugins.json` lie under it (D2, D7). */
   readonly home: AbsolutePath;
+  /** The user-level config file (011 C10), `userConfigPath(env)`, which follows `XDG_CONFIG_HOME`. */
+  readonly userConfig: AbsolutePath;
   /** `$XDG_RUNTIME_DIR`; `null` when unset. Sockets and the pool lie in it. */
   readonly runtimeDir: AbsolutePath | null;
   /** `/tmp`: `squeal-<uid>` (sockets, pool, temp keys) and other `squeal-*` directories lie in it (D7). */

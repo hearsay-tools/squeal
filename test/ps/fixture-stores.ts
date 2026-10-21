@@ -65,6 +65,7 @@ export function placesUnder(base: string): PsPlaces {
   return {
     uid: process.getuid?.() ?? 1000,
     home: join(base, "home"),
+    userConfig: join(base, "home", ".config", "squeal", "config.json"),
     runtimeDir: join(base, "run"),
     tempDir: join(base, "tmp"),
     commonDir: null,
