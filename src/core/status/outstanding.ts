@@ -106,9 +106,9 @@ export function outstandingOf(
     if (slow.isSlow(file.testFile) && !held) continue;
     add(standing, file.testFile);
   }
-  if (header.runnerPartPending === true && !groups.has(groupId(unlisted(header, policy)))) {
-    add(unlisted(header, policy), null);
-  }
+  // The revision's own line, unless a group of its queued files already says it (row 011-57).
+  const said = [...groups.values()].some((g) => g.standing.kind === "unlisted");
+  if (header.runnerPartPending === true && !said) add(unlisted(header, policy), null);
   if (reads.checkpoint !== undefined && !reads.checkpoint.owed) {
     add({ kind: "checkpoint" }, null);
   }
