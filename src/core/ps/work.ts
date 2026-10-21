@@ -94,16 +94,22 @@ function byStore(daemons: readonly FoundDaemon[]): Map<AbsolutePath, FoundDaemon
 
 /**
  * The connection, or why there is none. SQLite's WAL reader creates `-wal`
- * and `-shm` when they are missing (`lessons.md` P6). Without either, no
- * connection holds the store, so its database file has every commit: it is
- * read `immutable`, which opens no other file, and `file` is the file's
- * state, which `changed` checks after the read.
+ * and `-shm` when they are missing (`lessons.md` P6), so it reads only a
+ * store that has both. Without a `-wal`, or with an empty one, every commit
+ * is in the database file: it is read `immutable`, which opens no other
+ * file, and `file` is the file's state, which `changed` checks after the
+ * read. A `-wal` with frames and no `-shm`, as a crash leaves it, may hold
+ * commits the file lacks, which only a reader that creates `-shm` recovers:
+ * that store is unknown (the wave 4 review).
  */
 function openReadOnly(path: AbsolutePath): { db: DatabaseSync; file: BigIntStats | null } | string {
   let db: DatabaseSync | undefined;
   try {
     const file = statSync(path, { bigint: true });
-    const held = existsSync(`${path}-wal`) && existsSync(`${path}-shm`);
+    const wal = statSync(`${path}-wal`, { throwIfNoEntry: false });
+    const held = wal !== undefined && existsSync(`${path}-shm`);
+    if (!held && (wal?.size ?? 0) > 0)
+      return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
     db = new DatabaseSync(held ? path : immutable(path), { readOnly: true });
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
     const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
