@@ -5,8 +5,9 @@ import { claimBoundMs } from "../scheduler/claims.js";
 import { promotedIds } from "../scheduler/promotions.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { laneFor, slowView } from "../scheduler/slow.js";
+import { publishedYields } from "../scheduler/yields.js";
 import { type FileClass, fileClassOf, readHeader } from "../state/index.js";
-import type { LoadNow, Standing } from "../types/index.js";
+import type { LoadNow, Standing, TierYield } from "../types/index.js";
 import {
   type AbsolutePath,
   type DaemonLiveness,
@@ -113,6 +114,7 @@ export function standingsOf(
   const policy = readPolicy(root);
   const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
   const promoted = promotedOf(store, worktreeId, daemon, now);
+  const yields = yieldsOf(store, worktreeId, daemon);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -177,8 +179,22 @@ export function standingsOf(
           }
         : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
       if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
-        const promotedReason: PendingReason = { ...pending, promoted: true };
+        // Row 011-51: whether the tier it is queued behind yields to it, as the daemon published.
+        const tier = pending.behind === null ? undefined : yieldIn(runs, lane, policy, yields);
+        const promotedReason: PendingReason = {
+          ...pending,
+          promoted: true,
+          ...(tier === undefined ? {} : { yields: tier }),
+        };
         return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
+      }
+      if (pending.kind === "unlisted" && promoted.has(testFileId(ref))) {
+        // C15: "; the run yields" when the run the runner part waits for is cancelled for it.
+        const run = yieldIn(runs, lane, policy, yields);
+        if (run?.kind === "yields") {
+          const yielding: PendingReason = { ...pending, yields: run };
+          return { testFile: ref, state, pending: yielding, standing: yielding };
+        }
       }
       return { testFile: ref, state, pending, standing: pending };
     });
@@ -249,6 +265,38 @@ function promotedOf(
 }
 
 /**
+ * What the live daemon published of its tiers in flight (`publishedYields`,
+ * row 011-51); nothing without one, or from an older daemon.
+ */
+function yieldsOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  daemon: DaemonLiveness,
+): ReadonlyMap<string, TierYield> {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null || daemon.state !== "alive") return new Map();
+  return publishedYields(store, worktreeId, record.startedAt);
+}
+
+/** Whether the open run of `lane` yields, as `yields` holds it; `undefined` when not known. */
+function yieldIn(
+  runs: readonly RunRecord[],
+  lane: string,
+  policy: Policy,
+  yields: ReadonlyMap<string, TierYield>,
+): TierYield | undefined {
+  const run = runIn(runs, lane, policy);
+  return run === undefined ? undefined : yields.get(run.id);
+}
+
+/** The open run of `lane`, a tier holding one file of it. */
+function runIn(runs: readonly RunRecord[], lane: string, policy: Policy): RunRecord | undefined {
+  return runs.find((run) =>
+    run.testFiles.some((f) => laneFor(policy, f, runnerLaneOf(policy, f.project)) === lane),
+  );
+}
+
+/**
  * The lane the daemon's composite runner gives `project` (`RunnerAdapter.lane`
  * is its owner's name): a configured node:test or pytest project's, else
  * Vitest's. Learned at run time by the daemon; the policy names the same.
@@ -274,9 +322,7 @@ function queuedReason(
   if (claimant !== null) {
     return { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
   }
-  const tier = runs.find((run) =>
-    run.testFiles.some((f) => laneFor(policy, f, runnerLaneOf(policy, f.project)) === lane),
-  );
+  const tier = runIn(runs, lane, policy);
   if (tier !== undefined) {
     return { kind: "queued", lane, behind: tier.startedAt, files: tier.testFiles.length };
   }
