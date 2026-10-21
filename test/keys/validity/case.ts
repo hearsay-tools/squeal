@@ -131,13 +131,17 @@ export interface StoreInput {
 export interface VitestInput {
   /** The fixture's files: `$STARTED` and `$HOLD` stand for the held runs' markers, as string literals. */
   readonly files: Readonly<Record<string, string>>;
+  /** Policy `vitest.exclude`: test-file globs Squeal does not list (row 011-95). */
+  readonly exclude?: readonly string[];
   /**
    * In turn on one adapter: the files run, the paths touched once one of
    * them started, the reason the run is then cancelled with, if any (row
    * 011-56), or the reason its signal was aborted with before it started
    * (review 0.1.239 B2), whether its `fileEnded` callback throws (row
    * 011-54), and whether the instance's temp directory is removed before it,
-   * so it starts no test file and touches nothing (row 013-06).
+   * so it starts no test file and touches nothing (row 013-06). `edits` are
+   * written in turn after the touch, each followed by the `invalidate` and
+   * `affected` of its revision's runner part (row 011-95).
    */
   readonly runs: readonly {
     readonly files: readonly TestFileRef[];
@@ -146,6 +150,7 @@ export interface VitestInput {
     readonly cancelBefore?: string;
     readonly fileEndedThrows?: boolean;
     readonly removeTempDir?: boolean;
+    readonly edits?: readonly { readonly path: string; readonly text: string }[];
   }[];
   /** Read each project's environment files once open, as the case's keys (row 011-88). */
   readonly environment?: true;
