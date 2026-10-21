@@ -83,12 +83,10 @@ function known(store: Store, worktreeId: string, check: CheckId): boolean {
 }
 
 function resolve(store: Store, worktreeId: string, query: string): CheckId | WhyNoMatch {
-  const named = [
+  const named = distinct([
     ...store.knownStates.list(worktreeId).map((s) => s.check),
     ...held(store, worktreeId),
-  ]
-    .filter((check, i, all) => all.findIndex((c) => sameCheck(c, check)) === i)
-    .map((check) => ({ check, name: formatCheck(check) }));
+  ]).map((check) => ({ check, name: formatCheck(check) }));
   const stem = query.endsWith("...") ? query.slice(0, -3) : null;
   let matches = named.filter(
     (n) => n.name.includes(query) || (stem !== null && n.name.startsWith(stem)),
@@ -147,8 +145,19 @@ function held(store: Store, worktreeId: string): CheckId[] {
   );
 }
 
-function sameCheck(a: CheckId, b: CheckId): boolean {
-  return checkIdentity(a) === checkIdentity(b);
+/**
+ * Each check once, in the order of its first appearance. One pass over a
+ * set of identities: a `findIndex` per check was quadratic and took 29 s
+ * at 20,000 known checks (task 011-50, gh-55).
+ */
+function distinct(checks: readonly CheckId[]): CheckId[] {
+  const seen = new Set<string>();
+  return checks.filter((check) => {
+    const identity = checkIdentity(check);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
 }
 
 function report(
