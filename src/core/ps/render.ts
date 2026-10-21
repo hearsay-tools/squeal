@@ -1,4 +1,17 @@
 import type { Render } from "./model.js";
+import {
+  age,
+  bytes,
+  count,
+  cpus,
+  cpuTime,
+  known,
+  ofGib,
+  percent,
+  share,
+  thousands,
+  UNKNOWN,
+} from "./render-units.js";
 import type {
   PsDaemon,
   PsFileFlag,
@@ -20,10 +33,6 @@ import type {
  * as `unknown` in a sentence, never as 0.
  */
 
-const KIB = 1024;
-const MIB = KIB * 1024;
-const GIB = MIB * 1024;
-const UNKNOWN = "?";
 /** A state wider than its column takes a line of its own above its row. */
 const STATE_WIDTH = 19;
 const DETAIL = "      ";
@@ -78,7 +87,7 @@ function hostLine(h: PsHost): string {
   const pressure =
     h.memoryPressure === null
       ? "memory pressure unknown"
-      : `memory pressure ${pct(h.memoryPressure.some)} (${pct(h.memoryPressure.full)} full)`;
+      : `memory pressure ${share(h.memoryPressure.some)} (${share(h.memoryPressure.full)} full)`;
   const used = h.memTotal === null || h.memAvailable === null ? null : h.memTotal - h.memAvailable;
   const swap =
     h.swapUsed === null || h.swapTotal === null
@@ -86,7 +95,7 @@ function hostLine(h: PsHost): string {
       : `swap ${ofGib(h.swapUsed, h.swapTotal)}`;
   return [
     `Host    ${load} on ${count(h.cpus, "CPU")}`,
-    `CPU pressure ${h.cpuPressure === null ? "unknown" : pct(h.cpuPressure)}`,
+    `CPU pressure ${h.cpuPressure === null ? "unknown" : share(h.cpuPressure)}`,
     pressure,
     `${used === null || h.memTotal === null ? "memory unknown" : `memory ${ofGib(used, h.memTotal)} used`}, ${swap}`,
   ].join(" · ");
@@ -94,13 +103,13 @@ function hostLine(h: PsHost): string {
 
 function squealLine(s: PsSnapshot): string {
   const q: PsSqueal = s.squeal;
-  const share = q.cpuShare === null ? "share of busy unknown" : `${pct(q.cpuShare)} of busy`;
-  const cpu = q.cpuPct === null ? "CPU unknown" : `CPU ${cpus(q.cpuPct)} CPUs (${share})`;
-  const used = q.memoryShare === null ? "share of used unknown" : `${pct(q.memoryShare)} of used`;
+  const ofBusy = q.cpuShare === null ? "share of busy unknown" : `${share(q.cpuShare)} of busy`;
+  const cpu = q.cpuPct === null ? "CPU unknown" : `CPU ${cpus(q.cpuPct)} CPUs (${ofBusy})`;
+  const used = q.memoryShare === null ? "share of used unknown" : `${share(q.memoryShare)} of used`;
   const kind = s.memory === "rss" ? "RSS" : "memory";
   const rss = s.memory === "rss" ? ", shared pages counted more than once" : "";
-  const memory = `${kind} ${size(q.privateBytes)} (${used})${rss}`;
-  const swap = q.swapBytes === null ? "swap unknown" : `${size(q.swapBytes)} swap`;
+  const memory = `${kind} ${bytes(q.privateBytes)} (${used})${rss}`;
+  const swap = q.swapBytes === null ? "swap unknown" : `${bytes(q.swapBytes)} swap`;
   const pool =
     q.pool.held === null
       ? `pool ${q.pool.slots} permits, held unknown`
@@ -122,7 +131,7 @@ function repositoryBlock(r: PsRepository, s: PsSnapshot, full: boolean): string[
       `${name}${r.current ? " (this repository)" : ""}`,
       count(r.daemons.length, "daemon"),
       `CPU ${cpu === null ? "unknown" : cpus(cpu)}`,
-      `${s.memory === "rss" ? "RSS" : "memory"} ${size(memory)}`,
+      `${s.memory === "rss" ? "RSS" : "memory"} ${bytes(memory)}`,
     ].join(" · "),
     row("  ", {
       state: "STATE",
@@ -158,8 +167,8 @@ function daemonLines(d: PsDaemon, at: number): string[] {
       up: age(d.startedAt, at),
       cpu: percent(d.cpuPct),
       time: cpuTime(d.cpuMs),
-      memory: size(d.privateBytes, true),
-      swap: size(d.swapBytes, true),
+      memory: bytes(d.privateBytes, true),
+      swap: bytes(d.swapBytes, true),
       work: workOf(d, at),
     }),
     ...flagLines(d.flags),
@@ -178,8 +187,8 @@ function processLines(p: PsTestProcess, at: number, full: boolean): string[] {
       up: age(p.startedAt, at),
       cpu: percent(known(own)),
       time: cpuTime(known([p.cpuMs, p.descendants.cpuMs])),
-      memory: size(known([p.privateBytes, p.descendants.privateBytes]), true),
-      swap: size(known([p.swapBytes, p.descendants.swapBytes]), true),
+      memory: bytes(known([p.privateBytes, p.descendants.privateBytes]), true),
+      swap: bytes(known([p.swapBytes, p.descendants.swapBytes]), true),
       work: [...(p.escaped ? ["escaped"] : []), `nice ${p.nice}`, ...children].join(", "),
     }),
     ...flagLines(p.flags),
@@ -194,8 +203,8 @@ function processLines(p: PsTestProcess, at: number, full: boolean): string[] {
         up: "",
         cpu: percent(c.cpuPct),
         time: cpuTime(c.cpuMs),
-        memory: size(c.privateBytes, true),
-        swap: size(c.swapBytes, true),
+        memory: bytes(c.privateBytes, true),
+        swap: bytes(c.swapBytes, true),
         work: "",
       }),
     );
@@ -213,7 +222,7 @@ function fileLines(f: PsFileFlag): string[] {
   // Only `leftover-temp` groups its paths, which are directories (D7).
   const what =
     f.path ??
-    `${thousands(f.count)} ${f.count === 1 ? "directory" : "directories"}, ${f.bytes === null ? "size unknown" : size(f.bytes)}`;
+    `${thousands(f.count)} ${f.count === 1 ? "directory" : "directories"}, ${f.bytes === null ? "size unknown" : bytes(f.bytes)}`;
   return [`  ! ${f.flag}  ${what} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
 }
 
@@ -286,68 +295,4 @@ function row(margin: string, r: Row): string {
 
 function clip(text: string, width: number): string {
   return text.length <= width ? text : `…${text.slice(text.length - width + 1)}`;
-}
-
-/** Sums the values that are known; `null` when none is. */
-function known(values: readonly (number | null)[]): number | null {
-  const read = values.filter((v): v is number => v !== null);
-  return read.length === 0 ? null : read.reduce((a, b) => a + b, 0);
-}
-
-function count(n: number, one: string, many = `${one}s`): string {
-  return `${thousands(n)} ${n === 1 ? one : many}`;
-}
-
-function thousands(n: number): string {
-  return n.toLocaleString("en-US");
-}
-
-/** A percent in a sentence: whole above 10, one decimal below. */
-function pct(value: number): string {
-  return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
-}
-
-function percent(value: number | null): string {
-  return value === null ? UNKNOWN : `${Math.round(value)}%`;
-}
-
-/** Percent of one CPU as CPUs, one decimal. */
-function cpus(value: number): string {
-  return (value / 100).toFixed(1);
-}
-
-/** Bytes: `2.2G`, `310M`, `512K` in a column; `2.2 GiB`, `310 MiB` in a sentence. */
-function size(bytes: number | null, column = false): string {
-  if (bytes === null) return column ? UNKNOWN : "unknown";
-  if (bytes === 0) return "0";
-  const [value, unit] =
-    bytes >= GIB
-      ? [(bytes / GIB).toFixed(1), "G"]
-      : bytes >= MIB
-        ? [String(Math.round(bytes / MIB)), "M"]
-        : [String(Math.round(bytes / KIB)), "K"];
-  return column ? `${value}${unit}` : `${value} ${unit}iB`;
-}
-
-function ofGib(part: number, whole: number): string {
-  return `${(part / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
-}
-
-/** The time from `since` to `at`: `45s`, `39m`, `5h`, `3d`. */
-function age(since: number | null, at: number): string {
-  if (since === null) return UNKNOWN;
-  const s = Math.max(0, Math.floor((at - since) / 1000));
-  if (s < 60) return `${s}s`;
-  if (s < 100 * 60) return `${Math.floor(s / 60)}m`;
-  if (s < 48 * 3600) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86_400)}d`;
-}
-
-/** Cumulative CPU time: `11m42s`, `2h05m`. */
-function cpuTime(ms: number | null): string {
-  if (ms === null) return UNKNOWN;
-  const s = Math.floor(ms / 1000);
-  const two = (n: number) => String(n).padStart(2, "0");
-  if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
-  return `${Math.floor(s / 3600)}h${two(Math.floor(s / 60) % 60)}m`;
 }
