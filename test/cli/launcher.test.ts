@@ -208,6 +208,25 @@ describe("the launcher", () => {
     expect(r.stderr).toBe("");
   });
 
+  // Spec 014 goal 6: `ps` loads only its own bundle, where the plugin it runs ships one.
+  it("runs ps from the ps bundle beside the CLI it found, and squeal.mjs without one", () => {
+    const m = machine();
+    codexInstalls(m, ["0.1.249", "0.1.250"]);
+    const dist = join(m.codexHome, "plugins", "cache", "hearsay", "squeal", "0.1.250", "dist");
+    writeFileSync(
+      join(dist, "cli", "ps.mjs"),
+      'console.log(JSON.stringify({ version: "0.1.250", harness: "ps.mjs", args: process.argv.slice(2) }));\n',
+    );
+    expect(launch(m, ["ps", "--json"]).ran).toEqual({
+      version: "0.1.250",
+      harness: "ps.mjs",
+      args: ["ps", "--json"],
+    });
+    expect(launch(m, ["status", "ps"]).ran?.harness).toBe("codex");
+    rmSync(join(dist, "cli", "ps.mjs"));
+    expect(launch(m, ["ps"]).ran).toEqual({ version: "0.1.250", harness: "codex", args: ["ps"] });
+  });
+
   it("prints the install commands and exits 1 when no plugin is installed", () => {
     const m = machine();
     mkdirSync(join(m.claudeConfig, "plugins"), { recursive: true });
