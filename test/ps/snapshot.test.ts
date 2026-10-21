@@ -1,29 +1,56 @@
 import { rmSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { Flag, FlagFindings } from "../../src/core/ps/model.js";
-import { PS_SHAPE_VERSION } from "../../src/core/ps/shape.js";
-import { noFlags, type SnapshotOptions, takeSnapshot } from "../../src/core/ps/snapshot.js";
+import { departedMetaKey } from "../../src/core/delivery/expiry.js";
+import type { Flag, FlagFindings, PsModel } from "../../src/core/ps/model.js";
 import {
-  type FakeWindow,
+  PS_SHAPE_VERSION,
+  type PsFileFlag,
+  type PsFlag,
+  type PsFlagName,
+} from "../../src/core/ps/shape.js";
+import { noFlags, type SnapshotOptions, takeSnapshot } from "../../src/core/ps/snapshot.js";
+import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { BOOT_SECONDS, UPTIME_SECONDS } from "./fixture.js";
+import { fakeSource } from "./fixture-samples.js";
+import {
+  addTicks,
   fakeWindow,
+  forkWorker,
+  gitChild,
   NOW,
   type SnapshotHost,
+  STARTED_AT,
   snapshotHost,
+  startRun,
+  writeCpuTimes,
 } from "./fixture-snapshot.js";
+import {
+  cacheScript,
+  daemonProcess,
+  daemonRecord,
+  type FixtureRepo,
+  makeRepo,
+  withoutLocks,
+  writeProcesses,
+  writeStore,
+} from "./fixture-stores.js";
 
 /*
  * Spec 014 D1, D4, D8 (task 014-11): one snapshot runs the stages over one
  * window of two samples and builds the D8 shape. The host is a fixture
  * `/proc` tree with real repositories and stores; the window's clocks are
- * fakes the wait moves, so the window is as long as asked and no test sleeps.
+ * fakes the wait moves, so the window is as long as asked and no test
+ * sleeps, and the test changes the tree during the wait as a host would.
  */
 
+const TOKEN = daemonRecord({ id: "0", root: "", commonDir: "", lockPath: "", storePath: "" }).token;
 let host: SnapshotHost;
-let window: FakeWindow;
+let alpha: FixtureRepo;
 
 beforeEach(() => {
   host = snapshotHost();
-  window = fakeWindow();
+  alpha = makeRepo(host.base, "alpha");
 });
 
 afterEach(() => {
@@ -31,8 +58,9 @@ afterEach(() => {
   rmSync(host.base, { recursive: true, force: true });
 });
 
-function options(overrides: Partial<SnapshotOptions> = {}): SnapshotOptions {
-  return {
+async function snap(during: () => void = () => {}, overrides: Partial<SnapshotOptions> = {}) {
+  const window = fakeWindow(during);
+  const options: SnapshotOptions = {
     source: host.source,
     places: host.places,
     flag: noFlags,
@@ -43,11 +71,16 @@ function options(overrides: Partial<SnapshotOptions> = {}): SnapshotOptions {
     wait: window.wait,
     ...overrides,
   };
+  return { ...(await takeSnapshot(options)), waits: window.waits };
 }
 
+const flagOf = (flag: PsFlagName): PsFlag => ({ flag, reason: `${flag} holds`, command: "kill 1" });
+const epochOf = (ageS: number) => (BOOT_SECONDS + UPTIME_SECONDS - ageS) * 1000;
+const KIB = 1024;
+
 describe("a host with no daemon", () => {
-  test("the shape has the host, no daemon, no process and no flag; ps starts nothing", async () => {
-    const { shape, leftovers } = await takeSnapshot(options());
+  test("the shape has the host, no daemon, no process and no flag", async () => {
+    const { shape, leftovers, waits } = await snap();
     expect(shape).toMatchObject({
       v: PS_SHAPE_VERSION,
       at: NOW,
@@ -59,8 +92,8 @@ describe("a host with no daemon", () => {
         cpus: 24,
         cpuPressure: 45.57,
         memoryPressure: { some: 0.64, full: 0.52 },
-        memTotal: 49_223_972 * 1024,
-        memAvailable: 16_890_700 * 1024,
+        memTotal: 49_223_972 * KIB,
+        memAvailable: 16_890_700 * KIB,
       },
       squeal: {
         daemons: 0,
@@ -78,7 +111,430 @@ describe("a host with no daemon", () => {
       flags: 0,
     });
     expect(leftovers).toEqual([]);
-    // The window is waited out once, whole, since the reads inside it took no time on the fake clock.
-    expect(window.waits).toEqual([2_000]);
+    // The reads inside the window took no time on the fake clock: the whole window is waited out once.
+    expect(waits).toEqual([2_000]);
   });
 });
+
+describe("a serving daemon with a fork worker", () => {
+  test("its row, its test process and its child, each with its CPU over the window, and the totals", async () => {
+    writeCpuTimes(host, 1_000_000, 100_000);
+    const daemon = host.serve(800, alpha, {
+      fill: (store) => startRun(store, alpha, "r1", STARTED_AT + 10_000, 3),
+    });
+    const worker = forkWorker(801, 800, `${TOKEN}:vitest`);
+    const git = gitChild(802, 801);
+    writeProcesses(host, [worker, git]);
+    const { shape } = await snap(() => {
+      addTicks(host, daemon, 100);
+      addTicks(host, worker, 200);
+      addTicks(host, git, 20);
+      writeCpuTimes(host, 1_004_416, 100_384);
+    });
+    expect(shape.repositories).toHaveLength(1);
+    const [repository] = shape.repositories;
+    expect(repository).toMatchObject({ commonDir: alpha.commonDir, current: false });
+    expect(repository?.daemons[0]).toEqual({
+      pid: 800,
+      phase: "serving",
+      state: "serving",
+      worktreeId: alpha.id,
+      root: alpha.root,
+      version: "0.1.235",
+      harness: "claude",
+      startedAt: epochOf(600),
+      cpuPct: 50,
+      cpuMs: 13_000,
+      privateBytes: 100_000 * KIB,
+      swapBytes: 0,
+      permits: 0,
+      work: {
+        pending: 0,
+        running: 0,
+        tiers: [
+          {
+            runId: "r1",
+            lane: "fast",
+            files: 3,
+            startedAt: STARTED_AT + 10_000,
+            checkpointId: null,
+          },
+        ],
+        checkpoints: [],
+        departedAt: null,
+        drainLeftMs: null,
+        lastUsedAt: null,
+      },
+      consumers: [],
+      processes: [
+        {
+          pid: 801,
+          lane: "vitest",
+          runner: "vitest",
+          runId: "r1",
+          files: null,
+          escaped: false,
+          cpuPct: 100,
+          cpuMs: 14_000,
+          privateBytes: 160_000 * KIB,
+          swapBytes: 2_000 * KIB,
+          nice: 10,
+          startedAt: epochOf(240),
+          descendants: {
+            count: 1,
+            cpuPct: 10,
+            cpuMs: 1_200,
+            privateBytes: 4_000 * KIB,
+            swapBytes: 0,
+            list: null,
+          },
+          flags: [],
+        },
+      ],
+      flags: [],
+    });
+    expect(shape.host.busyCpuPct).toBe(92);
+    expect(shape.squeal).toMatchObject({
+      daemons: 1,
+      testProcesses: 1,
+      cpuPct: 160,
+      privateBytes: (100_000 + 160_000 + 4_000) * KIB,
+      swapBytes: 2_000 * KIB,
+    });
+    // 4,416 busy ticks in 2 s are 22.08 CPUs; Squeal used 1.6 of them.
+    expect(shape.squeal.cpuShare).toBeCloseTo((160 / 2_208) * 100);
+    expect(shape.squeal.memoryShare).toBeCloseTo(
+      ((264_000 * KIB) / ((49_223_972 - 16_890_700) * KIB)) * 100,
+    );
+    expect(shape.unknown).toEqual([
+      { what: "daemon 800 lastUsedAt", why: expect.stringContaining("D9") },
+    ]);
+  });
+
+  test("--full lists each descendant and keeps the counts of the files that never get a flag", async () => {
+    host.serve(800, alpha);
+    writeProcesses(host, [forkWorker(801, 800, `${TOKEN}:vitest`), gitChild(802, 801)]);
+    const unflagged = [{ kind: "lock", count: 3 }] as const;
+    const flag: Flag = (m) => ({ ...noFlags(m), unflagged });
+    const brief = await snap(() => {}, { flag });
+    expect(brief.shape.unflaggedFiles).toBeNull();
+    expect(brief.shape.repositories[0]?.daemons[0]?.processes[0]?.descendants.list).toBeNull();
+    const full = await snap(() => {}, { flag, full: true });
+    expect(full.shape.unflaggedFiles).toEqual(unflagged);
+    expect(full.shape.repositories[0]?.daemons[0]?.processes[0]?.descendants.list).toEqual([
+      { pid: 802, comm: "git", cpuPct: 0, cpuMs: 1_000, privateBytes: 4_000 * KIB, swapBytes: 0 },
+    ]);
+  });
+});
+
+describe("the window (reviews/wave-1.md input 3)", () => {
+  test("the flags get both readings, 2 s apart on the monotonic clock, and the epoch clock of the first sample", async () => {
+    host.serve(800, alpha);
+    // A mark of no live daemon's token, and one that leaves during the window.
+    writeProcesses(host, [
+      { ...forkWorker(900, 1, "11111111-0000-4000-8000-000000000000:vitest"), comm: "node" },
+      { ...forkWorker(901, 1, "11111111-0000-4000-8000-000000000000:vitest"), comm: "node" },
+    ]);
+    const flag = vi.fn(noFlags);
+    const { shape } = await snap(
+      () => {
+        rmSync(join(host.base, "proc", "901"), { recursive: true });
+        writeStore(alpha, daemonRecord(alpha, { heartbeatAt: NOW + 1_000 }));
+      },
+      { flag },
+    );
+    const model = flag.mock.calls[0]?.[0] as PsModel;
+    expect(model.now).toBe(NOW);
+    expect(shape.at).toBe(NOW);
+    expect(model.second.sample.atMs - model.first.sample.atMs).toBe(2_000);
+    expect(model.first.work.get(800)?.record?.heartbeatAt).toBe(STARTED_AT + 60_000);
+    expect(model.second.work.get(800)?.record?.heartbeatAt).toBe(NOW + 1_000);
+    expect(model.first.attribution.unowned.map((u) => u.pid)).toEqual([900, 901]);
+    expect(model.second.attribution.unowned.map((u) => u.pid)).toEqual([900]);
+    // The second sample reads Squeal's processes and the marked ones nobody owns, not the host.
+    expect([...model.second.sample.table.keys()].sort()).toEqual([800, 900]);
+  });
+
+  test("a wait the reads inside the window shortened, and none once they filled it", async () => {
+    host.serve(800, alpha);
+    const window = fakeWindow();
+    const now = vi.mocked(performance.now);
+    let mono = 5_000;
+    // Each clock read inside the window moves it 300 ms: the reads took 300 ms.
+    now.mockImplementation(() => {
+      mono += 300;
+      return mono;
+    });
+    const base = {
+      source: host.source,
+      places: host.places,
+      flag: noFlags,
+      full: false,
+      repo: false,
+    };
+    await takeSnapshot({ ...base, sampleMs: 2_000, now: window.now, wait: window.wait });
+    expect(window.waits[0]).toBeGreaterThan(0);
+    expect(window.waits[0]).toBeLessThan(2_000);
+    await takeSnapshot({ ...base, sampleMs: 100, now: window.now, wait: window.wait });
+    expect(window.waits[1]).toBe(0);
+  });
+});
+
+describe("who owns a process (reviews/wave-1.md input 2)", () => {
+  test("a starting daemon under a predecessor's row owns none of the predecessor's escaped processes, and no mark is called an orphan", async () => {
+    const before = STARTED_AT - 3_600_000;
+    host.serve(800, alpha, {
+      record: daemonRecord(alpha, { startedAt: before, heartbeatAt: before + 60_000 }),
+      fill: (store) => startRun(store, alpha, "theirs", before + 1_000),
+    });
+    writeProcesses(host, [{ ...forkWorker(900, 1, `${TOKEN}:slow:vitest`), comm: "node" }]);
+    const flag = vi.fn(noFlags);
+    const { shape } = await snap(() => {}, { flag });
+    const [d] = shape.repositories[0]?.daemons ?? [];
+    expect(d).toMatchObject({ phase: "starting", processes: [], work: { tiers: [] } });
+    const model = flag.mock.calls[0]?.[0] as PsModel;
+    expect(model.first.attribution).toEqual({ processes: [], unowned: [] });
+    expect(shape.unknown).toContainEqual({
+      what: "daemon 800 work",
+      why: expect.stringContaining("a predecessor's"),
+    });
+  });
+});
+
+describe("the version (D2)", () => {
+  const checkout = "/home/user/src/squeal/dist/cli/index.js";
+
+  test("a checkout's dist takes its store row's version, while the row is its own", async () => {
+    host.serve(800, alpha, { process: { cmdline: ["node", checkout, "daemon", alpha.root] } });
+    const { shape } = await snap();
+    expect(shape.repositories[0]?.daemons[0]).toMatchObject({ version: "0.1.235", harness: null });
+  });
+
+  test("a starting daemon has no record, so a checkout's version is unknown and named", async () => {
+    const before = STARTED_AT - 3_600_000;
+    host.serve(800, alpha, {
+      process: { cmdline: ["node", checkout, "daemon", alpha.root] },
+      record: daemonRecord(alpha, { startedAt: before, squealVersion: "0.1.200" }),
+    });
+    const { shape } = await snap();
+    expect(shape.repositories[0]?.daemons[0]?.version).toBeNull();
+    expect(shape.unknown).toContainEqual({ what: "daemon 800 version", why: expect.any(String) });
+  });
+});
+
+describe("the phase, with the snapshot's clock (D2, D10)", () => {
+  test("without locks, a heartbeat fresh at the snapshot's clock serves, and one old at it is unknown", async () => {
+    host.serve(800, alpha);
+    const blind = withoutLocks(host.source);
+    const fresh = await snap(() => {}, { source: blind });
+    expect(fresh.shape.repositories[0]?.daemons[0]?.phase).toBe("serving");
+    vi.restoreAllMocks();
+    const later = fakeWindow(() => {}, NOW + 60_000);
+    const { shape } = await takeSnapshot({
+      source: blind,
+      places: host.places,
+      flag: noFlags,
+      full: false,
+      repo: false,
+      sampleMs: 2_000,
+      now: later.now,
+      wait: later.wait,
+    });
+    expect(shape.repositories[0]?.daemons[0]).toMatchObject({ phase: "unknown", permits: null });
+    expect(shape.unknown).toContainEqual({ what: "pool permits", why: expect.any(String) });
+  });
+});
+
+describe("the flags in the shape (D7, D8)", () => {
+  test("each flag on its daemon, process, orphan or file, an information state as the state word with its drain left, and every flag counted", async () => {
+    const departed = NOW - 38 * 60_000;
+    host.serve(800, alpha, {
+      fill: (store) => store.meta.set(departedMetaKey(alpha.id), String(departed)),
+    });
+    writeProcesses(host, [forkWorker(801, 800, `${TOKEN}:vitest`)]);
+    const findings: FlagFindings = {
+      daemons: new Map([[800, [flagOf("past-unused")]]]),
+      states: new Map([[800, "draining 22m left"]]),
+      processes: new Map([[801, [flagOf("overdue-test-process")]]]),
+      orphans: [{ pid: 950, comm: "node", startedAt: null, flags: [flagOf("orphan-waiter")] }],
+      files: [socketFlag("fd5a859b8ca77ef9"), LEFTOVERS],
+      unflagged: [],
+      leftovers: ["/tmp/squeal-1000/tmp/0123456789abcdef"],
+      unknown: [{ what: "flag hung", why: "the lock holders cannot be read" }],
+    };
+    const { shape, leftovers } = await snap(() => {}, { flag: () => findings });
+    const d = shape.repositories[0]?.daemons[0];
+    expect(d).toMatchObject({ phase: "serving", state: "draining 22m left" });
+    expect(d?.flags).toEqual([flagOf("past-unused")]);
+    expect(d?.work).toMatchObject({ departedAt: departed, drainLeftMs: 22 * 60_000 });
+    expect(DEFAULT_POLICY.daemon.idleExitMinutes).toBe(60);
+    expect(d?.processes[0]?.flags).toEqual([flagOf("overdue-test-process")]);
+    expect(shape.orphans).toEqual(findings.orphans);
+    expect(shape.files).toEqual(findings.files);
+    expect(shape.flags).toBe(5);
+    expect(leftovers).toEqual(findings.leftovers);
+    expect(shape.unknown).toContainEqual(findings.unknown[0]);
+  });
+
+  test("without an information state, a departure has no drain left", async () => {
+    host.serve(800, alpha, {
+      fill: (store) => store.meta.set(departedMetaKey(alpha.id), String(NOW - 60_000)),
+    });
+    const { shape } = await snap();
+    expect(shape.repositories[0]?.daemons[0]?.work).toMatchObject({ drainLeftMs: null });
+  });
+});
+
+describe("repositories (D1)", () => {
+  let beta: FixtureRepo;
+  let gamma: FixtureRepo;
+  beforeEach(() => {
+    beta = makeRepo(host.base, "beta");
+    gamma = makeRepo(host.base, "gamma");
+  });
+  const places = () => ({ ...host.places, commonDir: beta.commonDir });
+
+  async function three() {
+    const a = host.serve(800, alpha);
+    host.serve(810, beta);
+    const g = host.serve(820, gamma);
+    return { a, g };
+  }
+
+  test("the current repository first, then the others by their CPU over the sample", async () => {
+    const { a, g } = await three();
+    const { shape } = await snap(
+      () => {
+        addTicks(host, a, 200);
+        addTicks(host, g, 50);
+      },
+      { places: places() },
+    );
+    expect(shape.repositories.map((r) => [r.commonDir, r.current])).toEqual([
+      [beta.commonDir, true],
+      [alpha.commonDir, false],
+      [gamma.commonDir, false],
+    ]);
+  });
+
+  test("--repo keeps the current repository's daemons, processes, flags and socket files only; the host and the pool stay", async () => {
+    await three();
+    writeProcesses(host, [forkWorker(811, 810, `${TOKEN}:vitest`), forkWorker(801, 800, null)]);
+    const findings: FlagFindings = {
+      ...noFlags({} as PsModel),
+      daemons: new Map([
+        [800, [flagOf("older")]],
+        [810, [flagOf("past-idle")]],
+      ]),
+      orphans: [{ pid: 950, comm: "node", startedAt: null, flags: [flagOf("orphan-waiter")] }],
+      files: [socketFlag(beta.id), socketFlag(alpha.id), socketFlag("fd5a859b8ca77ef9"), LEFTOVERS],
+      unknown: [
+        { what: "daemon 800 settings", why: "x" },
+        { what: "daemon 810 settings", why: "y" },
+      ],
+    };
+    const all = await snap(() => {}, { places: places(), flag: () => findings });
+    vi.restoreAllMocks();
+    const { shape } = await snap(() => {}, { places: places(), flag: () => findings, repo: true });
+    expect(shape.repositories.map((r) => r.commonDir)).toEqual([beta.commonDir]);
+    expect(shape.orphans).toEqual([]);
+    expect(shape.files).toEqual([socketFlag(beta.id)]);
+    expect(shape.flags).toBe(2);
+    expect(shape.squeal).toMatchObject({
+      daemons: 1,
+      testProcesses: 1,
+      pool: all.shape.squeal.pool,
+    });
+    expect(shape.host).toEqual(all.shape.host);
+    expect(shape.unknown.map((u) => u.what)).toContain("daemon 810 settings");
+    expect(shape.unknown.map((u) => u.what)).not.toContain("daemon 800 settings");
+    expect(all.shape.flags).toBe(7);
+  });
+});
+
+describe("what is unknown (D8): one entry per cause", () => {
+  test("a process that left during the window: its window CPU and memory, once each with the count", async () => {
+    host.serve(800, alpha);
+    writeProcesses(host, [
+      forkWorker(801, 800, `${TOKEN}:vitest`),
+      forkWorker(802, 800, `${TOKEN}:vitest`),
+    ]);
+    const { shape } = await snap(() => {
+      rmSync(join(host.base, "proc", "801"), { recursive: true });
+      rmSync(join(host.base, "proc", "802"), { recursive: true });
+    });
+    const p = shape.repositories[0]?.daemons[0]?.processes[0];
+    expect(p).toMatchObject({ cpuPct: null, privateBytes: null, swapBytes: null });
+    expect(p?.cpuMs).toBeGreaterThan(0);
+    expect(shape.unknown).toEqual(
+      expect.arrayContaining([
+        {
+          what: "processes cpuPct",
+          why: "2 processes were in one sample of the window only: pid 801, 802",
+        },
+        {
+          what: "processes privateBytes",
+          why: "2 processes left before their memory was read: pid 801, 802",
+        },
+      ]),
+    );
+    expect(shape.unknown.filter((u) => u.what.startsWith("process "))).toEqual([]);
+  });
+
+  test("a waiting daemon's work is not read, and says why", async () => {
+    host.serve(800, alpha);
+    writeProcesses(host, [daemonProcess({ pid: 801, root: alpha.root })]);
+    const { shape } = await snap();
+    const waiting = shape.repositories[0]?.daemons.find((d) => d.pid === 801);
+    expect(waiting).toMatchObject({ phase: "waiting", work: { pending: null, running: null } });
+    expect(shape.unknown).toContainEqual({
+      what: "daemon 801 work",
+      why: "it waits for its lock, and its worktree's row is the holder's",
+    });
+  });
+
+  test("an rss platform reads no swap per process: one entry, however many processes", async () => {
+    const memory = { bytes: 300 * KIB * KIB, swapBytes: null };
+    const daemonArgs = (root: string) => ["node", cacheScript("claude", "0.1.235"), "daemon", root];
+    const { source } = fakeSource(
+      [
+        { pid: 700, ppid: 1, comm: "node", cmdline: daemonArgs("/gone/a"), memory },
+        { pid: 701, ppid: 700, cmdline: ["node", "x.js"], memory },
+        { pid: 710, ppid: 1, comm: "node", cmdline: daemonArgs("/gone/b"), memory },
+      ],
+      { readsMarks: false },
+    );
+    // The fake rows are uid 1000's.
+    const { shape } = await snap(() => {}, { source, places: { ...host.places, uid: 1000 } });
+    expect(shape.memory).toBe("rss");
+    expect(shape.squeal).toMatchObject({ privateBytes: 900 * KIB * KIB, swapBytes: null });
+    const swap = shape.unknown.filter((u) => u.what.includes("swap"));
+    expect(swap).toEqual([
+      {
+        what: "processes swapBytes",
+        why: "the source reads no swap per process on this platform (D10)",
+      },
+    ]);
+  });
+});
+
+function socketFlag(id: string): PsFileFlag {
+  const path = `/run/user/1000/squeal-${id}.sock`;
+  return {
+    flag: "stale-socket",
+    reason: `no live daemon of worktree ${id} holds its lock`,
+    path,
+    count: 1,
+    bytes: null,
+    command: `rm ${path}`,
+  };
+}
+
+const LEFTOVERS: PsFileFlag = {
+  flag: "leftover-temp",
+  reason: "no live daemon's key names them and no process uses them",
+  path: null,
+  count: 3_530,
+  bytes: 6.4 * 2 ** 30,
+  command: "squeal ps --leftovers | xargs -d '\\n' rm -rf --",
+};
