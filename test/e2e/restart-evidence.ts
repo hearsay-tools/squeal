@@ -1,13 +1,15 @@
 import { execFile } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import type { TestPause } from "../../src/core/daemon/test-pause.js";
+import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type { BundleRun } from "../harness/bundle-helpers.js";
+import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
+import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import type { E2E } from "./harness.js";
 
 /*
@@ -81,6 +83,58 @@ export async function stoppedItself(pid: number, ms: number): Promise<boolean> {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   return false;
+}
+
+/** `squeal <args>` from the fixture's shipped CLI in its main worktree, as `E2E.cli`, with `env` added. */
+export function cliWith(
+  e: E2E,
+  args: readonly string[],
+  env: Readonly<Record<string, string>>,
+): Promise<BundleRun> {
+  const cli = join(e.plugin, "dist/cli/squeal.mjs");
+  const all = { XDG_RUNTIME_DIR: e.runtime, ...env };
+  return runNode(["--disable-warning=ExperimentalWarning", cli, ...args], "", all, e.main);
+}
+
+/**
+ * A process of the fixture's shipped CLI that runs `command` (`daemon`,
+ * `stop`), other than `not`, from its `/proc/<pid>/cmdline`; `null` while
+ * none runs. A scan of `/proc` takes milliseconds where `ps` takes a tenth of
+ * a second (row 011-20).
+ */
+export function cliProcess(e: E2E, command: string, not?: number): number | null {
+  const needle = `${join(e.plugin, "dist/cli/squeal.mjs")}\0${command}\0`;
+  for (const name of readdirSync("/proc")) {
+    const pid = Number(name);
+    if (!Number.isInteger(pid) || pid === not) continue;
+    try {
+      if (readFileSync(`/proc/${name}/cmdline`, "utf8").includes(needle)) return pid;
+    } catch {
+      // gone
+    }
+  }
+  return null;
+}
+
+/** The worktree's stopped mark as the store keeps it (task 011-08), `null` while there is none. */
+export function stopMark(root: string): string | null {
+  const store = openStore(join(root, ".git"), { create: false, busyTimeoutMs: 2_000 });
+  if (isStoreOpenFailure(store)) return null;
+  try {
+    return store.meta.get(stoppedMetaKey(worktreeIdFor(root)));
+  } finally {
+    store.close();
+  }
+}
+
+/** Polls `probe` every 20 ms, as `stoppedItself` does, until it is non-null; `null` past `ms`. */
+export async function soon<T>(ms: number, probe: () => T | null): Promise<T | null> {
+  const deadline = Date.now() + ms;
+  for (;;) {
+    const value = probe();
+    if (value !== null || Date.now() > deadline) return value;
+    await sleep(20);
+  }
 }
 
 /** SIGCONT to `pid`, which may have exited instead of stopping: then nothing to resume. */
