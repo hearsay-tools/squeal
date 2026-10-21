@@ -76,7 +76,7 @@ export interface PsRepository {
 }
 
 /** D2: what the held lock and the store row say; `unknown` without locks (D10). */
-export type DaemonPhase = "serving" | "waiting" | "stopping" | "unknown";
+export type DaemonPhase = "serving" | "starting" | "waiting" | "stopping" | "unknown";
 
 export interface PsDaemon {
   readonly pid: number;
