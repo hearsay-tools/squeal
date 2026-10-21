@@ -126,12 +126,15 @@ export interface VitestInput {
   /**
    * In turn on one adapter: the files run, the paths touched once one of
    * them started, the reason the run is then cancelled with, if any (row
-   * 011-56), and whether its `fileEnded` callback throws (row 011-54).
+   * 011-56), or the reason its signal was aborted with before it started
+   * (review 0.1.239 B2), and whether its `fileEnded` callback throws (row
+   * 011-54).
    */
   readonly runs: readonly {
     readonly files: readonly TestFileRef[];
     readonly touched: readonly string[];
     readonly cancel?: string;
+    readonly cancelBefore?: string;
     readonly fileEndedThrows?: boolean;
   }[];
 }
