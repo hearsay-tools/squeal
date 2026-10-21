@@ -22,8 +22,12 @@ const suite = daemonSuite();
 /** Past the daemon's heartbeat window (two 5 s intervals). */
 const LATER_MS = 60_000;
 
-/** Starts the daemon in-process, stops it at once, and records its registration then. */
-const DRIVER = `import { writeFileSync } from "node:fs";
+/**
+ * Starts the daemon in-process, stops it at once, and records its
+ * registration then: renamed into place, so the test, which waits for the
+ * file to exist, never reads it half written (014-20).
+ */
+const DRIVER = `import { renameSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const [daemonPath, root, out, commonDir] = process.argv.slice(2);
 const daemonUrl = pathToFileURL(daemonPath);
@@ -33,7 +37,9 @@ const daemon = await startDaemon({ root, env: process.env });
 if ("reason" in daemon) throw new Error(daemon.message);
 const stopping = daemon.stop("stop-requested");
 const store = openStore(commonDir, { create: false, busyTimeoutMs: 10000 });
-writeFileSync(out, JSON.stringify(store.worktrees.get(daemon.worktreeId).daemon));
+const staged = out + ".tmp";
+writeFileSync(staged, JSON.stringify(store.worktrees.get(daemon.worktreeId).daemon));
+renameSync(staged, out);
 store.close();
 await stopping;
 `;
