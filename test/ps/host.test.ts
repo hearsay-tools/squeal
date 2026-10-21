@@ -199,6 +199,22 @@ describe("readPool", () => {
     expect(reading.foreign).toEqual([{ pid: 4242, path: join(tempPool, "pool.0.lock") }]);
   });
 
+  test("over the window's two readings, a permit either shows is held, by the holders of the latest that shows it (lessons.md P9)", () => {
+    const first = [write(349493, "103:02:10"), write(349493, "103:02:11")];
+    // pool.0 passed to 2091490, pool.2 is in the second reading only, and pool.1 in the first only.
+    const second = [write(2091490, "103:02:10"), write(2091490, "103:02:12")];
+    const { source } = fakeSource([], { locks: null, fileKeys: keys() });
+    const reading = readPool(source, places, new Set([349493, 2091490]), [first, second]);
+    expect(reading.pool).toEqual({ slots: 23, held: 3 });
+    expect([...reading.permits]).toEqual([
+      [2091490, 2],
+      [349493, 1],
+    ]);
+    // A second reading that failed adds nothing; a first that failed leaves the permits unknown.
+    expect(readPool(source, places, new Set([349493]), [first, null]).pool.held).toBe(2);
+    expect(readPool(source, places, new Set([349493]), [null, second]).pool.held).toBeNull();
+  });
+
   test("the host's slots are capacity.hostSlots of the user-level config file, else the CPUs less one", () => {
     // `PsPlaces.userConfig`, not the home directory: a user with `XDG_CONFIG_HOME` keeps their file.
     const configFile = places.userConfig;
