@@ -12,7 +12,7 @@ Some states should not be up and cost resources, and no command shows them today
 2. It lists every test process Squeal started, under its daemon. For each, it gives the lane, the runner, its test files or tier, the CPU, the memory, nice, the age and its descendants.
 3. It gives the host totals (load, CPU and memory pressure, memory, swap, CPU count, the capacity pool), and Squeal's share of the CPU and the memory.
 4. It flags each D7 state with its reason and the command that would end it. It changes nothing: it opens no daemon socket, writes no store, sends no signal and removes no file.
-5. `--json` gives the same data as a versioned shape. `--repo` narrows the output to the current repository. The exit code is 0 without a flag, 1 with any flag, 2 on a usage error and 3 on a platform it does not cover (D10).
+5. `--json` gives the same data as a versioned shape. `--repo` narrows the output to the current repository. The exit code is 0 without a flag, 1 with any flag, 2 on a usage error and 3 on a platform other than Linux and macOS (D10).
 6. One snapshot takes at most 2.5 s wall time and 0.3 s CPU on a host with 650 processes and 25 daemons.
 
 ## Non-goals
@@ -23,7 +23,7 @@ Some states should not be up and cost resources, and no command shows them today
 - No socket request to any daemon, `ping` included. The store and `/proc` give all D2 to D7 need (`research/daemon-discovery.md` 3).
 - No PSS and no heap split. `smaps_rollup` costs about 1.1 s of kernel CPU per snapshot (`research/process-measurement.md` 5).
 - No file per Vitest worker. Only the daemon knows it; `ps` gives the files of the tier.
-- No platform other than Linux in this spec (D10).
+- No platform other than Linux and macOS, and no test on a Mac (D10).
 - No fix to the policies `ps` makes visible, such as the departure drain or the leftover temp directories. Those are board Later items for 004 and 011.
 
 ## Design
@@ -44,7 +44,7 @@ squeal ps --leftovers
 
 ### D2. Discovery
 
-On Linux, `ps` finds daemons without a registry (`research/daemon-discovery.md` recommendation):
+On Linux, `ps` finds daemons without a registry (`research/daemon-discovery.md` recommendation; macOS in D10):
 
 1. Scan `/proc/*/stat` once. Read `cmdline` only for processes whose `comm` is `MainThread` or `node`. A daemon is a process whose arguments hold a Squeal script (`squeal`, `squeal.mjs` or `squeal/dist/cli/index.js`) followed by `daemon <root>`.
 2. Take each daemon's store and worktree id from the lock file it holds open, `<common-dir>/squeal/locks/<id>.sqlite` in `/proc/<pid>/fd`. When the fd is not there, use the hash of the command line's root (`worktreeIdFor`).
@@ -193,11 +193,24 @@ The daemon writes `daemon-used:<worktree id>` in `meta` with each heartbeat: `{ 
 
 ### D10. Platforms
 
-This spec covers Linux. Every rule uses `/proc`, and none was run on macOS (`research/daemon-discovery.md` 5, `research/process-measurement.md` 4). On any other platform, `squeal ps` prints one line saying it reads `/proc` and is not available on that platform yet, and exits 3, Squeal's code for no verdict. The research names `ps -axww`, `lsof -p` and `sysctl vm.swapusage` as candidates for a later spec.
+Linux gets the full design of D2 to D7. macOS gets a fallback built from `ps` and the stores. Nobody has run it on a Mac: the human chose it untested (2026-10-21). Every value it cannot read is `null`, and `unknown` names it (D8). On any other platform, `squeal ps` prints one line saying the platform is not covered and exits 3, Squeal's code for no verdict.
+
+On macOS (`process.platform` is `darwin`), from `research/daemon-discovery.md` 5 and `research/process-measurement.md` 4, all `inferred`:
+
+- **Processes:** one `ps -axww -o pid=,ppid=,pgid=,nice=,time=,rss=,lstart=,command=` per sample, two samples 2 s apart. The CPU is the difference in `time` over the window. Never `%cpu`, which on macOS is a decaying average.
+- **Daemons:** from the command line, as in D2 step 1. The worktree id is the hash of the root (`worktreeIdFor`), and the store is in the root's common directory. The lock state is unknown. The phase is `serving` when the store row's heartbeat is within two intervals, and `unknown` otherwise.
+- **Memory:** RSS per process, labelled RSS. The totals are summed RSS, and they say that they count shared pages more than once. Swap per process is `null`.
+- **Test processes:** by the ppid tree only. The mark is not read, so the lane is `null` and an escaped process is not attributed.
+- **Host:** `os.loadavg()`, `os.availableParallelism()`, `os.totalmem()`, used memory from `vm_stat`, and swap from `sysctl vm.swapusage`. There is no pressure (`null`). The host's busy CPU comes from two `os.cpus()` samples over the window.
+- **Flags not evaluated** (named in `unknown`): `no-lock`, `hung`, `foreign-permit` and the `stopping` phase, which need `/proc/locks`; `orphan-test-process` and `overdue-test-process`, which need the mark. `duplicate` is evaluated, and its end command names both pids, because which one holds the lock is unknown. `stale-socket` uses the process rule: a socket file whose id is the root hash of no daemon process. `leftover-temp` reads the working directories from one `lsof -d cwd -F pn` spawn; when that fails, it is not evaluated.
+- **Paths:** the socket and temp directories are those the daemon uses there (011 C9: `/tmp/squeal-<uid>` when `XDG_RUNTIME_DIR` is unset).
+- **Tests:** the parsers run against fixture outputs of `ps`, `vm_stat`, `sysctl` and `lsof` on Linux CI. No test runs on macOS, and the dogfood row covers Linux only. The first run on a Mac goes to `lessons.md`.
 
 ### D11. Modules
 
-- `src/core/ps/proc.ts`: the reader of `/proc`, over a root path that tests replace with a fixture tree.
+- `src/core/ps/source.ts`: the interface between the platform and the rest: process table, per-process reads, locks, host files.
+- `src/core/ps/proc.ts`: the Linux source, reading `/proc` under a root path that tests replace with a fixture tree.
+- `src/core/ps/darwin.ts`: the macOS source (D10), over an injected command runner that tests replace with fixture outputs.
 - `src/core/ps/discover.ts` (D2), `work.ts` (D3), `measure.ts` (D4), `processes.ts` (D5), `host.ts` (D6), `flags.ts` (D7), `shape.ts` (the D8 types), `render.ts` (the D8 text).
 - `src/cli/ps.ts`: argument parsing, the sample and the exit code; an entry in `main.ts` and its help text.
 - D9's heartbeat write belongs to the daemon (`src/core/daemon/`).
@@ -212,10 +225,7 @@ This spec covers Linux. Every rule uses `/proc`, and none was run on macOS (`res
 
 ## Open questions
 
-For the human, at the review of this spec:
-
-1. D9: should the daemon record its last use, so that `past-idle` and `past-unused` are exact? Recommended: yes, as its own row in the first wave. Without it, both flags are left out.
-2. D10: Linux only in this spec, with macOS later? Recommended: yes. No macOS host is available to test on.
+Resolved at the review (the human, 2026-10-21): D9 yes, as its own row; D10 adds the untested macOS fallback. None is open.
 
 Recorded for other specs, as board Later items:
 
