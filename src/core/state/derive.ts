@@ -1,6 +1,7 @@
 import { testFileId } from "../keys/index.js";
 import type {
   CheckId,
+  CommitSha,
   KnownState,
   PendingPhase,
   ResultOrigin,
@@ -125,18 +126,26 @@ export function stateWithoutResult(
   return { ...previous, ...classify(previous.outcome, null, key) };
 }
 
-/** Spec 001 D12: a check of a crashed or timed-out tier "becomes `unknown` at this revision". */
+/**
+ * Spec 001 D12: a check of a crashed or timed-out tier "becomes `unknown` at
+ * this revision". Its own event, never stored under a key, so its origin is
+ * `own` at `commit`, the revision's; the previous commit stays only when the
+ * revision names none (task 011-59).
+ */
 export function unknownState(
   previous: KnownState,
   revision: RevisionNumber,
   key: TestFileKeyRecord | undefined,
   reason: string,
+  commit: CommitSha | null,
 ): KnownState {
   return {
     ...previous,
     outcome: "unknown",
     ...classify("unknown", null, key),
     observedAt: revision,
+    commit: commit ?? previous.commit,
+    origin: { kind: "own" },
     durationMs: null,
     summary: reason,
     fingerprint: null,
