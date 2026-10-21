@@ -1,0 +1,656 @@
+{
+ "root": "/tmp/squeal-011-81/cz-f1",
+ "project": "api-client",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "49e839c98d90",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "2e1be88f8c1a",
+ "runnerFiles": [
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "90f1cdd072c1"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
+{
+ "root": "/tmp/squeal-011-81/cz-f1",
+ "project": "contract",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "9e9b9e16a421",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "d0c714e221f2",
+ "runnerFiles": [
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "90f1cdd072c1"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
+{
+ "root": "/tmp/squeal-011-81/cz-f1",
+ "project": "e2e",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [
+  "child_process"
+ ],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "20909d02cb26",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "8f960e4463b9",
+ "runnerFiles": [
+  [
+   ".ai/scripts/resolve-browser-launch.mjs",
+   "f72334cef681"
+  ],
+  [
+   ".ai/scripts/test-env-lease.mjs",
+   "1273ad076fce"
+  ],
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/agent-browser.ts",
+   "8042629911be"
+  ],
+  [
+   "packages/web/e2e/environment.ts",
+   "94b6011efe86"
+  ],
+  [
+   "packages/web/e2e/failure-setup.ts",
+   "306e6c34c8ba"
+  ],
+  [
+   "packages/web/e2e/fetch-setup.mjs",
+   "855e6507b035"
+  ],
+  [
+   "packages/web/e2e/visual-ready.ts",
+   "ec0a59bfeb12"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "90f1cdd072c1"
+  ],
+  [
+   "packages/web/e2e/workspace-registry.ts",
+   "57f4634a6fe4"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "scripts/test-git-env.mjs",
+   "4742fa64c43f"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
+{
+ "root": "/tmp/squeal-011-81/cz-f1",
+ "project": "server",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "a3de4bfe709e",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "b1bf0f9a659f",
+ "runnerFiles": [
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/cezar/vitest.setup.ts",
+   "2feade6a33cd"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "90f1cdd072c1"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
+{
+ "root": "/tmp/squeal-011-81/cz-f1",
+ "project": "web",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "75e790ea3f46",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "c8a61b18c204",
+ "runnerFiles": [
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "90f1cdd072c1"
+  ],
+  [
+   "packages/web/src/lib/highlighter.ts",
+   "b69ff5898f51"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "packages/web/vitest.setup.ts",
+   "7a58f422c76a"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
+{
+ "root": "/tmp/squeal-011-81/cz-7c",
+ "project": "api-client",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "31d2f945dc7c",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "2e1be88f8c1a",
+ "runnerFiles": [
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "afceb215e1de"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
+{
+ "root": "/tmp/squeal-011-81/cz-7c",
+ "project": "contract",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "c5cb2560256c",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "d0c714e221f2",
+ "runnerFiles": [
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "afceb215e1de"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
+{
+ "root": "/tmp/squeal-011-81/cz-7c",
+ "project": "e2e",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [
+  "child_process"
+ ],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "9f1cfa728d72",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "23da57b4bd1c",
+ "runnerFiles": [
+  [
+   ".ai/scripts/resolve-browser-launch.mjs",
+   "f72334cef681"
+  ],
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/agent-browser.ts",
+   "8042629911be"
+  ],
+  [
+   "packages/web/e2e/environment.ts",
+   "98541aaa6d2b"
+  ],
+  [
+   "packages/web/e2e/failure-setup.ts",
+   "306e6c34c8ba"
+  ],
+  [
+   "packages/web/e2e/fetch-setup.mjs",
+   "855e6507b035"
+  ],
+  [
+   "packages/web/e2e/visual-ready.ts",
+   "ec0a59bfeb12"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "afceb215e1de"
+  ],
+  [
+   "packages/web/e2e/workspace-registry.ts",
+   "57f4634a6fe4"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "scripts/test-git-env.mjs",
+   "4742fa64c43f"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
+{
+ "root": "/tmp/squeal-011-81/cz-7c",
+ "project": "server",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "ce9b40bae2f5",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "b1bf0f9a659f",
+ "runnerFiles": [
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/cezar/vitest.setup.ts",
+   "2feade6a33cd"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "afceb215e1de"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
+{
+ "root": "/tmp/squeal-011-81/cz-7c",
+ "project": "web",
+ "fingerprint": "b7e4803bed82",
+ "graphUsable": false,
+ "staleNote": null,
+ "patches": "e3b0c44298fc",
+ "environmentOpaqueBuiltins": [],
+ "environmentDependencyInput": "b7e4803bed82",
+ "environmentInputIsWholeFingerprint": true,
+ "perFileSegmentForNoPackages": "",
+ "scopedIfNotOpaque": null,
+ "environmentHash": "b6fdf59b1e9f",
+ "runnerName": "vitest",
+ "runnerVersion": "4.1.10",
+ "adapterVersion": "3",
+ "resolvedConfig": "c8a61b18c204",
+ "runnerFiles": [
+  [
+   ".github/scripts/ci-test-sequencer.mjs",
+   "9a44078d69cc"
+  ],
+  [
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   "8b69098a010f"
+  ],
+  [
+   "packages/api-client/vitest.config.ts",
+   "6d6a01e94d35"
+  ],
+  [
+   "packages/cezar/vitest.config.ts",
+   "0e5843c76398"
+  ],
+  [
+   "packages/contract/vitest.config.ts",
+   "d769caaf9256"
+  ],
+  [
+   "packages/web/e2e/vitest.config.ts",
+   "afceb215e1de"
+  ],
+  [
+   "packages/web/src/lib/highlighter.ts",
+   "b69ff5898f51"
+  ],
+  [
+   "packages/web/vite.config.ts",
+   "28c9b68a5b8e"
+  ],
+  [
+   "packages/web/vitest.config.ts",
+   "9d4175aca7fb"
+  ],
+  [
+   "packages/web/vitest.setup.ts",
+   "7a58f422c76a"
+  ],
+  [
+   "vitest.config.ts",
+   "b83a402a5d28"
+  ]
+ ]
+}
