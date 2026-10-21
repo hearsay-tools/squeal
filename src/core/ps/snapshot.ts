@@ -24,7 +24,8 @@ import { readWork } from "./work.js";
  * the stores, the marks, the pool and the host. The rest of the window is
  * waited out, and the second sample closes it. That second reading reads
  * Squeal's processes, their stores and their marks again, so the flags that
- * confirm on two samples (D7) have both. The CPU is over the monotonic
+ * confirm on two samples (D7) have both; the rules of the whole host read
+ * the first, which holds every process. The CPU is over the monotonic
  * window; the phases and ages are against the epoch clock read at the
  * first sample. Nothing here writes, signals or connects.
  */
@@ -126,7 +127,11 @@ function measured(discovery: Discovery, attribution: Attribution): number[] {
   ];
 }
 
-/** What the second sample reads: Squeal's processes, the marked ones nobody owns, and the consumers' harnesses. */
+/**
+ * What the second sample reads: Squeal's processes, the marked ones nobody
+ * owns, and the consumers' harnesses. No other process is in it, so a rule
+ * of the whole host reads the first (`reviews/wave-2.md` B1).
+ */
 function followed(
   discovery: Discovery,
   work: ReadonlyMap<number, DaemonWork>,
