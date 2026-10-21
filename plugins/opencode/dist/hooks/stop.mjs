@@ -4426,10 +4426,18 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot.ts
-import { existsSync as existsSync6, readdirSync as readdirSync2, rmSync as rmSync4, statSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync as existsSync6,
+  mkdtempSync,
+  readdirSync as readdirSync2,
+  rmSync as rmSync4,
+  statSync,
+  writeFileSync
+} from "node:fs";
+import { tmpdir as tmpdir2 } from "node:os";
 import { isAbsolute as isAbsolute5, join as join11 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
-import { pathToFileURL } from "node:url";
 
 // src/core/daemon/paths.ts
 import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync4 } from "node:fs";
@@ -4494,9 +4502,26 @@ function heldPermits(request) {
   return held;
 }
 function permitRecord(path) {
+  let scratch;
+  try {
+    scratch = mkdtempSync(join11(tmpdir2(), "squeal-permit-"));
+  } catch {
+    return { kind: "unreadable" };
+  }
+  try {
+    const copy = join11(scratch, "permit.sqlite");
+    copyFileSync(path, copy);
+    return holderRow(copy);
+  } catch {
+    return { kind: "unreadable" };
+  } finally {
+    rmSync4(scratch, { recursive: true, force: true });
+  }
+}
+function holderRow(path) {
   let db;
   try {
-    db = new DatabaseSync4(new URL(`${pathToFileURL(path).href}?immutable=1`), { readOnly: true });
+    db = new DatabaseSync4(path, { readOnly: true });
   } catch {
     return { kind: "unreadable" };
   }
