@@ -1,6 +1,6 @@
 import { loadText } from "../retry/text.js";
 import { timeText } from "../text.js";
-import { isSlowLane, SLOW_LANE_PREFIX, type Standing } from "../types/index.js";
+import { isSlowLane, SLOW_LANE_PREFIX, type Standing, type TierYield } from "../types/index.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20; `tasks/011-24/design.md`
@@ -53,6 +53,31 @@ export interface StepContext {
 
 const NOT_INTERRUPTED = "no command runs {it} sooner (a running tier is not interrupted)";
 
+/** A tier that does not yield (C4 step 5 as amended 2026-10-21, row 011-51) is waited for. */
+const NOT_YIELDING =
+  "no command runs {it} sooner (a running tier that does not yield is waited for)";
+
+/** `; the tier yields`, or why it does not (C15 as amended 2026-10-21, row 011-51). */
+function yieldText(tier: TierYield, what: "tier" | "run"): string {
+  switch (tier.kind) {
+    case "yields":
+      return `; the ${what} yields`;
+    case "remainder":
+      return `; the ${what} does not yield: its estimated remainder was ${Math.max(0, Math.round(tier.remainderMs / 1_000))} s, not over 30 s`;
+    case "cut":
+      return `; the ${what} does not yield: it holds a file a yield already cut at its key`;
+    case "turn":
+      return `; the ${what} does not yield: it is the backlog's turn`;
+    case "runner":
+      return `; the ${what} does not yield: its runner runs each tier to its end`;
+  }
+}
+
+/** A named wait's step behind a tier whose yield is known: nothing while it yields. */
+function yieldStep(tier: TierYield): Step {
+  return { kind: "none", text: tier.kind === "yields" ? "" : NOT_YIELDING };
+}
+
 /** `retry` runs it once; above `PATHS_IN_COMMAND` files the step names the full-suite run too. */
 function retry(s: Retryable, note = ""): Step {
   return {
@@ -73,7 +98,7 @@ export function nextStep(s: Standing, context: StepContext = { named: true }): N
     case "unlisted":
       // None needed: the reason gives the bound; a named wait already waits, status names the wait.
       return same(
-        `revision ${s.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(s.callBoundMs / 1_000)} s`,
+        `revision ${s.revision} not listed yet, because the runner part waits for the run in flight, each of its calls bounded at ${Math.ceil(s.callBoundMs / 1_000)} s${s.yields === undefined ? "" : yieldText(s.yields, "run")}`,
         context.named
           ? { kind: "none", text: "" }
           : { kind: "command", args: "status --wait 60000", text: "{command} waits for it" },
@@ -208,16 +233,20 @@ function queuedStep(s: Extract<Standing, { kind: "queued" }>, context: StepConte
     s.files === undefined ? "" : ` of ${s.files === 1 ? "1 test file" : `${s.files} test files`}`;
   const tier = `behind the ${laneText(s.lane)} tier${of} running since ${timeText(s.behind)}`;
   const reason = promoted ? `queued, promoted, ${tier}` : `queued ${tier}`;
-  return same(
-    reason,
-    context.named
-      ? { kind: "none", text: NOT_INTERRUPTED }
-      : {
-          kind: "command",
-          args: "status --wait 60000 <test file>",
-          text: "{command} moves a named one ahead when that tier ends",
-        },
-  );
+  if (s.yields !== undefined) {
+    const yielded = yieldText(s.yields, "tier");
+    return same(`${reason}${yielded}`, context.named ? yieldStep(s.yields) : retryLater());
+  }
+  return same(reason, context.named ? { kind: "none", text: NOT_INTERRUPTED } : retryLater());
+}
+
+/** Outside a named wait, `status --wait` names a file to move it ahead. */
+function retryLater(): Step {
+  return {
+    kind: "command",
+    args: "status --wait 60000 <test file>",
+    text: "{command} moves a named one ahead when that tier ends",
+  };
 }
 
 /** `vitest`, or `slow vitest` for a slow lane (004 D2). */
