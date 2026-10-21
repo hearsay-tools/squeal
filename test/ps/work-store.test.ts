@@ -144,6 +144,36 @@ describe("a read creates no file", () => {
     }
   });
 
+  test("the limit that stays (review N1): a last writer that closes between the check and the first read; the read stays right, and SQLite makes -wal and -shm again", () => {
+    serve(alpha);
+    writeStore(alpha, daemonRecord(alpha));
+    const writer = openStore(alpha.commonDir);
+    if (isStoreOpenFailure(writer)) throw new Error(JSON.stringify(writer));
+    const newer = daemonRecord(alpha, { heartbeatAt: STARTED_AT + 120_000 });
+    writer.worktrees.setDaemon(alpha.id, newer);
+    const both = ["locks", "store.sqlite", "store.sqlite-shm", "store.sqlite-wal"];
+    expect(listing(alpha)).toEqual(both);
+    const exec = DatabaseSync.prototype.exec;
+    let closed = false;
+    vi.spyOn(DatabaseSync.prototype, "exec").mockImplementation(function (
+      this: DatabaseSync,
+      sql: string,
+    ) {
+      // Forced: after the check found both files, before the first read, the last writer closes.
+      if (!closed && sql.startsWith("PRAGMA busy_timeout")) {
+        closed = true;
+        writer.close();
+        expect(listing(alpha)).toEqual(["locks", "store.sqlite"]);
+      }
+      return exec.call(this, sql);
+    });
+
+    expect(read().work.get(800)?.record).toEqual(newer);
+    expect(closed).toBe(true);
+    // No open mode of node:sqlite avoids it; the doc comment of `openReadOnly` names the limit.
+    expect(listing(alpha)).toEqual(both);
+  });
+
   test("a crash image, a -wal with a commit newer than the file and no -shm, is unknown, never the old value", () => {
     serve(alpha);
     writeStore(alpha, daemonRecord(alpha));
