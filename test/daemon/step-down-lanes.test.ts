@@ -4,6 +4,8 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -12,8 +14,19 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { leftovers, marksOf } from "../../src/core/daemon/leftovers.js";
+import { storePaths } from "../../src/core/store/index.js";
+import { CANCELLED, cancelled } from "../../src/runners/vitest/run.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
-import { daemonSuite, diagnose, ping, readNotes, SLOW, waitFor, withStore } from "./helpers.js";
+import {
+  daemonSuite,
+  diagnose,
+  type FixtureRepo,
+  ping,
+  readNotes,
+  SLOW,
+  waitFor,
+  withStore,
+} from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
 
 /*
@@ -55,6 +68,18 @@ it("holds while held", { timeout: 170_000 }, async () => {
 }
 
 const HELD = ["test/held.test.ts", "nt/held.test.mjs"];
+
+/** The failures of this repository's cancelled Vitest runs, from each run's `report.json` (row 011-56). */
+function vitestCancels(repo: Pick<FixtureRepo, "commonDir">): string[] {
+  const runs = storePaths(repo.commonDir).runsDir;
+  return readdirSync(runs).flatMap((id) => {
+    if (!existsSync(join(runs, id, "vitest.log"))) return [];
+    const { report } = JSON.parse(readFileSync(join(runs, id, "report.json"), "utf8")) as {
+      report: { failure: string | null };
+    };
+    return report.failure?.startsWith(CANCELLED) === true ? [report.failure] : [];
+  });
+}
 
 /**
  * `buildAt(version)` with the node:test runtime files `tsc` does not emit
@@ -177,6 +202,8 @@ describe.runIf(process.platform === "linux")(
               .slice(notes)
               .filter((n) => /^daemon stopped/.test(n)),
           ).toHaveLength(1);
+          // The Vitest tier's run names the step-down (row 011-56).
+          expect(vitestCancels(repo)).toEqual([cancelled("step-down")]);
         } finally {
           writeFileSync(join(dir, "release"), "");
           resume(first.pid);
