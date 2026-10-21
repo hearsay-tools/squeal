@@ -58,22 +58,33 @@ export const discover: Discover = (source, table, places) => {
 };
 
 /**
- * D2's phase table, over `source`'s boot time and tick rate, read once. A
- * row's start names a daemon only when it is no earlier than the process
- * start (less `START_MARGIN_MS`): its own registration is 1.2 to 12.1 s
- * later, so the start time excludes a predecessor's row and never ties one.
- * Without lock state (D10), only its own fresh heartbeat says serving.
+ * Whether a row's start names `daemon`, over `source`'s boot time and tick
+ * rate, read once: only when it is no earlier than the process start (less
+ * `START_MARGIN_MS`). Its own registration is 1.2 to 12.1 s later, so the
+ * start time excludes a predecessor's row and never ties one. `null`
+ * without the boot time.
  */
-export function phaseOn(source: PsSource): PhaseOf {
+export function ownStartOn(
+  source: PsSource,
+): (daemon: FoundDaemon, startedAt: EpochMs) => boolean | null {
   const boot = source.bootTime();
   const ticks = source.clockTicks();
+  return (daemon, startedAt) =>
+    boot === null
+      ? null
+      : startedAt >= boot + ticksToMs(daemon.row.startTicks, ticks) - START_MARGIN_MS;
+}
+
+/**
+ * D2's phase table, a row's start read by `ownStartOn`. Without lock state
+ * (D10), only its own fresh heartbeat says serving.
+ */
+export function phaseOn(source: PsSource): PhaseOf {
+  const ownStart = ownStartOn(source);
   return (daemon, work, now) => {
     if (daemon.holdsLock === false) return "waiting";
     if (work === null) return "unknown";
-    const own = (startedAt: EpochMs): boolean | null =>
-      boot === null
-        ? null
-        : startedAt >= boot + ticksToMs(daemon.row.startTicks, ticks) - START_MARGIN_MS;
+    const own = (startedAt: EpochMs): boolean | null => ownStart(daemon, startedAt);
     const record = work.record;
     if (daemon.holdsLock === null) {
       const fresh =
