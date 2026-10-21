@@ -20,7 +20,7 @@ import { type CommandRunner, type PsSource, ticksToMs } from "../../src/core/ps/
 const FIXTURES = join(import.meta.dirname, "fixtures", "darwin");
 const fixture = (name: string): string => readFileSync(join(FIXTURES, name), "utf8");
 
-const PS = ["-axww", "-o", "pid=,ppid=,pgid=,nice=,time=,rss=,lstart=,command="];
+const PS = ["-axww", "-o", "pid=,ppid=,pgid=,uid=,nice=,time=,rss=,lstart=,command="];
 const PS_CALL = ["env", "-u", "LC_ALL", "LC_TIME=C", "ps", ...PS].join(" ");
 
 /** Local time, as `ps` prints `lstart` in the time zone it shares with Node. */
@@ -82,7 +82,7 @@ beforeEach(() => {
 describe("process table: one ps per read", () => {
   test("parses every column of a row, its start as ticks after the boot time", () => {
     const table = f.source.processTable();
-    expect([...table.keys()]).toEqual([1, 612, 4810, 5120, 5233, 5240, 5301, 6001, 7002]);
+    expect([...table.keys()]).toEqual([1, 612, 4810, 5120, 5233, 5240, 5301, 8120, 6001, 7002]);
     expect(f.source.bootTime()).toBe(BOOT);
     expect(f.source.clockTicks()).toBe(100);
     expect(table.get(4810)).toEqual({
@@ -94,7 +94,7 @@ describe("process table: one ps per read", () => {
       startTicks: (local(10, 21, 9, 40, 7) - BOOT) / 10,
       cpuTicks: 6_231,
       nice: 0,
-      uid: null,
+      uid: 501,
     });
     // Minutes past 59 and a negative nice; a day `%e` pads with a space.
     expect(table.get(6001)).toMatchObject({ ppid: 5998, nice: -5, cpuTicks: 750_740 });
@@ -116,9 +116,15 @@ describe("process table: one ps per read", () => {
       local(10, 21, 10, 20, 2),
       local(10, 21, 10, 20, 5),
       local(10, 21, 10, 20, 6),
+      local(10, 21, 8, 55, 30),
       local(10, 15, 14, 2, 33),
       local(10, 7, 9, 5, 0),
     ]);
+  });
+
+  test("each row has its owner's uid: root's, the user's and another user's", () => {
+    const table = f.source.processTable();
+    expect([1, 4810, 8120].map((pid) => table.get(pid)?.uid)).toEqual([0, 501, 502]);
   });
 
   test("only `pids`, still from one ps; none asked for is no read at all", () => {
@@ -287,8 +293,7 @@ describe("what the source cannot read (D10)", () => {
     expect(f.source.fileKey("/Users/user/projects/alpha/.git/squeal/locks/x.sqlite")).toBeNull();
     expect(f.source.unixListeners()).toBeNull();
     expect(f.source.pidNamespace()).toBeNull();
-    const row = f.source.processTable().get(4810);
-    expect({ state: row?.state, uid: row?.uid }).toEqual({ state: null, uid: null });
+    expect(f.source.processTable().get(4810)?.state).toBeNull();
     expect(f.calls).toEqual([PS_CALL]);
   });
 
@@ -354,6 +359,15 @@ describe("the stages over it, unchanged", () => {
     });
     expect(beta).toMatchObject({ version: "0.1.237", harness: "codex", awaitLock: true });
     expect(found.unknown.map((u) => u.what)).toContain("daemon lock holders");
+  });
+
+  test("discover leaves another user's daemon out, and finds it for that user", () => {
+    const table = f.source.processTable();
+    expect(discover(f.source, table, places()).daemons.map((d) => d.row.pid)).not.toContain(8120);
+    const other = discover(f.source, table, { ...places(), uid: 502 });
+    expect(other.daemons.map((d) => [d.row.pid, d.root])).toEqual([
+      [8120, "/Users/other/projects/gamma"],
+    ]);
   });
 
   test("phaseOn's start rule holds: its own fresh record serves, a predecessor's is unknown", () => {
