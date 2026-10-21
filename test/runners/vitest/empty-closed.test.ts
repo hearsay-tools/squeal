@@ -7,7 +7,11 @@ import { exposeGc } from "../../../src/core/daemon/idle-gc.js";
 import { withSlowInstance } from "../../../src/core/daemon/slow-instance.js";
 import { type InvalidatedPath, SLOW_LANE_PREFIX } from "../../../src/core/types/index.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
-import { closeEmptied, emptyClosed } from "../../../src/runners/vitest/empty-closed.js";
+import {
+  closedTargets,
+  closeEmptied,
+  emptyClosed,
+} from "../../../src/runners/vitest/empty-closed.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
 import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 import { RunCollector } from "../../../src/runners/vitest/reporter.js";
@@ -21,16 +25,23 @@ import { openFixture, outcomes, ref, SLOW } from "./helpers.js";
  * the plugin objects the emptying leaves alone; what it held is collected.
  */
 
-/** An instance the adapter created, held weakly, with each of its environments' module graph. */
+/**
+ * An instance the adapter created, held weakly, with its core project, its
+ * projects, its Vite servers and their environments in `parts`, and each
+ * environment's module graph, all taken before its close.
+ */
 interface Created {
   readonly vitest: WeakRef<Vitest>;
+  readonly parts: readonly WeakRef<object>[];
   readonly graphs: readonly WeakRef<object>[];
 }
 
-/** `whole`: it keeps its own properties; `freed`: emptied and every graph collected. */
-function state(created: Created): "whole" | "freed" | "graphs alive" {
-  const vitest = created.vitest.deref();
-  if (vitest !== undefined && Reflect.ownKeys(vitest).length > 0) return "whole";
+const kept = (ref: WeakRef<object>) => Reflect.ownKeys(ref.deref() ?? {}).length > 0;
+
+/** `whole`: it keeps its own properties; `freed`: it and its parts emptied, and every graph collected. */
+function state(created: Created): "whole" | "parts whole" | "freed" | "graphs alive" {
+  if (kept(created.vitest)) return "whole";
+  if (created.parts.some(kept)) return "parts whole";
   return created.graphs.every((graph) => graph.deref() === undefined) ? "freed" : "graphs alive";
 }
 
@@ -41,11 +52,12 @@ async function tracked(root: string, created: Created[]): Promise<VitestNode> {
     ...real,
     createVitest: async (...args: Parameters<VitestNode["createVitest"]>) => {
       const vitest = await real.createVitest(...args);
-      const servers = new Set([vitest.vite, ...vitest.projects.map((p) => p.vite)]);
-      const graphs = [...servers].flatMap((server) =>
-        Object.values(server.environments).map((env) => new WeakRef<object>(env.moduleGraph)),
-      );
-      created.push({ vitest: new WeakRef(vitest), graphs });
+      const projects = new Set([vitest.getRootProject(), ...vitest.projects]);
+      const servers = new Set([vitest.vite, ...[...projects].map((p) => p.vite)]);
+      const environments = [...servers].flatMap((server) => Object.values(server.environments));
+      const parts = [...projects, ...servers, ...environments].map((part) => new WeakRef(part));
+      const graphs = environments.map((env) => new WeakRef<object>(env.moduleGraph));
+      created.push({ vitest: new WeakRef(vitest), parts, graphs });
       return vitest;
     },
   } as VitestNode;
@@ -94,6 +106,18 @@ const rejecting = (started: string, go: string) => ({
 });
 const MATH = [ref("test/math.test.ts")];
 
+/** A root config that selects only a separate project config: no project is the core one. */
+const SEPARATE = {
+  "vitest.config.ts": 'export default { test: { projects: ["unit/vitest.config.ts"] } };\n',
+  "unit/vitest.config.ts":
+    'export default { test: { name: "unit", root: "..", include: ["test/math.test.ts"] } };\n',
+};
+const UNIT_MATH = [ref("test/math.test.ts", "unit")];
+
+/** `freed` for each closed instance, and `whole` for the one in use, if any. */
+const freed = (created: readonly Created[], inUse: boolean) =>
+  created.map((_, i) => (inUse && i === created.length - 1 ? "whole" : "freed"));
+
 describe("a closed Vitest instance is freed (task 013-06)", SLOW, () => {
   it("frees each instance a recreate closes, and keeps the one in use", async () => {
     const created: Created[] = [];
@@ -109,24 +133,48 @@ describe("a closed Vitest instance is freed (task 013-06)", SLOW, () => {
     expect(created.map(state)).toEqual(["freed", "freed", "freed", "whole"]);
   });
 
-  it("frees each slow instance a drained pass closes (spec 004 D2)", async () => {
+  // Review of 0.1.250: the close clears `vitest.vite` when no project is the core one.
+  it("frees the root server and core project a recreate closes, with a separate project config", async () => {
     const created: Created[] = [];
-    const fx = await openFixture();
-    const root = realpathSync(fx.root);
-    const node = await tracked(root, created);
-    const runner = withSlowInstance(
-      fx.adapter,
-      () => new VitestAdapter(new WorktreePaths(root), node),
-    );
-    const lane = `${SLOW_LANE_PREFIX}vitest`;
-    for (let i = 0; i < 3; i++) {
-      const report = await runner.run(MATH, fx.runOptions({ lane }));
-      expect(outcomes(report)).toEqual(["pass", "pass"]);
-      await runner.releaseLane?.(lane);
+    const fx = await openFixture("basic", SEPARATE, (root) => opened(root, created));
+    for (let i = 0; i < 2; i++) {
+      expect(outcomes(await fx.adapter.run(UNIT_MATH, fx.runOptions()))).toEqual(["pass", "pass"]);
+      expect((await fx.adapter.invalidate(changed("vitest.config.ts"))).recreatedProjects).toEqual([
+        "unit",
+      ]);
     }
+    // The core project, two servers and their environments; a config written just now may add a recreate.
+    expect(created.length).toBeGreaterThanOrEqual(3);
+    expect(created.every((c) => c.parts.length > 4 && c.graphs.length > 0)).toBe(true);
     await collect();
-    expect(created.map(state)).toEqual(["freed", "freed", "freed"]);
+    expect(created.map(state)).toEqual(freed(created, true));
   });
+
+  it.each([
+    ["the root project", {}, MATH],
+    ["a separate project config", SEPARATE, UNIT_MATH],
+  ])(
+    "frees each slow instance a drained pass closes, with %s (spec 004 D2)",
+    async (_, files, refs) => {
+      const created: Created[] = [];
+      const fx = await openFixture("basic", files);
+      const root = realpathSync(fx.root);
+      const node = await tracked(root, created);
+      const runner = withSlowInstance(
+        fx.adapter,
+        () => new VitestAdapter(new WorktreePaths(root), node),
+      );
+      const lane = `${SLOW_LANE_PREFIX}vitest`;
+      for (let i = 0; i < 3; i++) {
+        const report = await runner.run(refs, fx.runOptions({ lane }));
+        expect(outcomes(report)).toEqual(["pass", "pass"]);
+        await runner.releaseLane?.(lane);
+      }
+      expect(created.length).toBeGreaterThanOrEqual(3);
+      await collect();
+      expect(created.map(state)).toEqual(freed(created, false));
+    },
+  );
 
   it("frees the instance of a run whose global setup rejects, once the run read its graphs", async () => {
     const created: Created[] = [];
@@ -206,8 +254,14 @@ describe("emptyClosed and closeEmptied (task 013-06)", () => {
     const project = { name: "a", vite: projectServer };
     const root = { name: "", vite: server };
     const logger = { console: {} };
-    const vitest = { vite: server, projects: [root, project], logger, state: {} };
-    expect(emptyClosed(vitest as unknown as Vitest)).toBe(8);
+    const vitest = {
+      vite: server,
+      projects: [root, project],
+      logger,
+      state: {},
+      getRootProject: () => root,
+    };
+    expect(emptyClosed(closedTargets(vitest as unknown as Vitest))).toBe(8);
     for (const emptied of [
       vitest,
       logger,
@@ -223,7 +277,28 @@ describe("emptyClosed and closeEmptied (task 013-06)", () => {
     expect(Object.keys(plugin)).toEqual(["name", "transform"]);
   });
 
-  it("closeEmptied drops an error while emptying, and leaves an instance whose close failed", async () => {
+  // Review of 0.1.250: Vitest 5.0.3 clears `vite` when it closes a core project no other project is.
+  it("closeEmptied empties the root server and core project the close cleared from the instance", async () => {
+    const environment = { name: "ssr", moduleGraph: {} };
+    const server = { environments: { ssr: environment } };
+    const core = { name: "", vite: server };
+    const projectServer = { environments: {} };
+    const project = { name: "unit", vite: projectServer };
+    const vitest: Record<string, unknown> = {
+      vite: server,
+      projects: [project],
+      getRootProject: () => core,
+      close: async () => {
+        vitest.vite = undefined;
+      },
+    };
+    await closeEmptied(vitest as unknown as Vitest);
+    for (const emptied of [vitest, core, server, environment, project, projectServer]) {
+      expect(Reflect.ownKeys(emptied)).toEqual([]);
+    }
+  });
+
+  it("closeEmptied drops an error while gathering or emptying, and leaves every target whole when the close fails", async () => {
     const odd = {
       close: async () => {},
       get projects(): never {
@@ -231,9 +306,29 @@ describe("emptyClosed and closeEmptied (task 013-06)", () => {
       },
     };
     await expect(closeEmptied(odd as unknown as Vitest)).resolves.toBeUndefined();
-    const failing = { state: {}, close: () => Promise.reject(new Error("the close failed")) };
+    const sealed = new Proxy(
+      { name: "" },
+      {
+        deleteProperty: () => {
+          throw new Error("a target it cannot empty");
+        },
+      },
+    );
+    const emptying = { projects: [], getRootProject: () => sealed, close: async () => {} };
+    await expect(closeEmptied(emptying as unknown as Vitest)).resolves.toBeUndefined();
+    expect(Object.keys(sealed)).toEqual(["name"]);
+    const server = { environments: { ssr: { name: "ssr" } } };
+    const core = { name: "", vite: server };
+    const failing = {
+      vite: server,
+      projects: [core],
+      getRootProject: () => core,
+      close: () => Promise.reject(new Error("the close failed")),
+    };
     await expect(closeEmptied(failing as unknown as Vitest)).rejects.toThrow("the close failed");
-    expect(Object.keys(failing)).toEqual(["state", "close"]);
+    expect(Object.keys(failing)).toEqual(["vite", "projects", "getRootProject", "close"]);
+    expect(Object.keys(core)).toEqual(["name", "vite"]);
+    expect(Object.keys(server.environments.ssr)).toEqual(["name"]);
   });
 
   it("is never called by abandon, whose close may hang and reads the instance", async () => {

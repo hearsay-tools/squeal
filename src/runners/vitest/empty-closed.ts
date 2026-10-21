@@ -9,34 +9,44 @@ import type { Vitest } from "vitest/node";
  */
 
 /**
- * Awaits `vitest`'s close, then empties it (`emptyClosed`). The close's
- * error is the caller's, and leaves the instance as it is. An error while
- * emptying is dropped: a shape this does not know frees less, and fails
- * nothing. Never for an instance whose close may still run (`abandon`).
+ * Gathers what `vitest` holds (`closedTargets`), awaits its close, then
+ * empties each target (`emptyClosed`). The targets are gathered first: the
+ * close clears `vitest.vite` when no project in `vitest.projects` is the core
+ * one, as with a root config that selects only separate project configs. The
+ * close's error is the caller's, and leaves every target as it is. An error
+ * while gathering or emptying is dropped: a shape this does not know frees
+ * less, and fails nothing. Never for an instance whose close may still run
+ * (`abandon`).
  */
 export async function closeEmptied(vitest: Vitest): Promise<void> {
+  const targets = await Promise.resolve(vitest)
+    .then(closedTargets)
+    .catch(() => []);
   await vitest.close();
-  await Promise.resolve(vitest)
+  await Promise.resolve(targets)
     .then(emptyClosed)
     .catch(() => 0);
 }
 
 /**
- * Deletes the own properties of `vitest`, its logger, its projects, its Vite
- * servers (the root one and each project's) and their environments, and
- * returns how many objects it emptied. Plugin objects are left alone: a
- * config may import a ready-made one, which the next instance shares.
+ * `vitest`, its logger, its projects with the core one, its Vite servers (the
+ * root one and each project's) and their environments. Plugin objects are
+ * left out: a config may import a ready-made one, which the next instance
+ * shares.
  */
-export function emptyClosed(vitest: Vitest): number {
-  // Everything is gathered before anything is emptied: emptying one hides the others.
-  const projects = Array.isArray(vitest.projects) ? vitest.projects : [];
-  const servers = new Set([vitest.vite, ...projects.map((project) => project.vite)]);
+export function closedTargets(vitest: Vitest): object[] {
+  const listed = Array.isArray(vitest.projects) ? vitest.projects : [];
+  const projects = new Set([vitest.getRootProject(), ...listed]);
+  const servers = new Set([vitest.vite, ...[...projects].map((project) => project.vite)]);
   const environments = [...servers].flatMap((server) => Object.values(server?.environments ?? {}));
-  const emptied = new Set<object>();
-  for (const target of [...environments, ...servers, ...projects, vitest.logger, vitest]) {
-    if (typeof target !== "object" || target === null || emptied.has(target)) continue;
-    emptied.add(target);
+  const targets: unknown[] = [...environments, ...servers, ...projects, vitest.logger, vitest];
+  return [...new Set(targets)].filter((t): t is object => typeof t === "object" && t !== null);
+}
+
+/** Deletes the own properties of each of `targets`, and returns how many it emptied. */
+export function emptyClosed(targets: readonly object[]): number {
+  for (const target of targets) {
     for (const key of Reflect.ownKeys(target)) Reflect.deleteProperty(target, key);
   }
-  return emptied.size;
+  return targets.length;
 }
