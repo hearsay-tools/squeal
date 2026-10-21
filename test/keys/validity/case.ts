@@ -141,6 +141,8 @@ export interface VitestInput {
     readonly fileEndedThrows?: boolean;
     readonly removeTempDir?: boolean;
   }[];
+  /** Read each project's environment files once open, as the case's keys (row 011-88). */
+  readonly environment?: true;
 }
 
 export type Case = { readonly name: string; readonly why: string } & (
