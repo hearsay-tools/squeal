@@ -37,6 +37,7 @@ import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js
 import { openRuns } from "./open-runs.js";
 import { outstandingOf } from "./outstanding.js";
 import { pendingTestFilesOf } from "./phase-files.js";
+import { slowSlotOf } from "./slot-holders.js";
 import { once } from "./standing-facts.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
@@ -144,12 +145,14 @@ function snapshot(
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
   const at = worktree?.root ?? root;
+  // Row 011-58 (gh-58): who holds the slow slot, while the daemon waits for it.
+  const slowSlot = slowSlotOf(store, worktreeId, at, header, daemon.state === "alive", now);
   // Row 011-29: the groups `Outstanding:` prints, from the rows read above.
   const outstanding = outstandingOf(
     store,
     worktreeId,
     at,
-    { states, keys, header, runs, daemon, ...retries, ...checkpoint },
+    { states, keys, header, runs, daemon, slowSlot: slowSlot ?? null, ...retries, ...checkpoint },
     now,
     load,
   );
@@ -178,6 +181,7 @@ function snapshot(
     ...(daemon.state === "alive" ? { runsOpen: runs.length } : {}),
     outstanding,
     pendingTestFiles: pendingTestFilesOf(states, keys, held),
+    ...(slowSlot === undefined ? {} : { slowSlot }),
   };
 }
 

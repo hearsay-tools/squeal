@@ -91,7 +91,12 @@ export type Standing =
       readonly yields?: TierYield;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
-  | { readonly kind: "slow"; readonly pausesOnly?: true }
+  | {
+      readonly kind: "slow";
+      readonly pausesOnly?: true;
+      /** While its daemon waits for the slow slot: who holds it (row 011-58, gh-58). */
+      readonly slot?: SlowSlotHolders;
+    }
   | { readonly kind: "checkpoint" };
 
 /**
@@ -135,3 +140,41 @@ export interface PhaseFiles {
 
 /** The pending test files by phase, as `testFilesByPhase` counts them (row 011-58). */
 export type PendingTestFiles = Readonly<Record<PendingPhase, PhaseFiles>>;
+
+/**
+ * The holders of the slow slot's permits this worktree's daemon may take
+ * (row 011-58, gh-58; 004 D2, which lets several daemons hold permits at
+ * once), while its slow tier waits for them, as the permits' lock files
+ * record them.
+ */
+export interface SlowSlotHolders {
+  /** This repository's `slow.maxParallel`: the permits its daemon may take. */
+  readonly permits: number;
+  /** The held ones by holder, the longest held first; none when every one is free now. */
+  readonly holders: readonly SlotHolder[];
+}
+
+/**
+ * The permits one holder record names: `live` while its pid runs, `stale`
+ * when it does not, so whatever holds the lock wrote no record; or the
+ * permits that record none (`missing`) or none that reads (`unreadable`).
+ */
+export type SlotHolder =
+  | {
+      readonly kind: "live" | "stale";
+      readonly permits: number;
+      readonly pid: number;
+      readonly worktreeId: string;
+      /** Its root, when this repository's store records the worktree; `null` otherwise. */
+      readonly root: string | null;
+      /** The record names this worktree. */
+      readonly self?: true;
+      /** When it took the first of them, and how long before the read that was. */
+      readonly since: EpochMs;
+      readonly heldMs: number;
+      /** Its slow files running, as its daemon published them; absent when the store does not say. */
+      readonly running?: readonly string[];
+      /** Its slow files pending, the running ones included; absent when the store does not say. */
+      readonly pending?: number;
+    }
+  | { readonly kind: "missing" | "unreadable"; readonly permits: number };
