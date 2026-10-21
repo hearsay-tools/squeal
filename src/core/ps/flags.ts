@@ -366,7 +366,10 @@ function deadConsumers(c: FlagContext, pid: number): string[] {
  * without the lock once its wait is past the `no-lock` bound; two that each
  * hold a lock of it are flagged at once. Where the holder cannot be told,
  * each is flagged once all have waited so long, and its command names
- * every pid (D10). Two that both wait are each `no-lock`'s.
+ * every pid (D10). Two that both wait are each `no-lock`'s. A lock either
+ * reading of the window shows is held (`lessons.md` P9), and no two
+ * processes hold one lock file at once: two holders of one file are the two
+ * readings', the lock passed between them, and neither is flagged.
  */
 function duplicates(c: FlagContext): Map<number, PsFlag[]> {
   const byRoot = new Map<AbsolutePath, FoundDaemon[]>();
@@ -388,6 +391,8 @@ function duplicates(c: FlagContext): Map<number, PsFlag[]> {
         .map((o) => o.row.pid)
         .join(", ");
     const holders = group.filter((d) => d.holdsLock === true);
+    const atOnce = new Set(holders.map((d) => d.lockPath)).size === holders.length;
+    const holding = holders.map((d) => d.row.pid).join(", ");
     if (group.some((d) => d.holdsLock === null)) {
       if (!group.every(waited)) continue;
       for (const d of group)
@@ -396,12 +401,14 @@ function duplicates(c: FlagContext): Map<number, PsFlag[]> {
           `daemon ${others(d)} has its root ${root} too; which holds the lock is unknown`,
           `kill ${d.row.pid}  # or ${others(d)}: whichever holds no lock`,
         );
-    } else if (holders.length === 1) {
+    } else if (holders.length === 1 || (holders.length > 1 && !atOnce)) {
       for (const d of group)
         if (!d.holdsLock && waited(d))
           add(
             d,
-            `daemon ${holders[0]?.row.pid} holds the lock of its root ${root}`,
+            holders.length === 1
+              ? `daemon ${holding} holds the lock of its root ${root}`
+              : `daemons ${holding} held the lock of its root ${root} in turn`,
             `kill ${d.row.pid}`,
           );
     } else if (holders.length > 1) {
