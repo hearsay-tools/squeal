@@ -176,6 +176,7 @@ function readOne(
   if (root === null) name("settings", "its root is unknown: the defaults stand in");
   return {
     record,
+    recordedStartedAt: startedAt,
     token,
     pending: counts.get("queued") ?? 0,
     running: counts.get("running") ?? 0,

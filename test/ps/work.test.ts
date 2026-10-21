@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { recordVersion } from "../../src/core/delivery/consumer-version.js";
 import { departedMetaKey } from "../../src/core/delivery/expiry.js";
 import { recordHarness } from "../../src/core/delivery/harness-process.js";
-import { discover } from "../../src/core/ps/discover.js";
+import { discover, phaseOn } from "../../src/core/ps/discover.js";
 import type { DaemonWork } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { PsSource } from "../../src/core/ps/source.js";
@@ -64,6 +64,14 @@ function serve(pid: number, repo: FixtureRepo, held = true): void {
 function read(on: PsSource = source) {
   const table = on.processTable();
   return readWork(on, table, discover(on, table, host.places).daemons);
+}
+/** Each daemon's phase, as the snapshot will assemble it. */
+function phases(on: PsSource = source, now = STARTED_AT + 60_000) {
+  const table = on.processTable();
+  const { daemons } = discover(on, table, host.places);
+  const { work } = readWork(on, table, daemons);
+  const phase = phaseOn(on);
+  return new Map(daemons.map((d) => [d.row.pid, phase(d, work.get(d.row.pid) ?? null, now)]));
 }
 function workOf(pid: number, on: PsSource = source): DaemonWork {
   const result = read(on).work.get(pid);
@@ -281,8 +289,22 @@ describe("phases' work", () => {
     });
     const work = workOf(800);
     expect(work.record).toBeNull();
+    expect(work.recordedStartedAt).toBe(STARTED_AT);
     expect(work.token).toBe(daemonRecord(alpha).token);
     expect(work.tiers.map((t) => t.runId)).toEqual(["mine"]);
+    expect(phases().get(800)).toBe("stopping");
+  });
+
+  test("serving, and starting in a fresh worktree whose row its lock holder has not written", () => {
+    serve(800, alpha);
+    writeStore(alpha, daemonRecord(alpha));
+    expect(phases().get(800)).toBe("serving");
+    // Another worktree of the store: alpha's lock holder found no row of its own yet.
+    rmSync(alpha.storePath);
+    writeStore({ ...alpha, id: "0000000000000000" }, null);
+    const work = workOf(800);
+    expect([work.record, work.recordedStartedAt, work.token]).toEqual([null, null, null]);
+    expect(phases().get(800)).toBe("starting");
   });
 
   test("a waiting daemon's row is the lock holder's: only the holder of a duplicate root is read", () => {
