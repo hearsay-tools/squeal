@@ -112,14 +112,30 @@ describe("an adapter-only bump", () => {
 });
 
 describe("the alarm", SLOW, () => {
-  it("fires on a change to the build's target, which the shipped bundles are built at", async () => {
-    const result = await compare(
-      edited("src/harness/build.ts", 'target: "node22.13"', 'target: "node16"'),
-      [],
-    );
+  // 011-86: the build's target is `node` and engines.node's floor.
+  const ENGINES = /"node": ">=[^"]+"/;
+  const engines = read("package.json").match(ENGINES)?.[0] ?? '"node"';
+
+  it("fires on a change to the build's target, engines.node, which the shipped bundles are built at", async () => {
+    const result = await compare(edited("package.json", engines, '"node": ">=16.0"'), []);
     expect(result.alarms.filter((a) => a.fired).map((a) => a.component.name)).toEqual(
       COMPONENTS.map((c) => c.name),
     );
+  });
+
+  it("fires on no other change to package.json: its version, its description", async () => {
+    const version = read("package.json").match(/"version": "[^"]+"/)?.[0] ?? '"version"';
+    const manifest = edited("package.json", version, '"version": "9.9.9"');
+    const result = await compare(
+      {
+        "package.json": (manifest["package.json"] ?? "").replace(
+          /"description": "[^"]+"/,
+          '"description": "another"',
+        ),
+      },
+      [],
+    );
+    expect(result.alarms.filter((a) => a.fired)).toEqual([]);
   });
 
   it("fires on no change outside the entries: status, delivery, the CLI and the harnesses", async () => {
