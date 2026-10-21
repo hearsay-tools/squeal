@@ -49,12 +49,19 @@ export const readWork: ReadWork = (source, table, daemons) => {
     const { db, file } = store;
     const read = new Map<number, DaemonWork>();
     const named: PsUnknown[] = [];
+    // The store's open runs, one query for all its daemons (014-23): `runs` has no index to filter by.
+    // Read at the first daemon, so a store that fails it names each daemon unknown, as any read does.
+    let runs: Map<string, Row[]> | undefined;
+    const runsOf = (id: WorktreeId): Row[] => {
+      runs ??= openRuns(db);
+      return runs.get(id) ?? [];
+    };
     try {
       // One committed state for every daemon of the store.
       db.exec("BEGIN");
       for (const d of group) {
         try {
-          read.set(d.row.pid, readOne(db, d, table, namespace, ownStart, named));
+          read.set(d.row.pid, readOne(db, d, runsOf, table, namespace, ownStart, named));
         } catch (error) {
           const why = `its store ${path} cannot be read: ${message(error)}`;
           named.push({ what: `daemon ${d.row.pid} work`, why });
@@ -131,9 +138,21 @@ function changed(path: AbsolutePath, before: BigIntStats): boolean {
   }
 }
 
+/** Every worktree's open runs, by worktree, oldest first. */
+function openRuns(db: DatabaseSync): Map<string, Row[]> {
+  const byWorktree = new Map<string, Row[]>();
+  for (const r of all(db, OPEN_RUNS)) {
+    const rows = byWorktree.get(str(r, "worktree_id"));
+    if (rows === undefined) byWorktree.set(str(r, "worktree_id"), [r]);
+    else rows.push(r);
+  }
+  return byWorktree;
+}
+
 function readOne(
   db: DatabaseSync,
   d: FoundDaemon,
+  runsOf: (id: WorktreeId) => readonly Row[],
   table: ProcessTable,
   namespace: string | null,
   ownStart: ReturnType<typeof ownStartOn>,
@@ -182,20 +201,22 @@ function readOne(
     return lanes?.[checkpointId] ?? null;
   };
   const since = theirs ? Number.POSITIVE_INFINITY : (startedAt ?? Number.POSITIVE_INFINITY);
-  const tiers = all(db, OPEN_RUNS, id, since).map((r): PsTier => {
-    const checkpointId = strOrNull(r, "checkpoint_id");
-    const paths = testFiles(r).map((f) => (isRecord(f) ? f.path : undefined));
-    // Its checkpoint's one lane, else the slow tier's own record of its run; `null` without either.
-    const slowRun = paths.some((p) => typeof p === "string" && slow?.running.includes(p));
-    const lane = slow === null ? null : slowRun ? "slow" : "fast";
-    return {
-      runId: str(r, "id"),
-      lane: (checkpointId === null ? null : laneOf(checkpointId)) ?? lane,
-      files: paths.length,
-      startedAt: num(r, "started_at"),
-      checkpointId,
-    };
-  });
+  const tiers = runsOf(id)
+    .filter((r) => num(r, "started_at") >= since)
+    .map((r): PsTier => {
+      const checkpointId = strOrNull(r, "checkpoint_id");
+      const paths = testFiles(r).map((f) => (isRecord(f) ? f.path : undefined));
+      // Its checkpoint's one lane, else the slow tier's own record of its run; `null` without either.
+      const slowRun = paths.some((p) => typeof p === "string" && slow?.running.includes(p));
+      const lane = slow === null ? null : slowRun ? "slow" : "fast";
+      return {
+        runId: str(r, "id"),
+        lane: (checkpointId === null ? null : laneOf(checkpointId)) ?? lane,
+        files: paths.length,
+        startedAt: num(r, "started_at"),
+        checkpointId,
+      };
+    });
   const checkpoints = all(db, OPEN_CHECKPOINTS, id, since).map(
     (r): PsCheckpoint => ({
       id: str(r, "id"),
@@ -263,9 +284,10 @@ function readOne(
 
 const PENDING = `SELECT pending, count(*) AS n FROM test_file_keys
   WHERE worktree_id = ? AND pending IS NOT NULL GROUP BY pending`;
+// Every worktree's: `readOne` keeps a daemon's own, under D3's time bound.
+const OPEN_RUNS = `SELECT worktree_id, id, test_files, checkpoint_id, started_at FROM runs
+  WHERE end_state IS NULL ORDER BY started_at, rowid`;
 // D3's time bound: a run or checkpoint an earlier daemon left open runs nothing now.
-const OPEN_RUNS = `SELECT id, test_files, checkpoint_id, started_at FROM runs
-  WHERE worktree_id = ? AND end_state IS NULL AND started_at >= ? ORDER BY started_at, rowid`;
 const OPEN_CHECKPOINTS = `SELECT id, test_files, started_at FROM checkpoints
   WHERE worktree_id = ? AND completed_at IS NULL AND started_at >= ? ORDER BY started_at, rowid`;
 const CONSUMERS = `SELECT session_id, agent_id, last_seen_at FROM consumers

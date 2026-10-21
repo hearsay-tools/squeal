@@ -1,12 +1,13 @@
-import { readdirSync, rmSync } from "node:fs";
-import { dirname } from "node:path";
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { discover } from "../../src/core/ps/discover.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import type { PsSource } from "../../src/core/ps/source.js";
 import { readWork } from "../../src/core/ps/work.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
+import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
 import type { Store } from "../../src/core/types/index.js";
 import {
   daemonProcess,
@@ -23,10 +24,11 @@ import {
 } from "./fixture-stores.js";
 
 /*
- * Spec 014 goal 4 and D3 (task 014-26): `ps` reads a store and
+ * Spec 014 goal 4 and D3 (tasks 014-23, 014-26): `ps` reads a store and
  * leaves it as it found it. A store no connection holds open has no `-wal`
  * and `-shm`, and SQLite's WAL reader would create both (`lessons.md` P6),
- * so such a store is read from its database file alone.
+ * so such a store is read from its database file alone. The open runs of a
+ * store are one query per reading, whatever its daemons.
  */
 
 let host: FixtureHost;
@@ -61,6 +63,15 @@ function read() {
   return readWork(source, table, discover(source, table, host.places).daemons);
 }
 const listing = (repo: FixtureRepo): string[] => readdirSync(dirname(repo.storePath)).sort();
+/** A second worktree of `repo`'s store: its own root and lock, the same common dir. */
+function linked(repo: FixtureRepo, name: string): FixtureRepo {
+  const root = join(host.base, name);
+  mkdirSync(root);
+  const id = worktreeIdFor(root);
+  const lockPath = lockFileFor(repo.commonDir, id);
+  writeFileSync(lockPath, "");
+  return { root, commonDir: repo.commonDir, id, lockPath, storePath: repo.storePath };
+}
 function openRun(store: Store, repo: FixtureRepo, id: string): void {
   store.runs.start({
     id,
@@ -129,6 +140,30 @@ describe("a read creates no file", () => {
         what: "daemon 800 work",
         why: `its store ${alpha.storePath} changed while it was read without its WAL`,
       },
+    ]);
+  });
+});
+
+describe("the open runs", () => {
+  test("are one query per store and reading, each worktree's split from it", () => {
+    const beta = linked(alpha, "alpha-b");
+    const gamma = linked(alpha, "alpha-c");
+    serve(alpha, beta, gamma);
+    writeStore(alpha, daemonRecord(alpha), (store) => openRun(store, alpha, "a1"));
+    writeStore(beta, daemonRecord(beta), (store) => {
+      openRun(store, beta, "b1");
+      openRun(store, beta, "b2");
+    });
+    writeStore(gamma, daemonRecord(gamma));
+    const prepare = vi.spyOn(DatabaseSync.prototype, "prepare");
+
+    const { work } = read();
+    const runQueries = prepare.mock.calls.filter(([sql]) => /\bFROM runs\b/.test(sql));
+    expect(runQueries).toHaveLength(1);
+    expect([800, 801, 802].map((pid) => work.get(pid)?.tiers.map((t) => t.runId))).toEqual([
+      ["a1"],
+      ["b1", "b2"],
+      [],
     ]);
   });
 });
