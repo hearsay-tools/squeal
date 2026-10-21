@@ -1,7 +1,7 @@
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { discover } from "./discover.js";
 import { hostTotals, readPool } from "./host.js";
-import { measure, takeSample } from "./measure.js";
+import { below, measure, takeSample } from "./measure.js";
 import type {
   Attribution,
   DaemonWork,
@@ -13,9 +13,9 @@ import type {
   PsPlaces,
 } from "./model.js";
 import { attribute } from "./processes.js";
-import type { PsSnapshot } from "./shape.js";
+import type { PsSnapshot, PsUnknown } from "./shape.js";
 import { shapeOf, type WindowRead } from "./snapshot-shape.js";
-import type { PsSource } from "./source.js";
+import type { ProcessRow, ProcessTable, PsSource } from "./source.js";
 import { readWork } from "./work.js";
 
 /*
@@ -25,9 +25,11 @@ import { readWork } from "./work.js";
  * waited out, and the second sample closes it. That second reading reads
  * Squeal's processes, their stores and their marks again, so the flags that
  * confirm on two samples (D7) have both; the rules of the whole host read
- * the first, which holds every process. The CPU is over the monotonic
- * window; the phases and ages are against the epoch clock read at the
- * first sample. Nothing here writes, signals or connects.
+ * the first, which holds every process. For the CPU it also reads every
+ * process below Squeal's and each one born in the window (D4), which the
+ * flags do not see. The CPU is over the monotonic window; the phases and
+ * ages are against the epoch clock read at the first sample. Nothing here
+ * writes, signals or connects.
  */
 
 /** The CPU window (D4): about half the error of 1 s. */
@@ -73,7 +75,15 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
   const bootTime = source.bootTime();
   await o.wait(Math.max(0, o.sampleMs - (performance.now() - first.atMs)));
 
-  const second = takeSample(source, followed(discovery, work.work, attribution));
+  const pids = followed(discovery, work.work, attribution);
+  // The CPU reads what lies below Squeal's processes, and what was born there (D4).
+  const tree = below(first.table, measured(discovery, attribution));
+  const read = takeSample(
+    source,
+    [...new Set([...pids, ...tree])],
+    tree.length > 0 ? first.table : undefined,
+  );
+  const second = { ...read, table: only(read.table, pids) };
   const live = discovery.daemons.filter(
     (d) => second.table.get(d.row.pid)?.startTicks === d.row.startTicks,
   );
@@ -98,10 +108,18 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
       { ...reading, cpuTime: first.cpuTime },
       { ...reading, cpuTime: second.cpuTime },
     ),
-    costs: measure(source, first, second, measured(discovery, attribution)),
+    costs: measure(source, first, read, measured(discovery, attribution)),
     bootTime,
-    unknown: [...discovery.unknown, ...work.unknown, ...again.unknown],
+    unknown: [...discovery.unknown, ...work.unknown, ...again.unknown, ...blind(first.table, tree)],
   };
+}
+
+/** D4 on a source without children's times (D10): a process that ends in the window adds none. */
+function blind(table: ProcessTable, pids: readonly number[]): PsUnknown[] {
+  if (!pids.some((pid) => table.get(pid)?.childTicks === null)) return [];
+  const why =
+    "a lower bound: the source reads no children's CPU on this platform (D10), so a process that ends in the window adds none";
+  return [{ what: "squeal cpuPct", why }];
 }
 
 /**
@@ -142,4 +160,14 @@ function followed(
   for (const w of work.values())
     for (const c of w.consumers) if (c.harness !== null) pids.add(c.harness.pid);
   return [...pids].sort((a, b) => a - b);
+}
+
+/** The rows of `pids`: what the flags read at the second sample. */
+function only(table: ProcessTable, pids: readonly number[]): ProcessTable {
+  const kept = new Map<number, ProcessRow>();
+  for (const pid of pids) {
+    const row = table.get(pid);
+    if (row !== undefined) kept.set(pid, row);
+  }
+  return kept;
 }

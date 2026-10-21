@@ -228,6 +228,80 @@ describe("a serving daemon with a fork worker", () => {
   });
 });
 
+describe("Squeal's CPU counts what ends in the window (task 014-21, lessons.md P2)", () => {
+  test("a child that starts and ends between the two samples counts its CPU in its daemon's row and in Squeal's share", async () => {
+    writeCpuTimes(host, 1_000_000, 100_000);
+    const daemon = host.serve(800, alpha);
+    const { shape } = await snap(() => {
+      // The daemon used 100 ticks; a child it started and waited for in the window used 150.
+      addTicks(host, daemon, 100, 150);
+      writeCpuTimes(host, 1_004_416, 100_384);
+    });
+    expect(shape.repositories[0]?.daemons[0]).toMatchObject({ cpuPct: 125, cpuMs: 13_000 });
+    expect(shape.squeal.cpuPct).toBe(125);
+    expect(shape.squeal.cpuShare).toBeCloseTo((125 / 2_208) * 100);
+    expect(shape.unknown.map((u) => u.what)).not.toContain("squeal cpuPct");
+  });
+
+  test("a fork worker that ended in the window counts in its daemon; an escaped process that ended is named as left out", async () => {
+    const daemon = host.serve(800, alpha);
+    const worker = forkWorker(801, 800, `${TOKEN}:vitest`);
+    const escaped = { ...forkWorker(803, 1, `${TOKEN}:slow:vitest`), comm: "chrome" };
+    writeProcesses(host, [worker, escaped]);
+    const { shape } = await snap(() => {
+      // The worker had 1,200 ticks at the first sample and 1,260 at its end, which its daemon waited for.
+      rmSync(join(host.base, "proc", "801"), { recursive: true });
+      rmSync(join(host.base, "proc", "803"), { recursive: true });
+      addTicks(host, daemon, 0, 1_260);
+    });
+    const d = shape.repositories[0]?.daemons[0];
+    expect(d?.cpuPct).toBe(30);
+    expect(d?.processes.map((p) => [p.pid, p.cpuPct])).toEqual([
+      [801, null],
+      [803, null],
+    ]);
+    expect(shape.squeal.cpuPct).toBe(30);
+    expect(shape.unknown).toContainEqual({
+      what: "squeal cpuPct",
+      why: "a lower bound: it leaves out the CPU in the window of 1 process in one sample only, which no process ps measures waited for: pid 803",
+    });
+  });
+
+  test("a child born in the window and alive at its end counts all its CPU in its nearest row", async () => {
+    const daemon = host.serve(800, alpha);
+    const worker = forkWorker(801, 800, `${TOKEN}:vitest`);
+    writeProcesses(host, [worker]);
+    const { shape } = await snap(() => {
+      writeProcesses(host, [{ ...gitChild(805, 801), ageS: 1, lifeCpuPct: 40 }]);
+      addTicks(host, daemon, 0);
+    });
+    const p = shape.repositories[0]?.daemons[0]?.processes[0];
+    // The git's 40 ticks in 1 s of life, in 2 s; it is no descendant of the first reading's.
+    expect(p).toMatchObject({ pid: 801, cpuPct: 20, descendants: { count: 0 } });
+    expect(shape.squeal.cpuPct).toBe(20);
+  });
+});
+
+describe("a source without children's times (D10)", () => {
+  test("names Squeal's CPU a lower bound, once", async () => {
+    const daemonArgs = ["node", cacheScript("claude", "0.1.235"), "daemon", "/gone/a"];
+    const { source } = fakeSource(
+      [
+        { pid: 700, ppid: 1, comm: "node", cmdline: daemonArgs, childTicks: null },
+        { pid: 701, ppid: 700, cmdline: ["node", "x.js"], childTicks: null },
+      ],
+      { readsMarks: false },
+    );
+    const { shape } = await snap(() => {}, { source, places: { ...host.places, uid: 1000 } });
+    expect(shape.unknown.filter((u) => u.what === "squeal cpuPct")).toEqual([
+      {
+        what: "squeal cpuPct",
+        why: "a lower bound: the source reads no children's CPU on this platform (D10), so a process that ends in the window adds none",
+      },
+    ]);
+  });
+});
+
 describe("the window (reviews/wave-1.md input 3)", () => {
   test("the flags get both readings, 2 s apart on the monotonic clock, and the epoch clock of the first sample", async () => {
     host.serve(800, alpha);
@@ -478,7 +552,7 @@ describe("what is unknown (D8): one entry per cause", () => {
       expect.arrayContaining([
         {
           what: "processes cpuPct",
-          why: "2 processes were in one sample of the window only: pid 801, 802",
+          why: "2 processes were in one sample of the window only: pid 801, 802; the ancestor that waited for them counts their CPU",
         },
         {
           what: "processes privateBytes",

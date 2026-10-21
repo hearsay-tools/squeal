@@ -26,6 +26,8 @@ export interface FakeProcess {
   readonly comm?: string;
   readonly startTicks?: number;
   readonly cpuTicks?: number;
+  /** `null`: the source reads none (D10). */
+  readonly childTicks?: number | null;
   readonly nice?: number;
   readonly cmdline?: readonly string[] | null;
   readonly mark?: string | null;
@@ -41,6 +43,7 @@ export function rowOf(p: FakeProcess): ProcessRow {
     state: "S",
     startTicks: p.startTicks ?? 1_000,
     cpuTicks: p.cpuTicks ?? 0,
+    childTicks: p.childTicks === undefined ? 0 : p.childTicks,
     nice: p.nice ?? 0,
     uid: 1000,
   };
@@ -94,8 +97,13 @@ export function fakeSource(
     readsMarks,
     clockTicks: () => CLOCK_TICKS,
     bootTime: () => null,
-    processTable(pids) {
-      const chosen = pids === undefined ? processes : processes.filter((p) => pids.includes(p.pid));
+    processTable(pids, since) {
+      const chosen =
+        pids === undefined
+          ? processes
+          : processes.filter(
+              (p) => pids.includes(p.pid) || (since !== undefined && !since.has(p.pid)),
+            );
       count("stat", chosen.length);
       return tableOf(chosen);
     },
