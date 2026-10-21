@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { flag } from "../../src/core/ps/flags.js";
 import { fileFlags } from "../../src/core/ps/flags-files.js";
-import type { SocketFile } from "../../src/core/ps/model.js";
+import type { PsModel, SocketFile } from "../../src/core/ps/model.js";
 import {
   dirAged,
   foundDaemon,
@@ -18,6 +18,7 @@ import {
   workOf,
   writeAged,
 } from "./fixture-model.js";
+import { countingSource } from "./fixture-samples.js";
 
 /* Spec 014 D7, the files: each flag's flagged case and the healthy one it could take for it. */
 
@@ -237,6 +238,68 @@ describe("leftover-temp", () => {
     expect(findings.leftovers).toEqual([join(link, "squeal-e2e-freeAA")]);
   });
 
+  /** `model` whose source gives these listening sockets and open files, and counts its reads. */
+  function seen(
+    model: PsModel,
+    uses: { listeners?: readonly string[] | null; fds?: Readonly<Record<number, string[]>> },
+  ) {
+    const listeners =
+      uses.listeners === null
+        ? null
+        : (uses.listeners ?? []).map((path, i) => ({ path, socketInode: i, fileInode: i }));
+    const { source, reads } = countingSource({
+      ...model.source,
+      unixListeners: () => listeners,
+      fds: (pid) => uses.fds?.[pid] ?? [],
+    });
+    return { model: { ...model, source }, reads };
+  }
+
+  it("leaves a directory a live process listens under, or holds a file open under, alone (lessons.md P5)", () => {
+    const socket = dirAged(keyDir("00000000000000aa"), 2 * HOUR);
+    const open = dirAged(keyDir("00000000000000bb"), 2 * HOUR);
+    const deleted = dirAged(join(host.places.tempDir, "squeal-e2e-AbC123"), 2 * HOUR);
+    const free = dirAged(keyDir("00000000000000cc"), 2 * HOUR);
+    const processes = [{ pid: 700 }, { pid: 701 }];
+    const { model } = seen(modelOf({ host, processes }), {
+      listeners: [join(socket, "cez-ci-1", "ipc"), "@abstract", "relative.sock"],
+      fds: {
+        700: ["/dev/null", "socket:[42]", join(open, "log.txt")],
+        701: [`${join(deleted, "x")} (deleted)`],
+      },
+    });
+    const findings = flag(model);
+    expect(findings.leftovers).toEqual([free]);
+    expect(findings.unknown).toEqual([]);
+  });
+
+  it("reads no socket or open file once working directories and arguments use every candidate", () => {
+    const cwd = dirAged(keyDir("00000000000000aa"), 2 * HOUR);
+    const processes = [{ pid: 700, cwd }, { pid: 701 }];
+    const { model, reads } = seen(modelOf({ host, processes }), {});
+    expect(flag(model).leftovers).toEqual([]);
+    expect([reads.get("unixListeners"), reads.get("fds")]).toEqual([undefined, undefined]);
+  });
+
+  it("still lists without the sockets or the open files, and names what it could not read", () => {
+    const free = dirAged(keyDir("00000000000000aa"), 2 * HOUR);
+    const processes = [{ pid: 700 }];
+    const { model } = seen(modelOf({ host, processes }), { listeners: null });
+    const blind = { ...model, source: { ...model.source, fds: () => null } };
+    const findings = flag(blind);
+    expect(findings.leftovers).toEqual([free]);
+    expect(findings.unknown).toEqual([
+      {
+        what: "flag leftover-temp sockets",
+        why: "the listening unix sockets cannot be read (D10); a directory a socket is bound under counts as unused",
+      },
+      {
+        what: "flag leftover-temp open files",
+        why: "the open files of processes cannot be read (D10); a directory a file is open under counts as unused",
+      },
+    ]);
+  });
+
   it("is not evaluated without working directories, nor with a daemon of unknown key", () => {
     dirAged(keyDir("00000000000000aa"), 2 * HOUR);
     const blind = flag(modelOf({ host, cwds: false }));
@@ -268,12 +331,10 @@ describe("leftover-temp", () => {
     expect(fileFlags(model, 6).files[0]?.bytes).toBe(35);
     const past = fileFlags(model, 5);
     expect(past.files[0]?.bytes).toBeNull();
-    expect(past.unknown).toEqual([
-      {
-        what: "files leftover-temp bytes",
-        why: "the size walk stopped at 5 entries; `squeal ps --leftovers | xargs -d '\\n' du -sch --` sums them",
-      },
-    ]);
+    expect(past.unknown).toContainEqual({
+      what: "files leftover-temp bytes",
+      why: "the size walk stopped at 5 entries; `squeal ps --leftovers | xargs -d '\\n' du -sch --` sums them",
+    });
   });
 
   it("walks 3,500 leftover directories within the bound", () => {
