@@ -96,8 +96,9 @@ function digest(root: string, env: RunnerEnvironment | undefined): string {
 }
 
 describe("survivors re-key only when their environment's inputs change (001-370, review S1)", () => {
+  // Row 011-88: a file-based project's config file is in its own environment only, so both rows re-key no survivor.
   it.each([
-    ["e2e", "file-based, so its config file leaves every environment", true],
+    ["e2e", "file-based, so its config file was in no other environment", false],
     ["web", "inline, so nothing of the others' environment changes", false],
   ])("excluding %s: %s", SLOW, async (name, _why, rekeys) => {
     let excluded: readonly string[] = [];

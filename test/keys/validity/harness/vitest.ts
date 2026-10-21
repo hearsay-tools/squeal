@@ -114,8 +114,12 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
   const reports: RunReport[] = [];
   // Row 013-06: a case that removes its instance's temp directory starts it under one of its own.
   const tmp = input.runs.some((run) => run.removeTempDir === true) ? join(scratch, "tmp") : null;
+  let environments: unknown;
   try {
     await withTmpDir(tmp, () => adapter.open());
+    if (input.environment === true) {
+      environments = (await adapter.environment()).map((e) => [e.project, e.files]);
+    }
     for (const [at, run] of input.runs.entries()) {
       writeFileSync(hold, "");
       rmSync(started, { force: true });
@@ -148,6 +152,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     await adapter.close();
   }
   return {
+    ...(environments === undefined ? {} : { keys: { environments } }),
     outputs: { runs: reports.map(storedOf) },
     wording: { failures: reports.map((r) => r.failure) },
   };
