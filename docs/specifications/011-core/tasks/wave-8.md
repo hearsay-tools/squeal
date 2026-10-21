@@ -68,3 +68,17 @@ Answer, each with an evidence tag and one recommendation:
 4. The code rows: seams, owners, the done-when as tests.
 
 Include spec text as drafts and the rejected options. Owns `tasks/011-61/` only, probes under `tasks/011-61/probes/` in a throwaway repo under `/tmp` with `HOME` and `XDG_*` there, only while the one-minute load is below 24; no full suite, no build. Not yours: spec text, `status.md`, the board, product code. Done when `design.md` is committed. Stop: the human's dated acceptance.
+
+## R1: 011-68, the shipped yield rule on cezar's recorded runs (011-51's test 10)
+
+Use /researcher. Shape: research. Read board rows 011-68 and 011-51, `research/running-tier-yields.md` (questions 3 and 4, the replay's method), `probes/running-tier-yields/mid-tier.mjs`, spec 011 C4 step 5 and C15 as amended 2026-10-21, and `013-vitest-runner/research/issue-62.md`. A fact from W1 (013-03): the 3.5 s in gh-62 is the file-level check's remainder (`src/core/scheduler/records.ts` stores the file's time less its tests'), and the scheduler's estimate (`durationOf`, the sum of a file's results) was already the whole file.
+
+Outcome: how much sooner a named file gets its verdict on cezar under the shipped rule.
+
+Questions:
+1. Replay cezar's store read-only under three rules: 0.1.236 (no yield), 0.1.237 (every-file supersession, the 30 s yield) and 011-54's (supersession by the unfinished files only). Time to the named file's verdict, median and p90, and the files each rule cuts and runs again.
+2. The duration source: the scheduler's estimate against run-log wall times, and how far each moves the 30 s decision.
+3. The live check: one named wait behind a long tier in a scratch clone at 0.1.237 or later, only at a one-minute load below 8; otherwise say why it did not run.
+4. Whether 30 s still holds on this evidence.
+
+Isolation: scratch clones by SHA; a scratch `HOME`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and store; a real store only read-only (`node:sqlite`, `readOnly: true`). Owns `research/yields-replay.md`, `research/probes/yields-replay/`. Not yours: product code, spec text, `status.md`, the board. Done when the findings file answers 1 to 4, gives the load beside every live number, and ends with a recommendation.
