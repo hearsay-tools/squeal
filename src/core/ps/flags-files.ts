@@ -209,8 +209,12 @@ function fallbackKey(name: string, uid: number): string | null {
 /**
  * The temp directories that some process of this user has as its working
  * directory or names in an argument; `null` when working directories
- * cannot be read. One pass over each text, so the cost does not grow with
- * the candidates.
+ * cannot be read. A directory is used when a working directory or an
+ * argument is it or lies under it, or an argument is `<option>=` and such
+ * a path. A path is cut at `/` alone, since a name may hold a space, a
+ * quote, `=` or `:`, and no argument is read as shell text
+ * (`reviews/wave-2.md` B2). One pass over each text, so the cost does not
+ * grow with the candidates.
  */
 function usedPaths(model: PsModel, keyDirs: AbsolutePath): Set<AbsolutePath> | null {
   const { places, source } = model;
@@ -220,17 +224,20 @@ function usedPaths(model: PsModel, keyDirs: AbsolutePath): Set<AbsolutePath> | n
     .map((row) => row.pid);
   const cwds = source.cwds(pids);
   if (cwds === null) return null;
-  const texts = [...cwds.values()];
-  for (const pid of pids) texts.push(...(source.cmdline(pid) ?? []));
   const at = `${places.tempDir}/squeal-`;
-  const within = /^([^/\s'"=:]+)(?:\/tmp\/([^/\s'"=:]+))?/;
   const used = new Set<AbsolutePath>();
-  for (const text of texts) {
-    for (let i = text.indexOf(at); i >= 0; i = text.indexOf(at, i + 1)) {
-      const m = within.exec(text.slice(i + places.tempDir.length + 1));
-      if (m === null) continue;
-      used.add(join(places.tempDir, m[1] ?? ""));
-      if (m[2] !== undefined) used.add(join(keyDirs, m[2]));
+  const use = (path: string): void => {
+    if (!path.startsWith(at)) return;
+    const [top = "", sub, key] = path.slice(places.tempDir.length + 1).split("/", 3);
+    used.add(join(places.tempDir, top));
+    if (top === `squeal-${places.uid}` && sub === "tmp" && key !== undefined && key !== "")
+      used.add(join(keyDirs, key));
+  };
+  for (const cwd of cwds.values()) use(cwd);
+  for (const pid of pids) {
+    for (const arg of source.cmdline(pid) ?? []) {
+      // The path itself, or the value of `<option>=<path>`; a path's own `=` is no option's.
+      use(arg.startsWith(at) ? arg : arg.slice(arg.indexOf("=") + 1));
     }
   }
   return used;
