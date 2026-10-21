@@ -45,6 +45,7 @@ describe("CPU over the window", () => {
       privateBytes: 150 * MIB,
       swapBytes: 0,
       reapedBy: null,
+      left: false,
     });
   });
 
@@ -74,6 +75,7 @@ describe("CPU over the window", () => {
       privateBytes: null,
       swapBytes: null,
       reapedBy: null,
+      left: true,
     });
     expect(reads.get("status") ?? 0).toBe(0);
   });
@@ -89,7 +91,16 @@ describe("CPU over the window", () => {
       privateBytes: 150 * MIB,
       swapBytes: 0,
       reapedBy: null,
+      left: false,
     });
+  });
+
+  test("a zombie at the second sample ended: its CPU counts, it holds no memory, and its status is not read (014-24)", () => {
+    const zombie = { ...worker, cpuTicks: 390, state: "Z" };
+    const { source, reads } = fakeSource([zombie]);
+    const costs = measure(source, sampleOf(0, [worker]), sampleOf(2_000, [zombie]), [worker.pid]);
+    expect(costs.get(worker.pid)).toMatchObject({ cpuPct: 50, privateBytes: null, left: true });
+    expect(reads.get("status") ?? 0).toBe(0);
   });
 
   test("a pid that another process took during the window is two processes: the first one's CPU time, no window CPU, not the newcomer's memory", () => {
@@ -107,6 +118,7 @@ describe("CPU over the window", () => {
       privateBytes: null,
       swapBytes: null,
       reapedBy: null,
+      left: true,
     });
     expect(reads.get("status") ?? 0).toBe(0);
   });
@@ -253,11 +265,71 @@ describe("sumCosts", () => {
   test("sums each value over the processes that have one; null only when none has", () => {
     expect(
       sumCosts([
-        { cpuPct: 12, cpuMs: 100, privateBytes: 10, swapBytes: null, reapedBy: null },
-        { cpuPct: null, cpuMs: 5, privateBytes: 20, swapBytes: null, reapedBy: 1 },
+        { cpuPct: 12, cpuMs: 100, privateBytes: 10, swapBytes: null, reapedBy: null, left: false },
+        { cpuPct: null, cpuMs: 5, privateBytes: 20, swapBytes: null, reapedBy: null, left: false },
       ]),
-    ).toEqual({ cpuPct: 12, cpuMs: 105, privateBytes: 30, swapBytes: null });
-    expect(sumCosts([])).toEqual({ cpuPct: 0, cpuMs: 0, privateBytes: 0, swapBytes: 0 });
+    ).toEqual({
+      cpuPct: 12,
+      cpuMs: 105,
+      privateBytes: 30,
+      swapBytes: null,
+      skipped: { cpuPct: 1, privateBytes: 0, swapBytes: 2 },
+    });
+    expect(sumCosts([])).toEqual({
+      cpuPct: 0,
+      cpuMs: 0,
+      privateBytes: 0,
+      swapBytes: 0,
+      skipped: { cpuPct: 0, privateBytes: 0, swapBytes: 0 },
+    });
+  });
+
+  // A live process, a worker that ended under its daemon, and an escaped browser that ended under no measured process.
+  const live = {
+    cpuPct: 10,
+    cpuMs: 1,
+    privateBytes: 100,
+    swapBytes: 0,
+    reapedBy: null,
+    left: false,
+  };
+  const reaped = {
+    ...live,
+    cpuPct: null,
+    privateBytes: null,
+    swapBytes: null,
+    reapedBy: 800,
+    left: true,
+  };
+  const lost = { ...reaped, reapedBy: null };
+
+  test("one that ended adds no memory and its reaper holds its CPU: only a CPU no row holds is left out (014-24)", () => {
+    expect(sumCosts([live, reaped, lost])).toEqual({
+      cpuPct: 10,
+      cpuMs: 3,
+      privateBytes: 100,
+      swapBytes: 0,
+      skipped: { cpuPct: 1, privateBytes: 0, swapBytes: 0 },
+    });
+  });
+
+  test("a head's only descendant gone at the second sample: its sums are 0, never unknown", () => {
+    expect(sumCosts([reaped])).toEqual({
+      cpuPct: 0,
+      cpuMs: 1,
+      privateBytes: 0,
+      swapBytes: 0,
+      skipped: { cpuPct: 0, privateBytes: 0, swapBytes: 0 },
+    });
+  });
+
+  test("a sum that leaves out every value it has is unknown, with what it left out", () => {
+    const unread = { ...live, cpuPct: null, privateBytes: null, swapBytes: null };
+    expect(sumCosts([unread, reaped])).toMatchObject({
+      cpuPct: null,
+      privateBytes: null,
+      skipped: { cpuPct: 1, privateBytes: 1, swapBytes: 1 },
+    });
   });
 
   test("a test process's descendants are summed into it: the fixture fork worker's git", () => {

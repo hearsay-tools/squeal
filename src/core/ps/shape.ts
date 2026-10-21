@@ -58,7 +58,21 @@ export interface PsSqueal {
   /** `privateBytes` over `memTotal - memAvailable` (D6). Swap is stated apart. */
   readonly memoryShare: number | null;
   readonly swapBytes: number | null;
+  /** What each of the three sums leaves out (014-24). */
+  readonly skipped: PsSkipped;
   readonly pool: PsPool;
+}
+
+/**
+ * How many processes' values a sum leaves out because they are unknown:
+ * with any, the sum is a lower bound (D8). A process that ended in the
+ * window holds no memory and adds 0, and its CPU in the window counts in
+ * the ancestor that waited for it (D4): neither is left out.
+ */
+export interface PsSkipped {
+  readonly cpuPct: number;
+  readonly privateBytes: number;
+  readonly swapBytes: number;
 }
 
 export interface PsPool {
@@ -72,6 +86,11 @@ export interface PsRepository {
   /** The git common dir; `null` for daemons whose repository could not be read. */
   readonly commonDir: AbsolutePath | null;
   readonly current: boolean;
+  /** Its daemons and test processes with their descendants, as `PsSqueal`'s sums (014-24). */
+  readonly cpuPct: number | null;
+  readonly privateBytes: number | null;
+  readonly swapBytes: number | null;
+  readonly skipped: PsSkipped;
   readonly daemons: readonly PsDaemon[];
 }
 
@@ -171,6 +190,8 @@ export interface PsDescendants {
   readonly cpuMs: number | null;
   readonly privateBytes: number | null;
   readonly swapBytes: number | null;
+  /** What each sum leaves out (014-24). */
+  readonly skipped: PsSkipped;
   /** Each one with `--full`; `null` without it. */
   readonly list: readonly PsDescendant[] | null;
 }

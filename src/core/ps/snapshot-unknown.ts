@@ -67,11 +67,19 @@ export function unknownOf({ shape, named, costs }: UnknownInput): PsUnknown[] {
       "squeal cpuPct",
       `a lower bound: it leaves out the CPU in the window of ${counted(lost)} in one sample only, which no process ps measures waited for: ${pids(lost)}`,
     );
+  // One gone at the second sample holds none, so a sum adds 0 for it (014-24).
   const noMemory = entries.filter(([, c]) => c === null || c.privateBytes === null);
-  if (noMemory.length > 0)
+  const ended = noMemory.filter(([, c]) => c?.left === true);
+  if (ended.length > 0)
     name(
       "processes privateBytes",
-      `${counted(noMemory)} left before ${noMemory.length === 1 ? "its" : "their"} memory was read: ${pids(noMemory)}`,
+      `${counted(ended)} ended in the window, so ${ended.length === 1 ? "it holds" : "they hold"} none: ${pids(ended)}`,
+    );
+  const unread = noMemory.filter(([, c]) => c?.left !== true);
+  if (unread.length > 0)
+    name(
+      "squeal privateBytes",
+      `a lower bound: it leaves out the memory of ${counted(unread)} whose status could not be read: ${pids(unread)}`,
     );
   const noSwap = entries.filter(
     ([, c]) => c !== null && c.privateBytes !== null && c.swapBytes === null,

@@ -10,7 +10,14 @@ import {
   thousands,
 } from "../../src/core/ps/render-units.js";
 import type { PsFlag, PsTestProcess } from "../../src/core/ps/shape.js";
-import { EXAMPLE_AT, exampleDaemon, exampleProcess, exampleSnapshot } from "./fixture-snapshot.js";
+import {
+  EXAMPLE_AT,
+  exampleDaemon,
+  exampleProcess,
+  exampleRepository,
+  exampleSnapshot,
+  NO_SKIP,
+} from "./fixture-snapshot.js";
 
 /*
  * Spec 014 D8 (task 014-11): the text of `squeal ps`, from the shape alone,
@@ -82,6 +89,61 @@ describe("the D8 layout", () => {
   });
 });
 
+describe("a sum that leaves an unknown value out is a lower bound (task 014-24)", () => {
+  const out = { cpuPct: 1, privateBytes: 2, swapBytes: 1 };
+
+  test("the Squeal line says at least before each total and share that leaves a value out", () => {
+    const base = exampleSnapshot();
+    const s = exampleSnapshot({ squeal: { ...base.squeal, skipped: out } });
+    expect(lines(brief(s))[2]).toBe(
+      "Squeal  CPU at least 8.1 CPUs (at least 36% of busy) · memory at least 21.0 GiB (at least 64% of used) + at least 1.0 GiB swap · pool 3 of 12 permits",
+    );
+    const cpuOnly = exampleSnapshot({
+      squeal: { ...base.squeal, skipped: { ...NO_SKIP, cpuPct: 3 } },
+    });
+    expect(lines(brief(cpuOnly))[2]).toBe(
+      "Squeal  CPU at least 8.1 CPUs (at least 36% of busy) · memory 21.0 GiB (64% of used) + 1.0 GiB swap · pool 3 of 12 permits",
+    );
+  });
+
+  test("the repository line says at least before a total that leaves a value out", () => {
+    const daemons = [exampleDaemon({ processes: [exampleProcess()] })];
+    const s = exampleSnapshot({
+      repositories: [exampleRepository("/r/.git", false, daemons, out)],
+    });
+    expect(lines(brief(s))[4]).toBe("/r · 1 daemon · CPU at least 0.4 · memory at least 2.5 GiB");
+  });
+
+  test("a test process's column takes a + when its descendants' sum leaves a value out", () => {
+    const descendants = {
+      ...exampleProcess().descendants,
+      skipped: { ...NO_SKIP, privateBytes: 1 },
+    };
+    const daemons = [exampleDaemon({ processes: [exampleProcess({ descendants })] })];
+    const s = exampleSnapshot({ repositories: [exampleRepository("/r/.git", false, daemons)] });
+    expect(lines(brief(s)).find((l) => l.includes(" 3704700 "))).toBe(
+      "    vitest           3704700  fork worker                4m   12%     0m29s  310M+   0     nice 10, +2 children",
+    );
+  });
+
+  test("a worker whose descendants all left prints its own values with theirs at 0, never ? (lessons.md P4)", () => {
+    const gone = {
+      count: 2,
+      cpuPct: 0,
+      cpuMs: 2_000,
+      privateBytes: 0,
+      swapBytes: 0,
+      skipped: NO_SKIP,
+      list: null,
+    };
+    const daemons = [exampleDaemon({ processes: [exampleProcess({ descendants: gone })] })];
+    const s = exampleSnapshot({ repositories: [exampleRepository("/r/.git", false, daemons)] });
+    expect(lines(brief(s)).find((l) => l.includes(" 3704700 "))).toBe(
+      "    vitest           3704700  fork worker                4m   10%     0m29s  300M    0     nice 10, +2 children",
+    );
+  });
+});
+
 describe("flagged rows", () => {
   const hung: PsFlag = {
     flag: "hung",
@@ -91,9 +153,7 @@ describe("flagged rows", () => {
 
   test("a flagged daemon starts with `!`, its reason and its `ends it:` line under it", () => {
     const s = exampleSnapshot({
-      repositories: [
-        { commonDir: null, current: false, daemons: [exampleDaemon({ flags: [hung] })] },
-      ],
+      repositories: [exampleRepository(null, false, [exampleDaemon({ flags: [hung] })])],
       files: [],
       flags: 1,
     });
@@ -116,16 +176,12 @@ describe("flagged rows", () => {
     };
     const s = exampleSnapshot({
       repositories: [
-        {
-          commonDir: "/r/.git",
-          current: false,
-          daemons: [
-            exampleDaemon({
-              flags: [flag],
-              processes: [exampleProcess({ escaped: true, flags: [overdue] })],
-            }),
-          ],
-        },
+        exampleRepository("/r/.git", false, [
+          exampleDaemon({
+            flags: [flag],
+            processes: [exampleProcess({ escaped: true, flags: [overdue] })],
+          }),
+        ]),
       ],
     });
     const text = brief(s);
@@ -180,26 +236,23 @@ describe("unknown values print as unknown, never 0", () => {
         privateBytes: null,
         memoryShare: null,
         swapBytes: null,
+        skipped: NO_SKIP,
         pool: { slots: 7, held: null },
       },
       repositories: [
-        {
-          commonDir: "/r/.git",
-          current: false,
-          daemons: [
-            exampleDaemon({
-              worktreeId: null,
-              version: null,
-              harness: null,
-              startedAt: null,
-              cpuPct: null,
-              cpuMs: null,
-              privateBytes: null,
-              swapBytes: null,
-              work: { ...exampleDaemon().work, tiers: [], pending: null, running: null },
-            }),
-          ],
-        },
+        exampleRepository("/r/.git", false, [
+          exampleDaemon({
+            worktreeId: null,
+            version: null,
+            harness: null,
+            startedAt: null,
+            cpuPct: null,
+            cpuMs: null,
+            privateBytes: null,
+            swapBytes: null,
+            work: { ...exampleDaemon().work, tiers: [], pending: null, running: null },
+          }),
+        ]),
       ],
       unknown: [{ what: "host load", why: "the source cannot read it on this host" }],
     });
@@ -218,12 +271,20 @@ describe("unknown values print as unknown, never 0", () => {
   });
 
   describe("a test process's columns (reviews/wave-2.md B3)", () => {
-    const none = { count: 0, cpuPct: 0, cpuMs: 0, privateBytes: 0, swapBytes: 0, list: null };
+    const none = {
+      count: 0,
+      cpuPct: 0,
+      cpuMs: 0,
+      privateBytes: 0,
+      swapBytes: 0,
+      skipped: NO_SKIP,
+      list: null,
+    };
     const rowOf = (p: PsTestProcess, memory: "private" | "rss" = "private") => {
       const daemons = [exampleDaemon({ processes: [p] })];
       const s = exampleSnapshot({
         memory,
-        repositories: [{ commonDir: "/r/.git", current: false, daemons }],
+        repositories: [exampleRepository("/r/.git", false, daemons)],
       });
       return lines(brief(s)).find((l) => l.includes(" 3704700 "));
     };
@@ -278,11 +339,7 @@ describe("--full", () => {
     });
     const s = exampleSnapshot({
       repositories: [
-        {
-          commonDir: "/r/.git",
-          current: false,
-          daemons: [exampleDaemon({ processes: [process] })],
-        },
+        exampleRepository("/r/.git", false, [exampleDaemon({ processes: [process] })]),
       ],
       unflaggedFiles: [
         { kind: "lock", count: 12 },
