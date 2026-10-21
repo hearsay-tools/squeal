@@ -121,6 +121,7 @@ export function rowOf(p: ProcessSpec): ProcessRow {
     state: "S",
     startTicks: ticksAt(p.ageS ?? 600),
     cpuTicks: 0,
+    childTicks: 0,
     nice: 0,
     uid: p.uid === undefined ? UID : p.uid,
   };

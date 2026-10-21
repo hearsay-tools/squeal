@@ -54,10 +54,18 @@ export function unknownOf({ shape, named, costs }: UnknownInput): PsUnknown[] {
 
   const entries = [...costs];
   const seenOnce = entries.filter(([, c]) => c === null || c.cpuPct === null);
+  // Its CPU in the window counts in the ancestor that waited for it (D4).
+  const reaped = seenOnce.filter(([, c]) => (c?.reapedBy ?? null) !== null);
   if (seenOnce.length > 0)
     name(
       "processes cpuPct",
-      `${were(seenOnce)} in one sample of the window only: ${pids(seenOnce)}`,
+      `${were(seenOnce)} in one sample of the window only: ${pids(seenOnce)}${waitedFor(reaped.length, seenOnce.length)}`,
+    );
+  const lost = seenOnce.filter(([, c]) => (c?.reapedBy ?? null) === null);
+  if (lost.length > 0)
+    name(
+      "squeal cpuPct",
+      `a lower bound: it leaves out the CPU in the window of ${counted(lost)} in one sample only, which no process ps measures waited for: ${pids(lost)}`,
     );
   const noMemory = entries.filter(([, c]) => c === null || c.privateBytes === null);
   if (noMemory.length > 0)
@@ -113,6 +121,13 @@ function daemonOf(
   // A starting daemon's row is a predecessor's, which `readWork` names as its work.
   else if (d.work.lastUsedAt === null && !all.has(`${of} work`))
     name(`${of} lastUsedAt`, "its store records no last use of its own (D9)");
+}
+
+/** Of `once` processes seen once, `reaped` ended under an ancestor that counts their CPU. */
+function waitedFor(reaped: number, once: number): string {
+  if (reaped === 0) return "";
+  const whom = reaped < once ? `${reaped} of them` : once === 1 ? "it" : "them";
+  return `; the ancestor that waited for ${whom} counts ${once === 1 ? "its" : "their"} CPU`;
 }
 
 function counted(entries: readonly unknown[]): string {
