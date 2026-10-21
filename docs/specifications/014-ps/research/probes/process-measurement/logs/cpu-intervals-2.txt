@@ -1,0 +1,170 @@
+{
+ "at": "2026-10-21T08:20:33.167Z",
+ "durationS": 60,
+ "stepMs": 250,
+ "load1": [
+  45.11,
+  37.97
+ ],
+ "processes": {
+  "daemon": 21,
+  "test": 38
+ },
+ "result": {
+  "0.5s": {
+   "daemon": {
+    "n": 2058,
+    "errVs10sMedian": 7.2,
+    "errVs10sP90": 32,
+    "nextSwingMedian": 2,
+    "nextSwingP90": 68
+   },
+   "test": {
+    "n": 2093,
+    "errVs10sMedian": 6.1,
+    "errVs10sP90": 26.9,
+    "nextSwingMedian": 4,
+    "nextSwingP90": 33.3
+   }
+  },
+  "1s": {
+   "daemon": {
+    "n": 1029,
+    "errVs10sMedian": 6,
+    "errVs10sP90": 31.1,
+    "nextSwingMedian": 1,
+    "nextSwingP90": 57.4
+   },
+   "test": {
+    "n": 1046,
+    "errVs10sMedian": 4,
+    "errVs10sP90": 23.4,
+    "nextSwingMedian": 4,
+    "nextSwingP90": 32.2
+   }
+  },
+  "2s": {
+   "daemon": {
+    "n": 504,
+    "errVs10sMedian": 4.7,
+    "errVs10sP90": 17.2,
+    "nextSwingMedian": 5.1,
+    "nextSwingP90": 37.3
+   },
+   "test": {
+    "n": 514,
+    "errVs10sMedian": 2.6,
+    "errVs10sP90": 18.6,
+    "nextSwingMedian": 3.4,
+    "nextSwingP90": 32.5
+   }
+  }
+ },
+ "life": [
+  {
+   "pid": 1326051,
+   "last10s": 0.1,
+   "lifetime": 1.7
+  },
+  {
+   "pid": 2091149,
+   "last10s": 0.1,
+   "lifetime": 2.2
+  },
+  {
+   "pid": 2091490,
+   "last10s": 27.5,
+   "lifetime": 26
+  },
+  {
+   "pid": 2128703,
+   "last10s": 17.3,
+   "lifetime": 26.8
+  },
+  {
+   "pid": 2144348,
+   "last10s": 0.1,
+   "lifetime": 2
+  },
+  {
+   "pid": 2145215,
+   "last10s": 0,
+   "lifetime": 1.8
+  },
+  {
+   "pid": 2145899,
+   "last10s": 3.5,
+   "lifetime": 2.2
+  },
+  {
+   "pid": 2696595,
+   "last10s": 16.1,
+   "lifetime": 17.9
+  },
+  {
+   "pid": 2721938,
+   "last10s": 31,
+   "lifetime": 16.6
+  },
+  {
+   "pid": 2741583,
+   "last10s": 12.6,
+   "lifetime": 14.2
+  },
+  {
+   "pid": 2776538,
+   "last10s": 19.5,
+   "lifetime": 19.3
+  },
+  {
+   "pid": 2860458,
+   "last10s": 17.1,
+   "lifetime": 16.1
+  },
+  {
+   "pid": 2974521,
+   "last10s": 28.8,
+   "lifetime": 20.3
+  },
+  {
+   "pid": 3058908,
+   "last10s": 3.1,
+   "lifetime": 19.6
+  },
+  {
+   "pid": 3241641,
+   "last10s": 0.1,
+   "lifetime": 10.6
+  },
+  {
+   "pid": 349493,
+   "last10s": 0,
+   "lifetime": 1.6
+  },
+  {
+   "pid": 3546894,
+   "last10s": 2.3,
+   "lifetime": 10.2
+  },
+  {
+   "pid": 3699153,
+   "last10s": 0.2,
+   "lifetime": 11.6
+  },
+  {
+   "pid": 3704612,
+   "last10s": 16.9,
+   "lifetime": 26.6
+  },
+  {
+   "pid": 4099030,
+   "last10s": 16.1,
+   "lifetime": 19.6
+  },
+  {
+   "pid": 4102450,
+   "last10s": 13.9,
+   "lifetime": 19.4
+  }
+ ]
+}

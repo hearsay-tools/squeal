@@ -1,0 +1,2 @@
+{"load1":42.32,"processes":54,"serial":{"wallMs":1307,"cpuMs":1186},"fourThreads":{"wallMs":638,"processCpuMs":1512,"workersSeen":4}}
+{"load1":42.32,"processes":54,"serial":{"wallMs":1289,"cpuMs":1094},"fourThreads":{"wallMs":452,"processCpuMs":1310,"workersSeen":4}}

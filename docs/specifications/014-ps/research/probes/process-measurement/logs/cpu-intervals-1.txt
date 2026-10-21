@@ -1,0 +1,175 @@
+{
+ "at": "2026-10-21T08:16:13.919Z",
+ "durationS": 60,
+ "stepMs": 250,
+ "load1": [
+  35.09,
+  38.86
+ ],
+ "processes": {
+  "daemon": 22,
+  "test": 37
+ },
+ "result": {
+  "0.5s": {
+   "daemon": {
+    "n": 2156,
+    "errVs10sMedian": 4.7,
+    "errVs10sP90": 31.3,
+    "nextSwingMedian": 2,
+    "nextSwingP90": 64.7
+   },
+   "test": {
+    "n": 2152,
+    "errVs10sMedian": 3.7,
+    "errVs10sP90": 19.8,
+    "nextSwingMedian": 3.9,
+    "nextSwingP90": 25.5
+   }
+  },
+  "1s": {
+   "daemon": {
+    "n": 1078,
+    "errVs10sMedian": 4.3,
+    "errVs10sP90": 33.2,
+    "nextSwingMedian": 1,
+    "nextSwingP90": 58.5
+   },
+   "test": {
+    "n": 1076,
+    "errVs10sMedian": 2.8,
+    "errVs10sP90": 15.8,
+    "nextSwingMedian": 3.9,
+    "nextSwingP90": 23.5
+   }
+  },
+  "2s": {
+   "daemon": {
+    "n": 528,
+    "errVs10sMedian": 3.8,
+    "errVs10sP90": 18,
+    "nextSwingMedian": 2.6,
+    "nextSwingP90": 38.4
+   },
+   "test": {
+    "n": 528,
+    "errVs10sMedian": 1.5,
+    "errVs10sP90": 11.3,
+    "nextSwingMedian": 2,
+    "nextSwingP90": 16.3
+   }
+  }
+ },
+ "life": [
+  {
+   "pid": 1326051,
+   "last10s": 3.7,
+   "lifetime": 1.7
+  },
+  {
+   "pid": 2091149,
+   "last10s": 4.1,
+   "lifetime": 2.8
+  },
+  {
+   "pid": 2091490,
+   "last10s": 25.3,
+   "lifetime": 25.2
+  },
+  {
+   "pid": 2128703,
+   "last10s": 43.2,
+   "lifetime": 21.8
+  },
+  {
+   "pid": 2144348,
+   "last10s": 0.2,
+   "lifetime": 2.8
+  },
+  {
+   "pid": 2145215,
+   "last10s": 0,
+   "lifetime": 2.9
+  },
+  {
+   "pid": 2145899,
+   "last10s": 4.8,
+   "lifetime": 3.3
+  },
+  {
+   "pid": 2254287,
+   "last10s": 0.2,
+   "lifetime": 15.2
+  },
+  {
+   "pid": 2696595,
+   "last10s": 9.2,
+   "lifetime": 17.8
+  },
+  {
+   "pid": 2721938,
+   "last10s": 14.5,
+   "lifetime": 16.5
+  },
+  {
+   "pid": 2741583,
+   "last10s": 19.4,
+   "lifetime": 14.2
+  },
+  {
+   "pid": 2776538,
+   "last10s": 20.2,
+   "lifetime": 19.2
+  },
+  {
+   "pid": 2860458,
+   "last10s": 7.1,
+   "lifetime": 16.2
+  },
+  {
+   "pid": 2974521,
+   "last10s": 42.3,
+   "lifetime": 19.5
+  },
+  {
+   "pid": 3058908,
+   "last10s": 3.7,
+   "lifetime": 20.6
+  },
+  {
+   "pid": 3241641,
+   "last10s": 2.1,
+   "lifetime": 11.2
+  },
+  {
+   "pid": 349493,
+   "last10s": 0.1,
+   "lifetime": 1.6
+  },
+  {
+   "pid": 3546894,
+   "last10s": 0.4,
+   "lifetime": 10.6
+  },
+  {
+   "pid": 3699153,
+   "last10s": 0.5,
+   "lifetime": 12.1
+  },
+  {
+   "pid": 3704612,
+   "last10s": 19.4,
+   "lifetime": 27
+  },
+  {
+   "pid": 4099030,
+   "last10s": 17.7,
+   "lifetime": 19.6
+  },
+  {
+   "pid": 4102450,
+   "last10s": 14.3,
+   "lifetime": 19.5
+  }
+ ]
+}

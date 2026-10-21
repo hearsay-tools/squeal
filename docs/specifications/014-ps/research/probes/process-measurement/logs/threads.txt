@@ -1,0 +1,11 @@
+2286122 "MainThread" ticks 6
+2286131 "DelayedTaskSche" ticks 0
+2286132 "V8Worker" ticks 0
+2286133 "V8Worker" ticks 0
+2286134 "V8Worker" ticks 0
+2286135 "V8Worker" ticks 0
+2286144 "SignalInspector" ticks 0
+2286180 "WorkerThread" ticks 199
+2286181 "WorkerThread" ticks 7
+2286182 "squeal-probe" ticks 6
+worker env MARK in /proc/<pid>/environ: false

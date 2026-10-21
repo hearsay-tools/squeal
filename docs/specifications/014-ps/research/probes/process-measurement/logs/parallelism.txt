@@ -1,0 +1,5 @@
+plain: 24 cpus=24 uv=1.52.1
+taskset 0-3: 4 cpus=24
+CPUQuota=200%: 2 cpus=24 cgroup=/user.slice/user-1001.slice/user@1001.service/app.slice/run-r2c9e38aba99744f5907dbd4de7fe09b4.scope cpu.max=200000 100000
+cpu memory pids
+memory pids
