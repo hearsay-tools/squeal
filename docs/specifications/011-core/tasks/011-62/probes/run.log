@@ -1,0 +1,222 @@
+== load: 5.58 10.43 19.56 6/3358 4002296 cpus: 24
+== squeal 0.1.238 node v24.21.0
+$ squeal start
+Squeal daemon spawned for /tmp/sq62.izuu/repo
+
+Revision: 0
+Known failures: 0; the daemon has not listed this worktree's test files yet
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it
+More: `squeal status --full` adds the worktree and daemon and 1 note
+[exit 0]
+$ squeal run --all --wait
+Checkpoint b35d77b9-6580-4bf4-b60f-abf5207f1c54 completed at revision 0: 1 known failure: 1 test; 3 test files, 0 already current, 3 run by the baseline checkpoint ee6f56b3-f66b-4f30-958c-a06d5fced5ee it joined
+Checkpoint b35d77b9-6580-4bf4-b60f-abf5207f1c54 started at revision 0: 3 test files to run, 0 already current, joining the baseline checkpoint ee6f56b3-f66b-4f30-958c-a06d5fced5ee already running them (0 of 3 test files done); it ends when that one ends
+
+Revision: 0
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.23 per CPU when it ran; no retry asked at these inputs
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+More: `squeal status --full` adds the worktree and daemon and 4 notes
+[exit 1]
+== C1: keep's env PROBE_MODE a to b, include widened to more/*.test.mjs (committed)
+$ squeal status --wait 30000
+Revision: 1 · dceef2c0 + 1
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.23 per CPU when it ran; no retry asked at these inputs
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+More: `squeal status --full` adds the worktree and daemon and 4 notes
+
+Returned on quiet: the edits since revision 1 re-keyed no test file, at revision 1 after 0.3 s. Worktree: known failures 1 (1 test); all 3 test files current
+[exit 0]
+== C2: project gone renamed gone2, same cwd and include (committed)
+$ squeal status --wait 30000
+Revision: 2 · 1dd05dbc + 0
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 0, current
+        recorded just now in this worktree at revision 0, load 0.23 per CPU when it ran; no retry asked at these inputs
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+More: `squeal status --full` adds the worktree and daemon and 5 notes
+
+Returned on quiet: the edits since revision 2 re-keyed no test file, at revision 2 after 2.3 s; the daemon's heartbeat went 12 s stale while its socket showed it alive (a busy store or a stalled daemon), so the wait went on. Worktree: known failures 1 (1 test); all 3 test files current
+[exit 0]
+$ squeal retry gone/gone.test.mjs --reason environment
+Retry queued (reason: environment): gone/gone.test.mjs runs once more now. Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.
+[exit 0]
+== C3: project added (committed)
+$ squeal status --wait 30000
+Revision: 3 · a7c65b51 + 0
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.25 per CPU when it ran; retry asked (environment) at these inputs: it failed again
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 3; `squeal run --all` requests one)
+More: `squeal status --full` adds the worktree and daemon and 6 notes
+
+Returned on quiet: the edits since revision 3 re-keyed no test file, at revision 3 after 0.3 s. Worktree: known failures 1 (1 test); all 3 test files current
+[exit 0]
+== edit slow's test file; its 8 s run starts
+$ squeal status
+Revision: 4 · a7c65b51 + 1, dirty
+Known failures: 1 (1 test); not current: 1 of 3 test files (1 running), 1 test (1 running)
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.25 per CPU when it ran; retry asked (environment) at these inputs: it failed again
+Affected checks: 3 passed (1 test, 2 test files loaded), 2 running (1 test, 1 test file loaded), 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 4; `squeal run --all` requests one)
+Outstanding:
+  1 test file running since 17:25:35 in the node-test lane: slow: slow/slow.test.mjs
+More: `squeal status --full` adds the worktree and daemon and 6 notes
+[exit 0]
+== C4: project slow removed while its run is in flight (committed)
+$ squeal status --wait 30000 slow/slow.test.mjs
+Revision: 5 · 272fa240 + 0
+Selected: slow/slow.test.mjs
+Named test files at revision 5: no known failures; 1 test file, each with a current result, after 2.3 s. Worktree: known failures 1 (1 test); all 3 test files current
+[exit 0]
+$ squeal run --all --wait
+Checkpoint af983c29-7fa5-4ba3-bc51-1dbc36ad9523 completed at revision 5: 1 known failure: 1 test; 3 test files, 3 already current, 0 run now
+Checkpoint af983c29-7fa5-4ba3-bc51-1dbc36ad9523 started at revision 5: 0 test files to run, 3 already current
+
+Revision: 5 · 272fa240 + 0
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.25 per CPU when it ran; retry asked (environment) at these inputs: it failed again
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 5
+More: `squeal status --full` adds the worktree and daemon and 7 notes
+[exit 1]
+== restart the daemon on C4
+$ squeal stop
+Squeal daemon stopped for /tmp/sq62.izuu/repo
+[exit 0]
+$ squeal start
+Squeal daemon spawned for /tmp/sq62.izuu/repo
+
+Revision: 5 · 272fa240 + 0
+Known failures: 1 (1 test); all 3 test files current
+  FAIL  [gone] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 2, current
+        recorded just now in this worktree at revision 2, load 0.25 per CPU when it ran; retry asked (environment) at these inputs: it failed again
+Affected checks: 5 passed (2 tests, 3 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 5
+More: `squeal status --full` adds the worktree and daemon and 8 notes
+[exit 0]
+$ squeal run --all --wait
+Checkpoint ad66e6d3-74ba-4698-bc3b-571eabf77577 completed at revision 5: 2 known failures: 2 tests; 4 test files, 0 already current, 4 run by the baseline checkpoint 3c296206-8e60-453d-a10d-d6ec68852fcf it joined
+Checkpoint ad66e6d3-74ba-4698-bc3b-571eabf77577 started at revision 5: 4 test files to run, 0 already current, joining the baseline checkpoint 3c296206-8e60-453d-a10d-d6ec68852fcf already running them (0 of 4 test files done); it ends when that one ends
+
+Revision: 5 · 272fa240 + 0
+Known failures: 2 (2 tests); all 4 test files current
+  FAIL  [gone2] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 5, current
+        recorded just now in this worktree at revision 5, load 0.27 per CPU when it ran; no retry asked at these inputs
+  FAIL  [keep] keep/keep.test.mjs > keep runs with PROBE_MODE a
+        Expected values to be strictly equal:
+        at keep/keep.test.mjs:5:10, observed at revision 5, current
+        recorded just now in this worktree at revision 5, load 0.27 per CPU when it ran; no retry asked at these inputs
+Affected checks: 6 passed (2 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 5
+More: `squeal status --full` adds the worktree and daemon and 12 notes
+[exit 1]
+$ squeal failures
+Failures in this worktree (3 failures, newest first):
+  FAIL  2026-10-21T15:25:46.823Z  [gone2] gone/gone.test.mjs > gone fails
+        /tmp/sq62.izuu/repo (this worktree), revision 5, commit 272fa24, clean, 1 ms, run d3607dbb-1016-4cae-9595-3c9693b956be
+        AssertionError: removed or renamed project still ran @ gone/gone.test.mjs:5:10
+  FAIL  2026-10-21T15:25:46.822Z  [keep] keep/keep.test.mjs > keep runs with PROBE_MODE a
+        /tmp/sq62.izuu/repo (this worktree), revision 5, commit 272fa24, clean, 1 ms, run ea62d748-4c4f-44fd-a6a8-5911c452fe86
+        AssertionError: Expected values to be strictly equal: @ keep/keep.test.mjs:5:10
+  FAIL  2026-10-21T15:25:31.856Z  [gone] gone/gone.test.mjs > gone fails
+        /tmp/sq62.izuu/repo (this worktree), revision 2, commit 1dd05db, clean, 1 ms, run 3bfbe712-d59d-4c2f-a088-a4f4c6b73258
+        AssertionError: removed or renamed project still ran @ gone/gone.test.mjs:5:10
+
+squeal why "<check>" prints a failure's full output.
+[exit 0]
+$ squeal retry slow/slow.test.mjs --reason environment
+Not retried: slow/slow.test.mjs is not a test file Squeal has keyed in this worktree.
+[exit 1]
+== C5: squeal.config.json made invalid JSON (a trailing comma), daemon running
+$ squeal status --wait 30000
+Revision: 6 · 83e09186 + 0
+Known failures: 2 (2 tests); all 4 test files current
+  FAIL  [gone2] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 5, current
+        recorded just now in this worktree at revision 5, load 0.27 per CPU when it ran; no retry asked at these inputs
+  FAIL  [keep] keep/keep.test.mjs > keep runs with PROBE_MODE a
+        Expected values to be strictly equal:
+        at keep/keep.test.mjs:5:10, observed at revision 5, current
+        recorded just now in this worktree at revision 5, load 0.27 per CPU when it ran; no retry asked at these inputs
+Affected checks: 6 passed (2 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 5 (the counts are for revision 6; `squeal run --all` requests one)
+Config problem: squeal.config.json: not valid JSON (Unexpected token ']', ..."js"] },
+  ]
+}
+" is not valid JSON); the defaults apply in their place (`squeal setup --check` names each)
+More: `squeal status --full` adds the worktree and daemon and 13 notes
+
+Returned on quiet: the edits since revision 6 re-keyed no test file, at revision 6 after 0.3 s. Worktree: known failures 2 (2 tests); all 4 test files current
+[exit 0]
+== restart the daemon on C5
+$ squeal stop
+Squeal daemon stopped for /tmp/sq62.izuu/repo
+[exit 0]
+$ squeal start
+Squeal daemon spawned for /tmp/sq62.izuu/repo
+
+Revision: 6 · 83e09186 + 0
+Known failures: 2 (2 tests); all 4 test files current
+  FAIL  [gone2] gone/gone.test.mjs > gone fails
+        removed or renamed project still ran
+        at gone/gone.test.mjs:5:10, observed at revision 5, current
+        recorded just now in this worktree at revision 5, load 0.27 per CPU when it ran; no retry asked at these inputs
+  FAIL  [keep] keep/keep.test.mjs > keep runs with PROBE_MODE a
+        Expected values to be strictly equal:
+        at keep/keep.test.mjs:5:10, observed at revision 5, current
+        recorded just now in this worktree at revision 5, load 0.27 per CPU when it ran; no retry asked at these inputs
+Affected checks: 6 passed (2 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 5 (the counts are for revision 6; `squeal run --all` requests one)
+Config problem: squeal.config.json: not valid JSON (Unexpected token ']', ..."js"] },
+  ]
+}
+" is not valid JSON); the defaults apply in their place (`squeal setup --check` names each)
+More: `squeal status --full` adds the worktree and daemon and 14 notes
+[exit 0]
+$ squeal status
+Revision: 6 · 83e09186 + 0
+Known failures: 0; not current: 4 of 4 test files (4 unknown), 4 tests (4 unknown)
+Affected checks: 0 passed, 0 running, 0 queued, 8 unknown (4 tests, 4 test files loaded)
+Full-suite checkpoint: none completed since revision 5 (the counts are for revision 6; `squeal run --all` requests one)
+Outstanding:
+  4 test files without a result, runner environment failed: vitest could not start: vitest/node does not resolve from /tmp/sq62.izuu/repo (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest: added: added/added.test.mjs, gone2: gone/gone.test.mjs, keep: keep/keep.test.mjs and 1 more; the next edit or `squeal run --all --wait` calls the runner again
+Config problem: squeal.config.json: not valid JSON (Unexpected token ']', ..."js"] },
+  ]
+}
+" is not valid JSON); the defaults apply in their place (`squeal setup --check` names each)
+More: `squeal status --full` adds the worktree and daemon, the 4 test files without a result one by one and 17 notes
+[exit 0]
+$ squeal stop
+Squeal daemon stopped for /tmp/sq62.izuu/repo
+[exit 0]
+== tmp: /tmp/sq62.izuu

@@ -1,0 +1,7 @@
+{
+  "nodeTest": [
+    { "name": "keep", "cwd": "keep", "include": ["*.test.mjs"], "env": { "PROBE_MODE": "a" } },
+    { "name": "gone", "cwd": "gone", "include": ["*.test.mjs"] },
+    { "name": "slow", "cwd": "slow", "include": ["*.test.mjs"] }
+  ]
+}
