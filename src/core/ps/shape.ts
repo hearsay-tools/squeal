@@ -221,6 +221,8 @@ export interface PsOrphan {
 
 export interface PsFileFlag {
   readonly flag: "stale-socket" | "stale-pool-mark" | "leftover-temp";
+  /** Why it is flagged, as `PsFlag.reason`: what holds it, or that nothing does, and its mtime (D7, D8). */
+  readonly reason: string;
   /** `null` for a group (`leftover-temp`), whose paths `--leftovers` prints. */
   readonly path: AbsolutePath | null;
   readonly count: number;

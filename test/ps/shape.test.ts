@@ -103,6 +103,8 @@ const snapshot: PsSnapshot = {
   files: [
     {
       flag: "stale-socket",
+      reason:
+        "no live daemon of worktree fd5a859b8ca77ef9 holds its lock; changed 2026-10-16 20:36",
       path: "/run/user/1000/squeal-fd5a859b8ca77ef9.sock",
       count: 1,
       bytes: 0,
@@ -164,7 +166,7 @@ test("the JSON keeps exactly the shipped keys at every level, with null kept", (
   );
   expect(keys(d.flags[0])).toEqual(sorted("flag reason command"));
   expect(keys(json.orphans[0])).toEqual(sorted("pid comm startedAt flags"));
-  expect(keys(json.files[0])).toEqual(sorted("flag path count bytes command"));
+  expect(keys(json.files[0])).toEqual(sorted("flag reason path count bytes command"));
   expect(keys(json.unknown[0])).toEqual(sorted("what why"));
   expect(keys(json.unflaggedFiles[0])).toEqual(sorted("kind count"));
 });
