@@ -67,21 +67,34 @@ import { runnerPartBound } from "./runner-work-bound.js";
  * change, one set per revision: those of the `start` revision and of every
  * revision after the refined one (`refinedMetaKey`), which an earlier daemon
  * stored and never refined, as one that exited at a reinstall did (task
- * 001-113). The baseline queues them as edits (D5 step 4).
+ * 001-113). The baseline queues them as edits (D5 step 4). A start that
+ * resumes a rest counts the paths it hashed for the first time as its
+ * `start` revision's (011 C9 as amended 2026-10-21, row 011-91).
  */
-export async function scan(context: SchedulerContext, ledger: Ledger): Promise<UnseenChanges> {
+export async function scan(
+  context: SchedulerContext,
+  ledger: Ledger,
+  resumesRest = false,
+): Promise<UnseenChanges> {
   const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
   const refined = readRefined(store, worktreeId) ?? latest?.number ?? 0;
-  const revision = (await keys.bootstrap(context.head)) ?? latest;
+  const started = await keys.bootstrap(context.head);
+  const revision = started ?? latest;
   ledger.revision =
     revision === null
       ? { number: 0, ...(await context.head()) }
       : { number: revision.number, head: revision.head, dirty: revision.dirty };
-  if (revision === null) return [];
-  return store.revisions
-    .range(worktreeId, refined, revision.number)
-    .map(({ changes }) => new Set(changes.map((change) => change.path)));
+  const unseen =
+    revision === null
+      ? []
+      : store.revisions
+          .range(worktreeId, refined, revision.number)
+          .map(({ changes }) => new Set(changes.map((change) => change.path)));
+  if (!resumesRest || keys.seededAtStart.length === 0) return unseen;
+  // The start revision is the last of the range; with none, the new files are one of their own.
+  const startPaths = started === null ? [] : [...(unseen.pop() ?? [])];
+  return [...unseen, new Set([...startPaths, ...keys.seededAtStart])];
 }
 
 /** `null` when absent or not a number, as the header reads it. */
@@ -102,12 +115,14 @@ function readRefined(store: Store, worktreeId: WorktreeId): RevisionNumber | nul
  * revision is counted on its own, never their union (review wave 5, B3).
  * Of a smaller revision's reach, what the edit cut does not keep is
  * catch-up, by the runner's `affected` for its paths (`cutAtStart`, task
- * 011-25).
+ * 011-25). Under `lookup-only` only a start that resumes a rest queues
+ * that reach (011 C9 as amended 2026-10-21, row 011-91).
  */
 export async function baseline(
   context: SchedulerContext,
   ledger: Ledger,
   unseen: UnseenChanges = [],
+  resumesRest = false,
 ): Promise<void> {
   const { store, keys, worktreeId, policy } = context;
   const bound = runnerPartBound(context);
@@ -186,6 +201,8 @@ export async function baseline(
   );
   const lookupOnly = policy.baseline.onStart === "lookup-only";
   if (lookupOnly) ledger.checkpoints.finish("abandoned");
+  // Only a predecessor's queued work runs, unless the start resumes a rest (011-33, 011-91).
+  const holds = lookupOnly && !resumesRest;
   const handed = handover(context, ledger, previousKeys);
   // What no runner saw change is its revision's edit here, catch-up from 10 keyed paths (011-22).
   const changed = new Set([...unseen.flatMap((paths) => [...paths]), ...handed.changed]);
@@ -197,10 +214,10 @@ export async function baseline(
     const large = isCatchUp(context, ledger, paths);
     const reached = ledger.recentOf(paths);
     // A small revision keeps its namesakes and the shortest direct importers (011-25): the
-    // runner is asked only when the revision reached a file that runs, so never under
-    // lookup-only, where only a predecessor's queued work runs (011-33).
+    // runner is asked only when the revision reached a file that runs, so never while
+    // lookup-only holds.
     const cut =
-      lookupOnly || large || ![...reached].some((id) => missed.has(id))
+      holds || large || ![...reached].some((id) => missed.has(id))
         ? null
         : await cutAtStart(context, ledger, paths, bound);
     for (const id of cut?.direct ?? []) direct.add(id);
@@ -210,8 +227,10 @@ export async function baseline(
     }
   }
   for (const file of misses) {
-    // A predecessor's queued work is handed over whatever the policy (011 C4, task 011-33).
-    if (lookupOnly && !handed.pending.has(file.id)) continue;
+    // A predecessor's queued work is handed over whatever the policy (011 C4, task 011-33);
+    // a resumed rest's reach too (011 C9, row 011-91).
+    const reached = resumesRest && (recent.has(file.id) || catchUp.has(file.id));
+    if (lookupOnly && !handed.pending.has(file.id) && !reached) continue;
     const first = recent.has(file.id);
     const priority = priorityOf(file, changed, direct);
     ledger.enqueue(file, priority, false, first, !first && catchUp.has(file.id));
