@@ -712,7 +712,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.248";
+  if (true) return "0.1.249";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4516,7 +4516,8 @@ function heldStop(store, worktreeId, worktree, live) {
   return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
 }
 function asStopped(store, worktreeId, worktree, live) {
-  if (live.state !== "down" || heldStop(store, worktreeId, worktree, live) === null) return live;
+  if (live.state !== "down" || live.startingSince !== void 0) return live;
+  if (heldStop(store, worktreeId, worktree, live) === null) return live;
   return { ...live, stopped: true };
 }
 async function stopHolds(store, at, worktree, live) {
@@ -5692,7 +5693,8 @@ function asTold(live, told, at) {
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
-  return { ...live, startingSince };
+  const { stopped: _void, ...starting } = live;
+  return { ...starting, startingSince };
 }
 function withTold(header, told, at) {
   return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at) };
