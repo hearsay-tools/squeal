@@ -941,7 +941,8 @@ Spec: `specifications/014-ps/spec.md`, approved by the human 2026-10-21 (D9 as i
 | 014-10 flags | in review (cand/0.1.240) | D7: `flags.ts`, the 18 flags and 2 information states with their end commands, quoted; the `--leftovers` list. | One flagged and one healthy case per flag (the fifth column of `research/should-not-be-up.md` 1). |
 | 014-11 the output and `squeal ps` | in review (cand/0.1.240) | D1, D8: the snapshot that runs the stages inside the window, `render.ts`, `src/cli/ps.ts`, its `main.ts` entry and help text, exit codes 0, 1, 2 and 3. | Render tests against the D8 layout; CLI tests for every flag and exit code. |
 | 014-12 the macOS source | in review (cand/0.1.240) | D10: `darwin.ts` over an injected command runner; `ps`, `vm_stat`, `sysctl` and `lsof` parsers; the flags it does not evaluate named in `unknown`. | Parser tests against fixture outputs; no test on a Mac (the human, 2026-10-21). |
-| 014-13 review of wave 2 | running (worker 2976ee91, codex gpt-6.1-sol high, pinned 29ef2f053) | `/reviewer` on the candidate. | `reviews/wave-2.md` committed. |
+| 014-13 review of wave 2 | round 1 FAIL at 29ef2f053 (`reviews/wave-2.md`: B1 the second sample's subset table makes an in-use directory a leftover and drops an orphan waiter; B2 `usedPaths` cuts paths at spaces, quotes and `=`; B3 a null worker cost prints 0; B4 a failed macOS `ps` reads as an empty host); repair 014-13r running, then re-review | `/reviewer` on the candidate. | `reviews/wave-2.md` committed. |
+| 014-13r repair of wave 2 | running (worker 96fa9572, opus xhigh, on cand/0.1.240) | B1 to B4 and N3 of `reviews/wave-2.md`, brief `tasks/wave-2.md` 014-13r. | Real-flag snapshot and CLI regressions; `squeal run --all --wait` green. |
 
 ### Wave 3: proof (after 014-13)
 
