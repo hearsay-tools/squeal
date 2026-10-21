@@ -1,0 +1,98 @@
+[17:39:18] tmp=/tmp/sq72-uxPD version=0.1.238 load=16.00 cpus=24
+Squeal daemon spawned for /tmp/sq72-uxPD/repo
+
+Revision: 0
+Known failures: 0; the daemon has not listed this worktree's test files yet
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it
+More: `squeal status --full` adds the worktree and daemon and 1 note
+[17:39:18] start (plugin-a) exit 0
+  base| Checkpoint 4cf3ec41-3f75-4681-9383-76bab74d3ac6 completed at revision 0: no known failures; 6 test files, 0 already current, 6 run now
+  base| Checkpoint 4cf3ec41-3f75-4681-9383-76bab74d3ac6 started at revision 0: 6 test files to run, 0 already current
+  base| 
+[17:39:20] baseline started=6
+[17:39:20] edited src/shared.ts with the hold on
+[17:39:21] running before the delete: h1 h5 
+[17:39:21] daemon pid=35125 cmd: /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/sq72-uxPD/plugin-a/dist/cli/squeal.mjs daemon /tmp/sq72-uxPD/repo 
+  child 35943: /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/agent/projects/squeal/.ai/ceza
+  child 35944: /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/agent/projects/squeal/.ai/ceza
+  pre| Revision: 1 · 6fd23986 + 1, dirty
+  pre| Known failures: 0; not current: 6 of 6 test files (2 running, 4 queued), 6 tests (2 running, 4 queued)
+  pre| Affected checks: 0 passed, 4 running (2 tests, 2 test files loaded), 8 queued (4 tests, 4 test files loaded)
+  pre| Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+  pre| Outstanding:
+  pre|   2 test files in the vitest tier of 2 test files running since 17:39:20: test/h1.test.ts, test/h5.test.ts; no command runs them sooner (a running tier is not interrupted)
+  pre|   4 test files queued behind the vitest tier of 2 test files running since 17:39:20: test/h2.test.ts, test/h3.test.ts, test/h4.test.ts and 1 more; `squeal status --wait 60000 <test file>` moves a named one ahead when that tier ends
+  pre| More: `squeal status --full` adds the worktree and daemon
+[17:39:21] deleted plugin-a
+  old-cli| node:internal/modules/cjs/loader:1568
+  old-cli|   throw err;
+  old-cli|   ^
+  old-cli| 
+  old-cli| Error: Cannot find module '/tmp/sq72-uxPD/plugin-a/dist/cli/squeal.mjs'
+[17:39:21] old CLI exit 1
+[17:39:21] hold released
+[17:40:30] daemon alive after delete: yes; files started: h1 h5 
+  child| h5 status=1 stderr="node:internal/modules/esm/resolve:272\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/tmp/sq72-uxPD/plugin-a/dist/observe/recorder.cjs' imported from /tmp/sq72-uxPD/repo/\n    at finalizeResolution (node:internal/modules/esm/resolve:272:11)\n    at m"
+  child| h1 status=1 stderr="node:internal/modules/esm/resolve:272\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/tmp/sq72-uxPD/plugin-a/dist/observe/recorder.cjs' imported from /tmp/sq72-uxPD/repo/\n    at finalizeResolution (node:internal/modules/esm/resolve:272:11)\n    at m"
+  new-cli| Revision: 1 · 6fd23986 + 1, dirty
+  new-cli| Known failures: 2 (2 tests); not current: 4 of 6 test files (4 unknown), 4 tests (4 unknown)
+  new-cli|   FAIL  test/h1.test.ts > h1 holds while the flag exists, then spawns a node child
+  new-cli|         expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+  new-cli|         at test/h1.test.ts:11:24, observed at revision 1, current
+  new-cli|         recorded 1 min ago in this worktree at revision 1, load 0.67 per CPU when it ran; no retry asked at these inputs
+  new-cli|   FAIL  test/h5.test.ts > h5 holds while the flag exists, then spawns a node child
+  new-cli|         expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+  new-cli|         at test/h5.test.ts:11:24, observed at revision 1, current
+  new-cli|         recorded 1 min ago in this worktree at revision 1, load 0.67 per CPU when it ran; no retry asked at these inputs
+  new-cli| Affected checks: 2 passed (2 test files loaded), 0 running, 0 queued, 8 unknown (4 tests, 4 test files loaded)
+  new-cli| Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+  new-cli| Outstanding:
+  new-cli|   4 test files without a result: vitest: unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
+  new-cli| unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
+  new-cli| More: `squeal status --full` adds the worktree and daemon and the 4 test files without a result one by one
+[17:40:30] new CLI status exit 0
+  wait| Revision: 1 · 6fd23986 + 1, dirty
+  wait| Selected: test/h1.test.ts, test/h2.test.ts, test/h3.test.ts, test/h4.test.ts, test/h5.test.ts, test/h6.test.ts
+  wait|   FAIL  test/h1.test.ts > h1 holds while the flag exists, then spawns a node child
+  wait|         expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+  wait|         at test/h1.test.ts:11:24, observed at revision 1, current
+  wait|   FAIL  test/h5.test.ts > h5 holds while the flag exists, then spawns a node child
+  wait|         expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+  wait|         at test/h5.test.ts:11:24, observed at revision 1, current
+  wait| Current (2):
+  wait|   2 fail: test/h1.test.ts, test/h5.test.ts
+  wait| Unknown (4):
+  wait|   4 no result: vitest: unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
+  wait| unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
+  wait| Named test files have no verdict: 4 test files without a current result at revision 1 (4 unknown): 4 no result at its inputs: `squeal retry <test file>...`. Worktree: known failures 2 (2 tests); not current: 4 of 6 test files (4 unknown), 4 tests (4 unknown)
+[17:40:31] named wait (plugin-b) exit 3
+  retry-old-daemon| Not retried: test/h1.test.ts has a known failure at its inputs; a retry of it needs --reason load or --reason environment, the cause outside the code.
+  retry-wait| Revision: 1 · 6fd23986 + 1, dirty
+  retry-wait| Selected: test/h1.test.ts
+  retry-wait|   FAIL  test/h1.test.ts > h1 holds while the flag exists, then spawns a node child
+  retry-wait|         expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+  retry-wait|         at test/h1.test.ts:11:24, observed at revision 1, current
+  retry-wait| Named test files at revision 1: 1 known failure: 1 test; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 2 (2 tests); not current: 4 of 6 test files (4 unknown), 4 tests (4 unknown)
+[17:40:31] retry wait exit 1
+  stop| Squeal daemon stopped for /tmp/sq72-uxPD/repo
+  start-b| Squeal daemon spawned for /tmp/sq72-uxPD/repo
+  start-b| 
+[17:40:32] daemon now: 63395 /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/sq72-uxPD/plugin-b/dist/cli/squeal.mjs daemon /tmp/sq72-uxPD/repo
+  recover| Checkpoint 8eeeb783-98c9-4d61-a9a4-8c203f4d6ee3 completed at revision 1: no known failures; 6 test files, 0 already current, 6 run now
+  recover| Checkpoint 8eeeb783-98c9-4d61-a9a4-8c203f4d6ee3 started at revision 1: 6 test files to run, 0 already current
+  recover| 
+  recover| Revision: 1 · 6fd23986 + 1, dirty
+  recover| Known failures: 0; all 6 test files current
+  recover| Affected checks: 12 passed (6 tests, 6 test files loaded), 0 running, 0 queued
+[17:40:34] run --all --wait (plugin-b daemon) exit 0
+  child| h5 status=0 stderr=""
+  child| h1 status=0 stderr=""
+  child| h2 status=0 stderr=""
+  child| h4 status=0 stderr=""
+  child| h6 status=0 stderr=""
+  child| h3 status=0 stderr=""
+Squeal daemon stopped for /tmp/sq72-uxPD/repo
+[17:40:35] cleaned own fixture processes; tmp kept at /tmp/sq72-uxPD

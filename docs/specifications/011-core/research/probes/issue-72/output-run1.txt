@@ -1,0 +1,93 @@
+[17:37:38] tmp=/tmp/sq72-qNV9 version=0.1.238 load=11.92 cpus=24
+Squeal daemon spawned for /tmp/sq72-qNV9/repo
+
+Revision: 0
+Known failures: 0; the daemon has not listed this worktree's test files yet
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it
+More: `squeal status --full` adds the worktree and daemon and 1 note
+[17:37:38] start (plugin-a) exit 0
+  base| Checkpoint 0c0e11d5-ea78-4929-a2f0-8fe4ca6ba99a completed at revision 0: no known failures; 6 test files, 0 already current, 6 run now
+  base| Checkpoint 0c0e11d5-ea78-4929-a2f0-8fe4ca6ba99a started at revision 0: 6 test files to run, 0 already current
+  base| 
+[17:37:40] baseline started=6
+[17:37:40] edited src/shared.ts with the hold on
+[17:37:41] running before the delete: h2 h4 
+[17:37:41] daemon pid=4186697 cmd: /home/agent/.nvm/versions/node/v24.21.0/bin/node /tmp/sq72-qNV9/plugin-a/dist/cli/squeal.mjs daemon /tmp/sq72-qNV9/repo 
+  child 4187249: /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/agent/projects/squeal/.ai/ceza
+  child 4187250: /home/agent/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require /home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /home/agent/projects/squeal/.ai/ceza
+  pre| Revision: 1 · 377313fe + 1, dirty
+  pre| Known failures: 0; not current: 6 of 6 test files (2 running, 4 queued), 6 tests (2 running, 4 queued)
+  pre| Affected checks: 0 passed, 4 running (2 tests, 2 test files loaded), 8 queued (4 tests, 4 test files loaded)
+  pre| Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+  pre| Outstanding:
+  pre|   2 test files in the vitest tier of 2 test files running since 17:37:40: test/h2.test.ts, test/h4.test.ts; no command runs them sooner (a running tier is not interrupted)
+  pre|   4 test files queued behind the vitest tier of 2 test files running since 17:37:40: test/h1.test.ts, test/h3.test.ts, test/h5.test.ts and 1 more; `squeal status --wait 60000 <test file>` moves a named one ahead when that tier ends
+  pre| More: `squeal status --full` adds the worktree and daemon
+[17:37:42] deleted plugin-a
+  old-cli| node:internal/modules/cjs/loader:1568
+  old-cli|   throw err;
+  old-cli|   ^
+  old-cli| 
+  old-cli| Error: Cannot find module '/tmp/sq72-qNV9/plugin-a/dist/cli/squeal.mjs'
+[17:37:42] old CLI exit 1
+[17:37:42] hold released
+[17:38:50] daemon alive after delete: yes; files started: h2 h4 
+  child| h4 status=1 stderr="node:internal/modules/esm/resolve:272\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/tmp/sq72-qNV9/plugin-a/dist/observe/recorder.cjs' imported from /tmp/sq72-qNV9/repo/\n    at finalizeResolution (node:internal/modules/esm/resolve:272:11)\n    at m"
+  child| h2 status=1 stderr="node:internal/modules/esm/resolve:272\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/tmp/sq72-qNV9/plugin-a/dist/observe/recorder.cjs' imported from /tmp/sq72-qNV9/repo/\n    at finalizeResolution (node:internal/modules/esm/resolve:272:11)\n    at m"
+  new-cli| Revision: 1 · 377313fe + 1, dirty
+  new-cli| Known failures: 2 (2 tests); not current: 4 of 6 test files (4 unknown), 4 tests (4 unknown)
+  new-cli|   FAIL  test/h2.test.ts > h2 holds while the flag exists, then spawns a node child
+  new-cli|         expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+  new-cli|         at test/h2.test.ts:11:24, observed at revision 1, current
+  new-cli|         recorded 1 min ago in this worktree at revision 1, load 0.49 per CPU when it ran; no retry asked at these inputs
+  new-cli|   FAIL  test/h4.test.ts > h4 holds while the flag exists, then spawns a node child
+  new-cli|         expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+  new-cli|         at test/h4.test.ts:11:24, observed at revision 1, current
+  new-cli|         recorded 1 min ago in this worktree at revision 1, load 0.49 per CPU when it ran; no retry asked at these inputs
+  new-cli| Affected checks: 2 passed (2 test files loaded), 0 running, 0 queued, 8 unknown (4 tests, 4 test files loaded)
+  new-cli| Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+  new-cli| Outstanding:
+  new-cli|   4 test files without a result: vitest: unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
+  new-cli|     at EventEmitter.onTaskError (file:///home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
+  new-cli|     at EventEmitter.emit (node:events:526:24)
+  new-cli|     at ChildProcess.emitUnexpectedExit (file:///home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
+  new-cli|     at ChildProcess.emit (node:events:514:28)
+  new-cli|     at Process.ChildProcess._handle.onexit (node:internal/child_process:295:12)
+  new-cli| unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
+  new-cli|     at EventEmitter.onTaskError (file:///home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
+  new-cli|     at EventEmitter.emit (node:events:526:24)
+  new-cli|     at ChildProcess.emitUnexpectedExit (file:///home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
+  new-cli|     at ChildProcess.emit (node:events:514:28)
+  new-cli|     at Process.ChildProcess._handle.onexit (node:internal/child_process:295:12): test/h1.test.ts, test/h3.test.ts, test/h5.test.ts and 1 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 4 test files not current here
+  new-cli| More: `squeal status --full` adds the worktree and daemon and the 4 test files without a result one by one
+[17:38:50] new CLI status exit 0
+  wait| Revision: 1 · 377313fe + 1, dirty
+  wait| Selected: test/h1.test.ts, test/h2.test.ts, test/h3.test.ts, test/h4.test.ts, test/h5.test.ts, test/h6.test.ts
+  wait|   FAIL  test/h2.test.ts > h2 holds while the flag exists, then spawns a node child
+  wait|         expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+  wait|         at test/h2.test.ts:11:24, observed at revision 1, current
+  wait|   FAIL  test/h4.test.ts > h4 holds while the flag exists, then spawns a node child
+  wait|         expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+  wait|         at test/h4.test.ts:11:24, observed at revision 1, current
+  wait| Current (2):
+  wait|   2 fail: test/h2.test.ts, test/h4.test.ts
+  wait| Unknown (4):
+  wait|   4 no result: vitest: unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
+  wait|     at EventEmitter.onTaskError (file:///home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
+  wait|     at EventEmitter.emit (node:events:526:24)
+  wait|     at ChildProcess.emitUnexpectedExit (file:///home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
+  wait|     at ChildProcess.emit (node:events:514:28)
+  wait|     at Process.ChildProcess._handle.onexit (node:internal/child_process:295:12)
+  wait| unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
+  wait|     at EventEmitter.onTaskError (file:///home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
+  wait|     at EventEmitter.emit (node:events:526:24)
+  wait|     at ChildProcess.emitUnexpectedExit (file:///home/agent/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
+  wait|     at ChildProcess.emit (node:events:514:28)
+  wait|     at Process.ChildProcess._handle.onexit (node:internal/child_process:295:12): test/h1.test.ts, test/h3.test.ts, test/h5.test.ts, test/h6.test.ts; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 4 test files not current here
+  wait| Named test files have no verdict: 4 test files without a current result at revision 1 (4 unknown): 4 no result at its inputs: `squeal retry <test file>...`. Worktree: known failures 2 (2 tests); not current: 4 of 6 test files (4 unknown), 4 tests (4 unknown)
+[17:38:51] named wait (plugin-b) exit 3
+Squeal daemon stopped for /tmp/sq72-qNV9/repo
+[17:38:52] cleaned own fixture processes; tmp kept at /tmp/sq72-qNV9
