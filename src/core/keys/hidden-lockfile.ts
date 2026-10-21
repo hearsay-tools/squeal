@@ -32,8 +32,11 @@ interface PackageFolder {
  * replaced a folder without rewriting the file shows; an edit inside a file
  * does not, for npm either.
  */
-export function staleHiddenLockfile(dir: AbsolutePath, content: Buffer): string | null {
-  const listed = listedPackages(content);
+export function staleHiddenLockfile(
+  dir: AbsolutePath,
+  lockfile: Record<string, unknown> | null,
+): string | null {
+  const listed = lockfile === null ? null : packagesIn(lockfile);
   if (listed === null) return "not valid JSON";
   const lockTime = lstatSync(join(dir, HIDDEN_LOCKFILE)).mtimeMs;
   const folders = packageFolders(dir, workspaces(listed));
@@ -63,8 +66,11 @@ export function staleHiddenLockfile(dir: AbsolutePath, content: Buffer): string 
  * `package.json` name and version, and each link's path and target, unread.
  * Adding, removing, moving or re-versioning a package changes it.
  */
-export function packageFoldersFingerprint(dir: AbsolutePath, content: Buffer): string {
-  const folders = packageFolders(dir, workspaces(listedPackages(content) ?? {}));
+export function packageFoldersFingerprint(
+  dir: AbsolutePath,
+  lockfile: Record<string, unknown> | null,
+): string {
+  const folders = packageFolders(dir, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
   folders.sort((a, b) => compare(a.path, b.path));
   const entries = folders.map(({ path, link }) =>
     link ? [path, "link", readlinkSync(join(dir, path))] : [path, ...nameAndVersion(dir, path)],
@@ -74,15 +80,44 @@ export function packageFoldersFingerprint(dir: AbsolutePath, content: Buffer): s
     .digest("hex");
 }
 
-/** The lockfile's `packages` map, or `null` when it is not JSON. */
-function listedPackages(content: Buffer): Record<string, unknown> | null {
+/**
+ * The hidden lockfile, parsed once for every reader: `null` when it is not
+ * JSON, and `{}`, a lockfile that lists nothing, for JSON that is no object.
+ */
+export function parseHiddenLockfile(content: Buffer): Record<string, unknown> | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(content.toString("utf8"));
   } catch {
     return null;
   }
-  return isRecord(parsed) && isRecord(parsed.packages) ? parsed.packages : {};
+  return isRecord(parsed) ? parsed : {};
+}
+
+/**
+ * Task 011-85 (011 C11): the hidden lockfile as the whole fingerprint hashes
+ * it, without the root's own `name` and `version` and without the `version`
+ * of the `""` entry and of each workspace folder, which a release raises.
+ * Every entry under a `node_modules` folder stays whole, and so do a
+ * workspace's name and edges and a `file:` location outside the install. A
+ * test that reads an own version reads a project file, which its closure, an
+ * observed read or a declared input keys (C3).
+ */
+export function withoutOwnVersions(lockfile: Record<string, unknown>): string {
+  const { name: _name, version: _version, ...rest } = lockfile;
+  const own = (path: string, entry: unknown) =>
+    (path === "" || isWorkspace(path)) && isRecord(entry)
+      ? { ...entry, version: undefined }
+      : entry;
+  const packages = isRecord(rest.packages)
+    ? Object.fromEntries(Object.entries(rest.packages).map(([path, e]) => [path, own(path, e)]))
+    : rest.packages;
+  return JSON.stringify({ ...rest, packages });
+}
+
+/** The lockfile's `packages` map; `{}` when it has none. */
+function packagesIn(lockfile: Record<string, unknown>): Record<string, unknown> {
+  return isRecord(lockfile.packages) ? lockfile.packages : {};
 }
 
 /** Whether a lockfile location is a folder under some `node_modules`, inside the install. */
@@ -97,9 +132,14 @@ function insideInstall(path: string): boolean {
   return path !== "" && !isAbsolute(path) && path !== ".." && !path.startsWith("../");
 }
 
+/** A workspace folder: a location inside the install and outside every `node_modules` folder. */
+function isWorkspace(path: string): boolean {
+  return insideInstall(path) && !isInstalledFolder(path);
+}
+
 /** Workspace folders the lockfile lists: their own `node_modules` belong to the hierarchy. */
 function workspaces(listed: Record<string, unknown>): string[] {
-  return Object.keys(listed).filter((path) => insideInstall(path) && !isInstalledFolder(path));
+  return Object.keys(listed).filter(isWorkspace);
 }
 
 /**

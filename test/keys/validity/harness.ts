@@ -1,12 +1,25 @@
 import { join } from "node:path";
-import { CLOSURE_METHOD, checkKey, environmentHash } from "../../../src/core/keys/index.js";
+import {
+  CLOSURE_METHOD,
+  checkKey,
+  environmentHash,
+  installedDependencies,
+} from "../../../src/core/keys/index.js";
 import { recordsForFile } from "../../../src/core/scheduler/records.js";
 import { describeFailure } from "../../../src/core/state/fingerprint.js";
 import type { Case, CaseOutput, KeyInput, RowsInput } from "./case.js";
 import { decideAccept, writeAccept } from "./harness/accept.js";
 import { assemble } from "./harness/assemble.js";
 import { observe } from "./harness/observe.js";
-import { KEY, provenance, REPORT, scratchStore, verdictOf, wordingOf } from "./harness/shared.js";
+import {
+  KEY,
+  provenance,
+  REPORT,
+  scratchStore,
+  verdictOf,
+  wordingOf,
+  writeTree,
+} from "./harness/shared.js";
 import { storeCase } from "./harness/store.js";
 import { vitestCase } from "./harness/vitest.js";
 
@@ -18,9 +31,17 @@ import { vitestCase } from "./harness/vitest.js";
  * old one kept for the last release until it carries the move.
  */
 
-function key(input: KeyInput): CaseOutput {
+async function key(input: KeyInput, scratch: string): Promise<CaseOutput> {
   const hashOf = (path: string) => input.hashes[path] ?? null;
-  const env = environmentHash(input.core, input.runner, hashOf);
+  let core = input.core;
+  if (input.installed !== undefined) {
+    const root = writeTree(join(scratch, "install"), input.installed);
+    core = {
+      ...core,
+      installedDependencies: (await installedDependencies(root, root)).fingerprint,
+    };
+  }
+  const env = environmentHash(core, input.runner, hashOf);
   const closure = {
     testFile: input.testFile,
     paths: input.closure,
@@ -57,7 +78,7 @@ function rows(input: RowsInput, scratch: string): CaseOutput {
 export async function runCase(c: Case, scratch: string, runtime: string): Promise<CaseOutput> {
   switch (c.kind) {
     case "key":
-      return key(c.input);
+      return key(c.input, scratch);
     case "rows":
       return rows(c.input, join(scratch, "store"));
     case "observe":
