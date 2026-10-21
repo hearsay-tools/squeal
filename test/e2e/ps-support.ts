@@ -209,6 +209,7 @@ export function withUnknownDaemon(source: PsSource): PsSource {
     state: "S",
     startTicks: 0,
     cpuTicks: 0,
+    childTicks: 0,
     nice: 0,
     uid: currentUid(),
   };
