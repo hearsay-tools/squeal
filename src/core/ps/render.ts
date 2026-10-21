@@ -176,25 +176,27 @@ function daemonLines(d: PsDaemon, at: number): string[] {
 }
 
 function processLines(p: PsTestProcess, at: number, full: boolean): string[] {
-  const own = [p.cpuPct, p.descendants.cpuPct];
-  const children =
-    p.descendants.count === 0 ? [] : [`+${count(p.descendants.count, "child", "children")}`];
+  const d = p.descendants;
+  // Its own value without descendants; with them, unknown when either part is (`reviews/wave-2.md` B3).
+  const and = (own: number | null, sum: number | null): number | null =>
+    d.count === 0 ? own : own === null || sum === null ? null : own + sum;
+  const children = d.count === 0 ? [] : [`+${count(d.count, "child", "children")}`];
   const lines = [
     row(p.flags.length > 0 ? "! " : "  ", {
       state: `  ${p.lane ?? p.runner ?? "test"}`,
       pid: String(p.pid),
       detail: detailOf(p),
       up: age(p.startedAt, at),
-      cpu: percent(known(own)),
-      time: cpuTime(known([p.cpuMs, p.descendants.cpuMs])),
-      memory: bytes(known([p.privateBytes, p.descendants.privateBytes]), true),
-      swap: bytes(known([p.swapBytes, p.descendants.swapBytes]), true),
+      cpu: percent(and(p.cpuPct, d.cpuPct)),
+      time: cpuTime(and(p.cpuMs, d.cpuMs)),
+      memory: bytes(and(p.privateBytes, d.privateBytes), true),
+      swap: bytes(and(p.swapBytes, d.swapBytes), true),
       work: [...(p.escaped ? ["escaped"] : []), `nice ${p.nice}`, ...children].join(", "),
     }),
     ...flagLines(p.flags),
   ];
   if (!full) return lines;
-  for (const c of p.descendants.list ?? [])
+  for (const c of d.list ?? [])
     lines.push(
       row("  ", {
         state: `    ${c.comm}`,
