@@ -1,0 +1,22 @@
+load1 61.44 node v24.21.0 v8 13.6.233.17-node.53
+default                          {"start":15,"churned":224,"gc2":201,"heapTotal":136,"after10s":201}
+--no-decommit-pooled-pages       {"start":15,"churned":217,"gc2":200,"heapTotal":136,"after10s":200}
+--memory-saver-mode              {"start":15,"churned":35,"gc2":19,"heapTotal":8,"after10s":16}
+--optimize-for-size              {"start":15,"churned":30,"gc2":28,"heapTotal":8,"after10s":15}
+--max-semi-space-size=16         {"start":15,"churned":117,"gc2":104,"heapTotal":40,"after10s":104}
+--max-semi-space-size=8          {"start":15,"churned":119,"gc2":103,"heapTotal":24,"after10s":103}
+--single-threaded-gc             {"start":15,"churned":292,"gc2":264,"heapTotal":136,"after10s":264}
+--max-old-space-size=256         {"start":15,"churned":149,"gc2":138,"heapTotal":136,"after10s":138}
+== v8-ns.cjs default / --max-semi-space-size=16
+start      priv 15 newspace 4 heapTotal 12
+churned    priv 216 newspace 128 heapTotal 230
+gc         priv 181 newspace 128 heapTotal 137
+gc+10s     priv 181 newspace 128 heapTotal 137
+gc2        priv 181 newspace 1 heapTotal 9
+gc2+10s    priv 181 newspace 1 heapTotal 9
+start      priv 15 newspace 4 heapTotal 12
+churned    priv 152 newspace 32 heapTotal 50
+gc         priv 146 newspace 32 heapTotal 40
+gc+10s     priv 146 newspace 32 heapTotal 40
+gc2        priv 146 newspace 1 heapTotal 9
+gc2+10s    priv 146 newspace 1 heapTotal 9
