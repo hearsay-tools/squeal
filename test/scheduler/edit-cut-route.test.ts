@@ -73,11 +73,11 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
     await expect.poll(() => side.current(next.path), { interval: 10, timeout: 30_000 }).toBe(true);
     const currentAt = performance.now();
     // The cancel starts the lane's 20 s wait for quiet (row 011-94): no catch-up tier starts in
-    // it, and the clock then moves past it rather than the test idling 20 s (CI run 39696846845).
+    // it from the second edit on, and the clock then moves past it rather than the test idling
+    // 20 s (CI run 39696846845; review 0.1.253 B2: counted from the edit, not from the cancel).
     await expect.poll(() => tier.cancelled, { interval: 10, timeout: 30_000 }).toBe(true);
-    const waiting = side.runner.runs.length;
     await at(SETTLE_MS);
-    expect(side.runner.runs.slice(waiting).filter((run) => run.workers !== undefined)).toEqual([]);
+    expect(side.runner.runs.slice(second).filter((run) => run.workers !== undefined)).toEqual([]);
     offset += BACKLOG_QUIET_MS;
     await side.scheduler.idle();
     const edit = side.runner.runs
