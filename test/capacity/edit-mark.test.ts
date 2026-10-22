@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -6,11 +6,13 @@ import type { TreeCpu } from "../../src/core/capacity/cores.js";
 import { createPermitPool, type PermitPool, readMarks } from "../../src/core/capacity/index.js";
 
 /*
- * Review 0.1.255, B1: the mark an edit's tier writes (011 C10 as amended
- * 2026-10-21, row 011-98). A waiter whose edit runs keeps its refused demand
- * in the mark (task 011-96 notes, decision 6), and forgets it with its age
- * 30 s after its last look, at the edit's next refresh. Each pool here is
- * one simulated daemon on two slots. A mark's age is its file's real mtime, so only the
+ * Review 0.1.255, B1 and B2: the mark an edit's tier writes (011 C10 as
+ * amended 2026-10-21, row 011-98). B1: a waiter whose edit runs keeps its
+ * refused demand in the mark (task 011-96 notes, decision 6), and forgets it
+ * with its age 30 s after its last look, at the edit's next refresh. B2: an
+ * edit before any acquisition prepares the pool's directory as `acquire`
+ * does, so its first mark is written. Each pool here is one simulated
+ * daemon on two slots. A mark's age is its file's real mtime, so only the
  * waiter's clock moves on; the daemons that read its mark keep the real one.
  */
 
@@ -20,6 +22,7 @@ const pools: PermitPool[] = [];
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "squeal-edit-mark-test-"));
+  // Not created: the first pool user prepares it.
   dir = join(root, "squeal-uid");
 });
 
@@ -98,5 +101,30 @@ describe("a waiter's mark while its edit runs (review 0.1.255, B1)", () => {
     expect(markOf("waiter")).toMatchObject({ want: 2, grant: 0, since, least: 2 });
     holder?.release();
     expect(daemon("newcomer").acquire(1)).toBeNull();
+  });
+});
+
+describe("an edit before any acquisition (review 0.1.255, B2)", () => {
+  test("prepares the missing pool directory and writes its mark; the next daemon's grant is gated", () => {
+    const end = daemon("edit").running(4);
+    expect(statSync(dir).mode & 0o777).toBe(0o700);
+    // Unmeasured, its four workers count four cores: over the two slots.
+    expect(markOf("edit")).toMatchObject({ want: 0, grant: 0, since: null, cores: 4 });
+    expect(daemon("backlog").acquire(2)?.grant).toBe(1);
+    end();
+    expect(markOf("edit")).toBeUndefined();
+  });
+
+  test("a directory acquire refuses costs the edit nothing and gets no mark", () => {
+    mkdirSync(dir, { mode: 0o700 });
+    chmodSync(dir, 0o755);
+    const edit = daemon("edit");
+    expect(() => edit.acquire(1)).toThrow(/mode 755/);
+    let end = (): void => {};
+    expect(() => {
+      end = edit.running(2);
+    }).not.toThrow();
+    expect(markOf("edit")).toBeUndefined();
+    expect(() => end()).not.toThrow();
   });
 });
