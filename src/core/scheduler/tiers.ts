@@ -4,7 +4,14 @@ import { defaultHostSlots, type PoolLease } from "../capacity/index.js";
 import type { StatCache } from "../hash/index.js";
 import { listedDirectory, testFileId } from "../keys/index.js";
 import { readRunLoads } from "../retry/index.js";
-import type { CheckKey, Provenance, RelativePath, RunReport, TestFileRef } from "../types/index.js";
+import type {
+  CheckKey,
+  ProjectName,
+  Provenance,
+  RelativePath,
+  RunReport,
+  TestFileRef,
+} from "../types/index.js";
 import { BacklogWall, backlogBudget } from "./backlog.js";
 import { WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
@@ -593,7 +600,9 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<M
  * fails or passes and no project is blocked, and a file the startup failure
  * kept from running that `requeue` does not hold is `unknown`, as a crashed
  * run's is. A report the runtime's loss rejects (row 011-106, review
- * 0.1.262 B2): its startup failure is the missing recorder's.
+ * 0.1.262 B2): its startup failure is the missing recorder's. A set of
+ * projects passes none of their setups (`heldSetups`, review 0.1.266 B2): the
+ * caller has already taken out a startup failure the merge hold rejects.
  */
 export function recordTier(
   context: SchedulerContext,
@@ -604,7 +613,7 @@ export function recordTier(
   requeue: boolean | ReadonlySet<string> = false,
   observed: TierObservations = NOTHING_OBSERVED,
   commit = true,
-  setups = true,
+  setups: boolean | ReadonlySet<ProjectName> = true,
 ): RelativePath[] {
   const { store, worktreeId } = context;
   endTier(context, ledger, tier);
@@ -655,7 +664,7 @@ export function recordTier(
         continue;
       }
       if (decision.kind === "not-started") {
-        if (setups) notStarted.push({ file, forced });
+        if (setups !== false) notStarted.push({ file, forced });
         else unknown.push({ file, key });
       } else if (decision.kind === "unknown") unknown.push({ file, key });
       else if (decision.kind === "split") {
@@ -748,12 +757,14 @@ export function recordTier(
     );
     // Task 001-382: one setup failure, not a FAIL per file; a run of a project that started passes
     // it, whatever its tests then did (review wave-13bp B4).
-    if (setups) {
+    if (setups !== false) {
       const started = new Set([
         ...(report.startedProjects ?? []),
         ...report.completedFiles.map((f) => f.project),
       ]);
       for (const project of startup?.projects ?? []) started.delete(project);
+      // Review 0.1.266, B2: no outcome of a setup that may have read an unmerged path.
+      if (setups !== true) for (const project of setups) started.delete(project);
       ledger.setups.pass(started, provenance.commit);
       if (startup !== undefined) failStartup(ledger, startup, notStarted, provenance.commit);
     }
