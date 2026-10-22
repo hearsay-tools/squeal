@@ -71,3 +71,17 @@ Tests: `test/scheduler/runtime-gone-tier.test.ts`, with the catch-up fixture's s
 Cases 1, 3, 4 and 5 fail with `setups` always `true`.
 
 Open: a tier that crashes while its daemon stops (011-66) can carry a startup failure too, when a stop kills the run during global setup. Its not-started files are in the requeue set, and `failStartup` then blocks them. The brief scopes B2 to the runtime's loss, so `setups` is `false` only there. Passing `interrupted.length === 0` would cover both.
+
+## Repair of review 0.1.262, B3: no slow tier starts after its runtime went during the load wait (brief W5)
+
+- `SlowTier.next` reads the runtime again once the load guard's wait ends, through the new `SlowHost.runtimeMissing`, before it takes the slow slot. A runtime gone since the pump's check returns `"again"`: no slot, no pool lease, no claim is taken, and the files stay `queued`. The pump's next turn finds `#halted()` and ends, and its `finally` tells `runtimeGoneNote` once, so the daemon takes the `reinstalled` exit as on the fast path.
+- `#select`, under the lock, now checks `SlowHost.halted()` (the pump's `#halted()`: a close, the daemon's `stopping` phase, or a runtime another tier's end found gone) where it checked `closed()`. A selection that finds it returns `null`, and `next` releases the slot it took. Only `#shutdown` sets `stopping`, after any departure drain, so a normal run's selection is unchanged. No test drives this line: the runtime would have to go after `runtimeMissing` returned and be found by another tier's end before the lock is free.
+- Decision 5 above now reads: the runtime is checked before a tier, after the slow guard's wait, and when a tier ends.
+
+Test: `test/scheduler/runtime-gone-slow.test.ts`, the review's probe. Two slow files, trigger `idle`, one slow permit, a private slot directory, and a load reader that removes the runtime on its first read and reports high load, then low load. Before the close: no run, two load reads, no slow permit held, all four pool permits free, both rows `queued`. After it: one note that names `squeal start`, no known state. It fails on the B2 commit: `f000`'s slow tier runs.
+
+## Type changes (additive), review 0.1.262 repair
+
+- `recordTier(..., commit, setups = true)` (`src/core/scheduler/tiers.ts`).
+- `SlowHost.halted()` and `SlowHost.runtimeMissing()` (`src/core/scheduler/slow-tier.ts`), both given by the scheduler.
+- `CatchUpOptions.scheduler`, a test fixture's pass-through of `runtimeDir`, `onReinstall` and `slow` (`test/scheduler/catch-up-fixture.ts`).
