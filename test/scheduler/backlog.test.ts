@@ -1,7 +1,10 @@
 import { appendFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
+import { cancelled } from "../../src/runners/vitest/run.js";
 import { createRepo, openHarness, openRepoStore } from "./helpers.js";
+import { pause, SETTLE_MS } from "./tier-yields-fixture.js";
 
 /*
  * Lessons, defect 19: after an environment change the queue held the whole
@@ -13,7 +16,9 @@ import { createRepo, openHarness, openRepoStore } from "./helpers.js";
  * 200 test files, each importing its own module. 199 fail, so after the
  * config edit every one of them is a last known fail, the most urgent class;
  * `test/f123.test.ts` passes, and without the amendment its edit would run
- * it after all 199.
+ * it after all 199. The edit cancels the backlog's tier, so the lane waits
+ * 20 s for quiet (row 011-94); the clock moves past the wait once it is
+ * seen, rather than the test idling through it (CI run 39696846845).
  */
 const COUNT = 200;
 const EDITED = 123;
@@ -40,8 +45,13 @@ describe("scheduler: an edit runs ahead of an environment change's backlog (D5, 
       );
     }
     const store = openRepoStore(repo.commonDir);
+    let offset = 0;
     // Re-running 199 new failures (task 001-171) is not this test's subject.
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 4, rerunCap: 0 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 4,
+      rerunCap: 0,
+      now: () => Date.now() + offset,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     const baseline = h.runner.runs.length;
@@ -57,15 +67,29 @@ describe("scheduler: an edit runs ahead of an environment change's backlog (D5, 
       h.write(`src/m${pad(EDITED)}.ts`, `export const value = ${EDITED}; // edited\n`);
       void h.batch(`src/m${pad(EDITED)}.ts`);
     };
+    let starts = 0;
+    h.gate.before = () => {
+      starts += 1;
+    };
     await h.batch("vitest.config.ts");
+    const editedFile = `test/f${pad(EDITED)}.test.ts`;
+    const cancel = () =>
+      h.runner.runs.slice(baseline).some((r) => r.report.failure === cancelled("backlog"));
+    await expect.poll(cancel, { timeout: 60_000 }).toBe(true);
+    await expect.poll(() => h.runsOf(editedFile).length, { timeout: 60_000 }).toBe(2);
+    // The edit's work ran; the lane waits for quiet and starts no backlog tier.
+    const waiting = starts;
+    await pause(SETTLE_MS);
+    expect(starts).toBe(waiting);
+    offset += BACKLOG_QUIET_MS;
     await h.scheduler.idle();
 
     const order = h.runner.runs.slice(baseline).flatMap((r) => r.files.map((f) => f.path));
-    const position = order.indexOf(`test/f${pad(EDITED)}.test.ts`);
+    const position = order.indexOf(editedFile);
     const after = new Set(order.slice(position + 1)).size;
     // Measured for the board (task 001-100): the edited file's place in the backlog.
     console.log(
-      `001-100: test/f${pad(EDITED)}.test.ts ran at position ${position + 1} of ${order.length}, before ${after} queued files`,
+      `001-100: ${editedFile} ran at position ${position + 1} of ${order.length}, before ${after} queued files`,
     );
     expect(new Set(order).size).toBe(COUNT);
     expect(after).toBeGreaterThanOrEqual(190);
