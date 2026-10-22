@@ -84,17 +84,20 @@ interface Stopping {
 /**
  * The worktree's daemon when it is stopping (C9 as amended 2026-10-20): its
  * ping says `phase: "stopping"`, or the store says its shutdown began while
- * it holds its lock (`withStopping`). `null` otherwise.
+ * it holds its lock (`withStopping`). `null` otherwise. The record is read
+ * before the status, so with a status that says stopping it is the stopping
+ * daemon's or none, never a successor's that registered after (row 011-110).
  */
 async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<Stopping | null> {
   const socketPath = await daemonSocket(root);
   const answer = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
   const ping = answer?.ok === true && answer.type === "ping" ? answer : null;
+  const record = recordedDaemon(root, 1_000);
   const status = readStatus(root, { now });
   const stopping = status.available ? status.daemon.stopping : undefined;
   if (ping?.phase !== "stopping" && stopping === undefined) return null;
   const from = stopping?.from ?? ping?.squealVersion ?? "";
-  return { socketPath, ping, record: recordedDaemon(root, 1_000), from };
+  return { socketPath, ping, record, from };
 }
 
 /**
@@ -107,7 +110,9 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
  * still be starting, or may have died before it took the lock, and the lock
  * decides between the two (D10; review 0.1.259, the coordinator's decision
  * of 2026-10-22). That spawn has no lock wait (row 011-110), so the claim's
- * successor stays the only one that waits.
+ * successor stays the only one that waits. Nor does `start` claim or spawn
+ * with the lock wait once a daemon registered after the stopping one
+ * (`claims`), which ended the handoff.
  * Past that bound it says what holds the lock, as `squeal stop` does, and
  * exits 1. A daemon before 0.1.200 finishes its tier first, which only this
  * bound covers.
@@ -125,7 +130,8 @@ async function finishHandoff(
   // Read while it runs: its record's token is its children's mark (as `squeal stop` reads them).
   const marks = ping === null ? null : marksOf(ping.pid, tokenOf(ping, record));
   if (ping !== null) await askDaemon(stopping.socketPath, { type: "stop" }).catch(() => null);
-  if (claims(root, record, now)) {
+  const old = ping?.startedAt ?? record?.startedAt ?? null;
+  if (claims(root, old, now)) {
     await ensureDaemon(root, {
       ...(cli === undefined ? {} : { cli }),
       awaitLockMs: SUCCESSOR_LOCK_WAIT_MS,
@@ -136,7 +142,6 @@ async function finishHandoff(
     await ensureDaemon(root, cli === undefined ? {} : { cli });
   }
   const own = squealVersion();
-  const old = ping?.startedAt ?? record?.startedAt ?? null;
   const deadline = Date.now() + bounds.socketMs + bounds.lockMs;
   for (;;) {
     const probe = await probeDaemon(root, 100);
@@ -162,11 +167,16 @@ function follows(ping: PingResponse, old: number | null, own: string): boolean {
 
 /**
  * Whether `start` spawns the successor: it wrote the claim (row 011-32), or
- * could not read or write one; not when a live claim for this daemon is
- * there, whose successor already waits. With the record cleared, any live
- * claim is the handoff's.
+ * could not read or write one; not when a live claim for the stopping daemon,
+ * started at `old`, is there, whose successor already waits. With the record
+ * cleared, any live claim is the handoff's. Row 011-110: the record is read
+ * again with the claim, in one write transaction, as a daemon registers: its
+ * record and the claim's end in one. A record of another start than `old`'s
+ * is a daemon that registered after the stopping one, the claim's successor
+ * or another, which ended the handoff: `start` claims nothing and spawns
+ * nothing that waits for the lock beside it.
  */
-function claims(root: AbsolutePath, record: DaemonRecord | null, now: () => number): boolean {
+function claims(root: AbsolutePath, old: number | null, now: () => number): boolean {
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return true;
@@ -175,13 +185,17 @@ function claims(root: AbsolutePath, record: DaemonRecord | null, now: () => numb
     try {
       const id = worktreeIdFor(root);
       const at = now() as EpochMs;
-      if (record === null) {
-        const claim = readHandoff(store, id);
-        return claim === null || at >= claim.boundAt;
-      }
-      const from = handoffFrom(record);
-      if (liveHandoff(store, id, from, at) !== null) return false;
-      return claimHandoff(store, id, { from, to: squealVersion(), at }) !== null;
+      return store.transaction(() => {
+        const record = store.worktrees.get(id)?.daemon ?? null;
+        if (record === null) {
+          const claim = readHandoff(store, id);
+          return claim === null || at >= claim.boundAt;
+        }
+        if (record.startedAt !== old) return false;
+        const from = handoffFrom(record);
+        if (liveHandoff(store, id, from, at) !== null) return false;
+        return claimHandoff(store, id, { from, to: squealVersion(), at }) !== null;
+      });
     } finally {
       store.close();
     }
