@@ -15,6 +15,21 @@ function why(name: string, cwd: string): { code: number; json: { check?: CheckId
   return { code, json: JSON.parse(stdout) };
 }
 
+/**
+ * The check names a delta prints: a block's head, or, in a group of failures with one error and
+ * location (row 011-109), its lines between its location and its command.
+ */
+function namesIn(text: string): string[] {
+  return text.split("\n\n").flatMap((block) => {
+    const [head = "", ...lines] = block.split("\n");
+    if (!head.startsWith("FAIL  ")) return [];
+    if (!/^FAIL {2}\d+ checks with one error and location /.test(head)) return [head.slice(6)];
+    const from = lines.findIndex((l) => l.trimStart().startsWith("at ")) + 1;
+    const to = lines.findIndex((l) => l.trimStart().startsWith("Full list: "));
+    return lines.slice(from, to).map((l) => l.trim());
+  });
+}
+
 describe("a check name printed in a delta", () => {
   it("round-trips through squeal why: file-level, project, capped", async () => {
     const repo = fakeRepo();
@@ -39,17 +54,22 @@ describe("a check name printed in a delta", () => {
     createStateSink(store).applyResults(
       repo.mainId,
       1,
-      checks.map((c) => result(c, "fail", { worktreeId: repo.mainId })),
+      // The file-level check fails alone; the two tests share an error, so they print as a group.
+      checks.map((c) =>
+        result(c, "fail", {
+          worktreeId: repo.mainId,
+          ...(c.kind === "file" ? { message: "Cannot find module 'x'" } : {}),
+        }),
+      ),
       { checkpointId: null },
     );
     const delta = await delivery.onToolBoundary(consumer);
     store.close();
     if (delta === null) throw new Error("expected a delta");
 
-    const names = formatDelta(delta)
-      .split("\n")
-      .filter((line) => line.startsWith("FAIL  "))
-      .map((line) => line.slice("FAIL  ".length));
+    const text = formatDelta(delta);
+    expect(text).toContain("FAIL  2 checks with one error and location (2 tests)\n");
+    const names = namesIn(text);
     expect(names).toContain("[web] src/new.test.ts (file-level)");
     expect(names).toContain("src/a.test.ts > math > adds");
     expect(names.filter((name) => name.endsWith("..."))).toHaveLength(1);
