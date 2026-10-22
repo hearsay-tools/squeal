@@ -159,6 +159,8 @@ export async function startDaemon(options: DaemonOptions): Promise<RunningDaemon
 
 /** The topic of the busy store's episode notes (task 001-422). */
 const BUSY_TOPIC = "daemon:store-busy";
+/** The topic of the note on a Vitest below the root (003 D7 as amended 2026-10-22). */
+const VITEST_BELOW_ROOT_TOPIC = "vitest:below-root";
 
 class Daemon {
   readonly #log: (line: string) => void;
@@ -491,6 +493,21 @@ class Daemon {
               around,
             })
           : null;
+      // Spec 003 D7 as amended 2026-10-22 (row 005-79): a Vitest below the root that
+      // detection skips gets one note, read once here, off the hook path; a restart
+      // that finds the same directories writes none.
+      const vitestBelowRoot = runnerModule
+        .readVitestBelowRoot(root)
+        .then((dirs) => {
+          if (dirs.length === 0) return;
+          const text = runnerModule.vitestBelowRootNote(dirs);
+          const notes = readDaemonNotes(store, worktreeId);
+          if (notes.findLast((n) => n.topic === VITEST_BELOW_ROOT_TOPIC)?.text === text) return;
+          this.#note(text, undefined, undefined, VITEST_BELOW_ROOT_TOPIC);
+        })
+        .catch((error: unknown) =>
+          this.#log(`could not read the manifests below the root: ${message(error)}`),
+        );
       // Spec 004 D2: the slow tier's own Vitest instance, made per slow pass with `slow.maxWorkers`,
       // or `slow.maxParallel` when more, so an idle tier's files run at once (task 004-34).
       const slowWorkers = () =>
@@ -545,6 +562,7 @@ class Daemon {
         ...((await awaitsInstall(root)) ? [] : [vitestRunner?.open()]),
         ...nodeTestRunners.map((r) => r.open()),
         ...pytestRunners.map((r) => r.open()),
+        vitestBelowRoot,
       ]);
       if (this.#phase === "stopping" || this.#stopRequested) return;
       const loop = createDaemonLoop({
