@@ -3,7 +3,7 @@ import { loadConfigFile, positiveInteger } from "../daemon/config-file.js";
 import { defaultHostSlots } from "../daemon/user-config.js";
 import type { AbsolutePath } from "../types/index.js";
 import type { HostTotals, PsPlaces, ReadPool, Sample } from "./model.js";
-import { names } from "./reads.js";
+import { names, poolDirs } from "./reads.js";
 import type { PsHost } from "./shape.js";
 import { type LockEntry, ticksToMs } from "./source.js";
 
@@ -116,16 +116,10 @@ function hostSlotsOf(path: AbsolutePath, cpus: number): number {
   return loadConfigFile(path, shape, defaults).value.capacity.hostSlots;
 }
 
-/**
- * The permit files of the pool's directories: `squeal` in the runtime
- * directory and the per-user `squeal-<uid>` in the temp one, as a daemon's
- * `slowSlotDir` picks one by its own environment (004 D2).
- */
+/** The permit files of the pool's directories (`poolDirs`). */
 function permitFiles(places: PsPlaces): AbsolutePath[] {
-  const dirs = new Set<AbsolutePath>([join(places.tempDir, `squeal-${places.uid}`)]);
-  if (places.runtimeDir !== null) dirs.add(join(places.runtimeDir, "squeal"));
   const files: AbsolutePath[] = [];
-  for (const dir of dirs)
+  for (const dir of poolDirs(places))
     for (const name of names(dir)) if (PERMIT.test(name)) files.push(join(dir, name));
   return files;
 }

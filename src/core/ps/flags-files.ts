@@ -3,7 +3,7 @@ import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
 import { lockFileWorktreeId, storePaths } from "../store/paths.js";
 import type { AbsolutePath } from "../types/index.js";
 import type { PsModel, PsPlaces } from "./model.js";
-import { lstatOrNull, names } from "./reads.js";
+import { lstatOrNull, names, poolDirs } from "./reads.js";
 import { dateOf, shellQuote } from "./render-units.js";
 import type { PsFileFlag, PsUnflaggedFiles, PsUnflaggedKind, PsUnknown } from "./shape.js";
 
@@ -103,7 +103,7 @@ function unflagged(model: PsModel): PsUnflaggedFiles[] {
       if (i !== undefined && Number(i) >= model.pool.pool.slots) count("surplus-permit");
     }
   }
-  for (const dir of poolDirs(model.places, "squeal-sessions")) {
+  for (const dir of sessionDirs(model.places)) {
     for (const _ of names(dir)) count("session-root");
   }
   const kinds: readonly PsUnflaggedKind[] = [
@@ -119,14 +119,12 @@ function unflagged(model: PsModel): PsUnflaggedFiles[] {
 }
 
 /**
- * The directories a daemon keeps its pool and session roots in: the per-user
- * `<temp>/squeal-<uid>`, and the runtime directory, as a daemon picks one by
- * its own environment (004 D2). `sub` names the runtime one's child: the
- * pool lies in `squeal`, the session roots in `squeal-sessions`.
+ * The session roots' directories: `squeal-sessions` in the runtime
+ * directory and in the per-user `squeal-<uid>` of the temp one, as a
+ * daemon's hooks pick one by their own environment.
  */
-function poolDirs(places: PsPlaces, sub = "squeal"): AbsolutePath[] {
-  const userDir = join(places.tempDir, `squeal-${places.uid}`);
-  const dirs = [sub === "squeal" ? userDir : join(userDir, sub)];
-  if (places.runtimeDir !== null) dirs.push(join(places.runtimeDir, sub));
+function sessionDirs(places: PsPlaces): AbsolutePath[] {
+  const dirs = [join(places.tempDir, `squeal-${places.uid}`, "squeal-sessions")];
+  if (places.runtimeDir !== null) dirs.push(join(places.runtimeDir, "squeal-sessions"));
   return dirs;
 }
