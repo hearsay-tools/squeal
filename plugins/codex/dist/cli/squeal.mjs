@@ -16737,6 +16737,7 @@ var init_slow_tier = __esm({
        * and a marked waiter takes the slot at a handover without a new wait.
        */
       async next() {
+        if (this.host.closed()) return "again";
         const preemptions = this.#preemptions;
         const refs2 = await this.host.lock.run(() => this.#candidates());
         const { context } = this.host.started();
@@ -50894,7 +50895,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.258";
+  if (true) return "0.1.260";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
