@@ -56,3 +56,27 @@ Read W1 to W3 above, the notes under `tasks/011-113/`, `tasks/011-72/` and `task
 - `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is 0.1.266 in all eight places; the bundles match the tree; the four launchers are byte-identical.
 
 Run `npm ci`, then the test files W1 to W3 added or changed, directly. The full suite is CI on the candidate and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-w15.log`); a gate log names only failing files. Rows 011-111 and 006-95 are known flakes. Write `reviews/0.1.266.md` with a PASS or FAIL verdict and commit it alone.
+
+## Wave 15.5: repair of review 0.1.266
+
+One worker; the review found no blocker in 011-113 or 011-112.
+
+### W4: B1 and B2, the merge hold covers every refresh and setup outcome
+
+Use /worker. Shape: repair, one commit per blocker, B1 first.
+
+Outcome: while the merge hold holds, no refresh from another worktree and no setup outcome makes a held file current or UNKNOWN, and its queue resumes after `git add` with no edit.
+
+Read `reviews/0.1.266.md` B1, B2, "What fits" (the store view) and "Inputs for the repair", W3 above, `tasks/011-72/notes.md`, `tasks/011-61/design.md` section 1, and spec 011 C9 on the unresolved merge.
+
+Seam: B1 at `src/core/scheduler/store-results.ts:51` (the cross-worktree `sink.refresh`) and the hold decision in `src/core/scheduler/hold.ts:249` and `ledger.ts:684`; B2 at `scheduler.ts:908` to `:962` before `recordTier` (`tiers.ts:748`, `setup.ts:90`). A lead: the review's two numbered reproductions as failing tests first. One explicit hold policy that every refresh caller asks, in place of the store view, is welcome if it stays off the validity path or brings its validity case (C3).
+
+Owns: `src/core/scheduler/hold.ts`, `hold-rows.ts`, `ledger.ts`, `store-results.ts`, `#record` in `scheduler.ts`, the setup branch of `recordTier` in `tiers.ts`, `setup.ts`, the merge-hold tests, `tasks/011-72/notes.md`. Not yours: `sharing.ts`, `yields.ts` and tier selection (011-112), `src/core/status/` and `attribution.ts` (011-113), the board, spec text, bundles, version. No `npm run build`.
+
+Done when: both reproductions fail on the baseline and pass; the unaffected-file and unaffected-project controls pass; a setup path reached through project environment inputs is covered; R1's tests 1 to 10 still pass; `test/keys/key-format.test.ts` passes; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+### R2: narrow re-review of the repaired cand/0.1.266
+
+Use /reviewer. Shape: review, narrow, the last round. R1 failed cand/0.1.266 at 90f6f7ce9 (`reviews/0.1.266.md`, B1 and B2). The coordinator re-cuts it with W4's commits and one release commit, pinned to the SHA named in the spawn.
+
+Check only: `git range-diff` shows wave 15's eight commits and the docs commit unchanged but for their cherry-pick lines; B1 and B2 hold as the review's reproductions expect, by W4's tests and your own probes; normal healing and unaffected projects are unchanged; no key format, validity or delivery change unless C3's case comes with it; the version and the bundles as in R1. Run `npm ci`, then the files W4 changed or added, directly. The full suite is CI on the candidate and the coordinator's locked gate; read both by test name. Write `reviews/0.1.266-r2.md` with a PASS or FAIL verdict and commit it alone.
