@@ -167,6 +167,26 @@ describe("older", () => {
     expect(names(left, 4100)).toContain("older");
   });
 
+  // Task 014-38: its drain ends it at the deadline, and a stop before would end the slow work.
+  it("is information named in the state while it drains, and a flag again at the drain's deadline", () => {
+    const d = daemonAt(4100, { version: "0.1.234", ageS: 7200 });
+    const drains = (agoMs: number) => workOf(d, { departedAt: NOW - agoMs, slowWaiting: true });
+    const draining = one(d, drains(42 * MINUTE));
+    expect(names(draining, 4100)).toEqual([]);
+    expect(draining.states.get(4100)).toBe("draining 18m left, older");
+    expect(one(d, drains(59 * MINUTE)).states.get(4100)).toBe("draining 1m left, older");
+    const due = one(d, drains(60 * MINUTE));
+    expect(due.daemons.get(4100)).toEqual([
+      {
+        flag: "older",
+        reason: "version 0.1.234; claude installs 0.1.235",
+        command: `squeal stop ${d.root}`,
+      },
+    ]);
+    expect(due.states.has(4100)).toBe(false);
+    expect(names(one(d, drains(61 * MINUTE)), 4100)).toEqual(["older", "past-departure"]);
+  });
+
   it("reads Codex's newest cache directory beside its own, and names a missing install unknown", () => {
     for (const v of ["0.1.234", "0.1.236", "notes"])
       mkdirSync(join(host.places.home, ".codex/plugins/cache/hearsay/squeal", v), {
