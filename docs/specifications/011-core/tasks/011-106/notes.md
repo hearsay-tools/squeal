@@ -47,3 +47,9 @@ With this row, a tier during which the runtime went stores no FAIL, so no re-run
 3. A start through another copy: after case 1's exit, `start` and `status --wait` through copy B give six current files with no known failures, and `run --all --wait` then runs nothing ("11 already current, 0 run now").
 
 All three fail on the 011-66 commit without this row's source change: copy A's daemon never exits, so each times out at 180 s. They pass with it.
+
+## Verification at `1bdb4ddde`
+
+- `squeal run --all --wait`, revision 27: 867 test files current, 5 known failures, exit 1. Four are bundle drift: the plugin, Codex, OpenCode and Pi bundle tests name `cli/ps.mjs`, which bundles `WORKTREE_META_ROWS` and so its new `interrupted` row. Bundles are the coordinator's to rebuild.
+- The fifth is `test/scheduler/backlog-slots-overhead.test.ts` test 3, a 011-99 file. It fails on the base too. Run alone with `npx vitest run`, alternating base `a5901f2bf` (a detached worktree sharing this `node_modules`) and this head, at one-minute load 4.5 to 8.3 on 24 CPUs: base 1.24 and 1.25 times one tier's time, head 1.23 and 1.24, against its bound of 1.2. Board row 011-99 records the same failure on main at the CPU limits.
+- `test/keys/key-format.test.ts`, `test/store/worktree-meta.test.ts` and `test/daemon/restart-handover-signal.test.ts` (011-65) pass.
