@@ -147,6 +147,11 @@ export interface TimerContext {
    * runs once no tier ran for 60 s (`IdleGc.check`). Absent: none.
    */
   readonly idleGc?: () => void;
+  /**
+   * Spec 011 C9, *Hold command* (row 011-74): each heartbeat reads the
+   * command holds again (`Scheduler.commandHold`). Absent: none.
+   */
+  readonly commandHolds?: () => void;
   readonly note: (text: string) => void;
   readonly log: (line: string) => void;
   /**
@@ -314,12 +319,14 @@ export function startTimers(context: TimerContext): () => void {
         );
       }
     });
-  const heartbeat = () =>
+  const heartbeat = () => {
     retries.run("the heartbeat", [
       ["heartbeat", () => beat(context, now())],
       ["harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir })],
       ["leaving check", () => dropLeft(store, worktreeId, now(), { locksDir })],
     ]);
+    context.commandHolds?.();
+  };
   const observedKeys = context.policy.nodeTest.flatMap(({ name }) => [
     nodeTestObservedMetaKey(name),
     nodeTestObservedPreloadsMetaKey(name),
