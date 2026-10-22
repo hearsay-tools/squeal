@@ -21,7 +21,9 @@ export const BACKLOG_TIER_BUDGET_MS = 120_000;
  * results the stability check would discard. An add or a delete cancels
  * through its runner part, which finds what it reaches (`queuesEdit`, task
  * 001-364: a build's hashed outputs that no test file reads cancelled a
- * 200-file tier). An edit no test file reaches lets the tier finish.
+ * 200-file tier). An edit no test file reaches lets the tier finish. A
+ * revision of editor scratch files only queues no edit's work
+ * (`rekeyContent`, row 011-117), so it cancels only a tier that read one.
  */
 export function cancelsBacklog(
   context: SchedulerContext,
