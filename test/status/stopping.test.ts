@@ -176,10 +176,36 @@ describe("a daemon whose shutdown began and that holds its lock (row 011-34)", (
     expect(status(past).daemon).toEqual({ state: "down", since: SINCE });
   });
 
-  it("after it cleared its record and let go of its lock, is plain down whatever the claim", () => {
-    const { store, wt, status } = stopping({ claimAt: (SINCE + 100) as EpochMs, locked: false });
+  // Review 0.1.259: the lock goes before the successor's process takes it; status read down there.
+  it("after it cleared its record and let go of its lock, a live claim still reads handing over", () => {
+    const { store, wt, status, header } = stopping({
+      claimAt: (SINCE + 100) as EpochMs,
+      locked: false,
+    });
+    store.worktrees.setDaemon(wt, null);
+    const handing = {
+      from: "0.1.0",
+      since: SINCE + 100,
+      to: "0.1.31",
+      boundAt: SINCE + 100 + 130_000,
+      overdue: false,
+    };
+    expect(status().daemon).toEqual({ state: "down", since: SINCE, stopping: handing });
+    expect(header().daemon).toMatchObject({ state: "down", stopping: handing });
+    expect(formatStatus(status(), NOW, "squeal")).toContain(
+      `the daemon is handing over from 0.1.0 to 0.1.31 since ${new Date(SINCE + 100).toISOString()}`,
+    );
+  });
+
+  it("after it cleared its record, is plain down with a free lock and no live claim", () => {
+    const { store, wt, status, header } = stopping({ locked: false });
     store.worktrees.setDaemon(wt, null);
     expect(status().daemon).toEqual({ state: "down", since: SINCE });
+    expect(header().daemon).toEqual({ state: "down", since: SINCE });
+    claimHandoff(store, wt, { from: "0.1.0@1#old", to: "0.1.31", at: (SINCE + 100) as EpochMs });
+    const past = (SINCE + 100 + 130_000) as EpochMs;
+    expect(status(past).daemon).toEqual({ state: "down", since: SINCE });
+    expect(header(past).daemon).toEqual({ state: "down", since: SINCE });
   });
 
   it("is plain down once its lock is free: it was killed while it shut down", () => {
