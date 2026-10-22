@@ -70,7 +70,7 @@ export interface VitestHints {
   /** `vitest` started: its configs' widths are each run's ceilings. */
   started(vitest: Vitest): void;
   /** Sizes `vitest`'s next run for `workers`, a tier's grant; absent, the instance's own width. */
-  size(vitest: Vitest, workers: number | undefined): void;
+  size(vitest: Vitest, workers: number | undefined, testFiles: readonly TestFileRef[]): void;
 }
 
 const NO_HINTS: VitestHints = { started: () => {}, size: () => {} };
@@ -479,7 +479,7 @@ export class VitestAdapter implements RunnerAdapter {
           return empty;
         }
         // D11 Capacity (task 001-378): the tier's grant, under each project's own width.
-        this.#hints.size(vitest, options.workers);
+        this.#hints.size(vitest, options.workers, testFiles);
         const exitCode = process.exitCode;
         const unsure = this.#unsure;
         const loadedSince = Date.now();
