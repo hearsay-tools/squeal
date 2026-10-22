@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
-import { storePaths } from "../store/index.js";
+import { lockFileWorktreeId, storePaths } from "../store/paths.js";
 import type { AbsolutePath } from "../types/index.js";
 import type { PsModel, PsPlaces } from "./model.js";
 import { lstatOrNull, names } from "./reads.js";
@@ -14,7 +14,6 @@ import type { PsFileFlag, PsUnflaggedFiles, PsUnflaggedKind, PsUnknown } from ".
  * frees when the holder dies never get a flag; they are counted by kind.
  */
 
-const LOCK_FILE = /^[0-9a-f]{16}\.sqlite$/;
 const WAITER_LOCK = /^waiter-.+\.sqlite$/;
 const PERMIT = /^pool\.(\d+)\.lock$/;
 const MARK = /^pool\.mark\.[^.]+$/;
@@ -94,7 +93,7 @@ function unflagged(model: PsModel): PsUnflaggedFiles[] {
   );
   for (const dir of commonDirs) {
     for (const name of names(storePaths(dir).locksDir)) {
-      if (LOCK_FILE.test(name)) count("lock");
+      if (lockFileWorktreeId(name) !== null) count("lock");
       else if (WAITER_LOCK.test(name)) count("waiter-lock");
     }
   }
