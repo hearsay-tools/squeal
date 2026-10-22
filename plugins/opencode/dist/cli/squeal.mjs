@@ -8844,6 +8844,43 @@ var init_context = __esm({
   }
 });
 
+// src/core/scheduler/editor-scratch.ts
+function isEditorScratch(path) {
+  const name2 = path.slice(path.lastIndexOf("/") + 1);
+  return name2 === VIM_PROBE || VIM_SWAP.test(name2) || EMACS_LOCK.test(name2);
+}
+function onlyEditorScratch(changes) {
+  return changes.length > 0 && changes.every((change2) => isEditorScratch(change2.path));
+}
+function scratchMovedListings(store, worktreeId, after, changed2, listings) {
+  if (listings.size === 0 || ![...changed2].some(isEditorScratch)) return [];
+  const existed = /* @__PURE__ */ new Map();
+  const exists2 = /* @__PURE__ */ new Map();
+  for (const revision of store.revisions.range(worktreeId, after, Number.MAX_SAFE_INTEGER)) {
+    for (const { path, oldHash, newHash } of revision.changes) {
+      if (!isEditorScratch(path)) continue;
+      if (!existed.has(path)) existed.set(path, oldHash !== null);
+      exists2.set(path, newHash !== null);
+    }
+  }
+  const moved2 = /* @__PURE__ */ new Set();
+  for (const [path, before] of existed) {
+    if (exists2.get(path) === before) continue;
+    for (const listing of ancestorListings(path)) if (listings.has(listing)) moved2.add(listing);
+  }
+  return [...moved2];
+}
+var VIM_SWAP, VIM_PROBE, EMACS_LOCK;
+var init_editor_scratch = __esm({
+  "src/core/scheduler/editor-scratch.ts"() {
+    "use strict";
+    init_keys();
+    VIM_SWAP = /^\..+\.sw[a-p]$/;
+    VIM_PROBE = "4913";
+    EMACS_LOCK = /^\.#./;
+  }
+});
+
 // src/core/slow/rank-tokens.ts
 function offeredTokens(text3) {
   const tokens = /* @__PURE__ */ new Set();
@@ -10246,9 +10283,9 @@ var init_promotions = __esm({
 });
 
 // src/core/scheduler/quiet.ts
-function quietQueued(context, ledger, misses) {
+function quietQueued(context, ledger, misses, changes = []) {
   const { quiet } = context;
-  if (quiet === void 0) return;
+  if (quiet === void 0 || onlyEditorScratch(changes)) return;
   const now = context.now();
   const lanes = /* @__PURE__ */ new Set();
   for (const { ref: ref2 } of misses) if (ledger.queue.has(ref2)) lanes.add(laneOf(context, ref2));
@@ -10296,6 +10333,7 @@ var init_quiet = __esm({
   "src/core/scheduler/quiet.ts"() {
     "use strict";
     init_types();
+    init_editor_scratch();
     init_tiers();
     BACKLOG_QUIET_MS = 2e4;
     QUIET_RECHECK_MS = 1e3;
@@ -12949,6 +12987,7 @@ var init_ledger = __esm({
               this.#discharge(file);
             this.queue.remove(ref2);
             this.#syncPhase(file);
+            if (classify2(file) === "current") this.checkpoints.done(ref2, null);
             continue;
           }
           const hits = held2 ? [] : this.lookup(key2);
@@ -14325,7 +14364,7 @@ function rekeyContent(context, ledger, revision) {
   const { keys } = context;
   const changes = revision.changes;
   const paths = new Set(changes.map((c) => c.path));
-  const catchUp = isCatchUp(context, ledger, paths);
+  const catchUp = onlyEditorScratch(changes) || isCatchUp(context, ledger, paths);
   const touched = keys.rekeyListings(changes).map((c) => c.testFile);
   const policy = reloadPolicy(context, ledger, changes);
   touched.push(...policy.changes.map((c) => c.testFile));
@@ -14336,7 +14375,7 @@ function rekeyContent(context, ledger, revision) {
   const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs2) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
   const misses = ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
-  quietQueued(context, ledger, misses);
+  quietQueued(context, ledger, misses, changes);
   const recent = touched.filter((ref2) => ledger.queue.isRecent(ref2));
   return {
     rekeyed,
@@ -14448,6 +14487,7 @@ var init_revision2 = __esm({
     "use strict";
     init_keys();
     init_context();
+    init_editor_scratch();
     init_failures2();
     init_notes2();
     init_omitted_test_files();
@@ -14885,10 +14925,17 @@ function endTier(context, ledger, tier) {
   tier.lease?.release();
   if (ledger.tierChanges.delete(tier.changes)) context.keys.endRun();
 }
-function unstableInputs(context, tier) {
+async function unstableInputs(context, tier) {
   const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
-  for (const path of inputs2) if (listedDirectory(path) !== null) inputs2.delete(path);
-  return changedSince(tier.snapshot, inputs2, context.hasher);
+  const listings = /* @__PURE__ */ new Set();
+  for (const path of inputs2) if (listedDirectory(path) !== null) listings.add(path);
+  for (const path of listings) inputs2.delete(path);
+  const moved2 = await changedSince(tier.snapshot, inputs2, context.hasher);
+  const { store, worktreeId } = context;
+  const after = tier.revision.number;
+  for (const path of scratchMovedListings(store, worktreeId, after, tier.changes, listings))
+    moved2.changed.add(path);
+  return moved2;
 }
 function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = false, observed = NOTHING_OBSERVED, commit = true, setups = true) {
   const { store, worktreeId } = context;
@@ -15043,6 +15090,7 @@ var init_tiers = __esm({
     init_backlog();
     init_capacity2();
     init_context();
+    init_editor_scratch();
     init_environment_growth();
     init_hold();
     init_observed2();
@@ -15670,7 +15718,7 @@ async function reconcileBatch(context, ledger, batch) {
     ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
     for (const change2 of revision.changes) {
       ledger.refineChanges?.add(change2.path);
-      const structural2 = change2.oldHash === null || change2.newHash === null;
+      const structural2 = (change2.oldHash === null || change2.newHash === null) && !isEditorScratch(change2.path);
       const listings = structural2 ? [...ancestorListings(change2.path)] : [];
       for (const changes of ledger.tierChanges) {
         changes.add(change2.path);
@@ -15703,6 +15751,7 @@ var init_batch = __esm({
     init_fs();
     init_keys();
     init_revision();
+    init_editor_scratch();
     init_head_move();
     init_revision2();
     init_stability();
@@ -16118,14 +16167,17 @@ async function fetchEditCut(context, testFiles2, paths, affected2, bound, closur
     if (!ids.some((id2) => reached.has(id2))) bare.add(path);
   }
   const direct = affected2.direct.map(testFileId);
-  if (bare.size === 0) return { namesakes, bare, fallback: /* @__PURE__ */ new Set() };
-  if (bare.size === namesakes.size) return { namesakes, bare, fallback: new Set(direct) };
+  const transitive = new Set(affected2.transitive.map(testFileId));
+  if (bare.size === 0) return { namesakes, bare, fallback: /* @__PURE__ */ new Set(), transitive };
+  if (bare.size === namesakes.size)
+    return { namesakes, bare, fallback: new Set(direct), transitive };
   const own = await tryRunner(
     context,
     `affected (${listPaths([...bare])})`,
     () => bound.call(() => runner.affected([...bare]))
   );
-  return { namesakes, bare, fallback: new Set(own === null ? direct : own.direct.map(testFileId)) };
+  const fallback = new Set(own === null ? direct : own.direct.map(testFileId));
+  return { namesakes, bare, fallback, transitive };
 }
 function editWork(context, ledger, cut, changed2, direct) {
   const reached = ledger.recentOf(changed2, direct);
@@ -16136,9 +16188,32 @@ function editWork(context, ledger, cut, changed2, direct) {
     const fallback = cut.bare.has(source) ? cut.fallback : direct;
     for (const id2 of own.length > 0 ? own : fallback) kept2.add(id2);
   }
-  const others = [...direct].filter((id2) => !kept2.has(id2)).map((id2) => ledger.files.get(id2)).filter((file) => file !== void 0).sort(shortestFirst);
+  const beyond = heldBeyondInputs(context, changed2);
+  const rest = [...reached].filter((id2) => !kept2.has(id2) && !direct.has(id2));
+  const reads = rest.filter((id2) => cut.transitive.has(id2) || beyond.has(id2));
+  const others = [
+    ...shortest(
+      ledger,
+      [...direct].filter((id2) => !kept2.has(id2))
+    ),
+    ...shortest(ledger, reads)
+  ];
   for (const file of others.slice(0, context.policy.runner.tierSize)) kept2.add(file.id);
   return { kept: kept2, reached };
+}
+function shortest(ledger, ids) {
+  return ids.map((id2) => ledger.files.get(id2)).filter((file) => file !== void 0).sort(shortestFirst);
+}
+function heldBeyondInputs(context, changed2) {
+  const { keys } = context;
+  const ids = /* @__PURE__ */ new Set();
+  for (const path of changed2) {
+    for (const ref2 of keys.index.reverse.referencing([path])) {
+      const declared = keys.declaredFor(ref2.path).includes(path);
+      if (!declared || keys.observedOf(ref2).includes(path)) ids.add(testFileId(ref2));
+    }
+  }
+  return ids;
 }
 function demote(ledger, ids, kept2, revision) {
   for (const id2 of ids) {
@@ -17630,7 +17705,8 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile, keyedAt)
     ...keyedAt === void 0 ? {} : { keyedAt },
     ...catchUp ? { catchUp: true } : {}
   };
-  quietQueued(context, ledger, ledger.settle(touched.values(), changed2, options));
+  const misses = ledger.settle(touched.values(), changed2, options);
+  quietQueued(context, ledger, misses, part.revision.changes);
   settleFailures(ledger, part.failures, part.retrying, changed2, options);
   if (!catchUp && keyedAt !== void 0 && part.cut !== void 0) {
     const { kept: kept2, reached } = editWork(context, ledger, part.cut, changed2, part.direct);
@@ -45535,6 +45611,8 @@ var init_adapter_observed2 = __esm({
       outside;
       note;
       tests = /* @__PURE__ */ new Map();
+      /** What processes each test file started found to import, by this worktree's runs. */
+      spawned = /* @__PURE__ */ new Map();
       /** Test files whose set another worktree grew, not yet reported. */
       grown = /* @__PURE__ */ new Set();
       session = /* @__PURE__ */ new Set();
@@ -45623,8 +45701,9 @@ var init_adapter_observed2 = __esm({
        */
       record(seen, listed5) {
         const additions = {};
-        for (const { testFile, paths } of seen) {
+        for (const { testFile, paths, spawned } of seen) {
           if (!listed5.has(testFile.path)) continue;
+          this.recordSpawned(testFile.path, spawned);
           const closure = new Set(this.graph.closure(testFile.path).paths);
           const added = this.add(
             testFile.path,
@@ -45638,6 +45717,20 @@ var init_adapter_observed2 = __esm({
         } catch (error) {
           this.note(`could not store observed paths: ${String(error)}`);
         }
+      }
+      /**
+       * What the processes a test file started found (task 007-55): one hop from
+       * the test file, as a static import is. This worktree's runs only: the
+       * store keeps them among the observed paths, which another worktree and a
+       * restarted daemon read as `transitive` until the file runs here.
+       */
+      recordSpawned(testFile, paths) {
+        const known2 = this.spawned.get(testFile) ?? /* @__PURE__ */ new Set();
+        const added = paths.filter((p) => !known2.has(p) && !this.outside(p));
+        if (added.length === 0) return;
+        for (const path of added) known2.add(path);
+        this.spawned.set(testFile, known2);
+        this.graph.recordSpawned(testFile, [...known2]);
       }
       /** Adds paths to one test file's set; returns the new ones. */
       add(testFile, paths) {
@@ -50344,18 +50437,31 @@ var init_events2 = __esm({
 import { dirname as dirname34, sep as sep19 } from "node:path";
 function observeBatch(edges, files2, paths) {
   const children = /* @__PURE__ */ new Map();
+  const spawned = /* @__PURE__ */ new Map();
   const session2 = /* @__PURE__ */ new Set();
   const conftests = /* @__PURE__ */ new Set();
+  const imports = [];
+  const add2 = (map, from, to) => {
+    const set = map.get(from) ?? /* @__PURE__ */ new Set();
+    set.add(to);
+    map.set(from, set);
+  };
   for (const edge of edges) {
+    if (edge.type === "spawned") {
+      add2(children, edge.ctx, edge.to);
+      add2(spawned, edge.ctx, edge.to);
+      continue;
+    }
+    imports.push(edge);
     if (edge.to.endsWith(`${sep19}conftest.py`)) conftests.add(edge.to);
     const from = edge.from ?? edge.ctx;
     if (from === null) session2.add(edge.to);
-    else {
-      const set = children.get(from) ?? /* @__PURE__ */ new Set();
-      set.add(edge.to);
-      children.set(from, set);
-    }
+    else add2(children, from, edge.to);
   }
+  const relative24 = (all2) => [...all2].flatMap((p) => {
+    const path = paths.toRelative(p);
+    return path === null ? [] : [path];
+  }).sort(compare);
   const reach2 = (roots) => {
     const seen = /* @__PURE__ */ new Set();
     const todo = [...roots];
@@ -50364,21 +50470,22 @@ function observeBatch(edges, files2, paths) {
       seen.add(next);
       todo.push(...children.get(next) ?? []);
     }
-    return [...seen].flatMap((p) => {
-      const relative24 = paths.toRelative(p);
-      return relative24 === null ? [] : [relative24];
-    }).sort(compare);
+    return relative24(seen);
   };
   const closures = files2.map(({ testFile, real: real2 }) => {
     const dir2 = dirname34(real2);
     const own = [...conftests].filter(
       (c) => dir2 === dirname34(c) || dir2.startsWith(`${dirname34(c)}${sep19}`)
     );
-    return { testFile, paths: reach2([real2, ...own]) };
+    return {
+      testFile,
+      paths: reach2([real2, ...own]),
+      spawned: relative24(spawned.get(real2) ?? [])
+    };
   });
-  const imported = new Set(edges.map((e) => e.to));
+  const imported = new Set(imports.map((e) => e.to));
   const tests = new Set(files2.map((f) => f.real));
-  for (const { from } of edges) {
+  for (const { from } of imports) {
     if (from !== null && !imported.has(from) && !tests.has(from)) session2.add(from);
   }
   return { closures, session: reach2([...session2].filter((p) => !conftests.has(p))) };
@@ -50529,7 +50636,10 @@ async function runPytest(options) {
     ...environment.runEnv,
     ...options.childEnv,
     PYTHONPATH: [environment.runEnv.PYTHONPATH, runtimeDir2].filter((p) => p !== void 0 && p !== "").join(delimiter3),
-    SQUEAL_PYTEST_ROOT: options.root
+    SQUEAL_PYTEST_ROOT: options.root,
+    // The plugin names the file in progress for the processes a test starts (task 007-55);
+    // one inherited from a run around this daemon's would record pytest's own imports.
+    SQUEAL_PYTEST_FILE: void 0
   };
   const args2 = pytestArgs(
     {
@@ -50613,7 +50723,7 @@ async function runPytest(options) {
       running.delete(group);
       const parsed2 = parsePytestEvents(readOr(events));
       batch.read = readBatch(parsed2, batch.files, rootdir, paths, basetemp.dir(batch.index));
-      batch.edges = parsed2.flatMap((e) => e.type === "import" ? [e] : []);
+      batch.edges = parsed2.flatMap((e) => e.type === "import" || e.type === "spawned" ? [e] : []);
     }
   };
   const width = Math.max(1, Math.min(options.concurrency ?? batches2.length, batches2.length));
@@ -51544,6 +51654,7 @@ var init_graph4 = __esm({
       path;
       index = null;
       observed = /* @__PURE__ */ new Map();
+      spawned = /* @__PURE__ */ new Map();
       /** Cold build, or a full re-resolve from cached parses. */
       build(testFiles2, dropped = []) {
         this.testFiles = testFiles2.map((f) => this.abs(f));
@@ -51607,8 +51718,10 @@ var init_graph4 = __esm({
        * D5: `direct` is every changed test file, every test file that imports a
        * changed path in one hop (or probed it as a candidate, or names it in
        * `pytest_plugins`), and for a changed `conftest.py` every test file in
-       * its directory and below; `transitive` the other test files whose closure
-       * holds a changed path or whose last run loaded it.
+       * its directory and below, and every test file whose run started a
+       * process that imported a changed path (task 007-55); `transitive` the
+       * other test files whose closure holds a changed path or whose last run
+       * loaded it.
        */
       affected(changed2) {
         const index = this.current();
@@ -51626,6 +51739,7 @@ var init_graph4 = __esm({
             (oneHop ? direct : transitive).add(file);
           }
           for (const [file, paths] of this.observed) if (paths.has(path)) transitive.add(file);
+          for (const [file, paths] of this.spawned) if (paths.has(path)) direct.add(file);
         }
         for (const file of direct) transitive.delete(file);
         return { direct: this.sorted(direct), transitive: this.sorted(transitive) };
@@ -51633,6 +51747,10 @@ var init_graph4 = __esm({
       /** Paths a run of `testFile` loaded outside its static closure (D4, D6): a change to one affects it. */
       recordObserved(testFile, paths) {
         this.observed.set(this.abs(testFile), new Set(paths.map((p) => this.abs(p))));
+      }
+      /** What the processes a run of `testFile` started found to import: a change to one is one hop from it. */
+      recordSpawned(testFile, paths) {
+        this.spawned.set(this.abs(testFile), new Set(paths.map((p) => this.abs(p))));
       }
       /** Each test file whose static closure is incomplete, with its reasons, in listing order. */
       incompleteClosures() {
@@ -51710,6 +51828,7 @@ async function createPytestGraph(options) {
     invalidate: (paths) => graph.invalidate(paths),
     setTestFiles: (testFiles2) => graph.setTestFiles(testFiles2),
     recordObserved: (testFile, paths) => graph.recordObserved(testFile, paths),
+    recordSpawned: (testFile, paths) => graph.recordSpawned(testFile, paths),
     incompleteClosures: () => graph.incompleteClosures(),
     searchPath: () => graph.searchPath(),
     notes: () => graph.searchPath().notes.map((note) => `pytest: ${note}`)
@@ -51729,7 +51848,7 @@ var PYTEST_ADAPTER_VERSION;
 var init_version3 = __esm({
   "src/runners/pytest/version.ts"() {
     "use strict";
-    PYTEST_ADAPTER_VERSION = "2";
+    PYTEST_ADAPTER_VERSION = "3";
   }
 });
 
@@ -52356,7 +52475,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.267";
+  if (true) return "0.1.268";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {

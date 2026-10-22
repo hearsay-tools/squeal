@@ -13,6 +13,8 @@ flushed line per record so a killed process leaves a readable prefix:
 - `phase`: every `pytest_runtest_logreport` (setup, call, teardown).
 - `warning`: a recorded warning.
 - `import`: an import edge (spec 007 D6, module-graph Q3).
+- `spawned`: a project file a process the test started found to import,
+  written by that process's `sitecustomize` (task 007-55).
 - `session`: the session finished, with its exit status.
 
 `builtins.__import__` and `importlib.import_module` are wrapped from load,
@@ -26,6 +28,10 @@ runs `a` and `a.b`; from that module itself when nothing stands in, so a
 conftest's test packages belong to the files below it. Only files under
 `SQUEAL_PYTEST_ROOT` and outside the environment are written, once per
 `(ctx, importer, imported)`.
+
+The file in progress is also `SQUEAL_PYTEST_FILE` in `os.environ`, as pytest
+sets `PYTEST_CURRENT_TEST`, so the Python processes a test starts record
+what they import under its file (`sitecustomize.py`, task 007-55).
 """
 
 import atexit
@@ -68,6 +74,17 @@ _write(
 _ctx = [None]
 _seen = set()
 _files = {}
+
+
+def _enter(path):
+    """Makes `path` the file in progress, for this process and the ones it starts; returns the previous one."""
+    previous = _ctx[0]
+    _ctx[0] = path
+    if path is None:
+        os.environ.pop("SQUEAL_PYTEST_FILE", None)
+    else:
+        os.environ["SQUEAL_PYTEST_FILE"] = path
+    return previous
 
 
 def _project_file(path):
@@ -248,13 +265,13 @@ def _crash(longrepr):
 
 @pytest.hookimpl(wrapper=True)
 def pytest_make_collect_report(collector):
-    previous = _ctx[0]
-    if isinstance(collector, pytest.File):
-        _ctx[0] = os.path.realpath(collector.path)
+    file = isinstance(collector, pytest.File)
+    previous = _enter(os.path.realpath(collector.path)) if file else None
     try:
         report = yield
     finally:
-        _ctx[0] = previous
+        if file:
+            _enter(previous)
     _write(
         {
             "type": "collect",
@@ -286,13 +303,12 @@ def pytest_collection_finish(session):
 
 @pytest.hookimpl(wrapper=True)
 def pytest_runtest_protocol(item, nextitem):
-    previous = _ctx[0]
-    _ctx[0] = os.path.realpath(item.path)
+    previous = _enter(os.path.realpath(item.path))
     _write({"type": "item", "nodeid": item.nodeid, "last": nextitem is None})
     try:
         return (yield)
     finally:
-        _ctx[0] = previous
+        _enter(previous)
 
 
 def pytest_runtest_logreport(report):
