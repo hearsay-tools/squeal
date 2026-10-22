@@ -44,6 +44,10 @@ A CLI command run through the launcher now shows in `ps` as `node --disable-warn
 - Daemons do not change. `squeal start` spawns them from `process.argv[1]`, which is the CLI's path. `squeal ps` finds them as before (`src/core/ps/discover.ts`, `<script> daemon`).
 - `install.sh` `in_use` and the copy pruning (`version-copies.ts` `processArgs`) keep a version whose `<dir>/` a running process's arguments name. A long CLI command through the launcher (`run --all --wait`, `status --wait`) no longer protects its own version. The risk is small: the launcher runs the newest version, and a prune keeps the current version and the newest previous one. A second update during the command is needed, and the command's code is already loaded.
 
+## The key-validity guard
+
+`test/keys/launchers.test.ts` (011-41) lets a launcher run Node with `--disable-warning` flags only, and its comment sends any other flag to the coordinator. Format 6's `-e` is the lookup, not a flag for the CLI: the lookup removes it from `process.execArgv`, and the daemon is spawned as `node <cli> daemon <root>` with no flags. So key validity does not change. Commit a1c874f2b makes the guard skip the script's body, as it did for format 5, and read `-e '` at the end of the line as the end of the flags. A test with `--max-old-space-size=99` added still fails. The coordinator was asked to confirm this (request eca69c32).
+
 ## Not done here
 
 - The Codex, Pi and OpenCode copies of the launcher: the build writes them (005-76). Their identity tests in `launcher.test.ts` fail in this tree until the coordinator rebuilds.
