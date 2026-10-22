@@ -105,8 +105,12 @@ const SHAPE: Shape = {
  * the defaults with one problem.
  */
 export function loadPolicy(root: string): LoadedPolicy {
-  const { value, problems } = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
-  return { policy: value, problems };
+  const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  return {
+    policy: loaded.value,
+    problems: loaded.problems,
+    ...(loaded.unparsed === true ? { unparsed: true } : {}),
+  };
 }
 
 /** The policy alone, for callers that act on it and leave reporting to the daemon (the hooks). */
