@@ -535,6 +535,7 @@ describe("the flags in the shape (D7, D8)", () => {
     const findings: FlagFindings = {
       daemons: new Map([[800, [flagOf("past-unused")]]]),
       states: new Map([[800, "draining 22m left"]]),
+      drainLeftMs: new Map([[800, 22 * 60_000]]),
       processes: new Map([[801, [flagOf("overdue-test-process")]]]),
       orphans: [{ pid: 950, comm: "node", startedAt: null, flags: [flagOf("orphan-waiter")] }],
       files: [socketFlag("fd5a859b8ca77ef9"), MARK],

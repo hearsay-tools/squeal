@@ -106,7 +106,7 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
       startedAt: startOf(d.row.startTicks),
       ...costOf(costs.get(pid)),
       permits: model.pool.pool.held === null ? null : (model.pool.permits.get(pid) ?? 0),
-      work: workOf(work, model.now, state.startsWith("draining")),
+      work: workOf(work, findings.drainLeftMs.get(pid) ?? null),
       consumers: (work?.consumers ?? []).map((c) => ({
         harnessPid: c.harness?.pid ?? null,
         alive: c.alive,
@@ -199,19 +199,15 @@ function costOf(cost: ProcessCost | undefined): Cost | Record<keyof Cost, null> 
   return { cpuPct, cpuMs, privateBytes, swapBytes };
 }
 
-function workOf(work: DaemonWork | null, now: EpochMs, draining: boolean): PsWork {
-  const departedAt = work?.departedAt ?? null;
+/** `drainLeftMs`: the drain the flags found (D7), never read from the state word. */
+function workOf(work: DaemonWork | null, drainLeftMs: number | null): PsWork {
   return {
     pending: work?.pending ?? null,
     running: work?.running ?? null,
     tiers: work?.tiers ?? [],
     checkpoints: work?.checkpoints ?? [],
-    departedAt,
-    // The flags name the drain (D7); its time left is `daemon.idleExitMinutes` after the departure.
-    drainLeftMs:
-      !draining || work === null || departedAt === null
-        ? null
-        : Math.max(0, departedAt + work.settings.idleExitMinutes * 60_000 - now),
+    departedAt: work?.departedAt ?? null,
+    drainLeftMs,
     lastUsedAt: work?.lastUse?.usedAt ?? null,
   };
 }
