@@ -76,6 +76,19 @@ describe("a failure a passing retry replaced at its key (011-77)", SLOW, () => {
     expect(whyText).toMatch(/AssertionError: expected true to be false[\s\S]*at .*flaky\.test\.ts/);
     // The flaky note's sub-line is left out: the entry at its key says more.
     expect(whyText).not.toContain("the FAIL it replaced");
+
+    // Across a daemon restart and its first prune: the entry is the store's, not the daemon's.
+    await h.scheduler.close();
+    const next = await openHarness(repo.main, store, repo.commonDir, { hostLoad: load.read });
+    await next.scheduler.start();
+    await next.scheduler.idle();
+    store.prune({ now: Date.now() + 60 * 60 * 1000, retentionDays: 7, maxSizeMb: null });
+    const kept = readFailures(cwd) as FailuresReport;
+    expect(kept).toMatchObject({ total: 1, replaced: 1 });
+    expect(kept.failures[0]).toMatchObject({ runId: failRun, replacedBy: { runId: passRun } });
+    const again = formatWhy(readWhy(cwd, formatCheck(flips)));
+    expect(again).toMatch(/AssertionError: expected true to be false[\s\S]*at .*flaky\.test\.ts/);
+    expect(again).toContain(`log: ${failLog}`);
   });
 
   it("keeps another worktree's failure that this worktree's pass replaced, for both worktrees", async () => {
