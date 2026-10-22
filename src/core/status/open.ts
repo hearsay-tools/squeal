@@ -19,7 +19,8 @@ export const STATUS_BUSY_TIMEOUT_MS = 1_000;
 /**
  * Row 011-01, issue 8: how long a CLI read (`status`, `why`, `failures`)
  * keeps trying a busy store before it says it is unavailable. A CLI query is
- * not a hook, so goal 6's budget does not bind it; hooks keep one attempt.
+ * not a hook, so goal 6's budget does not bind it; other reads keep their
+ * busy timeout as the bound.
  */
 export const CLI_READ_RETRY_MS = 5_000;
 
@@ -31,7 +32,9 @@ export interface StatusStoreOptions {
   readonly busyTimeoutMs?: number;
   /**
    * How long to keep trying a busy store, each attempt with the busy timeout.
-   * Default 0: one attempt. The CLI's reads pass `CLI_READ_RETRY_MS`.
+   * Default the busy timeout: SQLite answers some reads busy at once, without
+   * its busy handler, so even one timeout's bound is waited out by trying
+   * again (row 011-113). The CLI's reads pass `CLI_READ_RETRY_MS`.
    */
   readonly busyRetryMs?: number;
 }
@@ -62,7 +65,8 @@ export function unavailable(
  * start, D12). `fn` runs in one read transaction, so it sees one committed
  * state of the store (lessons defect 23). Every failure becomes a `StatusUnavailable`: missing store,
  * newer schema (D8), unreadable file, or a lock held past the busy timeout
- * and `busyRetryMs`, whose message says how long it waited.
+ * and `busyRetryMs`, whose message says how long it waited. Each attempt
+ * opens the store again, so a retry reads in a new read transaction.
  */
 export function withStatusStore<T>(
   cwd: AbsolutePath,
@@ -75,7 +79,7 @@ export function withStatusStore<T>(
     return unavailable("no-store", `${cwd} is not inside a git worktree`);
   }
   const busyTimeoutMs = options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS;
-  const retryMs = options.busyRetryMs ?? 0;
+  const retryMs = options.busyRetryMs ?? busyTimeoutMs;
   const started = Date.now();
   for (;;) {
     // An attempt's busy timeout never outlasts what is left of `busyRetryMs`, so the bound holds.
