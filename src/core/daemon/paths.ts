@@ -28,9 +28,21 @@ export function socketPathFor(
   worktreeId: WorktreeId,
   env: NodeJS.ProcessEnv = process.env,
 ): AbsolutePath {
-  const name = `squeal-${worktreeId}.sock`;
+  const name = socketNameFor(worktreeId);
   const path = join(runtimeDir(env), name);
   return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join(userTmpDir(), name);
+}
+
+const SOCKET_NAME = /^squeal-([0-9a-f]{16})\.sock$/;
+
+/** `squeal-<worktree id>.sock`, the file name of `socketPathFor`. */
+export function socketNameFor(worktreeId: WorktreeId): string {
+  return `squeal-${worktreeId}.sock`;
+}
+
+/** The worktree id a `socketNameFor` name holds; `null` for any other name. */
+export function socketWorktreeId(name: string): WorktreeId | null {
+  return SOCKET_NAME.exec(name)?.[1] ?? null;
 }
 
 /**
