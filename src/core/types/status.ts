@@ -12,7 +12,12 @@ import type {
 } from "./common.js";
 import type { CheckKey, ClosureMethod, TestFileRef } from "./keys.js";
 import type { DaemonNote } from "./scheduler.js";
-import type { OutstandingGroup, PendingTestFiles, SlowSlotHolders } from "./standing.js";
+import type {
+  OutstandingGroup,
+  PendingTestFiles,
+  SlowSlotHolders,
+  StatusHold,
+} from "./standing.js";
 import type {
   DiagnosticFingerprint,
   FlakyNote,
@@ -260,6 +265,15 @@ export interface StatusHeader {
    * before it started the wait.
    */
   readonly installCommand?: string;
+  /**
+   * Row 011-73 (spec 011 C6, C8 and C9 as amended 2026-10-21): the holds on
+   * the worktree's validation, the merge hold first, then the command holds
+   * by start. The merge hold only from a live daemon that published it since
+   * its start; the command holds as `squeal hold` wrote them. Set by
+   * `buildSnapshot` and `readLiveHeader` only while one holds; absent from an
+   * older Squeal, and read as none.
+   */
+  readonly holds?: readonly StatusHold[];
   /**
    * The note saying Squeal runs Vitest without the dependency optimizer a
    * config turns on (spec 001 D4, task 001-176), for the registration
