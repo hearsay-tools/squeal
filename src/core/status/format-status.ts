@@ -17,6 +17,7 @@ import {
   splitByValidity,
 } from "./checks.js";
 import { configProblemsLine } from "./config-problems.js";
+import { holdLines } from "./holds.js";
 import { statusRevisionText } from "./identity.js";
 import { outstandingLines } from "./outstanding-text.js";
 import { phaseLines } from "./phase-files.js";
@@ -60,6 +61,8 @@ export function formatStatus(
   const full = allNotes || options.full === true;
   const lines = [
     `Revision: ${statusRevisionText(result)}`,
+    // Row 011-73 (C6 as amended 2026-10-21): a hold qualifies everything below it.
+    ...holdLines(result.holds, now, command),
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
     `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}${notCurrentText(result)}`,
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),

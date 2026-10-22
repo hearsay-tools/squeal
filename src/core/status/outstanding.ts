@@ -38,6 +38,7 @@ const ORDER: readonly OutstandingStanding["kind"][] = [
   "no-daemon",
   "listing",
   "unlisted",
+  "on-hold",
   "checkpoint",
   "retry",
   "no-install",
