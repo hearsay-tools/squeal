@@ -11,6 +11,7 @@ import { DEATH_CAUSE, deathText } from "./died.js";
 import { nextStep } from "./next-step.js";
 import { fromBase, reasonWords, stepText } from "./next-step-text.js";
 import { ageText } from "./status-detail.js";
+import { stoppingNext, stoppingState } from "./stopping.js";
 
 /*
  * Row 011-29 (011 C6 as amended 2026-10-20; `tasks/011-24/design.md` 1.1):
@@ -145,6 +146,11 @@ function daemonText(
   s: StatusSnapshot,
   command: string,
 ): string {
+  // Row 011-34: a stopping daemon names the handoff, and past its bound what finishes it.
+  if (s.daemon.stopping !== undefined) {
+    const { stopping } = s.daemon;
+    return `the daemon is ${stoppingState(stopping)}; results are as of revision ${standing.revision}; ${stoppingNext(stopping, command)}`;
+  }
   const next = nextStep(standing, { named: false });
   const reason = reasonWords(next, [], command);
   const start = stepText(next.step, [], command);

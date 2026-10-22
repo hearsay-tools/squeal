@@ -4,6 +4,7 @@ import { readHeader } from "../state/index.js";
 import { withDeath } from "../status/died.js";
 import { openRuns } from "../status/open-runs.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
+import { withStopping } from "../status/stopping.js";
 import {
   type Consumer,
   type DaemonLiveness,
@@ -76,15 +77,21 @@ export function readLiveHeader(
   return {
     ...header,
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
-    daemon: withDeath(
+    // Row 011-34: so is a daemon stopping.
+    daemon: withStopping(
       store,
       worktree,
-      asRested(
+      withDeath(
         store,
         worktree,
-        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
-        now,
+        asRested(
+          store,
+          worktree,
+          asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+          now,
+        ),
       ),
+      now,
     ),
     changedPaths: [...changes.keys()],
     ...(installed === undefined ? {} : { installedLockfile: installed.path }),
@@ -214,11 +221,17 @@ export function livenessChange(
 ): DaemonLiveness | null {
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = asStopped(
+  // Row 011-34: a stopping daemon's change is titled as such (`livenessTitle`).
+  const live = withStopping(
     store,
-    consumer.worktreeId,
     worktree,
-    asTold(worktreeLiveness(worktree, at), told, at),
+    asStopped(
+      store,
+      consumer.worktreeId,
+      worktree,
+      asTold(worktreeLiveness(worktree, at), told, at),
+    ),
+    at,
   );
   if (live.state === "down" && live.stopped !== true) {
     if (live.startingSince !== undefined) return null;

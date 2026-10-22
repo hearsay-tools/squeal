@@ -71,8 +71,9 @@ export function outstandingOf(
   load: () => LoadNow,
 ): readonly OutstandingGroup[] {
   const { daemon, header } = reads;
-  if (daemon.state !== "alive") {
-    const since = daemon.since;
+  // Row 011-34: a stopping daemon validates nothing; its group's text says it stops.
+  if (daemon.state !== "alive" || daemon.stopping !== undefined) {
+    const since = daemon.stopping?.since ?? (daemon.state === "alive" ? null : daemon.since);
     return [{ standing: { kind: "no-daemon", since, revision: header.revision }, files: [] }];
   }
   if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
