@@ -8,6 +8,7 @@ import type {
   ProcessTable,
   PsSource,
 } from "../../src/core/ps/source.js";
+import type { EpochMs } from "../../src/core/types/index.js";
 import { CLOCK_TICKS } from "./fixture.js";
 
 /*
@@ -20,12 +21,13 @@ export interface FakeProcess {
   readonly pid: number;
   readonly ppid: number;
   readonly comm?: string;
-  readonly state?: string;
+  readonly state?: string | null;
   readonly startTicks?: number;
   readonly cpuTicks?: number;
   /** `null`: the source reads none (D10). */
   readonly childTicks?: number | null;
   readonly nice?: number;
+  readonly uid?: number | null;
   readonly cmdline?: readonly string[] | null;
   readonly mark?: string | null;
   readonly memory?: ProcessMemory | null;
@@ -36,12 +38,12 @@ export function rowOf(p: FakeProcess): ProcessRow {
     pid: p.pid,
     ppid: p.ppid,
     comm: p.comm ?? "node",
-    state: p.state ?? "S",
+    state: p.state === undefined ? "S" : p.state,
     startTicks: p.startTicks ?? 1_000,
     cpuTicks: p.cpuTicks ?? 0,
     childTicks: p.childTicks === undefined ? 0 : p.childTicks,
     nice: p.nice ?? 0,
-    uid: 1000,
+    uid: p.uid === undefined ? 1000 : p.uid,
   };
 }
 
@@ -75,6 +77,8 @@ export interface FakeOptions {
   readonly locks?: readonly LockEntry[] | null;
   readonly fileKeys?: Readonly<Record<string, string>>;
   readonly host?: HostReading;
+  readonly bootTime?: EpochMs | null;
+  readonly pidNamespace?: string | null;
 }
 
 /** A source over `processes`, and how many times each of its reads ran. */
@@ -93,7 +97,7 @@ export function fakeSource(
     memoryKind: readsMarks ? "private" : "rss",
     readsMarks,
     clockTicks: () => CLOCK_TICKS,
-    bootTime: () => null,
+    bootTime: () => options.bootTime ?? null,
     processTable(pids, since) {
       const chosen =
         pids === undefined
@@ -123,7 +127,7 @@ export function fakeSource(
     },
     fileKey: (path) => options.fileKeys?.[path] ?? null,
     unixListeners: () => null,
-    pidNamespace: () => null,
+    pidNamespace: () => options.pidNamespace ?? null,
     host() {
       count("host");
       return options.host ?? HOST;

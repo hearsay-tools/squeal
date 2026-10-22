@@ -15,6 +15,7 @@ import type {
 import type { LockEntry, ProcessRow, ProcessTable, PsSource } from "../../src/core/ps/source.js";
 import type { DaemonRecord } from "../../src/core/types/index.js";
 import { BOOT_SECONDS, CLOCK_TICKS, UPTIME_SECONDS } from "./fixture.js";
+import { rowOf as fakeRow, fakeSource } from "./fixture-samples.js";
 
 /*
  * Models for the flags (spec 014 D7, task 014-10): a `PsModel` held in
@@ -106,17 +107,13 @@ export interface ProcessSpec {
 }
 
 export function rowOf(p: ProcessSpec): ProcessRow {
-  return {
+  return fakeRow({
     pid: p.pid,
     ppid: p.ppid ?? 1,
-    comm: p.comm ?? "node",
-    state: "S",
     startTicks: ticksAt(p.ageS ?? 600),
-    cpuTicks: 0,
-    childTicks: 0,
-    nice: 0,
     uid: p.uid === undefined ? UID : p.uid,
-  };
+    ...(p.comm === undefined ? {} : { comm: p.comm }),
+  });
 }
 
 export interface DaemonSpec {
@@ -269,29 +266,28 @@ export function modelOf(spec: ModelSpec): PsModel {
   };
 }
 
+/** `fakeSource` over the second table, with the processes' arguments and marks and the host's boot time. */
 function sourceOf(
   spec: ModelSpec,
   processes: readonly ProcessSpec[],
   table: ProcessTable,
 ): PsSource {
   const byPid = new Map(processes.map((p) => [p.pid, p]));
-  const readsMarks = spec.readsMarks ?? true;
-  const locks = spec.locks === undefined ? [] : spec.locks;
+  const { source } = fakeSource(
+    [...table.values()].map((row) => ({
+      ...row,
+      cmdline: byPid.get(row.pid)?.cmdline ?? null,
+      mark: byPid.get(row.pid)?.mark ?? null,
+    })),
+    {
+      readsMarks: spec.readsMarks ?? true,
+      locks: spec.locks === undefined ? [] : spec.locks,
+      bootTime: spec.bootTime === undefined ? BOOT_MS : spec.bootTime,
+      pidNamespace: "pid:[1]",
+    },
+  );
   return {
-    platform: readsMarks ? "linux" : "darwin",
-    memoryKind: readsMarks ? "private" : "rss",
-    readsMarks,
-    clockTicks: () => CLOCK_TICKS,
-    bootTime: () => (spec.bootTime === undefined ? BOOT_MS : spec.bootTime),
-    processTable: () => table,
-    cmdline: (pid) => byPid.get(pid)?.cmdline ?? null,
-    markOf: (pid) => (readsMarks ? (byPid.get(pid)?.mark ?? null) : null),
-    memory: () => null,
-    fds: () => null,
-    locks: () => locks,
-    fileKey: () => null,
-    unixListeners: () => null,
-    pidNamespace: () => "pid:[1]",
+    ...source,
     host: () => {
       throw new Error("the flags read no host totals");
     },
