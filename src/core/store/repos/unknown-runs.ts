@@ -16,13 +16,15 @@ import type { Connection } from "../connection.js";
  * a hit. One record per worktree and test file, the newest. `why` names the
  * record that fits the state; prune keeps the run and its log while the
  * UNKNOWN stands, and drops a record that no longer fits a state.
+ *
+ * Review 0.1.265 B3: no bound evicts a record whose UNKNOWN stands, so `why`
+ * never names an older daemon for this release's record and prune keeps its
+ * run. Each write drops the fallen records first; what is left is one record
+ * per file UNKNOWN in a live worktree, as many as `known_states` holds.
  */
 
 /** `meta` key of every worktree's records, oldest first. */
 export const UNKNOWN_RUNS_META_KEY = "unknown-runs";
-
-/** The most records kept in all, as every shared `meta` list keeps. */
-export const UNKNOWN_RUNS_KEPT = 1_024;
 
 /** Every record, oldest first; empty when none or unreadable, and one that does not parse is left out. */
 export function readUnknownRuns(conn: Connection): UnknownRun[] {
@@ -51,32 +53,42 @@ export function recordUnknownRuns(
   if (added.length === 0) return;
   conn.transaction(() => {
     const ids = new Set(added.map(idOf));
-    const kept = readUnknownRuns(conn).filter((r) => !ids.has(idOf(r)));
+    // Review 0.1.265 B3: the fallen records go first, and no bound evicts a standing one.
+    const kept = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
     // Within one commit the last mark of a file is its state's.
     const newest = new Map(added.map((r) => [idOf(r), r]));
-    write(conn, [...kept, ...newest.values()].slice(-UNKNOWN_RUNS_KEPT));
+    write(conn, [...kept, ...newest.values()]);
   });
 }
 
 /**
  * A record whose state still stands: a check of its file in its worktree is
  * `unknown`, observed at its revision, with its reason as the summary.
+ * `CROSS JOIN` keeps `checks` the outer loop, so the file's checks are
+ * searched by their index: driven by `known_states`, SQLite reads every
+ * state of the worktree per record (12 ms against 11.6 s for 2,400 records
+ * over 30,000 checks a worktree).
  */
-const STANDS = `SELECT 1 FROM known_states s JOIN checks c ON c.id = s.check_id
-  WHERE s.worktree_id = ? AND c.project = ? AND c.test_path = ? AND s.outcome = 'unknown'
+const STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
+    ON s.worktree_id = ? AND s.check_id = c.id
+  WHERE c.project = ? AND c.test_path = ? AND s.outcome = 'unknown'
     AND s.observed_at = ? AND s.summary = ? LIMIT 1`;
 
 /** Drops the records whose UNKNOWN no longer stands; inside the caller's transaction. Returns how many. */
 export function dropFallenUnknownRuns(conn: Connection): number {
   const records = readUnknownRuns(conn);
-  const standing = records.filter((r) => conn.get(STANDS, ...standsParams(r)) !== null);
-  if (standing.length < records.length) write(conn, standing);
-  return records.length - standing.length;
+  const kept = standing(conn, records);
+  if (kept.length < records.length) write(conn, kept);
+  return records.length - kept.length;
 }
 
 /** The runs the records name, which prune keeps while their UNKNOWN stands; read inside its transaction. */
 export function keptByUnknownRuns(conn: Connection): string[] {
   return readUnknownRuns(conn).flatMap((r) => (r.runId === null ? [] : [r.runId]));
+}
+
+function standing(conn: Connection, records: readonly UnknownRun[]): UnknownRun[] {
+  return records.filter((r) => conn.get(STANDS, ...standsParams(r)) !== null);
 }
 
 function standsParams(r: UnknownRun) {
