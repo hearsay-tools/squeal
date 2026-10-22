@@ -31,6 +31,7 @@ import { claimWake } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { rekeyEnvironments } from "./environment-growth.js";
+import { heldFiles, MergeHold } from "./hold.js";
 import {
   missingInstall,
   REINSTALL_NOTE,
@@ -178,10 +179,21 @@ class TierScheduler implements Scheduler {
   readonly #storedKeys: StoredKeys;
   /** A departure drain paused the backlog (`pauseBacklog`, row 011-93). */
   #backlogPaused = false;
+  /** Row 011-72: no tier starts while git lists an unmerged path (011 C9, "Holds"). */
+  readonly #hold: MergeHold;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
     this.#storedKeys = new StoredKeys((options.now ?? Date.now)());
+    this.#hold = new MergeHold({
+      root: options.root,
+      store: options.store,
+      worktreeId: options.worktreeId,
+      now: options.now ?? Date.now,
+      revision: () => this.#ledger?.revision.number ?? 0,
+      resumed: () => this.#pump(),
+      note: (message) => this.#note(message),
+    });
     this.#busy =
       options.busyWaits === undefined
         ? null
@@ -239,7 +251,8 @@ class TierScheduler implements Scheduler {
         hasher,
         runsDir: options.runsDir,
         describe: options.describeFailure ?? describeFailure,
-        head: options.head,
+        // Each revision's `git status` gives the unmerged paths too (row 011-72).
+        head: () => this.#hold.head(options.head),
         // Read at each call: a commit stamps the store's re-key moves with it (`recordMoves`).
         now: options.now ?? (() => Date.now()),
         note: (message) => this.#note(message),
@@ -253,8 +266,12 @@ class TierScheduler implements Scheduler {
       };
       const ledger = new Ledger(context);
       ledger.backlogPaused = this.#backlogPaused;
+      // Row 011-72: a key that names an unmerged path takes no stored result.
+      ledger.holds = (ref) => this.#hold.holding && this.#hold.names(keys.stabilityPaths(ref));
       // Notes written during the baseline carry its revision.
       this.#ledger = ledger;
+      // A daemon starts on hold when git lists an unmerged path (011 C9).
+      await this.#hold.check(true);
       this.#waitChanges = await scan(context, ledger, options.resumesRest === true);
       // A daemon killed while waiting left its flag (review wave 11, N5); this one decides again.
       stopWaiting(context);
@@ -297,6 +314,8 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(async () => {
       if (this.#reinstalled) return;
       const { context, ledger } = this.#started();
+      // A reconciliation or sync pass reads the index when it moved: `git add` makes no batch (row 011-72).
+      if (batch.trigger !== "watch") await this.#hold.check();
       if (this.#awaitingInstall) {
         this.#awaitingInstall = await reconcileWaiting(context, ledger, batch, this.#waitChanges);
         if (!this.#awaitingInstall) await this.#baseline(context, ledger);
@@ -355,6 +374,8 @@ class TierScheduler implements Scheduler {
    * 001-364).
    */
   #cutTiers(revision: Revision | null): void {
+    // Row 011-72: a tier in flight when a hold begins runs to its end; nothing would start instead.
+    if (this.#hold.holding) return;
     const { context, ledger } = this.#started();
     const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
     this.#yields.check(context, ledger, tiers, revision);
@@ -418,6 +439,22 @@ class TierScheduler implements Scheduler {
     this.#reinstallTold = true;
     if (this.options.onReinstall) this.options.onReinstall(note);
     else this.#note(note);
+  }
+
+  /**
+   * Row 011-72: the merge hold before a tier, the index read when it moved.
+   * A hold that ended released its paths: an abort restored their bytes,
+   * and their revision comes before any tier, so no tier runs at the keys
+   * of the conflicted bytes.
+   */
+  async #holdCheck(): Promise<"held" | "released" | "free"> {
+    await this.#hold.check();
+    const released = this.#hold.takeReleased();
+    if (released.length > 0) {
+      await this.#reconcilePaths(released);
+      return "released";
+    }
+    return this.#hold.holding ? "held" : "free";
   }
 
   /**
@@ -552,7 +589,8 @@ class TierScheduler implements Scheduler {
    * request. The backlog is no use, queued or running.
    */
   inUse(): boolean {
-    if (this.#closed || !this.#ledger) return false;
+    // A hold is no request and no activity for the idle and unused periods (011 C9, row 011-72).
+    if (this.#closed || !this.#ledger || this.#hold.holding) return false;
     if (this.#slow.requested && this.slowPending()) return true;
     return this.#editPending() || this.owedWork() !== null;
   }
@@ -579,13 +617,14 @@ class TierScheduler implements Scheduler {
   }
 
   slowPending(): boolean {
-    if (this.#closed || !this.#ledger) return false;
+    // A departure while on hold drains nothing (011 C9, row 011-72).
+    if (this.#closed || !this.#ledger || this.#hold.holding) return false;
     if (this.#lanes().some(isSlowLane)) return true;
     return this.#ledger.orderedSlow().length > 0;
   }
 
   owedWork(): string | null {
-    if (this.#closed || !this.#ledger) return null;
+    if (this.#closed || !this.#ledger || this.#hold.holding) return null;
     const ledger = this.#ledger;
     const owed: string[] = [];
     const active = ledger.checkpoints.active;
@@ -615,6 +654,7 @@ class TierScheduler implements Scheduler {
 
   async #close(): Promise<void> {
     this.#closed = true;
+    this.#hold.close();
     this.#yields.close();
     this.#slow.close();
     this.#busy?.close();
@@ -709,8 +749,13 @@ class TierScheduler implements Scheduler {
           }
           // Row 011-106: a daemon whose own runtime went starts no tier; its files stay queued.
           if (await this.#runtimeMissing()) break;
+          // Row 011-72: the check before a tier; a hold that ended first reconciles what it released.
+          const hold = await this.#holdCheck();
+          if (hold === "held") break;
+          if (hold === "released") continue;
           const next = await this.#lock.run(() => {
             if (this.#halted() || this.#awaitingInstall || this.#reinstalled) return null;
+            if (this.#hold.holding) return "held" as const;
             const { context, ledger } = this.#started();
             if (install.missing !== null) {
               this.#reinstall(ledger);
@@ -732,6 +777,7 @@ class TierScheduler implements Scheduler {
             return "flown" as const;
           });
           this.#busy?.landed();
+          if (next === "held") break;
           if (next !== null) continue;
           if (this.#reinstalled) break;
           if (this.#slowMayStart()) {
@@ -837,6 +883,8 @@ class TierScheduler implements Scheduler {
     const inputs = await unstableInputs(context, tier);
     const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
     const runtimeGone = await this.#runtimeMissing();
+    // Row 011-72: the record reads the index when it moved, so a merge during the run holds its files.
+    await this.#hold.check();
     return { tier, ran, ignored, inputs, installMoved, runtimeGone, slow };
   }
 
@@ -855,18 +903,22 @@ class TierScheduler implements Scheduler {
     const observed =
       environment === undefined || read === undefined ? read : { ...read, environment };
     const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
+    // Row 011-72 (011 C9): a file whose key names an unmerged path stores nothing and stays
+    // queued; that withhold counts toward no withhold limit.
+    const held = heldFiles(this.#hold, tier.files, observed?.growth);
+    const free = held.length === 0 ? tier.files : tier.files.filter((f) => !held.includes(f));
     // Task 013-02 (D2 of 013-01): the files whose keys name a touched path, as a content change.
     const {
       report,
       barred,
       paths: barredPaths,
-    } = barredByTouch(ran, tier.files, touched, observed?.growth);
+    } = barredByTouch(ran, free, touched, observed?.growth);
     // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
     // again as a moved install does, its previous state standing, and a second leaves it
     // `unknown`, per file whatever tier it shares (review 007-31, B1).
     const withheld: string[] = [];
     const withhold = barred.length === 0 ? null : this.#withholds.record(barred);
-    this.#withholds.clear(tier.files.filter((ran) => !barred.includes(ran)));
+    this.#withholds.clear(free.filter((ran) => !barred.includes(ran)));
     if (withhold !== null) {
       const notes = [
         withholdNote(barredPaths, withhold.again, true),
@@ -889,6 +941,7 @@ class TierScheduler implements Scheduler {
       });
       const again = [
         ...(withhold?.again.map(({ file }) => file.id) ?? []),
+        ...held.map(({ file }) => file.id),
         ...unfinished,
         ...interrupted,
       ];
@@ -1062,6 +1115,8 @@ class TierScheduler implements Scheduler {
    */
   #hasWork(): boolean {
     if (this.#awaitingInstall || this.#reinstalled) return false;
+    // Row 011-72: on hold, the runner part goes on (D5 step 5) and the queue waits.
+    if (this.#hold.holding) return this.#runnerWork.size > 0;
     return this.#runnerWork.size > 0 || this.#ledger?.fastQueued() === true;
   }
 
