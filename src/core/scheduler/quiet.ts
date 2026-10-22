@@ -1,5 +1,12 @@
-import { type EpochMs, type Store, type WorktreeId, worktreeMetaKey } from "../types/index.js";
+import {
+  type EpochMs,
+  type FileChange,
+  type Store,
+  type WorktreeId,
+  worktreeMetaKey,
+} from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
+import { onlyEditorScratch } from "./editor-scratch.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { laneOf } from "./tiers.js";
@@ -80,15 +87,18 @@ export class BacklogQuiet {
 /**
  * Calls `BacklogQuiet.queued` once for each lane of `misses` that is
  * queued: what a revision's content re-key or runner part settled
- * (`Ledger.settle`). A miss its runner cannot run is not queued.
+ * (`Ledger.settle`). A miss its runner cannot run is not queued. A revision
+ * whose `changes` are all editor scratch files starts no wait again (row
+ * 011-117): each vim open would hold the lane 20 s more.
  */
 export function quietQueued(
   context: SchedulerContext,
   ledger: Ledger,
   misses: readonly FileState[],
+  changes: readonly FileChange[] = [],
 ): void {
   const { quiet } = context;
-  if (quiet === undefined) return;
+  if (quiet === undefined || onlyEditorScratch(changes)) return;
   const now = context.now();
   const lanes = new Set<string>();
   for (const { ref } of misses) if (ledger.queue.has(ref)) lanes.add(laneOf(context, ref));
