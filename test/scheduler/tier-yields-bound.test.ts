@@ -143,6 +143,20 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
     expect(short.cancel?.signal.aborted).toBe(false);
   });
 
+  it("a tier whose files have all ended arms no timer and never yields past its estimate", () => {
+    const { context, ledger } = setup();
+    const tier = tierOf(ledger, "run-a", ["test/a.test.ts"], 5_000);
+    const ended = { ...tier, ended: new Set(tier.files.map(({ file }) => file.id)) } as Tier;
+    const yields = new TierYields(() => yields.check(context, ledger, [ended], null));
+
+    yields.check(context, ledger, [ended], null);
+    vi.advanceTimersByTime(10 * YIELD_REMAINDER_MS);
+    yields.check(context, ledger, [ended], null);
+
+    expect(vi.getTimerCount()).toBe(0);
+    expect(ended.cancel?.signal.aborted).toBe(false);
+  });
+
   it("one timer at the earliest bound; it goes when its tiers end and when the yields close", () => {
     const { context, ledger } = setup();
     const early = tierOf(ledger, "run-a", ["test/a.test.ts"], 5_000);
