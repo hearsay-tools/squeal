@@ -54,3 +54,7 @@ A CLI command run through the launcher now shows in `ps` as `node --disable-warn
 - The Codex, Pi and OpenCode copies of the launcher: the build writes them (005-76). Their identity tests in `launcher.test.ts` fail in this tree until the coordinator rebuilds.
 - `install.sh` copies the launcher as before; nothing in it changed.
 - The bundles and the version.
+
+## A limit found by spec 014's coordinator (2026-10-22)
+
+A daemon typed in the foreground as `squeal daemon <root>` through the launcher has the launcher's path as its script in the process table. `src/core/ps/discover.ts` still finds it (its pattern matches a path that ends in `/squeal`), but `squeal ps`'s `older` and `install-gone` flags read the bundle from that path, so for such a daemon they read nothing. Daemons that `squeal start` or a hook spawns are not affected: they run `node <cli> daemon <root>`. Two things `squeal ps` relies on stay as they were: `ps` loads only `dist/cli/ps.mjs` (014-33), and a waiter's command line ends in `/dist/waiter.mjs`.
