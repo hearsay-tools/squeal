@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
+import { Connection } from "../../src/core/store/connection.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { inspectConnection } from "../../src/core/store/open.js";
 import { report, spawnOpener } from "./child/spawn.js";
@@ -80,6 +82,24 @@ describe("store opened by concurrent processes (task 001-207)", () => {
       await released;
     }
   }, 30_000);
+});
+
+describe("rolling back a failed transaction (011-102)", () => {
+  it("rethrows the error that made SQLite roll back by itself, with nothing written", () => {
+    const connection = new Connection(new DatabaseSync(":memory:"));
+    connection.db.exec("CREATE TABLE t (x UNIQUE)");
+    const failing = () =>
+      connection.transaction(() => {
+        connection.run("INSERT INTO t VALUES (1)");
+        // ON CONFLICT ROLLBACK ends the transaction in SQLite, as a busy, full or I/O error can,
+        // so the rollback after it finds none open.
+        connection.run("INSERT OR ROLLBACK INTO t VALUES (1)");
+      });
+
+    expect(failing).toThrow(/UNIQUE constraint failed/);
+    expect(connection.db.isTransaction).toBe(false);
+    expect(connection.get("SELECT count(*) AS n FROM t")).toEqual({ n: 0 });
+  });
 });
 
 const HOLD_WRITE_LOCK = `
