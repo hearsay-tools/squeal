@@ -5,7 +5,10 @@ import {
   bundleOptions,
   copyNodeTestRuntime,
   copyObserveRuntime,
+  copyPluginTrees,
   copyPytestRuntime,
+  distOf,
+  LAUNCHER_COPY,
   nodeFloor,
   type PluginBuild,
   REPO_ROOT,
@@ -19,7 +22,8 @@ import {
  * the daemon and the runtime files, the root version in the package's
  * `package.json`, and the plugin `dist/plugin.mjs`, a bundle of its own: it
  * runs in OpenCode's Bun, so it gets no Node banner and reaches nothing of
- * the shared code (its import list is asserted by a build test). Run by
+ * the shared code (its import list is asserted by a build test). The
+ * launcher is copied from the Claude Code plugin (005-76). Run by
  * `npm run build:plugin`.
  */
 
@@ -35,6 +39,7 @@ export const OPENCODE_PLUGIN: PluginBuild = {
   // Each entry here is bundled as `dist/hooks/<name>.mjs` (`bridgeBundleOptions`).
   entriesDir: "src/harness/opencode/entries/hooks",
   versionedFiles: ["package.json"],
+  copies: [LAUNCHER_COPY],
 };
 
 /** The shared bundle options with this package's hook entries under `hooks/`. */
@@ -78,10 +83,15 @@ export async function buildOpencodeDist(outdir: string): Promise<void> {
   copyPytestRuntime(outdir);
 }
 
-/** Builds the OpenCode package in place: its version, then `dist/`. */
-export async function buildOpencodePlugin(): Promise<void> {
-  writePluginVersions(OPENCODE_PLUGIN.pluginDir, OPENCODE_PLUGIN.versionedFiles);
-  await buildOpencodeDist(OPENCODE_PLUGIN_DIST);
+/**
+ * Builds the OpenCode package in `plugin.pluginDir`: its version, the launcher,
+ * then `dist/`. Its `dist/` is not `buildDist`'s, so `buildPlugin` is not used,
+ * and the copies are made here.
+ */
+export async function buildOpencodePlugin(plugin: PluginBuild = OPENCODE_PLUGIN): Promise<void> {
+  writePluginVersions(plugin.pluginDir, plugin.versionedFiles);
+  copyPluginTrees(plugin);
+  await buildOpencodeDist(distOf(plugin));
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

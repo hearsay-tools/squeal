@@ -1,14 +1,14 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildPlugin, type PluginBuild, REPO_ROOT } from "../build.js";
+import { buildPlugin, LAUNCHER_COPY, type PluginBuild, REPO_ROOT } from "../build.js";
 
 /*
  * The Codex plugin's build, on the shared one in src/harness/build.ts (spec
  * 002 D1, D5): bundles under plugins/codex/dist/, the root version in
  * `.codex-plugin/plugin.json` once it exists, and the skill copied from the
  * Claude Code plugin, where its source stays, with one line for Codex
- * (`CODEX_SKILL_NOTE`). Run by `npm run build:plugin`.
+ * (`CODEX_SKILL_NOTE`), as is the launcher (005-76). Run by `npm run build:plugin`.
  */
 
 export const CODEX_PLUGIN_DIR = join(REPO_ROOT, "plugins/codex");
@@ -23,7 +23,7 @@ export const CODEX_PLUGIN: PluginBuild = {
   pluginDir: CODEX_PLUGIN_DIR,
   entriesDir: "src/harness/codex/entries",
   versionedFiles: [CODEX_MANIFEST],
-  copies: [{ from: SKILL_SOURCE, to: CODEX_SKILL }],
+  copies: [{ from: SKILL_SOURCE, to: CODEX_SKILL }, LAUNCHER_COPY],
 };
 
 /**

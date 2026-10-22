@@ -1,17 +1,18 @@
-import { readFileSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { init, parse } from "es-module-lexer";
 import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { REPO_ROOT, rootVersion } from "../../../src/harness/build.js";
+import { LAUNCHER_SOURCE, REPO_ROOT, rootVersion } from "../../../src/harness/build.js";
 import {
+  buildOpencodePlugin,
+  OPENCODE_PLUGIN,
   OPENCODE_PLUGIN_DIR,
   OPENCODE_PLUGIN_DIST,
   PLUGIN_IMPORTS,
   pluginBundleOptions,
 } from "../../../src/harness/opencode/build.js";
 import { expectSameFiles } from "../bundle-helpers.js";
-import { buildOpencodeBundles } from "./helpers.js";
 
 /*
  * Spec 008 D1 and D4: `plugins/opencode/` is an OpenCode plugin package whose
@@ -21,11 +22,14 @@ import { buildOpencodeBundles } from "./helpers.js";
  * `node:child_process` and nothing else.
  */
 
-let built = { dir: "", cleanup: () => {} };
+/** The package as `npm run build:plugin` builds it, into a temp directory: `dist/` and the launcher (005-76). */
+let built = { plugin: "", dir: "" };
 beforeAll(async () => {
-  built = await buildOpencodeBundles();
+  const plugin = mkdtempSync("/tmp/sq-oc-plugin-");
+  built = { plugin, dir: join(plugin, "dist") };
+  await buildOpencodePlugin({ ...OPENCODE_PLUGIN, pluginDir: plugin });
 }, 60_000);
-afterAll(() => built.cleanup());
+afterAll(() => rmSync(built.plugin, { recursive: true, force: true }));
 
 /** Every static and dynamic import specifier of an ES module's source. */
 async function importsOf(path: string): Promise<string[]> {
@@ -57,9 +61,13 @@ describe("the OpenCode package", () => {
     for (const file of ["squeal", "squeal-launcher"]) {
       expect(statSync(join(OPENCODE_PLUGIN_DIR, "bin", file)).mode & 0o111).toBe(0o111);
     }
+    // The committed copy and the one the build writes are the launcher's one source (005-76).
+    const launcher = readFileSync(join(REPO_ROOT, LAUNCHER_SOURCE), "utf8");
     expect(readFileSync(join(OPENCODE_PLUGIN_DIR, "bin", "squeal-launcher"), "utf8")).toBe(
-      readFileSync(join(REPO_ROOT, "plugins/pi/bin/squeal-launcher"), "utf8"),
+      launcher,
     );
+    expect(readFileSync(join(built.plugin, "bin", "squeal-launcher"), "utf8")).toBe(launcher);
+    expect(statSync(join(built.plugin, "bin", "squeal-launcher")).mode & 0o111).toBe(0o111);
     // Which bundle it runs for each command: test/harness/ps-bundle.test.ts.
     expect(readFileSync(join(OPENCODE_PLUGIN_DIR, "bin", "squeal"), "utf8")).toContain(
       '"$(dirname "$0")/../dist/cli/$cli.mjs"',
