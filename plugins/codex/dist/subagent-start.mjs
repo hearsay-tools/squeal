@@ -23,7 +23,7 @@ function runGit(cwd, args, options = {}) {
   const okCodes = options.okCodes ?? [0];
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
   for (const name of REPOSITORY_VARIABLES) delete env[name];
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     const child = spawn("git", args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
@@ -46,7 +46,7 @@ function runGit(cwd, args, options = {}) {
     child.on("close", (code) => {
       clearTimeout(timer);
       if (code !== null && okCodes.includes(code)) {
-        resolve3(Buffer.concat(stdout).toString("utf8"));
+        resolve4(Buffer.concat(stdout).toString("utf8"));
         return;
       }
       const message = Buffer.concat(stderr).toString("utf8").trim();
@@ -156,6 +156,7 @@ var WORKTREE_META_ROWS = {
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
+  interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
@@ -2555,17 +2556,27 @@ function toView(row) {
 
 // src/core/store/repos/failures.ts
 var FAILING_ROWS = `results r INDEXED BY results_by_failure CROSS JOIN checks c ON c.id = r.check_id`;
-function where2({ worktreeId, since, paths, checks }) {
-  const sql = ["r.failure_id IS NOT NULL", "r.outcome = 'fail'"];
+function rowWhere(alias, { worktreeId, since, errors = [] }) {
+  const sql = [`${alias}.failure_id IS NOT NULL`, `${alias}.outcome = 'fail'`];
   const params = [];
   if (worktreeId !== null) {
-    sql.push("r.worktree_id = ?");
+    sql.push(`${alias}.worktree_id = ?`);
     params.push(worktreeId);
   }
   if (since !== null) {
-    sql.push("r.recorded_at >= ?");
+    sql.push(`${alias}.recorded_at >= ?`);
     params.push(since);
   }
+  if (errors.length > 0) {
+    sql.push(`EXISTS (SELECT 1 FROM json_each(?) e JOIN failure_texts t
+      ON t.id = ${alias}.failure_id WHERE instr(t.summary, e.value) > 0)`);
+    params.push(JSON.stringify(errors));
+  }
+  return { sql, params };
+}
+function where2(selection) {
+  const { paths, checks } = selection;
+  const { sql, params } = rowWhere("r", selection);
   if (paths.length > 0) {
     sql.push(`EXISTS (SELECT 1 FROM json_each(?) p WHERE c.test_path = p.value
       OR substr(c.test_path, 1, length(p.value) + 1) = p.value || '/')`);
@@ -2576,6 +2587,13 @@ function where2({ worktreeId, since, paths, checks }) {
       ON k.project = json_extract(j.value, '$[0]') AND k.test_path = json_extract(j.value, '$[1]')
       AND k.kind = json_extract(j.value, '$[2]') AND k.full_name = json_extract(j.value, '$[3]'))`);
     params.push(JSON.stringify(checks.map(checkParams)));
+  }
+  if (selection.perCheck === true) {
+    const newer = rowWhere("n", selection);
+    sql.push(`NOT EXISTS (SELECT 1 FROM results n WHERE n.check_id = r.check_id
+      AND (n.recorded_at > r.recorded_at OR (n.recorded_at = r.recorded_at AND n.rowid > r.rowid))
+      AND ${newer.sql.join(" AND ")})`);
+    params.push(...newer.params);
   }
   return { sql: sql.join(" AND "), params };
 }
@@ -6142,15 +6160,6 @@ function createDelivery(store, options) {
   };
 }
 
-// src/core/scheduler/awaiting-install.ts
-var MISSING_INSTALLS_SHOWN = 3;
-function awaitingInstallSentence(missing, command) {
-  const more = missing.length - MISSING_INSTALLS_SHOWN;
-  const where3 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
-  const install = command === void 0 ? "Install them" : `Run \`${command}\` to install them`;
-  return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
-}
-
 // src/core/delivery/provenance.ts
 var TOUCHED_SHOWN = 3;
 var CHANGED_HERE = "files changed here since this session started";
@@ -6167,6 +6176,15 @@ function installSentences(header) {
   }
   const lockfile = header.installedLockfile;
   return lockfile === void 0 ? "" : ` These results follow a dependency install (${lockfile} changed).`;
+}
+
+// src/core/scheduler/awaiting-install.ts
+var MISSING_INSTALLS_SHOWN = 3;
+function awaitingInstallSentence(missing, command) {
+  const more = missing.length - MISSING_INSTALLS_SHOWN;
+  const where3 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+  const install = command === void 0 ? "Install them" : `Run \`${command}\` to install them`;
+  return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
 }
 
 // src/core/delivery/header.ts
@@ -6412,7 +6430,7 @@ import { setTimeout as sleep2 } from "node:timers/promises";
 // src/core/daemon/client.ts
 import { createConnection } from "node:net";
 function requestDaemon(socketPath, request, timeoutMs) {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled2 = false;
@@ -6422,7 +6440,7 @@ function requestDaemon(socketPath, request, timeoutMs) {
       clearTimeout(timer);
       socket.destroy();
       if (error) reject(error);
-      else resolve3(response);
+      else resolve4(response);
     };
     const timer = setTimeout(
       () => settle2(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
@@ -6546,7 +6564,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.261";
+  if (true) return "0.1.262";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -6952,11 +6970,13 @@ import {
   renameSync as renameSync2,
   rmSync as rmSync5
 } from "node:fs";
-import { basename, dirname as dirname5, join as join15 } from "node:path";
+import { basename, dirname as dirname5, join as join15, resolve as resolve3 } from "node:path";
 var CLI = join15("dist", "cli", "squeal.mjs");
 var SKILL = join15("skills", "squeal", "SKILL.md");
 var LAUNCHER_SOURCE = join15("bin", "squeal-launcher");
 var LAUNCHER = join15("bin", "squeal");
+var CODEX_CACHE = join15("plugins", "cache", "hearsay", "squeal");
+var CODEX_DATA = join15("plugins", "data", "squeal-hearsay");
 function dataLauncher(data) {
   return join15(data, LAUNCHER);
 }
