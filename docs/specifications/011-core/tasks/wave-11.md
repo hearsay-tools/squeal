@@ -55,3 +55,15 @@ Read W1 to W3 above, `tasks/011-101/notes.md`, `tasks/011-102/notes.md`, board r
 - the version is raised in all eight places and the bundles match the tree.
 
 Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. A file that fails loaded and passes alone is named; row 011-99 lists the known load-flaky files. Write `reviews/0.1.254.md` with a PASS or FAIL verdict and commit it.
+
+## R2: narrow re-review of cand/0.1.256
+
+Use /reviewer. Shape: review, narrow. R1 passed on `cand/0.1.254` at 779263541 (`reviews/0.1.254.md`). 0.1.255 (another coordinator's rows 011-96 to 011-98) landed first, so the coordinator re-cut the wave as `cand/0.1.256` at 1f5b1643d: the same six product commits and the `status.md` commit, cherry-picked onto `squeal--v0.1.255` (e9aaf95b2), then one release commit (0.1.256, bundles).
+
+Check only the re-cut:
+- `git range-diff 97bc2045c..779263541 e9aaf95b2..1f5b1643d` shows the seven commits unchanged; the release commit differs only in the version and in the bundles;
+- the version is 0.1.256 in all eight places, `npm run check:version -- origin/main` passes, and `npm ci && npm run build` in the candidate tree leaves it clean;
+- the files 0.1.255 changed and this wave changed overlap only in version files and bundles;
+- CI run 39733698808 on 1f5b1643d is green, and the coordinator's locked gate (`.ai/cezar/t/04a258b0/gate-0.1.256.log`) is green or red only on files row 011-99 lists.
+
+Run no full suite of your own: R1 ran one on the same product commits, and the coordinator's gate runs on this SHA. Write `reviews/0.1.256.md` with a PASS or FAIL verdict on 1f5b1643d and commit it alone.
