@@ -429,6 +429,7 @@ var WORKTREE_META_ROWS = {
   daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
   daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
   daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
+  daemonHandoff: { prefix: "daemon-handoff:", owner: "delivery/handoff" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -1012,6 +1013,13 @@ var pauses = channel(TEST_PAUSE_CHANNEL);
 // src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
