@@ -422,6 +422,7 @@ var WORKTREE_META_ROWS = {
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
   slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+  holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
@@ -791,6 +792,18 @@ function toSlowActivity(value) {
     };
   }
   return void 0;
+}
+
+// src/core/delivery/harness-process.ts
+function harnessAlive(harness, namespace, statOf2) {
+  if (namespace === null || harness.pidNamespace !== namespace) return null;
+  const stat = statOf2(harness.pid);
+  return stat !== null && stat.startTime === harness.startTime && stat.state !== "Z";
+}
+function toHarness(value) {
+  if (!isRecord(value)) return void 0;
+  const { pid, startTime, pidNamespace: pidNamespace2 } = value;
+  return typeof pid === "number" && typeof startTime === "number" && typeof pidNamespace2 === "string" ? { pid, startTime, pidNamespace: pidNamespace2 } : void 0;
 }
 
 // src/core/daemon/lock.ts
@@ -2965,18 +2978,6 @@ function readDaemonUsed(value, startedAt) {
 }
 function isEpochMs(value) {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
-}
-
-// src/core/delivery/harness-process.ts
-function harnessAlive(harness, namespace, statOf2) {
-  if (namespace === null || harness.pidNamespace !== namespace) return null;
-  const stat = statOf2(harness.pid);
-  return stat !== null && stat.startTime === harness.startTime && stat.state !== "Z";
-}
-function toHarness(value) {
-  if (!isRecord(value)) return void 0;
-  const { pid, startTime, pidNamespace } = value;
-  return typeof pid === "number" && typeof startTime === "number" && typeof pidNamespace === "string" ? { pid, startTime, pidNamespace } : void 0;
 }
 
 // src/core/ps/work.ts
