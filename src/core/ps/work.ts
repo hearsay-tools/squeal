@@ -256,7 +256,6 @@ function readOne(
     return {
       sessionId,
       agentId,
-      lastSeenAt: num(r, "last_seen_at"),
       harness,
       // `harnessGone`'s rule, over the process table.
       alive: harness === null ? null : harnessAlive(harness, namespace, statIn(table)),
@@ -304,7 +303,7 @@ const OPEN_RUNS = `SELECT worktree_id, id, test_files, checkpoint_id, started_at
 // D3's time bound: a run or checkpoint an earlier daemon left open runs nothing now.
 const OPEN_CHECKPOINTS = `SELECT id, test_files, started_at FROM checkpoints
   WHERE worktree_id = ? AND completed_at IS NULL AND started_at >= ? ORDER BY started_at, rowid`;
-const CONSUMERS = `SELECT session_id, agent_id, last_seen_at FROM consumers
+const CONSUMERS = `SELECT session_id, agent_id FROM consumers
   WHERE worktree_id = ? ORDER BY session_id, agent_id`;
 const UNKNOWN = "has a format this release does not know";
 

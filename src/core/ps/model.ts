@@ -116,7 +116,6 @@ export interface DaemonSettings {
 export interface ConsumerState {
   readonly sessionId: string;
   readonly agentId: string;
-  readonly lastSeenAt: EpochMs;
   /** Its `harnessProcess` meta row; `null` when none was recorded. */
   readonly harness: HarnessProcess | null;
   /** By the process table and the PID namespace; `null` when unknown. */
