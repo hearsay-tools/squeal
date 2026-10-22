@@ -21,7 +21,7 @@ Brief W1 of `../wave-14.md`, first commit. Base main at `1bbe7e43f` (0.1.262). D
 
 ## Tests (R3's 1 to 6)
 
-1. `test/scheduler/replaced-failures.test.ts`, first case: the issue-54 probe through the product scheduler (3.33 load per CPU, then a passing `load` retry at the same key). Red before (`total` 0). Second case, across worktrees: A's fail, B's pass at A's key; both worktrees' `failures --all-worktrees` and `why` keep A's failure.
+1. `test/scheduler/replaced-failures.test.ts`, first case: the issue-54 probe through the product scheduler (3.33 load per CPU, then a passing `load` retry at the same key). Red before (`total` 0). It then closes the daemon, starts the next one and prunes an hour later: `failures` and `why` still show the entry, its stack and its log. Second case, across worktrees: A's fail, B's pass at A's key; both worktrees' `failures --all-worktrees` and `why` keep A's failure.
 2. `test/store/replaced.test.ts`: flips at k1, k2, k1, k1 all kept in order; a 5th of the check drops its oldest; the 1,025th drops the oldest of all. A fail, a skip, or a pass at another key keeps nothing.
 3. `test/store/replaced.test.ts`: prune 1 h later keeps text, run and log; prune 8 days later drops the entry, then them. Under the size cap the text stays, and a run whose worktree is gone stays. `test/status/why-older-failures.test.ts`: an older release's prune (the text at its next pass, the run at the cutoff) reads `failure text pruned` and `log: run record pruned`, with no stale path.
 4. `test/status/why-older-failures.test.ts`: 2 stored fails below 22 newer passes are listed under `Older failures still stored`. Red before. At most 5.
