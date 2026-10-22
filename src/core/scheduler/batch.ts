@@ -3,6 +3,7 @@ import { ancestorListings } from "../keys/index.js";
 import { type BatchDiff, commitBatch, diffBatch, statCandidates } from "../revision/index.js";
 import type { CandidateBatch, RelativePath, Revision } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
+import { isEditorScratch } from "./editor-scratch.js";
 import { recordHeadMove } from "./head-move.js";
 import type { Ledger } from "./ledger.js";
 import { type ContentRekey, rekeyContent } from "./revision.js";
@@ -62,8 +63,10 @@ export async function reconcileBatch(
     ledger.revision = { number: revision.number, head: revision.head, dirty: revision.dirty };
     for (const change of revision.changes) {
       ledger.refineChanges?.add(change.path);
-      // An add or delete moves the listings of its directories (task 001-132).
-      const structural = change.oldHash === null || change.newHash === null;
+      // An add or delete moves the listings of its directories (task 001-132); an editor's scratch
+      // file's only as the run's end finds them (`scratchMovedListings`, row 011-117).
+      const structural =
+        (change.oldHash === null || change.newHash === null) && !isEditorScratch(change.path);
       const listings = structural ? [...ancestorListings(change.path)] : [];
       for (const changes of ledger.tierChanges) {
         changes.add(change.path);
