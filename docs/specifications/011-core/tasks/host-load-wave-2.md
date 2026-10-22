@@ -64,3 +64,14 @@ Seam: `formerReadAsOne` in `src/core/keys/former.ts` and `dependencyKeys` in `sr
 Keep: no former entry where the definitions agree; another install's former key is never read; a set is copied only where none is stored; a format raise ends the read; no key-format raise. Owns: `src/core/keys/former.ts`, `dependencies.ts`, `key-index.ts`'s segment mapping, `src/core/scheduler/keying.ts`'s former hunk, `src/runners/vitest/environment.ts`, the `formerFiles` type, their tests. Not yours: the release commit, bundles, version, spec, board.
 
 Rules as in this file's header. Done when the probe case is red before and green after, the four kept guarantees each have a passing test, and lint, typecheck and `squeal run --all --wait` pass, their output and the whole report in your final message.
+
+## R2: re-review of cand/0.1.253 after RP2
+
+Use /reviewer. Shape: review, the one re-review of this candidate. Pinned to `6a9dff117` (cand/0.1.253 re-cut: main `0fdccf30a`, the rows, RP1, B2's fix `f88527eb8`, RP2's `507e82130`, a new release commit). Read `reviews/0.1.253.md` and this file's RP2.
+
+Check B1 and B2 against their proofs, then the repair's own ground:
+- B1: re-run the reviewer's real-adapter probe (two file-based projects, a sibling config importing `node:child_process`, a trusted npm install): the pass stored under 0.1.252's definition is found at the first lookup. Then each kept guarantee: no former entry where the definitions agree; another install's former key is never read; a set is copied only where none is stored; a format raise ends the read; no key-format raise. Look for a new false hit: a former segment that a current file's packages could match while the file's inputs moved.
+- B2: with `BacklogQuiet.cancelled` returning at once, `edit-cut-route` Vitest test 6 fails; as committed it passes.
+- The release commit: eight version places, bundles match the tree.
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once. `backlog-slots-overhead.test.ts` test 3 is red alone on main 0.1.252 too (row 011-99); name it if it fails. Append a dated "Re-review" section to `reviews/0.1.253.md` with PASS or FAIL on `6a9dff117` and commit it. A finding outside B1 and B2 that is not a proven break goes to "Inputs for the next wave", not the verdict.
