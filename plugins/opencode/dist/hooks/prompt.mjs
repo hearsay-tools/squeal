@@ -4723,6 +4723,9 @@ function promotedIds(store, worktreeId, daemonStartedAt, now) {
   }
 }
 
+// src/core/ps/proc.ts
+var MARK = Buffer.from("SQUEAL_DAEMON_CHILD=");
+
 // src/core/capacity/pool.ts
 var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 
@@ -6688,7 +6691,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.253";
+  if (true) return "0.1.255";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
