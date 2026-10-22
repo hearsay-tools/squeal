@@ -43,3 +43,5 @@ Seam: `keepVersion` in `src/harness/shared/version-copies.ts:86`, called today o
 Owns: `src/harness/shared/version-copies.ts`, `src/cli/start.ts`'s spawn, `src/core/daemon/ensure.ts`'s `daemonCliEntry` if the copy is chosen there, their tests, notes under `005-agent-adoption/tasks/005-77/`. Not yours: the launcher, W1's and W2's files, the board, spec text, bundles, version. No `npm run build`.
 
 Done when: the row's done-when holds; a SessionStart spawn is unchanged; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+W3 also takes 011-110 as its last commit (steered 2026-10-22 after main CI 39755680012): `finishHandoff` in `src/cli/start.ts:123` spawns with no lock wait when it joined a live claim with the lock free; with the lock wait only when it claimed. W3 may edit `start.ts`'s `finishHandoff`, `test/daemon/start-handoff.test.ts` and `test/daemon/handover-tier.test.ts` for it.
