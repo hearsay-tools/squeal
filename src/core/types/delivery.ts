@@ -222,9 +222,10 @@ export interface Delta {
   /**
    * Row 011-73 (C8 as amended 2026-10-21): set when the holds on the
    * worktree's validation changed since this consumer was last told, at a
-   * tool boundary as `liveness` is. Absent from an older Squeal.
+   * tool boundary as `liveness` is: one change a hold that started or ended,
+   * the ends first (review 0.1.269, B2). Absent from an older Squeal.
    */
-  readonly hold?: HoldChange;
+  readonly holds?: readonly HoldChange[];
   /**
    * Checks whose known state is `fail` at delivery, any validity, so a
    * report with many recoveries can name what still fails instead of what
