@@ -1,3 +1,4 @@
+import { HANDOFF_BOUND_MS } from "../core/delivery/handoff.js";
 import { testFileId } from "../core/keys/index.js";
 import { runnerPartText, slowWaitText } from "../core/state/index.js";
 import { statusRevisionText } from "../core/status/identity.js";
@@ -9,6 +10,7 @@ import {
   type StatusFormatOptions,
   splitByValidity,
 } from "../core/status/index.js";
+import { stoppingState } from "../core/status/stopping.js";
 import { plural } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import { classLines, namedFailures, reasonGroups, unmatchedText } from "./named-file-lines.js";
@@ -29,7 +31,8 @@ export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
 export function waitLine(wait: EndedWait, command = "squeal"): string {
   const line = ownLine(wait, command);
   const slow = wait.slow === undefined || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
-  return `${line}${slow}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+  const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
+  return `${line}${slow}${live}${worktreeText(wait.result)}`;
 }
 
 /**
@@ -63,7 +66,7 @@ function ownLine(wait: EndedWait, command: string): string {
     case "news":
       return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at} ${after}`;
     case "no-daemon":
-      return `Returned without a daemon: ${noDaemonText(snapshot.daemon, wait.down)}; results are as of revision ${snapshot.revision}`;
+      return `Returned without a daemon: ${noDaemonText(snapshot.daemon, wait.down, command)}; results are as of revision ${snapshot.revision}`;
     case "timeout":
       return `Returned on timeout ${after}: ${pendingText(snapshot)} ${at}`;
   }
@@ -222,9 +225,8 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       break;
     case "no-daemon": {
       const asOf = snapshot ? "" : `; results are as of revision ${verdict.revision}`;
-      line = noneAt(
-        `${noDaemonText(wait.result.daemon, wait.down)}${asOf}; \`${command} start\` starts one`,
-      );
+      const start = wait.down === "handoff" ? "" : `; \`${command} start\` starts one`;
+      line = noneAt(`${noDaemonText(wait.result.daemon, wait.down, command)}${asOf}${start}`);
       break;
     }
     case "slow":
@@ -270,7 +272,8 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
     (wait.outcome === "settled" || wait.outcome === "timeout")
       ? `; ${pauseText(wait, command)}`
       : "";
-  return `${line}${beside}${pause}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+  const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
+  return `${line}${beside}${pause}${live}${worktreeText(wait.result)}`;
 }
 
 /**
@@ -385,15 +388,34 @@ function unsyncedText(sync: SyncState, revision: number, snapshot: boolean): str
  * As delivered headers word it (spec 001 D10: "no daemon running since
  * <time>"), then why the wait found none (task 004-66): a stopped daemon
  * cleared its record; a silent one's heartbeat stopped and nothing listened
- * on its socket for `WAIT_DOWN_MS` past the heartbeat's grace.
+ * on its socket for `WAIT_DOWN_MS` past the heartbeat's grace. Row 011-34:
+ * a stopping daemon's handoff did not finish within its bound, and
+ * `squeal start` finishes it.
  */
-function noDaemonText(daemon: DaemonLiveness, down: DownReason | undefined): string {
+function noDaemonText(
+  daemon: DaemonLiveness,
+  down: DownReason | undefined,
+  command: string,
+): string {
+  if (down === "handoff") {
+    const to = daemon.stopping?.to === undefined ? "" : ` to ${daemon.stopping.to}`;
+    return `the handoff${to} did not finish within ${Math.round(HANDOFF_BOUND_MS / 1_000)} s; \`${command} start\` finishes it`;
+  }
   if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
   const since = `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
   if (down === "silent") {
     return `${since}: its heartbeat stopped and nothing listens on its socket`;
   }
   return down === "stopped" ? `${since}: the daemon stopped` : since;
+}
+
+/**
+ * Row 011-34: a wait that ends while the daemon is stopping says so, in
+ * place of a lapse, which the stopping daemon's stopped heartbeat is.
+ */
+function liveText(daemon: DaemonLiveness, lapse: HeartbeatLapse | undefined): string {
+  if (daemon.stopping === undefined) return lapseText(lapse);
+  return `; the daemon is ${stoppingState(daemon.stopping)}, so the wait went on`;
 }
 
 /**
