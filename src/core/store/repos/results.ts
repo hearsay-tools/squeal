@@ -1,23 +1,17 @@
 import { createHash } from "node:crypto";
-import type { CheckError, FailureFilter, ResultRecord, ResultRepo } from "../../types/index.js";
+import type { CheckError, FailureFilter, ResultRepo } from "../../types/index.js";
 import {
-  bool,
   CHECK_COLUMNS,
   checkFrom,
   ensureCheckId,
   findCheckId,
   flag,
-  json,
-  location,
   locationParams,
   num,
-  oneOf,
   str,
-  strOrNull,
+  toResult,
 } from "../codec.js";
-import type { Connection, Row } from "../connection.js";
-
-const OUTCOMES = ["pass", "fail", "skip"] as const;
+import type { Connection } from "../connection.js";
 
 const SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
@@ -185,25 +179,4 @@ const FAILURE_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) A
 
 function failureParams({ worktreeId, since }: FailureFilter): (string | number | null)[] {
   return [worktreeId, worktreeId, since, since];
-}
-
-function toResult(row: Row): ResultRecord {
-  return {
-    check: checkFrom(row),
-    key: str(row, "key"),
-    outcome: oneOf(row, "outcome", OUTCOMES),
-    durationMs: num(row, "duration_ms"),
-    location: location(row),
-    fingerprint: strOrNull(row, "fingerprint"),
-    summary: strOrNull(row, "summary"),
-    errors: row.errors === null ? [] : json<CheckError[]>(row, "errors"),
-    provenance: {
-      worktreeId: str(row, "worktree_id"),
-      revision: num(row, "revision"),
-      commit: strOrNull(row, "commit_sha"),
-      dirty: bool(row, "dirty"),
-      runId: str(row, "run_id"),
-      recordedAt: num(row, "recorded_at"),
-    },
-  };
 }
