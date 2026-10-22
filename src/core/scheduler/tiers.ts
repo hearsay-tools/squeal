@@ -15,6 +15,7 @@ import type {
 import { BacklogWall, backlogBudget } from "./backlog.js";
 import { WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
+import { scratchMovedListings } from "./editor-scratch.js";
 import { rerunGrown } from "./environment-growth.js";
 import type { FileState } from "./files.js";
 import { healsUnheld } from "./hold.js";
@@ -540,12 +541,21 @@ export function endTier(context: SchedulerContext, ledger: Ledger, tier: Tier): 
 /**
  * The tier's inputs whose content now differs from the snapshot, and those
  * touched since it (task 001-168). Outside the lock: it only reads. A
- * listing is no file; the revisions during the run cover it (`Tier.changes`).
+ * listing is no file; the revisions during the run cover it (`Tier.changes`),
+ * and one editor scratch files moved counts when it differs at the run's end
+ * (row 011-117).
  */
-export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<Moved> {
+export async function unstableInputs(context: SchedulerContext, tier: Tier): Promise<Moved> {
   const inputs = new Set(tier.files.flatMap((f) => f.inputs));
-  for (const path of inputs) if (listedDirectory(path) !== null) inputs.delete(path);
-  return changedSince(tier.snapshot, inputs, context.hasher);
+  const listings = new Set<RelativePath>();
+  for (const path of inputs) if (listedDirectory(path) !== null) listings.add(path);
+  for (const path of listings) inputs.delete(path);
+  const moved = await changedSince(tier.snapshot, inputs, context.hasher);
+  const { store, worktreeId } = context;
+  const after = tier.revision.number;
+  for (const path of scratchMovedListings(store, worktreeId, after, tier.changes, listings))
+    moved.changed.add(path);
+  return moved;
 }
 
 /**
