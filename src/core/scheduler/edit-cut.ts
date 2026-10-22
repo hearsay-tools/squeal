@@ -26,6 +26,8 @@ export interface EditCut {
   readonly bare: ReadonlySet<RelativePath>;
   /** `testFileId`s of the runner's direct importers of `bare`. */
   readonly fallback: ReadonlySet<string>;
+  /** `testFileId`s of the runner's transitive importers of the revision's paths (task 011-116). */
+  readonly transitive: ReadonlySet<string>;
 }
 
 /**
@@ -65,12 +67,15 @@ export async function fetchEditCut(
     if (!ids.some((id) => reached.has(id))) bare.add(path);
   }
   const direct = affected.direct.map(testFileId);
-  if (bare.size === 0) return { namesakes, bare, fallback: new Set() };
-  if (bare.size === namesakes.size) return { namesakes, bare, fallback: new Set(direct) };
+  const transitive = new Set(affected.transitive.map(testFileId));
+  if (bare.size === 0) return { namesakes, bare, fallback: new Set(), transitive };
+  if (bare.size === namesakes.size)
+    return { namesakes, bare, fallback: new Set(direct), transitive };
   const own = await tryRunner(context, `affected (${listPaths([...bare])})`, () =>
     bound.call(() => runner.affected([...bare])),
   );
-  return { namesakes, bare, fallback: new Set(own === null ? direct : own.direct.map(testFileId)) };
+  const fallback = new Set(own === null ? direct : own.direct.map(testFileId));
+  return { namesakes, bare, fallback, transitive };
 }
 
 /**
@@ -78,11 +83,15 @@ export async function fetchEditCut(
  * (`Ledger.recentOf` with the runner's `direct`) and keeps as an edit's
  * work: the test files it added or edited; each source's namesakes it
  * reached, or for a source with none its direct importers; and the
- * `runner.tierSize` shortest other direct importers by last-known
- * duration, unknown last. Every other file it reaches is catch-up. On
- * cezar this cut the next edit's wait at p90 from 132 s to 8 s, and
- * reported 1 of 75 revisions' first new failure later, by 63 s
- * (`research/edit-cut.md`).
+ * `runner.tierSize` shortest by last-known duration, unknown last, of its
+ * other direct importers, then of the files that import a changed path
+ * through other modules or whose runs read it. Every other file it reaches
+ * is catch-up, a file a declared input alone reaches among them. On cezar
+ * this cut the next edit's wait at p90 from 132 s to 8 s, and reported 1 of
+ * 75 revisions' first new failure later, by 63 s (`research/edit-cut.md`).
+ * In toolkit-dev the only check of an edit read it at run time, and as
+ * catch-up waited 46.4 s for a permit (task 011-116,
+ * `research/edit-latency.md`).
  */
 export function editWork(
   context: SchedulerContext,
@@ -100,13 +109,46 @@ export function editWork(
     const fallback = cut.bare.has(source) ? cut.fallback : direct;
     for (const id of own.length > 0 ? own : fallback) kept.add(id);
   }
-  const others = [...direct]
-    .filter((id) => !kept.has(id))
+  const beyond = heldBeyondInputs(context, changed);
+  const rest = [...reached].filter((id) => !kept.has(id) && !direct.has(id));
+  const reads = rest.filter((id) => cut.transitive.has(id) || beyond.has(id));
+  const others = [
+    ...shortest(
+      ledger,
+      [...direct].filter((id) => !kept.has(id)),
+    ),
+    ...shortest(ledger, reads),
+  ];
+  for (const file of others.slice(0, context.policy.runner.tierSize)) kept.add(file.id);
+  return { kept, reached };
+}
+
+/** The files of `ids` the ledger knows, shortest last-known duration first, unknown last. */
+function shortest(ledger: Ledger, ids: readonly string[]): FileState[] {
+  return ids
     .map((id) => ledger.files.get(id))
     .filter((file): file is FileState => file !== undefined)
     .sort(shortestFirst);
-  for (const file of others.slice(0, context.policy.runner.tierSize)) kept.add(file.id);
-  return { kept, reached };
+}
+
+/**
+ * The `testFileId`s of the files whose closure holds a path of `changed`
+ * other than as a declared input alone: an import, a snapshot, or a path a
+ * run read, even one a declared input selects too (task 011-116).
+ */
+function heldBeyondInputs(
+  context: SchedulerContext,
+  changed: ReadonlySet<RelativePath>,
+): Set<string> {
+  const { keys } = context;
+  const ids = new Set<string>();
+  for (const path of changed) {
+    for (const ref of keys.index.reverse.referencing([path])) {
+      const declared = keys.declaredFor(ref.path).includes(path);
+      if (!declared || keys.observedOf(ref).includes(path)) ids.add(testFileId(ref));
+    }
+  }
+  return ids;
 }
 
 /**
