@@ -1,10 +1,12 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonResult } from "../../src/core/types/index.js";
+import type { HookDeps } from "../../src/harness/claude-code/index.js";
 import { runNode } from "../harness/bundle-helpers.js";
 import { recorded } from "../harness/helpers.js";
 import { daemonSuite, delay, type FixtureRepo, ping, readNotes, SLOW, waitFor } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
+import { findProcesses } from "./strays.js";
 
 /*
  * Task 001-130, review wave 12b B1, with released bundles: a step-down never
@@ -110,6 +112,59 @@ describe.runIf(hasReleases)(
     });
   },
 );
+
+/** Every pid of a successor of `repo` (`--await-lock`) seen until `done` resolves, polled. */
+async function successorsUntil(repo: FixtureRepo, done: Promise<unknown>): Promise<Set<number>> {
+  const seen = new Set<number>();
+  let finished = false;
+  void done.finally(() => {
+    finished = true;
+  });
+  while (!finished) {
+    for (const { pid } of findProcesses(`daemon ${repo.root}`, "--await-lock")) seen.add(pid);
+    await delay(50);
+  }
+  return seen;
+}
+
+describe("one successor per handoff (row 011-32)", SLOW, () => {
+  it("six SessionStart hooks against a stepping daemon leave one --await-lock process", async () => {
+    const repo = suite.fixture();
+    start(buildAt("0.1.0"), repo);
+    const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "the old daemon serving");
+    expect(first.squealVersion).toBe("0.1.0");
+
+    const ensured: EnsureDaemonResult[] = [];
+    const real = hookDeps(repo, ensured);
+    const lockWaits: number[] = [];
+    const deps: HookDeps = {
+      ...real,
+      ensureDaemon: (root, options) => {
+        if (options.awaitLockMs !== undefined) lockWaits.push(options.awaitLockMs);
+        return real.ensureDaemon?.(root, options) ?? Promise.resolve("unavailable");
+      },
+    };
+    sockets.push(repo.socketPath);
+    const hooks = (async () => {
+      await Promise.all(["a", "b", "c"].map((s) => hook("session-start", repo, deps, s)));
+      for (const s of ["d", "e", "f"]) {
+        await delay(1_000);
+        await hook("session-start", repo, deps, s);
+      }
+      await waitFor(
+        async () => (await ping(repo.socketPath, 500))?.squealVersion === HOOKS,
+        60_000,
+        "the successor serving",
+      );
+    })();
+    const successors = await successorsUntil(repo, hooks);
+    await hooks;
+
+    expect(lockWaits).toHaveLength(1);
+    expect(successors.size).toBe(1);
+    expect(readNotes(repo).filter((n) => /successor daemon gave up/.test(n))).toEqual([]);
+  });
+});
 
 describe("the successor's lock wait (squeal daemon --await-lock)", SLOW, () => {
   it("exits with a note when the lock is still held at its bound; the holder keeps serving", async () => {

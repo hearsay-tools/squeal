@@ -4,6 +4,12 @@ import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
 import { otherSessionVersions } from "../../core/delivery/consumer-version.js";
 import {
+  claimHandoff,
+  handoffFrom,
+  liveHandoff,
+  SUCCESSOR_LOCK_WAIT_MS,
+} from "../../core/delivery/handoff.js";
+import {
   daemonLiveness,
   spawnedAfterRest,
   worktreeLiveness,
@@ -26,14 +32,6 @@ export const SPAWN_SETTLE_MS = 750;
 const SETTLE_POLL_MS = 25;
 
 /**
- * How long the successor a step-down spawns waits for the old daemon's lock
- * (task 001-130): its cancelled tiers, then its shutdown (row 011-31). A
- * daemon before 0.1.200 finishes its tier, which can outlast this wait; the
- * successor then exits with a note and the next boundary spawns.
- */
-export const SUCCESSOR_LOCK_WAIT_MS = 120_000;
-
-/**
  * What a hook's ensure did: `ensureDaemon`'s answer, or `stopped` when it
  * started nothing because `squeal stop` stopped the daemon and neither an
  * edit nor a start came since (task 011-08).
@@ -44,8 +42,10 @@ export type HookEnsureResult = EnsureDaemonResult | "stopped";
  * `ensureDaemon` with the hook's CLI (review wave 3, B1) and the socket
  * budget. With `context`, a held stopped mark starts nothing (`stopHolds`,
  * task 011-08); a daemon older than the hook is first asked to step down,
- * and when it accepts, the hook spawns its successor from its own CLI; a
- * spawn after a rest starts the rest's start timeout (`spawnedAfterRest`).
+ * and when it accepts, the hook whose claim it is spawns its successor from
+ * its own CLI, while one that finds the handoff claimed spawns nothing and
+ * reads the daemon alive (`handOver`, row 011-32); a spawn after a rest
+ * starts the rest's start timeout (`spawnedAfterRest`).
  */
 export async function ensure(
   location: HookLocation,
@@ -59,9 +59,9 @@ export async function ensure(
     const at = { id: context.consumer.worktreeId, root: location.root };
     if (await stopHolds(context.store, at, worktree, live)) return "stopped";
   }
-  if (context !== undefined && (await stepDown(context, deps, record ?? null))) {
-    return successor(location, deps);
-  }
+  const handoff = context === undefined ? "none" : await handOver(context, deps, record ?? null);
+  if (handoff === "claimed") return successor(location, deps);
+  if (handoff === "joined") return "alive";
   const at = (deps.now ?? Date.now)();
   const ensured = await (deps.ensureDaemon ?? ensureDaemon)(location.root, {
     socketTimeoutMs: SOCKET_TIMEOUT_MS,
@@ -91,26 +91,44 @@ export async function ensureIfStale(
   if (daemonLiveness(record, (deps.now ?? Date.now)()).state !== "alive") {
     return ensure(context, deps, context);
   }
-  if (await stepDown(context, deps, record)) await successor(context, deps);
+  if ((await handOver(context, deps, record)) === "claimed") await successor(context, deps);
   return "fresh";
 }
 
-/** `stepDownIfOlder` with this hook's version and the other sessions' recorded versions. */
-function stepDown(
+/**
+ * Row 011-32 (C9 as amended 2026-10-20): one successor per handoff. When
+ * this hook would ask the daemon to step down (`asksStepDown`) and a live
+ * claim names it (`liveHandoff`), it asks nothing: `joined`. Otherwise it
+ * asks (`requestStepDown`), and on acceptance claims the handoff in one
+ * write transaction: `claimed` when the claim is its own, `joined` when
+ * another hook's came first. A store that stays busy past the hook's
+ * timeout takes no claim, and the hook spawns as before (`claimed`): the
+ * lock's winner serves and the rest exit. `none` when nothing was asked or
+ * the daemon did not accept.
+ */
+async function handOver(
   context: HookContext,
   deps: HookDeps,
   record: DaemonRecord | null,
-): Promise<boolean> {
-  return stepDownIfOlder(
-    record,
-    (deps.now ?? Date.now)(),
-    deps.squealVersion ?? squealVersion(),
-    otherSessionVersions(context.store, context.consumer),
-  );
+): Promise<"none" | "joined" | "claimed"> {
+  const now = deps.now ?? Date.now;
+  const version = deps.squealVersion ?? squealVersion();
+  const others = otherSessionVersions(context.store, context.consumer);
+  if (record === null || !asksStepDown(record, now(), version, others)) return "none";
+  const id = context.consumer.worktreeId;
+  const from = handoffFrom(record);
+  if (liveHandoff(context.store, id, from, now()) !== null) return "joined";
+  if (!(await requestStepDown(record, version))) return "none";
+  try {
+    const claim = claimHandoff(context.store, id, { from, to: version, at: now() });
+    return claim === null ? "joined" : "claimed";
+  } catch {
+    return "claimed";
+  }
 }
 
 /**
- * Task 001-130: the hook that asked a daemon to step down spawns its own
+ * Task 001-130: the hook that claimed the handoff (row 011-32) spawns its own
  * CLI's daemon at once, with a lock wait, so a current daemon follows without
  * another boundary, whichever plugin takes it.
  */
@@ -153,11 +171,26 @@ export async function stepDownIfOlder(
   version: string = squealVersion(),
   others: readonly (string | null)[] = [],
 ): Promise<boolean> {
-  if (record === null || !isNewerVersion(version, record.squealVersion)) return false;
+  if (record === null || !asksStepDown(record, now, version, others)) return false;
+  return requestStepDown(record, version);
+}
+
+/** Whether `stepDownIfOlder` asks `record`'s daemon to step down. */
+function asksStepDown(
+  record: DaemonRecord,
+  now: EpochMs,
+  version: string,
+  others: readonly (string | null)[],
+): boolean {
+  if (!isNewerVersion(version, record.squealVersion)) return false;
   if (!others.every((other) => other === version || isNewerVersion(other ?? "", version))) {
     return false;
   }
-  if (daemonLiveness(record, now).state !== "alive") return false;
+  return daemonLiveness(record, now).state === "alive";
+}
+
+/** `stepDownIfOlder`'s requests, once it asks. */
+async function requestStepDown(record: DaemonRecord, version: string): Promise<boolean> {
   try {
     const answer = await requestDaemon(
       record.socketPath,
