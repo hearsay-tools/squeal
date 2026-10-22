@@ -1,6 +1,12 @@
 import { harnessGone, pidNamespace, readProcStat } from "../delivery/harness-process.js";
+import { isBusy } from "../store/index.js";
 import type { EpochMs, HarnessProcess, Store, WorktreeId } from "../types/index.js";
-import { type CommandHoldEntry, type EndedCommandHold, pruneCommandHolds } from "./hold-rows.js";
+import {
+  type CommandHoldEntry,
+  type EndedCommandHold,
+  pruneCommandHolds,
+  readCommandHolds,
+} from "./hold-rows.js";
 
 /*
  * Row 011-74 (spec 011 C9 as amended 2026-10-21, "Holds", *Hold command*;
@@ -91,9 +97,9 @@ export class CommandHold {
 
   /**
    * Reads the row again and removes each entry whose holder is gone or whose
-   * `until` passed, with one note each; returns whether an entry holds. A
-   * store that fails leaves the hold as it was, with one note until a read
-   * succeeds.
+   * `until` passed, with one note each; returns whether an entry holds. Only
+   * a removal writes. A busy store leaves the hold as it was until the next
+   * check; any other failure too, with one note until a read succeeds.
    */
   check(): boolean {
     if (this.#closed) return this.holding;
@@ -101,13 +107,17 @@ export class CommandHold {
     const at = now();
     const namespace = this.options.gone === undefined ? pidNamespace() : null;
     const gone = this.options.gone ?? ((entry: CommandHoldEntry) => holderGone(entry, namespace));
+    const ends = (entry: CommandHoldEntry) =>
+      entry.until <= at ? "until" : gone(entry) ? "gone" : null;
     let read: ReturnType<typeof pruneCommandHolds>;
     try {
-      read = pruneCommandHolds(store, worktreeId, (entry) =>
-        entry.until <= at ? "until" : gone(entry) ? "gone" : null,
-      );
+      const entries = readCommandHolds(store, worktreeId);
+      read = entries.some((entry) => ends(entry) !== null)
+        ? pruneCommandHolds(store, worktreeId, ends)
+        : { ended: [], left: entries };
       this.#failed = null;
     } catch (error) {
+      if (isBusy(error)) return this.holding;
       const message = String(error);
       if (this.#failed !== message) note(`squeal: could not read the command holds: ${message}`);
       this.#failed = message;
