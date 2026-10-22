@@ -67,12 +67,14 @@ export const flag = (model: PsModel): FlagFindings => {
 
   const daemons = new Map<number, PsFlag[]>();
   const states = new Map<number, string>();
+  const drainLeftMs = new Map<number, number>();
   const add = (pid: number, flags: readonly PsFlag[]) =>
     daemons.set(pid, [...(daemons.get(pid) ?? []), ...flags]);
   for (const d of model.discovery.daemons) {
-    const { flags, state } = daemonFlags(c, d);
+    const { flags, state, drainLeft } = daemonFlags(c, d);
     add(d.row.pid, flags);
     if (state !== null) states.set(d.row.pid, state);
+    if (drainLeft !== null) drainLeftMs.set(d.row.pid, drainLeft);
   }
   for (const [pid, flags] of duplicates(c)) add(pid, flags);
 
@@ -80,6 +82,7 @@ export const flag = (model: PsModel): FlagFindings => {
   return {
     daemons,
     states,
+    drainLeftMs,
     processes: overdue(c),
     orphans: orphans(c),
     files: files.files,
@@ -93,7 +96,7 @@ export const flag = (model: PsModel): FlagFindings => {
  * `daemon.idleExitMinutes` after its own last departure; `null` otherwise.
  * A drain runs for slow work or an open checkpoint (task 001-219).
  */
-export function drainLeftMs(work: DaemonWork | null, now: EpochMs): number | null {
+function drainLeftMs(work: DaemonWork | null, now: EpochMs): number | null {
   const departed = ownDeparture(work);
   if (work === null || departed === null) return null;
   if (work.slowWaiting !== true && work.checkpoints.length === 0) return null;
@@ -107,7 +110,10 @@ function ownDeparture(work: DaemonWork | null): EpochMs | null {
   return work.departedAt >= work.record.startedAt ? work.departedAt : null;
 }
 
-function daemonFlags(c: FlagContext, d: FoundDaemon): { flags: PsFlag[]; state: string | null } {
+function daemonFlags(
+  c: FlagContext,
+  d: FoundDaemon,
+): { flags: PsFlag[]; state: string | null; drainLeft: number | null } {
   const { model } = c;
   const pid = d.row.pid;
   const work = model.second.work.get(pid) ?? model.first.work.get(pid) ?? null;
@@ -162,7 +168,7 @@ function daemonFlags(c: FlagContext, d: FoundDaemon): { flags: PsFlag[]; state: 
         kill,
       );
   }
-  return { flags, state };
+  return { flags, state, drainLeft: life?.drainLeft ?? null };
 }
 
 /** C9 `root-removed` and `worktree-removed`, as the daemon's own check reads them. */
@@ -289,7 +295,7 @@ function lifeOf(
   pid: number,
   work: DaemonWork,
   intervalMs: number,
-): { flag: { flag: PsFlagName; reason: string } | null; state: string | null } {
+): { flag: { flag: PsFlagName; reason: string } | null; state: string | null; drainLeft?: number } {
   const now = c.model.now;
   const grace = HEARTBEAT_GRACE_INTERVALS * intervalMs;
   const idleMs = work.settings.idleExitMinutes * 60_000;
@@ -299,7 +305,8 @@ function lifeOf(
   if (departed !== null) {
     const since = now - departed;
     const left = drainLeftMs(work, now);
-    if (left !== null) return { flag: null, state: `draining ${Math.ceil(left / 60_000)}m left` };
+    if (left !== null)
+      return { flag: null, state: `draining ${Math.ceil(left / 60_000)}m left`, drainLeft: left };
     const drains = work.slowWaiting === true || work.checkpoints.length > 0;
     if (!drains && work.slowWaiting === null) {
       c.name(`daemon ${pid} flag past-departure`, "its slow-tier row cannot be read");

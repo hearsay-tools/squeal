@@ -245,6 +245,8 @@ export interface FlagFindings {
   readonly daemons: ReadonlyMap<number, readonly PsFlag[]>;
   /** An information state that replaces a daemon's phase as its state word. */
   readonly states: ReadonlyMap<number, string>;
+  /** While a daemon drains (D7 `draining`): the time until `daemon.idleExitMinutes` after its departure. */
+  readonly drainLeftMs: ReadonlyMap<number, number>;
   readonly processes: ReadonlyMap<number, readonly PsFlag[]>;
   readonly orphans: readonly PsOrphan[];
   readonly files: readonly PsFileFlag[];
