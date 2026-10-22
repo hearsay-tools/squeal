@@ -18,6 +18,11 @@ export interface LoadedUserConfig {
   readonly path: AbsolutePath;
   readonly config: UserConfig;
   readonly problems: readonly string[];
+  /**
+   * `capacity.hostSlots` was above the CPU count and is cut to it (011 C10
+   * Size as amended 2026-10-21, row 011-98): the note's sentence.
+   */
+  readonly cut?: string;
 }
 
 /**

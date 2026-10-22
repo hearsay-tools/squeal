@@ -5,10 +5,21 @@ import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
 import type { Demand } from "./share.js";
 
-/** A daemon's mark in the pool's directory: its backlog demand and what it holds. */
+/**
+ * A daemon's mark in the pool's directory: its backlog demand and what it
+ * holds. `want` 0 is no backlog demand: a mark an edit's tier writes for its
+ * CPU alone (row 011-98), left out of the fair shares.
+ */
 export interface PoolMark extends Demand {
   /** The workers its backlog tiers run with now: its permits. */
   readonly grant: number;
+  /**
+   * The cores its process tree used in its last refresh window, and until
+   * its first one the workers its tiers run (011 C10 Size, row 011-98).
+   * Absent where the daemon cannot read its tree, or from an older release:
+   * its grant counts in its place.
+   */
+  readonly cores?: number;
 }
 
 const MARK_PREFIX = "pool.mark.";
@@ -33,6 +44,7 @@ export function writeMark(dir: AbsolutePath, mark: PoolMark): void {
     project: mark.project ?? null,
     ...(mark.slow === true ? { slow: true } : {}),
     ...(mark.least !== undefined && mark.least > 1 ? { least: mark.least } : {}),
+    ...(mark.cores === undefined ? {} : { cores: Math.round(mark.cores * 100) / 100 }),
   };
   writeFileSync(`${path}.tmp`, `${JSON.stringify(body)}\n`, { mode: 0o600 });
   renameSync(`${path}.tmp`, path);
@@ -75,7 +87,7 @@ export function readMarks(dir: AbsolutePath, worktreeId: WorktreeId, now: number
 function parseMark(text: string): PoolMark | null {
   const raw: unknown = JSON.parse(text);
   if (typeof raw !== "object" || raw === null) return null;
-  const { id, want, grant, since, project, slow, least } = raw as Record<string, unknown>;
+  const { id, want, grant, since, project, slow, least, cores } = raw as Record<string, unknown>;
   if (typeof id !== "string" || !isCount(want) || !isCount(grant)) return null;
   if (since !== null && typeof since !== "number") return null;
   const mark = {
@@ -85,6 +97,7 @@ function parseMark(text: string): PoolMark | null {
     since,
     ...(slow === true ? { slow: true } : {}),
     ...(isCount(least) && least > 1 ? { least } : {}),
+    ...(typeof cores === "number" && Number.isFinite(cores) && cores >= 0 ? { cores } : {}),
   };
   if (project === null || project === undefined) return mark;
   const p = project as Record<string, unknown>;

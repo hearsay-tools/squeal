@@ -462,8 +462,9 @@ function startable(ledger: Ledger, p: TierFile): TierFile[] {
  * joins `Tier.ended`, then `onFileEnd` hears of it (row 011-54). A tier
  * holds only what it runs: once its files that have not ended are fewer
  * than its lease's permits, the lease returns the rest (011 C10 as amended
- * 2026-10-21, row 011-97). Never rejects: a runner that throws is a crash
- * (D12).
+ * 2026-10-21, row 011-97). A tier without a lease, an edit's, is told to
+ * the pool while it runs, so its CPU counts against backlog tiers (row
+ * 011-98). Never rejects: a runner that throws is a crash (D12).
  */
 export async function executeTier(
   context: SchedulerContext,
@@ -481,6 +482,7 @@ export async function executeTier(
     if (left > 0) tier.lease?.shrinkTo(left);
     onFileEnd?.();
   };
+  const unleased = tier.lease === undefined ? context.capacity?.running(tier.files.length) : null;
   try {
     return await context.runner.run(
       tier.files.map((f) => f.file.ref),
@@ -505,6 +507,8 @@ export async function executeTier(
       fileErrors: [],
       failure: error instanceof Error ? error.message : String(error),
     };
+  } finally {
+    unleased?.();
   }
 }
 
