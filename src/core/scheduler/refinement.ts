@@ -268,7 +268,8 @@ export async function applyRunnerPart(
     ...(keyedAt === undefined ? {} : { keyedAt }),
     ...(catchUp ? { catchUp: true } : {}),
   };
-  quietQueued(context, ledger, ledger.settle(touched.values(), changed, options));
+  const misses = ledger.settle(touched.values(), changed, options);
+  quietQueued(context, ledger, misses, part.revision.changes);
   settleFailures(ledger, part.failures, part.retrying, changed, options);
   if (!catchUp && keyedAt !== undefined && part.cut !== undefined) {
     // The rest of a small revision's reach is catch-up (011 C4 step 4 as amended for 011-25).
