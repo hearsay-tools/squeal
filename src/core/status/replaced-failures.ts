@@ -82,8 +82,8 @@ export function selectReplaced(
   texts: readonly string[],
 ): ReplacedFailure[] {
   const { worktreeId, since, paths, errors = [] } = selection;
-  const selected = entries
-    .filter(
+  const selected = newestFirst(
+    entries.filter(
       (e) =>
         (worktreeId === null || e.provenance.worktreeId === worktreeId) &&
         (since === null || e.provenance.recordedAt >= since) &&
@@ -91,14 +91,25 @@ export function selectReplaced(
           paths.some((p) => e.check.testPath === p || e.check.testPath.startsWith(`${p}/`))) &&
         (texts.length === 0 || texts.some((t) => formatCheck(e.check).includes(t))) &&
         (errors.length === 0 || errors.some((t) => e.summary?.includes(t) === true)),
-    )
-    .reverse();
+    ),
+  );
   return selection.perCheck === true ? newestOfEach(selected, (e) => e.check) : selected;
+}
+
+/**
+ * Review 0.1.265 B1: kept entries, newest failure first. They are kept in the
+ * order passes replaced them, which need not be the order they failed in.
+ * At one failure time, the one kept later comes first, as of two stored
+ * rows the later one does.
+ */
+export function newestFirst(entries: readonly ReplacedFailure[]): ReplacedFailure[] {
+  return entries.toReversed().sort((a, b) => b.provenance.recordedAt - a.provenance.recordedAt);
 }
 
 /**
  * The stored rows, newest `limit` first, merged with the selected replaced
  * failures: newest first, cut at `limit`, each check once with `perCheck`.
+ * At one failure time a stored row comes first, as `perCheckTotals` counts.
  * The newest `limit` stored rows are enough: a check whose newest is stored
  * and listed has fewer than `limit` checks or rows newer than it.
  */

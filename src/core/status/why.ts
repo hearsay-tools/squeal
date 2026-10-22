@@ -32,6 +32,7 @@ import {
 } from "../types/index.js";
 import { durationsOf } from "./durations.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
+import { newestFirst } from "./replaced-failures.js";
 import { runLogOf } from "./run-log.js";
 import { testFileFrame } from "./test-frame.js";
 import { type WhySession, whyClosureChanges } from "./why-closure.js";
@@ -258,19 +259,15 @@ function replacedOf(
   worktreeRoots: Readonly<Record<WorktreeId, AbsolutePath>>,
 ): WhyReplacedFailure[] {
   const identity = checkIdentity(check);
-  return store.failures
-    .replaced()
-    .filter((failure) => checkIdentity(failure.check) === identity)
-    .reverse()
-    .map((failure) => ({
-      failure,
-      worktreeRoot: worktreeRoots[failure.provenance.worktreeId] ?? null,
-      logDir: store.runs.get(failure.provenance.runId)?.logDir ?? null,
-      errors:
-        failure.failureId === null
-          ? null
-          : (store.failures.text(failure.failureId)?.errors ?? null),
-    }));
+  return newestFirst(
+    store.failures.replaced().filter((failure) => checkIdentity(failure.check) === identity),
+  ).map((failure) => ({
+    failure,
+    worktreeRoot: worktreeRoots[failure.provenance.worktreeId] ?? null,
+    logDir: store.runs.get(failure.provenance.runId)?.logDir ?? null,
+    errors:
+      failure.failureId === null ? null : (store.failures.text(failure.failureId)?.errors ?? null),
+  }));
 }
 
 /**
