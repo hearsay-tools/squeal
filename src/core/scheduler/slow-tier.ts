@@ -189,6 +189,8 @@ export class SlowTier {
    * and a marked waiter takes the slot at a handover without a new wait.
    */
   async next(): Promise<SlowNext> {
+    // A close before this call found no wait to abort, and the count below would miss it (row 011-99).
+    if (this.host.closed()) return "again";
     const preemptions = this.#preemptions;
     const refs = await this.host.lock.run(() => this.#candidates());
     const { context } = this.host.started();
