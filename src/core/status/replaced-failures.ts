@@ -22,14 +22,18 @@ import { testFileFrame } from "./test-frame.js";
  * entries in the same order.
  */
 
-/** What the failures read needs besides the store: the worktrees' roots and the runs' loads. */
+/**
+ * What the failures read needs besides the store: the worktrees' roots, the
+ * runs' loads, and whether a check's test file has a key in a worktree.
+ */
 export interface EntryContext {
   readonly roots: ReadonlyMap<WorktreeId, AbsolutePath>;
   readonly loads: ReadonlyMap<string, number>;
+  readonly active: (worktreeId: WorktreeId, check: CheckId) => boolean;
 }
 
 /** A stored failing row as `failures` lists it. */
-export function storedEntry(r: ResultRecord, { roots, loads }: EntryContext): FailureEntry {
+export function storedEntry(r: ResultRecord, { roots, loads, active }: EntryContext): FailureEntry {
   const frame = testFileFrame(r.check, r.errors);
   return {
     check: r.check,
@@ -46,11 +50,16 @@ export function storedEntry(r: ResultRecord, { roots, loads }: EntryContext): Fa
     location: r.location,
     ...(frame === null ? {} : { testFileFrame: frame }),
     loadPerCpu: loads.get(r.provenance.runId) ?? null,
+    active: active(r.provenance.worktreeId, r.check),
   };
 }
 
 /** A kept replaced failure as `failures` lists it; its frame is read from its kept text. */
-function replacedEntry(store: Store, e: ReplacedFailure, { roots }: EntryContext): FailureEntry {
+function replacedEntry(
+  store: Store,
+  e: ReplacedFailure,
+  { roots, active }: EntryContext,
+): FailureEntry {
   const text = e.failureId === null ? null : store.failures.text(e.failureId);
   const frame = text === null ? null : testFileFrame(e.check, text.errors);
   const p = e.provenance;
@@ -70,6 +79,7 @@ function replacedEntry(store: Store, e: ReplacedFailure, { roots }: EntryContext
     ...(frame === null ? {} : { testFileFrame: frame }),
     loadPerCpu: e.loadPerCpu,
     replacedBy: { ...e.replacedBy, worktreeRoot: roots.get(e.replacedBy.worktreeId) ?? null },
+    active: active(p.worktreeId, e.check),
   };
 }
 

@@ -18,7 +18,13 @@ import {
 } from "../types/index.js";
 import { formatUnavailable, shortCommit } from "./format-status.js";
 import { type StatusStoreOptions, withStatusStore } from "./open.js";
-import { loadText, mergeFailures, perCheckTotals, selectReplaced } from "./replaced-failures.js";
+import {
+  type EntryContext,
+  loadText,
+  mergeFailures,
+  perCheckTotals,
+  selectReplaced,
+} from "./replaced-failures.js";
 import { atText } from "./test-frame.js";
 import { WHY_RESULT_LIMIT } from "./why.js";
 
@@ -97,6 +103,8 @@ function realOrNull(path: AbsolutePath): AbsolutePath | null {
  * printed names, so check names keep one formatter (C5). Review 0.1.262 B1:
  * `--error` texts select by summary and `--per-check` keeps each check's
  * newest, in the query too, so a grouped notice's command lists its group.
+ * Row 011-79: a listed failure whose test file has no key in its own
+ * worktree, a deleted file or a removed project, is not `active`.
  */
 export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): FailuresResult {
   const allWorktrees = options.allWorktrees ?? false;
@@ -138,7 +146,13 @@ export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): 
       : { total: stored + replaced.length, replaced: replaced.length };
     const { total } = totals;
     const limit = options.limit === "all" ? total : (options.limit ?? FAILURES_LIMIT);
-    const context = { roots, loads: readRunLoads(store) };
+    const context: EntryContext = {
+      roots,
+      loads: readRunLoads(store),
+      // Row 011-79 (011 C6, C10): one point lookup for each listed row, in its own worktree.
+      active: (id, { project, testPath: path }) =>
+        store.testFileKeys.list(id, [{ project, path }]).length > 0,
+    };
     const listed = store.failures.list(filter, limit);
     const failures = mergeFailures(store, listed, replaced, selection.perCheck, limit, context);
     return {
@@ -184,7 +198,7 @@ function failureLines(report: FailuresReport, f: FailureEntry): string[] {
   const mark = f.replacedBy === undefined ? "FAIL" : "REPLACED";
   const lines = [
     `  ${mark}  ${new Date(f.recordedAt).toISOString()}  ${formatCheck(f.check)}`,
-    `        ${where}, revision ${f.revision}, commit ${shortCommit(f.commit)}, ${f.dirty ? "dirty" : "clean"}, ${Math.round(f.durationMs)} ms, run ${f.runId}`,
+    `        ${where}, revision ${f.revision}, commit ${shortCommit(f.commit)}, ${f.dirty ? "dirty" : "clean"}, ${Math.round(f.durationMs)} ms, run ${f.runId}${f.active ? "" : ", not a test file here now"}`,
   ];
   const by = f.replacedBy;
   if (by !== undefined) {
