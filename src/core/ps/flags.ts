@@ -7,8 +7,8 @@ import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { phaseOn } from "./discover.js";
 import { fileFlags } from "./flags-files.js";
 import { orphans, overdue, type ProcessContext } from "./flags-processes.js";
-import { duration, NO_BOOT, shellQuote } from "./flags-text.js";
 import type { DaemonWork, FlagFindings, FoundDaemon, PhaseOf, PsModel } from "./model.js";
+import { NO_BOOT, sentenceDuration, shellQuote } from "./render-units.js";
 import type { PsFlag, PsFlagName, PsUnknown } from "./shape.js";
 import { type ProcessRow, ticksToMs } from "./source.js";
 
@@ -149,7 +149,11 @@ function daemonFlags(
     const bound = d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS;
     if (age === null) c.name(`daemon ${pid} flag no-lock`, NO_BOOT);
     else if (age > bound)
-      add("no-lock", `it has waited ${duration(age)} for its lock, past ${bound / 1000} s`, kill);
+      add(
+        "no-lock",
+        `it has waited ${sentenceDuration(age)} for its lock, past ${bound / 1000} s`,
+        kill,
+      );
   }
   const hung = hungOf(c, d);
   if (hung !== null) add("hung", hung, `kill ${pid}; sleep 5; kill -9 ${pid}`);
@@ -164,7 +168,7 @@ function daemonFlags(
     else if (age > NOT_INSTALLED_MS)
       add(
         "not-installed",
-        `its bundle is in no plugin cache, its root is under ${model.places.tempDir}, and it has run ${duration(age)}`,
+        `its bundle is in no plugin cache, its root is under ${model.places.tempDir}, and it has run ${sentenceDuration(age)}`,
         kill,
       );
   }
@@ -280,7 +284,7 @@ function hungOf(c: FlagContext, d: FoundDaemon): string | null {
     age = model.now - record.heartbeatAt;
     if (age <= bound) return null;
   }
-  return `its heartbeat is ${duration(age)} old on both samples, past two intervals`;
+  return `its heartbeat is ${sentenceDuration(age)} old on both samples, past two intervals`;
 }
 
 /**
@@ -313,11 +317,11 @@ function lifeOf(
       return none;
     }
     if (drains && since > idleMs + grace) {
-      const reason = `its last session left ${duration(since)} ago, and its drain is past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
+      const reason = `its last session left ${sentenceDuration(since)} ago, and its drain is past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
       return { flag: { flag: "past-departure", reason }, state: null };
     }
     if (!drains && since > DEPARTURE_MS) {
-      const reason = `its last session left ${duration(since)} ago, and no slow work is left`;
+      const reason = `its last session left ${sentenceDuration(since)} ago, and no slow work is left`;
       return { flag: { flag: "past-departure", reason }, state: null };
     }
     return none;
@@ -334,12 +338,12 @@ function lifeOf(
   if (consumers === 0) {
     const quiet = now - work.lastUse.activeAt;
     if (quiet <= idleMs + grace) return none;
-    const reason = `no consumer, and no request for ${duration(quiet)}, past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
+    const reason = `no consumer, and no request for ${sentenceDuration(quiet)}, past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
     return { flag: { flag: "past-idle", reason }, state: null };
   }
   const quiet = now - work.lastUse.usedAt;
   if (quiet <= unusedMs + grace) return none;
-  const reason = `${consumers === 1 ? "1 consumer" : `${consumers} consumers`}, and no edit, run, wait or request for ${duration(quiet)}, past daemon.unusedExitMinutes (${work.settings.unusedExitMinutes})`;
+  const reason = `${consumers === 1 ? "1 consumer" : `${consumers} consumers`}, and no edit, run, wait or request for ${sentenceDuration(quiet)}, past daemon.unusedExitMinutes (${work.settings.unusedExitMinutes})`;
   return { flag: { flag: "past-unused", reason }, state: null };
 }
 
