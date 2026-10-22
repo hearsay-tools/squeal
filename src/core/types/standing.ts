@@ -138,19 +138,27 @@ export type StatusHold =
     };
 
 /**
- * A change of the holds a consumer was last told (row 011-73; spec 011 C8 as
- * amended 2026-10-21: told as liveness is, once per change, in one line):
- * `on-hold`, the worktree is on hold, for `hold` first; `resumed`, no hold
- * holds now, `ended` the cause last told, and `queued` test files wait to
- * start, `running` already run.
+ * A hold that ended, as a delivery names it (row 011-73): the merge, or one
+ * command hold by its command and, when recorded, its pid (two holds may run
+ * the same command).
+ */
+export type HoldEnded =
+  | { readonly cause: "merge" }
+  | { readonly cause: "command"; readonly command: string; readonly pid?: number | null };
+
+/**
+ * One change of the holds a consumer was last told (row 011-73; spec 011 C8
+ * as amended 2026-10-21: told as liveness is, once per change, in one line):
+ * `on-hold`, `hold` started; `ended`, a hold ended while `holds` still hold,
+ * or before another ends (none); `resumed`, the last hold ended, no hold
+ * holds now, and `queued` test files wait to start, `running` already run.
  */
 export type HoldChange =
   | { readonly kind: "on-hold"; readonly hold: StatusHold }
+  | { readonly kind: "ended"; readonly ended: HoldEnded; readonly holds: readonly StatusHold[] }
   | {
       readonly kind: "resumed";
-      readonly ended:
-        | { readonly cause: "merge" }
-        | { readonly cause: "command"; readonly command: string };
+      readonly ended: HoldEnded;
       readonly queued: number;
       readonly running: number;
     };
