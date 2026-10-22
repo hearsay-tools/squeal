@@ -17,6 +17,7 @@ import type {
   EpochMs,
   RelativePath,
   RevisionNumber,
+  StatusHold,
   StatusResult,
   StatusSnapshot,
   StatusUnavailable,
@@ -34,6 +35,7 @@ import {
   type EditWindow,
   editWindow,
   heldPending,
+  heldRows,
   lastHeard,
   splitNews,
   windowRefined,
@@ -42,6 +44,7 @@ import { readHeld, type StartView, startView } from "./status-wait-held.js";
 import { type NamedTextOptions, waitLine, waitText } from "./status-wait-lines.js";
 import { baseOf, namedWaitCommand } from "./status-wait-paths.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
+import { holdOfWait } from "./verdict.js";
 import {
   type DaemonWatch,
   type DownReason,
@@ -97,10 +100,12 @@ export interface StatusWaitOptions {
  * none of the edit's test files (`StatusWaitEdit`); `news`, a check, or a
  * check of the edit's test files, changed notably since the wait started; `no-daemon`, no
  * daemon is validating, so nothing pending would ever finish and quiet would
- * say nothing about the files (review wave 4.5, S2); `timeout`, none of these
- * within the given time.
+ * say nothing about the files (review wave 4.5, S2); `on-hold`, a file it
+ * holds for is queued while the worktree is on hold, so nothing runs it until
+ * the hold ends (row 011-73, C6 as amended 2026-10-21); `timeout`, none of
+ * these within the given time.
  */
-export type StatusWaitOutcome = "quiet" | "news" | "no-daemon" | "timeout";
+export type StatusWaitOutcome = "quiet" | "news" | "no-daemon" | "on-hold" | "timeout";
 
 /**
  * The `wait` field `status --json --wait` adds to the snapshot: the same
@@ -154,6 +159,8 @@ export type StatusWait =
       readonly down?: DownReason;
       /** A heartbeat lapse the wait went on through, the daemon alive (task 004-66). */
       readonly lapse?: HeartbeatLapse;
+      /** With `on-hold`: the hold its verdict line names (row 011-73). */
+      readonly hold?: StatusHold;
       readonly result: StatusSnapshot;
     }
   | {
@@ -324,6 +331,21 @@ export async function waitForStatus(
         }
         // A lapsed heartbeat decides nothing: the daemon may be mid-run (review wave 4.5, S2; 004-66).
         quiet &&= slowLeft.length === 0 && daemon.state === "alive";
+        // Row 011-73 (C6 as amended 2026-10-21): at a read that holds the sync pass, which read
+        // the index first, a file it holds for queued on hold ends the wait with the hold.
+        const holding =
+          seen === null || naming || quiet || transitions > 0 || daemon.state !== "alive"
+            ? null
+            : window !== undefined
+              ? seen.header.revision >= window.revision
+                ? heldRows(window, seen.keys)
+                : null
+              : isSynced(current, seen.header.revision, settled)
+                ? seen.keys
+                : null;
+        const slowRows =
+          seen === null ? [] : seen.keys.filter((row) => slowLeft.includes(row.testFile.path));
+        const hold = holding === null ? null : holdOfWait(store, id, [...holding, ...slowRows], at);
         const outcome: StatusWaitOutcome | null =
           transitions > 0
             ? "news"
@@ -331,9 +353,11 @@ export async function waitForStatus(
               ? "no-daemon"
               : quiet
                 ? "quiet"
-                : final
-                  ? "timeout"
-                  : null;
+                : hold !== null
+                  ? "on-hold"
+                  : final
+                    ? "timeout"
+                    : null;
         if (outcome === null) return null;
         // The wait ends: the other checks' transitions it names read every state, once.
         const edit: StatusWaitEdit | undefined =
@@ -359,6 +383,7 @@ export async function waitForStatus(
           ...slow,
           ...(daemon.state === "down" ? { down: daemon.reason } : {}),
           ...(lapse === null ? {} : { lapse }),
+          ...(hold === null ? {} : { hold }),
           result,
         };
       });
@@ -413,13 +438,13 @@ export function waitConsumer(env: Readonly<Record<string, string | undefined>>):
  * D1); else 0.
  */
 export function slowWaitCode(wait: Extract<StatusWait, { result: StatusSnapshot }>): 0 | 3 {
-  if (wait.outcome === "no-daemon") return 3;
+  if (wait.outcome === "no-daemon" || wait.outcome === "on-hold") return 3;
   return wait.outcome === "timeout" && (wait.slow?.pending.length ?? 0) > 0 ? 3 : 0;
 }
 
 /**
  * `squeal status [--json] --wait <ms>`. Exit code 0 on quiet, news, no daemon
- * or timeout, but `slowWaitCode`'s with `holdSlow`; 1 when status is unavailable. The line saying why the wait
+ * or timeout, but `slowWaitCode`'s with `holdSlow`; 3 on hold (row 011-73); 1 when status is unavailable. The line saying why the wait
  * ended comes last in the human rendering, after the snapshot (issue 26), and goes to stderr with `--json`,
  * where stdout is the snapshot payload plus a `wait` field
  * (`StatusWaitPayload`) with the same outcome. `holdSlow` is
@@ -459,7 +484,7 @@ export async function statusWaitCommand(
     io.stdout(json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, now()));
     return 1;
   }
-  const line = `${waitLine(wait, statusCommand(env))}\n`;
+  const line = `${waitLine(wait, statusCommand(env), now())}\n`;
   if (json) {
     const payload: StatusWaitPayload = {
       outcome: wait.outcome,
@@ -473,5 +498,6 @@ export async function statusWaitCommand(
     const base = baseOf(wait.result.worktreeRoot, io.cwd ?? process.cwd());
     io.stdout(waitText(wait, now(), statusCommand(env), { ...named, base }));
   }
-  return holdSlow ? slowWaitCode(wait) : 0;
+  // Row 011-73 (C6 as amended 2026-10-21): on hold, the wait has no verdict.
+  return holdSlow || wait.outcome === "on-hold" ? slowWaitCode(wait) : 0;
 }

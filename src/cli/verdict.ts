@@ -1,10 +1,18 @@
+import { worktreeLiveness } from "../core/delivery/index.js";
 import { testFileId } from "../core/keys/index.js";
 import { type FileClass, fileClassOf, readHeader, testFileKeyOf } from "../core/state/index.js";
-import { type CheckCounts, checkPartsText, unknownFileText } from "../core/status/index.js";
+import {
+  type CheckCounts,
+  checkPartsText,
+  readHolds,
+  unknownFileText,
+} from "../core/status/index.js";
 import { plural } from "../core/text.js";
 import type {
+  EpochMs,
   KnownState,
   RevisionNumber,
+  StatusHold,
   StatusResult,
   Store,
   TestFileKeyRecord,
@@ -160,4 +168,26 @@ export function gapText(status: StatusResult): string {
   if (listed === undefined || first === undefined) return "";
   if (listed.total === 1) return `. Without a result: ${unknownFileText(first)}`;
   return `. Without a result: ${listed.total} test files, listed below; the first: ${unknownFileText(first)}`;
+}
+
+/**
+ * Row 011-73 (spec 011 C6 as amended 2026-10-21): the hold a wait returns
+ * with, the worktree's first, when one of `keys`, the rows of the files the
+ * wait holds for, is queued; `null` otherwise. No tier starts while on hold,
+ * so only the hold's end advances a queued file, and a wait would only spend
+ * its deadline. A file running in a tier begun before the hold is waited for.
+ * `keys` is read only while the worktree is on hold.
+ */
+export function holdOfWait(
+  store: Store,
+  worktreeId: WorktreeId,
+  keys: readonly TestFileKeyRecord[] | (() => readonly TestFileKeyRecord[]),
+  now: EpochMs,
+): StatusHold | null {
+  const worktree = store.worktrees.get(worktreeId);
+  const [hold] = readHolds(store, worktree, worktreeLiveness(worktree, now));
+  if (hold === undefined) return null;
+  // The rows only while on hold: a poll reads what decides it (C6 as amended, task 011-42).
+  const rows = typeof keys === "function" ? keys() : keys;
+  return rows.some((row) => row.pending === "queued") ? hold : null;
 }
