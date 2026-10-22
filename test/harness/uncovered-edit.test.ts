@@ -153,8 +153,9 @@ describe("an edit to a code file no Squeal test reads (task 001-292)", () => {
 
   it("counts against the delivery cap", async () => {
     const r = await repo();
+    // Each with an error of its own, so none groups with another (row 011-109).
     const failing = Array.from({ length: 200 }, (_, i) =>
-      r.fail(check(`math > case ${i}`, FILE), "x".repeat(300)),
+      r.fail(check(`math > case ${i}`, FILE), `${i} ${"x".repeat(300)}`),
     );
     edit(r, ["scripts/a.mjs"]);
     r.apply(...failing);
