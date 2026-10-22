@@ -1,4 +1,6 @@
+import { stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
+import { isMissing } from "../fs/index.js";
 import { createFsHasher, readObjectFormat } from "../hash/index.js";
 import { appendNote } from "../notes.js";
 import { hostLoad } from "../retry/index.js";
@@ -33,6 +35,7 @@ import {
   missingInstall,
   REINSTALL_NOTE,
   reconcileWaiting,
+  runtimeGoneNote,
   startWaiting,
   stopWaiting,
   touchesInstall,
@@ -85,6 +88,8 @@ interface EndedRun {
   readonly ignored: Awaited<ReturnType<WarmUp["read"]>>;
   readonly inputs: Moved;
   readonly installMoved: boolean;
+  /** The daemon's own runtime went (row 011-106): the run stores nothing. */
+  readonly runtimeGone: boolean;
   readonly slow: SlowRun | null;
 }
 
@@ -159,6 +164,8 @@ class TierScheduler implements Scheduler {
   /** The install went under this scheduler: it stores nothing more (`#reinstall`, task 001-113). */
   #reinstalled = false;
   #reinstallTold = false;
+  /** The daemon's own runtime went (`runtimeDir`, row 011-106): no tier starts, the queue stays. */
+  #runtimeGone = false;
   readonly #install: InstallStamps;
   /** The per-user pool's side of this scheduler (spec 001 D11 Capacity); `null` without one. */
   readonly #capacity: TierCapacity | null;
@@ -392,11 +399,28 @@ class TierScheduler implements Scheduler {
   }
 
   /** Once: `onReinstall`, or the note itself when no daemon listens. */
-  #tellReinstall(): void {
+  #tellReinstall(note = REINSTALL_NOTE): void {
     if (this.#reinstallTold) return;
     this.#reinstallTold = true;
-    if (this.options.onReinstall) this.options.onReinstall(REINSTALL_NOTE);
-    else this.#note(REINSTALL_NOTE);
+    if (this.options.onReinstall) this.options.onReinstall(note);
+    else this.#note(note);
+  }
+
+  /**
+   * Row 011-106: whether the daemon's own runtime went, before a tier and
+   * when one ends. Once gone it stays gone; a stat that fails otherwise
+   * proves nothing.
+   */
+  async #runtimeMissing(): Promise<boolean> {
+    const dir = this.options.runtimeDir;
+    if (this.#runtimeGone || dir === undefined) return this.#runtimeGone;
+    try {
+      await stat(dir);
+      return false;
+    } catch (error) {
+      this.#runtimeGone = isMissing(error);
+      return this.#runtimeGone;
+    }
   }
 
   /**
@@ -599,6 +623,11 @@ class TierScheduler implements Scheduler {
     return this.#closed || this.options.stopping?.() === true;
   }
 
+  /** No tier starts: the daemon stops, or its own runtime went (row 011-106). */
+  #halted(): boolean {
+    return this.#stopping() || this.#runtimeGone;
+  }
+
   /**
    * Runs tiers until the queue is empty, one at a time per lane (spec 001 D5
    * as amended, task 001-140): a tier holds the files of one lane, and a
@@ -630,7 +659,7 @@ class TierScheduler implements Scheduler {
    * or request starts the pump again.
    */
   #pump(): void {
-    if (this.#stopping() || !this.#ledger) return;
+    if (this.#halted() || !this.#ledger) return;
     if (this.#pumping) {
       this.#asked = true;
       this.#notify();
@@ -641,7 +670,7 @@ class TierScheduler implements Scheduler {
     this.#asked = false;
     this.#pumping = (async () => {
       try {
-        while (!this.#stopping() && !this.#stalled) {
+        while (!this.#halted() && !this.#stalled) {
           this.#woken = false;
           this.#drain();
           if (this.#draining) {
@@ -663,8 +692,10 @@ class TierScheduler implements Scheduler {
             });
             continue;
           }
+          // Row 011-106: a daemon whose own runtime went starts no tier; its files stay queued.
+          if (await this.#runtimeMissing()) break;
           const next = await this.#lock.run(() => {
-            if (this.#stopping() || this.#awaitingInstall || this.#reinstalled) return null;
+            if (this.#halted() || this.#awaitingInstall || this.#reinstalled) return null;
             const { context, ledger } = this.#started();
             if (install.missing !== null) {
               this.#reinstall(ledger);
@@ -713,10 +744,12 @@ class TierScheduler implements Scheduler {
         await this.#draining;
         this.#pumping = null;
         if (this.#reinstalled) this.#tellReinstall();
+        else if (this.#runtimeGone)
+          this.#tellReinstall(runtimeGoneNote(this.options.runtimeDir ?? ""));
         const again = !this.#stalled || this.#asked;
         // A resume after a busy store runs once with nothing queued too: its writes end the wait.
         const work = this.#hasWork() || this.#busy?.waiting === true;
-        if (!this.#stopping() && again && work) this.#pump();
+        if (!this.#halted() && again && work) this.#pump();
         else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
       }
     })();
@@ -788,7 +821,8 @@ class TierScheduler implements Scheduler {
     // The completion barrier (task 001-168): a touch since selection withholds the files keying it.
     const inputs = await unstableInputs(context, tier);
     const installMoved = this.#reinstalled || (await this.#install.stamp()) !== installStamp;
-    return { tier, ran, ignored, inputs, installMoved, slow };
+    const runtimeGone = await this.#runtimeMissing();
+    return { tier, ran, ignored, inputs, installMoved, runtimeGone, slow };
   }
 
   /**
@@ -798,7 +832,7 @@ class TierScheduler implements Scheduler {
    */
   async #record(ended: EndedRun, commit: boolean): Promise<Recorded> {
     const { context, ledger } = this.#started();
-    const { tier, ran, ignored, inputs, installMoved, slow } = ended;
+    const { tier, ran, ignored, inputs, installMoved, runtimeGone, slow } = ended;
     // Task 003-43: environment files the run loaded beyond the keyed ones re-key first.
     const environment = installMoved ? undefined : await rekeyEnvironments(context, ran, tier);
     // Task 001-132: what the run read beyond its closures, hashed under the lock.
@@ -832,9 +866,11 @@ class TierScheduler implements Scheduler {
     const unfinished = cancelled ? unfinishedFiles(tier, ran) : [];
     // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
     const moved = context.store.transaction(() => {
-      // Row 011-66: a crash after the daemon's stop began is queued again once per key.
+      // Rows 011-66 and 011-106: a crash after the daemon's stop began, or a run while its own
+      // runtime went, is queued again once per key.
       const interrupted = interruptedFiles(context, ledger, tier, ran, {
         stopping: this.#stopping() && !cancelled,
+        runtimeGone,
       });
       const again = [
         ...(withhold?.again.map(({ file }) => file.id) ?? []),

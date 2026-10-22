@@ -32,6 +32,18 @@ export const AWAITING_INSTALL_REASON = "no dependencies are installed in this wo
 export const REINSTALL_NOTE =
   "dependencies were removed under a running daemon (a reinstall); this daemon exits and the next session starts a fresh one";
 
+/**
+ * Why a daemon exits when its own runtime goes (row 011-106): a plugin
+ * upgrade or a cache cleanup removed the directory its code runs from.
+ */
+export function runtimeGoneNote(dir: AbsolutePath): string {
+  return (
+    `Squeal's own files at ${dir} were removed under its running daemon (an upgrade or a cache cleanup); ` +
+    "this daemon starts no tier and exits, and its queued test files stay queued: " +
+    "`squeal start` runs them with the installed Squeal"
+  );
+}
+
 /** What still waits for an install: workspace directories, or none named. */
 export interface MissingInstall {
   /**

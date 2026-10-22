@@ -12,12 +12,15 @@ import type { Ledger } from "./ledger.js";
 import { type Tier, unfinishedFiles } from "./tiers.js";
 
 /*
- * Row 011-66 (spec 011 C4, C9; D12's no-loop rule): a tier that crashed
- * after its daemon's stop began is an interrupted run, not a result. Its
- * files are queued again for the successor once per key; a second
- * interruption of a file at the same key records the run as usual, so a
- * run that stops its own daemon cannot loop. The second is usually the
- * successor's, so the key of each file's last re-queue outlives the
+ * Rows 011-66 and 011-106 (spec 011 C4, C9, C11; D12's no-loop rule): a
+ * tier its daemon could not finish is an interrupted run, not a result:
+ * one that crashed after the daemon's stop began, or one that ran while
+ * the daemon's own runtime went, whose children then load a recorder that
+ * is gone (gh-72, gh-70). Its files are queued again for the successor
+ * once per key, as C11 queues a tier an install change overlapped; a
+ * second interruption of a file at the same key records the run as usual,
+ * so a run that stops its own daemon cannot loop. The second is usually
+ * the successor's, so the key of each file's last re-queue outlives the
  * daemon, in `meta`. One entry per test file, the latest.
  */
 
@@ -36,24 +39,27 @@ export function interruptedMetaKey(worktreeId: WorktreeId): string {
 export interface Interruption {
   /** Its stop began (`SchedulerOptions.stopping`), and no stop's cancel cut the tier short. */
   readonly stopping: boolean;
+  /** Its own runtime is gone (`SchedulerOptions.runtimeDir`): the run stores nothing. */
+  readonly runtimeGone: boolean;
 }
 
 /**
  * The ids of `tier`'s files its record queues again as interrupted, and
- * remembers at the key each ran under: those a run that crashed while
- * the daemon stopped did not complete, unless interrupted at that key
- * before. In the record's transaction.
+ * remembers at the key each ran under: every file when the runtime went,
+ * those a run that crashed while the daemon stopped did not complete;
+ * each unless interrupted at that key before. In the record's transaction.
  */
 export function interruptedFiles(
   context: Pick<SchedulerContext, "store" | "worktreeId">,
   ledger: Ledger,
   tier: Tier,
   report: RunReport,
-  { stopping }: Interruption,
+  { stopping, runtimeGone }: Interruption,
 ): string[] {
-  if (!stopping || report.end !== "crashed") return [];
+  const crashed = stopping && report.end === "crashed";
+  if (!runtimeGone && !crashed) return [];
   const unfinished = new Set(unfinishedFiles(tier, report));
-  const entries = tier.files.filter(({ file }) => unfinished.has(file.id));
+  const entries = tier.files.filter(({ file }) => runtimeGone || unfinished.has(file.id));
   if (entries.length === 0) return [];
   const { store, worktreeId } = context;
   const memory = readInterrupted(store, worktreeId);
