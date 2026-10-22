@@ -85,7 +85,6 @@ describe("process table: one ps per read", () => {
     expect(table.get(4810)).toEqual({
       pid: 4810,
       ppid: 1,
-      pgid: 4810,
       comm: "node",
       state: null,
       startTicks: (local(10, 21, 9, 40, 7) - BOOT) / 10,
@@ -334,7 +333,6 @@ describe("the stages over it, unchanged", () => {
       version: "0.1.238",
       harness: "claude",
       worktreeId: worktreeIdFor(root),
-      idFrom: "root-hash",
       holdsLock: null,
       awaitLock: false,
     });

@@ -12,12 +12,6 @@ const GIB = MIB * 1024;
 /** An unknown value in a column. */
 export const UNKNOWN = "?";
 
-/** Sums the values that are known; `null` when none is. */
-export function known(values: readonly (number | null)[]): number | null {
-  const read = values.filter((v): v is number => v !== null);
-  return read.length === 0 ? null : read.reduce((a, b) => a + b, 0);
-}
-
 export function count(n: number, one: string, many = `${one}s`): string {
   return `${thousands(n)} ${n === 1 ? one : many}`;
 }

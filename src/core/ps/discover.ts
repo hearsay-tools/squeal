@@ -168,7 +168,6 @@ function found(
     awaitLock: args.slice(at + 2).includes("--await-lock"),
     ...installOf(script),
     worktreeId: lock?.worktreeId ?? null,
-    idFrom: lock === null ? null : fromFd === null ? "root-hash" : "lock-fd",
     lockPath,
     commonDir,
     storePath: commonDir === null ? null : storePaths(commonDir).database,

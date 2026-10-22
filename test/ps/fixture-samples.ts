@@ -39,7 +39,6 @@ export function rowOf(p: FakeProcess): ProcessRow {
   return {
     pid: p.pid,
     ppid: p.ppid,
-    pgid: p.pid,
     comm: p.comm ?? "node",
     state: p.state ?? "S",
     startTicks: p.startTicks ?? 1_000,

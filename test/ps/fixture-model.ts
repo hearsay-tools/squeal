@@ -109,7 +109,6 @@ export function rowOf(p: ProcessSpec): ProcessRow {
   return {
     pid: p.pid,
     ppid: p.ppid ?? 1,
-    pgid: p.pid,
     comm: p.comm ?? "node",
     state: "S",
     startTicks: ticksAt(p.ageS ?? 600),
@@ -147,7 +146,6 @@ export function foundDaemon(s: DaemonSpec): FoundDaemon {
     version: cache?.[2] ?? null,
     harness: cache?.[1] ?? null,
     worktreeId,
-    idFrom: "lock-fd",
     lockPath:
       commonDir === null ? null : join(commonDir, "squeal", "locks", `${worktreeId}.sqlite`),
     commonDir,
