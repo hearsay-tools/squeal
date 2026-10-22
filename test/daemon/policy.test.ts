@@ -206,14 +206,19 @@ describe("loadPolicy (spec 001 D11)", () => {
   it.skipIf(process.getuid?.() === 0)(
     "never throws: bad JSON, a top level that is not an object, an unreadable file",
     () => {
+      // Row 011-78: marked unparsed, so a reload keeps the projects (011 C10).
       expect(loadPolicy(rootWith("{ nope"))).toEqual({
         policy: DEFAULT_POLICY,
         problems: [expect.stringMatching(/^not valid JSON/)],
+        unparsed: true,
       });
       expect(loadPolicy(rootWith("[]"))).toEqual({
         policy: DEFAULT_POLICY,
         problems: ["must be a JSON object, got an array"],
+        unparsed: true,
       });
+      // A file that parses applies as written, its bad keys as problems.
+      expect(loadPolicy(rootWith('{"nodeTest": 1}'))).not.toHaveProperty("unparsed");
     },
   );
 
@@ -224,6 +229,7 @@ describe("loadPolicy (spec 001 D11)", () => {
     expect(loadPolicy(dir)).toEqual({
       policy: DEFAULT_POLICY,
       problems: [expect.stringMatching(/^could not be read: .*EACCES/)],
+      unparsed: true,
     });
   });
 

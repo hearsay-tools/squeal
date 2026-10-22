@@ -296,4 +296,10 @@ export const DEFAULT_POLICY: Policy = {
 export interface LoadedPolicy {
   readonly policy: Policy;
   readonly problems: readonly string[];
+  /**
+   * The file exists and cannot be read, is not JSON or is not an object, so
+   * `policy` is the defaults: a reload keeps the `nodeTest` and `pytest`
+   * projects it had (011 C10, *Projects at a reload*, row 011-78).
+   */
+  readonly unparsed?: true;
 }
