@@ -2,6 +2,7 @@ import { loadText } from "../retry/text.js";
 import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
 import { isSlowLane, SLOW_LANE_PREFIX, type Standing, type TierYield } from "../types/index.js";
+import { onHoldText } from "./holds.js";
 import { slotHoldersText } from "./slot-holders.js";
 
 /*
@@ -198,6 +199,14 @@ export function nextStep(s: Standing, context: StepContext = { named: true }): N
         step: { kind: "command", args: "run --slow", text: "", said: true },
       };
     }
+    case "on-hold":
+      // Row 011-73 (C9, C15): only git ends a merge hold; `squeal start` ends a command's.
+      return same(
+        `queued, ${onHoldText(s.hold)}`,
+        s.hold.cause === "merge"
+          ? { kind: "none", text: "none of Squeal's commands advances {it}" }
+          : { kind: "command", args: "start", text: "{command} ends the hold" },
+      );
     case "checkpoint":
       return same("a checkpoint in progress", {
         kind: "command",
