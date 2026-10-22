@@ -169,8 +169,7 @@ class LockFilePool implements PermitPool {
 
   acquire(want: number, lane: PoolLane = "fast", least = 1): PoolLease | null {
     if (this.#closed) return null;
-    const { dir } = this.#options;
-    preparePrivateDir(dir, this.#options.uid ?? currentUid(), "capacity pool directory");
+    this.#prepareDir();
     const now = this.#now();
     this.#forget(now);
     this.#idleSince = null;
@@ -245,7 +244,13 @@ class LockFilePool implements PermitPool {
     const edit = { workers: Math.max(1, Math.floor(workers)) };
     this.#edits.add(edit);
     this.#activate();
-    this.#republish();
+    try {
+      // It may be the pool's first user (review 0.1.255, B2).
+      this.#prepareDir();
+      this.#republish();
+    } catch {
+      // A directory `acquire` refuses: the edit's tier runs on without a mark of its own.
+    }
     return () => {
       if (!this.#edits.delete(edit) || this.#closed) return;
       if (this.#active()) this.#republish();
@@ -259,6 +264,15 @@ class LockFilePool implements PermitPool {
     this.#leases.clear();
     this.#edits.clear();
     this.#deactivate();
+  }
+
+  /** Creates the pool's directory if it is missing; throws unless it is the user's alone. */
+  #prepareDir(): void {
+    preparePrivateDir(
+      this.#options.dir,
+      this.#options.uid ?? currentUid(),
+      "capacity pool directory",
+    );
   }
 
   /** What a tier of `wanted` workers, `least` at the fewest, is entitled to now, and what it may take. */
