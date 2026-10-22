@@ -7,6 +7,7 @@ import {
   type EpochMs,
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
+  type HoldResponse,
   PAYLOAD_SCHEMA_VERSION,
   type RevisionNumber,
   type RunAllResponse,
@@ -81,6 +82,15 @@ export interface HandlerContext {
    * (defect 26). Called after the answer is built, like `onStop`.
    */
   readonly onStepDown: (version: string) => void;
+  /**
+   * `squeal hold` (spec 011 C9, row 011-74): the scheduler reads the command
+   * holds again and cancels what a hold cancels, like `requestSync`;
+   * resolves with whether one holds once the tiers it cancelled ended.
+   * Absent: this daemon answers that it cannot hold.
+   */
+  readonly requestHold?: () => Promise<boolean>;
+  /** `squeal hold` removed its entry, or `squeal start` all: the scheduler reads them again. Never awaited. */
+  readonly requestResume?: () => Promise<void>;
 }
 
 interface RunAllState {
@@ -98,6 +108,11 @@ interface SyncState {
   error: string | null;
 }
 
+interface HoldState {
+  holding: boolean | null;
+  error: string | null;
+}
+
 /**
  * Socket request handlers. Every answer comes from memory, so each one fits
  * the hooks' 100 ms socket budget while a tier runs (spec 001 D9). Review
@@ -107,6 +122,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   const requests = new Map<string, RunAllState>();
   const slowRequests = new Map<string, RunSlowState>();
   const syncRequests = new Map<string, SyncState>();
+  const holdRequests = new Map<string, HoldState>();
   const runAll = (requestId: string, state: RunAllState): RunAllResponse => {
     const answer = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -136,6 +152,15 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     error: state.error,
     moves: true,
     incarnation: daemonIncarnation(context),
+  });
+  const hold = (requestId: string, state: HoldState): HoldResponse => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "hold",
+    requestId,
+    settled: state.holding !== null || state.error !== null,
+    holding: state.holding,
+    error: state.error,
   });
 
   return (request): DaemonResponse => {
@@ -232,6 +257,31 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
         return sync(request.requestId, state);
       }
+      case "hold": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        if (context.requestHold === undefined) return errorResponse("this daemon cannot hold");
+        const requestId = randomUUID();
+        const state: HoldState = { holding: null, error: null };
+        remember(holdRequests, requestId, state);
+        context.requestHold().then(
+          (holding) => {
+            state.holding = holding;
+          },
+          (error: unknown) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          },
+        );
+        return hold(requestId, state);
+      }
+      case "hold-status": {
+        const state = holdRequests.get(request.requestId);
+        if (state === undefined) return errorResponse(`unknown request id ${request.requestId}`);
+        return hold(request.requestId, state);
+      }
+      case "resume":
+        if (context.requestResume === undefined) return errorResponse("this daemon cannot hold");
+        context.requestResume().catch(() => {});
+        return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "resume" };
       case "promote":
         if (context.requestPromotion === undefined)
           return errorResponse("this daemon cannot promote");

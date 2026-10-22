@@ -280,9 +280,10 @@ export interface RunOptions {
  * every file that had not ended; `backlog`, an edit arrived during a backlog
  * tier (`cancelsBacklog`); `yield`, the tier yielded to an edit's work, a
  * promoted file or a runner part waiting for it (spec 011 C4 step 5);
- * `stop` and `step-down`, the daemon's (D10, C9).
+ * `stop` and `step-down`, the daemon's (D10, C9); `hold`, a `squeal hold`
+ * began (011 C9, "Holds", row 011-74).
  */
-export type CancelCause = "supersession" | "backlog" | "yield" | "stop" | "step-down";
+export type CancelCause = "supersession" | "backlog" | "yield" | "stop" | "step-down" | "hold";
 
 /** The lane of a slow file is this and its runner's lane (spec 004 D2, task 004-18). */
 export const SLOW_LANE_PREFIX = "slow:";

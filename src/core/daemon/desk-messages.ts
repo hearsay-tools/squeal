@@ -42,6 +42,12 @@ export type ToDesk =
       readonly answer: SyncAnswer | null;
       readonly error: string | null;
     }
+  | {
+      readonly type: "hold-result";
+      readonly id: string;
+      readonly holding: boolean | null;
+      readonly error: string | null;
+    }
   | { readonly type: "close" };
 
 /** Front desk to main thread. */
@@ -54,6 +60,8 @@ export type FromDesk =
   | { readonly type: "run-all"; readonly id: string; readonly request: FullSuiteRequest }
   | { readonly type: "run-slow"; readonly id: string }
   | { readonly type: "sync"; readonly id: string }
+  | { readonly type: "hold"; readonly id: string }
+  | { readonly type: "resume" }
   | {
       readonly type: "promote";
       readonly testFiles: readonly TestFileRef[];

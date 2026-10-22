@@ -38,6 +38,13 @@ export interface DeskEvents {
   readonly requestSync: () => Promise<SyncAnswer>;
   readonly onStop: () => void;
   readonly onStepDown: (version: string) => void;
+  /**
+   * `squeal hold` (row 011-74): the command holds read again; resolves with
+   * whether one holds. Absent: the daemon answers that it cannot hold.
+   */
+  readonly requestHold?: () => Promise<boolean>;
+  /** `squeal hold` ended, or `squeal start`: the command holds read again. */
+  readonly requestResume?: () => Promise<void>;
   /** The worker died after it started listening. */
   readonly onFailure: (error: Error) => void;
   /**
@@ -145,7 +152,7 @@ export function guarded(events: DeskEvents): DeskEvents {
         return Promise.reject(error);
       }
     };
-  const { onNudge, requestRetries, requestPromotion } = events;
+  const { onNudge, requestRetries, requestPromotion, requestHold, requestResume } = events;
   return {
     onActivity: safe(events.onActivity),
     ...(onNudge === undefined ? {} : { onNudge: safe(onNudge) }),
@@ -154,6 +161,8 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestFullSuite: asked(events.requestFullSuite),
     requestSlowSuite: asked(events.requestSlowSuite),
     requestSync: asked(events.requestSync),
+    ...(requestHold === undefined ? {} : { requestHold: asked(requestHold) }),
+    ...(requestResume === undefined ? {} : { requestResume: asked(requestResume) }),
     onStop: safe(events.onStop),
     onStepDown: safe(events.onStepDown),
     onFailure: safe(events.onFailure),
@@ -230,6 +239,21 @@ async function inWorker(
               }),
           );
           return;
+        case "hold":
+          (events.requestHold?.() ?? Promise.reject(new Error("this daemon cannot hold"))).then(
+            (holding) => post({ type: "hold-result", id: message.id, holding, error: null }),
+            (error: unknown) =>
+              post({
+                type: "hold-result",
+                id: message.id,
+                holding: null,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+          );
+          return;
+        case "resume":
+          events.requestResume?.().catch(() => {});
+          return;
         case "stop":
           events.onStop();
           return;
@@ -284,6 +308,8 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       requestFullSuite: events.requestFullSuite,
       requestSlowSuite: events.requestSlowSuite,
       requestSync: events.requestSync,
+      ...(events.requestHold === undefined ? {} : { requestHold: events.requestHold }),
+      ...(events.requestResume === undefined ? {} : { requestResume: events.requestResume }),
       onActivity: events.onActivity,
       ...(events.onNudge === undefined ? {} : { onNudge: events.onNudge }),
       ...(events.requestRetries === undefined ? {} : { requestRetries: events.requestRetries }),

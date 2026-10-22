@@ -32,6 +32,11 @@ const waitingSync = new Map<
   { resolve: (answer: SyncAnswer) => void; reject: (error: Error) => void }
 >();
 
+const waitingHold = new Map<
+  string,
+  { resolve: (holding: boolean) => void; reject: (error: Error) => void }
+>();
+
 let server: DaemonServer | null = null;
 
 /** Started before the main thread holds the lock; binds only when told to. */
@@ -61,6 +66,13 @@ function bind(identity: DeskIdentity): void {
         waitingSync.set(id, { resolve, reject });
         post({ type: "sync", id });
       }),
+    requestHold: () =>
+      new Promise((resolve, reject) => {
+        const id = randomUUID();
+        waitingHold.set(id, { resolve, reject });
+        post({ type: "hold", id });
+      }),
+    requestResume: async () => post({ type: "resume" }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
@@ -113,6 +125,13 @@ function receive(message: ToDesk): void {
       waitingSync.delete(message.id);
       if (message.answer !== null) entry?.resolve(message.answer);
       else entry?.reject(new Error(message.error ?? "sync failed"));
+      return;
+    }
+    case "hold-result": {
+      const entry = waitingHold.get(message.id);
+      waitingHold.delete(message.id);
+      if (message.holding !== null) entry?.resolve(message.holding);
+      else entry?.reject(new Error(message.error ?? "hold failed"));
       return;
     }
     case "close":

@@ -348,6 +348,16 @@ export interface Scheduler {
    */
   pauseBacklog(on: boolean): void;
   /**
+   * Spec 011 C9, "Holds" (row 011-74): reads the worktree's command holds
+   * again (the `commandHold` row of `meta`) and removes, with one note each, those
+   * whose processes are both gone or whose `until` passed. While one holds,
+   * no tier starts, and the tiers in flight whose runner cancels are
+   * cancelled, their unfinished files queued again; it resolves once those
+   * tiers ended, with `true`. When none holds any more, the queued work
+   * starts. Before the scheduler started it only reads.
+   */
+  commandHold(): Promise<boolean>;
+  /**
    * What the worktree is owed and the last session's departure drains
    * before the exit, as the drain's notes name it: an explicit checkpoint
    * open, or a new failure's re-run queued or running (task 001-219).
