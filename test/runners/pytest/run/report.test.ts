@@ -210,4 +210,34 @@ describe("observeBatch (spec 007 D6)", () => {
     ]);
     expect(observed.session).toEqual(["src/plugin.py", "src/plugin_dep.py", "tests/__init__.py"]);
   });
+
+  it("puts what a test's child processes found one hop from that test file, never in the session (007-55)", () => {
+    const spawned = (to: string, ctx: string) => ({
+      type: "spawned" as const,
+      to: `${ROOT}/${to}`,
+      ctx: `${ROOT}/${ctx}`,
+      pid: 7,
+    });
+    const observed = observeBatch(
+      [
+        edge(null, "tests/test_a.py", "tests/test_a.py"),
+        spawned("src/app/__main__.py", "tests/test_a.py"),
+        spawned("src/app/cli.py", "tests/test_a.py"),
+        // a child pytest's conftest roots no file of this batch
+        spawned("tests/conftest.py", "tests/test_a.py"),
+        edge(null, "tests/test_b.py", "tests/test_b.py"),
+      ],
+      [file("tests/test_a.py"), file("tests/test_b.py")],
+      paths,
+    );
+    expect(observed.closures).toEqual([
+      {
+        testFile: ref("tests/test_a.py"),
+        paths: ["src/app/__main__.py", "src/app/cli.py", "tests/conftest.py", "tests/test_a.py"],
+        spawned: ["src/app/__main__.py", "src/app/cli.py", "tests/conftest.py"],
+      },
+      { testFile: ref("tests/test_b.py"), paths: ["tests/test_b.py"], spawned: [] },
+    ]);
+    expect(observed.session).toEqual([]);
+  });
 });
