@@ -25,8 +25,8 @@ const LOCK_FILE = /^(.+)\/squeal\/locks\/([0-9a-f]{16})\.sqlite$/;
 const SOCKET_FILE = /^squeal-([0-9a-f]{16})\.sock$/;
 /** The `unknown` entry of a lock reading that cannot be read. */
 const HOLDERS = "daemon lock holders";
-/** `.../{.claude,.codex}/plugins/cache/<marketplace>/squeal/<version>/...`. */
-const CACHE_INSTALL = /\/\.(claude|codex)\/plugins\/cache\/[^/]+\/squeal\/([^/]+)\//;
+/** `<plugins>/cache/<marketplace>/squeal/<version>/...`, `<plugins>` being `.../.claude/plugins` or `.../.codex/plugins`. */
+const CACHE_INSTALL = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/([^/]+)\//;
 /** The npm packages of the Pi and OpenCode plugins carry no version in their path. */
 const PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
 
@@ -217,10 +217,16 @@ function holds(
   return locks.some((l) => l.pid === pid && l.file === file && l.access === "write" && !l.blocked);
 }
 
-function installOf(script: string): Pick<FoundDaemon, "version" | "harness"> {
+function installOf(
+  script: string,
+): Pick<FoundDaemon, "version" | "harness" | "plugins" | "marketplace"> {
   const cache = CACHE_INSTALL.exec(script);
-  if (cache !== null) return { harness: cache[1] ?? null, version: cache[2] ?? null };
-  return { harness: PACKAGE_INSTALL.exec(script)?.[1] ?? null, version: null };
+  if (cache !== null) {
+    const [, plugins = null, harness = null, marketplace = null, version = null] = cache;
+    return { harness, version, plugins, marketplace };
+  }
+  const harness = PACKAGE_INSTALL.exec(script)?.[1] ?? null;
+  return { harness, version: null, plugins: null, marketplace: null };
 }
 
 /**

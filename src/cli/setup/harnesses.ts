@@ -1,8 +1,7 @@
-import { accessSync, constants, readdirSync } from "node:fs";
+import { accessSync, constants } from "node:fs";
 import { delimiter, join } from "node:path";
-import { isRecord } from "../../core/fs/index.js";
-import { MARKETPLACE_NAME, MARKETPLACE_REPO, PLUGIN_ID, PLUGIN_NAME } from "../plugin-id.js";
-import { readJson } from "./repo.js";
+import { claudeLoaded, codexNewest } from "../../core/daemon/version.js";
+import { MARKETPLACE_NAME, MARKETPLACE_REPO, PLUGIN_ID } from "../plugin-id.js";
 
 /*
  * Spec 005 D3 step 1: the harnesses on the PATH and whether each has the
@@ -67,33 +66,14 @@ function onPath(name: string, env: Env): boolean {
  */
 function claudeCodePlugin(root: string, env: Env): HarnessFact["plugin"] {
   const configDir = env.CLAUDE_CONFIG_DIR ?? join(env.HOME ?? "", ".claude");
-  const file = readJson(join(configDir, "plugins", "installed_plugins.json"));
-  const plugins = isRecord(file) && isRecord(file.plugins) ? file.plugins : {};
-  const entries = plugins[PLUGIN_ID];
-  if (!Array.isArray(entries)) return null;
-  for (const entry of entries) {
-    if (!isRecord(entry) || typeof entry.version !== "string") continue;
-    if (entry.scope === "user" || (entry.scope === "project" && entry.projectPath === root)) {
-      return { version: entry.version, scope: entry.scope };
-    }
-  }
-  return null;
+  return claudeLoaded(join(configDir, "plugins"), MARKETPLACE_NAME, root);
 }
 
 /** The newest version directory of `<CODEX_HOME>/plugins/cache/hearsay/squeal/`. */
 export function codexPlugin(env: Env): HarnessFact["plugin"] {
   const home = env.CODEX_HOME ?? join(env.HOME ?? "", ".codex");
-  let versions: string[];
-  try {
-    versions = readdirSync(join(home, "plugins", "cache", MARKETPLACE_NAME, PLUGIN_NAME));
-  } catch {
-    return null;
-  }
-  const newest = versions
-    .filter((v) => /^\d+(\.\d+)*$/.test(v))
-    .sort(compareVersions)
-    .at(-1);
-  return newest === undefined ? null : { version: newest, scope: "user" };
+  const newest = codexNewest(join(home, "plugins"), MARKETPLACE_NAME);
+  return newest === null ? null : { version: newest, scope: "user" };
 }
 
 /** Orders dotted numeric versions. */

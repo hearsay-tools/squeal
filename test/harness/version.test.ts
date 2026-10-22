@@ -2,7 +2,14 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { manifestVersion, squealVersion, UNKNOWN_VERSION } from "../../src/core/daemon/version.js";
+import {
+  claudeInstalls,
+  claudeLoaded,
+  codexNewest,
+  manifestVersion,
+  squealVersion,
+  UNKNOWN_VERSION,
+} from "../../src/core/daemon/version.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { runtimeDir } from "./bundle-helpers.js";
 
@@ -41,5 +48,65 @@ describe("squealVersion", () => {
     mkdirSync(join(root, "a"));
     expect(manifestVersion(pathToFileURL(join(root, "a/x.js")))).toBeNull();
     expect(UNKNOWN_VERSION).toMatch(/unknown/);
+  });
+});
+
+/*
+ * Row 014-42: one reader of the installed versions, for `squeal setup`,
+ * `squeal update` and `squeal ps` (D7 `older`), each with its own plugins
+ * directory.
+ */
+describe("the installed versions", () => {
+  const claude = (plugins: Record<string, unknown>) => {
+    const dir = runtimeDir();
+    writeFileSync(join(dir, "installed_plugins.json"), JSON.stringify({ version: 2, plugins }));
+    return dir;
+  };
+
+  it("reads the squeal entries of one marketplace, a key of no string as null", () => {
+    const dir = claude({
+      "squeal@hearsay": [
+        { scope: "user", version: "0.1.250", installPath: "/c/0.1.250" },
+        { scope: "project", projectPath: 7, version: null },
+        "not an entry",
+      ],
+      "squeal@squeal": [{ scope: "user", version: "0.1.100" }],
+    });
+    expect(claudeInstalls(dir, "hearsay")).toEqual([
+      { scope: "user", projectPath: null, version: "0.1.250", installPath: "/c/0.1.250" },
+      { scope: "project", projectPath: null, version: null, installPath: null },
+    ]);
+    expect(claudeInstalls(dir, "other")).toEqual([]);
+    const broken = runtimeDir();
+    writeFileSync(join(broken, "installed_plugins.json"), "not json");
+    expect(claudeInstalls(broken, "hearsay")).toEqual([]);
+    expect(claudeInstalls(join(broken, "missing"), "hearsay")).toEqual([]);
+  });
+
+  it("loads the first user entry, or the project entry of the root, that has a version", () => {
+    const dir = claude({
+      "squeal@hearsay": [
+        { scope: "project", projectPath: "/elsewhere", version: "0.1.260" },
+        { scope: "user" },
+        { scope: "project", projectPath: "/repo", version: "0.1.255" },
+        { scope: "user", version: "0.1.250" },
+      ],
+    });
+    expect(claudeLoaded(dir, "hearsay", "/repo")).toEqual({ version: "0.1.255", scope: "project" });
+    expect(claudeLoaded(dir, "hearsay", "/other")).toEqual({ version: "0.1.250", scope: "user" });
+    expect(claudeLoaded(dir, "hearsay", null)).toEqual({ version: "0.1.250", scope: "user" });
+    const projectOnly = claude({ "squeal@hearsay": [{ scope: "project", version: "0.1.255" }] });
+    expect(claudeLoaded(projectOnly, "hearsay", null)).toBeNull();
+  });
+
+  it("takes the newest Codex cache version by its numbers, past names that are no version", () => {
+    const plugins = runtimeDir();
+    for (const name of ["latest", "0.1.9", "0.1.131", "0.1.12", "0.2", "0.3.0-beta", ".tmp"])
+      mkdirSync(join(plugins, "cache", "hearsay", "squeal", name), { recursive: true });
+    expect(codexNewest(plugins, "hearsay")).toBe("0.1.131");
+    expect(codexNewest(plugins, "other")).toBeNull();
+    const none = runtimeDir();
+    mkdirSync(join(none, "cache", "hearsay", "squeal", "latest"), { recursive: true });
+    expect(codexNewest(none, "hearsay")).toBeNull();
   });
 });

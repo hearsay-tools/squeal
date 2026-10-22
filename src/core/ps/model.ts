@@ -55,6 +55,10 @@ export interface FoundDaemon {
   /** From the script path; `null` for a checkout's `dist`, where the store row's stands in. */
   readonly version: string | null;
   readonly harness: string | null;
+  /** The plugins directory of the plugin cache its script lies in, `.../.claude/plugins` or `.../.codex/plugins`; else `null`. */
+  readonly plugins: AbsolutePath | null;
+  /** The marketplace of that cache, `<plugins>/cache/<marketplace>`; else `null`. */
+  readonly marketplace: string | null;
   /** From the lock file it holds open, or else the hash of its root (`worktreeIdFor`). */
   readonly worktreeId: WorktreeId | null;
   /** `<common-dir>/squeal/locks/<id>.sqlite`. */
