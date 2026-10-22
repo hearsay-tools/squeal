@@ -51152,7 +51152,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.263";
+  if (true) return "0.1.264";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -63260,11 +63260,12 @@ async function stoppingDaemon(root, now) {
   const socketPath = await daemonSocket(root);
   const answer2 = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
   const ping2 = answer2?.ok === true && answer2.type === "ping" ? answer2 : null;
+  const record = recordedDaemon(root, 1e3);
   const status2 = readStatus(root, { now });
   const stopping = status2.available ? status2.daemon.stopping : void 0;
   if (ping2?.phase !== "stopping" && stopping === void 0) return null;
   const from = stopping?.from ?? ping2?.squealVersion ?? "";
-  return { socketPath, ping: ping2, record: recordedDaemon(root, 1e3), from };
+  return { socketPath, ping: ping2, record, from };
 }
 async function finishHandoff(root, cli, stopping, io, bounds) {
   const now = io.now ?? Date.now;
@@ -63272,7 +63273,8 @@ async function finishHandoff(root, cli, stopping, io, bounds) {
   const { ping: ping2, record } = stopping;
   const marks = ping2 === null ? null : marksOf(ping2.pid, tokenOf3(ping2, record));
   if (ping2 !== null) await askDaemon(stopping.socketPath, { type: "stop" }).catch(() => null);
-  if (claims(root, record, now)) {
+  const old = ping2?.startedAt ?? record?.startedAt ?? null;
+  if (claims(root, old, now)) {
     await ensureDaemon(root, {
       ...cli === void 0 ? {} : { cli },
       awaitLockMs: SUCCESSOR_LOCK_WAIT_MS
@@ -63281,7 +63283,6 @@ async function finishHandoff(root, cli, stopping, io, bounds) {
     await ensureDaemon(root, cli === void 0 ? {} : { cli });
   }
   const own = squealVersion();
-  const old = ping2?.startedAt ?? record?.startedAt ?? null;
   const deadline = Date.now() + bounds.socketMs + bounds.lockMs;
   for (; ; ) {
     const probe = await probeDaemon(root, 100);
@@ -63302,7 +63303,7 @@ async function finishHandoff(root, cli, stopping, io, bounds) {
 function follows(ping2, old, own) {
   return ping2.startedAt !== old && ping2.phase !== "stopping" && !isNewerVersion(own, ping2.squealVersion);
 }
-function claims(root, record, now) {
+function claims(root, old, now) {
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return true;
@@ -63311,13 +63312,17 @@ function claims(root, record, now) {
     try {
       const id2 = worktreeIdFor(root);
       const at2 = now();
-      if (record === null) {
-        const claim = readHandoff(store, id2);
-        return claim === null || at2 >= claim.boundAt;
-      }
-      const from = handoffFrom(record);
-      if (liveHandoff(store, id2, from, at2) !== null) return false;
-      return claimHandoff(store, id2, { from, to: squealVersion(), at: at2 }) !== null;
+      return store.transaction(() => {
+        const record = store.worktrees.get(id2)?.daemon ?? null;
+        if (record === null) {
+          const claim = readHandoff(store, id2);
+          return claim === null || at2 >= claim.boundAt;
+        }
+        if (record.startedAt !== old) return false;
+        const from = handoffFrom(record);
+        if (liveHandoff(store, id2, from, at2) !== null) return false;
+        return claimHandoff(store, id2, { from, to: squealVersion(), at: at2 }) !== null;
+      });
     } finally {
       store.close();
     }
