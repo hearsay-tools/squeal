@@ -1167,14 +1167,15 @@ function readSlowActivity(store, worktreeId) {
   const raw = store.meta.get(slowTierMetaKey(worktreeId));
   if (raw === null) return null;
   try {
-    return toActivity(JSON.parse(raw));
+    return toSlowActivity(JSON.parse(raw)) ?? null;
   } catch {
     return null;
   }
 }
 var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "load"]);
-function toActivity(value) {
-  if (typeof value !== "object" || value === null) return null;
+function toSlowActivity(value) {
+  if (value === null) return null;
+  if (typeof value !== "object") return void 0;
   const v = value;
   if (v.kind === "waiting" && WAITS.has(v.for)) {
     return { kind: "waiting", for: v.for };
@@ -1191,7 +1192,7 @@ function toActivity(value) {
       lastDurationMs: last
     };
   }
-  return null;
+  return void 0;
 }
 function failureKeysMetaKey(worktreeId) {
   return worktreeMetaKey("failureKeys", worktreeId);
@@ -1996,7 +1997,7 @@ import { join as join5 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // src/core/store/paths.ts
-import { join as join3 } from "node:path";
+import { basename, dirname as dirname2, join as join3 } from "node:path";
 function storePaths(commonDir) {
   const dir = join3(commonDir, "squeal");
   return {
@@ -3082,16 +3083,18 @@ function readLanes(conn, worktreeId) {
   );
   if (row === null) return {};
   try {
-    const parsed = JSON.parse(str(row, "value"));
-    if (typeof parsed !== "object" || parsed === null) return {};
-    const lanes = {};
-    for (const [id, lane] of Object.entries(parsed)) {
-      if (lane === "fast" || lane === "slow") lanes[id] = lane;
-    }
-    return lanes;
+    return toCheckpointLanes(JSON.parse(str(row, "value"))) ?? {};
   } catch {
     return {};
   }
+}
+function toCheckpointLanes(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const lanes = {};
+  for (const [id, lane] of Object.entries(value)) {
+    if (lane === "fast" || lane === "slow") lanes[id] = lane;
+  }
+  return lanes;
 }
 function writeLane(conn, worktreeId, id, lane) {
   const lanes = readLanes(conn, worktreeId);
@@ -3556,16 +3559,19 @@ var WORKTREE_SCOPED_TABLES = [
   "consumers"
 ];
 var tokenKey = (id) => worktreeMetaKey("daemonToken", id);
+function toDaemonToken(value, startedAt, version) {
+  if (!isRecord(value) || typeof value.token !== "string") return void 0;
+  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
+}
 function createWorktreeRepo(conn) {
   const tokenOf = (id, startedAt, version) => {
     const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
-    let value = null;
+    if (raw === null) return void 0;
     try {
-      value = raw === null ? null : JSON.parse(str(raw, "value"));
+      return toDaemonToken(JSON.parse(str(raw, "value")), startedAt, version) ?? void 0;
     } catch {
       return void 0;
     }
-    return isRecord(value) && value.startedAt === startedAt && value.squealVersion === version && typeof value.token === "string" ? value.token : void 0;
   };
   const writeToken = (id, d) => {
     if (d.token === void 0) {
@@ -4451,7 +4457,7 @@ import { existsSync as existsSync4 } from "node:fs";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync2 } from "node:fs";
-import { dirname as dirname2 } from "node:path";
+import { dirname as dirname3 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
@@ -4473,7 +4479,7 @@ function acquireDaemonLock(path) {
   return lock;
 }
 function lockDatabase(path) {
-  mkdirSync2(dirname2(path), { recursive: true });
+  mkdirSync2(dirname3(path), { recursive: true });
   const db = new DatabaseSync3(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
@@ -4747,15 +4753,18 @@ import { pathToFileURL } from "node:url";
 
 // src/core/daemon/paths.ts
 import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync3 } from "node:fs";
-import { dirname as dirname3, isAbsolute as isAbsolute4, join as join9 } from "node:path";
+import { dirname as dirname4, isAbsolute as isAbsolute4, join as join9 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 var MAX_SOCKET_PATH_BYTES = 103;
 function socketPathFor(worktreeId, env = process.env) {
-  const name = `squeal-${worktreeId}.sock`;
+  const name = socketNameFor(worktreeId);
   const path = join9(runtimeDir(env), name);
   return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join9(userTmpDir(), name);
+}
+function socketNameFor(worktreeId) {
+  return `squeal-${worktreeId}.sock`;
 }
 function checkPrivateDir(dir, uid, role = "socket directory") {
   const stat = lstatSync2(dir);
@@ -4783,9 +4792,9 @@ function currentUid() {
 
 // src/core/slow/slot.ts
 var SLOW_LOCK_FILE = "slow.lock";
-function slowSlotDir(env = process.env) {
+function slowSlotDir(env = process.env, userDir = userTmpDir()) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute5(xdg) ? join10(xdg, "squeal") : userTmpDir();
+  return xdg !== void 0 && xdg !== "" && isAbsolute5(xdg) ? join10(xdg, "squeal") : userDir;
 }
 function heldPermits(request) {
   const { dir } = request;
@@ -4810,7 +4819,7 @@ function heldPermits(request) {
 function permitRecord(path) {
   let db;
   try {
-    db = new DatabaseSync4(new URL(`${pathToFileURL(path).href}?immutable=1`), { readOnly: true });
+    db = new DatabaseSync4(immutableUrl(path), { readOnly: true });
   } catch {
     return { kind: "unreadable" };
   }
@@ -4831,6 +4840,11 @@ function permitRecord(path) {
   } finally {
     db.close();
   }
+}
+function immutableUrl(path) {
+  const url = pathToFileURL(path);
+  url.search = "immutable=1";
+  return url;
 }
 function permitFree(path) {
   const db = new DatabaseSync4(path);
@@ -4887,8 +4901,11 @@ function promotedIds(store, worktreeId, daemonStartedAt, now) {
   }
 }
 
+// src/core/daemon/escaped.ts
+var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
+
 // src/core/ps/proc.ts
-var MARK = Buffer.from("SQUEAL_DAEMON_CHILD=");
+var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
 
 // src/core/capacity/pool.ts
 var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
@@ -7085,21 +7102,21 @@ function daemonCliEntry(cli, env = process.env) {
 }
 
 // src/core/daemon/version.ts
-import { readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname4, join as join12 } from "node:path";
+import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname5, join as join12 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.266";
+  if (true) return "0.1.267";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
-  let dir = dirname4(fileURLToPath(module));
+  let dir = dirname5(fileURLToPath(module));
   for (; ; ) {
     const version = readVersion(join12(dir, "package.json"));
     if (version !== null) return version;
-    const parent = dirname4(dir);
+    const parent = dirname5(dir);
     if (parent === dir) return null;
     dir = parent;
   }

@@ -583,8 +583,11 @@ var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 var SLOT_WAITER_FRESH_MS = 3e4;
 
+// src/core/daemon/escaped.ts
+var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
+
 // src/core/ps/proc.ts
-var MARK = Buffer.from("SQUEAL_DAEMON_CHILD=");
+var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
 
 // src/core/capacity/pool.ts
 var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
