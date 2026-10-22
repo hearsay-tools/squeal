@@ -197,6 +197,11 @@ describe("the slot directory follows the daemon's XDG_RUNTIME_DIR (spec 004 D2, 
     expect(slowSlotDir({})).toBe(userTmpDir());
     expect(slowSlotDir({ XDG_RUNTIME_DIR: "" })).toBe(userTmpDir());
     expect(slowSlotDir({ XDG_RUNTIME_DIR: "relative/run" })).toBe(userTmpDir());
+    // Row 014-43 (e): `squeal ps` names the per-user directory of its own places.
+    expect(slowSlotDir({}, "/fixture/squeal-1000")).toBe("/fixture/squeal-1000");
+    expect(slowSlotDir({ XDG_RUNTIME_DIR: "/run/user/1000" }, "/fixture/squeal-1000")).toBe(
+      "/run/user/1000/squeal",
+    );
   });
 
   test("a daemon under another runtime directory takes its own slot while the outer one is held", {
