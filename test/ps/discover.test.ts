@@ -377,6 +377,17 @@ describe("the second reading at the window's end (lessons.md P9)", () => {
   const owners = (d: { sockets: readonly { worktreeId: string; daemonPid: number | null }[] }) =>
     d.sockets.map((x) => [x.worktreeId, x.daemonPid]);
 
+  /** Discovery over the fixture's `/proc/locks` as the window's first reading, and that reading. */
+  const firstReading = () => {
+    const locks = source.locks();
+    return { locks, found: discover(source, source.processTable(), host.places, locks) };
+  };
+  const OTHER = { first: "second", second: "first" } as const;
+  const lost = (which: "first" | "second") => ({
+    what: "daemon lock holders",
+    why: `the window's ${which} /proc/locks reading cannot be read, so a lock the ${OTHER[which]} misses is unknown, not absent: a phase is serving by its heartbeat, or unknown`,
+  });
+
   test("a lock the first reading misses and the second shows is held, and its socket is its daemon's", () => {
     setUp();
     // The first reading lost 540's line between two pages; 541's request still waits.
@@ -384,18 +395,17 @@ describe("the second reading at the window's end (lessons.md P9)", () => {
       lockLine(1, 541, key(alpha.lockPath), true),
       lockLine(2, 542, key(beta.lockPath)),
     ]);
-    const first = run();
-    expect(held(first)).toEqual([
+    const { locks, found } = firstReading();
+    expect(held(found)).toEqual([
       [540, false],
       [541, false],
       [542, true],
     ]);
-    const again = [
+    writeLocks(host, [
       lockLine(1, 540, key(alpha.lockPath)),
       lockLine(1, 541, key(alpha.lockPath), true),
-    ];
-    writeLocks(host, again);
-    const both = lockedAgain(source, first, source.locks());
+    ]);
+    const both = lockedAgain(source, found, [locks, source.locks()]);
     // 542's lock, missing from the second reading, stays held: either reading is enough.
     expect(held(both)).toEqual([
       [540, true],
@@ -408,14 +418,14 @@ describe("the second reading at the window's end (lessons.md P9)", () => {
         [beta.id, 542],
       ].sort(),
     );
-    expect(both.unknown).toBe(first.unknown);
+    expect(both.unknown).toBe(found.unknown);
   });
 
-  test("a lock both readings miss is not held, and its socket has no daemon", () => {
+  test("a lock two readable readings both miss is not held, and its socket has no daemon", () => {
     setUp();
     writeLocks(host, [lockLine(1, 542, key(beta.lockPath))]);
-    const first = run();
-    const both = lockedAgain(source, first, source.locks());
+    const { locks, found } = firstReading();
+    const both = lockedAgain(source, found, [locks, source.locks()]);
     expect(held(both)).toEqual([
       [540, false],
       [541, false],
@@ -429,15 +439,56 @@ describe("the second reading at the window's end (lessons.md P9)", () => {
     );
   });
 
-  test("without a second reading, or when every daemon holds its lock, the discovery is the first", () => {
+  test("a second reading that cannot be read leaves a lock the first misses unknown, and names it (reviews/wave-5.md B1)", () => {
     setUp();
     writeLocks(host, [lockLine(1, 542, key(beta.lockPath))]);
-    const first = run();
-    expect(lockedAgain(source, first, null)).toBe(first);
+    const { locks, found } = firstReading();
+    const both = lockedAgain(source, found, [locks, null]);
+    expect(held(both)).toEqual([
+      [540, null],
+      [541, null],
+      [542, true],
+    ]);
+    // Where a lock is unknown, any daemon of its id may hold it (D10's rule): no socket is left over.
+    expect(owners(both).sort()).toEqual(
+      [
+        [alpha.id, 540],
+        [beta.id, 542],
+      ].sort(),
+    );
+    expect(both.unknown).toEqual([...found.unknown, lost("second")]);
+  });
+
+  test("after a first reading that cannot be read, a lock the second shows is held and one it misses is unknown (reviews/wave-5.md B1)", () => {
+    setUp();
+    rmSync(join(host.base, "proc", "locks"));
+    const { locks, found } = firstReading();
+    expect(locks).toBeNull();
+    expect(held(found)).toEqual([
+      [540, null],
+      [541, null],
+      [542, null],
+    ]);
+    writeLocks(host, [lockLine(1, 540, key(alpha.lockPath))]);
+    const both = lockedAgain(source, found, [locks, source.locks()]);
+    expect(held(both)).toEqual([
+      [540, true],
+      [541, null],
+      [542, null],
+    ]);
+    // One entry for the lock holders, which names the reading that failed.
+    expect(both.unknown.filter((u) => u.what === "daemon lock holders")).toEqual([lost("first")]);
+  });
+
+  test("with neither reading, or when every daemon holds its lock, the discovery is the first", () => {
+    setUp();
+    rmSync(join(host.base, "proc", "locks"));
+    const none = firstReading();
+    expect(lockedAgain(source, none.found, [null, null])).toBe(none.found);
     rmSync(join(host.base, "proc", "541"), { recursive: true });
     writeLocks(host, [lockLine(1, 540, key(alpha.lockPath)), lockLine(2, 542, key(beta.lockPath))]);
-    const all = run();
-    expect(lockedAgain(source, all, [])).toBe(all);
+    const all = firstReading();
+    expect(lockedAgain(source, all.found, [all.locks, []])).toBe(all.found);
   });
 });
 

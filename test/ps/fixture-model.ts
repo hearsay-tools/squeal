@@ -6,6 +6,7 @@ import type {
   ConsumerState,
   DaemonWork,
   FoundDaemon,
+  LocksRead,
   PoolReading,
   PsModel,
   PsPlaces,
@@ -225,6 +226,8 @@ export interface ModelSpec {
   readonly pool?: Partial<PoolReading>;
   /** `null`: a platform without locks (D10). */
   readonly locks?: readonly LockEntry[] | null;
+  /** The window's `/proc/locks` readings that were read: `none` with `locks: null`, else `both`. */
+  readonly locksRead?: LocksRead;
   readonly readsMarks?: boolean;
   /** `null`: a platform that cannot read working directories. */
   readonly cwds?: boolean;
@@ -252,10 +255,12 @@ export function modelOf(spec: ModelSpec): PsModel {
     );
   const source = sourceOf(spec, processes, secondTable);
   const attribution = spec.attribution ?? NONE;
+  const locksRead = spec.locksRead ?? (spec.locks === null ? "none" : "both");
   return {
     now: NOW,
     places: spec.host.places,
     source,
+    locksRead,
     discovery: { daemons: daemons.map((d) => d.daemon), sockets: spec.sockets ?? [], unknown: [] },
     first: {
       sample: { atMs: 0, table: firstTable, cpuTime: null },
@@ -268,7 +273,7 @@ export function modelOf(spec: ModelSpec): PsModel {
       attribution: spec.secondAttribution ?? attribution,
     },
     pool: {
-      pool: { slots: 12, held: spec.locks === null ? null : 0 },
+      pool: { slots: 12, held: locksRead === "both" ? 0 : null },
       permits: new Map(),
       foreign: [],
       ...spec.pool,

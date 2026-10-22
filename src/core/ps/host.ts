@@ -15,8 +15,10 @@ import { type LockEntry, ticksToMs } from "./source.js";
  * in `/proc/locks` (`takePermit`, 004 D2); a read lock is a check on its
  * way, and a blocked request waits. One read can miss a held lock
  * (`lessons.md` P9), so the pool reads the window's two: a permit either
- * shows is held, by the holders of the latest that shows it. Without locks
- * (D10) nobody's permits are known.
+ * shows is held, by the holders of the latest that shows it. When a reading
+ * cannot be read, a permit the other misses may be held, so the counts are
+ * unknown, though a holder that is no daemon is still one
+ * (`reviews/wave-5.md` B1). Without locks (D10) nobody's permits are known.
  */
 
 export const hostTotals: HostTotals = (first, second) => {
@@ -65,8 +67,6 @@ const PERMIT = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
 
 export const readPool: ReadPool = (source, places, daemons, readings = [source.locks()]) => {
   const slots = hostSlotsOf(places.userConfig, source.host().cpus);
-  if ((readings[0] ?? null) === null)
-    return { pool: { slots, held: null }, permits: new Map(), foreign: [] };
   const holders = new Map<string, Set<number>>();
   for (const locks of readings)
     for (const [file, pids] of holdersOf(locks ?? [])) holders.set(file, pids);
@@ -83,6 +83,8 @@ export const readPool: ReadPool = (source, places, daemons, readings = [source.l
       else foreign.push({ pid, path });
     }
   }
+  if (readings.some((locks) => locks === null))
+    return { pool: { slots, held: null }, permits: new Map(), foreign };
   return { pool: { slots, held }, permits, foreign };
 };
 

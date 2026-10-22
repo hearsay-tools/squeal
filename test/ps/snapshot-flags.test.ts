@@ -90,12 +90,15 @@ describe("a held lock one /proc/locks read misses (lessons.md P9)", () => {
   const lockClaims = (flags: readonly PsFlag[] = []) =>
     flags.filter((f) => f.flag === "no-lock" || f.flag === "duplicate");
 
+  /** What one `/proc/locks` reading shows: 800's lock and permit, none, or no file to read. */
+  type Reading = "held" | "empty" | "unreadable";
+
   /**
    * Daemon 800 holds its lock and permit `pool.0.lock`, and its socket file is
-   * there; 801, of the same root, holds no lock. Unless `missed`, `/proc/locks`
-   * shows 800's two locks only from the window's end.
+   * there; 801, of the same root, holds no lock. `/proc/locks` reads as
+   * `first` at the window's start and as `second` at its end.
    */
-  async function window(missed: boolean) {
+  async function window(first: Reading, second: Reading) {
     const pool = join(host.places.runtimeDir ?? "", "squeal");
     mkdirSync(pool);
     writeFileSync(join(pool, "pool.0.lock"), "");
@@ -105,8 +108,12 @@ describe("a held lock one /proc/locks read misses (lessons.md P9)", () => {
     const locks = join(host.base, "proc", "locks");
     const permit = lockLine(2, 800, host.source.fileKey(join(pool, "pool.0.lock")) ?? "");
     const held = `${readFileSync(locks, "utf8")}${permit}\n`;
-    writeFileSync(locks, missed ? "" : held);
-    const w = fakeWindow(() => writeFileSync(locks, held));
+    const read = (r: Reading) =>
+      r === "unreadable"
+        ? rmSync(locks, { force: true })
+        : writeFileSync(locks, r === "held" ? held : "");
+    read(first);
+    const w = fakeWindow(() => read(second));
     const { shape } = await takeSnapshot({
       source: host.source,
       places: host.places,
@@ -120,9 +127,9 @@ describe("a held lock one /proc/locks read misses (lessons.md P9)", () => {
     return { shape, socket };
   }
 
-  for (const missed of [true, false])
-    test(`${missed ? "the first reading misses it, the second shows it" : "both readings show it"}: 800 serves with its work, socket and permit, and only 801 is waiting, no-lock and the duplicate`, async () => {
-      const { shape } = await window(missed);
+  for (const first of ["empty", "held"] as const)
+    test(`${first === "empty" ? "the first reading misses it, the second shows it" : "both readings show it"}: 800 serves with its work, socket and permit, and only 801 is waiting, no-lock and the duplicate`, async () => {
+      const { shape } = await window(first, "held");
       const daemons = new Map(shape.repositories.flatMap((r) => r.daemons).map((d) => [d.pid, d]));
       expect(daemons.get(800)).toMatchObject({ phase: "serving", state: "serving", permits: 1 });
       expect(daemons.get(800)?.work.pending).not.toBeNull();
@@ -143,6 +150,42 @@ describe("a held lock one /proc/locks read misses (lessons.md P9)", () => {
       expect(shape.files.filter((f) => f.flag === "stale-socket")).toEqual([]);
       expect(shape.squeal.pool).toMatchObject({ held: 1 });
       expect(shape.unknown.filter((u) => u.what === "daemon 800 work")).toEqual([]);
+      expect(shape.unknown.filter((u) => u.what === "daemon lock holders")).toEqual([]);
+    });
+
+  // `reviews/wave-5.md` B1: only two readable readings that both miss a lock prove it absent.
+  for (const [first, second] of [
+    ["empty", "unreadable"],
+    ["unreadable", "held"],
+    ["unreadable", "empty"],
+  ] as const)
+    test(`${first} then ${second}: no daemon is waiting or no-lock, no socket is stale, no end command names a lock, and the holders and permits are unknown`, async () => {
+      const { shape } = await window(first, second);
+      const daemons = shape.repositories.flatMap((r) => r.daemons);
+      expect(daemons.map((d) => d.pid).sort()).toEqual([800, 801]);
+      for (const d of daemons) {
+        expect(d.phase).not.toBe("waiting");
+        expect(lockClaims(d.flags)).toEqual([]);
+        expect(d.permits).toBeNull();
+      }
+      expect(daemons.find((d) => d.pid === 800)?.phase).toBe("serving");
+      expect(shape.files.filter((f) => f.flag === "stale-socket")).toEqual([]);
+      expect(shape.squeal.pool.held).toBeNull();
+      const [lost, other] = first === "unreadable" ? ["first", "second"] : ["second", "first"];
+      const why = `the window's ${lost} /proc/locks reading cannot be read, so a lock the ${other} misses is unknown, not absent`;
+      expect(shape.unknown).toContainEqual({
+        what: "daemon lock holders",
+        why: `${why}: a phase is serving by its heartbeat, or unknown`,
+      });
+      for (const what of ["flag no-lock", "flag hung", "flag foreign-permit", "phase stopping"])
+        expect(shape.unknown).toContainEqual({
+          what,
+          why: "one of the window's two /proc/locks readings cannot be read, so a lock the other misses is unknown, not absent",
+        });
+      expect(shape.unknown).toContainEqual({
+        what: "daemon 801 flag duplicate",
+        why: `whether it holds a lock of its root ${alpha.root} is unknown`,
+      });
     });
 
   test("a lock both readings miss: the daemon waits, is no-lock past 40 s, and its socket is stale", async () => {

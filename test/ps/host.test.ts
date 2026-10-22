@@ -210,9 +210,24 @@ describe("readPool", () => {
       [2091490, 2],
       [349493, 1],
     ]);
-    // A second reading that failed adds nothing; a first that failed leaves the permits unknown.
-    expect(readPool(source, places, new Set([349493]), [first, null]).pool.held).toBe(2);
-    expect(readPool(source, places, new Set([349493]), [null, second]).pool.held).toBeNull();
+  });
+
+  test("a reading that cannot be read leaves the permits unknown, and a holder that is no daemon is still one (reviews/wave-5.md B1)", () => {
+    const first = [write(349493, "103:02:10"), write(4242, "103:02:30")];
+    const second = [write(349493, "103:02:11")];
+    const { source } = fakeSource([], { locks: null, fileKeys: keys() });
+    for (const readings of [
+      [first, null],
+      [null, second],
+    ]) {
+      const reading = readPool(source, places, new Set([349493]), readings);
+      expect(reading.pool).toEqual({ slots: 23, held: null });
+      expect(reading.permits.size).toBe(0);
+      expect(reading.foreign).toEqual(
+        readings[0] === null ? [] : [{ pid: 4242, path: join(tempPool, "pool.0.lock") }],
+      );
+    }
+    expect(readPool(source, places, new Set([349493]), [null, null]).foreign).toEqual([]);
   });
 
   test("the host's slots are capacity.hostSlots of the user-level config file, else the CPUs less one", () => {
