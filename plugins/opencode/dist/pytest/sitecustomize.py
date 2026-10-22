@@ -11,10 +11,11 @@ record. Such a process appends a `spawned` record to the batch's events file
 the script it runs, under that test file. Only files under
 `SQUEAL_PYTEST_ROOT` and outside the environment are written, once each.
 
-A file is recorded when the import system finds it, before it runs, so a
-module that raises on import is recorded too. Each record is one `write` to
-a file opened for appending, so records of processes running at once do not
-interleave.
+The script, the file `sys.argv[0]` names, is recorded at start-up, so one
+that imports nothing is recorded too. A module is recorded when the import
+system finds it, before it runs, so one that raises on import is recorded
+too. Each record is one `write` to a file opened for appending, so records
+of processes running at once do not interleave.
 
 Python imports only the first `sitecustomize` on `sys.path`: the one this
 module shadows, an environment's or a distribution's, runs after it.
@@ -37,15 +38,8 @@ class _Recorder:
         )
         self.seen = set()
         self.fd = None
-        self.script = False
 
     def find_spec(self, name, path=None, target=None):
-        if not self.script:
-            # `python tool.py` runs its script, which no finder finds, before its first import.
-            main = getattr(sys.modules.get("__main__"), "__file__", None)
-            if main:
-                self.script = True
-                self.record(main)
         finders = list(sys.meta_path)
         # Those after this one: none when a caller holds it off `sys.meta_path`.
         later = finders[finders.index(self) + 1 :] if self in finders else []
@@ -85,7 +79,11 @@ def _record():
     events = os.environ.get("SQUEAL_PYTEST_EVENTS")
     root = os.environ.get("SQUEAL_PYTEST_ROOT")
     if test_file and events and root:
-        sys.meta_path.insert(0, _Recorder(test_file, events, root))
+        recorder = _Recorder(test_file, events, root)
+        sys.meta_path.insert(0, recorder)
+        # `python tool.py` runs a file no finder finds; one that imports nothing asks no finder at all.
+        if os.path.isfile(sys.argv[0]):
+            recorder.record(sys.argv[0])
 
 
 def _chain():
