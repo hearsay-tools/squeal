@@ -51,6 +51,10 @@ export interface SlowHost {
   /** `start` has ended: `started` no longer throws. */
   ready(): boolean;
   closed(): boolean;
+  /** No tier starts: the daemon stops, or its own runtime went (rows 011-66, 011-106). */
+  halted(): boolean;
+  /** Whether the daemon's own runtime went, read again now (row 011-106). */
+  runtimeMissing(): Promise<boolean>;
   pump(): void;
   /**
    * An edit's fast work is pending or running: runner work, a recent fast
@@ -204,7 +208,10 @@ export class SlowTier {
       this.#requested || this.#marked
         ? this.#skipGuard(context)
         : await this.#waitForCapacity(context, dir);
-    if (guard === "preempted" || preemptions !== this.#preemptions) return "again";
+    // The pump read the runtime before the wait, which can last `slow.maxDeferMs`: one gone since
+    // starts no tier, and its files take no slot (review 0.1.262, B3).
+    const gone = guard !== "preempted" && (await this.host.runtimeMissing());
+    if (gone || guard === "preempted" || preemptions !== this.#preemptions) return "again";
     if (guard === "held") return this.#waitAtSlot(context, dir, false);
     const { maxParallel } = context.policy.slow;
     const load = guard.ranUnderLoad;
@@ -411,8 +418,9 @@ export class SlowTier {
     ranUnderLoad: number | null,
     slot: SlowSlot,
   ): { tier: Tier } | "claimed" | typeof WAIT_FOR_CAPACITY | null {
-    // A close since the guard or the slot: a daemon that accepted a stop starts no tier (001-367).
-    if (this.host.closed()) return null;
+    // A close since the guard or the slot: a daemon that accepted a stop starts no tier (001-367),
+    // nor one whose runtime another tier's end found gone (011-106).
+    if (this.host.halted()) return null;
     const { context, ledger } = this.host.started();
     if (this.#fastFirst()) return null;
     const width = this.host.fastIdle() ? slot.permits : 1;
