@@ -1,4 +1,5 @@
 import { socketPathFor } from "../core/daemon/paths.js";
+import { HANDOFF_BOUND_MS } from "../core/delivery/handoff.js";
 import { daemonLiveness } from "../core/delivery/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../core/status/index.js";
 import type { AbsolutePath, DaemonRecord, EpochMs, WorktreeId } from "../core/types/index.js";
@@ -16,14 +17,21 @@ import { askDaemon } from "./daemon-access.js";
  * wait's down bound (`STOP_SLOW_DOWN_MS`), since a successor may be taking
  * over: counted from the heartbeat's grace by the record's clock, or from the
  * wait's first dead socket, whichever is longer, so a daemon long gone ends
- * the wait at once.
+ * the wait at once. Row 011-34 (011 C9 as amended 2026-10-20): a socket
+ * whose daemon answers that it is stopping keeps the wait going until the
+ * handoff's bound, `HANDOFF_BOUND_MS` past the interval after its last
+ * heartbeat, when its shutdown began; past it the wait returns without a
+ * daemon and names `squeal start`.
  */
 
 /** A daemon whose record stays stale and whose socket stays dead this long is gone. */
 export const WAIT_DOWN_MS = 10_000;
 
-/** Why a wait found no daemon: its record cleared, or its heartbeat stopped and its socket is dead. */
-export type DownReason = "stopped" | "silent";
+/**
+ * Why a wait found no daemon: its record cleared; its heartbeat stopped and
+ * its socket is dead; or it is stopping past its handoff's bound.
+ */
+export type DownReason = "stopped" | "silent" | "handoff";
 
 /**
  * What one read of the store says of the daemon: `alive`, fresh heartbeat;
@@ -53,7 +61,8 @@ export interface DaemonWatchOptions {
   readonly env?: NodeJS.ProcessEnv;
 }
 
-type SocketState = "listening" | "absent";
+/** `stopping`: a daemon answered with `phase: "stopping"`. */
+type SocketState = "listening" | "stopping" | "absent";
 
 /**
  * Watches the daemon of worktree `worktreeId` across a wait's reads. A
@@ -73,9 +82,9 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
     if (asking) return;
     asking = true;
     void listening([...new Set([record.socketPath, computed])]).then((found) => {
-      socket = found ? "listening" : "absent";
+      socket = found;
       // The lapse the check began on counts, even when the heartbeat is fresh by the next read.
-      if (found) staleMs = Math.max(staleMs ?? 0, asked);
+      if (found !== "absent") staleMs = Math.max(staleMs ?? 0, asked);
       asking = false;
     });
   };
@@ -89,6 +98,8 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
       }
       const seen: SocketState | null = socket;
       ask(record, at - record.heartbeatAt);
+      const boundAt = record.heartbeatAt + record.heartbeatIntervalMs + HANDOFF_BOUND_MS;
+      if (seen === "stopping" && at >= boundAt) return { state: "down", reason: "handoff" };
       if (seen !== "absent") {
         deadSince = null;
         if (seen === "listening") staleMs = Math.max(staleMs ?? 0, at - record.heartbeatAt);
@@ -104,15 +115,21 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
   };
 }
 
-async function listening(paths: readonly AbsolutePath[]): Promise<boolean> {
+async function listening(paths: readonly AbsolutePath[]): Promise<SocketState> {
   const answers = await Promise.all(
     paths.map((path) =>
       askDaemon(path, { type: "ping" }).then(
-        (answer) => answer !== null,
+        (answer): SocketState =>
+          answer === null
+            ? "absent"
+            : answer.ok && answer.type === "ping" && answer.phase === "stopping"
+              ? "stopping"
+              : "listening",
         // A socket that accepts and does not answer in time: a daemon whose event loop is stalled.
-        () => true,
+        (): SocketState => "listening",
       ),
     ),
   );
-  return answers.includes(true);
+  if (answers.includes("stopping")) return "stopping";
+  return answers.includes("listening") ? "listening" : "absent";
 }
