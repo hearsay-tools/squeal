@@ -53,6 +53,13 @@ export interface SlowHost {
   closed(): boolean;
   /** No tier starts: the daemon stops, or its own runtime went (rows 011-66, 011-106). */
   halted(): boolean;
+  /** Either hold holds (011 C9, "Holds"; rows 011-72, 011-74): no tier starts. */
+  held(): boolean;
+  /**
+   * The pump's hold check (row 011-72): the index read again when it moved;
+   * a merge hold that ended reconciles what it released, `"released"`.
+   */
+  holdCheck(): Promise<"held" | "released" | "free">;
   /** Whether the daemon's own runtime went, read again now (row 011-106). */
   runtimeMissing(): Promise<boolean>;
   pump(): void;
@@ -89,8 +96,8 @@ interface Guarded {
   readonly idle: boolean;
 }
 
-/** `next`: a slow run, `"again"` when the pump should plan again, `null` when nothing slow starts now. */
-export type SlowNext = SlowRun | "again" | null;
+/** `next`: `"flown"` when a slow run started, `"again"` when the pump should plan again, `null` when nothing slow starts now. */
+export type SlowNext = "flown" | "again" | null;
 
 /**
  * Spec 004 D2 to D5: the slow tier of one worktree. Slow files wait in the
@@ -191,8 +198,10 @@ export class SlowTier {
    * The guard decides whether the slow lane runs, never which worktree runs
    * it (D3 as amended, task 004-84): it waits only while the slot is free,
    * and a marked waiter takes the slot at a handover without a new wait.
+   * `launch` starts the run under the lock, in the block whose check found
+   * no hold, so no run starts once a hold began (011 C9; review 0.1.269, B1).
    */
-  async next(): Promise<SlowNext> {
+  async next(launch: (run: SlowRun) => void): Promise<SlowNext> {
     // A close before this call found no wait to abort, and the count below would miss it (row 011-99).
     if (this.host.closed()) return "again";
     const preemptions = this.#preemptions;
@@ -212,6 +221,11 @@ export class SlowTier {
     // starts no tier, and its files take no slot (review 0.1.262, B3).
     const gone = guard !== "preempted" && (await this.host.runtimeMissing());
     if (gone || guard === "preempted" || preemptions !== this.#preemptions) return "again";
+    // So is a hold that began during the wait, a merge's included, which no preemption tells
+    // (011 C9; review 0.1.269, B1): the pump plans again and stops on it.
+    if ((await this.host.holdCheck()) !== "free" || preemptions !== this.#preemptions) {
+      return "again";
+    }
     if (guard === "held") return this.#waitAtSlot(context, dir, false);
     const { maxParallel } = context.policy.slow;
     const load = guard.ranUnderLoad;
@@ -225,9 +239,15 @@ export class SlowTier {
     this.#unmark(dir, context.worktreeId);
     this.#slotMissedSince = null;
     this.#slotNoted = false;
-    let run: SlowRun | null = null;
+    let flown = false;
     try {
-      const selected = await this.host.lock.run(() => this.#select(refs, load, slot));
+      const selected = await this.host.lock.run(() => {
+        const picked = this.#select(refs, load, slot);
+        if (picked === null || typeof picked !== "object") return picked;
+        launch({ ...picked, slot });
+        flown = true;
+        return "flown" as const;
+      });
       // Every file another worktree runs: the pump waits on the claims, not the slot (task 001-205).
       if (selected === "claimed") return null;
       if (selected === WAIT_FOR_CAPACITY) {
@@ -235,11 +255,9 @@ export class SlowTier {
         this.#publish({ kind: "waiting", for: "slot" });
         return null;
       }
-      if (selected === null) return "again";
-      run = { ...selected, slot };
-      return run;
+      return selected === null ? "again" : selected;
     } finally {
-      if (run === null) slot.release();
+      if (!flown) slot.release();
     }
   }
 
@@ -419,8 +437,8 @@ export class SlowTier {
     slot: SlowSlot,
   ): { tier: Tier } | "claimed" | typeof WAIT_FOR_CAPACITY | null {
     // A close since the guard or the slot: a daemon that accepted a stop starts no tier (001-367),
-    // nor one whose runtime another tier's end found gone (011-106).
-    if (this.host.halted()) return null;
+    // nor one whose runtime another tier's end found gone (011-106), nor one on hold (011 C9).
+    if (this.host.halted() || this.host.held()) return null;
     const { context, ledger } = this.host.started();
     if (this.#fastFirst()) return null;
     const width = this.host.fastIdle() ? slot.permits : 1;

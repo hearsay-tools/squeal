@@ -237,6 +237,8 @@ class TierScheduler implements Scheduler {
         ready: () => this.#context !== null,
         closed: () => this.#closed,
         halted: () => this.#halted(),
+        held: () => this.#onHold(),
+        holdCheck: () => this.#holdCheck(),
         runtimeMissing: () => this.#runtimeMissing(),
         pump: () => this.#pump(),
         editPending: () => this.#editPending(),
@@ -492,6 +494,8 @@ class TierScheduler implements Scheduler {
     if (this.#closed) return false;
     const was = this.#commandHold.holding;
     if (this.#commandHold.check()) {
+      // A slow selection waiting for the load guard plans again, and stops on the hold (review 0.1.269, B1).
+      this.#slow.preempt();
       await this.#cancelHeld();
       return true;
     }
@@ -836,12 +840,8 @@ class TierScheduler implements Scheduler {
           if (this.#reinstalled) break;
           if (this.#slowMayStart()) {
             // Spec 004 D2: no edit's fast work pending or running; the slow tier decides the rest.
-            const after = await this.#slow.next();
-            if (after === "again") continue;
-            if (after !== null) {
-              this.#fly(after.tier, install.stamp, after);
-              continue;
-            }
+            const after = await this.#slow.next((run) => this.#fly(run.tier, install.stamp, run));
+            if (after !== null) continue;
           }
           if (this.#started().ledger.claims.waiting) {
             await this.#claimWake();
@@ -884,8 +884,6 @@ class TierScheduler implements Scheduler {
     const first = tier.files[0]?.file.ref;
     const cancellable = tier.slot !== true && first !== undefined && cancels(context, first);
     const held = cancellable ? new AbortController() : null;
-    // A tier picked while a command hold began (the slow tier's, after its wait) stops at once.
-    if (this.#commandHold.holding) held?.abort("hold" satisfies CancelCause);
     const flight: InFlight = { tier, done: Promise.resolve(), ran: false, held };
     this.#inFlight.set(tier.runId, flight);
     // Row 011-74: a hold's cancel reaches a Vitest run as a stop's does; its runner reads it as its cancel.
