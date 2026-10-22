@@ -115,12 +115,18 @@ export function editWindow(
 
 /** The window's files still queued or running, slow and resolved ones aside. */
 export function heldPending(window: EditWindow, keys: readonly TestFileKeyRecord[]): number {
+  return heldRows(window, keys).filter((row) => row.pending !== null).length;
+}
+
+/** The rows of `keys` the window holds for: its files, slow and resolved ones aside. */
+export function heldRows(
+  window: EditWindow,
+  keys: readonly TestFileKeyRecord[],
+): TestFileKeyRecord[] {
   return keys.filter((row) => {
     const id = testFileId(row.testFile);
-    return (
-      row.pending !== null && window.ids.has(id) && !window.slow.has(id) && !window.resolved.has(id)
-    );
-  }).length;
+    return window.ids.has(id) && !window.slow.has(id) && !window.resolved.has(id);
+  });
 }
 
 /** Whether the window's runner part is applied: the store's refined revision reached it. */
