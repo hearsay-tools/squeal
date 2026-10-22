@@ -43,6 +43,8 @@ var WORKTREE_META_ROWS = {
   promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
   quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
+  mergeHold: { prefix: "merge-hold:", owner: "scheduler/hold-rows" },
+  commandHold: { prefix: "command-hold:", owner: "scheduler/hold-rows" },
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
@@ -4082,7 +4084,7 @@ function testFileFrames(store, worktreeId) {
     const identity3 = checkIdentity(check);
     const key = keys.get(identity3);
     if (key === void 0 || location2 === null) return void 0;
-    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
+    if (!rows.has(key)) rows.set(key, store.results.byKey(key, 0));
     const row = rows.get(key)?.find((r) => r.outcome === "fail" && checkIdentity(r.check) === identity3);
     const thrown = row?.errors[0]?.location ?? null;
     if (row === void 0 || thrown === null || !samePosition(thrown, location2)) return void 0;
@@ -7059,7 +7061,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.265";
+  if (true) return "0.1.266";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
