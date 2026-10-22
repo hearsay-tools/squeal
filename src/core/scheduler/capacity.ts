@@ -81,6 +81,19 @@ export class TierCapacity {
   }
 
   /**
+   * A tier without a grant, an edit's, runs `workers` wide (row 011-98): the
+   * daemon's mark states its CPU while it runs. It never waits; a pool that
+   * fails costs it nothing. The function returned ends it.
+   */
+  running(workers: number): () => void {
+    try {
+      return this.#pool.running(workers);
+    } catch {
+      return () => {};
+    }
+  }
+
+  /**
    * The grant a tier of `want` workers would get now, taking nothing (spec
    * 011 C4 step 5, task 001-366): what a backlog tier is budgeted at before
    * its files are picked. `want` when the pool fails, as `take` then runs
