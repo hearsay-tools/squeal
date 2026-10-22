@@ -46,6 +46,7 @@ import {
   type DaemonWatch,
   type DownReason,
   type HeartbeatLapse,
+  stoppingOf,
   watchDaemon,
 } from "./wait-liveness.js";
 
@@ -288,7 +289,9 @@ export async function waitForStatus(
         const heldFiles = held === undefined ? [] : [...held.values()];
         const settled = final || elapsed() >= settleMs;
         watch ??= watchDaemon(id, { downMs: options.downMs });
-        const daemon = watch.judge(store.worktrees.get(id)?.daemon ?? null, now());
+        const worktree = store.worktrees.get(id);
+        const at = now();
+        const daemon = watch.judge(worktree?.daemon ?? null, at, stoppingOf(store, worktree, at));
         // Which files are the edit's is not known yet: no check's news is the edit's.
         const naming =
           window === undefined &&
