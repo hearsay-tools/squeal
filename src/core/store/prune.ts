@@ -4,6 +4,7 @@ import type { PruneOptions, PruneReport, WorktreeRepo } from "../types/index.js"
 import { num, str } from "./codec.js";
 import type { Connection } from "./connection.js";
 import type { StorePaths } from "./paths.js";
+import { expireReplaced, keptByReplaced } from "./repos/replaced.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EVICTION_BATCH = 32;
@@ -27,7 +28,9 @@ const VACUUM_PAGES = 512;
  * A live worktree is a `worktrees` row whose root still has a `.git` entry.
  * Runs and checkpoints follow the 7 days rule unless a kept result
  * references the run or a kept run the checkpoint; the newest completed
- * checkpoint of each live worktree is kept for status (D7).
+ * checkpoint of each live worktree is kept for status (D7). Spec 011 C7 as
+ * amended 2026-10-21 (row 011-77): a kept replaced failure keeps its run, its
+ * log and its failure text until it expires at the cutoff.
  */
 
 /**
@@ -80,6 +83,10 @@ export function prune(
     worktreesRemoved++;
   }
 
+  // Row 011-77 (011 C7 as amended 2026-10-21): an expired replaced failure first, so its run,
+  // log and text go in this pass.
+  conn.transaction(() => expireReplaced(conn, cutoff));
+
   let resultsRemoved = dropPrunable(conn, cutoff);
 
   if (options.maxSizeMb !== null) {
@@ -90,9 +97,11 @@ export function prune(
     conn.all(
       `DELETE FROM runs
        WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
+         AND id NOT IN (SELECT value FROM json_each(?))
          AND (worktree_id NOT IN (SELECT id FROM worktrees)
               OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))
        RETURNING log_dir`,
+      JSON.stringify(keptByReplaced(conn).runs),
       cutoff,
     ),
   );
@@ -195,10 +204,13 @@ function evictToCap(conn: Connection, capBytes: number): number {
   return removed;
 }
 
+/** Texts no result and no kept replaced failure names; inside the caller's transaction. */
 function dropOrphanFailureTexts(conn: Connection): void {
   conn.run(
     `DELETE FROM failure_texts
-     WHERE id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)`,
+     WHERE id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
+       AND id NOT IN (SELECT value FROM json_each(?))`,
+    JSON.stringify(keptByReplaced(conn).texts),
   );
 }
 

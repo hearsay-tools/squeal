@@ -1,4 +1,4 @@
-import type { CheckId } from "./check.js";
+import type { CheckError, CheckId } from "./check.js";
 import type {
   AbsolutePath,
   CommitSha,
@@ -23,7 +23,13 @@ import type {
   Transition,
   Validity,
 } from "./state.js";
-import type { CheckpointKind, CheckpointLane, ResultRecord } from "./store-records.js";
+import type {
+  CheckpointKind,
+  CheckpointLane,
+  ReplacedFailure,
+  ReplacingPass,
+  ResultRecord,
+} from "./store-records.js";
 
 /** Tally of checks by validity class at the current revision (D5). */
 export type ValidityCounts = Readonly<Record<Validity, number>>;
@@ -784,6 +790,17 @@ export interface WhyReport {
   /** The check's flaky note: its stored outcome flipped under one key (task 001-170). Absent when none. */
   readonly flaky?: FlakyNote;
   /**
+   * Stored failures of the check older than `results`, newest first, at
+   * most `WHY_OLDER_FAILURE_LIMIT` (011 C6 as amended 2026-10-21, row
+   * 011-77, gh-67 Q3). Absent when there is none.
+   */
+  readonly olderFailures?: readonly WhyResultEntry[];
+  /**
+   * The check's replaced failures, newest first (011 C5 as amended
+   * 2026-10-21, row 011-77, gh-54). Absent when none is kept.
+   */
+  readonly replacedFailures?: readonly WhyReplacedFailure[];
+  /**
    * The first error of the check's one re-run after all its tests passed,
    * at this worktree's current key, with that run's log; kept whether the
    * re-run passed or failed again (spec 011 C5 as amended, gh-20; review
@@ -921,6 +938,17 @@ export interface WhyReplacement {
   readonly logDir: AbsolutePath | null;
 }
 
+/** `WhyReport.replacedFailures`: a kept replaced failure with its run's log and its errors. */
+export interface WhyReplacedFailure {
+  readonly failure: ReplacedFailure;
+  /** Root of the failing worktree; `null` when it is gone from the store. */
+  readonly worktreeRoot: AbsolutePath | null;
+  /** `runs/<run-id>/` of the failing run; `null` when its run record was pruned. */
+  readonly logDir: AbsolutePath | null;
+  /** Its failure text's errors, the first one's stack included; `null` when the text was pruned. */
+  readonly errors: readonly CheckError[] | null;
+}
+
 /** `WhyReport.rerunFirstFailure`: the record with its run's log. */
 export interface WhyRerunFirstFailure extends RerunFirstFailure {
   /** `runs/<run-id>/` of the run that stored it; `null` when its run record was pruned. */
@@ -976,6 +1004,28 @@ export interface FailureEntry {
   readonly fingerprint: string | null;
   readonly summary: string | null;
   readonly runId: string;
+  /** Where it failed; `null` when the runner named no place (row 011-77). */
+  readonly location: SourceLocation | null;
+  /**
+   * The first frame in the check's own test file when `location` is not in
+   * it (011 C5 as amended 2026-10-21, gh-67); absent when there is none or
+   * its failure text was pruned.
+   */
+  readonly testFileFrame?: TestFileFrame;
+  /** The load per CPU its run had (`failed-run-loads`, 001-368); `null` when not recorded. */
+  readonly loadPerCpu: number | null;
+  /**
+   * The pass that replaced it at its key: a replaced failure, kept as
+   * history (011 C5 as amended 2026-10-21, row 011-77, gh-54). Absent for a
+   * failing row still stored.
+   */
+  readonly replacedBy?: FailureReplacedBy;
+}
+
+/** `FailureEntry.replacedBy`: the replacing pass, with its worktree's root. */
+export interface FailureReplacedBy extends ReplacingPass {
+  /** `null` when that worktree is gone from the store. */
+  readonly worktreeRoot: AbsolutePath | null;
 }
 
 /** What `squeal failures` was asked for (row 011-75, spec 011 C6 as amended for 011-64). */
@@ -1010,6 +1060,8 @@ export interface FailuresReport {
   readonly failures: readonly FailureEntry[];
   /** Failures matching in all, checks with `perCheck`; more than `failures.length` when capped. */
   readonly total: number;
+  /** How many of `total` are replaced failures (row 011-77); with `perCheck`, checks whose newest is one. */
+  readonly replaced: number;
   /** The most listed: `--limit`, 20 by default, `total` for `--limit all`. */
   readonly limit: number;
 }

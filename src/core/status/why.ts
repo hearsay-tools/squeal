@@ -25,6 +25,7 @@ import {
   type WhyChangedPath,
   type WhyChangedSince,
   type WhyNoMatch,
+  type WhyReplacedFailure,
   type WhyReport,
   type WhyResult,
   type WorktreeId,
@@ -39,6 +40,9 @@ import { namesFile, whyRankedBy } from "./why-rank.js";
 
 /** Most results `squeal why` lists for one check. */
 export const WHY_RESULT_LIMIT = 20;
+
+/** Most stored failures older than the listed results `why` keeps visible (row 011-77, gh-67 Q3). */
+export const WHY_OLDER_FAILURE_LIMIT = 5;
 
 /** Most candidates listed when a name matches several checks. */
 export const WHY_CANDIDATE_LIMIT = 20;
@@ -174,11 +178,19 @@ function report(
   const all = store.results.listForCheck(check, Number.MAX_SAFE_INTEGER);
   const logDirOf = (result: ResultRecord) =>
     store.runs.get(result.provenance.runId)?.logDir ?? null;
-  const results = all.slice(0, WHY_RESULT_LIMIT).map((result) => ({
+  const entry = (result: ResultRecord) => ({
     result,
     worktreeRoot: worktreeRoots[result.provenance.worktreeId] ?? null,
     logDir: logDirOf(result),
-  }));
+  });
+  const results = all.slice(0, WHY_RESULT_LIMIT).map(entry);
+  // Row 011-77 (gh-67 Q3): newest 20 passes never hide the check's older stored failures.
+  const olderFailures = all
+    .slice(WHY_RESULT_LIMIT)
+    .filter((r) => r.outcome === "fail")
+    .slice(0, WHY_OLDER_FAILURE_LIMIT)
+    .map(entry);
+  const replacedFailures = replacedOf(store, check, worktreeRoots);
   const key = currentKey(store, worktreeId, check);
   const heldFailure = heldFor(store, worktreeId, key, all);
   const since = observedSince(store, worktreeId, knownState?.observedAt ?? null);
@@ -224,11 +236,38 @@ function report(
     ...(replacedAtKey === undefined ? {} : { replacedAtKey }),
     ...(heldFailure === undefined ? {} : { heldFailure }),
     ...(flaky === undefined ? {} : { flaky }),
+    ...(olderFailures.length === 0 ? {} : { olderFailures }),
+    ...(replacedFailures.length === 0 ? {} : { replacedFailures }),
     ...(rerunFirstFailure === undefined ? {} : { rerunFirstFailure }),
     ...(changed === undefined ? {} : { changedSince: changed }),
     ...(closure === undefined ? {} : { changesInClosure: closure }),
     ...(rankedBy === undefined ? {} : { rankedBy }),
   };
+}
+
+/**
+ * Row 011-77 (gh-54): the check's kept replaced failures, newest first, each
+ * with its run's log and its kept text's errors, or `null` for what was pruned.
+ */
+function replacedOf(
+  store: Store,
+  check: CheckId,
+  worktreeRoots: Readonly<Record<WorktreeId, AbsolutePath>>,
+): WhyReplacedFailure[] {
+  const identity = checkIdentity(check);
+  return store.failures
+    .replaced()
+    .filter((failure) => checkIdentity(failure.check) === identity)
+    .reverse()
+    .map((failure) => ({
+      failure,
+      worktreeRoot: worktreeRoots[failure.provenance.worktreeId] ?? null,
+      logDir: store.runs.get(failure.provenance.runId)?.logDir ?? null,
+      errors:
+        failure.failureId === null
+          ? null
+          : (store.failures.text(failure.failureId)?.errors ?? null),
+    }));
 }
 
 /**

@@ -1,7 +1,8 @@
 import type { SQLInputValue } from "node:sqlite";
-import type { FailureRepo, FailureSelection } from "../../types/index.js";
-import { CHECK_COLUMNS, checkFrom, checkParams, num, toResult } from "../codec.js";
+import type { CheckError, FailureRepo, FailureSelection } from "../../types/index.js";
+import { CHECK_COLUMNS, checkFrom, checkParams, json, num, strOrNull, toResult } from "../codec.js";
 import type { Connection } from "../connection.js";
+import { failingAt, keepReplaced, readReplaced } from "./replaced.js";
 
 /** One query and its parameters. */
 export interface Statement {
@@ -103,5 +104,14 @@ export function createFailureRepo(conn: Connection): FailureRepo {
     list: (selection, limit) => all(FAILURE_STATEMENTS.list(selection, limit)).map(toResult),
     count: (selection) => num(all(FAILURE_STATEMENTS.count(selection))[0] ?? { n: 0 }, "n"),
     failingChecks: (selection) => all(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom),
+    failingAt: (key) => failingAt(conn, key),
+    keepReplaced: (failing, records, loadOf) => keepReplaced(conn, failing, records, loadOf),
+    replaced: () => readReplaced(conn),
+    text: (id) => {
+      const row = conn.get("SELECT summary, errors FROM failure_texts WHERE id = ?", id);
+      return row === null
+        ? null
+        : { summary: strOrNull(row, "summary"), errors: json<CheckError[]>(row, "errors") };
+    },
   };
 }
