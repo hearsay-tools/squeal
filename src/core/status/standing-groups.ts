@@ -1,4 +1,5 @@
 import type { OutstandingStanding, TierYield } from "../types/index.js";
+import { remainderSeconds } from "./next-step.js";
 
 /*
  * Row 011-27: files that read alike share a group, the named class lines'
@@ -36,9 +37,7 @@ export function groupId(s: OutstandingStanding): string {
 /** A yield as its line words it: its kind, and a remainder's seconds. */
 function yieldId(tier: TierYield | undefined): string {
   if (tier === undefined) return "-";
-  return tier.kind === "remainder"
-    ? `remainder ${Math.round(tier.remainderMs / 1_000)}`
-    : tier.kind;
+  return tier.kind === "remainder" ? `remainder ${remainderSeconds(tier.remainderMs)}` : tier.kind;
 }
 
 /** Of two standings of one group, the earliest start or the latest bound. */
