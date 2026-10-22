@@ -8,6 +8,7 @@ import type {
   ReplacedFailure,
   ResultRecord,
   Store,
+  WhyReplacedFailure,
   WorktreeId,
 } from "../types/index.js";
 import { testFileFrame } from "./test-frame.js";
@@ -17,7 +18,8 @@ import { testFileFrame } from "./test-frame.js";
  * the stored failing results and the replaced failures, merged newest first
  * and cut at `--limit`. The stored rows are selected and limited in SQL; the
  * kept entries, at most 1,024 in one `meta` row, are selected here by the
- * same selection, in the same read transaction.
+ * same selection, in the same read transaction. `why` lists a check's kept
+ * entries in the same order.
  */
 
 /** What the failures read needs besides the store: the worktrees' roots and the runs' loads. */
@@ -104,6 +106,31 @@ export function selectReplaced(
  */
 export function newestFirst(entries: readonly ReplacedFailure[]): ReplacedFailure[] {
   return entries.toReversed().sort((a, b) => b.provenance.recordedAt - a.provenance.recordedAt);
+}
+
+/**
+ * Row 011-77 (gh-54): `why`'s kept replaced failures of `check`, newest
+ * first, each with its run's log and its kept text's errors, or `null` for
+ * what was pruned; `kept` is every kept entry, newest first.
+ */
+export function replacedOfCheck(
+  store: Store,
+  check: CheckId,
+  worktreeRoots: Readonly<Record<WorktreeId, AbsolutePath>>,
+  kept: readonly ReplacedFailure[],
+): WhyReplacedFailure[] {
+  const identity = checkIdentity(check);
+  return kept
+    .filter((failure) => checkIdentity(failure.check) === identity)
+    .map((failure) => ({
+      failure,
+      worktreeRoot: worktreeRoots[failure.provenance.worktreeId] ?? null,
+      logDir: store.runs.get(failure.provenance.runId)?.logDir ?? null,
+      errors:
+        failure.failureId === null
+          ? null
+          : (store.failures.text(failure.failureId)?.errors ?? null),
+    }));
 }
 
 /**
