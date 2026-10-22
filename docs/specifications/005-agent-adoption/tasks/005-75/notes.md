@@ -14,7 +14,8 @@ The raise is in 005-74's commit, and 005-75 uses the same raise. `squeal update`
 
 ## Process count
 
-- Test: `test/cli/launcher.test.ts`, "starts Node once, and the CLI sees the process as `node <cli>` would give it". A `node` on the scratch PATH logs each start. With format 5 the test failed with 2 starts; with format 6 it passes with 1.
+- Test: `test/cli/launcher-one-node.test.ts`, "starts Node once, and the CLI sees the process as `node <cli>` would give it". A `node` on the scratch PATH logs each start. With format 5 the test failed with 2 starts; with format 6 it passes with 1. It also checks that inside the CLI `process.argv[1]` is the CLI's path and `process.execArgv` is `--disable-warning=ExperimentalWarning` alone.
+- Test: the same file, "spawns `squeal start`'s daemon from the CLI's path, with no Node flag". It runs `squeal start` through the launcher, with the committed `plugins/claude-code/dist` as the installed CLI, in a scratch git repo. Then it reads the daemon's arguments from `ps`: Node, then `<cli> daemon <root>`, with no flag. `squeal stop` ends the daemon. With `process.argv[1]` left as the launcher's path, both tests fail. With `-e` left in `process.execArgv`, the first test fails.
 - Real CLI (0.1.256 Codex cache copied into a scratch HOME, the same logging `node` first on the PATH): `squeal --version` through format 5 made 2 Node starts, through format 6 made 1.
 
 ## CPU per `squeal --version`
@@ -46,7 +47,7 @@ A CLI command run through the launcher now shows in `ps` as `node --disable-warn
 
 ## The key-validity guard
 
-`test/keys/launchers.test.ts` (011-41) lets a launcher run Node with `--disable-warning` flags only, and its comment sends any other flag to the coordinator. Format 6's `-e` is the lookup, not a flag for the CLI: the lookup removes it from `process.execArgv`, and the daemon is spawned as `node <cli> daemon <root>` with no flags. So key validity does not change. Commit a1c874f2b makes the guard skip the script's body, as it did for format 5, and read `-e '` at the end of the line as the end of the flags. A test with `--max-old-space-size=99` added still fails. The coordinator was asked to confirm this (request eca69c32).
+`test/keys/launchers.test.ts` (011-41) lets a launcher run Node with `--disable-warning` flags only, and its comment sends any other flag to the coordinator. Format 6's `-e` is the lookup, not a flag for the CLI: the lookup removes it from `process.execArgv`, and the daemon is spawned as `node <cli> daemon <root>` with no flags. So key validity does not change. Commit a1c874f2b makes the guard skip the script's body, as it did for format 5, and read `-e '` at the end of the line as the end of the flags. A test with `--max-old-space-size=99` added still fails. The coordinator kept this edit (request eca69c32), on the condition that the two behaviour tests under "Process count" show the CLI's `argv` and `execArgv` and the daemon's flags.
 
 ## Not done here
 

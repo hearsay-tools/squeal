@@ -63,17 +63,6 @@ function launch(m: Machine, args: readonly string[] = [], cwd = m.home) {
   return { ...r, ran };
 }
 
-/** Puts a `node` on the machine's PATH that logs each start; returns the count so far. */
-function countNodeStarts(m: Machine): () => number {
-  const node = join(m.root, "node-bin", "node");
-  const log = join(m.root, "node-starts.log");
-  rmSync(node);
-  writeFileSync(log, "");
-  writeFileSync(node, `#!/bin/sh\necho start >> '${log}'\nexec '${process.execPath}' "$@"\n`);
-  chmodSync(node, 0o755);
-  return () => readFileSync(log, "utf8").split("\n").length - 1;
-}
-
 function project(m: Machine, name: string): string {
   const dir = join(m.root, name);
   mkdirSync(join(dir, "src"), { recursive: true });
@@ -236,27 +225,6 @@ describe("the launcher", () => {
     expect(launch(m, ["status", "ps"]).ran?.harness).toBe("codex");
     rmSync(join(dist, "cli", "ps.mjs"));
     expect(launch(m, ["ps"]).ran).toEqual({ version: "0.1.250", harness: "codex", args: ["ps"] });
-  });
-
-  // Row 005-75: a second Node for the lookup cost each command about 0.06 s of CPU.
-  it("starts Node once, and the CLI sees the process as `node <cli>` would give it", () => {
-    const m = machine();
-    codexInstalls(m, ["0.1.250"]);
-    const dist = join(m.codexHome, "plugins", "cache", "hearsay", "squeal", "0.1.250", "dist");
-    const cli = join(dist, "cli", "squeal.mjs");
-    writeFileSync(
-      cli,
-      "console.log(JSON.stringify({ argv: process.argv.slice(1), execArgv: process.execArgv }));\n",
-    );
-    const starts = countNodeStarts(m);
-    const r = launch(m, ["status", "--wait", "60000"]);
-    expect(r.stdout).toBe(
-      `${JSON.stringify({
-        argv: [cli, "status", "--wait", "60000"],
-        execArgv: ["--disable-warning=ExperimentalWarning"],
-      })}\n`,
-    );
-    expect(starts()).toBe(1);
   });
 
   it("prints the install commands and exits 1 when no plugin is installed", () => {
