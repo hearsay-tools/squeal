@@ -39,7 +39,7 @@ Read the three designs' decisions and code rows, spec 011 C3, C4, C6, C7, C9, C1
 - RP1: each of its three commits changes only test timing, never a bound, and each test still fails with its row's behaviour turned off (the commit messages name the check); the three tests that move their clock past the quiet wait still assert that no backlog tier starts inside it;
 - the version is raised in all eight places and the bundles match the tree.
 
-Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. Known load-sensitive files: `opencode-dispose.test.ts` (008-38), `slow-slot-fair.test.ts`, `vacant-wait.test.ts`, `node-test/graph-cost.test.ts`; a file that fails loaded and passes alone is named. Write `reviews/0.1.253.md` with a PASS or FAIL verdict and commit it.
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. Known load-sensitive files: `opencode-dispose.test.ts` (008-38), `slow-slot-fair.test.ts`, `vacant-wait.test.ts`, `node-test/graph-cost.test.ts`, and `backlog-slots-overhead.test.ts` test 3, which fails alone on main 0.1.252 too (local bound 1.2: main 1.25, 1.22, 1.26 and the candidate 1.23, a pass, 1.22, interleaved at load 5 on 24 CPUs, 2026-10-22; CI's bound 1.6 passes; row 011-99); a file that fails loaded and passes alone is named. The coordinator's flock'd full run on 517967658 had that one failure only (1.203 against 1.20; 864 files passed); CI 39704040348 is green. Write `reviews/0.1.253.md` with a PASS or FAIL verdict and commit it.
 
 ## RP1: repair of cand/0.1.251, three Node 22 CI failures
 
