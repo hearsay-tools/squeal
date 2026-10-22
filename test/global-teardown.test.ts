@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TestProject } from "vitest/node";
 import { userTmpDir } from "../src/core/daemon/paths.js";
 import { pidNamespace } from "../src/core/delivery/harness-process.js";
-import setup from "./global-teardown.js";
+import setup, { namespaceName } from "./global-teardown.js";
 
 /*
  * Task 014-36: a run's temp directories lie under one parent,
@@ -42,7 +42,7 @@ function scratch(): string {
 
 /** The PID namespace the setup writes in a parent it makes. */
 function namespace(): string {
-  return pidNamespace() ?? "no /proc";
+  return pidNamespace() ?? process.platform;
 }
 
 /** A pid no process has any more. */
@@ -140,6 +140,12 @@ describe("the run's temp parent", () => {
       expect(existsSync(dir)).toBe(true);
     }
     await teardown();
+  });
+
+  it("names no namespace on Linux without a readable one, so no sweep removes a parent there", () => {
+    expect(namespaceName(() => "pid:[4026531836]", "linux")).toBe("pid:[4026531836]");
+    expect(namespaceName(() => null, "linux")).toBeNull();
+    expect(namespaceName(() => null, "darwin")).toBe("darwin");
   });
 
   it("leaves a SIGKILLed run's temp directories under one parent that the next setup removes", async () => {
