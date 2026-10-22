@@ -119,10 +119,12 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
  * of 2026-10-22). That spawn has no lock wait (row 011-110), so the claim's
  * successor stays the only one that waits. Nor does `start` claim or spawn
  * with the lock wait once a daemon registered after the stopping one
- * (`claims`), which ended the handoff.
- * Past that bound it says what holds the lock, as `squeal stop` does, and
- * exits 1. A daemon before 0.1.200 finishes its tier first, which only this
- * bound covers.
+ * (`claims`), which ended the handoff. It prints the status once the store
+ * records that daemon (`registered`, row 011-111), or at the bound once it
+ * answered.
+ * Past that bound with none answering it says what holds the lock, as
+ * `squeal stop` does, and exits 1. A daemon before 0.1.200 finishes its tier
+ * first, which only this bound covers.
  */
 async function finishHandoff(
   root: AbsolutePath,
@@ -152,8 +154,12 @@ async function finishHandoff(
   const deadline = Date.now() + bounds.socketMs + bounds.lockMs;
   for (;;) {
     const probe = await probeDaemon(root, 100);
-    if (probe.state === "alive" && follows(probe.ping, old, own)) break;
-    if (Date.now() > deadline) return stillHeld(root, stopping, marks, io, bounds);
+    const answered = probe.state === "alive" && follows(probe.ping, old, own);
+    if (answered && registered(root, probe.ping)) break;
+    if (Date.now() > deadline) {
+      if (answered) break;
+      return stillHeld(root, stopping, marks, io, bounds);
+    }
     await sleep(50);
   }
   const { from } = stopping;
@@ -170,6 +176,16 @@ function follows(ping: PingResponse, old: number | null, own: string): boolean {
   return (
     ping.startedAt !== old && ping.phase !== "stopping" && !isNewerVersion(own, ping.squealVersion)
   );
+}
+
+/**
+ * Row 011-111: whether the store records the daemon of `ping`. A daemon
+ * answers on its socket before it registers, and until then the handoff's
+ * claim stands, so status says it hands over (C9); from its registration on,
+ * status reads it serving.
+ */
+function registered(root: AbsolutePath, ping: PingResponse): boolean {
+  return recordedDaemon(root, STATUS_BUSY_TIMEOUT_MS)?.startedAt === ping.startedAt;
 }
 
 /**
