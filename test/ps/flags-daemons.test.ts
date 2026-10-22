@@ -307,6 +307,77 @@ describe("no-lock and duplicate", () => {
     expect([names(waited, 4100), names(waited, 4101)]).toEqual([[], []]);
   });
 
+  // `reviews/wave-5.md` B2: a lock that passed within one lock file hides no holder of another.
+  it("[A, A, B]: the lock A passed, and B's holder is a duplicate of A's holders", () => {
+    const a1 = daemonAt(4100, { worktreeId: "000000000000000a" });
+    const a2 = daemonAt(4101, { root: a1.root, worktreeId: "000000000000000a", awaitLock: true });
+    const b = daemonAt(4102, { root: a1.root, worktreeId: "000000000000000b" });
+    const findings = flag(
+      modelOf({ host, daemons: [a1, a2, b].map((d) => ({ daemon: d, first: workOf(d) })) }),
+    );
+    for (const pid of [4100, 4101])
+      expect(findings.daemons.get(pid)).toEqual([
+        {
+          flag: "duplicate",
+          reason: `daemon 4102 holds a lock of its root ${a1.root} too`,
+          command: `kill ${pid}  # or 4102: keep one`,
+        },
+      ]);
+    expect(findings.daemons.get(4102)).toEqual([
+      {
+        flag: "duplicate",
+        reason: `daemons 4100, 4101 held a lock of its root ${a1.root} too`,
+        command: "kill 4102  # or 4100, 4101: keep one",
+      },
+    ]);
+  });
+
+  it("[A, A, B, B]: both locks passed, and each lock's holders are duplicates of the other's", () => {
+    const a1 = daemonAt(4100, { worktreeId: "000000000000000a" });
+    const ids = ["000000000000000a", "000000000000000b", "000000000000000b"];
+    const rest = ids.map((worktreeId, i) => daemonAt(4101 + i, { root: a1.root, worktreeId }));
+    const findings = flag(
+      modelOf({ host, daemons: [a1, ...rest].map((d) => ({ daemon: d, first: workOf(d) })) }),
+    );
+    const other = (pid: number) => (pid < 4102 ? "4102, 4103" : "4100, 4101");
+    for (const pid of [4100, 4101, 4102, 4103])
+      expect(findings.daemons.get(pid)).toEqual([
+        {
+          flag: "duplicate",
+          reason: `daemons ${other(pid)} held a lock of its root ${a1.root} too`,
+          command: `kill ${pid}  # or ${other(pid)}: keep one`,
+        },
+      ]);
+  });
+
+  it("with one reading unread, a daemon whose lock it misses is unknown: no duplicate names it or its root's holder (reviews/wave-5.md B1, B2)", () => {
+    const a = daemonAt(4100);
+    const b = daemonAt(4101, { root: a.root, holdsLock: null, ageS: 300 });
+    const c = daemonAt(4102, { holdsLock: null, ageS: 300 });
+    const d = daemonAt(4103, { root: c.root, holdsLock: null, ageS: 300 });
+    const findings = flag(
+      modelOf({
+        host,
+        locksRead: "one",
+        daemons: [a, b, c, d].map((x) => ({ daemon: x, first: workOf(x) })),
+      }),
+    );
+    expect([4100, 4101, 4102, 4103].map((pid) => names(findings, pid))).toEqual([[], [], [], []]);
+    for (const [pid, root] of [
+      [4101, a.root],
+      [4102, c.root],
+      [4103, c.root],
+    ] as const)
+      expect(findings.unknown).toContainEqual({
+        what: `daemon ${pid} flag duplicate`,
+        why: `whether it holds a lock of its root ${root} is unknown`,
+      });
+    const why =
+      "one of the window's two /proc/locks readings cannot be read, so a lock the other misses is unknown, not absent";
+    for (const what of ["flag no-lock", "flag hung", "flag foreign-permit", "phase stopping"])
+      expect(findings.unknown).toContainEqual({ what, why });
+  });
+
   it("without lock state names both pids, and names the rules it cannot evaluate", () => {
     const a = daemonAt(4100, { holdsLock: null });
     const b = daemonAt(4101, { root: a.root, holdsLock: null, ageS: 300 });

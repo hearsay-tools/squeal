@@ -31,6 +31,8 @@ const NOT_INSTALLED_MS = 60 * 60_000;
 /** `<plugins>/cache/<marketplace>/squeal/<version>/...` of a Claude Code or Codex install. */
 const CACHE = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/[^/]+\//;
 const NO_LOCKS = "the source has no lock state (D10)";
+const ONE_READING =
+  "one of the window's two /proc/locks readings cannot be read, so a lock the other misses is unknown, not absent";
 const NO_MARKS = "the source reads no marks (D10)";
 
 /** What every rule of `flag` shares: the model, process ages, `unknown`, and D2's phase. */
@@ -47,10 +49,9 @@ export const flag = (model: PsModel, options: FileFlagOptions = {}): FlagFinding
     unknown.push({ what, why });
   };
   const { source } = model;
-  // The pool reads the window's `/proc/locks` readings: no permit is known only without them.
-  if (model.pool.pool.held === null)
+  if (model.locksRead !== "both")
     for (const what of ["flag no-lock", "flag hung", "flag foreign-permit", "phase stopping"])
-      name(what, NO_LOCKS);
+      name(what, model.locksRead === "none" ? NO_LOCKS : ONE_READING);
   if (!source.readsMarks)
     for (const what of ["flag orphan-test-process", "flag overdue-test-process"])
       name(what, NO_MARKS);
@@ -363,14 +364,17 @@ function deadConsumers(c: FlagContext, pid: number): string[] {
 }
 
 /**
- * D7 `duplicate`: two daemon processes of one root, flagged on the one
- * without the lock once its wait is past the `no-lock` bound; two that each
- * hold a lock of it are flagged at once. Where the holder cannot be told,
- * each is flagged once all have waited so long, and its command names
- * every pid (D10). Two that both wait are each `no-lock`'s. A lock either
- * reading of the window shows is held (`lessons.md` P9), and no two
- * processes hold one lock file at once: two holders of one file are the two
- * readings', the lock passed between them, and neither is flagged.
+ * D7 `duplicate`: two daemon processes of one root. Without lock state
+ * (D10), each is flagged once all have waited past the `no-lock` bound, and
+ * its command names every pid. Otherwise by lock file (`reviews/wave-5.md`
+ * B2): the holders of different lock files of the root are flagged at once,
+ * each against the other files' holders; a daemon two readings prove holds
+ * none is flagged once its wait is past the bound, against the holders of
+ * its own file, or of the root. A lock either reading of the window shows
+ * is held (`lessons.md` P9), and no two processes hold one file at once: its
+ * holders are the two readings', the lock passed between them, and no
+ * duplicates of each other. A daemon whose lock is unknown claims nothing
+ * and is named. Two that both wait are each `no-lock`'s.
  */
 function duplicates(c: FlagContext): Map<number, PsFlag[]> {
   const byRoot = new Map<AbsolutePath, FoundDaemon[]>();
@@ -386,42 +390,53 @@ function duplicates(c: FlagContext): Map<number, PsFlag[]> {
       if (age === null) c.name(`daemon ${d.row.pid} flag duplicate`, NO_BOOT);
       return age !== null && age > (d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS);
     };
-    const others = (d: FoundDaemon) =>
-      group
-        .filter((o) => o !== d)
-        .map((o) => o.row.pid)
-        .join(", ");
-    const holders = group.filter((d) => d.holdsLock === true);
-    const atOnce = new Set(holders.map((d) => d.lockPath)).size === holders.length;
-    const holding = holders.map((d) => d.row.pid).join(", ");
-    if (group.some((d) => d.holdsLock === null)) {
+    if (c.model.locksRead === "none") {
       if (!group.every(waited)) continue;
-      for (const d of group)
+      for (const d of group) {
+        const others = pids(group.filter((o) => o !== d));
         add(
           d,
-          `daemon ${others(d)} has its root ${root} too; which holds the lock is unknown`,
-          `kill ${d.row.pid}  # or ${others(d)}: whichever holds no lock`,
+          `daemon ${others} has its root ${root} too; which holds the lock is unknown`,
+          `kill ${d.row.pid}  # or ${others}: whichever holds no lock`,
         );
-    } else if (holders.length === 1 || (holders.length > 1 && !atOnce)) {
-      for (const d of group)
-        if (!d.holdsLock && waited(d))
+      }
+      continue;
+    }
+    const byLock = new Map<AbsolutePath | null, FoundDaemon[]>();
+    for (const d of group)
+      if (d.holdsLock === true) byLock.set(d.lockPath, [...(byLock.get(d.lockPath) ?? []), d]);
+    for (const d of group) {
+      if (d.holdsLock === null)
+        c.name(
+          `daemon ${d.row.pid} flag duplicate`,
+          `whether it holds a lock of its root ${root} is unknown`,
+        );
+      else if (d.holdsLock) {
+        const others = [...byLock].flatMap(([lock, ds]) => (lock === d.lockPath ? [] : ds));
+        if (others.length > 0)
           add(
             d,
-            holders.length === 1
-              ? `daemon ${holding} holds the lock of its root ${root}`
-              : `daemons ${holding} held the lock of its root ${root} in turn`,
-            `kill ${d.row.pid}`,
+            `${heldBy(others)} a lock of its root ${root} too`,
+            `kill ${d.row.pid}  # or ${pids(others)}: keep one`,
           );
-    } else if (holders.length > 1) {
-      for (const d of holders)
-        add(
-          d,
-          `daemon ${others(d)} holds a lock of its root ${root} too`,
-          `kill ${d.row.pid}  # or ${others(d)}: keep one`,
-        );
+      } else if (byLock.size > 0 && waited(d)) {
+        const mine = byLock.get(d.lockPath);
+        const by = mine ?? [...byLock.values()].flat();
+        const turn = (mine?.length ?? 0) > 1 ? " in turn" : "";
+        add(d, `${heldBy(by)} the lock of its root ${root}${turn}`, `kill ${d.row.pid}`);
+      }
     }
   }
   return out;
+}
+
+function pids(daemons: readonly FoundDaemon[]): string {
+  return daemons.map((d) => d.row.pid).join(", ");
+}
+
+/** `daemon <pid> holds`, or `daemons <pids> held`: several held it at different readings, or hold several. */
+function heldBy(daemons: readonly FoundDaemon[]): string {
+  return daemons.length === 1 ? `daemon ${pids(daemons)} holds` : `daemons ${pids(daemons)} held`;
 }
 
 function within(path: string, dir: string): boolean {

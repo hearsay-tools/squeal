@@ -70,8 +70,9 @@ export interface FoundDaemon {
   readonly commonDir: AbsolutePath | null;
   readonly storePath: AbsolutePath | null;
   /**
-   * Whether `/proc/locks` shows it holding its lock: `false` only when both
-   * readings of the window miss it (`lessons.md` P9); `null` without locks (D10).
+   * Whether `/proc/locks` shows it holding its lock: `true` when either
+   * reading of the window shows it, `false` only when two readable readings
+   * both miss it (`lessons.md` P9); else `null`, as without locks (D10).
    */
   readonly holdsLock: boolean | null;
 }
@@ -222,10 +223,18 @@ export interface PsReading {
   readonly attribution: Attribution;
 }
 
+/**
+ * D2 step 3: which of the window's two `/proc/locks` readings were read
+ * (`reviews/wave-5.md` B1). A lock is absent only on `both`; on `one`, a
+ * lock the read one misses is unknown; `none` is a source without locks (D10).
+ */
+export type LocksRead = "both" | "one" | "none";
+
 export interface PsModel {
   readonly now: EpochMs;
   readonly places: PsPlaces;
   readonly source: PsSource;
+  readonly locksRead: LocksRead;
   readonly discovery: Discovery;
   readonly first: PsReading;
   readonly second: PsReading;
