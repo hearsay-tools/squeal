@@ -102,3 +102,17 @@ Check only:
 - `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is 0.1.262 in all eight places; the build leaves the tree clean; the four launchers are byte-identical.
 
 Run `npm ci`, then the test files W4 and W5 changed or added, directly. The full suite is CI on c30f5181a and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-0.1.262b.log`); the pre-repair gate on dfc218b26 passed 888 files. Read both by test name. Write `reviews/0.1.262-r2.md` with a PASS or FAIL verdict on c30f5181a and commit it alone.
+
+### W6: 011-110, the second source of a second successor
+
+Use /worker. Shape: repair. Baseline the candidate `c30f5181a` (cand/0.1.262); it lands after 0.1.262.
+
+Outcome: `squeal start` never spawns a lock-waiting daemon beside the successor the hooks claimed, and `test/daemon/handover-tier.test.ts:161` counts one successor on CI.
+
+Read board row 011-110, `tasks/011-34/notes.md`, `tasks/011-32/notes.md`, spec 011 C9 on `start` during a handoff. Evidence: CI 39769624080 (Node 22 1/3) on c30f5181a, with 011-110's first fix in, still counted two `--await-lock` daemons; `lockWaits` at line 160 was 1, so the hooks spawned one and `start` the other.
+
+Seam: `claims()` in `src/cli/start.ts:169` and its caller `finishHandoff` (line 123). The coordinator's hypothesis, unverified: `finishHandoff` passes the record read when `start` began (`stopping.record`); if the successor registered meanwhile and cleared the claim, `claims()` finds no live claim for the old incarnation, writes a new one and spawns with the lock wait. A lead: prove or refute it first with a test that registers a successor between that read and `claims()`. If the second daemon has another source, find it by its parent process.
+
+Owns: `src/cli/start.ts`, `test/daemon/start-handoff.test.ts`, `test/daemon/handover-tier.test.ts`, `tasks/011-110/notes.md`. Not yours: the board, spec text, bundles, version. No `npm run build`.
+
+Done when: the new test fails on the baseline and passes; `handover-tier.test.ts` passes 20 runs in a row here (`npx vitest run test/daemon/handover-tier.test.ts --repeat 19` or a loop); lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
