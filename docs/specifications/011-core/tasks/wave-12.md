@@ -39,3 +39,15 @@ Outcome: `docs/triage/2026-10-22-digest.md` lets the human decide the five propo
 Read `docs/process.md` "Issue triage", the board's Triage rows gh-70 to gh-74, their research files (`011-core/research/issue-70.md`, `issue-72.md` to `issue-74.md`, `002-codex-adapter/research/issue-71.md`), the GitHub issues (`gh issue view <n> --comments`), and `docs/triage/2026-10-21-digest.md` as the model.
 
 Write the digest: group the five rows by theme, name overlaps with planned rows (for example gh-72 and 011-32/011-34, gh-70 and 005-73), and give one recommendation per group with what it costs. Say what is already shipped. Commit that one file. No board, spec or code edits, and no reproduction runs.
+
+## R1: review of cand/0.1.259
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.259` SHA named in the spawn; the range is `origin/main..<sha>`: W1 (011-32 and 011-34, nine commits from `cez/ff0c2ce6`), W2 (005-74 and 005-75, five from `cez/721bd166`), one notes commit and the release commit (0.1.259, bundles and the three launcher copies the build writes).
+
+Read W1 and W2 above, the notes under `tasks/011-32/`, `tasks/011-34/` and `005-agent-adoption/tasks/005-75/`, board rows 011-32, 011-34, 005-74, 005-75 and 005-76, `tasks/011-30/design.md` sections 2 and 4, spec 011 C6, C8 and C9, and spec 005 D3. Check that:
+- 011-32: six boundaries against a stepping daemon spawn one successor; the claim clears on register and after a timed-out wait; a busy store spawns as before;
+- 011-34: status, the header, `--json` and a wait read a stopping daemon, never alive beside down; past the bound they name `squeal start`; `start` finishes the handoff or names the holder; the evals parsers round-trip the new lines through the real formatters;
+- 005-74 and 005-75: one Node start per command; inside the CLI `process.execArgv` and `process.argv[1]` are what `node <cli>` gives; `squeal start` spawns the daemon with no Node flag; the key-validity guard in `test/keys/launchers.test.ts` still fails any other flag; format 6 makes `squeal update` replace installed launchers; `ps` loads only `dist/cli/ps.mjs`, and a waiter's command line still ends in `/dist/waiter.mjs` (spec 014's coordinator relies on both);
+- the version is raised in all eight places, the bundles match the tree, and the four launchers are byte-identical.
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. Row 011-99 lists the known load-flaky files. Write `reviews/0.1.259.md` with a PASS or FAIL verdict and commit it.
