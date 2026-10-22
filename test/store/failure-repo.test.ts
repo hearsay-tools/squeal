@@ -47,6 +47,46 @@ describe("store.failures (row 011-75)", () => {
     expect(store.failures.count({ ...EVERY, checks: [] })).toBe(0);
   });
 
+  // Review 0.1.262 B1: a grouped notice's command selects its checks by their error and lists
+  // each check once, however many failures each has stored.
+  it("selects by a part of the summary, and each check's newest selected failure", () => {
+    const store = open(fakeCommonDir());
+    const failed = (name: string, key: string, recordedAt: number, message: string) => ({
+      ...result(testCheck(name, "src/a.test.ts"), key, { outcome: "fail", recordedAt }),
+      summary: `Error: ${message}`,
+    });
+    store.results.putMany([
+      failed("one", "k1", 10, "ResizeObserver is not defined"),
+      failed("one", "k2", 20, "ResizeObserver is not defined"),
+      failed("one", "k3", 30, "fetch failed"),
+      failed("two", "k1", 15, "ResizeObserver is not defined"),
+      failed("three", "k1", 40, "resizeobserver is not defined"),
+    ]);
+    const keys = (selection: FailureSelection) =>
+      store.failures
+        .list(selection, 10)
+        .map((r) => `${r.check.kind === "test" ? r.check.fullName : ""} ${r.key}`);
+
+    const resize: FailureSelection = { ...EVERY, errors: ["ResizeObserver"] };
+    expect(keys(resize)).toEqual(["one k2", "two k1", "one k1"]);
+    expect(store.failures.count(resize)).toBe(3);
+    expect(keys({ ...EVERY, errors: ["ResizeObserver", "fetch"] })).toEqual([
+      "one k3",
+      "one k2",
+      "two k1",
+      "one k1",
+    ]);
+    expect(keys({ ...EVERY, errors: [] })).toHaveLength(5);
+
+    // The newest of each check among the failures with that error, not its newest failure.
+    const each: FailureSelection = { ...resize, perCheck: true };
+    expect(keys(each)).toEqual(["one k2", "two k1"]);
+    expect(store.failures.count(each)).toBe(2);
+    expect(keys({ ...EVERY, perCheck: true })).toEqual(["three k1", "one k3", "two k1"]);
+    expect(keys({ ...EVERY, perCheck: true, since: 16 })).toEqual(["three k1", "one k3"]);
+    expect(store.failures.count({ ...EVERY, perCheck: true, worktreeId: "wt-b" })).toBe(0);
+  });
+
   it("names results_by_failure in the plan of every list, count and failing-checks query", () => {
     const commonDir = fakeCommonDir();
     open(commonDir);
@@ -57,6 +97,9 @@ describe("store.failures (row 011-75)", () => {
       { ...EVERY, paths: ["src/a.test.ts", "src/dir"] },
       { ...EVERY, checks: [testCheck("one")] },
       { worktreeId: "wt-main", since: 5, paths: ["src"], checks: [testCheck("one")] },
+      { ...EVERY, errors: ["ResizeObserver"], perCheck: true },
+      { worktreeId: "wt-main", since: 5, paths: ["src"], checks: null, errors: ["a", "b"] },
+      { worktreeId: "wt-main", since: null, paths: ["src"], checks: null, perCheck: true },
     ];
     try {
       for (const selection of selections) {
@@ -72,7 +115,7 @@ describe("store.failures (row 011-75)", () => {
           // The failing rows are the outer loop; each joins its check by primary key.
           expect(plan[0]).toBe("SEARCH r USING INDEX results_by_failure (failure_id>?)");
           expect(plan).toContain("SEARCH c USING INTEGER PRIMARY KEY (rowid=?)");
-          expect(plan.some((step) => /^SCAN (r|c)\b/.test(step))).toBe(false);
+          expect(plan.some((step) => /^SCAN (r|c|n|t)\b/.test(step))).toBe(false);
         }
       }
     } finally {

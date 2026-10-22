@@ -20,18 +20,34 @@ export interface Statement {
  */
 const FAILING_ROWS = `results r INDEXED BY results_by_failure CROSS JOIN checks c ON c.id = r.check_id`;
 
-/** Every condition of `selection`, in one parameter order. */
-function where({ worktreeId, since, paths, checks }: FailureSelection): Statement {
-  const sql = ["r.failure_id IS NOT NULL", "r.outcome = 'fail'"];
+/** The conditions on the failing row `alias` that `selection` sets on each row, not on its check. */
+function rowWhere(
+  alias: string,
+  { worktreeId, since, errors = [] }: FailureSelection,
+): { sql: string[]; params: SQLInputValue[] } {
+  const sql = [`${alias}.failure_id IS NOT NULL`, `${alias}.outcome = 'fail'`];
   const params: SQLInputValue[] = [];
   if (worktreeId !== null) {
-    sql.push("r.worktree_id = ?");
+    sql.push(`${alias}.worktree_id = ?`);
     params.push(worktreeId);
   }
   if (since !== null) {
-    sql.push("r.recorded_at >= ?");
+    sql.push(`${alias}.recorded_at >= ?`);
     params.push(since);
   }
+  if (errors.length > 0) {
+    // `instr` holds case, as `--check` holds a name's.
+    sql.push(`EXISTS (SELECT 1 FROM json_each(?) e JOIN failure_texts t
+      ON t.id = ${alias}.failure_id WHERE instr(t.summary, e.value) > 0)`);
+    params.push(JSON.stringify(errors));
+  }
+  return { sql, params };
+}
+
+/** Every condition of `selection`, in one parameter order. */
+function where(selection: FailureSelection): Statement {
+  const { paths, checks } = selection;
+  const { sql, params } = rowWhere("r", selection);
   if (paths.length > 0) {
     // A path or below it, compared case-sensitively, as `LIKE` would not.
     sql.push(`EXISTS (SELECT 1 FROM json_each(?) p WHERE c.test_path = p.value
@@ -43,6 +59,15 @@ function where({ worktreeId, since, paths, checks }: FailureSelection): Statemen
       ON k.project = json_extract(j.value, '$[0]') AND k.test_path = json_extract(j.value, '$[1]')
       AND k.kind = json_extract(j.value, '$[2]') AND k.full_name = json_extract(j.value, '$[3]'))`);
     params.push(JSON.stringify(checks.map(checkParams)));
+  }
+  if (selection.perCheck === true) {
+    // Review 0.1.262 B1: no newer failure of the same check that the rest selects, in the order
+    // `list` gives.
+    const newer = rowWhere("n", selection);
+    sql.push(`NOT EXISTS (SELECT 1 FROM results n WHERE n.check_id = r.check_id
+      AND (n.recorded_at > r.recorded_at OR (n.recorded_at = r.recorded_at AND n.rowid > r.rowid))
+      AND ${newer.sql.join(" AND ")})`);
+    params.push(...newer.params);
   }
   return { sql: sql.join(" AND "), params };
 }

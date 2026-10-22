@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { LISTED_BY_DEFAULT } from "../../src/core/delivery/failure-groups.js";
 import { formatDelta } from "../../src/core/delivery/index.js";
-import { FAILURES_LIMIT, formatCheck } from "../../src/core/status/index.js";
+import { formatCheck } from "../../src/core/status/index.js";
 import type { Delta, ResultRecord, TestCheckId } from "../../src/core/types/index.js";
+import { shellWords } from "../../src/harness/shared/test-command.js";
 import { check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
 
@@ -28,14 +28,17 @@ function run(argv: string[], cwd: string) {
   return { code: main(argv, io), stdout };
 }
 
-/** A stored failure of `c`, `minutesAgo` old, with the error the group shares or `message`. */
+/**
+ * A stored failure of `c`, `minutesAgo` old, with the error the group shares or `message`; each
+ * age is its own key, as each edit of a test file's closure gives one.
+ */
 function failed(
   c: TestCheckId,
   worktreeId: string,
   minutesAgo: number,
   message = "ResizeObserver is not defined",
 ): ResultRecord {
-  const base = result(c, `key-${c.testPath}-${c.fullName}`, {
+  const base = result(c, `key-${c.testPath}-${c.fullName}-${minutesAgo}`, {
     outcome: "fail",
     worktreeId,
     recordedAt: NOW - minutesAgo * MINUTE,
@@ -58,8 +61,20 @@ function failed(
   };
 }
 
+const ERROR = "ReferenceError: ResizeObserver is not defined";
+
+/** The `FAIL` lines of a `squeal failures` listing, by the check each names. */
+function listed(stdout: string): string[] {
+  return stdout
+    .split("\n")
+    .filter((line) => line.startsWith("  FAIL  "))
+    .map((line) => line.split("  ").at(-1) ?? "");
+}
+
 describe("a grouped notice keeps every check's evidence (row 011-109)", () => {
-  it("lists all 91 checks through its one `squeal failures` command, and `why` gives each", () => {
+  // Review 0.1.262 B1: the command selected the group's directory with the group's size as its
+  // limit, so 25 newer failures in the same files left 25 of the group out.
+  it("lists all 91 checks through its one `squeal failures` command, among newer failures and older rows in their files", () => {
     const repo = fakeRepo();
     const store = seedStore(repo);
     store.worktrees.upsert({
@@ -70,17 +85,27 @@ describe("a grouped notice keeps every check's evidence (row 011-109)", () => {
       registeredAt: 1,
       daemon: null,
     });
-    const group = Array.from({ length: 91 }, (_, i) =>
-      check(`tests/components/f${i % 7}.test.tsx`, `renders case ${i}`),
-    );
-    // Older failures elsewhere, more than the default limit, stay out of the group's listing.
-    const others = Array.from({ length: 25 }, (_, i) => check(`tests/api/a${i}.test.ts`, "posts"));
+    const file = (i: number) => `tests/components/f${i % 7}.test.tsx`;
+    const group = Array.from({ length: 91 }, (_, i) => check(file(i), `renders case ${i}`));
+    // In the group's files: 25 newer failures with another error, and one older failure with the
+    // group's error of a check the notice does not name (it failed before, the same way).
+    const others = Array.from({ length: 25 }, (_, i) => check(file(i), `fetches case ${i}`));
+    const before = check(file(0), "measures");
     store.results.putMany([
-      ...group.map((c) => failed(c, repo.mainId, 1)),
-      ...others.map((c, i) => failed(c, repo.mainId, 30 + i, "fetch failed")),
+      ...group.map((c) => failed(c, repo.mainId, 10)),
+      // Each check of the group failed twice before with its error, and once with another.
+      ...group.flatMap((c) => [20, 30].map((age) => failed(c, repo.mainId, age))),
+      ...group.map((c) => failed(c, repo.mainId, 40, "window is not defined")),
+      ...others.flatMap((c, i) => [
+        failed(c, repo.mainId, 1 + i / 100, "fetch failed"),
+        failed(c, repo.mainId, 50, "fetch failed"),
+      ]),
+      failed(before, repo.mainId, 60),
     ]);
     store.knownStates.upsertMany(
-      [...group, ...others].map((c) => state(repo.mainId, c, { outcome: "fail", observedAt: 4 })),
+      [...group, ...others, before].map((c) =>
+        state(repo.mainId, c, { outcome: "fail", observedAt: 4 }),
+      ),
     );
 
     const delta: Delta = {
@@ -88,7 +113,7 @@ describe("a grouped notice keeps every check's evidence (row 011-109)", () => {
       consumer: { worktreeId: repo.mainId, sessionId: "s", agentId: "main" },
       header: {
         revision: 4,
-        counts: { current: 116, pending: 0, stale: 0, unknown: 0 },
+        counts: { current: 117, pending: 0, stale: 0, unknown: 0 },
         testFilesWithoutChecks: { pending: 0, unknown: 0 },
         fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
       },
@@ -101,31 +126,30 @@ describe("a grouped notice keeps every check's evidence (row 011-109)", () => {
         validity: "current",
         observedAt: 4,
         origin: { kind: "own" },
-        summary: "ReferenceError: ResizeObserver is not defined",
+        summary: ERROR,
         location: CHART,
       })),
     };
-    const command = /^ {6}Full list: (.*)$/m.exec(formatDelta(delta))?.[1] ?? "";
-    expect(command).toBe("squeal failures tests/components --limit 91");
+    const text = formatDelta(delta);
+    const commands = text.split("\n").filter((line) => line.startsWith("      Full list: "));
+    expect(commands).toHaveLength(1);
+    const command = commands[0]?.slice("      Full list: ".length) ?? "";
+    expect(command).toBe(
+      `squeal failures tests/components --error "${ERROR}" --per-check --limit all`,
+    );
 
-    const listing = run(command.split(" ").slice(1), repo.main);
+    const listing = run(shellWords(command)?.slice(1) ?? [], repo.main);
     expect(listing.code).toBe(0);
-    expect(listing.stdout).toContain("(91 failures, newest first):");
-    const names = listing.stdout
-      .split("\n")
-      .filter((line) => line.startsWith("  FAIL  "))
-      .map((line) => line.split("  ").at(-1));
-    expect(new Set(names)).toEqual(new Set(group.map(formatCheck)));
+    const names = listed(listing.stdout);
+    // Each check of the group once, and the older failure with its error, which it also selects.
+    expect(names.toSorted()).toEqual([...group, before].map(formatCheck).toSorted());
+    expect(listing.stdout).toContain("(92 checks, newest failure of each, newest first):");
 
     for (const c of group) {
       const why = run(["why", formatCheck(c)], repo.main);
       expect(why.code).toBe(0);
       expect(why.stdout).toContain(`Check: ${formatCheck(c)}\n`);
-      expect(why.stdout).toContain("ReferenceError: ResizeObserver is not defined");
+      expect(why.stdout).toContain(ERROR);
     }
-  });
-
-  it("names a limit only above the one `squeal failures` lists by default", () => {
-    expect(LISTED_BY_DEFAULT).toBe(FAILURES_LIMIT);
   });
 });

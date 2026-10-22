@@ -984,6 +984,10 @@ export interface FailuresSelection {
   readonly paths: readonly RelativePath[];
   /** `--check` texts; a check matches when its printed name holds one. */
   readonly checks: readonly string[];
+  /** `--error` texts; a failure matches when its summary holds one. */
+  readonly errors: readonly string[];
+  /** `--per-check`: each check once, at its newest failure the rest selects. */
+  readonly perCheck: boolean;
 }
 
 /**
@@ -1004,8 +1008,9 @@ export interface FailuresReport {
   readonly selection: FailuresSelection;
   /** At most `limit` entries, newest first. */
   readonly failures: readonly FailureEntry[];
-  /** Failures matching in all; more than `failures.length` when capped. */
+  /** Failures matching in all, checks with `perCheck`; more than `failures.length` when capped. */
   readonly total: number;
+  /** The most listed: `--limit`, 20 by default, `total` for `--limit all`. */
   readonly limit: number;
 }
 

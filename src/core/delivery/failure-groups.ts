@@ -20,12 +20,8 @@ import { seenLine, touchesLine } from "./provenance.js";
 /** Test files the command names before it names their common directory. */
 const FILES_NAMED = 3;
 
-/**
- * How many failures `squeal failures` lists without `--limit`: its
- * `FAILURES_LIMIT`, kept here because `status/failures.js` imports this
- * layer back through `why`.
- */
-export const LISTED_BY_DEFAULT = 20;
+/** Characters of the error's first line the command selects by; a part selects as the whole. */
+const ERROR_CHARS = 120;
 
 const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
@@ -93,23 +89,34 @@ function commonDirectory(paths: readonly string[]): string {
 }
 
 /**
- * The `squeal failures` command that lists every check of `group`: their
- * test files up to `FILES_NAMED`, else the directory holding them, with a
- * limit above the default's when the group has more checks.
+ * The `squeal failures` command that lists every check of `group`: the
+ * failures with its error, each check's newest once, all of them, in its test
+ * files up to `FILES_NAMED`, else the directory holding them, and in every
+ * worktree when they were inherited. Review 0.1.262 B1: the files and a
+ * limit of the group's size listed other, newer failures in its place.
  */
 function failuresCommand(
   group: readonly TransitionEntry[],
   command: string,
   quote: (t: string) => string,
 ): string {
+  const first = group[0] as TransitionEntry;
   const files = [...new Set(group.map((e) => e.check.testPath))];
   const selected = files.includes("")
     ? []
     : files.length <= FILES_NAMED
       ? files
       : [commonDirectory(files)].filter((d) => d !== "");
-  const limit = group.length > LISTED_BY_DEFAULT ? [`--limit ${group.length}`] : [];
-  return [`${command} failures`, ...selected.map((p) => argWord(p, quote)), ...limit].join(" ");
+  const error = Array.from((first.summary ?? "").split("\n")[0] ?? "")
+    .slice(0, ERROR_CHARS)
+    .join("");
+  return [
+    `${command} failures`,
+    ...selected.map((p) => argWord(p, quote)),
+    ...(error === "" ? [] : [`--error ${argWord(error, quote)}`]),
+    "--per-check --limit all",
+    ...(first.origin.kind === "inherited" ? ["--all-worktrees"] : []),
+  ].join(" ");
 }
 
 /**
