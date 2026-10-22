@@ -11,6 +11,7 @@ import type {
   WorktreeId,
 } from "./common.js";
 import type { CheckKey } from "./keys.js";
+import type { HoldChange } from "./standing.js";
 import type {
   DiagnosticFingerprint,
   FlakyNote,
@@ -218,6 +219,12 @@ export interface Delta {
    * Tool-boundary deliveries only; a peek and the idle waiter leave it.
    */
   readonly liveness?: DaemonLiveness;
+  /**
+   * Row 011-73 (C8 as amended 2026-10-21): set when the holds on the
+   * worktree's validation changed since this consumer was last told, at a
+   * tool boundary as `liveness` is. Absent from an older Squeal.
+   */
+  readonly hold?: HoldChange;
   /**
    * Checks whose known state is `fail` at delivery, any validity, so a
    * report with many recoveries can name what still fails instead of what
