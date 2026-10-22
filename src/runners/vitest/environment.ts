@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import type { TestProject } from "vitest/node";
 import { compare, sameList } from "../../core/fs/index.js";
 import type { AbsolutePath, RelativePath, RunnerEnvironment } from "../../core/types/index.js";
+import { environmentPackages } from "./packages.js";
 import type { WorktreePaths } from "./paths.js";
 import { configFiles, globalSetupFiles, type ProjectInputs } from "./project.js";
 
@@ -45,6 +46,27 @@ export function projectEnvironment(
     files,
     ...(sameList(former, files) ? {} : { formerFiles: former }),
   };
+}
+
+/**
+ * The packages every project's config files give the project
+ * (`environmentPackages` over them), which the key definition before task
+ * 011-85 read, where they differ from `packages`: a sibling's config then
+ * reached this environment (011 C3, C14; review 0.1.253 B1). Only where
+ * `formerFiles` is set, since equal files scan equal.
+ */
+export async function formerPackages(
+  project: TestProject,
+  inputs: ProjectInputs,
+  environment: RunnerEnvironment,
+  paths: WorktreePaths,
+): Promise<Pick<RunnerEnvironment, "formerPackages">> {
+  if (environment.formerFiles === undefined) return {};
+  const configs = configFiles(project.vitest);
+  const former = await environmentPackages(project, { ...inputs, configFiles: configs }, paths);
+  return JSON.stringify(former) === JSON.stringify(environment.packages)
+    ? {}
+    : { formerPackages: former };
 }
 
 /** The project files among `configs` and the setup closures, relative and sorted. */
