@@ -10,8 +10,9 @@ import {
 } from "../types/index.js";
 import { cancelsBacklog } from "./backlog.js";
 import type { SchedulerContext } from "./context.js";
+import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
-import { SHARE_FLOOR_MS } from "./sharing.js";
+import type { CutFiles } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
 
 /**
@@ -31,19 +32,32 @@ export const YIELD_REMAINDER_MS = 30_000;
 type Decision = Extract<CancelCause, "supersession" | "backlog" | "yield"> | TierYield | null;
 
 /**
+ * A yield cut a file at `key` when it had `applied` results
+ * (`FileState.resultsApplied`); `past` when its tier had run past its
+ * estimate (`overruns`, row 011-107).
+ */
+interface Cut {
+  readonly key: CheckKey;
+  readonly applied: number;
+  readonly past: boolean;
+}
+
+/**
  * Spec 011 C4 step 5 as amended 2026-10-21 (row 011-51): which fast tiers in
  * flight a revision, a runner part or a promotion cancels, the files a yield
  * cut, and what each tier in flight does for a promoted file's wait,
  * published for status in one `yields` meta row of the worktree (C15).
+ * Tier selection reads the files cut past their estimate (`CutFiles`, row
+ * 011-112).
  */
-export class TierYields {
+export class TierYields implements CutFiles {
   /**
-   * The key a yield cut each file at and its `resultsApplied` then, by
-   * `testFileId`, until a result lands at that key after the cut or its key
-   * moves. A forced file already has a result at its key when it is cut, so
+   * The key a yield cut each file at, its `resultsApplied` then and whether
+   * its tier was past its estimate, by `testFileId`, until a result lands at
+   * that key after the cut or its key moves. A forced file already has a result at its key when it is cut, so
    * `resultKey` alone would end the mark at once (review `reviews/0.1.237.md`).
    */
-  readonly #cut = new Map<string, { key: CheckKey; applied: number }>();
+  readonly #cut = new Map<string, Cut>();
   /** What each tier in flight does for a wait in its lane, by run id, as last published. */
   readonly #standing = new Map<string, TierYield>();
   /**
@@ -92,10 +106,11 @@ export class TierYields {
     for (const tier of tiers) {
       const decision = this.#decide(context, ledger, tier, revision);
       if (typeof decision === "string") {
-        if (decision === "yield")
+        if (decision === "yield") {
+          const past = remainder(context, tier) < 0;
           for (const { file, key } of unfinished(tier))
-            this.#cut.set(file.id, { key, applied: file.resultsApplied });
-        else if (tier.kind === "backlog" && tier.slot !== true)
+            this.#cut.set(file.id, { key, applied: file.resultsApplied, past });
+        } else if (tier.kind === "backlog" && tier.slot !== true)
           context.quiet?.cancelled(tier.lane, context.now());
         tier.cancel?.abort(decision);
       }
@@ -107,6 +122,11 @@ export class TierYields {
     }
     if (changed) this.#publish(context);
     this.#arm(context);
+  }
+
+  cutPastEstimate(file: FileState): boolean {
+    const cut = this.#cut.get(file.id);
+    return cut?.past === true && holds(file, cut);
   }
 
   /** `tier` is no longer in flight: its standing and its bound go. */
@@ -163,13 +183,9 @@ export class TierYields {
     this.#timer = null;
   }
 
-  /** Drops the marks of files whose result landed at the key cut after the cut, or whose key moved. */
+  /** Drops the marks that no longer hold. */
   #forget(ledger: Ledger): void {
-    for (const [id, cut] of this.#cut) {
-      const file = ledger.files.get(id);
-      const landed = file?.resultKey === cut.key && file.resultsApplied > cut.applied;
-      if (file === undefined || file.key !== cut.key || landed) this.#cut.delete(id);
-    }
+    for (const [id, cut] of this.#cut) if (!holds(ledger.files.get(id), cut)) this.#cut.delete(id);
   }
 
   /** Records `standing` for `runId`; whether it changed. */
@@ -190,6 +206,12 @@ export class TierYields {
       store.meta.set(key, JSON.stringify({ at: context.now(), tiers }));
     }
   }
+}
+
+/** `cut` marks `file` still: its key has not moved, and no result landed at it after the cut. */
+function holds(file: FileState | undefined, cut: Cut): boolean {
+  if (file === undefined || file.key !== cut.key) return false;
+  return file.resultKey !== cut.key || file.resultsApplied <= cut.applied;
 }
 
 /** The files of `tier` whose module has not ended, as far as the runner said (`Tier.ended`). */
@@ -263,22 +285,20 @@ function remainder(context: SchedulerContext, tier: Tier): number {
 
 /**
  * Whether `tier` may yield past its estimate (row 011-107): it has a file
- * left to cut, as `superseded` needs, and every file it would cut has a
- * last-known duration of at least `SHARE_FLOOR_MS`, a file with none
- * counting 0. A cut file runs again from its start, and one under the floor
- * shares the promoted file's next tier (`joinSpan`), whose result then waits
- * for it; row 011-112 keeps cut files apart and ends this hold.
+ * left to cut, as `superseded` needs. A file with no known duration counts
+ * 0, so such a tier yields 30 s after its start. The files it cuts run
+ * again from their start, apart from the file it yields to (`joinSpan`,
+ * row 011-112).
  */
 function overruns(tier: Tier): boolean {
-  const left = unfinished(tier);
-  return left.length > 0 && left.every(({ file }) => (file.durationMs ?? 0) >= SHARE_FLOOR_MS);
+  return unfinished(tier).length > 0;
 }
 
 /**
  * When a tier that does not yield for `decision` yields at the latest,
  * `YIELD_REMAINDER_MS` past its estimate (row 011-107); `null` when nothing
  * but an event changes it: a cut, the backlog's turn, a runner that does
- * not cancel, nothing waiting, or a tier `overruns` holds.
+ * not cancel, nothing waiting, or no file left to cut.
  */
 function boundOf(
   context: SchedulerContext,

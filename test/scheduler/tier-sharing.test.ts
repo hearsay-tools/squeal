@@ -52,8 +52,9 @@ afterEach(() => {
 
 describe("joinSpan (task 001-184)", () => {
   it("always takes the first file", () => {
-    expect(joinSpan(null, 600_000)).toEqual({ fastest: 600_000, slowest: 600_000 });
-    expect(joinSpan(null, null)).toEqual({ fastest: 0, slowest: 0 });
+    expect(joinSpan(null, 600_000)).toEqual({ fastest: 600_000, slowest: 600_000, cut: false });
+    expect(joinSpan(null, null)).toEqual({ fastest: 0, slowest: 0, cut: false });
+    expect(joinSpan(null, null, true)).toEqual({ fastest: 0, slowest: 0, cut: true });
   });
 
   it("keeps files under the floor together, whatever their ratio", () => {
@@ -71,6 +72,18 @@ describe("joinSpan (task 001-184)", () => {
   it("counts a file of no known time as 0", () => {
     expect(joinSpan(joinSpan(null, 112_000), null)).toBeNull();
     expect(joinSpan(joinSpan(null, null), 500)).not.toBeNull();
+  });
+
+  it("keeps a file a yield cut past its estimate apart from one it did not, under the floor too (row 011-112)", () => {
+    expect(joinSpan(joinSpan(null, 2_000), 5_000, true)).toBeNull();
+    expect(joinSpan(joinSpan(null, 5_000, true), 2_000)).toBeNull();
+    expect(joinSpan(joinSpan(null, null), null, true)).toBeNull();
+    expect(joinSpan(joinSpan(null, 5_000, true), 5_000, true)).toEqual({
+      fastest: 5_000,
+      slowest: 5_000,
+      cut: true,
+    });
+    expect(joinSpan(joinSpan(null, 2_000, true), 2_000 * SHARE_RATIO + 1, true)).toBeNull();
   });
 });
 

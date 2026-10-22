@@ -25,7 +25,7 @@ import {
 import { endRetry, recordFailedLoad, tierLoad } from "./retries.js";
 import { storeClosures } from "./revision.js";
 import { failStartup } from "./setup.js";
-import { joinSpan, type TierSpan } from "./sharing.js";
+import { type CutFiles, joinSpan, NONE_CUT, type TierSpan } from "./sharing.js";
 import { backlogSlot, joinsSlot } from "./slots.js";
 import { laneFor } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
@@ -155,7 +155,10 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * Any other tier takes a file only beside files of a comparable last-known
  * time (`joinSpan`, task 001-184): a tier stores its results when it ends,
  * so a file far slower than one already taken waits for the next tier
- * instead of holding the faster file's result (lessons, defect 31).
+ * instead of holding the faster file's result (lessons, defect 31). Nor
+ * does it hold both a file a yield `cut` past its tier's estimate and one
+ * it did not so cut (row 011-112): the file the tier yielded to does not
+ * wait for the cut files to run again from their start.
  *
  * A file a timed-out tier left incomplete joins a tier of at most its
  * `tierCap` files; one that does not fit stays queued and leads a later tier
@@ -195,6 +198,7 @@ export function selectTier(
   context: SchedulerContext,
   ledger: Ledger,
   busy: ReadonlySet<string> = new Set(),
+  cut: CutFiles = NONE_CUT,
   turnDue = ledger.queue.backlogTurn(),
 ): Tier | null {
   const { keys, policy } = context;
@@ -262,7 +266,7 @@ export function selectTier(
       slot = backlogSlot(context, ref);
     } else if (slot !== null && !joinsSlot(picked, file, (r) => partOf(context, r))) break;
     if (!backlog && slot === null) {
-      const joined = joinSpan(span, file.durationMs);
+      const joined = joinSpan(span, file.durationMs, cut.cutPastEstimate(file));
       if (joined === null) continue;
       span = joined;
     }
@@ -286,7 +290,7 @@ export function selectTier(
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     // The turn holds no edit's tier back on the pool: that tier goes, and the turn comes after it.
-    return turnTier ? selectTier(context, ledger, busy, false) : null;
+    return turnTier ? selectTier(context, ledger, busy, cut, false) : null;
   }
   const lease = taken ? widthLease(taken, width) : taken;
   if (backlog && slot === null && lease && lease.grant < Math.min(width, offer)) {
@@ -324,7 +328,7 @@ export function selectTier(
     skipped &&
     picked.length === 0 &&
     !ledger.queue.hasFirstGroup((r) => !busy.has(laneOf(context, r)));
-  return settled || slots ? selectTier(context, ledger, busy, turnDue) : null;
+  return settled || slots ? selectTier(context, ledger, busy, cut, turnDue) : null;
 }
 
 /** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */

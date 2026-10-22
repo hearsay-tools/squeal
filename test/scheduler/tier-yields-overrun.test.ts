@@ -22,12 +22,13 @@ import {
  * Row 011-107 (gh-73; spec 011 C4 step 5 as the digest of 2026-10-22, group
  * B, amends it): a tier that has run `YIELD_REMAINDER_MS` past its estimate
  * yields to a promoted wait as one whose remainder exceeds it does, once per
- * file and key, when every file it would cut was last at least
- * `SHARE_FLOOR_MS`. Before it, a tier past its estimate never yielded: on
+ * file and key. Before it, a tier past its estimate never yielded: on
  * 0.1.238 a wait read "its estimated remainder was 0 s, not over 30 s" and
- * waited 55 s more. The scheduler's clock runs `skew` ahead of the real one,
- * so a tier has run past its estimate without the test waiting for it; a
- * held run stands for one that takes longer than its files' `ms`.
+ * waited 55 s more. Row 011-112: the files it cut do not share the named
+ * file's next tier, whatever their last-known durations. The scheduler's
+ * clock runs `skew` ahead of the real one, so a tier has run past its
+ * estimate without the test waiting for it; a held run stands for one that
+ * takes longer than its files' `ms`.
  */
 const SLOW = [1, 2, 3, 4].map((i) => `test/s${i}.test.ts`);
 const isSlow = (path: string) => SLOW.includes(path);
@@ -39,13 +40,18 @@ const now = () => Date.now() + clock.skew;
 
 /**
  * A tier of the four slow files, `ms` each last time, held in flight from
- * a clock at 0 skew; `F`, and `extra`, are 1 ms files of the same lane.
+ * a clock at 0 skew; `F`, and `extra`, are files of the same lane, `named`
+ * ms each last time (1 by default).
  */
-async function heldTier(ms: number, extra: readonly string[] = [], policy?: Partial<Policy>) {
+async function heldTier(
+  ms: number,
+  options: { extra?: readonly string[]; policy?: Partial<Policy>; named?: number } = {},
+) {
+  const { extra = [], policy, named = 1 } = options;
   clock.skew = 0;
   const files: CatchUpFile[] = [
     ...SLOW.map((path) => ({ path, ms, imports: ["src/s.ts"] })),
-    ...[F, ...extra].map((path) => ({ path, ms: 1, imports: [path.replace("test/", "src/")] })),
+    ...[F, ...extra].map((path) => ({ path, ms: named, imports: [path.replace("test/", "src/")] })),
   ];
   const repo = catchUpRepo(files);
   const side = catchUpSide(repo, repo.main, {
@@ -68,6 +74,12 @@ async function wait(side: CatchUpSide, path: string): Promise<void> {
   await side.edit("watch", path.replace("test/", "src/"));
   await side.scheduler.promote([ref(path)], 60_000);
 }
+
+/** What waits for the tier in flight for `F`: a named wait, or an edit's work alone (row 011-112). */
+const waiters = [
+  { by: "a named wait", queue: (side: CatchUpSide) => wait(side, F) },
+  { by: "an edit", queue: (side: CatchUpSide) => side.edit("watch", F.replace("test/", "src/")) },
+];
 
 /** What the live daemon of `side` published for its tiers in flight. */
 function standings(side: CatchUpSide) {
@@ -140,27 +152,80 @@ describe("a tier past its estimate yields (spec 011 C4 step 5 as amended, row 01
     expect(next?.files.map((f) => f.path)).toEqual([F]);
   });
 
-  it("a tier of files with no known duration does not yield, past its bound too (held until row 011-112)", async () => {
-    // Row 011-112: a cut file of no known duration would share the named file's next tier
-    // (`joinSpan` counts it 0, under `SHARE_FLOOR_MS`), so the named file would wait for it again.
-    const policy = { baseline: { ...DEFAULT_POLICY.baseline, onStart: "lookup-only" as const } };
-    const { side, gate, tier } = await heldTier(200_000, [], policy);
+  it.each(waiters)(
+    "a tier of files with no known duration yields to $by; F runs alone while the cut files stay held (row 011-112)",
+    async ({ queue }) => {
+      // `joinSpan` counts an unknown duration 0, under `SHARE_FLOOR_MS`: a cut file would share
+      // F's next tier and run again from its start before F's result.
+      const policy = { baseline: { ...DEFAULT_POLICY.baseline, onStart: "lookup-only" as const } };
+      const { side, gate, tier, waitAt } = await heldTier(200_000, { policy });
 
-    clock.skew = 2 * YIELD_REMAINDER_MS;
-    await wait(side, F);
-    await pause(SETTLE_MS);
-    expect(tier.cancelled).toBe(false);
-    expect(standings(side)).toMatchObject([{ kind: "remainder" }]);
-    gate.stop();
-    await side.scheduler.idle();
+      clock.skew = 2 * YIELD_REMAINDER_MS;
+      await queue(side);
+      await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+      await expect.poll(() => side.current(F), { timeout: CUT_WITHIN_MS }).toBe(true);
+      expect(SLOW.some((path) => side.current(path))).toBe(false);
+      gate.stop();
+      await side.scheduler.idle();
 
-    const next = side.runner.runs[side.runner.runs.indexOf(tier) + 1];
-    expect(next?.files.map((f) => f.path)).toEqual([F]);
-  });
+      expect(order(side, waitAt)).toEqual([[F], SLOW]);
+      expect(SLOW.every((path) => side.current(path))).toBe(true);
+    },
+  );
+
+  it.each(waiters)(
+    "a 2 s file waited for by $by does not share its next tier with the 5 s files the yield cut (review 0.1.265 S1)",
+    async ({ queue }) => {
+      // 5 s is within `SHARE_RATIO` of 2 s: `joinSpan` alone would put them in one tier.
+      const { side, gate, tier, waitAt } = await heldTier(5_000, { named: 2_000 });
+
+      clock.skew = 5_000 + YIELD_REMAINDER_MS;
+      await queue(side);
+      await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+      await expect.poll(() => side.current(F), { timeout: CUT_WITHIN_MS }).toBe(true);
+      expect(SLOW.some((path) => side.current(path))).toBe(false);
+      gate.stop();
+      await side.scheduler.idle();
+
+      expect(order(side, waitAt)).toEqual([[F], SLOW]);
+      expect(SLOW.every((path) => side.current(path))).toBe(true);
+    },
+  );
+
+  it.each([
+    {
+      cut: "past their 5 s estimate",
+      ms: 5_000,
+      skew: 5_000 + YIELD_REMAINDER_MS,
+      next: [[F], SLOW],
+    },
+    {
+      cut: "by their 40 s remainder",
+      ms: 40_000,
+      skew: 0,
+      next: [[F, ...SLOW.slice(0, 3)], SLOW.slice(3)],
+    },
+  ])(
+    "a 10 s named file and files a yield cut $cut: they share its next tier only after a remainder cut (row 011-112)",
+    async ({ ms, skew, next }) => {
+      // 10 s is within `SHARE_RATIO` of both: only the cut past an estimate, which proved it short,
+      // keeps the cut files apart.
+      const { side, gate, tier, waitAt } = await heldTier(ms, { named: 10_000 });
+
+      clock.skew = skew;
+      await wait(side, F);
+      await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+      gate.stop();
+      await side.scheduler.idle();
+
+      expect(order(side, waitAt)).toEqual(next);
+      expect([...SLOW, F].every((path) => side.current(path))).toBe(true);
+    },
+  );
 
   it("a tier holding a file the overrun cut does not yield again at that key", async () => {
     const H = "test/h.test.ts";
-    const { side, gate, tier: first, waitAt } = await heldTier(5_000, [H]);
+    const { side, gate, tier: first, waitAt } = await heldTier(5_000, { extra: [H] });
 
     clock.skew = 5_000 + YIELD_REMAINDER_MS;
     await wait(side, F);
