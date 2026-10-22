@@ -110,6 +110,21 @@ describe("the plan on a repository shaped like toolkit-dev", () => {
     ]);
   });
 
+  it("asks either of two projects in one directory to give the shared files up", async () => {
+    const pytest = [
+      { name: "unit", include: ["tests/**/test_*.py"] },
+      { name: "all", include: ["**/test_*.py"] },
+    ];
+    const root = toolkitShaped({ "squeal.config.json": json({ nodeTest: [], pytest }) });
+    expect((await planJson(root)).runners.pytestOverlaps).toEqual([
+      {
+        projects: ["unit", "all"],
+        testFiles: 1,
+        fix: 'keep each test file in one project: narrow the include of pytest project "all" or add the shared files to its exclude',
+      },
+    ]);
+  });
+
   it("estimates the warm-up per project and test file, Vitest below the root left out", async () => {
     const plan = await planJson(toolkitShaped());
     // root: tests/test_root.py and plugin-tools/a's two; plugin-tools-a: its two.
