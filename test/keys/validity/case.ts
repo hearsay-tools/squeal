@@ -70,6 +70,13 @@ export interface AcceptInput {
    * with its own keys read as one (task 011-85 R4).
    */
   readonly installed?: Readonly<Record<string, string>>;
+  /**
+   * The receiver is keyed at the key first, and each run is stored as its
+   * scheduler stores one (`storeResults`), so a pass that replaces a fail
+   * heals the receiver; its states and key row after the runs are an output
+   * (review 0.1.266, B1).
+   */
+  readonly heal?: true;
 }
 
 /** A fixture repository keyed as a daemon keys it. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { unmergedPaths } from "../../src/core/daemon-loop/head.js";
-import { unmergedIndexPaths } from "../../src/core/scheduler/hold.js";
+import { healsUnheld, holdsAt, unmergedIndexPaths } from "../../src/core/scheduler/hold.js";
 import {
   commandHoldMetaKey,
   MERGE_HOLD_PATHS,
@@ -59,6 +59,39 @@ describe("the merge hold's parsers and rows (row 011-72)", () => {
       expect(readMergeHold(store, "w", 0)).toBeNull();
     }
     expect(MERGE_HOLD_PATHS).toBe(50);
+  });
+
+  it("names another worktree's held keys by their inputs, every key past the row's 50 paths (review 0.1.266 B1)", () => {
+    const store = open(fakeCommonDir());
+    const row = { v: 1, since: 2_000, revision: 7, paths: ["src/helper.ts"], count: 1 };
+    const helper = ["test/a.test.ts", "src/helper.ts", "config.json"];
+    const other = ["test/other.test.ts", "config.json"];
+    expect(holdsAt(store, "w", helper)).toBe(false);
+    // No daemon registered: the last one's row stands until the next one starts.
+    store.meta.set(mergeHoldMetaKey("w"), JSON.stringify(row));
+    expect([holdsAt(store, "w", helper), holdsAt(store, "w", other)]).toEqual([true, false]);
+    expect([healsUnheld(store, helper)("w"), healsUnheld(store, other)("w")]).toEqual([
+      false,
+      true,
+    ]);
+    store.meta.set(mergeHoldMetaKey("w"), JSON.stringify({ ...row, count: 51 }));
+    expect(holdsAt(store, "w", other)).toBe(true);
+    // A daemon started after the row: its predecessor's hold is gone.
+    store.worktrees.upsert({
+      id: "w",
+      root: "/w",
+      commonDir: "/w/.git",
+      isMain: true,
+      registeredAt: 1_000,
+      daemon: {
+        socketPath: "/tmp/w.sock",
+        startedAt: 3_000,
+        heartbeatAt: 3_000,
+        heartbeatIntervalMs: 60_000,
+        squealVersion: "0.0.0-test",
+      },
+    });
+    expect(holdsAt(store, "w", helper)).toBe(false);
   });
 
   it("reads the command holds as written, and drops an entry that does not parse", () => {
