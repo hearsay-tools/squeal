@@ -38,3 +38,26 @@ One successor per handoff: 011 C9 as amended 2026-10-20, design `tasks/011-30/de
 
 - 011-34 reads the claim with `readHandoff` and its bound from `boundAt`. Without a claim, the 130 s bound is `HANDOFF_BOUND_MS` from the shutdown's start.
 - `squeal start` takes part in the handoff through `claimHandoff`, as a hook does.
+
+## Review 0.1.259 repair, B1 (W3 of wave 12.5, 2026-10-22)
+
+`reviews/0.1.259.md` B1: `handOver` read the claim only after `asksStepDown` rejected a stale heartbeat. A stepping daemon stops its heartbeat when its shutdown begins, so ten seconds later every boundary fell back to an ordinary ensure, whose ping a stopping socket answers. Past the claim's bound, or after the successor's lock wait timed out and cleared the claim, no successor came. The retry tests above used a one-hour heartbeat, which hid it.
+
+What changed, in `src/harness/shared/ensure.ts`:
+
+- `handOver` checks `succeeds` first: the hook is newer and no other session's consumer runs an older version or none (review wave 12b, B1). Then a live claim for this incarnation gives `joined`, whatever the heartbeat. Then a fresh heartbeat asks the first step-down as before (`requestStepDown`). A stopped heartbeat claims and spawns only when the daemon already steps down (`steppingDown`): its shutdown mark (`shutDown`), or a claim that names it, past its bound now.
+- `stepDownIfOlder` and `asksStepDown` keep the fresh-heartbeat rule for a first step-down.
+
+Decisions the review did not settle:
+
+- **Recovery asks the old daemon nothing.** Its mark, or a claim that names it, proves it accepted a step-down, and it was sent `stop` then. A wedged old daemon does not answer, and recovery must not depend on it.
+- **A daemon whose heartbeat stopped with no mark and no claim is asked nothing**, as before: a stalled or stopped process, not a handoff.
+- **After a timed-out lock wait, a daemon that leaves no mark (a release before 0.1.121) is not recovered by a hook.** The wait cleared the claim, so nothing names the handoff; the boundary ensures as before. Past the claim's bound, with the claim still there, the claim alone is the proof, whatever the release.
+
+| Test (`test/harness/handoff.test.ts`) | What it checks | Red on base |
+| --- | --- | --- |
+| "past the claim's bound, the heartbeat stopped, with its shutdown's mark" and "with no mark" | A 5 s heartbeat stopped at T. At T + 130 s − 1 a boundary joins; at T + 130 s it claims and spawns. One step-down is asked in all. The new claim is at T + 130 s. | Yes, both |
+| "after the successor's lock wait ended the claim, the heartbeat stopped" | At T + 120,001 ms, with the claim cleared, a boundary spawns and claims. | Yes |
+| "asks a daemon whose heartbeat stopped with no shutdown and no claim nothing" | The first step-down still needs a fresh heartbeat; the boundary ensures as before. | No, by design |
+
+These replace the two retry tests with a one-hour heartbeat. The six-boundary test is unchanged.
