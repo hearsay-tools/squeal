@@ -45,6 +45,7 @@ import {
   type DaemonWatch,
   type DownReason,
   type HeartbeatLapse,
+  stoppingOf,
   watchDaemon,
 } from "./wait-liveness.js";
 
@@ -346,8 +347,10 @@ export async function waitForNamed(
         const all = readClasses(store, id, selection.files);
         const settled = final || elapsed() >= options.settleMs;
         watch ??= watchDaemon(id, { downMs: options.downMs });
-        const record = store.worktrees.get(id)?.daemon ?? null;
-        const daemon = watch.judge(record, options.now());
+        const worktree = store.worktrees.get(id);
+        const record = worktree?.daemon ?? null;
+        const readAt = options.now();
+        const daemon = watch.judge(record, readAt, stoppingOf(store, worktree, readAt));
         const current = sync.current();
         // A lapsed heartbeat gives no verdict yet: the daemon may be mid-run (004-66).
         const ready =
