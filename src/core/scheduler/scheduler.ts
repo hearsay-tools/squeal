@@ -196,6 +196,8 @@ class TierScheduler implements Scheduler {
         started: () => this.#started(),
         ready: () => this.#context !== null,
         closed: () => this.#closed,
+        halted: () => this.#halted(),
+        runtimeMissing: () => this.#runtimeMissing(),
         pump: () => this.#pump(),
         editPending: () => this.#editPending(),
         fastIdle: () => this.#fastIdle(),
