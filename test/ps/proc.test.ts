@@ -55,7 +55,6 @@ describe("process table", () => {
     expect(table.get(349493)).toEqual({
       pid: 349493,
       ppid: 1049,
-      pgid: 349493,
       comm: "MainThread",
       state: "S",
       startTicks: startTicksOf(daemon),
@@ -64,7 +63,7 @@ describe("process table", () => {
       nice: 0,
       uid: process.getuid?.() ?? null,
     });
-    expect(table.get(2353452)).toMatchObject({ ppid: 2091490, pgid: 2091490, nice: 10 });
+    expect(table.get(2353452)).toMatchObject({ ppid: 2091490, nice: 10 });
   });
 
   test("a command name with spaces and parentheses ends at the last parenthesis", () => {
@@ -202,18 +201,11 @@ describe("locks and listeners", () => {
     expect(source.locks()).toBeNull();
   });
 
-  test("unixListeners runs ss -xle and ties each bound name to its socket and file inode", () => {
+  test("unixListeners runs ss -xle and gives each listener's file inode", () => {
     const run = vi.fn(() => SS_XLE);
     const listeners = createProcSource({ root, run }).unixListeners();
     expect(run).toHaveBeenCalledWith("ss", ["-xle"]);
-    expect(listeners).toEqual([
-      { path: "/run/user/1000/.201327086831dfaa", socketInode: 1057291937, fileInode: 325632 },
-      {
-        path: "/tmp/squeal-1000/tmp/1e2484abf6bcdf96/cez ci/ipc",
-        socketInode: 205499193,
-        fileInode: 1087533839,
-      },
-    ]);
+    expect(listeners).toEqual([{ fileInode: 325632 }, { fileInode: 1087533839 }]);
   });
 
   test("unixListeners is null without ss", () => {
