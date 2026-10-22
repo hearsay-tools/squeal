@@ -21,7 +21,7 @@ import {
   printNamed,
   selectNamedFiles,
 } from "./status-wait-paths.js";
-import { readClasses, readVerdict } from "./verdict.js";
+import { holdOfWait, readClasses, readVerdict } from "./verdict.js";
 
 export interface NamedSnapshotOptions {
   /** Default `STATUS_WAIT_SETTLE_MS`: the longest the snapshot waits for the daemon's sync. */
@@ -104,13 +104,18 @@ function readOnce(
   const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
   const held = selection.files.filter((f) => !paused.has(testFileId(f)));
   const classes = paused.size === 0 ? all : readClasses(store, id, held);
+  const decided = ready ? decidedOutcome(selection, held, classes) : null;
+  // Row 011-73 (C6 as amended 2026-10-21): a held file queued on hold has the hold as its verdict.
+  const hold =
+    ready && decided === null
+      ? holdOfWait(store, id, () => store.testFileKeys.list(id, held), now)
+      : null;
   const outcome: NamedWaitOutcome =
-    liveness.state !== "alive"
-      ? "no-daemon"
-      : ((ready ? decidedOutcome(selection, held, classes) : null) ?? "timeout");
+    liveness.state !== "alive" ? "no-daemon" : (decided ?? (hold !== null ? "on-hold" : "timeout"));
   const result = buildSnapshot(store, root, now);
   return {
     outcome,
+    ...(hold === null ? {} : { hold }),
     selection,
     leftForPause,
     verdict: readVerdict(store, id, held),
