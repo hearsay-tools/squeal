@@ -1,7 +1,11 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import { harnessGone, recordHarness } from "../../src/core/delivery/harness-process.js";
+import {
+  harnessAlive,
+  harnessGone,
+  recordHarness,
+} from "../../src/core/delivery/harness-process.js";
 import {
   dropGoneHarnesses,
   expireConsumers,
@@ -91,6 +95,26 @@ describe.runIf(linux)("harnessGone", () => {
     await exited(child);
     expect(harnessGone({ ...recorded, pidNamespace: "pid:[1]" }, pidNamespace())).toBe(false);
     expect(harnessGone(recorded, null)).toBe(false);
+  });
+});
+
+// The rule of `harnessGone` and of `squeal ps` (`ps/work.ts`), over a PID's stat row.
+describe("harnessAlive", () => {
+  const recorded: HarnessProcess = { pid: 900, startTime: 7, pidNamespace: "ns" };
+  const alive = (stat: { startTime: number; state: string | null } | null, namespace = "ns") =>
+    harnessAlive(recorded, namespace, (pid) => (pid === 900 ? stat : null));
+
+  it("is the recorded process while its PID has its start time and is no zombie", () => {
+    expect(alive({ startTime: 7, state: "S" })).toBe(true);
+    expect(alive({ startTime: 7, state: null })).toBe(true);
+    expect(alive({ startTime: 7, state: "Z" })).toBe(false);
+    expect(alive({ startTime: 8, state: "S" })).toBe(false);
+    expect(alive(null)).toBe(false);
+  });
+
+  it("cannot tell in another PID namespace, or without one of its own", () => {
+    expect(alive(null, "other")).toBeNull();
+    expect(harnessAlive(recorded, null, () => null)).toBeNull();
   });
 });
 

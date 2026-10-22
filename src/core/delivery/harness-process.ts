@@ -68,13 +68,27 @@ export function pidNamespace(): string | null {
  * to be gone.
  */
 export function harnessGone(harness: HarnessProcess, namespace: string | null): boolean {
-  if (namespace === null || harness.pidNamespace !== namespace) return false;
   try {
-    const stat = readProcStat(harness.pid);
-    return stat === null || stat.startTime !== harness.startTime || stat.state === "Z";
+    return harnessAlive(harness, namespace, readProcStat) === false;
   } catch {
     return false;
   }
+}
+
+/**
+ * `harnessGone`'s rule over `statOf`, the stat of a PID or `null` without
+ * one: `false` when `harness` is surely gone, `null` in another PID namespace
+ * than `namespace`, where its PID names another process. A stat without a
+ * state is not a zombie's.
+ */
+export function harnessAlive(
+  harness: HarnessProcess,
+  namespace: string | null,
+  statOf: (pid: number) => { readonly startTime: number; readonly state: string | null } | null,
+): boolean | null {
+  if (namespace === null || harness.pidNamespace !== namespace) return null;
+  const stat = statOf(harness.pid);
+  return stat !== null && stat.startTime === harness.startTime && stat.state !== "Z";
 }
 
 /** `meta` key of a worktree's recorded harness processes. */
@@ -99,7 +113,7 @@ export function recordedHarnesses(
   const harnesses = new Map<string, HarnessProcess>();
   for (const [name, value] of Object.entries(readAll(store, harnessMetaKey(worktreeId)))) {
     const harness = toHarness(value);
-    if (harness !== null) harnesses.set(name, harness);
+    if (harness !== undefined) harnesses.set(name, harness);
   }
   return harnesses;
 }
@@ -113,12 +127,13 @@ export function sameHarness(a: HarnessProcess, b: HarnessProcess): boolean {
   return a.pid === b.pid && a.startTime === b.startTime && a.pidNamespace === b.pidNamespace;
 }
 
-function toHarness(value: unknown): HarnessProcess | null {
-  if (!isRecord(value)) return null;
+/** A consumer's value in a `harnessProcess` row; `undefined` in a format this release does not know. */
+export function toHarness(value: unknown): HarnessProcess | undefined {
+  if (!isRecord(value)) return undefined;
   const { pid, startTime, pidNamespace } = value;
   return typeof pid === "number" &&
     typeof startTime === "number" &&
     typeof pidNamespace === "string"
     ? { pid, startTime, pidNamespace }
-    : null;
+    : undefined;
 }
