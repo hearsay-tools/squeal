@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { unmergedPaths } from "../../src/core/daemon-loop/head.js";
+import { unmergedIndexPaths } from "../../src/core/scheduler/hold.js";
 import {
   commandHoldMetaKey,
   MERGE_HOLD_PATHS,
   mergeHoldMetaKey,
   readCommandHolds,
   readMergeHold,
-  unmergedIndexPaths,
-} from "../../src/core/scheduler/hold.js";
+} from "../../src/core/scheduler/hold-rows.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*
