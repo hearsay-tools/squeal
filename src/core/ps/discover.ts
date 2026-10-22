@@ -1,10 +1,11 @@
-import { readdirSync, statSync } from "node:fs";
+import { statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import { lockFileFor, storePaths } from "../store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/index.js";
 import type { Discover, Discovery, FoundDaemon, PhaseOf, PsPlaces, SocketFile } from "./model.js";
+import { NODE_COMMS, names } from "./reads.js";
 import type { PsUnknown } from "./shape.js";
 import { type LockEntry, type ProcessRow, type PsSource, ticksToMs } from "./source.js";
 
@@ -18,8 +19,6 @@ import { type LockEntry, type ProcessRow, type PsSource, ticksToMs } from "./sou
 
 /** `btime` is whole seconds, so a process start read from it is up to 1 s early. */
 const START_MARGIN_MS = 1_000;
-/** D2 step 1: Node 24 names its main thread `MainThread`; older Node, `node`. */
-const NODE_COMMS: ReadonlySet<string> = new Set(["MainThread", "node"]);
 const SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
 /** `<common-dir>/squeal/locks/<id>.sqlite`; a waiter lock (`waiter-<id>`) does not match. */
 const LOCK_FILE = /^(.+)\/squeal\/locks\/([0-9a-f]{16})\.sqlite$/;
@@ -265,13 +264,4 @@ function socketFiles(
 /** The live daemon of `worktreeId` that holds its lock; where locks cannot be read (D10), any daemon of it. */
 function holderOf(daemons: readonly FoundDaemon[], worktreeId: WorktreeId): number | null {
   return daemons.find((d) => d.worktreeId === worktreeId && (d.holdsLock ?? true))?.row.pid ?? null;
-}
-
-function names(dir: AbsolutePath): string[] {
-  try {
-    return readdirSync(dir).sort();
-  } catch {
-    // No such directory: no daemon of this user has used it.
-    return [];
-  }
 }
