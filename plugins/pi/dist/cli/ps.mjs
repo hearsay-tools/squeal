@@ -4,17 +4,25 @@ const require = __squealCreateRequire(import.meta.url);
 
 // src/cli/ps.ts
 import { homedir as homedir2 } from "node:os";
-import { isAbsolute as isAbsolute6, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute8, resolve as resolve3 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/paths.ts
+import { dirname, isAbsolute, join } from "node:path";
+var SOCKET_NAME = /^squeal-([0-9a-f]{16})\.sock$/;
+function socketWorktreeId(name) {
+  return SOCKET_NAME.exec(name)?.[1] ?? null;
+}
+function userTmpDir(uid = currentUid()) {
+  return join("/tmp", `squeal-${uid}`);
+}
 function currentUid() {
   return process.getuid?.() ?? 0;
 }
 
 // src/core/daemon/user-config.ts
 import { availableParallelism, homedir } from "node:os";
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join2, resolve as resolve2 } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute3, join as join3, resolve as resolve2 } from "node:path";
 
 // src/core/fs/errors.ts
 function isMissing(error) {
@@ -25,14 +33,14 @@ function isMissing(error) {
 // src/core/fs/git-layout.ts
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join2, resolve } from "node:path";
 var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
 function findWorktreeRoot(path) {
   let dir = resolve(path);
   if (existsSync(dir)) dir = realpathSync(dir);
   for (; ; ) {
-    if (existsSync(join(dir, ".git"))) return dir;
-    const parent = dirname(dir);
+    if (existsSync(join2(dir, ".git"))) return dir;
+    const parent = dirname2(dir);
     if (parent === dir) return null;
     dir = parent;
   }
@@ -50,10 +58,10 @@ function resolveCommonDir(root) {
   if (!entry.isFile) return realpathSync(entry.gitDir);
   const { gitDir } = entry;
   if (lstatOrNull(gitDir) === null) return null;
-  const commondirFile = join(gitDir, "commondir");
+  const commondirFile = join2(gitDir, "commondir");
   if (lstatOrNull(commondirFile) === null) return realpathSync(gitDir);
   const commondir = readFileSync(commondirFile, "utf8").trim();
-  const common = isAbsolute(commondir) ? commondir : resolve(gitDir, commondir);
+  const common = isAbsolute2(commondir) ? commondir : resolve(gitDir, commondir);
   return lstatOrNull(common) === null ? null : realpathSync(common);
 }
 function lstatOrNull(path) {
@@ -65,7 +73,7 @@ function lstatOrNull(path) {
   }
 }
 function dotGit(root) {
-  const path = join(root, ".git");
+  const path = join2(root, ".git");
   const stat = lstatOrNull(path);
   if (stat === null) return null;
   if (stat.isDirectory()) return { gitDir: path, isFile: false };
@@ -132,8 +140,8 @@ function merge(shape, defaults, given, prefix, problems) {
 // src/core/daemon/user-config.ts
 function userConfigPath(env = process.env) {
   const xdg = env.XDG_CONFIG_HOME;
-  const base = xdg !== void 0 && xdg !== "" && isAbsolute2(xdg) ? xdg : join2(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
-  return join2(base, "squeal", "config.json");
+  const base = xdg !== void 0 && xdg !== "" && isAbsolute3(xdg) ? xdg : join3(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir(), ".config");
+  return join3(base, "squeal", "config.json");
 }
 function defaultHostSlots(cpus3 = availableParallelism()) {
   return Math.max(1, cpus3 - 1);
@@ -172,7 +180,7 @@ var PS = [
   "-o",
   "pid=,ppid=,pgid=,uid=,nice=,time=,rss=,lstart=,command="
 ];
-var ROW = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(-?\d+)\s+(\S+)\s+(\d+)\s+[A-Z][a-z]{2}\s+([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})(?:\s+(.*))?$/;
+var ROW = /^\s*(\d+)\s+(\d+)\s+\d+\s+(\d+)\s+(-?\d+)\s+(\S+)\s+(\d+)\s+[A-Z][a-z]{2}\s+([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})(?:\s+(.*))?$/;
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 var TIME = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d{2})(?:\.(\d+))?$/;
 function createDarwinSource(options = {}) {
@@ -222,26 +230,6 @@ var DarwinSource = class {
   fds() {
     return null;
   }
-  /** `lsof -F pn` prints a `p<pid>` line, then each file's `f<fd>` and `n<name>` lines. */
-  cwds(pids3) {
-    if (pids3.length === 0) return /* @__PURE__ */ new Map();
-    const text2 = this.#run("lsof", ["-d", "cwd", "-F", "pn"]);
-    if (text2 === null) return null;
-    const wanted = new Set(pids3);
-    const cwds = /* @__PURE__ */ new Map();
-    let pid = null;
-    let fd = null;
-    for (const line of text2.split("\n")) {
-      const value = line.slice(1);
-      if (line.startsWith("p")) {
-        pid = /^\d+$/.test(value) ? Number(value) : null;
-        fd = null;
-      } else if (line.startsWith("f")) fd = value;
-      else if (line.startsWith("n") && pid !== null && (fd ?? "cwd") === "cwd" && wanted.has(pid))
-        cwds.set(pid, value);
-    }
-    return cwds;
-  }
   locks() {
     return null;
   }
@@ -249,9 +237,6 @@ var DarwinSource = class {
     return null;
   }
   unixListeners() {
-    return null;
-  }
-  unixSockets() {
     return null;
   }
   pidNamespace() {
@@ -293,23 +278,7 @@ var DarwinSource = class {
   #line(text2) {
     const m = ROW.exec(text2);
     if (m === null) return null;
-    const [
-      ,
-      pid,
-      ppid,
-      pgid,
-      uid,
-      nice,
-      time = "",
-      rss,
-      month = "",
-      day,
-      h,
-      min,
-      s,
-      year,
-      command2 = ""
-    ] = m;
+    const [, pid, ppid, uid, nice, time = "", rss, month = "", day, h, min, s, year, command2 = ""] = m;
     const cpuTicks = ticksOf(time);
     const start = localTime(Number(year), month, Number(day), [h, min, s].map(Number));
     if (cpuTicks === null || start === null) return null;
@@ -318,7 +287,6 @@ var DarwinSource = class {
       row: {
         pid: Number(pid),
         ppid: Number(ppid),
-        pgid: Number(pgid),
         comm: basename(args?.[0] ?? ""),
         state: null,
         startTicks: Math.round((start - (this.#boot ?? 0)) * CLOCK_TICKS / 1e3),
@@ -383,10 +351,12 @@ function cpuTime(cpus3) {
 }
 
 // src/core/ps/flags.ts
-import { existsSync as existsSync2, readdirSync as readdirSync4, readFileSync as readFileSync5 } from "node:fs";
-import { join as join9 } from "node:path";
+import { existsSync as existsSync2 } from "node:fs";
+import { join as join12 } from "node:path";
 
 // src/core/daemon/version.ts
+import { readdirSync, readFileSync as readFileSync3 } from "node:fs";
+import { dirname as dirname4, join as join4 } from "node:path";
 function isNewerVersion(version, than) {
   const a = versionParts(version);
   const b = versionParts(than);
@@ -399,6 +369,43 @@ function isNewerVersion(version, than) {
 function versionParts(version) {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
   return match === null ? null : match.slice(1).map(Number);
+}
+function claudeInstalls(plugins, marketplace) {
+  let file;
+  try {
+    file = JSON.parse(readFileSync3(join4(plugins, "installed_plugins.json"), "utf8"));
+  } catch {
+    return [];
+  }
+  const entries = isRecord(file) && isRecord(file.plugins) ? file.plugins[`squeal@${marketplace}`] : null;
+  const text2 = (value) => typeof value === "string" ? value : null;
+  return (Array.isArray(entries) ? entries : []).filter(isRecord).map((entry) => ({
+    scope: text2(entry.scope),
+    projectPath: text2(entry.projectPath),
+    version: text2(entry.version),
+    installPath: text2(entry.installPath)
+  }));
+}
+function claudeLoaded(plugins, marketplace, root) {
+  for (const { scope, projectPath, version } of claudeInstalls(plugins, marketplace)) {
+    if (version === null || scope === null) continue;
+    if (scope === "user" || scope === "project" && root !== null && projectPath === root)
+      return { version, scope };
+  }
+  return null;
+}
+function codexNewest(plugins, marketplace) {
+  let names2;
+  try {
+    names2 = readdirSync(join4(plugins, "cache", marketplace, "squeal"));
+  } catch {
+    return null;
+  }
+  let newest = null;
+  for (const name of names2)
+    if (versionParts(name) !== null && (newest === null || isNewerVersion(name, newest)))
+      newest = name;
+  return newest;
 }
 
 // src/core/types/store.ts
@@ -569,10 +576,10 @@ function splitTopLevel(body) {
 }
 
 // src/core/daemon/policy.ts
-import { join as join3 } from "node:path";
+import { join as join5 } from "node:path";
 
 // src/core/daemon/policy-node-test.ts
-import { isAbsolute as isAbsolute3, posix } from "node:path";
+import { isAbsolute as isAbsolute4, posix } from "node:path";
 function compiles(globs2) {
   for (const glob of globs2) {
     try {
@@ -591,7 +598,7 @@ var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s ===
 var insideRoot = (v) => {
   if (typeof v !== "string") return "a path inside the worktree, relative to its root";
   const normal = posix.normalize(v.replaceAll("\\", "/"));
-  return isAbsolute3(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+  return isAbsolute4(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
 var FIELDS = {
   name: nonEmptyString,
@@ -647,7 +654,7 @@ function entryProblem(entry, at, kept, fields, required, check) {
 }
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute4, posix as posix2 } from "node:path";
+import { isAbsolute as isAbsolute5, posix as posix2 } from "node:path";
 var FIELDS2 = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -671,7 +678,7 @@ function withDefaults2(entry) {
 }
 var pythonInsideRoot = (entry) => {
   const python = entry.python;
-  if (python === void 0 || isAbsolute4(python)) return null;
+  if (python === void 0 || isAbsolute5(python)) return null;
   const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
@@ -752,7 +759,7 @@ var SHAPE = {
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
 function loadPolicy(root) {
-  const { value, problems } = loadConfigFile(join3(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const { value, problems } = loadConfigFile(join5(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
   return { policy: value, problems };
 }
 function readPolicy(root) {
@@ -760,6 +767,30 @@ function readPolicy(root) {
 }
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+// src/core/slow/state.ts
+var WAITS = /* @__PURE__ */ new Set(["fast", "idle", "slot", "load"]);
+function toSlowActivity(value) {
+  if (value === null) return null;
+  if (typeof value !== "object") return void 0;
+  const v = value;
+  if (v.kind === "waiting" && WAITS.has(v.for)) {
+    return { kind: "waiting", for: v.for };
+  }
+  if (v.kind === "running" && typeof v.path === "string" && typeof v.since === "number") {
+    const last = typeof v.lastDurationMs === "number" ? v.lastDurationMs : null;
+    const paths = Array.isArray(v.paths) ? v.paths : [];
+    const several = paths.length > 1 && paths.every((p) => typeof p === "string");
+    return {
+      kind: "running",
+      path: v.path,
+      ...several ? { paths } : {},
+      since: v.since,
+      lastDurationMs: last
+    };
+  }
+  return void 0;
 }
 
 // src/core/daemon/lock.ts
@@ -773,18 +804,28 @@ var slices = new AsyncLocalStorage();
 import { DatabaseSync } from "node:sqlite";
 
 // src/core/store/paths.ts
-import { join as join4 } from "node:path";
+import { basename as basename2, dirname as dirname5, join as join6 } from "node:path";
 function storePaths(commonDir) {
-  const dir = join4(commonDir, "squeal");
+  const dir = join6(commonDir, "squeal");
   return {
     dir,
-    database: join4(dir, "store.sqlite"),
-    runsDir: join4(dir, "runs"),
-    locksDir: join4(dir, "locks")
+    database: join6(dir, "store.sqlite"),
+    runsDir: join6(dir, "runs"),
+    locksDir: join6(dir, "locks")
   };
 }
 function lockFileFor(commonDir, worktreeId) {
-  return join4(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
+  return join6(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
+}
+var LOCK_NAME = /^([0-9a-f]{16})\.sqlite$/;
+function lockFileWorktreeId(name) {
+  return LOCK_NAME.exec(name)?.[1] ?? null;
+}
+function lockFileParts(path) {
+  const worktreeId = lockFileWorktreeId(basename2(path));
+  if (worktreeId === null) return null;
+  const commonDir = dirname5(dirname5(dirname5(path)));
+  return lockFileFor(commonDir, worktreeId) === path ? { commonDir, worktreeId } : null;
 }
 
 // src/core/store/schema.ts
@@ -1010,8 +1051,24 @@ var SELECT_RESULTS = `
   JOIN checks c ON c.id = r.check_id
   LEFT JOIN failure_texts f ON f.id = r.failure_id`;
 
+// src/core/store/repos/runs.ts
+function toCheckpointLanes(value) {
+  if (typeof value !== "object" || value === null) return void 0;
+  const lanes = {};
+  for (const [id, lane] of Object.entries(value)) {
+    if (lane === "fast" || lane === "slow") lanes[id] = lane;
+  }
+  return lanes;
+}
+
 // src/core/store/repos/states.ts
 var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
+
+// src/core/store/repos/worktrees.ts
+function toDaemonToken(value, startedAt, version) {
+  if (!isRecord(value) || typeof value.token !== "string") return void 0;
+  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
+}
 
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
@@ -1019,15 +1076,26 @@ var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
 
 // src/core/slow/slot.ts
+import { isAbsolute as isAbsolute6, join as join7 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
+function slowSlotDir(env = process.env, userDir = userTmpDir()) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? join7(xdg, "squeal") : userDir;
+}
+function immutableUrl(path) {
+  const url = pathToFileURL(path);
+  url.search = "immutable=1";
+  return url;
+}
 var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/ps/measure.ts
 var takeSample = (source, pids3, since) => {
   const before = performance.now();
   const table = source.processTable(pids3, since);
-  const cpuTime4 = source.host().cpuTime;
-  return { atMs: (before + performance.now()) / 2, table, cpuTime: cpuTime4 };
+  const host = source.host();
+  return { atMs: (before + performance.now()) / 2, table, host };
 };
 function below(table, pids3) {
   const children = /* @__PURE__ */ new Map();
@@ -1162,11 +1230,18 @@ function sumCosts(costs) {
 }
 
 // src/core/ps/proc.ts
-import { readdirSync, readFileSync as readFileSync3, readlinkSync, statSync } from "node:fs";
+import { readdirSync as readdirSync2, readFileSync as readFileSync4, readlinkSync, statSync } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
-import { join as join5 } from "node:path";
-var CLOCK_TICKS2 = 100;
-var MARK = Buffer.from("SQUEAL_DAEMON_CHILD=");
+import { join as join8 } from "node:path";
+
+// src/core/daemon/terminate.ts
+var TICKS_PER_SECOND = 100;
+
+// src/core/daemon/escaped.ts
+var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
+
+// src/core/ps/proc.ts
+var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
 function createProcSource(options = {}) {
   return new ProcSource(options);
 }
@@ -1178,12 +1253,12 @@ var ProcSource = class {
   #cpus;
   #run;
   constructor(options) {
-    this.#proc = join5(options.root ?? "/", "proc");
+    this.#proc = join8(options.root ?? "/", "proc");
     this.#cpus = options.availableParallelism ?? availableParallelism3;
     this.#run = options.run ?? runCommand;
   }
   clockTicks() {
-    return CLOCK_TICKS2;
+    return TICKS_PER_SECOND;
   }
   bootTime() {
     const seconds = /^btime (\d+)$/m.exec(this.#read("stat") ?? "")?.[1];
@@ -1225,27 +1300,19 @@ var ProcSource = class {
     return { bytes: anon + shmem, swapBytes: swap ?? null };
   }
   fds(pid) {
-    const dir = join5(this.#proc, String(pid), "fd");
-    let names3;
+    const dir = join8(this.#proc, String(pid), "fd");
+    let names2;
     try {
-      names3 = readdirSync(dir);
+      names2 = readdirSync2(dir);
     } catch {
       return null;
     }
     const targets = [];
-    for (const fd of names3.filter(isPid).map(Number).sort((a, b) => a - b)) {
+    for (const fd of names2.filter(isPid).map(Number).sort((a, b) => a - b)) {
       const target = this.#link(`${pid}/fd/${fd}`);
       if (target !== null) targets.push(target);
     }
     return targets;
-  }
-  cwds(pids3) {
-    const cwds = /* @__PURE__ */ new Map();
-    for (const pid of pids3) {
-      const cwd = this.#link(`${pid}/cwd`);
-      if (cwd !== null) cwds.set(pid, cwd);
-    }
-    return cwds;
   }
   locks() {
     const text2 = this.#read("locks");
@@ -1284,19 +1351,10 @@ var ProcSource = class {
     if (text2 === null) return null;
     const listeners = [];
     for (const line of text2.split("\n")) {
-      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+(.+?)\s+(\d+)\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(
-        line
-      );
-      if (m === null) continue;
-      const [, path = "", socketInode, fileInode] = m;
-      listeners.push({ path, socketInode: Number(socketInode), fileInode: Number(fileInode) });
+      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
+      if (m !== null) listeners.push({ fileInode: Number(m[1]) });
     }
     return listeners;
-  }
-  unixSockets() {
-    const text2 = this.#read("net/unix");
-    if (text2 === null) return null;
-    return text2.split("\n").flatMap((line) => /^\s*[0-9a-f]+:(?:\s+[0-9A-F]+){5}\s+\d+ (.+)$/.exec(line)?.[1] ?? []);
   }
   pidNamespace() {
     return this.#link("self/ns/pid");
@@ -1322,7 +1380,7 @@ var ProcSource = class {
   }
   #pids() {
     try {
-      return readdirSync(this.#proc).filter(isPid).map(Number);
+      return readdirSync2(this.#proc).filter(isPid).map(Number);
     } catch {
       return [];
     }
@@ -1335,9 +1393,8 @@ var ProcSource = class {
     const close = text2.lastIndexOf(")");
     if (open < 0 || close < open) return null;
     const f = text2.slice(close + 2).split(" ");
-    const [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks] = [
+    const [ppid, utime, stime, cutime, cstime, nice, startTicks] = [
       f[1],
-      f[2],
       f[11],
       f[12],
       f[13],
@@ -1345,12 +1402,11 @@ var ProcSource = class {
       f[16],
       f[19]
     ].map(Number);
-    const numbers = [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks];
+    const numbers = [ppid, utime, stime, cutime, cstime, nice, startTicks];
     if (!numbers.every(Number.isInteger)) return null;
     return {
       pid,
       ppid: ppid ?? 0,
-      pgid: pgid ?? 0,
       comm: text2.slice(open + 1, close),
       state: f[0] ?? null,
       startTicks: startTicks ?? 0,
@@ -1362,28 +1418,28 @@ var ProcSource = class {
   }
   #uid(pid) {
     try {
-      return statSync(join5(this.#proc, String(pid))).uid;
+      return statSync(join8(this.#proc, String(pid))).uid;
     } catch {
       return null;
     }
   }
   #read(path) {
     try {
-      return readFileSync3(join5(this.#proc, path), "utf8");
+      return readFileSync4(join8(this.#proc, path), "utf8");
     } catch {
       return null;
     }
   }
   #bytes(path) {
     try {
-      return readFileSync3(join5(this.#proc, path));
+      return readFileSync4(join8(this.#proc, path));
     } catch {
       return null;
     }
   }
   #link(path) {
     try {
-      return readlinkSync(join5(this.#proc, path));
+      return readlinkSync(join8(this.#proc, path));
     } catch {
       return null;
     }
@@ -1450,15 +1506,41 @@ import { constants } from "node:fs";
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/ps/discover.ts
-import { readdirSync as readdirSync2, statSync as statSync2 } from "node:fs";
-import { isAbsolute as isAbsolute5, join as join6 } from "node:path";
-var START_MARGIN_MS = 1e3;
+import { statSync as statSync2 } from "node:fs";
+import { isAbsolute as isAbsolute7, join as join10 } from "node:path";
+
+// src/core/daemon/lock-wait.ts
+var VACANT_LOCK_WAIT_MS = 3e4;
+
+// src/core/ps/reads.ts
+import { lstatSync as lstatSync2, readdirSync as readdirSync3 } from "node:fs";
+import { join as join9 } from "node:path";
 var NODE_COMMS = /* @__PURE__ */ new Set(["MainThread", "node"]);
+function names(dir) {
+  try {
+    return readdirSync3(dir).sort();
+  } catch {
+    return [];
+  }
+}
+function lstatOrNull2(path) {
+  try {
+    return lstatSync2(path);
+  } catch {
+    return null;
+  }
+}
+function poolDirs(places) {
+  const userDir = join9(places.tempDir, `squeal-${places.uid}`);
+  const envs = places.runtimeDir === null ? [{}] : [{}, { XDG_RUNTIME_DIR: places.runtimeDir }];
+  return [...new Set(envs.map((env) => slowSlotDir(env, userDir)))];
+}
+
+// src/core/ps/discover.ts
+var START_MARGIN_MS = 1e3;
 var SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
-var LOCK_FILE = /^(.+)\/squeal\/locks\/([0-9a-f]{16})\.sqlite$/;
-var SOCKET_FILE = /^squeal-([0-9a-f]{16})\.sock$/;
 var HOLDERS = "daemon lock holders";
-var CACHE_INSTALL = /\/\.(claude|codex)\/plugins\/cache\/[^/]+\/squeal\/([^/]+)\//;
+var CACHE_INSTALL = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/([^/]+)\//;
 var PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
 var discover = (source, table, places, locks = source.locks()) => {
   const unknown = [];
@@ -1533,7 +1615,7 @@ function daemonVerbAt(args) {
 function found(source, row2, args, at, locks) {
   const script = args[at - 1] ?? "";
   const given = args[at + 1];
-  const root = given !== void 0 && isAbsolute5(given) ? given : null;
+  const root = given !== void 0 && isAbsolute7(given) ? given : null;
   const fromFd = lockFd(source.fds(row2.pid));
   const lock = fromFd ?? (root === null ? null : lockOfRoot(root));
   const commonDir = lock?.commonDir ?? null;
@@ -1542,20 +1624,25 @@ function found(source, row2, args, at, locks) {
     row: row2,
     script,
     root,
-    awaitLock: args.slice(at + 2).includes("--await-lock"),
+    lockWaitMs: lockWaitOf(args.slice(at + 2)),
     ...installOf(script),
     worktreeId: lock?.worktreeId ?? null,
-    idFrom: lock === null ? null : fromFd === null ? "root-hash" : "lock-fd",
     lockPath,
     commonDir,
     storePath: commonDir === null ? null : storePaths(commonDir).database,
     holdsLock: holds(source, row2.pid, lockPath, locks)
   };
 }
+function lockWaitOf(options) {
+  const at = options.indexOf("--await-lock");
+  if (at < 0) return VACANT_LOCK_WAIT_MS;
+  const value = options[at + 1] ?? "";
+  return /^\d+$/.test(value) ? Number(value) : SUCCESSOR_LOCK_WAIT_MS;
+}
 function lockFd(fds) {
   for (const target of fds ?? []) {
-    const m = LOCK_FILE.exec(target);
-    if (m !== null) return { worktreeId: m[2] ?? "", commonDir: m[1] ?? "", lockPath: target };
+    const lock = lockFileParts(target);
+    if (lock !== null) return { ...lock, lockPath: target };
   }
   return null;
 }
@@ -1579,19 +1666,23 @@ function holds(source, pid, lockPath, locks) {
 }
 function installOf(script) {
   const cache = CACHE_INSTALL.exec(script);
-  if (cache !== null) return { harness: cache[1] ?? null, version: cache[2] ?? null };
-  return { harness: PACKAGE_INSTALL.exec(script)?.[1] ?? null, version: null };
+  if (cache !== null) {
+    const [, plugins = null, harness2 = null, marketplace = null, version = null] = cache;
+    return { harness: harness2, version, plugins, marketplace };
+  }
+  const harness = PACKAGE_INSTALL.exec(script)?.[1] ?? null;
+  return { harness, version: null, plugins: null, marketplace: null };
 }
 function socketFiles(source, places, daemons) {
   const listeners = source.unixListeners();
-  const dirs = /* @__PURE__ */ new Set([places.runtimeDir, join6(places.tempDir, `squeal-${places.uid}`)]);
+  const dirs = /* @__PURE__ */ new Set([places.runtimeDir, join10(places.tempDir, `squeal-${places.uid}`)]);
   const sockets = [];
   for (const dir of dirs) {
     if (dir === null) continue;
     for (const name of names(dir)) {
-      const worktreeId = SOCKET_FILE.exec(name)?.[1];
-      if (worktreeId === void 0) continue;
-      const path = join6(dir, name);
+      const worktreeId = socketWorktreeId(name);
+      if (worktreeId === null) continue;
+      const path = join10(dir, name);
       let stat;
       try {
         stat = statSync2(path);
@@ -1612,49 +1703,23 @@ function socketFiles(source, places, daemons) {
 function holderOf(daemons, worktreeId) {
   return daemons.find((d) => d.worktreeId === worktreeId && (d.holdsLock ?? true))?.row.pid ?? null;
 }
-function names(dir) {
-  try {
-    return readdirSync2(dir).sort();
-  } catch {
-    return [];
-  }
-}
 
 // src/core/ps/flags-files.ts
-import { join as join8 } from "node:path";
-
-// src/core/ps/flags-leftovers.ts
-import { createHash as createHash2 } from "node:crypto";
-import {
-  lstatSync as lstatSync2,
-  readdirSync as readdirSync3,
-  readFileSync as readFileSync4,
-  realpathSync as realpathSync2
-} from "node:fs";
-import { join as join7 } from "node:path";
-
-// src/core/ps/flags-text.ts
-var SAFE_WORD = /^[\w@%+=:,./-]+$/;
-var NO_BOOT = "the boot time cannot be read, so no process has an age";
-function shellQuote(word) {
-  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
-}
-function dateOf(ms) {
-  return `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
-}
-function duration(ms) {
-  const s = Math.floor(ms / 1e3);
-  if (s < 120) return `${s} s`;
-  const m = Math.floor(s / 60);
-  if (m < 120) return `${m}m`;
-  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
-}
+import { join as join11 } from "node:path";
 
 // src/core/ps/render-units.ts
 var KIB = 1024;
 var MIB = KIB * 1024;
 var GIB = MIB * 1024;
 var UNKNOWN = "?";
+var NO_BOOT = "the boot time cannot be read, so no process has an age";
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellQuote(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+function dateOf(ms) {
+  return `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
 function count(n, one, many = `${one}s`) {
   return `${thousands(n)} ${n === 1 ? one : many}`;
 }
@@ -1680,9 +1745,16 @@ function ofGib(part, whole) {
   return `${(part / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
 }
 function age(since, at) {
-  return since === null ? UNKNOWN : duration2(at - since);
+  return since === null ? UNKNOWN : columnDuration(at - since);
 }
-function duration2(ms) {
+function sentenceDuration(ms) {
+  const s = Math.floor(ms / 1e3);
+  if (s < 120) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 120) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}
+function columnDuration(ms) {
   const s = Math.max(0, Math.floor(ms / 1e3));
   if (s < 60) return `${s}s`;
   if (s < 100 * 60) return `${Math.floor(s / 60)}m`;
@@ -1697,204 +1769,15 @@ function cpuTime3(ms) {
   return `${Math.floor(s / 3600)}h${two(Math.floor(s / 60) % 60)}m`;
 }
 
-// src/core/ps/flags-leftovers.ts
-var LEFTOVER_AGE_MS = 60 * 6e4;
-var SIZE_WALK_ENTRIES = 1e4;
-var DU = "`squeal ps --leftovers | xargs -d '\\n' du -sch --` sums them";
-var KEY_DIR = /^([0-9a-f]{16})(?:\.old-[0-9a-f]{8})?$/;
-var MADE = /^squeal-(?:e2e-(?:oc-|pi-)?|update-)[A-Za-z0-9]{6}$/;
-function leftoverTemp(model, options, unknown) {
-  const none = { flag: null, paths: [] };
-  const keys = liveKeys(model);
-  if (typeof keys === "string") {
-    unknown.push({ what: "flag leftover-temp", why: keys });
-    return none;
-  }
-  const { places } = model;
-  const userDir = join7(places.tempDir, `squeal-${places.uid}`);
-  const keyDirs = join7(userDir, "tmp");
-  const fallback = new RegExp(`^squeal-${places.uid}-([0-9a-f]{16})-[A-Za-z0-9]{6}$`);
-  const unkeyed = (pattern, name) => {
-    const key = pattern.exec(name)?.[1];
-    return key !== void 0 && !keys.has(key);
-  };
-  const candidates = [
-    ...names2(keyDirs).filter((name) => unkeyed(KEY_DIR, name)).map((name) => join7(keyDirs, name)),
-    ...names2(places.tempDir).filter((name) => MADE.test(name) || unkeyed(fallback, name)).map((name) => join7(places.tempDir, name))
-  ];
-  const old = /* @__PURE__ */ new Map();
-  for (const path of candidates) {
-    const stat = lstatOrNull2(path);
-    if (stat === null || !stat.isDirectory() || stat.uid !== places.uid) continue;
-    if (model.now - stat.mtimeMs > LEFTOVER_AGE_MS) old.set(path, stat);
-  }
-  if (old.size === 0) return none;
-  const use = unusedPaths(model, keyDirs, [...old.keys()]);
-  if (use === null) {
-    const why = "the working directories of processes cannot be read (D10)";
-    unknown.push({ what: "flag leftover-temp", why });
-    return none;
-  }
-  const paths = use.unused;
-  if (paths.length === 0) return none;
-  const limit = options.sizeEntries ?? SIZE_WALK_ENTRIES;
-  const bytes2 = options.full === true ? sizeOf(paths, old, limit) : null;
-  const count2 = paths.length === 1 ? "1 directory" : `${paths.length} directories`;
-  if (use.unread.length > 0) {
-    const size = bytes2 === null ? "" : `, ${bytes(bytes2)},`;
-    const why = `${count2} under ${places.tempDir} that no readable process uses${size} ${paths.length === 1 ? "is" : "are"} not listed, since ${use.unread.join(" and ")}`;
-    unknown.push({ what: "flag leftover-temp", why, paths });
-    return none;
-  }
-  if (bytes2 === null) {
-    const why = options.full === true ? `the size walk stops at ${limit} entries; ${DU}` : `the size walk runs with --full only; ${DU}`;
-    unknown.push({ what: "files leftover-temp bytes", why });
-  }
-  const oldest = Math.min(...paths.map((path) => old.get(path)?.mtimeMs ?? model.now));
-  return {
-    flag: {
-      flag: "leftover-temp",
-      reason: `${count2} under ${places.tempDir} that no live daemon's key names and no process uses, unchanged for over 1 h; the oldest since ${dateOf(oldest)}`,
-      path: null,
-      count: paths.length,
-      bytes: bytes2,
-      command: "squeal ps --leftovers | xargs -d '\\n' rm -rf --"
-    },
-    paths
-  };
-}
-function liveKeys(model) {
-  const keys = /* @__PURE__ */ new Set();
-  for (const d of model.discovery.daemons) {
-    if (d.root === null || d.commonDir === null)
-      return `the temp key of daemon ${d.row.pid} is unknown: its root or repository cannot be read`;
-    let id;
-    try {
-      id = readFileSync4(join7(storePaths(d.commonDir).dir, "repository-id"), "utf8").trim();
-    } catch {
-      continue;
-    }
-    const key = createHash2("sha256").update(`${id}\0${realOr(d.root)}`).digest("hex");
-    keys.add(key.slice(0, 16));
-  }
-  return keys;
-}
-function unusedPaths(model, keyDirs, candidates) {
-  const { places, source } = model;
-  const pids3 = [...model.first.sample.table.values()].filter((row2) => row2.uid === null || row2.uid === places.uid).map((row2) => row2.pid);
-  const cwds = source.cwds(pids3);
-  if (cwds === null) return null;
-  const at = `${places.tempDir}/squeal-`;
-  const real = realOr(places.tempDir);
-  const named = (text2) => text2.startsWith(`${real}/`) ? `${places.tempDir}${text2.slice(real.length)}` : text2;
-  const unused = new Set(candidates);
-  const use = (path) => {
-    if (!path.startsWith(at)) return;
-    const [top = "", sub, key] = path.slice(places.tempDir.length + 1).split("/", 3);
-    unused.delete(join7(places.tempDir, top));
-    if (top === `squeal-${places.uid}` && sub === "tmp" && key !== void 0 && key !== "")
-      unused.delete(join7(keyDirs, key));
-  };
-  const unread = /* @__PURE__ */ new Set();
-  for (const cwd of cwds.values()) use(named(cwd));
-  for (const pid of pids3) {
-    if (unused.size === 0) break;
-    const args = source.cmdline(pid);
-    if (args === null) unread.add(pid);
-    for (const arg of args ?? []) {
-      const path = named(arg);
-      use(path.startsWith(at) ? path : named(arg.slice(arg.indexOf("=") + 1)));
-    }
-  }
-  const sockets = unused.size === 0 ? [] : source.unixSockets();
-  for (const path of sockets ?? []) use(named(path));
-  for (const pid of pids3) {
-    if (unused.size === 0) break;
-    const fds = source.fds(pid);
-    if (fds === null) unread.add(pid);
-    for (const target of fds ?? []) use(named(target));
-  }
-  if (unused.size === 0) return { unused: [], unread: [] };
-  return { unused: [...unused].sort(), unread: failedReads(model, sockets === null, unread) };
-}
-var NAMED = 5;
-function failedReads(model, socketsUnread, pids3) {
-  const reasons = socketsUnread ? ["the bound unix sockets cannot be read (D10)"] : [];
-  const first = model.first.sample.table;
-  const now = pids3.size === 0 ? /* @__PURE__ */ new Map() : model.source.processTable([...pids3]);
-  const there = [...pids3].filter((pid) => {
-    const row2 = now.get(pid);
-    return row2 !== void 0 && row2.state !== "Z" && row2.startTicks === first.get(pid)?.startTicks;
-  });
-  if (there.length > 0) {
-    const names3 = there.slice(0, NAMED).map((pid) => `${pid} ${first.get(pid)?.comm ?? "?"}`);
-    const more = there.length > NAMED ? ` and ${there.length - NAMED} more` : "";
-    const n = there.length === 1 ? "1 process cannot" : `${there.length} processes cannot`;
-    reasons.push(`${n} be read: ${names3.join(", ")}${more}`);
-  }
-  return reasons;
-}
-function sizeOf(dirs, stats, limit) {
-  let entries = 0;
-  for (const dir of dirs) entries += Math.max(0, (stats.get(dir)?.nlink ?? 2) - 2);
-  if (entries > limit) return null;
-  const stack = [...dirs];
-  entries = 0;
-  let bytes2 = 0;
-  for (let dir = stack.pop(); dir !== void 0; dir = stack.pop()) {
-    let dirents;
-    try {
-      dirents = readdirSync3(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const dirent of dirents) {
-      if (++entries > limit) return null;
-      const path = join7(dir, dirent.name);
-      if (dirent.isDirectory()) stack.push(path);
-      else bytes2 += lstatOrNull2(path)?.size ?? 0;
-    }
-  }
-  return bytes2;
-}
-function names2(dir) {
-  try {
-    return readdirSync3(dir).sort();
-  } catch {
-    return [];
-  }
-}
-function lstatOrNull2(path) {
-  try {
-    return lstatSync2(path);
-  } catch {
-    return null;
-  }
-}
-function realOr(path) {
-  try {
-    return realpathSync2(path);
-  } catch {
-    return path;
-  }
-}
-
 // src/core/ps/flags-files.ts
-var LOCK_FILE2 = /^[0-9a-f]{16}\.sqlite$/;
 var WAITER_LOCK = /^waiter-.+\.sqlite$/;
 var PERMIT = /^pool\.(\d+)\.lock$/;
 var MARK2 = /^pool\.mark\.[^.]+$/;
-function fileFlags(model, options = {}) {
+function fileFlags(model) {
   const unknown = [];
-  const left = leftoverTemp(model, options, unknown);
   return {
-    files: [
-      ...staleSockets(model, unknown),
-      ...stalePoolMarks(model),
-      ...left.flag === null ? [] : [left.flag]
-    ],
+    files: [...staleSockets(model, unknown), ...stalePoolMarks(model)],
     unflagged: unflagged(model),
-    leftovers: left.paths,
     unknown
   };
 }
@@ -1921,9 +1804,9 @@ function staleSockets(model, unknown) {
 function stalePoolMarks(model) {
   const flags = [];
   for (const dir of poolDirs(model.places)) {
-    for (const name of names2(dir)) {
+    for (const name of names(dir)) {
       if (!MARK2.test(name)) continue;
-      const path = join8(dir, name);
+      const path = join11(dir, name);
       const stat = lstatOrNull2(path);
       if (stat === null || !stat.isFile() || model.now - stat.mtimeMs <= SLOT_WAITER_FRESH_MS)
         continue;
@@ -1948,19 +1831,19 @@ function unflagged(model) {
     )
   );
   for (const dir of commonDirs) {
-    for (const name of names2(storePaths(dir).locksDir)) {
-      if (LOCK_FILE2.test(name)) count2("lock");
+    for (const name of names(storePaths(dir).locksDir)) {
+      if (lockFileWorktreeId(name) !== null) count2("lock");
       else if (WAITER_LOCK.test(name)) count2("waiter-lock");
     }
   }
   for (const dir of poolDirs(model.places)) {
-    for (const name of names2(dir)) {
+    for (const name of names(dir)) {
       const i = PERMIT.exec(name)?.[1];
       if (i !== void 0 && Number(i) >= model.pool.pool.slots) count2("surplus-permit");
     }
   }
-  for (const dir of poolDirs(model.places, "squeal-sessions")) {
-    for (const _ of names2(dir)) count2("session-root");
+  for (const dir of sessionDirs(model.places)) {
+    for (const _ of names(dir)) count2("session-root");
   }
   const kinds = [
     "lock",
@@ -1973,10 +1856,9 @@ function unflagged(model) {
     return n === 0 ? [] : [{ kind, count: n }];
   });
 }
-function poolDirs(places, sub = "squeal") {
-  const userDir = join8(places.tempDir, `squeal-${places.uid}`);
-  const dirs = [sub === "squeal" ? userDir : join8(userDir, sub)];
-  if (places.runtimeDir !== null) dirs.push(join8(places.runtimeDir, sub));
+function sessionDirs(places) {
+  const dirs = [join11(places.tempDir, `squeal-${places.uid}`, "squeal-sessions")];
+  if (places.runtimeDir !== null) dirs.push(join11(places.runtimeDir, "squeal-sessions"));
   return dirs;
 }
 
@@ -1984,7 +1866,6 @@ function poolDirs(places, sub = "squeal") {
 var ORPHAN_WINDOW_MS = 1e3;
 var ORPHAN_AGE_MS = 6e4;
 var OVERDUE_MS = 6e4;
-var NODE_COMMS2 = /* @__PURE__ */ new Set(["MainThread", "node"]);
 var WAITER = /\/dist\/waiter\.mjs$/;
 function overdue(c) {
   const { model } = c;
@@ -2003,7 +1884,7 @@ function overdue(c) {
       if (age2 === null || age2 <= bound) continue;
       if (pid !== p.pid && model.source.markOf(pid) === null) continue;
       const who = pid === p.pid ? "it is" : `its descendant ${pid} (${row2.comm}) carries its mark, is not its daemon's child, and is`;
-      const reason = `${who} ${duration(age2)} old, past runner.timeoutMs plus ${OVERDUE_MS / 1e3} s`;
+      const reason = `${who} ${sentenceDuration(age2)} old, past runner.timeoutMs plus ${OVERDUE_MS / 1e3} s`;
       out.set(p.pid, [
         ...out.get(p.pid) ?? [],
         { flag: "overdue-test-process", reason, command: `kill ${pid}` }
@@ -2020,7 +1901,7 @@ function orphans(c) {
   for (const { pid, reason } of orphanTestProcesses(c)) add(pid, "orphan-test-process", reason);
   const host = model.first.sample.table;
   for (const row2 of host.values()) {
-    if (!NODE_COMMS2.has(row2.comm) || row2.uid !== null && row2.uid !== model.places.uid) continue;
+    if (!NODE_COMMS.has(row2.comm) || row2.uid !== null && row2.uid !== model.places.uid) continue;
     if (!(model.source.cmdline(row2.pid) ?? []).some((a) => WAITER.test(a))) continue;
     const parent = host.get(row2.ppid);
     if (parent === void 0) add(row2.pid, "orphan-waiter", `its parent ${row2.ppid} is gone`);
@@ -2073,7 +1954,7 @@ function orphanTestProcesses(c) {
     if (before.get(pid) !== mark || a === void 0 || a.startTicks !== b?.startTicks) continue;
     const age2 = c.ageOf(a);
     if (age2 === null || age2 < ORPHAN_AGE_MS) {
-      const why = age2 === null ? NO_BOOT : `process ${pid}'s mark names no live daemon, but it is ${duration(age2)} old, under ${ORPHAN_AGE_MS / 1e3} s`;
+      const why = age2 === null ? NO_BOOT : `process ${pid}'s mark names no live daemon, but it is ${sentenceDuration(age2)} old, under ${ORPHAN_AGE_MS / 1e3} s`;
       c.name("flag orphan-test-process", why);
       continue;
     }
@@ -2084,15 +1965,13 @@ function orphanTestProcesses(c) {
 }
 
 // src/core/ps/flags.ts
-var NO_LOCK_MS = 4e4;
-var AWAIT_LOCK_MS = 13e4;
+var NO_LOCK_MARGIN_MS = 1e4;
 var DEPARTURE_MS = 6e4;
 var NOT_INSTALLED_MS = 60 * 6e4;
-var CACHE = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/[^/]+\//;
 var NO_LOCKS = "the source has no lock state (D10)";
 var ONE_READING = "one of the window's two /proc/locks readings cannot be read, so a lock the other misses is unknown, not absent";
 var NO_MARKS = "the source reads no marks (D10)";
-var flag2 = (model, options = {}) => {
+var flag2 = (model) => {
   const unknown = [];
   const named = /* @__PURE__ */ new Set();
   const name = (what, why) => {
@@ -2119,22 +1998,24 @@ ${why}`);
   const c = { model, phase: phaseOn(source), ageOf, startOf, name };
   const daemons = /* @__PURE__ */ new Map();
   const states = /* @__PURE__ */ new Map();
+  const drainLeftMs2 = /* @__PURE__ */ new Map();
   const add = (pid, flags) => daemons.set(pid, [...daemons.get(pid) ?? [], ...flags]);
   for (const d of model.discovery.daemons) {
-    const { flags, state } = daemonFlags(c, d);
+    const { flags, state, drainLeft } = daemonFlags(c, d);
     add(d.row.pid, flags);
     if (state !== null) states.set(d.row.pid, state);
+    if (drainLeft !== null) drainLeftMs2.set(d.row.pid, drainLeft);
   }
   for (const [pid, flags] of duplicates(c)) add(pid, flags);
-  const files = fileFlags(model, options);
+  const files = fileFlags(model);
   return {
     daemons,
     states,
+    drainLeftMs: drainLeftMs2,
     processes: overdue(c),
     orphans: orphans(c),
     files: files.files,
     unflagged: files.unflagged,
-    leftovers: files.leftovers,
     unknown: [...unknown, ...files.unknown]
   };
 };
@@ -2166,7 +2047,7 @@ function daemonFlags(c, d) {
   const bundle = bundleOf(d.script);
   if (!existsSync2(bundle)) add("install-gone", `its bundle ${bundle} is missing`, stop);
   const older = olderOf(c, d, work);
-  const life = phase === "serving" && work?.record != null ? lifeOf(c, pid, work, work.record.heartbeatIntervalMs) : null;
+  const life = phase === "serving" && work?.record != null ? lifeOf2(c, pid, work, work.record.heartbeatIntervalMs) : null;
   let state = life?.state ?? null;
   if (typeof older === "string") state ??= older;
   else if (older !== null) {
@@ -2175,27 +2056,34 @@ function daemonFlags(c, d) {
   }
   const age2 = c.ageOf(d.row);
   if (phase === "waiting") {
-    const bound = d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS;
+    const bound = noLockBound(d);
     if (age2 === null) c.name(`daemon ${pid} flag no-lock`, NO_BOOT);
     else if (age2 > bound)
-      add("no-lock", `it has waited ${duration(age2)} for its lock, past ${bound / 1e3} s`, kill);
+      add(
+        "no-lock",
+        `it has waited ${sentenceDuration(age2)} for its lock, past ${bound / 1e3} s`,
+        kill
+      );
   }
   const hung = hungOf(c, d);
   if (hung !== null) add("hung", hung, `kill ${pid}; sleep 5; kill -9 ${pid}`);
   if (life?.flag != null) add(life.flag.flag, life.flag.reason, stop);
   for (const reason of deadConsumers(c, pid)) add("dead-consumer", reason, null);
   const home = model.places.home;
-  const installed = d.harness !== null && within(d.script, home) || within(d.script, join9(home, ".local"));
+  const installed = d.harness !== null && within(d.script, home) || within(d.script, join12(home, ".local"));
   if (!installed && d.root !== null && within(d.root, model.places.tempDir)) {
     if (age2 === null) c.name(`daemon ${pid} flag not-installed`, NO_BOOT);
     else if (age2 > NOT_INSTALLED_MS)
       add(
         "not-installed",
-        `its bundle is in no plugin cache, its root is under ${model.places.tempDir}, and it has run ${duration(age2)}`,
+        `its bundle is in no plugin cache, its root is under ${model.places.tempDir}, and it has run ${sentenceDuration(age2)}`,
         kill
       );
   }
-  return { flags, state };
+  return { flags, state, drainLeft: life?.drainLeft ?? null };
+}
+function noLockBound(d) {
+  return d.lockWaitMs + NO_LOCK_MARGIN_MS;
 }
 function rootGone(root) {
   if (!existsSync2(root)) return `its root ${root} is missing`;
@@ -2212,10 +2100,9 @@ function bundleOf(script) {
   return at < 0 ? script : script.slice(0, at + "/dist".length);
 }
 function olderOf(c, d, work) {
-  const m = CACHE.exec(d.script);
-  if (m === null || d.version === null) return null;
-  const [, plugins = "", harness = "", marketplace = ""] = m;
-  const newest = harness === "claude" ? claudeInstalled(plugins, marketplace, d.root) : codexNewest(plugins, marketplace);
+  const { plugins, marketplace, harness } = d;
+  if (plugins === null || marketplace === null || d.version === null) return null;
+  const newest = harness === "claude" ? claudeLoaded(plugins, marketplace, d.root)?.version ?? null : codexNewest(plugins, marketplace);
   if (newest === null) {
     c.name(
       `daemon ${d.row.pid} flag older`,
@@ -2236,32 +2123,6 @@ function olderOf(c, d, work) {
   }
   return { reason: `version ${d.version}; ${harness} installs ${newest}` };
 }
-function claudeInstalled(plugins, marketplace, root) {
-  let file;
-  try {
-    file = JSON.parse(readFileSync5(join9(plugins, "installed_plugins.json"), "utf8"));
-  } catch {
-    return null;
-  }
-  const entries = isRecord(file) && isRecord(file.plugins) ? file.plugins[`squeal@${marketplace}`] : null;
-  for (const entry of Array.isArray(entries) ? entries : []) {
-    if (!isRecord(entry) || typeof entry.version !== "string") continue;
-    if (entry.scope === "user" || entry.scope === "project" && entry.projectPath === root)
-      return entry.version;
-  }
-  return null;
-}
-function codexNewest(plugins, marketplace) {
-  let versions;
-  try {
-    versions = readdirSync4(join9(plugins, "cache", marketplace, "squeal"));
-  } catch {
-    return null;
-  }
-  let newest = null;
-  for (const v of versions) if (newest === null || isNewerVersion(v, newest)) newest = v;
-  return newest !== null && /^\d+\.\d+\.\d+$/.test(newest) ? newest : null;
-}
 function hungOf(c, d) {
   const { model } = c;
   let age2 = 0;
@@ -2273,9 +2134,9 @@ function hungOf(c, d) {
     age2 = model.now - record.heartbeatAt;
     if (age2 <= bound) return null;
   }
-  return `its heartbeat is ${duration(age2)} old on both samples, past two intervals`;
+  return `its heartbeat is ${sentenceDuration(age2)} old on both samples, past two intervals`;
 }
-function lifeOf(c, pid, work, intervalMs) {
+function lifeOf2(c, pid, work, intervalMs) {
   const now = c.model.now;
   const grace = HEARTBEAT_GRACE_INTERVALS * intervalMs;
   const idleMs = work.settings.idleExitMinutes * 6e4;
@@ -2285,18 +2146,19 @@ function lifeOf(c, pid, work, intervalMs) {
   if (departed !== null) {
     const since = now - departed;
     const left = drainLeftMs(work, now);
-    if (left !== null) return { flag: null, state: `draining ${Math.ceil(left / 6e4)}m left` };
+    if (left !== null)
+      return { flag: null, state: `draining ${Math.ceil(left / 6e4)}m left`, drainLeft: left };
     const drains = work.slowWaiting === true || work.checkpoints.length > 0;
     if (!drains && work.slowWaiting === null) {
       c.name(`daemon ${pid} flag past-departure`, "its slow-tier row cannot be read");
       return none;
     }
     if (drains && since > idleMs + grace) {
-      const reason2 = `its last session left ${duration(since)} ago, and its drain is past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
+      const reason2 = `its last session left ${sentenceDuration(since)} ago, and its drain is past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
       return { flag: { flag: "past-departure", reason: reason2 }, state: null };
     }
     if (!drains && since > DEPARTURE_MS) {
-      const reason2 = `its last session left ${duration(since)} ago, and no slow work is left`;
+      const reason2 = `its last session left ${sentenceDuration(since)} ago, and no slow work is left`;
       return { flag: { flag: "past-departure", reason: reason2 }, state: null };
     }
     return none;
@@ -2313,12 +2175,12 @@ function lifeOf(c, pid, work, intervalMs) {
   if (consumers === 0) {
     const quiet2 = now - work.lastUse.activeAt;
     if (quiet2 <= idleMs + grace) return none;
-    const reason2 = `no consumer, and no request for ${duration(quiet2)}, past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
+    const reason2 = `no consumer, and no request for ${sentenceDuration(quiet2)}, past daemon.idleExitMinutes (${work.settings.idleExitMinutes})`;
     return { flag: { flag: "past-idle", reason: reason2 }, state: null };
   }
   const quiet = now - work.lastUse.usedAt;
   if (quiet <= unusedMs + grace) return none;
-  const reason = `${consumers === 1 ? "1 consumer" : `${consumers} consumers`}, and no edit, run, wait or request for ${duration(quiet)}, past daemon.unusedExitMinutes (${work.settings.unusedExitMinutes})`;
+  const reason = `${consumers === 1 ? "1 consumer" : `${consumers} consumers`}, and no edit, run, wait or request for ${sentenceDuration(quiet)}, past daemon.unusedExitMinutes (${work.settings.unusedExitMinutes})`;
   return { flag: { flag: "past-unused", reason }, state: null };
 }
 function deadConsumers(c, pid) {
@@ -2355,7 +2217,7 @@ function duplicates(c) {
     const waited = (d) => {
       const age2 = c.ageOf(d.row);
       if (age2 === null) c.name(`daemon ${d.row.pid} flag duplicate`, NO_BOOT);
-      return age2 !== null && age2 > (d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS);
+      return age2 !== null && age2 > noLockBound(d);
     };
     if (c.model.locksRead === "none") {
       if (!group.every(waited)) continue;
@@ -2439,15 +2301,15 @@ var render = (snapshot, { full }) => {
 `;
 };
 function firstLine(s) {
-  const names3 = /* @__PURE__ */ new Map();
+  const names2 = /* @__PURE__ */ new Map();
   const daemons = s.repositories.flatMap((r) => r.daemons);
   const all2 = [
     ...daemons.flatMap((d) => [...d.flags, ...d.processes.flatMap((p) => p.flags)]),
     ...s.orphans.flatMap((o) => o.flags),
     ...s.files
   ];
-  for (const f of all2) names3.set(f.flag, (names3.get(f.flag) ?? 0) + 1);
-  const listed = [...names3].map(([name, n]) => n === 1 ? name : `${name} \xD7${n}`).join(", ");
+  for (const f of all2) names2.set(f.flag, (names2.get(f.flag) ?? 0) + 1);
+  const listed = [...names2].map(([name, n]) => n === 1 ? name : `${name} \xD7${n}`).join(", ");
   const flags = s.flags === 0 ? "no flags" : `${count(s.flags, "flag")}: ${listed}`;
   const processes = count(s.squeal.testProcesses, "test process", "test processes");
   return `squeal ps \xB7 ${count(s.squeal.daemons, "daemon")}, ${processes} \xB7 ${flags}`;
@@ -2573,8 +2435,7 @@ function orphanLines(o, at) {
   ]);
 }
 function fileLines(f) {
-  const what = f.path ?? `${thousands(f.count)} ${f.count === 1 ? "directory" : "directories"}, ${f.bytes === null ? "size unknown" : bytes(f.bytes)}`;
-  return [`  ! ${f.flag}  ${what} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
+  return [`  ! ${f.flag}  ${f.path} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
 }
 function flagLines(flags) {
   return flags.flatMap((f) => [
@@ -2619,8 +2480,7 @@ function clip(text2, width) {
 }
 
 // src/core/ps/host.ts
-import { readdirSync as readdirSync5 } from "node:fs";
-import { join as join10 } from "node:path";
+import { join as join13 } from "node:path";
 var hostTotals = (first, second) => {
   const a = first.cpuTime;
   const b = second.cpuTime;
@@ -2639,9 +2499,10 @@ var hostTotals = (first, second) => {
 };
 function cpuShare(cpuPct, first, second, clockTicks) {
   const windowMs = second.atMs - first.atMs;
-  if (cpuPct === null || first.cpuTime === null || second.cpuTime === null || windowMs <= 0)
-    return null;
-  const busyPct = ticksToMs(second.cpuTime.busy - first.cpuTime.busy, clockTicks) / windowMs * 100;
+  const a = first.host?.cpuTime ?? null;
+  const b = second.host?.cpuTime ?? null;
+  if (cpuPct === null || a === null || b === null || windowMs <= 0) return null;
+  const busyPct = ticksToMs(b.busy - a.busy, clockTicks) / windowMs * 100;
   return busyPct <= 0 ? null : cpuPct / busyPct * 100;
 }
 function memoryShare(privateBytes, host) {
@@ -2650,8 +2511,8 @@ function memoryShare(privateBytes, host) {
   return used <= 0 ? null : privateBytes / used * 100;
 }
 var PERMIT2 = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
-var readPool = (source, places, daemons, readings = [source.locks()]) => {
-  const slots = hostSlotsOf(places.userConfig, source.host().cpus);
+var readPool = (source, places, daemons, readings = [source.locks()], cpus3 = source.host().cpus) => {
+  const slots = hostSlotsOf(places.userConfig, cpus3);
   const holders = /* @__PURE__ */ new Map();
   for (const locks of readings)
     for (const [file, pids3] of holdersOf(locks ?? [])) holders.set(file, pids3);
@@ -2687,18 +2548,9 @@ function hostSlotsOf(path, cpus3) {
   return loadConfigFile(path, shape, defaults).value.capacity.hostSlots;
 }
 function permitFiles(places) {
-  const dirs = /* @__PURE__ */ new Set([join10(places.tempDir, `squeal-${places.uid}`)]);
-  if (places.runtimeDir !== null) dirs.add(join10(places.runtimeDir, "squeal"));
   const files = [];
-  for (const dir of dirs) {
-    let names3;
-    try {
-      names3 = readdirSync5(dir);
-    } catch {
-      continue;
-    }
-    for (const name of names3.sort()) if (PERMIT2.test(name)) files.push(join10(dir, name));
-  }
+  for (const dir of poolDirs(places))
+    for (const name of names(dir)) if (PERMIT2.test(name)) files.push(join13(dir, name));
   return files;
 }
 
@@ -2810,8 +2662,7 @@ function filesOf(args) {
 }
 
 // src/core/ps/snapshot-shape.ts
-import { readdirSync as readdirSync6 } from "node:fs";
-import { basename as basename2 } from "node:path";
+import { basename as basename3 } from "node:path";
 
 // src/core/ps/shape.ts
 var PS_SHAPE_VERSION = 1;
@@ -2821,7 +2672,7 @@ var LISTED = 10;
 function unknownOf({ shape, named, costs }) {
   const all2 = /* @__PURE__ */ new Map();
   const name = (what, why) => {
-    if (!all2.has(what)) all2.set(what, named.find((u) => u.what === what) ?? { what, why });
+    if (!all2.has(what)) all2.set(what, { what, why });
   };
   for (const u of named) name(u.what, u.why);
   const { host, squeal } = shape;
@@ -2988,7 +2839,7 @@ function shapeOf(r, findings, o) {
       startedAt: startOf(d.row.startTicks),
       ...costOf(costs.get(pid)),
       permits: model.pool.pool.held === null ? null : model.pool.permits.get(pid) ?? 0,
-      work: workOf2(work, model.now, state.startsWith("draining")),
+      work: workOf2(work, findings.drainLeftMs.get(pid) ?? null),
       consumers: (work?.consumers ?? []).map((c) => ({
         harnessPid: c.harness?.pid ?? null,
         alive: c.alive,
@@ -3027,7 +2878,7 @@ function shapeOf(r, findings, o) {
   const pids3 = pidsOf(daemons);
   const total = totalOf(daemons);
   const ids = !o.repo ? null : current === null ? /* @__PURE__ */ new Set() : worktreeIdsOf(current);
-  const files = ids === null ? findings.files : findings.files.filter((f) => f.path !== null && ids.has(socketIdOf(f.path)));
+  const files = ids === null ? findings.files : findings.files.filter((f) => ids.has(socketIdOf(f.path)));
   const orphans2 = o.repo ? [] : findings.orphans;
   const kept = new Set(daemons.flatMap((d) => [d.pid, ...d.processes.map((p) => p.pid)]));
   const shape = {
@@ -3063,16 +2914,14 @@ function costOf(cost) {
   const { cpuPct, cpuMs, privateBytes, swapBytes } = cost;
   return { cpuPct, cpuMs, privateBytes, swapBytes };
 }
-function workOf2(work, now, draining) {
-  const departedAt = work?.departedAt ?? null;
+function workOf2(work, drainLeftMs2) {
   return {
     pending: work?.pending ?? null,
     running: work?.running ?? null,
     tiers: work?.tiers ?? [],
     checkpoints: work?.checkpoints ?? [],
-    departedAt,
-    // The flags name the drain (D7); its time left is `daemon.idleExitMinutes` after the departure.
-    drainLeftMs: !draining || work === null || departedAt === null ? null : Math.max(0, departedAt + work.settings.idleExitMinutes * 6e4 - now),
+    departedAt: work?.departedAt ?? null,
+    drainLeftMs: drainLeftMs2,
     lastUsedAt: work?.lastUse?.usedAt ?? null
   };
 }
@@ -3082,15 +2931,11 @@ function cpuOf(d) {
   return cpu;
 }
 function worktreeIdsOf(commonDir) {
-  try {
-    const names3 = readdirSync6(storePaths(commonDir).locksDir);
-    return new Set(names3.flatMap((n) => /^([0-9a-f]{16})\.sqlite$/.exec(n)?.[1] ?? []));
-  } catch {
-    return /* @__PURE__ */ new Set();
-  }
+  const locks = names(storePaths(commonDir).locksDir);
+  return new Set(locks.flatMap((n) => lockFileWorktreeId(n) ?? []));
 }
 function socketIdOf(path) {
-  return /^squeal-([0-9a-f]{16})\.sock$/.exec(basename2(path))?.[1] ?? "";
+  return socketWorktreeId(basename3(path)) ?? "";
 }
 function ofKept(what, kept) {
   const pid = /^(?:daemon|process) (\d+)\b/.exec(what)?.[1];
@@ -3100,7 +2945,6 @@ function ofKept(what, kept) {
 // src/core/ps/work.ts
 import { existsSync as existsSync3, statSync as statSync3 } from "node:fs";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
-import { pathToFileURL } from "node:url";
 
 // src/core/daemon/last-use.ts
 function daemonUsedMetaKey(worktreeId) {
@@ -3121,6 +2965,18 @@ function readDaemonUsed(value, startedAt) {
 }
 function isEpochMs(value) {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+// src/core/delivery/harness-process.ts
+function harnessAlive(harness, namespace, statOf2) {
+  if (namespace === null || harness.pidNamespace !== namespace) return null;
+  const stat = statOf2(harness.pid);
+  return stat !== null && stat.startTime === harness.startTime && stat.state !== "Z";
+}
+function toHarness(value) {
+  if (!isRecord(value)) return void 0;
+  const { pid, startTime, pidNamespace } = value;
+  return typeof pid === "number" && typeof startTime === "number" && typeof pidNamespace === "string" ? { pid, startTime, pidNamespace } : void 0;
 }
 
 // src/core/ps/work.ts
@@ -3185,7 +3041,7 @@ function openReadOnly(path) {
     const held = wal !== void 0 && existsSync3(`${path}-shm`);
     if (!held && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
-    db = new DatabaseSync4(held ? path : immutable(path), { readOnly: true });
+    db = new DatabaseSync4(held ? path : immutableUrl(path), { readOnly: true });
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
     const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
     if (version >= READS_SCHEMA) return { db, file: held ? null : file };
@@ -3195,11 +3051,6 @@ function openReadOnly(path) {
     db?.close();
     return `its store ${path} cannot be read: ${message(error)}`;
   }
-}
-function immutable(path) {
-  const url = pathToFileURL(path);
-  url.search = "immutable=1";
-  return url;
 }
 function changed(path, before) {
   try {
@@ -3239,15 +3090,16 @@ function readOne(db, d, runsOf, table, namespace, ownStart, unknown) {
       "work",
       `its row is a predecessor's: its record, token and last use are ${UNKNOWN2} until it registers`
     );
-  const token = startedAt === null || theirs ? null : meta("daemonToken", "token", tokenOf(startedAt, version), null);
+  const token = startedAt === null || theirs ? null : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version), null);
   const record = row2 === null || theirs ? null : recordOf(row2, token);
   const counts = new Map(
     all(db, PENDING, id).map((r) => [str2(r, "pending"), num2(r, "n")])
   );
-  const slow = meta("slowTier", "slowWaiting", slowOf, { waits: false, running: [] });
+  const slow = meta("slowTier", "slowWaiting", (v) => slowOf(toSlowActivity(v)), NO_SLOW);
   let lanes;
   const laneOf2 = (checkpointId) => {
-    if (lanes === void 0) lanes = meta("checkpointLanes", "checkpoint lanes", lanesOf, {});
+    if (lanes === void 0)
+      lanes = meta("checkpointLanes", "checkpoint lanes", toCheckpointLanes, {});
     return lanes?.[checkpointId] ?? null;
   };
   const since = theirs ? Number.POSITIVE_INFINITY : startedAt ?? Number.POSITIVE_INFINITY;
@@ -3285,13 +3137,13 @@ function readOne(db, d, runsOf, table, namespace, ownStart, unknown) {
     const agentId = str2(r, "agent_id");
     const of = `${sessionId}
 ${agentId}`;
-    const harness = slot2(harnesses, of, `consumer ${sessionId} harness`, harnessOf);
+    const harness = slot2(harnesses, of, `consumer ${sessionId} harness`, toHarness);
     return {
       sessionId,
       agentId,
-      lastSeenAt: num2(r, "last_seen_at"),
       harness,
-      alive: aliveOf(harness, table, namespace),
+      // `harnessGone`'s rule, over the process table.
+      alive: harness === null ? null : harnessAlive(harness, namespace, statIn(table)),
       version: slot2(versions, of, `consumer ${sessionId} version`, text)
     };
   });
@@ -3325,13 +3177,9 @@ var OPEN_RUNS = `SELECT worktree_id, id, test_files, checkpoint_id, started_at F
   WHERE end_state IS NULL ORDER BY started_at, rowid`;
 var OPEN_CHECKPOINTS = `SELECT id, test_files, started_at FROM checkpoints
   WHERE worktree_id = ? AND completed_at IS NULL AND started_at >= ? ORDER BY started_at, rowid`;
-var CONSUMERS = `SELECT session_id, agent_id, last_seen_at FROM consumers
+var CONSUMERS = `SELECT session_id, agent_id FROM consumers
   WHERE worktree_id = ? ORDER BY session_id, agent_id`;
 var UNKNOWN2 = "has a format this release does not know";
-var tokenOf = (startedAt, version) => (v) => {
-  if (!isRecord(v) || typeof v.token !== "string") return void 0;
-  return v.startedAt === startedAt && v.squealVersion === version ? v.token : null;
-};
 function recordOf(row2, token) {
   const socketPath = strOrNull2(row2, "daemon_socket");
   if (socketPath === null) return null;
@@ -3344,29 +3192,22 @@ function recordOf(row2, token) {
     ...token === null ? {} : { token }
   };
 }
-var slowOf = (v) => {
-  if (v === null) return { waits: false, running: [] };
-  if (!isRecord(v)) return void 0;
-  if (v.kind === "waiting") return { waits: true, running: [] };
-  if (v.kind !== "running" || typeof v.path !== "string") return void 0;
-  return { waits: true, running: Array.isArray(v.paths) ? v.paths : [v.path] };
-};
-var lanesOf = (v) => {
-  if (!isRecord(v)) return void 0;
-  const lanes = {};
-  for (const [id, lane] of Object.entries(v))
-    if (lane === "fast" || lane === "slow") lanes[id] = lane;
-  return lanes;
-};
+var NO_SLOW = { waits: false, running: [] };
+function slowOf(activity) {
+  if (activity === void 0) return void 0;
+  if (activity === null) return NO_SLOW;
+  return {
+    waits: true,
+    running: activity.kind === "running" ? activity.paths ?? [activity.path] : []
+  };
+}
 var slotsOf = (v) => isRecord(v) ? v : void 0;
 var text = (v) => typeof v === "string" ? v : void 0;
-var harnessOf = (v) => isRecord(v) && typeof v.pid === "number" && typeof v.startTime === "number" && typeof v.pidNamespace === "string" ? { pid: v.pid, startTime: v.startTime, pidNamespace: v.pidNamespace } : void 0;
 var finiteNumber = (v) => typeof v === "number" && Number.isFinite(v) ? v : void 0;
-function aliveOf(harness, table, namespace) {
-  if (harness === null || namespace === null || harness.pidNamespace !== namespace) return null;
-  const row2 = table.get(harness.pid);
-  return row2 !== void 0 && row2.startTicks === harness.startTime && row2.state !== "Z";
-}
+var statIn = (table) => (pid) => {
+  const row2 = table.get(pid);
+  return row2 === void 0 ? null : { startTime: row2.startTicks, state: row2.state };
+};
 function settingsOf(root) {
   const { daemon, runner } = root === null ? DEFAULT_POLICY : readPolicy(root);
   return {
@@ -3413,8 +3254,7 @@ function message(error) {
 var SAMPLE_MS = 2e3;
 async function takeSnapshot(options) {
   const read = await readWindow(options);
-  const findings = options.flag(read.model);
-  return { shape: shapeOf(read, findings, options), leftovers: findings.leftovers };
+  return shapeOf(read, options.flag(read.model), options);
 }
 async function readWindow(o) {
   const { source, places } = o;
@@ -3424,7 +3264,6 @@ async function readWindow(o) {
   const found2 = discover(source, first.table, places, locks);
   const work = readWork(source, first.table, found2.daemons);
   const attribution = attribute(source, first.table, ownersOf(found2.daemons, work.work));
-  const reading = source.host();
   const bootTime = source.bootTime();
   await o.wait(Math.max(0, o.sampleMs - (performance.now() - first.atMs)));
   const pids3 = followed(found2, work.work, attribution);
@@ -3439,7 +3278,7 @@ async function readWindow(o) {
   const discovery = lockedAgain(source, found2, [locks, locksAgain]);
   const readable = [locks, locksAgain].filter((l) => l !== null).length;
   const daemonPids = new Set(discovery.daemons.map((d) => d.row.pid));
-  const pool = readPool(source, places, daemonPids, [locks, locksAgain]);
+  const pool = readPool(source, places, daemonPids, [locks, locksAgain], read.host.cpus);
   const second = { ...read, table: only(read.table, pids3) };
   const live = discovery.daemons.filter(
     (d) => second.table.get(d.row.pid)?.startTicks === d.row.startTicks
@@ -3461,11 +3300,7 @@ async function readWindow(o) {
   };
   return {
     model,
-    // The host files of one read, the busy CPU over the window's two.
-    host: hostTotals(
-      { ...reading, cpuTime: first.cpuTime },
-      { ...reading, cpuTime: second.cpuTime }
-    ),
+    host: hostTotals(first.host, second.host),
     costs,
     bootTime,
     unknown: [...discovery.unknown, ...work.unknown, ...again.unknown, ...blind(first.table, tree)]
@@ -3505,7 +3340,7 @@ function only(table, pids3) {
 }
 
 // src/cli/ps.ts
-var USAGE = "usage: squeal ps [--repo] [--full] [--json]\n       squeal ps --leftovers\n";
+var USAGE = "usage: squeal ps [--repo] [--full] [--json]\n";
 var SOURCES = {
   linux: () => createProcSource(),
   // Built untested: nobody has run it on a Mac (the human, 2026-10-21).
@@ -3534,16 +3369,15 @@ ${USAGE}`);
 ${USAGE}`);
     return 2;
   }
-  let snapshot;
+  let shape;
   try {
-    snapshot = await takeSnapshot({
+    shape = await takeSnapshot({
       source,
       places: placesOf(io.env ?? process.env, commonDir, options),
-      flag: options.flag ?? ((model) => flag2(model, { full: parsed2.full })),
+      flag: options.flag ?? flag2,
       full: parsed2.full,
       repo: parsed2.repo,
-      // The leftover walk needs no CPU window.
-      sampleMs: parsed2.leftovers ? 0 : SAMPLE_MS,
+      sampleMs: SAMPLE_MS,
       now: io.now ?? Date.now,
       wait: options.wait ?? ((ms) => sleep(ms))
     });
@@ -3554,31 +3388,18 @@ ${USAGE}`);
     );
     return 3;
   }
-  const { shape, leftovers } = snapshot;
-  if (parsed2.leftovers) {
-    io.stdout(leftovers.map((path) => `${path}
-`).join(""));
-    for (const u of shape.unknown.filter((u2) => u2.what === "flag leftover-temp"))
-      io.stderr(`squeal ps --leftovers: ${u.why}
-`);
-    return 0;
-  }
   io.stdout(parsed2.json ? `${JSON.stringify(shape)}
 ` : render(shape, { full: parsed2.full }));
   return shape.flags === 0 ? 0 : 1;
 }
 function parseArgs(args) {
-  const known = /* @__PURE__ */ new Set(["--repo", "--full", "--json", "--leftovers"]);
+  const known = /* @__PURE__ */ new Set(["--repo", "--full", "--json"]);
   const unknown = args.find((a) => !known.has(a));
   if (unknown !== void 0) return `unknown option "${unknown}"`;
-  const leftovers = args.includes("--leftovers");
-  if (leftovers && args.some((a) => a !== "--leftovers"))
-    return "--leftovers prints the leftover paths and nothing else; it takes no other option";
   return {
     repo: args.includes("--repo"),
     full: args.includes("--full"),
-    json: args.includes("--json"),
-    leftovers
+    json: args.includes("--json")
   };
 }
 function commonDirOf(cwd) {
@@ -3595,7 +3416,7 @@ function placesOf(env, commonDir, options) {
     uid: options.uid ?? currentUid(),
     home: env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2(),
     userConfig: userConfigPath(env),
-    runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? xdg : null,
+    runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute8(xdg) ? xdg : null,
     tempDir: options.tempDir ?? "/tmp",
     commonDir
   };
