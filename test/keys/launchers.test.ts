@@ -23,21 +23,27 @@ const LAUNCHERS = readdirSync(join(ROOT, "plugins"), { withFileTypes: true })
     return names.map((name) => `plugins/${plugin.name}/bin/${name}`);
   });
 
-/** The shell lines of `text`, comments dropped, the `node -e` script's body left out. */
+/**
+ * The shell lines of `text`, comments dropped, the `node -e` script's body
+ * left out. No `'` can stand inside it, so its first line that starts with one ends it.
+ */
 function shellLines(text: string): string[] {
   const lines: string[] = [];
   let inScript = false;
   for (const line of text.split("\n")) {
     if (inScript) {
-      if (line.startsWith("')")) inScript = false;
+      if (line.startsWith("'")) inScript = false;
       continue;
     }
     if (/^\s*#/.test(line) || line.trim() === "") continue;
-    if (/\$\(node -e '$/.test(line)) inScript = true;
+    if (/\bnode\b.*\s-e '$/.test(line)) inScript = true;
     lines.push(line);
   }
   return lines;
 }
+
+/** `exec node <flags> "<cli>"`, or `exec node <flags> -e '<lookup>` from format 6. */
+const EXEC_NODE = /\bexec node((?:\s+-\S+)*)\s+(?:"|-e '$)/;
 
 describe("the launchers", () => {
   it("are found", () => {
@@ -50,10 +56,10 @@ describe("the launchers", () => {
     const runs = lines.filter((line) => /(?:^\s*(?:exec\s+)?|\$\()node\s/.test(line));
     expect(runs.length, path).toBeGreaterThan(0);
     for (const line of runs) {
-      // The CLI's lookup is a script Node runs with `-e`, whose output the launcher reads.
+      // The CLI's lookup is a script Node runs with `-e`. Up to format 5 the launcher read its
+      // output; from format 6 (005-75) it imports the CLI and drops `-e` from `process.execArgv`.
       if (/^\S+=\$\(node -e '$/.test(line.trim())) continue;
-      const flags =
-        /\bexec node((?:\s+-\S+)*)\s+"/.exec(line)?.[1]?.split(/\s+/).filter(Boolean) ?? null;
+      const flags = EXEC_NODE.exec(line)?.[1]?.split(/\s+/).filter(Boolean) ?? null;
       expect(flags, `${path}: ${line}`).not.toBeNull();
       for (const flag of flags ?? []) expect(flag, path).toMatch(/^--disable-warning=\w+$/);
     }
