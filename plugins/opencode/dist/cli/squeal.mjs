@@ -13368,8 +13368,8 @@ function lower(processes2, idle2) {
     }
   );
 }
-function idleIo(pids2, done) {
-  execFile("ionice", ["-c", "3", "-p", ...pids2.map(String)], done).unref();
+function idleIo(pids3, done) {
+  execFile("ionice", ["-c", "3", "-p", ...pids3.map(String)], done).unref();
 }
 var TEST_NICE, EVERY_MS, WALK_MS;
 var init_low_priority = __esm({
@@ -57188,10 +57188,10 @@ var DarwinSource = class {
   bootTime() {
     return this.#boot;
   }
-  processTable(pids2, since) {
-    if (pids2?.length === 0 && since === void 0) return /* @__PURE__ */ new Map();
+  processTable(pids3, since) {
+    if (pids3?.length === 0 && since === void 0) return /* @__PURE__ */ new Map();
     this.#last = this.#read();
-    const wanted = pids2 === void 0 ? null : new Set(pids2);
+    const wanted = pids3 === void 0 ? null : new Set(pids3);
     const table = /* @__PURE__ */ new Map();
     for (const [pid, line] of this.#last)
       if ((wanted?.has(pid) ?? true) || since !== void 0 && !since.has(pid))
@@ -57212,11 +57212,11 @@ var DarwinSource = class {
     return null;
   }
   /** `lsof -F pn` prints a `p<pid>` line, then each file's `f<fd>` and `n<name>` lines. */
-  cwds(pids2) {
-    if (pids2.length === 0) return /* @__PURE__ */ new Map();
+  cwds(pids3) {
+    if (pids3.length === 0) return /* @__PURE__ */ new Map();
     const text3 = this.#run("lsof", ["-d", "cwd", "-F", "pn"]);
     if (text3 === null) return null;
-    const wanted = new Set(pids2);
+    const wanted = new Set(pids3);
     const cwds = /* @__PURE__ */ new Map();
     let pid = null;
     let fd = null;
@@ -57386,13 +57386,14 @@ var NODE_COMMS = /* @__PURE__ */ new Set(["MainThread", "node"]);
 var SCRIPT2 = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
 var LOCK_FILE = /^(.+)\/squeal\/locks\/([0-9a-f]{16})\.sqlite$/;
 var SOCKET_FILE = /^squeal-([0-9a-f]{16})\.sock$/;
+var HOLDERS = "daemon lock holders";
 var CACHE_INSTALL = /\/\.(claude|codex)\/plugins\/cache\/[^/]+\/squeal\/([^/]+)\//;
 var PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
 var discover = (source, table, places, locks = source.locks()) => {
   const unknown = [];
   if (locks === null) {
     const why2 = "they cannot be read: a phase is serving by its heartbeat, or unknown (D10)";
-    unknown.push({ what: "daemon lock holders", why: why2 });
+    unknown.push({ what: HOLDERS, why: why2 });
   }
   const daemons = [];
   for (const row2 of table.values()) {
@@ -57410,15 +57411,23 @@ var discover = (source, table, places, locks = source.locks()) => {
   }
   return { daemons, sockets: socketFiles(source, places, daemons), unknown };
 };
-function lockedAgain(source, discovery, locks) {
-  if (locks === null || discovery.daemons.every((d) => d.holdsLock !== false)) return discovery;
-  const daemons = discovery.daemons.map(
-    (d) => d.holdsLock === false && holds2(source, d.row.pid, d.lockPath, locks) === true ? { ...d, holdsLock: true } : d
-  );
+function lockedAgain(source, discovery, [first, second]) {
+  const both = first !== null && second !== null;
+  if (first === null && second === null) return discovery;
+  if (both && discovery.daemons.every((d) => d.holdsLock !== false)) return discovery;
+  const daemons = discovery.daemons.map((d) => {
+    const shown = d.holdsLock === true || second !== null && holds2(source, d.row.pid, d.lockPath, second) === true;
+    const held2 = shown ? true : both && d.holdsLock === false ? false : null;
+    return held2 === d.holdsLock ? d : { ...d, holdsLock: held2 };
+  });
   const sockets = discovery.sockets.map(
     (s) => s.daemonPid === null ? { ...s, daemonPid: holderOf2(daemons, s.worktreeId) } : s
   );
-  return { ...discovery, daemons, sockets };
+  if (both) return { ...discovery, daemons, sockets };
+  const [lost, read5] = first === null ? ["first", "second"] : ["second", "first"];
+  const why2 = `the window's ${lost} /proc/locks reading cannot be read, so a lock the ${read5} misses is unknown, not absent: a phase is serving by its heartbeat, or unknown`;
+  const unknown = discovery.unknown.filter((u) => u.what !== HOLDERS);
+  return { daemons, sockets, unknown: [...unknown, { what: HOLDERS, why: why2 }] };
 }
 function ownStartOn(source) {
   const boot = source.bootTime();
@@ -57704,8 +57713,8 @@ function liveKeys(model) {
 }
 function unusedPaths(model, keyDirs, candidates) {
   const { places, source } = model;
-  const pids2 = [...model.first.sample.table.values()].filter((row2) => row2.uid === null || row2.uid === places.uid).map((row2) => row2.pid);
-  const cwds = source.cwds(pids2);
+  const pids3 = [...model.first.sample.table.values()].filter((row2) => row2.uid === null || row2.uid === places.uid).map((row2) => row2.pid);
+  const cwds = source.cwds(pids3);
   if (cwds === null) return null;
   const at2 = `${places.tempDir}/squeal-`;
   const real2 = realOr4(places.tempDir);
@@ -57720,7 +57729,7 @@ function unusedPaths(model, keyDirs, candidates) {
   };
   const unread = /* @__PURE__ */ new Set();
   for (const cwd of cwds.values()) use(named(cwd));
-  for (const pid of pids2) {
+  for (const pid of pids3) {
     if (unused.size === 0) break;
     const args2 = source.cmdline(pid);
     if (args2 === null) unread.add(pid);
@@ -57731,7 +57740,7 @@ function unusedPaths(model, keyDirs, candidates) {
   }
   const sockets = unused.size === 0 ? [] : source.unixSockets();
   for (const path of sockets ?? []) use(named(path));
-  for (const pid of pids2) {
+  for (const pid of pids3) {
     if (unused.size === 0) break;
     const fds = source.fds(pid);
     if (fds === null) unread.add(pid);
@@ -57741,11 +57750,11 @@ function unusedPaths(model, keyDirs, candidates) {
   return { unused: [...unused].sort(), unread: failedReads(model, sockets === null, unread) };
 }
 var NAMED = 5;
-function failedReads(model, socketsUnread, pids2) {
+function failedReads(model, socketsUnread, pids3) {
   const reasons = socketsUnread ? ["the bound unix sockets cannot be read (D10)"] : [];
   const first = model.first.sample.table;
-  const now = pids2.size === 0 ? /* @__PURE__ */ new Map() : model.source.processTable([...pids2]);
-  const there = [...pids2].filter((pid) => {
+  const now = pids3.size === 0 ? /* @__PURE__ */ new Map() : model.source.processTable([...pids3]);
+  const there = [...pids3].filter((pid) => {
     const row2 = now.get(pid);
     return row2 !== void 0 && row2.state !== "Z" && row2.startTicks === first.get(pid)?.startTicks;
   });
@@ -58013,6 +58022,7 @@ var DEPARTURE_MS = 6e4;
 var NOT_INSTALLED_MS = 60 * 6e4;
 var CACHE = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/[^/]+\//;
 var NO_LOCKS = "the source has no lock state (D10)";
+var ONE_READING = "one of the window's two /proc/locks readings cannot be read, so a lock the other misses is unknown, not absent";
 var NO_MARKS = "the source reads no marks (D10)";
 var flag2 = (model, options = {}) => {
   const unknown = [];
@@ -58025,9 +58035,9 @@ ${why2}`);
     unknown.push({ what, why: why2 });
   };
   const { source } = model;
-  if (model.pool.pool.held === null)
+  if (model.locksRead !== "both")
     for (const what of ["flag no-lock", "flag hung", "flag foreign-permit", "phase stopping"])
-      name2(what, NO_LOCKS);
+      name2(what, model.locksRead === "none" ? NO_LOCKS : ONE_READING);
   if (!source.readsMarks)
     for (const what of ["flag orphan-test-process", "flag overdue-test-process"])
       name2(what, NO_MARKS);
@@ -58279,36 +58289,50 @@ function duplicates(c) {
       if (age2 === null) c.name(`daemon ${d.row.pid} flag duplicate`, NO_BOOT);
       return age2 !== null && age2 > (d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS);
     };
-    const others = (d) => group.filter((o) => o !== d).map((o) => o.row.pid).join(", ");
-    const holders = group.filter((d) => d.holdsLock === true);
-    const atOnce = new Set(holders.map((d) => d.lockPath)).size === holders.length;
-    const holding = holders.map((d) => d.row.pid).join(", ");
-    if (group.some((d) => d.holdsLock === null)) {
+    if (c.model.locksRead === "none") {
       if (!group.every(waited)) continue;
-      for (const d of group)
+      for (const d of group) {
+        const others = pids(group.filter((o) => o !== d));
         add2(
           d,
-          `daemon ${others(d)} has its root ${root} too; which holds the lock is unknown`,
-          `kill ${d.row.pid}  # or ${others(d)}: whichever holds no lock`
+          `daemon ${others} has its root ${root} too; which holds the lock is unknown`,
+          `kill ${d.row.pid}  # or ${others}: whichever holds no lock`
         );
-    } else if (holders.length === 1 || holders.length > 1 && !atOnce) {
-      for (const d of group)
-        if (!d.holdsLock && waited(d))
+      }
+      continue;
+    }
+    const byLock = /* @__PURE__ */ new Map();
+    for (const d of group)
+      if (d.holdsLock === true) byLock.set(d.lockPath, [...byLock.get(d.lockPath) ?? [], d]);
+    for (const d of group) {
+      if (d.holdsLock === null)
+        c.name(
+          `daemon ${d.row.pid} flag duplicate`,
+          `whether it holds a lock of its root ${root} is unknown`
+        );
+      else if (d.holdsLock) {
+        const others = [...byLock].flatMap(([lock2, ds]) => lock2 === d.lockPath ? [] : ds);
+        if (others.length > 0)
           add2(
             d,
-            holders.length === 1 ? `daemon ${holding} holds the lock of its root ${root}` : `daemons ${holding} held the lock of its root ${root} in turn`,
-            `kill ${d.row.pid}`
+            `${heldBy(others)} a lock of its root ${root} too`,
+            `kill ${d.row.pid}  # or ${pids(others)}: keep one`
           );
-    } else if (holders.length > 1) {
-      for (const d of holders)
-        add2(
-          d,
-          `daemon ${others(d)} holds a lock of its root ${root} too`,
-          `kill ${d.row.pid}  # or ${others(d)}: keep one`
-        );
+      } else if (byLock.size > 0 && waited(d)) {
+        const mine = byLock.get(d.lockPath);
+        const by = mine ?? [...byLock.values()].flat();
+        const turn = (mine?.length ?? 0) > 1 ? " in turn" : "";
+        add2(d, `${heldBy(by)} the lock of its root ${root}${turn}`, `kill ${d.row.pid}`);
+      }
     }
   }
   return out2;
+}
+function pids(daemons) {
+  return daemons.map((d) => d.row.pid).join(", ");
+}
+function heldBy(daemons) {
+  return daemons.length === 1 ? `daemon ${pids(daemons)} holds` : `daemons ${pids(daemons)} held`;
 }
 function within(path, dir2) {
   return path.startsWith(dir2.endsWith("/") ? dir2 : `${dir2}/`);
@@ -58342,10 +58366,10 @@ var ProcSource = class {
     const seconds3 = /^btime (\d+)$/m.exec(this.#read("stat") ?? "")?.[1];
     return seconds3 === void 0 ? null : Number(seconds3) * 1e3;
   }
-  processTable(pids2, since) {
+  processTable(pids3, since) {
     const table = /* @__PURE__ */ new Map();
     const born = since === void 0 ? [] : this.#pids().filter((pid) => !since.has(pid));
-    for (const pid of pids2 === void 0 ? this.#pids() : /* @__PURE__ */ new Set([...pids2, ...born])) {
+    for (const pid of pids3 === void 0 ? this.#pids() : /* @__PURE__ */ new Set([...pids3, ...born])) {
       const row2 = this.#row(pid);
       if (row2 !== null) table.set(pid, row2);
     }
@@ -58392,9 +58416,9 @@ var ProcSource = class {
     }
     return targets;
   }
-  cwds(pids2) {
+  cwds(pids3) {
     const cwds = /* @__PURE__ */ new Map();
-    for (const pid of pids2) {
+    for (const pid of pids3) {
       const cwd = this.#link(`${pid}/cwd`);
       if (cwd !== null) cwds.set(pid, cwd);
     }
@@ -58816,32 +58840,32 @@ function memoryShare(privateBytes, host) {
 var PERMIT2 = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
 var readPool = (source, places, daemons, readings = [source.locks()]) => {
   const slots = hostSlotsOf(places.userConfig, source.host().cpus);
-  if ((readings[0] ?? null) === null)
-    return { pool: { slots, held: null }, permits: /* @__PURE__ */ new Map(), foreign: [] };
   const holders = /* @__PURE__ */ new Map();
   for (const locks of readings)
-    for (const [file, pids2] of holdersOf(locks ?? [])) holders.set(file, pids2);
+    for (const [file, pids3] of holdersOf(locks ?? [])) holders.set(file, pids3);
   let held2 = 0;
   const permits = /* @__PURE__ */ new Map();
   const foreign = [];
   for (const path of permitFiles(places)) {
     const key2 = source.fileKey(path);
-    const pids2 = key2 === null ? void 0 : holders.get(key2);
-    if (pids2 === void 0) continue;
+    const pids3 = key2 === null ? void 0 : holders.get(key2);
+    if (pids3 === void 0) continue;
     held2++;
-    for (const pid of pids2) {
+    for (const pid of pids3) {
       if (daemons.has(pid)) permits.set(pid, (permits.get(pid) ?? 0) + 1);
       else foreign.push({ pid, path });
     }
   }
+  if (readings.some((locks) => locks === null))
+    return { pool: { slots, held: null }, permits: /* @__PURE__ */ new Map(), foreign };
   return { pool: { slots, held: held2 }, permits, foreign };
 };
 function holdersOf(locks) {
   const holders = /* @__PURE__ */ new Map();
   for (const lock2 of locks) {
     if (lock2.blocked || lock2.access !== "write" || lock2.pid === null) continue;
-    const pids2 = holders.get(lock2.file) ?? /* @__PURE__ */ new Set();
-    holders.set(lock2.file, pids2.add(lock2.pid));
+    const pids3 = holders.get(lock2.file) ?? /* @__PURE__ */ new Set();
+    holders.set(lock2.file, pids3.add(lock2.pid));
   }
   return holders;
 }
@@ -58867,18 +58891,18 @@ function permitFiles(places) {
 }
 
 // src/core/ps/measure.ts
-var takeSample = (source, pids2, since) => {
+var takeSample = (source, pids3, since) => {
   const before = performance.now();
-  const table = source.processTable(pids2, since);
+  const table = source.processTable(pids3, since);
   const cpuTime4 = source.host().cpuTime;
   return { atMs: (before + performance.now()) / 2, table, cpuTime: cpuTime4 };
 };
-function below2(table, pids2) {
+function below2(table, pids3) {
   const children = /* @__PURE__ */ new Map();
   for (const row2 of table.values())
     children.set(row2.ppid, [...children.get(row2.ppid) ?? [], row2.pid]);
   const all2 = /* @__PURE__ */ new Set();
-  const next = [...pids2];
+  const next = [...pids3];
   for (let pid = next.pop(); pid !== void 0; pid = next.pop()) {
     if (all2.has(pid)) continue;
     all2.add(pid);
@@ -58886,11 +58910,11 @@ function below2(table, pids2) {
   }
   return [...all2];
 }
-var measure = (source, first, second, pids2) => {
+var measure = (source, first, second, pids3) => {
   const windowMs = second.atMs - first.atMs;
   const clockTicks = source.clockTicks();
-  const rows = new Set(pids2);
-  const tree = below2(first.table, pids2);
+  const rows = new Set(pids3);
+  const tree = below2(first.table, pids3);
   const inTree = new Set(tree);
   const lived = (pid) => {
     const before = first.table.get(pid);
@@ -58954,7 +58978,7 @@ var measure = (source, first, second, pids2) => {
     count2(homeAfter(pid), after.cpuTicks + (after.childTicks ?? 0));
   }
   const costs = /* @__PURE__ */ new Map();
-  for (const pid of pids2) {
+  for (const pid of pids3) {
     const before = first.table.get(pid);
     const after = second.table.get(pid);
     const now = before === void 0 || after?.startTicks === before.startTicks ? after : void 0;
@@ -59036,10 +59060,10 @@ var attribute = (source, table, owners) => {
     const above = nearest(table, parent2, (p) => owner2.has(p) || marks.has(p));
     return above === null || owner2.has(above);
   };
-  const pids2 = [...table.keys()].sort((a, b) => a - b);
-  const heads = new Set(pids2.filter(isHead));
+  const pids3 = [...table.keys()].sort((a, b) => a - b);
+  const heads = new Set(pids3.filter(isHead));
   const descendants = new Map([...heads].map((h) => [h, []]));
-  for (const pid of pids2) {
+  for (const pid of pids3) {
     if (owner2.has(pid) || heads.has(pid)) continue;
     const head = nearest(table, table.get(pid)?.ppid, (p) => owner2.has(p) || heads.has(p));
     if (head !== null) descendants.get(head)?.push(pid);
@@ -59153,7 +59177,7 @@ function unknownOf({ shape, named, costs }) {
   if (seenOnce.length > 0)
     name2(
       "processes cpuPct",
-      `${were(seenOnce)} in one sample of the window only: ${pids(seenOnce)}${waitedFor3(reaped.length, seenOnce.length)}`
+      `${were(seenOnce)} in one sample of the window only: ${pids2(seenOnce)}${waitedFor3(reaped.length, seenOnce.length)}`
     );
   const lost = seenOnce.filter(([, c]) => (c?.reapedBy ?? null) === null);
   const unsure = entries3.filter(([, c]) => c?.reaperUnknown === true);
@@ -59162,10 +59186,10 @@ function unknownOf({ shape, named, costs }) {
   const holding = unsure.filter(([, c]) => c?.cpuPct !== null);
   const parts2 = [
     ...outside2.length === 0 ? [] : [
-      `${counted(outside2)} in one sample only, which no process ps measures waited for: ${pids(outside2)}`
+      `${counted(outside2)} in one sample only, which no process ps measures waited for: ${pids2(outside2)}`
     ],
-    ...ended2.length === 0 ? [] : [`${counted(ended2)} that ended ${afterParent(ended2.length)}: ${pids(ended2)}`],
-    ...holding.length === 0 ? [] : [`processes below ${counted(holding)} that ended ${afterParent(2)}: ${pids(holding)}`]
+    ...ended2.length === 0 ? [] : [`${counted(ended2)} that ended ${afterParent(ended2.length)}: ${pids2(ended2)}`],
+    ...holding.length === 0 ? [] : [`processes below ${counted(holding)} that ended ${afterParent(2)}: ${pids2(holding)}`]
   ];
   if (parts2.length > 0)
     name2(
@@ -59177,13 +59201,13 @@ function unknownOf({ shape, named, costs }) {
   if (left.length > 0)
     name2(
       "processes privateBytes",
-      `${counted(left)} ended in the window, so ${left.length === 1 ? "it holds" : "they hold"} none: ${pids(left)}`
+      `${counted(left)} ended in the window, so ${left.length === 1 ? "it holds" : "they hold"} none: ${pids2(left)}`
     );
   const unread = noMemory.filter(([, c]) => c?.left !== true);
   if (unread.length > 0)
     name2(
       "squeal privateBytes",
-      `a lower bound: it leaves out the memory of ${counted(unread)} whose status could not be read: ${pids(unread)}`
+      `a lower bound: it leaves out the memory of ${counted(unread)} whose status could not be read: ${pids2(unread)}`
     );
   const noSwap = entries3.filter(
     ([, c]) => c !== null && c.privateBytes !== null && c.swapBytes === null
@@ -59191,7 +59215,7 @@ function unknownOf({ shape, named, costs }) {
   if (noSwap.length > 0)
     name2(
       "processes swapBytes",
-      shape.memory === "rss" ? "the source reads no swap per process on this platform (D10)" : `${counted(noSwap)} show no swap: ${pids(noSwap)}`
+      shape.memory === "rss" ? "the source reads no swap per process on this platform (D10)" : `${counted(noSwap)} show no swap: ${pids2(noSwap)}`
     );
   const daemons = shape.repositories.flatMap((r) => r.daemons);
   const starts = [...daemons, ...daemons.flatMap((d) => d.processes)];
@@ -59235,7 +59259,7 @@ function counted(entries3) {
 function were(entries3) {
   return `${counted(entries3)} ${entries3.length === 1 ? "was" : "were"}`;
 }
-function pids(entries3) {
+function pids2(entries3) {
   const listed5 = entries3.slice(0, LISTED).map(([pid]) => pid);
   const more = entries3.length - listed5.length;
   return `pid ${listed5.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
@@ -59328,7 +59352,7 @@ function shapeOf(r, findings, o) {
   }).filter((repository) => !o.repo || repository.current).sort((a, b) => Number(b.current) - Number(a.current) || (b.cpuPct ?? 0) - (a.cpuPct ?? 0));
   const daemons = repositories.flatMap((repository) => repository.daemons);
   const processes2 = daemons.flatMap((d) => d.processes);
-  const pids2 = pidsOf(daemons);
+  const pids3 = pidsOf(daemons);
   const total = totalOf(daemons);
   const ids = !o.repo ? null : current3 === null ? /* @__PURE__ */ new Set() : worktreeIdsOf(current3);
   const files2 = ids === null ? findings.files : findings.files.filter((f) => f.path !== null && ids.has(socketIdOf(f.path)));
@@ -59359,7 +59383,7 @@ function shapeOf(r, findings, o) {
     flags: daemons.reduce((n, d) => n + d.flags.length, 0) + processes2.reduce((n, p) => n + p.flags.length, 0) + orphans2.reduce((n, p) => n + p.flags.length, 0) + files2.length
   };
   const named = [...r.unknown, ...findings.unknown].filter((u) => !o.repo || ofKept(u.what, kept2));
-  const covered = new Map(pids2.map((pid) => [pid, costs.get(pid) ?? null]));
+  const covered = new Map(pids3.map((pid) => [pid, costs.get(pid) ?? null]));
   return { ...shape, unknown: unknownOf({ shape, named, costs: covered }) };
 }
 function costOf(cost) {
@@ -59711,19 +59735,20 @@ async function readWindow(o) {
   const reading = source.host();
   const bootTime = source.bootTime();
   await o.wait(Math.max(0, o.sampleMs - (performance.now() - first.atMs)));
-  const pids2 = followed(found3, work.work, attribution);
+  const pids3 = followed(found3, work.work, attribution);
   const tree = below2(first.table, measured(found3, attribution));
   const read5 = takeSample(
     source,
-    [.../* @__PURE__ */ new Set([...pids2, ...tree])],
+    [.../* @__PURE__ */ new Set([...pids3, ...tree])],
     tree.length > 0 ? first.table : void 0
   );
   const costs = measure(source, first, read5, measured(found3, attribution));
   const locksAgain = source.locks();
-  const discovery = lockedAgain(source, found3, locksAgain);
+  const discovery = lockedAgain(source, found3, [locks, locksAgain]);
+  const readable = [locks, locksAgain].filter((l) => l !== null).length;
   const daemonPids = new Set(discovery.daemons.map((d) => d.row.pid));
   const pool = readPool(source, places, daemonPids, [locks, locksAgain]);
-  const second = { ...read5, table: only(read5.table, pids2) };
+  const second = { ...read5, table: only(read5.table, pids3) };
   const live = discovery.daemons.filter(
     (d) => second.table.get(d.row.pid)?.startTicks === d.row.startTicks
   );
@@ -59732,6 +59757,7 @@ async function readWindow(o) {
     now,
     places,
     source,
+    locksRead: readable === 2 ? "both" : readable === 1 ? "one" : "none",
     discovery,
     first: { sample: first, work: work.work, attribution },
     second: {
@@ -59753,8 +59779,8 @@ async function readWindow(o) {
     unknown: [...discovery.unknown, ...work.unknown, ...again.unknown, ...blind(first.table, tree)]
   };
 }
-function blind(table, pids2) {
-  if (!pids2.some((pid) => table.get(pid)?.childTicks === null)) return [];
+function blind(table, pids3) {
+  if (!pids3.some((pid) => table.get(pid)?.childTicks === null)) return [];
   const why2 = "a lower bound: the source reads no children's CPU on this platform (D10), so a process that ends in the window adds none";
   return [{ what: "squeal cpuPct", why: why2 }];
 }
@@ -59771,15 +59797,15 @@ function measured(discovery, attribution) {
   ];
 }
 function followed(discovery, work, attribution) {
-  const pids2 = new Set(measured(discovery, attribution));
-  for (const u of attribution.unowned) pids2.add(u.pid);
+  const pids3 = new Set(measured(discovery, attribution));
+  for (const u of attribution.unowned) pids3.add(u.pid);
   for (const w2 of work.values())
-    for (const c of w2.consumers) if (c.harness !== null) pids2.add(c.harness.pid);
-  return [...pids2].sort((a, b) => a - b);
+    for (const c of w2.consumers) if (c.harness !== null) pids3.add(c.harness.pid);
+  return [...pids3].sort((a, b) => a - b);
 }
-function only(table, pids2) {
+function only(table, pids3) {
   const kept2 = /* @__PURE__ */ new Map();
-  for (const pid of pids2) {
+  for (const pid of pids3) {
     const row2 = table.get(pid);
     if (row2 !== void 0) kept2.set(pid, row2);
   }
