@@ -6,6 +6,7 @@ import {
   claimHandoff,
   handoffFrom,
   liveHandoff,
+  readHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../core/delivery/handoff.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
@@ -66,12 +67,14 @@ export async function startCommand(
   return 0;
 }
 
-/** The worktree's daemon while it stops: where it answers, its ping, and its record. */
+/** The worktree's daemon while it stops: where it answers, its ping, its record and version. */
 interface Stopping {
   readonly socketPath: AbsolutePath;
   /** `null` once its socket no longer answers. */
   readonly ping: PingResponse | null;
+  /** `null` once it cleared it: only the handoff's claim is left. */
   readonly record: DaemonRecord | null;
+  readonly from: string;
 }
 
 /**
@@ -84,9 +87,10 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
   const answer = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
   const ping = answer?.ok === true && answer.type === "ping" ? answer : null;
   const status = readStatus(root, { now });
-  const stopping = status.available && status.daemon.stopping !== undefined;
-  if (ping?.phase !== "stopping" && !stopping) return null;
-  return { socketPath, ping, record: recordedDaemon(root, 1_000) };
+  const stopping = status.available ? status.daemon.stopping : undefined;
+  if (ping?.phase !== "stopping" && stopping === undefined) return null;
+  const from = stopping?.from ?? ping?.squealVersion ?? "";
+  return { socketPath, ping, record: recordedDaemon(root, 1_000), from };
 }
 
 /**
@@ -127,7 +131,7 @@ async function finishHandoff(
     if (Date.now() > deadline) return stillHeld(root, stopping, marks, io, bounds);
     await sleep(50);
   }
-  const from = record?.squealVersion ?? ping?.squealVersion ?? "stopping";
+  const { from } = stopping;
   const took = ((performance.now() - began) / 1_000).toFixed(1);
   io.stdout(
     `Squeal daemon started for ${root}, after the ${from} daemon handed over in ${took} s\n\n`,
@@ -146,10 +150,10 @@ function follows(ping: PingResponse, old: number | null, own: string): boolean {
 /**
  * Whether `start` spawns the successor: it wrote the claim (row 011-32), or
  * could not read or write one; not when a live claim for this daemon is
- * there, whose successor already waits.
+ * there, whose successor already waits. With the record cleared, any live
+ * claim is the handoff's.
  */
 function claims(root: AbsolutePath, record: DaemonRecord | null, now: () => number): boolean {
-  if (record === null) return true;
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return true;
@@ -157,9 +161,14 @@ function claims(root: AbsolutePath, record: DaemonRecord | null, now: () => numb
     if (isStoreOpenFailure(store)) return true;
     try {
       const id = worktreeIdFor(root);
+      const at = now() as EpochMs;
+      if (record === null) {
+        const claim = readHandoff(store, id);
+        return claim === null || at >= claim.boundAt;
+      }
       const from = handoffFrom(record);
-      if (liveHandoff(store, id, from, now() as EpochMs) !== null) return false;
-      return claimHandoff(store, id, { from, to: squealVersion(), at: now() as EpochMs }) !== null;
+      if (liveHandoff(store, id, from, at) !== null) return false;
+      return claimHandoff(store, id, { from, to: squealVersion(), at }) !== null;
     } finally {
       store.close();
     }
@@ -179,10 +188,9 @@ async function stillHeld(
   io: CliIo,
   bounds: StopBounds,
 ): Promise<number> {
-  const { ping, record } = stopping;
+  const { ping, from } = stopping;
   const after = `${(bounds.socketMs + bounds.lockMs) / 1_000} s`;
-  const version = record?.squealVersion ?? ping?.squealVersion;
-  const daemon = `the ${version === undefined ? "" : `${version} `}daemon for ${root}${ping === null ? "" : ` (pid ${ping.pid})`}`;
+  const daemon = `the ${from === "" ? "" : `${from} `}daemon for ${root}${ping === null ? "" : ` (pid ${ping.pid})`}`;
   const lock = await lockFreed(root, ping, 0);
   const holds =
     lock.state === "free"
