@@ -15,6 +15,7 @@ import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TestProject } from "vitest/node";
 import { userTmpDir } from "../src/core/daemon/paths.js";
+import { pidNamespace } from "../src/core/delivery/harness-process.js";
 import setup from "./global-teardown.js";
 
 /*
@@ -36,6 +37,11 @@ function scratch(): string {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "squeal-teardown-")));
   cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
   return dir;
+}
+
+/** The PID namespace the setup writes in a parent it makes. */
+function namespace(): string {
+  return pidNamespace() ?? "no /proc";
 }
 
 /** A pid no process has any more. */
@@ -97,16 +103,33 @@ describe("the run's temp parent", () => {
 
   it("removes at setup each parent whose Vitest process is gone, and only those", async () => {
     const root = scratch();
-    const dead = join(root, `squeal-vitest-${await deadPid()}-gone12`);
+    const pid = await deadPid();
+    const dead = join(root, `squeal-vitest-${pid}-gone12`);
     const live = join(root, `squeal-vitest-${process.pid}-live12`);
     const other = join(root, "squeal-helper-abc123");
     for (const dir of [join(dead, "squeal-helper-def456"), live, other]) {
       mkdirSync(dir, { recursive: true });
     }
+    for (const dir of [dead, live]) writeFileSync(join(dir, ".pid-namespace"), namespace());
     const teardown = await setup(project, { env: {}, root });
     expect(existsSync(dead)).toBe(false);
     expect(existsSync(live)).toBe(true);
     expect(existsSync(other)).toBe(true);
+    await teardown();
+  });
+
+  // Review 0.1.267 B1 and S1: a PID names a process only in its own namespace.
+  it("keeps a dead PID's parent of another PID namespace, one that names none, and a path mkdtemp did not name", async () => {
+    const root = scratch();
+    const pid = await deadPid();
+    const elsewhere = join(root, `squeal-vitest-${pid}-other1`);
+    const unnamed = join(root, `squeal-vitest-${pid}-unnamd`);
+    const notParent = join(root, `squeal-vitest-${pid}-not-a-run`);
+    for (const dir of [elsewhere, unnamed, notParent]) mkdirSync(dir);
+    writeFileSync(join(elsewhere, ".pid-namespace"), "pid:[1]");
+    writeFileSync(join(notParent, ".pid-namespace"), namespace());
+    const teardown = await setup(project, { env: {}, root });
+    for (const dir of [elsewhere, unnamed, notParent]) expect(existsSync(dir)).toBe(true);
     await teardown();
   });
 
