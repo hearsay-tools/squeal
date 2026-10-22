@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { TestProject } from "vitest/node";
@@ -36,7 +37,8 @@ async function startRun(): Promise<{ runDir: string; teardown: () => Promise<voi
       runDir = value;
     },
   } as unknown as TestProject;
-  const teardown = await setup(project);
+  // Its temp parent under this run's temp directory, and this worker's environment left as it is.
+  const teardown = await setup(project, { env: {}, root: tmpdir() });
   return { runDir, teardown };
 }
 
