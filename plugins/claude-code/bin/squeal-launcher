@@ -1,5 +1,5 @@
 #!/bin/sh
-# squeal-launcher format 5
+# squeal-launcher format 6
 # Squeal on the terminal's PATH (spec 005 D3): install.sh copies this file to
 # ~/.local/bin/squeal. At each call it finds the installed plugin's CLI and runs
 # it with Node, so a plugin update needs no launcher update. Claude Code's
@@ -88,13 +88,13 @@ if (found.length === 0 && kept === undefined) {
   process.exit(1);
 }
 const newest = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a), found[0]);
+const run = newest === undefined || (kept && compare(kept.version, newest.version) >= 0) ? kept : newest;
 if (found.some((f) => f.version !== newest.version)) {
   const has = found.map((f, i) => `${f.harness} has ${i === 0 ? "squeal " : ""}${f.version}`);
   process.stderr.write(
-    `squeal: ${has.slice(0, -1).join(", ")} and ${has.at(-1)}; running ${newest.version}. Run squeal update to bring them to one version.\n`,
+    `squeal: ${has.slice(0, -1).join(", ")} and ${has.at(-1)}; running ${run.version}. Run squeal update to bring them to one version.\n`,
   );
 }
-const run = newest === undefined || (kept && compare(kept.version, newest.version) >= 0) ? kept : newest;
 if (kept && compare(kept.version, run.version) < 0) {
   process.stderr.write(
     `squeal: running squeal ${run.version}; Codex sessions started on ${kept.version} run ${kept.version} until they restart.\n`,
