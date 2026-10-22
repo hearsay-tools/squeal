@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -28,7 +29,9 @@ import { stepDownKit } from "./step-down-helpers.js";
  * Review 0.1.259 (the coordinator's decision of 2026-10-22): with the old
  * daemon's record cleared, its lock free and the claim live, `start` spawns
  * its daemon whatever the claim, and the lock decides between it and a
- * successor still starting (D10).
+ * successor still starting (D10). Row 011-110: only a `start` that wrote the
+ * claim spawns with the lock wait; one that joined a live claim spawns
+ * without it, so the claim's successor stays the only one that waits.
  */
 
 const suite = daemonSuite();
@@ -78,6 +81,10 @@ async function startIn(repo: FixtureRepo, bounds: Parameters<typeof startCommand
   }
 }
 
+/** The arguments `ps` shows for process `pid`. */
+const argsOf = (pid: number | undefined) =>
+  execFileSync("ps", ["-ww", "-o", "args=", "-p", String(pid)], { encoding: "utf8" });
+
 /** A 0.1.31 daemon of `repo` asked to stop while its tier runs: it stops once the tier ends. */
 async function stoppingWithItsTier(repo: FixtureRepo, started: string) {
   const process = start(releasedCli(PRE_CANCEL), repo);
@@ -113,6 +120,8 @@ describe.runIf(hasPreCancel)("squeal start with a stopping daemon (row 011-34)",
       phase: expect.not.stringMatching("stopping"),
     });
     expect(next?.pid).not.toBe(old.pid);
+    // It wrote the claim, so its successor waits for the lock (row 011-110).
+    expect(argsOf(next?.pid)).toContain(" --await-lock ");
   });
 
   it("past its bound, exits 1 and names the process that holds the lock", async () => {
@@ -142,7 +151,7 @@ describe.runIf(process.platform === "linux")(
   "squeal start in a handoff's gap (review 0.1.259)",
   SLOW,
   () => {
-    it("with the record cleared, a live claim and the lock free, spawns its daemon and exits 0", async () => {
+    it("with the record cleared, a live claim and the lock free, spawns its daemon with no lock wait and exits 0", async () => {
       const repo = suite.fixture();
       // A daemon served and stopped: its record is cleared, its lock file is there and free.
       const first = start(suite.cli, repo);
@@ -169,7 +178,11 @@ describe.runIf(process.platform === "linux")(
       expect(stdout).toMatch(
         /^Squeal daemon started for .*, after the 0\.1\.0 daemon handed over in \d+\.\d s\n/,
       );
-      expect(await ping(repo.socketPath, 500)).toMatchObject({ squealVersion: HOOKS });
+      const served = await ping(repo.socketPath, 500);
+      expect(served).toMatchObject({ squealVersion: HOOKS });
+      // It joined the claim: no second successor waits for the lock beside the claim's (row 011-110).
+      expect(argsOf(served?.pid)).toContain(` daemon ${repo.root}`);
+      expect(argsOf(served?.pid)).not.toContain("--await-lock");
     });
   },
 );
