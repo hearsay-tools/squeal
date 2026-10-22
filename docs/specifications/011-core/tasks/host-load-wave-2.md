@@ -88,3 +88,19 @@ Check that:
 - the version is raised in all eight places and the bundles match the tree.
 
 Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once. Known red on main too (row 011-99): `slow-slot-fair.test.ts`, `backlog-slots-overhead.test.ts` test 3, `opencode-dispose.test.ts` (008-38). Write `reviews/0.1.255.md` with a PASS or FAIL verdict and commit it.
+
+## RP3: repair of cand/0.1.255, review B1 and B2 (the pool's marks)
+
+Use /worker. Shape: repair, two commits. Base: `5fa31c1c1` (011-96 to 011-98 and W6's notes on 0.1.253, without the release commit). Read `reviews/0.1.255.md` B1 and B2, C10 (An edit's tier, Backlog and checkpoint tiers) and `tasks/011-96/notes.md` decisions 6 and 10.
+
+B1, seam `#startRefresh` in `src/core/capacity/pool.ts`: a refresh applies the waiter's 30 s expiry (`#forget`) and, when it forgets, rebuilds the mark through `#publish`, keeping the edit's cores. B2, seam `running()` in the same file: prepare and check the pool directory before the first edit mark, with `acquire`'s private-directory rules; the edit still never waits and takes no permit, and a directory failure stays non-blocking. First edit, a lead: the reviewer's two probes as red tests in `test/capacity/pool.test.ts` or a new `test/capacity/edit-mark.test.ts`, with an injected clock, not a real 31 s wait.
+
+Owns: `src/core/capacity/pool.ts`, `test/capacity/`. Not yours: `src/runners/vitest/` (RP4 runs beside you), `src/core/scheduler/`, the release commit, bundles, version, spec, board. Rules as in this file's header. Done when both probes are red before and green after, waiter seniority inside 30 s still holds, and lint, typecheck and `squeal run --all --wait` pass, their output and the whole report in your final message.
+
+## RP4: repair of cand/0.1.255, review B3 (an isolated tier's width)
+
+Use /worker. Shape: repair. Base: `5fa31c1c1`, as RP3. Read `reviews/0.1.255.md` B3, C10 (Runner ceiling), 013 V9, and `tasks/011-96/notes.md` "The 011-97 risk check".
+
+Outcome: the floor of 2 applies only when a tier holds a file of an `isolate: false` project, so an isolated-only tier at grant 1 runs one worker and asks for one permit; a tier that mixes both kinds still never reaches Vitest's "different maxWorkers but same groupOrder" throw. Seam: `#rootFloor` and `floorOf` in `src/runners/vitest/width.ts:71`, and the width the scheduler's `fewest()` reads (`src/core/scheduler/tiers.ts`): the floor must follow the tier's files, not every sibling that reads the root width. First edit, a lead: the reviewer's shared-root fixture (a isolated, b `isolate: false`, both `extends: true`, no `maxWorkers`) as red tests in `test/runners/vitest/width.test.ts`: a-only at grant 1 runs worker id 1 only; a mixed tier at grant 2 runs without the throw.
+
+Owns: `src/runners/vitest/width.ts`, the width hunk of `tiers.ts` and the `RunnerAdapter` width type if its signature must take the tier's files, their tests. Not yours: `src/core/capacity/` (RP3), the release commit, bundles, version, spec, board. Width hints stay outside key inputs (`test/keys/validity/adapters.test.ts`). Rules and done-when as RP3.
