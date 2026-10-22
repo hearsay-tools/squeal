@@ -13,6 +13,7 @@ import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
 import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
+import { keptCacheCli } from "../harness/shared/version-copies.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
@@ -42,8 +43,11 @@ export async function startCommand(
   if (root === null) return 1;
   const cleared = clearStoppedMark(root);
   if (cleared !== null) io.stderr(`squeal: could not clear the stop mark: ${cleared}\n`);
-  // This CLI's own script is the daemon to spawn (review wave 3, B1); `SQUEAL_CLI` overrides it.
-  const cli = process.argv[1];
+  // This CLI's own script is the daemon to spawn (review wave 3, B1), or its kept copy when
+  // it runs from Codex's plugin cache (row 005-77); `SQUEAL_CLI` overrides it.
+  const script = process.argv[1];
+  const cli =
+    script === undefined ? undefined : keptCacheCli(script, squealVersion(), io.env ?? process.env);
   const now = io.now ?? Date.now;
   const stopping = await stoppingDaemon(root, now);
   if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
