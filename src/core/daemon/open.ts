@@ -1,6 +1,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { clearHandoff } from "../delivery/handoff.js";
 import { runGit, worktreeIdFor } from "../fs/index.js";
 import { isBusy, isStoreOpenFailure, lockFileFor, openStore } from "../store/index.js";
 import type {
@@ -139,11 +140,11 @@ export async function openDaemon(
       awaitLockMs === undefined
         ? `a daemon gave up: the lock was still held after ${waitMs} ms with no daemon serving; the next hook boundary starts one`
         : `a successor daemon gave up: the lock was still held after ${waitMs} ms; the next hook boundary starts one`;
-    return lockWaitTimedOut(commonDir, worktreeId, now, text);
+    return lockWaitTimedOut(commonDir, worktreeId, now, text, awaitLockMs !== undefined);
   }
   if (undecided !== null) {
     const text = `a daemon gave up: it took the lock but could not read the last daemon recorded within ${decideWithinMs} ms (${undecided}); the next hook boundary starts one`;
-    return lockWaitTimedOut(commonDir, worktreeId, now, text);
+    return lockWaitTimedOut(commonDir, worktreeId, now, text, awaitLockMs !== undefined);
   }
 
   let store: Store;
@@ -298,18 +299,29 @@ function readLastDaemon(
  * A lock wait ran out with the lock still held: a successor's, or one with
  * no daemon serving (task 001-340). A note says so, written without the
  * lock, beside the holder's; the next hook boundary starts a daemon once the
- * lock is free.
+ * lock is free. A successor's ends the handoff claim in the note's write
+ * (row 011-32), so that boundary claims again.
  */
 function lockWaitTimedOut(
   commonDir: AbsolutePath,
   worktreeId: WorktreeId,
   now: () => EpochMs,
   text: string,
+  successor: boolean,
 ): DaemonExit {
   try {
     const store = openStore(commonDir, { create: false, busyTimeoutMs: DAEMON_BUSY_TIMEOUT_MS });
     if (!isStoreOpenFailure(store)) {
-      writeNote(store, worktreeId, { at: now(), revision: null, text }, () => {});
+      const note = () =>
+        writeNote(store, worktreeId, { at: now(), revision: null, text }, () => {});
+      try {
+        store.transaction(() => {
+          note();
+          if (successor) clearHandoff(store, worktreeId);
+        });
+      } catch {
+        note();
+      }
       store.close();
     }
   } catch {
