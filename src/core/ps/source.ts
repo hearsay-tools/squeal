@@ -4,7 +4,7 @@ import type { EpochMs } from "../types/index.js";
 /*
  * Spec 014 D11: the one interface every `squeal ps` stage reads the host
  * through. `proc.ts` implements it over `/proc` on Linux (D2 to D6), and the
- * macOS source over `ps`, `vm_stat`, `sysctl` and `lsof` (D10). Every read is
+ * macOS source over `ps`, `vm_stat` and `sysctl` (D10). Every read is
  * synchronous and serial (D4). No read throws: a process that left between
  * two reads, a file of another user and a file the platform does not have
  * all read as absent or `null`, and the stage that needed the value names it
@@ -134,20 +134,12 @@ export interface PsSource {
   memory(pid: number): ProcessMemory | null;
   /** The targets of its open file descriptors: paths, `socket:[<inode>]`, ...; `null` when unreadable (D2 step 2). */
   fds(pid: number): readonly string[] | null;
-  /** The working directory of each of `pids` that has a readable one (D7 `leftover-temp`); `null` when the platform cannot read them. */
-  cwds(pids: readonly number[]): ReadonlyMap<number, string> | null;
   /** Every lock of `/proc/locks`; `null` without it (D2 step 3, D6). */
   locks(): readonly LockEntry[] | null;
   /** The key `locks` names `path` by; `null` when it is missing or the platform has no locks. */
   fileKey(path: string): string | null;
   /** Every listening unix socket; `null` without `ss` (D2 step 4). */
   unixListeners(): readonly UnixListener[] | null;
-  /**
-   * The name every bound unix socket of the host was bound at, listening or
-   * not, stream or datagram, as `/proc/net/unix` gives it: an abstract name
-   * starts with `@`. `null` when it cannot be read (D7 `leftover-temp`).
-   */
-  unixSockets(): readonly string[] | null;
   /** The PID namespace pids mean something in, as a consumer's harness process records it; `null` without one. */
   pidNamespace(): string | null;
   host(): HostReading;

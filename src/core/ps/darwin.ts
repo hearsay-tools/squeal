@@ -16,18 +16,18 @@ import {
 } from "./source.js";
 
 /*
- * Spec 014 D10: the macOS source, built from `ps`, `vm_stat`, `sysctl`,
- * `lsof` and `node:os`, all *inferred*: nobody has run it on a Mac. Each
+ * Spec 014 D10: the macOS source, built from `ps`, `vm_stat`, `sysctl` and
+ * `node:os`, all *inferred*: nobody has run it on a Mac. Each
  * `processTable` is one `ps`, and throws when it fails; a process's
  * arguments and RSS are those of the last one, so no read spawns per
- * process. Each `host` is one `vm_stat`
- * and one `sysctl`, each `cwds` one `lsof`. It reads no marks, fds, locks
- * or listening sockets: those are `null`, and the stages name them in
- * `unknown`. Every spawn goes through the runner, without a shell.
+ * process. Each `host` is one `vm_stat` and one `sysctl`. It reads no
+ * marks, fds, locks or listening sockets: those are `null`, and the stages
+ * name them in `unknown`. Every spawn goes through the runner, without a
+ * shell.
  */
 
 export interface DarwinSourceOptions {
-  /** Runs `ps`, `vm_stat`, `sysctl` and `lsof`; tests replace it with fixture outputs. */
+  /** Runs `ps`, `vm_stat` and `sysctl`; tests replace it with fixture outputs. */
   readonly run?: CommandRunner;
   readonly os?: DarwinOs;
   /** The epoch clock the boot time is read against. */
@@ -132,27 +132,6 @@ class DarwinSource implements PsSource {
     return null;
   }
 
-  /** `lsof -F pn` prints a `p<pid>` line, then each file's `f<fd>` and `n<name>` lines. */
-  cwds(pids: readonly number[]): ReadonlyMap<number, string> | null {
-    if (pids.length === 0) return new Map();
-    const text = this.#run("lsof", ["-d", "cwd", "-F", "pn"]);
-    if (text === null) return null;
-    const wanted = new Set(pids);
-    const cwds = new Map<number, string>();
-    let pid: number | null = null;
-    let fd: string | null = null;
-    for (const line of text.split("\n")) {
-      const value = line.slice(1);
-      if (line.startsWith("p")) {
-        pid = /^\d+$/.test(value) ? Number(value) : null;
-        fd = null;
-      } else if (line.startsWith("f")) fd = value;
-      else if (line.startsWith("n") && pid !== null && (fd ?? "cwd") === "cwd" && wanted.has(pid))
-        cwds.set(pid, value);
-    }
-    return cwds;
-  }
-
   locks(): readonly LockEntry[] | null {
     return null;
   }
@@ -162,10 +141,6 @@ class DarwinSource implements PsSource {
   }
 
   unixListeners(): readonly UnixListener[] | null {
-    return null;
-  }
-
-  unixSockets(): readonly string[] | null {
     return null;
   }
 

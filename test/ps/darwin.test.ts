@@ -12,7 +12,7 @@ import { type CommandRunner, type PsSource, ticksToMs } from "../../src/core/ps/
 
 /*
  * Spec 014 D10 (task 014-12): the macOS source over fixture outputs of `ps`,
- * `vm_stat`, `sysctl` and `lsof` and injected `node:os` reads. Nothing here
+ * `vm_stat` and `sysctl` and injected `node:os` reads. Nothing here
  * runs on a Mac or spawns a command: the runner is a fake that records what
  * it was asked to run.
  */
@@ -36,7 +36,6 @@ interface Fake {
   ps: string | null;
   vmStat: string | null;
   swap: string | null;
-  lsof: string | null;
   /** Each CPU's times in ms, which `cpus()` returns. */
   cpuMs: { user: number; nice: number; sys: number; idle: number; irq: number };
 }
@@ -47,7 +46,6 @@ function fake(os: Partial<DarwinOs> = {}): Fake {
     ps: fixture("ps-1.txt"),
     vmStat: fixture("vm_stat.txt"),
     swap: fixture("swapusage.txt"),
-    lsof: fixture("lsof-cwd.txt"),
     cpuMs: { user: 40_000, nice: 0, sys: 10_000, idle: 150_000, irq: 0 },
   };
   const run: CommandRunner = (command, args) => {
@@ -56,7 +54,6 @@ function fake(os: Partial<DarwinOs> = {}): Fake {
     if (call === PS_CALL) return state.ps;
     if (call === "vm_stat") return state.vmStat;
     if (call === "sysctl -n vm.swapusage") return state.swap;
-    if (call === "lsof -d cwd -F pn") return state.lsof;
     throw new Error(`unexpected command: ${call}`);
   };
   const source = createDarwinSource({
@@ -262,31 +259,6 @@ describe("host: os functions, vm_stat and sysctl", () => {
   test("no CPUs or a short load average read null", () => {
     const g = fake({ cpus: () => [], loadavg: () => [] });
     expect(g.source.host()).toMatchObject({ cpuTime: null, load: null });
-  });
-});
-
-describe("working directories: one lsof", () => {
-  test("those of `pids` that lsof names", () => {
-    const cwds = f.source.cwds([5233, 4810, 9999]);
-    expect(cwds).toEqual(
-      new Map([
-        [4810, "/Users/user/projects/alpha/.git/squeal"],
-        [5233, "/private/var/folders/xy/1b2c3d4e5f/T/squeal-vitest-0aB3"],
-      ]),
-    );
-    expect(f.source.cwds([6001])?.get(6001)).toBe(
-      "/Users/user/Library/Application Support/Google/Chrome",
-    );
-    expect(f.calls).toEqual(["lsof -d cwd -F pn", "lsof -d cwd -F pn"]);
-  });
-
-  test("a failed lsof is null; no pids is no spawn; stray lines are skipped", () => {
-    expect(f.source.cwds([])).toEqual(new Map());
-    expect(f.calls).toEqual([]);
-    f.lsof = null;
-    expect(f.source.cwds([4810])).toBeNull();
-    f.lsof = "n/orphan\npx\nn/not-a-pid\np42\nftxt\nn/usr/bin/x\nfcwd\nn/home\nlwarning\n";
-    expect(f.source.cwds([42])).toEqual(new Map([[42, "/home"]]));
   });
 });
 
