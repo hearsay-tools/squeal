@@ -25,6 +25,7 @@ import type {
   TransitionEntry,
 } from "../types/index.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
+import { failureGroups, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
 import {
   change,
@@ -156,6 +157,27 @@ function collapsedBlock({ head, lines }: Collapsed, shown: Shown, checks: CheckI
   );
 }
 
+/**
+ * Failures, one block each, but one for each group that states one first
+ * error and location (row 011-109, `failure-groups.ts`).
+ */
+function failureBlocks(
+  entries: readonly TransitionEntry[],
+  revision: number,
+  command: string,
+): Block[] {
+  return failureGroups(entries, revision).map((group) => {
+    const [first] = group;
+    if (group.length === 1 && first !== undefined) return entryBlock(first, revision);
+    const lines = groupLines(group, revision, command, shellWord);
+    return collapsedBlock(
+      lines,
+      "fail",
+      group.map((e) => e.check),
+    );
+  });
+}
+
 /** Recoveries, one block each up to `LISTED_MAX`, else one summary (task 001-91). */
 function recoveryBlocks(entries: readonly TransitionEntry[], delta: Delta): Block[] {
   const checks = entries.map((e) => e.check);
@@ -259,7 +281,11 @@ export function formatDelta(
         ? `SQUEAL · Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}`
         : `SQUEAL · ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
   const blocks = [
-    ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
+    ...failureBlocks(
+      changed.filter((e) => e.to === "fail"),
+      header.revision,
+      command,
+    ),
     ...unknownBlocks(
       changed.filter((e) => e.to === "unknown"),
       command,
