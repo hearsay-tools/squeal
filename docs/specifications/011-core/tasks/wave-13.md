@@ -58,3 +58,35 @@ Read W1 to W3 above, the notes under `tasks/011-66/`, `tasks/011-106/`, `tasks/0
 - `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is raised in all eight places; the bundles match the tree; the four launchers are byte-identical.
 
 Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. Row 011-99 lists the known load-flaky files. Write `reviews/0.1.262.md` with a PASS or FAIL verdict and commit it.
+
+## Wave 13.5: repair of review 0.1.262
+
+Both start from `8e28e960e` (the candidate dfc218b26 plus `reviews/0.1.262.md`). Their seams are disjoint; they run in parallel.
+
+### W4: B1, the group's command lists every member
+
+Use /worker. Shape: repair.
+
+Outcome: the one `squeal failures` command a group prints lists each of its checks, also when the same files or directory hold other, newer failures.
+
+Read `reviews/0.1.262.md` B1 and its Inputs, W2 above, `tasks/011-109/notes.md`, and the amended C5 sentence.
+
+Seam: the command at `src/core/delivery/failure-groups.ts:105-111`, and what `squeal failures` can select (`src/core/status/failures.ts:98`, `src/core/store/repos/failures.ts:66`). A lead: write the review's probe as a real-CLI test first, with 25 newer other failures and repeated historical rows in the same directory.
+
+Owns: `src/core/delivery/failure-groups.ts`, `src/core/delivery/format.ts`, the `failures` CLI and `src/core/status/failures.ts` if the selection must grow, their tests, the evals parsers if the block's text changes, `tasks/011-109/notes.md`. Not yours: `src/core/scheduler/` (W5), the board, spec text, bundles, version. No `npm run build`.
+
+Done when: the probe's test lists all 91; one command and the notice cap stay; `failures`, `why` and the parser round trip hold; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+### W5: B2 and B3, a tier without its runtime stores nothing and never starts
+
+Use /worker. Shape: repair, one commit per blocker.
+
+Outcome: a runtime-lost tier's startup failure is rejected with its results, and no slow tier starts after its runtime went during the load wait.
+
+Read `reviews/0.1.262.md` B2, B3 and Inputs (the order it gives), W1 above, `tasks/011-106/notes.md` and `tasks/011-66/notes.md`, spec 011 C9 and C11 as amended.
+
+Seam: B2 at `src/core/scheduler/scheduler.ts:883` into `recordTier` (`tiers.ts:735`) and `failStartup` (`setup.ts:81`); B3 at `scheduler.ts:696-727` and `slow-tier.ts:208`. A lead: the review's two probes as failing tests first.
+
+Owns: `src/core/scheduler/scheduler.ts`, `tiers.ts`, `setup.ts`, `slow-tier.ts`, `interrupted.ts`, their tests, `test/daemon/runtime-gone.test.ts`, the two notes. Not yours: `src/core/delivery/` (W4), `test/scheduler/backlog-slots-overhead.test.ts` and the other 011-99 files, the board, spec text, bundles, version. No `npm run build`.
+
+Done when: both probes' tests pass with a second queued file in the project; a rejected slow selection holds no slot, lease or claim; normal setup failures and slot fairness are unchanged; `test/keys/key-format.test.ts` passes; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
