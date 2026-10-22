@@ -242,6 +242,8 @@ describe("the launcher", () => {
     expect(r.stderr).toContain("install.sh");
   });
 
+  // The build writes these copies from the Claude Code plugin's launcher (005-76,
+  // test/harness/launcher-copy.test.ts); this catches a committed copy the build did not write.
   it.each([["codex"], ["pi"], ["opencode"]])(
     "is the same executable file in the %s plugin, and carries its format line",
     (plugin) => {
