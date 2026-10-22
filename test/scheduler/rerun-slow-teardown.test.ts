@@ -111,11 +111,12 @@ describe("a slow file's failure after its tests passed is re-run once (task 011-
       to: "pass",
     });
     const why = formatWhy(readWhy(h.root, SLOW_FILE, {}));
-    expect(why).toContain(
-      "    the FAIL it replaced: error after its tests ran: ENOTEMPTY, Directory not empty\n",
-    );
+    // Row 011-77: the FAIL the pass replaced is listed with its run, not on the flaky note's line.
+    expect(why).toContain("Replaced failures (1, newest first):");
+    expect(why).toContain("        error after its tests ran: ENOTEMPTY, Directory not empty\n");
+    expect(why).not.toContain("the FAIL it replaced");
     expect(why).not.toContain("setup failed");
-    // The flaky note already names the FAIL the pass replaced: the first error is said once.
+    // The replaced failure already names the first error: it is said once.
     expect(why).not.toContain("First error, before its re-run");
   });
 
