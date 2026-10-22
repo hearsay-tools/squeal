@@ -54,6 +54,7 @@
 #   test/cli/setup/plan.test.ts
 #   test/cli/setup/pytest.test.ts
 #   test/cli/setup/setup-exclude.test.ts
+#   test/daemon/composite-reconcile.test.ts
 #   test/daemon/observed-timer.test.ts
 #   test/daemon/policy.test.ts
 #   test/evals/claim-grades.test.ts
@@ -115,7 +116,8 @@ test/scheduler/superseded-claim
 # A daemon started on a node:test project: its results, its slow tier and
 # capacity mark, the version probe of each project's Node at startup, two
 # overlapping runs of its lane through the sweep, the bare-file note under
-# its policy inputs, and a step-down's cancel of its tier (row 011-31).
+# its policy inputs, a step-down's cancel of its tier (row 011-31), and a
+# reload that reconciles its projects (row 011-78).
 test/integration/slow-spawn
 test/integration/capacity-project
 test/daemon/composite-runner
@@ -124,6 +126,7 @@ test/daemon/repeated-notes
 test/daemon/escaped-run-mark
 test/daemon/bare-note-inputs
 test/daemon/step-down-lanes
+test/daemon/reload-projects
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
 test/e2e/slow-node-test
