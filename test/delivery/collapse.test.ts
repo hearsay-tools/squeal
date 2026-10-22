@@ -49,13 +49,14 @@ function recovery(c: CheckId): TransitionEntry {
   };
 }
 
+/** A failure with an error of its own, so it is never grouped with another (row 011-109). */
 function regression(c: CheckId): TransitionEntry {
   return {
     ...recovery(c),
     kind: "pass-to-fail",
     from: "pass",
     to: "fail",
-    summary: "expected 401, received 500",
+    summary: `expected 401, received 500 in ${c.kind === "test" ? c.fullName : c.testPath}`,
     location: { path: "src/auth.ts", line: 42, column: 7 },
     changesInClosure: ["src/auth.ts", "src/session.ts", "src/token.ts", "src/user.ts"],
   };
