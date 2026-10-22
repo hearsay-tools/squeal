@@ -982,6 +982,11 @@ var SCHEMA_VERSION = MIGRATIONS.length;
 // src/core/store/codec.ts
 var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
 
+// src/core/store/repos/replaced.ts
+var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
+  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
+  WHERE r.key = ? AND r.outcome = 'fail'`;
+
 // src/core/store/prune.ts
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
@@ -1014,16 +1019,6 @@ var pauses = channel(TEST_PAUSE_CHANNEL);
 // src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 var SLOT_WAITER_FRESH_MS = 3e4;
-
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/status/stopping.ts
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-
-// src/core/status/open.ts
-var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/ps/measure.ts
 var takeSample = (source, pids3, since) => {
@@ -1425,6 +1420,19 @@ var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 // src/core/slow/rank.ts
 var MAX_READ_BYTES = 1024 * 1024;
 
+// src/core/status/open.ts
+var SLEEP = new Int32Array(new SharedArrayBuffer(4));
+
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
+// src/core/status/snapshot.ts
+var HEARTBEAT_GRACE_INTERVALS = 2;
+
 // src/core/scheduler/queue.ts
 var Group = { first: 0, catchUp: 1, second: 2 };
 var GROUP_ORDER = {
@@ -1438,9 +1446,6 @@ var MOVES_RETENTION_MS = 60 * 6e4;
 // src/core/hash/blob.ts
 import { constants } from "node:fs";
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
-
-// src/core/status/snapshot.ts
-var HEARTBEAT_GRACE_INTERVALS = 2;
 
 // src/core/ps/discover.ts
 import { readdirSync as readdirSync2, statSync as statSync2 } from "node:fs";
