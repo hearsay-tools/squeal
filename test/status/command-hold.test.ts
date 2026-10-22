@@ -106,6 +106,30 @@ describe("status: a command hold (row 011-73)", { timeout: 60_000 }, () => {
     );
   });
 
+  it("S1: a holder gone past its bound carries `gone` and `expired`, and reads the bound first", async () => {
+    const s = await side();
+    const since = Date.now() - 5_000;
+    writeHolds(s, [
+      {
+        token: "t1",
+        since,
+        until: since + 1_000,
+        command: "npm run gate",
+        wrapper: await exited(),
+        child: await exited(),
+      },
+    ]);
+    const now = Date.now();
+    const snapshot = buildSnapshot(s.store, s.root, now);
+    expect(snapshot.holds).toEqual([
+      expect.objectContaining({ cause: "command", gone: true, expired: true }),
+    ]);
+    // The daemon's reason precedence (`command-hold.ts`): a passed `until` before a gone holder.
+    expect(formatStatus(snapshot, now).split("\n")[1]).toMatch(
+      /^On hold: `squeal hold` since \d\d:\d\d:\d\d, for `npm run gate` \(pid \d+\); its bound passed at \d\d:\d\d:\d\d; the daemon ends the hold at its next heartbeat\.$/,
+    );
+  });
+
   it("2: a wrapper gone while its command runs still holds", async () => {
     const s = await side();
     const since = Date.now() - 5_000;
