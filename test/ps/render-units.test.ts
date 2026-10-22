@@ -23,7 +23,7 @@ afterEach(() => {
 /*
  * Spec 014 goal 6 (task 014-23): a count prints with a comma every three
  * digits, as `en-US` writes it, without `Intl`, whose first call costs about
- * 19 ms of a 0.3 s budget (`lessons.md` Goal 6).
+ * 19 ms of CPU (`lessons.md` Goal 6).
  */
 const COUNTS = [0, 1, 7, 12, 999, 1_000, 1_234, 3_856, 99_999, 100_000, 1_234_567, -1, -1_234];
 
