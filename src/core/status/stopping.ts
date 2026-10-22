@@ -19,7 +19,9 @@ import { daemonGone, shutDown } from "./died.js";
  * daemon running". With a handoff claim for it (row 011-32), the version
  * that follows and the claim's bound; without one, the bound is
  * `HANDOFF_BOUND_MS` after its shutdown began. A record with no incarnation
- * (a release before task 001-270) leaves no mark to read.
+ * (a release before task 001-270) leaves no mark to read. Once the old
+ * daemon cleared its record, a live claim and a held lock still say the
+ * handoff runs (`claimed`), until the successor registers.
  */
 export function withStopping(
   store: Store,
@@ -27,8 +29,9 @@ export function withStopping(
   live: DaemonLiveness,
   now: EpochMs,
 ): DaemonLiveness {
-  const record = worktree?.daemon ?? null;
-  if (worktree === null || record === null) return live;
+  if (worktree === null) return live;
+  const record = worktree.daemon;
+  if (record === null) return claimed(store, worktree, live, now);
   const self = daemonIncarnation(record);
   if (self === null || !shutDown(store, worktree.id, self)) return live;
   if (live.state === "down" && daemonGone(worktree)) return live;
@@ -45,6 +48,25 @@ export function withStopping(
     overdue: now >= boundAt,
   };
   return { ...live, stopping };
+}
+
+/**
+ * Between the old daemon's cleared record and its successor's registration,
+ * which ends the claim: the old daemon releasing its lock, or the successor
+ * holding it while it opens the store. Its version is the incarnation's
+ * (`daemonIncarnation`), its time the claim's; past the bound, nothing.
+ */
+function claimed(
+  store: Store,
+  worktree: WorktreeRecord,
+  live: DaemonLiveness,
+  now: EpochMs,
+): DaemonLiveness {
+  const claim = readHandoff(store, worktree.id);
+  if (claim === null || now >= claim.boundAt || daemonGone(worktree)) return live;
+  const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
+  const { to, at: since, boundAt } = claim;
+  return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
 }
 
 /** A handoff's bound in seconds, as the texts name it. */

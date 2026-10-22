@@ -158,6 +158,30 @@ describe("a daemon whose shutdown began and that holds its lock (row 011-34)", (
     expect(registration).not.toMatch(/No daemon (?:is running|has validated)/);
   });
 
+  it("after it cleared its record, a live claim and a held lock still read handing over", () => {
+    const { store, wt, status } = stopping({ claimAt: (SINCE + 100) as EpochMs });
+    store.worktrees.setDaemon(wt, null);
+    expect(status().daemon).toEqual({
+      state: "down",
+      since: SINCE,
+      stopping: {
+        from: "0.1.0",
+        since: SINCE + 100,
+        to: "0.1.31",
+        boundAt: SINCE + 100 + 130_000,
+        overdue: false,
+      },
+    });
+    const past = (SINCE + 100 + 130_000) as EpochMs;
+    expect(status(past).daemon).toEqual({ state: "down", since: SINCE });
+  });
+
+  it("after it cleared its record and let go of its lock, is plain down whatever the claim", () => {
+    const { store, wt, status } = stopping({ claimAt: (SINCE + 100) as EpochMs, locked: false });
+    store.worktrees.setDaemon(wt, null);
+    expect(status().daemon).toEqual({ state: "down", since: SINCE });
+  });
+
   it("is plain down once its lock is free: it was killed while it shut down", () => {
     const { status, header } = stopping({ locked: false });
     expect(status().daemon).toEqual({ state: "down", since: SINCE });
