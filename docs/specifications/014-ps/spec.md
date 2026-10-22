@@ -13,7 +13,7 @@ Some states should not be up and cost resources, and no command shows them today
 3. It gives the host totals (load, CPU and memory pressure, memory, swap, CPU count, the capacity pool), and Squeal's share of the CPU and the memory.
 4. It flags each D7 state with its reason and the command that would end it. It changes nothing: it opens no daemon socket, writes no store, sends no signal and removes no file.
 5. `--json` gives the same data as a versioned shape. `--repo` narrows the output to the current repository. The exit code is 0 without a flag, 1 with any flag, 2 on a usage error and 3 on a platform other than Linux and macOS (D10).
-6. One snapshot takes at most 2.5 s wall time and 0.3 s CPU on a host with 650 processes and 25 daemons. The CPU counts the whole command, Node's start included, and is judged when the host's one-minute load is at or below its CPU count (human, 2026-10-21).
+6. One snapshot takes at most 2.5 s wall time and 0.4 s CPU on a host with 650 processes and 25 daemons. The CPU counts the whole command, Node's start included, and is judged when the host's one-minute load is at or below its CPU count (human, 2026-10-21; 0.4 s, not 0.3 s, human, 2026-10-22, after `lessons.md` Round 4).
 
 ## Non-goals
 

@@ -962,7 +962,7 @@ Spec: `specifications/013-vitest-runner/spec.md`. Sections referenced as V1 to V
 
 ## Feature 014: squeal ps
 
-Spec: `specifications/014-ps/spec.md`, approved by the human 2026-10-21 (D9 as its own row; D10 with an untested macOS fallback). Sections referenced as D1 to D11. One snapshot of every live daemon and every test process Squeal started, with CPU and memory, the host totals and Squeal's share, and flags for what should not be up, each naming the command that ends it; it changes nothing (the human, 2026-10-21, `status.md`). New rows take `014-NN`.
+Spec: `specifications/014-ps/spec.md`, shipped 2026-10-22 in 0.1.258 (approved by the human 2026-10-21; goal 6 at 0.4 s, the human, 2026-10-22) (D9 as its own row; D10 with an untested macOS fallback). Sections referenced as D1 to D11. One snapshot of every live daemon and every test process Squeal started, with CPU and memory, the host totals and Squeal's share, and flags for what should not be up, each naming the command that ends it; it changes nothing (the human, 2026-10-21, `status.md`). New rows take `014-NN`.
 
 ### Research (done; briefs and findings in `specifications/014-ps/research/`)
 
@@ -1043,6 +1043,7 @@ Spec: `specifications/014-ps/spec.md`, approved by the human 2026-10-21 (D9 as i
 | 014-37 goal 6 at its named size | done, goal 6 fails on CPU (worker 4e8a8a70, `lessons.md` Round 4: at 681 to 690 processes and 32 to 33 daemons, load 15.8 to 17.1, CPU 0.28 to 0.37 s, median 0.33 s, 4 of 5 over 0.3 s; wall 2.19 to 2.23 s holds; estimate at exactly 650 and 25: 0.30 to 0.31 s; to the human) | The human chose (2026-10-22): measure goal 6 at 650 processes and 25 daemons before `shipped`, with daemons and processes of the worker's own; brief `tasks/wave-6.md`. | `lessons.md` "Round 4": five runs at load at or below 24 at full size, against 0.3 s CPU and 2.5 s wall; all its processes and directories gone. A miss goes to the human. |
 | 014-38 an older daemon that drains is information | done (landed 253c45ead for 0.1.258; worker 83a3295d) | The human chose (2026-10-22): while `draining`, an older daemon has no `older` flag; the flag returns past its drain deadline; brief `tasks/wave-6.md`. | Tests: draining and older gives no flag and exit 0, its state names both; past the deadline, `older` with `squeal stop`; the session-held state unchanged. |
 | 014-39 review of wave 6 | done (PASS at 717f71679, `reviews/wave-6.md`, `/reviewer` fea10dca; gate and CI red only on known flakes 011-99 and 008-38; CI attempt 1 opencode.test.ts install timeouts passed on attempt 2) | `/reviewer` on the candidate of 014-38. | PASS on the candidate SHA. |
+| 014-40 `/quality` over spec 014 | next | One scan of 014's landed work (dba977e48, first in 0.1.237, to 0.1.258) against the vision and styleguide; with it the evals of process 6b on `squeal--v0.1.258`, Sonnet and Sol. Inputs it is given: `flags-leftovers.ts` at 333 lines, the `shape.ts:106` comment nit (`reviews/wave-6.md`), the two comments that name goal 6's 0.3 s. | A findings file under `docs/specifications/014-ps/`; findings become rows or drop candidates, never board edits. |
 
 ## Later
 
