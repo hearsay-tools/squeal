@@ -10,7 +10,7 @@ import {
   notCurrentText,
   splitByValidity,
 } from "../status/checks.js";
-import { holdEndText, holdStartText } from "../status/holds.js";
+import { holdEndedText, holdEndText, holdStartText } from "../status/holds.js";
 import { atText } from "../status/test-frame.js";
 import { cap, plural } from "../text.js";
 import type {
@@ -274,10 +274,9 @@ export function formatDelta(
   const { header, entries } = delta;
   const changed = entries.filter((e): e is TransitionEntry => e.kind !== "fail-retired");
   const retired = entries.filter((e): e is RetiredEntry => e.kind === "fail-retired");
-  // Row 011-73 (C8 as amended 2026-10-21): a hold's start or end is the title, or a line of its own.
-  const hold =
-    delta.hold === undefined ? null : holdChangeLine(delta.hold, header.revision, command);
-  const holdTitle = entries.length === 0 && delta.liveness === undefined ? hold : null;
+  // Row 011-73 (C8 as amended 2026-10-21): each start or end of a hold is a line; the first may be the title.
+  const holds = (delta.holds ?? []).map((c) => holdChangeLine(c, header.revision, command));
+  const holdTitle = entries.length === 0 && delta.liveness === undefined ? holds[0] : undefined;
   const title =
     entries.length === 0
       ? delta.liveness === undefined
@@ -316,7 +315,7 @@ export function formatDelta(
     [
       title,
       ...headerLines(header, command, form, delta.slowTierChanged === true),
-      ...(hold === null || holdTitle !== null ? [] : [hold]),
+      ...(holdTitle === undefined ? holds : holds.slice(1)),
       ...editLines(delta),
     ].join("\n"),
     blocks,
@@ -371,9 +370,14 @@ const checksOf = (entries: readonly DeltaEntry[]) => entries.map((e) => e.check)
 
 /** A hold's start or end (row 011-73), as a delivery says it. */
 function holdChangeLine(change: HoldChange, revision: number, command: string): string {
-  return change.kind === "on-hold"
-    ? `SQUEAL · validation on hold at revision ${revision}: ${holdStartText(change.hold, command)}`
-    : `SQUEAL · validating again at revision ${revision}: ${holdEndText(change)}`;
+  switch (change.kind) {
+    case "on-hold":
+      return `SQUEAL · validation on hold at revision ${revision}: ${holdStartText(change.hold, command)}`;
+    case "ended":
+      return `SQUEAL · a hold ended at revision ${revision}: ${holdEndedText(change)}`;
+    case "resumed":
+      return `SQUEAL · validating again at revision ${revision}: ${holdEndText(change)}`;
+  }
 }
 
 /** The title of a delta that carries only a change of daemon liveness. */

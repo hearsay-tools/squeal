@@ -6,6 +6,7 @@ import type {
   EpochMs,
   HarnessProcess,
   HoldChange,
+  HoldEnded,
   StatusHold,
   Store,
   WorktreeRecord,
@@ -27,6 +28,16 @@ type MergeHold = Extract<StatusHold, { cause: "merge" }>;
 type CommandHold = Extract<StatusHold, { cause: "command" }>;
 
 /**
+ * A hold and what keeps it the same hold from one read to the next (review
+ * 0.1.269, B2): `merge`, or `command:` and the command hold's token, so two
+ * holds that run the same command stay two.
+ */
+export interface KeyedHold {
+  readonly id: string;
+  readonly hold: StatusHold;
+}
+
+/**
  * The holds on `worktree`'s validation: the merge hold its live daemon
  * published, then each command hold by start. `daemon` is the liveness the
  * caller judged at `now`; `namespace` this process's PID namespace, in which
@@ -39,30 +50,44 @@ export function readHolds(
   now: EpochMs,
   namespace: string | null = pidNamespace(),
 ): StatusHold[] {
+  return readKeyedHolds(store, worktree, daemon, now, namespace).map((k) => k.hold);
+}
+
+/** `readHolds`, each hold with its `id`. */
+export function readKeyedHolds(
+  store: Store,
+  worktree: WorktreeRecord | null,
+  daemon: DaemonLiveness,
+  now: EpochMs,
+  namespace: string | null = pidNamespace(),
+): KeyedHold[] {
   if (worktree === null) return [];
   const record = worktree.daemon;
   const row =
     record === null || daemon.state !== "alive"
       ? null
       : readMergeHold(store, worktree.id, record.startedAt);
-  const merge: StatusHold[] =
+  const merge: KeyedHold[] =
     row === null
       ? []
       : [
           {
-            cause: "merge",
-            since: row.since,
-            revision: row.revision,
-            paths: row.paths,
-            pathCount: Math.max(row.count, row.paths.length),
+            id: "merge",
+            hold: {
+              cause: "merge",
+              since: row.since,
+              revision: row.revision,
+              paths: row.paths,
+              pathCount: Math.max(row.count, row.paths.length),
+            },
           },
         ];
   const commands = readCommandHolds(store, worktree.id)
     .sort((a, b) => a.since - b.since)
-    .map((entry): StatusHold => {
+    .map((entry): KeyedHold => {
       const recorded = [entry.wrapper, entry.child].filter((p): p is HarnessProcess => p !== null);
       const gone = recorded.length > 0 && recorded.every((p) => harnessGone(p, namespace));
-      return {
+      const hold: StatusHold = {
         cause: "command",
         since: entry.since,
         command: entry.command,
@@ -71,6 +96,7 @@ export function readHolds(
         ...(gone ? { gone: true as const } : {}),
         ...(entry.until <= now ? { expired: true as const } : {}),
       };
+      return { id: `command:${entry.token}`, hold };
     });
   return [...merge, ...commands];
 }
@@ -169,16 +195,32 @@ export function holdStartText(hold: StatusHold, command = "squeal"): string {
   return `${runs}. Edits are recorded and not run until it exits, at most until ${timeText(hold.until)}; \`${command} start\` ends the hold.`;
 }
 
+/** What ended, as a delivery names it: `git lists no unmerged path`, ``the hold for `npm run gate` (pid 4242) ended``. */
+function endedText(ended: HoldEnded): string {
+  if (ended.cause === "merge") return "git lists no unmerged path";
+  const pid = ended.pid === undefined || ended.pid === null ? "" : ` (pid ${ended.pid})`;
+  return `the hold for \`${ended.command}\`${pid} ended`;
+}
+
+/**
+ * The line a delivery says when a hold ends and is not the last (review
+ * 0.1.269, B2), after `SQUEAL · a hold ended at revision N: `: what ended,
+ * and the first hold that still holds, if one does.
+ */
+export function holdEndedText(change: Extract<HoldChange, { kind: "ended" }>): string {
+  const [first] = change.holds;
+  if (first === undefined) return `${endedText(change.ended)}.`;
+  const name = first.cause === "merge" ? "for the unresolved merge" : commandText(first);
+  const more = change.holds.length - 1;
+  return `${endedText(change.ended)}; still on hold ${name}${more > 0 ? ` and ${plural(more, "more hold")}` : ""}.`;
+}
+
 /**
  * The line a delivery says when the last hold ends, after `SQUEAL ·
  * validating again at revision N: `: what ended, and the test files that
  * wait to run.
  */
 export function holdEndText(change: Extract<HoldChange, { kind: "resumed" }>): string {
-  const ended =
-    change.ended.cause === "merge"
-      ? "git lists no unmerged path"
-      : `the hold for \`${change.ended.command}\` ended`;
   const running = change.running === 0 ? "" : `, ${change.running} running`;
-  return `${ended}; ${plural(change.queued, "test file")} queued${running}.`;
+  return `${endedText(change.ended)}; ${plural(change.queued, "test file")} queued${running}.`;
 }

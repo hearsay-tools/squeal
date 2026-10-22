@@ -25,7 +25,7 @@ import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from
 import { carriesEditResult, editNotes, startEdits } from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
-import { holdChangeOf, holdsChange, tellHolds, toldHolds } from "./hold-told.js";
+import { heldNow, holdChanges, holdsChange, tellHolds } from "./hold-told.js";
 import { markLeaving } from "./leaving.js";
 import {
   livenessChange,
@@ -205,8 +205,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       if (changed !== null) tellLiveness(store, consumer, changed.state);
       // Row 011-73 (C8 as amended 2026-10-21): a hold's start and end, told as liveness is.
       const holds = liveness ? holdsChange(store, consumer, at) : null;
-      const toldBefore = holds === null ? [] : toldHolds(store, consumer);
-      if (holds !== null) tellHolds(store, consumer, holds);
+      if (holds !== null) tellHolds(store, consumer, holds.now);
       const news = delta.entries.length > 0 || changed !== null || holds !== null;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
       const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
@@ -252,7 +251,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         entries,
         stillFailing,
         ...(changed === null ? {} : { liveness: changed }),
-        ...(holds === null ? {} : { hold: holdChangeOf(holds, toldBefore, header) }),
+        ...(holds === null ? {} : { holds: holdChanges(holds, header) }),
         ...(slowChanged ? { slowTierChanged: true as const } : {}),
         ...(sawEdit === undefined ? {} : { sawEdit }),
         ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
@@ -322,7 +321,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         tellLiveness(store, consumer, starting ? told : (header.daemon?.state ?? null));
         tellRevision(store, consumer, header.revision);
         tellSlowTier(store, consumer, header.slowTier);
-        tellHolds(store, consumer, header.holds ?? []);
+        tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
         if (!registered) {
           // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
           const alive = atStart && header.daemon?.state === "alive";
