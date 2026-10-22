@@ -25,6 +25,21 @@ function register(repo: FakeRepo, store: Store): void {
   });
 }
 
+/** `failure` is stored, then a pass at `passMinute` replaces it at its key. */
+function replace(store: Store, failure: ResultRecord, passMinute: number): void {
+  store.results.putMany([failure]);
+  store.transaction(() => {
+    const failing = store.failures.failingAt(failure.key);
+    const pass = result(LOGIN, failure.key, {
+      worktreeId: "wt-main",
+      recordedAt: at(9, passMinute),
+      runId: `pass-${passMinute}`,
+    });
+    store.results.putMany([pass]);
+    store.failures.keepReplaced(failing, [pass], () => null);
+  });
+}
+
 function failed(key: string, minute: number): ResultRecord {
   const r = result(LOGIN, key, {
     outcome: "fail",
@@ -147,5 +162,32 @@ describe("why's older failures and replaced failures (011-77)", () => {
     const runGone = formatWhy(why);
     expect(runGone).toContain("log: run record pruned");
     expect(runGone).not.toContain(logDir);
+  });
+
+  it("lists replaced failures by when they failed, a tie the one kept later first (review 0.1.265 B1)", () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    register(repo, store);
+    store.knownStates.upsertMany([state(repo.mainId, LOGIN, { outcome: "pass" })]);
+    // Failed at k1 (minute 1), stored at k3 (minute 2), failed at k2 (minute 3); k2 replaced first.
+    replace(store, failed("k2", 3), 10);
+    store.results.putMany([failed("k3", 2)]);
+    replace(store, failed("k1", 1), 20);
+    const runs = () =>
+      reportOf(readWhy(repo.main, "auth > login")).replacedFailures?.map(
+        (e) => e.failure.provenance.runId,
+      );
+    expect(runs()).toEqual(["fail-3", "fail-1"]);
+    expect(formatWhy(readWhy(repo.main, "auth > login"))).toMatch(
+      /Replaced failures \(2, newest first\):\n {2}REPLACED {2}2026-10-04T09:03:00\.000Z/,
+    );
+
+    // Two failures at minute 3: the one a pass replaced later is listed first.
+    replace(
+      store,
+      { ...failed("k4", 3), provenance: { ...failed("k4", 3).provenance, runId: "tie" } },
+      30,
+    );
+    expect(runs()).toEqual(["tie", "fail-3", "fail-1"]);
   });
 });
