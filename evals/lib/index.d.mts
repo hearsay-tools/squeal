@@ -423,7 +423,11 @@ export interface Evidence {
   files: string[];
   failing: string[];
 }
-/** One check a Squeal text named, or `count` checks a collapsed list or an overflow counts. */
+/**
+ * One check a Squeal text named, or `count` checks a collapsed list or an overflow counts, or a
+ * group of failures with one error and location counts in one test file (`file`) or past its
+ * tenth test file (row 011-109), with the group's provenance.
+ */
 export type CheckSeen =
   | {
       check: string;
@@ -436,7 +440,15 @@ export type CheckSeen =
       /** On a pass a retry's own run stored: the reason it was asked for (row 006-53). */
       retried?: string;
     }
-  | { to: "fail" | "pass" | "resolved"; count: number };
+  | { to: "fail" | "pass" | "resolved"; count: number }
+  | {
+      to: "fail";
+      count: number;
+      file?: string;
+      from: string | null;
+      observed: number | null;
+      validity: string;
+    };
 /** Known failures: check names, and a count of those no text named. */
 export interface Failing {
   named: string[];
