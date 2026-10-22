@@ -53,9 +53,8 @@ type Group = number | "sequential";
 
 export class Widths {
   readonly #root: number | undefined;
-  /** The root's floor: 2 when a project that reads the root's width batches its files. */
-  readonly #rootFloor: number;
-  readonly #projects: ReadonlyMap<TestProject, { own: number | undefined; floor: number }>;
+  /** Each project's own `maxWorkers`, written in place of the config's for a run. */
+  readonly #projects: ReadonlyMap<TestProject, number | undefined>;
   /** By project name: its own ceiling, else the root's, its floor and its group. */
   readonly #byName: ReadonlyMap<
     string,
@@ -64,21 +63,13 @@ export class Widths {
 
   constructor(vitest: Vitest) {
     this.#root = vitest.config.maxWorkers;
-    // Vitest throws when two projects of one group resolve to different widths, so every project
-    // that reads the root's width runs at the root's floor (row 011-97).
-    const readsRoot = (p: TestProject) =>
-      p.config === vitest.config || p.config.maxWorkers === undefined;
-    this.#rootFloor = vitest.projects.some((p) => readsRoot(p) && batches(p)) ? 2 : 1;
-    const floorOf = (p: TestProject) => (readsRoot(p) ? this.#rootFloor : batches(p) ? 2 : 1);
-    this.#projects = new Map(
-      vitest.projects.map((p) => [p, { own: p.config.maxWorkers, floor: floorOf(p) }]),
-    );
+    this.#projects = new Map(vitest.projects.map((p) => [p, p.config.maxWorkers]));
     this.#byName = new Map(
       vitest.projects.map((p) => {
         const own = p.config.maxWorkers;
         const order = p.config.sequence.groupOrder;
         const group = p.config.isolate && order === 0 && own === 1 ? "sequential" : order;
-        return [p.name, { ceiling: own ?? this.#root, floor: floorOf(p), group }];
+        return [p.name, { ceiling: own ?? this.#root, floor: batches(p) ? 2 : 1, group }];
       }),
     );
   }
@@ -112,14 +103,20 @@ export class Widths {
     return tierWidth(grant, known?.ceiling, known?.floor) ?? Math.max(1, grant);
   }
 
-  /** Sizes `vitest`'s next run for `want` workers. */
-  apply(vitest: Vitest, want: number | undefined): void {
+  /**
+   * Sizes `vitest`'s next run of `testFiles` for `want` workers. Vitest
+   * throws when two projects of one group resolve to different widths, so
+   * every project runs at the run's floor: the widest of its files' at a
+   * grant of 1, as the scheduler's tier asks for (row 011-97). A sibling
+   * with no file in the run raises none (review 0.1.255 B3).
+   */
+  apply(vitest: Vitest, want: number | undefined, testFiles: readonly TestFileRef[]): void {
+    const floor = Math.max(1, ...testFiles.map((f) => this.of(f.project, 1)));
     // The root project's config is the instance's; a project without a value of its own reads it.
-    (vitest.config as Sized).maxWorkers = tierWidth(want, this.#root, this.#rootFloor);
-    for (const project of vitest.projects) {
-      const sized = this.#projects.get(project);
-      if (project.config !== vitest.config && sized?.own !== undefined) {
-        (project.config as Sized).maxWorkers = tierWidth(want, sized.own, sized.floor);
+    (vitest.config as Sized).maxWorkers = tierWidth(want, this.#root, floor);
+    for (const [project, own] of this.#projects) {
+      if (project.config !== vitest.config && own !== undefined) {
+        (project.config as Sized).maxWorkers = tierWidth(want, own, floor);
       }
     }
   }
@@ -141,8 +138,8 @@ export class VitestWidths implements VitestHints {
     this.#widths = new Widths(vitest);
   }
 
-  size(vitest: Vitest, workers: number | undefined): void {
-    this.#widths?.apply(vitest, workers ?? this.maxWorkers);
+  size(vitest: Vitest, workers: number | undefined, testFiles: readonly TestFileRef[]): void {
+    this.#widths?.apply(vitest, workers ?? this.maxWorkers, testFiles);
   }
 
   /**
