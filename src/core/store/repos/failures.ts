@@ -1,18 +1,7 @@
 import type { SQLInputValue } from "node:sqlite";
-import type { CheckError, FailureRepo, FailureSelection, ResultRecord } from "../../types/index.js";
-import {
-  bool,
-  CHECK_COLUMNS,
-  checkFrom,
-  checkParams,
-  json,
-  location,
-  num,
-  oneOf,
-  str,
-  strOrNull,
-} from "../codec.js";
-import type { Connection, Row } from "../connection.js";
+import type { FailureRepo, FailureSelection } from "../../types/index.js";
+import { CHECK_COLUMNS, checkFrom, checkParams, num, toResult } from "../codec.js";
+import type { Connection } from "../connection.js";
 
 /** One query and its parameters. */
 export interface Statement {
@@ -89,33 +78,5 @@ export function createFailureRepo(conn: Connection): FailureRepo {
     list: (selection, limit) => all(FAILURE_STATEMENTS.list(selection, limit)).map(toResult),
     count: (selection) => num(all(FAILURE_STATEMENTS.count(selection))[0] ?? { n: 0 }, "n"),
     failingChecks: (selection) => all(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom),
-  };
-}
-
-const OUTCOMES = ["pass", "fail", "skip"] as const;
-
-/**
- * A row as `ResultRepo` reads it. Not shared with `results.ts`: that module
- * is on the key-format alarm's path, and a changed line there needs a
- * validity case (011-64 section 4).
- */
-function toResult(row: Row): ResultRecord {
-  return {
-    check: checkFrom(row),
-    key: str(row, "key"),
-    outcome: oneOf(row, "outcome", OUTCOMES),
-    durationMs: num(row, "duration_ms"),
-    location: location(row),
-    fingerprint: strOrNull(row, "fingerprint"),
-    summary: strOrNull(row, "summary"),
-    errors: row.errors === null ? [] : json<CheckError[]>(row, "errors"),
-    provenance: {
-      worktreeId: str(row, "worktree_id"),
-      revision: num(row, "revision"),
-      commit: strOrNull(row, "commit_sha"),
-      dirty: bool(row, "dirty"),
-      runId: str(row, "run_id"),
-      recordedAt: num(row, "recorded_at"),
-    },
   };
 }
