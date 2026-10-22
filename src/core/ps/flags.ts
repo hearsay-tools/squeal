@@ -14,7 +14,7 @@ import { type ProcessRow, ticksToMs } from "./source.js";
 
 /*
  * Spec 014 D7 (task 014-10): the states that should not be up, each with
- * its reason and the command that would end it, and the two information
+ * its reason and the command that would end it, and the three information
  * states that replace a daemon's phase. Every rule reads the model the
  * stages built, the files `lstat` and `readdir` give, and nothing else: no
  * flag runs its command. A rule this source cannot evaluate is named in
@@ -118,7 +118,6 @@ function daemonFlags(c: FlagContext, d: FoundDaemon): { flags: PsFlag[]; state: 
     flags.push({ flag, reason, command });
   const kill = `kill ${pid}`;
   const stop = d.root === null ? kill : `squeal stop ${shellQuote(d.root)}`;
-  let state: string | null = null;
 
   if (d.root === null) c.name(`daemon ${pid} flag root-gone`, "its root argument is relative");
   else {
@@ -128,8 +127,17 @@ function daemonFlags(c: FlagContext, d: FoundDaemon): { flags: PsFlag[]; state: 
   const bundle = bundleOf(d.script);
   if (!existsSync(bundle)) add("install-gone", `its bundle ${bundle} is missing`, stop);
   const older = olderOf(c, d, work);
-  if (typeof older === "string") state = older;
-  else if (older !== null) add("older", older.reason, stop);
+  const life =
+    phase === "serving" && work?.record != null
+      ? lifeOf(c, pid, work, work.record.heartbeatIntervalMs)
+      : null;
+  let state = life?.state ?? null;
+  if (typeof older === "string") state ??= older;
+  else if (older !== null) {
+    // Task 014-38: its drain ends it at the deadline; a stop before would end the slow work.
+    if (state === null) add("older", older.reason, stop);
+    else state = `${state}, older`;
+  }
 
   const age = c.ageOf(d.row);
   if (phase === "waiting") {
@@ -140,11 +148,7 @@ function daemonFlags(c: FlagContext, d: FoundDaemon): { flags: PsFlag[]; state: 
   }
   const hung = hungOf(c, d);
   if (hung !== null) add("hung", hung, `kill ${pid}; sleep 5; kill -9 ${pid}`);
-  if (phase === "serving" && work?.record != null) {
-    const life = lifeOf(c, pid, work, work.record.heartbeatIntervalMs);
-    if (life.flag !== null) add(life.flag.flag, life.flag.reason, stop);
-    state = life.state ?? state;
-  }
+  if (life?.flag != null) add(life.flag.flag, life.flag.reason, stop);
   for (const reason of deadConsumers(c, pid)) add("dead-consumer", reason, null);
 
   const home = model.places.home;
