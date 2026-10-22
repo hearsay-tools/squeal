@@ -1,3 +1,4 @@
+import { timeText } from "../text.js";
 import type { OutstandingStanding, TierYield } from "../types/index.js";
 import { remainderSeconds } from "./next-step.js";
 
@@ -34,10 +35,11 @@ export function groupId(s: OutstandingStanding): string {
   }
 }
 
-/** A yield as its line words it: its kind, and a remainder's seconds. */
+/** A yield as its line words it: its kind, a remainder's seconds and an overrun's bound. */
 function yieldId(tier: TierYield | undefined): string {
   if (tier === undefined) return "-";
-  return tier.kind === "remainder" ? `remainder ${remainderSeconds(tier.remainderMs)}` : tier.kind;
+  if (tier.kind === "remainder") return `remainder ${remainderSeconds(tier.remainderMs)}`;
+  return tier.kind === "overrun" ? `overrun ${timeText(tier.yieldsAt)}` : tier.kind;
 }
 
 /** Of two standings of one group, the earliest start or the latest bound. */
