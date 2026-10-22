@@ -6,19 +6,69 @@ import { clearHandoff, readHandoff } from "../../src/core/delivery/handoff.js";
 import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
 import type { DaemonRecord, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { closeFakeDaemons, fakeDaemon } from "../cli/fake-daemon.js";
-import { daemonSuite, SLOW } from "./helpers.js";
+import { daemonSuite, delay, type FixtureRepo, SLOW, waitFor } from "./helpers.js";
 import { spawnLog, startIn } from "./start-helpers.js";
 
 /*
- * Row 011-111 (011 C9, row 011-34): a successor answers on its socket before
- * it registers, and until it registers its predecessor's handoff claim
- * stands, so status says the daemon is handing over. CI 39864834794 printed
- * that under `Squeal daemon started`, and the evals read no daemon from it.
- * `start` prints its status once the store records the daemon that answered.
+ * Row 011-111 (011 C9, row 011-34): a daemon answers on its socket before it
+ * registers. Until it registers, status reads no daemon, or in a handoff its
+ * predecessor's claim, so it says the daemon is handing over. CI 39864834794
+ * printed that under `Squeal daemon started`, and the evals read no daemon
+ * from it. `start` prints its status once the store records the daemon that
+ * answered.
  */
 
 const suite = daemonSuite();
 const HOOKS = squealVersion();
+
+/** A stopping 0.1.0 daemon's record, and its successor's, of this version. */
+function records(repo: FixtureRepo): { old: DaemonRecord; next: DaemonRecord } {
+  const now = Date.now();
+  const old: DaemonRecord = {
+    socketPath: repo.socketPath,
+    startedAt: (now - 60_000) as EpochMs,
+    heartbeatAt: (now - 20_000) as EpochMs,
+    heartbeatIntervalMs: 5_000,
+    squealVersion: "0.1.0",
+    token: "old",
+  };
+  const next: DaemonRecord = {
+    ...old,
+    startedAt: (now - 1_000) as EpochMs,
+    heartbeatAt: now as EpochMs,
+    squealVersion: HOOKS,
+    token: "new",
+  };
+  return { old, next };
+}
+
+/** The fixture's store with the worktree's row, and `daemon` recorded in it. */
+function storeWith(repo: FixtureRepo, daemon: DaemonRecord | null) {
+  const store = openStore(repo.commonDir, { busyTimeoutMs: 10_000 });
+  if (isStoreOpenFailure(store)) throw new Error(`store: ${JSON.stringify(store)}`);
+  suite.cleanup(() => store.close());
+  store.worktrees.upsert({
+    id: repo.worktreeId as WorktreeId,
+    root: repo.root,
+    commonDir: repo.commonDir,
+    isMain: true,
+    registeredAt: 1,
+    daemon,
+  });
+  return store;
+}
+
+/** The ping the daemon of `record` answers in `phase`. */
+const answer = (repo: FixtureRepo, record: DaemonRecord, phase: string) => ({
+  ok: true,
+  type: "ping",
+  pid: process.pid,
+  worktreeId: repo.worktreeId,
+  root: repo.root,
+  squealVersion: record.squealVersion,
+  phase,
+  startedAt: record.startedAt,
+});
 
 describe.runIf(process.platform === "linux")(
   "squeal start when the successor answers before it registers (row 011-111)",
@@ -30,50 +80,15 @@ describe.runIf(process.platform === "linux")(
     async function handingOver(registerAfterMs: number | null) {
       const repo = suite.fixture();
       const id = repo.worktreeId as WorktreeId;
-      const now = Date.now();
-      const old: DaemonRecord = {
-        socketPath: repo.socketPath,
-        startedAt: (now - 60_000) as EpochMs,
-        heartbeatAt: (now - 20_000) as EpochMs,
-        heartbeatIntervalMs: 5_000,
-        squealVersion: "0.1.0",
-        token: "old",
-      };
-      const next: DaemonRecord = {
-        ...old,
-        startedAt: (now - 1_000) as EpochMs,
-        heartbeatAt: now as EpochMs,
-        squealVersion: HOOKS,
-        token: "new",
-      };
-      const store = openStore(repo.commonDir, { busyTimeoutMs: 10_000 });
-      if (isStoreOpenFailure(store)) throw new Error(`store: ${JSON.stringify(store)}`);
-      suite.cleanup(() => store.close());
-      store.worktrees.upsert({
-        id,
-        root: repo.root,
-        commonDir: repo.commonDir,
-        isMain: true,
-        registeredAt: 1,
-        daemon: old,
-      });
+      const { old, next } = records(repo);
+      const store = storeWith(repo, old);
       const lock = acquireDaemonLock(lockFileFor(repo.commonDir, id));
       if (lock === null) throw new Error("the lock is taken");
       suite.cleanup(() => lock.release());
-      const answer = (record: DaemonRecord, phase: string) => ({
-        ok: true,
-        type: "ping",
-        pid: process.pid,
-        worktreeId: id,
-        root: repo.root,
-        squealVersion: record.squealVersion,
-        phase,
-        startedAt: record.startedAt,
-      });
       // The first ping after the stop comes once start claimed the handoff. Then, as a 0.1.31
       // daemon's shutdown and its successor's start run: the old record is cleared, and the
       // successor answers from its socket while its registration (`#register`) has not run.
-      const pings = [answer(old, "stopping")];
+      const pings = [answer(repo, old, "stopping")];
       let stopped = false;
       let answering = false;
       await fakeDaemon(repo.socketPath, { ping: pings }, (type) => {
@@ -81,7 +96,7 @@ describe.runIf(process.platform === "linux")(
         if (type !== "ping" || !stopped || answering) return;
         answering = true;
         store.worktrees.setDaemon(id, null);
-        pings[0] = answer(next, "starting");
+        pings[0] = answer(repo, next, "starting");
         if (registerAfterMs === null) return;
         setTimeout(() => {
           store.transaction(() => {
@@ -121,6 +136,35 @@ describe.runIf(process.platform === "linux")(
       expect(stdout).toMatch(/^Squeal daemon started for .*, after the 0\.1\.0 daemon handed over/);
       // The claim stands, so the status says what is so: the handoff has not ended.
       expect(stdout).toMatch(/handing over from 0\.1\.0 to /);
+    });
+  },
+);
+
+describe.runIf(process.platform === "linux")(
+  "squeal start when the daemon it spawned answers before it registers (row 011-111)",
+  SLOW,
+  () => {
+    afterEach(() => closeFakeDaemons());
+
+    it("prints its status once that daemon registered, which says it validates", async () => {
+      const repo = suite.fixture();
+      const { next } = records(repo);
+      const store = storeWith(repo, null);
+      const { cli, spawns } = spawnLog(suite);
+      // Once spawned, it answers on its socket; it registers 1.5 s later.
+      const serving = (async () => {
+        await waitFor(() => spawns().length > 0, 30_000, "the spawn");
+        await fakeDaemon(repo.socketPath, { ping: [answer(repo, next, "starting")] });
+        await delay(1_500);
+        store.worktrees.setDaemon(repo.worktreeId as WorktreeId, next);
+      })();
+
+      const bounds = { socketMs: 10_000, lockMs: 5_000, leftoversMs: 0 };
+      const { code, stdout, stderr } = await startIn(repo, bounds, cli);
+      await serving;
+      expect(code, stderr).toBe(0);
+      expect(stdout).toMatch(/^Squeal daemon spawned for /);
+      expect(squealEvidence(stdout, "pull"), stdout).toMatchObject({ daemon: true });
     });
   },
 );
