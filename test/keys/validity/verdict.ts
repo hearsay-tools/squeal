@@ -7,7 +7,7 @@ import { versionName } from "./components.js";
 /*
  * The verdict (011 C3, task 011-37 sections 3 and 6). One case's outputs at
  * the two trees: equal keys must give equal outputs, a fingerprint read
- * through `sameFingerprint`; the `store` and `adapter:vitest` kinds read by
+ * through `sameFingerprint`; the `store` and adapter kinds read by
  * direction (risk 4, amended 2026-10-20). Each component's version: unchanged, its cases must
  * agree and its changed lines must have run; raised, one of its cases must
  * differ (D6), and a raised format empties the formats read as one (risk 6).
@@ -96,7 +96,7 @@ function decided(output: CaseOutput): Map<string, Filed> {
   );
 }
 
-/** One run as the `adapter:vitest` harness reports it (`harness/vitest.ts`), each file `project:path`. */
+/** One run as an adapter harness reports it (`harness/reported.ts`), each file `project:path`. */
 interface Reported {
   readonly completed: readonly string[];
   readonly withheld: readonly string[];
@@ -106,6 +106,8 @@ interface Reported {
     readonly fingerprint: string | null;
   }[];
   readonly loadErrors: readonly { readonly file: string; readonly fingerprint: string }[];
+  /** The files whose module skipped itself (pytest, 007 D6), which store a skip for each known check. */
+  readonly skipped?: readonly string[];
 }
 
 const fileOf = (check: string) => {
@@ -114,9 +116,10 @@ const fileOf = (check: string) => {
 };
 
 /**
- * The `adapter:vitest` harness's runs, by run and file: the scheduler
- * stores a run's completed files (`recordsForFile`), each with its results
- * and its load error, each with its fingerprint.
+ * An adapter harness's runs, by run and file: the scheduler stores a run's
+ * completed files (`recordsForFile`), each with its results and its load
+ * error, each with its fingerprint, and pytest's whether its module skipped
+ * itself.
  */
 function ranFiles(output: CaseOutput): Map<string, Filed> {
   const runs = isRecord(output.outputs) ? output.outputs.runs : undefined;
@@ -128,6 +131,7 @@ function ranFiles(output: CaseOutput): Map<string, Filed> {
       ...run.withheld,
       ...results.map(([file]) => file),
       ...run.loadErrors.map((e) => e.file),
+      ...(run.skipped ?? []),
     ];
     for (const file of new Set(files)) {
       const state = run.completed.includes(file)
@@ -137,10 +141,11 @@ function ranFiles(output: CaseOutput): Map<string, Filed> {
           : "reported";
       const own = results.filter(([f]) => f === file).map(([, r]) => r);
       const loadError = run.loadErrors.find((e) => e.file === file) ?? null;
+      const skipped = run.skipped === undefined ? {} : { skipped: run.skipped.includes(file) };
       filed.set(`run ${i + 1}, ${file}`, {
         stored: state === "completed" ? state : null,
         state,
-        outputs: { state, results: own, loadError },
+        outputs: { state, results: own, loadError, ...skipped },
       });
     }
   });
@@ -161,6 +166,7 @@ const runCount = (output: CaseOutput) => {
 const DIRECTIONS: Partial<Record<CaseKind, Direction>> = {
   store: { files: decided },
   "adapter:vitest": { files: ranFiles, whole: runCount },
+  "adapter:pytest": { files: ranFiles, whole: runCount },
 };
 
 function directionOf(read: Direction, baseline: CaseOutput, candidate: CaseOutput) {
