@@ -41,3 +41,15 @@ Outcome: `backlog-slots-overhead.test.ts` test 3 checks per-file overhead with b
 Owns: `test/scheduler/backlog-slots-overhead.test.ts`, and `slots-fixture.ts` only if the reading needs a hook. Not yours: src, `ci.yml`, the bundles, the version, the spec, the board.
 
 Done when 10 runs pass at `taskset -c 0-1` and 10 at `taskset -c 0-3` with 3 pinned burners; a temporary 20 ms CPU cost per slot fails the CPU bound, and a commit per slot without the gather fails the budget (both shown, then reverted); lint, typecheck and `squeal status` for the file pass.
+
+## R2: review of cand/011-99-w2
+
+Use /reviewer. Shape: review. Pinned to `b428e4308` (cand/011-99-w2: main `d69c8611b` and worker 760d185f's W2 commit, picked from `444a41dbd`). Test files only; the bundles do not change, so there is no version raise and no release. Read W2 above and the board row 011-99.
+
+Check:
+- Test 3 bounds the best slot pass's daemon CPU per file, net of the sink's busy-waits, at 5 times the best tier pass's, with no `process.env.CI` case; the comment's numbers match the worker's runs.
+- The commit budget, `FILES * 0.6`, applies to the slot pass with the fewest commits.
+- `slots-fixture.ts`'s `applyCpuMs()` measures the CPU of the busy-waits it subtracts, and changes no other harness behaviour.
+- A 20 ms CPU cost per slot would fail the CPU bound, and a commit per slot without the gather would fail the budget (reason from the code or re-run in a scratch copy; never edit `src` in your tree).
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once; that run is the gate. Known red on main: `handover-tier.test.ts` (row 011-110) and `opencode-dispose.test.ts` (008-38). Write `reviews/011-99-w2.md` with PASS or FAIL on `b428e4308` and commit it.
