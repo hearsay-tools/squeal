@@ -73,7 +73,7 @@ async function snap(during: () => void = () => {}, overrides: Partial<SnapshotOp
     wait: window.wait,
     ...overrides,
   };
-  return { ...(await takeSnapshot(options)), waits: window.waits };
+  return { shape: await takeSnapshot(options), waits: window.waits };
 }
 
 const flagOf = (flag: PsFlagName): PsFlag => ({ flag, reason: `${flag} holds`, command: "kill 1" });
@@ -82,7 +82,7 @@ const KIB = 1024;
 
 describe("a host with no daemon", () => {
   test("the shape has the host, no daemon, no process and no flag", async () => {
-    const { shape, leftovers, waits } = await snap();
+    const { shape, waits } = await snap();
     expect(shape).toMatchObject({
       v: PS_SHAPE_VERSION,
       at: NOW,
@@ -112,7 +112,6 @@ describe("a host with no daemon", () => {
       unflaggedFiles: null,
       flags: 0,
     });
-    expect(leftovers).toEqual([]);
     // The reads inside the window took no time on the fake clock: the whole window is waited out once.
     expect(waits).toEqual([2_000]);
   });
@@ -511,7 +510,7 @@ describe("the phase, with the snapshot's clock (D2, D10)", () => {
     expect(fresh.shape.repositories[0]?.daemons[0]?.phase).toBe("serving");
     vi.restoreAllMocks();
     const later = fakeWindow(() => {}, NOW + 60_000);
-    const { shape } = await takeSnapshot({
+    const shape = await takeSnapshot({
       source: blind,
       places: host.places,
       flag: noFlags,
@@ -538,12 +537,11 @@ describe("the flags in the shape (D7, D8)", () => {
       states: new Map([[800, "draining 22m left"]]),
       processes: new Map([[801, [flagOf("overdue-test-process")]]]),
       orphans: [{ pid: 950, comm: "node", startedAt: null, flags: [flagOf("orphan-waiter")] }],
-      files: [socketFlag("fd5a859b8ca77ef9"), LEFTOVERS],
+      files: [socketFlag("fd5a859b8ca77ef9"), MARK],
       unflagged: [],
-      leftovers: ["/tmp/squeal-1000/tmp/0123456789abcdef"],
       unknown: [{ what: "flag hung", why: "the lock holders cannot be read" }],
     };
-    const { shape, leftovers } = await snap(() => {}, { flag: () => findings });
+    const { shape } = await snap(() => {}, { flag: () => findings });
     const d = shape.repositories[0]?.daemons[0];
     expect(d).toMatchObject({ phase: "serving", state: "draining 22m left" });
     expect(d?.flags).toEqual([flagOf("past-unused")]);
@@ -553,7 +551,6 @@ describe("the flags in the shape (D7, D8)", () => {
     expect(shape.orphans).toEqual(findings.orphans);
     expect(shape.files).toEqual(findings.files);
     expect(shape.flags).toBe(5);
-    expect(leftovers).toEqual(findings.leftovers);
     expect(shape.unknown).toContainEqual(findings.unknown[0]);
   });
 
@@ -608,7 +605,7 @@ describe("repositories (D1)", () => {
         [810, [flagOf("past-idle")]],
       ]),
       orphans: [{ pid: 950, comm: "node", startedAt: null, flags: [flagOf("orphan-waiter")] }],
-      files: [socketFlag(beta.id), socketFlag(alpha.id), socketFlag("fd5a859b8ca77ef9"), LEFTOVERS],
+      files: [socketFlag(beta.id), socketFlag(alpha.id), socketFlag("fd5a859b8ca77ef9"), MARK],
       unknown: [
         { what: "daemon 800 settings", why: "x" },
         { what: "daemon 810 settings", why: "y" },
@@ -715,16 +712,17 @@ function socketFlag(id: string): PsFileFlag {
     reason: `no live daemon of worktree ${id} holds its lock`,
     path,
     count: 1,
-    bytes: null,
+    bytes: 0,
     command: `rm ${path}`,
   };
 }
 
-const LEFTOVERS: PsFileFlag = {
-  flag: "leftover-temp",
-  reason: "no live daemon's key names them and no process uses them",
-  path: null,
-  count: 3_530,
-  bytes: 6.4 * 2 ** 30,
-  command: "squeal ps --leftovers | xargs -d '\\n' rm -rf --",
+/** A pool mark no repository owns, so `--repo` drops it (D1). */
+const MARK: PsFileFlag = {
+  flag: "stale-pool-mark",
+  reason: "unchanged since 2026-10-21 18:02; readers skip a mark older than 30 s",
+  path: "/run/user/1000/squeal/pool.mark.0011223344556677",
+  count: 1,
+  bytes: 3,
+  command: "rm /run/user/1000/squeal/pool.mark.0011223344556677",
 };

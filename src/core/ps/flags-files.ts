@@ -2,15 +2,14 @@ import { join } from "node:path";
 import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
 import { storePaths } from "../store/index.js";
 import type { AbsolutePath } from "../types/index.js";
-import { type FileFlagOptions, leftoverTemp, lstatOrNull, names } from "./flags-leftovers.js";
 import { dateOf, shellQuote } from "./flags-text.js";
 import type { PsModel, PsPlaces } from "./model.js";
+import { lstatOrNull, names } from "./reads.js";
 import type { PsFileFlag, PsUnflaggedFiles, PsUnflaggedKind, PsUnknown } from "./shape.js";
 
 /*
  * Spec 014 D7, the files (task 014-10): a socket no live daemon of its id
- * holds, a pool mark past its freshness, and the temp directories no live
- * daemon's key names and no process uses. Each is read by `readdir` and
+ * holds, and a pool mark past its freshness. Each is read by `readdir` and
  * `lstat` alone; nothing here removes a file. The files whose lock the OS
  * frees when the holder dies never get a flag; they are counted by kind.
  */
@@ -20,26 +19,17 @@ const WAITER_LOCK = /^waiter-.+\.sqlite$/;
 const PERMIT = /^pool\.(\d+)\.lock$/;
 const MARK = /^pool\.mark\.[^.]+$/;
 
-export type { FileFlagOptions } from "./flags-leftovers.js";
-
 export interface FileFindings {
   readonly files: readonly PsFileFlag[];
   readonly unflagged: readonly PsUnflaggedFiles[];
-  readonly leftovers: readonly AbsolutePath[];
   readonly unknown: readonly PsUnknown[];
 }
 
-export function fileFlags(model: PsModel, options: FileFlagOptions = {}): FileFindings {
+export function fileFlags(model: PsModel): FileFindings {
   const unknown: PsUnknown[] = [];
-  const left = leftoverTemp(model, options, unknown);
   return {
-    files: [
-      ...staleSockets(model, unknown),
-      ...stalePoolMarks(model),
-      ...(left.flag === null ? [] : [left.flag]),
-    ],
+    files: [...staleSockets(model, unknown), ...stalePoolMarks(model)],
     unflagged: unflagged(model),
-    leftovers: left.paths,
     unknown,
   };
 }

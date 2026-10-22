@@ -154,9 +154,7 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
   const total = totalOf(daemons);
   const ids = !o.repo ? null : current === null ? new Set<string>() : worktreeIdsOf(current);
   const files =
-    ids === null
-      ? findings.files
-      : findings.files.filter((f) => f.path !== null && ids.has(socketIdOf(f.path)));
+    ids === null ? findings.files : findings.files.filter((f) => ids.has(socketIdOf(f.path)));
   const orphans = o.repo ? [] : findings.orphans;
   const kept = new Set(daemons.flatMap((d) => [d.pid, ...d.processes.map((p) => p.pid)]));
   const shape: Omit<PsSnapshot, "unknown"> = {

@@ -226,8 +226,7 @@ export type PsFlagName =
   | "orphan-waiter"
   | "stale-socket"
   | "stale-pool-mark"
-  | "foreign-permit"
-  | "leftover-temp";
+  | "foreign-permit";
 
 export interface PsFlag {
   readonly flag: PsFlagName;
@@ -244,13 +243,12 @@ export interface PsOrphan {
 }
 
 export interface PsFileFlag {
-  readonly flag: "stale-socket" | "stale-pool-mark" | "leftover-temp";
+  readonly flag: "stale-socket" | "stale-pool-mark";
   /** Why it is flagged, as `PsFlag.reason`: what holds it, or that nothing does, and its mtime (D7, D8). */
   readonly reason: string;
-  /** `null` for a group (`leftover-temp`), whose paths `--leftovers` prints. */
-  readonly path: AbsolutePath | null;
+  readonly path: AbsolutePath;
   readonly count: number;
-  readonly bytes: number | null;
+  readonly bytes: number;
   readonly command: string;
 }
 
@@ -267,6 +265,4 @@ export interface PsUnknown {
   /** `daemon 3704612 lastUsedAt`, `flag hung`, `host cpuPressure`, ... */
   readonly what: string;
   readonly why: string;
-  /** The directories `leftover-temp` cannot tell unused, so it lists them nowhere else (`reviews/wave-4.md` B2). */
-  readonly paths?: readonly string[];
 }

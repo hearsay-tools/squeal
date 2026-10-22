@@ -35,7 +35,6 @@ export interface FixtureProcess {
   /** kB, as `/proc/<pid>/status` prints them; absent for a kernel thread. */
   readonly memoryKb?: { readonly anon: number; readonly shmem: number; readonly swap: number };
   readonly fds?: Readonly<Record<number, string>>;
-  readonly cwd?: string;
 }
 
 export function startTicksOf(p: FixtureProcess): number {
@@ -117,7 +116,6 @@ export function writeProcess(root: string, p: FixtureProcess): void {
     if (p.environ === "unreadable") chmodSync(join(dir, "environ"), 0o000);
   }
   for (const [fd, target] of Object.entries(p.fds ?? {})) symlinkSync(target, join(dir, "fd", fd));
-  if (p.cwd !== undefined) symlinkSync(p.cwd, join(dir, "cwd"));
 }
 
 const HOME = "/home/user";
@@ -164,7 +162,6 @@ export const PROCESSES: readonly FixtureProcess[] = [
       4: `${HOME}/projects/alpha/.git/squeal/store.sqlite`,
       5: "socket:[1057291937]",
     },
-    cwd: `${HOME}/projects/alpha/.git/squeal`,
   },
   {
     pid: 2091490,
@@ -177,7 +174,6 @@ export const PROCESSES: readonly FixtureProcess[] = [
     cmdline: daemonArgs("codex", "0.1.234", `${HOME}/projects/beta`),
     memoryKb: { anon: 665_208, shmem: 512, swap: 2_048 },
     fds: { 3: `${HOME}/projects/beta/.git/squeal/locks/${BETA_ID}.sqlite` },
-    cwd: `${HOME}/projects/beta`,
   },
   {
     pid: 2353452,
@@ -280,12 +276,6 @@ export function writeHost(root: string): void {
   const proc = join(root, "proc");
   mkdirSync(join(proc, "pressure"), { recursive: true });
   mkdirSync(join(proc, "self", "ns"), { recursive: true });
-  mkdirSync(join(proc, "net"));
-  // No socket is bound: a socket read that fails withholds every leftover (B2).
-  writeFileSync(
-    join(proc, "net", "unix"),
-    "Num       RefCount Protocol Flags    Type St Inode Path\n",
-  );
   writeFileSync(join(proc, "loadavg"), "43.21 36.57 38.82 31/3218 2354001\n");
   writeFileSync(
     join(proc, "pressure", "cpu"),

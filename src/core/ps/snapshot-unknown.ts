@@ -28,8 +28,7 @@ const LISTED = 10;
 export function unknownOf({ shape, named, costs }: UnknownInput): PsUnknown[] {
   const all = new Map<string, PsUnknown>();
   const name = (what: string, why: string): void => {
-    // A named entry is kept whole: the withheld leftovers carry their `paths`.
-    if (!all.has(what)) all.set(what, named.find((u) => u.what === what) ?? { what, why });
+    if (!all.has(what)) all.set(what, { what, why });
   };
   for (const u of named) name(u.what, u.why);
 
