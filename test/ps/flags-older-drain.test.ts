@@ -41,7 +41,10 @@ function drains(agoMs: number): void {
     record: daemonRecord(alpha, { startedAt, heartbeatAt: NOW, squealVersion: "0.1.234" }),
     fill: (store) => {
       store.meta.set(departedMetaKey(alpha.id), String(NOW - agoMs));
-      store.meta.set(worktreeMetaKey("slowTier", alpha.id), JSON.stringify({ kind: "waiting" }));
+      store.meta.set(
+        worktreeMetaKey("slowTier", alpha.id),
+        JSON.stringify({ kind: "waiting", for: "fast" }),
+      );
     },
     process: daemonProcess({
       pid: 800,
