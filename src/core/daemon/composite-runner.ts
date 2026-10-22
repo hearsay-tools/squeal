@@ -1,12 +1,6 @@
 import { compare } from "../fs/index.js";
-import type {
-  ProjectName,
-  RunEnd,
-  RunnerAdapter,
-  RunOptions,
-  RunReport,
-  TestFileRef,
-} from "../types/index.js";
+import type { ProjectName, RunEnd, RunnerAdapter, RunReport, TestFileRef } from "../types/index.js";
+import { Flights, withheld } from "./composite-flights.js";
 import type { RunnerSet } from "./runner-set.js";
 
 /**
@@ -32,7 +26,8 @@ import type { RunnerSet } from "./runner-set.js";
  * recreated, so the scheduler reads the environments and the listing
  * again and forgets a removed project's files. A removed member's part in
  * flight is stopped as `squeal stop` stops one, a replaced member's
- * finishes, and each is closed once its parts end.
+ * finishes, and each is closed once its parts end. A part of either not
+ * started yet is withheld: its files queue again for the reload's listing.
  */
 export function createCompositeRunner(
   adapters: readonly RunnerAdapter[],
@@ -160,9 +155,11 @@ export function createCompositeRunner(
     besideBacklog: (testFile) => owners.get(testFile.project)?.besideBacklog?.(testFile) ?? false,
     backlogSlot: (testFile) => owners.get(testFile.project)?.backlogSlot?.(testFile) ?? null,
     async run(testFiles, options) {
+      // Grouped in one synchronous pass once every owner is known: no reload lands between files.
+      if (testFiles.some((f) => !owners.has(f.project))) await environment();
       const groups = new Map<RunnerAdapter, TestFileRef[]>();
       for (const testFile of testFiles) {
-        const owner = await ownerOf(testFile);
+        const owner = owners.get(testFile.project) ?? (await ownerOf(testFile));
         groups.set(owner, [...(groups.get(owner) ?? []), testFile]);
       }
       // Spec 001 D11: "Runs go one at a time", so the parts do too, in adapter order.
@@ -172,8 +169,8 @@ export function createCompositeRunner(
         const files = groups.get(adapter);
         // A `squeal stop` starts no further part: its files stay queued (D10, task 001-367).
         if (files === undefined || options.stop?.aborted === true) continue;
-        // 011 C10: a part of a project a reload removed reports nothing, run or not.
-        if (flights.removed(adapter)) parts.push({ adapter, report: withheld(files, 0) });
+        // 011 C10: a reload's leaver starts no part, and a removed one's part reports nothing.
+        if (flights.left(adapter)) parts.push({ adapter, report: withheld(files, 0) });
         else parts.push({ adapter, report: await flights.run(adapter, files, options) });
       }
       return merge(parts);
@@ -193,111 +190,9 @@ export function createCompositeRunner(
   };
 }
 
-/**
- * The parts in flight of each member, and the members a reload retired
- * (row 011-78). A removed member's parts stop on its own signal, joined to
- * the run's `stop`, so its node:test or pytest processes end as at a
- * `squeal stop` (C9); a retired member closes once its last part ends.
- */
-class Flights {
-  readonly #running = new Map<RunnerAdapter, Set<AbortController>>();
-  readonly #removed = new WeakSet<RunnerAdapter>();
-  readonly #retired = new Set<RunnerAdapter>();
-  readonly #closing: Promise<void>[] = [];
-
-  removed(adapter: RunnerAdapter): boolean {
-    return this.#removed.has(adapter);
-  }
-
-  stop(adapter: RunnerAdapter): void {
-    this.#removed.add(adapter);
-    for (const controller of this.#running.get(adapter) ?? []) controller.abort("stop");
-  }
-
-  retire(adapter: RunnerAdapter): void {
-    this.#retired.add(adapter);
-    if (!this.#running.has(adapter)) this.#closeRetired(adapter);
-  }
-
-  async run(
-    adapter: RunnerAdapter,
-    testFiles: readonly TestFileRef[],
-    options: RunOptions,
-  ): Promise<RunReport> {
-    const controller = new AbortController();
-    const running = this.#running.get(adapter) ?? new Set();
-    this.#running.set(adapter, running.add(controller));
-    const stop =
-      options.stop === undefined
-        ? controller.signal
-        : AbortSignal.any([options.stop, controller.signal]);
-    try {
-      const report = await runPart(adapter, testFiles, { ...options, stop });
-      return this.removed(adapter) ? withheld(testFiles, report.durationMs) : report;
-    } finally {
-      running.delete(controller);
-      if (running.size === 0) {
-        this.#running.delete(adapter);
-        if (this.#retired.has(adapter)) this.#closeRetired(adapter);
-      }
-    }
-  }
-
-  /** Closes the retired members still running, and waits for every retired close. */
-  async close(): Promise<void> {
-    for (const adapter of this.#retired) this.#closeRetired(adapter);
-    await Promise.all(this.#closing);
-  }
-
-  #closeRetired(adapter: RunnerAdapter): void {
-    this.#retired.delete(adapter);
-    // A leaver's close has nothing left to undo for the daemon, so a failure of it is dropped.
-    this.#closing.push(adapter.close().catch(() => {}));
-  }
-}
-
-/**
- * The report of a removed project's part (011 C10): nothing it ran is
- * stored. Its files are withheld, so a file the ledger still holds queues
- * again until the reload's listing forgets it, and one already forgotten
- * is `gone`.
- */
-function withheld(testFiles: readonly TestFileRef[], durationMs: number): RunReport {
-  return {
-    end: "completed",
-    durationMs,
-    completedFiles: [],
-    results: [],
-    fileErrors: [],
-    failure: null,
-    withheld: testFiles,
-  };
-}
-
 interface Part {
   readonly adapter: RunnerAdapter;
   readonly report: RunReport;
-}
-
-/** One adapter's part of a run. A rejection is a crash of that part only (001 D12). */
-async function runPart(
-  adapter: RunnerAdapter,
-  testFiles: readonly TestFileRef[],
-  options: RunOptions,
-): Promise<RunReport> {
-  const started = Date.now();
-  try {
-    return await adapter.run(testFiles, options);
-  } catch (error) {
-    return {
-      end: "crashed",
-      durationMs: Date.now() - started,
-      completedFiles: [],
-      results: [],
-      fileErrors: [],
-      failure: error instanceof Error ? error.message : String(error),
-    };
-  }
 }
 
 const SEVERITY: Readonly<Record<RunEnd, number>> = { completed: 0, "timed-out": 1, crashed: 2 };
