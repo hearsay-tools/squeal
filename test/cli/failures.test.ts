@@ -7,6 +7,7 @@ import { FAILURES_LIMIT } from "../../src/core/status/index.js";
 import type { ResultRecord } from "../../src/core/types/index.js";
 import { check, fakeRepo, seedStore } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
+import { keyTestFiles } from "./failures-keys.js";
 
 const MINUTE = 60_000;
 const NOW = Date.UTC(2026, 9, 15, 12, 0, 0);
@@ -66,7 +67,7 @@ function seed() {
       daemon: null,
     });
   }
-  store.results.putMany([
+  const results = [
     fail("src/a.test.ts", "adds", repo.mainId, 10, { durationMs: 33.6 }),
     result(check("src/a.test.ts", "subtracts"), "pass-k", {
       worktreeId: repo.mainId,
@@ -74,7 +75,9 @@ function seed() {
     }),
     fail("src/auth.test.ts", "auth > login", b.id, 5),
     fail("src/auth.test.ts", "auth > logout", b.id, 180),
-  ]);
+  ];
+  store.results.putMany(results);
+  keyTestFiles(store, results);
   return { repo, store, b };
 }
 
@@ -190,6 +193,7 @@ describe("squeal failures (task 001-409)", () => {
           runId: "run-5",
           location: { path: "src/a.test.ts", line: 3, column: 5 },
           loadPerCpu: null,
+          active: true,
         },
         {
           check: check("src/a.test.ts", "adds"),
@@ -205,6 +209,7 @@ describe("squeal failures (task 001-409)", () => {
           runId: "run-10",
           location: { path: "src/a.test.ts", line: 3, column: 5 },
           loadPerCpu: null,
+          active: true,
         },
       ],
     });
