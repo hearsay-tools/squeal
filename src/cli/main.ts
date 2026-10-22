@@ -11,6 +11,7 @@ import type { EpochMs } from "../core/types/index.js";
 import { codexStatusLine } from "./codex/status.js";
 import { daemonCommand } from "./daemon.js";
 import { failuresCommand } from "./failures.js";
+import { holdCommand } from "./hold.js";
 import { init } from "./init.js";
 import { opencodeStatusLine } from "./opencode/status.js";
 import { piStatusLine } from "./pi/status.js";
@@ -92,7 +93,8 @@ Usage:
   squeal warmup                 Start the daemon and run every test file without a
                                 current result; exit 0, 1 on known failures, 3 without
                                 a verdict; suggestions it finds, applied by squeal setup
-  squeal start [root]           Start this worktree's daemon if none runs, print status
+  squeal start [root]           Start this worktree's daemon if none runs, end every
+                                hold command of it, print status
   squeal run --all [--force] [--wait]
                                 Request a full-suite checkpoint from the daemon; both
                                 lanes, fast files first
@@ -121,6 +123,12 @@ Usage:
                                 adds each test's child processes; exit 0, 1 with a flag,
                                 3 on a platform other than Linux and macOS
   squeal stop [root]            Stop this worktree's daemon
+  squeal hold [--max <duration>] -- <command> [args...]
+                                Run the command with this worktree's validation on hold:
+                                the daemon cancels the runs it can, starts none, and
+                                records and queues each edit; the queued work runs when
+                                the command exits, after --max (default 3h), or when
+                                start ends the hold; exits with the command's code
   squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
                                 daemon, delete the store and temp directories; --config
                                 also deletes squeal.config.json
@@ -170,6 +178,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   retry: retryCommand,
   ps: psCommand,
   stop: stopCommand,
+  hold: holdCommand,
   remove: removeCommand,
   update: updateCommand,
 };
@@ -195,8 +204,11 @@ export function main(argv: readonly string[], io: CliIo): number | Promise<numbe
     io.stderr(`squeal: unknown command "${first}"\n\n${HELP}`);
     return 2;
   }
-  // Issue 11: `--help` anywhere after the command is its help, before its parser runs.
-  if (rest.includes("--help") || rest.includes("-h")) {
+  // Issue 11: `--help` anywhere after the command is its help, before its parser runs; what
+  // follows `--` is `squeal hold`'s command, whose own flags they are (row 011-74).
+  const end = rest.indexOf("--");
+  const own = end === -1 ? rest : rest.slice(0, end);
+  if (own.includes("--help") || own.includes("-h")) {
     io.stdout(commandHelp(first));
     return 0;
   }
