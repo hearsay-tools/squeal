@@ -251,12 +251,12 @@ export function modelOf(spec: ModelSpec): PsModel {
     locksRead,
     discovery: { daemons: daemons.map((d) => d.daemon), sockets: spec.sockets ?? [], unknown: [] },
     first: {
-      sample: { atMs: 0, table: firstTable, cpuTime: null },
+      sample: { atMs: 0, table: firstTable, host: null },
       work: work("first"),
       attribution,
     },
     second: {
-      sample: { atMs: spec.windowMs ?? 2_000, table: secondTable, cpuTime: null },
+      sample: { atMs: spec.windowMs ?? 2_000, table: secondTable, host: null },
       work: work("second"),
       attribution: spec.secondAttribution ?? attribution,
     },
