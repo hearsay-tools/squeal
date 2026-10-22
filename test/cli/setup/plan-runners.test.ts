@@ -124,6 +124,34 @@ describe("the plan on a repository shaped like toolkit-dev", () => {
     ]);
   });
 
+  it("never offers it either when the nested project's exclude leaves a file to the outer one", async () => {
+    const [outer, nested] = TOOLKIT_PYTEST;
+    const pytest = [outer, { ...nested, exclude: ["tests/test_two.py"] }];
+    const root = toolkitShaped({ "squeal.config.json": json({ nodeTest: [], pytest }) });
+    expect((await planJson(root)).runners.pytestOverlaps).toEqual([
+      {
+        projects: ["root", "plugin-tools-a"],
+        testFiles: 1,
+        fix: 'keep each test file in one project: narrow the include of pytest project "root" or add the shared files to its exclude',
+      },
+    ]);
+  });
+
+  it("offers a directory exclude that, applied, runs every test file once and loses none", async () => {
+    const before = await planJson(toolkitShaped());
+    expect(before.runners.pytestOverlaps?.[0]?.fix).toBe(
+      'add "plugin-tools/a/**" to the exclude of pytest project "root"',
+    );
+    const [outer, nested] = TOOLKIT_PYTEST;
+    const pytest = [{ ...outer, exclude: ["plugin-tools/a/**"] }, nested];
+    const after = await planJson(
+      toolkitShaped({ "squeal.config.json": json({ nodeTest: [], pytest }) }),
+    );
+    expect(after.runners.pytestOverlaps).toEqual([]);
+    expect(after.warmup.paths).toBe(before.warmup.paths);
+    expect(after.warmup.testFiles).toBe(after.warmup.paths);
+  });
+
   it("asks either of two projects in one directory to give the shared files up", async () => {
     const pytest = [
       { name: "unit", include: ["tests/**/test_*.py"] },
