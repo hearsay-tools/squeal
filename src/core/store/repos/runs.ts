@@ -131,16 +131,20 @@ function readLanes(conn: Connection, worktreeId: WorktreeId): Record<string, Che
   );
   if (row === null) return {};
   try {
-    const parsed: unknown = JSON.parse(str(row, "value"));
-    if (typeof parsed !== "object" || parsed === null) return {};
-    const lanes: Record<string, CheckpointLane> = {};
-    for (const [id, lane] of Object.entries(parsed)) {
-      if (lane === "fast" || lane === "slow") lanes[id] = lane;
-    }
-    return lanes;
+    return toCheckpointLanes(JSON.parse(str(row, "value"))) ?? {};
   } catch {
     return {};
   }
+}
+
+/** A `checkpointLanes` row's parsed value; `undefined` when it is not a map. */
+export function toCheckpointLanes(value: unknown): Record<string, CheckpointLane> | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const lanes: Record<string, CheckpointLane> = {};
+  for (const [id, lane] of Object.entries(value)) {
+    if (lane === "fast" || lane === "slow") lanes[id] = lane;
+  }
+  return lanes;
 }
 
 function writeLane(

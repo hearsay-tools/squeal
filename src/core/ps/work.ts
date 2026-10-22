@@ -1,14 +1,18 @@
 import { type BigIntStats, existsSync, statSync } from "node:fs";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
-import { pathToFileURL } from "node:url";
 import { daemonUsedMetaKey, readDaemonUsed } from "../daemon/last-use.js";
 import { readPolicy } from "../daemon/policy.js";
+import { harnessAlive, toHarness } from "../delivery/harness-process.js";
 import { isRecord } from "../fs/index.js";
+import { immutableUrl } from "../slow/slot.js";
+import { toSlowActivity } from "../slow/state.js";
+import { toCheckpointLanes } from "../store/repos/runs.js";
+import { toDaemonToken } from "../store/repos/worktrees.js";
 import {
   type AbsolutePath,
   type DaemonRecord,
   DEFAULT_POLICY,
-  type HarnessProcess,
+  type SlowTierActivity,
   type WorktreeId,
   type WorktreeMetaRow,
   worktreeMetaKey,
@@ -118,7 +122,7 @@ function openReadOnly(path: AbsolutePath): { db: DatabaseSync; file: BigIntStats
     const held = wal !== undefined && existsSync(`${path}-shm`);
     if (!held && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
-    db = new DatabaseSync(held ? path : immutable(path), { readOnly: true });
+    db = new DatabaseSync(held ? path : immutableUrl(path), { readOnly: true });
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
     const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
     if (version >= READS_SCHEMA) return { db, file: held ? null : file };
@@ -128,12 +132,6 @@ function openReadOnly(path: AbsolutePath): { db: DatabaseSync; file: BigIntStats
     db?.close();
     return `its store ${path} cannot be read: ${message(error)}`;
   }
-}
-
-function immutable(path: AbsolutePath): URL {
-  const url = pathToFileURL(path);
-  url.search = "immutable=1";
-  return url;
 }
 
 /** A writer that opened the store and checkpointed into its file during an `immutable` read. */
@@ -202,16 +200,17 @@ function readOne(
   const token =
     startedAt === null || theirs
       ? null
-      : meta("daemonToken", "token", tokenOf(startedAt, version), null);
+      : meta("daemonToken", "token", (v) => toDaemonToken(v, startedAt, version), null);
   const record = row === null || theirs ? null : recordOf(row, token);
 
   const counts = new Map(
     all(db, PENDING, id).map((r) => [str(r, "pending"), num(r, "n")] as const),
   );
-  const slow = meta("slowTier", "slowWaiting", slowOf, { waits: false, running: [] });
+  const slow = meta("slowTier", "slowWaiting", (v) => slowOf(toSlowActivity(v)), NO_SLOW);
   let lanes: Readonly<Record<string, string>> | null | undefined;
   const laneOf = (checkpointId: string): string | null => {
-    if (lanes === undefined) lanes = meta("checkpointLanes", "checkpoint lanes", lanesOf, {});
+    if (lanes === undefined)
+      lanes = meta("checkpointLanes", "checkpoint lanes", toCheckpointLanes, {});
     return lanes?.[checkpointId] ?? null;
   };
   const since = theirs ? Number.POSITIVE_INFINITY : (startedAt ?? Number.POSITIVE_INFINITY);
@@ -253,13 +252,14 @@ function readOne(
     const sessionId = str(r, "session_id");
     const agentId = str(r, "agent_id");
     const of = `${sessionId}\n${agentId}`;
-    const harness = slot(harnesses, of, `consumer ${sessionId} harness`, harnessOf);
+    const harness = slot(harnesses, of, `consumer ${sessionId} harness`, toHarness);
     return {
       sessionId,
       agentId,
       lastSeenAt: num(r, "last_seen_at"),
       harness,
-      alive: aliveOf(harness, table, namespace),
+      // `harnessGone`'s rule, over the process table.
+      alive: harness === null ? null : harnessAlive(harness, namespace, statIn(table)),
       version: slot(versions, of, `consumer ${sessionId} version`, text),
     };
   });
@@ -311,14 +311,6 @@ const UNKNOWN = "has a format this release does not know";
 /** Reads a parsed JSON value; `undefined` when its format is not known. */
 type Decode<T> = (value: unknown) => T | undefined;
 
-/** `WorktreeRepo`'s token rule: the row's token counts only for the registration it was drawn with. */
-const tokenOf =
-  (startedAt: number, version: string | null): Decode<string | null> =>
-  (v) => {
-    if (!isRecord(v) || typeof v.token !== "string") return undefined;
-    return v.startedAt === startedAt && v.squealVersion === version ? v.token : null;
-  };
-
 function recordOf(row: Row, token: string | null): DaemonRecord | null {
   const socketPath = strOrNull(row, "daemon_socket");
   if (socketPath === null) return null;
@@ -333,53 +325,39 @@ function recordOf(row: Row, token: string | null): DaemonRecord | null {
 }
 
 /**
- * The `slowTier` row (004 D8): whether slow work waits, and the files of the
- * slow run. The slow tier publishes those in the transaction that starts its
- * run (`scheduler/slow-tier.ts`), the only start besides the fast lane's.
+ * What the `slowTier` row (004 D8) tells: whether slow work waits, and the
+ * files of the slow run. The slow tier publishes those in the transaction
+ * that starts its run (`scheduler/slow-tier.ts`), the only start besides the
+ * fast lane's.
  */
-const slowOf: Decode<{ readonly waits: boolean; readonly running: readonly unknown[] }> = (v) => {
-  if (v === null) return { waits: false, running: [] };
-  if (!isRecord(v)) return undefined;
-  if (v.kind === "waiting") return { waits: true, running: [] };
-  if (v.kind !== "running" || typeof v.path !== "string") return undefined;
-  return { waits: true, running: Array.isArray(v.paths) ? v.paths : [v.path] };
-};
+interface Slow {
+  readonly waits: boolean;
+  readonly running: readonly string[];
+}
+const NO_SLOW: Slow = { waits: false, running: [] };
 
-/** The `checkpointLanes` row: the lane of each one-lane checkpoint (task 004-61). */
-const lanesOf: Decode<Record<string, string>> = (v) => {
-  if (!isRecord(v)) return undefined;
-  const lanes: Record<string, string> = {};
-  for (const [id, lane] of Object.entries(v))
-    if (lane === "fast" || lane === "slow") lanes[id] = lane;
-  return lanes;
-};
+function slowOf(activity: SlowTierActivity | null | undefined): Slow | undefined {
+  if (activity === undefined) return undefined;
+  if (activity === null) return NO_SLOW;
+  return {
+    waits: true,
+    running: activity.kind === "running" ? (activity.paths ?? [activity.path]) : [],
+  };
+}
 
 /** A per-consumer row (`delivery/slots.ts`): `{ "<session>\n<agent>": value }`. */
 type Slots = Readonly<Record<string, unknown>>;
 const slotsOf: Decode<Slots> = (v) => (isRecord(v) ? v : undefined);
 const text: Decode<string> = (v) => (typeof v === "string" ? v : undefined);
 
-const harnessOf: Decode<HarnessProcess> = (v) =>
-  isRecord(v) &&
-  typeof v.pid === "number" &&
-  typeof v.startTime === "number" &&
-  typeof v.pidNamespace === "string"
-    ? { pid: v.pid, startTime: v.startTime, pidNamespace: v.pidNamespace }
-    : undefined;
-
 const finiteNumber: Decode<number> = (v) =>
   typeof v === "number" && Number.isFinite(v) ? v : undefined;
 
-/** `harnessGone`'s rule, with `null` where it cannot tell: another PID namespace, or none recorded. */
-function aliveOf(
-  harness: HarnessProcess | null,
-  table: ProcessTable,
-  namespace: string | null,
-): boolean | null {
-  if (harness === null || namespace === null || harness.pidNamespace !== namespace) return null;
-  const row = table.get(harness.pid);
-  return row !== undefined && row.startTicks === harness.startTime && row.state !== "Z";
-}
+/** A PID's row of the process table as `harnessAlive` reads a stat; `null` without one. */
+const statIn = (table: ProcessTable) => (pid: number) => {
+  const row = table.get(pid);
+  return row === undefined ? null : { startTime: row.startTicks, state: row.state };
+};
 
 /** 011 C10: the daemon's own `squeal.config.json`, through the loader that never throws. */
 function settingsOf(root: AbsolutePath | null): DaemonSettings {
