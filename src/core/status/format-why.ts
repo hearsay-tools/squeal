@@ -26,6 +26,7 @@ import {
   worktreeName,
 } from "./format-why-replaced.js";
 import { locationText } from "./test-frame.js";
+import { unknownRunLines } from "./why-unknown.js";
 
 /** Human rendering of `squeal why <check>`. Full stacks included: the reader asked for them. */
 export function formatWhy(why: WhyResult): string {
@@ -261,6 +262,8 @@ function olderLines(why: WhyReport): string[] {
  */
 function runLog(why: WhyReport): string[] {
   const log = why.runLog;
+  // Row 011-108 (gh-74): an UNKNOWN names the run that produced it, or why it cannot.
+  if (log === null && why.unknownRun !== undefined) return unknownRunLines(why, why.unknownRun);
   if (log === null) return [`Run log: unknown, ${gapText(why.runLogUnavailable)}`];
   const where = producer(why, log);
   const file = testFileLabel(why.check.project, why.check.testPath);

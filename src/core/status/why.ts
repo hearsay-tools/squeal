@@ -37,6 +37,7 @@ import { testFileFrame } from "./test-frame.js";
 import { type WhySession, whyClosureChanges } from "./why-closure.js";
 import { replacement, unshownLog } from "./why-log.js";
 import { namesFile, whyRankedBy } from "./why-rank.js";
+import { unknownRunOf } from "./why-unknown.js";
 
 /** Most results `squeal why` lists for one check. */
 export const WHY_RESULT_LIMIT = 20;
@@ -191,6 +192,10 @@ function report(
     .slice(0, WHY_OLDER_FAILURE_LIMIT)
     .map(entry);
   const replacedFailures = replacedOf(store, check, worktreeRoots);
+  const runsDir = storePaths(commonDir).runsDir;
+  const logOf = (run: { runId: string; worktreeId: WorktreeId }, logDir: AbsolutePath | null) =>
+    runLogOf(run, logDir, check, runsDir, includeLogs);
+  const unknownRun = unknownRunOf(store, worktreeId, check, knownState, logOf);
   const key = currentKey(store, worktreeId, check);
   const heldFailure = heldFor(store, worktreeId, key, all);
   const since = observedSince(store, worktreeId, knownState?.observedAt ?? null);
@@ -198,7 +203,6 @@ function report(
   const replacedAtKey = replacement(store, knownState, key, all, shown);
   // 011 C5 as amended 2026-10-21 (gh-67): read from the result behind the state, never another's.
   const frame = shown?.outcome === "fail" ? testFileFrame(check, shown.errors) : null;
-  const runsDir = storePaths(commonDir).runsDir;
   const flaky = readFlakyNotes(store).get(checkIdentity(check));
   // B2 (review wave-2b): a re-run's first error, only while it is of the current key.
   const first = readRerunFirstFailures(store).get(checkIdentity(check));
@@ -229,10 +233,9 @@ function report(
     results,
     durations: durationsOf(all),
     ...(shown === null
-      ? unshownLog(store, worktreeId, knownState, key, replacedAtKey, (run, logDir) =>
-          runLogOf(run, logDir, check, runsDir, includeLogs),
-        )
-      : { runLog: runLogOf(shown.provenance, logDirOf(shown), check, runsDir, includeLogs) }),
+      ? unshownLog(store, worktreeId, knownState, key, replacedAtKey, logOf)
+      : { runLog: logOf(shown.provenance, logDirOf(shown)) }),
+    ...(unknownRun === undefined ? {} : { unknownRun }),
     ...(replacedAtKey === undefined ? {} : { replacedAtKey }),
     ...(heldFailure === undefined ? {} : { heldFailure }),
     ...(flaky === undefined ? {} : { flaky }),

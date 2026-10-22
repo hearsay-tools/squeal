@@ -773,6 +773,12 @@ export interface WhyReport {
   /** Why `runLog` is `null`; absent when it is not (issue 15, 011-04). */
   readonly runLogUnavailable?: WhyRunLogGap;
   /**
+   * For an UNKNOWN known state: the run that produced it, recorded beside
+   * the state, never as a keyed result (row 011-108, gh-74; 011 C6, C7).
+   * Absent for any other state.
+   */
+  readonly unknownRun?: WhyUnknownRun;
+  /**
    * The stored result at this worktree's current key for the check's test
    * file when it is not the one behind the known state: a later run, often
    * another worktree's with the same key, replaced it (spec 011 C7, one row
@@ -936,6 +942,25 @@ export interface WhyReplacement {
   readonly key: CheckKey;
   /** `runs/<run-id>/` of that run, the log of the errors stored at the key; `null` when its run record was pruned. */
   readonly logDir: AbsolutePath | null;
+}
+
+/**
+ * `WhyReport.unknownRun`. `missing` says why `log` is absent: `pruned`, its
+ * run record is gone; `never-written`, no run produced the UNKNOWN or its run
+ * wrote no log; `older-daemon`, no record fits the state, which a daemon
+ * before row 011-108 wrote.
+ */
+export interface WhyUnknownRun {
+  /** `null` when no run produced it, or no record says which did. */
+  readonly runId: string | null;
+  /** Its worktree: this one, as an UNKNOWN is never inherited (C7). */
+  readonly worktreeId: WorktreeId;
+  /** The revision its run ran at; the state's when its run record is gone or there is none. */
+  readonly revision: RevisionNumber | null;
+  /** The worker's error, as the state's summary holds it. */
+  readonly error: string | null;
+  readonly log?: WhyRunLog;
+  readonly missing?: "pruned" | "never-written" | "older-daemon";
 }
 
 /** `WhyReport.replacedFailures`: a kept replaced failure with its run's log and its errors. */
