@@ -29,3 +29,17 @@ Seam: `#decide` and `remainder` in `src/core/scheduler/yields.ts:114` and `:207`
 Owns: `src/core/scheduler/yields.ts`, `src/core/status/next-step.ts`, `src/core/status/standing-groups.ts`, `test/scheduler/tier-yields.test.ts` and new tests beside it, notes under `tasks/011-107/`. Not yours: how the estimate is taken (`ledger.ts`, `files.ts`, `edit-cut.ts`), W1's files, the board, spec text, bundles, version. No `npm run build`.
 
 Done when: both rows' done-when hold (the 0 s and stale-short estimates yield within the bound, within-estimate tiers keep today's rule, no second yield at a key; slice 6's −0.6 s and 0 s files in one group); `test/keys/key-format.test.ts` passes; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary. Draft the C4 sentence in the notes.
+
+## R1: review of wave 14's candidate
+
+Use /reviewer. Shape: review. Pinned to the `cand/<version>` SHA named in the spawn, on main after 0.1.263 and 0.1.264; the range is `origin/main..<sha>`: W1's three commits from `c04a258b/w14-w1` (011-77 twice, 011-108), W2's four from `c04a258b/w14-w2` (011-103 slice 6, the 011-107 rule, the `scheduler.ts` edit by coordinator agreement, and a fix), one docs commit (011 C4, C6, C7, C15 and `status.md`) and the release commit (version, bundles).
+
+Read W1 and W2 above, the notes under `tasks/011-77/`, `tasks/011-108/` and `tasks/011-107/`, board rows 011-77, 011-108, 011-107, 011-103 and 011-112, `011-64/design.md` sections 3 to 5, and the amended spec sentences. Check that:
+- 011-77: a failure that a passing retry, re-run or another worktree's run replaced stays in `failures` and `why` with its run, log and load, across a daemon restart and the first prune; caps and the 7-day expiry hold; older stored failures below the newest 20 show in `why`;
+- 011-108: `why` names the run behind an UNKNOWN, its worktree, revision and log, also when every stored result passes; a missing log names one reason; prune keeps that run while the UNKNOWN stands; no key input moves;
+- 011-107: a tier 30 s past its estimate yields to a promoted wait with no other event, the promoted file runs alone, and the hold under `SHARE_FLOOR_MS` (unknown durations count 0) keeps such a tier running; at most one unref'd timer, cleared when its tier ends and on close; the `scheduler.ts` edit is only the re-check;
+- slice 6: one `remainderSeconds` serves a yield's line and its group;
+- two choices the coordinator accepted, to judge: every `failures` entry prints an `at` line, also when the fingerprint line already ends with that location (011-77 notes, decision 1); the flaky note's `the FAIL it replaced` line is left out when the replaced failure at its key is listed (one 011-19 assertion changed);
+- `--json` of `failures` and `why` grows additively; `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is raised in all eight places; the bundles match the tree; the four launchers are byte-identical.
+
+Run `npm ci`, then the test files W1 and W2 added or changed, directly. The full suite is CI on the candidate and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-w14.log`); read both by test name. Rows 011-111 and the run-cell S2 teardown test are known flakes. Write `reviews/<version>.md` with a PASS or FAIL verdict and commit it alone.
