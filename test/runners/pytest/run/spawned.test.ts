@@ -153,5 +153,12 @@ describe.each(PYTHONS)("the start-up hook under Python %s (task 007-55)", (versi
     });
     expect(recording.stdout).toBe(shadowed);
     expect(recording.recorded).toEqual(["pkg/__init__.py"]);
+    // The hook's directory twice on `PYTHONPATH` still runs the shadowed one, once.
+    const twice = python(ctx, ["-c", `import pkg; ${check}`], {
+      file: "tests/test_cli.py",
+      pythonpath: [runtime, ...site],
+    });
+    expect(twice.stdout).toBe(shadowed);
+    expect(twice.recorded).toEqual(["pkg/__init__.py"]);
   });
 });
