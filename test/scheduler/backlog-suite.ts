@@ -6,8 +6,15 @@ import { createRepo } from "./helpers.js";
 
 const pad = (n: number) => String(n).padStart(3, "0");
 
-/** `count` test files, each importing its own module and waiting `sleepMs`; `mark` gets a line per test. */
-export function suite(count: number, sleepMs: number, mark?: string) {
+/**
+ * `count` test files, each importing its own module and waiting `sleepMs`,
+ * or, with `slowWhile`, only while that file exists; `mark` gets a line per test.
+ */
+export function suite(count: number, sleepMs: number, mark?: string, slowWhile?: string) {
+  const [fs, sleep] =
+    slowWhile === undefined
+      ? ["appendFileSync", `${sleepMs}`]
+      : ["appendFileSync, existsSync", `existsSync(${JSON.stringify(slowWhile)}) ? ${sleepMs} : 0`];
   const repo = createRepo("barrel-only");
   const at = (path: string) => join(repo.main, path);
   rmSync(at("test/aa-slow.test.ts"));
@@ -17,11 +24,11 @@ export function suite(count: number, sleepMs: number, mark?: string) {
     writeFileSync(
       at(`test/f${pad(i)}.test.ts`),
       [
-        `import { appendFileSync } from "node:fs";`,
+        `import { ${fs} } from "node:fs";`,
         `import { expect, it } from "vitest";`,
         `import { value } from "../src/m${pad(i)}.ts";`,
         `it("holds", async () => {`,
-        `  await new Promise((resolve) => setTimeout(resolve, ${sleepMs}));`,
+        `  await new Promise((resolve) => setTimeout(resolve, ${sleep}));`,
         `  expect(value).toBe(${i});`,
         mark === undefined ? "" : `  appendFileSync(${JSON.stringify(mark)}, "${i}\\n");`,
         `});`,
