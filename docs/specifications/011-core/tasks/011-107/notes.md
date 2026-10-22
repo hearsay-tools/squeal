@@ -15,7 +15,7 @@ Wave 14, W2. Two commits on 0.1.262, slice 6 first, then the overrun rule. A thi
 3. The tier has run 30 s or more past its estimate: yield.
 4. Otherwise: the new standing `{ kind: "overrun", yieldsAt }`. It reads "; the tier has run past its estimate and yields at HH:MM:SS, 30 s past it". The step is empty, because the reason gives the bound.
 
-`overruns(tier)`: every file the yield would cut (the unfinished ones) has a last-known duration of at least `SHARE_FLOOR_MS`, imported from `sharing.ts`. An unknown duration counts 0. The coordinator chose this hold (option C, narrowed). The reason is below.
+`overruns(tier)`: the tier has a file left to cut, and every file the yield would cut (the unfinished ones) has a last-known duration of at least `SHARE_FLOOR_MS`, imported from `sharing.ts`. An unknown duration counts 0. A tier whose files have all ended is never cut, as with `superseded`. The full checkpoint found this case: in `tier-ended-files.test.ts`, the run of a tier went on after it reported the end of every file. With no file left, the estimate read 0 s, and the timer cut the tier at 30 s. The coordinator chose this hold (option C, narrowed). The reason is below.
 
 A remainder or overrun decision whose tier `overruns` records the tier's bound, `start + estimate + 30 s`, in `#bounds`. One unref'd timer is set at the earliest bound. When it fires it calls `recheck`. The scheduler's `#recheckTiers` runs `#cutTiers(null)` under the lock, so the tier yields with no other event. `ended` drops the tier's bound and sets the timer again or clears it. `close` clears it.
 
