@@ -1,9 +1,9 @@
 import { describe, expect, it, type TestContext } from "vitest";
-import { findPython, PYTHONS } from "../../helpers/pytest-env.js";
+import { PYTHONS } from "../../helpers/pytest-env.js";
 import { failures } from "./compare.js";
 // The validity path's entries, statically, so a change to one re-runs this file (`compare.test.ts`).
 import "./driver.js";
-import { comparisons, edited, lineOf, only, SLOW } from "./self-test.js";
+import { comparisons, edited, FULL, lineOf, only, pythonsReady, SLOW } from "./self-test.js";
 
 /*
  * The `adapter:pytest` kind (row 011-48, risk 3 of task 011-37): a change
@@ -22,11 +22,7 @@ const VERSION = "src/runners/pytest/version.ts";
 
 /** The uv Pythons the kind runs on, or the test skipped; on CI an absent one fails it. */
 function requirePythons(ctx: TestContext): void {
-  const missing = PYTHONS.map(findPython).flatMap((found) => (found.ok ? [] : [found.reason]));
-  if (missing.length === 0) return;
-  if (process.env.CI)
-    throw new Error(`pytest's Pythons are unavailable on CI: ${missing.join("; ")}`);
-  ctx.skip(`uv or a Python is absent: ${missing.join("; ")}`);
+  if (!pythonsReady()) ctx.skip("uv or one of its Pythons is absent");
 }
 
 const fired = (result: Awaited<ReturnType<typeof compare>>) =>
@@ -35,23 +31,25 @@ const fired = (result: Awaited<ReturnType<typeof compare>>) =>
 const OUTCOMES = only("adapter:pytest").filter((c) => c.name.startsWith("outcomes"));
 
 describe("the pytest adapter's comparison (row 011-48)", () => {
-  it("passes a runtime change that every case runs and agrees on, on both Pythons", {
-    timeout: 300_000,
-  }, async (ctx) => {
-    requirePythons(ctx);
-    const cases = only("adapter:pytest");
-    expect(new Set(cases.map((c) => c.kind === "adapter:pytest" && c.input.python))).toEqual(
-      new Set(PYTHONS),
-    );
-    const result = await compare(
-      edited(RUNTIME, '"pytest": pytest.__version__,', '"pytest": str(pytest.__version__),'),
-      cases,
-    );
-    expect(fired(result)).toEqual(["pytest"]);
-    expect(result.cases.filter((c) => c.baseline.error ?? c.candidate.error)).toEqual([]);
-    expect(result.cases.filter((c) => !c.keysEqual || !c.outputsEqual)).toEqual([]);
-    expect(failures(result, release())).toEqual([]);
-  });
+  it(
+    "passes a runtime change that every case runs and agrees on, on both Pythons",
+    FULL,
+    async (ctx) => {
+      requirePythons(ctx);
+      const cases = only("adapter:pytest");
+      expect(new Set(cases.map((c) => c.kind === "adapter:pytest" && c.input.python))).toEqual(
+        new Set(PYTHONS),
+      );
+      const result = await compare(
+        edited(RUNTIME, '"pytest": pytest.__version__,', '"pytest": str(pytest.__version__),'),
+        cases,
+      );
+      expect(fired(result)).toEqual(["pytest"]);
+      expect(result.cases.filter((c) => c.baseline.error ?? c.candidate.error)).toEqual([]);
+      expect(result.cases.filter((c) => !c.keysEqual || !c.outputsEqual)).toEqual([]);
+      expect(failures(result, release())).toEqual([]);
+    },
+  );
 
   it(
     "names a changed runtime line and a changed adapter line that no case runs",

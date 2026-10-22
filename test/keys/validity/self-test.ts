@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, expect } from "vitest";
+import { findPython, PYTHONS } from "../../helpers/pytest-env.js";
 import type { Case, CaseKind } from "./case.js";
 import { CASES } from "./cases/index.js";
 import { type Comparison, compareTrees } from "./compare.js";
@@ -17,6 +18,22 @@ import { extractTree, lastRelease, type Overlay, ROOT } from "./trees.js";
 
 /** A full comparison bundles twice and runs the corpus in four child processes. */
 export const SLOW = { timeout: 120_000 };
+
+/** A comparison that may run the whole corpus, the pytest cases on two Pythons among them (row 011-48). */
+export const FULL = { timeout: 300_000 };
+
+/**
+ * Whether uv holds every Python the `adapter:pytest` kind runs on. On CI an
+ * absent one throws, so a broken setup cannot hide the kind (as
+ * `requireSynced` does for the pytest suite).
+ */
+export function pythonsReady(): boolean {
+  const missing = PYTHONS.map(findPython).flatMap((found) => (found.ok ? [] : [found.reason]));
+  if (missing.length > 0 && process.env.CI) {
+    throw new Error(`pytest's Pythons are unavailable on CI: ${missing.join("; ")}`);
+  }
+  return missing.length === 0;
+}
 
 export const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 

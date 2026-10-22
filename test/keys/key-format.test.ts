@@ -9,7 +9,7 @@ import { COMPONENTS, GLOBAL, versionName } from "./validity/components.js";
 // The validity path's entries and the harness, statically: esbuild reads them in a process no
 // recorder sees (011 C12), so this import is what re-runs this file when one of them changes.
 import "./validity/driver.js";
-import { comparisons, edited, read, SLOW } from "./validity/self-test.js";
+import { comparisons, edited, FULL, read, SLOW } from "./validity/self-test.js";
 import { ROOT, versionOf } from "./validity/trees.js";
 
 /*
@@ -25,7 +25,8 @@ import { ROOT, versionOf } from "./validity/trees.js";
 
 const { compare, release, tree } = comparisons();
 
-describe("KEY_FORMAT_VERSION", SLOW, () => {
+// Row 011-48: a change to the pytest component runs its cases on two Pythons, beside any other kind's.
+describe("KEY_FORMAT_VERSION", FULL, () => {
   it("moves only when the validity path's outputs differ from the last release's", async () => {
     const result = await compare({}, CASES, tree());
     expect(failures(result, release())).toEqual([]);

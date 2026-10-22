@@ -4,7 +4,7 @@ import { failures, reportedChanges, wordingChanges } from "./compare.js";
 // The validity path's entries and the harness, statically: esbuild reads them in a process no
 // recorder sees (011 C12), so this import is what re-runs this file when one of them changes.
 import "./driver.js";
-import { comparisons, edited, lineOf, only, read, SLOW } from "./self-test.js";
+import { comparisons, edited, FULL, lineOf, only, pythonsReady, read, SLOW } from "./self-test.js";
 
 /*
  * Task 011-39 (011 C3, task 011-37 sections 3 and 6): the candidate against
@@ -25,12 +25,17 @@ const reworded = () =>
     '"error once its tests ran: "',
   );
 
-describe("the candidate against the last release", SLOW, () => {
+describe("the candidate against the last release", FULL, () => {
   it("runs every case at the release's tree and at the candidate", async () => {
-    // An emitted line in Vitest's adapter too, so its cases run whatever the release holds.
-    const adapter = "src/runners/vitest/adapter.ts";
-    const vitest = { [adapter]: `${read(adapter)}export const validityRun = 1;\n` };
-    const result = await compare({ ...reworded(), ...vitest }, CASES, tree());
+    // An emitted line in each adapter with cases too, so they run whatever the release holds.
+    const ran = (path: string) => ({ [path]: `${read(path)}export const validityRun = 1;\n` });
+    const adapters = {
+      ...ran("src/runners/vitest/adapter.ts"),
+      ...ran("src/runners/pytest/adapter.ts"),
+    };
+    // Without uv's Pythons, off CI, the pytest cases are left out (`pythonsReady`).
+    const cases = pythonsReady() ? CASES : CASES.filter((c) => c.kind !== "adapter:pytest");
+    const result = await compare({ ...reworded(), ...adapters }, cases, tree());
     expect(result.fired).toBe(true);
     const thrown = result.cases.flatMap((c) =>
       [c.baseline.error, c.candidate.error].flatMap((e) =>
