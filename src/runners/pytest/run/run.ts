@@ -96,6 +96,9 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       .filter((p) => p !== undefined && p !== "")
       .join(delimiter),
     SQUEAL_PYTEST_ROOT: options.root,
+    // The plugin names the file in progress for the processes a test starts (task 007-55);
+    // one inherited from a run around this daemon's would record pytest's own imports.
+    SQUEAL_PYTEST_FILE: undefined,
   };
   const args = pytestArgs(
     {
@@ -186,7 +189,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       running.delete(group);
       const parsed = parsePytestEvents(readOr(events));
       batch.read = readBatch(parsed, batch.files, rootdir, paths, basetemp.dir(batch.index));
-      batch.edges = parsed.flatMap((e) => (e.type === "import" ? [e] : []));
+      batch.edges = parsed.flatMap((e) => (e.type === "import" || e.type === "spawned" ? [e] : []));
     }
   };
   const width = Math.max(1, Math.min(options.concurrency ?? batches.length, batches.length));

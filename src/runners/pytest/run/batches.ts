@@ -2,7 +2,7 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AbsolutePath, RunEnd, RunReport, TestFileRef } from "../../../core/types/index.js";
 import type { ProcessExit } from "../../node-test/run/process.js";
-import type { ImportEvent } from "./events.js";
+import type { ImportEvent, SpawnedEvent } from "./events.js";
 import type { BatchFile, BatchReport } from "./report.js";
 
 /** What `ending` reads of the tier. */
@@ -20,8 +20,8 @@ export interface Batch {
   readonly args: readonly string[];
   exit: ProcessExit | null;
   read: BatchReport | null;
-  /** The plugin's import edges, read with `read`. */
-  edges: readonly ImportEvent[];
+  /** The plugin's import edges and its children's `spawned` records, read with `read`. */
+  edges: readonly (ImportEvent | SpawnedEvent)[];
 }
 
 /** The tier in batches of `size`, in the order given; a file `alone` names gets one of its own. */
