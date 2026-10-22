@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { type CatchUpFile, type CatchUpOptions, catchUpSide } from "./catch-up-fixture.js";
 import {
   editAndRun,
@@ -10,6 +11,7 @@ import {
   started,
   transitive,
 } from "./edit-cut-fixture.js";
+import { SETTLE_MS } from "./tier-yields-fixture.js";
 
 /*
  * Task 011-25 (spec 011 C4 step 4 as amended 2026-10-20; `research/edit-cut.md`
@@ -49,7 +51,11 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
   }, async () => {
     const next: CatchUpFile = { path: "src/e.test.ts", ms: 200, realMs: 200, imports: [E] };
     const far = transitive("t", A, 60, "src/hub.ts", 200);
-    const { side } = await started([own(200), ...others(200), ...far, next], { hostSlots: 4 });
+    let offset = 0;
+    const { side } = await started([own(200), ...others(200), ...far, next], {
+      hostSlots: 4,
+      now: () => Date.now() + offset,
+    });
     const before = side.runner.runs.length;
     await side.edit("watch", A);
     await expect
@@ -66,8 +72,14 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
     await side.edit("watch", E);
     await expect.poll(() => side.current(next.path), { interval: 10, timeout: 30_000 }).toBe(true);
     const currentAt = performance.now();
+    // The cancel starts the lane's 20 s wait for quiet (row 011-94): no catch-up tier starts in
+    // it, and the clock then moves past it rather than the test idling 20 s (CI run 39696846845).
+    await expect.poll(() => tier.cancelled, { interval: 10, timeout: 30_000 }).toBe(true);
+    const waiting = side.runner.runs.length;
+    await at(SETTLE_MS);
+    expect(side.runner.runs.slice(waiting).filter((run) => run.workers !== undefined)).toEqual([]);
+    offset += BACKLOG_QUIET_MS;
     await side.scheduler.idle();
-    expect(tier.cancelled).toBe(true);
     const edit = side.runner.runs
       .slice(second)
       .find((run) => run.files.some((f) => f.path === next.path));
