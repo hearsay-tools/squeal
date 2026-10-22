@@ -45,3 +45,16 @@ Owns: `src/harness/shared/version-copies.ts`, `src/cli/start.ts`'s spawn, `src/c
 Done when: the row's done-when holds; a SessionStart spawn is unchanged; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
 
 W3 also takes 011-110 as its last commit (steered 2026-10-22 after main CI 39755680012): `finishHandoff` in `src/cli/start.ts:123` spawns with no lock wait when it joined a live claim with the lock free; with the lock wait only when it claimed. W3 may edit `start.ts`'s `finishHandoff`, `test/daemon/start-handoff.test.ts` and `test/daemon/handover-tier.test.ts` for it.
+
+## R1: review of cand/0.1.262
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.262` SHA named in the spawn; the range is `origin/main..<sha>`: W1 (011-66, 011-106, three commits from `cez/829153ea`), W2 (011-109, four from `cez/6bc5552e`), W3 (005-77, three, and 011-110, one, from `cez/323b4ae4`), one docs commit (spec 011 C5, C9, C11, spec 005 D3 and both `status.md` files) and the release commit (0.1.262, bundles).
+
+Read W1 to W3 above, the notes under `tasks/011-66/`, `tasks/011-106/`, `tasks/011-109/` and `005-agent-adoption/tasks/005-77/`, board rows 011-66, 011-106, 011-109, 011-110 and 005-77, and the amended spec sentences. Check that:
+- 011-66: a tier that crashes after its daemon's stop began leaves its uncompleted files queued, once per file and key; a second such crash is UNKNOWN; a crash outside the stopping phase and a stop's own cancel are unchanged;
+- 011-106: a missing runtime directory starts no tier, leaves the files queued, persists one note naming `squeal start` and exits as `reinstalled`; a tier during which it went stores nothing; no missing recorder is stored as a FAIL;
+- 011-109: checks with one error and location give one block with their count and a `squeal failures` command that lists each; mixed errors stay apart; `failures` and `why` keep every check's evidence; the evals parsers round-trip the block through the real `formatDelta`; the deny-once contract is unchanged;
+- 005-77 and 011-110: `start` from Codex's cache spawns from the kept copy, other paths and SessionStart unchanged; a joined `start` with the lock free spawns with no lock wait, a claiming one with it;
+- `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is raised in all eight places; the bundles match the tree; the four launchers are byte-identical.
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. Row 011-99 lists the known load-flaky files. Write `reviews/0.1.262.md` with a PASS or FAIL verdict and commit it.
