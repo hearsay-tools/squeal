@@ -29,6 +29,21 @@ function codexPlugin(m: Machine, version: string): string {
   return dir;
 }
 
+/**
+ * A Claude Code user-scope install of `version`, as `installed_plugins.json`
+ * names it; returns its plugin directory.
+ */
+function claudePlugin(m: Machine, version: string): string {
+  const dir = join(m.claudeConfig, "plugins", "cache", "hearsay", "squeal", version);
+  writePlugin(dir, "claude-code", version);
+  const entry = { scope: "user", installPath: dir, version };
+  writeFileSync(
+    join(m.claudeConfig, "plugins", "installed_plugins.json"),
+    JSON.stringify({ version: 2, plugins: { "squeal@hearsay": [entry] } }),
+  );
+  return dir;
+}
+
 /** Puts a `node` on the machine's PATH that logs each start; returns the count so far. */
 function countNodeStarts(m: Machine): () => number {
   const node = join(m.root, "node-bin", "node");
@@ -73,8 +88,9 @@ describe("the launcher's one Node", () => {
     timeout: 60_000,
   }, () => {
     const m = machine();
-    // The committed Claude Code bundle as the installed plugin's CLI.
-    const plugin = codexPlugin(m, "0.1.250");
+    // The committed Claude Code bundle as Claude Code's installed CLI: one in Codex's cache
+    // spawns its daemon from the kept copy of its version instead (row 005-77).
+    const plugin = claudePlugin(m, "0.1.250");
     rmSync(join(plugin, "dist"), { recursive: true });
     symlinkSync(PLUGIN_DIST, join(plugin, "dist"));
     const cli = join(plugin, "dist", "cli", "squeal.mjs");
