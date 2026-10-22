@@ -75,3 +75,16 @@ Check B1 and B2 against their proofs, then the repair's own ground:
 - The release commit: eight version places, bundles match the tree.
 
 Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once. `backlog-slots-overhead.test.ts` test 3 is red alone on main 0.1.252 too (row 011-99); name it if it fails. Append a dated "Re-review" section to `reviews/0.1.253.md` with PASS or FAIL on `6a9dff117` and commit it. A finding outside B1 and B2 that is not a proven break goes to "Inputs for the next wave", not the verdict.
+
+## R3: review of cand/0.1.255, the CPU cap (011-96 to 011-98)
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.255` SHA named in the spawn; the range is `origin/main..<sha>` on base `35ca57846` (0.1.253): 011-96, 011-97, 011-98, W6's notes and the release commit (0.1.255; 0.1.254 is another coordinator's). Read `tasks/011-83/design.md` sections 1 to 3 and 7, C10 as amended 2026-10-21, `tasks/011-96/notes.md` (its "Decisions the design left open" are deviations to judge), and the board rows.
+
+Check that:
+- an edit's tier never waits and takes no permit, with any pool, gate or mark state; it writes a want-0 mark with its cores and clears it at its end;
+- every backlog worker holds a permit: no free worker; a share can be 0; a waiter is served first at the next division and forgets its age 30 s after its last look; a refused pump looks again on a tier's end or within 2 s, with no busy loop (`#capacityWake`);
+- a tier gives back permits as its files end, and its mark says so; Vitest's floor of 2 applies only to `isolate: false` projects; a mixed tier can never reach Vitest's "different maxWorkers but same groupOrder" throw; `raiseToLeast` cannot starve a waiter or hand out more than `hostSlots`;
+- the CPU gate counts Squeal's measured process trees, reaped children included; no `/proc` means no gate; `hostSlots` above the CPU count is cut with a note; an older release's marks still work (C10 compatibility);
+- the version is raised in all eight places and the bundles match the tree.
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once. Known red on main too (row 011-99): `slow-slot-fair.test.ts`, `backlog-slots-overhead.test.ts` test 3, `opencode-dispose.test.ts` (008-38). Write `reviews/0.1.255.md` with a PASS or FAIL verdict and commit it.
