@@ -46,12 +46,10 @@ class _Recorder:
             if main:
                 self.script = True
                 self.record(main)
-        for at, finder in enumerate(sys.meta_path):
-            if finder is self:
-                break
-        else:
-            return None
-        for finder in sys.meta_path[at + 1 :]:
+        finders = list(sys.meta_path)
+        # Those after this one: none when a caller holds it off `sys.meta_path`.
+        later = finders[finders.index(self) + 1 :] if self in finders else []
+        for finder in later:
             find = getattr(finder, "find_spec", None)
             if find is None:
                 # A finder of the old protocol: the import system asks it and those after it.
@@ -94,13 +92,11 @@ def _chain():
     """Runs the next `sitecustomize` on `sys.path` after this module's directory, as `site` would have."""
     here = os.path.dirname(os.path.abspath(__file__))
     entries = [os.path.abspath(p) for p in sys.path]
-    if here not in entries:
-        return
     # After its last entry: the directory twice on `PYTHONPATH` must not find this module again.
-    last = len(entries) - 1 - entries[::-1].index(here)
+    after = len(entries) - entries[::-1].index(here) if here in entries else len(entries)
     from importlib.machinery import PathFinder
 
-    spec = PathFinder.find_spec("sitecustomize", sys.path[last + 1 :])
+    spec = PathFinder.find_spec("sitecustomize", sys.path[after:])
     if spec is None or spec.loader is None:
         return
     from importlib.util import module_from_spec
@@ -110,8 +106,5 @@ def _chain():
     spec.loader.exec_module(module)
 
 
-try:
-    _record()
-except Exception:
-    pass
+_record()
 _chain()
