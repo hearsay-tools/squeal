@@ -16,6 +16,7 @@ import type {
   EnsureDaemonResult,
 } from "../../src/core/types/index.js";
 import type { HookDeps } from "../../src/harness/claude-code/index.js";
+import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
 import { daemonSuite, delay, ping, SLOW, spawnCli, waitFor, withStore } from "./helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
 import { findProcesses } from "./strays.js";
@@ -28,6 +29,11 @@ import { findProcesses } from "./strays.js";
  * past every successor's 120 s lock wait, `start` printed alive above a
  * snapshot that said no daemon, and the named wait returned on quiet with
  * the edited file stale and unqueued (`research/issue-47.md`, runs 1 to 5).
+ *
+ * Status is read where the handoff is held, not by sampling: the old daemon
+ * stops itself between its socket's unlink and its lock release
+ * (`testPause("stop-gap")`). Its shutdown took under 150 ms, and a status
+ * read every 50 ms missed it on CI (run 39746558837, review 0.1.259).
  */
 
 const suite = daemonSuite();
@@ -35,6 +41,8 @@ const { HOOKS, buildAt, start, sockets, hookDeps, hook, exitWithin } = stepDownK
 const HOLD = "test/hold.test.ts";
 /** Row 011-31: Vitest's cancel forces its workers after 1 s, the shutdown follows (as `step-down`). */
 const STEP_DOWN_WITHIN_MS = 15_000;
+/** The old daemon stops itself with its record cleared and its lock held (task 001-355). */
+const STOP_GAP = testPause("stop-gap");
 
 /** Appends to `started` on each run, then sleeps while `hold` exists. */
 function heldTest(dir: string): string {
@@ -77,7 +85,7 @@ describe.runIf(process.platform === "linux")(
         return existsSync(path) ? readFileSync(path, "utf8").length : 0;
       };
 
-      const old = start(buildAt("0.1.0"), repo);
+      const old = start(buildAt("0.1.0"), repo, [], STOP_GAP);
       const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "0.1.0 serving");
       expect(first.squealVersion).toBe("0.1.0");
       expect((await squeal("run", "--all", "--wait").exited).code).toBe(0);
@@ -98,6 +106,22 @@ describe.runIf(process.platform === "linux")(
         },
       };
       sockets.push(repo.socketPath);
+      // What status says while the old daemon holds its stop gap, once the claim names the hooks' version.
+      const inGap = (async (): Promise<DaemonLiveness | null | "never stopped"> => {
+        if (!(await stoppedItself(first.pid, 60_000))) return "never stopped";
+        try {
+          let last: DaemonLiveness | null = null;
+          const deadline = performance.now() + 10_000;
+          while (last?.stopping?.to !== HOOKS && performance.now() < deadline) {
+            const s = readStatus(repo.root as AbsolutePath);
+            if (s.available) last = s.daemon;
+            await delay(20);
+          }
+          return last;
+        } finally {
+          resume(first.pid);
+        }
+      })();
       const steppedAt = performance.now();
       let startRun: ReturnType<typeof squeal> | null = null;
       let servedAt = 0;
@@ -137,8 +161,11 @@ describe.runIf(process.platform === "linux")(
       expect(successors.size).toBe(1);
       // The old daemon out within 15 s with its tier cancelled (row 011-31).
       expect(await exitWithin(old, STEP_DOWN_WITHIN_MS, repo)).toEqual({ code: 0, signal: null });
-      // Status said it hands over meanwhile, never a stopped heartbeat beside a live lock (row 011-34).
-      expect(readings.some((d) => d.stopping?.to === HOOKS)).toBe(true);
+      // Status said it hands over with the record cleared and the lock held (row 011-34).
+      expect(await inGap).toMatchObject({
+        state: "down",
+        stopping: { from: "0.1.0", to: HOOKS, overdue: false },
+      });
       // `start` never printed alive above a snapshot that said no daemon or a handoff.
       const started = startRun as ReturnType<typeof squeal> | null;
       if (started === null) throw new Error("start never ran");
