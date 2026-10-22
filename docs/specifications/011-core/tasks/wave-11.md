@@ -43,3 +43,15 @@ Seam: the `copies` entries in `src/harness/codex/build.ts:26` and `src/harness/p
 Owns: `src/harness/build.ts`, `src/harness/{codex,pi,opencode}/build.ts`, `.github/workflows/ci.yml`'s two `Bundles match the build` steps, `test/cli/launcher.test.ts`, `test/harness/opencode/package.test.ts`, a build test of the copy. Not yours: the launcher's text, `install.sh`, W1's and W2's files, the board, spec text, bundles, version. Do not run `npm run build` or `npm run build:plugin` in your tree: a rebuilt bundle there makes the worker's destroy fail. Prove the copy with a test that runs the copy step into a temporary directory. The coordinator runs the build at integration.
 
 Done when: the row's done-when holds, except the `npm run build:plugin` run, which the coordinator does; lint, typecheck and `squeal run --all --wait` pass, their output in your summary.
+
+## R1: review of cand/0.1.254
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.254` SHA named in the spawn; the range is `origin/main..<sha>`: W1 (011-101, two commits from `cez/02c7e199`), W2 (011-102, three from `cez/5721e776`), W3 (005-76, one from `cez/205eb9a9`), the release commit (0.1.254, bundles) and one `status.md` commit.
+
+Read W1 to W3 above, `tasks/011-101/notes.md`, `tasks/011-102/notes.md`, board rows 011-101, 011-102, 005-76 and 011-105, and `tasks/011-64/design.md` section 4. Check that:
+- 011-101: one `toResult` serves both repositories and reads every column as before; the five unused names stay, as decided, and `key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged;
+- 011-102: `heldPermits` reads a held permit without a copy and without writing to the permit's directory, also while its holder writes; the Node 22.15 and 22.16 claims in the notes match their sources; `rollback`'s code is unchanged; CI's Node 22 shards run v22.19.x and pass the slot-holder tests;
+- 005-76: the build writes the three launcher copies from the Claude Code source with mode 0755, the Claude Code build has no copy entry, and CI's drift step fails a hand edit to a copy;
+- the version is raised in all eight places and the bundles match the tree.
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. A file that fails loaded and passes alone is named; row 011-99 lists the known load-flaky files. Write `reviews/0.1.254.md` with a PASS or FAIL verdict and commit it.
