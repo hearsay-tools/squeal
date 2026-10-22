@@ -50894,7 +50894,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.256";
+  if (true) return "0.1.258";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -59110,7 +59110,6 @@ function daemonFlags(c, d) {
   const add2 = (flag3, reason2, command) => flags2.push({ flag: flag3, reason: reason2, command });
   const kill = `kill ${pid}`;
   const stop2 = d.root === null ? kill : `squeal stop ${shellQuote(d.root)}`;
-  let state = null;
   if (d.root === null) c.name(`daemon ${pid} flag root-gone`, "its root argument is relative");
   else {
     const gone3 = rootGone(d.root);
@@ -59119,8 +59118,13 @@ function daemonFlags(c, d) {
   const bundle = bundleOf(d.script);
   if (!existsSync35(bundle)) add2("install-gone", `its bundle ${bundle} is missing`, stop2);
   const older = olderOf(c, d, work);
-  if (typeof older === "string") state = older;
-  else if (older !== null) add2("older", older.reason, stop2);
+  const life = phase === "serving" && work?.record != null ? lifeOf2(c, pid, work, work.record.heartbeatIntervalMs) : null;
+  let state = life?.state ?? null;
+  if (typeof older === "string") state ??= older;
+  else if (older !== null) {
+    if (state === null) add2("older", older.reason, stop2);
+    else state = `${state}, older`;
+  }
   const age2 = c.ageOf(d.row);
   if (phase === "waiting") {
     const bound = d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS;
@@ -59130,11 +59134,7 @@ function daemonFlags(c, d) {
   }
   const hung = hungOf(c, d);
   if (hung !== null) add2("hung", hung, `kill ${pid}; sleep 5; kill -9 ${pid}`);
-  if (phase === "serving" && work?.record != null) {
-    const life = lifeOf2(c, pid, work, work.record.heartbeatIntervalMs);
-    if (life.flag !== null) add2(life.flag.flag, life.flag.reason, stop2);
-    state = life.state ?? state;
-  }
+  if (life?.flag != null) add2(life.flag.flag, life.flag.reason, stop2);
   for (const reason2 of deadConsumers(c, pid)) add2("dead-consumer", reason2, null);
   const home = model.places.home;
   const installed = d.harness !== null && within(d.script, home) || within(d.script, join103(home, ".local"));
