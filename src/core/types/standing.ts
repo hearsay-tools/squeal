@@ -100,6 +100,8 @@ export type Standing =
       readonly quietUntil?: EpochMs;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
+  /** Queued while the worktree is on hold (C9, row 011-73): the first hold `holds` names. */
+  | { readonly kind: "on-hold"; readonly hold: StatusHold }
   | {
       readonly kind: "slow";
       readonly pausesOnly?: true;
@@ -107,6 +109,31 @@ export type Standing =
       readonly slot?: SlowSlotHolders;
     }
   | { readonly kind: "checkpoint" };
+
+/**
+ * A hold on the worktree's validation (spec 011 C9 as amended 2026-10-21,
+ * row 011-73), as status gives it in `holds` (C6): an unresolved merge, with
+ * the first 50 paths git lists unmerged and how many it lists; or one
+ * `squeal hold -- <command>`, with the command's pid (the wrapper's when the
+ * command's is not recorded) and the latest end. `gone`: every process its
+ * holder recorded is gone, so the daemon ends it at its next heartbeat.
+ */
+export type StatusHold =
+  | {
+      readonly cause: "merge";
+      readonly since: EpochMs;
+      readonly revision: number;
+      readonly paths: readonly string[];
+      readonly pathCount: number;
+    }
+  | {
+      readonly cause: "command";
+      readonly since: EpochMs;
+      readonly command: string;
+      readonly pid: number | null;
+      readonly until: EpochMs;
+      readonly gone?: true;
+    };
 
 /**
  * What holds a group of `status`'s `Outstanding:` block (row 011-29): a

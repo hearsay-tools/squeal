@@ -20,12 +20,14 @@ import {
   type RunRecord,
   type SlowSlotHolders,
   type StatusHeader,
+  type StatusHold,
   type Store,
   type TestFileKeyRecord,
   type TestFileRef,
   type UnknownTestFile,
   type WorktreeId,
 } from "../types/index.js";
+import { readHolds } from "./holds.js";
 import { claimantOf, openRunsOf } from "./open-runs.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { type Facts, once, setupsOf, unknownStanding } from "./standing-facts.js";
@@ -50,7 +52,7 @@ export type NamedVerdict = "pass" | "fail" | "skip";
  */
 export type PendingReason = Extract<
   Standing,
-  { readonly kind: "running" | "queued" | "claim" | "slow" | "unlisted" }
+  { readonly kind: "running" | "queued" | "claim" | "slow" | "unlisted" | "on-hold" }
 >;
 
 export interface NamedFile {
@@ -96,6 +98,8 @@ export interface WorktreeReads {
   readonly runs: readonly RunRecord[];
   /** `slowSlotOf`'s, `null` when it found none; read when a slow file needs it, absent. */
   readonly slowSlot?: SlowSlotHolders | null;
+  /** `readHolds`'s; read here when absent (row 011-73). */
+  readonly holds?: readonly StatusHold[];
 }
 
 /**
@@ -126,6 +130,8 @@ export function standingsOf(
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
   const alive = daemon.state === "alive";
+  // Row 011-73 (C9, C15): while on hold no tier starts, so a queued file waits for the hold.
+  const hold = (reads?.holds ?? readHolds(store, store.worktrees.get(worktreeId), daemon))[0];
   const slot = once(() =>
     reads?.slowSlot === undefined
       ? slowSlotOf(store, worktreeId, root, header, alive, now)
@@ -190,6 +196,10 @@ export function standingsOf(
             ...(setup === undefined ? {} : { setup }),
           }
         : (unlisted ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now));
+      if (hold !== undefined && (pending.kind === "queued" || pending.kind === "slow")) {
+        const held: PendingReason = { kind: "on-hold", hold };
+        return { testFile: ref, state, pending: held, standing: held };
+      }
       // Row 011-82: no tier runs in its lane, which waits for quiet; the wait holds no promoted file.
       const quietUntil = pending.kind === "queued" ? quiet.get(pending.lane) : undefined;
       if (pending.kind === "queued" && pending.behind === null && quietUntil !== undefined) {
