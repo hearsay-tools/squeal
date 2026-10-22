@@ -62,9 +62,8 @@ export interface FoundDaemon {
   /** From the script path; `null` for a checkout's `dist`, where the store row's stands in. */
   readonly version: string | null;
   readonly harness: string | null;
+  /** From the lock file it holds open, or else the hash of its root (`worktreeIdFor`). */
   readonly worktreeId: WorktreeId | null;
-  /** The lock file it holds open, or else the hash of its root (`worktreeIdFor`). */
-  readonly idFrom: "lock-fd" | "root-hash" | null;
   /** `<common-dir>/squeal/locks/<id>.sqlite`. */
   readonly lockPath: AbsolutePath | null;
   readonly commonDir: AbsolutePath | null;

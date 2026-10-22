@@ -164,12 +164,9 @@ class ProcSource implements PsSource {
     if (text === null) return null;
     const listeners: UnixListener[] = [];
     for (const line of text.split("\n")) {
-      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+(.+?)\s+(\d+)\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(
-        line,
-      );
-      if (m === null) continue;
-      const [, path = "", socketInode, fileInode] = m;
-      listeners.push({ path, socketInode: Number(socketInode), fileInode: Number(fileInode) });
+      // `u_str LISTEN <recv-q> <send-q> <bound name> <socket inode> * 0 ... ino:<file inode>`.
+      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+.+?\s+\d+\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(line);
+      if (m !== null) listeners.push({ fileInode: Number(m[1]) });
     }
     return listeners;
   }
@@ -220,9 +217,8 @@ class ProcSource implements PsSource {
     const close = text.lastIndexOf(")");
     if (open < 0 || close < open) return null;
     const f = text.slice(close + 2).split(" ");
-    const [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks] = [
+    const [ppid, utime, stime, cutime, cstime, nice, startTicks] = [
       f[1],
-      f[2],
       f[11],
       f[12],
       f[13],
@@ -230,12 +226,11 @@ class ProcSource implements PsSource {
       f[16],
       f[19],
     ].map(Number);
-    const numbers = [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks];
+    const numbers = [ppid, utime, stime, cutime, cstime, nice, startTicks];
     if (!numbers.every(Number.isInteger)) return null;
     return {
       pid,
       ppid: ppid ?? 0,
-      pgid: pgid ?? 0,
       comm: text.slice(open + 1, close),
       state: f[0] ?? null,
       startTicks: startTicks ?? 0,

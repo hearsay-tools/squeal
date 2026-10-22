@@ -83,9 +83,10 @@ describe.skipIf(!linux)("the Linux source on this host", () => {
       const server: Server = createServer();
       await new Promise<void>((resolve) => server.listen(path, resolve));
       cleanups.push(() => server.close());
-      const listener = source.unixListeners()?.find((l) => l.path === path);
-      expect(listener?.fileInode).toBe(statSync(path).ino);
-      expect(source.fds(process.pid)).toContain(`socket:[${listener?.socketInode}]`);
+      const inode = statSync(path).ino;
+      expect(source.unixListeners()?.filter((l) => l.fileInode === inode)).toEqual([
+        { fileInode: inode },
+      ]);
     },
   );
 });
