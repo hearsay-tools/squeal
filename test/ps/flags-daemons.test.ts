@@ -38,6 +38,7 @@ interface At {
   readonly ageS?: number;
   readonly holdsLock?: boolean | null;
   readonly awaitLock?: boolean;
+  readonly lockWaitMs?: number;
   readonly root?: string | null;
   readonly script?: string;
   readonly version?: string;
@@ -259,6 +260,25 @@ describe("no-lock and duplicate", () => {
       }),
     );
     expect([...findings.daemons.values()].flat()).toEqual([]);
+  });
+
+  it("reads the wait --await-lock names: 600000 is not no-lock at 200 s, and is at 611 s", () => {
+    const holder = daemonAt(4100);
+    const waiter = (ageS: number) =>
+      daemonAt(4102, { root: holder.root, holdsLock: false, lockWaitMs: 600_000, ageS });
+    const findings = (ageS: number) =>
+      flag(
+        modelOf({
+          host,
+          daemons: [{ daemon: holder, first: workOf(holder) }, { daemon: waiter(ageS) }],
+        }),
+      );
+    expect(names(findings(200), 4102)).toEqual([]);
+    expect(findings(611).daemons.get(4102)?.[0]).toEqual({
+      flag: "no-lock",
+      reason: expect.stringMatching(/ for its lock, past 610 s$/),
+      command: "kill 4102",
+    });
   });
 
   it("flags two holders of one root at once, and leaves two waiters to no-lock", () => {
