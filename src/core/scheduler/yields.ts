@@ -262,14 +262,16 @@ function remainder(context: SchedulerContext, tier: Tier): number {
 }
 
 /**
- * Whether `tier` may yield past its estimate (row 011-107): every file it
- * would cut has a last-known duration of at least `SHARE_FLOOR_MS`, a file
- * with none counting 0. A cut file runs again from its start, and one under
- * the floor shares the promoted file's next tier (`joinSpan`), whose result
- * then waits for it; row 011-112 keeps cut files apart and ends this hold.
+ * Whether `tier` may yield past its estimate (row 011-107): it has a file
+ * left to cut, as `superseded` needs, and every file it would cut has a
+ * last-known duration of at least `SHARE_FLOOR_MS`, a file with none
+ * counting 0. A cut file runs again from its start, and one under the floor
+ * shares the promoted file's next tier (`joinSpan`), whose result then waits
+ * for it; row 011-112 keeps cut files apart and ends this hold.
  */
 function overruns(tier: Tier): boolean {
-  return unfinished(tier).every(({ file }) => (file.durationMs ?? 0) >= SHARE_FLOOR_MS);
+  const left = unfinished(tier);
+  return left.length > 0 && left.every(({ file }) => (file.durationMs ?? 0) >= SHARE_FLOOR_MS);
 }
 
 /**
