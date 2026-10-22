@@ -1,5 +1,5 @@
 import { createStateSink, heldFailure, recordFlips } from "../state/index.js";
-import type { ResultRecord } from "../types/index.js";
+import type { ResultRecord, WorktreeId } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import { unresolvedPreloads } from "./growth.js";
 import { addHeldFile } from "./held.js";
@@ -17,12 +17,15 @@ import { addHeldFile } from "./held.js";
  * confirmed, that worktree's file stays held: its row is marked `queued` and
  * its daemon is told to run it (`addHeldFile`, review wave 13i B1). Under a
  * key that may lack an observed preload (`unresolvedPreloads`, B2) the
- * results are stored with no note and no heal.
+ * results are stored with no note and no heal. A worktree `heals` refuses
+ * keeps its states and is told as a held one is: the scheduler's filter
+ * (review 0.1.266, B1), off this path.
  * Returns what the key held before (task 001-171, `holdsNewFailure`).
  */
 export function storeResults(
   context: SchedulerContext,
   records: readonly ResultRecord[],
+  heals: (worktreeId: WorktreeId) => boolean,
 ): readonly ResultRecord[] {
   const [first] = records;
   if (first === undefined) return [];
@@ -42,11 +45,13 @@ export function storeResults(
     for (const row of store.testFileKeys.withKey(first.key)) {
       if (row.worktreeId === worktreeId) continue;
       if (row.testFile.project !== project || row.testFile.path !== testPath) continue;
-      if (heldFailure(store, row.worktreeId, rows) !== undefined) {
+      const healed = heals(row.worktreeId);
+      if (!healed || heldFailure(store, row.worktreeId, rows) !== undefined) {
         // Its states fall to pending, not stale: its daemon queues the file (`Ledger.confirmHeld`).
         if (row.pending === null) store.testFileKeys.upsertMany([{ ...row, pending: "queued" }]);
         addHeldFile(store, row.worktreeId, { testFile: row.testFile, key: first.key });
       }
+      if (!healed) continue;
       const revision = store.revisions.latest(row.worktreeId)?.number ?? row.revision;
       sink.refresh(row.worktreeId, revision, { checkpointId: null }, [row.testFile]);
     }
