@@ -1,14 +1,15 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildPlugin, type PluginBuild, REPO_ROOT } from "../build.js";
+import { buildPlugin, LAUNCHER_COPY, type PluginBuild, REPO_ROOT } from "../build.js";
 
 /*
  * The Pi package's build, on the shared one in src/harness/build.ts (spec 009
  * D1): `dist/extension.mjs` and its `dist/worker.mjs` beside the CLI, the
  * daemon and the runtime files, the root version in the package's
  * `package.json`, and the skill copied from the Claude Code plugin with one
- * line for Pi (`PI_SKILL_NOTE`). Run by `npm run build:plugin`.
+ * line for Pi (`PI_SKILL_NOTE`), as is the launcher (005-76). Run by
+ * `npm run build:plugin`.
  */
 
 export const PI_PLUGIN_DIR = join(REPO_ROOT, "plugins/pi");
@@ -21,7 +22,7 @@ export const PI_PLUGIN: PluginBuild = {
   pluginDir: PI_PLUGIN_DIR,
   entriesDir: "src/harness/pi/entries",
   versionedFiles: ["package.json"],
-  copies: [{ from: SKILL_SOURCE, to: PI_SKILL }],
+  copies: [{ from: SKILL_SOURCE, to: PI_SKILL }, LAUNCHER_COPY],
 };
 
 /**
