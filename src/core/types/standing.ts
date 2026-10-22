@@ -29,14 +29,17 @@ interface Retryable {
  * Whether the tier a promoted file is queued behind yields to it (spec 011
  * C4 step 5 and C15 as amended 2026-10-21, row 011-51), as its daemon last
  * found: `yields`, it cancelled the tier; else why not: `remainder`, the
- * tier's estimated remainder was `remainderMs`, 30 s or less; `cut`, it holds
- * a file a yield already cut at its key; `turn`, it is the backlog's turn
- * after four tiers of the first group; `runner`, its runner runs each tier
- * to its end (node:test, pytest).
+ * tier's estimated remainder was `remainderMs`, 30 s or less; `overrun`, it
+ * has run past its estimate by less than 30 s and yields at `yieldsAt` if
+ * it still runs (row 011-107); `cut`, it holds a file a yield already cut
+ * at its key; `turn`, it is the backlog's turn after four tiers of the
+ * first group; `runner`, its runner runs each tier to its end (node:test,
+ * pytest).
  */
 export type TierYield =
   | { readonly kind: "yields" }
   | { readonly kind: "remainder"; readonly remainderMs: number }
+  | { readonly kind: "overrun"; readonly yieldsAt: EpochMs }
   | { readonly kind: "cut" | "turn" | "runner" };
 
 /**

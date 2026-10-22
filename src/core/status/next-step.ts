@@ -75,6 +75,8 @@ function yieldText(tier: TierYield, what: "tier" | "run"): string {
       return `; the ${what} yields`;
     case "remainder":
       return `; the ${what} does not yield: its estimated remainder was ${remainderSeconds(tier.remainderMs)} s, not over ${YIELD_REMAINDER_MS / 1_000} s`;
+    case "overrun":
+      return `; the ${what} has run past its estimate and yields at ${timeText(tier.yieldsAt)}, ${YIELD_REMAINDER_MS / 1_000} s past it`;
     case "cut":
       return `; the ${what} does not yield: it holds a file a yield already cut at its key`;
     case "turn":
@@ -84,9 +86,13 @@ function yieldText(tier: TierYield, what: "tier" | "run"): string {
   }
 }
 
-/** A named wait's step behind a tier whose yield is known: nothing while it yields. */
+/**
+ * A named wait's step behind a tier whose yield is known: nothing while it
+ * yields, or when the reason names the bound it yields at (row 011-107).
+ */
 function yieldStep(tier: TierYield): Step {
-  return { kind: "none", text: tier.kind === "yields" ? "" : NOT_YIELDING };
+  const bounded = tier.kind === "yields" || tier.kind === "overrun";
+  return { kind: "none", text: bounded ? "" : NOT_YIELDING };
 }
 
 /** `retry` runs it once; above `PATHS_IN_COMMAND` files the step names the full-suite run too. */
