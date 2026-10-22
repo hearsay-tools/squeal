@@ -36,3 +36,12 @@ Use /reviewer. Shape: review. Pinned to the `cand/0.1.263` SHA named in the spaw
 - the side effects the worker named are right: with Vitest only below the root, the managed block no longer names Vitest, and setup no longer proposes `vitest.exclude`. Also judge the repeated wording "not run: Vitest in X is not run".
 
 Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree, and name each file that fails loaded and passes alone. The coordinator's gate on 91e45c9a9: 882 files passed, 2 skipped; `test/scheduler/backlog-slots-overhead.test.ts` test 3 failed at load 17 to 23 on 24 CPUs (20,858 ms against a 20,277 ms bound) and passed alone (row 011-99). Write `reviews/0.1.263.md` with a PASS or FAIL verdict and commit it.
+
+## Re-review after the coordinator repair (2026-10-22)
+
+Use /reviewer. Shape: review, narrow. Pinned to the repaired `cand/0.1.263` SHA named in the resume; the delta is `f1c272cc0..` that SHA: the repair of `reviews/0.1.263.md` B1 and N1 (`bcf0d2c75`), the bundles (`605532f0c`) and two more B1 tests (`e6133649b`). Check that:
+- B1 is closed: the plan offers a directory exclude only when the nested project selects every file the outer one selects there. Apply each offered fix to your two subset fixtures (a narrower nested `include`, a nested `exclude`), and compare the pytest adapter's selections before and after: no test path lost, each shared file run once;
+- N1 is closed: the plan line reads `not run: Vitest in X: ...`, and the daemon note keeps its full sentence;
+- the rebuilt bundles match `npm run build`.
+
+Run the deferred locked full suite once in the candidate tree. Also run `test/e2e/slow-node-test.test.ts` alone: on CI run 39766470453 (at `f1c272cc0`), its claude-code case "reports the fast tests first, runs the slow files on idle and on run --slow" also re-ran `packages/demo/test/unit/math.test.ts` after Stop. That file passed 3 of 3 runs at `605532f0c` here, and no other run among the last 25 failed CI runs shows it. Judge whether the daemon's new start-time manifest read can cause it. Append a "Re-review" section to `reviews/0.1.263.md` with PASS or FAIL and commit it. Do not widen the review past this delta.
