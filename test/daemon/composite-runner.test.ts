@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import { vitestDetected } from "../../src/core/daemon/runner.js";
+import { vitestBelowRootNote, vitestDetected } from "../../src/core/daemon/runner.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type {
   AffectedTestFiles,
@@ -15,7 +15,15 @@ import type {
   TestFileRef,
 } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
-import { childEnv, daemonSuite, type FixtureRepo, readNotes, SLOW, waitReady } from "./helpers.js";
+import {
+  childEnv,
+  daemonSuite,
+  type FixtureRepo,
+  readNotes,
+  SLOW,
+  stopProcess,
+  waitReady,
+} from "./helpers.js";
 
 /*
  * Spec 003 D7: "The daemon holds one `RunnerAdapter` per configured or
@@ -403,6 +411,37 @@ describe("squeal daemon with node:test projects (spec 003 D7)", SLOW, () => {
     await waitReady(repo, spawned);
     expect(readNotes(repo).filter((text) => /vitest/i.test(text))).toEqual([]);
     expect(spawned.child.exitCode).toBeNull();
+  });
+
+  // Spec 003 D7 as amended 2026-10-22 (row 005-79): toolkit-dev's `tools/generator`.
+  const BELOW = { devDependencies: { vitest: "^3.0.0" } };
+  const belowRoot = (notes: readonly string[]) =>
+    notes.filter((text) => text.includes("loads Vitest from the root only"));
+
+  it("notes a Vitest below the root it does not run, once across a restart", async () => {
+    const { repo, spawned } = started({
+      "package.json": MANIFEST,
+      "squeal.config.json": NODE_TEST_CONFIG,
+      "test/a.test.mjs": NODE_TEST_FILE,
+      "tools/generator/package.json": JSON.stringify(BELOW),
+      "node_modules/dep/package.json": JSON.stringify(BELOW),
+    });
+    await waitReady(repo, spawned);
+    expect(belowRoot(readNotes(repo))).toEqual([vitestBelowRootNote(["tools/generator"])]);
+    await stopProcess(spawned);
+    await waitReady(repo, suite.daemon(repo));
+    expect(belowRoot(readNotes(repo))).toHaveLength(1);
+  });
+
+  it("writes no such note when the root has Vitest", async () => {
+    const { repo, spawned } = started({
+      "package.json": JSON.stringify(BELOW),
+      "squeal.config.json": NODE_TEST_CONFIG,
+      "test/a.test.mjs": NODE_TEST_FILE,
+      "tools/generator/package.json": JSON.stringify(BELOW),
+    });
+    await waitReady(repo, spawned);
+    expect(belowRoot(readNotes(repo))).toEqual([]);
   });
 
   it("keeps the Vitest note when neither runner is configured or detected", async () => {
