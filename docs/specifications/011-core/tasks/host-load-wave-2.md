@@ -104,3 +104,15 @@ Use /worker. Shape: repair. Base: `5fa31c1c1`, as RP3. Read `reviews/0.1.255.md`
 Outcome: the floor of 2 applies only when a tier holds a file of an `isolate: false` project, so an isolated-only tier at grant 1 runs one worker and asks for one permit; a tier that mixes both kinds still never reaches Vitest's "different maxWorkers but same groupOrder" throw. Seam: `#rootFloor` and `floorOf` in `src/runners/vitest/width.ts:71`, and the width the scheduler's `fewest()` reads (`src/core/scheduler/tiers.ts`): the floor must follow the tier's files, not every sibling that reads the root width. First edit, a lead: the reviewer's shared-root fixture (a isolated, b `isolate: false`, both `extends: true`, no `maxWorkers`) as red tests in `test/runners/vitest/width.test.ts`: a-only at grant 1 runs worker id 1 only; a mixed tier at grant 2 runs without the throw.
 
 Owns: `src/runners/vitest/width.ts`, the width hunk of `tiers.ts` and the `RunnerAdapter` width type if its signature must take the tier's files, their tests. Not yours: `src/core/capacity/` (RP3), the release commit, bundles, version, spec, board. Width hints stay outside key inputs (`test/keys/validity/adapters.test.ts`). Rules and done-when as RP3.
+
+## R4: re-review of cand/0.1.255 after RP3 and RP4
+
+Use /reviewer. Shape: review, the one re-review of this candidate. Pinned to `398630b3f` (cand/0.1.255 re-cut: main `35ca57846`, the three rows and W6's notes, RP3's `3ff1d3cb5` (B1) and `d9f949cd0` (B2), RP4's `735688173` (B3), a new release commit). Read `reviews/0.1.255.md` and this file's RP3 and RP4.
+
+Check B1 to B3 against their proofs, then the repairs' own ground:
+- B1: an edit that runs past a refused look's 30 s leaves no waiter in its mark, and a newcomer takes a free permit; a waiter inside 30 s keeps its seniority.
+- B2: the first edit before any acquisition creates the pool directory and writes its mark; a refused directory leaves the edit running without a mark, never waiting.
+- B3: with the shared-root fixture, an isolated-only tier at grant 1 runs one worker and asks for one permit; a mixed tier runs without Vitest's "different maxWorkers but same groupOrder" throw; a project that set `maxWorkers: 1` still runs at 1.
+- The release commit: eight version places, bundles match the tree.
+
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once. Known red on main too (row 011-99): `slow-slot-fair.test.ts`, `backlog-slots-overhead.test.ts` test 3, `opencode-dispose.test.ts`. Append a dated "Re-review" section to `reviews/0.1.255.md` as it is on origin/main, with PASS or FAIL on `398630b3f`, and commit it. A finding outside B1 to B3 that is not a proven break goes to "Inputs for the next wave".
