@@ -8,16 +8,12 @@ import type {
   ProcessTable,
   PsSource,
 } from "../../src/core/ps/source.js";
-import { CLOCK_TICKS, type FixtureProcess, writeProcess } from "./fixture.js";
+import { CLOCK_TICKS } from "./fixture.js";
 
 /*
  * Fixtures for measurement, test processes and the host (spec 014 D4 to D6,
  * task 014-07). `fakeSource` is a `PsSource` over rows held in memory, which
  * counts each read, so a test can state what a stage read and how often.
- * `writeHostTree` writes the 650-process `/proc` tree of the cost bound
- * (spec 014 Testing, goal 6) with the shape of the 2026-10-21 host
- * (`research/process-measurement.md` 5): 25 daemons, their fork workers and
- * their tests' children, and the rest of the host's processes.
  */
 
 export interface FakeProcess {
@@ -156,100 +152,4 @@ export function countingSource(source: PsSource): {
     },
   });
   return { source: counted, reads };
-}
-
-const HOME = "/home/user";
-const NODE = `${HOME}/.nvm/versions/node/v24.21.0/bin/node`;
-
-/** The 650-process host: what each daemon is, and which pids are Squeal's. */
-export interface HostTree {
-  readonly daemons: readonly number[];
-  readonly tokens: ReadonlyMap<number, string>;
-  /** The daemons, their fork workers and their tests' children: what `Measure` reads after the window. */
-  readonly squeal: readonly number[];
-  readonly testProcesses: number;
-}
-
-/** 25 daemons, each with one fork worker and its `git`, 1 escaped browser each for 5 of them, and 545 others. */
-export function writeHostTree(root: string): HostTree {
-  const processes: FixtureProcess[] = [];
-  const add = (p: Omit<FixtureProcess, "nice" | "ageS" | "lifeCpuPct"> & Partial<FixtureProcess>) =>
-    processes.push({ nice: 0, ageS: 600, lifeCpuPct: 1, ...p });
-  add({ pid: 1049, ppid: 1, pgid: 1049, comm: "systemd", cmdline: ["/usr/lib/systemd/systemd"] });
-  const daemons: number[] = [];
-  const tokens = new Map<number, string>();
-  const squeal: number[] = [];
-  let testProcesses = 0;
-  for (let d = 0; d < 25; d++) {
-    const pid = 300_000 + d * 10;
-    const token = `00000000-0000-4000-8000-${String(d).padStart(12, "0")}`;
-    daemons.push(pid);
-    tokens.set(pid, token);
-    const project = `${HOME}/projects/p${d}`;
-    const memoryKb = { anon: 400_000, shmem: 0, swap: 1_000 };
-    add({
-      pid,
-      ppid: 1049,
-      pgid: pid,
-      comm: "MainThread",
-      cmdline: [
-        NODE,
-        `${HOME}/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs`,
-        "daemon",
-        project,
-      ],
-      memoryKb,
-    });
-    const mark = `${token}:vitest`;
-    add({
-      pid: pid + 1,
-      ppid: pid,
-      pgid: pid,
-      comm: "MainThread",
-      nice: 10,
-      cmdline: [NODE, `${project}/node_modules/vitest/dist/workers/forks.js`],
-      environ: { SQUEAL_DAEMON_CHILD: mark, NODE_ENV: "test" },
-      memoryKb: { anon: 150_000, shmem: 0, swap: 0 },
-    });
-    add({
-      pid: pid + 2,
-      ppid: pid + 1,
-      pgid: pid,
-      comm: "git",
-      nice: 10,
-      cmdline: ["git", "status"],
-      environ: { GIT_DIR: `${project}/.git` },
-      memoryKb: { anon: 4_000, shmem: 0, swap: 0 },
-    });
-    squeal.push(pid, pid + 1, pid + 2);
-    testProcesses += 1;
-    if (d % 5 === 0) {
-      add({
-        pid: pid + 3,
-        ppid: 1049,
-        pgid: pid + 3,
-        comm: "chrome",
-        nice: 10,
-        cmdline: ["/usr/bin/google-chrome", "--no-first-run"],
-        environ: { SQUEAL_DAEMON_CHILD: `${token}:slow:vitest` },
-        memoryKb: { anon: 80_000, shmem: 26_000, swap: 0 },
-      });
-      squeal.push(pid + 3);
-      testProcesses += 1;
-    }
-  }
-  for (let i = 0; processes.length < 650; i++) {
-    const pid = 10_000 + i;
-    add({
-      pid,
-      ppid: i % 3 === 0 ? 1049 : 10_000 + Math.floor(i / 3),
-      pgid: pid,
-      comm: i % 4 === 0 ? "MainThread" : "bash",
-      cmdline: ["bash", "-l"],
-      environ: { HOME, PATH: "/usr/bin", TERM: "xterm" },
-      memoryKb: { anon: 5_000, shmem: 0, swap: 0 },
-    });
-  }
-  for (const p of processes) writeProcess(root, p);
-  return { daemons, tokens, squeal, testProcesses };
 }
