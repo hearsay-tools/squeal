@@ -878,6 +878,8 @@ class TierScheduler implements Scheduler {
         ...interrupted,
       ];
       const requeue = installMoved || again.length === 0 ? installMoved : new Set(again);
+      // Review 0.1.262, B2: a report the runtime's loss rejects applies no setup outcome either.
+      const setups = !runtimeGone || interrupted.length === 0;
       this.#warmUp.record(context, ignored);
       this.#yields.ended(context, tier);
       const result = recordTier(
@@ -889,6 +891,7 @@ class TierScheduler implements Scheduler {
         requeue,
         observed,
         commit,
+        setups,
       );
       if (slow !== null) this.#slow.ended();
       // The runner hears the touches too, so its next run reads the disk again.

@@ -582,6 +582,12 @@ export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<M
  * `commit` false leaves the ledger's writes to the caller's next commit: the
  * records of slots that ended together share one (spec 011 C4 step 5 as
  * amended for slots, task 011-21 slice 2).
+ *
+ * `setups` false applies none of the report's setup outcomes: no setup check
+ * fails or passes and no project is blocked, and a file the startup failure
+ * kept from running that `requeue` does not hold is `unknown`, as a crashed
+ * run's is. A report the runtime's loss rejects (row 011-106, review
+ * 0.1.262 B2): its startup failure is the missing recorder's.
  */
 export function recordTier(
   context: SchedulerContext,
@@ -592,6 +598,7 @@ export function recordTier(
   requeue: boolean | ReadonlySet<string> = false,
   observed: TierObservations = NOTHING_OBSERVED,
   commit = true,
+  setups = true,
 ): RelativePath[] {
   const { store, worktreeId } = context;
   endTier(context, ledger, tier);
@@ -641,8 +648,10 @@ export function recordTier(
         }
         continue;
       }
-      if (decision.kind === "not-started") notStarted.push({ file, forced });
-      else if (decision.kind === "unknown") unknown.push({ file, key });
+      if (decision.kind === "not-started") {
+        if (setups) notStarted.push({ file, forced });
+        else unknown.push({ file, key });
+      } else if (decision.kind === "unknown") unknown.push({ file, key });
       else if (decision.kind === "split") {
         requeueSplit(ledger, file, decision.cap, forced, recent === true);
       }
@@ -728,13 +737,15 @@ export function recordTier(
     );
     // Task 001-382: one setup failure, not a FAIL per file; a run of a project that started passes
     // it, whatever its tests then did (review wave-13bp B4).
-    const started = new Set([
-      ...(report.startedProjects ?? []),
-      ...report.completedFiles.map((f) => f.project),
-    ]);
-    for (const project of startup?.projects ?? []) started.delete(project);
-    ledger.setups.pass(started, provenance.commit);
-    if (startup !== undefined) failStartup(ledger, startup, notStarted, provenance.commit);
+    if (setups) {
+      const started = new Set([
+        ...(report.startedProjects ?? []),
+        ...report.completedFiles.map((f) => f.project),
+      ]);
+      for (const project of startup?.projects ?? []) started.delete(project);
+      ledger.setups.pass(started, provenance.commit);
+      if (startup !== undefined) failStartup(ledger, startup, notStarted, provenance.commit);
+    }
     const timedOut =
       report.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
     const reason = timedOut ?? report.failure ?? `run ${report.end}`;
