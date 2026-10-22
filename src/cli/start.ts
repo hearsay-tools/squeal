@@ -15,6 +15,7 @@ import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
 import { keptCacheCli } from "../harness/shared/version-copies.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
+import { endCommandHolds } from "./hold.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 import { lockFreed, STOP_BOUNDS, type StopBounds } from "./stop.js";
@@ -24,8 +25,10 @@ import { clearStoppedMark } from "./stopped-mark.js";
 const SPAWN_WAIT_MS = 10_000;
 
 /**
- * `squeal start [root]`: clears the mark `squeal stop` left (task 011-08),
- * makes sure a daemon serves the worktree, then prints its status. Exit code
+ * `squeal start [root]`: clears the mark `squeal stop` left (task 011-08)
+ * and ends every `squeal hold` (row 011-74; a running daemon is asked to
+ * resume, a new one reads none), makes sure a daemon serves the worktree,
+ * then prints its status. Exit code
  * 0 once a daemon answers, 1 otherwise. A stopping daemon is never said
  * alive: `start` finishes its handoff (`finishHandoff`, row 011-34), within
  * `bounds`, as long as `squeal stop` waits.
@@ -43,6 +46,7 @@ export async function startCommand(
   if (root === null) return 1;
   const cleared = clearStoppedMark(root);
   if (cleared !== null) io.stderr(`squeal: could not clear the stop mark: ${cleared}\n`);
+  for (const line of endCommandHolds(root)) io.stdout(line);
   // This CLI's own script is the daemon to spawn (review wave 3, B1), or its kept copy when
   // it runs from Codex's plugin cache (row 005-77); `SQUEAL_CLI` overrides it.
   const script = process.argv[1];
@@ -55,6 +59,9 @@ export async function startCommand(
   if (result === "unavailable") {
     io.stderr(`squeal: no daemon could be reached or started for ${root}\n`);
     return 1;
+  }
+  if (result === "alive") {
+    await askDaemon(await daemonSocket(root), { type: "resume" }).catch(() => null);
   }
   if (result === "spawned") {
     const deadline = Date.now() + SPAWN_WAIT_MS;
