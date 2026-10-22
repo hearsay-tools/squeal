@@ -13,7 +13,12 @@ import type {
   Store,
   WorktreeId,
 } from "../types/index.js";
-import { MERGE_HOLD_PATHS, type MergeHoldRow, mergeHoldMetaKey } from "./hold-rows.js";
+import {
+  MERGE_HOLD_PATHS,
+  type MergeHoldRow,
+  mergeHoldMetaKey,
+  readMergeHold,
+} from "./hold-rows.js";
 
 /*
  * Row 011-72 (spec 011 C9 as amended 2026-10-21, "Holds"; `tasks/011-61/design.md`
@@ -238,6 +243,37 @@ export function heldFiles<
   return files.filter(
     (f) => hold.names(f.inputs) || hold.names(growth?.get(f.file.id)?.growth ?? []),
   );
+}
+
+/**
+ * Review 0.1.266, B1: whether the merge hold `worktreeId`'s last daemon
+ * published names one of `paths`, a stored key's inputs, so the key takes
+ * no stored result there (011 C9). A row that lists fewer paths than it
+ * counts names every key: the rest are not known here.
+ */
+export function holdsAt(
+  store: Store,
+  worktreeId: WorktreeId,
+  paths: readonly RelativePath[],
+): boolean {
+  const startedAt = store.worktrees.lastDaemon(worktreeId)?.startedAt ?? 0;
+  const row = readMergeHold(store, worktreeId, startedAt);
+  if (row === null) return false;
+  if (row.count > row.paths.length) return true;
+  const unmerged = new Set(row.paths);
+  return paths.some((path) => unmerged.has(path));
+}
+
+/**
+ * Which other worktrees `storeResults` heals at a key whose inputs are
+ * `paths`: those whose merge hold names none of them. The others keep their
+ * states, and their daemons decide under their own hold (`Ledger.confirmHeld`).
+ */
+export function healsUnheld(
+  store: Store,
+  paths: readonly RelativePath[],
+): (worktreeId: WorktreeId) => boolean {
+  return (worktreeId) => !holdsAt(store, worktreeId, paths);
 }
 
 /**

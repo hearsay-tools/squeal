@@ -1,7 +1,9 @@
 import { join } from "node:path";
 import { loadPolicy } from "../../../../src/core/daemon/policy.js";
 import type { SchedulerContext } from "../../../../src/core/scheduler/context.js";
+import { heldFilesMetaKey } from "../../../../src/core/scheduler/held.js";
 import { recordsForFile } from "../../../../src/core/scheduler/records.js";
+import { storeResults } from "../../../../src/core/scheduler/store-results.js";
 import { stateFromResult } from "../../../../src/core/state/derive.js";
 import { describeFailure } from "../../../../src/core/state/fingerprint.js";
 import { createStateSink } from "../../../../src/core/state/sink.js";
@@ -50,6 +52,7 @@ export async function writeAccept(input: AcceptInput, scratch: string): Promise<
   try {
     const sink = createStateSink(store, { now: () => 2_000 });
     const stored: ResultRecord[] = [];
+    if (input.heal) keyReceiver(store, input);
     for (const [at, run] of input.runs.entries()) {
       const records = recordsForFile({
         ref: input.testFile,
@@ -59,7 +62,8 @@ export async function writeAccept(input: AcceptInput, scratch: string): Promise<
         provenance: provenance(run.worktree, run.recordedAt, `run-${at}`),
         describe: describeFailure,
       });
-      store.results.putMany(records);
+      if (input.heal) storeResults(producer(store, run.worktree), records, () => true);
+      else store.results.putMany(records);
       sink.applyResults(run.worktree as WorktreeId, 1, records, { checkpointId: null });
       stored.push(...records);
     }
@@ -129,6 +133,7 @@ export async function decideAccept(
         states,
         retired: probe.retired,
         ...(input.unknown === undefined ? {} : { unknown: unknownStates(store, worktreeId) }),
+        ...(input.heal === undefined ? {} : { healed: healedStates(store, input) }),
       },
     };
   } finally {
@@ -172,4 +177,34 @@ function unknownStates(store: Store, worktreeId: WorktreeId) {
     .list(worktreeId)
     .map((s) => ({ check: s.check, outcome: s.outcome, validity: s.validity }));
   return { states, atKey: store.results.byKey(KEY, 3_000).map(verdictOf) };
+}
+
+/** The receiver keyed at `KEY` before the runs, as its daemon keys it: what a heal reaches. */
+function keyReceiver(store: Store, input: AcceptInput): void {
+  const worktreeId = input.receiver as WorktreeId;
+  const row = { worktreeId, testFile: input.testFile, key: KEY, revision: 1, pending: null };
+  store.testFileKeys.upsertMany([row]);
+}
+
+/** What `storeResults` reads of the run's own scheduler: its store, worktree and clock. */
+function producer(store: Store, worktree: string): SchedulerContext {
+  return {
+    store,
+    worktreeId: worktree as WorktreeId,
+    now: () => 2_000,
+    keys: { environmentFiles: () => [] },
+  } as unknown as SchedulerContext;
+}
+
+/** The receiver's states and key row after the runs' heal, and the files its daemon is told to run. */
+function healedStates(store: Store, input: AcceptInput) {
+  const worktreeId = input.receiver as WorktreeId;
+  const states = store.knownStates.list(worktreeId).map((s) => ({
+    check: s.check,
+    outcome: s.outcome,
+    validity: s.validity,
+    origin: s.origin?.kind ?? null,
+  }));
+  const rows = store.testFileKeys.list(worktreeId).map((r) => ({ key: r.key, pending: r.pending }));
+  return { states, rows, held: store.meta.get(heldFilesMetaKey(worktreeId)) };
 }
