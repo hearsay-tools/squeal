@@ -45,6 +45,29 @@ const run = (
 const names = (results: readonly { check: { fullName: string }; outcome: string }[]) =>
   results.map((r) => `${r.check.fullName}: ${r.outcome}`);
 
+/**
+ * The busy loop's run, file 0 of the tier in `logDir`, the file after it, and what says how the
+ * loop ended: its exit, stderr and stdout, and its stream's last events, where the wrapper's
+ * failure carries the test child's exit code and signal.
+ */
+function busyLoop(logDir: string) {
+  const log = JSON.parse(readFileSync(join(logDir, "run.json"), "utf8")) as {
+    files: { exit: unknown; completed: boolean }[];
+  };
+  const read = (name: string) =>
+    existsSync(join(logDir, name)) ? readFileSync(join(logDir, name), "utf8") : "(none)";
+  const events = read("events-0.ndjson").trim().split("\n").slice(-3);
+  const [loop, next] = log.files;
+  // Row 003-47: an exit 1 with empty stderr is node:test reporting a failure on stdout.
+  const why = [
+    JSON.stringify(loop?.exit),
+    `stderr:\n${read("stderr-0.log")}`,
+    `stdout:\n${read("stdout-0.log")}`,
+    `last events:\n${events.map((e) => e.slice(0, 800)).join("\n")}`,
+  ].join("\n");
+  return { loop, next, why };
+}
+
 const edge = project("edge", "edge", ["--import", "tsx"]);
 
 describe("runNodeTest", () => {
@@ -90,6 +113,11 @@ describe("runNodeTest", () => {
     const { report } = await run({ project: edge, files: tier, timeoutMs: 8_000, logDir });
     expect(performance.now() - started).toBeLessThan(8_000 + 2_000 + 5_000);
     expect(report.end).toBe("timed-out");
+    // Row 011-99: once on CI (Node 22.19, 8060 ms) the loop's stream was whole at the deadline,
+    // "0 of 2". Not reproduced: Node's SIGTERM handler exits before its reporter writes, and
+    // libuv learns of the child's exit after its own SIGTERM. The premise names how it ended.
+    const { loop, why } = busyLoop(logDir);
+    expect(loop?.completed, `the busy loop's stream is whole: ${why}`).toBe(false);
     expect(report.failure).toMatch(/deadline of 8000 ms passed with 1 of 2 test files unfinished/);
     expect(report.completedFiles).toEqual(files(edge, "test/pass.test.ts"));
     expect(names(report.results)).toEqual(["passes: pass"]);
@@ -128,17 +156,8 @@ describe("runNodeTest", () => {
       concurrency: 1,
       logDir,
     });
-    const log = JSON.parse(readFileSync(join(logDir, "run.json"), "utf8")) as {
-      files: { exit: unknown; completed: boolean }[];
-    };
-    const [loop, queued] = log.files;
-    const stderr = readFileSync(join(logDir, "stderr-0.log"), "utf8");
-    // Row 003-47: an exit 1 with empty stderr is node:test reporting a failure on stdout.
-    const stdout = readFileSync(join(logDir, "stdout-0.log"), "utf8");
-    expect(
-      loop?.completed,
-      `the busy loop ended before the deadline: ${JSON.stringify(loop?.exit)}\nstderr:\n${stderr}\nstdout:\n${stdout}`,
-    ).toBe(false);
+    const { loop, next: queued, why } = busyLoop(logDir);
+    expect(loop?.completed, `the busy loop ended before the deadline: ${why}`).toBe(false);
     expect(queued).toEqual({ ...queued, exit: null, completed: false });
     expect(existsSync(join(logDir, "stdout-1.log"))).toBe(false);
     expect(report).toMatchObject({ end: "timed-out", completedFiles: [], results: [] });
