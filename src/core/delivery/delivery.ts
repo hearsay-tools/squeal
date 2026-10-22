@@ -25,6 +25,7 @@ import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from
 import { carriesEditResult, editNotes, startEdits } from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
+import { holdChangeOf, holdsChange, tellHolds, toldHolds } from "./hold-told.js";
 import { markLeaving } from "./leaving.js";
 import {
   livenessChange,
@@ -180,7 +181,10 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const states = scope?.states ?? store.knownStates.list(consumer.worktreeId);
       const selection = select(states, scope?.keys);
       if (selection === "silent") return null;
-      const quiet = !liveness || livenessChange(store, consumer, now()) === null;
+      const quiet =
+        !liveness ||
+        (livenessChange(store, consumer, now()) === null &&
+          holdsChange(store, consumer, now()) === null);
       const empty = isEmpty(plan(consumer, states, now(), selection.only, scope?.view));
       if (quiet && empty && selection.trim === null) return null;
     }
@@ -199,7 +203,11 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness ? livenessChange(store, consumer, at) : null;
       if (changed !== null) tellLiveness(store, consumer, changed.state);
-      const news = delta.entries.length > 0 || changed !== null;
+      // Row 011-73 (C8 as amended 2026-10-21): a hold's start and end, told as liveness is.
+      const holds = liveness ? holdsChange(store, consumer, at) : null;
+      const toldBefore = holds === null ? [] : toldHolds(store, consumer);
+      if (holds !== null) tellHolds(store, consumer, holds);
+      const news = delta.entries.length > 0 || changed !== null || holds !== null;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
       const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
@@ -244,6 +252,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         entries,
         stillFailing,
         ...(changed === null ? {} : { liveness: changed }),
+        ...(holds === null ? {} : { hold: holdChangeOf(holds, toldBefore, header) }),
         ...(slowChanged ? { slowTierChanged: true as const } : {}),
         ...(sawEdit === undefined ? {} : { sawEdit }),
         ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
@@ -313,6 +322,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         tellLiveness(store, consumer, starting ? told : (header.daemon?.state ?? null));
         tellRevision(store, consumer, header.revision);
         tellSlowTier(store, consumer, header.slowTier);
+        tellHolds(store, consumer, header.holds ?? []);
         if (!registered) {
           // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
           const alive = atStart && header.daemon?.state === "alive";

@@ -342,9 +342,10 @@ async function waitForPending(
     const { store, consumer } = context;
     const { header, held } = readTransaction(store, () => {
       const worktree = store.worktrees.get(consumer.worktreeId);
+      const now = Date.now();
       return {
         header: readHeader(store, consumer.worktreeId, undefined, undefined, isSlow),
-        held: readHolds(store, worktree, worktreeLiveness(worktree, Date.now())).length > 0,
+        held: readHolds(store, worktree, worktreeLiveness(worktree, now), now).length > 0,
       };
     });
     if (!isFastPending(header) || held) return;

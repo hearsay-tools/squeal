@@ -116,7 +116,8 @@ export type Standing =
  * the first 50 paths git lists unmerged and how many it lists; or one
  * `squeal hold -- <command>`, with the command's pid (the wrapper's when the
  * command's is not recorded) and the latest end. `gone`: every process its
- * holder recorded is gone, so the daemon ends it at its next heartbeat.
+ * holder recorded is gone; `expired`: `until` passed. The daemon ends such a
+ * hold at its next heartbeat.
  */
 export type StatusHold =
   | {
@@ -133,6 +134,25 @@ export type StatusHold =
       readonly pid: number | null;
       readonly until: EpochMs;
       readonly gone?: true;
+      readonly expired?: true;
+    };
+
+/**
+ * A change of the holds a consumer was last told (row 011-73; spec 011 C8 as
+ * amended 2026-10-21: told as liveness is, once per change, in one line):
+ * `on-hold`, the worktree is on hold, for `hold` first; `resumed`, no hold
+ * holds now, `ended` the cause last told, and `queued` test files wait to
+ * start, `running` already run.
+ */
+export type HoldChange =
+  | { readonly kind: "on-hold"; readonly hold: StatusHold }
+  | {
+      readonly kind: "resumed";
+      readonly ended:
+        | { readonly cause: "merge" }
+        | { readonly cause: "command"; readonly command: string };
+      readonly queued: number;
+      readonly running: number;
     };
 
 /**

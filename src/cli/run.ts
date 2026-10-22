@@ -9,7 +9,6 @@ import {
   type CheckpointProgress,
   type CheckpointRecord,
   checkpointMetaKey,
-  type EpochMs,
   parseCheckpointProgress,
   type RevisionNumber,
   type RunAllResponse,
@@ -141,7 +140,7 @@ export async function runCommand(
   const outcome = await ended(root, socketPath, checkpoint, deadline);
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
-  const [line, code] = verdictLine(root, checkpoint, outcome, joined, command, now());
+  const [line, code] = verdictLine(root, checkpoint, outcome, joined, command);
   const status = readStatus(root, { now });
   // Task 001-403: an abandoned or incomplete checkpoint names the file it lacks and why.
   const gap = outcome.kind === "abandoned" || code === 3 ? gapText(status) : "";
@@ -171,13 +170,12 @@ function verdictLine(
   outcome: Outcome,
   joined: Joined | null,
   command: string,
-  now: EpochMs,
 ): [string, 0 | 1 | 3] {
   const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
   switch (outcome.kind) {
     case "on-hold":
       return [
-        `is queued and runs when the hold ends. ${holdVerdictLine(outcome.hold, now, command)}`,
+        `is queued and runs when the hold ends. ${holdVerdictLine(outcome.hold, command)}`,
         3,
       ];
     case "abandoned":

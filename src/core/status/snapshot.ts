@@ -147,7 +147,7 @@ function snapshot(
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
   // Row 011-73 (C6, C9): the holds on its validation, which the queued files wait for.
-  const holds = readHolds(store, worktree, daemon);
+  const holds = readHolds(store, worktree, daemon, now);
   const header = readHeader(store, worktreeId, states, keys, undefined, held);
   // Task 001-404: each failure says how old its run is and the load it ran under.
   const knownFailures = withTestFileFrames(

@@ -30,10 +30,10 @@ export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
  * then the worktree's known failures and outstanding work. With the edit's
  * files (`StatusWaitEdit`), what it held for and what else is pending.
  */
-export function waitLine(wait: EndedWait, command = "squeal", now: EpochMs = Date.now()): string {
+export function waitLine(wait: EndedWait, command = "squeal"): string {
   // Row 011-73 (C6 as amended 2026-10-21): the hold is the verdict, and says what ends it.
   if (wait.outcome === "on-hold" && wait.hold !== undefined) {
-    return `${holdVerdictLine(wait.hold, now, command)}${worktreeText(wait.result)}`;
+    return `${holdVerdictLine(wait.hold, command)}${worktreeText(wait.result)}`;
   }
   const line = ownLine(wait, command);
   const slow = wait.slow === undefined || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
@@ -52,7 +52,7 @@ export function waitText(
   command = "squeal",
   options: StatusFormatOptions = {},
 ): string {
-  return `${formatStatus(wait.result, now, command, options)}\n${waitLine(wait, command, now)}\n`;
+  return `${formatStatus(wait.result, now, command, options)}\n${waitLine(wait, command)}\n`;
 }
 
 function ownLine(wait: EndedWait, command: string): string {
@@ -211,7 +211,7 @@ const NAMED_FILES_SHOWN = 10;
  * (`status <path>...` without `--wait`, row 011-28) names no deadline and no
  * time, and names its revision once.
  */
-export function namedLine(wait: EndedNamed, command = "squeal", now: EpochMs = Date.now()): string {
+export function namedLine(wait: EndedNamed, command = "squeal"): string {
   const { verdict, selection } = wait;
   const snapshot = wait.snapshot === true;
   const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
@@ -245,7 +245,7 @@ export function namedLine(wait: EndedNamed, command = "squeal", now: EpochMs = D
       line =
         wait.hold === undefined
           ? none("the worktree is on hold")
-          : holdVerdictLine(wait.hold, now, command);
+          : holdVerdictLine(wait.hold, command);
       break;
     case "timeout": {
       const paused = new Set((wait.leftForPause ?? []).map(testFileId));
@@ -353,7 +353,7 @@ export function namedText(
     ...(selected === null ? [] : [selected]),
     ...namedFailures(wait.selection.files, wait.result.knownFailures),
     ...namedClassLines(wait, command),
-    namedLine(wait, command, now),
+    namedLine(wait, command),
   ];
   const head =
     options.full === true
@@ -362,10 +362,7 @@ export function namedText(
           allNotes: options.allNotes === true,
           ...(wait.selection.base === undefined ? {} : { base: wait.selection.base }),
         })}\n`
-      : [
-          `Revision: ${statusRevisionText(wait.result)}`,
-          ...holdLines(wait.result.holds, now, command),
-        ]
+      : [`Revision: ${statusRevisionText(wait.result)}`, ...holdLines(wait.result.holds, command)]
           .map((line) => `${line}\n`)
           .join("");
   return `${head}${lines.join("\n")}\n`;
