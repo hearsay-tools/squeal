@@ -38,6 +38,8 @@ The brief's W1 list left out three files the row and R4 name. The coordinator ga
 | `test/daemon/handover-tier.test.ts` (1) | Design 011-30's regression: one successor, the old daemon out within 15 s, status saying it hands over, `start` exit 0, the held file run by the successor and stored, the named wait on its result. | Not run on base (base waits out the held tier). |
 | `test/evals/stopping-evidence.test.ts` (145) | Each new line from `formatStatus`, `waitText`, `namedText`, `formatRegistration` and `formatDelta`, plain and in a Claude Code hook's JSON, reads as no daemon; `--json` too; the trim keeps the Outstanding line; a settled snapshot still reads a daemon. | Yes: 89 failed before the parser change. |
 
+`handover-tier` does not check that the successor queues the held file in the first group (design 011-30, R4's checks). No daemon output names a tier's group: not the `runs` row, not status, not the daemon's log. Adding one is scheduler work outside W1's ownership. Row 011-33's `test/scheduler/handover-queued.test.ts` ("an open edit move's queued file runs in the first group") pins it at the scheduler. `handover-tier` checks that the successor runs the held file, held again, and stores its pass.
+
 `handover-tier` logged, on a host at load 50 on 24 CPUs: "the successor served 3264 ms after the first hook; 2 of 25 readings stopping; start: Squeal daemon started for …, after the 0.1.0 daemon handed over in 0.1 s".
 
 ## For the next row
