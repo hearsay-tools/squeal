@@ -99,6 +99,10 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
  * cancelling does nothing more); joins a live handoff claim, or claims one
  * and spawns this CLI's daemon with the lock wait; then waits for a daemon of
  * at least this version to answer, at most as long as `squeal stop` waits.
+ * With the lock free it spawns whatever the claim: the claim's successor may
+ * still be starting, or may have died before it took the lock, and the lock
+ * decides between the two (D10; review 0.1.259, the coordinator's decision
+ * of 2026-10-22).
  * Past that bound it says what holds the lock, as `squeal stop` does, and
  * exits 1. A daemon before 0.1.200 finishes its tier first, which only this
  * bound covers.
@@ -116,7 +120,7 @@ async function finishHandoff(
   // Read while it runs: its record's token is its children's mark (as `squeal stop` reads them).
   const marks = ping === null ? null : marksOf(ping.pid, tokenOf(ping, record));
   if (ping !== null) await askDaemon(stopping.socketPath, { type: "stop" }).catch(() => null);
-  if (claims(root, record, now)) {
+  if (claims(root, record, now) || (await lockFreed(root, null, 0)).state === "free") {
     await ensureDaemon(root, {
       ...(cli === undefined ? {} : { cli }),
       awaitLockMs: SUCCESSOR_LOCK_WAIT_MS,

@@ -20,8 +20,8 @@ import { daemonGone, shutDown } from "./died.js";
  * that follows and the claim's bound; without one, the bound is
  * `HANDOFF_BOUND_MS` after its shutdown began. A record with no incarnation
  * (a release before task 001-270) leaves no mark to read. Once the old
- * daemon cleared its record, a live claim and a held lock still say the
- * handoff runs (`claimed`), until the successor registers.
+ * daemon cleared its record, a live claim still says the handoff runs
+ * (`claimed`), until the successor registers.
  */
 export function withStopping(
   store: Store,
@@ -52,9 +52,14 @@ export function withStopping(
 
 /**
  * Between the old daemon's cleared record and its successor's registration,
- * which ends the claim: the old daemon releasing its lock, or the successor
- * holding it while it opens the store. Its version is the incarnation's
- * (`daemonIncarnation`), its time the claim's; past the bound, nothing.
+ * which ends the claim: the old daemon releasing its lock, the lock free
+ * while the successor starts, or the successor holding it while it opens the
+ * store. The lock is not read: a shutdown of 150 ms let it go 100 ms before
+ * the successor's process took it, and status read no daemon between an
+ * alive and a handing over (review 0.1.259, the coordinator's decision of
+ * 2026-10-22). Its version is the incarnation's (`daemonIncarnation`), its
+ * time the claim's; past the bound, or once a timed-out lock wait cleared
+ * the claim, nothing.
  */
 function claimed(
   store: Store,
@@ -63,7 +68,7 @@ function claimed(
   now: EpochMs,
 ): DaemonLiveness {
   const claim = readHandoff(store, worktree.id);
-  if (claim === null || now >= claim.boundAt || daemonGone(worktree)) return live;
+  if (claim === null || now >= claim.boundAt) return live;
   const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
   const { to, at: since, boundAt } = claim;
   return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
