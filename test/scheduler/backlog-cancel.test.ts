@@ -2,10 +2,12 @@ import { rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
 import { waitFor } from "../watcher/helpers.js";
 import { completions, suite } from "./backlog-suite.js";
 import { type Harness, openHarness, openRepoStore } from "./helpers.js";
+import { pause, SETTLE_MS } from "./tier-yields-fixture.js";
 
 /*
  * Task 001-364 (005-agent-adoption `lessons.md`, proposed row 1): a build
@@ -18,17 +20,26 @@ import { type Harness, openHarness, openRepoStore } from "./helpers.js";
  * again (`withheld-touch.test.ts`).
  */
 
-/** A 30-file backlog tier in flight, `during` run once its first test ended. */
+/**
+ * A 30-file backlog tier in flight, `during` run once its first test ended.
+ * With `settled`, `during` cancels the tier: the lane then waits 20 s for
+ * quiet (row 011-94), so until the clock moves past the wait, once
+ * `settled` holds, no file of the suite has started again; the test does
+ * not idle through the wait (CI run 39696846845).
+ */
 async function backlogWith(
   during: (h: Harness) => Promise<void>,
+  settled?: (h: Harness) => boolean,
 ): Promise<{ h: Harness; tiers: Harness["runner"]["runs"] }> {
   const mark = join(tmpdir(), `squeal-001-364-${process.pid}-${Date.now()}.log`);
   const repo = suite(30, 1_000, mark);
   writeFileSync(join(repo.main, "build-index-old.js"), "export const built = 1;\n");
+  let offset = 0;
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
     tierSize: 4,
     backlogTierSize: 200,
     runnerPartBesideRun: true,
+    now: () => Date.now() + offset,
   });
   try {
     await h.scheduler.start();
@@ -42,9 +53,19 @@ async function backlogWith(
         await during(h);
       })();
     };
+    const started: string[] = [];
+    h.gate.before = (files) => {
+      started.push(...files.map((f) => f.path));
+    };
     await h.scheduler.requestFullSuite({ force: true });
     await waitFor(() => edit !== null, 60_000);
     await edit;
+    if (settled !== undefined) {
+      await waitFor(() => settled(h), 60_000);
+      await pause(SETTLE_MS);
+      expect(started.slice(30).filter((path) => /^test\/f\d{3}\.test\.ts$/.test(path))).toEqual([]);
+      offset += BACKLOG_QUIET_MS;
+    }
     await h.scheduler.idle();
     return { h, tiers: h.runner.runs.slice(baselineTiers) };
   } finally {
@@ -71,10 +92,13 @@ describe("a backlog tier and a revision no file of it reads (task 001-364)", () 
     timeout: 120_000,
   }, async () => {
     const added = "test/added.test.ts";
-    const { h, tiers } = await backlogWith(async (h) => {
-      h.write(added, 'import { it } from "vitest";\nit("passes", () => {});\n');
-      await h.batch(added);
-    });
+    const { h, tiers } = await backlogWith(
+      async (h) => {
+        h.write(added, 'import { it } from "vitest";\nit("passes", () => {});\n');
+        await h.batch(added);
+      },
+      (h) => h.runsOf(added).length === 1,
+    );
 
     const [cancelled, next] = tiers;
     expect(cancelled?.files).toHaveLength(30);
