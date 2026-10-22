@@ -9,6 +9,7 @@ import { describeFailure } from "../state/index.js";
 import { isBusy, withBusySlice } from "../store/index.js";
 import { plural } from "../text.js";
 import {
+  type CancelCause,
   type CandidateBatch,
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
@@ -28,6 +29,7 @@ import { BusyResume } from "./busy-resume.js";
 import { CAPACITY_RECHECK_MS, TierCapacity } from "./capacity.js";
 import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
+import { CommandHold } from "./command-hold.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { scratchUnstable } from "./editor-scratch.js";
@@ -63,6 +65,7 @@ import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import { barredByTouch, type Moved, Withholds, withholdNote } from "./stability.js";
 import { StoredKeys } from "./stored-keys.js";
 import {
+  cancels,
   endTier,
   executeTier,
   laneOf,
@@ -82,6 +85,11 @@ interface InFlight {
   done: Promise<void>;
   /** A slot whose run ended: its lane may take the next file while it records (task 011-21). */
   ran: boolean;
+  /**
+   * Aborted when a command hold begins (row 011-74): a tier whose runner
+   * cancels, Vitest's fast or slow; `null` for one that runs to its end.
+   */
+  readonly held: AbortController | null;
 }
 
 /** A run that ended, with what its record reads outside the lock. */
@@ -94,6 +102,8 @@ interface EndedRun {
   /** The daemon's own runtime went (row 011-106): the run stores nothing. */
   readonly runtimeGone: boolean;
   readonly slow: SlowRun | null;
+  /** A command hold cancelled it (row 011-74): what it cut short queues again. */
+  readonly held: boolean;
 }
 
 /** What a record leaves to do outside the lock: the paths to reconcile, the withhold notes. */
@@ -183,6 +193,8 @@ class TierScheduler implements Scheduler {
   #backlogPaused = false;
   /** Row 011-72: no tier starts while git lists an unmerged path (011 C9, "Holds"). */
   readonly #hold: MergeHold;
+  /** Row 011-74: no tier starts while a `squeal hold` holds (011 C9, "Holds"). */
+  readonly #commandHold: CommandHold;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
@@ -195,6 +207,17 @@ class TierScheduler implements Scheduler {
       revision: () => this.#ledger?.revision.number ?? 0,
       resumed: () => this.#pump(),
       note: (message) => this.#note(message),
+    });
+    this.#commandHold = new CommandHold({
+      store: options.store,
+      worktreeId: options.worktreeId,
+      now: options.now ?? Date.now,
+      note: (message) => this.#note(message),
+      merging: () => this.#hold.holding,
+      due: () =>
+        void this.commandHold().catch((error: unknown) =>
+          this.#backgroundError("could not end a command hold", error),
+        ),
     });
     this.#busy =
       options.busyWaits === undefined
@@ -272,8 +295,9 @@ class TierScheduler implements Scheduler {
       ledger.holds = (ref) => this.#hold.holding && this.#hold.names(keys.stabilityPaths(ref));
       // Notes written during the baseline carry its revision.
       this.#ledger = ledger;
-      // A daemon starts on hold when git lists an unmerged path (011 C9).
+      // A daemon starts on hold when git lists an unmerged path or a `squeal hold` holds (011 C9).
       await this.#hold.check(true);
+      this.#commandHold.check();
       this.#waitChanges = await scan(context, ledger, options.resumesRest === true);
       // A daemon killed while waiting left its flag (review wave 11, N5); this one decides again.
       stopWaiting(context);
@@ -377,7 +401,7 @@ class TierScheduler implements Scheduler {
    */
   #cutTiers(revision: Revision | null): void {
     // Row 011-72: a tier in flight when a hold begins runs to its end; nothing would start instead.
-    if (this.#hold.holding) return;
+    if (this.#onHold()) return;
     const { context, ledger } = this.#started();
     const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
     this.#yields.check(context, ledger, tiers, revision);
@@ -456,7 +480,34 @@ class TierScheduler implements Scheduler {
       await this.#reconcilePaths(released);
       return "released";
     }
-    return this.#hold.holding ? "held" : "free";
+    return this.#onHold() ? "held" : "free";
+  }
+
+  /** Either hold holds (011 C9, "Holds"): no tier starts in any lane, and none is cut. */
+  #onHold(): boolean {
+    return this.#hold.holding || this.#commandHold.holding;
+  }
+
+  async commandHold(): Promise<boolean> {
+    if (this.#closed) return false;
+    const was = this.#commandHold.holding;
+    if (this.#commandHold.check()) {
+      await this.#cancelHeld();
+      return true;
+    }
+    if (was) this.#pump();
+    return false;
+  }
+
+  /**
+   * Row 011-74 (011 C9, *Hold command*): cancels each tier in flight whose
+   * runner cancels, as the supersession cancel does (C4 step 5); a node:test
+   * or pytest slot runs its file to its end. Resolves once those tiers ended.
+   */
+  async #cancelHeld(): Promise<void> {
+    const flights = [...this.#inFlight.values()].filter((flight) => flight.held !== null);
+    for (const { held } of flights) held?.abort("hold" satisfies CancelCause);
+    await Promise.all(flights.map((flight) => flight.done));
   }
 
   /**
@@ -592,7 +643,7 @@ class TierScheduler implements Scheduler {
    */
   inUse(): boolean {
     // A hold is no request and no activity for the idle and unused periods (011 C9, row 011-72).
-    if (this.#closed || !this.#ledger || this.#hold.holding) return false;
+    if (this.#closed || !this.#ledger || this.#onHold()) return false;
     if (this.#slow.requested && this.slowPending()) return true;
     return this.#editPending() || this.owedWork() !== null;
   }
@@ -620,13 +671,13 @@ class TierScheduler implements Scheduler {
 
   slowPending(): boolean {
     // A departure while on hold drains nothing (011 C9, row 011-72).
-    if (this.#closed || !this.#ledger || this.#hold.holding) return false;
+    if (this.#closed || !this.#ledger || this.#onHold()) return false;
     if (this.#lanes().some(isSlowLane)) return true;
     return this.#ledger.orderedSlow().length > 0;
   }
 
   owedWork(): string | null {
-    if (this.#closed || !this.#ledger || this.#hold.holding) return null;
+    if (this.#closed || !this.#ledger || this.#onHold()) return null;
     const ledger = this.#ledger;
     const owed: string[] = [];
     const active = ledger.checkpoints.active;
@@ -657,6 +708,7 @@ class TierScheduler implements Scheduler {
   async #close(): Promise<void> {
     this.#closed = true;
     this.#hold.close();
+    this.#commandHold.close();
     this.#yields.close();
     this.#slow.close();
     this.#busy?.close();
@@ -757,7 +809,7 @@ class TierScheduler implements Scheduler {
           if (hold === "released") continue;
           const next = await this.#lock.run(() => {
             if (this.#halted() || this.#awaitingInstall || this.#reinstalled) return null;
-            if (this.#hold.holding) return "held" as const;
+            if (this.#onHold()) return "held" as const;
             const { context, ledger } = this.#started();
             if (install.missing !== null) {
               this.#reinstall(ledger);
@@ -829,26 +881,28 @@ class TierScheduler implements Scheduler {
    */
   #fly(tier: Tier, installStamp: string, slow: SlowRun | null): void {
     const { context } = this.#started();
-    const flight: InFlight = { tier, done: Promise.resolve(), ran: false };
+    const first = tier.files[0]?.file.ref;
+    const cancellable = tier.slot !== true && first !== undefined && cancels(context, first);
+    const held = cancellable ? new AbortController() : null;
+    const flight: InFlight = { tier, done: Promise.resolve(), ran: false, held };
     this.#inFlight.set(tier.runId, flight);
+    // Row 011-74: a hold's cancel reaches a Vitest run as a stop's does; its runner reads it as its cancel.
+    const stop =
+      held === null ? this.#stop.signal : AbortSignal.any([this.#stop.signal, held.signal]);
     flight.done = (async () => {
       let recorded = false;
       try {
-        const ran = await executeTier(
-          context,
-          tier,
-          this.#warmUp.observes(tier),
-          this.#stop.signal,
-          () => this.#fileEnded(tier),
+        const ran = await executeTier(context, tier, this.#warmUp.observes(tier), stop, () =>
+          this.#fileEnded(tier),
         );
         let record: Recorded;
         if (tier.slot === true) {
           tier.lease?.release();
           flight.ran = true;
           this.#notify();
-          record = await this.#slotRecords.record(this.#ended(tier, ran, installStamp, slow));
+          record = await this.#slotRecords.record(this.#ended(tier, ran, installStamp, slow, null));
         } else {
-          const ended = await this.#ended(tier, ran, installStamp, slow);
+          const ended = await this.#ended(tier, ran, installStamp, slow, held);
           record = await this.#lock.run(() => this.#record(ended, true));
         }
         recorded = true;
@@ -878,6 +932,7 @@ class TierScheduler implements Scheduler {
     ran: RunReport,
     installStamp: string,
     slow: SlowRun | null,
+    held: AbortController | null,
   ): Promise<EndedRun> {
     const { context } = this.#started();
     const ignored = await this.#warmUp.read(context, tier, ran);
@@ -887,7 +942,8 @@ class TierScheduler implements Scheduler {
     const runtimeGone = await this.#runtimeMissing();
     // Row 011-72: the record reads the index when it moved, so a merge during the run holds its files.
     await this.#hold.check();
-    return { tier, ran, ignored, inputs, installMoved, runtimeGone, slow };
+    const cancelled = held?.signal.aborted === true;
+    return { tier, ran, ignored, inputs, installMoved, runtimeGone, slow, held: cancelled };
   }
 
   /**
@@ -897,7 +953,7 @@ class TierScheduler implements Scheduler {
    */
   async #record(ended: EndedRun, commit: boolean): Promise<Recorded> {
     const { context, ledger } = this.#started();
-    const { tier, ran, ignored, inputs, installMoved, runtimeGone, slow } = ended;
+    const { tier, ran, ignored, inputs, installMoved, runtimeGone, slow, held: holdCut } = ended;
     // Task 003-43: environment files the run loaded beyond the keyed ones re-key first.
     const environment = installMoved ? undefined : await rekeyEnvironments(context, ran, tier);
     // Task 001-132: what the run read beyond its closures, hashed under the lock.
@@ -941,9 +997,10 @@ class TierScheduler implements Scheduler {
     }
     // Only the first withholds are queued again; the exhausted files, forced or not, record
     // the withheld report and are `unknown` in the same commit (review 007-33, B1). What a
-    // stop's cancel cut short stays queued for the next daemon (D10, task 001-367).
+    // stop's cancel cut short stays queued for the next daemon (D10, task 001-367), and what a
+    // hold's cancel cut short stays queued for the hold's end (row 011-74).
     const cancelled = this.#stop.signal.aborted;
-    const unfinished = cancelled ? unfinishedFiles(tier, ran) : [];
+    const unfinished = cancelled || holdCut ? unfinishedFiles(tier, ran) : [];
     // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
     const moved = context.store.transaction(() => {
       // Rows 011-66 and 011-106: a crash after the daemon's stop began, or a run while its own
@@ -1131,7 +1188,7 @@ class TierScheduler implements Scheduler {
   #hasWork(): boolean {
     if (this.#awaitingInstall || this.#reinstalled) return false;
     // Row 011-72: on hold, the runner part goes on (D5 step 5) and the queue waits.
-    if (this.#hold.holding) return this.#runnerWork.size > 0;
+    if (this.#onHold()) return this.#runnerWork.size > 0;
     return this.#runnerWork.size > 0 || this.#ledger?.fastQueued() === true;
   }
 

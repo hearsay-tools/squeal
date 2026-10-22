@@ -33,6 +33,7 @@ const CANCEL_CAUSES: Readonly<Record<CancelCause, string>> = {
   yield: "it yielded to an edit's work, a promoted file or a runner part waiting for it",
   stop: "squeal stop",
   "step-down": "the daemon stepped down for newer hooks",
+  hold: "squeal hold",
 };
 
 /**

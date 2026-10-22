@@ -135,6 +135,33 @@ export interface StepDownRequest {
   readonly version: string;
 }
 
+/**
+ * `squeal hold` (spec 011 C9, "Holds", row 011-74) added its entry to
+ * the `commandHold` row of `meta`: the daemon reads it again, starts no tier
+ * while an entry holds, and cancels the tiers in flight whose runner
+ * cancels. Answered at once with a request id, like `sync`; ask whether the
+ * cancelled tiers ended with `HoldStatusRequest`. A daemon from before this
+ * request answers "unknown request type".
+ */
+export interface HoldRequest {
+  readonly type: "hold";
+}
+
+/** Whether the tiers a `hold` request cancelled ended. */
+export interface HoldStatusRequest {
+  readonly type: "hold-status";
+  readonly requestId: string;
+}
+
+/**
+ * `squeal hold` removed its entry, or `squeal start` every entry (row
+ * 011-74): the daemon reads the row again, and the queued work starts once
+ * no entry holds. Answered at once.
+ */
+export interface ResumeRequest {
+  readonly type: "resume";
+}
+
 export type DaemonRequest =
   | PingRequest
   | NudgeRequest
@@ -147,7 +174,10 @@ export type DaemonRequest =
   | SyncStatusRequest
   | PromoteRequest
   | StopRequest
-  | StepDownRequest;
+  | StepDownRequest
+  | HoldRequest
+  | HoldStatusRequest
+  | ResumeRequest;
 
 /** Where a daemon is in its life. `starting`: socket bound, scheduler not started yet. */
 export type DaemonPhase = "starting" | "ready" | "stopping";
@@ -308,6 +338,27 @@ export interface StepDownResponse {
   readonly steppingDown: boolean;
 }
 
+/**
+ * State of one `hold` request (row 011-74). `settled` is false until the
+ * daemon read the row and the tiers it cancelled ended; then `holding` says
+ * whether an entry holds. `error` is set when the request failed.
+ */
+export interface HoldResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "hold";
+  readonly requestId: string;
+  readonly settled: boolean;
+  readonly holding: boolean | null;
+  readonly error: string | null;
+}
+
+export interface ResumeResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "resume";
+}
+
 /** A request the daemon could not parse or does not know, or a status request for an unknown id. */
 export interface DaemonErrorResponse {
   readonly schemaVersion: PayloadSchemaVersion;
@@ -325,6 +376,8 @@ export type DaemonResponse =
   | PromoteResponse
   | StopResponse
   | StepDownResponse
+  | HoldResponse
+  | ResumeResponse
   | DaemonErrorResponse;
 
 /**
