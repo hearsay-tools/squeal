@@ -52,7 +52,7 @@ export interface TempOptions {
 const TEMP_VARIABLES = ["TMPDIR", "TMP", "TEMP"] as const;
 
 /** The name `mkdtemp` gives a parent: six characters after the prefix (review 0.1.267 S1). */
-const PARENT = /^squeal-vitest-(\d+)-[A-Za-z0-9]{6}$/;
+const PARENT = /^squeal-vitest-([1-9]\d*)-[A-Za-z0-9]{6}$/;
 
 /** The file in a parent that names its run's PID namespace. */
 const OWNER = ".pid-namespace";

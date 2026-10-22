@@ -8,6 +8,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -119,17 +120,25 @@ describe("the run's temp parent", () => {
   });
 
   // Review 0.1.267 B1 and S1: a PID names a process only in its own namespace.
-  it("keeps a dead PID's parent of another PID namespace, one that names none, and a path mkdtemp did not name", async () => {
+  it("keeps a dead PID's parent of another PID namespace, one that names none, a name mkdtemp does not make, and a symlink", async () => {
     const root = scratch();
     const pid = await deadPid();
     const elsewhere = join(root, `squeal-vitest-${pid}-other1`);
     const unnamed = join(root, `squeal-vitest-${pid}-unnamd`);
     const notParent = join(root, `squeal-vitest-${pid}-not-a-run`);
-    for (const dir of [elsewhere, unnamed, notParent]) mkdirSync(dir);
+    const badSuffix = join(root, `squeal-vitest-${pid}-ab_c12`);
+    const target = join(root, "target");
+    const link = join(root, `squeal-vitest-${pid}-link12`);
+    for (const dir of [elsewhere, unnamed, notParent, badSuffix, target]) mkdirSync(dir);
     writeFileSync(join(elsewhere, ".pid-namespace"), "pid:[1]");
-    writeFileSync(join(notParent, ".pid-namespace"), namespace());
+    for (const dir of [notParent, badSuffix, target]) {
+      writeFileSync(join(dir, ".pid-namespace"), namespace());
+    }
+    symlinkSync(target, link);
     const teardown = await setup(project, { env: {}, root });
-    for (const dir of [elsewhere, unnamed, notParent]) expect(existsSync(dir)).toBe(true);
+    for (const dir of [elsewhere, unnamed, notParent, badSuffix, target, link]) {
+      expect(existsSync(dir)).toBe(true);
+    }
     await teardown();
   });
 
