@@ -72,11 +72,13 @@ test("a holder killed with SIGKILL returns its permits to the pool", {
     expect(stdout).toContain("took 4");
 
     let clock = Date.now();
+    // Processes only: the dead holder's mark, fresh for 30 s, would also count its cores (row 011-98).
     const pool = createPermitPool({
       dir,
       owner: { pid: process.pid, worktreeId: "survivor" },
       hostSlots: 4,
       now: () => clock,
+      cores: null,
     });
     try {
       // Every permit is the holder's: this daemon gets none and waits (row 011-96).

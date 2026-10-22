@@ -32,7 +32,8 @@ export function defaultHostSlots(cpus: number = availableParallelism()): number 
 
 /**
  * Reads the user-level config under D11's loader rules: never throws, a
- * missing file is the defaults, and every problem is kept for one note.
+ * missing file is the defaults, and every problem is kept for one note. A
+ * `capacity.hostSlots` above the CPU count is cut to it, and the note says so.
  * `cpus` is injected for tests; the default is `os.availableParallelism()`.
  */
 export function loadUserConfig(
@@ -42,11 +43,20 @@ export function loadUserConfig(
   } = {},
 ): LoadedUserConfig {
   const path = userConfigPath(options.env);
+  const cpus = options.cpus ?? availableParallelism();
   const defaults: UserConfig = {
-    capacity: { hostSlots: defaultHostSlots(options.cpus), projects: {} },
+    capacity: { hostSlots: defaultHostSlots(cpus), projects: {} },
   };
   const { value, problems } = loadConfigFile(path, SHAPE, defaults);
-  return { path, config: value, problems };
+  const { hostSlots } = value.capacity;
+  if (hostSlots <= cpus) return { path, config: value, problems };
+  // 011 C10 Size as amended 2026-10-21 (row 011-98): a slot bounds cores too, so no more than the CPUs.
+  return {
+    path,
+    config: { ...value, capacity: { ...value.capacity, hostSlots: cpus } },
+    problems,
+    cut: `"capacity.hostSlots" ${hostSlots} is above the CPU count, ${cpus}; it is cut to ${cpus}`,
+  };
 }
 
 /**
@@ -78,8 +88,12 @@ export function capacityReader(options: {
 }): () => Capacity {
   let told: string | null = null;
   return () => {
-    const { path, config, problems } = loadUserConfig(options);
-    const text = problems.length > 0 ? `${path}: ${describeProblems(problems)}` : null;
+    const { path, config, problems, cut } = loadUserConfig(options);
+    const said = [
+      ...(problems.length > 0 ? [describeProblems(problems)] : []),
+      ...(cut === undefined ? [] : [cut]),
+    ];
+    const text = said.length > 0 ? `${path}: ${said.join("; ")}` : null;
     if (text !== null && text !== told && options.lastNote(path) !== text) options.note(text);
     told = text;
     return resolveCapacity(config, options.repositoryRoot);

@@ -63,6 +63,17 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
     expect(config).toEqual({ capacity: { hostSlots: 23, projects: {} } });
   });
 
+  // 011 C10 Size as amended 2026-10-21 (row 011-98): a slot is a core of the CPU too.
+  it("cuts hostSlots above the CPU count to it, and says so for the note", () => {
+    const { config, problems, cut } = load(JSON.stringify({ capacity: { hostSlots: 48 } }), 24);
+    expect(config.capacity.hostSlots).toBe(24);
+    expect(problems).toEqual([]);
+    expect(cut).toBe('"capacity.hostSlots" 48 is above the CPU count, 24; it is cut to 24');
+    const exact = load(JSON.stringify({ capacity: { hostSlots: 24 } }), 24);
+    expect(exact.config.capacity.hostSlots).toBe(24);
+    expect(exact.cut).toBeUndefined();
+  });
+
   it("never defaults below one host slot", () => {
     expect(defaultHostSlots(1)).toBe(1);
     expect(load(null, 1).config.capacity.hostSlots).toBe(1);
@@ -72,6 +83,7 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
     const root = tempDir();
     const { config, problems } = load(
       JSON.stringify({ capacity: { hostSlots: 12, projects: { [root]: { slots: 4 } } } }),
+      24,
     );
     expect(problems).toEqual([]);
     expect(config).toEqual({ capacity: { hostSlots: 12, projects: { [root]: { slots: 4 } } } });
@@ -202,9 +214,18 @@ describe("capacityReader (spec 001 D11 Capacity)", () => {
       `${file}: "capacity.hostSlots" must be a positive integer, got "six"; the defaults apply in their place`,
     ]);
 
-    writeFileSync(file, '{"capacity": {"hostSlots": 6, "projects": {"/srv/repo": {"slots": 2}}}}');
-    expect(read()).toEqual({ hostSlots: 6, projectSlots: 2 });
+    writeFileSync(file, '{"capacity": {"hostSlots": 4, "projects": {"/srv/repo": {"slots": 2}}}}');
+    expect(read()).toEqual({ hostSlots: 4, projectSlots: 2 });
     expect(notes).toHaveLength(1);
+  });
+
+  it("notes a hostSlots cut to the CPU count after the file's problems (row 011-98)", () => {
+    const env = envWith('{"capacity": {"hostSlots": 6, "projects": 3}}');
+    const { read, notes } = reader(env);
+    expect(read()).toEqual({ hostSlots: 4 });
+    expect(notes).toEqual([
+      `${userConfigPath(env)}: "capacity.projects" must be an object from repository root path to { "slots": n }, got 3; the defaults apply in their place; "capacity.hostSlots" 6 is above the CPU count, 4; it is cut to 4`,
+    ]);
   });
 
   it("adds no note when the newest persisted one already says the same (a restart)", () => {
