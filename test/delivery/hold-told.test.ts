@@ -52,7 +52,7 @@ describe("delivery: a hold's start and end (row 011-73)", { timeout: 60_000 }, (
     expect(heldPaths(side)).toEqual([HELPER]);
 
     const start = await delivery.onToolBoundary(consumer);
-    expect(start?.hold).toMatchObject({ kind: "on-hold", hold: { cause: "merge" } });
+    expect(start?.holds).toMatchObject([{ kind: "on-hold", hold: { cause: "merge" } }]);
     expect(start?.entries).toEqual([]);
     const text = formatDelta(start ?? never());
     expect(text.split("\n")[0]).toMatch(ON_HOLD);
@@ -75,7 +75,7 @@ describe("delivery: a hold's start and end (row 011-73)", { timeout: 60_000 }, (
 
     const end = await delivery.onToolBoundary(consumer);
     expect(end?.entries).toEqual([]);
-    expect(end?.hold).toMatchObject({ kind: "resumed", ended: { cause: "merge" } });
+    expect(end?.holds).toMatchObject([{ kind: "resumed", ended: { cause: "merge" } }]);
     expect(formatDelta(end ?? never()).split("\n")[0]).toMatch(
       /^SQUEAL · validating again at revision \d+: git lists no unmerged path; 0 test files queued\.$/,
     );
