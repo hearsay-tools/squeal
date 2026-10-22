@@ -19,20 +19,20 @@ import {
   type CheckId,
   type CheckKey,
   PAYLOAD_SCHEMA_VERSION,
+  type ReplacedFailure,
   type ResultRecord,
   type RevisionNumber,
   type Store,
   type WhyChangedPath,
   type WhyChangedSince,
   type WhyNoMatch,
-  type WhyReplacedFailure,
   type WhyReport,
   type WhyResult,
   type WorktreeId,
 } from "../types/index.js";
 import { durationsOf } from "./durations.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
-import { newestFirst } from "./replaced-failures.js";
+import { newestFirst, replacedOfCheck } from "./replaced-failures.js";
 import { runLogOf } from "./run-log.js";
 import { testFileFrame } from "./test-frame.js";
 import { type WhySession, whyClosureChanges } from "./why-closure.js";
@@ -65,34 +65,52 @@ export interface WhyOptions extends StatusStoreOptions {
  * last run log." Reads the store directly and needs no daemon.
  *
  * `query` is a name in the shape `formatCheck` prints. When no check has that
- * exact name, a check of this worktree whose name contains `query` is taken
- * if it is the only one, or the only one whose name ends with it. A name
- * ending in `...`, as a delta prints a capped one, matches by the part before.
+ * exact name, a check of this worktree, or one with a kept replaced failure,
+ * whose name contains `query` is taken if it is the only one, or the only
+ * one whose name ends with it. A name ending in `...`, as a delta prints a
+ * capped one, matches by the part before.
  */
 export function readWhy(cwd: AbsolutePath, query: string, options: WhyOptions = {}): WhyResult {
   const includeLogs = options.includeLogs ?? false;
   return withStatusStore(cwd, options, (context) => {
+    const { store } = context;
     const worktreeId = worktreeIdFor(context.root);
+    // Review 0.1.265 B2: a kept failure outlives its worktree's states and results; it names a check.
+    const kept = newestFirst(store.failures.replaced());
     const exact = parseCheck(query);
-    const check = exact !== null && known(context.store, worktreeId, exact) ? exact : null;
-    const match = check ?? resolve(context.store, worktreeId, query.trim());
+    const check = exact !== null && known(store, worktreeId, exact, kept) ? exact : null;
+    const match = check ?? resolve(store, worktreeId, query.trim(), kept);
     const session = options.session ?? { session: null, agent: null };
-    return "found" in match ? match : report(context, match, includeLogs, session);
+    return "found" in match ? match : report(context, match, includeLogs, session, kept);
   });
 }
 
-function known(store: Store, worktreeId: string, check: CheckId): boolean {
+function known(
+  store: Store,
+  worktreeId: string,
+  check: CheckId,
+  kept: readonly ReplacedFailure[],
+): boolean {
+  const identity = checkIdentity(check);
   return (
     store.knownStates.get(worktreeId, check) !== null ||
     store.transitions.history(worktreeId, check).length > 0 ||
-    store.results.listForCheck(check, 1).length > 0
+    store.results.listForCheck(check, 1).length > 0 ||
+    kept.some((e) => checkIdentity(e.check) === identity)
   );
 }
 
-function resolve(store: Store, worktreeId: string, query: string): CheckId | WhyNoMatch {
+/** Candidates are this worktree's checks, then every worktree's kept checks: at most 1,024, each once. */
+function resolve(
+  store: Store,
+  worktreeId: string,
+  query: string,
+  kept: readonly ReplacedFailure[],
+): CheckId | WhyNoMatch {
   const named = distinct([
     ...store.knownStates.list(worktreeId).map((s) => s.check),
     ...held(store, worktreeId),
+    ...kept.map((e) => e.check),
   ]).map((check) => ({ check, name: formatCheck(check) }));
   const stem = query.endsWith("...") ? query.slice(0, -3) : null;
   let matches = named.filter(
@@ -172,6 +190,7 @@ function report(
   check: CheckId,
   includeLogs: boolean,
   session: WhySession,
+  kept: readonly ReplacedFailure[],
 ): WhyReport {
   const worktreeId = worktreeIdFor(root);
   const worktreeRoots = Object.fromEntries(store.worktrees.list().map((w) => [w.id, w.root]));
@@ -192,7 +211,7 @@ function report(
     .filter((r) => r.outcome === "fail")
     .slice(0, WHY_OLDER_FAILURE_LIMIT)
     .map(entry);
-  const replacedFailures = replacedOf(store, check, worktreeRoots);
+  const replacedFailures = replacedOfCheck(store, check, worktreeRoots, kept);
   const runsDir = storePaths(commonDir).runsDir;
   const logOf = (run: { runId: string; worktreeId: WorktreeId }, logDir: AbsolutePath | null) =>
     runLogOf(run, logDir, check, runsDir, includeLogs);
@@ -247,27 +266,6 @@ function report(
     ...(closure === undefined ? {} : { changesInClosure: closure }),
     ...(rankedBy === undefined ? {} : { rankedBy }),
   };
-}
-
-/**
- * Row 011-77 (gh-54): the check's kept replaced failures, newest first, each
- * with its run's log and its kept text's errors, or `null` for what was pruned.
- */
-function replacedOf(
-  store: Store,
-  check: CheckId,
-  worktreeRoots: Readonly<Record<WorktreeId, AbsolutePath>>,
-): WhyReplacedFailure[] {
-  const identity = checkIdentity(check);
-  return newestFirst(
-    store.failures.replaced().filter((failure) => checkIdentity(failure.check) === identity),
-  ).map((failure) => ({
-    failure,
-    worktreeRoot: worktreeRoots[failure.provenance.worktreeId] ?? null,
-    logDir: store.runs.get(failure.provenance.runId)?.logDir ?? null,
-    errors:
-      failure.failureId === null ? null : (store.failures.text(failure.failureId)?.errors ?? null),
-  }));
 }
 
 /**
