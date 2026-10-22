@@ -14,6 +14,7 @@ import type {
 } from "../types/index.js";
 import { liveDaemonRecorded, recordedDaemon } from "./ensure.js";
 import { acquireDaemonLock, awaitDaemonLock, type DaemonLock, type LockWaitEnd } from "./lock.js";
+import { VACANT_LOCK_WAIT_MS } from "./lock-wait.js";
 import { noteInNewerStore, writeNote } from "./notes.js";
 import {
   type DaemonScratch,
@@ -36,16 +37,6 @@ export interface OpenedDaemon {
   /** Background removal of earlier daemons' temp files; shutdown waits for it. */
   readonly leftovers: Promise<void>;
 }
-
-/**
- * Task 001-340: how long a daemon started without `--await-lock` waits for a
- * lock it lost while no daemon is recorded serving. The holder's shutdown
- * has cleared its record and closed its socket, so only its lock release
- * remains, a few milliseconds that an I/O stall on a loaded host stretched
- * past 8 s (task 001-337); the successor's 2 minutes cover a tier in flight,
- * which this holder has finished.
- */
-export const VACANT_LOCK_WAIT_MS = 30_000;
 
 /** The daemon may wait longer on the store than a hook (spec 001 D8: a busy timeout on every connection). */
 export const DAEMON_BUSY_TIMEOUT_MS = 5_000;

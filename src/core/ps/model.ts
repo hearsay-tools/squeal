@@ -50,8 +50,12 @@ export interface FoundDaemon {
   readonly script: AbsolutePath;
   /** The root its arguments name; `null` when relative, since it moved its working directory. */
   readonly root: AbsolutePath | null;
-  /** `--await-lock` in its arguments: `no-lock` waits 130 s, not 40 s (D7). */
-  readonly awaitLock: boolean;
+  /**
+   * How long it waits for its lock (C9): the `<ms>` of `--await-lock <ms>`
+   * in its arguments, else `VACANT_LOCK_WAIT_MS`. `no-lock` flags it 10 s
+   * past (D7).
+   */
+  readonly lockWaitMs: number;
   /** From the script path; `null` for a checkout's `dist`, where the store row's stands in. */
   readonly version: string | null;
   readonly harness: string | null;
