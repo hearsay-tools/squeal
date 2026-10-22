@@ -30,3 +30,12 @@ Worker 67d779d1, 2026-10-22. Brief: `tasks/toolkit-latency.md`, section 011-117.
 
 - **A run that lists `D` while the swap file exists, and ends after vim quits, stores its result.** The run may have seen the extra entry. The brief and `research/edit-latency.md` 6.2 accept this: only the listing at the end is compared.
 - **An observed set that holds a scratch file.** If a run ever reads a swap file (a walk that reads every file), the observed set keeps it ("merged and never pruned"). Each later swap write re-keys and cancels that test while vim is open. The live toolkit-dev runs started while the swap file was absent, so this is not shown there. A fix would keep scratch names out of the observed sets (`observed.ts`, the `observe` kind of the key-format alarm); not filed.
+
+## Repair: review `reviews/0.1.268.md` B1
+
+The first slice asked `scratchMovedListings` only about the listings the tier's files held when it was selected, in `unstableInputs`, outside the lock. A listing the run observed for the first time (observed growth) was asked about by nobody: `prepareObserved` leaves listings to `Tier.changes`, and the scratch file's add no longer puts its listing there. A swap file created during a file's first run, and left present, then stored the run's PASS under the grown key, current, with no second run.
+
+- `editor-scratch.ts` `scratchUnstable`: the listings the tier's files hold and the listings their growth adds, asked of `scratchMovedListings`.
+- `scheduler.ts` `#record`: the call runs after `prepareObserved`, under the scheduler lock, and its listings join the changed paths `recordTier` gets. Every batch applied before the record counts, as in `Tier.changes`. `unstableInputs` in `tiers.ts` is back to its form before 011-117, apart from its comment.
+- `test/scheduler/editor-scratch-observed.test.ts`: the reviewer's probe as a scheduler test (a swap file left present: no PASS stored, it re-runs and fails like the ordinary-add control), the accepted round trip on an observed listing (one run, PASS current), and a swap file there when the run listed the directory and removed during it (no false PASS). Without the growth listings, the first and third fail.
+- Not covered by a test: a batch applied after the run's end and before its record. The check now reads the revisions in the record, so such a batch counts by construction.
