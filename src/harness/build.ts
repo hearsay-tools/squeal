@@ -45,6 +45,14 @@ export const PYTEST_RUNTIME = "src/runners/pytest/runtime";
 export const PYTEST_GRAMMAR = "src/runners/pytest/graph/tree-sitter-python.wasm";
 export const TREE_SITTER_RUNTIME = "node_modules/web-tree-sitter/web-tree-sitter.wasm";
 
+/**
+ * Spec 005 D3, row 005-76: the launcher's one source. The Codex, Pi and
+ * OpenCode builds copy it into their `bin/` (`LAUNCHER_COPY`); the Claude Code
+ * plugin holds it, so its build copies nothing.
+ */
+export const LAUNCHER_SOURCE = "plugins/claude-code/bin/squeal-launcher";
+export const LAUNCHER_COPY = { from: LAUNCHER_SOURCE, to: "bin/squeal-launcher" } as const;
+
 export interface PluginBuild {
   /** The plugin directory, absolute. */
   readonly pluginDir: string;
@@ -52,7 +60,7 @@ export interface PluginBuild {
   readonly entriesDir: string;
   /** Plugin files that carry the root version, relative to `pluginDir`; a missing one is skipped. */
   readonly versionedFiles: readonly string[];
-  /** Trees copied whole into the plugin, `from` relative to the root, `to` to `pluginDir`. */
+  /** Trees and files copied whole into the plugin, `from` relative to the root, `to` to `pluginDir`. */
   readonly copies?: readonly { readonly from: string; readonly to: string }[];
 }
 
@@ -208,13 +216,22 @@ export async function buildDist(plugin: PluginBuild, outdir: string): Promise<vo
   copyPytestRuntime(outdir);
 }
 
-/** Builds `plugin` in place: versions, copied trees, then `dist/`. */
-export async function buildPlugin(plugin: PluginBuild): Promise<void> {
-  writePluginVersions(plugin.pluginDir, plugin.versionedFiles);
+/**
+ * Copies each of `plugin.copies` from `root` into the plugin, its target
+ * replaced as a whole. `cpSync` keeps a file's mode, so the launcher stays
+ * executable.
+ */
+export function copyPluginTrees(plugin: PluginBuild, root: string = REPO_ROOT): void {
   for (const { from, to } of plugin.copies ?? []) {
     const target = join(plugin.pluginDir, to);
     rmSync(target, { recursive: true, force: true });
-    cpSync(join(REPO_ROOT, from), target, { recursive: true });
+    cpSync(join(root, from), target, { recursive: true });
   }
+}
+
+/** Builds `plugin` in place: versions, copied trees, then `dist/`. */
+export async function buildPlugin(plugin: PluginBuild): Promise<void> {
+  writePluginVersions(plugin.pluginDir, plugin.versionedFiles);
+  copyPluginTrees(plugin);
   await buildDist(plugin, distOf(plugin));
 }
