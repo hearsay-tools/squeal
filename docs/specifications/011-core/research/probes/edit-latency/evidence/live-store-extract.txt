@@ -1,0 +1,49 @@
+# Live store copy, toolkit-dev/.git/squeal/store.sqlite at 13:32Z 2026-10-22, worktree c5357edc (daemon 0.1.263). Times UTC.
+## revisions
+{"number":63,"at":"13:08:46.491","changes":"[{\"path\":\".gitignore\",\"oldHash\":\"2739646e25ffbde5f2f453a8aedd8fc9baef3e35\",\"newHash\":\"e4e76c56def15a08f64c631e85319770e8913eda\"}]"}
+{"number":64,"at":"13:19:47.653","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":null,\"newHash\":\"b59af12842ebc28100cdcc68d02ea1cb51430c8c\"}]"}
+{"number":65,"at":"13:19:50.212","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"b59af12842ebc28100cdcc68d02ea1cb51430c8c\",\"newHash\":\"376c6d61215af656c488dd8346bb3e6316acdc5a\"}]"}
+{"number":66,"at":"13:20:03.401","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"376c6d61215af656c488dd8346bb3e6316acdc5a\",\"newHash\":null},{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/cli.py\",\"oldHash\":\"2e3d6afc52906961013592f40a09638e98abc32a\",\"newHash\":\"46a0095d13110c91b5bf550a71d5ff33e9993b53\"}]"}
+{"number":67,"at":"13:22:48.574","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":null,\"newHash\":\"a12d8a9f3354a658719a37c4cc28151a6733776e\"}]"}
+{"number":68,"at":"13:22:49.671","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"a12d8a9f3354a658719a37c4cc28151a6733776e\",\"newHash\":\"7f7472910afe4e3a7984f95e6f2f392b16171551\"}]"}
+{"number":69,"at":"13:22:50.767","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"7f7472910afe4e3a7984f95e6f2f392b16171551\",\"newHash\":null},{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/cli.py\",\"oldHash\":\"46a0095d13110c91b5bf550a71d5ff33e9993b53\",\"newHash\":\"2e3d6afc52906961013592f40a09638e98abc32a\"}]"}
+{"number":70,"at":"13:24:01.531","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":null,\"newHash\":\"dee568daa783fe536a68f10198954dae3e512b02\"}]"}
+{"number":71,"at":"13:24:08.267","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"dee568daa783fe536a68f10198954dae3e512b02\",\"newHash\":\"b4063847a4ba6075efeeccc4af2fcbb2012381c2\"}]"}
+{"number":72,"at":"13:24:12.730","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"b4063847a4ba6075efeeccc4af2fcbb2012381c2\",\"newHash\":\"e27feffe189609ccd9dda12ca0b9f87f561db3e9\"}]"}
+{"number":73,"at":"13:24:17.145","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"e27feffe189609ccd9dda12ca0b9f87f561db3e9\",\"newHash\":null},{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/cli.py\",\"oldHash\":\"2e3d6afc52906961013592f40a09638e98abc32a\",\"newHash\":\"46a0095d13110c91b5bf550a71d5ff33e9993b53\"}]"}
+{"number":74,"at":"13:25:00.510","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":null,\"newHash\":\"3c095ed8872bc779240c483df4a287f187f3c22e\"}]"}
+{"number":75,"at":"13:25:01.632","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"3c095ed8872bc779240c483df4a287f187f3c22e\",\"newHash\":\"c2def7dc01c0b451afce1d82c9c6e741187631fe\"}]"}
+{"number":76,"at":"13:25:05.387","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"c2def7dc01c0b451afce1d82c9c6e741187631fe\",\"newHash\":null},{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/cli.py\",\"oldHash\":\"46a0095d13110c91b5bf550a71d5ff33e9993b53\",\"newHash\":\"2e3d6afc52906961013592f40a09638e98abc32a\"}]"}
+{"number":77,"at":"13:25:31.523","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":null,\"newHash\":\"f31f501c40468787b9f7e3efec39f5dd15c0b64a\"}]"}
+{"number":78,"at":"13:25:32.681","changes":"[{\"path\":\"plugin-tools/estimate-pricing/estimate_pricing/.cli.py.swp\",\"oldHash\":\"f31f501c40468787b9f7e3efec39f5dd15c0b64a\",\"newHash\":null}]"}
+## runs
+{"id":"baf47226-66bd-4843-a025-2373a42ff5f9","revision":66,"checkpoint_id":null,"started":"13:20:49.839","ended":"13:22:19.010","end_state":"completed","test_files":"[{\"project\":\"@apptension/marketplace-generator\",\"path\":\"tools/generator/tests/publish.test.ts\"}]"}
+{"id":"2202a931-1014-49f8-8880-b1c86937c146","revision":66,"checkpoint_id":null,"started":"13:22:19.100","ended":"13:22:49.760","end_state":"completed","test_files":"[{\"project\":\"@apptension/marketplace-generator\",\"path\":\"tools/generator/tests/publish.test.ts\"}]"}
+{"id":"245cf8c4-9de6-4950-847a-6668727bb113","revision":69,"checkpoint_id":"a6b8463a-b29c-465f-accb-40f3fbd73bd0","started":"13:23:07.806","ended":"13:24:02.878","end_state":"completed","test_files":"[{\"project\":\"@apptension/marketplace-generator\",\"path\":\"tools/generator/tests/publish.test.ts\"}]"}
+{"id":"e942c4ae-65ac-4d3c-804b-bf8e40d691d8","revision":73,"checkpoint_id":"a6b8463a-b29c-465f-accb-40f3fbd73bd0","started":"13:24:21.698","ended":"13:25:01.700","end_state":"completed","test_files":"[{\"project\":\"@apptension/marketplace-generator\",\"path\":\"tools/generator/tests/publish.test.ts\"}]"}
+{"id":"db1ae35f-8276-4c41-8a5b-d047db2204d8","revision":76,"checkpoint_id":"a6b8463a-b29c-465f-accb-40f3fbd73bd0","started":"13:25:20.638","ended":"13:25:32.827","end_state":"completed","test_files":"[{\"project\":\"@apptension/marketplace-generator\",\"path\":\"tools/generator/tests/publish.test.ts\"}]"}
+{"id":"a55e8896-44e7-4686-961c-7564a37c67f7","revision":78,"checkpoint_id":"a6b8463a-b29c-465f-accb-40f3fbd73bd0","started":"13:25:51.646","ended":"13:27:06.655","end_state":"completed","test_files":"[{\"project\":\"@apptension/marketplace-generator\",\"path\":\"tools/generator/tests/publish.test.ts\"}]"}
+## checkpoints
+{"id":"7fb0bdd4-6a36-4969-ac33-bab1e5f9e2b7","revision":63,"kind":"baseline","started":"13:19:01.136","completed":"13:19:01.137","end_state":"completed","test_files":"[]"}
+{"id":"a6b8463a-b29c-465f-accb-40f3fbd73bd0","revision":69,"kind":"run-all","started":"13:23:01.306","completed":"13:27:06.660","end_state":"completed","test_files":"[{\"project\":\"@apptension/marketplace-generator\",\"path\":\"tools/generator/tests/publish.test.ts\"}]"}
+{"id":"7c616b78-885a-42b7-a235-d1406a25dcf1","revision":73,"kind":"run-all","started":"13:24:21.951","completed":"13:27:06.660","end_state":"completed","test_files":"[{\"project\":\"@apptension/marketplace-generator\",\"path\":\"tools/generator/tests/publish.test.ts\"}]"}
+## transitions (grouped)
+{"kind":"pass-to-fail","revision":66,"at":"13:22:19.059","n":13}
+{"kind":"fail-to-pass","revision":69,"at":"13:22:50.824","n":13}
+{"kind":"pass-to-fail","revision":73,"at":"13:24:17.187","n":13}
+{"kind":"fail-to-pass","revision":76,"at":"13:25:05.422","n":13}
+## publish.test.ts file results by key
+{"key":"89907375","outcome":"pass","revision":16,"ms":79582,"recorded":"11:03:10.020"}
+{"key":"e0c3dd20","outcome":"pass","revision":17,"ms":72345,"recorded":"11:38:19.847"}
+{"key":"1c05d444","outcome":"pass","revision":20,"ms":76443,"recorded":"11:53:57.100"}
+{"key":"13df55e5","outcome":"pass","revision":26,"ms":91984,"recorded":"12:11:19.366"}
+{"key":"1e6a0056","outcome":"pass","revision":32,"ms":101443,"recorded":"12:36:07.076"}
+{"key":"8fa84338","outcome":"pass","revision":61,"ms":82851,"recorded":"13:02:42.097"}
+{"key":"fa6792a0","outcome":"pass","revision":66,"ms":88280,"recorded":"13:22:19.010"}
+{"key":"45c3f618","outcome":"pass","revision":78,"ms":74447,"recorded":"13:27:06.655"}
+## meta
+{"key":"quiet:c5357edc0cd13b40","value":"{\"at\":1792675531640,\"lanes\":{\"vitest\":1792675551640}}"}
+{"key":"reruns:c5357edc0cd13b40","value":"[{\"testFile\":{\"project\":\"@apptension/marketplace-generator\",\"path\":\"tools/generator/tests/publish.test.ts\"},\"key\":\"fa6792a043240321e7773bba4e2a18df54708f69b2de56edb0e6c96401d04e74\",\"pending\":false}]"}
+## other stores, runs overlapping 13:19:45-13:20:50 (copies of squeal and cezar stores)
+{"store":"squeal","worktree_id":"ea937e1151f225ee","started":"13:18:38.603","ended":"13:22:58.386","files":200,"checkpoint":1}
+{"store":"cezar","worktree_id":"511d644c270abb4e","started":"13:16:20.299","ended":"13:20:48.405","test_files":"[{\"project\":\"e2e\",\"path\":\"packages/web/e2e/touch-targets.e2e.ts\"}]","checkpoint":0}
