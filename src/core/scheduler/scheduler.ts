@@ -30,6 +30,7 @@ import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
+import { scratchUnstable } from "./editor-scratch.js";
 import { rekeyEnvironments } from "./environment-growth.js";
 import { heldFiles, MergeHold } from "./hold.js";
 import {
@@ -903,6 +904,12 @@ class TierScheduler implements Scheduler {
     const read = installMoved ? undefined : await prepareObserved(context, ran, tier.run);
     const observed =
       environment === undefined || read === undefined ? read : { ...read, environment };
+    // Row 011-117 (review 0.1.268 B1): a listing editor scratch files moved during the run, one
+    // the run observed first included, as the batches applied before this record leave it.
+    const changed = new Set([
+      ...inputs.changed,
+      ...scratchUnstable(context, tier, observed?.growth),
+    ]);
     const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
     // Row 011-72 (011 C9): a file whose key names an unmerged path stores nothing and stays
     // queued; that withhold counts toward no withhold limit.
@@ -963,7 +970,7 @@ class TierScheduler implements Scheduler {
         ledger,
         tier,
         report,
-        inputs.changed,
+        changed,
         requeue,
         observed,
         commit,
