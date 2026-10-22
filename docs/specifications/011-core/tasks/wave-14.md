@@ -43,3 +43,41 @@ Read W1 and W2 above, the notes under `tasks/011-77/`, `tasks/011-108/` and `tas
 - `--json` of `failures` and `why` grows additively; `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is raised in all eight places; the bundles match the tree; the four launchers are byte-identical.
 
 Run `npm ci`, then the test files W1 and W2 added or changed, directly. The full suite is CI on the candidate and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-w14.log`); read both by test name. Rows 011-111 and the run-cell S2 teardown test are known flakes. Write `reviews/<version>.md` with a PASS or FAIL verdict and commit it alone.
+
+## Wave 14.5: repair of review 0.1.265
+
+Both start from `ffa124533` (cand/0.1.265 f9fb6c219 plus `reviews/0.1.265.md`). Their seams are disjoint; they run in parallel.
+
+### W3: B1 and B2, replaced failures in order and reachable from `why`
+
+Use /worker. Shape: repair, one commit per blocker, B1 first.
+
+Outcome: `--per-check` and `why` order replaced failures by when they failed, and `why` finds a kept failure whose check has no state or result left in this worktree.
+
+Read `reviews/0.1.265.md` B1, B2 and "Inputs for the fix wave", W1 above, `tasks/011-77/notes.md`, spec 011 C6 and C7.
+
+Seam: B1 at `selectReplaced` (`src/core/status/replaced-failures.ts:95`) and `replacedOf` (`src/core/status/why.ts:264`); B2 at `why.ts:258` and its check guards at lines 76 to 95. A lead: the review's two probes as failing tests first, B1 with a stored failure between the two kept ones.
+
+Owns: `src/core/status/replaced-failures.ts`, `why.ts`, `failures.ts`, `format-why.ts`, `format-why-replaced.ts`, `test/cli/failures-replaced.test.ts`, `test/status/why-older-failures.test.ts`, new tests beside them, `tasks/011-77/notes.md`. Not yours: `src/core/store/` (W4), `why-unknown.ts` (W4), keyed results and their storage, the board, spec text, bundles, version. No `npm run build`.
+
+Done when: both probes' tests fail on the baseline and pass; a stable tie rule is tested; exact and partial `why` lookups find the kept failure with its log and stack after its worktree's prune; the existing failures and `why` tests and `test/keys/key-format.test.ts` pass; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+### W4: B3, a standing UNKNOWN keeps its run record
+
+Use /worker. Shape: repair.
+
+Outcome: no bound evicts the record of an UNKNOWN that still stands, so `why` names its run and prune keeps that run until the state changes.
+
+Read `reviews/0.1.265.md` B3 and "Inputs for the fix wave", W1 above, `tasks/011-108/notes.md`, spec 011 C6 and C7 (the 011-108 sentences).
+
+Seam: `recordUnknownRuns` in `src/core/store/repos/unknown-runs.ts:57`, then `src/core/status/why-unknown.ts:47` and `src/core/store/prune.ts:108`. A lead: drop fallen records before any bound applies; the review's probe as a failing test first.
+
+Owns: `src/core/store/repos/unknown-runs.ts`, `src/core/status/why-unknown.ts`, `src/core/store/prune.ts`, `test/scheduler/unknown-run.test.ts`, `test/status/why-unknown-run.test.ts`, new tests beside them, `tasks/011-108/notes.md`. Not yours: `why.ts`, `failures.ts`, `replaced-failures.ts` (W3), `ledger.ts` (ask first), the board, spec text, bundles, version. No `npm run build`.
+
+Done when: the probe's test fails on the baseline and passes; more than 1,024 records across worktrees, and many recovered records followed by one new UNKNOWN, keep every standing one through a prune past retention; a record this release wrote never reads `older-daemon`; `test/keys/key-format.test.ts` passes; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+### R2: narrow re-review of the repaired wave 14 candidate
+
+Use /reviewer. Shape: review, narrow, the last round. R1 failed cand/0.1.265 at f9fb6c219 (`reviews/0.1.265.md`, B1 to B3). The coordinator re-cuts it with W3's and W4's commits and one release commit, pinned to the SHA named in the spawn.
+
+Check only: `git range-diff` shows wave 14's nine commits unchanged but for their cherry-pick lines; B1 to B3 hold as the review's expected behaviour says, by W3's and W4's tests and your own probes; no keyed result, key format, validity, delivery or schema change; the version and the bundles as in R1. Run `npm ci`, then the files W3 and W4 changed or added, directly. The full suite is CI on the candidate and the coordinator's locked gate; read both by test name. Write `reviews/<version>-r2.md` with a PASS or FAIL verdict and commit it alone.
