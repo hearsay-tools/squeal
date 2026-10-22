@@ -95,6 +95,8 @@ Started: 2026-10-07
 
 - 2026-10-09, the 001 lane's review 001-195 (`../001-core-loop/reviews/wave-13k.md`, FAIL at `ff5808eb`, gpt-6.1-sol): both `reviews/wave-4.md` B1 and `reviews/wave-4.5.md` B1 are closed on the integrated candidate (003-45 with 001-194) on Node 22 and 24, which settles 003-43's slice. Its B1, the same completed-sibling boundary when a result under the previous key and a later growth fall in one revision, and S1 concern `status --wait` only (no wrong result stored or shown) and are the 001 lane's repair. The joint hub release 0.1.86 (from `2bc1c995`, approved by the human) carries 003-43 and 003-45.
 
+- 2026-10-22, 005-79 (the human, from the review of toolkit-dev session c92fddaf): D7 amended. A daemon that builds no Vitest while a `package.json` below the root lists `vitest` writes one note naming those directories, the root-only rule and the fix; that agent read `squeal status --notes` and found nothing on why three Vitest suites never ran.
+
 ## Research
 
 Complete 2026-10-07: `research/node-test-runner-api.md`, `research/node-test-module-graph.md`, every question tagged, experiments on Linux only. The spec is written from these files.

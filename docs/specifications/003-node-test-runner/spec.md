@@ -75,6 +75,8 @@ The daemon holds one `RunnerAdapter` per configured or detected runner behind a 
 
 Amended 2026-10-21 (the human, 011 row 011-62): The runners built per configured project follow a reload of `squeal.config.json` (011 C10 as amended, 011-62).
 
+Amended 2026-10-22 (the human, 005 row 005-79): when the daemon starts without a Vitest that this rule detects and a tracked `package.json` below the root lists `vitest` in `dependencies` or `devDependencies`, it writes one note that names those directories, says Squeal loads Vitest from the root only, and names the fix (a root Vitest config whose projects name them, with `vitest` in the root `package.json`). Detection itself is unchanged.
+
 ### D8. Policy and amendments to 001
 
 001 D11 gains the `nodeTest` key of D1 and loses the sentence that a project without Vitest is a runner failure, replaced by D7's rule. 001 D4's add, delete and manifest rules stay Vitest's; D3's closure definition gains "for node:test, as 003 D3 defines it". `runner.timeoutMs` and `runner.tierSize` apply to both runners.
