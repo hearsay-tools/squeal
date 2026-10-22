@@ -437,6 +437,7 @@ var WORKTREE_META_ROWS = {
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
+  quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },

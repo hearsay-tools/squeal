@@ -318,6 +318,7 @@ var init_store = __esm({
       heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
       promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
       yields: { prefix: "yields:", owner: "scheduler/yields" },
+      quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
       rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
       rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
       optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
@@ -1208,7 +1209,14 @@ var init_packages = __esm({
 
 // src/core/keys/dependencies.ts
 import { createHash as createHash4 } from "node:crypto";
-function dependencyKeys(installed, environment) {
+function dependencyKeys(installed, environment, formerEnvironment = environment) {
+  const keys = currentKeys(installed, environment);
+  const { fingerprint, former = null } = installed;
+  if (former === null && formerEnvironment === environment) return keys;
+  const then = { ...installed, fingerprint: former ?? fingerprint };
+  return { ...keys, former: currentKeys(then, formerEnvironment) };
+}
+function currentKeys(installed, environment) {
   const { graph, fingerprint } = installed;
   if (graph === null || environment === void 0 || isOpaque(environment)) {
     return { environment: fingerprint, of: () => "" };
@@ -1252,8 +1260,8 @@ var init_dependencies = __esm({
 import { createHash as createHash5 } from "node:crypto";
 import { lstatSync as lstatSync2, readdirSync as readdirSync2, readFileSync as readFileSync4, readlinkSync } from "node:fs";
 import { isAbsolute as isAbsolute3, join as join7 } from "node:path";
-function staleHiddenLockfile(dir2, content) {
-  const listed5 = listedPackages(content);
+function staleHiddenLockfile(dir2, lockfile) {
+  const listed5 = lockfile === null ? null : packagesIn(lockfile);
   if (listed5 === null) return "not valid JSON";
   const lockTime = lstatSync2(join7(dir2, HIDDEN_LOCKFILE)).mtimeMs;
   const folders = packageFolders(dir2, workspaces(listed5));
@@ -1271,22 +1279,31 @@ function staleHiddenLockfile(dir2, content) {
   const reasons = parts2.filter(([, paths]) => paths.length > 0).map(([label2, paths]) => `${label2}: ${example(paths)}`);
   return reasons.length === 0 ? null : reasons.join("; ");
 }
-function packageFoldersFingerprint(dir2, content) {
-  const folders = packageFolders(dir2, workspaces(listedPackages(content) ?? {}));
+function packageFoldersFingerprint(dir2, lockfile) {
+  const folders = packageFolders(dir2, workspaces(lockfile === null ? {} : packagesIn(lockfile)));
   folders.sort((a, b) => compare(a.path, b.path));
   const entries3 = folders.map(
     ({ path, link }) => link ? [path, "link", readlinkSync(join7(dir2, path))] : [path, ...nameAndVersion(dir2, path)]
   );
   return createHash5("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries3])).digest("hex");
 }
-function listedPackages(content) {
+function parseHiddenLockfile(content) {
   let parsed2;
   try {
     parsed2 = JSON.parse(content.toString("utf8"));
   } catch {
     return null;
   }
-  return isRecord(parsed2) && isRecord(parsed2.packages) ? parsed2.packages : {};
+  return isRecord(parsed2) ? parsed2 : {};
+}
+function withoutOwnVersions(lockfile) {
+  const { name: _name, version: _version, ...rest } = lockfile;
+  const own = (path, entry4) => (path === "" || isWorkspace(path)) && isRecord(entry4) ? { ...entry4, version: void 0 } : entry4;
+  const packages = isRecord(rest.packages) ? Object.fromEntries(Object.entries(rest.packages).map(([path, e]) => [path, own(path, e)])) : rest.packages;
+  return JSON.stringify({ ...rest, packages });
+}
+function packagesIn(lockfile) {
+  return isRecord(lockfile.packages) ? lockfile.packages : {};
 }
 function isInstalledFolder(path) {
   return insideInstall(path) && (path.startsWith("node_modules/") || path.includes("/node_modules/"));
@@ -1294,8 +1311,11 @@ function isInstalledFolder(path) {
 function insideInstall(path) {
   return path !== "" && !isAbsolute3(path) && path !== ".." && !path.startsWith("../");
 }
+function isWorkspace(path) {
+  return insideInstall(path) && !isInstalledFolder(path);
+}
 function workspaces(listed5) {
-  return Object.keys(listed5).filter((path) => insideInstall(path) && !isInstalledFolder(path));
+  return Object.keys(listed5).filter(isWorkspace);
 }
 function packageFolders(dir2, workspaceFolders) {
   const folders = [];
@@ -1369,6 +1389,23 @@ var init_key_format = __esm({
   }
 });
 
+// src/core/keys/pnpm-lockfile.ts
+function withoutLinkedSpecifiers(text3) {
+  const lines = text3.split("\n");
+  return lines.filter((line, at2) => !linkedSpecifier(line, lines[at2 + 1] ?? "")).join("\n");
+}
+function linkedSpecifier(line, next) {
+  const indent2 = /^( +)specifier: /.exec(line)?.[1];
+  return indent2 !== void 0 && next.startsWith(`${indent2}version: link:`);
+}
+var PNPM_LOCKFILE;
+var init_pnpm_lockfile = __esm({
+  "src/core/keys/pnpm-lockfile.ts"() {
+    "use strict";
+    PNPM_LOCKFILE = "node_modules/.pnpm/lock.yaml";
+  }
+});
+
 // src/core/keys/environment.ts
 import { createHash as createHash6 } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
@@ -1432,17 +1469,24 @@ async function installedDependencies(projectRoot, worktreeRoot2, scans) {
   const found3 = await locateLockfile(projectRoot, worktreeRoot2);
   if (found3 === null) return { fingerprint: "none", note: null, graph: null, patches: "none" };
   const { dir: dir2, format, content } = found3;
-  const stale = format.path === HIDDEN_LOCKFILE ? staleHiddenLockfile(dir2, content) : null;
+  const npm = format.path === HIDDEN_LOCKFILE;
+  const hidden = npm ? parseHiddenLockfile(content) : null;
+  const stale = npm ? staleHiddenLockfile(dir2, hidden) : null;
   const hash2 = createHash6("sha256").update(`${format.path}\0`);
-  if (stale === null) hash2.update(content);
-  else hash2.update(`stale\0${packageFoldersFingerprint(dir2, content)}`);
+  if (stale !== null) hash2.update(`stale\0${packageFoldersFingerprint(dir2, hidden)}`);
+  else if (hidden !== null) hash2.update(`${INSTALLED_ENCODING}\0${withoutOwnVersions(hidden)}`);
+  else if (format.path === PNPM_LOCKFILE) {
+    hash2.update(`${INSTALLED_ENCODING}\0${withoutLinkedSpecifiers(content.toString("utf8"))}`);
+  } else hash2.update(content);
+  const filtered = stale === null && (hidden !== null || format.path === PNPM_LOCKFILE);
+  const former = filtered ? createHash6("sha256").update(`${format.path}\0`).update(content) : null;
   const patches = createHash6("sha256");
   if (format.patches !== null) {
     const patchesDir = join8(dir2, format.patches);
     for (const path of await listEntries(patchesDir)) {
       const bytes2 = await readIfFile(join8(patchesDir, path));
       if (bytes2 === null) continue;
-      for (const target of [hash2, patches]) {
+      for (const target of [hash2, patches, ...former === null ? [] : [former]]) {
         target.update(`\0${path}\0${bytes2.byteLength}\0`).update(bytes2);
       }
     }
@@ -1452,7 +1496,13 @@ async function installedDependencies(projectRoot, worktreeRoot2, scans) {
   const listed5 = format.path === HIDDEN_LOCKFILE && stale === null ? packagesOf(content) : null;
   const base = resolve2(dir2) === resolve2(worktreeRoot2) ? "" : toRelative(worktreeRoot2, dir2);
   const graph = listed5 === null || base === null ? null : new InstalledGraph(dir2, base, listed5, scans);
-  return { fingerprint: hash2.digest("hex"), note, graph, patches: patches.digest("hex") };
+  return {
+    fingerprint: hash2.digest("hex"),
+    former: former?.digest("hex") ?? null,
+    note,
+    graph,
+    patches: patches.digest("hex")
+  };
 }
 function packagesOf(content) {
   try {
@@ -1489,7 +1539,7 @@ async function listEntries(dir2) {
     throw error;
   }
 }
-var ENVIRONMENT_ENCODING, LOCKFILES;
+var ENVIRONMENT_ENCODING, INSTALLED_ENCODING, LOCKFILES;
 var init_environment = __esm({
   "src/core/keys/environment.ts"() {
     "use strict";
@@ -1497,18 +1547,42 @@ var init_environment = __esm({
     init_hidden_lockfile();
     init_key_format();
     init_packages();
+    init_pnpm_lockfile();
     ENVIRONMENT_ENCODING = "squeal-environment/1";
+    INSTALLED_ENCODING = "squeal-installed/2";
     LOCKFILES = [
       { path: HIDDEN_LOCKFILE, patches: "patches" },
       { path: "node_modules/.yarn-state.yml", patches: null },
       { path: ".pnp.cjs", patches: ".yarn/patches" },
       { path: ".pnp.js", patches: ".yarn/patches" },
       { path: "node_modules/.yarn-integrity", patches: "patches" },
-      { path: "node_modules/.pnpm/lock.yaml", patches: null },
+      { path: PNPM_LOCKFILE, patches: null },
       { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
       { path: "bun.lock", patches: "patches" },
       { path: "bun.lockb", patches: "patches" }
     ];
+  }
+});
+
+// src/core/keys/former.ts
+function formerReadAsOne(core, environment, dependencies, hashOf2, packagesOf2) {
+  const former = dependencies?.former ?? null;
+  if (former === null && environment.formerFiles === void 0) return [];
+  const inputs2 = former === null ? core : { ...core, installedDependencies: former.environment };
+  const runner = { ...environment, files: environment.formerFiles ?? environment.files };
+  const segment = former === null ? {} : { segment: (testFile) => former.of(packagesOf2(testFile)) };
+  return [KEY_FORMAT_VERSION, ...Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number)].filter((format) => format <= FORMER_LAST_FORMAT).map((format) => ({
+    environment: environmentHash(inputs2, runner, hashOf2, format),
+    ...segment
+  }));
+}
+var FORMER_LAST_FORMAT;
+var init_former = __esm({
+  "src/core/keys/former.ts"() {
+    "use strict";
+    init_environment();
+    init_key_format();
+    FORMER_LAST_FORMAT = 20;
   }
 });
 
@@ -1622,7 +1696,7 @@ var init_key_index = __esm({
       keyed = /* @__PURE__ */ new Map();
       paths = /* @__PURE__ */ new Map();
       environments = /* @__PURE__ */ new Map();
-      /** Each project's environment hashes at the formats read as one (task 011-38). */
+      /** Each project's environment hashes at the formats and definitions read as one (011-38, 011-90). */
       readAsOne = /* @__PURE__ */ new Map();
       /** The test file each current key belongs to, by `testFileId`. */
       ids = /* @__PURE__ */ new Map();
@@ -1651,7 +1725,8 @@ var init_key_index = __esm({
        * installed-dependency segment of each of their test files, then re-keys
        * once each test file whose project hash or segment moved, so no key
        * passes through a mix of old and new inputs (task 001-105). `readAsOne`
-       * holds each project's hashes at the formats read as one (task 011-38).
+       * holds each project's hashes at the formats read as one (task 011-38) and
+       * under the definition before task 011-85 (011-90).
        */
       setInstalled(environments2, dependenciesOf, readAsOne = /* @__PURE__ */ new Map()) {
         const moved2 = /* @__PURE__ */ new Set();
@@ -1715,9 +1790,12 @@ var init_key_index = __esm({
       }
       /**
        * The test file whose current key is `key`, with its keys at the formats
-       * read as one (spec 011 C3 as amended 2026-10-20, task 011-38), computed
-       * over the segments the index holds, once per key. `null` when no test
-       * file holds `key` now.
+       * read as one (spec 011 C3 as amended 2026-10-20, task 011-38) and under
+       * the definition before task 011-85 (011-90), computed over the segments
+       * the index holds, each entry's installed-dependency segment in place of
+       * the file's own, once per key. `setClosure` and `setInstalled` drop the
+       * memo, so a segment is read with the packages the key was computed over.
+       * `null` when no test file holds `key` now.
        */
       keysReadAsOne(key2) {
         const id2 = this.ids.get(key2);
@@ -1727,7 +1805,9 @@ var init_key_index = __esm({
         const environments2 = this.readAsOne.get(testFile.project) ?? [];
         let memo2 = keyed.readAsOne;
         if (memo2?.key !== key2 || memo2.environments !== environments2) {
-          const keys = environments2.flatMap((envHash) => this.keyOf(keyed, envHash) ?? []);
+          const keys = environments2.flatMap(
+            (entry4) => this.keyOf(keyed, entry4.environment, entry4.segment) ?? []
+          );
           memo2 = { key: key2, environments: environments2, keys };
           keyed.readAsOne = memo2;
         }
@@ -1749,14 +1829,16 @@ var init_key_index = __esm({
         }
         return changes;
       }
-      /** `null` while any closure path is untracked. */
-      keyOf(keyed, envHash) {
+      /** `null` while any closure path is untracked. `segment` gives the installed-dependency segment in place of the file's own. */
+      keyOf(keyed, envHash, segment) {
         const segments2 = [];
         for (const entry4 of keyed.entries) {
           if (entry4.hash === void 0) return null;
           segments2.push(entry4.segment);
         }
-        return keyFromSegments(envHash, keyed.closure.testFile, segments2, keyed.dependencies);
+        const { testFile } = keyed.closure;
+        const dependencies = segment === void 0 ? keyed.dependencies : segment(testFile);
+        return keyFromSegments(envHash, testFile, segments2, dependencies);
       }
       /** The entry of `path` with one more reference; a new entry reads the hash. */
       acquire(path) {
@@ -1829,6 +1911,7 @@ var init_keys = __esm({
     init_closure();
     init_dependencies();
     init_environment();
+    init_former();
     init_glob();
     init_key_format();
     init_key_index();
@@ -8139,6 +8222,64 @@ var init_capacity = __esm({
   }
 });
 
+// src/core/scheduler/backlog.ts
+function cancelsBacklog(context, ledger, revision, tier) {
+  if (queuesEdit(context, ledger, tier)) return true;
+  const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
+  return revision?.changes.some((change2) => inputs2.has(change2.path)) ?? false;
+}
+function queuesEdit(context, ledger, tier) {
+  return ledger.queue.hasRecent((ref2) => laneOf(context, ref2) === tier.lane);
+}
+function backlogBudget(timeoutMs) {
+  return timeoutMs === null ? BACKLOG_TIER_BUDGET_MS : Math.min(BACKLOG_TIER_BUDGET_MS, timeoutMs / 2);
+}
+function wallEstimate(sum, longest2, width) {
+  return sum / width + (1 - 1 / width) * longest2;
+}
+var BACKLOG_TIER_BUDGET_MS, BacklogWall;
+var init_backlog = __esm({
+  "src/core/scheduler/backlog.ts"() {
+    "use strict";
+    init_tiers();
+    BACKLOG_TIER_BUDGET_MS = 12e4;
+    BacklogWall = class {
+      constructor(budget) {
+        this.budget = budget;
+      }
+      budget;
+      #parts = /* @__PURE__ */ new Map();
+      #first = null;
+      /**
+       * Whether a file of `durationMs`, `null` when unknown and counted 0, joins
+       * a tier where its part runs `width` wide; it is counted when it does.
+       */
+      take(durationMs2, width, part = "") {
+        const was = this.#parts.get(part) ?? { count: 0, sum: 0, longest: 0, width: Infinity };
+        const w2 = Math.max(1, Math.min(was.width, Math.floor(width)));
+        const next = {
+          count: was.count + 1,
+          sum: was.sum + (durationMs2 ?? 0),
+          longest: Math.max(was.longest, durationMs2 ?? 0),
+          width: w2
+        };
+        const firstRound = (this.#first ?? part) === part && this.#parts.size <= 1 && was.count < w2;
+        if (!firstRound && this.#estimate(part, next) > this.budget) return false;
+        this.#first ??= part;
+        this.#parts.set(part, next);
+        return true;
+      }
+      /** The tier's wall estimate with `part` as `next`: its parts' estimates summed. */
+      #estimate(part, next) {
+        let total = wallEstimate(next.sum, next.longest, next.width);
+        for (const [name2, p] of this.#parts)
+          if (name2 !== part) total += wallEstimate(p.sum, p.longest, p.width);
+        return total;
+      }
+    };
+  }
+});
+
 // src/core/scheduler/capacity.ts
 function widthLease(lease, width) {
   return {
@@ -9674,6 +9815,26 @@ function tellLiveness(store, consumer, told) {
 function markRest(store, worktreeId, at2) {
   store.meta.set(daemonRestMetaKey(worktreeId), JSON.stringify({ at: at2 }));
 }
+function resumesRest(store, worktree) {
+  return worktree !== null && restAfterHeartbeats(store, worktree) !== null;
+}
+function restAfterHeartbeats(store, worktree) {
+  const rest = readRest(store, worktree.id);
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
+  return rest === null || rest.at < heartbeat ? null : rest;
+}
+function readRest(store, worktreeId) {
+  const text3 = store.meta.get(daemonRestMetaKey(worktreeId));
+  if (text3 === null) return null;
+  try {
+    const rest = JSON.parse(text3);
+    if (!isRecord(rest) || typeof rest.at !== "number") return null;
+    const spawnedAt = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
+    return { at: rest.at, ...spawnedAt };
+  } catch {
+    return null;
+  }
+}
 function revisionMetaKey(worktreeId) {
   return worktreeMetaKey("revisionTold", worktreeId);
 }
@@ -9975,6 +10136,12 @@ var init_ledger = __esm({
       broken = false;
       /** The last test file listing failed; the next revision lists again. */
       listingFailed = false;
+      /**
+       * A departure drain pauses the backlog (011 C9 as amended 2026-10-21, row
+       * 011-93): `ordered` and `fastQueued` hold only the drain's files, and the
+       * paused ones stay queued for the next daemon.
+       */
+      backlogPaused = false;
       /** Global setups that failed to start a run, and their outcomes owed to the sink (task 001-382). */
       setups = new SetupFailures();
       #dirty = /* @__PURE__ */ new Set();
@@ -10007,10 +10174,21 @@ var init_ledger = __esm({
       }
       /**
        * The queue in run order: D5 step 4 classes, shortest last known duration
-       * first within one; `turn` false orders it as if the backlog's turn were not due.
+       * first within one; `turn` false orders it as if the backlog's turn were
+       * not due. While the backlog is paused, only the drain's files.
        */
       ordered(turn = this.queue.backlogTurn()) {
-        return this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null, turn);
+        const ordered = this.queue.ordered((ref2) => this.file(ref2)?.durationMs ?? null, turn);
+        return this.backlogPaused ? ordered.filter((ref2) => this.#drains(ref2)) : ordered;
+      }
+      /** Whether a fast file `where` holds is queued to run: while the backlog is paused, a drain's. */
+      fastQueued(where3 = () => true) {
+        return this.queue.hasFast((ref2) => where3(ref2) && (!this.backlogPaused || this.#drains(ref2)));
+      }
+      /** A file a drain runs: an edit's work or a promoted file, the open explicit checkpoint's, a re-run. */
+      #drains(ref2) {
+        if (this.queue.isFirstGroup(ref2) || this.file(ref2)?.rerunPending === true) return true;
+        return this.checkpoints.active?.explicit === true && this.checkpoints.idFor(ref2) !== null;
       }
       /**
        * The slow class of the queue in the order the slow tier runs it (spec 004
@@ -11441,7 +11619,8 @@ function rekeyContent(context, ledger, revision) {
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
   const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs2) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
-  ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
+  const misses = ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
+  quietQueued(context, ledger, misses);
   const recent = touched.filter((ref2) => ledger.queue.isRecent(ref2));
   return {
     rekeyed,
@@ -11556,6 +11735,7 @@ var init_revision2 = __esm({
     init_failures2();
     init_notes2();
     init_omitted_test_files();
+    init_quiet();
     init_runner_work_bound();
     CATCH_UP_KEYED_PATHS = 10;
   }
@@ -11769,10 +11949,12 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), turnDue =
   let lane = null;
   let slot2 = null;
   let skipped2 = false;
+  const now = context.now();
   for (const ref2 of ledger.ordered(turnDue)) {
     if (picked.length >= size) break;
     const at2 = laneOf(context, ref2);
     if (busy.has(at2) || lane !== null && at2 !== lane) continue;
+    if (backlog && context.quiet?.waits(at2, now) === true) continue;
     const file = ledger.file(ref2);
     const key2 = file?.key ?? null;
     if (!file || key2 === null || file.blocked !== null) {
@@ -12137,59 +12319,99 @@ var init_tiers = __esm({
   }
 });
 
-// src/core/scheduler/backlog.ts
-function cancelsBacklog(context, ledger, revision, tier) {
-  if (queuesEdit(context, ledger, tier)) return true;
-  const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
-  return revision?.changes.some((change2) => inputs2.has(change2.path)) ?? false;
+// src/core/scheduler/quiet.ts
+function quietQueued(context, ledger, misses) {
+  const { quiet } = context;
+  if (quiet === void 0) return;
+  const now = context.now();
+  const lanes = /* @__PURE__ */ new Set();
+  for (const { ref: ref2 } of misses) if (ledger.queue.has(ref2)) lanes.add(laneOf(context, ref2));
+  for (const lane of lanes) quiet.queued(lane, now);
 }
-function queuesEdit(context, ledger, tier) {
-  return ledger.queue.hasRecent((ref2) => laneOf(context, ref2) === tier.lane);
+function quietSleepMs(context, ledger) {
+  const { quiet } = context;
+  if (quiet === void 0) return null;
+  const now = context.now();
+  const ends = quiet.ends(now);
+  if (ends.size === 0) return null;
+  let earliest = null;
+  for (const [lane, until] of ends) {
+    if (!ledger.queue.hasFast((ref2) => laneOf(context, ref2) === lane)) continue;
+    earliest = earliest === null ? until : Math.min(earliest, until);
+  }
+  return earliest === null ? null : Math.min(QUIET_RECHECK_MS, Math.max(0, earliest - now));
 }
-function backlogBudget(timeoutMs) {
-  return timeoutMs === null ? BACKLOG_TIER_BUDGET_MS : Math.min(BACKLOG_TIER_BUDGET_MS, timeoutMs / 2);
+function quietMetaKey(worktreeId) {
+  return worktreeMetaKey("quiet", worktreeId);
 }
-function wallEstimate(sum, longest2, width) {
-  return sum / width + (1 - 1 / width) * longest2;
+function publishQuiet(store, worktreeId, ends, at2) {
+  const key2 = quietMetaKey(worktreeId);
+  if (ends.size === 0) store.meta.delete(key2);
+  else store.meta.set(key2, JSON.stringify({ at: at2, lanes: Object.fromEntries(ends) }));
 }
-var BACKLOG_TIER_BUDGET_MS, BacklogWall;
-var init_backlog = __esm({
-  "src/core/scheduler/backlog.ts"() {
+function publishedQuiet(store, worktreeId, daemonStartedAt, now) {
+  const raw = store.meta.get(quietMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const { at: at2, lanes } = JSON.parse(raw);
+    if (typeof at2 !== "number" || at2 < daemonStartedAt) return /* @__PURE__ */ new Map();
+    if (typeof lanes !== "object" || lanes === null) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(lanes).filter(
+        (entry4) => typeof entry4[1] === "number" && entry4[1] > now
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+var BACKLOG_QUIET_MS, QUIET_RECHECK_MS, BacklogQuiet;
+var init_quiet = __esm({
+  "src/core/scheduler/quiet.ts"() {
     "use strict";
+    init_types();
     init_tiers();
-    BACKLOG_TIER_BUDGET_MS = 12e4;
-    BacklogWall = class {
-      constructor(budget) {
-        this.budget = budget;
+    BACKLOG_QUIET_MS = 2e4;
+    QUIET_RECHECK_MS = 1e3;
+    BacklogQuiet = class {
+      constructor(publish = () => {
+      }) {
+        this.publish = publish;
       }
-      budget;
-      #parts = /* @__PURE__ */ new Map();
-      #first = null;
-      /**
-       * Whether a file of `durationMs`, `null` when unknown and counted 0, joins
-       * a tier where its part runs `width` wide; it is counted when it does.
-       */
-      take(durationMs2, width, part = "") {
-        const was = this.#parts.get(part) ?? { count: 0, sum: 0, longest: 0, width: Infinity };
-        const w2 = Math.max(1, Math.min(was.width, Math.floor(width)));
-        const next = {
-          count: was.count + 1,
-          sum: was.sum + (durationMs2 ?? 0),
-          longest: Math.max(was.longest, durationMs2 ?? 0),
-          width: w2
-        };
-        const firstRound = (this.#first ?? part) === part && this.#parts.size <= 1 && was.count < w2;
-        if (!firstRound && this.#estimate(part, next) > this.budget) return false;
-        this.#first ??= part;
-        this.#parts.set(part, next);
-        return true;
+      publish;
+      /** When each lane's wait ends, on the scheduler's clock; an end not after now is no wait. */
+      #until = /* @__PURE__ */ new Map();
+      /** A revision or an edit's work cancelled the backlog tier of `lane` at `now`: its wait starts. */
+      cancelled(lane, now) {
+        this.#until.set(lane, now + BACKLOG_QUIET_MS);
+        this.#told(now);
       }
-      /** The tier's wall estimate with `part` as `next`: its parts' estimates summed. */
-      #estimate(part, next) {
-        let total = wallEstimate(next.sum, next.longest, next.width);
-        for (const [name2, p] of this.#parts)
-          if (name2 !== part) total += wallEstimate(p.sum, p.longest, p.width);
-        return total;
+      /** A revision's re-key queued a test file of `lane` at `now`: a wait of the lane starts again. */
+      queued(lane, now) {
+        if (!this.waits(lane, now)) return;
+        this.#until.set(lane, now + BACKLOG_QUIET_MS);
+        this.#told(now);
+      }
+      /** `squeal run --all`: every wait ends. */
+      end(now) {
+        if (this.#until.size === 0) return;
+        this.#until.clear();
+        this.#told(now);
+      }
+      /** Whether `lane` waits for quiet at `now`. */
+      waits(lane, now) {
+        const until = this.#until.get(lane);
+        if (until === void 0) return false;
+        if (until > now) return true;
+        this.#until.delete(lane);
+        return false;
+      }
+      /** The end of each wait after `now`, by lane. */
+      ends(now) {
+        return new Map([...this.#until].filter(([, until]) => until > now));
+      }
+      #told(now) {
+        this.publish(this.ends(now), now);
       }
     };
   }
@@ -12285,7 +12507,9 @@ var init_yields = __esm({
        * A file has ended when the runner named it (`Tier.ended`, row 011-54,
        * review `reviews/0.1.237.md` B2); a runner that names none leaves every
        * file unfinished, so its tier is cancelled by the first rule only when
-       * every file of it was re-keyed.
+       * every file of it was re-keyed. A backlog tier cancelled by either of the
+       * first two rules starts its lane's wait for quiet (`BacklogQuiet`, row
+       * 011-82); a backlog slot, whose runner cannot cancel, starts none.
        */
       check(context, ledger, tiers, revision) {
         this.#forget(ledger);
@@ -12296,6 +12520,8 @@ var init_yields = __esm({
             if (decision === "yield")
               for (const { file, key: key2 } of unfinished(tier))
                 this.#cut.set(file.id, { key: key2, applied: file.resultsApplied });
+            else if (tier.kind === "backlog" && tier.slot !== true)
+              context.quiet?.cancelled(tier.lane, context.now());
             tier.cancel?.abort(decision);
           }
           const standing = typeof decision === "string" ? { kind: "yields" } : decision;
@@ -12407,6 +12633,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
   const promoted = promotedOf(store, worktreeId, daemon, now);
   const yields = yieldsOf(store, worktreeId, daemon);
+  const quiet = quietOf(store, worktreeId, daemon, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -12465,6 +12692,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ...run4 === void 0 ? {} : { files: run4.testFiles.length },
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now);
+    const quietUntil = pending.kind === "queued" ? quiet.get(pending.lane) : void 0;
+    if (pending.kind === "queued" && pending.behind === null && quietUntil !== void 0) {
+      if (!promoted.has(testFileId(ref2))) {
+        const held2 = { ...pending, quietUntil };
+        return { testFile: ref2, state, pending: held2, standing: held2 };
+      }
+    }
     if (pending.kind === "queued" && promoted.has(testFileId(ref2))) {
       const tier = pending.behind === null ? void 0 : yieldIn(runs, lane, policy, yields);
       const promotedReason = {
@@ -12527,6 +12761,11 @@ function yieldsOf(store, worktreeId, daemon) {
   if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Map();
   return publishedYields(store, worktreeId, record.startedAt);
 }
+function quietOf(store, worktreeId, daemon, now) {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Map();
+  return publishedQuiet(store, worktreeId, record.startedAt, now);
+}
 function yieldIn(runs, lane, policy, yields) {
   const run4 = runIn(runs, lane, policy);
   return run4 === void 0 ? void 0 : yields.get(run4.id);
@@ -12579,6 +12818,7 @@ var init_standing = __esm({
     init_load();
     init_claims();
     init_promotions();
+    init_quiet();
     init_runner_work_bound();
     init_slow3();
     init_yields();
@@ -12597,7 +12837,7 @@ function groupId(s) {
     case "running":
       return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
@@ -14065,21 +14305,24 @@ var init_handover = __esm({
 
 // src/core/scheduler/bootstrap.ts
 import { randomUUID as randomUUID6 } from "node:crypto";
-async function scan(context, ledger) {
+async function scan(context, ledger, resumesRest2 = false) {
   const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
   const refined = readRefined2(store, worktreeId) ?? latest?.number ?? 0;
-  const revision = await keys.bootstrap(context.head) ?? latest;
+  const started2 = await keys.bootstrap(context.head);
+  const revision = started2 ?? latest;
   ledger.revision = revision === null ? { number: 0, ...await context.head() } : { number: revision.number, head: revision.head, dirty: revision.dirty };
-  if (revision === null) return [];
-  return store.revisions.range(worktreeId, refined, revision.number).map(({ changes }) => new Set(changes.map((change2) => change2.path)));
+  const unseen = revision === null ? [] : store.revisions.range(worktreeId, refined, revision.number).map(({ changes }) => new Set(changes.map((change2) => change2.path)));
+  if (!resumesRest2 || keys.seededAtStart.length === 0) return unseen;
+  const startPaths = started2 === null ? [] : [...unseen.pop() ?? []];
+  return [...unseen, /* @__PURE__ */ new Set([...startPaths, ...keys.seededAtStart])];
 }
 function readRefined2(store, worktreeId) {
   const raw = store.meta.get(refinedMetaKey(worktreeId));
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
 }
-async function baseline(context, ledger, unseen = []) {
+async function baseline(context, ledger, unseen = [], resumesRest2 = false) {
   const { store, keys, worktreeId, policy } = context;
   const bound = runnerPartBound(context);
   const failures = /* @__PURE__ */ new Map();
@@ -14150,6 +14393,7 @@ async function baseline(context, ledger, unseen = []) {
   );
   const lookupOnly2 = policy.baseline.onStart === "lookup-only";
   if (lookupOnly2) ledger.checkpoints.finish("abandoned");
+  const holds3 = lookupOnly2 && !resumesRest2;
   const handed = handover(context, ledger, previousKeys);
   const changed2 = /* @__PURE__ */ new Set([...unseen.flatMap((paths) => [...paths]), ...handed.changed]);
   const recent = new Set(handed.first);
@@ -14159,7 +14403,7 @@ async function baseline(context, ledger, unseen = []) {
   for (const paths of unseen) {
     const large = isCatchUp(context, ledger, paths);
     const reached = ledger.recentOf(paths);
-    const cut = lookupOnly2 || large || ![...reached].some((id2) => missed.has(id2)) ? null : await cutAtStart(context, ledger, paths, bound);
+    const cut = holds3 || large || ![...reached].some((id2) => missed.has(id2)) ? null : await cutAtStart(context, ledger, paths, bound);
     for (const id2 of cut?.direct ?? []) direct.add(id2);
     for (const id2 of cut?.reached ?? reached) {
       const kept2 = !large && (cut === null || cut.kept === null || cut.kept.has(id2));
@@ -14167,7 +14411,8 @@ async function baseline(context, ledger, unseen = []) {
     }
   }
   for (const file of misses) {
-    if (lookupOnly2 && !handed.pending.has(file.id)) continue;
+    const reached = resumesRest2 && (recent.has(file.id) || catchUp.has(file.id));
+    if (lookupOnly2 && !handed.pending.has(file.id) && !reached) continue;
     const first2 = recent.has(file.id);
     const priority = priorityOf(file, changed2, direct);
     ledger.enqueue(file, priority, false, first2, !first2 && catchUp.has(file.id));
@@ -14743,7 +14988,8 @@ var init_lockfiles = __esm({
             read5.set(path, installed);
             if (path !== null) this.#noteOnce(path, installed.note);
           }
-          keys.set(environment.project, dependencyKeys(installed, environment.packages));
+          const { packages, formerPackages: formerPackages2 } = environment;
+          keys.set(environment.project, dependencyKeys(installed, packages, formerPackages2));
         }
         return keys;
       }
@@ -14841,6 +15087,8 @@ var init_keying = __esm({
       options;
       cache;
       index;
+      /** The paths the last `bootstrap` hashed for the first time, without a revision (row 011-91). */
+      seededAtStart = [];
       isDeclaredInput = (path) => this.#isDeclared(path);
       #runnerClosures = /* @__PURE__ */ new Map();
       #environments = /* @__PURE__ */ new Map();
@@ -14921,9 +15169,10 @@ var init_keying = __esm({
           revision = await this.reconcile({ trigger: "start", paths }, head);
         }
         const linked = await linkedFiles(this.options.root, listed5, this.extraFiles());
-        await this.#seed(
-          [...listed5, ...linked].filter((path) => this.cache.hashOf(path) === void 0)
+        this.seededAtStart = [...listed5, ...linked].filter(
+          (path) => this.cache.hashOf(path) === void 0
         );
+        await this.#seed(this.seededAtStart);
         this.#declared = createDeclaredInputs(this.#policy.inputs, this.#declarable());
         return revision;
       }
@@ -14936,7 +15185,8 @@ var init_keying = __esm({
        * Sets the environment hash of every project from runner output (D3). The
        * runner files and each project's installed lockfile are hashed first; the
        * lockfile is looked up from the project's root (review N8). Each project
-       * gets its hashes at the formats read as one too (011 C3, task 011-38).
+       * gets its hashes at the formats read as one too (011 C3, task 011-38), and
+       * under the definition before task 011-85 (`formerReadAsOne`, 011-90).
        */
       async setEnvironments(environments2) {
         const { squealVersion: squealVersion2, env } = this.options;
@@ -14949,24 +15199,29 @@ var init_keying = __esm({
         }
         this.#dependencies = await this.#lockfiles.set(environments2);
         const lockPaths = this.#lockfiles.paths();
-        await this.track([...this.#environmentFiles, ...lockPaths]);
+        const formerFiles = environments2.flatMap((environment) => environment.formerFiles ?? []);
+        await this.track([...this.#environmentFiles, ...formerFiles, ...lockPaths]);
         await this.#watchIgnored(lockPaths);
         const hashOf2 = (path) => this.cache.hashOf(path);
+        const packagesOf2 = (ref2) => this.#runnerClosures.get(testFileId(ref2))?.packages;
         const hashes = /* @__PURE__ */ new Map();
         const readAsOne = /* @__PURE__ */ new Map();
         const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
         for (const environment of environments2) {
+          const dependencies = this.#dependencies.get(environment.project);
           const core = coreEnvironmentInputs({
             squealVersion: squealVersion2,
-            installedDependencies: this.#dependencies.get(environment.project)?.environment ?? "none",
+            installedDependencies: dependencies?.environment ?? "none",
             allowlist: policy.env.allowlist,
             ...env === void 0 ? {} : { env }
           });
           hashes.set(environment.project, environmentHash(core, environment, hashOf2));
-          readAsOne.set(
-            environment.project,
-            formats.map((format) => environmentHash(core, environment, hashOf2, format))
-          );
+          readAsOne.set(environment.project, [
+            ...formats.map((format) => ({
+              environment: environmentHash(core, environment, hashOf2, format)
+            })),
+            ...formerReadAsOne(core, environment, dependencies, hashOf2, packagesOf2)
+          ]);
         }
         return this.index.setInstalled(
           hashes,
@@ -15410,7 +15665,7 @@ async function applyRunnerPart(context, ledger, part, changedMeanwhile, keyedAt)
     ...keyedAt === void 0 ? {} : { keyedAt },
     ...catchUp ? { catchUp: true } : {}
   };
-  ledger.settle(touched.values(), changed2, options);
+  quietQueued(context, ledger, ledger.settle(touched.values(), changed2, options));
   settleFailures(ledger, part.failures, part.retrying, changed2, options);
   if (!catchUp && keyedAt !== void 0 && part.cut !== void 0) {
     const { kept: kept2, reached } = editWork(context, ledger, part.cut, changed2, part.direct);
@@ -15430,6 +15685,7 @@ var init_refinement = __esm({
     init_failures2();
     init_notes2();
     init_omitted_test_files();
+    init_quiet();
     init_revision2();
     init_runner_work_bound();
   }
@@ -15790,6 +16046,12 @@ var init_slow_tier = __esm({
       #slotMissedSince = null;
       /** This worktree's waiter's mark is in the slot's directory. */
       #marked = false;
+      /**
+       * A departure drain (011 C9 and 004 D2 as amended 2026-10-21, row
+       * 011-93): it leaves no waiter mark and takes no permit while another
+       * worktree's mark is fresh, so a live session's slow files go first.
+       */
+      draining = false;
       /** The last pass took the slot: its next skips one turn for another worktree's mark. */
       #tookLast = false;
       #slotNoted = false;
@@ -15802,6 +16064,10 @@ var init_slow_tier = __esm({
       #preemptions = 0;
       /** What this tier last published, as stored, so `close` clears only its own. */
       #published = null;
+      /** A `run --slow` request is open: the daemon is in use while slow files are pending (row 011-92). */
+      get requested() {
+        return this.#requested;
+      }
       /**
        * `run --slow`: the pending slow files run behind fast work, whatever the
        * turns and the load (trigger b; D3 as amended 2026-10-14, task 004-59). A
@@ -15856,7 +16122,7 @@ var init_slow_tier = __esm({
         const { maxParallel } = context.policy.slow;
         const load = guard.ranUnderLoad;
         const want = guard.idle && this.host.fastIdle() ? Math.min(maxParallel, refs2.length) : 1;
-        const yieldTurn = this.#tookLast && othersWaitingForSlot(dir2, context.worktreeId);
+        const yieldTurn = (this.#tookLast || this.draining) && othersWaitingForSlot(dir2, context.worktreeId);
         const owner2 = { pid: process.pid, worktreeId: context.worktreeId };
         const slot2 = yieldTurn ? null : acquireSlowSlot({ dir: dir2, owner: owner2, permits: maxParallel, want });
         if (slot2 === null) return this.#waitAtSlot(context, dir2, yieldTurn);
@@ -15885,19 +16151,25 @@ var init_slow_tier = __esm({
        * 2026-10-09), its fast backlog (a baseline, a checkpoint, `run --all`)
        * queued or running unless a `run --slow` request is open (D2 as amended
        * 2026-10-14, task 004-60), so a warm-up's slow files never contend with
-       * its fast ones.
+       * its fast ones. During a departure drain only the drain's fast work
+       * counts: the paused backlog is not pending (`fastIdle`, row 011-93).
        */
       #fastFirst() {
         return this.host.editPending() || !this.#requested && !this.host.fastIdle();
       }
       /**
        * Another worktree holds the slot, or this one yields its turn: the files
-       * wait at the slot, marked as a waiter, and retry at `SLOW_RECHECK_MS`.
+       * wait at the slot, marked as a waiter unless draining, and retry at
+       * `SLOW_RECHECK_MS`.
        */
       #waitAtSlot(context, dir2, yielded) {
         this.#tookLast = false;
-        markSlotWaiter(dir2, context.worktreeId);
-        this.#marked = true;
+        if (this.draining) {
+          this.#unmark(dir2, context.worktreeId);
+        } else {
+          markSlotWaiter(dir2, context.worktreeId);
+          this.#marked = true;
+        }
         this.#publish({ kind: "waiting", for: "slot" });
         if (!yielded) this.#slotMissed(context, dir2);
         this.#arm();
@@ -16300,6 +16572,7 @@ var init_warm_up = __esm({
 });
 
 // src/core/scheduler/scheduler.ts
+import { setTimeout as delay4 } from "node:timers/promises";
 function createScheduler(options) {
   return new TierScheduler(options);
 }
@@ -16330,6 +16603,7 @@ var init_scheduler2 = __esm({
     init_mutex();
     init_observed2();
     init_queue();
+    init_quiet();
     init_rerun();
     init_retries();
     init_revision2();
@@ -16389,6 +16663,10 @@ var init_scheduler2 = __esm({
       #inFlight = /* @__PURE__ */ new Map();
       /** Which tiers in flight a revision, a runner part or a promotion cancels (C4 step 5, row 011-51). */
       #yields = new TierYields();
+      /** The lanes that wait for quiet after a backlog tier's cancel (C4 step 5, row 011-82). */
+      #quiet = new BacklogQuiet(
+        (ends, at2) => publishQuiet(this.options.store, this.options.worktreeId, ends, at2)
+      );
       /** A check of the tiers in flight a file's end queued under the lock, not run yet (row 011-54). */
       #endCheck = false;
       /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
@@ -16428,6 +16706,8 @@ var init_scheduler2 = __esm({
       #busy;
       /** The keys other worktrees stored since the last read (spec 011 C4 step 3, task 011-23). */
       #storedKeys;
+      /** A departure drain paused the backlog (`pauseBacklog`, row 011-93). */
+      #backlogPaused = false;
       async start() {
         await this.#lock.run(async () => {
           if (this.#context) throw new Error("squeal scheduler: started twice");
@@ -16467,11 +16747,13 @@ var init_scheduler2 = __esm({
             ...options.runnerPartMs === void 0 ? {} : { runnerPartMs: options.runnerPartMs },
             ...options.incarnation === void 0 ? {} : { incarnation: options.incarnation },
             ...options.predecessor === void 0 ? {} : { predecessor: options.predecessor },
-            ...this.#capacity === null ? {} : { capacity: this.#capacity }
+            ...this.#capacity === null ? {} : { capacity: this.#capacity },
+            quiet: this.#quiet
           };
           const ledger = new Ledger(context);
+          ledger.backlogPaused = this.#backlogPaused;
           this.#ledger = ledger;
-          this.#waitChanges = await scan(context, ledger);
+          this.#waitChanges = await scan(context, ledger, options.resumesRest === true);
           stopWaiting(context);
           const missing2 = await missingInstall(options.root);
           this.#awaitingInstall = missing2 !== null;
@@ -16582,7 +16864,7 @@ var init_scheduler2 = __esm({
         stopWaiting(context);
         const unseen = this.#waitChanges;
         this.#waitChanges = [];
-        await baseline(context, ledger, unseen);
+        await baseline(context, ledger, unseen, this.options.resumesRest === true);
       }
       /**
        * The install went while the scheduler runs (`npm ci` removes
@@ -16623,6 +16905,7 @@ var init_scheduler2 = __esm({
           const { policy } = this.#started().context;
           const only2 = lane === void 0 ? void 0 : { lane, isSlow: slowView(policy).isSlow };
           const record2 = queueFullSuite(ledger, force, warmUp2, only2);
+          this.#quiet.end(this.#started().context.now());
           if (warmUp2) this.#warmUp.start(this.#started().context, ledger, record2);
           return record2;
         };
@@ -16699,12 +16982,34 @@ var init_scheduler2 = __esm({
         return new Promise((resolve25) => this.#idle.push(resolve25));
       }
       /**
-       * Work queued or running, slow files included: the daemon is in use while
-       * it has any (D10 as amended, task 001-415).
+       * Use is the work an edit, a request or a wait caused (011 C9 as amended
+       * 2026-10-21, row 011-92): an edit's work and a promoted file
+       * (`#editPending`), what is owed (`owedWork`), an open `run --slow`
+       * request. The backlog is no use, queued or running.
        */
-      busy() {
-        if (this.#closed) return false;
-        return this.#inFlight.size > 0 || !this.#isIdle() || this.slowPending();
+      inUse() {
+        if (this.#closed || !this.#ledger) return false;
+        if (this.#slow.requested && this.slowPending()) return true;
+        return this.#editPending() || this.owedWork() !== null;
+      }
+      /**
+       * A departure drain runs only its session's work (011 C9 as amended
+       * 2026-10-21, row 011-93): the backlog stays queued, the slow lane waits
+       * only for the drain's fast work (004 D2), and the slow tier yields the
+       * slot to another worktree's fresh mark. `false` ends the pause.
+       */
+      pauseBacklog(on) {
+        if (this.#closed || this.#backlogPaused === on) return;
+        this.#backlogPaused = on;
+        if (this.#ledger) this.#ledger.backlogPaused = on;
+        this.#slow.draining = on;
+        this.#slow.preempt();
+        this.#pump();
+      }
+      queued() {
+        if (this.#closed || !this.#ledger) return 0;
+        const { queue } = this.#ledger;
+        return queue.fastSize + queue.slowSize;
       }
       slowPending() {
         if (this.#closed || !this.#ledger) return false;
@@ -16847,6 +17152,7 @@ var init_scheduler2 = __esm({
                 await this.#claimWake();
                 continue;
               }
+              if (await this.#quietWake()) continue;
               if (this.#inFlight.size === 0 && !this.#woken) break;
               await this.#nextEvent();
             }
@@ -16989,7 +17295,7 @@ var init_scheduler2 = __esm({
       #freeLaneQueued() {
         const { context, ledger } = this.#started();
         const busy = this.#busyLanes();
-        return ledger.queue.hasFast((ref2) => !busy.has(laneOf(context, ref2)));
+        return ledger.fastQueued((ref2) => !busy.has(laneOf(context, ref2)));
       }
       /** The lanes no tier may start in now. */
       #busyLanes() {
@@ -17026,6 +17332,23 @@ var init_scheduler2 = __esm({
         } finally {
           stop2.abort();
         }
+      }
+      /**
+       * A lane with a fast file queued waits for quiet (C4 step 5 as amended
+       * 2026-10-21, row 011-82): the pump looks again at the wait's end, at most
+       * `QUIET_RECHECK_MS` on, or on `#notify`. False when no such lane waits.
+       */
+      async #quietWake() {
+        const { context, ledger } = this.#started();
+        const ms2 = quietSleepMs(context, ledger);
+        if (ms2 === null) return false;
+        const stop2 = new AbortController();
+        try {
+          await Promise.race([this.#nextEvent(), delay4(ms2, void 0, { signal: stop2.signal })]);
+        } finally {
+          stop2.abort();
+        }
+        return true;
       }
       /** Settles when `#notify` is called; at once when it was since the pump's last pass began. */
       #nextEvent() {
@@ -17068,7 +17391,7 @@ var init_scheduler2 = __esm({
        */
       #hasWork() {
         if (this.#awaitingInstall || this.#reinstalled) return false;
-        return this.#runnerWork.size > 0 || (this.#ledger?.queue.fastSize ?? 0) > 0;
+        return this.#runnerWork.size > 0 || this.#ledger?.fastQueued() === true;
       }
       /**
        * An edit's fast work goes before a slow file (spec 004 D2 as amended):
@@ -17082,10 +17405,13 @@ var init_scheduler2 = __esm({
           ({ tier }) => tier.kind !== "backlog" && !isSlowLane(tier.lane)
         );
       }
-      /** No fast work pending or running: an idle slow tier may take several files (D2). */
+      /**
+       * No fast work pending or running: an idle slow tier may take several
+       * files (D2). During a drain, the paused backlog is not pending (row 011-93).
+       */
       #fastIdle() {
         const work = this.#runnerWork;
-        if (work.size > 0 || work.refining || (this.#ledger?.queue.fastSize ?? 0) > 0) return false;
+        if (work.size > 0 || work.refining || this.#ledger?.fastQueued() === true) return false;
         return this.#lanes().every(isSlowLane);
       }
       /**
@@ -20645,8 +20971,14 @@ var init_graph = __esm({
 // src/runners/vitest/project.ts
 import { basename as basename12, dirname as dirname22, join as join52 } from "node:path";
 function configFiles(vitest) {
+  return collect([vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]);
+}
+function projectConfigFiles(vitest, project) {
+  return collect([vitest.vite.config, project.vite.config]);
+}
+function collect(configs) {
   const files2 = /* @__PURE__ */ new Set();
-  for (const config of [vitest.vite.config, ...vitest.projects.map((p) => p.vite.config)]) {
+  for (const config of configs) {
     if (config.configFile) files2.add(config.configFile);
     for (const dep of config.configFileDependencies) files2.add(dep);
   }
@@ -20662,7 +20994,7 @@ async function projectInputs(vitest, project) {
     ...missingCandidates(setup, extensions),
     ...missingCandidates(globalSetup, extensions)
   ]);
-  return { configFiles: configFiles(vitest), setup, globalSetup, missing: missing2 };
+  return { configFiles: projectConfigFiles(vitest, project), setup, globalSetup, missing: missing2 };
 }
 function isProjectInput(inputs2, path) {
   return inputs2.configFiles.has(path) || inputs2.setup.files.has(path) || inputs2.globalSetup.files.has(path) || inputs2.missing.has(path);
@@ -20707,12 +21039,13 @@ var init_project = __esm({
 });
 
 // src/runners/vitest/related.ts
-async function relatedSpecifications(vitest, changed2) {
+async function relatedSpecifications(vitest, listed5, changed2) {
   if (changed2.length === 0) return [];
   const related = [...changed2];
   vitest.config.related = related;
   try {
-    const specs = await vitest.getRelevantTestSpecifications();
+    const specifications = vitest.specifications;
+    const specs = await specifications.filterTestsBySource([...listed5]);
     if (vitest.config.related !== related) {
       throw new Error("vitest adapter: a run ended during the related walk and reset it");
     }
@@ -20744,7 +21077,7 @@ async function affectedTestFiles(vitest, specs, changed2) {
   };
   let related;
   try {
-    related = await relatedSpecifications(vitest, changed2);
+    related = await relatedSpecifications(vitest, specs, changed2);
   } catch {
     related = await walkRelated(specs, changed2);
   }
@@ -21264,13 +21597,362 @@ var init_config_stamps = __esm({
   }
 });
 
+// node_modules/es-module-lexer/dist/lexer.js
+function C(A2, Q2, B2) {
+  if (B2 < 1 || Q2 + B2 > A2.length) throw new SyntaxError();
+  let E2 = 0;
+  const C3 = Q2 + B2;
+  for (let B3 = Q2; B3 < C3; B3++) {
+    const Q3 = A2.charCodeAt(B3), C4 = 32 | Q3, g2 = Q3 >= 48 && Q3 <= 57 ? Q3 - 48 : C4 >= 97 && C4 <= 102 ? C4 - 87 : -1;
+    if (-1 === g2) throw new SyntaxError();
+    E2 = 16 * E2 + g2;
+  }
+  return E2;
+}
+function parse3(H2, N2 = "@") {
+  w || R();
+  const M = H2.length + 1, k = (w.__heap_base.value || w.__heap_base) + 4 * M + 16 - w.memory.buffer.byteLength;
+  k > 0 && w.memory.grow(Math.ceil(k / 65536));
+  const G = w.sa(M - 1);
+  if (H2.length >= 64 && B) Buffer.from(w.memory.buffer, G, 2 * (M - 1)).write(H2, "utf16le");
+  else {
+    const A2 = w.memory.buffer;
+    (null == D ? void 0 : D.buffer) !== A2 && (D = new Uint16Array(A2, G)), (Q ? I : g)(H2, D);
+  }
+  if (!w.parse()) throw Object.assign(new Error(`Parse error ${N2}:${H2.slice(0, w.e()).split("\n").length}:${w.e() - H2.lastIndexOf("\n", w.e() - 1)}`), { idx: w.e() });
+  const s = [], L = [];
+  for (; w.ri(); ) {
+    const A2 = w.is(), Q2 = w.ie(), B2 = w.it(), E2 = 15 & B2, C3 = w.ai(), g2 = w.id(), I2 = w.ss(), D2 = w.se(), N3 = w.ip();
+    let R2, M2 = false;
+    if (1 & N3 ? R2 = U(-1 === g2 ? A2 : A2 + 1, -1 === g2 ? Q2 : Q2 - 1, A2, !!(2 & N3)) : -1 !== g2 && "`" === H2[A2] && (R2 = i3(A2, Q2), M2 = void 0 !== R2), 3 === E2) s.push({ type: "import-meta", specifier: null, typeOnly: false, start: A2, end: Q2, importStart: I2, importEnd: D2 });
+    else if (-1 !== g2) {
+      const w2 = 5 === E2 ? "source" : 7 === E2 ? "defer" : null;
+      s.push({ type: "dynamic", specifier: R2, glob: M2, phase: w2, start: A2, end: Q2, importStart: I2, importEnd: D2, dynamicStart: g2, attributes: null, attributesStart: C3, probablyTypeOnly: !!(16 & B2) });
+    } else {
+      let g3 = null;
+      if (-1 !== C3) {
+        for (g3 = [], w.rsa(); w.ra(); ) {
+          const A3 = w.aks(), Q3 = w.ake(), B3 = w.avs(), E3 = w.ave();
+          g3.push([o(A3, Q3), o(B3, E3)]);
+        }
+        0 === g3.length && (g3 = null);
+      }
+      const H3 = 4 === E2 ? "source" : 6 === E2 ? "defer" : null;
+      s.push({ type: 8 === E2 ? "reexport-star" : "static", specifier: R2, phase: H3, start: A2, end: Q2, importStart: I2, importEnd: D2, attributes: g3, attributesStart: C3, typeOnly: !!(16 & B2) });
+    }
+  }
+  let J = w.re();
+  const Y = 0 === J ? void 0 : new DataView(w.memory.buffer);
+  for (; 0 !== J; ) {
+    A;
+    const Q2 = Y.getUint32(J, true) - G >>> 1, B2 = Y.getUint32(J + 4, true) - G >>> 1, E2 = Y.getUint32(J + 8, true), C3 = 0 === E2 ? -1 : E2 - G >>> 1, g2 = Y.getUint32(J + 12, true), I2 = 0 === g2 ? -1 : g2 - G >>> 1, D2 = Y.getUint32(J + 16, true) - G >>> 1, H3 = Y.getUint32(J + 20, true), N3 = Y.getUint8(J + 24), R2 = Y.getUint8(J + 25), M2 = !!(4 & R2);
+    if (3 === N3) L.push({ type: "reexport-all", from: s[H3].specifier, importIndex: H3, start: Q2, end: B2, exportStart: D2, typeOnly: M2 });
+    else {
+      const A2 = o(Q2, B2);
+      if (1 === N3) {
+        const E3 = C3 < 0 ? void 0 : o(C3, I2);
+        L.push({ type: "direct", name: A2, localName: E3, start: Q2, end: B2, localStart: C3, localEnd: I2, exportStart: D2, typeOnly: M2 });
+      } else {
+        const E3 = 3 & R2, g3 = 0 === E3 ? o(C3, I2) : 1 === E3 ? "default" : null;
+        L.push({ type: "reexport", name: A2, importName: g3, importNameStart: 0 === E3 ? C3 : -1, importNameEnd: 0 === E3 ? I2 : -1, from: s[H3].specifier, importIndex: H3, start: Q2, end: B2, exportStart: D2, typeOnly: M2 });
+      }
+    }
+    J = w.re();
+  }
+  function U(A2, Q2, B2, g2 = false) {
+    try {
+      return (function(A3, Q3) {
+        let B3 = A3.indexOf("\\");
+        if (-1 === B3) return Q3 ? A3.replace(E, "\n") : A3;
+        let g3 = A3.slice(0, B3), I2 = Q3 ? g3.replace(E, "\n") : g3;
+        for (; ; ) {
+          let D2 = B3 + 1;
+          if (D2 >= A3.length) throw new SyntaxError();
+          const w2 = A3.charCodeAt(D2++);
+          switch (w2) {
+            case 13:
+              10 === A3.charCodeAt(D2) && D2++;
+              break;
+            case 10:
+            case 8232:
+            case 8233:
+              break;
+            case 114:
+              I2 += "\r";
+              break;
+            case 110:
+              I2 += "\n";
+              break;
+            case 116:
+              I2 += "	";
+              break;
+            case 98:
+              I2 += "\b";
+              break;
+            case 102:
+              I2 += "\f";
+              break;
+            case 118:
+              I2 += "\v";
+              break;
+            case 120:
+              I2 += String.fromCharCode(C(A3, D2, 2)), D2 += 2;
+              break;
+            case 117: {
+              let Q4;
+              if (123 === A3.charCodeAt(D2)) {
+                const B4 = A3.indexOf("}", ++D2);
+                if (-1 === B4) throw new SyntaxError();
+                Q4 = C(A3, D2, B4 - D2), D2 = B4 + 1;
+              } else Q4 = C(A3, D2, 4), D2 += 4;
+              if (Q4 > 1114111) throw new SyntaxError();
+              Q4 <= 65535 ? I2 += String.fromCharCode(Q4) : (Q4 -= 65536, I2 += String.fromCharCode(55296 + (Q4 >> 10), 56320 + (1023 & Q4)));
+              break;
+            }
+            case 48: {
+              const Q4 = A3.charCodeAt(D2);
+              if (Q4 >= 48 && Q4 <= 57) throw new SyntaxError();
+              I2 += "\0";
+              break;
+            }
+            default:
+              if (w2 >= 49 && w2 <= 57) throw new SyntaxError();
+              I2 += String.fromCharCode(w2);
+          }
+          const H3 = A3.indexOf("\\", D2);
+          if (-1 === H3) return g3 = A3.slice(D2), I2 + (Q3 ? g3.replace(E, "\n") : g3);
+          g3 = A3.slice(D2, H3), I2 += Q3 ? g3.replace(E, "\n") : g3, B3 = H3;
+        }
+      })(H2.slice(A2, Q2), g2);
+    } catch (A3) {
+      throw Object.assign(new Error(`Parse error ${N2}:${H2.slice(0, B2).split("\n").length}:${B2 - H2.lastIndexOf("\n", B2 - 1)}`), { idx: B2 });
+    }
+  }
+  function o(A2, Q2) {
+    const B2 = H2.charCodeAt(A2);
+    return 34 === B2 || 39 === B2 ? U(A2 + 1, Q2 - 1, A2) : H2.slice(A2, Q2);
+  }
+  function i3(A2, Q2) {
+    if (w.rts(), !w.rt()) return;
+    let B2 = "", E2 = A2 + 1, C3 = A2 + 1, g2 = w.te();
+    for (; C3 < Q2; ) {
+      const A3 = H2.charCodeAt(C3);
+      if (96 === A3) break;
+      92 !== A3 ? 42 !== A3 ? 36 === A3 && 123 === H2.charCodeAt(C3 + 1) && C3 + 2 <= g2 ? (B2 += H2.slice(E2, C3) + "*", C3 = E2 = g2, g2 = w.rt() ? w.te() : -1) : C3++ : (B2 += H2.slice(E2, C3) + "\\*", E2 = ++C3) : C3 += 2;
+    }
+    return B2 + H2.slice(E2, C3);
+  }
+  return [s, L, !!w.f(), !!w.ms()];
+}
+function g(A2, Q2) {
+  const B2 = A2.length;
+  let E2 = 0;
+  for (; E2 < B2; ) {
+    const B3 = A2.charCodeAt(E2);
+    Q2[E2++] = (255 & B3) << 8 | B3 >>> 8;
+  }
+}
+function I(A2, Q2) {
+  const B2 = A2.length;
+  let E2 = 0;
+  for (; E2 < B2; ) Q2[E2] = A2.charCodeAt(E2++);
+}
+var A, Q, B, E, D, w, H, N, init2, R;
+var init_lexer = __esm({
+  "node_modules/es-module-lexer/dist/lexer.js"() {
+    A = false;
+    Q = 1 === new Uint8Array(new Uint16Array([1]).buffer)[0];
+    B = "undefined" != typeof Buffer;
+    E = /\r\n?/g;
+    H = () => {
+      return A2 = "AGFzbQEAAAABOgpgAAF/YAF/AX9gAABgAX8AYAJ/fwF/YAR/f39/AGADf39/AX9gAn9/AGADf39/AGAHf39/f39/fwADWlkCAgEFAwUAAAAAAAAAAAAAAAIAAAAAAAAAAAACAAEGAAIBAgMDAQEAAQEBAgMDAAEBAQYBAQEBAgQFBwICAAAAAwEBAwQBAwEHAQgBBAQBAAQAAwQJAQQBBAQFAXABAgIFBwEBggKAgAIGDwJ/AUHwjQQLfwBB8I0ECwfBARwGbWVtb3J5AgACc2EAAgFlAAYCaXMABwJpZQAIAnNzAAkCc2UACgJpdAALAmFpAAwCaWQADQJpcAAOAnJ0AA8CdGUAEANydHMAEQJyaQASAnJlABMBZgAUAm1zABUCcmEAFgNha3MAFwNha2UAGANhdnMAGQNhdmUAGgNyc2EAGwVwYXJzZQAcC19faGVhcF9iYXNlAwELX2luaXRpYWxpemUAARlfX2luZGlyZWN0X2Z1bmN0aW9uX3RhYmxlAQAJBwEAQQELAQAMAQEKzeUBWSgAQagNQYDAADYCAEGgDUHwjQQ2AgBBiA1BKjYCAEGkDUGAgAQ2AgALBAAQAAt8AEGEDCAANgIAIABBAXQiAEEAOwHwjQRBiAwgAEHyjQRqNgIAQYwMPwBBEHQ2AgBB2AtBADYCAEHoC0EANgIAQeALQQA2AgBB3AtBADYCAEHwC0EANgIAQeQLQQA2AgBB+AtBADYCAEH8C0EANgIAQYAMQQA6AABB8I0EC/EBAQJ/QTgQBEGIDEGIDCgCACIEQThqNgIAAkBB6AsoAgAiBUUEQEHYCyAENgIADAELIAUgBDYCNAtB6AsgBDYCAEHsCyAFNgIAIAQgADYCCCAEQQA2AjQgBEEAOwAZIAQgA0EBRiIAOgAYIAQgAzYCFCAEQQA2AhAgBCACNgIEIAQgATYCACAE/QwAAAAAAAAAAAAAAAAAAAAA/QsCICAEQQA7ATAgBEEDQQFBAiAAGyADQQJGIgEbNgIcIAQgAiACQQJqQQAgABsgARs2AgxB+AtB+AsoAgBBAWo2AgAgA0EBa0EBTQRAQZAMQQE6AAALC0cBAX8gAEGIDCgCAGoiAEGMDCgCAEsEQCAAQYwMKAIAIgBrQf//A2oiAUEQdkAAQX9GBEAAC0GMDCAAIAFBgIB8cWo2AgALC4kBAQJ/QSQQBEGIDEGIDCgCACIEQSRqNgIAAkBB8AsoAgAiBUUEQEHcCyAENgIADAELIAUgBDYCIAtB8AsgBDYCACAEIAM2AgwgBCACNgIIIAQgATYCBCAEIAA2AgBB9AsoAgAhACAEQQA2AiAgBEEBOwEYIARBfzYCFCAEIAA2AhBBkAxBAToAAAsIAEGUDCgCAAsTAEHgCygCACgCAEHwjQRrQQF1CxwBAX9B4AsoAgAoAgQiAEHwjQRrQQF1QX8gABsLEwBB4AsoAgAoAghB8I0Ea0EBdQscAQF/QeALKAIAKAIMIgBB8I0Ea0EBdUF/IAAbCxsBAX9B4AsoAgAiACgCHCAALQAZQQR0QRBxcgscAQF/QeALKAIAKAIQIgBB8I0Ea0EBdUF/IAAbCzUBAn9BfyEAAkACQAJAQeALKAIAKAIUIgFBAWsOAgIBAAsgAUHwjQRrQQF1DwtBfiEACyAACwsAQeALKAIALQAYC0sBAn8CQEGcDAJ/QZgMLQAARQRAQZgMQQE6AABB4AsoAgBBJGoMAQtBnAwoAgAiAUUNASABQQRqCygCACIANgIAIABBAEchAAsgAAsTAEGcDCgCACgCAEHwjQRrQQF1CxIAQZgMQQA6AABBnAxBADYCAAslAQF/QeALQeALKAIAIgBBNGpB2AsgABsoAgAiADYCACAAQQBHCyIBAX9B5AtB5AsoAgAiAEEgakHcCyAAGygCACIANgIAIAALCABBoAwtAAALCABBkAwtAAALKwEBf0GkDEGkDCgCACIAQRBqQeALKAIAQSBqIAAbKAIAIgA2AgAgAEEARwsTAEGkDCgCACgCAEHwjQRrQQF1CxMAQaQMKAIAKAIEQfCNBGtBAXULEwBBpAwoAgAoAghB8I0Ea0EBdQsTAEGkDCgCACgCDEHwjQRrQQF1CwoAQaQMQQA2AgAL1CABCH8jAEGQ0ABrIgQkAEGgDEEBOgAAQawMQdgJNgIAQZAMQQA6AABBqAxBADsBAEGqDEEAOwEAQbAMQQA6AABBtAxBADYCAEG4DEEANgIAQbwMQQA2AgBBwAxBADoAAEHEDEEANgIAQZQMQQA2AgBBgQxBADoAAEHIDCAEQZAQajYCAEHMDCAEQRBqNgIAIARBADYCDEHQDEEAOgAAQdQMQQA2AgBB3AxB7o0EIgBBhAwoAgBBAXRqIgI2AgACQAJAA0ACQEHYDCAAQQJqIgE2AgACQAJAIAAgAkkEQCABLwEAIgJBCWtBBUkNAgJAAkACQAJAIAJB5QBrDgUBBwcHAgALIAJBIEYNBSACQS9GDQIgAkE7Rg0EDAYLQaoMLwEADQMgARAdRQ0DIABBBGpBgAhBChAeDQMQHwRAQawMQdgJNgIADAULQdgMKAIAIQFBoAwtAAANA0GsDCABNgIAIAEhAAwHCwJAIAAvAQRB7QBHDQAgARAdRQ0AIAApAAZC8IC8g6COgDpSDQAQIEHYDCgCACEBDAMLIAEQHUUNAiAAQQRqQeAJQRAQHg0CIAAvARQiAhAhRSACQS9HcQ0CQaAMQQA6AAAMBgsgAC8BBCIBQSpHBEAgAUEvRw0EECIMAwtBARAjDAILQQAhAiABIQBBgQwtAAANBQwEC0GsDCABNgIAC0HcDCgCACECQdgMKAIAIQAMAQsLQaAMQQA6AAALA0BB2AwgAEECaiIBNgIAAkACQAJAAkACQAJAAkACQAJAAkACfwJAQdwMKAIAIABLBEACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAIAEvAQAiAkHbAGsODwcTDBkZFRkZAwUBBBkZAgALAkACQCACQSBrDhABCRMaGhoaEwcQGhoOGhoVAAsgAkEJa0EFSQ0AAkAgAkE7aw4EDwoMCwALIAJB+wBrDgMQGREYCyACQQ1HIAJBCkdxDSVBtAwoAgBFDSUgARAkQbQMKAIADSUgBEEANgIMDCULQaoMLwEADSEgARAdRQ0hIABBBGpBgAhBChAeDSEQH0UNIgwjCwJAAkAgAC8BBEHtAGsOAgABIgsgARAdRQ0hIAApAAZC8IC8g6COgDpSDSEQIAwiCyABEB1FDSBBARAlDSIMIAsgAC8BBEHsAEcNHwJAIAEQHUUNACAAQQZqQZQIQQYQHg0AIAAvAQwQJkUNAEHEDCAAQQxqNgIACyABEB1FDR8gAEEGakGUCEEGEB4NHyAALwEMECFFDR9B0AxBAToAAAwfCyAALwEEQfUARw0eIAEQHUUNHiAAQQZqQboJQQwQHg0eIAAvARIQJkUNHkHEDCAAQRJqNgIADB4LIAAvAQRB5QBHDR0gARAdRQ0dECcNHwwdC0GqDC8BACIBQYAIRg0PQawMKAIAIQBByAwoAgAgAUEDdGoiAkEBNgIAQaoMIAFBAWo7AQAgAiAANgIEDB0LQaoMLwEAIgFBgAhGDQ5BrAwoAgAhAEHIDCgCACABQQN0aiICQQg2AgBBqgwgAUEBajsBACACIAA2AgQMHAsCQAJAQawMKAIALwEAIgFBL0YEQEEBIQBBsAwtAAANAQwCC0EBIQAgARAoDQECQCABQSdrDgMCAQIACwJAIAFB3QBrDgQCAQECAAsgAUEiRiABQf0ARnINAQtBwAwtAAAgAUEhRnEhAAtBwAwgADoAAAwbC0G0DCgCACICQQFrQX1NBEBBtAwgAkEBajYCAAwbCyACQX9HDRogAC8BAEE8RgRAIAQgATYCDAwbCwJ/AkACQAJAQawMKAIAIgEvAQAiAEEraw4DAAEAAQsgAUECay8BACAARw0AQQEhASAAEChFDQEMGAtBwAwtAAAgAEEhRnEhASAAQS9GBEBBsAwtAABBAXMMAgsgABAoDRcLAkACQCAAQSdrDgMYARgACyAAQSJGIABB3QBGciAAQf0ARnINFwsgAEHgAEYLIQAgAEEBcSABcg0VDBYLQbQMKAIAIgFBAmtBfEsNGSAALwEAQT1GDRlBtAwgAUEBazYCAAwZC0G0DCgCAEEBRw0YQaoMLwEADRggAC8BBEE+Rg0YQbwMIAE2AgBBtAxBfzYCAAwYC0GqDC8BACIBRQ0JQaoMIAFBAWs7AQAMFwtBqAwvAQAiAkVBqgwvAQAiAUVyRQRAQcgMKAIAIAFBA3RqQQhrKAIAQQVHDRdBzAwoAgAgAkECdGpBBGsoAgAiASgCBA0XIAFBrAwoAgAiAkECajYCBCABKAIsIAJHBEAgAUEANgIkC0HYDCAAQQRqNgIAQQEQKRogAUHYDCgCACIBNgIQQdgMIAFBAms2AgAMFwsgAQ0WAkACQEG0DCgCAEEBag4DABgBGAsgBEEMahAqRQ0XCxArDBYLQbQMKAIARQ0VQaoMLwEADRUgBEEANgIMQbQMQQA2AgAMFQtBqgwvAQAiAUUNBkGqDCABQQFrIgE7AQBBqAwvAQAiAkUNFEHIDCgCACABQf//A3FBA3RqKAIAQQVHDRQCQEHMDCgCACACQQJ0akEEaygCACIBKAIEDQAgAUGsDCgCACIDQQJqNgIEIAMgASgCLEYNACABQQA2AiQLIAEgAEEEajYCDCABECxBqAwgAkEBazsBAAwUCwJAQawMKAIAIgEvAQBBKUcNAEHoCygCACIARQ0AIAAoAgwgAUECakcNAEHoC0HsCygCACIANgIAAkAgAARAIABBADYCNAwBC0HYC0EANgIAC0H4C0H4CygCAEEBazYCAAtBqgwvAQAiAEGACEYNBUHIDCgCACAAQQN0aiICQQZBAkHQDC0AABs2AgBBqgwgAEEBajsBACACIAE2AgRB0AxBADoAAAwTC0GqDC8BACIBRQ0EQaoMIAFBAWsiATsBAEHIDCgCACABQf//A3EiAUEDdGooAgBBBEcNEkGoDC8BACIARQ0MQcwMKAIAIABBAnRqQQRrKAIAIgAvATAgAUcNDEEIEARBiAxBiAwoAgAiAUEIajYCAEHYDCgCACECIAFBADYCBCABIAJBAmo2AgACQCAAKAIoIgJFBEAgACABNgIkDAELIAIgATYCBAsgACABNgIoDAwLIAIQLQwRCxAuIgBFDQ8gAEEASA0CQawMIAE2AgAMEgsCQCAALwEEIgBBKkcEQCAAQS9HDQEQIkEBDAkLQQEQI0EBDAgLAkBBrAwoAgAiAC8BACICEC8EQAJAAkACQCACQStrDgQBCwIACwsgAEECay8BAEEwa0H//wNxQQpJDQMMCgsgAEECay8BAEErRg0CDAkLIABBAmsvAQBBLUYNAQwICyACQSlHDQBByAwoAgBBqgwvAQBBA3RqKAIEEDANBwsCQAJAQaoMLwEAIgNFIAJB5gBHcg0AQcgMKAIAIANBA3RqIgVBCGsoAgBBAUcNACAAQQJrLwEAQe8ARw0BIABBBGsQMUUNASAFQQRrKAIAQfgIQQMQMkUNAQwICyACQf0ARw0AQcgMKAIAIANBA3RqIgMoAgQQMw0HIAMoAgBBBkYNBwsgABA0DQZBsAwtAAAgAkEvRnEgAkEAR3NFDQYCQEHwCygCACIDRQ0AIAAgAygCAEkNACAAIAMoAgRNDQcLA0AgAEHwjQRLBEBBrAwgAEECayIANgIAIAAvAQAiAhAmRQ0BCwsgAkH//wNxEDUEQANAIABB8I0ESwRAQawMIABBAmsiADYCACAALwEAEDUNAQsLIAAQNg0HC0GwDEEBOgAAQQAMBwsCQAJAQagMLwEAIgBFDQBBzAwoAgAgAEECdGpBBGsoAgAiACgCBA0AIAAoAgAgAUcNACAAQaoMLwEAIgBBAWo7ATAMAQtBqgwvAQAhAAsgAEH//wNxIgFBgAhHDQELEDdBACECDBELQawMKAIAIQJByAwoAgAgAUEDdGoiAUEDNgIAQaoMIABBAWo7AQAgASACNgIEDAYLIAJB9ABGDQkLIAJBMGtB//8DcUEKSSACQSByQeEAa0H//wNxQRpJcg0JAkACQCACQdwAaw4ECwEBCwALIAJBJEYNCgsgAkGgAUYgAkGAAUlyDQoMCQtBACECQaoMLwEADQ1BgQwtAABBAXENDUGoDC8BAA0NAkBB/AsoAgAiAUUNAEGADC0AAEUEQEHcCyEAA0AgACgCACIBRQ0CIAEtABhBBEYEQCABQX82AhQgAUEBOgAYCyABQSBqIQAMAAsACyABQQF0IQJBBCEBA0AgASIAQQF0IQEgACACSQ0AC0EAIQJB7AwgADYCAEHoDCAAQQFrNgIAIABBAnQiARAEQYEMLQAADQ5B5AxBiAwoAgAiAjYCAEGIDCABIAJqNgIAQewMKAIAIQVBACEAA0AgACAFRgRAAkBB6AwoAgAhA0HcCyEAA0ACQCAAKAIAIgFFBEBB2AwoAgAhBkHYCyEAQQAhAQwBCyABLQAYQQRGBEAgASABKAIIIAEoAgwQOCIANgIUIAEgAiAAIANxQQJ0aiIAKAIANgIcIAAgATYCAAsgAUEgaiEADAELCwJAA0AgACgCACIARQ0BAkAgACgCFEEBRw0AIAAoAggiAy8BAEHpAEcNAEHYDCADQQxqNgIAQQEQKSEDIAAtABkiB0EBRgRAQdgMQdgMKAIAQQhqNgIAQQEQKSEDCwJAAkACQCAAKAIcQQRrDgMAAgECC0HYDEHYDCgCAEEMajYCAEEBEClBASABQQAQOQwCC0HYDEHYDCgCAEEKajYCAEEBECkaQYAMQQE6AAAgAUEAEDoMAQsgA0EiRiADQSdGcg0AIANBACABIAcQOQtB/AsoAgAEQCABQQFqIQEgAEE0aiEADAELC0HYDCAGNgIADAELQQAhAUHYDCAGNgIAQfwLKAIARQ0AA0AgASAFRg0BIAIgAUECdGohAANAIAAoAgAiAEUEQCABQQFqIQEMAgsgAC0AGEEERgRAIABBfzYCFCAAQQE6ABgLIABBHGohAAwACwALAAsFIAIgAEECdGpBADYCACAAQQFqIQAMAQsLQQAhAkHkDEEANgIAQYEMLQAADQ4LQQEhAgwNCxA7QbAMQQA6AABBAAsiAkUNAEG0DCgCAEUNAEGqDC8BAA0AQdgMKAIAIQADQCAAIAFJDQECQAJAIAEvAQBBCmsOBAABAQABCyAAQQJBACAALwEAIgFBCkcbQQAgAUENRxtqECRBtAwoAgANAiAEQQA2AgwMAgsgAUECaiEBDAALAAsgAg0IDAYLEDwMBQsQPQ0AQQEhABA+DQEQPw0BDAQLQQAhAAsgABBADAILIAAvAQRB+QBHDQAgARAdRQ0AQQEQJQ0CC0HYDCgCACEAA0AgAC8BAiIBQSByQeEAayECAkAgAUEwa0H//wNxQQpJIAJB//8DcUEaSXINAAJAAkAgAUHcAGsOBAIBAQIACyABQSRGDQELIAFBoAFGIAFBgAFJcg0CC0HYDCAAQQJqIgA2AgAMAAsAC0GsDEHYDCgCADYCAAwBC0GsDEHYCTYCAAtB2AwoAgAhAAwACwALIARBkNAAaiQAIAILFgAgAEHwjQRGBEBBAQ8LIABBAmsQQQtDAQN/AkAgAkUNAANAIAAtAAAiBCABLQAAIgVGBEAgAUEBaiEBIABBAWohACACQQFrIgINAQwCCwsgBCAFayEDCyADC5MbAQ1/QdgMQdgMKAIAIgtBDGoiATYCAEHwCygCACEHQQEQKSECAkACQCABQdgMKAIAIgBGBEAgAhBCRQ0BC0H0CyALNgIAAkACQAJ/AkACQAJAAkACQAJAAkACQAJAAkACQCACQekARwRAIAJB9ABHBEAgAiEEDAMLIAAvAQBB9ABHDQEgAEECakHaCUEGEB4NASAALwEIIgEQISABQSpGciABQfsARnJFIAFBL0dxDQFB2AwgAEEIajYCAEEBIQZBARApIgRBKkYgBEH7AEZyDQJB2AwgADYCAEEAECVFDQEMDgtBABAlDQ0LQaAMQQA6AAAMAQsgBEEqRg0IIARB+wBGBEBB2AxB2AwoAgBBAmo2AgBBARApIQIgByEBAkADQAJAAkACQCAGBEBBACEDDAELQQEhAyACQf//A3FB9ABHDQBB9AAhAgJAQdgMKAIAIggvAQBB9ABHDQAgCEECakHaCUEGEB4NACAILwEIIgAQISAAQSpGciAAQfsARnJFIABBL0dxDQBBACEDQdgMIAhBCGo2AgBBASEEQfQAIQkCQAJAQQEQKSICQSxGIAJB/QBGcg0AIAJB4QBHDQNB4QAhAkHYDCgCACIFLwECQfMARw0EIAUvAQQQJkUNBEHYDCAFQQRqNgIAAkBBARApIgpB4QBGBEBB2AwoAgAiAC8BAkHzAEcNAiAALwEEECZFDQJB2AwgAEEEajYCAAJ/QQFBARApIgNB3ABGIgwNABpBASADQTBrQf//A3FBCkkNABpBACEEQeEAIQkgA0Hf/wNxQcEAa0H//wNxQRpJDQIgBSEAAkACQCADQdwAaw4EBgEBBgALIANBJEYNAwsgA0GAAUkLIQpBACEDQdgMIAU2AgAgDA0GIAghAEH0ACEJQQEhBCAKDQMMBgtB2AwgBTYCACAKQSxGDQUgCCEAIApB/QBGDQUMAgsgBSEADAELIAghAAtB2AwgADYCACAAIQUgBCEDIAkhAgwCCyAIIQUMAQtB2AwoAgAhBSACQf//A3EiAEEiRyAAQSdHcQ0AIAAQLUHYDEHYDCgCAEECaiICNgIADAELIAJB//8DcRBDQdgMKAIAIQILQQEQKRogBSACEEQhAiADQfALKAIAIgBFciAAIAFGckUEQCAAIAAtABlBBHI6ABkLIAJBLEYEQEHYDEHYDCgCAEECajYCAEEBECkhAgsgAkH9AEYNASAFQdgMKAIAIgNHBEAgACEBIANB3AwoAgBNDQELCxA3DA4LQQEhBUEAIQFBkAxBAToAAEHYDEHYDCgCAEECajYCAEEBECkhBEEADAoLQaAMQQA6AAACQAJAIAQiAkHhAGsOBAECAgACC0HYDCgCACICQQJqQe4KQQwQHg0CIAIvAQ4iABAhRSAAQS9HcQ0CQQAhB0HYDCACQQ5qNgIAQQEhBEEBECkhAkEAECUNC0EAIQADQAJAAkACQCAEQQFxBEBBACEEAkACQAJAAkACQAJAAkACQAJAAkAgAkH//wNxIgFB4QBrDg4BDgIOAAgODg4ODgMJAAQLIAEQRQRAQfALKAIAIgAgAC0AGUEEcjoAGUHYDEHYDCgCACIAQQJqNgIAIAAvAQIQRkHYDCgCACEBDAsLIAFB7ABrDgICCAYLQeEAIQJB2AwoAgAiAUG+CkEQEB4NDCABQRBqIQUgAS8BECIJECEEQCAHIQMMBAsgByEDIAghBiAAIQEgCUEvRw0MDAsLQdgMKAIAIgYpAAJC7ICEg7COwDlRBEAgBkEKaiEFQQEhAUEAIQMgBi8BCiICECEgAkEvRnINCgtB4wAhAiAGKQACQu+AuIOwjoA6Ug0LIAZBCmohBUEBIQMgBi8BCiIJECENAiAIIQYgACEBIAlBL0cNCwwKC0HsACECQdgMKAIAIgEvAQJB5QBHDQogAS8BBEH0AEcNCiABQQZqIQVBASEDIAEvAQYiCRAhDQEgCCEGIAAhASAJQS9HDQoMCQsgAUH2AEcNCUH2ACECQdgMKAIAIgEvAQJB4QBHDQkgAS8BBEHyAEcNCSABQQZqIQVBASEDIAEvAQYiCRAhRQ0BCyAIIQYgACEBDAcLIAghBiAAIQEgCUEvRw0HDAYLIAFB5gBHDQYLQeYAIQJB2AwoAgAiAUECakG4CUEOEB4NBSABQRBqIQVBASEGIAEvARAiCRAhBEAgByEDIAAhAQwFCyAHIQMgACEBIAlBL0cNBQwEC0HtACECQdgMKAIAIgNBAmpBpAtBChAeDQQgA0EMaiEFQQEhASADLwEMIgkQIQRAIAchAwwDCyAHIQMgCCEGIAlBL0cNBAwDCwJAIAdBAXEEQANAQdgMKAIAIgFB3AwoAgBLDQNB8AsoAgAhACACQf//A3EQRyEEQdgMKAIAIgUgAUYNAiAAQSBqQdwLIAAbIQICQANAIAIoAgAiAARAIAAgAC0AGUEEcjoAGSAAQSBqIQIMAQUCQCAEQTprDgQAAwMAAwsLC0HYDCAFQQJqNgIAQQFBARBIQdgMKAIAIgUvAQAhBAsgBEH//wNxQSxHDQJB2AwgBUECajYCAEEBECkhAgwACwALAkAgAkH//wNxIgFB3ABGIAJBMGtB//8DcUEKSXINAAJAIAJB3/8DcUHBAGtB//8DcUEaSQ0AAkACQCABQdwAaw4EAgEBAgALIAFBJEYNAQsgAkH//wNxQYABSQ0BC0HYDCgCACEBIAJB//8DcRBJGiABQdgMKAIAIgMgASADEAVB8AsoAgAiASABLQAZQQRyOgAZQdgMKAIALwEAIQILAkAgAEEBcQRAIAJB//8DcRBGDAELIAhBAXFBABBIC0HYDCgCACEBDAELIAUhAQtB2AwgAUECazYCAAwPCyAIIQYLQdgMIAU2AgBBASEEQQEQKSECIAMhByAGIQggASEADAALAAtB2AwoAgAiAkG+CkEQEB4NAyACLwEQIgAQIUUgAEEvR3ENA0HYDCACQRBqNgIAQQEQKSECC0EAIQQCQAJAAkAgAkHhAGsODgQMBwIBBgwMDAwMCAwBAAsgAkH2AEYNBwwLCyACEEUNCiACQeYARg0EIAJB7ABGDQYMCgtB2AwoAgAhAgtB2AwgAkEOaiIANgIAAkACQAJAAkACQEEBEClB4QBrDgkBCgMKCgIKCgAKC0HwCygCACEDQQAQJUUNCSADQfALKAIAIgFHBEAgASAANgIEIAEgAjYCAAwOCyACIABBAEEAEAVB8AsoAgAiACAALQAZQQRyOgAZDA0LQdgMKAIAIgEpAAJC84Dkg+CNwDFSDQggAS8BChA1RQ0IQdgMIAFBCmo2AgBBABApGgtB2AwoAgAiAUECakG4CUEOEB4NBwJAIAEvARAiAxAhDQAgA0Eoaw4DAAgACAtB2AwgAUEQajYCAEEBECkiBUEqRgRAQdgMQdgMKAIAQQJqNgIAQQEQKSEFCyAFQShHDQEMBwtB2AwoAgAiASkAAkLsgISDsI7AOVINBiABLwEKIgMQIUUgA0H7AEdxDQZB2AwgAUEKajYCAEEBECkiBUH7AEYNBgtB2AwoAgAhASAFEEkaQdgMKAIAIgMgAU0NBSACIAAgASADEAVB2AxB2AwoAgBBAms2AgAMCgtB2AwoAgAhAgtB2AwgAkEKajYCAEEAECkaC0HYDEHYDCgCAEEQajYCAEEBECkiBEEqRgRAQdgMQdgMKAIAQQJqNgIAQQEQKSEEC0HYDCgCACEAIAQQSRoMCAsCQEHYDCgCACIAKQACQuyAhIOwjsA5Ug0AIAAvAQoQJkUNAEHYDCAAQQpqNgIAQQEQKSEBQdgMKAIAIQAgARBJGgwIC0HYDCAAQQRqNgIAC0HYDEHYDCgCAEEGajYCAEGgDEEAOgAAQQEQKSIAQe4ARyAAQeUAR3FFBEAgABBFDQQLQdgMQdgMKAIAQQJrNgIAECtBAA8LIAIgAEEAQQAQBUHYDCACQQxqNgIAQQAPC0HYDEHYDCgCACIBQQJqNgIAQQEQKRpB2AwoAgAiACAAEEQaQQEQKSEEQfALKAIAIAdGCyEDAkAgBkUNACAHQSBqQdwLIAcbIQIDQCACKAIAIgBFDQEgACAALQAZQQRyOgAZIABBIGohAgwACwALAkAgBEHmAEcNAEEAIQRB2AwoAgAiAEECakGaCEEGEB4NAEHYDCAAQQhqNgIAIAtBARApQQAQSkGBDC0AAA0BAkAgAwRAQegLKAIAQQg2AhwgASABQQJqQQBBABAFQfALKAIAIgBBAzoAGCAGRQ0BIAAgAC0AGUEEcjoAGQsgBkHoCygCACIAQQBHcUUNACAAQQE6ABkLIAdBIGpB3AsgBxshAkH4CygCAEEBayEBA0AgAigCACIARQ0CIAAgATYCFCAALQAYQQNHBEAgAEECOgAYIAAgAC0AGUEEcUEAQQIgACgCCBtyOgAZCyAAQSBqIQIMAAsACwJAIAVFDQAgB0EgakHcCyAHGyECQfwLKAIAIQQDQCACKAIAIgBFDQEgAEEEOgAYQfwLIARBAWoiBDYCACAAQSBqIQIMAAsAC0EAIQRB2AxB2AwoAgBBAms2AgALIAQPC0EBDwtBAA8LIABB2AwoAgAiASAAIAEQBUHYDEHYDCgCAEECazYCAEEAC94VAgx/AXtB2AxB2AwoAgAiB0EMaiILNgIAQQEhBUEBECkhA0HYDCgCACEAAkACQAJAAkACQAJAAkACQAJAAkACfwJAAkACfwJAAkACQAJ/AkACQAJAAkACQAJAIANB9ABHBEAgAyEBDAELIAAvAQBB9ABHDRAgAEECakHaCUEGEB4NECAALwEIIgEQISABQSpGciABQfsARnJFIAFBL0dxDRBB2AwgAEEIajYCAEEBECkiAUEsRiABQT1Gcg0CQeYAIQIgAUHmAEYNAUHYDCgCACEACyADQfQARiEGIAFBLkcNBEHYDCAAQQJqNgIAQQEQKSIAQeQARg0DIABB8wBGDQIgAEHtAEcNE0HYDCgCACIAQQJqQaAIQQYQHg0TQawMKAIAIgEQS0UEQCABLwEAQS5GDRQLIAcgByAAQQhqQQIQAw8LQdgMKAIAIgFBAmpBmghBBhAeDQ0gAS8BCCIDECFFBEAgA0EiayIDQQ1LQQEgA3RBocAAcUVyDQ4LQdgMIAFBCGo2AgBBARApIQNB2AwgATYCACADQSdGDQBBASEGIANBIkcNDwtB2AwgADYCACAAIQFB9AAhAkEAIQYMDgtB2AwoAgAiAEECakHGCUEKEB4NEEGsDCgCACIBEEtFBEAgAS8BAEEuRg0RC0HYDCAAQQxqNgIAQQEhCUEFIQhBARApIQJBAAwCC0HYDCgCACIAKQACQuWAmIPQjIA5Ug0PQQAhBUGsDCgCACIBEEtFBEAgAS8BAEEuRg0QC0HYDCAAQQpqNgIAQQchCEEBIQpBARApIQJBASEJQQIMCAsgACALTQ0DQfMAIQIgAUHzAEcNAyAAQQJqQcYJQQoQHg0FIAAvAQwQIUUNBUHYDCAAQQxqIgQ2AgBBARApIQIgBEHYDCgCACIBRiACQSxGcg0CIAJB5gBGDQFBASEJQQUhCEEACyEFQQEMBgtBASEEIAFBAmpBmghBBhAeDQYgAS8BCBAmRQ0GC0HYDCAANgIAQQchCCAALwEADAELQQchCCAAIAdBCmpNDQJB5AAhAiABQeQARw0CIAApAAJC5YCYg9CMgDlSDQEgAC8BChAhRQ0BQQAhBUHYDCAAQQpqNgIAQSohAkEBIQpBAiEEQQEQKUEqRg0IQQAhCkHYDCAANgIAQQEhBSAALwEACyECQQAMAgsgACEBDAULIAEhAkEACyEEAkACQAJAAkACQAJAIAJB//8DcSIAQShGBEBBqgwvAQAiAEGACEYNDEHYDCgCACEBQcgMKAIAIABBA3RqIgJBBTYCAEGqDCAAQQFqOwEAIAIgATYCBEGsDCgCAC8BAEEuRg0NQQAhAEGoDC8BAEGABEYNDEHYDCABQQJqNgIAQQEQKSECIAdB2AwoAgBBACABEANBrAwoAgAiAS8BACIEQfQARgRAIAFBAmtB4AhBBBAyIQALQegLKAIAIgMgADoAGgJAIARB5gBHDQAgAUGKCkEGEDJFDQAgA0EBOgAZCyAJBEAgAyAINgIcC0GoDEGoDC8BACIHQQFqOwEAQcwMKAIAIAdBAnRqIAM2AgACQCACQSJHBEAgAkEnRg0DIAJB4ABGDQFB2AwoAgAhAQwIC0EiEC0MBgtB4AxBADoAAEHUDCgCACIAQQ9LDQJB1AwgAEEBajYCAEHcDCgCACEGQQAhBEHYDCgCACIBIQADQCAAIgIgBk8NBwJAAkAgAEECaiIALwEAIgVB3ABrDgUBAgICBgALIAVBJEcEQCAFQQ1HDQJBASEEQeAMQQE6AAAMAgsgAi8BBEH7AEYNCAwBCyACQQRqIQAMAAsACyAFRSAAQfsAR3JFBEBB2AwoAgAhAEGqDC8BAA0OQdgMIABBAmo2AgBB+AsoAgBBABBMQf0ARw0MQdgMQdgMKAIAQQJqNgIAQQEQKSEBQdgMKAIAIQAgAUHmAEYEQCAAQQJqQZoIQQYQHg0NC0HYDCAAQQhqNgIAQQEQKSIAQSJHIABBJ0dxDQwgByAAQQAQSiADQfQARw0NQegLKAIAIgBFDQ0gAEEBOgAZDwsCQAJAIAJB//8DcSIAQSdrDgQMAQEMAAsgAEEiRg0LC0HYDCgCACEBDAkLQScQLQwDC0HcDCgCACEFQQAhBEHYDCgCACIBIQIDQAJAIAJBAmohAAJAAkACQCACLwECIgZB3ABrDgUCAQEBBQALIAZBDUYNAQsgAi8BBEHgAEYNAQsDQCAAIgJBEGohACAC/QAAACIM/QwkACQAJAAkACQAJAAkACQA/S0gDP0MYABgAGAAYABgAGAAYABgAP0t/VAgDP0MXABcAFwAXABcAFwAXABcAP0tIAz9DA4ADgAOAA4ADgAOAA4ADgD9MP1Q/VD9ZCIGRQ0ACwJAAkACQAJAIAIgBmhBPnFqIgAvAQAiAkHcAGsOBQEDAwMGAAsgAkEkRg0BIAJBDUcNAkEBIQRB4AxBAToAACAAIQIMBAsgAEECaiICIAVLDQcMAwsgACICLwECQfsARg0GDAILIAUgACICTw0BDAULC0HYDCACQQRqNgIAIAQNAQwCC0HYDCAANgIAIARFDQELIAMgAy0AGEECcjoAGAtB2AxB2AwoAgBBAmoiADYCAAJAAkACQEEBEClBKWsOBAECAgACC0HYDEHYDCgCAEECajYCAEEBECkaIAMgADYCBCADQdgMKAIAIgA2AhAgAyADLQAYQQFyOgAYDAoLQaoMQaoMLwEAQQFrOwEAIAMgADYCBEHYDCgCACEAIAMgAy0AGEEBcjoAGCADIABBAmo2AgwgAxAsQagMIAc7AQAPCwwJCwwJC0HmACECQQAhBQwCC0EBIQYMAQsgACEBQfQAIQILIAEgC0cNAAwFCwJAIAJB//8DcUEqRyAKcUUEQEGqDC8BAEUNAQsMBAsCQCAFRSACQf//A3EiAEHcAEZyIAJBMGtB//8DcUEKSXINAAJAIAJB3/8DcUHBAGtB//8DcUEaSQ0AAkACQCAAQdwAaw4EAgEBAgALIABBJEYNAQsgAkH//wNxQYABSQ0BC0HYDCgCACEAIAJB//8DcRBDIABB2AwoAgBGDQACQEEBEClBPUcNAEHYDCgCACIBLwECQT1GDQBB2AwgAUECajYCAAJAQQEQKUHyAEcNAEHYDCgCACIBQQJqQa4LQQwQHg0AIAEvAQ4iAEEwa0H//wNxQQpJIABB3/8DcUHBAGtB//8DcUEaSXINAAJAAkAgAEHcAGsOBAIBAQIACyAAQSRGDQELIABB/wBLDQBB2AwgAUEOajYCAAJAQQEQKUEoRw0AQdgMQdgMKAIAQQJqNgIAQQEQKSIAQSdHIABBIkdxDQAgByAAQQAQSkGBDC0AAA0FQegLKAIAIgBBAEcgBnEEQCAAQQE6ABkLQdgMQdgMKAIAQQJqNgIAQQEQKUEpRg0FDAcLQdgMIAE2AgALQQFBABBIDAULQdgMIAA2AgAgAC8BACECCyACQf//A3EiAEEiRiAAQSdGckUEQCAAIARB+AsoAgBBABA5C0HYDCgCACEAQdwMKAIAIQIDQCAAIAJPDQEgAC8BACIBQSdHIAFBIkdxBEBB2AwgAEECaiIANgIADAEFIAcgASAEEEogBkHoCygCACIAQQBHcUUNAyAAQQE6ABkPCwALAAsQNwsPC0HYDCAAQQJrNgIADwtB2AxB2AwoAgBBAms2AgAPC0HYDCABQQJrNgIACwsAIABBn4CABBBYC7IDAgN/AXsCQEHYDCgCACIAQQRqIgFB3AwoAgAiAksNAAJAIAAvAQRBCmsOBAEAAAEACyAAQQZqIgEgAksNAAJAIAAvAQZBCmsOBAEAAAEACyAAQQhqIgEgAksNAAJAIAAvAQhBCmsOBAEAAAEACyAAQQpqIgEgAksNAAJAIAAvAQpBCmsOBAEAAAEACyAAQQxqIgEgAksNAAJAIAAvAQxBCmsOBAEAAAEACyAAQQ5qIgEgAksNAAJAIAAvAQ5BCmsOBAEAAAEACyAAQRBqIgEgAksNAAJAIAAvARBBCmsOBAEAAAEACyAAQRJqIgEgAksNAAJAIAAvARJBCmsOBAEAAAEACyAAQRRqIgEgAksNAAJAIAAvARRBCmsOBAEAAAEACyAAQRZqIQEDQCAB/QAAACID/QwAAAAAAAAAAAAAAAAAAAAA/S0gA/0MCgAKAAoACgAKAAoACgAKAP0tIAP9DA0ADQANAA0ADQANAA0ADQD9Lf1Q/VD9hAEiAARAIAEgAGhBAXRqIgEgAksNAiABLwEADQIgAUECaiEBBSABQRBqIQELDAALAAtB2AwgATYCAAuUAQEDf0HYDCgCAEECaiEBQdwMKAIAIQICQCAABEADQCABIgBBAmohASAAIAJPDQIgAS8BAEEqRw0AIAAvAQRBL0cNAAsgAEEEaiEBDAELA0AgASIAQQJqIQEgACACTw0BIAEvAQAiA0EqRwRAIANBCmsOBAIBAQIBCyAALwEEQS9HDQALIABBBGohAQtB2AwgATYCAAvVBgEGf0GqDC8BAEUEQEHYDCgCACEFQdgMIAA2AgBBARApIQECQAJAAkACQAJAAkACQAJAQbQMKAIAIgJBf0YEQCAAQbgMKAIAIgJJDQgCQAJAAkACQAJAQawMKAIAIgMvAQAiAEEvRwRAAkAgABAoDQACQCAAQSdrDgMBEAEACwJAIABB3QBrDgQBEBABAAsgAEEiRg0AIABBPkYNAiAAQf0ARw0PCyABQSFrIgBBHk0NAwwLC0GwDC0AAA0NIAFBLEcNAQwNCyABQSxGIAIgA0dyDQwLIAFBIWsiAEEeTQ0BDAcLQQEgAHQiAkGw1YHQB3ENCiACQYAocQ0DIAANBwwBC0EBIAB0IgJBsMWB0AdxDQkgAkGAKHENAiAADQULQdgMKAIALwECQT1HDQcMCAsgAkEBSw0HQawMKAIAIgMvAQAiAEE6ayICQQVLDQFBASACdEEtcQ0HIAJBBEcNASADQQJrLwEAQT1HDQIMBwtB2AwoAgAvAQIgAUcNBgwFCwJAIABBLGsOAwYBBgALIABBJkYgAEH8AEZyDQULAkACQCAAQTBrQf//A3FBCkkgAEEgckHhAGtB//8DcUEaSXINAAJAAkAgAEHcAGsOBAIBAQIACyAAQSRGDQELIABBoAFGIABBgAFJcg0BCyADIQADQAJAIAAiAkHwjQRNDQAgAEECayIALwEAIgRBIHJB4QBrIQYgBEEwa0H//wNxQQpJIAZB//8DcUEaSXINAQJAAkAgBEHcAGsOBAMBAQMACyAEQSRGDQILIARBgAFJDQAgBEGgAUcNAQsLIAIgA0ECahBNDQUgAyACa0EMRw0AIAIvAQBB5QBHDQAgAkECakH6CkEMEB5FDQULIAEQTkUNAwwECyABQdsARiABQd4ARnIgAUHgAEZyDQMgAUHpAEYNASABQfwARw0CDAMLIAFB2wBGIAFB3gBGciABQeAARnINAiABQekARg0AIAFB/ABHDQEMAgtB2AwoAgAiAC8BAkHuAEYEQCAALwEEECYNAgsgAEG4CEEMEB4NACAALwEMQeMARw0AIAAvAQ5B5QBHDQAgAC8BEEHvAEcNACAALwESQeYARw0AIAAvARQQJg0BC0G0DEEANgIAC0HYDCAFNgIACwuJBAEHfwJAAkACQEHYDCgCACIDLwEAIgVB6QBGBEAgA0ECakHgCUEQEB4NAkEJIQQgAy8BEiICECEgAkEvRnINAQwCCyAFQfQARw0BIANBAmpB2glBBhAeDQFBBCEEIAMvAQgiAhAhIAJBKkZyIAJB+wBGcg0AIAJBL0cNAQtBACECQdgMIAMgBEEBdGo2AgACQCAAQQFzIgcQKSIBQdwARiIEIAFBMGtB//8DcUEKSXJFBEBBASECIAFB3/8DcUHBAGtB//8DcUEaSQ0BAkACQCABQdwAaw4EAwEBAwALIAFBJEYNAgsgAUH/AEshAgsgBA0AIAJFDQILQdgMKAIAIQQgARBJGkHYDCgCACEGAkBBARApIgFBPEYEQBBPRQRAEDcMAgtBARApIQELIABFIAVB6QBGckUgAUE9R3ENAiACIAdxBEAgBCAGIAQgBhAFQfALKAIAIgAgAC0AGUEEcjoAGQsCQCAFQekARwRAQdwMKAIAIQMCQANAIANB2AwoAgAiAEsEQAJAAkAgAUH//wNxIgFBCmsOBAYBAQYACyABQTtrDgMFAAMAC0HYDCAAQQJqNgIAQQAQKSEBDAELCyABQf//A3FBPUcNAgtB2AwgAEECajYCAEEBQQAQSAwBCyABEEYLQdgMQdgMKAIAQQJrNgIAC0EBIQELIAEPC0HYDCADNgIAQQALNAEBfyAAQaABRiAAQQlrIgFBF01BAEEBIAF0QZ+AgARxG3JFBEAgABBCIABBLkdxDwtBAQvEBwEFfwJAQdgMKAIAIgRBAmpB7gpBDBAeDQAgBC8BDiIAECFFIABBL0dxDQBB2AwgBEEOajYCAAJAAkACQAJAAkACfwJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkBBABApIgFB4QBrDhYAEwETAgMEEwUTEwYHCBMTExMTCRMLEwtB2AwoAgAiAUG+CkEQEB4NEkHhACEAIAEvARAiARAhIAFBL0ZyDRAMEgtB2AwoAgAiAykAAkLsgISDsI7AOVIEQCADKQACQu+AuIOwjoA6Ug0SCyADLwEKIgAQIUUgAEEvR3ENEUHjACEAIAMvAQJB7wBGDQsMDwtB2AwoAgAiAUECakGGC0EGEB4NEEHlACEAIAEvAQgiARAhIAFBL0ZyDQ4MEAtB2AwoAgAiA0ECakG4CUEOEB4ND0EIIAMvARAiARAhIAFBL0ZyDQoaDA8LQdgMKAIAIgFBAmpBugtBChAeDQ5B5wAhACABLwEMIgEQISABQS9Gcg0MDA4LQdgMKAIAIgAvAQBB6QBHDQ0gAEECakHgCUEQEB4NDSAALwESIgAQISAAQS9Gcg0EDA0LQdgMKAIAIgMvAQJB5QBHDQwgAy8BBEH0AEcNDCADLwEGIgAQISAAQS9Gcg0GDAwLQdgMKAIAIgBBAmpBpAtBChAeDQsgAC8BDCIBECEgAUEvRnINCAwLC0HYDCgCACIBQQJqQYwLQRAQHg0KQe4AIQAgAS8BEiIBECEgAUEvRnINCAwKC0HYDCgCACIALwEAQfQARw0JIABBAmpB2glBBhAeDQkgAC8BCCIAECEgAEEqRnIgAEEvRnINACAAQfsARw0JC0EBIQJBARAlDQkgASIAQewAaw4CAQQGC0HYDCgCACIDLwECQeEARw0HIAMvAQRB8gBHDQcgAy8BBiIAECEgAEEvRnINAQwHC0HYDCgCACEDC0EFQQMgAUHjAEYbCyEAQQEhBEHYDCADIABBAXRqNgIAAkBBARApIgBB5QBHDQBB2AwoAgAiAUECakGGC0EGEB4NACABLwEIIgEQIUUgAUEvR3ENAEHlABBGDAQLAkAgAEHcAEYgAEEwa0H//wNxQQpJcg0AAkAgAEHf/wNxQcEAa0H//wNxQRpJDQACQAJAIABB3ABrDgQCAQECAAsgAEEkRg0BCyAAQYABSQ0BCyAAEEkaQQAhBAsgBEEAEEgMAwtB2AwoAgAhAAtB2AwgAEEMajYCAEEBECkhAAsgABBGC0HYDCgCAEECayEEQQEhAgtB2AwgBDYCAAsgAgs9AQF/QQEhASAAQTBrQf//A3FBCkkgAEHf/wNxQcEAa0H//wNxQRpJciAAQSRGIABB3wBGcnIgAEH/AEtyC30BBH9B3AwoAgAhA0HYDCgCACEBA0ACQAJAAkAgAS8BACICQS9GBEAgAS8BAiIBQSpHBEAgAUEvRg0CQS8PCyAAECMMAgsgAARAIAIQIQ0CDAMLIAIQNQ0BDAILECILQdgMQdgMKAIAIgRBAmoiATYCACADIARLDQELCyACC7sGAQt/IAAoAgAiAQRAIAEQUiAAQQA2AgALQbgMKAIAIgFBACABQdgMKAIAIgZLG0UEQEHcDCgCACEEQZQMKAIAIQhBgQwtAAAhCUEBIQcCQAJAA0BB2AxB2AwoAgAiAEECajYCACAAIARPDQECQEEBECkiAEHf/wNxQdsARgRAEE9FDQNBACEFQdgMKAIAIQIMAQtB2AwoAgAhBSAAEEkaIAVB2AwoAgAiAkYNAgtBARApIgBBLEYNAAsCQAJAAkACQAJAIABBOmsOBAYGAgABC0HYDCgCAC8BAkE/a0H//wNxQf7/A08NBAwFCyAAQSFGDQELQdgMKAIAIgMgBEsNAyAAQdsARg0BIAAQTiAAQT5Gcg0CDAELQdgMKAIAIgMvAQJBOkYgAyAES3INAgsgAiEAA0AgACADTw0BAkACQCAALwEAQQprDgQBAAABAAsgAEECaiEADAELC0EAIQECQCAFRQ0AIAUgAhBNRQ0AQZQMKAIAIQRBgQwtAAAhCkHYDCgCACELAkAgBS8BAEHhAEYEQCADQfAJQQYQHg0BIAMvAQYiABAhIABBL0ZyIABBPEZyRSAAQShHcQ0BQdgMIANBBmo2AgBBARApIgBBPEYEfxBPRQ0CQQEQKQUgAAtBKEcNARBPRQ0BQQEQKUE9Rw0BQdgMKAIALwECQT5HDQELQbwMKAIAIQBBACECA0BB2AwgADYCAAJAAkACQANAIAAiASAGTw0DIAAvAQAiAEEoRiAAQfsARnIgAEHbAEZyRQRAIABBPEcNAhBPRQ0DQdgMKAIAIgAgBk0NASAAIAIgACACSRsgACACGyECDAMLEE8hAUHYDCgCACEAIAENAAsgACEBDAELIABBABBWGkHYDCgCACEBCyABQQJqIQAMAQsLIAJFBEBBACEBDAELQQEhAUG4DCgCACIAQQAgACACQQJrIgJPGw0AQbgMIAI2AgALQZQMIAQ2AgBB2AwgCzYCAEGBDCAKQQFxOgAACyABRQ0BQbgMKAIAIQELQQAhByABQQBB2AwoAgAiACABTRsNAEG4DCAANgIAC0GUDCAINgIAQdgMIAY2AgBBgQwgCUEBcToAAAsgBwuZAQEDf0G0DEEANgIAQdgMKAIAIQACQAJAA0BB2AwgAEECajYCACAAQdwMKAIATw0BQQEQKSEAQdgMKAIAIQIgABBHIQEgAkHYDCgCACIARg0CIAFBLEYNAAsCQAJAIAFBOmsOBAADAwEDC0G0DEEBNgIADwtBtAxBfzYCAEG8DCAANgIADwsgAEECaiEAC0HYDCAAQQJrNgIAC+kEAQZ/AkAgAC0AGQ0AIAAtABoNAEHYDEHYDCgCACIGQQJqNgIAAkBBARApIgJBLkcEQCACQdsARw0BQdgMQdgMKAIAQQJqNgIAQQEQKSIFQSdHIAVBIkdxDQFB3AwoAgAhA0HYDCgCAEECaiIEIQIDQAJAIAIvAQAhASACIANLDQACQCABQTBrQf//A3FBCkkgAUHf/wNxQcEAa0H//wNxQRpJcg0AAkACQCABQdwAaw4EAgEBAgALIAFBJEYNAQsgAUGAAUkNAQsgARAhIAFB3ABGcg0AIAJBAmohAgwBCwtBACEDIAEgBUcNAUHYDCACQQJqNgIAQQEQKUHdAEcNAUEAIQECQAJAAkACQCACIARrQQF1QQRrDgQAAQMCAwsgBCkAAEL0gKCD0IyAN1EhAQwCCyAEQdYKQQoQHkUhAQwBCyAEQeAKQQ4QHkUhAQsgAUUhAwwBC0HYDEHYDCgCAEECajYCAEEBECkaQdwMKAIAIQNB2AwoAgAiBCECA0ACQCACIANLDQACQCACLwEAIgFBMGtB//8DcUEKSSABQd//A3FBwQBrQf//A3FBGklyDQACQAJAIAFB3ABrDgQCAQECAAsgAUEkRg0BCyABQYABSQ0BCyABECEgAUHcAEZyDQAgAkECaiECDAELC0EAIQMgAiAERg0AIAIvAQBB3ABGDQBBACEBAkACQAJAAkAgAiAEa0EBdUEEaw4EAAEDAgMLIAQpAABC9ICgg9CMgDdRIQEMAgsgBEHWCkEKEB5FIQEMAQsgBEHgCkEOEB5FIQELIAFFIQMLQdgMIAY2AgAgACADOgAZCwuGAQEEf0HYDCgCACEBQdwMKAIAIQQCQANAAkAgASICQQJqIQEgAiAETw0AIAEvAQAiAyAARg0CIANB3ABHBEAgA0EKaw4EAQICAQILIAJBBGohASACLwEEQQ1HDQEgAkEGaiABIAIvAQZBCkYbIQEMAQsLQdgMIAE2AgAQNw8LQdgMIAE2AgALcAEDfwJAQdwMKAIAIgJB2AwoAgAiAEEEakkNACAALwECQfUARw0AIAAvAQRB+wBHDQAgAEEGaiEAA0ACQCAAIAJLBH9BfwUgAC8BAEH9AEcNAUEBCyEBQdgMIAA2AgAMAgsgAEECaiEADAALAAsgAQtuAQF/AkAgAEEpRyAAQShrQf//A3FBB0lxIABBIWsiAUEFTUEAQQEgAXRBMXEbckUEQCAAQTprIgFB//8DcUElT0K/gICAoAIgAa2Ip0EBcUVyDQELQQEPCyAAQf0ARyAAQfsAa0H//wNxQQRJcQsuAQF/QQEhAQJAIABB7ghBBRAyDQAgAEH4CEEDEDINACAAQf4IQQIQMiEBCyABC28BAX8CfyAALwEAIgEQISABQSlGciABQf0ARnJFBEBBACABQd0ARw0BGgsDQAJAIABB8I0ETQ0AIAEQIUUNACAAQQJrIgAvAQAhAQwBCwtBASABQSlGIAFB3QBGciABQf0ARnINABogARBCQQFzCws+AQJ/AkAgACACQQF0IgJrIgRBAmoiAEHwjQRJDQAgACABIAIQHg0AIABB8I0ERgRAQQEPCyAEEEEhAwsgAwuDAQECf0EBIQICQAJAAkACQAJAAkAgAC8BACIBQTtrDgQFBAQBAAsCQCABQeUAaw4EAwQEAgALIAFBKUYNBCABQfkARw0DIABBAmtBiglBBhAyDwsgAEECay8BAEE9Rg8LIABBAmtBgglBBBAyDwsgAEECa0GWCUEDEDIPC0EAIQILIAILqgMBAn8CQAJAAkACQAJAAkACQAJAAkACQCAALwEAQeQAaw4UAAECCQkJCQMJCQQFCQkGCQcJCQgJCwJAAkAgAEECay8BAEHpAGsOBAAKCgEKCyAAQQRrQaYIQQIQMg8LIABBBGtBqghBAxAyDwsCQAJAAkAgAEECay8BAEHzAGsOAwABAgoLIABBBGsvAQAiAUHhAEcEQCABQewARw0KIABBBmtB5QAQUA8LIABBBmtB4wAQUA8LIABBBGtBsAhBBBAyDwsgAEEEa0GkCUEGEDIPCyAAQQJrLwEAQe8ARw0GIABBBGsvAQBB5QBHDQYgAEEGay8BACIBQfAARwRAIAFB4wBHDQcgAEEIa0G4CEEGEDIPCyAAQQhrQcQIQQIQMg8LIABBAmtBnAlBBBAyDwtBASECIABBAmsiAEHpABBQDQQgAEHICEEFEDIPCyAAQQJrQeQAEFAPCyAAQQJrQdIIQQcQMg8LIABBAmtB4AhBBBAyDwsgAEECay8BACIBQe8ARwRAIAFB5QBHDQEgAEEEa0HuABBQDwsgAEEEa0HoCEEDEDIhAgsgAgsLACAAQY2AgAQQWAtIAQJ/AkAgAC8BACICQeUARwRAIAJB6wBHDQEgAEECa0GcCUEEEDIPCyAAQQJrLwEAQfUARw0AIABBBGtBpAlBBhAyIQELIAELMwEBf0GBDEEBOgAAQdgMKAIAIQBB2AxB3AwoAgBBAmo2AgBBlAwgAEHwjQRrQQF1NgIAC8EBAQR/IwBBEGsiBCQAIAAhAgJ/AkADQCABIAJNDQECQCACLwEAIgVB3ABHIAVBgPgDcUGAsANHcUUEQCAEIAA2AgxBACECA0AgACABTw0CIARBDGogARBTIAJqQYEIbCIAQQZ2IABzIQIgBCgCDCEADAALAAsgAyAFakGBCGwiA0EGdiADcyEDIAJBAmohAgwBCwsgAkEJbCIAQQt2IABzDAELIANBCWwiAEELdiAAcwshAiAEQRBqJAAgAkGBgAJsC8MBAEGADEEBOgAAAkACQAJAIAFBAWsOAgABAgtB2AwoAgAhASAAEEMgAUHYDCgCAEEAQQBBAyACQQAQVA8LIAJBABA6DwsCQCAAQSpGIABB+wBGckUEQEHYDCgCACEBIAAQQyABQdgMKAIAQQBBAEEBIAIgAxBUQQEQKUEsRw0BQdgMQdgMKAIAQQJqNgIAQQEQKSEACyAAQSpHBEAgAEH7AEcNAUHYDEHYDCgCAEECajYCACACIAMQTBoPCyACIAMQOgsLTQECf0HYDEHYDCgCAEECajYCAEEBECkaQdgMQdgMKAIAQQRqNgIAQQEQKSECQdgMKAIAIQMgAhBDIANB2AwoAgBBAEEAQQIgACABEFQL2wEBBH9B2AwoAgAhAEHcDCgCACEDA0AgAEECaiEBAkACQCAAIANPDQACQAJAAkAgAS8BACICQdsAaw4CAQIACyABIQAgAkEKaw4EAgQEAgMLAkADQAJAIAFBAmohACABIANPDQACQAJAIAAvAQAiAkHcAGsOAgAEAQsgAUEEaiEBDAILIAAhASACQQprDgQAAQEAAQsLQdgMIAA2AgAQN0HYDCgCACEADAQLQdgMIAA2AgAMAwsgAEEEaiEADAILQdgMIAE2AgAQNw8LIAJBL0cNAAtB2AwgADYCAAv0BQIEfwF7AkACQAJAAkBB1AwoAgAiAEEPTQRAQdQMIABBAWo2AgBB2AwoAgAhAEHcDCgCACECA0ACQCAAIgFBAmohACABIAJPDQACQAJAAkAgAC8BACIDQdwAaw4FAgQEBAEACyADQSRHDQMgAS8BBEH7AEcNA0HYDCABQQRqIgE2AgBBqgwvAQAiAEGACEYNBQwHC0HYDCAANgIAQaoMQaoMLwEAQQFrIgA7AQBByAwoAgAgAEH//wNxIgFBA3RqKAIAQQNHBEAQNwtBqAwvAQAiAEUNBUHMDCgCACAAQQJ0akEEaygCACIALwEwIAFBAWpHDQUMBwsgAUEEaiEADAELC0HYDCAANgIADAELQdwMKAIAIQJB2AwoAgAhAQNAIAFBAmohAAJAAkACQAJAAkACQCABLwECQdwAaw4FAQAAAAMACyABLwEEQeAARg0BCwNAIAAiAUEQaiEAIAH9AAAAIgT9DCQAJAAkACQAJAAkACQAJAD9LSAE/QxgAGAAYABgAGAAYABgAGAA/S39UCAE/QxcAFwAXABcAFwAXABcAFwA/S0gBP0MAAAAAAAAAAAAAAAAAAAAAP0t/VD9UP1kIgNFDQALAkAgASADaEE+cWoiAC8BACIBQdwAaw4FAwQEBAIACyABQSRHDQMgACIBLwECQfsARw0EQdgMIABBAmoiATYCAEGqDC8BACIAQYAIRg0FDAcLIAFBBGohAAtB2AwgADYCAEGqDEGqDC8BAEEBayIAOwEAQcgMKAIAIABB//8DcSIBQQN0aigCAEEDRwRAEDcLQagMLwEAIgBFDQRBzAwoAgAgAEECdGpBBGsoAgAiAC8BMCABQQFqRw0EDAYLIABBAmoiASACTQ0BQdgMIABBBGo2AgAMAgsgAiAAIgFPDQALQdgMIAA2AgALEDcLDwtByAwoAgAgAEEDdGoiAkEENgIAQaoMIABBAWo7AQAgAiABNgIEDwtB2AwoAgAhASAAQQA7ATAgACABNgIsC5cBAQN/AkBBxAwoAgAiAUUNACABQdgMKAIAIgJLDQBB2AwgATYCAEHEDEEANgIAQQEQKSIAQSpGBEBB2AxB2AwoAgBBAmo2AgBBARApIQALAkAgAkHYDCgCACIBRwRAIAAQSRpBACEAQdgMKAIAIAFGDQFBARApQTxHDQFB2AwoAgAgAkcNAQtBASEAC0HYDCACNgIACyAAC0UBA38CQEGsDCgCACIBLwEAQeMARw0AIAFBCGsiAkHwjQRJDQAgAUEGaykAAELzgOSD4I3AMVINACACQeEAEFAhAAsgAAtLAQJ/AkACQAJAQawMKAIAIgEvAQBB8wBrDgUBAgICAAILIAFB8AlBAxAyDwtBASEAIAFBAmtB4QAQUA0AIAFBxAtBCRAyIQALIAALdQEEf0GUDCgCACEBQYEMLQAAIQJB2AwoAgAhAwJAAkAgAEUQTyIARXJFBEAQUQ0BDAILIABFDQELQbgMKAIAIgRBACAEQdgMKAIAIgBPGw0AQbgMIAA2AgALQZQMIAE2AgBB2AwgAzYCAEGBDCACQQFxOgAACz0BAX8Cf0EBIAAvAQAiAUEJa0H//wNxQQVJIAFBgAFyQaABRnINABpBACABEEJFDQAaIAAQSyABQS5HcgsLXgEBfwJAIABB+P8DcUEoRiAAQSFrIgFBBU1BAEEBIAF0QTFxG3JFBEAgAEE6ayIBQf//A3FBJU9Cv4CAgKADIAGtiKdBAXFFcg0BC0EBDwsgAEH7AGtB//8DcUEESQuOAQEBfwNAAkACQCAAQTBrQf//A3FBCkkgAEFfcUHBAGtB//8DcUEaSXINAAJAAkAgAEH//wNxIgFB3ABrDgQCAQECAAsgAUEkRg0BCyABQYABSQ0BCyAAQf//A3EiABAhDQAgAEHcAEYEQBAuQQBIDQELQdgMQdgMKAIAIgBBAmo2AgAgAC8BAiEADAELCwukAQEEfwJAQdgMKAIAIgMvAQAiBUHhAEcEQCABIQIgACEEDAELQdgMIANBBGo2AgBBARApIQJB2AwoAgAhBAJAIAJBIkYgAkEnRnJFBEAgAhBDQdgMKAIAIQIMAQsgAhAtQdgMQdgMKAIAQQJqIgI2AgALQQEQKSEFQdgMKAIAIQMLIAMgBEcEQCAEIAJBACAAIAAgAUYiABtBACABIAAbEAULIAULlAIBA38CQAJAIABB7gBHBEAgAEHlAEcNAkHYDCgCACIAQQJqQYYLQQYQHg0CQQQhASAALwEIIgMQISADQS9Gcg0BDAILQdgMKAIAIgBBAmpBjAtBEBAeDQFBCSEBIAAvARIiAxAhDQAgA0EvRw0BC0HYDCAAIAFBAXRqNgIAAn9BARApIgFB3ABGIAFBMGtB//8DcUEKSXJFBEACQCABQd//A3FBwQBrQf//A3FBGkkNAAJAAkAgAUHcAGsOBAIBAQIACyABQSRGDQELQQAgAUGAAUkNAhoLQdgMKAIAIQAgARBJGiAAQdgMKAIAIgIgACACEAVB2AwoAgBBAmshAEEBDAELQQALIQJB2AwgADYCAAsgAgvYAQECfwJAAkAgAEEiRiAAQSdGckUEQEHcDCgCACECA0AgAEG//wNxQTtGQdgMKAIAIgEgAk9yRQRAAkACQAJAAkACQCAAQf//A3EiAEEiaw4HAgMDAwMCAQALIABBL0YNASAAQTxGDQAgAEHgAEYNASAAQdsARw0CCxBPDQIMBwsgAEEAEFYaQdgMKAIAIQELQdgMIAFBAmo2AgALQQEQKSEADAELCyAAQf//A3FB+wBHDQIMAQsgABAtQdgMQdgMKAIAQQJqNgIAQQEQKUH7AEcNAQsQTxoLC9MEAQZ/QdgMKAIAIQECQCAAQd//A3FB2wBGBEAgAS8BACEFQdgMIAFBAmo2AgBB/QBB3QAgBUH7AEYbIQZBARApIQMDQAJAQdgMKAIAIQEgA0H//wNxIgIgBkYNACABQdwMKAIASw0AAkAgAkEuRw0AIAEvAQJBLkcNACABLwEEQS5HDQBB2AwgAUEGajYCAEEBECkQRyEDDAILAkACfwJAIAVB+wBGBEACQCACQSJGIAJBJ0ZyRQRAIAJB2wBHDQFB/QAQVRpB2AxB2AwoAgBBAmo2AgAgAQwECyACEC1B2AxB2AwoAgBBAmo2AgAgAQwDCyABIQAgA0Ewa0H//wNxQQlLDQEDQCAAIgJBAmohACACLwECIgNBMGtB//8DcUEKSQ0AIANBwQBrIgRBHk1BAEEBIAR0Qb+AgYQEcRsNACADQeEAayIEQRdNQQBBASAEdEG/wIEEcRsNAAJAAkAgA0Eraw4EAAEAAgELIAIvAQBBIHJB5QBGDQELC0HYDCAANgIAIAEMAgsgAkEsRgRAQdgMIAFBAmo2AgBBARApIQMMBQsgAhBHIQIMAgsgAhBJGkHYDCgCAAshAEEBECkiAkE6RgRAQdgMQdgMKAIAQQJqNgIAQQEQKRBHIQIMAQsgACABTQ0AIAEgACABIAAQBQsgAkE9RgRAIAYQVSECC0HYDCgCACEBIAJBLEcNAEHYDCABQQJqNgIAQQEQKSEDDAELC0HYDCABQQJqNgIADAELIAAQSRpB2AwoAgAiACABTQ0AIAEgACABIAAQBQtBARApC/QDAQV/QdwMKAIAIQRBqgwvAQAhBQNAAkBB2AwoAgAiAyAESw0AIAMvAQAiAkE7RiABIAJBLEZxcg0AAkACQCACQQprDgQAAQEAAQsgAEEBcUUEQEEBIQAgARBXDQMMAgtB2AwgA0ECajYCAEEBIQAMAgsgAhA1BEBB2AwgA0ECajYCAAwCCyACQf0ARkEAIAUbDQACQAJAAkACQAJAIAJBKEYNACACQS9GDQEgAkE8RiACQfsARnINACACQdsARw0CC0EAIQAQTw0FDAQLIAMvAQIhBkEvQQEQVkUNAUHYDEHYDCgCACICLwEAIgNBDUYgA0EKRnIiA0UgBkEqR3IEfyACBUHYDCACQQJrNgIAQQEhA0EBECNB2AwoAgALQQJqNgIAIANBf3MgAHJBAXENBEEBIQAgARBXDQQMAwsgAkEBEFYNAQsCQAJAIAJB3ABGIAJBMGsiAEH//wNxQQpJckUEQCACQd//A3FBwQBrQf//A3FBGkkNAQJAAkAgAkHcAGsOBAMBAQMACyACQSRGDQILIAJB/wBLDQEMAgsgAEH//wNxQQlLDQELQdgMKAIAIQAgAhBJGiAAQdgMKAIAEE0hAAwDC0HYDEHYDCgCAEECajYCAEEBIQAMAgtBACEAQdgMQdgMKAIAQQJqNgIADAELCwuBAQEDfwNAAkACQCAAQf//A3EiAkHcAEYEQBAuIgNBAEgNAiADRQ0BQdgMQdgMKAIAIgBBAmo2AgAgAC8BAiEADAMLIAIQIUUNACAAIQEMAQsgACEBIAIQQg0AQQAhAUHYDEHYDCgCACIAQQJqNgIAIAAvAQIiAA0BCwsgAUH//wNxC7IEAQV/IAFBIkYgAUEnRnJFBEAQNw8LQdgMKAIAIQQgARAtIAAgBEECakHYDCgCAEEBEAMgAgRAQegLKAIAQQRBBiACQQFGGzYCHAtB2AxB2AwoAgBBAmo2AgBBABApIQBB2AwoAgAhAwJAAkAgAEH3AEcNACADLwECQekARw0AIAMvAQRB9ABHDQAgAy8BBkHoAEYNAQtB2AwgA0ECazYCAA8LQdgMIANBCGo2AgACQEEBEClB+wBHBEAMAQtB2AwoAgAiBSEAQQAhBANAQdgMIABBAmo2AgBBARApIQBB2AwoAgAhBgJAAkACQCAAQSJHBEAgAEEnRw0BQScQLQwCC0EiEC0MAQsgABBJIQJB2AwoAgAhAAwBC0HYDCgCAEECaiEAQdgMIAA2AgBBARApIQILIAJBOkcEQAwCC0HYDEHYDCgCAEECajYCAEEBECkiAUEiRiABQSdGckUEQAwCC0HYDCgCACECIAEQLUHYDCgCACEHQRQQBEGIDEGIDCgCACIBQRRqNgIAIAFBADYCECABIAdBAmo2AgwgASACNgIIIAEgADYCBCABIAY2AgACQCAERQRAQegLKAIAIAE2AiAMAQsgBCABNgIQC0HYDEHYDCgCAEECajYCAAJAQQEQKSIAQSxHBEAgAEH9AEYNAQwDC0HYDEHYDCgCAEECaiIANgIAIAEhBAwBCwtB6AsoAgAiACAFNgIQIABB2AwoAgBBAmo2AgwPC0HYDCADNgIACy0BAX8CQCAALwEAQS5HDQAgAEECay8BAEEuRw0AIABBBGsvAQBBLkYhAQsgAQvbBwEKf0GADEEBOgAAAkBB5AwoAgAEQEHcDCgCACEKA0BBARApIQMCQANAIANB//8DcSIEQf0ARg0EQdgMKAIAIgIgCksNBEEBIQgCQAJAAkACQAJAAkACfyACIAENABogBEH0AEcEQEEAIQggAgwBC0H0ACEDIAIvAQBB9ABHDQQgAkECakHaCUEGEB4NBCACLwEIIgQQISAEQSpGciAEQfsARnJFIARBL0dxDQRBACEHQdgMIAJBCGo2AgBB9AAhCUEBECkiA0EsRg0CIANB4QBGDQEgAiEFIANB/QBGDQNB2AwoAgALIQQgA0H//wNxIgJBJ0cgAkEiR3ENBCACEC1B2AxB2AwoAgBBAmoiAzYCAAwFC0HhACEDQdgMKAIAIgQvAQJB8wBHDQMgBC8BBBAmRQ0DQdgMIARBBGo2AgACQEEBECkiBkHhAEYEQEHYDCgCACIFLwECQfMARw0CIAUvAQQQJkUNAkHYDCAFQQRqNgIAAn9BAUEBECkiBkHcAEYiCw0AGkEBIAZBMGtB//8DcUEKSQ0AGkHhACEJQQEhByAGQd//A3FBwQBrQf//A3FBGkkNAiAEIQUCQAJAIAZB3ABrDgQGAQEGAAsgBkEkRg0DCyAGQYABSQshBkEAIQdB2AwgBDYCACALDQUgAiEFQfQAIQkgBg0DDAULQdgMIAQ2AgAgBkEsRg0EIAIhBSAGQf0ARg0EDAILIAQhBQwBCyACIQULQdgMIAU2AgAgBSEEIAchCCAJIQMMAQsgAiEEQQAhCAsgA0H//wNxEENB2AwoAgAiAyAERg0CCyAEIQICfyADQQEQKUHhAEcNABogA0HYDCgCACIHLwECQfMARw0AGgJAAkAgBy8BBCIFQTBrQf//A3FBCkkgBUHf/wNxQcEAa0H//wNxQRpJcg0AAkACQCAFQdwAaw4EAgEBAgALIAVBJEYNAQsgBUGAAUkNAQsgBCECIAMgBRAhRQ0BGgtB2AwgB0EEajYCAEEBECkhBUHYDCgCACECIAUQQ0HYDCgCAAshCSACIAkgBCADQQAgACAIEFRBARApIgNBLEcNAAtB2AwoAgAhAwtB2AwgA0ECajYCAAwACwALQdwMKAIAIQFB2AwoAgAhAgNAIAEgAkkNAQJAIAIvAQAiAEEiRiAAQSdGckUEQAJAIABBL0cEQCAAQdwARg0BIABB/QBHDQNB/QAhAwwFCyACLwECIgBBKkcEQCAAQS9HDQMQIgwDC0EBECMMAgsQLkEATg0BEDcMAwsgABAtC0HYDEHYDCgCAEECaiICNgIADAALAAsgA0H//wNxC5YBAQF/AkACQAJAAkACQCABIABrQQF1QQNrDgYABAECBAMECyAAQfAJQQYQHkUPC0EBIQIgAEH2CUEKEB5FDQIgAEGACkEKEB5FDwsgAEGKCkEMEB5FBEBBAQ8LQQEhAiAAQZYKQQwQHkUNASAAQaIKQQwQHkUPC0EBIQIgAEGuCkEQEB5FDQAgAEG+CkEQEB5FIQILIAILegECf0EBIQICQCAAQTxrIgFBH01BAEEBIAF0QYuAgIB4cRsNAEEAIQECQAJAIABBLGsOAwIBAgALIABBJkYgAEE6RnIgAEH8AEZyDQEgAEHlAEcNAEHYDCgCACIAQQJqQfoKQQwQHg0AIAAvAQ4QJiEBCyABIQILIAIL6gIBBH8CQAJAAn9BKUHYDCgCACIALwEAIgJBKEYNABoCQCACQdsARwRAIAJBPEcNAUHcDCgCACEDQQAhAgNAIAAgA0sEQEEADwsCQAJAIAAvAQAiAUEoRiABQdsARnIgAUH7AEZyRQRAAkACQCABQTxrDgMAAwEDCyACQQFqIQIMAwsgAEECay8BAEE9Rg0CIAJBAWsiAg0CIABBAmohAAwICxBPIQFB2AwoAgAhACABDQIMBgsgAUEAEFYaQdgMKAIAIQALQdgMIABBAmoiADYCAAwACwALQd0ADAELQf0ACyECQdwMKAIAIQMDQEHYDCAAQQJqIgE2AgAgASADSw0BIAEvAQAiASACRgRAIABBBGohAAwDCyABQShGIAFB+wBGckUgAUHbAEdxBEAgAUEAEFYaQdgMKAIAIQAMAQUQT0UNAkHYDEHYDCgCAEECayIANgIADAELAAsAC0EADwtB2AwgADYCAEEBCzUBAX8CQCAAQfCNBEkNACAALwEAIAFHDQAgAEHwjQRGBEBBAQ8LIABBAmsvAQAQJiECCyACC+kBAQZ/QdgMKAIAIQQCQEEBEClBKEcNABBPRQ0AQQEQKSEAQdgMKAIAIQECQAJAIABBOkcEQCABIQAMAQtB3AwoAgAhBQNAQdgMIAFBAmoiADYCACAAIAVLDQECQAJAAkACQCAALwEAIgNBPGsOAgECAAsgA0EoRiADQdsARnINACADQfsARw0CCxBPIQFB2AwoAgAhACABRQ0DQdgMIABBAmsiATYCAAwCCyABLwEEQT5GDQMLIANBABBWGkHYDCgCACEBDAALAAsgAC8BAEE9Rw0BCyAALwECQT5GIQILQdgMIAQ2AgAgAgtyAQR/QdgMKAIAIgEgAEsEQEHYDCAANgIAQZQMKAIAIQJBgQwtAAAhAwJAEE9FDQAQUUUNAEG4DCgCACIEQQAgBEHYDCgCACIATxsNAEG4DCAANgIAC0GUDCACNgIAQdgMIAE2AgBBgQwgA0EBcToAAAsLpwQBBX8gACgCACICQQJqIQRB3AAhAwJAIAIvAQAiBUHcAEYEQCABIARNDQEgAi8BAkH1AEcNAQJAIAJBBGoiBSABTw0AIAUvAQBB+wBHDQAgAkEGaiEDQQAhAgNAAkAgASADTQ0AIAMvAQAiBUH9AEYNACAFQQZ2QQlsIAVBD3EgAkEEdHJqIQIgA0ECaiEDDAELCyAEIANBAmogASADRiIBGyEEQdwAIAIgARshAwwCCyABIAVrQQhIDQEgAi8BBCIFQQZ2QQlsIAVBD3FqIQMgAkEGaiEGQQEhBANAIARBBEYEQCACQQxqIQQgA0GAeHFBgLADRw0DIAJBGGoiBSABSw0DIAQvAQBB3ABHDQMgAi8BDkH1AEcNAyACLwEQIgFB+wBGDQMgAUEGdkEJbCABQQ9xaiECQQMhBgNAIAZBBkYEQCADQQp0IAJqQYC4/xprIAMgAkGAeHFBgLgDRiIBGyEDIAUgBCABGyEEDAUFIAQgBkEBdGovAQAiAUEPcSACQQR0ciABQQZ2QQlsaiECIAZBAWohBgwBCwALAAUgBi8BACIFQQ9xIANBBHRyIAVBBnZBCWxqIQMgBEEBaiEEIAZBAmohBgwBCwALAAsgBUGA+ANxQYCwA0cgASAETXJFBEAgAkEEaiAEIAIvAQIiA0GA+ANxQYC4A0YiARshBCAFQQp0IANqQYC4/xprIAUgARshAwwBCyAFIQMLIAAgBDYCACADC7ICAQh/IwBBEGsiCCQAAkBB5AwoAgAiB0UNACABIABrIQsgByAAIAEQOCINQegMKAIAcUECdGohB0H8CygCACEMA0AgBygCACIHRQ0BAkAgBy0AGEEERw0AIAcoAhQgDUcNACAGBEAgBy0AGUEEcUUNAQsgBygCDCEJIAggBygCCCIKNgIMIAggADYCCAJAIAsgCSAKa0YEQCAKIAAgCxAeRQ0BCwNAIAgoAgwiCiAJTyAIKAIIIg4gAU9yRQRAIAhBDGogCRBTIAhBCGogARBTRg0BDAMLCyAJIApHIAEgDkdyDQELIAcgBTYCFCAHIAM2AgwgByACNgIIIAdBAjoAGCAHIActABlBBHEgBHI6ABlB/AsgDEEBayIMNgIACyAHQRxqIQcMAAsACyAIQRBqJAAL7hsBC38jAEEQayIGJABBrAxB2AwoAgAiATYCAEGqDC8BACELIAZBADYCDANAAkBB2AwgAUECaiICNgIAQdwMKAIAIAFNBEBBACEFDAELAkAgAi8BACIFEDUNAAJAAkACQAJAQaoMLwEAIAtHDQACQAJAIAVBKWsOBAcCAgEACyAFQTtGIAVB3QBGciAFQf0ARnINBgwBCyAGKAIMIgEEQCABEFIgBkEANgIMQdgMKAIAIQILQbgMKAIAIghFIAIgCE9yRQRAQawMKAIAIQQMAgtBlAwoAgAhCUGBDC0AACEKIAIhAQNAQdgMIAFBAmo2AgACQAJAQQEQKSIBIABGDQAgAEHdAEYgAUEsRnENAQJAAkBB2AwCfwJAIAFBLkcNAEHYDCgCACIDLwECQS5HDQAgAy8BBEEuRw0AIANBBmoMAQsgAEH9AEcNAQJ/AkACQCABQSJGIAFBJ0ZyRQRAIAFB2wBGBEAQT0UNB0EADAQLQdgMKAIAIQQgAUEwa0H//wNxQQlLDQIDQCAEIgNBAmohBCADLwECIgFBMGtB//8DcUEKSQ0AIAFBwQBrIgdBHk1BAEEBIAd0Qb+AgYQEcRsNACABQeEAayIHQRdNQQBBASAHdEG/wIEEcRsNAAJAIAFBK2sOBAADAAEDCyADLwEAQSByQeUARg0ACwwBCyABEC1B2AwoAgBBAmohBAtB2AwgBDYCAEEADAELIAEQSRpB2AwoAgAgBEYNA0EBCyEBQQEQKSIDQTpHBEAgASADQSxGcQ0FIAEgA0G//wNxQT1GcUUNAwwEC0HYDCgCAEECags2AgBBARApIQELAkAgAUHf/wNxQdsARgRAEE8NAQwCC0HYDCgCACEDIAEQSRogA0HYDCgCAEYNAQtBARApIgFBLEYNAiABQT1GIAAgAUZyDQELIAhBAEHYDCgCACIBIAhNG0UEQEG4DCABNgIAC0GUDCAJNgIAQdgMIAI2AgBBgQwgCkEBcToAAAwDC0GUDCAJNgIAQdgMIAI2AgBBgQwgCkEBcToAAEEsIQUMBwtB2AwoAgAhAQwACwALAkAgBUEKaw4EBAAABAALQawMKAIAIQQCQAJAAkACQAJAAkACQAJAAn8CQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAIAVB2wBrDg8HEgwYGBQYGAMFAQQYGAIACwJAIAVBIWsODwgRGBgYGBEGDhgYIxgYEwALAkAgBUE7aw4EDQkLCgALIAVB+wBrDgMOFw8WC0GqDC8BAA0fIAIQHUUNHyACQQJqQYAIQQoQHg0fEB9FDSIMIAsCQAJAIAIvAQJB7QBrDgIAASALIAIQHUUNHyACKQAEQvCAvIOgjoA6Ug0fECAMIgsgAhAdRQ0eQQEQJQ0fDB4LIAIvAQJB7ABHDR0CQCACEB1FDQAgAkEEakGUCEEGEB4NACACLwEKECZFDQBBxAwgAkEKajYCAAsgAhAdRQ0dIAJBBGpBlAhBBhAeDR0gAi8BChAhRQ0dQdAMQQE6AAAMHQsgAi8BAkH1AEcNHCACEB1FDRwgAkEEakG6CUEMEB4NHCACLwEQECZFDRxBxAwgAkEQajYCAAwcCyACLwECQeUARw0bIAIQHUUNGxAnDRwMGwtBqgwvAQAiA0GACEYNDkHIDCgCACADQQN0aiIBQQE2AgBBqgwgA0EBajsBACABIAQ2AgQMHQtBqgwvAQAiA0GACEYNDUHIDCgCACADQQN0aiIBQQg2AgBBqgwgA0EBajsBACABIAQ2AgQMHAsCQAJAIAQvAQAiA0EvRgRAQQEhAUGwDC0AAA0BDAILQQEhASADECgNAQJAIANBJ2sOAwIBAgALAkAgA0HdAGsOBAIBAQIACyADQSJGIANB/QBGcg0BC0HADC0AACADQSFGcSEBC0HADCABOgAADBsLQbQMKAIAIgFBAWtBfU0EQEG0DCABQQFqNgIADBsLIAJBAmsvAQBBPEYEQCAGIAI2AgwMGwsCfwJAAkACQCAELwEAIgFBK2sOAwABAAELIARBAmsvAQAgAUcNAEEBIQQgARAoRQ0BDBYLQcAMLQAAIAFBIUZxIQQgAUEvRgRAQbAMLQAAQQFzDAILIAEQKA0VCwJAAkAgAUEnaw4DFgEWAAsgAUEiRiABQd0ARnIgAUH9AEZyDRULIAFB4ABGCyEBIAFBAXEgBHINEwwUC0G0DCgCACIBQQJrQXxLDRkgAkECay8BAEE9Rg0ZQbQMIAFBAWs2AgAMGQtBtAwoAgBBAUcNGEGqDC8BAA0YIAIvAQJBPkYNGEG8DCACNgIAQbQMQX82AgAMGAtBqgwvAQAiAUUNCEGqDCABQQFrOwEADBcLQbQMKAIARQ0WQaoMLwEADRYgBkEANgIMQbQMQQA2AgAMFgtBqgwvAQAiAUUNBkGqDCABQQFrIgE7AQBBqAwvAQAiA0UNFUHIDCgCACABQf//A3FBA3RqKAIAQQVHDRUCQEHMDCgCACADQQJ0akEEaygCACIBKAIEDQAgASAEQQJqNgIEIAEoAiwgBEYNACABQQA2AiQLIAEgAkECajYCDCABECxBqAwgA0EBazsBAAwVCwJAIAQvAQBBKUcNAEHoCygCACIBRQ0AIAEoAgwgBEECakcNAEHoC0HsCygCACIBNgIAAkAgAQRAIAFBADYCNAwBC0HYC0EANgIAC0H4C0H4CygCAEEBazYCAAtBqgwvAQAiA0GACEYNBUHIDCgCACADQQN0aiIBQQZBAkHQDC0AABs2AgBBqgwgA0EBajsBACABIAQ2AgRB0AxBADoAAAwUC0GqDC8BACIBRQ0EQaoMIAFBAWsiATsBAEHIDCgCACABQf//A3EiA0EDdGooAgBBBEcNE0GoDC8BACIBRQ0LIANBzAwoAgAgAUECdGpBBGsoAgAiAy8BMEcNC0EIEARBiAxBiAwoAgAiAkEIajYCAEHYDCgCACEBIAJBADYCBCACIAFBAmo2AgACQCADKAIoIgFFBEAgAyACNgIkDAELIAEgAjYCBAsgAyACNgIoDAsLIAUQLQwSCxAuIgFFDQ4gAUEASA0CQawMIAI2AgAMEgsCQCACLwECIgFBKkcEQCABQS9HDQEQIkEBDAgLQQEQI0EBDAcLAkAgBC8BACIBEC8EQAJAAkACQCABQStrDgQBCgIACgsgBEECay8BAEEwa0H//wNxQQpJDQMMCQsgBEECay8BAEErRg0CDAgLIARBAmsvAQBBLUYNAQwHCyABQSlHDQBByAwoAgBBqgwvAQBBA3RqKAIEEDANBgsCQAJAQaoMLwEAIgdFIAFB5gBHcg0AQcgMKAIAIAdBA3RqIgNBCGsoAgBBAUcNACAEQQJrLwEAQe8ARw0BIARBBGsQMUUNASADQQRrKAIAQfgIQQMQMkUNAQwHCyABQf0ARw0AQcgMKAIAIAdBA3RqIgMoAgQQMw0GIAMoAgBBBkYNBgsgBBA0DQVBsAwtAAAgAUEvRnEgAUEAR3NFDQUCQEHwCygCACIDRQ0AIAQgAygCAEkNACAEIAMoAgRNDQYLA0AgBEHwjQRLBEBBrAwgBEECayIENgIAIAQvAQAiARAmRQ0BCwsgAUH//wNxEDUEQANAIARB8I0ESwRAQawMIARBAmsiBDYCACAELwEAEDUNAQsLIAQQNg0GC0GwDEEBOgAAQQAMBgsCQAJAQagMLwEAIgFFDQBBzAwoAgAgAUECdGpBBGsoAgAiASgCBA0AIAEoAgAgAkcNACABQaoMLwEAIgFBAWo7ATAMAQtBqgwvAQAhAQsgAUH//wNxIgNBgAhHDQELEDcMDwtByAwoAgAgA0EDdGoiA0EDNgIAQaoMIAFBAWo7AQAgAyAENgIEDAULIAVB9ABGDQgLIAVBMGtB//8DcUEKSSAFQSByQeEAa0H//wNxQRpJcg0IAkACQCAFQdwAaw4ECgEBCgALIAVBJEYNCQsgBUGgAUYgBUGAAUlyDQsMCAsQO0GwDEEAOgAAQQALIgRFDQBBtAwoAgBFDQBBqgwvAQANAEHYDCgCACEDA0AgAiADSw0BAkACQCACLwEAQQprDgQAAQEAAQsgA0ECQQAgAy8BACIBQQpHG0EAIAFBDUcbahAkQbQMKAIADQIgBkEANgIMDAILIAJBAmohAgwACwALIAQNCQwICxA8DAcLED0NAEEBIQEQPg0BED8NAQwGC0EAIQELIAEQQAwECyACLwECQfkARw0AIAIQHUUNAEEBECUNAQtB2AwoAgAhAQNAIAEvAQIiAkEgckHhAGshAwJAIAJBMGtB//8DcUEKSSADQf//A3FBGklyDQACQAJAIAJB3ABrDgQCAQECAAsgAkEkRg0BCyACQaABRiACQYABSXINBAtB2AwgAUECaiIBNgIADAALAAtBrAxB2Ak2AgAMAgtBqAwvAQAiAUVBqgwvAQAiA0VyRQRAQcgMKAIAIANBA3RqQQhrKAIAQQVHDQFBzAwoAgAgAUECdGpBBGsoAgAiASgCBA0BIAEgBEECajYCBCAEIAEoAixHBEAgAUEANgIkC0HYDCACQQJqNgIAQQEQKRogAUHYDCgCACIBNgIQQdgMIAFBAms2AgAMAQsgAw0AAkACQEG0DCgCAEEBag4DAAIBAgsgBkEMahAqRQ0BCxArC0GsDEHYDCgCADYCAAtBACEFQYEMLQAADQELQdgMKAIAIQEMAQsLIAZBEGokACAFC+ABAQJ/AkACQAJAIABBIkYgAEEnRnJFBEAgAEEvRg0BIABB4ABHDQNB3AwoAgAhAkHYDCgCACEAA0ACQCAAIgFBAmoiACACSw0AAkACQCAALwEAIgNB3ABrDgUAAwMDAgELIAFBBGohAAwCCyADQSRHDQEgAS8BBEH7AEcNAUHYDCABQQRqNgIAEE8aQdgMQdgMKAIAQQJrIgA2AgAMAQsLQdgMIAA2AgAMAgsgABAtDAELQdgMKAIALwECIgBBKkcEQCAAQS9HDQIQIgwBCyABQQFzECNBAQ8LQQEhAgsgAgvAAQECf0HYDCgCACEBQQEhAiAAQQBBARApIgBBLEYbRQRAAn8CQAJAAkACQAJAIABBOmsOBgEEBAIEAQALIABBJkYgAEH8AEZyDQAgAEHlAEYNAiAAQS5HDQMLQdgMKAIAQQJqIQFBAQwDC0HYDCgCACIALwECQT5HDQEgAEEEaiEBQQEMAgtB2AwoAgAiAEECakH6CkEMEB4NACAALwEOECZFDQAgAEEOaiEBQQEMAQtBAAshAkHYDCABNgIACyACCykBAX8gAEGgAUYgAEEJayICQRdNQQBBASACdCABcRtyRQRAQQAPC0EBCwvdAwEAQYAIC9UDeABwAG8AcgB0AHAAbwByAHQAbABhAHMAcwByAG8AbQBlAHQAYQB2AG8AeQBpAGUAZABlAGwAZQBpAG4AcwB0AGEAbgB0AHkAcgBlAHQAdQByAGQAZQBiAHUAZwBnAGUAYQB3AGEAaQB0AGgAcgB3AGgAaQBsAGUAZgBvAHIAaQBmAGMAYQB0AGMAZgBpAG4AYQBsAGwAZQBsAHMAYgByAGUAYQBjAG8AbgB0AGkAbgBzAHkAbgBjAHUAbgBjAHQAaQBvAG4AbwB1AHIAYwBlAGUAZgBlAHIAOwB5AHAAZQBuAHQAZQByAGYAYQBjAGUAbgBlAHcAawBlAHkAbwBmAGkAbgBmAGUAcgB0AHkAcABlAG8AZgB1AG4AaQBxAHUAZQBpAG0AcABvAHIAdAByAGUAYQBkAG8AbgBsAHkAYQBiAHMAdAByAGEAYwB0AHQAaABlAG4AYwBhAHQAYwBoAGYAaQBuAGEAbABsAHkAZQBjAGwAYQByAGUAeAB0AGUAbgBkAHMAbgB1AG0AYQBtAGUAcwBwAGEAYwBlAG8AbgBzAHQAbwBkAHUAbABlAGUAcQB1AGkAcgBlAGwAbwBiAGEAbABzAGEAdABpAHMAZgBpAGUAcw==", "undefined" != typeof Buffer ? Buffer.from(A2, "base64") : Uint8Array.from(atob(A2), (A3) => A3.charCodeAt(0));
+      var A2;
+    };
+    init2 = () => N || (N = w ? Promise.resolve() : WebAssembly.compile(H()).then(WebAssembly.instantiate).then(({ exports: A2 }) => {
+      w || (w = A2);
+    }));
+    R = () => {
+      if (w) return;
+      const A2 = new WebAssembly.Module(H());
+      w = new WebAssembly.Instance(A2).exports;
+    };
+  }
+});
+
+// src/runners/vitest/packages.ts
+import { readFile as readFile6 } from "node:fs/promises";
+import { dirname as dirname23, isAbsolute as isAbsolute10 } from "node:path";
+function closurePackages(graph, paths) {
+  const imports = [];
+  const builtins = new Set(graph.builtins);
+  for (const file of graph.files) {
+    const entry4 = installedEntry(file, paths);
+    if (entry4 === "unnamed") builtins.add(UNNAMED);
+    else if (entry4 !== null) imports.push(entry4);
+  }
+  for (const [importer, specifiers] of graph.bare) {
+    const from = directoryOf2(dirname23(importer), paths);
+    if (from === null) continue;
+    for (const specifier of specifiers) {
+      const entry4 = bareImport(from, specifier);
+      if (entry4 !== null) imports.push(entry4);
+    }
+  }
+  const root = directoryOf2(graph.root, paths);
+  if (root !== null) for (const name2 of graph.rooted) imports.push({ from: root, name: name2 });
+  return { imports, builtins: [...builtins].sort(compare) };
+}
+function installedEntry(file, paths) {
+  const rel2 = paths.toRelative(file);
+  const at2 = rel2 === null ? -1 : rel2.lastIndexOf(NODE_MODULES);
+  if (rel2 === null || at2 === -1 || at2 > 0 && rel2[at2 - 1] !== "/") return null;
+  const rest = rel2.slice(at2 + NODE_MODULES.length);
+  const name2 = packageName(rest);
+  if (name2 === null) return "unnamed";
+  const from = rel2.slice(0, Math.max(0, at2 - 1));
+  return rest === `${name2}/package.json` ? { from, name: name2, manifest: true } : { from, name: name2 };
+}
+function bareImport(from, specifier) {
+  const name2 = packageName(specifier);
+  if (name2 === null) return null;
+  const path = specifier.split("?")[0] ?? specifier;
+  return path === `${name2}/package.json` ? { from, name: name2, manifest: true } : { from, name: name2 };
+}
+async function environmentPackages(project, inputs2, paths) {
+  const setup = closurePackages(inputs2.setup, paths);
+  const globalSetup = closurePackages(inputs2.globalSetup, paths);
+  const imports = [...setup.imports, ...globalSetup.imports];
+  const builtins = /* @__PURE__ */ new Set([...setup.builtins, ...globalSetup.builtins]);
+  const root = directoryOf2(project.config.root, paths);
+  const runner = root === null ? [] : [{ from: root, name: "vitest" }];
+  imports.push(...runner);
+  if (root !== null) {
+    for (const name2 of namedByConfig(project.config)) imports.push({ from: root, name: name2 });
+  }
+  for (const file of configModules(project.config)) {
+    const entry4 = installedEntry(file, paths);
+    if (entry4 === "unnamed") builtins.add(UNNAMED);
+    else if (entry4 !== null) imports.push(entry4);
+  }
+  await init2;
+  for (const file of inputs2.configFiles) {
+    const from = paths.isProjectFile(file) ? directoryOf2(dirname23(file), paths) : null;
+    if (from === null) continue;
+    const { specifiers, unnamed } = await loadsOf(file);
+    if (unnamed) builtins.add(UNNAMED);
+    for (const specifier of specifiers) {
+      const builtin = builtinOf(specifier);
+      const entry4 = builtin === null ? bareImport(from, specifier) : null;
+      if (builtin !== null) builtins.add(builtin);
+      else if (entry4 !== null) {
+        imports.push(entry4);
+        runner.push(entry4);
+      }
+    }
+  }
+  return { imports, builtins: [...builtins].sort(compare), runner };
+}
+function namedByConfig(config) {
+  const names5 = [];
+  if (typeof config.environment === "string") {
+    const name2 = environmentPackage(config.environment);
+    if (name2 !== null) names5.push(name2);
+  }
+  const reporters = Array.isArray(config.reporters) ? config.reporters : [];
+  for (const reporter of reporters) {
+    const specifier = Array.isArray(reporter) ? reporter[0] : reporter;
+    if (typeof specifier !== "string" || BUILTIN_REPORTERS.has(specifier)) continue;
+    const name2 = packageName(specifier);
+    if (name2 !== null) names5.push(name2);
+  }
+  return names5;
+}
+function configModules(config) {
+  const serializers = Array.isArray(config.snapshotSerializers) ? config.snapshotSerializers : [];
+  const values = [...serializers, config.runner, config.snapshotEnvironment, config.diff];
+  return values.filter(
+    (value) => typeof value === "string" && isAbsolute10(value)
+  );
+}
+async function loadsOf(file) {
+  let source;
+  try {
+    source = await readFile6(file, "utf8");
+  } catch {
+    return { specifiers: [], unnamed: false };
+  }
+  const specifiers = [];
+  try {
+    const [imports] = parse3(source, file);
+    for (const record of imports) {
+      if (record.type === "import-meta" || record.specifier === void 0) continue;
+      if (record.type === "dynamic" ? !record.probablyTypeOnly : !record.typeOnly) {
+        specifiers.push(record.specifier);
+      }
+    }
+  } catch {
+  }
+  const loads2 = sourceLoads(source);
+  specifiers.push(...loads2.requires);
+  return { specifiers, unnamed: loads2.unnamed };
+}
+function directoryOf2(dir2, paths) {
+  return dir2 === paths.root ? "" : paths.toRelative(dir2);
+}
+var NODE_MODULES, UNNAMED, BUILTIN_REPORTERS;
+var init_packages2 = __esm({
+  "src/runners/vitest/packages.ts"() {
+    "use strict";
+    init_lexer();
+    init_fs();
+    init_graph();
+    init_loads();
+    NODE_MODULES = "node_modules/";
+    UNNAMED = "module";
+    BUILTIN_REPORTERS = /* @__PURE__ */ new Set([
+      "default",
+      "agent",
+      "minimal",
+      "blob",
+      "verbose",
+      "dot",
+      "json",
+      "tap",
+      "tap-flat",
+      "junit",
+      "tree",
+      "hanging-process",
+      "github-actions"
+    ]);
+  }
+});
+
 // src/runners/vitest/environment.ts
 import { fileURLToPath as fileURLToPath6 } from "node:url";
 function projectEnvironment(project, inputs2, context) {
   const { paths } = context;
+  const files2 = environmentFiles(inputs2.configFiles, inputs2, paths);
+  const former = environmentFiles(configFiles(project.vitest), inputs2, paths);
+  return {
+    project: project.name,
+    runnerName: "vitest",
+    runnerVersion: context.runnerVersion,
+    adapterVersion: context.adapterVersion,
+    resolvedConfig: canonicalConfig(project, paths, context.injected),
+    files: files2,
+    ...sameList(former, files2) ? {} : { formerFiles: former }
+  };
+}
+async function formerPackages(project, inputs2, environment, paths) {
+  if (environment.formerFiles === void 0) return {};
+  const configs = configFiles(project.vitest);
+  const former = await environmentPackages(project, { ...inputs2, configFiles: configs }, paths);
+  return JSON.stringify(former) === JSON.stringify(environment.packages) ? {} : { formerPackages: former };
+}
+function environmentFiles(configs, inputs2, paths) {
   const files2 = /* @__PURE__ */ new Set();
   const inputFiles = [
-    ...inputs2.configFiles,
+    ...configs,
     ...inputs2.setup.files,
     ...inputs2.globalSetup.files,
     ...inputs2.missing
@@ -21279,14 +21961,7 @@ function projectEnvironment(project, inputs2, context) {
     const rel2 = paths.toRelative(file);
     if (rel2 !== null && paths.isProjectFile(file)) files2.add(rel2);
   }
-  return {
-    project: project.name,
-    runnerName: "vitest",
-    runnerVersion: context.runnerVersion,
-    adapterVersion: context.adapterVersion,
-    resolvedConfig: canonicalConfig(project, paths, context.injected),
-    files: [...files2].sort(compare)
-  };
+  return [...files2].sort(compare);
 }
 function canonicalConfig(project, paths, injected = {}) {
   const {
@@ -21351,6 +22026,7 @@ var init_environment2 = __esm({
   "src/runners/vitest/environment.ts"() {
     "use strict";
     init_fs();
+    init_packages2();
     init_project();
   }
 });
@@ -21772,336 +22448,6 @@ var init_optimizer = __esm({
   "src/runners/vitest/optimizer.ts"() {
     "use strict";
     noted = /* @__PURE__ */ new Map();
-  }
-});
-
-// node_modules/es-module-lexer/dist/lexer.js
-function C(A2, Q2, B2) {
-  if (B2 < 1 || Q2 + B2 > A2.length) throw new SyntaxError();
-  let E2 = 0;
-  const C3 = Q2 + B2;
-  for (let B3 = Q2; B3 < C3; B3++) {
-    const Q3 = A2.charCodeAt(B3), C4 = 32 | Q3, g2 = Q3 >= 48 && Q3 <= 57 ? Q3 - 48 : C4 >= 97 && C4 <= 102 ? C4 - 87 : -1;
-    if (-1 === g2) throw new SyntaxError();
-    E2 = 16 * E2 + g2;
-  }
-  return E2;
-}
-function parse3(H2, N2 = "@") {
-  w || R();
-  const M = H2.length + 1, k = (w.__heap_base.value || w.__heap_base) + 4 * M + 16 - w.memory.buffer.byteLength;
-  k > 0 && w.memory.grow(Math.ceil(k / 65536));
-  const G = w.sa(M - 1);
-  if (H2.length >= 64 && B) Buffer.from(w.memory.buffer, G, 2 * (M - 1)).write(H2, "utf16le");
-  else {
-    const A2 = w.memory.buffer;
-    (null == D ? void 0 : D.buffer) !== A2 && (D = new Uint16Array(A2, G)), (Q ? I : g)(H2, D);
-  }
-  if (!w.parse()) throw Object.assign(new Error(`Parse error ${N2}:${H2.slice(0, w.e()).split("\n").length}:${w.e() - H2.lastIndexOf("\n", w.e() - 1)}`), { idx: w.e() });
-  const s = [], L = [];
-  for (; w.ri(); ) {
-    const A2 = w.is(), Q2 = w.ie(), B2 = w.it(), E2 = 15 & B2, C3 = w.ai(), g2 = w.id(), I2 = w.ss(), D2 = w.se(), N3 = w.ip();
-    let R2, M2 = false;
-    if (1 & N3 ? R2 = U(-1 === g2 ? A2 : A2 + 1, -1 === g2 ? Q2 : Q2 - 1, A2, !!(2 & N3)) : -1 !== g2 && "`" === H2[A2] && (R2 = i3(A2, Q2), M2 = void 0 !== R2), 3 === E2) s.push({ type: "import-meta", specifier: null, typeOnly: false, start: A2, end: Q2, importStart: I2, importEnd: D2 });
-    else if (-1 !== g2) {
-      const w2 = 5 === E2 ? "source" : 7 === E2 ? "defer" : null;
-      s.push({ type: "dynamic", specifier: R2, glob: M2, phase: w2, start: A2, end: Q2, importStart: I2, importEnd: D2, dynamicStart: g2, attributes: null, attributesStart: C3, probablyTypeOnly: !!(16 & B2) });
-    } else {
-      let g3 = null;
-      if (-1 !== C3) {
-        for (g3 = [], w.rsa(); w.ra(); ) {
-          const A3 = w.aks(), Q3 = w.ake(), B3 = w.avs(), E3 = w.ave();
-          g3.push([o(A3, Q3), o(B3, E3)]);
-        }
-        0 === g3.length && (g3 = null);
-      }
-      const H3 = 4 === E2 ? "source" : 6 === E2 ? "defer" : null;
-      s.push({ type: 8 === E2 ? "reexport-star" : "static", specifier: R2, phase: H3, start: A2, end: Q2, importStart: I2, importEnd: D2, attributes: g3, attributesStart: C3, typeOnly: !!(16 & B2) });
-    }
-  }
-  let J = w.re();
-  const Y = 0 === J ? void 0 : new DataView(w.memory.buffer);
-  for (; 0 !== J; ) {
-    A;
-    const Q2 = Y.getUint32(J, true) - G >>> 1, B2 = Y.getUint32(J + 4, true) - G >>> 1, E2 = Y.getUint32(J + 8, true), C3 = 0 === E2 ? -1 : E2 - G >>> 1, g2 = Y.getUint32(J + 12, true), I2 = 0 === g2 ? -1 : g2 - G >>> 1, D2 = Y.getUint32(J + 16, true) - G >>> 1, H3 = Y.getUint32(J + 20, true), N3 = Y.getUint8(J + 24), R2 = Y.getUint8(J + 25), M2 = !!(4 & R2);
-    if (3 === N3) L.push({ type: "reexport-all", from: s[H3].specifier, importIndex: H3, start: Q2, end: B2, exportStart: D2, typeOnly: M2 });
-    else {
-      const A2 = o(Q2, B2);
-      if (1 === N3) {
-        const E3 = C3 < 0 ? void 0 : o(C3, I2);
-        L.push({ type: "direct", name: A2, localName: E3, start: Q2, end: B2, localStart: C3, localEnd: I2, exportStart: D2, typeOnly: M2 });
-      } else {
-        const E3 = 3 & R2, g3 = 0 === E3 ? o(C3, I2) : 1 === E3 ? "default" : null;
-        L.push({ type: "reexport", name: A2, importName: g3, importNameStart: 0 === E3 ? C3 : -1, importNameEnd: 0 === E3 ? I2 : -1, from: s[H3].specifier, importIndex: H3, start: Q2, end: B2, exportStart: D2, typeOnly: M2 });
-      }
-    }
-    J = w.re();
-  }
-  function U(A2, Q2, B2, g2 = false) {
-    try {
-      return (function(A3, Q3) {
-        let B3 = A3.indexOf("\\");
-        if (-1 === B3) return Q3 ? A3.replace(E, "\n") : A3;
-        let g3 = A3.slice(0, B3), I2 = Q3 ? g3.replace(E, "\n") : g3;
-        for (; ; ) {
-          let D2 = B3 + 1;
-          if (D2 >= A3.length) throw new SyntaxError();
-          const w2 = A3.charCodeAt(D2++);
-          switch (w2) {
-            case 13:
-              10 === A3.charCodeAt(D2) && D2++;
-              break;
-            case 10:
-            case 8232:
-            case 8233:
-              break;
-            case 114:
-              I2 += "\r";
-              break;
-            case 110:
-              I2 += "\n";
-              break;
-            case 116:
-              I2 += "	";
-              break;
-            case 98:
-              I2 += "\b";
-              break;
-            case 102:
-              I2 += "\f";
-              break;
-            case 118:
-              I2 += "\v";
-              break;
-            case 120:
-              I2 += String.fromCharCode(C(A3, D2, 2)), D2 += 2;
-              break;
-            case 117: {
-              let Q4;
-              if (123 === A3.charCodeAt(D2)) {
-                const B4 = A3.indexOf("}", ++D2);
-                if (-1 === B4) throw new SyntaxError();
-                Q4 = C(A3, D2, B4 - D2), D2 = B4 + 1;
-              } else Q4 = C(A3, D2, 4), D2 += 4;
-              if (Q4 > 1114111) throw new SyntaxError();
-              Q4 <= 65535 ? I2 += String.fromCharCode(Q4) : (Q4 -= 65536, I2 += String.fromCharCode(55296 + (Q4 >> 10), 56320 + (1023 & Q4)));
-              break;
-            }
-            case 48: {
-              const Q4 = A3.charCodeAt(D2);
-              if (Q4 >= 48 && Q4 <= 57) throw new SyntaxError();
-              I2 += "\0";
-              break;
-            }
-            default:
-              if (w2 >= 49 && w2 <= 57) throw new SyntaxError();
-              I2 += String.fromCharCode(w2);
-          }
-          const H3 = A3.indexOf("\\", D2);
-          if (-1 === H3) return g3 = A3.slice(D2), I2 + (Q3 ? g3.replace(E, "\n") : g3);
-          g3 = A3.slice(D2, H3), I2 += Q3 ? g3.replace(E, "\n") : g3, B3 = H3;
-        }
-      })(H2.slice(A2, Q2), g2);
-    } catch (A3) {
-      throw Object.assign(new Error(`Parse error ${N2}:${H2.slice(0, B2).split("\n").length}:${B2 - H2.lastIndexOf("\n", B2 - 1)}`), { idx: B2 });
-    }
-  }
-  function o(A2, Q2) {
-    const B2 = H2.charCodeAt(A2);
-    return 34 === B2 || 39 === B2 ? U(A2 + 1, Q2 - 1, A2) : H2.slice(A2, Q2);
-  }
-  function i3(A2, Q2) {
-    if (w.rts(), !w.rt()) return;
-    let B2 = "", E2 = A2 + 1, C3 = A2 + 1, g2 = w.te();
-    for (; C3 < Q2; ) {
-      const A3 = H2.charCodeAt(C3);
-      if (96 === A3) break;
-      92 !== A3 ? 42 !== A3 ? 36 === A3 && 123 === H2.charCodeAt(C3 + 1) && C3 + 2 <= g2 ? (B2 += H2.slice(E2, C3) + "*", C3 = E2 = g2, g2 = w.rt() ? w.te() : -1) : C3++ : (B2 += H2.slice(E2, C3) + "\\*", E2 = ++C3) : C3 += 2;
-    }
-    return B2 + H2.slice(E2, C3);
-  }
-  return [s, L, !!w.f(), !!w.ms()];
-}
-function g(A2, Q2) {
-  const B2 = A2.length;
-  let E2 = 0;
-  for (; E2 < B2; ) {
-    const B3 = A2.charCodeAt(E2);
-    Q2[E2++] = (255 & B3) << 8 | B3 >>> 8;
-  }
-}
-function I(A2, Q2) {
-  const B2 = A2.length;
-  let E2 = 0;
-  for (; E2 < B2; ) Q2[E2] = A2.charCodeAt(E2++);
-}
-var A, Q, B, E, D, w, H, N, init2, R;
-var init_lexer = __esm({
-  "node_modules/es-module-lexer/dist/lexer.js"() {
-    A = false;
-    Q = 1 === new Uint8Array(new Uint16Array([1]).buffer)[0];
-    B = "undefined" != typeof Buffer;
-    E = /\r\n?/g;
-    H = () => {
-      return A2 = "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AEECakH6CkEMEB4NACAALwEOECZFDQAgAEEOaiEBQQEMAQtBAAshAkHYDCABNgIACyACCykBAX8gAEGgAUYgAEEJayICQRdNQQBBASACdCABcRtyRQRAQQAPC0EBCwvdAwEAQYAIC9UDeABwAG8AcgB0AHAAbwByAHQAbABhAHMAcwByAG8AbQBlAHQAYQB2AG8AeQBpAGUAZABlAGwAZQBpAG4AcwB0AGEAbgB0AHkAcgBlAHQAdQByAGQAZQBiAHUAZwBnAGUAYQB3AGEAaQB0AGgAcgB3AGgAaQBsAGUAZgBvAHIAaQBmAGMAYQB0AGMAZgBpAG4AYQBsAGwAZQBsAHMAYgByAGUAYQBjAG8AbgB0AGkAbgBzAHkAbgBjAHUAbgBjAHQAaQBvAG4AbwB1AHIAYwBlAGUAZgBlAHIAOwB5AHAAZQBuAHQAZQByAGYAYQBjAGUAbgBlAHcAawBlAHkAbwBmAGkAbgBmAGUAcgB0AHkAcABlAG8AZgB1AG4AaQBxAHUAZQBpAG0AcABvAHIAdAByAGUAYQBkAG8AbgBsAHkAYQBiAHMAdAByAGEAYwB0AHQAaABlAG4AYwBhAHQAYwBoAGYAaQBuAGEAbABsAHkAZQBjAGwAYQByAGUAeAB0AGUAbgBkAHMAbgB1AG0AYQBtAGUAcwBwAGEAYwBlAG8AbgBzAHQAbwBkAHUAbABlAGUAcQB1AGkAcgBlAGwAbwBiAGEAbABzAGEAdABpAHMAZgBpAGUAcw==", "undefined" != typeof Buffer ? Buffer.from(A2, "base64") : Uint8Array.from(atob(A2), (A3) => A3.charCodeAt(0));
-      var A2;
-    };
-    init2 = () => N || (N = w ? Promise.resolve() : WebAssembly.compile(H()).then(WebAssembly.instantiate).then(({ exports: A2 }) => {
-      w || (w = A2);
-    }));
-    R = () => {
-      if (w) return;
-      const A2 = new WebAssembly.Module(H());
-      w = new WebAssembly.Instance(A2).exports;
-    };
-  }
-});
-
-// src/runners/vitest/packages.ts
-import { readFile as readFile6 } from "node:fs/promises";
-import { dirname as dirname23, isAbsolute as isAbsolute10 } from "node:path";
-function closurePackages(graph, paths) {
-  const imports = [];
-  const builtins = new Set(graph.builtins);
-  for (const file of graph.files) {
-    const entry4 = installedEntry(file, paths);
-    if (entry4 === "unnamed") builtins.add(UNNAMED);
-    else if (entry4 !== null) imports.push(entry4);
-  }
-  for (const [importer, specifiers] of graph.bare) {
-    const from = directoryOf2(dirname23(importer), paths);
-    if (from === null) continue;
-    for (const specifier of specifiers) {
-      const entry4 = bareImport(from, specifier);
-      if (entry4 !== null) imports.push(entry4);
-    }
-  }
-  const root = directoryOf2(graph.root, paths);
-  if (root !== null) for (const name2 of graph.rooted) imports.push({ from: root, name: name2 });
-  return { imports, builtins: [...builtins].sort(compare) };
-}
-function installedEntry(file, paths) {
-  const rel2 = paths.toRelative(file);
-  const at2 = rel2 === null ? -1 : rel2.lastIndexOf(NODE_MODULES);
-  if (rel2 === null || at2 === -1 || at2 > 0 && rel2[at2 - 1] !== "/") return null;
-  const rest = rel2.slice(at2 + NODE_MODULES.length);
-  const name2 = packageName(rest);
-  if (name2 === null) return "unnamed";
-  const from = rel2.slice(0, Math.max(0, at2 - 1));
-  return rest === `${name2}/package.json` ? { from, name: name2, manifest: true } : { from, name: name2 };
-}
-function bareImport(from, specifier) {
-  const name2 = packageName(specifier);
-  if (name2 === null) return null;
-  const path = specifier.split("?")[0] ?? specifier;
-  return path === `${name2}/package.json` ? { from, name: name2, manifest: true } : { from, name: name2 };
-}
-async function environmentPackages(project, inputs2, paths) {
-  const setup = closurePackages(inputs2.setup, paths);
-  const globalSetup = closurePackages(inputs2.globalSetup, paths);
-  const imports = [...setup.imports, ...globalSetup.imports];
-  const builtins = /* @__PURE__ */ new Set([...setup.builtins, ...globalSetup.builtins]);
-  const root = directoryOf2(project.config.root, paths);
-  const runner = root === null ? [] : [{ from: root, name: "vitest" }];
-  imports.push(...runner);
-  if (root !== null) {
-    for (const name2 of namedByConfig(project.config)) imports.push({ from: root, name: name2 });
-  }
-  for (const file of configModules(project.config)) {
-    const entry4 = installedEntry(file, paths);
-    if (entry4 === "unnamed") builtins.add(UNNAMED);
-    else if (entry4 !== null) imports.push(entry4);
-  }
-  await init2;
-  for (const file of inputs2.configFiles) {
-    const from = paths.isProjectFile(file) ? directoryOf2(dirname23(file), paths) : null;
-    if (from === null) continue;
-    const { specifiers, unnamed } = await loadsOf(file);
-    if (unnamed) builtins.add(UNNAMED);
-    for (const specifier of specifiers) {
-      const builtin = builtinOf(specifier);
-      const entry4 = builtin === null ? bareImport(from, specifier) : null;
-      if (builtin !== null) builtins.add(builtin);
-      else if (entry4 !== null) {
-        imports.push(entry4);
-        runner.push(entry4);
-      }
-    }
-  }
-  return { imports, builtins: [...builtins].sort(compare), runner };
-}
-function namedByConfig(config) {
-  const names5 = [];
-  if (typeof config.environment === "string") {
-    const name2 = environmentPackage(config.environment);
-    if (name2 !== null) names5.push(name2);
-  }
-  const reporters = Array.isArray(config.reporters) ? config.reporters : [];
-  for (const reporter of reporters) {
-    const specifier = Array.isArray(reporter) ? reporter[0] : reporter;
-    if (typeof specifier !== "string" || BUILTIN_REPORTERS.has(specifier)) continue;
-    const name2 = packageName(specifier);
-    if (name2 !== null) names5.push(name2);
-  }
-  return names5;
-}
-function configModules(config) {
-  const serializers = Array.isArray(config.snapshotSerializers) ? config.snapshotSerializers : [];
-  const values = [...serializers, config.runner, config.snapshotEnvironment, config.diff];
-  return values.filter(
-    (value) => typeof value === "string" && isAbsolute10(value)
-  );
-}
-async function loadsOf(file) {
-  let source;
-  try {
-    source = await readFile6(file, "utf8");
-  } catch {
-    return { specifiers: [], unnamed: false };
-  }
-  const specifiers = [];
-  try {
-    const [imports] = parse3(source, file);
-    for (const record of imports) {
-      if (record.type === "import-meta" || record.specifier === void 0) continue;
-      if (record.type === "dynamic" ? !record.probablyTypeOnly : !record.typeOnly) {
-        specifiers.push(record.specifier);
-      }
-    }
-  } catch {
-  }
-  const loads2 = sourceLoads(source);
-  specifiers.push(...loads2.requires);
-  return { specifiers, unnamed: loads2.unnamed };
-}
-function directoryOf2(dir2, paths) {
-  return dir2 === paths.root ? "" : paths.toRelative(dir2);
-}
-var NODE_MODULES, UNNAMED, BUILTIN_REPORTERS;
-var init_packages2 = __esm({
-  "src/runners/vitest/packages.ts"() {
-    "use strict";
-    init_lexer();
-    init_fs();
-    init_graph();
-    init_loads();
-    NODE_MODULES = "node_modules/";
-    UNNAMED = "module";
-    BUILTIN_REPORTERS = /* @__PURE__ */ new Set([
-      "default",
-      "agent",
-      "minimal",
-      "blob",
-      "verbose",
-      "dot",
-      "json",
-      "tap",
-      "tap-flat",
-      "junit",
-      "tree",
-      "hanging-process",
-      "github-actions"
-    ]);
   }
 });
 
@@ -23320,12 +23666,16 @@ var init_adapter = __esm({
           const envs = [];
           for (const project of vitest.projects) {
             const inputs2 = await projectInputs(vitest, project);
-            envs.push({
+            const environment = {
               ...projectEnvironment(project, inputs2, {
                 ...context,
                 injected: { ...this.#childEnv, ...this.#observer.injectedFor(project.name) }
               }),
               packages: await environmentPackages(project, inputs2, this.paths)
+            };
+            envs.push({
+              ...environment,
+              ...await formerPackages(project, inputs2, environment, this.paths)
             });
           }
           return envs.sort((a, b) => compare(a.project, b.project));
@@ -49887,7 +50237,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.252";
+  if (true) return "0.1.253";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -50094,6 +50444,12 @@ function queuedStep(s, context) {
   const promoted = s.promoted === true;
   if (s.behind === null) {
     if (promoted) return same("queued, promoted", { kind: "none", text: "" });
+    if (s.quietUntil !== void 0) {
+      return same(
+        `queued: the ${laneText(s.lane)} lane waits for quiet until ${timeText(s.quietUntil)}, 20 s after the last edit that queued a file of it, since an edit cancelled its backlog tier`,
+        { kind: "command", args: "run --all", text: "{command} ends the wait" }
+      );
+    }
     return {
       reason: "queued; no run is open and nothing recorded holds {it}",
       short: "queued, nothing recorded holds {it}",
@@ -52236,6 +52592,7 @@ function codexStatusLine(cwd, env) {
 }
 
 // src/core/daemon/daemon.ts
+init_liveness();
 init_fs();
 init_notes();
 init_slow2();
@@ -53748,6 +54105,7 @@ init_liveness();
 
 // src/core/daemon/lifecycle.ts
 init_store3();
+init_text();
 init_types();
 
 // src/core/daemon/sliced-writes.ts
@@ -53882,7 +54240,7 @@ function startTimers(context) {
   const unused = (at2) => {
     if (context.lastUsed === void 0 || presence.draining === true) return;
     const work = context.work?.() ?? null;
-    if (work !== null && (work.busy || work.revision !== seenRevision)) {
+    if (work !== null && (work.inUse || work.revision !== seenRevision)) {
       seenRevision = work.revision;
       context.used?.(at2);
       return;
@@ -53891,11 +54249,12 @@ function startTimers(context) {
     const registered = store.consumers.list(worktreeId).length;
     if (registered === 0) return;
     markRest(store, worktreeId, at2);
-    context.shutdown("idle", unusedText(unusedMs, registered));
+    context.shutdown("idle", unusedText(unusedMs, registered, work?.queued ?? 0));
   };
   const countPresence = (at2) => {
     if (store.consumers.list(worktreeId).length > 0) {
       presence.lastPresentAt = at2;
+      if (presence.draining === true) context.pauseBacklog?.(false);
       presence.draining = false;
       context.active(at2);
       return false;
@@ -53922,6 +54281,7 @@ function startTimers(context) {
     } else if (presence.draining !== true) {
       presence.draining = true;
       presence.drainingFor = pending;
+      context.pauseBacklog?.(true);
       const them = pending === SLOW_FILES ? "them" : "that work";
       context.note(
         `the last session ended with ${pending} pending; this daemon runs ${them} before it exits, for at most ${duration(idleMs)} (daemon.idleExitMinutes)`
@@ -53999,9 +54359,10 @@ function boundText(pending, idleMs) {
   const after = `${duration(idleMs)} after its last session ended (daemon.idleExitMinutes)`;
   return pending === SLOW_FILES ? `daemon stopped: slow files were still pending ${after}` : `daemon stopped: still pending ${after}: ${pending}; the next daemon resumes what is owed`;
 }
-function unusedText(unusedMs, registered) {
+function unusedText(unusedMs, registered, queued) {
   const sessions = registered === 1 ? "1 session registered" : `${registered} sessions registered`;
-  return `daemon stopped: no edit, run, wait or request for ${duration(unusedMs)} (daemon.unusedExitMinutes), with ${sessions}; the next hook starts it again`;
+  const left = queued === 0 ? "" : ` and ${plural(queued, "test file")} queued`;
+  return `daemon stopped: no edit, run, wait or request for ${duration(unusedMs)} (daemon.unusedExitMinutes), with ${sessions}${left}; the next hook starts it again`;
 }
 function stepDownNote(own, hook) {
   return `daemon stopped: hooks at Squeal ${hook} are newer than this daemon (${own}); their daemon starts once this one exits`;
@@ -54682,6 +55043,8 @@ var Daemon = class {
   #token = randomUUID7();
   /** The incarnation registered before this daemon's (`predecessorIncarnation`, task 001-268). */
   #predecessor = void 0;
+  /** Its start resumes a rest (`resumesRest`, read before it registers; row 011-91). */
+  #resumesRest = false;
   #version = squealVersion();
   #phase = "starting";
   #policy = DEFAULT_POLICY;
@@ -54794,7 +55157,8 @@ var Daemon = class {
       },
       work: () => this.#loop === null || this.#phase === "stopping" ? null : {
         revision: this.#loop.scheduler.status().revision,
-        busy: this.#loop.scheduler.busy()
+        inUse: this.#loop.scheduler.inUse(),
+        queued: this.#loop.scheduler.queued()
       },
       // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
       observedChanged: () => this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
@@ -54803,6 +55167,8 @@ var Daemon = class {
       slowPending: () => this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.slowPending(),
       // Task 001-219: so are an explicit checkpoint and a new failure's re-run.
       owedWork: () => this.#loop !== null && this.#phase !== "stopping" ? this.#loop.scheduler.owedWork() : null,
+      // Row 011-93: the drain runs its session's work and leaves the backlog queued.
+      pauseBacklog: (on) => this.#loop?.scheduler.pauseBacklog(on),
       idleGc: () => {
         if (this.#phase !== "stopping") this.#idleGc.check();
       },
@@ -54858,6 +55224,7 @@ var Daemon = class {
     store.transaction(() => {
       const existing = store.worktrees.get(id2);
       this.#predecessor = predecessorIncarnation(existing !== null, store.worktrees.lastDaemon(id2));
+      this.#resumesRest = resumesRest(store, existing);
       store.testFileKeys.releaseRunning(id2);
       if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id2));
       else store.meta.set(daemonExitMetaKey(id2), this.#incarnation());
@@ -54996,6 +55363,7 @@ var Daemon = class {
         // Its registration's: the writer of the re-key moves a wait trusts (task 001-268).
         incarnation: this.#incarnation(),
         ...this.#predecessor === void 0 ? {} : { predecessor: this.#predecessor },
+        ...this.#resumesRest ? { resumesRest: true } : {},
         runsDir: storePaths2(commonDir).runsDir,
         describeFailure: describeFailure2,
         now: this.#now,
