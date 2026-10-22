@@ -6,6 +6,8 @@ import {
   countedText,
   failureCountText,
   formatStatus,
+  holdLines,
+  holdVerdictLine,
   notCurrentText,
   type StatusFormatOptions,
   splitByValidity,
@@ -28,7 +30,11 @@ export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;
  * then the worktree's known failures and outstanding work. With the edit's
  * files (`StatusWaitEdit`), what it held for and what else is pending.
  */
-export function waitLine(wait: EndedWait, command = "squeal"): string {
+export function waitLine(wait: EndedWait, command = "squeal", now: EpochMs = Date.now()): string {
+  // Row 011-73 (C6 as amended 2026-10-21): the hold is the verdict, and says what ends it.
+  if (wait.outcome === "on-hold" && wait.hold !== undefined) {
+    return `${holdVerdictLine(wait.hold, now, command)}${worktreeText(wait.result)}`;
+  }
   const line = ownLine(wait, command);
   const slow = wait.slow === undefined || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
   const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
@@ -46,7 +52,7 @@ export function waitText(
   command = "squeal",
   options: StatusFormatOptions = {},
 ): string {
-  return `${formatStatus(wait.result, now, command, options)}\n${waitLine(wait, command)}\n`;
+  return `${formatStatus(wait.result, now, command, options)}\n${waitLine(wait, command, now)}\n`;
 }
 
 function ownLine(wait: EndedWait, command: string): string {
@@ -69,6 +75,8 @@ function ownLine(wait: EndedWait, command: string): string {
       return `Returned without a daemon: ${noDaemonText(snapshot.daemon, wait.down, command)}; results are as of revision ${snapshot.revision}`;
     case "timeout":
       return `Returned on timeout ${after}: ${pendingText(snapshot)} ${at}`;
+    case "on-hold":
+      return `Returned on hold ${at} ${after}`;
   }
 }
 
@@ -203,7 +211,7 @@ const NAMED_FILES_SHOWN = 10;
  * (`status <path>...` without `--wait`, row 011-28) names no deadline and no
  * time, and names its revision once.
  */
-export function namedLine(wait: EndedNamed, command = "squeal"): string {
+export function namedLine(wait: EndedNamed, command = "squeal", now: EpochMs = Date.now()): string {
   const { verdict, selection } = wait;
   const snapshot = wait.snapshot === true;
   const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
@@ -231,6 +239,13 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
     }
     case "slow":
       line = noneAt(`every selected test file is slow: ${pauseText(wait, command)}`);
+      break;
+    case "on-hold":
+      // Row 011-73 (C6 as amended 2026-10-21): the hold is the verdict line.
+      line =
+        wait.hold === undefined
+          ? none("the worktree is on hold")
+          : holdVerdictLine(wait.hold, now, command);
       break;
     case "timeout": {
       const paused = new Set((wait.leftForPause ?? []).map(testFileId));
@@ -338,7 +353,7 @@ export function namedText(
     ...(selected === null ? [] : [selected]),
     ...namedFailures(wait.selection.files, wait.result.knownFailures),
     ...namedClassLines(wait, command),
-    namedLine(wait, command),
+    namedLine(wait, command, now),
   ];
   const head =
     options.full === true
@@ -347,7 +362,12 @@ export function namedText(
           allNotes: options.allNotes === true,
           ...(wait.selection.base === undefined ? {} : { base: wait.selection.base }),
         })}\n`
-      : `Revision: ${statusRevisionText(wait.result)}\n`;
+      : [
+          `Revision: ${statusRevisionText(wait.result)}`,
+          ...holdLines(wait.result.holds, now, command),
+        ]
+          .map((line) => `${line}\n`)
+          .join("");
   return `${head}${lines.join("\n")}\n`;
 }
 

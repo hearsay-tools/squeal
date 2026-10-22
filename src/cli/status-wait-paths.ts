@@ -14,6 +14,7 @@ import type {
   CheckKey,
   EpochMs,
   RelativePath,
+  StatusHold,
   StatusSnapshot,
   StatusUnavailable,
   Store,
@@ -37,6 +38,7 @@ import { ownPathFiles, type PromoteNamed, promoteNamed } from "./status-wait-pro
 import {
   type FileClasses,
   type FileVerdict,
+  holdOfWait,
   readClasses,
   readVerdict,
   verdictCode,
@@ -211,11 +213,19 @@ function realOrNull(path: string): string | null {
 /**
  * Spec 005 D2's path form: `settled`, no selected file it holds for pending;
  * `unmatched`, no path selects a file; `slow`, every selected file runs only
- * on a pause (task 004-78), so there is nothing to hold for. Row 011-63
+ * on a pause (task 004-78), so there is nothing to hold for; `on-hold`, a
+ * file it holds for is queued while the worktree is on hold (row 011-73,
+ * C6 as amended 2026-10-21). Row 011-63
  * (gh-59): a path that selects nothing beside one that selects a file is
  * named beside the other outcomes (`selection.unmatched`).
  */
-export type NamedWaitOutcome = "settled" | "unmatched" | "slow" | "no-daemon" | "timeout";
+export type NamedWaitOutcome =
+  | "settled"
+  | "unmatched"
+  | "slow"
+  | "no-daemon"
+  | "on-hold"
+  | "timeout";
 
 /**
  * The outcome of a read whose selection is decided, `null` while a file it
@@ -254,6 +264,8 @@ export type NamedWait =
       readonly down?: DownReason;
       /** A heartbeat lapse the wait went on through, the daemon alive (task 004-66). */
       readonly lapse?: HeartbeatLapse;
+      /** With `on-hold`: the hold its verdict line names (row 011-73). */
+      readonly hold?: StatusHold;
       /**
        * `status <path>...` without `--wait` (row 011-28, 005 D2 as amended
        * 2026-10-20): one read after one sync, worded as a snapshot; its
@@ -369,10 +381,15 @@ export async function waitForNamed(
         const held = selection.files.filter((f) => !paused.has(testFileId(f)));
         const classes = leftForPause.length === 0 ? all : readClasses(store, id, held);
         const decided = ready ? decidedOutcome(selection, held, classes) : null;
+        // Row 011-73 (C6 as amended 2026-10-21): a held file queued on hold waits for its end.
+        const hold =
+          ready && decided === null
+            ? holdOfWait(store, id, () => store.testFileKeys.list(id, held), readAt)
+            : null;
         const outcome: NamedWaitOutcome | null =
           settled && daemon.state === "down"
             ? "no-daemon"
-            : (decided ?? (final ? "timeout" : null));
+            : (decided ?? (hold !== null ? "on-hold" : final ? "timeout" : null));
         if (outcome === null) {
           // Spec 011 C15: once, at the first read whose selection is decided, beside it.
           if (ready && !promoted) {
@@ -403,6 +420,7 @@ export async function waitForNamed(
           sync: current,
           ...(daemon.state === "down" ? { down: daemon.reason } : {}),
           ...(lapse === null ? {} : { lapse }),
+          ...(hold === null ? {} : { hold }),
         };
       });
       if (read !== null && "available" in read) {
