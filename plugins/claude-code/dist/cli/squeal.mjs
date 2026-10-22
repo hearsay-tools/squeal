@@ -8844,43 +8844,6 @@ var init_context = __esm({
   }
 });
 
-// src/core/scheduler/editor-scratch.ts
-function isEditorScratch(path) {
-  const name2 = path.slice(path.lastIndexOf("/") + 1);
-  return name2 === VIM_PROBE || VIM_SWAP.test(name2) || EMACS_LOCK.test(name2);
-}
-function onlyEditorScratch(changes) {
-  return changes.length > 0 && changes.every((change2) => isEditorScratch(change2.path));
-}
-function scratchMovedListings(store, worktreeId, after, changed2, listings) {
-  if (listings.size === 0 || ![...changed2].some(isEditorScratch)) return [];
-  const existed = /* @__PURE__ */ new Map();
-  const exists2 = /* @__PURE__ */ new Map();
-  for (const revision of store.revisions.range(worktreeId, after, Number.MAX_SAFE_INTEGER)) {
-    for (const { path, oldHash, newHash } of revision.changes) {
-      if (!isEditorScratch(path)) continue;
-      if (!existed.has(path)) existed.set(path, oldHash !== null);
-      exists2.set(path, newHash !== null);
-    }
-  }
-  const moved2 = /* @__PURE__ */ new Set();
-  for (const [path, before] of existed) {
-    if (exists2.get(path) === before) continue;
-    for (const listing of ancestorListings(path)) if (listings.has(listing)) moved2.add(listing);
-  }
-  return [...moved2];
-}
-var VIM_SWAP, VIM_PROBE, EMACS_LOCK;
-var init_editor_scratch = __esm({
-  "src/core/scheduler/editor-scratch.ts"() {
-    "use strict";
-    init_keys();
-    VIM_SWAP = /^\..+\.sw[a-p]$/;
-    VIM_PROBE = "4913";
-    EMACS_LOCK = /^\.#./;
-  }
-});
-
 // src/core/slow/rank-tokens.ts
 function offeredTokens(text3) {
   const tokens = /* @__PURE__ */ new Set();
@@ -10279,6 +10242,53 @@ var init_promotions = __esm({
         return false;
       }
     };
+  }
+});
+
+// src/core/scheduler/editor-scratch.ts
+function isEditorScratch(path) {
+  const name2 = path.slice(path.lastIndexOf("/") + 1);
+  return name2 === VIM_PROBE || VIM_SWAP.test(name2) || EMACS_LOCK.test(name2);
+}
+function onlyEditorScratch(changes) {
+  return changes.length > 0 && changes.every((change2) => isEditorScratch(change2.path));
+}
+function scratchMovedListings(store, worktreeId, after, changed2, listings) {
+  if (listings.size === 0 || ![...changed2].some(isEditorScratch)) return [];
+  const existed = /* @__PURE__ */ new Map();
+  const exists2 = /* @__PURE__ */ new Map();
+  for (const revision of store.revisions.range(worktreeId, after, Number.MAX_SAFE_INTEGER)) {
+    for (const { path, oldHash, newHash } of revision.changes) {
+      if (!isEditorScratch(path)) continue;
+      if (!existed.has(path)) existed.set(path, oldHash !== null);
+      exists2.set(path, newHash !== null);
+    }
+  }
+  const moved2 = /* @__PURE__ */ new Set();
+  for (const [path, before] of existed) {
+    if (exists2.get(path) === before) continue;
+    for (const listing of ancestorListings(path)) if (listings.has(listing)) moved2.add(listing);
+  }
+  return [...moved2];
+}
+function scratchUnstable(context, tier, growth = /* @__PURE__ */ new Map()) {
+  const listings = /* @__PURE__ */ new Set();
+  const add2 = (paths) => {
+    for (const path of paths) if (listedDirectory(path) !== null) listings.add(path);
+  };
+  for (const file of tier.files) add2(file.inputs);
+  for (const grown of growth.values()) add2(grown.growth);
+  const { store, worktreeId } = context;
+  return scratchMovedListings(store, worktreeId, tier.revision.number, tier.changes, listings);
+}
+var VIM_SWAP, VIM_PROBE, EMACS_LOCK;
+var init_editor_scratch = __esm({
+  "src/core/scheduler/editor-scratch.ts"() {
+    "use strict";
+    init_keys();
+    VIM_SWAP = /^\..+\.sw[a-p]$/;
+    VIM_PROBE = "4913";
+    EMACS_LOCK = /^\.#./;
   }
 });
 
@@ -14925,17 +14935,10 @@ function endTier(context, ledger, tier) {
   tier.lease?.release();
   if (ledger.tierChanges.delete(tier.changes)) context.keys.endRun();
 }
-async function unstableInputs(context, tier) {
+function unstableInputs(context, tier) {
   const inputs2 = new Set(tier.files.flatMap((f) => f.inputs));
-  const listings = /* @__PURE__ */ new Set();
-  for (const path of inputs2) if (listedDirectory(path) !== null) listings.add(path);
-  for (const path of listings) inputs2.delete(path);
-  const moved2 = await changedSince(tier.snapshot, inputs2, context.hasher);
-  const { store, worktreeId } = context;
-  const after = tier.revision.number;
-  for (const path of scratchMovedListings(store, worktreeId, after, tier.changes, listings))
-    moved2.changed.add(path);
-  return moved2;
+  for (const path of inputs2) if (listedDirectory(path) !== null) inputs2.delete(path);
+  return changedSince(tier.snapshot, inputs2, context.hasher);
 }
 function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = false, observed = NOTHING_OBSERVED, commit = true, setups = true) {
   const { store, worktreeId } = context;
@@ -15090,7 +15093,6 @@ var init_tiers = __esm({
     init_backlog();
     init_capacity2();
     init_context();
-    init_editor_scratch();
     init_environment_growth();
     init_hold();
     init_observed2();
@@ -18639,6 +18641,7 @@ var init_scheduler2 = __esm({
     init_checkpoint_requests();
     init_claims();
     init_context();
+    init_editor_scratch();
     init_environment_growth();
     init_hold();
     init_install();
@@ -19370,6 +19373,10 @@ var init_scheduler2 = __esm({
         const environment = installMoved ? void 0 : await rekeyEnvironments(context, ran, tier);
         const read5 = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
         const observed = environment === void 0 || read5 === void 0 ? read5 : { ...read5, environment };
+        const changed2 = /* @__PURE__ */ new Set([
+          ...inputs2.changed,
+          ...scratchUnstable(context, tier, observed?.growth)
+        ]);
         const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
         const held2 = heldFiles(this.#hold, tier.files, observed?.growth);
         const free = held2.length === 0 ? tier.files : tier.files.filter((f) => !held2.includes(f));
@@ -19415,7 +19422,7 @@ var init_scheduler2 = __esm({
             ledger,
             tier,
             report2,
-            inputs2.changed,
+            changed2,
             requeue,
             observed,
             commit,
