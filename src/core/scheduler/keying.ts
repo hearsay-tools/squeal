@@ -218,6 +218,7 @@ export class WorktreeKeys {
     await this.#watchIgnored(lockPaths);
 
     const hashOf = (path: RelativePath) => this.cache.hashOf(path);
+    const packagesOf = (ref: TestFileRef) => this.#runnerClosures.get(testFileId(ref))?.packages;
     const hashes = new Map<ProjectName, EnvironmentHash>();
     const readAsOne = new Map<ProjectName, ReadAsOne[]>();
     const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
@@ -234,7 +235,7 @@ export class WorktreeKeys {
         ...formats.map((format) => ({
           environment: environmentHash(core, environment, hashOf, format),
         })),
-        ...formerReadAsOne(core, environment, dependencies, hashOf),
+        ...formerReadAsOne(core, environment, dependencies, hashOf, packagesOf),
       ]);
     }
     // Task 001-105: each test file's packages are keyed against the new install.

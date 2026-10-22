@@ -12,7 +12,7 @@ export {
   type UnmatchedInputs,
   unmatchedInputs,
 } from "./closure.js";
-export { type DependencyKeys, dependencyKeys, type FormerDependencies } from "./dependencies.js";
+export { type DependencyKeys, dependencyKeys } from "./dependencies.js";
 export {
   type CoreEnvironmentOptions,
   coreEnvironmentInputs,
