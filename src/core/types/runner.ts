@@ -134,6 +134,14 @@ export interface RunnerEnvironment {
    * fingerprint.
    */
   readonly packages?: RunnerPackages;
+  /**
+   * The packages the key definition before task 011-85 read in place of
+   * `packages`, where they differ: what every Vitest project's config files
+   * import, a sibling's included, so a sibling's builtin made this
+   * environment opaque then. A lookup reads the keys over them as one (011
+   * C3, C14). Absent otherwise.
+   */
+  readonly formerPackages?: RunnerPackages;
 }
 
 /**

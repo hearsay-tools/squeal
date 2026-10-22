@@ -151,26 +151,50 @@ describe("KeyIndex", () => {
     expect(index.keysReadAsOne(provisional)).toBeNull();
   });
 
-  it("reads an entry's segment in place of the one it replaces, every other segment as its own (011-90)", () => {
+  it("reads each test file's segment from an entry that gives one, every other entry its own (011-90, review 0.1.253 B1)", () => {
     const table = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1", "test/b.test.ts": "b1" });
     const index = new KeyIndex(table.hashOf);
     const [ca, cb] = [closureOf(a, ["src/x.ts"]), closureOf(b, [])];
     const segmentOf = (ref: TestFileRef) => (ref.path === a.path ? "whole:now" : "scoped");
     index.setClosure(ca, segmentOf(a));
     index.setClosure(cb, segmentOf(b));
-    const former = { environment: "former", segment: { from: "whole:now", to: "whole:then" } };
-    const readAsOne = [{ environment: "e19" }, former];
+    // Whole now, scoped then; scoped now, none then (an environment a sibling made opaque).
+    const then = (ref: TestFileRef) => (ref.path === a.path ? "scoped-then" : "");
+    const readAsOne = [{ environment: "e19" }, { environment: "former", segment: then }];
     index.setInstalled(new Map([["unit", "env20"]]), segmentOf, new Map([["unit", readAsOne]]));
     const at = (env: string, closure: Closure, segment: string) =>
       checkKey(env, closure, (path) => table.hashOf(path) ?? null, segment);
     expect(index.keysReadAsOne(index.key(a) ?? "")?.keys).toEqual([
       at("e19", ca, "whole:now"),
-      at("former", ca, "whole:then"),
+      at("former", ca, "scoped-then"),
     ]);
     expect(index.keysReadAsOne(index.key(b) ?? "")?.keys).toEqual([
       at("e19", cb, "scoped"),
-      at("former", cb, "scoped"),
+      at("former", cb, ""),
     ]);
+  });
+
+  it("reads an entry's segment again after the closure is set again, with the same key (review 0.1.253 B1)", () => {
+    const table = hashTable({ "test/a.test.ts": "a1" });
+    const index = new KeyIndex(table.hashOf);
+    const closure = closureOf(a, []);
+    index.setClosure(closure, "whole:now");
+    let then = "whole:then";
+    const readAsOne = [{ environment: "former", segment: () => then }];
+    index.setInstalled(
+      new Map([["unit", "env20"]]),
+      () => "whole:now",
+      new Map([["unit", readAsOne]]),
+    );
+    const key = index.key(a) ?? "";
+    const at = (segment: string) =>
+      checkKey("former", closure, (path) => table.hashOf(path) ?? null, segment);
+    expect(index.keysReadAsOne(key)?.keys).toEqual([at("whole:then")]);
+    // The runner's closure arrives with packages: the same key, another segment then.
+    then = "scoped-then";
+    index.setClosure(closure, "whole:now");
+    expect(index.key(a)).toBe(key);
+    expect(index.keysReadAsOne(key)?.keys).toEqual([at("scoped-then")]);
   });
 
   it("returns untracked closure paths and keys the test file only once they are hashed", () => {

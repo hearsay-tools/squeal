@@ -14,38 +14,31 @@ export interface DependencyKeys {
   /** The installed-dependency segment of one test file's key. */
   of(packages: RunnerPackages | undefined): string;
   /**
-   * Under the key definition before task 011-85, which a lookup reads as one
-   * (011 C3): its environment input, and the segment a test file keyed by
-   * the whole fingerprint read then. `null` (or absent) where that
-   * definition's fingerprint is this one's.
+   * The keys under the definition before task 011-85, which a lookup reads
+   * as one (011 C3): over its fingerprint and its environment packages.
+   * `null` (or absent) where that definition's inputs are these.
    */
-  readonly former?: FormerDependencies | null;
-}
-
-/** `DependencyKeys.former`. */
-export interface FormerDependencies {
-  readonly environment: string;
-  /** A test file whose segment is `from` read `to`; every other segment is its own. */
-  readonly segment: { readonly from: string; readonly to: string };
+  readonly former?: DependencyKeys | null;
 }
 
 /**
- * The keys below, with what the key definition before task 011-85 read in
- * their place where its fingerprint differs (`InstalledDependencies.former`,
- * 011 C3): the former fingerprint where the environment holds the whole one,
- * else the same scoped input, and `whole:<former>` for a test file keyed by
- * the whole fingerprint. Every other segment is the same under both.
+ * The keys below, and the same keys over what the key definition before
+ * task 011-85 read in place of the fingerprint and the environment's
+ * packages where either differs (`InstalledDependencies.former`,
+ * `RunnerEnvironment.formerPackages`; 011 C3, review 0.1.253 B1). Each test
+ * file's former segment is that definition's own, empty, scoped or whole,
+ * whatever its current one is.
  */
 export function dependencyKeys(
   installed: InstalledDependencies,
   environment: RunnerPackages | undefined,
+  formerEnvironment: RunnerPackages | undefined = environment,
 ): DependencyKeys {
   const keys = currentKeys(installed, environment);
   const { fingerprint, former = null } = installed;
-  if (former === null) return keys;
-  const input = keys.environment === fingerprint ? former : keys.environment;
-  const segment = { from: `whole:${fingerprint}`, to: `whole:${former}` };
-  return { ...keys, former: { environment: input, segment } };
+  if (former === null && formerEnvironment === environment) return keys;
+  const then = { ...installed, fingerprint: former ?? fingerprint };
+  return { ...keys, former: currentKeys(then, formerEnvironment) };
 }
 
 /**

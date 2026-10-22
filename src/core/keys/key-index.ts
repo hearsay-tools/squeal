@@ -57,12 +57,12 @@ interface Keyed {
 /**
  * A project's environment hash at a format or definition read as one (011
  * C3): a format's (task 011-38) or the definition's before task 011-85,
- * which also names the installed-dependency segment a test file read then.
+ * which also gives the installed-dependency segment a test file read then.
  */
 export interface ReadAsOne {
   readonly environment: EnvironmentHash;
-  /** A test file whose segment is `from` reads `to`; absent, every segment is its own. */
-  readonly segment?: { readonly from: string; readonly to: string };
+  /** The installed-dependency segment `testFile` read then; absent, its own. */
+  readonly segment?: (testFile: TestFileRef) => string;
 }
 
 /** A test file and its keys at the formats and definitions read as one (`KeyIndex.keysReadAsOne`). */
@@ -209,8 +209,10 @@ export class KeyIndex {
    * The test file whose current key is `key`, with its keys at the formats
    * read as one (spec 011 C3 as amended 2026-10-20, task 011-38) and under
    * the definition before task 011-85 (011-90), computed over the segments
-   * the index holds, each entry's segment rule applied, once per key. `null`
-   * when no test file holds `key` now.
+   * the index holds, each entry's installed-dependency segment in place of
+   * the file's own, once per key. `setClosure` and `setInstalled` drop the
+   * memo, so a segment is read with the packages the key was computed over.
+   * `null` when no test file holds `key` now.
    */
   keysReadAsOne(key: CheckKey): KeysReadAsOne | null {
     const id = this.ids.get(key);
@@ -246,19 +248,20 @@ export class KeyIndex {
     return changes;
   }
 
-  /** `null` while any closure path is untracked. `rule` replaces the installed-dependency segment it names. */
+  /** `null` while any closure path is untracked. `segment` gives the installed-dependency segment in place of the file's own. */
   private keyOf(
     keyed: Keyed,
     envHash: EnvironmentHash,
-    rule?: ReadAsOne["segment"],
+    segment?: ReadAsOne["segment"],
   ): CheckKey | null {
     const segments: string[] = [];
     for (const entry of keyed.entries) {
       if (entry.hash === undefined) return null;
       segments.push(entry.segment);
     }
-    const dependencies = rule?.from === keyed.dependencies ? rule.to : keyed.dependencies;
-    return keyFromSegments(envHash, keyed.closure.testFile, segments, dependencies);
+    const { testFile } = keyed.closure;
+    const dependencies = segment === undefined ? keyed.dependencies : segment(testFile);
+    return keyFromSegments(envHash, testFile, segments, dependencies);
   }
 
   /** The entry of `path` with one more reference; a new entry reads the hash. */
