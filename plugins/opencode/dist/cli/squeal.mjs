@@ -4875,6 +4875,26 @@ function checkFrom(row2) {
   if (kind !== "test") return { kind, project, testPath };
   return { kind: "test", project, testPath, fullName: str(row2, "check_full_name") };
 }
+function toResult(row2) {
+  return {
+    check: checkFrom(row2),
+    key: str(row2, "key"),
+    outcome: oneOf2(row2, "outcome", OUTCOMES2),
+    durationMs: num(row2, "duration_ms"),
+    location: location(row2),
+    fingerprint: strOrNull(row2, "fingerprint"),
+    summary: strOrNull(row2, "summary"),
+    errors: row2.errors === null ? [] : json(row2, "errors"),
+    provenance: {
+      worktreeId: str(row2, "worktree_id"),
+      revision: num(row2, "revision"),
+      commit: strOrNull(row2, "commit_sha"),
+      dirty: bool(row2, "dirty"),
+      runId: str(row2, "run_id"),
+      recordedAt: num(row2, "recorded_at")
+    }
+  };
+}
 function inTestFiles(column, files2) {
   if (files2.length === 0) return { sql: "0", params: [] };
   const values = files2.map(() => "(?, ?)").join(", ");
@@ -4901,10 +4921,11 @@ function ensureCheckId(conn, check, seenAt) {
 function flag(value) {
   return value ? 1 : 0;
 }
-var CHECK_WHERE, CHECK_COLUMNS;
+var OUTCOMES2, CHECK_WHERE, CHECK_COLUMNS;
 var init_codec = __esm({
   "src/core/store/codec.ts"() {
     "use strict";
+    OUTCOMES2 = ["pass", "fail", "skip"];
     CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
     CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
   }
@@ -5177,17 +5198,17 @@ function createViewRepo(conn) {
 function toView(row2) {
   return {
     check: checkFrom(row2),
-    outcome: oneOf2(row2, "outcome", OUTCOMES2),
+    outcome: oneOf2(row2, "outcome", OUTCOMES3),
     fingerprint: strOrNull(row2, "fingerprint"),
     toldAt: num(row2, "told_at")
   };
 }
-var OUTCOMES2, WHERE_CONSUMER;
+var OUTCOMES3, WHERE_CONSUMER;
 var init_consumers = __esm({
   "src/core/store/repos/consumers.ts"() {
     "use strict";
     init_codec();
-    OUTCOMES2 = ["pass", "fail", "skip", "unknown"];
+    OUTCOMES3 = ["pass", "fail", "skip", "unknown"];
     WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
   }
 });
@@ -5225,27 +5246,7 @@ function createFailureRepo(conn) {
     failingChecks: (selection) => all2(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom)
   };
 }
-function toResult(row2) {
-  return {
-    check: checkFrom(row2),
-    key: str(row2, "key"),
-    outcome: oneOf2(row2, "outcome", OUTCOMES3),
-    durationMs: num(row2, "duration_ms"),
-    location: location(row2),
-    fingerprint: strOrNull(row2, "fingerprint"),
-    summary: strOrNull(row2, "summary"),
-    errors: row2.errors === null ? [] : json(row2, "errors"),
-    provenance: {
-      worktreeId: str(row2, "worktree_id"),
-      revision: num(row2, "revision"),
-      commit: strOrNull(row2, "commit_sha"),
-      dirty: bool(row2, "dirty"),
-      runId: str(row2, "run_id"),
-      recordedAt: num(row2, "recorded_at")
-    }
-  };
-}
-var FAILING_ROWS, FAILURE_STATEMENTS, OUTCOMES3;
+var FAILING_ROWS, FAILURE_STATEMENTS;
 var init_failures = __esm({
   "src/core/store/repos/failures.ts"() {
     "use strict";
@@ -5274,7 +5275,6 @@ var init_failures = __esm({
         };
       }
     };
-    OUTCOMES3 = ["pass", "fail", "skip"];
   }
 });
 
@@ -5294,7 +5294,7 @@ function createResultRepo(conn) {
       return conn.all(
         `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
         key2
-      ).map(toResult2);
+      ).map(toResult);
     },
     checksForKey: (key2) => conn.all(
       `SELECT ${CHECK_COLUMNS} FROM results r JOIN checks c ON c.id = r.check_id
@@ -5308,7 +5308,7 @@ function createResultRepo(conn) {
         `${SELECT_RESULTS} WHERE r.check_id = ? ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT 1`,
         id2
       );
-      return row2 === null ? null : toResult2(row2);
+      return row2 === null ? null : toResult(row2);
     },
     listForCheck: (check, limit) => {
       const id2 = findCheckId(conn, check);
@@ -5318,13 +5318,15 @@ function createResultRepo(conn) {
            ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
         id2,
         limit
-      ).map(toResult2);
+      ).map(toResult);
     },
+    // Unused since 011-75, as are countFailures, FAILURE_WHERE and failureParams. They go with the
+    // next key-format raise: removing them changes lines no case runs (011-64 design 4, 011-101).
     listFailures: (filter, limit) => conn.all(
       `${SELECT_RESULTS} WHERE ${FAILURE_WHERE} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
       ...failureParams(filter),
       limit
-    ).map(toResult2),
+    ).map(toResult),
     countFailures: (filter) => num(
       conn.get(
         `SELECT COUNT(*) AS n FROM results r WHERE ${FAILURE_WHERE}`,
@@ -5385,32 +5387,11 @@ function storeFailureText(conn, summary, errors) {
 function failureParams({ worktreeId, since }) {
   return [worktreeId, worktreeId, since, since];
 }
-function toResult2(row2) {
-  return {
-    check: checkFrom(row2),
-    key: str(row2, "key"),
-    outcome: oneOf2(row2, "outcome", OUTCOMES4),
-    durationMs: num(row2, "duration_ms"),
-    location: location(row2),
-    fingerprint: strOrNull(row2, "fingerprint"),
-    summary: strOrNull(row2, "summary"),
-    errors: row2.errors === null ? [] : json(row2, "errors"),
-    provenance: {
-      worktreeId: str(row2, "worktree_id"),
-      revision: num(row2, "revision"),
-      commit: strOrNull(row2, "commit_sha"),
-      dirty: bool(row2, "dirty"),
-      runId: str(row2, "run_id"),
-      recordedAt: num(row2, "recorded_at")
-    }
-  };
-}
-var OUTCOMES4, SELECT_RESULTS, KEYS_SINCE, COPY_SET, FAILURE_WHERE;
+var SELECT_RESULTS, KEYS_SINCE, COPY_SET, FAILURE_WHERE;
 var init_results = __esm({
   "src/core/store/repos/results.ts"() {
     "use strict";
     init_codec();
-    OUTCOMES4 = ["pass", "fail", "skip"];
     SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
   FROM results r
@@ -5668,7 +5649,7 @@ function toKnownState(row2) {
   return {
     worktreeId: str(row2, "worktree_id"),
     check: checkFrom(row2),
-    outcome: oneOf2(row2, "outcome", OUTCOMES5),
+    outcome: oneOf2(row2, "outcome", OUTCOMES4),
     validity: oneOf2(row2, "validity", VALIDITIES),
     pendingPhase: oneOfOrNull(row2, "pending_phase", PENDING),
     observedAt: numOrNull(row2, "observed_at"),
@@ -5717,20 +5698,20 @@ function toTransition(row2) {
     worktreeId: str(row2, "worktree_id"),
     check: checkFrom(row2),
     kind: oneOf2(row2, "kind", KINDS),
-    from: oneOfOrNull(row2, "from_outcome", OUTCOMES5),
-    to: oneOf2(row2, "to_outcome", OUTCOMES5),
+    from: oneOfOrNull(row2, "from_outcome", OUTCOMES4),
+    to: oneOf2(row2, "to_outcome", OUTCOMES4),
     fromFingerprint: strOrNull(row2, "from_fingerprint"),
     toFingerprint: strOrNull(row2, "to_fingerprint"),
     revision: num(row2, "revision"),
     at: num(row2, "at")
   };
 }
-var OUTCOMES5, VALIDITIES, PENDING, KINDS, SELECT_STATES;
+var OUTCOMES4, VALIDITIES, PENDING, KINDS, SELECT_STATES;
 var init_states = __esm({
   "src/core/store/repos/states.ts"() {
     "use strict";
     init_codec();
-    OUTCOMES5 = ["pass", "fail", "skip", "unknown"];
+    OUTCOMES4 = ["pass", "fail", "skip", "unknown"];
     VALIDITIES = ["current", "pending", "stale", "unknown"];
     PENDING = ["queued", "running"];
     KINDS = [
@@ -6686,18 +6667,10 @@ var init_paths3 = __esm({
 
 // src/core/slow/slot.ts
 import { createHash as createHash8 } from "node:crypto";
-import {
-  copyFileSync,
-  existsSync as existsSync5,
-  mkdtempSync,
-  readdirSync as readdirSync3,
-  rmSync as rmSync3,
-  statSync as statSync2,
-  writeFileSync
-} from "node:fs";
-import { tmpdir as tmpdir2 } from "node:os";
+import { existsSync as existsSync5, readdirSync as readdirSync3, rmSync as rmSync3, statSync as statSync2, writeFileSync } from "node:fs";
 import { isAbsolute as isAbsolute7, join as join15 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 function slowSlotDir(env = process.env) {
   const xdg = env.XDG_RUNTIME_DIR;
   return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? join15(xdg, "squeal") : userTmpDir();
@@ -6764,26 +6737,9 @@ function heldPermits(request) {
   return held2;
 }
 function permitRecord(path) {
-  let scratch;
-  try {
-    scratch = mkdtempSync(join15(tmpdir2(), "squeal-permit-"));
-  } catch {
-    return { kind: "unreadable" };
-  }
-  try {
-    const copy = join15(scratch, "permit.sqlite");
-    copyFileSync(path, copy);
-    return holderRow(copy);
-  } catch {
-    return { kind: "unreadable" };
-  } finally {
-    rmSync3(scratch, { recursive: true, force: true });
-  }
-}
-function holderRow(path) {
   let db;
   try {
-    db = new DatabaseSync3(path, { readOnly: true });
+    db = new DatabaseSync3(new URL(`${pathToFileURL(path).href}?immutable=1`), { readOnly: true });
   } catch {
     return { kind: "unreadable" };
   }
@@ -10698,7 +10654,7 @@ var init_paths4 = __esm({
 // src/core/watcher/links.ts
 import { createHash as createHash12 } from "node:crypto";
 import { copyFile, lstat as lstat2, mkdir, rm, stat as stat2 } from "node:fs/promises";
-import { tmpdir as tmpdir3 } from "node:os";
+import { tmpdir as tmpdir2 } from "node:os";
 import { join as join21 } from "node:path";
 async function isSymlink(abs) {
   try {
@@ -10718,7 +10674,7 @@ async function isLinkedDir(abs) {
 }
 function ignoredAsDirectories(root, links) {
   if (links.length === 0) return Promise.resolve(/* @__PURE__ */ new Set());
-  const scratch = join21(tmpdir3(), `squeal-links-${hashOf(root)}`);
+  const scratch = join21(tmpdir2(), `squeal-links-${hashOf(root)}`);
   const previous = scratchQueue.get(scratch) ?? Promise.resolve();
   const run4 = previous.then(() => askAsDirectories(root, scratch, links));
   const settled = run4.then(
@@ -19602,7 +19558,7 @@ var init_parcel_backend = __esm({
 // src/core/watcher/backend.ts
 import { createRequire } from "node:module";
 import { join as join46 } from "node:path";
-import { pathToFileURL } from "node:url";
+import { pathToFileURL as pathToFileURL2 } from "node:url";
 function createWatcherBackend(platform) {
   return platform === "darwin" ? createParcelBackend(loadParcel) : chokidarBackend;
 }
@@ -19616,7 +19572,7 @@ async function loadParcel(root) {
     } catch {
       throw own;
     }
-    return (await import(pathToFileURL(resolved2).href)).default;
+    return (await import(pathToFileURL2(resolved2).href)).default;
   }
 }
 var init_backend = __esm({
@@ -20653,7 +20609,7 @@ var init_recorders = __esm({
 
 // src/runners/observe/runtime.ts
 import { existsSync as existsSync16 } from "node:fs";
-import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL2 } from "node:url";
+import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL3 } from "node:url";
 function observeRecorder(module2 = new URL(import.meta.url)) {
   for (const candidate of CANDIDATES) {
     const recorder = fileURLToPath5(new URL(`${candidate}recorder.cjs`, module2));
@@ -20662,7 +20618,7 @@ function observeRecorder(module2 = new URL(import.meta.url)) {
   return null;
 }
 function recorderOption(recorder, inherited) {
-  return inherited !== void 0 && holdsRequire(inherited) ? `--require ${quoteNodeOption(recorder)}` : `--import ${quoteNodeOption(pathToFileURL2(recorder).href)}`;
+  return inherited !== void 0 && holdsRequire(inherited) ? `--require ${quoteNodeOption(recorder)}` : `--import ${quoteNodeOption(pathToFileURL3(recorder).href)}`;
 }
 function observeEnv(recorder, settings, inherited) {
   const options = (inherited === void 0 ? void 0 : ownNodeOptions(inherited))?.trim() ?? "";
@@ -21229,7 +21185,7 @@ function enumeratedChecks(module2, testFile) {
 }
 function toCheckRunResult(testCase, testFile, paths, fullName) {
   const result = testCase.result();
-  const outcome2 = OUTCOMES6[result.state];
+  const outcome2 = OUTCOMES5[result.state];
   if (!outcome2) return null;
   const location2 = testCase.location;
   return {
@@ -21248,13 +21204,13 @@ function toCheckRunResult(testCase, testFile, paths, fullName) {
 function compareRefs(a, b) {
   return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
 }
-var OUTCOMES6, CAUSE_DEPTH, CAUSE_MESSAGE_CHARS, TIMEOUT, currentLoad, refKey;
+var OUTCOMES5, CAUSE_DEPTH, CAUSE_MESSAGE_CHARS, TIMEOUT, currentLoad, refKey;
 var init_results2 = __esm({
   "src/runners/vitest/results.ts"() {
     "use strict";
     init_fs();
     init_text();
-    OUTCOMES6 = {
+    OUTCOMES5 = {
       passed: "pass",
       failed: "fail",
       skipped: "skip"
@@ -22158,7 +22114,7 @@ var init_gate = __esm({
 // src/runners/vitest/load.ts
 import { createRequire as createRequire2 } from "node:module";
 import { join as join54 } from "node:path";
-import { pathToFileURL as pathToFileURL3 } from "node:url";
+import { pathToFileURL as pathToFileURL4 } from "node:url";
 async function loadVitest(root) {
   let resolved2;
   try {
@@ -22169,7 +22125,7 @@ async function loadVitest(root) {
       `vitest/node does not resolve from ${root} (${reason2}); Squeal runs only the project's own Vitest`
     );
   }
-  return await import(pathToFileURL3(resolved2).href);
+  return await import(pathToFileURL4(resolved2).href);
 }
 var init_load2 = __esm({
   "src/runners/vitest/load.ts"() {
@@ -22279,8 +22235,8 @@ var init_moved = __esm({
 });
 
 // src/runners/vitest/observe.ts
-import { mkdtempSync as mkdtempSync3, rmSync as rmSync9 } from "node:fs";
-import { tmpdir as tmpdir4 } from "node:os";
+import { mkdtempSync as mkdtempSync2, rmSync as rmSync9 } from "node:fs";
+import { tmpdir as tmpdir3 } from "node:os";
 import { join as join55, sep as sep6 } from "node:path";
 var VitestObserver;
 var init_observe2 = __esm({
@@ -22334,9 +22290,9 @@ var init_observe2 = __esm({
           this.#injected = settings2;
           return Object.keys(settings2).length === 0 ? {} : { env: settings2 };
         }
-        const out2 = mkdtempSync3(join55(tmpdir4(), "squeal-observe-"));
+        const out2 = mkdtempSync2(join55(tmpdir3(), "squeal-observe-"));
         this.#out = out2;
-        const temp = tmpdir4();
+        const temp = tmpdir3();
         const contains = `${this.paths.root}${sep6}`.startsWith(`${temp}${sep6}`);
         const settings = { out: out2, root: this.paths.root, skip: contains ? [] : [temp] };
         this.#injected = observeEnv(recorder, settings, process.env.NODE_OPTIONS);
@@ -35309,7 +35265,7 @@ var require_pathToFileURL = __commonJS({
       }
       return filepath;
     }
-    function pathToFileURL6(filepath, options) {
+    function pathToFileURL7(filepath, options) {
       const windows = options && options.windows !== void 0 ? options.windows : isWindows2;
       if (windows && filepath.startsWith("\\\\")) {
         const hostnameEndIndex = filepath.indexOf("\\", 2);
@@ -35333,7 +35289,7 @@ var require_pathToFileURL = __commonJS({
       url.pathname = encodePathChars(filepath, windows);
       return url;
     }
-    module2.exports = pathToFileURL6;
+    module2.exports = pathToFileURL7;
   }
 });
 
@@ -35343,7 +35299,7 @@ var require_packageMap = __commonJS({
     "use strict";
     var fileURLToPath15 = require_fileURLToPath();
     var { isInside, normalize: normalize8 } = require_path();
-    var pathToFileURL6 = require_pathToFileURL();
+    var pathToFileURL7 = require_pathToFileURL();
     function createError(message3, code) {
       const error = (
         /** @type {Error & { code: string }} */
@@ -35384,7 +35340,7 @@ var require_packageMap = __commonJS({
           "ERR_INVALID_PACKAGE_MAP"
         );
       }
-      const base = pathToFileURL6(configFilePath);
+      const base = pathToFileURL7(configFilePath);
       const packages = /* @__PURE__ */ new Map();
       const idsByPath = /* @__PURE__ */ new Map();
       for (const id2 of Object.keys(rawPackages)) {
@@ -40540,10 +40496,10 @@ var init_events = __esm({
 
 // src/runners/node-test/run/observed.ts
 import { realpathSync as realpathSync9 } from "node:fs";
-import { fileURLToPath as fileURLToPath8, pathToFileURL as pathToFileURL4 } from "node:url";
+import { fileURLToPath as fileURLToPath8, pathToFileURL as pathToFileURL5 } from "node:url";
 function observedClosure(testFile, absolute, graphs2, preloads, paths) {
   const edges = graphs2.flatMap(parseEdges);
-  const entry4 = pathToFileURL4(real(absolute)).href;
+  const entry4 = pathToFileURL5(real(absolute)).href;
   const children = /* @__PURE__ */ new Map();
   for (const { parent: parent2, url } of edges) {
     if (parent2 === null) continue;
@@ -40665,7 +40621,7 @@ var init_process = __esm({
 
 // src/runners/node-test/run/reads.ts
 import { mkdirSync as mkdirSync9 } from "node:fs";
-import { tmpdir as tmpdir5 } from "node:os";
+import { tmpdir as tmpdir4 } from "node:os";
 import { join as join63, sep as sep13 } from "node:path";
 var NodeTestReads;
 var init_reads = __esm({
@@ -40693,7 +40649,7 @@ var init_reads = __esm({
       env(env, absolute) {
         const options = env.NODE_OPTIONS?.trim() ?? "";
         const option = recorderOption(this.recorder, options);
-        const temp = tmpdir5();
+        const temp = tmpdir4();
         const skip = `${this.root}${sep13}`.startsWith(`${temp}${sep13}`) ? [] : [temp];
         const settings = { out: this.out, root: this.root, skip, file: absolute };
         return {
@@ -40795,7 +40751,7 @@ function readFileStream(stream, paths) {
     line: event2.data.line ?? null
   }));
   const results2 = identify(reported).map(
-    ({ test, fullName, ancestors }) => toResult3(stream.testFile, test.event, fullName, ancestors, paths)
+    ({ test, fullName, ancestors }) => toResult2(stream.testFile, test.event, fullName, ancestors, paths)
   );
   const failed2 = wrapper?.data.details?.passed === false;
   const fileError = failed2 && !results2.some((r) => r.outcome === "fail") ? { testFile: stream.testFile, errors: fileErrors(stream, reported, wrapper, paths) } : null;
@@ -40812,7 +40768,7 @@ function outcome(event2) {
   if (event2.type === "test:pass") return "pass";
   return details?.error?.failureType === "subtestsFailed" ? "pass" : "fail";
 }
-function toResult3(testFile, event2, fullName, ancestors, paths) {
+function toResult2(testFile, event2, fullName, ancestors, paths) {
   const result = outcome(event2);
   const { data: data2 } = event2;
   const file = typeof data2.file === "string" ? paths.toRelative(data2.file) : null;
@@ -47927,7 +47883,7 @@ var init_enumerate2 = __esm({
 import {
   existsSync as existsSync26,
   mkdirSync as mkdirSync11,
-  mkdtempSync as mkdtempSync4,
+  mkdtempSync as mkdtempSync3,
   readdirSync as readdirSync18,
   realpathSync as realpathSync15,
   rmSync as rmSync10,
@@ -47950,7 +47906,7 @@ function runBytecode(cacheDir, root, kept2) {
 function runScratch(parent2) {
   mkdirSync11(parent2, { recursive: true });
   sweep(parent2);
-  const dir2 = mkdtempSync4(join76(parent2, "run-"));
+  const dir2 = mkdtempSync3(join76(parent2, "run-"));
   return { dir: dir2, remove: () => rmSync10(dir2, { recursive: true, force: true }) };
 }
 function linkPoints(root, kept2) {
@@ -48392,7 +48348,7 @@ var init_report2 = __esm({
 // src/runners/pytest/run/run.ts
 import { createHash as createHash22 } from "node:crypto";
 import { existsSync as existsSync27, mkdirSync as mkdirSync12, writeFileSync as writeFileSync8 } from "node:fs";
-import { tmpdir as tmpdir6 } from "node:os";
+import { tmpdir as tmpdir5 } from "node:os";
 import { delimiter as delimiter3, join as join80, relative as relative18, sep as sep21 } from "node:path";
 import { fileURLToPath as fileURLToPath12 } from "node:url";
 async function runPytest(options) {
@@ -48591,7 +48547,7 @@ function refusal(note, started2) {
 }
 function defaultCacheDir(root, project) {
   const id2 = createHash22("sha256").update(`${root}\0${project.name}`).digest("hex").slice(0, 16);
-  return join80(tmpdir6(), "squeal-pytest", id2);
+  return join80(tmpdir5(), "squeal-pytest", id2);
 }
 function pytestRuntimeDir(module2 = new URL(import.meta.url)) {
   const tried = [];
@@ -50237,7 +50193,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.253";
+  if (true) return "0.1.254";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -54567,7 +54523,7 @@ import {
   linkSync,
   lstatSync as lstatSync4,
   mkdirSync as mkdirSync7,
-  mkdtempSync as mkdtempSync2,
+  mkdtempSync,
   readdirSync as readdirSync10,
   readFileSync as readFileSync18,
   renameSync as renameSync4,
@@ -54603,7 +54559,7 @@ function prepareScratch(scratch, uid = currentUid()) {
   try {
     preparePrivateDir(scratch.userDir, uid, "temp directory");
   } catch (error) {
-    const tempDir = mkdtempSync2(fallbackPrefix(scratch));
+    const tempDir = mkdtempSync(fallbackPrefix(scratch));
     const text3 = error instanceof Error ? error.message : String(error);
     return {
       scratch: { ...scratch, tempDir },
@@ -59796,7 +59752,7 @@ function ofKept(what, kept2) {
 // src/core/ps/work.ts
 import { existsSync as existsSync36, statSync as statSync22 } from "node:fs";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
-import { pathToFileURL as pathToFileURL5 } from "node:url";
+import { pathToFileURL as pathToFileURL6 } from "node:url";
 init_policy2();
 init_fs();
 init_types();
@@ -59873,7 +59829,7 @@ function openReadOnly(path) {
   }
 }
 function immutable(path) {
-  const url = pathToFileURL5(path);
+  const url = pathToFileURL6(path);
   url.search = "immutable=1";
   return url;
 }
@@ -63135,14 +63091,14 @@ import {
   accessSync as accessSync3,
   chmodSync as chmodSync3,
   constants as constants4,
-  copyFileSync as copyFileSync2,
+  copyFileSync,
   existsSync as existsSync39,
-  mkdtempSync as mkdtempSync5,
+  mkdtempSync as mkdtempSync4,
   readdirSync as readdirSync28,
   readFileSync as readFileSync44,
   rmSync as rmSync14
 } from "node:fs";
-import { tmpdir as tmpdir7 } from "node:os";
+import { tmpdir as tmpdir6 } from "node:os";
 import { delimiter as delimiter5, join as join108 } from "node:path";
 
 // src/cli/update-packages.ts
@@ -63298,7 +63254,7 @@ function updateTargets(cwd, env, io) {
   return targets;
 }
 function runInstallSh(flag3, cwd, env, io) {
-  const dir2 = mkdtempSync5(join108(tmpdir7(), "squeal-update-"));
+  const dir2 = mkdtempSync4(join108(tmpdir6(), "squeal-update-"));
   try {
     const script = join108(dir2, "install.sh");
     const url = env.SQUEAL_INSTALL_SH ?? LATEST_INSTALL_SH;
@@ -63352,7 +63308,7 @@ function recopyLauncher(env, io) {
     if (format !== null && format > (newest?.format ?? current3)) newest = { path, format };
   }
   if (newest === null) return;
-  copyFileSync2(newest.path, target);
+  copyFileSync(newest.path, target);
   chmodSync3(target, 493);
   io.stdout(`Copied the launcher (format ${current3}, now ${newest.format}) to ${target}
 `);
