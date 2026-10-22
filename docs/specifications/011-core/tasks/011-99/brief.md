@@ -15,3 +15,16 @@ Reproduce each one at a CPU limit before you fix it: use `taskset`, with burners
 Owns: these three tests, their fixtures, and the product code of a cause you prove. Not yours: `test/harness/opencode-dispose.test.ts` (row 008-38) and `test/e2e/pi.test.ts` (row 009-30), the spec, the board, the bundles and the version.
 
 Done when each file passes 10 runs in a row at `taskset -c 0-1`, and 10 runs at `taskset -c 0-3` with 3 pinned burners, or the report names why not. Lint, typecheck and `squeal run --all --wait` must also pass. Put their output and the whole report in your final message.
+
+## R1: review of cand/0.1.260
+
+Use /reviewer. Shape: review. Pinned to `791ca37dc` (cand/0.1.260: main `e9d907981`, worker 796bfe06's four commits picked as `b1420366d` to `d66e904ff`, a release commit). Read this brief and the board row 011-99.
+
+Check:
+- `src/core/scheduler/slow-tier.ts`: a close before `SlowTier.next()` reads the preemption count starts no guard wait; a close during a guard wait still aborts it; a pass not closed is unchanged.
+- `test/scheduler/claims-fixture.ts`: a run waits on the gate held when it started; every other `hold()` caller still holds the runs it means to.
+- `test/scheduler/slow-slot-fair.test.ts`: the new case is red without the `slow-tier.ts` change.
+- `test/runners/node-test/run.test.ts`: the case's premise check and failure text weaken no assertion of the 001-421 case it shares a helper with.
+- The release commit: eight version places, bundles match the tree.
+
+`backlog-slots-overhead.test.ts` test 3 is unchanged on purpose; its bound is the human's decision. Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once. Known red on main: `backlog-slots-overhead.test.ts` test 3 and `opencode-dispose.test.ts` (008-38). Write `reviews/0.1.260.md` with PASS or FAIL on `791ca37dc` and commit it. A finding that is not a proven break goes to "Inputs for the next wave".
