@@ -1,4 +1,4 @@
-import { ancestorListings } from "../keys/index.js";
+import { ancestorListings, listedDirectory } from "../keys/index.js";
 import type {
   FileChange,
   RelativePath,
@@ -6,6 +6,9 @@ import type {
   Store,
   WorktreeId,
 } from "../types/index.js";
+import type { SchedulerContext } from "./context.js";
+import type { ObservedGrowth } from "./observed.js";
+import type { Tier } from "./tiers.js";
 
 /*
  * Spec 011 C4 step 5 as amended 2026-10-22 (row 011-117,
@@ -15,7 +18,7 @@ import type {
  * lists it re-keys as before. Such a change cancels no tier in flight and
  * starts no quiet: in toolkit-dev four vim opens and quits threw away 138 s
  * of runs and added about 57 s of quiet. The completion barrier compares the
- * listing at the run's end instead (`scratchMovedListings`).
+ * listing at the run's end instead (`scratchUnstable`).
  */
 
 /** Vim's swap file `.<name>.swp`, and `.swo` down to `.swa` when that name is taken. */
@@ -69,4 +72,27 @@ export function scratchMovedListings(
     for (const listing of ancestorListings(path)) if (listings.has(listing)) moved.add(listing);
   }
   return [...moved];
+}
+
+/**
+ * The listings that `tier`'s files hold, or that its run observed first
+ * (`growth`, review `reviews/0.1.268.md` B1), which editor scratch files
+ * moved during the run (`scratchMovedListings`): unstable paths for the
+ * completion barrier. Asked under the scheduler lock as the run is
+ * recorded, so every batch applied before the record counts, as it does in
+ * `Tier.changes`.
+ */
+export function scratchUnstable(
+  context: SchedulerContext,
+  tier: Pick<Tier, "files" | "changes" | "revision">,
+  growth: ReadonlyMap<string, ObservedGrowth> = new Map(),
+): RelativePath[] {
+  const listings = new Set<RelativePath>();
+  const add = (paths: readonly RelativePath[]) => {
+    for (const path of paths) if (listedDirectory(path) !== null) listings.add(path);
+  };
+  for (const file of tier.files) add(file.inputs);
+  for (const grown of growth.values()) add(grown.growth);
+  const { store, worktreeId } = context;
+  return scratchMovedListings(store, worktreeId, tier.revision.number, tier.changes, listings);
 }
