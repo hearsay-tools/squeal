@@ -51,3 +51,19 @@ Read W1 and W2 above, the notes under `tasks/011-32/`, `tasks/011-34/` and `005-
 - the version is raised in all eight places, the bundles match the tree, and the four launchers are byte-identical.
 
 Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once in the candidate tree. Row 011-99 lists the known load-flaky files. Write `reviews/0.1.259.md` with a PASS or FAIL verdict and commit it.
+
+## Wave 12.5, W3: repair of review 0.1.259, B1 and B2
+
+Use /worker. Shape: repair. Baseline `c8506437c` (the candidate b7b4425ca plus the review file).
+
+Outcome: with the old daemon's heartbeat stopped, the next boundary still recovers an expired or timed-out handoff, and a wait reads the same handoff as the status it prints.
+
+Read `reviews/0.1.259.md` (B1, B2, Inputs for the repair wave), W1 above, board rows 011-32 and 011-34, spec 011 C9.
+
+Seam: B1 is `handOver` in `src/harness/shared/ensure.ts:117`: read the claim and the shutdown state before `asksStepDown` rejects a stale heartbeat. B2 is `watchDaemon` in `src/cli/wait-liveness.ts:93`: give it the reading of `withStopping` (`src/core/status/stopping.ts`), the record-cleared window included. A lead: write the review's two probes as failing tests first, with a 5 s heartbeat that stays stopped.
+
+Also: `test/daemon/handover-tier.test.ts:141` failed on CI Node 22 (run 39746558837, attempt 1; no reading had `stopping.to`). Find why in `tasks/011-34/notes.md`. Make the assertion independent of 50 ms sampling, or fix the product defect it shows.
+
+Owns: the files above, `src/core/delivery/handoff.ts`, `src/cli/status-wait.ts`, `src/cli/status-wait-paths.ts`, their tests, `test/harness/handoff.test.ts`, `test/daemon/handover-tier.test.ts`, the notes. Not yours: the launcher, the 011-99 files, the board, spec text, bundles, version. No `npm run build`.
+
+Done when: the review's expected behaviour for B1 and B2 holds by test; the six-boundary test still passes; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
