@@ -508,6 +508,11 @@ var SCHEMA_VERSION = MIGRATIONS.length;
 // src/core/store/codec.ts
 var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
 
+// src/core/store/repos/replaced.ts
+var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
+  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
+  WHERE r.key = ? AND r.outcome = 'fail'`;
+
 // src/core/store/prune.ts
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
