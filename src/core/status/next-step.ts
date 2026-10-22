@@ -1,4 +1,5 @@
 import { loadText } from "../retry/text.js";
+import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
 import { isSlowLane, SLOW_LANE_PREFIX, type Standing, type TierYield } from "../types/index.js";
 import { slotHoldersText } from "./slot-holders.js";
@@ -58,13 +59,22 @@ const NOT_INTERRUPTED = "no command runs {it} sooner (a running tier is not inte
 const NOT_YIELDING =
   "no command runs {it} sooner (a running tier that does not yield is waited for)";
 
+/**
+ * A remainder's whole seconds as its line words them, never below 0: a file
+ * run past its last-known duration has a negative one (row 011-103 slice 6).
+ * The group id reads it too, so files whose lines read alike share one.
+ */
+export function remainderSeconds(remainderMs: number): number {
+  return Math.max(0, Math.round(remainderMs / 1_000));
+}
+
 /** `; the tier yields`, or why it does not (C15 as amended 2026-10-21, row 011-51). */
 function yieldText(tier: TierYield, what: "tier" | "run"): string {
   switch (tier.kind) {
     case "yields":
       return `; the ${what} yields`;
     case "remainder":
-      return `; the ${what} does not yield: its estimated remainder was ${Math.max(0, Math.round(tier.remainderMs / 1_000))} s, not over 30 s`;
+      return `; the ${what} does not yield: its estimated remainder was ${remainderSeconds(tier.remainderMs)} s, not over ${YIELD_REMAINDER_MS / 1_000} s`;
     case "cut":
       return `; the ${what} does not yield: it holds a file a yield already cut at its key`;
     case "turn":
