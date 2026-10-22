@@ -89,9 +89,11 @@ describe("squeal failures (task 001-409)", () => {
         "Failures in this worktree (2 failures, newest first):",
         "  FAIL  2026-10-15T11:55:00.000Z  src/auth.test.ts > auth > login",
         "        <b> (this worktree), revision 4, commit abc123, dirty, 12 ms, run run-5",
+        "        at src/a.test.ts:3:5",
         "        AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
         "  FAIL  2026-10-15T09:00:00.000Z  src/auth.test.ts > auth > logout",
         "        <b> (this worktree), revision 4, commit abc123, dirty, 12 ms, run run-180",
+        "        at src/a.test.ts:3:5",
         "        AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
         "",
         'squeal why "<check>" prints a failure\'s full output.',
@@ -171,6 +173,7 @@ describe("squeal failures (task 001-409)", () => {
       since: NOW - 60 * MINUTE,
       selection: { paths: [], checks: [], errors: [], perCheck: false },
       total: 2,
+      replaced: 0,
       limit: FAILURES_LIMIT,
       failures: [
         {
@@ -185,6 +188,8 @@ describe("squeal failures (task 001-409)", () => {
           fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
           summary: "expected 1 to be 2",
           runId: "run-5",
+          location: { path: "src/a.test.ts", line: 3, column: 5 },
+          loadPerCpu: null,
         },
         {
           check: check("src/a.test.ts", "adds"),
@@ -198,6 +203,8 @@ describe("squeal failures (task 001-409)", () => {
           fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
           summary: "expected 1 to be 2",
           runId: "run-10",
+          location: { path: "src/a.test.ts", line: 3, column: 5 },
+          loadPerCpu: null,
         },
       ],
     });

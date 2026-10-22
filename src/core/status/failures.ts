@@ -1,19 +1,25 @@
 import { realpathSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { findWorktreeRoot, toRelative, worktreeIdFor } from "../fs/index.js";
+import { readRunLoads } from "../retry/index.js";
 import { formatCheck } from "../state/index.js";
 import { cap, plural } from "../text.js";
 import {
   type AbsolutePath,
   type EpochMs,
+  type FailureEntry,
   type FailureSelection,
+  type FailuresReport,
   type FailuresResult,
   type FailuresSelection,
   PAYLOAD_SCHEMA_VERSION,
   type RelativePath,
+  type WorktreeId,
 } from "../types/index.js";
 import { formatUnavailable, shortCommit } from "./format-status.js";
 import { type StatusStoreOptions, withStatusStore } from "./open.js";
+import { loadText, mergeFailures, perCheckTotals, selectReplaced } from "./replaced-failures.js";
+import { atText } from "./test-frame.js";
 import { WHY_RESULT_LIMIT } from "./why.js";
 
 /** Most failures `squeal failures` lists by default, as many as `why` lists results. */
@@ -103,7 +109,9 @@ export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): 
   };
   return withStatusStore(cwd, options, ({ store, root }) => {
     const worktreeId = worktreeIdFor(root);
-    const roots = new Map(store.worktrees.list().map((w) => [w.id, w.root]));
+    const roots = new Map<WorktreeId, AbsolutePath>(
+      store.worktrees.list().map((w) => [w.id, w.root]),
+    );
     const base: FailureSelection = {
       worktreeId: allWorktrees ? null : worktreeId,
       since,
@@ -122,21 +130,17 @@ export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): 
               .failingChecks(base)
               .filter((check) => texts.some((text) => formatCheck(check).includes(text))),
           };
-    const total = store.failures.count(filter);
+    const stored = store.failures.count(filter);
+    // Row 011-77: the replaced failures, by the same selection, in this read transaction.
+    const replaced = selectReplaced(store.failures.replaced(), base, texts);
+    const totals = selection.perCheck
+      ? perCheckTotals(store, filter, stored, replaced)
+      : { total: stored + replaced.length, replaced: replaced.length };
+    const { total } = totals;
     const limit = options.limit === "all" ? total : (options.limit ?? FAILURES_LIMIT);
-    const failures = store.failures.list(filter, limit).map((r) => ({
-      check: r.check,
-      worktreeId: r.provenance.worktreeId,
-      worktreeRoot: roots.get(r.provenance.worktreeId) ?? null,
-      revision: r.provenance.revision,
-      commit: r.provenance.commit,
-      dirty: r.provenance.dirty,
-      recordedAt: r.provenance.recordedAt,
-      durationMs: r.durationMs,
-      fingerprint: r.fingerprint,
-      summary: r.summary,
-      runId: r.provenance.runId,
-    }));
+    const context = { roots, loads: readRunLoads(store) };
+    const listed = store.failures.list(filter, limit);
+    const failures = mergeFailures(store, listed, replaced, selection.perCheck, limit, context);
     return {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
       available: true,
@@ -147,12 +151,13 @@ export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): 
       selection,
       failures,
       total,
+      replaced: totals.replaced,
       limit,
     };
   });
 }
 
-/** Human rendering of `squeal failures`: two lines per failure, a third with its summary. */
+/** Human rendering of `squeal failures`: each failure's head, provenance, location and summary. */
 export function formatFailures(report: FailuresResult): string {
   if (!report.available) return formatUnavailable(report);
   const scope = report.allWorktrees ? "every worktree" : "this worktree";
@@ -164,22 +169,44 @@ export function formatFailures(report: FailuresResult): string {
   const count = counted
     ? `newest ${report.failures.length} of ${report.total}${perCheck ? " checks" : ""}`
     : plural(report.total, perCheck ? "check" : "failure");
+  // Row 011-77: replaced failures are counted apart, so they never read as current.
+  const replaced = report.replaced > 0 ? `, ${report.replaced} replaced` : "";
   const each = perCheck ? ", newest failure of each" : "";
-  const lines = [`Failures in ${scope}${window} (${count}${each}, newest first):`];
-  for (const f of report.failures) {
-    const where =
-      f.worktreeId === report.worktreeId
-        ? `${report.worktreeRoot} (this worktree)`
-        : (f.worktreeRoot ?? `removed worktree ${f.worktreeId}`);
-    lines.push(
-      `  FAIL  ${new Date(f.recordedAt).toISOString()}  ${formatCheck(f.check)}`,
-      `        ${where}, revision ${f.revision}, commit ${shortCommit(f.commit)}, ${f.dirty ? "dirty" : "clean"}, ${Math.round(f.durationMs)} ms, run ${f.runId}`,
-    );
-    const text = f.fingerprint ?? f.summary;
-    if (text !== null) lines.push(`        ${cap(text.split("\n")[0] ?? "", FINGERPRINT_CHARS)}`);
-  }
+  const lines = [`Failures in ${scope}${window} (${count}${replaced}${each}, newest first):`];
+  for (const f of report.failures) lines.push(...failureLines(report, f));
   lines.push("", 'squeal why "<check>" prints a failure\'s full output.');
   return `${lines.join("\n")}\n`;
+}
+
+/** One failure: its head, its provenance, the pass that replaced it, its location, its error. */
+function failureLines(report: FailuresReport, f: FailureEntry): string[] {
+  const where = worktreeText(report, f.worktreeId, f.worktreeRoot);
+  const mark = f.replacedBy === undefined ? "FAIL" : "REPLACED";
+  const lines = [
+    `  ${mark}  ${new Date(f.recordedAt).toISOString()}  ${formatCheck(f.check)}`,
+    `        ${where}, revision ${f.revision}, commit ${shortCommit(f.commit)}, ${f.dirty ? "dirty" : "clean"}, ${Math.round(f.durationMs)} ms, run ${f.runId}`,
+  ];
+  const by = f.replacedBy;
+  if (by !== undefined) {
+    const passed = worktreeText(report, by.worktreeId, by.worktreeRoot);
+    lines.push(
+      `        replaced by PASS ${new Date(by.recordedAt).toISOString()} (${passed}, run ${by.runId}), ${loadText(f.loadPerCpu)}`,
+    );
+  }
+  // 011 C5 as amended 2026-10-21 (gh-67): its location, and the test-file frame beside a helper's.
+  if (f.location !== null) lines.push(`        ${atText(f.location, f.testFileFrame)}`);
+  const text = f.fingerprint ?? f.summary;
+  if (text !== null) lines.push(`        ${cap(text.split("\n")[0] ?? "", FINGERPRINT_CHARS)}`);
+  return lines;
+}
+
+function worktreeText(
+  report: FailuresReport,
+  worktreeId: WorktreeId,
+  root: AbsolutePath | null,
+): string {
+  if (worktreeId === report.worktreeId) return `${report.worktreeRoot} (this worktree)`;
+  return root ?? `removed worktree ${worktreeId}`;
 }
 
 /**

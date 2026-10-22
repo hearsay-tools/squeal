@@ -1,7 +1,7 @@
 import { basename, dirname } from "node:path";
 import { closureLine } from "../delivery/provenance.js";
 import { testFileLabel } from "../run-log.js";
-import { causeText, flakyText, formatCheck, revisionText } from "../state/index.js";
+import { flakyText, formatCheck, revisionText } from "../state/index.js";
 import { plural } from "../text.js";
 import type {
   KnownOutcome,
@@ -18,9 +18,14 @@ import type {
 } from "../types/index.js";
 import { durationsText } from "./durations.js";
 import { formatUnavailable, shortCommit } from "./format-status.js";
+import {
+  errorLines,
+  INDENT,
+  replacedAt,
+  replacedLines,
+  worktreeName,
+} from "./format-why-replaced.js";
 import { locationText } from "./test-frame.js";
-
-const INDENT = "        ";
 
 /** Human rendering of `squeal why <check>`. Full stacks included: the reader asked for them. */
 export function formatWhy(why: WhyResult): string {
@@ -49,6 +54,8 @@ export function formatWhy(why: WhyResult): string {
     "",
     ...durationsLine(why),
     ...results(why),
+    ...olderLines(why),
+    ...replacedLines(why),
     "",
     ...runLog(why),
   ];
@@ -146,7 +153,10 @@ function flakyLine(why: WhyReport): string[] {
   if (note === undefined) return [];
   return [
     `  ${capitalize(flakyText(note))} (key ${note.key.slice(0, 12)}, ${new Date(note.at).toISOString()})`,
-    ...(note.failure === undefined ? [] : [`    the FAIL it replaced: ${note.failure}`]),
+    // Row 011-77: a replaced failure kept at the note's key says more, with its run.
+    ...(note.failure === undefined || replacedAt(why, note.key)
+      ? []
+      : [`    the FAIL it replaced: ${note.failure}`]),
   ];
 }
 
@@ -230,20 +240,18 @@ function resultLines(why: WhyReport, { result, worktreeRoot, logDir }: WhyResult
     `${INDENT}log: ${logDir ?? "run record pruned"}`,
   ];
   if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);
-  for (const error of result.errors) {
-    const head = error.stack ?? `${error.name}: ${error.message}`;
-    // Task 001-361: the code and the causes a stack does not print.
-    const text = [
-      head,
-      error.code === undefined || head.includes(error.code) ? null : `code: ${error.code}`,
-      ...(error.causes ?? []).map((cause) => `Caused by: ${causeText(cause)}`),
-      error.diff,
-    ]
-      .filter((part) => part !== null)
-      .join("\n");
-    for (const line of text.split("\n")) lines.push(`${INDENT}${line}`);
-  }
-  return lines;
+  return [...lines, ...errorLines(result.errors)];
+}
+
+/** Row 011-77 (gh-67 Q3): stored failures older than the listed results, so passes do not hide them. */
+function olderLines(why: WhyReport): string[] {
+  const older = why.olderFailures ?? [];
+  if (older.length === 0) return [];
+  return [
+    "",
+    `Older failures still stored (${older.length}, newest first):`,
+    ...older.flatMap((entry) => resultLines(why, entry)),
+  ];
 }
 
 /**
@@ -321,11 +329,6 @@ function gapText(gap: WhyRunLogGap | undefined): string {
 function replacedHere(why: WhyReport, result: WhyResultEntry["result"]): boolean {
   const replaced = why.replacedAtKey;
   return replaced?.key === result.key && replaced.runId === result.provenance.runId;
-}
-
-function worktreeName(why: WhyReport, worktreeId: string): string {
-  if (worktreeId === why.worktreeId) return `${why.worktreeRoot} (this worktree)`;
-  return why.worktreeRoots[worktreeId] ?? `removed worktree ${worktreeId}`;
 }
 
 function producer(why: WhyReport, log: WhyRunLog): string {

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { defaultHostSlots, type PoolLease } from "../capacity/index.js";
 import type { StatCache } from "../hash/index.js";
 import { listedDirectory, testFileId } from "../keys/index.js";
+import { readRunLoads } from "../retry/index.js";
 import type { CheckKey, Provenance, RelativePath, RunReport, TestFileRef } from "../types/index.js";
 import { BacklogWall, backlogBudget } from "./backlog.js";
 import { WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
@@ -692,8 +693,11 @@ export function recordTier(
         provenance,
         describe: context.describe,
       });
+      // 011-64 R3 (row 011-77, gh-54): a failing row a pass replaces here is kept as history.
+      const failing = store.failures.failingAt(storeKey);
       const prior = storeResults(context, records);
       recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
+      store.failures.keepReplaced(failing, records, (run) => readRunLoads(store).get(run) ?? null);
       if (forced && file.rerunKey === key) endRerun(context, file);
       if (forced) endRetry(context, file, key, records, tier.runId);
       // A grown file's results become current at `storeKey` through `settle` below; its new
