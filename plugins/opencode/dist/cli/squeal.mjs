@@ -49887,7 +49887,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.250";
+  if (true) return "0.1.252";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -57388,9 +57388,8 @@ var LOCK_FILE = /^(.+)\/squeal\/locks\/([0-9a-f]{16})\.sqlite$/;
 var SOCKET_FILE = /^squeal-([0-9a-f]{16})\.sock$/;
 var CACHE_INSTALL = /\/\.(claude|codex)\/plugins\/cache\/[^/]+\/squeal\/([^/]+)\//;
 var PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
-var discover = (source, table, places) => {
+var discover = (source, table, places, locks = source.locks()) => {
   const unknown = [];
-  const locks = source.locks();
   if (locks === null) {
     const why2 = "they cannot be read: a phase is serving by its heartbeat, or unknown (D10)";
     unknown.push({ what: "daemon lock holders", why: why2 });
@@ -57411,6 +57410,16 @@ var discover = (source, table, places) => {
   }
   return { daemons, sockets: socketFiles(source, places, daemons), unknown };
 };
+function lockedAgain(source, discovery, locks) {
+  if (locks === null || discovery.daemons.every((d) => d.holdsLock !== false)) return discovery;
+  const daemons = discovery.daemons.map(
+    (d) => d.holdsLock === false && holds2(source, d.row.pid, d.lockPath, locks) === true ? { ...d, holdsLock: true } : d
+  );
+  const sockets = discovery.sockets.map(
+    (s) => s.daemonPid === null ? { ...s, daemonPid: holderOf2(daemons, s.worktreeId) } : s
+  );
+  return { ...discovery, daemons, sockets };
+}
 function ownStartOn(source) {
   const boot = source.bootTime();
   const ticks = source.clockTicks();
@@ -57509,17 +57518,19 @@ function socketFiles(source, places, daemons) {
       } catch {
         continue;
       }
-      const daemon = daemons.find((d) => d.worktreeId === worktreeId && (d.holdsLock ?? true));
       sockets.push({
         path,
         worktreeId,
         mtimeMs: stat7.mtimeMs,
-        daemonPid: daemon?.row.pid ?? null,
+        daemonPid: holderOf2(daemons, worktreeId),
         listening: listeners === null ? null : listeners.some((l) => l.fileInode === stat7.ino)
       });
     }
   }
   return sockets;
+}
+function holderOf2(daemons, worktreeId) {
+  return daemons.find((d) => d.worktreeId === worktreeId && (d.holdsLock ?? true))?.row.pid ?? null;
 }
 function names3(dir2) {
   try {
@@ -58014,7 +58025,7 @@ ${why2}`);
     unknown.push({ what, why: why2 });
   };
   const { source } = model;
-  if (source.locks() === null)
+  if (model.pool.pool.held === null)
     for (const what of ["flag no-lock", "flag hung", "flag foreign-permit", "phase stopping"])
       name2(what, NO_LOCKS);
   if (!source.readsMarks)
@@ -58270,6 +58281,8 @@ function duplicates(c) {
     };
     const others = (d) => group.filter((o) => o !== d).map((o) => o.row.pid).join(", ");
     const holders = group.filter((d) => d.holdsLock === true);
+    const atOnce = new Set(holders.map((d) => d.lockPath)).size === holders.length;
+    const holding = holders.map((d) => d.row.pid).join(", ");
     if (group.some((d) => d.holdsLock === null)) {
       if (!group.every(waited)) continue;
       for (const d of group)
@@ -58278,12 +58291,12 @@ function duplicates(c) {
           `daemon ${others(d)} has its root ${root} too; which holds the lock is unknown`,
           `kill ${d.row.pid}  # or ${others(d)}: whichever holds no lock`
         );
-    } else if (holders.length === 1) {
+    } else if (holders.length === 1 || holders.length > 1 && !atOnce) {
       for (const d of group)
         if (!d.holdsLock && waited(d))
           add2(
             d,
-            `daemon ${holders[0]?.row.pid} holds the lock of its root ${root}`,
+            holders.length === 1 ? `daemon ${holding} holds the lock of its root ${root}` : `daemons ${holding} held the lock of its root ${root} in turn`,
             `kill ${d.row.pid}`
           );
     } else if (holders.length > 1) {
@@ -58801,16 +58814,13 @@ function memoryShare(privateBytes, host) {
   return used <= 0 ? null : privateBytes / used * 100;
 }
 var PERMIT2 = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
-var readPool = (source, places, daemons) => {
+var readPool = (source, places, daemons, readings = [source.locks()]) => {
   const slots = hostSlotsOf(places.userConfig, source.host().cpus);
-  const locks = source.locks();
-  if (locks === null) return { pool: { slots, held: null }, permits: /* @__PURE__ */ new Map(), foreign: [] };
+  if ((readings[0] ?? null) === null)
+    return { pool: { slots, held: null }, permits: /* @__PURE__ */ new Map(), foreign: [] };
   const holders = /* @__PURE__ */ new Map();
-  for (const lock2 of locks) {
-    if (lock2.blocked || lock2.access !== "write" || lock2.pid === null) continue;
-    const pids2 = holders.get(lock2.file) ?? /* @__PURE__ */ new Set();
-    holders.set(lock2.file, pids2.add(lock2.pid));
-  }
+  for (const locks of readings)
+    for (const [file, pids2] of holdersOf(locks ?? [])) holders.set(file, pids2);
   let held2 = 0;
   const permits = /* @__PURE__ */ new Map();
   const foreign = [];
@@ -58826,6 +58836,15 @@ var readPool = (source, places, daemons) => {
   }
   return { pool: { slots, held: held2 }, permits, foreign };
 };
+function holdersOf(locks) {
+  const holders = /* @__PURE__ */ new Map();
+  for (const lock2 of locks) {
+    if (lock2.blocked || lock2.access !== "write" || lock2.pid === null) continue;
+    const pids2 = holders.get(lock2.file) ?? /* @__PURE__ */ new Set();
+    holders.set(lock2.file, pids2.add(lock2.pid));
+  }
+  return holders;
+}
 function hostSlotsOf(path, cpus3) {
   const shape = { capacity: { hostSlots: positiveInteger, projects: () => null } };
   const defaults = { capacity: { hostSlots: defaultHostSlots2(cpus3) } };
@@ -59258,7 +59277,7 @@ function shapeOf(r, findings, o) {
   };
   const daemonOf2 = (d) => {
     const pid = d.row.pid;
-    const work = first.work.get(pid) ?? null;
+    const work = first.work.get(pid) ?? second.work.get(pid) ?? null;
     const own = phase(d, work, model.now);
     const state = findings.states.get(pid) ?? own;
     return {
@@ -59685,21 +59704,25 @@ async function readWindow(o) {
   const { source, places } = o;
   const first = takeSample(source);
   const now = o.now();
-  const discovery = discover(source, first.table, places);
-  const work = readWork(source, first.table, discovery.daemons);
-  const attribution = attribute(source, first.table, ownersOf(discovery.daemons, work.work));
-  const pool = readPool(source, places, new Set(discovery.daemons.map((d) => d.row.pid)));
+  const locks = source.locks();
+  const found3 = discover(source, first.table, places, locks);
+  const work = readWork(source, first.table, found3.daemons);
+  const attribution = attribute(source, first.table, ownersOf(found3.daemons, work.work));
   const reading = source.host();
   const bootTime = source.bootTime();
   await o.wait(Math.max(0, o.sampleMs - (performance.now() - first.atMs)));
-  const pids2 = followed(discovery, work.work, attribution);
-  const tree = below2(first.table, measured(discovery, attribution));
+  const pids2 = followed(found3, work.work, attribution);
+  const tree = below2(first.table, measured(found3, attribution));
   const read5 = takeSample(
     source,
     [.../* @__PURE__ */ new Set([...pids2, ...tree])],
     tree.length > 0 ? first.table : void 0
   );
-  const costs = measure(source, first, read5, measured(discovery, attribution));
+  const costs = measure(source, first, read5, measured(found3, attribution));
+  const locksAgain = source.locks();
+  const discovery = lockedAgain(source, found3, locksAgain);
+  const daemonPids = new Set(discovery.daemons.map((d) => d.row.pid));
+  const pool = readPool(source, places, daemonPids, [locks, locksAgain]);
   const second = { ...read5, table: only(read5.table, pids2) };
   const live = discovery.daemons.filter(
     (d) => second.table.get(d.row.pid)?.startTicks === d.row.startTicks
