@@ -4435,7 +4435,7 @@ function files(refs) {
 
 // src/core/daemon/runner.ts
 import { readdirSync, readFileSync as readFileSync4 } from "node:fs";
-import { join as join8 } from "node:path";
+import { join as join8, posix as posix4 } from "node:path";
 var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
 function vitestDetected(root) {
   let names;
@@ -4445,17 +4445,21 @@ function vitestDetected(root) {
     return false;
   }
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
-  let manifest;
-  try {
-    manifest = JSON.parse(readFileSync4(join8(root, "package.json"), "utf8"));
-  } catch {
-    return false;
-  }
+  return listsVitest(readManifest(join8(root, "package.json")));
+}
+function listsVitest(manifest) {
   if (!isRecord(manifest)) return false;
   return ["dependencies", "devDependencies"].some((field) => {
     const deps = manifest[field];
     return isRecord(deps) && Object.hasOwn(deps, "vitest");
   });
+}
+function readManifest(path) {
+  try {
+    return JSON.parse(readFileSync4(path, "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 // src/core/delivery/stopped.ts
@@ -6838,7 +6842,7 @@ function openContext(input, location2, options = {}) {
 
 // src/harness/shared/coverage.ts
 import { existsSync as existsSync8 } from "node:fs";
-import { join as join14, posix as posix4 } from "node:path";
+import { join as join14, posix as posix5 } from "node:path";
 var VITEST_ONLY = {
   vitest: true,
   vitestConfig: null,
@@ -6876,7 +6880,7 @@ function fromRoot({
 }) {
   return {
     name,
-    include: include.map((glob) => cwd === void 0 ? glob : posix4.join(cwd, glob))
+    include: include.map((glob) => cwd === void 0 ? glob : posix5.join(cwd, glob))
   };
 }
 function vitestConfig(root) {
@@ -7503,7 +7507,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.262";
+  if (true) return "0.1.263";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
