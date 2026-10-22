@@ -8,6 +8,7 @@ import { clearHandoff } from "../delivery/handoff.js";
 import { resumesRest } from "../delivery/liveness.js";
 import { linkedWorktreeDir } from "../fs/index.js";
 import { readDaemonNotes } from "../notes.js";
+import { readCommandHolds } from "../scheduler/hold-rows.js";
 import { slowSlotDir } from "../slow/index.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
 import { BUSY_SLICE_MS, BusyWaits, isBusy, setBusyTimeout } from "../store/index.js";
@@ -338,6 +339,10 @@ class Daemon {
       idleGc: () => {
         if (this.#phase !== "stopping") this.#idleGc.check();
       },
+      // Row 011-74: a holder whose processes are gone, or past its bound, is removed (011 C9).
+      commandHolds: () => {
+        if (this.#loop !== null && this.#phase !== "stopping") void this.#requestHold();
+      },
       note: (text) => this.#note(text),
       log: this.#log,
       busyWaits: this.#busyWaits,
@@ -643,6 +648,8 @@ class Daemon {
         onNudge: () => this.#loop?.scheduler.nudge(),
         requestRetries: () => this.#requestRetries(),
         requestPromotion: (testFiles, withinMs) => this.#requestPromotion(testFiles, withinMs),
+        requestHold: () => this.#requestHold(),
+        requestResume: async () => void (await this.#requestHold()),
         // The tiers stop now, under a shutdown already begun too; the shutdown after the answer.
         onStop: () => {
           this.#cancelTiers("stop");
@@ -692,6 +699,27 @@ class Daemon {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") return;
     await this.#loop.scheduler.promote(testFiles, withinMs);
+  }
+
+  /**
+   * Row 011-74 (011 C9, *Hold command*): `squeal hold` added or removed its
+   * entry, `squeal start` removed all, or a heartbeat came. The scheduler
+   * reads the command holds again: while one holds no tier starts, and the
+   * tiers in flight whose runner cancels are cancelled; this resolves once
+   * they ended. A loop not created yet reads them at its start, so only the
+   * row answers.
+   */
+  async #requestHold(): Promise<boolean> {
+    const loop = this.#loop;
+    if (loop === null || this.#phase === "stopping") {
+      return readCommandHolds(this.opened.store, this.opened.worktreeId).length > 0;
+    }
+    try {
+      return await loop.scheduler.commandHold();
+    } catch (error) {
+      this.#log(`could not read the command holds: ${message(error)}`);
+      throw error;
+    }
   }
 
   async #requestSlowSuite(): Promise<SlowSuiteRequested> {
