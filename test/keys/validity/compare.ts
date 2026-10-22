@@ -5,11 +5,14 @@ import type { Case } from "./case.js";
 import { COMPONENTS, type Component, componentOf } from "./components.js";
 import { changedLines, changedSources, mappedLines, unrun } from "./coverage.js";
 import { esbuildOf, type Install, installLock } from "./lock.js";
+import { pythonsFor } from "./python.js";
 import {
   coverageAt,
+  driverFile,
   execute,
   prepare,
   RUNTIME,
+  runtimeDir,
   type Side,
   type SideName,
   textsOf,
@@ -135,31 +138,27 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
     found.some((a) => a.fired && a.component === componentOf(c.kind));
   const cases = options.cases.filter(firedKind);
 
+  const outfile = (name: SideName) => driverFile(join(work, name));
   const bundles = {
     baseline: installed
-      ? await bundleDriver(
-          baseline,
-          join(work, "baseline/driver.mjs"),
-          {},
-          await esbuildOf(baseline),
-        )
-      : await bundleDriver(baseline, join(work, "baseline/driver.mjs")),
-    candidate: await bundleDriver(candidate, join(work, "candidate/driver.mjs"), overlay),
+      ? await bundleDriver(baseline, outfile("baseline"), {}, await esbuildOf(baseline))
+      : await bundleDriver(baseline, outfile("baseline")),
+    candidate: await bundleDriver(candidate, outfile("candidate"), overlay),
   };
-  const recorder = (name: SideName) =>
-    found.find((a) => a.component.texts.some((t) => t.path === RUNTIME))?.texts[name] ?? new Map();
+  // Each side's runtimes, from its components' texts (`sides.ts`).
+  const texts = (name: SideName) => new Map(found.flatMap((a) => [...a.texts[name]]));
   const sides: Record<SideName, Side> = {
-    baseline: prepare(work, "baseline", baseline, bundles.baseline, recorder("baseline")),
-    candidate: prepare(work, "candidate", candidate, bundles.candidate, recorder("candidate")),
+    baseline: prepare(work, "baseline", baseline, bundles.baseline, texts("baseline")),
+    candidate: prepare(work, "candidate", candidate, bundles.candidate, texts("candidate")),
   };
   // The installed release resolves its packages from its own tree, Vitest among them.
   if (installed)
     symlinkSync(join(baseline, "node_modules"), join(sides.baseline.dir, "node_modules"), "dir");
-  const runtimeDir = (side: Side) => join(side.dir, "observe");
-  const outputs = {
-    baseline: execute(work, sides.baseline, "run", cases, runtimeDir(sides.baseline)),
-    candidate: execute(work, sides.candidate, "run", cases, runtimeDir(sides.candidate)),
-  };
+  // Row 011-48: the pytest cases' environments, one per Python, shared by both sides.
+  const pythons = pythonsFor(cases, work);
+  const run = (side: Side) =>
+    execute(work, side, "run", cases, runtimeDir(side, RUNTIME), "run", pythons);
+  const outputs = { baseline: run(sides.baseline), candidate: run(sides.candidate) };
   // D1 (a): the candidate decides over the store each tree wrote from the same runs.
   for (const name of ["baseline", "candidate"] as const) {
     const label = `decide-${name}`;
@@ -239,9 +238,10 @@ const COMMENT = /^\s*(?:\/\/|\/\*|\*|#)/;
 
 /**
  * Each changed code line of `component`'s text files that ran in no case,
- * at the side that holds it. Only the recorder's runtime runs in a case
- * (the `observe` kind), from its copy beside the side's driver; a line of
- * any other text file has run in none.
+ * at the side that holds it. The recorder's runtime (the `observe` kind) and
+ * the pytest runtime (`adapter:pytest`, through Python's trace) run in
+ * cases, from their copies beside the side's driver; a line of any other
+ * text file has run in none.
  */
 function uncoveredInTexts(
   work: string,

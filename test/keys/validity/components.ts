@@ -55,7 +55,7 @@ export const COMPONENTS: readonly Component[] = [
     version: { path: "src/runners/pytest/version.ts", constant: "PYTEST_ADAPTER_VERSION" },
     entries: "entries/pytest.ts",
     texts: [{ path: "src/runners/pytest/runtime", suffixes: [".py"] }],
-    kinds: [],
+    kinds: ["adapter:pytest"],
   },
   {
     name: "recorder",

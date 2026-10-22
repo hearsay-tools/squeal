@@ -163,6 +163,45 @@ export interface VitestInput {
   readonly environment?: true;
 }
 
+/** The Pythons the `adapter:pytest` kind runs on, as CI installs them (`test/helpers/pytest-env.ts`). */
+export type PytestPython = "3.10" | "3.13";
+
+/** The variable a driver reads each version's environment from (`python.ts`): its directory, or why there is none. */
+export const PYTHONS_VARIABLE = "SQUEAL_VALIDITY_PYTHONS";
+
+export type Pythons = Partial<Record<PytestPython, { env: string } | { reason: string }>>;
+
+/** A fixture the pytest adapter runs on one of the kind's Pythons (row 011-48). */
+export interface PytestInput {
+  /** The project's environment: one synced per comparison outside the worktree (`python.ts`), which both trees key alike. */
+  readonly python: PytestPython;
+  /** The worktree's files. */
+  readonly files: Readonly<Record<string, string>>;
+  /** The project's policy entry beyond its name; without `python`, the synced environment. */
+  readonly project?: {
+    readonly include?: readonly string[];
+    readonly exclude?: readonly string[];
+    readonly args?: readonly string[];
+    readonly env?: Readonly<Record<string, string>>;
+    /** Relative to the worktree, in place of the synced environment. */
+    readonly python?: string;
+  };
+  /** The synced environment linked in as `.venv`, which D2's discovery finds, in place of a declared one. */
+  readonly venv?: true;
+  /**
+   * In turn on one adapter: edits written and invalidated first (a text,
+   * `null` to delete, absent to write the same bytes again), then the files
+   * run, under Squeal's deadline (default 60 s).
+   */
+  readonly runs: readonly {
+    readonly files: readonly string[];
+    readonly edits?: readonly { readonly path: string; readonly text?: string | null }[];
+    readonly timeoutMs?: number;
+  }[];
+  /** Paths whose affected test files are read at open and after each run. */
+  readonly affected?: readonly string[];
+}
+
 export type Case = { readonly name: string; readonly why: string } & (
   | { readonly kind: "key"; readonly input: KeyInput }
   | { readonly kind: "rows"; readonly input: RowsInput }
@@ -171,6 +210,7 @@ export type Case = { readonly name: string; readonly why: string } & (
   | { readonly kind: "assemble"; readonly input: AssembleInput }
   | { readonly kind: "store"; readonly input: StoreInput }
   | { readonly kind: "adapter:vitest"; readonly input: VitestInput }
+  | { readonly kind: "adapter:pytest"; readonly input: PytestInput }
 );
 
 export type CaseKind = Case["kind"];
