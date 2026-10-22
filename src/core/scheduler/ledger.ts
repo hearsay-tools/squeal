@@ -26,6 +26,7 @@ import {
   noteKeyedAt,
 } from "./files.js";
 import { takeHeldFiles } from "./held.js";
+import { sinkWithoutResults } from "./hold.js";
 import { publishPromotions } from "./promotions.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
 import { adoptsAtFirstCommit, movesWouldChange, recordMoves } from "./rekeyed-moves.js";
@@ -264,11 +265,14 @@ export class Ledger {
       // The agent's retry was asked at the key it had: it lapses here (001-368).
       if (lapseRetry(this.context, file, key) && !file.rerunPending) this.queue.remove(ref);
       if (this.queue.isForced(ref)) continue;
+      // Row 011-72: while on hold, a key that names an unmerged path takes no stored result,
+      // its own included; it stays queued, and takes it at a tier boundary once the hold ends.
+      const held = key !== null && this.holds(ref);
       if (
         key === null ||
         key === file.runningKey ||
         key === file.unknownKey ||
-        key === file.resultKey
+        (key === file.resultKey && !held)
       ) {
         if (key !== null && (key === file.resultKey || key === file.unknownKey))
           this.#discharge(file);
@@ -276,7 +280,7 @@ export class Ledger {
         this.#syncPhase(file);
         continue;
       }
-      const hits = this.holds(ref) ? [] : this.lookup(key);
+      const hits = held ? [] : this.lookup(key);
       if (hits.length > 0) {
         const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
         this.applyResults(file, key, hits, checkpointId);
@@ -617,7 +621,7 @@ export class Ledger {
       // Only rows that changed: no other file's key, phase or validity moved.
       // Each file is attributed to the checkpoint that requested it (review S9).
       for (const [checkpointId, testFiles] of this.#byCheckpoint(rows)) {
-        sink.refresh(worktreeId, revision, { checkpointId }, testFiles);
+        this.#refresh(revision, checkpointId, testFiles);
       }
       if (options.refined !== undefined) {
         store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
@@ -669,6 +673,27 @@ export class Ledger {
       this.#adopted = adopted;
       checkpoints();
     };
+  }
+
+  /**
+   * `sink.refresh` of `testFiles`. Row 011-72: the files the merge hold holds
+   * refresh through a sink that reads no result at their keys, so their
+   * checks fall to pending, as with none; the sink, on the validity path
+   * (C3), is unchanged.
+   */
+  #refresh(revision: RevisionNumber, checkpointId: string | null, testFiles: TestFileRef[]): void {
+    const { store, worktreeId, sink, now } = this.context;
+    const held = testFiles.filter((ref) => this.holds(ref));
+    const free = held.length === 0 ? testFiles : testFiles.filter((ref) => !held.includes(ref));
+    if (free.length > 0) sink.refresh(worktreeId, revision, { checkpointId }, free);
+    if (held.length === 0) return;
+    const keys = held.flatMap((ref) => this.file(ref)?.key ?? []);
+    sinkWithoutResults(store, new Set(keys), now).refresh(
+      worktreeId,
+      revision,
+      { checkpointId },
+      held,
+    );
   }
 
   #byCheckpoint(rows: readonly TestFileKeyRecord[]): Map<string | null, TestFileRef[]> {

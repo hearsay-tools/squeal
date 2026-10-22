@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
-import { readMergeHold } from "../../src/core/scheduler/hold.js";
+import { readMergeHold } from "../../src/core/scheduler/hold-rows.js";
 import type { CheckKey } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import {

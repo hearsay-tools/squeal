@@ -69,6 +69,49 @@ describe("scheduler: what the merge hold records (row 011-72)", { timeout: 60_00
     expect([runsOf(side, A), runsOf(side, B)]).toEqual([4, 4]);
   });
 
+  it("7: a FAIL this worktree stored at the conflicted key reads pending while held; after `git add` the stored pass at the resolved key is current", async () => {
+    const repo = mergeRepo();
+    expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
+    const conflicted = readFileSync(join(repo.main, HELPER), "utf8");
+    git(repo.main, ["merge", "--abort"]);
+    const side = holdSide(repo);
+    await side.scheduler.start();
+    await side.scheduler.idle();
+    const passed = rows(side).get(A)?.key;
+    // The same bytes written by hand: no unmerged path, no hold, a FAIL at their key.
+    writeFileSync(join(repo.main, HELPER), conflicted);
+    await batch(side, HELPER);
+    await side.scheduler.idle();
+    expect(outcomes(side, A)).toEqual(["fail"]);
+    const failed = rows(side).get(A)?.key;
+    git(repo.main, ["checkout", "--", HELPER]);
+    await batch(side, HELPER);
+    await side.scheduler.idle();
+    expect(outcomes(side, A)).toEqual(["pass"]);
+    const runs = side.runner.runs.length;
+
+    expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
+    await batch(side, HELPER);
+    await side.scheduler.idle();
+    expect(rows(side).get(A)).toEqual({ key: failed, pending: "queued" });
+    for (const path of [A, B]) expect(outcomes(side, path)).toEqual([]);
+
+    // Resolved to main's side, whose pass is stored: still held, so still pending.
+    writeFileSync(join(repo.main, HELPER), helperReturning(3));
+    await batch(side, HELPER);
+    await side.scheduler.idle();
+    expect(rows(side).get(A)).toEqual({ key: passed, pending: "queued" });
+    for (const path of [A, B]) expect(outcomes(side, path)).toEqual([]);
+
+    git(repo.main, ["add", HELPER]);
+    await expect
+      .poll(() => [outcomes(side, A), outcomes(side, B)], { timeout: 5_000 })
+      .toEqual([["pass"], ["pass"]]);
+    await side.scheduler.idle();
+    expect(rows(side).get(A)).toEqual({ key: passed, pending: null });
+    expect(side.runner.runs.length).toBe(runs);
+  });
+
   it("7: a FAIL another worktree stores at the conflicted key during the hold is not promoted", async () => {
     const repo = mergeRepo();
     const side = holdSide(repo);
