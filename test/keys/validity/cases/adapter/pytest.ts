@@ -152,7 +152,8 @@ const CLOSURES: Readonly<Record<string, string>> = {
  * Task 007-55: what the start-up hook of a test's child Python meets. The
  * child imports a module no finder finds, then one only a finder of the old
  * protocol is asked for; one child cannot write its events file; one has a
- * `sitecustomize` after the hook's directory on `PYTHONPATH`, which runs.
+ * `sitecustomize` after the hook's directory on `PYTHONPATH`, which runs;
+ * one is a script that imports nothing (review 0.1.268 B2).
  */
 const CHILDREN: Readonly<Record<string, string>> = {
   "pyproject.toml": CONFIG,
@@ -180,6 +181,7 @@ const CHILDREN: Readonly<Record<string, string>> = {
     'print(getattr(builtins, "VALIDITY_SITE", "unset"))',
   ),
   "site/sitecustomize.py": lines("import builtins", "", 'builtins.VALIDITY_SITE = "ran"'),
+  "tool.py": lines('print("bare")'),
   "tests/test_children.py": lines(
     "import os",
     "import subprocess",
@@ -204,6 +206,11 @@ const CHILDREN: Readonly<Record<string, string>> = {
     "def test_site_after_the_hook():",
     "    site = os.pathsep + os.path.abspath('site')",
     "    assert child(PYTHONPATH=os.environ['PYTHONPATH'] + site) == 'ran\\n'",
+    "",
+    "",
+    "def test_bare_script():",
+    "    done = subprocess.run([sys.executable, 'tool.py'], capture_output=True, text=True)",
+    "    assert done.stdout == 'bare\\n', done.stderr",
   ),
 };
 
@@ -413,8 +420,8 @@ export const PYTEST_RUNS: readonly Case[] = [
     },
   ),
   ...pytest(
-    "a child Python's failed imports, an old-protocol finder, an unwritable events file and a sitecustomize after the hook",
-    "007 D6 as amended by 007-55: the start-up hook of a process a test starts asks the finders after it, returns nothing for a module none finds or where an old-protocol finder stands, never fails the child when its events file cannot be written, and runs the sitecustomize it shadows",
+    "a child Python's failed imports, an old-protocol finder, an unwritable events file, a sitecustomize after the hook and a bare script",
+    "007 D6 as amended by 007-55: the start-up hook of a process a test starts asks the finders after it, returns nothing for a module none finds or where an old-protocol finder stands, never fails the child when its events file cannot be written, runs the sitecustomize it shadows, and records at start-up the script `python tool.py` runs, which imports nothing (review 0.1.268 B2)",
     { files: CHILDREN, runs: [{ files: ["tests/test_children.py"] }] },
   ),
   ...pytest(
