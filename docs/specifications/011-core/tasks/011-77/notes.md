@@ -42,3 +42,21 @@ Also `test/cli/failures-replaced.test.ts`: the merge, the marks, the selection, 
 
 - `format-why.ts` stays at about 350 lines; the new blocks went to `format-why-replaced.ts`.
 - Each flip rewrites the whole `meta` row (up to about 1 MB). A tier whose files flip at one key rewrites it once per file. A later row could batch the tier's entries into one write.
+
+## Repair of review 0.1.265 B1 and B2 (brief W3 of `../wave-14.md`, 2026-10-22)
+
+Base `ffa124533` (cand/0.1.265 `f9fb6c219` plus `reviews/0.1.265.md`). One commit per blocker, B1 first.
+
+- **B1, order.** The kept list is in the order passes replaced the failures, not the order they failed in. `newestFirst` in `src/core/status/replaced-failures.ts` sorts kept entries by the failing run's `recordedAt`, newest first. `selectReplaced` sorts before `--per-check` keeps each check's first, so the newest failure of a check is never dropped before `mergeFailures` sorts. `why` lists a check's entries in the same order.
+- **Tie rule.** At one failure time: of two kept entries, the one kept later comes first (as of two stored rows the later `rowid`, the SQL `ORDER BY recorded_at DESC, rowid DESC`); a stored row comes before a kept one (`mergeFailures`' sort is stable and lists stored rows first; `perCheckTotals` counts a kept entry as a check's newest only when strictly newer). The kept order survives the caps and the expiry, which keep the entries' relative order.
+- **B2, lookup.** `readWhy` reads the kept entries once, newest first, and passes them to `known`, `resolve` and `report`. An exact name is known when a kept entry has that check. A part of a name matches this worktree's known states and held checks, then every worktree's kept checks, each once (`distinct`): at most 1,024 more names, and the candidates are still cut at 20. `replacedOf` moved to `replaced-failures.ts` as `replacedOfCheck`, which keeps `why.ts` at its earlier size.
+
+### Tests
+
+- `test/cli/failures-replaced.test.ts`: the review's probe, with a stored failure between the two kept ones (`--per-check` listed the stored one and counted 0 replaced; red before), and the tie rule for kept-kept and stored-kept ties, with and without `--per-check`.
+- `test/status/why-older-failures.test.ts`: `why` lists the kept entries by failure time, a tie the one kept later first (red before).
+- `test/status/why-replaced-pruned.test.ts` (new): a check only worktree `b` ran fails there and a pass replaces it; `b`'s `.git` is removed and prune runs a second later. From main, with no state, transition or result of the check, the exact and a partial name find it with its run's log and stack; a second kept entry of the check stays one candidate; two kept checks are two candidates (red before: `found: false`).
+
+### Decision the review did not settle
+
+A partial name also matches other worktrees' kept checks, not only this worktree's. The exact lookup already reads every worktree's stored results, and `failures --all-worktrees` lists every worktree's kept entries with `squeal why "<check>"` after them. Other worktrees' stored results stay out of the partial candidates, as before: they are not bounded, the kept entries are. A part of a name that matched one check of this worktree and also matches another worktree's kept check of another name now lists both as candidates.
