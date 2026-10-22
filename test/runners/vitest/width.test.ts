@@ -98,30 +98,46 @@ describe("vitest adapter: workers from the grant (001-378)", SLOW, () => {
    * neither its own `maxWorkers` nor the root's reads the root's written
    * width, so at a grant of 1 it would run at 1 beside an `isolate: false`
    * project at 2. Its tier never runs so: the `isolate: false` file makes
-   * the tier's floor 2, which it waits for.
+   * the run's floor 2 for every project in it, and the tier's, which it
+   * waits for. A tier without such a file keeps a floor of 1, whatever its
+   * siblings (review 0.1.255 B3).
    */
-  it("runs an isolated project's files alone at 1 beside an isolate: false project of one group, and both at 2", async () => {
+  async function twoProjects(b: string) {
     const projects = `import { defineConfig } from "vitest/config";
 export default defineConfig({ test: { projects: [
   { extends: true, test: { name: "a", include: ["test/w/*.test.ts"] } },
-  { extends: true, test: { name: "b", include: ["test/v/*.test.ts"], isolate: false, maxWorkers: 3 } },
+  { extends: true, test: { name: "b", include: ["test/v/*.test.ts"], isolate: false${b} } },
 ] } });
 `;
     const files: Record<string, string> = { "vitest.config.ts": projects };
-    const a: TestFileRef[] = [];
-    const b: TestFileRef[] = [];
+    const refs = { a: [] as TestFileRef[], b: [] as TestFileRef[] };
     for (let i = 0; i < 4; i++) {
       files[`test/w/a${i}.test.ts`] = recorder(`a${i}`);
       files[`test/v/b${i}.test.ts`] = recorder(`b${i}`);
-      a.push(ref(`test/w/a${i}.test.ts`, "a"));
-      b.push(ref(`test/v/b${i}.test.ts`, "b"));
+      refs.a.push(ref(`test/w/a${i}.test.ts`, "a"));
+      refs.b.push(ref(`test/v/b${i}.test.ts`, "b"));
     }
-    const fx = await openFixture("basic", files);
+    return { fx: await openFixture("basic", files), ...refs };
+  }
+
+  it("runs an isolated project's files alone at 1 beside an isolate: false project of one group, and both at 2", async () => {
+    const { fx, a, b } = await twoProjects(", maxWorkers: 3");
     expect(Math.max(...(await workerIds(fx, a, 1)).values())).toBe(1);
     expect(fx.adapter.tierWidth?.(a[0] ?? ref("x"), 1)).toBe(1);
     expect(fx.adapter.tierWidth?.(b[0] ?? ref("x"), 1)).toBe(2);
     const both = await workerIds(fx, [...a, ...b], 2);
     expect(Math.max(...both.values())).toBeLessThanOrEqual(2);
+    // A grant below the tier's floor, as the slow instance's own width can be: both at 2, no throw.
+    expect(Math.max(...(await workerIds(fx, [...a, ...b], 1)).values())).toBe(2);
+  });
+
+  it("runs an isolated project at 1 beside an isolate: false sibling that reads the root's width too (review 0.1.255 B3)", async () => {
+    const { fx, a, b } = await twoProjects("");
+    expect(fx.adapter.tierWidth?.(a[0] ?? ref("x"), 1)).toBe(1);
+    expect(fx.adapter.tierWidth?.(b[0] ?? ref("x"), 1)).toBe(2);
+    expect(new Set((await workerIds(fx, a, 1)).values())).toEqual(new Set([1]));
+    expect(Math.max(...(await workerIds(fx, [...a, ...b], 2)).values())).toBeLessThanOrEqual(2);
+    expect(Math.max(...(await workerIds(fx, [...a, ...b], 1)).values())).toBe(2);
   });
 
   it("holds each project's own ceiling, inherited from the root or its own", async () => {
