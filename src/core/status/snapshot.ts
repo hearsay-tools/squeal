@@ -33,6 +33,7 @@ import {
 import { knownFailureCounts } from "./checks.js";
 import { configProblemsOf, withConfigProblems } from "./config-problems.js";
 import { withDeath } from "./died.js";
+import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 import { openRuns } from "./open-runs.js";
@@ -145,6 +146,8 @@ function snapshot(
   );
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
+  // Row 011-73 (C6, C9): the holds on its validation, which the queued files wait for.
+  const holds = readHolds(store, worktree, daemon);
   const header = readHeader(store, worktreeId, states, keys, undefined, held);
   // Task 001-404: each failure says how old its run is and the load it ran under.
   const knownFailures = withTestFileFrames(
@@ -163,7 +166,17 @@ function snapshot(
     store,
     worktreeId,
     at,
-    { states, keys, header, runs, daemon, slowSlot: slowSlot ?? null, ...retries, ...checkpoint },
+    {
+      states,
+      keys,
+      header,
+      runs,
+      daemon,
+      holds,
+      slowSlot: slowSlot ?? null,
+      ...retries,
+      ...checkpoint,
+    },
     now,
     load,
   );
@@ -176,6 +189,7 @@ function snapshot(
     ...header,
     ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
+    ...(holds.length === 0 ? {} : { holds }),
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
