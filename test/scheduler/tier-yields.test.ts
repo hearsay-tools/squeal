@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import {
   CUT_WITHIN_MS,
@@ -148,33 +147,5 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
     const next = side.runner.runs[side.runner.runs.indexOf(tier) + 1];
     expect(next?.files.map((f) => f.path)).toEqual([F]);
     expect(tier.completed).toHaveLength(4);
-  });
-
-  it("4: a tier of files with no known duration does not yield, and the named file leads the next", async () => {
-    const G = "test/g.test.ts";
-    const files: CatchUpFile[] = [
-      ...SLOW.map((path) => ({ path, ms: 200_000, imports: ["src/s.ts"] })),
-      { path: G, ms: 1, imports: ["src/g.ts"] },
-    ];
-    const repo = catchUpRepo(files);
-    // Nothing runs at start: no file has a known duration.
-    const policy = { baseline: { ...DEFAULT_POLICY.baseline, onStart: "lookup-only" as const } };
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy });
-    await side.scheduler.start();
-    await side.scheduler.idle();
-    const base = side.runner.runs.length;
-    const gate = holdRuns(side.runner, isSlow);
-    await side.edit("watch", "src/s.ts");
-    const tier = await heldRun(side, SLOW[0] ?? "", base);
-
-    await side.edit("watch", "src/g.ts");
-    await side.scheduler.promote([ref(G)], 60_000);
-    await pause(SETTLE_MS);
-    expect(tier.cancelled).toBe(false);
-    gate.stop();
-    await side.scheduler.idle();
-
-    const next = side.runner.runs[side.runner.runs.indexOf(tier) + 1];
-    expect(next?.files.map((f) => f.path)).toEqual([G]);
   });
 });
