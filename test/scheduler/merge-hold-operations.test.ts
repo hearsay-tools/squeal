@@ -94,7 +94,8 @@ describe("scheduler: the merge hold's operations (row 011-72)", { timeout: 60_00
     await expect
       .poll(() => [outcomes(side, A), outcomes(side, B)], { timeout: 10_000 })
       .toEqual([["fail"], ["fail"]]);
-    // A new failure runs once more (C5).
+    // A new failure runs once more (C5): its re-run may still be in flight when the poll sees FAIL.
+    await side.scheduler.idle();
     expect([runsOf(side, A), runsOf(side, B)]).toEqual([a + 2, b + 2]);
   });
 });
