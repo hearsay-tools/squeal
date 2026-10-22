@@ -131,7 +131,7 @@ export interface DaemonSpec {
 export function foundDaemon(s: DaemonSpec): FoundDaemon {
   const script =
     s.script ?? "/nowhere/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs";
-  const cache = /\/\.(claude|codex)\/plugins\/cache\/[^/]+\/squeal\/([^/]+)\//.exec(script);
+  const cache = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/([^/]+)\//.exec(script);
   const commonDir =
     s.commonDir === undefined ? (s.root === null ? null : join(s.root, ".git")) : s.commonDir;
   const worktreeId = s.worktreeId ?? `${String(s.pid).padStart(16, "0")}`;
@@ -140,8 +140,10 @@ export function foundDaemon(s: DaemonSpec): FoundDaemon {
     script,
     root: s.root,
     awaitLock: s.awaitLock ?? false,
-    version: cache?.[2] ?? null,
-    harness: cache?.[1] ?? null,
+    version: cache?.[4] ?? null,
+    harness: cache?.[2] ?? null,
+    plugins: cache?.[1] ?? null,
+    marketplace: cache?.[3] ?? null,
     worktreeId,
     lockPath:
       commonDir === null ? null : join(commonDir, "squeal", "locks", `${worktreeId}.sqlite`),

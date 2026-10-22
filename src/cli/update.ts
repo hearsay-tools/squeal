@@ -12,7 +12,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
-import { isRecord } from "../core/fs/index.js";
+import { claudeInstalls } from "../core/daemon/version.js";
 import type { CliIo } from "./main.js";
 import { MARKETPLACE_NAME, PLUGIN_ID, PLUGIN_NAME } from "./plugin-id.js";
 import { type HarnessId, readHarnesses } from "./setup/harnesses.js";
@@ -221,17 +221,8 @@ function pluginDirs(env: Env): string[] {
   const home = env.HOME ?? "";
   const dirs: string[] = [];
   const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");
-  try {
-    const file: unknown = JSON.parse(
-      readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"),
-    );
-    const entries = isRecord(file) && isRecord(file.plugins) ? file.plugins[PLUGIN_ID] : null;
-    for (const entry of Array.isArray(entries) ? entries : []) {
-      if (isRecord(entry) && typeof entry.installPath === "string") dirs.push(entry.installPath);
-    }
-  } catch {
-    // No Claude Code install, or a file this version cannot read: Codex's cache may still have one.
-  }
+  for (const { installPath } of claudeInstalls(join(config, "plugins"), MARKETPLACE_NAME))
+    if (installPath !== null) dirs.push(installPath);
   const cache = join(
     env.CODEX_HOME ?? join(home, ".codex"),
     "plugins",
