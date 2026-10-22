@@ -8,10 +8,11 @@ import {
   markLeaving,
   readHeader,
   readLiveHeader,
+  worktreeLiveness,
 } from "../../core/delivery/index.js";
 import { type StopWaitHarness, slowFiles, stopWaitRuns } from "../../core/slow/index.js";
 import { isFastPending, slowFilesNotCurrent, toKnownFailure } from "../../core/state/index.js";
-import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
+import { readHolds, STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
 import { readTransaction, storePaths } from "../../core/store/index.js";
 import {
   type EpochMs,
@@ -326,7 +327,9 @@ async function nudgeSlow(context: HookContext, header: StatusHeader): Promise<vo
  * 4.5, S1), or `waitMs` passed. Stop never waits for slow files (spec 004
  * D9); they stay in the idle snapshot `endTurn` writes. Each read is one read
  * transaction, so it never pairs a new revision with the previous revision's
- * states (lessons defect 23).
+ * states (lessons defect 23). Row 011-73 (C6 as amended 2026-10-21): it does
+ * not wait while the worktree is on hold, since no tier starts then; the
+ * waiter's idle wake takes the pending files' results after the hold.
  */
 async function waitForPending(
   context: HookContext,
@@ -337,10 +340,14 @@ async function waitForPending(
   const deadline = performance.now() + waitMs;
   for (;;) {
     const { store, consumer } = context;
-    const header = readTransaction(store, () =>
-      readHeader(store, consumer.worktreeId, undefined, undefined, isSlow),
-    );
-    if (!isFastPending(header)) return;
+    const { header, held } = readTransaction(store, () => {
+      const worktree = store.worktrees.get(consumer.worktreeId);
+      return {
+        header: readHeader(store, consumer.worktreeId, undefined, undefined, isSlow),
+        held: readHolds(store, worktree, worktreeLiveness(worktree, Date.now())).length > 0,
+      };
+    });
+    if (!isFastPending(header) || held) return;
     const left = deadline - performance.now();
     if (left <= 0) return;
     await sleep(Math.min(pollMs, left));
