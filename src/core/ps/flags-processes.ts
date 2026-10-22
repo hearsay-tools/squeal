@@ -1,5 +1,5 @@
-import { duration, NO_BOOT } from "./flags-text.js";
 import type { PsModel } from "./model.js";
+import { NO_BOOT, sentenceDuration } from "./render-units.js";
 import type { PsFlag, PsFlagName, PsOrphan } from "./shape.js";
 import type { ProcessRow } from "./source.js";
 
@@ -52,7 +52,7 @@ export function overdue(c: ProcessContext): Map<number, PsFlag[]> {
         pid === p.pid
           ? "it is"
           : `its descendant ${pid} (${row.comm}) carries its mark, is not its daemon's child, and is`;
-      const reason = `${who} ${duration(age)} old, past runner.timeoutMs plus ${OVERDUE_MS / 1000} s`;
+      const reason = `${who} ${sentenceDuration(age)} old, past runner.timeoutMs plus ${OVERDUE_MS / 1000} s`;
       out.set(p.pid, [
         ...(out.get(p.pid) ?? []),
         { flag: "overdue-test-process", reason, command: `kill ${pid}` },
@@ -139,7 +139,7 @@ function orphanTestProcesses(c: ProcessContext): { pid: number; reason: string }
       const why =
         age === null
           ? NO_BOOT
-          : `process ${pid}'s mark names no live daemon, but it is ${duration(age)} old, under ${ORPHAN_AGE_MS / 1000} s`;
+          : `process ${pid}'s mark names no live daemon, but it is ${sentenceDuration(age)} old, under ${ORPHAN_AGE_MS / 1000} s`;
       c.name("flag orphan-test-process", why);
       continue;
     }
