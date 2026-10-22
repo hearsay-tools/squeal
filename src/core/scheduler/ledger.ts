@@ -115,6 +115,8 @@ export class Ledger {
    * paused ones stay queued for the next daemon.
    */
   backlogPaused = false;
+  /** Row 011-72: `ref`'s key names an unmerged path, so it takes no stored result (the merge hold). */
+  holds: (ref: TestFileRef) => boolean = () => false;
   /** Global setups that failed to start a run, and their outcomes owed to the sink (task 001-382). */
   readonly setups = new SetupFailures();
 
@@ -274,7 +276,7 @@ export class Ledger {
         this.#syncPhase(file);
         continue;
       }
-      const hits = this.lookup(key);
+      const hits = this.holds(ref) ? [] : this.lookup(key);
       if (hits.length > 0) {
         const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
         this.applyResults(file, key, hits, checkpointId);
