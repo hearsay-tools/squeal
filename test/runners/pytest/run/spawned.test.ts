@@ -43,6 +43,7 @@ const FILES: Readonly<Record<string, string>> = {
   "pkg/broken.py": 'raise RuntimeError("broken on import")\n',
   "pkg/unused.py": "",
   "tool.py": "import pkg\n",
+  "bare.py": 'print("ok")\n',
   "tests/test_cli.py": "",
   "site/sitecustomize.py": 'import builtins\n\nbuiltins.FIXTURE_SITECUSTOMIZE = "ran"\n',
 };
@@ -114,6 +115,14 @@ describe.each(PYTHONS)("the start-up hook under Python %s (task 007-55)", (versi
   it("records the script `python tool.py` runs", (ctx) => {
     const { recorded } = python(ctx, ["tool.py"], { file: "tests/test_cli.py" });
     expect(recorded).toEqual(["pkg/__init__.py", "tool.py"]);
+  });
+
+  it("records a script that imports nothing, which asks no finder (review 0.1.268 B2)", (ctx) => {
+    const { stdout, recorded } = python(ctx, ["bare.py"], { file: "tests/test_cli.py" });
+    expect(stdout).toBe("ok\n");
+    expect(recorded).toEqual(["bare.py"]);
+    // `python -c` names no file in `sys.argv[0]`.
+    expect(python(ctx, ["-c", "pass"], { file: "tests/test_cli.py" }).records).toEqual([]);
   });
 
   it("without SQUEAL_PYTEST_FILE writes nothing and imports nothing beyond importlib.machinery", (ctx) => {

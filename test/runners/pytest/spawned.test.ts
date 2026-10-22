@@ -22,13 +22,17 @@ import { openHarness, openRepoStore } from "../../scheduler/helpers.js";
  * console script; neither imports `app.cli`. Their child processes record
  * what they import under them, so an edit of `src/app/cli.py` re-keys and
  * runs both through the scheduler, and a break there fails both.
+ * `outcomes/test_spawn_tool.py` runs `python tool.py`, a script that imports
+ * nothing, which its child records at start-up (review 0.1.268 B2).
  */
 
 const SLOW = { timeout: 300_000 } as const;
 const MODULE_TEST = "outcomes/test_spawn_module.py";
 const SCRIPT_TEST = "outcomes/test_spawn_script.py";
 const MARKER_TEST = "outcomes/test_site_marker.py";
+const TOOL_TEST = "outcomes/test_spawn_tool.py";
 const CLI = "src/app/cli.py";
+const TOOL = "outcomes/tool.py";
 const PROJECT: PytestProject = {
   name: "small",
   args: [],
@@ -42,43 +46,54 @@ const repos = pytestRepos("spawned");
 describe.each(PYTHONS)(
   "a test's child Python processes under Python %s (task 007-55)",
   (version) => {
-    let main = "";
-    /** The fixture repository, committed and synced on `version` once for this block. */
-    function synced(ctx: TestContext): AbsolutePath {
-      if (main !== "") return main as AbsolutePath;
+    const repositories = new Map<string, AbsolutePath>();
+    /** A fixture repository, committed and synced on `version` once for this block. */
+    function synced(ctx: TestContext, name = "main"): AbsolutePath {
+      const known = repositories.get(name);
+      if (known !== undefined) return known;
       const found = findPython(version);
       if (!found.ok) {
         if (process.env.CI) throw new Error(`pytest fixture unavailable on CI: ${found.reason}`);
         return ctx.skip(`uv or Python ${version} is absent: ${found.reason}`);
       }
-      const repo = repos.createRepo(`main-${version}`, {});
+      const repo = repos.createRepo(`${name}-${version}`, {}) as AbsolutePath;
       execFileSync("uv", ["sync", "--locked", "--python", found.python], {
         cwd: repo,
         env: pythonEnv(),
         stdio: "pipe",
       });
-      main = repo;
-      return main as AbsolutePath;
+      repositories.set(name, repo);
+      return repo;
+    }
+
+    /** The scheduler over the real pytest adapter for `project`, in its own repository `name`. */
+    async function open(ctx: TestContext, name: string, project: PytestProject) {
+      const root = synced(ctx, name);
+      const commonDir = join(root, ".git");
+      const store = openRepoStore(commonDir);
+      const pytest = await createPytestAdapter(project, {
+        root,
+        source: pythonEnv(),
+        observed: pytestObservedStore(store, project.name),
+        cacheDir: join(root, "..", `pytest-cache-${name}-${version}`) as AbsolutePath,
+      });
+      const h = await openHarness(root, store, commonDir, { adapters: [pytest] });
+      const outcome = (path: string) =>
+        store.knownStates
+          .list(h.worktreeId)
+          .find((s) => s.check.testPath === path && s.check.kind === "test")?.outcome;
+      const key = (path: string) =>
+        store.testFileKeys
+          .list(h.worktreeId)
+          .find((r) => r.testFile.project === project.name && r.testFile.path === path)?.key;
+      return { root, store, pytest, h, outcome, key };
     }
 
     it(
       "an edit of a module only their `python -m` child or console script imports re-keys and runs them, and a break there fails them",
       SLOW,
       async (ctx) => {
-        const root = synced(ctx);
-        const commonDir = join(root, ".git");
-        const store = openRepoStore(commonDir);
-        const pytest = await createPytestAdapter(PROJECT, {
-          root,
-          source: pythonEnv(),
-          observed: pytestObservedStore(store, PROJECT.name),
-          cacheDir: join(root, "..", `pytest-cache-${version}`) as AbsolutePath,
-        });
-        const h = await openHarness(root, store, commonDir, { adapters: [pytest] });
-        const outcome = (path: string) =>
-          store.knownStates
-            .list(h.worktreeId)
-            .find((s) => s.check.testPath === path && s.check.kind === "test")?.outcome;
+        const { root, store, pytest, h, outcome, key } = await open(ctx, "main", PROJECT);
         await h.scheduler.start();
         await h.scheduler.idle();
         expect([outcome(MODULE_TEST), outcome(SCRIPT_TEST)]).toEqual(["pass", "pass"]);
@@ -96,13 +111,7 @@ describe.each(PYTHONS)(
           transitive: [],
         });
 
-        const keys = () =>
-          [MODULE_TEST, SCRIPT_TEST].map(
-            (path) =>
-              store.testFileKeys
-                .list(h.worktreeId)
-                .find((r) => r.testFile.project === PROJECT.name && r.testFile.path === path)?.key,
-          );
+        const keys = () => [MODULE_TEST, SCRIPT_TEST].map(key);
         const before = keys();
         expect(before.every((key) => key !== undefined)).toBe(true);
         const text = readFileSync(join(root, CLI), "utf8");
@@ -120,6 +129,33 @@ describe.each(PYTHONS)(
         await h.batch(CLI);
         await h.scheduler.idle();
         expect([outcome(MODULE_TEST), outcome(SCRIPT_TEST)]).toEqual(["pass", "pass"]);
+      },
+    );
+
+    it(
+      "an edit of a script that imports nothing, which a test runs as `python tool.py`, re-keys and runs it, and a break there fails it",
+      SLOW,
+      async (ctx) => {
+        const project = { ...PROJECT, include: [TOOL_TEST] };
+        const { root, pytest, h, outcome, key } = await open(ctx, "tool", project);
+        await h.scheduler.start();
+        await h.scheduler.idle();
+        expect(outcome(TOOL_TEST)).toBe("pass");
+        expect((await pytest.closure(ref(TOOL_TEST))).paths).toContain(TOOL);
+        expect(await pytest.affected([TOOL])).toEqual({ direct: [ref(TOOL_TEST)], transitive: [] });
+
+        const before = key(TOOL_TEST);
+        expect(before).not.toBeUndefined();
+        const text = readFileSync(join(root, TOOL), "utf8");
+        try {
+          h.write(TOOL, 'print("broken")\n');
+          await h.batch(TOOL);
+          await h.scheduler.idle();
+          expect(key(TOOL_TEST)).not.toBe(before);
+          expect(outcome(TOOL_TEST)).toBe("fail");
+        } finally {
+          h.write(TOOL, text);
+        }
       },
     );
 
