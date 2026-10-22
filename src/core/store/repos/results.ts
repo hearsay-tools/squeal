@@ -90,6 +90,8 @@ export function createResultRepo(conn: Connection): ResultRepo {
         )
         .map(toResult);
     },
+    // Unused since 011-75, as are countFailures, FAILURE_WHERE and failureParams. They go with the
+    // next key-format raise: removing them changes lines no case runs (011-64 design 4, 011-101).
     listFailures: (filter, limit) =>
       conn
         .all(
