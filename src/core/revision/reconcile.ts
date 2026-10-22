@@ -21,6 +21,8 @@ import type {
 export interface HeadState {
   readonly head: CommitSha;
   readonly dirty: boolean;
+  /** The unmerged paths the same `git status` listed (row 011-72); absent when not read. */
+  readonly unmerged?: readonly RelativePath[];
 }
 
 /** What one candidate batch changed, computed by `diffBatch` and not yet stored. */
