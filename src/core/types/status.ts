@@ -1059,6 +1059,12 @@ export interface FailureEntry {
    * failing row still stored.
    */
   readonly replacedBy?: FailureReplacedBy;
+  /**
+   * Its test file has a key in its own worktree (`test_file_keys`); `false`
+   * for history outside the active configuration, a deleted file or a
+   * project the configuration no longer has (011 C6 and C10, row 011-79).
+   */
+  readonly active: boolean;
 }
 
 /** `FailureEntry.replacedBy`: the replacing pass, with its worktree's root. */

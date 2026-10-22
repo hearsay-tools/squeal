@@ -3,6 +3,7 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import type { FailuresReport, ResultRecord, Store } from "../../src/core/types/index.js";
 import { check, fakeRepo, seedStore } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
+import { keyTestFiles } from "./failures-keys.js";
 
 /*
  * 011 C6 as amended 2026-10-21 (row 011-77, gh-54): `squeal failures` lists
@@ -77,12 +78,17 @@ function seed() {
       daemon: null,
     });
   }
-  store.results.putMany([
+  const stored = [
     fail("src/a.test.ts", "adds", 10, repo.mainId),
     fail("src/auth.test.ts", "login", 30, b.id),
-  ]);
-  replace(store, fail("src/flaky.test.ts", "flips", 20, repo.mainId), b.id);
-  replace(store, fail("src/auth.test.ts", "retries", 40, b.id), b.id);
+  ];
+  const replaced = [
+    fail("src/flaky.test.ts", "flips", 20, repo.mainId),
+    fail("src/auth.test.ts", "retries", 40, b.id),
+  ];
+  store.results.putMany(stored);
+  for (const failure of replaced) replace(store, failure, b.id);
+  keyTestFiles(store, [...stored, ...replaced]);
   return { repo, store, b };
 }
 

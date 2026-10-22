@@ -3,6 +3,7 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import type { ResultRecord } from "../../src/core/types/index.js";
 import { check, fakeRepo, seedStore } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
+import { keyTestFiles } from "./failures-keys.js";
 
 /*
  * Review 0.1.262 B1: the one command a grouped notice prints (row 011-109)
@@ -56,14 +57,16 @@ function seed() {
     registeredAt: 1,
     daemon: null,
   });
-  store.results.putMany([
+  const results = [
     ...Array.from({ length: 30 }, (_, i) =>
       [10, 20, 30].map((age) =>
         fail(`renders ${i}`, age + i / 100, "TypeError: x is null", repo.mainId),
       ),
     ).flat(),
     fail("fetches", 1, "Error: fetch failed", repo.mainId),
-  ]);
+  ];
+  store.results.putMany(results);
+  keyTestFiles(store, results);
   return repo;
 }
 
