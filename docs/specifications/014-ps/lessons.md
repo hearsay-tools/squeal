@@ -367,3 +367,176 @@ P3 (014-23) stays open: its done-when, five runs at ordinary load at most 0.3 s 
 - The scripts are in `/tmp/dogfood-014-30/bin/` while this host keeps `/tmp`. `sample.sh <n> <cwd>` takes one sample with the pinned bundle. `drive.sh <epoch of sample 1> <cwd>` takes samples 2 and 3 and both share windows. `pair.py <bundle> <runs> <out>` runs the paired check, and `locks-exp.mjs <reads>` the `/proc/locks` check. `judge.py`, `goal6.py`, `sharesum.py` and `prof.py` make the tables. They only read, and `flagcheck.py` opens a store only when its `-wal` and `-shm` exist.
 - Judge P1, P5 and P8 live once the fake daemons are gone. `squeal ps --full --json` then shows the withheld `leftover-temp` entry, or the flag, and `flagcheck.py` gives the by-hand set to compare.
 - A 2 s `ps` sample is not bounded by a 60 s mean. Check a lower bound against a count that encloses the same run (`pair.py`), not against the share window.
+
+## Round 3 (014-35)
+
+Task 014-35, 2026-10-22, 01:06 to 01:31 UTC. The released 0.1.252, run as a user runs it: the plugin's `bin/squeal ps`, which runs `dist/cli/ps.mjs` (014-33). Round 2's method, cut to the brief: three samples 10 minutes apart, each flag judged by hand within 3 s of its snapshot, one traced run, and 20 timed runs, each started only when the one-minute load was at or below 24, the CPU count. The host had no natural case for P5 or P8, so two plants of my own gave them one; the coordinator approved both at 01:13 UTC. Goal 3 held in round 2 and is not judged again. Inputs: the brief in `tasks/wave-5.md` (014-35), `spec.md` goals 4 and 6 and D7 as amended for wave 5, `status.md`, and round 2 above.
+
+### Verdict
+
+Goal 4, goal 6, P1, P5 and P8 hold, on the host as I found it. Goal 6 is judged on fewer processes and daemons than it names.
+
+- **Goal 6, the cost.** 20 runs at load 2.7 to 5.5, with 403 to 450 processes and 4 to 9 daemons: CPU 0.17 to 0.23 s, wall 2.12 to 2.16 s, against 0.3 s and 2.5 s. The median CPU was 0.18 s. The start through the launcher, to a usage error, used 0.05 to 0.07 s; `node -e 0` used 0.04 to 0.05 s. Goal 6 names 650 processes and 25 daemons; the host had 425 and 5.5 (medians). A two-point estimate from rounds 2 and 3 puts 650 processes and 25 daemons at 0.24 to 0.45 s. The range depends on how much of round 2's higher cost came from its load of 41 to 82. That scale is not measured.
+- **Goal 4, the flags and side effects.** Every flag `ps` printed in 46 saved snapshots was true by hand. No `no-lock` and no `waiting` fell on a serving daemon. No `-wal` or `-shm` was created in 4 checks. The traced run made no write, removal, connection or signal call.
+- **P1, Squeal's names only.** The rule ran in every run that judges the whole host. It withheld its set into one `unknown` entry each time, because 5 to 7 processes of SSH sessions cannot be read: 335 to 354 directories, all of names Squeal makes. My by-hand set was the same, except for 2 directories that passed the hour between the two reads. The 312 to 313 other `/tmp/squeal-*` names were never in it, among them `squeal-evals-1001` and `squeal-e2e-cache`. `--leftovers` printed no line.
+- **P5, sockets and open files as uses.** Two planted key directories, 2 h old by mtime, one used only by a listening unix socket and one only by an open file, were never in the withheld set in 4 of 4 snapshots. An unused control directory was in it every time.
+- **P8, the orphan age floor.** A planted `sleep` with a mark that no live daemon owns was named in `unknown` at 15 and 40 s and not flagged. At 75 s a new daemon, 2 s old and still `waiting`, had no token yet, and D7 then claims no orphan; `unknown` said so. At 110 s it was flagged `orphan-test-process`, with `ends it: kill 2199493`.
+
+In my reading, every goal now holds as last judged (1, 2 and 5 in round 1, 3 in round 2, 4 and 6 here), and no blocker is open. Two limits are the coordinator's to weigh before `shipped`: goal 6 is not measured at 650 processes and 25 daemons, and on this host `leftover-temp` lists nothing while an SSH session is open (D7 names that cost). One new finding follows as a proposed row (P11, a coverage gap of the leftover names); it is not a blocker. D10's first run on a Mac is still owed.
+
+| Goal or row | Holds? | Evidence |
+| --- | --- | --- |
+| 4. Each D7 state flagged; changes nothing | Yes | 46 snapshots, no `no-lock` among them (P9's done-when asks for 30); flags printed: `older` (true), `root-gone` and `install-gone` on an e2e daemon whose root was being removed (true at the read), `orphan-test-process` on the plant (true). No sidecar created; no write, `unlink`, `connect` or signal call |
+| 6. At most 2.5 s wall and 0.3 s CPU, at load at or below 24 | Yes, at 403 to 450 processes and 4 to 9 daemons | 20 runs at load 2.7 to 5.5: CPU 0.17 to 0.23 s, wall 2.12 to 2.16 s. Not measured at 650 processes and 25 daemons; estimate 0.24 to 0.45 s |
+| P1, 014-22 Squeal's names only | Yes, on the withheld set | 335 to 354 directories withheld, all of Squeal's names, equal to the by-hand set; 312 to 313 other `/tmp/squeal-*` names excluded; `--leftovers` printed nothing and exited 0 |
+| P5, 014-25 sockets and open files as uses | Yes, planted | The socket directory and the open-file directory were never withheld; the control was, in 4 of 4 snapshots. By hand, the socket read and the fd read each found one use |
+| P8, 014-28 the orphan age floor | Yes, planted | 15 s and 40 s: named in `unknown`, not flagged. 75 s: no claim, a new daemon's token unread. 110 s: flagged, `kill 2199493` |
+
+### Setup
+
+| Item | Value |
+| --- | --- |
+| Command | `/tmp/dogfood-014-35/bundle-0.1.252/plugins/claude-code/bin/squeal ps …`, from `git archive squeal--v0.1.252 plugins/claude-code` (tag at 0fdccf30a). The launcher runs `dist/cli/ps.mjs` (136 KB, sha256 `88810f231698858f…`) for `ps`. At 01:11:09 UTC, during sample 1, Claude Code installed 0.1.252 in both scopes; `diff -r` found the installed `dist` and `bin/squeal` byte-identical to the pinned copy. Every number below comes from the pinned copy. The source of `src/core/ps/` and the `ps` CLI has not changed since the tag |
+| Host | Linux 6.8.0-147, 24 CPUs, Node v24.21.0, 47 GiB, 4 GiB swap (1.9 GiB used). Load 2.7 to 6.8 over the round, CPU pressure under 2%. Only 4 to 9 daemons ran: the coordinators' work was light at this hour |
+| Independent reads | Round 2's scripts, copied to `/tmp/dogfood-014-35/bin/` and changed in four ways. `sample.sh` runs the launcher, takes a second `/proc/locks` copy 0.5 s after the first, and starts each timed run only at load at most 24. `flagcheck.py` records which use read found each old candidate (P5) and lists marked heads whose token no live daemon owns, with their age (P8). New: `daemons.py` (the daemon count from `/proc` by D2's command-line rule), `goal6.sh`, `plant5.py` and `plant.sh` (the plants), `plantcheck.py`, `allflags.py`, `slope.py` |
+| Rules kept | No end command that `ps` printed was run. No signal went to any process, mine included: both plants ended by themselves. The driver's only `kill` call was `kill -0` on its own planter, an existence check that sends no signal. No socket was opened. `strace` traced only my own `ps` run. My files went under `/tmp/dogfood-014-35/`, except this file and the plants' own paths |
+| Raw data | `/tmp/dogfood-014-35/`: `g6/` (goal 6 runs and start-ups), `s0` (traced run), `s1` to `s3`, `plant/` (records and snapshots), `prof/`, `probe/`, `bin/`, `drive.log`. It is not committed; this file keeps the numbers |
+
+| Sample | UTC | Load 1/5/15 min | Processes | Daemons, `ps` / `/proc` | Test processes, `ps` / the reader's, by parent |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 01:10:17 | 4.3 5.8 14.2 | 409 | 9 / 9 | 4 / 1 |
+| 2 | 01:20:17 | 4.1 5.6 10.0 | 435 | 4 / 4 | 0 / 0 |
+| 3 | 01:30:18 | 4.5 5.7 8.2 | 443 | 4 / 4 | 4 / 1 |
+
+In samples 1 and 3, the 3 test processes beyond the reader's were escaped processes of cezar's slow tier: an `agent-browser` and two `chrome_crashpad_handler`, under `systemd --user`, each with a `slow:vitest` mark. The reader found them as marked heads with no daemon ancestor, and `ps` tied them to their daemon by token (373847, then 1923655). Each daemon's CPU time, private memory and swap equalled the reader's in the same 2 s (`compare.txt`).
+
+### Goal 6: the cost of one snapshot
+
+Each run is `/usr/bin/time` around `bin/squeal ps`, started only when the one-minute load was at or below 24. The daemon count is `/proc`'s by D2's rule, and `ps`'s own first line:
+
+| Set | UTC | Load 1 min | CPU pressure | Processes | Daemons, /proc / ps | Test processes | Wall s | CPU s | Max RSS MiB |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| g6 | 01:07:12 | 3.3 | 0% | 410 | 6 / 6 | 4 | 2.16 | 0.23 | 74 |
+| g6 | 01:07:16 | 3.1 | 1% | 405 | 6 / 6 | 4 | 2.12 | 0.17 | 75 |
+| g6 | 01:07:20 | 3.1 | 0% | 404 | 6 / 6 | 4 | 2.12 | 0.17 | 75 |
+| g6 | 01:07:24 | 2.9 | 0% | 405 | 6 / 6 | 4 | 2.12 | 0.17 | 75 |
+| g6 | 01:07:28 | 2.7 | 0% | 403 | 6 / 6 | 4 | 2.13 | 0.18 | 74 |
+| s1 | 01:10:29 | 4.3 | 0% | 418 | 9 / 9 | 5 | 2.15 | 0.20 | 75 |
+| s1 | 01:10:31 | 4.5 | 0% | 416 | 9 / 9 | 5 | 2.14 | 0.19 | 74 |
+| s1 | 01:10:33 | 4.5 | 0% | 423 | 9 / 9 | 4 | 2.15 | 0.19 | 75 |
+| s1 | 01:10:36 | 4.5 | 0% | 423 | 9 / 9 | 5 | 2.13 | 0.19 | 74 |
+| s1 | 01:10:38 | 4.2 | 0% | 422 | 9 / 9 | 5 | 2.13 | 0.18 | 75 |
+| s2 | 01:20:29 | 5.1 | 0% | 438 | 5 / 5 | 4 | 2.14 | 0.19 | 74 |
+| s2 | 01:20:31 | 5.1 | 1% | 440 | 4 / 4 | 4 | 2.15 | 0.19 | 74 |
+| s2 | 01:20:33 | 5.5 | 0% | 440 | 4 / 4 | 4 | 2.13 | 0.18 | 74 |
+| s2 | 01:20:35 | 5.5 | 0% | 438 | 4 / 4 | 4 | 2.13 | 0.18 | 74 |
+| s2 | 01:20:37 | 5.2 | 0% | 439 | 4 / 4 | 4 | 2.12 | 0.18 | 74 |
+| s3 | 01:30:29 | 4.3 | 0% | 432 | 4 / 4 | 1 | 2.13 | 0.18 | 74 |
+| s3 | 01:30:32 | 4.2 | 0% | 450 | 4 / 4 | 4 | 2.14 | 0.19 | 74 |
+| s3 | 01:30:34 | 4.2 | 0% | 447 | 4 / 4 | 4 | 2.13 | 0.18 | 74 |
+| s3 | 01:30:36 | 4.2 | 0% | 427 | 4 / 4 | 0 | 2.13 | 0.18 | 74 |
+| s3 | 01:30:38 | 4.2 | 0% | 450 | 4 / 4 | 4 | 2.14 | 0.20 | 74 |
+
+The CPU is user plus system time, Node's start and the launcher's `sh` included. The first run of the round used 0.23 s; the other 19 used 0.17 to 0.20 s. The start-up alone, at load 3 to 5:
+
+| Command | CPU s, user plus system | What it is |
+| --- | --- | --- |
+| `node -e 0` | 0.04 to 0.05 (12 runs) | Node itself |
+| `bin/squeal ps --bogus` | 0.05 to 0.07 (5 runs) | the launcher and `ps.mjs`, to the usage error (exit 2) |
+| `bin/squeal --version` | 0.10 to 0.12 (12 runs) | the launcher and the whole `squeal.mjs` |
+
+So `ps`'s own work was about 0.12 s of the 0.18 s median. One run under `node --cpu-prof` at 01:17 UTC, at load 3.8 with 403 processes and 4 daemons, took 2.16 s wall and 0.28 s CPU with the profiler. Its 174 ms of busy samples split as follows: the two readings (`readWindow`) 79 ms, of which the process table 22 ms, the stores (`readWork`) 17 ms and discovery 9 ms; the file flags 34 ms, of which the leftover rule 32 ms and its use reads 13 ms; module compile about 14 ms; render under 2 ms.
+
+**Scale.** Goal 6 names 650 processes and 25 daemons; the host had 403 to 450 processes and 4 to 9 daemons, and no daemon was started to reach more (the coordinator's instruction). Round 2 ran at larger counts, at load 41 to 82. Each round's own work is its run's CPU less its own start-up: round 2 ran `node squeal.mjs ps`, whose start-up is `squeal.mjs --version`, and round 3 runs `ps.mjs`.
+
+| Round | Runs | Load | Processes, median | Daemons, median | CPU median s | Start-up s | Own work, median s |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 (0.1.248) | 15 | 41 to 82 | 620 | 19 | 0.440 | 0.173 | 0.273 |
+| 3 (0.1.252) | 20 | 2.7 to 5.5 | 425 | 5.5 | 0.180 | 0.062 | 0.118 |
+
+The two rounds differ by 13.5 daemons and 195 processes at once (medians), so two points cannot split the cost between them. Each slope below puts the whole difference on one count, an upper bound for that count:
+
+| Reading | Own work, round 2 less round 3 | All on daemons | At 25 daemons | All on processes | At 650 processes |
+| --- | --- | --- | --- | --- | --- |
+| Raw | 0.155 s | 11.5 ms per daemon | 0.40 s | 79.7 ms per 100 processes | 0.36 s |
+| Load-scaled | 0.054 s | 4.0 ms | 0.26 s | 27.8 ms | 0.24 s |
+| Raw, leftover rule set aside | 0.187 s | 13.9 ms | 0.45 s | 96.1 ms | 0.40 s |
+| Load-scaled, leftover rule set aside | 0.086 s | 6.4 ms | 0.30 s | 44.2 ms | 0.28 s |
+
+"At 25 daemons" is round 3's median CPU, 0.18 s, plus the slope times 19.5 more daemons; "at 650 processes" is the same plus the slope times 225 more processes.
+
+Two things confound these numbers. First, load: `squeal.mjs --version`, the same work in both rounds, used 0.173 s in round 2 and 0.109 s in round 3, 0.63 as much, so CPU time itself grows with load on this host. The load-scaled lines multiply round 2's own work by 0.63. Second, the leftover rule ran in every round 3 run and in no round 2 run (P10), so the last two lines set its 32 ms aside. The estimate at 650 processes and 25 daemons is 0.24 to 0.30 s when the load scaling holds, and 0.36 to 0.45 s when none of round 2's extra cost was load. Within round 3, the runs at 4, 6 and 9 daemons used the same 0.17 to 0.20 s, the first run aside; that range is too narrow to show a slope. Which end holds is not measured, so this round does not judge goal 6 at that scale.
+
+### Goal 4: the flags and side effects
+
+Flags in the 46 saved snapshots (12 JSON, 34 text), each judged by hand within 3 s of its sample:
+
+| Flag or state | Where | Judged | Evidence |
+| --- | --- | --- | --- |
+| `older` on 373847 (cezar, 0.1.248, `draining Nm left`) | Every whole-host snapshot | True | 0.1.248, older than the 0.1.250, then 0.1.252, that Claude Code installs; no consumer, so no session holds it. Its state stayed `draining` (own departure 33 to 53 min before, slow work running or waiting) |
+| `older (session N holds it)` | s1: 1923655; from s2 on: also 947517 and 2022397 | True | Each consumer's harness was alive and registered with that older version. 947517 and 2022397 (0.1.250) read plain `serving` in sample 1, while 0.1.250 was the newest installed; after the 01:11:09 install they read `older (session …)` |
+| `root-gone`, `install-gone` on 2048696 (`/tmp/squeal-opencode-QSVXxV/proj`, 9 s old) | s1, the text run only | True at the read, transient | An OpenCode e2e test was removing its directories; the root and the bundle `/tmp/squeal-e2e-oc-SZU9ta/…` were missing. The two `--json` runs 3 and 6 s earlier had read it `serving`, with no flag |
+| `orphan-test-process` on 2199493 | The plant at 110 s | True | P8 below |
+| `waiting` on 2219036, `stopping` on 2218769 | The plant at 75 s | True, no flag | A handover 2 to 3 s old: the new daemon had no lock yet, under the 40 s of `no-lock` |
+
+The flags `ps` did not print were absent by hand too, in samples 1 to 3: `no-lock`, `duplicate`, `hung` (heartbeats at most 4.7 s old against 5 s), `stale-socket` (4 sockets, each with its daemon), `stale-pool-mark` (one mark in samples 2 and 3, 2 and 6 s old), `foreign-permit`, `orphan-waiter` and `not-installed`. Once, `dead-consumer` was true by hand and not in `ps`: in sample 1 the consumer of e2e daemon 2048696 left within 3 s after the snapshot, under the two heartbeat intervals the flag needs. Round 2 saw the same. The pool read 1 permit each time: the holder of `slow.lock` (373847 in samples 1 and 2, 1923655 in sample 3), as by hand.
+
+Side effects:
+
+- **Sidecars.** `sidecars.py` listed 3 to 10 stores before each sample, after its `ps` runs, and at its end, and before and after the traced run. No `-wal` or `-shm` appeared. The differences were tests' scratch stores that came and went, and database files that live daemons wrote. Every store `ps` read had both sidecars, so it took the WAL reader path each time.
+- **System calls.** One `ps --json` through the launcher under `strace -f`, at 01:11 UTC and load 3.5. It opened each of the 4 stores twice: the database `O_RDONLY`, and `-wal` and `-shm` `O_RDWR|O_CREAT`, all present before and after (SQLite's WAL reader). No `unlink`, `rename`, `mkdir`, `rmdir`, `truncate`, `chmod`, `utimensat`, `connect` or signal call ran. The writes went to stdout and to Node's own wake-up descriptors (8-byte eventfd and 1-byte pipe writes, and one 16-byte message after `ss` exited with SIGCHLD). The only `bind` was `ss`'s netlink socket, and the only spawns were `dirname` (the launcher), `node` and `ss -xle`.
+
+### P1, P5 and P8 live
+
+**P1.** `leftover-temp` ran in every snapshot that judges the whole host; `--repo` drops it. In each, one `unknown` entry withheld its set, because processes of SSH sessions cannot be read, each with `fd` unreadable (EACCES). In samples 1 and 2 and the plant they were 7: `sd-pam` 1061, `gpg-agent` 37581, `sshd` 98559, 2039559, 2039560 and 2039561, and `sftp-server` 2039563. In sample 3 a new login had replaced the last four with `sshd` 2272087 and `sftp-server` 2272101, so 5. `ps` named the same processes as my read each time. The by-hand check of D7, within 3 s:
+
+| Snapshot | Withheld by `ps` | By hand: old, unused | Difference | Other `/tmp/squeal-*` names, never candidates | Size by hand |
+| --- | --- | --- | --- | --- | --- |
+| s1 `--json` | 335 | 335 | none | 313 | 303.9 MiB, 12,364 entries |
+| s2 `--json` | 343 | 345 | 2 directories 3,598 and 3,599 s old at `ps`'s read, past the hour at mine | 312 | 415.2 MiB, 16,141 entries |
+| s3 `--json` | 354 | 354 | none | 312 | 415.2 MiB, 16,189 entries |
+| plant, 4 snapshots | 349 each | 349 each, of 351 old: the 2 in use were the plants | none | 312 to 313 | 415.2 MiB, 16,161 entries |
+
+Every withheld path had a name D7 lists: a key directory under `/tmp/squeal-1001/tmp/`, or `/tmp/squeal-e2e-XXXXXX` and the like. `squeal-evals-1001`, `squeal-e2e-cache`, the agents' `squeal-review-*` and the 2,433 `/tmp/sq-*` entries were never in it. `--leftovers` printed no line in any sample, wrote the withheld reason to stderr and exited 0. With no SSH session the set would be listed and flagged; on this host a session was open in every sample, as in round 2.
+
+**P5**, planted by `plant5.py` (pid 2199408) at 01:20:40 UTC: three directories under `/tmp/squeal-1001/tmp/`, names drawn at random and checked absent, each with its mtime set 2 h back. `d1786a8409beba74` held `s.sock`, bound and listening by the planter. `f44c24436cf4112e` held `f.txt`, open in the planter. `cbd56dedef3ff2c3` stayed empty, the control. No working directory or argument named them. The planter exited by its own deadline at 01:24:40 and removed the three directories by exact path.
+
+| Snapshot (sleep age) | Socket directory | Open-file directory | Control | By hand: the read that found each use |
+| --- | --- | --- | --- | --- |
+| 01:20:56 (15 s) | not withheld | not withheld | withheld | socket 1, fd 1 |
+| 01:21:21 (40 s) | not withheld | not withheld | withheld | socket 1, fd 1 |
+| 01:21:56 (75 s) | not withheld | not withheld | withheld | socket 1, fd 1 |
+| 01:22:31 (110 s) | not withheld | not withheld | withheld | socket 1, fd 1 |
+
+No old candidate was in use on the host by any read in samples 1 to 3, so the plant is the only positive case of this round.
+
+**P8**, planted by `plant.sh` at 01:20:40.9 UTC: `env SQUEAL_DAEMON_CHILD=25d685346aa6461f:vitest sleep 150`, pid 2199493, a child of my own shell and under no daemon. The token was drawn at random. It exited by itself at 01:23:10.9, after 150.0 s.
+
+| Snapshot | Age at `ps`'s first reading | `ps --full --json` | Text | By hand |
+| --- | --- | --- | --- | --- |
+| 01:20:56 | 15 s | `unknown`: "process 2199493's mark names no live daemon, but it is 15 s old, under 60 s"; no orphan | no orphan row | the mark's token is none of the 4 daemons' tokens, all read; 18 s old |
+| 01:21:21 | 40 s | `unknown`: "… 40 s old, under 60 s"; no orphan | no orphan row | the same; 43 s old |
+| 01:21:56 | 75 s | `unknown`: "the token of daemon 2219036 is unread, so a mark may be its"; no orphan | no orphan row | 4 of 6 tokens read: 2219036 (`waiting`, 2 s) and 2218769 (`stopping`, 3 s) had none |
+| 01:22:31 | 110 s | orphan 2199493, `orphan-test-process`: "its mark's token 25d685346aa6461f names no live daemon, on both samples", `kill 2199493` | `2 flags: older, orphan-test-process`; the row under "Processes no live daemon owns" with `ends it: kill 2199493` | none of the 4 tokens, all read; 113 s old |
+
+No marked process lacked an owner on the host in samples 1 to 3. The coordinator told the other coordinators about both plants before they ran.
+
+### Other observations
+
+- **The plugin cache moved to 0.1.252 during sample 1**, at 01:11:09 UTC. The brief expected 0.1.250 at most. It made a live check of `older` possible: the two 0.1.250 daemons read `serving` before and `older (session N holds it)` after, both true.
+- **`older` on a draining daemon.** 373847 read `draining 18m left` and was flagged `older`, whose end command `squeal stop <root>` would end the slow tier it drains. D7 gives both: `older` is a flag unless a session holds it, and `draining` is a state. No row is proposed; the human may weigh whether an older daemon that drains should read as information only.
+- **Short-lived e2e daemons.** The e2e tests of another coordinator started and removed daemons in `/tmp` within seconds (0.1.253, from an e2e fixture's bundle). `ps` listed each with no harness, and once flagged one `root-gone` and `install-gone` while its directories were being removed. That is true at the read and transient, as round 2's fake daemons were.
+
+### Proposed rows
+
+The numbers continue after P10; the coordinator assigns the final ones.
+
+| Row | Problem, with the evidence | Done when |
+| --- | --- | --- |
+| P11 `leftover-temp` misses the `/tmp` names of Squeal's own test helpers | D7 lists the names of `daemon/scratch.ts`, the e2e fixtures and `cli/update.ts`. Squeal's test helpers make other `/tmp/squeal-*-XXXXXX` names: `squeal-opencode-` (`test/helpers/opencode.ts:157`), `squeal-setup-`, `squeal-setup-home-` and the like (`test/cli/setup/fixture.ts`), and `squeal-pi-…-` (`test/harness/pi-fixture.test.ts`, `test/e2e/pi-update.test.ts`). On this host at 01:27 UTC, 11 such directories were older than 1 h: 6 `squeal-opencode-*` (about 137 MiB), 3 `squeal-setup-*` and 2 `squeal-pi-*` (about 6 MiB). They are left by test runs that were stopped before their cleanup (inferred). No rule names them, so no end command removes them. Not a blocker: the rule withholds everything on this host while an SSH session is open | Either the helpers name their directories with a prefix D7 lists, or D7 adds these prefixes. A `flags-files.test.ts` case flags an old, unused `squeal-opencode-AbC123`. On this host `flagcheck.py`'s list of other `/tmp/squeal-*` names holds no test helper's `mkdtemp` name |
+
+### For the next worker
+
+- The scripts are in `/tmp/dogfood-014-35/bin/` while this host keeps `/tmp`. `sample.sh <n> <cwd>` takes one sample with the pinned launcher, and `drive.sh <epoch of sample 1> <cwd>` takes samples 2 and 3 with the plants between. `goal6.sh <out> <runs> <cwd>` takes timed runs at load at most 24; `goal6.py <dir>...` and `slope.py <dir>...` make the goal 6 tables. `plant.sh` plants P5 and P8 for about 4 minutes, and `plantcheck.py <snapshot>` reads one plant snapshot. Plant again only with the coordinator's approval: other sessions' `squeal ps` show the orphan flag while it lives.
+- Goal 6 at 650 processes and 25 daemons needs a host that busy at load at most 24. Tonight's host never had both: round 2 had the counts at load 41 to 82, and round 3 the load at 4 to 9 daemons.
+- On this host an SSH session is always open, so `leftover-temp` is judged on the withheld `paths`, never on a listed flag.
