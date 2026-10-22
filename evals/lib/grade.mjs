@@ -413,7 +413,8 @@ export function squealState(raw) {
     read.push(s.slowTier.testFiles, s.slowTier.current);
   if (!read.every(isCount)) return unsupported("status counts are missing or not counts");
 
-  const daemon = s.daemon.state === "alive";
+  // Row 011-34: a stopping daemon's heartbeat can still be fresh; it validates nothing.
+  const daemon = s.daemon.state === "alive" && s.daemon.stopping === undefined;
   const pending = s.counts.pending + s.testFilesWithoutChecks.pending;
   const tier = s.slowTier;
   const reasons = [
