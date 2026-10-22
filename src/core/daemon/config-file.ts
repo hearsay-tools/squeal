@@ -25,6 +25,8 @@ export interface Shape {
 export interface LoadedConfig<T> {
   readonly value: T;
   readonly problems: readonly string[];
+  /** The file exists and cannot be read, is not JSON or is not an object: `value` is the defaults. */
+  readonly unparsed?: true;
 }
 
 export const positiveInteger: Leaf = (v) =>
@@ -45,17 +47,18 @@ export function loadConfigFile<T extends object>(
     text = readFileSync(path, "utf8");
   } catch (error) {
     if (isMissing(error)) return { value: defaults, problems: [] };
-    return { value: defaults, problems: [`could not be read: ${String(error)}`] };
+    return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    return { value: defaults, problems: [`not valid JSON (${(error as Error).message})`] };
+    const problem = `not valid JSON (${(error as Error).message})`;
+    return { value: defaults, problems: [problem], unparsed: true };
   }
   if (!isRecord(parsed)) {
     const got = Array.isArray(parsed) ? "an array" : JSON.stringify(parsed);
-    return { value: defaults, problems: [`must be a JSON object, got ${got}`] };
+    return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
   }
   const problems: string[] = [];
   const merged = merge(shape, defaults, parsed, "", problems);

@@ -16,6 +16,7 @@ import {
   type Store,
 } from "../types/index.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
+import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 
 // The key names live in the types, so the daemon's timers read them without this module (task 003-26).
 export { nodeTestObservedMetaKey, nodeTestObservedPreloadsMetaKey };
@@ -131,29 +132,42 @@ export function createNodeTestRunners(
   projects: readonly NodeTestProject[],
   options: NodeTestRunnersOptions,
 ): RecoveringRunner[] {
-  return projects.map((project) =>
-    createRecoveringRunner({
-      name: "node-test",
-      adapterVersion: NODE_TEST_ADAPTER_VERSION,
-      create: () =>
-        createNodeTestAdapter(project, {
-          root: options.root,
-          observed: observedStore(options.store, project.name),
-          note: options.note,
-          concurrency: options.tierSize,
-          tempDir: options.tempDir,
-          ...(options.inputs === undefined ? {} : { inputs: options.inputs }),
-          ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
-        }),
-      // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
-      tierWidth: () => options.tierSize(),
-      // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
-      besideBacklog: true,
-      // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
-      backlogSlot: 1,
-      onFailure: (text) =>
-        options.note(`${text} (node-test project ${JSON.stringify(project.name)})`),
-      onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`),
-    }),
-  );
+  return projects.map((project) => nodeTestRunner(project, options));
+}
+
+/** The runners of the live `nodeTest` entries, which a reload reconciles (011 C10, row 011-78). */
+export function createNodeTestRunnerSet(
+  projects: () => readonly NodeTestProject[],
+  options: NodeTestRunnersOptions,
+): RunnerSet<RecoveringRunner> {
+  return createRunnerSet(projects, (project) => nodeTestRunner(project, options));
+}
+
+function nodeTestRunner(
+  project: NodeTestProject,
+  options: NodeTestRunnersOptions,
+): RecoveringRunner {
+  return createRecoveringRunner({
+    name: "node-test",
+    adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    create: () =>
+      createNodeTestAdapter(project, {
+        root: options.root,
+        observed: observedStore(options.store, project.name),
+        note: options.note,
+        concurrency: options.tierSize,
+        tempDir: options.tempDir,
+        ...(options.inputs === undefined ? {} : { inputs: options.inputs }),
+        ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
+      }),
+    // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
+    tierWidth: () => options.tierSize(),
+    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
+    besideBacklog: true,
+    // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
+    backlogSlot: 1,
+    onFailure: (text) =>
+      options.note(`${text} (node-test project ${JSON.stringify(project.name)})`),
+    onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`),
+  });
 }

@@ -369,10 +369,15 @@ class Daemon {
    * `SchedulerOptions.reloadPolicy`: spec 001 D11, "a revision that changes
    * the file reloads it and re-keys what `inputs` and `env.allowlist`
    * touch". The scheduler re-keys; the daemon restarts its timers for
-   * `daemon.*` and `store.*` and notes the reload.
+   * `daemon.*` and `store.*` and notes the reload. The runner reconciles
+   * its node:test and pytest projects with the new policy at its next
+   * `invalidate`, the same revision's runner part; a file that does not
+   * parse keeps the projects (011 C10, *Projects at a reload*, row 011-78).
    */
   #reloadPolicy(): Policy {
-    const { policy, problems } = loadPolicy(this.opened.root);
+    const { policy: loaded, problems, unparsed } = loadPolicy(this.opened.root);
+    const { nodeTest, pytest } = this.#policy;
+    const policy = unparsed === true ? { ...loaded, nodeTest, pytest } : loaded;
     this.#policy = policy;
     if (this.#phase !== "stopping") this.#startTimers();
     const found = problems.length > 0 ? `: ${describeProblems(problems)}` : "";
@@ -470,6 +475,7 @@ class Daemon {
       // Spec 003 D7: one runner per configured or detected runner. Vitest is
       // built when detected, or when nothing else is configured, so a project
       // with neither keeps the "project without Vitest" failure note (001 D11).
+      // Decided here only: a reload reconciles the projects, not the runners (011 C10).
       const configured = this.#policy.nodeTest;
       const configuredPytest = this.#policy.pytest;
       // Each Vitest instance's workers carry the mark of its lane (001 D12, task 004-18).
@@ -525,7 +531,8 @@ class Daemon {
           onFailure: (text) => this.#note(`the slow tier's ${text}`),
           around,
         });
-      const nodeTestRunners = nodeTest.createNodeTestRunners(configured, {
+      // Row 011-78 (011 C10, *Projects at a reload*): the sets read the live entries.
+      const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
         store,
         tempDir: this.opened.scratch.tempDir,
@@ -535,7 +542,7 @@ class Daemon {
         note: (text, topic) => this.#note(text, undefined, undefined, topic),
       });
       // Spec 007 D8: pytest's cache and bytecode live under the state directory (open question 3).
-      const pytestRunners = pytest.createPytestRunners(configuredPytest, {
+      const pytestRunners = pytest.createPytestRunnerSet(() => this.#policy.pytest, {
         root,
         store,
         stateDir: storePaths(commonDir).dir,
@@ -549,11 +556,10 @@ class Daemon {
       // Row 011-69: each run, of any lane, is a tier the idle GC waits for.
       const runner = this.#idleGc.track(
         afterEachRun(
-          createCompositeRunner([
-            ...(vitestRunner === null ? [] : [withSlowInstance(vitestRunner, slowVitest)]),
-            ...nodeTestRunners,
-            ...pytestRunners,
-          ]),
+          createCompositeRunner(
+            vitestRunner === null ? [] : [withSlowInstance(vitestRunner, slowVitest)],
+            [nodeTestRunners, pytestRunners],
+          ),
           this.#children,
           ({ text, stopped }) => this.#note(text, stopped),
         ),
@@ -565,8 +571,8 @@ class Daemon {
       // The node:test graphs build here too, off the hook path (review wave 1, inputs).
       await Promise.all([
         ...((await awaitsInstall(root)) ? [] : [vitestRunner?.open()]),
-        ...nodeTestRunners.map((r) => r.open()),
-        ...pytestRunners.map((r) => r.open()),
+        ...nodeTestRunners.members().map((r) => r.open()),
+        ...pytestRunners.members().map((r) => r.open()),
         vitestBelowRoot,
       ]);
       if (this.#phase === "stopping" || this.#stopRequested) return;

@@ -18,6 +18,7 @@ import {
   type Store,
 } from "../types/index.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
+import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 
 export { pytestObservedMetaKey, pytestObservedSessionMetaKey };
 
@@ -149,31 +150,41 @@ export function createPytestRunners(
   projects: readonly PytestProject[],
   options: PytestRunnersOptions,
 ): RecoveringRunner[] {
-  return projects.map((project) => {
-    const { batchSize } = project;
-    return createRecoveringRunner({
-      name: "pytest",
-      adapterVersion: PYTEST_ADAPTER_VERSION,
-      create: () =>
-        createPytestAdapter(project, {
-          root: options.root,
-          observed: pytestObservedStore(options.store, project.name),
-          note: options.note,
-          ...(options.latestNote === undefined ? {} : { latestNote: options.latestNote }),
-          concurrency: options.tierSize,
-          ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
-          tempDir: options.tempDir,
-          cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
-          ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
-        }),
-      // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
-      tierWidth: () => options.tierSize(),
-      // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
-      besideBacklog: true,
-      // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
-      backlogSlot: batchSize ?? DEFAULT_BATCH_SIZE,
-      onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
-      onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
-    });
+  return projects.map((project) => pytestRunner(project, options));
+}
+
+/** The runners of the live `pytest` entries, which a reload reconciles (011 C10, row 011-78). */
+export function createPytestRunnerSet(
+  projects: () => readonly PytestProject[],
+  options: PytestRunnersOptions,
+): RunnerSet<RecoveringRunner> {
+  return createRunnerSet(projects, (project) => pytestRunner(project, options));
+}
+
+function pytestRunner(project: PytestProject, options: PytestRunnersOptions): RecoveringRunner {
+  const { batchSize } = project;
+  return createRecoveringRunner({
+    name: "pytest",
+    adapterVersion: PYTEST_ADAPTER_VERSION,
+    create: () =>
+      createPytestAdapter(project, {
+        root: options.root,
+        observed: pytestObservedStore(options.store, project.name),
+        note: options.note,
+        ...(options.latestNote === undefined ? {} : { latestNote: options.latestNote }),
+        concurrency: options.tierSize,
+        ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
+        tempDir: options.tempDir,
+        cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
+        ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
+      }),
+    // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
+    tierWidth: () => options.tierSize(),
+    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
+    besideBacklog: true,
+    // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
+    backlogSlot: batchSize ?? DEFAULT_BATCH_SIZE,
+    onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
+    onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
   });
 }
