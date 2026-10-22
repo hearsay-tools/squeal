@@ -38,6 +38,7 @@ var WORKTREE_META_ROWS = {
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
+  interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
@@ -2585,17 +2586,27 @@ function toView(row) {
 
 // src/core/store/repos/failures.ts
 var FAILING_ROWS = `results r INDEXED BY results_by_failure CROSS JOIN checks c ON c.id = r.check_id`;
-function where2({ worktreeId, since, paths, checks }) {
-  const sql = ["r.failure_id IS NOT NULL", "r.outcome = 'fail'"];
+function rowWhere(alias, { worktreeId, since, errors = [] }) {
+  const sql = [`${alias}.failure_id IS NOT NULL`, `${alias}.outcome = 'fail'`];
   const params = [];
   if (worktreeId !== null) {
-    sql.push("r.worktree_id = ?");
+    sql.push(`${alias}.worktree_id = ?`);
     params.push(worktreeId);
   }
   if (since !== null) {
-    sql.push("r.recorded_at >= ?");
+    sql.push(`${alias}.recorded_at >= ?`);
     params.push(since);
   }
+  if (errors.length > 0) {
+    sql.push(`EXISTS (SELECT 1 FROM json_each(?) e JOIN failure_texts t
+      ON t.id = ${alias}.failure_id WHERE instr(t.summary, e.value) > 0)`);
+    params.push(JSON.stringify(errors));
+  }
+  return { sql, params };
+}
+function where2(selection) {
+  const { paths, checks } = selection;
+  const { sql, params } = rowWhere("r", selection);
   if (paths.length > 0) {
     sql.push(`EXISTS (SELECT 1 FROM json_each(?) p WHERE c.test_path = p.value
       OR substr(c.test_path, 1, length(p.value) + 1) = p.value || '/')`);
@@ -2606,6 +2617,13 @@ function where2({ worktreeId, since, paths, checks }) {
       ON k.project = json_extract(j.value, '$[0]') AND k.test_path = json_extract(j.value, '$[1]')
       AND k.kind = json_extract(j.value, '$[2]') AND k.full_name = json_extract(j.value, '$[3]'))`);
     params.push(JSON.stringify(checks.map(checkParams)));
+  }
+  if (selection.perCheck === true) {
+    const newer = rowWhere("n", selection);
+    sql.push(`NOT EXISTS (SELECT 1 FROM results n WHERE n.check_id = r.check_id
+      AND (n.recorded_at > r.recorded_at OR (n.recorded_at = r.recorded_at AND n.rowid > r.rowid))
+      AND ${newer.sql.join(" AND ")})`);
+    params.push(...newer.params);
   }
   return { sql: sql.join(" AND "), params };
 }
@@ -6142,15 +6160,6 @@ function createDelivery(store, options) {
   };
 }
 
-// src/core/scheduler/awaiting-install.ts
-var MISSING_INSTALLS_SHOWN = 3;
-function awaitingInstallSentence(missing, command) {
-  const more = missing.length - MISSING_INSTALLS_SHOWN;
-  const where3 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
-  const install = command === void 0 ? "Install them" : `Run \`${command}\` to install them`;
-  return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
-}
-
 // src/core/delivery/provenance.ts
 var upper = (outcome) => outcome.toUpperCase();
 var TOUCHED_SHOWN = 3;
@@ -6234,10 +6243,101 @@ function installSentences(header) {
   return lockfile === void 0 ? "" : ` These results follow a dependency install (${lockfile} changed).`;
 }
 
+// src/core/delivery/failure-groups.ts
+var FILES_NAMED = 3;
+var ERROR_CHARS = 120;
+var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+function groupKey(entry3, revision) {
+  if (entry3.summary === null) return null;
+  return JSON.stringify([
+    seenLine(entry3, revision),
+    entry3.summary,
+    entry3.location === null ? null : atText(entry3.location, void 0),
+    entry3.flaky === void 0 ? null : flakyText(entry3.flaky),
+    entry3.retry === void 0 ? null : retryText(entry3.retry)
+  ]);
+}
+function failureGroups(failures, revision) {
+  const byKey = /* @__PURE__ */ new Map();
+  const groups = [];
+  for (const failure2 of failures) {
+    const key = groupKey(failure2, revision);
+    const group = key === null ? void 0 : byKey.get(key);
+    if (group !== void 0) {
+      group.push(failure2);
+      continue;
+    }
+    const fresh2 = [failure2];
+    if (key !== null) byKey.set(key, fresh2);
+    groups.push(fresh2);
+  }
+  return groups;
+}
+function shared(group, line) {
+  const lines = group.map(line);
+  return lines.every((l) => l === lines[0]) ? lines[0] ?? null : null;
+}
+function loadsLine(group) {
+  const loads = group.flatMap((e) => e.loadAverage === void 0 ? [] : [e.loadAverage]);
+  if (loads.length === 0) return null;
+  const [low, high] = [Math.min(...loads), Math.max(...loads)].map((l) => l.toFixed(2));
+  return `load average ${low === high ? low : `${low} to ${high}`} when they ran`;
+}
+var argWord = (text, quote) => /^[\w./@+-]+$/.test(text) ? text : quote(text);
+function commonDirectory(paths) {
+  const split = paths.map((p) => p.split("/").slice(0, -1));
+  const first = split[0] ?? [];
+  let depth = 0;
+  while (depth < first.length && split.every((s) => s[depth] === first[depth])) depth++;
+  return first.slice(0, depth).join("/");
+}
+function failuresCommand(group, command, quote) {
+  const first = group[0];
+  const files2 = [...new Set(group.map((e) => e.check.testPath))];
+  const selected = files2.includes("") ? [] : files2.length <= FILES_NAMED ? files2 : [commonDirectory(files2)].filter((d) => d !== "");
+  const error = Array.from((first.summary ?? "").split("\n")[0] ?? "").slice(0, ERROR_CHARS).join("");
+  return [
+    `${command} failures`,
+    ...selected.map((p) => argWord(p, quote)),
+    ...error === "" ? [] : [`--error ${argWord(error, quote)}`],
+    "--per-check --limit all",
+    ...first.origin.kind === "inherited" ? ["--all-worktrees"] : []
+  ].join(" ");
+}
+function groupLines(group, revision, command, quote) {
+  const first = group[0];
+  const checks = group.map((e) => e.check);
+  const at = (e) => e.location === null ? null : atText(e.location, e.testFileFrame);
+  const lines = [
+    seenLine(first, revision),
+    cap(first.summary ?? "", SUMMARY_MAX_CHARS),
+    first.location === null ? null : shared(group, at) ?? atText(first.location, void 0),
+    shared(group, touchesLine),
+    loadsLine(group),
+    first.flaky === void 0 ? null : capitalize(flakyText(first.flaky)),
+    first.retry === void 0 ? null : capitalize(retryText(first.retry)),
+    ...nameLines(checks, "that did not load"),
+    `Full list: ${failuresCommand(group, command, quote)}`
+  ];
+  return {
+    head: `FAIL  ${plural(group.length, "check")} with one error and location (${checkPartsText(countChecks(checks), "that did not load")})`,
+    lines: lines.filter((l) => l !== null)
+  };
+}
+
+// src/core/scheduler/awaiting-install.ts
+var MISSING_INSTALLS_SHOWN = 3;
+function awaitingInstallSentence(missing, command) {
+  const more = missing.length - MISSING_INSTALLS_SHOWN;
+  const where3 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+  const install = command === void 0 ? "Install them" : `Run \`${command}\` to install them`;
+  return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
+}
+
 // src/core/delivery/header.ts
 var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 var CHANGED_PATHS_SHOWN = 3;
-var capitalize = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+var capitalize2 = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 function awaitingInstallText(header) {
   if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
   return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
@@ -6250,7 +6350,7 @@ function changedText(paths) {
 }
 function incompleteText(header) {
   const listed3 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
-  const runnerPart = header.runnerPartPending === true ? ` ${capitalize(runnerPartText(header.revision))} is pending; test files it adds are not counted yet.` : "";
+  const runnerPart = header.runnerPartPending === true ? ` ${capitalize2(runnerPartText(header.revision))} is pending; test files it adds are not counted yet.` : "";
   return `${listed3}${runnerPart}`;
 }
 function daemonText(header, command) {
@@ -6314,7 +6414,7 @@ var statusPointer = (command) => `\`${command} status\` lists every known failur
 var partsText2 = (checks, fileLevel) => checkPartsText(countChecks(checks), fileLevel);
 var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
 var upper2 = (outcome) => outcome.toUpperCase();
-var capitalize2 = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+var capitalize3 = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 function shellWord(text) {
   return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
 }
@@ -6334,8 +6434,8 @@ function entryBlock(entry3, revision) {
       entry3.summary === null ? null : cap(entry3.summary, SUMMARY_MAX_CHARS),
       entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
       ...failed2 ? [touchesLine(entry3), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
-      entry3.flaky === void 0 ? null : capitalize2(flakyText(entry3.flaky)),
-      entry3.retry === void 0 ? null : capitalize2(retryText(entry3.retry))
+      entry3.flaky === void 0 ? null : capitalize3(flakyText(entry3.flaky)),
+      entry3.retry === void 0 ? null : capitalize3(retryText(entry3.retry))
     ],
     [{ check: entry3.check, shown: entry3.to }]
   );
@@ -6353,6 +6453,18 @@ function collapsedBlock({ head, lines }, shown, checks) {
     lines,
     checks.map((check) => ({ check, shown }))
   );
+}
+function failureBlocks(entries, revision, command) {
+  return failureGroups(entries, revision).map((group) => {
+    const [first] = group;
+    if (group.length === 1 && first !== void 0) return entryBlock(first, revision);
+    const lines = groupLines(group, revision, command, shellWord);
+    return collapsedBlock(
+      lines,
+      "fail",
+      group.map((e) => e.check)
+    );
+  });
 }
 function recoveryBlocks(entries, delta) {
   const checks = entries.map((e) => e.check);
@@ -6420,7 +6532,11 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   const retired = entries.filter((e) => e.kind === "fail-retired");
   const title = entries.length === 0 ? delta.liveness === void 0 ? `SQUEAL \xB7 revision ${header.revision}` : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText2(checksOf(entries))}) at revision ${header.revision}`;
   const blocks2 = [
-    ...changed.filter((e) => e.to === "fail").map((e) => entryBlock(e, header.revision)),
+    ...failureBlocks(
+      changed.filter((e) => e.to === "fail"),
+      header.revision,
+      command
+    ),
     ...unknownBlocks(
       changed.filter((e) => e.to === "unknown"),
       command
@@ -6503,7 +6619,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : atText(f.location, f.testFileFrame),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize2(RECORDED_UNKNOWN_TEXT) : null : capitalize2(recordedText(f.recorded, registration2.consumer.worktreeId, now)),
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize3(RECORDED_UNKNOWN_TEXT) : null : capitalize3(recordedText(f.recorded, registration2.consumer.worktreeId, now)),
         closureLine(f.changesInClosure)
       ],
       [{ check: f.check, shown: "fail" }]
@@ -6755,7 +6871,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.261";
+  if (true) return "0.1.262";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
