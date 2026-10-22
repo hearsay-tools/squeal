@@ -1,0 +1,258 @@
+{
+  "file": "docs/specifications/011-core/research/probes/issue-75/natural.jsonl",
+  "host": {
+    "event": "host",
+    "at": "2026-10-22T13:12:08.560Z",
+    "load": 6.77,
+    "cpus": 24,
+    "node": "v24.21.0",
+    "mode": "natural"
+  },
+  "releases": [
+    {
+      "at": "2026-10-22T13:12:08.643Z",
+      "event": "release",
+      "version": "0.1.260",
+      "commit": "0f4cd7bb3f0478e78496d11eae86b1bd5dfec649"
+    },
+    {
+      "at": "2026-10-22T13:12:08.716Z",
+      "event": "release",
+      "version": "0.1.261",
+      "commit": "40b721f0967ed4f32cefd6075680cfaa195eaff4"
+    }
+  ],
+  "boundaries": 80,
+  "silent": 80,
+  "hookExitCodes": [
+    0
+  ],
+  "hookSignals": [
+    null
+  ],
+  "maxHookMs": 105,
+  "notices": [],
+  "claims": [
+    {
+      "from": "0.1.260@1792674728891#b731e2b6-9fe6-40aa-9594-6389070f29b3",
+      "to": "0.1.261",
+      "at": 1792674729072,
+      "boundAt": 1792674859072
+    }
+  ],
+  "versions": [
+    null,
+    "0.1.260",
+    "0.1.261"
+  ],
+  "revisions": [
+    null
+  ],
+  "finalDaemon": {
+    "id": "79e949cb9034fc84",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/b7d4a529-fec3-4e92-977c-9cd1ac486ef6/repo",
+    "common_dir": "/home/agent/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/b7d4a529-fec3-4e92-977c-9cd1ac486ef6/repo/.git",
+    "is_main": 1,
+    "registered_at": 1792674728891,
+    "daemon_socket": "/tmp/squeal-1001/squeal-79e949cb9034fc84.sock",
+    "daemon_started_at": 1792674729248,
+    "daemon_heartbeat_at": 1792674729258,
+    "daemon_heartbeat_interval_ms": 5000,
+    "daemon_version": "0.1.261"
+  },
+  "finalClaims": [],
+  "hold": null,
+  "release": null,
+  "cleanTree": {
+    "at": "2026-10-22T13:12:12.607Z",
+    "event": "clean-tree",
+    "output": ""
+  },
+  "cleanup": {
+    "at": "2026-10-22T13:12:14.623Z",
+    "event": "cleanup",
+    "owned": [
+      3536395
+    ],
+    "forced": []
+  }
+}
+{
+  "file": "docs/specifications/011-core/research/probes/issue-75/mixed.jsonl",
+  "host": {
+    "event": "host",
+    "at": "2026-10-22T13:09:53.808Z",
+    "load": 4.78,
+    "cpus": 24,
+    "node": "v24.21.0",
+    "mode": "mixed"
+  },
+  "releases": [
+    {
+      "at": "2026-10-22T13:09:53.881Z",
+      "event": "release",
+      "version": "0.1.260",
+      "commit": "0f4cd7bb3f0478e78496d11eae86b1bd5dfec649"
+    },
+    {
+      "at": "2026-10-22T13:09:53.947Z",
+      "event": "release",
+      "version": "0.1.261",
+      "commit": "40b721f0967ed4f32cefd6075680cfaa195eaff4"
+    }
+  ],
+  "boundaries": 80,
+  "silent": 80,
+  "hookExitCodes": [
+    0
+  ],
+  "hookSignals": [
+    null
+  ],
+  "maxHookMs": 74,
+  "notices": [],
+  "claims": [
+    {
+      "from": "0.1.260@1792674594106#d9b959d7-0529-49bb-ac21-395e899759a5",
+      "to": "0.1.261",
+      "at": 1792674594223,
+      "boundAt": 1792674724223
+    }
+  ],
+  "versions": [
+    null,
+    "0.1.260",
+    "0.1.261"
+  ],
+  "revisions": [
+    null
+  ],
+  "finalDaemon": {
+    "id": "305bdf6c1a82ce14",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/6b51661d-0fdf-40fd-bf1f-854df54b038a/repo",
+    "common_dir": "/home/agent/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/6b51661d-0fdf-40fd-bf1f-854df54b038a/repo/.git",
+    "is_main": 1,
+    "registered_at": 1792674594106,
+    "daemon_socket": "/tmp/squeal-1001/squeal-305bdf6c1a82ce14.sock",
+    "daemon_started_at": 1792674594367,
+    "daemon_heartbeat_at": 1792674594375,
+    "daemon_heartbeat_interval_ms": 5000,
+    "daemon_version": "0.1.261"
+  },
+  "finalClaims": [],
+  "hold": null,
+  "release": null,
+  "cleanTree": {
+    "at": "2026-10-22T13:09:57.474Z",
+    "event": "clean-tree",
+    "output": ""
+  },
+  "cleanup": {
+    "at": "2026-10-22T13:09:59.482Z",
+    "event": "cleanup",
+    "owned": [
+      3506117
+    ],
+    "forced": []
+  }
+}
+{
+  "file": "docs/specifications/011-core/research/probes/issue-75/blocked-delay.jsonl",
+  "host": {
+    "event": "host",
+    "at": "2026-10-22T13:11:38.565Z",
+    "load": 4.85,
+    "cpus": 24,
+    "node": "v24.21.0",
+    "mode": "blocked-delay"
+  },
+  "releases": [
+    {
+      "at": "2026-10-22T13:11:38.648Z",
+      "event": "release",
+      "version": "0.1.260",
+      "commit": "0f4cd7bb3f0478e78496d11eae86b1bd5dfec649"
+    },
+    {
+      "at": "2026-10-22T13:11:38.723Z",
+      "event": "release",
+      "version": "0.1.261",
+      "commit": "40b721f0967ed4f32cefd6075680cfaa195eaff4"
+    }
+  ],
+  "boundaries": 84,
+  "silent": 82,
+  "hookExitCodes": [
+    0
+  ],
+  "hookSignals": [
+    null
+  ],
+  "maxHookMs": 87,
+  "notices": [
+    {
+      "at": "2026-10-22T13:11:50.266Z",
+      "iteration": 6,
+      "version": "0.1.261",
+      "text": "SQUEAL · the daemon is handing over at revision 0\nRevision 0: no check pending, stale or unknown. The daemon is handing over from 0.1.260 to 0.1.261 since 2026-10-22T13:11:39.073Z; 0.1.261 serves once the old daemon's lock frees; results are as of revision 0."
+    },
+    {
+      "at": "2026-10-22T13:11:54.631Z",
+      "iteration": 80,
+      "version": "0.1.261",
+      "text": "SQUEAL · a daemon is validating again at revision 0\nRevision 0: no check pending, stale or unknown."
+    }
+  ],
+  "claims": [
+    {
+      "from": "0.1.260@1792674698891#1d378f37-b0a9-4651-ad0a-eae9eafcc8f3",
+      "to": "0.1.261",
+      "at": 1792674699071,
+      "boundAt": 1792674829071
+    }
+  ],
+  "versions": [
+    null,
+    "0.1.260",
+    "0.1.261"
+  ],
+  "revisions": [
+    null
+  ],
+  "finalDaemon": {
+    "id": "ceaa339fab11a712",
+    "root": "/home/agent/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/108f7056-f87c-46b5-898d-87bb392572c1/repo",
+    "common_dir": "/home/agent/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/108f7056-f87c-46b5-898d-87bb392572c1/repo/.git",
+    "is_main": 1,
+    "registered_at": 1792674698891,
+    "daemon_socket": "/tmp/squeal-1001/squeal-ceaa339fab11a712.sock",
+    "daemon_started_at": 1792674713659,
+    "daemon_heartbeat_at": 1792674713664,
+    "daemon_heartbeat_interval_ms": 5000,
+    "daemon_version": "0.1.261"
+  },
+  "finalClaims": [],
+  "hold": {
+    "at": "2026-10-22T13:11:39.083Z",
+    "event": "hold",
+    "pid": 3526335
+  },
+  "release": {
+    "at": "2026-10-22T13:11:53.565Z",
+    "event": "release",
+    "pid": 3526335
+  },
+  "cleanTree": {
+    "at": "2026-10-22T13:11:54.809Z",
+    "event": "clean-tree",
+    "output": ""
+  },
+  "cleanup": {
+    "at": "2026-10-22T13:11:56.817Z",
+    "event": "cleanup",
+    "owned": [
+      3526448
+    ],
+    "forced": []
+  }
+}
