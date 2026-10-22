@@ -1,13 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
+import { createNodeTestRunnerSet } from "../../src/core/daemon/node-test-runners.js";
+import { createPytestRunnerSet } from "../../src/core/daemon/pytest-runners.js";
 import { createRunnerSet } from "../../src/core/daemon/runner-set.js";
 import type {
   CheckRunResult,
+  NodeTestProject,
+  PytestProject,
   RunnerAdapter,
   RunOptions,
   RunReport,
   TestFileRef,
 } from "../../src/core/types/index.js";
+import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*
  * Row 011-78 (011 C10, *Projects at a reload*; `tasks/011-62/design.md` R1):
@@ -275,5 +283,48 @@ describe("createCompositeRunner with a reconciling set (row 011-78)", () => {
       ["gone", ["close"]],
       ["added", ["close"]],
     ]);
+  });
+});
+
+describe("the node:test and pytest sets (row 011-78)", () => {
+  it("build one runner per live entry, before any adapter, and reconcile by name", () => {
+    const dir = mkdtempSync(join(tmpdir(), "squeal-sets-"));
+    onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+    const common = {
+      root: dir,
+      store: open(fakeCommonDir()),
+      tempDir: dir,
+      tierSize: () => 4,
+      note: () => {},
+    };
+    const nt = (name: string): NodeTestProject => ({
+      name,
+      cwd: name,
+      argv: [],
+      env: {},
+      include: ["*.mjs"],
+    });
+    const py = (name: string, batchSize?: number): PytestProject => ({
+      name,
+      cwd: name,
+      args: [],
+      env: {},
+      include: ["test_*.py"],
+      ...(batchSize === undefined ? {} : { batchSize }),
+    });
+    let nodeTest: readonly NodeTestProject[] = [nt("a"), nt("b")];
+    let pytest: readonly PytestProject[] = [py("p", 2)];
+    const nodeSet = createNodeTestRunnerSet(() => nodeTest, common);
+    const pySet = createPytestRunnerSet(() => pytest, { ...common, stateDir: dir });
+    expect(nodeSet.members().map((r) => r.name)).toEqual(["node-test", "node-test"]);
+    const [p] = pySet.members();
+    expect(p?.backlogSlot?.({ project: "p", path: "p/test_a.py" })).toBe(2);
+
+    nodeTest = [nt("b"), nt("c")];
+    pytest = [py("p", 3)];
+    expect(nodeSet.reconcile().projects).toEqual(["a", "c"]);
+    expect(pySet.reconcile()).toMatchObject({ removed: [], replaced: [p], projects: ["p"] });
+    expect(pySet.members()[0]?.backlogSlot?.({ project: "p", path: "p/test_a.py" })).toBe(3);
+    expect(nodeSet.reconcile().projects).toEqual([]);
   });
 });
