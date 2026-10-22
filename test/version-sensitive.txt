@@ -50,6 +50,7 @@
 #   test/cli/setup/gates-allow-list.test.ts
 #   test/cli/setup/gates.test.ts
 #   test/cli/setup/init-flags.test.ts
+#   test/cli/setup/plan-runners.test.ts
 #   test/cli/setup/plan.test.ts
 #   test/cli/setup/pytest.test.ts
 #   test/cli/setup/setup-exclude.test.ts
