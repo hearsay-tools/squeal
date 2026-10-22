@@ -1,6 +1,8 @@
 import { statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
+import { VACANT_LOCK_WAIT_MS } from "../daemon/lock-wait.js";
 import { socketWorktreeId } from "../daemon/paths.js";
+import { SUCCESSOR_LOCK_WAIT_MS } from "../delivery/handoff.js";
 import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import { lockFileFor, lockFileParts, storePaths } from "../store/paths.js";
@@ -162,7 +164,7 @@ function found(
     row,
     script,
     root,
-    awaitLock: args.slice(at + 2).includes("--await-lock"),
+    lockWaitMs: lockWaitOf(args.slice(at + 2)),
     ...installOf(script),
     worktreeId: lock?.worktreeId ?? null,
     lockPath,
@@ -170,6 +172,18 @@ function found(
     storePath: commonDir === null ? null : storePaths(commonDir).database,
     holdsLock: holds(source, row.pid, lockPath, locks),
   };
+}
+
+/**
+ * The wait `squeal daemon <root> [--await-lock <ms>]` takes (`lockWait` in
+ * `src/cli/daemon.ts`), else a loser's. A flag without a whole number, which
+ * that command refuses, reads as the wait a hook's successor takes.
+ */
+function lockWaitOf(options: readonly string[]): number {
+  const at = options.indexOf("--await-lock");
+  if (at < 0) return VACANT_LOCK_WAIT_MS;
+  const value = options[at + 1] ?? "";
+  return /^\d+$/.test(value) ? Number(value) : SUCCESSOR_LOCK_WAIT_MS;
 }
 
 interface LockOf {

@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { VACANT_LOCK_WAIT_MS } from "../../src/core/daemon/lock-wait.js";
+import { SUCCESSOR_LOCK_WAIT_MS } from "../../src/core/delivery/handoff.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createDarwinSource, type DarwinOs } from "../../src/core/ps/darwin.js";
 import { discover, phaseOn } from "../../src/core/ps/discover.js";
@@ -335,9 +337,14 @@ describe("the stages over it, unchanged", () => {
       harness: "claude",
       worktreeId: worktreeIdFor(root),
       holdsLock: null,
-      awaitLock: false,
+      lockWaitMs: VACANT_LOCK_WAIT_MS,
     });
-    expect(beta).toMatchObject({ version: "0.1.237", harness: "codex", awaitLock: true });
+    // A bare `--await-lock`, which `squeal daemon` refuses, reads as a hook successor's wait.
+    expect(beta).toMatchObject({
+      version: "0.1.237",
+      harness: "codex",
+      lockWaitMs: SUCCESSOR_LOCK_WAIT_MS,
+    });
     expect(found.unknown.map((u) => u.what)).toContain("daemon lock holders");
   });
 

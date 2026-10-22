@@ -1,6 +1,8 @@
 import { mkdirSync, mkdtempSync, realpathSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { VACANT_LOCK_WAIT_MS } from "../../src/core/daemon/lock-wait.js";
+import { SUCCESSOR_LOCK_WAIT_MS } from "../../src/core/delivery/handoff.js";
 import type {
   Attribution,
   ConsumerState,
@@ -123,7 +125,10 @@ export interface DaemonSpec {
   readonly script?: string;
   readonly ageS?: number;
   readonly holdsLock?: boolean | null;
+  /** Started with `--await-lock`, as a hook starts its successor: `SUCCESSOR_LOCK_WAIT_MS`. */
   readonly awaitLock?: boolean;
+  /** The wait its arguments name, in place of the one `awaitLock` gives. */
+  readonly lockWaitMs?: number;
   readonly worktreeId?: string;
 }
 
@@ -139,7 +144,8 @@ export function foundDaemon(s: DaemonSpec): FoundDaemon {
     row: rowOf({ pid: s.pid, ppid: 1049, comm: "MainThread", ageS: s.ageS ?? 600 }),
     script,
     root: s.root,
-    awaitLock: s.awaitLock ?? false,
+    lockWaitMs:
+      s.lockWaitMs ?? (s.awaitLock === true ? SUCCESSOR_LOCK_WAIT_MS : VACANT_LOCK_WAIT_MS),
     version: cache?.[4] ?? null,
     harness: cache?.[2] ?? null,
     plugins: cache?.[1] ?? null,

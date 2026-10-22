@@ -22,9 +22,8 @@ import { type ProcessRow, ticksToMs } from "./source.js";
  * latest; `hung` and `orphan-test-process` hold on both.
  */
 
-/** C9: a loser's lock retry is 30 s, an `--await-lock` successor's 120 s, plus 10 s. */
-const NO_LOCK_MS = 40_000;
-const AWAIT_LOCK_MS = 130_000;
+/** D7 `no-lock`: past its own lock wait (`FoundDaemon.lockWaitMs`) by this much. */
+const NO_LOCK_MARGIN_MS = 10_000;
 /** C9: a departure grace of 3 s and a check of 5 s at most, so a minute is past any. */
 const DEPARTURE_MS = 60_000;
 const NOT_INSTALLED_MS = 60 * 60_000;
@@ -144,7 +143,7 @@ function daemonFlags(
 
   const age = c.ageOf(d.row);
   if (phase === "waiting") {
-    const bound = d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS;
+    const bound = noLockBound(d);
     if (age === null) c.name(`daemon ${pid} flag no-lock`, NO_BOOT);
     else if (age > bound)
       add(
@@ -171,6 +170,11 @@ function daemonFlags(
       );
   }
   return { flags, state, drainLeft: life?.drainLeft ?? null };
+}
+
+/** D7 `no-lock`: its lock wait, a loser's or the one `--await-lock` names, plus 10 s. */
+function noLockBound(d: FoundDaemon): number {
+  return d.lockWaitMs + NO_LOCK_MARGIN_MS;
 }
 
 /** C9 `root-removed` and `worktree-removed`, as the daemon's own check reads them. */
@@ -364,7 +368,7 @@ function duplicates(c: FlagContext): Map<number, PsFlag[]> {
     const waited = (d: FoundDaemon) => {
       const age = c.ageOf(d.row);
       if (age === null) c.name(`daemon ${d.row.pid} flag duplicate`, NO_BOOT);
-      return age !== null && age > (d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS);
+      return age !== null && age > noLockBound(d);
     };
     if (c.model.locksRead === "none") {
       if (!group.every(waited)) continue;
