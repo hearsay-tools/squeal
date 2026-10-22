@@ -38,6 +38,7 @@ import {
   touchesInstall,
 } from "./install.js";
 import { InstallStamps, refreshInstall } from "./install-stamp.js";
+import { interruptedFiles } from "./interrupted.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
@@ -593,6 +594,11 @@ class TierScheduler implements Scheduler {
     for (const resolve of this.#idle.splice(0)) resolve();
   }
 
+  /** The close began, or the daemon's stop, which precedes it: no tier starts (row 011-66). */
+  #stopping(): boolean {
+    return this.#closed || this.options.stopping?.() === true;
+  }
+
   /**
    * Runs tiers until the queue is empty, one at a time per lane (spec 001 D5
    * as amended, task 001-140): a tier holds the files of one lane, and a
@@ -624,7 +630,7 @@ class TierScheduler implements Scheduler {
    * or request starts the pump again.
    */
   #pump(): void {
-    if (this.#closed || !this.#ledger) return;
+    if (this.#stopping() || !this.#ledger) return;
     if (this.#pumping) {
       this.#asked = true;
       this.#notify();
@@ -635,7 +641,7 @@ class TierScheduler implements Scheduler {
     this.#asked = false;
     this.#pumping = (async () => {
       try {
-        while (!this.#closed && !this.#stalled) {
+        while (!this.#stopping() && !this.#stalled) {
           this.#woken = false;
           this.#drain();
           if (this.#draining) {
@@ -658,7 +664,7 @@ class TierScheduler implements Scheduler {
             continue;
           }
           const next = await this.#lock.run(() => {
-            if (this.#closed || this.#awaitingInstall || this.#reinstalled) return null;
+            if (this.#stopping() || this.#awaitingInstall || this.#reinstalled) return null;
             const { context, ledger } = this.#started();
             if (install.missing !== null) {
               this.#reinstall(ledger);
@@ -710,7 +716,7 @@ class TierScheduler implements Scheduler {
         const again = !this.#stalled || this.#asked;
         // A resume after a busy store runs once with nothing queued too: its writes end the wait.
         const work = this.#hasWork() || this.#busy?.waiting === true;
-        if (!this.#closed && again && work) this.#pump();
+        if (!this.#stopping() && again && work) this.#pump();
         else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
       }
     })();
@@ -822,14 +828,20 @@ class TierScheduler implements Scheduler {
     // Only the first withholds are queued again; the exhausted files, forced or not, record
     // the withheld report and are `unknown` in the same commit (review 007-33, B1). What a
     // stop's cancel cut short stays queued for the next daemon (D10, task 001-367).
-    const unfinished = this.#stop.signal.aborted ? unfinishedFiles(tier, ran) : [];
-    const again = [...(withhold?.again.map(({ file }) => file.id) ?? []), ...unfinished];
-    const requeue =
-      installMoved || (withhold === null && unfinished.length === 0)
-        ? installMoved
-        : new Set(again);
+    const cancelled = this.#stop.signal.aborted;
+    const unfinished = cancelled ? unfinishedFiles(tier, ran) : [];
     // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
     const moved = context.store.transaction(() => {
+      // Row 011-66: a crash after the daemon's stop began is queued again once per key.
+      const interrupted = interruptedFiles(context, ledger, tier, ran, {
+        stopping: this.#stopping() && !cancelled,
+      });
+      const again = [
+        ...(withhold?.again.map(({ file }) => file.id) ?? []),
+        ...unfinished,
+        ...interrupted,
+      ];
+      const requeue = installMoved || again.length === 0 ? installMoved : new Set(again);
       this.#warmUp.record(context, ignored);
       this.#yields.ended(context, tier);
       const result = recordTier(

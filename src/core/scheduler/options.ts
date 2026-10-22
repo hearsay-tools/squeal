@@ -107,6 +107,13 @@ export interface SchedulerOptions {
    * daemon starts fresh. Without it the scheduler persists the note itself.
    */
   readonly onReinstall?: (note: string) => void;
+  /**
+   * The daemon's stop began (its phase is `stopping`), which it sets before
+   * the scheduler's close: no tier starts, and a tier that crashes then is an
+   * interrupted run, queued again once per key (row 011-66). Without it, the
+   * scheduler's own close.
+   */
+  readonly stopping?: () => boolean;
   readonly hasher?: Hasher;
   /** Allow-listed variables for the environment hash. Defaults to `process.env`. */
   readonly env?: NodeJS.ProcessEnv;

@@ -563,6 +563,8 @@ class Daemon {
         busyWaits: this.#busyWaits,
         // Task 001-113: a fresh daemon waits for the install with no runner open.
         onReinstall: (note) => void this.#shutdown("reinstalled", 0, note),
+        // Row 011-66: set before the loop's close, so a tier that crashes from here is interrupted.
+        stopping: () => this.#phase === "stopping",
         onDropped: (reason) =>
           this.#note(`watcher dropped events (${reason}); a full reconciliation follows`),
         // Spec 001 D11 Capacity (tasks 001-376, 001-377): backlog and checkpoint tiers share the
