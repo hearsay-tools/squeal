@@ -31,8 +31,12 @@ export interface FailuresOptions extends StatusStoreOptions {
   readonly paths?: readonly RelativePath[];
   /** `--check`: only checks whose printed name holds one of these texts. */
   readonly checks?: readonly string[];
-  /** Most failures listed (`--limit`); default `FAILURES_LIMIT`. */
-  readonly limit?: number;
+  /** `--error`: only failures whose summary holds one of these texts. */
+  readonly errors?: readonly string[];
+  /** `--per-check`: each selected check once, at its newest selected failure. */
+  readonly perCheck?: boolean;
+  /** Most failures listed (`--limit`), `"all"` for every one; default `FAILURES_LIMIT`. */
+  readonly limit?: number | "all";
 }
 
 /**
@@ -84,13 +88,19 @@ function realOrNull(path: AbsolutePath): AbsolutePath | null {
  * store in one read transaction (D7, D8) and starts no daemon. Row 011-75:
  * the paths and `--check` texts select in the store's query, through
  * `results_by_failure`; a text is matched against the failing checks'
- * printed names, so check names keep one formatter (C5).
+ * printed names, so check names keep one formatter (C5). Review 0.1.262 B1:
+ * `--error` texts select by summary and `--per-check` keeps each check's
+ * newest, in the query too, so a grouped notice's command lists its group.
  */
 export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): FailuresResult {
   const allWorktrees = options.allWorktrees ?? false;
   const since = options.since ?? null;
-  const selection: FailuresSelection = { paths: options.paths ?? [], checks: options.checks ?? [] };
-  const limit = options.limit ?? FAILURES_LIMIT;
+  const selection: FailuresSelection = {
+    paths: options.paths ?? [],
+    checks: options.checks ?? [],
+    errors: options.errors ?? [],
+    perCheck: options.perCheck ?? false,
+  };
   return withStatusStore(cwd, options, ({ store, root }) => {
     const worktreeId = worktreeIdFor(root);
     const roots = new Map(store.worktrees.list().map((w) => [w.id, w.root]));
@@ -99,6 +109,8 @@ export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): 
       since,
       paths: selection.paths.includes(".") ? [] : selection.paths,
       checks: null,
+      errors: selection.errors,
+      perCheck: selection.perCheck,
     };
     const texts = selection.checks;
     const filter =
@@ -110,6 +122,8 @@ export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): 
               .failingChecks(base)
               .filter((check) => texts.some((text) => formatCheck(check).includes(text))),
           };
+    const total = store.failures.count(filter);
+    const limit = options.limit === "all" ? total : (options.limit ?? FAILURES_LIMIT);
     const failures = store.failures.list(filter, limit).map((r) => ({
       check: r.check,
       worktreeId: r.provenance.worktreeId,
@@ -132,7 +146,7 @@ export function readFailures(cwd: AbsolutePath, options: FailuresOptions = {}): 
       since,
       selection,
       failures,
-      total: store.failures.count(filter),
+      total,
       limit,
     };
   });
@@ -145,11 +159,13 @@ export function formatFailures(report: FailuresResult): string {
   const since = report.since === null ? "" : ` since ${new Date(report.since).toISOString()}`;
   const window = `${selectionText(report.selection)}${since}`;
   if (report.total === 0) return `No stored failures in ${scope}${window}.\n`;
-  const count =
-    report.total > report.failures.length
-      ? `newest ${report.failures.length} of ${report.total}`
-      : plural(report.total, "failure");
-  const lines = [`Failures in ${scope}${window} (${count}, newest first):`];
+  const { perCheck } = report.selection;
+  const counted = report.total > report.failures.length;
+  const count = counted
+    ? `newest ${report.failures.length} of ${report.total}${perCheck ? " checks" : ""}`
+    : plural(report.total, perCheck ? "check" : "failure");
+  const each = perCheck ? ", newest failure of each" : "";
+  const lines = [`Failures in ${scope}${window} (${count}${each}, newest first):`];
   for (const f of report.failures) {
     const where =
       f.worktreeId === report.worktreeId
@@ -166,11 +182,15 @@ export function formatFailures(report: FailuresResult): string {
   return `${lines.join("\n")}\n`;
 }
 
-/** ` for <paths>, checks holding "<text>" or "<text>"`, or nothing when every failure is selected. */
-function selectionText({ paths, checks }: FailuresSelection): string {
-  const parts = [...paths];
-  if (checks.length > 0) {
-    parts.push(`checks holding ${checks.map((text) => JSON.stringify(text)).join(" or ")}`);
-  }
+/**
+ * ` for <paths>, checks holding "<text>" or "<text>", errors holding "<text>"`, or nothing when
+ * every failure is selected.
+ */
+function selectionText({ paths, checks, errors }: FailuresSelection): string {
+  const holding = (what: string, texts: readonly string[]) =>
+    texts.length === 0
+      ? []
+      : [`${what} holding ${texts.map((t) => JSON.stringify(t)).join(" or ")}`];
+  const parts = [...paths, ...holding("checks", checks), ...holding("errors", errors)];
   return parts.length === 0 ? "" : ` for ${parts.join(", ")}`;
 }

@@ -27,6 +27,8 @@ const delta = (entries: DeltaEntry[]): Delta => ({
 });
 
 const RESIZE = "ReferenceError: ResizeObserver is not defined";
+/** What the command selects beside the paths (review 0.1.262 B1). */
+const SELECTS = `--error "${RESIZE}" --per-check --limit all`;
 const CHART = { path: "src/components/chart.tsx", line: 12, column: 5 };
 
 function failure(
@@ -81,10 +83,11 @@ describe("a regression notice groups checks with one error and location (row 011
         "      9 tests in tests/components/f3.test.tsx",
         "      9 tests in tests/components/f4.test.tsx",
         "      9 tests in tests/components/f5.test.tsx",
-        "      Full list: squeal failures tests/components --limit 91",
+        `      Full list: squeal failures tests/components ${SELECTS}`,
       ].join("\n"),
     );
-    expect(text.split(RESIZE)).toHaveLength(2);
+    // The error once in its line, and once as what the command selects.
+    expect(text.split(RESIZE)).toHaveLength(3);
     expect(text.match(/squeal failures/g)).toHaveLength(1);
     expect(text).not.toContain("Not shown");
     expect(text.split("\n")[0]).toBe("SQUEAL · 91 checks changed (91 tests) at revision 12");
@@ -121,7 +124,7 @@ describe("a regression notice groups checks with one error and location (row 011
         "      at src/components/chart.tsx:12:5",
         "      tests/a.test.ts > one",
         "      tests/b.test.ts > two",
-        "      Full list: squeal failures tests/a.test.ts tests/b.test.ts",
+        `      Full list: squeal failures tests/a.test.ts tests/b.test.ts ${SELECTS}`,
       ].join("\n"),
     ]);
   });
@@ -197,19 +200,41 @@ describe("a regression notice groups checks with one error and location (row 011
     expect(text([24.36, 3.2, 8])).toContain("\n      load average 3.20 to 24.36 when they ran\n");
   });
 
-  it("selects the group's test files, their directory, or every failure", () => {
+  it("selects the group's error and all of its checks once, in its test files, their directory, or every one", () => {
     const command = (entries: TransitionEntry[], cli?: string) =>
       /^ {6}Full list: (.*)$/m.exec(formatDelta(delta(entries), cli))?.[1];
     const odd = "tests/it's here.test.ts";
     expect(
       command([failure("tests/a.test.ts", "one"), failure(odd, "two")], "/opt/squeal/bin/squeal"),
-    ).toBe(`/opt/squeal/bin/squeal failures tests/a.test.ts "tests/it's here.test.ts"`);
-    expect(command(spread(20, 4, "tests/ui"))).toBe("squeal failures tests/ui");
+    ).toBe(`/opt/squeal/bin/squeal failures tests/a.test.ts "tests/it's here.test.ts" ${SELECTS}`);
+    expect(command(spread(20, 4, "tests/ui"))).toBe(`squeal failures tests/ui ${SELECTS}`);
     expect(command([...spread(4, 4, "tests/ui"), ...spread(4, 4, "tests/api")])).toBe(
-      "squeal failures tests",
+      `squeal failures tests ${SELECTS}`,
     );
     expect(command([...spread(4, 4, "web/tests"), ...spread(4, 4, "api/tests")])).toBe(
-      "squeal failures",
+      `squeal failures ${SELECTS}`,
+    );
+  });
+
+  it("selects inherited checks in every worktree, by the first line of their error", () => {
+    const command = (entries: TransitionEntry[]) =>
+      /^ {6}Full list: (.*)$/m.exec(formatDelta(delta(entries)))?.[1];
+    const origin = { kind: "inherited", worktreeId: "wt-b", commit: "abc123" } as const;
+    expect(
+      command([
+        failure("tests/a.test.ts", "one", { origin }),
+        failure("tests/b.test.ts", "two", { origin }),
+      ]),
+    ).toBe(`squeal failures tests/a.test.ts tests/b.test.ts ${SELECTS} --all-worktrees`);
+    // A part of the error selects as the whole of it does: its first line, at most 120 characters.
+    const summary = `Error: $HOME is "${"y".repeat(200)}"\n- expected\n+ received`;
+    expect(
+      command([
+        failure("tests/a.test.ts", "one", { summary }),
+        failure("tests/a.test.ts", "two", { summary }),
+      ]),
+    ).toBe(
+      `squeal failures tests/a.test.ts --error 'Error: $HOME is "${"y".repeat(103)}' --per-check --limit all`,
     );
   });
 

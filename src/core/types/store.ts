@@ -139,6 +139,13 @@ export interface FailureSelection {
   readonly paths: readonly RelativePath[];
   /** Only these checks' failures (`FailureRepo.failingChecks`); `null` for every check. */
   readonly checks: readonly CheckId[] | null;
+  /** Only failures whose summary holds one of these texts (`--error`); absent or empty for every error. */
+  readonly errors?: readonly string[];
+  /**
+   * Only each check's newest failure among those the rest selects
+   * (`--per-check`), so a count counts checks. Absent means every failure.
+   */
+  readonly perCheck?: boolean;
 }
 
 /**

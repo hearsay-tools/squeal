@@ -98,7 +98,9 @@ describe("the evals parser reads a grouped notice (row 011-109)", () => {
   it("is the real block: 91 checks counted by test file, one command", () => {
     expect(big).toContain("FAIL  91 checks with one error and location (91 tests)\n");
     expect(big).toContain("      13 tests in test/c0.test.ts\n");
-    expect(big).toContain("      Full list: squeal failures test --limit 91");
+    expect(big).toContain(
+      `      Full list: squeal failures test --error "${RESIZE}" --per-check --limit all\n`,
+    );
   });
 
   for (const [form, text] of forms(big))
