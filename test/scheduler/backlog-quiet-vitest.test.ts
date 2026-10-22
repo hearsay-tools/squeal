@@ -1,6 +1,7 @@
-import { appendFileSync } from "node:fs";
+import { appendFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { cancelled } from "../../src/runners/vitest/run.js";
 import { suite } from "./backlog-suite.js";
@@ -13,15 +14,20 @@ import { openHarness, openRepoStore, SLOW } from "./helpers.js";
  * later finds the lane waiting for quiet, with no backlog run between them
  * to cancel. Before it, the backlog's tier started again right after the
  * first edit's. (A `run --all --force` backlog would not do: an edit leaves
- * a forced queued file forced, in the backlog.)
+ * a forced queued file forced, in the backlog.) Only the tier the edit
+ * cancels runs 5 s files: 60 runs of them, the baseline's, the edits' and
+ * the last backlog's too, took 125 s against the 120 s timeout at Vitest's
+ * three workers on 4 CPUs (CI run 39695184172).
  */
 const TIER_SIZE = 4;
 const F0 = "test/f000.test.ts";
 
 describe("a lane waits for quiet on a real Vitest adapter (row 011-94)", SLOW, () => {
   it("8: a backlog tier cancelled by an edit, then a second edit 5 s later: no backlog run between them", async () => {
-    // 5 s each: the edit lands before any file of the tier ends, at any width.
-    const repo = suite(30, 5_000);
+    // 5 s each while `slow` exists: the edit lands before any file of the tier ends, at any width.
+    const slow = join(tmpdir(), `squeal-011-94-${process.pid}-${Date.now()}.slow`);
+    onTestFinished(() => rmSync(slow, { force: true }));
+    const repo = suite(30, 5_000, undefined, slow);
     let offset = 0;
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       tierSize: TIER_SIZE,
@@ -41,9 +47,11 @@ describe("a lane waits for quiet on a real Vitest adapter (row 011-94)", SLOW, (
       await h.batch(path);
     };
 
+    writeFileSync(slow, "");
     await edit("vitest.config.ts");
     await expect.poll(() => started.length, { timeout: 60_000 }).toBe(1);
     await edit(F0);
+    rmSync(slow);
     await expect.poll(() => h.runsOf(F0).length, { timeout: 60_000 }).toBe(3);
     const backlog = h.runner.runs.slice(base).find((run) => run.files.length === 30);
     expect(backlog?.report.failure).toBe(cancelled("backlog"));
