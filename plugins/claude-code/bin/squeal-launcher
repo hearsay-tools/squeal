@@ -22,9 +22,14 @@ command -v node >/dev/null 2>&1 || {
   echo "squeal: Node $NODE_FLOOR or later is needed, and node is not on the PATH" >&2
   exit 1
 }
-cli=$(node -e '
+# One Node finds the CLI and then runs it (005-75): a second Node start cost
+# each command about 0.06 s of CPU. The CLI sees the process as
+# `node --disable-warning=ExperimentalWarning <cli> <args>` gives it, so
+# `squeal start` spawns its daemon from the CLI's path, not this file's.
+exec node --disable-warning=ExperimentalWarning -e '
 const { existsSync, readFileSync, readdirSync, realpathSync } = require("node:fs");
 const { basename, dirname, join, sep } = require("node:path");
+const { pathToFileURL } = require("node:url");
 const env = process.env;
 const home = env.HOME ?? "";
 const cliOf = (dir) => join(dir, "dist", "cli", "squeal.mjs");
@@ -100,9 +105,11 @@ if (kept && compare(kept.version, run.version) < 0) {
     `squeal: running squeal ${run.version}; Codex sessions started on ${kept.version} run ${kept.version} until they restart.\n`,
   );
 }
-process.stdout.write(cliOf(run.dir));
-' "$0") || exit $?
-# `ps` runs the bundle of its own beside the CLI, which loads only its code (spec 014
-# goal 6); an older plugin has none.
-[ "${1-}" = ps ] && [ -f "${cli%/*}/ps.mjs" ] && cli="${cli%/*}/ps.mjs"
-exec node --disable-warning=ExperimentalWarning "$cli" "$@"
+// `ps` runs the bundle of its own beside the CLI, which loads only its code (spec 014
+// goal 6); an older plugin has none.
+const ps = join(run.dir, "dist", "cli", "ps.mjs");
+const cli = process.argv[2] === "ps" && existsSync(ps) ? ps : cliOf(run.dir);
+process.argv.splice(1, 1, cli);
+process.execArgv.splice(-2);
+import(pathToFileURL(cli).href);
+' "$0" "$@"
