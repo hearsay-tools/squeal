@@ -1,7 +1,7 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { isNewerVersion } from "../daemon/version.js";
-import { isRecord, linkedWorktreeDir } from "../fs/index.js";
+import { claudeLoaded, codexNewest, isNewerVersion } from "../daemon/version.js";
+import { linkedWorktreeDir } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { phaseOn } from "./discover.js";
@@ -28,8 +28,6 @@ const AWAIT_LOCK_MS = 130_000;
 /** C9: a departure grace of 3 s and a check of 5 s at most, so a minute is past any. */
 const DEPARTURE_MS = 60_000;
 const NOT_INSTALLED_MS = 60 * 60_000;
-/** `<plugins>/cache/<marketplace>/squeal/<version>/...` of a Claude Code or Codex install. */
-const CACHE = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/[^/]+\//;
 const NO_LOCKS = "the source has no lock state (D10)";
 const ONE_READING =
   "one of the window's two /proc/locks readings cannot be read, so a lock the other misses is unknown, not absent";
@@ -208,12 +206,11 @@ function olderOf(
   d: FoundDaemon,
   work: DaemonWork | null,
 ): { readonly reason: string } | string | null {
-  const m = CACHE.exec(d.script);
-  if (m === null || d.version === null) return null;
-  const [, plugins = "", harness = "", marketplace = ""] = m;
+  const { plugins, marketplace, harness } = d;
+  if (plugins === null || marketplace === null || d.version === null) return null;
   const newest =
     harness === "claude"
-      ? claudeInstalled(plugins, marketplace, d.root)
+      ? (claudeLoaded(plugins, marketplace, d.root)?.version ?? null)
       : codexNewest(plugins, marketplace);
   if (newest === null) {
     c.name(
@@ -235,41 +232,6 @@ function olderOf(
     return null;
   }
   return { reason: `version ${d.version}; ${harness} installs ${newest}` };
-}
-
-/** The user-scope entry, or the project one of `root`, as a session there loads it. */
-function claudeInstalled(
-  plugins: string,
-  marketplace: string,
-  root: AbsolutePath | null,
-): string | null {
-  let file: unknown;
-  try {
-    file = JSON.parse(readFileSync(join(plugins, "installed_plugins.json"), "utf8"));
-  } catch {
-    return null;
-  }
-  const entries =
-    isRecord(file) && isRecord(file.plugins) ? file.plugins[`squeal@${marketplace}`] : null;
-  for (const entry of Array.isArray(entries) ? entries : []) {
-    if (!isRecord(entry) || typeof entry.version !== "string") continue;
-    if (entry.scope === "user" || (entry.scope === "project" && entry.projectPath === root))
-      return entry.version;
-  }
-  return null;
-}
-
-/** The newest version directory beside its own. */
-function codexNewest(plugins: string, marketplace: string): string | null {
-  let versions: string[];
-  try {
-    versions = readdirSync(join(plugins, "cache", marketplace, "squeal"));
-  } catch {
-    return null;
-  }
-  let newest: string | null = null;
-  for (const v of versions) if (newest === null || isNewerVersion(v, newest)) newest = v;
-  return newest !== null && /^\d+\.\d+\.\d+$/.test(newest) ? newest : null;
 }
 
 /** D7 `hung`: serving, with a heartbeat past two intervals, on both readings. */

@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isRecord } from "../fs/index.js";
 
 /**
  * The root manifest's version, set by the plugin build's esbuild `define`
@@ -73,4 +74,77 @@ export function isNewerVersion(version: string, than: string): boolean {
 function versionParts(version: string): number[] | null {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
   return match === null ? null : match.slice(1).map(Number);
+}
+
+/**
+ * A `squeal@<marketplace>` entry of Claude Code's `installed_plugins.json`.
+ * A key the entry lacks, or holds as no string, is `null`.
+ */
+export interface ClaudeInstall {
+  readonly scope: string | null;
+  readonly projectPath: string | null;
+  readonly version: string | null;
+  readonly installPath: string | null;
+}
+
+/**
+ * The `squeal@<marketplace>` entries of `<plugins>/installed_plugins.json`,
+ * the file Claude Code writes in its plugins directory and Squeal never
+ * writes (002 D1); none when it is missing or cannot be read.
+ */
+export function claudeInstalls(plugins: string, marketplace: string): ClaudeInstall[] {
+  let file: unknown;
+  try {
+    file = JSON.parse(readFileSync(join(plugins, "installed_plugins.json"), "utf8"));
+  } catch {
+    // No Claude Code install, or a file this version cannot read.
+    return [];
+  }
+  const entries =
+    isRecord(file) && isRecord(file.plugins) ? file.plugins[`squeal@${marketplace}`] : null;
+  const text = (value: unknown) => (typeof value === "string" ? value : null);
+  return (Array.isArray(entries) ? entries : []).filter(isRecord).map((entry) => ({
+    scope: text(entry.scope),
+    projectPath: text(entry.projectPath),
+    version: text(entry.version),
+    installPath: text(entry.installPath),
+  }));
+}
+
+/**
+ * The entry a Claude Code session in `root` loads: the first with a version
+ * that is user scope, or project scope for `root` (005
+ * `research/wave-0-checks.md` 5); `null` when none is.
+ */
+export function claudeLoaded(
+  plugins: string,
+  marketplace: string,
+  root: string | null,
+): { readonly version: string; readonly scope: string } | null {
+  for (const { scope, projectPath, version } of claudeInstalls(plugins, marketplace)) {
+    if (version === null || scope === null) continue;
+    if (scope === "user" || (scope === "project" && root !== null && projectPath === root))
+      return { version, scope };
+  }
+  return null;
+}
+
+/**
+ * The newest version in the Codex plugin cache under `plugins`, by its
+ * directory names in `cache/<marketplace>/squeal`; names that are no plain
+ * `major.minor.patch` are passed over. `null` when it holds none.
+ */
+export function codexNewest(plugins: string, marketplace: string): string | null {
+  let names: string[];
+  try {
+    names = readdirSync(join(plugins, "cache", marketplace, "squeal"));
+  } catch {
+    // No Codex install, or none of this marketplace.
+    return null;
+  }
+  let newest: string | null = null;
+  for (const name of names)
+    if (versionParts(name) !== null && (newest === null || isNewerVersion(name, newest)))
+      newest = name;
+  return newest;
 }
