@@ -366,6 +366,7 @@ export const WORKTREE_META_ROWS = {
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
   slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+  holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
