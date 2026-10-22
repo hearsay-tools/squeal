@@ -42,14 +42,18 @@ export const SLOW_LOCK_FILE = "slow.lock";
 /**
  * The slot's directory: `squeal` in the daemon's `XDG_RUNTIME_DIR` when it is
  * set to an absolute path, as its socket follows it (`runtimeDir`), else the
- * per-user `/tmp/squeal-<uid>` (spec 001 D10). Spec 004 D2 as amended
+ * per-user `/tmp/squeal-<uid>` (spec 001 D10), or the `userDir` a reader of
+ * the pool names for it (`squeal ps`, 014 D7). Spec 004 D2 as amended
  * (004-16): a daemon started under another runtime directory, such as an
  * end-to-end test's inner daemon run by an outer daemon's slow file, has a
  * slot of its own, so the outer file holding its slot cannot starve it.
  */
-export function slowSlotDir(env: NodeJS.ProcessEnv = process.env): AbsolutePath {
+export function slowSlotDir(
+  env: NodeJS.ProcessEnv = process.env,
+  userDir: AbsolutePath = userTmpDir(),
+): AbsolutePath {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== undefined && xdg !== "" && isAbsolute(xdg) ? join(xdg, "squeal") : userTmpDir();
+  return xdg !== undefined && xdg !== "" && isAbsolute(xdg) ? join(xdg, "squeal") : userDir;
 }
 
 /**
