@@ -1,7 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { resolveCommonDir } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
-import { formatStatus, readStatus } from "../core/status/index.js";
+import { formatStatus, holdVerdictLine, readStatus } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import { plural } from "../core/text.js";
 import {
@@ -9,9 +9,11 @@ import {
   type CheckpointProgress,
   type CheckpointRecord,
   checkpointMetaKey,
+  type EpochMs,
   parseCheckpointProgress,
   type RevisionNumber,
   type RunAllResponse,
+  type StatusHold,
   type Store,
 } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
@@ -23,6 +25,7 @@ import {
   type FileVerdict,
   failuresText,
   gapText,
+  holdOfWait,
   noVerdictText,
   readClasses,
   readVerdict,
@@ -43,6 +46,8 @@ const PING_POLLS = 5;
 /** How a waited checkpoint ended for the CLI (spec 005 D1). */
 type Outcome =
   | { readonly kind: "ended"; readonly verdict: FileVerdict }
+  /** Row 011-73 (C6 as amended 2026-10-21): its files are queued while the worktree is on hold. */
+  | { readonly kind: "on-hold"; readonly hold: StatusHold }
   | { readonly kind: "abandoned" | "stopped" }
   | { readonly kind: "moved"; readonly revision: RevisionNumber }
   | { readonly kind: "deadline"; readonly verdict: FileVerdict };
@@ -134,13 +139,14 @@ export async function runCommand(
     return 0;
   }
   const outcome = await ended(root, socketPath, checkpoint, deadline);
-  const [line, code] = verdictLine(root, checkpoint, outcome, joined);
   const now = io.now ?? Date.now;
+  const command = statusCommand(io.env ?? process.env);
+  const [line, code] = verdictLine(root, checkpoint, outcome, joined, command, now());
   const status = readStatus(root, { now });
   // Task 001-403: an abandoned or incomplete checkpoint names the file it lacks and why.
   const gap = outcome.kind === "abandoned" || code === 3 ? gapText(status) : "";
   io.stdout(`${named} ${line}${gap}\n${started}\n`);
-  io.stdout(formatStatus(status, now(), statusCommand(io.env ?? process.env)));
+  io.stdout(formatStatus(status, now(), command));
   return code;
 }
 
@@ -164,9 +170,16 @@ function verdictLine(
   checkpoint: CheckpointRecord,
   outcome: Outcome,
   joined: Joined | null,
+  command: string,
+  now: EpochMs,
 ): [string, 0 | 1 | 3] {
   const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
   switch (outcome.kind) {
+    case "on-hold":
+      return [
+        `is queued and runs when the hold ends. ${holdVerdictLine(outcome.hold, now, command)}`,
+        3,
+      ];
     case "abandoned":
       return none(
         "it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped)",
@@ -365,7 +378,13 @@ function pollCheckpoint(
   if (revision > checkpoint.revision) return { kind: "moved", revision };
   if (end === "abandoned") return { kind: "abandoned" };
   const late = Date.now() >= deadline;
-  if (end !== "completed" && !late) return "open";
+  if (end !== "completed" && !late) {
+    // Row 011-73 (C6 as amended 2026-10-21): no tier starts on hold, so the wait returns with it.
+    const id = checkpoint.worktreeId;
+    const files = laneFiles(store, checkpoint) ?? undefined;
+    const hold = holdOfWait(store, id, () => store.testFileKeys.list(id, files), Date.now());
+    return hold === null ? "open" : { kind: "on-hold", hold };
+  }
   const verdict = readVerdict(store, checkpoint.worktreeId, laneFiles(store, checkpoint));
   const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
   if (end === "completed" && settled) return { kind: "ended", verdict };
