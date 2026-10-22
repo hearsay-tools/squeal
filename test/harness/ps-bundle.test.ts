@@ -38,6 +38,8 @@ describe("the ps bundle", () => {
       cwd: outdir,
       encoding: "utf8",
     });
+  /** Node 22 warns that SQLite is experimental, under each process's own pid (cand/0.1.252 CI). */
+  const samePid = (text: string) => text.replace(/^\(node:\d+\)/gm, "(node:PID)");
 
   it("holds ps's code and not the rest of the CLI", () => {
     const ps = output("cli/ps.mjs");
@@ -62,10 +64,10 @@ describe("the ps bundle", () => {
       const whole = run("squeal.mjs", args);
       expect(whole.status).toBeTypeOf("number");
       expect(whole.stdout + whole.stderr).toMatch(/squeal|\d+\.\d+\.\d+/);
-      expect({ code: ps.status, out: ps.stdout, err: ps.stderr }).toEqual({
+      expect({ code: ps.status, out: ps.stdout, err: samePid(ps.stderr) }).toEqual({
         code: whole.status,
         out: whole.stdout,
-        err: whole.stderr,
+        err: samePid(whole.stderr),
       });
     },
   );
