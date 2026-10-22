@@ -1,4 +1,5 @@
 import type { PsModel } from "./model.js";
+import { NODE_COMMS } from "./reads.js";
 import { NO_BOOT, sentenceDuration } from "./render-units.js";
 import type { PsFlag, PsFlagName, PsOrphan } from "./shape.js";
 import type { ProcessRow } from "./source.js";
@@ -16,7 +17,6 @@ const ORPHAN_WINDOW_MS = 1_000;
 const ORPHAN_AGE_MS = 60_000;
 /** C13: the reaper's grace and rounds come well within it. */
 const OVERDUE_MS = 60_000;
-const NODE_COMMS: ReadonlySet<string> = new Set(["MainThread", "node"]);
 const WAITER = /\/dist\/waiter\.mjs$/;
 
 /** What the process rules read of `flag`'s context. */
