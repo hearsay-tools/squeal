@@ -129,7 +129,8 @@ export function testFileFrames(store: Store, worktreeId: WorktreeId) {
     const identity = checkIdentity(check);
     const key = keys.get(identity);
     if (key === undefined || location === null) return undefined;
-    if (!rows.has(key)) rows.set(key, store.results.byKey(key));
+    // `usedAt` 0: status reads this in its read transaction, so it takes no write lock (011-113).
+    if (!rows.has(key)) rows.set(key, store.results.byKey(key, 0));
     const row = rows
       .get(key)
       ?.find((r) => r.outcome === "fail" && checkIdentity(r.check) === identity);
