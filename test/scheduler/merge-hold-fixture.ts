@@ -35,9 +35,9 @@ export const FILES: readonly CatchUpFile[] = [
 
 export const helperReturning = (n: number) => `export const helper = () => ${n};\n`;
 
-/** The repository, `side` and `main` apart on the helper, `main` checked out. */
-export function mergeRepo(): CatchUpRepo {
-  const repo = catchUpRepo(FILES);
+/** The repository of `files`, `side` and `main` apart on the helper, `main` checked out. */
+export function mergeRepo(files: readonly CatchUpFile[] = FILES): CatchUpRepo {
+  const repo = catchUpRepo(files);
   const { main } = repo;
   writeFileSync(join(main, HELPER), helperReturning(1));
   git(main, ["commit", "-qam", "helper"]);
@@ -61,8 +61,12 @@ export function gitMay(cwd: string, args: readonly string[]): number {
 }
 
 /** A side of `root` whose runs fail a file while a path of its closure holds a marker. */
-export function holdSide(repo: CatchUpRepo, root = repo.main): CatchUpSide {
-  const side = catchUpSide(repo, root, { files: FILES, hostSlots: 4, tierSize: 4 });
+export function holdSide(
+  repo: CatchUpRepo,
+  root = repo.main,
+  files: readonly CatchUpFile[] = FILES,
+): CatchUpSide {
+  const side = catchUpSide(repo, root, { files, hostSlots: 4, tierSize: 4 });
   const marked = (path: string) => {
     try {
       return readFileSync(join(root, path), "utf8").includes("<<<<<<<");
@@ -70,9 +74,9 @@ export function holdSide(repo: CatchUpRepo, root = repo.main): CatchUpSide {
       return false;
     }
   };
-  side.runner.beforeRun = (files) => {
-    for (const file of files) {
-      const paths = [file.path, ...(FILES.find((f) => f.path === file.path)?.imports ?? [])];
+  side.runner.beforeRun = (ran) => {
+    for (const file of ran) {
+      const paths = [file.path, ...(files.find((f) => f.path === file.path)?.imports ?? [])];
       if (paths.some(marked)) side.runner.failing.add(file.path);
       else side.runner.failing.delete(file.path);
     }
