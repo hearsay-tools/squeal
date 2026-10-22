@@ -332,10 +332,17 @@ export interface StatusHeader {
  * heartbeat is older than its interval."
  */
 export type DaemonLiveness =
-  | { readonly state: "alive"; readonly lastHeartbeatAt: EpochMs }
+  | {
+      readonly state: "alive";
+      readonly lastHeartbeatAt: EpochMs;
+      /** Row 011-34: its shutdown began while its heartbeat is still fresh. */
+      readonly stopping?: DaemonStopping;
+    }
   | {
       readonly state: "down";
       readonly since: EpochMs | null;
+      /** Row 011-34: its shutdown began, its heartbeat stopped, and it still holds its lock. */
+      readonly stopping?: DaemonStopping;
       /**
        * Task 001-156: a daemon a hook spawned at this time has not heartbeat
        * yet, and a registration said it is starting, or it was spawned
@@ -361,6 +368,28 @@ export type DaemonLiveness =
        */
       readonly died?: DaemonDeath;
     };
+
+/**
+ * Row 011-34 (011 C9 as amended 2026-10-20, gh-47): the recorded daemon is
+ * stopping, neither alive nor down. `state` keeps what its heartbeat says,
+ * so readers that switch on two values keep working; every text that says
+ * the daemon's state says this first.
+ */
+export interface DaemonStopping {
+  /** Its version, as its record names it. */
+  readonly from: string;
+  /** When its shutdown began. */
+  readonly since: EpochMs;
+  /** With a handoff claim for it (row 011-32): the version that follows. */
+  readonly to?: string;
+  /** With that claim: its bound. */
+  readonly boundAt?: EpochMs;
+  /**
+   * Past the claim's bound, or `HANDOFF_BOUND_MS` after `since` without a
+   * claim: the handoff did not finish, and `squeal start` finishes it.
+   */
+  readonly overdue: boolean;
+}
 
 /** What a daemon that died without shutting down was doing (task 001-263). */
 export interface DaemonDeath {
