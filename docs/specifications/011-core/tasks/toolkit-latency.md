@@ -35,3 +35,14 @@ Use /worker. Shape: slice. Outcome: a revision whose only changes are editor scr
 Read: 011 C2 and C4 step 5; `research/edit-latency.md` 1 and 3; `research/watch-mode-comparison.md` 3 (14 s thrown away and a 20.3 s quiet per vim open). Names: vim `.<name>.sw[a-p]` and `4913`, emacs `.#<name>`, untracked and not ignored. Seam: `cancelsBacklog` in `src/core/scheduler/backlog.ts` (a scratch-only revision changes no input that counts), and `quietQueued` in `quiet.ts` with its caller in `src/core/scheduler/revision.ts`. Own `backlog.ts`, `quiet.ts`, `src/core/scheduler/revision.ts`, one new module for the names, their tests, and one C4 step 5 sentence. Leave `refinement.ts` and `edit-cut.ts` (011-116) and `yields.ts` (wave 15) alone; if you need a change there, ask the coordinator.
 
 Done when: create and remove `D/.x.swp` (and `D/.#x`) while a backlog tier of a file that lists `D` runs; the tier completes and stores, and no quiet starts. A real edit in the same revision still cancels. A result whose listing differs at its end is still discarded.
+
+## 011-48, pytest half: the `adapter:pytest` case kind for the alarm (prerequisite of 007-55)
+
+Use /worker. Shape: slice. Outcome: a change to code the pytest alarm entry bundles can pass the key-format alarm, either because a case runs its changed lines with equal outputs or because a case's outputs differ and `PYTEST_ADAPTER_VERSION` is raised.
+
+Why now: 007-55 changes `src/runners/pytest/runtime/*.py`, and `test/keys/key-format.test.ts` fails it with "changed lines no case runs"; a version raise fails too, since no `adapter:pytest` case kind exists (row 011-48). The node:test half stays planned.
+
+Read: row 011-48 on the board; 011 C3 key format text; `research/key-format-guard.md`; `test/keys/validity/notes.md`; how `adapter:vitest` is built (`test/keys/validity/cases/adapter/vitest.ts`, `harness.ts`, `entries/`). Seam: a new `test/keys/validity/cases/adapter/pytest.ts` with real pytest runs on a fixture project, one case per decision the pytest adapter makes (closure, observed imports, environment, collection), and the direction rule where it withholds. Own `test/keys/validity/**` and `test/keys/key-format.test.ts`. Leave `src/runners/pytest/**` (007-55) alone.
+
+Done when: a change on an uncovered pytest adapter line is named; an overlay that changes a stored outcome fails its comparison and names `PYTEST_ADAPTER_VERSION`; the comparison against the last release passes; the tests run on Python 3.10 and 3.13.
+
