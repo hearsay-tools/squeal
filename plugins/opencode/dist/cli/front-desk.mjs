@@ -40,6 +40,8 @@ function parseRequest(line) {
     case "retry":
     case "run-slow":
     case "stop":
+    case "hold":
+    case "resume":
       return { type: request.type };
     // An older CLI's `after` and `resolvedSince` are ignored (task 001-258).
     case "sync":
@@ -72,6 +74,9 @@ function parseRequest(line) {
     case "sync-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "sync-status", requestId: request.requestId };
+    case "hold-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "hold-status", requestId: request.requestId };
     case "promote": {
       const { testFiles, withinMs } = request;
       if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
@@ -120,6 +125,7 @@ function createHandlers(context) {
   const requests = /* @__PURE__ */ new Map();
   const slowRequests = /* @__PURE__ */ new Map();
   const syncRequests = /* @__PURE__ */ new Map();
+  const holdRequests = /* @__PURE__ */ new Map();
   const runAll = (requestId, state) => {
     const answer2 = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -149,6 +155,15 @@ function createHandlers(context) {
     error: state.error,
     moves: true,
     incarnation: daemonIncarnation(context)
+  });
+  const hold = (requestId, state) => ({
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "hold",
+    requestId,
+    settled: state.holding !== null || state.error !== null,
+    holding: state.holding,
+    error: state.error
   });
   return (request) => {
     switch (request.type) {
@@ -243,6 +258,32 @@ function createHandlers(context) {
         if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
         return sync(request.requestId, state);
       }
+      case "hold": {
+        if (context.phase() === "stopping") return errorResponse("daemon is stopping");
+        if (context.requestHold === void 0) return errorResponse("this daemon cannot hold");
+        const requestId = randomUUID();
+        const state = { holding: null, error: null };
+        remember(holdRequests, requestId, state);
+        context.requestHold().then(
+          (holding) => {
+            state.holding = holding;
+          },
+          (error) => {
+            state.error = error instanceof Error ? error.message : String(error);
+          }
+        );
+        return hold(requestId, state);
+      }
+      case "hold-status": {
+        const state = holdRequests.get(request.requestId);
+        if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
+        return hold(request.requestId, state);
+      }
+      case "resume":
+        if (context.requestResume === void 0) return errorResponse("this daemon cannot hold");
+        context.requestResume().catch(() => {
+        });
+        return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "resume" };
       case "promote":
         if (context.requestPromotion === void 0)
           return errorResponse("this daemon cannot promote");
@@ -375,6 +416,7 @@ var phase = "starting";
 var waiting = /* @__PURE__ */ new Map();
 var waitingSlow = /* @__PURE__ */ new Map();
 var waitingSync = /* @__PURE__ */ new Map();
+var waitingHold = /* @__PURE__ */ new Map();
 var server = null;
 function bind(identity) {
   const handle = createHandlers({
@@ -399,6 +441,12 @@ function bind(identity) {
       waitingSync.set(id, { resolve, reject });
       post({ type: "sync", id });
     }),
+    requestHold: () => new Promise((resolve, reject) => {
+      const id = randomUUID2();
+      waitingHold.set(id, { resolve, reject });
+      post({ type: "hold", id });
+    }),
+    requestResume: async () => post({ type: "resume" }),
     onActivity: () => post({ type: "activity" }),
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
@@ -448,6 +496,13 @@ function receive(message) {
       waitingSync.delete(message.id);
       if (message.answer !== null) entry?.resolve(message.answer);
       else entry?.reject(new Error(message.error ?? "sync failed"));
+      return;
+    }
+    case "hold-result": {
+      const entry = waitingHold.get(message.id);
+      waitingHold.delete(message.id);
+      if (message.holding !== null) entry?.resolve(message.holding);
+      else entry?.reject(new Error(message.error ?? "hold failed"));
       return;
     }
     case "close":
