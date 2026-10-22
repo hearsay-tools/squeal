@@ -1,8 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import { isRecord } from "../fs/index.js";
+import { isRecord, runGit, splitNul } from "../fs/index.js";
 import type {
+  AbsolutePath,
   InvalidatedPath,
   InvalidateResult,
   RunnerAdapter,
@@ -166,6 +167,7 @@ const VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]
  * runner failure "project without Vitest" applies only when none is. The
  * daemon builds the Vitest runner when this holds or when no other runner is
  * configured, so a project with neither still gets that failure as a note.
+ * `squeal setup --plan` lists Vitest by this rule too (005 D3 step 2).
  */
 export function vitestDetected(root: string): boolean {
   let names: string[];
@@ -175,15 +177,62 @@ export function vitestDetected(root: string): boolean {
     return false;
   }
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
-  let manifest: unknown;
-  try {
-    manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-  } catch {
-    return false;
-  }
+  return listsVitest(readManifest(join(root, "package.json")));
+}
+
+/** A tracked `package.json`, by its directory relative to the root (`""` for the root). */
+export interface ManifestAt {
+  readonly dir: string;
+  readonly value: unknown;
+}
+
+/**
+ * Spec 003 D7 as amended 2026-10-22 (row 005-79): the directories below the
+ * root whose manifest lists `vitest`, sorted, when `vitestDetected` does not
+ * hold. Squeal loads Vitest from the root only, so it runs none of their
+ * tests. The daemon's note and the setup plan's line both come from here.
+ */
+export function vitestBelowRoot(root: string, manifests: readonly ManifestAt[]): string[] {
+  if (vitestDetected(root)) return [];
+  return manifests
+    .filter((m) => m.dir !== "" && listsVitest(m.value))
+    .map((m) => m.dir)
+    .sort();
+}
+
+/** `vitestBelowRoot` over the tracked manifests outside `node_modules`, as the daemon reads them. */
+export async function readVitestBelowRoot(root: AbsolutePath): Promise<string[]> {
+  if (vitestDetected(root)) return [];
+  const tracked = splitNul(await runGit(root, ["ls-files", "-z", "--", ":(glob)**/package.json"]));
+  const manifests = tracked
+    .filter((path) => !path.split("/").includes("node_modules"))
+    .map((path) => ({
+      dir: posix.dirname(path).replace(/^\.$/, ""),
+      value: readManifest(join(root, path)),
+    }));
+  return vitestBelowRoot(root, manifests);
+}
+
+/** The note on `vitestBelowRoot`'s directories: what is not run, why, and the fix. */
+export function vitestBelowRootNote(dirs: readonly string[]): string {
+  const list = dirs.join(", ");
+  return `Vitest in ${list} is not run: Squeal loads Vitest from the root only, and the root has no Vitest config and no vitest in package.json. To run ${dirs.length === 1 ? "it" : "them"}, add a root vitest.config.ts whose projects name ${list}, and vitest to the root package.json`;
+}
+
+/** `vitest` in a manifest's `dependencies` or `devDependencies`. */
+function listsVitest(manifest: unknown): boolean {
   if (!isRecord(manifest)) return false;
   return ["dependencies", "devDependencies"].some((field) => {
     const deps = manifest[field];
     return isRecord(deps) && Object.hasOwn(deps, "vitest");
   });
+}
+
+/** The parsed JSON at `path`; `null` when it is missing or not JSON. */
+function readManifest(path: string): unknown {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
 }

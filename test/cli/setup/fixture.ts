@@ -148,6 +148,50 @@ export function cezarionShaped(files: Readonly<Record<string, string>> = {}): st
   return root;
 }
 
+/** The pytest projects of `toolkitShaped`'s config: the root's `testpaths` covers `plugin-tools`. */
+export const TOOLKIT_PYTEST = [
+  { name: "root", include: ["tests/**/test_*.py", "plugin-tools/**/test_*.py"] },
+  { name: "plugin-tools-a", cwd: "plugin-tools/a", include: ["tests/**/test_*.py"] },
+];
+
+/**
+ * toolkit-dev at session c92fddaf (rows 005-79 and 005-80), reduced: a root
+ * `package.json` with scripts only, whose `test:node` chains `node --test`
+ * into a Vitest below the root; a root pytest project whose `testpaths`
+ * covers a nested one; a config with `"nodeTest": []` and both pytest
+ * projects. `files` adds or replaces files, as `squealShaped` takes them.
+ */
+export function toolkitShaped(files: Readonly<Record<string, string>> = {}): string {
+  const root = scratch("squeal-setup-toolkit-");
+  initRepo(root, {
+    "package.json": json({
+      name: "toolkit",
+      private: true,
+      scripts: {
+        "test:node":
+          "node --test .github/scripts/*.test.js && npm --prefix tools/generator run test",
+      },
+    }),
+    ".gitignore": "node_modules/\n",
+    ".github/scripts/release.test.js": "\n",
+    "tools/generator/package.json": json({
+      name: "generator",
+      scripts: { test: "vitest run" },
+      devDependencies: { vitest: "^3.0.0" },
+    }),
+    "tools/generator/vitest.config.ts": "export default {};\n",
+    "tools/generator/src/render.test.ts": "\n",
+    "pyproject.toml": '[tool.pytest.ini_options]\ntestpaths = ["tests", "plugin-tools"]\n',
+    "tests/test_root.py": "\n",
+    "plugin-tools/a/pyproject.toml": '[tool.pytest.ini_options]\ntestpaths = ["tests"]\n',
+    "plugin-tools/a/tests/test_one.py": "\n",
+    "plugin-tools/a/tests/test_two.py": "\n",
+    "squeal.config.json": json({ nodeTest: [], pytest: TOOLKIT_PYTEST }),
+    ...files,
+  });
+  return root;
+}
+
 /** An environment with a scratch HOME, the named harness CLIs on PATH and nothing else. */
 export function harnessEnv(
   harnesses: readonly ("claude" | "codex")[] = [],

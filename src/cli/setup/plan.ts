@@ -2,9 +2,9 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadPolicy, POLICY_FILE } from "../../core/daemon/policy.js";
 import { isRecord } from "../../core/fs/index.js";
-import type { AbsolutePath, Policy } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/index.js";
 import { type CodexHookTrust, readCodexTrust } from "../codex/trust.js";
-import { seedNodeTest } from "../node-test-seed.js";
+import type { SeededProject } from "../node-test-seed.js";
 import { PLUGIN_ID } from "../plugin-id.js";
 import { BLOCK_VERSION, instructionFiles } from "./block.js";
 import type { BuildOutputCandidate } from "./build-outputs.js";
@@ -12,7 +12,8 @@ import { slowCandidates } from "./candidates.js";
 import { scanGates, squealLine } from "./gates.js";
 import { type HarnessFact, readHarnesses } from "./harnesses.js";
 import { type PytestRunner, pytestRunners } from "./pytest.js";
-import { otherWorktrees, type RepoFacts, readJson, readRepoFacts } from "./repo.js";
+import { otherWorktrees, readJson, readRepoFacts } from "./repo.js";
+import { nodeTestProjects, readRunners, warmupOf } from "./runners.js";
 import { testFileUniverse, unselected } from "./test-globs.js";
 
 /*
@@ -50,8 +51,14 @@ export interface SetupPlan {
 }
 
 export interface Runners {
-  /** `vitest` in a manifest's dependencies, or a Vitest config at the root. */
+  /** Vitest as 003 D7 detects it, as the daemon does (`vitestDetected`, row 005-79). */
   readonly vitest: boolean;
+  /**
+   * Row 005-79 (003 D7 as amended 2026-10-22): directories below the root
+   * whose `package.json` lists `vitest` while `vitest` is false. Squeal loads
+   * Vitest from the root only and runs none of their tests. Absent from older plans.
+   */
+  readonly vitestBelowRoot?: readonly string[];
   /** `config` when `squeal.config.json` declares `nodeTest`; else what `squeal init` would seed. */
   readonly nodeTest: readonly {
     readonly name: string;
@@ -59,8 +66,32 @@ export interface Runners {
     readonly include: readonly string[];
     readonly source: "config" | "seed";
   }[];
+  /** Row 005-80: the `node --test` scripts the config leaves out. Absent from older plans. */
+  readonly nodeTestLeftOut?: NodeTestLeftOut;
   /** Spec 007 D1: `config` when `squeal.config.json` lists `pytest` projects; else what setup would seed. */
   readonly pytest?: readonly PytestRunner[];
+  /** Row 005-80: each pair of `pytest` projects that select the same test files. Absent from older plans. */
+  readonly pytestOverlaps?: readonly PytestOverlap[];
+}
+
+/**
+ * While the config declares no node:test project, each `package.json`
+ * script that runs `node --test` (003 D1): empty once it declares one.
+ */
+export interface NodeTestLeftOut {
+  /** The seed's note on each refused script, and one per script it would take. */
+  readonly notes: readonly string[];
+  /** The `nodeTest` entry for each, as `squeal init` prints it: a refused one's to complete by hand. */
+  readonly templates: readonly SeededProject[];
+}
+
+/** Two pytest projects that both select some test files: each runs them, once per project. */
+export interface PytestOverlap {
+  readonly projects: readonly [string, string];
+  /** How many tracked test files both select. */
+  readonly testFiles: number;
+  /** How to run each once, as one clause. */
+  readonly fix: string;
 }
 
 export interface ConfigFact {
@@ -174,8 +205,11 @@ export type CodexTrust = (
 export interface Warmup {
   /** `store` when a daemon listed the test files; else counted from the tracked files. */
   readonly source: "store" | "config-text" | "default";
+  /** One per project and test file, as the daemon runs them (row 005-80). */
   readonly testFiles: number;
-  /** Test files a warm-up would run: those without a current result here. */
+  /** The distinct test-file paths among them (row 005-80). Absent from older plans. */
+  readonly paths?: number;
+  /** Of `testFiles`, those a warm-up would run: without a current result here. Never negative. */
   readonly withoutCurrentResult: number;
 }
 
@@ -199,9 +233,10 @@ export async function readPlan(
   const facts = await readRepoFacts(root);
   const { policy, problems } = loadPolicy(root);
   const raw = readJson(join(root, POLICY_FILE));
-  const projects = nodeTestProjects(facts, policy, raw);
+  const nodeTest = nodeTestProjects(facts, policy, raw);
+  const { projects } = nodeTest;
   const pytest = pytestRunners(facts, policy, raw, options.env);
-  const runners: Runners = { ...readRunners(facts, projects), pytest };
+  const runners = readRunners(facts, nodeTest, pytest);
   const exists = existsSync(join(root, POLICY_FILE));
   const slow = await slowCandidates(facts, policy, runners);
   const config: ConfigFact = {
@@ -233,7 +268,6 @@ export async function readPlan(
         : []),
     ],
   };
-  const { testFiles } = facts;
   const instructions = instructionFiles(root, facts.tracked);
   const { gates, mentions } = scanGates(root, facts.tracked, {
     nodeTest: runners.nodeTest.length > 0,
@@ -253,11 +287,7 @@ export async function readPlan(
     slow,
     excluded: { vitest: policy.vitest.exclude },
     codexTrust: await codexTrust(root, harnesses, options),
-    warmup: {
-      source: testFiles.source,
-      testFiles: testFiles.paths.length,
-      withoutCurrentResult: testFiles.paths.length - (testFiles.current ?? 0),
-    },
+    warmup: warmupOf(facts, runners, [...projects, ...pytest]),
     outdated: [...outdated(config, instructions), ...unselected(policy, universe)],
   };
   return { plan, testFiles: universe };
@@ -273,40 +303,6 @@ async function codexTrust(
     return { state: "not-checked", command: TRUST_COMMAND };
   }
   return { ...(await readCodexTrust(root, options.env, PLUGIN_ID)), command: TRUST_COMMAND };
-}
-
-/** The node:test projects the config declares, else those `squeal init` would seed. */
-function nodeTestProjects(facts: RepoFacts, policy: Policy, raw: unknown) {
-  const declared = isRecord(raw) && "nodeTest" in raw;
-  return declared
-    ? policy.nodeTest.map((p) => ({ ...p, source: "config" as const }))
-    : seeded(facts.root).map((p) => ({ ...p, source: "seed" as const }));
-}
-
-function readRunners(facts: RepoFacts, projects: ReturnType<typeof nodeTestProjects>): Runners {
-  const deps = (value: unknown) => (isRecord(value) ? Object.keys(value) : []);
-  const vitest =
-    facts.manifests.some((m) =>
-      [...deps(m.value.dependencies), ...deps(m.value.devDependencies)].includes("vitest"),
-    ) || facts.tracked.some((path) => /^vite(st)?\.config\.[cm]?[jt]s$/.test(path));
-  return {
-    vitest,
-    nodeTest: projects.map((p) => ({
-      name: p.name,
-      cwd: p.cwd ?? "",
-      include: p.include,
-      source: p.source,
-    })),
-  };
-}
-
-/** What `squeal init` would seed; none when a manifest cannot be read, as init then reports. */
-function seeded(root: AbsolutePath) {
-  try {
-    return seedNodeTest(root).projects;
-  } catch {
-    return [];
-  }
 }
 
 async function configElsewhere(root: AbsolutePath): Promise<string | null> {
