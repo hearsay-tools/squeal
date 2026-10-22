@@ -31,3 +31,15 @@ Seam: a cancel that leaves the scheduler open, beside `#cancelTiers` (`src/core/
 Owns: `src/cli/hold.ts` (new), `src/cli/main.ts` (the command table and `--help`), `src/cli/start.ts`, `src/core/daemon/` (`protocol.ts`, `handlers.ts`, `daemon.ts`), `src/core/scheduler/scheduler.ts`, `hold.ts`, `hold-rows.ts` (the command row's writer), `commands.md` in the three plugin copies (`plugins/{claude-code,codex,pi}/skills/squeal/references/`), their tests, notes under `tasks/011-74/`. Not yours: W1's files, the toolkit rows' files above, the primer (005's), the board, spec text, bundles, version. No `npm run build`.
 
 Done when: R3's tests 1 to 7 pass; test 8's RSS is measured and in the notes; `test/keys/key-format.test.ts` passes; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+## R1: review of cand/0.1.269
+
+Use /reviewer. Shape: review. Pinned to `cand/0.1.269` at c41c365095380ed988078b0b94ea9449f650f836; the range is `origin/main..c41c36509`: W1's ten commits (011-73, worker 0288f1ff), W2's four (011-74, worker 0167bfa7), the release commit (0.1.269, bundles) and one docs commit (011 C6 and C9, `status.md`).
+
+Read `tasks/wave-16.md` (W1, W2), the notes under `tasks/011-73/` and `tasks/011-74/`, board rows 011-73 and 011-74, `tasks/011-61/design.md` sections 2 to 4 (R2's tests 1 to 7, R3's tests 1 to 8), spec 011 C6, C8, C9 (*Holds*) and C15 as amended, and the two new `status.md` lines. Check that:
+- 011-73: status, `--json`, every wait (`status --wait` with and without paths, `status <path>`, `run --all --wait`) and Stop's wait name the hold and exit 3 at once; no held file reads FAIL; a hold's start and end are told once each per consumer, and a hold change at Stop is news as a liveness change is; the merge row from a dead or earlier daemon is not shown;
+- 011-74: the cancel leaves the scheduler open, cancels Vitest tiers (fast and slow) and re-queues their files, lets a node:test or pytest slot finish and starts none after it; the wrapper's exit codes, signals and `--max`; a holder judged gone (missing, PID reused, zombie) at heartbeat and start; a daemon started during a hold starts on hold; `squeal start` ends every hold; `squeal stop` leaves the row;
+- the two rows agree: W1 reads the command row W2 writes (`CommandHoldEntry` in `hold-rows.ts`), and W1's `gone` and `expired` judge as W2's prune does;
+- `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is 0.1.269 in all eight places; the bundles match the tree; the four launchers are byte-identical.
+
+Run `npm ci`, then the test files W1 and W2 added or changed, directly; `test/e2e/merge-hold.test.ts` runs the committed bundle. The full suite is CI on the candidate and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-w16.log`); a gate log names only failing files. Rows 011-111 and 006-95 are known flakes. Write `reviews/0.1.269.md` with a PASS or FAIL verdict and commit it alone.
