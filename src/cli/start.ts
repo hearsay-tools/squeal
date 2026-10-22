@@ -28,7 +28,8 @@ const SPAWN_WAIT_MS = 10_000;
  * `squeal start [root]`: clears the mark `squeal stop` left (task 011-08)
  * and ends every `squeal hold` (row 011-74; a running daemon is asked to
  * resume, a new one reads none), makes sure a daemon serves the worktree,
- * then prints its status. Exit code
+ * then prints its status: for one it spawned, once the store records it
+ * (`served`, row 011-111). Exit code
  * 0 once a daemon answers, 1 otherwise. A stopping daemon is never said
  * alive: `start` finishes its handoff (`finishHandoff`, row 011-34), within
  * `bounds`, as long as `squeal stop` waits.
@@ -63,15 +64,9 @@ export async function startCommand(
   if (result === "alive") {
     await askDaemon(await daemonSocket(root), { type: "resume" }).catch(() => null);
   }
-  if (result === "spawned") {
-    const deadline = Date.now() + SPAWN_WAIT_MS;
-    while ((await probeDaemon(root, 100)).state !== "alive") {
-      if (Date.now() > deadline) {
-        io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer\n`);
-        return 1;
-      }
-      await sleep(50);
-    }
+  if (result === "spawned" && !(await served(root, Date.now() + SPAWN_WAIT_MS, () => true))) {
+    io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer\n`);
+    return 1;
   }
   io.stdout(`Squeal daemon ${result} for ${root}\n\n`);
   io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
@@ -120,9 +115,8 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
  * successor stays the only one that waits. Nor does `start` claim or spawn
  * with the lock wait once a daemon registered after the stopping one
  * (`claims`), which ended the handoff. It prints the status once the store
- * records that daemon (`registered`, row 011-111), or at the bound once it
- * answered.
- * Past that bound with none answering it says what holds the lock, as
+ * records that daemon, or at the bound once it answered (`served`, row
+ * 011-111). Past that bound with none answering it says what holds the lock, as
  * `squeal stop` does, and exits 1. A daemon before 0.1.200 finishes its tier
  * first, which only this bound covers.
  */
@@ -152,15 +146,8 @@ async function finishHandoff(
   }
   const own = squealVersion();
   const deadline = Date.now() + bounds.socketMs + bounds.lockMs;
-  for (;;) {
-    const probe = await probeDaemon(root, 100);
-    const answered = probe.state === "alive" && follows(probe.ping, old, own);
-    if (answered && registered(root, probe.ping)) break;
-    if (Date.now() > deadline) {
-      if (answered) break;
-      return stillHeld(root, stopping, marks, io, bounds);
-    }
-    await sleep(50);
+  if (!(await served(root, deadline, (ping) => follows(ping, old, own)))) {
+    return stillHeld(root, stopping, marks, io, bounds);
   }
   const { from } = stopping;
   const took = ((performance.now() - began) / 1_000).toFixed(1);
@@ -179,11 +166,27 @@ function follows(ping: PingResponse, old: number | null, own: string): boolean {
 }
 
 /**
- * Row 011-111: whether the store records the daemon of `ping`. A daemon
- * answers on its socket before it registers, and until then the handoff's
- * claim stands, so status says it hands over (C9); from its registration on,
- * status reads it serving.
+ * Row 011-111 (C9): waits until a daemon whose ping `accepts` answers and
+ * the store records it, then `true`; at `deadline`, whether one answered. A
+ * daemon answers on its socket before it registers. Until then status reads
+ * no daemon, or in a handoff its claim, so it says the daemon hands over;
+ * from its registration on, status reads it serving.
  */
+async function served(
+  root: AbsolutePath,
+  deadline: number,
+  accepts: (ping: PingResponse) => boolean,
+): Promise<boolean> {
+  for (;;) {
+    const probe = await probeDaemon(root, 100);
+    const answered = probe.state === "alive" && accepts(probe.ping);
+    if (answered && registered(root, probe.ping)) return true;
+    if (Date.now() > deadline) return answered;
+    await sleep(50);
+  }
+}
+
+/** Whether the store records the daemon of `ping`: its start time, as `follows` reads it. */
 function registered(root: AbsolutePath, ping: PingResponse): boolean {
   return recordedDaemon(root, STATUS_BUSY_TIMEOUT_MS)?.startedAt === ping.startedAt;
 }
