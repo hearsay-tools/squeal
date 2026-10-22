@@ -60,6 +60,37 @@ it("holds while the flag exists", async () => {
 `;
 }
 
+/** A process's parent: its pid and arguments. */
+interface Parent {
+  readonly pid: number;
+  readonly args: string;
+}
+
+/** The parent of `pid`, read while both run; `null` once either is gone. */
+function parentOf(pid: number): Parent | null {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    const parent = Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[1]);
+    const args = readFileSync(`/proc/${parent}/cmdline`, "utf8").replaceAll("\0", " ").trim();
+    return { pid: parent, args };
+  } catch {
+    return null;
+  }
+}
+
+/** Each successor by who spawned it: this test's hooks, `squeal start` (pid `start`), or its parent. */
+function sources(successors: ReadonlyMap<number, Parent | null>, start: number | undefined) {
+  const by = (parent: Parent | null) =>
+    parent === null
+      ? "a parent not read"
+      : parent.pid === process.pid
+        ? "this test's hooks"
+        : parent.pid === start
+          ? "squeal start"
+          : `pid ${parent.pid} ${parent.args}`;
+  return [...successors].map(([pid, parent]) => `pid ${pid} from ${by(parent)}`).join("; ");
+}
+
 const passing = (name: string) =>
   `import { expect, it } from "vitest";\nit("${name}", () => expect(1).toBe(1));\n`;
 
@@ -139,8 +170,8 @@ describe.runIf(process.platform === "linux")(
         );
         servedAt = performance.now();
       })();
-      // Every successor process and every status reading until the successor serves.
-      const successors = new Set<number>();
+      // Every successor process, with its parent, and every status reading until the successor serves.
+      const successors = new Map<number, Parent | null>();
       const readings: DaemonLiveness[] = [];
       let settled = false;
       void handover.finally(() => {
@@ -148,7 +179,7 @@ describe.runIf(process.platform === "linux")(
       });
       while (!settled) {
         for (const { pid } of findProcesses(`daemon ${repo.root}`, "--await-lock")) {
-          successors.add(pid);
+          if (!successors.has(pid)) successors.set(pid, parentOf(pid));
         }
         const s = readStatus(repo.root as AbsolutePath);
         if (s.available) readings.push(s.daemon);
@@ -156,9 +187,11 @@ describe.runIf(process.platform === "linux")(
       }
       await handover;
 
-      // One successor (row 011-32).
+      const started = startRun as ReturnType<typeof squeal> | null;
+      if (started === null) throw new Error("start never ran");
+      // One successor (row 011-32); a second names its source, the hooks or `start` (row 011-110).
       expect(lockWaits).toHaveLength(1);
-      expect(successors.size).toBe(1);
+      expect(successors.size, sources(successors, started.child.pid)).toBe(1);
       // The old daemon out within 15 s with its tier cancelled (row 011-31).
       expect(await exitWithin(old, STEP_DOWN_WITHIN_MS, repo)).toEqual({ code: 0, signal: null });
       // Status said it hands over with the record cleared and the lock held (row 011-34).
@@ -167,8 +200,6 @@ describe.runIf(process.platform === "linux")(
         stopping: { from: "0.1.0", to: HOOKS, overdue: false },
       });
       // `start` never printed alive above a snapshot that said no daemon or a handoff.
-      const started = startRun as ReturnType<typeof squeal> | null;
-      if (started === null) throw new Error("start never ran");
       expect((await started.exited).code, started.stderr()).toBe(0);
       const out = started.stdout();
       console.log(
