@@ -5,7 +5,7 @@ import type { CaseKind } from "./case.js";
 import { CASES } from "./cases/index.js";
 import { compareTrees, failures, reportedChanges, wordingChanges } from "./compare.js";
 import { versionName } from "./components.js";
-import { execute, type Side } from "./sides.js";
+import { driverFile, execute, type Side } from "./sides.js";
 import { extractTree } from "./trees.js";
 
 /*
@@ -54,7 +54,7 @@ try {
   const own = cases.filter((c) => c.kind === "accept");
   if (own.length > 0 && result.fired) {
     const dir = join(work, "run", "baseline");
-    const side = { name: "baseline", tree: baseline, dir, file: join(dir, "driver.mjs") } as Side;
+    const side = { name: "baseline", tree: baseline, dir, file: driverFile(dir) } as Side;
     const decided = execute(join(work, "run"), side, "decide", cases, join(dir, "run"), "own");
     for (const c of own)
       console.log(
