@@ -20,7 +20,6 @@ export type MemoryKind = "private" | "rss";
 export interface ProcessRow {
   readonly pid: number;
   readonly ppid: number;
-  readonly pgid: number;
   /** The command name: `MainThread` for Node 24's main thread, `node`, `git`, ... */
   readonly comm: string;
   /** `R`, `S`, `T`, `Z`, ...; `null` where the platform does not give it. */
@@ -65,13 +64,12 @@ export interface LockEntry {
   readonly blocked: boolean;
 }
 
-/** One listening unix socket of `ss -xle` (D2 step 4). */
+/**
+ * One listening unix socket of `ss -xle` (D2 step 4), by the VFS inode of
+ * its file, which `stat` of the renamed file gives: the name it was bound
+ * at is a staging name, before the daemon renamed it into place.
+ */
 export interface UnixListener {
-  /** The name it was bound at: a staging name, before the daemon renamed it into place. */
-  readonly path: string;
-  /** What `/proc/<pid>/fd` shows as `socket:[<inode>]`. */
-  readonly socketInode: number;
-  /** The VFS inode of its file, which `stat` of the renamed file gives. */
   readonly fileInode: number;
 }
 

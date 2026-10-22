@@ -157,7 +157,6 @@ describe("identity (D2)", () => {
     writeProcesses(host, [daemonProcess({ pid: 420, root: alpha.root, lockPath: beta.lockPath })]);
     expect(daemonOf(420)).toMatchObject({
       worktreeId: beta.id,
-      idFrom: "lock-fd",
       lockPath: beta.lockPath,
       commonDir: beta.commonDir,
       storePath: beta.storePath,
@@ -168,7 +167,6 @@ describe("identity (D2)", () => {
     writeProcesses(host, [daemonProcess({ pid: 430, root: alpha.root })]);
     expect(daemonOf(430)).toMatchObject({
       worktreeId: alpha.id,
-      idFrom: "root-hash",
       lockPath: alpha.lockPath,
       commonDir: alpha.commonDir,
       storePath: alpha.storePath,
@@ -182,7 +180,7 @@ describe("identity (D2)", () => {
     ]);
     const discovery = run();
     for (const d of discovery.daemons) {
-      expect(d).toMatchObject({ worktreeId: null, idFrom: null, lockPath: null, storePath: null });
+      expect(d).toMatchObject({ worktreeId: null, lockPath: null, storePath: null });
     }
     expect(discovery.unknown).toEqual([
       { what: "daemon 440 worktreeId", why: expect.stringContaining("cannot be read") },
@@ -297,9 +295,9 @@ describe("phases (D2 step 3 and its table)", () => {
     ]);
     writeLocks(host, [lockLine(1, 520, key(alpha.lockPath))]);
     const daemons = run().daemons;
-    expect(daemons.map((d) => [d.row.pid, d.worktreeId, d.idFrom, d.holdsLock])).toEqual([
-      [520, alpha.id, "lock-fd", true],
-      [521, alpha.id, "root-hash", false],
+    expect(daemons.map((d) => [d.row.pid, d.worktreeId, d.holdsLock])).toEqual([
+      [520, alpha.id, true],
+      [521, alpha.id, false],
     ]);
   });
 
@@ -308,7 +306,7 @@ describe("phases (D2 step 3 and its table)", () => {
     const bare = withoutLocks(source);
     const discovery = discover(bare, bare.processTable(), host.places);
     const [d] = discovery.daemons;
-    expect(d).toMatchObject({ worktreeId: alpha.id, idFrom: "root-hash", holdsLock: null });
+    expect(d).toMatchObject({ worktreeId: alpha.id, holdsLock: null });
     expect(discovery.unknown).toEqual([
       { what: "daemon lock holders", why: expect.stringContaining("heartbeat") },
     ]);

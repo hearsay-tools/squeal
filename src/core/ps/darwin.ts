@@ -61,8 +61,9 @@ const PS: readonly string[] = [
   "-o",
   "pid=,ppid=,pgid=,uid=,nice=,time=,rss=,lstart=,command=",
 ];
+/** `pid ppid pgid uid nice time rss lstart command`; the pgid is read past. */
 const ROW =
-  /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(-?\d+)\s+(\S+)\s+(\d+)\s+[A-Z][a-z]{2}\s+([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})(?:\s+(.*))?$/;
+  /^\s*(\d+)\s+(\d+)\s+\d+\s+(\d+)\s+(-?\d+)\s+(\S+)\s+(\d+)\s+[A-Z][a-z]{2}\s+([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})(?:\s+(.*))?$/;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** `M:SS.cc` on macOS, minutes past 59 included; `[[DD-]HH:]MM:SS` elsewhere. */
 const TIME = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d{2})(?:\.(\d+))?$/;
@@ -189,23 +190,8 @@ class DarwinSource implements PsSource {
   #line(text: string): PsLine | null {
     const m = ROW.exec(text);
     if (m === null) return null;
-    const [
-      ,
-      pid,
-      ppid,
-      pgid,
-      uid,
-      nice,
-      time = "",
-      rss,
-      month = "",
-      day,
-      h,
-      min,
-      s,
-      year,
-      command = "",
-    ] = m;
+    const [, pid, ppid, uid, nice, time = "", rss, month = "", day, h, min, s, year, command = ""] =
+      m;
     const cpuTicks = ticksOf(time);
     const start = localTime(Number(year), month, Number(day), [h, min, s].map(Number));
     if (cpuTicks === null || start === null) return null;
@@ -215,7 +201,6 @@ class DarwinSource implements PsSource {
       row: {
         pid: Number(pid),
         ppid: Number(ppid),
-        pgid: Number(pgid),
         comm: basename(args?.[0] ?? ""),
         state: null,
         startTicks: Math.round(((start - (this.#boot ?? 0)) * CLOCK_TICKS) / 1000),
