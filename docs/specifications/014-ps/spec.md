@@ -122,7 +122,7 @@ Every rule is read-only, from `/proc`, `/proc/locks`, `ls` and `stat`, and the r
 |---|---|---|
 | `root-gone` | the root, or the `gitdir` its `.git` names, is missing | `kill <pid>` (SIGTERM runs the shutdown order; `squeal stop` refuses a missing root) |
 | `install-gone` | the bundle directory in its arguments is missing | `squeal stop <root>` |
-| `older` | its version is older than the newest one installed for its harness (Claude Code: `installed_plugins.json`; Codex: the newest cache directory) | `squeal stop <root>`; but see the info state below |
+| `older` | its version is older than the newest one installed for its harness (Claude Code: `installed_plugins.json`; Codex: the newest cache directory) | `squeal stop <root>`; but see the info states below |
 | `duplicate` | two daemon processes have one root | `kill <pid>` of the one without the lock |
 | `no-lock` | `waiting` for more than 40 s (130 s with `--await-lock`) | `kill <pid>` |
 | `hung` | `serving`, with a heartbeat older than two intervals, on two samples | `kill <pid>`, then `kill -9 <pid>` |
@@ -139,10 +139,11 @@ Every rule is read-only, from `/proc`, `/proc/locks`, `ls` and `stat`, and the r
 | `foreign-permit` | a `pool.<i>.lock` or `slow*.lock` holder that is no daemon | `kill <pid>` |
 | `leftover-temp` | a directory of a name Squeal makes (a key directory `<16 hex>` or `<16 hex>.old-<8 hex>` under `/tmp/squeal-<uid>/tmp/`; `/tmp/squeal-<uid>-<key>-XXXXXX`; `/tmp/squeal-e2e-XXXXXX`, `squeal-e2e-oc-XXXXXX`, `squeal-e2e-pi-XXXXXX` and `squeal-update-XXXXXX`, XXXXXX being `mkdtemp`'s six letters and digits) that no live daemon's key names and no process has as its working directory, in its arguments, as a bound unix socket or as an open file, with an mtime older than 1 h | `squeal ps --leftovers \| xargs -d '\n' rm -rf --` |
 
-Two states are information, never flags, and each says why:
+Three states are information, never flags, and each says why:
 
 - `draining <N>m left`: no consumer, `departed` is set, slow work waits, and the departure was less than `daemon.idleExitMinutes` ago. This is the rule of 004-29.
 - `older`, while a consumer registered with that older version has a live harness process: `older (session <pid> holds it)`. C9 asks no step-down then, and a stop would make that session's next edit start the old version again.
+- `draining <N>m left, older`: an `older` daemon that is `draining`. The drain ends it at its deadline, and a stop before would end the work it drains. From `daemon.idleExitMinutes` after the departure it is flagged `older` again, with `squeal stop <root>` (014-38, the human, 2026-10-22).
 
 On 2026-10-21, at load 24 to 42, the list flagged no live daemon. It found 4 draining daemons, 1 older daemon held by its session, 1 stale socket, 1 stale pool mark and 3,530 leftover directories (`research/should-not-be-up.md` 2). Two flags need a second sample: `hung` and `orphan-test-process` are confirmed by a second read at the end of the CPU window, because one false orphan showed on a single sample.
 
