@@ -54,6 +54,7 @@ import { RERUN_CAP } from "./rerun.js";
 import { takeRetries } from "./retries.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
+import { heldSetups } from "./setup.js";
 import { SlotRecords } from "./slot-records.js";
 import { busyLanes } from "./slots.js";
 import { slowView } from "./slow.js";
@@ -909,10 +910,15 @@ class TierScheduler implements Scheduler {
     const free = held.length === 0 ? tier.files : tier.files.filter((f) => !held.includes(f));
     // Task 013-02 (D2 of 013-01): the files whose keys name a touched path, as a content change.
     const {
-      report,
+      report: ranReport,
       barred,
       paths: barredPaths,
     } = barredByTouch(ran, free, touched, observed?.growth);
+    // Review 0.1.266, B2: the held files' projects give no setup outcome, and a startup failure
+    // that blames one is the hold's: it blocks nothing and the files it kept from starting queue.
+    const setupsHeld = heldSetups(this.#hold, tier.files, held, ranReport.startupFailure);
+    const { startupFailure: _, ...withoutStartup } = ranReport;
+    const report = setupsHeld.startup ? withoutStartup : ranReport;
     // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
     // again as a moved install does, its previous state standing, and a second leaves it
     // `unknown`, per file whatever tier it shares (review 007-31, B1).
@@ -942,12 +948,14 @@ class TierScheduler implements Scheduler {
       const again = [
         ...(withhold?.again.map(({ file }) => file.id) ?? []),
         ...held.map(({ file }) => file.id),
+        ...setupsHeld.notStarted.map(({ file }) => file.id),
         ...unfinished,
         ...interrupted,
       ];
       const requeue = installMoved || again.length === 0 ? installMoved : new Set(again);
       // Review 0.1.262, B2: a report the runtime's loss rejects applies no setup outcome either.
-      const setups = !runtimeGone || interrupted.length === 0;
+      const lost = runtimeGone && interrupted.length > 0;
+      const setups = lost ? false : setupsHeld.projects.size === 0 || setupsHeld.projects;
       this.#warmUp.record(context, ignored);
       this.#yields.ended(context, tier);
       const result = recordTier(

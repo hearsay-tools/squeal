@@ -1,3 +1,4 @@
+import { testFileId } from "../keys/index.js";
 import { checkIdentity } from "../state/derive.js";
 import type {
   CheckError,
@@ -11,6 +12,7 @@ import type {
 import { NOTHING_CHANGED } from "./context.js";
 import { block, type Failures, failed } from "./failures.js";
 import type { FileState } from "./files.js";
+import type { MergeHold } from "./hold.js";
 import type { Ledger } from "./ledger.js";
 import { priorityOf } from "./queue.js";
 
@@ -92,6 +94,45 @@ export function failStartup(
     const check = { kind: "setup", project, testPath: startup.setupFile ?? "" } as const;
     ledger.setups.fail(check, startup.error, commit);
   }
+}
+
+/** What a run recorded while the merge hold holds gives of its setups (`heldSetups`). */
+export interface HeldSetups<T> {
+  /** The projects whose setup outcome, pass or fail, the run gives none. */
+  readonly projects: ReadonlySet<ProjectName>;
+  /** The run's startup failure blames one of them: it fails no setup and blocks no file. */
+  readonly startup: boolean;
+  /** The files that failure kept from starting: queued again, uncounted. */
+  readonly notStarted: readonly T[];
+}
+
+/**
+ * Review 0.1.266, B2 (011 C9): a run the merge hold let past gives no setup
+ * outcome for a project whose setup may have read an unmerged path: the
+ * projects of the files `held` names, whose keys name one through their
+ * closure or their project's environment inputs (where a global setup and
+ * its closure are listed), and, when the setup file is unmerged itself,
+ * those its startup failure blames (`failedProjects`). A startup failure
+ * that blames one of them is the hold's: the files it kept from starting
+ * stay queued at their keys and none is `unknown`. Outside the hold, none.
+ */
+export function heldSetups<T extends { readonly file: FileState }>(
+  hold: Pick<MergeHold, "holding" | "names">,
+  files: readonly T[],
+  held: readonly T[],
+  startup: StartupFailure | undefined,
+): HeldSetups<T> {
+  const projects = new Set(held.map(({ file }) => file.ref.project));
+  if (!hold.holding || startup === undefined) return { projects, startup: false, notStarted: [] };
+  const listed = new Set(startup.testFiles.map(testFileId));
+  const kept = files.filter(({ file }) => listed.has(file.id));
+  const blamed = failedProjects(startup, kept);
+  const unmerged = startup.setupFile !== null && hold.names([startup.setupFile]);
+  if (!unmerged && ![...blamed].some((project) => projects.has(project))) {
+    return { projects, startup: false, notStarted: [] };
+  }
+  for (const project of blamed) projects.add(project);
+  return { projects, startup: true, notStarted: kept };
 }
 
 /**
