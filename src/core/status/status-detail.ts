@@ -3,6 +3,7 @@ import type { DaemonNote, EpochMs, StatusSnapshot } from "../types/index.js";
 import { partsSuffix } from "./checks.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, worktreeLine } from "./identity.js";
+import { stoppingText } from "./stopping.js";
 import { unknownFilesLines } from "./unknown-files.js";
 
 /*
@@ -71,6 +72,11 @@ function inheritedLine(s: StatusSnapshot): string {
 }
 
 function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
+  // Row 011-34: a stopping daemon is neither running nor gone.
+  const { stopping } = s.daemon;
+  if (stopping !== undefined) {
+    return `Daemon: ${stoppingText(stopping, command, ageText(now - stopping.since))}`;
+  }
   if (s.daemon.state === "alive") {
     return `Daemon: running, last heartbeat ${ageText(now - s.daemon.lastHeartbeatAt)} ago`;
   }
