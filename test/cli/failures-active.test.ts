@@ -139,23 +139,42 @@ describe("squeal failures marks history outside the active configuration (row 01
       { project: "keep", path: "keep/deleted.test.mjs" },
       { project: "gone", path: "gone/gone.test.mjs" },
     ]);
+    // A listed file its daemon cannot key now (an unknown environment) is still a test file here.
+    const unkeyed = fail(projectCheck("keep", "keep/unkeyed.test.mjs"), repo.mainId, 50);
+    store.results.putMany([unkeyed]);
+    store.testFileKeys.upsertMany([
+      {
+        worktreeId: repo.mainId,
+        testFile: { project: "keep", path: "keep/unkeyed.test.mjs" },
+        key: null,
+        revision: unkeyed.provenance.revision,
+        pending: null,
+      },
+    ]);
 
     const report = json(["failures"], repo.main);
-    expect(report).toMatchObject({ total: 4, replaced: 0 });
+    expect(report).toMatchObject({ total: 5, replaced: 0 });
     expect(actives(report.failures)).toEqual([
       ["[keep] keep/keep.test.mjs", true],
       ["[keep] keep/deleted.test.mjs", false],
       ["[gone] gone/gone.test.mjs", false],
       ["[gone2] gone/gone.test.mjs", true],
+      ["[keep] keep/unkeyed.test.mjs", true],
     ]);
 
     const text = run(["failures"], repo.main).stdout;
     const provenance = text.split("\n").filter((line) => line.includes(", run run-"));
-    expect(provenance.map((line) => line.endsWith(MARK))).toEqual([false, true, true, false]);
+    expect(provenance.map((line) => line.endsWith(MARK))).toEqual([
+      false,
+      true,
+      true,
+      false,
+      false,
+    ]);
     expect(text).toContain(
       `        ${repo.main} (this worktree), revision 4, commit abc123, dirty, 12 ms, run run-20${MARK}\n`,
     );
-    expect(text).toContain("Failures in this worktree (4 failures, newest first):");
+    expect(text).toContain("Failures in this worktree (5 failures, newest first):");
   });
 
   it("judges each row by its own worktree with --all-worktrees, from any worktree", () => {
