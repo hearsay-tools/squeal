@@ -46,8 +46,12 @@ class _Recorder:
             if main:
                 self.script = True
                 self.record(main)
-        at = next(i for i, finder in enumerate(sys.meta_path) if finder is self) + 1
-        for finder in sys.meta_path[at:]:
+        for at, finder in enumerate(sys.meta_path):
+            if finder is self:
+                break
+        else:
+            return None
+        for finder in sys.meta_path[at + 1 :]:
             find = getattr(finder, "find_spec", None)
             if find is None:
                 # A finder of the old protocol: the import system asks it and those after it.
@@ -92,9 +96,11 @@ def _chain():
     entries = [os.path.abspath(p) for p in sys.path]
     if here not in entries:
         return
+    # After its last entry: the directory twice on `PYTHONPATH` must not find this module again.
+    last = len(entries) - 1 - entries[::-1].index(here)
     from importlib.machinery import PathFinder
 
-    spec = PathFinder.find_spec("sitecustomize", sys.path[entries.index(here) + 1 :])
+    spec = PathFinder.find_spec("sitecustomize", sys.path[last + 1 :])
     if spec is None or spec.loader is None:
         return
     from importlib.util import module_from_spec
