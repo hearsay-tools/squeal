@@ -49,10 +49,10 @@ export function cpuShare(
   clockTicks: number,
 ): number | null {
   const windowMs = second.atMs - first.atMs;
-  if (cpuPct === null || first.cpuTime === null || second.cpuTime === null || windowMs <= 0)
-    return null;
-  const busyPct =
-    (ticksToMs(second.cpuTime.busy - first.cpuTime.busy, clockTicks) / windowMs) * 100;
+  const a = first.host?.cpuTime ?? null;
+  const b = second.host?.cpuTime ?? null;
+  if (cpuPct === null || a === null || b === null || windowMs <= 0) return null;
+  const busyPct = (ticksToMs(b.busy - a.busy, clockTicks) / windowMs) * 100;
   return busyPct <= 0 ? null : (cpuPct / busyPct) * 100;
 }
 
@@ -65,8 +65,14 @@ export function memoryShare(privateBytes: number | null, host: PsHost): number |
 
 const PERMIT = /^(pool\.\d+|slow(\.\d+)?)\.lock$/;
 
-export const readPool: ReadPool = (source, places, daemons, readings = [source.locks()]) => {
-  const slots = hostSlotsOf(places.userConfig, source.host().cpus);
+export const readPool: ReadPool = (
+  source,
+  places,
+  daemons,
+  readings = [source.locks()],
+  cpus = source.host().cpus,
+) => {
+  const slots = hostSlotsOf(places.userConfig, cpus);
   const holders = new Map<string, Set<number>>();
   for (const locks of readings)
     for (const [file, pids] of holdersOf(locks ?? [])) holders.set(file, pids);
