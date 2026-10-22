@@ -18,6 +18,7 @@ var WORKTREE_META_ROWS = {
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
   slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+  holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
@@ -4133,6 +4134,18 @@ function pidNamespace() {
     return null;
   }
 }
+function harnessGone(harness, namespace) {
+  try {
+    return harnessAlive(harness, namespace, readProcStat) === false;
+  } catch {
+    return false;
+  }
+}
+function harnessAlive(harness, namespace, statOf2) {
+  if (namespace === null || harness.pidNamespace !== namespace) return null;
+  const stat = statOf2(harness.pid);
+  return stat !== null && stat.startTime === harness.startTime && stat.state !== "Z";
+}
 function harnessMetaKey(worktreeId) {
   return worktreeMetaKey("harnessProcess", worktreeId);
 }
@@ -4140,14 +4153,82 @@ function recordHarness(store, consumer, harness) {
   writeSlot(store, harnessMetaKey(consumer.worktreeId), consumer, harness);
 }
 
-// src/core/delivery/leaving.ts
-function leavingMetaKey(worktreeId) {
-  return worktreeMetaKey("leaving", worktreeId);
+// src/core/scheduler/hold-rows.ts
+function mergeHoldMetaKey(worktreeId) {
+  return worktreeMetaKey("mergeHold", worktreeId);
 }
-function markLeaving(store, consumer, at) {
-  const key = leavingMetaKey(consumer.worktreeId);
-  if (at === null && readSlot(store, key, consumer) === void 0) return;
-  writeSlot(store, key, consumer, at === null ? null : { at });
+function commandHoldMetaKey(worktreeId) {
+  return worktreeMetaKey("commandHold", worktreeId);
+}
+function readMergeHold(store, worktreeId, daemonStartedAt) {
+  const raw = store.meta.get(mergeHoldMetaKey(worktreeId));
+  if (raw === null) return null;
+  try {
+    const row = JSON.parse(raw);
+    if (!isRecord(row) || row.v !== 1 || typeof row.since !== "number") return null;
+    if (row.since < daemonStartedAt || typeof row.revision !== "number") return null;
+    if (!Array.isArray(row.paths) || typeof row.count !== "number") return null;
+    const paths = row.paths.filter((p) => typeof p === "string");
+    return { v: 1, since: row.since, revision: row.revision, paths, count: row.count };
+  } catch {
+    return null;
+  }
+}
+function readCommandHolds(store, worktreeId) {
+  const raw = store.meta.get(commandHoldMetaKey(worktreeId));
+  if (raw === null) return [];
+  try {
+    const row = JSON.parse(raw);
+    if (!isRecord(row) || row.v !== 1 || !Array.isArray(row.entries)) return [];
+    return row.entries.filter(isCommandHold);
+  } catch {
+    return [];
+  }
+}
+function isCommandHold(entry3) {
+  if (!isRecord(entry3)) return false;
+  const { token, since, until, command, wrapper, child } = entry3;
+  return typeof token === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || isProcess(wrapper)) && (child === null || isProcess(child));
+}
+function isProcess(value) {
+  return isRecord(value) && typeof value.pid === "number" && typeof value.startTime === "number" && typeof value.pidNamespace === "string";
+}
+
+// src/core/status/holds.ts
+function readHolds(store, worktree, daemon, now, namespace = pidNamespace()) {
+  return readKeyedHolds(store, worktree, daemon, now, namespace).map((k) => k.hold);
+}
+function readKeyedHolds(store, worktree, daemon, now, namespace = pidNamespace()) {
+  if (worktree === null) return [];
+  const record = worktree.daemon;
+  const row = record === null || daemon.state !== "alive" ? null : readMergeHold(store, worktree.id, record.startedAt);
+  const merge2 = row === null ? [] : [
+    {
+      id: "merge",
+      hold: {
+        cause: "merge",
+        since: row.since,
+        revision: row.revision,
+        paths: row.paths,
+        pathCount: Math.max(row.count, row.paths.length)
+      }
+    }
+  ];
+  const commands = readCommandHolds(store, worktree.id).sort((a, b) => a.since - b.since).map((entry3) => {
+    const recorded = [entry3.wrapper, entry3.child].filter((p) => p !== null);
+    const gone = recorded.length > 0 && recorded.every((p) => harnessGone(p, namespace));
+    const hold = {
+      cause: "command",
+      since: entry3.since,
+      command: entry3.command,
+      pid: entry3.child?.pid ?? entry3.wrapper?.pid ?? null,
+      until: entry3.until,
+      ...gone ? { gone: true } : {},
+      ...entry3.until <= now ? { expired: true } : {}
+    };
+    return { id: `command:${entry3.token}`, hold };
+  });
+  return [...merge2, ...commands];
 }
 
 // src/core/status/died.ts
@@ -4825,6 +4906,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
   const alive = daemon.state === "alive";
+  const hold = (reads?.holds ?? readHolds(store, store.worktrees.get(worktreeId), daemon, now))[0];
   const slot2 = once(
     () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive, now) : reads.slowSlot ?? void 0
   );
@@ -4878,6 +4960,10 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ...run === void 0 ? {} : { files: run.testFiles.length },
       ...setup === void 0 ? {} : { setup }
     } : unlisted2 ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now);
+    if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
+      const held = { kind: "on-hold", hold };
+      return { testFile: ref, state, pending: held, standing: held };
+    }
     const quietUntil = pending.kind === "queued" ? quiet.get(pending.lane) : void 0;
     if (pending.kind === "queued" && pending.behind === null && quietUntil !== void 0) {
       if (!promoted.has(testFileId(ref))) {
@@ -5025,6 +5111,7 @@ var ORDER = [
   "no-daemon",
   "listing",
   "unlisted",
+  "on-hold",
   "checkpoint",
   "retry",
   "no-install",
@@ -5233,6 +5320,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
   );
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
+  const holds = readHolds(store, worktree, daemon, now);
   const header = readHeader(store, worktreeId, states, keys, void 0, held);
   const knownFailures = withTestFileFrames(
     store,
@@ -5248,7 +5336,17 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
     store,
     worktreeId,
     at,
-    { states, keys, header, runs, daemon, slowSlot: slowSlot ?? null, ...retries, ...checkpoint },
+    {
+      states,
+      keys,
+      header,
+      runs,
+      daemon,
+      holds,
+      slowSlot: slowSlot ?? null,
+      ...retries,
+      ...checkpoint
+    },
     now,
     load
   );
@@ -5260,6 +5358,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
     ...header,
     ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
+    ...holds.length === 0 ? {} : { holds },
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
@@ -5433,8 +5532,10 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
   );
+  const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
   return {
     ...header,
+    ...holds.length === 0 ? {} : { holds },
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
     // Row 011-34: so is a daemon stopping.
     daemon: withStopping(
@@ -5550,6 +5651,70 @@ function toldRevision(store, consumer) {
 }
 function tellRevision(store, consumer, revision) {
   writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
+}
+
+// src/core/delivery/hold-told.ts
+function holdToldMetaKey(worktreeId) {
+  return worktreeMetaKey("holdTold", worktreeId);
+}
+function endedOf(hold) {
+  return hold.cause === "merge" ? { cause: "merge" } : { cause: "command", command: hold.command, pid: hold.pid };
+}
+function isEnded(value) {
+  if (!isRecord(value)) return false;
+  if (value.cause === "merge") return true;
+  const pid = value.pid;
+  return value.cause === "command" && typeof value.command === "string" && (pid === void 0 || pid === null || typeof pid === "number");
+}
+function toldHolds(store, consumer) {
+  const value = readSlot(store, holdToldMetaKey(consumer.worktreeId), consumer);
+  if (!Array.isArray(value)) return [];
+  return value.flatMap(
+    (v) => isRecord(v) && typeof v.id === "string" && isEnded(v.ended) ? [{ id: v.id, ended: v.ended }] : []
+  );
+}
+function heldNow(store, worktreeId, at) {
+  const worktree = store.worktrees.get(worktreeId);
+  return readKeyedHolds(store, worktree, worktreeLiveness(worktree, at), at);
+}
+function tellHolds(store, consumer, holds) {
+  const told = (holds ?? []).map(({ id, hold }) => ({ id, ended: endedOf(hold) }));
+  writeSlot(store, holdToldMetaKey(consumer.worktreeId), consumer, told.length === 0 ? null : told);
+}
+function holdsChange(store, consumer, at) {
+  const worktree = store.worktrees.get(consumer.worktreeId);
+  const live = worktreeLiveness(worktree, at);
+  if (live.state !== "alive") return null;
+  const now = readKeyedHolds(store, worktree, live, at);
+  const before = toldHolds(store, consumer);
+  const ids = new Set(now.map((k) => k.id));
+  const told = new Set(before.map((t) => t.id));
+  const ended = before.filter((t) => !ids.has(t.id)).map((t) => t.ended);
+  const started = now.filter((k) => !told.has(k.id)).map((k) => k.hold);
+  return ended.length === 0 && started.length === 0 ? null : { now, ended, started };
+}
+function holdChanges(change2, header) {
+  const holds = change2.now.map((k) => k.hold);
+  const last = holds.length === 0 ? change2.ended.length - 1 : -1;
+  const ends = change2.ended.map(
+    (ended, i) => i === last ? {
+      kind: "resumed",
+      ended,
+      queued: header.testFilesByPhase?.queued ?? 0,
+      running: header.testFilesByPhase?.running ?? 0
+    } : { kind: "ended", ended, holds }
+  );
+  return [...ends, ...change2.started.map((hold) => ({ kind: "on-hold", hold }))];
+}
+
+// src/core/delivery/leaving.ts
+function leavingMetaKey(worktreeId) {
+  return worktreeMetaKey("leaving", worktreeId);
+}
+function markLeaving(store, consumer, at) {
+  const key = leavingMetaKey(consumer.worktreeId);
+  if (at === null && readSlot(store, key, consumer) === void 0) return;
+  writeSlot(store, key, consumer, at === null ? null : { at });
 }
 
 // src/core/delivery/slow-told.ts
@@ -5710,6 +5875,7 @@ function forget(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
   tellSlowTier(store, consumer, void 0);
+  tellHolds(store, consumer, null);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
@@ -5789,7 +5955,7 @@ function createDelivery(store, options) {
       const states = scope?.states ?? store.knownStates.list(consumer.worktreeId);
       const selection = select(states, scope?.keys);
       if (selection === "silent") return null;
-      const quiet = !liveness2 || livenessChange(store, consumer, now()) === null;
+      const quiet = !liveness2 || livenessChange(store, consumer, now()) === null && holdsChange(store, consumer, now()) === null;
       const empty = isEmpty(plan(consumer, states, now(), selection.only, scope?.view));
       if (quiet && empty && selection.trim === null) return null;
     }
@@ -5807,7 +5973,9 @@ function createDelivery(store, options) {
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness2 ? livenessChange(store, consumer, at) : null;
       if (changed !== null) tellLiveness(store, consumer, changed.state);
-      const news = delta.entries.length > 0 || changed !== null;
+      const holds = liveness2 ? holdsChange(store, consumer, at) : null;
+      if (holds !== null) tellHolds(store, consumer, holds.now);
+      const news = delta.entries.length > 0 || changed !== null || holds !== null;
       const notes = liveness2 || idle && news ? editNotes(store, consumer, states, news) : null;
       const delivered = news || liveness2 && !stop && notes?.sawEdit !== void 0;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
@@ -5844,6 +6012,7 @@ function createDelivery(store, options) {
         entries,
         stillFailing,
         ...changed === null ? {} : { liveness: changed },
+        ...holds === null ? {} : { holds: holdChanges(holds, header) },
         ...slowChanged ? { slowTierChanged: true } : {},
         ...sawEdit === void 0 ? {} : { sawEdit },
         ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled }
@@ -5893,6 +6062,7 @@ function createDelivery(store, options) {
       tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);
+      tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
       if (!registered) {
         const alive = atStart && header.daemon?.state === "alive";
         const resumed = tellRegistered(store, consumer, header.revision, {
@@ -6014,7 +6184,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.268";
+  if (true) return "0.1.269";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
