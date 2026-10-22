@@ -884,6 +884,8 @@ class TierScheduler implements Scheduler {
     const first = tier.files[0]?.file.ref;
     const cancellable = tier.slot !== true && first !== undefined && cancels(context, first);
     const held = cancellable ? new AbortController() : null;
+    // A tier picked while a command hold began (the slow tier's, after its wait) stops at once.
+    if (this.#commandHold.holding) held?.abort("hold" satisfies CancelCause);
     const flight: InFlight = { tier, done: Promise.resolve(), ran: false, held };
     this.#inFlight.set(tier.runId, flight);
     // Row 011-74: a hold's cancel reaches a Vitest run as a stop's does; its runner reads it as its cancel.
