@@ -705,6 +705,11 @@ function plural(count, word) {
 function cap(text, max) {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
+function timeText(at) {
+  const date = new Date(at);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
 function excludedProjectsText(entries) {
   const quoted = (list, join17) => {
     const all = list.map((entry3) => JSON.stringify(entry3));
@@ -2325,6 +2330,169 @@ function flag(value) {
 // src/core/store/prune.ts
 import { existsSync as existsSync2, rmSync } from "node:fs";
 import { join as join4, resolve as resolve2, sep } from "node:path";
+
+// src/core/store/repos/replaced.ts
+var REPLACED_META_KEY = "replaced-failures";
+var REPLACED_PER_CHECK = 4;
+var REPLACED_KEPT = 1024;
+var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
+  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
+  WHERE r.key = ? AND r.outcome = 'fail'`;
+function failingAt(conn, key) {
+  return conn.all(FAILING_AT, key).map((row) => ({ result: toResult(row), failureId: strOrNull(row, "failure_id") }));
+}
+function readReplaced(conn) {
+  const row = conn.get("SELECT value FROM meta WHERE key = ?", REPLACED_META_KEY);
+  if (row === null) return [];
+  let value;
+  try {
+    value = JSON.parse(strOrNull(row, "value") ?? "[]");
+  } catch {
+    return [];
+  }
+  return Array.isArray(value) ? value.filter(isEntry) : [];
+}
+function keepReplaced(conn, failing, records, loadOf2) {
+  if (failing.length === 0) return 0;
+  const passes = new Map(
+    records.filter((r) => r.outcome === "pass").map((r) => [identity2(r.check), r])
+  );
+  const added = [];
+  for (const { result, failureId } of failing) {
+    const pass = passes.get(identity2(result.check));
+    if (pass === void 0 || pass.key !== result.key) continue;
+    added.push({
+      check: result.check,
+      key: result.key,
+      provenance: result.provenance,
+      durationMs: result.durationMs,
+      location: result.location,
+      fingerprint: result.fingerprint,
+      summary: result.summary,
+      failureId,
+      loadPerCpu: loadOf2(result.provenance.runId),
+      replacedBy: {
+        runId: pass.provenance.runId,
+        worktreeId: pass.provenance.worktreeId,
+        recordedAt: pass.provenance.recordedAt
+      }
+    });
+  }
+  if (added.length === 0) return 0;
+  conn.transaction(() => write(conn, capped([...readReplaced(conn), ...added])));
+  return added.length;
+}
+function expireReplaced(conn, cutoff) {
+  const entries = readReplaced(conn);
+  const kept = entries.filter((e) => e.provenance.recordedAt >= cutoff);
+  if (kept.length < entries.length) write(conn, kept);
+  return entries.length - kept.length;
+}
+function keptByReplaced(conn) {
+  const entries = readReplaced(conn);
+  return {
+    runs: entries.map((e) => e.provenance.runId),
+    texts: entries.flatMap((e) => e.failureId === null ? [] : [e.failureId])
+  };
+}
+function capped(entries) {
+  const seen = /* @__PURE__ */ new Set();
+  const perCheck = /* @__PURE__ */ new Map();
+  const kept = [];
+  for (let i = entries.length - 1; i >= 0 && kept.length < REPLACED_KEPT; i--) {
+    const entry3 = entries[i];
+    const check = identity2(entry3.check);
+    const id = JSON.stringify([check, entry3.key, entry3.provenance.runId]);
+    const count = perCheck.get(check) ?? 0;
+    if (seen.has(id) || count >= REPLACED_PER_CHECK) continue;
+    seen.add(id);
+    perCheck.set(check, count + 1);
+    kept.push(entry3);
+  }
+  return kept.reverse();
+}
+function write(conn, entries) {
+  if (entries.length === 0) conn.run("DELETE FROM meta WHERE key = ?", REPLACED_META_KEY);
+  else {
+    conn.run(
+      "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+      REPLACED_META_KEY,
+      JSON.stringify(entries)
+    );
+  }
+}
+function identity2(check) {
+  return JSON.stringify(checkParams(check));
+}
+function isEntry(value) {
+  if (!isRecord(value) || !isRecord(value.check) || !isRecord(value.provenance)) return false;
+  const { check, provenance: p, replacedBy: by } = value;
+  return typeof check.project === "string" && typeof check.testPath === "string" && typeof check.kind === "string" && typeof value.key === "string" && typeof p.runId === "string" && typeof p.worktreeId === "string" && typeof p.revision === "number" && typeof p.recordedAt === "number" && typeof value.durationMs === "number" && (value.failureId === null || typeof value.failureId === "string") && (value.loadPerCpu === null || typeof value.loadPerCpu === "number") && isRecord(by) && typeof by.runId === "string" && typeof by.worktreeId === "string" && typeof by.recordedAt === "number";
+}
+
+// src/core/store/repos/unknown-runs.ts
+var UNKNOWN_RUNS_META_KEY = "unknown-runs";
+function readUnknownRuns(conn) {
+  const row = conn.get("SELECT value FROM meta WHERE key = ?", UNKNOWN_RUNS_META_KEY);
+  if (row === null) return [];
+  let value;
+  try {
+    value = JSON.parse(strOrNull(row, "value") ?? "[]");
+  } catch {
+    return [];
+  }
+  return Array.isArray(value) ? value.filter(isEntry2) : [];
+}
+function recordUnknownRuns(conn, worktreeId, revision, marked, at) {
+  const added = marked.flatMap(
+    ({ testFiles, reason, runId }) => testFiles.map((testFile) => ({ worktreeId, testFile, runId, revision, reason, at }))
+  );
+  if (added.length === 0) return;
+  conn.transaction(() => {
+    const ids = new Set(added.map(idOf));
+    const kept = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
+    const newest = new Map(added.map((r) => [idOf(r), r]));
+    write2(conn, [...kept, ...newest.values()]);
+  });
+}
+var STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
+    ON s.worktree_id = ? AND s.check_id = c.id
+  WHERE c.project = ? AND c.test_path = ? AND s.outcome = 'unknown'
+    AND s.observed_at = ? AND s.summary = ? LIMIT 1`;
+function dropFallenUnknownRuns(conn) {
+  const records = readUnknownRuns(conn);
+  const kept = standing(conn, records);
+  if (kept.length < records.length) write2(conn, kept);
+  return records.length - kept.length;
+}
+function keptByUnknownRuns(conn) {
+  return readUnknownRuns(conn).flatMap((r) => r.runId === null ? [] : [r.runId]);
+}
+function standing(conn, records) {
+  return records.filter((r) => conn.get(STANDS, ...standsParams(r)) !== null);
+}
+function standsParams(r) {
+  return [r.worktreeId, r.testFile.project, r.testFile.path, r.revision, r.reason];
+}
+function idOf(r) {
+  return JSON.stringify([r.worktreeId, r.testFile.project, r.testFile.path]);
+}
+function write2(conn, records) {
+  if (records.length === 0) conn.run("DELETE FROM meta WHERE key = ?", UNKNOWN_RUNS_META_KEY);
+  else {
+    conn.run(
+      "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+      UNKNOWN_RUNS_META_KEY,
+      JSON.stringify(records)
+    );
+  }
+}
+function isEntry2(value) {
+  if (!isRecord(value) || !isRecord(value.testFile)) return false;
+  return typeof value.worktreeId === "string" && typeof value.testFile.project === "string" && typeof value.testFile.path === "string" && (value.runId === null || typeof value.runId === "string") && typeof value.revision === "number" && typeof value.reason === "string" && typeof value.at === "number";
+}
+
+// src/core/store/prune.ts
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var EVICTION_BATCH = 32;
 var DELETE_BATCH = 256;
@@ -2355,6 +2523,8 @@ function prune(conn, worktrees, paths, options) {
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
+  conn.transaction(() => expireReplaced(conn, cutoff));
+  conn.transaction(() => dropFallenUnknownRuns(conn));
   let resultsRemoved = dropPrunable(conn, cutoff);
   if (options.maxSizeMb !== null) {
     resultsRemoved += evictToCap(conn, options.maxSizeMb * 1024 * 1024);
@@ -2363,9 +2533,11 @@ function prune(conn, worktrees, paths, options) {
     () => conn.all(
       `DELETE FROM runs
        WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
+         AND id NOT IN (SELECT value FROM json_each(?))
          AND (worktree_id NOT IN (SELECT id FROM worktrees)
               OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))
        RETURNING log_dir`,
+      JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]),
       cutoff
     )
   );
@@ -2445,7 +2617,9 @@ function evictToCap(conn, capBytes) {
 function dropOrphanFailureTexts(conn) {
   conn.run(
     `DELETE FROM failure_texts
-     WHERE id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)`
+     WHERE id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
+       AND id NOT IN (SELECT value FROM json_each(?))`,
+    JSON.stringify(keptByReplaced(conn).texts)
   );
 }
 function usedBytes(conn) {
@@ -2661,7 +2835,16 @@ function createFailureRepo(conn) {
   return {
     list: (selection, limit) => all(FAILURE_STATEMENTS.list(selection, limit)).map(toResult),
     count: (selection) => num(all(FAILURE_STATEMENTS.count(selection))[0] ?? { n: 0 }, "n"),
-    failingChecks: (selection) => all(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom)
+    failingChecks: (selection) => all(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom),
+    failingAt: (key) => failingAt(conn, key),
+    keepReplaced: (failing, records, loadOf2) => keepReplaced(conn, failing, records, loadOf2),
+    replaced: () => readReplaced(conn),
+    text: (id) => {
+      const row = conn.get("SELECT summary, errors FROM failure_texts WHERE id = ?", id);
+      return row === null ? null : { summary: strOrNull(row, "summary"), errors: json(row, "errors") };
+    },
+    recordUnknownRuns: (worktreeId, revision, marked, at) => recordUnknownRuns(conn, worktreeId, revision, marked, at),
+    unknownRuns: (worktreeId) => readUnknownRuns(conn).filter((r) => r.worktreeId === worktreeId)
   };
 }
 
@@ -3902,11 +4085,11 @@ function testFileFrames(store, worktreeId) {
   const keys = readFailureKeys(store, worktreeId);
   const rows = /* @__PURE__ */ new Map();
   return (check, location2) => {
-    const identity2 = checkIdentity(check);
-    const key = keys.get(identity2);
+    const identity3 = checkIdentity(check);
+    const key = keys.get(identity3);
     if (key === void 0 || location2 === null) return void 0;
     if (!rows.has(key)) rows.set(key, store.results.byKey(key));
-    const row = rows.get(key)?.find((r) => r.outcome === "fail" && checkIdentity(r.check) === identity2);
+    const row = rows.get(key)?.find((r) => r.outcome === "fail" && checkIdentity(r.check) === identity3);
     const thrown = row?.errors[0]?.location ?? null;
     if (row === void 0 || thrown === null || !samePosition(thrown, location2)) return void 0;
     return testFileFrame(check, row.errors) ?? void 0;
@@ -3962,8 +4145,8 @@ function withFlaky(store, worktreeId, entries) {
   const rows = /* @__PURE__ */ new Map();
   const runOf2 = (check, key) => {
     if (!rows.has(key)) rows.set(key, store.results.byKey(key));
-    const identity2 = checkIdentity(check);
-    return rows.get(key)?.find((r) => checkIdentity(r.check) === identity2)?.provenance.runId;
+    const identity3 = checkIdentity(check);
+    return rows.get(key)?.find((r) => checkIdentity(r.check) === identity3)?.provenance.runId;
   };
   return entries.map((entry3) => {
     if (entry3.kind === "fail-retired") return entry3;
@@ -4102,7 +4285,7 @@ function readRekeyed(store, worktreeId) {
   }
   return entries;
 }
-function write(store, worktreeId, entries) {
+function write3(store, worktreeId, entries) {
   const key = rekeyedMetaKey(worktreeId);
   if (entries.size === 0) {
     if (store.meta.get(key) !== null) store.meta.delete(key);
@@ -4117,7 +4300,7 @@ function pruneRekeyed(store, worktreeId, upTo) {
   for (const [id, entry3] of entries) {
     if (entry3.open === null && entry3.last <= upTo) entries.delete(id);
   }
-  if (entries.size !== before) write(store, worktreeId, entries);
+  if (entries.size !== before) write3(store, worktreeId, entries);
 }
 
 // src/core/delivery/edits.ts
@@ -4745,11 +4928,11 @@ function readUnknownFiles(store, worktreeId) {
     return /* @__PURE__ */ new Map();
   }
   if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
-  const entries = value.filter(isEntry).map(knownCause);
+  const entries = value.filter(isEntry3).map(knownCause);
   return new Map(entries.map((e) => [testFileId(e.testFile), e]));
 }
 var CAUSES = ["timeout", "install", "runner", "setup"];
-function isEntry(value) {
+function isEntry3(value) {
   if (!isRecord(value) || !isRecord(value.testFile)) return false;
   return typeof value.testFile.path === "string" && typeof value.testFile.project === "string" && (value.key === null || typeof value.key === "string") && typeof value.reason === "string" && typeof value.ran === "boolean" && Array.isArray(value.samples) && value.samples.every((p) => typeof p === "string") && typeof value.revision === "number" && typeof value.at === "number";
 }
@@ -4804,8 +4987,9 @@ function publishedYields(store, worktreeId, daemonStartedAt) {
 }
 function isYield(value) {
   if (typeof value !== "object" || value === null) return false;
-  const { kind, remainderMs } = value;
+  const { kind, remainderMs, yieldsAt } = value;
   if (kind === "remainder") return typeof remainderMs === "number";
+  if (kind === "overrun") return typeof yieldsAt === "number";
   return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner";
 }
 
@@ -5030,13 +5214,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     const claim = claimant === null ? null : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
     if (state === "stale") {
       const verdict = verdictOf(own);
-      const standing = claim ?? {
+      const standing2 = claim ?? {
         kind: "stale",
         verdict: verdict.verdict ?? null,
         lookupOnly: facts.lookupOnly,
         notCurrent: facts.notCurrent()
       };
-      return { testFile: ref, state, ...verdict, standing };
+      return { testFile: ref, state, ...verdict, standing: standing2 };
     }
     if (state === "unknown") {
       if (row === void 0) return { testFile: ref, state };
@@ -5155,6 +5339,11 @@ function verdictOf(own) {
   return {};
 }
 
+// src/core/status/next-step.ts
+function remainderSeconds(remainderMs) {
+  return Math.max(0, Math.round(remainderMs / 1e3));
+}
+
 // src/core/status/standing-groups.ts
 function groupId(s) {
   switch (s.kind) {
@@ -5180,7 +5369,8 @@ function groupId(s) {
 }
 function yieldId(tier) {
   if (tier === void 0) return "-";
-  return tier.kind === "remainder" ? `remainder ${Math.round(tier.remainderMs / 1e3)}` : tier.kind;
+  if (tier.kind === "remainder") return `remainder ${remainderSeconds(tier.remainderMs)}`;
+  return tier.kind === "overrun" ? `overrun ${timeText(tier.yieldsAt)}` : tier.kind;
 }
 function widest(a, b) {
   if (a.kind === "running" && b.kind === "running") {
@@ -5227,15 +5417,15 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
   const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files2 = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
   const groups = /* @__PURE__ */ new Map();
-  const add = (standing, ref) => {
-    const id = groupId(standing);
+  const add = (standing2, ref) => {
+    const id = groupId(standing2);
     const group = groups.get(id);
     if (group === void 0) {
-      groups.set(id, { standing, files: ref === null ? [] : [ref] });
+      groups.set(id, { standing: standing2, files: ref === null ? [] : [ref] });
       return;
     }
     if (ref !== null) group.files.push(ref);
-    group.standing = widest(group.standing, standing);
+    group.standing = widest(group.standing, standing2);
   };
   for (const file of files2) {
     const retry = retries.get(testFileId(file.testFile));
@@ -5243,11 +5433,11 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
       add(retry, file.testFile);
       continue;
     }
-    const standing = file.state === "current" ? void 0 : file.standing ?? file.pending;
-    if (standing === void 0) continue;
-    const held = standing.kind === "running" && standing.setup !== void 0;
+    const standing2 = file.state === "current" ? void 0 : file.standing ?? file.pending;
+    if (standing2 === void 0) continue;
+    const held = standing2.kind === "running" && standing2.setup !== void 0;
     if (slow.isSlow(file.testFile) && !held) continue;
-    add(standing, file.testFile);
+    add(standing2, file.testFile);
   }
   const said = [...groups.values()].some((g) => g.standing.kind === "unlisted");
   if (header.runnerPartPending === true && !said) add(unlisted(header, policy), null);
@@ -6879,7 +7069,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.264";
+  if (true) return "0.1.265";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
