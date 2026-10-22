@@ -1,28 +1,19 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { below, measure, sumCosts, takeSample } from "../../src/core/ps/measure.js";
-import type { ProcessOwner } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
 import { attribute } from "../../src/core/ps/processes.js";
 import type { PsSource } from "../../src/core/ps/source.js";
-import { writeHost, writeTree } from "./fixture.js";
-import {
-  countingSource,
-  type FakeProcess,
-  fakeSource,
-  HOST,
-  type HostTree,
-  sampleOf,
-  writeHostTree,
-} from "./fixture-samples.js";
+import { writeTree } from "./fixture.js";
+import { type FakeProcess, fakeSource, HOST, sampleOf } from "./fixture-samples.js";
 
 /*
  * Spec 014 D4 (task 014-07): the CPU over the window from two samples
  * matched by pid and start ticks, the cumulative CPU time, the private
- * memory and the swap. The cost bound of the spec's Testing runs over a
- * 650-process fixture tree.
+ * memory and the swap. The cost bound of the spec's Testing is
+ * `snapshot-cost.test.ts`'s, over the whole snapshot.
  */
 
 const MIB = 2 ** 20;
@@ -424,63 +415,5 @@ describe("sumCosts", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
-});
-
-describe("cost on a host of 650 processes (spec 014 Testing, goal 6)", () => {
-  let root: string;
-  let tree: HostTree;
-  beforeAll(() => {
-    root = mkdtempSync(join(tmpdir(), "squeal-ps-cost-"));
-    writeHost(root);
-    tree = writeHostTree(root);
-  }, 60_000);
-  afterAll(() => {
-    rmSync(root, { recursive: true, force: true });
-  });
-
-  test("the fixture has the host's shape", () => {
-    const table = createProcSource({ root }).processTable();
-    expect(table.size).toBe(650);
-    expect(tree.daemons).toHaveLength(25);
-  });
-
-  test("the reads outside the window read only Squeal's processes, under 0.5 s wall, and every stage stays under 0.3 s CPU", () => {
-    const { source, reads } = countingSource(
-      createProcSource({ root, availableParallelism: () => 24 }),
-    );
-    const owners: ProcessOwner[] = tree.daemons.map((pid) => ({
-      pid,
-      token: tree.tokens.get(pid) ?? null,
-      tiers: [],
-    }));
-    const cpuAtStart = process.cpuUsage();
-
-    // Inside the window: the first sample and the per-process reads.
-    const first = takeSample(source);
-    const attribution = attribute(source, first.table, owners);
-    const inside = new Map(reads);
-    reads.clear();
-
-    // After the window: the second sample of Squeal's pids, and their memory.
-    const wallAtEnd = performance.now();
-    const second = takeSample(source, tree.squeal);
-    const costs = measure(source, first, second, tree.squeal);
-    const outsideMs = performance.now() - wallAtEnd;
-    const cpu = process.cpuUsage(cpuAtStart);
-
-    expect(attribution.processes).toHaveLength(tree.testProcesses);
-    expect(costs.size).toBe(tree.squeal.length);
-    expect(inside.get("processTable")).toBe(1);
-    expect(inside.get("cmdline")).toBe(tree.testProcesses);
-    expect(inside.get("markOf") ?? 0).toBeLessThanOrEqual(650);
-    expect(Object.fromEntries(reads)).toEqual({
-      processTable: tree.squeal.length,
-      host: 1,
-      clockTicks: 1,
-      memory: tree.squeal.length,
-    });
-    expect(outsideMs).toBeLessThan(500);
-    expect((cpu.user + cpu.system) / 1000).toBeLessThan(300);
   });
 });
