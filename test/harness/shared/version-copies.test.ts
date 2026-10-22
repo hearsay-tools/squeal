@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { keepVersion } from "../../../src/harness/shared/version-copies.js";
+import { keepVersion, keptCacheCli } from "../../../src/harness/shared/version-copies.js";
 import { tempDir } from "../../store/helpers.js";
 
 /*
@@ -26,9 +26,12 @@ const write = (path: string, text: string) => {
   writeFileSync(path, text);
 };
 
-/** A plugin root of `version`: its CLI, skill and launcher. */
-function plugin(version: string, launcher = "#!/bin/sh\n# squeal-launcher format 4\n"): string {
-  const root = join(tempDir("squeal-root-"), version);
+/** A plugin root of `version` at `root`: its CLI, skill and launcher. */
+function plugin(
+  version: string,
+  launcher = "#!/bin/sh\n# squeal-launcher format 4\n",
+  root = join(tempDir("squeal-root-"), version),
+): string {
   write(join(root, "dist", "cli", "squeal.mjs"), `// ${version}\n`);
   write(join(root, "dist", "observe", "recorder.cjs"), `// ${version}\n`);
   write(join(root, "skills", "squeal", "SKILL.md"), `# Squeal ${version}\n`);
@@ -137,5 +140,55 @@ describe("keepVersion", () => {
     writeFileSync(blocked, "a file\n");
     expect(keepVersion({ root: plugin("0.1.5"), data: blocked, version: "0.1.5" })).toBeNull();
     expect(readFileSync(blocked, "utf8")).toBe("a file\n");
+  });
+});
+
+describe("keptCacheCli (005-77)", () => {
+  const cliOf = (root: string) => join(root, "dist", "cli", "squeal.mjs");
+  const cached = (home: string, version: string) =>
+    plugin(version, undefined, join(home, "plugins", "cache", "hearsay", "squeal", version));
+
+  it("keeps the copy of a CLI that runs from Codex's cache and names the copy's CLI", () => {
+    const codex = tempDir("squeal-codex-");
+    const data = join(codex, "plugins", "data", "squeal-hearsay");
+    const cli = cliOf(cached(codex, "0.1.5"));
+    expect(keptCacheCli(cli, "0.1.5", { CODEX_HOME: codex })).toBe(
+      join(data, "versions", "0.1.5", "dist", "cli", "squeal.mjs"),
+    );
+    expect(existsSync(join(data, "bin", "squeal"))).toBe(true);
+    // Without `CODEX_HOME`, the Codex home is `~/.codex`, as the launcher finds the cache.
+    const home = tempDir("squeal-home-");
+    const homeCli = cliOf(cached(join(home, ".codex"), "0.1.5"));
+    expect(keptCacheCli(homeCli, "0.1.5", { HOME: home })).toBe(
+      join(
+        home,
+        ".codex",
+        "plugins",
+        "data",
+        "squeal-hearsay",
+        "versions",
+        "0.1.5",
+        "dist",
+        "cli",
+        "squeal.mjs",
+      ),
+    );
+  });
+
+  it("names the CLI itself outside Codex's cache, as in Claude Code's, and copies nothing", () => {
+    const home = tempDir("squeal-home-");
+    const claude = cliOf(cached(join(home, ".claude"), "0.1.5"));
+    expect(keptCacheCli(claude, "0.1.5", { HOME: home })).toBe(claude);
+    const elsewhere = cliOf(plugin("0.1.5"));
+    expect(keptCacheCli(elsewhere, "0.1.5", { HOME: home })).toBe(elsewhere);
+    expect(existsSync(join(home, ".claude", "plugins", "data"))).toBe(false);
+    expect(existsSync(join(home, ".codex"))).toBe(false);
+  });
+
+  it("names the cache's CLI when no copy can be kept", () => {
+    const codex = tempDir("squeal-codex-");
+    const cli = cliOf(cached(codex, "0.1.5"));
+    expect(keptCacheCli(cli, "0.0.0-unknown", { CODEX_HOME: codex })).toBe(cli);
+    expect(existsSync(join(codex, "plugins", "data"))).toBe(false);
   });
 });
