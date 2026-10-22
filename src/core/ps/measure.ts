@@ -36,12 +36,12 @@ import { type ProcessRow, type ProcessTable, ticksToMs } from "./source.js";
  * holds none (014-24).
  */
 
-/** One table read and the host's CPU times, at the middle of the read on a monotonic clock. */
+/** One table read and the host's files, at the middle of the read on a monotonic clock. */
 export const takeSample: TakeSample = (source, pids, since) => {
   const before = performance.now();
   const table = source.processTable(pids, since);
-  const cpuTime = source.host().cpuTime;
-  return { atMs: (before + performance.now()) / 2, table, cpuTime };
+  const host = source.host();
+  return { atMs: (before + performance.now()) / 2, table, host };
 };
 
 /** `pids` and every process below them in `table`: what the second sample reads again (D4). */

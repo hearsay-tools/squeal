@@ -66,7 +66,6 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
   const found = discover(source, first.table, places, locks);
   const work = readWork(source, first.table, found.daemons);
   const attribution = attribute(source, first.table, ownersOf(found.daemons, work.work));
-  const reading = source.host();
   const bootTime = source.bootTime();
   await o.wait(Math.max(0, o.sampleMs - (performance.now() - first.atMs)));
 
@@ -85,7 +84,7 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
   const discovery = lockedAgain(source, found, [locks, locksAgain]);
   const readable = [locks, locksAgain].filter((l) => l !== null).length;
   const daemonPids = new Set(discovery.daemons.map((d) => d.row.pid));
-  const pool = readPool(source, places, daemonPids, [locks, locksAgain]);
+  const pool = readPool(source, places, daemonPids, [locks, locksAgain], read.host.cpus);
   const second = { ...read, table: only(read.table, pids) };
   const live = discovery.daemons.filter(
     (d) => second.table.get(d.row.pid)?.startTicks === d.row.startTicks,
@@ -107,11 +106,7 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
   };
   return {
     model,
-    // The host files of one read, the busy CPU over the window's two.
-    host: hostTotals(
-      { ...reading, cpuTime: first.cpuTime },
-      { ...reading, cpuTime: second.cpuTime },
-    ),
+    host: hostTotals(first.host, second.host),
     costs,
     bootTime,
     unknown: [...discovery.unknown, ...work.unknown, ...again.unknown, ...blind(first.table, tree)],
