@@ -37,8 +37,10 @@ export interface RepoFacts {
 export interface TestFiles {
   readonly source: "store" | "config-text" | "default";
   readonly paths: readonly string[];
-  /** Of `paths`, those with a current result; `null` when no daemon listed them. */
+  /** Of `runs`, those with a current result; `null` when no daemon listed them. */
   readonly current: number | null;
+  /** One per project and test file the daemon listed, as it runs them (row 005-80); `null` when none did. */
+  readonly runs: number | null;
 }
 
 export async function readRepoFacts(root: AbsolutePath): Promise<RepoFacts> {
@@ -142,11 +144,13 @@ function listTestFiles(root: AbsolutePath, tracked: readonly string[]): TestFile
     const id = worktreeIdFor(root);
     const rows = store.testFileKeys.list(id);
     if (rows.length === 0) return null;
-    const current = readVerdict(store, id).byClass.current;
-    return { paths: [...new Set(rows.map((row) => row.testFile.path))].sort(), current };
+    // Row 005-80: both counts are per project and file; `paths` is not (it printed `-55`).
+    const verdict = readVerdict(store, id);
+    const paths = [...new Set(rows.map((row) => row.testFile.path))].sort();
+    return { paths, current: verdict.byClass.current, runs: verdict.testFiles };
   });
   if (listed !== null && "paths" in listed) {
-    return { source: "store", paths: listed.paths, current: listed.current };
+    return { source: "store", ...listed };
   }
   const config = VITEST_CONFIGS.map((name) => readText(join(root, name))).find((t) => t !== null);
   const include = config == null ? [] : stringArrays(config, "include");
@@ -160,6 +164,7 @@ function listTestFiles(root: AbsolutePath, tracked: readonly string[]): TestFile
     source: include.length > 0 ? "config-text" : "default",
     paths: tracked.filter((path) => included(path) && !excluded(path) && !notCovered(path)),
     current: null,
+    runs: null,
   };
 }
 

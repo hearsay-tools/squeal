@@ -17,19 +17,26 @@ import type { RepoFacts } from "./repo.js";
  * project's, each its `include` minus its `exclude` as the adapter lists them
  * (review 005-42 B1).
  */
-export function testFileUniverse(
-  facts: RepoFacts,
-  projects: readonly Pick<NodeTestProject, "cwd" | "include" | "exclude">[],
-): string[] {
-  const inProjects = projects.map((p) => {
-    const under = (globs: readonly string[]) =>
-      matcher(globs.map((g) => posix.join(p.cwd ?? "", g)));
-    const include = under(p.include);
-    const exclude = under(p.exclude ?? []);
-    return (path: string) => include(path) && !exclude(path);
-  });
+export function testFileUniverse(facts: RepoFacts, projects: readonly Project[]): string[] {
+  const inProjects = projects.map(selects);
   const inProject = (path: string) => inProjects.some((test) => test(path));
   return [...new Set([...facts.testFiles.paths, ...facts.tracked.filter(inProject)])];
+}
+
+/** The tracked files one node:test or pytest project lists (rows 005-80: its warm-up runs, its overlaps). */
+export function projectFiles(facts: RepoFacts, project: Project): string[] {
+  return facts.tracked.filter(selects(project));
+}
+
+type Project = Pick<NodeTestProject, "cwd" | "include" | "exclude">;
+
+/** A project's `include` minus its `exclude`, both relative to its `cwd`. */
+function selects(project: Project): (path: string) => boolean {
+  const under = (globs: readonly string[]) =>
+    matcher(globs.map((g) => posix.join(project.cwd ?? "", g)));
+  const include = under(project.include);
+  const exclude = under(project.exclude ?? []);
+  return (path) => include(path) && !exclude(path);
 }
 
 /** `--check`'s line for each `slow.include` entry and `inputs` key that selects none of `files`. */

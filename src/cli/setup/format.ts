@@ -1,5 +1,6 @@
+import { vitestBelowRootNote } from "../../core/daemon/runner.js";
 import { excludeKeys } from "./exclude.js";
-import type { CodexTrust, SetupPlan } from "./plan.js";
+import type { CodexTrust, Runners, SetupPlan, Warmup } from "./plan.js";
 
 /** The plan for a human: one section per D3 step 2 fact, then what is outdated. */
 export function formatPlan(plan: SetupPlan): string {
@@ -22,6 +23,7 @@ export function formatPlan(plan: SetupPlan): string {
     "",
     `Runners: ${[plan.runners.vitest ? "Vitest" : null, ...nodeTest.map((n) => `node:test ${n}`), ...pytest].filter((r) => r !== null).join(", ") || "none found"}`,
     ...(plan.runners.pytest ?? []).flatMap((p) => p.notes.map((n) => `  note: ${n}`)),
+    ...gapLines(plan.runners),
   );
   const config = plan.config;
   lines.push(
@@ -105,15 +107,45 @@ export function formatPlan(plan: SetupPlan): string {
     for (const glob of excluded) lines.push(`  Vitest test files matching ${JSON.stringify(glob)}`);
   }
 
-  lines.push(
-    "",
-    `Codex trust: ${trustText(plan.codexTrust)}`,
-    `Warm-up: runs all ${plan.warmup.testFiles} test files, ${plan.warmup.withoutCurrentResult} without a current result${plan.warmup.source === "store" ? "" : " (estimated: no daemon has listed them)"}`,
-    "",
-  );
+  lines.push("", `Codex trust: ${trustText(plan.codexTrust)}`, warmupLine(plan.warmup), "");
   if (plan.outdated.length === 0) lines.push("Nothing is outdated.");
   else lines.push("Outdated:", ...plan.outdated.map((line) => `  ${line}`));
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Rows 005-79 and 005-80 (D3 step 2 as amended 2026-10-22): what the config
+ * leaves out or runs twice, each with its fix. None makes `--check` exit 1.
+ */
+function gapLines(runners: Runners): string[] {
+  const below = runners.vitestBelowRoot ?? [];
+  const leftOut = runners.nodeTestLeftOut ?? { notes: [], templates: [] };
+  return [
+    ...(below.length === 0 ? [] : [`  not run: ${vitestBelowRootNote(below)}`]),
+    ...leftOut.notes.map((note) => `  not run: ${note}`),
+    ...(leftOut.templates.length === 0
+      ? []
+      : [
+          "    nodeTest entries to complete by hand:",
+          ...JSON.stringify(leftOut.templates, null, 2)
+            .split("\n")
+            .map((line) => `    ${line}`),
+        ]),
+    ...(runners.pytestOverlaps ?? []).map(
+      ({ projects: [a, b], testFiles, fix }) =>
+        `  run twice: ${testFiles} test file${testFiles === 1 ? "" : "s"} that pytest projects "${a}" and "${b}" both select; to run each once, ${fix}`,
+    ),
+  ];
+}
+
+/** Row 005-80: the runs a warm-up makes, one per project and file, and the paths when fewer. */
+function warmupLine(warmup: Warmup): string {
+  const paths =
+    warmup.paths === undefined || warmup.paths === warmup.testFiles
+      ? ""
+      : `, one run per project and file (${warmup.paths} paths)`;
+  const estimated = warmup.source === "store" ? "" : " (estimated: no daemon has listed them)";
+  return `Warm-up: runs all ${warmup.testFiles} test files${paths}, ${warmup.withoutCurrentResult} without a current result${estimated}`;
 }
 
 function trustText(trust: CodexTrust): string {
