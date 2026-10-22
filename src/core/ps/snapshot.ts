@@ -89,7 +89,8 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
   const costs = measure(source, first, read, measured(found, attribution));
   // One read can miss a held lock, and a read right after it often misses the same one (`lessons.md` P9).
   const locksAgain = source.locks();
-  const discovery = lockedAgain(source, found, locksAgain);
+  const discovery = lockedAgain(source, found, [locks, locksAgain]);
+  const readable = [locks, locksAgain].filter((l) => l !== null).length;
   const daemonPids = new Set(discovery.daemons.map((d) => d.row.pid));
   const pool = readPool(source, places, daemonPids, [locks, locksAgain]);
   const second = { ...read, table: only(read.table, pids) };
@@ -101,6 +102,7 @@ async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
     now,
     places,
     source,
+    locksRead: readable === 2 ? "both" : readable === 1 ? "one" : "none",
     discovery,
     first: { sample: first, work: work.work, attribution },
     second: {

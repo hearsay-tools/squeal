@@ -24,6 +24,8 @@ const SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
 /** `<common-dir>/squeal/locks/<id>.sqlite`; a waiter lock (`waiter-<id>`) does not match. */
 const LOCK_FILE = /^(.+)\/squeal\/locks\/([0-9a-f]{16})\.sqlite$/;
 const SOCKET_FILE = /^squeal-([0-9a-f]{16})\.sock$/;
+/** The `unknown` entry of a lock reading that cannot be read. */
+const HOLDERS = "daemon lock holders";
 /** `.../{.claude,.codex}/plugins/cache/<marketplace>/squeal/<version>/...`. */
 const CACHE_INSTALL = /\/\.(claude|codex)\/plugins\/cache\/[^/]+\/squeal\/([^/]+)\//;
 /** The npm packages of the Pi and OpenCode plugins carry no version in their path. */
@@ -33,7 +35,7 @@ export const discover: Discover = (source, table, places, locks = source.locks()
   const unknown: PsUnknown[] = [];
   if (locks === null) {
     const why = "they cannot be read: a phase is serving by its heartbeat, or unknown (D10)";
-    unknown.push({ what: "daemon lock holders", why });
+    unknown.push({ what: HOLDERS, why });
   }
   const daemons: FoundDaemon[] = [];
   for (const row of table.values()) {
@@ -57,29 +59,39 @@ export const discover: Discover = (source, table, places, locks = source.locks()
 };
 
 /**
- * D2 step 3 again, with `locks` read at the window's end (`lessons.md` P9).
- * One `/proc/locks` read returns a page per `read()`, and a held lock can
- * fall between two pages while other locks change; a read right after the
- * first misses the same lock far more often than chance, so the second is
- * 2 s later. A lock either reading shows is held: a daemon holds no lock
- * only when both miss it, and a socket file is its daemon's when either
- * shows that daemon's lock.
+ * D2 step 3 over the window's two `/proc/locks` readings (`lessons.md` P9),
+ * `discovery` being `discover`'s over the first. One read returns a page per
+ * `read()`, and a held lock can fall between two pages while other locks
+ * change; a read right after the first misses the same lock far more often
+ * than chance, so the second is 2 s later. A lock either reading shows is
+ * held, and only two readable readings that both miss it prove it absent:
+ * after a reading that cannot be read, a lock the other misses is unknown,
+ * as without locks (D10), and `unknown` names the reading (`reviews/wave-5.md`
+ * B1). A socket file is its daemon's when that daemon holds its lock, or may.
  */
 export function lockedAgain(
   source: PsSource,
   discovery: Discovery,
-  locks: readonly LockEntry[] | null,
+  [first, second]: readonly [readonly LockEntry[] | null, readonly LockEntry[] | null],
 ): Discovery {
-  if (locks === null || discovery.daemons.every((d) => d.holdsLock !== false)) return discovery;
-  const daemons = discovery.daemons.map((d) =>
-    d.holdsLock === false && holds(source, d.row.pid, d.lockPath, locks) === true
-      ? { ...d, holdsLock: true }
-      : d,
-  );
+  const both = first !== null && second !== null;
+  if (first === null && second === null) return discovery;
+  if (both && discovery.daemons.every((d) => d.holdsLock !== false)) return discovery;
+  const daemons = discovery.daemons.map((d) => {
+    const shown =
+      d.holdsLock === true ||
+      (second !== null && holds(source, d.row.pid, d.lockPath, second) === true);
+    const held = shown ? true : both && d.holdsLock === false ? false : null;
+    return held === d.holdsLock ? d : { ...d, holdsLock: held };
+  });
   const sockets = discovery.sockets.map((s) =>
     s.daemonPid === null ? { ...s, daemonPid: holderOf(daemons, s.worktreeId) } : s,
   );
-  return { ...discovery, daemons, sockets };
+  if (both) return { ...discovery, daemons, sockets };
+  const [lost, read] = first === null ? ["first", "second"] : ["second", "first"];
+  const why = `the window's ${lost} /proc/locks reading cannot be read, so a lock the ${read} misses is unknown, not absent: a phase is serving by its heartbeat, or unknown`;
+  const unknown = discovery.unknown.filter((u) => u.what !== HOLDERS);
+  return { daemons, sockets, unknown: [...unknown, { what: HOLDERS, why }] };
 }
 
 /**
