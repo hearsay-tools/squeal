@@ -174,6 +174,26 @@ describe("the load guard never picks the worktree (task 004-84)", { timeout: 30_
 });
 
 /*
+ * Row 011-99: a close whose preempt found no guard wait in progress still
+ * ends the next one. The start's pump is in its install check when the
+ * close comes, before its slow pass; under load a pump of any daemon can be.
+ * Before the fix the guard waited out `b`'s 10-minute budget and the close
+ * with it, as the teardown hook that timed out at 10 s did.
+ */
+describe("a close ends a guard wait that had not begun (row 011-99)", { timeout: 30_000 }, () => {
+  it("closes at once and reads the load no more", async () => {
+    const b = daemon(slotDir(), { count: 2, load: OVER });
+    await b.scheduler.start();
+    const closing = b.scheduler.close().then(() => "closed");
+    const waited = delay(5_000, "waiting", { ref: false });
+    expect(await Promise.race([closing, waited])).toBe("closed");
+    const reads = b.reads();
+    await delay(200);
+    expect(b.reads()).toBe(reads);
+  });
+});
+
+/*
  * 011 C9 and 004 D2 as amended 2026-10-21 (row 011-84, code row 011-93): a
  * draining daemon leaves no waiter mark and takes no permit while another
  * worktree's mark is fresh, so a live session's slow files never wait
