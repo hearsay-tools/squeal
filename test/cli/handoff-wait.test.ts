@@ -217,14 +217,29 @@ describe("a wait after the old daemon cleared its record (review 0.1.259, B2)", 
     expect(wait.waitedMs).toBeGreaterThanOrEqual(250);
   });
 
-  it("finds no daemon once the lock is free, the claim live or not", async () => {
-    const { repo, lock } = await handingOver({ cleared: true });
+  it("goes on with the lock free while the claim lives, and finds no daemon once it ends", async () => {
+    // The old daemon let go of its lock before the successor's process took it.
+    const { repo, store, id, lock } = await handingOver({ cleared: true });
     lock.release();
+    const handing = "the daemon is handing over from 0.1.0 to 0.1.31";
     const wait = await waitForStatus(repo.main, options(NOW, 500));
     if (wait.outcome === "unavailable") throw new Error("unavailable");
-    expect(wait).toMatchObject({ outcome: "no-daemon", down: "stopped" });
+    expect(wait.outcome).toBe("timeout");
+    expect(waitLine(wait)).toContain(handing);
     const named = await waitForNamed(repo.main, [SLOW_FILE], options(NOW, 500));
-    expect(named).toMatchObject({ outcome: "no-daemon", down: "stopped" });
+    if (named.outcome === "unavailable") throw new Error("unavailable");
+    expect(named.outcome).toBe("timeout");
+    expect(namedLine(named)).toContain(handing);
+    // The successor's lock wait timed out (`lockWaitTimedOut`): no handoff runs.
+    clearHandoff(store, id);
+    expect(await waitForStatus(repo.main, options(NOW, 500))).toMatchObject({
+      outcome: "no-daemon",
+      down: "stopped",
+    });
+    expect(await waitForNamed(repo.main, [SLOW_FILE], options(NOW, 500))).toMatchObject({
+      outcome: "no-daemon",
+      down: "stopped",
+    });
   });
 
   it("finds no daemon past the claim's bound, as status reads none", async () => {
