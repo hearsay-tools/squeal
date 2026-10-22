@@ -62,7 +62,7 @@ export function formatStatus(
   const lines = [
     `Revision: ${statusRevisionText(result)}`,
     // Row 011-73 (C6 as amended 2026-10-21): a hold qualifies everything below it.
-    ...holdLines(result.holds, now, command),
+    ...holdLines(result.holds, command),
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
     `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}${notCurrentText(result)}`,
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),

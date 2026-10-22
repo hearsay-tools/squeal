@@ -5,6 +5,7 @@ import type {
   DaemonLiveness,
   EpochMs,
   HarnessProcess,
+  HoldChange,
   StatusHold,
   Store,
   WorktreeRecord,
@@ -28,13 +29,14 @@ type CommandHold = Extract<StatusHold, { cause: "command" }>;
 /**
  * The holds on `worktree`'s validation: the merge hold its live daemon
  * published, then each command hold by start. `daemon` is the liveness the
- * caller judged; `namespace` this process's PID namespace, in which a
- * holder's processes are judged.
+ * caller judged at `now`; `namespace` this process's PID namespace, in which
+ * a holder's processes are judged.
  */
 export function readHolds(
   store: Store,
   worktree: WorktreeRecord | null,
   daemon: DaemonLiveness,
+  now: EpochMs,
   namespace: string | null = pidNamespace(),
 ): StatusHold[] {
   if (worktree === null) return [];
@@ -67,6 +69,7 @@ export function readHolds(
         pid: entry.child?.pid ?? entry.wrapper?.pid ?? null,
         until: entry.until,
         ...(gone ? { gone: true as const } : {}),
+        ...(!gone && entry.until <= now ? { expired: true as const } : {}),
       };
     });
   return [...merge, ...commands];
@@ -96,48 +99,44 @@ function commandText(hold: CommandHold): string {
 }
 
 /**
- * Whether the daemon ends `hold` at its next heartbeat: its holder's
- * processes are gone, or its bound passed (C9).
+ * Why the daemon ends `hold` at its next heartbeat: its holder's processes
+ * are gone, or its bound passed (C9); `null` while it holds.
  */
-function endingText(hold: CommandHold, now: EpochMs): string | null {
+function endingText(hold: CommandHold): string | null {
   if (hold.gone === true) return "its command is gone";
-  return hold.until <= now ? `its bound passed at ${timeText(hold.until)}` : null;
+  return hold.expired === true ? `its bound passed at ${timeText(hold.until)}` : null;
 }
 
 /**
  * The `On hold:` line of one hold (C6 as amended 2026-10-21): its cause and
  * since when, what it names, and what ends it.
  */
-export function holdLine(hold: StatusHold, now: EpochMs, command = "squeal"): string {
+export function holdLine(hold: StatusHold, command = "squeal"): string {
   const since = timeText(hold.since);
   if (hold.cause === "merge") {
     return `On hold: unresolved merge since ${since}, ${listedText(hold)}; no test runs until git lists none. ${mergeEndText(hold)}`;
   }
   const head = `On hold: \`${command} hold\` since ${since}, ${commandText(hold)}`;
-  const ending = endingText(hold, now);
+  const ending = endingText(hold);
   if (ending !== null) return `${head}; ${ending}; the daemon ends the hold at its next heartbeat.`;
   return `${head}, until it exits, at most until ${timeText(hold.until)}; edits are recorded and not run. \`${command} start\` ends the hold.`;
 }
 
 /** Every hold's `On hold:` line, after the revision line. */
-export function holdLines(
-  holds: readonly StatusHold[] | undefined,
-  now: EpochMs,
-  command = "squeal",
-): string[] {
-  return (holds ?? []).map((hold) => holdLine(hold, now, command));
+export function holdLines(holds: readonly StatusHold[] | undefined, command = "squeal"): string[] {
+  return (holds ?? []).map((hold) => holdLine(hold, command));
 }
 
 /**
  * A wait's verdict line while its files are on hold (C6 as amended
  * 2026-10-21): the first hold, `no verdict`, and what ends it.
  */
-export function holdVerdictLine(hold: StatusHold, now: EpochMs, command = "squeal"): string {
+export function holdVerdictLine(hold: StatusHold, command = "squeal"): string {
   if (hold.cause === "merge") {
     return `On hold: unresolved merge, ${listedText(hold)}; no verdict, since no test runs until git lists none. ${mergeEndText(hold)}`;
   }
   const head = `On hold: \`${command} hold\` ${commandText(hold)}`;
-  const ending = endingText(hold, now);
+  const ending = endingText(hold);
   if (ending !== null) {
     return `${head}; no verdict: ${ending}, and the daemon ends the hold at its next heartbeat.`;
   }
@@ -154,4 +153,31 @@ export function onHoldText(hold: StatusHold): string {
     return `on hold for the unresolved merge (git lists ${unmergedPathsText(hold)} unmerged)`;
   }
   return `on hold ${commandText(hold)} until it exits`;
+}
+
+/**
+ * The line a delivery says when a hold starts (C8 as amended 2026-10-21),
+ * after `SQUEAL · validation on hold at revision N: `.
+ */
+export function holdStartText(hold: StatusHold, command = "squeal"): string {
+  if (hold.cause === "merge") {
+    const them = hold.pathCount === 1 ? "it" : "them";
+    return `${listedText(hold)}. No test runs until git lists none: resolve ${them} and \`git add\` ${them}, or abort.`;
+  }
+  const runs = `\`${command} hold\` runs \`${hold.command}\`${hold.pid === null ? "" : ` (pid ${hold.pid})`}`;
+  return `${runs}. Edits are recorded and not run until it exits, at most until ${timeText(hold.until)}; \`${command} start\` ends the hold.`;
+}
+
+/**
+ * The line a delivery says when the last hold ends, after `SQUEAL ·
+ * validating again at revision N: `: what ended, and the test files that
+ * wait to run.
+ */
+export function holdEndText(change: Extract<HoldChange, { kind: "resumed" }>): string {
+  const ended =
+    change.ended.cause === "merge"
+      ? "git lists no unmerged path"
+      : `the hold for \`${change.ended.command}\` ended`;
+  const running = change.running === 0 ? "" : `, ${change.running} running`;
+  return `${ended}; ${plural(change.queued, "test file")} queued${running}.`;
 }

@@ -131,7 +131,7 @@ export function standingsOf(
   const setups = setupsOf(states);
   const alive = daemon.state === "alive";
   // Row 011-73 (C9, C15): while on hold no tier starts, so a queued file waits for the hold.
-  const hold = (reads?.holds ?? readHolds(store, store.worktrees.get(worktreeId), daemon))[0];
+  const hold = (reads?.holds ?? readHolds(store, store.worktrees.get(worktreeId), daemon, now))[0];
   const slot = once(() =>
     reads?.slowSlot === undefined
       ? slowSlotOf(store, worktreeId, root, header, alive, now)
