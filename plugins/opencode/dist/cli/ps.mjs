@@ -383,8 +383,8 @@ function cpuTime(cpus3) {
 }
 
 // src/core/ps/flags.ts
-import { existsSync as existsSync2, readdirSync as readdirSync3, readFileSync as readFileSync4 } from "node:fs";
-import { join as join8 } from "node:path";
+import { existsSync as existsSync2, readdirSync as readdirSync4, readFileSync as readFileSync5 } from "node:fs";
+import { join as join9 } from "node:path";
 
 // src/core/daemon/version.ts
 function isNewerVersion(version, than) {
@@ -1016,6 +1016,400 @@ var SLOT_WAITER_FRESH_MS = 3e4;
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
+// src/core/ps/measure.ts
+var takeSample = (source, pids3, since) => {
+  const before = performance.now();
+  const table = source.processTable(pids3, since);
+  const cpuTime4 = source.host().cpuTime;
+  return { atMs: (before + performance.now()) / 2, table, cpuTime: cpuTime4 };
+};
+function below(table, pids3) {
+  const children = /* @__PURE__ */ new Map();
+  for (const row2 of table.values())
+    children.set(row2.ppid, [...children.get(row2.ppid) ?? [], row2.pid]);
+  const all2 = /* @__PURE__ */ new Set();
+  const next = [...pids3];
+  for (let pid = next.pop(); pid !== void 0; pid = next.pop()) {
+    if (all2.has(pid)) continue;
+    all2.add(pid);
+    next.push(...children.get(pid) ?? []);
+  }
+  return [...all2];
+}
+var measure = (source, first, second, pids3) => {
+  const windowMs = second.atMs - first.atMs;
+  const clockTicks = source.clockTicks();
+  const rows = new Set(pids3);
+  const tree = below(first.table, pids3);
+  const inTree = new Set(tree);
+  const lived = (pid) => {
+    const before = first.table.get(pid);
+    return before !== void 0 && second.table.get(pid)?.startTicks === before.startTicks;
+  };
+  const steps = inTree.size + second.table.size;
+  const homeOf = (pid) => {
+    let p = pid;
+    for (let n = 0; p !== void 0 && inTree.has(p) && n <= steps; n++) {
+      if (rows.has(p) && lived(p)) return p;
+      p = first.table.get(p)?.ppid;
+    }
+    return null;
+  };
+  const homeAfter = (pid) => {
+    let p = pid;
+    for (let n = 0; p !== void 0 && n <= steps; n++) {
+      if (lived(p)) return homeOf(p);
+      const row2 = second.table.get(p);
+      if (row2 === void 0) return null;
+      if (rows.has(p) && !first.table.has(p)) return p;
+      p = row2.ppid;
+    }
+    return null;
+  };
+  const counted2 = /* @__PURE__ */ new Map();
+  const count2 = (home, ticks) => {
+    if (home !== null) counted2.set(home, (counted2.get(home) ?? 0) + ticks);
+  };
+  const endedUnder = /* @__PURE__ */ new Map();
+  for (const pid of tree) {
+    const before = first.table.get(pid);
+    if (before === void 0) continue;
+    const after = second.table.get(pid);
+    if (after !== void 0 && after.startTicks === before.startTicks) {
+      const home = homeOf(pid);
+      if (!rows.has(pid)) count2(home, after.cpuTicks - before.cpuTicks);
+      count2(home, (after.childTicks ?? 0) - (before.childTicks ?? 0));
+      continue;
+    }
+    endedUnder.set(before.ppid, [...endedUnder.get(before.ppid) ?? [], before]);
+  }
+  const reapedBy = /* @__PURE__ */ new Map();
+  const unsure = /* @__PURE__ */ new Set();
+  for (const [ppid, ended] of endedUnder) {
+    const parent = first.table.get(ppid);
+    const home = homeOf(ppid);
+    if (parent === void 0 || parent.childTicks === null || home === null) continue;
+    const had = ended.reduce((n, p) => n + p.cpuTicks + (p.childTicks ?? 0), 0);
+    count2(home, -had);
+    const later = second.table.get(ppid);
+    const grew = later === void 0 || later.childTicks === null ? null : later.childTicks - parent.childTicks;
+    const waited = lived(ppid) && later?.state !== "Z" && grew !== null && grew >= had;
+    for (const p of ended) {
+      if (waited) reapedBy.set(p.pid, home);
+      else unsure.add(rows.has(p.pid) ? p.pid : home);
+    }
+  }
+  for (const [pid, after] of second.table) {
+    if (first.table.get(pid)?.startTicks === after.startTicks) continue;
+    count2(homeAfter(pid), after.cpuTicks + (after.childTicks ?? 0));
+  }
+  const costs = /* @__PURE__ */ new Map();
+  for (const pid of pids3) {
+    const before = first.table.get(pid);
+    const after = second.table.get(pid);
+    const now = before === void 0 || after?.startTicks === before.startTicks ? after : void 0;
+    const last = now ?? before;
+    if (last === void 0) continue;
+    const own = now === void 0 ? null : now.cpuTicks - (before?.cpuTicks ?? now.cpuTicks);
+    const ticks = own === null || own < 0 ? null : own + Math.max(0, counted2.get(pid) ?? 0);
+    const ended = now === void 0 || now.state === "Z";
+    const memory = ended ? null : source.memory(pid);
+    costs.set(pid, {
+      cpuPct: ticks === null || windowMs <= 0 ? null : ticksToMs(ticks, clockTicks) / windowMs * 100,
+      cpuMs: ticksToMs(last.cpuTicks, clockTicks),
+      privateBytes: memory?.bytes ?? null,
+      swapBytes: memory?.swapBytes ?? null,
+      reapedBy: reapedBy.get(pid) ?? null,
+      reaperUnknown: unsure.has(pid),
+      left: ended,
+      childCpuUnread: ticks !== null && now?.childTicks === null
+    });
+  }
+  return costs;
+};
+function sumCosts(costs) {
+  const sum = (value, out) => {
+    const known = costs.flatMap((c) => value(c) ?? []);
+    const skipped = costs.filter(out).length;
+    const total = known.length === 0 && skipped > 0 ? null : known.reduce((a, b) => a + b, 0);
+    return { total, skipped };
+  };
+  const cpu = sum(
+    (c) => c.cpuPct,
+    (c) => c.cpuPct === null ? c.reapedBy === null : c.reaperUnknown || c.childCpuUnread
+  );
+  const memory = sum(
+    (c) => c.privateBytes,
+    (c) => c.privateBytes === null && !c.left
+  );
+  const swap = sum(
+    (c) => c.swapBytes,
+    (c) => c.swapBytes === null && !c.left
+  );
+  return {
+    cpuPct: cpu.total,
+    cpuMs: costs.reduce((a, c) => a + c.cpuMs, 0),
+    privateBytes: memory.total,
+    swapBytes: swap.total,
+    skipped: { cpuPct: cpu.skipped, privateBytes: memory.skipped, swapBytes: swap.skipped }
+  };
+}
+
+// src/core/ps/proc.ts
+import { readdirSync, readFileSync as readFileSync3, readlinkSync, statSync } from "node:fs";
+import { availableParallelism as availableParallelism3 } from "node:os";
+import { join as join5 } from "node:path";
+var CLOCK_TICKS2 = 100;
+var MARK = Buffer.from("SQUEAL_DAEMON_CHILD=");
+function createProcSource(options = {}) {
+  return new ProcSource(options);
+}
+var ProcSource = class {
+  platform = "linux";
+  memoryKind = "private";
+  readsMarks = true;
+  #proc;
+  #cpus;
+  #run;
+  constructor(options) {
+    this.#proc = join5(options.root ?? "/", "proc");
+    this.#cpus = options.availableParallelism ?? availableParallelism3;
+    this.#run = options.run ?? runCommand;
+  }
+  clockTicks() {
+    return CLOCK_TICKS2;
+  }
+  bootTime() {
+    const seconds = /^btime (\d+)$/m.exec(this.#read("stat") ?? "")?.[1];
+    return seconds === void 0 ? null : Number(seconds) * 1e3;
+  }
+  processTable(pids3, since) {
+    const table = /* @__PURE__ */ new Map();
+    const born = since === void 0 ? [] : this.#pids().filter((pid) => !since.has(pid));
+    for (const pid of pids3 === void 0 ? this.#pids() : /* @__PURE__ */ new Set([...pids3, ...born])) {
+      const row2 = this.#row(pid);
+      if (row2 !== null) table.set(pid, row2);
+    }
+    return table;
+  }
+  cmdline(pid) {
+    const text2 = this.#read(`${pid}/cmdline`);
+    if (text2 === null) return null;
+    const args = text2.split("\0");
+    if (args.at(-1) === "") args.pop();
+    return args;
+  }
+  markOf(pid) {
+    const bytes2 = this.#bytes(`${pid}/environ`);
+    if (bytes2 === null) return null;
+    for (let at = bytes2.indexOf(MARK); at >= 0; at = bytes2.indexOf(MARK, at + 1)) {
+      if (at > 0 && bytes2[at - 1] !== 0) continue;
+      const start = at + MARK.length;
+      const end = bytes2.indexOf(0, start);
+      return bytes2.toString("utf8", start, end < 0 ? bytes2.length : end);
+    }
+    return null;
+  }
+  memory(pid) {
+    const status = kilobytes(this.#read(`${pid}/status`));
+    const anon = status.get("RssAnon");
+    const shmem = status.get("RssShmem");
+    if (anon === void 0 || shmem === void 0) return null;
+    const swap = status.get("VmSwap");
+    return { bytes: anon + shmem, swapBytes: swap ?? null };
+  }
+  fds(pid) {
+    const dir = join5(this.#proc, String(pid), "fd");
+    let names3;
+    try {
+      names3 = readdirSync(dir);
+    } catch {
+      return null;
+    }
+    const targets = [];
+    for (const fd of names3.filter(isPid).map(Number).sort((a, b) => a - b)) {
+      const target = this.#link(`${pid}/fd/${fd}`);
+      if (target !== null) targets.push(target);
+    }
+    return targets;
+  }
+  cwds(pids3) {
+    const cwds = /* @__PURE__ */ new Map();
+    for (const pid of pids3) {
+      const cwd = this.#link(`${pid}/cwd`);
+      if (cwd !== null) cwds.set(pid, cwd);
+    }
+    return cwds;
+  }
+  locks() {
+    const text2 = this.#read("locks");
+    if (text2 === null) return null;
+    const locks = [];
+    for (const line of text2.split("\n")) {
+      const m = /^\s*\d+:\s+((?:->\s*)+)?(\S+)\s+\S+\s+(READ|WRITE)\s+(-?\d+)\s+([0-9a-f]+):([0-9a-f]+):(\d+)\s/i.exec(
+        line
+      );
+      if (m === null) continue;
+      const [, arrow, kind = "", access = "", pid = "", major = "", minor = "", inode = ""] = m;
+      locks.push({
+        kind,
+        access: access.toUpperCase() === "WRITE" ? "write" : "read",
+        pid: Number(pid) > 0 ? Number(pid) : null,
+        file: `${hex(BigInt(`0x${major}`))}:${hex(BigInt(`0x${minor}`))}:${inode}`,
+        blocked: arrow !== void 0
+      });
+    }
+    return locks;
+  }
+  fileKey(path) {
+    let dev;
+    let ino;
+    try {
+      ({ dev, ino } = statSync(path, { bigint: true }));
+    } catch {
+      return null;
+    }
+    const major = (dev & 0xfff00n) >> 8n | (dev & 0xfffff00000000000n) >> 32n;
+    const minor = dev & 0xffn | (dev & 0xffffff00000n) >> 12n;
+    return `${hex(major)}:${hex(minor)}:${ino}`;
+  }
+  unixListeners() {
+    const text2 = this.#run("ss", ["-xle"]);
+    if (text2 === null) return null;
+    const listeners = [];
+    for (const line of text2.split("\n")) {
+      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+(.+?)\s+(\d+)\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(
+        line
+      );
+      if (m === null) continue;
+      const [, path = "", socketInode, fileInode] = m;
+      listeners.push({ path, socketInode: Number(socketInode), fileInode: Number(fileInode) });
+    }
+    return listeners;
+  }
+  unixSockets() {
+    const text2 = this.#read("net/unix");
+    if (text2 === null) return null;
+    return text2.split("\n").flatMap((line) => /^\s*[0-9a-f]+:(?:\s+[0-9A-F]+){5}\s+\d+ (.+)$/.exec(line)?.[1] ?? []);
+  }
+  pidNamespace() {
+    return this.#link("self/ns/pid");
+  }
+  host() {
+    const load = (this.#read("loadavg") ?? "").split(" ").slice(0, 3).map(Number);
+    const cpu = pressure(this.#read("pressure/cpu"));
+    const memory = pressure(this.#read("pressure/memory"));
+    const meminfo = kilobytes(this.#read("meminfo"));
+    const swapTotal = meminfo.get("SwapTotal") ?? null;
+    const swapFree = meminfo.get("SwapFree");
+    return {
+      load: load.length === 3 && load.every(Number.isFinite) ? [load[0] ?? 0, load[1] ?? 0, load[2] ?? 0] : null,
+      cpuPressure: cpu.get("some") ?? null,
+      memoryPressure: memory.has("some") && memory.has("full") ? { some: memory.get("some") ?? 0, full: memory.get("full") ?? 0 } : null,
+      memTotal: meminfo.get("MemTotal") ?? null,
+      memAvailable: meminfo.get("MemAvailable") ?? null,
+      swapTotal,
+      swapUsed: swapTotal !== null && swapFree !== void 0 ? swapTotal - swapFree : null,
+      cpuTime: cpuTime2(this.#read("stat")),
+      cpus: this.#cpus()
+    };
+  }
+  #pids() {
+    try {
+      return readdirSync(this.#proc).filter(isPid).map(Number);
+    } catch {
+      return [];
+    }
+  }
+  /** Fields are counted after the last `)`, since the command name may hold spaces and parentheses. */
+  #row(pid) {
+    const text2 = this.#read(`${pid}/stat`);
+    if (text2 === null) return null;
+    const open = text2.indexOf("(");
+    const close = text2.lastIndexOf(")");
+    if (open < 0 || close < open) return null;
+    const f = text2.slice(close + 2).split(" ");
+    const [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks] = [
+      f[1],
+      f[2],
+      f[11],
+      f[12],
+      f[13],
+      f[14],
+      f[16],
+      f[19]
+    ].map(Number);
+    const numbers = [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks];
+    if (!numbers.every(Number.isInteger)) return null;
+    return {
+      pid,
+      ppid: ppid ?? 0,
+      pgid: pgid ?? 0,
+      comm: text2.slice(open + 1, close),
+      state: f[0] ?? null,
+      startTicks: startTicks ?? 0,
+      cpuTicks: (utime ?? 0) + (stime ?? 0),
+      childTicks: (cutime ?? 0) + (cstime ?? 0),
+      nice: nice ?? 0,
+      uid: this.#uid(pid)
+    };
+  }
+  #uid(pid) {
+    try {
+      return statSync(join5(this.#proc, String(pid))).uid;
+    } catch {
+      return null;
+    }
+  }
+  #read(path) {
+    try {
+      return readFileSync3(join5(this.#proc, path), "utf8");
+    } catch {
+      return null;
+    }
+  }
+  #bytes(path) {
+    try {
+      return readFileSync3(join5(this.#proc, path));
+    } catch {
+      return null;
+    }
+  }
+  #link(path) {
+    try {
+      return readlinkSync(join5(this.#proc, path));
+    } catch {
+      return null;
+    }
+  }
+};
+function isPid(name) {
+  return /^\d+$/.test(name);
+}
+function hex(n) {
+  return n.toString(16).padStart(2, "0");
+}
+function kilobytes(text2) {
+  const values = /* @__PURE__ */ new Map();
+  for (const m of (text2 ?? "").matchAll(/^(\w+):\s+(\d+) kB$/gm))
+    values.set(m[1] ?? "", Number(m[2]) * 1024);
+  return values;
+}
+function pressure(text2) {
+  const values = /* @__PURE__ */ new Map();
+  for (const m of (text2 ?? "").matchAll(/^(\w+) avg10=([\d.]+)/gm))
+    values.set(m[1] ?? "", Number(m[2]));
+  return values;
+}
+function cpuTime2(text2) {
+  const line = /^cpu\s+(.*)$/m.exec(text2 ?? "")?.[1];
+  if (line === void 0) return null;
+  const ticks = line.trim().split(/\s+/).slice(0, 8).map(Number);
+  if (ticks.length < 5 || !ticks.every(Number.isFinite)) return null;
+  const total = ticks.reduce((a, b) => a + b, 0);
+  return { busy: total - (ticks[3] ?? 0) - (ticks[4] ?? 0), total };
+}
+
 // src/core/capacity/pool.ts
 var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 
@@ -1040,8 +1434,8 @@ var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOC
 var HEARTBEAT_GRACE_INTERVALS = 2;
 
 // src/core/ps/discover.ts
-import { readdirSync, statSync } from "node:fs";
-import { isAbsolute as isAbsolute5, join as join5 } from "node:path";
+import { readdirSync as readdirSync2, statSync as statSync2 } from "node:fs";
+import { isAbsolute as isAbsolute5, join as join6 } from "node:path";
 var START_MARGIN_MS = 1e3;
 var NODE_COMMS = /* @__PURE__ */ new Set(["MainThread", "node"]);
 var SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
@@ -1174,17 +1568,17 @@ function installOf(script) {
 }
 function socketFiles(source, places, daemons) {
   const listeners = source.unixListeners();
-  const dirs = /* @__PURE__ */ new Set([places.runtimeDir, join5(places.tempDir, `squeal-${places.uid}`)]);
+  const dirs = /* @__PURE__ */ new Set([places.runtimeDir, join6(places.tempDir, `squeal-${places.uid}`)]);
   const sockets = [];
   for (const dir of dirs) {
     if (dir === null) continue;
     for (const name of names(dir)) {
       const worktreeId = SOCKET_FILE.exec(name)?.[1];
       if (worktreeId === void 0) continue;
-      const path = join5(dir, name);
+      const path = join6(dir, name);
       let stat;
       try {
-        stat = statSync(path);
+        stat = statSync2(path);
       } catch {
         continue;
       }
@@ -1204,24 +1598,24 @@ function holderOf(daemons, worktreeId) {
 }
 function names(dir) {
   try {
-    return readdirSync(dir).sort();
+    return readdirSync2(dir).sort();
   } catch {
     return [];
   }
 }
 
 // src/core/ps/flags-files.ts
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 
 // src/core/ps/flags-leftovers.ts
 import { createHash as createHash2 } from "node:crypto";
 import {
   lstatSync as lstatSync2,
-  readdirSync as readdirSync2,
-  readFileSync as readFileSync3,
+  readdirSync as readdirSync3,
+  readFileSync as readFileSync4,
   realpathSync as realpathSync2
 } from "node:fs";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 
 // src/core/ps/flags-text.ts
 var SAFE_WORD = /^[\w@%+=:,./-]+$/;
@@ -1279,7 +1673,7 @@ function duration2(ms) {
   if (s < 48 * 3600) return `${Math.floor(s / 3600)}h`;
   return `${Math.floor(s / 86400)}d`;
 }
-function cpuTime2(ms) {
+function cpuTime3(ms) {
   if (ms === null) return UNKNOWN;
   const s = Math.floor(ms / 1e3);
   const two = (n) => String(n).padStart(2, "0");
@@ -1301,16 +1695,16 @@ function leftoverTemp(model, options, unknown) {
     return none;
   }
   const { places } = model;
-  const userDir = join6(places.tempDir, `squeal-${places.uid}`);
-  const keyDirs = join6(userDir, "tmp");
+  const userDir = join7(places.tempDir, `squeal-${places.uid}`);
+  const keyDirs = join7(userDir, "tmp");
   const fallback = new RegExp(`^squeal-${places.uid}-([0-9a-f]{16})-[A-Za-z0-9]{6}$`);
   const unkeyed = (pattern, name) => {
     const key = pattern.exec(name)?.[1];
     return key !== void 0 && !keys.has(key);
   };
   const candidates = [
-    ...names2(keyDirs).filter((name) => unkeyed(KEY_DIR, name)).map((name) => join6(keyDirs, name)),
-    ...names2(places.tempDir).filter((name) => MADE.test(name) || unkeyed(fallback, name)).map((name) => join6(places.tempDir, name))
+    ...names2(keyDirs).filter((name) => unkeyed(KEY_DIR, name)).map((name) => join7(keyDirs, name)),
+    ...names2(places.tempDir).filter((name) => MADE.test(name) || unkeyed(fallback, name)).map((name) => join7(places.tempDir, name))
   ];
   const old = /* @__PURE__ */ new Map();
   for (const path of candidates) {
@@ -1360,7 +1754,7 @@ function liveKeys(model) {
       return `the temp key of daemon ${d.row.pid} is unknown: its root or repository cannot be read`;
     let id;
     try {
-      id = readFileSync3(join6(storePaths(d.commonDir).dir, "repository-id"), "utf8").trim();
+      id = readFileSync4(join7(storePaths(d.commonDir).dir, "repository-id"), "utf8").trim();
     } catch {
       continue;
     }
@@ -1381,9 +1775,9 @@ function unusedPaths(model, keyDirs, candidates) {
   const use = (path) => {
     if (!path.startsWith(at)) return;
     const [top = "", sub, key] = path.slice(places.tempDir.length + 1).split("/", 3);
-    unused.delete(join6(places.tempDir, top));
+    unused.delete(join7(places.tempDir, top));
     if (top === `squeal-${places.uid}` && sub === "tmp" && key !== void 0 && key !== "")
-      unused.delete(join6(keyDirs, key));
+      unused.delete(join7(keyDirs, key));
   };
   const unread = /* @__PURE__ */ new Set();
   for (const cwd of cwds.values()) use(named(cwd));
@@ -1434,13 +1828,13 @@ function sizeOf(dirs, stats, limit) {
   for (let dir = stack.pop(); dir !== void 0; dir = stack.pop()) {
     let dirents;
     try {
-      dirents = readdirSync2(dir, { withFileTypes: true });
+      dirents = readdirSync3(dir, { withFileTypes: true });
     } catch {
       continue;
     }
     for (const dirent of dirents) {
       if (++entries > limit) return null;
-      const path = join6(dir, dirent.name);
+      const path = join7(dir, dirent.name);
       if (dirent.isDirectory()) stack.push(path);
       else bytes2 += lstatOrNull2(path)?.size ?? 0;
     }
@@ -1449,7 +1843,7 @@ function sizeOf(dirs, stats, limit) {
 }
 function names2(dir) {
   try {
-    return readdirSync2(dir).sort();
+    return readdirSync3(dir).sort();
   } catch {
     return [];
   }
@@ -1473,7 +1867,7 @@ function realOr(path) {
 var LOCK_FILE2 = /^[0-9a-f]{16}\.sqlite$/;
 var WAITER_LOCK = /^waiter-.+\.sqlite$/;
 var PERMIT = /^pool\.(\d+)\.lock$/;
-var MARK = /^pool\.mark\.[^.]+$/;
+var MARK2 = /^pool\.mark\.[^.]+$/;
 function fileFlags(model, options = {}) {
   const unknown = [];
   const left = leftoverTemp(model, options, unknown);
@@ -1512,8 +1906,8 @@ function stalePoolMarks(model) {
   const flags = [];
   for (const dir of poolDirs(model.places)) {
     for (const name of names2(dir)) {
-      if (!MARK.test(name)) continue;
-      const path = join7(dir, name);
+      if (!MARK2.test(name)) continue;
+      const path = join8(dir, name);
       const stat = lstatOrNull2(path);
       if (stat === null || !stat.isFile() || model.now - stat.mtimeMs <= SLOT_WAITER_FRESH_MS)
         continue;
@@ -1564,9 +1958,9 @@ function unflagged(model) {
   });
 }
 function poolDirs(places, sub = "squeal") {
-  const userDir = join7(places.tempDir, `squeal-${places.uid}`);
-  const dirs = [sub === "squeal" ? userDir : join7(userDir, sub)];
-  if (places.runtimeDir !== null) dirs.push(join7(places.runtimeDir, sub));
+  const userDir = join8(places.tempDir, `squeal-${places.uid}`);
+  const dirs = [sub === "squeal" ? userDir : join8(userDir, sub)];
+  if (places.runtimeDir !== null) dirs.push(join8(places.runtimeDir, sub));
   return dirs;
 }
 
@@ -1775,7 +2169,7 @@ function daemonFlags(c, d) {
   }
   for (const reason of deadConsumers(c, pid)) add("dead-consumer", reason, null);
   const home = model.places.home;
-  const installed = d.harness !== null && within(d.script, home) || within(d.script, join8(home, ".local"));
+  const installed = d.harness !== null && within(d.script, home) || within(d.script, join9(home, ".local"));
   if (!installed && d.root !== null && within(d.root, model.places.tempDir)) {
     if (age2 === null) c.name(`daemon ${pid} flag not-installed`, NO_BOOT);
     else if (age2 > NOT_INSTALLED_MS)
@@ -1829,7 +2223,7 @@ function olderOf(c, d, work) {
 function claudeInstalled(plugins, marketplace, root) {
   let file;
   try {
-    file = JSON.parse(readFileSync4(join8(plugins, "installed_plugins.json"), "utf8"));
+    file = JSON.parse(readFileSync5(join9(plugins, "installed_plugins.json"), "utf8"));
   } catch {
     return null;
   }
@@ -1844,7 +2238,7 @@ function claudeInstalled(plugins, marketplace, root) {
 function codexNewest(plugins, marketplace) {
   let versions;
   try {
-    versions = readdirSync3(join8(plugins, "cache", marketplace, "squeal"));
+    versions = readdirSync4(join9(plugins, "cache", marketplace, "squeal"));
   } catch {
     return null;
   }
@@ -1996,261 +2390,6 @@ function within(path, dir) {
   return path.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
 }
 
-// src/core/ps/proc.ts
-import { readdirSync as readdirSync4, readFileSync as readFileSync5, readlinkSync, statSync as statSync2 } from "node:fs";
-import { availableParallelism as availableParallelism3 } from "node:os";
-import { join as join9 } from "node:path";
-var CLOCK_TICKS2 = 100;
-var MARK2 = Buffer.from("SQUEAL_DAEMON_CHILD=");
-function createProcSource(options = {}) {
-  return new ProcSource(options);
-}
-var ProcSource = class {
-  platform = "linux";
-  memoryKind = "private";
-  readsMarks = true;
-  #proc;
-  #cpus;
-  #run;
-  constructor(options) {
-    this.#proc = join9(options.root ?? "/", "proc");
-    this.#cpus = options.availableParallelism ?? availableParallelism3;
-    this.#run = options.run ?? runCommand;
-  }
-  clockTicks() {
-    return CLOCK_TICKS2;
-  }
-  bootTime() {
-    const seconds = /^btime (\d+)$/m.exec(this.#read("stat") ?? "")?.[1];
-    return seconds === void 0 ? null : Number(seconds) * 1e3;
-  }
-  processTable(pids3, since) {
-    const table = /* @__PURE__ */ new Map();
-    const born = since === void 0 ? [] : this.#pids().filter((pid) => !since.has(pid));
-    for (const pid of pids3 === void 0 ? this.#pids() : /* @__PURE__ */ new Set([...pids3, ...born])) {
-      const row2 = this.#row(pid);
-      if (row2 !== null) table.set(pid, row2);
-    }
-    return table;
-  }
-  cmdline(pid) {
-    const text2 = this.#read(`${pid}/cmdline`);
-    if (text2 === null) return null;
-    const args = text2.split("\0");
-    if (args.at(-1) === "") args.pop();
-    return args;
-  }
-  markOf(pid) {
-    const bytes2 = this.#bytes(`${pid}/environ`);
-    if (bytes2 === null) return null;
-    for (let at = bytes2.indexOf(MARK2); at >= 0; at = bytes2.indexOf(MARK2, at + 1)) {
-      if (at > 0 && bytes2[at - 1] !== 0) continue;
-      const start = at + MARK2.length;
-      const end = bytes2.indexOf(0, start);
-      return bytes2.toString("utf8", start, end < 0 ? bytes2.length : end);
-    }
-    return null;
-  }
-  memory(pid) {
-    const status = kilobytes(this.#read(`${pid}/status`));
-    const anon = status.get("RssAnon");
-    const shmem = status.get("RssShmem");
-    if (anon === void 0 || shmem === void 0) return null;
-    const swap = status.get("VmSwap");
-    return { bytes: anon + shmem, swapBytes: swap ?? null };
-  }
-  fds(pid) {
-    const dir = join9(this.#proc, String(pid), "fd");
-    let names3;
-    try {
-      names3 = readdirSync4(dir);
-    } catch {
-      return null;
-    }
-    const targets = [];
-    for (const fd of names3.filter(isPid).map(Number).sort((a, b) => a - b)) {
-      const target = this.#link(`${pid}/fd/${fd}`);
-      if (target !== null) targets.push(target);
-    }
-    return targets;
-  }
-  cwds(pids3) {
-    const cwds = /* @__PURE__ */ new Map();
-    for (const pid of pids3) {
-      const cwd = this.#link(`${pid}/cwd`);
-      if (cwd !== null) cwds.set(pid, cwd);
-    }
-    return cwds;
-  }
-  locks() {
-    const text2 = this.#read("locks");
-    if (text2 === null) return null;
-    const locks = [];
-    for (const line of text2.split("\n")) {
-      const m = /^\s*\d+:\s+((?:->\s*)+)?(\S+)\s+\S+\s+(READ|WRITE)\s+(-?\d+)\s+([0-9a-f]+):([0-9a-f]+):(\d+)\s/i.exec(
-        line
-      );
-      if (m === null) continue;
-      const [, arrow, kind = "", access = "", pid = "", major = "", minor = "", inode = ""] = m;
-      locks.push({
-        kind,
-        access: access.toUpperCase() === "WRITE" ? "write" : "read",
-        pid: Number(pid) > 0 ? Number(pid) : null,
-        file: `${hex(BigInt(`0x${major}`))}:${hex(BigInt(`0x${minor}`))}:${inode}`,
-        blocked: arrow !== void 0
-      });
-    }
-    return locks;
-  }
-  fileKey(path) {
-    let dev;
-    let ino;
-    try {
-      ({ dev, ino } = statSync2(path, { bigint: true }));
-    } catch {
-      return null;
-    }
-    const major = (dev & 0xfff00n) >> 8n | (dev & 0xfffff00000000000n) >> 32n;
-    const minor = dev & 0xffn | (dev & 0xffffff00000n) >> 12n;
-    return `${hex(major)}:${hex(minor)}:${ino}`;
-  }
-  unixListeners() {
-    const text2 = this.#run("ss", ["-xle"]);
-    if (text2 === null) return null;
-    const listeners = [];
-    for (const line of text2.split("\n")) {
-      const m = /^u_\w+\s+LISTEN\s+\d+\s+\d+\s+(.+?)\s+(\d+)\s+\*\s+\d+\b.*?\bino:(\d+)\b/.exec(
-        line
-      );
-      if (m === null) continue;
-      const [, path = "", socketInode, fileInode] = m;
-      listeners.push({ path, socketInode: Number(socketInode), fileInode: Number(fileInode) });
-    }
-    return listeners;
-  }
-  unixSockets() {
-    const text2 = this.#read("net/unix");
-    if (text2 === null) return null;
-    return text2.split("\n").flatMap((line) => /^\s*[0-9a-f]+:(?:\s+[0-9A-F]+){5}\s+\d+ (.+)$/.exec(line)?.[1] ?? []);
-  }
-  pidNamespace() {
-    return this.#link("self/ns/pid");
-  }
-  host() {
-    const load = (this.#read("loadavg") ?? "").split(" ").slice(0, 3).map(Number);
-    const cpu = pressure(this.#read("pressure/cpu"));
-    const memory = pressure(this.#read("pressure/memory"));
-    const meminfo = kilobytes(this.#read("meminfo"));
-    const swapTotal = meminfo.get("SwapTotal") ?? null;
-    const swapFree = meminfo.get("SwapFree");
-    return {
-      load: load.length === 3 && load.every(Number.isFinite) ? [load[0] ?? 0, load[1] ?? 0, load[2] ?? 0] : null,
-      cpuPressure: cpu.get("some") ?? null,
-      memoryPressure: memory.has("some") && memory.has("full") ? { some: memory.get("some") ?? 0, full: memory.get("full") ?? 0 } : null,
-      memTotal: meminfo.get("MemTotal") ?? null,
-      memAvailable: meminfo.get("MemAvailable") ?? null,
-      swapTotal,
-      swapUsed: swapTotal !== null && swapFree !== void 0 ? swapTotal - swapFree : null,
-      cpuTime: cpuTime3(this.#read("stat")),
-      cpus: this.#cpus()
-    };
-  }
-  #pids() {
-    try {
-      return readdirSync4(this.#proc).filter(isPid).map(Number);
-    } catch {
-      return [];
-    }
-  }
-  /** Fields are counted after the last `)`, since the command name may hold spaces and parentheses. */
-  #row(pid) {
-    const text2 = this.#read(`${pid}/stat`);
-    if (text2 === null) return null;
-    const open = text2.indexOf("(");
-    const close = text2.lastIndexOf(")");
-    if (open < 0 || close < open) return null;
-    const f = text2.slice(close + 2).split(" ");
-    const [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks] = [
-      f[1],
-      f[2],
-      f[11],
-      f[12],
-      f[13],
-      f[14],
-      f[16],
-      f[19]
-    ].map(Number);
-    const numbers = [ppid, pgid, utime, stime, cutime, cstime, nice, startTicks];
-    if (!numbers.every(Number.isInteger)) return null;
-    return {
-      pid,
-      ppid: ppid ?? 0,
-      pgid: pgid ?? 0,
-      comm: text2.slice(open + 1, close),
-      state: f[0] ?? null,
-      startTicks: startTicks ?? 0,
-      cpuTicks: (utime ?? 0) + (stime ?? 0),
-      childTicks: (cutime ?? 0) + (cstime ?? 0),
-      nice: nice ?? 0,
-      uid: this.#uid(pid)
-    };
-  }
-  #uid(pid) {
-    try {
-      return statSync2(join9(this.#proc, String(pid))).uid;
-    } catch {
-      return null;
-    }
-  }
-  #read(path) {
-    try {
-      return readFileSync5(join9(this.#proc, path), "utf8");
-    } catch {
-      return null;
-    }
-  }
-  #bytes(path) {
-    try {
-      return readFileSync5(join9(this.#proc, path));
-    } catch {
-      return null;
-    }
-  }
-  #link(path) {
-    try {
-      return readlinkSync(join9(this.#proc, path));
-    } catch {
-      return null;
-    }
-  }
-};
-function isPid(name) {
-  return /^\d+$/.test(name);
-}
-function hex(n) {
-  return n.toString(16).padStart(2, "0");
-}
-function kilobytes(text2) {
-  const values = /* @__PURE__ */ new Map();
-  for (const m of (text2 ?? "").matchAll(/^(\w+):\s+(\d+) kB$/gm))
-    values.set(m[1] ?? "", Number(m[2]) * 1024);
-  return values;
-}
-function pressure(text2) {
-  const values = /* @__PURE__ */ new Map();
-  for (const m of (text2 ?? "").matchAll(/^(\w+) avg10=([\d.]+)/gm))
-    values.set(m[1] ?? "", Number(m[2]));
-  return values;
-}
-function cpuTime3(text2) {
-  const line = /^cpu\s+(.*)$/m.exec(text2 ?? "")?.[1];
-  if (line === void 0) return null;
-  const ticks = line.trim().split(/\s+/).slice(0, 8).map(Number);
-  if (ticks.length < 5 || !ticks.every(Number.isFinite)) return null;
-  const total = ticks.reduce((a, b) => a + b, 0);
-  return { busy: total - (ticks[3] ?? 0) - (ticks[4] ?? 0), total };
-}
-
 // src/core/ps/render.ts
 var STATE_WIDTH = 19;
 var DETAIL = "      ";
@@ -2367,7 +2506,7 @@ function daemonLines(d, at) {
       version,
       up: age(d.startedAt, at),
       cpu: percent(d.cpuPct),
-      time: cpuTime2(d.cpuMs),
+      time: cpuTime3(d.cpuMs),
       memory: bytes(d.privateBytes, true),
       swap: bytes(d.swapBytes, true),
       work: workOf(d, at)
@@ -2387,7 +2526,7 @@ function processLines(p, at, full) {
       detail: detailOf(p),
       up: age(p.startedAt, at),
       cpu: plus(percent(and(p.cpuPct, d.cpuPct)), d.skipped.cpuPct),
-      time: cpuTime2(and(p.cpuMs, d.cpuMs)),
+      time: cpuTime3(and(p.cpuMs, d.cpuMs)),
       memory: plus(bytes(and(p.privateBytes, d.privateBytes), true), d.skipped.privateBytes),
       swap: plus(bytes(and(p.swapBytes, d.swapBytes), true), d.skipped.swapBytes),
       work: [...p.escaped ? ["escaped"] : [], `nice ${p.nice}`, ...children].join(", ")
@@ -2403,7 +2542,7 @@ function processLines(p, at, full) {
         detail: "",
         up: "",
         cpu: percent(c.cpuPct),
-        time: cpuTime2(c.cpuMs),
+        time: cpuTime3(c.cpuMs),
         memory: bytes(c.privateBytes, true),
         swap: bytes(c.swapBytes, true),
         work: ""
@@ -2545,145 +2684,6 @@ function permitFiles(places) {
     for (const name of names3.sort()) if (PERMIT2.test(name)) files.push(join10(dir, name));
   }
   return files;
-}
-
-// src/core/ps/measure.ts
-var takeSample = (source, pids3, since) => {
-  const before = performance.now();
-  const table = source.processTable(pids3, since);
-  const cpuTime4 = source.host().cpuTime;
-  return { atMs: (before + performance.now()) / 2, table, cpuTime: cpuTime4 };
-};
-function below(table, pids3) {
-  const children = /* @__PURE__ */ new Map();
-  for (const row2 of table.values())
-    children.set(row2.ppid, [...children.get(row2.ppid) ?? [], row2.pid]);
-  const all2 = /* @__PURE__ */ new Set();
-  const next = [...pids3];
-  for (let pid = next.pop(); pid !== void 0; pid = next.pop()) {
-    if (all2.has(pid)) continue;
-    all2.add(pid);
-    next.push(...children.get(pid) ?? []);
-  }
-  return [...all2];
-}
-var measure = (source, first, second, pids3) => {
-  const windowMs = second.atMs - first.atMs;
-  const clockTicks = source.clockTicks();
-  const rows = new Set(pids3);
-  const tree = below(first.table, pids3);
-  const inTree = new Set(tree);
-  const lived = (pid) => {
-    const before = first.table.get(pid);
-    return before !== void 0 && second.table.get(pid)?.startTicks === before.startTicks;
-  };
-  const steps = inTree.size + second.table.size;
-  const homeOf = (pid) => {
-    let p = pid;
-    for (let n = 0; p !== void 0 && inTree.has(p) && n <= steps; n++) {
-      if (rows.has(p) && lived(p)) return p;
-      p = first.table.get(p)?.ppid;
-    }
-    return null;
-  };
-  const homeAfter = (pid) => {
-    let p = pid;
-    for (let n = 0; p !== void 0 && n <= steps; n++) {
-      if (lived(p)) return homeOf(p);
-      const row2 = second.table.get(p);
-      if (row2 === void 0) return null;
-      if (rows.has(p) && !first.table.has(p)) return p;
-      p = row2.ppid;
-    }
-    return null;
-  };
-  const counted2 = /* @__PURE__ */ new Map();
-  const count2 = (home, ticks) => {
-    if (home !== null) counted2.set(home, (counted2.get(home) ?? 0) + ticks);
-  };
-  const endedUnder = /* @__PURE__ */ new Map();
-  for (const pid of tree) {
-    const before = first.table.get(pid);
-    if (before === void 0) continue;
-    const after = second.table.get(pid);
-    if (after !== void 0 && after.startTicks === before.startTicks) {
-      const home = homeOf(pid);
-      if (!rows.has(pid)) count2(home, after.cpuTicks - before.cpuTicks);
-      count2(home, (after.childTicks ?? 0) - (before.childTicks ?? 0));
-      continue;
-    }
-    endedUnder.set(before.ppid, [...endedUnder.get(before.ppid) ?? [], before]);
-  }
-  const reapedBy = /* @__PURE__ */ new Map();
-  const unsure = /* @__PURE__ */ new Set();
-  for (const [ppid, ended] of endedUnder) {
-    const parent = first.table.get(ppid);
-    const home = homeOf(ppid);
-    if (parent === void 0 || parent.childTicks === null || home === null) continue;
-    const had = ended.reduce((n, p) => n + p.cpuTicks + (p.childTicks ?? 0), 0);
-    count2(home, -had);
-    const later = second.table.get(ppid);
-    const grew = later === void 0 || later.childTicks === null ? null : later.childTicks - parent.childTicks;
-    const waited = lived(ppid) && later?.state !== "Z" && grew !== null && grew >= had;
-    for (const p of ended) {
-      if (waited) reapedBy.set(p.pid, home);
-      else unsure.add(rows.has(p.pid) ? p.pid : home);
-    }
-  }
-  for (const [pid, after] of second.table) {
-    if (first.table.get(pid)?.startTicks === after.startTicks) continue;
-    count2(homeAfter(pid), after.cpuTicks + (after.childTicks ?? 0));
-  }
-  const costs = /* @__PURE__ */ new Map();
-  for (const pid of pids3) {
-    const before = first.table.get(pid);
-    const after = second.table.get(pid);
-    const now = before === void 0 || after?.startTicks === before.startTicks ? after : void 0;
-    const last = now ?? before;
-    if (last === void 0) continue;
-    const own = now === void 0 ? null : now.cpuTicks - (before?.cpuTicks ?? now.cpuTicks);
-    const ticks = own === null || own < 0 ? null : own + Math.max(0, counted2.get(pid) ?? 0);
-    const ended = now === void 0 || now.state === "Z";
-    const memory = ended ? null : source.memory(pid);
-    costs.set(pid, {
-      cpuPct: ticks === null || windowMs <= 0 ? null : ticksToMs(ticks, clockTicks) / windowMs * 100,
-      cpuMs: ticksToMs(last.cpuTicks, clockTicks),
-      privateBytes: memory?.bytes ?? null,
-      swapBytes: memory?.swapBytes ?? null,
-      reapedBy: reapedBy.get(pid) ?? null,
-      reaperUnknown: unsure.has(pid),
-      left: ended,
-      childCpuUnread: ticks !== null && now?.childTicks === null
-    });
-  }
-  return costs;
-};
-function sumCosts(costs) {
-  const sum = (value, out) => {
-    const known = costs.flatMap((c) => value(c) ?? []);
-    const skipped = costs.filter(out).length;
-    const total = known.length === 0 && skipped > 0 ? null : known.reduce((a, b) => a + b, 0);
-    return { total, skipped };
-  };
-  const cpu = sum(
-    (c) => c.cpuPct,
-    (c) => c.cpuPct === null ? c.reapedBy === null : c.reaperUnknown || c.childCpuUnread
-  );
-  const memory = sum(
-    (c) => c.privateBytes,
-    (c) => c.privateBytes === null && !c.left
-  );
-  const swap = sum(
-    (c) => c.swapBytes,
-    (c) => c.swapBytes === null && !c.left
-  );
-  return {
-    cpuPct: cpu.total,
-    cpuMs: costs.reduce((a, c) => a + c.cpuMs, 0),
-    privateBytes: memory.total,
-    swapBytes: swap.total,
-    skipped: { cpuPct: cpu.skipped, privateBytes: memory.skipped, swapBytes: swap.skipped }
-  };
 }
 
 // src/core/ps/processes.ts
