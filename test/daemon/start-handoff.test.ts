@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { squealEvidence } from "../../evals/lib/index.mjs";
 import type { CliIo } from "../../src/cli/main.js";
 import { startCommand } from "../../src/cli/start.js";
 import { requestDaemon } from "../../src/core/daemon/client.js";
@@ -65,6 +66,8 @@ describe.runIf(hasPreCancel)("squeal start with a stopping daemon (row 011-34)",
       /^Squeal daemon started for .*, after the 0\.1\.31 daemon handed over in \d+\.\d s\n/,
     );
     expect(cli.stdout()).not.toMatch(/Squeal daemon alive|no daemon running/);
+    // The evals read a daemon validating from it: the successor serves (row 011-34).
+    expect(squealEvidence(cli.stdout(), "pull")).toMatchObject({ daemon: true });
     const next = await ping(repo.socketPath, 500);
     expect(next).toMatchObject({
       squealVersion: HOOKS,
@@ -107,6 +110,7 @@ describe.runIf(hasPreCancel)("squeal start with a stopping daemon (row 011-34)",
       ),
     );
     expect(stdout).toBe("");
+    expect(squealEvidence(stderr, "pull")).toMatchObject({ daemon: false });
     expect(await exitWithin(holder, 60_000, repo)).toEqual({ code: 0, signal: null });
   });
 });
