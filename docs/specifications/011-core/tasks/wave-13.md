@@ -90,3 +90,15 @@ Seam: B2 at `src/core/scheduler/scheduler.ts:883` into `recordTier` (`tiers.ts:7
 Owns: `src/core/scheduler/scheduler.ts`, `tiers.ts`, `setup.ts`, `slow-tier.ts`, `interrupted.ts`, their tests, `test/daemon/runtime-gone.test.ts`, the two notes. Not yours: `src/core/delivery/` (W4), `test/scheduler/backlog-slots-overhead.test.ts` and the other 011-99 files, the board, spec text, bundles, version. No `npm run build`.
 
 Done when: both probes' tests pass with a second queued file in the project; a rejected slow selection holds no slot, lease or claim; normal setup failures and slot fairness are unchanged; `test/keys/key-format.test.ts` passes; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+### R2: narrow re-review of cand/0.1.262 after the repair
+
+Use /reviewer. Shape: review, narrow, the last round. R1 failed `cand/0.1.262` at dfc218b26 (`reviews/0.1.262.md`, B1 to B3). The coordinator re-cut it at c30f5181a on main 42e87532b (docs only since 60fb71694): the same twelve commits (W1 to W3 and the docs commit), W4's two, W5's two, one docs commit (C5, C6, `status.md`), then the release commit (0.1.262, bundles and skill copies).
+
+Check only:
+- `git range-diff 60fb71694..14aac727f 42e87532b..53ff37bd6` shows the twelve commits unchanged but for their cherry-pick lines;
+- B1 to B3 hold as the review's expected behaviour says, by W4's and W5's tests and your own probes; the order the review's Inputs gives holds;
+- the new `squeal failures` options (`--error`, `--per-check`, `--limit all`, and `--all-worktrees` on an inherited group's line) match the amended C5 and C6, their help text and the skill's `commands.md`, and keep `--json` additive;
+- `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is 0.1.262 in all eight places; the build leaves the tree clean; the four launchers are byte-identical.
+
+Run `npm ci`, then the test files W4 and W5 changed or added, directly. The full suite is CI on c30f5181a and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-0.1.262b.log`); the pre-repair gate on dfc218b26 passed 888 files. Read both by test name. Write `reviews/0.1.262-r2.md` with a PASS or FAIL verdict on c30f5181a and commit it alone.
