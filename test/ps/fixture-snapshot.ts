@@ -34,6 +34,7 @@ import {
 export const noFlags: Flag = () => ({
   daemons: new Map(),
   states: new Map(),
+  drainLeftMs: new Map(),
   processes: new Map(),
   orphans: [],
   files: [],

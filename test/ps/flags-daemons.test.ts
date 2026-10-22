@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { drainLeftMs, flag } from "../../src/core/ps/flags.js";
+import { flag } from "../../src/core/ps/flags.js";
 import type { DaemonWork, FlagFindings, FoundDaemon } from "../../src/core/ps/model.js";
 import {
   claudeInstalled,
@@ -457,7 +457,7 @@ describe("departure, drain and idle", () => {
     const findings = one(d, draining);
     expect(names(findings, 4100)).toEqual([]);
     expect(findings.states.get(4100)).toBe("draining 22m left");
-    expect(drainLeftMs(draining, NOW)).toBe(22 * MINUTE);
+    expect(findings.drainLeftMs.get(4100)).toBe(22 * MINUTE);
     const checkpoint = { id: "c1", startedAt: NOW - HOUR, lane: null, files: 3 };
     expect(one(d, departed(d, 10 * MINUTE, { checkpoints: [checkpoint] })).states.get(4100)).toBe(
       "draining 50m left",
@@ -470,7 +470,7 @@ describe("departure, drain and idle", () => {
     expect(findings.daemons.get(4100)?.[0]?.reason).toBe(
       "its last session left 61m ago, and its drain is past daemon.idleExitMinutes (60)",
     );
-    expect(drainLeftMs(departed(d, 61 * MINUTE, { slowWaiting: true }), NOW)).toBeNull();
+    expect(findings.drainLeftMs.has(4100)).toBe(false);
   });
 
   it("takes a departure before its own start as a predecessor's: the idle rule, not departure", () => {
