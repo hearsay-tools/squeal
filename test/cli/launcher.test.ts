@@ -300,6 +300,18 @@ describe("the launcher in the plugin data directory", () => {
     );
   });
 
+  // Review 0.1.247 S1 (row 005-74): the skew notice named the newest install, not the copy that ran.
+  it("names the newer copy it runs in the harness-skew notice", () => {
+    const m = machine();
+    claudeInstalls(m, [{ scope: "user", version: "0.1.1" }]);
+    piInstalls(m, ["0.1.2"]);
+    const r = run(m, kept(m, ["0.1.3"]));
+    expect(r.ran).toMatchObject({ version: "0.1.3", harness: "copy" });
+    expect(r.stderr).toBe(
+      `squeal: Claude Code has squeal 0.1.1 and Pi has 0.1.2; running ${r.ran.version}. Run squeal update to bring them to one version.\n`,
+    );
+  });
+
   it("runs the newest copy when no plugin is installed, as while Codex replaces its cache", () => {
     const m = machine();
     const r = run(m, kept(m, ["0.1.249", "0.1.250"]));
