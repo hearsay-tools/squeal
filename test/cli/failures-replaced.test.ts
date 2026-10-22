@@ -41,14 +41,17 @@ function fail(path: string, name: string, minutesAgo: number, worktreeId: string
   return { ...r, summary: `${name} broke`, fingerprint: `${name} broke @ src/a.test.ts:3:5` };
 }
 
-/** `failure` is stored, then a pass a minute later replaces it at its key. */
-function replace(store: Store, failure: ResultRecord, by: string): void {
+/** `failure` is stored, then a pass replaces it at its key, a minute later or `passedMinutesAgo`. */
+function replace(store: Store, failure: ResultRecord, by: string, passedMinutesAgo?: number): void {
   store.results.putMany([failure]);
   store.transaction(() => {
     const failing = store.failures.failingAt(failure.key);
     const pass = result(failure.check, failure.key, {
       worktreeId: by,
-      recordedAt: failure.provenance.recordedAt + MINUTE,
+      recordedAt:
+        passedMinutesAgo === undefined
+          ? failure.provenance.recordedAt + MINUTE
+          : NOW - passedMinutesAgo * MINUTE,
       runId: `pass-of-${failure.provenance.runId}`,
     });
     store.results.putMany([pass]);
@@ -151,5 +154,48 @@ describe("squeal failures with replaced failures (011-77)", () => {
     const newer = json(["failures", "--all-worktrees", "--per-check"], repo.main);
     expect(newer).toMatchObject({ total: 4, replaced: 1 });
     expect(newer.failures.map((f) => f.runId)).toEqual(["run-5", "run-10", "run-30", "run-40"]);
+  });
+
+  it("orders them by when they failed, not by when a pass replaced them (review 0.1.265 B1)", () => {
+    const { repo, store, b } = seed();
+    // `swaps` failed at k1 30 min ago and at k2 10 min ago; its stored failure 20 min ago lies
+    // between. A retry replaced k2 5 min ago, then another worktree's run replaced k1 2 min ago.
+    const swaps = (minutesAgo: number) => fail("src/order.test.ts", "swaps", minutesAgo, b.id);
+    replace(store, swaps(10), b.id, 5);
+    store.results.putMany([swaps(20)]);
+    replace(store, swaps(30), repo.mainId, 2);
+    const runs = (argv: string[]) => {
+      const report = json(["failures", "--all-worktrees", "--check", "swaps", ...argv], repo.main);
+      return [report.total, report.replaced, report.failures.map((f) => f.runId)];
+    };
+    expect(runs([])).toEqual([3, 2, ["run-10", "run-20", "run-30"]]);
+    expect(runs(["--per-check"])).toEqual([1, 1, ["run-10"]]);
+    expect(run(["failures", "--all-worktrees", "--per-check"], repo.main).stdout).toContain(
+      "  REPLACED  2026-10-22T11:50:00.000Z  src/order.test.ts > swaps",
+    );
+  });
+
+  it("at one failure time lists the one kept later first, and a stored one before a replaced one", () => {
+    const { repo, store, b } = seed();
+    const tie = (key: string, runId: string): ResultRecord => {
+      const r = fail("src/tie.test.ts", "ties", 15, b.id);
+      return { ...r, key, provenance: { ...r.provenance, runId } };
+    };
+    replace(store, tie("k-first", "kept-first"), b.id, 6);
+    replace(store, tie("k-second", "kept-second"), b.id, 8);
+    const runs = (argv: string[]) =>
+      json(["failures", "--all-worktrees", "--check", "ties", ...argv], repo.main).failures.map(
+        (f) => f.runId,
+      );
+    expect(runs([])).toEqual(["kept-second", "kept-first"]);
+    expect(runs(["--per-check"])).toEqual(["kept-second"]);
+    store.results.putMany([tie("k-stored", "stored")]);
+    expect(runs([])).toEqual(["stored", "kept-second", "kept-first"]);
+    const each = json(["failures", "--all-worktrees", "--check", "ties", "--per-check"], repo.main);
+    expect([each.total, each.replaced, each.failures.map((f) => f.runId)]).toEqual([
+      1,
+      0,
+      ["stored"],
+    ]);
   });
 });
