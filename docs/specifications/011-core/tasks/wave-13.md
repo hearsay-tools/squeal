@@ -116,3 +116,15 @@ Seam: `claims()` in `src/cli/start.ts:169` and its caller `finishHandoff` (line 
 Owns: `src/cli/start.ts`, `test/daemon/start-handoff.test.ts`, `test/daemon/handover-tier.test.ts`, `tasks/011-110/notes.md`. Not yours: the board, spec text, bundles, version. No `npm run build`.
 
 Done when: the new test fails on the baseline and passes; `handover-tier.test.ts` passes 20 runs in a row here (`npx vitest run test/daemon/handover-tier.test.ts --repeat 19` or a loop); lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+### R3: review of cand/0.1.264, 011-110's second cause
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.264` SHA named in the spawn, on main with 0.1.262; the range is `origin/main..<sha>`: W6's two commits from `cez/b5115158` (fix and notes), one docs commit (C9 and `status.md`) and the release commit (0.1.264, bundles). 0.1.263 is another coordinator's (spec 005 wave 10) and lands first if it is ready first.
+
+Read W6 above, `tasks/011-110/notes.md`, board row 011-110, `reviews/0.1.262-r2.md` S1, and spec 011 C9 on `start` during a handoff. Check that:
+- `start` that finds a daemon registered after the stopping one claims nothing and spawns nothing with the lock wait, in the three paths the notes name; a `start` that claims a live handoff it owns still spawns with the lock wait, and a joined `start` with the lock free still spawns with none;
+- the record and the claim are read in one write transaction, and a busy store still falls back as before;
+- `test/daemon/handover-tier.test.ts` counts one successor, and its message names each waiter's source when it does not;
+- `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is 0.1.264 in all eight places; the bundles match the tree.
+
+Run `npm ci`, then `test/daemon/start-handoff.test.ts` and `test/daemon/handover-tier.test.ts` directly, the second at least 5 times. The full suite is CI on the candidate and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-0.1.264.log`); read both by test name. Write `reviews/0.1.264.md` with a PASS or FAIL verdict and commit it alone.
