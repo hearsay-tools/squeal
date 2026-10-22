@@ -61,3 +61,5 @@ Decisions the review did not settle:
 | "asks a daemon whose heartbeat stopped with no shutdown and no claim nothing" | The first step-down still needs a fresh heartbeat; the boundary ensures as before. | No, by design |
 
 These replace the two retry tests with a one-hour heartbeat. The six-boundary test is unchanged.
+
+For the next row: the shutdown mark is written for every shutdown, not only a step-down. So a hook newer than a daemon that `squeal stop`, an idle exit or its sessions' end is shutting down also claims and spawns a successor, once the heartbeat stopped. The fresh-heartbeat path did the same since this row (a stopping daemon accepts a step-down from a newer version), so the repair widens the window, not the kind. It matters only when an upgrade meets a shutdown that takes longer than two heartbeat intervals; a successor then serves after a `squeal stop`. No test pins it either way.
