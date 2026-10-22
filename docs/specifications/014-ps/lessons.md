@@ -540,3 +540,117 @@ The numbers continue after P10; the coordinator assigns the final ones.
 - The scripts are in `/tmp/dogfood-014-35/bin/` while this host keeps `/tmp`. `sample.sh <n> <cwd>` takes one sample with the pinned launcher, and `drive.sh <epoch of sample 1> <cwd>` takes samples 2 and 3 with the plants between. `goal6.sh <out> <runs> <cwd>` takes timed runs at load at most 24; `goal6.py <dir>...` and `slope.py <dir>...` make the goal 6 tables. `plant.sh` plants P5 and P8 for about 4 minutes, and `plantcheck.py <snapshot>` reads one plant snapshot. Plant again only with the coordinator's approval: other sessions' `squeal ps` show the orphan flag while it lives.
 - Goal 6 at 650 processes and 25 daemons needs a host that busy at load at most 24. Tonight's host never had both: round 2 had the counts at load 41 to 82, and round 3 the load at 4 to 9 daemons.
 - On this host an SSH session is always open, so `leftover-temp` is judged on the withheld `paths`, never on a listed flag.
+
+## Round 4 (014-37)
+
+Task 014-37, 2026-10-22, measurements from 07:25 to 07:33 UTC. Goal 6 at its named size, as the human chose on 2026-10-22: five timed runs of `squeal ps` as a user runs it, at 650 or more processes and 25 or more daemons, each started at a one-minute load at or below 24, judged against 0.3 s CPU and 2.5 s wall. The bundle is a pinned copy of the release `squeal--v0.1.256`. To reach the size, I started 25 idle daemons and 202 idle processes of my own, and removed them after the runs. Inputs: the brief in `tasks/wave-6.md` (014-37), `spec.md` goal 6 and D11, `status.md`, and Round 3 above.
+
+### Verdict
+
+Goal 6 fails at its named size, on CPU. Wall time holds.
+
+- **Full size.** Five runs at 681 to 690 processes and 32 to 33 daemons, at load 15.8 to 17.1: CPU 0.28, 0.34, 0.32, 0.33 and 0.37 s, over 0.3 s in 4 of 5, median 0.33 s. Wall 2.19 to 2.23 s, under 2.5 s in all 5. One more run, at 615 processes, is not one of the five, because the host's own processes fell by about 70 in 4 s; it used 0.36 s.
+- **The host as found.** Five runs before the setup, at 510 to 525 processes and 9 to 10 daemons, at load 12.3 to 14.1: CPU 0.21 to 0.26 s, median 0.22 s; wall 2.14 to 2.17 s.
+- **Start-up is not the cause.** Right after the sixth run (0.37 s), the start-up through the launcher to a usage error used 0.06 s, the same as at the host as found. So `ps`'s own work in that run was about 0.31 s.
+- **The parts.** One profiled run at full size had 272 ms of busy samples, against 174 ms in Round 3's at 403 processes and 4 daemons. The 97 ms more: the store reads +30 ms (27 stores, against 2), the leftover rule's use reads +21 ms (open files +17 ms of it), the marks +13 ms, the discovery +7 ms, and the locks and the leftover names +5 ms each.
+- **Above the named size.** The brief's 25 daemons came on top of the host's own 7 to 8, so the runs had 32 to 33 daemons, not 25, and 681 to 690 processes, not 650. A line through the medians of the two measured sets puts the named size at 0.30 to 0.31 s, at the bound. That is an estimate, not a measurement, and the two sets differ in load too.
+
+| Goal | Holds? | Evidence |
+| --- | --- | --- |
+| 6. At most 2.5 s wall and 0.3 s CPU, 650 processes and 25 daemons, at load at or below 24 | No, on CPU; wall holds | 5 runs at 681 to 690 processes and 32 to 33 daemons, load 15.8 to 17.1: CPU 0.28 to 0.37 s, over 0.3 s in 4, median 0.33 s; wall 2.19 to 2.23 s |
+
+`ps` flagged none of my daemons: each of their 150 rows in the six runs read `serving`, with no harness and work `idle`. No new defect was found, so no row is proposed. The coordinator takes the miss to the human (the coordinator's instruction). Goals 1 to 5 stand as last judged.
+
+### Setup
+
+| Item | Value |
+| --- | --- |
+| Command | `/tmp/dogfood-014-37/bundle-0.1.256/plugins/claude-code/bin/squeal ps`, from `git archive squeal--v0.1.256 plugins/claude-code` (476c8e988), run in this worktree, a Squeal repository. The launcher runs `dist/cli/ps.mjs` (sha256 `f1163cbd775aa1ba…`). Between 0.1.252 and 0.1.256, `src/core/ps/`, `src/cli/ps.ts` and `src/cli/ps-index.ts` did not change; `ps.mjs` differs from Round 3's because 9 shared files under `src/core/store`, `src/core/fs` and `src/core/types` changed |
+| Host | Linux 6.8.0-147, 24 CPUs, Node v24.21.0, 46 GiB. Another coordinator's wave ran: the one-minute load was 29 at 07:19 UTC (the coordinator's reading), 37.5 at 07:22, then 12 to 31. Its daemons ran fast tiers through the full-size runs, 6 to 12 test processes, with CPU pressure at 3 to 6% |
+| Daemons | 25, each in its own throwaway git repository, `/tmp/dogfood-014-37/repos/r1` to `r25`. Each repository holds one commit of a `squeal.config.json` that sets `daemon.idleExitMinutes` to 85, so each daemon, with no consumer, ends by its own setting 85 minutes after its last activity. Started by `bin/squeal start <root>` from the pinned bundle, with `HOME` and `TMPDIR` under `/tmp/dogfood-014-37`. `XDG_RUNTIME_DIR` stayed the user's, so their sockets went to the host daemons' directory (`src/core/daemon/paths.ts`). Each was idle: no repository has Vitest, so each daemon noted that `vitest/node` does not resolve and listed no test files. Daemon r1 used 0.41 s of CPU to start, had no child process and an RSS of 124 MiB (`ps`: 48 MiB private) |
+| Idle processes | 202, to bring the host to about 680: 57 `node -e "setTimeout(() => {}, …)"` and 145 `sleep`, each in its own session, each ending by itself 88 minutes after the first start. 28% of them are `node`, the host's share just before they started: 26 `node` of its 92 user processes, kernel threads (433) aside. Started in two parts: 130 at 07:30:54, and 72 at 07:31:47, after the host's own processes fell by about 90 |
+| Marker | `DOGFOOD_014_37=<16 hex digits>` on every process I started: `git`, `squeal start`, the daemons and the idle processes. `mine.py` finds them in `/proc/<pid>/environ` |
+| Timeline, UTC | 07:25:06 five runs at the host as found. 07:30:12 the first start, at load 18.9. 07:30:41 the 25th daemon. 07:30:59 to 07:31:16 five runs. 07:31:49 the sixth run. 07:31:54 the profiled run. 07:32:14 teardown. 07:32:39 all down, 2 min 27 s after the first start |
+| Rules kept | Round 3's, with the brief's teardown. No end command that `ps` printed was run; at full size it printed none. The only signals went to my own 202 idle processes, a TERM at teardown; no KILL was needed. The only sockets opened were my CLI's to my own daemons: `squeal start` and `squeal stop` for each root, and one `squeal status --full` in r1. My files went under `/tmp/dogfood-014-37/` |
+| Raw data | `/tmp/dogfood-014-37/`: `g6-found/`, `g6-full/` and `g6-full2/` (runs and start-ups), `prof/`, `bin/`, `start.*`, `stop.log`, and the lists of sockets and temp keys before and after. It is not committed |
+
+### Goal 6: the cost of one snapshot
+
+Each run is `/usr/bin/time` around `bin/squeal ps`, started only when the one-minute load was at or below 24. The process count is read just before the run; the daemon count is `/proc`'s by D2's rule, and `ps`'s own first line:
+
+| Set | UTC | Load 1 min | CPU pressure | Processes | Daemons, /proc / ps | Test processes | Wall s | CPU s | Max RSS MiB |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| as found | 07:25:06 | 14.1 | 3% | 511 | 10 / 10 | 5 | 2.14 | 0.22 | 78 |
+| as found | 07:25:10 | 14.1 | 2% | 512 | 10 / 10 | 5 | 2.14 | 0.21 | 77 |
+| as found | 07:25:14 | 13.4 | 1% | 510 | 9 / 9 | 4 | 2.14 | 0.21 | 78 |
+| as found | 07:25:19 | 13.0 | 1% | 519 | 9 / 9 | 10 | 2.17 | 0.26 | 77 |
+| as found | 07:25:23 | 12.3 | 1% | 525 | 10 / 10 | 9 | 2.16 | 0.24 | 78 |
+| full | 07:30:59 | 17.0 | 4% | 681 | 32 / 32 | 6 | 2.19 | 0.28 | 78 |
+| full | 07:31:03 | 16.8 | 3% | 685 | 32 / 32 | 7 | 2.22 | 0.34 | 77 |
+| full | 07:31:07 | 17.1 | 3% | 690 | 32 / 32 | 10 | 2.20 | 0.32 | 77 |
+| full | 07:31:12 | 16.2 | 4% | 687 | 32 / 32 | 6 | 2.23 | 0.33 | 78 |
+| not full | 07:31:16 | 17.0 | 5% | 615 | 32 / 32 | 12 | 2.23 | 0.36 | 78 |
+| full | 07:31:49 | 15.8 | 6% | 684 | 33 / 33 | 11 | 2.23 | 0.37 | 79 |
+
+The CPU is user plus system time, Node's start and the launcher's `sh` included. Every run exited 0, except the last run at the host as found: it exited 1 on a true, transient flag (Other observations). The start-up was measured right after each set, 3 runs each:
+
+| After | `node -e 0`, CPU s | `bin/squeal ps --bogus`, CPU s |
+| --- | --- | --- |
+| the host as found, 07:25:25 | 0.05, 0.06, 0.05 | 0.07, 0.06, 0.06 |
+| the five full runs, 07:31:18 | 0.08, 0.07, 0.07 | 0.10, 0.08, 0.10 |
+| the sixth run, 07:31:51 | 0.07, 0.06, 0.05 | 0.06, 0.06, 0.06 |
+
+Each set's own work is its median CPU less its start-up, as in Round 3:
+
+| Set | Runs | Load | Processes, median | Daemons, median | CPU median s | Start-up s | Own work, median s |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Round 3 (0.1.252) | 20 | 2.7 to 5.5 | 425 | 5.5 | 0.180 | 0.062 | 0.118 |
+| As found (0.1.256) | 5 | 12.3 to 14.1 | 512 | 10 | 0.22 | 0.06 | 0.16 |
+| Full (0.1.256) | 5 | 15.8 to 17.1 | 685 | 32 | 0.33 | 0.06 to 0.10 | 0.23 to 0.27 |
+
+The start-up rose to 0.08 to 0.10 s once, after the five full runs, and fell back to 0.06 s after the sixth. Load raises the CPU time on this host (Round 3, "Scale"), but here it does not explain the miss: the sixth run used 0.37 s with a start-up of 0.06 s.
+
+**The named size, estimated.** From the host as found to full size, the median CPU rose 0.11 s over 22 more daemons and 173 more processes. Put all on the daemons, that is 5.0 ms per daemon, and 25 daemons give 0.30 s. Put all on the processes, it is 0.64 ms per process, and 650 processes give 0.31 s. Both lines also carry the load difference, 12 to 14 against 16 to 17. Goal 6 at exactly 650 processes and 25 daemons is not measured.
+
+**The profiled run**, 07:31:54 UTC, at load 16.0, with 681 processes and 33 daemons in 27 repositories: `node --cpu-prof dist/cli/ps.mjs ps`, 2.21 s wall and 0.42 s CPU with the profiler. Busy samples by part, against Round 3's profiled run (403 processes, 4 daemons in 2 repositories, load 3.8):
+
+| Part (function) | Round 4, ms | Round 3, ms |
+| --- | --- | --- |
+| All busy samples | 272 | 174 |
+| The two readings (`readWindow`) | 138 | 79 |
+| of which the stores (`readWork`) | 48 | 17 |
+| of which the locks (`locks`) | 25 | 20 |
+| of which the process table and host files (`takeSample`) | 25 | 22 |
+| of which the marks (`attribute`, nearly all `markOf`) | 17 | 4 |
+| of which the discovery (`discover`) | 17 | 9 |
+| The file flags (`fileFlags`) | 64 | 34 |
+| of which the leftover rule's use reads (`unusedPaths`) | 34 | 13 |
+| of which its open-file reads (`fds`) | 26 | 9 |
+| of which the leftover names (`names`) | 20 | 15 |
+| Garbage collection | 11 | 8 |
+| Module compile, self time | 9 | 14 |
+| Render | 2 | 1 |
+
+The parts that grew the most are those that scale with the stores, the processes and the open files:
+
+- **Stores.** Each repository has one store, so 27 repositories gave 27 stores. My 25 are small: 0.6 MiB each (a 4 KiB database, a 564 KiB WAL). The host's two are large: 176 MiB (squeal) and 537 MiB (cezar), each with a 14 MiB WAL. `readOne` took about 15 ms for Round 3's 2 large stores, and about 40 ms here for 2 large and 25 small ones, so about 1 ms for each small store (rough, at a sampling interval of about 1 ms). A host with 25 real daemons has fewer stores, because a repository's worktrees share one, but larger ones.
+- **Marks and open files.** `markOf` reads each candidate process's environment, and the use reads list each process's open files. My 82 `node` processes (25 daemons, 57 idle) and the other 145 grew both. A real host grows to 650 processes mostly by test processes, which are `node` too.
+- **Leftover names.** `/tmp` held 38,706 entries just after the round; the leftover rule's listing took 20 ms, against 15 ms in Round 3.
+
+### Teardown
+
+`teardown.sh` ran `squeal stop <root>` for each of the 25 roots: each printed "Squeal daemon stopped" and exited 0. After that, 202 processes still carried the marker, all idle processes of mine; a TERM ended all of them within 10 s. Then it removed the repositories, `HOME`, `TMPDIR` and the bundle; the raw data stays.
+
+At 07:33:03 UTC, from a shell whose command line did not name the directory, `/proc` held nothing of this round: `mine.py` found no process with the marker, `naming.py` found no process whose command line names `/tmp/dogfood-014-37`, and D2's rule counted 7 daemons, all the host's. The `squeal-*.sock` names in `/run/user/1001` were the 9 of before the setup; none of mine was left. Under `/tmp/squeal-1001/tmp`, 3 empty key directories were new, and 2 more had come and gone. None names my directory, and my daemons ran no tier, so they come from the other daemons' tiers (inferred).
+
+### Other observations
+
+- **No `not-installed`.** My daemons ran from a bundle outside any plugin cache, but lived 2 min 27 s at most. `ps` gave them no flag in any run.
+- **An e2e daemon, flagged truly.** The last run at the host as found exited 1 with `root-gone` and `install-gone` on daemon 10539, version 0.1.900, 1 s old, whose root `/tmp/sq-vc-jFWzjb/repo` and bundle were missing: another coordinator's e2e fixture removing its directories. True at the read and transient, as Round 3 saw.
+- **The process count moves fast.** The host's own processes fell by about 70 within 4 s, and by about 90 within 40 s, as other daemons' tiers ended. A count read before a run can be off by that much during it. The 72 idle processes added at 07:31:47 brought the count back above 650 for the sixth run.
+
+### For the next worker
+
+- The kit is in `/tmp/dogfood-014-37/bin/` while this host keeps `/tmp`. `setup.sh <daemons>` makes the repositories and starts the daemons; `fillers.sh <node> <sleep>` starts the idle processes; `teardown.sh` stops and removes everything; `mine.py` and `naming.py` show what is left in `/proc`. `goal6.sh <out> <runs> <cwd>` takes timed runs at load at most 24 and reads the load once a minute while it waits; `waitload.sh <max> <minutes>` waits for a load; `children.py <profile> <function>...` splits a profile by direct children. Round 3's `goal6.py` makes the run table.
+- The setup took 30 s for 25 daemons, and the whole round 2.5 minutes from the first start to all down. The time goes to waiting for the load.
+- To measure at exactly 25 daemons, start 25 less the host's own. The host had 7 to 10 during this round.
