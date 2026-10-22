@@ -1,4 +1,3 @@
-import { readdirSync } from "node:fs";
 import { basename } from "node:path";
 import { storePaths } from "../store/index.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
@@ -13,6 +12,7 @@ import type {
   PsModel,
   TestProcessModel,
 } from "./model.js";
+import { names } from "./reads.js";
 import {
   PS_SHAPE_VERSION,
   type PsDaemon,
@@ -219,15 +219,10 @@ function cpuOf(d: PsDaemon): number {
   return cpu;
 }
 
-/** The worktree ids of the repository at `commonDir`: one lock file each (011 C1). */
+/** The worktree ids of the repository at `commonDir`: one lock file each (011 C1); none when no daemon of it ever ran. */
 function worktreeIdsOf(commonDir: AbsolutePath): ReadonlySet<string> {
-  try {
-    const names = readdirSync(storePaths(commonDir).locksDir);
-    return new Set(names.flatMap((n) => /^([0-9a-f]{16})\.sqlite$/.exec(n)?.[1] ?? []));
-  } catch {
-    // No lock directory: no daemon of this repository ever ran.
-    return new Set();
-  }
+  const locks = names(storePaths(commonDir).locksDir);
+  return new Set(locks.flatMap((n) => /^([0-9a-f]{16})\.sqlite$/.exec(n)?.[1] ?? []));
 }
 
 function socketIdOf(path: AbsolutePath): string {

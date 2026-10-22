@@ -1,9 +1,9 @@
-import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfigFile, positiveInteger } from "../daemon/config-file.js";
 import { defaultHostSlots } from "../daemon/user-config.js";
 import type { AbsolutePath } from "../types/index.js";
 import type { HostTotals, PsPlaces, ReadPool, Sample } from "./model.js";
+import { names } from "./reads.js";
 import type { PsHost } from "./shape.js";
 import { type LockEntry, ticksToMs } from "./source.js";
 
@@ -125,14 +125,7 @@ function permitFiles(places: PsPlaces): AbsolutePath[] {
   const dirs = new Set<AbsolutePath>([join(places.tempDir, `squeal-${places.uid}`)]);
   if (places.runtimeDir !== null) dirs.add(join(places.runtimeDir, "squeal"));
   const files: AbsolutePath[] = [];
-  for (const dir of dirs) {
-    let names: string[];
-    try {
-      names = readdirSync(dir);
-    } catch {
-      continue;
-    }
-    for (const name of names.sort()) if (PERMIT.test(name)) files.push(join(dir, name));
-  }
+  for (const dir of dirs)
+    for (const name of names(dir)) if (PERMIT.test(name)) files.push(join(dir, name));
   return files;
 }
