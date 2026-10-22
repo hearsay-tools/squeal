@@ -1,6 +1,6 @@
 # Wave 16 of spec 011
 
-The last two rows of `tasks/011-61/design.md` (section 4), R2 and R3, from main with 0.1.266, which shipped R1 (row 011-72). The design gives them disjoint files, so they run in parallel. 3b94ca98's rows (`tasks/toolkit-latency.md`) own `edit-cut.ts`, `refinement.ts`, `checkpoints.ts`, `ledger.ts`, `backlog.ts`, `quiet.ts`, `src/core/scheduler/revision.ts`, `reconcileBatch` in `batch.ts`, `unstableInputs` in `tiers.ts`, `src/runners/pytest/**` and `test/keys/validity/**`. No row here edits them. 03d89750 holds 0.1.267, so this wave's candidate takes the next free number.
+The last two rows of `tasks/011-61/design.md` (section 4), R2 and R3, from main with 0.1.268; 0.1.266 shipped R1 (row 011-72). The human chose the wave on 2026-10-22 ("Wave 16: 011-73 + 011-74"). The design gives them disjoint files, so they run in parallel. 3b94ca98's rows (`tasks/toolkit-latency.md`) own `edit-cut.ts`, `refinement.ts`, `checkpoints.ts`, `ledger.ts`, `backlog.ts`, `quiet.ts`, `src/core/scheduler/revision.ts`, `reconcileBatch` in `batch.ts`, `unstableInputs` in `tiers.ts`, `src/runners/pytest/**` and `test/keys/validity/**`. They shipped in 0.1.268; no row here edits them. The candidate is 0.1.269 unless another lands first.
 
 `test/e2e/**` runs the committed bundle, and a worker tree does not build. Write and typecheck the e2e test. The coordinator runs it on the candidate.
 
