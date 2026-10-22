@@ -109,7 +109,7 @@ describe("Squeal's shares", () => {
     const second = sampleOf(3_000, [], { busy: 1_004_400, total: 1_104_800 });
     expect(cpuShare(null, first, second, 100)).toBeNull();
     expect(cpuShare(810, first, sampleOf(3_000, [], null), 100)).toBeNull();
-    expect(cpuShare(810, first, sampleOf(3_000, [], first.cpuTime), 100)).toBeNull();
+    expect(cpuShare(810, first, sampleOf(3_000, [], first.host?.cpuTime), 100)).toBeNull();
   });
 
   test("the memory share is Squeal's private memory over MemTotal - MemAvailable; swap stays apart", () => {

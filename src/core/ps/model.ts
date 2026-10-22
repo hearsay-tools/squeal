@@ -19,14 +19,7 @@ import type {
   PsUnflaggedFiles,
   PsUnknown,
 } from "./shape.js";
-import type {
-  CpuTimes,
-  HostReading,
-  LockEntry,
-  ProcessRow,
-  ProcessTable,
-  PsSource,
-} from "./source.js";
+import type { HostReading, LockEntry, ProcessRow, ProcessTable, PsSource } from "./source.js";
 
 /*
  * Spec 014 D11: the model the `squeal ps` stages pass, and each stage's
@@ -137,7 +130,13 @@ export interface Sample {
   /** A monotonic clock's ms (`performance.now()`): the window is the difference. */
   readonly atMs: number;
   readonly table: ProcessTable;
-  readonly cpuTime: CpuTimes | null;
+  /** The host files read with the table (D6); `null` where none were (`capacity/cores.ts`). */
+  readonly host: HostReading | null;
+}
+
+/** A sample of the snapshot's window, which always reads the host. */
+export interface WindowSample extends Sample {
+  readonly host: HostReading;
 }
 
 export interface ProcessCost {
@@ -281,7 +280,7 @@ export type TakeSample = (
   source: PsSource,
   pids?: readonly number[],
   since?: ProcessTable,
-) => Sample;
+) => WindowSample;
 export type Measure = (
   source: PsSource,
   first: Sample,
@@ -296,12 +295,16 @@ export type Attribute = (
 ) => Attribution;
 /** `host.ts` (014-07). */
 export type HostTotals = (first: HostReading, second: HostReading) => PsHost;
-/** `readings`: the window's `/proc/locks` readings in order; one read when not given. */
+/**
+ * `readings`: the window's `/proc/locks` readings in order; `cpus`, the
+ * host's CPU count (D6). Each is read once when not given.
+ */
 export type ReadPool = (
   source: PsSource,
   places: PsPlaces,
   daemons: ReadonlySet<number>,
   readings?: readonly (readonly LockEntry[] | null)[],
+  cpus?: number,
 ) => PoolReading;
 /** `flags.ts` (014-10). */
 export type Flag = (model: PsModel) => FlagFindings;

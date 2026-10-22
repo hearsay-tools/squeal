@@ -87,7 +87,7 @@ class ProcTreeCpu implements TreeCpu {
 
   read(): number | null {
     const table = this.#source.processTable(this.#tree());
-    const sample: Sample = { atMs: this.#now(), table, cpuTime: null };
+    const sample: Sample = { atMs: this.#now(), table, host: null };
     const last = this.#last;
     this.#last = table.has(this.#pid) ? sample : null;
     if (last === null || this.#last === null) return null;

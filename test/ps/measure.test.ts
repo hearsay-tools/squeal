@@ -12,6 +12,7 @@ import {
   countingSource,
   type FakeProcess,
   fakeSource,
+  HOST,
   type HostTree,
   sampleOf,
   writeHostTree,
@@ -307,15 +308,16 @@ describe("memory", () => {
 });
 
 describe("takeSample", () => {
-  test("one table read of every process, or of the pids asked, with the host's CPU times and a monotonic time", () => {
+  test("one table read of every process, or of the pids asked, with one host reading and a monotonic time", () => {
     const { source, reads } = fakeSource([worker, { pid: 1, ppid: 0 }]);
     const first = takeSample(source);
     expect([...first.table.keys()].sort()).toEqual([1, worker.pid]);
-    expect(first.cpuTime).toEqual({ busy: 1_000_000, total: 1_100_000 });
+    expect(first.host).toEqual(HOST);
     const second = takeSample(source, [worker.pid]);
     expect([...second.table.keys()]).toEqual([worker.pid]);
     expect(second.atMs).toBeGreaterThanOrEqual(first.atMs);
     expect(reads.get("stat")).toBe(3);
+    expect(reads.get("host")).toBe(2);
   });
 });
 

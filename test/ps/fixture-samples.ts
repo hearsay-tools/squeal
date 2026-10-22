@@ -53,12 +53,13 @@ export function tableOf(processes: readonly FakeProcess[]): ProcessTable {
   return new Map(processes.map((p) => [p.pid, rowOf(p)]));
 }
 
+/** A sample of `processes`; with `cpuTime`, a host reading of `HOST` with those times. */
 export function sampleOf(
   atMs: number,
   processes: readonly FakeProcess[],
   cpuTime: CpuTimes | null = null,
 ): Sample {
-  return { atMs, table: tableOf(processes), cpuTime };
+  return { atMs, table: tableOf(processes), host: cpuTime === null ? null : { ...HOST, cpuTime } };
 }
 
 export const HOST: HostReading = {

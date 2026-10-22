@@ -184,9 +184,9 @@ describe("arguments and memory: of the last table read", () => {
 
 describe("the window: CPU from time= over two reads", () => {
   test("measure gives each process its CPU over the window, never %cpu", () => {
-    const first: Sample = { atMs: 0, table: f.source.processTable(), cpuTime: null };
+    const first: Sample = { atMs: 0, table: f.source.processTable(), host: null };
     f.ps = fixture("ps-2.txt");
-    const second: Sample = { atMs: 2_000, table: f.source.processTable(), cpuTime: null };
+    const second: Sample = { atMs: 2_000, table: f.source.processTable(), host: null };
     const costs = measure(f.source, first, second, [4810, 5120, 5233, 5240, 5301]);
     expect(costs.get(5233)).toEqual({
       cpuPct: 90,
@@ -226,12 +226,13 @@ describe("host: os functions, vm_stat and sysctl", () => {
   });
 
   test("the busy CPU of two readings is in clock ticks, as the shares read it", () => {
-    const first: Sample = { atMs: 0, table: new Map(), cpuTime: f.source.host().cpuTime };
     const h1 = f.source.host();
     f.cpuMs = { user: 41_200, nice: 0, sys: 10_400, idle: 150_400, irq: 0 };
-    const second: Sample = { atMs: 2_000, table: new Map(), cpuTime: f.source.host().cpuTime };
+    const h2 = f.source.host();
+    const first: Sample = { atMs: 0, table: new Map(), host: h1 };
+    const second: Sample = { atMs: 2_000, table: new Map(), host: h2 };
     // Each of 2 CPUs was busy 1.6 s of 2 s: 160% of one CPU, 80% of the host.
-    expect(hostTotals(h1, f.source.host()).busyCpuPct).toBe(80);
+    expect(hostTotals(h1, h2).busyCpuPct).toBe(80);
     expect(cpuShare(80, first, second, f.source.clockTicks())).toBe(50);
   });
 
