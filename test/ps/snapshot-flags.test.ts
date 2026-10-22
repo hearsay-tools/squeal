@@ -50,23 +50,14 @@ async function snap(f: Flag = flag) {
   });
 }
 
-describe("the host-wide rules read the whole host, and a used name whole (reviews/wave-2.md B1, B2)", () => {
-  test("a directory a process works in, or names in an argument or an <option>=<path>, is no leftover; an unused one is", async () => {
-    const rules = writeHostRules(host);
-    const real = vi.fn(flag);
-    const { shape, leftovers } = await snap(real);
-    // The second sample is the daemon's alone: the processes that use the directories are in the first only.
-    const model = real.mock.calls[0]?.[0] as PsModel;
-    expect([...model.second.sample.table.keys()]).toEqual([800]);
-    expect(leftovers).toEqual(rules.leftovers);
-    expect(shape.files.find((f) => f.flag === "leftover-temp")).toMatchObject({
-      count: rules.leftovers.length,
-    });
-  });
-
+describe("the host-wide rules read the whole host (reviews/wave-2.md B1)", () => {
   test("a waiter whose parent is gone is an orphan-waiter; one whose parent lives is not", async () => {
     const rules = writeHostRules(host);
-    const { shape } = await snap();
+    const real = vi.fn(flag);
+    const shape = await snap(real);
+    // The second sample is the daemon's alone: the waiters are in the first only.
+    const model = real.mock.calls[0]?.[0] as PsModel;
+    expect([...model.second.sample.table.keys()]).toEqual([800]);
     expect(shape.orphans).toEqual([
       {
         pid: rules.goneParent,
@@ -114,7 +105,7 @@ describe("a held lock one /proc/locks read misses (lessons.md P9)", () => {
         : writeFileSync(locks, r === "held" ? held : "");
     read(first);
     const w = fakeWindow(() => read(second));
-    const { shape } = await takeSnapshot({
+    const shape = await takeSnapshot({
       source: host.source,
       places: host.places,
       flag,
@@ -193,7 +184,7 @@ describe("a held lock one /proc/locks read misses (lessons.md P9)", () => {
     writeFileSync(locks, "");
     const socket = join(host.places.runtimeDir ?? "", `squeal-${alpha.id}.sock`);
     writeFileSync(socket, "");
-    const { shape } = await snap();
+    const shape = await snap();
     const daemon = shape.repositories[0]?.daemons.find((d) => d.pid === 800);
     expect(daemon).toMatchObject({ phase: "waiting" });
     expect(lockClaims(daemon?.flags).map((f) => [f.flag, f.command])).toEqual([

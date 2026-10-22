@@ -191,11 +191,9 @@ export function withoutLocks(source: PsSource): PsSource {
     markOf: (pid) => source.markOf(pid),
     memory: (pid) => source.memory(pid),
     fds: () => null,
-    cwds: (pids) => source.cwds(pids),
     locks: () => null,
     fileKey: () => null,
     unixListeners: () => null,
-    unixSockets: () => null,
     pidNamespace: () => source.pidNamespace(),
     host: () => source.host(),
   };

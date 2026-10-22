@@ -1,4 +1,4 @@
-import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { vi } from "vitest";
 import type { Flag } from "../../src/core/ps/model.js";
@@ -38,7 +38,6 @@ export const noFlags: Flag = () => ({
   orphans: [],
   files: [],
   unflagged: [],
-  leftovers: [],
   unknown: [],
 });
 
@@ -305,7 +304,7 @@ export function exampleDaemon(overrides: Partial<PsDaemon> = {}): PsDaemon {
   };
 }
 
-/** The D8 example as a shape: three daemons of one repository, a stale socket and the leftovers. */
+/** The D8 example as a shape: three daemons of one repository, a stale socket and a stale pool mark. */
 export function exampleSnapshot(overrides: Partial<PsSnapshot> = {}): PsSnapshot {
   const idle = exampleDaemon().work;
   return {
@@ -379,16 +378,16 @@ export function exampleSnapshot(overrides: Partial<PsSnapshot> = {}): PsSnapshot
           "no live daemon of worktree fd5a859b8ca77ef9 holds its lock; changed 2026-10-16 20:36",
         path: "/run/user/1001/squeal-fd5a859b8ca77ef9.sock",
         count: 1,
-        bytes: null,
+        bytes: 0,
         command: "rm /run/user/1001/squeal-fd5a859b8ca77ef9.sock",
       },
       {
-        flag: "leftover-temp",
-        reason: "no live daemon's key names them and no process uses them, older than 1 h",
-        path: null,
-        count: 3_530,
-        bytes: 6.4 * GIB,
-        command: "squeal ps --leftovers | xargs -d '\\n' rm -rf --",
+        flag: "stale-pool-mark",
+        reason: "unchanged since 2026-10-21 18:02; readers skip a mark older than 30 s",
+        path: "/run/user/1001/squeal/pool.mark.0011223344556677",
+        count: 1,
+        bytes: 3,
+        command: "rm /run/user/1001/squeal/pool.mark.0011223344556677",
       },
     ],
     unflaggedFiles: null,
@@ -475,16 +474,5 @@ export function writeCostHost(host: SnapshotHost): CostHost {
     });
   }
   writeProcesses(host, processes);
-  // Old leftover directories, so `leftover-temp` reads every process's working directory and arguments.
-  const keys = join(host.places.tempDir, `squeal-${host.places.uid}`, "tmp");
-  for (let i = 0; i < LEFTOVERS; i++) {
-    const dir = join(keys, i.toString(16).padStart(16, "0"));
-    mkdirSync(dir, { recursive: true });
-    const at = new Date(NOW - 2 * 60 * MINUTE);
-    utimesSync(dir, at, at);
-  }
   return { daemons, testProcesses, squeal };
 }
-
-/** The cost host's leftover directories; the walk of 3,500 is `flags-files.test.ts`'s. */
-export const LEFTOVERS = 100;

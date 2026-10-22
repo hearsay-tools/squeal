@@ -35,7 +35,7 @@ const brief = (s = exampleSnapshot()) => render(s, { full: false });
 describe("the D8 layout", () => {
   test("the first line, the host line and the Squeal line", () => {
     expect(lines(brief()).slice(0, 3)).toEqual([
-      "squeal ps · 3 daemons, 1 test process · 2 flags: stale-socket, leftover-temp",
+      "squeal ps · 3 daemons, 1 test process · 2 flags: stale-socket, stale-pool-mark",
       "Host    load 36.8 41.3 51.1 on 24 CPUs · CPU pressure 45% · memory pressure 0.6% (0.5% full) · memory 32.7 of 47.0 GiB used, swap 4.0 of 4.0 GiB",
       "Squeal  CPU 8.1 CPUs (36% of busy) · memory 21.0 GiB (64% of used) + 1.0 GiB swap · pool 3 of 12 permits",
     ]);
@@ -45,13 +45,12 @@ describe("the D8 layout", () => {
     expect(lines(brief(exampleSnapshot({ files: [], flags: 0 })))[0]).toBe(
       "squeal ps · 3 daemons, 1 test process · no flags",
     );
-    const [socket, leftovers] = exampleSnapshot().files;
-    if (socket === undefined || leftovers === undefined)
-      throw new Error("the example has two files");
+    const [socket, mark] = exampleSnapshot().files;
+    if (socket === undefined || mark === undefined) throw new Error("the example has two files");
     const other = { ...socket, path: "/tmp/squeal-1001/squeal-0000000000000000.sock" };
-    const twice = exampleSnapshot({ files: [socket, other, leftovers], flags: 3 });
+    const twice = exampleSnapshot({ files: [socket, other, mark], flags: 3 });
     expect(lines(brief(twice))[0]).toBe(
-      "squeal ps · 3 daemons, 1 test process · 3 flags: stale-socket ×2, leftover-temp",
+      "squeal ps · 3 daemons, 1 test process · 3 flags: stale-socket ×2, stale-pool-mark",
     );
   });
 
@@ -83,8 +82,8 @@ describe("the D8 layout", () => {
       "Files no live process uses",
       "  ! stale-socket  /run/user/1001/squeal-fd5a859b8ca77ef9.sock (no live daemon of worktree fd5a859b8ca77ef9 holds its lock; changed 2026-10-16 20:36)",
       "      ends it: rm /run/user/1001/squeal-fd5a859b8ca77ef9.sock",
-      "  ! leftover-temp  3,530 directories, 6.4 GiB (no live daemon's key names them and no process uses them, older than 1 h)",
-      "      ends it: squeal ps --leftovers | xargs -d '\\n' rm -rf --",
+      "  ! stale-pool-mark  /run/user/1001/squeal/pool.mark.0011223344556677 (unchanged since 2026-10-21 18:02; readers skip a mark older than 30 s)",
+      "      ends it: rm /run/user/1001/squeal/pool.mark.0011223344556677",
     ]);
     expect(text.at(-1)).toBe("");
   });

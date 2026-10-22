@@ -1,4 +1,4 @@
-import type { AbsolutePath, EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/index.js";
 import { discover, lockedAgain } from "./discover.js";
 import { hostTotals, readPool } from "./host.js";
 import { below, measure, takeSample } from "./measure.js";
@@ -53,16 +53,9 @@ export interface SnapshotOptions {
   readonly wait: (ms: number) => Promise<void>;
 }
 
-export interface Snapshot {
-  readonly shape: PsSnapshot;
-  /** Every leftover path, for `--leftovers` (D1). */
-  readonly leftovers: readonly AbsolutePath[];
-}
-
-export async function takeSnapshot(options: SnapshotOptions): Promise<Snapshot> {
+export async function takeSnapshot(options: SnapshotOptions): Promise<PsSnapshot> {
   const read = await readWindow(options);
-  const findings = options.flag(read.model);
-  return { shape: shapeOf(read, findings, options), leftovers: findings.leftovers };
+  return shapeOf(read, options.flag(read.model), options);
 }
 
 async function readWindow(o: SnapshotOptions): Promise<WindowRead> {

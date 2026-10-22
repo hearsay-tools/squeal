@@ -43,7 +43,7 @@ export interface PsPlaces {
   readonly userConfig: AbsolutePath;
   /** `$XDG_RUNTIME_DIR`; `null` when unset. Sockets and the pool lie in it. */
   readonly runtimeDir: AbsolutePath | null;
-  /** `/tmp`: `squeal-<uid>` (sockets, pool, temp keys) and other `squeal-*` directories lie in it (D7). */
+  /** `/tmp`: `squeal-<uid>` (sockets, pool, session roots) lies in it (D7). */
   readonly tempDir: AbsolutePath;
   /** The current repository's common dir; `null` outside one (D1). */
   readonly commonDir: AbsolutePath | null;
@@ -251,8 +251,6 @@ export interface FlagFindings {
   readonly files: readonly PsFileFlag[];
   /** The files that never get a flag, counted by kind; the snapshot keeps them with `--full` only (D7). */
   readonly unflagged: readonly PsUnflaggedFiles[];
-  /** Every leftover path, for `--leftovers`. */
-  readonly leftovers: readonly AbsolutePath[];
   readonly unknown: readonly PsUnknown[];
 }
 

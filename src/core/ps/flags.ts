@@ -5,7 +5,7 @@ import { isRecord, linkedWorktreeDir } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { phaseOn } from "./discover.js";
-import { type FileFlagOptions, fileFlags } from "./flags-files.js";
+import { fileFlags } from "./flags-files.js";
 import { orphans, overdue, type ProcessContext } from "./flags-processes.js";
 import { duration, NO_BOOT, shellQuote } from "./flags-text.js";
 import type { DaemonWork, FlagFindings, FoundDaemon, PhaseOf, PsModel } from "./model.js";
@@ -40,7 +40,7 @@ interface FlagContext extends ProcessContext {
   readonly phase: PhaseOf;
 }
 
-export const flag = (model: PsModel, options: FileFlagOptions = {}): FlagFindings => {
+export const flag = (model: PsModel): FlagFindings => {
   const unknown: PsUnknown[] = [];
   const named = new Set<string>();
   const name = (what: string, why: string): void => {
@@ -76,7 +76,7 @@ export const flag = (model: PsModel, options: FileFlagOptions = {}): FlagFinding
   }
   for (const [pid, flags] of duplicates(c)) add(pid, flags);
 
-  const files = fileFlags(model, options);
+  const files = fileFlags(model);
   return {
     daemons,
     states,
@@ -84,7 +84,6 @@ export const flag = (model: PsModel, options: FileFlagOptions = {}): FlagFinding
     orphans: orphans(c),
     files: files.files,
     unflagged: files.unflagged,
-    leftovers: files.leftovers,
     unknown: [...unknown, ...files.unknown],
   };
 };

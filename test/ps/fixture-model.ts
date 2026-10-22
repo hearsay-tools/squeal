@@ -20,7 +20,7 @@ import { BOOT_SECONDS, CLOCK_TICKS, UPTIME_SECONDS } from "./fixture.js";
  * Models for the flags (spec 014 D7, task 014-10): a `PsModel` held in
  * memory, as the snapshot assembles it from the stages, over a temp
  * directory that holds the files the flags read: roots, bundles, plugin
- * caches, sockets, pool marks and temp directories. Every process row is
+ * caches, sockets and pool marks. Every process row is
  * this user's, so the uid rules see what a host's own processes give.
  */
 
@@ -39,7 +39,7 @@ export const startedAt = (ageS: number): number => NOW - ageS * 1000;
 export interface ModelHost {
   readonly base: string;
   readonly places: PsPlaces;
-  /** `<tempDir>/squeal-<uid>`: sockets without a runtime dir, the pool, the temp keys. */
+  /** `<tempDir>/squeal-<uid>`: sockets without a runtime dir, and the pool. */
   readonly userDir: string;
 }
 
@@ -55,7 +55,7 @@ export function modelHost(): ModelHost {
   };
   const userDir = join(places.tempDir, `squeal-${UID}`);
   mkdirSync(join(places.runtimeDir ?? "", "squeal"), { recursive: true });
-  mkdirSync(join(userDir, "tmp"), { recursive: true });
+  mkdirSync(userDir, { recursive: true });
   return { base, places, userDir };
 }
 
@@ -63,13 +63,6 @@ export function modelHost(): ModelHost {
 export function writeAged(path: string, ageMs = 0, body = ""): string {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, body);
-  return age(path, ageMs);
-}
-
-/** A directory at `path` with one file of `bytes`, its mtime `ageMs` before `NOW`. */
-export function dirAged(path: string, ageMs: number, bytes = 10): string {
-  mkdirSync(path, { recursive: true });
-  writeFileSync(join(path, "file"), "x".repeat(bytes));
   return age(path, ageMs);
 }
 
@@ -110,7 +103,6 @@ export interface ProcessSpec {
   readonly uid?: number | null;
   readonly cmdline?: readonly string[];
   readonly mark?: string;
-  readonly cwd?: string;
 }
 
 export function rowOf(p: ProcessSpec): ProcessRow {
@@ -229,8 +221,6 @@ export interface ModelSpec {
   /** The window's `/proc/locks` readings that were read: `none` with `locks: null`, else `both`. */
   readonly locksRead?: LocksRead;
   readonly readsMarks?: boolean;
-  /** `null`: a platform that cannot read working directories. */
-  readonly cwds?: boolean;
   readonly bootTime?: number | null;
   readonly windowMs?: number;
 }
@@ -300,19 +290,9 @@ function sourceOf(
     markOf: (pid) => (readsMarks ? (byPid.get(pid)?.mark ?? null) : null),
     memory: () => null,
     fds: () => null,
-    cwds: (pids) => {
-      if (spec.cwds === false) return null;
-      const cwds = new Map<number, string>();
-      for (const pid of pids) {
-        const cwd = byPid.get(pid)?.cwd;
-        if (cwd !== undefined) cwds.set(pid, cwd);
-      }
-      return cwds;
-    },
     locks: () => locks,
     fileKey: () => null,
     unixListeners: () => null,
-    unixSockets: () => [],
     pidNamespace: () => "pid:[1]",
     host: () => {
       throw new Error("the flags read no host totals");

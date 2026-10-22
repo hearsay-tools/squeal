@@ -120,7 +120,6 @@ Usage:
                                 that would end it; --repo: this repository only; --full
                                 adds each test's child processes; exit 0, 1 with a flag,
                                 3 on a platform other than Linux and macOS
-  squeal ps --leftovers         Every leftover temp path, one per line
   squeal stop [root]            Stop this worktree's daemon
   squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
                                 daemon, delete the store and temp directories; --config

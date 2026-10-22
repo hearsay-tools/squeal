@@ -223,11 +223,7 @@ function orphanLines(o: PsOrphan, at: number): string[] {
 }
 
 function fileLines(f: PsFileFlag): string[] {
-  // Only `leftover-temp` groups its paths, which are directories (D7).
-  const what =
-    f.path ??
-    `${thousands(f.count)} ${f.count === 1 ? "directory" : "directories"}, ${f.bytes === null ? "size unknown" : bytes(f.bytes)}`;
-  return [`  ! ${f.flag}  ${what} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
+  return [`  ! ${f.flag}  ${f.path} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
 }
 
 function flagLines(flags: readonly PsFlag[]): string[] {
