@@ -50,7 +50,7 @@ export function withDeath(
  * step-down from that release still reads as one. Any other note, a
  * watcher's or a runner's, proves nothing (review wave-13af B1).
  */
-function shutDown(store: Store, worktreeId: WorktreeId, self: string): boolean {
+export function shutDown(store: Store, worktreeId: WorktreeId, self: string): boolean {
   if (store.meta.get(daemonExitMetaKey(worktreeId)) === self) return true;
   return readDaemonNotes(store, worktreeId).some((note) => note.exitOf === self);
 }
@@ -62,7 +62,7 @@ function shutDown(store: Store, worktreeId: WorktreeId, self: string): boolean {
  * `waiterLockState` probes a waiter's; no lock file means no daemon of this
  * store ever ran here, so the record proves nothing.
  */
-function daemonGone(worktree: WorktreeRecord): boolean {
+export function daemonGone(worktree: WorktreeRecord): boolean {
   const path = lockFileFor(worktree.commonDir, worktree.id);
   if (!existsSync(path)) return false;
   try {

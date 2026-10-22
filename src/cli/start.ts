@@ -1,9 +1,21 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { ensureDaemon, probeDaemon } from "../core/daemon/ensure.js";
-import { formatStatus, readStatus } from "../core/status/index.js";
-import { worktreeRoot } from "./daemon-access.js";
+import { ensureDaemon, probeDaemon, recordedDaemon } from "../core/daemon/ensure.js";
+import { type DaemonMarks, leftovers, marksOf } from "../core/daemon/leftovers.js";
+import { isNewerVersion, squealVersion } from "../core/daemon/version.js";
+import {
+  claimHandoff,
+  handoffFrom,
+  liveHandoff,
+  SUCCESSOR_LOCK_WAIT_MS,
+} from "../core/delivery/handoff.js";
+import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
+import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
+import { isStoreOpenFailure, openStore } from "../core/store/index.js";
+import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
+import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
+import { lockFreed, STOP_BOUNDS, type StopBounds } from "./stop.js";
 import { clearStoppedMark } from "./stopped-mark.js";
 
 /** A spawned daemon binds its socket in about 100 ms; a loaded machine gets more. */
@@ -12,9 +24,15 @@ const SPAWN_WAIT_MS = 10_000;
 /**
  * `squeal start [root]`: clears the mark `squeal stop` left (task 011-08),
  * makes sure a daemon serves the worktree, then prints its status. Exit code
- * 0 once a daemon answers, 1 otherwise.
+ * 0 once a daemon answers, 1 otherwise. A stopping daemon is never said
+ * alive: `start` finishes its handoff (`finishHandoff`, row 011-34), within
+ * `bounds`, as long as `squeal stop` waits.
  */
-export async function startCommand(args: readonly string[], io: CliIo): Promise<number> {
+export async function startCommand(
+  args: readonly string[],
+  io: CliIo,
+  bounds: StopBounds = STOP_BOUNDS,
+): Promise<number> {
   if (args.length > 1 || args[0]?.startsWith("-")) {
     io.stderr("usage: squeal start [root]\n");
     return 2;
@@ -25,6 +43,9 @@ export async function startCommand(args: readonly string[], io: CliIo): Promise<
   if (cleared !== null) io.stderr(`squeal: could not clear the stop mark: ${cleared}\n`);
   // This CLI's own script is the daemon to spawn (review wave 3, B1); `SQUEAL_CLI` overrides it.
   const cli = process.argv[1];
+  const now = io.now ?? Date.now;
+  const stopping = await stoppingDaemon(root, now);
+  if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
   const result = await ensureDaemon(root, cli === undefined ? {} : { cli });
   if (result === "unavailable") {
     io.stderr(`squeal: no daemon could be reached or started for ${root}\n`);
@@ -41,7 +62,143 @@ export async function startCommand(args: readonly string[], io: CliIo): Promise<
     }
   }
   io.stdout(`Squeal daemon ${result} for ${root}\n\n`);
-  const now = io.now ?? Date.now;
   io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
   return 0;
+}
+
+/** The worktree's daemon while it stops: where it answers, its ping, and its record. */
+interface Stopping {
+  readonly socketPath: AbsolutePath;
+  /** `null` once its socket no longer answers. */
+  readonly ping: PingResponse | null;
+  readonly record: DaemonRecord | null;
+}
+
+/**
+ * The worktree's daemon when it is stopping (C9 as amended 2026-10-20): its
+ * ping says `phase: "stopping"`, or the store says its shutdown began while
+ * it holds its lock (`withStopping`). `null` otherwise.
+ */
+async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<Stopping | null> {
+  const socketPath = await daemonSocket(root);
+  const answer = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
+  const ping = answer?.ok === true && answer.type === "ping" ? answer : null;
+  const status = readStatus(root, { now });
+  const stopping = status.available && status.daemon.stopping !== undefined;
+  if (ping?.phase !== "stopping" && !stopping) return null;
+  return { socketPath, ping, record: recordedDaemon(root, 1_000) };
+}
+
+/**
+ * Row 011-34 (C9 as amended 2026-10-20, design 011-30 section 4): asks the
+ * stopping daemon to `stop`, which cancels what it runs (one already
+ * cancelling does nothing more); joins a live handoff claim, or claims one
+ * and spawns this CLI's daemon with the lock wait; then waits for a daemon of
+ * at least this version to answer, at most as long as `squeal stop` waits.
+ * Past that bound it says what holds the lock, as `squeal stop` does, and
+ * exits 1. A daemon before 0.1.200 finishes its tier first, which only this
+ * bound covers.
+ */
+async function finishHandoff(
+  root: AbsolutePath,
+  cli: string | undefined,
+  stopping: Stopping,
+  io: CliIo,
+  bounds: StopBounds,
+): Promise<number> {
+  const now = io.now ?? Date.now;
+  const began = performance.now();
+  const { ping, record } = stopping;
+  // Read while it runs: its record's token is its children's mark (as `squeal stop` reads them).
+  const marks = ping === null ? null : marksOf(ping.pid, tokenOf(ping, record));
+  if (ping !== null) await askDaemon(stopping.socketPath, { type: "stop" }).catch(() => null);
+  if (claims(root, record, now)) {
+    await ensureDaemon(root, {
+      ...(cli === undefined ? {} : { cli }),
+      awaitLockMs: SUCCESSOR_LOCK_WAIT_MS,
+    });
+  }
+  const own = squealVersion();
+  const old = ping?.startedAt ?? record?.startedAt ?? null;
+  const deadline = Date.now() + bounds.socketMs + bounds.lockMs;
+  for (;;) {
+    const probe = await probeDaemon(root, 100);
+    if (probe.state === "alive" && follows(probe.ping, old, own)) break;
+    if (Date.now() > deadline) return stillHeld(root, stopping, marks, io, bounds);
+    await sleep(50);
+  }
+  const from = record?.squealVersion ?? ping?.squealVersion ?? "stopping";
+  const took = ((performance.now() - began) / 1_000).toFixed(1);
+  io.stdout(
+    `Squeal daemon started for ${root}, after the ${from} daemon handed over in ${took} s\n\n`,
+  );
+  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
+  return 0;
+}
+
+/** A daemon that serves after the stopping one: another start, not stopping, at least `own`. */
+function follows(ping: PingResponse, old: number | null, own: string): boolean {
+  return (
+    ping.startedAt !== old && ping.phase !== "stopping" && !isNewerVersion(own, ping.squealVersion)
+  );
+}
+
+/**
+ * Whether `start` spawns the successor: it wrote the claim (row 011-32), or
+ * could not read or write one; not when a live claim for this daemon is
+ * there, whose successor already waits.
+ */
+function claims(root: AbsolutePath, record: DaemonRecord | null, now: () => number): boolean {
+  if (record === null) return true;
+  try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return true;
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS });
+    if (isStoreOpenFailure(store)) return true;
+    try {
+      const id = worktreeIdFor(root);
+      const from = handoffFrom(record);
+      if (liveHandoff(store, id, from, now() as EpochMs) !== null) return false;
+      return claimHandoff(store, id, { from, to: squealVersion(), at: now() as EpochMs }) !== null;
+    } finally {
+      store.close();
+    }
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Past the bound: what still holds the lock, in `squeal stop`'s words (the
+ * daemon's process, the processes it started), and exit 1.
+ */
+async function stillHeld(
+  root: AbsolutePath,
+  stopping: Stopping,
+  marks: DaemonMarks | null,
+  io: CliIo,
+  bounds: StopBounds,
+): Promise<number> {
+  const { ping, record } = stopping;
+  const after = `${(bounds.socketMs + bounds.lockMs) / 1_000} s`;
+  const version = record?.squealVersion ?? ping?.squealVersion;
+  const daemon = `the ${version === undefined ? "" : `${version} `}daemon for ${root}${ping === null ? "" : ` (pid ${ping.pid})`}`;
+  const lock = await lockFreed(root, ping, 0);
+  const holds =
+    lock.state === "free"
+      ? `${daemon} let go of its lock, but no daemon of Squeal ${squealVersion()} or later answered after ${after}`
+      : `${daemon} is still stopping and holds its lock after ${after}, so no daemon follows it`;
+  const left = marks === null ? [] : await leftovers(marks);
+  const named = left.map(({ pid, args }) => `pid ${pid} ${args}`.trim()).join("; ");
+  const children =
+    left.length === 0
+      ? ""
+      : `; ${left.length === 1 ? "a process it started still runs" : `${left.length} processes it started still run`}: ${named}`;
+  io.stderr(`squeal: ${holds}${children}\n`);
+  return 1;
+}
+
+/** The token the store records for the daemon of `ping`, `null` for another start or none. */
+function tokenOf(ping: PingResponse, record: DaemonRecord | null): string | null {
+  return record?.startedAt === ping.startedAt ? (record.token ?? null) : null;
 }

@@ -40,6 +40,7 @@ import { outstandingOf } from "./outstanding.js";
 import { pendingTestFilesOf } from "./phase-files.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { once } from "./standing-facts.js";
+import { withStopping } from "./stopping.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
 export interface StatusOptions extends StatusStoreOptions {
@@ -126,16 +127,21 @@ function snapshot(
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
 
-  // Task 011-08: a held `squeal stop` is said as such.
-  const daemon = withDeath(
+  // Task 011-08: a held `squeal stop` is said as such. Row 011-34: so is a daemon stopping.
+  const daemon = withStopping(
     store,
     worktree,
-    asStopped(
+    withDeath(
       store,
-      worktreeId,
       worktree,
-      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+      asStopped(
+        store,
+        worktreeId,
+        worktree,
+        liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+      ),
     ),
+    now,
   );
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);

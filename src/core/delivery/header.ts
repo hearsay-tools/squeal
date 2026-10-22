@@ -2,6 +2,7 @@ import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import { fullSuiteText, revisionText, runnerPartText, slowTierText } from "../state/index.js";
 import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
+import { stoppingText } from "../status/stopping.js";
 import type { DaemonLiveness, StatusHeader, ValidityCounts } from "../types/index.js";
 import { installSentences } from "./provenance.js";
 
@@ -145,7 +146,12 @@ function livenessSentence(
   revision: number,
   command: string,
 ): string {
-  if (daemon === undefined || daemon.state === "alive") return "";
+  if (daemon === undefined) return "";
+  // Row 011-34: a stopping daemon is neither alive nor down.
+  if (daemon.stopping !== undefined) {
+    return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
+  }
+  if (daemon.state === "alive") return "";
   // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
   if (daemon.stopped === true)
     return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
