@@ -81,6 +81,14 @@ squeal why "src/math.test.ts > math > adds" --include-logs
 
 It prints at most 200 of them and says how many there were. A log Squeal has pruned is reported as pruned; the result's errors are still in the store.
 
+## squeal failures
+
+`squeal failures [<test file or directory>...]` lists this worktree's stored failing results, newest first, each with its check, run and first error line, and says how many there are. `--check <text>` keeps the checks whose name holds the text, `--error <text>` the failures whose error holds it, and `--all-worktrees` adds other worktrees' failures. Each edit that re-runs a failing check stores one more failure of it; `--per-check` lists each check once, at its newest failure. It lists 20 by default, `--limit <n>` more, and `--limit all` every one. When a report groups checks that failed with one error and location, the group ends with the command that lists each of them, and any other check in those files that failed with that error:
+
+```text
+Full list: squeal failures tests/components --error "ReferenceError: ResizeObserver is not defined" --per-check --limit all
+```
+
 ## squeal run --all
 
 Queues every test file that has no result for the current files (`--force` queues all of them). Completion shows in the full header (at registration and Stop) and `squeal status` as `Full-suite checkpoint: completed at revision <current>`. Policy `stop.requireFullSuite` can require one before you stop.

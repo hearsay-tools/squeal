@@ -107,6 +107,7 @@ var WORKTREE_META_ROWS = {
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
+  interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
@@ -2275,17 +2276,27 @@ function toView(row) {
 
 // src/core/store/repos/failures.ts
 var FAILING_ROWS = `results r INDEXED BY results_by_failure CROSS JOIN checks c ON c.id = r.check_id`;
-function where2({ worktreeId, since, paths, checks }) {
-  const sql = ["r.failure_id IS NOT NULL", "r.outcome = 'fail'"];
+function rowWhere(alias, { worktreeId, since, errors = [] }) {
+  const sql = [`${alias}.failure_id IS NOT NULL`, `${alias}.outcome = 'fail'`];
   const params = [];
   if (worktreeId !== null) {
-    sql.push("r.worktree_id = ?");
+    sql.push(`${alias}.worktree_id = ?`);
     params.push(worktreeId);
   }
   if (since !== null) {
-    sql.push("r.recorded_at >= ?");
+    sql.push(`${alias}.recorded_at >= ?`);
     params.push(since);
   }
+  if (errors.length > 0) {
+    sql.push(`EXISTS (SELECT 1 FROM json_each(?) e JOIN failure_texts t
+      ON t.id = ${alias}.failure_id WHERE instr(t.summary, e.value) > 0)`);
+    params.push(JSON.stringify(errors));
+  }
+  return { sql, params };
+}
+function where2(selection) {
+  const { paths, checks } = selection;
+  const { sql, params } = rowWhere("r", selection);
   if (paths.length > 0) {
     sql.push(`EXISTS (SELECT 1 FROM json_each(?) p WHERE c.test_path = p.value
       OR substr(c.test_path, 1, length(p.value) + 1) = p.value || '/')`);
@@ -2296,6 +2307,13 @@ function where2({ worktreeId, since, paths, checks }) {
       ON k.project = json_extract(j.value, '$[0]') AND k.test_path = json_extract(j.value, '$[1]')
       AND k.kind = json_extract(j.value, '$[2]') AND k.full_name = json_extract(j.value, '$[3]'))`);
     params.push(JSON.stringify(checks.map(checkParams)));
+  }
+  if (selection.perCheck === true) {
+    const newer = rowWhere("n", selection);
+    sql.push(`NOT EXISTS (SELECT 1 FROM results n WHERE n.check_id = r.check_id
+      AND (n.recorded_at > r.recorded_at OR (n.recorded_at = r.recorded_at AND n.rowid > r.rowid))
+      AND ${newer.sql.join(" AND ")})`);
+    params.push(...newer.params);
   }
   return { sql: sql.join(" AND "), params };
 }
@@ -5748,7 +5766,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.261";
+  if (true) return "0.1.262";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
