@@ -2142,7 +2142,6 @@ function daemonFlags(c, d) {
   const add = (flag3, reason, command2) => flags.push({ flag: flag3, reason, command: command2 });
   const kill = `kill ${pid}`;
   const stop = d.root === null ? kill : `squeal stop ${shellQuote(d.root)}`;
-  let state = null;
   if (d.root === null) c.name(`daemon ${pid} flag root-gone`, "its root argument is relative");
   else {
     const gone = rootGone(d.root);
@@ -2151,8 +2150,13 @@ function daemonFlags(c, d) {
   const bundle = bundleOf(d.script);
   if (!existsSync2(bundle)) add("install-gone", `its bundle ${bundle} is missing`, stop);
   const older = olderOf(c, d, work);
-  if (typeof older === "string") state = older;
-  else if (older !== null) add("older", older.reason, stop);
+  const life = phase === "serving" && work?.record != null ? lifeOf(c, pid, work, work.record.heartbeatIntervalMs) : null;
+  let state = life?.state ?? null;
+  if (typeof older === "string") state ??= older;
+  else if (older !== null) {
+    if (state === null) add("older", older.reason, stop);
+    else state = `${state}, older`;
+  }
   const age2 = c.ageOf(d.row);
   if (phase === "waiting") {
     const bound = d.awaitLock ? AWAIT_LOCK_MS : NO_LOCK_MS;
@@ -2162,11 +2166,7 @@ function daemonFlags(c, d) {
   }
   const hung = hungOf(c, d);
   if (hung !== null) add("hung", hung, `kill ${pid}; sleep 5; kill -9 ${pid}`);
-  if (phase === "serving" && work?.record != null) {
-    const life = lifeOf(c, pid, work, work.record.heartbeatIntervalMs);
-    if (life.flag !== null) add(life.flag.flag, life.flag.reason, stop);
-    state = life.state ?? state;
-  }
+  if (life?.flag != null) add(life.flag.flag, life.flag.reason, stop);
   for (const reason of deadConsumers(c, pid)) add("dead-consumer", reason, null);
   const home = model.places.home;
   const installed = d.harness !== null && within(d.script, home) || within(d.script, join9(home, ".local"));
