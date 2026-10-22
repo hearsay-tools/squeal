@@ -12,7 +12,7 @@ import {
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../../src/core/delivery/handoff.js";
 import { storePaths } from "../../src/core/store/index.js";
-import type { DaemonRequest, EpochMs } from "../../src/core/types/index.js";
+import { type DaemonRequest, daemonExitMetaKey, type EpochMs } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { openContext } from "../../src/harness/shared/context.js";
 import { ensure } from "../../src/harness/shared/ensure.js";
@@ -42,8 +42,20 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-/** A daemon at `OLD` with a fresh heartbeat that accepts every step-down; what it was asked. */
-async function stepping(r: SquealRepo, clock: () => number): Promise<DaemonRequest[]> {
+/**
+ * A daemon at `OLD` with its heartbeat at `clock()` that accepts every
+ * step-down; what it was asked. By default the heartbeat stays fresh an
+ * hour. With `stops`, it has a 5 s interval and stops as a stepping
+ * daemon's does, and an accepted step-down writes the shutdown's mark
+ * (`#markExit`), unless `marks` is false (a release before 0.1.121).
+ */
+async function stepping(
+  r: SquealRepo,
+  clock: () => number,
+  options: { readonly stops?: boolean; readonly marks?: boolean } = {},
+): Promise<DaemonRequest[]> {
+  const stops = options.stops ?? false;
+  const marks = options.marks ?? stops;
   const socketPath = join(dir, "d.sock");
   const asked: DaemonRequest[] = [];
   const server = createServer((socket) => {
@@ -51,6 +63,9 @@ async function stepping(r: SquealRepo, clock: () => number): Promise<DaemonReque
     socket.once("data", (chunk) => {
       const request = JSON.parse(chunk.toString("utf8")) as DaemonRequest;
       asked.push(request);
+      if (request.type === "step-down" && marks) {
+        r.store.meta.set(daemonExitMetaKey(r.worktreeId), `${OLD}@1#t`);
+      }
       const answer =
         request.type === "step-down"
           ? { ok: true, type: "step-down", squealVersion: OLD, steppingDown: true }
@@ -64,8 +79,8 @@ async function stepping(r: SquealRepo, clock: () => number): Promise<DaemonReque
     socketPath,
     startedAt: 1 as EpochMs,
     heartbeatAt: clock() as EpochMs,
-    // A stepping daemon's heartbeat stays fresh this long: the boundaries all read it alive.
-    heartbeatIntervalMs: 3_600_000,
+    // Without `stops`, the boundaries all read it alive.
+    heartbeatIntervalMs: stops ? 5_000 : 3_600_000,
     squealVersion: OLD,
     token: "t",
   });
@@ -129,33 +144,64 @@ describe("one successor per handoff (row 011-32)", () => {
     });
   });
 
-  it("spawns again at the next boundary past the claim's bound", async () => {
+  // Review 0.1.259, B1: a stepping daemon's heartbeat stops long before the claim's bound.
+  it.each([
+    ["its shutdown's mark", true],
+    ["no mark (a release before 0.1.121)", false],
+  ])(
+    "spawns again at the next boundary past the claim's bound, the heartbeat stopped, with %s",
+    async (_, marks) => {
+      const r = squealRepo();
+      const at = 1_800_000_000_000;
+      let now = at;
+      const asked = await stepping(r, () => at, { stops: true, marks });
+      const { successors, deps } = recording(() => now);
+      await boundary(r, "session-start", deps, "s1");
+      now += HANDOFF_BOUND_MS - 1;
+      await boundary(r, "post-tool-batch", deps, "s1");
+      expect(successors()).toHaveLength(1);
+
+      now += 1;
+      await boundary(r, "post-tool-batch", deps, "s1");
+      expect(successors()).toHaveLength(2);
+      // The daemon steps down already: it is asked nothing more.
+      expect(stepDowns(asked)).toBe(1);
+      expect(readHandoff(r.store, r.worktreeId)).toEqual({
+        from: `${OLD}@1#t`,
+        to: HOOK,
+        at: now,
+        boundAt: now + HANDOFF_BOUND_MS,
+      });
+    },
+  );
+
+  it("spawns again at once after the successor's lock wait ended the claim, the heartbeat stopped", async () => {
     const r = squealRepo();
-    let now = 1_800_000_000_000;
-    const asked = await stepping(r, () => now);
+    const at = 1_800_000_000_000;
+    let now = at;
+    const asked = await stepping(r, () => at, { stops: true });
     const { successors, deps } = recording(() => now);
     await boundary(r, "session-start", deps, "s1");
-    now += HANDOFF_BOUND_MS - 1;
-    await boundary(r, "post-tool-batch", deps, "s1");
-    expect(successors()).toHaveLength(1);
-
-    now += 1;
-    await boundary(r, "post-tool-batch", deps, "s1");
-    expect(successors()).toHaveLength(2);
-    expect(stepDowns(asked)).toBe(2);
-    expect(readHandoff(r.store, r.worktreeId)).toMatchObject({ at: now });
-  });
-
-  it("spawns again at once after the successor's lock wait ended the claim", async () => {
-    const r = squealRepo();
-    const asked = await stepping(r, () => Date.now());
-    const { successors, deps } = recording(() => Date.now());
-    await boundary(r, "session-start", deps, "s1");
+    now += SUCCESSOR_LOCK_WAIT_MS + 1;
     // What `lockWaitTimedOut` does in its note's write (`test/daemon/handoff-claim`).
     clearHandoff(r.store, r.worktreeId);
     await boundary(r, "post-tool-batch", deps, "s1");
     expect(successors()).toHaveLength(2);
-    expect(stepDowns(asked)).toBe(2);
+    expect(stepDowns(asked)).toBe(1);
+    expect(readHandoff(r.store, r.worktreeId)).toMatchObject({ at: now });
+  });
+
+  it("asks a daemon whose heartbeat stopped with no shutdown and no claim nothing, and spawns no successor", async () => {
+    const r = squealRepo();
+    const at = 1_800_000_000_000;
+    const asked = await stepping(r, () => at, { stops: true });
+    const { calls, successors, deps } = recording(() => at + 60_000);
+    await boundary(r, "post-tool-batch", deps, "s1");
+    // The first step-down needs a live heartbeat; the hook ensures as it always did.
+    expect(asked).toEqual([]);
+    expect(calls).toHaveLength(1);
+    expect(successors()).toEqual([]);
+    expect(readHandoff(r.store, r.worktreeId)).toBeNull();
   });
 
   it("asks again for a daemon of another incarnation, whatever the claim", async () => {
