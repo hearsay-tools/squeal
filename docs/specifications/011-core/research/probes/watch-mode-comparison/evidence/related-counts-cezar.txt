@@ -1,0 +1,150 @@
+0 packages/api-client/src/contract/agent-config.ts 
+0 packages/api-client/src/contract/ask-schema.ts 
+0 packages/api-client/src/contract/conversations.ts 
+0 packages/api-client/src/contract/discovery.ts 
+0 packages/api-client/src/contract/effort.ts 
+0 packages/cezar/src/agent-config/model-settings/types.ts 
+1 packages/api-client/src/protocol/ui-events.ts packages/web/src/test/api-client-subpaths.test.ts
+1 packages/cezar/src/artifacts/cli.ts packages/cezar/src/artifacts/cli.test.ts
+1 packages/cezar/src/workflows/monitoring-channel-order.testkit.ts packages/cezar/src/workflows/monitoring-channel-order.test.ts
+1 packages/web/src/components/app-error-boundary.tsx packages/web/src/components/app-error-boundary.test.tsx
+1 packages/web/src/test/e2e-wait-discipline.ts packages/web/src/test/e2e-wait-discipline.test.ts
+2 packages/api-client/src/contract/live-limits.ts packages/web/src/api/live-owner.test.ts packages/web/src/api/sse-reader.test.ts
+2 packages/web/src/components/run-notifications.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/run-notifications.test.tsx
+3 packages/cezar/src/application-update/helper.ts packages/cezar/src/application-update/helper.test.ts packages/cezar/src/application-update/hoisted-recovery.te
+3 packages/cezar/src/task-cli/cockpit.testkit.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/task-cli/cli.test.ts packages/cezar/sr
+3 packages/web/src/test/palette.ts packages/web/src/design-guardian.test.ts packages/web/src/components/nav-selection.test.tsx packages/web/src/routes/task-thre
+18 packages/cezar/src/core/owned-input-delivery.testkit.ts packages/cezar/src/core/conversation-batch-ack.test.ts packages/cezar/src/core/owned-input-delivery.t
+26 packages/cezar/src/workflows/waits-parity.testkit.ts packages/cezar/src/core/harness-claude-parity.test.ts packages/cezar/src/core/harness-codex-parity.test.
+39 packages/web/src/components/sidebar-view-tabs.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/ap
+39 packages/web/src/routes/settings/accounts-section.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/component
+39 packages/web/src/routes/settings/agents-section.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/
+39 packages/web/src/routes/settings/projects-section.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/component
+39 packages/web/src/routes/settings/remove-project.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/
+39 packages/web/src/routes/settings/settings-field.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/
+39 packages/web/src/routes/settings/skills-section.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/
+40 packages/web/src/components/add-project-menu.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/add
+40 packages/web/src/components/application-update-control.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/comp
+40 packages/web/src/lib/ellipsis-hidden.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-co
+40 packages/web/src/lib/last-location.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-cont
+40 packages/web/src/lib/sidebar-width.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-cont
+40 packages/web/src/routes/github/github-filter-list.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/component
+40 packages/web/src/routes/github/github-loading.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/ap
+40 packages/web/src/routes/github/hand-to-agent.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app
+40 packages/web/src/routes/global-tasks.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-c
+40 packages/web/src/routes/repo-git/git-checkout-block.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/compone
+40 packages/web/src/routes/repo-git/repo-commits.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/ap
+40 packages/web/src/routes/repo-git/repo-git-loading.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/component
+40 packages/web/src/routes/repo-git/repo-git.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-sh
+40 packages/web/src/routes/settings/prompt-templates-section.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/c
+40 packages/web/src/routes/task-git/file-preview.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/ap
+41 packages/api-client/src/contract/ask.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-co
+41 packages/web/src/components/use-application-update.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/component
+41 packages/web/src/lib/git-actions.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-contai
+41 packages/web/src/lib/github-list-width.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-
+41 packages/web/src/lib/github-task.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-contai
+41 packages/web/src/routes/new-task-params.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell
+41 packages/web/src/routes/task-git/git-tab-loading.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components
+41 packages/web/src/routes/task-thread/preview/preview-split.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/c
+41 packages/web/src/routes/task-thread/review-panel.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components
+41 packages/web/src/routes/task-thread/task-thread.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/
+41 packages/web/src/routes/task-thread/thread-loading.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/componen
+42 packages/api-client/src/contract/project-limits.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/a
+42 packages/api-client/src/contract/workflows.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-sh
+42 packages/web/src/components/add-project-dialog.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/a
+42 packages/web/src/components/theme-provider.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-s
+42 packages/web/src/routes/automations/log.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shel
+42 packages/web/src/routes/automations/next-runs-preview.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/compo
+42 packages/web/src/routes/task-thread/run-reconcile.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components
+43 packages/api-client/src/contract/automations.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-
+43 packages/web/src/components/diff/index.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-
+43 packages/web/src/components/github-template-input.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/component
+43 packages/web/src/components/ui/badge.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/add-project
+43 packages/web/src/routes/automations/page-frame.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/a
+43 packages/web/src/routes/task-thread/run-activity-dock.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/compo
+43 packages/web/src/routes/task-thread/subagent-sheet.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/componen
+44 packages/web/src/components/ui/sheet.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-c
+44 packages/web/src/routes/task-thread/step-rail.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/ap
+45 packages/web/src/components/ui/label.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/add-project
+46 packages/api-client/src/contract/automation-schedule.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/compone
+46 packages/web/src/routes/task-thread/permission-card.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/compone
+47 packages/web/src/components/diff-stat.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-
+48 packages/web/src/api/global-events.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events-lifecycle.test.tsx packages/web/src/api/global-eve
+48 packages/web/src/lib/prompt-templates.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-c
+48 packages/web/src/routes/task-thread/run-status.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/ap
+50 packages/web/src/components/pill.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-conta
+50 packages/web/src/lib/automation-format.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-
+51 packages/api-client/src/contract/agent-profiles.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/a
+51 packages/api-client/src/contract/attachments.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-
+53 packages/api-client/src/contract/preview.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/api/preview-socket.
+54 packages/web/src/components/open-in-menu.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-she
+54 packages/web/src/routes/task-thread/preview/preview-state.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/co
+61 packages/web/src/routes/task-thread/task-link.tsx packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/ap
+64 packages/web/src/lib/keyboard-inset.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events.test.tsx packages/web/src/components/app-shell-con
+88 packages/cezar/src/agent-config/service.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cezar/src/
+88 packages/cezar/src/server/server.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cezar/src/core/ha
+89 packages/cezar/src/server/provider-action-gate.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cez
+89 packages/cezar/src/server/ws.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cezar/src/core/harnes
+90 packages/cezar/src/automations/coordinator.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/automations/coordinator.test.ts packag
+91 packages/cezar/src/application-update/service.ts packages/cezar/src/application-update/hoisted-recovery.test.ts packages/cezar/src/application-update/service
+91 packages/cezar/src/automations/schedule-runner.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/automations/schedule-runner.test.t
+93 packages/cezar/src/application-update/npm-process.ts packages/cezar/src/application-update/helper.test.ts packages/cezar/src/application-update/hoisted-recov
+93 packages/cezar/src/task-cli/projections.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cezar/src/
+97 packages/cezar/src/automations/task-template.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/automations/prompts.test.ts packages
+99 packages/cezar/src/automations/store.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/automations/coordinator.test.ts packages/cez
+104 packages/api-client/src/contract/github.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events-lifecycle.test.tsx packages/web/src/api/globa
+105 packages/web/src/lib/project-tags.ts packages/web/src/routes.test.tsx packages/web/src/api/global-events-lifecycle.test.tsx packages/web/src/api/global-even
+108 packages/api-client/src/contract/projects.ts packages/web/src/routes.test.tsx packages/web/src/api/client.test.ts packages/web/src/api/global-events-lifecyc
+113 packages/api-client/src/contract/live.ts packages/web/src/routes.test.tsx packages/web/src/api/client.test.ts packages/web/src/api/global-events-lifecycle.t
+115 packages/api-client/src/contract/delegation.ts packages/web/src/routes.test.tsx packages/web/src/api/client.test.ts packages/web/src/api/global-events-lifec
+115 packages/web/src/api/live-visibility.ts packages/web/src/routes.test.tsx packages/web/src/api/client.test.ts packages/web/src/api/global-events-lifecycle.te
+121 packages/api-client/src/contract/runs.ts packages/web/src/routes.test.tsx packages/web/src/api/client.test.ts packages/web/src/api/events.test.ts packages/w
+121 packages/cezar/src/workflows/fixture-cleanup.testkit.ts packages/cezar/src/discovery/cli.test.ts packages/cezar/src/delegation/cli.test.ts packages/cezar/sr
+164 packages/cezar/src/core/host-model-catalog.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cezar/
+164 packages/cezar/src/core/provider-availability.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cez
+164 packages/cezar/src/core/runner-model-catalog.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/ceza
+165 packages/cezar/src/core/claude-model-catalog.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/ceza
+165 packages/cezar/src/core/omp-model-catalog.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cezar/s
+228 packages/cezar/src/automations/builtin-skill.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/ceza
+228 packages/cezar/src/ci-wait/resources.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cezar/src/de
+229 packages/cezar/src/agent-config/model-settings/claude.ts packages/cezar/src/agent-config/models.test.ts packages/cezar/src/automations/automation-cli.test.t
+229 packages/cezar/src/agent-config/model-settings/opencode.ts packages/cezar/src/agent-config/models.test.ts packages/cezar/src/automations/automation-cli.test
+229 packages/cezar/src/agent-config/model-settings/pi.ts packages/cezar/src/agent-config/models.test.ts packages/cezar/src/automations/automation-cli.test.ts pa
+229 packages/cezar/src/core/managed-session.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery/cli.test.ts packages/cezar/src
+231 packages/cezar/src/ci-wait/supervisor.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/ci-wait/conflict-process.test.ts packages/
+231 packages/cezar/src/workflows/load.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/automations/prompts.test.ts packages/cezar/src
+232 packages/cezar/src/core/omp-ui-mapper.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src
+232 packages/cezar/src/core/pi-runner.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/dis
+233 packages/cezar/src/workspace/ui-state.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/skills-remote.test.ts packages/cezar/src/skills.test.
+234 packages/cezar/src/ci-wait/github.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/ci-wait/conflict-process.test.ts packages/ceza
+234 packages/cezar/src/core/cursor-print-capabilities.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packag
+234 packages/cezar/src/core/cursor-ui-mapper.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/
+235 packages/cezar/src/core/cursor-print-runner.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cez
+235 packages/cezar/src/core/opencode-ui-mapper.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/ceza
+235 packages/cezar/src/core/usage.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discove
+236 packages/cezar/src/core/codex-app-server-runner.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages
+236 packages/cezar/src/core/codex-permissions.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar
+237 packages/cezar/src/core/codex-stream-error.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/ceza
+237 packages/cezar/src/core/codex-turn-outcome.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/ceza
+237 packages/cezar/src/core/codex-ui-mapper.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/s
+237 packages/cezar/src/core/cursor-print-process.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/ce
+237 packages/cezar/src/core/usage-limit.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/d
+238 packages/cezar/src/agent-config/files.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/agent-config/files.test.ts packages/cezar/src/agent-c
+239 packages/cezar/src/agent-config/validate.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/agent-config/files.test.ts packages/cezar/src/agen
+239 packages/cezar/src/core/codex-app-server-transport.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packa
+239 packages/cezar/src/core/cursor-cli-flags.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/
+241 packages/cezar/src/agent-config/catalog.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/agent-config/catalog.test.ts packages/cezar/src/age
+243 packages/cezar/src/core/ndjson.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discov
+245 packages/cezar/src/core/input-submissions.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar
+248 packages/cezar/src/ci-wait/client.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/ci-
+248 packages/cezar/src/ci-wait/tools.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/ci-w
+249 packages/cezar/src/core/ask.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/discovery
+251 packages/cezar/src/ci-wait/errors.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/ci-
+254 packages/cezar/src/core/tool-display.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/
+261 packages/cezar/src/artifacts/lifecycle.ts packages/cezar/src/session-signal-cli.test.ts packages/cezar/src/artifacts/lifecycle.test.ts packages/cezar/src/au
+265 packages/cezar/src/delegation/capacity.ts packages/cezar/src/git-worktree-release.test.ts packages/cezar/src/session-signal-cli.test.ts packages/cezar/src/a
+266 packages/cezar/src/workspace/agent-profiles.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/session-signal-cli.test.ts packages/cezar/src/a
+275 packages/cezar/src/workflows/types.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/session-signal-cli.test.ts packages/cezar/src/artifacts/
+280 packages/cezar/src/workspace/config.ts packages/cezar/src/config.test.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/session-signal-cli.te
+283 packages/cezar/src/core/provider-auth.ts packages/cezar/src/config.test.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/session-signal-cli.
+284 packages/cezar/src/core/agent-model-policy.ts packages/cezar/src/config.test.ts packages/cezar/src/planner-account.test.ts packages/cezar/src/session-signal

@@ -1,0 +1,586 @@
+0 src/cli/index.ts 
+0 src/cli/named-standing.ts 
+0 src/cli/ps-index.ts 
+0 src/core/daemon/desk-messages.ts 
+0 src/core/daemon/front-desk.ts 
+0 src/core/ps/model.ts 
+0 src/core/scheduler/options.ts 
+0 src/core/types/capacity.ts 
+0 src/core/types/check.ts 
+0 src/core/types/keys.ts 
+0 src/core/types/revision.ts 
+0 src/core/types/standing.ts 
+0 src/core/types/status.ts 
+0 src/harness/claude-code/entries/post-tool-batch.ts 
+0 src/harness/claude-code/entries/pre-tool-use.ts 
+0 src/harness/claude-code/entries/session-end.ts 
+0 src/harness/claude-code/entries/session-start.ts 
+0 src/harness/claude-code/entries/stop-slow.ts 
+0 src/harness/claude-code/entries/stop.ts 
+0 src/harness/claude-code/entries/user-prompt-submit.ts 
+0 src/harness/claude-code/entries/waiter.ts 
+0 src/harness/claude-code/main.ts 
+0 src/harness/codex/entries/interrupt.ts 
+0 src/harness/codex/entries/post-tool-use.ts 
+0 src/harness/codex/entries/pre-tool-use.ts 
+0 src/harness/codex/entries/session-end.ts 
+0 src/harness/codex/entries/session-start.ts 
+0 src/harness/codex/entries/stop-slow.ts 
+0 src/harness/codex/entries/stop.ts 
+0 src/harness/codex/entries/subagent-start.ts 
+0 src/harness/codex/entries/subagent-stop.ts 
+0 src/harness/codex/entries/user-prompt-submit.ts 
+0 src/harness/codex/hook.ts 
+0 src/harness/codex/main.ts 
+0 src/harness/opencode/api.ts 
+0 src/harness/opencode/entries/hooks/after.ts 
+0 src/harness/opencode/entries/hooks/before.ts 
+0 src/harness/opencode/entries/hooks/end-turn.ts 
+0 src/harness/opencode/entries/hooks/end.ts 
+0 src/harness/opencode/entries/hooks/ping.ts 
+0 src/harness/opencode/entries/hooks/prompt.ts 
+0 src/harness/opencode/entries/hooks/register.ts 
+0 src/harness/opencode/entries/hooks/stop.ts 
+0 src/harness/opencode/entries/hooks/wait.ts 
+0 src/harness/opencode/entries/plugin.ts 
+0 src/harness/pi/api.ts 
+0 src/harness/pi/entries/extension.ts 
+0 src/harness/pi/entries/worker.ts 
+0 src/harness/pi/protocol.ts 
+1 src/harness/opencode/protocol.ts test/harness/opencode/latency.test.ts
+2 src/harness/shared/index.ts test/harness/liveness.test.ts test/harness/stop.test.ts
+3 src/harness/opencode/bridge-turn.ts test/harness/session-root.test.ts test/harness/opencode/hooks.test.ts test/harness/opencode/turn.test.ts
+3 src/harness/pi/extension.ts test/harness/pi/events.test.ts test/harness/pi/extension.test.ts test/harness/pi/wake.test.ts
+4 src/harness/pi/run.ts test/cli/pi-status.test.ts test/harness/primer-slow-policy.test.ts test/harness/pi/run.test.ts test/harness/pi/session.test.ts
+4 src/harness/pi/session.ts test/cli/pi-status.test.ts test/harness/primer-slow-policy.test.ts test/harness/pi/run.test.ts test/harness/pi/session.test.ts
+4 src/harness/pi/worker.ts test/cli/pi-status.test.ts test/harness/primer-slow-policy.test.ts test/harness/pi/run.test.ts test/harness/pi/session.test.ts
+5 src/harness/pi/host.ts test/harness/pi/events.test.ts test/harness/pi/extension.test.ts test/harness/pi/host.test.ts test/harness/pi/latency.test.ts test/harn
+6 src/harness/opencode/bridge.ts test/cli/opencode-status.test.ts test/harness/primer-slow-policy.test.ts test/harness/session-root.test.ts test/harness/opencod
+9 src/harness/pi/build.ts test/harness/launcher-copy.test.ts test/harness/skill-wait.test.ts test/harness/skill.test.ts test/integration/pi-events.test.ts test/
+10 src/harness/opencode/build.ts test/harness/launcher-copy.test.ts test/harness/opencode-abort.test.ts test/harness/opencode-continued.test.ts test/harness/ope
+12 src/core/daemon/index.ts test/cli/daemon-socket.test.ts test/cli/handoff-wait.test.ts test/cli/run-slow-wait.test.ts test/cli/run-slow.test.ts test/cli/slow-
+12 src/harness/opencode/arrivals.ts test/helpers/opencode.test.ts test/harness/opencode/bridge-client.test.ts test/harness/opencode/bundle.test.ts test/harness/
+12 src/harness/opencode/deadline.ts test/helpers/opencode.test.ts test/harness/opencode/bridge-client.test.ts test/harness/opencode/bundle.test.ts test/harness/
+12 src/harness/opencode/hooks.ts test/helpers/opencode.test.ts test/harness/opencode/bridge-client.test.ts test/harness/opencode/bundle.test.ts test/harness/ope
+12 src/harness/opencode/parts.ts test/helpers/opencode.test.ts test/harness/opencode/bridge-client.test.ts test/harness/opencode/bundle.test.ts test/harness/ope
+12 src/harness/opencode/plugin.ts test/helpers/opencode.test.ts test/harness/opencode/bridge-client.test.ts test/harness/opencode/bundle.test.ts test/harness/op
+12 src/harness/opencode/sessions.ts test/helpers/opencode.test.ts test/harness/opencode/bridge-client.test.ts test/harness/opencode/bundle.test.ts test/harness/
+12 src/harness/opencode/turns.ts test/helpers/opencode.test.ts test/harness/opencode/bridge-client.test.ts test/harness/opencode/bundle.test.ts test/harness/ope
+13 src/harness/opencode/bridge-client.ts test/helpers/opencode.test.ts test/harness/opencode/bridge-client.test.ts test/harness/opencode/bundle.test.ts test/har
+29 src/harness/codex/handlers.ts test/cli/codex.test.ts test/harness/primer-coverage.test.ts test/harness/primer-excluded.test.ts test/harness/primer-listing.te
+29 src/harness/codex/hooks.ts test/cli/codex.test.ts test/harness/primer-coverage.test.ts test/harness/primer-excluded.test.ts test/harness/primer-listing.test.
+29 src/harness/codex/index.ts test/cli/codex.test.ts test/harness/primer-coverage.test.ts test/harness/primer-excluded.test.ts test/harness/primer-listing.test.
+29 src/harness/codex/kept.ts test/cli/codex.test.ts test/harness/primer-coverage.test.ts test/harness/primer-excluded.test.ts test/harness/primer-listing.test.t
+29 src/harness/codex/run.ts test/cli/codex.test.ts test/harness/primer-coverage.test.ts test/harness/primer-excluded.test.ts test/harness/primer-listing.test.ts
+30 src/harness/codex/input.ts test/cli/codex.test.ts test/harness/primer-coverage.test.ts test/harness/primer-excluded.test.ts test/harness/primer-listing.test.
+30 src/harness/codex/output.ts test/cli/codex.test.ts test/harness/primer-coverage.test.ts test/harness/primer-excluded.test.ts test/harness/primer-listing.test
+42 src/harness/codex/build.ts test/cli/codex.test.ts test/e2e/codex-upgrade.test.ts test/daemon/symlinked-source.test.ts test/harness/launcher-copy.test.ts test
+53 src/cli/codex/status.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+53 src/cli/daemon.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-c
+53 src/cli/failures.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per
+53 src/cli/main.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-che
+53 src/cli/remove.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-c
+53 src/cli/status-paths.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+53 src/cli/update-packages.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+53 src/cli/update.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-c
+53 src/core/daemon/signals.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+54 src/cli/codex/init.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-p
+54 src/cli/codex/launcher.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+54 src/cli/init.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-che
+54 src/cli/setup/apply.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+54 src/cli/setup/ask.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-pe
+54 src/cli/setup/command.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+54 src/cli/setup/config-edit.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+54 src/cli/setup/flow.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-p
+54 src/cli/setup/format.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+54 src/cli/setup/questions.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+56 src/cli/codex/hash.ts test/cli/codex-hash.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket
+56 src/cli/retry.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-ch
+56 src/cli/run-lanes.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-pe
+56 src/cli/run-slow.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per
+56 src/cli/run.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-chec
+56 src/cli/wait-arg.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per
+56 src/cli/warmup.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-c
+57 src/cli/codex/trust.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+57 src/cli/node-test-seed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+57 src/cli/setup/build-outputs.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+57 src/cli/setup/candidates.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+57 src/cli/setup/exclude.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+57 src/cli/setup/harnesses.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+57 src/cli/setup/plan.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-p
+57 src/cli/setup/pytest.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+57 src/cli/setup/runners.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+57 src/cli/setup/test-globs.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+57 src/cli/start.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-ch
+58 src/cli/ps.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-check
+58 src/cli/pytest-seed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+58 src/cli/setup/block.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+58 src/cli/setup/gates.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+59 src/cli/plugin-id.ts test/cli/codex-hash.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.
+59 src/cli/setup/repo.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-p
+60 src/cli/stop.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-che
+60 src/core/ps/darwin.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-p
+60 src/core/ps/render.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-p
+61 src/cli/stopped-mark.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+61 src/core/ps/snapshot-shape.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+61 src/core/ps/snapshot-unknown.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+61 src/core/ps/snapshot.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+61 src/harness/claude-code/fork.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts test/daemon/d
+61 src/harness/claude-code/hook.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts test/daemon/d
+61 src/harness/claude-code/hooks.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts test/daemon/
+61 src/harness/claude-code/hooks/post-tool-batch.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test
+61 src/harness/claude-code/hooks/pre-tool-use.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts
+61 src/harness/claude-code/hooks/session-end.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts 
+61 src/harness/claude-code/hooks/session-start.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.t
+61 src/harness/claude-code/hooks/stop-slow.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts te
+61 src/harness/claude-code/hooks/stop.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts test/da
+61 src/harness/claude-code/hooks/user-prompt-submit.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.t
+61 src/harness/claude-code/hooks/waiter.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts test/
+61 src/harness/claude-code/index.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts test/daemon/
+61 src/harness/claude-code/input.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts test/daemon/
+61 src/harness/claude-code/run.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/died.test.ts test/daemon/dr
+62 src/core/daemon/leftovers.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+62 src/core/ps/shape.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-pe
+63 src/core/ps/flags-files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+63 src/core/ps/flags-leftovers.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+63 src/core/ps/flags-processes.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+63 src/core/ps/flags.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-pe
+63 src/core/ps/host.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per
+63 src/core/ps/work.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per
+64 src/core/ps/flags-text.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+64 src/core/ps/processes.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+65 src/harness/shared/waiter.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/di
+66 src/core/ps/render-units.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+67 src/core/daemon/daemon.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+68 src/core/ps/discover.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+69 src/core/daemon/notes.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+69 src/core/daemon/open.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+69 src/harness/shared/session-root.ts test/cli/codex.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/
+69 src/harness/shared/stop-slow.ts test/cli/codex.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.test.ts test/daemon/die
+70 src/core/daemon-loop/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+70 src/core/daemon/idle-gc.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+73 src/core/daemon/pytest-runners.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+73 src/harness/shared/deliver.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startu
+73 src/harness/shared/deny.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-startup.t
+73 src/harness/shared/prompt.ts test/cli/codex.test.ts test/cli/opencode-status.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died-s
+73 src/harness/shared/test-command-reason.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon
+73 src/harness/shared/uncovered-edit.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/died
+74 src/core/delivery/test-command-denied.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/
+74 src/harness/shared/no-edit.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/delivery/slow-told.test.ts test/daemon/departure
+74 src/harness/shared/stop.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/delivery/slow-told.test.ts test/daemon/departure.te
+75 src/core/daemon/lifecycle.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+75 src/harness/shared/session.ts test/cli/codex.test.ts test/cli/opencode-status.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/daemon/departur
+75 src/harness/shared/sweep.ts test/cli/codex.test.ts test/cli/opencode-status.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/daemon/departure.
+76 src/core/daemon/sliced-writes.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+76 src/harness/shared/context.ts test/cli/codex.test.ts test/cli/opencode-status.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/delivery/slow-t
+76 src/harness/shared/harness-process.ts test/cli/codex.test.ts test/cli/opencode-status.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/deliver
+76 src/harness/shared/hook.ts test/cli/codex.test.ts test/cli/opencode-status.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/delivery/slow-told
+76 src/harness/shared/test-command-files.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/daemon/departure.test.ts test/daemon/
+77 src/core/daemon/scratch.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+77 src/harness/shared/ensure.ts test/cli/codex.test.ts test/cli/opencode-status.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/delivery/slow-to
+77 src/harness/shared/test-command-pytest.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/delivery/failure-group-evidence.test
+77 src/harness/shared/test-command.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/delivery/failure-group-evidence.test.ts tes
+80 src/core/daemon/desk.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+80 src/core/daemon/escaped.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+81 src/cli/status-wait.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+81 src/core/daemon/handlers.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+81 src/core/daemon/user-config.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+81 src/harness/shared/text.ts test/cli/codex.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/delivery/slow-told.test.ts test/evals/evidence-sque
+82 src/cli/status-wait-edit.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+82 src/cli/status-wait-held.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+82 src/cli/status-wait-slow.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+82 src/core/watcher/atomic-save.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+82 src/core/watcher/backend.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+82 src/core/watcher/change-feed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+82 src/core/watcher/chokidar-backend.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+82 src/core/watcher/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+82 src/core/watcher/unlisted-dirs.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+82 src/core/watcher/watch-limit.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+82 src/runners/pytest/adapter-config.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+82 src/runners/pytest/adapter-observed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts te
+82 src/runners/pytest/adapter-run.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+82 src/runners/pytest/adapter.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+82 src/runners/pytest/version.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+83 src/core/daemon/server.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+83 src/core/watcher/batch-retry.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+83 src/core/watcher/debounce.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+83 src/core/watcher/linked-exclusions.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+83 src/core/watcher/linked-watch.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+83 src/harness/shared/coverage.ts test/cli/codex.test.ts test/cli/opencode-status.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/e2e/opencode.t
+83 src/harness/shared/primer.ts test/cli/codex.test.ts test/cli/opencode-status.test.ts test/cli/pi-status.test.ts test/cli/remove.test.ts test/e2e/opencode.tes
+83 src/runners/pytest/adapter-environment.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts
+83 src/runners/pytest/adapter-files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+83 src/runners/pytest/enumerate.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+84 src/core/daemon/protocol.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+84 src/core/daemon/run-slow.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+84 src/core/daemon/slow-instance.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+85 src/core/daemon/last-use.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+85 src/core/watcher/parcel-backend.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+85 src/core/watcher/root-recheck.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+86 src/runners/pytest/graph/closures.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+86 src/runners/pytest/graph/graph.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+86 src/runners/pytest/graph/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+86 src/runners/pytest/graph/modules.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+86 src/runners/pytest/graph/resolver.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+87 src/runners/pytest/graph/search-path.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts t
+87 src/runners/pytest/graph/stdlib-names.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts 
+87 src/runners/pytest/run/batches.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+87 src/runners/pytest/run/run.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+88 src/cli/named-files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+88 src/cli/status-sync.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+88 src/cli/status-wait-paths.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+88 src/cli/status-wait-promote.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+88 src/cli/wait-liveness.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+88 src/runners/pytest/environment/entry-points.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.te
+88 src/runners/pytest/environment/fingerprint.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.tes
+88 src/runners/pytest/environment/hash.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts te
+88 src/runners/pytest/environment/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts t
+88 src/runners/pytest/graph/derive-roots.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts 
+88 src/runners/pytest/graph/parse.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+88 src/runners/pytest/run/observed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+89 src/runners/pytest/environment/interpreter.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.tes
+89 src/runners/pytest/environment/states.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts 
+89 src/runners/pytest/graph/wasm.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+89 src/runners/pytest/run/basetemp.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+89 src/runners/pytest/run/bytecode.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+89 src/runners/pytest/run/events.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+89 src/runners/pytest/run/report.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+90 src/cli/opencode/status.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+90 src/cli/pi/status.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-pe
+90 src/cli/status-command.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+92 src/cli/daemon-access.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+92 src/core/daemon/node-test-runners.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+93 src/runners/pytest/environment/import-roots.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.te
+93 src/runners/pytest/run/command.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+94 src/cli/status-wait-lines.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+95 src/runners/pytest/environment/config-values.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.t
+95 src/runners/pytest/environment/config.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts 
+97 src/cli/named-file-lines.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+99 src/cli/verdict.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-per-
+100 src/harness/claude-code/build.ts test/cli/codex-hash.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/install-sh-opencode-update.test.ts
+103 src/harness/opencode/host.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+105 src/runners/pytest/environment/site.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts t
+117 src/harness/codex/command.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+118 src/harness/shared/version-copies.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+125 src/harness/build.ts test/node-floor.test.ts test/cli/codex-hash.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/install-sh-opencode-up
+165 src/runners/pytest/environment/discover.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.
+178 src/core/daemon/ensure.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+195 src/core/daemon/version.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+197 src/core/daemon/composite-runner.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+211 src/runners/node-test/adapter-environment.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.tes
+211 src/runners/node-test/adapter-files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts t
+211 src/runners/node-test/adapter-observed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.t
+211 src/runners/node-test/adapter-project.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts
+211 src/runners/node-test/adapter.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+211 src/runners/node-test/version.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+212 src/runners/node-test/enumerate.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+214 src/runners/node-test/run/observed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts te
+214 src/runners/node-test/run/reads.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+214 src/runners/node-test/run/run.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+215 src/runners/node-test/run/errors.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+215 src/runners/node-test/run/events.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+215 src/runners/node-test/run/report.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+215 src/runners/node-test/runtime.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+217 src/runners/node-test/identity.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+218 src/runners/node-test/graph/closures.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts 
+218 src/runners/node-test/graph/glob.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+218 src/runners/node-test/graph/graph.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+218 src/runners/node-test/graph/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+218 src/runners/node-test/graph/loader-chain.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test
+218 src/runners/node-test/graph/modules.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts t
+218 src/runners/node-test/graph/packages.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts 
+218 src/runners/node-test/graph/preload-notes.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.tes
+218 src/runners/node-test/graph/resolver.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts 
+218 src/runners/node-test/graph/tsconfig.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts 
+219 src/runners/node-test/graph/code-ranges.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.
+219 src/runners/node-test/graph/parse.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+226 src/runners/node-test/run/process.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+227 src/core/scheduler/bootstrap.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+227 src/core/scheduler/busy-resume.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+227 src/core/scheduler/edit-cut.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+227 src/core/scheduler/handover.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+227 src/core/scheduler/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+227 src/core/scheduler/install-stamp.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+227 src/core/scheduler/interrupted.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+227 src/core/scheduler/refinement.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+227 src/core/scheduler/runner-work.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+227 src/core/scheduler/scheduler.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+227 src/core/scheduler/slow-tier.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+227 src/core/scheduler/slow-trigger.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+227 src/core/scheduler/stored-keys.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+227 src/core/scheduler/warm-up.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+228 src/core/scheduler/checkpoint-requests.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.t
+228 src/core/scheduler/mutex.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+228 src/core/scheduler/namesakes.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+228 src/core/scheduler/slot-records.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+229 src/core/scheduler/batch.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+229 src/core/scheduler/install.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+229 src/core/scheduler/workspaces.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+230 src/core/scheduler/install-command.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts te
+231 src/core/daemon-loop/head.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+231 src/core/scheduler/head-move.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+232 src/core/scheduler/keying.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+232 src/core/scheduler/lockfiles.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+233 src/core/watcher/linked-files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+234 src/runners/vitest/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+234 src/runners/vitest/width.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+237 src/core/daemon/low-priority.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+238 src/runners/vitest/adapter.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+238 src/runners/vitest/affected.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+238 src/runners/vitest/broken.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+238 src/runners/vitest/config-stamps.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+238 src/runners/vitest/dynamic.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+238 src/runners/vitest/empty-closed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+238 src/runners/vitest/environment.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+238 src/runners/vitest/exclude.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+238 src/runners/vitest/load.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+238 src/runners/vitest/optimizer.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+238 src/runners/vitest/project.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+238 src/runners/vitest/sources.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+238 src/runners/vitest/stale.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+238 src/runners/vitest/stamp.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+238 src/runners/vitest/startup.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+238 src/runners/vitest/touched.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+238 src/runners/vitest/version.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+239 src/core/daemon/terminate.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+239 src/runners/vitest/gate.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+239 src/runners/vitest/graph.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+239 src/runners/vitest/loads.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+239 src/runners/vitest/observe.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+239 src/runners/vitest/packages.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+239 src/runners/vitest/related.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+240 src/runners/vitest/reporter.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+240 src/runners/vitest/run.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+241 src/runners/vitest/moved.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+243 src/core/watcher/candidates.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+243 src/runners/vitest/paths.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+244 src/core/daemon/client.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+244 src/core/watcher/watch-spec.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+245 src/runners/vitest/results.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+246 src/core/watcher/exclusions.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+263 src/core/status/durations.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+263 src/core/status/failures.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+263 src/core/status/format-status.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+263 src/core/status/format-why-replaced.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts t
+263 src/core/status/format-why.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+263 src/core/status/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+263 src/core/status/outstanding-text.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+263 src/core/status/replaced-failures.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+263 src/core/status/run-log.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+263 src/core/status/status-detail.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+263 src/core/status/why-closure.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+263 src/core/status/why-log.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+263 src/core/status/why-rank.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+263 src/core/status/why-unknown.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+263 src/core/status/why.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+264 src/core/status/next-step-text.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+267 src/runners/observe/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+267 src/runners/observe/inputs.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+267 src/runners/observe/runtime.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+267 src/runners/observe/signature.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+268 src/runners/node-test/recorders.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+268 src/runners/observe/read.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+269 src/runners/node-test/run/node-options.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.t
+277 src/core/fs/worktree-paths.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+357 src/core/delivery/delivery.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+357 src/core/delivery/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+357 src/core/delivery/own-edit.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+358 src/core/delivery/delta.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+360 src/core/delivery/edits.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+360 src/core/delivery/expiry.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+360 src/core/delivery/harness-process.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+360 src/core/delivery/slow-told.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+360 src/core/delivery/uncovered.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+361 src/core/delivery/collapse.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+361 src/core/delivery/consumer-version.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts te
+361 src/core/delivery/failure-groups.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+361 src/core/delivery/format.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+361 src/core/delivery/header.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+363 src/core/waiter-lock/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+363 src/core/waiter-lock/waiter-lock.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+398 src/core/scheduler/awaiting-install.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts t
+404 src/core/delivery/leaving.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+404 src/core/delivery/turn.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+410 src/core/scheduler/ignored-reads.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+432 src/core/delivery/provenance.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+479 src/core/delivery/attribution.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+479 src/core/delivery/closure.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+479 src/core/delivery/handoff.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+479 src/core/delivery/liveness.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+479 src/core/delivery/registered.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+479 src/core/scheduler/backlog.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+479 src/core/scheduler/claims.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+479 src/core/scheduler/environment-growth.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts
+479 src/core/scheduler/failures.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+479 src/core/scheduler/ledger.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+479 src/core/scheduler/observed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+479 src/core/scheduler/quiet.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/scheduler/rerun-memory.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+479 src/core/scheduler/rerun.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/scheduler/retries.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+479 src/core/scheduler/revision.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+479 src/core/scheduler/runner-work-bound.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts 
+479 src/core/scheduler/setup.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/scheduler/sharing.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+479 src/core/scheduler/slots.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/scheduler/slow.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+479 src/core/scheduler/tiers.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/scheduler/timeout-split.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+479 src/core/scheduler/unknown-files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+479 src/core/scheduler/yields.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+479 src/core/status/checks.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+479 src/core/status/config-problems.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+479 src/core/status/died.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+479 src/core/status/git-head.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/status/identity.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/status/next-step.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+479 src/core/status/open-runs.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+479 src/core/status/open.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+479 src/core/status/outstanding.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+479 src/core/status/phase-files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+479 src/core/status/slot-holders.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+479 src/core/status/snapshot.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/status/standing-facts.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+479 src/core/status/standing-groups.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/
+479 src/core/status/standing.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/status/stopping.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+479 src/core/status/unknown-files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+480 src/core/scheduler/capacity.ts test/capacity/pool-failure.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/
+480 src/core/scheduler/context.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+480 src/core/scheduler/link-target.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+480 src/core/scheduler/omitted-test-files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts
+480 src/core/scheduler/rekeyed-moves.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+480 src/core/slow/rank-store.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+480 src/core/status/test-frame.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+481 src/core/delivery/stopped.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+481 src/core/retry/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+481 src/core/retry/load.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+481 src/core/retry/pending.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+481 src/core/retry/recorded.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+481 src/core/retry/records.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+481 src/core/retry/text.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+481 src/core/scheduler/checkpoints.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+481 src/core/slow/rank-tokens.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+481 src/core/slow/rank.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+483 src/core/daemon/lock.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+483 src/core/daemon/test-pause.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+483 src/core/scheduler/accept.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+483 src/core/scheduler/growth.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+483 src/core/scheduler/held.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+483 src/core/scheduler/store-decision.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+483 src/core/scheduler/store-results.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test
+484 src/core/scheduler/promotions.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+484 src/core/scheduler/queue.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+484 src/core/scheduler/stability.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli
+486 src/core/capacity/index.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/ca
+486 src/core/capacity/marks.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/ca
+486 src/core/capacity/pool.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/cap
+486 src/core/capacity/share.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/ca
+486 src/core/scheduler/notes.ts test/notes.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.t
+487 src/core/capacity/cores.ts test/capacity/cores.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/
+487 src/core/scheduler/records.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+488 src/core/ps/measure.ts test/capacity/cores.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool
+489 src/core/revision/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+489 src/core/revision/reconcile.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+490 src/core/scheduler/files.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+492 src/core/slow/guard.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/capaci
+492 src/core/slow/index.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/capaci
+492 src/core/slow/slot.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/capacit
+493 src/core/ps/proc.ts test/capacity/cores.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-fa
+493 src/core/ps/source.ts test/capacity/cores.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-
+494 src/core/daemon/runner.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+497 src/core/watcher/git.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+498 src/core/scheduler/rekeyed-record.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+498 src/core/watcher/links.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+498 src/core/watcher/paths.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+516 src/core/daemon/paths.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/capa
+517 src/core/slow/state.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+517 src/core/state/baseline.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+517 src/core/state/before-edits.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+517 src/core/state/check-name.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+517 src/core/state/derive.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+517 src/core/state/file-class.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+517 src/core/state/flaky.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+517 src/core/state/header.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+517 src/core/state/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+517 src/core/state/inherited.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+517 src/core/state/producers.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+517 src/core/state/rerun-first.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+517 src/core/state/revision-commit.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/c
+517 src/core/state/shown-result.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+517 src/core/state/sink.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+517 src/core/state/slow-text.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+517 src/core/state/slow.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+517 src/core/state/transitions.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+525 src/core/run-log.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-pe
+530 src/core/delivery/slots.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/ca
+530 src/core/slow/stop-wait.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/ca
+531 src/core/slow/classify.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test.ts test/cap
+535 src/core/hash/blob.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures-
+535 src/core/hash/git-index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+535 src/core/hash/hasher.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+535 src/core/hash/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+535 src/core/hash/stat-cache.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+557 src/core/state/optimizer-note.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+560 src/core/state/fingerprint.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+565 src/core/text.ts test/notes.test.ts test/text.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-s
+566 src/core/daemon/policy-node-test.ts test/notes.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-
+566 src/core/daemon/policy-pytest.ts test/notes.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-soc
+566 src/core/daemon/policy-slow.ts test/notes.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socke
+566 src/core/daemon/policy.ts test/notes.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.tes
+567 src/core/notes.ts test/notes.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts tes
+571 src/core/daemon/config-file.ts test/notes.test.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socke
+605 src/core/store/busy.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.
+605 src/core/store/index.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure
+609 src/core/keys/check-key.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+609 src/core/keys/closure.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failur
+609 src/core/keys/dependencies.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/f
+609 src/core/keys/index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failures
+609 src/core/keys/key-index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fail
+609 src/core/keys/observed.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+609 src/core/keys/resolution.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+609 src/core/keys/reverse-index.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+609 src/core/store/codec.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure
+609 src/core/store/connection.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-fa
+609 src/core/store/open.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.
+609 src/core/store/paths.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure
+609 src/core/store/prune.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure
+609 src/core/store/repos/consumers.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/po
+609 src/core/store/repos/failures.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/poo
+609 src/core/store/repos/replaced.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/poo
+609 src/core/store/repos/results.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool
+609 src/core/store/repos/runs.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-fa
+609 src/core/store/repos/states.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-
+609 src/core/store/repos/test-files.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/p
+609 src/core/store/repos/unknown-runs.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity
+609 src/core/store/repos/workspace.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/po
+609 src/core/store/repos/worktrees.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/po
+609 src/core/store/schema.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failur
+609 src/core/store/store.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure
+610 src/core/keys/environment.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fa
+610 src/core/keys/former.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failure
+610 src/core/keys/hidden-lockfile.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cl
+610 src/core/keys/key-format.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/fai
+610 src/core/keys/package-scans.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+610 src/core/keys/packages.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/failu
+610 src/core/keys/pnpm-lockfile.ts test/cli/codex-trust.test.ts test/cli/codex.test.ts test/cli/daemon-commands.test.ts test/cli/daemon-socket.test.ts test/cli/
+637 src/core/keys/glob.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.t
+713 src/core/types/common.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/c
+713 src/core/types/daemon.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/c
+713 src/core/types/delivery.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test
+713 src/core/types/index.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/ca
+713 src/core/types/policy.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/c
+713 src/core/types/runner.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/c
+713 src/core/types/scheduler.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts tes
+713 src/core/types/state.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/ca
+713 src/core/types/store-records.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts
+713 src/core/types/store.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/ca
+713 src/core/types/watcher.ts test/notes.test.ts test/types.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/
+764 src/core/fs/compare.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.
+764 src/core/fs/concurrency.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-fail
+764 src/core/fs/errors.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.t
+764 src/core/fs/git-layout.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failu
+764 src/core/fs/git.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.test
+764 src/core/fs/index.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.te
+764 src/core/fs/json.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.tes
+766 src/core/fs/paths.ts test/notes.test.ts test/capacity/crash.test.ts test/capacity/edit-mark.test.ts test/capacity/gate.test.ts test/capacity/pool-failure.te
