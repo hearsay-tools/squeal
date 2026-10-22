@@ -1,0 +1,53 @@
+# `squeal setup --plan` on /home/agent/projects/toolkit-dev, 2026-10-22 about 10:15Z,
+# run read-only by coordinator 7c21a5ae from worker 96897428's source (cez/96897428 at
+# e225f5948, the code of rows 005-79 and 005-80 in cand/0.1.263). toolkit-dev then had
+# no root Vitest, "nodeTest": [], and seven pytest projects. On 0.1.258 the same
+# repository printed `Runners: Vitest, pytest pytest, ...` with neither `not run:` nor
+# `run twice:` lines, and `Warm-up: runs all 88 test files, -55 without a current result`.
+# Its user has since changed that configuration, so this run cannot be repeated there.
+
+Squeal setup plan for /home/agent/projects/toolkit-dev
+
+Harnesses:
+  claude-code: on the PATH, plugin 0.1.261 (user)
+  codex: on the PATH, plugin 0.1.261 (user)
+
+Runners: pytest pytest, pytest plugin-tools/estimate-pricing, pytest plugin-tools/estimate-to-graph, pytest plugin-tools/estimation-pipeline, pytest plugin-tools/graph-intake, pytest plugin-tools/project-graph, pytest plugin-tools/prune-worktrees
+  not run: Vitest in docs-site, scripts/metrics/ui, tools/generator is not run: Squeal loads Vitest from the root only, and the root has no Vitest config and no vitest in package.json. To run them, add a root vitest.config.ts whose projects name docs-site, scripts/metrics/ui, tools/generator, and vitest to the root package.json
+  not run: script "test:node" in package.json is not `node [flags...] --test <globs...>` (a chain); add its nodeTest entry by hand from the template below
+    nodeTest entries to complete by hand:
+    [
+      {
+        "name": "test:node",
+        "argv": [],
+        "include": [
+          "<test-file glob>"
+        ]
+      }
+    ]
+  run twice: 3 test files that pytest projects "pytest" and "plugin-tools/estimate-pricing" both select; to run each once, add "plugin-tools/estimate-pricing/**" to the exclude of pytest project "pytest"
+  run twice: 3 test files that pytest projects "pytest" and "plugin-tools/estimate-to-graph" both select; to run each once, add "plugin-tools/estimate-to-graph/**" to the exclude of pytest project "pytest"
+  run twice: 32 test files that pytest projects "pytest" and "plugin-tools/estimation-pipeline" both select; to run each once, add "plugin-tools/estimation-pipeline/**" to the exclude of pytest project "pytest"
+  run twice: 4 test files that pytest projects "pytest" and "plugin-tools/graph-intake" both select; to run each once, add "plugin-tools/graph-intake/**" to the exclude of pytest project "pytest"
+  run twice: 12 test files that pytest projects "pytest" and "plugin-tools/project-graph" both select; to run each once, add "plugin-tools/project-graph/**" to the exclude of pytest project "pytest"
+  run twice: 1 test file that pytest projects "pytest" and "plugin-tools/prune-worktrees" both select; to run each once, add "plugin-tools/prune-worktrees/**" to the exclude of pytest project "pytest"
+Config: squeal.config.json exists, not tracked by git: commit it
+
+Instruction files:
+  CLAUDE.md (also AGENTS.md): read by claude-code and codex; no Squeal block
+
+Gate lines:
+  none
+  The test command where it is no gate (not offered as edits):
+    CLAUDE.md:121: | `npm test` | Vitest, then pytest |
+    CLAUDE.md:130: `uv` is a hard prerequisite: `npm run lint` and `npm test` each run the
+    CLAUDE.md:140: `uv.lock` is committed. `npm run lint` and `npm test` run uv frozen, so
+    CLAUDE.md:363: | Verification | `npm run validate`, `npm run verify`, `npm run lint`, `npm test` — add `npm run docs:test` and `npm run docs:build` when `docs/sdlc/**` or `docs-site/**` changed |
+
+Slow groups:
+  none found
+
+Codex trust: all 10 hooks of the plugin trusted
+Warm-up: runs all 143 test files, one run per project and file (88 paths), 0 without a current result
+
+Outdated:
