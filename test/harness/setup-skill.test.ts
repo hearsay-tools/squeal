@@ -81,6 +81,13 @@ describe("the setup skill", () => {
     );
   });
 
+  // Rows 005-79 and 005-80: toolkit-dev's user asked what was left so that every test runs.
+  it("shows the user what the config leaves out or runs twice, with the fix", () => {
+    expect(body).toContain(
+      "Show the user the plan's `not run:` and `run twice:` lines, each with its fix: no question or flag covers them.",
+    );
+  });
+
   it("finds the CLI in each harness", () => {
     expect(body).toContain(`\`"\${CLAUDE_PLUGIN_ROOT}/bin/squeal"\``);
     expect(body).toContain(
