@@ -38,6 +38,8 @@ export interface ObservedStore {
  */
 export class Observed {
   private readonly tests = new Map<RelativePath, Set<RelativePath>>();
+  /** What processes each test file started found to import, by this worktree's runs. */
+  private readonly spawned = new Map<RelativePath, Set<RelativePath>>();
   /** Test files whose set another worktree grew, not yet reported. */
   private readonly grown = new Set<RelativePath>();
   private readonly session = new Set<RelativePath>();
@@ -151,8 +153,9 @@ export class Observed {
    */
   record(seen: readonly PytestObservedClosure[], listed: ReadonlySet<RelativePath>): void {
     const additions: Record<RelativePath, RelativePath[]> = {};
-    for (const { testFile, paths } of seen) {
+    for (const { testFile, paths, spawned } of seen) {
       if (!listed.has(testFile.path)) continue;
+      this.recordSpawned(testFile.path, spawned);
       const closure = new Set(this.graph.closure(testFile.path).paths);
       const added = this.add(
         testFile.path,
@@ -166,6 +169,21 @@ export class Observed {
     } catch (error) {
       this.note(`could not store observed paths: ${String(error)}`);
     }
+  }
+
+  /**
+   * What the processes a test file started found (task 007-55): one hop from
+   * the test file, as a static import is. This worktree's runs only: the
+   * store keeps them among the observed paths, which another worktree and a
+   * restarted daemon read as `transitive` until the file runs here.
+   */
+  private recordSpawned(testFile: RelativePath, paths: readonly RelativePath[]): void {
+    const known = this.spawned.get(testFile) ?? new Set<RelativePath>();
+    const added = paths.filter((p) => !known.has(p) && !this.outside(p));
+    if (added.length === 0) return;
+    for (const path of added) known.add(path);
+    this.spawned.set(testFile, known);
+    this.graph.recordSpawned(testFile, [...known]);
   }
 
   /** Adds paths to one test file's set; returns the new ones. */
