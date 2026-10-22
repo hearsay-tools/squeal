@@ -70,7 +70,9 @@ jobs:
       - name: Bundles match the build
         if: matrix.shard == 1
         # The plugin ships the committed bundles; a build that differs here, on this Node, is stale.
-        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist
+        # `plugins/*/bin` (shell-expanded): the build writes the launcher's copies from the Claude
+        # Code plugin's (005-76), so a hand edit to a copy differs here.
+        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/*/bin
 
   node24:
     # Spec 010 D4, D5: lint and typecheck once per run, and on Node 24 only the test files whose
@@ -101,7 +103,7 @@ jobs:
       - name: Build
         run: npm run build
       - name: Bundles match the build
-        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist
+        run: git diff --exit-code -- plugins/claude-code/dist plugins/pi/dist plugins/opencode/dist plugins/*/bin
 
   nightly:
     # Spec 010 D7: the whole suite on Node 24, scheduled on main only. Main's Node 22 result comes
