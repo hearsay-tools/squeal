@@ -123,10 +123,13 @@ export class FakeRunner implements RunnerAdapter {
   async run(files: readonly TestFileRef[]): Promise<RunReport> {
     this.runs.push([...files]);
     this.active += 1;
+    // The gate held when the run started (row 011-99): a `release` then `hold` within its
+    // `runMs` ends it, and holds only later runs.
+    const gate = this.#gate;
     try {
       await this.during?.(files);
       await new Promise((resolve) => setTimeout(resolve, this.runMs));
-      await this.#gate?.shut;
+      await gate?.shut;
     } finally {
       this.active -= 1;
     }
