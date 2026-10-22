@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readdirSync, rmSync } from "node:fs";
+import { lstatSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { TestProject } from "vitest/node";
+import { currentUid, userTmpDir } from "../src/core/daemon/paths.js";
 import {
   entryUnder,
   findProcesses,
@@ -19,10 +20,30 @@ import {
  * whatever still runs from that directory and fails the run, naming the test
  * files that left it. Runs whose Vitest process is gone (killed before its
  * teardown) are swept at the next setup, without failing this one.
+ *
+ * Task 014-36: the run's temp directories go the same way. Setup points
+ * `TMPDIR`, `TMP` and `TEMP` at one parent, `/tmp/squeal-vitest-<pid>-XXXXXX`,
+ * before the workers start, and they inherit it; teardown removes it, and
+ * the next setup removes each parent whose Vitest process is gone. Under a
+ * daemon the tests already write into its key directory, which the daemon
+ * clears (`src/core/daemon/scratch.ts`), so setup makes no parent there.
  */
 
-export default async function setup(project: TestProject): Promise<() => Promise<void>> {
+/** Where the run's temp parent goes and the environment that names it; tests pass their own. */
+export interface TempOptions {
+  readonly env: NodeJS.ProcessEnv;
+  readonly root: string;
+}
+
+const TEMP_VARIABLES = ["TMPDIR", "TMP", "TEMP"] as const;
+
+export default async function setup(
+  project: TestProject,
+  temp: TempOptions = { env: process.env, root: "/tmp" },
+): Promise<() => Promise<void>> {
   await sweepDeadRuns();
+  sweepDeadParents(temp.root);
+  const restoreTemp = useTempParent(temp);
   // The Vitest process in the name: a run is live while it is.
   const runDir = join(TEST_CACHE, `run-${process.pid}-${randomUUID()}`);
   mkdirSync(runDir, { recursive: true });
@@ -32,7 +53,38 @@ export default async function setup(project: TestProject): Promise<() => Promise
     await killProcesses(strays);
     const message = strays.length === 0 ? null : leakMessage(runDir, strays);
     rmSync(runDir, { recursive: true, force: true });
+    restoreTemp();
     if (message !== null) throw new Error(message);
+  };
+}
+
+/** Points the temp variables at a new parent under `root`; returns what removes it and restores them. */
+function useTempParent({ env, root }: TempOptions): () => void {
+  if (env.TMPDIR?.startsWith(`${userTmpDir()}/tmp/`) === true) return () => undefined;
+  let parent: string;
+  try {
+    // Under `/tmp`, whatever `TMPDIR` says, as a daemon's key directory is
+    // (`userTmpDir`): at most 33 bytes, under the key directory's 37, so the
+    // tests' socket paths fit. Under a 48-byte `TMPDIR` the parent was 77
+    // bytes, and `test/ps/proc-live.test.ts` failed to bind (task 014-36).
+    parent = mkdtempSync(join(root, `squeal-vitest-${process.pid}-`));
+  } catch {
+    // The suite runs without a parent rather than not at all.
+    return () => undefined;
+  }
+  const found = TEMP_VARIABLES.map((name) => [name, env[name]] as const);
+  for (const name of TEMP_VARIABLES) env[name] = parent;
+  return () => {
+    for (const [name, value] of found) {
+      if (value === undefined) delete env[name];
+      else env[name] = value;
+    }
+    try {
+      rmSync(parent, { recursive: true, force: true });
+    } catch (error) {
+      // A directory a test made read-only, say; the run does not fail on it.
+      process.stderr.write(`squeal tests: could not remove ${parent}: ${String(error)}\n`);
+    }
   };
 }
 
@@ -68,6 +120,27 @@ async function sweepDeadRuns(): Promise<void> {
   for (const entry of entries) {
     if (entry.startsWith("run-") && !runAlive(entry)) {
       rmSync(join(TEST_CACHE, entry), { recursive: true, force: true });
+    }
+  }
+}
+
+/** Removes each `squeal-vitest-<pid>-XXXXXX` of this user under `root` whose Vitest process is gone. */
+function sweepDeadParents(root: string): void {
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(root);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const match = /^squeal-vitest-(\d+)-/.exec(entry);
+    if (match === null || isAlive(Number(match[1]))) continue;
+    const path = join(root, entry);
+    try {
+      const stat = lstatSync(path);
+      if (stat.isDirectory() && stat.uid === currentUid()) rmSync(path, { recursive: true });
+    } catch {
+      // Gone already, or not ours to remove.
     }
   }
 }
