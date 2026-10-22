@@ -69,7 +69,7 @@ export function readHolds(
         pid: entry.child?.pid ?? entry.wrapper?.pid ?? null,
         until: entry.until,
         ...(gone ? { gone: true as const } : {}),
-        ...(!gone && entry.until <= now ? { expired: true as const } : {}),
+        ...(entry.until <= now ? { expired: true as const } : {}),
       };
     });
   return [...merge, ...commands];
@@ -99,12 +99,13 @@ function commandText(hold: CommandHold): string {
 }
 
 /**
- * Why the daemon ends `hold` at its next heartbeat: its holder's processes
- * are gone, or its bound passed (C9); `null` while it holds.
+ * Why the daemon ends `hold` at its next heartbeat: its bound passed, or its
+ * holder's processes are gone (C9), in the daemon's order of reasons
+ * (`scheduler/command-hold.ts`); `null` while it holds.
  */
 function endingText(hold: CommandHold): string | null {
-  if (hold.gone === true) return "its command is gone";
-  return hold.expired === true ? `its bound passed at ${timeText(hold.until)}` : null;
+  if (hold.expired === true) return `its bound passed at ${timeText(hold.until)}`;
+  return hold.gone === true ? "its command is gone" : null;
 }
 
 /**
