@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { acquireSlowSlot, heldPermits, slowSlotHeld } from "../../src/core/slow/index.js";
 import type { WorktreeId } from "../../src/core/types/index.js";
 
@@ -22,6 +22,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -50,6 +51,22 @@ describe("the slot's held permits and their holders (011-58)", () => {
     expect(acquireSlowSlot({ dir, owner: owner("wt-c"), permits: 3, want: 3 })?.permits).toBe(1);
     a?.release();
     b?.release();
+  });
+
+  test("reads the holder in place, through SQLite's immutable URI, and writes no copy (011-102)", () => {
+    const slot = acquireSlowSlot({ dir, owner: owner("wt-a"), permits: 1 });
+    // No temporary directory to copy the permit file into: the read takes its bytes in place.
+    vi.stubEnv("TMPDIR", join(root, "no-such-dir"));
+
+    const held = heldPermits({ dir, permits: 1 });
+    slot?.release();
+
+    expect(held).toEqual([
+      {
+        file: "slow.lock",
+        record: { kind: "holder", pid: process.pid, worktreeId: "wt-a", since: expect.any(Number) },
+      },
+    ]);
   });
 
   test("a missing directory or permit file holds none, and none is created", () => {

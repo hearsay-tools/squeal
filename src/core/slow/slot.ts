@@ -1,16 +1,8 @@
 import { createHash } from "node:crypto";
-import {
-  copyFileSync,
-  existsSync,
-  mkdtempSync,
-  readdirSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 import { checkPrivateDir, currentUid, preparePrivateDir, userTmpDir } from "../daemon/paths.js";
 import { isBusy } from "../store/index.js";
 import type { AbsolutePath, WorktreeId } from "../types/index.js";
@@ -151,11 +143,10 @@ export interface HeldPermit {
  * Each of the user's first `permits` slow-slot permits that is held now,
  * with the holder its lock file records (row 011-58, gh-58; spec 004 D2,
  * which lets several daemons hold permits at once). Each is tested as
- * `slowSlotHeld` tests it, and a held one's `holder` row is read from a
- * copy of the file's bytes, since the holder's exclusive lock keeps every
- * other reader out and Node 22.13 opens no SQLite URI (`immutable`; review
- * 0.1.239). The row is committed before the holder keeps its lock, so the
- * bytes hold it. A missing directory or
+ * `slowSlotHeld` tests it, and a held one's `holder` row is read through
+ * SQLite's `immutable` URI, which takes no lock, since the holder's
+ * exclusive lock keeps every other reader out. The row is committed before
+ * the holder keeps its lock, so the file's bytes hold it. A missing directory or
  * permit file holds none, and none is created; a file the test cannot lock
  * nor read as a database is held, `unreadable`. Throws when the directory
  * is not the user's private one.
@@ -183,29 +174,11 @@ export function heldPermits(
   return held;
 }
 
-/** The `holder` row of permit `path`, read from a private copy, without a lock. */
+/** The `holder` row of permit `path`, read without a lock. */
 function permitRecord(path: AbsolutePath): PermitRecord {
-  let scratch: string;
-  try {
-    scratch = mkdtempSync(join(tmpdir(), "squeal-permit-"));
-  } catch {
-    return { kind: "unreadable" };
-  }
-  try {
-    const copy = join(scratch, "permit.sqlite");
-    copyFileSync(path, copy);
-    return holderRow(copy);
-  } catch {
-    return { kind: "unreadable" };
-  } finally {
-    rmSync(scratch, { recursive: true, force: true });
-  }
-}
-
-function holderRow(path: string): PermitRecord {
   let db: DatabaseSync;
   try {
-    db = new DatabaseSync(path, { readOnly: true });
+    db = new DatabaseSync(new URL(`${pathToFileURL(path).href}?immutable=1`), { readOnly: true });
   } catch {
     return { kind: "unreadable" };
   }
