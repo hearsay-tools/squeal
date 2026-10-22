@@ -5,6 +5,7 @@ import { num, str } from "./codec.js";
 import type { Connection } from "./connection.js";
 import type { StorePaths } from "./paths.js";
 import { expireReplaced, keptByReplaced } from "./repos/replaced.js";
+import { dropFallenUnknownRuns, keptByUnknownRuns } from "./repos/unknown-runs.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EVICTION_BATCH = 32;
@@ -30,7 +31,8 @@ const VACUUM_PAGES = 512;
  * references the run or a kept run the checkpoint; the newest completed
  * checkpoint of each live worktree is kept for status (D7). Spec 011 C7 as
  * amended 2026-10-21 (row 011-77): a kept replaced failure keeps its run, its
- * log and its failure text until it expires at the cutoff.
+ * log and its failure text until it expires at the cutoff. Row 011-108: the
+ * run behind an UNKNOWN keeps its run and log while that UNKNOWN stands.
  */
 
 /**
@@ -86,6 +88,8 @@ export function prune(
   // Row 011-77 (011 C7 as amended 2026-10-21): an expired replaced failure first, so its run,
   // log and text go in this pass.
   conn.transaction(() => expireReplaced(conn, cutoff));
+  // Row 011-108: a record whose UNKNOWN no longer stands keeps its run no longer.
+  conn.transaction(() => dropFallenUnknownRuns(conn));
 
   let resultsRemoved = dropPrunable(conn, cutoff);
 
@@ -101,7 +105,7 @@ export function prune(
          AND (worktree_id NOT IN (SELECT id FROM worktrees)
               OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))
        RETURNING log_dir`,
-      JSON.stringify(keptByReplaced(conn).runs),
+      JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]),
       cutoff,
     ),
   );
