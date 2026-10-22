@@ -11,6 +11,7 @@ import {
 import { cancelsBacklog } from "./backlog.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
+import { SHARE_FLOOR_MS } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
 
 /**
@@ -18,7 +19,8 @@ import { laneOf, type Tier, type TierFile } from "./tiers.js";
  * 011 C4 step 5 as amended 2026-10-21; the human chose rule B at 30 s, row
  * 001-381, `research/running-tier-yields.md`: on cezar's 6.5 days, 82% of
  * the time edits waited for a tier and 52% of named waits' went, for 4,454
- * file-seconds run again).
+ * file-seconds run again), or once it has run this long past its estimate
+ * (row 011-107, gh-73: a stale, short estimate never yielded; `overruns`).
  */
 export const YIELD_REMAINDER_MS = 30_000;
 
@@ -44,6 +46,19 @@ export class TierYields {
   readonly #cut = new Map<string, { key: CheckKey; applied: number }>();
   /** What each tier in flight does for a wait in its lane, by run id, as last published. */
   readonly #standing = new Map<string, TierYield>();
+  /**
+   * When each tier in flight that a wait waits for yields at the latest,
+   * `YIELD_REMAINDER_MS` past its estimate (row 011-107), by run id.
+   */
+  readonly #bounds = new Map<string, EpochMs>();
+  /** The one timer that checks the tiers again at the earliest of `#bounds`. */
+  #timer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * `recheck` checks the tiers in flight again under the scheduler's lock,
+   * as an event does: a tier reaches its bound with no event (row 011-107).
+   */
+  constructor(private readonly recheck: () => void = () => {}) {}
 
   /**
    * Cancels each of `tiers` that C4 step 5 cancels after `revision`, the
@@ -56,7 +71,9 @@ export class TierYields {
    * - any but the backlog's turn yields, once per file and key, while an
    *   edit's work that came during its run or a promoted file is queued in
    *   its lane, or `revision` makes the lane's runner part wait for the run,
-   *   when its estimated remainder exceeds `YIELD_REMAINDER_MS`.
+   *   when its estimated remainder exceeds `YIELD_REMAINDER_MS` or, as
+   *   `overruns` allows, it has run that long past its estimate (row
+   *   011-107); one that does not yet is checked again at that bound.
    * A file has ended when the runner named it (`Tier.ended`, row 011-54,
    * review `reviews/0.1.237.md` B2); a runner that names none leaves every
    * file unfinished, so its tier is cancelled by the first rule only when
@@ -84,13 +101,24 @@ export class TierYields {
       }
       const standing = typeof decision === "string" ? { kind: "yields" as const } : decision;
       changed = this.#set(tier.runId, standing) || changed;
+      const bound = typeof decision === "string" ? null : boundOf(context, tier, decision);
+      if (bound === null) this.#bounds.delete(tier.runId);
+      else this.#bounds.set(tier.runId, bound);
     }
     if (changed) this.#publish(context);
+    this.#arm(context);
   }
 
-  /** `tier` is no longer in flight: its standing goes. */
+  /** `tier` is no longer in flight: its standing and its bound go. */
   ended(context: SchedulerContext, tier: Tier): void {
     if (this.#standing.delete(tier.runId)) this.#publish(context);
+    if (this.#bounds.delete(tier.runId)) this.#arm(context);
+  }
+
+  /** The scheduler closed: no check comes again. */
+  close(): void {
+    this.#bounds.clear();
+    this.#disarm();
   }
 
   #decide(
@@ -112,7 +140,27 @@ export class TierYields {
     if (unfinished(tier).some(({ file, key }) => this.#cut.get(file.id)?.key === key))
       return { kind: "cut" };
     const remainderMs = remainder(context, tier);
-    return remainderMs > YIELD_REMAINDER_MS ? "yield" : { kind: "remainder", remainderMs };
+    if (remainderMs > YIELD_REMAINDER_MS) return "yield";
+    if (remainderMs >= 0 || !overruns(tier)) return { kind: "remainder", remainderMs };
+    if (-remainderMs >= YIELD_REMAINDER_MS) return "yield";
+    return { kind: "overrun", yieldsAt: context.now() + remainderMs + YIELD_REMAINDER_MS };
+  }
+
+  /** Sets the one timer at the earliest bound, none without a bound; unref'd, it never holds the process. */
+  #arm(context: SchedulerContext): void {
+    this.#disarm();
+    if (this.#bounds.size === 0) return;
+    const ms = Math.max(0, Math.min(...this.#bounds.values()) - context.now());
+    this.#timer = setTimeout(() => {
+      this.#timer = null;
+      this.recheck();
+    }, ms);
+    this.#timer.unref();
+  }
+
+  #disarm(): void {
+    if (this.#timer !== null) clearTimeout(this.#timer);
+    this.#timer = null;
   }
 
   /** Drops the marks of files whose result landed at the key cut after the cut, or whose key moved. */
@@ -206,11 +254,38 @@ function recreates(
 /**
  * The tier's estimated remainder: the largest last-known duration among
  * its files that have not ended, a file with none counting 0, less the time
- * it has run.
+ * it has run. Negative past its estimate.
  */
 function remainder(context: SchedulerContext, tier: Tier): number {
   const longest = Math.max(0, ...unfinished(tier).map(({ file }) => file.durationMs ?? 0));
   return longest - (context.now() - (tier.startedAt ?? context.now()));
+}
+
+/**
+ * Whether `tier` may yield past its estimate (row 011-107): every file it
+ * would cut has a last-known duration of at least `SHARE_FLOOR_MS`, a file
+ * with none counting 0. A cut file runs again from its start, and one under
+ * the floor shares the promoted file's next tier (`joinSpan`), whose result
+ * then waits for it; row 011-112 keeps cut files apart and ends this hold.
+ */
+function overruns(tier: Tier): boolean {
+  return unfinished(tier).every(({ file }) => (file.durationMs ?? 0) >= SHARE_FLOOR_MS);
+}
+
+/**
+ * When a tier that does not yield for `decision` yields at the latest,
+ * `YIELD_REMAINDER_MS` past its estimate (row 011-107); `null` when nothing
+ * but an event changes it: a cut, the backlog's turn, a runner that does
+ * not cancel, nothing waiting, or a tier `overruns` holds.
+ */
+function boundOf(
+  context: SchedulerContext,
+  tier: Tier,
+  decision: TierYield | null,
+): EpochMs | null {
+  if (decision?.kind === "overrun") return decision.yieldsAt;
+  if (decision?.kind !== "remainder" || !overruns(tier)) return null;
+  return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
 }
 
 /** `meta` key of `worktreeId`'s tiers in flight and whether each yields: `{ at, tiers }`. */
@@ -244,7 +319,12 @@ export function publishedYields(
 
 function isYield(value: unknown): value is TierYield {
   if (typeof value !== "object" || value === null) return false;
-  const { kind, remainderMs } = value as { kind?: unknown; remainderMs?: unknown };
+  const { kind, remainderMs, yieldsAt } = value as {
+    kind?: unknown;
+    remainderMs?: unknown;
+    yieldsAt?: unknown;
+  };
   if (kind === "remainder") return typeof remainderMs === "number";
+  if (kind === "overrun") return typeof yieldsAt === "number";
   return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner";
 }
