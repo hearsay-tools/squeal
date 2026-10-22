@@ -1,8 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { lstatSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { TestProject } from "vitest/node";
 import { currentUid, userTmpDir } from "../src/core/daemon/paths.js";
+import { pidNamespace } from "../src/core/delivery/harness-process.js";
 import {
   entryUnder,
   findProcesses,
@@ -27,6 +36,11 @@ import {
  * the next setup removes each parent whose Vitest process is gone. Under a
  * daemon the tests already write into its key directory, which the daemon
  * clears (`src/core/daemon/scratch.ts`), so setup makes no parent there.
+ *
+ * A PID names a process only in its own PID namespace, and `/tmp` can be
+ * shared by another (a container's), so each parent records its run's
+ * namespace in `OWNER`, and the sweep removes only parents of its own
+ * namespace (review 0.1.267 B1).
  */
 
 /** Where the run's temp parent goes and the environment that names it; tests pass their own. */
@@ -36,6 +50,12 @@ export interface TempOptions {
 }
 
 const TEMP_VARIABLES = ["TMPDIR", "TMP", "TEMP"] as const;
+
+/** The name `mkdtemp` gives a parent: six characters after the prefix (review 0.1.267 S1). */
+const PARENT = /^squeal-vitest-(\d+)-[A-Za-z0-9]{6}$/;
+
+/** The file in a parent that names its run's PID namespace. */
+const OWNER = ".pid-namespace";
 
 export default async function setup(
   project: TestProject,
@@ -68,6 +88,7 @@ function useTempParent({ env, root }: TempOptions): () => void {
     // tests' socket paths fit. Under a 48-byte `TMPDIR` the parent was 77
     // bytes, and `test/ps/proc-live.test.ts` failed to bind (task 014-36).
     parent = mkdtempSync(join(root, `squeal-vitest-${process.pid}-`));
+    writeFileSync(join(parent, OWNER), namespaceName());
   } catch {
     // The suite runs without a parent rather than not at all.
     return () => undefined;
@@ -124,7 +145,11 @@ async function sweepDeadRuns(): Promise<void> {
   }
 }
 
-/** Removes each `squeal-vitest-<pid>-XXXXXX` of this user under `root` whose Vitest process is gone. */
+/**
+ * Removes each `squeal-vitest-<pid>-XXXXXX` of this user under `root` that a
+ * run in this PID namespace made and whose Vitest process is gone. A parent
+ * without `OWNER` is kept: another namespace's, or one a setup is making.
+ */
 function sweepDeadParents(root: string): void {
   let entries: string[] = [];
   try {
@@ -132,17 +157,25 @@ function sweepDeadParents(root: string): void {
   } catch {
     return;
   }
+  const namespace = namespaceName();
   for (const entry of entries) {
-    const match = /^squeal-vitest-(\d+)-/.exec(entry);
+    const match = PARENT.exec(entry);
     if (match === null || isAlive(Number(match[1]))) continue;
     const path = join(root, entry);
     try {
       const stat = lstatSync(path);
-      if (stat.isDirectory() && stat.uid === currentUid()) rmSync(path, { recursive: true });
+      if (!stat.isDirectory() || stat.uid !== currentUid()) continue;
+      if (readFileSync(join(path, OWNER), "utf8") !== namespace) continue;
+      rmSync(path, { recursive: true });
     } catch {
-      // Gone already, or not ours to remove.
+      // Gone already, without `OWNER`, or not ours to remove.
     }
   }
+}
+
+/** This process's PID namespace; one name for every process on a host without `/proc`. */
+function namespaceName(): string {
+  return pidNamespace() ?? "no /proc";
 }
 
 /** `run-<pid>-<uuid>` of a Vitest process still running. */
