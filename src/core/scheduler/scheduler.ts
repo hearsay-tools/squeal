@@ -126,14 +126,17 @@ class TierScheduler implements Scheduler {
    * task 011-21); one whose runner cancels carries its `cancel`.
    */
   readonly #inFlight = new Map<string, InFlight>();
-  /** Which tiers in flight a revision, a runner part or a promotion cancels (C4 step 5, row 011-51). */
-  readonly #yields = new TierYields();
+  /**
+   * Which tiers in flight a revision, a runner part or a promotion cancels (C4 step 5, row 011-51);
+   * a tier past its estimate is checked again at its bound (row 011-107).
+   */
+  readonly #yields = new TierYields(() => this.#recheckTiers());
   /** The lanes that wait for quiet after a backlog tier's cancel (C4 step 5, row 011-82). */
   readonly #quiet = new BacklogQuiet((ends, at) =>
     publishQuiet(this.options.store, this.options.worktreeId, ends, at),
   );
-  /** A check of the tiers in flight a file's end queued under the lock, not run yet (row 011-54). */
-  #endCheck = false;
+  /** A check of the tiers in flight queued under the lock, not run yet (rows 011-54, 011-107). */
+  #recheck = false;
   /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
   readonly #slotRecords = new SlotRecords<EndedRun, Recorded>({
     lock: this.#lock,
@@ -360,15 +363,24 @@ class TierScheduler implements Scheduler {
   /**
    * A file of `tier` ended during its run (row 011-54): once a revision has
    * changed an input of the tier, every file left may now be re-keyed, so
-   * the tiers in flight are checked again under the lock, one check queued
-   * at a time.
+   * the tiers in flight are checked again.
    */
   #fileEnded(tier: Tier): void {
-    if (tier.changes.size === 0 || this.#endCheck) return;
-    this.#endCheck = true;
+    if (tier.changes.size === 0) return;
+    this.#recheckTiers();
+  }
+
+  /**
+   * Checks the tiers in flight again under the lock, one check queued at a
+   * time: after a file's end, or at the bound of a tier past its estimate
+   * (`TierYields`, row 011-107).
+   */
+  #recheckTiers(): void {
+    if (this.#recheck) return;
+    this.#recheck = true;
     this.#lock
       .run(() => {
-        this.#endCheck = false;
+        this.#recheck = false;
         if (!this.#closed) this.#cutTiers(null);
       })
       .catch((error: unknown) =>
@@ -603,6 +615,7 @@ class TierScheduler implements Scheduler {
 
   async #close(): Promise<void> {
     this.#closed = true;
+    this.#yields.close();
     this.#slow.close();
     this.#busy?.close();
     this.#notify();

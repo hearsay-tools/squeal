@@ -79,6 +79,32 @@ function standings(side: CatchUpSide) {
 describe("a tier past its estimate yields (spec 011 C4 step 5 as amended, row 011-107)", {
   timeout: 120_000,
 }, () => {
+  it("a tier 30 s past a 5 s estimate yields at that bound with no event after the promotion; the named file runs alone", async () => {
+    const { side, gate, tier, waitAt } = await heldTier(5_000);
+
+    // 20 s past its estimate: it does not yield yet, and says when it does.
+    clock.skew = 25_000;
+    await wait(side, F);
+    const [standing] = standings(side);
+    expect(standing?.kind).toBe("overrun");
+    expect(tier.cancelled).toBe(false);
+    const bound = standing?.kind === "overrun" ? standing.yieldsAt : 0;
+    expect(bound - now()).toBeGreaterThan(0);
+    expect(bound - now()).toBeLessThanOrEqual(10_000);
+
+    // Nothing else happens: the bound alone makes it yield.
+    await expect.poll(() => tier.cancelled, { timeout: 10_000 + CUT_WITHIN_MS }).toBe(true);
+    expect(now()).toBeGreaterThanOrEqual(bound);
+    // Current while the cut files, still held, run again.
+    await expect.poll(() => side.current(F), { timeout: CUT_WITHIN_MS }).toBe(true);
+    gate.stop();
+    await side.scheduler.idle();
+
+    expect(order(side, waitAt)).toEqual([[F], SLOW]);
+    expect(tier.completed).toEqual([]);
+    expect(SLOW.every((path) => side.current(path))).toBe(true);
+  });
+
   it("a tier already 30 s past a stale, short estimate yields at the promotion", async () => {
     const { side, gate, tier, waitAt } = await heldTier(5_000);
 
