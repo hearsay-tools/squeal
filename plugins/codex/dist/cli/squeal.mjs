@@ -310,6 +310,7 @@ var init_store = __esm({
       daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
       daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
       daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
+      daemonHandoff: { prefix: "daemon-handoff:", owner: "delivery/handoff" },
       slowTier: { prefix: "slow-tier:", owner: "slow/state" },
       slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
       failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -6011,7 +6012,7 @@ var init_workspace = __esm({
 
 // src/core/store/repos/worktrees.ts
 function createWorktreeRepo(conn) {
-  const tokenOf3 = (id2, startedAt, version2) => {
+  const tokenOf4 = (id2, startedAt, version2) => {
     const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id2));
     let value = null;
     try {
@@ -6036,7 +6037,7 @@ function createWorktreeRepo(conn) {
   const toRecord = (row2) => {
     const record = fromRow(row2);
     const d = record.daemon;
-    const token = d === null ? void 0 : tokenOf3(record.id, d.startedAt, d.squealVersion);
+    const token = d === null ? void 0 : tokenOf4(record.id, d.startedAt, d.squealVersion);
     return token === void 0 || d === null ? record : { ...record, daemon: { ...d, token } };
   };
   return {
@@ -6105,7 +6106,7 @@ function createWorktreeRepo(conn) {
       const startedAt = row2 === null ? null : numOrNull(row2, "daemon_started_at");
       if (row2 === null || startedAt === null) return null;
       const squealVersion2 = strOrNull(row2, "daemon_version");
-      const token = tokenOf3(id2, startedAt, squealVersion2);
+      const token = tokenOf4(id2, startedAt, squealVersion2);
       return { startedAt, squealVersion: squealVersion2, ...token === void 0 ? {} : { token } };
     },
     remove: (id2) => {
@@ -6972,6 +6973,106 @@ var init_slot_holders = __esm({
     init_slow2();
     init_state3();
     init_text();
+  }
+});
+
+// src/core/delivery/handoff.ts
+function handoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoff", worktreeId);
+}
+function handoffFrom(record) {
+  return daemonIncarnation(record) ?? `${record.squealVersion}@${record.startedAt}`;
+}
+function readHandoff(store, worktreeId) {
+  const text3 = store.meta.get(handoffMetaKey(worktreeId));
+  if (text3 === null) return null;
+  try {
+    const claim = JSON.parse(text3);
+    if (!isRecord(claim)) return null;
+    const { from, to, at: at2, boundAt } = claim;
+    if (typeof from !== "string" || typeof to !== "string") return null;
+    if (typeof at2 !== "number" || typeof boundAt !== "number") return null;
+    return { from, to, at: at2, boundAt };
+  } catch {
+    return null;
+  }
+}
+function liveHandoff(store, worktreeId, from, now) {
+  const claim = readHandoff(store, worktreeId);
+  return claim !== null && claim.from === from && now < claim.boundAt ? claim : null;
+}
+function claimHandoff(store, worktreeId, claim) {
+  return store.transaction(() => {
+    if (liveHandoff(store, worktreeId, claim.from, claim.at) !== null) return null;
+    const written = { ...claim, boundAt: claim.at + HANDOFF_BOUND_MS };
+    store.meta.set(handoffMetaKey(worktreeId), JSON.stringify(written));
+    return written;
+  });
+}
+function clearHandoff(store, worktreeId) {
+  store.meta.delete(handoffMetaKey(worktreeId));
+}
+var SUCCESSOR_LOCK_WAIT_MS, HANDOFF_BOUND_MS;
+var init_handoff = __esm({
+  "src/core/delivery/handoff.ts"() {
+    "use strict";
+    init_fs();
+    init_types();
+    SUCCESSOR_LOCK_WAIT_MS = 12e4;
+    HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+  }
+});
+
+// src/core/status/stopping.ts
+function withStopping(store, worktree, live, now) {
+  if (worktree === null) return live;
+  const record = worktree.daemon;
+  if (record === null) return claimed(store, worktree, live, now);
+  const self = daemonIncarnation(record);
+  if (self === null || !shutDown(store, worktree.id, self)) return live;
+  if (live.state === "down" && daemonGone(worktree)) return live;
+  const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
+  const since = note?.at ?? record.heartbeatAt;
+  const claim = readHandoff(store, worktree.id);
+  const handoff = claim !== null && claim.from === self ? claim : null;
+  const boundAt = handoff?.boundAt ?? since + HANDOFF_BOUND_MS;
+  const stopping = {
+    from: record.squealVersion,
+    since,
+    ...handoff === null ? {} : { to: handoff.to, boundAt: handoff.boundAt },
+    overdue: now >= boundAt
+  };
+  return { ...live, stopping };
+}
+function claimed(store, worktree, live, now) {
+  const claim = readHandoff(store, worktree.id);
+  if (claim === null || now >= claim.boundAt || daemonGone(worktree)) return live;
+  const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
+  const { to, at: since, boundAt } = claim;
+  return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
+}
+function stoppingState(stopping, age2) {
+  const what = stopping.to === void 0 ? "stopping" : `handing over from ${stopping.from} to ${stopping.to}`;
+  const at2 = new Date(stopping.since).toISOString();
+  const past = stopping.overdue ? `, past its ${BOUND_S} s bound` : "";
+  return `${what} since ${at2}${age2 === void 0 ? "" : ` (${age2})`}${past}`;
+}
+function stoppingNext(stopping, command) {
+  if (stopping.overdue) return `\`${command} start\` finishes it`;
+  return stopping.to === void 0 ? "nothing validates until its lock frees" : `${stopping.to} serves once the old daemon's lock frees`;
+}
+function stoppingText(stopping, command, age2) {
+  return `${stoppingState(stopping, age2)}; ${stoppingNext(stopping, command)}`;
+}
+var BOUND_S;
+var init_stopping = __esm({
+  "src/core/status/stopping.ts"() {
+    "use strict";
+    init_handoff();
+    init_notes();
+    init_types();
+    init_died();
+    BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
   }
 });
 
@@ -10474,6 +10575,7 @@ var init_liveness = __esm({
     init_died();
     init_open_runs();
     init_snapshot();
+    init_stopping();
     init_types();
     init_slots();
     init_stopped();
@@ -13509,8 +13611,8 @@ var init_standing_groups = __esm({
 // src/core/status/outstanding.ts
 function outstandingOf(store, worktreeId, root, reads, now, load) {
   const { daemon, header } = reads;
-  if (daemon.state !== "alive") {
-    const since = daemon.since;
+  if (daemon.state !== "alive" || daemon.stopping !== void 0) {
+    const since = daemon.stopping?.since ?? (daemon.state === "alive" ? null : daemon.since);
     return [{ standing: { kind: "no-daemon", since, revision: header.revision }, files: [] }];
   }
   if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
@@ -13684,15 +13786,20 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = withDeath(
+  const daemon = withStopping(
     store,
     worktree,
-    asStopped(
+    withDeath(
       store,
-      worktreeId,
       worktree,
-      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
-    )
+      asStopped(
+        store,
+        worktreeId,
+        worktree,
+        liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+      )
+    ),
+    now
   );
   const runs = openRuns(store, worktree, daemon);
   const held2 = openFiles(runs);
@@ -13874,6 +13981,7 @@ var init_snapshot = __esm({
     init_phase_files();
     init_slot_holders();
     init_standing_facts();
+    init_stopping();
     init_unknown_files2();
     HEARTBEAT_GRACE_INTERVALS = 2;
   }
@@ -16830,15 +16938,15 @@ var init_slow_tier = __esm({
           return [];
         }
         const triggered = queued.filter(this.#trigger(context, ledger));
-        const claims = new Map(triggered.map((ref2) => [ref2, claimOf(ledger, ref2)]));
-        const free = triggered.filter((ref2) => claims.get(ref2) === "free");
+        const claims2 = new Map(triggered.map((ref2) => [ref2, claimOf(ledger, ref2)]));
+        const free = triggered.filter((ref2) => claims2.get(ref2) === "free");
         const first = free[0];
         if (first !== void 0) {
           const runner = runnerOf(context, first);
           return free.filter((ref2) => runnerOf(context, ref2) === runner);
         }
-        if ([...claims.values()].includes("settled")) return this.#candidates();
-        if ([...claims.values()].includes("waits")) return [];
+        if ([...claims2.values()].includes("settled")) return this.#candidates();
+        if ([...claims2.values()].includes("waits")) return [];
         this.#publishUntriggered(context);
         const quiet = quietLeftMs(context);
         this.#arm(quiet === null ? this.#recheckMs() : Math.max(1, quiet));
@@ -50894,7 +51002,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.258";
+  if (true) return "0.1.259";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -51199,6 +51307,7 @@ init_text();
 init_checks();
 init_died();
 init_identity();
+init_stopping();
 init_unknown_files2();
 function detailLines(s, now, command, allNotes) {
   return [
@@ -51234,6 +51343,10 @@ function inheritedLine(s) {
   return s.inherited.count === 0 ? "Inherited from other worktrees: none (every current result here was run in this worktree)" : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}${partsSuffix(s.inherited.count, s.inheritedFileLevelCount)}`;
 }
 function daemonLine(s, now, command) {
+  const { stopping } = s.daemon;
+  if (stopping !== void 0) {
+    return `Daemon: ${stoppingText(stopping, command, ageText(now - stopping.since))}`;
+  }
   if (s.daemon.state === "alive") {
     return `Daemon: running, last heartbeat ${ageText(now - s.daemon.lastHeartbeatAt)} ago`;
   }
@@ -51297,6 +51410,7 @@ function foldedText(what, list2, command) {
 }
 
 // src/core/status/outstanding-text.ts
+init_stopping();
 var OUTSTANDING_GROUPS_SHOWN = 6;
 var OUTSTANDING_FILES_SHOWN = 3;
 function outstandingLines(s, now, command, options = {}) {
@@ -51316,10 +51430,10 @@ function outstandingLines(s, now, command, options = {}) {
 }
 function groupsOf(s) {
   if (s.outstanding !== void 0) return s.outstanding;
-  if (s.daemon.state !== "alive") {
-    return [
-      { standing: { kind: "no-daemon", since: s.daemon.since, revision: s.revision }, files: [] }
-    ];
+  const { daemon } = s;
+  if (daemon.state !== "alive" || daemon.stopping !== void 0) {
+    const since = daemon.stopping?.since ?? (daemon.state === "alive" ? null : daemon.since);
+    return [{ standing: { kind: "no-daemon", since, revision: s.revision }, files: [] }];
   }
   return s.testFilesListed === false ? [{ standing: { kind: "listing" }, files: [] }] : [];
 }
@@ -51361,6 +51475,10 @@ function shownText(files2) {
   return more > 0 ? `${shown} and ${more} more` : shown;
 }
 function daemonText(standing, s, command) {
+  if (s.daemon.stopping !== void 0) {
+    const { stopping } = s.daemon;
+    return `the daemon is ${stoppingState(stopping)}; results are as of revision ${standing.revision}; ${stoppingNext(stopping, command)}`;
+  }
   const next = nextStep(standing, { named: false });
   const reason2 = reasonWords(next, [], command);
   const start2 = stepText(next.step, [], command);
@@ -53249,6 +53367,7 @@ function codexStatusLine(cwd, env) {
 }
 
 // src/core/daemon/daemon.ts
+init_handoff();
 init_liveness();
 init_fs();
 init_notes();
@@ -54749,6 +54868,7 @@ init_awaiting_install();
 init_state3();
 init_checks();
 init_died();
+init_stopping();
 
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
@@ -55066,6 +55186,7 @@ function noteInNewerStore(commonDir, worktreeId, note) {
 }
 
 // src/core/daemon/open.ts
+init_handoff();
 init_fs();
 init_store3();
 import { existsSync as existsSync14, realpathSync as realpathSync4 } from "node:fs";
@@ -55388,11 +55509,11 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
   }
   if (lock2 === "timed-out") {
     const text3 = awaitLockMs === void 0 ? `a daemon gave up: the lock was still held after ${waitMs} ms with no daemon serving; the next hook boundary starts one` : `a successor daemon gave up: the lock was still held after ${waitMs} ms; the next hook boundary starts one`;
-    return lockWaitTimedOut(commonDir, worktreeId, now, text3);
+    return lockWaitTimedOut(commonDir, worktreeId, now, text3, awaitLockMs !== void 0);
   }
   if (undecided !== null) {
     const text3 = `a daemon gave up: it took the lock but could not read the last daemon recorded within ${decideWithinMs} ms (${undecided}); the next hook boundary starts one`;
-    return lockWaitTimedOut(commonDir, worktreeId, now, text3);
+    return lockWaitTimedOut(commonDir, worktreeId, now, text3, awaitLockMs !== void 0);
   }
   let store;
   try {
@@ -55483,12 +55604,20 @@ function readLastDaemon(commonDir, worktreeId, busyTimeoutMs) {
     return { unread: message(error), busy: isBusy(error) };
   }
 }
-function lockWaitTimedOut(commonDir, worktreeId, now, text3) {
+function lockWaitTimedOut(commonDir, worktreeId, now, text3, successor) {
   try {
     const store = openStore(commonDir, { create: false, busyTimeoutMs: DAEMON_BUSY_TIMEOUT_MS });
     if (!isStoreOpenFailure(store)) {
-      writeNote(store, worktreeId, { at: now(), revision: null, text: text3 }, () => {
+      const note = () => writeNote(store, worktreeId, { at: now(), revision: null, text: text3 }, () => {
       });
+      try {
+        store.transaction(() => {
+          note();
+          if (successor) clearHandoff(store, worktreeId);
+        });
+      } catch {
+        note();
+      }
       store.close();
     }
   } catch {
@@ -55886,7 +56015,8 @@ var Daemon = class {
    * shutdown mark goes (task 001-274); if this daemon's own shutdown already
    * began, its mark replaces it in the same transaction, since `#markExit`
    * had no registration to describe then (task 001-276). The heartbeat's last
-   * use replaces the predecessor's too (spec 014 D9).
+   * use replaces the predecessor's too (spec 014 D9), and the handoff claim
+   * goes (row 011-32).
    */
   #register() {
     const { store, worktreeId: id2, root, commonDir } = this.opened;
@@ -55897,6 +56027,7 @@ var Daemon = class {
       store.testFileKeys.releaseRunning(id2);
       if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id2));
       else store.meta.set(daemonExitMetaKey(id2), this.#incarnation());
+      clearHandoff(store, id2);
       store.worktrees.upsert({
         id: id2,
         root,
@@ -60990,9 +61121,11 @@ function newsOf(start2, states, revision) {
 }
 
 // src/cli/status-wait-lines.ts
+init_handoff();
 init_keys();
 init_state3();
 init_identity();
+init_stopping();
 init_text();
 
 // src/cli/named-file-lines.ts
@@ -61120,7 +61253,8 @@ function fileEntry(f, command, base) {
 function waitLine(wait, command = "squeal") {
   const line = ownLine(wait, command);
   const slow = wait.slow === void 0 || wait.outcome === "no-daemon" ? "" : slowText(wait.slow);
-  return `${line}${slow}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+  const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
+  return `${line}${slow}${live}${worktreeText(wait.result)}`;
 }
 function waitText(wait, now, command = "squeal", options = {}) {
   return `${formatStatus(wait.result, now, command, options)}
@@ -61141,7 +61275,7 @@ function ownLine(wait, command) {
     case "news":
       return `Returned on news: ${plural(transitions, "transition")} since the wait started, ${at2} ${after}`;
     case "no-daemon":
-      return `Returned without a daemon: ${noDaemonText(snapshot3.daemon, wait.down)}; results are as of revision ${snapshot3.revision}`;
+      return `Returned without a daemon: ${noDaemonText(snapshot3.daemon, wait.down, command)}; results are as of revision ${snapshot3.revision}`;
     case "timeout":
       return `Returned on timeout ${after}: ${pendingText2(snapshot3)} ${at2}`;
   }
@@ -61219,9 +61353,8 @@ function namedLine(wait, command = "squeal") {
       break;
     case "no-daemon": {
       const asOf = snapshot3 ? "" : `; results are as of revision ${verdict.revision}`;
-      line = noneAt(
-        `${noDaemonText(wait.result.daemon, wait.down)}${asOf}; \`${command} start\` starts one`
-      );
+      const start2 = wait.down === "handoff" ? "" : `; \`${command} start\` starts one`;
+      line = noneAt(`${noDaemonText(wait.result.daemon, wait.down, command)}${asOf}${start2}`);
       break;
     }
     case "slow":
@@ -61258,7 +61391,8 @@ function namedLine(wait, command = "squeal") {
     }
   }
   const pause = (wait.leftForPause ?? []).length > 0 && (wait.outcome === "settled" || wait.outcome === "timeout") ? `; ${pauseText(wait, command)}` : "";
-  return `${line}${beside}${pause}${lapseText(wait.lapse)}${worktreeText(wait.result)}`;
+  const live = wait.outcome === "no-daemon" ? "" : liveText(wait.result.daemon, wait.lapse);
+  return `${line}${beside}${pause}${live}${worktreeText(wait.result)}`;
 }
 function pauseText(wait, command) {
   const files2 = wait.leftForPause ?? [];
@@ -61317,13 +61451,21 @@ function unsyncedText(sync, revision, snapshot3) {
   }
   return null;
 }
-function noDaemonText(daemon, down) {
+function noDaemonText(daemon, down, command) {
+  if (down === "handoff") {
+    const to = daemon.stopping?.to === void 0 ? "" : ` to ${daemon.stopping.to}`;
+    return `the handoff${to} did not finish within ${Math.round(HANDOFF_BOUND_MS / 1e3)} s; \`${command} start\` finishes it`;
+  }
   if (daemon.state === "alive" || daemon.since === null) return "no daemon is running";
   const since = `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
   if (down === "silent") {
     return `${since}: its heartbeat stopped and nothing listens on its socket`;
   }
   return down === "stopped" ? `${since}: the daemon stopped` : since;
+}
+function liveText(daemon, lapse) {
+  if (daemon.stopping === void 0) return lapseText(lapse);
+  return `; the daemon is ${stoppingState(daemon.stopping)}, so the wait went on`;
 }
 function lapseText(lapse) {
   if (lapse === void 0) return "";
@@ -61374,6 +61516,7 @@ function ownPathFiles(selected, named) {
 
 // src/cli/wait-liveness.ts
 init_paths3();
+init_handoff();
 var WAIT_DOWN_MS = 1e4;
 function watchDaemon(worktreeId, options = {}) {
   const downMs = options.downMs ?? WAIT_DOWN_MS;
@@ -61386,8 +61529,8 @@ function watchDaemon(worktreeId, options = {}) {
     if (asking) return;
     asking = true;
     void listening([.../* @__PURE__ */ new Set([record.socketPath, computed])]).then((found3) => {
-      socket = found3 ? "listening" : "absent";
-      if (found3) staleMs = Math.max(staleMs ?? 0, asked);
+      socket = found3;
+      if (found3 !== "absent") staleMs = Math.max(staleMs ?? 0, asked);
       asking = false;
     });
   };
@@ -61401,6 +61544,8 @@ function watchDaemon(worktreeId, options = {}) {
       }
       const seen = socket;
       ask(record, at2 - record.heartbeatAt);
+      const boundAt = record.heartbeatAt + record.heartbeatIntervalMs + HANDOFF_BOUND_MS;
+      if (seen === "stopping" && at2 >= boundAt) return { state: "down", reason: "handoff" };
       if (seen !== "absent") {
         deadSince = null;
         if (seen === "listening") staleMs = Math.max(staleMs ?? 0, at2 - record.heartbeatAt);
@@ -61419,13 +61564,14 @@ async function listening(paths) {
   const answers = await Promise.all(
     paths.map(
       (path) => askDaemon(path, { type: "ping" }).then(
-        (answer2) => answer2 !== null,
+        (answer2) => answer2 === null ? "absent" : answer2.ok && answer2.type === "ping" && answer2.phase === "stopping" ? "stopping" : "listening",
         // A socket that accepts and does not answer in time: a daemon whose event loop is stalled.
-        () => true
+        () => "listening"
       )
     )
   );
-  return answers.includes(true);
+  if (answers.includes("stopping")) return "stopping";
+  return answers.includes("listening") ? "listening" : "absent";
 }
 
 // src/cli/status-wait-paths.ts
@@ -62387,7 +62533,87 @@ init_text();
 init_types();
 
 // src/cli/start.ts
+import { setTimeout as sleep14 } from "node:timers/promises";
+
+// src/core/daemon/leftovers.ts
+import { readdirSync as readdirSync28, readFileSync as readFileSync43 } from "node:fs";
+init_terminate();
+function marksOf(pid, token) {
+  const group = statOf(pid)?.pgrp === pid ? pid : null;
+  if (group === null || process.platform !== "linux")
+    return { pid, token, group, foreign: /* @__PURE__ */ new Set() };
+  const entries3 = processes();
+  const byPid = new Map(entries3.map((entry4) => [entry4.pid, entry4]));
+  const descends = (entry4) => {
+    for (let at2 = entry4, hops = 0; at2 !== void 0 && hops < 64; hops++) {
+      if (at2.ppid === pid) return true;
+      at2 = byPid.get(at2.ppid);
+    }
+    return false;
+  };
+  const foreign = entries3.filter(
+    (entry4) => entry4.pgrp === group && entry4.pid !== pid && !descends(entry4)
+  );
+  return { pid, token, group, foreign: new Set(foreign.map(identity2)) };
+}
+function processes() {
+  return readdirSync28("/proc").flatMap((name2) => {
+    const entry4 = /^\d+$/.test(name2) ? statOf(Number(name2)) : null;
+    return entry4 === null ? [] : [entry4];
+  });
+}
+function identity2({ pid, start: start2 }) {
+  return `${pid}:${start2}`;
+}
+async function leftovers(marks, self = process.pid) {
+  if (process.platform !== "linux") return [];
+  const needle = marks.token === null ? null : `\0${CHILD_VARIABLE}=${marks.token}`;
+  const entries3 = processes();
+  const byPid = new Map(entries3.map((entry4) => [entry4.pid, entry4]));
+  const found3 = entries3.filter(
+    (entry4) => entry4.pid !== self && entry4.pid !== marks.pid && (marks.group !== null && entry4.pgrp === marks.group || carries(entry4.pid, needle)) && !ofForeign(entry4, marks.foreign, byPid)
+  );
+  const named = await Promise.all(
+    found3.map(async (entry4) => ({ entry: entry4, args: await commandLine(entry4.pid) }))
+  );
+  return named.flatMap(
+    ({ entry: entry4, args: args2 }) => statOf(entry4.pid)?.start === entry4.start ? [{ pid: entry4.pid, args: args2 }] : []
+  );
+}
+function ofForeign(entry4, foreign, byPid) {
+  for (let at2 = entry4, hops = 0; at2 !== void 0 && hops < 64; hops++) {
+    if (foreign.has(identity2(at2))) return true;
+    at2 = byPid.get(at2.ppid);
+  }
+  return false;
+}
+function carries(pid, needle) {
+  if (needle === null) return false;
+  let environ;
+  try {
+    environ = `\0${readFileSync43(`/proc/${pid}/environ`, "latin1")}`;
+  } catch {
+    return false;
+  }
+  const at2 = environ.indexOf(needle);
+  if (at2 < 0) return false;
+  const next = environ[at2 + needle.length];
+  return next === void 0 || next === "\0" || next === ":";
+}
+
+// src/cli/start.ts
+init_handoff();
+init_fs();
+init_store3();
+
+// src/cli/stop.ts
+import { realpathSync as realpathSync23 } from "node:fs";
+import { resolve as resolve23 } from "node:path";
 import { setTimeout as sleep13 } from "node:timers/promises";
+init_lock();
+init_test_pause();
+init_fs();
+init_store3();
 
 // src/cli/stopped-mark.ts
 init_stopped();
@@ -62421,9 +62647,165 @@ function withStore(root, write2) {
   }
 }
 
+// src/cli/stop.ts
+var STOP_BOUNDS = { socketMs: 6e4, lockMs: 3e4, leftoversMs: 1e4 };
+async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
+  if (args2.length > 1 || args2[0]?.startsWith("-")) {
+    io.stderr("usage: squeal stop [root]\n");
+    return 2;
+  }
+  const root = args2[0] === void 0 ? worktreeRoot(void 0, io) : explicitRoot(args2[0], io);
+  if (root === null) return 1;
+  const socketPath = await daemonSocket(root);
+  const ping2 = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
+  const daemon = ping2?.ok === true && ping2.type === "ping" ? ping2 : null;
+  const marks = daemon === null ? null : marksOf(daemon.pid, tokenOf2(root, daemon));
+  const tree = await stopTree(root);
+  const response = await askDaemon(socketPath, { type: "stop" });
+  if (response === null) {
+    stoppedMark(root, tree, io);
+    io.stdout(`No daemon running for ${root}
+`);
+    return 0;
+  }
+  if (!response.ok) {
+    io.stderr(`squeal: the daemon refused to stop: ${response.error}
+`);
+    return 1;
+  }
+  const deadline = Date.now() + bounds.socketMs;
+  while (await askDaemon(socketPath, { type: "ping" }).catch(() => "busy") !== null) {
+    if (Date.now() > deadline) {
+      const which = daemon === null ? "" : ` (pid ${daemon.pid})`;
+      io.stdout(
+        `Stop requested; the daemon for ${root}${which} still serves after ${seconds2(bounds.socketMs)}
+`
+      );
+      return 1;
+    }
+    await sleep13(50);
+  }
+  pauseAt("stop-mark");
+  stoppedMark(root, tree, io);
+  const lock2 = await lockFreed(root, daemon, bounds.lockMs);
+  const after = seconds2(bounds.lockMs);
+  if (lock2.state === "held") {
+    io.stdout(
+      `Stop requested; the daemon for ${root} closed its socket but still holds its lock after ${after}
+`
+    );
+    return 1;
+  }
+  if (lock2.state === "unchecked") {
+    io.stdout(
+      `Stop requested; the daemon for ${root} closed its socket, and whether it still holds its lock could not be checked after ${after}: ${lock2.error}
+`
+    );
+    return 1;
+  }
+  const left = marks === null ? [] : await leftoversGone(marks, bounds.leftoversMs);
+  if (left.length > 0) {
+    const named = left.map(({ pid, args: args3 }) => `pid ${pid} ${args3}`.trim()).join("; ");
+    const what = left.length === 1 ? "a process it started still runs" : `${left.length} processes it started still run`;
+    io.stdout(
+      `Stop requested; the daemon for ${root} stopped, but ${what} after ${seconds2(bounds.leftoversMs)}: ${named}
+`
+    );
+    return 1;
+  }
+  io.stdout(`Squeal daemon stopped for ${root}
+`);
+  return 0;
+}
+function stoppedMark(root, tree, io) {
+  const error = leaveStoppedMark(root, (io.now ?? Date.now)(), tree);
+  if (error !== null) {
+    io.stderr(`squeal: could not record the stop, so a hook may start a daemon again: ${error}
+`);
+  }
+}
+function explicitRoot(path, io) {
+  const named = resolve23(io.cwd ?? process.cwd(), path);
+  if (lstatOrNull(named) === null) {
+    io.stderr(`squeal: ${named} does not exist; nothing stopped
+`);
+    return null;
+  }
+  const root = findWorktreeRoot(named);
+  if (root === null) {
+    io.stderr(`squeal: ${named} is not inside a git worktree
+`);
+    return null;
+  }
+  if (root !== realpathSync23(named)) {
+    io.stderr(
+      `squeal: ${named} is not a worktree root (it lies inside ${root}); nothing stopped
+`
+    );
+    return null;
+  }
+  return root;
+}
+function tokenOf2(root, ping2) {
+  const record = recordedDaemon(root);
+  return record?.startedAt === ping2.startedAt ? record.token ?? null : null;
+}
+async function leftoversGone(marks, ms2) {
+  const deadline = Date.now() + ms2;
+  for (; ; ) {
+    const left = await leftovers(marks);
+    if (left.length === 0 || Date.now() > deadline) return left;
+    await sleep13(100);
+  }
+}
+function seconds2(ms2) {
+  return `${ms2 / 1e3} s`;
+}
+async function lockFreed(root, daemon, ms2) {
+  const commonDir = resolveCommonDir(root);
+  if (commonDir === null) return { state: "free" };
+  const path = lockFileFor(commonDir, worktreeIdFor(root));
+  const deadline = Date.now() + ms2;
+  for (; ; ) {
+    if (missing(path) || daemon !== null && gone2(root, daemon)) return { state: "free" };
+    const probe = probeLock(path);
+    if (probe.state === "free" || Date.now() > deadline) return probe;
+    await sleep13(50);
+  }
+}
+function gone2(root, daemon) {
+  if (processGone(daemon.pid)) return true;
+  const record = recordedDaemon(root);
+  return record !== null && record.startedAt !== daemon.startedAt;
+}
+function missing(path) {
+  try {
+    return lstatOrNull(path) === null;
+  } catch {
+    return false;
+  }
+}
+function probeLock(path) {
+  try {
+    const lock2 = acquireDaemonLock(path);
+    lock2?.release();
+    return { state: lock2 === null ? "held" : "free" };
+  } catch (error) {
+    return { state: "unchecked", error: error instanceof Error ? error.message : String(error) };
+  }
+}
+function processGone(pid) {
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    return error.code === "ESRCH";
+  }
+}
+
 // src/cli/start.ts
 var SPAWN_WAIT_MS = 1e4;
-async function startCommand(args2, io) {
+async function startCommand(args2, io, bounds = STOP_BOUNDS) {
   if (args2.length > 1 || args2[0]?.startsWith("-")) {
     io.stderr("usage: squeal start [root]\n");
     return 2;
@@ -62434,6 +62816,9 @@ async function startCommand(args2, io) {
   if (cleared !== null) io.stderr(`squeal: could not clear the stop mark: ${cleared}
 `);
   const cli = process.argv[1];
+  const now = io.now ?? Date.now;
+  const stopping = await stoppingDaemon(root, now);
+  if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
   const result = await ensureDaemon(root, cli === void 0 ? {} : { cli });
   if (result === "unavailable") {
     io.stderr(`squeal: no daemon could be reached or started for ${root}
@@ -62448,15 +62833,97 @@ async function startCommand(args2, io) {
 `);
         return 1;
       }
-      await sleep13(50);
+      await sleep14(50);
     }
   }
   io.stdout(`Squeal daemon ${result} for ${root}
 
 `);
-  const now = io.now ?? Date.now;
   io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
   return 0;
+}
+async function stoppingDaemon(root, now) {
+  const socketPath = await daemonSocket(root);
+  const answer2 = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
+  const ping2 = answer2?.ok === true && answer2.type === "ping" ? answer2 : null;
+  const status2 = readStatus(root, { now });
+  const stopping = status2.available ? status2.daemon.stopping : void 0;
+  if (ping2?.phase !== "stopping" && stopping === void 0) return null;
+  const from = stopping?.from ?? ping2?.squealVersion ?? "";
+  return { socketPath, ping: ping2, record: recordedDaemon(root, 1e3), from };
+}
+async function finishHandoff(root, cli, stopping, io, bounds) {
+  const now = io.now ?? Date.now;
+  const began = performance.now();
+  const { ping: ping2, record } = stopping;
+  const marks = ping2 === null ? null : marksOf(ping2.pid, tokenOf3(ping2, record));
+  if (ping2 !== null) await askDaemon(stopping.socketPath, { type: "stop" }).catch(() => null);
+  if (claims(root, record, now)) {
+    await ensureDaemon(root, {
+      ...cli === void 0 ? {} : { cli },
+      awaitLockMs: SUCCESSOR_LOCK_WAIT_MS
+    });
+  }
+  const own = squealVersion();
+  const old = ping2?.startedAt ?? record?.startedAt ?? null;
+  const deadline = Date.now() + bounds.socketMs + bounds.lockMs;
+  for (; ; ) {
+    const probe = await probeDaemon(root, 100);
+    if (probe.state === "alive" && follows(probe.ping, old, own)) break;
+    if (Date.now() > deadline) return stillHeld(root, stopping, marks, io, bounds);
+    await sleep14(50);
+  }
+  const { from } = stopping;
+  const took = ((performance.now() - began) / 1e3).toFixed(1);
+  io.stdout(
+    `Squeal daemon started for ${root}, after the ${from} daemon handed over in ${took} s
+
+`
+  );
+  io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
+  return 0;
+}
+function follows(ping2, old, own) {
+  return ping2.startedAt !== old && ping2.phase !== "stopping" && !isNewerVersion(own, ping2.squealVersion);
+}
+function claims(root, record, now) {
+  try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return true;
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS });
+    if (isStoreOpenFailure(store)) return true;
+    try {
+      const id2 = worktreeIdFor(root);
+      const at2 = now();
+      if (record === null) {
+        const claim = readHandoff(store, id2);
+        return claim === null || at2 >= claim.boundAt;
+      }
+      const from = handoffFrom(record);
+      if (liveHandoff(store, id2, from, at2) !== null) return false;
+      return claimHandoff(store, id2, { from, to: squealVersion(), at: at2 }) !== null;
+    } finally {
+      store.close();
+    }
+  } catch {
+    return true;
+  }
+}
+async function stillHeld(root, stopping, marks, io, bounds) {
+  const { ping: ping2, from } = stopping;
+  const after = `${(bounds.socketMs + bounds.lockMs) / 1e3} s`;
+  const daemon = `the ${from === "" ? "" : `${from} `}daemon for ${root}${ping2 === null ? "" : ` (pid ${ping2.pid})`}`;
+  const lock2 = await lockFreed(root, ping2, 0);
+  const holds3 = lock2.state === "free" ? `${daemon} let go of its lock, but no daemon of Squeal ${squealVersion()} or later answered after ${after}` : `${daemon} is still stopping and holds its lock after ${after}, so no daemon follows it`;
+  const left = marks === null ? [] : await leftovers(marks);
+  const named = left.map(({ pid, args: args2 }) => `pid ${pid} ${args2}`.trim()).join("; ");
+  const children = left.length === 0 ? "" : `; ${left.length === 1 ? "a process it started still runs" : `${left.length} processes it started still run`}: ${named}`;
+  io.stderr(`squeal: ${holds3}${children}
+`);
+  return 1;
+}
+function tokenOf3(ping2, record) {
+  return record?.startedAt === ping2.startedAt ? record.token ?? null : null;
 }
 
 // src/cli/warmup.ts
@@ -63100,7 +63567,7 @@ function parseSetupArgs(args2) {
 }
 
 // src/cli/status-paths.ts
-import { setTimeout as sleep14 } from "node:timers/promises";
+import { setTimeout as sleep15 } from "node:timers/promises";
 init_fs();
 init_keys();
 async function readNamedSnapshot(cwd, paths, options) {
@@ -63119,7 +63586,7 @@ async function readNamedSnapshot(cwd, paths, options) {
       const state = sync?.current().state;
       const left = settleMs - elapsed();
       if (state === "synced" || left <= 0) break;
-      await (state === "unsupported" ? sleep14(left) : pollPause(Math.min(pollMs, left), sync));
+      await (state === "unsupported" ? sleep15(left) : pollPause(Math.min(pollMs, left), sync));
     }
     const read5 = withStatusStore(
       cwd,
@@ -63162,237 +63629,6 @@ function readOnce2({ store, root }, cwd, paths, sync, now) {
 async function namedSnapshotCommand(paths, how, io, options) {
   const snapshot3 = await readNamedSnapshot(io.cwd ?? process.cwd(), paths, options);
   return printNamed(snapshot3, how, io, options.now);
-}
-
-// src/cli/stop.ts
-import { realpathSync as realpathSync23 } from "node:fs";
-import { resolve as resolve23 } from "node:path";
-import { setTimeout as sleep15 } from "node:timers/promises";
-
-// src/core/daemon/leftovers.ts
-import { readdirSync as readdirSync28, readFileSync as readFileSync43 } from "node:fs";
-init_terminate();
-function marksOf(pid, token) {
-  const group = statOf(pid)?.pgrp === pid ? pid : null;
-  if (group === null || process.platform !== "linux")
-    return { pid, token, group, foreign: /* @__PURE__ */ new Set() };
-  const entries3 = processes();
-  const byPid = new Map(entries3.map((entry4) => [entry4.pid, entry4]));
-  const descends = (entry4) => {
-    for (let at2 = entry4, hops = 0; at2 !== void 0 && hops < 64; hops++) {
-      if (at2.ppid === pid) return true;
-      at2 = byPid.get(at2.ppid);
-    }
-    return false;
-  };
-  const foreign = entries3.filter(
-    (entry4) => entry4.pgrp === group && entry4.pid !== pid && !descends(entry4)
-  );
-  return { pid, token, group, foreign: new Set(foreign.map(identity2)) };
-}
-function processes() {
-  return readdirSync28("/proc").flatMap((name2) => {
-    const entry4 = /^\d+$/.test(name2) ? statOf(Number(name2)) : null;
-    return entry4 === null ? [] : [entry4];
-  });
-}
-function identity2({ pid, start: start2 }) {
-  return `${pid}:${start2}`;
-}
-async function leftovers(marks, self = process.pid) {
-  if (process.platform !== "linux") return [];
-  const needle = marks.token === null ? null : `\0${CHILD_VARIABLE}=${marks.token}`;
-  const entries3 = processes();
-  const byPid = new Map(entries3.map((entry4) => [entry4.pid, entry4]));
-  const found3 = entries3.filter(
-    (entry4) => entry4.pid !== self && entry4.pid !== marks.pid && (marks.group !== null && entry4.pgrp === marks.group || carries(entry4.pid, needle)) && !ofForeign(entry4, marks.foreign, byPid)
-  );
-  const named = await Promise.all(
-    found3.map(async (entry4) => ({ entry: entry4, args: await commandLine(entry4.pid) }))
-  );
-  return named.flatMap(
-    ({ entry: entry4, args: args2 }) => statOf(entry4.pid)?.start === entry4.start ? [{ pid: entry4.pid, args: args2 }] : []
-  );
-}
-function ofForeign(entry4, foreign, byPid) {
-  for (let at2 = entry4, hops = 0; at2 !== void 0 && hops < 64; hops++) {
-    if (foreign.has(identity2(at2))) return true;
-    at2 = byPid.get(at2.ppid);
-  }
-  return false;
-}
-function carries(pid, needle) {
-  if (needle === null) return false;
-  let environ;
-  try {
-    environ = `\0${readFileSync43(`/proc/${pid}/environ`, "latin1")}`;
-  } catch {
-    return false;
-  }
-  const at2 = environ.indexOf(needle);
-  if (at2 < 0) return false;
-  const next = environ[at2 + needle.length];
-  return next === void 0 || next === "\0" || next === ":";
-}
-
-// src/cli/stop.ts
-init_lock();
-init_test_pause();
-init_fs();
-init_store3();
-var STOP_BOUNDS = { socketMs: 6e4, lockMs: 3e4, leftoversMs: 1e4 };
-async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
-  if (args2.length > 1 || args2[0]?.startsWith("-")) {
-    io.stderr("usage: squeal stop [root]\n");
-    return 2;
-  }
-  const root = args2[0] === void 0 ? worktreeRoot(void 0, io) : explicitRoot(args2[0], io);
-  if (root === null) return 1;
-  const socketPath = await daemonSocket(root);
-  const ping2 = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
-  const daemon = ping2?.ok === true && ping2.type === "ping" ? ping2 : null;
-  const marks = daemon === null ? null : marksOf(daemon.pid, tokenOf2(root, daemon));
-  const tree = await stopTree(root);
-  const response = await askDaemon(socketPath, { type: "stop" });
-  if (response === null) {
-    stoppedMark(root, tree, io);
-    io.stdout(`No daemon running for ${root}
-`);
-    return 0;
-  }
-  if (!response.ok) {
-    io.stderr(`squeal: the daemon refused to stop: ${response.error}
-`);
-    return 1;
-  }
-  const deadline = Date.now() + bounds.socketMs;
-  while (await askDaemon(socketPath, { type: "ping" }).catch(() => "busy") !== null) {
-    if (Date.now() > deadline) {
-      const which = daemon === null ? "" : ` (pid ${daemon.pid})`;
-      io.stdout(
-        `Stop requested; the daemon for ${root}${which} still serves after ${seconds2(bounds.socketMs)}
-`
-      );
-      return 1;
-    }
-    await sleep15(50);
-  }
-  pauseAt("stop-mark");
-  stoppedMark(root, tree, io);
-  const lock2 = await lockFreed(root, daemon, bounds.lockMs);
-  const after = seconds2(bounds.lockMs);
-  if (lock2.state === "held") {
-    io.stdout(
-      `Stop requested; the daemon for ${root} closed its socket but still holds its lock after ${after}
-`
-    );
-    return 1;
-  }
-  if (lock2.state === "unchecked") {
-    io.stdout(
-      `Stop requested; the daemon for ${root} closed its socket, and whether it still holds its lock could not be checked after ${after}: ${lock2.error}
-`
-    );
-    return 1;
-  }
-  const left = marks === null ? [] : await leftoversGone(marks, bounds.leftoversMs);
-  if (left.length > 0) {
-    const named = left.map(({ pid, args: args3 }) => `pid ${pid} ${args3}`.trim()).join("; ");
-    const what = left.length === 1 ? "a process it started still runs" : `${left.length} processes it started still run`;
-    io.stdout(
-      `Stop requested; the daemon for ${root} stopped, but ${what} after ${seconds2(bounds.leftoversMs)}: ${named}
-`
-    );
-    return 1;
-  }
-  io.stdout(`Squeal daemon stopped for ${root}
-`);
-  return 0;
-}
-function stoppedMark(root, tree, io) {
-  const error = leaveStoppedMark(root, (io.now ?? Date.now)(), tree);
-  if (error !== null) {
-    io.stderr(`squeal: could not record the stop, so a hook may start a daemon again: ${error}
-`);
-  }
-}
-function explicitRoot(path, io) {
-  const named = resolve23(io.cwd ?? process.cwd(), path);
-  if (lstatOrNull(named) === null) {
-    io.stderr(`squeal: ${named} does not exist; nothing stopped
-`);
-    return null;
-  }
-  const root = findWorktreeRoot(named);
-  if (root === null) {
-    io.stderr(`squeal: ${named} is not inside a git worktree
-`);
-    return null;
-  }
-  if (root !== realpathSync23(named)) {
-    io.stderr(
-      `squeal: ${named} is not a worktree root (it lies inside ${root}); nothing stopped
-`
-    );
-    return null;
-  }
-  return root;
-}
-function tokenOf2(root, ping2) {
-  const record = recordedDaemon(root);
-  return record?.startedAt === ping2.startedAt ? record.token ?? null : null;
-}
-async function leftoversGone(marks, ms2) {
-  const deadline = Date.now() + ms2;
-  for (; ; ) {
-    const left = await leftovers(marks);
-    if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep15(100);
-  }
-}
-function seconds2(ms2) {
-  return `${ms2 / 1e3} s`;
-}
-async function lockFreed(root, daemon, ms2) {
-  const commonDir = resolveCommonDir(root);
-  if (commonDir === null) return { state: "free" };
-  const path = lockFileFor(commonDir, worktreeIdFor(root));
-  const deadline = Date.now() + ms2;
-  for (; ; ) {
-    if (missing(path) || daemon !== null && gone2(root, daemon)) return { state: "free" };
-    const probe = probeLock(path);
-    if (probe.state === "free" || Date.now() > deadline) return probe;
-    await sleep15(50);
-  }
-}
-function gone2(root, daemon) {
-  if (processGone(daemon.pid)) return true;
-  const record = recordedDaemon(root);
-  return record !== null && record.startedAt !== daemon.startedAt;
-}
-function missing(path) {
-  try {
-    return lstatOrNull(path) === null;
-  } catch {
-    return false;
-  }
-}
-function probeLock(path) {
-  try {
-    const lock2 = acquireDaemonLock(path);
-    lock2?.release();
-    return { state: lock2 === null ? "held" : "free" };
-  } catch (error) {
-    return { state: "unchecked", error: error instanceof Error ? error.message : String(error) };
-  }
-}
-function processGone(pid) {
-  try {
-    process.kill(pid, 0);
-    return false;
-  } catch (error) {
-    return error.code === "ESRCH";
-  }
 }
 
 // src/cli/update.ts

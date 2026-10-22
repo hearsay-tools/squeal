@@ -150,6 +150,7 @@ var WORKTREE_META_ROWS = {
   daemonRest: { prefix: "daemon-rest:", owner: "types/daemon" },
   daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
   daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
+  daemonHandoff: { prefix: "daemon-handoff:", owner: "delivery/handoff" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -5193,8 +5194,8 @@ var ORDER = [
 ];
 function outstandingOf(store, worktreeId, root, reads, now, load) {
   const { daemon, header } = reads;
-  if (daemon.state !== "alive") {
-    const since = daemon.since;
+  if (daemon.state !== "alive" || daemon.stopping !== void 0) {
+    const since = daemon.stopping?.since ?? (daemon.state === "alive" ? null : daemon.since);
     return [{ standing: { kind: "no-daemon", since, revision: header.revision }, files: [] }];
   }
   if (header.testFilesListed === false) return [{ standing: { kind: "listing" }, files: [] }];
@@ -5286,6 +5287,85 @@ function listed(files2) {
   };
 }
 
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+function handoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoff", worktreeId);
+}
+function handoffFrom(record) {
+  return daemonIncarnation(record) ?? `${record.squealVersion}@${record.startedAt}`;
+}
+function readHandoff(store, worktreeId) {
+  const text = store.meta.get(handoffMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const claim = JSON.parse(text);
+    if (!isRecord(claim)) return null;
+    const { from, to, at, boundAt } = claim;
+    if (typeof from !== "string" || typeof to !== "string") return null;
+    if (typeof at !== "number" || typeof boundAt !== "number") return null;
+    return { from, to, at, boundAt };
+  } catch {
+    return null;
+  }
+}
+function liveHandoff(store, worktreeId, from, now) {
+  const claim = readHandoff(store, worktreeId);
+  return claim !== null && claim.from === from && now < claim.boundAt ? claim : null;
+}
+function claimHandoff(store, worktreeId, claim) {
+  return store.transaction(() => {
+    if (liveHandoff(store, worktreeId, claim.from, claim.at) !== null) return null;
+    const written = { ...claim, boundAt: claim.at + HANDOFF_BOUND_MS };
+    store.meta.set(handoffMetaKey(worktreeId), JSON.stringify(written));
+    return written;
+  });
+}
+
+// src/core/status/stopping.ts
+function withStopping(store, worktree, live, now) {
+  if (worktree === null) return live;
+  const record = worktree.daemon;
+  if (record === null) return claimed(store, worktree, live, now);
+  const self = daemonIncarnation(record);
+  if (self === null || !shutDown(store, worktree.id, self)) return live;
+  if (live.state === "down" && daemonGone(worktree)) return live;
+  const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
+  const since = note?.at ?? record.heartbeatAt;
+  const claim = readHandoff(store, worktree.id);
+  const handoff = claim !== null && claim.from === self ? claim : null;
+  const boundAt = handoff?.boundAt ?? since + HANDOFF_BOUND_MS;
+  const stopping = {
+    from: record.squealVersion,
+    since,
+    ...handoff === null ? {} : { to: handoff.to, boundAt: handoff.boundAt },
+    overdue: now >= boundAt
+  };
+  return { ...live, stopping };
+}
+function claimed(store, worktree, live, now) {
+  const claim = readHandoff(store, worktree.id);
+  if (claim === null || now >= claim.boundAt || daemonGone(worktree)) return live;
+  const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
+  const { to, at: since, boundAt } = claim;
+  return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
+}
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+function stoppingState(stopping, age) {
+  const what = stopping.to === void 0 ? "stopping" : `handing over from ${stopping.from} to ${stopping.to}`;
+  const at = new Date(stopping.since).toISOString();
+  const past = stopping.overdue ? `, past its ${BOUND_S} s bound` : "";
+  return `${what} since ${at}${age === void 0 ? "" : ` (${age})`}${past}`;
+}
+function stoppingNext(stopping, command) {
+  if (stopping.overdue) return `\`${command} start\` finishes it`;
+  return stopping.to === void 0 ? "nothing validates until its lock frees" : `${stopping.to} serves once the old daemon's lock frees`;
+}
+function stoppingText(stopping, command, age) {
+  return `${stoppingState(stopping, age)}; ${stoppingNext(stopping, command)}`;
+}
+
 // src/core/status/snapshot.ts
 var HEARTBEAT_GRACE_INTERVALS = 2;
 function createStatusBuilder(store, options = {}) {
@@ -5317,15 +5397,20 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = withDeath(
+  const daemon = withStopping(
     store,
     worktree,
-    asStopped(
+    withDeath(
       store,
-      worktreeId,
       worktree,
-      liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
-    )
+      asStopped(
+        store,
+        worktreeId,
+        worktree,
+        liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+      )
+    ),
+    now
   );
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
@@ -5532,15 +5617,21 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   return {
     ...header,
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
-    daemon: withDeath(
+    // Row 011-34: so is a daemon stopping.
+    daemon: withStopping(
       store,
       worktree,
-      asRested(
+      withDeath(
         store,
         worktree,
-        asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
-        now
-      )
+        asRested(
+          store,
+          worktree,
+          asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+          now
+        )
+      ),
+      now
     ),
     changedPaths: [...changes.keys()],
     ...installed === void 0 ? {} : { installedLockfile: installed.path }
@@ -5588,11 +5679,16 @@ function withTold(header, told, at) {
 function livenessChange(store, consumer, at) {
   const told = toldLiveness(store, consumer);
   const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = asStopped(
+  const live = withStopping(
     store,
-    consumer.worktreeId,
     worktree,
-    asTold(worktreeLiveness(worktree, at), told, at)
+    asStopped(
+      store,
+      consumer.worktreeId,
+      worktree,
+      asTold(worktreeLiveness(worktree, at), told, at)
+    ),
+    at
   );
   if (live.state === "down" && live.stopped !== true) {
     if (live.startingSince !== void 0) return null;
@@ -6197,7 +6293,11 @@ function stoppedText(command) {
   return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
 }
 function livenessSentence(daemon, revision, command) {
-  if (daemon === void 0 || daemon.state === "alive") return "";
+  if (daemon === void 0) return "";
+  if (daemon.stopping !== void 0) {
+    return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
+  }
+  if (daemon.state === "alive") return "";
   if (daemon.stopped === true)
     return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
   const died = daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
@@ -6382,6 +6482,10 @@ function editLines({ sawEdit, editsSettled }) {
 }
 var checksOf = (entries) => entries.map((e) => e.check);
 function livenessTitle(liveness2, revision) {
+  if (liveness2?.stopping !== void 0) {
+    const what = liveness2.stopping.to === void 0 ? "stopping" : "handing over";
+    return `SQUEAL \xB7 the daemon is ${what} at revision ${revision}`;
+  }
   if (liveness2?.state === "down" && liveness2.stopped === true) {
     return `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
   }
@@ -6655,7 +6759,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.258";
+  if (true) return "0.1.259";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -6696,7 +6800,6 @@ function versionParts(version) {
 var SOCKET_TIMEOUT_MS = 100;
 var SPAWN_SETTLE_MS = 750;
 var SETTLE_POLL_MS = 25;
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
 async function ensure(location2, deps, context) {
   const worktree = context?.store.worktrees.get(context.consumer.worktreeId);
   const record = context === void 0 ? void 0 : worktree?.daemon ?? null;
@@ -6705,9 +6808,9 @@ async function ensure(location2, deps, context) {
     const at2 = { id: context.consumer.worktreeId, root: location2.root };
     if (await stopHolds(context.store, at2, worktree, live)) return "stopped";
   }
-  if (context !== void 0 && await stepDown(context, deps, record ?? null)) {
-    return successor(location2, deps);
-  }
+  const handoff = context === void 0 ? "none" : await handOver(context, deps, record ?? null);
+  if (handoff === "claimed") return successor(location2, deps);
+  if (handoff === "joined") return "alive";
   const at = (deps.now ?? Date.now)();
   const ensured = await (deps.ensureDaemon ?? ensureDaemon)(location2.root, {
     socketTimeoutMs: SOCKET_TIMEOUT_MS,
@@ -6719,13 +6822,21 @@ async function ensure(location2, deps, context) {
   }
   return ensured;
 }
-function stepDown(context, deps, record) {
-  return stepDownIfOlder(
-    record,
-    (deps.now ?? Date.now)(),
-    deps.squealVersion ?? squealVersion(),
-    otherSessionVersions(context.store, context.consumer)
-  );
+async function handOver(context, deps, record) {
+  const now = deps.now ?? Date.now;
+  const version = deps.squealVersion ?? squealVersion();
+  const others = otherSessionVersions(context.store, context.consumer);
+  if (record === null || !asksStepDown(record, now(), version, others)) return "none";
+  const id = context.consumer.worktreeId;
+  const from = handoffFrom(record);
+  if (liveHandoff(context.store, id, from, now()) !== null) return "joined";
+  if (!await requestStepDown(record, version)) return "none";
+  try {
+    const claim = claimHandoff(context.store, id, { from, to: version, at: now() });
+    return claim === null ? "joined" : "claimed";
+  } catch {
+    return "claimed";
+  }
 }
 function successor(location2, deps) {
   return (deps.ensureDaemon ?? ensureDaemon)(location2.root, {
@@ -6734,12 +6845,14 @@ function successor(location2, deps) {
     ...deps.cli === void 0 ? {} : { cli: deps.cli }
   });
 }
-async function stepDownIfOlder(record, now, version = squealVersion(), others = []) {
-  if (record === null || !isNewerVersion(version, record.squealVersion)) return false;
+function asksStepDown(record, now, version, others) {
+  if (!isNewerVersion(version, record.squealVersion)) return false;
   if (!others.every((other) => other === version || isNewerVersion(other ?? "", version))) {
     return false;
   }
-  if (daemonLiveness(record, now).state !== "alive") return false;
+  return daemonLiveness(record, now).state === "alive";
+}
+async function requestStepDown(record, version) {
   try {
     const answer = await requestDaemon(
       record.socketPath,
