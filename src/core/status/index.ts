@@ -28,8 +28,10 @@ export {
 export { formatStatus, formatUnavailable, type StatusFormatOptions } from "./format-status.js";
 export { formatWhy } from "./format-why.js";
 export {
+  holdEndText,
   holdLine,
   holdLines,
+  holdStartText,
   holdVerdictLine,
   onHoldText,
   readHolds,

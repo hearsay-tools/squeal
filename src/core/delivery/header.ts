@@ -2,6 +2,7 @@ import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import { fullSuiteText, revisionText, runnerPartText, slowTierText } from "../state/index.js";
 import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
+import { holdLine } from "../status/holds.js";
 import { stoppingText } from "../status/stopping.js";
 import type { DaemonLiveness, StatusHeader, ValidityCounts } from "../types/index.js";
 import { installSentences } from "./provenance.js";
@@ -76,8 +77,17 @@ function fullLine(header: StatusHeader, command: string): string {
       : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
   return (
     `Revision ${revisionText(revision, header.commit)}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${incompleteText(header)} ` +
-    `Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}`
+    `Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText(header, command)}`
   );
+}
+
+/**
+ * Row 011-73 (C8 as amended 2026-10-21): the full form carries the status
+ * line of each hold; a change delivery says a hold's start and end in its
+ * title instead (`formatDelta`).
+ */
+function holdsText(header: StatusHeader, command: string): string {
+  return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
 }
 
 /** The validities a news header counts: those that need a run or a wait. */

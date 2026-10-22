@@ -185,7 +185,7 @@ export function holdOfWait(
   now: EpochMs,
 ): StatusHold | null {
   const worktree = store.worktrees.get(worktreeId);
-  const [hold] = readHolds(store, worktree, worktreeLiveness(worktree, now));
+  const [hold] = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
   if (hold === undefined) return null;
   // The rows only while on hold: a poll reads what decides it (C6 as amended, task 011-42).
   const rows = typeof keys === "function" ? keys() : keys;

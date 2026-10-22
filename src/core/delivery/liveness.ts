@@ -2,6 +2,7 @@ import { isRecord } from "../fs/index.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { readHeader } from "../state/index.js";
 import { withDeath } from "../status/died.js";
+import { readHolds } from "../status/holds.js";
 import { openRuns } from "../status/open-runs.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
 import { withStopping } from "../status/stopping.js";
@@ -74,8 +75,11 @@ export function readLiveHeader(
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path),
   );
+  // Row 011-73 (C8 as amended 2026-10-21): the registration header carries the hold, as status does.
+  const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
   return {
     ...header,
+    ...(holds.length === 0 ? {} : { holds }),
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
     // Row 011-34: so is a daemon stopping.
     daemon: withStopping(
