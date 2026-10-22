@@ -53,3 +53,21 @@ All three fail on the 011-66 commit without this row's source change: copy A's d
 - `squeal run --all --wait`, revision 27: 867 test files current, 5 known failures, exit 1. Four are bundle drift: the plugin, Codex, OpenCode and Pi bundle tests name `cli/ps.mjs`, which bundles `WORKTREE_META_ROWS` and so its new `interrupted` row. Bundles are the coordinator's to rebuild.
 - The fifth is `test/scheduler/backlog-slots-overhead.test.ts` test 3, a 011-99 file. It fails on the base too. Run alone with `npx vitest run`, alternating base `a5901f2bf` (a detached worktree sharing this `node_modules`) and this head, at one-minute load 4.5 to 8.3 on 24 CPUs: base 1.24 and 1.25 times one tier's time, head 1.23 and 1.24, against its bound of 1.2. Board row 011-99 records the same failure on main at the CPU limits.
 - `test/keys/key-format.test.ts`, `test/store/worktree-meta.test.ts` and `test/daemon/restart-handover-signal.test.ts` (011-65) pass.
+
+## Repair of review 0.1.262, B2: a rejected tier applies no setup outcome (brief W5 of `../wave-13.md`)
+
+- `recordTier` takes `setups`, default `true`. `#record` passes `false` when the runtime went and `interruptedFiles` queued any of the tier's files again. Then no setup check fails or passes and no project is blocked: `failStartup` and `setups.pass` do not run. Run accounting (`runs.finish`, `endTier`), the requeue set and the once-per-key memory are as before.
+- A file of that tier past its one re-queue still records as usual, but its report's startup failure is the missing recorder's, not its project's. A file of it that the startup failure kept from running is `unknown`, as a crashed run's file is (D12), with the run's failure as the reason. The project is not blocked and its setup check does not fail. This is the only change for a file outside the requeue set.
+- A tier whose every file is past its one re-queue is not rejected: `setups` stays `true`, so its setup failure fails the setup check and blocks the project, as the once-per-key rule says.
+
+Tests: `test/scheduler/runtime-gone-tier.test.ts`, with the catch-up fixture's store and a runner that fails to start as Vitest does without its recorder (the review's probe), two files of one project in tiers of one:
+
+1. The runtime goes during a run that failed to start: both rows stay `queued`, no setup FAIL, and a lookup-only successor runs both and stores no failure.
+2. A control: the same failure with the runtime there fails the setup and both files leave the queue, as before.
+3. The runtime goes during a run whose files completed, after an earlier setup FAIL: the setup stays failing, both rows `queued`.
+4. A second such run of a file at the same key: the setup fails as usual.
+5. A tier of a file at its second such run beside one at its first: the first is `unknown` with no setup FAIL, the second stays `queued`.
+
+Cases 1, 3, 4 and 5 fail with `setups` always `true`.
+
+Open: a tier that crashes while its daemon stops (011-66) can carry a startup failure too, when a stop kills the run during global setup. Its not-started files are in the requeue set, and `failStartup` then blocks them. The brief scopes B2 to the runtime's loss, so `setups` is `false` only there. Passing `interrupted.length === 0` would cover both.

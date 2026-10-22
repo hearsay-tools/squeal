@@ -6,7 +6,7 @@ import { readHead } from "../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
-import { createScheduler } from "../../src/core/scheduler/index.js";
+import { createScheduler, type SchedulerOptions } from "../../src/core/scheduler/index.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import {
   DEFAULT_POLICY,
@@ -236,6 +236,8 @@ export interface CatchUpOptions {
   readonly resumesRest?: boolean;
   /** `SchedulerOptions.now`: the scheduler's clock (row 011-94). */
   readonly now?: () => number;
+  /** Further `SchedulerOptions`: the runtime directory, the slow tier's (rows 011-106, 004). */
+  readonly scheduler?: Pick<SchedulerOptions, "runtimeDir" | "onReinstall" | "slow">;
 }
 
 /** Project `project`'s environment file. */
@@ -339,6 +341,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.resumesRest === undefined ? {} : { resumesRest: options.resumesRest }),
     ...(options.now === undefined ? {} : { now: options.now }),
+    ...options.scheduler,
   });
   onTestFinished(async () => {
     clearInterval(beat);
