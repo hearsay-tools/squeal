@@ -88,7 +88,9 @@ function useTempParent({ env, root }: TempOptions): () => void {
     // tests' socket paths fit. Under a 48-byte `TMPDIR` the parent was 77
     // bytes, and `test/ps/proc-live.test.ts` failed to bind (task 014-36).
     parent = mkdtempSync(join(root, `squeal-vitest-${process.pid}-`));
-    writeFileSync(join(parent, OWNER), namespaceName());
+    const namespace = namespaceName();
+    // Without a namespace no sweep may take it; its own teardown still removes it.
+    if (namespace !== null) writeFileSync(join(parent, OWNER), namespace);
   } catch {
     // The suite runs without a parent rather than not at all.
     return () => undefined;
@@ -158,6 +160,7 @@ function sweepDeadParents(root: string): void {
     return;
   }
   const namespace = namespaceName();
+  if (namespace === null) return;
   for (const entry of entries) {
     const match = PARENT.exec(entry);
     if (match === null || isAlive(Number(match[1]))) continue;
@@ -173,9 +176,16 @@ function sweepDeadParents(root: string): void {
   }
 }
 
-/** This process's PID namespace; one name for every process on a host without `/proc`. */
-function namespaceName(): string {
-  return pidNamespace() ?? "no /proc";
+/**
+ * This process's PID namespace, or `null` on Linux when it cannot be read: a
+ * masked `/proc` there may hide another namespace (review 0.1.267 round 2).
+ * Elsewhere there are no PID namespaces, and the platform names the one.
+ */
+export function namespaceName(
+  read: () => string | null = pidNamespace,
+  platform: NodeJS.Platform = process.platform,
+): string | null {
+  return read() ?? (platform === "linux" ? null : platform);
 }
 
 /** `run-<pid>-<uuid>` of a Vitest process still running. */
