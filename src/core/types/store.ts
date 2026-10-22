@@ -14,11 +14,13 @@ import type {
   FailingRow,
   FailureText,
   FileHashRecord,
+  MarkedUnknown,
   ReplacedFailure,
   ResultRecord,
   RunRecord,
   TestFileKeyRecord,
   TestFileRecord,
+  UnknownRun,
   WorktreeRecord,
 } from "./store-records.js";
 
@@ -152,8 +154,10 @@ export interface FailureSelection {
 }
 
 /**
- * The stored failing results, read through `results_by_failure` (row 011-75).
- * Off the key-format alarm's path, unlike `ResultRepo` (011-64, section 4).
+ * Failure evidence beside `results`: the stored failing rows, read through
+ * `results_by_failure` (row 011-75), the replaced failures (row 011-77) and
+ * the runs behind UNKNOWN states (row 011-108). Off the key-format alarm's
+ * path, unlike `ResultRepo` (011-64, section 4).
  */
 export interface FailureRepo {
   /** Failing results of `selection`, newest first by record time, at most `limit`. Read only. */
@@ -179,6 +183,19 @@ export interface FailureRepo {
   replaced(): readonly ReplacedFailure[];
   /** A stored failure text; `null` when it was pruned. */
   text(failureId: string): FailureText | null;
+  /**
+   * Records the run behind each file `marked` made UNKNOWN at `revision`,
+   * over the file's earlier record (row 011-108). Inside the commit that
+   * marks them.
+   */
+  recordUnknownRuns(
+    worktreeId: WorktreeId,
+    revision: RevisionNumber,
+    marked: readonly MarkedUnknown[],
+    at: EpochMs,
+  ): void;
+  /** `worktreeId`'s records of the runs behind its UNKNOWN states; empty when none or unreadable. */
+  unknownRuns(worktreeId: WorktreeId): readonly UnknownRun[];
 }
 
 /** A key with results, and when its newest one was recorded (`ResultRepo.keysSince`). */

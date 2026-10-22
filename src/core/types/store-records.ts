@@ -143,6 +143,32 @@ export interface ResultRecord {
   readonly provenance: Provenance;
 }
 
+/**
+ * The run behind an UNKNOWN known state (row 011-108, gh-74; 011 C6, C7):
+ * recorded beside the known state of every check of `testFile` in
+ * `worktreeId`, never as a keyed result, in the shared `meta` entry
+ * `unknown-runs`. It fits the state while the state is `unknown` with
+ * `revision` as its `observedAt` and `reason` as its summary.
+ */
+export interface UnknownRun {
+  readonly worktreeId: WorktreeId;
+  readonly testFile: TestFileRef;
+  /** The run whose end made the file UNKNOWN; `null` when no run did (its runner, install or environment failed first). */
+  readonly runId: string | null;
+  /** The revision the UNKNOWN state was observed at. */
+  readonly revision: RevisionNumber;
+  /** The worker's error, the state's summary. */
+  readonly reason: string;
+  readonly at: EpochMs;
+}
+
+/** One `markUnknown` of a ledger commit, as `FailureRepo.recordUnknownRuns` takes it. */
+export interface MarkedUnknown {
+  readonly testFiles: readonly TestFileRef[];
+  readonly reason: string;
+  readonly runId: string | null;
+}
+
 /** A failing `results` row at a key with its failure text's id (`FailureRepo.failingAt`). */
 export interface FailingRow {
   readonly result: ResultRecord;
