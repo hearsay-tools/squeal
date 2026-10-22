@@ -6,7 +6,9 @@ import type { Case, PytestInput, PytestPython } from "../../case.js";
  * fails to collect, a module that skips itself), the closure and the
  * imports a run observes beyond it, the environment and what start-up
  * loads beyond its key (the direction rule's withhold), collection under
- * the config's names, a project with no environment and a refused flag.
+ * the config's names, a project with no environment and a refused flag;
+ * from task 007-55, the start-up hook of a test's child processes and the
+ * file in progress a test sees.
  */
 
 const lines = (...text: string[]) => `${text.join("\n")}\n`;
@@ -143,6 +145,77 @@ const CLOSURES: Readonly<Record<string, string>> = {
     "",
     "def test_child():",
     '    subprocess.run([sys.executable, "-m", "pkg"], check=True)',
+  ),
+};
+
+/**
+ * Task 007-55: what the start-up hook of a test's child Python meets. The
+ * child imports a module no finder finds, then one only a finder of the old
+ * protocol is asked for; one child cannot write its events file; one has a
+ * `sitecustomize` after the hook's directory on `PYTHONPATH`, which runs.
+ */
+const CHILDREN: Readonly<Record<string, string>> = {
+  "pyproject.toml": CONFIG,
+  "pkg/__init__.py": "",
+  "pkg/child.py": lines(
+    "import builtins",
+    "import sys",
+    "",
+    "try:",
+    "    import validity_absent_one",
+    "except ImportError:",
+    "    pass",
+    "",
+    "",
+    "class Old:",
+    "    def find_module(self, name, path=None):",
+    "        return None",
+    "",
+    "",
+    "sys.meta_path.append(Old())",
+    "try:",
+    "    import validity_absent_two",
+    "except ImportError:",
+    "    pass",
+    'print(getattr(builtins, "VALIDITY_SITE", "unset"))',
+  ),
+  "site/sitecustomize.py": lines("import builtins", "", 'builtins.VALIDITY_SITE = "ran"'),
+  "tests/test_children.py": lines(
+    "import os",
+    "import subprocess",
+    "import sys",
+    "",
+    "",
+    "def child(**env):",
+    "    run = [sys.executable, '-m', 'pkg.child']",
+    "    done = subprocess.run(run, capture_output=True, text=True, env={**os.environ, **env})",
+    "    assert done.returncode == 0, done.stderr",
+    "    return done.stdout",
+    "",
+    "",
+    "def test_child():",
+    "    assert child() == 'unset\\n'",
+    "",
+    "",
+    "def test_unwritable_events():",
+    "    assert child(SQUEAL_PYTEST_EVENTS=os.path.abspath('missing/events.jsonl')) == 'unset\\n'",
+    "",
+    "",
+    "def test_site_after_the_hook():",
+    "    site = os.pathsep + os.path.abspath('site')",
+    "    assert child(PYTHONPATH=os.environ['PYTHONPATH'] + site) == 'ran\\n'",
+  ),
+};
+
+/** Task 007-55: a test that reads the file in progress, which only 007-55's runtime names. */
+const SEES_FILE: Readonly<Record<string, string>> = {
+  "pyproject.toml": CONFIG,
+  "tests/test_sees_file.py": lines(
+    "import os",
+    "",
+    "",
+    "def test_sees_its_file():",
+    '    assert os.environ.get("SQUEAL_PYTEST_FILE") == os.path.realpath(__file__)',
   ),
 };
 
@@ -338,6 +411,16 @@ export const PYTEST_RUNS: readonly Case[] = [
         },
       ],
     },
+  ),
+  ...pytest(
+    "a child Python's failed imports, an old-protocol finder, an unwritable events file and a sitecustomize after the hook",
+    "007 D6 as amended by 007-55: the start-up hook of a process a test starts asks the finders after it, returns nothing for a module none finds or where an old-protocol finder stands, never fails the child when its events file cannot be written, and runs the sitecustomize it shadows",
+    { files: CHILDREN, runs: [{ files: ["tests/test_children.py"] }] },
+  ),
+  ...pytest(
+    "a test sees its own file in SQUEAL_PYTEST_FILE while it runs",
+    "007 D6 as amended by 007-55, the case that stands for PYTEST_ADAPTER_VERSION 3. Observable: a test's environment holds SQUEAL_PYTEST_FILE, its own file, while it runs, so under one key a test that reads it stores a pass where the last release stored a fail. The reason for the raise: a result stored before 007-55 sits at a key whose closure lacks what the test's child processes import, and a closure gains those paths only after a run here, which this kind reads as keys; without the raise such a result, an E9-style false pass among them, would stay current until its file ran again",
+    { files: SEES_FILE, runs: [{ files: ["tests/test_sees_file.py"] }] },
   ),
   ...pytest(
     "a start-up import beyond the key withholds the files, then joins the environment",
