@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { dirname } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import type { PoolCapacity } from "../capacity/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { clearHandoff } from "../delivery/handoff.js";
@@ -63,6 +65,14 @@ import { capacityReader, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
 
 export type { DaemonTimings } from "./lifecycle.js";
+
+/**
+ * The directory this daemon's code runs from (row 011-106): `<plugin>/dist/cli`
+ * in a bundle, this module's own in the `tsc` build. An upgrade or a cache
+ * cleanup that removes it leaves the daemon serving code its tests' children
+ * can no longer load (gh-72, gh-70).
+ */
+const RUNTIME_DIR = dirname(fileURLToPath(import.meta.url));
 
 /**
  * After a stop's cancel, how long the tiers in flight get to end before the
@@ -565,6 +575,8 @@ class Daemon {
         onReinstall: (note) => void this.#shutdown("reinstalled", 0, note),
         // Row 011-66: set before the loop's close, so a tier that crashes from here is interrupted.
         stopping: () => this.#phase === "stopping",
+        // Row 011-106: the directory this code runs from; its removal ends the daemon as a reinstall.
+        runtimeDir: RUNTIME_DIR,
         onDropped: (reason) =>
           this.#note(`watcher dropped events (${reason}); a full reconciliation follows`),
         // Spec 001 D11 Capacity (tasks 001-376, 001-377): backlog and checkpoint tiers share the
