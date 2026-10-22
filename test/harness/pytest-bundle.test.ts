@@ -46,8 +46,9 @@ const git = (cwd: string, args: readonly string[]) =>
   execFileSync("git", args, { cwd, stdio: "pipe", encoding: "utf8" });
 
 describe("the bundled CLI and pytest (spec 007)", () => {
-  it("ships squeal_pytest.py and both .wasm files in dist/pytest/", () => {
+  it("ships squeal_pytest.py, sitecustomize.py and both .wasm files in dist/pytest/", () => {
     expect(readdirSync(join(dist, "pytest")).sort()).toEqual([
+      "sitecustomize.py",
       "squeal_pytest.py",
       "tree-sitter-python.wasm",
       "web-tree-sitter.wasm",
