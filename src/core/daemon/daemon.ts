@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { PoolCapacity } from "../capacity/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
+import { clearHandoff } from "../delivery/handoff.js";
 import { resumesRest } from "../delivery/liveness.js";
 import { linkedWorktreeDir } from "../fs/index.js";
 import { readDaemonNotes } from "../notes.js";
@@ -374,7 +375,8 @@ class Daemon {
    * shutdown mark goes (task 001-274); if this daemon's own shutdown already
    * began, its mark replaces it in the same transaction, since `#markExit`
    * had no registration to describe then (task 001-276). The heartbeat's last
-   * use replaces the predecessor's too (spec 014 D9).
+   * use replaces the predecessor's too (spec 014 D9), and the handoff claim
+   * goes (row 011-32).
    */
   #register(): void {
     const { store, worktreeId: id, root, commonDir } = this.opened;
@@ -387,6 +389,8 @@ class Daemon {
       store.testFileKeys.releaseRunning(id);
       if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id));
       else store.meta.set(daemonExitMetaKey(id), this.#incarnation());
+      // Row 011-32: a daemon serves, so the handoff a hook claimed has ended.
+      clearHandoff(store, id);
       store.worktrees.upsert({
         id,
         root,
