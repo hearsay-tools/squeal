@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, readlinkSync, statSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import { join } from "node:path";
+import { CHILD_VARIABLE } from "../daemon/escaped.js";
+import { TICKS_PER_SECOND } from "../daemon/terminate.js";
 import type { EpochMs } from "../types/index.js";
 import {
   type CommandRunner,
@@ -32,10 +34,8 @@ export interface ProcSourceOptions {
   readonly run?: CommandRunner;
 }
 
-/** USER_HZ: 100 on every architecture Node builds for; `daemon/terminate.ts` assumes the same. */
-const CLOCK_TICKS = 100;
 /** The only environment entry `markOf` reads (D5). */
-const MARK = Buffer.from("SQUEAL_DAEMON_CHILD=");
+const MARK = Buffer.from(`${CHILD_VARIABLE}=`);
 
 export function createProcSource(options: ProcSourceOptions = {}): PsSource {
   return new ProcSource(options);
@@ -56,7 +56,7 @@ class ProcSource implements PsSource {
   }
 
   clockTicks(): number {
-    return CLOCK_TICKS;
+    return TICKS_PER_SECOND;
   }
 
   bootTime(): EpochMs | null {
