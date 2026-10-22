@@ -28,6 +28,14 @@ export {
 export { formatStatus, formatUnavailable, type StatusFormatOptions } from "./format-status.js";
 export { formatWhy } from "./format-why.js";
 export {
+  holdLine,
+  holdLines,
+  holdVerdictLine,
+  onHoldText,
+  readHolds,
+  unmergedPathsText,
+} from "./holds.js";
+export {
   CLI_READ_RETRY_MS,
   STATUS_BUSY_TIMEOUT_MS,
   type StatusContext,
