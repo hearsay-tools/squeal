@@ -128,7 +128,8 @@ interface Lease {
  * - The mark is written at each boundary and each look, refreshed while a
  *   tier runs, an edit's included, and cleared when the last one ends. The
  *   waiter's age is kept across that gap between tiers, and forgotten after
- *   30 s without a lease or a look.
+ *   30 s without a lease or a look, by a refresh too while an edit's tier
+ *   runs (review 0.1.255, B1).
  * - Each refresh measures the daemon's tree since the last (`TreeCpu`), and
  *   the mark states those cores; each permit taken needs the marks' cores
  *   below the slots or their grants below half of them (`gatedPermits`, 011
@@ -361,12 +362,14 @@ class LockFilePool implements PermitPool {
     this.#clear();
   }
 
-  /** A waiter that has neither held a lease nor looked for 30 s is no longer one. */
-  #forget(now: number): void {
-    if (this.#leases.size > 0 || this.#idleSince === null) return;
-    if (now - this.#idleSince < SLOT_WAITER_FRESH_MS) return;
+  /** A waiter that has neither held a lease nor looked for 30 s is no longer one. True when one was. */
+  #forget(now: number): boolean {
+    if (this.#leases.size > 0 || this.#idleSince === null) return false;
+    if (now - this.#idleSince < SLOT_WAITER_FRESH_MS) return false;
+    const waited = this.#since !== null || this.#pending > 0;
     this.#since = null;
     this.#pending = 0;
+    return waited;
   }
 
   /** The cores this daemon's tiers use: as measured, else one per worker; `null` without a tree. */
@@ -442,6 +445,11 @@ class LockFilePool implements PermitPool {
     this.#timer = setInterval(() => {
       if (this.#mark === null) return;
       this.#measured = this.#tree?.read() ?? this.#measured;
+      // A waiter whose edit runs on 30 s after its last look leaves the mark; its cores stay (B1).
+      if (this.#forget(this.#now())) {
+        this.#republish();
+        return;
+      }
       const cores = this.#cores();
       if (cores !== null) this.#mark = { ...this.#mark, cores };
       try {
