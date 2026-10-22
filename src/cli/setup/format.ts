@@ -1,4 +1,4 @@
-import { vitestBelowRootNote } from "../../core/daemon/runner.js";
+import { vitestBelowRootReason } from "../../core/daemon/runner.js";
 import { excludeKeys } from "./exclude.js";
 import type { CodexTrust, Runners, SetupPlan, Warmup } from "./plan.js";
 
@@ -121,7 +121,9 @@ function gapLines(runners: Runners): string[] {
   const below = runners.vitestBelowRoot ?? [];
   const leftOut = runners.nodeTestLeftOut ?? { notes: [], templates: [] };
   return [
-    ...(below.length === 0 ? [] : [`  not run: ${vitestBelowRootNote(below)}`]),
+    ...(below.length === 0
+      ? []
+      : [`  not run: Vitest in ${below.join(", ")}: ${vitestBelowRootReason(below)}`]),
     ...leftOut.notes.map((note) => `  not run: ${note}`),
     ...(leftOut.templates.length === 0
       ? []

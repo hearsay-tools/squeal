@@ -213,10 +213,15 @@ export async function readVitestBelowRoot(root: AbsolutePath): Promise<string[]>
   return vitestBelowRoot(root, manifests);
 }
 
-/** The note on `vitestBelowRoot`'s directories: what is not run, why, and the fix. */
+/** The note on `vitestBelowRoot`'s directories: what is not run, then `vitestBelowRootReason`. */
 export function vitestBelowRootNote(dirs: readonly string[]): string {
+  return `Vitest in ${dirs.join(", ")} is not run: ${vitestBelowRootReason(dirs)}`;
+}
+
+/** Why Squeal runs none of `vitestBelowRoot`'s directories, and the fix; the plan's `not run:` line ends with it. */
+export function vitestBelowRootReason(dirs: readonly string[]): string {
   const list = dirs.join(", ");
-  return `Vitest in ${list} is not run: Squeal loads Vitest from the root only, and the root has no Vitest config and no vitest in package.json. To run ${dirs.length === 1 ? "it" : "them"}, add a root vitest.config.ts whose projects name ${list}, and vitest to the root package.json`;
+  return `Squeal loads Vitest from the root only, and the root has no Vitest config and no vitest in package.json. To run ${dirs.length === 1 ? "it" : "them"}, add a root vitest.config.ts whose projects name ${list}, and vitest to the root package.json`;
 }
 
 /** `vitest` in a manifest's `dependencies` or `devDependencies`. */

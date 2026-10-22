@@ -106,20 +106,34 @@ function pytestOverlaps(facts: RepoFacts, pytest: readonly PytestRunner[]): Pyte
       const b = pytest[j] as PytestRunner;
       const shared = [...(files[i] as Set<string>)].filter((f) => files[j]?.has(f)).length;
       if (shared > 0) {
-        overlaps.push({ projects: [a.name, b.name], testFiles: shared, fix: overlapFix(a, b) });
+        const fix = overlapFix(a, b, files[i] as Set<string>, files[j] as Set<string>);
+        overlaps.push({ projects: [a.name, b.name], testFiles: shared, fix });
       }
     }
   });
   return overlaps;
 }
 
-/** The project whose `cwd` holds the other's excludes it; else either project gives the files up. */
-function overlapFix(a: PytestRunner, b: PytestRunner): string {
+/**
+ * The project whose `cwd` holds the other's excludes that directory, when the
+ * other selects every file it selects there (review 0.1.263 B1: else the
+ * exclude would drop files no project runs); else a project gives the shared
+ * files up, the wider one when one `cwd` holds the other.
+ */
+function overlapFix(
+  a: PytestRunner,
+  b: PytestRunner,
+  aFiles: ReadonlySet<string>,
+  bFiles: ReadonlySet<string>,
+): string {
   const wide = a.cwd === b.cwd ? null : under(b.cwd, a.cwd) ? a : under(a.cwd, b.cwd) ? b : null;
-  if (wide === null) {
-    return `keep each test file in one project: narrow the include of pytest project "${b.name}" or add the shared files to its exclude`;
-  }
   const narrow = wide === a ? b : a;
+  const [wideFiles, narrowFiles] = wide === a ? [aFiles, bFiles] : [bFiles, aFiles];
+  const covered =
+    wide !== null && [...wideFiles].every((f) => !under(f, narrow.cwd) || narrowFiles.has(f));
+  if (wide === null || !covered) {
+    return `keep each test file in one project: narrow the include of pytest project "${(wide ?? b).name}" or add the shared files to its exclude`;
+  }
   return `add "${posix.relative(wide.cwd, narrow.cwd)}/**" to the exclude of pytest project "${wide.name}"`;
 }
 

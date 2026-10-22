@@ -48,7 +48,8 @@ describe("the plan on a repository shaped like toolkit-dev", () => {
     expect(lines(stdout)).toContain("Runners: pytest root, pytest plugin-tools-a");
     const named = lines(stdout).filter((line) => line.includes("tools/generator"));
     expect(named).toHaveLength(1);
-    expect(named[0]).toMatch(/^ {2}not run: /);
+    // Review 0.1.263 N1: the prefix says "not run" once.
+    expect(named[0]).toMatch(/^ {2}not run: Vitest in tools\/generator: Squeal loads/);
     expect(named[0]).toContain("loads Vitest from the root only");
     expect(named[0]).toContain("projects name tools/generator");
     expect(named[0]).toContain("vitest to the root package.json");
@@ -106,6 +107,19 @@ describe("the plan on a repository shaped like toolkit-dev", () => {
         projects: ["root", "plugin-tools-a"],
         testFiles: 2,
         fix: 'add "plugin-tools/a/**" to the exclude of pytest project "root"',
+      },
+    ]);
+  });
+
+  it("never offers a directory exclude that drops files only the outer project selects", async () => {
+    // Review 0.1.263 B1: plugin-tools/a/integration is the root's alone; excluding
+    // "plugin-tools/a/**" from the root would stop running it anywhere.
+    const root = toolkitShaped({ "plugin-tools/a/integration/test_flow.py": "\n" });
+    expect((await planJson(root)).runners.pytestOverlaps).toEqual([
+      {
+        projects: ["root", "plugin-tools-a"],
+        testFiles: 2,
+        fix: 'keep each test file in one project: narrow the include of pytest project "root" or add the shared files to its exclude',
       },
     ]);
   });
