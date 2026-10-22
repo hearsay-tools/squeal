@@ -22,6 +22,7 @@ import {
   recordHarness,
   sameHarness,
 } from "./harness-process.js";
+import { tellHolds } from "./hold-told.js";
 import { leavingMarks, markLeaving } from "./leaving.js";
 import { tellLiveness, tellRevision } from "./liveness.js";
 import { park } from "./registered.js";
@@ -206,6 +207,7 @@ function forget(store: Store, consumer: Consumer): void {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
   tellSlowTier(store, consumer, undefined);
+  tellHolds(store, consumer, null);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
   recordVersion(store, consumer, null);
