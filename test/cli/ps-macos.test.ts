@@ -44,7 +44,6 @@ async function ps(args: string[], tables: readonly (string | null)[]) {
       if (command === "env") return tables[calls++] ?? null;
       if (command === "vm_stat") return fixture("vm_stat.txt");
       if (command === "sysctl") return fixture("swapusage.txt");
-      if (command === "lsof") return fixture("lsof-cwd.txt");
       throw new Error(`unexpected command: ${command}`);
     },
     now: window.now,

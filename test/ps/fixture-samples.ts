@@ -121,14 +121,12 @@ export function fakeSource(
       return byPid.get(pid)?.memory ?? null;
     },
     fds: () => null,
-    cwds: () => null,
     locks() {
       count("locks");
       return options.locks ?? null;
     },
     fileKey: (path) => options.fileKeys?.[path] ?? null,
     unixListeners: () => null,
-    unixSockets: () => [],
     pidNamespace: () => null,
     host() {
       count("host");

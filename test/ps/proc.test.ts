@@ -175,16 +175,6 @@ describe("per-process reads", () => {
     expect(source.fds(99999)).toBeNull();
   });
 
-  test("cwds gives each readable working directory and leaves out the rest", () => {
-    const cwds = source.cwds([349493, 2091490, 2, 99999]);
-    expect(cwds).toEqual(
-      new Map([
-        [349493, "/home/user/projects/alpha/.git/squeal"],
-        [2091490, "/home/user/projects/beta"],
-      ]),
-    );
-  });
-
   test("a process that leaves between the table and the next read reads as null, never a throw", () => {
     expect(source.processTable().has(2353452)).toBe(true);
     rmSync(join(root, "proc", "2353452"), { recursive: true });
@@ -192,7 +182,6 @@ describe("per-process reads", () => {
     expect(source.markOf(2353452)).toBeNull();
     expect(source.memory(2353452)).toBeNull();
     expect(source.fds(2353452)).toBeNull();
-    expect(source.cwds([2353452])?.size ?? 0).toBe(0);
     expect(source.processTable([2353452]).size).toBe(0);
   });
 });
@@ -229,29 +218,6 @@ describe("locks and listeners", () => {
 
   test("unixListeners is null without ss", () => {
     expect(createProcSource({ root, run: () => null }).unixListeners()).toBeNull();
-  });
-
-  test("unixSockets gives every bound name of /proc/net/unix, datagram and unconnected included, and is null without it (B2)", () => {
-    writeFileSync(
-      join(root, "proc", "net", "unix"),
-      [
-        "Num       RefCount Protocol Flags    Type St Inode Path",
-        "0000000000000000: 00000002 00000000 00010000 0001 01 205499193 /tmp/squeal-1000/tmp/1e2484abf6bcdf96/cez ci/ipc",
-        "0000000000000000: 00000002 00000000 00000000 0002 01  7519 /tmp/squeal-1000/tmp/00000000000000aa/dgram",
-        "0000000000000000: 00000003 00000000 00000000 0001 03 1057291940",
-        "0000000000000000: 00000002 00000000 00010000 0001 01 1057291937 @/tmp/.X11-unix/X0",
-        "0000000000000000: 00000002 00000000 00000000 0005 01 44012 relative.sock",
-        "",
-      ].join("\n"),
-    );
-    expect(source.unixSockets()).toEqual([
-      "/tmp/squeal-1000/tmp/1e2484abf6bcdf96/cez ci/ipc",
-      "/tmp/squeal-1000/tmp/00000000000000aa/dgram",
-      "@/tmp/.X11-unix/X0",
-      "relative.sock",
-    ]);
-    unlinkSync(join(root, "proc", "net", "unix"));
-    expect(source.unixSockets()).toBeNull();
   });
 
   test("fileKey is null for a missing file", () => {

@@ -19,7 +19,7 @@ import { type FixtureRepo, makeRepo } from "../ps/fixture-stores.js";
 
 /*
  * Spec 014 D1 and goal 5 (task 014-11): `squeal ps [--repo] [--full]
- * [--json]` and `squeal ps --leftovers`, over a fixture host: every option,
+ * [--json]`, over a fixture host: every option,
  * and exit 0 without a flag, 1 with any, 2 on a usage error and 3 on a
  * platform it does not cover. The source, the wait and the flags are
  * injected, so no test reads this host or sleeps 2 s.
@@ -42,14 +42,12 @@ afterEach(() => {
   rmSync(host.base, { recursive: true, force: true });
 });
 
-const LEFTOVER = "/tmp/squeal-1000/tmp/0123456789abcdef";
-/** One flag on beta's daemon, and a leftover. */
+/** One flag on beta's daemon. */
 const oneFlag: Flag = (model) => ({
   ...noFlags(model),
   daemons: new Map([
     [810, [{ flag: "past-idle", reason: "unused for 2 h", command: "squeal stop /b" }]],
   ]),
-  leftovers: [LEFTOVER, `${LEFTOVER}0`],
 });
 
 async function ps(args: string[], o: { cwd?: string; options?: PsCommandOptions } = {}) {
@@ -156,19 +154,11 @@ describe("squeal ps", () => {
     expect(brief.stdout).toContain("--full names each");
   });
 
-  test("--leftovers prints each leftover path, one per line, and nothing else, without the CPU window", async () => {
-    const { code, stdout, stderr, waits } = await ps(["--leftovers"], {
-      options: { flag: oneFlag },
-    });
-    expect([code, stderr]).toEqual([0, ""]);
-    expect(stdout).toBe(`${LEFTOVER}\n${LEFTOVER}0\n`);
-    expect(waits).toEqual([0]);
-  });
-
   test.each([
     [["--watch"], 'unknown option "--watch"'],
-    [["--leftovers", "--json"], "--leftovers prints the leftover paths and nothing else"],
-    [["--repo", "--leftovers"], "--leftovers prints the leftover paths and nothing else"],
+    // Dropped with `leftover-temp` (the human, 2026-10-22).
+    [["--leftovers"], 'unknown option "--leftovers"'],
+    [["--repo", "--leftovers"], 'unknown option "--leftovers"'],
     [["status"], 'unknown option "status"'],
   ])("%j is a usage error, exit 2", async (args, problem) => {
     const { code, stdout, stderr, waits } = await ps(args);
@@ -260,14 +250,7 @@ describe("squeal ps", () => {
   });
 });
 
-describe("squeal ps with the real flags (reviews/wave-2.md B1, B2)", () => {
-  test("--leftovers lists the unused directories, never one a process works in or names in an argument", async () => {
-    const rules = writeHostRules(host);
-    const { code, stdout, stderr } = await ps(["--leftovers"], { options: { flag: realFlag } });
-    expect([code, stderr]).toEqual([0, ""]);
-    expect(stdout).toBe(rules.leftovers.map((path) => `${path}\n`).join(""));
-  });
-
+describe("squeal ps with the real flags (reviews/wave-2.md B1)", () => {
   test("--json has the waiter whose parent is gone as an orphan, not the one whose parent lives", async () => {
     const rules = writeHostRules(host);
     const { code, stdout } = await ps(["--json"], { options: { flag: realFlag } });
@@ -276,7 +259,6 @@ describe("squeal ps with the real flags (reviews/wave-2.md B1, B2)", () => {
     expect(shape.orphans.map((o) => [o.pid, o.flags.map((f) => f.flag)])).toEqual([
       [rules.goneParent, ["orphan-waiter"]],
     ]);
-    expect(shape.files.find((f) => f.flag === "leftover-temp")?.count).toBe(rules.leftovers.length);
   });
 });
 
@@ -295,11 +277,11 @@ describe("its main entry", () => {
     };
   };
 
-  test("squeal ps --help prints both usages and exits 0 without a snapshot", async () => {
+  test("squeal ps --help prints its usage and exits 0 without a snapshot", async () => {
     const { io: cli, out } = io();
     expect(await main(["ps", "--help"], cli)).toBe(0);
     expect(out()).toContain("squeal ps [--repo] [--full] [--json]");
-    expect(out()).toContain("squeal ps --leftovers");
+    expect(out()).not.toContain("--leftovers");
     expect(out()).not.toContain("squeal stop");
   });
 

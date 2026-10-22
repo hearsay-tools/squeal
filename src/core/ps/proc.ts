@@ -123,15 +123,6 @@ class ProcSource implements PsSource {
     return targets;
   }
 
-  cwds(pids: readonly number[]): ReadonlyMap<number, string> {
-    const cwds = new Map<number, string>();
-    for (const pid of pids) {
-      const cwd = this.#link(`${pid}/cwd`);
-      if (cwd !== null) cwds.set(pid, cwd);
-    }
-    return cwds;
-  }
-
   locks(): readonly LockEntry[] | null {
     const text = this.#read("locks");
     if (text === null) return null;
@@ -181,15 +172,6 @@ class ProcSource implements PsSource {
       listeners.push({ path, socketInode: Number(socketInode), fileInode: Number(fileInode) });
     }
     return listeners;
-  }
-
-  unixSockets(): readonly string[] | null {
-    const text = this.#read("net/unix");
-    if (text === null) return null;
-    // `Num RefCount Protocol Flags Type St Inode Path`: only a bound socket has the path, after its inode.
-    return text
-      .split("\n")
-      .flatMap((line) => /^\s*[0-9a-f]+:(?:\s+[0-9A-F]+){5}\s+\d+ (.+)$/.exec(line)?.[1] ?? []);
   }
 
   pidNamespace(): string | null {
