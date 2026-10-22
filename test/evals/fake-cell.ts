@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { leftoverProcesses } from "../../evals/lib/index.mjs";
+import { cellProcesses, killCellProcess, startOf } from "./cell-processes.js";
 
 export const TOKEN = "made-up-anthropic-token-0123456789abcdef";
 export const PROXY_KEY = "made-up-proxy-key-0123456789abcdefghij";
@@ -39,27 +39,26 @@ const write = (p: string, s: string, mode?: number) => {
  * teardown and the test's own stopped it. A runner killed, a runner that crashed because its root
  * was removed under it, or a test process killed with its cancelled run, each left one running
  * with nothing to stop it: two for over an hour (014 lessons, P10). So it ends by itself
- * (014-32): once its root is gone, or once the test process that made the cell (`FAKE_OWNER`) has
- * ended. That process is known by its start time, so a pid reused meanwhile does not keep the
- * daemon alive.
+ * (014-32): once its root is gone, or once the test process that made the cell has ended.
+ * `FAKE_OWNER` names that process as `<pid>:<start time>` (`startOf`), so an owner gone before
+ * the daemon starts, a zombie, or a later process given its pid ends it too (review B4).
  */
 export const FAKE_DAEMON = `{
   const { existsSync, readFileSync } = await import("node:fs");
-  const owner = Number(process.env.FAKE_OWNER);
-  // The owner's start time while it runs; null once it has ended or waits as a zombie.
+  const [owner, start] = (process.env.FAKE_OWNER ?? "").split(":");
+  // startOf's reading: the owner's start time while it runs; null once it has ended or is a zombie.
   const life = () => {
     try {
       const stat = readFileSync("/proc/" + owner + "/stat", "utf8");
       const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
       return fields[0] === "Z" || fields[0] === "X" ? null : fields[19];
     } catch {
-      try { process.kill(owner, 0); return "alive, no /proc"; } catch { return null; }
+      return null;
     }
   };
-  const born = owner > 0 ? life() : null;
-  setInterval(() => {
-    if (!existsSync(root) || (born !== null && life() !== born)) process.exit(0);
-  }, 500);
+  const ended = () => !existsSync(root) || (owner !== "" && life() !== start);
+  if (ended()) process.exit(0);
+  setInterval(() => ended() && process.exit(0), 500);
 }`;
 
 const FAKE_SQUEAL = `import { spawn } from "node:child_process";
@@ -203,6 +202,7 @@ export function fakeRoot(): FakeRoot {
   );
   const log = join(dir, "log");
   mkdirSync(log);
+  const start = startOf(process.pid);
   const env = {
     PATH: `${hostBin}:${bin}:${join(dir, "node")}:/usr/bin:/bin`,
     HOME: join(dir, "home"),
@@ -210,7 +210,8 @@ export function fakeRoot(): FakeRoot {
     ANTHROPIC_AUTH_TOKEN: TOKEN,
     FAKEPROXY_API_KEY: PROXY_KEY,
     FAKE_LOG: log,
-    FAKE_OWNER: String(process.pid), // the test process: its cells' fake daemons end with it
+    // The test process, by its start time: its cells' fake daemons end with it (FAKE_DAEMON).
+    ...(start === null ? {} : { FAKE_OWNER: `${process.pid}:${start}` }),
   };
   return { dir, root, log, env, commit };
 }
@@ -247,19 +248,11 @@ export function runCell(
 }
 
 /**
- * Tears a fake root down (014-32): kills every process whose command line names a path under it,
- * its fake daemons and harnesses whatever their logs hold, then removes it, a locked cell too. A
- * runner still running, as after a test's timeout, fails on its missing root; its fake daemon
- * ends by itself (`FAKE_DAEMON`).
+ * Tears a fake root down (014-32): kills the processes it owns (`cellProcesses`), its runner, its
+ * session and its fake daemons whatever their logs hold, then removes it, a locked cell too.
  */
 export function removeRoot(f: FakeRoot): void {
-  for (const { pid } of leftoverProcesses(f.dir)) {
-    try {
-      process.kill(pid, "SIGKILL");
-    } catch {
-      // It ended after the scan.
-    }
-  }
+  for (const p of cellProcesses(f)) killCellProcess(p);
   if (existsSync(f.dir)) execFileSync("chmod", ["-R", "u+w", f.dir]);
   rmSync(f.dir, { recursive: true, force: true });
 }
