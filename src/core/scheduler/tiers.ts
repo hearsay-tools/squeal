@@ -10,6 +10,7 @@ import { WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { rerunGrown } from "./environment-growth.js";
 import type { FileState } from "./files.js";
+import { healsUnheld } from "./hold.js";
 import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
 import { priorityOf } from "./queue.js";
@@ -699,7 +700,9 @@ export function recordTier(
       });
       // 011-64 R3 (row 011-77, gh-54): a failing row a pass replaces here is kept as history.
       const failing = store.failures.failingAt(storeKey);
-      const prior = storeResults(context, records);
+      // Review 0.1.266, B1: a worktree whose merge hold names the stored key's inputs takes no heal.
+      const inputs = [...entry.inputs, ...(growth?.growth ?? [])];
+      const prior = storeResults(context, records, healsUnheld(store, inputs));
       recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
       store.failures.keepReplaced(failing, records, (run) => readRunLoads(store).get(run) ?? null);
       if (forced && file.rerunKey === key) endRerun(context, file);
