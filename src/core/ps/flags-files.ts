@@ -2,9 +2,9 @@ import { join } from "node:path";
 import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
 import { storePaths } from "../store/index.js";
 import type { AbsolutePath } from "../types/index.js";
-import { dateOf, shellQuote } from "./flags-text.js";
 import type { PsModel, PsPlaces } from "./model.js";
 import { lstatOrNull, names } from "./reads.js";
+import { dateOf, shellQuote } from "./render-units.js";
 import type { PsFileFlag, PsUnflaggedFiles, PsUnflaggedKind, PsUnknown } from "./shape.js";
 
 /*

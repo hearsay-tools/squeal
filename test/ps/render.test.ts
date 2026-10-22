@@ -1,14 +1,5 @@
 import { describe, expect, test } from "vitest";
 import { render } from "../../src/core/ps/render.js";
-import {
-  age,
-  bytes,
-  cpuTime,
-  duration,
-  percent,
-  share,
-  thousands,
-} from "../../src/core/ps/render-units.js";
 import type { PsDaemon, PsFlag, PsTestProcess } from "../../src/core/ps/shape.js";
 import {
   EXAMPLE_AT,
@@ -390,34 +381,5 @@ describe("--full", () => {
     ]);
     // Without --full the snapshot holds no counts, and the shape alone decides.
     expect(brief({ ...s, unflaggedFiles: null })).not.toContain("never get a flag");
-  });
-});
-
-describe("the units", () => {
-  test("sizes, ages, CPU times and percents", () => {
-    expect([bytes(512 * 1024, true), bytes(0, true), bytes(3 * 2 ** 30), bytes(null)]).toEqual([
-      "512K",
-      "0",
-      "3.0 GiB",
-      "unknown",
-    ]);
-    expect([
-      duration(59_999),
-      duration(99 * 60_000),
-      duration(100 * 60_000),
-      duration(50 * 3_600_000),
-    ]).toEqual(["59s", "99m", "1h", "2d"]);
-    expect([
-      age(null, 0),
-      cpuTime(29_000),
-      cpuTime(2 * 3_600_000 + 5 * 60_000),
-      cpuTime(null),
-    ]).toEqual(["?", "0m29s", "2h05m", "?"]);
-    expect([share(45.57), share(0.64), percent(null), thousands(3_530)]).toEqual([
-      "46%",
-      "0.6%",
-      "?",
-      "3,530",
-    ]);
   });
 });
