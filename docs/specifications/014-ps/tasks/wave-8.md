@@ -18,7 +18,7 @@ Use /worker. Shape: slice. **Outcome:** `work.ts` defines no meta decoder. **Rea
 
 ## 014-42 and 014-43, one worker
 
-Use /worker. Shape: slice. Starts on the integration branch once 014-45 is on it and 011's wave 12 (0.1.261) is on main, rebased onto that main: 0.1.261 rewrites `src/harness/shared/ensure.ts` and changes the lock wait in `src/core/daemon/open.ts` (011-32), so 014-43 (h) reads the lock waits as they stand after it (04a258b0, 2026-10-22). **Outcome:** one reader of the installed Squeal versions (014-42), and no restated name or bound in `src/core/ps` (014-43 (c) to (h); (a) and (b) went with the drop). **Read:** `quality/2026-10.md` rows 014-42 and 014-43. **Owns:** the files those rows name, and spec D7's `no-lock` line. **Done when:** both rows' done-whens.
+Use /worker. Shape: slice. Starts on the integration branch once 014-45 is on it and 011's wave 12 (0.1.261) is on main, rebased onto that main: 0.1.261 rewrites `src/harness/shared/ensure.ts` and changes the lock wait in `src/core/daemon/open.ts` (011-32), so 014-43 (h) reads the lock waits as they stand after it (04a258b0, 2026-10-22). Its `src/cli/setup/harnesses.ts` edit (014-42) also waits for 005's wave 10 (rows 005-78 to 005-80, coordinator 7c21a5ae), which owns `src/cli/setup/**`: start from a main that holds it. **Outcome:** one reader of the installed Squeal versions (014-42), and no restated name or bound in `src/core/ps` (014-43 (c) to (h); (a) and (b) went with the drop). **Read:** `quality/2026-10.md` rows 014-42 and 014-43. **Owns:** the files those rows name, and spec D7's `no-lock` line. **Done when:** both rows' done-whens.
 
 ## 014-46 review of wave 8
 
