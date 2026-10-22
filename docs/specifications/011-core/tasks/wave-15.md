@@ -43,3 +43,16 @@ Seam: as R1 names it: `readHead` in `src/core/daemon-loop/head.ts`, a new `src/c
 Owns: those files and their tests, notes under `tasks/011-72/`. Not yours: `src/core/status/`, `src/core/delivery/`, `src/cli/` (011-73 and 011-74), `src/core/store/` but for the types (W1), `sharing.ts`, `yields.ts` and tier selection in `tiers.ts` (W2), the board, spec text, bundles, version. No `npm run build`.
 
 Done when: R1's tests 1 to 10 pass; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+## R1: review of cand/0.1.266
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.266` SHA named in the spawn; the range is `origin/main..<sha>`: W1's three commits (011-113, one by agreement in `src/core/delivery/attribution.ts`), W3's three (011-72), W2's two (011-112, one by agreement in `scheduler.ts`), one docs commit (011 C4, C6, C15 and `status.md`) and the release commit (0.1.266, bundles).
+
+Read W1 to W3 above, the notes under `tasks/011-113/`, `tasks/011-72/` and `tasks/011-112/`, board rows 011-113, 011-72 and 011-112, `tasks/011-61/design.md` sections 1 and 4, `reviews/0.1.265.md` S1, and the amended spec sentences. Check that:
+- 011-113: no status, `failures` or `why` read writes; a read SQLite answers busy at once is retried in a new transaction within its bound; no other read path still writes; the daemon's write paths keep their bounds;
+- 011-72: R1's tests 1 to 10 hold, the race stores nothing and no `unknown` follows a withhold; judge the store view in `hold.ts` that hides results at held keys during the known-state refresh, against an explicit parameter off the validity path, and the gate's place in `Ledger.settle`;
+- 011-112: a tier that yields past its estimate gives the promoted or edited file a tier without the cut files, for unknown, sub-second and 2 s / 5 s durations; remainder cuts still share (row 011-51's case 2); once-per-key and slot limits hold;
+- `#pump` holds both W3's gate and W2's argument;
+- `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is 0.1.266 in all eight places; the bundles match the tree; the four launchers are byte-identical.
+
+Run `npm ci`, then the test files W1 to W3 added or changed, directly. The full suite is CI on the candidate and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-w15.log`); a gate log names only failing files. Rows 011-111 and 006-95 are known flakes. Write `reviews/0.1.266.md` with a PASS or FAIL verdict and commit it alone.
