@@ -7,6 +7,7 @@ import {
   claimHandoff,
   handoffFrom,
   liveHandoff,
+  readHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../../core/delivery/handoff.js";
 import {
@@ -15,7 +16,15 @@ import {
   worktreeLiveness,
 } from "../../core/delivery/liveness.js";
 import { stopHolds } from "../../core/delivery/stopped.js";
-import type { DaemonRecord, EnsureDaemonResult, EpochMs } from "../../core/types/index.js";
+import { shutDown } from "../../core/status/died.js";
+import {
+  type DaemonRecord,
+  daemonIncarnation,
+  type EnsureDaemonResult,
+  type EpochMs,
+  type Store,
+  type WorktreeId,
+} from "../../core/types/index.js";
 import type { HookContext, HookLocation } from "./context.js";
 import type { HookDeps } from "./hook.js";
 
@@ -97,14 +106,18 @@ export async function ensureIfStale(
 
 /**
  * Row 011-32 (C9 as amended 2026-10-20): one successor per handoff. When
- * this hook would ask the daemon to step down (`asksStepDown`) and a live
- * claim names it (`liveHandoff`), it asks nothing: `joined`. Otherwise it
- * asks (`requestStepDown`), and on acceptance claims the handoff in one
- * write transaction: `claimed` when the claim is its own, `joined` when
- * another hook's came first. A store that stays busy past the hook's
- * timeout takes no claim, and the hook spawns as before (`claimed`): the
- * lock's winner serves and the rest exit. `none` when nothing was asked or
- * the daemon did not accept.
+ * this hook may succeed the daemon (`succeeds`) and a live claim names it
+ * (`liveHandoff`), it asks nothing: `joined`. Otherwise, with the heartbeat
+ * fresh, it asks (`requestStepDown`), and on acceptance claims the handoff
+ * in one write transaction: `claimed` when the claim is its own, `joined`
+ * when another hook's came first. With the heartbeat stopped, which a
+ * stepping daemon's is long before the claim's bound, it asks nothing and
+ * claims only when the daemon already steps down (`steppingDown`), so the
+ * next boundary after the bound or a timed-out lock wait spawns again
+ * (review 0.1.259, B1). A store that stays busy past the hook's timeout
+ * takes no claim, and the hook spawns as before (`claimed`): the lock's
+ * winner serves and the rest exit. `none` when nothing was asked or the
+ * daemon did not accept.
  */
 async function handOver(
   context: HookContext,
@@ -114,17 +127,33 @@ async function handOver(
   const now = deps.now ?? Date.now;
   const version = deps.squealVersion ?? squealVersion();
   const others = otherSessionVersions(context.store, context.consumer);
-  if (record === null || !asksStepDown(record, now(), version, others)) return "none";
+  if (record === null || !succeeds(record, version, others)) return "none";
   const id = context.consumer.worktreeId;
   const from = handoffFrom(record);
-  if (liveHandoff(context.store, id, from, now()) !== null) return "joined";
-  if (!(await requestStepDown(record, version))) return "none";
+  const at = now();
+  if (liveHandoff(context.store, id, from, at) !== null) return "joined";
+  if (daemonLiveness(record, at).state === "alive") {
+    if (!(await requestStepDown(record, version))) return "none";
+  } else if (!steppingDown(context.store, id, record)) {
+    return "none";
+  }
   try {
     const claim = claimHandoff(context.store, id, { from, to: version, at: now() });
     return claim === null ? "joined" : "claimed";
   } catch {
     return "claimed";
   }
+}
+
+/**
+ * Whether `record`'s daemon took a step-down already: its shutdown began
+ * (`shutDown`, every release from 0.1.121), or a claim names it, past its
+ * bound now, which only an accepted step-down writes.
+ */
+function steppingDown(store: Store, worktreeId: WorktreeId, record: DaemonRecord): boolean {
+  const self = daemonIncarnation(record);
+  if (self !== null && shutDown(store, worktreeId, self)) return true;
+  return readHandoff(store, worktreeId)?.from === handoffFrom(record);
 }
 
 /**
@@ -182,11 +211,21 @@ function asksStepDown(
   version: string,
   others: readonly (string | null)[],
 ): boolean {
+  return succeeds(record, version, others) && daemonLiveness(record, now).state === "alive";
+}
+
+/**
+ * Whether a hook at `version` may succeed `record`'s daemon: it is newer,
+ * and no other session's consumer runs an older version or none (review
+ * wave 12b, B1).
+ */
+function succeeds(
+  record: DaemonRecord,
+  version: string,
+  others: readonly (string | null)[],
+): boolean {
   if (!isNewerVersion(version, record.squealVersion)) return false;
-  if (!others.every((other) => other === version || isNewerVersion(other ?? "", version))) {
-    return false;
-  }
-  return daemonLiveness(record, now).state === "alive";
+  return others.every((other) => other === version || isNewerVersion(other ?? "", version));
 }
 
 /** `stepDownIfOlder`'s requests, once it asks. */
