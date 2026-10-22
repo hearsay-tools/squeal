@@ -103,10 +103,20 @@ export interface SchedulerOptions {
   readonly busyWaits?: BusyWaits;
   /**
    * The install went under the running scheduler (a reinstall, task
-   * 001-113): it stores nothing more. Persist `note` and close; the next
-   * daemon starts fresh. Without it the scheduler persists the note itself.
+   * 001-113): it stores nothing more. Or the daemon's own runtime went
+   * (`runtimeDir`, row 011-106): it starts no tier. Persist `note` and close;
+   * the next daemon starts fresh. Without it the scheduler persists the note
+   * itself.
    */
   readonly onReinstall?: (note: string) => void;
+  /**
+   * The daemon's own module directory (row 011-106): before each tier and
+   * when a tier ends the scheduler checks it is there. Once it is gone, no
+   * tier starts, the files stay queued for the next daemon, a tier that ran
+   * meanwhile is queued again once per key, and `onReinstall` gets
+   * `runtimeGoneNote`. Absent: never checked.
+   */
+  readonly runtimeDir?: AbsolutePath;
   /**
    * The daemon's stop began (its phase is `stopping`), which it sets before
    * the scheduler's close: no tier starts, and a tier that crashes then is an
