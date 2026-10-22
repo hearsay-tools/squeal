@@ -1,10 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
-import type { CliIo } from "../../src/cli/main.js";
-import { startCommand } from "../../src/cli/start.js";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import {
@@ -26,6 +24,7 @@ import {
   waitFor,
   withStore,
 } from "./helpers.js";
+import { spawnLog, startIn } from "./start-helpers.js";
 import { stepDownKit } from "./step-down-helpers.js";
 
 /*
@@ -63,35 +62,6 @@ function slowTest(ms: number): { files: Record<string, string>; started: string 
     "",
   ].join("\n");
   return { files: { "test/slow.test.ts": test }, started };
-}
-
-/** `startCommand` in this process, spawning `cli`, with `bounds`; its code and output. */
-async function startIn(
-  repo: FixtureRepo,
-  bounds: Parameters<typeof startCommand>[2],
-  cli = suite.cli,
-) {
-  let stdout = "";
-  let stderr = "";
-  const io: CliIo = {
-    stdout: (text) => {
-      stdout += text;
-    },
-    stderr: (text) => {
-      stderr += text;
-    },
-    cwd: repo.root,
-    env: repo.env,
-  };
-  // The CLI it spawns, and where it finds the socket: the fixture's, not this test runner's.
-  const saved = process.env;
-  process.env = { ...repo.env, SQUEAL_CLI: cli };
-  try {
-    const code = await startCommand([], io, bounds);
-    return { code, stdout, stderr };
-  } finally {
-    process.env = saved;
-  }
 }
 
 /** The arguments `ps` shows for process `pid`. */
@@ -143,11 +113,8 @@ describe.runIf(hasPreCancel)("squeal start with a stopping daemon (row 011-34)",
     const repo = suite.fixture(slow.files);
     const { old, process: holder } = await stoppingWithItsTier(repo, slow.started);
 
-    const { code, stdout, stderr } = await startIn(repo, {
-      socketMs: 2_000,
-      lockMs: 1_000,
-      leftoversMs: 0,
-    });
+    const bounds = { socketMs: 2_000, lockMs: 1_000, leftoversMs: 0 };
+    const { code, stdout, stderr } = await startIn(repo, bounds, suite.cli);
     expect(code, stdout).toBe(1);
     expect(stderr).toMatch(
       new RegExp(
@@ -182,11 +149,8 @@ describe.runIf(process.platform === "linux")(
       sockets.push(repo.socketPath);
 
       // Bounds far below the claim's: a start that only joined the claim would wait them out.
-      const { code, stdout, stderr } = await startIn(repo, {
-        socketMs: 20_000,
-        lockMs: 5_000,
-        leftoversMs: 0,
-      });
+      const bounds = { socketMs: 20_000, lockMs: 5_000, leftoversMs: 0 };
+      const { code, stdout, stderr } = await startIn(repo, bounds, suite.cli);
       expect(code, stderr).toBe(0);
       expect(stdout).toMatch(
         /^Squeal daemon started for .*, after the 0\.1\.0 daemon handed over in \d+\.\d s\n/,
@@ -199,26 +163,6 @@ describe.runIf(process.platform === "linux")(
     });
   },
 );
-
-/** A CLI that only appends its arguments to `log`, one JSON line for each daemon spawned. */
-function spawnLog(): { cli: string; spawns: () => string[][] } {
-  const base = `/tmp/sq-start-${randomUUID()}`;
-  const log = `${base}.log`;
-  writeFileSync(
-    `${base}.mjs`,
-    `import { appendFileSync } from "node:fs";\nappendFileSync(${JSON.stringify(log)}, JSON.stringify(process.argv.slice(2)) + "\\n");\n`,
-  );
-  suite.cleanup(() => rmSync(`${base}.mjs`, { force: true }));
-  suite.cleanup(() => rmSync(log, { force: true }));
-  const spawns = () =>
-    existsSync(log)
-      ? readFileSync(log, "utf8")
-          .trim()
-          .split("\n")
-          .map((line) => JSON.parse(line) as string[])
-      : [];
-  return { cli: `${base}.mjs`, spawns };
-}
 
 describe.runIf(process.platform === "linux")(
   "squeal start when the successor registers while it starts (row 011-110)",
@@ -289,7 +233,7 @@ describe.runIf(process.platform === "linux")(
           });
           pings[0] = answer(next, "ready");
         });
-        const { cli, spawns } = spawnLog();
+        const { cli, spawns } = spawnLog(suite);
 
         const { code, stdout, stderr } = await startIn(
           repo,
