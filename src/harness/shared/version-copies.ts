@@ -10,7 +10,8 @@ import {
   renameSync,
   rmSync,
 } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { homedir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
 import { isNewerVersion } from "../../core/daemon/version.js";
 
 /*
@@ -30,6 +31,13 @@ const SKILL = join("skills", "squeal", "SKILL.md");
 const LAUNCHER_SOURCE = join("bin", "squeal-launcher");
 const LAUNCHER = join("bin", "squeal");
 const VERSION = /^\d+\.\d+\.\d+$/;
+/**
+ * Squeal's plugin cache and data directory under a Codex home, as the
+ * launcher finds the cache and Codex 0.160.1 names the data directory to
+ * hooks (`research/plugin-cache-cleanup.md` 2).
+ */
+const CODEX_CACHE = join("plugins", "cache", "hearsay", "squeal");
+const CODEX_DATA = join("plugins", "data", "squeal-hearsay");
 /**
  * A copy in the making, `.<version>.<pid>.tmp`, renamed into place when
  * whole, or one being removed, `.<name>.<pid>.gone`: left behind only by a
@@ -113,6 +121,26 @@ export function keepVersion({ root, data, version }: KeepOptions): string | null
   } catch {
     return null;
   }
+}
+
+/**
+ * Row 005-77: the CLI to spawn a daemon from when the CLI `cli` runs from
+ * Codex's plugin cache, as the launcher runs it before any session of its
+ * version kept a copy. That is `version`'s copy in Codex's plugin data
+ * directory, kept now (`keepVersion`), so Codex's install of another version
+ * deletes the cache directory, not the daemon's runtime. `cli` itself for a
+ * CLI elsewhere, such as Claude Code's cache, or when no copy could be made.
+ */
+export function keptCacheCli(
+  cli: string,
+  version: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): string {
+  const codex = resolve(env.CODEX_HOME || join(env.HOME || homedir(), ".codex"));
+  const root = dirname(dirname(dirname(cli)));
+  if (!cli.endsWith(`/${CLI}`) || dirname(root) !== join(codex, CODEX_CACHE)) return cli;
+  const data = join(codex, CODEX_DATA);
+  return keepVersion({ root, data, version }) === null ? cli : (keptCli(data, version) ?? cli);
 }
 
 /** `<data>/bin/squeal` from the plugin's launcher: when missing, or from the newest copy. */
