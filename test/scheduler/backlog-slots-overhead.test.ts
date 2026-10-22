@@ -3,36 +3,43 @@ import { type SlotHarness, slotHarness, testPath } from "./slots-fixture.js";
 
 /*
  * Task 011-21 slice 2, done-when 3 (`research/streaming-lanes.md` finding 1,
- * "Per-file overhead", and test 6): a slot costs a selection, a record, a
- * pool acquisition and a `node` start, which a tier pays once for all its
- * files but the start. 300 node:test files that each spin about 50 ms run
- * a forced pass in at most 1.2 times the time one backlog tier of them
- * takes, and the slots that end while a record gathers or holds the lock
- * share its commit: fewer sink commits than files. Each commit holds the
- * thread 55 ms, the least a sink call took on cezar's store, so a commit per
- * slot, 16.5 s of them, would not fit: one per slot with no gather took 1.39
- * times at 50 ms. One harness alternates the two, tier first, and each is
- * its best of two rounds, so a load that moves between passes moves both.
+ * "Per-file overhead", and test 6), as task 011-99 measures it: a slot costs
+ * a selection, a record, a pool acquisition and a `node` start, which a tier
+ * pays once for all its files but the start. 300 node:test files that each
+ * spin about 50 ms run a forced pass in slots, and the daemon's CPU per file
+ * there is at most 5 times its CPU per file in one backlog tier of them; the
+ * slots that end while a record gathers or holds the lock share its commit:
+ * fewer sink commits than files. Each commit holds the thread 55 ms, the
+ * least a sink call took on cezar's store. The CPU is the daemon's own
+ * (`process.cpuUsage()`, the files run in their own processes), net of those
+ * busy-waits, so a slower CPU moves both passes, and a busy host moves it far
+ * less than their clocks: the wall-clock ratio this test bounded at 1.2
+ * failed on main, alone and at 2 CPUs (1.21 to 1.26), and at slice 2's own
+ * commit (1.40; 011-99). One harness alternates the two, tier first, and each
+ * is its best of two rounds.
  */
 const FILES = 300;
 const APPLY_MS = 55;
 const ROUNDS = 2;
 
-async function forcedPass({ h, runs }: SlotHarness) {
-  const before = { runs: runs.length, commits: h.sink.calls.length };
+async function forcedPass({ h, runs, applyCpuMs }: SlotHarness) {
+  const before = { runs: runs.length, commits: h.sink.calls.length, applyCpuMs: applyCpuMs() };
+  const cpu = process.cpuUsage();
   const started = performance.now();
   await h.scheduler.requestFullSuite({ force: true });
   await h.scheduler.idle();
   const ms = performance.now() - started;
+  const used = process.cpuUsage(cpu);
+  const cpuMs = ((used.user + used.system) / 1000 - (applyCpuMs() - before.applyCpuMs)) / FILES;
   const pass = runs.slice(before.runs);
   const commits = h.sink.calls
     .slice(before.commits)
     .filter((call) => call.method === "applyResults").length;
-  return { ms, pass, commits };
+  return { ms, cpuMs, pass, commits };
 }
 
 describe("scheduler: a node:test backlog in one-file slots, per-file overhead (task 011-21 slice 2)", () => {
-  it("3. runs 300 files of about 50 ms within 1.2 times one tier's time, with fewer commits than files", {
+  it("3. runs 300 files of about 50 ms at most 5 times a tier's daemon CPU per file, with fewer commits than files", {
     timeout: 600_000,
   }, async () => {
     const files = Array.from({ length: FILES }, (_, i) => ({
@@ -63,22 +70,26 @@ describe("scheduler: a node:test backlog in one-file slots, per-file overhead (t
         .some((s) => s.check.testPath === testPath(f.name) && s.outcome === "pass"),
     );
     await h.scheduler.close();
-    const best = (passes: typeof tiers) => Math.min(...passes.map((p) => p.ms));
+    const bestCpu = (passes: typeof tiers) => Math.min(...passes.map((p) => p.cpuMs));
+    const pass = (p: (typeof tiers)[number]) =>
+      `${p.cpuMs.toFixed(1)} ms CPU a file in ${Math.round(p.ms)} ms`;
     console.log(
-      `011-21 slots: 300 files in ${slots.map((p) => `${Math.round(p.ms)} ms in ${p.pass.length} runs and ${p.commits} commits`).join(", ")}; one tier ${tiers.map((p) => `${Math.round(p.ms)} ms in ${p.pass.length} runs`).join(", ")} (best ${(best(slots) / best(tiers)).toFixed(2)} times)`,
+      `011-21 slots: 300 files at ${slots.map((p) => `${pass(p)}, ${p.pass.length} runs and ${p.commits} commits`).join("; ")}; one tier at ${tiers.map((p) => `${pass(p)}, ${p.pass.length} runs`).join("; ")} (best ${(bestCpu(slots) / bestCpu(tiers)).toFixed(2)} times)`,
     );
     expect(stored).toBe(true);
     for (const tier of tiers) expect(tier.pass).toHaveLength(1);
     for (const pass of slots) {
       expect(pass.pass).toHaveLength(FILES);
       expect(pass.pass.every((run) => run.files.length === 1)).toBe(true);
-      // Records that gather commit 71 to 148 times a pass, here and on CI; without the gather they
-      // commit 224 to 226 times (review wave-4, slice 2 overhead check).
-      expect(pass.commits).toBeLessThanOrEqual(FILES * 0.6);
     }
-    // 1.2 on this host (1.09 measured). A 4-vCPU CI runner took 1.45 (branch CI 39388147377): each
-    // slot's selection and record share its few CPUs with the files, so there the bound is 1.6,
-    // and the commit budget above is what fails records that stop gathering.
-    expect(best(slots)).toBeLessThanOrEqual(best(tiers) * (process.env.CI ? 1.6 : 1.2));
+    // Records that gather commit 71 to 148 times a pass on a light host and on CI. The fewer of two
+    // passes commits 103 to 135 times at 2 CPUs and 161 to 176 at 4 CPUs with 3 burners, but 195
+    // there at host load 57: slots that run 1 to 2 s end farther apart than a record waits, so this
+    // budget is the limit of a loaded host. Without the gather they commit 224 to 226 times on a
+    // light host, 277 to 292 at 2 CPUs (review wave-4, slice 2 overhead check; 011-99).
+    expect(Math.min(...slots.map((p) => p.commits))).toBeLessThanOrEqual(FILES * 0.6);
+    // 2.82 to 4.29 times on main at 2 CPUs and at 4 CPUs with 3 burners, 3.67 to 4.07 without the
+    // gather; 20 ms more daemon CPU a slot took it to 6.69 to 7.27 (011-99).
+    expect(bestCpu(slots)).toBeLessThanOrEqual(bestCpu(tiers) * 5);
   });
 });

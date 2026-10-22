@@ -40,6 +40,8 @@ export interface SlotHarness {
   readonly poolDir: string;
   /** Whether the backlog runs in slots from the next selection on (`SlotOptions.slots`). */
   slots(on: boolean): void;
+  /** The CPU, in ms, the sink calls' `applyMs` busy-waits have taken so far. */
+  applyCpuMs(): number;
 }
 
 export interface SlotOptions {
@@ -108,11 +110,16 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
     capacity: { dir: poolDir, hostSlots: options.hostSlots },
   });
   const applyMs = options.applyMs ?? 0;
+  let applyCpuMs = 0;
   if (applyMs > 0) {
     const apply = h.sink.applyResults.bind(h.sink);
     h.sink.applyResults = (...args) => {
+      // A busy host takes the thread from the wait, so it is measured, not taken as `applyMs`.
+      const cpu = process.cpuUsage();
       const end = performance.now() + applyMs;
       while (performance.now() < end);
+      const used = process.cpuUsage(cpu);
+      applyCpuMs += (used.user + used.system) / 1000;
       return apply(...args);
     };
   }
@@ -130,6 +137,7 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
     slots: (on) => {
       mode.slots = on;
     },
+    applyCpuMs: () => applyCpuMs,
   };
 }
 
