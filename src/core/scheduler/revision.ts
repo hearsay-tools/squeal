@@ -7,6 +7,7 @@ import type {
   TestFileRef,
 } from "../types/index.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
+import { onlyEditorScratch } from "./editor-scratch.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { unmatchedInputNotes } from "./notes.js";
@@ -26,7 +27,10 @@ export interface ContentRekey {
   readonly rekeyed: readonly TestFileRef[];
   /** An environment input changed: the runner's environment is read again. */
   readonly environment: boolean;
-  /** The revision is catch-up (`isCatchUp`): its runner part queues no edit's work either. */
+  /**
+   * The revision is catch-up (`isCatchUp`), or changed only editor scratch
+   * files (`onlyEditorScratch`): its runner part queues no edit's work either.
+   */
   readonly catchUp?: boolean;
   /**
    * The files the content part left recent: those this revision made so are
@@ -89,6 +93,11 @@ export function isCatchUp(
  * environment inputs (config, setup files, installed lockfile), so every
  * file of an affected project moves to a key with no result. Lookups and
  * queueing follow (`Ledger.settle`); the caller commits the ledger.
+ *
+ * A revision whose only changes are editor scratch files re-keys as any
+ * other, but is catch-up, so neither part queues an edit's work, and starts
+ * or restarts no lane's wait for quiet (011 C4 step 5 as amended, row
+ * 011-117).
  */
 export function rekeyContent(
   context: SchedulerContext,
@@ -98,7 +107,7 @@ export function rekeyContent(
   const { keys } = context;
   const changes = revision.changes;
   const paths = new Set(changes.map((c) => c.path));
-  const catchUp = isCatchUp(context, ledger, paths);
+  const catchUp = onlyEditorScratch(changes) || isCatchUp(context, ledger, paths);
   // First: a listing reads the tracked files as this revision left them (task 001-132).
   const touched: TestFileRef[] = keys.rekeyListings(changes).map((c) => c.testFile);
   const policy = reloadPolicy(context, ledger, changes);
@@ -110,7 +119,7 @@ export function rekeyContent(
   const inputs = changes.some((c) => keys.isEnvironmentInput(c.path));
   if (inputs) touched.push(...keys.provisionalEnvironments(changes).map((c) => c.testFile));
   const misses = ledger.settle(touched, paths, { keyedAt: revision.number, catchUp });
-  quietQueued(context, ledger, misses);
+  quietQueued(context, ledger, misses, changes);
   const recent = touched.filter((ref) => ledger.queue.isRecent(ref));
   return {
     rekeyed,
