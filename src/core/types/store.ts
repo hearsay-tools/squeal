@@ -11,7 +11,10 @@ import type {
   CheckRecord,
   ConsumerRecord,
   DaemonRecord,
+  FailingRow,
+  FailureText,
   FileHashRecord,
+  ReplacedFailure,
   ResultRecord,
   RunRecord,
   TestFileKeyRecord,
@@ -159,6 +162,23 @@ export interface FailureRepo {
   count(selection: FailureSelection): number;
   /** The checks with a failing result matching `selection`, sorted; a `--check` text is matched against their printed names. */
   failingChecks(selection: FailureSelection): readonly CheckId[];
+  /** The failing rows at `key` with their failure texts' ids, read before a run's results replace them (row 011-77). */
+  failingAt(key: CheckKey): readonly FailingRow[];
+  /**
+   * Keeps each of `failing`, the rows at a key before `records` were stored
+   * there, that a pass in `records` replaced, with the load per CPU `loadOf`
+   * gives its run (row 011-77). Inside the caller's transaction. Returns how
+   * many it kept.
+   */
+  keepReplaced(
+    failing: readonly FailingRow[],
+    records: readonly ResultRecord[],
+    loadOf: (runId: string) => number | null,
+  ): number;
+  /** Every kept replaced failure, oldest first; empty when none or unreadable. */
+  replaced(): readonly ReplacedFailure[];
+  /** A stored failure text; `null` when it was pruned. */
+  text(failureId: string): FailureText | null;
 }
 
 /** A key with results, and when its newest one was recorded (`ResultRepo.keysSince`). */

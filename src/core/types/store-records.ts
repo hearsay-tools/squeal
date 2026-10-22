@@ -143,6 +143,48 @@ export interface ResultRecord {
   readonly provenance: Provenance;
 }
 
+/** A failing `results` row at a key with its failure text's id (`FailureRepo.failingAt`). */
+export interface FailingRow {
+  readonly result: ResultRecord;
+  /** Its `failure_texts` row; `null` when it has none. */
+  readonly failureId: string | null;
+}
+
+/** A stored failure text (`FailureRepo.text`). */
+export interface FailureText {
+  readonly summary: string | null;
+  readonly errors: readonly CheckError[];
+}
+
+/** The pass that replaced a failure at its key (`ReplacedFailure.replacedBy`). */
+export interface ReplacingPass {
+  readonly runId: string;
+  readonly worktreeId: WorktreeId;
+  readonly recordedAt: EpochMs;
+}
+
+/**
+ * A failing row that a pass replaced at the same key (011 C5 as amended
+ * 2026-10-21, row 011-77; gh-54): history beside `results`, kept in the
+ * shared `meta` entry `replaced-failures`. No known state, transition,
+ * delivery, lookup or held fail reads it.
+ */
+export interface ReplacedFailure {
+  readonly check: CheckId;
+  readonly key: CheckKey;
+  /** The failing run's provenance. */
+  readonly provenance: Provenance;
+  readonly durationMs: number;
+  readonly location: SourceLocation | null;
+  readonly fingerprint: DiagnosticFingerprint | null;
+  readonly summary: string | null;
+  /** Its failure text, which prune keeps while this is kept; `null` when it had none. */
+  readonly failureId: string | null;
+  /** The load per CPU its run had (`failed-run-loads`); `null` when not recorded. */
+  readonly loadPerCpu: number | null;
+  readonly replacedBy: ReplacingPass;
+}
+
 /** Row of `runs`. Spec 001 D1: "`runs/<run-id>/`: full runner output per run, referenced from results". */
 export interface RunRecord {
   readonly id: string;
