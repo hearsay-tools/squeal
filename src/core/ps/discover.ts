@@ -1,8 +1,9 @@
 import { statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
+import { socketWorktreeId } from "../daemon/paths.js";
 import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
-import { lockFileFor, storePaths } from "../store/index.js";
+import { lockFileFor, lockFileParts, storePaths } from "../store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/index.js";
 import type { Discover, Discovery, FoundDaemon, PhaseOf, PsPlaces, SocketFile } from "./model.js";
 import { NODE_COMMS, names } from "./reads.js";
@@ -20,9 +21,6 @@ import { type LockEntry, type ProcessRow, type PsSource, ticksToMs } from "./sou
 /** `btime` is whole seconds, so a process start read from it is up to 1 s early. */
 const START_MARGIN_MS = 1_000;
 const SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
-/** `<common-dir>/squeal/locks/<id>.sqlite`; a waiter lock (`waiter-<id>`) does not match. */
-const LOCK_FILE = /^(.+)\/squeal\/locks\/([0-9a-f]{16})\.sqlite$/;
-const SOCKET_FILE = /^squeal-([0-9a-f]{16})\.sock$/;
 /** The `unknown` entry of a lock reading that cannot be read. */
 const HOLDERS = "daemon lock holders";
 /** `<plugins>/cache/<marketplace>/squeal/<version>/...`, `<plugins>` being `.../.claude/plugins` or `.../.codex/plugins`. */
@@ -180,11 +178,11 @@ interface LockOf {
   readonly lockPath: AbsolutePath | null;
 }
 
-/** D2 step 2: the daemon lock among its open files. */
+/** D2 step 2: the daemon lock among its open files, `lockFileFor`'s path; a waiter lock is none. */
 function lockFd(fds: readonly string[] | null): LockOf | null {
   for (const target of fds ?? []) {
-    const m = LOCK_FILE.exec(target);
-    if (m !== null) return { worktreeId: m[2] ?? "", commonDir: m[1] ?? "", lockPath: target };
+    const lock = lockFileParts(target);
+    if (lock !== null) return { ...lock, lockPath: target };
   }
   return null;
 }
@@ -245,8 +243,8 @@ function socketFiles(
   for (const dir of dirs) {
     if (dir === null) continue;
     for (const name of names(dir)) {
-      const worktreeId = SOCKET_FILE.exec(name)?.[1];
-      if (worktreeId === undefined) continue;
+      const worktreeId = socketWorktreeId(name);
+      if (worktreeId === null) continue;
       const path = join(dir, name);
       let stat: { ino: number; mtimeMs: number };
       try {

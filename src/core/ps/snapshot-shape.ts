@@ -1,5 +1,6 @@
 import { basename } from "node:path";
-import { storePaths } from "../store/index.js";
+import { socketWorktreeId } from "../daemon/paths.js";
+import { lockFileWorktreeId, storePaths } from "../store/paths.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { phaseOn } from "./discover.js";
 import { cpuShare, memoryShare } from "./host.js";
@@ -222,11 +223,11 @@ function cpuOf(d: PsDaemon): number {
 /** The worktree ids of the repository at `commonDir`: one lock file each (011 C1); none when no daemon of it ever ran. */
 function worktreeIdsOf(commonDir: AbsolutePath): ReadonlySet<string> {
   const locks = names(storePaths(commonDir).locksDir);
-  return new Set(locks.flatMap((n) => /^([0-9a-f]{16})\.sqlite$/.exec(n)?.[1] ?? []));
+  return new Set(locks.flatMap((n) => lockFileWorktreeId(n) ?? []));
 }
 
 function socketIdOf(path: AbsolutePath): string {
-  return /^squeal-([0-9a-f]{16})\.sock$/.exec(basename(path))?.[1] ?? "";
+  return socketWorktreeId(basename(path)) ?? "";
 }
 
 /** An unknown that names a daemon or process `--repo` dropped is not the current repository's. */
