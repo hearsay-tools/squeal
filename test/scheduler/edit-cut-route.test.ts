@@ -91,9 +91,19 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
     const before = side.runner.runs.length;
     await side.edit("watch", A);
     await expect.poll(() => side.runner.active, { interval: 10, timeout: 30_000 }).toBe(4);
-    await at(1_000);
+    // A slot that starts from here runs until the edit's tier has started. A fixed 1 s put the
+    // edit on the boundary of two 500 ms rounds, where no slot may be running (CI run 39695184172).
+    side.runner.hold();
+    const held = side.runner.runs.length;
+    await expect
+      .poll(() => side.runner.runs.length, { interval: 10, timeout: 30_000 })
+      .toBeGreaterThan(held);
     const second = side.runner.runs.length;
     await side.edit("watch", E);
+    const ran = () =>
+      side.runner.runs.slice(second).some((run) => run.files.some((f) => f.path === next.path));
+    await expect.poll(ran, { interval: 10, timeout: 30_000 }).toBe(true);
+    side.runner.release();
     await side.scheduler.idle();
     const edit = side.runner.runs
       .slice(second)
