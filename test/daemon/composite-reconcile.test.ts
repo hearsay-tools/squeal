@@ -253,6 +253,23 @@ describe("createCompositeRunner with a reconciling set (row 011-78)", () => {
     expect(report.withheld).toEqual([{ project: "gone", path: "gone/a.test.mjs" }]);
   });
 
+  it("withholds a changed project's part that had not started, and runs none on its old runner", async () => {
+    let entries: readonly Entry[] = [KEEP, GONE];
+    const { hold, started, release } = holding("keep");
+    const { set, of } = setOf(() => entries, hold);
+    const composite = createCompositeRunner([], [set]);
+    const run = composite.run(await composite.testFiles(), OPTIONS);
+    await started;
+    entries = [KEEP, { ...GONE, env: { MODE: "b" } }];
+    await composite.invalidate([]);
+    release();
+    const report = await run;
+    expect(of("gone").map((r) => r.calls)).toEqual([["close"], []]);
+    expect(report.end).toBe("completed");
+    expect(report.completedFiles).toEqual([{ project: "keep", path: "keep/a.test.mjs" }]);
+    expect(report.withheld).toEqual([{ project: "gone", path: "gone/a.test.mjs" }]);
+  });
+
   it("lets a changed project's part in flight finish, then closes its old runner", async () => {
     let entries: readonly Entry[] = [KEEP];
     const { hold, started, release } = holding("keep");
