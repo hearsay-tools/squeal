@@ -69,10 +69,10 @@ export function outstandingLines(
  */
 function groupsOf(s: StatusSnapshot): readonly OutstandingGroup[] {
   if (s.outstanding !== undefined) return s.outstanding;
-  if (s.daemon.state !== "alive") {
-    return [
-      { standing: { kind: "no-daemon", since: s.daemon.since, revision: s.revision }, files: [] },
-    ];
+  const { daemon } = s;
+  if (daemon.state !== "alive" || daemon.stopping !== undefined) {
+    const since = daemon.stopping?.since ?? (daemon.state === "alive" ? null : daemon.since);
+    return [{ standing: { kind: "no-daemon", since, revision: s.revision }, files: [] }];
   }
   return s.testFilesListed === false ? [{ standing: { kind: "listing" }, files: [] }] : [];
 }
