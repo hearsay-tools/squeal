@@ -28,3 +28,16 @@ Check:
 - The release commit: eight version places, bundles match the tree.
 
 `backlog-slots-overhead.test.ts` test 3 is unchanged on purpose; its bound is the human's decision. Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once. Known red on main: `backlog-slots-overhead.test.ts` test 3 and `opencode-dispose.test.ts` (008-38). Write `reviews/0.1.260.md` with PASS or FAIL on `791ca37dc` and commit it. A finding that is not a proven break goes to "Inputs for the next wave".
+
+## W2: option (c) for test 3
+
+The human chose (c) on 2026-10-22. Use /worker. Shape: repair, one commit. Base: cand/0.1.260 (`791ca37dc`). Worker 796bfe06's measurements are in `.ai/cezar/t/796bfe06/` (`cpu.out`, `tree-*/test/scheduler/zz-cpu.test.ts`, `repro.sh`, `ratio.sh`); read them, never edit them.
+
+Outcome: `backlog-slots-overhead.test.ts` test 3 checks per-file overhead with bounds that a loaded host does not trip.
+1. Replace the wall-clock ratio with a bound on the slot pass's daemon CPU per file (`process.cpuUsage()`), net of the commit busy-waits. Prefer a ceiling relative to the tier pass's CPU per file in the same harness, so a slower CI CPU moves both; use an absolute ceiling only if the spread makes the relative one worse, and say why. Set it from main's numbers with a margin; the comment names both.
+2. Check the commit budget, `FILES * 0.6`, on the slot pass with the fewest commits.
+3. The `it()` name and the header comment say what the test now checks.
+
+Owns: `test/scheduler/backlog-slots-overhead.test.ts`, and `slots-fixture.ts` only if the reading needs a hook. Not yours: src, `ci.yml`, the bundles, the version, the spec, the board.
+
+Done when 10 runs pass at `taskset -c 0-1` and 10 at `taskset -c 0-3` with 3 pinned burners; a temporary 20 ms CPU cost per slot fails the CPU bound, and a commit per slot without the gather fails the budget (both shown, then reverted); lint, typecheck and `squeal status` for the file pass.
