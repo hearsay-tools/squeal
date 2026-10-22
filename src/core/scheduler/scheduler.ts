@@ -763,13 +763,13 @@ class TierScheduler implements Scheduler {
             }
             if (this.#runnerWork.size > 0) return "runner-work" as const;
             this.#adopt(context, ledger);
-            const tier = selectTier(context, ledger, this.#busyLanes());
+            const tier = selectTier(context, ledger, this.#busyLanes(), this.#yields);
             if (tier === null) return null;
             this.#fly(tier, install.stamp, null);
             // A lane of slots fills every free slot in this hold, so its slots end, and record,
             // together rather than one record per selection (task 011-21 slice 2).
             for (let more = tier; more.slot === true; ) {
-              const again = selectTier(context, ledger, this.#busyLanes());
+              const again = selectTier(context, ledger, this.#busyLanes(), this.#yields);
               if (again === null) break;
               this.#fly(again, install.stamp, null);
               more = again;
