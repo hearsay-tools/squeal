@@ -29,6 +29,12 @@ const C = "src/c.ts";
 const OWN: CatchUpFile = { path: "src/a.test.ts", ms: 900, imports: [A] };
 const OTHERS = importers("d", A, FOUR_SHORT);
 const BARE = importers("c", C, SIX);
+/**
+ * Task 011-116: with every direct importer kept, the `runner.tierSize` places
+ * go to the files that reach the source through another module, shortest first.
+ */
+const shortest4 = (files: readonly CatchUpFile[]) =>
+  [...files].sort((a, b) => a.ms - b.ms || a.path.localeCompare(b.path)).slice(0, 4);
 
 describe("scheduler: an edit keeps its namesakes and the shortest direct importers (C4 step 4, task 011-25)", {
   timeout: 120_000,
@@ -44,13 +50,14 @@ describe("scheduler: an edit keeps its namesakes and the shortest direct importe
     expect(files.every((f) => side.current(f.path))).toBe(true);
   });
 
-  it("3. keeps every direct importer of a source with no namesake, and makes the transitive files catch-up", async () => {
+  it("3. keeps every direct importer of a source with no namesake and the 4 shortest transitive files, and makes the rest catch-up", async () => {
     // `src/c.test.ts` is c's namesake by name, but does not reach it: the revision does not re-key it.
     const unrelated: CatchUpFile = { path: "src/c.test.ts", ms: 100, imports: ["src/other.ts"] };
     const far = transitive("t", C, 60);
     const { side } = await started([unrelated, ...BARE, ...far]);
     const result = await editAndRun(side, C);
-    expectCut(result, BARE, far.slice(-1));
+    // Task 011-116: the 4 shortest transitive files are an edit's work too, no longer catch-up.
+    expectCut(result, [...BARE, ...shortest4(far)], far.slice(-1));
     expect(result.editPaths).not.toContain(unrelated.path);
     expect(result.catchUpPaths).not.toContain(unrelated.path);
     expectEditsFirst(result);
@@ -65,7 +72,8 @@ describe("scheduler: an edit keeps its namesakes and the shortest direct importe
     const far = transitive("t", source, 30);
     const { side } = await started([...direct, ...far]);
     const result = await editAndRun(side, source);
-    expectCut(result, direct, far.slice(-1));
+    // Task 011-116: the 4 shortest transitive files are an edit's work too, no longer catch-up.
+    expectCut(result, [...direct, ...shortest4(far)], far.slice(-1));
   });
 
   it("3. keeps a bare source's direct importers beside another source's namesake, by the runner's answer for it", async () => {
@@ -110,14 +118,14 @@ describe("scheduler: an edit keeps its namesakes and the shortest direct importe
   });
 
   it("7. keeps every direct importer when the runner's answer for the bare source is abandoned", async () => {
-    const { side } = await started([OWN, ...OTHERS, ...BARE, ...transitive("t", A, 30)], {
-      runnerPartMs: 1_000,
-    });
+    const far = transitive("t", A, 30);
+    const { side } = await started([OWN, ...OTHERS, ...BARE, ...far], { runnerPartMs: 1_000 });
     const affected = side.runner.affected;
     side.runner.affected = (paths) =>
       paths.length === 1 ? new Promise(() => {}) : affected(paths);
     const result = await editAndRun(side, A, C);
-    expectCut(result, [OWN, ...OTHERS, ...BARE], []);
+    // Task 011-116: the 4 shortest transitive files are an edit's work too, no longer catch-up.
+    expectCut(result, [OWN, ...OTHERS, ...BARE, ...shortest4(far)], []);
     const notes = side.store.meta.get(notesMetaKey(side.worktreeId)) ?? "";
     expect(notes).toContain("abandoned");
   });
