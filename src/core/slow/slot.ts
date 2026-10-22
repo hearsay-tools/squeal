@@ -178,7 +178,7 @@ export function heldPermits(
 function permitRecord(path: AbsolutePath): PermitRecord {
   let db: DatabaseSync;
   try {
-    db = new DatabaseSync(new URL(`${pathToFileURL(path).href}?immutable=1`), { readOnly: true });
+    db = new DatabaseSync(immutableUrl(path), { readOnly: true });
   } catch {
     return { kind: "unreadable" };
   }
@@ -199,6 +199,13 @@ function permitRecord(path: AbsolutePath): PermitRecord {
   } finally {
     db.close();
   }
+}
+
+/** SQLite's `immutable` URI of the database `path`: a reader of it takes no lock and opens no other file. */
+export function immutableUrl(path: AbsolutePath): URL {
+  const url = pathToFileURL(path);
+  url.search = "immutable=1";
+  return url;
 }
 
 /** Permit `path` is not held: its exclusive lock was taken and released. */

@@ -38,22 +38,30 @@ export const WORKTREE_SCOPED_TABLES = [
 
 const tokenKey = (id: string) => worktreeMetaKey("daemonToken", id);
 
+/**
+ * A `daemonToken` row's parsed value: its token when the daemon registered at
+ * `startedAt` with `version` drew it, `null` when another registration did,
+ * `undefined` in a format this release does not know.
+ */
+export function toDaemonToken(
+  value: unknown,
+  startedAt: EpochMs,
+  version: string | null,
+): string | null | undefined {
+  if (!isRecord(value) || typeof value.token !== "string") return undefined;
+  return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
+}
+
 export function createWorktreeRepo(conn: Connection): WorktreeRepo {
   /** `id`'s token, when it was drawn by the daemon registered at `startedAt` with `version`. */
   const tokenOf = (id: string, startedAt: EpochMs, version: string | null): string | undefined => {
     const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
-    let value: unknown = null;
+    if (raw === null) return undefined;
     try {
-      value = raw === null ? null : JSON.parse(str(raw, "value"));
+      return toDaemonToken(JSON.parse(str(raw, "value")), startedAt, version) ?? undefined;
     } catch {
       return undefined;
     }
-    return isRecord(value) &&
-      value.startedAt === startedAt &&
-      value.squealVersion === version &&
-      typeof value.token === "string"
-      ? value.token
-      : undefined;
   };
   /** With a registration: its token, or none, so an earlier token never names it. */
   const writeToken = (id: string, d: DaemonRecord) => {

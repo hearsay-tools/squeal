@@ -36,7 +36,7 @@ export function readSlowActivity(store: Store, worktreeId: WorktreeId): SlowTier
   const raw = store.meta.get(slowTierMetaKey(worktreeId));
   if (raw === null) return null;
   try {
-    return toActivity(JSON.parse(raw) as unknown);
+    return toSlowActivity(JSON.parse(raw) as unknown) ?? null;
   } catch {
     return null;
   }
@@ -44,8 +44,13 @@ export function readSlowActivity(store: Store, worktreeId: WorktreeId): SlowTier
 
 const WAITS: ReadonlySet<unknown> = new Set(["fast", "idle", "slot", "load"]);
 
-function toActivity(value: unknown): SlowTierActivity | null {
-  if (typeof value !== "object" || value === null) return null;
+/**
+ * A `slowTier` row's parsed value: `null` when none is published, `undefined`
+ * in a format this release does not know.
+ */
+export function toSlowActivity(value: unknown): SlowTierActivity | null | undefined {
+  if (value === null) return null;
+  if (typeof value !== "object") return undefined;
   const v = value as Record<string, unknown>;
   if (v.kind === "waiting" && WAITS.has(v.for)) {
     return { kind: "waiting", for: v.for as Extract<SlowTierActivity, { kind: "waiting" }>["for"] };
@@ -62,7 +67,7 @@ function toActivity(value: unknown): SlowTierActivity | null {
       lastDurationMs: last,
     };
   }
-  return null;
+  return undefined;
 }
 
 /*
