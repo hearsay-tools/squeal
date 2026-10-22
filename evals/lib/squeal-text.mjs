@@ -214,7 +214,11 @@ export function settled(step, after) {
  */
 export function failingAfter(before, s) {
   if (s.known !== null && s.known !== undefined) {
-    const named = [...new Set(s.checks.filter((c) => c.to === "fail").map((c) => c.check))];
+    const named = [
+      ...new Set(
+        s.checks.filter((c) => c.to === "fail" && c.check !== undefined).map((c) => c.check),
+      ),
+    ];
     return { named, unnamed: Math.max(0, s.known - named.length), uncertain: false };
   }
   const named = [...before.named];
@@ -242,10 +246,11 @@ export function failingAfter(before, s) {
  * Whether check `c` of squeal step `s` is current at the step's revision: its own line says no
  * older revision, no pending revision and no stale result (review wave 2.6, B2). A status lists
  * a known failure as current in words; a delivered check is current when its run was at the
- * delivery's revision.
+ * delivery's revision. A group's count of one test file (row 011-109) is current as its checks
+ * are; a count with no file, an overflow's or a collapsed list's, never is.
  */
 export function currentCheck(s, c) {
-  if (c.check === undefined || c.validity !== "current") return false;
+  if (c.file === undefined || c.validity !== "current") return false;
   if (s.from === "pull") return c.stated === true;
   return c.observed === null || c.observed === s.revision;
 }
@@ -373,6 +378,80 @@ function countsOf(t) {
 const FILE = /^(?:\[[^\]]*\] )?(\S+?)(?: > | \(|$)/;
 /** A collapsed list of recoveries or retirements: `PASS  6 checks recovered (FAIL -> PASS)`. */
 const COLLAPSED = /^(\d+) checks? (?:recovered|no longer reported)/;
+/** Failures with one error and location in one block (row 011-109): `FAIL  91 checks with one …`. */
+const GROUPED = /^(\d+) checks? with one error and location\b/;
+/** A group's facts after its change and its error: location, closure, load, flaky note, retry. */
+const GROUP_FACT =
+  /^(?:at |its closure reads |none of the files changed here |load average |Flaky: |Retry asked )/;
+/** A count of checks, as a group names a test file's (`collapse`'s `nameLines`): `40 tests`. */
+const PARTS = /^\d+ (?:tests?|test files? (?:loaded|that did not load)|global setups?)$/;
+
+/** The checks a list of parts counts: `2 tests, 1 test file that did not load` is 3. */
+const partsCount = (text) => text.split(", ").reduce((n, p) => n + parseInt(p, 10), 0);
+
+/**
+ * The provenance a failure's change line states (`formatDelta`'s words): the outcome it changed
+ * from (`null` when first observed), the revision its run was at, and its validity.
+ */
+function provenanceOf(body) {
+  const change = /^\s*(?:first observed: FAIL|(\w+) -> (?:FAIL|PASS|no longer))/m.exec(body);
+  const observed = /\bat revision (\d+)/.exec(body);
+  const stated = /observed at revision \d+, (\w+)/.exec(body)?.[1];
+  const validity =
+    stated ??
+    (/\brevision \d+ pending\b|^\s*pending, observed/m.test(body)
+      ? "pending"
+      : /^\s*stale\b|, stale\b/m.test(body)
+        ? "stale"
+        : /^\s*unknown, observed/m.test(body)
+          ? "unknown"
+          : "current");
+  return {
+    from: change ? (change[1]?.toLowerCase() ?? null) : null,
+    observed: observed ? Number(observed[1]) : null,
+    validity,
+    ...(stated === undefined ? {} : { stated: true }),
+  };
+}
+
+/**
+ * The checks of a group of `count` failures (row 011-109) whose block holds `body`: its change
+ * line, its error, its facts, then the checks by name, or by test file with their counts and the
+ * files past ten counted, then its `Full list:` command. Each has the change line's provenance; a
+ * count the lines leave out is one more count with no file.
+ */
+function groupChecks(count, body) {
+  const lines = body.split("\n").map((l) => l.trim());
+  const [seen = ""] = lines.splice(0, 2);
+  while (GROUP_FACT.test(lines[0] ?? "")) lines.shift();
+  const end = lines.findIndex((l) => l.startsWith("Full list: "));
+  const prov = provenanceOf(seen);
+  const checks = [];
+  for (const line of lines.slice(0, end < 0 ? lines.length : end)) {
+    const more = /^and \d+ more test files? \((.+)\)$/.exec(line);
+    const at = line.indexOf(" in ");
+    if (more) checks.push({ to: "fail", count: partsCount(more[1]), ...prov });
+    else if (
+      at > 0 &&
+      line
+        .slice(0, at)
+        .split(", ")
+        .every((p) => PARTS.test(p))
+    ) {
+      const file = line.slice(at + 4);
+      checks.push({
+        to: "fail",
+        count: partsCount(line.slice(0, at)),
+        file: FILE.exec(file)?.[1] ?? file,
+        ...prov,
+      });
+    } else if (line !== "")
+      checks.push({ check: line, file: FILE.exec(line)?.[1] ?? line, to: "fail", ...prov });
+  }
+  const told = checks.reduce((n, c) => n + (c.count ?? 1), 0);
+  if (told < count) checks.push({ to: "fail", count: count - told, ...prov });
+  return checks;
+}
 
 /**
  * Each check the text names, with its own provenance (`squeal status`, a registration or a
@@ -381,7 +460,8 @@ const COLLAPSED = /^(\d+) checks? (?:recovered|no longer reported)/;
  * when first observed), `observed` the revision its result is from (`null` when unstated) and
  * `validity` `current`, `pending`, `stale` or `unknown`; `stated` when a status says `current`;
  * `retried`, the reason, on a pass a retry's run delivered. A collapsed list or an overflow is
- * `{ to, count }`.
+ * `{ to, count }`; a group of failures with one error and location (row 011-109) is its named
+ * checks, or `{ to, count, file }` for each test file it counts, with the group's provenance.
  */
 function checksOf(t) {
   const checks = [];
@@ -396,28 +476,22 @@ function checksOf(t) {
       continue;
     }
     const body = b.slice(head.index + head[0].length);
-    const change = /^\s*(?:first observed: FAIL|(\w+) -> (?:FAIL|PASS|no longer))/m.exec(body);
-    const observed = /\bat revision (\d+)/.exec(body);
-    const stated = /observed at revision \d+, (\w+)/.exec(body)?.[1];
-    const validity =
-      stated ??
-      (/\brevision \d+ pending\b|^\s*pending, observed/m.test(body)
-        ? "pending"
-        : /^\s*stale\b|, stale\b/m.test(body)
-          ? "stale"
-          : /^\s*unknown, observed/m.test(body)
-            ? "unknown"
-            : "current");
+    const grouped = GROUPED.exec(name);
+    if (grouped && to === "fail") {
+      checks.push(...groupChecks(Number(grouped[1]), body.replace(/^\n/, "")));
+      continue;
+    }
     // A recovery a retry's own run stored (spec 001 D6, 001-398 S2; row 006-53).
     const retried = /^\s*Retry asked \((\w+)\) at these inputs: it passed$/m.exec(body)?.[1];
+    const { from, observed, validity, stated } = provenanceOf(body);
     checks.push({
       check: name,
       file: FILE.exec(name)?.[1] ?? name,
       to,
-      from: change ? (change[1]?.toLowerCase() ?? null) : null,
-      observed: observed ? Number(observed[1]) : null,
+      from,
+      observed,
       validity,
-      ...(stated === undefined ? {} : { stated: true }),
+      ...(stated === undefined ? {} : { stated }),
       ...(to === "pass" && retried !== undefined ? { retried } : {}),
     });
   }
