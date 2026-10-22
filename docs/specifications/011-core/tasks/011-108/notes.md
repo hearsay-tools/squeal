@@ -8,7 +8,7 @@ The brief did not choose between a store column and a `meta` record, so this row
 
 ## Seam map
 
-- `src/core/store/repos/unknown-runs.ts` (new): one record per worktree and test file, the newest: worktree, test file, run id (`null` when no run produced the UNKNOWN), the revision the state was observed at, the reason, the time. 1,024 kept in all. A record fits a state when the state is `unknown`, its `observedAt` is the record's revision and its summary is the record's reason. `dropFallenUnknownRuns` drops each record whose state no longer stands, read in SQL from `known_states`. `keptByUnknownRuns` gives the runs prune keeps.
+- `src/core/store/repos/unknown-runs.ts` (new): one record per worktree and test file, the newest: worktree, test file, run id (`null` when no run produced the UNKNOWN), the revision the state was observed at, the reason, the time. No bound evicts a standing one (review 0.1.265 B3, below). A record fits a state when the state is `unknown`, its `observedAt` is the record's revision and its summary is the record's reason. `dropFallenUnknownRuns` drops each record whose state no longer stands, read in SQL from `known_states`. `keptByUnknownRuns` gives the runs prune keeps.
 - `src/core/store/repos/failures.ts`: `store.failures.recordUnknownRuns` and `unknownRuns(worktreeId)`.
 - `src/core/scheduler/ledger.ts`: `markUnknown` takes `runId` (default `null`) and keeps it in `#unknown`; `commit` writes the records in the same transaction as `sink.markUnknown`, at the same revision, so the record and the state agree. `discard` and `rerunFirstSeen` pass a run id on.
 - `src/core/scheduler/tiers.ts`: the crash, timeout and not-started path at the end of `recordTier`, the two `discard`s and `rerunFirstSeen` pass `tier.runId`. A runner, install or environment failure (`failures.ts`, `install.ts`, `environment-growth.ts`) has no run: its record holds `null`.
@@ -42,9 +42,21 @@ The brief did not choose between a store column and a `meta` record, so this row
 1. Prune keeps a standing UNKNOWN's run past the 7-day cutoff, as the row says ("while the UNKNOWN stands"). The bound is the 1,024 records, and one crashed tier's files share one run. An UNKNOWN that stands for a week is rare (an idle worktree, a lookup-only daemon), but its log then outlives the cutoff. If the coordinator wants the cutoff to hold, the change is one condition in `keptByUnknownRuns`.
 2. The record matches the state by revision and reason, not by key. The ledger writes both in one commit at one revision, and `stateWithoutResult` keeps `observedAt` and the summary while the UNKNOWN stands, so a key move that leaves it UNKNOWN keeps the match.
 3. The `why` text does not repeat the error on the `Run log:` line: the state's `Summary:` line above it holds it. `--json` carries it as `unknownRun.error`.
-4. `older-daemon` is also what a record dropped by the 1,024 cap reads as. A cap that bites needs more than 1,024 files UNKNOWN at once across worktrees.
+4. Withdrawn by review 0.1.265 B3: a record dropped by the 1,024 cap read as `older-daemon`. The cap is gone; see the last section.
 
 ## Residue
 
 - `src/core/scheduler/unknown-files.ts`'s `stands` filter drops a restarted daemon's predecessor's entries at its first write (seen while choosing the record; not changed, not this row's).
 - The restarted daemon re-runs a file left UNKNOWN by its predecessor (`file.unknownKey` is not restored). Seen in the test; unchanged.
+
+## Review 0.1.265 B3: no bound evicts a standing UNKNOWN's record (wave 14.5 W4, 2026-10-22)
+
+The 1,024 cap in `recordUnknownRuns` evicted the oldest records, standing or not, so a standing UNKNOWN read `older-daemon` and the next prune dropped its run. C6 and C7 give a standing UNKNOWN no cap exception.
+
+- `recordUnknownRuns` now drops the fallen records first, through the same stands query as `dropFallenUnknownRuns`, and keeps every standing one: `UNKNOWN_RUNS_KEPT` is gone. The list is one record per file UNKNOWN in a live worktree, so `known_states` bounds it. A removed worktree's states go with it (`worktrees.remove`), so its records fall at the next write or prune.
+- The new records of a commit are written without the stands check: the ledger calls `sink.markUnknown` before `recordUnknownRuns` in the same transaction, so they stand. A record of a file with no state yet (first seen) does not stand and falls at the next write.
+- The stands query drives from `checks` with `CROSS JOIN`. Driven from `known_states`, SQLite searched every state of the worktree per record: 11.6 s against 12 ms for 2,400 records over 30,000 checks a worktree and 3,000 files (an in-memory probe of the schema, not in the suite). This also sped up prune's `dropFallenUnknownRuns`, which ran it under a write lock before this fix. No test pins the plan; `STANDS` is not exported.
+- `why-unknown.ts`: one comment, no logic. `unknownState` (`src/core/state/derive.ts`) sets `observedAt` and the summary on every state of the file, so a record this release writes always fits its state; `older-daemon` now means a daemon before 011-108 only. 0.1.265 never shipped, so no released daemon has the cap.
+- `prune.ts`: unchanged. `dropFallenUnknownRuns` still runs before the runs `DELETE`, and `keptByUnknownRuns` reads the records in that `DELETE`'s transaction.
+- Tests: `test/status/why-unknown-standing.test.ts`. The review's probe (one standing record, then 1,024 newer ones, prune past retention); 1,200 records over two worktrees, each read through `unknownRunOf`, none `older-daemon`, every run kept; 1,100 recovered records, then one new UNKNOWN, keeping the earlier standing one, dropping the recovered run. All three failed on the baseline (the probe read `runId: null`, revision 7, `older-daemon`; the second kept 424 of 600; the third kept 1,024 fallen records).
+- Residue: a large standing set (an environment failure marks every file of every worktree UNKNOWN with `runId: null`) is one JSON value of about 350 bytes a record, read and rewritten at each commit that marks a file UNKNOWN. If that shows in a profile, the fix is a record per worktree row or a table, which is a schema change (011-64 design section 4).
