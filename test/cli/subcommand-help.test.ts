@@ -17,6 +17,7 @@ const COMMANDS: Record<string, readonly string[]> = {
   run: ["--all", "--fast", "--slow", "--force", "--wait"],
   retry: ["--reason load|environment", "--cancel"],
   stop: ["[root]"],
+  hold: ["--max <duration>", "-- <command> [args...]"],
   remove: ["--config"],
   update: ["squeal update"],
 };
