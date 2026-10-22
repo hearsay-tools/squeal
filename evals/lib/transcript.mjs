@@ -173,11 +173,11 @@ const SUMMARY =
   /Test Files|^\s*Tests\s|^\s*Duration|^# (?:tests|suites|pass|fail|cancelled|skipped|todo)\b|^\s*(?:✓|✗|×|❯|↓|FAIL|PASS)\s|\.(?:test|spec)\.[cm]?[jt]sx?\b|^not ok|^ok \d|[Nn]o test files found|[Ff]ilter|[Ee]xclud|[Ee]rror|^Exit code/;
 /**
  * Squeal's evidence: a header, counts, a check and its change, a tier or checkpoint line, and
- * from row 011-29 status's `Outstanding:` groups (a down daemon among them) and `More:` line.
- * Kept whole.
+ * from row 011-29 status's `Outstanding:` groups (a down daemon among them, from row 011-34 a
+ * stopping one) and `More:` line. Kept whole.
  */
 const SQUEAL_EVIDENCE =
-  /^\s*(?:SQUEAL ·|Revision\b|Known failures|Affected checks|Full-suite checkpoint|Slow tier|Test files without checks|Returned |Checkpoint |Daemon:|Not shown:|Not validated|Outstanding:|More: )|^ {2}(?:\d+ test files? |no daemon has validated|the daemon is still listing|a checkpoint in progress)|^\s*(?:FAIL|PASS|RESOLVED|UNKNOWN) {2}|->|observed at revision|seen by Squeal|checks recovered|still failing|\b(?:current|pending|stale|unknown)\b.*\brevision \d+/;
+  /^\s*(?:SQUEAL ·|Revision\b|Known failures|Affected checks|Full-suite checkpoint|Slow tier|Test files without checks|Returned |Checkpoint |Daemon:|Not shown:|Not validated|Outstanding:|More: )|^ {2}(?:\d+ test files? |no daemon has validated|the daemon is (?:still listing|stopping|handing over)|a checkpoint in progress)|^\s*(?:FAIL|PASS|RESOLVED|UNKNOWN) {2}|->|observed at revision|seen by Squeal|checks recovered|still failing|\b(?:current|pending|stale|unknown)\b.*\brevision \d+/;
 const LINE_CAP = 400;
 const HEAD = 3;
 const TAIL = 3;
