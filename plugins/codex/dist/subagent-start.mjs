@@ -2234,6 +2234,27 @@ function checkFrom(row) {
   if (kind !== "test") return { kind, project, testPath };
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
 }
+var OUTCOMES2 = ["pass", "fail", "skip"];
+function toResult(row) {
+  return {
+    check: checkFrom(row),
+    key: str(row, "key"),
+    outcome: oneOf2(row, "outcome", OUTCOMES2),
+    durationMs: num(row, "duration_ms"),
+    location: location(row),
+    fingerprint: strOrNull(row, "fingerprint"),
+    summary: strOrNull(row, "summary"),
+    errors: row.errors === null ? [] : json(row, "errors"),
+    provenance: {
+      worktreeId: str(row, "worktree_id"),
+      revision: num(row, "revision"),
+      commit: strOrNull(row, "commit_sha"),
+      dirty: bool(row, "dirty"),
+      runId: str(row, "run_id"),
+      recordedAt: num(row, "recorded_at")
+    }
+  };
+}
 var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
 var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
 function inTestFiles(column, files2) {
@@ -2405,7 +2426,7 @@ function removeRunLog(paths, logDir) {
 }
 
 // src/core/store/repos/consumers.ts
-var OUTCOMES2 = ["pass", "fail", "skip", "unknown"];
+var OUTCOMES3 = ["pass", "fail", "skip", "unknown"];
 var WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
 function consumerParams(c) {
   return [c.worktreeId, c.sessionId, c.agentId];
@@ -2525,7 +2546,7 @@ function createViewRepo(conn) {
 function toView(row) {
   return {
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES2),
+    outcome: oneOf2(row, "outcome", OUTCOMES3),
     fingerprint: strOrNull(row, "fingerprint"),
     toldAt: num(row, "told_at")
   };
@@ -2588,31 +2609,9 @@ function createFailureRepo(conn) {
     failingChecks: (selection) => all(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom)
   };
 }
-var OUTCOMES3 = ["pass", "fail", "skip"];
-function toResult(row) {
-  return {
-    check: checkFrom(row),
-    key: str(row, "key"),
-    outcome: oneOf2(row, "outcome", OUTCOMES3),
-    durationMs: num(row, "duration_ms"),
-    location: location(row),
-    fingerprint: strOrNull(row, "fingerprint"),
-    summary: strOrNull(row, "summary"),
-    errors: row.errors === null ? [] : json(row, "errors"),
-    provenance: {
-      worktreeId: str(row, "worktree_id"),
-      revision: num(row, "revision"),
-      commit: strOrNull(row, "commit_sha"),
-      dirty: bool(row, "dirty"),
-      runId: str(row, "run_id"),
-      recordedAt: num(row, "recorded_at")
-    }
-  };
-}
 
 // src/core/store/repos/results.ts
 import { createHash as createHash2 } from "node:crypto";
-var OUTCOMES4 = ["pass", "fail", "skip"];
 var SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
   FROM results r
@@ -2643,7 +2642,7 @@ function createResultRepo(conn) {
       return conn.all(
         `${SELECT_RESULTS} WHERE r.key = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
         key
-      ).map(toResult2);
+      ).map(toResult);
     },
     checksForKey: (key) => conn.all(
       `SELECT ${CHECK_COLUMNS} FROM results r JOIN checks c ON c.id = r.check_id
@@ -2657,7 +2656,7 @@ function createResultRepo(conn) {
         `${SELECT_RESULTS} WHERE r.check_id = ? ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT 1`,
         id
       );
-      return row === null ? null : toResult2(row);
+      return row === null ? null : toResult(row);
     },
     listForCheck: (check, limit) => {
       const id = findCheckId(conn, check);
@@ -2667,13 +2666,15 @@ function createResultRepo(conn) {
            ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
         id,
         limit
-      ).map(toResult2);
+      ).map(toResult);
     },
+    // Unused since 011-75, as are countFailures, FAILURE_WHERE and failureParams. They go with the
+    // next key-format raise: removing them changes lines no case runs (011-64 design 4, 011-101).
     listFailures: (filter, limit) => conn.all(
       `${SELECT_RESULTS} WHERE ${FAILURE_WHERE} ORDER BY r.recorded_at DESC, r.rowid DESC LIMIT ?`,
       ...failureParams(filter),
       limit
-    ).map(toResult2),
+    ).map(toResult),
     countFailures: (filter) => num(
       conn.get(
         `SELECT COUNT(*) AS n FROM results r WHERE ${FAILURE_WHERE}`,
@@ -2734,26 +2735,6 @@ function storeFailureText(conn, summary, errors) {
 var FAILURE_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND (? IS NULL OR r.recorded_at >= ?)`;
 function failureParams({ worktreeId, since }) {
   return [worktreeId, worktreeId, since, since];
-}
-function toResult2(row) {
-  return {
-    check: checkFrom(row),
-    key: str(row, "key"),
-    outcome: oneOf2(row, "outcome", OUTCOMES4),
-    durationMs: num(row, "duration_ms"),
-    location: location(row),
-    fingerprint: strOrNull(row, "fingerprint"),
-    summary: strOrNull(row, "summary"),
-    errors: row.errors === null ? [] : json(row, "errors"),
-    provenance: {
-      worktreeId: str(row, "worktree_id"),
-      revision: num(row, "revision"),
-      commit: strOrNull(row, "commit_sha"),
-      dirty: bool(row, "dirty"),
-      runId: str(row, "run_id"),
-      recordedAt: num(row, "recorded_at")
-    }
-  };
 }
 
 // src/core/store/repos/runs.ts
@@ -2901,7 +2882,7 @@ function toCheckpoint(row) {
 }
 
 // src/core/store/repos/states.ts
-var OUTCOMES5 = ["pass", "fail", "skip", "unknown"];
+var OUTCOMES4 = ["pass", "fail", "skip", "unknown"];
 var VALIDITIES = ["current", "pending", "stale", "unknown"];
 var PENDING = ["queued", "running"];
 var KINDS = [
@@ -2996,7 +2977,7 @@ function toKnownState(row) {
   return {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
-    outcome: oneOf2(row, "outcome", OUTCOMES5),
+    outcome: oneOf2(row, "outcome", OUTCOMES4),
     validity: oneOf2(row, "validity", VALIDITIES),
     pendingPhase: oneOfOrNull(row, "pending_phase", PENDING),
     observedAt: numOrNull(row, "observed_at"),
@@ -3045,8 +3026,8 @@ function toTransition(row) {
     worktreeId: str(row, "worktree_id"),
     check: checkFrom(row),
     kind: oneOf2(row, "kind", KINDS),
-    from: oneOfOrNull(row, "from_outcome", OUTCOMES5),
-    to: oneOf2(row, "to_outcome", OUTCOMES5),
+    from: oneOfOrNull(row, "from_outcome", OUTCOMES4),
+    to: oneOf2(row, "to_outcome", OUTCOMES4),
     fromFingerprint: strOrNull(row, "from_fingerprint"),
     toFingerprint: strOrNull(row, "to_fingerprint"),
     revision: num(row, "revision"),
@@ -4545,18 +4526,10 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot.ts
-import {
-  copyFileSync,
-  existsSync as existsSync6,
-  mkdtempSync,
-  readdirSync as readdirSync2,
-  rmSync as rmSync4,
-  statSync,
-  writeFileSync
-} from "node:fs";
-import { tmpdir as tmpdir2 } from "node:os";
+import { existsSync as existsSync6, readdirSync as readdirSync2, rmSync as rmSync4, statSync, writeFileSync } from "node:fs";
 import { isAbsolute as isAbsolute5, join as join11 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 
 // src/core/daemon/paths.ts
 import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync4 } from "node:fs";
@@ -4631,26 +4604,9 @@ function heldPermits(request) {
   return held;
 }
 function permitRecord(path) {
-  let scratch;
-  try {
-    scratch = mkdtempSync(join11(tmpdir2(), "squeal-permit-"));
-  } catch {
-    return { kind: "unreadable" };
-  }
-  try {
-    const copy = join11(scratch, "permit.sqlite");
-    copyFileSync(path, copy);
-    return holderRow(copy);
-  } catch {
-    return { kind: "unreadable" };
-  } finally {
-    rmSync4(scratch, { recursive: true, force: true });
-  }
-}
-function holderRow(path) {
   let db;
   try {
-    db = new DatabaseSync4(path, { readOnly: true });
+    db = new DatabaseSync4(new URL(`${pathToFileURL(path).href}?immutable=1`), { readOnly: true });
   } catch {
     return { kind: "unreadable" };
   }
@@ -6487,7 +6443,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.253";
+  if (true) return "0.1.254";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -6868,7 +6824,7 @@ var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
 // src/harness/shared/version-copies.ts
 import {
   chmodSync as chmodSync2,
-  copyFileSync as copyFileSync2,
+  copyFileSync,
   cpSync,
   existsSync as existsSync10,
   mkdirSync as mkdirSync6,
