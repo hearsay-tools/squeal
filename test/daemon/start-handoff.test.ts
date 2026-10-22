@@ -1,15 +1,24 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, rmSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { afterEach, describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import type { CliIo } from "../../src/cli/main.js";
 import { startCommand } from "../../src/cli/start.js";
 import { requestDaemon } from "../../src/core/daemon/client.js";
-import { claimHandoff } from "../../src/core/delivery/handoff.js";
-import type { EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
+import {
+  claimHandoff,
+  clearHandoff,
+  handoffFrom,
+  readHandoff,
+} from "../../src/core/delivery/handoff.js";
+import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
+import type { DaemonRecord, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { closeFakeDaemons, fakeDaemon } from "../cli/fake-daemon.js";
 import {
   daemonSuite,
+  delay,
   type FixtureRepo,
   ping,
   SLOW,
@@ -56,8 +65,12 @@ function slowTest(ms: number): { files: Record<string, string>; started: string 
   return { files: { "test/slow.test.ts": test }, started };
 }
 
-/** `startCommand` in this process, spawning `suite.cli`, with `bounds`; its code and output. */
-async function startIn(repo: FixtureRepo, bounds: Parameters<typeof startCommand>[2]) {
+/** `startCommand` in this process, spawning `cli`, with `bounds`; its code and output. */
+async function startIn(
+  repo: FixtureRepo,
+  bounds: Parameters<typeof startCommand>[2],
+  cli = suite.cli,
+) {
   let stdout = "";
   let stderr = "";
   const io: CliIo = {
@@ -72,7 +85,7 @@ async function startIn(repo: FixtureRepo, bounds: Parameters<typeof startCommand
   };
   // The CLI it spawns, and where it finds the socket: the fixture's, not this test runner's.
   const saved = process.env;
-  process.env = { ...repo.env, SQUEAL_CLI: suite.cli };
+  process.env = { ...repo.env, SQUEAL_CLI: cli };
   try {
     const code = await startCommand([], io, bounds);
     return { code, stdout, stderr };
@@ -113,7 +126,7 @@ describe.runIf(hasPreCancel)("squeal start with a stopping daemon (row 011-34)",
     );
     expect(cli.stdout()).not.toMatch(/Squeal daemon alive|no daemon running/);
     // The evals read a daemon validating from it: the successor serves (row 011-34).
-    expect(squealEvidence(cli.stdout(), "pull")).toMatchObject({ daemon: true });
+    expect(squealEvidence(cli.stdout(), "pull"), cli.stdout()).toMatchObject({ daemon: true });
     const next = await ping(repo.socketPath, 500);
     expect(next).toMatchObject({
       squealVersion: HOOKS,
@@ -184,5 +197,114 @@ describe.runIf(process.platform === "linux")(
       expect(argsOf(served?.pid)).toContain(` daemon ${repo.root}`);
       expect(argsOf(served?.pid)).not.toContain("--await-lock");
     });
+  },
+);
+
+/** A CLI that only appends its arguments to `log`, one JSON line for each daemon spawned. */
+function spawnLog(): { cli: string; spawns: () => string[][] } {
+  const base = `/tmp/sq-start-${randomUUID()}`;
+  const log = `${base}.log`;
+  writeFileSync(
+    `${base}.mjs`,
+    `import { appendFileSync } from "node:fs";\nappendFileSync(${JSON.stringify(log)}, JSON.stringify(process.argv.slice(2)) + "\\n");\n`,
+  );
+  suite.cleanup(() => rmSync(`${base}.mjs`, { force: true }));
+  suite.cleanup(() => rmSync(log, { force: true }));
+  const spawns = () =>
+    existsSync(log)
+      ? readFileSync(log, "utf8")
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line) as string[])
+      : [];
+  return { cli: `${base}.mjs`, spawns };
+}
+
+describe.runIf(process.platform === "linux")(
+  "squeal start when the successor registers while it starts (row 011-110)",
+  SLOW,
+  () => {
+    afterEach(() => closeFakeDaemons());
+
+    it.each([
+      ["its record", false],
+      ["its record cleared", true],
+    ])(
+      "with %s, a successor that registered after start read it ends the handoff: no claim, no spawn",
+      async (_, cleared) => {
+        const repo = suite.fixture();
+        const id = repo.worktreeId as WorktreeId;
+        const now = Date.now();
+        const old: DaemonRecord = {
+          socketPath: repo.socketPath,
+          startedAt: (now - 60_000) as EpochMs,
+          heartbeatAt: (now - 20_000) as EpochMs,
+          heartbeatIntervalMs: 5_000,
+          squealVersion: "0.1.0",
+          token: "old",
+        };
+        const next: DaemonRecord = {
+          ...old,
+          startedAt: (now - 1_000) as EpochMs,
+          heartbeatAt: now as EpochMs,
+          squealVersion: HOOKS,
+          token: "new",
+        };
+        const store = openStore(repo.commonDir, { busyTimeoutMs: 10_000 });
+        if (isStoreOpenFailure(store)) throw new Error(`store: ${JSON.stringify(store)}`);
+        suite.cleanup(() => store.close());
+        store.worktrees.upsert({
+          id,
+          root: repo.root,
+          commonDir: repo.commonDir,
+          isMain: true,
+          registeredAt: 1,
+          daemon: old,
+        });
+        // A hook's claim; the old daemon cleared its record or not yet, and holds its lock.
+        claimHandoff(store, id, { from: handoffFrom(old), to: HOOKS, at: now as EpochMs });
+        if (cleared) store.worktrees.setDaemon(id, null);
+        const lock = acquireDaemonLock(lockFileFor(repo.commonDir, id));
+        if (lock === null) throw new Error("the lock is taken");
+        suite.cleanup(() => lock.release());
+        const answer = (record: DaemonRecord, phase: string) => ({
+          ok: true,
+          type: "ping",
+          pid: process.pid,
+          worktreeId: id,
+          root: repo.root,
+          squealVersion: record.squealVersion,
+          phase,
+          startedAt: record.startedAt,
+        });
+        // Start's `stop` is answered after the successor registered, as `#register` does it:
+        // its record and the claim cleared in one transaction, between start's reads and `claims()`.
+        // From then on the successor answers the pings.
+        const pings = [answer(old, "stopping")];
+        await fakeDaemon(repo.socketPath, { ping: pings }, (type) => {
+          if (type !== "stop") return;
+          store.transaction(() => {
+            store.worktrees.setDaemon(id, next);
+            clearHandoff(store, id);
+          });
+          pings[0] = answer(next, "ready");
+        });
+        const { cli, spawns } = spawnLog();
+
+        const { code, stdout, stderr } = await startIn(
+          repo,
+          { socketMs: 5_000, lockMs: 5_000, leftoversMs: 0 },
+          cli,
+        );
+        expect(code, stderr).toBe(0);
+        expect(stdout).toMatch(
+          /^Squeal daemon started for .*, after the 0\.1\.0 daemon handed over in \d+\.\d s\n/,
+        );
+        // The registration ended the handoff: start claims nothing, and spawns no second successor.
+        expect(readHandoff(store, id)).toBeNull();
+        await delay(2_000);
+        expect(spawns()).toEqual([]);
+      },
+    );
   },
 );
