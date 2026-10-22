@@ -3,6 +3,7 @@ import type { CheckError, FailureRepo, FailureSelection } from "../../types/inde
 import { CHECK_COLUMNS, checkFrom, checkParams, json, num, strOrNull, toResult } from "../codec.js";
 import type { Connection } from "../connection.js";
 import { failingAt, keepReplaced, readReplaced } from "./replaced.js";
+import { readUnknownRuns, recordUnknownRuns } from "./unknown-runs.js";
 
 /** One query and its parameters. */
 export interface Statement {
@@ -113,5 +114,8 @@ export function createFailureRepo(conn: Connection): FailureRepo {
         ? null
         : { summary: strOrNull(row, "summary"), errors: json<CheckError[]>(row, "errors") };
     },
+    recordUnknownRuns: (worktreeId, revision, marked, at) =>
+      recordUnknownRuns(conn, worktreeId, revision, marked, at),
+    unknownRuns: (worktreeId) => readUnknownRuns(conn).filter((r) => r.worktreeId === worktreeId),
   };
 }

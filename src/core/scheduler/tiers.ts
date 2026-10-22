@@ -637,7 +637,7 @@ export function recordTier(
       ledger.setRunning(file, null);
       if (decision.kind === "gone") continue;
       if (decision.kind === "withheld") {
-        ledger.discard(file, key, forced, [], report.failure ?? `run ${report.end}`);
+        ledger.discard(file, key, forced, [], report.failure ?? `run ${report.end}`, tier.runId);
         continue;
       }
       if (decision.kind === "requeue") {
@@ -671,7 +671,7 @@ export function recordTier(
         storeKey = decision.kind === "store" ? context.keys.index.key(file.ref) : null;
       }
       if (decision.kind === "unstable") {
-        ledger.discard(file, key, forced, decision.paths);
+        ledger.discard(file, key, forced, decision.paths, undefined, tier.runId);
         continue;
       }
       if (decision.kind === "first-seen") {
@@ -733,7 +733,7 @@ export function recordTier(
       ledger.settle([ref], NOTHING_CHANGED, { checkpointId });
     }
     ledger.settle(rekeyed, NOTHING_CHANGED);
-    ledger.rerunFirstSeen(firstSeen);
+    ledger.rerunFirstSeen(firstSeen, tier.runId);
     rememberReruns(context, queueReruns(context, ledger, failedAnew));
     storeClosures(
       context,
@@ -756,7 +756,11 @@ export function recordTier(
     for (const { file, key } of unknown) endRetry(context, file, key, null, tier.runId);
     for (const { file } of notStarted)
       if (file.key !== null) endRetry(context, file, file.key, null, tier.runId);
-    ledger.markUnknown(unknown, reason, timedOut === null ? {} : { cause: "timeout" });
+    // Row 011-108 (gh-74): the run is recorded beside the states, never as a keyed result.
+    ledger.markUnknown(unknown, reason, {
+      runId: tier.runId,
+      ...(timedOut === null ? {} : { cause: "timeout" }),
+    });
     if (commit) ledger.commit();
   });
   return [...new Set([...changedOnDisk, ...observed.changed])];
