@@ -43,6 +43,7 @@ export function unknownRunOf(
         r.reason === knownState.summary,
     );
   const error = knownState.summary;
+  // No bound evicts a standing UNKNOWN's record (review 0.1.265 B3): only a daemon before 011-108 leaves none.
   if (record === undefined) {
     return {
       runId: null,
