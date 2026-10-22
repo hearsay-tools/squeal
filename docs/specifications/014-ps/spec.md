@@ -123,7 +123,7 @@ Every rule is read-only, from `/proc`, `/proc/locks`, `ls` and `stat`, and the r
 | `install-gone` | the bundle directory in its arguments is missing | `squeal stop <root>` |
 | `older` | its version is older than the newest one installed for its harness (Claude Code: `installed_plugins.json`; Codex: the newest cache directory) | `squeal stop <root>`; but see the info states below |
 | `duplicate` | two daemon processes have one root | `kill <pid>` of the one without the lock |
-| `no-lock` | `waiting` for more than 40 s (130 s with `--await-lock`) | `kill <pid>` |
+| `no-lock` | `waiting` for more than its own lock wait plus 10 s: the `<ms>` of the `--await-lock <ms>` in its arguments, else a loser's 30 s (`VACANT_LOCK_WAIT_MS`), so 130 s for a hook's successor (`SUCCESSOR_LOCK_WAIT_MS`) and 40 s for a loser (014-43) | `kill <pid>` |
 | `hung` | `serving`, with a heartbeat older than two intervals, on two samples | `kill <pid>`, then `kill -9 <pid>` |
 | `past-departure` | no consumer, departed more than 1 min ago, and no slow work | `squeal stop <root>` |
 | `past-idle` | no consumer ever, and unused for more than `daemon.idleExitMinutes` (D9) | `squeal stop <root>` |

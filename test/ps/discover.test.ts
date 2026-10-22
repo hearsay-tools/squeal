@@ -1,6 +1,7 @@
 import { rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { VACANT_LOCK_WAIT_MS } from "../../src/core/daemon/lock-wait.js";
 import { discover, lockedAgain, phaseOn } from "../../src/core/ps/discover.js";
 import type { DaemonWork, FoundDaemon } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
@@ -148,8 +149,12 @@ describe("identity (D2)", () => {
       daemonProcess({ pid: 410, root: alpha.root, awaitLock: true }),
       daemonProcess({ pid: 411, root: ".", lockPath: beta.lockPath }),
     ]);
-    expect(daemonOf(410)).toMatchObject({ root: alpha.root, awaitLock: true });
-    expect(daemonOf(411)).toMatchObject({ root: null, awaitLock: false, worktreeId: beta.id });
+    expect(daemonOf(410)).toMatchObject({ root: alpha.root, lockWaitMs: 130_000 });
+    expect(daemonOf(411)).toMatchObject({
+      root: null,
+      lockWaitMs: VACANT_LOCK_WAIT_MS,
+      worktreeId: beta.id,
+    });
   });
 
   test("the worktree id, store and repository come from the lock file it holds open", () => {
