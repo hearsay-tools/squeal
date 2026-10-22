@@ -19,6 +19,7 @@ import { Claims } from "./claims.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import {
   checkId,
+  classify,
   clearKeyedAt,
   durationOf,
   type FileState,
@@ -278,6 +279,8 @@ export class Ledger {
           this.#discharge(file);
         this.queue.remove(ref);
         this.#syncPhase(file);
+        // Row 011-118: back at the key its results stand under, it is current by lookup.
+        if (classify(file) === "current") this.checkpoints.done(ref, null);
         continue;
       }
       const hits = held ? [] : this.lookup(key);
