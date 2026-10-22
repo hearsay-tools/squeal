@@ -103,7 +103,10 @@ export type DaemonPhase = "serving" | "starting" | "waiting" | "stopping" | "unk
 export interface PsDaemon {
   readonly pid: number;
   readonly phase: DaemonPhase;
-  /** The STATE column: the phase, or an information state (`draining 22m left`, `older (session <pid> holds it)`, D7). */
+  /**
+   * The STATE column: the phase, or an information state (D7): `draining 22m left`,
+   * `older (session <pid> holds it)` or `draining 22m left, older`.
+   */
   readonly state: string;
   readonly worktreeId: WorktreeId | null;
   readonly root: AbsolutePath | null;
