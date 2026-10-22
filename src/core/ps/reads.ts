@@ -2,9 +2,13 @@ import { lstatSync, readdirSync, type Stats } from "node:fs";
 import type { AbsolutePath } from "../types/index.js";
 
 /*
- * Spec 014 D2 and D7: the file reads the stages share. Each reads as empty
- * or `null` what is not there, as every read of the source does (D11).
+ * Spec 014 D2 and D7: the file reads and the process names the stages
+ * share. Each read gives empty or `null` for what is not there, as every
+ * read of the source does (D11).
  */
+
+/** D2 step 1: Node 24 names its main thread `MainThread`; older Node, `node`. */
+export const NODE_COMMS: ReadonlySet<string> = new Set(["MainThread", "node"]);
 
 /** The names in `dir`, sorted; none when it is missing or cannot be read. */
 export function names(dir: AbsolutePath): string[] {
