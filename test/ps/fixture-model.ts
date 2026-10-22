@@ -188,7 +188,6 @@ export function consumer(over: Partial<ConsumerState> = {}): ConsumerState {
   return {
     sessionId: "s1",
     agentId: "main",
-    lastSeenAt: NOW - MINUTE,
     harness: { pid: 3212240, startTime: ticksAt(3_000), pidNamespace: "pid:[1]" },
     alive: true,
     version: "0.1.235",

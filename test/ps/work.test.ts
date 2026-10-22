@@ -248,7 +248,6 @@ describe("a serving daemon's work", () => {
     expect([...by.keys()].sort()).toEqual(["alive", "elsewhere", "gone", "none", "reused"]);
     expect(by.get("alive")).toMatchObject({ alive: true, version: "0.1.235", agentId: "main" });
     expect(by.get("alive")?.harness?.pid).toBe(900);
-    expect(by.get("alive")?.lastSeenAt).toBe(STARTED_AT + 10_000);
     expect(by.get("reused")?.alive).toBe(false);
     expect(by.get("elsewhere")?.alive).toBeNull();
     expect(by.get("gone")?.alive).toBe(false);
@@ -494,7 +493,6 @@ test("meta values of a format it does not know read as null, and unknown names e
     {
       sessionId: "s1",
       agentId: "main",
-      lastSeenAt: STARTED_AT,
       harness: null,
       alive: null,
       version: null,
