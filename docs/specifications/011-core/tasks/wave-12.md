@@ -67,3 +67,15 @@ Also: `test/daemon/handover-tier.test.ts:141` failed on CI Node 22 (run 39746558
 Owns: the files above, `src/core/delivery/handoff.ts`, `src/cli/status-wait.ts`, `src/cli/status-wait-paths.ts`, their tests, `test/harness/handoff.test.ts`, `test/daemon/handover-tier.test.ts`, the notes. Not yours: the launcher, the 011-99 files, the board, spec text, bundles, version. No `npm run build`.
 
 Done when: the review's expected behaviour for B1 and B2 holds by test; the six-boundary test still passes; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+## Wave 12.5, R2: narrow re-review of cand/0.1.261
+
+Use /reviewer. Shape: review, narrow, the last round. R1 failed `cand/0.1.259` at b7b4425ca (`reviews/0.1.259.md`, B1 and B2). 0.1.260 (011-99 slice 1) landed first, so the coordinator re-cut the wave as `cand/0.1.261` at cfbf718b6 on main 2ab929bb0: the same 15 product and notes commits, W3's six repair commits, then one release commit (0.1.261, bundles and launcher copies).
+
+Check only:
+- `git range-diff 253b50a24..e2c41840b 2ab929bb0..badd840fe` and `git range-diff c8506437c..c7c087219 badd840fe..3651d1394` show the commits unchanged but for their cherry-pick lines;
+- B1 and B2 hold as the review's expected behaviour says, by W3's tests and your own probes;
+- W3's gap decision (`296021664`, notes in `tasks/011-34/notes.md`): a cleared record with a live claim reads handing over with the lock free too, in status, the header, `--json` and both waits; a free lock with no live claim is plain down; `squeal start` that finds the lock free spawns; `handover-tier.test.ts` reads status in the held stop gap, not by sampling;
+- the files 0.1.260 changed and this candidate changed overlap only in version files and bundles; the version is 0.1.261 in all eight places, `npm run check:version -- origin/main` passes, the build leaves the tree clean, and the four launchers are byte-identical.
+
+Run `npm ci`, then the test files W3 changed or added, directly with `npx vitest run <files>`. The full suite is CI run 39752978076 on cfbf718b6 and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-0.1.261.log`): read both by test name; row 011-99 lists the known load-flaky files. Write `reviews/0.1.261.md` with a PASS or FAIL verdict on cfbf718b6 and commit it alone.
