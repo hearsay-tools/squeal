@@ -33,6 +33,7 @@ export type PytestEvent =
       readonly message: string;
     }
   | ImportEvent
+  | SpawnedEvent
   | { readonly type: "session"; readonly exitstatus: number };
 
 export interface CollectedItem {
@@ -76,6 +77,18 @@ export interface ImportEvent {
   readonly from: string | null;
   readonly to: string;
   readonly ctx: string | null;
+}
+
+/**
+ * A project file a Python process the test started found to import, or the
+ * script it ran, written by that process's `sitecustomize` (task 007-55).
+ * `ctx` is the test file in progress when the process started.
+ */
+export interface SpawnedEvent {
+  readonly type: "spawned";
+  readonly to: string;
+  readonly ctx: string;
+  readonly pid: number;
 }
 
 /**
