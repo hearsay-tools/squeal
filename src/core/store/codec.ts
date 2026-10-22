@@ -1,4 +1,11 @@
-import type { CheckId, EpochMs, SourceLocation, TestFileRef } from "../types/index.js";
+import type {
+  CheckError,
+  CheckId,
+  EpochMs,
+  ResultRecord,
+  SourceLocation,
+  TestFileRef,
+} from "../types/index.js";
 import type { Connection, Row } from "./connection.js";
 
 /*
@@ -80,6 +87,33 @@ export function checkFrom(row: Row): CheckId {
   const kind = oneOf(row, "check_kind", ["test", "file", "setup"] as const);
   if (kind !== "test") return { kind, project, testPath };
   return { kind: "test", project, testPath, fullName: str(row, "check_full_name") };
+}
+
+const OUTCOMES = ["pass", "fail", "skip"] as const;
+
+/**
+ * A `results` row, joined to its check (`CHECK_COLUMNS`) and its failure text,
+ * as `ResultRepo` and `FailureRepo` read it.
+ */
+export function toResult(row: Row): ResultRecord {
+  return {
+    check: checkFrom(row),
+    key: str(row, "key"),
+    outcome: oneOf(row, "outcome", OUTCOMES),
+    durationMs: num(row, "duration_ms"),
+    location: location(row),
+    fingerprint: strOrNull(row, "fingerprint"),
+    summary: strOrNull(row, "summary"),
+    errors: row.errors === null ? [] : json<CheckError[]>(row, "errors"),
+    provenance: {
+      worktreeId: str(row, "worktree_id"),
+      revision: num(row, "revision"),
+      commit: strOrNull(row, "commit_sha"),
+      dirty: bool(row, "dirty"),
+      runId: str(row, "run_id"),
+      recordedAt: num(row, "recorded_at"),
+    },
+  };
 }
 
 const CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
