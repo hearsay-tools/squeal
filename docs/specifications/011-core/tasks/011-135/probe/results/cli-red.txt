@@ -1,0 +1,8 @@
+# 6a4db210f fix(waits): separate open-wait footer from delivered text; run.ts at red; 24 CPUs; 2026-10-23T07:21:14Z
+07:31:37Z	red	claude whole	load 15.30	wall 443.1 s	Tests  2 failed | 76 passed (78)	442.29s (transform 3.10s, setup 100ms, import 3.63s, tests 438.40s, environment 0ms)
+07:46:06Z	red	claude -t	load 14.11	wall 8.6 s	Tests  2 failed | 76 skipped (78)	7.69s (transform 1.99s, setup 40ms, import 2.65s, tests 4.82s, environment 0ms)
+07:51:13Z	red	claude -t	load 15.53	wall 7.8 s	Tests  2 failed | 76 skipped (78)	7.20s (transform 2.52s, setup 42ms, import 3.19s, tests 3.79s, environment 0ms)
+07:53:13Z	red	codex whole	load 15.57	wall 119.7 s	Tests  2 failed | 76 passed (78)	119.12s (transform 1.98s, setup 56ms, import 2.60s, tests 116.29s, environment 0ms)
+07:54:40Z	red	codex -t	load 14.19	wall 6.4 s	Tests  2 failed | 76 skipped (78)	5.89s (transform 1.66s, setup 39ms, import 2.17s, tests 3.53s, environment 0ms)
+07:54:46Z	red	codex -t	load 14.01	wall 6.3 s	Tests  2 failed | 76 skipped (78)	5.79s (transform 1.66s, setup 33ms, import 2.20s, tests 3.42s, environment 0ms)
+07:58:49Z	red	cursor whole	load 13.85	wall 242.8 s	Tests  2 failed | 76 passed (78)	241.90s (transform 6.97s, setup 118ms, import 7.77s, tests 233.67s, environment 0ms)

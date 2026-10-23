@@ -1,0 +1,126 @@
+== Vitest 4 (cezarion): vitest 4.1.10
+-- pattern: new 1
+case skipped parity > old 1
+case failed  parity > new 1
+case skipped parity > inner > new 2
+case skipped new 3 top
+module end t/a.test.ts state=failed
+module tests 4, reported skipped 3, cases reported 4
+-- pattern: parity > new 1
+case skipped parity > old 1
+case skipped parity > new 1
+case skipped parity > inner > new 2
+case skipped new 3 top
+module end t/a.test.ts state=skipped
+module tests 4, reported skipped 4, cases reported 4
+-- pattern: ^parity new 1$
+case skipped parity > old 1
+case failed  parity > new 1
+case skipped parity > inner > new 2
+case skipped new 3 top
+module end t/a.test.ts state=failed
+module tests 4, reported skipped 3, cases reported 4
+-- pattern: ^parity inner new 2$
+case skipped parity > old 1
+case skipped parity > new 1
+case passed  parity > inner > new 2
+case skipped new 3 top
+module end t/a.test.ts state=passed
+module tests 4, reported skipped 3, cases reported 4
+-- pattern: -
+case passed  parity > old 1
+case failed  parity > new 1
+case passed  parity > inner > new 2
+case passed  new 3 top
+module end t/a.test.ts state=failed
+module tests 4, reported skipped 0, cases reported 4
+== Vitest 5 (Squeal): vitest 5.0.3
+-- pattern: new 1
+case skipped parity > old 1
+case failed  parity > new 1
+case skipped parity > inner > new 2
+case skipped new 3 top
+module end t/a.test.ts state=failed
+module tests 4, reported skipped 3, cases reported 4
+-- pattern: parity > new 1
+case skipped parity > old 1
+case failed  parity > new 1
+case skipped parity > inner > new 2
+case skipped new 3 top
+module end t/a.test.ts state=failed
+module tests 4, reported skipped 3, cases reported 4
+-- pattern: ^parity new 1$
+case skipped parity > old 1
+case skipped parity > new 1
+case skipped parity > inner > new 2
+case skipped new 3 top
+module end t/a.test.ts state=skipped
+module tests 4, reported skipped 4, cases reported 4
+-- pattern: ^parity inner new 2$
+case skipped parity > old 1
+case skipped parity > new 1
+case skipped parity > inner > new 2
+case skipped new 3 top
+module end t/a.test.ts state=skipped
+module tests 4, reported skipped 4, cases reported 4
+-- pattern: -
+case passed  parity > old 1
+case failed  parity > new 1
+case passed  parity > inner > new 2
+case passed  new 3 top
+module end t/a.test.ts state=failed
+module tests 4, reported skipped 0, cases reported 4
+== node:test, node v24.21.0
+-- --test-name-pattern=new
+    not ok 1 - new 1
+        ok 1 - new 2
+    ok 2 - inner
+not ok 1 - parity
+ok 2 - new 3 top
+# tests 3
+# pass 2
+# fail 1
+# skipped 0
+-- --test-name-pattern=parity new 1
+    not ok 1 - new 1
+not ok 1 - parity
+# tests 1
+# pass 0
+# fail 1
+# skipped 0
+-- --test-name-pattern=parity > new 1
+ok 1 - a.test.mjs
+# tests 1
+# pass 1
+# fail 0
+# skipped 0
+-- --test-name-pattern=^parity inner new 2$
+        ok 1 - new 2
+    ok 1 - inner
+ok 1 - parity
+# tests 1
+# pass 1
+# fail 0
+# skipped 0
+-- --test-name-pattern=inner
+        ok 1 - new 2
+    ok 1 - inner
+ok 1 - parity
+# tests 1
+# pass 1
+# fail 0
+# skipped 0
+== pytest
+pytest 9.1.1
+-- node ids TestParity::test_new_1 and TestParity::test_new_param[2]
+PASSED test_parity.py::TestParity::test_new_param[2]
+FAILED test_parity.py::TestParity::test_new_1 - assert 1 == 2
+1 failed, 1 passed in 0.01s
+-- -k new_1
+FAILED test_parity.py::TestParity::test_new_1 - assert 1 == 2
+1 failed, 4 deselected in 0.02s
+-- deselect hook, SELECT=TestParity::test_new
+PASSED test_parity.py::TestParity::test_new_param[1]
+PASSED test_parity.py::TestParity::test_new_param[2]
+FAILED test_parity.py::TestParity::test_new_1 - assert 1 == 2
+1 failed, 2 passed, 2 deselected in 0.01s
