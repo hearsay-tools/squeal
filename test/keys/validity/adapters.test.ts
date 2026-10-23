@@ -75,14 +75,17 @@ describe("each adapter's comparison (risk 3)", SLOW, () => {
     );
     expect(fired(result)).toEqual(["vitest"]);
     const differing = result.cases.filter((c) => !c.outputsEqual).map((c) => c.name);
+    // Row 011-144's focused case stores the same kinds of failure, so it differs too.
     expect(differing).toEqual([
       "a failing test and a file that fails to load store their fingerprints (review of cand/0.1.232, B1)",
+      "a focused run stores the selected checks' outcomes as a whole run does (row 011-144)",
     ]);
     const failed = failures(result, release());
     expect(failed).toEqual([
       expect.stringMatching(
         /^adapter:vitest case "a failing test .*:test\/broken\.test\.ts.*:test\/fails\.test\.ts.* raise VITEST_ADAPTER_VERSION/,
       ),
+      expect.stringMatching(/^adapter:vitest case "a focused run .* raise VITEST_ADAPTER_VERSION/),
     ]);
   });
 
