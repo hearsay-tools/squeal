@@ -1,6 +1,12 @@
 import { statSync } from "node:fs";
 import { createConnection } from "node:net";
-import type { AbsolutePath, DaemonRecord, DaemonRequest, DaemonResponse } from "../types/index.js";
+import type {
+  AbsolutePath,
+  DaemonRecord,
+  DaemonRequest,
+  DaemonResponse,
+  PingResponse,
+} from "../types/index.js";
 
 /** A failed socket request. `code` is the socket error code, or `ETIMEDOUT`. */
 export interface DaemonRequestError extends Error {
@@ -39,6 +45,12 @@ function sameEndpoint(a: DaemonEndpoint | null, b: DaemonEndpoint): boolean {
   );
 }
 
+/** A daemon's endpoint, with the ping that proved it (`pinDaemon`). */
+export interface PinnedDaemon {
+  readonly endpoint: DaemonEndpoint;
+  readonly ping: PingResponse;
+}
+
 /**
  * Row 011-151 (review 0.1.277-r2, B1): the endpoint of `record`'s daemon,
  * proved by a ping over a connection to it: the file at the path is the same
@@ -50,15 +62,14 @@ function sameEndpoint(a: DaemonEndpoint | null, b: DaemonEndpoint): boolean {
 export async function pinDaemon(
   record: Pick<DaemonRecord, "socketPath" | "startedAt" | "squealVersion">,
   timeoutMs: number,
-): Promise<DaemonEndpoint | null> {
+): Promise<PinnedDaemon | null> {
   const endpoint = endpointAt(record.socketPath);
   if (endpoint === null) return null;
   try {
-    const answer = await requestDaemon(record.socketPath, { type: "ping" }, timeoutMs, endpoint);
-    if (!answer.ok || answer.type !== "ping") return null;
-    const same =
-      answer.startedAt === record.startedAt && answer.squealVersion === record.squealVersion;
-    return same ? endpoint : null;
+    const ping = await requestDaemon(record.socketPath, { type: "ping" }, timeoutMs, endpoint);
+    if (!ping.ok || ping.type !== "ping") return null;
+    const same = ping.startedAt === record.startedAt && ping.squealVersion === record.squealVersion;
+    return same ? { endpoint, ping } : null;
   } catch {
     return null;
   }
