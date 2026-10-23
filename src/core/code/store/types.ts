@@ -28,7 +28,10 @@ export interface CodeCountRepo {
 /** Each worktree's included files at its current revision (spec 015 D4). */
 export interface CodeFileRepo {
   list(worktreeId: WorktreeId, paths?: readonly RelativePath[]): readonly CodeFile[];
-  /** The files whose count is not stored yet: the first count's work, and status's "counting: N of M". */
+  /**
+   * The files whose count is not stored yet: the first count's work, and
+   * status's "counting: N of M". A too-big file is never among them.
+   */
   uncounted(worktreeId: WorktreeId): readonly CodeFile[];
   upsertMany(worktreeId: WorktreeId, files: readonly CodeFile[]): void;
   removeMany(worktreeId: WorktreeId, paths: readonly RelativePath[]): void;

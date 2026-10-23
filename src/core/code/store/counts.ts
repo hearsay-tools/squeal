@@ -54,7 +54,7 @@ export function createFileRepo(conn: Connection): CodeFileRepo {
     uncounted(worktreeId) {
       return conn
         .all(
-          `SELECT * FROM files f WHERE f.worktree_id = ? AND NOT EXISTS (
+          `SELECT * FROM files f WHERE f.worktree_id = ? AND f.too_big = 0 AND NOT EXISTS (
              SELECT 1 FROM counts c WHERE c.blob = f.blob AND c.language = f.language
                AND c.counter_version = f.counter_version)
            ORDER BY f.path`,
@@ -66,11 +66,11 @@ export function createFileRepo(conn: Connection): CodeFileRepo {
       conn.transaction(() => {
         for (const file of files) {
           conn.run(
-            `INSERT INTO files (worktree_id, path, blob, language, counter_version, size, revision)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO files (worktree_id, path, blob, language, counter_version, size, revision,
+               too_big) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (worktree_id, path) DO UPDATE SET blob = excluded.blob,
                language = excluded.language, counter_version = excluded.counter_version,
-               size = excluded.size, revision = excluded.revision`,
+               size = excluded.size, revision = excluded.revision, too_big = excluded.too_big`,
             worktreeId,
             file.path,
             file.blob,
@@ -78,6 +78,7 @@ export function createFileRepo(conn: Connection): CodeFileRepo {
             file.counterVersion,
             file.size,
             file.revision,
+            file.tooBig === true ? 1 : 0,
           );
         }
       });
@@ -110,5 +111,6 @@ function toFile(row: Row): CodeFile {
     counterVersion: num(row, "counter_version"),
     size: num(row, "size"),
     revision: num(row, "revision"),
+    ...(num(row, "too_big") === 1 ? { tooBig: true } : {}),
   };
 }
