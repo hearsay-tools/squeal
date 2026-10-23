@@ -1,3 +1,4 @@
+import { toHarness } from "../delivery/harness-process.js";
 import { isRecord } from "../fs/index.js";
 import {
   type EpochMs,
@@ -193,16 +194,7 @@ function isCommandHold(entry: unknown): entry is CommandHoldEntry {
     typeof since === "number" &&
     typeof until === "number" &&
     typeof command === "string" &&
-    (wrapper === null || isProcess(wrapper)) &&
-    (child === null || isProcess(child))
-  );
-}
-
-function isProcess(value: unknown): value is HarnessProcess {
-  return (
-    isRecord(value) &&
-    typeof value.pid === "number" &&
-    typeof value.startTime === "number" &&
-    typeof value.pidNamespace === "string"
+    (wrapper === null || toHarness(wrapper) !== undefined) &&
+    (child === null || toHarness(child) !== undefined)
   );
 }
