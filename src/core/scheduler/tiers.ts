@@ -659,18 +659,21 @@ export function recordTier(
       if (decision.kind === "requeue") {
         // What did not run keeps its class: an edit's work, catch-up (C4 step 4 as amended
         // 2026-10-20, task 011-22), or promoted, which `Promotions` holds while it is queued (011-51).
+        // It stays forced only while what forced it holds (row 011-120).
         if (file.key !== null && file.blocked === null) {
           const priority = priorityOf(file, NOTHING_CHANGED);
-          ledger.enqueue(file, priority, forced, recent === true, catchUp === true);
+          const again = ledger.staysForced(file, key, forced);
+          ledger.enqueue(file, priority, again, recent === true, catchUp === true);
         }
         continue;
       }
       if (decision.kind === "not-started") {
-        if (setups !== false) notStarted.push({ file, forced });
+        if (setups !== false)
+          notStarted.push({ file, forced: ledger.staysForced(file, key, forced) });
         else unknown.push({ file, key });
       } else if (decision.kind === "unknown") unknown.push({ file, key });
       else if (decision.kind === "split") {
-        requeueSplit(ledger, file, decision.cap, forced, recent === true);
+        requeueSplit(ledger, file, key, decision.cap, forced, recent === true);
       }
       if (
         decision.kind === "not-started" ||
