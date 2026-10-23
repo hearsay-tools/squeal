@@ -1132,6 +1132,18 @@ Spec: `specifications/014-ps/spec.md`, shipped 2026-10-22 in 0.1.258, its qualit
 | 014-46 review of wave 8 | done (round 1 FAIL at ec15d10bf, `reviews/wave-8.md`: B1 and S1 in 014-36's temp sweep; repaired by the coordinator; round 2 PASS at 8fbd74467, `reviews/wave-8-r2.md`, `/reviewer` f7050dd3; gates 901 and 909 files pass, CI green) | `/reviewer` on the wave 8 candidate. | PASS on the candidate SHA. |
 | 014-47 the names and decoders `squeal ps` still restates | planned (the human, 2026-10-22: leave it planned for a later wave or the next quality scan; from wave 8's reports) | Left by wave 8 outside its rows: `work.ts` `slotsOf`, `text` and `finiteNumber` beside their writers (`delivery/slots.ts`, `consumer-version.ts`, `expiry.ts`, which reads `""` as 0); `WAITER_LOCK` in `flags-files.ts` beside `waiter-lock.ts`; `sessionDirs`' `squeal-sessions` beside `session-root.ts`; `update.ts` `pluginDirs`' own Codex cache path; the fixed `/tmp/squeal-*` test paths outside 014-36's parent. | `squeal ps` restates none of them, or each that stays is named in D11 with its reason. |
 
+## Feature 015: coverage and complexity
+
+Spec: not written yet (`specifications/015-coverage-complexity/status.md`, stage research). The human's idea, 2026-10-23: Squeal calculates coverage and cyclomatic complexity per function, shares them between worktrees, and gives the CRAP score; opt-in, fed to the agent on the fly and available on demand. Research first; the spec follows from the findings, and the human reviews it before any code.
+
+### Research (briefs in `specifications/015-coverage-complexity/research/`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 015-01 coverage from Squeal's own runs | planned | `research/coverage-collection-brief.md`: per-test-file coverage from the warm Vitest instance (v8, istanbul, the recorder's inspector), mapping to TypeScript functions, node:test and pytest, cost against off, fidelity, keying and adoption like a result, the selection gain as a secondary estimate. | `research/coverage-collection.md` committed, every question tagged. |
+| 015-02 complexity and CRAP | planned | `research/complexity-and-crap-brief.md`: what each counter counts, engines (web-tree-sitter, TypeScript, acorn, oxc, lizard) by correctness, time and bundle bytes, CRAP's formula and coverage kind, the function join, an experiment on `src/`, identity across edits, Python. | `research/complexity-and-crap.md` committed, every question tagged. |
+| 015-03 coverage and complexity as feedback | planned | `research/agent-feedback-brief.md`: what peers show developers and on which scope, evidence on such feedback to LLM agents, Goodhart harm, which signals are transitions and how often they would fire here, policy keys and defaults. | `research/agent-feedback.md` committed, every question tagged. |
+
 ## Later
 
 - 011: 3,446 temp key directories under `/tmp/squeal-<uid>/tmp/` belong to no live daemon (149 MiB, from 2026-10-14 on, 104 to 845 a day by mtime). Their contents look like temp files of Squeal's own tests, each test repository with a key no later daemon reuses (inferred; `specifications/014-ps/research/should-not-be-up.md` 2).
