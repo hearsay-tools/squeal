@@ -5,12 +5,14 @@ import { delimiter, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toAbsolute } from "../../../core/fs/index.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type {
-  AbsolutePath,
-  PytestProject,
-  RelativePath,
-  RunReport,
-  TestFileRef,
+import {
+  type AbsolutePath,
+  type FocusedFile,
+  focusedTexts,
+  type PytestProject,
+  type RelativePath,
+  type RunReport,
+  type TestFileRef,
 } from "../../../core/types/index.js";
 import { startGroup } from "../../node-test/run/process.js";
 import type { PytestEnvironment } from "../environment/index.js";
@@ -47,6 +49,8 @@ export interface PytestRunOptions {
   readonly runtimeDir?: AbsolutePath;
   /** A `squeal stop`'s cancel (`RunOptions.signal`): the running processes are stopped, no other starts, and only completed files report. */
   readonly signal?: AbortSignal;
+  /** A focused run's texts per file (`RunOptions.checks`, 007 D6); a file without any runs whole. */
+  readonly checks?: readonly FocusedFile[];
 }
 
 /** A tier's report, each completed file's observed closure, and the run's notes. */
@@ -75,6 +79,8 @@ export const KILL_GRACE_MS = 2_000;
  * the run (`runBasetemp`). On the deadline every running group gets
  * SIGTERM, then SIGKILL, and batches not yet started stay unrun. A refused
  * flag in the config's `addopts`, `PYTEST_ADDOPTS` or `args` runs nothing.
+ * A batch holding files given texts (`checks`) passes them to the plugin
+ * in `SQUEAL_PYTEST_CHECKS`, by real path (row 011-135).
  */
 export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   const started = performance.now();
@@ -99,6 +105,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     // The plugin names the file in progress for the processes a test starts (task 007-55);
     // one inherited from a run around this daemon's would record pytest's own imports.
     SQUEAL_PYTEST_FILE: undefined,
+    SQUEAL_PYTEST_CHECKS: undefined,
   };
   const args = pytestArgs(
     {
@@ -121,10 +128,11 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     options.alone,
   ).map((files, index) => ({
     index,
-    files: files.map((testFile) => ({
-      testFile,
-      real: realOr(toAbsolute(options.root, testFile.path)),
-    })),
+    files: files.map((testFile) => {
+      const texts = focusedTexts(options.checks, testFile);
+      const real = realOr(toAbsolute(options.root, testFile.path));
+      return texts === null ? { testFile, real } : { testFile, real, texts };
+    }),
     // After `args`, so it wins over the project's own `--basetemp` (task 007-37).
     args: [
       ...args,
@@ -180,7 +188,12 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
         command: python,
         args: batch.args,
         cwd,
-        env: { ...env, PYTHONPYCACHEPREFIX: bytecode.prefix, SQUEAL_PYTEST_EVENTS: events },
+        env: {
+          ...env,
+          PYTHONPYCACHEPREFIX: bytecode.prefix,
+          SQUEAL_PYTEST_EVENTS: events,
+          ...focusedEnv(batch),
+        },
         stdout: join(options.logDir, `stdout-${batch.index}.log`),
         stderr: join(options.logDir, `stderr-${batch.index}.log`),
       });
@@ -211,7 +224,8 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       refusedAtRun ??= refusalNote(project, flags);
       return false;
     }
-    if (code === 5)
+    // A focused batch's deselection gives exit 5 too: its counts say what the texts selected.
+    if (code === 5 && !b.files.every((f) => f.texts !== undefined))
       notes.push(`pytest project "${project.name}" collected nothing in ${names(b)}.`);
     // D6: "3 (internal error) and 4 (usage error) are runner failures".
     return code !== 3 && code !== 4;
@@ -249,6 +263,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     fileErrors: done.flatMap((f) => (f.fileError === null ? [] : [f.fileError])),
     failure: refusedAtRun ?? failure,
     fileDurations: done.map((f) => ({ testFile: f.testFile, durationMs: f.durationMs })),
+    ...focusedOf(done),
   };
   const observed = trusted.map((b) => observeBatch(b.edges, b.files, paths));
   const completed = new Set(report.completedFiles);
@@ -262,6 +277,20 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
     ),
     notes,
   };
+}
+
+/** `SQUEAL_PYTEST_CHECKS` for a batch: each file given texts, by its real path. */
+function focusedEnv(batch: Batch): { SQUEAL_PYTEST_CHECKS?: string } {
+  const checks = batch.files.flatMap((f) => (f.texts === undefined ? [] : [[f.real, f.texts]]));
+  return checks.length === 0
+    ? {}
+    : { SQUEAL_PYTEST_CHECKS: JSON.stringify(Object.fromEntries(checks)) };
+}
+
+/** `RunReport.focused`: the completed files given texts. */
+function focusedOf(done: readonly PytestFileReport[]): Pick<RunReport, "focused"> {
+  const focused = done.flatMap((f) => (f.focused === undefined ? [] : [f.focused]));
+  return focused.length === 0 ? {} : { focused };
 }
 
 /**
