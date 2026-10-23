@@ -1,0 +1,23 @@
+home /home/agent/projects/squeal/.ai/cezar/t/bbe50721/issue-81-Y82xQf
+
+# 1. Session on 0.1.275: catalog rendered, SessionStart keeps the copy
+catalog path readable: true
+keepVersion(0.1.275): /home/agent/projects/squeal/.ai/cezar/t/bbe50721/issue-81-Y82xQf/.codex/plugins/data/squeal-hearsay/versions/0.1.275
+SessionStart skill line: "Squeal's skill for this session, kept across plugin updates: `/home/agent/projects/squeal/.ai/cezar/t/bbe50721/issue-81-Y82xQf/.codex/plugins/data/squeal-hearsay/versions/0.1.275/skills/squeal/SKILL.md`."
+
+# 2. Codex installs 0.1.276 (startup auto-upgrade); next hook keeps 0.1.276
+keepVersion(0.1.276): /home/agent/projects/squeal/.ai/cezar/t/bbe50721/issue-81-Y82xQf/.codex/plugins/data/squeal-hearsay/versions/0.1.276
+catalog path 0.1.275 readable: false
+cat catalog path stderr: cat: /home/agent/projects/squeal/.ai/cezar/t/bbe50721/issue-81-Y82xQf/.codex/plugins/cache/hearsay/squeal/0.1.275/skills/squeal/SKILL.md: No such file or directory
+saved 0.1.275 skill readable: true
+keptSkill(data, 0.1.275): /home/agent/projects/squeal/.ai/cezar/t/bbe50721/issue-81-Y82xQf/.codex/plugins/data/squeal-hearsay/versions/0.1.275/skills/squeal/SKILL.md
+launcher exists: true
+launcher equals plugin's: true
+
+# 3. A second install, 0.1.277, while the 0.1.275 session lives and no process names its copy
+keepVersion(0.1.277): /home/agent/projects/squeal/.ai/cezar/t/bbe50721/issue-81-Y82xQf/.codex/plugins/data/squeal-hearsay/versions/0.1.277
+saved 0.1.275 skill readable: false
+saved 0.1.276 skill readable: true
+launcher exists: true
+
+cleaned: true
