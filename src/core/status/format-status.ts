@@ -19,6 +19,7 @@ import {
 import { configProblemsLine } from "./config-problems.js";
 import { holdLines } from "./holds.js";
 import { statusRevisionText } from "./identity.js";
+import { fromBase } from "./next-step-text.js";
 import { outstandingLines } from "./outstanding-text.js";
 import { phaseLines } from "./phase-files.js";
 import { slowSlotLines } from "./slot-holders.js";
@@ -78,7 +79,10 @@ export function formatStatus(
         ? f.recordedUnknown === true
           ? [`        ${RECORDED_UNKNOWN_TEXT}`]
           : []
-        : [`        ${recordedText(f.recorded, result.worktreeId, now)}`]),
+        : [
+            // Row 011-67 (gh-52): a failure recorded under load names its load retry.
+            `        ${recordedText(f.recorded, result.worktreeId, now, { command, path: fromBase(options.base, f.check.testPath) })}`,
+          ]),
     ]),
     `Affected checks: ${affected(result, command)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,

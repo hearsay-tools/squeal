@@ -78,12 +78,27 @@ export function agoText(ms: number): string {
 export const RECORDED_UNKNOWN_TEXT =
   "recorded at an unknown time and load: the result that produced it is no longer identifiable in the store";
 
+/** How a printed command names the CLI and a failure's test file. */
+export interface RetryCommandWords {
+  /** The CLI as the surface names it (`SQUEAL_COMMAND`, or the Codex command). */
+  readonly command: string;
+  /** The test file as that command names it from the reader's directory. */
+  readonly path: string;
+}
+
 /**
- * A known failure's facts at registration and in status (spec 001 D6,
- * 001-368, 001-404): how long ago, where and at which revision it was
- * recorded, the load per CPU then, and the retry.
+ * A known failure's facts at registration, in status and in `why` (spec 001
+ * D6, 001-368, 001-404): how long ago, where and at which revision it was
+ * recorded, the load per CPU then, and the retry. A failure recorded at a
+ * load a `load` retry would wait out, with no retry asked, names that retry
+ * in `words` (row 011-67, gh-52); it stays counted, and nothing is queued.
  */
-export function recordedText(facts: RecordedFacts, here: WorktreeId, now: EpochMs): string {
+export function recordedText(
+  facts: RecordedFacts,
+  here: WorktreeId,
+  now: EpochMs,
+  words: RetryCommandWords,
+): string {
   const where =
     facts.worktreeId === here
       ? "this worktree"
@@ -94,6 +109,18 @@ export function recordedText(facts: RecordedFacts, here: WorktreeId, now: EpochM
       ? "load per CPU then not recorded"
       : `load ${facts.loadPerCpu.toFixed(2)} per CPU when it ran`;
   const retry =
-    facts.retry === undefined ? "no retry asked at these inputs" : retryText(facts.retry);
+    facts.retry === undefined
+      ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words)}`
+      : retryText(facts.retry);
   return `recorded${ago} in ${where} at revision ${facts.revision}, ${load}; ${retry}`;
+}
+
+/**
+ * `; \`squeal retry <file> --reason load\` runs it once more …` for a run at
+ * or above the threshold a `load` retry waits on (`loadAllows`, one CPU's
+ * share), else empty.
+ */
+function loadRetryText(loadPerCpu: number | null, words: RetryCommandWords): string {
+  if (loadPerCpu === null || loadAllows({ oneMinute: loadPerCpu, cpus: 1 })) return "";
+  return `; \`${words.command} retry ${words.path} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
