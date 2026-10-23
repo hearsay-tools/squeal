@@ -1,0 +1,21 @@
+# Source extracts for issue 80 (read 2026-10-23 from this worktree's node_modules; vite 8.3.2, vitest 5.0.3, rolldown 1.2.12)
+
+## vite/dist/node/chunks/node.js (oxcResolvePlugin): native resolver cache is off only when server.watch === null
+99:*   disableCache: () => void,
+28977:			disableCache: partialEnv.config.command === "serve" && partialEnv.config.server.watch === null,
+29017:		plugin.perEnvironmentWatchChangeDuringDev = true;
+
+## vite/dist/node/chunks/node.js (vite:import-analysis): the issue's message
+return this.error(`Failed to resolve import "${url}" from "${normalizePath(path.relative(process.cwd(), importerFile))}". Does the file exist?`, pos);
+
+## vitest/dist/chunks/index.DpLw24bj.js: root server.watch = null when watch is off; project servers always null
+if (!(viteConfig.test?.watch ?? configDefaults.watch)) server.watch = null;
+// project servers never watch; the top-level server owns the watcher
+config.server.watch = null;
+
+## squeal src/runners/vitest/adapter.ts: createVitest options
+169:  /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
+188:      watch: false,
+
+## squeal src/runners/vitest/stale.ts: watchChange is called only for package.json
+109:      await environment.pluginContainer.watchChange(manifest, { event });
