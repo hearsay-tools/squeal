@@ -429,7 +429,13 @@ export function formatRegistration(
           ? f.recordedUnknown === true
             ? capitalize(RECORDED_UNKNOWN_TEXT)
             : null
-          : capitalize(recordedText(f.recorded, registration.consumer.worktreeId, now)),
+          : // Row 011-67 (gh-52): a failure recorded under load names its load retry.
+            capitalize(
+              recordedText(f.recorded, registration.consumer.worktreeId, now, {
+                command,
+                path: f.check.testPath,
+              }),
+            ),
         closureLine(f.changesInClosure),
       ],
       [{ check: f.check, shown: "fail" }],
