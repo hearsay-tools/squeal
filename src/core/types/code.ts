@@ -55,7 +55,11 @@ export type CodeMeasure = "complexity" | "crap" | "uncovered";
  */
 export type CodeOutcome = "pass" | "fail" | "pending" | "unknown";
 
-/** A span of source text: 1-based lines and columns, as `SourceLocation`; the end is inclusive. */
+/**
+ * A span of source text: 1-based lines and columns, as `SourceLocation`.
+ * The end is the position just after the last character, as tree-sitter's
+ * `endPosition` and V8's ranges end.
+ */
 export interface CodeRange {
   readonly startLine: number;
   readonly startColumn: number;
