@@ -28,7 +28,7 @@ describe("the code pass behind the daemon loop (015 D4)", SLOW, () => {
       format: "sha1",
       source: mainStoreSource(store, worktreeId, () => loop?.scheduler.extraFiles() ?? []),
       policy: () => policyOn(),
-      counter: fakeCounter(),
+      counter: () => Promise.resolve(fakeCounter()),
       log: () => {},
       onError: (error) => errors.push(error),
     });
