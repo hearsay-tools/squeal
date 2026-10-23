@@ -1,0 +1,86 @@
+name: Friction report
+description: Squeal cost an agent or a person time. Give the evidence a maintainer needs to reproduce it.
+labels: ["friction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report one obstacle per issue. This repository is public: remove secrets, private code and private paths before you submit.
+
+        Record the evidence when the obstacle happens. A version, revision or output that is not recorded at that time often makes the report impossible to reproduce.
+
+        To file from a terminal, use each field label below as a `###` heading in the issue body.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what Squeal did, and in which repository or task.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: command-output
+    attributes:
+      label: Command and output
+      description: The exact Squeal command or SQUEAL message, with its output. For status, why and failures, give the `--json` output. Write "not recorded" if you did not keep it.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Squeal version
+      description: The version that ran when it happened, from a SQUEAL message or `squeal --version`. If you did not record it, give the current version and write "not recorded at the time".
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Squeal revision
+      description: The revision number in the SQUEAL message or `squeal status` output, or "not recorded".
+  - type: dropdown
+    id: harness
+    attributes:
+      label: Harness
+      options:
+        - Claude Code
+        - Codex
+        - OpenCode
+        - Pi
+        - Other or none
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: The agent's model ID. Leave it empty when a person found the obstacle.
+  - type: input
+    id: cost
+    attributes:
+      label: Cost
+      description: The turns, minutes or wrong claims the obstacle caused.
+    validations:
+      required: true
+  - type: dropdown
+    id: restart
+    attributes:
+      label: Did a daemon restart clear it?
+      description: A restart is `squeal stop`, then `squeal start` or the next edit.
+      options:
+        - Not tried
+        - Yes, a restart cleared it
+        - No, it stayed after a restart
+        - Tried, result not recorded
+    validations:
+      required: true
+  - type: textarea
+    id: suggested-fix
+    attributes:
+      label: Suggested fix
+      description: Optional. What Squeal could do so that this does not happen again.
