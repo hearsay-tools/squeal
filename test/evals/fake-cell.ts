@@ -59,6 +59,10 @@ export const FAKE_DAEMON = `{
   const ended = () => !existsSync(root) || (owner !== "" && life() !== start);
   if (ended()) process.exit(0);
   setInterval(() => ended() && process.exit(0), 500);
+  // FAKE_STOP_MS: a stop's SIGTERM ends it only this many ms later, so a teardown that signals it
+  // and does not wait for it leaves it running (006-95).
+  const stopMs = Number(process.env.FAKE_STOP_MS ?? 0);
+  if (stopMs) process.on("SIGTERM", () => setTimeout(() => process.exit(0), stopMs));
 }`;
 
 const FAKE_SQUEAL = `import { spawn } from "node:child_process";
@@ -133,7 +137,8 @@ start)
   node scripts/rates-service.mjs > /dev/null 2>&1 ;;
 hang)
   trap '' TERM
-  (trap '' TERM; echo $$ >> "$FAKE_LOG/harness"; while :; do sleep 1; done) &
+  # Its own shell, as a subshell's $$ is its parent's: both pids are logged (006-95).
+  sh -c 'trap "" TERM; echo $$ >> "$FAKE_LOG/harness"; while :; do sleep 1; done' &
   while :; do sleep 1; done ;;
 esac
 exit 0
@@ -284,18 +289,49 @@ export const pids = (f: FakeRoot, name: "daemons" | "harness"): number[] =>
     ? readFileSync(join(f.log, name), "utf8").split("\n").filter(Boolean).map(Number)
     : [];
 
+/** A process as `/proc/<pid>` reads it, with its process group; `null` once it is gone. */
+export interface ProcessReading {
+  pid: number;
+  state: string;
+  ppid: number;
+  pgid: number;
+  args: string;
+}
+
+export function readProcess(pid: number): ProcessReading | null {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    const [state = "?", ppid, pgrp] = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+    let args = "";
+    try {
+      args = readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter(Boolean).join(" ");
+    } catch {
+      // It ended after the stat was read.
+    }
+    return { pid, state, ppid: Number(ppid), pgid: Number(pgrp), args };
+  } catch {
+    return null;
+  }
+}
+
 /** A process that exists and is not a zombie: a killed process waits as one until it is reaped. */
 export const alive = (pid: number) => {
+  const p = readProcess(pid);
+  if (p) return p.state !== "Z" && p.state !== "X";
+  // Gone, or no `/proc`: only then does the signal decide. The other order read a zombie reaped
+  // between the signal and the read as alive (006-95).
   try {
     process.kill(pid, 0);
+    return true;
   } catch {
     return false;
   }
-  try {
-    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
-    const state = stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0];
-    return state !== "Z" && state !== "X";
-  } catch {
-    return true;
-  }
 };
+
+/** The pids the `names` logs hold that are still `alive`, each with its log and process (006-95). */
+export const survivors = (f: FakeRoot, names: ("daemons" | "harness")[]) =>
+  names.flatMap((log) =>
+    pids(f, log)
+      .filter(alive)
+      .map((pid) => ({ log, ...(readProcess(pid) ?? { pid }) })),
+  );
