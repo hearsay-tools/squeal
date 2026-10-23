@@ -87,6 +87,18 @@ export interface AssembleInput {
   readonly untracked?: Readonly<Record<string, string>>;
   /** Each test file and the paths the runner reported it imports. */
   readonly closures: readonly { readonly path: string; readonly imports: readonly string[] }[];
+  /** Paths among the files the stat cache holds before bootstrap, as a predecessor left them (011-36). */
+  readonly cached?: readonly string[];
+  /** Read from the runner (`setEnvironments`) in place of one fixed environment hash (011-36). */
+  readonly environment?: RunnerEnvironment;
+  /**
+   * Then the runner's closures replace the first ones, the `removed` test
+   * files are forgotten, and untracked paths are tracked again (011-36).
+   */
+  readonly after?: {
+    readonly closures: readonly { readonly path: string; readonly imports: readonly string[] }[];
+    readonly removed: readonly string[];
+  };
 }
 
 /** One file of a finished tier, and what the ledger holds of it when the tier is recorded. */
