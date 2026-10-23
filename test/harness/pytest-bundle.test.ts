@@ -4,11 +4,12 @@ import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { readStatus } from "../../src/core/status/index.js";
+import { buildDist } from "../../src/harness/build.js";
 import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { until } from "../e2e/support.js";
+import { observeMetafile } from "../helpers/build-inputs.js";
 import { requireSynced, type Synced, syncFixture } from "../helpers/pytest-env.js";
-import { buildDistObserved } from "./bundle-helpers.js";
 
 /*
  * Spec 007 D4, D6 and review wave 1's input 7: the built CLI, from a temp
@@ -30,7 +31,7 @@ const daemons: ChildProcess[] = [];
 beforeAll(async () => {
   // Under /tmp: no `node_modules` above it, so nothing resolves from the sources.
   dist = mkdtempSync("/tmp/sq-pytest-dist-");
-  await buildDistObserved(CLAUDE_CODE_PLUGIN, dist);
+  observeMetafile(await buildDist(CLAUDE_CODE_PLUGIN, dist));
   synced = syncFixture(small, "3.13");
 }, SLOW.timeout);
 afterAll(async () => {

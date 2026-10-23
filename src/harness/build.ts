@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { type BuildOptions, build } from "esbuild";
+import { type BuildOptions, build, type Metafile } from "esbuild";
 
 /*
  * Builds one harness plugin (spec 001 D9, spec 002 D5): every hook entry point
@@ -208,12 +208,17 @@ export function copyPytestRuntime(
   }
 }
 
-/** What `dist/` holds, built into `outdir`: the bundles, the node:test and pytest runtimes and the recorder. */
-export async function buildDist(plugin: PluginBuild, outdir: string): Promise<void> {
-  await build(bundleOptions(plugin, outdir));
+/**
+ * What `dist/` holds, built into `outdir`: the bundles, the node:test and
+ * pytest runtimes and the recorder. Returns the bundles' metafile, whose
+ * inputs a test that builds reports as read (011-141).
+ */
+export async function buildDist(plugin: PluginBuild, outdir: string): Promise<Metafile> {
+  const { metafile } = await build({ ...bundleOptions(plugin, outdir), metafile: true });
   copyNodeTestRuntime(outdir);
   copyObserveRuntime(outdir);
   copyPytestRuntime(outdir);
+  return metafile;
 }
 
 /**

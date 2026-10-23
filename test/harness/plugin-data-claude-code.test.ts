@@ -2,13 +2,15 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { buildDist } from "../../src/harness/build.js";
 import {
   CLAUDE_CODE_PLUGIN,
   PLUGIN_DIR,
   rootVersion,
 } from "../../src/harness/claude-code/build.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
-import { buildDistObserved, liveSocket, runBundle, runtimeDir } from "./bundle-helpers.js";
+import { observeMetafile } from "../helpers/build-inputs.js";
+import { liveSocket, runBundle, runtimeDir } from "./bundle-helpers.js";
 import { recorded, squealRepo } from "./helpers.js";
 
 /*
@@ -32,7 +34,7 @@ beforeAll(async () => {
     recursive: true,
     filter: (from) => !from.startsWith(join(PLUGIN_DIR, "dist")),
   });
-  await buildDistObserved(CLAUDE_CODE_PLUGIN, join(root, "dist"));
+  observeMetafile(await buildDist(CLAUDE_CODE_PLUGIN, join(root, "dist")));
   // The version an update left: orphaned, still whole.
   cpSync(root, join(cache, OLDER), { recursive: true });
   writeFileSync(join(cache, OLDER, ".orphaned_at"), `${Date.now()}`);
