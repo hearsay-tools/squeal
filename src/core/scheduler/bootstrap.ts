@@ -178,11 +178,11 @@ export async function baseline(
 
   for (const file of misses) {
     const previous = previousKeys.get(file.id)?.key ?? null;
-    if (previous === null) continue;
     // `usedAt` 0 never advances last-used: reading a duration is not a lookup hit (D8).
-    const results = store.results.byKey(previous, 0);
+    const results = previous === null ? [] : store.results.byKey(previous, 0);
     if (results.length === 0) {
-      // Stored at a revision the last daemon never ran (task 004-54): no held fail, only a duration.
+      // No previous key, as at a new worktree's first start (row 011-154), or one stored at a
+      // revision the last daemon never ran (task 004-54): no held fail, only a duration.
       file.durationMs = durationOf(newestResults(store, file.ref));
       continue;
     }
