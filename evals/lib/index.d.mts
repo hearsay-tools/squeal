@@ -255,6 +255,8 @@ export function runBounded(input: {
   env: Record<string, string | undefined>;
   timeoutMs: number;
   graceMs?: number;
+  /** Written to the command's stdin, otherwise closed (006-98). */
+  input?: string;
   onStdout?: (chunk: Buffer) => void;
   onStderr?: (chunk: Buffer) => void;
   log: (line: string) => void;
@@ -591,6 +593,7 @@ export function claudeRunner(options?: {
   command?: string;
   prefix?: string[];
   timeoutMs?: number;
+  graceMs?: number;
 }): JudgeRunner;
 export function claudeVersion(runner: JudgeRunner): Promise<string>;
 export function rubricRevision(declared: Declarations): string;
