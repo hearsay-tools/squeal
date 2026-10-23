@@ -111,18 +111,18 @@ export function clearHandoff(store: Store, worktreeId: WorktreeId): void {
 }
 
 /*
- * Row 011-140 (011 C9, \`research/issue-75-77.md\` Q2): a Codex kept copy that
+ * Row 011-140 (011 C9, `research/issue-75-77.md` Q2): a Codex kept copy that
  * held older code than its name spawned every successor older than the claim
  * it ended, so the next hook stepped it down again, 39 times in 180 s. A
  * successor that registers older than the live claim it ends ends the
  * handoff short: one note, and a mark naming its incarnation, which no hook
- * asks to step down again (\`handOver\`) and which status and the next
- * liveness notice name with \`squeal start\`.
+ * asks to step down again (`handOver`) and which status and the next
+ * liveness notice name with `squeal start`.
  */
 
 /** A handoff that ended with a daemon older than its claim. */
 export interface ShortHandoff {
-  /** The incarnation that registered (\`handoffFrom\` of its record). */
+  /** The incarnation that registered (`handoffFrom` of its record). */
   readonly of: string;
   /** Its version. */
   readonly version: string;
@@ -132,17 +132,17 @@ export interface ShortHandoff {
   readonly at: EpochMs;
 }
 
-/** \`meta\` key of the worktree's short handoff. */
+/** `meta` key of the worktree's short handoff. */
 export function shortHandoffMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("daemonHandoffShort", worktreeId);
 }
 
-/** What \`endHandoff\` reads of the daemon that registers. */
+/** What `endHandoff` reads of the daemon that registers. */
 export interface Registering {
-  /** Its incarnation, as \`handoffFrom\` names its record. */
+  /** Its incarnation, as `handoffFrom` names its record. */
   readonly of: string;
   readonly version: string;
-  /** The script it runs, \`process.argv[1]\`. */
+  /** The script it runs, `process.argv[1]`. */
   readonly executable: string;
   readonly at: EpochMs;
 }
@@ -175,7 +175,7 @@ export function endHandoff(store: Store, worktreeId: WorktreeId, daemon: Registe
   appendNote(store, worktreeId, { at: daemon.at, revision: null, text });
 }
 
-/** The worktree's short handoff; \`null\` with none or one unreadable. */
+/** The worktree's short handoff; `null` with none or one unreadable. */
 export function readShortHandoff(store: Store, worktreeId: WorktreeId): ShortHandoff | null {
   const text = store.meta.get(shortHandoffMetaKey(worktreeId));
   if (text === null) return null;
