@@ -4,20 +4,22 @@ import { compare } from "../../core/fs/index.js";
 import { createInputMatcher } from "../../core/keys/glob.js";
 import { findInstalledLockfile } from "../../core/keys/index.js";
 import { optimizerOffNote } from "../../core/state/optimizer-note.js";
-import type {
-  AbsolutePath,
-  AffectedTestFiles,
-  EnumeratedCheck,
-  EpochMs,
-  InvalidatedPath,
-  InvalidateResult,
-  RelativePath,
-  RunnerAdapter,
-  RunnerClosure,
-  RunnerEnvironment,
-  RunOptions,
-  RunReport,
-  TestFileRef,
+import {
+  type AbsolutePath,
+  type AffectedTestFiles,
+  checkTextPattern,
+  type EnumeratedCheck,
+  type EpochMs,
+  focusedTexts,
+  type InvalidatedPath,
+  type InvalidateResult,
+  type RelativePath,
+  type RunnerAdapter,
+  type RunnerClosure,
+  type RunnerEnvironment,
+  type RunOptions,
+  type RunReport,
+  type TestFileRef,
 } from "../../core/types/index.js";
 import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
@@ -78,6 +80,8 @@ const NO_HINTS: VitestHints = { started: () => {}, size: () => {} };
 export class VitestAdapter implements RunnerAdapter {
   readonly name = "vitest";
   readonly adapterVersion = VITEST_ADAPTER_VERSION;
+  /** 013 V4 (row 011-135): a run takes `RunOptions.checks`. */
+  readonly focuses = true;
 
   #vitest: Vitest | null = null;
   /** Where the current instance copies transformed modules (`instanceTempDirs`). */
@@ -469,10 +473,22 @@ export class VitestAdapter implements RunnerAdapter {
         // instance unsure of what it read once is then replaced.
         await this.#invalidateStale(await this.#instance(hold));
         const vitest = await this.#instance(hold);
-        const specs = testFiles.map((ref) =>
-          findProject(vitest, ref).createSpecification(this.paths.toAbsolute(ref.path)),
+        const specs = testFiles.map((ref) => {
+          const texts = focusedTexts(options.checks, ref);
+          const path = this.paths.toAbsolute(ref.path);
+          // 013 V4 (row 011-135): the specification's own pattern, never the instance's.
+          return texts === null
+            ? findProject(vitest, ref).createSpecification(path)
+            : findProject(vitest, ref).createSpecification(path, {
+                testNamePattern: new RegExp(checkTextPattern(texts)),
+              });
+        });
+        const collector = new RunCollector(
+          testFiles,
+          this.paths,
+          options.fileEnded,
+          options.checks,
         );
-        const collector = new RunCollector(testFiles, this.paths, options.fileEnded);
         if (specs.length === 0) {
           const empty = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
           writeRunLog(options, collector, empty);
