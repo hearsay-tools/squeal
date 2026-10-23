@@ -127,6 +127,28 @@ describe("pnpm's lock.yaml trusted and read for per-package keys (011-162, R2)",
     expect((await read()).fingerprint).toBe("none");
   });
 
+  it("keeps the whole fingerprint for importers written on their header line, so a bump re-keys (review 0.1.282 B1)", async () => {
+    const flowAt = async (version: string) => {
+      const fixture = { "vitest@4.0.0": {}, [`a@${version}`]: {} };
+      writePnpmInstall(root, {
+        importers: { ".": { a: version, vitest: "4.0.0" } },
+        snapshots: fixture,
+      });
+      const flow = `importers: {'.': {dependencies: {a: {specifier: ^${version}, version: ${version}}, vitest: {specifier: ^4.0.0, version: 4.0.0}}}}`;
+      const text = readFileSync(join(root, LOCK), "utf8");
+      writeFile(
+        root,
+        LOCK,
+        text.replace(/importers:\n[\s\S]*?\npackages:/, `${flow}\n\npackages:`),
+      );
+      return read();
+    };
+    const before = await flowAt("1.0.0");
+    expect([before.graph, before.note, before.formerPnpm ?? null]).toEqual([null, null, null]);
+    const after = await flowAt("2.0.0");
+    expect(keyOf(after, uses("a"))).not.toBe(keyOf(before, uses("a")));
+  });
+
   it("is stale with one note for a missing, a newer, an undeclared or a retargeted entry", async () => {
     const trusted = await read();
     const folder = (id: string, name: string) => `node_modules/.pnpm/${id}/node_modules/${name}`;
