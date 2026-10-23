@@ -1,0 +1,62 @@
+== squeal first baselines (first.mjs, copy 15:41:22Z, window 72 h)
+10-22T06:36 998aca77 R rev1 abandoned 1f5b1643d d0 miss 690 ran 200 134s keyed 1 sameKeyBefore 0 sameCommitBefore 0 anyBefore 668
+10-22T07:13 846b23e0 R rev0 completed - dnull miss 639 ran 400 1977s keyed 2 sameKeyBefore 0 sameCommitBefore 0 anyBefore 618
+10-22T09:32 b56b1df9 R rev0 abandoned - dnull miss 750 ran 188 72s keyed 1 sameKeyBefore 0 sameCommitBefore 0 anyBefore 726
+10-22T11:20 f6b7b547 R rev1 abandoned - dnull miss 494 ran 200 47s keyed 2 sameKeyBefore 0 sameCommitBefore 0 anyBefore 468
+10-22T13:12 ea937e11 R rev0 completed - dnull miss 706 ran 703 4228s keyed 107 sameKeyBefore 0 sameCommitBefore 0 anyBefore 664
+10-22T13:30 ed5b5fee L rev0 completed a74ce1da0 d0 miss 111 ran 111 2267s keyed 110 sameKeyBefore 0 sameCommitBefore 0 anyBefore 107
+10-22T13:52 e34fc3f1 R rev0 abandoned - dnull miss 296 ran 200 28s keyed 64 sameKeyBefore 0 sameCommitBefore 0 anyBefore 276
+10-22T14:42 b7f3a01e R rev0 completed fc43cb5c0 d0 miss 6 ran 6 7s keyed 3 sameKeyBefore 0 sameCommitBefore 0 anyBefore 6
+10-22T14:42 93f9caa5 R rev0 completed - dnull miss 6 ran 1 0s keyed 1 sameKeyBefore 0 sameCommitBefore 0 anyBefore 6
+10-22T15:43 da4da046 R rev0 abandoned - dnull miss 715 ran 200 1s keyed 14 sameKeyBefore 0 sameCommitBefore 0 anyBefore 710
+10-22T15:52 f5c1639c R rev0 abandoned - dnull miss 224 ran 200 2920s keyed 35 sameKeyBefore 0 sameCommitBefore 0 anyBefore 219
+10-22T16:39 21970f32 R rev0 abandoned - dnull miss 46 ran 46 7s keyed 2 sameKeyBefore 0 sameCommitBefore 0 anyBefore 46
+10-22T17:36 8f2342d8 L rev0 abandoned - dnull miss 510 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 504
+10-22T17:36 0432fde4 R rev0 abandoned 7f0207629 d0 miss 510 ran 200 562s keyed 109 sameKeyBefore 0 sameCommitBefore 0 anyBefore 504
+10-23T04:02 6d45a893 R rev0 abandoned - dnull miss 241 ran 200 267s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 237
+10-23T05:36 bd30982c R rev0 abandoned - dnull miss 403 ran 200 31s keyed 23 sameKeyBefore 0 sameCommitBefore 0 anyBefore 394
+10-23T06:44 9141a026 R rev0 completed 7580d1a1d d0 miss 11 ran 11 778s keyed 9 sameKeyBefore 0 sameCommitBefore 0 anyBefore 10
+10-23T06:44 e23653ca R rev0 completed - dnull miss 11 ran 1 274s keyed 1 sameKeyBefore 0 sameCommitBefore 0 anyBefore 10
+10-23T07:00 e16f92e7 L rev0 abandoned - dnull miss 1 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 1
+10-23T07:48 3c74c111 L rev0 completed 8c0d7a221 d0 miss 14 ran 14 279s keyed 14 sameKeyBefore 0 sameCommitBefore 0 anyBefore 14
+10-23T08:37 07b0d895 L rev0 abandoned 016013a6b d1 miss 633 ran 493 862s keyed 91 sameKeyBefore 0 sameCommitBefore 0 anyBefore 628
+10-23T08:38 7174683f L rev0 abandoned 016013a6b d1 miss 633 ran 569 732s keyed 75 sameKeyBefore 0 sameCommitBefore 0 anyBefore 628
+10-23T08:51 cf605b2c L rev0 abandoned 016013a6b d0 miss 507 ran 220 721s keyed 90 sameKeyBefore 0 sameCommitBefore 0 anyBefore 502
+10-23T08:59 96a3059b R rev0 abandoned - dnull miss 446 ran 355 1896s keyed 181 sameKeyBefore 0 sameCommitBefore 0 anyBefore 442
+10-23T09:01 b17ee032 L rev0 abandoned a8aa0795d d0 miss 620 ran 521 2122s keyed 509 sameKeyBefore 0 sameCommitBefore 0 anyBefore 617
+10-23T09:05 f85f8e2b R rev0 abandoned - dnull miss 620 ran 200 1129s keyed 19 sameKeyBefore 0 sameCommitBefore 0 anyBefore 617
+10-23T09:10 06a032dc R rev0 abandoned - dnull miss 621 ran 200 1146s keyed 79 sameKeyBefore 0 sameCommitBefore 0 anyBefore 618
+10-23T10:22 98118842 R rev0 completed - dnull miss 210 ran 210 2188s keyed 6 sameKeyBefore 0 sameCommitBefore 0 anyBefore 210
+10-23T10:46 58e696e8 R rev0 abandoned - dnull miss 120 ran 120 2679s keyed 67 sameKeyBefore 0 sameCommitBefore 0 anyBefore 120
+10-23T11:45 540f5ec8 R rev0 completed a6cd853b9 d0 miss 29 ran 18 1607s keyed 14 sameKeyBefore 0 sameCommitBefore 0 anyBefore 29
+10-23T12:34 604bdd55 L rev0 abandoned c7e1d6a9c d0 miss 644 ran 582 867s keyed 104 sameKeyBefore 0 sameCommitBefore 0 anyBefore 644
+10-23T12:34 a85a0b1a L rev0 abandoned - dnull miss 644 ran 437 2097s keyed 110 sameKeyBefore 0 sameCommitBefore 0 anyBefore 644
+10-23T12:47 c64accca L rev0 completed f16369510 d0 miss 6 ran 6 336s keyed 6 sameKeyBefore 0 sameCommitBefore 0 anyBefore 6
+10-23T12:47 c03a842f L rev0 abandoned - dnull miss 6 ran 1 48s keyed 5 sameKeyBefore 0 sameCommitBefore 0 anyBefore 6
+10-23T13:02 eb54f622 R rev0 abandoned - dnull miss 633 ran 399 3477s keyed 8 sameKeyBefore 0 sameCommitBefore 0 anyBefore 633
+10-23T13:18 4b19c534 R rev0 completed - dnull miss 64 ran 22 493s keyed 2 sameKeyBefore 0 sameCommitBefore 0 anyBefore 64
+10-23T13:18 f5a6f393 R rev0 completed - dnull miss 64 ran 22 820s keyed 5 sameKeyBefore 0 sameCommitBefore 0 anyBefore 64
+10-23T13:18 3bb4cb32 R rev0 completed - dnull miss 64 ran 20 348s keyed 2 sameKeyBefore 0 sameCommitBefore 0 anyBefore 64
+10-23T14:03 2b9eaa1f L rev0 completed 3225f593c d0 miss 68 ran 68 1148s keyed 67 sameKeyBefore 0 sameCommitBefore 0 anyBefore 68
+10-23T14:04 38dbf63c R rev0 completed - dnull miss 68 ran 1 18s keyed 1 sameKeyBefore 0 sameCommitBefore 0 anyBefore 68
+10-23T14:05 297eb5fb L rev0 completed 7564837cf d0 miss 581 ran 581 5043s keyed 581 sameKeyBefore 0 sameCommitBefore 0 anyBefore 581
+== cezar first baselines (lookup-only)
+10-20T21:51 b29e5e73 L rev0 abandoned - dnull miss 53 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 53
+10-23T07:52 19c1ece4 L rev0 abandoned - dnull miss 514 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 498
+10-23T07:53 c3d9999b L rev0 abandoned - dnull miss 514 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 498
+10-23T08:01 727ae3b4 L rev0 abandoned - dnull miss 509 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 493
+10-23T08:59 b92c665e L rev0 abandoned - dnull miss 501 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 487
+10-23T09:48 61268f42 L rev0 abandoned - dnull miss 482 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 471
+10-23T11:36 d5ae69f1 L rev0 abandoned - dnull miss 258 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 256
+10-23T11:41 d93cbbd2 L rev0 abandoned - dnull miss 516 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 510
+10-23T12:16 f551453a L rev0 abandoned - dnull miss 194 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 192
+10-23T12:18 e36b14d6 L rev0 abandoned - dnull miss 165 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 165
+10-23T12:22 20d1db55 L rev0 abandoned - dnull miss 164 ran 0 0s keyed 0 sameKeyBefore 0 sameCommitBefore 0 anyBefore 162
+10-23T14:54 d5062258 L rev0 abandoned - dnull miss 662 ran 0 0s keyed 312 sameKeyBefore 0 sameCommitBefore 0 anyBefore 661
+10-23T15:38 a6e709c7 L rev0 abandoned - dnull miss 139 ran 0 0s keyed 139 sameKeyBefore 0 sameCommitBefore 0 anyBefore 139
+10-23T15:40 262f210c L rev0 abandoned - dnull miss 139 ran 0 0s keyed 139 sameKeyBefore 0 sameCommitBefore 0 anyBefore 139
+cezar first starts 14, misses 4810, baseline ran 0 (lookup-only); key known 590; a row at the key before the start 0; stored later at that key by the worktree itself 0 (0 s), by another worktree after the start 263
+an/first-squeal.jsonl misses 13665 key known 2520 (ran 2419 23139 s) row at the key before the start 0 row at the same commit before 0
+an/every-squeal.jsonl misses 46656 key known 11720 (ran 10522 71760 s) row at the key before the start 0 row at the same commit before 0
+an/content-squeal.jsonl misses at a known clean commit 12252 with an earlier clean row of the file at that same commit 0 0 s
+an/every-content.jsonl misses at a known clean commit 25131 with an earlier clean row of the file at that same commit 0 0 s

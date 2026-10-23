@@ -1,0 +1,11 @@
+every baseline checkpoint in the window (first.mjs every); E here reads: dirty at the checkpoint's revision
+misses 46656; file runs 20709; recorded 101274 s
+cause | recorded s (share) | live s / removed s | file runs / misses | CPU-s at 0.32 to 0.59
+A. new content: its closure content stood in git less than 15 min before the start | 31161 (30.8%) | 14629 / 16532 | 5691 / 8805 | 9971 to 18385
+B. content 15 min or more old, no stored row and no surviving run at equal content | 26208 (25.9%) | 11582 / 14626 | 6184 / 12866 | 8387 to 15463
+C1. an earlier run completed it at equal content in a removed worktree; its row is gone (prune) | 2448 (2.4%) | 2039 / 409 | 466 / 654 | 783 to 1444
+C2. an earlier run completed it at equal content in a live worktree; its row is gone | 686 (0.7%) | 392 / 294 | 116 / 129 | 220 to 405
+D. equal content stored before under another key (a path from another branch in the shared closure list) | 4989 (4.9%) | 3308 / 1680 | 786 / 1564 | 1596 to 2943
+E. the worktree was dirty at its first start (its own edits) | 29323 (29.0%) | 25430 / 3893 | 5756 / 17907 | 9383 to 17300
+F. no clean stored row of the file at any commit before (new or rarely run file) | 4110 (4.1%) | 3466 / 644 | 790 / 1113 | 1315 to 2425
+G. not determined: no stored row gives the start's commit | 2350 (2.3%) | 266 / 2084 | 920 / 3618 | 752 to 1386
