@@ -1,6 +1,7 @@
-import { chmodSync, existsSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { cellProcesses } from "./cell-processes.js";
 import {
   cellDirs,
   type FakeRoot,
@@ -32,6 +33,19 @@ const json = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 const noSecretPrinted = (output: string) => {
   for (const s of [TOKEN, PROXY_KEY, HOST]) expect(output).not.toContain(s);
 };
+/** The command of each fake Squeal call so far, in order: `status`, `stop`, ... */
+const squealCalls = (f: FakeRoot): string[] =>
+  existsSync(join(f.log, "squeal"))
+    ? readFileSync(join(f.log, "squeal"), "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l).args[0])
+    : [];
+/** A node:test file that logs its start and never ends, as a ground truth left running would. */
+const NODE_TEST_PROBE = `import { appendFileSync } from "node:fs";
+appendFileSync(process.env.FAKE_LOG + "/node-test", process.pid + "\\n");
+setInterval(() => {}, 1000);
+`;
 
 describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
   it("cleans the scratch when setup throws, and fails the cell (B1)", async () => {
@@ -128,6 +142,7 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
 
   it("tears down the session, the daemon and the scratch when the runner is terminated (S2)", async () => {
     const f = root();
+    let before = 0;
     const r = await runCell(
       f,
       [...CELL, "claude", "claude-haiku-5-5", "1"],
@@ -135,8 +150,12 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
       { FAKE_HARNESS: "hang", FAKE_STOP_MS: "300" },
       (child) => {
         const poll = setInterval(() => {
-          if (pids(f, "harness").length >= 2) {
+          const [cell] = cellDirs(f);
+          if (cell && pids(f, "harness").length >= 2) {
             clearInterval(poll);
+            // 006-97: the ground truth's node:test run would start this file and stay.
+            writeFileSync(join(cell, "work/scripts/started.test.mjs"), NODE_TEST_PROBE);
+            before = squealCalls(f).length;
             child.kill("SIGTERM");
           }
         }, 100);
@@ -152,6 +171,15 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
     expect(survivors(f, ["harness", "daemons"])).toEqual([]);
     expect(existsSync(join(cell, "home"))).toBe(false);
     expect(existsSync(join(cell, "out/scratch.json"))).toBe(true);
+    // 006-97: the killed session's end resumed the lifecycle during the teardown, and it started
+    // nothing: no Squeal command but the teardown's stop, no ground truth, nothing alive at exit.
+    expect(readFileSync(join(cell, "out/runner.log"), "utf8")).toMatch(
+      /terminated by SIGTERM[\s\S]*session end[\s\S]*the teardown has begun: squeal status not started/,
+    );
+    expect(squealCalls(f).slice(before)).toEqual(["stop"]);
+    expect(pids(f, "npx")).toEqual([]);
+    expect(pids(f, "node-test")).toEqual([]);
+    expect(cellProcesses(f).map((p) => p.args.join(" "))).toEqual([]);
   });
 
   it("gives the session's bare squeal the pinned plugin's CLI, not the host's launcher (006-62)", async () => {

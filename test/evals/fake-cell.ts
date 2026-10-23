@@ -150,7 +150,9 @@ echo "cannot reach https://${HOST}/v1 with $FAKEPROXY_API_KEY" >&2
 exit 9
 `;
 
+// Each start logs its pid (006-97: a teardown starts no ground truth).
 const FAKE_NPX = `#!/bin/sh
+echo $$ >> "$FAKE_LOG/npx"
 for a in "$@"; do case $a in --outputFile=*) echo '{"numFailedTests":0,"testResults":[]}' > "\${a#--outputFile=}";; esac; done
 exit 0
 `;
@@ -284,7 +286,10 @@ export function leaks(dir: string): string[] {
   return out;
 }
 
-export const pids = (f: FakeRoot, name: "daemons" | "harness"): number[] =>
+/** The pid logs: the fake daemons, the harness's processes, `npx` and a node:test probe's (006-97). */
+export type PidLog = "daemons" | "harness" | "npx" | "node-test";
+
+export const pids = (f: FakeRoot, name: PidLog): number[] =>
   existsSync(join(f.log, name))
     ? readFileSync(join(f.log, name), "utf8").split("\n").filter(Boolean).map(Number)
     : [];
@@ -329,7 +334,7 @@ export const alive = (pid: number) => {
 };
 
 /** The pids the `names` logs hold that are still `alive`, each with its log and process (006-95). */
-export const survivors = (f: FakeRoot, names: ("daemons" | "harness")[]) =>
+export const survivors = (f: FakeRoot, names: PidLog[]) =>
   names.flatMap((log) =>
     pids(f, log)
       .filter(alive)
