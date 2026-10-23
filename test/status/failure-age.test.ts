@@ -75,8 +75,23 @@ describe("status: a known failure's age and load (001-404)", () => {
       loadPerCpu: 3.33,
     });
     expect(text).toContain(
-      "        recorded 3 h ago in this worktree at revision 4, load 3.33 per CPU when it ran; no retry asked at these inputs\n",
+      "        recorded 3 h ago in this worktree at revision 4, load 3.33 per CPU when it ran; no retry asked at these inputs; `squeal retry src/auth.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count\n",
     );
+  });
+
+  // Row 011-67 (gh-52): the CLI status names, the path from the cwd it ran in, and only under load.
+  it("names the load retry as the reader's command would, and none below the CPU count", () => {
+    const { repo, store } = seeded(NOW - 20_000);
+    recordRunLoad(store, "run-1", 1);
+    const status = readStatus(repo.main, { now: () => NOW });
+
+    expect(formatStatus(status, NOW, "/opt/squeal", { base: "src" })).toContain(
+      "load 1.00 per CPU when it ran; no retry asked at these inputs; `/opt/squeal retry auth.test.ts --reason load` runs it",
+    );
+    recordRunLoad(store, "run-1", 0.99);
+    const below = formatStatus(readStatus(repo.main, { now: () => NOW }), NOW);
+    expect(below).toContain("load 0.99 per CPU when it ran; no retry asked at these inputs\n");
+    expect(below).not.toContain("--reason load");
   });
 
   it("reads a fresh failure as just now, and a load not kept as not recorded", () => {
