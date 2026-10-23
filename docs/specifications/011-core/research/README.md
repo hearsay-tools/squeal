@@ -28,3 +28,4 @@ Links only. The findings behind this spec were written for 001 and stay in `../.
 - [daemon-scope-brief](daemon-scope-brief.md) (011-52): one daemon per repository instead of one per worktree, from the 2026-10-21 memory figures and usage since 2026-10-13 (the human, 2026-10-21). Findings go to `daemon-scope.md`.
 - [daemon-memory-brief](daemon-memory-brief.md) (011-53): what a quiet daemon gives back after a forced GC and after closing its Vitest instance, and the next edit's cost (the human, 2026-10-21, after 011-52). Findings go to `daemon-memory.md`.
 - [backlog-wall-budget](backlog-wall-budget.md) (001-366; brief `../tasks/wave-3.md` R1)
+- [cli-build-inputs-brief](cli-build-inputs-brief.md) (011-127): what keys a test that builds the CLI at run time, and the cost of each fix (coordinator 04a258b0, 2026-10-23, wave 21 R1). Findings go to `cli-build-inputs.md`.
