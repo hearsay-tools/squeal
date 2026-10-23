@@ -114,7 +114,10 @@ class TierScheduler implements Scheduler {
    * a tier past its estimate is checked again at its bound (row 011-107).
    */
   readonly #yields = new TierYields(() => this.#recheckTiers());
-  /** The lanes that wait for quiet after a backlog tier's cancel or for catch-up (C4 step 5, rows 011-82, 011-153). */
+  /**
+   * The lanes that wait for quiet after a backlog tier's cancel, or before an
+   * edit's catch-up (C4 step 5, rows 011-82 and 011-153).
+   */
   readonly #quiet = new BacklogQuiet((ends, at, catchUp) =>
     publishQuiet(this.options.store, this.options.worktreeId, ends, at, catchUp),
   );
