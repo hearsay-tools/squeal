@@ -72,8 +72,8 @@ describe("PnpmGraph (011-162, R1)", () => {
 
   it("resolves a bare name through the nearest importer that declares it, the root's public hoisting last", () => {
     expect(identities({ from: "packages/app/src/deep", name: "c" })).toEqual([
-      "@types/x@1.0.0@types-only",
-      id("c@1.0.0", "@types/x@1.0.0"),
+      "@types/x@types-only",
+      id("c@1.0.0", "@types/x@types-only"),
     ]);
     expect(identities({ from: "packages/app/src", name: "vitest" })).toEqual([id("vitest@4.0.0")]);
     expect(identities({ from: "test", name: "pub" })).toEqual([id("pub@1.0.0")]);
