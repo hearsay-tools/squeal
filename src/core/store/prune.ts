@@ -20,16 +20,19 @@ const DELETE_BATCH = 256;
 const VACUUM_PAGES = 512;
 
 /*
- * Spec 001 D8: "keep every result whose key is current in any live worktree
- * plus the newest result per check on the main worktree; drop other keys
- * after 7 days and everything owned by removed worktrees; a size cap with LRU
- * eviction as a backstop [...]; drop `checks` rows that no result, known
- * state, view or transition references."
+ * Spec 001 D8 as amended 2026-10-23 (row 011-160): "keep every result whose
+ * key is current in any live worktree plus the newest result per check on
+ * the main worktree; drop other keys after 7 days, the results of removed
+ * worktrees included, which are kept for the same 7 days so a later worktree
+ * at the same content inherits them; [...] a size cap evicting least
+ * recently used results as a backstop; drop `checks` rows that no result,
+ * known state, view or transition references."
  *
  * A live worktree is a `worktrees` row whose root still has a `.git` entry.
  * Runs and checkpoints follow the 7 days rule unless a kept result
  * references the run or a kept run the checkpoint; the newest completed
- * checkpoint of each live worktree is kept for status (D7). Spec 011 C7 as
+ * checkpoint of each live worktree is kept for status (D7). A removed
+ * worktree's run goes once no kept result names it. Spec 011 C7 as
  * amended 2026-10-21 (row 011-77): a kept replaced failure keeps its run, its
  * log and its failure text until it expires at the cutoff. Row 011-108: the
  * run behind an UNKNOWN keeps its run and log while that UNKNOWN stands.
@@ -57,9 +60,15 @@ const UNPROTECTED = `key NOT IN (${LIVE_KEYS})
       AND (n.recorded_at > results.recorded_at
            OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
 
-/** What no rule keeps: unprotected, and older than the cutoff (the one parameter) or orphaned. */
-const PRUNABLE = `${UNPROTECTED}
-  AND (recorded_at < ? OR worktree_id NOT IN (SELECT id FROM worktrees))`;
+/**
+ * What no rule keeps: unprotected and older than the cutoff (the one
+ * parameter), whether or not its worktree is still registered.
+ */
+const PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
+
+/** Runs no result, kept replaced failure or standing UNKNOWN names; the kept ids are the parameter. */
+const UNREFERENCED_RUN = `NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
+  AND id NOT IN (SELECT value FROM json_each(?))`;
 
 /** The newest completed checkpoint of each live worktree; status reports it (D7). */
 const LAST_COMPLETED_CHECKPOINTS = `
@@ -97,19 +106,10 @@ export function prune(
     resultsRemoved += evictToCap(conn, options.maxSizeMb * 1024 * 1024);
   }
 
-  const droppedRuns = conn.transaction(() =>
-    conn.all(
-      `DELETE FROM runs
-       WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
-         AND id NOT IN (SELECT value FROM json_each(?))
-         AND (worktree_id NOT IN (SELECT id FROM worktrees)
-              OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))
-       RETURNING log_dir`,
-      JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]),
-      cutoff,
-    ),
-  );
-  for (const row of droppedRuns) removeRunLog(paths, str(row, "log_dir"));
+  const keptRuns = JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]);
+  const runsRemoved =
+    dropLiveWorktreeRuns(conn, paths, keptRuns, cutoff) +
+    dropRemovedWorktreeRuns(conn, paths, keptRuns);
 
   // Same rule as runs, plus: a checkpoint stays while a kept run is one of its tiers.
   const checkpointsRemoved = conn.transaction(() =>
@@ -134,12 +134,52 @@ export function prune(
   vacuum(conn);
   return {
     resultsRemoved,
-    runsRemoved: droppedRuns.length,
+    runsRemoved,
     checkpointsRemoved,
     checksRemoved,
     worktreesRemoved,
     bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size"),
   };
+}
+
+/** A live worktree's runs that ended before the cutoff and that nothing names, with their logs. */
+function dropLiveWorktreeRuns(
+  conn: Connection,
+  paths: StorePaths,
+  kept: string,
+  cutoff: number,
+): number {
+  const dropped = conn.transaction(() =>
+    conn.all(
+      `DELETE FROM runs
+       WHERE ${UNREFERENCED_RUN} AND worktree_id IN (SELECT id FROM worktrees)
+         AND end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?
+       RETURNING log_dir`,
+      kept,
+      cutoff,
+    ),
+  );
+  for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
+  return dropped.length;
+}
+
+/**
+ * A removed worktree's runs and their logs (row 011-160). A run goes, with
+ * its log, once nothing names it: at once when it stored nothing, else when
+ * its last result expires at the cutoff. Its own step, so these logs can
+ * follow another rule than the result rows that name their runs.
+ */
+function dropRemovedWorktreeRuns(conn: Connection, paths: StorePaths, kept: string): number {
+  const dropped = conn.transaction(() =>
+    conn.all(
+      `DELETE FROM runs
+       WHERE ${UNREFERENCED_RUN} AND worktree_id NOT IN (SELECT id FROM worktrees)
+       RETURNING log_dir`,
+      kept,
+    ),
+  );
+  for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
+  return dropped.length;
 }
 
 /**
