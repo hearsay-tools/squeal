@@ -1743,6 +1743,9 @@ function hostLoad() {
     cpus: availableParallelism()
   };
 }
+function loadAllows(load) {
+  return load.oneMinute === null || load.oneMinute < load.cpus;
+}
 var RUN_LOADS_META_KEY = "failed-run-loads";
 function readRunLoads(store) {
   const raw = store.meta.get(RUN_LOADS_META_KEY);
@@ -1861,6 +1864,15 @@ function withRecorded(store, worktreeId, states, revision) {
   });
 }
 
+// src/core/ps/render-units.ts
+var KIB = 1024;
+var MIB = KIB * 1024;
+var GIB = MIB * 1024;
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellQuote(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+
 // src/core/retry/text.ts
 function outcomeText(outcome) {
   switch (outcome) {
@@ -1887,12 +1899,16 @@ function agoText(ms) {
   return `${Math.floor(hours / 24)} d ago`;
 }
 var RECORDED_UNKNOWN_TEXT = "recorded at an unknown time and load: the result that produced it is no longer identifiable in the store";
-function recordedText(facts, here, now) {
+function recordedText(facts, here, now, words) {
   const where3 = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
   const ago = facts.recordedAt === void 0 ? "" : ` ${agoText(now - facts.recordedAt)}`;
   const load = facts.loadPerCpu === null ? "load per CPU then not recorded" : `load ${facts.loadPerCpu.toFixed(2)} per CPU when it ran`;
-  const retry = facts.retry === void 0 ? "no retry asked at these inputs" : retryText(facts.retry);
+  const retry = facts.retry === void 0 ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words)}` : retryText(facts.retry);
   return `recorded${ago} in ${where3} at revision ${facts.revision}, ${load}; ${retry}`;
+}
+function loadRetryText(loadPerCpu, words) {
+  if (loadPerCpu === null || loadAllows({ oneMinute: loadPerCpu, cpus: 1 })) return "";
+  return `; \`${words.command} retry ${shellQuote(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
 
 // src/core/store/connection.ts
@@ -3973,9 +3989,9 @@ var stored = (r) => r.gaps.length === 0 && r.scanned === void 0 ? r.since : r;
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
-function scannedDaemon(store, worktreeId, alive) {
+function scannedDaemon(store, worktreeId, alive2) {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (!alive || daemon === null) return null;
+  if (!alive2 || daemon === null) return null;
   const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
   return marker !== null && Number(marker) === daemon.startedAt ? daemon.startedAt : null;
 }
@@ -5202,9 +5218,9 @@ function pidRuns(pid) {
     return error.code === "EPERM";
   }
 }
-function slowSlotOf(store, worktreeId, root, header, alive, now) {
+function slowSlotOf(store, worktreeId, root, header, alive2, now) {
   const tier = header.slowTier;
-  if (!alive || tier === void 0 || tier.pending === 0) return void 0;
+  if (!alive2 || tier === void 0 || tier.pending === 0) return void 0;
   if (tier.activity?.kind !== "waiting" || tier.activity.for !== "slot") return void 0;
   const permits = readPolicy(root).slow.maxParallel;
   let held;
@@ -5389,10 +5405,10 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
-  const alive = daemon.state === "alive";
+  const alive2 = daemon.state === "alive";
   const hold = (reads?.holds ?? readHolds(store, store.worktrees.get(worktreeId), daemon, now))[0];
   const slot2 = once(
-    () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive, now) : reads.slowSlot ?? void 0
+    () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive2, now) : reads.slowSlot ?? void 0
   );
   const facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
@@ -6581,10 +6597,10 @@ function createDelivery(store, options) {
       tellSlowTier(store, consumer, header.slowTier);
       tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
       if (!registered) {
-        const alive = atStart && header.daemon?.state === "alive";
+        const alive2 = atStart && header.daemon?.state === "alive";
         const resumed = tellRegistered(store, consumer, header.revision, {
           at,
-          scanned: scannedDaemon(store, consumer.worktreeId, alive)
+          scanned: scannedDaemon(store, consumer.worktreeId, alive2)
         });
         startEdits(store, consumer, header.revision, resumed?.said === true);
         if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
@@ -7124,7 +7140,15 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : atText(f.location, f.testFileFrame),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize3(RECORDED_UNKNOWN_TEXT) : null : capitalize3(recordedText(f.recorded, registration2.consumer.worktreeId, now)),
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize3(RECORDED_UNKNOWN_TEXT) : null : (
+          // Row 011-67 (gh-52): a failure recorded under load names its load retry.
+          capitalize3(
+            recordedText(f.recorded, registration2.consumer.worktreeId, now, {
+              command,
+              path: f.check.testPath
+            })
+          )
+        ),
         closureLine(f.changesInClosure)
       ],
       [{ check: f.check, shown: "fail" }]
@@ -7324,7 +7348,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.270";
+  if (true) return "0.1.271";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -7863,6 +7887,7 @@ async function waitForPending(context, waitMs, pollMs, isSlow) {
 var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
 
 // src/harness/shared/version-copies.ts
+import { spawnSync } from "node:child_process";
 import {
   chmodSync as chmodSync2,
   copyFileSync,
@@ -7875,12 +7900,15 @@ import {
   rmSync as rmSync5
 } from "node:fs";
 import { basename as basename2, dirname as dirname6, join as join13, resolve as resolve3 } from "node:path";
+var COPIED = ["dist", "skills"];
 var CLI = join13("dist", "cli", "squeal.mjs");
 var SKILL = join13("skills", "squeal", "SKILL.md");
 var LAUNCHER_SOURCE = join13("bin", "squeal-launcher");
 var LAUNCHER = join13("bin", "squeal");
+var VERSION = /^\d+\.\d+\.\d+$/;
 var CODEX_CACHE = join13("plugins", "cache", "hearsay", "squeal");
 var CODEX_DATA = join13("plugins", "data", "squeal-hearsay");
+var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
 function dataLauncher(data) {
   return join13(data, LAUNCHER);
 }
@@ -7894,6 +7922,94 @@ function keptCli(data, version) {
 function dataOfCopy(cli) {
   const versions = dirname6(dirname6(dirname6(dirname6(cli))));
   return cli.endsWith(`/${CLI}`) && basename2(versions) === "versions" ? dirname6(versions) : null;
+}
+function keepVersion({ root, data, version }) {
+  const dir = copyOf(data, version);
+  if (!VERSION.test(version) || !existsSync8(join13(root, CLI))) return null;
+  try {
+    const versions = join13(data, "versions");
+    let made = false;
+    if (keptCli(data, version) === null) {
+      mkdirSync6(versions, { recursive: true });
+      const part = join13(versions, `.${version}.${process.pid}.tmp`);
+      rmSync5(part, { recursive: true, force: true });
+      for (const name of COPIED) {
+        if (existsSync8(join13(root, name))) {
+          cpSync(join13(root, name), join13(part, name), { recursive: true, dereference: true });
+        }
+      }
+      try {
+        renameSync2(part, dir);
+        made = true;
+      } catch {
+        rmSync5(part, { recursive: true, force: true });
+      }
+    }
+    writeLauncher(root, data, version);
+    if (made) prune3(data, version);
+    return keptCli(data, version) === null ? null : dir;
+  } catch {
+    return null;
+  }
+}
+function writeLauncher(root, data, version) {
+  const target = dataLauncher(data);
+  const source = join13(root, LAUNCHER_SOURCE);
+  if (!existsSync8(source)) return;
+  if (existsSync8(target)) {
+    if (copies(data).some((v) => isNewerVersion(v, version))) return;
+    if (readFileSync7(target, "utf8") === readFileSync7(source, "utf8")) return;
+  }
+  mkdirSync6(join13(data, "bin"), { recursive: true });
+  const part = `${target}.${process.pid}.tmp`;
+  copyFileSync(source, part);
+  chmodSync2(part, 493);
+  renameSync2(part, target);
+}
+function copies(data) {
+  try {
+    return readdirSync4(join13(data, "versions")).filter((v) => VERSION.test(v));
+  } catch {
+    return [];
+  }
+}
+function prune3(data, version) {
+  const versions = join13(data, "versions");
+  const others = copies(data).filter((v) => v !== version);
+  const keep = others.reduce(
+    (a, b) => a === null || isNewerVersion(b, a) ? b : a,
+    null
+  );
+  const running = processArgs();
+  const gone = readdirSync4(versions).filter((name) => {
+    const left = LEFT.exec(name);
+    return left !== null && !alive(Number(left[1]));
+  });
+  for (const other of others) {
+    if (other !== keep && running !== null && !running.includes(`${join13(versions, other)}/`)) {
+      gone.push(other);
+    }
+  }
+  for (const name of gone) {
+    const doomed = join13(versions, `.${name}.${process.pid}.gone`);
+    try {
+      renameSync2(join13(versions, name), doomed);
+      rmSync5(doomed, { recursive: true, force: true });
+    } catch {
+    }
+  }
+}
+function processArgs() {
+  const ps = spawnSync("ps", ["-A", "-o", "args="], { encoding: "utf8" });
+  return ps.status === 0 && typeof ps.stdout === "string" ? ps.stdout : null;
+}
+function alive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM";
+  }
 }
 
 // src/harness/codex/command.ts
@@ -7912,6 +8028,32 @@ var set = (value) => value === void 0 || value === "" ? null : value;
 function keptCodexCli(env, version = squealVersion()) {
   const data = set(env.PLUGIN_DATA);
   return data === null ? null : keptCli(data, version);
+}
+function keepCodexCli(env, version) {
+  const root = set(env.PLUGIN_ROOT);
+  const data = set(env.PLUGIN_DATA);
+  if (root === null || data === null) return null;
+  return keepVersion({ root, data, version }) === null ? null : keptCli(data, version);
+}
+function keepOnSpawn(deps) {
+  const version = deps.squealVersion ?? squealVersion();
+  const data = set(deps.env.PLUGIN_DATA);
+  if (set(deps.env.PLUGIN_ROOT) === null || data === null || keptCli(data, version) !== null) {
+    return deps;
+  }
+  const ensure2 = deps.ensureDaemon ?? ensureDaemon;
+  return {
+    ...deps,
+    ensureDaemon: async (root, options) => {
+      if (options.awaitLockMs === void 0) {
+        const probe = await probeDaemon(root, options.socketTimeoutMs, options);
+        if (probe.state === "alive") return "alive";
+        if (probe.state === "unresponsive") return "unavailable";
+      }
+      const cli = keepCodexCli(deps.env, version);
+      return ensure2(root, cli === null ? options : { ...options, cli });
+    }
+  };
 }
 
 // src/harness/codex/output.ts
@@ -8111,12 +8253,14 @@ async function runMain(name, handler) {
   } catch {
   }
   const cli = keptCodexCli(process.env) ?? fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url));
-  const result = await runCodexHandler(name, handler, stdin, {
+  const deps = {
     env: process.env,
     sessionRoots: sessionRootFiles(process.env),
     cli,
     command: codexCommand(process.env, cli)
-  });
+  };
+  const kept = name === "session-start" ? deps : keepOnSpawn(deps);
+  const result = await runCodexHandler(name, handler, stdin, kept);
   if (result.stdout !== "") process.stdout.write(result.stdout);
   if (result.stderr !== "") process.stderr.write(result.stderr);
 }
