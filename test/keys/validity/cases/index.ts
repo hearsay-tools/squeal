@@ -12,7 +12,7 @@ import { VITEST_RUNS } from "./adapter/vitest.js";
 import { DECLARED } from "./assemble/declared.js";
 import { INHERITED } from "./assemble/inherited.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
-import { INSTALLED_KEYS } from "./key/installed.js";
+import { INSTALLED_KEYS, PNPM_KEYS } from "./key/installed.js";
 import { OBSERVED_READS } from "./observe/reads.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
 import { STORE_TIERS } from "./store/tier.js";
@@ -25,6 +25,7 @@ import { STORE_TIERS } from "./store/tier.js";
 export const CASES: readonly Case[] = [
   ...GOLDEN_KEYS,
   ...INSTALLED_KEYS,
+  ...PNPM_KEYS,
   ...GOLDEN_ROWS,
   ...OBSERVED_READS,
   ...INHERIT,

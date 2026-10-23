@@ -114,9 +114,9 @@ export class PnpmGraph implements PackageGraph {
 
   /** A worktree-relative directory relative to the install, or `null` when outside it. */
   #local(from: RelativePath): string | null {
-    if (this.base === "") return from;
+    const prefix = this.base === "" ? "" : `${this.base}/`;
     if (from === this.base) return "";
-    return from.startsWith(`${this.base}/`) ? from.slice(this.base.length + 1) : null;
+    return from.startsWith(prefix) ? from.slice(prefix.length) : null;
   }
 
   /** The snapshot id `name` resolves to from `from`, a marker, or `null` when absent. */
