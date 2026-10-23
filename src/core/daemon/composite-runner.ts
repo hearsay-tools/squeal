@@ -227,6 +227,8 @@ function merge(parts: readonly Part[]): RunReport {
   const environment = reports.flatMap((report) => report.environmentObserved ?? []);
   const skipped = reports.flatMap((report) => report.skippedFiles ?? []);
   const withheld = reports.flatMap((report) => report.withheld ?? []);
+  // Row 011-145: each part's focused counts, in the parts' order as `completedFiles`.
+  const focused = reports.flatMap((report) => report.focused ?? []);
   // Task 001-382: one adapter runs Vitest, so at most one part failed to start.
   const startup = reports.find((report) => report.startupFailure !== undefined)?.startupFailure;
   const started = [...new Set(reports.flatMap((report) => report.startedProjects ?? []))];
@@ -243,6 +245,7 @@ function merge(parts: readonly Part[]): RunReport {
     ...(environment.length > 0 ? { environmentObserved: environment } : {}),
     ...(skipped.length > 0 ? { skippedFiles: skipped } : {}),
     ...(withheld.length > 0 ? { withheld } : {}),
+    ...(focused.length > 0 ? { focused } : {}),
     ...(startup === undefined ? {} : { startupFailure: startup }),
     ...(started.length === 0 ? {} : { startedProjects: started.sort(compare) }),
   };
