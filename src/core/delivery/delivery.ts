@@ -20,6 +20,8 @@ import {
   type ViewEntry,
 } from "../types/index.js";
 import { annotate, withClosureChanges, withDependencies } from "./attribution.js";
+import { registerCode, tellCode } from "./code-deliver.js";
+import type { CodeSource } from "./code-source.js";
 import { recordVersion } from "./consumer-version.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 import { carriesEditResult, editNotes, startEdits } from "./edits.js";
@@ -38,7 +40,7 @@ import {
   withTold,
 } from "./liveness.js";
 import { ownEditUnknown } from "./own-edit.js";
-import { scannedDaemon, tellRegistered } from "./registered.js";
+import { registration, scannedDaemon, tellRegistered } from "./registered.js";
 import { slowTierChanged, tellSlowTier } from "./slow-told.js";
 import {
   currentKeys,
@@ -69,6 +71,8 @@ export interface DeliveryOptions {
    * (task 001-130); `null` records none. Default: none.
    */
   readonly squealVersion?: string | null;
+  /** Spec 015 D6: the code store, read while `complexity.enabled` holds. Default: none, so no code part. */
+  readonly code?: CodeSource;
 }
 
 /**
@@ -207,7 +211,13 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Row 011-73 (C8 as amended 2026-10-21): a hold's start and end, told as liveness is.
       const holds = liveness ? holdsChange(store, consumer, at) : null;
       if (holds !== null) tellHolds(store, consumer, holds.now);
-      const news = delta.entries.length > 0 || changed !== null || holds !== null;
+      const tests = delta.entries.length > 0 || changed !== null || holds !== null;
+      // Spec 015 D6, D7: code changes at tool boundaries; a Stop tells them only beside other news.
+      const code =
+        liveness && (tests || !stop)
+          ? tellCode(options.code, consumer, at, () => registration(store, consumer)?.since ?? null)
+          : null;
+      const news = tests || code !== null;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
       const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
@@ -256,6 +266,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...(slowChanged ? { slowTierChanged: true as const } : {}),
         ...(sawEdit === undefined ? {} : { sawEdit }),
         ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
+        ...(code === null ? {} : { code }),
       };
     });
   }
@@ -340,12 +351,14 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         else writeTurn(store, consumer, null);
         recordHarness(store, consumer, options.harnessProcess?.() ?? null);
         recordVersion(store, consumer, options.squealVersion ?? null);
+        const code = registerCode(options.code, consumer, at);
         return {
           schemaVersion: PAYLOAD_SCHEMA_VERSION,
           consumer,
           header,
           // 011-18: a resumed session's failures name the closure paths changed since it started.
           knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
+          ...(code === undefined ? {} : { code }),
         };
       }),
 

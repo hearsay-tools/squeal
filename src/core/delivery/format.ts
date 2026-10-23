@@ -26,6 +26,7 @@ import type {
   RetiredEntry,
   TransitionEntry,
 } from "../types/index.js";
+import { codeChanges, codeLines, codeRegistrationLine } from "./code-format.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { failureGroups, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
@@ -274,7 +275,7 @@ export function formatDelta(
   const title =
     entries.length === 0
       ? delta.liveness === undefined
-        ? (holdTitle ?? `SQUEAL · revision ${header.revision}`)
+        ? (holdTitle ?? codeTitle(delta) ?? `SQUEAL · revision ${header.revision}`)
         : livenessTitle(delta.liveness, header.revision)
       : delta.label === "baseline"
         ? `SQUEAL · Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}`
@@ -304,7 +305,12 @@ export function formatDelta(
       .map(([o, checks]) => `${checks.length} ${upper(o)}: ${partsText(checks, fileLevelWord(o))}`);
     return `Not shown: ${counted.length} more changed checks (${by.join("; ")}). ${statusPointer(command)}`;
   };
-  const tail = failed === undefined ? null : whyLine(failed.check, command);
+  // Spec 015 D6: the code lines come after every test block, and are never cut.
+  const tail =
+    [
+      ...(failed === undefined ? [] : [whyLine(failed.check, command)]),
+      ...(delta.code === undefined ? [] : [codeLines(delta.code, command).join("\n")]),
+    ].join("\n\n") || null;
   return assemble(
     [
       title,
@@ -317,6 +323,13 @@ export function formatDelta(
     tail,
     max,
   );
+}
+
+/** Spec 015 D6: the title of a delivery whose only news is the code's. */
+function codeTitle({ code, header }: Delta): string | undefined {
+  if (code === undefined || codeChanges(code) === 0) return undefined;
+  const changes = codeChanges(code);
+  return `SQUEAL · ${changes} complexity ${changes === 1 ? "change" : "changes"} at revision ${header.revision}`;
 }
 
 /** Task 001-224, decided by the human: said once per consumer, after its first edit. */
@@ -415,6 +428,8 @@ export function formatRegistration(
     // Spec 011 C6 as amended (gh-34, gh-45): status's count and words.
     `Known failures: ${failureCountText(splitByValidity(knownFailures).current.map((f) => f.check))}${notCurrentText(header)}`,
     ...earlierFailuresLines(knownFailureCounts(knownFailures)),
+    // Spec 015 D6: a number and the command that lists them, never the list.
+    ...(registration.code === undefined ? [] : [codeRegistrationLine(registration.code, command)]),
   ].join("\n");
   const blocks = knownFailures.map((f: KnownFailure) =>
     block(
