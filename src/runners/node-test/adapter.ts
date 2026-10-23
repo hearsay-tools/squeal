@@ -164,8 +164,6 @@ export async function createNodeTestAdapter(
         : inner.environment(),
     run: async (testFiles, runOptions) =>
       inner === null ? unavailable(`${label}: ${broken()}`) : inner.run(testFiles, runOptions),
-    // 003 D5 (row 011-135): `runNodeTest` takes `RunOptions.checks`.
-    focuses: true,
     close: async () => inner?.close(),
   };
 }
