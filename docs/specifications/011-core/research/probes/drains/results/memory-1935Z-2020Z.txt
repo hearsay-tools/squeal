@@ -1,0 +1,59 @@
+at load1 | draining: n daemon_pss_mib tests_pss_mib cpu_s_per_min | live: n pss tests | other: n pss tests | host avail_mib
+19:35:52Z 12.79 | draining: 7 2950 0 0.0 | live: 8 6420 1940 0.0 | other: 0 0 0 0.0 | 26231
+19:36:51Z 10.71 | draining: 7 2955 0 3.3 | live: 8 5649 946 34.6 | other: 0 0 0 0.0 | 28758
+19:37:51Z 20.91 | draining: 7 2859 0 4.3 | live: 8 5455 3522 60.9 | other: 1 42 0 0.0 | 26795
+19:38:51Z 25.75 | draining: 7 2960 0 4.4 | live: 8 5680 3447 63.0 | other: 1 762 0 15.4 | 25598
+19:39:51Z 24.70 | draining: 7 2963 0 4.7 | live: 8 5553 4769 37.6 | other: 0 0 0 0.0 | 25184
+19:40:52Z 21.30 | draining: 8 3505 0 4.1 | live: 7 4817 476 42.6 | other: 0 0 0 0.0 | 29311
+19:41:51Z 14.40 | draining: 8 3510 0 3.7 | live: 7 4493 273 18.9 | other: 3 1775 0 0.0 | 26312
+19:42:51Z 8.95 | draining: 8 3516 0 3.2 | live: 7 4205 216 10.4 | other: 3 1112 0 7.9 | 27825
+19:43:51Z 6.23 | draining: 7 3219 0 3.1 | live: 7 3970 280 18.1 | other: 3 1145 0 2.2 | 27859
+19:44:51Z 11.80 | draining: 7 3088 0 3.9 | live: 7 4043 383 14.2 | other: 4 2061 813 65.5 | 26551
+19:45:52Z 12.03 | draining: 7 3090 0 3.3 | live: 11 6133 430 70.5 | other: 0 0 0 0.0 | 27908
+19:46:51Z 19.90 | draining: 7 2776 0 3.0 | live: 12 5763 1286 45.4 | other: 2 536 0 0.0 | 27084
+19:47:51Z 21.97 | draining: 7 2476 0 3.6 | live: 11 5926 3023 61.8 | other: 7 1951 0 17.0 | 25421
+19:48:51Z 24.99 | draining: 7 2476 0 4.4 | live: 11 5901 1949 60.6 | other: 7 2521 0 7.8 | 25070
+19:49:52Z 27.29 | draining: 7 2268 0 4.1 | live: 11 5348 4182 63.6 | other: 9 2769 27 5.9 | 24001
+19:50:53Z 43.05 | draining: 6 1804 0 3.7 | live: 15 7797 3958 106.7 | other: 3 525 0 0.5 | 23428
+19:51:51Z 45.46 | draining: 6 1673 0 4.5 | live: 13 6472 2871 108.3 | other: 4 1436 0 0.0 | 26451
+19:52:51Z 34.98 | draining: 5 1511 373 9.7 | live: 11 5831 457 86.5 | other: 7 2403 0 11.0 | 26669
+19:53:51Z 23.80 | draining: 5 1550 0 4.3 | live: 11 5247 2041 62.0 | other: 4 1900 0 41.4 | 26013
+19:54:51Z 25.47 | draining: 5 1429 0 3.5 | live: 11 5339 2019 70.5 | other: 4 1274 0 11.2 | 25783
+19:55:52Z 16.56 | draining: 4 1208 0 2.1 | live: 15 7427 1616 54.4 | other: 1 134 0 0.0 | 27378
+19:56:51Z 30.45 | draining: 4 1212 0 2.6 | live: 15 7455 2864 100.8 | other: 13 1773 198 0.0 | 25140
+19:57:51Z 25.10 | draining: 4 1212 0 2.5 | live: 15 8218 3464 141.4 | other: 6 968 130 0.0 | 26216
+19:58:51Z 39.08 | draining: 4 1359 207 12.1 | live: 14 7825 3891 95.6 | other: 11 1513 522 0.0 | 24810
+19:59:51Z 29.87 | draining: 4 1371 0 8.0 | live: 14 9665 703 147.1 | other: 3 322 0 0.0 | 25513
+20:00:53Z 43.88 | draining: 4 1207 0 10.2 | live: 14 9076 1461 117.1 | other: 2 300 21 0.0 | 24772
+20:01:52Z 52.20 | draining: 4 1048 232 12.3 | live: 14 9091 1625 132.2 | other: 0 0 0 0.0 | 24551
+20:02:52Z 57.67 | draining: 4 1114 239 13.0 | live: 14 9422 2535 135.7 | other: 2 175 0 0.0 | 22109
+20:03:52Z 54.44 | draining: 4 1143 187 6.3 | live: 14 9274 2437 130.5 | other: 2 247 0 0.0 | 23545
+20:04:51Z 61.94 | draining: 4 1155 207 16.1 | live: 14 9212 2391 156.1 | other: 3 280 27 0.0 | 21685
+20:05:53Z 50.15 | draining: 4 1146 172 4.5 | live: 13 9128 1177 119.3 | other: 1 81 0 0.0 | 24699
+20:06:51Z 39.35 | draining: 4 1151 0 7.9 | live: 12 7557 2038 101.9 | other: 1 83 0 0.0 | 25858
+20:07:51Z 45.28 | draining: 4 1087 0 6.8 | live: 12 7725 2787 135.3 | other: 1 129 0 0.0 | 25319
+20:08:51Z 53.73 | draining: 4 1052 45 9.6 | live: 12 8020 3070 122.7 | other: 0 0 0 0.0 | 25807
+20:09:51Z 45.06 | draining: 4 1115 212 11.2 | live: 12 7919 3296 100.3 | other: 3 449 0 0.0 | 23822
+20:10:53Z 45.76 | draining: 4 1114 215 15.4 | live: 12 7907 2812 145.3 | other: 1 127 0 0.0 | 24349
+20:11:51Z 44.15 | draining: 4 1136 83 6.1 | live: 12 8073 4089 108.0 | other: 3 558 326 0.0 | 24727
+20:12:51Z 39.27 | draining: 3 919 227 18.3 | live: 11 7732 3598 81.8 | other: 3 364 0 0.0 | 24111
+20:13:51Z 33.31 | draining: 3 917 157 16.7 | live: 12 7811 2220 71.3 | other: 2 261 26 0.0 | 24903
+20:14:51Z 39.45 | draining: 3 917 271 12.8 | live: 11 7696 4065 124.0 | other: 2 253 0 0.0 | 23731
+20:15:52Z 32.71 | draining: 3 909 0 8.2 | live: 11 7927 4373 121.8 | other: 2 334 421 0.0 | 24296
+20:16:51Z 35.32 | draining: 3 812 227 6.7 | live: 11 8006 3392 82.8 | other: 1 100 0 0.0 | 24222
+20:17:51Z 34.96 | draining: 3 823 389 14.5 | live: 9 6899 3402 72.8 | other: 1 135 0 0.0 | 25274
+20:18:51Z 44.54 | draining: 3 800 305 14.2 | live: 10 7493 3513 126.5 | other: 3 892 0 0.0 | 22694
+20:19:51Z 41.10 | draining: 2 638 0 9.1 | live: 9 7718 4593 113.9 | other: 3 1360 0 2.0 | 23548
+
+per draining daemon (one sample a minute, so samples = daemon-minutes):
+{"pid": 1114823, "root": "orktrees/97c6ff55-6695-498d-b5e9-c1af407582b7", "drain_start": "18:43:18Z", "seen": "19:35-19:42", "samples": 8, "pss_mib_min_med_max": [302, 302, 303], "tests_mib_max": 0, "children_max": 0, "cpu_s": 3.7, "slow_lane": {"{\"kind\":\"waiting\",\"for\":\"slot\"}": 8}}
+{"pid": 1114830, "root": "orktrees/6310e370-2230-45b1-870b-074df751ff98", "drain_start": "19:12:47Z", "seen": "19:35-20:11", "samples": 37, "pss_mib_min_med_max": [221, 239, 355], "tests_mib_max": 0, "children_max": 0, "cpu_s": 32.8, "slow_lane": {"{\"kind\":\"waiting\",\"for\":\"slot\"}": 37}}
+{"pid": 1114863, "root": "orktrees/1732cc7e-0d4b-4d98-80a3-80eb3409a2c2", "drain_start": "19:20:44Z", "seen": "19:35-20:19", "samples": 45, "pss_mib_min_med_max": [239, 398, 503], "tests_mib_max": 389, "children_max": 17, "cpu_s": 211.0, "slow_lane": {"{\"kind\":\"waiting\",\"for\":\"slot\"}": 35, "{\"kind\":\"running\",\"path\":\"packages/web/e2e/new-task-hierarchy.e2e.ts\",\"since\":1792785951730,\"lastDurationMs\":42557.038785}": 5, "{\"kind\":\"running\",\"path\":\"packages/web/e2e/sidebar-reference-status.e2e.ts\",\"since\":1792786178498,\"lastDurationMs\":58701.497051}": 5}}
+{"pid": 1116254, "root": "orktrees/c0671d05-6b9e-435d-8adb-e5acb29a5782", "drain_start": "18:55:30Z", "seen": "19:35-19:54", "samples": 20, "pss_mib_min_med_max": [219, 330, 345], "tests_mib_max": 0, "children_max": 0, "cpu_s": 11.0, "slow_lane": {"{\"kind\":\"waiting\",\"for\":\"slot\"}": 20}}
+{"pid": 1119447, "root": "orktrees/3c94f411-ad1a-4e7a-93cb-dd0bde974faa", "drain_start": "18:52:44Z", "seen": "19:35-19:51", "samples": 17, "pss_mib_min_med_max": [214, 330, 331], "tests_mib_max": 0, "children_max": 0, "cpu_s": 8.5, "slow_lane": {"{\"kind\":\"waiting\",\"for\":\"slot\"}": 17}}
+{"pid": 1728620, "root": "orktrees/1299a346-5935-49ac-9aec-69fc20c62507", "drain_start": "19:19:09Z", "seen": "19:35-20:18", "samples": 44, "pss_mib_min_med_max": [229, 318, 600], "tests_mib_max": 0, "children_max": 0, "cpu_s": 27.0, "slow_lane": {"{\"kind\":\"waiting\",\"for\":\"slot\"}": 30, "{\"kind\":\"waiting\",\"for\":\"load\"}": 14}}
+{"pid": 2294819, "root": "orktrees/3fe06edd-f388-4a7b-b21d-7786211bcffc", "drain_start": "19:34:29Z", "seen": "19:35-20:19", "samples": 45, "pss_mib_min_med_max": [244, 383, 544], "tests_mib_max": 0, "children_max": 0, "cpu_s": 26.5, "slow_lane": {"{\"kind\":\"waiting\",\"for\":\"slot\"}": 45}}
+{"pid": 1234614, "root": "orktrees/d5a5be68-5382-410d-800d-33fd93d9ec3d", "drain_start": "19:37:44Z", "seen": "19:40-19:49", "samples": 10, "pss_mib_min_med_max": [419, 498, 542], "tests_mib_max": 0, "children_max": 0, "cpu_s": 5.5, "slow_lane": {"{\"kind\":\"waiting\",\"for\":\"slot\"}": 10}}
+
+means per sample: {'draining': [5.0, 1758.7, 83.3, 7.2], 'live': [11.2, 6984.9, 2441.8, 86.1], 'other': [2.9, 734.4, 55.8, 4.2]} samples 45
+daemon-minutes draining: 226 MiB-minutes (daemon + tests): 82890 CPU-s: 326.0
