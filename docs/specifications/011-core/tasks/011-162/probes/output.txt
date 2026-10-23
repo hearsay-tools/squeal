@@ -1,0 +1,605 @@
+# 011-162 probe output (2026-10-23). Node v24.21.0, pnpm 12.11.2 (cezar's packageManager) and 10.32.0, Linux, 24 CPUs.
+# cezar clones at 28be188dc under /tmp/p162, installed with --frozen-lockfile --ignore-scripts --store-dir /tmp/p162/store (no count needs a script: only Vite's closure walk runs).
+
+## pairs: how each comparison install was made
+cezar-a: HEAD's pnpm-lock.yaml. cezar-b: 21e516ef5^'s pnpm-lock.yaml and packages/web/package.json, installed, then HEAD's restored (36 lock.yaml lines apart: @babel/parser, @babel/types and 3 dependencies).
+cezar-e: pnpm update -r react react-dom zod hono marked lucide-react @tanstack/react-query radix-ui shiki streamdown ws smol-toml @modelcontextprotocol/sdk @hono/node-server react-router tailwind-merge; manifests restored (86 packages only in E, 177 only in A; vitest's snapshot equal).
+cezar-c: pnpm update -r; manifests restored (224 packages only in C, 325 only in A; vitest 4.1.10 -> 4.1.12).
+
+## measure-pnpm.mts, cezar-a against itself (sanity)
+{"rootA":"/tmp/p162/cezar-a","rootB":"/tmp/p162/cezar-a","edgesInIdentity":true,"load":{"before":"21.8 29.9 33.7","afterWalk":"24.2 29.6 33.4","end":"24.9 29.6 33.4"},"walkMs":[21187,18590],"testFiles":[919,919],"onlyInA":0,"fingerprintEqual":true,"stale":[null,null],"environmentScoped":[{"api-client":true,"contract":true,"e2e":false,"server":true,"web":true},{"api-client":true,"contract":true,"e2e":false,"server":true,"web":true}],"keptToday":919,"keptDesign":919,"byCaseA":{"own segment":329,"environment whole":84,"(1) child_process, worker_threads or cluster":435,"(1)-(3) module, a hand-made resolution or an unnamed file":4,"(4) opaque package":67},"keptByCase":{"own segment":329,"environment whole":84,"(1) child_process, worker_threads or cluster":435,"(1)-(3) module, a hand-made resolution or an unnamed file":4,"(4) opaque package":67},"reKeyedOwnSegment":0,"reKeyedOwnSegmentSample":[],"unknownFolders":[0,0],"ms":[{"read":243,"parse":232,"trust":9,"key":2389,"scans":2160,"scanned":480},{"read":157,"parse":151,"trust":4,"key":666,"scans":508,"scanned":480}]}
+
+## measure-pnpm.mts, ab
+{
+ "rootA": "/tmp/p162/cezar-a",
+ "rootB": "/tmp/p162/cezar-b",
+ "edgesInIdentity": true,
+ "load": {
+  "before": "28.7 27.3 29.4",
+  "afterWalk": "29.4 27.7 29.4",
+  "end": "29.4 27.7 29.4"
+ },
+ "walkMs": [
+  21063,
+  20916
+ ],
+ "testFiles": [
+  919,
+  919
+ ],
+ "onlyInA": 0,
+ "fingerprintEqual": false,
+ "stale": [
+  null,
+  null
+ ],
+ "orphanFolders": [
+  0,
+  0
+ ],
+ "environmentScoped": [
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  },
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  }
+ ],
+ "keptToday": 0,
+ "keptDesign": 328,
+ "byCaseA": {
+  "own segment": 329,
+  "environment whole": 84,
+  "(1) child_process, worker_threads or cluster": 435,
+  "(1)-(3) module, a hand-made resolution or an unnamed file": 4,
+  "(4) opaque package": 67
+ },
+ "keptByCase": {
+  "own segment": 328
+ },
+ "reKeyedOwnSegment": 1,
+ "reKeyedOwnSegmentSample": [
+  "web:packages/web/src/test/card-2-contrast.test.ts"
+ ],
+ "opaquePackagesByFiles": "commander@7.2.0:66 commander@8.3.0:66 es-toolkit@1.49.0:66 import-meta-resolve@4.2.0:66 marked@16.4.2:66 marked@17.0.6:66 cross-spawn@7.0.6:1",
+ "unknownFolders": [
+  0,
+  0
+ ],
+ "ms": [
+  {
+   "read": 201,
+   "parse": 196,
+   "trust": 9,
+   "key": 703,
+   "scans": 504,
+   "scanned": 400
+  },
+  {
+   "read": 184,
+   "parse": 180,
+   "trust": 8,
+   "key": 667,
+   "scans": 485,
+   "scanned": 396
+  }
+ ]
+}
+
+## measure-pnpm.mts, ae
+{
+ "rootA": "/tmp/p162/cezar-a",
+ "rootB": "/tmp/p162/cezar-e",
+ "edgesInIdentity": true,
+ "load": {
+  "before": "25.5 26.4 31.1",
+  "afterWalk": "26.5 26.5 30.9",
+  "end": "26.5 26.5 30.9"
+ },
+ "walkMs": [
+  22225,
+  21559
+ ],
+ "testFiles": [
+  919,
+  919
+ ],
+ "onlyInA": 0,
+ "fingerprintEqual": false,
+ "stale": [
+  null,
+  null
+ ],
+ "orphanFolders": [
+  0,
+  206
+ ],
+ "environmentScoped": [
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  },
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  }
+ ],
+ "keptToday": 0,
+ "keptDesign": 69,
+ "byCaseA": {
+  "own segment": 329,
+  "environment whole": 84,
+  "(1) child_process, worker_threads or cluster": 435,
+  "(1)-(3) module, a hand-made resolution or an unnamed file": 4,
+  "(4) opaque package": 67
+ },
+ "keptByCase": {
+  "own segment": 69
+ },
+ "reKeyedOwnSegment": 260,
+ "reKeyedOwnSegmentSample": [
+  "contract:packages/contract/src/ask-schema.test.ts",
+  "contract:packages/contract/src/attention.test.ts",
+  "contract:packages/contract/src/automation-schedule.test.ts",
+  "contract:packages/contract/src/delegation.test.ts",
+  "contract:packages/contract/src/github.test.ts",
+  "contract:packages/contract/src/live-coordination.test.ts",
+  "contract:packages/contract/src/preview.test.ts",
+  "contract:packages/contract/src/projects.test.ts"
+ ],
+ "opaquePackagesByFiles": "commander@7.2.0:66 commander@8.3.0:66 es-toolkit@1.49.0:66 import-meta-resolve@4.2.0:66 marked@16.4.2:66 marked@17.0.6:66 cross-spawn@7.0.6:1",
+ "unknownFolders": [
+  0,
+  0
+ ],
+ "ms": [
+  {
+   "read": 261,
+   "parse": 256,
+   "trust": 5,
+   "key": 789,
+   "scans": 559,
+   "scanned": 400
+  },
+  {
+   "read": 127,
+   "parse": 123,
+   "trust": 4,
+   "key": 491,
+   "scans": 288,
+   "scanned": 343
+  }
+ ]
+}
+
+## measure-pnpm.mts, ac
+{
+ "rootA": "/tmp/p162/cezar-a",
+ "rootB": "/tmp/p162/cezar-c",
+ "edgesInIdentity": true,
+ "load": {
+  "before": "26.7 26.6 30.9",
+  "afterWalk": "29.2 27.3 30.9",
+  "end": "29.8 27.4 30.9"
+ },
+ "walkMs": [
+  21400,
+  21534
+ ],
+ "testFiles": [
+  919,
+  919
+ ],
+ "onlyInA": 0,
+ "fingerprintEqual": false,
+ "stale": [
+  null,
+  null
+ ],
+ "orphanFolders": [
+  0,
+  284
+ ],
+ "environmentScoped": [
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  },
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  }
+ ],
+ "keptToday": 0,
+ "keptDesign": 0,
+ "byCaseA": {
+  "own segment": 329,
+  "environment whole": 84,
+  "(1) child_process, worker_threads or cluster": 435,
+  "(1)-(3) module, a hand-made resolution or an unnamed file": 4,
+  "(4) opaque package": 67
+ },
+ "keptByCase": {},
+ "reKeyedOwnSegment": 329,
+ "reKeyedOwnSegmentSample": [
+  "api-client:packages/api-client/src/protocol/tool-display.test.ts",
+  "api-client:packages/api-client/src/utils/project-scope.test.ts",
+  "contract:packages/contract/src/ask-schema.test.ts",
+  "contract:packages/contract/src/attention.test.ts",
+  "contract:packages/contract/src/automation-schedule.test.ts",
+  "contract:packages/contract/src/delegation.test.ts",
+  "contract:packages/contract/src/github.test.ts",
+  "contract:packages/contract/src/live-coordination.test.ts"
+ ],
+ "opaquePackagesByFiles": "commander@7.2.0:66 commander@8.3.0:66 es-toolkit@1.49.0:66 import-meta-resolve@4.2.0:66 marked@16.4.2:66 marked@17.0.6:66 cross-spawn@7.0.6:1",
+ "unknownFolders": [
+  0,
+  0
+ ],
+ "ms": [
+  {
+   "read": 257,
+   "parse": 252,
+   "trust": 6,
+   "key": 798,
+   "scans": 556,
+   "scanned": 400
+  },
+  {
+   "read": 144,
+   "parse": 139,
+   "trust": 6,
+   "key": 500,
+   "scans": 310,
+   "scanned": 326
+  }
+ ]
+}
+
+## measure-pnpm.mts, ab-noedges
+{
+ "rootA": "/tmp/p162/cezar-a",
+ "rootB": "/tmp/p162/cezar-b",
+ "edgesInIdentity": false,
+ "load": {
+  "before": "26.3 26.3 29.3",
+  "afterWalk": "28.7 27.1 29.4",
+  "end": "28.7 27.1 29.4"
+ },
+ "walkMs": [
+  22233,
+  17348
+ ],
+ "testFiles": [
+  919,
+  919
+ ],
+ "onlyInA": 0,
+ "fingerprintEqual": false,
+ "stale": [
+  null,
+  null
+ ],
+ "orphanFolders": [
+  0,
+  0
+ ],
+ "environmentScoped": [
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  },
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  }
+ ],
+ "keptToday": 0,
+ "keptDesign": 328,
+ "byCaseA": {
+  "own segment": 329,
+  "environment whole": 84,
+  "(1) child_process, worker_threads or cluster": 435,
+  "(1)-(3) module, a hand-made resolution or an unnamed file": 4,
+  "(4) opaque package": 67
+ },
+ "keptByCase": {
+  "own segment": 328
+ },
+ "reKeyedOwnSegment": 1,
+ "reKeyedOwnSegmentSample": [
+  "web:packages/web/src/test/card-2-contrast.test.ts"
+ ],
+ "opaquePackagesByFiles": "commander@7.2.0:66 commander@8.3.0:66 es-toolkit@1.49.0:66 import-meta-resolve@4.2.0:66 marked@16.4.2:66 marked@17.0.6:66 cross-spawn@7.0.6:1",
+ "unknownFolders": [
+  0,
+  0
+ ],
+ "ms": [
+  {
+   "read": 324,
+   "parse": 319,
+   "trust": 14,
+   "key": 843,
+   "scans": 655,
+   "scanned": 400
+  },
+  {
+   "read": 173,
+   "parse": 168,
+   "trust": 11,
+   "key": 706,
+   "scans": 539,
+   "scanned": 396
+  }
+ ]
+}
+
+## measure-pnpm.mts, ae-noedges
+{
+ "rootA": "/tmp/p162/cezar-a",
+ "rootB": "/tmp/p162/cezar-e",
+ "edgesInIdentity": false,
+ "load": {
+  "before": "28.7 27.1 29.4",
+  "afterWalk": "29.1 27.3 29.4",
+  "end": "29.1 27.3 29.4"
+ },
+ "walkMs": [
+  20444,
+  22799
+ ],
+ "testFiles": [
+  919,
+  919
+ ],
+ "onlyInA": 0,
+ "fingerprintEqual": false,
+ "stale": [
+  null,
+  null
+ ],
+ "orphanFolders": [
+  0,
+  206
+ ],
+ "environmentScoped": [
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  },
+  {
+   "api-client": true,
+   "contract": true,
+   "e2e": false,
+   "server": true,
+   "web": true
+  }
+ ],
+ "keptToday": 0,
+ "keptDesign": 69,
+ "byCaseA": {
+  "own segment": 329,
+  "environment whole": 84,
+  "(1) child_process, worker_threads or cluster": 435,
+  "(1)-(3) module, a hand-made resolution or an unnamed file": 4,
+  "(4) opaque package": 67
+ },
+ "keptByCase": {
+  "own segment": 69
+ },
+ "reKeyedOwnSegment": 260,
+ "reKeyedOwnSegmentSample": [
+  "contract:packages/contract/src/ask-schema.test.ts",
+  "contract:packages/contract/src/attention.test.ts",
+  "contract:packages/contract/src/automation-schedule.test.ts",
+  "contract:packages/contract/src/delegation.test.ts",
+  "contract:packages/contract/src/github.test.ts",
+  "contract:packages/contract/src/live-coordination.test.ts",
+  "contract:packages/contract/src/preview.test.ts",
+  "contract:packages/contract/src/projects.test.ts"
+ ],
+ "opaquePackagesByFiles": "commander@7.2.0:66 commander@8.3.0:66 es-toolkit@1.49.0:66 import-meta-resolve@4.2.0:66 marked@16.4.2:66 marked@17.0.6:66 cross-spawn@7.0.6:1",
+ "unknownFolders": [
+  0,
+  0
+ ],
+ "ms": [
+  {
+   "read": 248,
+   "parse": 240,
+   "trust": 8,
+   "key": 816,
+   "scans": 609,
+   "scanned": 400
+  },
+  {
+   "read": 179,
+   "parse": 169,
+   "trust": 6,
+   "key": 439,
+   "scans": 298,
+   "scanned": 343
+  }
+ ]
+}
+
+## dirnames.mjs
+{ "root": "/tmp/p162/cezar-a", "pnpm": "pnpm@12.11.2", "nodeLinker": "isolated", "virtualStoreDir": ".pnpm", "virtualStoreDirMaxLength": 120, "parseMs": 218, "snapshots": 638, "packages": 638, "dirs": 553, "matched": 553, "hashedNames": 48, "peerVariantPackages": 0, "unmatchedDirs": [], "unmatchedSnapshots": [ "@emnapi/core@1.11.1", "@emnapi/runtime@1.11.1", "@emnapi/wasi-threads@1.2.2", "@esbuild/aix-ppc64@0.28.1", "@esbuild/android-arm64@0.28.1", "@esbuild/android-arm@0.28.1", "@esbuild/android-x64@0.28.1", "@esbuild/darwin-arm64@0.28.1", "@esbuild/darwin-x64@0.28.1", "@esbuild/freebsd-arm64@0.28.1" ], "unmatchedSnapshotCount": 85 } 
+{ "root": "/tmp/p162/layouts/pnpm10", "pnpm": "pnpm@10.32.0", "nodeLinker": "isolated", "virtualStoreDir": ".pnpm", "virtualStoreDirMaxLength": 120, "parseMs": 13, "snapshots": 4, "packages": 4, "dirs": 4, "matched": 4, "hashedNames": 0, "peerVariantPackages": 0, "unmatchedDirs": [], "unmatchedSnapshots": [], "unmatchedSnapshotCount": 0 } 
+{ "root": "/tmp/p162/layouts/patched", "pnpm": "pnpm@12.11.2", "nodeLinker": "isolated", "virtualStoreDir": ".pnpm", "virtualStoreDirMaxLength": 120, "parseMs": 10, "snapshots": 4, "packages": 4, "dirs": 6, "matched": 4, "hashedNames": 0, "peerVariantPackages": 0, "unmatchedDirs": [ "@hono+node-server@1.19.14_hono@4.12.29", "hono@4.12.29" ], "unmatchedSnapshots": [], "unmatchedSnapshotCount": 0 } 
+
+## lookups.mjs, cezar-a: first hop of every import its closures report, against Node's on-disk lookup
+{ "root": "/tmp/p162/cezar-a", "distinctImports": 43, "tally": { "entry Vite resolved: same (snapshot)": 31, "bare or required: same (absent)": 1, "bare or required: same (snapshot)": 11 }, "mismatches": [], "mismatchCount": 0 } { "edges": { "same": 1594 }, "edgeMismatches": [] } 
+
+## lookups.mjs edges only (the first hop above uses cezar-a's closures, so only cezar-a's is meaningful)
+cezar-b: "edges": { "same": 1591 }, "edgeMismatches": [] } 
+cezar-c: "edges": { "same": 1453 }, "edgeMismatches": [] } 
+cezar-e: "edges": { "same": 1512 }, "edgeMismatches": [] } 
+
+## orphans.mjs
+{"root":"/tmp/p162/cezar-c","orphans":284,"symlinks":1864,"intoOrphan":0,"sample":[],"prunedAt":"Fri, 23 Oct 2026 20:31:42 GMT"}
+{"root":"/tmp/p162/cezar-e","orphans":206,"symlinks":1932,"intoOrphan":0,"sample":[],"prunedAt":"Fri, 23 Oct 2026 20:32:26 GMT"}
+{"root":"/tmp/p162/layouts/patched","orphans":2,"symlinks":11,"intoOrphan":0,"sample":[],"prunedAt":"Fri, 23 Oct 2026 20:39:11 GMT"}
+
+## lockread.mjs (best of 5; load 26.87 27.59 29.31)
+{"root":"/tmp/p162/cezar-a","bytes":256559,"snapshots":638,"equal":true,"lineReaderMs":3.4,"yamlMs":127.9}
+{"root":"/tmp/p162/cezar-b","bytes":255288,"snapshots":634,"equal":true,"lineReaderMs":2.3,"yamlMs":155}
+{"root":"/tmp/p162/cezar-c","bytes":233777,"snapshots":537,"equal":true,"lineReaderMs":1.8,"yamlMs":97.3}
+{"root":"/tmp/p162/cezar-e","bytes":244851,"snapshots":547,"equal":true,"lineReaderMs":3,"yamlMs":85.8}
+{"root":"/tmp/p162/layouts/isolated","bytes":1612,"snapshots":4,"equal":true,"lineReaderMs":0,"yamlMs":0.6}
+{"root":"/tmp/p162/layouts/pnpm10","bytes":1612,"snapshots":4,"equal":true,"lineReaderMs":0,"yamlMs":0.6}
+{"root":"/tmp/p162/layouts/patched","bytes":2100,"snapshots":4,"equal":true,"lineReaderMs":0,"yamlMs":0.6}
+{"root":"/home/agent/projects/cezar","bytes":256559,"snapshots":638,"equal":true,"lineReaderMs":1.8,"yamlMs":113.4}
+
+## trust.mjs over cezar's live installs, read-only (load 28.00 27.82 29.38)
+{"root":"/home/agent/projects/cezar","stale":null,"orphans":0,"readMs":345,"ruleMs":29}
+{"root":"worktree 027222d2","stale":null,"orphans":0,"readMs":269,"ruleMs":13}
+{"root":"worktree 0498344c","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree 06d646d2","stale":null,"orphans":0,"readMs":204,"ruleMs":23}
+{"root":"worktree 09a5b452","stale":null,"orphans":0,"readMs":159,"ruleMs":11}
+{"root":"worktree 1299a346","stale":null,"orphans":0,"readMs":217,"ruleMs":16}
+{"root":"worktree 1732cc7e","stale":null,"orphans":0,"readMs":214,"ruleMs":20}
+{"root":"worktree 27213164","stale":null,"orphans":0,"readMs":241,"ruleMs":14}
+{"root":"worktree 2f6bb7fd","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree 3c94f411","stale":null,"orphans":0,"readMs":245,"ruleMs":16}
+{"root":"worktree 3ee27649","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree 3fe06edd","stale":null,"orphans":0,"readMs":206,"ruleMs":11}
+{"root":"worktree 48024b83","stale":null,"orphans":0,"readMs":181,"ruleMs":14}
+{"root":"worktree 4a7475dc","stale":null,"orphans":0,"readMs":132,"ruleMs":18}
+{"root":"worktree 51cfc9c7","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree 52edfbc8","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree 53c89719","stale":null,"orphans":0,"readMs":157,"ruleMs":14}
+{"root":"worktree 5ae67660","stale":null,"orphans":0,"readMs":136,"ruleMs":24}
+{"root":"worktree 6310e370","stale":null,"orphans":0,"readMs":170,"ruleMs":13}
+{"root":"worktree 6474f253","stale":null,"orphans":0,"readMs":177,"ruleMs":22}
+{"root":"worktree 66317fb5","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree 68b9f60a","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree 6ac7ca8f","stale":null,"orphans":0,"readMs":209,"ruleMs":15}
+{"root":"worktree 78dc23f0","stale":null,"orphans":0,"readMs":151,"ruleMs":8}
+{"root":"worktree 7ac9265c","stale":null,"orphans":0,"readMs":139,"ruleMs":15}
+{"root":"worktree 80d79455","stale":null,"orphans":0,"readMs":129,"ruleMs":14}
+{"root":"worktree 923d1a0a","stale":null,"orphans":0,"readMs":147,"ruleMs":18}
+{"root":"worktree 97c6ff55","stale":null,"orphans":0,"readMs":194,"ruleMs":15}
+{"root":"worktree 9cb752d0","stale":null,"orphans":0,"readMs":146,"ruleMs":11}
+{"root":"worktree a5a45b74","stale":null,"orphans":0,"readMs":183,"ruleMs":19}
+{"root":"worktree aee1234c","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree b31044f5","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree b704e3c3","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree be7346c8","stale":null,"orphans":0,"readMs":148,"ruleMs":9}
+{"root":"worktree bed067c2","stale":null,"orphans":0,"readMs":214,"ruleMs":11}
+{"root":"worktree bf1af356","stale":null,"orphans":0,"readMs":146,"ruleMs":10}
+{"root":"worktree c0671d05","stale":null,"orphans":0,"readMs":163,"ruleMs":11}
+{"root":"worktree d2b0d830","stale":null,"orphans":0,"readMs":142,"ruleMs":20}
+{"root":"worktree d31c9fef","stale":null,"orphans":0,"readMs":172,"ruleMs":14}
+{"root":"worktree d5a5be68","stale":null,"orphans":0,"readMs":149,"ruleMs":13}
+{"root":"worktree d70f8f72","stale":null,"orphans":0,"readMs":180,"ruleMs":28}
+{"root":"worktree e040d496","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
+{"root":"worktree e3337b09","stale":null,"orphans":0,"readMs":176,"ruleMs":21}
+{"root":"worktree eb3f9982","stale":null,"orphans":0,"readMs":157,"ruleMs":27}
+
+## trust.sh (load 27.92 27.80 29.36)
+none: rule trusted  | pnpm: Lockfile is up to date, resolution step is skipped Done in 20ms using pnpm v12.11.2  | hono@4.12.29 before: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json after: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json
+delete-folder: rule stale (missing: hono@4.12.29)  | pnpm: Lockfile is up to date, resolution step is skipped Done in 42ms using pnpm v12.11.2  | hono@4.12.29 before: no hono@4.12.29 folder after: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json
+add-file: rule stale (newer than it: hono@4.12.29)  | pnpm: Lockfile is up to date, resolution step is skipped Done in 18ms using pnpm v12.11.2  | hono@4.12.29 before: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json after: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json
+replace-folder: rule trusted  | pnpm: Lockfile is up to date, resolution step is skipped Done in 26ms using pnpm v12.11.2  | hono@4.12.29 before: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json after: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json
+undeclared-copy: rule stale (not listed in it: node_modules/ws)  | pnpm: Lockfile is up to date, resolution step is skipped Done in 24ms using pnpm v12.11.2  | hono@4.12.29 before: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json after: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json
+retarget-link: rule stale (newer than it: hono)  | pnpm: Lockfile is up to date, resolution step is skipped Done in 21ms using pnpm v12.11.2  | hono@4.12.29 before: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json after: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json
+pnpm-update: rule trusted orphans 2 | pnpm: Lockfile is up to date, resolution step is skipped Done in 15ms using pnpm v12.11.2  | hono@4.12.29 before: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json after: node_modules/.pnpm/hono@4.12.29/node_modules/hono/package.json
+
+## layouts.sh (load 29.08 28.07 29.43)
+=== isolated
+lock.yaml: /tmp/p162/layouts/isolated/node_modules/.pnpm/lock.yaml
+.package-lock.json: absent
+.modules.yaml: {"nodeLinker":"isolated","virtualStoreDir":".pnpm","publicHoistPattern":[],"hoistPattern":["*"],"layoutVersion":5} hoisted {"private":5}
+app -> @hono/node-server: node_modules/.pnpm/@hono+node-server@1.19.14_hono@4.12.29/node_modules/@hono/node-server
+app -> hono: node_modules/.pnpm/hono@4.12.29/node_modules/hono
+app -> ws: absent
+app -> zod: absent
+app -> lib: packages/lib
+root node_modules/ws: absent
+root node_modules/hono: absent
+=== hoisted
+lock.yaml: /tmp/p162/layouts/hoisted/node_modules/.pnpm/lock.yaml
+.package-lock.json: absent
+.modules.yaml: {"nodeLinker":"hoisted","virtualStoreDir":".pnpm","publicHoistPattern":[],"hoistPattern":["*"],"layoutVersion":5} hoisted {"private":2}
+app -> @hono/node-server: absent
+app -> hono: absent
+app -> ws: absent
+app -> zod: absent
+app -> lib: packages/lib
+root node_modules/ws: node_modules/ws
+root node_modules/hono: node_modules/hono
+=== shamefully-hoist
+lock.yaml: /tmp/p162/layouts/shamefully-hoist/node_modules/.pnpm/lock.yaml
+.package-lock.json: absent
+.modules.yaml: {"nodeLinker":"isolated","virtualStoreDir":".pnpm","publicHoistPattern":["*"],"hoistPattern":["*"],"layoutVersion":5} hoisted {"public":5}
+app -> @hono/node-server: node_modules/.pnpm/@hono+node-server@1.19.14_hono@4.12.29/node_modules/@hono/node-server
+app -> hono: node_modules/.pnpm/hono@4.12.29/node_modules/hono
+app -> ws: absent
+app -> zod: absent
+app -> lib: packages/lib
+root node_modules/ws: node_modules/.pnpm/ws@8.21.1/node_modules/ws
+root node_modules/hono: node_modules/.pnpm/hono@4.12.29/node_modules/hono
+=== public-hoist-ws
+lock.yaml: /tmp/p162/layouts/public-hoist-ws/node_modules/.pnpm/lock.yaml
+.package-lock.json: absent
+.modules.yaml: {"nodeLinker":"isolated","virtualStoreDir":".pnpm","publicHoistPattern":["ws"],"hoistPattern":["*"],"layoutVersion":5} hoisted {"private":4,"public":1}
+app -> @hono/node-server: node_modules/.pnpm/@hono+node-server@1.19.14_hono@4.12.29/node_modules/@hono/node-server
+app -> hono: node_modules/.pnpm/hono@4.12.29/node_modules/hono
+app -> ws: absent
+app -> zod: absent
+app -> lib: packages/lib
+root node_modules/ws: node_modules/.pnpm/ws@8.21.1/node_modules/ws
+root node_modules/hono: absent
+=== global-virtual-store
+lock.yaml: /tmp/p162/layouts/global-virtual-store/node_modules/.pnpm/lock.yaml
+.package-lock.json: absent
+.modules.yaml: {"nodeLinker":"isolated","virtualStoreDir":"../../../store/v11/links","publicHoistPattern":[],"hoistPattern":["*"],"layoutVersion":5} hoisted {"private":5}
+app -> @hono/node-server: /tmp/p162/store/v11/links/@hono/node-server/1.19.14/1dae4b44fd2180032ca6a2292abf50e3861f250f9a68ff86b7f02f51055f9894/node_modules/@hono/node-server
+app -> hono: /tmp/p162/store/v11/links/@/hono/4.12.29/3da65a615fc4d55d4197e608e383f75fad30bfdb6550138e9f5e2f7b49684186/node_modules/hono
+app -> ws: absent
+app -> zod: absent
+app -> lib: packages/lib
+root node_modules/ws: absent
+root node_modules/hono: absent
+=== injected
+lock.yaml: /tmp/p162/layouts/injected/node_modules/.pnpm/lock.yaml
+.package-lock.json: absent
+.modules.yaml: {"nodeLinker":"isolated","virtualStoreDir":".pnpm","publicHoistPattern":[],"hoistPattern":["*"],"layoutVersion":5} hoisted {"private":5}
+app -> @hono/node-server: node_modules/.pnpm/@hono+node-server@1.19.14_hono@4.12.29/node_modules/@hono/node-server
+app -> hono: node_modules/.pnpm/hono@4.12.29/node_modules/hono
+app -> ws: absent
+app -> zod: absent
+app -> lib: packages/lib
+root node_modules/ws: absent
+root node_modules/hono: absent
