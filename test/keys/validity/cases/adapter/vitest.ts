@@ -95,6 +95,33 @@ const INCLUDES_E2E: Readonly<Record<string, string>> = {
     'export default { test: { include: ["test/**/*.test.ts", "e2e/**/*.test.ts"], setupFiles: ["test/setup.ts"], testTimeout: 60_000 } };\n',
 };
 
+/**
+ * Row 011-144: four checks, one red and held, one in a nested suite, one at
+ * top level; the texts `new` select three. A tree that does not focus runs
+ * the whole file, and the harness compares the selected checks alone.
+ */
+const FOCUSED: Readonly<Record<string, string>> = {
+  ...FAILING,
+  "test/four.test.ts": [
+    'import { existsSync, writeFileSync } from "node:fs";',
+    'import { setTimeout as delay } from "node:timers/promises";',
+    'import { describe, expect, it } from "vitest";',
+    'describe("parity", () => {',
+    '  it("old 1", () => expect(1).toBe(1));',
+    '  it("new 1 holds", async () => {',
+    '    writeFileSync($STARTED, "");',
+    "    while (existsSync($HOLD)) await delay(20);",
+    "    expect(1).toBe(2);",
+    "  }, 120_000);",
+    '  describe("inner", () => {',
+    '    it("new 2", () => expect(1).toBe(1));',
+    "  });",
+    "});",
+    'it("new 3 top", () => expect(1).toBe(1));',
+    "",
+  ].join("\n"),
+};
+
 /** Revision `n` of an excluded test file. */
 const e2eTest = (n: number) =>
   `import { expect, it } from "vitest";\nit("e2e ${n}", () => expect(${n}).toBe(${n}));\n`;
@@ -218,6 +245,23 @@ export const VITEST_RUNS: readonly Case[] = [
         {
           files: [ref("test/held.test.ts"), ref("test/fails.test.ts"), ref("test/broken.test.ts")],
           touched: ["dist/unrelated.js"],
+        },
+      ],
+    },
+  ),
+  vitest(
+    "a focused run stores the selected checks' outcomes as a whole run does (row 011-144)",
+    "011 C14 as amended 2026-10-23: a run given texts runs only the checks whose name holds one, so its selected checks, a file that fails to load and a file without texts beside them read as in a whole run; the focused tier stores nothing (C4), and this pins that the filter changes no outcome it selects",
+    {
+      files: FOCUSED,
+      runs: [
+        {
+          files: [ref("test/four.test.ts"), ref("test/broken.test.ts"), ref("test/fails.test.ts")],
+          touched: [],
+          checks: [
+            { testFile: ref("test/four.test.ts"), texts: ["new", "parity > inner"] },
+            { testFile: ref("test/broken.test.ts"), texts: ["never"] },
+          ],
         },
       ],
     },
