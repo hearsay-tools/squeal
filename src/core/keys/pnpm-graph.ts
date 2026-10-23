@@ -37,8 +37,9 @@ export class PnpmGraph implements PackageGraph {
   readonly skipped: ReadonlySet<string>;
   /** The snapshot each publicly hoisted name at the root links to. */
   readonly publicHoisted: ReadonlyMap<string, string>;
+  /** The snapshot each privately hoisted name in `.pnpm/node_modules` links to. */
+  readonly privateHoisted: ReadonlyMap<string, string>;
   readonly #snapshotOf = new Map<string, string>();
-  readonly #privateHoisted = new Map<string, string>();
   readonly #closures = new Map<string, readonly string[]>();
   /** The package folder of each installed identity a closure produced. */
   readonly #packageFolders = new Map<string, string>();
@@ -67,15 +68,17 @@ export class PnpmGraph implements PackageGraph {
     const skipped = Array.isArray(modules.skipped) ? modules.skipped : [];
     this.skipped = new Set(skipped.filter((id) => typeof id === "string"));
     const publicHoisted = new Map<string, string>();
+    const privateHoisted = new Map<string, string>();
     const hoisted = isRecord(modules.hoistedDependencies) ? modules.hoistedDependencies : {};
     for (const [id, aliases] of Object.entries(hoisted)) {
       if (!isRecord(aliases)) continue;
       for (const [alias, kind] of Object.entries(aliases)) {
         if (kind === "public") publicHoisted.set(alias, id);
-        else if (kind === "private") this.#privateHoisted.set(alias, id);
+        else if (kind === "private") privateHoisted.set(alias, id);
       }
     }
     this.publicHoisted = publicHoisted;
+    this.privateHoisted = privateHoisted;
   }
 
   /** The sorted identities of every installed package `imports` can load, without those in `exclude`. */
@@ -128,7 +131,7 @@ export class PnpmGraph implements PackageGraph {
     if (nameOf(id) === name) return id;
     const ref = this.lockfile.snapshots.get(id)?.get(name);
     if (ref !== undefined) return childOf(name, ref);
-    return this.#privateHoisted.get(name) ?? this.#fromImporters("", name);
+    return this.privateHoisted.get(name) ?? this.#fromImporters("", name);
   }
 
   /** Node's walk from a project directory: pnpm creates `node_modules` only in importers. */
@@ -198,7 +201,7 @@ function nameOf(id: string): string {
 }
 
 /** The snapshot an edge names: `name@ref`, or the ref itself for an alias (`other@1.0.0`). */
-function childOf(name: string, ref: string): string {
+export function childOf(name: string, ref: string): string {
   if (ref.startsWith("link:")) return workspace("", ref);
   return ref.replace(/\(.*$/, "").indexOf("@", 1) > 0 ? ref : `${name}@${ref}`;
 }

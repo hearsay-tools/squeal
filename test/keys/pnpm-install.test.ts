@@ -212,6 +212,70 @@ describe("pnpm's lock.yaml trusted and read for per-package keys (011-162, R2)",
     expect((await read()).fingerprint).not.toBe(reversioned.fingerprint);
   });
 
+  // Review 0.1.282 B2: Node walks past a link that is gone, to a private hoist, the root or above,
+  // while the graph keys the package the link named. Each link the graph resolves through exists.
+  it("is stale with one note for a declared entry, a hoisted name or an edge's link that is missing", async () => {
+    const hoisting: PnpmFixture = {
+      ...INSTALL,
+      modules: {
+        hoistedDependencies: { "b@1.0.0": { b: "private" }, "pub@1.0.0": { pub: "public" } },
+      },
+    };
+    const breaks = [
+      "packages/app/node_modules/a",
+      "packages/app/node_modules/lib",
+      "node_modules/vitest",
+      "node_modules/pub",
+      "node_modules/.pnpm/node_modules/b",
+      "node_modules/.pnpm/a@1.0.0/node_modules/b",
+    ];
+    for (const path of breaks) {
+      dir.cleanup();
+      mkdirSync(root);
+      writeFile(root, "packages/lib/index.js", "export {};\n");
+      writePnpmInstall(root, hoisting);
+      expect((await read()).note).toBeNull();
+      rmSync(join(root, path));
+      const stale = await read();
+      expect(stale.note).toBe(
+        `${LOCK} does not describe the installed packages (missing: ${path}); ` +
+          "dependencies are keyed by their package.json files until pnpm rewrites it",
+      );
+      expect([stale.graph, stale.formerPnpm ?? null]).toEqual([null, null]);
+    }
+  });
+
+  it("re-keys a workspace whose own link is gone when the root's copy it then loads moves", async () => {
+    const rootAt = (version: string): PnpmFixture => ({
+      importers: { ".": { a: version, vitest: "4.0.0" }, "packages/app": { a: "1.0.0" } },
+      snapshots: { "a@1.0.0": {}, [`a@${version}`]: {}, "vitest@4.0.0": {} },
+    });
+    const keys: string[] = [];
+    for (const version of ["2.0.0", "3.0.0"]) {
+      const fresh = tempDir();
+      try {
+        writePnpmInstall(fresh.path, rootAt(version));
+        rmSync(join(fresh.path, "packages/app/node_modules/a"));
+        const installed = await installedDependencies(fresh.path, fresh.path, new PackageScans());
+        expect(installed.graph).toBeNull();
+        keys.push(keyOf(installed, uses("a")));
+      } finally {
+        fresh.cleanup();
+      }
+    }
+    expect(keys[1]).not.toBe(keys[0]);
+  });
+
+  it("stays trusted without the link of a skipped optional entry an importer declares", async () => {
+    writePnpmInstall(root, {
+      ...INSTALL,
+      importers: { ...INSTALL.importers, ".": { fsevents: "2.3.3", vitest: "4.0.0" } },
+      snapshots: { ...INSTALL.snapshots, "fsevents@2.3.3": { skipped: true } },
+    });
+    const installed = await read();
+    expect([installed.note, installed.graph === null]).toEqual([null, false]);
+  });
+
   it("stays trusted with a folder no snapshot names, which pnpm keeps after an update", async () => {
     writePnpmInstall(root, BUMPED);
     const bumped = await read();
