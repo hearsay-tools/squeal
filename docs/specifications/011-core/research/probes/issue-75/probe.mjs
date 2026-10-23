@@ -8,6 +8,8 @@ import { DatabaseSync } from 'node:sqlite';
 const base = import.meta.dirname;
 const source = process.cwd();
 const mode = process.argv[2] ?? 'natural';
+// Row 011-133: three versions in one worktree, on the 0.1.271 to 0.1.273 bundles (three-versions.mjs).
+if (mode === 'mislabeled' || mode === 'control') { await import('./three-versions.mjs'); process.exit(0); }
 const load = loadavg()[0];
 console.log(JSON.stringify({ event: 'host', at: new Date().toISOString(), load, cpus: cpus().length, node: process.version, mode }));
 if (load > cpus().length) { console.log('NOT REPRODUCED: one-minute load exceeds CPU count'); process.exit(0); }
