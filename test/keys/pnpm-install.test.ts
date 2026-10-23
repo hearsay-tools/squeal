@@ -276,6 +276,37 @@ describe("pnpm's lock.yaml trusted and read for per-package keys (011-162, R2)",
     expect([installed.note, installed.graph === null]).toEqual([null, false]);
   });
 
+  // Review 0.1.282 S1 (C11): a package with no runtime file keys as a constant, so a bump of it
+  // re-keys no file that keeps its own segment, unless a project file imports its manifest.
+  it("keeps the key across a types-only bump, directly or as an edge, unless its manifest is imported", async () => {
+    const typesAt = (version: string): PnpmFixture => ({
+      importers: { ".": { "@types/x": version, vitest: "4.0.0" }, "packages/app": { c: "1.0.0" } },
+      snapshots: {
+        [`@types/x@${version}`]: { files: { "index.d.ts": "export {};\n" } },
+        "c@1.0.0": { dependencies: { "@types/x": version } },
+        "vitest@4.0.0": {},
+      },
+    });
+    const types = (manifest?: true): RunnerPackages => ({
+      imports: [{ from: "test", name: "@types/x", ...(manifest ? { manifest } : {}) }],
+      builtins: [],
+    });
+    const keysAt = async (version: string) => {
+      const fresh = tempDir();
+      try {
+        writePnpmInstall(fresh.path, typesAt(version));
+        const installed = await installedDependencies(fresh.path, fresh.path, new PackageScans());
+        expect(installed.note).toBeNull();
+        return [types(), uses("c"), types(true)].map((packages) => keyOf(installed, packages));
+      } finally {
+        fresh.cleanup();
+      }
+    };
+    const [before, after] = [await keysAt("1.0.0"), await keysAt("2.0.0")];
+    expect(after.slice(0, 2)).toEqual(before.slice(0, 2));
+    expect(after[2]).not.toBe(before[2]);
+  });
+
   it("stays trusted with a folder no snapshot names, which pnpm keeps after an update", async () => {
     writePnpmInstall(root, BUMPED);
     const bumped = await read();
