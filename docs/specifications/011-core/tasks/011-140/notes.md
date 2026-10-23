@@ -39,7 +39,7 @@ Outside the row's file list: `src/core/daemon/daemon.ts` (the `#register` call a
 2. **A wrong copy that a running daemon uses is still renamed out.** That daemon runs older code under a newer name, and the hook steps it down anyway; its later loads by path fail as it exits. Sparing it would leave the wrong copy in place for the launcher.
 3. **The short mark is its own `meta` row**, not a field of the claim: a release before this row would read a claim row with a live bound as a live claim.
 4. **`squeal start` replaces only a marked daemon.** A newer `start` still says `alive` for an older daemon without the mark, as before; hooks step that one down.
-5. **The notice** is the liveness title `a 0.1.272 daemon is validating at revision N, not 0.1.273` and the header sentence `The daemon is up: the handoff to 0.1.273 ended at <time> with a 0.1.272 daemon, which validates; no hook asks it to step down again, and \`squeal start\` of 0.1.273 replaces it.`
+5. **The notice** is the liveness title `a 0.1.272 daemon is validating at revision N, not 0.1.273` and the header sentence ``The daemon is up: the handoff to 0.1.273 ended at <time> with a 0.1.272 daemon, which validates; no hook asks it to step down again, and `squeal start` of 0.1.273 replaces it.``
 
 ## 4. Drafted spec sentences (the coordinator writes them)
 
