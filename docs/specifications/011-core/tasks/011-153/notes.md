@@ -19,7 +19,8 @@ Worker notes, wave 25 (W1), from main `7e585a601` (after 0.1.278). Commits `fab0
 2. **A pull's catch-up during an edit's wait is held too.** The queue keeps one catch-up flag per entry and does not record which revision made it catch-up (`queue.ts`, not this row's). While the wait runs, every catch-up file of the lane is held. Telling them apart needs a field on the queue entry.
 3. **Which tiers it holds.** The backlog's tiers and the second group's turn: the amended sentence lists the edit's own tiers, a promoted file and `run --all` as not held, and not the turn. An edit's tier still takes catch-up files beside its own (tier sharing, 001-184), as it takes the backlog's during the 20 s wait, so a promoted file's tier does too. Holding them there too would be one more condition in `quietHolds`.
 4. **The rest of the second group is not held.** During the catch-up wait a backlog tier takes the baseline's, an environment change's and re-queued files, as the sentence holds only catch-up.
-5. **Status names the later wait.** The store does not tell catch-up files from the rest of a lane's queue, so, as 011-82 does, every queued file of a lane with no tier running reads the wait. With both waits, the later end is the one the catch-up files wait for.
+5. **The slow tier waits longer.** It starts once no fast work is pending, the backlog's included (004 D2, 004-60), so held catch-up delays it by up to the wait, as the 20 s wait does.
+6. **Status names the later wait.** The store does not tell catch-up files from the rest of a lane's queue, so, as 011-82 does, every queued file of a lane with no tier running reads the wait. With both waits, the later end is the one the catch-up files wait for.
 
 ## 3. Spec sentences, drafted
 
