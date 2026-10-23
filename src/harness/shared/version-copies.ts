@@ -13,6 +13,7 @@ import {
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { isNewerVersion } from "../../core/daemon/version.js";
+import { isRecord } from "../../core/fs/index.js";
 
 /*
  * Spec 005 D3 as amended 2026-10-21 (row 005-73, `research/plugin-cache-cleanup.md`
@@ -21,10 +22,19 @@ import { isNewerVersion } from "../../core/daemon/version.js";
  * deleted files. Squeal keeps its own copy of each version in the plugin data
  * directory, which the harness keeps across updates, and the launcher beside
  * the copies, which runs the newest one.
+ *
+ * Row 011-140 (`research/issue-75-77.md` Q1 and Q4): a copy is named after the
+ * running code's version and filled from `PLUGIN_ROOT`, which a test run of
+ * unreleased code under a Codex hook's environment names for an older plugin;
+ * the copy then held older code, and each successor a hook spawned from it
+ * registered old and was stepped down again. So a copy keeps its root's
+ * manifest, is made only from a root whose manifest names its version, and is
+ * used only while its own manifest does.
  */
 
-/** What a copy holds of the plugin root. */
-const COPIED = ["dist", "skills"] as const;
+/** What a copy holds of the plugin root: its manifest too, which names the code's version. */
+const COPIED = ["dist", "skills", ".codex-plugin"] as const;
+const MANIFEST = join(".codex-plugin", "plugin.json");
 const CLI = join("dist", "cli", "squeal.mjs");
 const SKILL = join("skills", "squeal", "SKILL.md");
 /** The launcher every plugin ships (spec 005 D3), and where the data directory keeps it. */
@@ -55,10 +65,29 @@ export function copyOf(data: string, version: string): string {
   return join(data, "versions", version);
 }
 
-/** The CLI of `version`'s copy, `null` when there is none. A copy is whole once it exists. */
+/** The version a plugin root's or a copy's manifest names, `null` without one readable. */
+function manifestVersion(dir: string): string | null {
+  try {
+    const manifest: unknown = JSON.parse(readFileSync(join(dir, MANIFEST), "utf8"));
+    return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `file` in `version`'s copy while the copy holds that version's code (row 011-140), else `null`. */
+function kept(data: string, version: string, file: string): string | null {
+  const dir = copyOf(data, version);
+  const path = join(dir, file);
+  return existsSync(path) && manifestVersion(dir) === version ? path : null;
+}
+
+/**
+ * The CLI of `version`'s copy, `null` when there is none or its manifest
+ * names another version (row 011-140). A copy is whole once it exists.
+ */
 export function keptCli(data: string, version: string): string | null {
-  const cli = join(copyOf(data, version), CLI);
-  return existsSync(cli) ? cli : null;
+  return kept(data, version, CLI);
 }
 
 /** The plugin data directory whose copy holds the CLI `cli`; `null` for a CLI outside one. */
@@ -67,10 +96,9 @@ export function dataOfCopy(cli: string): string | null {
   return cli.endsWith(`/${CLI}`) && basename(versions) === "versions" ? dirname(versions) : null;
 }
 
-/** The skill of `version`'s copy, `null` when there is none. */
+/** The skill of `version`'s copy, `null` when there is none or it holds other code. */
 export function keptSkill(data: string, version: string): string | null {
-  const skill = join(copyOf(data, version), SKILL);
-  return existsSync(skill) ? skill : null;
+  return kept(data, version, SKILL);
 }
 
 export interface KeepOptions {
@@ -83,13 +111,16 @@ export interface KeepOptions {
 }
 
 /**
- * Keeps `version`'s copy of `root` under `data`: its `dist/` and `skills/`
- * once, built under a temporary name and renamed into place, so a copy that
- * exists is whole and two session starts make one. The launcher is written
- * when it is missing, and replaced when this version's copy is the newest and
- * its plugin ships another text. Making a copy prunes the others (`prune`).
- * Returns the copy's directory, or `null` when none could be made: the caller
- * then runs from `root`, as before the first copy.
+ * Keeps `version`'s copy of `root` under `data`: its `dist/`, `skills/` and
+ * manifest once, built under a temporary name and renamed into place, so a
+ * copy that exists is whole and two session starts make one. The launcher is
+ * written when it is missing, and replaced when this version's copy is the
+ * newest and its plugin ships another text. Making a copy prunes the others
+ * (`prune`). Row 011-140: a copy there whose manifest names another version,
+ * or none, is renamed out first, and a root whose manifest does not name
+ * `version` makes no copy and writes nothing. Returns the copy's directory,
+ * or `null` when none could be made: the caller then runs from `root`, or
+ * from its own bundle, as before the first copy.
  */
 export function keepVersion({ root, data, version }: KeepOptions): string | null {
   const dir = copyOf(data, version);
@@ -97,8 +128,11 @@ export function keepVersion({ root, data, version }: KeepOptions): string | null
   if (!VERSION.test(version) || !existsSync(join(root, CLI))) return null;
   try {
     const versions = join(data, "versions");
+    const whole = keptCli(data, version) !== null;
+    if (!whole && existsSync(dir)) remove(versions, version);
+    if (manifestVersion(root) !== version) return whole ? dir : null;
     let made = false;
-    if (keptCli(data, version) === null) {
+    if (!whole) {
       mkdirSync(versions, { recursive: true });
       const part = join(versions, `.${version}.${process.pid}.tmp`);
       rmSync(part, { recursive: true, force: true });
@@ -193,14 +227,17 @@ function prune(data: string, version: string): void {
       gone.push(other);
     }
   }
-  for (const name of gone) {
-    const doomed = join(versions, `.${name}.${process.pid}.gone`);
-    try {
-      renameSync(join(versions, name), doomed);
-      rmSync(doomed, { recursive: true, force: true });
-    } catch {
-      // Removed by another session start already.
-    }
+  for (const name of gone) remove(versions, name);
+}
+
+/** Renames `name` out of `versions`, so no reader finds half of it, and removes it. */
+function remove(versions: string, name: string): void {
+  const doomed = join(versions, `.${name}.${process.pid}.gone`);
+  try {
+    renameSync(join(versions, name), doomed);
+    rmSync(doomed, { recursive: true, force: true });
+  } catch {
+    // Removed by another session start already.
   }
 }
 
