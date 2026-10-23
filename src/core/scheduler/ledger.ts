@@ -1,6 +1,7 @@
 import { testFileId } from "../keys/index.js";
 import { fsRankSource, SlowRanker } from "../slow/rank.js";
 import { metaTokenRecords, publishSlowEvidence, readSlowEvidence } from "../slow/rank-store.js";
+import { isBusy } from "../store/index.js";
 import {
   type CheckId,
   type CheckKey,
@@ -10,6 +11,7 @@ import {
   type ResultRecord,
   type RevisionNumber,
   refinedMetaKey,
+  type SetupOutcome,
   type TestFileKeyRecord,
   type TestFileRef,
 } from "../types/index.js";
@@ -47,6 +49,18 @@ import {
 interface Applied {
   readonly results: readonly ResultRecord[];
   readonly checkpointId: string | null;
+}
+
+/** What `commit` takes from the ledger: put back when its transaction gives up on a busy store (row 011-126). */
+interface Drained {
+  readonly dirty: readonly string[];
+  readonly removed: readonly TestFileRef[];
+  readonly rekeyed: readonly (readonly [string, RevisionNumber | null])[];
+  readonly applied: readonly Applied[];
+  readonly unknown: readonly MarkedUnknown[];
+  readonly unknownFiles: readonly Omit<UnknownFileRecord, "revision" | "at">[];
+  readonly retired: readonly CheckId[];
+  readonly setups: readonly SetupOutcome[];
 }
 
 /** After this many consecutive discarded tiers at an unmoved key a file is `unknown` instead of re-queued. */
@@ -549,36 +563,38 @@ export class Ledger {
    * pending in the same transaction that applies it.
    */
   commit(options: { readonly refined?: RevisionNumber } = {}): void {
+    const drained = this.#drain();
+    try {
+      this.#write(drained, options);
+    } catch (error) {
+      // Row 011-126: a busy store gave up before the transaction wrote anything; the next commit writes it.
+      if (isBusy(error)) this.#putBack(drained);
+      throw error;
+    }
+  }
+
+  /** `commit`'s rows and its one transaction, from what it drained. */
+  #write(drained: Drained, options: { readonly refined?: RevisionNumber }): void {
     const { store, sink, worktreeId } = this.context;
     const revision = this.revision.number;
     const rows: TestFileKeyRecord[] = [];
-    const removed = this.#removed.splice(0);
-    const rekeyed = [...this.#rekeyed].flatMap(([id, moved]) => {
+    const { removed, applied, unknown, retired, setups } = drained;
+    const rekeyed = drained.rekeyed.flatMap(([id, moved]) => {
       const file = this.files.get(id);
       return file ? [{ id, open: file.keyedAt, moved }] : [];
     });
-    this.#rekeyed.clear();
-    for (const id of this.#dirty) {
+    for (const id of drained.dirty) {
       const file = this.files.get(id);
       if (!file) continue;
       // An unkeyed file keeps its row with a null key: status counts it as unknown (B1).
       const pending = file.key === null ? null : file.phase;
       rows.push({ worktreeId, testFile: file.ref, key: file.key, revision, pending });
     }
-    this.#dirty.clear();
-    const applied = this.#applied;
-    const unknown = this.#unknown;
-    const unknownFiles = this.#unknownFiles.map((e) => ({
+    const unknownFiles = drained.unknownFiles.map((e) => ({
       ...e,
       revision,
       at: this.context.now(),
     }));
-    const retired = this.#retired;
-    const setups = this.setups.take();
-    this.#applied = [];
-    this.#unknown = [];
-    this.#unknownFiles = [];
-    this.#retired = [];
 
     const quiet =
       this.#adopted &&
@@ -631,6 +647,45 @@ export class Ledger {
       }
     });
     this.#adopted = true;
+  }
+
+  /** Takes what this round of work owes the store and the sink, for `commit`. */
+  #drain(): Drained {
+    const drained: Drained = {
+      dirty: [...this.#dirty],
+      removed: this.#removed.splice(0),
+      rekeyed: [...this.#rekeyed],
+      applied: this.#applied,
+      unknown: this.#unknown,
+      unknownFiles: this.#unknownFiles,
+      retired: this.#retired,
+      setups: this.setups.take(),
+    };
+    this.#dirty.clear();
+    this.#rekeyed.clear();
+    this.#applied = [];
+    this.#unknown = [];
+    this.#unknownFiles = [];
+    this.#retired = [];
+    return drained;
+  }
+
+  /**
+   * Owes again what a commit that gave up drained (row 011-126), ahead of
+   * what came after it, so the next commit writes each once, in order, and a
+   * newer entry for the same file or check wins.
+   */
+  #putBack(drained: Drained): void {
+    for (const id of drained.dirty) this.#dirty.add(id);
+    this.#removed.unshift(...drained.removed);
+    for (const [id, moved] of drained.rekeyed) {
+      if (!this.#rekeyed.has(id)) this.#rekeyed.set(id, moved);
+    }
+    this.#applied = [...drained.applied, ...this.#applied];
+    this.#unknown = [...drained.unknown, ...this.#unknown];
+    this.#unknownFiles = [...drained.unknownFiles, ...this.#unknownFiles];
+    this.#retired = [...drained.retired, ...this.#retired];
+    this.setups.putBack(drained.setups);
   }
 
   /**
