@@ -39,14 +39,14 @@ Case (4) says each package is scanned "once per installed version (`location@ver
 
 ## 4. Decisions the design did not settle
 
-- **Scan id.** A package is scanned once per identity, with its edges, not once per `<id>#<integrity>`. Peer variants share an id prefix but lie in different folders, so they scan separately. That costs one scan for each extra variant. It never shares one result between two folders.
+- **Scan id.** A package is scanned for opaque code once per identity, with its edges, not once per `<id>#<integrity>`. The types-only scan uses `<id>#<integrity>` since the repair. Peer variants share an id prefix but lie in different folders, so they scan separately. That costs one scan for each extra variant. It never shares one result between two folders.
 - **Skipped marker.** A skipped optional package keys as `skipped:<id>#<integrity>`, without edges. It is not expanded or scanned, and it does not make the file opaque.
 - **No integrity.** A snapshot without an integrity keys as `nointegrity:<id>` and is opaque (section 3, item 1). The other choice, `<id>` alone, would let a re-published tarball at the same URL keep the key.
 - **Format of the pnpm former.** `formerReadAsOne` reads today's pnpm definition at the current format while `KEY_FORMAT_VERSION` is `FORMER_LAST_FORMAT` (20) or less. The validity bundles pin the format to 0, so the condition is `<=`, not `=== 20`; with `=== 20`, the `accept` case found nothing in the candidate. A raise to 21 reads nothing (`former-raise.test.ts`).
 - **An equal former.** `DependencyKeys.formerPnpm` is left out when its environment hash equals the current one: the file then keys whole under both definitions, and the lookup at its own key already reads the row.
 - **The order of the former reads.** 011-85's former entries come first, then today's pnpm one. When pnpm is read, 011-85's former is computed without a graph (its definition hashed `lock.yaml` whole).
 - **`.modules.yaml` as JSON.** pnpm 10 and 12 write JSON. A file that does not parse as JSON keeps the whole fingerprint without a note, as an unknown layout does.
-- **Not in the trust rule.** `.pnpm/node_modules`, the private hoisting, is not in the trust rule, as the design says. It is in the stale fallback's walk.
+- **Not in the trust rule.** An entry of `.pnpm/node_modules` (the private hoisting) that `.modules.yaml` does not list is not in the trust rule, as the design says. Since review 0.1.282 B2, each listed private hoist must exist. The folder is in the stale fallback's walk.
 - **File size.** `environment.ts` is 335 lines. It was 316 before these rows, and the styleguide's limit is about 300. The pnpm read is in `pnpm-install.ts`; `environment.ts` only selects it. A split of `installedDependencies` is left for a quality scan.
 
 ## 5. Type changes (all additive)
@@ -65,3 +65,53 @@ Case (4) says each package is scanned "once per installed version (`location@ver
 - `dependencyKeys` (`dependencies.ts`) builds the current keys, `formerPnpm` (no graph, today's whole fingerprint) and 011-85's `former`. `formerReadAsOne` (`former.ts`) turns them into the keys a missed lookup reads.
 - Test helpers: `writePnpmInstall` and `pnpmLockfileText` (`test/keys/install.ts`) write an install on disk; no test runs pnpm.
 - Open: the design's open question 1, which pnpm versions to name. This check used 12.11.2 only.
+
+## Repair (review 0.1.282)
+
+The first-round review of `cand/0.1.282` (reviewer 12ae2958) found two blockers and one should-fix. Each fix was red first; one commit per item.
+
+| Commit | Item | Change |
+|---|---|---|
+| `b202788c7` | B1 | The reader passes over only the keys pnpm writes. It returns `null` for a part it reads (`importers`, `packages`, `snapshots`) written on its header line, for any other key at any level, for a block `resolution`, for a package written as a flow map, and for a file without the root importer `.`. Known metadata stays explicit in `UNREAD`, taken from pnpm 10.32.0's `convertToLockfileFile`; every key pnpm 12.11.2 wrote for cezar is in it. A `key` case covers the flow layout. |
+| `adef063a0` | B2 | Every link a lookup resolves through must exist, unless it names a skipped package: each declared name, each hoisted name (public and private) and each edge beside a package folder. A missing one makes the install stale with the one note ("missing: …"), so no `formerPnpm` is offered. The validity fixtures write these links as folders, because `writeTree` writes no symlinks. A `key` case covers a missing declared link. |
+| `17c60b3d5` | S1 | A types-only package keys as `<name>@types-only`, without its version, and a parent's edge list writes such a child the same way. An import of the package's `package.json` still keys its version. |
+
+### The reviewer's probe after the fix
+
+The fingerprints and keys are shortened to `…`.
+
+```
+FLOW_IMPORTERS {"results":[{"trusted":false,…,"former":false,"readerReturnedNull":true,"loaded":"a@1.0.0"},{"trusted":false,…,"former":false,"readerReturnedNull":true,"loaded":"a@2.0.0"}],"equalKeys":false,"equalFingerprints":false}
+MISSING_IMPORTER_LINK {"before":{"trusted":true,…,"former":true,"loaded":"a@1.0.0"},"after":{"trusted":false,…,"former":false,"loaded":"a@2.0.0"},"equalKeys":false}
+TYPES_ONLY {"results":[{"trusted":true,…,"former":true},{"trusted":true,…,"former":true}],"equalKeys":true}
+MISSING_LINK_BUMP {"results":[{"trusted":false,…,"former":false,"loaded":"a@2.0.0"},{"trusted":false,…,"former":false,"loaded":"a@3.0.0"}],"equalKeys":false,"equalFingerprints":false}
+```
+
+### Cezar again, and the cost of B2
+
+`cezar-check.sh` was run again on fresh clones with all three fixes (raw output: `output-282.txt`; the clones were removed). The results are the same as in section 2. Both installs are trusted with no note. 329 files keep their own segment and 328 keep their key across `21e516ef5`. The one re-keyed file is `card-2-contrast.test.ts`, and 919 of 919 keys are readable as one. So pnpm 12.11.2 creates every link that B2 now requires.
+
+`time-trust.mts` times the trust check over 30 runs. The first run on the clone failed because of an argument-order error in my `env` command, and was run again; `output-282.txt` leaves the failed line out.
+
+| Install | Snapshots | Added `lstat` calls | Trust check, median | Added calls, median | Load (1 min) |
+|---|---|---|---|---|---|
+| Synthetic (640 snapshots, 1,600 edges, 540 private hoists) | 640 | 2,140 | 16.6 ms | 11.3 ms | 28.9 |
+| cezar at `28be188dc` (1,605 edges, 537 private hoists, 85 skipped) | 638 | 2,050 | 19.8 ms | 13.9 ms | 39.2 |
+
+The trust check runs whenever `installedDependencies` reads the install, not per test file.
+
+### C11 sentences these change (proposed)
+
+1. **The trust rule.** Replace "`lock.yaml` stands for the install while every snapshot `.modules.yaml` does not list as skipped has its package folder, no such folder and no entry of an importer's `node_modules` is newer than it, and each importer's `node_modules` holds only the names it declares and, at the root, those hoisted publicly; …" with: "`lock.yaml` stands for the install while every snapshot `.modules.yaml` does not list as skipped has its package folder; every link a lookup resolves through exists unless it names a skipped package (each name an importer declares, each name `.modules.yaml` hoists, publicly at the root or privately in `.pnpm/node_modules`, and each edge beside a package folder), since Node walks past a missing link to another copy; no package folder and no entry of an importer's `node_modules` is newer than it; and each importer's `node_modules` holds only the names it declares and, at the root, those hoisted publicly, dot entries left out; …". This replaces section 3, item 2.
+2. **The reader.** After "by a reader of pnpm's written layout", add: "which knows the keys pnpm writes (pnpm 10.32.0's `convertToLockfileFile`, and every key pnpm 12.11.2 wrote for cezar) and passes over the metadata among them unread". Change "and any line the reader does not know" to "and any line the reader does not know, a part it reads written on its header line, or a file without the root importer `.`".
+3. **The types-only identity under pnpm.** In "Each test file's key adds the sorted set of identities (`location@version#integrity` for npm, `<snapshot id>#<integrity>` with its resolved edges for pnpm)", change the pnpm part to "`<snapshot id>#<integrity>` with its resolved edges for pnpm, a types-only child's written `<name>@types-only`". After "keys as a constant and is not expanded", add "(under pnpm `<name>@types-only`, without its version)".
+
+### Decisions in the repair
+
+- **A value on a part's header line.** Even `{}` returns null. pnpm 10 deletes an empty `packages` or `snapshots` and never writes a value there.
+- **The root importer.** A file without `.` returns null. pnpm always writes the root importer. Without it, the trust rule would never list the root `node_modules`.
+- **Private hoists.** They are in B2 as well as the public ones. The review named only the public hoists and the edges. A missing private hoist also sends Node from a package folder to the root.
+- **Edge links.** The rule checks only that they exist, not that they are older than `lock.yaml`. A retargeted edge link that keeps its name is not caught. This is not measured on real pnpm, so I left it out.
+- **The skipped-entry fixture.** `writePnpmInstall` no longer links a skipped package that an importer declares, as pnpm does not.
+- **The types-only constant.** It is per name, so two types-only versions of one name in a closure count once. The types-only scan id is now `<id>#<integrity>`, because a package's own files do not depend on its edges. The opaque scan keeps its id, edges included.
+- **The validity fixtures.** They write the required links as folders with a `package.json`. The rule needs only that the entry exists.
