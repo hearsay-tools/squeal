@@ -1,5 +1,5 @@
-import { isAbsolute, relative, resolve, sep } from "node:path";
-import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
+import { isAbsolute, resolve } from "node:path";
+import { resolveCommonDir, toRelative, worktreeIdFor } from "../core/fs/index.js";
 import {
   askNoResultRun,
   askRetry,
@@ -141,11 +141,9 @@ function parse(args: readonly string[]): Parsed | string {
   return { kind: "ask", reason: reason as RetryReason, paths };
 }
 
-/** `path` from `cwd`, relative to `root` with `/`; `null` when outside it. */
+/** `path` from `cwd`, relative to `root` with `/`; `null` when outside it (a root-level `..foo` is inside). */
 function inWorktree(root: AbsolutePath, cwd: string, path: string): string | null {
-  const rel = relative(root, isAbsolute(path) ? path : resolve(cwd, path));
-  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) return null;
-  return rel.split(sep).join("/");
+  return toRelative(root, (isAbsolute(path) ? path : resolve(cwd, path)) as AbsolutePath);
 }
 
 /** The harness session the shell runs in; `""` when it names none. */
