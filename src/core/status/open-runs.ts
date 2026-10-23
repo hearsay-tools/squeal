@@ -12,6 +12,18 @@ import type {
 import { HEARTBEAT_GRACE_INTERVALS } from "./snapshot.js";
 
 /**
+ * When the worktree's live daemon started: the rows it publishes are trusted
+ * from then on (C15); `null` without a live one.
+ */
+export function liveStartedAt(
+  worktree: WorktreeRecord | null,
+  daemon: DaemonLiveness,
+): EpochMs | null {
+  const record = worktree?.daemon ?? null;
+  return record === null || daemon.state !== "alive" ? null : record.startedAt;
+}
+
+/**
  * The runs the worktree's live daemon has open, oldest first: those with no
  * end that it started (task 011-12). A run an earlier daemon left open, or
  * one of a daemon that is down, runs nothing now.
@@ -21,9 +33,9 @@ export function openRuns(
   worktree: WorktreeRecord | null,
   daemon: DaemonLiveness,
 ): readonly RunRecord[] {
-  const record = worktree?.daemon ?? null;
-  if (worktree === null || record === null || daemon.state !== "alive") return [];
-  return store.runs.inFlight(worktree.id, record.startedAt);
+  const startedAt = liveStartedAt(worktree, daemon);
+  if (worktree === null || startedAt === null) return [];
+  return store.runs.inFlight(worktree.id, startedAt);
 }
 
 /** The open runs of `worktreeId`'s live daemon, read from its row. */

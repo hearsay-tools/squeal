@@ -28,7 +28,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { readHolds } from "./holds.js";
-import { claimantOf, openRunsOf } from "./open-runs.js";
+import { claimantOf, liveStartedAt, openRuns, openRunsOf } from "./open-runs.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { type Facts, once, setupsOf, unknownStanding } from "./standing-facts.js";
 import { checksByFile, unknownReasons } from "./unknown-files.js";
@@ -121,17 +121,27 @@ export function standingsOf(
   const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
   const checks = checksByFile(states);
   const policy = readPolicy(root);
-  const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
-  const promoted = promotedOf(store, worktreeId, daemon, now);
-  const yields = yieldsOf(store, worktreeId, daemon);
-  const quiet = quietOf(store, worktreeId, daemon, now);
+  const worktree = store.worktrees.get(worktreeId);
+  const startedAt = liveStartedAt(worktree, daemon);
+  const runs = reads?.runs ?? openRuns(store, worktree, daemon);
+  // What the live daemon published: promotions, its tiers' yields (row 011-51) and the waits for quiet (row 011-82).
+  const promoted =
+    startedAt === null ? new Set<string>() : promotedIds(store, worktreeId, startedAt, now);
+  const yields =
+    startedAt === null
+      ? new Map<string, TierYield>()
+      : publishedYields(store, worktreeId, startedAt);
+  const quiet =
+    startedAt === null
+      ? new Map<string, EpochMs>()
+      : publishedQuiet(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
   const alive = daemon.state === "alive";
   // Row 011-73 (C9, C15): while on hold no tier starts, so a queued file waits for the hold.
-  const hold = (reads?.holds ?? readHolds(store, store.worktrees.get(worktreeId), daemon, now))[0];
+  const hold = (reads?.holds ?? readHolds(store, worktree, daemon, now))[0];
   const slot = once(() =>
     reads?.slowSlot === undefined
       ? slowSlotOf(store, worktreeId, root, header, alive, now)
@@ -288,47 +298,6 @@ export function pauseOnlyIds(
     if (reason.kind === "slow") ids.add(id);
   }
   return ids;
-}
-
-/** What the live daemon published as promoted now (`promotedIds`); nothing without one. */
-function promotedOf(
-  store: Store,
-  worktreeId: WorktreeId,
-  daemon: DaemonLiveness,
-  now: EpochMs,
-): ReadonlySet<string> {
-  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (record === null || daemon.state !== "alive") return new Set();
-  return promotedIds(store, worktreeId, record.startedAt, now);
-}
-
-/**
- * What the live daemon published of its tiers in flight (`publishedYields`,
- * row 011-51); nothing without one, or from an older daemon.
- */
-function yieldsOf(
-  store: Store,
-  worktreeId: WorktreeId,
-  daemon: DaemonLiveness,
-): ReadonlyMap<string, TierYield> {
-  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (record === null || daemon.state !== "alive") return new Map();
-  return publishedYields(store, worktreeId, record.startedAt);
-}
-
-/**
- * When each lane's wait for quiet ends, as the live daemon published it
- * (`publishedQuiet`, row 011-82); none without one, or from an older daemon.
- */
-function quietOf(
-  store: Store,
-  worktreeId: WorktreeId,
-  daemon: DaemonLiveness,
-  now: EpochMs,
-): ReadonlyMap<string, EpochMs> {
-  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (record === null || daemon.state !== "alive") return new Map();
-  return publishedQuiet(store, worktreeId, record.startedAt, now);
 }
 
 /** Whether the open run of `lane` yields, as `yields` holds it; `undefined` when not known. */
