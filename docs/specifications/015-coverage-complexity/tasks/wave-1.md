@@ -50,6 +50,17 @@ Use /worker. Shape: slice. Outcome: the agent sees D6 (without its first-edit ru
   - The `squeal code --json` shape is tested.
   - One integration test each passes through the Claude Code and the Codex hook.
 
-## W4: 015-08, the first edit to a standing failure (after W2 and W3 are integrated)
+## W4: 015-08, the first edit to a standing failure
 
-Briefed when W2 and W3 land on the candidate: D6's last rule, on W2's body-hash change and W3's view marks. It is dropped if it proves complex.
+Use /worker. Shape: slice. Starts from `int/015` with 015-04 to 015-07 integrated. Outcome: goal 5. The first edit in a session to a function that was over the threshold before it and is still over after it delivers one line about that function, once per session. It is dropped if it proves complex.
+
+- **Read.** D6, its last rule; `tasks/015-06/notes.md`, "For the next rows"; `tasks/015-07/notes.md`, "For 015-08".
+- **Seams.** The pass already returns `PassReport.edited`: the checks whose identity stayed and whose body hash changed (015-06). Store it where the hooks can read it. The lead is a revision column, for example `edited_at`, on the states row: V1 is unreleased, so edit V1 itself, and set the column in the pass's last transaction. In `tellCode`'s plan (`src/core/delivery/code-*.ts`), a `fail` state whose view entry is told by `count` and whose `edited_at` is after the view's `toldAt` or seed is told in full once, and the entry is written as `full`. The line must not read as a new failure: it says the function was already over before the edit.
+- **Owns.** `src/core/code/pass/**`; the column in `src/core/code/store/{schema,states,types}.ts`; `src/core/delivery/code-*.ts`; `test/code/**`; `tasks/015-08/`. Nothing else.
+- **Done when.**
+  - The first edit that leaves the function over tells it once, in full.
+  - A second edit in the same session is quiet.
+  - Another session gets its own one line.
+  - A move with the same body tells nothing.
+  - `PASS -> FAIL` and `FAIL -> PASS` are told as before.
+  - Lint, typecheck and `squeal run --all --wait` pass; paste their output.
