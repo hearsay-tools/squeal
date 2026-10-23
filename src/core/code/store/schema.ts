@@ -13,7 +13,8 @@ import type { Migration } from "../../store/schema.js";
  *   by every worktree; `functions` and `errors` are JSON.
  * - `files`: each worktree's included files at its current revision, the
  *   blob and key their count is stored under. Prune keeps the counts these
- *   reference.
+ *   reference. `too_big` marks a file over `complexity.maxFileBytes`, which
+ *   has no count (D6).
  * - `states`, `transitions`, `views`: per worktree, after 011 C5's
  *   `known_states`, `transitions` and `consumer_views`, one row per measure.
  * - `coverage`: wave 2's records by result key and provider version (D8).
@@ -42,6 +43,7 @@ CREATE TABLE files (
   counter_version INTEGER NOT NULL,
   size INTEGER NOT NULL,
   revision INTEGER NOT NULL,
+  too_big INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (worktree_id, path)
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX files_by_count ON files (blob, language, counter_version);
