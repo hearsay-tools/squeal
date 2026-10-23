@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { StatCache, seedStatCache } from "../../src/core/hash/index.js";
+import type { NodeTestProject } from "../../src/core/types/index.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import { BASE, createRepo, stored } from "./stamps-repo.js";
 
@@ -11,9 +11,11 @@ import { BASE, createRepo, stored } from "./stamps-repo.js";
  * gh-33's probes T1 and T2 (`011-core/research/issue-33-dist.md`): a
  * same-bytes rewrite of build output while a Vitest tier runs. `slow1`
  * imports the gitignored `dist/gen.js`; `slow2` and `slow3` do not, and no
- * test file loads `dist/unrelated.js`, which the stat cache holds as an
- * extra file, as a declaration since removed left cezar's `dist` rows.
- * `slow1` appends to `flags/started` and waits until `flags/heard` is as long.
+ * Vitest file loads `dist/unrelated.js`. A node:test project's test imports
+ * it, so it is watched as an extra file, as cezar's `test:package` files
+ * named its `dist` (a cached row nothing names is dropped at start, row
+ * 011-36). `slow1` appends to `flags/started` and waits until `flags/heard`
+ * is as long.
  */
 
 const slow = (imports: string, check: string, held: boolean) =>
@@ -44,6 +46,22 @@ const FILES: Readonly<Record<string, string>> = {
   "test/slow1.test.ts": slow('import { g } from "../dist/gen.js";', " expect(g).toBe(1);", true),
   "test/slow2.test.ts": slow("", "", false),
   "test/slow3.test.ts": slow("", "", false),
+  "pkg/test/unrelated.test.mjs": [
+    'import { test } from "node:test";',
+    'import { u } from "../../dist/unrelated.js";',
+    'test("imports the build", () => u);',
+    "",
+  ].join("\n"),
+};
+
+/** The node:test project whose test imports `dist/unrelated.js`. */
+const PKG: NodeTestProject = {
+  name: "pkg",
+  cwd: "pkg",
+  node: process.execPath,
+  argv: [],
+  env: {},
+  include: ["test/*.test.mjs"],
 };
 
 const SLOW_FILES = ["test/slow1.test.ts", "test/slow2.test.ts", "test/slow3.test.ts"];
@@ -54,18 +72,14 @@ interface Rig {
   readonly heard: string[];
 }
 
-/** A scheduler over `FILES`, `extra` held in the stat cache before it starts. */
-async function rig(extra: readonly string[] = []): Promise<Rig> {
+/** A scheduler over `FILES`, with the node:test project `PKG` when `pkg`. */
+async function rig(pkg = false): Promise<Rig> {
   const repo = createRepo(FILES);
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
     tierSize: 4,
     runnerPartBesideRun: true,
+    ...(pkg ? { nodeTest: [PKG], policy: { nodeTest: [PKG] } } : {}),
   });
-  if (extra.length > 0) {
-    const cache = new StatCache();
-    await seedStatCache(cache, h.root, extra, { objectFormat: "sha1" });
-    cache.flush(h.store.fileHashes, h.worktreeId);
-  }
   const heard: string[] = [];
   const invalidate = h.runner.invalidate;
   h.runner.invalidate = (paths) => {
@@ -101,6 +115,9 @@ const releaseAll = (h: Harness) => appendFileSync(flag(h, "heard"), "x".repeat(1
 
 const runs = (h: Harness) => SLOW_FILES.map((path) => h.runsOf(path).length);
 
+/** The Vitest files' stored states, without the node:test project's. */
+const storedSlow = (h: Harness) => stored(h).filter(([, path]) => SLOW_FILES.includes(path));
+
 /** The reasons `markUnknown` stored for `path`. */
 const reasons = (h: Harness, path: string) =>
   h.sink
@@ -121,12 +138,12 @@ describe(
   SLOW,
   () => {
     it("stores every file from its run when no test file loads the path (T1 and T2, 9 and 10)", async () => {
-      const r = await rig(["dist/unrelated.js"]);
+      const r = await rig(true);
       await r.h.scheduler.start();
       await touchDuring(r, "dist/unrelated.js", 1);
       await r.h.scheduler.idle();
       expect(runs(r.h)).toEqual([1, 1, 1]);
-      expect(stored(r.h)).toEqual(current);
+      expect(storedSlow(r.h)).toEqual(current);
 
       // T2: a second rewrite during the next run.
       await editLib(r.h);
@@ -134,7 +151,7 @@ describe(
       releaseAll(r.h);
       await r.h.scheduler.idle();
       expect(runs(r.h)).toEqual([2, 2, 2]);
-      expect(stored(r.h)).toEqual(current);
+      expect(storedSlow(r.h)).toEqual(current);
       expect(r.h.header()).toMatchObject({ counts: { pending: 0, unknown: 0 } });
     });
 
