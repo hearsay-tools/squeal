@@ -28,6 +28,7 @@ import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
+import { codeStopReason } from "./stop-code.js";
 import {
   fullSuiteReason,
   knownFailuresLine,
@@ -131,9 +132,13 @@ export function stopTurn(
       const now = deps.now ?? Date.now;
       const blocking =
         !input.stopHookActive &&
-        (policy.blockOnKnownFailures || policy.requireFullSuite || policy.requireSlowSuite);
+        (policy.blockOnKnownFailures ||
+          policy.requireFullSuite ||
+          policy.requireSlowSuite ||
+          // Spec 015 D7.
+          (project.complexity.enabled && project.complexity.blocking));
       for (let decision = 1; ; decision++) {
-        const { header, failures, reasons } = decide(context, policy, isSlow, now(), {
+        const { header, failures, reasons } = decide(context, project, isSlow, now(), {
           stopHookActive: input.stopHookActive,
           slowElsewhere:
             input.agent_id === undefined &&
@@ -197,10 +202,12 @@ interface Decision {
  * and `stop.requireSlowSuite` from one read transaction: states, keys and
  * header of one revision, so a slow file queued by a revision the states do
  * not show yet is never read as current (spec 004 D7, review wave 2 B3).
+ * With `complexity.blocking`, the functions gone over since registration
+ * too (spec 015 D7), from the code store.
  */
 function decide(
   context: HookContext,
-  policy: Policy["stop"],
+  project: Policy,
   isSlow: (testFile: TestFileRef) => boolean,
   now: number,
   {
@@ -214,6 +221,7 @@ function decide(
   },
 ): Decision {
   const { store, consumer } = context;
+  const policy = project.stop;
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
     const keys = store.testFileKeys.list(consumer.worktreeId);
@@ -235,6 +243,8 @@ function decide(
       const open = slowFilesNotCurrent(states, keys, isSlow);
       if (open.length > 0) reasons.push(slowSuiteReason(header.revision, open, command));
     }
+    const code = codeStopReason(context, project.complexity, command);
+    if (code !== null) reasons.push(code);
     return { header, failures, reasons };
   });
 }
