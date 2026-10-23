@@ -1,11 +1,13 @@
-import type { Policy } from "../types/index.js";
 import { type Leaf, positiveInteger, type Shape } from "./config-file.js";
 import { compiles } from "./policy-node-test.js";
 
 /*
  * Spec 015 D1: the `complexity`, `coverage` and `crap` keys of the policy
  * loader. A wrong type is one problem and the key's default applies (001
- * D11), as in every other section.
+ * D11), as in every other section. D1's "`coverage.enabled` needs
+ * `complexity.enabled`" is applied where coverage turns on (wave 2), not
+ * here: the loader is on the key-validity path, and a rule there needs a
+ * validity case (`test/keys/key-format.test.ts`).
  */
 
 const boolean: Leaf = (v) => (typeof v === "boolean" ? null : "true or false");
@@ -29,22 +31,3 @@ export const CODE_SHAPE: Shape = {
   coverage: { enabled: boolean },
   crap: { threshold: aboveZero },
 };
-
-/**
- * D1: `coverage.enabled` needs `complexity.enabled`. Coverage on without it
- * is one problem, and coverage stays off.
- */
-export function codePolicy<
-  T extends { readonly value: Policy; readonly problems: readonly string[] },
->(loaded: T): T {
-  const { complexity, coverage } = loaded.value;
-  if (complexity.enabled || !coverage.enabled) return loaded;
-  return {
-    ...loaded,
-    value: { ...loaded.value, coverage: { ...coverage, enabled: false } },
-    problems: [
-      ...loaded.problems,
-      `"coverage.enabled" must be false while "complexity.enabled" is false, got true`,
-    ],
-  };
-}

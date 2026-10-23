@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { describeProblems, loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
+import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { createInputMatcher } from "../../src/core/keys/glob.js";
 import { CODE_EXTENSIONS } from "../../src/core/types/code.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
@@ -115,12 +115,12 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
     expect(policy.complexity.include).toEqual(DEFAULT_POLICY.complexity.include);
   });
 
-  it("keeps coverage off while complexity is off, with a note", () => {
+  it("leaves coverage.enabled as written while complexity is off", () => {
+    // D1's "needs complexity.enabled" is wave 2's to apply where coverage turns on: the loader is
+    // on the key-validity path, where a rule needs a validity case (test/keys/key-format.test.ts).
     const { policy, problems } = load({ coverage: { enabled: true } });
-    expect(policy.coverage.enabled).toBe(false);
-    expect(problems).toEqual([
-      `"coverage.enabled" must be false while "complexity.enabled" is false, got true`,
-    ]);
-    expect(describeProblems(problems)).toMatch(/the defaults apply in their place$/);
+    expect(problems).toEqual([]);
+    expect(policy.coverage.enabled).toBe(true);
+    expect(policy.complexity.enabled).toBe(false);
   });
 });
