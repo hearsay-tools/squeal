@@ -10,7 +10,14 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { editAndRun, FOUR_SHORT, importers, pathsOf, transitive } from "./edit-cut-fixture.js";
+import {
+  editAndRun,
+  FOUR_SHORT,
+  importers,
+  pastCatchUpQuiet,
+  pathsOf,
+  transitive,
+} from "./edit-cut-fixture.js";
 
 /*
  * Task 011-116 (spec 011 C4 step 4 as amended for 011-116;
@@ -82,6 +89,8 @@ describe("scheduler: an edit's transitive importers and readers share its cut (C
     // A catch-up tier the next edit cancels: the lane then waits 20 s for quiet (row 011-94).
     const before = side.runner.runs.length;
     await side.edit("watch", A);
+    // The cut's catch-up waits 120 s for quiet first (row 011-153).
+    await pastCatchUpQuiet(side);
     const backlog = () => side.runner.runs.slice(before).find((run) => run.workers !== undefined);
     await expect.poll(backlog, { interval: 10, timeout: 30_000 }).toBeDefined();
     await side.edit("watch", E);
