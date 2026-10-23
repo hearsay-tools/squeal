@@ -1,0 +1,110 @@
+load before installs: 60.19 45.33 37.53
++ yaml 2.9.0
+
+Done in 6s using pnpm v12.11.2
++ yaml 2.9.0
+
+Done in 5.7s using pnpm v12.11.2
+pnpm: 12.11.2
+lock.yaml lines apart: 36
+== A against B
+{
+  "rootA": "/tmp/p165/cezar-a",
+  "rootB": "/tmp/p165/cezar-b",
+  "load": {
+    "before": "54.2 44.9 37.5",
+    "afterWalk": "41.7 43.0 37.3",
+    "end": "41.7 43.0 37.3"
+  },
+  "walkMs": [
+    26877,
+    22854
+  ],
+  "testFiles": [
+    919,
+    919
+  ],
+  "graph": [
+    true,
+    true
+  ],
+  "note": [
+    null,
+    null
+  ],
+  "fingerprintEqual": false,
+  "ownSegment": [
+    329,
+    329
+  ],
+  "keptToday": 0,
+  "keptCode": 328,
+  "keptOwnSegment": 328,
+  "reKeyedOwnSegment": [
+    "web:packages/web/src/test/card-2-contrast.test.ts"
+  ],
+  "todayReadableAsOne": [
+    919,
+    919
+  ],
+  "ms": [
+    {
+      "read": 31,
+      "key": 458
+    },
+    {
+      "read": 23,
+      "key": 431
+    }
+  ]
+}
+== A against A
+{
+  "rootA": "/tmp/p165/cezar-a",
+  "rootB": "/tmp/p165/cezar-a",
+  "load": {
+    "before": "41.7 43.0 37.3",
+    "afterWalk": "48.1 44.2 38.0",
+    "end": "48.1 44.2 38.0"
+  },
+  "walkMs": [
+    25344,
+    25243
+  ],
+  "testFiles": [
+    919,
+    919
+  ],
+  "graph": [
+    true,
+    true
+  ],
+  "note": [
+    null,
+    null
+  ],
+  "fingerprintEqual": true,
+  "ownSegment": [
+    329,
+    329
+  ],
+  "keptToday": 919,
+  "keptCode": 919,
+  "keptOwnSegment": 329,
+  "reKeyedOwnSegment": [],
+  "todayReadableAsOne": [
+    919,
+    919
+  ],
+  "ms": [
+    {
+      "read": 61,
+      "key": 1490
+    },
+    {
+      "read": 126,
+      "key": 492
+    }
+  ]
+}
+exit 0
