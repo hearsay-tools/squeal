@@ -246,10 +246,14 @@ export function selectTier(
   /** A backlog file left to a lane's slots by an edit's tier. */
   let skipped = false;
   const now = context.now();
+  // Row 011-145 (review 0.1.280 B2): a file whose focused entry waits runs focused first, never
+  // whole before it, whatever the turn left to this selection.
+  const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
   for (const ref of ledger.ordered(turnDue)) {
     if (picked.length >= size) break;
     const at = laneOf(context, ref);
     if (busy.has(at) || (lane !== null && at !== lane)) continue;
+    if (focusWaits.has(testFileId(ref))) continue;
     // A lane that waits for quiet after its backlog tier's cancel starts no backlog tier (row
     // 011-82); one whose catch-up waits starts no tier of it, the turn's included (row 011-153).
     if (quietHolds(context, ledger, ref, at, { backlog, turn }, now)) continue;
@@ -308,6 +312,12 @@ export function selectTier(
     const checkpointId = ledger.checkpoints.idFor(ref);
     const inputs = keys.stabilityPaths(ref);
     picked.push({ file, key, inputs, checkpointId, forced, recent, waits, catchUp });
+  }
+  if (turnDue && !turnTier && focusWaits.size > 0) {
+    // A due turn that started no file of the second group leaves the lane to the waiting focused
+    // entries before any whole tier (review 0.1.280 B2).
+    ledger.commit();
+    return selectTier(context, ledger, busy, cut, false);
   }
   const granted = backlog || turnTier;
   const width = slot !== null ? 1 : granted ? widest(context, picked) : 0;
