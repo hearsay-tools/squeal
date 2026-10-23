@@ -72,6 +72,20 @@ export function parseRequest(line: string): DaemonRequest | string {
       const refs = testFiles.map(({ project, path }) => ({ project, path }));
       return { type: "promote", testFiles: refs, withinMs };
     }
+    case "focus": {
+      const { testFiles, texts, withinMs } = request;
+      if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
+        return '"testFiles" must be a list of { project, path } strings';
+      }
+      if (!Array.isArray(texts) || texts.length === 0 || !texts.every(isText)) {
+        return '"texts" must be a list of non-empty strings';
+      }
+      if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
+        return '"withinMs" must be a number of milliseconds';
+      }
+      const refs = testFiles.map(({ project, path }) => ({ project, path }));
+      return { type: "focus", testFiles: refs, texts: [...texts], withinMs };
+    }
     default:
       return `unknown request type ${JSON.stringify(request.type)}`;
   }
@@ -81,6 +95,10 @@ function isTestFileRef(value: unknown): value is TestFileRef {
   if (typeof value !== "object" || value === null) return false;
   const { project, path } = value as Record<string, unknown>;
   return typeof project === "string" && typeof path === "string";
+}
+
+function isText(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
 }
 
 export function errorResponse(error: string): DaemonErrorResponse {

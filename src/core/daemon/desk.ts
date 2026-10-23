@@ -32,6 +32,12 @@ export interface DeskEvents {
     testFiles: readonly TestFileRef[],
     withinMs: number,
   ) => Promise<void>;
+  /** A named wait's focused checks (C15, row 011-145); absent: the daemon answers it cannot focus. */
+  readonly requestFocus?: (
+    testFiles: readonly TestFileRef[],
+    texts: readonly string[],
+    withinMs: number,
+  ) => Promise<void>;
   readonly requestFullSuite: (request: FullSuiteRequest) => Promise<FullSuiteCheckpoint>;
   readonly requestSlowSuite: () => Promise<SlowSuiteRequested>;
   /** A `status --wait` reconciliation pass (lessons, defect 30). */
@@ -152,12 +158,14 @@ export function guarded(events: DeskEvents): DeskEvents {
         return Promise.reject(error);
       }
     };
-  const { onNudge, requestRetries, requestPromotion, requestHold, requestResume } = events;
+  const { onNudge, requestRetries, requestPromotion, requestFocus, requestHold, requestResume } =
+    events;
   return {
     onActivity: safe(events.onActivity),
     ...(onNudge === undefined ? {} : { onNudge: safe(onNudge) }),
     ...(requestRetries === undefined ? {} : { requestRetries: asked(requestRetries) }),
     ...(requestPromotion === undefined ? {} : { requestPromotion: asked(requestPromotion) }),
+    ...(requestFocus === undefined ? {} : { requestFocus: asked(requestFocus) }),
     requestFullSuite: asked(events.requestFullSuite),
     requestSlowSuite: asked(events.requestSlowSuite),
     requestSync: asked(events.requestSync),
@@ -200,6 +208,9 @@ async function inWorker(
           return;
         case "promote":
           events.requestPromotion?.(message.testFiles, message.withinMs).catch(() => {});
+          return;
+        case "focus":
+          events.requestFocus?.(message.testFiles, message.texts, message.withinMs).catch(() => {});
           return;
         case "run-all":
           events.requestFullSuite(message.request).then(
@@ -316,6 +327,7 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       ...(events.requestPromotion === undefined
         ? {}
         : { requestPromotion: events.requestPromotion }),
+      ...(events.requestFocus === undefined ? {} : { requestFocus: events.requestFocus }),
       onStop: events.onStop,
       onStepDown: events.onStepDown,
     }),

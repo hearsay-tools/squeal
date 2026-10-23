@@ -77,6 +77,8 @@ function bind(identity: DeskIdentity): void {
     onNudge: () => post({ type: "nudge" }),
     requestRetries: async () => post({ type: "retry" }),
     requestPromotion: async (testFiles, withinMs) => post({ type: "promote", testFiles, withinMs }),
+    requestFocus: async (testFiles, texts, withinMs) =>
+      post({ type: "focus", testFiles, texts, withinMs }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version }),
   });
