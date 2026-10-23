@@ -2,6 +2,7 @@ import { join } from "node:path";
 import {
   CLOSURE_METHOD,
   checkKey,
+  dependencyKeys,
   environmentHash,
   installedDependencies,
 } from "../../../src/core/keys/index.js";
@@ -35,12 +36,16 @@ import { vitestCase } from "./harness/vitest.js";
 async function key(input: KeyInput, scratch: string): Promise<CaseOutput> {
   const hashOf = (path: string) => input.hashes[path] ?? null;
   let core = input.core;
+  let dependencies = input.dependencies;
   if (input.installed !== undefined) {
     const root = writeTree(join(scratch, "install"), input.installed);
-    core = {
-      ...core,
-      installedDependencies: (await installedDependencies(root, root)).fingerprint,
-    };
+    const installed = await installedDependencies(root, root);
+    core = { ...core, installedDependencies: installed.fingerprint };
+    if (input.packages !== undefined) {
+      const keys = dependencyKeys(installed, input.packages.environment);
+      core = { ...core, installedDependencies: keys.environment };
+      dependencies = keys.of(input.packages.testFile);
+    }
   }
   const env = environmentHash(core, input.runner, hashOf);
   const closure = {
@@ -49,7 +54,7 @@ async function key(input: KeyInput, scratch: string): Promise<CaseOutput> {
     complete: true,
     method: CLOSURE_METHOD,
   };
-  return { keys: { env, check: checkKey(env, closure, hashOf, input.dependencies) } };
+  return { keys: { env, check: checkKey(env, closure, hashOf, dependencies) } };
 }
 
 /** The rows a run stores for one file, and the same read back after the tree's own `putMany`. */
