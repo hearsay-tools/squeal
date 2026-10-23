@@ -357,6 +357,8 @@ export type DaemonLiveness =
       readonly lastHeartbeatAt: EpochMs;
       /** Row 011-34: its shutdown began while its heartbeat is still fresh. */
       readonly stopping?: DaemonStopping;
+      /** Row 011-140: it registered older than the handoff claim it ended. */
+      readonly short?: DaemonShort;
     }
   | {
       readonly state: "down";
@@ -409,6 +411,22 @@ export interface DaemonStopping {
    * claim: the handoff did not finish, and `squeal start` finishes it.
    */
   readonly overdue: boolean;
+}
+
+/**
+ * Row 011-140 (011 C9): the recorded daemon registered older than the live
+ * handoff claim it ended, so it validates at its own version, no hook asks
+ * it to step down again, and \`squeal start\` of the claim's version replaces it.
+ */
+export interface DaemonShort {
+  /** Its incarnation, what a consumer is told once (\`ToldLiveness\`). */
+  readonly of: string;
+  /** Its version. */
+  readonly version: string;
+  /** The claim's version, which it was to run. */
+  readonly claimed: string;
+  /** When it registered. */
+  readonly since: EpochMs;
 }
 
 /** What a daemon that died without shutting down was doing (task 001-263). */

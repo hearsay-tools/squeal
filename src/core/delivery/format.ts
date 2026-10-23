@@ -385,6 +385,10 @@ function livenessTitle(liveness: DaemonLiveness | undefined, revision: number): 
   if (liveness?.state === "down" && liveness.stopped === true) {
     return `SQUEAL · the daemon is stopped by request at revision ${revision}`;
   }
+  // Row 011-140: the header after it names the claim's version and `squeal start`.
+  if (liveness?.state === "alive" && liveness.short !== undefined) {
+    return `SQUEAL · a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
+  }
   return liveness?.state === "alive"
     ? `SQUEAL · a daemon is validating again at revision ${revision}`
     : `SQUEAL · no daemon is validating at revision ${revision}`;
