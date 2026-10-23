@@ -173,11 +173,20 @@ export class Withholds {
 
   /** Records the withhold of `files`, each first or exhausted at its key. */
   record<T extends Ran>(files: readonly T[]): Withheld<T> {
+    const withheld = this.peek(files);
+    for (const { file, key } of files) this.#keys.set(file.id, key);
+    return withheld;
+  }
+
+  /**
+   * What `record` would make of `files`, recording nothing (row 011-128): a
+   * record decides before its write, and counts only once the write lands.
+   */
+  peek<T extends Ran>(files: readonly T[]): Withheld<T> {
     const again: T[] = [];
     const exhausted: T[] = [];
     for (const ran of files) {
       (this.#keys.get(ran.file.id) === ran.key ? exhausted : again).push(ran);
-      this.#keys.set(ran.file.id, ran.key);
     }
     return { again, exhausted };
   }
