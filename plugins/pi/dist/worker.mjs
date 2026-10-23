@@ -80,6 +80,7 @@ var WORKTREE_META_ROWS = {
   daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
   daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
   daemonHandoff: { prefix: "daemon-handoff:", owner: "delivery/handoff" },
+  daemonHandoffShort: { prefix: "daemon-handoff-short:", owner: "delivery/handoff" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -3596,21 +3597,31 @@ function toDaemonToken(value, startedAt, version) {
   return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
 }
 function createWorktreeRepo(conn) {
-  const tokenOf = (id, startedAt, version) => {
+  const tokenRowOf = (id, startedAt, version) => {
     const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
     if (raw === null) return void 0;
     try {
-      return toDaemonToken(JSON.parse(str(raw, "value")), startedAt, version) ?? void 0;
+      const value = JSON.parse(str(raw, "value"));
+      const token = toDaemonToken(value, startedAt, version);
+      if (token === null || token === void 0) return void 0;
+      const executable = isRecord(value) ? value.executable : void 0;
+      return typeof executable === "string" ? { token, executable } : { token };
     } catch {
       return void 0;
     }
   };
+  const tokenOf = (id, startedAt, version) => tokenRowOf(id, startedAt, version)?.token;
   const writeToken = (id, d) => {
     if (d.token === void 0) {
       conn.run("DELETE FROM meta WHERE key = ?", tokenKey(id));
       return;
     }
-    const value = { startedAt: d.startedAt, squealVersion: d.squealVersion, token: d.token };
+    const value = {
+      startedAt: d.startedAt,
+      squealVersion: d.squealVersion,
+      token: d.token,
+      ...d.executable === void 0 ? {} : { executable: d.executable }
+    };
     conn.run(
       "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
       tokenKey(id),
@@ -3620,8 +3631,8 @@ function createWorktreeRepo(conn) {
   const toRecord = (row) => {
     const record = fromRow(row);
     const d = record.daemon;
-    const token = d === null ? void 0 : tokenOf(record.id, d.startedAt, d.squealVersion);
-    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, token } };
+    const token = d === null ? void 0 : tokenRowOf(record.id, d.startedAt, d.squealVersion);
+    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, ...token } };
   };
   return {
     get: (id) => {
@@ -5044,6 +5055,50 @@ var GROUP_ORDER = {
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
 
+// src/core/daemon/version.ts
+import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname5, join as join13 } from "node:path";
+import { fileURLToPath } from "node:url";
+var UNKNOWN_VERSION = "0.0.0-unknown";
+var PACKAGE_NAME = "squeal";
+function squealVersion() {
+  if (true) return "0.1.277";
+  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
+}
+function manifestVersion(module) {
+  let dir = dirname5(fileURLToPath(module));
+  for (; ; ) {
+    const version = readVersion(join13(dir, "package.json"));
+    if (version !== null) return version;
+    const parent = dirname5(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function readVersion(path) {
+  try {
+    const parsed = JSON.parse(readFileSync6(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const { name, version } = parsed;
+    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
+function isNewerVersion(version, than) {
+  const a = versionParts(version);
+  const b = versionParts(than);
+  if (a === null || b === null) return false;
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+function versionParts(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  return match === null ? null : match.slice(1).map(Number);
+}
+
 // src/core/delivery/handoff.ts
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
 var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
@@ -5079,6 +5134,23 @@ function claimHandoff(store, worktreeId, claim) {
     return written;
   });
 }
+function shortHandoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoffShort", worktreeId);
+}
+function readShortHandoff(store, worktreeId) {
+  const text = store.meta.get(shortHandoffMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const mark = JSON.parse(text);
+    if (!isRecord(mark)) return null;
+    const { of, version, claimed: claimed2, at } = mark;
+    if (typeof of !== "string" || typeof version !== "string") return null;
+    if (typeof claimed2 !== "string" || typeof at !== "number") return null;
+    return { of, version, claimed: claimed2, at };
+  } catch {
+    return null;
+  }
+}
 
 // src/core/status/stopping.ts
 function withStopping(store, worktree, live, now) {
@@ -5086,7 +5158,9 @@ function withStopping(store, worktree, live, now) {
   const record = worktree.daemon;
   if (record === null) return claimed(store, worktree, live, now);
   const self = daemonIncarnation(record);
-  if (self === null || !shutDown(store, worktree.id, self)) return live;
+  if (self === null || !shutDown(store, worktree.id, self)) {
+    return withShort(store, worktree, record, live);
+  }
   if (live.state === "down" && daemonGone(worktree)) return live;
   const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
   const since = note?.at ?? record.heartbeatAt;
@@ -5107,6 +5181,17 @@ function claimed(store, worktree, live, now) {
   const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
   const { to, at: since, boundAt } = claim;
   return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
+}
+function withShort(store, worktree, record, live) {
+  if (live.state !== "alive") return live;
+  const mark = readShortHandoff(store, worktree.id);
+  if (mark === null || mark.of !== handoffFrom(record)) return live;
+  const { of, version, claimed: claimed2, at: since } = mark;
+  return { ...live, short: { of, version, claimed: claimed2, since } };
+}
+function shortText(short, command) {
+  const at = new Date(short.since).toISOString();
+  return `the handoff to ${short.claimed} ended at ${at} with a ${short.version} daemon, which validates; no hook asks it to step down again, and \`${command} start\` of ${short.claimed} replaces it`;
 }
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 function stoppingState(stopping, age) {
@@ -5190,14 +5275,18 @@ function livenessMetaKey(worktreeId) {
 function toldLiveness(store, consumer) {
   const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
   if (told === "down") return "down";
+  if (isRecord(told) && typeof told.short === "string") return { short: told.short };
   const since = isRecord(told) ? told.startingSince : void 0;
   return typeof since === "number" ? { startingSince: since } : "alive";
+}
+function toldOf(live) {
+  return live.state === "alive" && live.short !== void 0 ? { short: live.short.of } : live.state;
 }
 function tellLiveness(store, consumer, told) {
   writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
 }
 function asTold(live, told, at) {
-  if (live.state === "alive" || typeof told !== "object") return live;
+  if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
@@ -5226,6 +5315,9 @@ function livenessChange(store, consumer, at) {
     const rest = restState(store, worktree, at);
     if (rest === "quiet") return null;
     if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  }
+  if (live.state === "alive" && live.short !== void 0) {
+    return typeof told === "object" && "short" in told && told.short === live.short.of ? null : live;
   }
   return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
 }
@@ -6551,7 +6643,7 @@ function createDelivery(store, options) {
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness2 ? livenessChange(store, consumer, at) : null;
-      if (changed !== null) tellLiveness(store, consumer, changed.state);
+      if (changed !== null) tellLiveness(store, consumer, toldOf(changed));
       const holds = liveness2 ? holdsChange(store, consumer, at) : null;
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const news = delta.entries.length > 0 || changed !== null || holds !== null;
@@ -6638,7 +6730,8 @@ function createDelivery(store, options) {
         knownFailures.map((f) => f.check)
       );
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
+      const daemon = header.daemon === void 0 ? null : toldOf(header.daemon);
+      tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);
       tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
@@ -6944,7 +7037,9 @@ function livenessSentence(daemon, revision, command) {
   if (daemon.stopping !== void 0) {
     return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
   }
-  if (daemon.state === "alive") return "";
+  if (daemon.state === "alive") {
+    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+  }
   if (daemon.stopped === true)
     return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
   const died = daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
@@ -7166,6 +7261,9 @@ function livenessTitle(liveness2, revision) {
   if (liveness2?.state === "down" && liveness2.stopped === true) {
     return `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
   }
+  if (liveness2?.state === "alive" && liveness2.short !== void 0) {
+    return `SQUEAL \xB7 a ${liveness2.short.version} daemon is validating at revision ${revision}, not ${liveness2.short.claimed}`;
+  }
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQUEAL_COMMAND, now = Date.now()) {
@@ -7251,7 +7349,7 @@ function findHarnessProcess(lookup = {}) {
 
 // src/harness/shared/context.ts
 import { existsSync as existsSync7 } from "node:fs";
-import { join as join13 } from "node:path";
+import { join as join14 } from "node:path";
 function locate(cwd) {
   const root = findWorktreeRoot(cwd);
   if (root === null) return null;
@@ -7259,7 +7357,7 @@ function locate(cwd) {
   return commonDir === null ? null : { root, commonDir };
 }
 function usesSqueal(location2) {
-  return existsSync7(storePaths(location2.commonDir).database) || existsSync7(join13(location2.root, "squeal.config.json"));
+  return existsSync7(storePaths(location2.commonDir).database) || existsSync7(join14(location2.root, "squeal.config.json"));
 }
 function openContext(input, location2, options = {}) {
   const store = openStore(location2.commonDir, {
@@ -7290,7 +7388,7 @@ function openContext(input, location2, options = {}) {
 
 // src/harness/shared/coverage.ts
 import { existsSync as existsSync8 } from "node:fs";
-import { join as join14, posix as posix5 } from "node:path";
+import { join as join15, posix as posix5 } from "node:path";
 var VITEST_ONLY = {
   vitest: true,
   vitestConfig: null,
@@ -7334,15 +7432,15 @@ function fromRoot({
 function vitestConfig(root) {
   for (const name of CONFIG_NAMES) {
     for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync8(join14(root, `${name}${extension}`))) return `${name}${extension}`;
+      if (existsSync8(join15(root, `${name}${extension}`))) return `${name}${extension}`;
     }
   }
   return null;
 }
 
 // src/harness/shared/deny.ts
-import { readFileSync as readFileSync7, realpathSync as realpathSync3 } from "node:fs";
-import { join as join18, resolve as resolve6 } from "node:path";
+import { readFileSync as readFileSync8, realpathSync as realpathSync3 } from "node:fs";
+import { join as join19, resolve as resolve6 } from "node:path";
 
 // src/core/delivery/test-command-denied.ts
 function testCommandDeniedMetaKey(worktreeId) {
@@ -7356,8 +7454,8 @@ function recordTestCommandDenied(store, consumer, revision) {
 }
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync9, readdirSync as readdirSync3, readFileSync as readFileSync6, statSync as statSync2 } from "node:fs";
-import { basename as basename2, dirname as dirname5, isAbsolute as isAbsolute7, join as join15, relative as relative2, resolve as resolve3 } from "node:path";
+import { existsSync as existsSync9, readdirSync as readdirSync4, readFileSync as readFileSync7, statSync as statSync2 } from "node:fs";
+import { basename as basename2, dirname as dirname6, isAbsolute as isAbsolute7, join as join16, relative as relative2, resolve as resolve3 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
 }
@@ -7365,16 +7463,16 @@ function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
     const declared = resolve3(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join15(declared, "bin", "python"));
-    if (existsSync9(declared)) return found("declared", dirname5(dirname5(declared)), declared);
-    const target = basename2(declared).startsWith("python") ? dirname5(dirname5(declared)) : declared;
+    if (isDirectory(declared)) return found("declared", declared, join16(declared, "bin", "python"));
+    if (existsSync9(declared)) return found("declared", dirname6(dirname6(declared)), declared);
+    const target = basename2(declared).startsWith("python") ? dirname6(dirname6(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join15(cwd, ".venv");
-  if (existsSync9(join15(venv, "pyvenv.cfg"))) return found("venv", venv, join15(venv, "bin", "python"));
+  const venv = join16(cwd, ".venv");
+  if (existsSync9(join16(venv, "pyvenv.cfg"))) return found("venv", venv, join16(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
-  if (pdm !== null) return found("pdm-python", dirname5(dirname5(pdm)), pdm);
-  return none(root, cwd, [venv, join15(cwd, ".pdm-python")], venv);
+  if (pdm !== null) return found("pdm-python", dirname6(dirname6(pdm)), pdm);
+  return none(root, cwd, [venv, join16(cwd, ".pdm-python")], venv);
 }
 function found(source, env, python) {
   return { kind: "found", source, env, python };
@@ -7382,7 +7480,7 @@ function found(source, env, python) {
 function pdmPython(root, cwd) {
   let text;
   try {
-    text = readFileSync6(join15(cwd, ".pdm-python"), "utf8").trim();
+    text = readFileSync7(join16(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -7399,17 +7497,17 @@ var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
 function none(root, cwd, looked, target) {
   const venv = relative2(cwd, target) || ".";
   const dirs = [];
-  for (let dir = cwd; ; dir = dirname5(dir)) {
+  for (let dir = cwd; ; dir = dirname6(dir)) {
     dirs.push(dir);
     if (toRelative(root, dir) === null) break;
   }
   for (const dir of dirs) {
-    const hit = LOCKFILES2.find(([file]) => existsSync9(join15(dir, file)));
+    const hit = LOCKFILES2.find(([file]) => existsSync9(join16(dir, file)));
     if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join15(dir, hit[0]) };
+      return { kind: "none", looked, command: hit[1], from: join16(dir, hit[0]) };
   }
   for (const dir of dirs) {
-    const files2 = requirementsIn(dir).map((file) => join15(dir, file));
+    const files2 = requirementsIn(dir).map((file) => join16(dir, file));
     if (files2.length === 0) continue;
     const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
     const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
@@ -7420,7 +7518,7 @@ function none(root, cwd, looked, target) {
 function requirementsIn(dir) {
   let names;
   try {
-    names = readdirSync3(dir);
+    names = readdirSync4(dir);
   } catch (error) {
     if (isMissing(error)) return [];
     throw error;
@@ -7437,7 +7535,7 @@ function isDirectory(path) {
 }
 
 // src/harness/shared/test-command-pytest.ts
-import { join as join16, resolve as resolve4 } from "node:path";
+import { join as join17, resolve as resolve4 } from "node:path";
 var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
 function pytestCommand(words, here) {
   if (here.length !== 1) return null;
@@ -7459,7 +7557,7 @@ function pytestCommand(words, here) {
 }
 function invocation(words, dir, env) {
   const [first, second, third] = words;
-  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join16(env, "bin", name);
+  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join17(env, "bin", name);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -7560,7 +7658,7 @@ function shellWords(text) {
 }
 
 // src/harness/shared/test-command-files.ts
-import { isAbsolute as isAbsolute8, join as join17, relative as relative3, resolve as resolve5 } from "node:path";
+import { isAbsolute as isAbsolute8, join as join18, relative as relative3, resolve as resolve5 } from "node:path";
 function resolveTestFiles(command, listing, root, nodeTest, omitted) {
   if (command.runner === "node-test") {
     const own = listing.filter((ref) => ref.project === command.project);
@@ -7576,7 +7674,7 @@ function resolveTestFiles(command, listing, root, nodeTest, omitted) {
   if (command.filters.length === 0) return vitest;
   const selected = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref) => matchesFilter(join17(root, ref.path), filter, root));
+    const hits = vitest.filter((ref) => matchesFilter(join18(root, ref.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref of hits) selected.add(ref);
   }
@@ -7586,7 +7684,7 @@ function matchesFilter(file, filter, root) {
   if (isAbsolute8(filter) && file.startsWith(filter)) return true;
   const testFile = relative3(root, file).toLocaleLowerCase();
   const rel = relative3(root, resolve5(root, filter));
-  const relativePath = filter.endsWith("/") ? join17(rel, "/") : rel;
+  const relativePath = filter.endsWith("/") ? join18(rel, "/") : rel;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function pytestFiles(command, listing, root) {
@@ -7761,7 +7859,7 @@ function realPath(path) {
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync7(join18(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync8(join19(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string")
@@ -7948,50 +8046,6 @@ function daemonCliEntry(cli, env = process.env) {
   return cli ?? null;
 }
 
-// src/core/daemon/version.ts
-import { readdirSync as readdirSync4, readFileSync as readFileSync8 } from "node:fs";
-import { dirname as dirname6, join as join19 } from "node:path";
-import { fileURLToPath } from "node:url";
-var UNKNOWN_VERSION = "0.0.0-unknown";
-var PACKAGE_NAME = "squeal";
-function squealVersion() {
-  if (true) return "0.1.276";
-  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
-}
-function manifestVersion(module) {
-  let dir = dirname6(fileURLToPath(module));
-  for (; ; ) {
-    const version = readVersion(join19(dir, "package.json"));
-    if (version !== null) return version;
-    const parent = dirname6(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-function readVersion(path) {
-  try {
-    const parsed = JSON.parse(readFileSync8(path, "utf8"));
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const { name, version } = parsed;
-    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
-  } catch {
-    return null;
-  }
-}
-function isNewerVersion(version, than) {
-  const a = versionParts(version);
-  const b = versionParts(than);
-  if (a === null || b === null) return false;
-  for (let i = 0; i < 3; i++) {
-    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
-  }
-  return false;
-}
-function versionParts(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
-  return match === null ? null : match.slice(1).map(Number);
-}
-
 // src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
 var SPAWN_SETTLE_MS = 750;
@@ -8033,6 +8087,7 @@ async function handOver(context, deps, record) {
   if (record === null || !succeeds(record, version, others)) return "none";
   const id = context.consumer.worktreeId;
   const from = handoffFrom(record);
+  if (readShortHandoff(context.store, id)?.of === from) return "none";
   const at = now();
   if (liveHandoff(context.store, id, from, at) !== null) return "joined";
   if (daemonLiveness(record, at).state === "alive") {
