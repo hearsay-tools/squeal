@@ -163,14 +163,15 @@ describe("squeal retry on a test file the daemon has not listed yet (011-134, gh
 
   it("treats a file whose name starts with two dots as inside its project and the worktree (review 0.1.275 B1)", async () => {
     const w = worktree(4, 3, 3);
+    // A pytest project, as above: `mayList` reads node:test and pytest projects alike.
     w.write(
       "squeal.config.json",
-      JSON.stringify({ nodeTest: [{ name: "pkg", cwd: "pkg", include: ["**/*.test.ts"] }] }),
+      JSON.stringify({ pytest: [{ name: "pkg", cwd: "pkg", include: ["**/*_test.py"] }] }),
     );
-    w.write("pkg/..fresh.test.ts");
-    expect(await retry(["pkg/..fresh.test.ts"], w.root)).toEqual({
+    w.write("pkg/..fresh_test.py");
+    expect(await retry(["pkg/..fresh_test.py"], w.root)).toEqual({
       code: 3,
-      stdout: unlisted("pkg/..fresh.test.ts", "revision 4 is not listed yet"),
+      stdout: unlisted("pkg/..fresh_test.py", "revision 4 is not listed yet"),
       stderr: "",
     });
     // A root-level `..` name is in the worktree too; Vitest is built when no other project is.
