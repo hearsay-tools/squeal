@@ -16,14 +16,14 @@ The research (`research/coverage-collection.md`, `complexity-and-crap.md`, `agen
 
 Wave 1, complexity (the human, 2026-10-23: complexity first):
 
-1. Off by default. With `complexity.enabled` unset or `false`, Squeal counts nothing, writes no new store rows, and every delivery, status and exit code is byte-identical to the release before (D1).
+1. Off by default. With `complexity.enabled` unset or `false`, Squeal counts nothing, creates no code store and writes nothing new to the store, and every delivery, status and exit code is byte-identical to the release before (D1).
 2. When it is on, every function in the included files has a known complexity state, `pass` or `fail`, with the revision and blob it was counted at. Squeal's count equals ESLint's `complexity` rule (classic variant) on every `src/` file of this repository, and radon's on the research's Python corpus (D3).
 3. A function that goes over the threshold, or a new function that starts over it, is delivered the way a test failure is delivered. A function that goes back to the threshold or under it is delivered as a recovery. A change of the count while the function stays over is quiet (D5, D6).
 4. A registration shows the number of functions over the threshold and the command that lists them, never the list (the human, 2026-10-23, "don't flood the agent") (D6).
 5. The first edit in a session to a function that is already over, and that leaves it over, delivers one line about it, once per session (D6, its own row).
 6. A move or a rename that keeps the function's body keeps its state and delivers nothing (D2).
 7. Complexity never denies a tool call, never counts in `Known failures`, and never blocks Stop, unless `complexity.blocking` is `true` (D7).
-8. Cost: the counter runs only on files a revision changed. A changed file costs at most 5 ms at the median and 20 ms at p95 on this repository's files. The first count of this repository's included files takes at most 5 s of CPU. A second worktree at the same files counts nothing again, because results are shared by blob through the store (D4).
+8. Cost: the counter runs only on files a revision changed. A changed file costs at most 5 ms at the median and 20 ms at p95 on this repository's files. The first count of this repository's included files takes at most 5 s of CPU. A second worktree at the same files counts nothing again, because counts are shared by blob through the code store (D4).
 
 Wave 2, coverage and CRAP (after wave 1's dogfood):
 
@@ -53,11 +53,12 @@ New keys in `squeal.config.json` (011 C10):
 | `complexity.threshold` | `20` | A function fails when its CC is above this. 20 is ESLint's default `max`. At 20, crossings happened in 5% of this repository's last 300 commits, and at 10 in 16% (`complexity-and-crap.md` 8). |
 | `complexity.include` | every file Squeal sees with a supported extension | Globs. Supported: `.ts .tsx .mts .cts .js .jsx .mjs .cjs .py`. |
 | `complexity.exclude` | `["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"]` | Globs. A project's list replaces the default. |
+| `complexity.maxFileBytes` | `524288` (512 KiB) | A larger file is not counted; D6 tells the session once when it edits one. |
 | `complexity.blocking` | `false` | D7. |
 | `coverage.enabled` | `false` | Wave 2, D8. Needs `complexity.enabled`. |
 | `crap.threshold` | `30` | Wave 2, D9. Savoia's threshold and php-code-coverage's default. |
 
-These are never counted: test files (any file a runner lists), files under `node_modules`, files git ignores, and files over 512 KiB. A file over 512 KiB is named once in a note. The watcher already gives Squeal the set of files it sees (011 C2).
+Both thresholds and the size limit are the project's to set; the defaults are the starting numbers (the human, 2026-10-23). These are never counted: test files (any file a runner lists), files under `node_modules`, files git ignores, and files over `complexity.maxFileBytes`. The watcher already gives Squeal the set of files it sees (011 C2).
 
 A policy change that alters the counted set or the states (threshold, include, exclude, a new counter version) re-counts the files that need it. It delivers one summary line, never one transition per function (D6).
 
@@ -103,7 +104,9 @@ A file that does not parse completely has an `unknown` state for each function i
 
 ### D4. Storage and the daemon's pass
 
-**Counts.** Counts are stored by `(blob id, language, COUNTER_VERSION)`, the blob id being 011 C3's file hash. Each entry holds the file's functions: identity, range, body hash, CC and the count of decision points by kind. The entry depends on the bytes alone, so every worktree shares it through the store (C7) and nothing is counted twice. Retention follows C7: an entry no worktree's current file uses is pruned with old results.
+**The code store.** Code data lives in its own SQLite file beside the store, `<common-dir>/squeal/code.sqlite`, with its own `user_version`. It is created only when the policy is on, so with the policy off nothing on disk changes (goal 1). The main store's schema stays as it is: it has never been raised, and a raise would make every older daemon of the repository exit and every older hook report "status unavailable" (011 C7). The code store follows C7's rules otherwise: WAL, busy retries, reads without writes for `status` and `squeal code`, and retention.
+
+**Counts.** Counts are stored by `(blob id, language, COUNTER_VERSION)`, the blob id being 011 C3's file hash. Each entry holds the file's functions: identity, range, body hash, CC and the count of decision points by kind. The entry depends on the bytes alone, so every worktree shares it through the code store and nothing is counted twice. Retention follows C7: an entry no worktree's current file uses is pruned with old results.
 
 **States.** The per-worktree known state of each code check is: state, value, threshold, the revision and blob it was counted at, and the revision it last changed state. Changes of state are recorded as transitions, as 011 C5 records them for tests.
 
@@ -115,7 +118,11 @@ A revision with more than 200 changed files, for example a pull or a checkout, i
 
 ### D5. States and transitions
 
-A complexity check is `pass` when its CC is at or under `complexity.threshold`, and `fail` when it is above. A file Squeal has not counted yet has `pending`, and a parse error gives `unknown` (D3). 011 C5's transitions apply:
+A complexity check is `pass` when its CC is at or under `complexity.threshold`, and `fail` when it is above. A file Squeal has not counted yet has `pending`, and a parse error gives `unknown` (D3).
+
+Complexity never waits for a test (the human, 2026-10-23). It depends on the file's text alone, so whether the tests pass or fail, or have not run, does not change it. A revision's counts are ready within milliseconds and are delivered at the next delivery point, usually the hook of the edit that made them. `pending` means only that Squeal has not counted the file yet. The wait for test results applies to CRAP and "no test runs it" (D9), which depend on coverage.
+
+011 C5's transitions apply:
 
 | Change | Transition | Delivered |
 |---|---|---|
@@ -149,6 +156,8 @@ A delivery holds at most 5 code transitions in full. The rest become one line: `
 
 The view entry is then marked told in full. Later edits to the function in that session are quiet until its state changes.
 
+**A file too big to count.** The first time in a session that an edit changes an included file over `complexity.maxFileBytes`, the session gets one line: `src/big.ts is 600 KiB, over the 512 KiB limit; its functions are not counted.` Later edits to it in that session are quiet. `squeal code` lists every such file.
+
 **A summary.** A policy change, or a counter version that changes states, delivers `Complexity threshold is now 15: 117 functions over; squeal code lists them.` and re-seeds the views by count.
 
 **Status.** `squeal status` shows one line under the test lines: `Complexity: 62 functions over 20, 2 since this session started; squeal code lists them.` `--json` adds `code: { v: 1, threshold, over, sinceRegistration, pending, unknown }`.
@@ -161,6 +170,7 @@ squeal code [<path>...] [--changed] [--json]
 
 - With no path, it lists every function over the threshold, newest first by the revision at which it went over. Each line gives the location, the CC, its decision points by kind and the revision.
 - With paths, it lists every function in those files with its CC, over the threshold or not.
+- Files not counted (too big, parse errors) are listed after the functions, with the reason.
 - `--changed` keeps the functions whose state changed since the consumer registered.
 - `--json` gives a versioned shape. The command reads the store and needs no daemon, like `status` (011 C6).
 
@@ -178,7 +188,7 @@ With `coverage.enabled`, the Vitest adapter (013) passes `coverage: { enabled: t
 
 **Mapping.** Each payload is mapped through the transform's source map to source lines and functions, outside the scheduler's path (0.37 s of main-thread CPU per test file).
 
-**The record.** It holds, per source the test file loaded: the source's blob id, a bitset of covered lines and a hit bit per function range. That is about 9 KiB per test file. It is stored with the test file's result. Its key is the result's key plus the provider version, so it is adopted with the result (011-23) and pruned with it (C7).
+**The record.** It holds, per source the test file loaded: the source's blob id, a bitset of covered lines and a hit bit per function range. That is about 9 KiB per test file. It is stored in the code store (D4) at the test file's result key plus the provider version, so it is adopted with the result (011-23) and pruned with it (C7).
 
 **Fidelity** (the human, 2026-10-23, skip and name). A test file whose closure imports `node:inspector` or `inspector` is run with coverage off. If the provider cannot skip one file, the file runs in its own tier. Squeal reads that import with the lexer it already uses. Status lists those files, and a source that only they load reads coverage `unknown`. One test of this kind failed under V8 coverage in the research (`coverage-collection.md` Q5). 011 C10's Fidelity rule makes that a defect, never an accepted cost.
 
@@ -210,7 +220,7 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 - **Counter.** A fixture with one construct per function, against ESLint's counts (`complexity-and-crap.md` `fixtures/constructs.ts`, `constructs.py`). A test over this repository's `src/` against stored ESLint counts at a pinned commit. Timing over `src/`.
 - **Identity.** Rename with the same body, move across files, duplicate names, anonymous callbacks by call site, and a move plus an edit in one revision (reads as new).
 - **States and delivery.** Registration shows the count line and no list. `PASS -> FAIL`, `FAIL -> PASS`, a first-seen fail, a removed failing function, the 5-line limit, a policy-change summary, the first edit to a standing failure (once, then quiet). With the policy off, every delivery stays byte-identical.
-- **Store.** One count per blob across two worktrees; pruning; migration from the previous schema (C7).
+- **Store.** One count per blob across two worktrees; pruning; with the policy off no `code.sqlite` exists and the main store is untouched; the main store's `user_version` unchanged.
 - **Integration.** A daemon on a fixture repository: switch the policy on, edit a function over the threshold, read the delivery from the Claude Code hook. The same through the Codex hook.
 - **Wave 2.** A provider fixture with per-file payloads; the inspector fidelity rule (the research's `self-coverage.test.ts` passes under Squeal with coverage on); CRAP pending until every loader is current; the cost on the 30-file sample.
 - **Proof.** A dogfood row per wave, in `lessons.md`. Wave 1: complexity on this repository and on cezar for a working day of agent sessions. It reports the transition rate per session, the deliveries that read as noise, identity losses and the counting cost. Wave 2: the same with coverage, plus CPU per edit against coverage off.
@@ -220,7 +230,8 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 1. Count `?.`, `??` and defaults? ESLint counts them, and so does D3. Leaving them out drops 31% of the functions at CC 10 or more, but Squeal's number would then differ from every peer's. Owner: the human; wave 1's dogfood brings the noise count.
 2. Is "the first edit to a standing failure" (D6) useful or noise in practice? Owner: wave 1's dogfood.
 3. How much of `src/` do tests reach only through child processes, so that those functions read "no test runs it"? Owner: wave 2's first row measures it here.
-4. Does coverage stay noise-free on a wider sample, with timing-dependent tests? The research had 0 changes in 75,628 function states over two runs of 30 files. Owner: wave 2's dogfood.
+4. Is an immediate delivery noisy during a refactor made in several edits? A function can go over in one edit and back under two edits later, giving two lines that a test run, slower, would often skip. The view diff (011 C5) already drops a crossing that returns before the next delivery. If the dogfood shows noise, a crossing could wait until it holds across two edits. Owner: wave 1's dogfood.
+5. Does coverage stay noise-free on a wider sample, with timing-dependent tests? The research had 0 changes in 75,628 function states over two runs of 30 files. Owner: wave 2's dogfood.
 
 ## References
 

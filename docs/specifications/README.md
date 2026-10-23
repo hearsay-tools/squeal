@@ -29,4 +29,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 012 | Claude Code adapter (hook events, idle waiter, packaging; from 001 D9) | shipped |
 | 013 | Vitest runner adapter (instance, invalidation, closure, runs, gate; from 001 D4) | shipped |
 | 014 | squeal ps (every daemon and test process with CPU and memory, the host totals, what should not be up) | shipped |
-| 015 | The code squeals (complexity, coverage and CRAP per function, shared between worktrees; opt-in) | draft |
+| 015 | The code squeals (complexity, coverage and CRAP per function, shared between worktrees; opt-in) | approved |
