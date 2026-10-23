@@ -5,6 +5,9 @@ import type { RunReport } from "../core/types/index.js";
  * run ended, its cancel cause, its duration and each file's, the files it
  * completed, file errors and the projects it started. Each check's result and
  * the observed paths live only in the store; nothing reads them back here.
+ * Vitest's `report.json` and pytest's `run.json` use it. node:test's `run.json`
+ * keeps its full report until the key-format alarm has an `adapter:node-test`
+ * case to run its writer (011-41 notes, decision 5; row 011-48).
  */
 
 /** The part of a `RunReport` a run log keeps. */
