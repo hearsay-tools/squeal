@@ -31,6 +31,7 @@ import { gradeClaim, parseClaim } from "../lib/claim.mjs";
 import { claudeRunner, identityKey } from "../lib/judge.mjs";
 import { EVALS } from "../lib/prepare.mjs";
 import { stamped } from "../lib/results.mjs";
+import { stopOnSignal } from "../lib/session.mjs";
 import { expectationsRevision, writeTrendMarkdown } from "../lib/trend.mjs";
 
 const EXPECTED =
@@ -125,6 +126,8 @@ function expect(data) {
 }
 
 const maxCost = values["max-cost"] === undefined ? Infinity : Number(values["max-cost"]);
+// 006-98: with --judge, SIGINT or SIGTERM ends each judge call in flight with the script.
+if (values.judge) stopOnSignal();
 const real = values.judge ? claudeRunner() : null;
 let spent = 0;
 let capped = false;

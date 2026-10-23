@@ -52,7 +52,7 @@ import {
 } from "../lib/results.mjs";
 import { evalsRoot, refuseInsideRepo } from "../lib/root.mjs";
 import { secretsOf } from "../lib/scratch.mjs";
-import { CLAUDE_ALLOWED_TOOLS } from "../lib/session.mjs";
+import { CLAUDE_ALLOWED_TOOLS, stopOnSignal } from "../lib/session.mjs";
 import { expectationsRevision } from "../lib/trend.mjs";
 import { buildPin } from "../lib/variant.mjs";
 
@@ -102,7 +102,9 @@ const load1 = () => loadavg()[0];
 // ---------- the judge, calibrated before any session (spec 006 D9) ----------
 // A Claude Code version or rubric with no passing calibration file is calibrated first: Haiku 5.5,
 // then Sonnet 5.5. With none passing, the run stops here, before spending on any subject session.
-// The atomic pilot is graded mechanically: no judge.
+// The atomic pilot is graded mechanically: no judge. SIGINT or SIGTERM ends this script's judge
+// calls with it (006-98); its cells, in its process group, take a terminal's signal themselves.
+stopOnSignal();
 const judgeIdentity = atomic
   ? null
   : await ensureCalibrated({
