@@ -30,7 +30,9 @@
 // Whatever happens, setup exception, timeout or SIGTERM, the teardown runs: the session's process
 // group and every daemon the cell started are stopped, any process still naming the cell is
 // killed, the scratch is removed and the retained evidence is scanned, every secret in it
-// redacted or its file removed. A secret that survives fails the cell and drops its grade.
+// redacted or its file removed. A secret that survives fails the cell and drops its grade. Once
+// the teardown has begun the lifecycle starts no process: a signal's teardown runs beside it,
+// and its next session, Squeal command, ground truth, grade or judge call throws (006-97).
 
 import { spawnSync } from "node:child_process";
 import {
@@ -88,7 +90,7 @@ import {
   secretsOf,
   squealBin,
 } from "../lib/scratch.mjs";
-import { groundTruth, killRunning, runSession, sessionCommand } from "../lib/session.mjs";
+import { groundTruth, killRunning, runSession, sessionCommand, stopping } from "../lib/session.mjs";
 import { buildPin } from "../lib/variant.mjs";
 
 const argv = process.argv.slice(2);
@@ -149,7 +151,12 @@ const log = (s) => {
 const env = cellEnv(process.env, CELL, providerVariables(harness, process.env, realCodex));
 if (knobs.flakeColdRuns) env.LEDGERLINE_CALENDAR_COLD_RUNS = String(knobs.flakeColdRuns);
 const setLoad = retryEnv(knobs, CELL, env); // 006-53: pinLoad and service, before any process
+// 006-97: once the teardown has begun the lifecycle starts nothing; `teardown` marks its own stop.
+const refuseAfterTeardown = (what) => {
+  if (stopping()) throw new Error(`the teardown has begun: ${what} not started`);
+};
 const sh = (cmd, args, opts = {}) => {
+  if (!opts.teardown) refuseAfterTeardown(opts.what ?? `${cmd} ${args.join(" ")}`);
   const r = spawnSync(cmd, args, {
     cwd: WORK,
     env: { ...env, ...opts.env },
@@ -164,12 +171,16 @@ const sh = (cmd, args, opts = {}) => {
 const plugin = variant.plugin !== false;
 let CLI = null;
 const squeal = (args, opts = {}) =>
-  sh("node", ["--disable-warning=ExperimentalWarning", CLI, ...args], { check: false, ...opts });
+  sh("node", ["--disable-warning=ExperimentalWarning", CLI, ...args], {
+    check: false,
+    what: `squeal ${args.join(" ")}`,
+    ...opts,
+  });
 const daemonExits = [];
-const stopDaemon = async (why) => {
+const stopDaemon = async (why, opts = {}) => {
   const stop = () => {
     if (!CLI || !existsSync(join(WORK, ".git"))) return null;
-    const r = squeal(["stop", WORK]);
+    const r = squeal(["stop", WORK], opts);
     return (r.stdout + r.stderr).trim().split("\n").at(-1) ?? "";
   };
   daemonExits.push(...(await stopDaemons({ work: WORK, stop, why, log })));
@@ -340,6 +351,7 @@ async function lifecycle() {
   }
   keepRecords(CELL, harness);
   const leftovers = await stopCellLeftovers();
+  refuseAfterTeardown("the grade"); // with the harness's --version, its first process
   const meta = {
     id,
     run,
@@ -429,7 +441,11 @@ async function judge() {
   writeFileSync(file, JSON.stringify(grade, null, 2));
   try {
     const declared = declarations();
-    const runner = claudeRunner({ base: CELL });
+    const call = claudeRunner({ base: CELL });
+    const runner = (a) => {
+      refuseAfterTeardown("a judge call");
+      return call(a);
+    };
     const identity = await calibratedIdentity({ dir: join(EVALS, "results"), declared, runner });
     if (identity === null) {
       log(
@@ -455,7 +471,7 @@ const tearDown = (why) => {
   teardown ??= (async () => {
     await killRunning("SIGKILL");
     delete env.SQUEAL_CLI;
-    if (plugin && daemonPids(WORK).length) await stopDaemon(why);
+    if (plugin && daemonPids(WORK).length) await stopDaemon(why, { teardown: true });
     await stopCellLeftovers();
     const scratch = clearScratch(CELL, secrets);
     writeFileSync(join(OUT, "scratch.json"), JSON.stringify(scratch, null, 2));
@@ -469,6 +485,8 @@ const tearDown = (why) => {
   })();
   return teardown;
 };
+// The first signal's exit code: the lifecycle it stops ends too, and exits with it (006-97).
+let signalled = null;
 for (const [sig, n] of [
   ["SIGINT", 2],
   ["SIGTERM", 15],
@@ -476,8 +494,9 @@ for (const [sig, n] of [
 ])
   process.on(sig, async () => {
     log(`terminated by ${sig}`);
+    signalled ??= 128 + n;
     await tearDown(sig);
-    process.exit(128 + n);
+    process.exit(signalled);
   });
 
 let failed = false;
@@ -488,4 +507,4 @@ try {
   log(`cell failed: ${e?.message ?? e}`);
 }
 const code = await tearDown(failed ? "failure" : "cell end");
-process.exit(failed ? 1 : code);
+process.exit(signalled ?? (failed ? 1 : code));
