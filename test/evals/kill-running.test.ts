@@ -1,7 +1,9 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { pathToFileURL } from "node:url";
+import { describe, expect, it, vi } from "vitest";
 import { groundTruth, groupLive, killRunning, runBounded } from "../../evals/lib/index.mjs";
 import { alive } from "./fake-cell.js";
 
@@ -80,6 +82,55 @@ describe("killRunning", () => {
       expect(existsSync(join(out, "truth.json"))).toBe(false);
       expect(existsSync(join(out, "truth.node.txt"))).toBe(false);
     } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+// 006-98: a judge script ends the groups runBounded runs on SIGINT and SIGTERM, before any
+// continuation of theirs runs, and exits 128 + n. A child process installs it twice and starts a
+// shell that, with a child of its own, ignores both signals.
+const SCRIPT = `import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { runBounded, stopOnSignal } from ${JSON.stringify(pathToFileURL(join(import.meta.dirname, "../../evals/lib/session.mjs")).href)};
+const dir = process.argv[2];
+stopOnSignal();
+stopOnSignal();
+writeFileSync(join(dir, "listeners"), process.listenerCount("SIGINT") + " " + process.listenerCount("SIGTERM"));
+const loop = "trap '' INT TERM; echo $$ >> pids; while :; do sleep 1; done";
+runBounded({
+  command: "sh",
+  args: ["-c", 'sh -c "$0" & ' + loop, loop],
+  cwd: dir,
+  env: process.env,
+  timeoutMs: 60_000,
+  log: () => {},
+}).then(() => writeFileSync(join(dir, "resumed"), ""));
+`;
+
+describe("stopOnSignal", { timeout: 30_000 }, () => {
+  it.each([
+    ["SIGTERM", 143],
+    ["SIGINT", 130],
+  ] as const)("ends every running group on %s and exits %i", async (signal, code) => {
+    const dir = mkdtempSync(join(tmpdir(), "squeal-evals-signal-"));
+    const pids = () =>
+      existsSync(join(dir, "pids"))
+        ? readFileSync(join(dir, "pids"), "utf8").split("\n").filter(Boolean).map(Number)
+        : [];
+    try {
+      writeFileSync(join(dir, "script.mjs"), SCRIPT);
+      const child = spawn(process.execPath, [join(dir, "script.mjs"), dir], { stdio: "ignore" });
+      const closed = new Promise<number | null>((r) => child.on("close", (c) => r(c)));
+      await vi.waitFor(() => expect(pids()).toHaveLength(2), { timeout: 10_000, interval: 20 });
+      child.kill(signal);
+      expect(await closed).toBe(code);
+      expect(readFileSync(join(dir, "listeners"), "utf8")).toBe("1 1");
+      expect(pids().filter(alive)).toEqual([]);
+      expect(pids().some(groupLive)).toBe(false);
+      expect(existsSync(join(dir, "resumed"))).toBe(false);
+    } finally {
+      for (const pid of pids().filter(alive)) process.kill(pid, "SIGKILL");
       rmSync(dir, { recursive: true, force: true });
     }
   });

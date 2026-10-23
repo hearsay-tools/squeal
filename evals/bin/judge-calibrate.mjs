@@ -22,6 +22,7 @@ import { EVALS } from "../lib/prepare.mjs";
 import { assertNoSecrets } from "../lib/results.mjs";
 import { evalsRoot, refuseInsideRepo } from "../lib/root.mjs";
 import { secretsOf } from "../lib/scratch.mjs";
+import { stopOnSignal } from "../lib/session.mjs";
 
 const { values } = parseArgs({
   options: {
@@ -55,6 +56,8 @@ try {
 
 const declared = declarations();
 const maxCost = values["max-cost"] === undefined ? Infinity : Number(values["max-cost"]);
+// 006-98: SIGINT or SIGTERM ends each judge call in flight, in its own group, with the script.
+stopOnSignal();
 const real = claudeRunner({ base: values.base });
 let spent = 0;
 /** The real runner until the calls so far cost `maxCost`, then a refusal. */
