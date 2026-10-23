@@ -5,8 +5,32 @@ const require = __squealCreateRequire(import.meta.url);
 import { setTimeout as sleep2 } from "node:timers/promises";
 
 // src/core/daemon/client.ts
+import { statSync } from "node:fs";
 import { createConnection } from "node:net";
-function requestDaemon(socketPath, request, timeoutMs) {
+function endpointAt(socketPath) {
+  try {
+    const { dev, ino, ctimeNs, birthtimeNs } = statSync(socketPath, { bigint: true });
+    return { dev, ino, ctimeNs, birthtimeNs };
+  } catch {
+    return null;
+  }
+}
+function sameEndpoint(a, b) {
+  return a !== null && a.dev === b.dev && a.ino === b.ino && a.ctimeNs === b.ctimeNs && a.birthtimeNs === b.birthtimeNs;
+}
+async function pinDaemon(record, timeoutMs) {
+  const endpoint = endpointAt(record.socketPath);
+  if (endpoint === null) return null;
+  try {
+    const ping2 = await requestDaemon(record.socketPath, { type: "ping" }, timeoutMs, endpoint);
+    if (!ping2.ok || ping2.type !== "ping") return null;
+    const same = ping2.startedAt === record.startedAt && ping2.squealVersion === record.squealVersion;
+    return same ? { endpoint, ping: ping2 } : null;
+  } catch {
+    return null;
+  }
+}
+function requestDaemon(socketPath, request, timeoutMs, endpoint) {
   return new Promise((resolve3, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
@@ -24,8 +48,14 @@ function requestDaemon(socketPath, request, timeoutMs) {
       timeoutMs
     );
     socket.setEncoding("utf8");
-    socket.on("connect", () => socket.write(`${JSON.stringify(request)}
-`));
+    socket.on("connect", () => {
+      if (endpoint !== void 0 && !sameEndpoint(endpointAt(socketPath), endpoint)) {
+        settle(failure("ESTALE", `${socketPath} is another daemon's socket now`));
+        return;
+      }
+      socket.write(`${JSON.stringify(request)}
+`);
+    });
     socket.on("data", (chunk) => {
       buffer += chunk;
       const end = buffer.indexOf("\n");
@@ -724,7 +754,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.278";
+  if (true) return "0.1.279";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -2951,6 +2981,12 @@ var SELECT_RESULTS = `
 var KEYS_SINCE = `
   SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
   WHERE recorded_at > ? GROUP BY key`;
+var NEWEST_OF_FILE = `${SELECT_RESULTS}
+  WHERE c.project = ? AND c.test_path = ? AND r.key = (
+    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
+    WHERE c2.project = ? AND c2.test_path = ?
+    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
+  ORDER BY c.kind, c.full_name`;
 var COPY_SET = `
   INSERT INTO results (check_id, key, outcome, duration_ms, location_path, location_line,
     location_column, fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id,
@@ -2989,6 +3025,7 @@ function createResultRepo(conn) {
       );
       return row === null ? null : toResult(row);
     },
+    newestForTestFile: ({ project, path }) => conn.all(NEWEST_OF_FILE, project, path, project, path).map(toResult),
     listForCheck: (check, limit) => {
       const id = findCheckId(conn, check);
       if (id === null) return [];
@@ -4921,7 +4958,7 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot.ts
-import { existsSync as existsSync6, readdirSync as readdirSync3, rmSync as rmSync4, statSync, writeFileSync } from "node:fs";
+import { existsSync as existsSync6, readdirSync as readdirSync3, rmSync as rmSync4, statSync as statSync2, writeFileSync } from "node:fs";
 import { isAbsolute as isAbsolute5, join as join12 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
@@ -5406,21 +5443,26 @@ var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOC
 function quietMetaKey(worktreeId) {
   return worktreeMetaKey("quiet", worktreeId);
 }
-function publishedQuiet(store, worktreeId, daemonStartedAt, now) {
+var NO_ENDS = /* @__PURE__ */ new Map();
+function publishedWaits(store, worktreeId, daemonStartedAt, now) {
+  const none = { backlog: NO_ENDS, catchUp: NO_ENDS };
   const raw = store.meta.get(quietMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Map();
+  if (raw === null) return none;
   try {
-    const { at, lanes } = JSON.parse(raw);
-    if (typeof at !== "number" || at < daemonStartedAt) return /* @__PURE__ */ new Map();
-    if (typeof lanes !== "object" || lanes === null) return /* @__PURE__ */ new Map();
-    return new Map(
-      Object.entries(lanes).filter(
-        (entry3) => typeof entry3[1] === "number" && entry3[1] > now
-      )
-    );
+    const { at, lanes, catchUp } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt) return none;
+    return { backlog: endsAfter(lanes, now), catchUp: endsAfter(catchUp, now) };
   } catch {
-    return /* @__PURE__ */ new Map();
+    return none;
   }
+}
+function endsAfter(lanes, now) {
+  if (typeof lanes !== "object" || lanes === null) return NO_ENDS;
+  return new Map(
+    Object.entries(lanes).filter(
+      (entry3) => typeof entry3[1] === "number" && entry3[1] > now
+    )
+  );
 }
 
 // src/core/scheduler/yields.ts
@@ -5642,7 +5684,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const runs = reads?.runs ?? openRuns(store, worktree, daemon);
   const promoted = startedAt === null ? /* @__PURE__ */ new Set() : promotedIds(store, worktreeId, startedAt, now);
   const yields = startedAt === null ? /* @__PURE__ */ new Map() : publishedYields(store, worktreeId, startedAt);
-  const quiet = startedAt === null ? /* @__PURE__ */ new Map() : publishedQuiet(store, worktreeId, startedAt, now);
+  const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -5706,10 +5748,10 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       const held = { kind: "on-hold", hold };
       return { testFile: ref, state, pending: held, standing: held };
     }
-    const quietUntil = pending.kind === "queued" ? quiet.get(pending.lane) : void 0;
-    if (pending.kind === "queued" && pending.behind === null && quietUntil !== void 0) {
+    const wait = pending.kind === "queued" ? quietWait(quiet, pending.lane) : void 0;
+    if (pending.kind === "queued" && pending.behind === null && wait !== void 0) {
       if (!promoted.has(testFileId(ref))) {
-        const held = { ...pending, quietUntil };
+        const held = { ...pending, ...wait };
         return { testFile: ref, state, pending: held, standing: held };
       }
     }
@@ -5738,6 +5780,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     }
     return { testFile: ref, state, pending, standing: pending };
   });
+}
+function quietWait(quiet, lane) {
+  const backlog = quiet?.backlog.get(lane);
+  const catchUp = quiet?.catchUp.get(lane);
+  if (catchUp !== void 0 && (backlog === void 0 || catchUp > backlog))
+    return { quietUntil: catchUp, quietCatchUp: true };
+  return backlog === void 0 ? void 0 : { quietUntil: backlog };
 }
 function claimBound(policy, now) {
   return now + claimBoundMs(policy.runner.timeoutMs);
@@ -5798,7 +5847,7 @@ function groupId(s) {
     case "running":
       return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
@@ -7411,11 +7460,19 @@ async function handOver(context, deps) {
     return "none";
   }
   try {
-    const claim = claimHandoff(store, id, { from: read4.from, to: version, at: now() });
+    const claim = store.transaction(() => {
+      if (!stillRecorded(store, id, read4.from)) return void 0;
+      return claimHandoff(store, id, { from: read4.from, to: version, at: now() });
+    });
+    if (claim === void 0) return "none";
     return claim === null ? "joined" : "claimed";
   } catch {
     return "claimed";
   }
+}
+function stillRecorded(store, worktreeId, from) {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  return record === null || handoffFrom(record) === from;
 }
 function steppingDown(store, worktreeId, record) {
   const self = daemonIncarnation(record);
@@ -7435,18 +7492,17 @@ function succeeds(record, version, others) {
 }
 async function requestStepDown(record, version) {
   try {
-    const answer = await requestDaemon(
-      record.socketPath,
-      { type: "step-down", version },
-      SOCKET_TIMEOUT_MS
-    );
+    const pinned = await pinDaemon(record, SOCKET_TIMEOUT_MS);
+    if (pinned === null) return false;
+    const ask = (request) => requestDaemon(record.socketPath, request, SOCKET_TIMEOUT_MS, pinned.endpoint);
+    const answer = await ask({ type: "step-down", version });
     if (answer.ok) {
       if (answer.type !== "step-down" || !answer.steppingDown) return false;
-      await requestDaemon(record.socketPath, { type: "stop" }, SOCKET_TIMEOUT_MS).catch(() => null);
+      await ask({ type: "stop" }).catch(() => null);
       return true;
     }
     if (!answer.error.startsWith("unknown request type")) return false;
-    return (await requestDaemon(record.socketPath, { type: "stop" }, SOCKET_TIMEOUT_MS)).ok;
+    return (await ask({ type: "stop" })).ok;
   } catch {
     return false;
   }
