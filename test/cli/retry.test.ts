@@ -163,13 +163,14 @@ describe("squeal retry", () => {
   });
 
   // Row 011-27: a missing reason is no usage error; `retry-no-reason.test.ts` has its cases.
-  it("rejects an unknown reason and a file outside the keyed test files", async () => {
+  // Row 011-134: `retry-unlisted.test.ts` has the paths with no key.
+  it("rejects an unknown reason and a missing file", async () => {
     const { root } = await worktree();
     expect((await retry([A, "--reason", "flaky"], root)).stderr).toContain(
       '--reason must be load or environment, not "flaky"',
     );
     expect((await retry(["src/x.ts", "--reason", "load"], root)).stdout).toBe(
-      "Not retried: src/x.ts is not a test file Squeal has keyed in this worktree.\n",
+      "Not retried: src/x.ts does not exist in this worktree.\n",
     );
   });
 
