@@ -1,0 +1,5 @@
+# node cost.mjs <clone>, 2026-10-23 13:39Z, nice 10, one process, one-minute load 25 to 27
+{"clone":"/tmp/to149/squeal","files":1910,"bytes":10902660,"msBlobHash":[51,0],"msOxcNoMap":[436,7],"msOxcWithMap":[392,7],"msOxcThenReprint":[491,7],"perFileUs":{"oxc":228,"withMap":205,"reprint":257}}
+cpu user 1.45 s sys 0.20 s wall 2.16 s
+{"clone":"/tmp/to149/cezar","files":1717,"bytes":21272534,"msBlobHash":[101,0],"msOxcNoMap":[1727,0],"msOxcWithMap":[1183,0],"msOxcThenReprint":[1418,0],"perFileUs":{"oxc":1006,"withMap":689,"reprint":826}}
+cpu user 2.97 s sys 1.05 s wall 5.38 s
