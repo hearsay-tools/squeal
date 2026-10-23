@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { openDaemon } from "../../src/core/daemon/open.js";
-import { claimHandoff, readHandoff } from "../../src/core/delivery/handoff.js";
+import { squealVersion } from "../../src/core/daemon/version.js";
+import { claimHandoff, readHandoff, readShortHandoff } from "../../src/core/delivery/handoff.js";
 import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { createFixtureRepo, type FixtureRepo, readNotes, withStore } from "./helpers.js";
@@ -12,7 +13,8 @@ import { createFixtureRepo, type FixtureRepo, readNotes, withStore } from "./hel
  * successor registers, in the registering transaction, and when that
  * successor's lock wait ends without the lock, in its note's write, so the
  * next boundary claims again. A vacant-lock waiter is no claimed successor:
- * its wait leaves the claim.
+ * its wait leaves the claim. Row 011-140: a daemon older than the claim it
+ * ends ends it short, with its mark and one note.
  */
 
 const repos: FixtureRepo[] = [];
@@ -28,12 +30,12 @@ function fixture(): FixtureRepo {
 
 const id = (repo: FixtureRepo) => repo.worktreeId as WorktreeId;
 
-/** A live claim of a handoff from an older daemon, in a store created for it. */
-function claimed(repo: FixtureRepo): void {
+/** A live claim of a handoff from an older daemon to `to`, in a store created for it. */
+function claimed(repo: FixtureRepo, to = "0.1.31"): void {
   const store = openStore(repo.commonDir as AbsolutePath);
   if (isStoreOpenFailure(store)) throw new Error("no store");
   try {
-    const claim = { from: "0.1.0@1#t", to: "0.1.31", at: Date.now() as EpochMs };
+    const claim = { from: "0.1.0@1#t", to, at: Date.now() as EpochMs };
     expect(claimHandoff(store, id(repo), claim)).not.toBeNull();
   } finally {
     store.close();
@@ -58,6 +60,30 @@ describe("the end of a handoff claim (row 011-32)", () => {
     if ("reason" in daemon) throw new Error(`exited: ${daemon.message}`);
     try {
       expect(claim(repo)).toBeNull();
+    } finally {
+      await daemon.stop("stop-requested");
+    }
+  });
+
+  it("row 011-140: ends short, with its mark and one note, when it names a newer version", async () => {
+    const repo = fixture();
+    claimed(repo, "9.9.9");
+    const daemon = await startDaemon({ root: repo.root, env: repo.env });
+    if ("reason" in daemon) throw new Error(`exited: ${daemon.message}`);
+    try {
+      expect(claim(repo)).toBeNull();
+      const short = withStore(repo, (store) => readShortHandoff(store, id(repo)));
+      const record = withStore(repo, (store) => store.worktrees.get(id(repo))?.daemon);
+      expect(short).toMatchObject({
+        of: `${squealVersion()}@${record?.startedAt}#${record?.token}`,
+        version: squealVersion(),
+        claimed: "9.9.9",
+      });
+      expect(readNotes(repo)).toEqual([
+        expect.stringMatching(
+          `^the handoff to Squeal 9\\.9\\.9 ended with a ${squealVersion().replaceAll(".", "\\.")} daemon from /`,
+        ),
+      ]);
     } finally {
       await daemon.stop("stop-requested");
     }

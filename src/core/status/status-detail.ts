@@ -3,7 +3,7 @@ import type { DaemonNote, EpochMs, StatusSnapshot } from "../types/index.js";
 import { partsSuffix } from "./checks.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, worktreeLine } from "./identity.js";
-import { stoppingText } from "./stopping.js";
+import { shortText, stoppingText } from "./stopping.js";
 import { unknownFilesLines } from "./unknown-files.js";
 
 /*
@@ -78,7 +78,11 @@ function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
     return `Daemon: ${stoppingText(stopping, command, ageText(now - stopping.since))}`;
   }
   if (s.daemon.state === "alive") {
-    return `Daemon: running, last heartbeat ${ageText(now - s.daemon.lastHeartbeatAt)} ago`;
+    const running = `Daemon: running, last heartbeat ${ageText(now - s.daemon.lastHeartbeatAt)} ago`;
+    // Row 011-140: one that ended its handoff short says so, and what replaces it.
+    return s.daemon.short === undefined
+      ? running
+      : `${running}; ${shortText(s.daemon.short, command)}`;
   }
   // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
   if (s.daemon.stopped === true) {

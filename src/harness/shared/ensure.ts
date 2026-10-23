@@ -8,6 +8,7 @@ import {
   handoffFrom,
   liveHandoff,
   readHandoff,
+  readShortHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../../core/delivery/handoff.js";
 import {
@@ -116,8 +117,10 @@ export async function ensureIfStale(
  * next boundary after the bound or a timed-out lock wait spawns again
  * (review 0.1.259, B1). A store that stays busy past the hook's timeout
  * takes no claim, and the hook spawns as before (`claimed`): the lock's
- * winner serves and the rest exit. `none` when nothing was asked or the
- * daemon did not accept.
+ * winner serves and the rest exit. Row 011-140: a daemon that registered
+ * older than the claim it ended (`readShortHandoff`) is asked nothing again;
+ * `squeal start` replaces it. `none` when nothing was asked or the daemon
+ * did not accept.
  */
 async function handOver(
   context: HookContext,
@@ -130,6 +133,7 @@ async function handOver(
   if (record === null || !succeeds(record, version, others)) return "none";
   const id = context.consumer.worktreeId;
   const from = handoffFrom(record);
+  if (readShortHandoff(context.store, id)?.of === from) return "none";
   const at = now();
   if (liveHandoff(context.store, id, from, at) !== null) return "joined";
   if (daemonLiveness(record, at).state === "alive") {

@@ -1,4 +1,6 @@
+import { isNewerVersion } from "../daemon/version.js";
 import { isRecord } from "../fs/index.js";
+import { appendNote } from "../notes.js";
 import {
   type DaemonRecord,
   daemonIncarnation,
@@ -106,4 +108,85 @@ export function claimHandoff(
 /** Ends the worktree's claim: its successor registered, or its lock wait ended without the lock. */
 export function clearHandoff(store: Store, worktreeId: WorktreeId): void {
   store.meta.delete(handoffMetaKey(worktreeId));
+}
+
+/*
+ * Row 011-140 (011 C9, \`research/issue-75-77.md\` Q2): a Codex kept copy that
+ * held older code than its name spawned every successor older than the claim
+ * it ended, so the next hook stepped it down again, 39 times in 180 s. A
+ * successor that registers older than the live claim it ends ends the
+ * handoff short: one note, and a mark naming its incarnation, which no hook
+ * asks to step down again (\`handOver\`) and which status and the next
+ * liveness notice name with \`squeal start\`.
+ */
+
+/** A handoff that ended with a daemon older than its claim. */
+export interface ShortHandoff {
+  /** The incarnation that registered (\`handoffFrom\` of its record). */
+  readonly of: string;
+  /** Its version. */
+  readonly version: string;
+  /** The claim's version, which the successor was to run. */
+  readonly claimed: string;
+  /** When it registered. */
+  readonly at: EpochMs;
+}
+
+/** \`meta\` key of the worktree's short handoff. */
+export function shortHandoffMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("daemonHandoffShort", worktreeId);
+}
+
+/** What \`endHandoff\` reads of the daemon that registers. */
+export interface Registering {
+  /** Its incarnation, as \`handoffFrom\` names its record. */
+  readonly of: string;
+  readonly version: string;
+  /** The script it runs, \`process.argv[1]\`. */
+  readonly executable: string;
+  readonly at: EpochMs;
+}
+
+/**
+ * A daemon registers: the claim ends (row 011-32). When a live claim names a
+ * version newer than the daemon's, the handoff ends short: its mark and one
+ * note, naming both versions and the executable. Any other registration
+ * clears an earlier mark. Call in the registering transaction.
+ */
+export function endHandoff(store: Store, worktreeId: WorktreeId, daemon: Registering): void {
+  const claim = readHandoff(store, worktreeId);
+  clearHandoff(store, worktreeId);
+  const short =
+    claim !== null && daemon.at < claim.boundAt && isNewerVersion(claim.to, daemon.version);
+  if (!short) {
+    store.meta.delete(shortHandoffMetaKey(worktreeId));
+    return;
+  }
+  const mark: ShortHandoff = {
+    of: daemon.of,
+    version: daemon.version,
+    claimed: claim.to,
+    at: daemon.at,
+  };
+  store.meta.set(shortHandoffMetaKey(worktreeId), JSON.stringify(mark));
+  const text =
+    `the handoff to Squeal ${claim.to} ended with a ${daemon.version} daemon from ${daemon.executable}; ` +
+    `no hook asks it to step down again, and \`squeal start\` of ${claim.to} replaces it`;
+  appendNote(store, worktreeId, { at: daemon.at, revision: null, text });
+}
+
+/** The worktree's short handoff; \`null\` with none or one unreadable. */
+export function readShortHandoff(store: Store, worktreeId: WorktreeId): ShortHandoff | null {
+  const text = store.meta.get(shortHandoffMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const mark: unknown = JSON.parse(text);
+    if (!isRecord(mark)) return null;
+    const { of, version, claimed, at } = mark;
+    if (typeof of !== "string" || typeof version !== "string") return null;
+    if (typeof claimed !== "string" || typeof at !== "number") return null;
+    return { of, version, claimed, at: at as EpochMs };
+  } catch {
+    return null;
+  }
 }
