@@ -18,6 +18,7 @@ import {
 } from "../../core/delivery/liveness.js";
 import { stopHolds } from "../../core/delivery/stopped.js";
 import { shutDown } from "../../core/status/died.js";
+import { readTransaction } from "../../core/store/index.js";
 import {
   type DaemonRecord,
   daemonIncarnation,
@@ -69,7 +70,7 @@ export async function ensure(
     const at = { id: context.consumer.worktreeId, root: location.root };
     if (await stopHolds(context.store, at, worktree, live)) return "stopped";
   }
-  const handoff = context === undefined ? "none" : await handOver(context, deps, record ?? null);
+  const handoff = context === undefined ? "none" : await handOver(context, deps);
   if (handoff === "claimed") return successor(location, deps);
   if (handoff === "joined") return "alive";
   const at = (deps.now ?? Date.now)();
@@ -101,7 +102,7 @@ export async function ensureIfStale(
   if (daemonLiveness(record, (deps.now ?? Date.now)()).state !== "alive") {
     return ensure(context, deps, context);
   }
-  if ((await handOver(context, deps, record)) === "claimed") await successor(context, deps);
+  if ((await handOver(context, deps)) === "claimed") await successor(context, deps);
   return "fresh";
 }
 
@@ -119,30 +120,46 @@ export async function ensureIfStale(
  * takes no claim, and the hook spawns as before (`claimed`): the lock's
  * winner serves and the rest exit. Row 011-140: a daemon that registered
  * older than the claim it ended (`readShortHandoff`) is asked nothing again;
- * `squeal start` replaces it. `none` when nothing was asked or the daemon
- * did not accept.
+ * `squeal start` replaces it. Review 0.1.277, B1: the record, the claim and
+ * the mark are read in one read transaction, as the successor writes them in
+ * one, so a short successor that registers meanwhile is read with its mark,
+ * not as the daemon it succeeded at the socket it reuses. `none` when
+ * nothing was asked or the daemon did not accept.
  */
 async function handOver(
   context: HookContext,
   deps: HookDeps,
-  record: DaemonRecord | null,
 ): Promise<"none" | "joined" | "claimed"> {
   const now = deps.now ?? Date.now;
   const version = deps.squealVersion ?? squealVersion();
-  const others = otherSessionVersions(context.store, context.consumer);
-  if (record === null || !succeeds(record, version, others)) return "none";
-  const id = context.consumer.worktreeId;
-  const from = handoffFrom(record);
-  if (readShortHandoff(context.store, id)?.of === from) return "none";
+  const { store, consumer } = context;
+  const id = consumer.worktreeId;
   const at = now();
-  if (liveHandoff(context.store, id, from, at) !== null) return "joined";
-  if (daemonLiveness(record, at).state === "alive") {
-    if (!(await requestStepDown(record, version))) return "none";
-  } else if (!steppingDown(context.store, id, record)) {
+  const read = readTransaction(store, () => {
+    const record = store.worktrees.get(id)?.daemon ?? null;
+    if (record === null || !succeeds(record, version, otherSessionVersions(store, consumer))) {
+      return null;
+    }
+    const from = handoffFrom(record);
+    if (readShortHandoff(store, id)?.of === from) return null;
+    const alive = daemonLiveness(record, at).state === "alive";
+    return {
+      record,
+      from,
+      alive,
+      joined: liveHandoff(store, id, from, at) !== null,
+      stepping: !alive && steppingDown(store, id, record),
+    };
+  });
+  if (read === null) return "none";
+  if (read.joined) return "joined";
+  if (read.alive) {
+    if (!(await requestStepDown(read.record, version))) return "none";
+  } else if (!read.stepping) {
     return "none";
   }
   try {
-    const claim = claimHandoff(context.store, id, { from, to: version, at: now() });
+    const claim = claimHandoff(store, id, { from: read.from, to: version, at: now() });
     return claim === null ? "joined" : "claimed";
   } catch {
     return "claimed";
