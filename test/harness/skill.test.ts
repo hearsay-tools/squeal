@@ -158,7 +158,7 @@ describe("the squeal skill", () => {
   });
 
   it("names the squeal why line a FAIL report ends with", () => {
-    expect(body).toContain('`Full output: squeal why "<name>"`');
+    expect(body).toContain("`Full output: squeal why '<name>'`");
   });
 
   /*

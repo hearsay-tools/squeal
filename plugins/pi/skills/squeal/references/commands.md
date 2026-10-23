@@ -63,10 +63,10 @@ Each edit is its own revision, so the first wait reports the revert, not the fix
 
 ## squeal why
 
-`squeal why "<check name>"` prints the history and provenance of one check and the path to its last run log, which holds the full output; SQUEAL messages carry only the first error line and its location. A FAIL report ends with the command for its first failure:
+`squeal why '<check name>'` prints the history and provenance of one check and the path to its last run log, which holds the full output; SQUEAL messages carry only the first error line and its location. A FAIL report ends with the command for its first failure:
 
 ```text
-Full output: squeal why "src/math.test.ts > math > adds"
+Full output: squeal why 'src/math.test.ts > math > adds'
 ```
 
 Use a name exactly as a SQUEAL message or `squeal status` printed it. Any unique part of the name also works.
@@ -76,7 +76,7 @@ When the result shown ran at a revision older than the current one, a `Changed s
 Its `Run log:` line names the `vitest.log` of the run that produced the result shown, from the worktree it was inherited from when it was. That file holds the run's `console` output, but it covers every test file of that run, not only this check. To see only this check's test file's lines, add `--include-logs`:
 
 ```sh
-squeal why "src/math.test.ts > math > adds" --include-logs
+squeal why 'src/math.test.ts > math > adds' --include-logs
 ```
 
 It prints at most 200 of them and says how many there were. A log Squeal has pruned is reported as pruned; the result's errors are still in the store.
