@@ -3,7 +3,6 @@ import { testFileId } from "../keys/index.js";
 import {
   type CheckId,
   type RelativePath,
-  type ResultRecord,
   type RevisionNumber,
   refinedMetaKey,
   type Store,
@@ -183,7 +182,7 @@ export async function baseline(
     if (results.length === 0) {
       // No previous key, as at a new worktree's first start (row 011-154), or one stored at a
       // revision the last daemon never ran (task 004-54): no held fail, only a duration.
-      file.durationMs = durationOf(newestResults(store, file.ref));
+      file.durationMs = durationOf(store.results.newestForTestFile(file.ref));
       continue;
     }
     // A miss at its previous key is a held inherited fail (task 001-170): no result stands here yet.
@@ -251,27 +250,6 @@ export async function baseline(
 function outside(files: readonly FileState[], others: readonly FileState[]): FileState[] {
   const elsewhere = new Set(others.map((file) => file.id));
   return files.filter((file) => !elsewhere.has(file.id));
-}
-
-/**
- * A test file's results under the key of its newest result, from any
- * worktree; empty when it has none. Read only: never advances last-used.
- */
-function newestResults(store: Store, ref: TestFileRef): readonly ResultRecord[] {
-  let newest: ResultRecord | null = null;
-  for (const { check } of store.checks.listByTestFile(ref)) {
-    const result = store.results.latestForCheck(check);
-    if (
-      result !== null &&
-      (newest === null || result.provenance.recordedAt > newest.provenance.recordedAt)
-    ) {
-      newest = result;
-    }
-  }
-  if (newest === null) return [];
-  return store.results
-    .byKey(newest.key, 0)
-    .filter(({ check }) => check.project === ref.project && check.testPath === ref.path);
 }
 
 function testFilePaths(ledger: Ledger): string[] {
