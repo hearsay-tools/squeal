@@ -116,8 +116,18 @@ else if (cmd === "start") {
 else console.log("Known failures: 0");
 `;
 
-// The harness: --version answers; otherwise FAKE_HARNESS picks what the "session" does.
+// The harness: --version answers; otherwise FAKE_HARNESS picks what the "session" does. A judge
+// call (claudeRunner, its HOME in a squeal-judge-* scratch) logs its pid first; FAKE_JUDGE=hang
+// keeps it running, its shell and a child of its own both ignoring SIGTERM (006-98).
 const FAKE_HARNESS = `#!/bin/sh
+case "$HOME" in */squeal-judge-*)
+  echo $$ >> "$FAKE_LOG/judge"
+  if [ "$FAKE_JUDGE" = hang ]; then
+    trap '' TERM
+    sh -c 'trap "" TERM; echo $$ >> "$FAKE_LOG/judge"; while :; do sleep 1; done' &
+    while :; do sleep 1; done
+  fi ;;
+esac
 [ "$1" = "--version" ] && { echo "fake 1.0"; exit 0; }
 echo $$ >> "$FAKE_LOG/harness"
 case "$FAKE_HARNESS" in
@@ -286,8 +296,11 @@ export function leaks(dir: string): string[] {
   return out;
 }
 
-/** The pid logs: the fake daemons, the harness's processes, `npx` and a node:test probe's (006-97). */
-export type PidLog = "daemons" | "harness" | "npx" | "node-test";
+/**
+ * The pid logs: the fake daemons, the harness's processes, `npx`, a node:test probe's (006-97)
+ * and the judge's (006-98).
+ */
+export type PidLog = "daemons" | "harness" | "npx" | "node-test" | "judge";
 
 export const pids = (f: FakeRoot, name: PidLog): number[] =>
   existsSync(join(f.log, name))
