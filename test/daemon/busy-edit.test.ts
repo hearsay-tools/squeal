@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
+import { readHeader } from "../../src/core/delivery/index.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import {
   daemonSuite,
@@ -25,6 +26,12 @@ import {
  * write waits a 250 ms slice and is retried: the edit's revision and a
  * heartbeat land within a second of the lock freeing, the socket answers
  * throughout, and one note names the wait.
+ *
+ * Task 011-122 (`tasks/011-122/notes.md`): the hold starts once the baseline
+ * has recorded. A tier recording in it is the pump's case, whose writes keep
+ * 5 s: they held the event loop 10 s, the edit's batch came only after the
+ * lock freed, and the note named no revision. Both bounds count from when
+ * the writer's commit returned, not from when its hold was due to end.
  */
 
 const suite = daemonSuite();
@@ -77,6 +84,15 @@ describe("an edit while another connection holds the store's write lock (001-422
     created.close();
     const daemon = suite.daemon(repo);
     await waitReady(repo, daemon, 300_000);
+    await waitFor(
+      () =>
+        withStore(repo, (store) => {
+          const { counts } = readHeader(store, repo.worktreeId);
+          return counts.current >= 5 && counts.pending === 0;
+        }),
+      300_000,
+      "the baseline recorded",
+    );
     const before = withStore(repo, (store) => store.revisions.latest(repo.worktreeId)?.number ?? 0);
 
     // Past the writer's start-up; a writer late for its slot only holds it shorter.
@@ -114,17 +130,24 @@ describe("an edit while another connection holds the store's write lock (001-422
       30_000,
       "the edit's revision",
     );
+    const freed = await waitFor(
+      () => Number(/^freed (\d+)$/m.exec(writer.stdout())?.[1] ?? 0) || null,
+      30_000,
+      "the writer's commit",
+    );
     const heartbeatAt = await waitFor(
       () =>
         withStore(repo, (store) => {
           const at = store.worktrees.get(repo.worktreeId)?.daemon?.heartbeatAt ?? 0;
-          return at >= freeAt ? at : null;
+          return at >= freed ? at : null;
         }),
       30_000,
       "a heartbeat after the hold",
     );
-    expect(stored.createdAt - freeAt).toBeLessThanOrEqual(WITHIN_MS);
-    expect(heartbeatAt - freeAt).toBeLessThanOrEqual(WITHIN_MS);
+    // A miss names its phase: the writer's own lateness, or the daemon's time after the lock freed.
+    const timing = `lock due free at ${freeAt}, freed at ${freed}; notes: ${JSON.stringify(readNotes(repo))}`;
+    expect(stored.createdAt - freed, `the revision, ${timing}`).toBeLessThanOrEqual(WITHIN_MS);
+    expect(heartbeatAt - freed, `the heartbeat, ${timing}`).toBeLessThanOrEqual(WITHIN_MS);
     const busy = await waitFor(
       () => {
         const found = readNotes(repo).filter((note) => note.startsWith("the store was busy"));
