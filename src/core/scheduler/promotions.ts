@@ -31,8 +31,8 @@ export interface PublishedPromotion {
  * until its deadline or until none of its files is queued or running (its
  * keys settled), whichever comes first. A file waiting on another
  * worktree's claim of its key is queued, so the promotion holds through the
- * claim (C7). In the daemon's memory only; a successor does not inherit
- * them.
+ * claim (C7), but it makes no tier yield (`TierYields`, row 011-55). In the
+ * daemon's memory only; a successor does not inherit them.
  */
 export class Promotions {
   #promotions: Promotion[] = [];
