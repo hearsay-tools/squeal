@@ -2,7 +2,6 @@ import { chmodSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  alive,
   cellDirs,
   type FakeRoot,
   fakeRoot,
@@ -13,6 +12,7 @@ import {
   removeRoot,
   runCell,
   STATUS_JSON,
+  survivors,
   TOKEN,
 } from "./fake-cell.js";
 
@@ -75,7 +75,7 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
     expect(readFileSync(join(cell, "out/diff.patch"), "utf8")).toMatch(
       /leak\.txt[\s\S]*\[redacted\]/,
     );
-    for (const pid of pids(f, "daemons")) expect(alive(pid)).toBe(false);
+    expect(survivors(f, ["daemons"])).toEqual([]);
   });
 
   it("fails the cell when a secret survives, and keeps no grade (B1)", async () => {
@@ -103,7 +103,7 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
     if (!cell) throw new Error("no cell");
     expect(readFileSync(join(cell, "out/runner.log"), "utf8")).toMatch(/EACCES/);
     expect(pids(f, "daemons").length).toBeGreaterThan(0);
-    for (const pid of pids(f, "daemons")) expect(alive(pid)).toBe(false);
+    expect(survivors(f, ["daemons"])).toEqual([]);
     expect(existsSync(join(cell, "out/grade.json"))).toBe(false);
   });
 
@@ -112,7 +112,7 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
     const r = await runCell(
       f,
       [...CELL, "claude", "claude-haiku-5-5", "1", "--timeout-s", "1", "--grace-s", "0.5"],
-      { FAKE_HARNESS: "hang" },
+      { FAKE_HARNESS: "hang", FAKE_STOP_MS: "300" },
     );
     expect(r.code).toBe(0);
     const [cell] = cellDirs(f);
@@ -123,8 +123,7 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
       timedOut: true,
       spawnError: null,
     });
-    for (const pid of [...pids(f, "harness"), ...pids(f, "daemons")])
-      expect(alive(pid)).toBe(false);
+    expect(survivors(f, ["harness", "daemons"])).toEqual([]);
   });
 
   it("tears down the session, the daemon and the scratch when the runner is terminated (S2)", async () => {
@@ -132,7 +131,8 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
     const r = await runCell(
       f,
       [...CELL, "claude", "claude-haiku-5-5", "1"],
-      { FAKE_HARNESS: "hang" },
+      // The fake daemon ends 300 ms after its SIGTERM: alive at the end unless the teardown waits.
+      { FAKE_HARNESS: "hang", FAKE_STOP_MS: "300" },
       (child) => {
         const poll = setInterval(() => {
           if (pids(f, "harness").length >= 2) {
@@ -145,8 +145,11 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
     expect(r.code).toBe(143);
     const [cell] = cellDirs(f);
     if (!cell) throw new Error("no cell");
-    for (const pid of [...pids(f, "harness"), ...pids(f, "daemons")])
-      expect(alive(pid)).toBe(false);
+    // The session's shell and its child that ignores SIGTERM, and the warm-up's daemon. One still
+    // alive is named with its log, process group, state and command line (006-95).
+    expect(new Set(pids(f, "harness")).size).toBe(2);
+    expect(pids(f, "daemons").length).toBeGreaterThan(0);
+    expect(survivors(f, ["harness", "daemons"])).toEqual([]);
     expect(existsSync(join(cell, "home"))).toBe(false);
     expect(existsSync(join(cell, "out/scratch.json"))).toBe(true);
   });
