@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { ALL_TEST_FILES, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { idleAfterQuiet } from "./quiet-clock.js";
 
 /*
  * Spec 001 D3 and D11 as amended; lessons, surprise 2: a map from test-file
@@ -29,7 +30,8 @@ describe("scheduler: per-test-file declared inputs", SLOW, () => {
       ...before,
       "test/math.test.ts": null,
     });
-    await h.scheduler.idle();
+    // Reached through a declared input alone, `math` is catch-up, which waits for quiet (row 011-153).
+    await idleAfterQuiet(h);
 
     // A new file under the glob joins math's closure only.
     h.write("fixtures/more.json", "{}\n");
@@ -40,7 +42,7 @@ describe("scheduler: per-test-file declared inputs", SLOW, () => {
       ...changed,
       "test/math.test.ts": null,
     });
-    await h.scheduler.idle();
+    await idleAfterQuiet(h);
   });
 
   /*
