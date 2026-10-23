@@ -209,8 +209,8 @@ export interface Delta {
   /** `baseline` when every entry is a baseline finding, else `transitions`. */
   readonly label: "transitions" | "baseline";
   /**
-   * Empty only when `liveness` is set: a delta with nothing to say is `null`
-   * at the call site.
+   * Empty only when `liveness`, `holds`, an edit line or `code` is set: a
+   * delta with nothing to say is `null` at the call site.
    */
   readonly entries: readonly DeltaEntry[];
   /**
