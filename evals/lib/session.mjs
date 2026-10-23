@@ -90,9 +90,10 @@ export const stopping = () => stopped;
 /**
  * Runs `command` in its own process group, so a timeout or a teardown reaches every process it
  * started. At `timeoutMs` the group gets SIGTERM, `graceMs` later SIGKILL, and `graceMs` after
- * that the wait ends whatever the pipes say. `onStdout` and `onStderr` take chunks. Returns
- * `{ exit, signal, timedOut, spawnError }`: `exit` is null unless the process exited by itself,
- * `spawnError` the error code of a command that could not start (`ENOENT`, `EACCES`), or
+ * that the wait ends whatever the pipes say. `input`, when given, is written to its stdin, which
+ * is otherwise closed (a judge call's transcript, 006-98). `onStdout` and `onStderr` take chunks.
+ * Returns `{ exit, signal, timedOut, spawnError }`: `exit` is null unless the process exited by
+ * itself, `spawnError` the error code of a command that could not start (`ENOENT`, `EACCES`), or
  * `stopping` for one not started because the teardown has begun (`killRunning`, 006-97).
  */
 export function runBounded({
@@ -102,6 +103,7 @@ export function runBounded({
   env,
   timeoutMs,
   graceMs = 10_000,
+  input,
   onStdout,
   onStderr,
   log,
@@ -118,7 +120,7 @@ export function runBounded({
       cwd,
       env,
       detached: true,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
     const group = { pgid: child.pid, kill: (sig) => signalGroup(child.pid, sig) };
     const done = (r) => {
@@ -133,6 +135,10 @@ export function runBounded({
     child.on("error", (e) => done({ spawnError: e.code ?? e.message }));
     if (child.pid === undefined) return;
     running.add(group);
+    if (input !== undefined) {
+      child.stdin.on("error", () => {}); // A command that ends before it reads its input.
+      child.stdin.end(input);
+    }
     child.stdout.on("data", (d) => onStdout?.(d));
     child.stderr.on("data", (d) => onStderr?.(d));
     child.on("close", (code, signal) => done({ exit: code, signal }));
