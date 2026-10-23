@@ -80,6 +80,10 @@ describe("loadPolicy (spec 001 D11)", () => {
       delivery: { uncoveredEdits: false },
       daemon: { idleExitMinutes: 0.5, unusedExitMinutes: 10 },
       store: { retentionDays: 3, maxSizeMb: 200 },
+      // Spec 015 D1; its keys' own tests are test/code/policy.test.ts.
+      complexity: DEFAULT_POLICY.complexity,
+      coverage: DEFAULT_POLICY.coverage,
+      crap: DEFAULT_POLICY.crap,
     });
   });
 
