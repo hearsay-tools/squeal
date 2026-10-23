@@ -28,7 +28,8 @@ const FOLDER_MAX_LENGTH = 120;
  * and is neither expanded nor scanned. A folder no snapshot names and a
  * snapshot without an integrity are opaque, so the file keys by the whole
  * fingerprint. Markers as for npm (`InstalledGraph`): `absent:`,
- * `workspace:`, `@types-only`.
+ * `workspace:`, and a package with no runtime file as `<name>@types-only`,
+ * without its version, in a parent's edges too (review 0.1.282 S1).
  */
 export class PnpmGraph implements PackageGraph {
   /** The `.pnpm` folder of each snapshot, by id. */
@@ -146,13 +147,34 @@ export class PnpmGraph implements PackageGraph {
 
   /** `<id>#<integrity>` and its sorted edges, or a marker the closure does not expand. */
   #identity(id: string): string {
-    const edges = this.lockfile.snapshots.get(id);
-    if (edges === undefined) return `unknown:${id}`;
+    const base = this.#base(id);
+    if (!base.startsWith(`${id}#`)) return base;
+    const edges = [...(this.lockfile.snapshots.get(id) ?? [])].map(([name, ref]) =>
+      this.#typesOnly(childOf(name, ref)) ? `${name}@types-only` : `${name}@${ref}`,
+    );
+    return edges.length === 0 ? base : `${base}>${edges.sort(compare).join(",")}`;
+  }
+
+  /** `<id>#<integrity>`, or a marker: no such snapshot, no integrity, or skipped. */
+  #base(id: string): string {
+    if (!this.lockfile.snapshots.has(id)) return `unknown:${id}`;
     const integrity = this.lockfile.integrity.get(id.replace(/\(.*$/, ""));
     if (integrity === undefined) return `nointegrity:${id}`;
-    if (this.skipped.has(id)) return `skipped:${id}#${integrity}`;
-    const names = [...edges].map(([name, ref]) => `${name}@${ref}`).sort(compare);
-    return names.length === 0 ? `${id}#${integrity}` : `${id}#${integrity}>${names.join(",")}`;
+    return this.skipped.has(id) ? `skipped:${id}#${integrity}` : `${id}#${integrity}`;
+  }
+
+  /** Whether `id` is an installed snapshot whose package has no runtime file (task 001-109). */
+  #typesOnly(id: string): boolean {
+    const base = this.#base(id);
+    return (
+      base.startsWith(`${id}#`) &&
+      this.scans.typesOnly(this.#scanId(base), join(this.dir, this.#folderOf(id)))
+    );
+  }
+
+  /** The package folder of snapshot `id`, relative to the install. */
+  #folderOf(id: string): string {
+    return `${VIRTUAL_STORE}${this.folders.get(id)}/node_modules/${nameOf(id)}`;
   }
 
   /** Identities of `start` and everything it can load, memoized per snapshot. */
@@ -165,18 +187,18 @@ export class PnpmGraph implements PackageGraph {
     for (let id = stack.pop(); id !== undefined; id = stack.pop()) {
       if (seen.has(id)) continue;
       seen.add(id);
-      const identity = isMarker(id) ? id : this.#identity(id);
-      if (!identity.startsWith(`${id}#`)) {
-        identities.push(identity);
+      const base = isMarker(id) ? id : this.#base(id);
+      if (!base.startsWith(`${id}#`)) {
+        identities.push(base);
         continue;
       }
-      const folder = `${VIRTUAL_STORE}${this.folders.get(id)}/node_modules/${nameOf(id)}`;
-      if (this.scans.typesOnly(this.#scanId(identity), join(this.dir, folder))) {
-        identities.push(`${id}@types-only`);
+      if (this.#typesOnly(id)) {
+        identities.push(`${nameOf(id)}@types-only`);
         continue;
       }
+      const identity = this.#identity(id);
       identities.push(identity);
-      this.#packageFolders.set(identity, folder);
+      this.#packageFolders.set(identity, this.#folderOf(id));
       for (const [name, ref] of this.lockfile.snapshots.get(id) ?? [])
         stack.push(childOf(name, ref));
     }
