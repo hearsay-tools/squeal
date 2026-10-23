@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { requestDaemon } from "../../core/daemon/client.js";
+import { pinDaemon, requestDaemon } from "../../core/daemon/client.js";
 import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
 import { otherSessionVersions } from "../../core/delivery/consumer-version.js";
@@ -21,6 +21,7 @@ import { shutDown } from "../../core/status/died.js";
 import { readTransaction } from "../../core/store/index.js";
 import {
   type DaemonRecord,
+  type DaemonRequest,
   daemonIncarnation,
   type EnsureDaemonResult,
   type EpochMs,
@@ -123,8 +124,11 @@ export async function ensureIfStale(
  * `squeal start` replaces it. Review 0.1.277, B1: the record, the claim and
  * the mark are read in one read transaction, as the successor writes them in
  * one, so a short successor that registers meanwhile is read with its mark,
- * not as the daemon it succeeded at the socket it reuses. `none` when
- * nothing was asked or the daemon did not accept.
+ * not as the daemon it succeeded at the socket it reuses. Row 011-151: the
+ * requests reach that daemon or nothing (`requestStepDown`), and the claim
+ * is taken only while the store still records it or none
+ * (`stillRecorded`). `none` when nothing was asked, the daemon did not
+ * accept, or another registered since.
  */
 async function handOver(
   context: HookContext,
@@ -159,11 +163,25 @@ async function handOver(
     return "none";
   }
   try {
-    const claim = claimHandoff(store, id, { from: read.from, to: version, at: now() });
+    const claim = store.transaction(() => {
+      if (!stillRecorded(store, id, read.from)) return undefined;
+      return claimHandoff(store, id, { from: read.from, to: version, at: now() });
+    });
+    if (claim === undefined) return "none";
     return claim === null ? "joined" : "claimed";
   } catch {
     return "claimed";
   }
+}
+
+/**
+ * Row 011-151: whether the store still records the daemon `from` names, or
+ * none since it cleared its record. Another one registered after the
+ * decision ended that daemon's handoff: no claim from it, and no successor.
+ */
+function stillRecorded(store: Store, worktreeId: WorktreeId, from: string): boolean {
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  return record === null || handoffFrom(record) === from;
 }
 
 /**
@@ -210,8 +228,9 @@ function successor(location: HookLocation, deps: HookDeps): Promise<EnsureDaemon
  * step-down would start a daemon older than the one that left. So nothing is
  * asked while another session's consumer registered with an older version,
  * or with none (`others`, every hook from before task 001-130): the daemon
- * serves until those sessions leave. At most two round trips of the socket
- * budget, only for an older daemon; with its timers stopped a stepping
+ * serves until those sessions leave. At most three round trips of the socket
+ * budget (the ping of row 011-151, the request and its stop), only for an
+ * older daemon; with its timers stopped a stepping
  * daemon's heartbeat goes stale, so the request is not repeated past two
  * intervals. True when the daemon took a request to exit.
  */
@@ -249,22 +268,29 @@ function succeeds(
   return others.every((other) => other === version || isNewerVersion(other ?? "", version));
 }
 
-/** `stepDownIfOlder`'s requests, once it asks. */
+/**
+ * `stepDownIfOlder`'s requests, once it asks. Row 011-151 (review
+ * 0.1.277-r2, B1): every incarnation reuses the socket path, so a successor
+ * that bound it after the decision would take a request sent by path, and
+ * an older one knows no mark to refuse it by. The ping first proves the
+ * file at the path is `record`'s daemon's (`pinDaemon`), and each request
+ * after it is written only while that file is still there.
+ */
 async function requestStepDown(record: DaemonRecord, version: string): Promise<boolean> {
   try {
-    const answer = await requestDaemon(
-      record.socketPath,
-      { type: "step-down", version },
-      SOCKET_TIMEOUT_MS,
-    );
+    const endpoint = await pinDaemon(record, SOCKET_TIMEOUT_MS);
+    if (endpoint === null) return false;
+    const ask = (request: DaemonRequest) =>
+      requestDaemon(record.socketPath, request, SOCKET_TIMEOUT_MS, endpoint);
+    const answer = await ask({ type: "step-down", version });
     if (answer.ok) {
       if (answer.type !== "step-down" || !answer.steppingDown) return false;
       // Row 011-31: a daemon from 0.1.200 on that steps down without a cancel cancels on `stop`.
-      await requestDaemon(record.socketPath, { type: "stop" }, SOCKET_TIMEOUT_MS).catch(() => null);
+      await ask({ type: "stop" }).catch(() => null);
       return true;
     }
     if (!answer.error.startsWith("unknown request type")) return false;
-    return (await requestDaemon(record.socketPath, { type: "stop" }, SOCKET_TIMEOUT_MS)).ok;
+    return (await ask({ type: "stop" })).ok;
   } catch {
     return false;
   }
