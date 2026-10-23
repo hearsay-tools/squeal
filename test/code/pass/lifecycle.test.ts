@@ -9,7 +9,9 @@ import {
 } from "../../../src/core/code/pass/index.js";
 import { codeStorePath } from "../../../src/core/code/store/index.js";
 import { storePaths } from "../../../src/core/store/paths.js";
+import type { CodeLanguage } from "../../../src/core/types/code.js";
 import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/index.js";
+import { waitFor } from "../../watcher/helpers.js";
 import { open } from "../helpers.js";
 import { type FakeWorktree, fakeCounter, policyOn, worktree } from "./helpers.js";
 
@@ -27,7 +29,7 @@ function daemonPass(
     format: "sha1",
     source: tree.source,
     policy: () => policyOn(),
-    counter: fakeCounter(),
+    counter: () => Promise.resolve(fakeCounter()),
     now: () => 1_000,
     log: (text) => logs.push(text),
     onError: (error) => errors.push(error),
@@ -42,10 +44,18 @@ describe("the daemon's code pass (015 D4, goal 1)", () => {
     const tree = worktree();
     tree.write("src/a.ts", "settle 23 B1\n").revise();
     const counter = fakeCounter();
-    const { code, reports } = daemonPass(tree, { policy: () => DEFAULT_POLICY, counter });
+    let loaded = 0;
+    const { code, reports } = daemonPass(tree, {
+      policy: () => DEFAULT_POLICY,
+      counter: () => {
+        loaded++;
+        return Promise.resolve(counter);
+      },
+    });
     code.nudge();
     await code.idle();
     await code.close();
+    expect(loaded).toBe(0);
     expect(counter.calls).toEqual([]);
     expect(reports).toEqual([]);
     expect(existsSync(codeStorePath(tree.commonDir))).toBe(false);
@@ -81,15 +91,34 @@ describe("the daemon's code pass (015 D4, goal 1)", () => {
   it("runs one more pass for nudges during a pass, never two at once", async () => {
     const tree = worktree();
     tree.write("src/a.ts", "settle 23 B1\n").revise();
-    const { code, reports } = daemonPass(tree, {});
+    const inner = fakeCounter();
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let active = 0;
+    let most = 0;
+    const counter = {
+      version: inner.version,
+      async count(text: string, language: CodeLanguage) {
+        most = Math.max(most, ++active);
+        await gate;
+        active--;
+        return inner.count(text, language);
+      },
+    };
+    const { code, reports } = daemonPass(tree, { counter: () => Promise.resolve(counter) });
     code.nudge();
+    await waitFor(() => active === 1);
+    // Revision 2 is stored while the first pass counts revision 1.
     tree.write("src/a.ts", "settle 3 B2\n").revise();
     code.nudge();
     code.nudge();
+    release();
     await code.idle();
     await code.close();
-    // The first pass read revision 1 before the nudges; the one after it follows revision 2.
     expect(reports.map((r) => `${r.mode} ${r.revision}`)).toEqual(["first 1", "edit 2"]);
+    expect(most).toBe(1);
   });
 
   it("deletes a corrupt code store and counts again", async () => {
@@ -151,5 +180,18 @@ describe("the daemon's code pass (015 D4, goal 1)", () => {
     await code.close();
     expect(errors.map((e) => e.message)).toEqual(["store busy"]);
     expect(reports.map((r) => r.mode)).toEqual(["first"]);
+  });
+
+  it("tells a counter that cannot load once, however many passes find it so", async () => {
+    const tree = worktree();
+    tree.write("src/a.ts", "settle 23 B1\n").revise();
+    const counter = () => Promise.reject(new Error("tree-sitter-tsx.wasm not found"));
+    const { code, errors } = daemonPass(tree, { counter });
+    for (let i = 0; i < 3; i++) {
+      code.nudge();
+      await code.idle();
+    }
+    await code.close();
+    expect(errors.map((e) => e.message)).toEqual(["tree-sitter-tsx.wasm not found"]);
   });
 });
