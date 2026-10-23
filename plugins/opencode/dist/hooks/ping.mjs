@@ -537,6 +537,12 @@ var SELECT_RESULTS = `
   FROM results r
   JOIN checks c ON c.id = r.check_id
   LEFT JOIN failure_texts f ON f.id = r.failure_id`;
+var NEWEST_OF_FILE = `${SELECT_RESULTS}
+  WHERE c.project = ? AND c.test_path = ? AND r.key = (
+    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
+    WHERE c2.project = ? AND c2.test_path = ?
+    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
+  ORDER BY c.kind, c.full_name`;
 
 // src/core/store/repos/states.ts
 var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
