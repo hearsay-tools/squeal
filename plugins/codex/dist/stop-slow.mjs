@@ -297,17 +297,18 @@ function loadConfigFile(path, shape, defaults) {
     text = readFileSync2(path, "utf8");
   } catch (error) {
     if (isMissing(error)) return { value: defaults, problems: [] };
-    return { value: defaults, problems: [`could not be read: ${String(error)}`] };
+    return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
   }
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    return { value: defaults, problems: [`not valid JSON (${error.message})`] };
+    const problem = `not valid JSON (${error.message})`;
+    return { value: defaults, problems: [problem], unparsed: true };
   }
   if (!isRecord(parsed)) {
     const got = Array.isArray(parsed) ? "an array" : JSON.stringify(parsed);
-    return { value: defaults, problems: [`must be a JSON object, got ${got}`] };
+    return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
   }
   const problems = [];
   const merged = merge(shape, defaults, parsed, "", problems);
@@ -598,8 +599,12 @@ var SHAPE = {
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
 function loadPolicy(root) {
-  const { value, problems } = loadConfigFile(join2(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
-  return { policy: value, problems };
+  const loaded = loadConfigFile(join2(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  return {
+    policy: loaded.value,
+    problems: loaded.problems,
+    ...loaded.unparsed === true ? { unparsed: true } : {}
+  };
 }
 function readPolicy(root) {
   return loadPolicy(root).policy;
@@ -7014,7 +7019,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.269";
+  if (true) return "0.1.270";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
