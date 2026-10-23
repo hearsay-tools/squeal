@@ -145,6 +145,7 @@ export function writePnpmInstall(root: string, fixture: PnpmFixture): void {
   for (const [path, declared] of Object.entries(fixture.importers)) {
     const dir = path === "." ? "" : `${path}/`;
     for (const [name, ref] of Object.entries(declared)) {
+      if (fixture.snapshots[snapshotId(name, ref)]?.skipped === true) continue;
       const target = ref.startsWith("link:")
         ? join(path, ref.slice(5))
         : packageOf(snapshotId(name, ref));
