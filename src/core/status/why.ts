@@ -4,6 +4,7 @@ import { withRecorded } from "../retry/index.js";
 import {
   checkIdentity,
   failureKeysOnce,
+  firstOfEachCheck,
   formatCheck,
   heldFailure,
   observedSince,
@@ -108,11 +109,14 @@ function resolve(
   query: string,
   kept: readonly ReplacedFailure[],
 ): CheckId | WhyNoMatch {
-  const named = distinct([
-    ...store.knownStates.list(worktreeId).map((s) => s.check),
-    ...held(store, worktreeId),
-    ...kept.map((e) => e.check),
-  ]).map((check) => ({ check, name: formatCheck(check) }));
+  const named = firstOfEachCheck(
+    [
+      ...store.knownStates.list(worktreeId).map((s) => s.check),
+      ...held(store, worktreeId),
+      ...kept.map((e) => e.check),
+    ],
+    (c) => c,
+  ).map((check) => ({ check, name: formatCheck(check) }));
   const stem = query.endsWith("...") ? query.slice(0, -3) : null;
   let matches = named.filter(
     (n) => n.name.includes(query) || (stem !== null && n.name.startsWith(stem)),
@@ -169,21 +173,6 @@ function held(store: Store, worktreeId: string): CheckId[] {
       .filter((r) => heldFailure(store, worktreeId, [r], failureKeys) !== undefined)
       .map((r) => r.check),
   );
-}
-
-/**
- * Each check once, in the order of its first appearance. One pass over a
- * set of identities: a `findIndex` per check was quadratic and took 29 s
- * at 20,000 known checks (task 011-50, gh-55).
- */
-function distinct(checks: readonly CheckId[]): CheckId[] {
-  const seen = new Set<string>();
-  return checks.filter((check) => {
-    const identity = checkIdentity(check);
-    if (seen.has(identity)) return false;
-    seen.add(identity);
-    return true;
-  });
 }
 
 function report(
