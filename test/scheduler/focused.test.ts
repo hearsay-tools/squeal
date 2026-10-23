@@ -181,4 +181,52 @@ describe("a focused tier (spec 011 C4 and C15 as amended 2026-10-23, row 011-145
     expect(runsSince(s, record, base)).toEqual([F]);
     expect(focusedRows(s)).toEqual([]);
   });
+
+  it.each([
+    { name: "while the deadline holds it runs again at the new key", late: false },
+    { name: "past the deadline it does not run again", late: true },
+  ])("4: an input changed during the focused run discards it; $name", async ({ late }) => {
+    const { side: s } = side(20_000);
+    let phase: "slow" | "focused" | "free" = "free";
+    const record = holdWhere(s, (path, focused) =>
+      phase === "slow" ? SLOW.includes(path) : phase === "focused" && path === F && focused,
+    );
+    await s.scheduler.start();
+    await s.scheduler.idle();
+    const base = s.runner.runs.length;
+    phase = "slow";
+    await s.edit("watch", "src/s.ts", "f.config.json");
+    await heldRun(s, SLOW[0] ?? "", base);
+    await focus(s, [FILE], ["runs"], 60_000);
+    phase = "focused";
+    s.runner.release();
+    const first = await heldRun(s, F, base);
+    const [started] = focusedRows(s);
+
+    await s.edit("watch", "src/f.ts");
+    if (late) s.advance(61_000);
+    phase = "free";
+    s.runner.release();
+    await s.scheduler.idle();
+
+    const discarded = record.writes.flat().find((r) => r.end === "discarded");
+    expect(discarded).toMatchObject({ runId: started?.runId, key: started?.key, checks: [] });
+    expect(discarded?.reason).toContain("src/f.ts");
+    expect(first.files.map((f) => f.path)).toEqual([F]);
+    const [last] = focusedRows(s);
+    if (late) {
+      expect(runsSince(s, record, base)).toEqual([SLOW.join(","), `${F} focused`, F]);
+      expect(last).toMatchObject({ runId: started?.runId, end: "discarded" });
+    } else {
+      expect(runsSince(s, record, base)).toEqual([
+        SLOW.join(","),
+        `${F} focused`,
+        `${F} focused`,
+        F,
+      ]);
+      expect(last).toMatchObject({ end: "completed", matched: 1 });
+      expect(last?.key).not.toBe(started?.key);
+    }
+    expect(s.current(F)).toBe(true);
+  });
 });
