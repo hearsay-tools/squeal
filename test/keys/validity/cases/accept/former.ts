@@ -33,6 +33,43 @@ const pass = {
   recordedAt: 1_000,
 };
 
+/*
+ * Row 011-167 (task 011-162 R3): over a trusted pnpm install the release keys the file by the
+ * whole fingerprint, the candidate by its per-package segment; the candidate's lookup over the
+ * release's store finds the row through today's pnpm definition read as one.
+ */
+const pnpmLock = [
+  "lockfileVersion: '9.0'",
+  "",
+  "importers:",
+  "",
+  "  .:",
+  "    dependencies:",
+  "      a:",
+  "        specifier: ^1.0.0",
+  "        version: 1.0.0",
+  "",
+  "packages:",
+  "",
+  "  a@1.0.0:",
+  "    resolution: {integrity: sha512-a}",
+  "",
+  "snapshots:",
+  "",
+  "  a@1.0.0: {}",
+  "",
+].join("\n");
+const pnpm = {
+  "node_modules/.pnpm/a@1.0.0/node_modules/a/package.json": '{"name":"a","version":"1.0.0"}',
+  "node_modules/.pnpm/a@1.0.0/node_modules/a/index.js": "module.exports = 1;\n",
+  "node_modules/.modules.yaml": JSON.stringify({
+    nodeLinker: "isolated",
+    virtualStoreDir: ".pnpm",
+  }),
+  "node_modules/.pnpm/lock.yaml": pnpmLock,
+};
+const importsA = { imports: [{ from: "", name: "a" }], builtins: [] };
+
 export const FORMER: readonly Case[] = [
   {
     kind: "accept",
@@ -45,5 +82,11 @@ export const FORMER: readonly Case[] = [
     name: "no row stored over an install with a root version",
     why: "011-90: a miss reads the keys at the formats and the definition read as one, and finds none",
     input: { testFile, installed, runs: [], receiver: "B" },
+  },
+  {
+    kind: "accept",
+    name: "a pass stored over a trusted pnpm install",
+    why: "011-167: a row stored under the pnpm definition before 011-162 is read as one",
+    input: { testFile, installed: pnpm, packages: importsA, runs: [pass], receiver: "B" },
   },
 ];
