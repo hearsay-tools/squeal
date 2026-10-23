@@ -592,6 +592,13 @@ export interface RunnerAdapter {
   readonly focuses?: true;
 
   /**
+   * Whether the adapter that runs `testFile` honours `RunOptions.checks`,
+   * for a runner of several adapters (the daemon's composite, spec 003 D7;
+   * row 011-145). Absent: `focuses` answers for every file.
+   */
+  focusesFile?(testFile: TestFileRef): boolean;
+
+  /**
    * The lane that runs `testFile`: runner instances that run one tier at a
    * time between them. Tiers of different lanes run at once (spec 001 D5 as
    * amended, task 001-140); a tier holds files of one lane. Absent: one lane,
