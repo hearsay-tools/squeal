@@ -20,7 +20,7 @@ import {
 import { KEY_FORMAT_VERSION } from "./key-format.js";
 import type { PackageScans } from "./package-scans.js";
 import { InstalledGraph, type PackageGraph } from "./packages.js";
-import { pnpmPackageFoldersFingerprint, readPnpmInstall } from "./pnpm-install.js";
+import { readPnpmInstall } from "./pnpm-install.js";
 import { PNPM_LOCKFILE, withoutLinkedSpecifiers } from "./pnpm-lockfile.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
@@ -244,9 +244,7 @@ export async function installedDependencies(
   const stale = npm ? staleHiddenLockfile(dir, hidden) : (install?.stale ?? null);
   const hash = createHash("sha256").update(`${format.path}\0`);
   if (stale !== null) {
-    const folders = npm
-      ? packageFoldersFingerprint(dir, hidden)
-      : pnpmPackageFoldersFingerprint(dir);
+    const folders = npm ? packageFoldersFingerprint(dir, hidden) : install?.folders;
     hash.update(`stale\0${folders}`);
   } else if (hidden !== null) hash.update(`${INSTALLED_ENCODING}\0${withoutOwnVersions(hidden)}`);
   else if (pnpm) hash.update(`${INSTALLED_ENCODING}\0${withoutLinkedSpecifiers(text)}`);

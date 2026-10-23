@@ -171,7 +171,7 @@ describe("pnpm's lock.yaml trusted and read for per-package keys (011-162, R2)",
     }
   });
 
-  it("fingerprints a stale install's package folders, so a re-versioned folder re-keys", async () => {
+  it("fingerprints a stale install's package folders, so a re-versioned folder or a retargeted workspace link re-keys", async () => {
     writeFile(root, "node_modules/extra/package.json", "{}");
     const stale = await read();
     writeFile(
@@ -179,7 +179,15 @@ describe("pnpm's lock.yaml trusted and read for per-package keys (011-162, R2)",
       "node_modules/.pnpm/b@1.0.0/node_modules/b/package.json",
       '{"name":"b","version":"1.0.1"}',
     );
-    expect((await read()).fingerprint).not.toBe(stale.fingerprint);
+    const reversioned = await read();
+    expect(reversioned.fingerprint).not.toBe(stale.fingerprint);
+    // Between two folders the install holds already: no `.pnpm` entry moves, only the link.
+    rmSync(join(root, "packages/app/node_modules/c"));
+    symlinkSync(
+      "../../../node_modules/.pnpm/b@1.0.0/node_modules/b",
+      join(root, "packages/app/node_modules/c"),
+    );
+    expect((await read()).fingerprint).not.toBe(reversioned.fingerprint);
   });
 
   it("stays trusted with a folder no snapshot names, which pnpm keeps after an update", async () => {
