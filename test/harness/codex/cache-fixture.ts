@@ -18,6 +18,7 @@ import {
   noteCodexCommand,
   SKILL_SOURCE,
 } from "../../../src/harness/codex/build.js";
+import { observeMetafile } from "../../helpers/build-inputs.js";
 
 /*
  * Codex's plugin cache in a temporary directory (`research/plugin-cache-cleanup.md`
@@ -46,10 +47,11 @@ export async function codexPluginAt(dir: string, version: string): Promise<void>
   noteCodexCommand(join(dir, CODEX_SKILL));
   writePluginVersions(dir, [CODEX_MANIFEST], version);
   const dist = join(dir, "dist");
-  await build({
+  const result = await build({
     ...bundleOptions(CODEX_PLUGIN, dist),
     define: { __SQUEAL_VERSION__: JSON.stringify(version) },
   });
+  observeMetafile(result.metafile);
   copyNodeTestRuntime(dist);
   copyObserveRuntime(dist);
   copyPytestRuntime(dist);
