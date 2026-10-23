@@ -11,7 +11,8 @@ import { fakeCommonDir, open, worktree } from "./helpers.js";
  * start token, written beside its registration, so two daemons of one
  * version that start in one millisecond are two incarnations. A token
  * counts only while the registration is the one it was drawn with: a
- * release before it writes none and leaves the last one in place.
+ * release before it writes none and leaves the last one in place. Row
+ * 011-140: the token row keeps the executable the daemon runs.
  */
 
 const record = (startedAt: number, token?: string): DaemonRecord => ({
@@ -38,6 +39,15 @@ describe("a daemon's start token (task 001-270)", () => {
     store.worktrees.setDaemon("wt-1", record(10, "second"));
     expect(first).toBe("0.1.117@10#first");
     expect(incarnation()).toBe("0.1.117@10#second");
+  });
+
+  it("row 011-140: keeps the executable beside the version, and none for a daemon that names none", () => {
+    const { store } = registered();
+    const cli = "/data/versions/0.1.117/dist/cli/squeal.mjs";
+    store.worktrees.setDaemon("wt-1", { ...record(10, "first"), executable: cli });
+    expect(store.worktrees.get("wt-1")?.daemon).toMatchObject({ token: "first", executable: cli });
+    store.worktrees.setDaemon("wt-1", record(11, "second"));
+    expect(store.worktrees.get("wt-1")?.daemon).toEqual(record(11, "second"));
   });
 
   it("is kept with the identity on a clean exit, for the next daemon's first commit", () => {
