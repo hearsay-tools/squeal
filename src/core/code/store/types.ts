@@ -48,7 +48,11 @@ export interface CodeStateFilter {
 export interface CodeStateRepo {
   list(worktreeId: WorktreeId, filter?: CodeStateFilter): readonly CodeKnownState[];
   upsertMany(states: readonly CodeKnownState[]): void;
-  /** Removes every measure's state of each check, and every view entry for it. */
+  /**
+   * Removes every measure's state of each check. View entries stay: a
+   * consumer told `fail` is told once that the function is no longer in the
+   * code (D2), then the delivery removes the entry (`CodeViewRepo.removeMany`).
+   */
   removeMany(worktreeId: WorktreeId, checks: readonly CodeCheckId[]): void;
   /**
    * Spec 015 D2: a move or rename with the same body. `to` takes over
@@ -69,6 +73,11 @@ export interface CodeTransitionRepo {
 export interface CodeViewRepo {
   list(consumer: Consumer): readonly CodeViewEntry[];
   writeMany(consumer: Consumer, entries: readonly CodeViewEntry[]): void;
+  /** The consumer's entries of these checks and measures; others stay. */
+  removeMany(
+    consumer: Consumer,
+    entries: readonly Pick<CodeViewEntry, "check" | "measure">[],
+  ): void;
   /** Every entry of the consumer: it unregistered, or its view is seeded again (D6's summary). */
   clear(consumer: Consumer): void;
 }
