@@ -57,10 +57,8 @@ Side observation, not followed: in each of those 5 runs the same check has one k
 
 ## 3. For whoever continues
 
-- **The human's decision on bounding the growth is pending** (coordinator, 2026-10-23). The options and where each one goes:
-  - Drop the logs of a removed worktree's passing runs at the next prune: in `dropRemovedWorktreeRuns`, add a statement that selects `log_dir` of runs whose worktree is gone, whose results all pass, and that no replaced failure or UNKNOWN keeps. Remove those logs and keep the rows, because `results.run_id` is `NOT NULL`. `why` already has a `pruned` log state (`src/core/status/why-unknown.ts:63`).
-  - A default `store.maxSizeMb`: `src/core/types/policy.ts`, row 011-159's file in this wave.
-  - A shorter period for removed worktrees: a second cutoff in `PRUNABLE` for `worktree_id NOT IN (SELECT id FROM worktrees)`.
+- **The human's decision on the growth** (2026-10-23, from the coordinator): "Summary report, keep 7 days". A removed worktree's results, its runs and their run folders follow the same 7-day cutoff, as D8 is amended. There is no separate log rule and no option. Row 011-164 (W5) cuts the size instead: each run folder keeps only the console log and a compact summary of the report, about 87% smaller. This row does not touch the run-log writers. The log deletion for a removed worktree's runs stays its own step (`dropRemovedWorktreeRuns`), as the coordinator asked. Section 1's log figures are for today's run folders; with 011-164 they shrink by about that share.
+- If a different log rule for removed worktrees is ever wanted, it goes in `dropRemovedWorktreeRuns`: select `log_dir` of the runs whose worktree is gone and that the rule drops, remove those logs, and keep the rows, because `results.run_id` is `NOT NULL`. `why` already has a `pruned` log state (`src/core/status/why-unknown.ts:63`).
 - 011-159 (`lookup-only` by default) makes a new worktree depend on these results. The test in `prune-removed.test.ts` checks the inherited state and not only the absence of runs, so it still discriminates under that default.
 - Not followed: the 5 runs that survived from the older cezar copy each have one key per check in O and another key in the current store (section 1, B).
 - `/tmp/w160` holds the copies and is removed after this row's review. `/tmp/t75` belongs to another task; it is left as it was, apart from the `-shm` and empty `-wal` files that section 1 names.
