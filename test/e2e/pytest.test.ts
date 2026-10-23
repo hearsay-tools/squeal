@@ -143,7 +143,7 @@ async function withEvidence(
   }
 }
 
-/** The store's pytest meta rows and each pytest run's report, minus its results. */
+/** The store's pytest meta rows and each pytest run's summary (row 011-164). */
 function storeEvidence(main: string): object {
   const squeal = join(main, ".git/squeal");
   const db = new DatabaseSync(join(squeal, "store.sqlite"), { readOnly: true });
@@ -166,16 +166,14 @@ function storeEvidence(main: string): object {
       }
       const json = JSON.parse(readFileSync(join(at, "run.json"), "utf8")) as {
         batches: unknown;
-        report: Record<string, unknown> & { results?: unknown[] };
+        report: unknown;
         notes: unknown;
       };
-      const { results, ...report } = json.report;
       const stderr = readdirSync(at).filter((f) => f.startsWith("stderr"));
       runs.push({
         run,
         project,
-        results: results?.length,
-        report,
+        report: json.report,
         notes: json.notes,
         stderr: stderr.map((f) => readFileSync(join(at, f), "utf8").slice(-1500)),
       });
