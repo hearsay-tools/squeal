@@ -116,7 +116,8 @@ const releaseAll = (h: Harness) => appendFileSync(flag(h, "heard"), "x".repeat(1
 const runs = (h: Harness) => SLOW_FILES.map((path) => h.runsOf(path).length);
 
 /** The Vitest files' stored states, without the node:test project's. */
-const storedSlow = (h: Harness) => stored(h).filter(([, path]) => SLOW_FILES.includes(path));
+const storedSlow = (h: Harness) =>
+  stored(h).filter(([, path]) => path !== undefined && SLOW_FILES.includes(path));
 
 /** The reasons `markUnknown` stored for `path`. */
 const reasons = (h: Harness, path: string) =>
