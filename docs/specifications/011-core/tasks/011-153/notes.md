@@ -38,3 +38,9 @@ C6, in the `Outstanding:` sentence, after "`--json` gives the end as `quietUntil
 - `test/scheduler/catch-up-quiet.test.ts`: the edit-cut fixture on a scheduler with a movable clock. An edit runs its kept files at once and no catch-up tier until 120 s after the last edit (a second edit 60 s on restarts it); `run --all` starts catch-up at once; a lane of slots never waits.
 - `test/status/catch-up-quiet-wait.test.ts`: the line, `quietUntil` and `quietCatchUp` in `--json`; the later of two waits; an ended or a predecessor's wait says nothing.
 - The 011-82 tests (`test/scheduler/backlog-quiet*.test.ts`, `test/status/quiet-wait.test.ts`) are unchanged.
+- Tests that idled through the new wait on the host's clock and would time out: the edit-cut tests (`edit-cut*.test.ts`) and the harness tests that edit a declared input (`declared-inputs`, `own-version`, `policy-reload`: a file a declared input alone reaches is catch-up, 011-116). `test/scheduler/quiet-clock.ts` serves both fixtures: `CatchUpSide` and `Harness` gain `now()` and `advance(ms)` over any given clock, `pastCatchUpQuiet` and `idleAfterQuiet` move the clock past a published wait once `scheduler.inUse()` is false. A later test that edits a source and idles until every file is current needs `idleAfterQuiet` when the edit leaves catch-up.
+
+## 5. What the next worker must know
+
+- An edit of a file that a test declares as an input, and that no test imports, now runs that test only after 120 s of quiet: the cut makes such a file catch-up (011-116), and this row holds catch-up. In squeal, `src/**/*.ts` is a declared input of 45 harness and integration files (`research/edit-load.md` 1), so those run after the wait.
+- Telling an edit's catch-up from a pull's (decision 2) needs a field on the queue entry in `queue.ts`; `quietHolds` would then test it instead of `isCatchUp`.
