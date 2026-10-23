@@ -3,13 +3,13 @@
 // the transcript's numbered steps; one that cannot tell, cites none or cites a step that does not
 // exist is `not computable`. Verdicts are cached by the transcript's hash and the judge's
 // identity. The runner is an argument, so this repository's tests never call a model.
-import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { sha } from "./results.mjs";
 import { evalsRoot, refuseInsideRepo } from "./root.mjs";
 import { RUBRIC, rubricOf, SYSTEM } from "./rubric.mjs";
 import { cellEnv, providerVariables } from "./scratch.mjs";
+import { runBounded } from "./session.mjs";
 
 /** The expectations the judge grades; the rest stay mechanical (D4 "Who grades what"). */
 export const JUDGED = Object.keys(RUBRIC);
@@ -176,8 +176,11 @@ export function judgeEnv(parent, scratch) {
 /**
  * The real runner: each call runs `command` (with `prefix` before the arguments) from a fresh
  * scratch directory under `base` (`<eval root>/judge` by default, refused inside a repository,
- * `lib/root.mjs`), with a scratch `HOME`, and removes the scratch afterwards.
- * Resolves `{ status, stdout, stderr }`.
+ * `lib/root.mjs`), with a scratch `HOME`, and removes the scratch afterwards. The call runs
+ * through `runBounded`, in a process group of its own, so its timeout and a runner's teardown
+ * (`killRunning`) end every process it started; after the teardown has begun it starts nothing
+ * (006-98). Resolves `{ status, stdout, stderr }`: `status` is null for a call that was killed or
+ * did not start, and `stderr` then ends with the reason.
  */
 export function claudeRunner({
   base = refuseInsideRepo(join(evalsRoot(), "judge")),
@@ -185,6 +188,7 @@ export function claudeRunner({
   command = "claude",
   prefix = [],
   timeoutMs = 300_000,
+  graceMs = 10_000,
 } = {}) {
   return ({ args, input = "" }) => {
     if (parent.VITEST && command === "claude")
@@ -192,33 +196,30 @@ export function claudeRunner({
     mkdirSync(base, { recursive: true }); // a fresh eval root (review 006-24, B1)
     const scratch = mkdtempSync(join(base, "squeal-judge-"));
     for (const d of ["home", "tmp", "codex", "cwd"]) mkdirSync(join(scratch, d));
-    return new Promise((resolve) => {
-      const child = spawn(command, [...prefix, ...args], {
-        cwd: join(scratch, "cwd"),
-        env: judgeEnv(parent, scratch),
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-      let stdout = "";
-      let stderr = "";
-      const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
-      child.stdout.on("data", (d) => {
+    let stdout = "";
+    let stderr = "";
+    return runBounded({
+      command,
+      args: [...prefix, ...args],
+      cwd: join(scratch, "cwd"),
+      env: judgeEnv(parent, scratch),
+      timeoutMs,
+      graceMs,
+      input,
+      onStdout: (d) => {
         stdout += d;
-      });
-      child.stderr.on("data", (d) => {
+      },
+      onStderr: (d) => {
         stderr += d;
-      });
-      const done = (status) => {
-        clearTimeout(timer);
-        rmSync(scratch, { recursive: true, force: true });
-        resolve({ status, stdout, stderr });
-      };
-      child.on("error", (e) => {
-        stderr += String(e.message);
-        done(null);
-      });
-      child.on("close", (code) => done(code));
-      child.stdin.on("error", () => {});
-      child.stdin.end(input);
+      },
+      log: (s) => {
+        stderr += `${s}\n`;
+      },
+    }).then((r) => {
+      rmSync(scratch, { recursive: true, force: true });
+      if (r.spawnError && r.spawnError !== "stopping")
+        stderr += `${command} could not start: ${r.spawnError}`;
+      return { status: r.exit, stdout, stderr };
     });
   };
 }

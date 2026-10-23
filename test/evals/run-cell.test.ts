@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cellProcesses } from "./cell-processes.js";
@@ -179,6 +179,34 @@ describe("run-cell.mjs with fake harnesses", { timeout: 30_000 }, () => {
     expect(squealCalls(f).slice(before)).toEqual(["stop"]);
     expect(pids(f, "npx")).toEqual([]);
     expect(pids(f, "node-test")).toEqual([]);
+    expect(cellProcesses(f).map((p) => p.args.join(" "))).toEqual([]);
+  });
+
+  it("kills a judge call running when the runner is terminated (006-98)", async () => {
+    const f = root();
+    const r = await runCell(
+      f,
+      [...CELL, "claude", "claude-haiku-5-5", "1"],
+      { FAKE_JUDGE: "hang" },
+      (child) => {
+        const poll = setInterval(() => {
+          // The judge's shell and its child that ignores SIGTERM.
+          if (pids(f, "judge").length >= 2) {
+            clearInterval(poll);
+            child.kill("SIGTERM");
+          }
+        }, 100);
+      },
+    );
+    expect(r.code).toBe(143);
+    const [cell] = cellDirs(f);
+    if (!cell) throw new Error("no cell");
+    expect(new Set(pids(f, "judge")).size).toBe(2);
+    expect(survivors(f, ["judge"])).toEqual([]);
+    expect(readFileSync(join(cell, "out/runner.log"), "utf8")).toMatch(
+      /terminated by SIGTERM[\s\S]*judge failed/,
+    );
+    expect(readdirSync(cell).filter((e) => e.startsWith("squeal-judge-"))).toEqual([]);
     expect(cellProcesses(f).map((p) => p.args.join(" "))).toEqual([]);
   });
 
