@@ -11,6 +11,7 @@ import type {
   TestFileRef,
 } from "../../../core/types/index.js";
 import { withRecorderSignatures } from "../../observe/index.js";
+import { runLogJson } from "../../run-summary.js";
 import { projectEnv } from "../recorders.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
 import { parseEvents } from "./events.js";
@@ -277,7 +278,7 @@ function graphs(logDir: AbsolutePath, index: number): string[] {
     .map((name) => readFileSync(join(logDir, name), "utf8"));
 }
 
-/** `run.json`: each file's command line and exit, which nothing else trusts, and the report. */
+/** `run.json`: each file's command line and exit, which nothing else trusts, and the run's summary. */
 function writeRunLog(
   logDir: AbsolutePath,
   log: { node: string; cwd: string; runs: readonly FileRun[]; report: RunReport },
@@ -288,6 +289,5 @@ function writeRunLog(
     exit: r.exit,
     completed: r.stream?.completed ?? false,
   }));
-  const text = JSON.stringify({ cwd: log.cwd, files, report: log.report }, null, 2);
-  writeFileSync(join(logDir, "run.json"), `${text}\n`);
+  writeFileSync(join(logDir, "run.json"), runLogJson({ cwd: log.cwd, files }, log.report));
 }
