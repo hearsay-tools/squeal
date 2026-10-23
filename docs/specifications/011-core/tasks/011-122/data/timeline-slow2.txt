@@ -1,0 +1,57 @@
+# slow2 r1-0: ms relative to the writer's freed time (1792724941280); probe events of the daemon's main thread (t0), writes outside a transaction and sliced steps' successes left out
+-11880 tier-record-wait {"files":6}
+-11880 tier-record-locked {"lockWaitMs":0.1}
+ -6873 tx-busy {"waitMs":5005.5,"slice":null,"at":"Object.transaction@store/store:62 < TierScheduler.#record@scheduler/scheduler:988","error":"Error: database is locked"}
+ -6873 tier-stall {"error":"Error: database is locked"}
+ -6873 busy-waiting {"key":"scheduler","what":"6 files of a tier queued again","first":true}
+ -6873 pump-gave-up {"what":"6 files of a tier queued again","attempts":0}
+ -1866 tx-busy {"waitMs":5006,"slice":null,"at":"Object.transaction@store/store:62 < Ledger.commit@scheduler/ledger:480 < ?@scheduler/scheduler:1223","error":"Error: database is locked"}
+ -1865 stall {"ms":10015,"fromMs":1792724929400}
+ -1865 feed-debounced {"paths":5}
+ -1865 feed-batch-start
+ -1613 tx-busy {"waitMs":251.3,"slice":250,"at":"Object.transaction@store/store:62 < beat@daemon/lifecycle:224 < ?@daemon/lifecycle:163 < SlicedWrites.#run@daemon/sliced-writes:57","error":"Error: database is locked"}
+ -1613 sliced-step-failed {"what":"the heartbeat","step":"heartbeat","ms":251.8,"error":"Error: database is locked"}
+ -1613 busy-waiting {"key":"the heartbeat","what":"the heartbeat","first":false}
+ -1612 busy-waiting {"key":"consumer expiry","what":"consumer expiry","first":false}
+ -1612 pump-resume
+ -1611 stall {"ms":255,"fromMs":1792724939414}
+ -1359 tx-busy {"waitMs":251.2,"slice":250,"at":"Object.transaction@store/store:62 < beat@daemon/lifecycle:224 < ?@daemon/lifecycle:163 < SlicedWrites.#run@daemon/sliced-writes:57","error":"Error: database is locked"}
+ -1359 sliced-step-failed {"what":"the heartbeat","step":"heartbeat","ms":251.6,"error":"Error: database is locked"}
+ -1359 busy-waiting {"key":"the heartbeat","what":"the heartbeat","first":false}
+ -1358 stall {"ms":252,"fromMs":1792724939670}
+   +73 run {"ms":1430.2,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +73 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +74 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +74 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +74 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +74 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +92 tx {"waitMs":0,"bodyMs":0.6,"commitMs":0.1,"slice":null,"at":"Object.transaction@store/store:62 < startTier@scheduler/tiers:278 < selectTier@scheduler/tiers:219 < ?@scheduler/scheduler:793"}
+   +92 tier-fly {"files":6,"lane":"vitest"}
+   +93 pump-landed
+   +93 busy-ran {"key":"scheduler","what":null,"left":["the heartbeat","consumer expiry"]}
+   +93 stall {"ms":1452,"fromMs":1792724939921}
+   +94 tx {"waitMs":0,"bodyMs":0.1,"commitMs":0,"slice":250,"at":"Object.transaction@store/store:62 < expireConsumers@delivery/expiry:31 < ?@daemon/lifecycle:87 < SlicedWrites.#run@daemon/sliced-writes:57"}
+   +94 sliced-step {"what":"consumer expiry","step":"consumer expiry","ms":0.5}
+   +94 busy-ran {"key":"consumer expiry","what":null,"left":["the heartbeat"]}
+   +94 tx {"waitMs":0,"bodyMs":0.3,"commitMs":0,"slice":250,"at":"Object.transaction@store/store:62 < beat@daemon/lifecycle:224 < ?@daemon/lifecycle:163 < SlicedWrites.#run@daemon/sliced-writes:57"}
+   +94 sliced-step {"what":"the heartbeat","step":"heartbeat","ms":0.5}
+   +95 sliced-step {"what":"the heartbeat","step":"harness check","ms":0.2}
+   +95 sliced-step {"what":"the heartbeat","step":"leaving check","ms":0.1}
+   +95 busy-ran {"key":"the heartbeat","what":null,"left":[]}
+   +95 busy-episode-end {"waitedMs":6968,"waited":["6 files of a tier queued again","the heartbeat","consumer expiry"]}
+   +95 tx {"waitMs":0,"bodyMs":0.1,"commitMs":0,"slice":null,"at":"Object.transaction@store/store:62 < appendNote@notes:17 < writeNote@daemon/notes:8 < Daemon.#note@daemon/daemon:648"}
+   +95 feed-debounced {"paths":1}
+  +155 feed-batch-start
+  +164 hb-enter {"trigger":"watch","paths":1,"slice":250}
+  +164 hb-locked {"lockWaitMs":0.1}
+  +180 read-head {"ms":14.6}
+  +180 batch-phases {"diffMs":0.5,"besideMs":0,"headMs":14.8,"changes":1,"updates":1}
+  +182 tx {"waitMs":0.1,"bodyMs":2.1,"commitMs":0.1,"slice":250,"at":"Object.transaction@store/store:62 < reconcileBatch@scheduler/batch:50 < TierScheduler.#pass@scheduler/scheduler:314 < ?@scheduler/scheduler:289"}
+  +182 pass-phases {"confirmHeldMs":0.1,"adoptMs":0.1,"reconcileBatchMs":18,"revision":1,"createdAt":1792724941460}
+  +183 run {"ms":0.1,"slice":250,"at":"Object.set@store/store:77 < publishQuiet@scheduler/quiet:128 < BacklogQuiet.#quiet [as publish]@scheduler/scheduler:81 < BacklogQuiet.#told@scheduler/quiet:69"}
+  +183 run {"ms":0.1,"slice":250,"at":"Object.set@store/store:77 < TierYields.#publish@scheduler/yields:204 < TierYields.check@scheduler/yields:113 < TierScheduler.#cutTiers@scheduler/scheduler:361"}
+  +184 hb-pass-done {"passMs":19.5,"totalMs":19.7}
+  +200 tx {"waitMs":0,"bodyMs":0.1,"commitMs":0,"slice":null,"at":"Object.transaction@store/store:62 < storeClosures@scheduler/revision:194 < applyRunnerPart@scheduler/refinement:169 < ?@scheduler/runner-work:142"}
+  +200 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < Ledger.lookup@scheduler/ledger:264"}
+  +201 run {"ms":0,"slice":null,"at":"Object.set@store/store:77 < publishQuiet@scheduler/quiet:128 < BacklogQuiet.#quiet [as publish]@scheduler/scheduler:81 < BacklogQuiet.#told@scheduler/quiet:69"}
+  +201 tx {"waitMs":0,"bodyMs":0.1,"commitMs":0,"slice":null,"at":"Object.transaction@store/store:62 < Ledger.commit@scheduler/ledger:480 < ?@scheduler/runner-work:145"}
