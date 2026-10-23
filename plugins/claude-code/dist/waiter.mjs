@@ -371,6 +371,10 @@ function timeText(at) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellWord(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
 
 // src/core/state/fingerprint.ts
 var SUMMARY_MAX_CHARS = 300;
@@ -1713,11 +1717,6 @@ function withRecorded(store, worktreeId, states, revision) {
   });
 }
 
-// src/core/ps/render-units.ts
-var KIB = 1024;
-var MIB = KIB * 1024;
-var GIB = MIB * 1024;
-
 // src/core/retry/text.ts
 function outcomeText(outcome) {
   switch (outcome) {
@@ -2192,6 +2191,29 @@ function flag(value) {
 import { existsSync as existsSync2, rmSync } from "node:fs";
 import { join as join4, resolve as resolve2, sep } from "node:path";
 
+// src/core/store/repos/meta-list.ts
+function readMetaList(conn, key, guard) {
+  const row = conn.get("SELECT value FROM meta WHERE key = ?", key);
+  if (row === null) return [];
+  let value;
+  try {
+    value = JSON.parse(strOrNull(row, "value") ?? "[]");
+  } catch {
+    return [];
+  }
+  return Array.isArray(value) ? value.filter(guard) : [];
+}
+function writeMetaList(conn, key, entries) {
+  if (entries.length === 0) conn.run("DELETE FROM meta WHERE key = ?", key);
+  else {
+    conn.run(
+      "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+      key,
+      JSON.stringify(entries)
+    );
+  }
+}
+
 // src/core/store/repos/replaced.ts
 var REPLACED_META_KEY = "replaced-failures";
 var REPLACED_PER_CHECK = 4;
@@ -2203,15 +2225,7 @@ function failingAt(conn, key) {
   return conn.all(FAILING_AT, key).map((row) => ({ result: toResult(row), failureId: strOrNull(row, "failure_id") }));
 }
 function readReplaced(conn) {
-  const row = conn.get("SELECT value FROM meta WHERE key = ?", REPLACED_META_KEY);
-  if (row === null) return [];
-  let value;
-  try {
-    value = JSON.parse(strOrNull(row, "value") ?? "[]");
-  } catch {
-    return [];
-  }
-  return Array.isArray(value) ? value.filter(isEntry) : [];
+  return readMetaList(conn, REPLACED_META_KEY, isEntry);
 }
 function keepReplaced(conn, failing, records, loadOf2) {
   if (failing.length === 0) return 0;
@@ -2240,13 +2254,15 @@ function keepReplaced(conn, failing, records, loadOf2) {
     });
   }
   if (added.length === 0) return 0;
-  conn.transaction(() => write(conn, capped([...readReplaced(conn), ...added])));
+  conn.transaction(
+    () => writeMetaList(conn, REPLACED_META_KEY, capped([...readReplaced(conn), ...added]))
+  );
   return added.length;
 }
 function expireReplaced(conn, cutoff) {
   const entries = readReplaced(conn);
   const kept = entries.filter((e) => e.provenance.recordedAt >= cutoff);
-  if (kept.length < entries.length) write(conn, kept);
+  if (kept.length < entries.length) writeMetaList(conn, REPLACED_META_KEY, kept);
   return entries.length - kept.length;
 }
 function keptByReplaced(conn) {
@@ -2272,16 +2288,6 @@ function capped(entries) {
   }
   return kept.reverse();
 }
-function write(conn, entries) {
-  if (entries.length === 0) conn.run("DELETE FROM meta WHERE key = ?", REPLACED_META_KEY);
-  else {
-    conn.run(
-      "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-      REPLACED_META_KEY,
-      JSON.stringify(entries)
-    );
-  }
-}
 function identity2(check) {
   return JSON.stringify(checkParams(check));
 }
@@ -2294,15 +2300,7 @@ function isEntry(value) {
 // src/core/store/repos/unknown-runs.ts
 var UNKNOWN_RUNS_META_KEY = "unknown-runs";
 function readUnknownRuns(conn) {
-  const row = conn.get("SELECT value FROM meta WHERE key = ?", UNKNOWN_RUNS_META_KEY);
-  if (row === null) return [];
-  let value;
-  try {
-    value = JSON.parse(strOrNull(row, "value") ?? "[]");
-  } catch {
-    return [];
-  }
-  return Array.isArray(value) ? value.filter(isEntry2) : [];
+  return readMetaList(conn, UNKNOWN_RUNS_META_KEY, isEntry2);
 }
 function recordUnknownRuns(conn, worktreeId, revision, marked, at) {
   const added = marked.flatMap(
@@ -2313,7 +2311,7 @@ function recordUnknownRuns(conn, worktreeId, revision, marked, at) {
     const ids = new Set(added.map(idOf));
     const kept = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
     const newest = new Map(added.map((r) => [idOf(r), r]));
-    write2(conn, [...kept, ...newest.values()]);
+    writeMetaList(conn, UNKNOWN_RUNS_META_KEY, [...kept, ...newest.values()]);
   });
 }
 var STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
@@ -2323,7 +2321,7 @@ var STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
 function dropFallenUnknownRuns(conn) {
   const records = readUnknownRuns(conn);
   const kept = standing(conn, records);
-  if (kept.length < records.length) write2(conn, kept);
+  if (kept.length < records.length) writeMetaList(conn, UNKNOWN_RUNS_META_KEY, kept);
   return records.length - kept.length;
 }
 function keptByUnknownRuns(conn) {
@@ -2337,16 +2335,6 @@ function standsParams(r) {
 }
 function idOf(r) {
   return JSON.stringify([r.worktreeId, r.testFile.project, r.testFile.path]);
-}
-function write2(conn, records) {
-  if (records.length === 0) conn.run("DELETE FROM meta WHERE key = ?", UNKNOWN_RUNS_META_KEY);
-  else {
-    conn.run(
-      "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-      UNKNOWN_RUNS_META_KEY,
-      JSON.stringify(records)
-    );
-  }
 }
 function isEntry2(value) {
   if (!isRecord(value) || !isRecord(value.testFile)) return false;
@@ -4151,7 +4139,7 @@ function readRekeyed(store, worktreeId) {
   }
   return entries;
 }
-function write3(store, worktreeId, entries) {
+function write(store, worktreeId, entries) {
   const key = rekeyedMetaKey(worktreeId);
   if (entries.size === 0) {
     if (store.meta.get(key) !== null) store.meta.delete(key);
@@ -4166,7 +4154,7 @@ function pruneRekeyed(store, worktreeId, upTo) {
   for (const [id, entry3] of entries) {
     if (entry3.open === null && entry3.last <= upTo) entries.delete(id);
   }
-  if (entries.size !== before) write3(store, worktreeId, entries);
+  if (entries.size !== before) write(store, worktreeId, entries);
 }
 
 // src/core/delivery/edits.ts
@@ -4352,6 +4340,11 @@ function harnessMetaKey(worktreeId) {
 function recordHarness(store, consumer, harness) {
   writeSlot(store, harnessMetaKey(consumer.worktreeId), consumer, harness);
 }
+function toHarness(value) {
+  if (!isRecord(value)) return void 0;
+  const { pid, startTime, pidNamespace: pidNamespace2 } = value;
+  return typeof pid === "number" && typeof startTime === "number" && typeof pidNamespace2 === "string" ? { pid, startTime, pidNamespace: pidNamespace2 } : void 0;
+}
 
 // src/core/scheduler/hold-rows.ts
 function mergeHoldMetaKey(worktreeId) {
@@ -4388,101 +4381,70 @@ function readCommandHolds(store, worktreeId) {
 function isCommandHold(entry3) {
   if (!isRecord(entry3)) return false;
   const { token, since, until, command, wrapper, child } = entry3;
-  return typeof token === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || isProcess(wrapper)) && (child === null || isProcess(child));
-}
-function isProcess(value) {
-  return isRecord(value) && typeof value.pid === "number" && typeof value.startTime === "number" && typeof value.pidNamespace === "string";
+  return typeof token === "string" && typeof since === "number" && typeof until === "number" && typeof command === "string" && (wrapper === null || toHarness(wrapper) !== void 0) && (child === null || toHarness(child) !== void 0);
 }
 
-// src/core/status/holds.ts
-var HOLD_PATHS_SHOWN = 3;
-function readHolds(store, worktree, daemon, now, namespace = pidNamespace()) {
-  return readKeyedHolds(store, worktree, daemon, now, namespace).map((k) => k.hold);
+// src/core/daemon/runner.ts
+import { readdirSync, readFileSync as readFileSync4 } from "node:fs";
+import { join as join7, posix as posix4 } from "node:path";
+var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+function vitestDetected(root) {
+  let names;
+  try {
+    names = readdirSync(root);
+  } catch {
+    return false;
+  }
+  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  return listsVitest(readManifest(join7(root, "package.json")));
 }
-function readKeyedHolds(store, worktree, daemon, now, namespace = pidNamespace()) {
-  if (worktree === null) return [];
-  const record = worktree.daemon;
-  const row = record === null || daemon.state !== "alive" ? null : readMergeHold(store, worktree.id, record.startedAt);
-  const merge2 = row === null ? [] : [
-    {
-      id: "merge",
-      hold: {
-        cause: "merge",
-        since: row.since,
-        revision: row.revision,
-        paths: row.paths,
-        pathCount: Math.max(row.count, row.paths.length)
-      }
-    }
-  ];
-  const commands = readCommandHolds(store, worktree.id).sort((a, b) => a.since - b.since).map((entry3) => {
-    const recorded = [entry3.wrapper, entry3.child].filter((p) => p !== null);
-    const gone = recorded.length > 0 && recorded.every((p) => harnessGone(p, namespace));
-    const hold = {
-      cause: "command",
-      since: entry3.since,
-      command: entry3.command,
-      pid: entry3.child?.pid ?? entry3.wrapper?.pid ?? null,
-      until: entry3.until,
-      ...gone ? { gone: true } : {},
-      ...entry3.until <= now ? { expired: true } : {}
-    };
-    return { id: `command:${entry3.token}`, hold };
+function listsVitest(manifest) {
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
   });
-  return [...merge2, ...commands];
 }
-function unmergedPathsText(hold) {
-  const shown = hold.paths.slice(0, HOLD_PATHS_SHOWN).join(", ");
-  const more = hold.pathCount - Math.min(hold.paths.length, HOLD_PATHS_SHOWN);
-  return more > 0 ? `${shown} and ${more} more` : shown;
-}
-function listedText(hold) {
-  return `git lists ${plural(hold.pathCount, "unmerged path")} (${unmergedPathsText(hold)})`;
-}
-function mergeEndText(hold) {
-  const them = hold.pathCount === 1 ? "it" : "them";
-  return `Resolve ${them} and \`git add\` ${them}, or abort.`;
-}
-function commandText(hold) {
-  return `for \`${hold.command}\`${hold.pid === null ? "" : ` (pid ${hold.pid})`}`;
-}
-function endingText(hold) {
-  if (hold.expired === true) return `its bound passed at ${timeText(hold.until)}`;
-  return hold.gone === true ? "its command is gone" : null;
-}
-function holdLine(hold, command = "squeal") {
-  const since = timeText(hold.since);
-  if (hold.cause === "merge") {
-    return `On hold: unresolved merge since ${since}, ${listedText(hold)}; no test runs until git lists none. ${mergeEndText(hold)}`;
+function readManifest(path) {
+  try {
+    return JSON.parse(readFileSync4(path, "utf8"));
+  } catch {
+    return null;
   }
-  const head = `On hold: \`${command} hold\` since ${since}, ${commandText(hold)}`;
-  const ending = endingText(hold);
-  if (ending !== null) return `${head}; ${ending}; the daemon ends the hold at its next heartbeat.`;
-  return `${head}, until it exits, at most until ${timeText(hold.until)}; edits are recorded and not run. \`${command} start\` ends the hold.`;
 }
-function holdStartText(hold, command = "squeal") {
-  if (hold.cause === "merge") {
-    const them = hold.pathCount === 1 ? "it" : "them";
-    return `${listedText(hold)}. No test runs until git lists none: resolve ${them} and \`git add\` ${them}, or abort.`;
+
+// src/core/delivery/stopped.ts
+function stoppedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonStopped", worktreeId);
+}
+function heldStop(store, worktreeId, worktree, live) {
+  if (live.state === "alive") return null;
+  const mark = readMark(store, worktreeId);
+  if (mark === null) return null;
+  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
+  return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
+}
+function asStopped(store, worktreeId, worktree, live) {
+  if (live.state !== "down" || live.startingSince !== void 0) return live;
+  if (heldStop(store, worktreeId, worktree, live) === null) return live;
+  return { ...live, stopped: true };
+}
+function readMark(store, worktreeId) {
+  const text = store.meta.get(stoppedMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const mark = JSON.parse(text);
+    if (!isRecord(mark) || typeof mark.at !== "number") return null;
+    return { at: mark.at, tree: typeof mark.tree === "string" ? mark.tree : null };
+  } catch {
+    return null;
   }
-  const runs = `\`${command} hold\` runs \`${hold.command}\`${hold.pid === null ? "" : ` (pid ${hold.pid})`}`;
-  return `${runs}. Edits are recorded and not run until it exits, at most until ${timeText(hold.until)}; \`${command} start\` ends the hold.`;
 }
-function endedText(ended) {
-  if (ended.cause === "merge") return "git lists no unmerged path";
-  const pid = ended.pid === void 0 || ended.pid === null ? "" : ` (pid ${ended.pid})`;
-  return `the hold for \`${ended.command}\`${pid} ended`;
-}
-function holdEndedText(change2) {
-  const [first] = change2.holds;
-  if (first === void 0) return `${endedText(change2.ended)}.`;
-  const name = first.cause === "merge" ? "for the unresolved merge" : commandText(first);
-  const more = change2.holds.length - 1;
-  return `${endedText(change2.ended)}; still on hold ${name}${more > 0 ? ` and ${plural(more, "more hold")}` : ""}.`;
-}
-function holdEndText(change2) {
-  const running = change2.running === 0 ? "" : `, ${change2.running} running`;
-  return `${endedText(change2.ended)}; ${plural(change2.queued, "test file")} queued${running}.`;
+
+// src/core/status/config-problems.ts
+function configProblemsOf(root) {
+  const { problems } = loadPolicy(root);
+  return problems.length === 0 ? {} : { configProblems: problems };
 }
 
 // src/core/status/died.ts
@@ -4585,69 +4547,6 @@ function files(refs) {
   const shown = refs.slice(0, DIED_FILES_SHOWN).map((ref) => testFileLabel(ref.project, ref.path));
   const more = refs.length - shown.length;
   return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
-}
-
-// src/core/daemon/runner.ts
-import { readdirSync, readFileSync as readFileSync4 } from "node:fs";
-import { join as join7, posix as posix4 } from "node:path";
-var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
-function vitestDetected(root) {
-  let names;
-  try {
-    names = readdirSync(root);
-  } catch {
-    return false;
-  }
-  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
-  return listsVitest(readManifest(join7(root, "package.json")));
-}
-function listsVitest(manifest) {
-  if (!isRecord(manifest)) return false;
-  return ["dependencies", "devDependencies"].some((field) => {
-    const deps = manifest[field];
-    return isRecord(deps) && Object.hasOwn(deps, "vitest");
-  });
-}
-function readManifest(path) {
-  try {
-    return JSON.parse(readFileSync4(path, "utf8"));
-  } catch {
-    return null;
-  }
-}
-
-// src/core/delivery/stopped.ts
-function stoppedMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonStopped", worktreeId);
-}
-function heldStop(store, worktreeId, worktree, live) {
-  if (live.state === "alive") return null;
-  const mark = readMark(store, worktreeId);
-  if (mark === null) return null;
-  const heartbeat = worktree?.daemon?.heartbeatAt ?? worktree?.lastHeartbeatAt;
-  return heartbeat !== void 0 && heartbeat > mark.at ? null : mark;
-}
-function asStopped(store, worktreeId, worktree, live) {
-  if (live.state !== "down" || live.startingSince !== void 0) return live;
-  if (heldStop(store, worktreeId, worktree, live) === null) return live;
-  return { ...live, stopped: true };
-}
-function readMark(store, worktreeId) {
-  const text = store.meta.get(stoppedMetaKey(worktreeId));
-  if (text === null) return null;
-  try {
-    const mark = JSON.parse(text);
-    if (!isRecord(mark) || typeof mark.at !== "number") return null;
-    return { at: mark.at, tree: typeof mark.tree === "string" ? mark.tree : null };
-  } catch {
-    return null;
-  }
-}
-
-// src/core/status/config-problems.ts
-function configProblemsOf(root) {
-  const { problems } = loadPolicy(root);
-  return problems.length === 0 ? {} : { configProblems: problems };
 }
 
 // src/core/status/git-head.ts
@@ -4899,6 +4798,211 @@ var GROUP_ORDER = {
 
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
+
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+function handoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoff", worktreeId);
+}
+function readHandoff(store, worktreeId) {
+  const text = store.meta.get(handoffMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const claim = JSON.parse(text);
+    if (!isRecord(claim)) return null;
+    const { from, to, at, boundAt } = claim;
+    if (typeof from !== "string" || typeof to !== "string") return null;
+    if (typeof at !== "number" || typeof boundAt !== "number") return null;
+    return { from, to, at, boundAt };
+  } catch {
+    return null;
+  }
+}
+
+// src/core/status/stopping.ts
+function withStopping(store, worktree, live, now) {
+  if (worktree === null) return live;
+  const record = worktree.daemon;
+  if (record === null) return claimed(store, worktree, live, now);
+  const self = daemonIncarnation(record);
+  if (self === null || !shutDown(store, worktree.id, self)) return live;
+  if (live.state === "down" && daemonGone(worktree)) return live;
+  const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
+  const since = note?.at ?? record.heartbeatAt;
+  const claim = readHandoff(store, worktree.id);
+  const handoff = claim !== null && claim.from === self ? claim : null;
+  const boundAt = handoff?.boundAt ?? since + HANDOFF_BOUND_MS;
+  const stopping = {
+    from: record.squealVersion,
+    since,
+    ...handoff === null ? {} : { to: handoff.to, boundAt: handoff.boundAt },
+    overdue: now >= boundAt
+  };
+  return { ...live, stopping };
+}
+function claimed(store, worktree, live, now) {
+  const claim = readHandoff(store, worktree.id);
+  if (claim === null || now >= claim.boundAt) return live;
+  const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
+  const { to, at: since, boundAt } = claim;
+  return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
+}
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+function stoppingState(stopping, age) {
+  const what = stopping.to === void 0 ? "stopping" : `handing over from ${stopping.from} to ${stopping.to}`;
+  const at = new Date(stopping.since).toISOString();
+  const past = stopping.overdue ? `, past its ${BOUND_S} s bound` : "";
+  return `${what} since ${at}${age === void 0 ? "" : ` (${age})`}${past}`;
+}
+function stoppingNext(stopping, command) {
+  if (stopping.overdue) return `\`${command} start\` finishes it`;
+  return stopping.to === void 0 ? "nothing validates until its lock frees" : `${stopping.to} serves once the old daemon's lock frees`;
+}
+function stoppingText(stopping, command, age) {
+  return `${stoppingState(stopping, age)}; ${stoppingNext(stopping, command)}`;
+}
+
+// src/core/delivery/liveness.ts
+function daemonLiveness(record, now, lastHeartbeatAt = null) {
+  if (record === null) return { state: "down", since: lastHeartbeatAt };
+  if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
+    return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
+  }
+  return { state: "down", since: record.heartbeatAt };
+}
+function worktreeLiveness(worktree, now) {
+  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+}
+function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
+  const worktree = store.worktrees.get(worktreeId);
+  const runs = openRuns(store, worktree, worktreeLiveness(worktree, now));
+  const open = new Set(runs.flatMap((run) => run.testFiles.map(testFileId)));
+  const header = readHeader(store, worktreeId, states, keys, void 0, open);
+  const changes = changedSince(store, worktreeId, header.revision, since);
+  const installed = [...changes.values()].find(
+    (c) => c.newHash !== null && isInstalledLockfile(c.path)
+  );
+  const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
+  return {
+    ...header,
+    ...holds.length === 0 ? {} : { holds },
+    // Task 001-263: a daemon that died without its stop note is named, as status names it.
+    // Row 011-34: so is a daemon stopping.
+    daemon: withStopping(
+      store,
+      worktree,
+      withDeath(
+        store,
+        worktree,
+        asRested(
+          store,
+          worktree,
+          asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+          now
+        )
+      ),
+      now
+    ),
+    changedPaths: [...changes.keys()],
+    ...installed === void 0 ? {} : { installedLockfile: installed.path }
+  };
+}
+function asRested(store, worktree, live, at) {
+  if (live.state !== "down" || live.startingSince !== void 0 || worktree === null) return live;
+  if (live.stopped === true) return live;
+  if (restState(store, worktree, at) !== "quiet") return live;
+  const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
+  return spawnedAt === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt };
+}
+function changedSince(store, worktreeId, revision, since) {
+  const after = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
+  const changes = /* @__PURE__ */ new Map();
+  for (const r of store.revisions.range(worktreeId, after, revision)) {
+    for (const change2 of r.changes) changes.set(change2.path, change2);
+  }
+  return changes;
+}
+var DAEMON_START_GRACE_MS = 1e4;
+function livenessMetaKey(worktreeId) {
+  return worktreeMetaKey("livenessTold", worktreeId);
+}
+function toldLiveness(store, consumer) {
+  const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
+  if (told === "down") return "down";
+  const since = isRecord(told) ? told.startingSince : void 0;
+  return typeof since === "number" ? { startingSince: since } : "alive";
+}
+function tellLiveness(store, consumer, told) {
+  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
+}
+function asTold(live, told, at) {
+  if (live.state === "alive" || typeof told !== "object") return live;
+  const { startingSince } = told;
+  const heartbeatSince = live.since !== null && live.since >= startingSince;
+  if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
+  const { stopped: _void, ...starting } = live;
+  return { ...starting, startingSince };
+}
+function withTold(header, told, at) {
+  return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at) };
+}
+function livenessChange(store, consumer, at) {
+  const told = toldLiveness(store, consumer);
+  const worktree = store.worktrees.get(consumer.worktreeId);
+  const live = withStopping(
+    store,
+    worktree,
+    asStopped(
+      store,
+      consumer.worktreeId,
+      worktree,
+      asTold(worktreeLiveness(worktree, at), told, at)
+    ),
+    at
+  );
+  if (live.state === "down" && live.stopped !== true) {
+    if (live.startingSince !== void 0) return null;
+    const rest = restState(store, worktree, at);
+    if (rest === "quiet") return null;
+    if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  }
+  return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
+}
+function restState(store, worktree, at) {
+  if (worktree === null || worktree.daemon !== null) return null;
+  const rest = restAfterHeartbeats(store, worktree);
+  if (rest === null) return null;
+  if (rest.spawnedAt === void 0 || at - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
+  return "overdue";
+}
+function restAfterHeartbeats(store, worktree) {
+  const rest = readRest(store, worktree.id);
+  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
+  return rest === null || rest.at < heartbeat ? null : rest;
+}
+function readRest(store, worktreeId) {
+  const text = store.meta.get(daemonRestMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const rest = JSON.parse(text);
+    if (!isRecord(rest) || typeof rest.at !== "number") return null;
+    const spawnedAt = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
+    return { at: rest.at, ...spawnedAt };
+  } catch {
+    return null;
+  }
+}
+function revisionMetaKey(worktreeId) {
+  return worktreeMetaKey("revisionTold", worktreeId);
+}
+function toldRevision(store, consumer) {
+  const told = readSlot(store, revisionMetaKey(consumer.worktreeId), consumer);
+  return typeof told === "number" ? told : null;
+}
+function tellRevision(store, consumer, revision) {
+  writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
+}
 
 // src/core/scheduler/unknown-files.ts
 function unknownFilesMetaKey(worktreeId) {
@@ -5167,16 +5271,18 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
   const checks = checksByFile(states);
   const policy = readPolicy(root);
-  const runs = reads?.runs ?? openRunsOf(store, worktreeId, daemon);
-  const promoted = promotedOf(store, worktreeId, daemon, now);
-  const yields = yieldsOf(store, worktreeId, daemon);
-  const quiet = quietOf(store, worktreeId, daemon, now);
+  const worktree = store.worktrees.get(worktreeId);
+  const startedAt = liveStartedAt(worktree, daemon);
+  const runs = reads?.runs ?? openRuns(store, worktree, daemon);
+  const promoted = startedAt === null ? /* @__PURE__ */ new Set() : promotedIds(store, worktreeId, startedAt, now);
+  const yields = startedAt === null ? /* @__PURE__ */ new Map() : publishedYields(store, worktreeId, startedAt);
+  const quiet = startedAt === null ? /* @__PURE__ */ new Map() : publishedQuiet(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
   const alive = daemon.state === "alive";
-  const hold = (reads?.holds ?? readHolds(store, store.worktrees.get(worktreeId), daemon, now))[0];
+  const hold = (reads?.holds ?? readHolds(store, worktree, daemon, now))[0];
   const slot2 = once(
     () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive, now) : reads.slowSlot ?? void 0
   );
@@ -5269,21 +5375,6 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
 }
 function claimBound(policy, now) {
   return now + claimBoundMs(policy.runner.timeoutMs);
-}
-function promotedOf(store, worktreeId, daemon, now) {
-  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Set();
-  return promotedIds(store, worktreeId, record.startedAt, now);
-}
-function yieldsOf(store, worktreeId, daemon) {
-  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Map();
-  return publishedYields(store, worktreeId, record.startedAt);
-}
-function quietOf(store, worktreeId, daemon, now) {
-  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (record === null || daemon.state !== "alive") return /* @__PURE__ */ new Map();
-  return publishedQuiet(store, worktreeId, record.startedAt, now);
 }
 function yieldIn(runs, lane, policy, yields) {
   const run = runIn(runs, lane, policy);
@@ -5489,70 +5580,6 @@ function listed(files2) {
     files: sorted.slice(0, PHASE_FILES_LISTED),
     omitted: Math.max(0, sorted.length - PHASE_FILES_LISTED)
   };
-}
-
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-function handoffMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonHandoff", worktreeId);
-}
-function readHandoff(store, worktreeId) {
-  const text = store.meta.get(handoffMetaKey(worktreeId));
-  if (text === null) return null;
-  try {
-    const claim = JSON.parse(text);
-    if (!isRecord(claim)) return null;
-    const { from, to, at, boundAt } = claim;
-    if (typeof from !== "string" || typeof to !== "string") return null;
-    if (typeof at !== "number" || typeof boundAt !== "number") return null;
-    return { from, to, at, boundAt };
-  } catch {
-    return null;
-  }
-}
-
-// src/core/status/stopping.ts
-function withStopping(store, worktree, live, now) {
-  if (worktree === null) return live;
-  const record = worktree.daemon;
-  if (record === null) return claimed(store, worktree, live, now);
-  const self = daemonIncarnation(record);
-  if (self === null || !shutDown(store, worktree.id, self)) return live;
-  if (live.state === "down" && daemonGone(worktree)) return live;
-  const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
-  const since = note?.at ?? record.heartbeatAt;
-  const claim = readHandoff(store, worktree.id);
-  const handoff = claim !== null && claim.from === self ? claim : null;
-  const boundAt = handoff?.boundAt ?? since + HANDOFF_BOUND_MS;
-  const stopping = {
-    from: record.squealVersion,
-    since,
-    ...handoff === null ? {} : { to: handoff.to, boundAt: handoff.boundAt },
-    overdue: now >= boundAt
-  };
-  return { ...live, stopping };
-}
-function claimed(store, worktree, live, now) {
-  const claim = readHandoff(store, worktree.id);
-  if (claim === null || now >= claim.boundAt) return live;
-  const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
-  const { to, at: since, boundAt } = claim;
-  return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
-}
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-function stoppingState(stopping, age) {
-  const what = stopping.to === void 0 ? "stopping" : `handing over from ${stopping.from} to ${stopping.to}`;
-  const at = new Date(stopping.since).toISOString();
-  const past = stopping.overdue ? `, past its ${BOUND_S} s bound` : "";
-  return `${what} since ${at}${age === void 0 ? "" : ` (${age})`}${past}`;
-}
-function stoppingNext(stopping, command) {
-  if (stopping.overdue) return `\`${command} start\` finishes it`;
-  return stopping.to === void 0 ? "nothing validates until its lock frees" : `${stopping.to} serves once the old daemon's lock frees`;
-}
-function stoppingText(stopping, command, age) {
-  return `${stoppingState(stopping, age)}; ${stoppingNext(stopping, command)}`;
 }
 
 // src/core/status/snapshot.ts
@@ -5769,13 +5796,14 @@ function recoveryNote(raw) {
 }
 
 // src/core/status/open-runs.ts
-function openRuns(store, worktree, daemon) {
+function liveStartedAt(worktree, daemon) {
   const record = worktree?.daemon ?? null;
-  if (worktree === null || record === null || daemon.state !== "alive") return [];
-  return store.runs.inFlight(worktree.id, record.startedAt);
+  return record === null || daemon.state !== "alive" ? null : record.startedAt;
 }
-function openRunsOf(store, worktreeId, daemon) {
-  return openRuns(store, store.worktrees.get(worktreeId), daemon);
+function openRuns(store, worktree, daemon) {
+  const startedAt = liveStartedAt(worktree, daemon);
+  if (worktree === null || startedAt === null) return [];
+  return store.runs.inFlight(worktree.id, startedAt);
 }
 function claimantOf(store, worktreeId, ref, key, now) {
   if (!store.testFileKeys.claimed(worktreeId, key, { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS })) {
@@ -5795,145 +5823,95 @@ function claimantOf(store, worktreeId, ref, key, now) {
   return null;
 }
 
-// src/core/delivery/liveness.ts
-function daemonLiveness(record, now, lastHeartbeatAt = null) {
-  if (record === null) return { state: "down", since: lastHeartbeatAt };
-  if (now - record.heartbeatAt <= record.heartbeatIntervalMs * HEARTBEAT_GRACE_INTERVALS) {
-    return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
+// src/core/status/holds.ts
+var HOLD_PATHS_SHOWN = 3;
+function readHolds(store, worktree, daemon, now, namespace = pidNamespace()) {
+  return readKeyedHolds(store, worktree, daemon, now, namespace).map((k) => k.hold);
+}
+function readKeyedHolds(store, worktree, daemon, now, namespace = pidNamespace()) {
+  if (worktree === null) return [];
+  const startedAt = liveStartedAt(worktree, daemon);
+  const row = startedAt === null ? null : readMergeHold(store, worktree.id, startedAt);
+  const merge2 = row === null ? [] : [
+    {
+      id: "merge",
+      hold: {
+        cause: "merge",
+        since: row.since,
+        revision: row.revision,
+        paths: row.paths,
+        pathCount: Math.max(row.count, row.paths.length)
+      }
+    }
+  ];
+  const commands = readCommandHolds(store, worktree.id).sort((a, b) => a.since - b.since).map((entry3) => {
+    const recorded = [entry3.wrapper, entry3.child].filter((p) => p !== null);
+    const gone = recorded.length > 0 && recorded.every((p) => harnessGone(p, namespace));
+    const hold = {
+      cause: "command",
+      since: entry3.since,
+      command: entry3.command,
+      pid: entry3.child?.pid ?? entry3.wrapper?.pid ?? null,
+      until: entry3.until,
+      ...gone ? { gone: true } : {},
+      ...entry3.until <= now ? { expired: true } : {}
+    };
+    return { id: `command:${entry3.token}`, hold };
+  });
+  return [...merge2, ...commands];
+}
+function unmergedPathsText(hold) {
+  const shown = hold.paths.slice(0, HOLD_PATHS_SHOWN).join(", ");
+  const more = hold.pathCount - Math.min(hold.paths.length, HOLD_PATHS_SHOWN);
+  return more > 0 ? `${shown} and ${more} more` : shown;
+}
+function listedText(hold) {
+  return `git lists ${plural(hold.pathCount, "unmerged path")} (${unmergedPathsText(hold)})`;
+}
+function mergeEndText(hold) {
+  const them = hold.pathCount === 1 ? "it" : "them";
+  return `Resolve ${them} and \`git add\` ${them}, or abort.`;
+}
+function commandText(hold) {
+  return `for \`${hold.command}\`${hold.pid === null ? "" : ` (pid ${hold.pid})`}`;
+}
+function endingText(hold) {
+  if (hold.expired === true) return `its bound passed at ${timeText(hold.until)}`;
+  return hold.gone === true ? "its command is gone" : null;
+}
+function holdLine(hold, command = "squeal") {
+  const since = timeText(hold.since);
+  if (hold.cause === "merge") {
+    return `On hold: unresolved merge since ${since}, ${listedText(hold)}; no test runs until git lists none. ${mergeEndText(hold)}`;
   }
-  return { state: "down", since: record.heartbeatAt };
+  const head = `On hold: \`${command} hold\` since ${since}, ${commandText(hold)}`;
+  const ending = endingText(hold);
+  if (ending !== null) return `${head}; ${ending}; the daemon ends the hold at its next heartbeat.`;
+  return `${head}, until it exits, at most until ${timeText(hold.until)}; edits are recorded and not run. \`${command} start\` ends the hold.`;
 }
-function worktreeLiveness(worktree, now) {
-  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
-}
-function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
-  const worktree = store.worktrees.get(worktreeId);
-  const runs = openRuns(store, worktree, worktreeLiveness(worktree, now));
-  const open = new Set(runs.flatMap((run) => run.testFiles.map(testFileId)));
-  const header = readHeader(store, worktreeId, states, keys, void 0, open);
-  const changes = changedSince2(store, worktreeId, header.revision, since);
-  const installed = [...changes.values()].find(
-    (c) => c.newHash !== null && isInstalledLockfile(c.path)
-  );
-  const holds = readHolds(store, worktree, worktreeLiveness(worktree, now), now);
-  return {
-    ...header,
-    ...holds.length === 0 ? {} : { holds },
-    // Task 001-263: a daemon that died without its stop note is named, as status names it.
-    // Row 011-34: so is a daemon stopping.
-    daemon: withStopping(
-      store,
-      worktree,
-      withDeath(
-        store,
-        worktree,
-        asRested(
-          store,
-          worktree,
-          asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
-          now
-        )
-      ),
-      now
-    ),
-    changedPaths: [...changes.keys()],
-    ...installed === void 0 ? {} : { installedLockfile: installed.path }
-  };
-}
-function asRested(store, worktree, live, at) {
-  if (live.state !== "down" || live.startingSince !== void 0 || worktree === null) return live;
-  if (live.stopped === true) return live;
-  if (restState(store, worktree, at) !== "quiet") return live;
-  const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
-  return spawnedAt === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt };
-}
-function changedSince2(store, worktreeId, revision, since) {
-  const after = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
-  const changes = /* @__PURE__ */ new Map();
-  for (const r of store.revisions.range(worktreeId, after, revision)) {
-    for (const change2 of r.changes) changes.set(change2.path, change2);
+function holdStartText(hold, command = "squeal") {
+  if (hold.cause === "merge") {
+    const them = hold.pathCount === 1 ? "it" : "them";
+    return `${listedText(hold)}. No test runs until git lists none: resolve ${them} and \`git add\` ${them}, or abort.`;
   }
-  return changes;
+  const runs = `\`${command} hold\` runs \`${hold.command}\`${hold.pid === null ? "" : ` (pid ${hold.pid})`}`;
+  return `${runs}. Edits are recorded and not run until it exits, at most until ${timeText(hold.until)}; \`${command} start\` ends the hold.`;
 }
-var DAEMON_START_GRACE_MS = 1e4;
-function livenessMetaKey(worktreeId) {
-  return worktreeMetaKey("livenessTold", worktreeId);
+function endedText(ended) {
+  if (ended.cause === "merge") return "git lists no unmerged path";
+  const pid = ended.pid === void 0 || ended.pid === null ? "" : ` (pid ${ended.pid})`;
+  return `the hold for \`${ended.command}\`${pid} ended`;
 }
-function toldLiveness(store, consumer) {
-  const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
-  if (told === "down") return "down";
-  const since = isRecord(told) ? told.startingSince : void 0;
-  return typeof since === "number" ? { startingSince: since } : "alive";
+function holdEndedText(change2) {
+  const [first] = change2.holds;
+  if (first === void 0) return `${endedText(change2.ended)}.`;
+  const name = first.cause === "merge" ? "for the unresolved merge" : commandText(first);
+  const more = change2.holds.length - 1;
+  return `${endedText(change2.ended)}; still on hold ${name}${more > 0 ? ` and ${plural(more, "more hold")}` : ""}.`;
 }
-function tellLiveness(store, consumer, told) {
-  writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
-}
-function asTold(live, told, at) {
-  if (live.state === "alive" || typeof told !== "object") return live;
-  const { startingSince } = told;
-  const heartbeatSince = live.since !== null && live.since >= startingSince;
-  if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
-  const { stopped: _void, ...starting } = live;
-  return { ...starting, startingSince };
-}
-function withTold(header, told, at) {
-  return header.daemon === void 0 ? header : { ...header, daemon: asTold(header.daemon, told, at) };
-}
-function livenessChange(store, consumer, at) {
-  const told = toldLiveness(store, consumer);
-  const worktree = store.worktrees.get(consumer.worktreeId);
-  const live = withStopping(
-    store,
-    worktree,
-    asStopped(
-      store,
-      consumer.worktreeId,
-      worktree,
-      asTold(worktreeLiveness(worktree, at), told, at)
-    ),
-    at
-  );
-  if (live.state === "down" && live.stopped !== true) {
-    if (live.startingSince !== void 0) return null;
-    const rest = restState(store, worktree, at);
-    if (rest === "quiet") return null;
-    if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
-  }
-  return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
-}
-function restState(store, worktree, at) {
-  if (worktree === null || worktree.daemon !== null) return null;
-  const rest = restAfterHeartbeats(store, worktree);
-  if (rest === null) return null;
-  if (rest.spawnedAt === void 0 || at - rest.spawnedAt <= DAEMON_START_GRACE_MS) return "quiet";
-  return "overdue";
-}
-function restAfterHeartbeats(store, worktree) {
-  const rest = readRest(store, worktree.id);
-  const heartbeat = worktree.daemon?.heartbeatAt ?? worktree.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
-  return rest === null || rest.at < heartbeat ? null : rest;
-}
-function readRest(store, worktreeId) {
-  const text = store.meta.get(daemonRestMetaKey(worktreeId));
-  if (text === null) return null;
-  try {
-    const rest = JSON.parse(text);
-    if (!isRecord(rest) || typeof rest.at !== "number") return null;
-    const spawnedAt = typeof rest.spawnedAt === "number" ? { spawnedAt: rest.spawnedAt } : {};
-    return { at: rest.at, ...spawnedAt };
-  } catch {
-    return null;
-  }
-}
-function revisionMetaKey(worktreeId) {
-  return worktreeMetaKey("revisionTold", worktreeId);
-}
-function toldRevision(store, consumer) {
-  const told = readSlot(store, revisionMetaKey(consumer.worktreeId), consumer);
-  return typeof told === "number" ? told : null;
-}
-function tellRevision(store, consumer, revision) {
-  writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
+function holdEndText(change2) {
+  const running = change2.running === 0 ? "" : `, ${change2.running} running`;
+  return `${endedText(change2.ended)}; ${plural(change2.queued, "test file")} queued${running}.`;
 }
 
 // src/core/delivery/hold-told.ts
@@ -6538,7 +6516,6 @@ function loadsLine(group) {
   const [low, high] = [Math.min(...loads), Math.max(...loads)].map((l) => l.toFixed(2));
   return `load average ${low === high ? low : `${low} to ${high}`} when they ran`;
 }
-var argWord = (text, quote) => /^[\w./@+-]+$/.test(text) ? text : quote(text);
 function commonDirectory(paths) {
   const split = paths.map((p) => p.split("/").slice(0, -1));
   const first = split[0] ?? [];
@@ -6546,20 +6523,20 @@ function commonDirectory(paths) {
   while (depth < first.length && split.every((s) => s[depth] === first[depth])) depth++;
   return first.slice(0, depth).join("/");
 }
-function failuresCommand(group, command, quote) {
+function failuresCommand(group, command) {
   const first = group[0];
   const files2 = [...new Set(group.map((e) => e.check.testPath))];
   const selected = files2.includes("") ? [] : files2.length <= FILES_NAMED ? files2 : [commonDirectory(files2)].filter((d) => d !== "");
   const error = Array.from((first.summary ?? "").split("\n")[0] ?? "").slice(0, ERROR_CHARS).join("");
   return [
     `${command} failures`,
-    ...selected.map((p) => argWord(p, quote)),
-    ...error === "" ? [] : [`--error ${argWord(error, quote)}`],
+    ...selected.map(shellWord),
+    ...error === "" ? [] : [`--error ${shellWord(error)}`],
     "--per-check --limit all",
     ...first.origin.kind === "inherited" ? ["--all-worktrees"] : []
   ].join(" ");
 }
-function groupLines(group, revision, command, quote) {
+function groupLines(group, revision, command) {
   const first = group[0];
   const checks = group.map((e) => e.check);
   const at = (e) => e.location === null ? null : atText(e.location, e.testFileFrame);
@@ -6572,7 +6549,7 @@ function groupLines(group, revision, command, quote) {
     first.flaky === void 0 ? null : capitalize(flakyText(first.flaky)),
     first.retry === void 0 ? null : capitalize(retryText(first.retry)),
     ...nameLines(checks, "that did not load"),
-    `Full list: ${failuresCommand(group, command, quote)}`
+    `Full list: ${failuresCommand(group, command)}`
   ];
   return {
     head: `FAIL  ${plural(group.length, "check")} with one error and location (${checkPartsText(countChecks(checks), "that did not load")})`,
@@ -6673,9 +6650,6 @@ var partsText = (checks, fileLevel) => checkPartsText(countChecks(checks), fileL
 var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
 var upper2 = (outcome) => outcome.toUpperCase();
 var capitalize3 = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-function shellWord(text) {
-  return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
-}
 function whyLine(check, command) {
   return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
@@ -6716,7 +6690,7 @@ function failureBlocks(entries, revision, command) {
   return failureGroups(entries, revision).map((group) => {
     const [first] = group;
     if (group.length === 1 && first !== void 0) return entryBlock(first, revision);
-    const lines = groupLines(group, revision, command, shellWord);
+    const lines = groupLines(group, revision, command);
     return collapsedBlock(
       lines,
       "fail",
@@ -6880,7 +6854,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.274";
+  if (true) return "0.1.275";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

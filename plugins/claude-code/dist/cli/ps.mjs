@@ -577,6 +577,12 @@ function splitTopLevel(body) {
   return parts;
 }
 
+// src/core/text.ts
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellWord(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+
 // src/core/daemon/policy.ts
 import { join as join5 } from "node:path";
 
@@ -799,68 +805,6 @@ function toSlowActivity(value) {
   return void 0;
 }
 
-// src/core/ps/render-units.ts
-var KIB = 1024;
-var MIB = KIB * 1024;
-var GIB = MIB * 1024;
-var UNKNOWN = "?";
-var NO_BOOT = "the boot time cannot be read, so no process has an age";
-var SAFE_WORD = /^[\w@%+=:,./-]+$/;
-function shellQuote(word) {
-  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
-}
-function dateOf(ms) {
-  return `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
-}
-function count(n, one, many = `${one}s`) {
-  return `${thousands(n)} ${n === 1 ? one : many}`;
-}
-function thousands(n) {
-  return String(n).replace(/\B(?=(\d{3})+$)/g, ",");
-}
-function share(value) {
-  return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
-}
-function percent(value) {
-  return value === null ? UNKNOWN : `${Math.round(value)}%`;
-}
-function cpus2(value) {
-  return (value / 100).toFixed(1);
-}
-function bytes(n, column = false) {
-  if (n === null) return column ? UNKNOWN : "unknown";
-  if (n === 0) return "0";
-  const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
-  return column ? `${value}${unit}` : `${value} ${unit}iB`;
-}
-function ofGib(part, whole) {
-  return `${(part / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
-}
-function age(since, at) {
-  return since === null ? UNKNOWN : columnDuration(at - since);
-}
-function sentenceDuration(ms) {
-  const s = Math.floor(ms / 1e3);
-  if (s < 120) return `${s} s`;
-  const m = Math.floor(s / 60);
-  if (m < 120) return `${m}m`;
-  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
-}
-function columnDuration(ms) {
-  const s = Math.max(0, Math.floor(ms / 1e3));
-  if (s < 60) return `${s}s`;
-  if (s < 100 * 60) return `${Math.floor(s / 60)}m`;
-  if (s < 48 * 3600) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86400)}d`;
-}
-function cpuTime2(ms) {
-  if (ms === null) return UNKNOWN;
-  const s = Math.floor(ms / 1e3);
-  const two = (n) => String(n).padStart(2, "0");
-  if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
-  return `${Math.floor(s / 3600)}h${two(Math.floor(s / 60) % 60)}m`;
-}
-
 // src/core/delivery/harness-process.ts
 function harnessAlive(harness, namespace, statOf2) {
   if (namespace === null || harness.pidNamespace !== namespace) return null;
@@ -872,9 +816,6 @@ function toHarness(value) {
   const { pid, startTime, pidNamespace: pidNamespace2 } = value;
   return typeof pid === "number" && typeof startTime === "number" && typeof pidNamespace2 === "string" ? { pid, startTime, pidNamespace: pidNamespace2 } : void 0;
 }
-
-// src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -1150,10 +1091,16 @@ function toDaemonToken(value, startedAt, version) {
   return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
 }
 
+// src/core/daemon/lock.ts
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
 var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
+
+// src/core/status/open.ts
+var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/slow/slot.ts
 import { isAbsolute as isAbsolute6, join as join7 } from "node:path";
@@ -1454,7 +1401,7 @@ var ProcSource = class {
       memAvailable: meminfo.get("MemAvailable") ?? null,
       swapTotal,
       swapUsed: swapTotal !== null && swapFree !== void 0 ? swapTotal - swapFree : null,
-      cpuTime: cpuTime3(this.#read("stat")),
+      cpuTime: cpuTime2(this.#read("stat")),
       cpus: this.#cpus()
     };
   }
@@ -1543,7 +1490,7 @@ function pressure(text2) {
     values.set(m[1] ?? "", Number(m[2]));
   return values;
 }
-function cpuTime3(text2) {
+function cpuTime2(text2) {
   const line = /^cpu\s+(.*)$/m.exec(text2 ?? "")?.[1];
   if (line === void 0) return null;
   const ticks = line.trim().split(/\s+/).slice(0, 8).map(Number);
@@ -1558,19 +1505,6 @@ var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 // src/core/slow/rank.ts
 var MAX_READ_BYTES = 1024 * 1024;
 
-// src/core/status/open.ts
-var SLEEP = new Int32Array(new SharedArrayBuffer(4));
-
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/status/stopping.ts
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-
-// src/core/status/snapshot.ts
-var HEARTBEAT_GRACE_INTERVALS = 2;
-
 // src/core/scheduler/queue.ts
 var Group = { first: 0, catchUp: 1, second: 2 };
 var GROUP_ORDER = {
@@ -1581,9 +1515,19 @@ var GROUP_ORDER = {
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
 
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
 // src/core/hash/blob.ts
 import { constants } from "node:fs";
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+
+// src/core/status/snapshot.ts
+var HEARTBEAT_GRACE_INTERVALS = 2;
 
 // src/core/ps/discover.ts
 import { statSync as statSync2 } from "node:fs";
@@ -1786,6 +1730,66 @@ function holderOf(daemons, worktreeId) {
 
 // src/core/ps/flags-files.ts
 import { join as join11 } from "node:path";
+
+// src/core/ps/render-units.ts
+var KIB = 1024;
+var MIB = KIB * 1024;
+var GIB = MIB * 1024;
+var UNKNOWN = "?";
+var NO_BOOT = "the boot time cannot be read, so no process has an age";
+function dateOf(ms) {
+  return `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+function count(n, one, many = `${one}s`) {
+  return `${thousands(n)} ${n === 1 ? one : many}`;
+}
+function thousands(n) {
+  return String(n).replace(/\B(?=(\d{3})+$)/g, ",");
+}
+function share(value) {
+  return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
+}
+function percent(value) {
+  return value === null ? UNKNOWN : `${Math.round(value)}%`;
+}
+function cpus2(value) {
+  return (value / 100).toFixed(1);
+}
+function bytes(n, column = false) {
+  if (n === null) return column ? UNKNOWN : "unknown";
+  if (n === 0) return "0";
+  const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
+  return column ? `${value}${unit}` : `${value} ${unit}iB`;
+}
+function ofGib(part, whole) {
+  return `${(part / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
+}
+function age(since, at) {
+  return since === null ? UNKNOWN : columnDuration(at - since);
+}
+function sentenceDuration(ms) {
+  const s = Math.floor(ms / 1e3);
+  if (s < 120) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 120) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}
+function columnDuration(ms) {
+  const s = Math.max(0, Math.floor(ms / 1e3));
+  if (s < 60) return `${s}s`;
+  if (s < 100 * 60) return `${Math.floor(s / 60)}m`;
+  if (s < 48 * 3600) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
+}
+function cpuTime3(ms) {
+  if (ms === null) return UNKNOWN;
+  const s = Math.floor(ms / 1e3);
+  const two = (n) => String(n).padStart(2, "0");
+  if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
+  return `${Math.floor(s / 3600)}h${two(Math.floor(s / 60) % 60)}m`;
+}
+
+// src/core/ps/flags-files.ts
 var WAITER_LOCK = /^waiter-.+\.sqlite$/;
 var PERMIT = /^pool\.(\d+)\.lock$/;
 var MARK2 = /^pool\.mark\.[^.]+$/;
@@ -1812,7 +1816,7 @@ function staleSockets(model, unknown) {
       path: socket.path,
       count: 1,
       bytes: 0,
-      command: `rm ${shellQuote(socket.path)}`
+      command: `rm ${shellWord(socket.path)}`
     });
   }
   return flags;
@@ -1832,7 +1836,7 @@ function stalePoolMarks(model) {
         path,
         count: 1,
         bytes: stat.size,
-        command: `rm ${shellQuote(path)}`
+        command: `rm ${shellWord(path)}`
       });
     }
   }
@@ -2054,7 +2058,7 @@ function daemonFlags(c, d) {
   const flags = [];
   const add = (flag3, reason, command2) => flags.push({ flag: flag3, reason, command: command2 });
   const kill = `kill ${pid}`;
-  const stop = d.root === null ? kill : `squeal stop ${shellQuote(d.root)}`;
+  const stop = d.root === null ? kill : `squeal stop ${shellWord(d.root)}`;
   if (d.root === null) c.name(`daemon ${pid} flag root-gone`, "its root argument is relative");
   else {
     const gone = rootGone(d.root);
@@ -2400,7 +2404,7 @@ function daemonLines(d, at) {
       version,
       up: age(d.startedAt, at),
       cpu: percent(d.cpuPct),
-      time: cpuTime2(d.cpuMs),
+      time: cpuTime3(d.cpuMs),
       memory: bytes(d.privateBytes, true),
       swap: bytes(d.swapBytes, true),
       work: workOf(d, at)
@@ -2420,7 +2424,7 @@ function processLines(p, at, full) {
       detail: detailOf(p),
       up: age(p.startedAt, at),
       cpu: plus(percent(and(p.cpuPct, d.cpuPct)), d.skipped.cpuPct),
-      time: cpuTime2(and(p.cpuMs, d.cpuMs)),
+      time: cpuTime3(and(p.cpuMs, d.cpuMs)),
       memory: plus(bytes(and(p.privateBytes, d.privateBytes), true), d.skipped.privateBytes),
       swap: plus(bytes(and(p.swapBytes, d.swapBytes), true), d.skipped.swapBytes),
       work: [...p.escaped ? ["escaped"] : [], `nice ${p.nice}`, ...children].join(", ")
@@ -2436,7 +2440,7 @@ function processLines(p, at, full) {
         detail: "",
         up: "",
         cpu: percent(c.cpuPct),
-        time: cpuTime2(c.cpuMs),
+        time: cpuTime3(c.cpuMs),
         memory: bytes(c.privateBytes, true),
         swap: bytes(c.swapBytes, true),
         work: ""
