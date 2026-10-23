@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import type { MessagePort } from "node:worker_threads";
-import { shellWord } from "../../core/delivery/index.js";
+import { shellWord } from "../../core/text.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import type { HookDeps } from "../shared/hook.js";
 import type { FromWorker, PiAnswer, PiRequest, ToWorker } from "./protocol.js";

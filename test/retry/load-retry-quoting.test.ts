@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createDelivery, formatRegistration } from "../../src/core/delivery/index.js";
 import { recordedText, recordRunLoad } from "../../src/core/retry/index.js";
 import { formatStatus, formatWhy, readStatus, readWhy } from "../../src/core/status/index.js";
+import { stepCommand, stepText } from "../../src/core/status/next-step-text.js";
 import { fixedStatus, liveDaemon } from "../delivery/fakes.js";
 import { reportOf } from "../status/why-seed.js";
 import { AWKWARD_PATHS, loadRetryArgs, NOW, seededFailure } from "./load-retry-fixture.js";
@@ -56,5 +57,19 @@ describe("the load retry command's path is one shell argument (review 0.1.271 S1
     const text = recordedText(facts, "wt-a", NOW, { command: "squeal", path: "src/a-b_c.test.ts" });
     expect(text).toContain("`squeal retry src/a-b_c.test.ts --reason load`");
     expect(loadRetryArgs(text)).toEqual(ARGS("src/a-b_c.test.ts"));
+  });
+
+  it("names a path as a status retry step does (row 011-130)", () => {
+    const path = "test/a b.test.ts";
+    const facts = { worktreeId: "wt-a", worktreeRoot: null, revision: 4 as never, loadPerCpu: 2 };
+    const clause = recordedText(facts, "wt-a", NOW, { command: "squeal", path });
+    expect(stepCommand({ kind: "retry" }, [path], "squeal")).toBe(
+      "squeal retry 'test/a b.test.ts'",
+    );
+    expect(stepText({ kind: "retry" }, [path], "squeal")).toBe(
+      "`squeal retry 'test/a b.test.ts'` runs it once",
+    );
+    expect(clause).toContain("`squeal retry 'test/a b.test.ts' --reason load`");
+    expect(loadRetryArgs(clause)).toEqual(ARGS(path));
   });
 });

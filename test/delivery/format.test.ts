@@ -96,7 +96,7 @@ describe("formatDelta", () => {
         "PASS  tests/auth/logout.test.ts > revoked session",
         "      FAIL -> PASS",
         "",
-        'Full output: squeal why "tests/auth/login.test.ts > login > expired token"',
+        "Full output: squeal why 'tests/auth/login.test.ts > login > expired token'",
       ].join("\n"),
     );
   });
@@ -110,7 +110,7 @@ describe("formatDelta", () => {
     const text = formatDelta(delta([recovery, regression, second]));
     expect(text.match(/squeal why/g)).toHaveLength(1);
     expect(text.split("\n").at(-1)).toBe(
-      'Full output: squeal why "tests/auth/login.test.ts > login > expired token"',
+      "Full output: squeal why 'tests/auth/login.test.ts > login > expired token'",
     );
     expect(formatDelta(delta([recovery]))).not.toContain("squeal why");
   });
@@ -189,7 +189,7 @@ describe("formatDelta", () => {
       "RESOLVED  tests/new.test.ts (file-level)",
       "      FAIL -> no longer reported by the runner",
       "",
-      'Full output: squeal why "tests/auth/login.test.ts > login > expired token"',
+      "Full output: squeal why 'tests/auth/login.test.ts > login > expired token'",
     ]);
   });
 
@@ -359,7 +359,7 @@ describe("formatDelta", () => {
     expect(shown).toBeGreaterThan(10);
     const [last, blank, why] = text.split("\n").slice(-3);
     expect(blank).toBe("");
-    expect(why).toBe('Full output: squeal why "tests/f0.test.ts > case 0"');
+    expect(why).toBe("Full output: squeal why 'tests/f0.test.ts > case 0'");
     expect(last).toBe(
       `Not shown: ${2_001 - shown} more changed checks (${2_000 - shown} FAIL: ${2_000 - shown} tests; 1 PASS: 1 test). \`squeal status\` lists every known failure.`,
     );
@@ -453,7 +453,7 @@ describe("formatRegistration", () => {
         "      expected 401, received 500",
         "      at src/f.ts:1:1",
         "",
-        'Full output: squeal why "tests/f1.test.ts > case 1"',
+        "Full output: squeal why 'tests/f1.test.ts > case 1'",
       ].join("\n"),
     );
   });
@@ -496,7 +496,7 @@ describe("formatRegistration", () => {
     expect(text.split("\n").at(-3)).toBe(
       `Not shown: ${2_000 - shown} more known failures (${2_000 - shown} tests). \`squeal status\` lists every known failure.`,
     );
-    expect(text.split("\n").at(-1)).toBe('Full output: squeal why "tests/f0.test.ts > case 0"');
+    expect(text.split("\n").at(-1)).toBe("Full output: squeal why 'tests/f0.test.ts > case 0'");
   });
 
   it("names tests and file-level checks apart in every count of checks (spec 005 D1)", () => {
@@ -527,7 +527,7 @@ describe("formatRegistration", () => {
     const text = formatRegistration(registration(many), 6_000);
     expect(text.length).toBeLessThanOrEqual(6_000);
     expect(text).toContain("Not shown: ");
-    expect(text.split("\n").at(-1)).toBe('Full output: squeal why "tests/f0.test.ts > case 0"');
+    expect(text.split("\n").at(-1)).toBe("Full output: squeal why 'tests/f0.test.ts > case 0'");
   });
 });
 

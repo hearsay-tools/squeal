@@ -2,7 +2,7 @@ import { retryText } from "../retry/index.js";
 import { flakyText, SUMMARY_MAX_CHARS } from "../state/index.js";
 import { checkPartsText, countChecks } from "../status/checks.js";
 import { atText } from "../status/test-frame.js";
-import { cap, plural } from "../text.js";
+import { cap, plural, shellWord } from "../text.js";
 import type { TransitionEntry } from "../types/index.js";
 import { type Collapsed, nameLines } from "./collapse.js";
 import { seenLine, touchesLine } from "./provenance.js";
@@ -75,10 +75,6 @@ function loadsLine(group: readonly TransitionEntry[]): string | null {
   return `load average ${low === high ? low : `${low} to ${high}`} when they ran`;
 }
 
-/** `text` as one shell word, bare when the shell reads it as it is. */
-const argWord = (text: string, quote: (t: string) => string) =>
-  /^[\w./@+-]+$/.test(text) ? text : quote(text);
-
 /** The deepest directory holding every one of `paths`; `""` for the worktree's root. */
 function commonDirectory(paths: readonly string[]): string {
   const split = paths.map((p) => p.split("/").slice(0, -1));
@@ -95,11 +91,7 @@ function commonDirectory(paths: readonly string[]): string {
  * worktree when they were inherited. Review 0.1.262 B1: the files and a
  * limit of the group's size listed other, newer failures in its place.
  */
-function failuresCommand(
-  group: readonly TransitionEntry[],
-  command: string,
-  quote: (t: string) => string,
-): string {
+function failuresCommand(group: readonly TransitionEntry[], command: string): string {
   const first = group[0] as TransitionEntry;
   const files = [...new Set(group.map((e) => e.check.testPath))];
   const selected = files.includes("")
@@ -112,22 +104,18 @@ function failuresCommand(
     .join("");
   return [
     `${command} failures`,
-    ...selected.map((p) => argWord(p, quote)),
-    ...(error === "" ? [] : [`--error ${argWord(error, quote)}`]),
+    ...selected.map(shellWord),
+    ...(error === "" ? [] : [`--error ${shellWord(error)}`]),
     "--per-check --limit all",
     ...(first.origin.kind === "inherited" ? ["--all-worktrees"] : []),
   ].join(" ");
 }
 
-/**
- * One block for a group of more than one failure: its head and lines, as
- * `collapse` gives them. `quote` makes a shell word of a path.
- */
+/** One block for a group of more than one failure: its head and lines, as `collapse` gives them. */
 export function groupLines(
   group: readonly TransitionEntry[],
   revision: number,
   command: string,
-  quote: (t: string) => string,
 ): Collapsed {
   const first = group[0] as TransitionEntry;
   const checks = group.map((e) => e.check);
@@ -142,7 +130,7 @@ export function groupLines(
     first.flaky === undefined ? null : capitalize(flakyText(first.flaky)),
     first.retry === undefined ? null : capitalize(retryText(first.retry)),
     ...nameLines(checks, "that did not load"),
-    `Full list: ${failuresCommand(group, command, quote)}`,
+    `Full list: ${failuresCommand(group, command)}`,
   ];
   return {
     head: `FAIL  ${plural(group.length, "check")} with one error and location (${checkPartsText(countChecks(checks), "that did not load")})`,

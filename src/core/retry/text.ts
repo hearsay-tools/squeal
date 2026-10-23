@@ -1,5 +1,4 @@
-import { shellQuote } from "../ps/render-units.js";
-import { timeText } from "../text.js";
+import { shellWord, timeText } from "../text.js";
 import type { EpochMs, RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
 import { type HostLoad, loadAllows } from "./load.js";
 import type { RetryOutcome, RetryReason } from "./records.js";
@@ -124,5 +123,5 @@ export function recordedText(
  */
 function loadRetryText(loadPerCpu: number | null, words: RetryCommandWords): string {
   if (loadPerCpu === null || loadAllows({ oneMinute: loadPerCpu, cpus: 1 })) return "";
-  return `; \`${words.command} retry ${shellQuote(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
+  return `; \`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }

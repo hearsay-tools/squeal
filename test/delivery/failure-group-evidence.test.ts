@@ -135,7 +135,7 @@ describe("a grouped notice keeps every check's evidence (row 011-109)", () => {
     expect(commands).toHaveLength(1);
     const command = commands[0]?.slice("      Full list: ".length) ?? "";
     expect(command).toBe(
-      `squeal failures tests/components --error "${ERROR}" --per-check --limit all`,
+      `squeal failures tests/components --error '${ERROR}' --per-check --limit all`,
     );
 
     const listing = run(shellWords(command)?.slice(1) ?? [], repo.main);

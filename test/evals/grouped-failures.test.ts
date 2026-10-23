@@ -99,7 +99,7 @@ describe("the evals parser reads a grouped notice (row 011-109)", () => {
     expect(big).toContain("FAIL  91 checks with one error and location (91 tests)\n");
     expect(big).toContain("      13 tests in test/c0.test.ts\n");
     expect(big).toContain(
-      `      Full list: squeal failures test --error "${RESIZE}" --per-check --limit all\n`,
+      `      Full list: squeal failures test --error '${RESIZE}' --per-check --limit all\n`,
     );
   });
 

@@ -85,7 +85,7 @@ describe("squeal status", () => {
     const { stdout } = run(["status"], repo.main, env);
 
     const command =
-      'node --disable-warning=ExperimentalWarning "/opt/codex/squeal/dist/cli/squeal.mjs"';
+      "node --disable-warning=ExperimentalWarning /opt/codex/squeal/dist/cli/squeal.mjs";
     expect(stdout).toContain(
       `Full-suite checkpoint: none completed at any revision (the counts are for revision 3; \`${command} run --all\` requests one)`,
     );

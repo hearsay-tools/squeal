@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { shellWord } from "../../../src/core/delivery/index.js";
+import { shellWord } from "../../../src/core/text.js";
 import { CODEX_SKILL_NOTE } from "../../../src/harness/codex/build.js";
 import type { CodexHookName } from "../../../src/harness/codex/index.js";
 import { primer } from "../../../src/harness/shared/primer.js";
@@ -92,7 +92,7 @@ describe("a Codex session keeps its version's copy and the launcher (005-73)", (
     fail(r);
     const report = await hook("post-tool-use", "post-tool-use");
     expect(report.split("\n").at(-1)).toBe(
-      `Full output: ${command} why "src/math.test.ts > math > adds"`,
+      `Full output: ${command} why 'src/math.test.ts > math > adds'`,
     );
     expect(report).not.toContain(m.cache);
   });
@@ -141,8 +141,8 @@ describe("a Codex session keeps its version's copy and the launcher (005-73)", (
     fail(r);
     // The first boundary registers, so its text is the registration and the primer.
     const report = await hook("post-tool-use", "post-tool-use");
-    const cli = `node --disable-warning=ExperimentalWarning "${root}/dist/cli/squeal.mjs"`;
-    expect(report).toContain(`\nFull output: ${cli} why "src/math.test.ts > math > adds"\n`);
+    const cli = `node --disable-warning=ExperimentalWarning ${root}/dist/cli/squeal.mjs`;
+    expect(report).toContain(`\nFull output: ${cli} why 'src/math.test.ts > math > adds'\n`);
     expect(report.endsWith(`\n\n${primer(cli)}`)).toBe(true);
     expect(existsSync(m.data)).toBe(false);
   });
@@ -153,7 +153,7 @@ describe("a Codex session keeps its version's copy and the launcher (005-73)", (
     writeFileSync(blocked, "a file where the data directory should be\n");
     const { root, hook } = await session(A, { PLUGIN_DATA: blocked });
     const start = await hook("session-start", "session-start");
-    const cli = `node --disable-warning=ExperimentalWarning "${root}/dist/cli/squeal.mjs"`;
+    const cli = `node --disable-warning=ExperimentalWarning ${root}/dist/cli/squeal.mjs`;
     expect(start.endsWith(`\n\n${primer(cli)}`)).toBe(true);
     expect(start).not.toContain("Squeal's skill for this session");
   });
