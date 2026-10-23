@@ -1,9 +1,18 @@
-import { lstatSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import type { CandidateBatch, RelativePath } from "../../src/core/types/index.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import {
+  A,
+  BROKEN,
+  doneOf,
+  edit,
+  holdRun,
+  LISTED,
+  LISTS,
+  listing,
+  phaseOf,
+  statNow,
+} from "./forced-requeue-fixture.js";
+import { SLOW } from "./helpers.js";
 
 /*
  * Row 011-120 (`tasks/011-118/notes.md` 2; 011 C4 step 5; 001-171 S1: "a
@@ -13,87 +22,13 @@ import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./he
  * `run --all --force` checkpoint still holds it. Otherwise it is queued as
  * any miss, looked up at each later key, and current when one has a result.
  */
-const LISTS = "test/lists.test.ts";
-const LISTED = { kind: "test", project: "", testPath: LISTS, fullName: "lists tree" } as const;
-const A = "tree/a.txt";
-const BROKEN = "tree/broken";
-/** Observed inputs on, whatever the policy default (task 001-134). */
-const OBSERVING = { observe: true, policy: { observe: { runtimeInputs: true } } } as const;
-
-const LISTS_TEST = `import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { expect, test } from "vitest";
-
-const tree = join(import.meta.dirname, "..", "tree");
-
-test("lists tree", () => {
-  expect(readFileSync(join(tree, "a.txt"), "utf8")).not.toBe("");
-  expect(readdirSync(tree)).not.toContain("broken");
-});
-`;
-
-/** Row 011-118's repository: one test that reads `tree/a.txt` and lists `tree/`, its pass stored. */
-async function listing(): Promise<{ h: Harness; stored: string | null }> {
-  const repo = createRepo();
-  writeFileSync(join(repo.main, LISTS), LISTS_TEST);
-  const store = openRepoStore(repo.commonDir);
-  // One file a tier, so a revision that moves its key alone cancels its tier (C4 step 5).
-  const h = await openHarness(repo.main, store, repo.commonDir, { ...OBSERVING, tierSize: 1 });
-  h.write(A, "a\n");
-  await h.scheduler.start();
-  await h.scheduler.idle();
-  return { h, stored: h.keyOf(LISTS) };
-}
-
-/** The phase of `path`'s row: `queued`, `running`, or none. */
-const phaseOf = (h: Harness, path: string) =>
-  h.store.testFileKeys.list(h.worktreeId).find((r) => r.testFile.path === path)?.pending;
-
-/**
- * A watch batch of `paths` as they are on disk, stat'ed as the fs hasher
- * does but at once: handed to the scheduler, it reaches its lock before any
- * other task asks for it.
- */
-function statNow(h: Harness, ...paths: string[]): CandidateBatch {
-  const stat = (path: string) => {
-    const stats = lstatSync(join(h.root, path), { throwIfNoEntry: false });
-    if (stats === undefined) return null;
-    return { mtimeMs: stats.mtimeMs, ctimeMs: stats.ctimeMs, size: stats.size, inode: stats.ino };
-  };
-  const sorted = [...paths].sort();
-  return {
-    trigger: "watch",
-    paths: sorted.map((path) => ({ path: path as RelativePath, stat: stat(path) })),
-  };
-}
-
-/**
- * Holds at the gate the first run of `LISTS` that `pick` accepts until
- * `release`; `cancelled` once the scheduler cancelled it (`RunOptions.signal`).
- */
-function holdRun(h: Harness, pick: () => boolean = () => true) {
-  let release = () => {};
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const run: { id: string | null; signal?: AbortSignal | undefined } = { id: null };
-  h.gate.before = async (files, options) => {
-    if (!files.some((f) => f.path === LISTS)) return;
-    if (run.id === null && pick()) run.id = options.runId;
-    if (options.runId !== run.id) return;
-    run.signal = options.signal;
-    await held;
-  };
-  return { run, release, cancelled: () => run.signal?.aborted === true };
-}
-
 describe("a cancelled forced run, queued again (row 011-120)", SLOW, () => {
   it("drops a re-run cancelled by a revision: after the revert the file is current, nothing runs", async () => {
     const { h, stored } = await listing();
     const before = h.runsOf(LISTS).length;
 
     // Its re-run (task 001-171) is the second run after the edit; the gate holds it.
-    const rerun = holdRun(h, () => h.runsOf(LISTS).length > before);
+    const rerun = holdRun(h, LISTS, () => h.runsOf(LISTS).length > before);
     // The revert reaches the lock right behind the cancelled re-run's record, before the next tier.
     let revert: Promise<void> | null = null;
     const finish = h.store.runs.finish.bind(h.store.runs);
@@ -141,17 +76,11 @@ describe("a cancelled forced run, queued again (row 011-120)", SLOW, () => {
     expect(h.keyOf(LISTS)).toBe(stored);
   });
 
-  it("keeps a `run --all --force`'s file forced at the key a revision moved it to", async () => {
+  it("runs a `run --all --force`'s file forced at the key a revision moved it to, counting only that run", async () => {
     const { h, stored } = await listing();
     // A pass stands at the key the revision moves the file to: a lookup there would take it.
-    h.write(A, "b\n");
-    await h.batch(A);
-    await h.scheduler.idle();
-    const moved = h.keyOf(LISTS);
-    h.write(A, "a\n");
-    await h.batch(A);
-    await h.scheduler.idle();
-    expect(h.keyOf(LISTS)).toBe(stored);
+    const moved = await edit(h, "b\n");
+    expect(await edit(h, "a\n")).toBe(stored);
     const before = h.runsOf(LISTS).length;
 
     const forced = holdRun(h);
@@ -161,21 +90,28 @@ describe("a cancelled forced run, queued again (row 011-120)", SLOW, () => {
       checkpoint = requested.id;
       expect(requested.testFiles.map((f) => f.path)).toContain(LISTS);
       await waitFor(() => forced.run.id !== null, 60_000);
+      expect(forced.run.key).toBe(stored);
       // The revision moves its key to the stored pass and cancels its tier.
+      const done = doneOf(h);
       h.write(A, "b\n");
       await h.batch(A);
       expect(h.keyOf(LISTS)).toBe(moved);
+      // The stored pass does not count for the strict checkpoint (task 001-217): the file runs.
+      expect(doneOf(h)).toBe(done);
+      expect(phaseOf(h, LISTS)).toBe("queued");
       await waitFor(forced.cancelled, 60_000);
     } finally {
       forced.release();
     }
     await h.scheduler.idle();
 
-    // Its own run at the new key, forced past the stored pass, completes the strict checkpoint.
+    // Its own run at the new key, forced past the stored pass, completes the checkpoint.
     const runs = h.runsOf(LISTS).slice(before);
     expect(runs).toHaveLength(2);
     expect(runs[0]?.options.runId).toBe(forced.run.id);
     expect(runs[1]?.report.completedFiles.map((f) => f.path)).toEqual([LISTS]);
+    const ran = h.store.results.listForCheck(LISTED, 10).map((r) => r.provenance.runId);
+    expect(ran).toContain(runs[1]?.options.runId);
     expect(h.store.checkpoints.get(checkpoint)?.end).toBe("completed");
     expect(h.keyOf(LISTS)).toBe(moved);
     expect(phaseOf(h, LISTS)).toBeNull();
