@@ -129,6 +129,11 @@ export interface CodeFile {
   readonly size: number;
   /** The revision that saw the file at this blob. */
   readonly revision: RevisionNumber;
+  /**
+   * Over `complexity.maxFileBytes` when the pass stored it (D6): never
+   * counted, and not among `uncounted`. Absent when not.
+   */
+  readonly tooBig?: boolean;
 }
 
 /**
