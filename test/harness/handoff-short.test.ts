@@ -13,6 +13,8 @@ import {
 import { readDaemonNotes } from "../../src/core/notes.js";
 import type { DaemonRequest, EpochMs } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { openContext } from "../../src/harness/shared/context.js";
+import { ensureIfStale } from "../../src/harness/shared/ensure.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
@@ -108,15 +110,20 @@ async function successor(r: SquealRepo): Promise<DaemonRequest[]> {
   });
   servers.push(server);
   await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+  recordAt(r, 2, "u");
+  return asked;
+}
+
+/** Records the daemon of `OLD` started at `startedAt` with `token` on the stand-in socket, alive an hour. */
+function recordAt(r: SquealRepo, startedAt: number, token: string): void {
   r.store.worktrees.setDaemon(r.worktreeId, {
-    socketPath,
-    startedAt: 2 as EpochMs,
+    socketPath: join(dir, "d.sock"),
+    startedAt: startedAt as EpochMs,
     heartbeatAt: Date.now() as EpochMs,
     heartbeatIntervalMs: 3_600_000,
     squealVersion: OLD,
-    token: "u",
+    token,
   });
-  return asked;
 }
 
 /** Hook deps at `HOOK`; `calls` are its spawns and lock waits. */
@@ -165,5 +172,35 @@ describe("a daemon that ended its handoff short (row 011-140)", () => {
     );
     const second = (await boundary(r, "post-tool-batch", deps)).stdout;
     expect(second).not.toContain("daemon is validating");
+  });
+
+  it("is asked nothing when it registers between the hook's read of the record and of the mark", async () => {
+    // Review 0.1.277, B1: the hook read the stepping daemon's record, then the
+    // successor's mark, and asked the successor at the reused socket.
+    const r = squealRepo();
+    const asked = await successor(r);
+    recordAt(r, 1, "t");
+    const { calls, deps } = hookAt();
+    let registered = false;
+    // The hook's first clock read comes after its read of the record.
+    const now = () => {
+      if (!registered) {
+        registered = true;
+        recordAt(r, 2, "u");
+        registers(r, OLD, Date.now());
+      }
+      return Date.now() as EpochMs;
+    };
+    const location = { root: r.root, commonDir: r.repo.commonDir } as never;
+    const context = openContext({ session_id: "s1" }, location);
+    if (context === null) throw new Error("no store");
+    try {
+      expect(await ensureIfStale(context, { ...deps, now })).toBe("fresh");
+    } finally {
+      context.close();
+    }
+    expect(registered).toBe(true);
+    expect(asked.filter((a) => a.type === "step-down")).toEqual([]);
+    expect(calls.filter((call) => call.awaitLockMs !== undefined)).toEqual([]);
   });
 });
