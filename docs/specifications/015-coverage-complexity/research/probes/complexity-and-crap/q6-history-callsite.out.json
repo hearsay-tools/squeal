@@ -1,0 +1,34 @@
+{
+ "range": "2026-10-20..2026-10-23",
+ "commits": 300,
+ "files": 911,
+ "fnsAfter": 21396,
+ "ccChanged": 551,
+ "bodyChangedSameCc": 760,
+ "unchanged": 18299,
+ "born": 1732,
+ "died": 373,
+ "renamedSameBody": 54,
+ "dupNamesAfter": 228,
+ "anonFns": 8227,
+ "anonIndexShift": 39,
+ "crossUp": {
+  "10": 37,
+  "20": 13
+ },
+ "crossDown": {
+  "10": 14,
+  "20": 2
+ },
+ "bornAbove": {
+  "10": 86,
+  "20": 8
+ },
+ "commitsWithAnyTransition10": 46,
+ "bornAnon": 703,
+ "diedAnon": 190,
+ "bornInNewFiles": 985,
+ "commitsWithAnyTransition20": 15,
+ "parsedBlobs": 1089,
+ "parseAndCountMsPerBlob": 7.58
+}
