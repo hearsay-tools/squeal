@@ -126,6 +126,7 @@ function worktreeMetaKey(row, worktreeId) {
 }
 
 // src/core/types/daemon.ts
+var DAEMON_SOCKET_TIMEOUT_MS = 100;
 function daemonIncarnation(daemon) {
   if (daemon?.token === void 0) return null;
   return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
@@ -1535,21 +1536,21 @@ function passedRetry(store, testFile, key, runId) {
 }
 function withRecorded(store, worktreeId, states, revision) {
   const failing = states.flatMap((state) => {
-    const failure = toKnownFailure(state, revision);
-    return failure === null ? [] : [{ state, failure }];
+    const failure2 = toKnownFailure(state, revision);
+    return failure2 === null ? [] : [{ state, failure: failure2 }];
   });
   if (failing.length === 0) return [];
   const producers = readFailureProducers(store, worktreeId);
   const failureKeys = readFailureKeys(store, worktreeId);
   const retries = readRetries(store);
   const loads = readRunLoads(store);
-  return failing.map(({ state, failure }) => {
-    if (failure.check.kind === "setup") return failure;
-    const testFile = testFileOf(failure.check);
-    const results = store.results.listForCheck(failure.check, Number.MAX_SAFE_INTEGER);
+  return failing.map(({ state, failure: failure2 }) => {
+    if (failure2.check.kind === "setup") return failure2;
+    const testFile = testFileOf(failure2.check);
+    const results = store.results.listForCheck(failure2.check, Number.MAX_SAFE_INTEGER);
     const id = checkIdentity(state.check);
     const row = producingResult(worktreeId, state, producers.get(id), failureKeys.get(id), results);
-    if (row === null) return { ...failure, recordedUnknown: true };
+    if (row === null) return { ...failure2, recordedUnknown: true };
     const { provenance } = row;
     const retry = retryFactOf(retriesAt(retries, testFile, row.key));
     const recorded = {
@@ -1560,9 +1561,14 @@ function withRecorded(store, worktreeId, states, revision) {
       loadPerCpu: loads.get(provenance.runId) ?? null,
       ...retry === void 0 ? {} : { retry }
     };
-    return { ...failure, recorded };
+    return { ...failure2, recorded };
   });
 }
+
+// src/core/ps/render-units.ts
+var KIB = 1024;
+var MIB = KIB * 1024;
+var GIB = MIB * 1024;
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -3632,9 +3638,9 @@ var stored = (r) => r.gaps.length === 0 && r.scanned === void 0 ? r.since : r;
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
-function scannedDaemon(store, worktreeId, alive) {
+function scannedDaemon(store, worktreeId, alive2) {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
-  if (!alive || daemon === null) return null;
+  if (!alive2 || daemon === null) return null;
   const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
   return marker !== null && Number(marker) === daemon.startedAt ? daemon.startedAt : null;
 }
@@ -4440,6 +4446,15 @@ import { dirname as dirname4, isAbsolute as isAbsolute4, join as join8 } from "n
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
+var MAX_SOCKET_PATH_BYTES = 103;
+function socketPathFor(worktreeId, env = process.env) {
+  const name = socketNameFor(worktreeId);
+  const path = join8(runtimeDir(env), name);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join8(userTmpDir(), name);
+}
+function socketNameFor(worktreeId) {
+  return `squeal-${worktreeId}.sock`;
+}
 function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
   mkdirSync3(dirname4(dir), { recursive: true });
   try {
@@ -4695,9 +4710,9 @@ function pidRuns(pid) {
     return error.code === "EPERM";
   }
 }
-function slowSlotOf(store, worktreeId, root, header, alive, now) {
+function slowSlotOf(store, worktreeId, root, header, alive2, now) {
   const tier = header.slowTier;
-  if (!alive || tier === void 0 || tier.pending === 0) return void 0;
+  if (!alive2 || tier === void 0 || tier.pending === 0) return void 0;
   if (tier.activity?.kind !== "waiting" || tier.activity.for !== "slot") return void 0;
   const permits = readPolicy(root).slow.maxParallel;
   let held;
@@ -4882,10 +4897,10 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
-  const alive = daemon.state === "alive";
+  const alive2 = daemon.state === "alive";
   const hold = (reads?.holds ?? readHolds(store, store.worktrees.get(worktreeId), daemon, now))[0];
   const slot2 = once(
-    () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive, now) : reads.slowSlot ?? void 0
+    () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive2, now) : reads.slowSlot ?? void 0
   );
   const facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
@@ -6041,10 +6056,10 @@ function createDelivery(store, options) {
       tellSlowTier(store, consumer, header.slowTier);
       tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
       if (!registered) {
-        const alive = atStart && header.daemon?.state === "alive";
+        const alive2 = atStart && header.daemon?.state === "alive";
         const resumed = tellRegistered(store, consumer, header.revision, {
           at,
-          scanned: scannedDaemon(store, consumer.worktreeId, alive)
+          scanned: scannedDaemon(store, consumer.worktreeId, alive2)
         });
         startEdits(store, consumer, header.revision, resumed?.said === true);
         if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
@@ -6157,6 +6172,136 @@ var VITEST_ONLY = {
   slow: null
 };
 
+// src/core/daemon/client.ts
+import { createConnection } from "node:net";
+function requestDaemon(socketPath, request, timeoutMs) {
+  return new Promise((resolve4, reject) => {
+    const socket = createConnection(socketPath);
+    let buffer = "";
+    let settled2 = false;
+    const settle = (error, response) => {
+      if (settled2) return;
+      settled2 = true;
+      clearTimeout(timer);
+      socket.destroy();
+      if (error) reject(error);
+      else resolve4(response);
+    };
+    const timer = setTimeout(
+      () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      timeoutMs
+    );
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write(`${JSON.stringify(request)}
+`));
+    socket.on("data", (chunk) => {
+      buffer += chunk;
+      const end = buffer.indexOf("\n");
+      if (end < 0) return;
+      try {
+        settle(null, JSON.parse(buffer.slice(0, end)));
+      } catch {
+        settle(failure("EPROTO", `malformed answer from ${socketPath}`));
+      }
+    });
+    socket.on(
+      "error",
+      (error) => settle(failure(error.code ?? "EIO", error.message))
+    );
+    socket.on(
+      "close",
+      () => settle(failure("ECONNRESET", `${socketPath} closed without an answer`))
+    );
+  });
+}
+function failure(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+
+// src/core/daemon/ensure.ts
+import { spawn } from "node:child_process";
+import { existsSync as existsSync6, mkdirSync as mkdirSync4 } from "node:fs";
+async function probeDaemon(root, timeoutMs, options = {}) {
+  try {
+    return (await locateDaemon(root, timeoutMs, options)).probe;
+  } catch (error) {
+    return { state: "unresponsive", reason: `no worktree at ${root}: ${String(error)}` };
+  }
+}
+async function locateDaemon(root, timeoutMs, options = {}) {
+  const socketPath = socketPathFor(worktreeIdFor(root), options.env);
+  const record = options.record === void 0 ? recordedDaemon(root) : options.record;
+  const now = options.now ?? Date.now;
+  if (record !== null && record.socketPath !== socketPath && daemonLiveness(record, now()).state === "alive") {
+    const probe = await ping(record.socketPath, timeoutMs);
+    if (probe.state !== "absent") return { socketPath: record.socketPath, probe };
+  }
+  return { socketPath, probe: await ping(socketPath, timeoutMs) };
+}
+async function ping(socketPath, timeoutMs) {
+  try {
+    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs);
+    if (response.ok && response.type === "ping") return { state: "alive", ping: response };
+    return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
+  } catch (error) {
+    const code = noDaemonCode(error);
+    if (code !== null) return { state: "absent", code };
+    return { state: "unresponsive", reason: error.message };
+  }
+}
+function noDaemonCode(error) {
+  const code = error?.code;
+  return code === "ENOENT" || code === "ECONNREFUSED" ? code : null;
+}
+function recordedDaemon(root, busyTimeoutMs = 100) {
+  try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return null;
+    const store = openStore(commonDir, { create: false, busyTimeoutMs });
+    if (isStoreOpenFailure(store)) return null;
+    try {
+      return store.worktrees.get(worktreeIdFor(root))?.daemon ?? null;
+    } finally {
+      store.close();
+    }
+  } catch {
+    return null;
+  }
+}
+async function ensureDaemon(root, options = {}) {
+  if (options.awaitLockMs === void 0) {
+    const timeoutMs = options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS;
+    const probe = await probeDaemon(root, timeoutMs, options);
+    if (probe.state === "alive") return "alive";
+    if (probe.state === "unresponsive") return "unavailable";
+  }
+  const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
+  const cli = daemonCliEntry(options.cli, options.env);
+  if (cli === null || !existsSync6(cli)) return "unavailable";
+  try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return "unavailable";
+    const cwd = storePaths(commonDir).dir;
+    mkdirSync4(cwd, { recursive: true });
+    const child = spawn(process.execPath, [cli, "daemon", root, ...lockWait], {
+      cwd,
+      detached: true,
+      stdio: "ignore"
+    });
+    child.on("error", () => {
+    });
+    child.unref();
+    return "spawned";
+  } catch {
+    return "unavailable";
+  }
+}
+function daemonCliEntry(cli, env = process.env) {
+  const override = env.SQUEAL_CLI;
+  if (override !== void 0 && override !== "") return override;
+  return cli ?? null;
+}
+
 // src/core/daemon/version.ts
 import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
 import { dirname as dirname5, join as join10 } from "node:path";
@@ -6164,7 +6309,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.270";
+  if (true) return "0.1.271";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -6186,6 +6331,19 @@ function readVersion(path) {
   } catch {
     return null;
   }
+}
+function isNewerVersion(version, than) {
+  const a = versionParts(version);
+  const b = versionParts(than);
+  if (a === null || b === null) return false;
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+function versionParts(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  return match === null ? null : match.slice(1).map(Number);
 }
 
 // src/harness/shared/harness-process.ts
@@ -6369,24 +6527,28 @@ function bashCommand(input) {
 var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
 
 // src/harness/shared/version-copies.ts
+import { spawnSync } from "node:child_process";
 import {
   chmodSync as chmodSync2,
   copyFileSync,
   cpSync,
-  existsSync as existsSync6,
-  mkdirSync as mkdirSync4,
+  existsSync as existsSync7,
+  mkdirSync as mkdirSync5,
   readdirSync as readdirSync4,
   readFileSync as readFileSync7,
   renameSync as renameSync2,
   rmSync as rmSync4
 } from "node:fs";
 import { basename as basename2, dirname as dirname6, join as join11, resolve as resolve3 } from "node:path";
+var COPIED = ["dist", "skills"];
 var CLI = join11("dist", "cli", "squeal.mjs");
 var SKILL = join11("skills", "squeal", "SKILL.md");
 var LAUNCHER_SOURCE = join11("bin", "squeal-launcher");
 var LAUNCHER = join11("bin", "squeal");
+var VERSION = /^\d+\.\d+\.\d+$/;
 var CODEX_CACHE = join11("plugins", "cache", "hearsay", "squeal");
 var CODEX_DATA = join11("plugins", "data", "squeal-hearsay");
+var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
 function dataLauncher(data) {
   return join11(data, LAUNCHER);
 }
@@ -6395,19 +6557,107 @@ function copyOf(data, version) {
 }
 function keptCli(data, version) {
   const cli = join11(copyOf(data, version), CLI);
-  return existsSync6(cli) ? cli : null;
+  return existsSync7(cli) ? cli : null;
 }
 function dataOfCopy(cli) {
   const versions = dirname6(dirname6(dirname6(dirname6(cli))));
   return cli.endsWith(`/${CLI}`) && basename2(versions) === "versions" ? dirname6(versions) : null;
 }
+function keepVersion({ root, data, version }) {
+  const dir = copyOf(data, version);
+  if (!VERSION.test(version) || !existsSync7(join11(root, CLI))) return null;
+  try {
+    const versions = join11(data, "versions");
+    let made = false;
+    if (keptCli(data, version) === null) {
+      mkdirSync5(versions, { recursive: true });
+      const part = join11(versions, `.${version}.${process.pid}.tmp`);
+      rmSync4(part, { recursive: true, force: true });
+      for (const name of COPIED) {
+        if (existsSync7(join11(root, name))) {
+          cpSync(join11(root, name), join11(part, name), { recursive: true, dereference: true });
+        }
+      }
+      try {
+        renameSync2(part, dir);
+        made = true;
+      } catch {
+        rmSync4(part, { recursive: true, force: true });
+      }
+    }
+    writeLauncher(root, data, version);
+    if (made) prune3(data, version);
+    return keptCli(data, version) === null ? null : dir;
+  } catch {
+    return null;
+  }
+}
+function writeLauncher(root, data, version) {
+  const target = dataLauncher(data);
+  const source = join11(root, LAUNCHER_SOURCE);
+  if (!existsSync7(source)) return;
+  if (existsSync7(target)) {
+    if (copies(data).some((v) => isNewerVersion(v, version))) return;
+    if (readFileSync7(target, "utf8") === readFileSync7(source, "utf8")) return;
+  }
+  mkdirSync5(join11(data, "bin"), { recursive: true });
+  const part = `${target}.${process.pid}.tmp`;
+  copyFileSync(source, part);
+  chmodSync2(part, 493);
+  renameSync2(part, target);
+}
+function copies(data) {
+  try {
+    return readdirSync4(join11(data, "versions")).filter((v) => VERSION.test(v));
+  } catch {
+    return [];
+  }
+}
+function prune3(data, version) {
+  const versions = join11(data, "versions");
+  const others = copies(data).filter((v) => v !== version);
+  const keep = others.reduce(
+    (a, b) => a === null || isNewerVersion(b, a) ? b : a,
+    null
+  );
+  const running = processArgs();
+  const gone = readdirSync4(versions).filter((name) => {
+    const left = LEFT.exec(name);
+    return left !== null && !alive(Number(left[1]));
+  });
+  for (const other of others) {
+    if (other !== keep && running !== null && !running.includes(`${join11(versions, other)}/`)) {
+      gone.push(other);
+    }
+  }
+  for (const name of gone) {
+    const doomed = join11(versions, `.${name}.${process.pid}.gone`);
+    try {
+      renameSync2(join11(versions, name), doomed);
+      rmSync4(doomed, { recursive: true, force: true });
+    } catch {
+    }
+  }
+}
+function processArgs() {
+  const ps = spawnSync("ps", ["-A", "-o", "args="], { encoding: "utf8" });
+  return ps.status === 0 && typeof ps.stdout === "string" ? ps.stdout : null;
+}
+function alive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM";
+  }
+}
 
 // src/harness/codex/command.ts
-import { existsSync as existsSync7 } from "node:fs";
+import { existsSync as existsSync8 } from "node:fs";
 import { join as join12 } from "node:path";
 function codexCommand(env, bundleCli) {
   const data = env.PLUGIN_DATA === void 0 || env.PLUGIN_DATA === "" ? dataOfCopy(bundleCli) : env.PLUGIN_DATA;
-  if (data !== null && existsSync7(dataLauncher(data))) return shellWord(dataLauncher(data));
+  if (data !== null && existsSync8(dataLauncher(data))) return shellWord(dataLauncher(data));
   const root = env.PLUGIN_ROOT;
   const cli = root === void 0 || root === "" ? bundleCli : join12(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
@@ -6418,6 +6668,32 @@ var set = (value) => value === void 0 || value === "" ? null : value;
 function keptCodexCli(env, version = squealVersion()) {
   const data = set(env.PLUGIN_DATA);
   return data === null ? null : keptCli(data, version);
+}
+function keepCodexCli(env, version) {
+  const root = set(env.PLUGIN_ROOT);
+  const data = set(env.PLUGIN_DATA);
+  if (root === null || data === null) return null;
+  return keepVersion({ root, data, version }) === null ? null : keptCli(data, version);
+}
+function keepOnSpawn(deps) {
+  const version = deps.squealVersion ?? squealVersion();
+  const data = set(deps.env.PLUGIN_DATA);
+  if (set(deps.env.PLUGIN_ROOT) === null || data === null || keptCli(data, version) !== null) {
+    return deps;
+  }
+  const ensure2 = deps.ensureDaemon ?? ensureDaemon;
+  return {
+    ...deps,
+    ensureDaemon: async (root, options) => {
+      if (options.awaitLockMs === void 0) {
+        const probe = await probeDaemon(root, options.socketTimeoutMs, options);
+        if (probe.state === "alive") return "alive";
+        if (probe.state === "unresponsive") return "unavailable";
+      }
+      const cli = keepCodexCli(deps.env, version);
+      return ensure2(root, cli === null ? options : { ...options, cli });
+    }
+  };
 }
 
 // src/harness/codex/handlers.ts
@@ -6433,7 +6709,7 @@ import { fileURLToPath as fileURLToPath2 } from "node:url";
 // src/harness/shared/session-root.ts
 import { createHash as createHash3 } from "node:crypto";
 import {
-  existsSync as existsSync8,
+  existsSync as existsSync9,
   lstatSync as lstatSync3,
   readdirSync as readdirSync5,
   readFileSync as readFileSync8,
@@ -6519,7 +6795,7 @@ function readKept(file) {
   if (!isRecord(kept) || typeof kept.root !== "string" || typeof kept.commonDir !== "string") {
     return null;
   }
-  return existsSync8(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
+  return existsSync9(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
 }
 
 // src/harness/codex/input.ts
@@ -6582,12 +6858,14 @@ async function runMain(name, handler) {
   } catch {
   }
   const cli = keptCodexCli(process.env) ?? fileURLToPath2(new URL("./cli/squeal.mjs", import.meta.url));
-  const result = await runCodexHandler(name, handler, stdin, {
+  const deps = {
     env: process.env,
     sessionRoots: sessionRootFiles(process.env),
     cli,
     command: codexCommand(process.env, cli)
-  });
+  };
+  const kept = name === "session-start" ? deps : keepOnSpawn(deps);
+  const result = await runCodexHandler(name, handler, stdin, kept);
   if (result.stdout !== "") process.stdout.write(result.stdout);
   if (result.stderr !== "") process.stderr.write(result.stderr);
 }

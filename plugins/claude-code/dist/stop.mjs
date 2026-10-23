@@ -723,7 +723,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.270";
+  if (true) return "0.1.271";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -1813,6 +1813,9 @@ function hostLoad() {
     cpus: availableParallelism()
   };
 }
+function loadAllows(load) {
+  return load.oneMinute === null || load.oneMinute < load.cpus;
+}
 var RUN_LOADS_META_KEY = "failed-run-loads";
 function readRunLoads(store) {
   const raw = store.meta.get(RUN_LOADS_META_KEY);
@@ -1931,6 +1934,15 @@ function withRecorded(store, worktreeId, states, revision) {
   });
 }
 
+// src/core/ps/render-units.ts
+var KIB = 1024;
+var MIB = KIB * 1024;
+var GIB = MIB * 1024;
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellQuote(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+
 // src/core/retry/text.ts
 function outcomeText(outcome) {
   switch (outcome) {
@@ -1957,12 +1969,16 @@ function agoText(ms) {
   return `${Math.floor(hours / 24)} d ago`;
 }
 var RECORDED_UNKNOWN_TEXT = "recorded at an unknown time and load: the result that produced it is no longer identifiable in the store";
-function recordedText(facts, here, now) {
+function recordedText(facts, here, now, words) {
   const where3 = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
   const ago = facts.recordedAt === void 0 ? "" : ` ${agoText(now - facts.recordedAt)}`;
   const load = facts.loadPerCpu === null ? "load per CPU then not recorded" : `load ${facts.loadPerCpu.toFixed(2)} per CPU when it ran`;
-  const retry = facts.retry === void 0 ? "no retry asked at these inputs" : retryText(facts.retry);
+  const retry = facts.retry === void 0 ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words)}` : retryText(facts.retry);
   return `recorded${ago} in ${where3} at revision ${facts.revision}, ${load}; ${retry}`;
+}
+function loadRetryText(loadPerCpu, words) {
+  if (loadPerCpu === null || loadAllows({ oneMinute: loadPerCpu, cpus: 1 })) return "";
+  return `; \`${words.command} retry ${shellQuote(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
 
 // src/core/store/connection.ts
@@ -7194,7 +7210,15 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : atText(f.location, f.testFileFrame),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize3(RECORDED_UNKNOWN_TEXT) : null : capitalize3(recordedText(f.recorded, registration2.consumer.worktreeId, now)),
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize3(RECORDED_UNKNOWN_TEXT) : null : (
+          // Row 011-67 (gh-52): a failure recorded under load names its load retry.
+          capitalize3(
+            recordedText(f.recorded, registration2.consumer.worktreeId, now, {
+              command,
+              path: f.check.testPath
+            })
+          )
+        ),
         closureLine(f.changesInClosure)
       ],
       [{ check: f.check, shown: "fail" }]

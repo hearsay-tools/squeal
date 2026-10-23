@@ -304,6 +304,11 @@ function excludedFilesText(globs2) {
   return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
 }
 
+// src/core/ps/render-units.ts
+var KIB = 1024;
+var MIB = KIB * 1024;
+var GIB = MIB * 1024;
+
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 var slices = new AsyncLocalStorage();
