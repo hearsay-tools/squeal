@@ -284,6 +284,68 @@ describe("a test writing scratch files under its declared inputs (lessons defect
   });
 });
 
+describe("a removed project's saved closures (row 011-36)", SLOW, () => {
+  it("keep no ignored build named: one daemon start stops hashing and watching it", async () => {
+    const BUILD = "pkg/dist/lib.js";
+    const TYPES = "pkg/dist/lib.d.ts";
+    const CLIENT = "src/gen/client.ts";
+    const test = [
+      'import { test } from "node:test";',
+      'import { lib } from "../dist/lib.js";',
+      'test("imports the build", () => lib());',
+      "",
+    ].join("\n");
+    // `dist/` is gitignored at any depth; the fixture gitignores `src/gen/` too.
+    const r = repo("", { "pkg/test/lib.test.mjs": test });
+    mkdirSync(join(r.main, "pkg/dist"));
+    writeFileSync(join(r.main, BUILD), "export const lib = () => 1;\n");
+    writeFileSync(join(r.main, TYPES), "export declare const lib: () => number;\n");
+    const project: NodeTestProject = {
+      name: "pkg",
+      cwd: "pkg",
+      node: process.execPath,
+      argv: [],
+      env: {},
+      include: ["test/*.test.mjs"],
+    };
+    const store = openRepoStore(r.commonDir);
+    const first = await openHarness(r.main, store, r.commonDir, {
+      nodeTest: [project],
+      policy: { nodeTest: [project] },
+      slow: calm(),
+    });
+    await first.scheduler.start();
+    await first.scheduler.idle();
+    expect(first.scheduler.extraFiles()).toEqual(expect.arrayContaining([BUILD, CLIENT]));
+    await first.scheduler.close();
+    await first.runner.close();
+    // As cezar's store kept them: the build's types hashed under a declaration since removed.
+    await seedPredecessor(store, r.main, [TYPES]);
+
+    // The project is removed: its test file's saved closure still names the build.
+    const h = await openHarness(r.main, store, r.commonDir, { slow: calm() });
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    const revision = h.scheduler.status().revision;
+    expect(h.scheduler.extraFiles()).toContain(CLIENT);
+    expect(h.scheduler.extraFiles()).not.toContain(BUILD);
+    expect(h.scheduler.extraFiles()).not.toContain(TYPES);
+    const stored = store.fileHashes.list(worktreeIdFor(r.main)).map((row) => row.path);
+    expect(stored).toContain(CLIENT);
+    expect(stored).not.toContain(BUILD);
+    expect(stored).not.toContain(TYPES);
+
+    // A rebuild makes no revision: nothing hashes the build now.
+    h.write(BUILD, "export const lib = () => 2;\n");
+    h.write(TYPES, "export declare const lib: () => 2;\n");
+    const all = [...h.scheduler.trackedPaths(), ...h.scheduler.extraFiles()];
+    const paths = await statCandidates(all, createFsHasher(r.main, "sha1"));
+    await h.scheduler.handleBatch({ trigger: "interval", paths });
+    await h.scheduler.idle();
+    expect(h.scheduler.status().revision).toBe(revision);
+  });
+});
+
 describe("a predecessor's saved closure (reviews/wave-5.6.md S1)", SLOW, () => {
   it("naming dropped scratch keeps it unwatched, and no revision follows a full pass", async () => {
     const SCRATCH = "fixtures/.tmp/out.txt";
