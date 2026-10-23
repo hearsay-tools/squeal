@@ -22,7 +22,8 @@ export interface CodePassOptions {
   readonly source: PassSource;
   /** The policy now: the daemon's, which a revision may reload. */
   readonly policy: () => Policy;
-  readonly counter: Counter;
+  /** Loaded at the first pass with the policy on, so a daemon with it off loads no grammar. */
+  readonly counter: () => Promise<Counter>;
   readonly now?: () => EpochMs;
   readonly log: (text: string) => void;
   readonly onError: (error: Error) => void;
@@ -57,6 +58,8 @@ export function createCodePass(options: CodePassOptions): CodePass {
   const now = options.now ?? Date.now;
   const retry = new Set<RelativePath>();
   let store: CodeStore | null = null;
+  let counter: Promise<Counter> | null = null;
+  let lastError: string | null = null;
   let wasOff = false;
   let refused: string | null = null;
   let running: Promise<void> | null = null;
@@ -101,7 +104,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
       format: options.format,
       store: opened,
       source: options.source,
-      counter: options.counter,
+      counter: await (counter ??= options.counter()),
       complexity: policy.complexity,
       switchedOn: wasOff,
       retry,
@@ -117,8 +120,12 @@ export function createCodePass(options: CodePassOptions): CodePass {
       again = false;
       try {
         await once();
+        lastError = null;
       } catch (error) {
-        options.onError(error instanceof Error ? error : new Error(String(error)));
+        // A failure that repeats at every pass, such as a counter that cannot load, is told once.
+        const failure = error instanceof Error ? error : new Error(String(error));
+        if (failure.message !== lastError) options.onError(failure);
+        lastError = failure.message;
       }
     } while (again && !closed);
     running = null;
