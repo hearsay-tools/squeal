@@ -1,0 +1,2 @@
+moves 10 (10 read); re-keyed 87 files, 969 s; of them stored at equal content before the move 0 files, 0 s; moves re-keying nothing 0
+per move s: median 95, p90 103, max 103; full suite at the last move: {"files":398,"secs":825}

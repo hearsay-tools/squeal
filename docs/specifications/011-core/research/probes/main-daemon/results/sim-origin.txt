@@ -1,0 +1,6 @@
+squeal origin: rate 60 s/min, stored skipped: ran 99500 recorded s over 473 moves; superseded before running 5577 s; skipped as stored 13734 s
+squeal origin: rate 140 s/min, stored skipped: ran 105077 recorded s over 473 moves; superseded before running 0 s; skipped as stored 13734 s
+cezar origin: rate 60 s/min, stored skipped: ran 76839 recorded s over 63 moves; superseded before running 25725 s; skipped as stored 3293 s
+cezar origin: rate 140 s/min, stored skipped: ran 90468 recorded s over 63 moves; superseded before running 12095 s; skipped as stored 3293 s
+toolkit-dev origin: rate 60 s/min, stored skipped: ran 969 recorded s over 10 moves; superseded before running 0 s; skipped as stored 0 s
+toolkit-dev origin: rate 140 s/min, stored skipped: ran 969 recorded s over 10 moves; superseded before running 0 s; skipped as stored 0 s

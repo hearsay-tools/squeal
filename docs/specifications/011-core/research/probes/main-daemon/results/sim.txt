@@ -1,0 +1,36 @@
+== squeal plain: moves 100 (100 read); re-keyed 19089 files, 92326 s; of them stored at equal content before the move 3160 files, 14330 s; moves re-keying nothing 66
+per move s: median 0, p90 3085, max 3803; full suite at the last move: {"files":943,"secs":3900}
+rate 60 s/min: ran 89553 recorded s over 100 moves; superseded before running 2784 s; skipped as stored 0 s
+rate 60 s/min, stored skipped: ran 76909 recorded s over 100 moves; superseded before running 1096 s; skipped as stored 14331 s
+rate 140 s/min: ran 91577 recorded s over 100 moves; superseded before running 759 s; skipped as stored 0 s
+rate 140 s/min, stored skipped: ran 78005 recorded s over 100 moves; superseded before running 0 s; skipped as stored 14331 s
+== squeal env-: moves 100 (100 read); re-keyed 21283 files, 96647 s; of them stored at equal content before the move 3104 files, 14215 s; moves re-keying nothing 65
+per move s: median 0, p90 3085, max 3888; full suite at the last move: {"files":943,"secs":3900}
+rate 60 s/min: ran 93739 recorded s over 100 moves; superseded before running 2926 s; skipped as stored 0 s
+rate 60 s/min, stored skipped: ran 81096 recorded s over 100 moves; superseded before running 1353 s; skipped as stored 14216 s
+rate 140 s/min: ran 95905 recorded s over 100 moves; superseded before running 759 s; skipped as stored 0 s
+rate 140 s/min, stored skipped: ran 82449 recorded s over 100 moves; superseded before running 0 s; skipped as stored 14216 s
+== cezar plain: moves 12 (12 read); re-keyed 5802 files, 35348 s; of them stored at equal content before the move 859 files, 5337 s; moves re-keying nothing 0
+per move s: median 3661, p90 4111, max 4281; full suite at the last move: {"files":997,"secs":4645}
+rate 60 s/min: ran 34682 recorded s over 12 moves; superseded before running 673 s; skipped as stored 0 s
+rate 60 s/min, stored skipped: ran 30016 recorded s over 12 moves; superseded before running 0 s; skipped as stored 5339 s
+rate 140 s/min: ran 35355 recorded s over 12 moves; superseded before running 0 s; skipped as stored 0 s
+rate 140 s/min, stored skipped: ran 30016 recorded s over 12 moves; superseded before running 0 s; skipped as stored 5339 s
+== cezar env-: moves 12 (12 read); re-keyed 6048 files, 35512 s; of them stored at equal content before the move 862 files, 5338 s; moves re-keying nothing 0
+per move s: median 3661, p90 4275, max 4281; full suite at the last move: {"files":997,"secs":4645}
+rate 60 s/min: ran 34847 recorded s over 12 moves; superseded before running 673 s; skipped as stored 0 s
+rate 60 s/min, stored skipped: ran 30180 recorded s over 12 moves; superseded before running 0 s; skipped as stored 5340 s
+rate 140 s/min: ran 35520 recorded s over 12 moves; superseded before running 0 s; skipped as stored 0 s
+rate 140 s/min, stored skipped: ran 30180 recorded s over 12 moves; superseded before running 0 s; skipped as stored 5340 s
+== toolkit-dev plain: moves 7 (7 read); re-keyed 92 files, 410 s; of them stored at equal content before the move 2 files, 2 s; moves re-keying nothing 2
+per move s: median 1, p90 311, max 311; full suite at the last move: {"files":398,"secs":825}
+rate 60 s/min: ran 411 recorded s over 7 moves; superseded before running 0 s; skipped as stored 0 s
+rate 60 s/min, stored skipped: ran 409 recorded s over 7 moves; superseded before running 0 s; skipped as stored 2 s
+rate 140 s/min: ran 411 recorded s over 7 moves; superseded before running 0 s; skipped as stored 0 s
+rate 140 s/min, stored skipped: ran 409 recorded s over 7 moves; superseded before running 0 s; skipped as stored 2 s
+== toolkit-dev env-: moves 7 (7 read); re-keyed 2050 files, 4531 s; of them stored at equal content before the move 2 files, 2 s; moves re-keying nothing 0
+per move s: median 825, p90 825, max 825; full suite at the last move: {"files":398,"secs":825}
+rate 60 s/min: ran 3593 recorded s over 7 moves; superseded before running 935 s; skipped as stored 0 s
+rate 60 s/min, stored skipped: ran 3591 recorded s over 7 moves; superseded before running 935 s; skipped as stored 2 s
+rate 140 s/min: ran 3725 recorded s over 7 moves; superseded before running 804 s; skipped as stored 0 s
+rate 140 s/min, stored skipped: ran 3723 recorded s over 7 moves; superseded before running 804 s; skipped as stored 2 s

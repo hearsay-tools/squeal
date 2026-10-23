@@ -1,0 +1,21 @@
+files with main and linked rows: 113
+{
+  'equal content, key differs': 91,
+  'content differs, key differs': 204
+}
+files with equal content and different keys: 88
+ :: scripts/metrics/ui/src/lib/compare.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/compareReport.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/configStorage.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/dates.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/gettingStarted.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/metricsUrl.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/multiPeriodReport.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/outputStage.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/periodTimeline.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/reportSnapshot.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/runHint.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: scripts/metrics/ui/src/lib/window.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: tools/generator/tests/docs-drift-entry.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: tools/generator/tests/jira-mcp-entry.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
+ :: tools/generator/tests/plugin-tools.test.ts {"main":"f1de4bcb7","linked":"856d3bec2","w":"84d67cedba790826"}
