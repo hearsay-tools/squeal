@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
@@ -8,6 +8,7 @@ import { encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js
 import {
   coreEnvironmentInputs,
   environmentHash,
+  installedDependencies,
   KEY_FORMAT_VERSION,
 } from "../../src/core/keys/index.js";
 import {
@@ -17,7 +18,7 @@ import {
   type ResultRecord,
   type Store,
 } from "../../src/core/types/index.js";
-import { writeInstall } from "../keys/install.js";
+import { type PnpmFixture, writeInstall, writePnpmInstall } from "../keys/install.js";
 import { claimRepo, FakeRunner, fileName, side } from "./claims-fixture.js";
 
 /*
@@ -126,5 +127,103 @@ describe("the definition before 011-85 read as one (011-90)", SLOW, () => {
     expect(c.runner.runs).toEqual([]);
     expect([c.keyOf(F0), c.keyOf(F1)]).toEqual([k0, k1]);
     expect(c.passing()).toBe(2);
+  });
+});
+
+/*
+ * Row 011-167 (task 011-162 R3; 011 C3): a trusted pnpm install gives per-package keys (011-166),
+ * so a project whose environment becomes scoped changes every key. A lookup that misses also reads
+ * the key today's pnpm definition gave the file, the whole fingerprint in the environment hash and
+ * no segment, at the current format, while `lock.yaml` stands for the install. The definition
+ * before 011-85 read no pnpm graph either: its keys stay whole.
+ */
+
+const PNPM_LOCK = "node_modules/.pnpm/lock.yaml";
+const PNPM: PnpmFixture = { importers: { ".": { a: "1.0.0" } }, snapshots: { "a@1.0.0": {} } };
+
+/** The fake runner with packages: a scoped environment, F1 reaching a process, the others `a`. */
+function withPackages(runner: FakeRunner): void {
+  const environment = runner.environment;
+  runner.environment = async () =>
+    (await environment()).map((env) => ({ ...env, packages: { imports: [], builtins: [] } }));
+  runner.closure = async (testFile) => ({
+    testFile,
+    paths: [testFile.path],
+    packages:
+      testFile.path === F1
+        ? { imports: [], builtins: ["child_process"] }
+        : { imports: [{ from: "", name: "a" }], builtins: [] },
+  });
+}
+
+describe("today's pnpm definition read as one (011-167)", SLOW, () => {
+  it("settles a file from a pass stored under today's pnpm key under lookup-only and copies it to the new key", async () => {
+    const { main, others } = claimRepo(3, IGNORED, 1);
+    const [first] = others as [string];
+    writePnpmInstall(first, PNPM);
+    const installed = await installedDependencies(first, first);
+    expect([installed.note, installed.graph === null]).toEqual([null, false]);
+    const today = installed.fingerprint;
+
+    const b = side(first, { count: 3, policy: LOOKUP_ONLY });
+    withPackages(b.runner);
+    const t = Date.now() - 60_000;
+    const a = worktreeIdFor(main);
+    const f0 = stored(b.store, a, F0, await keyOver(first, F0, today), t);
+    const f1 = stored(b.store, a, F1, await keyOver(first, F1, today), t);
+    // At a format read as one: today's pnpm definition stored at format 20 only.
+    stored(b.store, a, F2, await keyOver(first, F2, today, KEY_FORMAT_VERSION - 1), t);
+    await b.scheduler.start();
+    await b.scheduler.idle();
+
+    expect(b.runner.runs).toEqual([]);
+    expect(b.passing()).toBe(2);
+    const k0 = b.keyOf(F0) as CheckKey;
+    expect(k0).not.toBe(await keyOver(first, F0, today));
+    expect(b.keyOf(F1)).not.toBe(await keyOver(first, F1, today));
+    expect(provenanceAt(b.store, k0)).toEqual([f0.provenance]);
+    expect(provenanceAt(b.store, b.keyOf(F1) as CheckKey)).toEqual([f1.provenance]);
+    expect(provenanceAt(b.store, b.keyOf(F2) as CheckKey)).toEqual([]);
+  });
+
+  it("reads no row under today's pnpm key while lock.yaml does not describe the install", async () => {
+    const { main, others } = claimRepo(1, IGNORED, 1);
+    const [first] = others as [string];
+    writePnpmInstall(first, PNPM);
+    const today = (await installedDependencies(first, first)).fingerprint;
+    mkdirSync(join(first, "node_modules/extra"));
+    const stale = await installedDependencies(first, first);
+    expect(stale.note).toMatch(/not listed in it: node_modules\/extra/);
+
+    const b = side(first, { count: 1, policy: LOOKUP_ONLY });
+    withPackages(b.runner);
+    stored(b.store, worktreeIdFor(main), F0, await keyOver(first, F0, today), Date.now());
+    await b.scheduler.start();
+    await b.scheduler.idle();
+    expect(b.passing()).toBe(0);
+    expect(provenanceAt(b.store, b.keyOf(F0) as CheckKey)).toEqual([]);
+  });
+
+  it("keys the definition before 011-85 whole for pnpm, so its rows are read too", async () => {
+    const { main, others } = claimRepo(1, IGNORED, 1);
+    const [first] = others as [string];
+    writePnpmInstall(first, PNPM);
+    const content = readFileSync(join(first, PNPM_LOCK));
+    const before = createHash("sha256").update(`${PNPM_LOCK}\0`).update(content).digest("hex");
+
+    const b = side(first, { count: 1, policy: LOOKUP_ONLY });
+    withPackages(b.runner);
+    const f0 = stored(
+      b.store,
+      worktreeIdFor(main),
+      F0,
+      await keyOver(first, F0, before),
+      Date.now(),
+    );
+    await b.scheduler.start();
+    await b.scheduler.idle();
+    expect(b.runner.runs).toEqual([]);
+    expect(b.passing()).toBe(1);
+    expect(provenanceAt(b.store, b.keyOf(F0) as CheckKey)).toEqual([f0.provenance]);
   });
 });
