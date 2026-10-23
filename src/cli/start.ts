@@ -12,6 +12,7 @@ import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
 import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
+import { stepDownIfOlder } from "../harness/shared/ensure.js";
 import { keptCacheCli } from "../harness/shared/version-copies.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import { endCommandHolds } from "./hold.js";
@@ -31,7 +32,9 @@ const SPAWN_WAIT_MS = 10_000;
  * (`served`, row 011-111). Exit code
  * 0 once a daemon answers, 1 otherwise. A stopping daemon is never said
  * alive: `start` finishes its handoff (`finishHandoff`, row 011-34), within
- * `bounds`, as long as `squeal stop` waits.
+ * `bounds`, as long as `squeal stop` waits. Row 011-140: a daemon older
+ * than this CLI that ended its handoff short, which no hook replaces, is
+ * asked to step down first (`replaceShort`).
  */
 export async function startCommand(
   args: readonly string[],
@@ -53,7 +56,7 @@ export async function startCommand(
   const cli =
     script === undefined ? undefined : keptCacheCli(script, squealVersion(), io.env ?? process.env);
   const now = io.now ?? Date.now;
-  const stopping = await stoppingDaemon(root, now);
+  const stopping = (await stoppingDaemon(root, now)) ?? (await replaceShort(root, now));
   if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
   const result = await ensureDaemon(root, cli === undefined ? {} : { cli });
   if (result === "unavailable") {
@@ -99,6 +102,23 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
   if (ping?.phase !== "stopping" && stopping === undefined) return null;
   const from = stopping?.from ?? ping?.squealVersion ?? "";
   return { socketPath, ping, record, from };
+}
+
+/**
+ * Row 011-140 (C9): the recorded daemon registered older than the handoff
+ * claim it ended (\`DaemonShort\`), and this CLI is newer than it: asks it
+ * to step down, as a hook would, and returns it stopping once it accepts,
+ * so \`start\` finishes the handoff. \`null\` otherwise.
+ */
+async function replaceShort(root: AbsolutePath, now: () => number): Promise<Stopping | null> {
+  const status = readStatus(root, { now });
+  const daemon = status.available ? status.daemon : null;
+  const short = daemon?.state === "alive" ? daemon.short : undefined;
+  if (short === undefined || !isNewerVersion(squealVersion(), short.version)) return null;
+  const record = recordedDaemon(root, 1_000);
+  if (record === null || handoffFrom(record) !== short.of) return null;
+  if (!(await stepDownIfOlder(record, now() as EpochMs))) return null;
+  return stoppingDaemon(root, now);
 }
 
 /**
