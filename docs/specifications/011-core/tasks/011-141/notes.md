@@ -25,7 +25,26 @@ Test code, `squeal.config.json`, and the return value of two build functions in 
 
 ## Measurement
 
-(filled in below once the checkpoint and the edit run complete)
+This host, 24 CPUs, 2026-10-23, shared with the other coordinators' workers. Load is the one-minute average, sampled every 15 to 30 s by a poller of `squeal status` (`t/b5d1bbdc/poll.log`, scratch). `slow.maxLoadPerCpu` 1.0 means a load of 24, which the host stayed above throughout.
+
+**The edit.** `git show 92b38a0f6 -- src/ | git apply -R` at 12:46:25 (load 41.8): the `scheduler.ts` edit the research measured, an 011-126 slice. The research's own reverted slice (69a6c09b2) no longer reverses at 016013a6b. The edit was measurement only, never committed, and checked out at 14:00:38. Right after it, `squeal status --wait 30000 test/daemon/busy-tier.test.ts` read "Pending (1): 1 slow, run after the fast tests": not current, where before this row it stayed current (research Q2). It re-keyed 364 of 934 files, 306 fast and 58 of the 60 slow ones; `graph-bundle` and `validity/lock` build nothing that holds `scheduler.ts`.
+
+| Part of one `squeal run --all --wait` after the edit | Files | Wall | Load (min, median, max) |
+| --- | --- | --- | --- |
+| Fast lane, 12:47:04 to about 13:21 | 306 | about 34 min | 22, 48, 103 |
+| Slow lane's load guard (D3), 13:21:18 to 13:31:19 | 0 | 10 min, its whole `slow.maxDeferMs` | 54, 70, 88 |
+| Slow lane, one file at a time (D2 width under load), 13:31 to 14:00:32 | 58 | 29.5 min | 27, 52, 74 |
+| Whole checkpoint | 364 | 4,408 s (73.5 min) | |
+
+The slow lane waited for the per-user slot another worktree held in 9 of 112 samples (8 %). It took about 40 min from the end of the fast lane to the verdict.
+
+An earlier run of all 60 slow files, after the `src/harness/build.ts` edit of f56e11f6b (checkpoint at df83ad165, 2,960 s for 61 files): guard 11:43 to 11:54, then 60 files serial 11:54 to 12:43 (49 min, load 26, 52.5, 94), waiting for the slot in 73 of 188 samples (39 %). About 60 min after the fast lane.
+
+**The same files in a fast lane.** The 58 files with `flock … npx vitest run --maxWorkers=4` (the lock taken at 14:15:41): 557 s wall, 1,358 s summed, load 38, 58, 81. `hold.test.ts` took 279 s of it. The research measured option A at 607 s wall for 52 files at load 19 to 97, which agrees.
+
+So, per `src/` checkpoint at about 2.2 per CPU: the slow lane adds about 40 to 60 min after the fast lane, the fast lane would add about 9 to 10 min of fast-lane wall (more where the files contend with the edit's other fast files). What the slow lane buys: an edit's own fast results never wait behind these 58. The repository-local levers are `slow.maxLoadPerCpu` (the guard's 10 min is spent on every pass here), `slow.maxDeferMs`, and the lane itself. Sent to the coordinator.
+
+**A failure seen on the way.** `test/harness/opencode-dispose.test.ts`, "serve: an abort of the new turn, then the old Stop's answer, stores nothing", misses its 2,000 ms idle deadline under load (+2,328, +2,116, +2,163 ms). It failed in the slow lane, in the direct run above, in W1's worktree (896f1939), and at the base 016013a6b in a scratch worktree (load 44, three attempts): not this row. A `squeal retry --reason load` is queued.
 
 ## Draft for spec 011 C12
 
