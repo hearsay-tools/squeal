@@ -8,6 +8,7 @@ import {
   readWhy,
 } from "../core/status/index.js";
 import type { EpochMs } from "../core/types/index.js";
+import { codeCommand } from "./code.js";
 import { codexStatusLine } from "./codex/status.js";
 import { daemonCommand } from "./daemon.js";
 import { failuresCommand } from "./failures.js";
@@ -72,6 +73,14 @@ Usage:
                                 --per-check lists each check once, at its newest
                                 failure; --limit lists more than 20, all lists
                                 every one; --since 2h lists only the last two hours
+  squeal code [<path>...] [--changed] [--json]
+                                With complexity.enabled: every function over the
+                                complexity threshold, newest first, with its location,
+                                complexity, decision points by kind and the revision it
+                                went over; paths list every function in those files or
+                                directories; --changed keeps those whose state changed
+                                since this session registered; files not counted
+                                follow, with why
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
   squeal init --harness codex [--print-launcher-config | --trust [--yes]]
@@ -169,6 +178,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   status,
   why,
   failures: failuresCommand,
+  code: codeCommand,
   init,
   setup: setupCommand,
   warmup: warmupCommand,
