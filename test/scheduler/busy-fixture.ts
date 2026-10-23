@@ -14,7 +14,7 @@ export function busyWrite(store: Store, during: () => void, nth = 1): () => void
   let left = nth;
   let depth = 0;
   store.transaction = ((fn: () => unknown) => {
-    if (left > 0 && depth === 0 && new Error().stack?.includes("TierScheduler.#write")) {
+    if (left > 0 && depth === 0 && new Error().stack?.includes("TierRecords.#write")) {
       left -= 1;
       if (left === 0) {
         during();
