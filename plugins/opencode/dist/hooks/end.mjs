@@ -2545,6 +2545,12 @@ var SELECT_RESULTS = `
 var KEYS_SINCE = `
   SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
   WHERE recorded_at > ? GROUP BY key`;
+var NEWEST_OF_FILE = `${SELECT_RESULTS}
+  WHERE c.project = ? AND c.test_path = ? AND r.key = (
+    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
+    WHERE c2.project = ? AND c2.test_path = ?
+    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
+  ORDER BY c.kind, c.full_name`;
 var COPY_SET = `
   INSERT INTO results (check_id, key, outcome, duration_ms, location_path, location_line,
     location_column, fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id,
@@ -2583,6 +2589,7 @@ function createResultRepo(conn) {
       );
       return row === null ? null : toResult(row);
     },
+    newestForTestFile: ({ project, path }) => conn.all(NEWEST_OF_FILE, project, path, project, path).map(toResult),
     listForCheck: (check, limit) => {
       const id = findCheckId(conn, check);
       if (id === null) return [];
@@ -4600,7 +4607,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.278";
+  if (true) return "0.1.279";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4888,21 +4895,26 @@ var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOC
 function quietMetaKey(worktreeId) {
   return worktreeMetaKey("quiet", worktreeId);
 }
-function publishedQuiet(store, worktreeId, daemonStartedAt, now) {
+var NO_ENDS = /* @__PURE__ */ new Map();
+function publishedWaits(store, worktreeId, daemonStartedAt, now) {
+  const none = { backlog: NO_ENDS, catchUp: NO_ENDS };
   const raw = store.meta.get(quietMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Map();
+  if (raw === null) return none;
   try {
-    const { at, lanes } = JSON.parse(raw);
-    if (typeof at !== "number" || at < daemonStartedAt) return /* @__PURE__ */ new Map();
-    if (typeof lanes !== "object" || lanes === null) return /* @__PURE__ */ new Map();
-    return new Map(
-      Object.entries(lanes).filter(
-        (entry3) => typeof entry3[1] === "number" && entry3[1] > now
-      )
-    );
+    const { at, lanes, catchUp } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt) return none;
+    return { backlog: endsAfter(lanes, now), catchUp: endsAfter(catchUp, now) };
   } catch {
-    return /* @__PURE__ */ new Map();
+    return none;
   }
+}
+function endsAfter(lanes, now) {
+  if (typeof lanes !== "object" || lanes === null) return NO_ENDS;
+  return new Map(
+    Object.entries(lanes).filter(
+      (entry3) => typeof entry3[1] === "number" && entry3[1] > now
+    )
+  );
 }
 
 // src/core/scheduler/yields.ts
@@ -5124,7 +5136,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const runs = reads?.runs ?? openRuns(store, worktree, daemon);
   const promoted = startedAt === null ? /* @__PURE__ */ new Set() : promotedIds(store, worktreeId, startedAt, now);
   const yields = startedAt === null ? /* @__PURE__ */ new Map() : publishedYields(store, worktreeId, startedAt);
-  const quiet = startedAt === null ? /* @__PURE__ */ new Map() : publishedQuiet(store, worktreeId, startedAt, now);
+  const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -5188,10 +5200,10 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       const held = { kind: "on-hold", hold };
       return { testFile: ref, state, pending: held, standing: held };
     }
-    const quietUntil = pending.kind === "queued" ? quiet.get(pending.lane) : void 0;
-    if (pending.kind === "queued" && pending.behind === null && quietUntil !== void 0) {
+    const wait = pending.kind === "queued" ? quietWait(quiet, pending.lane) : void 0;
+    if (pending.kind === "queued" && pending.behind === null && wait !== void 0) {
       if (!promoted.has(testFileId(ref))) {
-        const held = { ...pending, quietUntil };
+        const held = { ...pending, ...wait };
         return { testFile: ref, state, pending: held, standing: held };
       }
     }
@@ -5220,6 +5232,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     }
     return { testFile: ref, state, pending, standing: pending };
   });
+}
+function quietWait(quiet, lane) {
+  const backlog = quiet?.backlog.get(lane);
+  const catchUp = quiet?.catchUp.get(lane);
+  if (catchUp !== void 0 && (backlog === void 0 || catchUp > backlog))
+    return { quietUntil: catchUp, quietCatchUp: true };
+  return backlog === void 0 ? void 0 : { quietUntil: backlog };
 }
 function claimBound(policy, now) {
   return now + claimBoundMs(policy.runner.timeoutMs);
@@ -5280,7 +5299,7 @@ function groupId(s) {
     case "running":
       return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
