@@ -99,7 +99,7 @@ describe("squeal failures (task 001-409)", () => {
         "        at src/a.test.ts:3:5",
         "        AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
         "",
-        'squeal why "<check>" prints a failure\'s full output.',
+        "squeal why '<check>' prints a failure's full output.",
         "",
       ].join("\n"),
     );
