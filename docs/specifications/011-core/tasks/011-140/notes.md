@@ -13,7 +13,7 @@ How it was found (verified by experiment, this tree, 2026-10-23 10:40Z):
 3. `npx vitest run test/harness test/plugins test/real-cli --maxWorkers=4` with `PLUGIN_ROOT` and `PLUGIN_DATA` set to the scratch directories: 121 files, 213 s. The scratch data directory then held `versions/0.1.275` (the fake 0.1.200 code) and `bin/squeal`. The log named 6 calls, all from `/tmp/sq-codex-*/session-start.mjs` through `runMain` → `runCodexHandler` → `sessionStart` → `keepCodexVersion` → `keepVersion`.
 4. `test/harness/opencode/latency.test.ts` alone with the same variables: a copy without the isolation below, none with it (both on the old `keepVersion`).
 
-Not run: the other directories (`test/cli`, `test/daemon`, `test/scheduler`, ...) with the scratch variables. Every other `keepVersion` caller in the source takes its environment from the caller (`keptCacheCli` in `start.ts`) or from `process.env` in a bundle (`main.ts`). The bundle runners in `test/harness/bundle-helpers.ts` pass a minimal environment. So no other test reached it in the run above. The global setup clears both variables for every directory in any case.
+After the fix (39e614a30), `npx vitest run test/daemon test/harness --maxWorkers=4` with the same scratch variables, `HOME` and `CODEX_HOME`: 211 files, the scratch data and Codex directories still empty afterwards. Not run with the scratch variables: the other directories (`test/cli`, `test/scheduler`, ...). Every other `keepVersion` caller in the source takes its environment from the caller (`keptCacheCli` in `start.ts`) or from `process.env` in a bundle (`main.ts`). The bundle runners in `test/harness/bundle-helpers.ts` pass a minimal environment. So no other test reached it in the run above. The global setup clears both variables for every directory in any case.
 
 **Isolation.** `test/global-teardown.ts` (the Vitest global setup) deletes `PLUGIN_ROOT` and `PLUGIN_DATA` before the workers start, as it sets `TMPDIR` for them (task 014-36), and puts them back at teardown. Test: `test/global-teardown.test.ts` "row 011-140: clears PLUGIN_ROOT and PLUGIN_DATA ...".
 
@@ -59,4 +59,5 @@ Outside the row's file list: `src/core/daemon/daemon.ts` (the `#register` call a
 
 - The launcher (`plugins/*/bin/squeal-launcher`, format 6) still runs the newest copy without reading its manifest. After this row a hook renames a wrong copy of its own version out; a wrong copy of a version no hook runs any more stays until pruned. Not in this row's files.
 - Bundles are not rebuilt (no `npm run build` in this row): `plugins/*/dist` drift fails the four bundle tests until integration.
-- The scratch-variable experiment ran three directories, not the whole suite (section 1).
+- The scratch-variable runs covered `test/harness`, `test/plugins`, `test/real-cli` and `test/daemon`, not the whole suite (section 1).
+- `squeal start` asks the short daemon with the CLI's socket timeout (`askDaemon`), not the hooks' 100 ms: under Squeal's own run at load 2.2 per CPU the 100 ms ask timed out once.
