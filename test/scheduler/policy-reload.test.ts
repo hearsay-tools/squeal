@@ -8,6 +8,7 @@ import {
   openRepoStore,
   SLOW,
 } from "./helpers.js";
+import { idleAfterQuiet } from "./quiet-clock.js";
 
 const keysOf = (h: Harness) => ALL_TEST_FILES.map((path) => h.keyOf(path));
 
@@ -51,7 +52,8 @@ describe("scheduler: policy reload on a squeal.config.json revision (D11, review
     await h.batch("fixtures/data.json");
     for (const [i, key] of keysOf(h).entries())
       expect(key, ALL_TEST_FILES[i]).not.toBe(reloaded[i]);
-    await h.scheduler.idle();
+    // Reached through a declared input alone, every file is catch-up, which waits for quiet (row 011-153).
+    await idleAfterQuiet(h);
   });
 
   it("a new env.allowlist re-reads the environment and re-keys every test file", async () => {

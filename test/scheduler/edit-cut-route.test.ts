@@ -5,14 +5,13 @@ import {
   editAndRun,
   expectCut,
   FOUR_SHORT,
-  idleAfterQuiet,
   importers,
-  pastCatchUpQuiet,
   pathsOf,
   split,
   started,
   transitive,
 } from "./edit-cut-fixture.js";
+import { idleAfterQuiet, pastCatchUpQuiet } from "./quiet-clock.js";
 import { SETTLE_MS } from "./tier-yields-fixture.js";
 
 /*
