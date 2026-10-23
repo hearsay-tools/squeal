@@ -1,9 +1,11 @@
 import { basename, dirname } from "node:path";
 import { closureLine } from "../delivery/provenance.js";
+import { recordedText } from "../retry/index.js";
 import { testFileLabel } from "../run-log.js";
 import { flakyText, formatCheck, revisionText } from "../state/index.js";
 import { plural } from "../text.js";
 import type {
+  EpochMs,
   KnownOutcome,
   KnownState,
   Transition,
@@ -25,11 +27,26 @@ import {
   replacedLines,
   worktreeName,
 } from "./format-why-replaced.js";
+import { fromBase } from "./next-step-text.js";
 import { locationText } from "./test-frame.js";
 import { unknownRunLines } from "./why-unknown.js";
 
-/** Human rendering of `squeal why <check>`. Full stacks included: the reader asked for them. */
-export function formatWhy(why: WhyResult): string {
+export interface WhyFormatOptions {
+  /** The directory, relative to the worktree root, a printed command names its paths from (`fromBase`). */
+  readonly base?: string;
+  /** Dates the known failure's recorded run; `Date.now()` when absent. */
+  readonly now?: EpochMs;
+}
+
+/**
+ * Human rendering of `squeal why <check>`. Full stacks included: the reader
+ * asked for them. `command` is how the text names the CLI (row 011-67).
+ */
+export function formatWhy(
+  why: WhyResult,
+  command = "squeal",
+  options: WhyFormatOptions = {},
+): string {
   if (!why.available) return formatUnavailable(why);
   if (!why.found) {
     const ranked = rankedLine(why.rankedBy)
@@ -49,7 +66,7 @@ export function formatWhy(why: WhyResult): string {
     `Worktree: ${why.worktreeRoot}`,
     `Revision: ${why.revision === null ? "none recorded" : revisionText(why.revision, why.commit)}`,
     "",
-    ...knownState(why, why.knownState),
+    ...knownState(why, why.knownState, recordedLines(why, command, options)),
     "",
     ...history(why.history),
     "",
@@ -79,9 +96,10 @@ function noMatch(why: WhyNoMatch): string {
   return `${none} ${files}; a test that has not run yet has no name here, so it may be in ${queued === 1 ? "it" : "one of them"}.\n`;
 }
 
-function knownState(why: WhyReport, s: KnownState | null): string[] {
+function knownState(why: WhyReport, s: KnownState | null, recorded: readonly string[]): string[] {
   return [
     ...stateLines(why, s),
+    ...recorded,
     ...changedLine(why.changedSince),
     ...closureLines(why),
     ...rankedLine(why.rankedBy).map((line) => `  ${line}`),
@@ -90,6 +108,20 @@ function knownState(why: WhyReport, s: KnownState | null): string[] {
     ...flakyLine(why),
     ...rerunFirstLines(why, s),
   ];
+}
+
+/**
+ * Row 011-67 (gh-52): a known failure's recorded facts as status states them,
+ * with the load retry they name, the command and path as the reader runs them.
+ */
+function recordedLines(why: WhyReport, command: string, options: WhyFormatOptions): string[] {
+  if (why.recorded === undefined) return [];
+  const path = fromBase(options.base, why.check.testPath);
+  const text = recordedText(why.recorded, why.worktreeId, options.now ?? Date.now(), {
+    command,
+    path,
+  });
+  return [`  ${text.charAt(0).toUpperCase()}${text.slice(1)}`];
 }
 
 /**
