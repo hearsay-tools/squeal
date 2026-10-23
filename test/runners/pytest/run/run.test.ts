@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AbsolutePath, PytestProject, TestFileRef } from "../../../../src/core/types/index.js";
 import { readEnvironment } from "../../../../src/runners/pytest/environment/index.js";
 import { type PytestRunOptions, runPytest } from "../../../../src/runners/pytest/run/run.js";
+import { runSummary } from "../../../../src/runners/run-summary.js";
 import {
   PYTHONS,
   pythonEnv,
@@ -222,6 +223,10 @@ describe.each(PYTHONS)("runPytest under Python %s (spec 007 D6)", (version) => {
       ["outcomes/test_fail.py"],
       ["outcomes/test_pass.py", "outcomes/test_phases.py"],
     ]);
+    // Row 011-164: each batch's command line and exit stay; the report keeps its summary only.
+    expect(log.batches[0].command.length).toBeGreaterThan(1);
+    expect(log.batches[0].exit).toMatchObject({ code: 1 });
+    expect(log.report).toEqual(JSON.parse(JSON.stringify(runSummary(report))));
   });
 
   it(

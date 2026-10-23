@@ -12,6 +12,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../core/types/index.js";
+import { runLogJson } from "../run-summary.js";
 import { endedInTime, errorText, type RunCollector } from "./reporter.js";
 import { compareRefs, refKey, toCheckError } from "./results.js";
 
@@ -272,7 +273,10 @@ function owner(error: SerializedError, collector: RunCollector): RelativePath | 
   return path === null ? null : collector.paths.toRelative(path);
 }
 
-/** Writes `vitest.log` (raw output, absolute paths kept) and `report.json` under `logDir`. */
+/**
+ * Writes `vitest.log` (raw output, absolute paths kept) and `report.json`, the
+ * run's summary (`runLogJson`), under `logDir`.
+ */
 export function writeRunLog(options: RunOptions, collector: RunCollector, report: RunReport): void {
   mkdirSync(options.logDir, { recursive: true });
   const header = [
@@ -283,10 +287,7 @@ export function writeRunLog(options: RunOptions, collector: RunCollector, report
   const logFile = join(options.logDir, "vitest.log");
   writeFileSync(logFile, `${[...header, ...collector.log].join("\n")}\n`);
   collector.logFile = logFile;
-  writeFileSync(
-    join(options.logDir, "report.json"),
-    `${JSON.stringify({ runId: options.runId, report }, null, 2)}\n`,
-  );
+  writeFileSync(join(options.logDir, "report.json"), runLogJson({ runId: options.runId }, report));
 }
 
 function describeError(error: unknown): string {
