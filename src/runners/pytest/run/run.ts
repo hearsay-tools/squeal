@@ -5,15 +5,15 @@ import { delimiter, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toAbsolute } from "../../../core/fs/index.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import {
-  type AbsolutePath,
-  type FocusedFile,
-  focusedTexts,
-  type PytestProject,
-  type RelativePath,
-  type RunReport,
-  type TestFileRef,
+import type {
+  AbsolutePath,
+  FocusedFile,
+  PytestProject,
+  RelativePath,
+  RunReport,
+  TestFileRef,
 } from "../../../core/types/index.js";
+import { focusedTexts } from "../../focus.js";
 import { startGroup } from "../../node-test/run/process.js";
 import type { PytestEnvironment } from "../environment/index.js";
 import { runBasetemp } from "./basetemp.js";

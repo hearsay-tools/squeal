@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkTextPattern, focusedTexts, holdsCheckText } from "../../src/core/types/index.js";
+import { checkTextPattern, focusedTexts, holdsCheckText } from "../../src/runners/focus.js";
 
 /*
  * Row 011-135 R1 (spec 011 C14): a text is literal and selects a check when
