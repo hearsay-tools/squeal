@@ -9,9 +9,10 @@ import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/index.js";
 import { commonDir } from "../helpers.js";
 
 /**
- * A fake counter (015-05 is a sibling row): each line of a file is one
- * function, `<qualified name> <cc> <body>`, with an `!` after it when it is
- * in a parse error's range. Occurrences count repeated names in order.
+ * A fake counter (015-05 is a sibling row): each line of a file of the
+ * form `<qualified name> <cc> <body>` is one function, with an `!` after it
+ * when it is in a parse error's range; other lines are none. Occurrences
+ * count repeated names in order.
  */
 export function fakeCounter(version = 1): Counter & { readonly calls: string[] } {
   const calls: string[] = [];
@@ -25,7 +26,7 @@ export function fakeCounter(version = 1): Counter & { readonly calls: string[] }
       const seen = new Map<string, number>();
       text
         .split("\n")
-        .filter((line) => line.trim() !== "")
+        .filter((line) => /^\s*\S+ \d+ \S+( !)?\s*$/.test(line))
         .forEach((line, i) => {
           const [name = "", cc = "1", body = "", error] = line.trim().split(/\s+/);
           const occurrence = seen.get(name) ?? 0;

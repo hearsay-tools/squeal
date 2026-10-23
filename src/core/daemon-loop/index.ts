@@ -23,6 +23,12 @@ export interface DaemonLoopOptions extends Omit<SchedulerOptions, "head" | "onEx
   /** Defaults to the backend for `process.platform`. */
   readonly backend?: WatcherBackend;
   readonly timings?: Partial<WatcherTimings>;
+  /**
+   * Called once each batch's revision, if any, is stored: the code pass's
+   * nudge (spec 015 D4). It must not wait, so the feed's next batch is not
+   * held back.
+   */
+  readonly afterBatch?: () => void;
 }
 
 /** A worktree's watcher feeding its scheduler. Task 001-30 runs one per daemon. */
@@ -59,7 +65,7 @@ export interface DaemonLoop {
  * what changed while the baseline ran.
  */
 export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
-  const { onDropped, backend, timings, ...rest } = options;
+  const { onDropped, backend, timings, afterBatch, ...rest } = options;
   let feed: ChangeFeed | null = null;
   let closing: Promise<void> | null = null;
   const scheduler = createScheduler({
@@ -79,7 +85,10 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
       if (closing !== null) return;
       feed = createChangeFeed({
         root: options.root,
-        onBatch: (batch) => scheduler.handleBatch(batch),
+        onBatch: async (batch) => {
+          await scheduler.handleBatch(batch);
+          afterBatch?.();
+        },
         onError: options.onError,
         ...(options.busyWaits === undefined
           ? {}
