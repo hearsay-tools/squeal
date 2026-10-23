@@ -1,4 +1,5 @@
 import type { CheckError, CheckId } from "./check.js";
+import type { CodeStatus } from "./code-delivery.js";
 import type {
   AbsolutePath,
   CommitSha,
@@ -665,6 +666,8 @@ export interface StatusSnapshot extends StatusHeader {
    * `setup --check` names it (011 C6, C10). Absent for a valid or missing config.
    */
   readonly configProblems?: readonly string[];
+  /** Spec 015 D6: the complexity counts; absent while `complexity.enabled` is off. */
+  readonly code?: CodeStatus;
 }
 
 /** `StatusSnapshot.unknownTestFiles`: the first `files`, path order, of `total`. */
