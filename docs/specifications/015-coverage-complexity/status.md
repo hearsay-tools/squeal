@@ -1,6 +1,6 @@
 # 015 coverage and complexity: status
 
-Stage: draft (`spec.md`), under the human's review
+Stage: approved (2026-10-23, with changes)
 Started: 2026-10-23
 
 ## Decisions so far
@@ -21,6 +21,8 @@ Started: 2026-10-23
 - 2026-10-23, the human: line-level selection (015-01 Q7) is measured on the full suite after 015's coverage records are in the store, not now; 011's non-goal stands until then.
 - 2026-10-23, the human, on the transition model: a function is judged against its own last known count, as a test is. Going over the threshold is reported the same way as a test failure; going back under is reported as a recovery. Asked by the coordinator to drop the earlier question of which version to compare against (merge base, session start or last commit): the human's model does not need it.
 - 2026-10-23, the human, on the functions over the threshold when a session starts (192 here at CC 12): show their number and where to get the details, never the list ("don't flood the agent"). Ideally, the first edit that leaves such a function still over surfaces it; the coordinator judged it feasible (the counter sees which function's own text changed, and the delivery view already remembers per session what it was told), and the spec makes it its own row so it can be dropped if it proves complex.
+- 2026-10-23, the human, at the review of `spec.md`: approved with changes. The thresholds (`complexity.threshold` 20, `crap.threshold` 30) are configurable and the starting numbers are good. A session that edits a file too big to count is told so once (D6), and the size limit is a key of its own (`complexity.maxFileBytes`, D1); a warning against very large modules is an idea for later (board, Later). Complexity is delivered at once, without waiting for any test result, since it does not depend on coverage (D5); the coordinator named the one cost, churn during a refactor made in several edits, as open question 4.
+- 2026-10-23, the coordinator, found while briefing wave 0: code data lives in its own SQLite file, created only when the policy is on (D4, D8). The main store's `user_version` has never been raised, and a raise would make every older daemon of a repository exit (011 C7).
 
 ## Open questions
 
