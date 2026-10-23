@@ -226,6 +226,12 @@ export interface ResultRepo {
   checksForKey(key: CheckKey): readonly CheckId[];
   latestForCheck(check: CheckId): ResultRecord | null;
   /**
+   * Results of one test file under the key of its newest result, from any
+   * worktree; empty when it has none. Read only, as `listForCheck`. Row
+   * 011-154: a miss with no previous key takes its last duration from them.
+   */
+  newestForTestFile(testFile: TestFileRef): readonly ResultRecord[];
+  /**
    * Results of one check under any key, from every worktree, newest first by
    * record time, at most `limit`. Read only: never advances the last-used
    * time. Spec 001 D7: "`squeal why <check>` prints the full history and
