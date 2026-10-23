@@ -38,10 +38,10 @@ export interface PassContext {
  * the cursor's policy and counter, it follows the revisions since the
  * cursor: their changed paths, a retry, and a file a runner now lists. Else
  * it rebuilds every state with no transition (D5) and writes the recount
- * record. Four steps: the files rows, so status can say "counting, N of M";
- * the blobs no worktree counted yet, in slices with a turn of the event loop
- * between them; then states, transitions and the cursor in one transaction,
- * so a hook never reads half a revision.
+ * record. Three writes: the files rows, so status can say "counting, N of
+ * M"; the blobs no worktree counted yet, in slices with a turn of the event
+ * loop between them; then states, transitions and the cursor in one
+ * transaction, so a hook never reads half a revision.
  */
 export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const { store, source, worktreeId } = ctx;
