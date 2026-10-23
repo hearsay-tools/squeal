@@ -161,6 +161,7 @@ var WORKTREE_META_ROWS = {
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
+  focused: { prefix: "focused:", owner: "scheduler/focused-row" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
   quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
   mergeHold: { prefix: "merge-hold:", owner: "scheduler/hold-rows" },
@@ -2482,8 +2483,12 @@ var UNPROTECTED = `key NOT IN (${LIVE_KEYS})
     WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
       AND (n.recorded_at > results.recorded_at
            OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
-var PRUNABLE = `${UNPROTECTED}
-  AND (recorded_at < ? OR worktree_id NOT IN (SELECT id FROM worktrees))`;
+var PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
+var UNREFERENCED_RUN = `NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
+  AND id NOT IN (SELECT value FROM json_each(?))`;
+function keptRuns(conn) {
+  return JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]);
+}
 var LAST_COMPLETED_CHECKPOINTS = `
   SELECT id FROM (
     SELECT (SELECT x.id FROM checkpoints x
@@ -2505,19 +2510,7 @@ function prune(conn, worktrees, paths, options) {
   if (options.maxSizeMb !== null) {
     resultsRemoved += evictToCap(conn, options.maxSizeMb * 1024 * 1024);
   }
-  const droppedRuns = conn.transaction(
-    () => conn.all(
-      `DELETE FROM runs
-       WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
-         AND id NOT IN (SELECT value FROM json_each(?))
-         AND (worktree_id NOT IN (SELECT id FROM worktrees)
-              OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))
-       RETURNING log_dir`,
-      JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]),
-      cutoff
-    )
-  );
-  for (const row of droppedRuns) removeRunLog(paths, str(row, "log_dir"));
+  const runsRemoved = dropLiveWorktreeRuns(conn, paths, cutoff) + dropRemovedWorktreeRuns(conn, paths);
   const checkpointsRemoved = conn.transaction(
     () => conn.run(
       `DELETE FROM checkpoints
@@ -2538,12 +2531,38 @@ function prune(conn, worktrees, paths, options) {
   vacuum(conn);
   return {
     resultsRemoved,
-    runsRemoved: droppedRuns.length,
+    runsRemoved,
     checkpointsRemoved,
     checksRemoved,
     worktreesRemoved,
     bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size")
   };
+}
+function dropLiveWorktreeRuns(conn, paths, cutoff) {
+  const dropped = conn.transaction(
+    () => conn.all(
+      `DELETE FROM runs
+       WHERE ${UNREFERENCED_RUN} AND worktree_id IN (SELECT id FROM worktrees)
+         AND end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?
+       RETURNING log_dir`,
+      keptRuns(conn),
+      cutoff
+    )
+  );
+  for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
+  return dropped.length;
+}
+function dropRemovedWorktreeRuns(conn, paths) {
+  const dropped = conn.transaction(
+    () => conn.all(
+      `DELETE FROM runs
+       WHERE ${UNREFERENCED_RUN} AND worktree_id NOT IN (SELECT id FROM worktrees)
+       RETURNING log_dir`,
+      keptRuns(conn)
+    )
+  );
+  for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
+  return dropped.length;
 }
 function dropPrunable(conn, cutoff) {
   const ids = conn.read(() => conn.all(`SELECT rowid AS id FROM results WHERE ${PRUNABLE}`, cutoff)).map((row) => num(row, "id"));
@@ -4976,28 +4995,6 @@ function promotedIds(store, worktreeId, daemonStartedAt, now) {
   }
 }
 
-// src/core/daemon/escaped.ts
-var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
-
-// src/core/ps/proc.ts
-var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
-
-// src/core/capacity/pool.ts
-var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
-
-// src/core/slow/rank.ts
-var MAX_READ_BYTES = 1024 * 1024;
-
-// src/core/scheduler/queue.ts
-var Group = { first: 0, catchUp: 1, second: 2 };
-var GROUP_ORDER = {
-  edits: [Group.first, Group.catchUp, Group.second],
-  turn: [Group.catchUp, Group.second, Group.first]
-};
-
-// src/core/scheduler/rekeyed-moves.ts
-var MOVES_RETENTION_MS = 60 * 6e4;
-
 // src/core/daemon/version.ts
 import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
 import { dirname as dirname5, join as join12 } from "node:path";
@@ -5005,7 +5002,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.279";
+  if (true) return "0.1.280";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5304,6 +5301,32 @@ function tellRevision(store, consumer, revision) {
   writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
 }
 
+// src/core/scheduler/queue.ts
+var Group = { first: 0, catchUp: 1, second: 2 };
+var GROUP_ORDER = {
+  edits: [Group.first, Group.catchUp, Group.second],
+  turn: [Group.catchUp, Group.second, Group.first]
+};
+
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+
+// src/core/daemon/escaped.ts
+var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
+
+// src/core/ps/proc.ts
+var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
+
+// src/core/capacity/pool.ts
+var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
+
+// src/core/slow/rank.ts
+var MAX_READ_BYTES = 1024 * 1024;
+
+// src/core/scheduler/rekeyed-moves.ts
+var MOVES_RETENTION_MS = 60 * 6e4;
+
 // src/core/scheduler/unknown-files.ts
 function unknownFilesMetaKey(worktreeId) {
   return worktreeMetaKey("unknownFiles", worktreeId);
@@ -5331,10 +5354,6 @@ function knownCause(entry3) {
   const { cause: _cause, ...rest } = entry3;
   return rest;
 }
-
-// src/core/hash/blob.ts
-import { constants } from "node:fs";
-var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/scheduler/quiet.ts
 function quietMetaKey(worktreeId) {

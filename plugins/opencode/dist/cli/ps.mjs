@@ -448,6 +448,7 @@ var WORKTREE_META_ROWS = {
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
+  focused: { prefix: "focused:", owner: "scheduler/focused-row" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
   quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
   mergeHold: { prefix: "merge-hold:", owner: "scheduler/hold-rows" },
@@ -1063,8 +1064,7 @@ var UNPROTECTED = `key NOT IN (${LIVE_KEYS})
     WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
       AND (n.recorded_at > results.recorded_at
            OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
-var PRUNABLE = `${UNPROTECTED}
-  AND (recorded_at < ? OR worktree_id NOT IN (SELECT id FROM worktrees))`;
+var PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
 
 // src/core/store/repos/results.ts
 var SELECT_RESULTS = `
@@ -1123,6 +1123,24 @@ function immutableUrl(path) {
   return url;
 }
 var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
+// src/core/scheduler/queue.ts
+var Group = { first: 0, catchUp: 1, second: 2 };
+var GROUP_ORDER = {
+  edits: [Group.first, Group.catchUp, Group.second],
+  turn: [Group.catchUp, Group.second, Group.first]
+};
+
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/ps/measure.ts
 var takeSample = (source, pids3, since) => {
@@ -1512,26 +1530,8 @@ var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 // src/core/slow/rank.ts
 var MAX_READ_BYTES = 1024 * 1024;
 
-// src/core/scheduler/queue.ts
-var Group = { first: 0, catchUp: 1, second: 2 };
-var GROUP_ORDER = {
-  edits: [Group.first, Group.catchUp, Group.second],
-  turn: [Group.catchUp, Group.second, Group.first]
-};
-
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
-
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/status/stopping.ts
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-
-// src/core/hash/blob.ts
-import { constants } from "node:fs";
-var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/status/snapshot.ts
 var HEARTBEAT_GRACE_INTERVALS = 2;
