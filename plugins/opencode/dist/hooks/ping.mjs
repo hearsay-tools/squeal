@@ -280,6 +280,10 @@ function isNumber(value) {
 function plural(count, word) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
+var SAFE_WORD = /^[\w@%+=:,./-]+$/;
+function shellWord(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
 function excludedProjectsText(entries) {
   const quoted = (list, join) => {
     const all = list.map((entry) => JSON.stringify(entry));
@@ -303,11 +307,6 @@ function excludedFilesText(globs2) {
   const last = quoted.pop();
   return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
 }
-
-// src/core/ps/render-units.ts
-var KIB = 1024;
-var MIB = KIB * 1024;
-var GIB = MIB * 1024;
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -610,10 +609,6 @@ var GROUP_ORDER = {
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
 
-// src/core/hash/blob.ts
-import { constants } from "node:fs";
-var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
-
 // src/core/delivery/handoff.ts
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
 var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
@@ -621,11 +616,12 @@ var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
 // src/core/status/stopping.ts
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
-function shellWord(text) {
-  return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
-}
 
 // src/harness/shared/coverage.ts
 var VITEST_ONLY = {
