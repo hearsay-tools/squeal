@@ -3,11 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/main.js";
 import { askRetry, recordRunLoad } from "../../src/core/retry/index.js";
-import { recordFailureKeys } from "../../src/core/slow/state.js";
-import { checkIdentity, recordFailureProducers } from "../../src/core/state/index.js";
 import { formatWhy, readWhy } from "../../src/core/status/index.js";
-import { result } from "../store/helpers.js";
-import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";
+import { NOW, seededFailure } from "../retry/load-retry-fixture.js";
 import { reportOf } from "./why-seed.js";
 
 /*
@@ -16,50 +13,8 @@ import { reportOf } from "./why-seed.js";
  * names its load retry. Guidance only: nothing is asked or queued (011 C5).
  */
 
-const AUTH = check("src/auth.test.ts", "auth > login");
 const NAME = "src/auth.test.ts > auth > login";
-const NOW = Date.UTC(2026, 9, 23, 12, 0);
-
-function seeded(outcome: "fail" | "pass" = "fail") {
-  const repo = fakeRepo();
-  const store = seedStore(repo);
-  store.worktrees.upsert({
-    id: repo.mainId,
-    root: repo.main,
-    commonDir: repo.commonDir,
-    isMain: true,
-    registeredAt: 1,
-    daemon: null,
-  });
-  appendRevisions(store, repo.mainId, 4, { head: null, dirty: false });
-  const testFile = { project: "", path: "src/auth.test.ts" };
-  store.testFileKeys.upsertMany([
-    { worktreeId: repo.mainId, testFile, key: "k1", revision: 4, pending: null },
-  ]);
-  const produced = result(AUTH, "k1", {
-    outcome,
-    worktreeId: repo.mainId,
-    runId: "run-1",
-    recordedAt: NOW - 20_000,
-  });
-  store.results.putMany([produced]);
-  recordFailureKeys(store, repo.mainId, new Map([[checkIdentity(AUTH), "k1"]]));
-  recordFailureProducers(store, repo.mainId, [produced]);
-  store.knownStates.upsertMany([
-    state(repo.mainId, AUTH, {
-      outcome,
-      observedAt: 4,
-      ...(outcome === "fail"
-        ? {
-            commit: "abc123",
-            summary: "expected 1 to be 2",
-            fingerprint: "AssertionError: expected 1 to be 2 @ src/a.test.ts:3:5",
-          }
-        : {}),
-    }),
-  ]);
-  return { repo, store, testFile };
-}
+const seeded = (outcome: "fail" | "pass" = "fail") => seededFailure(outcome);
 
 describe("squeal why: a known failure's recorded facts and its load retry (row 011-67)", () => {
   it("names the load retry, as the reader's command would, at or above one load per CPU", () => {
