@@ -148,6 +148,7 @@ function newTooBig(
   consumer: Consumer,
   since: RevisionNumber | null,
   limit: number,
+  write: boolean,
 ): CodeTooBig[] {
   if (since === null) return [];
   const told = toldTooBig(store, consumer);
@@ -155,7 +156,7 @@ function newTooBig(
     .list(consumer.worktreeId)
     .filter((f) => isTooBig(f) && f.revision > since && !told.has(f.path));
   if (files.length === 0) return [];
-  writeJson(store, tooBigToldKey(consumer), [...told, ...files.map((f) => f.path)]);
+  if (write) writeJson(store, tooBigToldKey(consumer), [...told, ...files.map((f) => f.path)]);
   return files.map((f) => ({ path: f.path, size: f.size, limit }));
 }
 
@@ -174,13 +175,71 @@ export function lineOf(
   return fn?.range.startLine ?? null;
 }
 
+/** What one delivery tells, and whether it writes anything. */
+interface CodeStep {
+  readonly news: CodeNews | null;
+  readonly writes: boolean;
+}
+
+/** The delivery's code part; with `write`, the view and told marks it changes are written. */
+function codeStep(
+  store: CodeStore,
+  consumer: Consumer,
+  { at, since, limit }: { at: EpochMs; since: RevisionNumber | null; limit: number },
+  write: boolean,
+): CodeStep {
+  const { worktreeId } = consumer;
+  const seeded = readJson(store, seededKey(consumer));
+  const seededAt = typeof seeded === "number" ? seeded : 0;
+  const states = store.states.list(worktreeId, { measure: MEASURE });
+  const tooBig = newTooBig(store, consumer, since, limit, write);
+  const big = tooBig.length === 0 ? {} : { tooBig };
+  const recount = readRecount(store, worktreeId);
+  if (recount !== null && recount.at > seededAt) {
+    if (write) seed(store, consumer, states, at);
+    const news: CodeNews = {
+      v: 1,
+      entries: [],
+      more: 0,
+      recount: { ...recount, over: over(states) },
+    };
+    return { news: { ...news, ...big }, writes: true };
+  }
+  const plan = planCodeDelta({
+    view: store.views.list(consumer).filter((v) => v.measure === MEASURE),
+    states,
+    last: (check, measure) => lastTransition(store, worktreeId, check, measure),
+    seededAt,
+    toldAt: at,
+  });
+  const listed = plan.entries.slice(0, CODE_LISTED_MAX);
+  if (write) {
+    // The changes past the limit are told as a number only.
+    const full = new Set(listed.map(codeKey));
+    store.views.removeMany(consumer, plan.removals);
+    store.views.writeMany(
+      consumer,
+      plan.writes.map((w) => (full.has(codeKey(w)) ? w : { ...w, told: "count" })),
+    );
+  }
+  const writes = plan.removals.length + plan.writes.length + tooBig.length > 0;
+  if (plan.entries.length === 0 && tooBig.length === 0) return { news: null, writes };
+  const entries: CodeDeltaEntry[] = listed.map((e) => ({
+    ...e,
+    line: e.kind === "removed" ? null : lineOf(store, worktreeId, e.check),
+  }));
+  return { news: { v: 1, entries, more: plan.entries.length - entries.length, ...big }, writes };
+}
+
 /**
  * Spec 015 D5, D6: what `consumer` is told of the code at a delivery, its
  * view written in the same code store transaction. A recount since its
  * view was seeded is one summary line and seeds it again by count. `since`
  * reads its registration revision (`registration`), `null` when none is
- * recorded; only while the policy is on. `null` when there is nothing to
- * tell, the policy is off or the store cannot be read.
+ * recorded; only while the policy is on. Read-only first, so a delivery
+ * with nothing to write takes no lock the daemon's pass waits for. `null`
+ * when there is nothing to tell, the policy is off or the store cannot be
+ * read.
  */
 export function tellCode(
   source: CodeSource | undefined,
@@ -188,41 +247,10 @@ export function tellCode(
   at: EpochMs,
   since: () => RevisionNumber | null,
 ): CodeNews | null {
-  const { worktreeId } = consumer;
-  const told = withCode(source, ({ store, complexity }) =>
-    store.transaction((): CodeNews | null => {
-      const seeded = readJson(store, seededKey(consumer));
-      const seededAt = typeof seeded === "number" ? seeded : 0;
-      const states = store.states.list(worktreeId, { measure: MEASURE });
-      const tooBig = newTooBig(store, consumer, since(), complexity.maxFileBytes);
-      const big = tooBig.length === 0 ? {} : { tooBig };
-      const recount = readRecount(store, worktreeId);
-      if (recount !== null && recount.at > seededAt) {
-        seed(store, consumer, states, at);
-        return { v: 1, entries: [], more: 0, recount: { ...recount, over: over(states) }, ...big };
-      }
-      const plan = planCodeDelta({
-        view: store.views.list(consumer).filter((v) => v.measure === MEASURE),
-        states,
-        last: (check, measure) => lastTransition(store, worktreeId, check, measure),
-        seededAt,
-        toldAt: at,
-      });
-      const listed = plan.entries.slice(0, CODE_LISTED_MAX);
-      // The changes past the limit are told as a number only.
-      const full = new Set(listed.map(codeKey));
-      store.views.removeMany(consumer, plan.removals);
-      store.views.writeMany(
-        consumer,
-        plan.writes.map((w) => (full.has(codeKey(w)) ? w : { ...w, told: "count" })),
-      );
-      if (plan.entries.length === 0 && tooBig.length === 0) return null;
-      const entries: CodeDeltaEntry[] = listed.map((e) => ({
-        ...e,
-        line: e.kind === "removed" ? null : lineOf(store, worktreeId, e.check),
-      }));
-      return { v: 1, entries, more: plan.entries.length - entries.length, ...big };
-    }),
-  );
+  const told = withCode(source, ({ store, complexity }) => {
+    const input = { at, since: since(), limit: complexity.maxFileBytes };
+    if (!store.read(() => codeStep(store, consumer, input, false)).writes) return null;
+    return store.transaction(() => codeStep(store, consumer, input, true).news);
+  });
   return told === "missing" ? null : told;
 }
