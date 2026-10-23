@@ -187,7 +187,7 @@ export function formatFailures(report: FailuresResult): string {
   const each = perCheck ? ", newest failure of each" : "";
   const lines = [`Failures in ${scope}${window} (${count}${replaced}${each}, newest first):`];
   for (const f of report.failures) lines.push(...failureLines(report, f));
-  lines.push("", 'squeal why "<check>" prints a failure\'s full output.');
+  lines.push("", "squeal why '<check>' prints a failure's full output.");
   return `${lines.join("\n")}\n`;
 }
 
