@@ -1514,11 +1514,12 @@ function readPnpmLockfile(text3) {
     if (indent2 === 0) {
       const pair2 = pairOf(body2);
       if (pair2 === null) return null;
-      if (pair2[0] === "lockfileVersion") {
-        if (!/^9\.\d+$/.test(pair2[1])) return null;
+      const [key3, value2] = pair2;
+      if (key3 === "lockfileVersion") {
+        if (!/^9\.\d+$/.test(value2)) return null;
         version2 = true;
-      }
-      section2 = pair2[1] === "" ? pair2[0] : "";
+      } else if (!UNREAD.root.has(key3) && (!isPart(key3) || value2 !== "")) return null;
+      section2 = isPart(key3) ? key3 : "";
       [entry4, id2, reading] = [null, "", false];
       continue;
     }
@@ -1526,11 +1527,14 @@ function readPnpmLockfile(text3) {
       if (indent2 > 4) continue;
       const pair2 = pairOf(body2);
       if (pair2 === null) return null;
-      if (indent2 === 2) id2 = pair2[0];
-      else if (pair2[0] === "resolution") {
+      if (indent2 === 2) {
+        if (pair2[1] !== "") return null;
+        id2 = pair2[0];
+      } else if (pair2[0] === "resolution") {
+        if (!pair2[1].startsWith("{")) return null;
         const found3 = /^\{(?:.*[ ,])?integrity: ([^\s,}]+)[,}]/.exec(pair2[1])?.[1];
         if (found3 !== void 0) integrity.set(id2, found3);
-      }
+      } else if (!UNREAD.packages.has(pair2[0])) return null;
       continue;
     }
     if (section2 !== "importers" && section2 !== "snapshots") continue;
@@ -1549,7 +1553,7 @@ function readPnpmLockfile(text3) {
     } else if (entry4 === null) return null;
     else if (indent2 === 4) {
       reading = (section2 === "importers" ? IMPORTER_FIELDS : SNAPSHOT_FIELDS).has(key2);
-      if (reading && value !== "") return null;
+      if (reading ? value !== "" : !UNREAD[section2].has(key2)) return null;
     } else if (section2 === "snapshots") {
       if (!isRef(value) || !setOnce(entry4, key2, value)) return null;
     } else if (indent2 === 6) {
@@ -1558,12 +1562,15 @@ function readPnpmLockfile(text3) {
       if (!entry4.has(key2)) entry4.set(key2, "");
     } else if (key2 === "version") {
       if (!isRef(value) || !setOnce(entry4, dependency, value)) return null;
-    }
+    } else if (key2 !== "specifier") return null;
   }
   for (const declared of importers.values()) {
     for (const ref2 of declared.values()) if (ref2 === "") return null;
   }
-  return version2 ? { importers, integrity, snapshots } : null;
+  return version2 && importers.has(".") ? { importers, integrity, snapshots } : null;
+}
+function isPart(key2) {
+  return key2 === "importers" || key2 === "packages" || key2 === "snapshots";
 }
 function isRef(value) {
   return value !== "" && !value.startsWith("{") && !value.startsWith("[");
@@ -1608,13 +1615,40 @@ function pnpmFolderName(id2, max) {
   }
   return name2;
 }
-var PNPM_LOCKFILE, IMPORTER_FIELDS, SNAPSHOT_FIELDS;
+var PNPM_LOCKFILE, IMPORTER_FIELDS, SNAPSHOT_FIELDS, UNREAD;
 var init_pnpm_lockfile = __esm({
   "src/core/keys/pnpm-lockfile.ts"() {
     "use strict";
     PNPM_LOCKFILE = "node_modules/.pnpm/lock.yaml";
     IMPORTER_FIELDS = /* @__PURE__ */ new Set(["dependencies", "devDependencies", "optionalDependencies"]);
     SNAPSHOT_FIELDS = /* @__PURE__ */ new Set(["dependencies", "optionalDependencies"]);
+    UNREAD = {
+      root: /* @__PURE__ */ new Set([
+        "settings",
+        "catalogs",
+        "overrides",
+        "packageExtensionsChecksum",
+        "pnpmfileChecksum",
+        "patchedDependencies",
+        "ignoredOptionalDependencies",
+        "time"
+      ]),
+      importers: /* @__PURE__ */ new Set(["dependenciesMeta", "publishDirectory"]),
+      packages: /* @__PURE__ */ new Set([
+        "bundledDependencies",
+        "cpu",
+        "deprecated",
+        "engines",
+        "hasBin",
+        "libc",
+        "name",
+        "os",
+        "peerDependencies",
+        "peerDependenciesMeta",
+        "version"
+      ]),
+      snapshots: /* @__PURE__ */ new Set(["transitivePeerDependencies", "optional", "id"])
+    };
   }
 });
 
@@ -1669,15 +1703,17 @@ var init_pnpm_graph = __esm({
         const skipped2 = Array.isArray(modules.skipped) ? modules.skipped : [];
         this.skipped = new Set(skipped2.filter((id2) => typeof id2 === "string"));
         const publicHoisted = /* @__PURE__ */ new Map();
+        const privateHoisted = /* @__PURE__ */ new Map();
         const hoisted = isRecord(modules.hoistedDependencies) ? modules.hoistedDependencies : {};
         for (const [id2, aliases] of Object.entries(hoisted)) {
           if (!isRecord(aliases)) continue;
           for (const [alias, kind] of Object.entries(aliases)) {
             if (kind === "public") publicHoisted.set(alias, id2);
-            else if (kind === "private") this.#privateHoisted.set(alias, id2);
+            else if (kind === "private") privateHoisted.set(alias, id2);
           }
         }
         this.publicHoisted = publicHoisted;
+        this.privateHoisted = privateHoisted;
       }
       dir;
       base;
@@ -1689,8 +1725,9 @@ var init_pnpm_graph = __esm({
       skipped;
       /** The snapshot each publicly hoisted name at the root links to. */
       publicHoisted;
+      /** The snapshot each privately hoisted name in `.pnpm/node_modules` links to. */
+      privateHoisted;
       #snapshotOf = /* @__PURE__ */ new Map();
-      #privateHoisted = /* @__PURE__ */ new Map();
       #closures = /* @__PURE__ */ new Map();
       /** The package folder of each installed identity a closure produced. */
       #packageFolders = /* @__PURE__ */ new Map();
@@ -1739,7 +1776,7 @@ var init_pnpm_graph = __esm({
         if (nameOf(id2) === name2) return id2;
         const ref2 = this.lockfile.snapshots.get(id2)?.get(name2);
         if (ref2 !== void 0) return childOf(name2, ref2);
-        return this.#privateHoisted.get(name2) ?? this.#fromImporters("", name2);
+        return this.privateHoisted.get(name2) ?? this.#fromImporters("", name2);
       }
       /** Node's walk from a project directory: pnpm creates `node_modules` only in importers. */
       #fromImporters(from, name2) {
@@ -1752,13 +1789,28 @@ var init_pnpm_graph = __esm({
       }
       /** `<id>#<integrity>` and its sorted edges, or a marker the closure does not expand. */
       #identity(id2) {
-        const edges = this.lockfile.snapshots.get(id2);
-        if (edges === void 0) return `unknown:${id2}`;
+        const base = this.#base(id2);
+        if (!base.startsWith(`${id2}#`)) return base;
+        const edges = [...this.lockfile.snapshots.get(id2) ?? []].map(
+          ([name2, ref2]) => this.#typesOnly(childOf(name2, ref2)) ? `${name2}@types-only` : `${name2}@${ref2}`
+        );
+        return edges.length === 0 ? base : `${base}>${edges.sort(compare).join(",")}`;
+      }
+      /** `<id>#<integrity>`, or a marker: no such snapshot, no integrity, or skipped. */
+      #base(id2) {
+        if (!this.lockfile.snapshots.has(id2)) return `unknown:${id2}`;
         const integrity = this.lockfile.integrity.get(id2.replace(/\(.*$/, ""));
         if (integrity === void 0) return `nointegrity:${id2}`;
-        if (this.skipped.has(id2)) return `skipped:${id2}#${integrity}`;
-        const names4 = [...edges].map(([name2, ref2]) => `${name2}@${ref2}`).sort(compare);
-        return names4.length === 0 ? `${id2}#${integrity}` : `${id2}#${integrity}>${names4.join(",")}`;
+        return this.skipped.has(id2) ? `skipped:${id2}#${integrity}` : `${id2}#${integrity}`;
+      }
+      /** Whether `id` is an installed snapshot whose package has no runtime file (task 001-109). */
+      #typesOnly(id2) {
+        const base = this.#base(id2);
+        return base.startsWith(`${id2}#`) && this.scans.typesOnly(this.#scanId(base), join8(this.dir, this.#folderOf(id2)));
+      }
+      /** The package folder of snapshot `id`, relative to the install. */
+      #folderOf(id2) {
+        return `${VIRTUAL_STORE}${this.folders.get(id2)}/node_modules/${nameOf(id2)}`;
       }
       /** Identities of `start` and everything it can load, memoized per snapshot. */
       #closure(start2) {
@@ -1770,18 +1822,18 @@ var init_pnpm_graph = __esm({
         for (let id2 = stack.pop(); id2 !== void 0; id2 = stack.pop()) {
           if (seen.has(id2)) continue;
           seen.add(id2);
-          const identity4 = isMarker(id2) ? id2 : this.#identity(id2);
-          if (!identity4.startsWith(`${id2}#`)) {
-            identities.push(identity4);
+          const base = isMarker(id2) ? id2 : this.#base(id2);
+          if (!base.startsWith(`${id2}#`)) {
+            identities.push(base);
             continue;
           }
-          const folder = `${VIRTUAL_STORE}${this.folders.get(id2)}/node_modules/${nameOf(id2)}`;
-          if (this.scans.typesOnly(this.#scanId(identity4), join8(this.dir, folder))) {
-            identities.push(`${id2}@types-only`);
+          if (this.#typesOnly(id2)) {
+            identities.push(`${nameOf(id2)}@types-only`);
             continue;
           }
+          const identity4 = this.#identity(id2);
           identities.push(identity4);
-          this.#packageFolders.set(identity4, folder);
+          this.#packageFolders.set(identity4, this.#folderOf(id2));
           for (const [name2, ref2] of this.lockfile.snapshots.get(id2) ?? [])
             stack.push(childOf(name2, ref2));
         }
@@ -1830,20 +1882,40 @@ function stalePnpmLockfile(dir2, graph) {
   const unlisted2 = [];
   const newer = [];
   const missing2 = [];
+  const absent2 = (path) => lstatSync3(join9(dir2, path), { throwIfNoEntry: false }) === void 0;
   for (const [id2, folder] of graph.folders) {
     if (graph.skipped.has(id2)) continue;
-    const path = `${VIRTUAL_STORE2}/${folder}/node_modules/${id2.slice(0, id2.indexOf("@", 1))}`;
+    const modules = `${VIRTUAL_STORE2}/${folder}/node_modules`;
+    const path = `${modules}/${id2.slice(0, id2.indexOf("@", 1))}`;
     const stat9 = lstatSync3(join9(dir2, path), { throwIfNoEntry: false });
     if (stat9 === void 0) missing2.push(path);
     else if (stat9.mtimeMs > lockTime) newer.push(path);
+    for (const [name2, ref2] of graph.lockfile.snapshots.get(id2) ?? []) {
+      const edge = `${modules}/${name2}`;
+      if (!graph.skipped.has(childOf(name2, ref2)) && absent2(edge)) missing2.push(edge);
+    }
+  }
+  for (const [at2, hoisted] of [
+    ["node_modules", graph.publicHoisted],
+    [`${VIRTUAL_STORE2}/node_modules`, graph.privateHoisted]
+  ]) {
+    for (const [alias, id2] of hoisted) {
+      if (!graph.skipped.has(id2) && absent2(`${at2}/${alias}`)) missing2.push(`${at2}/${alias}`);
+    }
   }
   for (const [importer, declared] of graph.lockfile.importers) {
     const modules = importer === "." ? "node_modules" : `${importer}/node_modules`;
-    for (const name2 of namesIn(join9(dir2, modules))) {
+    const present = new Set(namesIn(join9(dir2, modules)));
+    for (const name2 of present) {
       const path = `${modules}/${name2}`;
       if (!declared.has(name2) && !(importer === "." && graph.publicHoisted.has(name2))) {
         unlisted2.push(path);
       } else if (lstatSync3(join9(dir2, path)).mtimeMs > lockTime) newer.push(path);
+    }
+    for (const [name2, ref2] of declared) {
+      if (!present.has(name2) && !graph.skipped.has(childOf(name2, ref2))) {
+        missing2.push(`${modules}/${name2}`);
+      }
     }
   }
   const parts2 = [
