@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { idleAfterQuiet } from "./quiet-clock.js";
 
 /*
  * Lessons, defect 3: an edit to a module ran every test file that reaches it
@@ -106,7 +107,8 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
 
     h.write("src/math.ts", edit);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    // The cut keeps the shortest; the other is catch-up, which waits for quiet (row 011-153).
+    await idleAfterQuiet(h);
     expect(direct).toEqual([[]]);
     expect(h.runner.runs.slice(baseline).map((run) => run.files.map((f) => f.path))).toEqual([
       ["test/zz-fast.test.ts"],
