@@ -91,8 +91,10 @@ export interface SchedulerOptions {
    */
   readonly onError?: (error: Error) => void;
   /**
-   * Task 001-422: the busy wait of each write of a `handleBatch` pass, below
-   * the store's own (`BUSY_SLICE_MS` in the daemon). Absent: the store's.
+   * Task 001-422: the busy wait of each write the pump awaits, below the
+   * store's own (`BUSY_SLICE_MS` in the daemon), only with `busyWaits`,
+   * whose give-up resumes the pump (row 011-132 slice 4). Absent, or
+   * without `busyWaits`: the store's.
    */
   readonly busySliceMs?: number;
   /**
