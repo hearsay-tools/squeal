@@ -254,6 +254,14 @@ export interface SlowSuiteRequest {
   readonly queued: number;
 }
 
+/** `Scheduler.slowWaiting`: what a departure drain's waiting slow lane would leave queued (row 011-163). */
+export interface SlowWaiting {
+  /** Since when no slow file ran and the drain's fast work was done, or the drain began. */
+  readonly since: EpochMs;
+  /** The slow files queued, in the lane's order. */
+  readonly paths: readonly RelativePath[];
+}
+
 /**
  * Turns revisions into keys, lookups and tiered runs for one worktree.
  *
@@ -377,6 +385,13 @@ export interface Scheduler {
    * `null` with nothing owed, before the scheduler started and once it closed.
    */
   owedWork(): string | null;
+  /**
+   * A departure drain's slow lane waits (011 C9 as amended 2026-10-23, row
+   * 011-163): the drain's fast work is done, no slow file runs, and slow
+   * files are queued. `null` otherwise, when no drain paused the backlog,
+   * before the scheduler started and once it closed.
+   */
+  slowWaiting(): SlowWaiting | null;
   /** Paths the stat cache holds, for `ChangeFeed` reconciliation passes. */
   trackedPaths(): Iterable<RelativePath>;
   /**
