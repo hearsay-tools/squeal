@@ -3,7 +3,7 @@ import { fullSuiteText, revisionText, runnerPartText, slowTierText } from "../st
 import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { holdLine } from "../status/holds.js";
-import { stoppingText } from "../status/stopping.js";
+import { shortText, stoppingText } from "../status/stopping.js";
 import type { DaemonLiveness, StatusHeader, ValidityCounts } from "../types/index.js";
 import { installSentences } from "./provenance.js";
 
@@ -161,7 +161,12 @@ function livenessSentence(
   if (daemon.stopping !== undefined) {
     return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
   }
-  if (daemon.state === "alive") return "";
+  // Row 011-140: a daemon that ended its handoff short validates, at its own version.
+  if (daemon.state === "alive") {
+    return daemon.short === undefined
+      ? ""
+      : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+  }
   // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
   if (daemon.stopped === true)
     return ` ${stoppedText(command)}; results are as of revision ${revision}.`;

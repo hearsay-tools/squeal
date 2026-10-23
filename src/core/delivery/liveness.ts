@@ -153,8 +153,15 @@ export function changedSince(
  * before that task reads the object as `alive`.
  */
 
-/** What a consumer was last told about the daemon. */
-export type ToldLiveness = DaemonLiveness["state"] | { readonly startingSince: EpochMs };
+/**
+ * What a consumer was last told about the daemon; \`{ short }\`, the
+ * incarnation of a daemon that ended its handoff short (row 011-140), is
+ * \`alive\` told once, and a hook before that row reads it as \`alive\`.
+ */
+export type ToldLiveness =
+  | DaemonLiveness["state"]
+  | { readonly startingSince: EpochMs }
+  | { readonly short: string };
 
 /**
  * Task 001-156: how long a daemon a hook spawned before a registration may
@@ -177,8 +184,14 @@ export function livenessMetaKey(worktreeId: WorktreeId): string {
 export function toldLiveness(store: Store, consumer: Consumer): ToldLiveness {
   const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
   if (told === "down") return "down";
+  if (isRecord(told) && typeof told.short === "string") return { short: told.short };
   const since = isRecord(told) ? told.startingSince : undefined;
   return typeof since === "number" ? { startingSince: since as EpochMs } : "alive";
+}
+
+/** What telling \`live\` records (\`tellLiveness\`): its state, or the short handoff's daemon. */
+export function toldOf(live: DaemonLiveness): ToldLiveness {
+  return live.state === "alive" && live.short !== undefined ? { short: live.short.of } : live.state;
 }
 
 /** Records what `consumer` was told; `null` forgets it. Call inside a transaction. */
@@ -196,7 +209,7 @@ export function tellLiveness(store: Store, consumer: Consumer, told: ToldLivenes
  * first heartbeat (`heldStop`).
  */
 export function asTold(live: DaemonLiveness, told: ToldLiveness, at: EpochMs): DaemonLiveness {
-  if (live.state === "alive" || typeof told !== "object") return live;
+  if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
@@ -242,6 +255,12 @@ export function livenessChange(
     const rest = restState(store, worktree, at);
     if (rest === "quiet") return null;
     if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  }
+  // Row 011-140: a daemon that ended its handoff short is told once, whatever was told before.
+  if (live.state === "alive" && live.short !== undefined) {
+    return typeof told === "object" && "short" in told && told.short === live.short.of
+      ? null
+      : live;
   }
   return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
 }

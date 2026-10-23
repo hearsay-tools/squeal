@@ -33,6 +33,7 @@ import {
   tellLiveness,
   tellRevision,
   toldLiveness,
+  toldOf,
   toldRevision,
   withTold,
 } from "./liveness.js";
@@ -202,7 +203,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness ? livenessChange(store, consumer, at) : null;
-      if (changed !== null) tellLiveness(store, consumer, changed.state);
+      if (changed !== null) tellLiveness(store, consumer, toldOf(changed));
       // Row 011-73 (C8 as amended 2026-10-21): a hold's start and end, told as liveness is.
       const holds = liveness ? holdsChange(store, consumer, at) : null;
       if (holds !== null) tellHolds(store, consumer, holds.now);
@@ -318,7 +319,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         );
         const starting =
           header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
-        tellLiveness(store, consumer, starting ? told : (header.daemon?.state ?? null));
+        const daemon = header.daemon === undefined ? null : toldOf(header.daemon);
+        tellLiveness(store, consumer, starting ? told : daemon);
         tellRevision(store, consumer, header.revision);
         tellSlowTier(store, consumer, header.slowTier);
         tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
