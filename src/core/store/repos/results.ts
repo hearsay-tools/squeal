@@ -29,6 +29,19 @@ export const KEYS_SINCE = `
   WHERE recorded_at > ? GROUP BY key`;
 
 /**
+ * `ResultRepo.newestForTestFile` (row 011-154): the file's newest row names
+ * the key, then that key's rows of the file. One statement: on a copy of
+ * squeal's store (156,000 rows, 970 files) a third of the time a read per
+ * check took (`tasks/011-154/notes.md`).
+ */
+const NEWEST_OF_FILE = `${SELECT_RESULTS}
+  WHERE c.project = ? AND c.test_path = ? AND r.key = (
+    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
+    WHERE c2.project = ? AND c2.test_path = ?
+    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
+  ORDER BY c.kind, c.full_name`;
+
+/**
  * `ResultRepo.copyNewest`'s copy (task 011-38): every row of one key under
  * another, with its provenance and record time, only while the other holds
  * no row. One statement, so a set another daemon stores there meanwhile is
@@ -78,6 +91,8 @@ export function createResultRepo(conn: Connection): ResultRepo {
       );
       return row === null ? null : toResult(row);
     },
+    newestForTestFile: ({ project, path }) =>
+      conn.all(NEWEST_OF_FILE, project, path, project, path).map(toResult),
     listForCheck: (check, limit) => {
       const id = findCheckId(conn, check);
       if (id === null) return [];
