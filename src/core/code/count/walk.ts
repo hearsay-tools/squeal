@@ -6,6 +6,7 @@ import type { CodeRange, DecisionKind, FunctionCount } from "../../types/code.js
 export interface At {
   readonly type: string;
   readonly named: boolean;
+  /** Read only under a parent of `CountRules.fieldParents`; `null` elsewhere. */
   readonly field: string | null;
   readonly parentType: string | null;
 }
@@ -16,11 +17,13 @@ export interface CountRules {
   readonly functions: ReadonlySet<string>;
   /** Named node types that are classes: a scope of the qualified name, never counted. */
   readonly classes: ReadonlySet<string>;
+  /** Parent types whose children's field names the rules read; the walk reads no other. */
+  readonly fieldParents: ReadonlySet<string>;
   /** A function's or a class's name (D2); an anonymous one's from its call site or receiver. */
   nameOf(node: Node): string;
-  /** Where a function's hashed text starts: after its name, so that a rename keeps the hash (D2). */
+  /** Where a function's hashed text starts: after its name, so a rename keeps the hash (D2). */
   hashFrom(node: Node): Node;
-  /** A node whose decision points are no function's: they are dropped, its nested functions counted. */
+  /** A node whose decision points are no function's: dropped, its nested functions counted. */
   ownPath(at: At): boolean;
   /** The decision point a node is, adding 1; `cursor` stands on it. */
   decision(at: At, cursor: TreeCursor): DecisionKind | null;
@@ -68,12 +71,10 @@ export function countTree(root: Node, text: string, rules: CountRules): TreeCoun
     for (;;) {
       const type = cursor.nodeType;
       const named = cursor.nodeIsNamed;
-      const at: At = {
-        type,
-        named,
-        field: cursor.currentFieldName,
-        parentType: ancestors.at(-1) ?? null,
-      };
+      const parentType = ancestors.at(-1) ?? null;
+      const field =
+        parentType !== null && rules.fieldParents.has(parentType) ? cursor.currentFieldName : null;
+      const at: At = { type, named, field, parentType };
       const exit: Exit = { scope: false, frame: false, error: false };
       if (findErrors && inError === 0 && (type === "ERROR" || cursor.nodeIsMissing)) {
         errors.push(rangeAt(cursor));
