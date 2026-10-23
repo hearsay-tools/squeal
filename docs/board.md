@@ -1157,7 +1157,7 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 015-04 the code-check seam | planned | D1 policy keys and their validation; D2 and D5 the code check identity and state types, beside `CheckId`, never in it; D4 the store tables for counts by blob and states per worktree, with migration (011 C7); the path that does nothing while the policy is off. The interface wave 1 builds on. | Type and store tests; with the policy off, every delivery, status and exit code is byte-identical to the release before (goal 1). |
+| 015-04 the code-check seam | running (wave 0, `015-coverage-complexity/tasks/wave-0.md` W1, worker dc73d332, opus xhigh, from main 6233ef597) | D1 policy keys and their validation; D2 and D5 the code check identity and state types, beside `CheckId`, never in it; D4 the store tables for counts by blob and states per worktree, with migration (011 C7); the path that does nothing while the policy is off. The interface wave 1 builds on. | Type and store tests; with the policy off, every delivery, status and exit code is byte-identical to the release before (goal 1). |
 
 ### Wave 1: complexity (parallel on disjoint seams after 015-04; one candidate with 015-08)
 
