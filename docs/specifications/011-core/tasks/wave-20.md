@@ -94,3 +94,30 @@ Check:
   - the four launchers are byte-identical.
 
 Run `npm ci`, then run directly the test files W1 to W3 added or changed. Never run a script under `evals/bin/`, `tasks/011-122/probe/` or `tasks/009-31/probe/` yourself, `--help` included. The full suite is run twice: by CI on the candidate (run 39904823555) and by the coordinator's locked gate (`.ai/cezar/t/04a258b0/gate-w20.log`). A gate log names only failing files. Write `reviews/0.1.273.md` under `docs/specifications/011-core/`, with a PASS or FAIL verdict, and commit it alone.
+
+## Wave 20.5: repair of review 0.1.273
+
+Review `reviews/0.1.273.md` failed `cand/0.1.273` (a1618a61f) on one proven blocker, B1, in 011-126. W2 (006-98) and W3 (009-31) need no change. One repair, then one narrow re-review.
+
+### W4: 011-126 B1, a busy record checks the current merge hold before it lands
+
+Use /worker. Shape: repair. Resume of worker e8b08f00, on its own branch.
+
+Outcome: a record that waits for a busy store stores nothing at a key the current merge hold names when it lands, and leaves that file queued until the hold ends, as C9 says.
+
+Read `reviews/0.1.273.md` (B1, its regression body, N1 and "Inputs for the fix wave"); spec 011 C9, the unresolved-merge sentences.
+
+Seam: `#prepare` and `#write` in `src/core/scheduler/scheduler.ts` (`:1047` to `:1128`). Keep prepared what must run once: the observations, the environment re-key and the counted withholds. Before each unwritten record's store decision, read the merge hold anew and apply its file and setup exclusions, without counting a withhold again and without a re-run because the store was busy.
+
+Owns: `scheduler.ts`, `test/scheduler/busy-*.test.ts`, `tasks/011-126/notes.md`. Not yours: the result validity decoder, C9's text, `tiers.ts`, the board, bundles, version. No `npm run build`.
+
+Done when:
+- the review's regression is a test that fails at a1618a61f and passes now: the held key stays empty and queued after the free, and the hold's end starts the queued work;
+- a setup exclusion case passes, if the repair changes that boundary;
+- `busy-tier.test.ts`, `busy-edit.test.ts`, `busy-record.test.ts`, `busy-commit.test.ts` and the merge-hold and setup tests pass unchanged in their bounds;
+- the notes' list of writes still at 5 s adds N1's two paths (`#hold.check()` in `#ended`, and `#recheckTiers`' `#adopt` and `#cutTiers`);
+- lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), with their output in your summary.
+
+### R2: re-review of the repaired candidate
+
+Use /reviewer. Shape: review, narrow: B1 and the repair delta only, against `reviews/0.1.273.md`. Write `reviews/0.1.273-r2.md`.
