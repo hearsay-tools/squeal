@@ -1,0 +1,84 @@
+Observations of three-versions.mjs on 2026-10-23, from summarize-three.mjs. Paths under the scratch directory are shown as <scratch>.
+== mislabeled.jsonl: mode mislabeled, load 15.79 on 24 CPUs, v24.21.0, start 2026-10-23T07:24:51.947Z
+daemon processes: 57 {"\"0.1.271\" from versions/0.1.272":1,"\"0.1.272\" from versions/0.1.273 --await-lock":36,"\"0.1.272\" from versions/0.1.273":19,"\"0.1.272\" from squeal/0.1.272":1}
+daemon incarnations recorded: 39 {"0.1.271":1,"0.1.272":38}
+claims: 38; exit notes: 38; registrations seen: 39
+hooks: 116 (0 not exit 0); with a notice: 35; handing over: 35; validating again: 0; largest hook ms: 165
+  stop at 33017 ms: decision null; 
+  stop at 62600 ms: decision null; 
+  stop at 91789 ms: decision null; 
+  stop at 120548 ms: decision null; 
+  stop at 152754 ms: decision null; 
+  codex-install: {"t":496,"removed":"0.1.272 cache"}
+  writer: {"t":45743,"ms":3064,"held":3000,"out":"held 1792740335298 freed 1792740338304","code":0}
+  status-wait: {"t":46270,"ms":3282,"code":0,"out":"Revision: 0 | Selected: test/fast.test.mjs | Named test files at revision 0: no known failures; 1 test file, each with a current result, after 3.1 s. Worktree: known failures 0; not current: 1 of 2 test files (1 running)"}
+  edit: {"t":72255}
+  start: {"t":92360,"ms":570,"code":0,"out":"Squeal daemon started for <scratch>/mislabeled-c79c7c43/repo, after the 0.1.272 daemon handed over in 0.4 s |  | Revision: 1 · df34cf22 + 1, dirty | Known failures: 0; not current: 1 of 2 test files (1 queued)"}
+  writer: {"t":103391,"ms":2044,"held":2000,"out":"held 1792740393952 freed 1792740395956","code":0}
+  writer: {"t":119317,"ms":2062,"held":2000,"out":"held 1792740409874 freed 1792740411880","code":0}
+  writer: {"t":132309,"ms":2075,"held":2000,"out":"held 1792740422856 freed 1792740424861","code":0}
+  writer: {"t":148348,"ms":2063,"held":2000,"out":"held 1792740438902 freed 1792740440912","code":0}
+  final-status: {"code":0,"out":"Revision: 1 · df34cf22 + 1, dirty | Known failures: 0; not current: 1 of 2 test files (1 running) | Affected checks: 3 passed (2 tests, 1 test file loaded), 0 running, 0 queued; 1 test file without checks yet: 1 running, 0 queued | Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)"}
+  cleanup: {"owned":[720144,720474,720529],"forced":[],"scratch":"<scratch>/mislabeled-c79c7c43"}
+distinct handover notices (from to since): 33
+  0.1.271 0.1.273 2026-10-23T07:24:53.242Z;
+  0.1.272 0.1.273 2026-10-23T07:24:59.661Z;
+  0.1.272 0.1.273 2026-10-23T07:25:06.067Z;
+  0.1.272 0.1.273 2026-10-23T07:25:06.069Z;
+  0.1.272 0.1.273 2026-10-23T07:25:12.490Z;
+  0.1.272 0.1.273 2026-10-23T07:25:15.694Z;
+== mislabeled-2.jsonl: mode mislabeled, load 15.57 on 24 CPUs, v24.21.0, start 2026-10-23T07:51:17.965Z
+daemon processes: 51 {"\"0.1.271\" from versions/0.1.272":1,"\"0.1.272\" from versions/0.1.273 --await-lock":39,"\"0.1.272\" from versions/0.1.273":11}
+daemon incarnations recorded: 40 {"0.1.271":1,"0.1.272":39}
+claims: 39; exit notes: 40; registrations seen: 40
+hooks: 102 (0 not exit 0); with a notice: 27; handing over: 26; validating again: 0; largest hook ms: 181
+  stop at 31943 ms: decision null; 
+  stop at 50741 ms: decision block; SQUEAL · the daemon is handing over at revision 0 handing over from 0.1.272 to 0.1.273 since 2026-10-23T07:52:09.155Z;
+  stop at 72918 ms: decision null; 
+  stop at 92092 ms: decision null; 
+  stop at 111456 ms: decision null; 
+  stop at 130626 ms: decision null; 
+  stop at 153039 ms: decision block; SQUEAL · the daemon is handing over at revision 1 handing over from 0.1.272 to 0.1.273 since 2026-10-23T07:53:51.452Z;
+  codex-install: {"t":473,"removed":"0.1.272 cache"}
+  status-wait: {"t":42636,"ms":1130,"code":0,"out":"Revision: 0 | Selected: test/fast.test.mjs | Named test files at revision 0: no known failures; 1 test file, each with a current result, after 1.0 s; the daemon is handing over from 0.1.272 to 0.1.273 since 2026-10-23T07:51:59.882Z, so the wait went on. Worktree: known failures 0; not current: 1 of 2 test files (1 running)"}
+  writer: {"t":44510,"ms":3034,"held":3000,"out":"held 1792741919937 freed 1792741922940","code":0}
+  edit: {"t":73161}
+  start: {"t":92551,"ms":212,"code":0,"out":"Squeal daemon alive for <scratch>/mislabeled-7eb90224/repo |  | Revision: 1 · d8f53b50 + 1, dirty | Known failures: 0; not current: 1 of 2 test files (1 queued)"}
+  writer: {"t":104131,"ms":2057,"held":2000,"out":"held 1792741980552 freed 1792741982558","code":0}
+  writer: {"t":120086,"ms":2046,"held":2000,"out":"held 1792741996509 freed 1792741998513","code":0}
+  writer: {"t":132959,"ms":2085,"held":2000,"out":"held 1792742009376 freed 1792742011383","code":0}
+  writer: {"t":148812,"ms":2056,"held":2000,"out":"held 1792742025232 freed 1792742027240","code":0}
+  final-status: {"code":0,"out":"Revision: 1 · d8f53b50 + 1, dirty not known | Known failures: 0; not current: 1 of 2 test files (1 queued) | Affected checks: 3 passed (2 tests, 1 test file loaded), 0 running, 0 queued | Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)"}
+  cleanup: {"owned":[1602074],"forced":[],"scratch":"<scratch>/mislabeled-7eb90224"}
+distinct handover notices (from to since): 25
+  0.1.272 0.1.273 2026-10-23T07:51:50.359Z;
+  0.1.272 0.1.273 2026-10-23T07:51:53.637Z;
+  0.1.272 0.1.273 2026-10-23T07:51:59.882Z;
+  0.1.272 0.1.273 2026-10-23T07:52:09.155Z;
+  0.1.272 0.1.273 2026-10-23T07:52:09.154Z;
+  0.1.272 0.1.273 2026-10-23T07:52:12.485Z;
+== control-2.jsonl: mode control, load 15.13 on 24 CPUs, v24.21.0, start 2026-10-23T07:45:41.897Z
+daemon processes: 2 {"\"0.1.271\" from versions/0.1.272":1,"\"0.1.273\" from versions/0.1.273 --await-lock":1}
+daemon incarnations recorded: 2 {"0.1.271":1,"0.1.273":1}
+claims: 1; exit notes: 1; registrations seen: 2
+hooks: 102 (0 not exit 0); with a notice: 2; handing over: 1; validating again: 0; largest hook ms: 182
+  stop at 32173 ms: decision null; 
+  stop at 50868 ms: decision null; 
+  stop at 72833 ms: decision null; 
+  stop at 91781 ms: decision null; 
+  stop at 110732 ms: decision null; 
+  stop at 133052 ms: decision null; 
+  stop at 152376 ms: decision null; 
+  codex-install: {"t":466,"removed":"0.1.272 cache"}
+  status-wait: {"t":42034,"ms":379,"code":0,"out":"Revision: 0 | Selected: test/fast.test.mjs | Named test files at revision 0: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 2 test files current"}
+  writer: {"t":44661,"ms":3030,"held":3000,"out":"held 1792741583873 freed 1792741586876","code":0}
+  edit: {"t":72960}
+  start: {"t":92046,"ms":131,"code":0,"out":"Squeal daemon alive for <scratch>/control-31aef8fa/repo |  | Revision: 1 · 43897c04 + 1, dirty | Known failures: 0; all 2 test files current"}
+  writer: {"t":103353,"ms":2039,"held":2000,"out":"held 1792741643564 freed 1792741645569","code":0}
+  writer: {"t":119244,"ms":2052,"held":2000,"out":"held 1792741659439 freed 1792741661442","code":0}
+  writer: {"t":135255,"ms":2047,"held":2000,"out":"held 1792741675464 freed 1792741677468","code":0}
+  writer: {"t":148184,"ms":2080,"held":2000,"out":"held 1792741688384 freed 1792741690390","code":0}
+  final-status: {"code":0,"out":"Revision: 1 · 43897c04 + 1, dirty | Known failures: 0; all 2 test files current | Affected checks: 5 passed (3 tests, 2 test files loaded), 0 running, 0 queued | Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)"}
+  cleanup: {"owned":[1350697],"forced":[],"scratch":"<scratch>/control-31aef8fa"}
+distinct handover notices (from to since): 1
+  0.1.271 0.1.273 2026-10-23T07:45:42.803Z;
