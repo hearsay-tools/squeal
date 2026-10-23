@@ -97,7 +97,8 @@ test/integration/node-test
 # observed and environment growth, capacity, lanes, scratch inputs, the idle
 # pass (beside pytest), warm-up, an edit's tier beside the backlog tier,
 # the backlog's one-file slots and its turn among them, and an edit's tier
-# superseded by a store hit, run to its end (row 011-71).
+# superseded by a store hit, run to its end (row 011-71), and an import
+# that keeps a touched build watched (row 011-36).
 test/scheduler/slow-node-test
 test/scheduler/preload-heal
 test/scheduler/preload-refresh
@@ -113,6 +114,7 @@ test/scheduler/edit-beside-backlog
 test/scheduler/backlog-slots
 test/scheduler/slots-backlog-turn
 test/scheduler/superseded-claim
+test/integration/touched-scope
 # A daemon started on a node:test project: its results, its slow tier and
 # capacity mark, the version probe of each project's Node at startup, two
 # overlapping runs of its lane through the sweep, the bare-file note under

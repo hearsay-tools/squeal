@@ -6,7 +6,8 @@ Brief `brief.md`, shape slice. Base `266a3471a`. Commits:
 - `9a5097481`: the end-to-end case in `test/scheduler/scratch-inputs.test.ts` and this file.
 - `49a29dd7f`: the validity case, outside the brief's ownership, approved by the coordinator (decision 1).
 - `022dad752`: `test/integration/touched-scope.test.ts`, outside the brief's ownership, approved by the coordinator (decision 2, option A).
-- The last commit: this file's update.
+- `d082e8497`: a type narrowing in that edit, for `npm run typecheck`.
+- The next commit: `test/version-sensitive.txt` lists `test/integration/touched-scope` (spec 010 D4), since option A makes that file run a real node:test; `test/version-sensitive.test.ts` failed without it.
 
 ## What landed
 
