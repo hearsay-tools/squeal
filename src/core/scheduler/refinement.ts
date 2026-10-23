@@ -15,7 +15,7 @@ import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
-import { quietQueued } from "./quiet.js";
+import { quietCaughtUp, quietQueued } from "./quiet.js";
 import {
   applyListing,
   type ContentRekey,
@@ -274,7 +274,10 @@ export async function applyRunnerPart(
   if (!catchUp && keyedAt !== undefined && part.cut !== undefined) {
     // The rest of a small revision's reach is catch-up (011 C4 step 4 as amended for 011-25).
     const { kept, reached } = editWork(context, ledger, part.cut, changed, part.direct);
-    demote(ledger, [...reached, ...(part.recent ?? []).map(testFileId)], kept, keyedAt);
+    const ids = [...reached, ...(part.recent ?? []).map(testFileId)];
+    demote(ledger, ids, kept, keyedAt);
+    // Its catch-up waits for quiet (011 C4 step 5 as amended 2026-10-23, row 011-153).
+    quietCaughtUp(context, ledger, ids);
   }
   return stale;
 }

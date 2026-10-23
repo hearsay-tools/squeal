@@ -98,6 +98,11 @@ export type Standing =
        * 2026-10-21, row 011-82); absent with no wait, or from an older daemon.
        */
       readonly quietUntil?: EpochMs;
+      /**
+       * `quietUntil` is the end of the lane's wait for quiet before its
+       * catch-up of an edit (C4 step 5 as amended 2026-10-23, row 011-153).
+       */
+      readonly quietCatchUp?: true;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
   /** Queued while the worktree is on hold (C9, row 011-73): the first hold `holds` names. */

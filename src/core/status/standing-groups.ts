@@ -17,7 +17,7 @@ export function groupId(s: OutstandingStanding): string {
     case "running":
       return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
