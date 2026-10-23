@@ -203,9 +203,12 @@ describe("policy: this repository's squeal.config.json", () => {
    * Row 011-141: `busy-tier.test.ts` builds the CLI with `tsc` and imports
    * none of the scheduler; `buildCli` stats each file `tsc` compiled, so its
    * run observes them (011 C12). With that observed set, a `scheduler.ts` edit
-   * re-keys it, and a daemon test that observed no build keeps its key.
+   * re-keys it, and a daemon test that observed no build keeps its key. `tsc`
+   * lists the files, which can outlast the 5 s default on a loaded host.
    */
-  it("re-keys busy-tier.test.ts on a scheduler.ts edit, by what its build compiled", async () => {
+  it("re-keys busy-tier.test.ts on a scheduler.ts edit, by what its build compiled", {
+    timeout: 60_000,
+  }, async () => {
     const busyTier = "test/daemon/busy-tier.test.ts";
     const listed = execFileSync(
       process.execPath,
