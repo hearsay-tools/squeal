@@ -1,5 +1,6 @@
 {
   "vitest": { "exclude": ["test/e2e/**"] },
+  "baseline": { "onStart": "lookup-only" },
   "inputs": {
     "test/harness/plugin.test.ts": [
       "plugins/claude-code/**",
