@@ -1,5 +1,10 @@
 import { describeFailure } from "../../../../src/core/state/fingerprint.js";
-import type { CheckError, RunReport, TestFileRef } from "../../../../src/core/types/index.js";
+import type {
+  CheckError,
+  FocusedFile,
+  RunReport,
+  TestFileRef,
+} from "../../../../src/core/types/index.js";
 
 /*
  * What a run's report stores (011 C14, rows 011-41 and 011-48), as the
@@ -40,4 +45,25 @@ export function storedOf(report: RunReport) {
       }))
       .sort(byText((e) => e.file)),
   };
+}
+
+/**
+ * Of a focused run (`RunOptions.checks`, row 011-144), at both trees, the
+ * results of the checks its texts select: a tree that does not focus runs
+ * the file whole, so the comparison asks whether the selected checks'
+ * outcomes agree. The text rule is literal, as `holdsCheckText`, which an
+ * older tree lacks.
+ */
+export function selectedOf(
+  report: RunReport,
+  checks: readonly FocusedFile[] | undefined,
+): RunReport {
+  if (checks === undefined) return report;
+  const results = report.results.filter(({ check }) => {
+    const texts = checks
+      .filter((c) => c.testFile.project === check.project && c.testFile.path === check.testPath)
+      .flatMap((c) => c.texts);
+    return texts.length === 0 || texts.some((text) => check.fullName.includes(text));
+  });
+  return { ...report, results };
 }

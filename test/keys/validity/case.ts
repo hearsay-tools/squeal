@@ -1,6 +1,7 @@
 import type {
   CheckId,
   CoreEnvironmentInputs,
+  FocusedFile,
   RunnerEnvironment,
   RunReport,
   TestFileRef,
@@ -170,6 +171,8 @@ export interface VitestInput {
     readonly fileEndedThrows?: boolean;
     readonly removeTempDir?: boolean;
     readonly edits?: readonly { readonly path: string; readonly text: string }[];
+    /** A focused run's texts per file (`RunOptions.checks`, row 011-144): see `selectedOf`. */
+    readonly checks?: readonly FocusedFile[];
   }[];
   /** Read each project's environment files once open, as the case's keys (row 011-88). */
   readonly environment?: true;
@@ -209,6 +212,8 @@ export interface PytestInput {
     readonly files: readonly string[];
     readonly edits?: readonly { readonly path: string; readonly text?: string | null }[];
     readonly timeoutMs?: number;
+    /** A focused run's texts per file path (`RunOptions.checks`, row 011-144): see `selectedOf`. */
+    readonly checks?: readonly { readonly path: string; readonly texts: readonly string[] }[];
   }[];
   /** Paths whose affected test files are read at open and after each run. */
   readonly affected?: readonly string[];
