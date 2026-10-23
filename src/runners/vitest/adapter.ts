@@ -473,12 +473,13 @@ export class VitestAdapter implements RunnerAdapter {
         await this.#invalidateStale(await this.#instance(hold));
         const vitest = await this.#instance(hold);
         const specs = testFiles.map((ref) => {
-          const texts = focusedTexts(options.checks, ref);
+          const project = findProject(vitest, ref);
           const path = this.paths.toAbsolute(ref.path);
+          const texts = focusedTexts(options.checks, ref);
           // 013 V4 (row 011-135): the specification's own pattern, never the instance's.
           return texts === null
-            ? findProject(vitest, ref).createSpecification(path)
-            : findProject(vitest, ref).createSpecification(path, {
+            ? project.createSpecification(path)
+            : project.createSpecification(path, {
                 testNamePattern: new RegExp(checkTextPattern(texts)),
               });
         });
