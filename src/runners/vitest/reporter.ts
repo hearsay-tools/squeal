@@ -1,15 +1,14 @@
 import { appendFileSync } from "node:fs";
 import type { Reporter, SerializedError, TestCase, TestModule, Vitest } from "vitest/node";
 import { consolePrefix, testFileLabel } from "../../core/run-log.js";
-import {
-  type AbsolutePath,
-  type CheckRunResult,
-  type FocusedCount,
-  type FocusedFile,
-  focusedTexts,
-  holdsCheckText,
-  type TestFileRef,
+import type {
+  AbsolutePath,
+  CheckRunResult,
+  FocusedCount,
+  FocusedFile,
+  TestFileRef,
 } from "../../core/types/index.js";
+import { focusedTexts, holdsCheckText } from "../focus.js";
 import type { WorktreePaths } from "./paths.js";
 import { checkNames, refKey, toCheckRunResult } from "./results.js";
 

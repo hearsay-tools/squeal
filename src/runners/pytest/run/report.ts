@@ -1,16 +1,16 @@
 import { join, sep } from "node:path";
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import {
-  type AbsolutePath,
-  type CheckError,
-  type CheckRunResult,
-  type FileLevelError,
-  type FocusedCount,
-  holdsCheckText,
-  type RunOutcome,
-  type SourceLocation,
-  type TestFileRef,
+import type {
+  AbsolutePath,
+  CheckError,
+  CheckRunResult,
+  FileLevelError,
+  FocusedCount,
+  RunOutcome,
+  SourceLocation,
+  TestFileRef,
 } from "../../../core/types/index.js";
+import { holdsCheckText } from "../../focus.js";
 import { scrubBasetemp } from "./basetemp.js";
 import type { CollectedItem, PhaseEvent, PytestEvent } from "./events.js";
 
