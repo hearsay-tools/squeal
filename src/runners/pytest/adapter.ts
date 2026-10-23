@@ -10,6 +10,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../core/types/index.js";
+import { focusedTexts } from "../focus.js";
 import { type ProjectSettings, projectSettings, sameSettings } from "./adapter-config.js";
 import {
   type AdapterEnvironment,
@@ -315,8 +316,17 @@ export async function createPytestAdapter(
         once(outcome.report.failure ?? "");
         return outcome.report;
       }
-      built.observed.record(outcome.run.observed, new Set(files));
       for (const text of outcome.run.notes) once(text);
+      // Spec 011 C4 (row 011-145): a file given texts observes nothing, nor does a run of only
+      // such files. It ran only some checks, and the file's own run that follows reads every path
+      // they read. A file run whole beside one still records its own, and the session's.
+      const whole = outcome.run.observed.filter(
+        (seen) => focusedTexts(runOptions.checks, seen.testFile) === null,
+      );
+      if (testFiles.every((f) => focusedTexts(runOptions.checks, f) !== null)) {
+        return outcome.report;
+      }
+      built.observed.record(whole, new Set(files));
       const plugins = pluginPaths(built, environment, settings);
       const session = built.observed.recordSession(outcome.run.session, plugins, files.length);
       if (session.length === 0) return outcome.report;
