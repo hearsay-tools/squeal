@@ -665,6 +665,8 @@ class Daemon {
         onNudge: () => this.#loop?.scheduler.nudge(),
         requestRetries: () => this.#requestRetries(),
         requestPromotion: (testFiles, withinMs) => this.#requestPromotion(testFiles, withinMs),
+        requestFocus: (testFiles, texts, withinMs) =>
+          this.#requestFocus(testFiles, texts, withinMs),
         requestHold: () => this.#requestHold(),
         requestResume: async () => void (await this.#requestHold()),
         // The tiers stop now, under a shutdown already begun too; the shutdown after the answer.
@@ -716,6 +718,17 @@ class Daemon {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") return;
     await this.#loop.scheduler.promote(testFiles, withinMs);
+  }
+
+  /** Spec 011 C15 (row 011-145): a named wait's focused checks of its test files for `withinMs`. */
+  async #requestFocus(
+    testFiles: readonly TestFileRef[],
+    texts: readonly string[],
+    withinMs: number,
+  ): Promise<void> {
+    await this.#starting;
+    if (this.#loop === null || this.#phase === "stopping") return;
+    await this.#loop.scheduler.focus?.(testFiles, texts, withinMs);
   }
 
   /**

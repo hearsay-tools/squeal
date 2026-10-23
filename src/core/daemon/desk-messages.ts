@@ -67,6 +67,12 @@ export type FromDesk =
       readonly testFiles: readonly TestFileRef[];
       readonly withinMs: number;
     }
+  | {
+      readonly type: "focus";
+      readonly testFiles: readonly TestFileRef[];
+      readonly texts: readonly string[];
+      readonly withinMs: number;
+    }
   | { readonly type: "stop" }
   | { readonly type: "step-down"; readonly version: string }
   | { readonly type: "closed" };
