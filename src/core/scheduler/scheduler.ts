@@ -421,8 +421,10 @@ class TierScheduler implements Scheduler {
 
   /**
    * Checks the tiers in flight again under the lock, one check queued at a
-   * time: after a file's end, or at the bound of a tier past its estimate
-   * (`TierYields`, row 011-107).
+   * time: after a file's end, at the bound of a tier past its estimate
+   * (`TierYields`, row 011-107), or while promoted files wait on claims (row
+   * 011-123). Results other worktrees stored are taken first (`#adopt`), as
+   * a reconciliation pass does, so a claimant's record cuts nothing.
    */
   #recheckTiers(): void {
     if (this.#recheck) return;
@@ -430,7 +432,11 @@ class TierScheduler implements Scheduler {
     this.#lock
       .run(() => {
         this.#recheck = false;
-        if (!this.#closed) this.#cutTiers(null);
+        if (this.#closed) return;
+        // Row 011-123: a claimant's record is taken first, so its file needs no yield.
+        const { context, ledger } = this.#started();
+        this.#adopt(context, ledger);
+        this.#cutTiers(null);
       })
       .catch((error: unknown) =>
         this.#backgroundError("could not check the tiers in flight", error),

@@ -285,6 +285,8 @@ export interface CatchUpSide {
   touch(...paths: string[]): void;
   /** Whether `path`'s checks are current, passing or failing. */
   current(path: string): boolean;
+  /** Stops this side's heartbeat, as a killed daemon's (row 011-123). */
+  stopBeat(): void;
 }
 
 /** A scheduler of the worktree at `root`, its daemon live in the store, over the repository's pool. */
@@ -366,6 +368,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
       touch(...paths);
       await scheduler.handleBatch({ trigger, paths: await statCandidates(paths, hasher) });
     },
+    stopBeat: () => clearInterval(beat),
     current: (path) => {
       const states = store.knownStates.list(worktreeId).filter((s) => s.check.testPath === path);
       return states.length > 0 && states.every((s) => s.validity === "current");

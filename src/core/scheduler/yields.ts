@@ -10,6 +10,7 @@ import {
   worktreeMetaKey,
 } from "../types/index.js";
 import { cancelsBacklog } from "./backlog.js";
+import { CLAIM_RECHECK_MS, peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
@@ -27,10 +28,30 @@ import { laneOf, type Tier, type TierFile } from "./tiers.js";
 export const YIELD_REMAINDER_MS = 30_000;
 
 /**
+ * A tier only promoted files wait for, each held by another worktree's
+ * claim of its key or with a result stored there to take: it runs on, and
+ * is checked again every `CLAIM_RECHECK_MS`, which takes the stored results
+ * first (row 011-123). Status reads nothing of it: a held file's wait names
+ * the claim.
+ */
+const RECHECK = { kind: "recheck" } as const;
+
+/**
  * What C4 step 5 does with a tier in flight now: cancel it for one of the
  * causes it names (row 011-56), a yield among them, or what it says.
  */
-type Decision = Extract<CancelCause, "supersession" | "backlog" | "yield"> | TierYield | null;
+type Decision =
+  | Extract<CancelCause, "supersession" | "backlog" | "yield">
+  | TierYield
+  | typeof RECHECK
+  | null;
+
+/**
+ * What waits for a tier in its lane (`waitedFor`): work a yield runs sooner,
+ * or only promoted files a yield runs nothing sooner for, until a claim
+ * ends or a stored result is taken.
+ */
+type Waiting = "work" | "recheck" | null;
 
 /**
  * A yield cut a file at `key` when it had `applied` results
@@ -63,7 +84,9 @@ export class TierYields implements CutFiles {
   readonly #standing = new Map<string, TierYield>();
   /**
    * When each tier in flight that a wait waits for yields at the latest,
-   * `YIELD_REMAINDER_MS` past its estimate (row 011-107), by run id.
+   * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked
+   * again while its promoted files wait on claims or stored results (row
+   * 011-123), by run id.
    */
   readonly #bounds = new Map<string, EpochMs>();
   /** The one timer that checks the tiers again at the earliest of `#bounds`. */
@@ -71,7 +94,9 @@ export class TierYields implements CutFiles {
 
   /**
    * `recheck` checks the tiers in flight again under the scheduler's lock,
-   * as an event does: a tier reaches its bound with no event (row 011-107).
+   * as an event does: a tier reaches its bound with no event (row 011-107),
+   * or a claim may have ended with none (row 011-123); it takes stored
+   * results first.
    */
   constructor(private readonly recheck: () => void = () => {}) {}
 
@@ -85,11 +110,15 @@ export class TierYields implements CutFiles {
    * - a backlog tier, as `cancelsBacklog` says;
    * - any but the backlog's turn yields, once per file and key, while an
    *   edit's work that came during its run or a promoted file is queued in
-   *   its lane, one that waits on another worktree's claim of its key aside
-   *   (row 011-55), or `revision` makes the lane's runner part wait for the
-   *   run, when its estimated remainder exceeds `YIELD_REMAINDER_MS` or, as
-   *   `overruns` allows, it has run that long past its estimate (row
-   *   011-107); one that does not yet is checked again at that bound.
+   *   its lane, one that waits on another worktree's claim of its key or
+   *   has a result stored there aside (rows 011-55, 011-123), or `revision`
+   *   makes the lane's runner part wait for the run, when its estimated
+   *   remainder exceeds `YIELD_REMAINDER_MS` or, as `overruns` allows, it
+   *   has run that long past its estimate (row 011-107); one that does not
+   *   yet is checked again at that bound, and one only such promoted files
+   *   wait for every `CLAIM_RECHECK_MS` (row 011-123): a claim ends with no
+   *   event when its claimant's heartbeat is lost or the waiter's bound
+   *   passes (C7).
    * A file has ended when the runner named it (`Tier.ended`, row 011-54,
    * review `reviews/0.1.237.md` B2); a runner that names none leaves every
    * file unfinished, so its tier is cancelled by the first rule only when
@@ -116,7 +145,12 @@ export class TierYields implements CutFiles {
           context.quiet?.cancelled(tier.lane, context.now());
         tier.cancel?.abort(decision);
       }
-      const standing = typeof decision === "string" ? { kind: "yields" as const } : decision;
+      const standing =
+        typeof decision === "string"
+          ? { kind: "yields" as const }
+          : decision?.kind === "recheck"
+            ? null
+            : decision;
       changed = this.#set(tier.runId, standing) || changed;
       const bound = typeof decision === "string" ? null : boundOf(context, tier, decision);
       if (bound === null) this.#bounds.delete(tier.runId);
@@ -156,8 +190,11 @@ export class TierYields implements CutFiles {
     if (tier.kind === "backlog" && cancel !== null) {
       if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
     }
-    if (!waitedFor(context, ledger, tier, revision)) return null;
-    if (cancel === null || tier.slot === true) return { kind: "runner" };
+    const waiting = waitedFor(context, ledger, tier, revision);
+    if (waiting === null) return null;
+    if (cancel === null || tier.slot === true)
+      return waiting === "work" ? { kind: "runner" } : null;
+    if (waiting === "recheck") return RECHECK;
     if (tier.kind === "turn") return { kind: "turn" };
     if (unfinished(tier).some(({ file, key }) => this.#cut.get(file.id)?.key === key))
       return { kind: "cut" };
@@ -235,40 +272,34 @@ function superseded(tier: Tier): boolean {
 }
 
 /**
- * Something waits for `tier` in its lane: an edit's work queued by a
- * revision after the one it was selected at, a promoted file (C15) but one
- * that waits on another worktree's claim (row 011-55), or `revision`
- * changed an environment input of a project of the lane, whose runner part
- * then waits for the run to recreate the runner (Vitest's `Gate`; #69:
- * "revision 5 not listed yet").
+ * What waits for `tier` in its lane: `"work"` when an edit's work queued by
+ * a revision after the one it was selected at does, a promoted file a yield
+ * runs sooner (C15), or `revision` changed an environment input of a
+ * project of the lane, whose runner part then waits for the run to recreate
+ * the runner (Vitest's `Gate`; #69: "revision 5 not listed yet");
+ * `"recheck"` when only promoted files a yield runs nothing sooner for do:
+ * held by other worktrees' claims, or with a result stored to take (rows
+ * 011-55, 011-123).
  */
 function waitedFor(
   context: SchedulerContext,
   ledger: Ledger,
   tier: Tier,
   revision: Revision | null,
-): boolean {
+): Waiting {
   const inLane = (ref: TestFileRef) => laneOf(context, ref) === tier.lane;
   const { queue } = ledger;
-  if (queue.hasRecentAfter(tier.revision.number, inLane)) return true;
-  if (queue.hasPromoted((ref) => inLane(ref) && !waitsOnClaim(context, ledger, ref))) return true;
-  return revision !== null && recreates(context, ledger, revision, tier.lane);
-}
-
-/**
- * Queued `ref` waits on another worktree's claim of its key, as tier
- * selection holds it (`selectTier`, `claimOf`; C7): not forced, not an
- * edit's work, no result stored at its key, and a live claim within the
- * waiter's bound. A yield for it would run nothing sooner (C15, row 011-55).
- * `Claims.holds` starts the waiter's bound at its first sight here, as
- * selection's would.
- */
-function waitsOnClaim(context: SchedulerContext, ledger: Ledger, ref: TestFileRef): boolean {
-  const { queue, claims } = ledger;
-  const key = ledger.file(ref)?.key ?? null;
-  if (key === null || queue.isForced(ref) || queue.isRecent(ref)) return false;
-  // `usedAt` 0: a read, not a lookup hit.
-  return context.store.results.byKey(key, 0).length === 0 && claims.holds(key);
+  if (queue.hasRecentAfter(tier.revision.number, inLane)) return "work";
+  let later = false;
+  const runsSooner = (ref: TestFileRef) => {
+    if (!inLane(ref)) return false;
+    const claim = peekClaim(context, ledger, ref);
+    later ||= claim !== "free";
+    return claim === "free";
+  };
+  if (queue.hasPromoted(runsSooner)) return "work";
+  if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "work";
+  return later ? "recheck" : null;
 }
 
 /** `revision` changed an environment input of a project with a test file in `lane`. */
@@ -316,15 +347,18 @@ function overruns(tier: Tier): boolean {
 
 /**
  * When a tier that does not yield for `decision` yields at the latest,
- * `YIELD_REMAINDER_MS` past its estimate (row 011-107); `null` when nothing
+ * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked again
+ * while only promoted files a yield runs nothing sooner for wait for it (row
+ * 011-123); `null` when nothing
  * but an event changes it: a cut, the backlog's turn, a runner that does
  * not cancel, nothing waiting, or no file left to cut.
  */
 function boundOf(
   context: SchedulerContext,
   tier: Tier,
-  decision: TierYield | null,
+  decision: Exclude<Decision, string>,
 ): EpochMs | null {
+  if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
   if (decision?.kind === "overrun") return decision.yieldsAt;
   if (decision?.kind !== "remainder" || !overruns(tier)) return null;
   return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
