@@ -10,7 +10,6 @@ import { createFsHasher } from "../../src/core/hash/index.js";
 import { createInputMatcher } from "../../src/core/keys/glob.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
-import { slowFiles } from "../../src/core/slow/classify.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import type { CheckKey, Revision, Store } from "../../src/core/types/index.js";
 import { candidatesFromHints } from "../../src/core/watcher/candidates.js";
@@ -127,8 +126,8 @@ describe("policy: this repository's squeal.config.json", () => {
     for (const glob of policy.slow.include) {
       expect(testFiles.filter(createInputMatcher([glob])), glob).not.toEqual([]);
     }
-    const isSlow = slowFiles(policy, policy.nodeTest);
-    const slow = testFiles.filter((path) => isSlow({ project: "", path }));
+    // `slowFiles` (004 D1) for a Vitest file: this repository has no node:test project.
+    const slow = testFiles.filter(createInputMatcher(policy.slow.include));
     expect(slow).toHaveLength(60);
     expect(slow).toContain("test/daemon/busy-tier.test.ts");
     expect(slow).not.toContain("test/daemon/drain-timers.test.ts");
