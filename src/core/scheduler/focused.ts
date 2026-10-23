@@ -80,7 +80,8 @@ function turnFirst(
   if (!turnDue) return false;
   const now = context.now();
   const { queue } = ledger;
-  return queue.hasFast((ref) => {
+  // A departure drain's paused backlog takes no turn: only files the drain runs count.
+  return ledger.fastQueued((ref) => {
     const lane = laneOf(context, ref);
     if (busy.has(lane) || queue.isFirstGroup(ref)) return false;
     return !quietHolds(context, ledger, ref, lane, { backlog: true, turn: true }, now);
