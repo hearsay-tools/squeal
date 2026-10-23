@@ -2,6 +2,7 @@ import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type FocusedRun, readFocused } from "../../src/core/scheduler/focused-row.js";
+import type { RunnerAdapter } from "../../src/core/types/index.js";
 import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
 
 /*
@@ -88,4 +89,87 @@ describe("focused checks on a real Vitest adapter (row 011-145)", SLOW, () => {
       .filter((k) => k.check.testPath === PARITY && k.outcome === "fail");
     expect(failing).toHaveLength(2);
   });
+
+  it("the counts survive the daemon's composite, a zero match included (review 0.1.280 B1)", async () => {
+    const repo = createRepo("basic");
+    // A second adapter makes the harness wrap its runners in the daemon's composite.
+    const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
+      policy: { baseline: { onStart: "lookup-then-run-missing" } },
+      adapters: [emptyAdapter("x")],
+    });
+    Object.assign(h.runner, { focuses: true });
+    const { focus } = h.scheduler;
+    if (focus === undefined) throw new Error("the scheduler cannot focus");
+    await h.scheduler.start();
+    await h.scheduler.idle();
+
+    let open = () => {};
+    const blocked = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    let held = false;
+    h.gate.before = async (files) => {
+      if (files.some((f) => f.path === MATH)) {
+        held = true;
+        await blocked;
+      }
+    };
+    appendFileSync(join(repo.main, MATH), "// edited\n");
+    await h.batch(MATH);
+    await expect.poll(() => held, { timeout: 60_000 }).toBe(true);
+    h.write(PARITY, SOURCE);
+    h.write(ZERO, ZERO_SOURCE);
+    await h.batch(PARITY, ZERO);
+    await expect.poll(() => h.keyOf(PARITY), { timeout: 60_000 }).not.toBeNull();
+    await expect.poll(() => h.keyOf(ZERO), { timeout: 60_000 }).not.toBeNull();
+    await h.scheduler.promote([ref(PARITY), ref(ZERO)], 60_000);
+    await focus.call(h.scheduler, [ref(PARITY)], ["new"], 60_000);
+    await focus.call(h.scheduler, [ref(ZERO)], ["absent"], 60_000);
+    open();
+    await h.scheduler.idle();
+
+    const rows = readFocused(h.store, h.worktreeId);
+    const of = (path: string) => rows.find((run) => run.testFile.path === path);
+    expect(of(PARITY)).toMatchObject({ collected: 32, matched: 2, end: "completed" });
+    expect(of(ZERO)).toMatchObject({ collected: 3, matched: 0, end: "completed" });
+  });
 });
+
+const ZERO = "test/zero.test.ts";
+const ZERO_SOURCE = `import { expect, it } from "vitest";
+it("one", () => { expect(1).toBe(1); });
+it("two", () => { expect(2).toBe(2); });
+it("three", () => { expect(3).toBe(3); });
+`;
+
+/** An adapter of project `project` with no test files. */
+function emptyAdapter(project: string): RunnerAdapter {
+  return {
+    name: "empty",
+    adapterVersion: "empty-1",
+    invalidate: async () => ({ recreatedProjects: [] }),
+    affected: async () => ({ direct: [], transitive: [] }),
+    closure: async (testFile) => ({ testFile, paths: [testFile.path] }),
+    enumerate: async () => [],
+    testFiles: async () => [],
+    environment: async () => [
+      {
+        project,
+        runnerName: "empty",
+        runnerVersion: "1.0.0",
+        adapterVersion: "empty-1",
+        resolvedConfig: "{}",
+        files: [],
+      },
+    ],
+    run: async () => ({
+      end: "completed",
+      durationMs: 0,
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure: null,
+    }),
+    close: async () => {},
+  };
+}
