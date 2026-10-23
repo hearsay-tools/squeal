@@ -4,6 +4,7 @@ import {
   type EpochMs,
   type Revision,
   type Store,
+  type TestFileRef,
   type TierYield,
   type WorktreeId,
   worktreeMetaKey,
@@ -84,8 +85,9 @@ export class TierYields implements CutFiles {
    * - a backlog tier, as `cancelsBacklog` says;
    * - any but the backlog's turn yields, once per file and key, while an
    *   edit's work that came during its run or a promoted file is queued in
-   *   its lane, or `revision` makes the lane's runner part wait for the run,
-   *   when its estimated remainder exceeds `YIELD_REMAINDER_MS` or, as
+   *   its lane, one that waits on another worktree's claim of its key aside
+   *   (row 011-55), or `revision` makes the lane's runner part wait for the
+   *   run, when its estimated remainder exceeds `YIELD_REMAINDER_MS` or, as
    *   `overruns` allows, it has run that long past its estimate (row
    *   011-107); one that does not yet is checked again at that bound.
    * A file has ended when the runner named it (`Tier.ended`, row 011-54,
@@ -234,10 +236,11 @@ function superseded(tier: Tier): boolean {
 
 /**
  * Something waits for `tier` in its lane: an edit's work queued by a
- * revision after the one it was selected at, a promoted file (C15), or
- * `revision` changed an environment input of a project of the lane, whose
- * runner part then waits for the run to recreate the runner (Vitest's
- * `Gate`; #69: "revision 5 not listed yet").
+ * revision after the one it was selected at, a promoted file (C15) but one
+ * that waits on another worktree's claim (row 011-55), or `revision`
+ * changed an environment input of a project of the lane, whose runner part
+ * then waits for the run to recreate the runner (Vitest's `Gate`; #69:
+ * "revision 5 not listed yet").
  */
 function waitedFor(
   context: SchedulerContext,
@@ -245,10 +248,27 @@ function waitedFor(
   tier: Tier,
   revision: Revision | null,
 ): boolean {
-  const inLane = (ref: Parameters<typeof laneOf>[1]) => laneOf(context, ref) === tier.lane;
+  const inLane = (ref: TestFileRef) => laneOf(context, ref) === tier.lane;
   const { queue } = ledger;
-  if (queue.hasRecentAfter(tier.revision.number, inLane) || queue.hasPromoted(inLane)) return true;
+  if (queue.hasRecentAfter(tier.revision.number, inLane)) return true;
+  if (queue.hasPromoted((ref) => inLane(ref) && !waitsOnClaim(context, ledger, ref))) return true;
   return revision !== null && recreates(context, ledger, revision, tier.lane);
+}
+
+/**
+ * Queued `ref` waits on another worktree's claim of its key, as tier
+ * selection holds it (`selectTier`, `claimOf`; C7): not forced, not an
+ * edit's work, no result stored at its key, and a live claim within the
+ * waiter's bound. A yield for it would run nothing sooner (C15, row 011-55).
+ * `Claims.holds` starts the waiter's bound at its first sight here, as
+ * selection's would.
+ */
+function waitsOnClaim(context: SchedulerContext, ledger: Ledger, ref: TestFileRef): boolean {
+  const { queue, claims } = ledger;
+  const key = ledger.file(ref)?.key ?? null;
+  if (key === null || queue.isForced(ref) || queue.isRecent(ref)) return false;
+  // `usedAt` 0: a read, not a lookup hit.
+  return context.store.results.byKey(key, 0).length === 0 && claims.holds(key);
 }
 
 /** `revision` changed an environment input of a project with a test file in `lane`. */
