@@ -37,7 +37,8 @@ async function listing(): Promise<{ h: Harness; stored: string | null }> {
   const repo = createRepo();
   writeFileSync(join(repo.main, LISTS), LISTS_TEST);
   const store = openRepoStore(repo.commonDir);
-  const h = await openHarness(repo.main, store, repo.commonDir, OBSERVING);
+  // One file a tier, so a revision that moves its key alone cancels its tier (C4 step 5).
+  const h = await openHarness(repo.main, store, repo.commonDir, { ...OBSERVING, tierSize: 1 });
   h.write(A, "a\n");
   await h.scheduler.start();
   await h.scheduler.idle();
@@ -66,32 +67,39 @@ function statNow(h: Harness, ...paths: string[]): CandidateBatch {
   };
 }
 
+/**
+ * Holds at the gate the first run of `LISTS` that `pick` accepts until
+ * `release`; `cancelled` once the scheduler cancelled it (`RunOptions.signal`).
+ */
+function holdRun(h: Harness, pick: () => boolean = () => true) {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const run: { id: string | null; signal?: AbortSignal | undefined } = { id: null };
+  h.gate.before = async (files, options) => {
+    if (!files.some((f) => f.path === LISTS)) return;
+    if (run.id === null && pick()) run.id = options.runId;
+    if (options.runId !== run.id) return;
+    run.signal = options.signal;
+    await held;
+  };
+  return { run, release, cancelled: () => run.signal?.aborted === true };
+}
+
 describe("a cancelled forced run, queued again (row 011-120)", SLOW, () => {
   it("drops a re-run cancelled by a revision: after the revert the file is current, nothing runs", async () => {
     const { h, stored } = await listing();
     const before = h.runsOf(LISTS).length;
 
     // Its re-run (task 001-171) is the second run after the edit; the gate holds it.
-    let release = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    let rerun: string | null = null;
-    let cancel: AbortSignal | undefined;
-    h.gate.before = async (files, options) => {
-      if (!files.some((f) => f.path === LISTS)) return;
-      if (h.runsOf(LISTS).length === before) return;
-      rerun ??= options.runId;
-      if (options.runId !== rerun) return;
-      cancel = options.signal;
-      await held;
-    };
+    const rerun = holdRun(h, () => h.runsOf(LISTS).length > before);
     // The revert reaches the lock right behind the cancelled re-run's record, before the next tier.
     let revert: Promise<void> | null = null;
     const finish = h.store.runs.finish.bind(h.store.runs);
     vi.spyOn(h.store.runs, "finish").mockImplementation((id, end, at) => {
       finish(id, end, at);
-      if (id !== rerun || revert !== null) return;
+      if (id !== rerun.run.id || revert !== null) return;
       h.write(A, "a\n");
       h.remove(BROKEN);
       revert = h.scheduler.handleBatch(statNow(h, A, BROKEN));
@@ -100,7 +108,7 @@ describe("a cancelled forced run, queued again (row 011-120)", SLOW, () => {
       // Edit 1 fails: its failure is delivered, and its re-run queued forced starts.
       h.write(BROKEN, "x\n");
       await h.batch(BROKEN);
-      await waitFor(() => rerun !== null, 60_000);
+      await waitFor(() => rerun.run.id !== null, 60_000);
       const failed = h.keyOf(LISTS);
       expect(failed).not.toBe(stored);
       expect(h.sink.stateOf(LISTED)).toMatchObject({ outcome: "fail", validity: "current" });
@@ -109,9 +117,9 @@ describe("a cancelled forced run, queued again (row 011-120)", SLOW, () => {
       h.write(A, "b\n");
       await h.batch(A);
       expect(h.keyOf(LISTS)).not.toBe(failed);
-      await waitFor(() => cancel?.aborted === true, 60_000);
+      await waitFor(rerun.cancelled, 60_000);
     } finally {
-      release();
+      rerun.release();
     }
     await waitFor(() => revert !== null, 60_000);
     await revert;
@@ -131,5 +139,45 @@ describe("a cancelled forced run, queued again (row 011-120)", SLOW, () => {
     await h.scheduler.idle();
     expect(h.runsOf(LISTS).slice(before)).toHaveLength(2);
     expect(h.keyOf(LISTS)).toBe(stored);
+  });
+
+  it("keeps a `run --all --force`'s file forced at the key a revision moved it to", async () => {
+    const { h, stored } = await listing();
+    // A pass stands at the key the revision moves the file to: a lookup there would take it.
+    h.write(A, "b\n");
+    await h.batch(A);
+    await h.scheduler.idle();
+    const moved = h.keyOf(LISTS);
+    h.write(A, "a\n");
+    await h.batch(A);
+    await h.scheduler.idle();
+    expect(h.keyOf(LISTS)).toBe(stored);
+    const before = h.runsOf(LISTS).length;
+
+    const forced = holdRun(h);
+    let checkpoint = "";
+    try {
+      const requested = await h.scheduler.requestFullSuite({ force: true });
+      checkpoint = requested.id;
+      expect(requested.testFiles.map((f) => f.path)).toContain(LISTS);
+      await waitFor(() => forced.run.id !== null, 60_000);
+      // The revision moves its key to the stored pass and cancels its tier.
+      h.write(A, "b\n");
+      await h.batch(A);
+      expect(h.keyOf(LISTS)).toBe(moved);
+      await waitFor(forced.cancelled, 60_000);
+    } finally {
+      forced.release();
+    }
+    await h.scheduler.idle();
+
+    // Its own run at the new key, forced past the stored pass, completes the strict checkpoint.
+    const runs = h.runsOf(LISTS).slice(before);
+    expect(runs).toHaveLength(2);
+    expect(runs[0]?.options.runId).toBe(forced.run.id);
+    expect(runs[1]?.report.completedFiles.map((f) => f.path)).toEqual([LISTS]);
+    expect(h.store.checkpoints.get(checkpoint)?.end).toBe("completed");
+    expect(h.keyOf(LISTS)).toBe(moved);
+    expect(phaseOf(h, LISTS)).toBeNull();
   });
 });

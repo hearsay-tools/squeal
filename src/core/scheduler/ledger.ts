@@ -280,14 +280,17 @@ export class Ledger {
       // The agent's retry was asked at the key it had: it lapses here (001-368).
       if (lapseRetry(this.context, file, key) && !file.rerunPending) this.queue.remove(ref);
       if (this.queue.isForced(ref)) continue;
+      // Row 011-120: `run --all --force` counts only its own run of a file (task 001-217). One it
+      // holds that runs at another key takes no stored result here: it runs forced at this key.
+      const strict =
+        file.runningKey !== null && key !== file.runningKey && this.checkpoints.covers([ref], true);
       // Row 011-72: while on hold, a key that names an unmerged path takes no stored result,
       // its own included; it stays queued, and takes it at a tier boundary once the hold ends.
       const held = key !== null && this.holds(ref);
       if (
         key === null ||
-        key === file.runningKey ||
-        key === file.unknownKey ||
-        (key === file.resultKey && !held)
+        (!strict &&
+          (key === file.runningKey || key === file.unknownKey || (key === file.resultKey && !held)))
       ) {
         if (key !== null && (key === file.resultKey || key === file.unknownKey))
           this.#discharge(file);
@@ -297,7 +300,7 @@ export class Ledger {
         if (classify(file) === "current") this.checkpoints.done(ref, null);
         continue;
       }
-      const hits = held ? [] : this.lookup(key);
+      const hits = held || strict ? [] : this.lookup(key);
       if (hits.length > 0) {
         const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
         this.applyResults(file, key, hits, checkpointId);
@@ -308,11 +311,11 @@ export class Ledger {
         // The runner cannot run it; it stays `unknown` until the runner recovers.
         this.queue.remove(ref);
         this.#syncPhase(file);
-      } else if (options.queueMisses !== false) {
+      } else if (strict || options.queueMisses !== false) {
         const reached = recent.has(file.id);
         const catchUp = reached && options.catchUp === true;
         const priority = priorityOf(file, changed, options.direct);
-        this.enqueue(file, priority, false, reached && !catchUp, catchUp, options.keyedAt);
+        this.enqueue(file, priority, strict, reached && !catchUp, catchUp, options.keyedAt);
       }
     }
     this.#rank(changed, misses);
