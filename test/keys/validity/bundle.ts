@@ -4,6 +4,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { build, type Plugin } from "esbuild";
 import { nodeFloor } from "../../../src/harness/build.js";
 import { bundleOptions } from "../../../src/harness/claude-code/build.js";
+import { observeMetafile } from "../../helpers/build-inputs.js";
 import { COMPONENTS, FORMAT_FILE } from "./components.js";
 import { type Overlay, packageOf, ROOT } from "./trees.js";
 
@@ -204,6 +205,8 @@ async function bundleModule(
     logLevel: "silent",
     plugins: [treePlugin(tree, overlay)],
   });
+  // What esbuild read in this worktree keys the test that bundled it (011-141); another tree's are not ours.
+  observeMetafile(result.metafile, ROOT);
   const files = result.outputFiles ?? [];
   const js = files.find((f) => !f.path.endsWith(".map"));
   const mapFile = files.find((f) => f.path.endsWith(".map"));
