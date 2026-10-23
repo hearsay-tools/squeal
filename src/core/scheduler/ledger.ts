@@ -463,6 +463,15 @@ export class Ledger {
   }
 
   /**
+   * The tier that ran `file` at `key` ends, superseded by a newer run at
+   * another key: only its own claim ends, since a store hit at the newer key
+   * took none (row 011-71).
+   */
+  endRunningAt(file: FileState, key: CheckKey): void {
+    if (file.runningKey === key) this.setRunning(file, null);
+  }
+
+  /**
    * Spec 001 D12: a crash, a timeout, or inputs that never hold still. Nothing
    * is stored under a key; the files' checks become `unknown` at this revision.
    * Spec 001 D5: a checkpoint containing an `unknown` file ends `abandoned`.
