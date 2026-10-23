@@ -372,7 +372,10 @@ function queuedReason(
   now: EpochMs,
 ): PendingReason {
   const claimant = key === null ? null : claimantOf(store, worktreeId, ref, key, now);
-  if (claimant !== null) {
+  // Row 011-124 (C7, `peekClaim`): with a result stored at its key the file waits on no claim;
+  // the daemon takes it with no run, or runs the file here when that is a failure it holds.
+  // `usedAt` 0: a read, not a lookup hit. An edit's work or a forced file is the daemon's to know.
+  if (claimant !== null && store.results.byKey(key, 0).length === 0) {
     return { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
   }
   const tier = runIn(runs, lane, policy);
