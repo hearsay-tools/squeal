@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { type DaemonEndpoint, pinDaemon, requestDaemon } from "../core/daemon/client.js";
 import { ensureDaemon, probeDaemon, recordedDaemon } from "../core/daemon/ensure.js";
 import { type DaemonMarks, leftovers, marksOf } from "../core/daemon/leftovers.js";
 import { isNewerVersion, squealVersion } from "../core/daemon/version.js";
@@ -14,7 +15,7 @@ import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
 import { keptCacheCli } from "../harness/shared/version-copies.js";
-import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
+import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import { endCommandHolds } from "./hold.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
@@ -83,6 +84,8 @@ interface Stopping {
   /** `null` once it cleared it: only the handoff's claim is left. */
   readonly record: DaemonRecord | null;
   readonly from: string;
+  /** The socket file it answered at, when `replaceShort` pinned it: its `stop` goes only there. */
+  readonly endpoint?: DaemonEndpoint;
 }
 
 /**
@@ -112,20 +115,24 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
  * `start` finishes the handoff (whose `stop` follows). Review 0.1.277, B3:
  * stopping from its acceptance on, whether or not its ping or the store says
  * so yet; read again, it could still read serving, and `start` said it was
- * alive. `null` otherwise.
+ * alive. Row 011-151: the step-down and the `stop` reach the daemon its
+ * ping proved at the socket file it pinned, or nothing (`pinDaemon`).
+ * `null` otherwise.
  */
 async function replaceShort(root: AbsolutePath): Promise<Stopping | null> {
   const record = recordedDaemon(root, 1_000);
   if (record === null || !isNewerVersion(squealVersion(), record.squealVersion)) return null;
   if (shortOf(root) !== handoffFrom(record)) return null;
   const { socketPath } = record;
-  const answer = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
-  const ping = answer?.ok === true && answer.type === "ping" ? answer : null;
-  if (ping === null || ping.startedAt !== record.startedAt) return null;
+  const pinned = await pinDaemon(record, CLI_SOCKET_TIMEOUT_MS);
+  if (pinned === null) return null;
+  const { endpoint, ping } = pinned;
   const request = { type: "step-down", version: squealVersion() } as const;
-  const accepted = await askDaemon(socketPath, request).catch(() => null);
+  const accepted = await requestDaemon(socketPath, request, CLI_SOCKET_TIMEOUT_MS, endpoint).catch(
+    () => null,
+  );
   if (accepted?.ok !== true || accepted.type !== "step-down" || !accepted.steppingDown) return null;
-  return { socketPath, ping, record, from: record.squealVersion };
+  return { socketPath, ping, record, from: record.squealVersion, endpoint };
 }
 
 /** The incarnation the worktree's short handoff names (`readShortHandoff`), `null` with none. */
@@ -175,7 +182,7 @@ async function finishHandoff(
   const { ping, record } = stopping;
   // Read while it runs: its record's token is its children's mark (as `squeal stop` reads them).
   const marks = ping === null ? null : marksOf(ping.pid, tokenOf(ping, record));
-  if (ping !== null) await askDaemon(stopping.socketPath, { type: "stop" }).catch(() => null);
+  if (ping !== null) await stopAt(stopping).catch(() => null);
   const old = ping?.startedAt ?? record?.startedAt ?? null;
   if (claims(root, old, now)) {
     await ensureDaemon(root, {
@@ -199,6 +206,13 @@ async function finishHandoff(
   );
   io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
   return 0;
+}
+
+/** Asks the stopping daemon to `stop`, at the socket file `replaceShort` pinned when it did. */
+function stopAt({ socketPath, endpoint }: Stopping): Promise<unknown> {
+  const stop = { type: "stop" } as const;
+  if (endpoint === undefined) return askDaemon(socketPath, stop);
+  return requestDaemon(socketPath, stop, CLI_SOCKET_TIMEOUT_MS, endpoint);
 }
 
 /** A daemon that serves after the stopping one: another start, not stopping, at least `own`. */
