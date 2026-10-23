@@ -48,7 +48,7 @@ Done when the row's done-when holds with real runner processes; the 011-144 and 
 
 ## W4: 011-163, a departure drain ends when its slow files wait
 
-Use /worker. Shape: slice. Added 2026-10-23 after the human's drain decision; dispatched from main `eb6386fbc` beside W1 to W3.
+Use /worker. Shape: slice. Added 2026-10-23 after the human's drain decision; dispatched from main `7cd9c3bf9` beside W1 to W3.
 
 Outcome: a draining daemon runs its fast work to the end, then exits once its slow files have had no run for 60 s, and leaves them queued for the next daemon.
 
