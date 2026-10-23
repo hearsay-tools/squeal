@@ -65308,7 +65308,7 @@ async function startCommand(args2, io, bounds = STOP_BOUNDS) {
   const script = process.argv[1];
   const cli = script === void 0 ? void 0 : keptCacheCli(script, squealVersion(), io.env ?? process.env);
   const now = io.now ?? Date.now;
-  const stopping = await stoppingDaemon(root, now) ?? await replaceShort(root, now);
+  const stopping = await stoppingDaemon(root, now) ?? await replaceShort(root);
   if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
   const result = await ensureDaemon(root, cli === void 0 ? {} : { cli });
   if (result === "unavailable") {
@@ -65341,14 +65341,18 @@ async function stoppingDaemon(root, now) {
   const from = stopping?.from ?? ping2?.squealVersion ?? "";
   return { socketPath, ping: ping2, record, from };
 }
-async function replaceShort(root, now) {
+async function replaceShort(root) {
   const record = recordedDaemon(root, 1e3);
   if (record === null || !isNewerVersion(squealVersion(), record.squealVersion)) return null;
   if (shortOf(root) !== handoffFrom(record)) return null;
+  const { socketPath } = record;
+  const answer2 = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
+  const ping2 = answer2?.ok === true && answer2.type === "ping" ? answer2 : null;
+  if (ping2 === null || ping2.startedAt !== record.startedAt) return null;
   const request = { type: "step-down", version: squealVersion() };
-  const answer2 = await askDaemon(record.socketPath, request).catch(() => null);
-  if (answer2?.ok !== true || answer2.type !== "step-down" || !answer2.steppingDown) return null;
-  return stoppingDaemon(root, now);
+  const accepted = await askDaemon(socketPath, request).catch(() => null);
+  if (accepted?.ok !== true || accepted.type !== "step-down" || !accepted.steppingDown) return null;
+  return { socketPath, ping: ping2, record, from: record.squealVersion };
 }
 function shortOf(root) {
   try {
