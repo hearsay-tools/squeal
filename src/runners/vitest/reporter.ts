@@ -1,7 +1,15 @@
 import { appendFileSync } from "node:fs";
 import type { Reporter, SerializedError, TestCase, TestModule, Vitest } from "vitest/node";
 import { consolePrefix, testFileLabel } from "../../core/run-log.js";
-import type { AbsolutePath, CheckRunResult, TestFileRef } from "../../core/types/index.js";
+import {
+  type AbsolutePath,
+  type CheckRunResult,
+  type FocusedCount,
+  type FocusedFile,
+  focusedTexts,
+  holdsCheckText,
+  type TestFileRef,
+} from "../../core/types/index.js";
 import type { WorktreePaths } from "./paths.js";
 import { checkNames, refKey, toCheckRunResult } from "./results.js";
 
@@ -42,19 +50,30 @@ export class RunCollector {
   cancelRequested = false;
   /** Set once `vitest.log` is written; later notes are appended to it. */
   logFile: AbsolutePath | null = null;
+  /** Per requested file with texts, what they selected, once its module ended (`RunReport.focused`). */
+  readonly focused = new Map<string, FocusedCount>();
   readonly #requested: Map<string, TestFileRef>;
+  readonly #texts: Map<string, readonly string[]>;
   readonly #names = new WeakMap<TestModule, Map<string, string>>();
 
   /**
    * `ended` hears each requested file whose module ended in a final state
    * before any cancel, as it ends (`RunOptions.fileEnded`, row 011-54).
+   * `checks` are the run's texts (`RunOptions.checks`).
    */
   constructor(
     requested: readonly TestFileRef[],
     readonly paths: WorktreePaths,
     readonly ended?: (testFile: TestFileRef) => void,
+    checks?: readonly FocusedFile[],
   ) {
     this.#requested = new Map(requested.map((r) => [refKey(r), r]));
+    this.#texts = new Map(
+      requested.flatMap((r) => {
+        const texts = focusedTexts(checks, r);
+        return texts === null ? [] : [[refKey(r), texts] as const];
+      }),
+    );
   }
 
   /** The test files the run was asked for. */
@@ -70,6 +89,9 @@ export class RunCollector {
   testCase(testCase: TestCase): void {
     const ref = this.#ref(testCase.project.name, testCase.module.moduleId);
     if (!ref) return;
+    // 013 V4 (row 011-135): a check the texts leave out reports `skipped`; it is not reported.
+    const texts = this.#texts.get(refKey(ref));
+    if (texts !== undefined && !holdsCheckText(testCase.fullName, texts)) return;
     const result = toCheckRunResult(testCase, ref, this.paths, this.#name(testCase));
     if (!result) return;
     this.results.push({ ref, result });
@@ -107,6 +129,13 @@ export class RunCollector {
     };
     this.modules.set(refKey(ref), end);
     this.log.push(`MODULE ${module.state()} ${label(ref)}`);
+    const texts = this.#texts.get(refKey(ref));
+    if (texts !== undefined) {
+      const tests = [...module.children.allTests()];
+      const matched = tests.filter((test) => holdsCheckText(test.fullName, texts)).length;
+      this.focused.set(refKey(ref), { testFile: ref, collected: tests.length, matched });
+      this.log.push(indent(`focused on ${JSON.stringify(texts)}: ${matched} of ${tests.length}`));
+    }
     if (endedInTime(end)) this.#tell(ref);
     for (const error of module.errors()) {
       this.log.push(indent(`file-level error: ${errorText(error)}`));
