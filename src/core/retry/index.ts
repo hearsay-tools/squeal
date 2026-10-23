@@ -33,6 +33,7 @@ export {
 } from "./records.js";
 export {
   agoText,
+  loadPerCpuText,
   loadText,
   outcomeText,
   RECORDED_UNKNOWN_TEXT,

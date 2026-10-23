@@ -209,13 +209,6 @@ export function perCheckTotals(
   return { total: storedChecks + added, replaced: newer };
 }
 
-/** The load per CPU a failure's run had, as a known failure states it (001-368). */
-export function loadText(loadPerCpu: number | null): string {
-  return loadPerCpu === null
-    ? "load per CPU then not recorded"
-    : `load ${loadPerCpu.toFixed(2)} per CPU when it ran`;
-}
-
 /** The first of each check in `items`, in their order. */
 function newestOfEach<T>(items: readonly T[], checkOf: (item: T) => CheckId): T[] {
   const seen = new Set<string>();
