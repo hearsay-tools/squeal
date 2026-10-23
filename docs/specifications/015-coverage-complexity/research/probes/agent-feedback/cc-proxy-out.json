@@ -1,0 +1,879 @@
+{
+ "repoHead": "f6f44e030",
+ "commits": 100,
+ "commitsTouchingProduct": 25,
+ "changedFunctionsTotal": 207,
+ "changedPerProductCommit": {
+  "p50": 5,
+  "p90": 19,
+  "max": 33
+ },
+ "ccOfChangedFunctions": {
+  "p50": 2,
+  "p90": 12,
+  "max": 69,
+  "atLeast5": 71,
+  "atLeast10": 31
+ },
+ "ccDirection": {
+  "added": 113,
+  "rose": 33,
+  "same": 44,
+  "fell": 17
+ },
+ "identity": {
+  "removedFunctions": 51,
+  "addedMatchingARemovedBody": 33,
+  "addedMatchingARemovedName": 6,
+  "anonymousOrCallbackIds": 72
+ },
+ "crossings": {
+  "cov0": {
+   "changedFunctionsAtOrAbove30": 71,
+   "commitsWithOneAtOrAbove": 20,
+   "crossings": 16,
+   "commitsWithACrossing": 8,
+   "examples": [
+    "482da1d53 src/core/daemon/client.ts sameEndpoint null->5",
+    "482da1d53 src/core/daemon/client.ts pinDaemon null->7",
+    "414394f10 src/core/scheduler/quiet.ts BacklogQuiet.queued 2->5",
+    "414394f10 src/core/scheduler/quiet.ts quietCaughtUp null->7",
+    "414394f10 src/core/scheduler/quiet.ts quietHolds null->7",
+    "414394f10 src/core/scheduler/quiet.ts publishedWaits null->5"
+   ]
+  },
+  "cov50": {
+   "changedFunctionsAtOrAbove30": 22,
+   "commitsWithOneAtOrAbove": 13,
+   "crossings": 5,
+   "commitsWithACrossing": 4,
+   "examples": [
+    "b651a582f src/runners/pytest/adapter-run.ts runProject 11->12",
+    "522a27be9 src/runners/node-test/adapter-project.ts openProject.run 11->12",
+    "fa700a29d src/core/delivery/liveness.ts livenessChange 8->13",
+    "fa700a29d src/harness/shared/ensure.ts handOver 11->12",
+    "822006cd9 src/harness/shared/version-copies.ts keepVersion 10->14"
+   ]
+  },
+  "cov80": {
+   "changedFunctionsAtOrAbove30": 6,
+   "commitsWithOneAtOrAbove": 5,
+   "crossings": 0,
+   "commitsWithACrossing": 0,
+   "examples": []
+  },
+  "cov100": {
+   "changedFunctionsAtOrAbove30": 6,
+   "commitsWithOneAtOrAbove": 5,
+   "crossings": 0,
+   "commitsWithACrossing": 0,
+   "examples": []
+  }
+ },
+ "parse": {
+  "files": 156,
+  "ms": 5974
+ },
+ "perCommit": [
+  {
+   "commit": "f6f44e030",
+   "subject": "docs(015): coverage and complexity, research brief and rows 015-01 to ",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "b72596c68",
+   "subject": "docs: triage issue 86 retry store write contention",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "530873643",
+   "subject": "docs(011): issue 86 research: retry's 2 s store wait reproduced on a s",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "78d42b7db",
+   "subject": "docs(board): wave 26 running (011-159 fa8e6ec2, 011-160 75bfec79, 011-",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "27d481c0e",
+   "subject": "docs(board): 0.1.279 released (011-151, 011-153, 011-154 done; #77 clo",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "e90e0030c",
+   "subject": "docs: review candidate 0.1.279",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "653f4230b",
+   "subject": "build: squeal 0.1.279, bundles for wave 25 (011-153, 011-154, 011-151)",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "d6efaf82f",
+   "subject": "docs(011): wave 25 spec text: C9 exception removed (011-151), C4 step ",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "c468d912b",
+   "subject": "docs(011): 011-151 worker notes, the C9 sentence that replaces the 0.1",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "05ae88d19",
+   "subject": "fix(cli): 011-151 squeal start's step-down and stop reach only the sho",
+   "productFiles": 3,
+   "testFiles": 1,
+   "changed": 7,
+   "maxCc": 8
+  },
+  {
+   "commit": "482da1d53",
+   "subject": "fix(harness): 011-151 a hook's step-down and stop reach only the incar",
+   "productFiles": 2,
+   "testFiles": 3,
+   "changed": 11,
+   "maxCc": 11
+  },
+  {
+   "commit": "8bed37686",
+   "subject": "docs(011): 011-154 notes and the start-cost timing script",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "6b0756204",
+   "subject": "perf(store): one statement reads a test file's newest results (011-154",
+   "productFiles": 3,
+   "testFiles": 1,
+   "changed": 2,
+   "maxCc": 37
+  },
+  {
+   "commit": "6b15e55e4",
+   "subject": "fix(scheduler): a new worktree's misses take the file's newest stored ",
+   "productFiles": 1,
+   "testFiles": 1,
+   "changed": 1,
+   "maxCc": 37
+  },
+  {
+   "commit": "788cc4c62",
+   "subject": "docs(011): 011-153 notes list the ordering test",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "5c301a9ef",
+   "subject": "test(scheduler): ordering's barrel-only case skips the catch-up wait (",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "68529718c",
+   "subject": "docs(011): 011-153 notes, the fixtures' clock and what the next worker",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "509dd4941",
+   "subject": "test(scheduler): harness tests that edit a declared input skip the cat",
+   "productFiles": 0,
+   "testFiles": 9,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "c1e93c52d",
+   "subject": "docs(scheduler): wrap the quiet field's comment; note the slow tier's ",
+   "productFiles": 1,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "67fe15994",
+   "subject": "test(scheduler): edit-cut tests skip the catch-up wait on a movable cl",
+   "productFiles": 0,
+   "testFiles": 5,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "ddb0ed423",
+   "subject": "docs(011): 011-153 worker notes, decisions and drafted C4 step 5 and C",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "a841f4def",
+   "subject": "docs(scheduler): busySliceMs slices only with busyWaits since 011-132 ",
+   "productFiles": 1,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "56b93bd9d",
+   "subject": "test(scheduler): an edit's catch-up waits 120 s, run --all ends it, sl",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "414394f10",
+   "subject": "feat(scheduler): catch-up of an edit waits for 120 s of quiet (011-153",
+   "productFiles": 8,
+   "testFiles": 2,
+   "changed": 32,
+   "maxCc": 69
+  },
+  {
+   "commit": "e699383f5",
+   "subject": "docs(board): 011-161 running (researcher 1d662e8b)",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "a6d2f6c61",
+   "subject": "docs(011): research brief 011-161, departure drains since 011-93 (the ",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "28e341976",
+   "subject": "docs(011): wave 26 briefed (011-159 default lookup-only, 011-160 reten",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "1f53a1618",
+   "subject": "docs(board): wave 25 in review as cand/0.1.279 (reviewer 9581facc); 01",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "cf4b5d8ff",
+   "subject": "docs(011): a removed worktree's results are kept 7 days (the human, ro",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "b68208461",
+   "subject": "docs: triage issue 84 selected-file JSON verdicts",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "2da2bb744",
+   "subject": "docs: triage issue 85 launcher warning repetition",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "c9b98b33c",
+   "subject": "docs(triage): record issue 83 coverage ambiguity",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "6f9b90276",
+   "subject": "docs(011): lookup-only becomes the default with held-failure confirmat",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "4b5d374ee",
+   "subject": "docs(board): 011-157 done, research main-daemon on main",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "ef98f0c7b",
+   "subject": "docs(011-157): research the main checkout as the baseline for new work",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "223a3f4a5",
+   "subject": "docs(board): 011-155 wording, the 1% done-when was the coordinator's",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "0ac7d88f9",
+   "subject": "docs(board): 011-155 done, host-load runbook counts results stored at ",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "3bf07fdd1",
+   "subject": "docs(011): host-load runbook reads store copies and C3 at run end, wit",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "8add693a2",
+   "subject": "docs(011): waste.mjs counts a file stored at run end and separates the",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "88a0d20c1",
+   "subject": "docs(board): wave 25 running (W1 e8df95f1, W2 c86b031a, W3 b833f699, W",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "7e585a601",
+   "subject": "docs(011): wave 25 briefed (W1 011-153, W2 011-154, W3 011-151, W4 011",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "469a829d1",
+   "subject": "docs(board): 011-157 running (researcher 71cc1659)",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "46dac522c",
+   "subject": "docs(board): rows 011-157 (main checkout as baseline, research) and 01",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "5a5bbc9ba",
+   "subject": "chore(config): squeal's own baseline is lookup-only, as cezar's (the h",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "1bfdd4be9",
+   "subject": "docs(board): 011-131, 011-144, 011-132 done and 011-103 slice 1 releas",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "f25fd09b7",
+   "subject": "build: squeal 0.1.278, bundles for wave 24 (011-131, 011-103 slice 1, ",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "7ef90d857",
+   "subject": "docs(011): wave 24 spec text: 003 D5 node:test focus waits for 011-48'",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "21016f39f",
+   "subject": "refactor(011-144): one findProject per specification in the Vitest run",
+   "productFiles": 1,
+   "testFiles": 0,
+   "changed": 1,
+   "maxCc": 2
+  },
+  {
+   "commit": "f051896d6",
+   "subject": "docs(011-144): notes: seam map, decisions, the node:test starting poin",
+   "productFiles": 0,
+   "testFiles": 2,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "61f5eb08e",
+   "subject": "test(011-144): the fingerprint self-test expects the focused case to d",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "5f07d35c1",
+   "subject": "test(011-144): focused adapter cases for the key-format alarm, Vitest ",
+   "productFiles": 0,
+   "testFiles": 6,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "7351f8d41",
+   "subject": "refactor(011-144): the focus helpers move to src/runners/focus.ts",
+   "productFiles": 7,
+   "testFiles": 1,
+   "changed": 8,
+   "maxCc": 3
+  },
+  {
+   "commit": "d5676f8f8",
+   "subject": "revert(011-144): node:test focused runs wait for the adapter:node-test",
+   "productFiles": 4,
+   "testFiles": 1,
+   "changed": 8,
+   "maxCc": 16
+  },
+  {
+   "commit": "06a812134",
+   "subject": "test(011-144): a focused pytest batch that deselects every item gives ",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "b651a582f",
+   "subject": "feat(011-144): pytest focused runs through a deselection hook in squea",
+   "productFiles": 6,
+   "testFiles": 1,
+   "changed": 19,
+   "maxCc": 20
+  },
+  {
+   "commit": "522a27be9",
+   "subject": "feat(011-144): node:test focused runs through --test-name-pattern and ",
+   "productFiles": 4,
+   "testFiles": 2,
+   "changed": 12,
+   "maxCc": 16
+  },
+  {
+   "commit": "b353ff40b",
+   "subject": "feat(011-144): RunOptions.checks and RunnerAdapter.focuses; the Vitest",
+   "productFiles": 4,
+   "testFiles": 2,
+   "changed": 18,
+   "maxCc": 11
+  },
+  {
+   "commit": "982ba549e",
+   "subject": "docs(011-131): the record path's seam, the commits and the decisions",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "3b9311b77",
+   "subject": "test(011-131): the busy fixture finds the record's write in TierRecord",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "9595aa284",
+   "subject": "refactor(011-131): the record of an ended run leaves scheduler.ts",
+   "productFiles": 2,
+   "testFiles": 0,
+   "changed": 33,
+   "maxCc": 8
+  },
+  {
+   "commit": "0aeb76076",
+   "subject": "refactor(011-132): one rule decides when a pass is sliced",
+   "productFiles": 1,
+   "testFiles": 0,
+   "changed": 5,
+   "maxCc": 6
+  },
+  {
+   "commit": "e4e9fdf82",
+   "subject": "refactor(011-103): one Ledger method ends a superseded tier's claim at",
+   "productFiles": 3,
+   "testFiles": 0,
+   "changed": 3,
+   "maxCc": 54
+  },
+  {
+   "commit": "75a1012aa",
+   "subject": "docs(board): 011-152 done, research missed-sharing on main",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "7ba1cfc02",
+   "subject": "docs(011): research 011-152, why a new worktree misses results another",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "d8fc5f748",
+   "subject": "docs(011): review candidate 0.1.278",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "663685643",
+   "subject": "docs(board): 011-145 inputs from 011-144 and review 0.1.278 (adapter-l",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "b8a617f35",
+   "subject": "docs(board): wave 24 in review as cand/0.1.278 (reviewer a9b5e7b2); ro",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "73d638c27",
+   "subject": "docs(board): 011-128, 011-140, 011-141 done, released in 0.1.277",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "d3773e02b",
+   "subject": "docs(011): C4 catch-up of an edit waits for 120 s of quiet (the human,",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "3d7e75683",
+   "subject": "docs(011): C9 names the snapshot-to-socket window the human accepted a",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "70036627a",
+   "subject": "build: squeal 0.1.277 bundles after the review repair (B1, B3)",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "6b9266a36",
+   "subject": "docs(011-140): notes: the review 0.1.277 repair of B1 and B3, and the ",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "260366765",
+   "subject": "test(011-141): a failed tsc compile keeps what tsc listed, under the r",
+   "productFiles": 0,
+   "testFiles": 4,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "20a702451",
+   "subject": "fix(011-141): tscObserved stats only the files tsc listed, and rethrow",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "8a679fda6",
+   "subject": "test(011-140): squeal start finishes the handoff of a short daemon tha",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "4a752aa63",
+   "subject": "fix(011-140): squeal start finishes the handoff once a short daemon ac",
+   "productFiles": 1,
+   "testFiles": 0,
+   "changed": 4,
+   "maxCc": 17
+  },
+  {
+   "commit": "0371808e0",
+   "subject": "test(011-140): a short successor that registers between the hook's rea",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "96a80e2c1",
+   "subject": "fix(011-140): a hook reads the record, the claim and the short mark in",
+   "productFiles": 1,
+   "testFiles": 0,
+   "changed": 4,
+   "maxCc": 16
+  },
+  {
+   "commit": "747b4372d",
+   "subject": "build: squeal 0.1.277, bundles for wave 23 (011-140, 011-141, 011-128)",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "2b55227c8",
+   "subject": "docs(011): wave 23 spec text: 011-140 in 005 D3 and 011 C9, 011-141 in",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "2fe09e67c",
+   "subject": "docs(011-141): the coordinator's fast-lane decision and the checkpoint",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "feef2aaee",
+   "subject": "test(011-141): the build tests stay in the fast lane",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "eb3b5752e",
+   "subject": "docs(011-141): the slow-lane cost of one scheduler.ts edit, against th",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "a3964fc61",
+   "subject": "test(011-141): the policy test matches the slow lane by slow.include",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "50989aa32",
+   "subject": "docs(011-141): worker notes: the change, its tests, seam map, the C12 ",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "c28af89a3",
+   "subject": "refactor(011-141): buildDist and buildOpencodeDist return their metafi",
+   "productFiles": 2,
+   "testFiles": 7,
+   "changed": 2,
+   "maxCc": 1
+  },
+  {
+   "commit": "e03ac7f15",
+   "subject": "test(011-141): the policy test's busy-tier case waits up to 60 s for t",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "2c6203493",
+   "subject": "test(011-141): the build tests run in the slow lane",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "57c399832",
+   "subject": "test(011-141): build helpers stat each file tsc and esbuild compiled",
+   "productFiles": 0,
+   "testFiles": 16,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "b566793d1",
+   "subject": "docs(011-140): notes: the scratch-variable run of test/daemon and test",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "c0931de70",
+   "subject": "fix(011-140): squeal start asks a short daemon to step down with the C",
+   "productFiles": 1,
+   "testFiles": 0,
+   "changed": 2,
+   "maxCc": 7
+  },
+  {
+   "commit": "b7ec6ce80",
+   "subject": "fix(011-140): a copy is renamed out only while its manifest is still w",
+   "productFiles": 7,
+   "testFiles": 2,
+   "changed": 3,
+   "maxCc": 15
+  },
+  {
+   "commit": "ffa286d18",
+   "subject": "docs(011-140): notes: the writer, the changes, decisions, drafted 005 ",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "1aab2e696",
+   "subject": "feat(011-140): the daemon records the executable it runs beside its ve",
+   "productFiles": 3,
+   "testFiles": 2,
+   "changed": 6,
+   "maxCc": 7
+  },
+  {
+   "commit": "b0bb42cc0",
+   "subject": "test(011-140): three versions and a store writer give one handover and",
+   "productFiles": 0,
+   "testFiles": 1,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "d81f5b783",
+   "subject": "fix(011-140): squeal start replaces a daemon that ended its handoff sh",
+   "productFiles": 1,
+   "testFiles": 1,
+   "changed": 2,
+   "maxCc": 17
+  },
+  {
+   "commit": "fa700a29d",
+   "subject": "fix(011-140): a successor older than its claim ends the handoff short,",
+   "productFiles": 11,
+   "testFiles": 2,
+   "changed": 17,
+   "maxCc": 36
+  },
+  {
+   "commit": "822006cd9",
+   "subject": "fix(011-140): a Codex kept copy is made and used only for its manifest",
+   "productFiles": 1,
+   "testFiles": 5,
+   "changed": 7,
+   "maxCc": 14
+  },
+  {
+   "commit": "8b1a9c081",
+   "subject": "docs(011-128): verification in the notes",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  },
+  {
+   "commit": "fca24e2c5",
+   "subject": "docs(011-128): notes for the busy record's withhold count under a merg",
+   "productFiles": 0,
+   "testFiles": 0,
+   "changed": 0,
+   "maxCc": 0
+  }
+ ]
+}
