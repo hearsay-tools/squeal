@@ -9,6 +9,7 @@ import { VITEST_ENVIRONMENT } from "./adapter/environment.js";
 import { PYTEST_RUNS } from "./adapter/pytest.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
 import { DECLARED } from "./assemble/declared.js";
+import { INHERITED } from "./assemble/inherited.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
 import { INSTALLED_KEYS } from "./key/installed.js";
 import { OBSERVED_READS } from "./observe/reads.js";
@@ -32,6 +33,7 @@ export const CASES: readonly Case[] = [
   ...HEAL,
   ...FORMER,
   ...DECLARED,
+  ...INHERITED,
   ...STORE_TIERS,
   ...VITEST_RUNS,
   ...VITEST_ENVIRONMENT,
