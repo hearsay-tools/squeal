@@ -283,12 +283,17 @@ function why(args: readonly string[], io: CliIo): number {
   if (name === undefined || parsed.positional.length > 1) {
     return usage("why", "expected one check name", io);
   }
-  const result = readWhy(io.cwd ?? process.cwd(), name, {
+  const cwd = io.cwd ?? process.cwd();
+  const env = io.env ?? process.env;
+  const result = readWhy(cwd, name, {
     includeLogs,
     busyRetryMs: CLI_READ_RETRY_MS,
-    session: whySession(io.env ?? process.env),
+    session: whySession(env),
   });
-  io.stdout(parsed.json ? json(result) : formatWhy(result));
+  // Row 011-67 (gh-52): a printed command names the CLI and its path as status does.
+  const base = result.available && result.found ? baseOf(result.worktreeRoot, cwd) : "";
+  const now = (io.now ?? Date.now)();
+  io.stdout(parsed.json ? json(result) : formatWhy(result, statusCommand(env), { base, now }));
   return result.available && result.found ? 0 : 1;
 }
 
