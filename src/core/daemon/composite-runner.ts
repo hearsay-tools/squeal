@@ -154,6 +154,8 @@ export function createCompositeRunner(
     },
     besideBacklog: (testFile) => owners.get(testFile.project)?.besideBacklog?.(testFile) ?? false,
     backlogSlot: (testFile) => owners.get(testFile.project)?.backlogSlot?.(testFile) ?? null,
+    // Row 011-145: a focused tier goes only to a file whose owner honours `RunOptions.checks`.
+    focusesFile: (testFile) => focusesFile(owners.get(testFile.project), testFile),
     async run(testFiles, options) {
       // Grouped in one synchronous pass once every owner is known: no reload lands between files.
       if (testFiles.some((f) => !owners.has(f.project))) await environment();
@@ -188,6 +190,14 @@ export function createCompositeRunner(
       if (failed !== undefined) throw failed.reason;
     },
   };
+}
+
+/**
+ * Whether `runner` runs `testFile` for its texts (`RunOptions.checks`, spec
+ * 011 C14): its per-file answer, else `focuses`. No runner: it does not.
+ */
+export function focusesFile(runner: RunnerAdapter | undefined, testFile: TestFileRef): boolean {
+  return runner?.focusesFile?.(testFile) ?? runner?.focuses === true;
 }
 
 interface Part {
