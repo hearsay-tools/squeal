@@ -96,17 +96,18 @@ function loadConfigFile(path, shape, defaults) {
     text2 = readFileSync2(path, "utf8");
   } catch (error) {
     if (isMissing(error)) return { value: defaults, problems: [] };
-    return { value: defaults, problems: [`could not be read: ${String(error)}`] };
+    return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
   }
   let parsed2;
   try {
     parsed2 = JSON.parse(text2);
   } catch (error) {
-    return { value: defaults, problems: [`not valid JSON (${error.message})`] };
+    const problem = `not valid JSON (${error.message})`;
+    return { value: defaults, problems: [problem], unparsed: true };
   }
   if (!isRecord(parsed2)) {
     const got = Array.isArray(parsed2) ? "an array" : JSON.stringify(parsed2);
-    return { value: defaults, problems: [`must be a JSON object, got ${got}`] };
+    return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
   }
   const problems = [];
   const merged = merge(shape, defaults, parsed2, "", problems);
@@ -760,8 +761,12 @@ var SHAPE = {
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
 };
 function loadPolicy(root) {
-  const { value, problems } = loadConfigFile(join5(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
-  return { policy: value, problems };
+  const loaded = loadConfigFile(join5(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  return {
+    policy: loaded.value,
+    problems: loaded.problems,
+    ...loaded.unparsed === true ? { unparsed: true } : {}
+  };
 }
 function readPolicy(root) {
   return loadPolicy(root).policy;

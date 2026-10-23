@@ -2645,17 +2645,18 @@ function loadConfigFile(path, shape, defaults) {
     text3 = readFileSync5(path, "utf8");
   } catch (error) {
     if (isMissing(error)) return { value: defaults, problems: [] };
-    return { value: defaults, problems: [`could not be read: ${String(error)}`] };
+    return { value: defaults, problems: [`could not be read: ${String(error)}`], unparsed: true };
   }
   let parsed2;
   try {
     parsed2 = JSON.parse(text3);
   } catch (error) {
-    return { value: defaults, problems: [`not valid JSON (${error.message})`] };
+    const problem = `not valid JSON (${error.message})`;
+    return { value: defaults, problems: [problem], unparsed: true };
   }
   if (!isRecord(parsed2)) {
     const got = Array.isArray(parsed2) ? "an array" : JSON.stringify(parsed2);
-    return { value: defaults, problems: [`must be a JSON object, got ${got}`] };
+    return { value: defaults, problems: [`must be a JSON object, got ${got}`], unparsed: true };
   }
   const problems = [];
   const merged2 = merge(shape, defaults, parsed2, "", problems);
@@ -2845,8 +2846,12 @@ var init_policy_slow = __esm({
 // src/core/daemon/policy.ts
 import { join as join9 } from "node:path";
 function loadPolicy(root) {
-  const { value, problems } = loadConfigFile(join9(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
-  return { policy: value, problems };
+  const loaded = loadConfigFile(join9(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  return {
+    policy: loaded.value,
+    problems: loaded.problems,
+    ...loaded.unparsed === true ? { unparsed: true } : {}
+  };
 }
 function readPolicy(root) {
   return loadPolicy(root).policy;
@@ -2942,12 +2947,12 @@ function readSlot(store, key2, consumer) {
   return readAll(store, key2)[slot(consumer)];
 }
 function writeSlot(store, key2, consumer, value) {
-  const registered = new Set(
+  const registered2 = new Set(
     store.consumers.list(consumer.worktreeId).map((r) => slot(r.consumer))
   );
   const all2 = readAll(store, key2);
   const next = {};
-  for (const [k, v] of Object.entries(all2)) if (registered.has(k)) next[k] = v;
+  for (const [k, v] of Object.entries(all2)) if (registered2.has(k)) next[k] = v;
   if (value === null) delete next[slot(consumer)];
   else next[slot(consumer)] = value;
   if (Object.keys(next).length === 0 && Object.keys(all2).length === 0) return;
@@ -14375,8 +14380,8 @@ function withheldForTouch(report2, touched, files2) {
   );
   const gone3 = files2 === void 0 ? null : new Set(files2.map(testFileId));
   const kept2 = (ref2) => gone3 !== null && !gone3.has(testFileId(ref2));
-  const { fileDurations, observed, reads, withheld, ...rest } = report2;
-  const stillWithheld = withheld?.filter(kept2) ?? [];
+  const { fileDurations, observed, reads, withheld: withheld2, ...rest } = report2;
+  const stillWithheld = withheld2?.filter(kept2) ?? [];
   return {
     ...rest,
     completedFiles: report2.completedFiles.filter(kept2),
@@ -14398,12 +14403,12 @@ function barredByTouch(report2, files2, touched, growth) {
   const touchedOf = (ran) => [...named(ran.inputs), ...named(growth?.get(ran.file.id)?.growth)];
   const barred = files2.filter((ran) => touchedOf(ran).length > 0);
   const paths = [...new Set(barred.flatMap(touchedOf))].sort();
-  const withheld = withheldForTouch(
+  const withheld2 = withheldForTouch(
     report2,
     paths,
     barred.map(({ file }) => file.ref)
   );
-  return { report: withheld, barred, paths };
+  return { report: withheld2, barred, paths };
 }
 function withholdNote(touched, files2, retry2) {
   if (files2.length === 0) return null;
@@ -19815,7 +19820,7 @@ var init_scheduler2 = __esm({
         const setupsHeld = heldSetups(this.#hold, tier.files, held2, ranReport.startupFailure);
         const { startupFailure: _, ...withoutStartup } = ranReport;
         const report2 = setupsHeld.startup ? withoutStartup : ranReport;
-        const withheld = [];
+        const withheld2 = [];
         const withhold = barred.length === 0 ? null : this.#withholds.record(barred);
         this.#withholds.clear(free.filter((ran2) => !barred.includes(ran2)));
         if (withhold !== null) {
@@ -19823,7 +19828,7 @@ var init_scheduler2 = __esm({
             withholdNote(barredPaths, withhold.again, true),
             withholdNote(barredPaths, withhold.exhausted, false)
           ];
-          withheld.push(...notes.filter((note) => note !== null));
+          withheld2.push(...notes.filter((note) => note !== null));
         }
         const cancelled2 = this.#stop.signal.aborted;
         const unfinished2 = cancelled2 || holdCut ? unfinishedFiles(tier, ran) : [];
@@ -19858,7 +19863,7 @@ var init_scheduler2 = __esm({
           if (slow !== null) this.#slow.ended();
           return [.../* @__PURE__ */ new Set([...result, ...touched])];
         });
-        return { moved: moved2, withheld };
+        return { moved: moved2, withheld: withheld2 };
       }
       /**
        * The slow pass of `lane` drained: no file of it is queued, so its runner
@@ -24868,11 +24873,11 @@ function dropFiles(report2, dropped, reason2) {
   const gone3 = new Set(dropped.map(refKey));
   const kept2 = (ref2) => !gone3.has(refKey(ref2));
   const { fileDurations, observed, reads } = report2;
-  const withheld = [...report2.withheld ?? [], ...report2.completedFiles.filter((f) => !kept2(f))];
+  const withheld2 = [...report2.withheld ?? [], ...report2.completedFiles.filter((f) => !kept2(f))];
   return {
     ...report2,
     completedFiles: report2.completedFiles.filter(kept2),
-    ...withheld.length > 0 ? { withheld } : {},
+    ...withheld2.length > 0 ? { withheld: withheld2 } : {},
     results: report2.results.filter(
       (r) => kept2({ project: r.check.project, path: r.check.testPath })
     ),
@@ -43954,9 +43959,54 @@ var init_adapter2 = __esm({
   }
 });
 
+// src/core/daemon/runner-set.ts
+function createRunnerSet(entries3, build) {
+  const make = (entry4) => ({ runner: build(entry4), stamp: stampOf(entry4) });
+  let built = new Map(entries3().map((entry4) => [entry4.name, make(entry4)]));
+  return {
+    members: () => [...built.values()].map((member) => member.runner),
+    reconcile() {
+      const next = /* @__PURE__ */ new Map();
+      const replaced = [];
+      const projects2 = /* @__PURE__ */ new Set();
+      for (const entry4 of entries3()) {
+        const was = built.get(entry4.name);
+        if (was !== void 0 && was.stamp === stampOf(entry4)) {
+          next.set(entry4.name, was);
+          continue;
+        }
+        next.set(entry4.name, make(entry4));
+        projects2.add(entry4.name);
+        if (was !== void 0) replaced.push(was.runner);
+      }
+      const removed = [...built].filter(([name2]) => !next.has(name2));
+      for (const [name2] of removed) projects2.add(name2);
+      built = next;
+      return {
+        removed: removed.map(([, member]) => member.runner),
+        replaced,
+        projects: [...projects2].sort(compare)
+      };
+    }
+  };
+}
+function stampOf(entry4) {
+  return JSON.stringify(
+    entry4,
+    (_, value) => isRecord(value) ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => compare(a, b))) : value
+  );
+}
+var init_runner_set = __esm({
+  "src/core/daemon/runner-set.ts"() {
+    "use strict";
+    init_fs();
+  }
+});
+
 // src/core/daemon/node-test-runners.ts
 var node_test_runners_exports = {};
 __export(node_test_runners_exports, {
+  createNodeTestRunnerSet: () => createNodeTestRunnerSet,
   createNodeTestRunners: () => createNodeTestRunners,
   nodeTestObservedMetaKey: () => nodeTestObservedMetaKey,
   nodeTestObservedPreloadsMetaKey: () => nodeTestObservedPreloadsMetaKey,
@@ -44032,29 +44082,33 @@ function parseObserved(raw) {
   );
 }
 function createNodeTestRunners(projects2, options) {
-  return projects2.map(
-    (project) => createRecoveringRunner({
-      name: "node-test",
-      adapterVersion: NODE_TEST_ADAPTER_VERSION,
-      create: () => createNodeTestAdapter(project, {
-        root: options.root,
-        observed: observedStore(options.store, project.name),
-        note: options.note,
-        concurrency: options.tierSize,
-        tempDir: options.tempDir,
-        ...options.inputs === void 0 ? {} : { inputs: options.inputs },
-        ...options.childEnv === void 0 ? {} : { childEnv: options.childEnv }
-      }),
-      // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
-      tierWidth: () => options.tierSize(),
-      // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
-      besideBacklog: true,
-      // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
-      backlogSlot: 1,
-      onFailure: (text3) => options.note(`${text3} (node-test project ${JSON.stringify(project.name)})`),
-      onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`)
-    })
-  );
+  return projects2.map((project) => nodeTestRunner(project, options));
+}
+function createNodeTestRunnerSet(projects2, options) {
+  return createRunnerSet(projects2, (project) => nodeTestRunner(project, options));
+}
+function nodeTestRunner(project, options) {
+  return createRecoveringRunner({
+    name: "node-test",
+    adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    create: () => createNodeTestAdapter(project, {
+      root: options.root,
+      observed: observedStore(options.store, project.name),
+      note: options.note,
+      concurrency: options.tierSize,
+      tempDir: options.tempDir,
+      ...options.inputs === void 0 ? {} : { inputs: options.inputs },
+      ...options.childEnv === void 0 ? {} : { childEnv: options.childEnv }
+    }),
+    // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
+    tierWidth: () => options.tierSize(),
+    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
+    besideBacklog: true,
+    // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
+    backlogSlot: 1,
+    onFailure: (text3) => options.note(`${text3} (node-test project ${JSON.stringify(project.name)})`),
+    onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`)
+  });
 }
 var init_node_test_runners = __esm({
   "src/core/daemon/node-test-runners.ts"() {
@@ -44063,6 +44117,7 @@ var init_node_test_runners = __esm({
     init_fs();
     init_types();
     init_runner2();
+    init_runner_set();
   }
 });
 
@@ -52525,6 +52580,7 @@ var init_adapter3 = __esm({
 // src/core/daemon/pytest-runners.ts
 var pytest_runners_exports = {};
 __export(pytest_runners_exports, {
+  createPytestRunnerSet: () => createPytestRunnerSet,
   createPytestRunners: () => createPytestRunners,
   pytestCacheDir: () => pytestCacheDir,
   pytestObservedMetaKey: () => pytestObservedMetaKey,
@@ -52605,31 +52661,35 @@ function pytestCacheDir(stateDir, root, project) {
   return join88(stateDir, "pytest", id2);
 }
 function createPytestRunners(projects2, options) {
-  return projects2.map((project) => {
-    const { batchSize } = project;
-    return createRecoveringRunner({
-      name: "pytest",
-      adapterVersion: PYTEST_ADAPTER_VERSION,
-      create: () => createPytestAdapter(project, {
-        root: options.root,
-        observed: pytestObservedStore(options.store, project.name),
-        note: options.note,
-        ...options.latestNote === void 0 ? {} : { latestNote: options.latestNote },
-        concurrency: options.tierSize,
-        ...batchSize === void 0 ? {} : { batchSize: () => batchSize },
-        tempDir: options.tempDir,
-        cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
-        ...options.childEnv === void 0 ? {} : { childEnv: options.childEnv }
-      }),
-      // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
-      tierWidth: () => options.tierSize(),
-      // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
-      besideBacklog: true,
-      // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
-      backlogSlot: batchSize ?? DEFAULT_BATCH_SIZE,
-      onFailure: (text3) => options.note(`${text3} (pytest project ${JSON.stringify(project.name)})`),
-      onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`)
-    });
+  return projects2.map((project) => pytestRunner(project, options));
+}
+function createPytestRunnerSet(projects2, options) {
+  return createRunnerSet(projects2, (project) => pytestRunner(project, options));
+}
+function pytestRunner(project, options) {
+  const { batchSize } = project;
+  return createRecoveringRunner({
+    name: "pytest",
+    adapterVersion: PYTEST_ADAPTER_VERSION,
+    create: () => createPytestAdapter(project, {
+      root: options.root,
+      observed: pytestObservedStore(options.store, project.name),
+      note: options.note,
+      ...options.latestNote === void 0 ? {} : { latestNote: options.latestNote },
+      concurrency: options.tierSize,
+      ...batchSize === void 0 ? {} : { batchSize: () => batchSize },
+      tempDir: options.tempDir,
+      cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
+      ...options.childEnv === void 0 ? {} : { childEnv: options.childEnv }
+    }),
+    // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
+    tierWidth: () => options.tierSize(),
+    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
+    besideBacklog: true,
+    // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
+    backlogSlot: batchSize ?? DEFAULT_BATCH_SIZE,
+    onFailure: (text3) => options.note(`${text3} (pytest project ${JSON.stringify(project.name)})`),
+    onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`)
   });
 }
 var init_pytest_runners = __esm({
@@ -52640,6 +52700,91 @@ var init_pytest_runners = __esm({
     init_fs();
     init_types();
     init_runner2();
+    init_runner_set();
+  }
+});
+
+// src/core/daemon/composite-flights.ts
+function withheld(testFiles2, durationMs2) {
+  return {
+    end: "completed",
+    durationMs: durationMs2,
+    completedFiles: [],
+    results: [],
+    fileErrors: [],
+    failure: null,
+    withheld: testFiles2
+  };
+}
+async function runPart(adapter, testFiles2, options) {
+  const started2 = Date.now();
+  try {
+    return await adapter.run(testFiles2, options);
+  } catch (error) {
+    return {
+      end: "crashed",
+      durationMs: Date.now() - started2,
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+var Flights;
+var init_composite_flights = __esm({
+  "src/core/daemon/composite-flights.ts"() {
+    "use strict";
+    Flights = class {
+      #running = /* @__PURE__ */ new Map();
+      #removed = /* @__PURE__ */ new WeakSet();
+      /** Every member a reload retired, removed or replaced: none starts a part again. */
+      #left = /* @__PURE__ */ new WeakSet();
+      /** Retired members not closed yet: each waits for its parts in flight. */
+      #retired = /* @__PURE__ */ new Set();
+      #closing = [];
+      removed(adapter) {
+        return this.#removed.has(adapter);
+      }
+      left(adapter) {
+        return this.#left.has(adapter);
+      }
+      stop(adapter) {
+        this.#removed.add(adapter);
+        for (const controller of this.#running.get(adapter) ?? []) controller.abort("stop");
+      }
+      retire(adapter) {
+        this.#left.add(adapter);
+        this.#retired.add(adapter);
+        if (!this.#running.has(adapter)) this.#closeRetired(adapter);
+      }
+      async run(adapter, testFiles2, options) {
+        const controller = new AbortController();
+        const running = this.#running.get(adapter) ?? /* @__PURE__ */ new Set();
+        this.#running.set(adapter, running.add(controller));
+        const stop2 = options.stop === void 0 ? controller.signal : AbortSignal.any([options.stop, controller.signal]);
+        try {
+          const report2 = await runPart(adapter, testFiles2, { ...options, stop: stop2 });
+          return this.removed(adapter) ? withheld(testFiles2, report2.durationMs) : report2;
+        } finally {
+          running.delete(controller);
+          if (running.size === 0) {
+            this.#running.delete(adapter);
+            if (this.#retired.has(adapter)) this.#closeRetired(adapter);
+          }
+        }
+      }
+      /** Closes the retired members still running, and waits for every retired close. */
+      async close() {
+        for (const adapter of this.#retired) this.#closeRetired(adapter);
+        await Promise.all(this.#closing);
+      }
+      #closeRetired(adapter) {
+        this.#retired.delete(adapter);
+        this.#closing.push(adapter.close().catch(() => {
+        }));
+      }
+    };
   }
 });
 
@@ -52648,8 +52793,11 @@ var composite_runner_exports = {};
 __export(composite_runner_exports, {
   createCompositeRunner: () => createCompositeRunner
 });
-function createCompositeRunner(adapters) {
+function createCompositeRunner(adapters, sets2 = []) {
+  const all2 = () => [...adapters, ...sets2.flatMap((set) => set.members())];
+  let members = all2();
   const owners = /* @__PURE__ */ new Map();
+  const flights = new Flights();
   const own = (adapter, projects2) => {
     for (const project of projects2) {
       const owner2 = owners.get(project);
@@ -52661,7 +52809,20 @@ function createCompositeRunner(adapters) {
       owners.set(project, adapter);
     }
   };
-  const each = (call) => Promise.all(adapters.map(async (adapter) => ({ adapter, value: await call(adapter) })));
+  const reconcile2 = () => {
+    if (sets2.length === 0) return [];
+    const changes = sets2.map((set) => set.reconcile());
+    members = all2();
+    for (const { removed, replaced } of changes) {
+      for (const runner of removed) flights.stop(runner);
+      for (const runner of [...removed, ...replaced]) {
+        for (const [project, owner2] of owners) if (owner2 === runner) owners.delete(project);
+        flights.retire(runner);
+      }
+    }
+    return changes.flatMap((change2) => change2.projects);
+  };
+  const each = (call) => Promise.all(members.map(async (adapter) => ({ adapter, value: await call(adapter) })));
   const environment = async () => {
     const parts2 = await each((adapter) => adapter.environment());
     for (const { adapter, value } of parts2)
@@ -52682,29 +52843,34 @@ function createCompositeRunner(adapters) {
     return owner2;
   };
   return {
-    name: adapters.map((adapter) => adapter.name).join("+"),
-    adapterVersion: adapters.map((adapter) => adapter.adapterVersion).join("+"),
+    get name() {
+      return members.map((adapter) => adapter.name).join("+");
+    },
+    get adapterVersion() {
+      return members.map((adapter) => adapter.adapterVersion).join("+");
+    },
     async invalidate(paths) {
-      const parts2 = await Promise.all(adapters.map((adapter) => adapter.invalidate(paths)));
-      const projects2 = new Set(parts2.flatMap((part) => part.recreatedProjects));
+      const reconciled = reconcile2();
+      const parts2 = await Promise.all(members.map((adapter) => adapter.invalidate(paths)));
+      const projects2 = /* @__PURE__ */ new Set([...reconciled, ...parts2.flatMap((part) => part.recreatedProjects)]);
       return { recreatedProjects: [...projects2].sort(compare) };
     },
     async recheck() {
       const parts2 = await Promise.all(
-        adapters.map((adapter) => adapter.recheck?.() ?? { recreatedProjects: [] })
+        members.map((adapter) => adapter.recheck?.() ?? { recreatedProjects: [] })
       );
       const projects2 = new Set(parts2.flatMap((part) => part.recreatedProjects));
       return { recreatedProjects: [...projects2].sort(compare) };
     },
     async affected(changedPaths) {
-      const parts2 = await Promise.all(adapters.map((adapter) => adapter.affected(changedPaths)));
+      const parts2 = await Promise.all(members.map((adapter) => adapter.affected(changedPaths)));
       return {
         direct: parts2.flatMap((part) => part.direct).sort(compareRefs2),
         transitive: parts2.flatMap((part) => part.transitive).sort(compareRefs2)
       };
     },
     // A project no adapter listed yet has the composite's lane: its run fails on its own.
-    lane: (testFile) => owners.get(testFile.project)?.name ?? adapters.map((a) => a.name).join("+"),
+    lane: (testFile) => owners.get(testFile.project)?.name ?? members.map((a) => a.name).join("+"),
     closure: async (testFile) => (await ownerOf(testFile)).closure(testFile),
     enumerate: async (testFile) => (await ownerOf(testFile)).enumerate(testFile),
     async testFiles() {
@@ -52716,7 +52882,7 @@ function createCompositeRunner(adapters) {
         );
       return parts2.flatMap((part) => part.value);
     },
-    omittedTestFiles: () => adapters.reduce((sum, adapter) => sum + (adapter.omittedTestFiles?.() ?? 0), 0),
+    omittedTestFiles: () => members.reduce((sum, adapter) => sum + (adapter.omittedTestFiles?.() ?? 0), 0),
     environment,
     // The parts run one after another: a slow tier starts only the first file's owner's (004 D2).
     slowWidth(testFiles2) {
@@ -52732,49 +52898,40 @@ function createCompositeRunner(adapters) {
     tierPart(testFile) {
       const owner2 = owners.get(testFile.project);
       if (owner2 === void 0) return "";
-      return `${adapters.indexOf(owner2)}:${owner2.tierPart?.(testFile) ?? ""}`;
+      return `${members.indexOf(owner2)}:${owner2.tierPart?.(testFile) ?? ""}`;
     },
     besideBacklog: (testFile) => owners.get(testFile.project)?.besideBacklog?.(testFile) ?? false,
     backlogSlot: (testFile) => owners.get(testFile.project)?.backlogSlot?.(testFile) ?? null,
     async run(testFiles2, options) {
+      if (testFiles2.some((f) => !owners.has(f.project))) await environment();
       const groups = /* @__PURE__ */ new Map();
       for (const testFile of testFiles2) {
-        const owner2 = await ownerOf(testFile);
+        const owner2 = owners.get(testFile.project) ?? await ownerOf(testFile);
         groups.set(owner2, [...groups.get(owner2) ?? [], testFile]);
       }
+      const order = [...members, ...[...groups.keys()].filter((a) => !members.includes(a))];
       const parts2 = [];
-      for (const adapter of adapters) {
+      for (const adapter of order) {
         const files2 = groups.get(adapter);
         if (files2 === void 0 || options.stop?.aborted === true) continue;
-        parts2.push({ adapter, report: await runPart(adapter, files2, options) });
+        if (flights.left(adapter)) parts2.push({ adapter, report: withheld(files2, 0) });
+        else parts2.push({ adapter, report: await flights.run(adapter, files2, options) });
       }
       return merge2(parts2);
     },
     // Each adapter knows its own lanes (a slow instance, task 004-18); the others ignore it.
     async releaseLane(lane) {
-      await Promise.all(adapters.map((adapter) => adapter.releaseLane?.(lane)));
+      await Promise.all(members.map((adapter) => adapter.releaseLane?.(lane)));
     },
     async close() {
-      const closed = await Promise.allSettled(adapters.map((adapter) => adapter.close()));
+      const closed = await Promise.allSettled([
+        ...members.map((adapter) => adapter.close()),
+        flights.close()
+      ]);
       const failed2 = closed.find((result) => result.status === "rejected");
       if (failed2 !== void 0) throw failed2.reason;
     }
   };
-}
-async function runPart(adapter, testFiles2, options) {
-  const started2 = Date.now();
-  try {
-    return await adapter.run(testFiles2, options);
-  } catch (error) {
-    return {
-      end: "crashed",
-      durationMs: Date.now() - started2,
-      completedFiles: [],
-      results: [],
-      fileErrors: [],
-      failure: error instanceof Error ? error.message : String(error)
-    };
-  }
 }
 function merge2(parts2) {
   const reports = parts2.map((part) => part.report);
@@ -52790,7 +52947,7 @@ function merge2(parts2) {
   const read5 = reports.some((report2) => report2.reads !== void 0);
   const environment = reports.flatMap((report2) => report2.environmentObserved ?? []);
   const skipped2 = reports.flatMap((report2) => report2.skippedFiles ?? []);
-  const withheld = reports.flatMap((report2) => report2.withheld ?? []);
+  const withheld2 = reports.flatMap((report2) => report2.withheld ?? []);
   const startup = reports.find((report2) => report2.startupFailure !== void 0)?.startupFailure;
   const started2 = [...new Set(reports.flatMap((report2) => report2.startedProjects ?? []))];
   return {
@@ -52805,7 +52962,7 @@ function merge2(parts2) {
     ...read5 ? { reads: reports.flatMap((report2) => report2.reads ?? []) } : {},
     ...environment.length > 0 ? { environmentObserved: environment } : {},
     ...skipped2.length > 0 ? { skippedFiles: skipped2 } : {},
-    ...withheld.length > 0 ? { withheld } : {},
+    ...withheld2.length > 0 ? { withheld: withheld2 } : {},
     ...startup === void 0 ? {} : { startupFailure: startup },
     ...started2.length === 0 ? {} : { startedProjects: started2.sort(compare) }
   };
@@ -52818,6 +52975,7 @@ var init_composite_runner = __esm({
   "src/core/daemon/composite-runner.ts"() {
     "use strict";
     init_fs();
+    init_composite_flights();
     SEVERITY = { completed: 0, "timed-out": 1, crashed: 2 };
   }
 });
@@ -52910,7 +53068,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.269";
+  if (true) return "0.1.270";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -53384,7 +53542,7 @@ init_open2();
 // src/core/status/replaced-failures.ts
 init_state3();
 init_test_frame();
-function storedEntry(r, { roots, loads: loads2 }) {
+function storedEntry(r, { roots, loads: loads2, active }) {
   const frame = testFileFrame(r.check, r.errors);
   return {
     check: r.check,
@@ -53400,10 +53558,11 @@ function storedEntry(r, { roots, loads: loads2 }) {
     runId: r.provenance.runId,
     location: r.location,
     ...frame === null ? {} : { testFileFrame: frame },
-    loadPerCpu: loads2.get(r.provenance.runId) ?? null
+    loadPerCpu: loads2.get(r.provenance.runId) ?? null,
+    active: active(r.provenance.worktreeId, r.check)
   };
 }
-function replacedEntry(store, e, { roots }) {
+function replacedEntry(store, e, { roots, active }) {
   const text3 = e.failureId === null ? null : store.failures.text(e.failureId);
   const frame = text3 === null ? null : testFileFrame(e.check, text3.errors);
   const p = e.provenance;
@@ -53422,7 +53581,8 @@ function replacedEntry(store, e, { roots }) {
     location: e.location,
     ...frame === null ? {} : { testFileFrame: frame },
     loadPerCpu: e.loadPerCpu,
-    replacedBy: { ...e.replacedBy, worktreeRoot: roots.get(e.replacedBy.worktreeId) ?? null }
+    replacedBy: { ...e.replacedBy, worktreeRoot: roots.get(e.replacedBy.worktreeId) ?? null },
+    active: active(p.worktreeId, e.check)
   };
 }
 function selectReplaced(entries3, selection, texts) {
@@ -53970,7 +54130,12 @@ function readFailures(cwd, options = {}) {
     const totals = selection.perCheck ? perCheckTotals(store, filter, stored, replaced) : { total: stored + replaced.length, replaced: replaced.length };
     const { total } = totals;
     const limit = options.limit === "all" ? total : options.limit ?? FAILURES_LIMIT;
-    const context = { roots, loads: readRunLoads(store) };
+    const context = {
+      roots,
+      loads: readRunLoads(store),
+      // Row 011-79 (011 C6, C10): one point lookup for each listed row, in its own worktree.
+      active: (id2, { project, testPath: path }) => store.testFileKeys.list(id2, [{ project, path }]).length > 0
+    };
     const listed5 = store.failures.list(filter, limit);
     const failures = mergeFailures(store, listed5, replaced, selection.perCheck, limit, context);
     return {
@@ -54011,7 +54176,7 @@ function failureLines(report2, f) {
   const mark = f.replacedBy === void 0 ? "FAIL" : "REPLACED";
   const lines = [
     `  ${mark}  ${new Date(f.recordedAt).toISOString()}  ${formatCheck(f.check)}`,
-    `        ${where3}, revision ${f.revision}, commit ${shortCommit(f.commit)}, ${f.dirty ? "dirty" : "clean"}, ${Math.round(f.durationMs)} ms, run ${f.runId}`
+    `        ${where3}, revision ${f.revision}, commit ${shortCommit(f.commit)}, ${f.dirty ? "dirty" : "clean"}, ${Math.round(f.durationMs)} ms, run ${f.runId}${f.active ? "" : ", not a test file here now"}`
   ];
   const by = f.replacedBy;
   if (by !== void 0) {
@@ -55150,13 +55315,13 @@ function printLauncherConfig(io, pluginRoot = findCodexPlugin()) {
 function codexStatusLine(cwd, env) {
   const session2 = env.CODEX_SESSION_ID;
   if (session2 === void 0 || session2 === "") return null;
-  const registered = withStatusStore(
+  const registered2 = withStatusStore(
     cwd,
     {},
     ({ store, root }) => store.consumers.list(worktreeIdFor(root)).some((c) => c.consumer.sessionId === session2)
   );
-  if (registered === true) return null;
-  if (registered !== false && registered.reason !== "no-store") return null;
+  if (registered2 === true) return null;
+  if (registered2 !== false && registered2.reason !== "no-store") return null;
   return `Codex: no Squeal consumer is registered for this session in this worktree (CODEX_SESSION_ID ${session2}). Either Squeal's hooks do not run in it, or none has registered it yet: hooks that ran before the store existed register nothing, and the next prompt or tool result does. If the hooks do not run and the plugin is installed, ${CODEX_TRUST_STEP}; without the plugin, run squeal init --harness codex.
 `;
 }
@@ -56483,10 +56648,10 @@ function startTimers(context) {
       return;
     }
     if (at2 - context.lastUsed() < unusedMs) return;
-    const registered = store.consumers.list(worktreeId).length;
-    if (registered === 0) return;
+    const registered2 = store.consumers.list(worktreeId).length;
+    if (registered2 === 0) return;
     markRest(store, worktreeId, at2);
-    context.shutdown("idle", unusedText(unusedMs, registered, work?.queued ?? 0));
+    context.shutdown("idle", unusedText(unusedMs, registered2, work?.queued ?? 0));
   };
   const countPresence = (at2) => {
     if (store.consumers.list(worktreeId).length > 0) {
@@ -56599,8 +56764,8 @@ function boundText(pending, idleMs) {
   const after = `${duration(idleMs)} after its last session ended (daemon.idleExitMinutes)`;
   return pending === SLOW_FILES ? `daemon stopped: slow files were still pending ${after}` : `daemon stopped: still pending ${after}: ${pending}; the next daemon resumes what is owed`;
 }
-function unusedText(unusedMs, registered, queued) {
-  const sessions = registered === 1 ? "1 session registered" : `${registered} sessions registered`;
+function unusedText(unusedMs, registered2, queued) {
+  const sessions = registered2 === 1 ? "1 session registered" : `${registered2} sessions registered`;
   const left = queued === 0 ? "" : ` and ${plural(queued, "test file")} queued`;
   return `daemon stopped: no edit, run, wait or request for ${duration(unusedMs)} (daemon.unusedExitMinutes), with ${sessions}${left}; the next hook starts it again`;
 }
@@ -57465,10 +57630,15 @@ var Daemon = class {
    * `SchedulerOptions.reloadPolicy`: spec 001 D11, "a revision that changes
    * the file reloads it and re-keys what `inputs` and `env.allowlist`
    * touch". The scheduler re-keys; the daemon restarts its timers for
-   * `daemon.*` and `store.*` and notes the reload.
+   * `daemon.*` and `store.*` and notes the reload. The runner reconciles
+   * its node:test and pytest projects with the new policy at its next
+   * `invalidate`, the same revision's runner part; a file that does not
+   * parse keeps the projects (011 C10, *Projects at a reload*, row 011-78).
    */
   #reloadPolicy() {
-    const { policy, problems } = loadPolicy(this.opened.root);
+    const { policy: loaded, problems, unparsed } = loadPolicy(this.opened.root);
+    const { nodeTest, pytest } = this.#policy;
+    const policy = unparsed === true ? { ...loaded, nodeTest, pytest } : loaded;
     this.#policy = policy;
     if (this.#phase !== "stopping") this.#startTimers();
     const found3 = problems.length > 0 ? `: ${describeProblems(problems)}` : "";
@@ -57593,7 +57763,7 @@ var Daemon = class {
         onFailure: (text3) => this.#note(`the slow tier's ${text3}`),
         around
       });
-      const nodeTestRunners = nodeTest.createNodeTestRunners(configured, {
+      const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
         store,
         tempDir: this.opened.scratch.tempDir,
@@ -57602,7 +57772,7 @@ var Daemon = class {
         inputs: () => this.#policy.inputs,
         note: (text3, topic) => this.#note(text3, void 0, void 0, topic)
       });
-      const pytestRunners2 = pytest.createPytestRunners(configuredPytest, {
+      const pytestRunners2 = pytest.createPytestRunnerSet(() => this.#policy.pytest, {
         root,
         store,
         stateDir: storePaths2(commonDir).dir,
@@ -57614,11 +57784,10 @@ var Daemon = class {
       });
       const runner = this.#idleGc.track(
         afterEachRun(
-          createCompositeRunner2([
-            ...vitestRunner === null ? [] : [withSlowInstance2(vitestRunner, slowVitest)],
-            ...nodeTestRunners,
-            ...pytestRunners2
-          ]),
+          createCompositeRunner2(
+            vitestRunner === null ? [] : [withSlowInstance2(vitestRunner, slowVitest)],
+            [nodeTestRunners, pytestRunners2]
+          ),
           this.#children,
           ({ text: text3, stopped }) => this.#note(text3, stopped)
         )
@@ -57627,8 +57796,8 @@ var Daemon = class {
       this.#runner = runner;
       await Promise.all([
         ...await awaitsInstall2(root) ? [] : [vitestRunner?.open()],
-        ...nodeTestRunners.map((r) => r.open()),
-        ...pytestRunners2.map((r) => r.open()),
+        ...nodeTestRunners.members().map((r) => r.open()),
+        ...pytestRunners2.members().map((r) => r.open()),
         vitestBelowRoot2
       ]);
       if (this.#phase === "stopping" || this.#stopRequested) return;
@@ -60262,13 +60431,13 @@ function piInstallCommand(cli) {
 function piStatusLine(cwd, env, cli) {
   const session2 = env.PI_SESSION_ID;
   if (session2 === void 0 || session2 === "") return null;
-  const registered = withStatusStore(
+  const registered2 = withStatusStore(
     cwd,
     {},
     ({ store, root }) => store.consumers.list(worktreeIdFor(root)).some((c) => c.consumer.sessionId === session2)
   );
-  if (registered === true) return null;
-  if (registered !== false && registered.reason !== "no-store") return null;
+  if (registered2 === true) return null;
+  if (registered2 !== false && registered2.reason !== "no-store") return null;
   return `Pi: no Squeal consumer is registered for this session in this worktree (PI_SESSION_ID ${session2}). Either the Squeal Pi extension is not loaded in it, or it has not registered the session yet: a session that started before the store existed registers at its next tool call. Without the extension, install it with ${piInstallCommand(cli)}, then start Pi again.
 `;
 }
@@ -60288,13 +60457,13 @@ function opencodeStatusLine(cwd, env) {
     return `OpenCode: this shell runs under OpenCode (OPENCODE=1) without OPENCODE_SESSION_ID, so the Squeal OpenCode plugin did not run in this session. Install it with ${INSTALL_SH_COMMAND}, then start OpenCode again.
 `;
   }
-  const registered = withStatusStore(
+  const registered2 = withStatusStore(
     cwd,
     {},
     ({ store, root }) => store.consumers.list(worktreeIdFor(root)).some((c) => c.consumer.sessionId === session2)
   );
-  if (registered === true) return null;
-  if (registered !== false && registered.reason !== "no-store") return null;
+  if (registered2 === true) return null;
+  if (registered2 !== false && registered2.reason !== "no-store") return null;
   return `OpenCode: no Squeal consumer is registered for this session in this worktree (OPENCODE_SESSION_ID ${session2}). The Squeal OpenCode plugin ran in it but has not registered the session here yet: it registers at the session's next message, also when it started before the store existed, and a session may be registered in another worktree of the repository. If the plugin is not installed, install it with ${INSTALL_SH_COMMAND}, then start OpenCode again.
 `;
 }
@@ -64694,16 +64863,10 @@ async function startCommand(args2, io, bounds = STOP_BOUNDS) {
   if (result === "alive") {
     await askDaemon(await daemonSocket(root), { type: "resume" }).catch(() => null);
   }
-  if (result === "spawned") {
-    const deadline = Date.now() + SPAWN_WAIT_MS;
-    while ((await probeDaemon(root, 100)).state !== "alive") {
-      if (Date.now() > deadline) {
-        io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer
+  if (result === "spawned" && !await served(root, Date.now() + SPAWN_WAIT_MS, () => true)) {
+    io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer
 `);
-        return 1;
-      }
-      await sleep15(50);
-    }
+    return 1;
   }
   io.stdout(`Squeal daemon ${result} for ${root}
 
@@ -64739,11 +64902,8 @@ async function finishHandoff(root, cli, stopping, io, bounds) {
   }
   const own = squealVersion();
   const deadline = Date.now() + bounds.socketMs + bounds.lockMs;
-  for (; ; ) {
-    const probe = await probeDaemon(root, 100);
-    if (probe.state === "alive" && follows(probe.ping, old, own)) break;
-    if (Date.now() > deadline) return stillHeld(root, stopping, marks, io, bounds);
-    await sleep15(50);
+  if (!await served(root, deadline, (ping3) => follows(ping3, old, own))) {
+    return stillHeld(root, stopping, marks, io, bounds);
   }
   const { from } = stopping;
   const took = ((performance.now() - began) / 1e3).toFixed(1);
@@ -64757,6 +64917,18 @@ async function finishHandoff(root, cli, stopping, io, bounds) {
 }
 function follows(ping2, old, own) {
   return ping2.startedAt !== old && ping2.phase !== "stopping" && !isNewerVersion(own, ping2.squealVersion);
+}
+async function served(root, deadline, accepts) {
+  for (; ; ) {
+    const probe = await probeDaemon(root, 100);
+    const answered = probe.state === "alive" && accepts(probe.ping);
+    if (answered && registered(root, probe.ping)) return true;
+    if (Date.now() > deadline) return answered;
+    await sleep15(50);
+  }
+}
+function registered(root, ping2) {
+  return recordedDaemon(root, STATUS_BUSY_TIMEOUT_MS)?.startedAt === ping2.startedAt;
 }
 function claims(root, old, now) {
   try {
