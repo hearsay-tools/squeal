@@ -1,8 +1,9 @@
 import { readPolicy } from "../daemon/policy.js";
 import { vitestDetected } from "../daemon/runner.js";
 import { withTestFileFrames } from "../delivery/attribution.js";
+import type { ShellSession } from "../delivery/code-since.js";
 import { asStopped } from "../delivery/stopped.js";
-import { worktreeIdFor } from "../fs/index.js";
+import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
 import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
 import { readDaemonNotes } from "../notes.js";
 import { pendingRetriesOf, withRecorded } from "../retry/index.js";
@@ -31,6 +32,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { knownFailureCounts } from "./checks.js";
+import { codeStatusOf } from "./code-status.js";
 import { configProblemsOf, withConfigProblems } from "./config-problems.js";
 import { withDeath } from "./died.js";
 import { readHolds } from "./holds.js";
@@ -48,6 +50,8 @@ export interface StatusOptions extends StatusStoreOptions {
   readonly now?: () => EpochMs;
   /** The host's load, for a retry's and a timed-out file's text; `hostLoad` by default. */
   readonly load?: () => LoadNow;
+  /** Spec 015 D6: the shell's session, which "since this session started" counts from. Default none. */
+  readonly shell?: ShellSession;
 }
 
 /**
@@ -64,7 +68,7 @@ export const HEARTBEAT_GRACE_INTERVALS = 2;
 export function readStatus(cwd: AbsolutePath, options: StatusOptions = {}): StatusResult {
   const now = options.now ?? Date.now;
   const result = withStatusStore(cwd, options, ({ store, root }) =>
-    buildSnapshot(store, root, now(), options.load),
+    buildSnapshot(store, root, now(), options.load, options.shell),
   );
   return withConfigProblems(result, cwd);
 }
@@ -104,8 +108,9 @@ export function buildSnapshot(
   root: AbsolutePath,
   now: EpochMs,
   load: () => LoadNow = hostLoad,
+  shell: ShellSession | null = null,
 ): StatusSnapshot {
-  return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now, load));
+  return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now, load, shell));
 }
 
 function snapshot(
@@ -114,6 +119,7 @@ function snapshot(
   root: AbsolutePath,
   now: EpochMs,
   hostLoadNow: () => LoadNow = hostLoad,
+  shell: ShellSession | null = null,
 ): StatusSnapshot {
   const worktree = store.worktrees.get(worktreeId);
   const revision = store.revisions.latest(worktreeId);
@@ -207,6 +213,12 @@ function snapshot(
     outstanding,
     pendingTestFiles: pendingTestFilesOf(states, keys, held),
     ...(slowSlot === undefined ? {} : { slowSlot }),
+    ...codeStatusOf(
+      store,
+      worktreeId,
+      { root: at, commonDir: () => worktree?.commonDir ?? resolveCommonDir(at) },
+      shell,
+    ),
   };
 }
 
