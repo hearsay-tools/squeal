@@ -1,0 +1,61 @@
+{
+ "entries": [
+  "src/cli/index.ts"
+ ],
+ "tscCompiles": 595,
+ "cliHolds": 480,
+ "notHeld": [
+  [
+   "src/cli/named-standing.ts",
+   1
+  ],
+  [
+   "src/cli/ps-index.ts",
+   1
+  ],
+  [
+   "src/core/daemon",
+   3
+  ],
+  [
+   "src/core/delivery",
+   1
+  ],
+  [
+   "src/core/ps",
+   1
+  ],
+  [
+   "src/core/scheduler",
+   1
+  ],
+  [
+   "src/core/types",
+   6
+  ],
+  [
+   "src/harness/build.ts",
+   1
+  ],
+  [
+   "src/harness/claude-code",
+   24
+  ],
+  [
+   "src/harness/codex",
+   20
+  ],
+  [
+   "src/harness/opencode",
+   23
+  ],
+  [
+   "src/harness/pi",
+   10
+  ],
+  [
+   "src/harness/shared",
+   23
+  ]
+ ]
+}

@@ -1,0 +1,206 @@
+test/cli/remove.test.ts  (2.4 s)
+    1x tsc -p tsconfig.build.json
+test/cli/retry-no-result-daemon.test.ts  (2.1 s)
+    1x tsc -p tsconfig.build.json
+test/cli/run-all-verdict-daemon.test.ts  (8.3 s)
+    1x tsc -p tsconfig.build.json
+test/cli/warmup.test.ts  (60.4 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/bootstrapped.test.ts  (1.0 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/busy-edit.test.ts  (16.4 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/busy-store.test.ts  (33.4 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/busy-tier.test.ts  (16.4 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/composite-runner.test.ts  (3.8 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/departure.test.ts  (48.8 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/died-startup.test.ts  (2.7 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/died.test.ts  (6.1 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/drain-checkpoint.test.ts  (7.0 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/drain.test.ts  (45.8 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/escaped.test.ts  (5.3 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/exit-mark.test.ts  (3.1 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/handover-gap.test.ts  (5.7 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/handover-tier.test.ts  (11.3 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/handover.test.ts  (13.8 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/hardening.test.ts  (8.7 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/hold.test.ts  (272.8 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/install-wait.test.ts  (1.8 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/lifecycle.test.ts  (52.5 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/reinstall.test.ts  (3.2 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/repeated-notes.test.ts  (2.7 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/restart-handover-signal.test.ts  (15.6 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/restart-handover.test.ts  (8.8 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/runtime-gone.test.ts  (11.0 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/scratch-children.test.ts  (5.4 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/scratch-identity.test.ts  (5.6 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/scratch-refused.test.ts  (1.2 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/scratch.test.ts  (6.8 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/serving.test.ts  (15.5 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/shared-store.test.ts  (23.7 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/slow-lane.test.ts  (1.7 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/socket-handover.test.ts  (6.6 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/start-handoff.test.ts  (26.4 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/start-register.test.ts  (5.5 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/step-down-lanes.test.ts  (2.9 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/step-down.test.ts  (11.3 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/stop-cancel.test.ts  (8.5 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/symlinked-install.test.ts  (1.4 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/symlinked-source.test.ts  (4.0 s)
+    1x esbuild.build src/harness/claude-code/entries/post-tool-batch.ts,src/harness/claude-code/entries/pre-tool-use.ts,src/harness/claude-code/entries/session-end.ts +8
+    1x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+    1x tsc -p tsconfig.build.json
+test/daemon/unused-stop.test.ts  (28.5 s)
+    1x tsc -p tsconfig.build.json
+test/daemon/user-config-note.test.ts  (1.9 s)
+    1x tsc -p tsconfig.build.json
+test/harness/codex/bundles.test.ts  (2.9 s)
+    1x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+test/harness/codex/command.test.ts  (0.5 s)
+    1x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+test/harness/codex/latency.test.ts  (6.3 s)
+    1x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+test/harness/codex/plugin.test.ts  (1.7 s)
+    4x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+test/harness/codex/version-copies-hook.test.ts  (1.6 s)
+    1x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+test/harness/codex/version-copies-start.test.ts  (0.4 s)
+    1x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+test/harness/codex/version-copies-tier.test.ts  (1.4 s)
+    2x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+test/harness/codex/version-copies.test.ts  (1.1 s)
+    2x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+test/harness/hung-daemon.test.ts  (4.2 s)
+    1x tsc -p tsconfig.build.json
+test/harness/opencode-abort.test.ts  (8.3 s)
+    1x esbuild.build src/harness/opencode/entries/hooks/after.ts,src/harness/opencode/entries/hooks/before.ts,src/harness/opencode/entries/hooks/end.ts +9
+    1x esbuild.build src/harness/opencode/entries/plugin.ts
+test/harness/opencode-continued.test.ts  (19.0 s)
+    1x esbuild.build src/harness/opencode/entries/hooks/after.ts,src/harness/opencode/entries/hooks/before.ts,src/harness/opencode/entries/hooks/end.ts +9
+    1x esbuild.build src/harness/opencode/entries/plugin.ts
+test/harness/opencode-dispose.test.ts  (15.1 s)
+    1x esbuild.build src/harness/opencode/entries/hooks/after.ts,src/harness/opencode/entries/hooks/before.ts,src/harness/opencode/entries/hooks/end.ts +9
+    1x esbuild.build src/harness/opencode/entries/plugin.ts
+test/harness/opencode-hooks.test.ts  (26.1 s)
+    1x esbuild.build src/harness/opencode/entries/hooks/after.ts,src/harness/opencode/entries/hooks/before.ts,src/harness/opencode/entries/hooks/end.ts +9
+    1x esbuild.build src/harness/opencode/entries/plugin.ts
+test/harness/opencode-wake.test.ts  (21.5 s)
+    1x esbuild.build src/harness/opencode/entries/hooks/after.ts,src/harness/opencode/entries/hooks/before.ts,src/harness/opencode/entries/hooks/end.ts +9
+    1x esbuild.build src/harness/opencode/entries/plugin.ts
+test/harness/opencode/bundle.test.ts  (2.1 s)
+    1x esbuild.build src/harness/opencode/entries/hooks/after.ts,src/harness/opencode/entries/hooks/before.ts,src/harness/opencode/entries/hooks/end.ts +9
+    1x esbuild.build src/harness/opencode/entries/plugin.ts
+test/harness/opencode/fresh-store.test.ts  (8.8 s)
+    1x esbuild.build src/harness/opencode/entries/hooks/after.ts,src/harness/opencode/entries/hooks/before.ts,src/harness/opencode/entries/hooks/end.ts +9
+    1x esbuild.build src/harness/opencode/entries/plugin.ts
+test/harness/opencode/latency.test.ts  (7.3 s)
+    1x esbuild.build src/harness/opencode/entries/hooks/after.ts,src/harness/opencode/entries/hooks/before.ts,src/harness/opencode/entries/hooks/end.ts +9
+    1x esbuild.build src/harness/codex/entries/interrupt.ts,src/harness/codex/entries/post-tool-use.ts,src/harness/codex/entries/pre-tool-use.ts +10
+    1x esbuild.build src/harness/opencode/entries/plugin.ts
+test/harness/opencode/package.test.ts  (0.1 s)
+    1x esbuild.build src/harness/opencode/entries/hooks/after.ts,src/harness/opencode/entries/hooks/before.ts,src/harness/opencode/entries/hooks/end.ts +9
+    2x esbuild.build src/harness/opencode/entries/plugin.ts
+test/harness/pi/bundle.test.ts  (1.0 s)
+    1x esbuild.build src/harness/pi/entries/extension.ts,src/harness/pi/entries/worker.ts,src/cli/index.ts +2
+test/harness/pi/latency.test.ts  (3.1 s)
+    1x esbuild.build src/harness/pi/entries/extension.ts,src/harness/pi/entries/worker.ts,src/cli/index.ts +2
+test/harness/pi/package.test.ts  (0.0 s)
+    1x esbuild.build src/harness/pi/entries/extension.ts,src/harness/pi/entries/worker.ts,src/cli/index.ts +2
+test/harness/plugin-data-claude-code.test.ts  (0.3 s)
+    1x esbuild.build src/harness/claude-code/entries/post-tool-batch.ts,src/harness/claude-code/entries/pre-tool-use.ts,src/harness/claude-code/entries/session-end.ts +8
+test/harness/plugin.test.ts  (0.7 s)
+    3x esbuild.build src/harness/claude-code/entries/post-tool-batch.ts,src/harness/claude-code/entries/pre-tool-use.ts,src/harness/claude-code/entries/session-end.ts +8
+test/harness/ps-bundle.test.ts  (2.2 s)
+    1x esbuild.build src/harness/claude-code/entries/post-tool-batch.ts,src/harness/claude-code/entries/pre-tool-use.ts,src/harness/claude-code/entries/session-end.ts +8
+test/harness/pytest-bundle.test.ts  (0.0 s)
+    1x esbuild.build src/harness/claude-code/entries/post-tool-batch.ts,src/harness/claude-code/entries/pre-tool-use.ts,src/harness/claude-code/entries/session-end.ts +8
+test/integration/pi-events.test.ts  (16.3 s)
+    1x esbuild.build src/harness/pi/entries/extension.ts,src/harness/pi/entries/worker.ts,src/cli/index.ts +2
+test/integration/pi-silence.test.ts  (7.2 s)
+    1x esbuild.build src/harness/pi/entries/extension.ts,src/harness/pi/entries/worker.ts,src/cli/index.ts +2
+test/integration/pi-wake.test.ts  (3.2 s)
+    1x esbuild.build src/harness/pi/entries/extension.ts,src/harness/pi/entries/worker.ts,src/cli/index.ts +2
+test/keys/key-format.test.ts  (2.8 s)
+    14x esbuild.build test/keys/validity/entries/global.ts
+    14x esbuild.build test/keys/validity/entries/vitest.ts
+    14x esbuild.build test/keys/validity/entries/node-test.ts
+    14x esbuild.build test/keys/validity/entries/pytest.ts
+    14x esbuild.build test/keys/validity/entries/recorder.ts
+    2x esbuild.build test/keys/validity/driver.ts
+test/keys/validity/adapters.test.ts  (38.2 s)
+    12x esbuild.build test/keys/validity/entries/global.ts
+    12x esbuild.build test/keys/validity/entries/vitest.ts
+    12x esbuild.build test/keys/validity/entries/node-test.ts
+    12x esbuild.build test/keys/validity/entries/pytest.ts
+    12x esbuild.build test/keys/validity/entries/recorder.ts
+    10x esbuild.build test/keys/validity/driver.ts
+test/keys/validity/compare.test.ts  (32.7 s)
+    26x esbuild.build test/keys/validity/entries/global.ts
+    26x esbuild.build test/keys/validity/entries/vitest.ts
+    26x esbuild.build test/keys/validity/entries/node-test.ts
+    26x esbuild.build test/keys/validity/entries/pytest.ts
+    26x esbuild.build test/keys/validity/entries/recorder.ts
+    26x esbuild.build test/keys/validity/driver.ts
+test/keys/validity/lock.test.ts  (5.6 s)
+    12x esbuild.build test/keys/validity/entries/global.ts
+    12x esbuild.build test/keys/validity/entries/vitest.ts
+    12x esbuild.build test/keys/validity/entries/node-test.ts
+    12x esbuild.build test/keys/validity/entries/pytest.ts
+    12x esbuild.build test/keys/validity/entries/recorder.ts
+    8x esbuild.build test/keys/validity/driver.ts
+test/keys/validity/reach.test.ts  (9.9 s)
+    10x esbuild.build test/keys/validity/entries/global.ts
+    10x esbuild.build test/keys/validity/entries/vitest.ts
+    10x esbuild.build test/keys/validity/entries/node-test.ts
+    10x esbuild.build test/keys/validity/entries/pytest.ts
+    10x esbuild.build test/keys/validity/entries/recorder.ts
+    10x esbuild.build test/keys/validity/driver.ts
+test/runners/node-test/graph-bundle.test.ts  (0.1 s)
+    1x esbuild.build src/runners/node-test/graph/index.ts
+
+by directory: {
+  'test/cli': 4,
+  'test/daemon': 41,
+  'test/harness': 25,
+  'test/integration': 3,
+  'test/keys': 1,
+  'test/keys/validity': 4,
+  'test/runners': 1
+}
+files: 79

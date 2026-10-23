@@ -1,0 +1,1 @@
+{"commits":1335,"gapFiles":59,"commitsWithAStalePass":1322,"meanFilesLeftStale":42.3,"meanTheirRunS":722.1,"allGapFilesRunS":956.8}

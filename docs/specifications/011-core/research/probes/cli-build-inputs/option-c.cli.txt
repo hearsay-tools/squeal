@@ -1,0 +1,3 @@
+import { it } from "vitest";
+import "/tmp/r127/repo/src/cli/main.ts";
+it("loads", () => {});
