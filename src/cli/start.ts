@@ -56,7 +56,7 @@ export async function startCommand(
   const cli =
     script === undefined ? undefined : keptCacheCli(script, squealVersion(), io.env ?? process.env);
   const now = io.now ?? Date.now;
-  const stopping = (await stoppingDaemon(root, now)) ?? (await replaceShort(root, now));
+  const stopping = (await stoppingDaemon(root, now)) ?? (await replaceShort(root));
   if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
   const result = await ensureDaemon(root, cli === undefined ? {} : { cli });
   if (result === "unavailable") {
@@ -106,19 +106,26 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
 
 /**
  * Row 011-140 (C9): the recorded daemon registered older than the handoff
- * claim it ended (`DaemonShort`), and this CLI is newer than it: asks it
- * to step down, as a hook would but with the CLI's socket timeout, and
- * returns it stopping once it accepts, so `start` finishes the handoff
- * (whose `stop` follows). `null` otherwise.
+ * claim it ended (`DaemonShort`), and this CLI is newer than it: when that
+ * daemon answers at its socket, asks it to step down, as a hook would but
+ * with the CLI's socket timeout, and returns it stopping once it accepts, so
+ * `start` finishes the handoff (whose `stop` follows). Review 0.1.277, B3:
+ * stopping from its acceptance on, whether or not its ping or the store says
+ * so yet; read again, it could still read serving, and `start` said it was
+ * alive. `null` otherwise.
  */
-async function replaceShort(root: AbsolutePath, now: () => number): Promise<Stopping | null> {
+async function replaceShort(root: AbsolutePath): Promise<Stopping | null> {
   const record = recordedDaemon(root, 1_000);
   if (record === null || !isNewerVersion(squealVersion(), record.squealVersion)) return null;
   if (shortOf(root) !== handoffFrom(record)) return null;
+  const { socketPath } = record;
+  const answer = await askDaemon(socketPath, { type: "ping" }).catch(() => null);
+  const ping = answer?.ok === true && answer.type === "ping" ? answer : null;
+  if (ping === null || ping.startedAt !== record.startedAt) return null;
   const request = { type: "step-down", version: squealVersion() } as const;
-  const answer = await askDaemon(record.socketPath, request).catch(() => null);
-  if (answer?.ok !== true || answer.type !== "step-down" || !answer.steppingDown) return null;
-  return stoppingDaemon(root, now);
+  const accepted = await askDaemon(socketPath, request).catch(() => null);
+  if (accepted?.ok !== true || accepted.type !== "step-down" || !accepted.steppingDown) return null;
+  return { socketPath, ping, record, from: record.squealVersion };
 }
 
 /** The incarnation the worktree's short handoff names (`readShortHandoff`), `null` with none. */
