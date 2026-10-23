@@ -1,4 +1,5 @@
 import type { CheckId } from "./check.js";
+import type { CodeNews, CodeRegistration } from "./code-delivery.js";
 import type {
   AbsolutePath,
   CommitSha,
@@ -246,6 +247,11 @@ export interface Delta {
    * last shown, so a change delivery carries the slow-tier line.
    */
   readonly slowTierChanged?: true;
+  /**
+   * Spec 015 D6: the code changes told with this delivery, after every test
+   * entry. Absent while `complexity.enabled` is off, and from an older Squeal.
+   */
+  readonly code?: CodeNews;
 }
 
 /** The test files the consumer's edits after revision `since` re-keyed, none pending any more. */
@@ -284,6 +290,8 @@ export interface Registration {
   readonly consumer: Consumer;
   readonly header: StatusHeader;
   readonly knownFailures: readonly KnownFailure[];
+  /** Spec 015 D6: the complexity line; absent while `complexity.enabled` is off. */
+  readonly code?: CodeRegistration;
 }
 
 export interface PeekOptions {

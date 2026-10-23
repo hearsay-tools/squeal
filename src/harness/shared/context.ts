@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { codeSource } from "../../core/delivery/code-source.js";
 import { createDelivery } from "../../core/delivery/index.js";
 import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../../core/fs/index.js";
 import { createStatusBuilder, STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
@@ -95,6 +96,8 @@ export function openContext(
       ...(options.pollIntervalMs === undefined ? {} : { pollIntervalMs: options.pollIntervalMs }),
       ...(options.harnessProcess === undefined ? {} : { harnessProcess: options.harnessProcess }),
       ...(options.squealVersion === undefined ? {} : { squealVersion: options.squealVersion }),
+      // Spec 015 D6: read only while the worktree's `complexity.enabled` holds.
+      code: codeSource(location.commonDir, location.root),
     });
     return { ...location, store, delivery, consumer, close: () => store.close() };
   } catch (error) {
