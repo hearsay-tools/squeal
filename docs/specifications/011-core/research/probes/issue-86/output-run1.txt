@@ -1,0 +1,20 @@
+# first try (load 27.11, 24 CPUs): SKIP: load above CPU count
+# wait loop, then the run:
+2026-10-23T21:48:18+02:00 load=26.19 wait
+2026-10-23T21:48:28+02:00 load=24.76 wait
+2026-10-23T21:48:38+02:00 load=22.19 go
+load1=22.19 cpus=24 node=v24.21.0 busyTimeoutMs=2000
+A transient 800 ms, session s1: queued after 807 ms
+A transient 800 ms, session s1: records=1
+B persistent 4000 ms, session s2: THROW after 2006 ms code=ERR_SQLITE_ERROR errcode=5 errstr=database is locked message="database is locked" frames=at <anonymous> (/home/agent/projects/squeal/.ai/cezar/worktrees/dff4eff0-4577-4b3a-aa51-1de358ac0084/src/core/store/connection.ts:47:61) | at Connection.#withinSlice (/home/agent/projects/squeal/.ai/cezar/worktrees/dff4eff0-4577-4b3a-aa51-1de358ac0084/src/core/store/connection.ts:101:52) | at Connection.transaction (/home/agent/projects/squeal/.ai/cezar/worktrees/dff4eff0-4577-4b3a-aa51-1de358ac0084/src/core/store/connection.ts:47:34)
+B persistent 4000 ms, session s2: records=1
+C next invocation, session s2: queued after 4 ms
+C next invocation, session s2: records=2
+D repeat, session s2: spent after 0 ms
+D repeat, session s2: records=2
+E1 no session: queued after 2 ms
+E1 no session: records=3
+E2 no session: spent after 0 ms
+E2 no session: records=3
+
+[exited with code 0]
