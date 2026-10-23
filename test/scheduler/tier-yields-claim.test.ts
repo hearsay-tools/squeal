@@ -1,23 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { classLines } from "../../src/cli/named-file-lines.js";
-import { daemonLiveness } from "../../src/core/delivery/liveness.js";
-import { standingsOf } from "../../src/core/status/standing.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
 import {
-  type CatchUpFile,
-  type CatchUpSide,
-  catchUpRepo,
-  catchUpSide,
-} from "./catch-up-fixture.js";
-import {
-  CUT_WITHIN_MS,
-  heldRun,
-  holdRuns,
-  holds,
-  pause,
-  ref,
-  SETTLE_MS,
-} from "./tier-yields-fixture.js";
+  F,
+  filesOf,
+  G,
+  isSlow,
+  named,
+  ranSince,
+  rowOf,
+  SLOW,
+  sides,
+} from "./tier-yields-claim-fixture.js";
+import { CUT_WITHIN_MS, heldRun, holdRuns, pause, ref, SETTLE_MS } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-55 (spec 011 C15 and C7; `tasks/011-51/notes.md`, "Open for
@@ -25,52 +19,8 @@ import {
  * for that run, so a yield for it would run nothing sooner. Before the row,
  * the tier in its lane yielded to it all the same. Two worktrees on one
  * store; the other runs F's key, held, while this one runs four slow files.
+ * `tier-yields-claim-ends.test.ts` has the claim's end (row 011-123).
  */
-const SLOW = [1, 2, 3, 4].map((i) => `test/s${i}.test.ts`);
-const isSlow = (path: string) => SLOW.includes(path);
-const F = "f/f.test.ts";
-const G = "g/g.test.ts";
-
-/** The test files: four slow ones of `slowMs`, F of `fMs`, G of 1 ms. */
-function filesOf(slowMs: number, fMs: number): CatchUpFile[] {
-  return [
-    ...SLOW.map((path) => ({ path, ms: slowMs, imports: ["src/s.ts"] })),
-    { project: "f", path: F, ms: fMs, imports: ["src/f.ts"] },
-    { project: "g", path: G, ms: 1, imports: ["src/g.ts"] },
-  ];
-}
-
-/** Both worktrees started and idle; the other inherited this one's baseline. */
-async function sides(files: CatchUpFile[]): Promise<{ main: CatchUpSide; other: CatchUpSide }> {
-  const repo = catchUpRepo(files);
-  const main = catchUpSide(repo, repo.main, { files, hostSlots: 8 });
-  await main.scheduler.start();
-  await main.scheduler.idle();
-  const other = catchUpSide(repo, repo.other, { files, hostSlots: 8 });
-  await other.scheduler.start();
-  await other.scheduler.idle();
-  return { main, other };
-}
-
-/** How many runs of `side` after the first `after` held `path`. */
-function ranSince(side: CatchUpSide, path: string, after: number): number {
-  return side.runner.runs.slice(after).filter((run) => holds(run, path)).length;
-}
-
-function rowOf(side: CatchUpSide, path: string) {
-  return side.store.testFileKeys.list(side.worktreeId).find((r) => r.testFile.path === path);
-}
-
-/** `file` as a named wait in `side` reads it now. */
-function named(side: CatchUpSide, file: TestFileRef) {
-  const { store, worktreeId, root } = side;
-  const now = Date.now();
-  const daemon = daemonLiveness(store.worktrees.get(worktreeId)?.daemon ?? null, now);
-  const [entry] = standingsOf(store, worktreeId, root, daemon, now)([file]);
-  if (entry === undefined) throw new Error("no named file");
-  return entry;
-}
-
 describe("a promoted file under another worktree's claim makes no tier yield (spec 011 C15, row 011-55)", {
   timeout: 120_000,
 }, () => {
