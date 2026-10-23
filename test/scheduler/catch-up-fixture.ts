@@ -287,6 +287,10 @@ export interface CatchUpSide {
   current(path: string): boolean;
   /** Stops this side's heartbeat, as a killed daemon's (row 011-123). */
   stopBeat(): void;
+  /** The scheduler's clock: `CatchUpOptions.now`, or the host's, plus what `advance` added. */
+  now(): number;
+  /** Moves the scheduler's clock `ms` ahead (row 011-153). */
+  advance(ms: number): void;
 }
 
 /** A scheduler of the worktree at `root`, its daemon live in the store, over the repository's pool. */
@@ -311,6 +315,9 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     },
   });
   const beat = setInterval(() => store.worktrees.heartbeat(worktreeId, Date.now()), 12_000);
+  let offset = 0;
+  const clock = options.now ?? Date.now;
+  const now = () => clock() + offset;
   const { lane, tierWidth, besideBacklog, backlogSlot, cancels } = options;
   const runner = new CatchUpRunner(options.files, {
     ...(lane === undefined ? {} : { lane }),
@@ -342,7 +349,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     capacity: { dir: repo.poolDir, hostSlots: options.hostSlots },
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.resumesRest === undefined ? {} : { resumesRest: options.resumesRest }),
-    ...(options.now === undefined ? {} : { now: options.now }),
+    now,
     ...options.scheduler,
   });
   onTestFinished(async () => {
@@ -369,6 +376,10 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
       await scheduler.handleBatch({ trigger, paths: await statCandidates(paths, hasher) });
     },
     stopBeat: () => clearInterval(beat),
+    now,
+    advance: (ms) => {
+      offset += ms;
+    },
     current: (path) => {
       const states = store.knownStates.list(worktreeId).filter((s) => s.check.testPath === path);
       return states.length > 0 && states.every((s) => s.validity === "current");

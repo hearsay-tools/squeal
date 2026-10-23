@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CATCHUP_QUIET_MS, publishedWaits } from "../../src/core/scheduler/quiet.js";
 import type { WorktreeId } from "../../src/core/types/index.js";
-import type { CatchUpFile, CatchUpOptions, CatchUpRun, CatchUpSide } from "./catch-up-fixture.js";
+import type { CatchUpFile, CatchUpRun, CatchUpSide } from "./catch-up-fixture.js";
 import { FOUR_SHORT, importers, started, transitive } from "./edit-cut-fixture.js";
 import { pause, SETTLE_MS, START_WITHIN_MS } from "./tier-yields-fixture.js";
 
@@ -12,8 +12,9 @@ import { pause, SETTLE_MS, START_WITHIN_MS } from "./tier-yields-fixture.js";
  * with no cancel; the edit's own tiers run at once, `squeal run --all` ends
  * the wait, and a lane of slots never waits. The edit-cut fixture: `src/a.ts`,
  * its namesake, six direct importers of which the cut keeps four, and files
- * that reach it through `src/hub.ts`; the scheduler's clock moves only on
- * `advance`, so no wait ends by itself within a check's poll.
+ * that reach it through `src/hub.ts`. The scheduler's clock is the host's
+ * plus what `advance` adds, so a 120 s wait never ends by itself within a
+ * check's poll.
  */
 
 const A = "src/a.ts";
@@ -23,18 +24,6 @@ const KEPT = [OWN, ...DIRECT.slice(0, 4)];
 /** The two slow direct importers: only catch-up runs them, never an edit's tier. */
 const DEMOTED = DIRECT.slice(4);
 const FILES = [OWN, ...DIRECT, ...transitive("t", A, 12)];
-
-async function clocked(options: Partial<CatchUpOptions> = {}) {
-  let offset = 0;
-  const { side } = await started(FILES, { now: () => Date.now() + offset, ...options });
-  return {
-    side,
-    advance: (ms: number) => {
-      offset += ms;
-    },
-    now: () => Date.now() + offset,
-  };
-}
 
 /** The runs after `before` on the backlog's route: the pool's grant. */
 const catchUpRuns = (side: CatchUpSide, before: number): CatchUpRun[] =>
@@ -50,7 +39,7 @@ const allCurrent = (side: CatchUpSide) => FILES.every((f) => side.current(f.path
 
 describe("catch-up of an edit waits for 120 s of quiet (row 011-153)", { timeout: 120_000 }, () => {
   it("runs the edit's own files at once and no catch-up tier until 120 s after the last edit", async () => {
-    const { side, advance, now } = await clocked();
+    const { side } = await started(FILES);
     const before = side.runner.runs.length;
     await side.edit("watch", A);
     await keptCurrent(side);
@@ -58,18 +47,18 @@ describe("catch-up of an edit waits for 120 s of quiet (row 011-153)", { timeout
     // Red before row 011-153: the catch-up tier started right after the edit's.
     expect(catchUpRuns(side, before)).toEqual([]);
     expect(DEMOTED.some((f) => side.current(f.path))).toBe(false);
-    const { catchUp } = publishedWaits(side.store, side.worktreeId as WorktreeId, 0, now());
+    const { catchUp } = publishedWaits(side.store, side.worktreeId as WorktreeId, 0, side.now());
     expect([...catchUp.values()]).toHaveLength(1);
 
     // Another edit 60 s on queues files of the lane: the wait starts again from it.
-    advance(60_000);
+    side.advance(60_000);
     await side.edit("watch", A);
     await keptCurrent(side);
-    advance(CATCHUP_QUIET_MS - 60_000);
+    side.advance(CATCHUP_QUIET_MS - 60_000);
     await pause(SETTLE_MS * 2);
     expect(catchUpRuns(side, before)).toEqual([]);
 
-    advance(60_000);
+    side.advance(60_000);
     await expect
       .poll(() => catchUpRuns(side, before).length, { timeout: START_WITHIN_MS })
       .toBeGreaterThan(0);
@@ -78,7 +67,7 @@ describe("catch-up of an edit waits for 120 s of quiet (row 011-153)", { timeout
   });
 
   it("starts the catch-up at once on `run --all` during the wait", async () => {
-    const { side } = await clocked();
+    const { side } = await started(FILES);
     const before = side.runner.runs.length;
     await side.edit("watch", A);
     await keptCurrent(side);
@@ -92,7 +81,7 @@ describe("catch-up of an edit waits for 120 s of quiet (row 011-153)", { timeout
   });
 
   it("never holds a lane of slots, whose runner cannot cancel", async () => {
-    const { side, now } = await clocked({
+    const { side } = await started(FILES, {
       lane: () => "node-test",
       besideBacklog: () => true,
       backlogSlot: () => 1,
@@ -103,8 +92,8 @@ describe("catch-up of an edit waits for 120 s of quiet (row 011-153)", { timeout
     await side.scheduler.idle();
     expect(catchUpRuns(side, before).length).toBeGreaterThan(0);
     expect(allCurrent(side)).toBe(true);
-    expect(publishedWaits(side.store, side.worktreeId as WorktreeId, 0, now()).catchUp.size).toBe(
-      0,
-    );
+    expect(
+      publishedWaits(side.store, side.worktreeId as WorktreeId, 0, side.now()).catchUp.size,
+    ).toBe(0);
   });
 });
