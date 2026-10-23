@@ -62,6 +62,48 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     expect(files.every((f) => s.current(f.path))).toBe(true);
   });
 
+  it("5b: under a departure drain's paused backlog, the turn waits and every focused entry runs (review 0.1.280)", async () => {
+    const edited = [1, 2, 3, 4, 5].map((i) => `test/f${i}.test.ts`);
+    const B = "b/b.test.ts";
+    const files: CatchUpFile[] = [
+      { path: S, ms: 20_000, imports: ["src/s.ts"] },
+      ...edited.map((path) => ({ path, ms: 1, imports: ["src/f.ts"] })),
+      { project: "b", path: B, ms: 1, imports: ["src/b.ts"] },
+    ];
+    const repo = catchUpRepo(files);
+    const s = catchUpSide(repo, repo.main, { files, hostSlots: 8, tierSize: 1, policy: BASELINE });
+    const record = focusing(s);
+    let holding = false;
+    s.runner.beforeRun = (run) => {
+      if (holding && run.some((f) => f.path === S)) s.runner.hold();
+    };
+    await s.scheduler.start();
+    await s.scheduler.idle();
+    const base = s.runner.runs.length;
+    holding = true;
+    await s.edit("watch", "src/s.ts");
+    await heldRun(s, S, base);
+    await s.edit("watch", "src/f.ts", "b.config.json");
+    await focus(
+      s,
+      edited.map((path) => ref(path)),
+      ["runs"],
+      60_000,
+    );
+    // The last session left: the drain runs the edit's work, and the backlog (B) stays queued.
+    s.scheduler.pauseBacklog(true);
+    holding = false;
+    s.runner.release();
+    await s.scheduler.idle();
+
+    const focusedRuns = edited.map((path) => `${path} focused`);
+    expect(runsSince(s, record, base)).toEqual([S, ...focusedRuns, ...edited]);
+    expect(focusedRows(s).map((run) => [run.testFile.path, run.end])).toEqual(
+      edited.map((path) => [path, "completed"]),
+    );
+    expect(s.current(B)).toBe(false);
+  });
+
   it("6: a slow file, and a file whose runner runs whole files only, get no entry", async () => {
     const L = "test/slow/l.test.ts";
     const F = "f/f.test.ts";
