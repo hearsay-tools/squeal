@@ -1,0 +1,227 @@
+{"timestamp":"2026-10-23T14:18:46.594Z","node":"v24.21.0","cpus":24,"load":[23.49,29.28,29.51],"layout":"web","runtime":".runtime-v4","versions":{"vitest":"4.1.10","vite":"8.1.4","jsdom":"29.1.1"},"root":"/home/agent/projects/squeal/.ai/cezar/worktrees/a9c13f66-b530-4cce-bae6-ece1c0aef78b/docs/specifications/013-vitest-runner/research/probes/issue-80/.runtime-v4/fixture-web-1792765126594"}
+DAEMON_PID 177098
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
+Checkpoint c8e71bc9-6751-49de-91c4-2af1e6113423 completed at revision 0: no known failures; 5 test files, 0 already current, 5 run now
+Checkpoint c8e71bc9-6751-49de-91c4-2af1e6113423 started at revision 0: 5 test files to run, 0 already current
+
+Revision: 0
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+More: `squeal status --full` adds the worktree and daemon and 1 note
+
+== Case A: create module, wait, then edit importer
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs status --wait 60000
+Revision: 1 · 14ee848e + 1, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+More: `squeal status --full` adds the worktree and daemon
+
+Returned on quiet: the edits since revision 1 re-keyed no test file, at revision 1 after 0.3 s. Worktree: known failures 0; all 5 test files current
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs status --wait 60000
+Revision: 2 · 14ee848e + 2, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+More: `squeal status --full` adds the worktree and daemon
+
+Returned on quiet: the edits since revision 2 re-keyed no test file, at revision 2 after 0.3 s. Worktree: known failures 0; all 5 test files current
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
+Checkpoint 8e166103-d7d3-4645-b823-c10e8dbe3b1a completed at revision 2: no known failures; 5 test files, 5 already current, 0 run now
+Checkpoint 8e166103-d7d3-4645-b823-c10e8dbe3b1a started at revision 2: 0 test files to run, 5 already current
+
+Revision: 2 · 14ee848e + 2, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 2
+More: `squeal status --full` adds the worktree and daemon
+
+== Case B: create module and edit importer in one burst
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs status --wait 60000
+Revision: 3 · 14ee848e + 3, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 2 (the counts are for revision 3; `squeal run --all` requests one)
+More: `squeal status --full` adds the worktree and daemon
+
+Returned on quiet: the edits since revision 3 re-keyed no test file, at revision 3 after 0.3 s. Worktree: known failures 0; all 5 test files current
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
+Checkpoint ae65e64b-a1f8-4964-a725-cb8a09979377 completed at revision 3: no known failures; 5 test files, 5 already current, 0 run now
+Checkpoint ae65e64b-a1f8-4964-a725-cb8a09979377 started at revision 3: 0 test files to run, 5 already current
+
+Revision: 3 · 14ee848e + 3, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 3
+More: `squeal status --full` adds the worktree and daemon
+
+== Case C: import a missing module, then create it
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs status --wait 60000
+Revision: 4 · 14ee848e + 4, dirty
+Known failures: 2 (1 test, 1 test file that did not load); not current: 1 of 5 test files (1 running)
+  FAIL  [web] packages/web/src/c/scroller.test.ts (file-level)
+        Failed to resolve import "./navigation" from "packages/web/src/c/scroller.tsx". Does the file exist?
+        observed at revision 4, current
+        recorded just now in this worktree at revision 4, load 0.99 per CPU when it ran; no retry asked at these inputs
+  FAIL  [web] packages/web/src/c/scroller.test.ts > c value
+        Failed to resolve import "./navigation" from "packages/web/src/c/scroller.tsx". Does the file exist?
+        observed at revision 4, current
+        recorded just now in this worktree at revision 4, load 0.99 per CPU when it ran; no retry asked at these inputs
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 3 (the counts are for revision 4; `squeal run --all` requests one)
+Running: 1 test file: web: packages/web/src/c/scroller.test.ts
+Outstanding:
+  1 test file running since 16:19:03 in the vitest lane: web: packages/web/src/c/scroller.test.ts
+More: `squeal status --full` adds the worktree and daemon
+
+Returned on news: 2 transitions in the 1 test file the edits since revision 4 re-keyed, at revision 4 after 0.3 s. Worktree: known failures 2 (1 test, 1 test file that did not load); not current: 1 of 5 test files (1 running)
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
+Checkpoint e62a0320-4bbf-45a3-b4bc-0015583cfebb completed at revision 4: 2 known failures: 1 test, 1 test file that did not load; 5 test files, 4 already current, 1 run now
+Checkpoint e62a0320-4bbf-45a3-b4bc-0015583cfebb started at revision 4: 1 test file to run, 4 already current
+
+Revision: 4 · 14ee848e + 4, dirty
+Known failures: 2 (1 test, 1 test file that did not load); all 5 test files current
+  FAIL  [web] packages/web/src/c/scroller.test.ts (file-level)
+        Failed to resolve import "./navigation" from "packages/web/src/c/scroller.tsx". Does the file exist?
+        observed at revision 4, current
+        recorded just now in this worktree at revision 4, load 1.02 per CPU when it ran; no retry asked at these inputs; `squeal retry packages/web/src/c/scroller.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+  FAIL  [web] packages/web/src/c/scroller.test.ts > c value
+        Failed to resolve import "./navigation" from "packages/web/src/c/scroller.tsx". Does the file exist?
+        observed at revision 4, current
+        recorded just now in this worktree at revision 4, load 1.02 per CPU when it ran; no retry asked at these inputs; `squeal retry packages/web/src/c/scroller.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 4
+More: `squeal status --full` adds the worktree and daemon
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs status --wait 60000
+Revision: 5 · 14ee848e + 5, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 4 (the counts are for revision 5; `squeal run --all` requests one)
+More: `squeal status --full` adds the worktree and daemon
+
+Returned on quiet: the edits since revision 5 re-keyed no test file, at revision 5 after 0.3 s. Worktree: known failures 0; all 5 test files current
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
+Checkpoint ed072163-c721-47ae-b437-6d337dd0e665 completed at revision 5: no known failures; 5 test files, 5 already current, 0 run now
+Checkpoint ed072163-c721-47ae-b437-6d337dd0e665 started at revision 5: 0 test files to run, 5 already current
+
+Revision: 5 · 14ee848e + 5, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 5
+More: `squeal status --full` adds the worktree and daemon
+
+== Case D: importer written 200 ms before the module
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs status --wait 60000
+Revision: 7 · 14ee848e + 7, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 5 (the counts are for revision 7; `squeal run --all` requests one)
+More: `squeal status --full` adds the worktree and daemon
+
+Returned on quiet: the 1 test file the edits since revision 6 re-keyed is not pending, at revision 7 after 1.3 s. Worktree: known failures 0; all 5 test files current
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
+Checkpoint de424fd0-5d42-4a55-b92b-8b522f576d38 completed at revision 7: no known failures; 5 test files, 5 already current, 0 run now
+Checkpoint de424fd0-5d42-4a55-b92b-8b522f576d38 started at revision 7: 0 test files to run, 5 already current
+
+Revision: 7 · 14ee848e + 7, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 7
+More: `squeal status --full` adds the worktree and daemon
+
+== Case E: missing import, then create raced by a run request
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs status --wait 60000
+Revision: 8 · 14ee848e + 8, dirty
+Known failures: 2 (1 test, 1 test file that did not load); not current: 1 of 5 test files (1 running)
+  FAIL  [web] packages/web/src/e/scroller.test.ts (file-level)
+        Failed to resolve import "./navigation" from "packages/web/src/e/scroller.tsx". Does the file exist?
+        observed at revision 8, current
+        recorded just now in this worktree at revision 8, load 1.03 per CPU when it ran; no retry asked at these inputs; `squeal retry packages/web/src/e/scroller.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+  FAIL  [web] packages/web/src/e/scroller.test.ts > e value
+        Failed to resolve import "./navigation" from "packages/web/src/e/scroller.tsx". Does the file exist?
+        observed at revision 8, current
+        recorded just now in this worktree at revision 8, load 1.03 per CPU when it ran; no retry asked at these inputs; `squeal retry packages/web/src/e/scroller.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 7 (the counts are for revision 8; `squeal run --all` requests one)
+Running: 1 test file: web: packages/web/src/e/scroller.test.ts
+Outstanding:
+  1 test file running since 16:19:13 in the vitest lane: web: packages/web/src/e/scroller.test.ts
+More: `squeal status --full` adds the worktree and daemon
+
+Returned on quiet: the edits since revision 8 re-keyed no test file, at revision 8 after 0.3 s; this wait does not hold for the rest of the worktree. Worktree: known failures 2 (1 test, 1 test file that did not load); not current: 1 of 5 test files (1 running)
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
+Checkpoint 3bbeae63-b1a3-4a15-9405-5eff2c63b000 completed at revision 8: 2 known failures: 1 test, 1 test file that did not load; 5 test files, 4 already current, 1 run now
+Checkpoint 3bbeae63-b1a3-4a15-9405-5eff2c63b000 started at revision 8: 1 test file to run, 4 already current
+
+Revision: 8 · 14ee848e + 8, dirty
+Known failures: 2 (1 test, 1 test file that did not load); all 5 test files current
+  FAIL  [web] packages/web/src/e/scroller.test.ts (file-level)
+        Failed to resolve import "./navigation" from "packages/web/src/e/scroller.tsx". Does the file exist?
+        observed at revision 8, current
+        recorded just now in this worktree at revision 8, load 1.01 per CPU when it ran; no retry asked at these inputs; `squeal retry packages/web/src/e/scroller.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+  FAIL  [web] packages/web/src/e/scroller.test.ts > e value
+        Failed to resolve import "./navigation" from "packages/web/src/e/scroller.tsx". Does the file exist?
+        observed at revision 8, current
+        recorded just now in this worktree at revision 8, load 1.01 per CPU when it ran; no retry asked at these inputs; `squeal retry packages/web/src/e/scroller.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count
+Affected checks: 8 passed (4 tests, 4 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 8
+More: `squeal status --full` adds the worktree and daemon
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
+Checkpoint 75d16d41-d6c7-4ec4-906c-a14ac2064db0 completed at revision 9: no known failures; 5 test files, 4 already current, 1 run now
+Checkpoint 75d16d41-d6c7-4ec4-906c-a14ac2064db0 started at revision 9: 1 test file to run, 4 already current
+
+Revision: 9 · 14ee848e + 9, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 9
+More: `squeal status --full` adds the worktree and daemon
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs status --wait 60000
+Revision: 9 · 14ee848e + 9, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 9
+More: `squeal status --full` adds the worktree and daemon
+
+Returned on quiet: the edits since revision 9 re-keyed no test file, at revision 9 after 0.3 s. Worktree: known failures 0; all 5 test files current
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
+Checkpoint 55bbc750-ef10-4139-b9a6-12c1b8b4f91e completed at revision 9: no known failures; 5 test files, 5 already current, 0 run now
+Checkpoint 55bbc750-ef10-4139-b9a6-12c1b8b4f91e started at revision 9: 0 test files to run, 5 already current
+
+Revision: 9 · 14ee848e + 9, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 9
+More: `squeal status --full` adds the worktree and daemon
+
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs status
+Revision: 9 · 14ee848e + 9, dirty
+Known failures: 0; all 5 test files current
+Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 9
+More: `squeal status --full` adds the worktree and daemon
+
+$ vitest run (cold, after all cases)
+ Test Files  5 passed (5)
+      Tests  5 passed (5)
+VERDICTS {"warmup":0,"a":0,"b":0,"cMissing":1,"c":0,"d":0,"eMissing":1,"eRaced":0,"e":0,"cold":0}
+$ node /home/agent/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs stop
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/worktrees/a9c13f66-b530-4cce-bae6-ece1c0aef78b/docs/specifications/013-vitest-runner/research/probes/issue-80/.runtime-v4/fixture-web-1792765126594
+
+DAEMON_EXIT {"code":0,"signal":null}
+DAEMON_LOG squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/worktrees/a9c13f66-b530-4cce-bae6-ece1c0aef78b/docs/specifications/013-vitest-runner/research/probes/issue-80/.runtime-v4/fixture-web-1792765126594 on /run/user/1001/squeal-87d3e16c84c9337e.sock
+squeal daemon: daemon stopped: squeal stop
+squeal daemon: daemon stopped: squeal stop
+
+FINAL_LOAD [24.23,28.77,29.33]
