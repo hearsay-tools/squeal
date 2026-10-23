@@ -6,8 +6,8 @@ import type {
   UnknownRun,
   WorktreeId,
 } from "../../types/index.js";
-import { strOrNull } from "../codec.js";
 import type { Connection } from "../connection.js";
+import { readMetaList, writeMetaList } from "./meta-list.js";
 
 /*
  * Row 011-108 (gh-74; 011 C6 and C7 as amended): when a check reads UNKNOWN,
@@ -28,15 +28,7 @@ export const UNKNOWN_RUNS_META_KEY = "unknown-runs";
 
 /** Every record, oldest first; empty when none or unreadable, and one that does not parse is left out. */
 export function readUnknownRuns(conn: Connection): UnknownRun[] {
-  const row = conn.get("SELECT value FROM meta WHERE key = ?", UNKNOWN_RUNS_META_KEY);
-  if (row === null) return [];
-  let value: unknown;
-  try {
-    value = JSON.parse(strOrNull(row, "value") ?? "[]");
-  } catch {
-    return [];
-  }
-  return Array.isArray(value) ? value.filter(isEntry) : [];
+  return readMetaList(conn, UNKNOWN_RUNS_META_KEY, isEntry);
 }
 
 /** See `FailureRepo.recordUnknownRuns`. */
@@ -57,7 +49,7 @@ export function recordUnknownRuns(
     const kept = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
     // Within one commit the last mark of a file is its state's.
     const newest = new Map(added.map((r) => [idOf(r), r]));
-    write(conn, [...kept, ...newest.values()]);
+    writeMetaList(conn, UNKNOWN_RUNS_META_KEY, [...kept, ...newest.values()]);
   });
 }
 
@@ -78,7 +70,7 @@ const STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
 export function dropFallenUnknownRuns(conn: Connection): number {
   const records = readUnknownRuns(conn);
   const kept = standing(conn, records);
-  if (kept.length < records.length) write(conn, kept);
+  if (kept.length < records.length) writeMetaList(conn, UNKNOWN_RUNS_META_KEY, kept);
   return records.length - kept.length;
 }
 
@@ -97,17 +89,6 @@ function standsParams(r: UnknownRun) {
 
 function idOf(r: UnknownRun): string {
   return JSON.stringify([r.worktreeId, r.testFile.project, r.testFile.path]);
-}
-
-function write(conn: Connection, records: readonly UnknownRun[]): void {
-  if (records.length === 0) conn.run("DELETE FROM meta WHERE key = ?", UNKNOWN_RUNS_META_KEY);
-  else {
-    conn.run(
-      "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-      UNKNOWN_RUNS_META_KEY,
-      JSON.stringify(records),
-    );
-  }
 }
 
 function isEntry(value: unknown): value is UnknownRun {
