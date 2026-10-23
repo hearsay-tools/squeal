@@ -1562,6 +1562,11 @@ function withRecorded(store, worktreeId, states, revision) {
   });
 }
 
+// src/core/ps/render-units.ts
+var KIB = 1024;
+var MIB = KIB * 1024;
+var GIB = MIB * 1024;
+
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 var Connection = class {
@@ -6189,7 +6194,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.270";
+  if (true) return "0.1.271";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

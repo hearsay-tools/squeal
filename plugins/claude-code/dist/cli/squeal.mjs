@@ -4204,6 +4204,74 @@ var init_recorded = __esm({
   }
 });
 
+// src/core/ps/render-units.ts
+function shellQuote(word) {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+function dateOf(ms2) {
+  return `${new Date(ms2).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+function count(n, one, many = `${one}s`) {
+  return `${thousands(n)} ${n === 1 ? one : many}`;
+}
+function thousands(n) {
+  return String(n).replace(/\B(?=(\d{3})+$)/g, ",");
+}
+function share(value) {
+  return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
+}
+function percent(value) {
+  return value === null ? UNKNOWN : `${Math.round(value)}%`;
+}
+function cpus(value) {
+  return (value / 100).toFixed(1);
+}
+function bytes(n, column = false) {
+  if (n === null) return column ? UNKNOWN : "unknown";
+  if (n === 0) return "0";
+  const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
+  return column ? `${value}${unit}` : `${value} ${unit}iB`;
+}
+function ofGib(part, whole) {
+  return `${(part / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
+}
+function age(since, at2) {
+  return since === null ? UNKNOWN : columnDuration(at2 - since);
+}
+function sentenceDuration(ms2) {
+  const s = Math.floor(ms2 / 1e3);
+  if (s < 120) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 120) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}
+function columnDuration(ms2) {
+  const s = Math.max(0, Math.floor(ms2 / 1e3));
+  if (s < 60) return `${s}s`;
+  if (s < 100 * 60) return `${Math.floor(s / 60)}m`;
+  if (s < 48 * 3600) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
+}
+function cpuTime(ms2) {
+  if (ms2 === null) return UNKNOWN;
+  const s = Math.floor(ms2 / 1e3);
+  const two = (n) => String(n).padStart(2, "0");
+  if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
+  return `${Math.floor(s / 3600)}h${two(Math.floor(s / 60) % 60)}m`;
+}
+var KIB, MIB, GIB, UNKNOWN, NO_BOOT, SAFE_WORD;
+var init_render_units = __esm({
+  "src/core/ps/render-units.ts"() {
+    "use strict";
+    KIB = 1024;
+    MIB = KIB * 1024;
+    GIB = MIB * 1024;
+    UNKNOWN = "?";
+    NO_BOOT = "the boot time cannot be read, so no process has an age";
+    SAFE_WORD = /^[\w@%+=:,./-]+$/;
+  }
+});
+
 // src/core/retry/text.ts
 function loadText(load) {
   const cpus3 = `${load.cpus} ${load.cpus === 1 ? "CPU" : "CPUs"}`;
@@ -4242,17 +4310,22 @@ function agoText(ms2) {
   if (hours < 48) return `${hours} h ago`;
   return `${Math.floor(hours / 24)} d ago`;
 }
-function recordedText(facts, here, now) {
+function recordedText(facts, here, now, words) {
   const where3 = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
   const ago = facts.recordedAt === void 0 ? "" : ` ${agoText(now - facts.recordedAt)}`;
   const load = facts.loadPerCpu === null ? "load per CPU then not recorded" : `load ${facts.loadPerCpu.toFixed(2)} per CPU when it ran`;
-  const retry2 = facts.retry === void 0 ? "no retry asked at these inputs" : retryText(facts.retry);
+  const retry2 = facts.retry === void 0 ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words)}` : retryText(facts.retry);
   return `recorded${ago} in ${where3} at revision ${facts.revision}, ${load}; ${retry2}`;
+}
+function loadRetryText(loadPerCpu2, words) {
+  if (loadPerCpu2 === null || loadAllows({ oneMinute: loadPerCpu2, cpus: 1 })) return "";
+  return `; \`${words.command} retry ${shellQuote(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
 var RECORDED_UNKNOWN_TEXT;
 var init_text2 = __esm({
   "src/core/retry/text.ts"() {
     "use strict";
+    init_render_units();
     init_text();
     init_load();
     RECORDED_UNKNOWN_TEXT = "recorded at an unknown time and load: the result that produced it is no longer identifiable in the store";
@@ -8263,7 +8336,7 @@ function pressure(text3) {
     values.set(m[1] ?? "", Number(m[2]));
   return values;
 }
-function cpuTime(text3) {
+function cpuTime2(text3) {
   const line = /^cpu\s+(.*)$/m.exec(text3 ?? "")?.[1];
   if (line === void 0) return null;
   const ticks = line.trim().split(/\s+/).slice(0, 8).map(Number);
@@ -8408,7 +8481,7 @@ var init_proc = __esm({
           memAvailable: meminfo.get("MemAvailable") ?? null,
           swapTotal,
           swapUsed: swapTotal !== null && swapFree !== void 0 ? swapTotal - swapFree : null,
-          cpuTime: cpuTime(this.#read("stat")),
+          cpuTime: cpuTime2(this.#read("stat")),
           cpus: this.#cpus()
         };
       }
@@ -9798,7 +9871,7 @@ __export(runner_exports, {
   vitestDetected: () => vitestDetected
 });
 import { readdirSync as readdirSync10, readFileSync as readFileSync14 } from "node:fs";
-import { join as join21, posix as posix8 } from "node:path";
+import { join as join21, posix as posix9 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters3 } from "node:util";
 function createRecoveringRunner(options) {
   let inner = null;
@@ -9910,7 +9983,7 @@ async function readVitestBelowRoot(root) {
   if (vitestDetected(root)) return [];
   const tracked = splitNul(await runGit(root, ["ls-files", "-z", "--", ":(glob)**/package.json"]));
   const manifests = tracked.filter((path) => !path.split("/").includes("node_modules")).map((path) => ({
-    dir: posix8.dirname(path).replace(/^\.$/, ""),
+    dir: posix9.dirname(path).replace(/^\.$/, ""),
     value: readManifest(join21(root, path))
   }));
   return vitestBelowRoot(root, manifests);
@@ -10844,14 +10917,14 @@ function readUnknownFiles(store, worktreeId) {
   const entries3 = value.filter(isEntry3).map(knownCause);
   return new Map(entries3.map((e) => [testFileId(e.testFile), e]));
 }
-function recordUnknownFiles(store, worktreeId, marked, stands) {
+function recordUnknownFiles(store, worktreeId, marked, stands2) {
   const entries3 = readUnknownFiles(store, worktreeId);
   for (const entry4 of marked) {
     const id2 = testFileId(entry4.testFile);
     entries3.delete(id2);
     entries3.set(id2, entry4);
   }
-  const kept2 = [...entries3.values()].filter(stands).slice(-UNKNOWN_FILES_KEPT);
+  const kept2 = [...entries3.values()].filter(stands2).slice(-UNKNOWN_FILES_KEPT);
   store.meta.set(unknownFilesMetaKey(worktreeId), JSON.stringify(kept2));
 }
 function samplesOf(paths) {
@@ -11758,6 +11831,19 @@ function claimOf(ledger, ref2) {
   }
   return mayWait && ledger.claims.holds(key2) ? "waits" : "free";
 }
+function peekClaim(context, ledger, ref2) {
+  const { queue, claims: claims2 } = ledger;
+  const key2 = ledger.file(ref2)?.key ?? null;
+  if (key2 === null || queue.isForced(ref2)) return "free";
+  const hits = context.store.results.byKey(key2, 0);
+  if (hits.length > 0) return stands(context, hits) ? "stored" : "free";
+  return !queue.isRecent(ref2) && claims2.holds(key2) ? "waits" : "free";
+}
+function stands(context, hits) {
+  const { store, worktreeId } = context;
+  if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return true;
+  return heldFailure(store, worktreeId, hits) === void 0;
+}
 async function claimWake(store, signal2) {
   const before = changeMarker(store);
   const until = performance.now() + CLAIM_RECHECK_MS;
@@ -11775,6 +11861,7 @@ var CLAIM_GRACE_MS, CLAIM_UNBOUNDED_MS, CLAIM_RECHECK_MS, CLAIM_POLL_MS, Claims;
 var init_claims = __esm({
   "src/core/scheduler/claims.ts"() {
     "use strict";
+    init_state3();
     init_snapshot();
     init_store3();
     CLAIM_GRACE_MS = 6e3;
@@ -12311,10 +12398,14 @@ var init_queue = __esm({
           (entry4) => entry4.recent && where3(entry4.ref) && [...entry4.recentBy].some((by) => by !== null && by > revision)
         );
       }
-      /** Whether a promoted fast entry `where` holds is queued (C15; row 011-51). */
+      /**
+       * Whether a promoted fast entry `where` holds is queued (C15; row 011-51).
+       * `where` is asked of promoted entries only, so it may read the store
+       * (row 011-55: another worktree's claim).
+       */
       hasPromoted(where3) {
         return this.#fast().some(
-          (entry4) => where3(entry4.ref) && this.#promotions.rankOf(testFileId(entry4.ref)) !== null
+          (entry4) => this.#promotions.rankOf(testFileId(entry4.ref)) !== null && where3(entry4.ref)
         );
       }
       /** Some fast entry `where` holds is queued (task 001-140: one of a free lane). */
@@ -15456,8 +15547,17 @@ function superseded(tier) {
 function waitedFor(context, ledger, tier, revision) {
   const inLane = (ref2) => laneOf(context, ref2) === tier.lane;
   const { queue } = ledger;
-  if (queue.hasRecentAfter(tier.revision.number, inLane) || queue.hasPromoted(inLane)) return true;
-  return revision !== null && recreates(context, ledger, revision, tier.lane);
+  if (queue.hasRecentAfter(tier.revision.number, inLane)) return "work";
+  let later = false;
+  const runsSooner = (ref2) => {
+    if (!inLane(ref2)) return false;
+    const claim = peekClaim(context, ledger, ref2);
+    later ||= claim !== "free";
+    return claim === "free";
+  };
+  if (queue.hasPromoted(runsSooner)) return "work";
+  if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "work";
+  return later ? "recheck" : null;
 }
 function recreates(context, ledger, revision, lane) {
   const { keys } = context;
@@ -15480,6 +15580,7 @@ function overruns(tier) {
   return unfinished(tier).length > 0;
 }
 function boundOf(context, tier, decision) {
+  if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
   if (decision?.kind === "overrun") return decision.yieldsAt;
   if (decision?.kind !== "remainder" || !overruns(tier)) return null;
   return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
@@ -15508,18 +15609,22 @@ function isYield(value) {
   if (kind === "overrun") return typeof yieldsAt === "number";
   return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner";
 }
-var YIELD_REMAINDER_MS, TierYields;
+var YIELD_REMAINDER_MS, RECHECK, TierYields;
 var init_yields = __esm({
   "src/core/scheduler/yields.ts"() {
     "use strict";
     init_types();
     init_backlog();
+    init_claims();
     init_tiers();
     YIELD_REMAINDER_MS = 3e4;
+    RECHECK = { kind: "recheck" };
     TierYields = class {
       /**
        * `recheck` checks the tiers in flight again under the scheduler's lock,
-       * as an event does: a tier reaches its bound with no event (row 011-107).
+       * as an event does: a tier reaches its bound with no event (row 011-107),
+       * or a claim may have ended with none (row 011-123); it takes stored
+       * results first.
        */
       constructor(recheck = () => {
       }) {
@@ -15537,7 +15642,9 @@ var init_yields = __esm({
       #standing = /* @__PURE__ */ new Map();
       /**
        * When each tier in flight that a wait waits for yields at the latest,
-       * `YIELD_REMAINDER_MS` past its estimate (row 011-107), by run id.
+       * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked
+       * again while its promoted files wait on claims or stored results (row
+       * 011-123), by run id.
        */
       #bounds = /* @__PURE__ */ new Map();
       /** The one timer that checks the tiers again at the earliest of `#bounds`. */
@@ -15552,10 +15659,15 @@ var init_yields = __esm({
        * - a backlog tier, as `cancelsBacklog` says;
        * - any but the backlog's turn yields, once per file and key, while an
        *   edit's work that came during its run or a promoted file is queued in
-       *   its lane, or `revision` makes the lane's runner part wait for the run,
-       *   when its estimated remainder exceeds `YIELD_REMAINDER_MS` or, as
-       *   `overruns` allows, it has run that long past its estimate (row
-       *   011-107); one that does not yet is checked again at that bound.
+       *   its lane, one that waits on another worktree's claim of its key or
+       *   has a result stored there aside (rows 011-55, 011-123), or `revision`
+       *   makes the lane's runner part wait for the run, when its estimated
+       *   remainder exceeds `YIELD_REMAINDER_MS` or, as `overruns` allows, it
+       *   has run that long past its estimate (row 011-107); one that does not
+       *   yet is checked again at that bound, and one only such promoted files
+       *   wait for every `CLAIM_RECHECK_MS` (row 011-123): a claim ends with no
+       *   event when its claimant's heartbeat is lost or the waiter's bound
+       *   passes (C7).
        * A file has ended when the runner named it (`Tier.ended`, row 011-54,
        * review `reviews/0.1.237.md` B2); a runner that names none leaves every
        * file unfinished, so its tier is cancelled by the first rule only when
@@ -15577,7 +15689,7 @@ var init_yields = __esm({
               context.quiet?.cancelled(tier.lane, context.now());
             tier.cancel?.abort(decision);
           }
-          const standing2 = typeof decision === "string" ? { kind: "yields" } : decision;
+          const standing2 = typeof decision === "string" ? { kind: "yields" } : decision?.kind === "recheck" ? null : decision;
           changed2 = this.#set(tier.runId, standing2) || changed2;
           const bound = typeof decision === "string" ? null : boundOf(context, tier, decision);
           if (bound === null) this.#bounds.delete(tier.runId);
@@ -15608,8 +15720,11 @@ var init_yields = __esm({
         if (tier.kind === "backlog" && cancel2 !== null) {
           if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
         }
-        if (!waitedFor(context, ledger, tier, revision)) return null;
-        if (cancel2 === null || tier.slot === true) return { kind: "runner" };
+        const waiting = waitedFor(context, ledger, tier, revision);
+        if (waiting === null) return null;
+        if (cancel2 === null || tier.slot === true)
+          return waiting === "work" ? { kind: "runner" } : null;
+        if (waiting === "recheck") return RECHECK;
         if (tier.kind === "turn") return { kind: "turn" };
         if (unfinished(tier).some(({ file, key: key2 }) => this.#cut.get(file.id)?.key === key2))
           return { kind: "cut" };
@@ -19332,15 +19447,20 @@ var init_scheduler2 = __esm({
       }
       /**
        * Checks the tiers in flight again under the lock, one check queued at a
-       * time: after a file's end, or at the bound of a tier past its estimate
-       * (`TierYields`, row 011-107).
+       * time: after a file's end, at the bound of a tier past its estimate
+       * (`TierYields`, row 011-107), or while promoted files wait on claims (row
+       * 011-123). Results other worktrees stored are taken first (`#adopt`), as
+       * a reconciliation pass does, so a claimant's record cuts nothing.
        */
       #recheckTiers() {
         if (this.#recheck) return;
         this.#recheck = true;
         this.#lock.run(() => {
           this.#recheck = false;
-          if (!this.#closed) this.#cutTiers(null);
+          if (this.#closed) return;
+          const { context, ledger } = this.#started();
+          this.#adopt(context, ledger);
+          this.#cutTiers(null);
         }).catch(
           (error) => this.#backgroundError("could not check the tiers in flight", error)
         );
@@ -53068,7 +53188,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.270";
+  if (true) return "0.1.271";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -53165,15 +53285,9 @@ init_config_problems();
 init_holds();
 init_identity();
 
-// src/core/status/outstanding-text.ts
-init_text2();
-init_text();
-init_died();
-init_next_step();
-
 // src/core/status/next-step-text.ts
 init_text();
-import { posix as posix9 } from "node:path";
+import { posix as posix8 } from "node:path";
 var PATHS_IN_COMMAND = 3;
 function stepText(step, paths, command) {
   const n = paths.length;
@@ -53206,8 +53320,8 @@ function reasonWords(next, paths, command) {
   );
 }
 function fromBase(base, path) {
-  if (base === void 0 || base === "" || posix9.isAbsolute(base)) return path;
-  return posix9.relative(base, path);
+  if (base === void 0 || base === "" || posix8.isAbsolute(base)) return path;
+  return posix8.relative(base, path);
 }
 function stepCommand(step, paths, command) {
   switch (step.kind) {
@@ -53226,6 +53340,12 @@ function stepCommand(step, paths, command) {
 function fill(text3, cmd, command, it) {
   return text3.replaceAll("{command}", cmd === null ? "" : `\`${cmd}\``).replaceAll("{squeal}", command).replaceAll("{its}", it === "it" ? "its" : "their").replaceAll("{it}", it);
 }
+
+// src/core/status/outstanding-text.ts
+init_text2();
+init_text();
+init_died();
+init_next_step();
 
 // src/core/status/status-detail.ts
 init_text();
@@ -53456,7 +53576,10 @@ function formatStatus(result, now, command = "squeal", options = {}) {
         `observed at revision ${f.observedAt}`,
         f.validity
       ].join(", ")}`,
-      ...f.recorded === void 0 ? f.recordedUnknown === true ? [`        ${RECORDED_UNKNOWN_TEXT}`] : [] : [`        ${recordedText(f.recorded, result.worktreeId, now)}`]
+      ...f.recorded === void 0 ? f.recordedUnknown === true ? [`        ${RECORDED_UNKNOWN_TEXT}`] : [] : [
+        // Row 011-67 (gh-52): a failure recorded under load names its load retry.
+        `        ${recordedText(f.recorded, result.worktreeId, now, { command, path: fromBase(options.base, f.check.testPath) })}`
+      ]
     ]),
     `Affected checks: ${affected(result, command)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
@@ -53656,6 +53779,7 @@ init_test_frame();
 // src/core/status/why.ts
 init_fs();
 init_keys();
+init_retry();
 init_state3();
 init_store3();
 init_types();
@@ -54006,6 +54130,7 @@ function report({ store, root, commonDir }, check, includeLogs, session2, kept2)
   const commit = readRevisionCommit(store, worktreeId, latest);
   const changed2 = changedSince2(store, worktreeId, knownState2?.observedAt ?? null, revision);
   const closure = whyClosureChanges(store, worktreeId, check, knownState2, revision, session2);
+  const recorded2 = knownState2 === null ? void 0 : withRecorded(store, worktreeId, [knownState2], revision ?? 0)[0]?.recorded;
   const file = testFileId(testFileOf(check));
   const rankedBy = whyRankedBy(store, worktreeId, (ref2) => testFileId(ref2) === file);
   return {
@@ -54019,6 +54144,7 @@ function report({ store, root, commonDir }, check, includeLogs, session2, kept2)
     check,
     worktreeRoots,
     knownState: knownState2,
+    ...recorded2 === void 0 ? {} : { recorded: recorded2 },
     ...frame === null ? {} : { testFileFrame: frame },
     history: store.transitions.history(worktreeId, check),
     results: results2,
@@ -54215,6 +54341,7 @@ function closureLine(paths) {
 }
 
 // src/core/status/format-why.ts
+init_retry();
 init_run_log();
 init_state3();
 init_text();
@@ -54267,7 +54394,7 @@ function replacedAt(why2, key2) {
 
 // src/core/status/format-why.ts
 init_test_frame();
-function formatWhy(why2) {
+function formatWhy(why2, command = "squeal", options = {}) {
   if (!why2.available) return formatUnavailable(why2);
   if (!why2.found) {
     const ranked = rankedLine(why2.rankedBy).map((line) => `${line}
@@ -54287,7 +54414,7 @@ ${ranked}`;
     `Worktree: ${why2.worktreeRoot}`,
     `Revision: ${why2.revision === null ? "none recorded" : revisionText(why2.revision, why2.commit)}`,
     "",
-    ...knownState(why2, why2.knownState),
+    ...knownState(why2, why2.knownState, recordedLines(why2, command, options)),
     "",
     ...history(why2.history),
     "",
@@ -54310,9 +54437,10 @@ function noMatch(why2) {
   return `${none2} ${files2}; a test that has not run yet has no name here, so it may be in ${queued === 1 ? "it" : "one of them"}.
 `;
 }
-function knownState(why2, s) {
+function knownState(why2, s, recorded2) {
   return [
     ...stateLines(why2, s),
+    ...recorded2,
     ...changedLine(why2.changedSince),
     ...closureLines(why2),
     ...rankedLine(why2.rankedBy).map((line) => `  ${line}`),
@@ -54321,6 +54449,15 @@ function knownState(why2, s) {
     ...flakyLine(why2),
     ...rerunFirstLines(why2, s)
   ];
+}
+function recordedLines(why2, command, options) {
+  if (why2.recorded === void 0) return [];
+  const path = fromBase(options.base, why2.check.testPath);
+  const text3 = recordedText(why2.recorded, why2.worktreeId, options.now ?? Date.now(), {
+    command,
+    path
+  });
+  return [`  ${text3.charAt(0).toUpperCase()}${text3.slice(1)}`];
 }
 function changedLine(since) {
   if (since === void 0) return [];
@@ -60477,7 +60614,7 @@ init_fs();
 
 // src/core/ps/darwin.ts
 init_source();
-import { availableParallelism as availableParallelism6, cpus, loadavg as loadavg4, totalmem, uptime } from "node:os";
+import { availableParallelism as availableParallelism6, cpus as cpus2, loadavg as loadavg4, totalmem, uptime } from "node:os";
 import { basename as basename25 } from "node:path";
 var CLOCK_TICKS = 100;
 var PS = [
@@ -60506,7 +60643,7 @@ var DarwinSource = class {
   #last = /* @__PURE__ */ new Map();
   constructor(options) {
     this.#run = options.run ?? runCommand;
-    this.#os = options.os ?? { loadavg: loadavg4, totalmem, cpus, availableParallelism: availableParallelism6, uptime };
+    this.#os = options.os ?? { loadavg: loadavg4, totalmem, cpus: cpus2, availableParallelism: availableParallelism6, uptime };
     const boot = (options.now ?? Date.now)() - this.#os.uptime() * 1e3;
     this.#boot = Number.isFinite(boot) ? Math.floor(boot / 1e3) * 1e3 : null;
   }
@@ -60564,7 +60701,7 @@ var DarwinSource = class {
       memAvailable: used === null ? null : Math.max(0, memTotal - used),
       swapTotal: swap?.total ?? null,
       swapUsed: swap?.used ?? null,
-      cpuTime: cpuTime2(this.#os.cpus()),
+      cpuTime: cpuTime3(this.#os.cpus()),
       cpus: this.#os.availableParallelism()
     };
   }
@@ -60648,7 +60785,7 @@ function swapUsage(text3) {
   const used = bytes2("used");
   return total === null || used === null ? null : { total, used };
 }
-function cpuTime2(cpus3) {
+function cpuTime3(cpus3) {
   if (cpus3.length === 0) return null;
   let busy = 0;
   let total = 0;
@@ -60870,70 +61007,7 @@ function holderOf2(daemons, worktreeId) {
 init_slow2();
 init_paths2();
 import { join as join102 } from "node:path";
-
-// src/core/ps/render-units.ts
-var KIB = 1024;
-var MIB = KIB * 1024;
-var GIB = MIB * 1024;
-var UNKNOWN = "?";
-var NO_BOOT = "the boot time cannot be read, so no process has an age";
-var SAFE_WORD = /^[\w@%+=:,./-]+$/;
-function shellQuote(word) {
-  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
-}
-function dateOf(ms2) {
-  return `${new Date(ms2).toISOString().slice(0, 16).replace("T", " ")} UTC`;
-}
-function count(n, one, many = `${one}s`) {
-  return `${thousands(n)} ${n === 1 ? one : many}`;
-}
-function thousands(n) {
-  return String(n).replace(/\B(?=(\d{3})+$)/g, ",");
-}
-function share(value) {
-  return value >= 10 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
-}
-function percent(value) {
-  return value === null ? UNKNOWN : `${Math.round(value)}%`;
-}
-function cpus2(value) {
-  return (value / 100).toFixed(1);
-}
-function bytes(n, column = false) {
-  if (n === null) return column ? UNKNOWN : "unknown";
-  if (n === 0) return "0";
-  const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
-  return column ? `${value}${unit}` : `${value} ${unit}iB`;
-}
-function ofGib(part, whole) {
-  return `${(part / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
-}
-function age(since, at2) {
-  return since === null ? UNKNOWN : columnDuration(at2 - since);
-}
-function sentenceDuration(ms2) {
-  const s = Math.floor(ms2 / 1e3);
-  if (s < 120) return `${s} s`;
-  const m = Math.floor(s / 60);
-  if (m < 120) return `${m}m`;
-  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
-}
-function columnDuration(ms2) {
-  const s = Math.max(0, Math.floor(ms2 / 1e3));
-  if (s < 60) return `${s}s`;
-  if (s < 100 * 60) return `${Math.floor(s / 60)}m`;
-  if (s < 48 * 3600) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86400)}d`;
-}
-function cpuTime3(ms2) {
-  if (ms2 === null) return UNKNOWN;
-  const s = Math.floor(ms2 / 1e3);
-  const two = (n) => String(n).padStart(2, "0");
-  if (s < 3600) return `${Math.floor(s / 60)}m${two(s % 60)}s`;
-  return `${Math.floor(s / 3600)}h${two(Math.floor(s / 60) % 60)}m`;
-}
-
-// src/core/ps/flags-files.ts
+init_render_units();
 var WAITER_LOCK = /^waiter-.+\.sqlite$/;
 var PERMIT = /^pool\.(\d+)\.lock$/;
 var MARK2 = /^pool\.mark\.[^.]+$/;
@@ -61027,6 +61101,7 @@ function sessionDirs(places) {
 }
 
 // src/core/ps/flags-processes.ts
+init_render_units();
 var ORPHAN_WINDOW_MS = 1e3;
 var ORPHAN_AGE_MS = 6e4;
 var OVERDUE_MS = 6e4;
@@ -61129,6 +61204,7 @@ function orphanTestProcesses(c) {
 }
 
 // src/core/ps/flags.ts
+init_render_units();
 init_source();
 var NO_LOCK_MARGIN_MS = 1e4;
 var DEPARTURE_MS = 6e4;
@@ -61437,6 +61513,7 @@ function within(path, dir2) {
 init_proc();
 
 // src/core/ps/render.ts
+init_render_units();
 var STATE_WIDTH = 19;
 var DETAIL = "      ";
 var render = (snapshot3, { full }) => {
@@ -61498,7 +61575,7 @@ function squealLine2(s) {
   const q = s.squeal;
   const out2 = q.skipped;
   const ofBusy = lower2(q.cpuShare, out2.cpuPct, (v) => `${share(v)} of busy`);
-  const cpu = lower2(q.cpuPct, out2.cpuPct, (v) => `${cpus2(v)} CPUs`);
+  const cpu = lower2(q.cpuPct, out2.cpuPct, (v) => `${cpus(v)} CPUs`);
   const used = lower2(q.memoryShare, out2.privateBytes, (v) => `${share(v)} of used`);
   const kind = s.memory === "rss" ? "RSS" : "memory";
   const rss = s.memory === "rss" ? ", shared pages counted more than once" : "";
@@ -61511,7 +61588,7 @@ function squealLine2(s) {
 }
 function repositoryBlock(r, s, full) {
   const name2 = r.commonDir === null ? "repository unknown" : r.commonDir.replace(/\/\.git$/, "");
-  const cpu = lower2(r.cpuPct, r.skipped.cpuPct, cpus2) ?? "unknown";
+  const cpu = lower2(r.cpuPct, r.skipped.cpuPct, cpus) ?? "unknown";
   const memory = lower2(r.privateBytes, r.skipped.privateBytes, (v) => bytes(v)) ?? "unknown";
   const lines = [
     [
@@ -61552,7 +61629,7 @@ function daemonLines(d, at2) {
       version: version2,
       up: age(d.startedAt, at2),
       cpu: percent(d.cpuPct),
-      time: cpuTime3(d.cpuMs),
+      time: cpuTime(d.cpuMs),
       memory: bytes(d.privateBytes, true),
       swap: bytes(d.swapBytes, true),
       work: workOf(d, at2)
@@ -61572,7 +61649,7 @@ function processLines(p, at2, full) {
       detail: detailOf(p),
       up: age(p.startedAt, at2),
       cpu: plus(percent(and(p.cpuPct, d.cpuPct)), d.skipped.cpuPct),
-      time: cpuTime3(and(p.cpuMs, d.cpuMs)),
+      time: cpuTime(and(p.cpuMs, d.cpuMs)),
       memory: plus(bytes(and(p.privateBytes, d.privateBytes), true), d.skipped.privateBytes),
       swap: plus(bytes(and(p.swapBytes, d.swapBytes), true), d.skipped.swapBytes),
       work: [...p.escaped ? ["escaped"] : [], `nice ${p.nice}`, ...children].join(", ")
@@ -61588,7 +61665,7 @@ function processLines(p, at2, full) {
         detail: "",
         up: "",
         cpu: percent(c.cpuPct),
-        time: cpuTime3(c.cpuMs),
+        time: cpuTime(c.cpuMs),
         memory: bytes(c.privateBytes, true),
         swap: bytes(c.swapBytes, true),
         work: ""
@@ -66170,12 +66247,16 @@ function why(args2, io) {
   if (name2 === void 0 || parsed2.positional.length > 1) {
     return usage2("why", "expected one check name", io);
   }
-  const result = readWhy(io.cwd ?? process.cwd(), name2, {
+  const cwd = io.cwd ?? process.cwd();
+  const env = io.env ?? process.env;
+  const result = readWhy(cwd, name2, {
     includeLogs,
     busyRetryMs: CLI_READ_RETRY_MS,
-    session: whySession(io.env ?? process.env)
+    session: whySession(env)
   });
-  io.stdout(parsed2.json ? json2(result) : formatWhy(result));
+  const base = result.available && result.found ? baseOf(result.worktreeRoot, cwd) : "";
+  const now = (io.now ?? Date.now)();
+  io.stdout(parsed2.json ? json2(result) : formatWhy(result, statusCommand(env), { base, now }));
   return result.available && result.found ? 0 : 1;
 }
 function whySession(env) {
