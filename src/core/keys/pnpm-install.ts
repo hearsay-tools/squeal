@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { compare, isRecord } from "../fs/index.js";
 import type { AbsolutePath, RelativePath } from "../types/index.js";
 import type { PackageScans } from "./package-scans.js";
-import { PnpmGraph } from "./pnpm-graph.js";
+import { childOf, PnpmGraph } from "./pnpm-graph.js";
 import { PNPM_LOCKFILE, readPnpmLockfile } from "./pnpm-lockfile.js";
 
 /** pnpm's record of the install's layout, relative to the directory that holds `node_modules`. */
@@ -79,26 +79,53 @@ function layoutOf(dir: AbsolutePath): Readonly<Record<string, unknown>> | null {
  * and none of them is newer than `lock.yaml`. Folders and links compare
  * with `lstat`. A `.pnpm` folder no snapshot names is an orphan pnpm keeps
  * until `modules-cache-max-age` and nothing links to: ignored.
+ *
+ * Review 0.1.282 B2: and every link a lookup resolves through exists, so
+ * Node never walks past a missing one to a package the graph does not
+ * name: each name an importer declares, each hoisted name, public and
+ * private, and each edge beside a package folder, unless it names a
+ * skipped package.
  */
 export function stalePnpmLockfile(dir: AbsolutePath, graph: PnpmGraph): string | null {
   const lockTime = lstatSync(join(dir, PNPM_LOCKFILE)).mtimeMs;
   const unlisted: string[] = [];
   const newer: string[] = [];
   const missing: string[] = [];
+  const absent = (path: string) =>
+    lstatSync(join(dir, path), { throwIfNoEntry: false }) === undefined;
   for (const [id, folder] of graph.folders) {
     if (graph.skipped.has(id)) continue;
-    const path = `${VIRTUAL_STORE}/${folder}/node_modules/${id.slice(0, id.indexOf("@", 1))}`;
+    const modules = `${VIRTUAL_STORE}/${folder}/node_modules`;
+    const path = `${modules}/${id.slice(0, id.indexOf("@", 1))}`;
     const stat = lstatSync(join(dir, path), { throwIfNoEntry: false });
     if (stat === undefined) missing.push(path);
     else if (stat.mtimeMs > lockTime) newer.push(path);
+    for (const [name, ref] of graph.lockfile.snapshots.get(id) ?? []) {
+      const edge = `${modules}/${name}`;
+      if (!graph.skipped.has(childOf(name, ref)) && absent(edge)) missing.push(edge);
+    }
+  }
+  for (const [at, hoisted] of [
+    ["node_modules", graph.publicHoisted],
+    [`${VIRTUAL_STORE}/node_modules`, graph.privateHoisted],
+  ] as const) {
+    for (const [alias, id] of hoisted) {
+      if (!graph.skipped.has(id) && absent(`${at}/${alias}`)) missing.push(`${at}/${alias}`);
+    }
   }
   for (const [importer, declared] of graph.lockfile.importers) {
     const modules = importer === "." ? "node_modules" : `${importer}/node_modules`;
-    for (const name of namesIn(join(dir, modules))) {
+    const present = new Set(namesIn(join(dir, modules)));
+    for (const name of present) {
       const path = `${modules}/${name}`;
       if (!declared.has(name) && !(importer === "." && graph.publicHoisted.has(name))) {
         unlisted.push(path);
       } else if (lstatSync(join(dir, path)).mtimeMs > lockTime) newer.push(path);
+    }
+    for (const [name, ref] of declared) {
+      if (!present.has(name) && !graph.skipped.has(childOf(name, ref))) {
+        missing.push(`${modules}/${name}`);
+      }
     }
   }
   const parts = [

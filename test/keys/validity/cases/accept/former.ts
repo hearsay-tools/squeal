@@ -62,6 +62,7 @@ const pnpmLock = [
 const pnpm = {
   "node_modules/.pnpm/a@1.0.0/node_modules/a/package.json": '{"name":"a","version":"1.0.0"}',
   "node_modules/.pnpm/a@1.0.0/node_modules/a/index.js": "module.exports = 1;\n",
+  "node_modules/a/package.json": '{"name":"a","version":"1.0.0"}',
   "node_modules/.modules.yaml": JSON.stringify({
     nodeLinker: "isolated",
     virtualStoreDir: ".pnpm",
