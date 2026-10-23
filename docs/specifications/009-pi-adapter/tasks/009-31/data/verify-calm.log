@@ -1,0 +1,160 @@
+=== 05:08:46 calm real 1 3.16 7.49 9.88
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.98 7.38 9.83
+│ 3       │ 'boundary on a fresh worker' │ 47.9 │ 51.1 │ 56.3 │
+=== exit 0 2.98 7.38 9.83
+=== 05:08:48 calm lifted 1 2.98 7.38 9.83
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.82 7.27 9.79
+│ 3       │ 'boundary on a fresh worker' │ 46.5 │ 48.2 │ 53  │
+=== exit 0 2.82 7.27 9.79
+=== 05:08:54 calm real 2 2.82 7.27 9.79
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.76 7.18 9.74
+│ 3       │ 'boundary on a fresh worker' │ 51.7 │ 66.2 │ 103.1 │
+=== exit 0 2.76 7.18 9.74
+=== 05:08:58 calm lifted 2 2.76 7.18 9.74
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.76 7.18 9.74
+│ 3       │ 'boundary on a fresh worker' │ 47.4 │ 54.4 │ 58.3 │
+=== exit 0 2.76 7.18 9.74
+=== 05:09:04 calm real 3 2.54 7.06 9.69
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.41 6.96 9.64
+│ 3       │ 'boundary on a fresh worker' │ 45.8 │ 50  │ 57.2 │
+=== exit 0 2.41 6.96 9.64
+=== 05:09:07 calm lifted 3 2.41 6.96 9.64
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.41 6.96 9.64
+│ 3       │ 'boundary on a fresh worker' │ 47.7 │ 51.2 │ 54.5 │
+=== exit 0 2.41 6.96 9.64
+=== 05:09:13 calm real 4 2.30 6.86 9.60
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.30 6.86 9.60
+│ 3       │ 'boundary on a fresh worker' │ 48.5 │ 51.5 │ 54.3 │
+=== exit 0 2.30 6.86 9.60
+=== 05:09:15 calm lifted 4 2.30 6.86 9.60
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.19 6.77 9.55
+│ 3       │ 'boundary on a fresh worker' │ 46.6 │ 49.6 │ 51.5 │
+=== exit 0 2.19 6.77 9.55
+=== 05:09:21 calm real 5 2.02 6.65 9.50
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.02 6.65 9.50
+│ 3       │ 'boundary on a fresh worker' │ 45.2 │ 47.7 │ 52.6 │
+=== exit 0 2.02 6.65 9.50
+=== 05:09:24 calm lifted 5 2.02 6.65 9.50
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.94 6.56 9.45
+│ 3       │ 'boundary on a fresh worker' │ 47.5 │ 51.9 │ 54   │
+=== exit 0 1.94 6.56 9.45
+=== 05:09:30 calm real 6 1.94 6.56 9.45
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.18 6.53 9.43
+│ 3       │ 'boundary on a fresh worker' │ 46.4 │ 49.9 │ 51.5 │
+=== exit 0 2.18 6.53 9.43
+=== 05:09:33 calm lifted 6 2.18 6.53 9.43
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.18 6.53 9.43
+│ 3       │ 'boundary on a fresh worker' │ 46.7 │ 51.7 │ 51.8 │
+=== exit 0 2.18 6.53 9.43
+=== 05:09:39 calm real 7 2.01 6.42 9.38
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.93 6.33 9.33
+│ 3       │ 'boundary on a fresh worker' │ 47  │ 50.8 │ 52.4 │
+=== exit 0 1.93 6.33 9.33
+=== 05:09:41 calm lifted 7 1.93 6.33 9.33
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.93 6.33 9.33
+│ 3       │ 'boundary on a fresh worker' │ 45.1 │ 49.9 │ 52.5 │
+=== exit 0 1.93 6.33 9.33
+=== 05:09:47 calm real 8 1.77 6.23 9.28
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.77 6.23 9.28
+│ 3       │ 'boundary on a fresh worker' │ 46.1 │ 49.4 │ 52.3 │
+=== exit 0 1.77 6.23 9.28
+=== 05:09:50 calm lifted 8 1.77 6.23 9.28
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.91 6.39 9.32
+│ 3       │ 'boundary on a fresh worker' │ 47  │ 50.3 │ 54   │
+=== exit 0 2.91 6.39 9.32
+=== 05:09:56 calm real 9 2.91 6.39 9.32
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.76 6.30 9.27
+│ 3       │ 'boundary on a fresh worker' │ 48.7 │ 54.8 │ 55.9 │
+=== exit 0 2.76 6.30 9.27
+=== 05:09:59 calm lifted 9 2.76 6.30 9.27
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.62 6.21 9.23
+│ 3       │ 'boundary on a fresh worker' │ 46.9 │ 51.4 │ 51.7 │
+=== exit 0 2.62 6.21 9.23
+=== 05:10:05 calm real 10 2.62 6.21 9.23
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.49 6.13 9.19
+│ 3       │ 'boundary on a fresh worker' │ 49  │ 53  │ 58.8 │
+=== exit 0 2.49 6.13 9.19
+=== 05:10:07 calm lifted 10 2.49 6.13 9.19
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.49 6.13 9.19
+│ 3       │ 'boundary on a fresh worker' │ 49.5 │ 63.1 │ 63.4 │
+=== exit 0 2.49 6.13 9.19
+=== 05:10:13 calm real 11 2.29 6.02 9.14
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.18 5.94 9.09
+│ 3       │ 'boundary on a fresh worker' │ 46.7 │ 50.5 │ 53.5 │
+=== exit 0 2.18 5.94 9.09
+=== 05:10:16 calm lifted 11 2.18 5.94 9.09
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.18 5.94 9.09
+│ 3       │ 'boundary on a fresh worker' │ 45.3 │ 47.6 │ 54.7 │
+=== exit 0 2.18 5.94 9.09
+=== 05:10:22 calm real 12 2.01 5.84 9.04
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 2.01 5.84 9.04
+│ 3       │ 'boundary on a fresh worker' │ 49.6 │ 51.8 │ 53.7 │
+=== exit 0 2.01 5.84 9.04
+=== 05:10:25 calm lifted 12 2.01 5.84 9.04
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.85 5.74 8.99
+│ 3       │ 'boundary on a fresh worker' │ 50.5 │ 55.8 │ 57.1 │
+=== exit 0 1.85 5.74 8.99
+=== 05:10:31 calm real 13 1.70 5.65 8.95
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.70 5.65 8.95
+│ 3       │ 'boundary on a fresh worker' │ 47.9 │ 52.6 │ 54   │
+=== exit 0 1.70 5.65 8.95
+=== 05:10:34 calm lifted 13 1.70 5.65 8.95
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.64 5.57 8.90
+│ 3       │ 'boundary on a fresh worker' │ 50.2 │ 57.8 │ 60.5 │
+=== exit 0 1.64 5.57 8.90
+=== 05:10:40 calm real 14 1.64 5.57 8.90
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.59 5.50 8.86
+│ 3       │ 'boundary on a fresh worker' │ 48.4 │ 52.8 │ 59.1 │
+=== exit 0 1.59 5.50 8.86
+=== 05:10:43 calm lifted 14 1.59 5.50 8.86
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.79 5.47 8.83
+│ 3       │ 'boundary on a fresh worker' │ 51.2 │ 56  │ 60.2 │
+=== exit 0 1.79 5.47 8.83
+=== 05:10:49 calm real 15 1.79 5.47 8.83
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.80 5.41 8.80
+│ 3       │ 'boundary on a fresh worker' │ 48.5 │ 53.8 │ 56.8 │
+=== exit 0 1.80 5.41 8.80
+=== 05:10:52 calm lifted 15 1.80 5.41 8.80
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.80 5.41 8.80
+│ 3       │ 'boundary on a fresh worker' │ 47  │ 49.8 │ 63.1 │
+=== exit 0 1.80 5.41 8.80
+=== 05:10:58 calm real 16 1.66 5.32 8.75
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.66 5.32 8.75
+│ 3       │ 'boundary on a fresh worker' │ 47.1 │ 52.4 │ 54.5 │
+=== exit 0 1.66 5.32 8.75
+=== 05:11:01 calm lifted 16 1.66 5.32 8.75
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.61 5.25 8.71
+│ 3       │ 'boundary on a fresh worker' │ 46.8 │ 51.2 │ 51.3 │
+=== exit 0 1.61 5.25 8.71
+=== 05:11:07 calm real 17 1.48 5.16 8.66
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.48 5.16 8.66
+│ 3       │ 'boundary on a fresh worker' │ 46  │ 48.6 │ 51  │
+=== exit 0 1.48 5.16 8.66
+=== 05:11:10 calm lifted 17 1.48 5.16 8.66
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.44 5.09 8.62
+│ 3       │ 'boundary on a fresh worker' │ 46.9 │ 50.2 │ 56   │
+=== exit 0 1.44 5.09 8.62
+=== 05:11:15 calm real 18 1.44 5.09 8.62
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.40 5.03 8.58
+│ 3       │ 'boundary on a fresh worker' │ 46.2 │ 50  │ 54.8 │
+=== exit 0 1.40 5.03 8.58
+=== 05:11:18 calm lifted 18 1.40 5.03 8.58
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.37 4.96 8.54
+│ 3       │ 'boundary on a fresh worker' │ 46.7 │ 51.2 │ 54.4 │
+=== exit 0 1.37 4.96 8.54
+=== 05:11:24 calm real 19 1.37 4.96 8.54
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.34 4.89 8.50
+│ 3       │ 'boundary on a fresh worker' │ 47.4 │ 50.6 │ 54.1 │
+=== exit 0 1.34 4.89 8.50
+=== 05:11:27 calm lifted 19 1.34 4.89 8.50
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.34 4.89 8.50
+│ 3       │ 'boundary on a fresh worker' │ 48.5 │ 52.2 │ 58.1 │
+=== exit 0 1.34 4.89 8.50
+=== 05:11:33 calm real 20 1.23 4.81 8.45
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.23 4.81 8.45
+│ 3       │ 'boundary on a fresh worker' │ 46.1 │ 49.7 │ 56.1 │
+=== exit 0 1.23 4.81 8.45
+=== 05:11:36 calm lifted 20 1.23 4.81 8.45
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 1.53 4.81 8.43
+│ 3       │ 'boundary on a fresh worker' │ 47.4 │ 52.5 │ 57  │
+=== exit 0 1.53 4.81 8.43
