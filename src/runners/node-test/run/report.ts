@@ -1,14 +1,12 @@
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import {
-  type CheckError,
-  type CheckRunResult,
-  type FileLevelError,
-  type FocusedCount,
-  holdsCheckText,
-  type RunOutcome,
-  type TestFileRef,
+import type {
+  CheckError,
+  CheckRunResult,
+  FileLevelError,
+  RunOutcome,
+  TestFileRef,
 } from "../../../core/types/index.js";
-import { identify, NAME_SEPARATOR, type ReportedTest } from "../identity.js";
+import { identify, type ReportedTest } from "../identity.js";
 import { stderrError, toCheckError } from "./errors.js";
 import type { TestEvent, TestEventData } from "./events.js";
 
@@ -18,8 +16,6 @@ export interface FileStream {
   /** The path as passed to `node --test`, relative to the project's `cwd`; the wrapper's name. */
   readonly arg: string;
   readonly events: readonly TestEvent[];
-  /** A focused run's texts for the file (`RunOptions.checks`); absent: it ran whole. */
-  readonly texts?: readonly string[];
 }
 
 /** What one file's stream says. */
@@ -37,8 +33,6 @@ export interface FileReport {
   readonly fileError: FileLevelError | null;
   /** The wrapper's whole-process duration, startup included (runner-api 6). */
   readonly durationMs: number | null;
-  /** With `texts`: what they selected; Node hides the checks its pattern left out. */
-  readonly focused?: FocusedCount;
 }
 
 interface Reported extends ReportedTest {
@@ -52,10 +46,7 @@ interface Reported extends ReportedTest {
  * the `skip` outcome; a test that failed only through its subtests passes,
  * since its own body passed, and its failing subtests carry the failure
  * (coordinator, 2026-10-07). A wrapper that failed while no check failed is
- * a `FileLevelError` with the file's stderr. With `texts`, only the checks
- * whose full name holds one are results (003 D5, row 011-135): Node's
- * pattern can let more through, and a file it selects nothing in reports
- * as one passing test, the wrapper, which is never a result.
+ * a `FileLevelError` with the file's stderr.
  */
 export function readFileStream(stream: FileStream, paths: WorktreePaths): FileReport {
   const isWrapper = (data: TestEventData) =>
@@ -74,23 +65,13 @@ export function readFileStream(stream: FileStream, paths: WorktreePaths): FileRe
       suite: event.data.details?.type === "suite",
       line: event.data.line ?? null,
     }));
-  const identified = identify(reported);
-  const all = identified.map(({ test, fullName, ancestors }) =>
+  const results = identify(reported).map(({ test, fullName, ancestors }) =>
     toResult(stream.testFile, test.event, fullName, ancestors, paths),
   );
-  const { texts } = stream;
-  const results =
-    texts === undefined
-      ? all
-      : all.filter((_, i) => {
-          const { test, ancestors } = identified[i] as (typeof identified)[number];
-          const name = [...ancestors, test].map((t) => t.name).join(NAME_SEPARATOR);
-          return holdsCheckText(name, texts);
-        });
 
   const failed = wrapper?.data.details?.passed === false;
   const fileError =
-    failed && !all.some((r) => r.outcome === "fail")
+    failed && !results.some((r) => r.outcome === "fail")
       ? { testFile: stream.testFile, errors: fileErrors(stream, reported, wrapper, paths) }
       : null;
   return {
@@ -98,9 +79,6 @@ export function readFileStream(stream: FileStream, paths: WorktreePaths): FileRe
     results,
     fileError,
     durationMs: wrapper?.data.details?.duration_ms ?? null,
-    ...(texts === undefined
-      ? {}
-      : { focused: { testFile: stream.testFile, collected: null, matched: results.length } }),
   };
 }
 

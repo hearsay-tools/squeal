@@ -2,16 +2,13 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { toAbsolute } from "../../../core/fs/index.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import {
-  type AbsolutePath,
-  checkTextPattern,
-  type FocusedFile,
-  focusedTexts,
-  type NodeTestProject,
-  type ObservedInputs,
-  type RunEnd,
-  type RunReport,
-  type TestFileRef,
+import type {
+  AbsolutePath,
+  NodeTestProject,
+  ObservedInputs,
+  RunEnd,
+  RunReport,
+  TestFileRef,
 } from "../../../core/types/index.js";
 import { withRecorderSignatures } from "../../observe/index.js";
 import { projectEnv } from "../recorders.js";
@@ -47,8 +44,6 @@ export interface NodeTestRunOptions {
   readonly observeIgnored?: boolean;
   /** A `squeal stop`'s cancel (`RunOptions.signal`): the running processes are stopped, no other starts, and only completed files report. */
   readonly signal?: AbortSignal;
-  /** A focused run's texts per file (`RunOptions.checks`, 003 D5); a file without any runs whole. */
-  readonly checks?: readonly FocusedFile[];
 }
 
 /** A tier's report and, for each completed file, what its process loaded. */
@@ -68,7 +63,6 @@ interface FileRun {
   readonly absolute: AbsolutePath;
   readonly arg: string;
   readonly args: readonly string[];
-  readonly texts: readonly string[] | null;
   exit: ProcessExit | null;
   stream: FileReport | null;
 }
@@ -85,8 +79,6 @@ interface FileRun {
  * files report results. The recorder is the first `--require` because Node
  * runs every `--require` preload, then every `--import`, whatever their order
  * in argv (task 003-28); `childEnv` puts it first in `NODE_OPTIONS` too.
- * A file given texts (`checks`) gets `--test-name-pattern=<pattern>` before
- * it (row 011-135).
  */
 export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTestRun> {
   const started = performance.now();
@@ -106,7 +98,6 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   const runs: FileRun[] = options.files.map((testFile, index) => {
     const absolute = toAbsolute(options.root, testFile.path);
     const arg = relative(cwd, absolute).split(sep).join("/");
-    const texts = focusedTexts(options.checks, testFile);
     const args = [
       "--enable-source-maps",
       "--require",
@@ -115,10 +106,9 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       "--test",
       `--test-reporter=${runtime.reporter}`,
       `--test-reporter-destination=${join(options.logDir, `events-${index}.ndjson`)}`,
-      ...(texts === null ? [] : [`--test-name-pattern=${checkTextPattern(texts)}`]),
       arg,
     ];
-    return { index, testFile, absolute, arg, args, texts, exit: null, stream: null };
+    return { index, testFile, absolute, arg, args, exit: null, stream: null };
   });
 
   const node = options.project.node ?? "node";
@@ -172,12 +162,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       run.exit = await group.exited;
       running.delete(group);
       run.stream = readFileStream(
-        {
-          testFile: run.testFile,
-          arg: run.arg,
-          events: readEvents(options.logDir, run.index),
-          ...(run.texts === null ? {} : { texts: run.texts }),
-        },
+        { testFile: run.testFile, arg: run.arg, events: readEvents(options.logDir, run.index) },
         paths,
       );
     }
@@ -203,7 +188,6 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         ? []
         : [{ testFile: r.testFile, durationMs: r.stream.durationMs }],
     ),
-    ...focusedOf(completed),
   };
   // Spec 001 D11 Fidelity (task 001-390): a signature of a recorder this run used says so; in
   // `NODE_OPTIONS` only when `childEnv` or the warm-up put one there, argv's reaching no child.
@@ -221,12 +205,6 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   writeRunLog(options.logDir, { node, cwd, runs, report });
   if (reads === null) return { report, observed };
   return { report, observed, reads: reads.take(report.completedFiles, paths) };
-}
-
-/** `RunReport.focused`: the completed files given texts. */
-function focusedOf(completed: readonly FileRun[]): Pick<RunReport, "focused"> {
-  const focused = completed.flatMap((r) => (r.stream?.focused ? [r.stream.focused] : []));
-  return focused.length === 0 ? {} : { focused };
 }
 
 /**
