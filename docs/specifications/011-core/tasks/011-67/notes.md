@@ -34,7 +34,15 @@ The failure stays counted. Nothing is asked or queued. The text is a read.
 
 - **Wording.** The clause comes after `no retry asked at these inputs`. So C5's line format (`Recorded … ; retry asked … | no retry asked at these inputs`) stays a prefix, and existing `toContain` checks and readers keep matching. The words are factual (spec 001 D6) and follow next-step's "`squeal retry a.test.ts` runs it once" and `squeal retry`'s own "runs once more when the one-minute load average falls below the CPU count".
 - **Rounding.** A run at 0.995 to 0.999 per CPU prints `load 1.00 per CPU` and names no command, because the stored value is below the threshold. I chose to accept this.
-- **Path quoting.** Paths are not quoted, as in next-step's commands. A test file path with a space would print a command the shell splits.
+- **Path quoting.** Superseded by the repair below (review 0.1.271 S1). The first version did not quote paths, as next-step's commands do not.
+
+## Repair: review 0.1.271 S1 (wave 18.5 W6)
+
+- **Finding.** For `test/with space.test.ts` the command passed two path arguments to `squeal retry`. A path with a quote broke the shell command.
+- **Fix.** `loadRetryText` (`src/core/retry/text.ts`) passes the path through `shellQuote` (`src/core/ps/render-units.ts`), the quoting rule `squeal ps` already uses. A path made only of `[\w@%+=:,./-]` prints bare, so a plain path is unchanged. Any other path is single-quoted, and a `'` inside it becomes `'\''`. The command stays as the surface gives it: the Codex command is already quoted by `codexCommand`. Quoting happens in one place, so status, registration and `why` all get it. `RetryCommandWords.path` stays unquoted.
+- **Tests.** `test/retry/load-retry-quoting.test.ts` sends `src/with space.test.ts` and `src/it's.test.ts` through status (from the root and from `src/`), the registration report (a real `delivery.register`) and `why`. A POSIX `sh` reads each printed command, with `squeal` defined as a function that prints its arguments. Each test expects exactly `retry <path> --reason load`. A plain path prints bare and parses the same way. Before the fix, all six awkward-path cases failed: the space split the path, and the quote made `sh` exit non-zero. The shared store fixture moved to `test/retry/load-retry-fixture.ts`, and `test/status/why-load-retry.test.ts` uses it too.
+- **Bundles.** `retry/text.ts` now imports `ps/render-units.ts`. This changes where esbuild places that module in `cli/ps.mjs`: it moves earlier, with no new code in `ps.mjs` (checked with a build into a temp directory). The bundle drift now names `cli/ps.mjs` before `cli/squeal.mjs`. `test/harness/ps-bundle.test.ts` (ps holds only its own code) passes.
+- **Still not quoted.** Paths in next-step's `squeal retry` commands and in the registration's `squeal failures` command use their own rules: `failure-groups.ts` `argWord` quotes, and `next-step-text.ts` `stepCommand` does not. One shared quoting rule is a /quality candidate.
 
 ## For the coordinator and later rows
 
