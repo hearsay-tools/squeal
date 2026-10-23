@@ -332,6 +332,24 @@ describe("createCompositeRunner (spec 003 D7)", () => {
     expect(await composite.run([A], OPTIONS)).not.toHaveProperty("skippedFiles");
   });
 
+  it("carries a part's focused counts, a zero match included, and none when no part focused (row 011-145)", async () => {
+    const { composite } = pair({
+      run: async (testFiles) => ({
+        end: "completed",
+        durationMs: 4,
+        completedFiles: testFiles,
+        results: [],
+        fileErrors: [],
+        failure: null,
+        focused: testFiles.map((testFile) => ({ testFile, collected: 3, matched: 0 })),
+      }),
+    });
+    await composite.testFiles();
+    const report = await composite.run([A, C], OPTIONS);
+    expect(report.focused).toEqual([{ testFile: C, collected: 3, matched: 0 }]);
+    expect(await composite.run([A], OPTIONS)).not.toHaveProperty("focused");
+  });
+
   it("closes each adapter even when one fails to close, then rejects", async () => {
     const vitest = fake("vitest", {}, { close: () => Promise.reject(new Error("busy")) });
     const node = fake("node-test", {});
