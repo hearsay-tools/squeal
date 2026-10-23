@@ -13354,8 +13354,9 @@ var init_ledger = __esm({
           }
           if (lapseRetry(this.context, file, key2) && !file.rerunPending) this.queue.remove(ref2);
           if (this.queue.isForced(ref2)) continue;
+          const strict = file.runningKey !== null && key2 !== file.runningKey && this.checkpoints.covers([ref2], true);
           const held2 = key2 !== null && this.holds(ref2);
-          if (key2 === null || key2 === file.runningKey || key2 === file.unknownKey || key2 === file.resultKey && !held2) {
+          if (key2 === null || !strict && (key2 === file.runningKey || key2 === file.unknownKey || key2 === file.resultKey && !held2)) {
             if (key2 !== null && (key2 === file.resultKey || key2 === file.unknownKey))
               this.#discharge(file);
             this.queue.remove(ref2);
@@ -13363,7 +13364,7 @@ var init_ledger = __esm({
             if (classify2(file) === "current") this.checkpoints.done(ref2, null);
             continue;
           }
-          const hits = held2 ? [] : this.lookup(key2);
+          const hits = held2 || strict ? [] : this.lookup(key2);
           if (hits.length > 0) {
             const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref2);
             this.applyResults(file, key2, hits, checkpointId);
@@ -13373,11 +13374,11 @@ var init_ledger = __esm({
           if (file.blocked !== null) {
             this.queue.remove(ref2);
             this.#syncPhase(file);
-          } else if (options.queueMisses !== false) {
+          } else if (strict || options.queueMisses !== false) {
             const reached = recent.has(file.id);
             const catchUp = reached && options.catchUp === true;
             const priority = priorityOf(file, changed2, options.direct);
-            this.enqueue(file, priority, false, reached && !catchUp, catchUp, options.keyedAt);
+            this.enqueue(file, priority, strict, reached && !catchUp, catchUp, options.keyedAt);
           }
         }
         this.#rank(changed2, misses);
@@ -13548,8 +13549,21 @@ var init_ledger = __esm({
         if (file.discards >= MAX_DISCARDS) {
           this.markUnknown([{ file, key: key2, samples: changed2 }], reason2, { ran: true, runId });
         } else if (file.key !== null && file.blocked === null) {
-          this.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced && file.key === key2);
+          this.enqueue(file, priorityOf(file, NOTHING_CHANGED), this.staysForced(file, key2, forced));
         }
+      }
+      /**
+       * Whether a forced run of `file` at `key` that did not store its result
+       * is queued forced again (row 011-120, 011 C4 step 5): while the file is
+       * still at `key`, where a lookup would take the run's own fail (a re-run,
+       * task 001-171), or while the open checkpoint holds it strict
+       * (`run --all --force`, task 001-107), which counts only its own run. A
+       * file whose key moved otherwise drops it, and the new key runs as any
+       * miss (001-171 S1); forced, `settle` would skip its lookup at every later
+       * key.
+       */
+      staysForced(file, key2, forced) {
+        return forced && (file.key === key2 || this.checkpoints.covers([file.ref], true));
       }
       /**
        * Files whose run read a path first seen during it (`ObservedGrowth.firstSeen`,
@@ -15083,10 +15097,15 @@ var init_store_results = __esm({
 });
 
 // src/core/scheduler/timeout-split.ts
-function requeueSplit(ledger, file, cap2, forced, recent) {
+function requeueSplit(ledger, file, key2, cap2, forced, recent) {
   file.tierCap = Math.min(cap2, file.tierCap ?? cap2);
   if (file.key === null || file.blocked !== null) return;
-  ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced, recent);
+  ledger.enqueue(
+    file,
+    priorityOf(file, NOTHING_CHANGED),
+    ledger.staysForced(file, key2, forced),
+    recent
+  );
 }
 function timedOutReason(timeoutMs) {
   return timeoutMs === null ? null : `timed out after ${timeoutMs / 1e3} s`;
@@ -15379,16 +15398,18 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
       if (decision.kind === "requeue") {
         if (file.key !== null && file.blocked === null) {
           const priority = priorityOf(file, NOTHING_CHANGED);
-          ledger.enqueue(file, priority, forced, recent === true, catchUp === true);
+          const again = ledger.staysForced(file, key2, forced);
+          ledger.enqueue(file, priority, again, recent === true, catchUp === true);
         }
         continue;
       }
       if (decision.kind === "not-started") {
-        if (setups !== false) notStarted.push({ file, forced });
+        if (setups !== false)
+          notStarted.push({ file, forced: ledger.staysForced(file, key2, forced) });
         else unknown.push({ file, key: key2 });
       } else if (decision.kind === "unknown") unknown.push({ file, key: key2 });
       else if (decision.kind === "split") {
-        requeueSplit(ledger, file, decision.cap, forced, recent === true);
+        requeueSplit(ledger, file, key2, decision.cap, forced, recent === true);
       }
       if (decision.kind === "not-started" || decision.kind === "unknown" || decision.kind === "split") {
         continue;
@@ -53376,7 +53397,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.273";
+  if (true) return "0.1.274";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
