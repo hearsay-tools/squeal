@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Counter, PassSource, SourceFile } from "../../../src/core/code/pass/index.js";
 import { type PassContext, runPass } from "../../../src/core/code/pass/pass.js";
@@ -80,6 +80,17 @@ export class FakeWorktree {
     mkdirSync(dirname(full), { recursive: true });
     writeFileSync(full, text);
     const bytes = Buffer.from(text);
+    this.#files.set(path, { path, hash: blobHash(bytes, "sha1"), size: bytes.length });
+    this.#pending.add(path);
+    return this;
+  }
+
+  /** A symlink, hashed as git stores it: the blob of its target path. */
+  link(path: string, target: string): this {
+    const full = join(this.root, path);
+    mkdirSync(dirname(full), { recursive: true });
+    symlinkSync(target, full);
+    const bytes = Buffer.from(target);
     this.#files.set(path, { path, hash: blobHash(bytes, "sha1"), size: bytes.length });
     this.#pending.add(path);
     return this;
