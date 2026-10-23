@@ -1,0 +1,22 @@
+== squeal
+617 s, 23 file runs: same worktree, re-run of a new failure (C5)
+520 s, 20 file runs: same worktree, other (checkpoint-baseline, baseline)
+146 s, 9 file runs: same worktree, run --all checkpoint
+86 s, 3 file runs: overlapping run in another worktree (claim)
+84 s, 2 file runs: another worktree, after it ended
+59 s, 9 file runs: same worktree, other (edit-route, none)
+26 s, 8 file runs: same worktree, other (catchup-edit, none)
+21 s, 3 file runs: same worktree, other (catchup-pull, none)
+0 s, 1 file runs: same worktree, a daemon start between (baseline baseline)
+== cezar
+1924 s, 19 file runs: overlapping run in another worktree (claim)
+1900 s, 24 file runs: same worktree, re-run of a new failure (C5)
+715 s, 10 file runs: another worktree, after it ended
+685 s, 8 file runs: same worktree, other (edit-route, none)
+158 s, 1 file runs: same worktree, run --all checkpoint
+90 s, 11 file runs: same worktree, other (catchup-pull, none)
+22 s, 2 file runs: same worktree, other (catchup-edit, none)
+== toolkit
+205 s, 9 file runs: same worktree, re-run of a new failure (C5)
+117 s, 105 file runs: same worktree, run --all checkpoint
+35 s, 2 file runs: same worktree, other (checkpoint-baseline, baseline)

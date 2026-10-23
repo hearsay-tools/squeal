@@ -1,0 +1,5 @@
+== squeal
+34781 s, 5577 file runs: clean; no stored result of this file at this commit before
+31393 s, 2310 file runs: no revision row
+24526 s, 5373 file runs: dirty worktree at the run's revision
+== cezar

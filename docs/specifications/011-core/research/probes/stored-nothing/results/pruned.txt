@@ -1,0 +1,62 @@
+== squeal
+[
+  [Object: null prototype] {
+    live: 0,
+    n: 30791,
+    underLiveKey: 30791,
+    onMain: 0
+  },
+  [Object: null prototype] {
+    live: 1,
+    n: 136601,
+    underLiveKey: 41367,
+    onMain: 0
+  }
+]
+[
+  [Object: null prototype] { live: 0, runs: 234, runsWithNoResult: 4 },
+  [Object: null prototype] {
+    live: 1,
+    runs: 1462,
+    runsWithNoResult: 91
+  }
+]
+== cezar
+[
+  [Object: null prototype] {
+    live: 0,
+    n: 55703,
+    underLiveKey: 55703,
+    onMain: 0
+  },
+  [Object: null prototype] {
+    live: 1,
+    n: 167799,
+    underLiveKey: 72747,
+    onMain: 39399
+  }
+]
+[
+  [Object: null prototype] { live: 0, runs: 478, runsWithNoResult: 13 },
+  [Object: null prototype] {
+    live: 1,
+    runs: 1848,
+    runsWithNoResult: 141
+  }
+]
+== toolkit
+[
+  [Object: null prototype] {
+    live: 1,
+    n: 36729,
+    underLiveKey: 9605,
+    onMain: 28139
+  }
+]
+[
+  [Object: null prototype] {
+    live: 1,
+    runs: 536,
+    runsWithNoResult: 151
+  }
+]

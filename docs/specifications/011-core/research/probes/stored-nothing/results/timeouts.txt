@@ -1,0 +1,77 @@
+== squeal
+10-21T08:33 w=15c0d83e live checkpoint-baseline files=200 ended=103 stored=101 wall=606 load1=50.18..39.79 inflight=2: scheduler/discards.test.ts (usual 34 s), scheduler/edit-beside-backlog.test.ts (usual 43 s)
+10-21T14:39 w=1c2b8b3b live checkpoint-baseline files=200 ended=178 stored=177 wall=605 load1=36.66..45.75 inflight=1: scheduler/backlog-wall.test.ts (usual 5 s)
+10-22T13:30 w=ed5b5fee live checkpoint-baseline files=111 ended=110 stored=109 wall=607 load1=13.28..20.27 inflight=1: scheduler/timed-out-tier.test.ts (usual 126 s)
+10-22T17:37 w=0432fde4 live checkpoint-baseline files=200 ended=109 stored=109 wall=602 load1=16.73..26.47 inflight=1: daemon/start-handoff.test.ts (usual 32 s)
+10-23T08:55 w=7174683f live checkpoint-run-all files=200 ended=77 stored=77 wall=607 load1=72.35..78.18 inflight=1: validity/pytest.test.ts (usual 93 s)
+10-23T09:01 w=b17ee032 live checkpoint-baseline files=200 ended=88 stored=86 wall=602 load1=78.18..63.26 inflight=1: cli/warmup.test.ts (usual 66 s)
+10-23T09:05 w=7174683f live checkpoint-run-all files=138 ended=67 stored=67 wall=602 load1=78.18..63.26 inflight=1: scheduler/held-heal.test.ts (usual 3 s)
+10-23T09:05 w=f85f8e2b removed checkpoint-baseline files=200 ended=112 stored=19 wall=603 load1=78.18..63.26 inflight=2: integration/node-test.test.ts (usual 1 s), integration/optimizer-off.test.ts (usual 9 s)
+10-23T09:10 w=06a032dc removed checkpoint-baseline files=200 ended=93 stored=79 wall=601 load1=78.18..null inflight=2: harness/stop-slow-handoff.test.ts (usual 23 s), harness/stop-slow-untold.test.ts (usual 2 s)
+10-23T09:11 w=b17ee032 live checkpoint-baseline files=200 ended=19 stored=19 wall=603 load1=63.26..59.87 inflight=0: 
+10-23T09:21 w=b17ee032 live checkpoint-baseline files=121 ended=79 stored=78 wall=604 load1=59.87..39.03 inflight=2: vitest/setup-failure.test.ts (usual 4 s), vitest/setup-recovery.test.ts (usual 6 s)
+10-23T09:37 w=07b0d895 live checkpoint-run-all files=200 ended=142 stored=142 wall=605 load1=39.03..61.91 inflight=3: daemon/hold.test.ts (usual 284 s), delivery/news-header.test.ts (usual 0 s), delivery/own-edit-unknown.test.ts (usual 0 s)
+10-23T10:22 w=98118842 removed checkpoint-baseline files=200 ended=63 stored=1 wall=601 load1=50.67..58.46 inflight=1: daemon/drain.test.ts (usual 49 s)
+10-23T10:46 w=58e696e8 removed checkpoint-baseline files=120 ended=13 stored=7 wall=602 load1=38.5..39.27 inflight=1: daemon/hold.test.ts (usual 284 s)
+10-23T11:04 w=58e696e8 removed checkpoint-baseline files=53 ended=27 stored=26 wall=602 load1=50.58..85.84 inflight=1: scheduler/retry.test.ts (usual 9 s)
+10-23T11:45 w=540f5ec8 removed checkpoint-baseline files=15 ended=14 stored=11 wall=602 load1=53.76..42.26 inflight=0: 
+10-23T12:42 w=604bdd55 live checkpoint-baseline files=200 ended=42 stored=41 wall=601 load1=41.73..41.78 inflight=1: daemon/drain.test.ts (usual 49 s)
+10-23T12:52 w=604bdd55 live checkpoint-run-all files=200 ended=81 stored=81 wall=604 load1=41.78..36.92 inflight=2: scheduler/catch-up-order.test.ts (usual 66 s), scheduler/catch-up-turn.test.ts (usual 28 s)
+10-23T13:09 w=eb54f622 live checkpoint-baseline files=200 ended=170 stored=169 wall=605 load1=36.92..65.52 inflight=3: scheduler/catch-up-cancel.test.ts (usual 35 s), scheduler/catch-up-classification.test.ts (usual 2 s), scheduler/catch-up-order.test.ts (usual 66 s)
+
+timed-out runs 19; stored in them 16345 s; not stored (upper: in-flight files at the full wall) 19159 s; in-flight files 26: usual duration under a third of the wall 24, else 2
+files in flight at a timeout more than once:
+  2x test/daemon/hold.test.ts in 2 worktrees
+  2x test/daemon/drain.test.ts in 2 worktrees
+  2x test/scheduler/catch-up-order.test.ts in 2 worktrees
+10-21T08:33 15c0d83e rev 11 files 200: ended 103 took 1139 s (usual 862, slowdown 1.3x), ran 1.9 file-s per s; not ended 97, usual 755 s; unknown durations 0
+10-21T14:39 1c2b8b3b rev 93 files 200: ended 178 took 1153 s (usual 725, slowdown 1.6x), ran 1.9 file-s per s; not ended 22, usual 237 s; unknown durations 0
+10-22T13:30 ed5b5fee rev 0 files 111: ended 110 took 2140 s (usual 2065, slowdown 1.0x), ran 3.5 file-s per s; not ended 1, usual 126 s; unknown durations 0
+10-22T17:37 0432fde4 rev 0 files 200: ended 109 took 562 s (usual 579, slowdown 1.0x), ran 0.9 file-s per s; not ended 91, usual 326 s; unknown durations 0
+10-23T08:55 7174683f rev 17 files 200: ended 77 took 1726 s (usual 818, slowdown 2.1x), ran 2.8 file-s per s; not ended 123, usual 842 s; unknown durations 0
+10-23T09:01 b17ee032 rev 0 files 200: ended 88 took 487 s (usual 238, slowdown 2.0x), ran 0.8 file-s per s; not ended 112, usual 1071 s; unknown durations 0
+10-23T09:05 f85f8e2b rev 0 files 200: ended 112 took 1129 s (usual 435, slowdown 2.6x), ran 1.9 file-s per s; not ended 88, usual 627 s; unknown durations 0
+10-23T09:05 7174683f rev 17 files 138: ended 67 took 546 s (usual 296, slowdown 1.8x), ran 0.9 file-s per s; not ended 71, usual 695 s; unknown durations 0
+10-23T09:10 06a032dc rev 0 files 200: ended 93 took 1146 s (usual 466, slowdown 2.5x), ran 1.9 file-s per s; not ended 107, usual 694 s; unknown durations 0
+10-23T09:11 b17ee032 rev 0 files 200: ended 19 took 468 s (usual 198, slowdown 2.4x), ran 0.8 file-s per s; not ended 181, usual 1679 s; unknown durations 0
+10-23T09:21 b17ee032 rev 0 files 121: ended 79 took 1167 s (usual 582, slowdown 2.0x), ran 1.9 file-s per s; not ended 42, usual 46 s; unknown durations 0
+10-23T09:37 07b0d895 rev 44 files 200: ended 142 took 1485 s (usual 966, slowdown 1.5x), ran 2.5 file-s per s; not ended 58, usual 870 s; unknown durations 0
+10-23T10:22 98118842 rev 0 files 200: ended 63 took 523 s (usual 359, slowdown 1.5x), ran 0.9 file-s per s; not ended 137, usual 1477 s; unknown durations 0
+10-23T10:46 58e696e8 rev 0 files 120: ended 13 took 364 s (usual 336, slowdown 1.1x), ran 0.6 file-s per s; not ended 107, usual 2128 s; unknown durations 0
+10-23T11:04 58e696e8 rev 7 files 53: ended 27 took 575 s (usual 303, slowdown 1.9x), ran 1.0 file-s per s; not ended 26, usual 534 s; unknown durations 0
+10-23T11:45 540f5ec8 rev 0 files 15: ended 14 took 1438 s (usual 953, slowdown 1.5x), ran 2.4 file-s per s; not ended 1, usual 111 s; unknown durations 0
+10-23T12:42 604bdd55 rev 14 files 200: ended 42 took 566 s (usual 395, slowdown 1.4x), ran 0.9 file-s per s; not ended 158, usual 1036 s; unknown durations 0
+10-23T12:52 604bdd55 rev 16 files 200: ended 81 took 1118 s (usual 843, slowdown 1.3x), ran 1.8 file-s per s; not ended 119, usual 1225 s; unknown durations 0
+10-23T13:09 eb54f622 rev 0 files 200: ended 170 took 2071 s (usual 1116, slowdown 1.9x), ran 3.4 file-s per s; not ended 30, usual 475 s; unknown durations 0
+
+== cezar
+10-20T13:49 w=ba5234dc removed edit-route files=4 ended=3 stored=1 wall=601 load1=47.68..68.81 inflight=1: workflows/waits-parity.test.ts (usual 29 s)
+10-20T18:29 w=b7555ac0 live checkpoint-run-all files=15 ended=14 stored=14 wall=601 load1=43.26..40.78 inflight=1: workflows/waits-parity.test.ts (usual 29 s)
+10-20T18:39 w=b7555ac0 live checkpoint-run-all files=1 ended=0 stored=0 wall=601 load1=40.78..30.24 inflight=1: workflows/waits-parity.test.ts (usual 29 s)
+10-20T19:29 w=b7555ac0 live checkpoint-run-all files=1 ended=0 stored=0 wall=601 load1=21.69..13.03 inflight=1: workflows/waits-parity.test.ts (usual 29 s)
+10-20T20:39 w=342dc1e3 removed backlog-unknown-cause files=200 ended=52 stored=51 wall=601 load1=42.89..19.64 inflight=2: core/harness-parity.test.ts (usual 34 s), core/workflow-ask-parity.test.ts (usual 4 s)
+10-21T07:53 w=b7555ac0 live checkpoint-run-all files=1 ended=0 stored=0 wall=601 load1=27.14..30.83 inflight=1: core/harness-parity.test.ts (usual 34 s)
+10-21T09:31 w=b7555ac0 live edit-route files=2 ended=1 stored=1 wall=601 load1=30.18..37.05 inflight=1: core/harness-parity.test.ts (usual 34 s)
+10-21T09:41 w=b7555ac0 live edit-route files=1 ended=0 stored=0 wall=602 load1=37.05..41.97 inflight=1: core/harness-parity.test.ts (usual 34 s)
+10-21T23:19 w=bd41fb6f removed backlog-unknown-cause files=60 ended=20 stored=4 wall=601 load1=71.29..54.07 inflight=2: core/harness-opencode-parity.test.ts (usual 150 s), core/owned-input-delivery.test.ts (usual 6 s)
+10-23T10:24 w=727ae3b4 live catchup-edit files=200 ended=57 stored=57 wall=902 load1=50.67..58.46 inflight=1: delegation/workspace.test.ts (usual 4 s)
+10-23T10:39 w=727ae3b4 live catchup-edit files=158 ended=31 stored=30 wall=903 load1=58.46..39.27 inflight=2: workflows/worker-parent-attention.test.ts (usual 2 s), workflows/worker-questions.test.ts (usual 3 s)
+10-23T11:07 w=d3a4979d removed backlog-unknown-cause files=129 ended=14 stored=0 wall=902 load1=50.58..63.31 inflight=2: core/harness-autosave-settlement.test.ts (usual 3 s), workflows/pr-merge-wait-parity.test.ts (usual 76 s)
+
+timed-out runs 12; stored in them 3280 s; not stored (upper: in-flight files at the full wall) 14480 s; in-flight files 16: usual duration under a third of the wall 16, else 0
+files in flight at a timeout more than once:
+  4x packages/cezar/src/workflows/waits-parity.test.ts in 2 worktrees
+  4x packages/cezar/src/core/harness-parity.test.ts in 2 worktrees
+10-20T13:49 ba5234dc rev 75 files 4: ended 3 took 727 s (usual 0, slowdown 2008.0x), ran 1.2 file-s per s; not ended 1, usual 29 s; unknown durations 2
+10-20T18:29 b7555ac0 rev 106 files 15: ended 14 took 267 s (usual 25, slowdown 10.8x), ran 0.4 file-s per s; not ended 1, usual 29 s; unknown durations 0
+10-20T18:39 b7555ac0 rev 106 files 1: ended 0 took 0 s (usual 0, slowdown NaNx), ran 0.0 file-s per s; not ended 1, usual 29 s; unknown durations 0
+10-20T19:29 b7555ac0 rev 106 files 1: ended 0 took 0 s (usual 0, slowdown NaNx), ran 0.0 file-s per s; not ended 1, usual 29 s; unknown durations 0
+10-20T20:39 342dc1e3 rev 6 files 200: ended 52 took 770 s (usual 96, slowdown 8.0x), ran 1.3 file-s per s; not ended 148, usual 351 s; unknown durations 0
+10-21T07:53 b7555ac0 rev 111 files 1: ended 0 took 0 s (usual 0, slowdown NaNx), ran 0.0 file-s per s; not ended 1, usual 34 s; unknown durations 0
+10-21T09:31 b7555ac0 rev 112 files 2: ended 1 took 14 s (usual 3, slowdown 4.6x), ran 0.0 file-s per s; not ended 1, usual 34 s; unknown durations 0
+10-21T09:41 b7555ac0 rev 112 files 1: ended 0 took 0 s (usual 0, slowdown NaNx), ran 0.0 file-s per s; not ended 1, usual 34 s; unknown durations 0
+10-21T23:19 bd41fb6f rev 3 files 60: ended 20 took 1037 s (usual 285, slowdown 3.6x), ran 1.7 file-s per s; not ended 40, usual 986 s; unknown durations 0
+10-23T10:24 727ae3b4 rev 42 files 200: ended 57 took 844 s (usual 144, slowdown 5.9x), ran 0.9 file-s per s; not ended 143, usual 425 s; unknown durations 0
+10-23T10:39 727ae3b4 rev 42 files 158: ended 31 took 1356 s (usual 74, slowdown 18.4x), ran 1.5 file-s per s; not ended 127, usual 865 s; unknown durations 0
+10-23T11:07 d3a4979d rev 65 files 129: ended 14 took 1625 s (usual 27, slowdown 60.0x), ran 1.8 file-s per s; not ended 115, usual 712 s; unknown durations 0
+

@@ -1,0 +1,89 @@
+== squeal
+53840 s (28.7%), 9948 file runs, 71% stored nothing: baseline: worktree removed, not determined
+32258 s (17.2%), 2620 file runs, 22% stored nothing: run-all: re-keyed by a watch revision since the daemon's start (catch-up or edit work anyway)
+28959 s (15.4%), 2990 file runs, 69% stored nothing: baseline: the worktree's first daemon start, no path changed while no daemon ran
+22537 s (12.0%), 3688 file runs, 31% stored nothing: baseline: re-keyed by a watch revision since the daemon's start (catch-up or edit work anyway)
+22297 s (11.9%), 2892 file runs, 6% stored nothing: baseline: the worktree's first daemon start, paths changed while no daemon ran
+14692 s (7.8%), 2268 file runs, 67% stored nothing: run-all: worktree removed, not determined
+11088 s (5.9%), 3268 file runs, 17% stored nothing: baseline: a later daemon start, paths changed while no daemon ran
+2109 s (1.1%), 317 file runs, 0% stored nothing: run-all: only because of run --all
+-- run --all fates
+an/fate-squeal.jsonl [cls=checkpoint-run-all] file runs 5205, recorded s 49058
+group | recorded s | share | files | result at the key now: yes / no / undetermined (s) | later run at an inferred same key (s)
+stored | 32058 | 65.3% | 3037 | 0 / 0 / 0 | 0
+ended, worktree removed since (results pruned) | 9860 | 20.1% | 1655 | 0 / 0 / 9860 | 0
+timed out (not ended) | 4233 | 8.6% | 371 | 1210 / 1209 / 1814 | 2419
+cancel: edit during a backlog tier | 1833 | 3.7% | 103 | 1375 / 0 / 458 | 1375
+ended, a later run stored the same key (replaced) | 489 | 1.0% | 20 | 458 / 0 / 30 | 480
+ended, no rule seen | 443 | 0.9% | 6 | 0 / 415 / 28 | 0
+cancel: supersession | 96 | 0.2% | 7 | 0 / 0 / 96 | 0
+ended, inputs changed during the run | 46 | 0.1% | 6 | 0 / 0 / 46 | 0
+stored nothing: 17000 s, 34.7%
+class | recorded s | share | stored nothing | of which ended in a removed worktree
+checkpoint-run-all | 49058 | 100.0% | 35% | 20%
+-- baseline fates
+an/fate-squeal.jsonl [cls=checkpoint-baseline] file runs 22786, recorded s 138720
+group | recorded s | share | files | result at the key now: yes / no / undetermined (s) | later run at an inferred same key (s)
+stored | 70583 | 50.9% | 10420 | 0 / 0 / 0 | 0
+ended, worktree removed since (results pruned) | 22691 | 16.4% | 3612 | 0 / 0 / 22691 | 0
+cancel: supersession | 13956 | 10.1% | 258 | 0 / 0 / 13956 | 0
+timed out (not ended) | 11469 | 8.3% | 1200 | 1810 / 1204 / 8455 | 3025
+cancel: edit during a backlog tier | 9279 | 6.7% | 3797 | 42 / 0 / 9237 | 140
+cancel: stop or step-down | 5468 | 3.9% | 3063 | 8 / 0 / 5460 | 0
+ended, inputs changed during the run | 2303 | 1.7% | 344 | 0 / 0 / 2303 | 0
+ended, no rule seen | 1791 | 1.3% | 43 | 0 / 0 / 1791 | 0
+ended, a later run stored the same key (replaced) | 744 | 0.5% | 28 | 261 / 0 / 483 | 583
+cancel: yield | 239 | 0.2% | 7 | 32 / 0 / 207 | 32
+not ended, run withheld (bytes no key names) | 168 | 0.1% | 8 | 0 / 0 / 168 | 0
+crashed | 30 | 0.0% | 5 | 0 / 0 / 30 | 0
+ended, withheld | 0 | 0.0% | 1 | 0 / 0 / 0 | 0
+stored nothing: 68137 s, 49.1%
+class | recorded s | share | stored nothing | of which ended in a removed worktree
+checkpoint-baseline | 138720 | 100.0% | 49% | 16%
+== cezar
+17385 s (57.1%), 346 file runs, 17% stored nothing: run-all: only because of run --all
+13059 s (42.9%), 372 file runs, 7% stored nothing: run-all: re-keyed by a watch revision since the daemon's start (catch-up or edit work anyway)
+-- run --all fates
+an/fate-cezar.jsonl [cls=checkpoint-run-all] file runs 414, recorded s 24362
+group | recorded s | share | files | result at the key now: yes / no / undetermined (s) | later run at an inferred same key (s)
+stored | 20538 | 84.3% | 399 | 0 / 0 / 0 | 0
+timed out (not ended) | 2403 | 9.9% | 4 | 0 / 0 / 2403 | 0
+cancel: edit during a backlog tier | 901 | 3.7% | 7 | 0 / 0 / 901 | 901
+ended, no rule seen | 362 | 1.5% | 3 | 0 / 0 / 362 | 0
+ended, a later run stored the same key (replaced) | 158 | 0.7% | 1 | 0 / 0 / 158 | 158
+stored nothing: 3824 s, 15.7%
+class | recorded s | share | stored nothing | of which ended in a removed worktree
+checkpoint-run-all | 24362 | 100.0% | 16% | 0%
+-- baseline fates
+an/fate-cezar.jsonl [cls=checkpoint-baseline] file runs 0, recorded s 0
+group | recorded s | share | files | result at the key now: yes / no / undetermined (s) | later run at an inferred same key (s)
+stored nothing: 0 s, NaN%
+class | recorded s | share | stored nothing | of which ended in a removed worktree
+== toolkit
+5376 s (50.1%), 821 file runs, 96% stored nothing: baseline: the worktree's first daemon start, no path changed while no daemon ran
+3576 s (33.3%), 553 file runs, 23% stored nothing: run-all: only because of run --all
+1131 s (10.5%), 121 file runs, 8% stored nothing: baseline: a later daemon start, paths changed while no daemon ran
+263 s (2.4%), 14 file runs, 58% stored nothing: baseline: re-keyed by a watch revision since the daemon's start (catch-up or edit work anyway)
+262 s (2.4%), 10 file runs, 41% stored nothing: run-all: re-keyed by a watch revision since the daemon's start (catch-up or edit work anyway)
+123 s (1.1%), 105 file runs, 68% stored nothing: baseline: the worktree's first daemon start, paths changed while no daemon ran
+-- run --all fates
+an/fate-toolkit.jsonl [cls=checkpoint-run-all] file runs 563, recorded s 3838
+group | recorded s | share | files | result at the key now: yes / no / undetermined (s) | later run at an inferred same key (s)
+stored | 2923 | 76.2% | 441 | 0 / 0 / 0 | 0
+no report (node:test or pytest), no result | 789 | 20.6% | 15 | 0 / 0 / 789 | 236
+cancel: supersession | 107 | 2.8% | 3 | 0 / 0 / 107 | 0
+crashed | 19 | 0.5% | 104 | 0 / 0 / 19 | 8
+stored nothing: 915 s, 23.8%
+class | recorded s | share | stored nothing | of which ended in a removed worktree
+checkpoint-run-all | 3838 | 100.0% | 24% | 0%
+-- baseline fates
+an/fate-toolkit.jsonl [cls=checkpoint-baseline] file runs 1061, recorded s 6892
+group | recorded s | share | files | result at the key now: yes / no / undetermined (s) | later run at an inferred same key (s)
+crashed | 4617 | 67.0% | 333 | 92 / 0 / 4525 | 98
+stored | 1396 | 20.3% | 509 | 0 / 0 / 0 | 0
+no report (node:test or pytest), no result | 498 | 7.2% | 105 | 0 / 0 / 498 | 46
+ended, a later run stored the same key (replaced) | 331 | 4.8% | 113 | 0 / 0 / 331 | 331
+cancel: edit during a backlog tier | 50 | 0.7% | 1 | 0 / 0 / 50 | 50
+stored nothing: 5496 s, 79.7%
+class | recorded s | share | stored nothing | of which ended in a removed worktree
+checkpoint-baseline | 6892 | 100.0% | 80% | 0%
