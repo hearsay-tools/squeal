@@ -48,6 +48,10 @@ The order of the C7 note stays one note per episode. It names "the results of N 
 - The slow tier's selection (`SlowTier.next` under its own `lock.run`, `slow-tier.ts`). It could be sliced from the pump (`this.#sliced(() => this.#slow.next(...))`), but I did not check that its slot and activity state survive a busy error midway.
 - The runner part's commits (`RunnerWork.drain`, `runner-work.ts`). A busy error there is a background error, not retried, so slicing it would lose the runner work. With the ledger fix such a commit no longer loses its rows.
 - `#reconcilePaths` after a record (its pass is not retried), `refreshInstall`, `takeRetries` at start, and `#note`'s `appendNote`.
+- `#ended` calls `#hold.check()` before `#recordLanded` enters a slice (`scheduler.ts:1034`). When the index moved and the merge hold changed, its publication writes `meta` (`hold.ts:188`). Review 0.1.273, N1.
+- `#recheckTiers` calls `#adopt` and `#cutTiers` under the lock with no slice (`scheduler.ts:457`). Adoption can write results' last use and run `ledger.commit`, and a changed yield state writes its `meta` row. This path runs from the file-ended and yield timers, outside a selection's slice. Review 0.1.273, N1.
+
+The daemon test measures one case: a tier that records during a 12 s hold. It does not show that no other write holds the event loop: the writes above still wait 5 s. Slicing them needs its own retry design.
 
 ## Proposed for the spec (spec text is not mine)
 
@@ -56,6 +60,24 @@ C7, D8 paragraph:
 - "A busy error of the pump or of a tier's record puts the tier's files back and resumes the pump after the same backoff, with no stall note" → "A busy error of the pump's selection resumes the pump after the same backoff, with no stall note. A tier's record that gives up keeps the run's results, as prepared, and is tried again at its turn, the oldest first and before the pump resumes, so its files do not run again; a waiting record keeps its turn when another error stops the pump, and the close gives it a last try at 5 s."
 - "The pump's own writes, the front desk's and the shutdown's keep 5 s." → "The front desk's and the shutdown's writes keep 5 s, and so do the slow tier's selection and the runner part's commits. A ledger commit that gives up on a busy store owes again what it drained (row 011-126)."
 - "The tier pump's writes keep the 5 s wait: chained during a hold … (row 011-126)" → "Measured by `test/daemon/busy-tier.test.ts`: with a tier recording 2 s into a 12 s hold, the daemon's event loop was held 250 to 509 ms at a time, against 10,019 ms before; its files ran once, and an edit's revision landed 55 ms after the free (row 011-126)."
+
+## Review 0.1.273 B1: a busy record and the merge hold
+
+Wave 20.5 W4, from b8dc3fe5c. The review found that a record that waited for a busy store wrote the merge hold's decision from before the wait. A hold that started during the wait did not stop the record from storing a result at a key the hold names (011 C9).
+
+The repair (commit 6d7d079f6, `scheduler.ts`):
+- `#prepare` still runs once. It keeps the observations, the environment re-key, the counted withholds, the barrier's report with its startup failure, and the hold it saw (`held`, `setupsHeld`).
+- `#write` reads the hold again at each try (`#heldNow`): `heldFiles` and `heldSetups` against the hold in memory. It does not call `#hold.check()`; the passes that ran while the record waited updated the hold.
+- A file or setup held at the preparation stays held, so the union applies. The report drops its startup failure when either check gives it to the hold, and the held and not-started files queue again.
+- The written path is unchanged: a record whose write landed returns `#written`, so a slot's retry only commits again.
+
+`test/scheduler/busy-merge.test.ts`:
+1. The review's regression. A record's write gives up as on a busy store; the index lists `src/math.ts` unmerged and an interval pass reads it. After the retry nothing is stored at `test/math.test.ts`'s key and the file is queued. After `git add`, the hold's poll ends the hold, the file runs, and its result is stored.
+2. The setup boundary. The run fails to start on `src/helper.ts`, which the index lists unmerged only during the record's wait. `test/other.test.ts` imports nothing, so only the startup failure on the unmerged setup file holds it. After the retry no setup outcome is stored, the three files are queued with nothing stored and nothing `unknown`, and after `git add` all three pass.
+
+At a1618a61f (the same `src/` and `test/scheduler/` as b8dc3fe5c), in a scratch copy with this test added, both cases failed: case 1 stored a pass at the held key (line 90), and case 2 stored a `fail` setup outcome for project `""` (line 139). Both pass after the repair.
+
+Not settled by the brief: a file that becomes held only during the wait was among the preparation's free files. So the barrier may have counted a withhold for it, or cleared its last one. That count is not repeated, as the brief asks. The file queues as held either way: in `storeDecision` a requeue goes before a withhold. The effect: if the file is withheld again at the same key after the hold ends, its count is off by one. It then runs once more, or becomes `unknown` one run sooner.
 
 ## Review 0.1.272 N1
 
@@ -67,3 +89,10 @@ Not done. I did not run the 011-122 probe: the daemon test's stall log gives the
 - `npm run typecheck`: `tsc --noEmit`, no output.
 - `squeal run --all --wait` at revision 30 (8d22d22bb): checkpoint 3955c391 completed, 926 test files current, 8,765 checks passed, 7 skipped, 4 known failures. All four are the bundle drift checks ("cli/squeal.mjs differs from the build"), which the brief excepts: no `npm run build` in this row.
 - Squeal at revision 30: `busy-edit.test.ts`, `busy-record.test.ts`, `busy-hold.test.ts`, `busy-commit.test.ts`, `busy-resume.test.ts`, `busy-tier.test.ts` pass; all 178 files under `test/scheduler/` passed at revision 21.
+
+For the B1 repair (6d7d079f6):
+- `npm run lint`: "Checked 1823 files in 702ms. No fixes applied."
+- `npm run typecheck`: `tsc --noEmit`, no output.
+- `squeal run --all --wait` at revision 40: checkpoint 384b2c8e completed, all 927 test files current, 8,768 checks passed, 7 skipped, 4 known failures. All four are the bundle drift checks ("cli/squeal.mjs differs from the build"). Exit 1 for those.
+- Squeal at revision 38: `busy-merge`, `busy-record`, `busy-commit`, `busy-hold`, and `merge-hold`, `merge-hold-heal`, `merge-hold-operations`, `merge-hold-records`, `merge-hold-setup` pass.
+- The daemon tests build `src` with `tsc` when they run, and Squeal's key for them did not name the `scheduler.ts` edit. So I ran them myself at 6d7d079f6: `npx vitest run test/daemon/busy-tier.test.ts test/daemon/busy-edit.test.ts test/daemon/busy-store.test.ts` gave 3 of 3 passed, in 43 s, at load 7.47. That is under 8, the load above which their timing checks are skipped, so the checks applied.
