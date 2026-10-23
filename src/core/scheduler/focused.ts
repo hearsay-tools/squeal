@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import type { CheckKey, EpochMs, FocusedFile, TestFileRef } from "../types/index.js";
+import { peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import type { FocusEntry } from "./focused-entries.js";
@@ -80,11 +81,14 @@ function turnFirst(
   if (!turnDue) return false;
   const now = context.now();
   const { queue } = ledger;
-  // A departure drain's paused backlog takes no turn: only files the drain runs count.
+  // Only a file that may start now takes the turn: a departure drain's paused
+  // backlog does not, nor a file another worktree's claim holds or a stored
+  // result stands for (review 0.1.280).
   return ledger.fastQueued((ref) => {
     const lane = laneOf(context, ref);
     if (busy.has(lane) || queue.isFirstGroup(ref)) return false;
-    return !quietHolds(context, ledger, ref, lane, { backlog: true, turn: true }, now);
+    if (quietHolds(context, ledger, ref, lane, { backlog: true, turn: true }, now)) return false;
+    return peekClaim(context, ledger, ref) === "free";
   });
 }
 
