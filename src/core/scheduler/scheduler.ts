@@ -11,6 +11,7 @@ import { plural } from "../text.js";
 import {
   type CancelCause,
   type CandidateBatch,
+  type EpochMs,
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
   isSlowLane,
@@ -20,6 +21,7 @@ import {
   type SchedulerCloseOptions,
   type SchedulerStatus,
   type SlowSuiteRequest,
+  type SlowWaiting,
   type TestFileRef,
 } from "../types/index.js";
 import { reconcileBatch } from "./batch.js";
@@ -160,6 +162,11 @@ class TierScheduler implements Scheduler {
   readonly #storedKeys: StoredKeys;
   /** A departure drain paused the backlog (`pauseBacklog`, row 011-93). */
   #backlogPaused = false;
+  /**
+   * When `slowWaiting` last found the drain's fast work or a slow file busy,
+   * or first checked the drain; `null` until then (row 011-163).
+   */
+  #drainBusyAt: EpochMs | null = null;
   /** Row 011-72: no tier starts while git lists an unmerged path (011 C9, "Holds"). */
   readonly #hold: MergeHold;
   /** Row 011-74: no tier starts while a `squeal hold` holds (011 C9, "Holds"). */
@@ -677,6 +684,7 @@ class TierScheduler implements Scheduler {
     if (this.#closed || this.#backlogPaused === on) return;
     this.#backlogPaused = on;
     if (this.#ledger) this.#ledger.backlogPaused = on;
+    this.#drainBusyAt = null;
     this.#slow.draining = on;
     this.#slow.preempt();
     this.#pump();
@@ -707,6 +715,25 @@ class TierScheduler implements Scheduler {
     if (reruns.length === 1) owed.push("a new failure's re-run");
     if (reruns.length > 1) owed.push(`${reruns.length} new failures' re-runs`);
     return owed.length === 0 ? null : owed.join(" and ");
+  }
+
+  /**
+   * A drain's slow lane waits once the drain's fast work is done (the work
+   * `#fastFirst` of the slow tier waits for) and no slow file runs; its wait
+   * counts from the later of the last check that found either or began the
+   * drain, and the last slow run's end (row 011-163).
+   */
+  slowWaiting(): SlowWaiting | null {
+    if (this.#closed || !this.#ledger || !this.#context || !this.#backlogPaused) return null;
+    if (this.#onHold()) return null;
+    const queued = this.#ledger.orderedSlow();
+    const busy = this.#lanes().some(isSlowLane) || this.#editPending() || !this.#fastIdle();
+    if (busy || queued.length === 0 || this.#drainBusyAt === null) {
+      this.#drainBusyAt = this.#context.now();
+      return null;
+    }
+    const since = Math.max(this.#drainBusyAt, this.#slow.endedAt ?? 0);
+    return { since, paths: queued.map((ref) => ref.path) };
   }
 
   trackedPaths(): Iterable<RelativePath> {

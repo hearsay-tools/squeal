@@ -1,12 +1,13 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { type Presence, startTimers } from "../../src/core/daemon/lifecycle.js";
+import { DRAIN_SLOW_WAIT_MS, type Presence, startTimers } from "../../src/core/daemon/lifecycle.js";
 import { storePaths } from "../../src/core/store/index.js";
 import {
   type Consumer,
   type DaemonExitReason,
   DEFAULT_POLICY,
+  type SlowWaiting,
   type Store,
 } from "../../src/core/types/index.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
@@ -19,7 +20,8 @@ import { delay, waitFor } from "./helpers.js";
  * cancels the exit. Driven through the real timers with a test clock and a
  * stand-in for `Scheduler.slowPending`. Row 011-93 (011 C9 as amended
  * 2026-10-21): the drain pauses the backlog, and that registration ends the
- * pause.
+ * pause. Row 011-163 (011 C9 as amended 2026-10-23): a stand-in for
+ * `Scheduler.slowWaiting` tells since when the drain's slow files waited.
  */
 
 const WT = "0123456789abcdef";
@@ -37,7 +39,9 @@ interface Timed {
   readonly notes: string[];
   readonly presence: Presence;
   advance(ms: number): void;
+  now(): number;
   pending(value: boolean): void;
+  waiting(value: SlowWaiting | null): void;
   owed(value: string | null): void;
   /** Each `pauseBacklog` call, in order. */
   readonly pauses: boolean[];
@@ -53,6 +57,7 @@ function timed(): Timed {
   let lastActive = clock;
   let pending = true;
   let owed: string | null = null;
+  let waiting: SlowWaiting | null = null;
   const exits: Timed["exits"] = [];
   const notes: string[] = [];
   const pauses: boolean[] = [];
@@ -76,6 +81,7 @@ function timed(): Timed {
       slowPending: () => pending,
       owedWork: () => owed,
       pauseBacklog: (on) => pauses.push(on),
+      slowWaiting: () => waiting,
       note: (text) => notes.push(text),
       log: () => {},
       shutdown: (reason, text) => exits.push({ reason, text }),
@@ -89,8 +95,12 @@ function timed(): Timed {
     advance: (ms) => {
       clock += ms;
     },
+    now: () => clock,
     pending: (value) => {
       pending = value;
+    },
+    waiting: (value) => {
+      waiting = value;
     },
     owed: (value) => {
       owed = value;
@@ -192,6 +202,52 @@ describe("the departure drains pending slow files (task 004-29)", () => {
         "(daemon.idleExitMinutes)",
     });
     expect(t.lastActive()).toBe(active);
+  });
+});
+
+describe("a drain ends when its slow files wait (row 011-163)", () => {
+  it("exits 60 s after its slow lane began to wait, with one note naming the files left queued", async () => {
+    const t = timed();
+    t.owed("a new failure's re-run");
+    await leave(t);
+    t.advance(3_100);
+    await waitFor(() => t.notes.length > 0, 2_000, "the drain note");
+    // Its fast work runs past the 60 s: no wait yet.
+    t.advance(10 * 60_000);
+    await delay(60);
+    expect(t.exits).toEqual([]);
+
+    const paths = Array.from({ length: 7 }, (_, i) => `test/e2e-${i}.test.ts`);
+    t.waiting({ since: t.now(), paths });
+    t.advance(DRAIN_SLOW_WAIT_MS - 100);
+    await delay(60);
+    expect(t.exits).toEqual([]);
+    t.advance(200);
+    await waitFor(() => t.exits.length > 0, 2_000, "the waited exit");
+    expect(t.exits).toEqual([
+      {
+        reason: "sessions-gone",
+        text:
+          "daemon stopped: no slow file ran for 60 s once the fast work pending when its last " +
+          "session ended was done; 7 slow files left queued for the next daemon in this " +
+          "worktree: test/e2e-0.test.ts, test/e2e-1.test.ts, test/e2e-2.test.ts, " +
+          "test/e2e-3.test.ts, test/e2e-4.test.ts and 2 more",
+      },
+    ]);
+    expect(t.notes).toHaveLength(1);
+  });
+
+  it("a session that registers ends the drain, and its wait with it", async () => {
+    const t = timed();
+    await leave(t);
+    t.advance(3_100);
+    await waitFor(() => t.notes.length > 0, 2_000, "the drain note");
+    t.waiting({ since: t.now(), paths: ["test/e2e.test.ts"] });
+    t.store.consumers.register(S2, 1);
+    await waitFor(() => t.presence.draining === false, 2_000, "the drain cancelled");
+    t.advance(2 * DRAIN_SLOW_WAIT_MS);
+    await delay(60);
+    expect(t.exits).toEqual([]);
   });
 });
 

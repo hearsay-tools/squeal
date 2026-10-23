@@ -7,7 +7,7 @@ import {
   markRest,
 } from "../delivery/index.js";
 import { type BusyWaits, storePaths } from "../store/index.js";
-import { plural } from "../text.js";
+import { listPaths, plural } from "../text.js";
 import {
   type AbsolutePath,
   type DaemonExitReason,
@@ -15,6 +15,7 @@ import {
   nodeTestObservedMetaKey,
   nodeTestObservedPreloadsMetaKey,
   type Policy,
+  type SlowWaiting,
   type Store,
   type WorktreeId,
 } from "../types/index.js";
@@ -143,6 +144,12 @@ export interface TimerContext {
    */
   readonly pauseBacklog?: (on: boolean) => void;
   /**
+   * The drain's slow lane waits (`Scheduler.slowWaiting`, row 011-163): its
+   * fast work is done and no slow file runs. Once that lasted
+   * `DRAIN_SLOW_WAIT_MS`, the drain ends. Absent or `null`: none waits.
+   */
+  readonly slowWaiting?: () => SlowWaiting | null;
+  /**
    * Spec 011 C9 (row 011-69): each check asks for the last-resort GC, which
    * runs once no tier ran for 60 s (`IdleGc.check`). Absent: none.
    */
@@ -188,6 +195,9 @@ export interface TimerContext {
  * Task 001-219: an explicit checkpoint left open and a new failure's re-run
  * queued are drained the same way, within the same bound; past it the
  * scheduler leaves them owed to the next daemon.
+ * Row 011-163 (the human, 2026-10-23): once the drain's fast work is done,
+ * slow files that had no run for `DRAIN_SLOW_WAIT_MS` end the drain, with
+ * one note naming them; they stay queued for the next daemon.
  * The shutdown lets a tier in flight finish and store its results (D5). Each
  * heartbeat first drops the consumers whose recorded harness process is gone.
  *
@@ -317,6 +327,11 @@ export function startTimers(context: TimerContext): () => void {
           `the last session ended with ${pending} pending; this daemon runs ${them} before it ` +
             `exits, for at most ${duration(idleMs)} (daemon.idleExitMinutes)`,
         );
+      } else {
+        const waiting = context.slowWaiting?.() ?? null;
+        if (waiting !== null && at - waiting.since >= DRAIN_SLOW_WAIT_MS) {
+          context.shutdown("sessions-gone", waitedText(waiting.paths));
+        }
       }
     });
   const heartbeat = () => {
@@ -396,6 +411,13 @@ function beat(context: TimerContext, at: EpochMs): void {
 
 const SLOW_FILES = "slow files";
 
+/**
+ * How long a drain's slow lane may wait with its fast work done before the
+ * drain ends (011 C9 as amended 2026-10-23, row 011-163, `research/drains.md`
+ * option (a′)): its slow files stay queued for the next daemon.
+ */
+export const DRAIN_SLOW_WAIT_MS = 60_000;
+
 /** What the departure drains, as its notes name it; `null` with nothing pending. */
 function drainable(context: TimerContext): string | null {
   const slow = context.slowPending?.() === true ? [SLOW_FILES] : [];
@@ -408,6 +430,14 @@ function drainedText(drained: string): string {
   return drained === SLOW_FILES
     ? "daemon stopped: the slow files pending when its last session ended have run"
     : `daemon stopped: the work pending when its last session ended is done (${drained})`;
+}
+
+function waitedText(paths: readonly string[]): string {
+  return (
+    `daemon stopped: no slow file ran for ${DRAIN_SLOW_WAIT_MS / 1000} s once the fast work ` +
+    `pending when its last session ended was done; ${plural(paths.length, "slow file")} left ` +
+    `queued for the next daemon in this worktree: ${listPaths(paths)}`
+  );
 }
 
 function boundText(pending: string, idleMs: number): string {
