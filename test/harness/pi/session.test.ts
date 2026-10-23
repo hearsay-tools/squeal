@@ -143,7 +143,7 @@ describe("Pi session shutdown", () => {
 describe("piCommand", () => {
   it("names the Node running Pi and the package's CLI by absolute path", () => {
     expect(piCommand("/pkg/dist/cli/squeal.mjs", "/opt/node/bin/node")).toBe(
-      '"/opt/node/bin/node" --disable-warning=ExperimentalWarning "/pkg/dist/cli/squeal.mjs"',
+      "/opt/node/bin/node --disable-warning=ExperimentalWarning /pkg/dist/cli/squeal.mjs",
     );
   });
 

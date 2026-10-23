@@ -5,6 +5,7 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { opencodeCliCommand } from "../../src/cli/opencode/status.js";
 import { INSTALL_SH_COMMAND } from "../../src/cli/pi/status.js";
 import { statusCommand } from "../../src/cli/status-command.js";
+import { shellWord } from "../../src/core/text.js";
 import { opencodeCommand } from "../../src/harness/opencode/bridge.js";
 import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
 
@@ -118,7 +119,7 @@ describe("squeal status in an OpenCode shell (spec 008 D7)", () => {
   it("names the CLI as the plugin's texts do", () => {
     const cli = "/data/squeal/opencode/0.1.176/dist/cli/squeal.mjs";
     expect(statusCommand(SHELL, cli)).toBe(
-      `"${process.execPath}" --disable-warning=ExperimentalWarning "${cli}"`,
+      `${shellWord(process.execPath)} --disable-warning=ExperimentalWarning ${cli}`,
     );
     expect(opencodeCliCommand(cli, "/opt/node")).toBe(opencodeCommand(cli, "/opt/node"));
     // Without the plugin's shell, the PATH's squeal.
@@ -127,7 +128,7 @@ describe("squeal status in an OpenCode shell (spec 008 D7)", () => {
     // Codex and Pi shells keep their commands.
     expect(statusCommand({ ...SHELL, CODEX_SESSION_ID: "t" }, cli)).toMatch(/^node /);
     expect(statusCommand({ ...SHELL, PI_SESSION_ID: "p" }, cli)).toBe(
-      `"${process.execPath}" --disable-warning=ExperimentalWarning "${cli}"`,
+      `${shellWord(process.execPath)} --disable-warning=ExperimentalWarning ${cli}`,
     );
   });
 });

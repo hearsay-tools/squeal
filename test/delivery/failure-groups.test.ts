@@ -28,7 +28,7 @@ const delta = (entries: DeltaEntry[]): Delta => ({
 
 const RESIZE = "ReferenceError: ResizeObserver is not defined";
 /** What the command selects beside the paths (review 0.1.262 B1). */
-const SELECTS = `--error "${RESIZE}" --per-check --limit all`;
+const SELECTS = `--error '${RESIZE}' --per-check --limit all`;
 const CHART = { path: "src/components/chart.tsx", line: 12, column: 5 };
 
 function failure(
@@ -92,7 +92,7 @@ describe("a regression notice groups checks with one error and location (row 011
     expect(text).not.toContain("Not shown");
     expect(text.split("\n")[0]).toBe("SQUEAL · 91 checks changed (91 tests) at revision 12");
     expect(text.split("\n").at(-1)).toBe(
-      'Full output: squeal why "tests/components/f0.test.tsx > renders case 0"',
+      "Full output: squeal why 'tests/components/f0.test.tsx > renders case 0'",
     );
   });
 
@@ -206,7 +206,9 @@ describe("a regression notice groups checks with one error and location (row 011
     const odd = "tests/it's here.test.ts";
     expect(
       command([failure("tests/a.test.ts", "one"), failure(odd, "two")], "/opt/squeal/bin/squeal"),
-    ).toBe(`/opt/squeal/bin/squeal failures tests/a.test.ts "tests/it's here.test.ts" ${SELECTS}`);
+    ).toBe(
+      `/opt/squeal/bin/squeal failures tests/a.test.ts 'tests/it'\\''s here.test.ts' ${SELECTS}`,
+    );
     expect(command(spread(20, 4, "tests/ui"))).toBe(`squeal failures tests/ui ${SELECTS}`);
     expect(command([...spread(4, 4, "tests/ui"), ...spread(4, 4, "tests/api")])).toBe(
       `squeal failures tests ${SELECTS}`,

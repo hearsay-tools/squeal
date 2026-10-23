@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import { plural } from "../text.js";
+import { plural, shellWord } from "../text.js";
 import type { NextStep, Step } from "./next-step.js";
 
 /*
@@ -65,11 +65,15 @@ export function fromBase(base: string | undefined, path: string): string {
   return posix.relative(base, path);
 }
 
-/** The group's command with its paths, for the verdict line and `--json`; `null` for none. */
+/**
+ * The group's command with its paths, for the verdict line and `--json`;
+ * `null` for none. Each path is one shell word (row 011-130).
+ */
 export function stepCommand(step: Step, paths: readonly string[], command: string): string | null {
   switch (step.kind) {
     case "retry": {
-      const files = paths.length > PATHS_IN_COMMAND ? "<test file>..." : paths.join(" ");
+      const files =
+        paths.length > PATHS_IN_COMMAND ? "<test file>..." : paths.map(shellWord).join(" ");
       return `${command} retry ${files}${step.again === true ? " --reason environment" : ""}`;
     }
     case "command":

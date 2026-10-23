@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { shellWord } from "../../core/delivery/index.js";
+import { shellWord } from "../../core/text.js";
 import { dataLauncher, dataOfCopy } from "../shared/version-copies.js";
 
 /**
