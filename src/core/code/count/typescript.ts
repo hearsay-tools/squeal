@@ -92,7 +92,8 @@ function isParameter(type: string | null): boolean {
 /**
  * D2: an anonymous function or class is named by the call it is passed to,
  * `<transaction>` (`<new Promise>` for a constructor), else by the variable,
- * property, field or assignment that receives it, else `<anonymous>`.
+ * property, field, assignment or parameter that receives it, else
+ * `<anonymous>`.
  */
 function anonymousName(node: Node): string {
   let parent = node.parent;
@@ -101,13 +102,19 @@ function anonymousName(node: Node): string {
     case "arguments":
       return callSite(parent.parent);
     case "variable_declarator":
+    case "public_field_definition":
       return receiver(parent.childForFieldName("name"));
     case "pair":
       return receiver(parent.childForFieldName("key"));
-    case "public_field_definition":
-      return receiver(parent.childForFieldName("name"));
     case "assignment_expression":
+    // A default: `{ cb = () => {} }`, `[cb = () => {}]`.
+    case "assignment_pattern":
+    case "object_assignment_pattern":
       return receiver(parent.childForFieldName("left"));
+    // A default parameter: `cb = () => {}`.
+    case "required_parameter":
+    case "optional_parameter":
+      return receiver(parent.childForFieldName("pattern"));
     default:
       return "<anonymous>";
   }
@@ -133,14 +140,15 @@ function calleeName(callee: Node | null): string | null {
   return null;
 }
 
-/** The receiving name: an identifier or a key, a member's property; a pattern names nothing. */
+/** Receivers that name nothing: `const { a } = …`, `[a] = …`, `a[k] = …`. */
+const NAMELESS = new Set(["object_pattern", "array_pattern", "subscript_expression"]);
+
+/** The receiving name: an identifier or a key, a member's property. */
 function receiver(target: Node | null): string {
-  if (target === null) return "<anonymous>";
+  if (target === null || NAMELESS.has(target.type)) return "<anonymous>";
   if (target.type === "member_expression") {
     return target.childForFieldName("property")?.text ?? "<anonymous>";
   }
-  if (target.type.endsWith("pattern") || target.type === "subscript_expression")
-    return "<anonymous>";
   return keyText(target);
 }
 
