@@ -1166,10 +1166,13 @@ class TierScheduler implements Scheduler {
   async #requeue(tier: Tier, slow: boolean): Promise<void> {
     await this.#runSliced(() => {
       const { context, ledger } = this.#started();
-      this.#yields.ended(context, tier);
       // Row 011-145: a focused tier holds no file of the queue; its entries wait for another run.
-      if (tier.kind === "focused") return requeueFocusedTier(context, ledger, tier);
+      if (tier.kind === "focused") {
+        this.#yields.ended(context, tier);
+        return requeueFocusedTier(context, ledger, tier);
+      }
       endTier(context, ledger, tier);
+      this.#yields.ended(context, tier);
       for (const { file, key } of tier.files) {
         // A newer run has the file at another key: it is that run's (review wave-4 B1).
         if (supersededIn(file, key)) {
