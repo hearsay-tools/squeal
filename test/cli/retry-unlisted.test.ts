@@ -161,6 +161,24 @@ describe("squeal retry on a test file the daemon has not listed yet (011-134, gh
     );
   });
 
+  it("treats a file whose name starts with two dots as inside its project and the worktree (review 0.1.275 B1)", async () => {
+    const w = worktree(4, 3, 3);
+    w.write(
+      "squeal.config.json",
+      JSON.stringify({ nodeTest: [{ name: "pkg", cwd: "pkg", include: ["**/*.test.ts"] }] }),
+    );
+    w.write("pkg/..fresh.test.ts");
+    expect(await retry(["pkg/..fresh.test.ts"], w.root)).toEqual({
+      code: 3,
+      stdout: unlisted("pkg/..fresh.test.ts", "revision 4 is not listed yet"),
+      stderr: "",
+    });
+    // A root-level `..` name is in the worktree too; Vitest is built when no other project is.
+    w.write("squeal.config.json", JSON.stringify({}));
+    w.write("..root.test.ts");
+    expect((await retry(["..root.test.ts"], w.root)).code).toBe(3);
+  });
+
   it("is unchanged once a listed revision holds the file: the refusal stands", async () => {
     // The listed revision was recorded after the file last changed (its ctime).
     const w = worktree(3, 3, Date.now() + 60_000);
