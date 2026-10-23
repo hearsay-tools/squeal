@@ -371,8 +371,9 @@ const FLAGGED: Readonly<Record<string, string>> = {
  * Row 011-144: four checks, one red, one in a nested class, one at top
  * level, of which the texts `new` select three; a file that fails to
  * collect and a module that skips itself, each given texts; a file without
- * texts in the same batch. A tree that does not focus runs every file whole,
- * and the harness compares the selected checks alone.
+ * texts in the same batch; then a batch of focused files only (row
+ * 011-145). A tree that does not focus runs every file whole, and the
+ * harness compares the selected checks alone.
  */
 const FOCUSED: Readonly<Record<string, string>> = {
   "pyproject.toml": CONFIG,
@@ -416,6 +417,11 @@ export const PYTEST_RUNS: readonly Case[] = [
             { path: "tests/test_broken.py", texts: ["never"] },
             { path: "tests/test_skipped.py", texts: ["test_"] },
           ],
+        },
+        // Row 011-145: a batch of focused files only records no observed path or session.
+        {
+          files: ["tests/test_four.py"],
+          checks: [{ path: "tests/test_four.py", texts: ["TestInner::"] }],
         },
       ],
     },
