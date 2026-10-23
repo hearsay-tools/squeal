@@ -214,6 +214,24 @@ const pnpmFolder = (folder: string, name: string, files: Readonly<Record<string,
 
 const runtime = { "index.js": "module.exports = 1;\n" };
 
+/**
+ * The links of `pnpmLock` a lookup resolves through, as folders (review 0.1.282 B2): each name
+ * an importer declares, each hoisted name and each edge beside a package folder. `fsevents` is
+ * skipped and has none.
+ */
+const pnpmLinks = Object.fromEntries(
+  [
+    "node_modules/q",
+    "node_modules/.pnpm/node_modules/b",
+    "node_modules/.pnpm/a@1.0.0/node_modules/@types/x",
+    "node_modules/.pnpm/a@1.0.0/node_modules/b",
+    "node_modules/.pnpm/p@1.0.0_q@1.0.0/node_modules/q",
+    ...["a", "alias", "lib", "p", "pub", "tarball"].map(
+      (name) => `packages/app/node_modules/${name}`,
+    ),
+  ].map((path) => [`${path}/package.json`, "{}"]),
+);
+
 /** An isolated pnpm install with `nodeLinker` in `.modules.yaml`, `lock.yaml` written last. */
 const pnpmInstall = (nodeLinker = "isolated"): Readonly<Record<string, string>> => ({
   ...pnpmFolder(CSS_CALC_FOLDER, "@csstools/css-calc", runtime),
@@ -227,6 +245,7 @@ const pnpmInstall = (nodeLinker = "isolated"): Readonly<Record<string, string>> 
   ...pnpmFolder("tarball@1.0.0", "tarball", runtime),
   ...pnpmFolder("vitest@4.0.0", "vitest", runtime),
   "node_modules/vitest/package.json": '{"name":"vitest"}',
+  ...pnpmLinks,
   "packages/lib/index.js": "export {};\n",
   "node_modules/.modules.yaml": pnpmModules(nodeLinker),
   "node_modules/.pnpm/lock.yaml": pnpmLock,
@@ -304,6 +323,19 @@ export const PNPM_KEYS: readonly Case[] = [
         ),
       },
       [{ from: "test", name: "vitest" }],
+    ),
+  },
+  {
+    kind: "key",
+    name: "a pnpm install missing a declared link",
+    why: "review 0.1.282 B2: Node walks past a missing link to the root's copy, so the install is stale",
+    input: pnpmCase(
+      Object.fromEntries(
+        Object.entries(pnpmInstall()).filter(
+          ([path]) => path !== "packages/app/node_modules/a/package.json",
+        ),
+      ),
+      [{ from: "packages/app/test", name: "a" }],
     ),
   },
   {
