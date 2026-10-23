@@ -66,6 +66,24 @@ describe("vitest adapter: focused runs", SLOW, () => {
     ]);
   });
 
+  it("drops a check the pattern lets through that holds no text", async () => {
+    const join = ref("test/join.test.ts");
+    const fx = await openFixture("basic", {
+      "test/join.test.ts": [
+        'import { describe, expect, it, test } from "vitest";',
+        'describe("a", () => it("b", () => expect(1).toBe(1)));',
+        'test("a b", () => expect(1).toBe(1));',
+        "",
+      ].join("\n"),
+    });
+    const report = await fx.adapter.run(
+      [join],
+      fx.runOptions({ checks: [{ testFile: join, texts: ["a > b"] }] }),
+    );
+    expect(checks(report)).toEqual([["a > b", "pass"]]);
+    expect(report.focused).toEqual([{ testFile: join, collected: 2, matched: 1 }]);
+  });
+
   it("reports matched 0 and no result for a text that selects nothing", async () => {
     const fx = await openFixture("basic", { "test/four.test.ts": FOUR });
     // `parity new 1` is Vitest 4's join: on Vitest 5 it names no check, and the post-filter agrees.
