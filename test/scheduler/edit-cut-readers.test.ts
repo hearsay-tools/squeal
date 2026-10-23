@@ -10,14 +10,8 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import {
-  editAndRun,
-  FOUR_SHORT,
-  importers,
-  pastCatchUpQuiet,
-  pathsOf,
-  transitive,
-} from "./edit-cut-fixture.js";
+import { editAndRun, FOUR_SHORT, importers, pathsOf, transitive } from "./edit-cut-fixture.js";
+import { pastCatchUpQuiet } from "./quiet-clock.js";
 
 /*
  * Task 011-116 (spec 011 C4 step 4 as amended for 011-116;
