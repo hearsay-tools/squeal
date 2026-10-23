@@ -11222,7 +11222,7 @@ function runnerLaneOf(policy, project) {
 }
 function queuedReason(store, worktreeId, ref2, key2, lane, runs, policy, now) {
   const claimant = key2 === null ? null : claimantOf(store, worktreeId, ref2, key2, now);
-  if (claimant !== null) {
+  if (claimant !== null && store.results.byKey(key2, 0).length === 0) {
     return { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
   }
   const tier = runIn(runs, lane, policy);
@@ -53188,7 +53188,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.271";
+  if (true) return "0.1.272";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
