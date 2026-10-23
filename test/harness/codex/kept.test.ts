@@ -41,6 +41,9 @@ function fixture(version = V) {
   const cache = join(root, "dist", "cli", "squeal.mjs");
   mkdirSync(join(root, "dist", "cli"), { recursive: true });
   writeFileSync(cache, "// the cache's CLI\n");
+  // Row 011-140: the root's manifest names the version a copy of it holds.
+  mkdirSync(join(root, ".codex-plugin"));
+  writeFileSync(join(root, ".codex-plugin", "plugin.json"), JSON.stringify({ version }));
   const data = join(tempDir("squeal-kept-data-"), "squeal-hearsay");
   const worktree = tempDir("squeal-kept-worktree-");
   const runtime = runtimeDir();

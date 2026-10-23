@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../../src/core/fs/index.js";
@@ -7,7 +7,14 @@ import type { CodexHookName } from "../../../src/harness/codex/index.js";
 import { ping, waitFor } from "../../daemon/helpers.js";
 import { open } from "../../store/helpers.js";
 import { liveSocket, runBundle, runtimeDir } from "../bundle-helpers.js";
-import { A, type Built, buildVersions, type CodexMachine, codexMachine } from "./cache-fixture.js";
+import {
+  A,
+  B,
+  type Built,
+  buildVersions,
+  type CodexMachine,
+  codexMachine,
+} from "./cache-fixture.js";
 import { codexRecorded, sessionOf } from "./helpers.js";
 
 /*
@@ -17,6 +24,9 @@ import { codexRecorded, sessionOf } from "./helpers.js";
  * it, as SessionStart (005-73) and `squeal start` (005-77) do. Codex's install
  * of another version then deletes the cache directory, not the daemon's
  * runtime. A hook whose daemon answers copies nothing.
+ *
+ * Row 011-140: a hook spawns no daemon from a copy whose code is another
+ * version, and keeps no copy from a \`PLUGIN_ROOT\` of another version.
  */
 
 const SLOW = { timeout: 240_000 } as const;
@@ -24,7 +34,7 @@ const SESSION = sessionOf("exec", "session-start");
 
 let built: Built;
 beforeAll(async () => {
-  built = await buildVersions([A]);
+  built = await buildVersions([A, B]);
 }, 120_000);
 afterAll(() => built.cleanup());
 
@@ -51,9 +61,16 @@ function repository(): string {
   return realpathSync(root);
 }
 
-/** Runs the bundled hook `name` of A from Codex's cache, as Codex runs a plugin's hook. */
-async function hook(name: CodexHookName, root: string, runtime: string) {
-  const plugin = m.rootOf(A);
+/**
+ * Runs the bundled hook `name` of A from Codex's cache, as Codex runs a
+ * plugin's hook; `from` the directory of another bundle, `plugin` another root.
+ */
+async function hook(
+  name: CodexHookName,
+  root: string,
+  runtime: string,
+  { plugin = m.rootOf(A), from = join(plugin, "dist") } = {},
+) {
   const input = codexRecorded("exec", name, root, SESSION);
   const env = {
     XDG_RUNTIME_DIR: runtime,
@@ -62,8 +79,15 @@ async function hook(name: CodexHookName, root: string, runtime: string) {
     HOME: m.home,
     PATH: m.path,
   };
-  const out = await runBundle(name, input, env, join(plugin, "dist"));
+  const out = await runBundle(name, input, env, from);
   expect(out, name).toMatchObject({ stderr: "", code: 0 });
+}
+
+/** The daemon answering on `socket`, and its command line. */
+async function spawned(socket: string) {
+  const answer = await waitFor(() => ping(socket, 500), 30_000, "the spawned daemon");
+  const args = execFileSync("ps", ["-o", "args=", "-p", String(answer.pid)], { encoding: "utf8" });
+  return { answer, args };
 }
 
 describe("a Codex hook before any SessionStart of its version (005-81)", () => {
@@ -77,12 +101,9 @@ describe("a Codex hook before any SessionStart of its version (005-81)", () => {
       expect(existsSync(m.data)).toBe(false);
 
       await hook(name, root, runtime);
-      const answer = await waitFor(() => ping(socket, 500), 30_000, "the spawned daemon");
+      const { answer, args } = await spawned(socket);
       expect(answer.squealVersion).toBe(A);
       const copy = join(m.data, "versions", A, "dist", "cli", "squeal.mjs");
-      const args = execFileSync("ps", ["-o", "args=", "-p", String(answer.pid)], {
-        encoding: "utf8",
-      });
       expect(args).toContain(` ${copy} daemon ${root}`);
       expect(existsSync(join(m.data, "bin", "squeal"))).toBe(true);
 
@@ -103,4 +124,53 @@ describe("a Codex hook before any SessionStart of its version (005-81)", () => {
     await hook("stop", root, runtime);
     expect(existsSync(m.data)).toBe(false);
   });
+});
+
+describe("a Codex hook and a copy of other code (row 011-140)", () => {
+  it(
+    "a PostToolUse of B with PLUGIN_ROOT of A keeps no copy and spawns B from its own bundle",
+    SLOW,
+    async () => {
+      m = codexMachine(built);
+      m.install(A);
+      const root = repository();
+      const runtime = runtimeDir();
+      socket = join(runtime, `squeal-${worktreeIdFor(root)}.sock`);
+
+      // A test run of B's code under a Codex hook's environment, as on 2026-10-23.
+      const own = join(built.dir, B, "dist");
+      await hook("post-tool-use", root, runtime, { from: own });
+      const { answer, args } = await spawned(socket);
+      expect(answer.squealVersion).toBe(B);
+      expect(args).toContain(` ${join(own, "cli", "squeal.mjs")} daemon ${root}`);
+      expect(existsSync(join(m.data, "versions"))).toBe(false);
+      expect(existsSync(join(m.data, "bin"))).toBe(false);
+    },
+  );
+
+  it(
+    "a PostToolUse of B that finds the copy named B holding A makes it again and spawns B from it",
+    SLOW,
+    async () => {
+      m = codexMachine(built);
+      const plugin = m.install(B);
+      const root = repository();
+      const runtime = runtimeDir();
+      socket = join(runtime, `squeal-${worktreeIdFor(root)}.sock`);
+      // The copy as a release before row 011-140 made it from A's root: no manifest.
+      const wrong = join(m.data, "versions", B);
+      for (const dir of ["dist", "skills"]) {
+        cpSync(join(built.dir, A, dir), join(wrong, dir), { recursive: true });
+      }
+
+      await hook("post-tool-use", root, runtime, { plugin });
+      const { answer, args } = await spawned(socket);
+      expect(answer.squealVersion).toBe(B);
+      expect(args).toContain(` ${join(wrong, "dist", "cli", "squeal.mjs")} daemon ${root}`);
+      const manifest = JSON.parse(
+        readFileSync(join(wrong, ".codex-plugin", "plugin.json"), "utf8"),
+      );
+      expect(manifest.version).toBe(B);
+    },
+  );
 });
