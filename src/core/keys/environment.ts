@@ -201,6 +201,13 @@ export interface InstalledDependencies {
    * over it as one (011 C3).
    */
   readonly former?: string | null;
+  /**
+   * The fingerprint the pnpm key definition before task 011-162 held whole
+   * in the environment hash, with no segment: `fingerprint` itself, set only
+   * while pnpm's `lock.yaml` stands for the install and gives the graph. A
+   * lookup reads the keys over it as one (011 C3).
+   */
+  readonly formerPnpm?: string | null;
 }
 
 /**
@@ -268,9 +275,11 @@ export async function installedDependencies(
     listed === null || base === null
       ? (install?.graph ?? null)
       : new InstalledGraph(dir, base, listed, scans);
+  const fingerprint = hash.digest("hex");
   return {
-    fingerprint: hash.digest("hex"),
+    fingerprint,
     former: former?.digest("hex") ?? null,
+    formerPnpm: install?.graph ? fingerprint : null,
     note,
     graph,
     patches: patches.digest("hex"),

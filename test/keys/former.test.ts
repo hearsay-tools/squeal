@@ -20,7 +20,7 @@ import type {
   TestFileRef,
 } from "../../src/core/types/index.js";
 import { tempDir, writeFile } from "../hash/git-repo.js";
-import { writeInstall } from "./install.js";
+import { writeInstall, writePnpmInstall } from "./install.js";
 
 // Row 011-90 (task 011-85 R4; 011 C3): the inputs the key definition before 011-85 hashed, read as
 // one. That definition took npm's hidden lockfile and pnpm's `lock.yaml` whole, and every Vitest
@@ -201,6 +201,28 @@ describe("the former dependency keys (011-90, review 0.1.253 B1)", () => {
     expect(keys.former?.of(FILES[1])).toBe("");
   });
 
+  it("over a trusted pnpm install: both former definitions whole, today's with no segment (011-167)", async () => {
+    writePnpmInstall(dir.path, {
+      importers: { ".": { a: "1.0.0" } },
+      snapshots: { "a@1.0.0": {} },
+    });
+    const read = await installedDependencies(dir.path, dir.path);
+    expect([read.graph === null, read.formerPnpm]).toEqual([false, read.fingerprint]);
+    const keys = dependencyKeys(read, SCOPED);
+    expect(keys.environment).not.toBe(read.fingerprint);
+    expect(keys.formerPnpm?.environment).toBe(read.fingerprint);
+    expect(keys.former?.environment).toBe(read.former);
+    for (const file of FILES) {
+      expect(keys.formerPnpm?.of(file)).toBe("");
+      expect(keys.former?.of(file)).toBe("");
+    }
+    expect(keys.of(FILES[1])).not.toBe("");
+    // An environment that stays whole keeps today's keys: nothing more to read.
+    expect(
+      dependencyKeys(read, { imports: [], builtins: ["child_process"] }).formerPnpm,
+    ).toBeUndefined();
+  });
+
   it("is null where that definition's inputs are these", async () => {
     const none = { fingerprint: "now", former: null, note: null, graph: null, patches: "none" };
     expect(dependencyKeys(none, undefined).former ?? null).toBeNull();
@@ -240,6 +262,23 @@ describe("formerReadAsOne (011-90)", () => {
         segments: ["scoped", "whole:deps-then"],
       })),
     );
+  });
+
+  it("hashes today's pnpm definition at the current format only, after the definition before 011-85 (011-167)", () => {
+    const formerPnpm: DependencyKeys = { environment: "deps-whole", of: () => "" };
+    const pnpm = { ...keys(former), formerPnpm };
+    const whole = environmentHash(
+      { ...core, installedDependencies: "deps-whole" },
+      ENVIRONMENT,
+      hashOf,
+    );
+    expect(read(formerReadAsOne(core, ENVIRONMENT, pnpm, hashOf, packagesOf))).toEqual([
+      ...read(formerReadAsOne(core, ENVIRONMENT, keys(former), hashOf, packagesOf)),
+      { environment: whole, segments: ["", ""] },
+    ]);
+    expect(
+      read(formerReadAsOne(core, ENVIRONMENT, { ...keys(null), formerPnpm }, hashOf, packagesOf)),
+    ).toEqual([{ environment: whole, segments: ["", ""] }]);
   });
 
   it("hashes the former files, every segment its own", () => {

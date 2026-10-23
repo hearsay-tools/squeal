@@ -83,6 +83,8 @@ export interface AcceptInput {
   readonly installed?: Readonly<Record<string, string>>;
   /** With `installed`: paths with no file that the file's closure names, as a snapshot path (task 011-158). */
   readonly absent?: readonly string[];
+  /** The packages the test file's closure imports over `installed`; it reaches `child_process` otherwise (011-162 R3). */
+  readonly packages?: RunnerPackages;
   /**
    * The receiver is keyed at the key first, and each run is stored as its
    * scheduler stores one (`storeResults`), so a pass that replaces a fail
