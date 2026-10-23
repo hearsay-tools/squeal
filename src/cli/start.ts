@@ -13,7 +13,6 @@ import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
 import { formatStatus, readStatus, STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
 import { isStoreOpenFailure, openStore } from "../core/store/index.js";
 import type { AbsolutePath, DaemonRecord, EpochMs, PingResponse } from "../core/types/index.js";
-import { stepDownIfOlder } from "../harness/shared/ensure.js";
 import { keptCacheCli } from "../harness/shared/version-copies.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import { endCommandHolds } from "./hold.js";
@@ -108,14 +107,17 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
 /**
  * Row 011-140 (C9): the recorded daemon registered older than the handoff
  * claim it ended (`DaemonShort`), and this CLI is newer than it: asks it
- * to step down, as a hook would, and returns it stopping once it accepts,
- * so `start` finishes the handoff. `null` otherwise.
+ * to step down, as a hook would but with the CLI's socket timeout, and
+ * returns it stopping once it accepts, so `start` finishes the handoff
+ * (whose `stop` follows). `null` otherwise.
  */
 async function replaceShort(root: AbsolutePath, now: () => number): Promise<Stopping | null> {
   const record = recordedDaemon(root, 1_000);
   if (record === null || !isNewerVersion(squealVersion(), record.squealVersion)) return null;
   if (shortOf(root) !== handoffFrom(record)) return null;
-  if (!(await stepDownIfOlder(record, now() as EpochMs))) return null;
+  const request = { type: "step-down", version: squealVersion() } as const;
+  const answer = await askDaemon(record.socketPath, request).catch(() => null);
+  if (answer?.ok !== true || answer.type !== "step-down" || !answer.steppingDown) return null;
   return stoppingDaemon(root, now);
 }
 
