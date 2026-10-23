@@ -11,7 +11,10 @@ import { environmentHash } from "./environment.js";
 import { KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE } from "./key-format.js";
 import type { ReadAsOne } from "./key-index.js";
 
-/** The last format the definition before task 011-85 keyed at; a raise above it ends the read. */
+/**
+ * The last format the definitions before tasks 011-85 and 011-162 keyed
+ * at; a raise above it ends the read.
+ */
 const FORMER_LAST_FORMAT = 20;
 
 /**
@@ -26,6 +29,11 @@ const FORMER_LAST_FORMAT = 20;
  * test file over the packages `packagesOf` reports for it (review 0.1.253
  * B1); none where that definition's inputs are the current ones. A format
  * raise empties it with `KEY_FORMATS_READ_AS_ONE`.
+ *
+ * Task 011-162 R3: then the pnpm definition before 011-162, while
+ * `lock.yaml` stands for the install (`DependencyKeys.formerPnpm`): the
+ * current files, the whole fingerprint and no segment, at the current
+ * format only, since its rows exist at format 20 alone (from 0.1.253).
  */
 export function formerReadAsOne(
   core: CoreEnvironmentInputs,
@@ -34,16 +42,34 @@ export function formerReadAsOne(
   hashOf: (path: RelativePath) => FileHash | null | undefined,
   packagesOf: (testFile: TestFileRef) => RunnerPackages | undefined,
 ): ReadAsOne[] {
-  const former = dependencies?.former ?? null;
-  if (former === null && environment.formerFiles === undefined) return [];
-  const inputs = former === null ? core : { ...core, installedDependencies: former.environment };
-  const runner = { ...environment, files: environment.formerFiles ?? environment.files };
-  const segment =
-    former === null ? {} : { segment: (testFile: TestFileRef) => former.of(packagesOf(testFile)) };
-  return [KEY_FORMAT_VERSION, ...Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number)]
+  const pnpm = dependencies?.formerPnpm ?? null;
+  const pnpmRead = (pnpm === null ? [] : [KEY_FORMAT_VERSION])
     .filter((format) => format <= FORMER_LAST_FORMAT)
-    .map((format) => ({
-      environment: environmentHash(inputs, runner, hashOf, format),
-      ...segment,
-    }));
+    .map((format) => readAt(core, environment, pnpm, hashOf, packagesOf, format));
+  const former = dependencies?.former ?? null;
+  if (former === null && environment.formerFiles === undefined) return pnpmRead;
+  const runner = { ...environment, files: environment.formerFiles ?? environment.files };
+  return [
+    ...[KEY_FORMAT_VERSION, ...Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number)]
+      .filter((format) => format <= FORMER_LAST_FORMAT)
+      .map((format) => readAt(core, runner, former, hashOf, packagesOf, format)),
+    ...pnpmRead,
+  ];
+}
+
+/** The environment hash at `format` over `keys`' environment, each file with its segment of `keys`. */
+function readAt(
+  core: CoreEnvironmentInputs,
+  runner: RunnerEnvironment,
+  keys: DependencyKeys | null,
+  hashOf: (path: RelativePath) => FileHash | null | undefined,
+  packagesOf: (testFile: TestFileRef) => RunnerPackages | undefined,
+  format: number,
+): ReadAsOne {
+  if (keys === null) return { environment: environmentHash(core, runner, hashOf, format) };
+  const inputs = { ...core, installedDependencies: keys.environment };
+  return {
+    environment: environmentHash(inputs, runner, hashOf, format),
+    segment: (testFile) => keys.of(packagesOf(testFile)),
+  };
 }

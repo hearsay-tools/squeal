@@ -19,6 +19,13 @@ export interface DependencyKeys {
    * `null` (or absent) where that definition's inputs are these.
    */
   readonly former?: DependencyKeys | null;
+  /**
+   * The keys under the pnpm definition before task 011-162, which a lookup
+   * reads as one while `lock.yaml` stands for the install (011 C3): its
+   * whole fingerprint in the environment, no segment. `null` (or absent)
+   * where they are these.
+   */
+  readonly formerPnpm?: DependencyKeys | null;
 }
 
 /**
@@ -27,7 +34,9 @@ export interface DependencyKeys {
  * packages where either differs (`InstalledDependencies.former`,
  * `RunnerEnvironment.formerPackages`; 011 C3, review 0.1.253 B1). Each test
  * file's former segment is that definition's own, empty, scoped or whole,
- * whatever its current one is.
+ * whatever its current one is. Task 011-162 R3: each former definition
+ * keys with its own graph. Neither read pnpm's, so for a pnpm install both
+ * hold the whole fingerprint (`InstalledDependencies.formerPnpm`).
  */
 export function dependencyKeys(
   installed: InstalledDependencies,
@@ -35,10 +44,16 @@ export function dependencyKeys(
   formerEnvironment: RunnerPackages | undefined = environment,
 ): DependencyKeys {
   const keys = currentKeys(installed, environment);
-  const { fingerprint, former = null } = installed;
-  if (former === null && formerEnvironment === environment) return keys;
-  const then = { ...installed, fingerprint: former ?? fingerprint };
-  return { ...keys, former: currentKeys(then, formerEnvironment) };
+  const { fingerprint, former = null, formerPnpm = null } = installed;
+  const graph = formerPnpm === null ? installed.graph : null;
+  const pnpm =
+    formerPnpm === null
+      ? null
+      : currentKeys({ ...installed, fingerprint: formerPnpm, graph: null }, environment);
+  const read = pnpm === null || pnpm.environment === keys.environment ? {} : { formerPnpm: pnpm };
+  if (former === null && formerEnvironment === environment) return { ...keys, ...read };
+  const then = { ...installed, fingerprint: former ?? fingerprint, graph };
+  return { ...keys, ...read, former: currentKeys(then, formerEnvironment) };
 }
 
 /**
