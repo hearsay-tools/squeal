@@ -1,6 +1,6 @@
 # 015 coverage and complexity: status
 
-Stage: research done; the spec waits for the human's answers below
+Stage: research done; spec being written
 Started: 2026-10-23
 
 ## Decisions so far
@@ -16,6 +16,9 @@ Started: 2026-10-23
   - Push or pull: no source measures coverage or complexity feedback pushed to an agent mid-task; the strong evidence is for writing tests, where coverage saves work more than it adds result. Peers that notify scope to changed code. Proxy over the last 100 commits: a touched function crossing CRAP 30 fires in 0 to 8 commits, by coverage.
   - Selection, a separate gain: on a 30-file sample over 76 edits, line-level selection needed 259 runs against 899 at file level (71% fewer); not sound for every program; against 011's non-goal.
   - A defect present today, independent of 015: a project whose own config enables coverage gets its `coverage/` deleted and rewritten by Squeal's warm instance, and a failed threshold sets the daemon's exit code. Row 013-07.
+- 2026-10-23, the human, on the research: write spec 015, complexity first. Wave 1 makes complexity a check type of its own, with no coverage; wave 2 adds Squeal's own v8 coverage, CRAP and "no test runs this function". Both opt-in.
+- 2026-10-23, the human: a test file whose closure loads `node:inspector` gets no coverage (it can read its own V8 coverage, and one such test failed under v8, 015-01 Q5); status names those files, and a source only they cover reads "coverage unknown".
+- 2026-10-23, the human: line-level selection (015-01 Q7) is measured on the full suite after 015's coverage records are in the store, not now; 011's non-goal stands until then.
 
 ## Open questions
 
