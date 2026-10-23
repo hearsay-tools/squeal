@@ -303,7 +303,10 @@ export interface FocusedCount {
    * when its filter hides the others (node:test, spec 003 D5).
    */
   readonly collected: number | null;
-  /** Of them, the checks whose full name holds a text: the file's results. `0` selected nothing, never a pass. */
+  /**
+   * Of them, the checks whose full name holds a text, the ones that ran. `0`
+   * selected nothing, which is never a pass.
+   */
   readonly matched: number;
 }
 

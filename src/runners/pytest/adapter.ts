@@ -326,6 +326,8 @@ export async function createPytestAdapter(
         environmentObserved: [{ project: project.name, paths: session }],
       };
     },
+    // 007 D6 (row 011-135): `runPytest` takes `RunOptions.checks`.
+    focuses: true,
     close: async () => {},
   };
 }

@@ -1,13 +1,15 @@
 import { join, sep } from "node:path";
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type {
-  AbsolutePath,
-  CheckError,
-  CheckRunResult,
-  FileLevelError,
-  RunOutcome,
-  SourceLocation,
-  TestFileRef,
+import {
+  type AbsolutePath,
+  type CheckError,
+  type CheckRunResult,
+  type FileLevelError,
+  type FocusedCount,
+  holdsCheckText,
+  type RunOutcome,
+  type SourceLocation,
+  type TestFileRef,
 } from "../../../core/types/index.js";
 import { scrubBasetemp } from "./basetemp.js";
 import type { CollectedItem, PhaseEvent, PytestEvent } from "./events.js";
@@ -16,6 +18,8 @@ import type { CollectedItem, PhaseEvent, PytestEvent } from "./events.js";
 export interface BatchFile {
   readonly testFile: TestFileRef;
   readonly real: AbsolutePath;
+  /** A focused run's texts for the file (`RunOptions.checks`); absent: it runs whole. */
+  readonly texts?: readonly string[];
 }
 
 /** What one file's part of a batch's event stream says. */
@@ -34,6 +38,8 @@ export interface PytestFileReport {
   readonly skipped: string | null;
   /** The sum of its items' phase durations (D6). */
   readonly durationMs: number;
+  /** With `texts`: what they selected, as the plugin counted what the file collected. */
+  readonly focused?: FocusedCount;
 }
 
 export interface BatchReport {
@@ -54,7 +60,9 @@ type Scrub = (text: string, name?: string) => string;
  * come only from the event file; the exit code is the caller's to judge.
  * `rootdir` is pytest's, against which `location` paths are written;
  * `basetemp`, the batch's, is written as `scrubBasetemp` does (task 007-37),
- * each test's with its own node name (task 007-43).
+ * each test's with its own node name (task 007-43). A file with `texts`
+ * reports only the checks whose full name holds one (row 011-135), as the
+ * plugin deselected the others.
  */
 export function readBatch(
   events: readonly PytestEvent[],
@@ -72,6 +80,7 @@ export function readBatch(
   }
   const collects = events.flatMap((e) => (e.type === "collect" ? [e] : []));
   const items = collected?.items ?? [];
+  const counts = events.find((e) => e.type === "focused")?.files ?? {};
 
   const reports = files.map((file): PytestFileReport => {
     const own = items.filter((item) => item.path === file.real);
@@ -82,8 +91,11 @@ export function readBatch(
     );
     const skip = collects.find((c) => c.outcome === "skipped" && c.path === file.real);
     const done = own.every((item) => phases.get(item.nodeid)?.some((p) => p.when === "teardown"));
+    const { texts } = file;
     const results = done
-      ? own.map((item) => joinPhases(item, file.testFile, phases, rootdir, paths, scrub))
+      ? own
+          .map((item) => joinPhases(item, file.testFile, phases, rootdir, paths, scrub))
+          .filter((r) => texts === undefined || holdsCheckText(r.check.fullName, texts))
       : [];
     return {
       testFile: file.testFile,
@@ -95,6 +107,15 @@ export function readBatch(
           : { testFile: file.testFile, errors: [collectionError(failed.longrepr, paths, scrub)] },
       skipped: skip === undefined ? null : skipReason(skip.longrepr),
       durationMs: Math.round(results.reduce((sum, r) => sum + r.durationMs, 0)),
+      ...(texts === undefined
+        ? {}
+        : {
+            focused: {
+              testFile: file.testFile,
+              collected: counts[file.real]?.collected ?? null,
+              matched: results.length,
+            },
+          }),
     };
   });
   return {
