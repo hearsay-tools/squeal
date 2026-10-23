@@ -21,6 +21,7 @@ import { healsUnheld } from "./hold.js";
 import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
 import { priorityOf } from "./queue.js";
+import { quietHolds } from "./quiet.js";
 import { recordsForFile } from "./records.js";
 import {
   endRerun,
@@ -181,7 +182,10 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * A lane that waits for quiet after its backlog tier's cancel
  * (`BacklogQuiet`, C4 step 5 as amended 2026-10-21, row 011-82) takes no
  * backlog tier: its files stay queued, as a busy lane's do. Its edit's work
- * and the turn below start as before.
+ * and the turn below start as before. A lane whose catch-up of an edit waits
+ * for quiet (as amended 2026-10-23, row 011-153) starts no tier of catch-up,
+ * the turn's included; an edit's tier still takes catch-up files beside its
+ * own, as it takes the backlog's, and the rest of the queue starts as before.
  *
  * The second group's turn after four tiers of the first (C4 step 4, catch-up
  * first) is selected while an edit's work is queued, so it is never
@@ -233,8 +237,9 @@ export function selectTier(
     if (picked.length >= size) break;
     const at = laneOf(context, ref);
     if (busy.has(at) || (lane !== null && at !== lane)) continue;
-    // A lane that waits for quiet after its backlog tier's cancel starts no backlog tier (row 011-82).
-    if (backlog && context.quiet?.waits(at, now) === true) continue;
+    // A lane that waits for quiet after its backlog tier's cancel starts no backlog tier (row
+    // 011-82); one whose catch-up waits starts no tier of it, the turn's included (row 011-153).
+    if (quietHolds(context, ledger, ref, at, { backlog, turn }, now)) continue;
     const file = ledger.file(ref);
     const key = file?.key ?? null;
     if (!file || key === null || file.blocked !== null) {

@@ -3,7 +3,7 @@ import { testFileId } from "../keys/index.js";
 import { hostLoad } from "../retry/load.js";
 import { claimBoundMs } from "../scheduler/claims.js";
 import { promotedIds } from "../scheduler/promotions.js";
-import { publishedQuiet } from "../scheduler/quiet.js";
+import { type PublishedQuiet, publishedWaits } from "../scheduler/quiet.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { laneFor, slowView } from "../scheduler/slow.js";
 import { publishedYields } from "../scheduler/yields.js";
@@ -131,10 +131,7 @@ export function standingsOf(
     startedAt === null
       ? new Map<string, TierYield>()
       : publishedYields(store, worktreeId, startedAt);
-  const quiet =
-    startedAt === null
-      ? new Map<string, EpochMs>()
-      : publishedQuiet(store, worktreeId, startedAt, now);
+  const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -211,10 +208,10 @@ export function standingsOf(
         return { testFile: ref, state, pending: held, standing: held };
       }
       // Row 011-82: no tier runs in its lane, which waits for quiet; the wait holds no promoted file.
-      const quietUntil = pending.kind === "queued" ? quiet.get(pending.lane) : undefined;
-      if (pending.kind === "queued" && pending.behind === null && quietUntil !== undefined) {
+      const wait = pending.kind === "queued" ? quietWait(quiet, pending.lane) : undefined;
+      if (pending.kind === "queued" && pending.behind === null && wait !== undefined) {
         if (!promoted.has(testFileId(ref))) {
-          const held: PendingReason = { ...pending, quietUntil };
+          const held: PendingReason = { ...pending, ...wait };
           return { testFile: ref, state, pending: held, standing: held };
         }
       }
@@ -246,6 +243,22 @@ export function standingsOf(
       }
       return { testFile: ref, state, pending, standing: pending };
     });
+}
+
+/**
+ * The wait that holds `lane`'s queued files longest: after a cancel (row
+ * 011-82) or before its catch-up (row 011-153), whose files the store does
+ * not tell apart from the rest of the lane's queue.
+ */
+function quietWait(
+  quiet: PublishedQuiet | null,
+  lane: string,
+): { quietUntil: EpochMs; quietCatchUp?: true } | undefined {
+  const backlog = quiet?.backlog.get(lane);
+  const catchUp = quiet?.catchUp.get(lane);
+  if (catchUp !== undefined && (backlog === undefined || catchUp > backlog))
+    return { quietUntil: catchUp, quietCatchUp: true };
+  return backlog === undefined ? undefined : { quietUntil: backlog };
 }
 
 /**
