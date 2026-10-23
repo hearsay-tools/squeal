@@ -15,6 +15,18 @@ export function timeText(at: number): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
+/** A word the shell may read as it is: no space, quote, `$`, glob or other special character. */
+const SAFE_WORD = /^[\w@%+=:,./-]+$/;
+
+/**
+ * Row 011-130: `word` as one word the shell reads back whole, bare when it is
+ * safe, else single-quoted. Every printed command quotes each of its paths,
+ * names and error texts through it, the one quoting rule (spec 014 D7).
+ */
+export function shellWord(word: string): string {
+  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
+}
+
 /** The most paths a note or a reason names before "N more" (tasks 007-30, 011-02). */
 export const PATHS_NAMED = 5;
 

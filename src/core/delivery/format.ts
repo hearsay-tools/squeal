@@ -12,7 +12,7 @@ import {
 } from "../status/checks.js";
 import { holdEndedText, holdEndText, holdStartText } from "../status/holds.js";
 import { atText } from "../status/test-frame.js";
-import { cap, plural } from "../text.js";
+import { cap, plural, shellWord } from "../text.js";
 import type {
   CheckId,
   DaemonLiveness,
@@ -76,15 +76,9 @@ const fileLevelWord = (shown: Shown) => (shown === "fail" ? "that did not load" 
 const upper = (outcome: Shown) => outcome.toUpperCase();
 const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
-/** `text` as one shell word: double-quoted, or single-quoted when the shell would expand it inside double quotes. */
-export function shellWord(text: string): string {
-  return /["$`\\]/.test(text) ? `'${text.replaceAll("'", "'\\''")}'` : `"${text}"`;
-}
-
 /**
  * Task 001-88: a FAIL report ends with one line naming the command that prints
- * the full output of its first failure. A name the shell would expand inside
- * double quotes is single-quoted.
+ * the full output of its first failure, the name one shell word (row 011-130).
  */
 function whyLine(check: CheckId, command: string): string {
   return `Full output: ${command} why ${shellWord(checkName(check))}`;
@@ -171,7 +165,7 @@ function failureBlocks(
   return failureGroups(entries, revision).map((group) => {
     const [first] = group;
     if (group.length === 1 && first !== undefined) return entryBlock(first, revision);
-    const lines = groupLines(group, revision, command, shellWord);
+    const lines = groupLines(group, revision, command);
     return collapsedBlock(
       lines,
       "fail",

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { INSTALL_SH_COMMAND, piCliCommand, piInstallCommand } from "../../src/cli/pi/status.js";
 import { statusCommand } from "../../src/cli/status-command.js";
+import { shellWord } from "../../src/core/text.js";
 import { piCommand } from "../../src/harness/pi/worker.js";
 import { runtimeDir } from "../harness/bundle-helpers.js";
 import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
@@ -72,13 +73,13 @@ describe("squeal status in a Pi shell (spec 009 D7)", () => {
     writeFileSync(join(root, "package.json"), JSON.stringify({ name: "squeal", version: "1" }));
     expect(piInstallCommand(cli)).toBe(INSTALL_SH_COMMAND);
     writeFileSync(join(root, "package.json"), JSON.stringify({ name: "squeal-pi" }));
-    expect(piInstallCommand(cli)).toBe(`pi install "${root}"`);
+    expect(piInstallCommand(cli)).toBe(`pi install '${root}'`);
   });
 
   it("names the CLI as the extension's texts do, since squeal is not on a Pi agent's PATH", () => {
     const cli = "/data/squeal/pi/0.1.170/dist/cli/squeal.mjs";
     expect(statusCommand(PI, cli)).toBe(
-      `"${process.execPath}" --disable-warning=ExperimentalWarning "${cli}"`,
+      `${shellWord(process.execPath)} --disable-warning=ExperimentalWarning ${cli}`,
     );
     expect(piCliCommand(cli, "/opt/node")).toBe(piCommand(cli, "/opt/node"));
     expect(statusCommand({}, cli)).toBe("squeal");

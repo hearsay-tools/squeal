@@ -18,19 +18,19 @@ import { buildCodexBundles, codexRecorded, sessionOf } from "./helpers.js";
  */
 
 describe("codexCommand", () => {
-  it("names the CLI under PLUGIN_ROOT, quoted for a shell", () => {
+  it("names the CLI under PLUGIN_ROOT, as one shell word", () => {
     const env = { PLUGIN_ROOT: "/home/u/.codex/plugins/cache/squeal/squeal/0.1.25" };
     expect(codexCommand(env, "/elsewhere/dist/cli/squeal.mjs")).toBe(
-      'node --disable-warning=ExperimentalWarning "/home/u/.codex/plugins/cache/squeal/squeal/0.1.25/dist/cli/squeal.mjs"',
+      "node --disable-warning=ExperimentalWarning /home/u/.codex/plugins/cache/squeal/squeal/0.1.25/dist/cli/squeal.mjs",
     );
   });
 
   it("names the running bundle's sibling CLI without PLUGIN_ROOT, as for launcher hooks", () => {
     expect(codexCommand({}, "/p/dist/cli/squeal.mjs")).toBe(
-      'node --disable-warning=ExperimentalWarning "/p/dist/cli/squeal.mjs"',
+      "node --disable-warning=ExperimentalWarning /p/dist/cli/squeal.mjs",
     );
     expect(codexCommand({ PLUGIN_ROOT: "" }, "/p/dist/cli/squeal.mjs")).toBe(
-      'node --disable-warning=ExperimentalWarning "/p/dist/cli/squeal.mjs"',
+      "node --disable-warning=ExperimentalWarning /p/dist/cli/squeal.mjs",
     );
   });
 
@@ -39,18 +39,18 @@ describe("codexCommand", () => {
     const root = "/home/u/.codex/plugins/cache/hearsay/squeal/0.1.243";
     const copy = join(data, "versions", "0.1.243", "dist", "cli", "squeal.mjs");
     const env = { PLUGIN_ROOT: root, PLUGIN_DATA: data };
-    const cached = `node --disable-warning=ExperimentalWarning "${root}/dist/cli/squeal.mjs"`;
+    const cached = `node --disable-warning=ExperimentalWarning ${root}/dist/cli/squeal.mjs`;
     expect(codexCommand(env, copy)).toBe(cached);
     mkdirSync(join(data, "bin"), { recursive: true });
     writeFileSync(join(data, "bin", "squeal"), "");
-    expect(codexCommand(env, copy)).toBe(`"${data}/bin/squeal"`);
+    expect(codexCommand(env, copy)).toBe(`${data}/bin/squeal`);
     // A CLI the launcher ran from the copy, in a Codex shell without PLUGIN_DATA.
-    expect(statusCommand({ CODEX_SESSION_ID: "019a" }, copy)).toBe(`"${data}/bin/squeal"`);
+    expect(statusCommand({ CODEX_SESSION_ID: "019a" }, copy)).toBe(`${data}/bin/squeal`);
     expect(statusCommand({ CODEX_SESSION_ID: "019a" }, `${root}/dist/cli/squeal.mjs`)).toBe(cached);
     rmSync(join(data, ".."), { recursive: true, force: true });
   });
 
-  it("single-quotes a path the shell would expand inside double quotes", () => {
+  it("single-quotes a path the shell would not read back bare", () => {
     expect(codexCommand({ PLUGIN_ROOT: "/a $b" }, "/x")).toBe(
       "node --disable-warning=ExperimentalWarning '/a $b/dist/cli/squeal.mjs'",
     );
@@ -89,7 +89,7 @@ describe("Codex hook texts name the command they are given", () => {
     const start = await text(r, "session-start", "session-start");
     expect(start.endsWith(`\n\n${primer(command)}`)).toBe(true);
     expect(start).toContain(checkpoint);
-    expect(start).toContain(`Full output: ${command} why "src/math.test.ts > math > adds"`);
+    expect(start).toContain(`Full output: ${command} why 'src/math.test.ts > math > adds'`);
     const sub = await text(r, "subagent-start", "subagent-start");
     expect(sub.endsWith(`\n\n${primer(command)}`)).toBe(true);
     expect(await text(r, "session-start", "session-start", { source: "compact" })).toBe(
@@ -102,7 +102,7 @@ describe("Codex hook texts name the command they are given", () => {
     r.apply(r.pass(), r.pass(SUBTRACTS));
     r.policy({ stop: { requireFullSuite: true } });
     expect(await text(r, "session-start", "session-start")).toContain(checkpoint);
-    const why = (name: string) => `Full output: ${command} why "src/math.test.ts > math > ${name}"`;
+    const why = (name: string) => `Full output: ${command} why 'src/math.test.ts > math > ${name}'`;
     r.apply(r.fail(), r.pass(SUBTRACTS));
     const delivered = await text(r, "post-tool-use", "post-tool-use");
     expect(delivered.split("\n").at(-1)).toBe(why("adds"));
@@ -169,7 +169,7 @@ describe("bundled Codex hooks name a CLI the agent's shell runs", () => {
         encoding: "utf8",
       });
     expect(shell("command -v squeal").status).not.toBe(0);
-    const command = `node --disable-warning=ExperimentalWarning "${root}/dist/cli/squeal.mjs"`;
+    const command = `node --disable-warning=ExperimentalWarning '${root}/dist/cli/squeal.mjs'`;
 
     const start = await context("session-start", "session-start");
     expect(start.endsWith(`\n\n${primer(command)}`)).toBe(true);
@@ -185,7 +185,7 @@ describe("bundled Codex hooks name a CLI the agent's shell runs", () => {
     const report = await context("post-tool-use", "post-tool-use");
     expect(report).toContain("PASS -> FAIL");
     const last = report.split("\n").at(-1) ?? "";
-    expect(last).toBe(`Full output: ${command} why "src/math.test.ts > math > adds"`);
+    expect(last).toBe(`Full output: ${command} why 'src/math.test.ts > math > adds'`);
     const why = shell(last.slice("Full output: ".length));
     expect(why.stderr).toBe("");
     expect(why.status).toBe(0);
@@ -203,7 +203,7 @@ describe("bundled Codex hooks name a CLI the agent's shell runs", () => {
       .hookSpecificOutput.additionalContext;
     expect(
       text.endsWith(
-        `\n\n${primer(`node --disable-warning=ExperimentalWarning "${join(dist, "cli/squeal.mjs")}"`)}`,
+        `\n\n${primer(`node --disable-warning=ExperimentalWarning ${join(dist, "cli/squeal.mjs")}`)}`,
       ),
     ).toBe(true);
   });

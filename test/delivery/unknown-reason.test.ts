@@ -84,7 +84,7 @@ describe("an unknown reason naming 660 paths (task 011-02)", () => {
       );
       expect(shown).toContain(`(task ${task}): ${ARTIFACTS[0]}, `);
       expect(text).toContain(
-        'Full reason: squeal why "packages/web/src/test/card-2-contrast.test.ts > contrast > case 0"',
+        "Full reason: squeal why 'packages/web/src/test/card-2-contrast.test.ts > contrast > case 0'",
       );
     });
 

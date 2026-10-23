@@ -78,7 +78,7 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
       "      expected 401, received 500",
       "      at src/auth.ts:42:7",
       "",
-      'Full output: squeal why "tests/auth.test.ts > login"',
+      "Full output: squeal why 'tests/auth.test.ts > login'",
     ]);
   });
 
