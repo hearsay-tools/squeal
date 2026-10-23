@@ -52,7 +52,10 @@ export interface WorktreeRepo {
     readonly squealVersion: string | null;
     readonly token?: string;
   } | null;
-  /** Spec 001 D8: drop "everything owned by removed worktrees". */
+  /**
+   * Spec 001 D8: the rows that belong to the worktree go; its results and
+   * their runs stay for prune's 7-day cutoff (row 011-160).
+   */
   remove(id: WorktreeId): void;
 }
 
@@ -461,10 +464,11 @@ export interface Store {
   transaction<T>(fn: () => T): T;
 
   /**
-   * Spec 001 D8: "keep every result whose key is current in any live worktree
-   * plus the newest result per check on the main worktree; drop other keys
-   * after 7 days and everything owned by removed worktrees; a size cap with
-   * LRU eviction as a backstop."
+   * Spec 001 D8 as amended 2026-10-23: "keep every result whose key is
+   * current in any live worktree plus the newest result per check on the main
+   * worktree; drop other keys after 7 days, the results of removed worktrees
+   * included [...]; a size cap evicting least recently used results as a
+   * backstop."
    */
   prune(options: PruneOptions): PruneReport;
 
