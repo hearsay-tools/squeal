@@ -110,10 +110,10 @@ describe("prune (spec 001 D8)", () => {
     const report = store.prune({ now: NOW, retentionDays: 7, maxSizeMb: null });
 
     expect(report).toEqual({
-      resultsRemoved: 4,
-      runsRemoved: 3,
+      resultsRemoved: 3,
+      runsRemoved: 2,
       checkpointsRemoved: 0,
-      checksRemoved: 2,
+      checksRemoved: 1,
       worktreesRemoved: 1,
       bytesAfter: expect.any(Number),
     });
@@ -132,12 +132,19 @@ describe("prune (spec 001 D8)", () => {
       "k-current-in-removed",
       "k-boundary",
     ];
-    expect(keys(store, allKeys)).toEqual(["k-current", "k-main-newest", "k-recent", "k-boundary"]);
+    // Row 011-160: a removed worktree's recent result stays for the 7 days, and its run and log with it.
+    expect(keys(store, allKeys)).toEqual([
+      "k-current",
+      "k-main-newest",
+      "k-recent",
+      "k-removed-recent",
+      "k-boundary",
+    ]);
 
     const keptRuns = runs.map(([id]) => id).filter((id) => store.runs.get(id) !== null);
-    expect(keptRuns).toEqual(["run-cur", "run-recent-l", "run-running-l"]);
+    expect(keptRuns).toEqual(["run-cur", "run-removed", "run-recent-l", "run-running-l"]);
     expect(existsSync(join(runsDir, "run-old-l"))).toBe(false);
-    expect(existsSync(join(runsDir, "run-removed"))).toBe(false);
+    expect(existsSync(join(runsDir, "run-removed"))).toBe(true);
     expect(existsSync(join(runsDir, "run-cur"))).toBe(true);
     // Log directories outside `<store>/runs/` are never deleted.
     expect(existsSync(outside)).toBe(true);
@@ -279,10 +286,11 @@ describe("prune (spec 001 D8)", () => {
       }),
     ]);
     const evictable = Array.from({ length: 150 }, (_, i) => `k-${i}`);
+    // Row 011-160: a removed worktree's results stay and are evicted in the same order as a live one's.
     store.results.putMany(
       evictable.map((key, i) =>
         result(testCheck(`t${i}`), key, {
-          worktreeId: "linked",
+          worktreeId: i % 2 === 0 ? "linked" : "removed",
           recordedAt: ago(1) + i,
           outcome: "fail",
           errors: big(i),
