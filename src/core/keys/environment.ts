@@ -19,7 +19,7 @@ import {
 } from "./hidden-lockfile.js";
 import { KEY_FORMAT_VERSION } from "./key-format.js";
 import type { PackageScans } from "./package-scans.js";
-import { InstalledGraph } from "./packages.js";
+import { InstalledGraph, type PackageGraph } from "./packages.js";
 import { PNPM_LOCKFILE, withoutLinkedSpecifiers } from "./pnpm-lockfile.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
@@ -189,7 +189,7 @@ export interface InstalledDependencies {
    * format, a stale or unparsable hidden lockfile, or no install; keys then
    * hold the whole `fingerprint`.
    */
-  readonly graph: InstalledGraph | null;
+  readonly graph: PackageGraph | null;
   /** Hash of the patches directory the package manager applies; part of `fingerprint` too. */
   readonly patches: string;
   /**

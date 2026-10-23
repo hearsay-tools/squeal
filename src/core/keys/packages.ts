@@ -30,6 +30,18 @@ interface LockEntry {
 const EDGES = ["dependencies", "optionalDependencies", "peerDependencies"] as const;
 
 /**
+ * An installed package graph per-package keys read (tasks 001-105, 011-162):
+ * npm's hidden lockfile (`InstalledGraph`) or pnpm's `lock.yaml`
+ * (`PnpmGraph`). `dependencyKeys` reads only these two methods.
+ */
+export interface PackageGraph {
+  /** The sorted identities of every installed package `imports` can load, without those in `exclude`. */
+  identities(imports: readonly PackageImport[], exclude?: ReadonlySet<string>): string[];
+  /** Whether a package among `identities`, as `identities()` returned them, is opaque (task 001-109). */
+  opaque(identities: readonly string[]): boolean;
+}
+
+/**
  * The installed npm dependency graph of one install, from its hidden
  * lockfile `node_modules/.package-lock.json`.
  *
@@ -44,7 +56,7 @@ const EDGES = ["dependencies", "optionalDependencies", "peerDependencies"] as co
  * the code of a package among some identities reaches a builtin that loads
  * packages no import names.
  */
-export class InstalledGraph {
+export class InstalledGraph implements PackageGraph {
   readonly #packages: Readonly<Record<string, LockEntry>>;
   readonly #closures = new Map<string, readonly string[]>();
   /** The location of each installed identity a closure produced. */
