@@ -8,6 +8,7 @@ import type {
 } from "../../types/index.js";
 import { CHECK_COLUMNS, checkParams, strOrNull, toResult } from "../codec.js";
 import type { Connection } from "../connection.js";
+import { readMetaList, writeMetaList } from "./meta-list.js";
 
 /*
  * 011 C5 as amended 2026-10-21 (row 011-77, gh-54; `tasks/011-64/design.md`
@@ -43,15 +44,7 @@ export function failingAt(conn: Connection, key: CheckKey): FailingRow[] {
 
 /** Every kept entry, oldest first; empty when none or unreadable, and an entry that does not parse is left out. */
 export function readReplaced(conn: Connection): ReplacedFailure[] {
-  const row = conn.get("SELECT value FROM meta WHERE key = ?", REPLACED_META_KEY);
-  if (row === null) return [];
-  let value: unknown;
-  try {
-    value = JSON.parse(strOrNull(row, "value") ?? "[]");
-  } catch {
-    return [];
-  }
-  return Array.isArray(value) ? value.filter(isEntry) : [];
+  return readMetaList(conn, REPLACED_META_KEY, isEntry);
 }
 
 /** See `FailureRepo.keepReplaced`. A fail replaced by a fail is the same failure stored again: not kept. */
@@ -87,7 +80,9 @@ export function keepReplaced(
     });
   }
   if (added.length === 0) return 0;
-  conn.transaction(() => write(conn, capped([...readReplaced(conn), ...added])));
+  conn.transaction(() =>
+    writeMetaList(conn, REPLACED_META_KEY, capped([...readReplaced(conn), ...added])),
+  );
   return added.length;
 }
 
@@ -95,7 +90,7 @@ export function keepReplaced(
 export function expireReplaced(conn: Connection, cutoff: EpochMs): number {
   const entries = readReplaced(conn);
   const kept = entries.filter((e) => e.provenance.recordedAt >= cutoff);
-  if (kept.length < entries.length) write(conn, kept);
+  if (kept.length < entries.length) writeMetaList(conn, REPLACED_META_KEY, kept);
   return entries.length - kept.length;
 }
 
@@ -128,17 +123,6 @@ function capped(entries: readonly ReplacedFailure[]): ReplacedFailure[] {
     kept.push(entry);
   }
   return kept.reverse();
-}
-
-function write(conn: Connection, entries: readonly ReplacedFailure[]): void {
-  if (entries.length === 0) conn.run("DELETE FROM meta WHERE key = ?", REPLACED_META_KEY);
-  else {
-    conn.run(
-      "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-      REPLACED_META_KEY,
-      JSON.stringify(entries),
-    );
-  }
 }
 
 function identity(check: ResultRecord["check"]): string {
