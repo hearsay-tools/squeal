@@ -305,10 +305,14 @@ export class RunQueue {
     );
   }
 
-  /** Whether a promoted fast entry `where` holds is queued (C15; row 011-51). */
+  /**
+   * Whether a promoted fast entry `where` holds is queued (C15; row 011-51).
+   * `where` is asked of promoted entries only, so it may read the store
+   * (row 011-55: another worktree's claim).
+   */
   hasPromoted(where: (ref: TestFileRef) => boolean): boolean {
     return this.#fast().some(
-      (entry) => where(entry.ref) && this.#promotions.rankOf(testFileId(entry.ref)) !== null,
+      (entry) => this.#promotions.rankOf(testFileId(entry.ref)) !== null && where(entry.ref),
     );
   }
 
