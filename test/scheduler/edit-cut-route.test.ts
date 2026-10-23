@@ -5,7 +5,9 @@ import {
   editAndRun,
   expectCut,
   FOUR_SHORT,
+  idleAfterQuiet,
   importers,
+  pastCatchUpQuiet,
   pathsOf,
   split,
   started,
@@ -40,7 +42,7 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
       states.set(side.runner.runs.length - 1, both);
     };
     await side.edit("watch", A, edited.path);
-    await side.scheduler.idle();
+    await idleAfterQuiet(side);
     const { catchUp } = split(side.runner.runs, before);
     expect(catchUp.length).toBeGreaterThan(0);
     for (const run of catchUp) expect(states.get(side.runner.runs.indexOf(run))).toBe(true);
@@ -58,6 +60,8 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
     });
     const before = side.runner.runs.length;
     await side.edit("watch", A);
+    // The cut's catch-up waits 120 s for quiet first (row 011-153).
+    await pastCatchUpQuiet(side);
     await expect
       .poll(() => side.runner.runs.slice(before).find((run) => run.workers !== undefined), {
         interval: 10,
@@ -152,7 +156,7 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
       60_000,
     );
     side.runner.release();
-    await side.scheduler.idle();
+    await idleAfterQuiet(side);
     const result = split(side.runner.runs, before);
     expect(result.editPaths).toEqual(expect.arrayContaining(pathsOf(promoted)));
     expect(result.catchUpPaths).not.toContain(guard.path);

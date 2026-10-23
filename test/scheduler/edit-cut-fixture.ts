@@ -1,4 +1,6 @@
 import { expect } from "vitest";
+import { publishedWaits } from "../../src/core/scheduler/quiet.js";
+import type { WorktreeId } from "../../src/core/types/index.js";
 import {
   type CatchUpFile,
   type CatchUpOptions,
@@ -79,12 +81,48 @@ export function split(runs: readonly CatchUpRun[], before: number) {
   return { after, edits, catchUp, editPaths: paths(edits), catchUpPaths: paths(catchUp) };
 }
 
-/** `side` edits `paths` as one watch revision and runs what it queued. */
+/** `side` edits `paths` as one watch revision and runs what it queued, its catch-up's wait skipped. */
 export async function editAndRun(side: CatchUpSide, ...paths: string[]) {
   const before = side.runner.runs.length;
   await side.edit("watch", ...paths);
-  await side.scheduler.idle();
+  await idleAfterQuiet(side);
   return split(side.runner.runs, before);
+}
+
+/** How often `idleAfterQuiet` looks whether only a wait before catch-up is left. */
+const QUIET_POLL_MS = 100;
+
+/**
+ * Moves `side`'s clock past its wait before catch-up (spec 011 C4 step 5 as
+ * amended 2026-10-23, row 011-153) when the wait is all that is left: no
+ * run active, and no edit's work or promoted file queued (`inUse`). Whether
+ * it moved. For a test of what runs and in which order, not of the 120 s.
+ */
+function skipCatchUpQuiet(side: CatchUpSide): boolean {
+  if (side.runner.active > 0 || side.scheduler.inUse()) return false;
+  const now = side.now();
+  const ends = publishedWaits(side.store, side.worktreeId as WorktreeId, 0, now).catchUp;
+  if (ends.size === 0) return false;
+  side.advance(Math.max(...ends.values()) - now);
+  return true;
+}
+
+/** Waits until `side`'s wait before catch-up is all that is left, then moves its clock past it. */
+export async function pastCatchUpQuiet(side: CatchUpSide): Promise<void> {
+  const skipped = () => skipCatchUpQuiet(side);
+  await expect.poll(skipped, { interval: QUIET_POLL_MS, timeout: 30_000 }).toBe(true);
+}
+
+/** `scheduler.idle()`, moving `side`'s clock past each wait before catch-up on the way. */
+export async function idleAfterQuiet(side: CatchUpSide): Promise<void> {
+  let idle = false;
+  const done = side.scheduler.idle().then(() => {
+    idle = true;
+  });
+  while (!idle) {
+    await Promise.race([done, new Promise((resolve) => setTimeout(resolve, QUIET_POLL_MS))]);
+    if (!idle) skipCatchUpQuiet(side);
+  }
 }
 
 /**
