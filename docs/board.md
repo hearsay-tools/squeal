@@ -1143,7 +1143,7 @@ Spec: `specifications/014-ps/spec.md`, shipped 2026-10-22 in 0.1.258, its qualit
 
 ## Feature 015: coverage and complexity
 
-Spec: not written yet (`specifications/015-coverage-complexity/status.md`, stage research). The human's idea, 2026-10-23: Squeal calculates coverage and cyclomatic complexity per function, shares them between worktrees, and gives the CRAP score; opt-in, fed to the agent on the fly and available on demand. Research first; the spec follows from the findings, and the human reviews it before any code.
+Spec: `specifications/015-coverage-complexity/spec.md`, draft, under the human's review; no row is dispatched before the human approves it. Sections referenced as D1 to D10. The human's idea, 2026-10-23: Squeal calculates coverage and cyclomatic complexity per function, shares them between worktrees, and gives the CRAP score; opt-in, fed to the agent on the fly and available on demand. Research first; the spec follows from the findings, and the human reviews it before any code.
 
 ### Research (briefs in `specifications/015-coverage-complexity/research/`)
 
@@ -1152,6 +1152,38 @@ Spec: not written yet (`specifications/015-coverage-complexity/status.md`, stage
 | 015-01 coverage from Squeal's own runs | done (b4d23bfbb, researcher 7ad9898e: v8 per test file at +8% CPU through a provider of Squeal's own; istanbul ruled out; 9 KiB per test file keyed like the result; one PASS -> FAIL under v8 (a test that reads its own V8 coverage); line-level selection 71% fewer runs on a 30-file sample) | `research/coverage-collection-brief.md`: per-test-file coverage from the warm Vitest instance (v8, istanbul, the recorder's inspector), mapping to TypeScript functions, node:test and pytest, cost against off, fidelity, keying and adoption like a result, the selection gain as a secondary estimate. | `research/coverage-collection.md` committed, every question tagged. |
 | 015-02 complexity and CRAP | done (942e8172a, researcher 996e5eba: web-tree-sitter plus the TSX grammar equals ESLint on 481 of 481 files and radon on 2,064 of 2,064 functions, 2 to 4 ms per file, +1.45 MB per plugin; CRAP by Savoia, threshold 30, own-statement coverage; join by position; 38% anonymous functions weaken identity) | `research/complexity-and-crap-brief.md`: what each counter counts, engines (web-tree-sitter, TypeScript, acorn, oxc, lizard) by correctness, time and bundle bytes, CRAP's formula and coverage kind, the function join, an experiment on `src/`, identity across edits, Python. | `research/complexity-and-crap.md` committed, every question tagged. |
 | 015-03 coverage and complexity as feedback | done (02c694b82, researcher 43f271c2: pull first; push at most two transitions on touched functions; no source measures pushed coverage or complexity feedback to an agent mid-task; standing functions above a threshold need a baseline outside Known failures) | `research/agent-feedback-brief.md`: what peers show developers and on which scope, evidence on such feedback to LLM agents, Goodhart harm, which signals are transitions and how often they would fire here, policy keys and defaults. | `research/agent-feedback.md` committed, every question tagged. |
+
+### Wave 0: the code-check seam (one worker; after the human approves the spec)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 015-04 the code-check seam | planned | D1 policy keys and their validation; D2 and D5 the code check identity and state types, beside `CheckId`, never in it; D4 the store tables for counts by blob and states per worktree, with migration (011 C7); the path that does nothing while the policy is off. The interface wave 1 builds on. | Type and store tests; with the policy off, every delivery, status and exit code is byte-identical to the release before (goal 1). |
+
+### Wave 1: complexity (parallel on disjoint seams after 015-04; one candidate with 015-08)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 015-05 the counter | planned | D3: the `tree-sitter-tsx` grammar in every plugin's `dist/` (`src/harness/build.ts`), ESLint's classic rules for TS and JS, radon's for Python, each file's functions with identity, range, body hash, CC and decision points by kind; `COUNTER_VERSION`. | Goal 2's tests (the constructs fixture, `src/` against pinned ESLint counts, the Python corpus); goal 8's timing; the bundle-drift tests. |
+| 015-06 the daemon's pass and the states | planned | D4 the pass on each revision, the blob lookup, slices over 200 files, the first count; D2 moves and renames by body hash, removed functions; D5 states and transitions; the recount on a policy change. | Identity and state tests; two worktrees at one blob count it once (goal 8); a pull of 300 files leaves hooks within their bound. |
+| 015-07 delivery, status and `squeal code` | planned | D6 without the first-edit rule: the registration line, the FAIL and PASS lines, the 5-line limit, the summary line, the status line and `code` JSON, the `squeal code` command; D7 blocking. | Delivery tests for goals 3, 4 and 7; the `squeal code --json` shape; one integration test each through the Claude Code and the Codex hook. |
+| 015-08 the first edit to a standing failure | planned | D6, its last rule (the human, 2026-10-23: "ideally"); after 015-06 and 015-07, in their candidate. Dropped if it proves complex. | Goal 5: told once in full on the first edit that leaves the function over, quiet on the next. |
+| 015-09 review of waves 0 and 1 | planned | `/reviewer` on the candidate. | `reviews/` file committed. |
+| 015-10 dogfood of complexity | planned | Testing, Proof: this repository and cezar for a working day of agent sessions; open questions 1 and 2. | `lessons.md`: transitions per session, deliveries that read as noise, identity losses, counting cost. |
+
+### Wave 2: coverage and CRAP (after 015-10, and after 013-07 lands)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 015-11 Squeal's coverage provider and the records | planned | D8: the custom provider, mapping off the scheduler's path, the record keyed with the result, the inspector fidelity rule, `isolate: false` off; open question 3 measured first. | Goal 9's cost on the 30-file sample with the load; goal 10 (the research's `self-coverage.test.ts` passes with coverage on); adoption of a record by a second worktree. |
+| 015-12 CRAP and "no test runs it" | planned | D9: the join by position, the two states, pending and unknown, delivery wording as evidence. | Goal 11: no state before every loader is current; CRAP equals the formula on a fixture. |
+| 015-13 review of wave 2 | planned | `/reviewer` on the candidate. | `reviews/` file committed. |
+| 015-14 dogfood of coverage and CRAP | planned | D10: CPU per edit with and without coverage, with the load; open question 4. | `lessons.md`; the spec moves to shipped when its goals hold there. |
+
+### After 015
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 015-15 research: line-level selection on the full suite | planned (the human, 2026-10-23: after 015's coverage records are in the store) | `research/coverage-collection.md` Q7 (71% fewer runs on a 30-file sample); soundness cases (reflection, data reads, hoisting); against 011's non-goal. | Findings committed; the human decides whether it becomes a spec. |
 
 ## Later
 

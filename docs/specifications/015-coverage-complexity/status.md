@@ -1,6 +1,6 @@
 # 015 coverage and complexity: status
 
-Stage: research done; spec being written
+Stage: draft (`spec.md`), under the human's review
 Started: 2026-10-23
 
 ## Decisions so far
@@ -19,6 +19,8 @@ Started: 2026-10-23
 - 2026-10-23, the human, on the research: write spec 015, complexity first. Wave 1 makes complexity a check type of its own, with no coverage; wave 2 adds Squeal's own v8 coverage, CRAP and "no test runs this function". Both opt-in.
 - 2026-10-23, the human: a test file whose closure loads `node:inspector` gets no coverage (it can read its own V8 coverage, and one such test failed under v8, 015-01 Q5); status names those files, and a source only they cover reads "coverage unknown".
 - 2026-10-23, the human: line-level selection (015-01 Q7) is measured on the full suite after 015's coverage records are in the store, not now; 011's non-goal stands until then.
+- 2026-10-23, the human, on the transition model: a function is judged against its own last known count, as a test is. Going over the threshold is reported the same way as a test failure; going back under is reported as a recovery. Asked by the coordinator to drop the earlier question of which version to compare against (merge base, session start or last commit): the human's model does not need it.
+- 2026-10-23, the human, on the functions over the threshold when a session starts (192 here at CC 12): show their number and where to get the details, never the list ("don't flood the agent"). Ideally, the first edit that leaves such a function still over surfaces it; the coordinator judged it feasible (the counter sees which function's own text changed, and the delivery view already remembers per session what it was told), and the spec makes it its own row so it can be dropped if it proves complex.
 
 ## Open questions
 
