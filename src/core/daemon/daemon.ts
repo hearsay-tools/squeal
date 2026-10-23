@@ -505,6 +505,8 @@ class Daemon {
               name: "vitest",
               adapterVersion: vitest.VITEST_ADAPTER_VERSION,
               create: vitestInstance("vitest"),
+              // Spec 011 C14 (row 011-145): the fast instance runs focused tiers; no slow file gets one.
+              focuses: true,
               onFailure: (text) =>
                 this.#note(
                   `${text}; every check of this worktree is unknown until the config loads`,

@@ -25,6 +25,8 @@ export interface RecoveringRunnerOptions {
   readonly besideBacklog?: boolean;
   /** `RunnerAdapter.backlogSlot` of every file, before the adapter exists too (task 011-21 slice 2). */
   readonly backlogSlot?: number;
+  /** `RunnerAdapter.focuses`, before the adapter exists too (spec 011 C14, row 011-145). */
+  readonly focuses?: true;
   /** Wraps every call that reaches the adapter, creation included (the working directory, D10). */
   readonly around?: (<T>(call: () => Promise<T>) => Promise<T>) | undefined;
 }
@@ -138,6 +140,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     tierPart: (testFile) => inner?.tierPart?.(testFile) ?? "",
     besideBacklog: () => options.besideBacklog === true,
     backlogSlot: () => options.backlogSlot ?? null,
+    ...(options.focuses === true ? { focuses: true as const } : {}),
     environment: () => around(async () => (await adapter()).environment()),
     run: (testFiles, runOptions) =>
       around(async () => (await adapter()).run(testFiles, runOptions)),

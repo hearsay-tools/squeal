@@ -184,6 +184,8 @@ function pytestRunner(project: PytestProject, options: PytestRunnersOptions): Re
     besideBacklog: true,
     // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
     backlogSlot: batchSize ?? DEFAULT_BATCH_SIZE,
+    // Spec 007 D6 (row 011-145): its deselection hook runs a focused tier's texts.
+    focuses: true,
     onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
     onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
   });
