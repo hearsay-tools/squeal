@@ -38,7 +38,7 @@ import {
 /** The key the tree computes over `input.installed` (011-85 R4), else the fixed one. */
 async function keyedFor(input: AcceptInput, scratch: string): Promise<Keyed | null> {
   if (input.installed === undefined) return null;
-  return keyedOver(input.testFile, input.installed, join(scratch, "worktree"));
+  return keyedOver(input.testFile, input.installed, join(scratch, "worktree"), input.packages);
 }
 
 /**

@@ -30,9 +30,16 @@ const ENVIRONMENT: RunnerEnvironment = {
   formerFiles: ["e2e/vitest.config.ts", "vitest.config.ts"],
 };
 const former: DependencyKeys = { environment: "deps-then", of: () => "" };
-const keys: DependencyKeys = { environment: "deps-now", of: () => "whole:deps-now", former };
+/** Row 011-167: and the pnpm definition before 011-162, stored at format 20 only. */
+const formerPnpm: DependencyKeys = { environment: "deps-whole", of: () => "" };
+const keys: DependencyKeys = {
+  environment: "deps-now",
+  of: () => "whole:deps-now",
+  former,
+  formerPnpm,
+};
 
-describe("the definition before 011-85 after a format raise (011-90)", () => {
+describe("the definitions before 011-85 and 011-162 after a format raise (011-90, 011-167)", () => {
   it("reads nothing at format 21, whose raise empties the formats read as one", () => {
     expect(KEY_FORMAT_VERSION).toBe(21);
     expect(

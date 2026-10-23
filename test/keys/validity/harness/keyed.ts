@@ -6,6 +6,7 @@ import { WorktreeKeys } from "../../../../src/core/scheduler/keying.js";
 import type {
   CheckKey,
   RunnerEnvironment,
+  RunnerPackages,
   TestFileRef,
   WorktreeId,
 } from "../../../../src/core/types/index.js";
@@ -15,7 +16,8 @@ import { git, scratchStore, writeTree } from "./shared.js";
  * A test file keyed over an install as a daemon keys it (task 011-85 R4):
  * the tree's `WorktreeKeys` reads the installed lockfile and the runner's
  * environment, whose packages are scoped, and the file's closure imports
- * `child_process`, so its segment is the whole fingerprint.
+ * `child_process`, so its segment is the whole fingerprint, or the packages
+ * a case gives it (task 011-162 R3).
  */
 
 const ENVIRONMENT: RunnerEnvironment = {
@@ -39,6 +41,7 @@ export async function keyedOver(
   testFile: TestFileRef,
   installed: Readonly<Record<string, string>>,
   root: string,
+  packages: RunnerPackages = { imports: [], builtins: ["child_process"] },
 ): Promise<Keyed> {
   writeTree(root, { ".gitignore": "node_modules/\n", [testFile.path]: "// a test\n" });
   git(root, ["init", "-q", "-b", "main"]);
@@ -60,7 +63,6 @@ export async function keyedOver(
     });
     await keys.bootstrap(() => readHead(root));
     await keys.setEnvironments([ENVIRONMENT]);
-    const packages = { imports: [], builtins: ["child_process"] };
     keys.setClosure({ testFile, paths: [testFile.path], packages });
     const key = keys.index.key(testFile);
     if (key === null) throw new Error(`${testFile.path} has no key`);
