@@ -28,6 +28,7 @@ import type {
 } from "../core/types/index.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
+import { notKeyed } from "./retry-unlisted.js";
 import { waitConsumer } from "./status-wait.js";
 
 const USAGE =
@@ -42,10 +43,11 @@ type Parsed =
   | { readonly kind: "ask"; readonly reason: RetryReason | null; readonly paths: readonly string[] }
   | { readonly kind: "cancel"; readonly paths: readonly string[] };
 
-/** One file's line, and whether its request was taken. */
+/** One file's line, whether its request was taken, and, if not, whether no listed revision holds it yet (011-134). */
 interface Answer {
   readonly ok: boolean;
   readonly text: string;
+  readonly unlisted?: boolean;
 }
 
 const refuse = (text: string): Answer => ({ ok: false, text });
@@ -60,8 +62,9 @@ export interface RetryInternal {
  * --cancel <file>...` (spec 001 D6 as amended, 001-368). Stores each request
  * in the shared store and tells the worktree's daemon, which claims and runs
  * it; with no daemon it waits there for the next daemon at the file's key.
- * Exit code 0 when every file was queued or withdrawn, 1 when any was not,
- * 2 on a usage error.
+ * Exit code 0 when every file was queued or withdrawn, 1 when any was
+ * refused, else 3 when any is in a revision the daemon has not listed yet
+ * (row 011-134, gh-76), 2 on a usage error.
  */
 export async function retryCommand(
   args: readonly string[],
@@ -88,6 +91,7 @@ export async function retryCommand(
   const cwd = io.cwd ?? process.cwd();
   const load = (internal.hostLoad ?? hostLoad)();
   let refused = 0;
+  let unlisted = 0;
   const lines: string[] = [];
   try {
     const keys = store.testFileKeys.list(worktreeId);
@@ -97,19 +101,20 @@ export async function retryCommand(
       const shown = rel ?? path;
       const answer: Answer =
         row === undefined || row.key === null
-          ? refuse(notKeyed(store, worktreeId, rel, shown))
+          ? { ok: false, ...notKeyed(store, { root, worktreeId, rel, shown, given: path }, keys) }
           : parsed.kind === "cancel"
             ? cancelLine(store, row, worktreeId, shown)
             : askLine(store, row, { root, worktreeId, shown }, parsed.reason, session(io), load);
-      if (!answer.ok) refused++;
+      if (answer.unlisted === true) unlisted++;
+      else if (!answer.ok) refused++;
       lines.push(answer.text);
     }
   } finally {
     store.close();
   }
   io.stdout(`${lines.join("\n")}\n`);
-  if (refused < parsed.paths.length) io.stdout(await tellDaemon(root));
-  return refused === 0 ? 0 : 1;
+  if (refused + unlisted < parsed.paths.length) io.stdout(await tellDaemon(root));
+  return refused > 0 ? 1 : unlisted > 0 ? 3 : 0;
 }
 
 function parse(args: readonly string[]): Parsed | string {
@@ -263,20 +268,6 @@ function noResultText(
   // Its first line: a stack the reason carries stays in status (011-02).
   const line = why?.split("\n")[0]?.trim() || "no reason was kept";
   return `unknown: ${cap(line, SUMMARY_MAX_CHARS)}`;
-}
-
-/**
- * Why `shown` has no keyed test file. A failed global setup (001-382) has no
- * key: the next run of its project clears it, which an edit or `run --all`
- * starts.
- */
-function notKeyed(store: Store, worktreeId: WorktreeId, rel: string | null, shown: string): string {
-  const setup = store.knownStates
-    .list(worktreeId)
-    .some((s) => s.check.kind === "setup" && s.outcome === "fail" && s.check.testPath === rel);
-  return setup
-    ? `Not retried: ${shown} is a global setup, which has no inputs to retry at; its FAIL clears when a run of its project starts, as the next edit or squeal run --all does.`
-    : `Not retried: ${shown} is not a test file Squeal has keyed in this worktree.`;
 }
 
 function spentLine(shown: string, record: RetryRecord): string {
