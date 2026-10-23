@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { findWorktreeRoot, toRelative, worktreeIdFor } from "../fs/index.js";
-import { readRunLoads } from "../retry/index.js";
+import { loadPerCpuText, readRunLoads } from "../retry/index.js";
 import { formatCheck } from "../state/index.js";
 import { cap, plural } from "../text.js";
 import {
@@ -20,7 +20,6 @@ import { formatUnavailable, shortCommit } from "./format-status.js";
 import { type StatusStoreOptions, withStatusStore } from "./open.js";
 import {
   type EntryContext,
-  loadText,
   mergeFailures,
   perCheckTotals,
   selectReplaced,
@@ -204,7 +203,7 @@ function failureLines(report: FailuresReport, f: FailureEntry): string[] {
   if (by !== undefined) {
     const passed = worktreeText(report, by.worktreeId, by.worktreeRoot);
     lines.push(
-      `        replaced by PASS ${new Date(by.recordedAt).toISOString()} (${passed}, run ${by.runId}), ${loadText(f.loadPerCpu)}`,
+      `        replaced by PASS ${new Date(by.recordedAt).toISOString()} (${passed}, run ${by.runId}), ${loadPerCpuText(f.loadPerCpu)}`,
     );
   }
   // 011 C5 as amended 2026-10-21 (gh-67): its location, and the test-file frame beside a helper's.
