@@ -22,13 +22,15 @@ daemon.
 - The shell logged itself twice. In `FAKE_HARNESS`'s `hang` branch, the background subshell wrote
   `$$`, which in a subshell is the parent shell's pid (POSIX), so the TERM-ignoring background
   process was never checked. Shown here: `sh -c 'echo $$; (echo $$)'` prints one pid twice.
-- The fake daemon cannot be the one. The teardown waits for it until it is reaped:
+- The fake daemon is not likely. The teardown waits for it until it is reaped:
   `stopDaemon` -> `stopDaemons` -> `waitForExit` polls `process.kill(pid, 0)`, which succeeds for a
   zombie too, so a daemon that `ps` still lists is waited for until it is gone, a stricter test
   than the test's own. The runner log shows it in every traced run:
   `daemon stopped (SIGTERM): stopped; [{"pid":…,"exitedMs":0,"signal":null}]`. A daemon that `ps`
-  no longer lists is a zombie or gone, which the test counts as dead.
-- So the pid was the harness shell, misread.
+  no longer lists is a zombie or gone. Its parent is init or a subreaper, never the runner, so a
+  zombie daemon is reaped at once, not at the moment the test checks.
+- So the pid was most likely the harness shell, misread: the one process whose reaping waits for
+  the runner's exit, which is the moment the test checks (below).
 
 ## The cause
 
