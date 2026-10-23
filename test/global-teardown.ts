@@ -41,6 +41,14 @@ import {
  * shared by another (a container's), so each parent records its run's
  * namespace in `OWNER`, and the sweep removes only parents of its own
  * namespace (review 0.1.267 B1).
+ *
+ * Row 011-140: setup clears \`PLUGIN_ROOT\` and \`PLUGIN_DATA\` before the
+ * workers start, and teardown puts them back. A Codex hook names its
+ * installed plugin and data directory in them, and a run under the daemon
+ * that hook spawned inherits both. \`test/harness/opencode/latency.test.ts\`
+ * hands its environment to the bundled Codex hooks, whose SessionStart then
+ * kept a copy named for this tree's version from the installed, older plugin
+ * (\`versions/0.1.274\` with 0.1.273 code, 2026-10-23).
  */
 
 /** Where the run's temp parent goes and the environment that names it; tests pass their own. */
@@ -50,6 +58,7 @@ export interface TempOptions {
 }
 
 const TEMP_VARIABLES = ["TMPDIR", "TMP", "TEMP"] as const;
+const PLUGIN_VARIABLES = ["PLUGIN_ROOT", "PLUGIN_DATA"] as const;
 
 /** The name `mkdtemp` gives a parent: six characters after the prefix (review 0.1.267 S1). */
 const PARENT = /^squeal-vitest-([1-9]\d*)-[A-Za-z0-9]{6}$/;
@@ -64,6 +73,7 @@ export default async function setup(
   await sweepDeadRuns();
   sweepDeadParents(temp.root);
   const restoreTemp = useTempParent(temp);
+  const restorePlugin = clearPluginVariables(temp.env);
   // The Vitest process in the name: a run is live while it is.
   const runDir = join(TEST_CACHE, `run-${process.pid}-${randomUUID()}`);
   mkdirSync(runDir, { recursive: true });
@@ -74,11 +84,21 @@ export default async function setup(
     const message = strays.length === 0 ? null : leakMessage(runDir, strays);
     rmSync(runDir, { recursive: true, force: true });
     restoreTemp();
+    restorePlugin();
     if (message !== null) throw new Error(message);
   };
 }
 
 /** Points the temp variables at a new parent under `root`; returns what removes it and restores them. */
+/** Clears a Codex hook's plugin variables from \`env\`; the function returned puts them back. */
+function clearPluginVariables(env: NodeJS.ProcessEnv): () => void {
+  const found = PLUGIN_VARIABLES.map((name) => [name, env[name]] as const);
+  for (const name of PLUGIN_VARIABLES) delete env[name];
+  return () => {
+    for (const [name, value] of found) if (value !== undefined) env[name] = value;
+  };
+}
+
 function useTempParent({ env, root }: TempOptions): () => void {
   if (env.TMPDIR?.startsWith(`${userTmpDir()}/tmp/`) === true) return () => undefined;
   let parent: string;

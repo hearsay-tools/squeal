@@ -68,6 +68,17 @@ describe("the run's temp parent", () => {
     expect(env).toEqual({ TMPDIR: "/elsewhere", TMP: "/elsewhere" });
   });
 
+  it("row 011-140: clears PLUGIN_ROOT and PLUGIN_DATA for the workers, and teardown restores them", async () => {
+    const root = scratch();
+    const plugin = { PLUGIN_ROOT: "/codex/cache/0.1.273", PLUGIN_DATA: "/codex/data" };
+    const env: NodeJS.ProcessEnv = { TMPDIR: "/elsewhere", ...plugin };
+    const teardown = await setup(project, { env, root });
+    expect(env.PLUGIN_ROOT).toBeUndefined();
+    expect(env.PLUGIN_DATA).toBeUndefined();
+    await teardown();
+    expect(env).toEqual({ TMPDIR: "/elsewhere", ...plugin });
+  });
+
   it("makes no parent under a daemon's key directory", async () => {
     const root = scratch();
     const key = join(userTmpDir(), "tmp", "0123456789abcdef");
