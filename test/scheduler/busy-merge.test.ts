@@ -3,9 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readMergeHold } from "../../src/core/scheduler/hold-rows.js";
 import type { SchedulerOptions } from "../../src/core/scheduler/options.js";
-import { BusyWaits } from "../../src/core/store/index.js";
-import type { RunReport, Store, TestFileRef } from "../../src/core/types/index.js";
+import type { RunReport, TestFileRef } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { busyWaits, busyWrite } from "./busy-fixture.js";
 import { type CatchUpOptions, type CatchUpSide, catchUpSide } from "./catch-up-fixture.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 import {
@@ -32,28 +32,6 @@ import {
  * hold's end starts it.
  */
 
-const busyWaits = () => new BusyWaits({ now: Date.now, note: () => {} });
-
-/**
- * Makes the first record's write transaction give up as on a busy store,
- * after `during` ran: the record waits for its retry. Returns the restore.
- */
-function busyFirstWrite(store: Store, during: () => void): () => void {
-  const real = store.transaction.bind(store);
-  let inject = true;
-  store.transaction = ((fn: () => unknown) => {
-    if (inject && new Error().stack?.includes("TierScheduler.#write")) {
-      inject = false;
-      during();
-      throw Object.assign(new Error("database is locked"), { errcode: 5 });
-    }
-    return real(fn);
-  }) as typeof store.transaction;
-  return () => {
-    store.transaction = real;
-  };
-}
-
 describe("a busy record and a merge hold that starts before it lands (review 0.1.273 B1)", () => {
   it(
     "stores nothing at the held key, keeps the file queued, and runs it once `git add` ends the hold",
@@ -73,7 +51,7 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
         key === null || key === undefined ? [] : store.results.byKey(key, 0);
       let beforeStore: unknown = null;
       let held: Promise<void> | null = null;
-      const restore = busyFirstWrite(store, () => {
+      const restore = busyWrite(store, () => {
         beforeStore = storedAt(math()?.key);
         unmergeIndex(main, "src/math.ts");
         // The interval's pass reads the index, under the lock the record gave back.
@@ -122,7 +100,7 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
     await side.scheduler.idle();
     const failsOnce = startupFailureOnce(side, HELPER);
     let held: Promise<void> | null = null;
-    const restore = busyFirstWrite(side.store, () => {
+    const restore = busyWrite(side.store, () => {
       unmergeIndex(repo.main, HELPER);
       held = side.scheduler.handleBatch({ trigger: "interval", paths: [] });
     });
