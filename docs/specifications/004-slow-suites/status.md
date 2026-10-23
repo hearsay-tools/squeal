@@ -1,6 +1,6 @@
 # 004 Slow suites by policy: status
 
-Stage: shipped (2026-10-09, 0.1.85, released in hub 0.1.86, after the confirmation dogfood 004-53 the human asked for: slow files declared by policy run outside the agent's fast loop, drain before a daemon exits, catch up up to `slow.maxParallel` wide when idle, key their declared artifacts, and the loop of `lessons.md` defect 10 stays closed in real use. Every review of the spec's waves passed. Open, not blocking: 004-52, 004-54 and 004-55 (should-fix), open question 3 (macOS, unrun), D4 held by the human)
+Stage: shipped (2026-10-09, 0.1.85, released in hub 0.1.86, after the confirmation dogfood 004-53 the human asked for: slow files declared by policy run outside the agent's fast loop, drain before a daemon exits, catch up up to `slow.maxParallel` wide when idle, key their declared artifacts, and the loop of `lessons.md` defect 10 stays closed in real use. Every review of the spec's waves passed. Open, not blocking: open question 3 (macOS, unrun), D4 held by the human). Rows 004-52, 004-54 and 004-55 completed in 0.1.88.
 Started: 2026-10-08
 
 ## Decisions so far

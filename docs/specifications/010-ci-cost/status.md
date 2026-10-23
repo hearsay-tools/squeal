@@ -1,6 +1,6 @@
 # 010 CI cost: status
 
-Stage: in-progress (wave 1 landed 2026-10-15 at 1f7f8a02; 010-13 probe and 010-20 measurement to come); approved 2026-10-15 as a first step; waves on `docs/board.md`, briefs under `tasks/`.
+Stage: in-progress (wave 1 landed 2026-10-15 at 1f7f8a02; 010-13 probe completed; step two D8 to D11 drafted and awaiting 010-20 measurement; D12 issue intake landed; 010-32 remains open); approved 2026-10-15 as a first step; waves on `docs/board.md`, briefs under `tasks/`.
 Started: 2026-10-15
 
 ## Decisions so far

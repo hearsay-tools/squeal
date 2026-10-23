@@ -1,6 +1,6 @@
 # 009 Pi adapter
 
-Stage: approved 2026-10-14 by the human. Amendments: `status.md`. Research: `research/pi-extension-events.md` (009-01), `research/pi-sessions-and-packaging.md` (009-02), both on Pi 1.0.4, Linux, with a scripted fake provider. Spec 001 D6 (state and delivery views), D9 (the Claude Code adapter), D10 (daemon) and D11 (policy) hold, and spec 002 is the closest precedent, unless a section here says otherwise.
+Stage: shipped 2026-10-14 (009-20 dogfooding, no blocker); approved 2026-10-14 by the human. Amendments: `status.md`. Research: `research/pi-extension-events.md` (009-01), `research/pi-sessions-and-packaging.md` (009-02), both on Pi 1.0.4, Linux, with a scripted fake provider. Spec 001 D6 (state and delivery views), D9 (the Claude Code adapter), D10 (daemon) and D11 (policy) hold, and spec 002 is the closest precedent, unless a section here says otherwise.
 
 ## Problem
 

@@ -1,6 +1,6 @@
 # 005 Agent adoption
 
-Stage: approved 2026-10-09 by the human; dispatch waits for the human's go. Amendments: `status.md`. Research: `research/adoption-baseline.md` (Opus, the dogfooding record and 330 Cezar sessions, no new sessions), `research/instruction-surfaces.md` (Opus, 40 controlled sessions), `research/hook-levers.md` (Astra, 40 controlled sessions), `research/cli-distribution.md` (Opus, probes in a scratch home, no sessions), all at Claude Code 2.1.295 and Codex 0.160.1. Specs 001 to 004 hold unless a section here says otherwise.
+Stage: in-progress; approved 2026-10-09 by the human, resumed on the human's go 2026-10-12. Pre-release proof is recorded in `lessons.md`; 005-18's post-release metric remains open. Amendments: `status.md`. Research: `research/adoption-baseline.md` (Opus, the dogfooding record and 330 Cezar sessions, no new sessions), `research/instruction-surfaces.md` (Opus, 40 controlled sessions), `research/hook-levers.md` (Astra, 40 controlled sessions), `research/cli-distribution.md` (Opus, probes in a scratch home, no sessions), all at Claude Code 2.1.295 and Codex 0.160.1. Specs 001 to 004 hold unless a section here says otherwise.
 
 ## Problem
 
