@@ -56,6 +56,11 @@ export class SetupFailures {
   take(): SetupOutcome[] {
     return this.#owed.splice(0);
   }
+
+  /** Owes again, ahead of any newer, the outcomes a commit took and could not write (row 011-126). */
+  putBack(outcomes: readonly SetupOutcome[]): void {
+    this.#owed.unshift(...outcomes);
+  }
 }
 
 /** Why the files of a project whose run failed to start are `unknown`. */
