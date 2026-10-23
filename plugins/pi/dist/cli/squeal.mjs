@@ -13142,6 +13142,10 @@ var init_setup = __esm({
       take() {
         return this.#owed.splice(0);
       }
+      /** Owes again, ahead of any newer, the outcomes a commit took and could not write (row 011-126). */
+      putBack(outcomes) {
+        this.#owed.unshift(...outcomes);
+      }
     };
   }
 });
@@ -13170,6 +13174,7 @@ var init_ledger = __esm({
     init_keys();
     init_rank();
     init_rank_store();
+    init_store3();
     init_types();
     init_accept();
     init_checkpoints();
@@ -13577,35 +13582,35 @@ var init_ledger = __esm({
        * pending in the same transaction that applies it.
        */
       commit(options = {}) {
+        const drained = this.#drain();
+        try {
+          this.#write(drained, options);
+        } catch (error) {
+          if (isBusy(error)) this.#putBack(drained);
+          throw error;
+        }
+      }
+      /** `commit`'s rows and its one transaction, from what it drained. */
+      #write(drained, options) {
         const { store, sink, worktreeId } = this.context;
         const revision = this.revision.number;
         const rows = [];
-        const removed = this.#removed.splice(0);
-        const rekeyed = [...this.#rekeyed].flatMap(([id2, moved2]) => {
+        const { removed, applied, unknown, retired, setups } = drained;
+        const rekeyed = drained.rekeyed.flatMap(([id2, moved2]) => {
           const file = this.files.get(id2);
           return file ? [{ id: id2, open: file.keyedAt, moved: moved2 }] : [];
         });
-        this.#rekeyed.clear();
-        for (const id2 of this.#dirty) {
+        for (const id2 of drained.dirty) {
           const file = this.files.get(id2);
           if (!file) continue;
           const pending = file.key === null ? null : file.phase;
           rows.push({ worktreeId, testFile: file.ref, key: file.key, revision, pending });
         }
-        this.#dirty.clear();
-        const applied = this.#applied;
-        const unknown = this.#unknown;
-        const unknownFiles = this.#unknownFiles.map((e) => ({
+        const unknownFiles = drained.unknownFiles.map((e) => ({
           ...e,
           revision,
           at: this.context.now()
         }));
-        const retired = this.#retired;
-        const setups = this.setups.take();
-        this.#applied = [];
-        this.#unknown = [];
-        this.#unknownFiles = [];
-        this.#retired = [];
         const quiet = this.#adopted && options.refined === void 0 && [rows, removed, rekeyed, applied, unknown, unknownFiles, retired, setups].every(
           (list2) => list2.length === 0
         );
@@ -13647,6 +13652,43 @@ var init_ledger = __esm({
           }
         });
         this.#adopted = true;
+      }
+      /** Takes what this round of work owes the store and the sink, for `commit`. */
+      #drain() {
+        const drained = {
+          dirty: [...this.#dirty],
+          removed: this.#removed.splice(0),
+          rekeyed: [...this.#rekeyed],
+          applied: this.#applied,
+          unknown: this.#unknown,
+          unknownFiles: this.#unknownFiles,
+          retired: this.#retired,
+          setups: this.setups.take()
+        };
+        this.#dirty.clear();
+        this.#rekeyed.clear();
+        this.#applied = [];
+        this.#unknown = [];
+        this.#unknownFiles = [];
+        this.#retired = [];
+        return drained;
+      }
+      /**
+       * Owes again what a commit that gave up drained (row 011-126), ahead of
+       * what came after it, so the next commit writes each once, in order, and a
+       * newer entry for the same file or check wins.
+       */
+      #putBack(drained) {
+        for (const id2 of drained.dirty) this.#dirty.add(id2);
+        this.#removed.unshift(...drained.removed);
+        for (const [id2, moved2] of drained.rekeyed) {
+          if (!this.#rekeyed.has(id2)) this.#rekeyed.set(id2, moved2);
+        }
+        this.#applied = [...drained.applied, ...this.#applied];
+        this.#unknown = [...drained.unknown, ...this.#unknown];
+        this.#unknownFiles = [...drained.unknownFiles, ...this.#unknownFiles];
+        this.#retired = [...drained.retired, ...this.#retired];
+        this.setups.putBack(drained.setups);
       }
       /**
        * What a store transaction enclosing work on `refs` would lose if it rolled
@@ -16870,16 +16912,19 @@ var init_bootstrap = __esm({
 });
 
 // src/core/scheduler/busy-resume.ts
-var PUMP, BusyResume;
+var PUMP, RECORDS, BusyResume;
 var init_busy_resume = __esm({
   "src/core/scheduler/busy-resume.ts"() {
     "use strict";
     init_store3();
     PUMP = "scheduler";
+    RECORDS = "scheduler:records";
     BusyResume = class {
       #timer = null;
       #attempts = 0;
       #waiting = false;
+      /** The turns of the records that gave up, oldest first. */
+      #records = [];
       #waits;
       #resume;
       constructor(waits, resume) {
@@ -16898,37 +16943,68 @@ var init_busy_resume = __esm({
       gaveUp(what) {
         this.#waiting = true;
         this.#waits.waiting(PUMP, what);
-        if (this.#timer !== null) return;
-        this.#timer = setTimeout(
-          () => {
-            this.#timer = null;
-            this.#resume();
-          },
-          busyBackoffMs(this.#attempts++)
-        );
+        this.#arm();
       }
-      /** A write of the pump landed: the wait, if any, is over. */
+      /**
+       * A tier's record gave up (row 011-126); `what` names it. Settles at its
+       * turn: a later resume, or a write landing first, or the close, for its
+       * last try.
+       */
+      retry(what) {
+        this.#waits.waiting(RECORDS, what);
+        const turn = new Promise((resolve27) => this.#records.push(resolve27));
+        this.#arm();
+        return turn;
+      }
+      /** A write of the pump or a record landed: the store is free, so the next record goes, or the wait is over. */
       landed() {
+        if (this.#turn()) return;
+        this.#attempts = 0;
+        this.#waits.ran(RECORDS);
         if (!this.#waiting) return;
         this.#waiting = false;
-        this.#attempts = 0;
         this.#waits.ran(PUMP);
+        this.#resume();
       }
       /**
        * Another error stopped the pump (review 001-432, B1): the resume
        * scheduled is dropped, and what waited never ran, so the episode's note
-       * does not name it. A later `gaveUp` starts a wait again.
+       * does not name it. A later `gaveUp` starts a wait again. The records that
+       * wait keep their turns (row 011-126).
        */
       abandon() {
-        this.close();
+        if (this.#records.length === 0) {
+          this.#disarm();
+          this.#attempts = 0;
+        }
         if (!this.#waiting) return;
         this.#waiting = false;
-        this.#attempts = 0;
         this.#waits.abandoned(PUMP);
       }
+      /** Every record that waits makes its last try now. */
       close() {
+        this.#disarm();
+        for (let turn = this.#records.shift(); turn; turn = this.#records.shift()) turn();
+      }
+      #arm() {
+        if (this.#timer !== null) return;
+        this.#timer = setTimeout(
+          () => {
+            this.#timer = null;
+            if (!this.#turn()) this.#resume();
+          },
+          busyBackoffMs(this.#attempts++)
+        );
+      }
+      #disarm() {
         if (this.#timer !== null) clearTimeout(this.#timer);
         this.#timer = null;
+      }
+      /** The oldest record that waits tries again; false when none waits. */
+      #turn() {
+        const turn = this.#records.shift();
+        turn?.();
+        return turn !== void 0;
       }
     };
   }
@@ -19253,13 +19329,18 @@ var init_scheduler2 = __esm({
       /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
       #slotRecords = new SlotRecords({
         lock: this.#lock,
-        record: (ended2) => this.#record(ended2, false),
+        record: (ended2) => this.#recordSlot(ended2),
         commit: () => this.#started().ledger.commit()
       });
       /** A `run --all` with `observeIgnored` (task 001-307). */
       #warmUp = new WarmUp();
       /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
       #withholds = new Withholds();
+      /** The busy store's error a slot's record gave up on, since its record began (`#recordSlot`). */
+      #slotsBusy = null;
+      /** Row 011-126: each ended run's record as prepared, and as written, kept across tries on a busy store. */
+      #prepared = /* @__PURE__ */ new WeakMap();
+      #written = /* @__PURE__ */ new WeakMap();
       /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
       #woken = false;
       #wake = null;
@@ -19794,7 +19875,7 @@ var init_scheduler2 = __esm({
               const hold = await this.#holdCheck();
               if (hold === "held") break;
               if (hold === "released") continue;
-              const next = await this.#lock.run(() => {
+              const next = await this.#runSliced(() => {
                 if (this.#halted() || this.#awaitingInstall || this.#reinstalled) return null;
                 if (this.#onHold()) return "held";
                 const { context, ledger } = this.#started();
@@ -19880,10 +19961,17 @@ var init_scheduler2 = __esm({
               tier.lease?.release();
               flight.ran = true;
               this.#notify();
-              record = await this.#slotRecords.record(this.#ended(tier, ran, installStamp, slow, null));
+              const ended2 = this.#ended(tier, ran, installStamp, slow, null);
+              record = await this.#recordLanded(tier, () => {
+                this.#slotsBusy = null;
+                return this.#slotRecords.record(ended2);
+              });
             } else {
               const ended2 = await this.#ended(tier, ran, installStamp, slow, held2);
-              record = await this.#lock.run(() => this.#record(ended2, true));
+              record = await this.#recordLanded(
+                tier,
+                () => this.#lock.run(() => this.#record(ended2, true))
+              );
             }
             recorded2 = true;
             this.#busy?.landed();
@@ -19903,6 +19991,51 @@ var init_scheduler2 = __esm({
           }
         })();
       }
+      /**
+       * Row 011-126: `attempt`, the record of `tier`'s run, its writes waiting at
+       * most the busy slice. One that gives up keeps the run's results and tries
+       * again at its turn (`BusyResume`), so a busy store neither holds the event
+       * loop nor queues the files to run again. Once the scheduler closes, the
+       * last try waits as long as the store does.
+       */
+      async #recordLanded(tier, attempt) {
+        for (; ; ) {
+          const last = this.#closed;
+          try {
+            return await (last ? attempt() : this.#sliced(attempt));
+          } catch (error) {
+            if (last || this.#busy === null || !isBusy(error)) throw error;
+            await this.#busy.retry(`the results of ${plural(tier.files.length, "file")}`);
+          }
+        }
+      }
+      /**
+       * A slot's record (`SlotRecords`). Row 011-126: once one slot's write gave
+       * up on a busy store, the rest of its record give up without trying, so
+       * their slices do not add up; each tries again at its own turn.
+       */
+      async #recordSlot(ended2) {
+        if (this.#slotsBusy !== null) throw this.#slotsBusy;
+        try {
+          return await this.#record(ended2, false);
+        } catch (error) {
+          if (isBusy(error)) this.#slotsBusy = error;
+          throw error;
+        }
+      }
+      /**
+       * `fn` with each write it awaits waiting at most `busySliceMs` on a busy
+       * store, when a busy store's give-up resumes the pump (row 011-126); with
+       * the store's own wait otherwise.
+       */
+      #sliced(fn) {
+        const ms2 = this.options.busySliceMs;
+        return ms2 === void 0 || this.#busy === null ? fn() : withBusySlice(ms2, fn);
+      }
+      /** `task` under the lock, `#sliced`. */
+      #runSliced(task) {
+        return this.#sliced(() => this.#lock.run(task));
+      }
       /** What the record of a run that ended reads outside the lock. */
       async #ended(tier, ran, installStamp, slow, held2) {
         const { context } = this.#started();
@@ -19918,10 +20051,23 @@ var init_scheduler2 = __esm({
        * Records an ended run under the lock: what it loaded and read beyond its
        * keys, the completion barrier's withholds, then `recordTier`. `commit`
        * false leaves the ledger's writes to the caller's commit (`SlotRecords`).
+       * Row 011-126: a record tried again after a busy store gave up writes what
+       * it prepared the first time, and a slot's whose write landed returns it,
+       * owing only the commit.
        */
       async #record(ended2, commit) {
-        const { context, ledger } = this.#started();
-        const { tier, ran, ignored, inputs: inputs2, installMoved, runtimeGone, slow, held: holdCut } = ended2;
+        const written = this.#written.get(ended2);
+        if (written !== void 0) return written;
+        const prepared = this.#prepared.get(ended2) ?? await this.#prepare(ended2);
+        this.#prepared.set(ended2, prepared);
+        const recorded2 = this.#write(ended2, prepared, commit);
+        this.#written.set(ended2, recorded2);
+        return recorded2;
+      }
+      /** What a record reads and decides under the lock before its write, once however often it is tried. */
+      async #prepare(ended2) {
+        const { context } = this.#started();
+        const { tier, ran, inputs: inputs2, installMoved, held: holdCut } = ended2;
         const environment = installMoved ? void 0 : await rekeyEnvironments(context, ran, tier);
         const read5 = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
         const observed = environment === void 0 || read5 === void 0 ? read5 : { ...read5, environment };
@@ -19938,8 +20084,6 @@ var init_scheduler2 = __esm({
           paths: barredPaths
         } = barredByTouch(ran, free, touched, observed?.growth);
         const setupsHeld = heldSetups(this.#hold, tier.files, held2, ranReport.startupFailure);
-        const { startupFailure: _, ...withoutStartup } = ranReport;
-        const report2 = setupsHeld.startup ? withoutStartup : ranReport;
         const withheld2 = [];
         const withhold = barred.length === 0 ? null : this.#withholds.record(barred);
         this.#withholds.clear(free.filter((ran2) => !barred.includes(ran2)));
@@ -19952,21 +20096,61 @@ var init_scheduler2 = __esm({
         }
         const cancelled2 = this.#stop.signal.aborted;
         const unfinished2 = cancelled2 || holdCut ? unfinishedFiles(tier, ran) : [];
+        const again = [...withhold?.again.map(({ file }) => file.id) ?? [], ...unfinished2];
+        return {
+          ranReport,
+          changed: changed2,
+          touched,
+          observed,
+          again,
+          held: held2,
+          setupsHeld,
+          cancelled: cancelled2,
+          withheld: withheld2
+        };
+      }
+      /**
+       * Review 0.1.273, B1 (011 C9): what the merge hold holds as the record's
+       * write lands, read again at each try, since a hold can start while a busy
+       * store holds the write back. A file or setup held at the preparation stays
+       * held.
+       */
+      #heldNow(tier, prepared) {
+        const { observed, ranReport, setupsHeld: was } = prepared;
+        const now = heldFiles(this.#hold, tier.files, observed?.growth);
+        const held2 = tier.files.filter((f) => prepared.held.includes(f) || now.includes(f));
+        const setups = heldSetups(this.#hold, tier.files, held2, ranReport.startupFailure);
+        return {
+          held: held2,
+          projects: /* @__PURE__ */ new Set([...was.projects, ...setups.projects]),
+          startup: was.startup || setups.startup,
+          notStarted: tier.files.filter(
+            (f) => was.notStarted.includes(f) || setups.notStarted.includes(f)
+          )
+        };
+      }
+      /** The record's one write transaction, from what `#prepare` decided. */
+      #write(ended2, prepared, commit) {
+        const { context, ledger } = this.#started();
+        const { tier, ran, ignored, installMoved, runtimeGone, slow } = ended2;
+        const { ranReport, changed: changed2, touched, observed, cancelled: cancelled2, withheld: withheld2 } = prepared;
+        const { held: held2, projects: projects2, startup, notStarted } = this.#heldNow(tier, prepared);
+        const { startupFailure: _, ...withoutStartup } = ranReport;
+        const report2 = startup ? withoutStartup : ranReport;
         const moved2 = context.store.transaction(() => {
           const interrupted = interruptedFiles(context, ledger, tier, ran, {
             stopping: this.#stopping() && !cancelled2,
             runtimeGone
           });
           const again = [
-            ...withhold?.again.map(({ file }) => file.id) ?? [],
+            ...prepared.again,
             ...held2.map(({ file }) => file.id),
-            ...setupsHeld.notStarted.map(({ file }) => file.id),
-            ...unfinished2,
+            ...notStarted.map(({ file }) => file.id),
             ...interrupted
           ];
           const requeue = installMoved || again.length === 0 ? installMoved : new Set(again);
           const lost = runtimeGone && interrupted.length > 0;
-          const setups = lost ? false : setupsHeld.projects.size === 0 || setupsHeld.projects;
+          const setups = lost ? false : projects2.size === 0 || projects2;
           this.#warmUp.record(context, ignored);
           this.#yields.ended(context, tier);
           const result = recordTier(
@@ -20156,9 +20340,13 @@ var init_scheduler2 = __esm({
           this.#note(`could not clear the slow tier's activity: ${String(error)}`);
         }
       }
-      /** Puts the files of a tier that never got recorded back into the queue; a slow one's activity goes. */
+      /**
+       * Puts the files of a tier that never got recorded back into the queue; a
+       * slow one's activity goes. Its commit waits a slice on a busy store (row
+       * 011-126).
+       */
       async #requeue(tier, slow) {
-        await this.#lock.run(() => {
+        await this.#runSliced(() => {
           const { context, ledger } = this.#started();
           endTier(context, ledger, tier);
           this.#yields.ended(context, tier);
@@ -53188,7 +53376,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.272";
+  if (true) return "0.1.273";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
