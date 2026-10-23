@@ -1,0 +1,154 @@
+--- a/test/daemon/busy-edit.test.ts
++++ b/test/daemon/busy-edit.test.ts
+@@ -1,5 +1,6 @@
+ import { spawn } from "node:child_process";
+-import { writeFileSync } from "node:fs";
++import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
++import { loadavg } from "node:os";
+ import { createRequire } from "node:module";
+ import { join } from "node:path";
+ import { pathToFileURL } from "node:url";
+@@ -70,18 +71,33 @@
+ }
+ 
+ describe("an edit while another connection holds the store's write lock (001-422)", () => {
+-  it(`is stored within ${WITHIN_MS} ms of a ${HOLD_MS} ms hold ending, and the daemon answers throughout`, async () => {
+-    const repo = suite.fixture();
++  for (const iteration of Array.from({ length: Number(process.env.PROBE_REPEAT ?? 1) }, (_, k) => k))
++  it(`${iteration} is stored within ${WITHIN_MS} ms of a ${HOLD_MS} ms hold ending, and the daemon answers throughout`, async () => {
++    const slowMs = Number(process.env.PROBE_SLOW_MS ?? 0);
++    const repo = suite.fixture(
++      slowMs > 0
++        ? { "test/slow.test.ts": `import { test } from "vitest";\ntest("slow", async () => {\n  await new Promise((r) => setTimeout(r, ${slowMs}));\n});\n` }
++        : undefined,
++    );
++    const OUT = process.env.PROBE_OUT ?? "/tmp/probe-out";
++    const RUN = `${process.env.PROBE_RUN ?? Date.now()}-${iteration}`;
++    mkdirSync(OUT, { recursive: true });
++    repo.env.SQUEAL_PROBE_LOG = join(OUT, `run-${RUN}.log`);
++    const summary: Record<string, unknown> = { run: RUN, slowMs, loadStart: loadavg()[0] };
++    const t0 = Date.now();
++    try {
+     const created = openStore(repo.commonDir);
+     if (isStoreOpenFailure(created)) throw new Error(JSON.stringify(created));
+     created.close();
+     const daemon = suite.daemon(repo);
+     await waitReady(repo, daemon, 300_000);
++    summary.readyMs = Date.now() - t0;
+     const before = withStore(repo, (store) => store.revisions.latest(repo.worktreeId)?.number ?? 0);
+ 
+     // Past the writer's start-up; a writer late for its slot only holds it shorter.
+     const epoch = Date.now() + 2_000;
+     const freeAt = epoch + HOLD_MS;
++    Object.assign(summary, { epoch, freeAt });
+     const writer = startWriter(storePaths(repo.commonDir).database, repo.env, epoch);
+     suite.cleanup(() => writer.child.kill("SIGKILL"));
+     await waitFor(() => writer.stdout().includes("holding"), 60_000, "writer");
+@@ -98,6 +114,7 @@
+     })();
+ 
+     await delay(Math.max(0, epoch + 1_000 - Date.now()));
++    const editAt = Date.now();
+     writeFileSync(
+       join(repo.root, "src/math.ts"),
+       "export const add = (a: number, b: number) => b + a;\n",
+@@ -114,6 +131,7 @@
+       30_000,
+       "the edit's revision",
+     );
++    Object.assign(summary, { revision: stored.number, createdAt: stored.createdAt });
+     const heartbeatAt = await waitFor(
+       () =>
+         withStore(repo, (store) => {
+@@ -123,6 +141,13 @@
+       30_000,
+       "a heartbeat after the hold",
+     );
++    summary.heartbeatAt = heartbeatAt;
++    const out = writer.stdout();
++    for (const name of ["took", "committing", "freed"]) {
++      const m = new RegExp(`${name} (\\d+)`).exec(out);
++      summary[name] = m === null ? null : Number(m[1]);
++    }
++    summary.writeAt = editAt;
+     expect(stored.createdAt - freeAt).toBeLessThanOrEqual(WITHIN_MS);
+     expect(heartbeatAt - freeAt).toBeLessThanOrEqual(WITHIN_MS);
+     const busy = await waitFor(
+@@ -147,5 +172,15 @@
+     expect(notes.filter((note) => /database is locked/.test(note))).toEqual([]);
+     await stopProcess(writer);
+     expect(writer.stderr()).toBe("");
++    summary.ok = true;
++    } catch (error) {
++      summary.ok = false;
++      summary.error = String(error).slice(0, 400);
++      throw error;
++    } finally {
++      summary.notes = readNotes(repo);
++      summary.loadEnd = loadavg()[0];
++      appendFileSync(join(OUT, "summary.jsonl"), `${JSON.stringify(summary)}\n`);
++    }
+   }, 600_000);
+ });
+--- a/test/daemon/helpers.ts
++++ b/test/daemon/helpers.ts
+@@ -187,7 +187,28 @@
+ }
+ 
+ export function spawnDaemon(cli: string, repo: FixtureRepo): SpawnedProcess {
+-  return spawnCli(cli, ["daemon", repo.root], { cwd: repo.root, env: repo.env });
++  const cpus = process.env.PROBE_TASKSET;
++  if (cpus === undefined || cpus === "") {
++    return spawnCli(cli, ["daemon", repo.root], { cwd: repo.root, env: repo.env });
++  }
++  // Probe 011-122: the daemon's process tree on these CPUs only, beside the busy loops there.
++  const child = spawn("taskset", ["-c", cpus, process.execPath, cli, "daemon", repo.root], {
++    cwd: repo.root,
++    env: repo.env,
++    stdio: ["ignore", "pipe", "pipe"],
++  });
++  let out = "";
++  let err = "";
++  child.stdout?.setEncoding("utf8").on("data", (chunk: string) => {
++    out += chunk;
++  });
++  child.stderr?.setEncoding("utf8").on("data", (chunk: string) => {
++    err += chunk;
++  });
++  const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((done) =>
++    child.on("exit", (code, signal) => done({ code, signal })),
++  );
++  return { child, exited, stdout: () => out, stderr: () => err };
+ }
+ 
+ export function delay(ms: number): Promise<void> {
+--- a/test/daemon/long-writer.ts
++++ b/test/daemon/long-writer.ts
+@@ -30,19 +30,24 @@
+ const db = new DatabaseSync(database);
+ db.exec("PRAGMA busy_timeout = 60000");
+ let stopping = false;
++const stop = new AbortController();
+ process.on("SIGTERM", () => {
+   stopping = true;
++  stop.abort();
+ });
++const wait = (ms: number) => sleep(ms, undefined, { signal: stop.signal }).catch(() => {});
+ for (let slot = turn; !stopping; slot += writers) {
+   const start = epoch + slot * (hold + rest);
+-  await sleep(Math.max(0, start - Date.now()));
++  await wait(Math.max(0, start - Date.now()));
+   if (stopping) break;
+   db.exec("BEGIN IMMEDIATE");
+   db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('long-writer', ?)").run(
+     String(process.pid),
+   );
+-  if (slot === turn) process.stdout.write("holding\n");
+-  await sleep(Math.max(0, start + hold - Date.now()));
++  if (slot === turn) process.stdout.write(`holding\ntook ${Date.now()}\n`);
++  await wait(Math.max(0, start + hold - Date.now()));
++  const committing = Date.now();
+   db.exec("COMMIT");
++  process.stdout.write(`committing ${committing}\nfreed ${Date.now()}\n`);
+ }
+ db.close();
