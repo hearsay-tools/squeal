@@ -367,7 +367,59 @@ const FLAGGED: Readonly<Record<string, string>> = {
   "tests/test_pass.py": lines("def test_pass():", "    assert True"),
 };
 
+/**
+ * Row 011-144: four checks, one red, one in a nested class, one at top
+ * level, of which the texts `new` select three; a file that fails to
+ * collect and a module that skips itself, each given texts; a file without
+ * texts in the same batch. A tree that does not focus runs every file whole,
+ * and the harness compares the selected checks alone.
+ */
+const FOCUSED: Readonly<Record<string, string>> = {
+  "pyproject.toml": CONFIG,
+  "tests/test_four.py": lines(
+    "class TestParity:",
+    "    def test_old_1(self):",
+    "        assert True",
+    "",
+    "    def test_new_1(self):",
+    "        assert 1 == 2",
+    "",
+    "    class TestInner:",
+    "        def test_new_2(self):",
+    "            assert True",
+    "",
+    "",
+    "def test_new_3_top():",
+    "    assert True",
+  ),
+  "tests/test_broken.py": OUTCOMES["tests/test_broken.py"] ?? "",
+  "tests/test_skipped.py": OUTCOMES["tests/test_skipped.py"] ?? "",
+  "tests/test_pass.py": OUTCOMES["tests/test_pass.py"] ?? "",
+};
+
 export const PYTEST_RUNS: readonly Case[] = [
+  ...pytest(
+    "a focused run stores the selected checks' outcomes as a whole run does (row 011-144)",
+    "011 C14 and 007 D6 as amended 2026-10-23: squeal_pytest deselects every item whose full name holds no text, so the selected checks, a collection error and a module skip read as in a whole run, beside a file without texts; the focused tier stores nothing (C4), and this pins that the deselection changes no outcome it selects",
+    {
+      files: FOCUSED,
+      runs: [
+        {
+          files: [
+            "tests/test_broken.py",
+            "tests/test_four.py",
+            "tests/test_pass.py",
+            "tests/test_skipped.py",
+          ],
+          checks: [
+            { path: "tests/test_four.py", texts: ["new", "TestInner::"] },
+            { path: "tests/test_broken.py", texts: ["never"] },
+            { path: "tests/test_skipped.py", texts: ["test_"] },
+          ],
+        },
+      ],
+    },
+  ),
   ...pytest(
     "outcomes, a file that fails to collect and a module that skips itself",
     "007 D2 and D6: each phase's outcome, a failure's fingerprint, a collection error's and a module-level skip are what the scheduler stores for each file; the environment is the worktree's .venv",

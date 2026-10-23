@@ -17,7 +17,7 @@ import {
   type PytestPython,
   type Pythons,
 } from "../case.js";
-import { sortedRefs, storedOf } from "./reported.js";
+import { selectedOf, sortedRefs, storedOf } from "./reported.js";
 import { writeTree } from "./shared.js";
 
 /*
@@ -173,11 +173,16 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
         recreated.push(await adapter.invalidate(write(root, run.edits)));
         steps.push(await decided(adapter, affected));
       }
-      const report = await adapter.run(run.files.map(ref), {
-        runId: `validity-${at}`,
-        logDir: join(scratch, "logs", String(at)),
-        timeoutMs: run.timeoutMs ?? 60_000,
-      });
+      const checks = run.checks?.map(({ path, texts }) => ({ testFile: ref(path), texts }));
+      const report = selectedOf(
+        await adapter.run(run.files.map(ref), {
+          runId: `validity-${at}`,
+          logDir: join(scratch, "logs", String(at)),
+          timeoutMs: run.timeoutMs ?? 60_000,
+          ...(checks === undefined ? {} : { checks }),
+        }),
+        checks,
+      );
       const before = steps[steps.length - 1] as Decided;
       runs.push(storedRun(report, before));
       loaded.push(report.environmentObserved ?? []);
