@@ -29,7 +29,7 @@ import { daemonGone, shutDown } from "./died.js";
  * (a release before task 001-270) leaves no mark to read. Once the old
  * daemon cleared its record, a live claim still says the handoff runs
  * (`claimed`), until the successor registers. Row 011-140: an alive daemon
- * that registered older than the claim it ended has \`short\` (\`withShort\`).
+ * that registered older than the claim it ended has `short` (`withShort`).
  */
 export function withStopping(
   store: Store,
@@ -84,7 +84,7 @@ function claimed(
   return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
 }
 
-/** \`live\` with \`short\` while it is alive and the short handoff's mark names \`record\`. */
+/** `live` with `short` while it is alive and the short handoff's mark names `record`. */
 function withShort(
   store: Store,
   worktree: WorktreeRecord,
@@ -100,7 +100,7 @@ function withShort(
 
 /**
  * What every text says of a daemon that ended its handoff short (row
- * 011-140): its version validates, and \`squeal start\` of the claim's replaces it.
+ * 011-140): its version validates, and `squeal start` of the claim's replaces it.
  */
 export function shortText(short: DaemonShort, command: string): string {
   const at = new Date(short.since).toISOString();

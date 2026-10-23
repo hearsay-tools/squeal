@@ -129,7 +129,8 @@ export function keepVersion({ root, data, version }: KeepOptions): string | null
   try {
     const versions = join(data, "versions");
     const whole = keptCli(data, version) !== null;
-    if (!whole && existsSync(dir)) remove(versions, version);
+    // Read again just before: another session start may have renamed its whole copy in since.
+    if (!whole && existsSync(dir) && manifestVersion(dir) !== version) remove(versions, version);
     if (manifestVersion(root) !== version) return whole ? dir : null;
     let made = false;
     if (!whole) {

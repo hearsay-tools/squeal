@@ -6,6 +6,7 @@ import {
   claimHandoff,
   handoffFrom,
   readHandoff,
+  readShortHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../core/delivery/handoff.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
@@ -106,19 +107,33 @@ async function stoppingDaemon(root: AbsolutePath, now: () => number): Promise<St
 
 /**
  * Row 011-140 (C9): the recorded daemon registered older than the handoff
- * claim it ended (\`DaemonShort\`), and this CLI is newer than it: asks it
+ * claim it ended (`DaemonShort`), and this CLI is newer than it: asks it
  * to step down, as a hook would, and returns it stopping once it accepts,
- * so \`start\` finishes the handoff. \`null\` otherwise.
+ * so `start` finishes the handoff. `null` otherwise.
  */
 async function replaceShort(root: AbsolutePath, now: () => number): Promise<Stopping | null> {
-  const status = readStatus(root, { now });
-  const daemon = status.available ? status.daemon : null;
-  const short = daemon?.state === "alive" ? daemon.short : undefined;
-  if (short === undefined || !isNewerVersion(squealVersion(), short.version)) return null;
   const record = recordedDaemon(root, 1_000);
-  if (record === null || handoffFrom(record) !== short.of) return null;
+  if (record === null || !isNewerVersion(squealVersion(), record.squealVersion)) return null;
+  if (shortOf(root) !== handoffFrom(record)) return null;
   if (!(await stepDownIfOlder(record, now() as EpochMs))) return null;
   return stoppingDaemon(root, now);
+}
+
+/** The incarnation the worktree's short handoff names (`readShortHandoff`), `null` with none. */
+function shortOf(root: AbsolutePath): string | null {
+  try {
+    const commonDir = resolveCommonDir(root);
+    if (commonDir === null) return null;
+    const store = openStore(commonDir, { create: false, busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS });
+    if (isStoreOpenFailure(store)) return null;
+    try {
+      return readShortHandoff(store, worktreeIdFor(root))?.of ?? null;
+    } finally {
+      store.close();
+    }
+  } catch {
+    return null;
+  }
 }
 
 /**
