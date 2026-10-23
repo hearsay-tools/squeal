@@ -94,12 +94,18 @@ export class WorktreeKeys {
    */
   readonly #dropped = new Set<RelativePath>();
   /**
-   * Dropped paths a closure tracked again. A predecessor's saved closure
-   * names its declaration-only scratch too, so each is dropped once more
-   * when no closure, environment, lockfile or observed read names it
-   * (reviews/wave-5.6.md S1).
+   * Gitignored paths watched because the store named them: those bootstrap
+   * found cached, and dropped paths a closure tracked again. A predecessor's
+   * saved closure can name a path the runner's no longer does (its
+   * declaration-only scratch, reviews/wave-5.6.md S1), and a removed
+   * project's closures name none, so each is dropped once no closure,
+   * environment, lockfile or observed read names it (row 011-36).
    */
-  readonly #revived = new Set<RelativePath>();
+  readonly #inherited = new Set<RelativePath>();
+  /** Inherited paths the next `#release` judges: new ones, and those a replaced or removed closure named. */
+  readonly #unjudged = new Set<RelativePath>();
+  /** The environment names the lockfiles: no inherited path is judged before its first read. */
+  #environmentsRead = false;
   readonly #lockfiles: Lockfiles;
   /** How each project's installed dependencies enter its keys (D3, task 001-105). */
   #dependencies = new Map<ProjectName, DependencyKeys>();
@@ -149,7 +155,8 @@ export class WorktreeKeys {
    * are the files under a symlinked directory git lists, which the change
    * feed walks (task 001-166).
    * Cached paths git ignores entered the cache because a closure or an
-   * environment named them, so they are watched again as extra files. A
+   * environment named them, so they are watched again as extra files, until
+   * a release finds nothing names them now (`#inherited`, row 011-36). A
    * daemon before 0.1.220 also hashed gitignored files under declared
    * inputs (a slow file's artifact, 004 D5 before task 004-81; scratch from
    * 0.1.60 to 0.1.73): those are dropped before reconciling, so they neither
@@ -171,7 +178,10 @@ export class WorktreeKeys {
     const scratch: RelativePath[] = [];
     for (const path of await checkIgnored(this.options.root, unlisted)) {
       if (this.#isDeclared(path)) scratch.push(path);
-      else this.#extra.add(path);
+      else {
+        this.#extra.add(path);
+        this.#inherit(path);
+      }
     }
     this.#drop(scratch);
     let revision: Revision | null = null;
@@ -216,6 +226,9 @@ export class WorktreeKeys {
     const formerFiles = environments.flatMap((environment) => environment.formerFiles ?? []);
     await this.track([...this.#environmentFiles, ...formerFiles, ...lockPaths]);
     await this.#watchIgnored(lockPaths);
+    // Row 011-36: what the last read named may be named by nothing now.
+    this.#environmentsRead = true;
+    this.#rejudge(this.#inherited);
 
     const hashOf = (path: RelativePath) => this.cache.hashOf(path);
     const packagesOf = (ref: TestFileRef) => this.#runnerClosures.get(testFileId(ref))?.packages;
@@ -347,6 +360,8 @@ export class WorktreeKeys {
    * paths its runs were observed to read (D3, task 001-132).
    */
   setClosure(runner: RunnerClosure): KeyChange[] {
+    // Row 011-36: a path the replaced closure named may be named by nothing now.
+    this.#rejudge(this.index.closure(runner.testFile)?.paths ?? []);
     this.#runnerClosures.set(testFileId(runner.testFile), runner);
     const observed = this.#policy.observe.runtimeInputs ? this.#observed.of(runner.testFile) : [];
     const update = this.index.setClosure(
@@ -410,7 +425,8 @@ export class WorktreeKeys {
   }
 
   removeTestFile(ref: TestFileRef): void {
-    this.#runnerClosures.delete(testFileId(ref));
+    // Row 011-36: what its closure or its runs named may be named by nothing now.
+    if (this.#runnerClosures.delete(testFileId(ref))) this.#rejudge(this.#inherited);
     this.index.removeTestFile(ref);
   }
 
@@ -435,28 +451,46 @@ export class WorktreeKeys {
   async trackUntracked(): Promise<KeyChange[]> {
     const paths = [...this.#untracked];
     this.#untracked.clear();
-    for (const path of paths) if (this.#dropped.has(path)) this.#revived.add(path);
+    for (const path of paths) if (this.#dropped.has(path)) this.#inherit(path);
     if (paths.length > 0) await this.track(paths);
     this.#release();
     return paths.length === 0 ? [] : this.index.rekey(paths);
   }
 
+  /** `path` is watched because the store named it: the next release judges it (`#inherited`). */
+  #inherit(path: RelativePath): void {
+    this.#inherited.add(path);
+    this.#unjudged.add(path);
+  }
+
+  /** The next release judges again the inherited paths among `paths`. */
+  #rejudge(paths: Iterable<RelativePath>): void {
+    if (this.#inherited.size === 0) return;
+    for (const path of paths) if (this.#inherited.has(path)) this.#unjudged.add(path);
+  }
+
   /**
-   * Drops again the revived paths nothing names now: the closures that named
-   * them were saved ones, since replaced by the runner's (`#revived`).
+   * Drops the unjudged inherited paths nothing names now: the closures that
+   * named them were saved ones, since replaced by the runner's or removed
+   * (`#inherited`). A kept one is judged again only when what named it
+   * changes, so a release costs nothing while nothing did.
    */
   #release(): void {
-    if (this.#revived.size === 0) return;
+    if (this.#unjudged.size === 0 || !this.#environmentsRead) return;
     const named = new Set([...this.#environmentFiles, ...this.#lockfiles.paths()]);
+    for (const environment of this.#environments.values()) {
+      for (const path of environment.formerFiles ?? []) named.add(path);
+    }
     for (const runner of this.#runnerClosures.values()) {
       for (const path of this.#observed.of(runner.testFile)) named.add(path);
     }
-    const unnamed = [...this.#revived].filter(
+    const unnamed = [...this.#unjudged].filter(
       (path) => !named.has(path) && this.index.reverse.referencing([path]).length === 0,
     );
+    this.#unjudged.clear();
     if (unnamed.length === 0) return;
     for (const path of unnamed) {
-      this.#revived.delete(path);
+      this.#inherited.delete(path);
       this.#extra.delete(path);
     }
     this.#drop(unnamed);
