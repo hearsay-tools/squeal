@@ -82,13 +82,18 @@ export function sessionCommand({
 }
 
 const running = new Set();
+let stopped = false;
+
+/** Whether `killRunning`, a runner's teardown, has begun: no command starts after it (006-97). */
+export const stopping = () => stopped;
 
 /**
  * Runs `command` in its own process group, so a timeout or a teardown reaches every process it
  * started. At `timeoutMs` the group gets SIGTERM, `graceMs` later SIGKILL, and `graceMs` after
  * that the wait ends whatever the pipes say. `onStdout` and `onStderr` take chunks. Returns
  * `{ exit, signal, timedOut, spawnError }`: `exit` is null unless the process exited by itself,
- * `spawnError` the error code of a command that could not start (`ENOENT`, `EACCES`).
+ * `spawnError` the error code of a command that could not start (`ENOENT`, `EACCES`), or
+ * `stopping` for one not started because the teardown has begun (`killRunning`, 006-97).
  */
 export function runBounded({
   command,
@@ -101,6 +106,10 @@ export function runBounded({
   onStderr,
   log,
 }) {
+  if (stopped) {
+    log?.(`the teardown has begun: ${command} ${args[0] ?? ""} not started`);
+    return Promise.resolve({ exit: null, signal: null, timedOut: false, spawnError: "stopping" });
+  }
   return new Promise((resolve) => {
     let timedOut = false;
     let settled = false;
@@ -159,16 +168,19 @@ function signalGroup(pid, sig) {
 }
 
 /**
- * Sends `signal` to every process group `runBounded` is still waiting for, then waits up to
- * `waitMs` until none of them has a live process left: a runner's teardown. A killed process
- * stays visible for a moment after the signal, and a zombie until it is reaped; only a process
- * that is not a zombie counts as live.
+ * A runner's teardown: from now on `runBounded` starts nothing (006-97). Sends `signal` to every
+ * process group `runBounded` is still waiting for, then waits up to `waitMs` until none of them
+ * has a live process left and each one's `runBounded` has settled. A killed process stays
+ * visible for a moment after the signal, and a zombie until it is reaped; only a process that is
+ * not a zombie counts as live. Settled, the group's leader is reaped and whatever its end resumes
+ * has run up to its next wait, so the runner reaps its session before it exits.
  */
 export async function killRunning(signal = "SIGKILL", waitMs = 5_000) {
+  stopped = true;
   const groups = [...running];
   for (const g of groups) g.kill(signal);
   const deadline = Date.now() + waitMs;
-  while (groups.some((g) => groupLive(g.pgid)) && Date.now() < deadline)
+  while (groups.some((g) => running.has(g) || groupLive(g.pgid)) && Date.now() < deadline)
     await new Promise((r) => setTimeout(r, 50));
 }
 
