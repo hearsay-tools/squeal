@@ -356,14 +356,14 @@ class TierScheduler implements Scheduler {
    * tier.
    */
   handleBatch(batch: CandidateBatch): Promise<void> {
-    return this.#handleBatch(batch, this.options.busySliceMs);
+    return this.#handleBatch(batch, true);
   }
 
   /**
-   * `handleBatch`, the pass's writes waiting at most `sliceMs` on a busy
-   * store (task 001-422): only the change feed's batches, which it retries.
+   * `handleBatch`, the pass `#sliced` when `sliced` (task 001-422): only the
+   * change feed's batches, which it retries.
    */
-  async #handleBatch(batch: CandidateBatch, sliceMs: number | undefined): Promise<void> {
+  async #handleBatch(batch: CandidateBatch, sliced: boolean): Promise<void> {
     if (this.#closed || this.#reinstalled) return;
     await this.#lock.run(async () => {
       if (this.#reinstalled) return;
@@ -376,7 +376,7 @@ class TierScheduler implements Scheduler {
         return;
       }
       const pass = () => this.#pass(context, ledger, batch);
-      await (sliceMs === undefined ? pass() : withBusySlice(sliceMs, pass));
+      await (sliced ? this.#sliced(pass) : pass());
     });
     if (this.#reinstalled) this.#tellReinstall();
     else this.#pump();
@@ -589,7 +589,7 @@ class TierScheduler implements Scheduler {
     // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
     // A request's pass: its writes keep the store's wait (task 001-422).
     if (this.#awaitingInstall) {
-      await this.#handleBatch({ trigger: "interval", paths: [] }, undefined);
+      await this.#handleBatch({ trigger: "interval", paths: [] }, false);
     }
     this.#slow.preempt();
     const record =
@@ -1001,8 +1001,8 @@ class TierScheduler implements Scheduler {
 
   /**
    * `fn` with each write it awaits waiting at most `busySliceMs` on a busy
-   * store, when a busy store's give-up resumes the pump (row 011-126); with
-   * the store's own wait otherwise.
+   * store, when a busy store's give-up resumes the pump (task 001-422, row
+   * 011-126); with the store's own wait otherwise.
    */
   #sliced<T>(fn: () => Promise<T>): Promise<T> {
     const ms = this.options.busySliceMs;
@@ -1414,7 +1414,7 @@ class TierScheduler implements Scheduler {
     const { context } = this.#started();
     const candidates = await statCandidates(paths, context.hasher);
     // No slice: nothing retries this pass, so its writes wait as long as the store does.
-    await this.#handleBatch({ trigger: "watch", paths: candidates }, undefined);
+    await this.#handleBatch({ trigger: "watch", paths: candidates }, false);
   }
 
   #isIdle(): boolean {
