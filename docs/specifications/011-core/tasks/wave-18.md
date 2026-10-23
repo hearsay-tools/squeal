@@ -57,3 +57,13 @@ Seam: `queue.hasPromoted(inLane)` in the yield rule (`src/core/scheduler/yields.
 Owns: `src/core/scheduler/yields.ts`, `queue.ts` (`hasPromoted`), `promotions.ts`, their tests, notes under `011-core/tasks/011-55/`. Not yours: `tiers.ts` (3b94ca98's), `src/core/retry/` (W2), `src/core/status/` (W2 and the wait text: ask first), the board, spec text, bundles, version. No `npm run build`.
 
 Done when: the regression fails before and passes after; a promoted file with no foreign claim still makes the tier yield; the wait names the claim; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+## D1: triage digest for gh-64, gh-75, gh-76 and gh-77
+
+Use /worker. Shape: survey, docs only.
+
+Outcome: `docs/triage/2026-10-23-digest.md` lets the human decide the four proposed friction rows in one round.
+
+Read `docs/process.md` "Issue triage"; the board's Triage rows gh-64, gh-75, gh-76 and gh-77; their research files (`011-core/research/issue-64.md`, `issue-75.md` to `issue-77.md`, and `running-tier-yields.md` for gh-64's hold); the GitHub issues (`gh issue view <n> --comments`); `docs/triage/2026-10-22-digest.md` as the model.
+
+Write the digest: group the rows by theme (gh-75 and gh-77 share the daemon handover), name overlaps with shipped and planned rows (for example 011-30 to 011-34, 011-110 in 0.1.264, 011-113 in 0.1.266, 011-111 in 0.1.270, 011-122, #1), and say for each issue which reported versions predate which fix. Give one recommendation per group with what it costs and a cheaper option. Commit that one file. No board, spec or code edits, and no reproduction runs.
