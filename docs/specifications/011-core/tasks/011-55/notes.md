@@ -25,5 +25,42 @@ Red before: test 1 failed on the base at `expect(tier.cancelled).toBe(false)`. T
 
 ## Open for later rows
 
-- A claim that ends with no result (the claimant's heartbeat goes stale, or the waiter's bound passes) does not check the tiers in flight again. The file then waits for the tier in its lane, as any promoted file behind a tier that does not yield. A claimant's record that stores a result needs no yield: the file takes the result. A fix would arm the yield timer (`#bounds`) at the waiter's bound, which needs `Claims` to expose when it first saw the key (`claims.ts`).
+- Closed by the repair below (row 011-123): a claim that ends with no result did not check the tiers in flight again.
 - Status's claim reason (`claimantOf` in `queuedReason` and `standingsOf`) does not ask whether the file may wait: an edit's work (`recent`) or a forced file under another worktree's claim reads `waiting for <worktree>'s run of its key` though this daemon runs it, and a tier may yield to it (test 2's state). Not this row's files (`src/core/status/`).
+
+## Repair W5: review `../../reviews/0.1.271.md` B1 (2026-10-23)
+
+Brief W5 of `../wave-18.md` ("Wave 18.5"), which folds in row 011-123. Base `c3538db61`, the two commits above unchanged in cand/0.1.271 (`70bd5840f`). Commit `ff656cb20` is the repair.
+
+### What changed
+
+- `src/core/scheduler/yields.ts`: `waitedFor` returns `"work"`, `"recheck"` or `null`. `"recheck"`: only promoted files a yield runs nothing sooner for wait for the tier, each held by another worktree's claim or with a result stored at its key to take. `#decide` then returns the internal `RECHECK` (after the runner rule: a tier whose runner cannot cancel gets no recheck), `check` publishes no standing for it, and `boundOf` arms the yield timer at `now + CLAIM_RECHECK_MS` (1 s). Each recheck asks `Claims.holds` again, which reads the claimant's heartbeat (two intervals, C7) and the waiter's bound (`runner.timeoutMs` + 6 s, or 600 s) from its first sight. A claim that ended makes the file `"free"`, and the tier yields as C15 says.
+- `src/core/scheduler/scheduler.ts`, `#recheckTiers`: under the lock, `#adopt` (results other worktrees stored, as a reconciliation pass takes them) before `#cutTiers(null)`. A claimant's record is then taken first, and its file leaves the queue with no run and no cut. `#adopt` takes nothing while runner work waits, as before.
+- `src/core/scheduler/claims.ts`: `peekClaim(context, ledger, ref)`, `claimOf` by reads only, moved from `yields.ts` (`waitsOnClaim` in `86de93c03`). `"stored"` is new: a result at the key that stands here (the accept rule's `heldFailure` test, without the format copy) makes no yield. A held foreign failure is `"free"`: it runs here.
+- The busy-lane wait in `scheduler.ts:795` is unchanged: the yield timer covers a busy lane and a free one alike, so the pump needs no new wake.
+
+### Decisions the brief did not settle
+
+1. The cadence is the claim recheck's 1 s, not a timer at the waiter's bound: a timer there misses a claimant that dies earlier (review, "Inputs for the fix wave"). The cost is one check of the tiers in flight, one `keysSince` read and, per promoted file of the lane, one `byKey` and one `claimed` read each second, only while such a file waits.
+2. A stored result arms the recheck too, so a result that lands before this worktree saw any claim is taken within a second, not at the next reconciliation pass (30 s idle). Where `#adopt` cannot take it (runner work waits, or the file crashed at that key here, which `StoredKeys` skips), the recheck repeats each second until the tier ends or the file leaves the queue.
+3. `#adopt` runs at every recheck, the file-ended and overrun ones too. It writes nothing when no key is new (task 001-412).
+
+### Tests
+
+`test/scheduler/tier-yields-claim-ends.test.ts`, on the two-worktree setup of `tier-yields-claim.test.ts` (helpers now in `tier-yields-claim-fixture.ts`): F held by the other worktree after an environment-only re-key, here behind an edit's tier of four 200 s files, held, and promoted for 60 s. Each test first checks that three rechecks (3 s) leave the tier running and that the wait names the claim. Nothing in the tests makes an edit, a promotion or a reconciliation pass after that, unless the test says so.
+
+1. Heartbeat lost: the claimant's beat stops and its last heartbeat is three intervals old. The tier is cancelled and F runs here within 10 s (`RECHECK_WITHIN_MS`, ten rechecks).
+2. The waiter's bound, from first sight: `runner.timeoutMs` 40 s here (bound 46 s), a clock this test moves. 20 s on, a second request; the tier runs on. 30 s more (50 s since the first sight, 30 s since the second request): the tier is cancelled and F runs here within 10 s. A bound that restarted at the second request would not have passed.
+3. The claimant's result: the claimant's run ends and stores F's result. F is current here within 10 s, the tier is not cancelled, and F ran 0 times here.
+4. A result stored before the wait's first check: the claimant records before the promotion. F is current here within 10 s, the tier is not cancelled, and F ran 0 times here.
+
+`tier-yields-claim.test.ts` keeps the live claim, the unclaimed file G that cuts the tier, and the edit's file that cuts it.
+
+Red before: tests 1 to 3 failed on `c3538db61` at their first poll (the tier's cancel for 1 and 2, F current for 3). Test 4 was written after the first fix; it fails with `"stored"` counted as `"free"` (the tier is cut, line 132) and without the recheck's `#adopt` (F is not current, line 130). Without `#adopt`, test 3 fails too (line 104).
+
+`test/scheduler/catch-up-fixture.ts` gains `stopBeat()`, as `claims-fixture.ts` has; no other test uses it.
+
+### Open for later rows
+
+- `yields.ts` is 406 lines, above the styleguide's 300 (352 before row 011-55). `waitedFor` and `recreates` could move out together.
+
