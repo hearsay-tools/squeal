@@ -141,17 +141,17 @@ describe("squeal retry on a test file the daemon has not listed yet (011-134, gh
 
   it("keeps the refusal for a path no configured pattern selects, before its listing too", async () => {
     const w = worktree(4, 3, 3);
-    // node:test alone: no Vitest is built, so only the project's globs select.
+    // A pytest project alone: no Vitest is built, so only the project's globs select.
     w.write(
       "squeal.config.json",
-      JSON.stringify({ nodeTest: [{ name: "unit", cwd: "pkg", include: ["test/**/*.test.mjs"] }] }),
+      JSON.stringify({ pytest: [{ name: "unit", cwd: "pkg", include: ["tests/**/test_*.py"] }] }),
     );
-    w.write("pkg/test/x.test.mjs");
-    w.write("pkg/src/x.mjs");
-    const out = await retry(["pkg/src/x.mjs", "pkg/test/x.test.mjs"], w.root);
+    w.write("pkg/tests/test_x.py");
+    w.write("pkg/src/x.py");
+    const out = await retry(["pkg/src/x.py", "pkg/tests/test_x.py"], w.root);
     expect(out.code).toBe(1);
     expect(out.stdout).toBe(
-      `Not retried: pkg/src/x.mjs is not a test file Squeal has keyed in this worktree.\n${unlisted("pkg/test/x.test.mjs", "revision 4 is not listed yet")}`,
+      `Not retried: pkg/src/x.py is not a test file Squeal has keyed in this worktree.\n${unlisted("pkg/tests/test_x.py", "revision 4 is not listed yet")}`,
     );
     // With Vitest built, a file policy `vitest.exclude` drops is no test file either.
     w.write("squeal.config.json", JSON.stringify({ vitest: { exclude: ["test/e2e/**"] } }));
