@@ -293,6 +293,21 @@ export const PNPM_KEYS: readonly Case[] = [
   },
   {
     kind: "key",
+    name: "a pnpm lock.yaml with its importers on their header line",
+    why: "review 0.1.282 B1: a part the reader reads, written as a flow map, keeps the whole fingerprint",
+    input: pnpmCase(
+      {
+        ...pnpmInstall(),
+        "node_modules/.pnpm/lock.yaml": pnpmLock.replace(
+          /importers:\n[\s\S]*?\npackages:/,
+          "importers: {'.': {devDependencies: {vitest: {specifier: ^4.0.0, version: 4.0.0}}}}\n\npackages:",
+        ),
+      },
+      [{ from: "test", name: "vitest" }],
+    ),
+  },
+  {
+    kind: "key",
     name: "a hoisted pnpm install",
     why: "011-162 (R2): nodeLinker hoisted keeps the whole fingerprint",
     input: pnpmCase(pnpmInstall("hoisted"), [{ from: "packages/app/test", name: "a" }]),
