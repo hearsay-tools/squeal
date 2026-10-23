@@ -1,0 +1,43 @@
+$ node --disable-warning=ExperimentalWarning plugins/claude-code/dist/cli/squeal.mjs --version
+0.1.276
+[exit 0]
+
+$ node --disable-warning=ExperimentalWarning plugins/claude-code/dist/cli/squeal.mjs retry --help
+Usage:
+  squeal retry <test file>... [--reason load|environment]
+                                Re-run each file's failure once, caused outside the
+                                code: load waits until the one-minute load average is
+                                below the CPU count, environment runs at once; once per
+                                file, inputs and session; the FAIL stays counted until
+                                a retry passes. A file with no result at its inputs
+                                (stale, never run, timed out) runs once at once, any
+                                reason or none
+  squeal retry --cancel <test file>...
+                                Withdraw a pending retry
+[exit 0]
+
+$ node --disable-warning=ExperimentalWarning plugins/claude-code/dist/cli/squeal.mjs run --help
+Usage:
+  squeal run --all [--force] [--wait]
+                                Request a full-suite checkpoint from the daemon; both
+                                lanes, fast files first
+  squeal run --fast [--force] [--wait]
+                                A checkpoint of the fast lane only, which is not a
+                                full-suite checkpoint
+  squeal run --slow [--wait <ms>]
+                                Run the slow lane once no fast work is pending; with
+                                --wait, then wait as status --wait does. --fast --slow
+                                is --all
+[exit 0]
+
+$ node --disable-warning=ExperimentalWarning plugins/claude-code/dist/cli/squeal.mjs retry tests/selected.test.mjs --wait 60000
+squeal retry: unknown option "--wait"
+usage: squeal retry <test file>... [--reason load|environment]
+       squeal retry --cancel <test file>...
+[exit 2]
+
+$ node --disable-warning=ExperimentalWarning plugins/claude-code/dist/cli/squeal.mjs run --all --wait 60000 tests/selected.test.mjs
+squeal run: unknown argument "tests/selected.test.mjs"
+usage: squeal run --all|--fast [--force] [--wait [<ms>]]
+       squeal run --slow [--wait <ms>]
+[exit 2]
