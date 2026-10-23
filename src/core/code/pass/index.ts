@@ -98,13 +98,15 @@ export function createCodePass(options: CodePassOptions): CodePass {
     }
     const opened = open(policy);
     if (opened === null) return;
+    counter ??= options.counter();
+    const loaded = await counter;
     const report = await runPass({
       worktreeId: options.worktreeId,
       root: options.root,
       format: options.format,
       store: opened,
       source: options.source,
-      counter: await (counter ??= options.counter()),
+      counter: loaded,
       complexity: policy.complexity,
       switchedOn: wasOff,
       retry,
