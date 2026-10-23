@@ -66,9 +66,14 @@ const UNPROTECTED = `key NOT IN (${LIVE_KEYS})
  */
 const PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
 
-/** Runs no result, kept replaced failure or standing UNKNOWN names; the kept ids are the parameter. */
+/** Runs no result, kept replaced failure or standing UNKNOWN names; `keptRuns` is the parameter. */
 const UNREFERENCED_RUN = `NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
   AND id NOT IN (SELECT value FROM json_each(?))`;
+
+/** The runs replaced failures and standing UNKNOWNs keep; read inside the deleting transaction. */
+function keptRuns(conn: Connection): string {
+  return JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]);
+}
 
 /** The newest completed checkpoint of each live worktree; status reports it (D7). */
 const LAST_COMPLETED_CHECKPOINTS = `
@@ -106,10 +111,8 @@ export function prune(
     resultsRemoved += evictToCap(conn, options.maxSizeMb * 1024 * 1024);
   }
 
-  const keptRuns = JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]);
   const runsRemoved =
-    dropLiveWorktreeRuns(conn, paths, keptRuns, cutoff) +
-    dropRemovedWorktreeRuns(conn, paths, keptRuns);
+    dropLiveWorktreeRuns(conn, paths, cutoff) + dropRemovedWorktreeRuns(conn, paths);
 
   // Same rule as runs, plus: a checkpoint stays while a kept run is one of its tiers.
   const checkpointsRemoved = conn.transaction(() =>
@@ -143,19 +146,14 @@ export function prune(
 }
 
 /** A live worktree's runs that ended before the cutoff and that nothing names, with their logs. */
-function dropLiveWorktreeRuns(
-  conn: Connection,
-  paths: StorePaths,
-  kept: string,
-  cutoff: number,
-): number {
+function dropLiveWorktreeRuns(conn: Connection, paths: StorePaths, cutoff: number): number {
   const dropped = conn.transaction(() =>
     conn.all(
       `DELETE FROM runs
        WHERE ${UNREFERENCED_RUN} AND worktree_id IN (SELECT id FROM worktrees)
          AND end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?
        RETURNING log_dir`,
-      kept,
+      keptRuns(conn),
       cutoff,
     ),
   );
@@ -169,13 +167,13 @@ function dropLiveWorktreeRuns(
  * its last result expires at the cutoff. Its own step, so these logs can
  * follow another rule than the result rows that name their runs.
  */
-function dropRemovedWorktreeRuns(conn: Connection, paths: StorePaths, kept: string): number {
+function dropRemovedWorktreeRuns(conn: Connection, paths: StorePaths): number {
   const dropped = conn.transaction(() =>
     conn.all(
       `DELETE FROM runs
        WHERE ${UNREFERENCED_RUN} AND worktree_id NOT IN (SELECT id FROM worktrees)
        RETURNING log_dir`,
-      kept,
+      keptRuns(conn),
     ),
   );
   for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
