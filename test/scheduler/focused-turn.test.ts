@@ -165,6 +165,57 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     expect(ranB).toHaveLength(0);
   });
 
+  it("5d: the turn's tier takes no file whole while its focused entry waits (review 0.1.280)", async () => {
+    const edited = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => `test/f${i}.test.ts`);
+    const B = "b/b.test.ts";
+    const files: CatchUpFile[] = [
+      { path: S, ms: 20_000, imports: ["src/s.ts"] },
+      ...edited.map((path) => ({ path, ms: 1, imports: ["src/f.ts"] })),
+      { project: "b", path: B, ms: 1, imports: ["src/b.ts"] },
+    ];
+    const repo = catchUpRepo(files);
+    const s = catchUpSide(repo, repo.main, { files, hostSlots: 8, tierSize: 2, policy: BASELINE });
+    const record = focusing(s);
+    let holding = false;
+    s.runner.beforeRun = (run) => {
+      if (holding && run.some((f) => f.path === S)) s.runner.hold();
+    };
+    await s.scheduler.start();
+    await s.scheduler.idle();
+    const base = s.runner.runs.length;
+    holding = true;
+    await s.edit("watch", "src/s.ts");
+    await heldRun(s, S, base);
+    await s.edit("watch", "src/f.ts", "b.config.json");
+    await focus(
+      s,
+      [...edited].reverse().map((path) => ref(path)),
+      ["runs"],
+      60_000,
+    );
+    holding = false;
+    s.runner.release();
+    await s.scheduler.idle();
+    // Tiers of two: four focused tiers, then the turn's tier, which leaves f1 to its waiting
+    // focus and takes f2 whole beside B.
+    const [f1, f2, f3, f4, f5, f6, f7, f8, f9] = edited;
+    expect(runsSince(s, record, base)).toEqual([
+      S,
+      `${f9},${f8} focused`,
+      `${f7},${f6} focused`,
+      `${f5},${f4} focused`,
+      `${f3},${f2} focused`,
+      `${B},${f2}`,
+      `${f1} focused`,
+      `${f1},${f3}`,
+      `${f4},${f5}`,
+      `${f6},${f7}`,
+      `${f8},${f9}`,
+    ]);
+    expect(focusedRows(s)).toHaveLength(edited.length);
+    expect(files.every((f) => s.current(f.path))).toBe(true);
+  });
+
   it("6: a slow file, and a file whose runner runs whole files only, get no entry", async () => {
     const L = "test/slow/l.test.ts";
     const F = "f/f.test.ts";
