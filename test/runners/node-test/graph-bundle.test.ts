@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { build } from "esbuild";
 import { afterAll, describe, expect, it } from "vitest";
 import { bundleOptions } from "../../../src/harness/claude-code/build.js";
+import { observeMetafile } from "../../helpers/build-inputs.js";
 
 /**
  * The plugin is an esbuild bundle installed with no `node_modules` (001 D9,
@@ -30,6 +31,8 @@ describe("node-test graph: bundle", () => {
       entryPoints: [{ in: "src/runners/node-test/graph/index.ts", out: "graph" }],
     });
     const inputs = Object.keys(result.metafile?.inputs ?? {});
+    // The bundle's sources key this file (011-141): esbuild reads them natively.
+    expect(observeMetafile(result.metafile)).toContain("src/runners/node-test/graph/index.ts");
     expect(inputs.some((p) => p.startsWith("node_modules/enhanced-resolve/"))).toBe(true);
     expect(inputs.some((p) => p.startsWith("node_modules/es-module-lexer/"))).toBe(true);
 

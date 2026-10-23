@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { build, type Metafile } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bundleOptions, REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { observeMetafile } from "../helpers/build-inputs.js";
 import { tempDir } from "../store/helpers.js";
 
 /*
@@ -25,6 +26,7 @@ describe("the ps bundle", () => {
     outdir = mkdtempSync(join(tmpdir(), "squeal-ps-bundle-"));
     const result = await build(bundleOptions(outdir));
     metafile = result.metafile as Metafile;
+    observeMetafile(metafile);
   }, BUILD.timeout);
   afterAll(() => rmSync(outdir, { recursive: true, force: true }));
 
