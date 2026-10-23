@@ -114,9 +114,9 @@ class TierScheduler implements Scheduler {
    * a tier past its estimate is checked again at its bound (row 011-107).
    */
   readonly #yields = new TierYields(() => this.#recheckTiers());
-  /** The lanes that wait for quiet after a backlog tier's cancel (C4 step 5, row 011-82). */
-  readonly #quiet = new BacklogQuiet((ends, at) =>
-    publishQuiet(this.options.store, this.options.worktreeId, ends, at),
+  /** The lanes that wait for quiet after a backlog tier's cancel or for catch-up (C4 step 5, rows 011-82, 011-153). */
+  readonly #quiet = new BacklogQuiet((ends, at, catchUp) =>
+    publishQuiet(this.options.store, this.options.worktreeId, ends, at, catchUp),
   );
   /** A check of the tiers in flight queued under the lock, not run yet (rows 011-54, 011-107). */
   #recheck = false;
