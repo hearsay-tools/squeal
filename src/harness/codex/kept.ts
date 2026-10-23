@@ -1,3 +1,4 @@
+import { ensureDaemon, probeDaemon } from "../../core/daemon/ensure.js";
 import { squealVersion } from "../../core/daemon/version.js";
 import type { HookDeps } from "../shared/hook.js";
 import { keepVersion, keptCli, keptSkill } from "../shared/version-copies.js";
@@ -23,21 +24,54 @@ export function keptCodexCli(env: Env, version: string = squealVersion()): strin
   return data === null ? null : keptCli(data, version);
 }
 
+/** Keeps `version`'s copy of `PLUGIN_ROOT` (`keepVersion`): its CLI, `null` when none could be made. */
+function keepCodexCli(env: Env, version: string): string | null {
+  const root = set(env.PLUGIN_ROOT);
+  const data = set(env.PLUGIN_DATA);
+  if (root === null || data === null) return null;
+  return keepVersion({ root, data, version }) === null ? null : keptCli(data, version);
+}
+
 /**
  * SessionStart, before it ensures the daemon: keeps this version's copy
  * (`keepVersion`) and returns `deps` with the copy's CLI, the daemon a hook
  * spawns, so a tier loads the copy's recorder and reporters, and the command
- * that names the launcher. `deps` as they are when no copy could be made, as
- * at the first hook of a new install.
+ * that names the launcher. `deps` as they are when no copy could be made.
  */
 export function keepCodexVersion(deps: HookDeps): HookDeps {
-  const root = set(deps.env.PLUGIN_ROOT);
-  const data = set(deps.env.PLUGIN_DATA);
-  if (root === null || data === null) return deps;
+  const cli = keepCodexCli(deps.env, deps.squealVersion ?? squealVersion());
+  return cli === null ? deps : { ...deps, cli, command: codexCommand(deps.env, cli) };
+}
+
+/**
+ * Row 005-81: every other Codex hook, before its version's copy exists,
+ * keeps the copy only when it spawns a daemon, and spawns it from the copy,
+ * so Codex's install of another version deletes the cache directory, not the
+ * daemon's runtime. It probes as `ensureDaemon` does, so a hook whose daemon
+ * answers or holds the lock copies nothing; a successor after a handoff
+ * (`awaitLockMs`) spawns without a probe. The hook's texts name the cache's
+ * CLI until its next hook finds the copy. `deps` as they are once a copy
+ * exists, or without `PLUGIN_ROOT` and `PLUGIN_DATA`.
+ */
+export function keepOnSpawn(deps: HookDeps): HookDeps {
   const version = deps.squealVersion ?? squealVersion();
-  if (keepVersion({ root, data, version }) === null) return deps;
-  const cli = keptCli(data, version) ?? deps.cli;
-  return cli === undefined ? deps : { ...deps, cli, command: codexCommand(deps.env, cli) };
+  const data = set(deps.env.PLUGIN_DATA);
+  if (set(deps.env.PLUGIN_ROOT) === null || data === null || keptCli(data, version) !== null) {
+    return deps;
+  }
+  const ensure = deps.ensureDaemon ?? ensureDaemon;
+  return {
+    ...deps,
+    ensureDaemon: async (root, options) => {
+      if (options.awaitLockMs === undefined) {
+        const probe = await probeDaemon(root, options.socketTimeoutMs, options);
+        if (probe.state === "alive") return "alive";
+        if (probe.state === "unresponsive") return "unavailable";
+      }
+      const cli = keepCodexCli(deps.env, version);
+      return ensure(root, cli === null ? options : { ...options, cli });
+    },
+  };
 }
 
 /**
