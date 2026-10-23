@@ -9999,6 +9999,7 @@ function merge2(parts2) {
   const environment = reports.flatMap((report2) => report2.environmentObserved ?? []);
   const skipped2 = reports.flatMap((report2) => report2.skippedFiles ?? []);
   const withheld2 = reports.flatMap((report2) => report2.withheld ?? []);
+  const focused = reports.flatMap((report2) => report2.focused ?? []);
   const startup = reports.find((report2) => report2.startupFailure !== void 0)?.startupFailure;
   const started2 = [...new Set(reports.flatMap((report2) => report2.startedProjects ?? []))];
   return {
@@ -10014,6 +10015,7 @@ function merge2(parts2) {
     ...environment.length > 0 ? { environmentObserved: environment } : {},
     ...skipped2.length > 0 ? { skippedFiles: skipped2 } : {},
     ...withheld2.length > 0 ? { withheld: withheld2 } : {},
+    ...focused.length > 0 ? { focused } : {},
     ...startup === void 0 ? {} : { startupFailure: startup },
     ...started2.length === 0 ? {} : { startedProjects: started2.sort(compare) }
   };
@@ -14536,10 +14538,12 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   let slot2 = null;
   let skipped2 = false;
   const now = context.now();
+  const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
   for (const ref2 of ledger.ordered(turnDue)) {
     if (picked.length >= size) break;
     const at2 = laneOf(context, ref2);
     if (busy.has(at2) || lane !== null && at2 !== lane) continue;
+    if (focusWaits.has(testFileId(ref2))) continue;
     if (quietHolds(context, ledger, ref2, at2, { backlog, turn }, now)) continue;
     const file = ledger.file(ref2);
     const key2 = file?.key ?? null;
@@ -14584,6 +14588,10 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
     const checkpointId = ledger.checkpoints.idFor(ref2);
     const inputs2 = keys.stabilityPaths(ref2);
     picked.push({ file, key: key2, inputs: inputs2, checkpointId, forced, recent, waits, catchUp });
+  }
+  if (turnDue && !turnTier && focusWaits.size > 0) {
+    ledger.commit();
+    return selectTier(context, ledger, busy, cut, false);
   }
   const granted = backlog || turnTier;
   const width = slot2 !== null ? 1 : granted ? widest(context, picked) : 0;
@@ -14958,10 +14966,13 @@ function turnFirst(context, ledger, busy, turnDue) {
   if (!turnDue) return false;
   const now = context.now();
   const { queue } = ledger;
-  return queue.hasFast((ref2) => {
+  return ledger.fastQueued((ref2) => {
     const lane = laneOf(context, ref2);
     if (busy.has(lane) || queue.isFirstGroup(ref2)) return false;
-    return !quietHolds(context, ledger, ref2, lane, { backlog: true, turn: true }, now);
+    if (quietHolds(context, ledger, ref2, lane, { backlog: true, turn: true }, now)) return false;
+    const file = ledger.file(ref2);
+    if (!file || file.key === null || file.blocked !== null) return false;
+    return peekClaim(context, ledger, ref2) === "free";
   });
 }
 function selectFocusedTier(context, ledger, busy, turnDue) {
@@ -15055,6 +15066,7 @@ function startFocusedTier(context, ledger, picked, lane) {
 var init_focused = __esm({
   "src/core/scheduler/focused.ts"() {
     "use strict";
+    init_claims();
     init_focused_row();
     init_quiet();
     init_retries();
