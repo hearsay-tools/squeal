@@ -1,0 +1,98 @@
+== repo
+dotgit: dir
+toplevel: <D>/repo
+git-dir: <D>/repo/.git
+common-dir: <D>/repo/.git
+is-bare: false
+superproject: 
+worktree list:
+  worktree <D>/repo
+  worktree <D>/repo-wt
+  worktree <D>/repo/.ai/w/nested
+== repo-wt
+dotgit: file: gitdir: <D>/repo/.git/worktrees/repo-wt
+toplevel: <D>/repo-wt
+git-dir: <D>/repo/.git/worktrees/repo-wt
+common-dir: <D>/repo/.git
+is-bare: false
+superproject: 
+worktree list:
+  worktree <D>/repo
+  worktree <D>/repo-wt
+  worktree <D>/repo/.ai/w/nested
+== repo/.ai/w/nested
+dotgit: file: gitdir: <D>/repo/.git/worktrees/nested
+toplevel: <D>/repo/.ai/w/nested
+git-dir: <D>/repo/.git/worktrees/nested
+common-dir: <D>/repo/.git
+is-bare: false
+superproject: 
+worktree list:
+  worktree <D>/repo
+  worktree <D>/repo-wt
+  worktree <D>/repo/.ai/w/nested
+== bare-wt1
+dotgit: file: gitdir: <D>/bare.git/worktrees/bare-wt1
+toplevel: <D>/bare-wt1
+git-dir: <D>/bare.git/worktrees/bare-wt1
+common-dir: <D>/bare.git
+is-bare: false
+superproject: 
+worktree list:
+  worktree <D>/bare.git
+  bare
+  worktree <D>/bare-wt1
+  worktree <D>/bare-wt2
+== bare-wt2
+dotgit: file: gitdir: <D>/bare.git/worktrees/bare-wt2
+toplevel: <D>/bare-wt2
+git-dir: <D>/bare.git/worktrees/bare-wt2
+common-dir: <D>/bare.git
+is-bare: false
+superproject: 
+worktree list:
+  worktree <D>/bare.git
+  bare
+  worktree <D>/bare-wt1
+  worktree <D>/bare-wt2
+== clone2
+dotgit: dir
+toplevel: <D>/clone2
+git-dir: <D>/clone2/.git
+common-dir: <D>/clone2/.git
+is-bare: false
+superproject: 
+worktree list:
+  worktree <D>/clone2
+== super
+dotgit: dir
+toplevel: <D>/super
+git-dir: <D>/super/.git
+common-dir: <D>/super/.git
+is-bare: false
+superproject: 
+worktree list:
+  worktree <D>/super
+== super/sub
+dotgit: file: gitdir: ../.git/modules/sub
+toplevel: <D>/super/sub
+git-dir: <D>/super/.git/modules/sub
+common-dir: <D>/super/.git/modules/sub
+is-bare: false
+superproject: <D>/super
+worktree list:
+  worktree <D>/super/.git/modules/sub
+  worktree <D>/sub-wt
+== sub-wt
+dotgit: file: gitdir: <D>/super/.git/modules/sub/worktrees/sub-wt
+toplevel: <D>/sub-wt
+git-dir: <D>/super/.git/modules/sub/worktrees/sub-wt
+common-dir: <D>/super/.git/modules/sub
+is-bare: false
+superproject: 
+worktree list:
+  worktree <D>/super/.git/modules/sub
+  worktree <D>/sub-wt
+== bare.git itself
+is-bare: true
+git version 2.43.0
