@@ -304,7 +304,7 @@ export interface Scheduler {
    * Spec 011 C15, focused checks (row 011-145): a named wait with `--check`
    * asks for the checks of each of `testFiles` whose full name holds one of
    * `texts`, run first and alone, until `withinMs` on this daemon's clock.
-   * Their outcome is never a result (C5): it goes to the `focused:` meta
+   * Their outcome is never a result (C5): it goes to the focused meta
    * row. A slow file or one whose runner does not focus gets no entry.
    * Absent: the daemon cannot focus.
    */

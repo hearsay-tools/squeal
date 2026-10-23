@@ -1,6 +1,7 @@
 import { isSlowLane, type TestFileRef } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
+import { focusedWaiting } from "./focused.js";
 import type { Ledger } from "./ledger.js";
 import { SHARE_FLOOR_MS } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
@@ -44,7 +45,9 @@ export function busyLanes(
   for (const [lane, tiers] of held) {
     const backlog = tiers.filter((tier) => tier.kind === "backlog");
     const edit = backlog.length < tiers.length;
-    const queued = ledger.queue.hasFirstGroup((ref) => laneOf(context, ref) === lane);
+    const inLane = (ref: TestFileRef) => laneOf(context, ref) === lane;
+    // Row 011-145: a focused entry is an edit's work here, so its tier starts beside the backlog's.
+    const queued = ledger.queue.hasFirstGroup(inLane) || focusedWaiting(context, ledger, inLane);
     const lead = backlog[0]?.files[0]?.file.ref;
     const beside =
       queued && !edit && lead !== undefined && context.runner.besideBacklog?.(lead) === true;
