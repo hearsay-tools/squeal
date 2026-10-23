@@ -6,7 +6,7 @@ import { VitestAdapter } from "../../../../src/runners/vitest/adapter.js";
 import { loadVitest } from "../../../../src/runners/vitest/load.js";
 import { WorktreePaths } from "../../../../src/runners/vitest/paths.js";
 import type { CaseOutput, VitestInput } from "../case.js";
-import { storedOf } from "./reported.js";
+import { selectedOf, storedOf } from "./reported.js";
 import { writeTree } from "./shared.js";
 
 /*
@@ -105,6 +105,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
         timeoutMs: null,
         ...(cancel === null ? {} : { signal: cancel.signal }),
         ...(run.fileEndedThrows === true ? { fileEnded: throwing } : {}),
+        ...(run.checks === undefined ? {} : { checks: run.checks }),
       };
       if (run.removeTempDir === true && tmp !== null) rmSync(tmp, { recursive: true, force: true });
       const report = adapter.run(run.files, options);
@@ -123,7 +124,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
         cancel?.abort(run.cancel);
       }
       rmSync(hold, { force: true });
-      reports.push(await report);
+      reports.push(selectedOf(await report, run.checks));
       hinted(adapter, run.files);
     }
   } finally {
