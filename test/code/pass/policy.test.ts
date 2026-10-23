@@ -27,6 +27,18 @@ describe("the code pass's included set (015 D1)", () => {
     expect(counter.calls).toHaveLength(2);
   });
 
+  it("counts a symlink's target at its own path, never the link, and does not read it again", async () => {
+    const tree = worktree();
+    const store = open(tree.commonDir);
+    tree.write("src/a.ts", "settle 23 B1\n").link("src/alias.ts", "a.ts").revise();
+    const counter = fakeCounter();
+    await pass(tree, store, counter);
+    expect(store.files.list(tree.id).map((f) => f.path)).toEqual(["src/a.ts"]);
+    expect(store.states.list(tree.id).map((s) => s.check.path)).toEqual(["src/a.ts"]);
+    expect(counter.calls).toHaveLength(1);
+    expect(await pass(tree, store, counter)).toBeNull();
+  });
+
   it("keeps a too-big file's row with its size and no count, out of the files still to count", async () => {
     const tree = worktree();
     const store = open(tree.commonDir);
