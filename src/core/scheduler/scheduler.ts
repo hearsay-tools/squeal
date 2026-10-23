@@ -109,24 +109,22 @@ interface EndedRun {
 
 /**
  * What a record decides under the lock before its write (row 011-126): kept
- * while a busy store holds the write back, so a retry neither re-keys nor
- * counts a withhold again. The merge hold is read again at each try (review
- * 0.1.273, B1).
+ * while a busy store holds the write back, so a retry does not re-key
+ * again. The merge hold is read again at each try (review 0.1.273, B1), and
+ * so is the completion barrier over the files it leaves free, whose
+ * withholds count once the write lands (row 011-128).
  */
 interface PreparedRecord {
-  /** The completion barrier's report, its startup failure kept for the hold's check. */
-  readonly ranReport: RunReport;
   readonly changed: ReadonlySet<RelativePath>;
   readonly touched: readonly RelativePath[];
   readonly observed: TierObservations | undefined;
-  /** The files queued again instead of stored whatever the hold: first withholds, unfinished. */
-  readonly again: readonly string[];
+  /** The files a cancel cut short: queued again instead of stored whatever the hold. */
+  readonly unfinished: readonly string[];
   /** The files and setups the merge hold held at the preparation: still held at each try. */
   readonly held: readonly TierFile[];
   readonly setupsHeld: HeldSetups<TierFile>;
   /** The stop's cancel had reached the run. */
   readonly cancelled: boolean;
-  readonly withheld: readonly string[];
 }
 
 /** What a record leaves to do outside the lock: the paths to reconcile, the withhold notes. */
@@ -1074,47 +1072,14 @@ class TierScheduler implements Scheduler {
     // Row 011-72 (011 C9): a file whose key names an unmerged path stores nothing and stays
     // queued; that withhold counts toward no withhold limit.
     const held = heldFiles(this.#hold, tier.files, observed?.growth);
-    const free = held.length === 0 ? tier.files : tier.files.filter((f) => !held.includes(f));
-    // Task 013-02 (D2 of 013-01): the files whose keys name a touched path, as a content change.
-    const {
-      report: ranReport,
-      barred,
-      paths: barredPaths,
-    } = barredByTouch(ran, free, touched, observed?.growth);
     // Review 0.1.266, B2: the held files' projects give no setup outcome, and a startup failure
     // that blames one is the hold's: it blocks nothing and the files it kept from starting queue.
-    const setupsHeld = heldSetups(this.#hold, tier.files, held, ranReport.startupFailure);
-    // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
-    // again as a moved install does, its previous state standing, and a second leaves it
-    // `unknown`, per file whatever tier it shares (review 007-31, B1).
-    const withheld: string[] = [];
-    const withhold = barred.length === 0 ? null : this.#withholds.record(barred);
-    this.#withholds.clear(free.filter((ran) => !barred.includes(ran)));
-    if (withhold !== null) {
-      const notes = [
-        withholdNote(barredPaths, withhold.again, true),
-        withholdNote(barredPaths, withhold.exhausted, false),
-      ];
-      withheld.push(...notes.filter((note) => note !== null));
-    }
-    // Only the first withholds are queued again; the exhausted files, forced or not, record
-    // the withheld report and are `unknown` in the same commit (review 007-33, B1). What a
-    // stop's cancel cut short stays queued for the next daemon (D10, task 001-367), and what a
-    // hold's cancel cut short stays queued for the hold's end (row 011-74).
+    const setupsHeld = heldSetups(this.#hold, tier.files, held, ran.startupFailure);
+    // What a stop's cancel cut short stays queued for the next daemon (D10, task 001-367), and
+    // what a hold's cancel cut short stays queued for the hold's end (row 011-74).
     const cancelled = this.#stop.signal.aborted;
     const unfinished = cancelled || holdCut ? unfinishedFiles(tier, ran) : [];
-    const again = [...(withhold?.again.map(({ file }) => file.id) ?? []), ...unfinished];
-    return {
-      ranReport,
-      changed,
-      touched,
-      observed,
-      again,
-      held,
-      setupsHeld,
-      cancelled,
-      withheld,
-    };
+    return { changed, touched, observed, unfinished, held, setupsHeld, cancelled };
   }
 
   /**
@@ -1123,11 +1088,12 @@ class TierScheduler implements Scheduler {
    * store holds the write back. A file or setup held at the preparation stays
    * held.
    */
-  #heldNow(tier: Tier, prepared: PreparedRecord): HeldSetups<TierFile> & { held: TierFile[] } {
-    const { observed, ranReport, setupsHeld: was } = prepared;
+  #heldNow(ended: EndedRun, prepared: PreparedRecord): HeldSetups<TierFile> & { held: TierFile[] } {
+    const { tier, ran } = ended;
+    const { observed, setupsHeld: was } = prepared;
     const now = heldFiles(this.#hold, tier.files, observed?.growth);
     const held = tier.files.filter((f) => prepared.held.includes(f) || now.includes(f));
-    const setups = heldSetups(this.#hold, tier.files, held, ranReport.startupFailure);
+    const setups = heldSetups(this.#hold, tier.files, held, ran.startupFailure);
     return {
       held,
       projects: new Set([...was.projects, ...setups.projects]),
@@ -1138,14 +1104,44 @@ class TierScheduler implements Scheduler {
     };
   }
 
+  /**
+   * The completion barrier over the files the merge hold leaves free as the
+   * write is tried. Row 011-128 (011 C9): a held file's withhold counts
+   * toward no withhold limit, so `count` moves the free files' withholds,
+   * once the write has landed.
+   */
+  #barrier(ended: EndedRun, prepared: PreparedRecord, held: readonly TierFile[]) {
+    const { tier, ran } = ended;
+    const { touched, observed } = prepared;
+    const free = held.length === 0 ? tier.files : tier.files.filter((f) => !held.includes(f));
+    // Task 013-02 (D2 of 013-01): the files whose keys name a touched path, as a content change.
+    const { report, barred, paths } = barredByTouch(ran, free, touched, observed?.growth);
+    // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
+    // again as a moved install does, its previous state standing, and a second leaves it
+    // `unknown`, per file whatever tier it shares (review 007-31, B1). Only the first are
+    // queued again; the exhausted files, forced or not, record the withheld report and are
+    // `unknown` in the same commit (review 007-33, B1).
+    const withhold = this.#withholds.peek(barred);
+    const notes = [
+      withholdNote(paths, withhold.again, true),
+      withholdNote(paths, withhold.exhausted, false),
+    ].filter((note) => note !== null);
+    const count = () => {
+      this.#withholds.record(barred);
+      this.#withholds.clear(free.filter((ran) => !barred.includes(ran)));
+    };
+    return { report, again: withhold.again.map(({ file }) => file.id), notes, count };
+  }
+
   /** The record's one write transaction, from what `#prepare` decided. */
   #write(ended: EndedRun, prepared: PreparedRecord, commit: boolean): Recorded {
     const { context, ledger } = this.#started();
     const { tier, ran, ignored, installMoved, runtimeGone, slow } = ended;
-    const { ranReport, changed, touched, observed, cancelled, withheld } = prepared;
-    const { held, projects, startup, notStarted } = this.#heldNow(tier, prepared);
-    const { startupFailure: _, ...withoutStartup } = ranReport;
-    const report = startup ? withoutStartup : ranReport;
+    const { changed, touched, observed, cancelled } = prepared;
+    const { held, projects, startup, notStarted } = this.#heldNow(ended, prepared);
+    const barrier = this.#barrier(ended, prepared, held);
+    const { startupFailure: _, ...withoutStartup } = barrier.report;
+    const report = startup ? withoutStartup : barrier.report;
     // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
     const moved = context.store.transaction(() => {
       // Rows 011-66 and 011-106: a crash after the daemon's stop began, or a run while its own
@@ -1155,7 +1151,8 @@ class TierScheduler implements Scheduler {
         runtimeGone,
       });
       const again = [
-        ...prepared.again,
+        ...barrier.again,
+        ...prepared.unfinished,
         ...held.map(({ file }) => file.id),
         ...notStarted.map(({ file }) => file.id),
         ...interrupted,
@@ -1181,7 +1178,8 @@ class TierScheduler implements Scheduler {
       // The runner hears the touches too, so its next run reads the disk again.
       return [...new Set([...result, ...touched])];
     });
-    return { moved, withheld };
+    barrier.count();
+    return { moved, withheld: barrier.notes };
   }
 
   /**
