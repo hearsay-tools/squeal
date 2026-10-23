@@ -30,7 +30,7 @@ export const WORKTREE_SCOPED_TABLES = [
 /*
  * Task 001-270: a daemon's start token (`DaemonRecord.token`) is a `meta`
  * row beside its registration, written with it, with the start time and the
- * version it was drawn with. Schema V1 stays: a release before the token
+ * version it was drawn with, and from row 011-140 the executable it runs. Schema V1 stays: a release before the token
  * writes no row and leaves one it finds, so a token counts only while the
  * registration's start time and version are its own; that release's daemon
  * reads as having none.
@@ -53,23 +53,39 @@ export function toDaemonToken(
 }
 
 export function createWorktreeRepo(conn: Connection): WorktreeRepo {
-  /** `id`'s token, when it was drawn by the daemon registered at `startedAt` with `version`. */
-  const tokenOf = (id: string, startedAt: EpochMs, version: string | null): string | undefined => {
+  /** `id`'s token row, when the daemon registered at `startedAt` with `version` drew it. */
+  const tokenRowOf = (
+    id: string,
+    startedAt: EpochMs,
+    version: string | null,
+  ): { token: string; executable?: string } | undefined => {
     const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
     if (raw === null) return undefined;
     try {
-      return toDaemonToken(JSON.parse(str(raw, "value")), startedAt, version) ?? undefined;
+      const value: unknown = JSON.parse(str(raw, "value"));
+      const token = toDaemonToken(value, startedAt, version);
+      if (token === null || token === undefined) return undefined;
+      const executable = isRecord(value) ? value.executable : undefined;
+      return typeof executable === "string" ? { token, executable } : { token };
     } catch {
       return undefined;
     }
   };
+  /** `id`'s token, when it was drawn by the daemon registered at `startedAt` with `version`. */
+  const tokenOf = (id: string, startedAt: EpochMs, version: string | null) =>
+    tokenRowOf(id, startedAt, version)?.token;
   /** With a registration: its token, or none, so an earlier token never names it. */
   const writeToken = (id: string, d: DaemonRecord) => {
     if (d.token === undefined) {
       conn.run("DELETE FROM meta WHERE key = ?", tokenKey(id));
       return;
     }
-    const value = { startedAt: d.startedAt, squealVersion: d.squealVersion, token: d.token };
+    const value = {
+      startedAt: d.startedAt,
+      squealVersion: d.squealVersion,
+      token: d.token,
+      ...(d.executable === undefined ? {} : { executable: d.executable }),
+    };
     conn.run(
       "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
       tokenKey(id),
@@ -79,8 +95,8 @@ export function createWorktreeRepo(conn: Connection): WorktreeRepo {
   const toRecord = (row: Row): WorktreeRecord => {
     const record = fromRow(row);
     const d = record.daemon;
-    const token = d === null ? undefined : tokenOf(record.id, d.startedAt, d.squealVersion);
-    return token === undefined || d === null ? record : { ...record, daemon: { ...d, token } };
+    const token = d === null ? undefined : tokenRowOf(record.id, d.startedAt, d.squealVersion);
+    return token === undefined || d === null ? record : { ...record, daemon: { ...d, ...token } };
   };
   return {
     get: (id) => {
