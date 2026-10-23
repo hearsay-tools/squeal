@@ -83,4 +83,6 @@ C7's last D8 sentence on the busy store now reads: "Measured by `test/daemon/bus
 
 - The repaired test, `npx vitest run test/daemon/busy-edit.test.ts` in this worktree at b8130baa8, 20 times in a row, 03:18:31Z to 03:24:48Z, beside my locked full suite (started 03:18:29Z, `full=1` in every sample): 20 passed, 0 failed, each run 18 to 20 s wall (CLI build included), 1-minute load 3.36 to 5.05. Before the repair the file took about 77 s.
 - Squeal's own runs of the changed files at revision 6: `busy-edit.test.ts` PASS in 17,392 ms, `busy-store.test.ts` PASS.
+- My locked full suite, `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` in this worktree at b8130baa8 (the notes not yet committed), 03:18:30Z to 03:37:02Z, 1,112 s: 938 files passed, 2 skipped, 1 failed. The failure is `test/harness/pi/latency.test.ts:128`, "boundary on a fresh worker: expected 80.9 to be less than 80", a p95 bound in the Pi harness that this row does not touch, met during my 20 runs beside it. Not rerun. No other file failed, `busy-edit.test.ts` and `busy-store.test.ts` included (the reporter lists failures only).
+- `squeal run --all --wait` at revision 16 (5c23acc9a): no known failures, 921 test files, all current.
 
