@@ -152,6 +152,7 @@ var WORKTREE_META_ROWS = {
   daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
   daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
   daemonHandoff: { prefix: "daemon-handoff:", owner: "delivery/handoff" },
+  daemonHandoffShort: { prefix: "daemon-handoff-short:", owner: "delivery/handoff" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -513,17 +514,17 @@ function withDefaults(entry3) {
 }
 function projectEntries(value, path, fields, required, withDefaults3, check) {
   if (!Array.isArray(value)) return "an array of projects";
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   value.forEach((entry3, index) => {
     const at = `${path}[${index}]`;
-    const problem = entryProblem(entry3, at, kept, fields, required, check);
-    if (problem === null) kept.push(withDefaults3(entry3));
+    const problem = entryProblem(entry3, at, kept2, fields, required, check);
+    if (problem === null) kept2.push(withDefaults3(entry3));
     else problems.push(problem);
   });
-  return { kept, problems };
+  return { kept: kept2, problems };
 }
-function entryProblem(entry3, at, kept, fields, required, check) {
+function entryProblem(entry3, at, kept2, fields, required, check) {
   if (!isRecord(entry3))
     return `"${at}" must be an object, got ${JSON.stringify(entry3)}; it is skipped`;
   const named2 = nonEmptyString(entry3.name) === null ? entry3.name : null;
@@ -541,7 +542,7 @@ function entryProblem(entry3, at, kept, fields, required, check) {
   }
   const across = check?.(entry3) ?? null;
   if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
-  if (kept.some((project) => project.name === named2)) {
+  if (kept2.some((project) => project.name === named2)) {
     return `"${at}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
   }
   return null;
@@ -586,14 +587,14 @@ function slowInclude(value) {
   if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
     return "an array of strings";
   }
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   value.forEach((glob, index) => {
     const bad = compiles([glob]);
-    if (bad === null) kept.push(glob);
+    if (bad === null) kept2.push(glob);
     else problems.push(`"slow.include[${index}]" ${bad.problem}; it is left out`);
   });
-  return { kept, problems };
+  return { kept: kept2, problems };
 }
 
 // src/core/daemon/policy.ts
@@ -946,12 +947,12 @@ function read2(store, worktreeId) {
   }
 }
 var identity = (keys) => JSON.stringify(Object.entries(keys).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
-function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept }) {
+function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept: kept2 }) {
   const recorded = read2(store, worktreeId);
   const named2 = /* @__PURE__ */ new Map();
   for (const [at, index] of Object.entries(recorded.slots)) {
     const keys = recorded.snapshots[index];
-    if (keys !== void 0 && kept.has(at) && (resumed || at !== slot2)) named2.set(at, keys);
+    if (keys !== void 0 && kept2.has(at) && (resumed || at !== slot2)) named2.set(at, keys);
   }
   if (!resumed) {
     const keys = {};
@@ -2434,9 +2435,9 @@ function keepReplaced(conn, failing, records, loadOf2) {
 }
 function expireReplaced(conn, cutoff) {
   const entries = readReplaced(conn);
-  const kept = entries.filter((e) => e.provenance.recordedAt >= cutoff);
-  if (kept.length < entries.length) writeMetaList(conn, REPLACED_META_KEY, kept);
-  return entries.length - kept.length;
+  const kept2 = entries.filter((e) => e.provenance.recordedAt >= cutoff);
+  if (kept2.length < entries.length) writeMetaList(conn, REPLACED_META_KEY, kept2);
+  return entries.length - kept2.length;
 }
 function keptByReplaced(conn) {
   const entries = readReplaced(conn);
@@ -2448,8 +2449,8 @@ function keptByReplaced(conn) {
 function capped(entries) {
   const seen = /* @__PURE__ */ new Set();
   const perCheck = /* @__PURE__ */ new Map();
-  const kept = [];
-  for (let i = entries.length - 1; i >= 0 && kept.length < REPLACED_KEPT; i--) {
+  const kept2 = [];
+  for (let i = entries.length - 1; i >= 0 && kept2.length < REPLACED_KEPT; i--) {
     const entry3 = entries[i];
     const check = identity2(entry3.check);
     const id = JSON.stringify([check, entry3.key, entry3.provenance.runId]);
@@ -2457,9 +2458,9 @@ function capped(entries) {
     if (seen.has(id) || count >= REPLACED_PER_CHECK) continue;
     seen.add(id);
     perCheck.set(check, count + 1);
-    kept.push(entry3);
+    kept2.push(entry3);
   }
-  return kept.reverse();
+  return kept2.reverse();
 }
 function identity2(check) {
   return JSON.stringify(checkParams(check));
@@ -2482,9 +2483,9 @@ function recordUnknownRuns(conn, worktreeId, revision, marked, at) {
   if (added.length === 0) return;
   conn.transaction(() => {
     const ids = new Set(added.map(idOf));
-    const kept = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
+    const kept2 = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
     const newest = new Map(added.map((r) => [idOf(r), r]));
-    writeMetaList(conn, UNKNOWN_RUNS_META_KEY, [...kept, ...newest.values()]);
+    writeMetaList(conn, UNKNOWN_RUNS_META_KEY, [...kept2, ...newest.values()]);
   });
 }
 var STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
@@ -2493,9 +2494,9 @@ var STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
     AND s.observed_at = ? AND s.summary = ? LIMIT 1`;
 function dropFallenUnknownRuns(conn) {
   const records = readUnknownRuns(conn);
-  const kept = standing(conn, records);
-  if (kept.length < records.length) writeMetaList(conn, UNKNOWN_RUNS_META_KEY, kept);
-  return records.length - kept.length;
+  const kept2 = standing(conn, records);
+  if (kept2.length < records.length) writeMetaList(conn, UNKNOWN_RUNS_META_KEY, kept2);
+  return records.length - kept2.length;
 }
 function keptByUnknownRuns(conn) {
   return readUnknownRuns(conn).flatMap((r) => r.runId === null ? [] : [r.runId]);
@@ -3123,11 +3124,11 @@ function writeLane(conn, worktreeId, id, lane) {
       JSON.stringify(Object.keys(lanes))
     ).map((row) => str(row, "id"))
   );
-  const kept = Object.entries(lanes).filter(([id2]) => live.has(id2));
+  const kept2 = Object.entries(lanes).filter(([id2]) => live.has(id2));
   conn.run(
     "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
     worktreeMetaKey("checkpointLanes", worktreeId),
-    JSON.stringify(Object.fromEntries([...kept, [id, lane]]))
+    JSON.stringify(Object.fromEntries([...kept2, [id, lane]]))
   );
 }
 function toCheckpoint(row) {
@@ -3583,21 +3584,31 @@ function toDaemonToken(value, startedAt, version) {
   return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
 }
 function createWorktreeRepo(conn) {
-  const tokenOf = (id, startedAt, version) => {
+  const tokenRowOf = (id, startedAt, version) => {
     const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
     if (raw === null) return void 0;
     try {
-      return toDaemonToken(JSON.parse(str(raw, "value")), startedAt, version) ?? void 0;
+      const value = JSON.parse(str(raw, "value"));
+      const token = toDaemonToken(value, startedAt, version);
+      if (token === null || token === void 0) return void 0;
+      const executable = isRecord(value) ? value.executable : void 0;
+      return typeof executable === "string" ? { token, executable } : { token };
     } catch {
       return void 0;
     }
   };
+  const tokenOf = (id, startedAt, version) => tokenRowOf(id, startedAt, version)?.token;
   const writeToken = (id, d) => {
     if (d.token === void 0) {
       conn.run("DELETE FROM meta WHERE key = ?", tokenKey(id));
       return;
     }
-    const value = { startedAt: d.startedAt, squealVersion: d.squealVersion, token: d.token };
+    const value = {
+      startedAt: d.startedAt,
+      squealVersion: d.squealVersion,
+      token: d.token,
+      ...d.executable === void 0 ? {} : { executable: d.executable }
+    };
     conn.run(
       "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
       tokenKey(id),
@@ -3607,8 +3618,8 @@ function createWorktreeRepo(conn) {
   const toRecord = (row) => {
     const record = fromRow(row);
     const d = record.daemon;
-    const token = d === null ? void 0 : tokenOf(record.id, d.startedAt, d.squealVersion);
-    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, token } };
+    const token = d === null ? void 0 : tokenRowOf(record.id, d.startedAt, d.squealVersion);
+    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, ...token } };
   };
   return {
     get: (id) => {
@@ -5027,6 +5038,50 @@ var GROUP_ORDER = {
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
 
+// src/core/daemon/version.ts
+import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname5, join as join12 } from "node:path";
+import { fileURLToPath } from "node:url";
+var UNKNOWN_VERSION = "0.0.0-unknown";
+var PACKAGE_NAME = "squeal";
+function squealVersion() {
+  if (true) return "0.1.277";
+  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
+}
+function manifestVersion(module) {
+  let dir = dirname5(fileURLToPath(module));
+  for (; ; ) {
+    const version = readVersion(join12(dir, "package.json"));
+    if (version !== null) return version;
+    const parent = dirname5(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function readVersion(path) {
+  try {
+    const parsed = JSON.parse(readFileSync6(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const { name, version } = parsed;
+    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
+function isNewerVersion(version, than) {
+  const a = versionParts(version);
+  const b = versionParts(than);
+  if (a === null || b === null) return false;
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+function versionParts(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+  return match === null ? null : match.slice(1).map(Number);
+}
+
 // src/core/delivery/handoff.ts
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
 var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
@@ -5062,6 +5117,23 @@ function claimHandoff(store, worktreeId, claim) {
     return written;
   });
 }
+function shortHandoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoffShort", worktreeId);
+}
+function readShortHandoff(store, worktreeId) {
+  const text = store.meta.get(shortHandoffMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const mark = JSON.parse(text);
+    if (!isRecord(mark)) return null;
+    const { of, version, claimed: claimed2, at } = mark;
+    if (typeof of !== "string" || typeof version !== "string") return null;
+    if (typeof claimed2 !== "string" || typeof at !== "number") return null;
+    return { of, version, claimed: claimed2, at };
+  } catch {
+    return null;
+  }
+}
 
 // src/core/status/stopping.ts
 function withStopping(store, worktree, live, now) {
@@ -5069,7 +5141,9 @@ function withStopping(store, worktree, live, now) {
   const record = worktree.daemon;
   if (record === null) return claimed(store, worktree, live, now);
   const self = daemonIncarnation(record);
-  if (self === null || !shutDown(store, worktree.id, self)) return live;
+  if (self === null || !shutDown(store, worktree.id, self)) {
+    return withShort(store, worktree, record, live);
+  }
   if (live.state === "down" && daemonGone(worktree)) return live;
   const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
   const since = note?.at ?? record.heartbeatAt;
@@ -5090,6 +5164,17 @@ function claimed(store, worktree, live, now) {
   const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
   const { to, at: since, boundAt } = claim;
   return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
+}
+function withShort(store, worktree, record, live) {
+  if (live.state !== "alive") return live;
+  const mark = readShortHandoff(store, worktree.id);
+  if (mark === null || mark.of !== handoffFrom(record)) return live;
+  const { of, version, claimed: claimed2, at: since } = mark;
+  return { ...live, short: { of, version, claimed: claimed2, since } };
+}
+function shortText(short, command) {
+  const at = new Date(short.since).toISOString();
+  return `the handoff to ${short.claimed} ended at ${at} with a ${short.version} daemon, which validates; no hook asks it to step down again, and \`${command} start\` of ${short.claimed} replaces it`;
 }
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 function stoppingState(stopping, age) {
@@ -5173,14 +5258,18 @@ function livenessMetaKey(worktreeId) {
 function toldLiveness(store, consumer) {
   const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
   if (told === "down") return "down";
+  if (isRecord(told) && typeof told.short === "string") return { short: told.short };
   const since = isRecord(told) ? told.startingSince : void 0;
   return typeof since === "number" ? { startingSince: since } : "alive";
+}
+function toldOf(live) {
+  return live.state === "alive" && live.short !== void 0 ? { short: live.short.of } : live.state;
 }
 function tellLiveness(store, consumer, told) {
   writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
 }
 function asTold(live, told, at) {
-  if (live.state === "alive" || typeof told !== "object") return live;
+  if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
@@ -5209,6 +5298,9 @@ function livenessChange(store, consumer, at) {
     const rest = restState(store, worktree, at);
     if (rest === "quiet") return null;
     if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  }
+  if (live.state === "alive" && live.short !== void 0) {
+    return typeof told === "object" && "short" in told && told.short === live.short.of ? null : live;
   }
   return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
 }
@@ -6345,11 +6437,11 @@ function trimmed(state, states, keys) {
   const owed = state.testFiles.filter((f) => pending.has(f) && atKey(state, f, current2));
   if (owed.length === state.testFiles.length) return null;
   const { keys: recorded, ...rest } = state;
-  const kept = Object.entries(recorded ?? {}).filter(([f]) => owed.includes(f));
+  const kept2 = Object.entries(recorded ?? {}).filter(([f]) => owed.includes(f));
   return {
     ...rest,
     testFiles: owed,
-    ...recorded === void 0 ? {} : { keys: Object.fromEntries(kept) }
+    ...recorded === void 0 ? {} : { keys: Object.fromEntries(kept2) }
   };
 }
 
@@ -6481,7 +6573,7 @@ function createDelivery(store, options) {
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness2 ? livenessChange(store, consumer, at) : null;
-      if (changed !== null) tellLiveness(store, consumer, changed.state);
+      if (changed !== null) tellLiveness(store, consumer, toldOf(changed));
       const holds = liveness2 ? holdsChange(store, consumer, at) : null;
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const news = delta.entries.length > 0 || changed !== null || holds !== null;
@@ -6568,7 +6660,8 @@ function createDelivery(store, options) {
         knownFailures.map((f) => f.check)
       );
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
+      const daemon = header.daemon === void 0 ? null : toldOf(header.daemon);
+      tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);
       tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
@@ -6874,7 +6967,9 @@ function livenessSentence(daemon, revision, command) {
   if (daemon.stopping !== void 0) {
     return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
   }
-  if (daemon.state === "alive") return "";
+  if (daemon.state === "alive") {
+    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+  }
   if (daemon.stopped === true)
     return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
   const died = daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
@@ -7091,6 +7186,9 @@ function livenessTitle(liveness2, revision) {
   }
   if (liveness2?.state === "down" && liveness2.stopped === true) {
     return `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
+  }
+  if (liveness2?.state === "alive" && liveness2.short !== void 0) {
+    return `SQUEAL \xB7 a ${liveness2.short.version} daemon is validating at revision ${revision}, not ${liveness2.short.claimed}`;
   }
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
@@ -7313,50 +7411,6 @@ function daemonCliEntry(cli, env = process.env) {
   return cli ?? null;
 }
 
-// src/core/daemon/version.ts
-import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname5, join as join12 } from "node:path";
-import { fileURLToPath } from "node:url";
-var UNKNOWN_VERSION = "0.0.0-unknown";
-var PACKAGE_NAME = "squeal";
-function squealVersion() {
-  if (true) return "0.1.276";
-  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
-}
-function manifestVersion(module) {
-  let dir = dirname5(fileURLToPath(module));
-  for (; ; ) {
-    const version = readVersion(join12(dir, "package.json"));
-    if (version !== null) return version;
-    const parent = dirname5(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-function readVersion(path) {
-  try {
-    const parsed = JSON.parse(readFileSync6(path, "utf8"));
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const { name, version } = parsed;
-    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
-  } catch {
-    return null;
-  }
-}
-function isNewerVersion(version, than) {
-  const a = versionParts(version);
-  const b = versionParts(than);
-  if (a === null || b === null) return false;
-  for (let i = 0; i < 3; i++) {
-    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0);
-  }
-  return false;
-}
-function versionParts(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
-  return match === null ? null : match.slice(1).map(Number);
-}
-
 // src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
 async function ensure(location2, deps, context) {
@@ -7396,6 +7450,7 @@ async function handOver(context, deps, record) {
   if (record === null || !succeeds(record, version, others)) return "none";
   const id = context.consumer.worktreeId;
   const from = handoffFrom(record);
+  if (readShortHandoff(context.store, id)?.of === from) return "none";
   const at = now();
   if (liveHandoff(context.store, id, from, at) !== null) return "joined";
   if (daemonLiveness(record, at).state === "alive") {
@@ -7872,7 +7927,8 @@ import {
   rmSync as rmSync5
 } from "node:fs";
 import { basename as basename2, dirname as dirname6, join as join13, resolve as resolve3 } from "node:path";
-var COPIED = ["dist", "skills"];
+var COPIED = ["dist", "skills", ".codex-plugin"];
+var MANIFEST = join13(".codex-plugin", "plugin.json");
 var CLI = join13("dist", "cli", "squeal.mjs");
 var SKILL = join13("skills", "squeal", "SKILL.md");
 var LAUNCHER_SOURCE = join13("bin", "squeal-launcher");
@@ -7887,9 +7943,21 @@ function dataLauncher(data) {
 function copyOf(data, version) {
   return join13(data, "versions", version);
 }
+function manifestVersion2(dir) {
+  try {
+    const manifest = JSON.parse(readFileSync7(join13(dir, MANIFEST), "utf8"));
+    return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : null;
+  } catch {
+    return null;
+  }
+}
+function kept(data, version, file) {
+  const dir = copyOf(data, version);
+  const path = join13(dir, file);
+  return existsSync8(path) && manifestVersion2(dir) === version ? path : null;
+}
 function keptCli(data, version) {
-  const cli = join13(copyOf(data, version), CLI);
-  return existsSync8(cli) ? cli : null;
+  return kept(data, version, CLI);
 }
 function dataOfCopy(cli) {
   const versions = dirname6(dirname6(dirname6(dirname6(cli))));
@@ -7900,8 +7968,11 @@ function keepVersion({ root, data, version }) {
   if (!VERSION.test(version) || !existsSync8(join13(root, CLI))) return null;
   try {
     const versions = join13(data, "versions");
+    const whole = keptCli(data, version) !== null;
+    if (!whole && existsSync8(dir) && manifestVersion2(dir) !== version) remove(versions, version);
+    if (manifestVersion2(root) !== version) return whole ? dir : null;
     let made = false;
-    if (keptCli(data, version) === null) {
+    if (!whole) {
       mkdirSync6(versions, { recursive: true });
       const part = join13(versions, `.${version}.${process.pid}.tmp`);
       rmSync5(part, { recursive: true, force: true });
@@ -7962,13 +8033,14 @@ function prune3(data, version) {
       gone.push(other);
     }
   }
-  for (const name of gone) {
-    const doomed = join13(versions, `.${name}.${process.pid}.gone`);
-    try {
-      renameSync2(join13(versions, name), doomed);
-      rmSync5(doomed, { recursive: true, force: true });
-    } catch {
-    }
+  for (const name of gone) remove(versions, name);
+}
+function remove(versions, name) {
+  const doomed = join13(versions, `.${name}.${process.pid}.gone`);
+  try {
+    renameSync2(join13(versions, name), doomed);
+    rmSync5(doomed, { recursive: true, force: true });
+  } catch {
   }
 }
 function processArgs() {
@@ -8036,10 +8108,10 @@ function capContext(text, command = SQUEAL_COMMAND, keep = "") {
 
 ${text}`).slice(2);
   const head = text.slice(0, text.length - primer2.length).replace(/\n\n$/, "");
-  const kept = [keep, primer2].filter((p) => p !== "").join("\n\n");
-  const tail = head === "" || kept === "" ? kept : `
+  const kept2 = [keep, primer2].filter((p) => p !== "").join("\n\n");
+  const tail = head === "" || kept2 === "" ? kept2 : `
 
-${kept}`;
+${kept2}`;
   if (head.length + tail.length <= CONTEXT_CAP_CHARS) return `${head}${tail}`;
   const cut = cutLine(command);
   const room = CONTEXT_CAP_CHARS - tail.length - cut.length - 1;
@@ -8102,8 +8174,8 @@ function sessionLocation(input, start, roots) {
   }
   const restart = start && input.agent_id === void 0 && (input.source === void 0 || RESTART_SOURCES.has(input.source));
   if (!restart) {
-    const kept = roots.get(input.session_id);
-    if (kept !== null) return kept;
+    const kept2 = roots.get(input.session_id);
+    if (kept2 !== null) return kept2;
   }
   const located = locate(input.cwd);
   if (located !== null) roots.set(input.session_id, located);
@@ -8158,11 +8230,11 @@ function hash(text) {
 function readKept(file) {
   const stat = lstatSync3(file, { throwIfNoEntry: false });
   if (stat === void 0 || !stat.isFile() || stat.uid !== currentUid()) return null;
-  const kept = JSON.parse(readFileSync8(file, "utf8"));
-  if (!isRecord(kept) || typeof kept.root !== "string" || typeof kept.commonDir !== "string") {
+  const kept2 = JSON.parse(readFileSync8(file, "utf8"));
+  if (!isRecord(kept2) || typeof kept2.root !== "string" || typeof kept2.commonDir !== "string") {
     return null;
   }
-  return existsSync10(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
+  return existsSync10(kept2.root) ? { root: kept2.root, commonDir: kept2.commonDir } : null;
 }
 
 // src/harness/codex/input.ts
@@ -8231,8 +8303,8 @@ async function runMain(name, handler) {
     cli,
     command: codexCommand(process.env, cli)
   };
-  const kept = name === "session-start" ? deps : keepOnSpawn(deps);
-  const result = await runCodexHandler(name, handler, stdin, kept);
+  const kept2 = name === "session-start" ? deps : keepOnSpawn(deps);
+  const result = await runCodexHandler(name, handler, stdin, kept2);
   if (result.stdout !== "") process.stdout.write(result.stdout);
   if (result.stderr !== "") process.stderr.write(result.stderr);
 }
