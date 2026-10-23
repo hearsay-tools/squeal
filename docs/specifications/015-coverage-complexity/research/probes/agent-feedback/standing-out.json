@@ -1,0 +1,14 @@
+{
+  "files": 600,
+  "functions": 6964,
+  "ccAtLeast5": 1143,
+  "ccAtLeast10": 309,
+  "ccAtLeast12": 192,
+  "ccAtLeast15": 117,
+  "ccAtLeast25": 30,
+  "ccAtLeast30": 18,
+  "filesWithCcAtLeast12": 148,
+  "parseAndCcMs": 2036,
+  "bytes": 3494136,
+  "load": "56.10 43.49 33.34"
+}
