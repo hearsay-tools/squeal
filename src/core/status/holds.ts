@@ -11,6 +11,7 @@ import type {
   Store,
   WorktreeRecord,
 } from "../types/index.js";
+import { liveStartedAt } from "./open-runs.js";
 
 /*
  * Row 011-73 (spec 011 C6, C9 and C15 as amended 2026-10-21;
@@ -62,11 +63,8 @@ export function readKeyedHolds(
   namespace: string | null = pidNamespace(),
 ): KeyedHold[] {
   if (worktree === null) return [];
-  const record = worktree.daemon;
-  const row =
-    record === null || daemon.state !== "alive"
-      ? null
-      : readMergeHold(store, worktree.id, record.startedAt);
+  const startedAt = liveStartedAt(worktree, daemon);
+  const row = startedAt === null ? null : readMergeHold(store, worktree.id, startedAt);
   const merge: KeyedHold[] =
     row === null
       ? []
