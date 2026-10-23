@@ -111,7 +111,8 @@ function mayList(root: AbsolutePath, rel: string): boolean {
   const others = [...policy.nodeTest, ...policy.pytest];
   const selects = (project: (typeof others)[number]) => {
     const from = posix.relative(project.cwd ?? "", rel);
-    if (from.startsWith("..")) return false;
+    // Outside the project only when the first segment is exactly `..`: `..x.test.ts` is inside.
+    if (from === ".." || from.startsWith("../")) return false;
     return (
       createInputMatcher(project.include)(from) && !createInputMatcher(project.exclude ?? [])(from)
     );
