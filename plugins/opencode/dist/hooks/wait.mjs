@@ -103,6 +103,7 @@ var WORKTREE_META_ROWS = {
   daemonUsed: { prefix: "daemon-used:", owner: "daemon/last-use" },
   daemonStopped: { prefix: "daemon-stopped:", owner: "delivery/stopped" },
   daemonHandoff: { prefix: "daemon-handoff:", owner: "delivery/handoff" },
+  daemonHandoffShort: { prefix: "daemon-handoff-short:", owner: "delivery/handoff" },
   slowTier: { prefix: "slow-tier:", owner: "slow/state" },
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
@@ -3436,21 +3437,31 @@ function toDaemonToken(value, startedAt, version) {
   return value.startedAt === startedAt && value.squealVersion === version ? value.token : null;
 }
 function createWorktreeRepo(conn) {
-  const tokenOf = (id, startedAt, version) => {
+  const tokenRowOf = (id, startedAt, version) => {
     const raw = conn.get("SELECT value FROM meta WHERE key = ?", tokenKey(id));
     if (raw === null) return void 0;
     try {
-      return toDaemonToken(JSON.parse(str(raw, "value")), startedAt, version) ?? void 0;
+      const value = JSON.parse(str(raw, "value"));
+      const token = toDaemonToken(value, startedAt, version);
+      if (token === null || token === void 0) return void 0;
+      const executable = isRecord(value) ? value.executable : void 0;
+      return typeof executable === "string" ? { token, executable } : { token };
     } catch {
       return void 0;
     }
   };
+  const tokenOf = (id, startedAt, version) => tokenRowOf(id, startedAt, version)?.token;
   const writeToken = (id, d) => {
     if (d.token === void 0) {
       conn.run("DELETE FROM meta WHERE key = ?", tokenKey(id));
       return;
     }
-    const value = { startedAt: d.startedAt, squealVersion: d.squealVersion, token: d.token };
+    const value = {
+      startedAt: d.startedAt,
+      squealVersion: d.squealVersion,
+      token: d.token,
+      ...d.executable === void 0 ? {} : { executable: d.executable }
+    };
     conn.run(
       "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
       tokenKey(id),
@@ -3460,8 +3471,8 @@ function createWorktreeRepo(conn) {
   const toRecord = (row) => {
     const record = fromRow(row);
     const d = record.daemon;
-    const token = d === null ? void 0 : tokenOf(record.id, d.startedAt, d.squealVersion);
-    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, token } };
+    const token = d === null ? void 0 : tokenRowOf(record.id, d.startedAt, d.squealVersion);
+    return token === void 0 || d === null ? record : { ...record, daemon: { ...d, ...token } };
   };
   return {
     get: (id) => {
@@ -4808,11 +4819,45 @@ var GROUP_ORDER = {
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
 
+// src/core/daemon/version.ts
+import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
+import { dirname as dirname5, join as join11 } from "node:path";
+import { fileURLToPath } from "node:url";
+var UNKNOWN_VERSION = "0.0.0-unknown";
+var PACKAGE_NAME = "squeal";
+function squealVersion() {
+  if (true) return "0.1.277";
+  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
+}
+function manifestVersion(module) {
+  let dir = dirname5(fileURLToPath(module));
+  for (; ; ) {
+    const version = readVersion(join11(dir, "package.json"));
+    if (version !== null) return version;
+    const parent = dirname5(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+function readVersion(path) {
+  try {
+    const parsed = JSON.parse(readFileSync6(path, "utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const { name, version } = parsed;
+    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
+
 // src/core/delivery/handoff.ts
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
 var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
 function handoffMetaKey(worktreeId) {
   return worktreeMetaKey("daemonHandoff", worktreeId);
+}
+function handoffFrom(record) {
+  return daemonIncarnation(record) ?? `${record.squealVersion}@${record.startedAt}`;
 }
 function readHandoff(store, worktreeId) {
   const text = store.meta.get(handoffMetaKey(worktreeId));
@@ -4828,6 +4873,23 @@ function readHandoff(store, worktreeId) {
     return null;
   }
 }
+function shortHandoffMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonHandoffShort", worktreeId);
+}
+function readShortHandoff(store, worktreeId) {
+  const text = store.meta.get(shortHandoffMetaKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const mark = JSON.parse(text);
+    if (!isRecord(mark)) return null;
+    const { of, version, claimed: claimed2, at } = mark;
+    if (typeof of !== "string" || typeof version !== "string") return null;
+    if (typeof claimed2 !== "string" || typeof at !== "number") return null;
+    return { of, version, claimed: claimed2, at };
+  } catch {
+    return null;
+  }
+}
 
 // src/core/status/stopping.ts
 function withStopping(store, worktree, live, now) {
@@ -4835,7 +4897,9 @@ function withStopping(store, worktree, live, now) {
   const record = worktree.daemon;
   if (record === null) return claimed(store, worktree, live, now);
   const self = daemonIncarnation(record);
-  if (self === null || !shutDown(store, worktree.id, self)) return live;
+  if (self === null || !shutDown(store, worktree.id, self)) {
+    return withShort(store, worktree, record, live);
+  }
   if (live.state === "down" && daemonGone(worktree)) return live;
   const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
   const since = note?.at ?? record.heartbeatAt;
@@ -4856,6 +4920,17 @@ function claimed(store, worktree, live, now) {
   const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
   const { to, at: since, boundAt } = claim;
   return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
+}
+function withShort(store, worktree, record, live) {
+  if (live.state !== "alive") return live;
+  const mark = readShortHandoff(store, worktree.id);
+  if (mark === null || mark.of !== handoffFrom(record)) return live;
+  const { of, version, claimed: claimed2, at: since } = mark;
+  return { ...live, short: { of, version, claimed: claimed2, since } };
+}
+function shortText(short, command) {
+  const at = new Date(short.since).toISOString();
+  return `the handoff to ${short.claimed} ended at ${at} with a ${short.version} daemon, which validates; no hook asks it to step down again, and \`${command} start\` of ${short.claimed} replaces it`;
 }
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 function stoppingState(stopping, age) {
@@ -4939,14 +5014,18 @@ function livenessMetaKey(worktreeId) {
 function toldLiveness(store, consumer) {
   const told = readSlot(store, livenessMetaKey(consumer.worktreeId), consumer);
   if (told === "down") return "down";
+  if (isRecord(told) && typeof told.short === "string") return { short: told.short };
   const since = isRecord(told) ? told.startingSince : void 0;
   return typeof since === "number" ? { startingSince: since } : "alive";
+}
+function toldOf(live) {
+  return live.state === "alive" && live.short !== void 0 ? { short: live.short.of } : live.state;
 }
 function tellLiveness(store, consumer, told) {
   writeSlot(store, livenessMetaKey(consumer.worktreeId), consumer, told);
 }
 function asTold(live, told, at) {
-  if (live.state === "alive" || typeof told !== "object") return live;
+  if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
@@ -4975,6 +5054,9 @@ function livenessChange(store, consumer, at) {
     const rest = restState(store, worktree, at);
     if (rest === "quiet") return null;
     if (rest === "overdue") store.meta.delete(daemonRestMetaKey(consumer.worktreeId));
+  }
+  if (live.state === "alive" && live.short !== void 0) {
+    return typeof told === "object" && "short" in told && told.short === live.short.of ? null : live;
   }
   return live.state === (typeof told === "object" ? "alive" : told) ? null : live;
 }
@@ -6242,7 +6324,7 @@ function createDelivery(store, options) {
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness2 ? livenessChange(store, consumer, at) : null;
-      if (changed !== null) tellLiveness(store, consumer, changed.state);
+      if (changed !== null) tellLiveness(store, consumer, toldOf(changed));
       const holds = liveness2 ? holdsChange(store, consumer, at) : null;
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const news = delta.entries.length > 0 || changed !== null || holds !== null;
@@ -6329,7 +6411,8 @@ function createDelivery(store, options) {
         knownFailures.map((f) => f.check)
       );
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      tellLiveness(store, consumer, starting ? told : header.daemon?.state ?? null);
+      const daemon = header.daemon === void 0 ? null : toldOf(header.daemon);
+      tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);
       tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
@@ -6635,7 +6718,9 @@ function livenessSentence(daemon, revision, command) {
   if (daemon.stopping !== void 0) {
     return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
   }
-  if (daemon.state === "alive") return "";
+  if (daemon.state === "alive") {
+    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+  }
   if (daemon.stopped === true)
     return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
   const died = daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
@@ -6853,6 +6938,9 @@ function livenessTitle(liveness2, revision) {
   if (liveness2?.state === "down" && liveness2.stopped === true) {
     return `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
   }
+  if (liveness2?.state === "alive" && liveness2.short !== void 0) {
+    return `SQUEAL \xB7 a ${liveness2.short.version} daemon is validating at revision ${revision}, not ${liveness2.short.claimed}`;
+  }
   return liveness2?.state === "alive" ? `SQUEAL \xB7 a daemon is validating again at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 
@@ -6897,37 +6985,6 @@ var VITEST_ONLY = {
   nodeTest: [],
   slow: null
 };
-
-// src/core/daemon/version.ts
-import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname5, join as join11 } from "node:path";
-import { fileURLToPath } from "node:url";
-var UNKNOWN_VERSION = "0.0.0-unknown";
-var PACKAGE_NAME = "squeal";
-function squealVersion() {
-  if (true) return "0.1.276";
-  return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
-}
-function manifestVersion(module) {
-  let dir = dirname5(fileURLToPath(module));
-  for (; ; ) {
-    const version = readVersion(join11(dir, "package.json"));
-    if (version !== null) return version;
-    const parent = dirname5(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-function readVersion(path) {
-  try {
-    const parsed = JSON.parse(readFileSync6(path, "utf8"));
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const { name, version } = parsed;
-    return name === PACKAGE_NAME && typeof version === "string" ? version : null;
-  } catch {
-    return null;
-  }
-}
 
 // src/harness/shared/harness-process.ts
 var SKIPPED = /* @__PURE__ */ new Set([
