@@ -1,3 +1,4 @@
+import { shellQuote } from "../ps/render-units.js";
 import { timeText } from "../text.js";
 import type { EpochMs, RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
 import { type HostLoad, loadAllows } from "./load.js";
@@ -82,7 +83,7 @@ export const RECORDED_UNKNOWN_TEXT =
 export interface RetryCommandWords {
   /** The CLI as the surface names it (`SQUEAL_COMMAND`, or the Codex command). */
   readonly command: string;
-  /** The test file as that command names it from the reader's directory. */
+  /** The test file from the reader's directory, unquoted: the text makes it one shell word. */
   readonly path: string;
 }
 
@@ -118,9 +119,10 @@ export function recordedText(
 /**
  * `; \`squeal retry <file> --reason load\` runs it once more …` for a run at
  * or above the threshold a `load` retry waits on (`loadAllows`, one CPU's
- * share), else empty.
+ * share), else empty. The path is one shell word, quoted only when it needs
+ * it (review 0.1.271 S1); the command stays as the surface formats it.
  */
 function loadRetryText(loadPerCpu: number | null, words: RetryCommandWords): string {
   if (loadPerCpu === null || loadAllows({ oneMinute: loadPerCpu, cpus: 1 })) return "";
-  return `; \`${words.command} retry ${words.path} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
+  return `; \`${words.command} retry ${shellQuote(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
