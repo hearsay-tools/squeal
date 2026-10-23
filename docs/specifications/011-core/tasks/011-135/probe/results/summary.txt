@@ -1,0 +1,8 @@
+phase	run	wall s	vitest tests s	load start	load during: min / mean / max (n)
+red	claude whole	443.1	438.40	15.30	22.0 / 33.0 / 43.6 (27)
+red	claude -t	8.6	4.82	14.11	14.1 / 14.1 / 14.1 (1)
+red	claude -t	7.8	3.79	15.53	15.9 / 15.9 / 15.9 (1)
+red	codex whole	119.7	116.29	15.57	11.8 / 15.7 / 20.2 (12)
+red	codex -t	6.4	3.53	14.19	no sample
+red	codex -t	6.3	3.42	14.01	14.0 / 14.0 / 14.0 (1)
+red	cursor whole	242.8	233.67	13.85	13.4 / 46.2 / 84.9 (24)
