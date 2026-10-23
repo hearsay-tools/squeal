@@ -523,9 +523,22 @@ export class Ledger {
     if (file.discards >= MAX_DISCARDS) {
       this.markUnknown([{ file, key, samples: changed }], reason, { ran: true, runId });
     } else if (file.key !== null && file.blocked === null) {
-      // A forced run, a re-run among them (task 001-171), stays forced: its lookup would take its own fail.
-      this.enqueue(file, priorityOf(file, NOTHING_CHANGED), forced && file.key === key);
+      this.enqueue(file, priorityOf(file, NOTHING_CHANGED), this.staysForced(file, key, forced));
     }
+  }
+
+  /**
+   * Whether a forced run of `file` at `key` that did not store its result
+   * is queued forced again (row 011-120, 011 C4 step 5): while the file is
+   * still at `key`, where a lookup would take the run's own fail (a re-run,
+   * task 001-171), or while the open checkpoint holds it strict
+   * (`run --all --force`, task 001-107), which counts only its own run. A
+   * file whose key moved otherwise drops it, and the new key runs as any
+   * miss (001-171 S1); forced, `settle` would skip its lookup at every later
+   * key.
+   */
+  staysForced(file: FileState, key: CheckKey, forced: boolean): boolean {
+    return forced && (file.key === key || this.checkpoints.covers([file.ref], true));
   }
 
   /**
