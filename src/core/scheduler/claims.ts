@@ -1,7 +1,15 @@
 import { setTimeout as delay } from "node:timers/promises";
+import { heldFailure } from "../state/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
 import { changeMarker } from "../store/index.js";
-import type { CheckKey, EpochMs, Liveness, Store, TestFileRef } from "../types/index.js";
+import type {
+  CheckKey,
+  EpochMs,
+  Liveness,
+  ResultRecord,
+  Store,
+  TestFileRef,
+} from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 
@@ -115,6 +123,39 @@ export function claimOf(ledger: Ledger, ref: TestFileRef): "waits" | "settled" |
     return "settled";
   }
   return mayWait && ledger.claims.holds(key) ? "waits" : "free";
+}
+
+/**
+ * `claimOf` by reads only, as tier selection judges queued `ref` (rows
+ * 011-55, 011-123: the yield rule): `"waits"` while another worktree's claim
+ * of its key holds it, live and within the waiter's bound; `"stored"` when a
+ * result stored at its key stands for it, which it takes with no run
+ * (`StoredKeys`); `"free"` when it runs here. Nothing is applied and no
+ * lookup hit is recorded; a format read as one is not read. `Claims.holds`
+ * starts the waiter's bound at its first sight here, as selection's does.
+ */
+export function peekClaim(
+  context: SchedulerContext,
+  ledger: Ledger,
+  ref: TestFileRef,
+): "waits" | "stored" | "free" {
+  const { queue, claims } = ledger;
+  const key = ledger.file(ref)?.key ?? null;
+  if (key === null || queue.isForced(ref)) return "free";
+  // `usedAt` 0: a read, not a lookup hit.
+  const hits = context.store.results.byKey(key, 0);
+  if (hits.length > 0) return stands(context, hits) ? "stored" : "free";
+  return !queue.isRecent(ref) && claims.holds(key) ? "waits" : "free";
+}
+
+/**
+ * `hits` stand for their file here, as the accept rule says (`acceptedAt`):
+ * unless one is another worktree's fail this worktree has not confirmed.
+ */
+function stands(context: SchedulerContext, hits: readonly ResultRecord[]): boolean {
+  const { store, worktreeId } = context;
+  if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return true;
+  return heldFailure(store, worktreeId, hits) === undefined;
 }
 
 /**
