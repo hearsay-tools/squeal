@@ -41,7 +41,7 @@ A **repository** is the set of worktrees sharing one git common directory. The *
 
 - `store.sqlite`: the shared database (D8).
 - `locks/<worktree-hash>.sqlite`: one exclusive-lock database per worktree, the daemon singleton (D10).
-- `runs/<run-id>/`: full runner output per run, referenced from results, pruned with them.
+- `runs/<run-id>/`: per run, the runner's console output and a compact summary of the run (how it ended, its cancel cause, its duration and each test file's, the files it completed, file errors, the projects it started); each check's result and the observed paths live only in the store; referenced from results, pruned with them (amended 2026-10-23, the human, row 011-164: before, a full report with every result and each file's observed paths, 92% of `runs/`, which nothing read back).
 
 Hook scripts resolve the common directory without spawning git: if `<root>/.git` is a directory, that is it; if it is a file, follow its `gitdir:` entry and then `<gitdir>/commondir`. The daemon uses `git rev-parse --path-format=absolute --git-common-dir` and records the result.
 

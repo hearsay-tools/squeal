@@ -59,3 +59,17 @@ Seams: the departure check and `drainable` in `src/core/daemon/lifecycle.ts`; th
 Owns `lifecycle.ts`, `slow-tier.ts`, the drain methods of `scheduler.ts` (the three above and one new reader; W3 adds its `focus` method in the same file, so keep to those methods), their tests, `tasks/011-163/`. Not yours: `bootstrap.ts`, `ledger.ts` (W1), `prune.ts` (W2), `queue.ts`, `tiers.ts`, `record.ts`, `daemon.ts` and the runner wrappers (W3); ask before you need any. Not the board, spec text, bundles or version. No `npm run build`.
 
 Done when the row's done-when holds with real daemons; the 011-93 drain tests pass; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output in your summary.
+
+## W5: 011-164, a run's report keeps only its summary
+
+Use /worker. Shape: slice. Added 2026-10-23 after the human's retention decision ("Summary report, keep 7 days").
+
+Outcome: a run folder holds the runner's console log and a compact summary of the run, about 87% smaller than today, with every reader of the summary still working.
+
+Read board row 011-164; 001 D8 (`runs/<run-id>/`, as amended 2026-10-23).
+
+Seams: `writeRunLog` in `src/runners/vitest/run.ts` (`report.json`), `src/runners/node-test/run/run.ts` and `src/runners/pytest/run/batches.ts` (`run.json`). A lead: one shared helper that picks the summary fields of a `RunReport`, used by all three, `JSON.stringify` without indentation.
+
+Owns those three writers, one shared helper beside them, the tests that read a run log (`test/runners/vitest/run.test.ts`, `test/daemon/{hold,step-down-lanes,stop-cancel}.test.ts` and any other you find), `tasks/011-164/`. Read `docs/specifications/011-core/research/probes/host-load/waste.mjs` and say in your notes whether it still works; do not edit it. Not yours: `src/runners/pytest/adapter.ts` and the daemon wrappers (W3), `src/core/store/prune.ts` (W2), `src/core/scheduler/` (W1, W3, W4), the board, spec text, bundles, version. No `npm run build`.
+
+Done when the row's done-when holds; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output in your summary.
