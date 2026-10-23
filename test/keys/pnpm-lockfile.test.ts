@@ -249,6 +249,64 @@ describe("readPnpmLockfile (011-162, R1)", () => {
     ];
     for (const text of unknown) expect(readPnpmLockfile(text)).toBeNull();
   });
+
+  // Review 0.1.282 B1: a part the reader reads, written on its header line, was skipped unread,
+  // so a graph with no importers stood for the install. Every key the reader passes over is now
+  // one pnpm writes (`convertToLockfileFile` of pnpm 10.32.0; cezar's file under pnpm 12.11.2).
+  it("returns null for a part it reads written on its header line, or a key pnpm does not write", () => {
+    const unknown = [
+      WRITTEN.replace(
+        /importers:\n[\s\S]*?\npackages:/,
+        "importers: {'.': {devDependencies: {vitest: {specifier: ^4.1.10, version: 4.1.10}}}}\n\npackages:",
+      ),
+      WRITTEN.replace(/packages:\n[\s\S]*?\nsnapshots:/, "packages: {}\n\nsnapshots:"),
+      WRITTEN.replace(/snapshots:\n[\s\S]*$/, "snapshots: {}\n"),
+      WRITTEN.replace(/\n {2}\.:\n[\s\S]*?\n\n {2}packages\/app:/, "\n  packages/app:"),
+      `${WRITTEN}\nfuture: true\n`,
+      WRITTEN.replace("    dependenciesMeta:\n", "    future:\n"),
+      WRITTEN.replace(
+        "        specifier: ^4.1.10\n",
+        "        specifier: ^4.1.10\n        future: 1\n",
+      ),
+      WRITTEN.replace("    hasBin: true\n", "    future: true\n"),
+      WRITTEN.replace(
+        "    resolution: {integrity: sha512-hono==}\n",
+        "    resolution:\n      integrity: sha512-hono==\n",
+      ),
+      WRITTEN.replace(
+        "  hono@4.12.29:\n    resolution: {integrity: sha512-hono==}\n    hasBin: true\n",
+        "  hono@4.12.29: {resolution: {integrity: sha512-hono==}}\n",
+      ),
+      WRITTEN.replace(
+        "  fsevents@2.3.3:\n    optional: true\n",
+        "  fsevents@2.3.3:\n    future: true\n",
+      ),
+    ];
+    for (const text of unknown) expect(readPnpmLockfile(text)).toBeNull();
+    const metadata = WRITTEN.replace(
+      "settings:",
+      [
+        "overrides:\n  hono: 4.12.29\n",
+        "patchedDependencies:\n  hono:\n    hash: 0f3c\n    path: patches/hono.patch\n",
+        "pnpmfileChecksum: sha256-pnpmfile\npackageExtensionsChecksum: sha256-extensions\n",
+        "ignoredOptionalDependencies:\n  - fsevents\n",
+        "catalogs:\n  default:\n    hono:\n      specifier: ^4\n      version: 4.12.29\n",
+        "settings:",
+      ].join("\n"),
+    )
+      .replace("        version: 2.3.3\n", "        version: 2.3.3\n    publishDirectory: dist\n")
+      .replace("    os: [darwin]\n", "    os: [darwin]\n    cpu: [arm64]\n    libc: [glibc]\n")
+      .replace(
+        "    resolution: {tarball: https://example.com/string-width.tgz}\n",
+        "    resolution: {tarball: https://example.com/string-width.tgz}\n    name: string-width\n    version: 4.2.3\n",
+      )
+      .replace(
+        "  string-width@4.2.3: {}\n",
+        "  string-width@4.2.3:\n    id: string-width@https://example.com/string-width.tgz\n",
+      )
+      .concat("\ntime:\n  hono@4.12.29: '2026-01-01T00:00:00.000Z'\n");
+    expect(readPnpmLockfile(metadata)).toEqual(readPnpmLockfile(WRITTEN));
+  });
 });
 
 describe("pnpmFolderName (011-162, R1)", () => {
