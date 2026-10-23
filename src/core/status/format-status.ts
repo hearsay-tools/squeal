@@ -16,6 +16,7 @@ import {
   notCurrentText,
   splitByValidity,
 } from "./checks.js";
+import { codeStatusLines } from "./code-status.js";
 import { configProblemsLine } from "./config-problems.js";
 import { holdLines } from "./holds.js";
 import { statusRevisionText } from "./identity.js";
@@ -95,6 +96,8 @@ export function formatStatus(
       all: full,
       ...(options.base === undefined ? {} : { base: options.base }),
     }),
+    // Spec 015 D6: one line under the test lines.
+    ...codeStatusLines(result, command),
     ...configProblemsLine(result, command),
     ...excludedLine(result),
     ...(full
