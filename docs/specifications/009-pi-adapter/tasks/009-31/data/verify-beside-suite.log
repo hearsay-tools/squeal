@@ -1,0 +1,167 @@
+=== 04:47:59 verify real 1 7.63 10.17 8.76
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 8.14 10.23 8.79, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 54.1 │ 59.6 │ 67.1 │
+=== exit 0 8.14 10.23 8.79
+=== 04:48:03 verify lifted 1 8.14 10.23 8.79
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 7.97 10.16 8.78
+│ 3       │ 'boundary on a fresh worker' │ 56.2 │ 61  │ 62.4 │
+=== exit 0 7.97 10.16 8.78
+=== 04:48:51 verify real 2 5.17 9.12 8.49
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 5.17 9.12 8.49, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 80.8 │ 96.5 │ 107.1 │
+=== exit 0 5.17 9.12 8.49
+=== 04:48:55 verify lifted 2 5.17 9.12 8.49
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 9.23 9.86 8.74
+│ 3       │ 'boundary on a fresh worker' │ 88.9 │ 100.5 │ 110.2 │
+AssertionError: boundary on a fresh worker: expected 100.5 to be less than 80
+=== exit 1 9.23 9.86 8.74
+=== 04:49:46 verify real 3 22.07 13.00 9.84
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 23.90 13.53 10.03, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 116  │ 201.2 │ 202.4 │
+=== exit 0 23.90 13.53 10.03
+=== 04:49:53 verify lifted 3 23.90 13.53 10.03
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 25.51 14.04 10.22
+│ 3       │ 'boundary on a fresh worker' │ 97   │ 130 │ 136.3 │
+AssertionError: boundary on a fresh worker: expected 130 to be less than 80
+=== exit 1 25.51 14.04 10.22
+=== 04:50:44 verify real 4 35.42 18.54 11.94
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 41.14 20.28 12.57, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 132  │ 177.6 │ 191.7 │
+=== exit 0 41.14 20.28 12.57
+=== 04:50:52 verify lifted 4 41.14 20.28 12.57
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 41.37 20.68 12.74
+│ 3       │ 'boundary on a fresh worker' │ 104.7 │ 123.7 │ 179.7 │
+AssertionError: boundary on a fresh worker: expected 123.7 to be less than 80
+=== exit 1 41.37 20.68 12.74
+=== 04:51:44 verify real 5 32.06 21.23 13.31
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 31.41 21.27 13.37, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 61.3 │ 68   │ 101.9 │
+=== exit 0 31.41 21.27 13.37
+=== 04:51:48 verify lifted 5 31.41 21.27 13.37
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 29.77 21.10 13.36
+│ 3       │ 'boundary on a fresh worker' │ 54.6 │ 67.9 │ 74.7 │
+=== exit 0 29.77 21.10 13.36
+=== 04:52:37 verify real 6 18.69 19.28 13.10
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 18.80 19.29 13.14, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 58.4 │ 76.4 │ 82.7 │
+=== exit 0 18.80 19.29 13.14
+=== 04:52:41 verify lifted 6 18.80 19.29 13.14
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 18.80 19.29 13.14
+│ 3       │ 'boundary on a fresh worker' │ 78.4 │ 87.9 │ 89.1 │
+AssertionError: boundary on a fresh worker: expected 87.9 to be less than 80
+=== exit 1 18.80 19.29 13.14
+=== 04:53:30 verify real 7 18.65 19.25 13.42
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 20.92 19.71 13.60, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 57.7 │ 88.1 │ 121.8 │
+=== exit 0 20.92 19.71 13.60
+=== 04:53:35 verify lifted 7 20.92 19.71 13.60
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 19.49 19.44 13.54
+│ 3       │ 'boundary on a fresh worker' │ 59.9 │ 66.7 │ 72.6 │
+=== exit 0 19.49 19.44 13.54
+=== 04:54:24 verify real 8 17.84 18.72 13.56
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 20.17 19.19 13.74, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 99.8 │ 113.4 │ 119.2 │
+=== exit 0 20.17 19.19 13.74
+=== 04:54:30 verify lifted 8 20.17 19.19 13.74
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 20.48 19.27 13.80
+│ 3       │ 'boundary on a fresh worker' │ 91.5 │ 106.5 │ 114.1 │
+AssertionError: boundary on a fresh worker: expected 106.5 to be less than 80
+=== exit 1 20.48 19.27 13.80
+=== 04:55:20 verify real 9 14.61 18.02 13.64
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 13.92 17.82 13.60, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 53.9 │ 59.6 │ 60.8 │
+=== exit 0 13.92 17.82 13.60
+=== 04:55:23 verify lifted 9 13.92 17.82 13.60
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 13.13 17.59 13.55
+│ 3       │ 'boundary on a fresh worker' │ 50.4 │ 54.5 │ 56   │
+=== exit 0 13.13 17.59 13.55
+=== 04:56:12 verify real 10 7.47 15.47 13.02
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 7.47 15.47 13.02, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 56.9 │ 61  │ 63.1 │
+=== exit 0 7.47 15.47 13.02
+=== 04:56:15 verify lifted 10 7.47 15.47 13.02
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 7.68 15.38 13.01
+│ 3       │ 'boundary on a fresh worker' │ 53.6 │ 62.1 │ 64.3 │
+=== exit 0 7.68 15.38 13.01
+=== 04:57:04 verify real 11 5.72 13.81 12.59
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 5.50 13.63 12.54, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 52  │ 56.8 │ 57.6 │
+=== exit 0 5.50 13.63 12.54
+=== 04:57:07 verify lifted 11 5.50 13.63 12.54
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 5.50 13.63 12.54
+│ 3       │ 'boundary on a fresh worker' │ 50.8 │ 53.6 │ 58.4 │
+=== exit 0 5.50 13.63 12.54
+=== 04:57:55 verify real 12 5.28 12.41 12.17
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 5.10 12.26 12.12, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 49.4 │ 55  │ 55  │
+=== exit 0 5.10 12.26 12.12
+=== 04:57:58 verify lifted 12 5.10 12.26 12.12
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 5.25 12.17 12.10
+│ 3       │ 'boundary on a fresh worker' │ 55.7 │ 63.5 │ 74.8 │
+=== exit 0 5.25 12.17 12.10
+=== 04:58:46 verify real 13 5.97 11.46 11.86
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 5.97 11.46 11.86, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 54.1 │ 58  │ 58.3 │
+=== exit 0 5.97 11.46 11.86
+=== 04:58:49 verify lifted 13 5.97 11.46 11.86
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 6.21 11.42 11.85
+│ 3       │ 'boundary on a fresh worker' │ 53.8 │ 57.2 │ 59.7 │
+=== exit 0 6.21 11.42 11.85
+=== 04:59:38 verify real 14 4.54 10.25 11.43
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 4.42 10.13 11.39, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 50.9 │ 58.7 │ 59.5 │
+=== exit 0 4.42 10.13 11.39
+=== 04:59:41 verify lifted 14 4.42 10.13 11.39
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 4.42 10.13 11.39
+│ 3       │ 'boundary on a fresh worker' │ 48.5 │ 54.4 │ 63.2 │
+=== exit 0 4.42 10.13 11.39
+=== 05:00:29 verify real 15 3.50 9.06 10.96
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 3.38 8.94 10.91
+│ 3       │ 'boundary on a fresh worker' │ 52.8 │ 57  │ 59.7 │
+=== exit 0 3.38 8.94 10.91
+=== 05:00:33 verify lifted 15 3.38 8.94 10.91
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 3.59 8.89 10.89
+│ 3       │ 'boundary on a fresh worker' │ 58.3 │ 65.7 │ 72.1 │
+=== exit 0 3.59 8.89 10.89
+=== 05:01:21 verify real 16 14.50 10.93 11.47
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 15.50 11.20 11.56, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 86.1 │ 101.3 │ 105.4 │
+=== exit 0 15.50 11.20 11.56
+=== 05:01:26 verify lifted 16 15.50 11.20 11.56
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 15.50 11.20 11.56
+│ 3       │ 'boundary on a fresh worker' │ 79.7 │ 99   │ 101.7 │
+AssertionError: boundary on a fresh worker: expected 99 to be less than 80
+=== exit 1 15.86 11.34 11.60
+=== 05:02:16 verify real 17 12.78 11.19 11.54
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 12.78 11.19 11.54, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 62.2 │ 74.5 │ 80.7 │
+=== exit 0 12.78 11.19 11.54
+=== 05:02:20 verify lifted 17 12.78 11.19 11.54
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 12.63 11.19 11.54
+│ 3       │ 'boundary on a fresh worker' │ 55.2 │ 58.3 │ 66.7 │
+=== exit 0 12.63 11.19 11.54
+=== 05:03:08 verify real 18 12.18 11.11 11.48
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 12.17 11.12 11.49, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 68.8 │ 91.3 │ 92.1 │
+=== exit 0 12.17 11.12 11.49
+=== 05:03:13 verify lifted 18 12.17 11.12 11.49
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 12.56 11.22 11.52
+│ 3       │ 'boundary on a fresh worker' │ 83.2 │ 97.8 │ 99.1 │
+AssertionError: boundary on a fresh worker: expected 97.8 to be less than 80
+=== exit 1 12.56 11.22 11.52
+=== 05:04:03 verify real 19 9.67 10.72 11.34
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 9.46 10.66 11.31, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 58  │ 77.4 │ 90.9 │
+=== exit 0 9.46 10.66 11.31
+=== 05:04:07 verify lifted 19 9.46 10.66 11.31
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 9.46 10.66 11.31
+│ 3       │ 'boundary on a fresh worker' │ 57.6 │ 63.2 │ 65.3 │
+=== exit 0 9.46 10.66 11.31
+=== 05:04:55 verify real 20 7.36 9.98 11.05
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 7.25 9.91 11.03, above 4 before or after the runs, or in CI: reported only
+│ 3       │ 'boundary on a fresh worker' │ 56.2 │ 63.7 │ 65.9 │
+=== exit 0 7.25 9.91 11.03
+=== 05:04:59 verify lifted 20 7.25 9.91 11.03
+Pi delivery worker round trip ms, 50 calls (20 fresh workers), load 7.47 9.91 11.02
+│ 3       │ 'boundary on a fresh worker' │ 56.3 │ 62  │ 67.4 │
+=== exit 0 7.47 9.91 11.02
