@@ -278,10 +278,10 @@ function succeeds(
  */
 async function requestStepDown(record: DaemonRecord, version: string): Promise<boolean> {
   try {
-    const endpoint = await pinDaemon(record, SOCKET_TIMEOUT_MS);
-    if (endpoint === null) return false;
+    const pinned = await pinDaemon(record, SOCKET_TIMEOUT_MS);
+    if (pinned === null) return false;
     const ask = (request: DaemonRequest) =>
-      requestDaemon(record.socketPath, request, SOCKET_TIMEOUT_MS, endpoint);
+      requestDaemon(record.socketPath, request, SOCKET_TIMEOUT_MS, pinned.endpoint);
     const answer = await ask({ type: "step-down", version });
     if (answer.ok) {
       if (answer.type !== "step-down" || !answer.steppingDown) return false;
