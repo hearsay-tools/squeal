@@ -10,7 +10,9 @@ import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
  * "scheduler stopped running tiers: Error: database is locked", and nothing
  * ran again until the next batch (hearsay-tools/squeal#1). With `busyWaits`
  * the pump resumes by itself once the lock frees, and the episode's one
- * note names what waited.
+ * note names what waited. Row 011-126: the record keeps the run's results
+ * and lands at its turn, instead of queuing the tier's files again
+ * (`busy-hold.test.ts` holds the event loop and the re-run to it).
  */
 
 const BUSY_MS = 50;
@@ -116,6 +118,7 @@ describe("a tier recorded on a busy store (001-422)", () => {
     await h.scheduler.idle();
 
     expect(releasedAt).not.toBeNull();
+    // The new failure's run once more (C5) is the pump's after the free, with no batch asking.
     expect(runs.length).toBeGreaterThanOrEqual(2);
     const math = store.knownStates
       .list(h.worktreeId)
@@ -125,15 +128,14 @@ describe("a tier recorded on a busy store (001-422)", () => {
     expect(texts.filter((text) => /scheduler stopped|database is locked/.test(text))).toEqual([]);
     expect(h.errors).toEqual([]);
     expect(notes).toHaveLength(1);
-    expect(notes[0]).toMatch(
-      /^the store was busy for [\d.]+ s .*: \d+ files? of a tier queued again/,
-    );
+    expect(notes[0]).toMatch(/^the store was busy for [\d.]+ s .*: the results of \d+ files?$/);
   });
 
   /*
-   * Review 001-432, B1: a resume armed by a busy record survived a later
+   * Review 001-432, B1: a resume armed by a busy write survived a later
    * stall on another error, and started tiers no batch or request asked for
-   * (4 runs where 2 were due).
+   * (4 runs where 2 were due). Row 011-126: a busy record no longer stops
+   * the pump, so the selection's write gives up here.
    */
   it("starts nothing from a resume armed before a stall on another error", SLOW, async () => {
     const { main, commonDir } = createRepo();
@@ -149,14 +151,16 @@ describe("a tier recorded on a busy store (001-422)", () => {
     let runs = 0;
     h.gate.before = () => {
       runs++;
-      // The first tier's record gives up on a busy store, the second's fails otherwise.
-      if (runs === 1) writes.fail(busyError());
-      if (runs === 2) writes.fail(new Error("not a busy store"));
+      // The tier's record fails otherwise.
+      if (runs === 1) writes.fail(new Error("not a busy store"));
     };
     try {
+      // The edit's selection gives up on a busy store.
+      writes.fail(busyError(), "selectTier");
       h.write("src/math.ts", "export const add = (a: number, b: number) => a - b;\n");
       await h.batch("src/math.ts");
       await expect.poll(() => deferred.resume() !== null, { timeout: 30_000 }).toBe(true);
+      expect(runs).toBe(0);
       // A batch restarts the pump before the resume is due; its writes end the busy wait.
       await h.batch("src/math.ts");
       await expect
@@ -164,12 +168,12 @@ describe("a tier recorded on a busy store (001-422)", () => {
           timeout: 30_000,
         })
         .toBe(true);
-      expect(runs).toBe(2);
+      expect(runs).toBe(1);
       deferred.resume()?.();
       await settle(1_000);
-      expect(runs).toBe(2);
+      expect(runs).toBe(1);
       expect(notes).toHaveLength(1);
-      expect(notes[0]).toMatch(/: 1 file of a tier queued again$/);
+      expect(notes[0]).toMatch(/: the next tier$/);
     } finally {
       deferred.restore();
       writes.restore();
@@ -193,9 +197,9 @@ describe("a tier recorded on a busy store (001-422)", () => {
       let runs = 0;
       h.gate.before = () => {
         runs++;
-        if (runs === 1) writes.fail(busyError());
       };
       try {
+        writes.fail(busyError(), "selectTier");
         h.write("src/math.ts", "export const add = (a: number, b: number) => a - b;\n");
         await h.batch("src/math.ts");
         await expect.poll(() => deferred.resume() !== null, { timeout: 30_000 }).toBe(true);
@@ -209,11 +213,11 @@ describe("a tier recorded on a busy store (001-422)", () => {
           .toBe(true);
         deferred.resume()?.();
         await settle(1_000);
-        expect(runs).toBe(1);
+        expect(runs).toBe(0);
         // The next batch restarts the pump; its writes land, and the abandoned wait is no news.
         await h.batch("src/math.ts");
         await h.scheduler.idle();
-        expect(runs).toBeGreaterThan(1);
+        expect(runs).toBeGreaterThan(0);
         expect(notes).toEqual([]);
       } finally {
         deferred.restore();
