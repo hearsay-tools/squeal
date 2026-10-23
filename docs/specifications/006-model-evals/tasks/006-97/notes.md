@@ -81,5 +81,8 @@ At 04c04cabb, 2026-10-23:
 - `test/evals/run-cell.test.ts`, 10 of 10 single-file runs (8 of 8 tests each) beside one locked
   full suite (`flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`,
   started 02:58:47Z), which ran through all ten; host load 10.4 to 20.3.
+- The full suite beside them, at 04c04cabb: 939 files passed, 2 skipped; 7925 tests passed, 9
+  skipped; exit 0; 1141 s.
 - `npm run lint`: no fixes applied. `npm run typecheck`: clean.
-- Squeal at revision 11: the 73 `test/evals` files current, no known failures.
+- `squeal run --all --wait`: completed at revision 13, no known failures, 921 test files current,
+  exit 0.
