@@ -43,3 +43,15 @@ Seam: `src/core/daemon-loop/` (`head.ts`, `index.ts`), `src/core/daemon/sliced-w
 Owns: `test/daemon/busy-edit.test.ts` and its helpers, notes under `tasks/011-122/`; a fix in `src/core/daemon-loop/`, `sliced-writes.ts` or `busy-resume.ts` only if it is small and the notes name the phase it removes. Not yours: `tiers.ts`, `src/core/status/` (W1), `evals/` (W2), the board, spec text, bundles, version. No `npm run build`.
 
 Done when: the notes give the phases and their times from at least 10 runs beside a locked full suite; a fix, if any, shows the bound met 20 of 20 beside a suite, or the notes propose the bound or the C9 sentence and the row; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+## R1: review of cand/0.1.272
+
+Use /reviewer. Shape: review. Pinned to `cand/0.1.272` at e95d2b1c30d41e1eb3c5ee2eebc333c32215f126; the range is `1fa750ba5..e95d2b1c3` (`origin/main` at 1fa750ba5): W1's two commits (011-124, worker 4d01c305), W2's three (006-97, worker 720c25d1), one docs commit (011 C15, 006 D3, both `status.md` files), W3's three (011-122, worker 61519d18), its docs commit (011 C7, `status.md`) and the release commit (0.1.272, bundles).
+
+Read this file (W1 to W3), the notes under `011-core/tasks/011-124/`, `006-model-evals/tasks/006-97/` and `011-core/tasks/011-122/`, board rows 011-124, 006-97 and 011-122 (and the rows they filed: 011-125, 006-98, 011-126), the amended 011 C7 and C15 and 006 D3 sentences, and the three new `status.md` lines. Check that:
+- 011-124 (narrowed by the coordinator to option C, request 21691955): a queued file under another worktree's claim names the claim only with no result stored at its key; the store read writes no last use; a stale or unknown file keeps the claim; `pauseOnlyIds` follows; no type changed;
+- 006-97: after SIGTERM nothing but the teardown's `squeal stop` starts; a refused start reads as could not start, never as a pass, in `runTurns` and the grader; `killRunning`'s wait stays bounded at 5 s; the exit is 128 + n on either path;
+- 011-122: the test still measures an edit's revision and a heartbeat within 1,000 ms of the lock freeing; waiting for the baseline and timing from the writer's `freed` line hide no daemon defect the old test caught (the case it drops is row 011-126's); `src/` is unchanged; the probe under `tasks/011-122/probe/` reaches no real HOME and no watched tree;
+- `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is 0.1.272 in all eight places; the bundles match the tree; the four launchers are byte-identical.
+
+Run `npm ci`, then the test files W1 to W3 added or changed, directly. Never run a script under `evals/bin/` or `tasks/011-122/probe/` yourself, `--help` included. The full suite is CI on the candidate and the coordinator's locked gate (`.ai/cezar/t/04a258b0/gate-w19.log`); a gate log names only failing files. `test/harness/pi/latency.test.ts` missed its p95 bound once beside W3's 20 runs (80.9 ms against 80). Write `reviews/0.1.272.md` under `docs/specifications/011-core/` with a PASS or FAIL verdict and commit it alone.
