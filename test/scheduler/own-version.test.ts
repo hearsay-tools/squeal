@@ -11,6 +11,7 @@ import {
   openRepoStore,
   SLOW,
 } from "./helpers.js";
+import { idleAfterQuiet } from "./quiet-clock.js";
 
 /*
  * Task 011-85, regression 4 (011 C11, Q5): a test that reads the root
@@ -60,7 +61,8 @@ async function movedByRaise(options: HarnessOptions): Promise<string[]> {
   h.write("package.json", manifest("1.5.0"));
   writeInstall(h.root, {}, "1.5.0");
   await h.batch("package.json", "node_modules/.package-lock.json");
-  await h.scheduler.idle();
+  // A file a declared input alone reaches is catch-up, which waits for quiet (row 011-153).
+  await idleAfterQuiet(h);
   return paths.filter((path) => h.keyOf(path) !== before.get(path)).sort();
 }
 

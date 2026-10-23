@@ -32,6 +32,7 @@ import {
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { git } from "../hash/git-repo.js";
+import { movableClock } from "./quiet-clock.js";
 import { RecordingSink } from "./recording-sink.js";
 import { HARNESS_INCARNATION } from "./store-wait.js";
 
@@ -195,6 +196,10 @@ export interface Harness {
   header(): StatusHeader;
   /** A consumer of this worktree registered with a real `HarnessDelivery`. */
   consumer(sessionId?: string): Promise<{ delivery: HarnessDelivery; consumer: Consumer }>;
+  /** The scheduler's clock: `HarnessOptions.now`, or the host's, plus what `advance` added. */
+  now(): number;
+  /** Moves the scheduler's clock `ms` ahead (row 011-153). */
+  advance(ms: number): void;
 }
 
 export interface HarnessOptions {
@@ -321,6 +326,7 @@ export async function openHarness(
   };
   current = policy;
   const reload = options.reloadPolicy;
+  const clock = movableClock(options.now);
   scheduler = createScheduler({
     root,
     worktreeId,
@@ -350,7 +356,7 @@ export async function openHarness(
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.busyWaits === undefined ? {} : { busyWaits: options.busyWaits }),
     ...(options.busySliceMs === undefined ? {} : { busySliceMs: options.busySliceMs }),
-    ...(options.now === undefined ? {} : { now: options.now }),
+    now: clock.now,
     incarnation: options.incarnation ?? HARNESS_INCARNATION,
     ...(options.predecessor === undefined ? {} : { predecessor: options.predecessor }),
   });
@@ -369,6 +375,8 @@ export async function openHarness(
     gate,
     sink,
     scheduler,
+    now: clock.now,
+    advance: clock.advance,
     extraFiles,
     errors,
     write(path, content) {

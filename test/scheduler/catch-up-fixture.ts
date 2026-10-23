@@ -20,6 +20,7 @@ import {
   type TestFileRef,
 } from "../../src/core/types/index.js";
 import { claimRepo } from "./claims-fixture.js";
+import { movableClock } from "./quiet-clock.js";
 import { RecordingSink } from "./recording-sink.js";
 
 /*
@@ -315,9 +316,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     },
   });
   const beat = setInterval(() => store.worktrees.heartbeat(worktreeId, Date.now()), 12_000);
-  let offset = 0;
-  const clock = options.now ?? Date.now;
-  const now = () => clock() + offset;
+  const { now, advance } = movableClock(options.now);
   const { lane, tierWidth, besideBacklog, backlogSlot, cancels } = options;
   const runner = new CatchUpRunner(options.files, {
     ...(lane === undefined ? {} : { lane }),
@@ -377,9 +376,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     },
     stopBeat: () => clearInterval(beat),
     now,
-    advance: (ms) => {
-      offset += ms;
-    },
+    advance,
     current: (path) => {
       const states = store.knownStates.list(worktreeId).filter((s) => s.check.testPath === path);
       return states.length > 0 && states.every((s) => s.validity === "current");
