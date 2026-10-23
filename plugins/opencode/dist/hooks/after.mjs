@@ -7450,7 +7450,7 @@ async function ensure(location2, deps, context) {
     const at2 = { id: context.consumer.worktreeId, root: location2.root };
     if (await stopHolds(context.store, at2, worktree, live)) return "stopped";
   }
-  const handoff = context === void 0 ? "none" : await handOver(context, deps, record ?? null);
+  const handoff = context === void 0 ? "none" : await handOver(context, deps);
   if (handoff === "claimed") return successor(location2, deps);
   if (handoff === "joined") return "alive";
   const at = (deps.now ?? Date.now)();
@@ -7469,26 +7469,40 @@ async function ensureIfStale(context, deps) {
   if (daemonLiveness(record, (deps.now ?? Date.now)()).state !== "alive") {
     return ensure(context, deps, context);
   }
-  if (await handOver(context, deps, record) === "claimed") await successor(context, deps);
+  if (await handOver(context, deps) === "claimed") await successor(context, deps);
   return "fresh";
 }
-async function handOver(context, deps, record) {
+async function handOver(context, deps) {
   const now = deps.now ?? Date.now;
   const version = deps.squealVersion ?? squealVersion();
-  const others = otherSessionVersions(context.store, context.consumer);
-  if (record === null || !succeeds(record, version, others)) return "none";
-  const id = context.consumer.worktreeId;
-  const from = handoffFrom(record);
-  if (readShortHandoff(context.store, id)?.of === from) return "none";
+  const { store, consumer } = context;
+  const id = consumer.worktreeId;
   const at = now();
-  if (liveHandoff(context.store, id, from, at) !== null) return "joined";
-  if (daemonLiveness(record, at).state === "alive") {
-    if (!await requestStepDown(record, version)) return "none";
-  } else if (!steppingDown(context.store, id, record)) {
+  const read4 = readTransaction(store, () => {
+    const record = store.worktrees.get(id)?.daemon ?? null;
+    if (record === null || !succeeds(record, version, otherSessionVersions(store, consumer))) {
+      return null;
+    }
+    const from = handoffFrom(record);
+    if (readShortHandoff(store, id)?.of === from) return null;
+    const alive = daemonLiveness(record, at).state === "alive";
+    return {
+      record,
+      from,
+      alive,
+      joined: liveHandoff(store, id, from, at) !== null,
+      stepping: !alive && steppingDown(store, id, record)
+    };
+  });
+  if (read4 === null) return "none";
+  if (read4.joined) return "joined";
+  if (read4.alive) {
+    if (!await requestStepDown(read4.record, version)) return "none";
+  } else if (!read4.stepping) {
     return "none";
   }
   try {
-    const claim = claimHandoff(context.store, id, { from, to: version, at: now() });
+    const claim = claimHandoff(store, id, { from: read4.from, to: version, at: now() });
     return claim === null ? "joined" : "claimed";
   } catch {
     return "claimed";
