@@ -2,6 +2,7 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AbsolutePath, RunEnd, RunReport, TestFileRef } from "../../../core/types/index.js";
 import type { ProcessExit } from "../../node-test/run/process.js";
+import { runLogJson } from "../../run-summary.js";
 import type { ImportEvent, SpawnedEvent } from "./events.js";
 import type { BatchFile, BatchReport } from "./report.js";
 
@@ -109,7 +110,7 @@ export function readOr(path: string): string {
   }
 }
 
-/** `run.json`: each batch's command line and exit, which nothing trusts for a verdict (D6), the report and notes. */
+/** `run.json`: each batch's command line and exit, which nothing trusts for a verdict (D6), the run's summary and notes. */
 export function writeRunLog(
   logDir: AbsolutePath,
   log: {
@@ -126,10 +127,6 @@ export function writeRunLog(
     exit: b.exit,
     session: b.read?.session ?? false,
   }));
-  const text = JSON.stringify(
-    { cwd: log.cwd, batches, report: log.report, notes: log.notes },
-    null,
-    2,
-  );
-  writeFileSync(join(logDir, "run.json"), `${text}\n`);
+  const text = runLogJson({ cwd: log.cwd, batches, notes: log.notes }, log.report);
+  writeFileSync(join(logDir, "run.json"), text);
 }

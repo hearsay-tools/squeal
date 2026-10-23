@@ -126,9 +126,20 @@ describe("vitest adapter: run()", SLOW, () => {
     expect(log).toContain("hello from the test");
     expect(log).toContain("FAIL test/noisy.test.ts > logs");
     expect(log).toContain("expected 1 to be 2");
-    const saved = JSON.parse(readFileSync(join(options.logDir, "report.json"), "utf8"));
+    // Row 011-164: `report.json` keeps the run's summary, on one line; results live in the store.
+    const text = readFileSync(join(options.logDir, "report.json"), "utf8");
+    expect(text.trimEnd()).not.toContain("\n");
+    const saved = JSON.parse(text);
     expect(saved.runId).toBe(options.runId);
-    expect(saved.report.results).toHaveLength(1);
+    expect(saved.report).toEqual({
+      end: report.end,
+      failure: report.failure,
+      durationMs: report.durationMs,
+      fileDurations: report.fileDurations,
+      completedFiles: [ref("test/noisy.test.ts")],
+      fileErrors: [],
+      startedProjects: report.startedProjects,
+    });
   });
 
   it("tags every console line in vitest.log with the test file that wrote it", async () => {
