@@ -74,6 +74,8 @@ describe("the end of a handoff claim (row 011-32)", () => {
       expect(claim(repo)).toBeNull();
       const short = withStore(repo, (store) => readShortHandoff(store, id(repo)));
       const record = withStore(repo, (store) => store.worktrees.get(id(repo))?.daemon);
+      // The script it runs, recorded beside its version.
+      expect(record?.executable).toBe(process.argv[1]);
       expect(short).toMatchObject({
         of: `${squealVersion()}@${record?.startedAt}#${record?.token}`,
         version: squealVersion(),

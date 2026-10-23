@@ -412,11 +412,13 @@ class Daemon {
       store.testFileKeys.releaseRunning(id);
       if (this.#exit === null) store.meta.delete(daemonExitMetaKey(id));
       else store.meta.set(daemonExitMetaKey(id), this.#incarnation());
+      // Row 011-140: the script it runs, recorded beside its version.
+      const executable = process.argv[1] ?? process.execPath;
       // Row 011-32: a daemon serves, so the handoff a hook claimed has ended.
       endHandoff(store, id, {
         of: this.#incarnation(),
         version: this.#version,
-        executable: process.argv[1] ?? process.execPath,
+        executable,
         at: this.#now(),
       });
       store.worktrees.upsert({
@@ -434,6 +436,7 @@ class Daemon {
         heartbeatIntervalMs: this.#heartbeatMs(),
         squealVersion: this.#version,
         token: this.#token,
+        executable,
       });
       recordDaemonUsed(store, id, { usedAt: this.#lastUsed, activeAt: this.#lastActive });
     });
