@@ -1,0 +1,232 @@
+{
+  "vitest": {
+    "exclude": [
+      "test/e2e/**"
+    ]
+  },
+  "inputs": {
+    "test/harness/plugin.test.ts": [
+      "plugins/claude-code/**",
+      "src/**/*.ts",
+      ".claude-plugin/**",
+      "package.json"
+    ],
+    "test/policy/repository-inputs.test.ts": [
+      "squeal.config.json",
+      "**/.gitignore"
+    ],
+    "test/runners/vitest/**/*.test.ts": [
+      "test/fixtures/vitest/**"
+    ],
+    "test/harness/codex/**/*.test.ts": [
+      "plugins/codex/**",
+      "src/**/*.ts",
+      "test/fixtures/codex-hooks/**"
+    ],
+    "test/plugins/codex/**/*.test.ts": [
+      "plugins/codex/**"
+    ],
+    "test/harness/opencode/**/*.test.ts": [
+      "plugins/opencode/**",
+      "src/**/*.ts"
+    ],
+    "test/harness/pi/**/*.test.ts": [
+      "plugins/pi/**",
+      "src/**/*.ts"
+    ],
+    "test/runners/node-test/**/*.test.ts": [
+      "test/fixtures/node-test/**",
+      "src/runners/node-test/runtime/**"
+    ],
+    "test/runners/pytest/**/*.test.ts": [
+      "test/fixtures/pytest/**",
+      "src/runners/pytest/runtime/**"
+    ],
+    "test/runners/node-test/graph-memory.test.ts": [
+      "src/runners/node-test/graph/**"
+    ],
+    "test/runners/node-test/graph-bundle.test.ts": [
+      "src/runners/node-test/graph/**",
+      "src/harness/build.ts",
+      "src/**/*.ts"
+    ],
+    "test/integration/node-test.test.ts": [
+      "src/**/*.ts",
+      "test/fixtures/node-test/**"
+    ],
+    "test/cli/remove.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/cli/retry-no-result-daemon.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/cli/run-all-verdict-daemon.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/cli/warmup.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/bootstrapped.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/busy-edit.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/busy-store.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/busy-tier.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/composite-runner.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/departure.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/died-startup.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/died.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/drain-checkpoint.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/drain.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/escaped.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/exit-mark.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/handover-gap.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/handover-tier.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/handover.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/hardening.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/hold.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/install-wait.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/lifecycle.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/reinstall.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/repeated-notes.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/restart-handover-signal.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/restart-handover.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/runtime-gone.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/scratch-children.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/scratch-identity.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/scratch-refused.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/scratch.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/serving.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/shared-store.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/slow-lane.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/socket-handover.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/start-handoff.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/start-register.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/step-down-lanes.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/step-down.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/stop-cancel.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/symlinked-install.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/symlinked-source.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/unused-stop.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/daemon/user-config-note.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/harness/hung-daemon.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/harness/opencode-abort.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/harness/opencode-continued.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/harness/opencode-dispose.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/harness/opencode-hooks.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/harness/opencode-wake.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/harness/plugin-data-claude-code.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/harness/ps-bundle.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/harness/pytest-bundle.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/integration/pi-events.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/integration/pi-silence.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/integration/pi-wake.test.ts": [
+      "src/**/*.ts"
+    ],
+    "test/keys/validity/lock.test.ts": [
+      "src/**/*.ts"
+    ]
+  }
+}

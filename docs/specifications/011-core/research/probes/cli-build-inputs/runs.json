@@ -1,0 +1,119 @@
+{
+ "c0-e126-restore": {
+  "files": 1,
+  "summedS": 8.7,
+  "failed": [],
+  "builderFiles": 0,
+  "builderSummedS": 0,
+  "otherFiles": 1,
+  "otherSummedS": 8.7,
+  "tiers": 1,
+  "firstStart": 1792741506199,
+  "lastEnd": 1792741515274,
+  "tierWallS": 9.1,
+  "top": [
+   "test/scheduler/reinstall.test.ts 8.7"
+  ],
+  "others": 1
+ },
+ "c0-e126": {
+  "files": 310,
+  "summedS": 2659.4,
+  "failed": [],
+  "builderFiles": 22,
+  "builderSummedS": 228.8,
+  "otherFiles": 288,
+  "otherSummedS": 2430.5,
+  "tiers": 9,
+  "firstStart": 1792740714036,
+  "lastEnd": 1792741502821,
+  "tierWallS": 788.8,
+  "top": [
+   "test/scheduler/timed-out-tier.test.ts 127.6",
+   "test/scheduler/backlog-slots-overhead.test.ts 125.3",
+   "test/scheduler/backlog-tiers.test.ts 108.4",
+   "test/scheduler/backlog.test.ts 82.0",
+   "test/cli/warmup.test.ts 77.6",
+   "test/scheduler/tier-ended-files.test.ts 70.4",
+   "test/scheduler/catch-up-order.test.ts 70.4",
+   "test/scheduler/tier-yields.test.ts 64.7"
+  ],
+  "others": 288
+ },
+ "cA-e124-restore": {
+  "files": 0,
+  "summedS": 0,
+  "failed": [],
+  "builderFiles": 0,
+  "builderSummedS": 0,
+  "otherFiles": 0,
+  "otherSummedS": 0,
+  "tiers": 0,
+  "lastEnd": null,
+  "tierWallS": 0,
+  "top": [],
+  "others": 0
+ },
+ "cA-e124": {
+  "files": 555,
+  "summedS": 4514.2,
+  "failed": [],
+  "builderFiles": 76,
+  "builderSummedS": 1535,
+  "otherFiles": 479,
+  "otherSummedS": 2979.2,
+  "tiers": 14,
+  "firstStart": 1792742784172,
+  "lastEnd": 1792744277987,
+  "tierWallS": 1493.8,
+  "top": [
+   "test/daemon/hold.test.ts 280.2",
+   "test/scheduler/backlog-tiers.test.ts 135.9",
+   "test/scheduler/backlog-slots-overhead.test.ts 129.8",
+   "test/scheduler/timed-out-tier.test.ts 128.7",
+   "test/cli/warmup.test.ts 78.6",
+   "test/scheduler/tier-ended-files.test.ts 70.3",
+   "test/scheduler/catch-up-order.test.ts 70.1",
+   "test/daemon/lifecycle.test.ts 69.0"
+  ],
+  "others": 479
+ },
+ "cA-e126-restore": {
+  "files": 0,
+  "summedS": 0,
+  "failed": [],
+  "builderFiles": 0,
+  "builderSummedS": 0,
+  "otherFiles": 0,
+  "otherSummedS": 0,
+  "tiers": 0,
+  "lastEnd": null,
+  "tierWallS": 0,
+  "top": [],
+  "others": 0
+ },
+ "cA-e126": {
+  "files": 65,
+  "summedS": 1586.2,
+  "failed": [],
+  "builderFiles": 59,
+  "builderSummedS": 1574.4,
+  "otherFiles": 6,
+  "otherSummedS": 11.7,
+  "tiers": 4,
+  "firstStart": 1792742167039,
+  "lastEnd": 1792742774542,
+  "tierWallS": 607.5,
+  "top": [
+   "test/daemon/hold.test.ts 294.9",
+   "test/cli/warmup.test.ts 97.0",
+   "test/daemon/lifecycle.test.ts 90.2",
+   "test/daemon/departure.test.ts 77.6",
+   "test/daemon/busy-store.test.ts 68.5",
+   "test/harness/opencode-hooks.test.ts 66.3",
+   "test/daemon/drain.test.ts 62.9",
+   "test/harness/opencode-wake.test.ts 51.0"
+  ],
+  "others": 6
+ }
+}

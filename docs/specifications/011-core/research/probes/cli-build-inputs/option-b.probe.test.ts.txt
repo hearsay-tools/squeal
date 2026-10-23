@@ -1,0 +1,24 @@
+// Throwaway probe for 011-127 (option B), copied into the scratch clone as test/r127-option-b.test.ts.
+// Builds as `buildCli` does, with `--listFiles`, then stats every `src/` file tsc names, so the
+// recorder (011 C12) sees in the worker what the native tsc read where it cannot look.
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { expect, it } from "vitest";
+
+const root = resolve(import.meta.dirname, "..");
+
+it("builds src and stats what tsc compiled", () => {
+  const out = mkdtempSync(join(tmpdir(), "r127-"));
+  const listed = execFileSync(
+    process.execPath,
+    [join(root, "node_modules/typescript/bin/tsc"), "-p", join(root, "tsconfig.build.json"),
+      "--outDir", out, "--declaration", "false", "--sourceMap", "false", "--listFiles"],
+    { cwd: root, encoding: "utf8" },
+  );
+  const inputs = listed.split("\n").filter((p) => p.startsWith(join(root, "src/")));
+  for (const path of inputs) statSync(path);
+  rmSync(out, { recursive: true, force: true });
+  expect(inputs.length).toBeGreaterThan(500);
+});

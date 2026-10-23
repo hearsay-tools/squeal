@@ -1,0 +1,5 @@
+ 08:48:04 up 8 days, 21:36,  6 users,  load average: 3.25, 5.25, 4.45
+ 09:04:48 up 8 days, 21:53,  7 users,  load average: 6.61, 14.61, 11.79
+	User time (seconds): 2619.48
+	System time (seconds): 911.11
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 16:43.61
