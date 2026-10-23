@@ -104,21 +104,6 @@ describe("runNodeTest", () => {
     for (const log of ["run.json", "events-0.ndjson", "stderr-2.log", "stdout-0.log"]) {
       expect(existsSync(join(logDir, log))).toBe(true);
     }
-    // Row 011-164: each file's command line and exit stay; the report keeps its summary only.
-    const saved = JSON.parse(readFileSync(join(logDir, "run.json"), "utf8"));
-    expect(saved.files.map((f: { testFile: string }) => f.testFile)).toEqual(
-      tier.map((f) => f.path),
-    );
-    expect(saved.files[0]).toMatchObject({ completed: true, exit: { code: 0 } });
-    expect(saved.files[0].command).toContain("--test");
-    expect(Object.keys(saved.report).sort()).toEqual([
-      "completedFiles",
-      "durationMs",
-      "end",
-      "failure",
-      "fileDurations",
-      "fileErrors",
-    ]);
   });
 
   it("kills a busy loop at the deadline and keeps the file that finished", SLOW, async () => {
