@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it } from "vitest";
 import { codeStorePath } from "../../../src/core/code/store/index.js";
 import type { CodeSource } from "../../../src/core/delivery/code-source.js";
@@ -283,6 +284,23 @@ describe("code delivery (015 D6, goals 3, 4 and 7)", () => {
       "src/big.ts is 600 KiB, over the 512 KiB limit; its functions are not counted.",
     );
     expect(await delivery(source).onToolBoundary(C1)).toBeNull();
+  });
+});
+
+describe("a busy code store (015 D4, 011 C7)", () => {
+  it("costs the delivery its code part, never an error, and the change arrives later", async () => {
+    counted(18);
+    await delivery().register(C1);
+    edited(23, "pass-to-fail", 18);
+    // The daemon's pass holds the write lock.
+    const writer = new DatabaseSync(codeStorePath(repo.dir));
+    writer.exec("PRAGMA busy_timeout = 0");
+    writer.exec("BEGIN IMMEDIATE");
+    const hook = delivery(codeSource(repo.dir, repo.root, { busyTimeoutMs: 20 }));
+    expect(await hook.onToolBoundary(C1)).toBeNull();
+    writer.exec("COMMIT");
+    writer.close();
+    expect((await hook.onToolBoundary(C1))?.code?.entries).toHaveLength(1);
   });
 });
 
