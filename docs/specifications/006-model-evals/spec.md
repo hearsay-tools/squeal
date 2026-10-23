@@ -58,6 +58,8 @@ Three knobs reach the states the live daemon makes hard: the daemon stopped (or 
 - the session at an explicit effort level, never the harness's default (`claude -p --effort <level>`; `codex exec -c model_reasoning_effort="<level>"`), with timestamped `stream-json` or `exec --json` and load samples every 5 s;
 - then Squeal's status, ground truth (Vitest with the flake off, plus node:test), the diff, a store copy, `squeal stop`, a wait for the daemon's pid to exit, and a sweep for leftover processes.
 
+A runner told to stop (`SIGTERM`, `SIGINT`) tears down the session, the daemon and the scratch, and from that moment starts no process but the teardown's `squeal stop`: no session, ground truth, Squeal command, grade or judge call. It exits with the signal's code (128 + n) once each run it started has ended (amended 2026-10-23, row 006-97; a judge call already running at the signal is row 006-98).
+
 `evals/bin/run-baseline.mjs` runs the baseline's cells 2 to 4 at a time and starts a cell only while the one-minute load average is below the host's CPU count (24 here); it waits otherwise and records the load beside every cell.
 
 ### D4. Grading
