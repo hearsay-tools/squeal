@@ -75,6 +75,7 @@ export function readPnpmLockfile(text: string): PnpmLockfile | null {
         version = true;
       }
       section = pair[1] === "" ? pair[0] : "";
+      [entry, id, reading] = [null, "", false];
       continue;
     }
     if (section === "packages") {
@@ -101,11 +102,10 @@ export function readPnpmLockfile(text: string): PnpmLockfile | null {
       entry = new Map();
       (section === "importers" ? importers : snapshots).set(key, entry);
       reading = false;
-    } else if (indent === 4) {
+    } else if (entry === null) return null;
+    else if (indent === 4) {
       reading = (section === "importers" ? IMPORTER_FIELDS : SNAPSHOT_FIELDS).has(key);
       if (reading && value !== "") return null;
-    } else if (entry === null) {
-      return null;
     } else if (section === "snapshots") {
       if (!isRef(value) || !setOnce(entry, key, value)) return null;
     } else if (indent === 6) {
@@ -163,15 +163,11 @@ function pairOf(body: string): readonly [string, string] | null {
 
 /** A single-quoted scalar at the start of `text`, unescaped, and the text after it. */
 function singleQuoted(text: string): readonly [string, string] | null {
-  for (let at = 1; at < text.length; at++) {
-    if (text[at] !== "'") continue;
-    if (text[at + 1] === "'") {
-      at++;
-      continue;
-    }
-    return [text.slice(1, at).replaceAll("''", "'"), text.slice(at + 1)];
-  }
-  return null;
+  const quoted = /^'((?:[^']|'')*)'/.exec(text);
+  const [all, inner] = quoted ?? [];
+  return all === undefined || inner === undefined
+    ? null
+    : [inner.replaceAll("''", "'"), text.slice(all.length)];
 }
 
 /**

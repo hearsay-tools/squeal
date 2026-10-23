@@ -20,6 +20,7 @@ import {
 import { KEY_FORMAT_VERSION } from "./key-format.js";
 import type { PackageScans } from "./package-scans.js";
 import { InstalledGraph, type PackageGraph } from "./packages.js";
+import { pnpmPackageFoldersFingerprint, readPnpmInstall } from "./pnpm-install.js";
 import { PNPM_LOCKFILE, withoutLinkedSpecifiers } from "./pnpm-lockfile.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
@@ -181,13 +182,14 @@ export async function installedDependenciesFingerprint(
 /** The installed-dependency fingerprint and the note to show beside it. */
 export interface InstalledDependencies {
   readonly fingerprint: string;
-  /** Why npm's hidden lockfile does not describe the install, or `null`. */
+  /** Why npm's hidden lockfile or pnpm's `lock.yaml` does not describe the install, or `null`. */
   readonly note: string | null;
   /**
-   * The package graph per-package keys read (task 001-105): only from npm's
-   * hidden lockfile while npm would trust it. `null` for any other lockfile
-   * format, a stale or unparsable hidden lockfile, or no install; keys then
-   * hold the whole `fingerprint`.
+   * The package graph per-package keys read (tasks 001-105, 011-162): from
+   * npm's hidden lockfile while npm would trust it, and from pnpm's
+   * `lock.yaml` in pnpm's default layout while it stands for the install.
+   * `null` for any other lockfile format or layout, a stale or unreadable
+   * lockfile, or no install; keys then hold the whole `fingerprint`.
    */
   readonly graph: PackageGraph | null;
   /** Hash of the patches directory the package manager applies; part of `fingerprint` too. */
@@ -214,7 +216,9 @@ export interface InstalledDependencies {
  * 011-85: a trusted hidden lockfile enters without the root's and the
  * workspaces' own versions (`withoutOwnVersions`), and pnpm's without a
  * linked dependency's range (`withoutLinkedSpecifiers`), so a release keeps
- * them.
+ * them. Task 011-162: pnpm's `lock.yaml` stands for an install in pnpm's
+ * default layout under npm's rule on that layout (`readPnpmInstall`), and
+ * otherwise its package folders are fingerprinted with the note.
  */
 export async function installedDependencies(
   projectRoot: AbsolutePath,
@@ -224,16 +228,23 @@ export async function installedDependencies(
   const found = await locateLockfile(projectRoot, worktreeRoot);
   if (found === null) return { fingerprint: "none", note: null, graph: null, patches: "none" };
   const { dir, format, content } = found;
+  const base = resolve(dir) === resolve(worktreeRoot) ? "" : toRelative(worktreeRoot, dir);
   const npm = format.path === HIDDEN_LOCKFILE;
+  const pnpm = format.path === PNPM_LOCKFILE;
   const hidden = npm ? parseHiddenLockfile(content) : null;
-  const stale = npm ? staleHiddenLockfile(dir, hidden) : null;
+  const text = pnpm ? content.toString("utf8") : "";
+  const install = pnpm && base !== null ? readPnpmInstall(dir, base, text, scans) : null;
+  const stale = npm ? staleHiddenLockfile(dir, hidden) : (install?.stale ?? null);
   const hash = createHash("sha256").update(`${format.path}\0`);
-  if (stale !== null) hash.update(`stale\0${packageFoldersFingerprint(dir, hidden)}`);
-  else if (hidden !== null) hash.update(`${INSTALLED_ENCODING}\0${withoutOwnVersions(hidden)}`);
-  else if (format.path === PNPM_LOCKFILE) {
-    hash.update(`${INSTALLED_ENCODING}\0${withoutLinkedSpecifiers(content.toString("utf8"))}`);
-  } else hash.update(content);
-  const filtered = stale === null && (hidden !== null || format.path === PNPM_LOCKFILE);
+  if (stale !== null) {
+    const folders = npm
+      ? packageFoldersFingerprint(dir, hidden)
+      : pnpmPackageFoldersFingerprint(dir);
+    hash.update(`stale\0${folders}`);
+  } else if (hidden !== null) hash.update(`${INSTALLED_ENCODING}\0${withoutOwnVersions(hidden)}`);
+  else if (pnpm) hash.update(`${INSTALLED_ENCODING}\0${withoutLinkedSpecifiers(text)}`);
+  else hash.update(content);
+  const filtered = stale === null && (hidden !== null || pnpm);
   const former = filtered ? createHash("sha256").update(`${format.path}\0`).update(content) : null;
   const patches = createHash("sha256");
   if (format.patches !== null) {
@@ -251,11 +262,12 @@ export async function installedDependencies(
     stale === null
       ? null
       : `${lockfile} does not describe the installed packages (${stale}); ` +
-        "dependencies are keyed by their package.json files until npm rewrites it";
-  const listed = format.path === HIDDEN_LOCKFILE && stale === null ? packagesOf(content) : null;
-  const base = resolve(dir) === resolve(worktreeRoot) ? "" : toRelative(worktreeRoot, dir);
+        `dependencies are keyed by their package.json files until ${npm ? "npm" : "pnpm"} rewrites it`;
+  const listed = npm && stale === null ? packagesOf(content) : null;
   const graph =
-    listed === null || base === null ? null : new InstalledGraph(dir, base, listed, scans);
+    listed === null || base === null
+      ? (install?.graph ?? null)
+      : new InstalledGraph(dir, base, listed, scans);
   return {
     fingerprint: hash.digest("hex"),
     former: former?.digest("hex") ?? null,
