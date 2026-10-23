@@ -1,0 +1,100 @@
+{
+ "files": 605,
+ "bytes": 3538554,
+ "timing": {
+  "treesitter": {
+   "medianMs": 2268.2,
+   "perFileMs": 3.749,
+   "load1": 53.2
+  },
+  "acorn": {
+   "medianMs": 804.9,
+   "perFileMs": 1.33,
+   "load1": 56
+  },
+  "oxc": {
+   "medianMs": 1116.5,
+   "perFileMs": 1.845,
+   "load1": 55.7
+  },
+  "eslint": {
+   "medianMs": 5775.5,
+   "perFileMs": 9.546,
+   "load1": 56
+  },
+  "tscParseOnly": {
+   "medianMs": 701.7,
+   "perFileMs": 1.16,
+   "load1": 56
+  }
+ },
+ "failures": {
+  "treesitter": [
+   "src/core/types/index.ts"
+  ],
+  "acorn": [
+   "src/cli/codex/trust.ts: TypeScript parameter property is not supported in strip-only mode",
+   "src/core/daemon/daemon.ts: TypeScript parameter property is not supported in strip-only mode",
+   "src/core/fs/worktree-paths.ts: TypeScript parameter property is not supported in strip-only mode",
+   "src/core/keys/key-index.ts: TypeScript parameter property is not supported in strip-only mode",
+   "src/core/keys/observed.ts: TypeScript parameter property is not supported in strip-only mode"
+  ],
+  "oxc": 0,
+  "eslint": [
+   "src/cli/codex/trust.ts: TypeScript parameter property is not supported in strip-only mode",
+   "src/core/daemon/daemon.ts: TypeScript parameter property is not supported in strip-only mode",
+   "src/core/fs/worktree-paths.ts: TypeScript parameter property is not supported in strip-only mode",
+   "src/core/keys/key-index.ts: TypeScript parameter property is not supported in strip-only mode",
+   "src/core/keys/observed.ts: TypeScript parameter property is not supported in strip-only mode"
+  ],
+  "tscParseOnly": 0
+ }
+}
+treesitter { filesCompared: 481, filesWithDifferentCountMultiset: 0 } []
+treesitter {
+  functions: 7042,
+  linesSame: 5646,
+  linesDiff: 16,
+  eslintFunctions: 5764
+} [
+  'src/core/delivery/delivery.ts:163 [5] vs eslint []',
+  'src/core/ps/host.ts:68 [13] vs eslint []',
+  'src/core/state/sink.ts:63 [9] vs eslint []',
+  'src/core/status/unknown-files.ts:97 [9] vs eslint []',
+  'src/core/store/repos/worktrees.ts:57 [7] vs eslint []',
+  'src/harness/opencode/hooks.ts:101 [10] vs eslint []',
+  'src/harness/opencode/turns.ts:185 [9] vs eslint []',
+  'src/harness/pi/extension.ts:104 [6] vs eslint []'
+]
+acorn { filesCompared: 481, filesWithDifferentCountMultiset: 0 } []
+acorn {
+  functions: 5764,
+  linesSame: 5646,
+  linesDiff: 16,
+  eslintFunctions: 5764
+} [
+  'src/core/delivery/delivery.ts:163 [5] vs eslint []',
+  'src/core/ps/host.ts:68 [13] vs eslint []',
+  'src/core/state/sink.ts:63 [9] vs eslint []',
+  'src/core/status/unknown-files.ts:97 [9] vs eslint []',
+  'src/core/store/repos/worktrees.ts:57 [7] vs eslint []',
+  'src/harness/opencode/hooks.ts:101 [10] vs eslint []',
+  'src/harness/opencode/turns.ts:185 [9] vs eslint []',
+  'src/harness/pi/extension.ts:104 [6] vs eslint []'
+]
+oxc { filesCompared: 481, filesWithDifferentCountMultiset: 0 } []
+oxc {
+  functions: 7042,
+  linesSame: 5646,
+  linesDiff: 16,
+  eslintFunctions: 5764
+} [
+  'src/core/delivery/delivery.ts:163 [5] vs eslint []',
+  'src/core/ps/host.ts:68 [13] vs eslint []',
+  'src/core/state/sink.ts:63 [9] vs eslint []',
+  'src/core/status/unknown-files.ts:97 [9] vs eslint []',
+  'src/core/store/repos/worktrees.ts:57 [7] vs eslint []',
+  'src/harness/opencode/hooks.ts:101 [10] vs eslint []',
+  'src/harness/opencode/turns.ts:185 [9] vs eslint []',
+  'src/harness/pi/extension.ts:104 [6] vs eslint []'
+]

@@ -1,0 +1,21 @@
+{
+ "files": 431,
+ "filesWithoutFunctionsOmittedByRadon": 139,
+ "treeSitterFunctions": 2064,
+ "vsRadon": {
+  "same": 2064,
+  "diff": 0,
+  "radonOnly": 0
+ },
+ "lizardVsRadon": {
+  "same": 1866,
+  "diff": 182,
+  "missing": 16
+ },
+ "ms": {
+  "radonCli": 703,
+  "treeSitterInProcess": 821,
+  "lizardCli": 730
+ }
+}
+
