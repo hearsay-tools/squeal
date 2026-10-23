@@ -3,6 +3,8 @@ import { toAbsolute } from "../../core/fs/index.js";
 import {
   type AbsolutePath,
   type CheckRunResult,
+  focusedTexts,
+  holdsCheckText,
   isSlowLane,
   type PytestProject,
   type RunOptions,
@@ -73,11 +75,14 @@ export async function runProject(
     ...(options.cacheDir === undefined ? {} : { cacheDir: options.cacheDir }),
     childEnv: childEnvOf(options, runOptions.childEnv),
     ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
+    ...(runOptions.checks === undefined ? {} : { checks: runOptions.checks }),
   });
   const after = syncNote(project, environment.fingerprint, currentFingerprint(environment));
   if (after !== null) return { kind: "moved", report: unavailable(after) };
   const skipped = await Promise.all(
-    run.skippedFiles.map(({ testFile }) => skipKnown(root, testFile, context.names)),
+    run.skippedFiles.map(({ testFile }) =>
+      skipKnown(root, testFile, context.names, focusedTexts(runOptions.checks, testFile)),
+    ),
   );
   const report: RunReport =
     skipped.length === 0
@@ -90,14 +95,20 @@ export async function runProject(
   return { kind: "ran", run, report };
 }
 
-/** A `skip` for every check a skipped module lists statically: the fallback of `skippedFiles`. */
+/**
+ * A `skip` for every check a skipped module lists statically: the fallback
+ * of `skippedFiles`. In a focused run, for those that hold a text only.
+ */
 async function skipKnown(
   root: AbsolutePath,
   testFile: TestFileRef,
   names: CollectionNames,
+  texts: readonly string[] | null,
 ): Promise<CheckRunResult[]> {
   const listed = await enumerate(toAbsolute(root, testFile.path), testFile, names).catch(() => []);
-  return listed.map(({ check, location }) => ({
+  const selected =
+    texts === null ? listed : listed.filter(({ check }) => holdsCheckText(check.fullName, texts));
+  return selected.map(({ check, location }) => ({
     check,
     outcome: "skip",
     durationMs: 0,

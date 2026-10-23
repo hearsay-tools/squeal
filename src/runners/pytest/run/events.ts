@@ -23,6 +23,13 @@ export type PytestEvent =
     }
   | { readonly type: "collected"; readonly items: readonly CollectedItem[] }
   | { readonly type: "deselected"; readonly nodeids: readonly string[] }
+  | {
+      readonly type: "focused";
+      /** Per real path given texts: the items it collected and those the texts selected. */
+      readonly files: Readonly<
+        Record<string, { readonly collected: number; readonly matched: number }>
+      >;
+    }
   | { readonly type: "item"; readonly nodeid: string; readonly last: boolean }
   | PhaseEvent
   | {
