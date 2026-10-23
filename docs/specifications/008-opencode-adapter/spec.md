@@ -1,6 +1,6 @@
 # 008 OpenCode adapter
 
-Stage: draft, for the human's review. Amendments: `status.md`. Research: `research/opencode-plugins.md` (008-01) and `research/opencode-sessions-and-wake.md` (008-02), both on OpenCode 1.18.35 (embedded Bun 1.3.14), Linux, model `cliproxy/gpt-6-luna`, run as `squeal-e2e`. Spec 001 D6 (state and delivery views), D9 (the Claude Code adapter), D10 (daemon) and D11 (policy) hold, and specs 002 (Codex) and 009 (Pi) are the precedents, unless a section here says otherwise.
+Stage: shipped 2026-10-15 (0.1.192); approved 2026-10-14 by the human. Amendments: `status.md`. Research: `research/opencode-plugins.md` (008-01) and `research/opencode-sessions-and-wake.md` (008-02), both on OpenCode 1.18.35 (embedded Bun 1.3.14), Linux, model `cliproxy/gpt-6-luna`, run as `squeal-e2e`. Spec 001 D6 (state and delivery views), D9 (the Claude Code adapter), D10 (daemon) and D11 (policy) hold, and specs 002 (Codex) and 009 (Pi) are the precedents, unless a section here says otherwise.
 
 ## Problem
 

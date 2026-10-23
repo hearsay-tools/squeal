@@ -1,6 +1,6 @@
 # 007 pytest runner
 
-Status: approved 2026-10-14 by the human; amendments in `status.md`. Written from `research/pytest-runner-api.md` (007-01), `research/python-module-graph.md` (007-02) and `research/python-environments.md` (007-03). Not approved.
+Stage: shipped 2026-10-15 (0.1.195); approved 2026-10-14 by the human; amendments in `status.md`. Written from `research/pytest-runner-api.md` (007-01), `research/python-module-graph.md` (007-02) and `research/python-environments.md` (007-03).
 
 ## Problem
 

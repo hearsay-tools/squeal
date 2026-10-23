@@ -1,6 +1,6 @@
 # 005 Agent adoption: status
 
-Stage: approved (2026-10-09, by the human; waves on `docs/board.md`, not started until the human's go)
+Stage: in-progress (approved 2026-10-09 by the human; resumed on the human's go 2026-10-12; waves on `docs/board.md`). Pre-release proof is recorded in `lessons.md`; 005-18's post-release metric remains open.
 Started: 2026-10-09
 
 ## Decisions so far

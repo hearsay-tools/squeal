@@ -1,6 +1,6 @@
 # 006 Model evals
 
-Stage: approved 2026-10-11 by the human, to be ready before 005 resumes (`status.md`). Amendments: `status.md`. Research: `../005-agent-adoption/research/model-evals.md` (005-06, Opus, a pilot of 36 sessions), with `../005-agent-adoption/research/instruction-surfaces.md` (005-02) and `../005-agent-adoption/research/adoption-baseline.md` 3 (005-01's metric) behind it. Specs 001 to 005 hold unless a section here says otherwise.
+Stage: shipped 2026-10-13; approved 2026-10-11 by the human. Proof: 0.1.131 release evals, 006-38 and `lessons.md` (`status.md`). Amendments: `status.md`. Research: `../005-agent-adoption/research/model-evals.md` (005-06, Opus, a pilot of 36 sessions), with `../005-agent-adoption/research/instruction-surfaces.md` (005-02) and `../005-agent-adoption/research/adoption-baseline.md` 3 (005-01's metric) behind it. Specs 001 to 005 hold unless a section here says otherwise.
 
 ## Problem
 
