@@ -47,7 +47,9 @@ afterEach(() => {
  * step-down; what it was asked. By default the heartbeat stays fresh an
  * hour. With `stops`, it has a 5 s interval and stops as a stepping
  * daemon's does, and an accepted step-down writes the shutdown's mark
- * (`#markExit`), unless `marks` is false (a release before 0.1.121).
+ * (`#markExit`), unless `marks` is false (a release before 0.1.121). Its
+ * ping answers as the daemon the store records, which a hook checks before
+ * it asks (row 011-151); `handoff-endpoint` replaces the daemon at the socket.
  */
 async function stepping(
   r: SquealRepo,
@@ -66,10 +68,13 @@ async function stepping(
       if (request.type === "step-down" && marks) {
         r.store.meta.set(daemonExitMetaKey(r.worktreeId), `${OLD}@1#t`);
       }
+      const startedAt = r.store.worktrees.get(r.worktreeId)?.daemon?.startedAt;
       const answer =
         request.type === "step-down"
           ? { ok: true, type: "step-down", squealVersion: OLD, steppingDown: true }
-          : { ok: true, type: request.type };
+          : request.type === "ping"
+            ? { ok: true, type: "ping", pid: 1, squealVersion: OLD, phase: "ready", startedAt }
+            : { ok: true, type: request.type };
       socket.end(`${JSON.stringify({ schemaVersion: 1, ...answer })}\n`);
     });
   });
