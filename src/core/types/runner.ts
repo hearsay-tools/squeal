@@ -272,6 +272,75 @@ export interface RunOptions {
    * A runner that never calls it leaves every file of the run unfinished.
    */
   readonly fileEnded?: (testFile: TestFileRef) => void;
+  /**
+   * A focused run (spec 011 C14 as amended 2026-10-23, row 011-135): per
+   * test file of the run, matched by project and path, the texts that
+   * select its checks. Such a file runs only the checks whose full name
+   * holds a text (`holdsCheckText`), through the runner's own filter, and
+   * the report holds results for those alone, its file errors as for any
+   * run, and its count in `RunReport.focused`. A file without an entry runs
+   * whole. Given only to an adapter with `RunnerAdapter.focuses`. Absent:
+   * every file runs whole.
+   */
+  readonly checks?: readonly FocusedFile[];
+}
+
+/** One test file's texts in a focused run (`RunOptions.checks`). */
+export interface FocusedFile {
+  readonly testFile: TestFileRef;
+  /** Literal texts, at least one. A check is selected when its full name holds any one. */
+  readonly texts: readonly string[];
+}
+
+/**
+ * What a focused run's texts selected in one completed file
+ * (`RunReport.focused`, spec 011 C14).
+ */
+export interface FocusedCount {
+  readonly testFile: TestFileRef;
+  /**
+   * The checks the runner collected in the file, selected or not; `null`
+   * when its filter hides the others (node:test, spec 003 D5).
+   */
+  readonly collected: number | null;
+  /** Of them, the checks whose full name holds a text: the file's results. `0` selected nothing, never a pass. */
+  readonly matched: number;
+}
+
+/**
+ * Whether a focused run's texts select a check (spec 011 C14, row
+ * 011-135): its full name, the runner's own without Squeal's duplicate-line
+ * suffix (001 D4), holds one of them, literally and with case.
+ */
+export function holdsCheckText(fullName: string, texts: readonly string[]): boolean {
+  return texts.some((text) => fullName.includes(text));
+}
+
+/**
+ * The texts `checks` gives `testFile`, its entries matched by project and
+ * path and joined; `null` when the file runs whole.
+ */
+export function focusedTexts(
+  checks: readonly FocusedFile[] | undefined,
+  testFile: TestFileRef,
+): readonly string[] | null {
+  const own = (checks ?? []).filter(
+    (entry) => entry.testFile.project === testFile.project && entry.testFile.path === testFile.path,
+  );
+  return own.length === 0 ? null : [...new Set(own.flatMap((entry) => entry.texts))];
+}
+
+/**
+ * The name filter a runner is given for `texts` (013 V4, 003 D5): each text
+ * escaped, each ` > ` in it matching ` > ` or a space, since Vitest 5 joins a
+ * full name with ` > ` and Vitest 4 and node:test with a space, the texts
+ * joined by `|`; no text matches nothing. It can select more checks than
+ * `holdsCheckText` does, so the adapter keeps only the checks that hold a text.
+ */
+export function checkTextPattern(texts: readonly string[]): string {
+  if (texts.length === 0) return "(?!)";
+  const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return texts.map((text) => literal(text).split(" > ").join("(?: > | )")).join("|");
 }
 
 /**
@@ -403,6 +472,11 @@ export interface RunReport {
    * moves (issue 10, task 011-06). Absent: none withheld.
    */
   readonly withheld?: readonly TestFileRef[];
+  /**
+   * Of the completed files given texts (`RunOptions.checks`), what the texts
+   * selected in each, sorted as `completedFiles`. Absent: no file had texts.
+   */
+  readonly focused?: readonly FocusedCount[];
 }
 
 /** A run that failed to start (`RunReport.startupFailure`). */
@@ -543,6 +617,12 @@ export interface RunnerAdapter {
    * `process.exitCode` is reset after each run."
    */
   run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport>;
+
+  /**
+   * The adapter honours `RunOptions.checks` (spec 011 C14, row 011-135).
+   * Absent: it runs whole files only, and is given no focused run.
+   */
+  readonly focuses?: true;
 
   /**
    * The lane that runs `testFile`: runner instances that run one tier at a

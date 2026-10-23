@@ -239,7 +239,20 @@ export function buildReport(
       .sort((a, b) => compareRefs(a.ref, b.ref))
       .map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
     ...(started.length === 0 ? {} : { startedProjects: started }),
+    ...focusedOf(collector, completed),
   };
+}
+
+/** `RunReport.focused`: the completed files the run was given texts for (row 011-135). */
+function focusedOf(
+  collector: RunCollector,
+  completed: readonly TestFileRef[],
+): Pick<RunReport, "focused"> {
+  const focused = completed.flatMap((ref) => {
+    const count = collector.focused.get(refKey(ref));
+    return count === undefined ? [] : [count];
+  });
+  return focused.length === 0 ? {} : { focused };
 }
 
 /**
