@@ -13,6 +13,7 @@ import { cancelsBacklog } from "./backlog.js";
 import { CLAIM_RECHECK_MS, peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
+import { focusedWaiting } from "./focused.js";
 import type { Ledger } from "./ledger.js";
 import type { CutFiles } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
@@ -187,6 +188,8 @@ export class TierYields implements CutFiles {
     if (tier.kind === "slow") return null;
     if (cancel?.signal.aborted === true) return { kind: "yields" };
     if (cancel !== null && superseded(tier)) return "supersession";
+    // Row 011-145: a focused tier leads its lane, so it yields to nothing.
+    if (tier.kind === "focused") return null;
     if (tier.kind === "backlog" && cancel !== null) {
       if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
     }
@@ -298,6 +301,8 @@ function waitedFor(
     return claim === "free";
   };
   if (queue.hasPromoted(runsSooner)) return "work";
+  // Row 011-145 (C4 as amended 2026-10-23): a focused entry, as a promoted file; no claim holds it.
+  if (focusedWaiting(context, ledger, inLane)) return "work";
   if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "work";
   return later ? "recheck" : null;
 }
