@@ -1,10 +1,11 @@
 import { join } from "node:path";
 import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
 import { lockFileWorktreeId, storePaths } from "../store/paths.js";
+import { shellWord } from "../text.js";
 import type { AbsolutePath } from "../types/index.js";
 import type { PsModel, PsPlaces } from "./model.js";
 import { lstatOrNull, names, poolDirs } from "./reads.js";
-import { dateOf, shellQuote } from "./render-units.js";
+import { dateOf } from "./render-units.js";
 import type { PsFileFlag, PsUnflaggedFiles, PsUnflaggedKind, PsUnknown } from "./shape.js";
 
 /*
@@ -49,7 +50,7 @@ function staleSockets(model: PsModel, unknown: PsUnknown[]): PsFileFlag[] {
       path: socket.path,
       count: 1,
       bytes: 0,
-      command: `rm ${shellQuote(socket.path)}`,
+      command: `rm ${shellWord(socket.path)}`,
     });
   }
   return flags;
@@ -71,7 +72,7 @@ function stalePoolMarks(model: PsModel): PsFileFlag[] {
         path,
         count: 1,
         bytes: stat.size,
-        command: `rm ${shellQuote(path)}`,
+        command: `rm ${shellWord(path)}`,
       });
     }
   }

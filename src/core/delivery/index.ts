@@ -24,7 +24,6 @@ export {
   MESSAGE_CAP_CHARS,
   notValidatedLine,
   SQUEAL_COMMAND,
-  shellWord,
 } from "./format.js";
 export { harnessOf, type ProcStat, pidNamespace, readProcStat } from "./harness-process.js";
 export { type HeaderForm, headerLines } from "./header.js";

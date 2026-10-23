@@ -3,12 +3,13 @@ import { join } from "node:path";
 import { claudeLoaded, codexNewest, isNewerVersion } from "../daemon/version.js";
 import { linkedWorktreeDir } from "../fs/index.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/index.js";
+import { shellWord } from "../text.js";
 import type { AbsolutePath, EpochMs } from "../types/index.js";
 import { phaseOn } from "./discover.js";
 import { fileFlags } from "./flags-files.js";
 import { orphans, overdue, type ProcessContext } from "./flags-processes.js";
 import type { DaemonWork, FlagFindings, FoundDaemon, PhaseOf, PsModel } from "./model.js";
-import { NO_BOOT, sentenceDuration, shellQuote } from "./render-units.js";
+import { NO_BOOT, sentenceDuration } from "./render-units.js";
 import type { PsFlag, PsFlagName, PsUnknown } from "./shape.js";
 import { type ProcessRow, ticksToMs } from "./source.js";
 
@@ -119,7 +120,7 @@ function daemonFlags(
   const add = (flag: PsFlagName, reason: string, command: string | null) =>
     flags.push({ flag, reason, command });
   const kill = `kill ${pid}`;
-  const stop = d.root === null ? kill : `squeal stop ${shellQuote(d.root)}`;
+  const stop = d.root === null ? kill : `squeal stop ${shellWord(d.root)}`;
 
   if (d.root === null) c.name(`daemon ${pid} flag root-gone`, "its root argument is relative");
   else {

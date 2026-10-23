@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { shellWord } from "../../core/delivery/index.js";
 import { worktreeIdFor } from "../../core/fs/index.js";
 import { withStatusStore } from "../../core/status/index.js";
+import { shellWord } from "../../core/text.js";
 import type { AbsolutePath } from "../../core/types/index.js";
 
 /*

@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   age,
@@ -10,7 +9,6 @@ import {
   percent,
   sentenceDuration,
   share,
-  shellQuote,
   thousands,
 } from "../../src/core/ps/render-units.js";
 
@@ -79,35 +77,5 @@ describe("the units", () => {
 
   test("a date is a UTC minute", () => {
     expect(dateOf(Date.UTC(2026, 9, 16, 20, 36, 59))).toBe("2026-10-16 20:36 UTC");
-  });
-});
-
-/* Spec 014 D7: "Each end command quotes its paths for the shell." */
-describe("shellQuote", () => {
-  /** What `sh` gives back as one argument for `word` quoted. */
-  function shellReads(word: string): string[] {
-    const out = execFileSync("sh", ["-c", `printf '%s\\0' ${shellQuote(word)}`], {
-      encoding: "utf8",
-    });
-    return out.split("\0").slice(0, -1);
-  }
-
-  test("leaves a plain path bare", () => {
-    expect(shellQuote("/run/user/1001/squeal-fd5a859b8ca77ef9.sock")).toBe(
-      "/run/user/1001/squeal-fd5a859b8ca77ef9.sock",
-    );
-  });
-
-  test("gives the shell back each path whole: a space, a quote, $, a glob, a newline, empty", () => {
-    for (const word of [
-      "/home/u/it's a dir/x",
-      "/tmp/$HOME `id`",
-      "/tmp/*",
-      "/tmp/a\nb",
-      "",
-      "-rf",
-    ])
-      expect(shellReads(word)).toEqual([word]);
-    expect(shellQuote("/home/u/it's a dir")).toBe("'/home/u/it'\\''s a dir'");
   });
 });

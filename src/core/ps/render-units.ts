@@ -6,7 +6,7 @@ import type { EpochMs } from "../types/index.js";
  * read prints as `?` in a column and as `unknown` in a sentence, never as
  * 0. Sizes are binary: `2.2G` in a column, `2.2 GiB` in a sentence. A
  * duration is `3h` in a column and `3h 05m` in a sentence. Each path in an
- * end command goes through `shellQuote`, the one quoting rule.
+ * end command goes through `shellWord` (`../text.ts`), the one quoting rule.
  */
 
 const KIB = 1024;
@@ -17,13 +17,6 @@ const GIB = MIB * 1024;
 export const UNKNOWN = "?";
 
 export const NO_BOOT = "the boot time cannot be read, so no process has an age";
-
-const SAFE_WORD = /^[\w@%+=:,./-]+$/;
-
-/** A word the shell reads back as `word`: bare when it is safe, else single-quoted. */
-export function shellQuote(word: string): string {
-  return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
-}
 
 /** An epoch time as `YYYY-MM-DD HH:MM UTC`. */
 export function dateOf(ms: EpochMs): string {

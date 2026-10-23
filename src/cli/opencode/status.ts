@@ -1,6 +1,6 @@
-import { shellWord } from "../../core/delivery/index.js";
 import { worktreeIdFor } from "../../core/fs/index.js";
 import { withStatusStore } from "../../core/status/index.js";
+import { shellWord } from "../../core/text.js";
 import type { AbsolutePath } from "../../core/types/index.js";
 import { usesSquealAt } from "../../harness/opencode/host.js";
 import { INSTALL_SH_COMMAND } from "../pi/status.js";

@@ -2,8 +2,8 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { shellWord } from "../../../src/core/delivery/index.js";
 import { worktreeIdFor } from "../../../src/core/fs/index.js";
+import { shellWord } from "../../../src/core/text.js";
 import { ping, waitFor } from "../../daemon/helpers.js";
 import { runBundle, runtimeDir } from "../bundle-helpers.js";
 import {
