@@ -9,6 +9,8 @@ flushed line per record so a killed process leaves a readable prefix:
 - `collect`: every collector's report (`pytest_make_collect_report`).
 - `collected`: the items left after deselection, each with its name and file.
 - `deselected`: node ids `-k`, `-m` or a plugin deselected.
+- `focused`: per file given texts in `SQUEAL_PYTEST_CHECKS`, how many items
+  it collected and how many the texts selected (row 011-135).
 - `item`: an item starts.
 - `phase`: every `pytest_runtest_logreport` (setup, call, teardown).
 - `warning`: a recorded warning.
@@ -287,6 +289,43 @@ def pytest_make_collect_report(collector):
 
 def pytest_deselected(items):
     _write({"type": "deselected", "nodeids": [item.nodeid for item in items]})
+
+
+# A focused run (spec 007 D6, row 011-135): `SQUEAL_PYTEST_CHECKS` maps a test
+# file's real path to texts, and an item of that file runs only when its full
+# name, the node id after the first `::`, holds one. The others are
+# deselected through the hook, so pytest counts them deselected.
+
+_CHECKS = json.loads(os.environ.get("SQUEAL_PYTEST_CHECKS") or "{}")
+
+
+def _full_name(nodeid):
+    return nodeid.split("::", 1)[1] if "::" in nodeid else nodeid
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_modifyitems(session, config, items):
+    if not _CHECKS:
+        return
+    counts = {path: {"collected": 0, "matched": 0} for path in _CHECKS}
+    kept = []
+    deselected = []
+    for item in items:
+        path = os.path.realpath(item.path)
+        texts = _CHECKS.get(path)
+        if texts is None:
+            kept.append(item)
+            continue
+        counts[path]["collected"] += 1
+        if any(text in _full_name(item.nodeid) for text in texts):
+            counts[path]["matched"] += 1
+            kept.append(item)
+        else:
+            deselected.append(item)
+    _write({"type": "focused", "files": counts})
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = kept
 
 
 def pytest_collection_finish(session):
