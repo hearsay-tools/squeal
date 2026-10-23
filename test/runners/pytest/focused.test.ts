@@ -49,6 +49,7 @@ const checks = (report: RunReport) => report.results.map((r) => [r.check.fullNam
 let synced: Synced = { ok: false, reason: "the sync did not run" };
 let scratch = "";
 let adapter: RunnerAdapter | null = null;
+const notes: string[] = [];
 beforeAll(async () => {
   synced = syncFixture(small, "3.13");
   scratch = realpathSync(mkdtempSync(join(tmpdir(), "squeal-pytest-focused-")));
@@ -62,7 +63,7 @@ beforeAll(async () => {
   adapter = await createPytestAdapter(PROJECT, {
     root,
     source,
-    note: () => {},
+    note: (text) => notes.push(text),
     cacheDir: join(scratch, "cache") as AbsolutePath,
   });
 }, 300_000);
@@ -128,6 +129,8 @@ describe("pytest adapter: focused runs", SLOW, () => {
     expect(report.results).toEqual([]);
     expect(report.fileErrors).toEqual([]);
     expect(report.focused).toEqual([{ testFile: FILE, collected: 4, matched: 0 }]);
+    // pytest exits 5 when it deselected every item: not the note of a file that collects nothing.
+    expect(notes.filter((n) => n.includes("collected nothing"))).toEqual([]);
   });
 
   it("reports the file-level error of a file that does not load", async (ctx) => {
