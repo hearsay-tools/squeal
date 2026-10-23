@@ -1,8 +1,8 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { groupLive, killRunning, runBounded } from "../../evals/lib/index.mjs";
+import { groundTruth, groupLive, killRunning, runBounded } from "../../evals/lib/index.mjs";
 import { alive } from "./fake-cell.js";
 
 // A runner's teardown returns only once the session's process group has no live process left:
@@ -62,6 +62,23 @@ describe("killRunning", () => {
       expect(r).toEqual({ exit: null, signal: null, timedOut: false, spawnError: "stopping" });
       expect(existsSync(join(dir, "started"))).toBe(false);
       expect(logged).toEqual(["the teardown has begun: sh -c not started"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves a ground truth after it writing nothing (006-98)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "squeal-evals-kill-"));
+    try {
+      mkdirSync(join(dir, "scripts"));
+      writeFileSync(join(dir, "scripts/a.test.mjs"), "");
+      const out = join(dir, "out");
+      mkdirSync(out);
+      const refused = { exit: null, signal: null, timedOut: false, spawnError: "stopping" };
+      const truth = await groundTruth({ cwd: dir, env: process.env, out, log: () => {} });
+      expect(truth).toEqual({ vitest: refused, nodeTest: { ...refused, files: 1 } });
+      expect(existsSync(join(out, "truth.json"))).toBe(false);
+      expect(existsSync(join(out, "truth.node.txt"))).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
