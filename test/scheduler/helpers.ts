@@ -240,6 +240,8 @@ export interface HarnessOptions {
   readonly runnerPartMs?: number;
   /** Task 001-422: the pump resumes after a busy store, reporting here. */
   readonly busyWaits?: SchedulerOptions["busyWaits"];
+  /** `SchedulerOptions.busySliceMs`: how long a sliced write waits on a busy store (row 011-126). */
+  readonly busySliceMs?: number;
   /** `SchedulerOptions.now`: the clock the store's re-key moves are stamped with (task 001-258). */
   readonly now?: () => number;
   /** `SchedulerOptions.incarnation`; default `HARNESS_INCARNATION`, the daemon `liveDaemon` registers. */
@@ -347,6 +349,7 @@ export async function openHarness(
     ...(options.hostLoad === undefined ? {} : { hostLoad: options.hostLoad }),
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.busyWaits === undefined ? {} : { busyWaits: options.busyWaits }),
+    ...(options.busySliceMs === undefined ? {} : { busySliceMs: options.busySliceMs }),
     ...(options.now === undefined ? {} : { now: options.now }),
     incarnation: options.incarnation ?? HARNESS_INCARNATION,
     ...(options.predecessor === undefined ? {} : { predecessor: options.predecessor }),

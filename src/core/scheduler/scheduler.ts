@@ -14,6 +14,7 @@ import {
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
   isSlowLane,
+  type ProjectName,
   type RelativePath,
   type Revision,
   type RunReport,
@@ -49,7 +50,7 @@ import { interruptedFiles } from "./interrupted.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
-import { prepareObserved } from "./observed.js";
+import { prepareObserved, type TierObservations } from "./observed.js";
 import type { SchedulerOptions } from "./options.js";
 import { priorityOf } from "./queue.js";
 import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
@@ -106,6 +107,25 @@ interface EndedRun {
   readonly held: boolean;
 }
 
+/**
+ * What a record decides under the lock before its write (row 011-126): kept
+ * while a busy store holds the write back, so a retry neither re-keys nor
+ * counts a withhold again.
+ */
+interface PreparedRecord {
+  readonly report: RunReport;
+  readonly changed: ReadonlySet<RelativePath>;
+  readonly touched: readonly RelativePath[];
+  readonly observed: TierObservations | undefined;
+  /** The files queued again instead of stored: first withholds, held, not started, unfinished. */
+  readonly again: readonly string[];
+  /** The projects of held files, which give no setup outcome. */
+  readonly setupProjects: ReadonlySet<ProjectName>;
+  /** The stop's cancel had reached the run. */
+  readonly cancelled: boolean;
+  readonly withheld: readonly string[];
+}
+
 /** What a record leaves to do outside the lock: the paths to reconcile, the withhold notes. */
 interface Recorded {
   readonly moved: readonly RelativePath[];
@@ -153,13 +173,18 @@ class TierScheduler implements Scheduler {
   /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
   readonly #slotRecords = new SlotRecords<EndedRun, Recorded>({
     lock: this.#lock,
-    record: (ended) => this.#record(ended, false),
+    record: (ended) => this.#recordSlot(ended),
     commit: () => this.#started().ledger.commit(),
   });
   /** A `run --all` with `observeIgnored` (task 001-307). */
   readonly #warmUp = new WarmUp();
   /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
   readonly #withholds = new Withholds();
+  /** The busy store's error a slot's record gave up on, since its record began (`#recordSlot`). */
+  #slotsBusy: unknown = null;
+  /** Row 011-126: each ended run's record as prepared, and as written, kept across tries on a busy store. */
+  readonly #prepared = new WeakMap<EndedRun, PreparedRecord>();
+  readonly #written = new WeakMap<EndedRun, Recorded>();
   /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
   #woken = false;
   #wake: (() => void) | null = null;
@@ -817,7 +842,8 @@ class TierScheduler implements Scheduler {
           const hold = await this.#holdCheck();
           if (hold === "held") break;
           if (hold === "released") continue;
-          const next = await this.#lock.run(() => {
+          // Row 011-126: the selection's lookups and the tier's start wait a slice on a busy store.
+          const next = await this.#runSliced(() => {
             if (this.#halted() || this.#awaitingInstall || this.#reinstalled) return null;
             if (this.#onHold()) return "held" as const;
             const { context, ledger } = this.#started();
@@ -906,10 +932,16 @@ class TierScheduler implements Scheduler {
           tier.lease?.release();
           flight.ran = true;
           this.#notify();
-          record = await this.#slotRecords.record(this.#ended(tier, ran, installStamp, slow, null));
+          const ended = this.#ended(tier, ran, installStamp, slow, null);
+          record = await this.#recordLanded(tier, () => {
+            this.#slotsBusy = null;
+            return this.#slotRecords.record(ended);
+          });
         } else {
           const ended = await this.#ended(tier, ran, installStamp, slow, held);
-          record = await this.#lock.run(() => this.#record(ended, true));
+          record = await this.#recordLanded(tier, () =>
+            this.#lock.run(() => this.#record(ended, true)),
+          );
         }
         recorded = true;
         this.#busy?.landed();
@@ -930,6 +962,55 @@ class TierScheduler implements Scheduler {
         this.#notify();
       }
     })();
+  }
+
+  /**
+   * Row 011-126: `attempt`, the record of `tier`'s run, its writes waiting at
+   * most the busy slice. One that gives up keeps the run's results and tries
+   * again at its turn (`BusyResume`), so a busy store neither holds the event
+   * loop nor queues the files to run again. Once the scheduler closes, the
+   * last try waits as long as the store does.
+   */
+  async #recordLanded(tier: Tier, attempt: () => Promise<Recorded>): Promise<Recorded> {
+    for (;;) {
+      const last = this.#closed;
+      try {
+        return await (last ? attempt() : this.#sliced(attempt));
+      } catch (error) {
+        if (last || this.#busy === null || !isBusy(error)) throw error;
+        await this.#busy.retry(`the results of ${plural(tier.files.length, "file")}`);
+      }
+    }
+  }
+
+  /**
+   * A slot's record (`SlotRecords`). Row 011-126: once one slot's write gave
+   * up on a busy store, the rest of its record give up without trying, so
+   * their slices do not add up; each tries again at its own turn.
+   */
+  async #recordSlot(ended: EndedRun): Promise<Recorded> {
+    if (this.#slotsBusy !== null) throw this.#slotsBusy;
+    try {
+      return await this.#record(ended, false);
+    } catch (error) {
+      if (isBusy(error)) this.#slotsBusy = error;
+      throw error;
+    }
+  }
+
+  /**
+   * `fn` with each write it awaits waiting at most `busySliceMs` on a busy
+   * store, when a busy store's give-up resumes the pump (row 011-126); with
+   * the store's own wait otherwise.
+   */
+  #sliced<T>(fn: () => Promise<T>): Promise<T> {
+    const ms = this.options.busySliceMs;
+    return ms === undefined || this.#busy === null ? fn() : withBusySlice(ms, fn);
+  }
+
+  /** `task` under the lock, `#sliced`. */
+  #runSliced<T>(task: () => T | Promise<T>): Promise<T> {
+    return this.#sliced(() => this.#lock.run(task));
   }
 
   /** What the record of a run that ended reads outside the lock. */
@@ -956,10 +1037,24 @@ class TierScheduler implements Scheduler {
    * Records an ended run under the lock: what it loaded and read beyond its
    * keys, the completion barrier's withholds, then `recordTier`. `commit`
    * false leaves the ledger's writes to the caller's commit (`SlotRecords`).
+   * Row 011-126: a record tried again after a busy store gave up writes what
+   * it prepared the first time, and a slot's whose write landed returns it,
+   * owing only the commit.
    */
   async #record(ended: EndedRun, commit: boolean): Promise<Recorded> {
-    const { context, ledger } = this.#started();
-    const { tier, ran, ignored, inputs, installMoved, runtimeGone, slow, held: holdCut } = ended;
+    const written = this.#written.get(ended);
+    if (written !== undefined) return written;
+    const prepared = this.#prepared.get(ended) ?? (await this.#prepare(ended));
+    this.#prepared.set(ended, prepared);
+    const recorded = this.#write(ended, prepared, commit);
+    this.#written.set(ended, recorded);
+    return recorded;
+  }
+
+  /** What a record reads and decides under the lock before its write, once however often it is tried. */
+  async #prepare(ended: EndedRun): Promise<PreparedRecord> {
+    const { context } = this.#started();
+    const { tier, ran, inputs, installMoved, held: holdCut } = ended;
     // Task 003-43: environment files the run loaded beyond the keyed ones re-key first.
     const environment = installMoved ? undefined : await rekeyEnvironments(context, ran, tier);
     // Task 001-132: what the run read beyond its closures, hashed under the lock.
@@ -1007,6 +1102,21 @@ class TierScheduler implements Scheduler {
     // hold's cancel cut short stays queued for the hold's end (row 011-74).
     const cancelled = this.#stop.signal.aborted;
     const unfinished = cancelled || holdCut ? unfinishedFiles(tier, ran) : [];
+    const again = [
+      ...(withhold?.again.map(({ file }) => file.id) ?? []),
+      ...held.map(({ file }) => file.id),
+      ...setupsHeld.notStarted.map(({ file }) => file.id),
+      ...unfinished,
+    ];
+    const setupProjects = setupsHeld.projects;
+    return { report, changed, touched, observed, again, setupProjects, cancelled, withheld };
+  }
+
+  /** The record's one write transaction, from what `#prepare` decided. */
+  #write(ended: EndedRun, prepared: PreparedRecord, commit: boolean): Recorded {
+    const { context, ledger } = this.#started();
+    const { tier, ran, ignored, installMoved, runtimeGone, slow } = ended;
+    const { report, changed, touched, observed, setupProjects, cancelled, withheld } = prepared;
     // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
     const moved = context.store.transaction(() => {
       // Rows 011-66 and 011-106: a crash after the daemon's stop began, or a run while its own
@@ -1015,17 +1125,11 @@ class TierScheduler implements Scheduler {
         stopping: this.#stopping() && !cancelled,
         runtimeGone,
       });
-      const again = [
-        ...(withhold?.again.map(({ file }) => file.id) ?? []),
-        ...held.map(({ file }) => file.id),
-        ...setupsHeld.notStarted.map(({ file }) => file.id),
-        ...unfinished,
-        ...interrupted,
-      ];
+      const again = [...prepared.again, ...interrupted];
       const requeue = installMoved || again.length === 0 ? installMoved : new Set(again);
       // Review 0.1.262, B2: a report the runtime's loss rejects applies no setup outcome either.
       const lost = runtimeGone && interrupted.length > 0;
-      const setups = lost ? false : setupsHeld.projects.size === 0 || setupsHeld.projects;
+      const setups = lost ? false : setupProjects.size === 0 || setupProjects;
       this.#warmUp.record(context, ignored);
       this.#yields.ended(context, tier);
       const result = recordTier(
@@ -1241,9 +1345,13 @@ class TierScheduler implements Scheduler {
     }
   }
 
-  /** Puts the files of a tier that never got recorded back into the queue; a slow one's activity goes. */
+  /**
+   * Puts the files of a tier that never got recorded back into the queue; a
+   * slow one's activity goes. Its commit waits a slice on a busy store (row
+   * 011-126).
+   */
   async #requeue(tier: Tier, slow: boolean): Promise<void> {
-    await this.#lock.run(() => {
+    await this.#runSliced(() => {
       const { context, ledger } = this.#started();
       endTier(context, ledger, tier);
       this.#yields.ended(context, tier);
@@ -1274,7 +1382,7 @@ class TierScheduler implements Scheduler {
   async #reconcilePaths(paths: readonly RelativePath[]): Promise<void> {
     const { context } = this.#started();
     const candidates = await statCandidates(paths, context.hasher);
-    // No slice: nothing retries this pass, so its writes wait as the tier's record did.
+    // No slice: nothing retries this pass, so its writes wait as long as the store does.
     await this.#handleBatch({ trigger: "watch", paths: candidates }, undefined);
   }
 
