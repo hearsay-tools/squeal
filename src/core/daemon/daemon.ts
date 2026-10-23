@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import type { PoolCapacity } from "../capacity/index.js";
+import type { CodePass } from "../code/pass/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { endHandoff } from "../delivery/handoff.js";
 import { resumesRest } from "../delivery/liveness.js";
@@ -189,6 +190,8 @@ class Daemon {
   /** The Vitest part of `#runner`, which `run --all` asks to retry its creation. */
   #vitest: RecoveringRunner | null = null;
   #loop: DaemonLoop | null = null;
+  /** Spec 015 D4: counts the code each revision changed; opens nothing while complexity is off. */
+  #code: CodePass | null = null;
   /**
    * What its tests leave running, stopped after each tier and at exit (D12).
    * Their mark is the registration's token, which `squeal stop` reads to
@@ -471,6 +474,8 @@ class Daemon {
         { createCompositeRunner },
         { withSlowInstance },
         { awaitsInstall },
+        codePass,
+        { readObjectFormat },
       ] = await Promise.all([
         import("../daemon-loop/index.js"),
         import("../state/index.js"),
@@ -481,6 +486,8 @@ class Daemon {
         import("./composite-runner.js"),
         import("./slow-instance.js"),
         import("../scheduler/index.js"),
+        import("../code/pass/index.js"),
+        import("../hash/index.js"),
       ]);
       const { storePaths } = await import("../store/index.js");
       const around = this.options.ownsProcess
@@ -592,6 +599,28 @@ class Daemon {
         vitestBelowRoot,
       ]);
       if (this.#phase === "stopping" || this.#stopRequested) return;
+      // Spec 015 D4: outside the scheduler's lanes, with no test permit, nudged after each batch.
+      const code = codePass.createCodePass({
+        worktreeId,
+        root,
+        commonDir,
+        format: await readObjectFormat(root),
+        source: codePass.mainStoreSource(
+          store,
+          worktreeId,
+          () => this.#loop?.scheduler.extraFiles() ?? [],
+        ),
+        policy: () => this.#policy,
+        // The grammars load only once complexity is on (goal 1).
+        counter: async () => (await import("../code/pass/counter.js")).treeSitterCounter,
+        now: this.#now,
+        log: this.#log,
+        onError: (error) =>
+          isBusy(error)
+            ? this.#log(`complexity: ${error.message}`)
+            : this.#note(`complexity: ${error.message}`),
+      });
+      this.#code = code;
       const loop = createDaemonLoop({
         root,
         worktreeId,
@@ -627,9 +656,12 @@ class Daemon {
         // Spec 001 D11 Capacity (tasks 001-376, 001-377): backlog and checkpoint tiers share the
         // user's pool, sized from the user's config as read when the loop starts.
         capacity: { dir: slowSlotDir(this.options.env), ...this.#poolCapacity() },
+        afterBatch: () => code.nudge(),
       });
       this.#loop = loop;
       await loop.start();
+      // The first count, or what the revisions stored while no daemon ran changed.
+      code.nudge();
       // Past the start scan: a registration at a session's start from here on records this
       // daemon as scanned, which "none of the files changed here" needs (D6).
       store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt));
@@ -858,6 +890,7 @@ class Daemon {
         await this.#loop?.close(this.#stopRequested ? { cancel: true } : {});
         await this.#cancelling;
       });
+      await this.#step("code.close", () => this.#code?.close());
       await this.#step("runner.close", () => this.#runner?.close());
       await this.#step("escaped children", async () => {
         const stop = await this.#children.atExit();
