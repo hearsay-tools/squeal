@@ -289,7 +289,8 @@ export async function runSession({
  * The ground truth after the session (spec 006 goal 2), in `cwd`: Vitest's JSON report to
  * `out/truth.vitest.json`, `node --test` over `scripts/*.test.mjs` to `out/truth.node.txt`, and
  * both commands' completion to `out/truth.json`, `{ vitest, nodeTest }` with `nodeTest.files`.
- * No `node:test` file leaves `nodeTest.exit` null: nothing ran, so nothing passed.
+ * No `node:test` file leaves `nodeTest.exit` null: nothing ran, so nothing passed. Once the
+ * teardown has begun (`killRunning`) it writes neither file, and returns the records (006-98).
  */
 export async function groundTruth({
   cwd,
@@ -329,8 +330,10 @@ export async function groundTruth({
         onStderr: (d) => (text += d),
       })
     : { exit: null, signal: null, timedOut: false, spawnError: null };
-  writeFileSync(join(out, "truth.node.txt"), text);
   const truth = { vitest, nodeTest: { ...nodeTest, files: files.length } };
+  // After the teardown has begun the cell is not graded, and no file lands after its scan.
+  if (stopped) return truth;
+  writeFileSync(join(out, "truth.node.txt"), text);
   writeFileSync(join(out, "truth.json"), `${JSON.stringify(truth, null, 2)}\n`);
   return truth;
 }
