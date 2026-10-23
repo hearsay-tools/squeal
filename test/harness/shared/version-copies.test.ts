@@ -5,12 +5,18 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { keepVersion, keptCacheCli } from "../../../src/harness/shared/version-copies.js";
+import {
+  keepVersion,
+  keptCacheCli,
+  keptCli,
+  keptSkill,
+} from "../../../src/harness/shared/version-copies.js";
 import { tempDir } from "../../store/helpers.js";
 
 /*
@@ -26,12 +32,16 @@ const write = (path: string, text: string) => {
   writeFileSync(path, text);
 };
 
-/** A plugin root of `version` at `root`: its CLI, skill and launcher. */
+/** The manifest a Codex plugin root and its copy name their version in (row 011-140). */
+const manifest = (version: string) => `${JSON.stringify({ name: "squeal", version })}\n`;
+
+/** A plugin root of `version` at `root`: its manifest, CLI, skill and launcher. */
 function plugin(
   version: string,
   launcher = "#!/bin/sh\n# squeal-launcher format 4\n",
   root = join(tempDir("squeal-root-"), version),
 ): string {
+  write(join(root, ".codex-plugin", "plugin.json"), manifest(version));
   write(join(root, "dist", "cli", "squeal.mjs"), `// ${version}\n`);
   write(join(root, "dist", "observe", "recorder.cjs"), `// ${version}\n`);
   write(join(root, "skills", "squeal", "SKILL.md"), `# Squeal ${version}\n`);
@@ -40,10 +50,14 @@ function plugin(
   return root;
 }
 
-/** A copy as an earlier session start left it. */
-function copied(data: string, version: string): string {
+/**
+ * A copy named `version` as an earlier session start left it, holding the
+ * code of `code`; `manifest: false` as a release before row 011-140 left it.
+ */
+function copied(data: string, version: string, code = version, kept = { manifest: true }): string {
   const dir = join(data, "versions", version);
-  write(join(dir, "dist", "cli", "squeal.mjs"), `// ${version}\n`);
+  write(join(dir, "dist", "cli", "squeal.mjs"), `// ${code}\n`);
+  if (kept.manifest) write(join(dir, ".codex-plugin", "plugin.json"), manifest(code));
   return dir;
 }
 
@@ -80,6 +94,9 @@ describe("keepVersion", () => {
     );
     expect(existsSync(join(data, "versions/0.1.5/dist/observe/recorder.cjs"))).toBe(true);
     expect(existsSync(join(data, "versions/0.1.5/skills/squeal/SKILL.md"))).toBe(true);
+    expect(readFileSync(join(data, "versions/0.1.5/.codex-plugin/plugin.json"), "utf8")).toBe(
+      manifest("0.1.5"),
+    );
     expect(existsSync(join(data, "versions/0.1.5/bin"))).toBe(false);
     expect(readFileSync(join(data, "bin", "squeal"), "utf8")).toBe(
       readFileSync(join(root, "bin", "squeal-launcher"), "utf8"),
@@ -124,6 +141,47 @@ describe("keepVersion", () => {
     expect(readFileSync(join(data, "bin", "squeal"), "utf8")).toBe("#!/bin/sh\n# 0.1.6\n");
     keepVersion({ root: plugin("0.1.7", "#!/bin/sh\n# 0.1.7\n"), data, version: "0.1.7" });
     expect(readFileSync(join(data, "bin", "squeal"), "utf8")).toBe("#!/bin/sh\n# 0.1.7\n");
+  });
+
+  it("row 011-140: makes no copy and writes no launcher from a root of another version", () => {
+    const data = join(tempDir("squeal-data-"), "squeal-hearsay");
+    // A test run of unreleased 0.1.5 code under a Codex hook's PLUGIN_ROOT of 0.1.4.
+    expect(keepVersion({ root: plugin("0.1.4"), data, version: "0.1.5" })).toBeNull();
+    expect(existsSync(data)).toBe(false);
+    // A root without a manifest names no version either.
+    const bare = plugin("0.1.5");
+    rmSync(join(bare, ".codex-plugin"), { recursive: true });
+    expect(keepVersion({ root: bare, data, version: "0.1.5" })).toBeNull();
+    expect(existsSync(data)).toBe(false);
+    expect(keptCli(data, "0.1.5")).toBeNull();
+  });
+
+  it.each([
+    ["holds another version's code", { manifest: true }],
+    ["has no manifest, as before row 011-140", { manifest: false }],
+  ])(
+    "row 011-140: does not use a copy that %s, and makes it again from its own root",
+    (_, kept) => {
+      const data = tempDir("squeal-data-");
+      copied(data, "0.1.5", "0.1.4", kept);
+      expect(keptCli(data, "0.1.5")).toBeNull();
+      expect(keptSkill(data, "0.1.5")).toBeNull();
+      const dir = keepVersion({ root: plugin("0.1.5"), data, version: "0.1.5" });
+      expect(dir).toBe(join(data, "versions", "0.1.5"));
+      expect(readFileSync(join(data, "versions/0.1.5/dist/cli/squeal.mjs"), "utf8")).toBe(
+        "// 0.1.5\n",
+      );
+      expect(keptCli(data, "0.1.5")).toBe(join(data, "versions/0.1.5/dist/cli/squeal.mjs"));
+      expect(versions(data)).toEqual(["0.1.5"]);
+    },
+  );
+
+  it("row 011-140: renames a copy of other code out even when its root is of another version", () => {
+    const data = tempDir("squeal-data-");
+    copied(data, "0.1.5", "0.1.4");
+    copied(data, "0.1.4");
+    expect(keepVersion({ root: plugin("0.1.4"), data, version: "0.1.5" })).toBeNull();
+    expect(versions(data)).toEqual(["0.1.4"]);
   });
 
   it("keeps no copy of a version that is no plain release", () => {
@@ -183,6 +241,16 @@ describe("keptCacheCli (005-77)", () => {
     expect(keptCacheCli(elsewhere, "0.1.5", { HOME: home })).toBe(elsewhere);
     expect(existsSync(join(home, ".claude", "plugins", "data"))).toBe(false);
     expect(existsSync(join(home, ".codex"))).toBe(false);
+  });
+
+  it("row 011-140: makes the copy again when the one there holds another version's code", () => {
+    const codex = tempDir("squeal-codex-");
+    const data = join(codex, "plugins", "data", "squeal-hearsay");
+    const cli = cliOf(cached(codex, "0.1.5"));
+    copied(data, "0.1.5", "0.1.4");
+    const kept = join(data, "versions", "0.1.5", "dist", "cli", "squeal.mjs");
+    expect(keptCacheCli(cli, "0.1.5", { CODEX_HOME: codex })).toBe(kept);
+    expect(readFileSync(kept, "utf8")).toBe("// 0.1.5\n");
   });
 
   it("names the cache's CLI when no copy can be kept", () => {
