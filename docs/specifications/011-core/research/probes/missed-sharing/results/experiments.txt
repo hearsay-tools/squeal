@@ -1,0 +1,26 @@
+Experiments of 011-152, 2026-10-23 15:57Z to 16:20Z, load (one minute) 30 to 46. Daemons in /tmp clones with lookup-only baselines (no test ran),
+each over a scrubbed copy of the squeal store copied at 15:41:22Z (daemon columns NULL). Clones: a = e5905d35e, b = 3225f593c, c = 69cb9f7ed.
+
+E0. Tool built with tsc from 69cb9f7ed (no src change since squeal--v0.1.276):
+  clone b: 934 of 934 test files miss; 0 of its 934 keys are in `results` or held by another worktree.
+  clone c: 0 of 934 keys equal the keys of worktree c091c53e9fa54061 (this research's own worktree, fresh at 69cb9f7ed, 0 misses at 15:40:41Z).
+  The environment encodings (logged): no absolute path, Vitest config env {BASE_URL, DEV, MODE, PROD}; clones b and c give the same two hashes.
+  With CLAUDECODE, AI_AGENT, CLAUDE_CODE_ENTRYPOINT, LANG, USER, LOGNAME, SHELL passed through: the same hashes, still 0 of 934.
+  => a tsc build computes other keys than the shipped bundle; why is not determined. A probe artefact, not a host input.
+
+E1. The shipped bundle (copy of ~/.claude/plugins/cache/hearsay/squeal/0.1.276) on clone c:
+  920 of 934 keys equal c091c53e9fa54061's (location /tmp/ms152/clones/c vs ~/projects/squeal/.ai/cezar/worktrees/<id>, a fresh npm ci, no session env).
+  8 differ: squeal.config.json, edited by the probe for lookup-only, is in their closure.
+  6 differ: test/daemon/{departure,drain,drain-checkpoint,restart-handover-signal,stop-cancel}, test/evals/eval-root. Their closure holds `.git`,
+  a directory in a clone and a file in a worktree. Host worktrees share these keys (c091c53e inherited them from f5a6f393, 2b9eaa1f, 6d4a4187, 4b19c534),
+  so this is a clone artefact. rekey3.mjs, rekey4.mjs: no `.git` variant reproduces the host key; which input differs is not determined.
+
+E2. The shipped bundle on clones a and b, 16:12Z: 920 of 934 found in each (14 unknown, as E1).
+
+E3. The pair of content.mjs: 2b9eaa1f at 3225f593c (14:03Z) missed 52 files (696 s) that 3c74c111 had stored at e5905d35e with equal closure content.
+  pairkeys.mjs: clone a key = clone b key = 2b9eaa1f's stored key; clone a key != 3c74c111's stored key, for all 52.
+  Observed set alone rolled back in the store copy: 5 of 934 keys change (the first lookup keys from the stored closure lists, which hold the observed paths).
+  Closure lists and observed set rolled back to the paths first reported before 3c74c111's row (growth.mjs; removed: src/runners/focus.ts from 53 files,
+  src/core/scheduler/record.ts from 51, 3 test paths from 1 each): clone a key = 3c74c111's stored key for 53 of 54 files; clone b (not rolled back) still
+  = 2b9eaa1f's stored key for 52. Both paths are absent at e5905d35e, 3225f593c and 69cb9f7ed; git adds them on branches 011-144 (a63ac1a34, 13:03Z) and
+  011-131 (cd5e2fc1a, 12:41Z).

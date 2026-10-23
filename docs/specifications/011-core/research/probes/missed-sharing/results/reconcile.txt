@@ -1,0 +1,6 @@
+== reconciliation with stored-nothing.md finding 5 (recorded s of baseline runs in the window)
+14388 live: baseline of a later daemon start
+21320 live: first baseline checkpoint
+29633 live: later baseline checkpoint, before the second daemon start
+29766 removed: first baseline checkpoint
+10496 removed: later baseline checkpoint, before the second daemon start
