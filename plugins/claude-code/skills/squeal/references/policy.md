@@ -45,3 +45,22 @@ With policy `interrupt.onRegression` on (the default), the first file edit after
 | `daemon.idleExitMinutes` | `60` | The daemon exits after this long with no registered session. |
 | `store.retentionDays` | `7` | Results for file contents no worktree has any more are dropped after this many days. |
 | `store.maxSizeMb` | `null` | Size cap of the store; `null` for none. |
+
+## Complexity
+
+With `complexity.enabled`, Squeal counts the cyclomatic complexity of each function in the files it sees after each edit, with no test run: ESLint's classic `complexity` rule for `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs` and `.cjs`, radon's for `.py`. A function over `complexity.threshold` fails, and its state is kept as a test's is.
+
+- The session's first message counts the functions over the threshold and never lists them: `Complexity: 62 functions over 20; squeal code lists them.` While the first count runs, it says `Complexity: counting, 340 of 600 files.`
+- A function that goes over, or a new one over, arrives with the next tool call after any test failure: `FAIL complexity: selectTier (src/core/scheduler/tiers.ts:120) is 23, over 20 (ESLint rule)`. One that goes back at or under arrives as `PASS complexity: ...`, and a failing one that is removed as `RESOLVED complexity: ... is no longer in the code`. A message lists at most 5 of them and counts the rest: `and 14 more complexity changes; squeal code --changed lists them.` A count that changes while the function stays over says nothing, and so does a move or a rename that keeps the function's body.
+- A change of the threshold or of the files counted is one line, such as `Complexity threshold is now 15: 117 functions over; squeal code lists them.`
+- A file over `complexity.maxFileBytes` is not counted; the first edit to it in a session says so once.
+- A complexity failure never denies an edit and never counts in `Known failures`. It keeps you going at Stop only with `complexity.blocking`, and then only for a function that went over since the session started.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `complexity.enabled` | `false` | Count complexity per function and keep its state. Off, Squeal counts nothing and keeps no code store. |
+| `complexity.threshold` | `20` | A function fails when its complexity is above this. |
+| `complexity.include` | `["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"]` | Globs, worktree-relative, of the files counted. Test files, files under `node_modules` and files git ignores are never counted. |
+| `complexity.exclude` | `["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"]` | Globs left out of `include`; a project's list replaces the default. |
+| `complexity.maxFileBytes` | `524288` | A larger file is not counted, and `squeal code` names it. |
+| `complexity.blocking` | `false` | Stop also names each function that went over since the session started, and keeps you going once. A function already over at the session's start never blocks. |

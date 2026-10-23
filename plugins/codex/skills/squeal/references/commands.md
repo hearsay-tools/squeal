@@ -89,6 +89,22 @@ It prints at most 200 of them and says how many there were. A log Squeal has pru
 Full list: squeal failures tests/components --error "ReferenceError: ResizeObserver is not defined" --per-check --limit all
 ```
 
+## squeal code
+
+With `complexity.enabled` (see `policy.md`), `squeal code` lists every function over the complexity threshold, newest first by the revision it went over: its location, its complexity (CC) with the decision points by kind, and that revision. It reads the store and needs no daemon.
+
+```text
+Complexity: 2 functions over 20
+  src/core/scheduler/tiers.ts:120  selectTier  CC 23 (if 12, logical 6, optional-chain 4), over since revision 14
+  src/core/ledger.ts:40  Ledger.settle  CC 31 (if 20, case 10), over since revision 3
+Not judged:
+  src/big.ts: 600 KiB, over the 512 KiB limit; its functions are not counted
+```
+
+`squeal code <path>...` lists every function of those files or directories, over the threshold or not. `--changed` keeps the functions whose state changed since this session registered, the ones a message counts as `and N more complexity changes`. The files not judged follow the functions, with why: too big, not parsed (the functions in a parse error are not judged), or not counted yet. With complexity off it says so and exits 1. `--json` gives a versioned object: `functions`, each with `path`, `qualifiedName`, `occurrence`, `line`, `outcome`, `complexity`, `threshold`, `decisions` and `changedAt`, and `files`, each with `path`, `reason` and `size`.
+
+`squeal status` counts them in one line under the test lines, `Complexity: 62 functions over 20, 2 since this session started; squeal code lists them.`, and `--json` adds them as `code`. In a shell that names no session, the line counts since the oldest session registered in the worktree, and says so.
+
 ## squeal run --all
 
 Queues every test file that has no result for the current files (`--force` queues all of them). Completion shows in the full header (at registration and Stop) and `squeal status` as `Full-suite checkpoint: completed at revision <current>`. Policy `stop.requireFullSuite` can require one before you stop.
