@@ -88,6 +88,8 @@ function turnFirst(
     const lane = laneOf(context, ref);
     if (busy.has(lane) || queue.isFirstGroup(ref)) return false;
     if (quietHolds(context, ledger, ref, lane, { backlog: true, turn: true }, now)) return false;
+    const file = ledger.file(ref);
+    if (!file || file.key === null || file.blocked !== null) return false;
     return peekClaim(context, ledger, ref) === "free";
   });
 }
