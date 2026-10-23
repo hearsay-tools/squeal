@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.277";
+  if (true) return "0.1.278";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -12499,6 +12499,14 @@ var init_ledger = __esm({
         this.#syncPhase(file);
       }
       /**
+       * The tier that ran `file` at `key` ends, superseded by a newer run at
+       * another key: only its own claim ends, since a store hit at the newer key
+       * took none (row 011-71).
+       */
+      endRunningAt(file, key2) {
+        if (file.runningKey === key2) this.setRunning(file, null);
+      }
+      /**
        * Spec 001 D12: a crash, a timeout, or inputs that never hold still. Nothing
        * is stored under a key; the files' checks become `unknown` at this revision.
        * Spec 001 D5: a checkpoint containing an `unknown` file ends `abandoned`.
@@ -14390,7 +14398,7 @@ function recordTier(context, ledger, tier, report2, changedOnDisk, requeue = fal
       const { file, key: key2, checkpointId, forced, recent, catchUp } = entry4;
       const decision = storeDecision(entry4, end, ledger.files.get(file.id) === file);
       if (decision.kind === "superseded") {
-        if (file.runningKey === key2) ledger.setRunning(file, null);
+        ledger.endRunningAt(file, key2);
         continue;
       }
       ledger.setRunning(file, null);
@@ -17319,55 +17327,6 @@ var init_install_stamp = __esm({
   }
 });
 
-// src/core/scheduler/interrupted.ts
-function interruptedMetaKey(worktreeId) {
-  return worktreeMetaKey("interrupted", worktreeId);
-}
-function interruptedFiles(context, ledger, tier, report2, { stopping, runtimeGone }) {
-  const crashed = stopping && report2.end === "crashed";
-  if (!runtimeGone && !crashed) return [];
-  const unfinished2 = new Set(unfinishedFiles(tier, report2));
-  const entries3 = tier.files.filter(({ file }) => runtimeGone || unfinished2.has(file.id));
-  if (entries3.length === 0) return [];
-  const { store, worktreeId } = context;
-  const memory = readInterrupted(store, worktreeId);
-  const again = [];
-  for (const { file, key: key2 } of entries3) {
-    if (memory.get(file.id)?.key === key2) continue;
-    memory.set(file.id, { testFile: file.ref, key: key2 });
-    again.push(file.id);
-  }
-  const kept3 = [...memory].filter(([id2]) => ledger.files.has(id2)).map(([, entry4]) => entry4);
-  store.meta.set(interruptedMetaKey(worktreeId), JSON.stringify(kept3));
-  return again;
-}
-function readInterrupted(store, worktreeId) {
-  const raw = store.meta.get(interruptedMetaKey(worktreeId));
-  if (raw === null) return /* @__PURE__ */ new Map();
-  try {
-    const value = JSON.parse(raw);
-    if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
-    return new Map(value.filter(isInterrupted).map((e) => [testFileId(e.testFile), e]));
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function isInterrupted(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const { testFile, key: key2 } = value;
-  if (typeof key2 !== "string" || typeof testFile !== "object" || testFile === null) return false;
-  const { project, path } = testFile;
-  return typeof project === "string" && typeof path === "string";
-}
-var init_interrupted = __esm({
-  "src/core/scheduler/interrupted.ts"() {
-    "use strict";
-    init_keys();
-    init_types();
-    init_tiers();
-  }
-});
-
 // src/core/watcher/candidates.ts
 import { lstat as lstat5, readdir as readdir4, realpath as realpath2 } from "node:fs/promises";
 import { dirname as dirname15 } from "node:path";
@@ -18301,6 +18260,335 @@ var init_mutex = __esm({
   }
 });
 
+// src/core/scheduler/interrupted.ts
+function interruptedMetaKey(worktreeId) {
+  return worktreeMetaKey("interrupted", worktreeId);
+}
+function interruptedFiles(context, ledger, tier, report2, { stopping, runtimeGone }) {
+  const crashed = stopping && report2.end === "crashed";
+  if (!runtimeGone && !crashed) return [];
+  const unfinished2 = new Set(unfinishedFiles(tier, report2));
+  const entries3 = tier.files.filter(({ file }) => runtimeGone || unfinished2.has(file.id));
+  if (entries3.length === 0) return [];
+  const { store, worktreeId } = context;
+  const memory = readInterrupted(store, worktreeId);
+  const again = [];
+  for (const { file, key: key2 } of entries3) {
+    if (memory.get(file.id)?.key === key2) continue;
+    memory.set(file.id, { testFile: file.ref, key: key2 });
+    again.push(file.id);
+  }
+  const kept3 = [...memory].filter(([id2]) => ledger.files.has(id2)).map(([, entry4]) => entry4);
+  store.meta.set(interruptedMetaKey(worktreeId), JSON.stringify(kept3));
+  return again;
+}
+function readInterrupted(store, worktreeId) {
+  const raw = store.meta.get(interruptedMetaKey(worktreeId));
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(value.filter(isInterrupted).map((e) => [testFileId(e.testFile), e]));
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function isInterrupted(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { testFile, key: key2 } = value;
+  if (typeof key2 !== "string" || typeof testFile !== "object" || testFile === null) return false;
+  const { project, path } = testFile;
+  return typeof project === "string" && typeof path === "string";
+}
+var init_interrupted = __esm({
+  "src/core/scheduler/interrupted.ts"() {
+    "use strict";
+    init_keys();
+    init_types();
+    init_tiers();
+  }
+});
+
+// src/core/scheduler/slot-records.ts
+import { setTimeout as sleep6 } from "node:timers/promises";
+var SLOT_GATHER_MS, SLOT_GATHER_COMMITS, SlotRecords;
+var init_slot_records = __esm({
+  "src/core/scheduler/slot-records.ts"() {
+    "use strict";
+    SLOT_GATHER_MS = 25;
+    SLOT_GATHER_COMMITS = 3;
+    SlotRecords = class {
+      #options;
+      #ended = [];
+      /** The wait of the next record, while one is open. */
+      #gathering = null;
+      #commitMs = 0;
+      constructor(options) {
+        this.#options = options;
+      }
+      /** Records the slot whose run ended, `ended` its reads outside the lock. */
+      async record(ended2) {
+        const outcome2 = new Promise((resolve27, reject) => {
+          this.#ended.push({ ended: ended2, resolve: resolve27, reject });
+        });
+        ended2.catch(() => {
+        });
+        outcome2.catch(() => {
+        });
+        const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
+        this.#gathering ??= sleep6(gather).then(() => {
+          this.#gathering = null;
+        });
+        await this.#gathering;
+        await this.#options.lock.run(async () => {
+          const recorded2 = [];
+          for (let slot2 = this.#ended.shift(); slot2; slot2 = this.#ended.shift()) {
+            try {
+              recorded2.push({ slot: slot2, record: await this.#options.record(await slot2.ended) });
+            } catch (error) {
+              slot2.reject(error);
+            }
+          }
+          if (recorded2.length === 0) return;
+          const started2 = performance.now();
+          try {
+            this.#options.commit();
+            this.#commitMs = performance.now() - started2;
+          } catch (error) {
+            for (const { slot: slot2 } of recorded2) slot2.reject(error);
+            return;
+          }
+          for (const { slot: slot2, record } of recorded2) slot2.resolve(record);
+        });
+        return outcome2;
+      }
+    };
+  }
+});
+
+// src/core/scheduler/record.ts
+var TierRecords;
+var init_record = __esm({
+  "src/core/scheduler/record.ts"() {
+    "use strict";
+    init_store3();
+    init_text();
+    init_editor_scratch();
+    init_environment_growth();
+    init_hold();
+    init_interrupted();
+    init_observed2();
+    init_setup();
+    init_slot_records();
+    init_stability();
+    init_tiers();
+    TierRecords = class {
+      #host;
+      /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
+      #withholds = new Withholds();
+      /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
+      #slots;
+      /** The busy store's error a slot's record gave up on, since its record began (`#recordSlot`). */
+      #slotsBusy = null;
+      /** Row 011-126: each ended run's record as prepared, and as written, kept across tries on a busy store. */
+      #prepared = /* @__PURE__ */ new WeakMap();
+      #written = /* @__PURE__ */ new WeakMap();
+      constructor(host) {
+        this.#host = host;
+        this.#slots = new SlotRecords({
+          lock: host.lock,
+          record: (ended2) => this.#recordSlot(ended2),
+          commit: () => host.started().ledger.commit()
+        });
+      }
+      /**
+       * Records `tier`'s run `ran`; `held` aborts when a command hold cancels
+       * it. A slot's record joins the slots that ended meanwhile.
+       */
+      async record(tier, ran, installStamp, slow, held2) {
+        if (tier.slot === true) {
+          const ended3 = this.#ended(tier, ran, installStamp, slow, held2);
+          return this.#landed(tier, () => {
+            this.#slotsBusy = null;
+            return this.#slots.record(ended3);
+          });
+        }
+        const ended2 = await this.#ended(tier, ran, installStamp, slow, held2);
+        return this.#landed(tier, () => this.#host.lock.run(() => this.#record(ended2, true)));
+      }
+      /**
+       * Row 011-126: `attempt`, the record of `tier`'s run, its writes waiting at
+       * most the busy slice. One that gives up keeps the run's results and tries
+       * again at its turn (`BusyResume`), so a busy store neither holds the event
+       * loop nor queues the files to run again. Once the scheduler closes, the
+       * last try waits as long as the store does.
+       */
+      async #landed(tier, attempt) {
+        const { busy } = this.#host;
+        for (; ; ) {
+          const last = this.#host.closed();
+          try {
+            return await (last ? attempt() : this.#host.sliced(attempt));
+          } catch (error) {
+            if (last || busy === null || !isBusy(error)) throw error;
+            await busy.retry(`the results of ${plural(tier.files.length, "file")}`);
+          }
+        }
+      }
+      /**
+       * A slot's record (`SlotRecords`). Row 011-126: once one slot's write gave
+       * up on a busy store, the rest of its record give up without trying, so
+       * their slices do not add up; each tries again at its own turn.
+       */
+      async #recordSlot(ended2) {
+        if (this.#slotsBusy !== null) throw this.#slotsBusy;
+        try {
+          return await this.#record(ended2, false);
+        } catch (error) {
+          if (isBusy(error)) this.#slotsBusy = error;
+          throw error;
+        }
+      }
+      /** What the record of a run that ended reads outside the lock. */
+      async #ended(tier, ran, installStamp, slow, held2) {
+        const host = this.#host;
+        const { context } = host.started();
+        const ignored = await host.warmUp.read(context, tier, ran);
+        const inputs2 = await unstableInputs(context, tier);
+        const installMoved = host.reinstalled() || await host.install.stamp() !== installStamp;
+        const runtimeGone = await host.runtimeMissing();
+        await host.hold.check();
+        const cancelled2 = held2?.signal.aborted === true;
+        return { tier, ran, ignored, inputs: inputs2, installMoved, runtimeGone, slow, held: cancelled2 };
+      }
+      /**
+       * Records an ended run under the lock: what it loaded and read beyond its
+       * keys, the completion barrier's withholds, then `recordTier`. `commit`
+       * false leaves the ledger's writes to the caller's commit (`SlotRecords`).
+       * Row 011-126: a record tried again after a busy store gave up writes what
+       * it prepared the first time, and a slot's whose write landed returns it,
+       * owing only the commit.
+       */
+      async #record(ended2, commit) {
+        const written = this.#written.get(ended2);
+        if (written !== void 0) return written;
+        const prepared = this.#prepared.get(ended2) ?? await this.#prepare(ended2);
+        this.#prepared.set(ended2, prepared);
+        const recorded2 = this.#write(ended2, prepared, commit);
+        this.#written.set(ended2, recorded2);
+        return recorded2;
+      }
+      /** What a record reads and decides under the lock before its write, once however often it is tried. */
+      async #prepare(ended2) {
+        const { hold } = this.#host;
+        const { context } = this.#host.started();
+        const { tier, ran, inputs: inputs2, installMoved, held: holdCut } = ended2;
+        const environment = installMoved ? void 0 : await rekeyEnvironments(context, ran, tier);
+        const read5 = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
+        const observed = environment === void 0 || read5 === void 0 ? read5 : { ...read5, environment };
+        const changed2 = /* @__PURE__ */ new Set([
+          ...inputs2.changed,
+          ...scratchUnstable(context, tier, observed?.growth)
+        ]);
+        const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
+        const held2 = heldFiles(hold, tier.files, observed?.growth);
+        const setupsHeld = heldSetups(hold, tier.files, held2, ran.startupFailure);
+        const cancelled2 = this.#host.stop.aborted;
+        const unfinished2 = cancelled2 || holdCut ? unfinishedFiles(tier, ran) : [];
+        return { changed: changed2, touched, observed, unfinished: unfinished2, held: held2, setupsHeld, cancelled: cancelled2 };
+      }
+      /**
+       * Review 0.1.273, B1 (011 C9): what the merge hold holds as the record's
+       * write lands, read again at each try, since a hold can start while a busy
+       * store holds the write back. A file or setup held at the preparation stays
+       * held.
+       */
+      #heldNow(ended2, prepared) {
+        const { hold } = this.#host;
+        const { tier, ran } = ended2;
+        const { observed, setupsHeld: was } = prepared;
+        const now = heldFiles(hold, tier.files, observed?.growth);
+        const held2 = tier.files.filter((f) => prepared.held.includes(f) || now.includes(f));
+        const setups = heldSetups(hold, tier.files, held2, ran.startupFailure);
+        return {
+          held: held2,
+          projects: /* @__PURE__ */ new Set([...was.projects, ...setups.projects]),
+          startup: was.startup || setups.startup,
+          notStarted: tier.files.filter(
+            (f) => was.notStarted.includes(f) || setups.notStarted.includes(f)
+          )
+        };
+      }
+      /**
+       * The completion barrier over the files the merge hold leaves free as the
+       * write is tried. Row 011-128 (011 C9): a held file's withhold counts
+       * toward no withhold limit, so `count` moves the free files' withholds,
+       * once the write has landed.
+       */
+      #barrier(ended2, prepared, held2) {
+        const { tier, ran } = ended2;
+        const { touched, observed } = prepared;
+        const free = held2.length === 0 ? tier.files : tier.files.filter((f) => !held2.includes(f));
+        const { report: report2, barred, paths } = barredByTouch(ran, free, touched, observed?.growth);
+        const withhold = this.#withholds.peek(barred);
+        const notes = [
+          withholdNote(paths, withhold.again, true),
+          withholdNote(paths, withhold.exhausted, false)
+        ].filter((note) => note !== null);
+        const count2 = () => {
+          this.#withholds.record(barred);
+          this.#withholds.clear(free.filter((ran2) => !barred.includes(ran2)));
+        };
+        return { report: report2, again: withhold.again.map(({ file }) => file.id), notes, count: count2 };
+      }
+      /** The record's one write transaction, from what `#prepare` decided. */
+      #write(ended2, prepared, commit) {
+        const host = this.#host;
+        const { context, ledger } = host.started();
+        const { tier, ran, ignored, installMoved, runtimeGone, slow } = ended2;
+        const { changed: changed2, touched, observed, cancelled: cancelled2 } = prepared;
+        const { held: held2, projects: projects2, startup, notStarted } = this.#heldNow(ended2, prepared);
+        const barrier = this.#barrier(ended2, prepared, held2);
+        const { startupFailure: _, ...withoutStartup } = barrier.report;
+        const report2 = startup ? withoutStartup : barrier.report;
+        const moved2 = context.store.transaction(() => {
+          const interrupted = interruptedFiles(context, ledger, tier, ran, {
+            stopping: host.stopping() && !cancelled2,
+            runtimeGone
+          });
+          const again = [
+            ...barrier.again,
+            ...prepared.unfinished,
+            ...held2.map(({ file }) => file.id),
+            ...notStarted.map(({ file }) => file.id),
+            ...interrupted
+          ];
+          const requeue = installMoved || again.length === 0 ? installMoved : new Set(again);
+          const lost = runtimeGone && interrupted.length > 0;
+          const setups = lost ? false : projects2.size === 0 || projects2;
+          host.warmUp.record(context, ignored);
+          host.yields.ended(context, tier);
+          const result = recordTier(
+            context,
+            ledger,
+            tier,
+            report2,
+            changed2,
+            requeue,
+            observed,
+            commit,
+            setups
+          );
+          if (slow !== null) host.slowEnded();
+          return [.../* @__PURE__ */ new Set([...result, ...touched])];
+        });
+        barrier.count();
+        return { moved: moved2, withheld: barrier.notes };
+      }
+    };
+  }
+});
+
 // src/core/scheduler/refinement.ts
 async function fetchRunnerPart(context, ledger, revision, content, carried, touched = [], rechecked) {
   const { keys, runner } = context;
@@ -18654,63 +18942,6 @@ var init_runner_work = __esm({
         } catch (error) {
           this.host.backgroundError(`could not record revision ${revision} as refined`, error);
         }
-      }
-    };
-  }
-});
-
-// src/core/scheduler/slot-records.ts
-import { setTimeout as sleep6 } from "node:timers/promises";
-var SLOT_GATHER_MS, SLOT_GATHER_COMMITS, SlotRecords;
-var init_slot_records = __esm({
-  "src/core/scheduler/slot-records.ts"() {
-    "use strict";
-    SLOT_GATHER_MS = 25;
-    SLOT_GATHER_COMMITS = 3;
-    SlotRecords = class {
-      #options;
-      #ended = [];
-      /** The wait of the next record, while one is open. */
-      #gathering = null;
-      #commitMs = 0;
-      constructor(options) {
-        this.#options = options;
-      }
-      /** Records the slot whose run ended, `ended` its reads outside the lock. */
-      async record(ended2) {
-        const outcome2 = new Promise((resolve27, reject) => {
-          this.#ended.push({ ended: ended2, resolve: resolve27, reject });
-        });
-        ended2.catch(() => {
-        });
-        outcome2.catch(() => {
-        });
-        const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
-        this.#gathering ??= sleep6(gather).then(() => {
-          this.#gathering = null;
-        });
-        await this.#gathering;
-        await this.#options.lock.run(async () => {
-          const recorded2 = [];
-          for (let slot2 = this.#ended.shift(); slot2; slot2 = this.#ended.shift()) {
-            try {
-              recorded2.push({ slot: slot2, record: await this.#options.record(await slot2.ended) });
-            } catch (error) {
-              slot2.reject(error);
-            }
-          }
-          if (recorded2.length === 0) return;
-          const started2 = performance.now();
-          try {
-            this.#options.commit();
-            this.#commitMs = performance.now() - started2;
-          } catch (error) {
-            for (const { slot: slot2 } of recorded2) slot2.reject(error);
-            return;
-          }
-          for (const { slot: slot2, record } of recorded2) slot2.resolve(record);
-        });
-        return outcome2;
       }
     };
   }
@@ -19362,28 +19593,22 @@ var init_scheduler2 = __esm({
     init_claims();
     init_command_hold();
     init_context();
-    init_editor_scratch();
-    init_environment_growth();
     init_hold();
     init_install();
     init_install_stamp();
-    init_interrupted();
     init_keying();
     init_ledger();
     init_mutex();
-    init_observed2();
     init_queue();
     init_quiet();
+    init_record();
     init_rerun();
     init_retries();
     init_revision2();
     init_runner_work();
-    init_setup();
-    init_slot_records();
     init_slots2();
     init_slow3();
     init_slow_tier();
-    init_stability();
     init_stored_keys();
     init_tiers();
     init_warm_up();
@@ -19432,6 +19657,22 @@ var init_scheduler2 = __esm({
           },
           options.slow
         );
+        this.#records = new TierRecords({
+          lock: this.#lock,
+          started: () => this.#started(),
+          busy: this.#busy,
+          hold: this.#hold,
+          warmUp: this.#warmUp,
+          yields: this.#yields,
+          install: this.#install,
+          stop: this.#stop.signal,
+          sliced: (fn) => this.#sliced(fn),
+          closed: () => this.#closed,
+          stopping: () => this.#stopping(),
+          reinstalled: () => this.#reinstalled,
+          runtimeMissing: () => this.#runtimeMissing(),
+          slowEnded: () => this.#slow.ended()
+        });
       }
       options;
       #lock = new Mutex();
@@ -19466,21 +19707,10 @@ var init_scheduler2 = __esm({
       );
       /** A check of the tiers in flight queued under the lock, not run yet (rows 011-54, 011-107). */
       #recheck = false;
-      /** The records of backlog slots, each with the slots that end meanwhile (task 011-21 slice 2). */
-      #slotRecords = new SlotRecords({
-        lock: this.#lock,
-        record: (ended2) => this.#recordSlot(ended2),
-        commit: () => this.#started().ledger.commit()
-      });
       /** A `run --all` with `observeIgnored` (task 001-307). */
       #warmUp = new WarmUp();
-      /** Task 007-30: files the completion barrier withheld, so a withheld tier runs once more. */
-      #withholds = new Withholds();
-      /** The busy store's error a slot's record gave up on, since its record began (`#recordSlot`). */
-      #slotsBusy = null;
-      /** Row 011-126: each ended run's record as prepared, and as written, kept across tries on a busy store. */
-      #prepared = /* @__PURE__ */ new WeakMap();
-      #written = /* @__PURE__ */ new WeakMap();
+      /** The records of the runs that ended (row 011-131). */
+      #records;
       /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
       #woken = false;
       #wake = null;
@@ -19592,13 +19822,13 @@ var init_scheduler2 = __esm({
        * tier.
        */
       handleBatch(batch) {
-        return this.#handleBatch(batch, this.options.busySliceMs);
+        return this.#handleBatch(batch, true);
       }
       /**
-       * `handleBatch`, the pass's writes waiting at most `sliceMs` on a busy
-       * store (task 001-422): only the change feed's batches, which it retries.
+       * `handleBatch`, the pass `#sliced` when `sliced` (task 001-422): only the
+       * change feed's batches, which it retries.
        */
-      async #handleBatch(batch, sliceMs) {
+      async #handleBatch(batch, sliced) {
         if (this.#closed || this.#reinstalled) return;
         await this.#lock.run(async () => {
           if (this.#reinstalled) return;
@@ -19610,7 +19840,7 @@ var init_scheduler2 = __esm({
             return;
           }
           const pass = () => this.#pass(context, ledger, batch);
-          await (sliceMs === void 0 ? pass() : withBusySlice(sliceMs, pass));
+          await (sliced ? this.#sliced(pass) : pass());
         });
         if (this.#reinstalled) this.#tellReinstall();
         else this.#pump();
@@ -19793,7 +20023,7 @@ var init_scheduler2 = __esm({
           return record2;
         };
         if (this.#awaitingInstall) {
-          await this.#handleBatch({ trigger: "interval", paths: [] }, void 0);
+          await this.#handleBatch({ trigger: "interval", paths: [] }, false);
         }
         this.#slow.preempt();
         const record = await this.#lock.run(() => {
@@ -20096,23 +20326,12 @@ var init_scheduler2 = __esm({
               stop2,
               () => this.#fileEnded(tier)
             );
-            let record;
             if (tier.slot === true) {
               tier.lease?.release();
               flight.ran = true;
               this.#notify();
-              const ended2 = this.#ended(tier, ran, installStamp, slow, null);
-              record = await this.#recordLanded(tier, () => {
-                this.#slotsBusy = null;
-                return this.#slotRecords.record(ended2);
-              });
-            } else {
-              const ended2 = await this.#ended(tier, ran, installStamp, slow, held2);
-              record = await this.#recordLanded(
-                tier,
-                () => this.#lock.run(() => this.#record(ended2, true))
-              );
             }
+            const record = await this.#records.record(tier, ran, installStamp, slow, held2);
             recorded2 = true;
             this.#busy?.landed();
             for (const note of record.withheld) this.#note(note);
@@ -20132,41 +20351,9 @@ var init_scheduler2 = __esm({
         })();
       }
       /**
-       * Row 011-126: `attempt`, the record of `tier`'s run, its writes waiting at
-       * most the busy slice. One that gives up keeps the run's results and tries
-       * again at its turn (`BusyResume`), so a busy store neither holds the event
-       * loop nor queues the files to run again. Once the scheduler closes, the
-       * last try waits as long as the store does.
-       */
-      async #recordLanded(tier, attempt) {
-        for (; ; ) {
-          const last = this.#closed;
-          try {
-            return await (last ? attempt() : this.#sliced(attempt));
-          } catch (error) {
-            if (last || this.#busy === null || !isBusy(error)) throw error;
-            await this.#busy.retry(`the results of ${plural(tier.files.length, "file")}`);
-          }
-        }
-      }
-      /**
-       * A slot's record (`SlotRecords`). Row 011-126: once one slot's write gave
-       * up on a busy store, the rest of its record give up without trying, so
-       * their slices do not add up; each tries again at its own turn.
-       */
-      async #recordSlot(ended2) {
-        if (this.#slotsBusy !== null) throw this.#slotsBusy;
-        try {
-          return await this.#record(ended2, false);
-        } catch (error) {
-          if (isBusy(error)) this.#slotsBusy = error;
-          throw error;
-        }
-      }
-      /**
        * `fn` with each write it awaits waiting at most `busySliceMs` on a busy
-       * store, when a busy store's give-up resumes the pump (row 011-126); with
-       * the store's own wait otherwise.
+       * store, when a busy store's give-up resumes the pump (task 001-422, row
+       * 011-126); with the store's own wait otherwise.
        */
       #sliced(fn) {
         const ms2 = this.options.busySliceMs;
@@ -20175,138 +20362,6 @@ var init_scheduler2 = __esm({
       /** `task` under the lock, `#sliced`. */
       #runSliced(task) {
         return this.#sliced(() => this.#lock.run(task));
-      }
-      /** What the record of a run that ended reads outside the lock. */
-      async #ended(tier, ran, installStamp, slow, held2) {
-        const { context } = this.#started();
-        const ignored = await this.#warmUp.read(context, tier, ran);
-        const inputs2 = await unstableInputs(context, tier);
-        const installMoved = this.#reinstalled || await this.#install.stamp() !== installStamp;
-        const runtimeGone = await this.#runtimeMissing();
-        await this.#hold.check();
-        const cancelled2 = held2?.signal.aborted === true;
-        return { tier, ran, ignored, inputs: inputs2, installMoved, runtimeGone, slow, held: cancelled2 };
-      }
-      /**
-       * Records an ended run under the lock: what it loaded and read beyond its
-       * keys, the completion barrier's withholds, then `recordTier`. `commit`
-       * false leaves the ledger's writes to the caller's commit (`SlotRecords`).
-       * Row 011-126: a record tried again after a busy store gave up writes what
-       * it prepared the first time, and a slot's whose write landed returns it,
-       * owing only the commit.
-       */
-      async #record(ended2, commit) {
-        const written = this.#written.get(ended2);
-        if (written !== void 0) return written;
-        const prepared = this.#prepared.get(ended2) ?? await this.#prepare(ended2);
-        this.#prepared.set(ended2, prepared);
-        const recorded2 = this.#write(ended2, prepared, commit);
-        this.#written.set(ended2, recorded2);
-        return recorded2;
-      }
-      /** What a record reads and decides under the lock before its write, once however often it is tried. */
-      async #prepare(ended2) {
-        const { context } = this.#started();
-        const { tier, ran, inputs: inputs2, installMoved, held: holdCut } = ended2;
-        const environment = installMoved ? void 0 : await rekeyEnvironments(context, ran, tier);
-        const read5 = installMoved ? void 0 : await prepareObserved(context, ran, tier.run);
-        const observed = environment === void 0 || read5 === void 0 ? read5 : { ...read5, environment };
-        const changed2 = /* @__PURE__ */ new Set([
-          ...inputs2.changed,
-          ...scratchUnstable(context, tier, observed?.growth)
-        ]);
-        const touched = [.../* @__PURE__ */ new Set([...inputs2.touched, ...observed?.touched ?? []])].sort();
-        const held2 = heldFiles(this.#hold, tier.files, observed?.growth);
-        const setupsHeld = heldSetups(this.#hold, tier.files, held2, ran.startupFailure);
-        const cancelled2 = this.#stop.signal.aborted;
-        const unfinished2 = cancelled2 || holdCut ? unfinishedFiles(tier, ran) : [];
-        return { changed: changed2, touched, observed, unfinished: unfinished2, held: held2, setupsHeld, cancelled: cancelled2 };
-      }
-      /**
-       * Review 0.1.273, B1 (011 C9): what the merge hold holds as the record's
-       * write lands, read again at each try, since a hold can start while a busy
-       * store holds the write back. A file or setup held at the preparation stays
-       * held.
-       */
-      #heldNow(ended2, prepared) {
-        const { tier, ran } = ended2;
-        const { observed, setupsHeld: was } = prepared;
-        const now = heldFiles(this.#hold, tier.files, observed?.growth);
-        const held2 = tier.files.filter((f) => prepared.held.includes(f) || now.includes(f));
-        const setups = heldSetups(this.#hold, tier.files, held2, ran.startupFailure);
-        return {
-          held: held2,
-          projects: /* @__PURE__ */ new Set([...was.projects, ...setups.projects]),
-          startup: was.startup || setups.startup,
-          notStarted: tier.files.filter(
-            (f) => was.notStarted.includes(f) || setups.notStarted.includes(f)
-          )
-        };
-      }
-      /**
-       * The completion barrier over the files the merge hold leaves free as the
-       * write is tried. Row 011-128 (011 C9): a held file's withhold counts
-       * toward no withhold limit, so `count` moves the free files' withholds,
-       * once the write has landed.
-       */
-      #barrier(ended2, prepared, held2) {
-        const { tier, ran } = ended2;
-        const { touched, observed } = prepared;
-        const free = held2.length === 0 ? tier.files : tier.files.filter((f) => !held2.includes(f));
-        const { report: report2, barred, paths } = barredByTouch(ran, free, touched, observed?.growth);
-        const withhold = this.#withholds.peek(barred);
-        const notes = [
-          withholdNote(paths, withhold.again, true),
-          withholdNote(paths, withhold.exhausted, false)
-        ].filter((note) => note !== null);
-        const count2 = () => {
-          this.#withholds.record(barred);
-          this.#withholds.clear(free.filter((ran2) => !barred.includes(ran2)));
-        };
-        return { report: report2, again: withhold.again.map(({ file }) => file.id), notes, count: count2 };
-      }
-      /** The record's one write transaction, from what `#prepare` decided. */
-      #write(ended2, prepared, commit) {
-        const { context, ledger } = this.#started();
-        const { tier, ran, ignored, installMoved, runtimeGone, slow } = ended2;
-        const { changed: changed2, touched, observed, cancelled: cancelled2 } = prepared;
-        const { held: held2, projects: projects2, startup, notStarted } = this.#heldNow(ended2, prepared);
-        const barrier = this.#barrier(ended2, prepared, held2);
-        const { startupFailure: _, ...withoutStartup } = barrier.report;
-        const report2 = startup ? withoutStartup : barrier.report;
-        const moved2 = context.store.transaction(() => {
-          const interrupted = interruptedFiles(context, ledger, tier, ran, {
-            stopping: this.#stopping() && !cancelled2,
-            runtimeGone
-          });
-          const again = [
-            ...barrier.again,
-            ...prepared.unfinished,
-            ...held2.map(({ file }) => file.id),
-            ...notStarted.map(({ file }) => file.id),
-            ...interrupted
-          ];
-          const requeue = installMoved || again.length === 0 ? installMoved : new Set(again);
-          const lost = runtimeGone && interrupted.length > 0;
-          const setups = lost ? false : projects2.size === 0 || projects2;
-          this.#warmUp.record(context, ignored);
-          this.#yields.ended(context, tier);
-          const result = recordTier(
-            context,
-            ledger,
-            tier,
-            report2,
-            changed2,
-            requeue,
-            observed,
-            commit,
-            setups
-          );
-          if (slow !== null) this.#slow.ended();
-          return [.../* @__PURE__ */ new Set([...result, ...touched])];
-        });
-        barrier.count();
-        return { moved: moved2, withheld: barrier.notes };
       }
       /**
        * The slow pass of `lane` drained: no file of it is queued, so its runner
@@ -20491,7 +20546,7 @@ var init_scheduler2 = __esm({
           this.#yields.ended(context, tier);
           for (const { file, key: key2 } of tier.files) {
             if (supersededIn(file, key2)) {
-              if (file.runningKey === key2) ledger.setRunning(file, null);
+              ledger.endRunningAt(file, key2);
               continue;
             }
             ledger.setRunning(file, null);
@@ -20512,7 +20567,7 @@ var init_scheduler2 = __esm({
       async #reconcilePaths(paths) {
         const { context } = this.#started();
         const candidates = await statCandidates(paths, context.hasher);
-        await this.#handleBatch({ trigger: "watch", paths: candidates }, void 0);
+        await this.#handleBatch({ trigger: "watch", paths: candidates }, false);
       }
       #isIdle() {
         if (this.#closed) return true;
@@ -23480,6 +23535,27 @@ var init_daemon_loop = __esm({
   }
 });
 
+// src/runners/focus.ts
+function holdsCheckText(fullName, texts) {
+  return texts.some((text3) => fullName.includes(text3));
+}
+function focusedTexts(checks, testFile) {
+  const own = (checks ?? []).filter(
+    (entry4) => entry4.testFile.project === testFile.project && entry4.testFile.path === testFile.path
+  );
+  return own.length === 0 ? null : [...new Set(own.flatMap((entry4) => entry4.texts))];
+}
+function checkTextPattern(texts) {
+  if (texts.length === 0) return "(?!)";
+  const literal2 = (text3) => text3.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return texts.map((text3) => literal2(text3).split(" > ").join("(?: > | )")).join("|");
+}
+var init_focus = __esm({
+  "src/runners/focus.ts"() {
+    "use strict";
+  }
+});
+
 // src/runners/observe/inputs.ts
 import { statSync as statSync8 } from "node:fs";
 function observedInputs(recorded2, completed, paths) {
@@ -24382,16 +24458,24 @@ var init_reporter = __esm({
   "src/runners/vitest/reporter.ts"() {
     "use strict";
     init_run_log();
+    init_focus();
     init_results2();
     RunCollector = class {
       /**
        * `ended` hears each requested file whose module ended in a final state
        * before any cancel, as it ends (`RunOptions.fileEnded`, row 011-54).
+       * `checks` are the run's texts (`RunOptions.checks`).
        */
-      constructor(requested, paths, ended2) {
+      constructor(requested, paths, ended2, checks) {
         this.paths = paths;
         this.ended = ended2;
         this.#requested = new Map(requested.map((r) => [refKey(r), r]));
+        this.#texts = new Map(
+          requested.flatMap((r) => {
+            const texts = focusedTexts(checks, r);
+            return texts === null ? [] : [[refKey(r), texts]];
+          })
+        );
       }
       paths;
       ended;
@@ -24406,7 +24490,10 @@ var init_reporter = __esm({
       cancelRequested = false;
       /** Set once `vitest.log` is written; later notes are appended to it. */
       logFile = null;
+      /** Per requested file with texts, what they selected, once its module ended (`RunReport.focused`). */
+      focused = /* @__PURE__ */ new Map();
       #requested;
+      #texts;
       #names = /* @__PURE__ */ new WeakMap();
       /** The test files the run was asked for. */
       get requested() {
@@ -24419,6 +24506,8 @@ var init_reporter = __esm({
       testCase(testCase) {
         const ref2 = this.#ref(testCase.project.name, testCase.module.moduleId);
         if (!ref2) return;
+        const texts = this.#texts.get(refKey(ref2));
+        if (texts !== void 0 && !holdsCheckText(testCase.fullName, texts)) return;
         const result = toCheckRunResult(testCase, ref2, this.paths, this.#name(testCase));
         if (!result) return;
         this.results.push({ ref: ref2, result });
@@ -24453,6 +24542,13 @@ var init_reporter = __esm({
         };
         this.modules.set(refKey(ref2), end);
         this.log.push(`MODULE ${module2.state()} ${label(ref2)}`);
+        const texts = this.#texts.get(refKey(ref2));
+        if (texts !== void 0) {
+          const tests = [...module2.children.allTests()];
+          const matched = tests.filter((test) => holdsCheckText(test.fullName, texts)).length;
+          this.focused.set(refKey(ref2), { testFile: ref2, collected: tests.length, matched });
+          this.log.push(indent(`focused on ${JSON.stringify(texts)}: ${matched} of ${tests.length}`));
+        }
         if (endedInTime(end)) this.#tell(ref2);
         for (const error of module2.errors()) {
           this.log.push(indent(`file-level error: ${errorText(error)}`));
@@ -25639,8 +25735,16 @@ function buildReport(collector, execution, durationMs2) {
     fileErrors: [...errors.values()].sort((a, b) => compareRefs(a.testFile, b.testFile)),
     failure: failure2 === "" ? null : collector.paths.relativizeText(failure2),
     fileDurations: [...collector.modules.values()].filter((m) => completedKeys.has(refKey(m.ref)) && m.durationMs !== null).sort((a, b) => compareRefs(a.ref, b.ref)).map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
-    ...started2.length === 0 ? {} : { startedProjects: started2 }
+    ...started2.length === 0 ? {} : { startedProjects: started2 },
+    ...focusedOf(collector, completed)
   };
+}
+function focusedOf(collector, completed) {
+  const focused = completed.flatMap((ref2) => {
+    const count2 = collector.focused.get(refKey(ref2));
+    return count2 === void 0 ? [] : [count2];
+  });
+  return focused.length === 0 ? {} : { focused };
 }
 function startedProjects(collector) {
   if (collector.queued === 0) return [];
@@ -26392,6 +26496,7 @@ var init_adapter = __esm({
     init_glob();
     init_keys();
     init_optimizer_note();
+    init_focus();
     init_observe();
     init_affected();
     init_broken();
@@ -26451,6 +26556,8 @@ var init_adapter = __esm({
       paths;
       name = "vitest";
       adapterVersion = VITEST_ADAPTER_VERSION;
+      /** 013 V4 (row 011-135): a run takes `RunOptions.checks`. */
+      focuses = true;
       #vitest = null;
       /** Where the current instance copies transformed modules (`instanceTempDirs`). */
       #tempDirs = [];
@@ -26755,10 +26862,20 @@ var init_adapter = __esm({
           this.#call(async (hold) => {
             await this.#invalidateStale(await this.#instance(hold));
             const vitest = await this.#instance(hold);
-            const specs = testFiles2.map(
-              (ref2) => findProject(vitest, ref2).createSpecification(this.paths.toAbsolute(ref2.path))
+            const specs = testFiles2.map((ref2) => {
+              const project = findProject(vitest, ref2);
+              const path = this.paths.toAbsolute(ref2.path);
+              const texts = focusedTexts(options.checks, ref2);
+              return texts === null ? project.createSpecification(path) : project.createSpecification(path, {
+                testNamePattern: new RegExp(checkTextPattern(texts))
+              });
+            });
+            const collector = new RunCollector(
+              testFiles2,
+              this.paths,
+              options.fileEnded,
+              options.checks
             );
-            const collector = new RunCollector(testFiles2, this.paths, options.fileEnded);
             if (specs.length === 0) {
               const empty2 = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);
               writeRunLog(options, collector, empty2);
@@ -51445,6 +51562,7 @@ function readBatch(events, files2, rootdir, paths, basetemp = null) {
   }
   const collects = events.flatMap((e) => e.type === "collect" ? [e] : []);
   const items = collected?.items ?? [];
+  const counts = events.find((e) => e.type === "focused")?.files ?? {};
   const reports = files2.map((file) => {
     const own = items.filter((item) => item.path === file.real);
     const failed2 = collects.find(
@@ -51452,14 +51570,22 @@ function readBatch(events, files2, rootdir, paths, basetemp = null) {
     );
     const skip = collects.find((c) => c.outcome === "skipped" && c.path === file.real);
     const done = own.every((item) => phases.get(item.nodeid)?.some((p) => p.when === "teardown"));
-    const results2 = done ? own.map((item) => joinPhases(item, file.testFile, phases, rootdir, paths, scrub)) : [];
+    const { texts } = file;
+    const results2 = done ? own.map((item) => joinPhases(item, file.testFile, phases, rootdir, paths, scrub)).filter((r) => texts === void 0 || holdsCheckText(r.check.fullName, texts)) : [];
     return {
       testFile: file.testFile,
       completed: collected !== void 0 && done,
       results: results2,
       fileError: failed2 === void 0 ? null : { testFile: file.testFile, errors: [collectionError(failed2.longrepr, paths, scrub)] },
       skipped: skip === void 0 ? null : skipReason(skip.longrepr),
-      durationMs: Math.round(results2.reduce((sum, r) => sum + r.durationMs, 0))
+      durationMs: Math.round(results2.reduce((sum, r) => sum + r.durationMs, 0)),
+      ...texts === void 0 ? {} : {
+        focused: {
+          testFile: file.testFile,
+          collected: counts[file.real]?.collected ?? null,
+          matched: results2.length
+        }
+      }
     };
   });
   return {
@@ -51547,6 +51673,7 @@ function under(file, dir2) {
 var init_report2 = __esm({
   "src/runners/pytest/run/report.ts"() {
     "use strict";
+    init_focus();
     init_basetemp();
   }
 });
@@ -51576,7 +51703,8 @@ async function runPytest(options) {
     SQUEAL_PYTEST_ROOT: options.root,
     // The plugin names the file in progress for the processes a test starts (task 007-55);
     // one inherited from a run around this daemon's would record pytest's own imports.
-    SQUEAL_PYTEST_FILE: void 0
+    SQUEAL_PYTEST_FILE: void 0,
+    SQUEAL_PYTEST_CHECKS: void 0
   };
   const args2 = pytestArgs(
     {
@@ -51598,10 +51726,11 @@ async function runPytest(options) {
     options.alone
   ).map((files2, index) => ({
     index,
-    files: files2.map((testFile) => ({
-      testFile,
-      real: realOr3(toAbsolute(options.root, testFile.path))
-    })),
+    files: files2.map((testFile) => {
+      const texts = focusedTexts(options.checks, testFile);
+      const real2 = realOr3(toAbsolute(options.root, testFile.path));
+      return texts === null ? { testFile, real: real2 } : { testFile, real: real2, texts };
+    }),
     // After `args`, so it wins over the project's own `--basetemp` (task 007-37).
     args: [
       ...args2,
@@ -51651,7 +51780,12 @@ async function runPytest(options) {
         command: python,
         args: batch.args,
         cwd,
-        env: { ...env, PYTHONPYCACHEPREFIX: bytecode.prefix, SQUEAL_PYTEST_EVENTS: events },
+        env: {
+          ...env,
+          PYTHONPYCACHEPREFIX: bytecode.prefix,
+          SQUEAL_PYTEST_EVENTS: events,
+          ...focusedEnv(batch)
+        },
         stdout: join81(options.logDir, `stdout-${batch.index}.log`),
         stderr: join81(options.logDir, `stderr-${batch.index}.log`)
       });
@@ -51681,7 +51815,7 @@ async function runPytest(options) {
       refusedAtRun ??= refusalNote(project, flags2);
       return false;
     }
-    if (code === 5)
+    if (code === 5 && !b.files.every((f) => f.texts !== void 0))
       notes.push(`pytest project "${project.name}" collected nothing in ${names(b)}.`);
     return code !== 3 && code !== 4;
   });
@@ -51709,7 +51843,8 @@ async function runPytest(options) {
     results: done.flatMap((f) => f.results),
     fileErrors: done.flatMap((f) => f.fileError === null ? [] : [f.fileError]),
     failure: refusedAtRun ?? failure2,
-    fileDurations: done.map((f) => ({ testFile: f.testFile, durationMs: f.durationMs }))
+    fileDurations: done.map((f) => ({ testFile: f.testFile, durationMs: f.durationMs })),
+    ...focusedOf2(done)
   };
   const observed = trusted2.map((b) => observeBatch(b.edges, b.files, paths));
   const completed = new Set(report2.completedFiles);
@@ -51723,6 +51858,14 @@ async function runPytest(options) {
     ),
     notes
   };
+}
+function focusedEnv(batch) {
+  const checks = batch.files.flatMap((f) => f.texts === void 0 ? [] : [[f.real, f.texts]]);
+  return checks.length === 0 ? {} : { SQUEAL_PYTEST_CHECKS: JSON.stringify(Object.fromEntries(checks)) };
+}
+function focusedOf2(done) {
+  const focused = done.flatMap((f) => f.focused === void 0 ? [] : [f.focused]);
+  return focused.length === 0 ? {} : { focused };
 }
 function allSkippedNote(project, files2) {
   const results2 = files2.flatMap((f) => f.results);
@@ -51775,6 +51918,7 @@ var init_run3 = __esm({
     "use strict";
     init_fs();
     init_worktree_paths();
+    init_focus();
     init_process();
     init_basetemp();
     init_batches();
@@ -51812,12 +51956,15 @@ async function runProject(context, testFiles2, runOptions) {
     ...slow ? { alone: () => true } : {},
     ...options.cacheDir === void 0 ? {} : { cacheDir: options.cacheDir },
     childEnv: childEnvOf2(options, runOptions.childEnv),
-    ...runOptions.stop === void 0 ? {} : { signal: runOptions.stop }
+    ...runOptions.stop === void 0 ? {} : { signal: runOptions.stop },
+    ...runOptions.checks === void 0 ? {} : { checks: runOptions.checks }
   });
   const after = syncNote(project, environment.fingerprint, currentFingerprint(environment));
   if (after !== null) return { kind: "moved", report: unavailable3(after) };
   const skipped2 = await Promise.all(
-    run5.skippedFiles.map(({ testFile }) => skipKnown(root, testFile, context.names))
+    run5.skippedFiles.map(
+      ({ testFile }) => skipKnown(root, testFile, context.names, focusedTexts(runOptions.checks, testFile))
+    )
   );
   const report2 = skipped2.length === 0 ? run5.report : {
     ...run5.report,
@@ -51826,9 +51973,10 @@ async function runProject(context, testFiles2, runOptions) {
   };
   return { kind: "ran", run: run5, report: report2 };
 }
-async function skipKnown(root, testFile, names4) {
+async function skipKnown(root, testFile, names4, texts) {
   const listed5 = await enumerate2(toAbsolute(root, testFile.path), testFile, names4).catch(() => []);
-  return listed5.map(({ check, location: location2 }) => ({
+  const selected = texts === null ? listed5 : listed5.filter(({ check }) => holdsCheckText(check.fullName, texts));
+  return selected.map(({ check, location: location2 }) => ({
     check,
     outcome: "skip",
     durationMs: 0,
@@ -51859,6 +52007,7 @@ var init_adapter_run = __esm({
     "use strict";
     init_fs();
     init_types();
+    init_focus();
     init_enumerate2();
     init_environment3();
     init_run3();
@@ -52987,6 +53136,8 @@ async function createPytestAdapter(project, options) {
         environmentObserved: [{ project: project.name, paths: session2 }]
       };
     },
+    // 007 D6 (row 011-135): `runPytest` takes `RunOptions.checks`.
+    focuses: true,
     close: async () => {
     }
   };
