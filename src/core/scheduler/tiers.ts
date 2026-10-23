@@ -6,6 +6,7 @@ import { listedDirectory, testFileId } from "../keys/index.js";
 import { readRunLoads } from "../retry/index.js";
 import type {
   CheckKey,
+  FocusedFile,
   ProjectName,
   Provenance,
   RelativePath,
@@ -17,6 +18,7 @@ import { WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { rerunGrown } from "./environment-growth.js";
 import type { FileState } from "./files.js";
+import { selectFocusedTier } from "./focused.js";
 import { healsUnheld } from "./hold.js";
 import type { Ledger, RevisionState } from "./ledger.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
@@ -107,6 +109,12 @@ export interface Tier {
    * and its record joins the next one.
    */
   readonly slot?: boolean;
+  /**
+   * A focused tier's texts per file (`RunOptions.checks`, spec 011 C4 as
+   * amended 2026-10-23, row 011-145), in the order of `files`; it stores
+   * nothing under a key (`recordFocusedTier`). Absent: its files run whole.
+   */
+  readonly focus?: readonly FocusedFile[];
 }
 
 /**
@@ -115,9 +123,11 @@ export interface Tier {
  * backlog slot (the turn's included), which an edit's work cancels; `turn`,
  * the backlog's turn after four tiers of the first group, which only a
  * revision that supersedes it cancels; `edit`, any other fast tier, which
- * yields too; `slow`, a slow tier (spec 004 D2), which nothing cancels.
+ * yields too; `slow`, a slow tier (spec 004 D2), which nothing cancels;
+ * `focused`, a named wait's focused checks (row 011-145), which yields to
+ * nothing and stores nothing under a key.
  */
-export type TierKind = "backlog" | "turn" | "edit" | "slow";
+export type TierKind = "backlog" | "turn" | "edit" | "slow" | "focused";
 
 /**
  * The lane of `ref` (`RunnerAdapter.lane`): one tier at a time per lane, so
@@ -213,6 +223,9 @@ export function selectTier(
   cut: CutFiles = NONE_CUT,
   turnDue = ledger.queue.backlogTurn(),
 ): Tier | null {
+  // Row 011-145 (C4 as amended 2026-10-23): a focused entry's tier leads its lane.
+  const focused = selectFocusedTier(context, ledger, busy, turnDue);
+  if (focused !== null) return focused;
   const { keys, policy } = context;
   const picked: TierFile[] = [];
   ledger.claims.begin();
@@ -513,6 +526,7 @@ export async function executeTier(
         lane: tier.lane,
         ...(observeIgnored ? { observeIgnored } : {}),
         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
+        ...(tier.focus === undefined ? {} : { checks: tier.focus }),
         fileEnded,
       },
     );

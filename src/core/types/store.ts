@@ -400,6 +400,7 @@ export const WORKTREE_META_ROWS = {
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
   promotions: { prefix: "promotions:", owner: "scheduler/promotions" },
+  focused: { prefix: "focused:", owner: "scheduler/focused-row" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
   quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
   mergeHold: { prefix: "merge-hold:", owner: "scheduler/hold-rows" },

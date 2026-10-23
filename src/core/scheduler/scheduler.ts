@@ -31,6 +31,8 @@ import { claimWake } from "./claims.js";
 import { CommandHold } from "./command-hold.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
+import { focusedWaiting, mayFocus } from "./focused.js";
+import { requeueFocusedTier } from "./focused-record.js";
 import { MergeHold } from "./hold.js";
 import {
   missingInstall,
@@ -606,6 +608,30 @@ class TierScheduler implements Scheduler {
     this.#pump();
   }
 
+  /**
+   * Spec 011 C15, focused checks (row 011-145): a named wait asks for the
+   * checks of `testFiles` that hold one of `texts`, first and alone, for
+   * `withinMs` on this daemon's clock. A file that is not listed, slow or of
+   * a runner that runs whole files only gets no entry. The tier in flight in
+   * a file's lane may yield to it as to a promoted file (C4 step 5).
+   */
+  async focus(
+    testFiles: readonly TestFileRef[],
+    texts: readonly string[],
+    withinMs: number,
+  ): Promise<void> {
+    if (this.#closed || !this.#context || texts.length === 0) return;
+    await this.#lock.run(() => {
+      const { context, ledger } = this.#started();
+      const until = context.now() + withinMs;
+      for (const ref of testFiles) {
+        if (mayFocus(context, ledger, ref)) ledger.queue.focused.add(ref, texts, until);
+      }
+      this.#cutTiers(null);
+    });
+    this.#pump();
+  }
+
   nudge(): void {
     // Before `start` has set the context nothing is planned; the start pumps when it ends (review wave-13ak, B1).
     if (this.#closed || !this.#context) return;
@@ -946,7 +972,8 @@ class TierScheduler implements Scheduler {
   #freeLaneQueued(): boolean {
     const { context, ledger } = this.#started();
     const busy = this.#busyLanes();
-    return ledger.fastQueued((ref) => !busy.has(laneOf(context, ref)));
+    const free = (ref: TestFileRef) => !busy.has(laneOf(context, ref));
+    return ledger.fastQueued(free) || focusedWaiting(context, ledger, free);
   }
 
   /** The lanes no tier may start in now. */
@@ -1076,7 +1103,14 @@ class TierScheduler implements Scheduler {
     if (this.#awaitingInstall || this.#reinstalled) return false;
     // Row 011-72: on hold, the runner part goes on (D5 step 5) and the queue waits.
     if (this.#onHold()) return this.#runnerWork.size > 0;
-    return this.#runnerWork.size > 0 || this.#ledger?.fastQueued() === true;
+    return this.#runnerWork.size > 0 || this.#ledger?.fastQueued() === true || this.#focused();
+  }
+
+  /** A focused entry waits for its tier (row 011-145): fast work, an edit's for the slow tier. */
+  #focused(): boolean {
+    const context = this.#context;
+    const ledger = this.#ledger;
+    return context !== null && ledger !== null && focusedWaiting(context, ledger);
   }
 
   /**
@@ -1087,6 +1121,7 @@ class TierScheduler implements Scheduler {
   #editPending(): boolean {
     const work = this.#runnerWork;
     if (work.size > 0 || work.refining || this.#ledger?.queue.hasFirstGroup()) return true;
+    if (this.#focused()) return true;
     return [...this.#inFlight.values()].some(
       ({ tier }) => tier.kind !== "backlog" && !isSlowLane(tier.lane),
     );
@@ -1099,6 +1134,7 @@ class TierScheduler implements Scheduler {
   #fastIdle(): boolean {
     const work = this.#runnerWork;
     if (work.size > 0 || work.refining || this.#ledger?.fastQueued() === true) return false;
+    if (this.#focused()) return false;
     return this.#lanes().every(isSlowLane);
   }
 
@@ -1130,8 +1166,10 @@ class TierScheduler implements Scheduler {
   async #requeue(tier: Tier, slow: boolean): Promise<void> {
     await this.#runSliced(() => {
       const { context, ledger } = this.#started();
-      endTier(context, ledger, tier);
       this.#yields.ended(context, tier);
+      // Row 011-145: a focused tier holds no file of the queue; its entries wait for another run.
+      if (tier.kind === "focused") return requeueFocusedTier(context, ledger, tier);
+      endTier(context, ledger, tier);
       for (const { file, key } of tier.files) {
         // A newer run has the file at another key: it is that run's (review wave-4 B1).
         if (supersededIn(file, key)) {

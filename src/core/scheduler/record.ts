@@ -5,6 +5,7 @@ import type { BusyResume } from "./busy-resume.js";
 import type { SchedulerContext } from "./context.js";
 import { scratchUnstable } from "./editor-scratch.js";
 import { rekeyEnvironments } from "./environment-growth.js";
+import { recordFocusedTier } from "./focused-record.js";
 import { heldFiles, type MergeHold } from "./hold.js";
 import type { InstallStamps } from "./install-stamp.js";
 import { interruptedFiles } from "./interrupted.js";
@@ -122,6 +123,9 @@ export class TierRecords {
     slow: SlowRun | null,
     held: AbortController | null,
   ): Promise<Recorded> {
+    // Row 011-145: a focused tier's record stores nothing under a key.
+    if (tier.kind === "focused")
+      return this.#landed(tier, () => this.#focused(tier, ran, installStamp, held));
     if (tier.slot === true) {
       const ended = this.#ended(tier, ran, installStamp, slow, held);
       return this.#landed(tier, () => {
@@ -166,6 +170,39 @@ export class TierRecords {
       if (isBusy(error)) this.#slotsBusy = error;
       throw error;
     }
+  }
+
+  /**
+   * A focused tier's record (C4 as amended 2026-10-23, row 011-145): the
+   * stability check and the install's, then the focused meta row (`writeFocused`) and a closed
+   * run row under the lock. Its writes are its own: tried again whole on a
+   * busy store, and none touches the ledger.
+   */
+  async #focused(
+    tier: Tier,
+    ran: RunReport,
+    installStamp: string,
+    held: AbortController | null,
+  ): Promise<Recorded> {
+    const host = this.#host;
+    const { context } = host.started();
+    const inputs = await unstableInputs(context, tier);
+    const installMoved =
+      host.reinstalled() ||
+      (await host.install.stamp()) !== installStamp ||
+      (await host.runtimeMissing());
+    const cancelled =
+      host.stop.aborted || held?.signal.aborted === true || tier.cancel?.signal.aborted === true;
+    return host.lock.run(() => {
+      const { context, ledger } = host.started();
+      host.yields.ended(context, tier);
+      const moved = recordFocusedTier(context, ledger, tier, ran, {
+        inputs,
+        installMoved,
+        cancelled,
+      });
+      return { moved, withheld: [] };
+    });
   }
 
   /** What the record of a run that ended reads outside the lock. */

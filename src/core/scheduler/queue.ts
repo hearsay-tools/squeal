@@ -2,6 +2,7 @@ import { compare } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
 import type { RelativePath, RevisionNumber, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
+import { FocusedEntries } from "./focused-entries.js";
 import { Promotions, type PublishedPromotion } from "./promotions.js";
 
 /**
@@ -93,6 +94,8 @@ export class RunQueue {
   #recentTiers = 0;
   #isSlow: (ref: TestFileRef) => boolean = NOTHING_SLOW;
   readonly #promotions = new Promotions();
+  /** Named waits' focused checks (spec 011 C15, row 011-145): they go before every entry. */
+  readonly focused = new FocusedEntries();
   readonly #queued = (id: string) => this.#entries.has(id);
 
   /** Every entry, fast and slow. */
@@ -241,11 +244,12 @@ export class RunQueue {
     };
   }
 
-  /** Empties the queue; promotions go with it. */
+  /** Empties the queue; promotions and focused entries go with it. */
   clear(): void {
     this.#entries.clear();
     this.#recentTiers = 0;
     this.#promotions.clear();
+    this.focused.clear();
   }
 
   /**
