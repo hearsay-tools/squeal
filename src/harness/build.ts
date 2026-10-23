@@ -46,6 +46,13 @@ export const PYTEST_GRAMMAR = "src/runners/pytest/graph/tree-sitter-python.wasm"
 export const TREE_SITTER_RUNTIME = "node_modules/web-tree-sitter/web-tree-sitter.wasm";
 
 /**
+ * Spec 015 D3: the vendored tree-sitter-tsx grammar of the code counter,
+ * which the bundled CLI finds at `<plugin>/dist/code/`. It shares the
+ * runtime and the Python grammar of `dist/pytest/`.
+ */
+export const CODE_GRAMMAR = "src/core/code/count/tree-sitter-tsx.wasm";
+
+/**
  * Spec 005 D3, row 005-76: the launcher's one source. The Codex, Pi and
  * OpenCode builds copy it into their `bin/` (`LAUNCHER_COPY`); the Claude Code
  * plugin holds it, so its build copies nothing.
@@ -209,15 +216,32 @@ export function copyPytestRuntime(
 }
 
 /**
+ * Copies the counter's grammar into `<outdir>/code/`, replaced as a whole.
+ * Throws when it is missing, since the bundled counter cannot parse without it.
+ */
+export function copyCodeGrammar(
+  outdir: string,
+  grammar: string = join(REPO_ROOT, CODE_GRAMMAR),
+): void {
+  if (!existsSync(grammar)) throw new Error(`build: ${grammar} is missing`);
+  const target = join(outdir, "code");
+  rmSync(target, { recursive: true, force: true });
+  mkdirSync(target, { recursive: true });
+  copyFileSync(grammar, join(target, basename(grammar)));
+}
+
+/**
  * What `dist/` holds, built into `outdir`: the bundles, the node:test and
- * pytest runtimes and the recorder. Returns the bundles' metafile, whose
- * inputs a test that builds reports as read (011-141).
+ * pytest runtimes, the code counter's grammar and the recorder. Returns the
+ * bundles' metafile, whose inputs a test that builds reports as read
+ * (011-141).
  */
 export async function buildDist(plugin: PluginBuild, outdir: string): Promise<Metafile> {
   const { metafile } = await build({ ...bundleOptions(plugin, outdir), metafile: true });
   copyNodeTestRuntime(outdir);
   copyObserveRuntime(outdir);
   copyPytestRuntime(outdir);
+  copyCodeGrammar(outdir);
   return metafile;
 }
 
