@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type BuildOptions, build } from "esbuild";
+import { type BuildOptions, build, type Metafile } from "esbuild";
 import {
   bundleOptions,
   copyNodeTestRuntime,
@@ -74,13 +74,20 @@ export function pluginBundleOptions(outdir: string): BuildOptions {
   };
 }
 
-/** What `dist/` holds, built into `outdir`: the bridge, the CLI pair, the runtimes and the plugin. */
-export async function buildOpencodeDist(outdir: string): Promise<void> {
-  await build(bridgeBundleOptions(outdir));
-  await build(pluginBundleOptions(outdir));
+/**
+ * What `dist/` holds, built into `outdir`: the bridge, the CLI pair, the
+ * runtimes and the plugin. Returns both builds' metafiles as one (011-141).
+ */
+export async function buildOpencodeDist(outdir: string): Promise<Metafile> {
+  const bridge = await build({ ...bridgeBundleOptions(outdir), metafile: true });
+  const plugin = await build({ ...pluginBundleOptions(outdir), metafile: true });
   copyNodeTestRuntime(outdir);
   copyObserveRuntime(outdir);
   copyPytestRuntime(outdir);
+  return {
+    inputs: { ...bridge.metafile.inputs, ...plugin.metafile.inputs },
+    outputs: { ...bridge.metafile.outputs, ...plugin.metafile.outputs },
+  };
 }
 
 /**
