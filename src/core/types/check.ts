@@ -62,7 +62,7 @@ export type RunOutcome = "pass" | "fail" | "skip";
 export interface CheckError {
   readonly name: string;
   readonly message: string;
-  /** Full stack with relativized paths. Kept in the run log and `squeal why`, not in deltas. */
+  /** Full stack with relativized paths. Kept in the store, printed in the run's console log and by `squeal why`, not in deltas (row 011-164). */
   readonly stack: string | null;
   /** First source-mapped frame. Research Q4: "Failure location: `errors[0].stacks[0]`". */
   readonly location: SourceLocation | null;
