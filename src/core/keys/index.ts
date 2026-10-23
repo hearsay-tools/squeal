@@ -45,6 +45,7 @@ export {
   observedMetaKey,
 } from "./observed.js";
 export { PackageScans } from "./package-scans.js";
-export { InstalledGraph, OPAQUE_BUILTINS } from "./packages.js";
+export { InstalledGraph, OPAQUE_BUILTINS, type PackageGraph } from "./packages.js";
+export { PnpmGraph } from "./pnpm-graph.js";
 export { closuresToReresolve } from "./resolution.js";
 export { directoryOf, ReverseIndex, testFileId } from "./reverse-index.js";
