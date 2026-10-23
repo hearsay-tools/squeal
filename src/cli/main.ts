@@ -257,8 +257,10 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
     return namedSnapshotCommand(parsed.positional, { ...named, json: parsed.json }, io, { now });
   }
   const cwd = io.cwd ?? process.cwd();
-  const result = readStatus(cwd, { now, busyRetryMs: CLI_READ_RETRY_MS });
   const env = io.env ?? process.env;
+  // Spec 015 D6: "since this session started" counts from the shell's session, as `--wait` reads it.
+  const shell = waitConsumer(env);
+  const result = readStatus(cwd, { now, busyRetryMs: CLI_READ_RETRY_MS, shell });
   const harness = parsed.json
     ? null
     : (codexStatusLine(cwd, env) ??
