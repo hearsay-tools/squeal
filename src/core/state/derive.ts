@@ -24,6 +24,21 @@ export function checkIdentity(check: CheckId): string {
   return `${check.kind}\0${check.project}\0${check.testPath}\0${name}`;
 }
 
+/**
+ * The first item of each check in `items`, in their order. One pass over a
+ * set of identities: a `findIndex` per check was quadratic and took 29 s
+ * at 20,000 known checks (task 011-50, gh-55).
+ */
+export function firstOfEachCheck<T>(items: readonly T[], checkOf: (item: T) => CheckId): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const id = checkIdentity(checkOf(item));
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 /** Map key of the test file a check belongs to. */
 export function testFileKeyOf(check: CheckId): string {
   return testFileId(testFileOf(check));

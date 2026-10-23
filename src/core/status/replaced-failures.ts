@@ -1,4 +1,4 @@
-import { checkIdentity, formatCheck } from "../state/index.js";
+import { checkIdentity, firstOfEachCheck, formatCheck } from "../state/index.js";
 import type {
   AbsolutePath,
   CheckId,
@@ -105,7 +105,7 @@ export function selectReplaced(
         (errors.length === 0 || errors.some((t) => e.summary?.includes(t) === true)),
     ),
   );
-  return selection.perCheck === true ? newestOfEach(selected, (e) => e.check) : selected;
+  return selection.perCheck === true ? firstOfEachCheck(selected, (e) => e.check) : selected;
 }
 
 /**
@@ -170,7 +170,7 @@ export function mergeFailures(
       entry: () => replacedEntry(store, e, context),
     })),
   ].sort((a, b) => b.at - a.at);
-  const chosen = perCheck ? newestOfEach(all, (x) => x.check) : all;
+  const chosen = perCheck ? firstOfEachCheck(all, (x) => x.check) : all;
   return chosen.slice(0, limit).map((x) => x.entry());
 }
 
@@ -207,15 +207,4 @@ export function perCheckTotals(
     if (at === undefined || e.provenance.recordedAt > at) newer++;
   }
   return { total: storedChecks + added, replaced: newer };
-}
-
-/** The first of each check in `items`, in their order. */
-function newestOfEach<T>(items: readonly T[], checkOf: (item: T) => CheckId): T[] {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    const id = checkIdentity(checkOf(item));
-    if (seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
 }

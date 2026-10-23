@@ -3,7 +3,13 @@
 export { baselineFindings } from "./baseline.js";
 export { beforeEditsFor, recordRegisteredKeys, registeredKeysMetaKey } from "./before-edits.js";
 export { formatCheck, parseCheck } from "./check-name.js";
-export { checkIdentity, classify, testFileKeyOf, testFileOf } from "./derive.js";
+export {
+  checkIdentity,
+  classify,
+  firstOfEachCheck,
+  testFileKeyOf,
+  testFileOf,
+} from "./derive.js";
 export { type FileClass, fileClassOf } from "./file-class.js";
 export {
   causeText,
