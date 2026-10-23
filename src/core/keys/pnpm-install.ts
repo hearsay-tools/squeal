@@ -16,10 +16,13 @@ const VIRTUAL_STORE = "node_modules/.pnpm";
 /** Bumped when the fallback encoding below changes. */
 const PACKAGE_FOLDERS_ENCODING = "squeal-pnpm-package-folders/1";
 
-/** A pnpm install as per-package keys read it: its graph, or why `lock.yaml` does not describe it. */
+/**
+ * A pnpm install as per-package keys read it: its graph, or why `lock.yaml`
+ * does not describe it and the fingerprint of its package folders.
+ */
 export type PnpmInstall =
-  | { readonly graph: PnpmGraph; readonly stale: null }
-  | { readonly graph: null; readonly stale: string };
+  | { readonly graph: PnpmGraph; readonly stale: null; readonly folders?: undefined }
+  | { readonly graph: null; readonly stale: string; readonly folders: string };
 
 /**
  * Task 011-162 R2 (011 C11, design sections 3 and 4): the graph of the pnpm
@@ -43,7 +46,12 @@ export function readPnpmInstall(
   if (lockfile === null) return null;
   const graph = new PnpmGraph(dir, base, lockfile, modules, scans);
   const stale = stalePnpmLockfile(dir, graph);
-  return stale === null ? { graph, stale } : { graph: null, stale };
+  if (stale === null) return { graph, stale };
+  return {
+    graph: null,
+    stale,
+    folders: pnpmPackageFoldersFingerprint(dir, lockfile.importers.keys()),
+  };
 }
 
 /** `.modules.yaml`, JSON under pnpm 10 and 12, where it records pnpm's default layout. */
@@ -106,29 +114,34 @@ export function stalePnpmLockfile(dir: AbsolutePath, graph: PnpmGraph): string |
 
 /**
  * Fingerprint of the pnpm install at `dir` from its package folders, for
- * when `lock.yaml` does not describe it: each entry of each `.pnpm` folder's
- * `node_modules`, of the private hoisting and of the root's `node_modules`,
- * a folder by its path and its `package.json` name and version, a link by
- * its path and target, unread. Adding, removing, moving, retargeting or
+ * when `lock.yaml` does not describe it: each entry of each importer's
+ * `node_modules`, the root's among them, of the private hoisting and of
+ * each `.pnpm` folder's `node_modules`, a folder by its path and its
+ * `package.json` name and version and then its own `node_modules`, a link
+ * by its path and target, unread. Adding, removing, moving, retargeting or
  * re-versioning a package changes it.
  */
-export function pnpmPackageFoldersFingerprint(dir: AbsolutePath): string {
-  const modules = [`${VIRTUAL_STORE}/node_modules`, "node_modules"];
+function pnpmPackageFoldersFingerprint(dir: AbsolutePath, importers: Iterable<string>): string {
+  const roots = new Set(["node_modules", `${VIRTUAL_STORE}/node_modules`]);
+  for (const importer of importers)
+    roots.add(importer === "." ? "node_modules" : `${importer}/node_modules`);
   for (const folder of entriesOf(join(dir, VIRTUAL_STORE))) {
     if (folder.isDirectory() && folder.name !== "node_modules") {
-      modules.push(`${VIRTUAL_STORE}/${folder.name}/node_modules`);
+      roots.add(`${VIRTUAL_STORE}/${folder.name}/node_modules`);
     }
   }
   const entries: unknown[] = [];
-  for (const at of modules.sort(compare)) {
+  const walk = (at: string): void => {
     for (const name of namesIn(join(dir, at))) {
       const path = `${at}/${name}`;
       const link = lstatSync(join(dir, path)).isSymbolicLink();
       entries.push(
         link ? [path, "link", readlinkSync(join(dir, path))] : [path, ...manifestOf(dir, path)],
       );
+      if (!link) walk(`${path}/node_modules`);
     }
-  }
+  };
+  for (const at of [...roots].sort(compare)) walk(at);
   return createHash("sha256")
     .update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries]))
     .digest("hex");
