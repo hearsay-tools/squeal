@@ -109,7 +109,6 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
           const id = findCodeCheckId(conn, check);
           if (id === null) continue;
           conn.run("DELETE FROM states WHERE worktree_id = ? AND check_id = ?", worktreeId, id);
-          conn.run("DELETE FROM views WHERE worktree_id = ? AND check_id = ?", worktreeId, id);
         }
       });
     },

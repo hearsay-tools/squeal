@@ -2,7 +2,14 @@ import { num, numOrNull, oneOf } from "../../store/codec.js";
 import type { Connection, Row } from "../../store/connection.js";
 import type { CodeTold, CodeViewEntry } from "../../types/code.js";
 import type { Consumer } from "../../types/index.js";
-import { CHECK_COLUMNS, checkFrom, ensureCodeCheckId, MEASURES, OUTCOMES } from "./states.js";
+import {
+  CHECK_COLUMNS,
+  checkFrom,
+  ensureCodeCheckId,
+  findCodeCheckId,
+  MEASURES,
+  OUTCOMES,
+} from "./states.js";
 import type { CodeViewRepo } from "./types.js";
 
 const TOLD = ["count", "full"] as const satisfies readonly CodeTold[];
@@ -40,6 +47,20 @@ export function createViewRepo(conn: Connection): CodeViewRepo {
             entry.threshold,
             entry.told,
             entry.toldAt,
+          );
+        }
+      });
+    },
+    removeMany(consumer, entries) {
+      conn.transaction(() => {
+        for (const entry of entries) {
+          const id = findCodeCheckId(conn, entry.check);
+          if (id === null) continue;
+          conn.run(
+            `DELETE FROM views WHERE ${WHERE_CONSUMER} AND check_id = ? AND measure = ?`,
+            ...consumerParams(consumer),
+            id,
+            entry.measure,
           );
         }
       });
