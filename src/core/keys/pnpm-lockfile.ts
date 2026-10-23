@@ -41,14 +41,48 @@ const IMPORTER_FIELDS = new Set(["dependencies", "devDependencies", "optionalDep
 const SNAPSHOT_FIELDS = new Set(["dependencies", "optionalDependencies"]);
 
 /**
+ * The keys pnpm writes that no key reads (`convertToLockfileFile` of pnpm
+ * 10.32.0, and every key of cezar's file under pnpm 12.11.2), per part.
+ * The reader passes over these and their lines; any other key is a layout
+ * it does not know (review 0.1.282 B1).
+ */
+const UNREAD = {
+  root: new Set([
+    "settings",
+    "catalogs",
+    "overrides",
+    "packageExtensionsChecksum",
+    "pnpmfileChecksum",
+    "patchedDependencies",
+    "ignoredOptionalDependencies",
+    "time",
+  ]),
+  importers: new Set(["dependenciesMeta", "publishDirectory"]),
+  packages: new Set([
+    "bundledDependencies",
+    "cpu",
+    "deprecated",
+    "engines",
+    "hasBin",
+    "libc",
+    "name",
+    "os",
+    "peerDependencies",
+    "peerDependenciesMeta",
+    "version",
+  ]),
+  snapshots: new Set(["transitivePeerDependencies", "optional", "id"]),
+};
+
+/**
  * Task 011-162 R1 (011 C11): the importers, integrities and snapshot edges
  * of pnpm's installed `lock.yaml`, read line by line in the layout pnpm
  * writes: two-space indents, one key per line, plain or single-quoted keys
- * and scalars, `resolution` as a one-line flow map, `{}` for an empty map.
- * Lines under any other part are skipped unread. `null` for a
- * `lockfileVersion` other than 9, a second document, or any line it does
- * not know where it reads, so the install keeps the whole fingerprint: a
- * split, never a wrong key.
+ * and scalars, `resolution` as a one-line flow map, `{}` for an empty
+ * importer or snapshot. Lines under a key in `UNREAD` are skipped unread.
+ * `null` for a `lockfileVersion` other than 9, a second document, no root
+ * importer, or any other line it does not know, so the install keeps the
+ * whole fingerprint: a split, never a wrong key.
  */
 export function readPnpmLockfile(text: string): PnpmLockfile | null {
   const importers = new Map<string, Map<string, string>>();
@@ -70,11 +104,12 @@ export function readPnpmLockfile(text: string): PnpmLockfile | null {
     if (indent === 0) {
       const pair = pairOf(body);
       if (pair === null) return null;
-      if (pair[0] === "lockfileVersion") {
-        if (!/^9\.\d+$/.test(pair[1])) return null;
+      const [key, value] = pair;
+      if (key === "lockfileVersion") {
+        if (!/^9\.\d+$/.test(value)) return null;
         version = true;
-      }
-      section = pair[1] === "" ? pair[0] : "";
+      } else if (!UNREAD.root.has(key) && (!isPart(key) || value !== "")) return null;
+      section = isPart(key) ? key : "";
       [entry, id, reading] = [null, "", false];
       continue;
     }
@@ -82,11 +117,14 @@ export function readPnpmLockfile(text: string): PnpmLockfile | null {
       if (indent > 4) continue;
       const pair = pairOf(body);
       if (pair === null) return null;
-      if (indent === 2) id = pair[0];
-      else if (pair[0] === "resolution") {
+      if (indent === 2) {
+        if (pair[1] !== "") return null;
+        id = pair[0];
+      } else if (pair[0] === "resolution") {
+        if (!pair[1].startsWith("{")) return null;
         const found = /^\{(?:.*[ ,])?integrity: ([^\s,}]+)[,}]/.exec(pair[1])?.[1];
         if (found !== undefined) integrity.set(id, found);
-      }
+      } else if (!UNREAD.packages.has(pair[0])) return null;
       continue;
     }
     if (section !== "importers" && section !== "snapshots") continue;
@@ -105,7 +143,7 @@ export function readPnpmLockfile(text: string): PnpmLockfile | null {
     } else if (entry === null) return null;
     else if (indent === 4) {
       reading = (section === "importers" ? IMPORTER_FIELDS : SNAPSHOT_FIELDS).has(key);
-      if (reading && value !== "") return null;
+      if (reading ? value !== "" : !UNREAD[section].has(key)) return null;
     } else if (section === "snapshots") {
       if (!isRef(value) || !setOnce(entry, key, value)) return null;
     } else if (indent === 6) {
@@ -114,12 +152,17 @@ export function readPnpmLockfile(text: string): PnpmLockfile | null {
       if (!entry.has(key)) entry.set(key, "");
     } else if (key === "version") {
       if (!isRef(value) || !setOnce(entry, dependency, value)) return null;
-    }
+    } else if (key !== "specifier") return null;
   }
   for (const declared of importers.values()) {
     for (const ref of declared.values()) if (ref === "") return null;
   }
-  return version ? { importers, integrity, snapshots } : null;
+  return version && importers.has(".") ? { importers, integrity, snapshots } : null;
+}
+
+/** A top-level part the reader reads. */
+function isPart(key: string): key is "importers" | "packages" | "snapshots" {
+  return key === "importers" || key === "packages" || key === "snapshots";
 }
 
 /** A resolved version or edge: a scalar, never a nested or flow collection. */
