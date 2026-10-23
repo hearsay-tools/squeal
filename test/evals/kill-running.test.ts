@@ -87,17 +87,17 @@ describe("killRunning", () => {
   });
 });
 
-// 006-98: a judge script ends the groups runBounded runs on SIGINT and SIGTERM, before any
-// continuation of theirs runs, and exits 128 + n. A child process installs it twice and starts a
-// shell that, with a child of its own, ignores both signals.
+// 006-98: a judge script ends the groups runBounded runs on SIGINT, SIGTERM and SIGHUP, before
+// any continuation of theirs runs, and exits 128 + n. A child process installs it twice and
+// starts a shell that, with a child of its own, ignores the three signals.
 const SCRIPT = `import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runBounded, stopOnSignal } from ${JSON.stringify(pathToFileURL(join(import.meta.dirname, "../../evals/lib/session.mjs")).href)};
 const dir = process.argv[2];
 stopOnSignal();
 stopOnSignal();
-writeFileSync(join(dir, "listeners"), process.listenerCount("SIGINT") + " " + process.listenerCount("SIGTERM"));
-const loop = "trap '' INT TERM; echo $$ >> pids; while :; do sleep 1; done";
+writeFileSync(join(dir, "listeners"), ["SIGINT", "SIGTERM", "SIGHUP"].map((s) => process.listenerCount(s)).join(" "));
+const loop = "trap '' INT TERM HUP; echo $$ >> pids; while :; do sleep 1; done";
 runBounded({
   command: "sh",
   args: ["-c", 'sh -c "$0" & ' + loop, loop],
@@ -112,6 +112,7 @@ describe("stopOnSignal", { timeout: 30_000 }, () => {
   it.each([
     ["SIGTERM", 143],
     ["SIGINT", 130],
+    ["SIGHUP", 129],
   ] as const)("ends every running group on %s and exits %i", async (signal, code) => {
     const dir = mkdtempSync(join(tmpdir(), "squeal-evals-signal-"));
     const pids = () =>
@@ -125,7 +126,7 @@ describe("stopOnSignal", { timeout: 30_000 }, () => {
       await vi.waitFor(() => expect(pids()).toHaveLength(2), { timeout: 10_000, interval: 20 });
       child.kill(signal);
       expect(await closed).toBe(code);
-      expect(readFileSync(join(dir, "listeners"), "utf8")).toBe("1 1");
+      expect(readFileSync(join(dir, "listeners"), "utf8")).toBe("1 1 1");
       expect(pids().filter(alive)).toEqual([]);
       expect(pids().some(groupLive)).toBe(false);
       expect(existsSync(join(dir, "resumed"))).toBe(false);
