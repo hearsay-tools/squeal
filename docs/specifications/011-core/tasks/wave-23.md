@@ -29,3 +29,19 @@ Seam: `#prepare` and `#write` in `src/core/scheduler/scheduler.ts` (the withhold
 Owns `scheduler.ts`, `test/scheduler/busy-*.test.ts` and new scheduler tests, `tasks/011-128/`. Not yours: `src/harness/`, `src/cli/`, `src/core/store/`, `src/core/delivery/` (W1), the board, spec text, bundles, version. No `npm run build`.
 
 Done when the row's test passes, and lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run `test/scheduler/busy-*.test.ts` and `test/daemon/busy-tier.test.ts` directly. Paste the output in your summary.
+
+## W3: 011-141, tests that build the CLI or a bundle key what their build compiled
+
+Added 2026-10-23 after 011-127's findings. The lane is the coordinator's decision under the human's word for repository-local choices ("go with the recommendation", 2026-10-23): option B, with the build tests in the slow lane.
+
+Use /worker. Shape: slice.
+
+Outcome: each test file that builds the CLI or a plugin bundle while it runs has every `src/` file its build compiled among its observed inputs, and those files run in the slow lane.
+
+Read board row 011-141; `research/cli-build-inputs.md` (Q1, Q2, Q4, the recommendation) and `probes/cli-build-inputs/gap.txt` (the 59 files); spec 011 C12 ("Not seen") and C3; spec 004 D7 (`slow`).
+
+Seam: `buildCli` (`test/daemon/helpers.ts:64`). A lead: run its `tsc` with `--listFiles`, then stat each `src/` path it prints from the test's own process, so the recorder keeps them. For esbuild, the helpers pass `metafile: true` and stat `Object.keys(metafile.inputs)`. Then add the 59 files to `slow` in `squeal.config.json`, by glob where a glob matches only build files.
+
+Owns: `test/daemon/helpers.ts`, `test/harness/bundle-helpers.ts`, the other test helpers that call a builder, `test/keys/validity/bundle.ts`, `test/runners/node-test/graph-bundle.test.ts`, `squeal.config.json`, `test/policy/repository-inputs.test.ts`, new tests, `tasks/011-141/`. Not yours: every file under `src/`; `vitest.config.ts` and any Vitest setup file (W1); `test/scheduler/` (W2); the board, spec text, bundles, version. If a harness test file you must edit is one W1 changes, tell the coordinator. No `npm run build`.
+
+Done when the row's done-when holds, a note for 011 C12 is drafted in `tasks/011-141/notes.md` with the slow-lane wall time of one `src/core/scheduler/scheduler.ts` edit measured at the load you record, and lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Paste the output in your summary.
