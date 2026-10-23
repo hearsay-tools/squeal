@@ -104,6 +104,67 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     expect(s.current(B)).toBe(false);
   });
 
+  it("5c: a backlog file another worktree's claim holds takes no turn; every focused entry runs (review 0.1.280)", async () => {
+    const edited = [1, 2, 3, 4, 5].map((i) => `test/f${i}.test.ts`);
+    const B = "b/b.test.ts";
+    const files: CatchUpFile[] = [
+      { path: S, ms: 20_000, imports: ["src/s.ts"] },
+      ...edited.map((path) => ({ path, ms: 1, imports: ["src/f.ts"] })),
+      { project: "b", path: B, ms: 1, imports: ["src/b.ts"] },
+    ];
+    const repo = catchUpRepo(files);
+    const s = catchUpSide(repo, repo.main, { files, hostSlots: 8, tierSize: 1, policy: BASELINE });
+    await s.scheduler.start();
+    await s.scheduler.idle();
+    const other = catchUpSide(repo, repo.other, { files, hostSlots: 8, policy: BASELINE });
+    await other.scheduler.start();
+    await other.scheduler.idle();
+    // The other worktree runs B at the key this one's edit will reach (the same bytes: its
+    // second edit), held, so its claim stands while this worktree's focused entries wait.
+    let otherHolding = true;
+    other.runner.beforeRun = (run) => {
+      if (otherHolding && run.some((f) => f.path === B)) other.runner.hold();
+    };
+    const otherBase = other.runner.runs.length;
+    other.touch();
+    await other.edit("watch", "b.config.json");
+    await heldRun(other, B, otherBase);
+
+    const record = focusing(s);
+    let holding = false;
+    s.runner.beforeRun = (run) => {
+      if (holding && run.some((f) => f.path === S)) s.runner.hold();
+    };
+    const base = s.runner.runs.length;
+    holding = true;
+    await s.edit("watch", "src/s.ts");
+    await heldRun(s, S, base);
+    await s.edit("watch", "src/f.ts", "b.config.json");
+    await focus(
+      s,
+      edited.map((path) => ref(path)),
+      ["runs"],
+      60_000,
+    );
+    holding = false;
+    s.runner.release();
+    await expect
+      .poll(() => edited.every((path) => s.current(path)), { timeout: 60_000 })
+      .toBe(true);
+
+    const focusedRuns = edited.map((path) => `${path} focused`);
+    expect(runsSince(s, record, base)).toEqual([S, ...focusedRuns, ...edited]);
+    expect(s.current(B)).toBe(false);
+    otherHolding = false;
+    other.runner.release();
+    await other.scheduler.idle();
+    // This worktree adopts the other's result for B and never runs it.
+    await expect.poll(() => s.current(B), { timeout: 60_000 }).toBe(true);
+    await s.scheduler.idle();
+    const ranB = s.runner.runs.slice(base).filter((run) => run.files.some((f) => f.path === B));
+    expect(ranB).toHaveLength(0);
+  });
+
   it("6: a slow file, and a file whose runner runs whole files only, get no entry", async () => {
     const L = "test/slow/l.test.ts";
     const F = "f/f.test.ts";
