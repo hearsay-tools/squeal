@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
@@ -10,6 +10,7 @@ import { createFsHasher } from "../../src/core/hash/index.js";
 import { createInputMatcher } from "../../src/core/keys/glob.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
+import { slowFiles } from "../../src/core/slow/classify.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import type { CheckKey, Revision, Store } from "../../src/core/types/index.js";
 import { candidatesFromHints } from "../../src/core/watcher/candidates.js";
@@ -18,6 +19,7 @@ import { gitStatus } from "../../src/core/watcher/git.js";
 import { buildWatchSpec } from "../../src/core/watcher/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { git } from "../hash/git-repo.js";
+import { observeBuildInputs } from "../helpers/build-inputs.js";
 
 /*
  * Review wave 7, input 4: `test/harness/plugin.test.ts` reads the committed
@@ -32,6 +34,7 @@ import { git } from "../hash/git-repo.js";
  */
 
 const E2E = /^test\/e2e\/[^/]+\.test\.ts$/;
+const TSC = join(REPO_ROOT, "node_modules/typescript/bin/tsc");
 
 let root: string;
 let store: Store;
@@ -112,14 +115,23 @@ describe("policy: this repository's squeal.config.json", () => {
   /*
    * Task 004-81 (004 D7 as amended 2026-10-18): the e2e tests run the
    * committed bundles, a build output Squeal does not produce, so Squeal
-   * covers none of them and declares no slow tier; CI runs them.
+   * covers none of them; CI runs them. Row 011-141: the tests that build the
+   * CLI or a bundle from the sources while they run, and key on all of it, are
+   * the slow files; each glob selects one, and none an in-process daemon test.
    */
-  it("excludes the e2e tests, lists every other test file, and declares nothing slow", () => {
+  it("excludes the e2e tests, lists every other test file, and runs the build tests slow", () => {
     const { policy } = loadPolicy(REPO_ROOT);
     expect(policy.vitest.exclude).toEqual(["test/e2e/**"]);
-    expect(policy.slow.include).toEqual([]);
     expect(testFiles.filter((path) => E2E.test(path))).toEqual([]);
     expect(testFiles).toContain("test/harness/plugin.test.ts");
+    for (const glob of policy.slow.include) {
+      expect(testFiles.filter(createInputMatcher([glob])), glob).not.toEqual([]);
+    }
+    const isSlow = slowFiles(policy, policy.nodeTest);
+    const slow = testFiles.filter((path) => isSlow({ project: "", path }));
+    expect(slow).toHaveLength(60);
+    expect(slow).toContain("test/daemon/busy-tier.test.ts");
+    expect(slow).not.toContain("test/daemon/drain-timers.test.ts");
   });
 
   it("re-keys exactly plugin.test.ts when a bundle changes", async () => {
@@ -185,6 +197,41 @@ describe("policy: this repository's squeal.config.json", () => {
 
     const after = allKeys();
     expect(testFiles.filter((path) => after[path] !== before[path])).toEqual(adapter);
+  });
+
+  /*
+   * Row 011-141: `busy-tier.test.ts` builds the CLI with `tsc` and imports
+   * none of the scheduler; `buildCli` stats each file `tsc` compiled, so its
+   * run observes them (011 C12). With that observed set, a `scheduler.ts` edit
+   * re-keys it, and a daemon test that observed no build keeps its key.
+   */
+  it("re-keys busy-tier.test.ts on a scheduler.ts edit, by what its build compiled", async () => {
+    const busyTier = "test/daemon/busy-tier.test.ts";
+    const listed = execFileSync(
+      process.execPath,
+      [TSC, "-p", join(REPO_ROOT, "tsconfig.build.json"), "--listFilesOnly"],
+      { cwd: REPO_ROOT, encoding: "utf8" },
+    );
+    // Stat'ed in the mirror, as `buildCli` stats them in the worktree.
+    const compiled = observeBuildInputs(
+      listed
+        .split("\n")
+        .filter((path) => path !== "")
+        .map((path) => relative(REPO_ROOT, path)),
+      root,
+    );
+    expect(compiled).toContain("src/core/scheduler/scheduler.ts");
+    keys.addObserved({ project: "", path: busyTier }, compiled);
+    const before = allKeys();
+
+    write("src/core/scheduler/scheduler.ts", "// edited, not rebuilt\n");
+    const revision = await batch("src/core/scheduler/scheduler.ts");
+    keys.index.rekey(revision?.changes.map((c) => c.path) ?? []);
+
+    const after = allKeys();
+    const rekeyed = testFiles.filter((path) => after[path] !== before[path]);
+    expect(rekeyed).toContain(busyTier);
+    expect(rekeyed).not.toContain("test/daemon/busy-store.test.ts");
   });
 
   /*
