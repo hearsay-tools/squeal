@@ -52,7 +52,7 @@ Amended 2026-10-23 (the human, gh-76, digest group B, row 011-134): `squeal retr
 1. a new matching file while revision 4 is not listed: the reply, exit 3, nothing stored; from a subdirectory the command names the path as given;
 2. gh-76's case: revision 0 listed by the daemon's start scan, the file written after: "it changed after revision 0";
 3. a missing path: its own refusal, exit 1 over another path's 3;
-4. a path no pattern selects keeps the refusal before its listing: a node:test-only config, and a file `vitest.exclude` drops;
+4. a path no pattern selects keeps the refusal before its listing: a pytest-only config (pytest, not node:test, so that `test/version-sensitive.test.ts` does not take the file for a node:test caller; `mayList` reads both alike), and a file `vitest.exclude` drops;
 5. a file in a listed revision (ctime before `createdAt`): the old refusal, exit 1.
 
 `test/cli/retry.test.ts`: `src/x.ts`, which does not exist, now gets the missing-path refusal.
