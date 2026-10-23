@@ -42,13 +42,13 @@ import {
  * namespace in `OWNER`, and the sweep removes only parents of its own
  * namespace (review 0.1.267 B1).
  *
- * Row 011-140: setup clears \`PLUGIN_ROOT\` and \`PLUGIN_DATA\` before the
+ * Row 011-140: setup clears `PLUGIN_ROOT` and `PLUGIN_DATA` before the
  * workers start, and teardown puts them back. A Codex hook names its
  * installed plugin and data directory in them, and a run under the daemon
- * that hook spawned inherits both. \`test/harness/opencode/latency.test.ts\`
+ * that hook spawned inherits both. `test/harness/opencode/latency.test.ts`
  * hands its environment to the bundled Codex hooks, whose SessionStart then
  * kept a copy named for this tree's version from the installed, older plugin
- * (\`versions/0.1.274\` with 0.1.273 code, 2026-10-23).
+ * (`versions/0.1.274` with 0.1.273 code, 2026-10-23).
  */
 
 /** Where the run's temp parent goes and the environment that names it; tests pass their own. */
@@ -90,7 +90,7 @@ export default async function setup(
 }
 
 /** Points the temp variables at a new parent under `root`; returns what removes it and restores them. */
-/** Clears a Codex hook's plugin variables from \`env\`; the function returned puts them back. */
+/** Clears a Codex hook's plugin variables from `env`; the function returned puts them back. */
 function clearPluginVariables(env: NodeJS.ProcessEnv): () => void {
   const found = PLUGIN_VARIABLES.map((name) => [name, env[name]] as const);
   for (const name of PLUGIN_VARIABLES) delete env[name];

@@ -154,9 +154,9 @@ export function changedSince(
  */
 
 /**
- * What a consumer was last told about the daemon; \`{ short }\`, the
+ * What a consumer was last told about the daemon; `{ short }`, the
  * incarnation of a daemon that ended its handoff short (row 011-140), is
- * \`alive\` told once, and a hook before that row reads it as \`alive\`.
+ * `alive` told once, and a hook before that row reads it as `alive`.
  */
 export type ToldLiveness =
   | DaemonLiveness["state"]
@@ -189,7 +189,7 @@ export function toldLiveness(store: Store, consumer: Consumer): ToldLiveness {
   return typeof since === "number" ? { startingSince: since as EpochMs } : "alive";
 }
 
-/** What telling \`live\` records (\`tellLiveness\`): its state, or the short handoff's daemon. */
+/** What telling `live` records (`tellLiveness`): its state, or the short handoff's daemon. */
 export function toldOf(live: DaemonLiveness): ToldLiveness {
   return live.state === "alive" && live.short !== undefined ? { short: live.short.of } : live.state;
 }

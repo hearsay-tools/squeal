@@ -416,10 +416,10 @@ export interface DaemonStopping {
 /**
  * Row 011-140 (011 C9): the recorded daemon registered older than the live
  * handoff claim it ended, so it validates at its own version, no hook asks
- * it to step down again, and \`squeal start\` of the claim's version replaces it.
+ * it to step down again, and `squeal start` of the claim's version replaces it.
  */
 export interface DaemonShort {
-  /** Its incarnation, what a consumer is told once (\`ToldLiveness\`). */
+  /** Its incarnation, what a consumer is told once (`ToldLiveness`). */
   readonly of: string;
   /** Its version. */
   readonly version: string;

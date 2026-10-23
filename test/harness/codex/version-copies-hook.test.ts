@@ -26,7 +26,7 @@ import { codexRecorded, sessionOf } from "./helpers.js";
  * runtime. A hook whose daemon answers copies nothing.
  *
  * Row 011-140: a hook spawns no daemon from a copy whose code is another
- * version, and keeps no copy from a \`PLUGIN_ROOT\` of another version.
+ * version, and keeps no copy from a `PLUGIN_ROOT` of another version.
  */
 
 const SLOW = { timeout: 240_000 } as const;

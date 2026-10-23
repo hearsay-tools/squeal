@@ -50,7 +50,7 @@ export interface DaemonRecord {
    */
   readonly token?: string;
   /**
-   * Row 011-140 (011 C9): the script the daemon runs (\`process.argv[1]\`),
+   * Row 011-140 (011 C9): the script the daemon runs (`process.argv[1]`),
    * kept in its token row beside the version, so a wrong copy's code can be
    * traced to its file. Absent from a release before it.
    */
