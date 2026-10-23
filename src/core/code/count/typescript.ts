@@ -59,6 +59,7 @@ const WRAPPERS = new Set([
 export const TYPESCRIPT_RULES: CountRules = {
   functions: FUNCTIONS,
   classes: CLASSES,
+  fieldParents: new Set(["public_field_definition"]),
   nameOf(node) {
     const own = node.childForFieldName("name");
     return own === null ? anonymousName(node) : keyText(own);
@@ -76,7 +77,7 @@ export const TYPESCRIPT_RULES: CountRules = {
     if (at.named) return NAMED_DECISIONS[at.type] ?? null;
     // A default parameter, `a = 1`, on its `=`, so that a default `b ? 1 : 2` adds its own 1 too.
     if (at.type === "=") return isParameter(at.parentType) ? "default" : null;
-    // tree-sitter-tsx 0.23.2 leaves the `?.` of a call a bare token; a member's is inside `optional_chain`.
+    // tree-sitter-tsx 0.23.2 leaves a call's `?.` a bare token; a member's is in `optional_chain`.
     if (at.type === "?.") return at.parentType === "optional_chain" ? null : "optional-chain";
     return TOKEN_DECISIONS[at.type] ?? null;
   },
