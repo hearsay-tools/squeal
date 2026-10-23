@@ -2,9 +2,9 @@ import { statSync } from "node:fs";
 import { join, posix } from "node:path";
 import { readPolicy } from "../core/daemon/policy.js";
 import { vitestDetected } from "../core/daemon/runner.js";
-import { shellWord } from "../core/delivery/index.js";
 import { createInputMatcher } from "../core/keys/glob.js";
 import { readHeader } from "../core/state/index.js";
+import { shellWord } from "../core/text.js";
 import {
   type AbsolutePath,
   bootstrappedMetaKey,

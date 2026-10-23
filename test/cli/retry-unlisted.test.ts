@@ -3,8 +3,8 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { retryCommand } from "../../src/cli/retry.js";
-import { shellWord } from "../../src/core/delivery/index.js";
 import { readRetries } from "../../src/core/retry/index.js";
+import { shellWord } from "../../src/core/text.js";
 import {
   bootstrappedMetaKey,
   type CheckKey,
