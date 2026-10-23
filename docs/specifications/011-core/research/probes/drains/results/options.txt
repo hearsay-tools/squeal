@@ -1,0 +1,18 @@
+25 drains with a known end; wait PSS 350.0 MiB, wait CPU 0.64 CPU-s/min, gap 60 s
+| Option | Daemon-minutes saved | MiB-minutes saved (daemon only) | CPU-s saved | Runs lost | Results lost | of them read later | at a key another live worktree holds |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| (a) exit when it must wait | 1226 of 1312 | 429,085 | 3,243 to 5,318 | 148 | 3320 | 1762 | 1713 |
+| (a') exit when only slow files wait | 1139 of 1312 | 398,482 | 1,756 to 2,623 | 142 | 1364 | 581 | 581 |
+| (b) 15-min bound | 947 of 1312 | 331,408 | 4,028 to 6,915 | 101 | 4391 | 435 | 435 |
+| (c) no drains | 1311 of 1312 | 458,792 | 7,366 to 12,873 | 185 | 8946 | 1789 | 1713 |
+| (d) as today | 0 of 1312 | 0 | 0 to 0 | 0 | 0 | 0 | 0 |
+| (a) exit when it must wait | 1277 of 1312 | 446,996 | 5,787 to 9,980 | 165 | 6444 | 1762 | 1713 |
+| (a') exit when only slow files wait | 1139 of 1312 | 398,482 | 1,756 to 2,623 | 142 | 1364 | 581 | 581 |
+| (b) 15-min bound | 947 of 1312 | 331,408 | 4,028 to 6,915 | 101 | 4391 | 435 | 435 |
+| (c) no drains | 1311 of 1312 | 458,792 | 7,366 to 12,873 | 185 | 8946 | 1789 | 1713 |
+| (d) as today | 0 of 1312 | 0 | 0 to 0 | 0 | 0 | 0 | 0 |
+| (a) exit when it must wait | 1202 of 1312 | 420,711 | 2,891 to 4,682 | 94 | 2784 | 1467 | 1418 |
+| (a') exit when only slow files wait | 1115 of 1312 | 390,108 | 1,404 to 1,987 | 88 | 828 | 286 | 286 |
+| (b) 15-min bound | 947 of 1312 | 331,408 | 4,028 to 6,915 | 101 | 4391 | 435 | 435 |
+| (c) no drains | 1311 of 1312 | 458,792 | 7,366 to 12,873 | 185 | 8946 | 1789 | 1713 |
+| (d) as today | 0 of 1312 | 0 | 0 to 0 | 0 | 0 | 0 | 0 |
