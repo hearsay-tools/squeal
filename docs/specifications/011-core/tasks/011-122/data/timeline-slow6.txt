@@ -1,0 +1,63 @@
+# slow6 r1-0: ms relative to the writer's freed time (1792724836199); probe events of the daemon's main thread (t0), writes outside a transaction and sliced steps' successes left out
+ -7534 tx-busy {"waitMs":254.4,"slice":250,"at":"Object.transaction@store/store:62 < reconcileBatch@scheduler/batch:50 < TierScheduler.#pass@scheduler/scheduler:314 < ?@scheduler/scheduler:289","error":"Error: database is locked"}
+ -7533 hb-pass-failed {"passMs":272.4,"totalMs":272.5,"error":"Error: database is locked"}
+ -7533 retry-failed {"attempt":5,"passMs":309.8,"error":"database is locked"}
+ -7533 busy-waiting {"key":"pass","what":null,"first":false}
+ -7533 stall {"ms":257,"fromMs":1792724828409}
+ -7533 feed-debounced {"paths":5}
+ -7282 tx-busy {"waitMs":251.2,"slice":250,"at":"Object.transaction@store/store:62 < expireConsumers@delivery/expiry:31 < ?@daemon/lifecycle:87 < SlicedWrites.#run@daemon/sliced-writes:57","error":"Error: database is locked"}
+ -7281 sliced-step-failed {"what":"consumer expiry","step":"consumer expiry","ms":251.7,"error":"Error: database is locked"}
+ -7281 busy-waiting {"key":"consumer expiry","what":"consumer expiry","first":false}
+ -7281 stall {"ms":253,"fromMs":1792724828665}
+ -7281 retry-pass {"attempt":6,"delay":250,"pausedMs":252.6}
+ -7281 rec-start {"trigger":"watch"}
+ -7275 tier-record-wait {"files":6}
+ -7275 tier-record-locked {"lockWaitMs":0.1}
+ -2267 tx-busy {"waitMs":5007.1,"slice":null,"at":"Object.transaction@store/store:62 < TierScheduler.#record@scheduler/scheduler:988","error":"Error: database is locked"}
+ -2267 tier-stall {"error":"Error: database is locked"}
+ -2266 busy-waiting {"key":"scheduler","what":"6 files of a tier queued again","first":false}
+ -2266 pump-gave-up {"what":"6 files of a tier queued again","attempts":0}
+   +67 tx {"waitMs":2331.2,"bodyMs":0.5,"commitMs":0.1,"slice":null,"at":"Object.transaction@store/store:62 < Ledger.commit@scheduler/ledger:480 < ?@scheduler/scheduler:1223"}
+   +67 stall {"ms":7348,"fromMs":1792724828918}
+   +67 tx {"waitMs":0,"bodyMs":0.3,"commitMs":0,"slice":250,"at":"Object.transaction@store/store:62 < beat@daemon/lifecycle:224 < ?@daemon/lifecycle:163 < SlicedWrites.#run@daemon/sliced-writes:57"}
+   +68 sliced-step {"what":"the heartbeat","step":"heartbeat","ms":0.6}
+   +68 sliced-step {"what":"the heartbeat","step":"harness check","ms":0.3}
+   +68 sliced-step {"what":"the heartbeat","step":"leaving check","ms":0.1}
+   +68 busy-ran {"key":"the heartbeat","what":null,"left":["pass","consumer expiry","scheduler"]}
+   +68 tx {"waitMs":0,"bodyMs":0.2,"commitMs":0,"slice":250,"at":"Object.transaction@store/store:62 < expireConsumers@delivery/expiry:31 < ?@daemon/lifecycle:87 < SlicedWrites.#run@daemon/sliced-writes:57"}
+   +68 sliced-step {"what":"consumer expiry","step":"consumer expiry","ms":0.4}
+   +68 busy-ran {"key":"consumer expiry","what":null,"left":["pass","scheduler"]}
+   +69 tx {"waitMs":0,"bodyMs":0,"commitMs":0,"slice":250,"at":"Object.transaction@store/store:62 < beat@daemon/lifecycle:224 < ?@daemon/lifecycle:163 < SlicedWrites.#run@daemon/sliced-writes:57"}
+   +69 sliced-step {"what":"the heartbeat","step":"heartbeat","ms":0.2}
+   +69 sliced-step {"what":"the heartbeat","step":"harness check","ms":0}
+   +69 sliced-step {"what":"the heartbeat","step":"leaving check","ms":0}
+   +69 pump-resume
+   +78 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +78 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +79 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +79 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +79 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +79 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < selectTier@scheduler/tiers:162"}
+   +96 tx {"waitMs":0,"bodyMs":0.5,"commitMs":0.1,"slice":null,"at":"Object.transaction@store/store:62 < startTier@scheduler/tiers:278 < selectTier@scheduler/tiers:219 < ?@scheduler/scheduler:793"}
+   +96 tier-fly {"files":6,"lane":"vitest"}
+   +96 pump-landed
+   +96 busy-ran {"key":"scheduler","what":null,"left":["pass"]}
+  +103 rec-emit {"trigger":"watch","gitStatusMs":7350,"specMs":33.2,"candidatesMs":0.4,"linkedMs":0,"paths":12}
+  +103 hb-enter {"trigger":"watch","paths":12,"slice":250}
+  +103 hb-locked {"lockWaitMs":0}
+  +135 read-head {"ms":29.6}
+  +135 batch-phases {"diffMs":1.6,"besideMs":0,"headMs":29.8,"changes":1,"updates":12}
+  +137 tx {"waitMs":0.1,"bodyMs":1.9,"commitMs":0.1,"slice":250,"at":"Object.transaction@store/store:62 < reconcileBatch@scheduler/batch:50 < TierScheduler.#pass@scheduler/scheduler:314 < ?@scheduler/scheduler:289"}
+  +137 pass-phases {"confirmHeldMs":0,"adoptMs":0,"reconcileBatchMs":33.7,"revision":1,"createdAt":1792724836334}
+  +138 run {"ms":0,"slice":250,"at":"Object.set@store/store:77 < publishQuiet@scheduler/quiet:128 < BacklogQuiet.#quiet [as publish]@scheduler/scheduler:81 < BacklogQuiet.#told@scheduler/quiet:69"}
+  +138 run {"ms":0,"slice":250,"at":"Object.set@store/store:77 < TierYields.#publish@scheduler/yields:204 < TierYields.check@scheduler/yields:113 < TierScheduler.#cutTiers@scheduler/scheduler:361"}
+  +138 hb-pass-done {"passMs":35,"totalMs":35.1}
+  +139 retry-landed {"attempt":6,"passMs":7420}
+  +139 busy-ran {"key":"pass","what":"revision 1","left":[]}
+  +140 busy-episode-end {"waitedMs":10775,"waited":["the heartbeat","consumer expiry","6 files of a tier queued again","revision 1"]}
+  +140 tx {"waitMs":0,"bodyMs":0.1,"commitMs":0,"slice":null,"at":"Object.transaction@store/store:62 < appendNote@notes:17 < writeNote@daemon/notes:8 < Daemon.#note@daemon/daemon:648"}
+  +140 feed-batch-start
+  +148 tx {"waitMs":0,"bodyMs":0.1,"commitMs":0,"slice":null,"at":"Object.transaction@store/store:62 < storeClosures@scheduler/revision:194 < applyRunnerPart@scheduler/refinement:169 < ?@scheduler/runner-work:142"}
+  +148 run {"ms":0,"slice":null,"at":"Object.byKey@store/repos/results:34 < acceptedAt@scheduler/accept:17 < Ledger.probe@scheduler/ledger:273 < Ledger.lookup@scheduler/ledger:264"}
+  +149 run {"ms":0,"slice":null,"at":"Object.set@store/store:77 < publishQuiet@scheduler/quiet:128 < BacklogQuiet.#quiet [as publish]@scheduler/scheduler:81 < BacklogQuiet.#told@scheduler/quiet:69"}
+  +149 tx {"waitMs":0,"bodyMs":0.1,"commitMs":0,"slice":null,"at":"Object.transaction@store/store:62 < Ledger.commit@scheduler/ledger:480 < ?@scheduler/runner-work:145"}
