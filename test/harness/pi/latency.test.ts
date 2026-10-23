@@ -23,7 +23,8 @@ import { buildPiBundles } from "./helpers.js";
  * minimal environment 001's and 002's hooks get, since `NODE_USE_ENV_PROXY`
  * in an agent's environment adds 20 ms of CPU to every worker's start; and
  * each fresh worker exits before the next starts, as Pi holds one at a time,
- * since a process holding seven live workers starts the next 10 to 20 ms late.
+ * since in a process that keeps them all, the 7th and the 20th start 5 to 34
+ * ms late (median 12 ms).
  */
 
 const RUNS = 50;
