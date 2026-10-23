@@ -80,3 +80,39 @@ Read `docs/specifications/011-core/tasks/wave-18.md` (W1 to W4), the notes under
 - `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is 0.1.271 in all eight places; the bundles match the tree; the four launchers are byte-identical.
 
 Run `npm ci`, then the test files W1 to W4 added or changed, directly. Never run a script under `evals/bin/` yourself, `--help` included. The full suite is CI on the candidate and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-w18.log`); a gate log names only failing files. Row 011-122 is a known flake. Write `reviews/0.1.271.md` under `docs/specifications/011-core/` with a PASS or FAIL verdict and commit it alone.
+
+## Wave 18.5: repair of review 0.1.271
+
+Review `reviews/0.1.271.md` failed cand/0.1.271 70bd5840f with B1 and one should-fix, S1. The two repairs own disjoint files, so they run in parallel. Each resumes its wave 18 worker in its own tree, on its own branch.
+
+### W5: B1, a claim that ends with no result lets the promotion cut its tier (011-55; closes 011-123)
+
+Use /worker. Shape: repair. Resumes W4 (d0d65d20, row 011-55).
+
+Outcome: once another worktree's claim of a promoted file's key ends with no result (its heartbeat lost, or the waiter's bound passed), the running tier in the file's lane yields as C15 says, with no new edit or promotion.
+
+Read `reviews/0.1.271.md` B1 and "Inputs for the fix wave"; board row 011-123; spec 011 C7 (claims) and C15.
+
+Seam: `waitedFor`, `#decide` and `boundOf` (`src/core/scheduler/yields.ts:254`, `:159`, `:329` at 70bd5840f), the busy-lane wait (`scheduler.ts:795`), and `Claims` (`claims.ts`). A lead: the review's five-step regression first.
+
+Owns: `yields.ts`, `claims.ts`, the busy-lane wait in `scheduler.ts`, `queue.ts`, `promotions.ts`, their tests, `tasks/011-55/notes.md`. Not yours: `tiers.ts` (3b94ca98's), `src/core/retry/` and `src/core/status/` (W6), the board, spec text, bundles, version. No `npm run build`.
+
+Done when: the regression fails before and passes after, for heartbeat loss and for the waiter's bound (its bound starts at first sight); a live claim still keeps the tier running; a claimant's result is taken here with no run; an edit's file and an unclaimed file still make the tier yield; the recheck runs under the scheduler lock; `test/keys/key-format.test.ts`, lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+### W6: S1, the load retry command names its path as one shell argument (011-67)
+
+Use /worker. Shape: repair. Resumes W2 (9bc1c8e9, row 011-67).
+
+Outcome: the load retry command passes its path to a POSIX shell as one argument, so a path with a space or a quote selects that file; a plain path prints as today.
+
+Read `reviews/0.1.271.md` S1.
+
+Seam: the command in `src/core/retry/text.ts:125` at 70bd5840f. A lead: a shell-quoting helper already in `src/`, if there is one, quoting only when a path needs it.
+
+Owns: `src/core/retry/text.ts`, its tests, `tasks/011-67/notes.md`. Not yours: W5's files, the board, spec text, bundles, version. No `npm run build`.
+
+Done when: a path with a space and a path with a quote each print a command that a POSIX shell passes as one argument, through status, the registration report and `why`, by test; a plain path is unchanged; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted), their output in your summary.
+
+### R2: narrow re-review
+
+Use /reviewer. Shape: review. Pinned to the re-cut `cand/0.1.271`: B1 and S1 against `reviews/0.1.271.md`, the repair commits only, and the range-diff of the rest against 70bd5840f. Write `reviews/0.1.271-r2.md`. This is the last round: a second FAIL ends the loop.
