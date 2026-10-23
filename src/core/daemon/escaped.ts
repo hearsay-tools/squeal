@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { RunnerAdapter, RunOptions, TestFileRef } from "../types/index.js";
+import { focusesFile } from "./composite-runner.js";
 import { lowerWhile } from "./low-priority.js";
 import {
   childrenOf,
@@ -405,6 +406,7 @@ export function afterEachRun(
     tierPart: (testFile) => runner.tierPart?.(testFile) ?? "",
     besideBacklog: (testFile) => runner.besideBacklog?.(testFile) ?? false,
     backlogSlot: (testFile) => runner.backlogSlot?.(testFile) ?? null,
+    focusesFile: (testFile) => focusesFile(runner, testFile),
     environment: () => runner.environment(),
     ...(lane === undefined ? {} : { lane }),
     ...(releaseLane === undefined ? {} : { releaseLane }),

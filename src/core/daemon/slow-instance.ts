@@ -1,4 +1,5 @@
 import { type InvalidatedPath, isSlowLane, type RunnerAdapter } from "../types/index.js";
+import { focusesFile } from "./composite-runner.js";
 
 /**
  * Spec 004 D2: "a slow file runs in its own runner process, never in the
@@ -61,6 +62,8 @@ export function withSlowInstance(
     tierPart: (testFile) => fast.tierPart?.(testFile) ?? "",
     besideBacklog: (testFile) => fast.besideBacklog?.(testFile) ?? false,
     backlogSlot: (testFile) => fast.backlogSlot?.(testFile) ?? null,
+    // Row 011-145: a focused tier runs on the fast instance; a slow file gets none.
+    focusesFile: (testFile) => focusesFile(fast, testFile),
     environment: () => fast.environment(),
     ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {
