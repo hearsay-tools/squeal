@@ -199,13 +199,13 @@ function killGroups(signal) {
 let onSignal = false;
 
 /**
- * A judge script's answer to SIGINT and SIGTERM, installed once (006-98): every group
- * `runBounded` runs gets SIGKILL, and the script exits 128 + n once none has a live process, or
- * after `waitMs` whatever is live, naming on stderr each group that outlived the wait: a process
- * in uninterruptible sleep ends at SIGKILL only when its wait does. A judge call runs in a group
- * of its own, which a terminal's signal no longer reaches. The wait is synchronous: a killed
- * call's end resumes nothing, so the script writes no results from the calls refused after it.
- * `run-cell` has its own teardown and does not call it.
+ * A judge script's answer to SIGINT, SIGTERM and SIGHUP, `run-cell`'s three, installed once
+ * (006-98): every group `runBounded` runs gets SIGKILL, and the script exits 128 + n once none
+ * has a live process, or after `waitMs` whatever is live, naming on stderr each group that
+ * outlived the wait: a process in uninterruptible sleep ends at SIGKILL only when its wait does.
+ * A judge call runs in a group of its own, which a terminal's signal no longer reaches. The wait
+ * is synchronous: a killed call's end resumes nothing, so the script writes no results from the
+ * calls refused after it. `run-cell` has its own teardown and does not call it.
  */
 export function stopOnSignal(waitMs = 5_000) {
   if (onSignal) return;
@@ -213,6 +213,7 @@ export function stopOnSignal(waitMs = 5_000) {
   for (const [sig, n] of [
     ["SIGINT", 2],
     ["SIGTERM", 15],
+    ["SIGHUP", 1],
   ])
     process.on(sig, () => {
       let live = killGroups("SIGKILL");
