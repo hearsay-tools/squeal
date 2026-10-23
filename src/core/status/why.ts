@@ -1,5 +1,6 @@
 import { worktreeIdFor } from "../fs/index.js";
 import { testFileId } from "../keys/index.js";
+import { withRecorded } from "../retry/index.js";
 import {
   checkIdentity,
   failureKeysOnce,
@@ -235,6 +236,11 @@ function report(
   const commit = readRevisionCommit(store, worktreeId, latest);
   const changed = changedSince(store, worktreeId, knownState?.observedAt ?? null, revision);
   const closure = whyClosureChanges(store, worktreeId, check, knownState, revision, session);
+  // Row 011-67 (gh-52): the facts status gives a known failure, read from the same producer.
+  const recorded =
+    knownState === null
+      ? undefined
+      : withRecorded(store, worktreeId, [knownState], revision ?? 0)[0]?.recorded;
   const file = testFileId(testFileOf(check));
   const rankedBy = whyRankedBy(store, worktreeId, (ref) => testFileId(ref) === file);
   return {
@@ -248,6 +254,7 @@ function report(
     check,
     worktreeRoots,
     knownState,
+    ...(recorded === undefined ? {} : { recorded }),
     ...(frame === null ? {} : { testFileFrame: frame }),
     history: store.transitions.history(worktreeId, check),
     results,

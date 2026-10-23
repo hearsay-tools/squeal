@@ -764,6 +764,13 @@ export interface WhyReport {
   /** Known state in this worktree; `null` when it has none. */
   readonly knownState: KnownState | null;
   /**
+   * For a failing known state: the facts status gives it (`KnownFailure.recorded`),
+   * where and at what load its stored result was recorded and the retry asked
+   * at its key (row 011-67, gh-52). Absent for any other state, or when no
+   * stored result is identifiably behind it.
+   */
+  readonly recorded?: RecordedFacts;
+  /**
    * For a failing known state whose `location` is not in the check's own
    * test file: the first frame in that file, read from the stored result
    * behind the state (011 C5 as amended 2026-10-21, gh-67). Absent when
