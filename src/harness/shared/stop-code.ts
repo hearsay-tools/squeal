@@ -23,7 +23,8 @@ export function codeStopReason(
   const since = consumerSince(context.store, context.consumer);
   if (since === null) return null;
   const { worktreeId } = context.consumer;
-  const over = withCode(codeSource(context.commonDir, context.root), ({ store }) =>
+  const source = context.code ?? codeSource(context.commonDir, context.root);
+  const over = withCode(source, ({ store }) =>
     store.read(() =>
       wentOverSince(store, worktreeId, since.since).map(
         (s) => `${functionName(s.check)} (${whereOf(s.check, lineOf(store, worktreeId, s.check))})`,

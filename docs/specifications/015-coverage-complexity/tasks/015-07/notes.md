@@ -38,7 +38,8 @@ The told marks are code `meta` keys per consumer: `seeded:<worktree>:<session>:<
 7. **"Since this session started"** counts the functions failing now whose last transition went to `fail` after the registration: the shell's session (`CLAUDE_CODE_SESSION_ID`, `CODEX_SESSION_ID`, `OPENCODE_SESSION_ID`, as `status --wait`), else the oldest registered consumer's, and the line says which (`since the oldest registered session started`). A function failing since a first count has no transition, so it never counts, and never blocks Stop.
 8. **`squeal code --changed`** keeps functions whose last transition is after that registration, recoveries included; a removed function is not listed, since its state is gone.
 9. **`squeal code` exit codes**: 0 with an answer, 1 with complexity off, no code store or the store unavailable, 2 on a usage error; `--json` then prints `{ v: 1, available: false, message }`.
-10. **Status `code` JSON** adds `since` (`session`, `oldest` or `null`) and `files` beside D6's fields, so the text can say which registration and how far the count is.
+10. **A busy code store** costs that delivery, status read or Stop check its code part, never an error or a stall: the hooks open it with their own busy timeout, `withCode` reads a busy error as `null`, and the delivery reads first and takes the write lock only when it has a view or told mark to write.
+11. **Status `code` JSON** adds `since` (`session`, `oldest` or `null`) and `files` beside D6's fields, so the text can say which registration and how far the count is.
 
 ## For 015-08 (the first edit to a standing failure)
 
