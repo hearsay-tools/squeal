@@ -1,7 +1,14 @@
-import { HANDOFF_BOUND_MS, readHandoff } from "../delivery/handoff.js";
+import {
+  HANDOFF_BOUND_MS,
+  handoffFrom,
+  readHandoff,
+  readShortHandoff,
+} from "../delivery/handoff.js";
 import { readDaemonNotes } from "../notes.js";
 import {
   type DaemonLiveness,
+  type DaemonRecord,
+  type DaemonShort,
   type DaemonStopping,
   daemonIncarnation,
   type EpochMs,
@@ -21,7 +28,8 @@ import { daemonGone, shutDown } from "./died.js";
  * `HANDOFF_BOUND_MS` after its shutdown began. A record with no incarnation
  * (a release before task 001-270) leaves no mark to read. Once the old
  * daemon cleared its record, a live claim still says the handoff runs
- * (`claimed`), until the successor registers.
+ * (`claimed`), until the successor registers. Row 011-140: an alive daemon
+ * that registered older than the claim it ended has \`short\` (\`withShort\`).
  */
 export function withStopping(
   store: Store,
@@ -33,7 +41,9 @@ export function withStopping(
   const record = worktree.daemon;
   if (record === null) return claimed(store, worktree, live, now);
   const self = daemonIncarnation(record);
-  if (self === null || !shutDown(store, worktree.id, self)) return live;
+  if (self === null || !shutDown(store, worktree.id, self)) {
+    return withShort(store, worktree, record, live);
+  }
   if (live.state === "down" && daemonGone(worktree)) return live;
   // The exit note's time; past the notes' cap, the last heartbeat, which stopped with the timers.
   const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
@@ -72,6 +82,32 @@ function claimed(
   const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
   const { to, at: since, boundAt } = claim;
   return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
+}
+
+/** \`live\` with \`short\` while it is alive and the short handoff's mark names \`record\`. */
+function withShort(
+  store: Store,
+  worktree: WorktreeRecord,
+  record: DaemonRecord,
+  live: DaemonLiveness,
+): DaemonLiveness {
+  if (live.state !== "alive") return live;
+  const mark = readShortHandoff(store, worktree.id);
+  if (mark === null || mark.of !== handoffFrom(record)) return live;
+  const { of, version, claimed, at: since } = mark;
+  return { ...live, short: { of, version, claimed, since } };
+}
+
+/**
+ * What every text says of a daemon that ended its handoff short (row
+ * 011-140): its version validates, and \`squeal start\` of the claim's replaces it.
+ */
+export function shortText(short: DaemonShort, command: string): string {
+  const at = new Date(short.since).toISOString();
+  return (
+    `the handoff to ${short.claimed} ended at ${at} with a ${short.version} daemon, which validates; ` +
+    `no hook asks it to step down again, and \`${command} start\` of ${short.claimed} replaces it`
+  );
 }
 
 /** A handoff's bound in seconds, as the texts name it. */
