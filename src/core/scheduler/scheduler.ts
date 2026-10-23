@@ -14,7 +14,6 @@ import {
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
   isSlowLane,
-  type ProjectName,
   type RelativePath,
   type Revision,
   type RunReport,
@@ -58,7 +57,7 @@ import { RERUN_CAP } from "./rerun.js";
 import { takeRetries } from "./retries.js";
 import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
-import { heldSetups } from "./setup.js";
+import { type HeldSetups, heldSetups } from "./setup.js";
 import { SlotRecords } from "./slot-records.js";
 import { busyLanes } from "./slots.js";
 import { slowView } from "./slow.js";
@@ -74,6 +73,7 @@ import {
   selectTier,
   supersededIn,
   type Tier,
+  type TierFile,
   unfinishedFiles,
   unstableInputs,
 } from "./tiers.js";
@@ -110,17 +110,20 @@ interface EndedRun {
 /**
  * What a record decides under the lock before its write (row 011-126): kept
  * while a busy store holds the write back, so a retry neither re-keys nor
- * counts a withhold again.
+ * counts a withhold again. The merge hold is read again at each try (review
+ * 0.1.273, B1).
  */
 interface PreparedRecord {
-  readonly report: RunReport;
+  /** The completion barrier's report, its startup failure kept for the hold's check. */
+  readonly ranReport: RunReport;
   readonly changed: ReadonlySet<RelativePath>;
   readonly touched: readonly RelativePath[];
   readonly observed: TierObservations | undefined;
-  /** The files queued again instead of stored: first withholds, held, not started, unfinished. */
+  /** The files queued again instead of stored whatever the hold: first withholds, unfinished. */
   readonly again: readonly string[];
-  /** The projects of held files, which give no setup outcome. */
-  readonly setupProjects: ReadonlySet<ProjectName>;
+  /** The files and setups the merge hold held at the preparation: still held at each try. */
+  readonly held: readonly TierFile[];
+  readonly setupsHeld: HeldSetups<TierFile>;
   /** The stop's cancel had reached the run. */
   readonly cancelled: boolean;
   readonly withheld: readonly string[];
@@ -1081,8 +1084,6 @@ class TierScheduler implements Scheduler {
     // Review 0.1.266, B2: the held files' projects give no setup outcome, and a startup failure
     // that blames one is the hold's: it blocks nothing and the files it kept from starting queue.
     const setupsHeld = heldSetups(this.#hold, tier.files, held, ranReport.startupFailure);
-    const { startupFailure: _, ...withoutStartup } = ranReport;
-    const report = setupsHeld.startup ? withoutStartup : ranReport;
     // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
     // again as a moved install does, its previous state standing, and a second leaves it
     // `unknown`, per file whatever tier it shares (review 007-31, B1).
@@ -1102,21 +1103,49 @@ class TierScheduler implements Scheduler {
     // hold's cancel cut short stays queued for the hold's end (row 011-74).
     const cancelled = this.#stop.signal.aborted;
     const unfinished = cancelled || holdCut ? unfinishedFiles(tier, ran) : [];
-    const again = [
-      ...(withhold?.again.map(({ file }) => file.id) ?? []),
-      ...held.map(({ file }) => file.id),
-      ...setupsHeld.notStarted.map(({ file }) => file.id),
-      ...unfinished,
-    ];
-    const setupProjects = setupsHeld.projects;
-    return { report, changed, touched, observed, again, setupProjects, cancelled, withheld };
+    const again = [...(withhold?.again.map(({ file }) => file.id) ?? []), ...unfinished];
+    return {
+      ranReport,
+      changed,
+      touched,
+      observed,
+      again,
+      held,
+      setupsHeld,
+      cancelled,
+      withheld,
+    };
+  }
+
+  /**
+   * Review 0.1.273, B1 (011 C9): what the merge hold holds as the record's
+   * write lands, read again at each try, since a hold can start while a busy
+   * store holds the write back. A file or setup held at the preparation stays
+   * held.
+   */
+  #heldNow(tier: Tier, prepared: PreparedRecord): HeldSetups<TierFile> & { held: TierFile[] } {
+    const { observed, ranReport, setupsHeld: was } = prepared;
+    const now = heldFiles(this.#hold, tier.files, observed?.growth);
+    const held = tier.files.filter((f) => prepared.held.includes(f) || now.includes(f));
+    const setups = heldSetups(this.#hold, tier.files, held, ranReport.startupFailure);
+    return {
+      held,
+      projects: new Set([...was.projects, ...setups.projects]),
+      startup: was.startup || setups.startup,
+      notStarted: tier.files.filter(
+        (f) => was.notStarted.includes(f) || setups.notStarted.includes(f),
+      ),
+    };
   }
 
   /** The record's one write transaction, from what `#prepare` decided. */
   #write(ended: EndedRun, prepared: PreparedRecord, commit: boolean): Recorded {
     const { context, ledger } = this.#started();
     const { tier, ran, ignored, installMoved, runtimeGone, slow } = ended;
-    const { report, changed, touched, observed, setupProjects, cancelled, withheld } = prepared;
+    const { ranReport, changed, touched, observed, cancelled, withheld } = prepared;
+    const { held, projects, startup, notStarted } = this.#heldNow(tier, prepared);
+    const { startupFailure: _, ...withoutStartup } = ranReport;
+    const report = startup ? withoutStartup : ranReport;
     // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
     const moved = context.store.transaction(() => {
       // Rows 011-66 and 011-106: a crash after the daemon's stop began, or a run while its own
@@ -1125,11 +1154,16 @@ class TierScheduler implements Scheduler {
         stopping: this.#stopping() && !cancelled,
         runtimeGone,
       });
-      const again = [...prepared.again, ...interrupted];
+      const again = [
+        ...prepared.again,
+        ...held.map(({ file }) => file.id),
+        ...notStarted.map(({ file }) => file.id),
+        ...interrupted,
+      ];
       const requeue = installMoved || again.length === 0 ? installMoved : new Set(again);
       // Review 0.1.262, B2: a report the runtime's loss rejects applies no setup outcome either.
       const lost = runtimeGone && interrupted.length > 0;
-      const setups = lost ? false : setupProjects.size === 0 || setupProjects;
+      const setups = lost ? false : projects.size === 0 || projects;
       this.#warmUp.record(context, ignored);
       this.#yields.ended(context, tier);
       const result = recordTier(
