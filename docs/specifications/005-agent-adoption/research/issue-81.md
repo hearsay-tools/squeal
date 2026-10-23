@@ -2,7 +2,7 @@
 
 Date: 2026-10-23. Issue: https://github.com/hearsay-tools/squeal/issues/81. Related: closed [#48](https://github.com/hearsay-tools/squeal/issues/48), `issue-48.md`, `plugin-cache-cleanup.md`, spec 005 D3 and D6, spec 002 D1. Versions: Squeal checkout 0.1.276 (`ed9c18b64`), installed Codex plugin 0.1.275 then 0.1.276, Codex CLI 0.160.1 (from the session log). Time box: 20 minutes.
 
-Verdict: **reproduced.** A live Codex session's catalog skill path disappears during an update, while the saved skill copy and the stable launcher survive. This is a recurrence of a gap that 005-73 left on purpose, not a regression of 005-73. The real session also did not get the saved-skill line, because no SessionStart text reached it.
+Verdict: **reproduced synthetically; no live update replayed.** The probe deletes a simulated catalog skill path while the saved skill copy and the stable launcher survive. The probe ran at load 45.11 on 24 CPUs, contrary to the required skip rule; retain this as limited evidence, not a compliant live reproduction. This is a recurrence of a gap that 005-73 left on purpose, not a regression of 005-73. The real session also did not get the saved-skill line, and no SessionStart text was found in the inspected log.
 
 ## Answers
 
