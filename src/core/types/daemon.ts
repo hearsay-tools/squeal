@@ -116,6 +116,22 @@ export interface PromoteRequest {
   readonly withinMs: number;
 }
 
+/**
+ * Spec 011 C15, focused checks (row 011-145): a named wait with `--check`
+ * asks the daemon to run first, alone, the checks of each of `testFiles`
+ * whose full name holds one of `texts`, for `withinMs`, what is left of the
+ * wait. Answered at once, as `promote` is; the daemon keeps no entry for a
+ * slow file or one whose runner does not focus. A daemon from before this
+ * request answers "unknown request type", and the wait reads as a named wait.
+ */
+export interface FocusRequest {
+  readonly type: "focus";
+  readonly testFiles: readonly TestFileRef[];
+  /** Literal texts, at least one (`RunOptions.checks`). */
+  readonly texts: readonly string[];
+  readonly withinMs: number;
+}
+
 /** `squeal stop`: answered, then the daemon shuts down (D10 shutdown order). */
 export interface StopRequest {
   readonly type: "stop";
@@ -173,6 +189,7 @@ export type DaemonRequest =
   | SyncRequest
   | SyncStatusRequest
   | PromoteRequest
+  | FocusRequest
   | StopRequest
   | StepDownRequest
   | HoldRequest
@@ -322,6 +339,12 @@ export interface PromoteResponse {
   readonly type: "promote";
 }
 
+export interface FocusResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "focus";
+}
+
 export interface StopResponse {
   readonly schemaVersion: PayloadSchemaVersion;
   readonly ok: true;
@@ -374,6 +397,7 @@ export type DaemonResponse =
   | RunSlowResponse
   | SyncResponse
   | PromoteResponse
+  | FocusResponse
   | StopResponse
   | StepDownResponse
   | HoldResponse

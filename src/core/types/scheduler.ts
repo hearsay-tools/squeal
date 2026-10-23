@@ -301,6 +301,19 @@ export interface Scheduler {
    */
   promote(testFiles: readonly TestFileRef[], withinMs: number): Promise<void>;
   /**
+   * Spec 011 C15, focused checks (row 011-145): a named wait with `--check`
+   * asks for the checks of each of `testFiles` whose full name holds one of
+   * `texts`, run first and alone, until `withinMs` on this daemon's clock.
+   * Their outcome is never a result (C5): it goes to the `focused:` meta
+   * row. A slow file or one whose runner does not focus gets no entry.
+   * Absent: the daemon cannot focus.
+   */
+  focus?(
+    testFiles: readonly TestFileRef[],
+    texts: readonly string[],
+    withinMs: number,
+  ): Promise<void>;
+  /**
    * A hook's nudge (task 001-281): a silent Stop ended a turn, so slow files
    * waiting for their consumers to go idle are planned now instead of at the
    * slow tier's recheck. Starts nothing a trigger does not allow.

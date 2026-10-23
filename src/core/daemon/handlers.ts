@@ -68,6 +68,16 @@ export interface HandlerContext {
     testFiles: readonly TestFileRef[],
     withinMs: number,
   ) => Promise<void>;
+  /**
+   * A named wait's focused checks (spec 011 C15, row 011-145), like
+   * `requestPromotion`, never awaited. Absent: this daemon answers that it
+   * cannot focus, and the wait reads as a named wait.
+   */
+  readonly requestFocus?: (
+    testFiles: readonly TestFileRef[],
+    texts: readonly string[],
+    withinMs: number,
+  ) => Promise<void>;
   /** A nudge or a request: the daemon is in use. */
   readonly onActivity: () => void;
   /**
@@ -288,6 +298,11 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
         context.onActivity();
         context.requestPromotion(request.testFiles, request.withinMs).catch(() => {});
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "promote" };
+      case "focus":
+        if (context.requestFocus === undefined) return errorResponse("this daemon cannot focus");
+        context.onActivity();
+        context.requestFocus(request.testFiles, request.texts, request.withinMs).catch(() => {});
+        return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "focus" };
       case "stop":
         context.onStop();
         return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "stop" };
