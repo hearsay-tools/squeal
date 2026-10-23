@@ -117,7 +117,7 @@ describe("the counter on the constructs fixtures (spec 015 D3)", () => {
     ]).toEqual([2, 2, 1, 2]);
   });
 
-  it("counts no class field initializer or static block, as ESLint reports none as a function", async () => {
+  it("counts no class field initializer or static block, which are no function", async () => {
     const ts = await count("constructs.ts");
     const fields = ts.functions.filter((f) => f.qualifiedName.startsWith("Fields."));
     expect(fields.map((f) => `${f.qualifiedName}#${f.occurrence}`)).toEqual([

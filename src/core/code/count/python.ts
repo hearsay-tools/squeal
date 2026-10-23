@@ -27,6 +27,7 @@ const NAMED_DECISIONS: Readonly<Record<string, DecisionKind>> = {
 export const PYTHON_RULES: CountRules = {
   functions: new Set(["function_definition"]),
   classes: new Set(["class_definition"]),
+  fieldParents: new Set(["function_definition"]),
   nameOf(node) {
     return node.childForFieldName("name")?.text ?? "<anonymous>";
   },

@@ -54,7 +54,7 @@ describe("a function's identity (spec 015 D2)", () => {
       "}",
       "export function load(xs) {",
       "  xs.forEach((x) => x);",
-      "  return new Promise((resolve) => setTimeout(() => resolve(xs.map((x) => x).map((x) => x))));",
+      "  return new Promise((ok) => setTimeout(() => ok(xs.map((x) => x).map((x) => x))));",
       "}",
     ].join("\n");
     expect(ids(await functions(text))).toEqual([
@@ -70,7 +70,7 @@ describe("a function's identity (spec 015 D2)", () => {
     ]);
   });
 
-  it("names one that is no argument by the variable, property, field or assignment receiving it", async () => {
+  it("names one that is no argument by the variable, key or parameter receiving it", async () => {
     const text = [
       "const plain = () => 1;",
       "const typed = (() => 2) as () => number;",
