@@ -44,10 +44,23 @@ export function observeMetafile(
   );
 }
 
+/** A `tsc` diagnostic line: `file(line,col): error TS1234: …`. */
+const DIAGNOSTIC = /\(\d+,\d+\): (?:error|warning|message) TS\d+/;
+
+/**
+ * The lines of `tsc --listFiles` output that name a listed file: absolute
+ * paths. A diagnostic beside them is no path, and one longer than a file name
+ * can be made `statSync` throw (review 0.1.277 B2).
+ */
+function listedPaths(stdout: string): string[] {
+  return stdout.split("\n").filter((line) => isAbsolute(line) && !DIAGNOSTIC.test(line));
+}
+
 /**
  * Runs `tsc` with `args` and `--listFiles` in the worktree, then stats what it
  * compiled, also when it fails: `tsc` prints the list beside its errors, and
- * the edit that fixes them must re-key the test.
+ * the edit that fixes them must re-key the test. A failed compile throws its
+ * own error.
  */
 export function tscObserved(args: readonly string[]): string[] {
   let listed: string;
@@ -59,9 +72,12 @@ export function tscObserved(args: readonly string[]): string[] {
       maxBuffer: 16 * 1024 * 1024,
     });
   } catch (error) {
-    const stdout = (error as { stdout?: unknown }).stdout;
-    observeBuildInputs(String(stdout ?? "").split("\n"));
+    try {
+      observeBuildInputs(listedPaths(String((error as { stdout?: unknown }).stdout ?? "")));
+    } catch {
+      // The compile error is what the test reports, whatever a stat threw.
+    }
     throw error;
   }
-  return observeBuildInputs(listed.split("\n"));
+  return observeBuildInputs(listedPaths(listed));
 }
