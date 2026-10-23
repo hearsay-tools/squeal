@@ -5,7 +5,6 @@ import { isNewerVersion, squealVersion } from "../core/daemon/version.js";
 import {
   claimHandoff,
   handoffFrom,
-  liveHandoff,
   readHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
 } from "../core/delivery/handoff.js";
@@ -219,7 +218,6 @@ function claims(root: AbsolutePath, old: number | null, now: () => number): bool
         }
         if (record.startedAt !== old) return false;
         const from = handoffFrom(record);
-        if (liveHandoff(store, id, from, at) !== null) return false;
         return claimHandoff(store, id, { from, to: squealVersion(), at }) !== null;
       });
     } finally {
