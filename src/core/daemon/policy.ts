@@ -15,7 +15,7 @@ import {
   positiveInteger,
   type Shape,
 } from "./config-file.js";
-import { CODE_SHAPE, codePolicy } from "./policy-code.js";
+import { CODE_SHAPE } from "./policy-code.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import { pytestProjects } from "./policy-pytest.js";
 import { slowInclude } from "./policy-slow.js";
@@ -107,7 +107,7 @@ const SHAPE: Shape = {
  * the defaults with one problem.
  */
 export function loadPolicy(root: string): LoadedPolicy {
-  const loaded = codePolicy(loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY));
+  const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
   return {
     policy: loaded.value,
     problems: loaded.problems,
