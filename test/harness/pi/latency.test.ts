@@ -16,12 +16,18 @@ import { buildPiBundles } from "./helpers.js";
  * files of 10 checks: the bare round trip, a tool boundary that delivers (a
  * transition before each call) and one that does not, and a call on a fresh
  * worker, which `session_start` and the first event after a missed deadline
- * pay. Above load average 4, and in CI, the table is reported and nothing is
- * asserted, as 001's and 002's latency tests do.
+ * pay. Above load average 4, before or after the runs, and in CI, the table is
+ * reported and nothing is asserted, as 001's and 002's latency tests do.
+ *
+ * Row 009-31 (`009-pi-adapter/tasks/009-31/notes.md`): the worker gets the
+ * minimal environment 001's and 002's hooks get, since `NODE_USE_ENV_PROXY`
+ * in an agent's environment adds 20 ms of CPU to every worker's start; and
+ * each fresh worker exits before the next starts, as Pi holds one at a time,
+ * since a process holding seven live workers starts the next 10 to 20 ms late.
  */
 
 const RUNS = 50;
-const COLD_RUNS = 10;
+const COLD_RUNS = 20;
 const BUDGET_MS = 80;
 const MAX_LOAD = 4;
 const FILES = 50;
@@ -73,11 +79,16 @@ describe("the Pi delivery worker's round trip", () => {
     const r = seeded();
     const dir = runtimeDir();
     await liveSocket(join(dir, `squeal-${r.worktreeId}.sock`));
-    const env = { ...process.env, XDG_RUNTIME_DIR: dir, SQUEAL_CLI: quietCli().cli };
+    const env = {
+      PATH: process.env.PATH ?? "",
+      HOME: process.env.HOME ?? "",
+      XDG_RUNTIME_DIR: dir,
+      SQUEAL_CLI: quietCli().cli,
+    };
     const start = () => new Worker(join(built.dir, "worker.mjs"), { env });
     const session = { sessionId: SESSION, cwd: r.root };
     const host = createDeliveryHost(start);
-    const hosts = [host];
+    const calmBefore = calm();
     try {
       expect(await host.call({ kind: "start", reason: "startup", ...session }, 2_000)).toMatch(
         /^SQUEAL · registered/,
@@ -110,24 +121,37 @@ describe("the Pi delivery worker's round trip", () => {
         expect(text).toBeNull();
         return ms;
       });
-      await measure("boundary on a fresh worker", COLD_RUNS, async () => {
-        const fresh = createDeliveryHost(start);
-        hosts.push(fresh);
-        return (await timed(fresh, { kind: "boundary", edited: true, ...session }))[0];
+      // It delivers, so a worker that dies (its call is `null` too) cannot pass.
+      await measure("boundary on a fresh worker", COLD_RUNS, async (run) => {
+        r.apply(run % 2 === 0 ? r.fail() : r.pass());
+        const workers: Worker[] = [];
+        const fresh = createDeliveryHost(() => {
+          const worker = start();
+          workers.push(worker);
+          return worker;
+        });
+        try {
+          const [ms, text] = await timed(fresh, { kind: "boundary", edited: true, ...session });
+          expect(text).toMatch(/^SQUEAL/);
+          return ms;
+        } finally {
+          fresh.stop();
+          await Promise.all(workers.map((worker) => worker.terminate()));
+        }
       });
 
       const load = loadavg();
-      const asserted = calm();
+      const asserted = calmBefore && calm();
       console.log(
         `Pi delivery worker round trip ms, ${RUNS} calls (${COLD_RUNS} fresh workers), load ` +
           `${load.map((l) => l.toFixed(2)).join(" ")}` +
-          (asserted ? "" : `, above ${MAX_LOAD} or in CI: reported only`),
+          (asserted ? "" : `, above ${MAX_LOAD} before or after the runs, or in CI: reported only`),
       );
       console.table(rows);
       if (!asserted) return;
       for (const row of rows) expect(row.p95, row.call).toBeLessThan(BUDGET_MS);
     } finally {
-      for (const h of hosts) h.stop();
+      host.stop();
     }
   }, 120_000);
 });
