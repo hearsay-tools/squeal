@@ -114,23 +114,17 @@ describe("policy: this repository's squeal.config.json", () => {
   /*
    * Task 004-81 (004 D7 as amended 2026-10-18): the e2e tests run the
    * committed bundles, a build output Squeal does not produce, so Squeal
-   * covers none of them; CI runs them. Row 011-141: the tests that build the
-   * CLI or a bundle from the sources while they run, and key on all of it, are
-   * the slow files; each glob selects one, and none an in-process daemon test.
+   * covers none of them and declares no slow tier; CI runs them. Row 011-141:
+   * the tests that build the CLI or a bundle stay in the fast lane (the
+   * coordinator's choice, 2026-10-23: the slow lane added 40 to 60 min to a
+   * `src/` checkpoint on this host, the fast lane about 10).
    */
-  it("excludes the e2e tests, lists every other test file, and runs the build tests slow", () => {
+  it("excludes the e2e tests, lists every other test file, and declares nothing slow", () => {
     const { policy } = loadPolicy(REPO_ROOT);
     expect(policy.vitest.exclude).toEqual(["test/e2e/**"]);
+    expect(policy.slow.include).toEqual([]);
     expect(testFiles.filter((path) => E2E.test(path))).toEqual([]);
     expect(testFiles).toContain("test/harness/plugin.test.ts");
-    for (const glob of policy.slow.include) {
-      expect(testFiles.filter(createInputMatcher([glob])), glob).not.toEqual([]);
-    }
-    // `slowFiles` (004 D1) for a Vitest file: this repository has no node:test project.
-    const slow = testFiles.filter(createInputMatcher(policy.slow.include));
-    expect(slow).toHaveLength(60);
-    expect(slow).toContain("test/daemon/busy-tier.test.ts");
-    expect(slow).not.toContain("test/daemon/drain-timers.test.ts");
   });
 
   it("re-keys exactly plugin.test.ts when a bundle changes", async () => {
