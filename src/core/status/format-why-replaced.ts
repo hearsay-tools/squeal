@@ -1,7 +1,7 @@
+import { loadPerCpuText } from "../retry/index.js";
 import { causeText } from "../state/index.js";
 import type { CheckError, WhyReplacedFailure, WhyReport, WorktreeId } from "../types/index.js";
 import { shortCommit } from "./format-status.js";
-import { loadText } from "./replaced-failures.js";
 
 /** The indent of a result's lines under its head. */
 export const INDENT = "        ";
@@ -49,7 +49,7 @@ function entryLines(why: WhyReport, { failure, logDir, errors }: WhyReplacedFail
   const by = failure.replacedBy;
   const lines = [
     `  REPLACED  ${new Date(p.recordedAt).toISOString()}  ${worktreeName(why, p.worktreeId)}, revision ${p.revision}, commit ${shortCommit(p.commit)}, ${p.dirty ? "dirty" : "clean"}`,
-    `${INDENT}run ${p.runId}, ${Math.round(failure.durationMs)} ms, key ${failure.key.slice(0, 12)}, ${loadText(failure.loadPerCpu)}`,
+    `${INDENT}run ${p.runId}, ${Math.round(failure.durationMs)} ms, key ${failure.key.slice(0, 12)}, ${loadPerCpuText(failure.loadPerCpu)}`,
     `${INDENT}replaced by PASS ${new Date(by.recordedAt).toISOString()} (${worktreeName(why, by.worktreeId)}, run ${by.runId})`,
     `${INDENT}log: ${logDir ?? "run record pruned"}`,
   ];

@@ -86,6 +86,13 @@ export interface RetryCommandWords {
   readonly path: string;
 }
 
+/** The load per CPU a failure's run had, as a known failure states it (001-368). */
+export function loadPerCpuText(loadPerCpu: number | null): string {
+  return loadPerCpu === null
+    ? "load per CPU then not recorded"
+    : `load ${loadPerCpu.toFixed(2)} per CPU when it ran`;
+}
+
 /**
  * A known failure's facts at registration, in status and in `why` (spec 001
  * D6, 001-368, 001-404): how long ago, where and at which revision it was
@@ -104,15 +111,11 @@ export function recordedText(
       ? "this worktree"
       : (facts.worktreeRoot ?? `worktree ${facts.worktreeId}`);
   const ago = facts.recordedAt === undefined ? "" : ` ${agoText(now - facts.recordedAt)}`;
-  const load =
-    facts.loadPerCpu === null
-      ? "load per CPU then not recorded"
-      : `load ${facts.loadPerCpu.toFixed(2)} per CPU when it ran`;
   const retry =
     facts.retry === undefined
       ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words)}`
       : retryText(facts.retry);
-  return `recorded${ago} in ${where} at revision ${facts.revision}, ${load}; ${retry}`;
+  return `recorded${ago} in ${where} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}; ${retry}`;
 }
 
 /**
