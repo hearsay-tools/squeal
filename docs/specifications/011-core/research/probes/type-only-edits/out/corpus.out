@@ -1,0 +1,6 @@
+# python3 -I corpus.py <store copy> <git dir> <out.tsv>, store copies of 2026-10-23 13:20Z
+squeal:  code path edits 9045, both blobs in git 3523, revisions 536
+cezar:   code path edits 2012, both blobs in git 1406, revisions 417
+toolkit: code path edits 4414, both blobs in git 17, revisions 30
+# python3 -I pairs.py: unique (path, old, new) with both blobs; with a holding project
+squeal 2749 2738 / cezar 1233 1231 / toolkit 17 13

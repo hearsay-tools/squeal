@@ -1,0 +1,5 @@
+pairs 17
+vitest pipeline (classes over the holding projects): {('differs',): 11, (): 6}
+pipeline and oxc alone disagree: {}
+node type stripping: {'differs': 11, 'n/a: not stripped (js or tsx)': 6}
+esbuild (tsx): {'n/a': 17}

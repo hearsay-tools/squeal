@@ -1,0 +1,16 @@
+{"case":"failure-location","emitted":{"code":"same","mappings":"differs","bare":"same","nodeStrip":"differs"},"A":{"status":"failed","libFrame":"at boom (./cases/failure-location/lib.ts:2:9)"},"B":{"status":"failed","libFrame":"at boom (./cases/failure-location/lib.ts:3:9)"}}
+{"case":"import-elision","emitted":{"code":"same","mappings":"same","bare":"same","nodeStrip":"differs"},"A":{"status":"passed","libFrame":""},"B":{"status":"passed","libFrame":""}}
+{"case":"raw-import","emitted":{"code":"same","mappings":"differs","bare":"same","nodeStrip":"differs"},"A":{"status":"passed","libFrame":""},"B":{"status":"failed","libFrame":""}}
+{"case":"reads-source","emitted":{"code":"same","mappings":"differs","bare":"same","nodeStrip":"differs"},"A":{"status":"passed","libFrame":""},"B":{"status":"failed","libFrame":""}}
+{"case":"stack-assert","emitted":{"code":"same","mappings":"differs","bare":"same","nodeStrip":"differs"},"A":{"status":"passed","libFrame":""},"B":{"status":"failed","libFrame":"AssertionError: expected 'Error: boom\\n    at boom (/tmp/to149/…' to contain 'lib.ts:2:'"}}
+{"case":"tostring-comment","emitted":{"code":"differs","mappings":"same","bare":"same","nodeStrip":"differs"},"A":{"status":"passed","libFrame":""},"B":{"status":"failed","libFrame":""}}
+{"case":"tsc","emitted":{"code":"same","mappings":"same","bare":"same","nodeStrip":"same"},"A":{"status":"passed","libFrame":""},"B":{"status":"failed","libFrame":""}}
+{"demo":"decorator metadata, string -> number (experimentalDecorators + emitDecoratorMetadata)","code":"differs","mappings":"same","bare":"differs","nodeStrip":"same"}
+{"demo":"decorator metadata, same edit without emitDecoratorMetadata","code":"same","mappings":"same","bare":"same","nodeStrip":"same"}
+{"demo":"enum member value","code":"differs","mappings":"same","bare":"differs","nodeStrip":"ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX"}
+{"demo":"namespace","code":"same","mappings":"differs","bare":"same","nodeStrip":"ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX"}
+{"demo":"parameter property type","code":"same","mappings":"same","bare":"same","nodeStrip":"ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX"}
+{"demo":"import of a type used only as a type, default settings","code":"same","mappings":"same","bare":"same","nodeStrip":"differs"}
+{"demo":"the same edit under verbatimModuleSyntax (onlyRemoveTypeImports)","code":"differs","mappings":"differs","bare":"differs","nodeStrip":"differs"}
+{"demo":"same bytes, onlyRemoveTypeImports off vs on","code":"differs","off":"export const f = (x) => x;\n","on":"import { T } from \"./t.js\";\nexport const f = (x) => x;\n"}
+{"demo":"same bytes, emitDecoratorMetadata off vs on","code":"differs"}

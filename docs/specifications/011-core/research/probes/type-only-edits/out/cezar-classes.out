@@ -1,0 +1,5 @@
+pairs 1233
+vitest pipeline (classes over the holding projects): {('differs',): 1113, (): 38, ('error',): 28, ('differs', 'error'): 25, ('same-code-moved',): 17, ('same',): 11, ('differs', 'same'): 1}
+pipeline and oxc alone disagree: {(('differs', 'error'), ('differs',)): 25, (('differs', 'same'), ('same',)): 1, (('same',), ('same-code-moved',)): 1}
+node type stripping: {'differs': 815, 'n/a: not stripped (js or tsx)': 327, 'n/a: ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX': 56, 'n/a: ERR_INVALID_TYPESCRIPT_SYNTAX': 23, 'whitespace-only': 12}
+esbuild (tsx): {'differs': 1035, 'n/a': 102, 'same-code-moved': 69, 'same': 27}

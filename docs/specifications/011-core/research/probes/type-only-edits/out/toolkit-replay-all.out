@@ -1,0 +1,24 @@
+== path edits of code files (watch revisions)
+  agent (<=3 paths) TS edits 8, evaluable 1: same 0, moved 0, differs 1 (of which same without comments 1), unknown 7
+    shares of evaluable: K1 0.0%, K2 0.0%, K3 100.0%
+  bulk (>3 paths) TS edits 362, evaluable 6: same 0, moved 0, differs 6 (of which same without comments 1), unknown 356
+    shares of evaluable: K1 0.0%, K2 0.0%, K3 16.7%
+== re-keyed test files at those revisions
+  agent: 2 file re-keys over 1 revisions, last-duration 0 s, stored results in window 1 s (5 runs)
+    K1: keep 0 (0.0%), last-duration 0 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K2: keep 0 (0.0%), last-duration 0 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K3: keep 0 (0.0%), last-duration 0 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+  bulk: 2697 file re-keys over 23 revisions, last-duration 917 s, stored results in window 539 s (74 runs)
+    K1: keep 0 (0.0%), last-duration 0 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K2: keep 0 (0.0%), last-duration 0 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K3: keep 2 (0.1%), last-duration 0 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+  all: 2699 file re-keys over 24 revisions, last-duration 917 s, stored results in window 540 s (79 runs)
+    K1: keep 0 (0.0%), last-duration 0 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K2: keep 0 (0.0%), last-duration 0 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K3: keep 2 (0.1%), last-duration 0 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+== only file re-keys whose every changed closure path has a known emission class
+  agent: 2 file re-keys over 1 revisions, 0 s; K1 keeps 0 s (0.0%), K2 keeps 0 s (0.0%), K3 keeps 0 s (0.0%)
+  bulk: 13 file re-keys over 2 revisions, 4 s; K1 keeps 0 s (0.0%), K2 keeps 0 s (0.0%), K3 keeps 0 s (3.6%)
+== agent revisions: files whose every changed closure path emits equal code (K2) yet re-key, by how the paths enter
+   {}
+== transitions in files a variant keeps

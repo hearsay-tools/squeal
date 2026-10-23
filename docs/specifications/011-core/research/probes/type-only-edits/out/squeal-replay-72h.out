@@ -1,0 +1,26 @@
+== path edits of code files (watch revisions)
+  agent (<=3 paths) TS edits 284, evaluable 122: same 5, moved 4, differs 113 (of which same without comments 1), unknown 162
+    shares of evaluable: K1 4.1%, K2 7.4%, K3 8.2%
+  bulk (>3 paths) TS edits 8560, evaluable 3279: same 149, moved 78, differs 3052 (of which same without comments 55), unknown 5281
+    shares of evaluable: K1 4.5%, K2 6.9%, K3 8.6%
+== re-keyed test files at those revisions since 1792502418000
+  agent: 32841 file re-keys over 161 revisions, last-duration 336,895 s, stored results in window 26,432 s (3136 runs)
+    K1: keep 188 (0.6%), last-duration 687 s (0.2%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K2: keep 1031 (3.1%), last-duration 5,024 s (1.5%), ran 783 s (3.0%); to FAIL 0, to PASS 0
+    K3: keep 1031 (3.1%), last-duration 5,024 s (1.5%), ran 783 s (3.0%); to FAIL 0, to PASS 0
+  bulk: 38778 file re-keys over 75 revisions, last-duration 356,745 s, stored results in window 26,870 s (6622 runs)
+    K1: keep 415 (1.1%), last-duration 1,483 s (0.4%), ran 1,618 s (6.0%); to FAIL 0, to PASS 0
+    K2: keep 1049 (2.7%), last-duration 3,344 s (0.9%), ran 1,805 s (6.7%); to FAIL 0, to PASS 0
+    K3: keep 3472 (9.0%), last-duration 22,751 s (6.4%), ran 5,419 s (20.2%); to FAIL 4, to PASS 4
+  all: 71619 file re-keys over 236 revisions, last-duration 693,640 s, stored results in window 53,302 s (9758 runs)
+    K1: keep 603 (0.8%), last-duration 2,170 s (0.3%), ran 1,618 s (3.0%); to FAIL 0, to PASS 0
+    K2: keep 2080 (2.9%), last-duration 8,368 s (1.2%), ran 2,589 s (4.9%); to FAIL 0, to PASS 0
+    K3: keep 4503 (6.3%), last-duration 27,775 s (4.0%), ran 6,202 s (11.6%); to FAIL 4, to PASS 4
+== only file re-keys whose every changed closure path has a known emission class
+  agent: 9036 file re-keys over 54 revisions, 92,281 s; K1 keeps 687 s (0.7%), K2 keeps 5,024 s (5.4%), K3 keeps 5,024 s (5.4%)
+  bulk: 13539 file re-keys over 69 revisions, 94,493 s; K1 keeps 1,483 s (1.6%), K2 keeps 3,344 s (3.5%), K3 keeps 22,751 s (24.1%)
+== agent revisions: files whose every changed closure path emits equal code (K2) yet re-key, by how the paths enter
+   {'observed': 5979, 'declared': 697}
+== transitions in files a variant keeps
+  K3 15c0d83e rev 36 :test/scheduler/slow-slot-fair.test.ts via ['import'] toFail [['pass', 'fail', 39, 'the load guard never picks the worktree (task 004-84) > a guard wait gives way once another worktree takes the slot'], ['pass', 'fail', 39, 'the load guard never picks the worktree (task 004-84) > below the threshold nothing changes: the slot is handed over file by file, unprobed']] toPass [['fail', 'pass', 39, 'the load guard never picks the worktree (task 004-84) > a guard wait gives way once another worktree takes the slot'], ['fail', 'pass', 39, 'the load guard never picks the worktree (task 004-84) > below the threshold nothing changes: the slot is handed over file by file, unprobed']]
+  K3 07b0d895 rev 44 :test/daemon/vacant-wait.test.ts via ['import'] toFail [['pass', 'fail', 44, 'a lock waiter that cannot yet read the last recorded daemon (review 001-351, B1) > a --await-lock waiter reads again and exits as a loser, no note, once the store is readable'], ['pass', 'fail', 44, 'a lock waiter that cannot yet read the last recorded daemon (review 001-351, B1) > a waiter that cannot decide within its budget lets go of the lock and exits with one note, code 0']] toPass [['fail', 'pass', 45, 'a lock waiter that cannot yet read the last recorded daemon (review 001-351, B1) > a --await-lock waiter reads again and exits as a loser, no note, once the store is readable'], ['fail', 'pass', 45, 'a lock waiter that cannot yet read the last recorded daemon (review 001-351, B1) > a waiter that cannot decide within its budget lets go of the lock and exits with one note, code 0']]

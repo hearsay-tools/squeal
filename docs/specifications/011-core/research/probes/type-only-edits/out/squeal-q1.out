@@ -1,0 +1,17 @@
+('agent', 'differs') 113 
+('agent', 'moved') 4 {'observed': 1883, 'own': 7, 'declared': 697, 'import': 12969}
+('agent', 'same') 5 {'import': 13474, 'declared': 1161, 'observed': 5482}
+('agent', 'unknown') 162 
+('bulk', 'differs') 3052 
+('bulk', 'moved') 78 {'import': 378400, 'declared': 17186, 'observed': 40798}
+('bulk', 'same') 149 {'import': 286312, 'declared': 32750, 'observed': 142840}
+('bulk', 'unknown') 5281 
+-- 72h
+('agent', 'differs') 60 
+('agent', 'moved') 3 {'declared': 697, 'import': 12969, 'observed': 1883}
+('agent', 'same') 3 {'declared': 697, 'import': 760, 'observed': 5400}
+('agent', 'unknown') 131 
+('bulk', 'differs') 818 
+('bulk', 'moved') 22 {'import': 107387, 'declared': 4877, 'observed': 12047}
+('bulk', 'same') 48 {'declared': 9522, 'observed': 52149, 'import': 40642}
+('bulk', 'unknown') 411 

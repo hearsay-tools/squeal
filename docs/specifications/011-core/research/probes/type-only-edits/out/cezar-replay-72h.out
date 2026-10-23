@@ -1,0 +1,26 @@
+== path edits of code files (watch revisions)
+  agent (<=3 paths) TS edits 387, evaluable 101: same 1, moved 4, differs 96 (of which same without comments 3), unknown 286
+    shares of evaluable: K1 1.0%, K2 5.0%, K3 7.9%
+  bulk (>3 paths) TS edits 1453, evaluable 1152: same 11, moved 20, differs 1121 (of which same without comments 63), unknown 301
+    shares of evaluable: K1 1.0%, K2 2.7%, K3 8.2%
+== re-keyed test files at those revisions since 1792502418000
+  agent: 32053 file re-keys over 224 revisions, last-duration 1,108,011 s, stored results in window 54,975 s (2787 runs)
+    K1: keep 3 (0.0%), last-duration 12 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K2: keep 236 (0.7%), last-duration 3,335 s (0.3%), ran 1,227 s (2.2%); to FAIL 1, to PASS 0
+    K3: keep 597 (1.9%), last-duration 15,568 s (1.4%), ran 1,679 s (3.1%); to FAIL 1, to PASS 0
+  bulk: 10265 file re-keys over 38 revisions, last-duration 270,459 s, stored results in window 32,274 s (3089 runs)
+    K1: keep 1 (0.0%), last-duration 1 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K2: keep 48 (0.5%), last-duration 172 s (0.1%), ran 50 s (0.2%); to FAIL 0, to PASS 0
+    K3: keep 61 (0.6%), last-duration 188 s (0.1%), ran 50 s (0.2%); to FAIL 0, to PASS 0
+  all: 42318 file re-keys over 262 revisions, last-duration 1,378,471 s, stored results in window 87,249 s (5876 runs)
+    K1: keep 4 (0.0%), last-duration 12 s (0.0%), ran 0 s (0.0%); to FAIL 0, to PASS 0
+    K2: keep 284 (0.7%), last-duration 3,506 s (0.3%), ran 1,277 s (1.5%); to FAIL 1, to PASS 0
+    K3: keep 658 (1.6%), last-duration 15,756 s (1.1%), ran 1,729 s (2.0%); to FAIL 1, to PASS 0
+== only file re-keys whose every changed closure path has a known emission class
+  agent: 8066 file re-keys over 59 revisions, 269,362 s; K1 keeps 12 s (0.0%), K2 keeps 3,333 s (1.2%), K3 keeps 5,188 s (1.9%)
+  bulk: 4310 file re-keys over 26 revisions, 107,020 s; K1 keeps 1 s (0.0%), K2 keeps 172 s (0.2%), K3 keeps 188 s (0.2%)
+== agent revisions: files whose every changed closure path emits equal code (K2) yet re-key, by how the paths enter
+   {'declared': 6083, 'observed': 219, 'own': 0}
+== transitions in files a variant keeps
+  K2 b92c665e rev 6 server:packages/cezar/src/server/projects-api.test.ts via ['import'] toFail [[None, 'fail', 6, 'workspace projects API > GET /api/v1/health — additive projects + bootProject > keeps the pre-workspace shape byte-identical and adds only projects + bootProject']] toPass []
+  K3 b92c665e rev 6 server:packages/cezar/src/server/projects-api.test.ts via ['import'] toFail [[None, 'fail', 6, 'workspace projects API > GET /api/v1/health — additive projects + bootProject > keeps the pre-workspace shape byte-identical and adds only projects + bootProject']] toPass []
