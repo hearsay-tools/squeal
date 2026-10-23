@@ -136,6 +136,8 @@ export class SlowTier {
   draining = false;
   /** The last pass took the slot: its next skips one turn for another worktree's mark. */
   #tookLast = false;
+  /** When a slow run last ended (`ended`): a drain's wait counts from it (row 011-163). */
+  #endedAt: EpochMs | null = null;
   #slotNoted = false;
   #timer: NodeJS.Timeout | null = null;
   /** When `#timer` fires, so an earlier deadline replaces it. */
@@ -155,6 +157,11 @@ export class SlowTier {
   /** A `run --slow` request is open: the daemon is in use while slow files are pending (row 011-92). */
   get requested(): boolean {
     return this.#requested;
+  }
+
+  /** When a slow run last ended, recorded, discarded or put back; `null` before the first. */
+  get endedAt(): EpochMs | null {
+    return this.#endedAt;
   }
 
   /**
@@ -552,6 +559,7 @@ export class SlowTier {
    */
   ended(): void {
     const { context, ledger } = this.host.started();
+    this.#endedAt = context.now();
     const queued = ledger.orderedSlow();
     if (queued.length === 0) this.#publish(null);
     else if (this.#fastFirst()) this.#publish({ kind: "waiting", for: "fast" });
