@@ -53,3 +53,44 @@ Done when:
 - The notes give the phases and their times from at least 20 fresh workers beside a locked full suite.
 - The test passes 20 of 20 beside a suite. If the bound must change, the notes propose the D4 sentence instead.
 - Lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Put their output in your summary.
+
+## R1: review of cand/0.1.273
+
+Use /reviewer. Shape: review. Pinned to `cand/0.1.273` at a1618a61f2b3992321e28e2aa2ae548bdbc36072. The range is `b911f082c..a1618a61f` (`origin/main` at b911f082c):
+- W2's seven commits (006-98, worker 6077df44) and the 006 docs commit;
+- W1's four (011-126, worker e8b08f00);
+- W3's three (009-31, worker a6a03320);
+- one docs commit (011 C7, the 011 and 009 `status.md` lines);
+- the release commit (0.1.273, bundles).
+
+Read `docs/specifications/011-core/tasks/wave-20.md` (W1 to W3; this R1 brief is on main, not in the candidate). Read the notes under `011-core/tasks/011-126/`, `006-model-evals/tasks/006-98/` and `009-pi-adapter/tasks/009-31/`, and board rows 011-126, 006-98 and 009-31. Read the amended 011 C7 and 006 D3 sentences and the three new `status.md` lines. The coordinator widened two rows:
+- W1's to `ledger.ts` and `setup.ts` (request 7640bfa1);
+- W2's to `stopOnSignal` calls in `judge-calibrate.mjs`, `regrade.mjs` and `run-baseline.mjs`, and to two optional fields in `evals/lib/index.d.mts` (requests f15f0a70, dd200ec4 and 5d9a129b).
+
+Check:
+- 011-126:
+  - a record that gives up on a busy store keeps its prepared results and lands once. Its environment re-key and withhold count are not applied twice, and its files do not run again;
+  - `Ledger.commit`'s put-back runs on a busy error only. A newer entry beats the drained one, and nothing is written twice;
+  - the turn order of records and the pump cannot starve the pump or leave a record unlanded at the close;
+  - a tier whose record waits keeps its lane, `idle()` and the close consistent;
+  - the scheduler tests without `busySliceMs` keep the store's own timeout;
+  - the writes the notes list as still at 5 s are the only ones.
+- 006-98:
+  - a judge call runs in a group that `killRunning` reaches, and a timeout ends the whole group;
+  - `stopOnSignal`'s synchronous wait is bounded at 5 s, and exits 128 + n;
+  - `run-cell.mjs` does not install it twice;
+  - `run-baseline`'s cells still take a terminal's signal as before;
+  - a refused ground truth writes no record;
+  - `judge-isolation.test.ts` still holds.
+- 009-31:
+  - the minimal environment still exercises what a Pi session's worker does;
+  - the fresh call must deliver;
+  - the guard reads the load before and after the runs;
+  - the bound is still 80 ms.
+- the release:
+  - `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged;
+  - the version is 0.1.273 in all eight places;
+  - the bundles match the tree;
+  - the four launchers are byte-identical.
+
+Run `npm ci`, then run directly the test files W1 to W3 added or changed. Never run a script under `evals/bin/`, `tasks/011-122/probe/` or `tasks/009-31/probe/` yourself, `--help` included. The full suite is run twice: by CI on the candidate (run 39904823555) and by the coordinator's locked gate (`.ai/cezar/t/04a258b0/gate-w20.log`). A gate log names only failing files. Write `reviews/0.1.273.md` under `docs/specifications/011-core/`, with a PASS or FAIL verdict, and commit it alone.
