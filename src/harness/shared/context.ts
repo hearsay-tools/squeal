@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { codeSource } from "../../core/delivery/code-source.js";
+import { type CodeSource, codeSource } from "../../core/delivery/code-source.js";
 import { createDelivery } from "../../core/delivery/index.js";
 import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../../core/fs/index.js";
 import { createStatusBuilder, STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
@@ -54,6 +54,8 @@ export interface HookContext extends HookLocation {
   readonly store: Store;
   readonly delivery: HarnessDelivery;
   readonly consumer: Consumer;
+  /** Spec 015: the code store as the delivery reads it; absent in contexts made without one. */
+  readonly code?: CodeSource;
   close(): void;
 }
 
@@ -90,16 +92,19 @@ export function openContext(
       agentId: input.agent_id ?? MAIN_AGENT,
     };
     const now = options.now ?? Date.now;
+    // Spec 015 D6: read only while the worktree's `complexity.enabled` holds, in the hook's budget.
+    const code = codeSource(location.commonDir, location.root, {
+      busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
+    });
     const delivery = createDelivery(store, {
       status: createStatusBuilder(store, { now }),
       now,
       ...(options.pollIntervalMs === undefined ? {} : { pollIntervalMs: options.pollIntervalMs }),
       ...(options.harnessProcess === undefined ? {} : { harnessProcess: options.harnessProcess }),
       ...(options.squealVersion === undefined ? {} : { squealVersion: options.squealVersion }),
-      // Spec 015 D6: read only while the worktree's `complexity.enabled` holds.
-      code: codeSource(location.commonDir, location.root),
+      code,
     });
-    return { ...location, store, delivery, consumer, close: () => store.close() };
+    return { ...location, store, delivery, consumer, code, close: () => store.close() };
   } catch (error) {
     store.close();
     throw error;
