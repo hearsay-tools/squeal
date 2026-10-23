@@ -336,6 +336,11 @@ class Daemon {
         this.#loop !== null && this.#phase !== "stopping" ? this.#loop.scheduler.owedWork() : null,
       // Row 011-93: the drain runs its session's work and leaves the backlog queued.
       pauseBacklog: (on) => this.#loop?.scheduler.pauseBacklog(on),
+      // Row 011-163: a drain whose slow files had no run for 60 s once its fast work was done ends.
+      slowWaiting: () =>
+        this.#loop !== null && this.#phase !== "stopping"
+          ? this.#loop.scheduler.slowWaiting()
+          : null,
       idleGc: () => {
         if (this.#phase !== "stopping") this.#idleGc.check();
       },
