@@ -54,7 +54,9 @@ function flip(store: Store, logsDir: string, worktreeId: string, flipped: CheckI
 
 /**
  * Main and linked worktree `b`; `APPEARS` flipped in `b` only at key `kb`,
- * then the `more` flips; `b` then removed and pruned a second later.
+ * then the `more` flips; `b` then removed and pruned a second later. Its
+ * results stay 7 days after its removal (row 011-160), so the size cap
+ * evicts them; the replaced failures stay.
  */
 function seedPruned(more: readonly [CheckId, string][] = []) {
   const repo = fakeRepo();
@@ -77,7 +79,7 @@ function seedPruned(more: readonly [CheckId, string][] = []) {
   const logDir = flip(store, runsDir, b.id, APPEARS, "kb");
   for (const [flipped, key] of more) flip(store, runsDir, b.id, flipped, key);
   rmSync(join(b.root, ".git"));
-  store.prune({ now: at(9, 3) + 1_000, retentionDays: 7, maxSizeMb: null });
+  store.prune({ now: at(9, 3) + 1_000, retentionDays: 7, maxSizeMb: 0 });
   return { repo, store, b, logDir };
 }
 
