@@ -131,6 +131,25 @@ export interface Policy {
     /** LRU backstop (D8). D11 gives no default; `null` means no cap. */
     readonly maxSizeMb: number | null;
   };
+  /** Spec 015 D1: complexity per function. With `enabled` false Squeal counts nothing and keeps no code store. */
+  readonly complexity: {
+    /** Default `false`. */
+    readonly enabled: boolean;
+    /** A function fails when its CC is above this. Default `20`, ESLint's default `max`. */
+    readonly threshold: number;
+    /** Worktree-relative globs of the files counted. Default every extension the counter reads. */
+    readonly include: readonly string[];
+    /** Globs removed from `include`; a project's list replaces the default. */
+    readonly exclude: readonly string[];
+    /** A larger file is not counted (D6). Default `524288`, 512 KiB. */
+    readonly maxFileBytes: number;
+    /** D7: Stop also counts each function that went over since registration. Default `false`. */
+    readonly blocking: boolean;
+  };
+  /** Spec 015 D8 (wave 2): coverage from Squeal's own Vitest runs. Needs `complexity.enabled`. */
+  readonly coverage: { readonly enabled: boolean };
+  /** Spec 015 D9 (wave 2): a function fails when its CRAP is above `threshold`. Default `30`. */
+  readonly crap: { readonly threshold: number };
 }
 
 /**
@@ -286,6 +305,16 @@ export const DEFAULT_POLICY: Policy = {
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
   store: { retentionDays: 7, maxSizeMb: null },
+  complexity: {
+    enabled: false,
+    threshold: 20,
+    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
+    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
+    maxFileBytes: 524_288,
+    blocking: false,
+  },
+  coverage: { enabled: false },
+  crap: { threshold: 30 },
 };
 
 /**
