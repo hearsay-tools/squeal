@@ -3,6 +3,7 @@ import type {
   CoreEnvironmentInputs,
   FocusedFile,
   RunnerEnvironment,
+  RunnerPackages,
   RunReport,
   TestFileRef,
 } from "../../../src/core/types/index.js";
@@ -26,6 +27,15 @@ export interface KeyInput {
   readonly dependencies?: string;
   /** An install written under the case's scratch directory, whose fingerprint replaces `core`'s (011-85). */
   readonly installed?: Readonly<Record<string, string>>;
+  /**
+   * The environment's and the test file's packages over `installed`, keyed
+   * through `dependencyKeys`: they replace `core`'s installed dependencies
+   * and `dependencies` (011-162).
+   */
+  readonly packages?: {
+    readonly environment: RunnerPackages;
+    readonly testFile?: RunnerPackages;
+  };
 }
 
 /** A run's report of one test file, and the checks its previous key held. */
