@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
-import { compare, mapConcurrent } from "../../fs/index.js";
+import { compare } from "../../fs/index.js";
 import { blobHash, type ObjectFormat } from "../../hash/index.js";
 import type { CodeFile, CodeLanguage, FileCount } from "../../types/code.js";
 import type {
@@ -199,7 +199,7 @@ function oldBodies(
 /**
  * D4's blob lookup and slices: each blob of the work set with no count at
  * this counter version is read and counted once, `sliceFiles` at a time, and
- * stored. A blob the disk no longer holds is retried at the next pass; one
+ * stored with one transaction per slice. A blob the disk no longer holds is retried at the next pass; one
  * the counter fails on stays uncounted (`pending`). The paths of either keep
  * their states as they were.
  */
@@ -223,9 +223,9 @@ async function countMissing(
   for (let start = 0; start < missing.length; start += size) {
     if (start > 0) await nextTurn();
     const slice = missing.slice(start, start + size);
-    const counts = await mapConcurrent(slice, ([e]) =>
-      e === undefined ? Promise.resolve(null) : countOne(ctx, e),
-    );
+    // One file at a time: each read gives the event loop a turn, so no stretch holds more than one count.
+    const counts: (FileCount | "moved" | null)[] = [];
+    for (const [e] of slice) counts.push(e === undefined ? null : await countOne(ctx, e));
     store.transaction(() => {
       slice.forEach((group, i) => {
         const count = counts[i];
