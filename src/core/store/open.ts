@@ -107,7 +107,7 @@ function busyTimeout(options: OpenStoreOptions): number {
  * another opener holding the write lock fails it at once (task 001-207). On a
  * file already in WAL it writes nothing.
  */
-function switchToWal(db: DatabaseSync, ms: number): void {
+export function switchToWal(db: DatabaseSync, ms: number): void {
   const deadline = Date.now() + ms;
   for (;;) {
     try {
