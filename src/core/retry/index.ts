@@ -36,6 +36,7 @@ export {
   loadText,
   outcomeText,
   RECORDED_UNKNOWN_TEXT,
+  type RetryCommandWords,
   recordedText,
   retryText,
   waitsText,

@@ -466,7 +466,11 @@ describe("formatRegistration", () => {
     const later = at + 2 * 3_600_000 + 50 * 60_000;
     const text = formatRegistration(registration([old]), undefined, undefined, later);
     expect(text).toContain(
-      "Recorded 2 h ago in /repo/b at revision 9, load 3.33 per CPU when it ran; no retry asked at these inputs",
+      "Recorded 2 h ago in /repo/b at revision 9, load 3.33 per CPU when it ran; no retry asked at these inputs; `squeal retry tests/f1.test.ts --reason load` runs it once more when the one-minute load average is below the CPU count",
+    );
+    // Row 011-67 (gh-52): the command is the hook's, as its other lines name it.
+    expect(formatRegistration(registration([old]), undefined, "/opt/squeal", later)).toContain(
+      "`/opt/squeal retry tests/f1.test.ts --reason load`",
     );
     expect(formatRegistration(registration([fresh]), undefined, undefined, at + 30_000)).toContain(
       "Recorded just now in /repo/b at revision 9, load per CPU then not recorded;",
