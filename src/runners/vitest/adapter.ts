@@ -4,23 +4,22 @@ import { compare } from "../../core/fs/index.js";
 import { createInputMatcher } from "../../core/keys/glob.js";
 import { findInstalledLockfile } from "../../core/keys/index.js";
 import { optimizerOffNote } from "../../core/state/optimizer-note.js";
-import {
-  type AbsolutePath,
-  type AffectedTestFiles,
-  checkTextPattern,
-  type EnumeratedCheck,
-  type EpochMs,
-  focusedTexts,
-  type InvalidatedPath,
-  type InvalidateResult,
-  type RelativePath,
-  type RunnerAdapter,
-  type RunnerClosure,
-  type RunnerEnvironment,
-  type RunOptions,
-  type RunReport,
-  type TestFileRef,
+import type {
+  AbsolutePath,
+  AffectedTestFiles,
+  EnumeratedCheck,
+  EpochMs,
+  InvalidatedPath,
+  InvalidateResult,
+  RelativePath,
+  RunnerAdapter,
+  RunnerClosure,
+  RunnerEnvironment,
+  RunOptions,
+  RunReport,
+  TestFileRef,
 } from "../../core/types/index.js";
+import { checkTextPattern, focusedTexts } from "../focus.js";
 import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
