@@ -48,4 +48,11 @@ The record path now also has `#barrier`, between `#heldNow` and `#write` (about 
 
 ## Verification
 
-Filled in from the final checkpoint; see the worker's final message.
+- `npm run lint`: "Checked 1840 files in 1036ms. No fixes applied."
+- `npm run typecheck`: `tsc --noEmit`, no output.
+- `squeal run --all --wait`: checkpoint 820be900 completed at revision 17 (ecd253cb1). All 935 test files current, 8,801 checks passed, 7 skipped, 6 known failures, exit 1:
+  - 4 bundle drift checks ("cli/squeal.mjs differs from the build"), which the brief excepts: no `npm run build` in this row.
+  - `test/harness/opencode-dispose.test.ts`, "the plugin killed the held Stop at +2231, at or after its idle deadline (+2000)". Squeal's baseline run saw it at revision 0, before any edit of mine. It is outside this row's files. A load retry is pending.
+  - `test/daemon/busy-edit.test.ts`, "the heartbeat … expected 3042 to be less than or equal to 1000", at 4.03 load per CPU. This is load, not this row. At load 51 to 64 on 24 CPUs, two direct runs with this row's files gave one fail (4,017 ms) and one pass. Two direct runs with 016013a6b's `scheduler.ts` and `stability.ts` gave one fail (3,791 ms) and one pass. Squeal also records an earlier FAIL to PASS at the same inputs (2026-10-22). A load retry is pending.
+  - `test/status/why-unknown-standing.test.ts` timed out at 5 s at load 94.88. Its load retry then passed.
+- Direct runs, `npx vitest run`: the busy tests, `busy-withhold`, `withholds`, `withheld-retry`, `withheld-touch`, `barrier`, the five `merge-hold*` files and `test/daemon/busy-tier.test.ts` gave 16 files and 45 tests passed in 43 s. Load was about 48, above 8, so `busy-tier`'s timing checks were skipped. `test/daemon/busy-edit.test.ts`, `test/daemon/busy-store.test.ts` and `test/keys/validity` gave 8 files and 42 tests passed.
