@@ -3,14 +3,13 @@ import { toAbsolute } from "../../core/fs/index.js";
 import {
   type AbsolutePath,
   type CheckRunResult,
-  focusedTexts,
-  holdsCheckText,
   isSlowLane,
   type PytestProject,
   type RunOptions,
   type RunReport,
   type TestFileRef,
 } from "../../core/types/index.js";
+import { focusedTexts, holdsCheckText } from "../focus.js";
 import type { PytestAdapterOptions } from "./adapter.js";
 import { type CollectionNames, enumerate } from "./enumerate.js";
 import {
