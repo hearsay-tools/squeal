@@ -2,8 +2,18 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
+import { build } from "esbuild";
 import { afterEach, expect } from "vitest";
+import {
+  bundleOptions,
+  copyNodeTestRuntime,
+  copyObserveRuntime,
+  copyPytestRuntime,
+  type PluginBuild,
+} from "../../src/harness/build.js";
 import { PLUGIN_DIST } from "../../src/harness/claude-code/build.js";
+import { bridgeBundleOptions, pluginBundleOptions } from "../../src/harness/opencode/build.js";
+import { observeMetafile } from "../helpers/build-inputs.js";
 import { tempDir } from "../store/helpers.js";
 
 export interface BundleRun {
@@ -90,6 +100,33 @@ export function liveSocket(path: string): Promise<Server> {
     cleanups.push(() => server.close());
     server.listen(path, () => resolve(server));
   });
+}
+
+/*
+ * Row 011-141: `buildDist` and `buildOpencodeDist` (`src/harness/`) step for
+ * step, keeping esbuild's metafile, so the test that builds stats each file the
+ * bundles hold. A step either gains that these lack shows as drift in the
+ * Codex, OpenCode and Pi package tests, which compare these builds with the
+ * committed `dist`.
+ */
+
+/** `buildDist(plugin, outdir)`, then each bundled worktree file stat'ed; returns those files. */
+export async function buildDistObserved(plugin: PluginBuild, outdir: string): Promise<string[]> {
+  const result = await build(bundleOptions(plugin, outdir));
+  copyNodeTestRuntime(outdir);
+  copyObserveRuntime(outdir);
+  copyPytestRuntime(outdir);
+  return observeMetafile(result.metafile);
+}
+
+/** `buildOpencodeDist(outdir)`, then each bundled worktree file stat'ed; returns those files. */
+export async function buildOpencodeDistObserved(outdir: string): Promise<string[]> {
+  const bridge = await build(bridgeBundleOptions(outdir));
+  const plugin = await build(pluginBundleOptions(outdir));
+  copyNodeTestRuntime(outdir);
+  copyObserveRuntime(outdir);
+  copyPytestRuntime(outdir);
+  return [...new Set([...observeMetafile(bridge.metafile), ...observeMetafile(plugin.metafile)])];
 }
 
 /** A CLI stand-in for spawned daemons: records that it ran, does nothing else. */

@@ -1,4 +1,4 @@
-import { type ChildProcess, execFileSync, spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {
   copyFileSync,
@@ -24,6 +24,7 @@ import {
   type Store,
 } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { tscObserved } from "../helpers/build-inputs.js";
 import { findProcesses, killProcesses, TEST_CACHE, testBuildDir } from "./strays.js";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
@@ -60,24 +61,21 @@ export interface BuildOptions {
  * Under `node_modules/`, so the build resolves `vitest` and `chokidar`, with
  * the package manifest beside it for `squeal --version`; in this run's
  * directory there, so the global teardown finds daemons it leaves (`strays.ts`).
+ * Stats each file `tsc` compiled, so an edit the test's imports do not reach
+ * re-keys it (011-141).
  */
 export function buildCli(options: BuildOptions = {}): BuiltCli {
   const dir = testBuildDir(expect.getState().testPath);
-  execFileSync(
-    process.execPath,
-    [
-      join(repoRoot, "node_modules/typescript/bin/tsc"),
-      "-p",
-      join(repoRoot, "tsconfig.build.json"),
-      "--outDir",
-      join(dir, "dist"),
-      "--declaration",
-      "false",
-      "--sourceMap",
-      "false",
-    ],
-    { cwd: repoRoot, stdio: "pipe" },
-  );
+  tscObserved([
+    "-p",
+    join(repoRoot, "tsconfig.build.json"),
+    "--outDir",
+    join(dir, "dist"),
+    "--declaration",
+    "false",
+    "--sourceMap",
+    "false",
+  ]);
   copyFileSync(join(repoRoot, "package.json"), join(dir, "package.json"));
   if (options.observe === true) {
     for (const file of OBSERVE_FILES) {

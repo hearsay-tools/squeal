@@ -3,10 +3,9 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readHeader } from "../../src/core/delivery/index.js";
 import type { Store } from "../../src/core/types/index.js";
-import { buildDist } from "../../src/harness/build.js";
 import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
 import { CODEX_PLUGIN } from "../../src/harness/codex/build.js";
-import { runBundle } from "../harness/bundle-helpers.js";
+import { buildDistObserved, runBundle } from "../harness/bundle-helpers.js";
 import { codexRecorded, sessionOf } from "../harness/codex/helpers.js";
 import { recorded } from "../harness/helpers.js";
 import { git } from "../hash/git-repo.js";
@@ -41,7 +40,10 @@ let bundles: { claude: string; codex: string } | null = null;
 beforeAll(async () => {
   const claude = mkdtempSync("/tmp/sq-claude-");
   const codex = mkdtempSync("/tmp/sq-codex-");
-  await Promise.all([buildDist(CLAUDE_CODE_PLUGIN, claude), buildDist(CODEX_PLUGIN, codex)]);
+  await Promise.all([
+    buildDistObserved(CLAUDE_CODE_PLUGIN, claude),
+    buildDistObserved(CODEX_PLUGIN, codex),
+  ]);
   bundles = { claude, codex };
 }, 120_000);
 // The removal of two bundles can outlast the 10 s hook default under load (task 001-385).
