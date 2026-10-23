@@ -6,10 +6,15 @@ import type {
   AbsolutePath,
   FocusedFile,
   PytestProject,
+  RelativePath,
   RunnerAdapter,
   RunReport,
 } from "../../../src/core/types/index.js";
-import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
+import {
+  createPytestAdapter,
+  type ObservedPaths,
+  type ObservedStore,
+} from "../../../src/runners/pytest/adapter.js";
 import { pythonEnv, requireSynced, type Synced, syncFixture } from "../../helpers/pytest-env.js";
 
 /*
@@ -40,26 +45,61 @@ const FOUR = [
   "    assert True",
   "",
 ].join("\n");
+/** `core.computed` imports `app.plugins.alpha` by name: a path no static closure holds. */
+const DYNAMIC = [
+  "from app import core",
+  "",
+  "def test_dynamic_alpha():",
+  '    assert core.computed("alpha") == 3',
+  "",
+  "def test_plain():",
+  "    assert True",
+  "",
+].join("\n");
 const SKIPPED = `import pytest\n\npytest.skip("no service", allow_module_level=True)\n\n${FOUR}`;
 
 const ref = (name: string) => ({ project: "small", path: `tests/${name}.py` });
 const FILE = ref("test_four");
 const checks = (report: RunReport) => report.results.map((r) => [r.check.fullName, r.outcome]);
 
+/** An observed store in memory, as `pytestObservedStore` keeps it in the daemon's `meta`. */
+function memoryStore(): ObservedStore & { value: ObservedPaths; session: RelativePath[] } {
+  const value: Record<RelativePath, RelativePath[]> = {};
+  const session: RelativePath[] = [];
+  return {
+    value,
+    session,
+    read: () => value,
+    write(additions) {
+      for (const [file, paths] of Object.entries(additions)) {
+        value[file as RelativePath] = [
+          ...new Set([...(value[file as RelativePath] ?? []), ...paths]),
+        ];
+      }
+    },
+    readSession: () => session,
+    writeSession: (additions) => void session.push(...additions),
+  };
+}
+
 let synced: Synced = { ok: false, reason: "the sync did not run" };
 let scratch = "";
 let adapter: RunnerAdapter | null = null;
+let root = "" as AbsolutePath;
+let source: NodeJS.ProcessEnv = {};
 const notes: string[] = [];
 beforeAll(async () => {
   synced = syncFixture(small, "3.13");
   scratch = realpathSync(mkdtempSync(join(tmpdir(), "squeal-pytest-focused-")));
   if (!synced.ok) return;
-  const root = realpathSync(synced.env.root) as AbsolutePath;
+  root = realpathSync(synced.env.root) as AbsolutePath;
   writeFileSync(join(root, "tests/test_four.py"), FOUR);
   writeFileSync(join(root, "tests/test_four_broken.py"), `raise RuntimeError("cannot load")\n`);
   writeFileSync(join(root, "tests/test_four_skipped.py"), SKIPPED);
   writeFileSync(join(root, "tests/test_four_other.py"), "def test_other():\n    assert True\n");
-  const { PYTHONDONTWRITEBYTECODE: _, ...source } = pythonEnv();
+  writeFileSync(join(root, "tests/test_four_dynamic.py"), DYNAMIC);
+  const { PYTHONDONTWRITEBYTECODE: _, ...env } = pythonEnv();
+  source = env;
   adapter = await createPytestAdapter(PROJECT, {
     root,
     source,
@@ -155,6 +195,44 @@ describe("pytest adapter: focused runs", SLOW, () => {
 
     expect(report.skippedFiles?.map((f) => f.testFile)).toEqual([skipped]);
     expect(checks(report)).toEqual([["TestParity::test_old_1", "skip"]]);
+  });
+
+  it("records no observed path of a focused run; the file's whole run does (row 011-145)", async (ctx) => {
+    requireSynced(ctx, synced);
+    const store = memoryStore();
+    const observing = await createPytestAdapter(PROJECT, {
+      root,
+      source,
+      note: (text) => notes.push(text),
+      cacheDir: join(scratch, "cache") as AbsolutePath,
+      observed: store,
+    });
+    const DYNAMIC_FILE = ref("test_four_dynamic");
+    const alpha = "src/app/plugins/alpha.py";
+    const options = (n: number) => ({
+      runId: `d${n}`,
+      logDir: join(scratch, `dynamic-${n}`) as AbsolutePath,
+      timeoutMs: 60_000,
+    });
+
+    const focused = await observing.run([DYNAMIC_FILE], {
+      ...options(0),
+      checks: [{ testFile: DYNAMIC_FILE, texts: ["dynamic_alpha"] }],
+    });
+    expect(checks(focused)).toEqual([["test_dynamic_alpha", "pass"]]);
+    expect(store.value).toEqual({});
+    expect(store.session).toEqual([]);
+    expect(focused.environmentObserved).toBeUndefined();
+    expect((await observing.closure(DYNAMIC_FILE)).paths).not.toContain(alpha);
+
+    const whole = await observing.run([DYNAMIC_FILE], options(1));
+    expect(checks(whole)).toEqual([
+      ["test_dynamic_alpha", "pass"],
+      ["test_plain", "pass"],
+    ]);
+    expect(store.value[DYNAMIC_FILE.path as RelativePath]).toContain(alpha);
+    expect((await observing.closure(DYNAMIC_FILE)).paths).toContain(alpha);
+    await observing.close();
   });
 
   it("runs a file without texts whole, in the same batch as a focused file", async (ctx) => {
