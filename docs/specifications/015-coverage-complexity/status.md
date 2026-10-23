@@ -7,6 +7,7 @@ Started: 2026-10-23
 
 - 2026-10-23, the human, an idea to consider: could Squeal calculate coverage and cyclomatic complexity (CC) and share them between worktrees? It could calculate CC and the CRAP score, behind an opt-in setting, feed the agent on the fly, and be available on demand. Research first.
 - 2026-10-23, the coordinator's assumptions, for the spec to confirm or change: off by default, switched on in `squeal.config.json`; coverage comes only from runs Squeal makes anyway, never from an extra run; coverage and complexity are stored by content key like test results (011 C3, C4, C7), so a worktree inherits them; a push says only what changed on code the agent changed, and the rest is pull (vision, "push transitions, pull state"); Vitest first, node:test and pytest by the same contract later.
+- 2026-10-23, the human: "the code can squeal as well, not just tests". Complexity and CRAP are a check type of their own (vision, Long-term direction: "Tests are the first check type, not the last"), with states, transitions and provenance like a test's, not only a note on test results. This replaces the coordinator's first reading that they fit only as a decoration of coverage.
 
 ## Open questions
 
