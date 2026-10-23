@@ -45,3 +45,17 @@ Seams: forward `RunnerAdapter.focuses` through `src/core/daemon/{composite-runne
 Owns those files, `src/runners/pytest/adapter.ts`, their tests, `tasks/011-145/`. Not yours: `src/core/scheduler/{bootstrap,ledger}.ts` (W1: ask before you need either), `src/core/store/prune.ts` (W2), `src/cli/` and `src/core/status/` (R3, 011-146), the board, spec text, bundles, version. No `npm run build`.
 
 Done when the row's done-when holds with real runner processes; the 011-144 and 011-153 tests pass; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output in your summary.
+
+## W4: 011-163, a departure drain ends when its slow files wait
+
+Use /worker. Shape: slice. Added 2026-10-23 after the human's drain decision; dispatched from main `eb6386fbc` beside W1 to W3.
+
+Outcome: a draining daemon runs its fast work to the end, then exits once its slow files have had no run for 60 s, and leaves them queued for the next daemon.
+
+Read board row 011-163; 011 C9 (the drain, as amended 2026-10-23) and 004 D2; `research/drains.md` sections 1 and 5; `tasks/011-84/design.md` section 1.
+
+Seams: the departure check and `drainable` in `src/core/daemon/lifecycle.ts`; the drain's slow lane and its `waiting for slot` state in `src/core/scheduler/slow-tier.ts`; `slowPending`, `owedWork` and `pauseBacklog` in `src/core/scheduler/scheduler.ts`. A lead: the scheduler tells the departure check since when the drain's slow lane has had no run; the check exits when no fast drain work is left and that time is 60 s old.
+
+Owns `lifecycle.ts`, `slow-tier.ts`, the drain methods of `scheduler.ts` (the three above and one new reader; W3 adds its `focus` method in the same file, so keep to those methods), their tests, `tasks/011-163/`. Not yours: `bootstrap.ts`, `ledger.ts` (W1), `prune.ts` (W2), `queue.ts`, `tiers.ts`, `record.ts`, `daemon.ts` and the runner wrappers (W3); ask before you need any. Not the board, spec text, bundles or version. No `npm run build`.
+
+Done when the row's done-when holds with real daemons; the 011-93 drain tests pass; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output in your summary.
