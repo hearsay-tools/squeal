@@ -1,0 +1,24 @@
+spec  reviews  FAIL  blockers  review-repair rows
+001      107    62       107         46
+002        1     0         0          0
+003        9     6         7          7
+004       24    11        23          1
+005       14     6        17         14
+006       19    13        28         16
+007       14    10        24          7
+008        6     4        10          4
+009        4     1         1          1
+010        4     1         1          1
+011       83    43        76          8
+012        2     2         2          0
+013        1     1         1          0
+014       15     6        11          1
+015       10     5        18          2
+FAIL round whose blockers are all A or B: 007/wave-5.5.md A
+FAIL round whose blockers are all A or B: 007/wave-5.75.md A
+FAIL round whose blockers are all A or B: 007/wave-5.875.md A
+FAIL round whose blockers are all A or B: 011/0.1.243.md A
+FAIL round whose blockers are all A or B: 011/0.1.287.md B
+FAIL rounds with blockers: 169
+rounds with at least one blocker of class: {"G":30,"B":7,"E":110,"D":10,"C":30,"A":13,"F":4,"X":2}
+rounds whose blockers are all one class: {"G":22,"E":85,"C":17,"F":1,"D":6,"A":4,"B":1}
