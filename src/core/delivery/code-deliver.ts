@@ -1,4 +1,4 @@
-import { awaitFirstCount, readCursor } from "../code/pass/cursor.js";
+import { awaitFirstCount, readCursor, recountTooBigEdits } from "../code/pass/cursor.js";
 import { uncountableFiles } from "../code/pass/failed.js";
 import { pulledReader } from "../code/pass/pulled.js";
 import type { CodeStore } from "../code/store/types.js";
@@ -217,7 +217,8 @@ function toldTooBig(store: CodeStore, consumer: Consumer): ReadonlySet<string> {
  * Spec 015 D6: the files too big to count that changed in `since`'s
  * revisions, the consumer's own, and that it was not told of; recorded as told.
  * Row 015-36: a first count or a recount writes every files row at its
- * revision (`recount`), which is no edit.
+ * revision (`recount`), which is no edit, but for the too-big files an
+ * edit in its revisions changed (review 0.1.297 B5).
  */
 function newTooBig(
   store: CodeStore,
@@ -228,13 +229,14 @@ function newTooBig(
 ): CodeTooBig[] {
   if (since === null) return [];
   const told = toldTooBig(store, consumer);
+  const edits = recount === null ? null : recountTooBigEdits(store.meta, consumer.worktreeId);
   const files = store.files
     .list(consumer.worktreeId)
     .filter(
       (f) =>
         isTooBig(f) &&
         isOwn(since, f.revision) &&
-        f.revision !== recount?.revision &&
+        (f.revision !== recount?.revision || edits?.has(f.path) === true) &&
         !told.has(f.path),
     );
   if (files.length === 0) return [];
