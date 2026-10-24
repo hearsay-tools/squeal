@@ -130,7 +130,12 @@ function fileFunctions(
   });
 }
 
-/** The files not judged, in path order: too big, parse errors, not counted yet. */
+/**
+ * The files not judged, in path order: too big, not counted yet, parse
+ * errors. A file has parse errors when its stored count does (D3), whether
+ * or not a function is in one; the `unknown` functions are the detail
+ * (review 0.1.283 B4).
+ */
 function notJudged(
   code: CodeStore,
   worktreeId: WorktreeId,
@@ -138,18 +143,18 @@ function notJudged(
   keep: (path: RelativePath) => boolean,
 ): CodeReportFile[] {
   const files = code.files.list(worktreeId).filter((f) => keep(f.path));
-  const uncounted = new Set(code.files.uncounted(worktreeId).map((f) => f.path));
   const unknown = new Map<RelativePath, number>();
   for (const s of states) {
     if (s.outcome === "unknown") unknown.set(s.check.path, (unknown.get(s.check.path) ?? 0) + 1);
   }
   return files.flatMap((f): CodeReportFile[] => {
     if (isTooBig(f)) return [{ path: f.path, reason: "too-big", size: f.size }];
-    const errors = unknown.get(f.path);
-    if (errors !== undefined) {
-      return [{ path: f.path, reason: "parse-error", size: f.size, unknown: errors }];
-    }
-    return uncounted.has(f.path) ? [{ path: f.path, reason: "not-counted", size: f.size }] : [];
+    const count = code.counts.get(f.blob, f.language, f.counterVersion);
+    if (count === null) return [{ path: f.path, reason: "not-counted", size: f.size }];
+    if (count.errors.length === 0) return [];
+    return [
+      { path: f.path, reason: "parse-error", size: f.size, unknown: unknown.get(f.path) ?? 0 },
+    ];
   });
 }
 
