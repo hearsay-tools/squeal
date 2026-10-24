@@ -26391,10 +26391,10 @@ function endedInTime(module2) {
 function endedWhole(module2) {
   return module2.afterCancel && module2.state === "passed" && module2.cut === false;
 }
-function cutShort(module2) {
+function cutShort(module2, beforeCancel) {
   for (const test of module2.children.allTests()) {
     if (test.options.mode !== "run" && test.options.mode !== "only") continue;
-    const state = test.result().state;
+    const state = beforeCancel.get(test.id);
     if (state !== "passed" && state !== "failed") return true;
   }
   return false;
@@ -26478,6 +26478,8 @@ var init_reporter = __esm({
       #requested;
       #texts;
       #names = /* @__PURE__ */ new WeakMap();
+      /** Each test whose result arrived before the cancel was asked, and its state then (`cutShort`). */
+      #beforeCancel = /* @__PURE__ */ new Map();
       /** The test files the run was asked for. */
       get requested() {
         return this.#requested.values();
@@ -26489,6 +26491,7 @@ var init_reporter = __esm({
       testCase(testCase) {
         const ref2 = this.#ref(testCase.project.name, testCase.module.moduleId);
         if (!ref2) return;
+        if (!this.cancelRequested) this.#beforeCancel.set(testCase.id, testCase.result().state);
         const texts = this.#texts.get(refKey(ref2));
         if (texts !== void 0 && !holdsCheckText(testCase.fullName, texts)) return;
         const result = toCheckRunResult(testCase, ref2, this.paths, this.#name(testCase));
@@ -26521,7 +26524,7 @@ var init_reporter = __esm({
           state: module2.state(),
           errors,
           afterCancel: this.cancelRequested,
-          cut: cutShort(module2),
+          cut: cutShort(module2, this.#beforeCancel),
           durationMs: moduleDuration(module2)
         };
         this.modules.set(refKey(ref2), end);
