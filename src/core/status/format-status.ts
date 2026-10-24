@@ -18,6 +18,7 @@ import {
 } from "./checks.js";
 import { codeStatusLines } from "./code-status.js";
 import { configProblemsLine } from "./config-problems.js";
+import { focusedLines } from "./focused.js";
 import { holdLines } from "./holds.js";
 import { statusRevisionText } from "./identity.js";
 import { fromBase } from "./next-step-text.js";
@@ -85,6 +86,8 @@ export function formatStatus(
             `        ${recordedText(f.recorded, result.worktreeId, now, { command, path: fromBase(options.base, f.check.testPath) })}`,
           ]),
     ]),
+    // Row 011-146 (C6 as amended 2026-10-23): focused runs, after the failures, never counted.
+    ...focusedLines(result, full),
     `Affected checks: ${affected(result, command)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...owedLine(result),
