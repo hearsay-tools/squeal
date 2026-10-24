@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.286";
+  if (true) return "0.1.287";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -26388,6 +26388,17 @@ import { appendFileSync } from "node:fs";
 function endedInTime(module2) {
   return !module2.afterCancel && module2.state !== "pending" && module2.state !== "queued";
 }
+function endedWhole(module2) {
+  return module2.afterCancel && module2.state === "passed" && module2.cut === false;
+}
+function cutShort(module2) {
+  for (const test of module2.children.allTests()) {
+    if (test.options.mode !== "run" && test.options.mode !== "only") continue;
+    const state = test.result().state;
+    if (state !== "passed" && state !== "failed") return true;
+  }
+  return false;
+}
 function createSquealReporter(current3) {
   let vitest = null;
   const moduleOf = (taskId) => {
@@ -26510,6 +26521,7 @@ var init_reporter = __esm({
           state: module2.state(),
           errors,
           afterCancel: this.cancelRequested,
+          cut: cutShort(module2),
           durationMs: moduleDuration(module2)
         };
         this.modules.set(refKey(ref2), end);
@@ -27640,12 +27652,14 @@ async function execute(vitest, specs, timeoutMs, collector, signal2) {
   const reason2 = timedOut ? TIMEOUT_REASON : CANCEL_REASON;
   const failure2 = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : cancelled(signal2?.reason);
   if (!timedOut) collector.note(failure2);
+  const keeps = !timedOut && signal2?.reason === "step-down";
+  const keepsWhole = keeps ? { keepsWhole: true } : {};
   const stopped = (execution) => timedOut ? {
     end: "timed-out",
     failure: failure2,
     hung: false,
     ...execution.rejected === void 0 ? {} : { rejected: execution.rejected }
-  } : { ...execution, failure: execution.failure ?? failure2 };
+  } : { ...execution, failure: execution.failure ?? failure2, ...keepsWhole };
   cancel(vitest, collector, reason2);
   const graceful = await settleWithin(run5, GRACE_BEFORE_FORCE_MS);
   if (graceful) return stopped(graceful);
@@ -27655,7 +27669,8 @@ async function execute(vitest, specs, timeoutMs, collector, signal2) {
   return {
     end: timedOut ? "timed-out" : "completed",
     failure: `${failure2}; workers did not stop`,
-    hung: true
+    hung: true,
+    ...keepsWhole
   };
 }
 async function settleOrStop(run5, timeoutMs, signal2) {
@@ -27699,7 +27714,7 @@ function buildReport(collector, execution, durationMs2) {
     ...execution.failure === null ? [] : [execution.failure],
     ...unattributed.map((e) => `unhandled error outside any test file: ${errorText(e)}`)
   ].join("\n");
-  const completed = end === "crashed" ? [] : [...collector.modules.values()].filter(endedInTime).map((m) => m.ref).sort(compareRefs2);
+  const completed = end === "crashed" ? [] : [...collector.modules.values()].filter((m) => endedInTime(m) || execution.keepsWhole === true && endedWhole(m)).map((m) => m.ref).sort(compareRefs2);
   const completedKeys = new Set(completed.map(refKey));
   const started2 = startedProjects(collector);
   const errors = /* @__PURE__ */ new Map();
