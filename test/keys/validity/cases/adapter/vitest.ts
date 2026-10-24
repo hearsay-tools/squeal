@@ -373,4 +373,9 @@ export const VITEST_RUNS: readonly Case[] = [
       runs: [{ files: [ref("test/held.test.ts"), ref("test/computed.test.ts")], touched: [] }],
     },
   ),
+  vitest(
+    "a run with coverage on whose global setup throws stores nothing (review 0.1.295 B3)",
+    "015 D8: a rejected run keeps no coverage record and deletes its payloads, and stores what it stores with coverage off",
+    { files: REJECTING, coverage: true, runs: [{ files: [ref("test/one.test.ts")], touched: [] }] },
+  ),
 ];
