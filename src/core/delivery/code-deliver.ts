@@ -1,6 +1,12 @@
 import type { CodeStore } from "../code/store/types.js";
 import { isRecord } from "../fs/index.js";
-import type { CodeCheckId, CodeFile, CodeKnownState, CodeMeasure } from "../types/code.js";
+import type {
+  CodeCheckId,
+  CodeFile,
+  CodeKnownState,
+  CodeMeasure,
+  CodeViewEntry,
+} from "../types/code.js";
 import {
   CODE_LISTED_MAX,
   type CodeDeltaEntry,
@@ -54,6 +60,10 @@ function writeJson(store: CodeStore, key: string, value: unknown): void {
   store.meta.set(key, JSON.stringify(value));
 }
 
+function forget(store: CodeStore, key: string): void {
+  store.meta.delete(key);
+}
+
 const REASONS: readonly CodeRecount["reason"][] = ["first", "threshold", "include", "counter"];
 
 /** The worktree's latest recount; `null` when none is recorded or it is unreadable. */
@@ -85,24 +95,27 @@ export function lastTransition(
   );
 }
 
-/** Seeds `consumer`'s view with every judged state, told by count (D6), and marks when. */
+/** Every function failing now in the worktree. */
+const failingIn = (store: CodeStore, worktreeId: WorktreeId) =>
+  store.states.list(worktreeId, { measure: MEASURE, outcome: "fail" });
+
+/**
+ * Seeds `consumer`'s view with every failing state, told by count (D6), and
+ * marks when. A function with no entry reads `pass` (lessons round 1, P5).
+ */
 function seed(
   store: CodeStore,
   consumer: Consumer,
-  states: readonly CodeKnownState[],
+  failing: readonly CodeKnownState[],
   at: EpochMs,
 ): void {
   store.views.clear(consumer);
-  const judged = states.filter((s) => s.outcome === "pass" || s.outcome === "fail");
   store.views.writeMany(
     consumer,
-    judged.map((s) => seedEntry(s, at)),
+    failing.map((s) => seedEntry(s, at)),
   );
   writeJson(store, seededKey(consumer), at);
 }
-
-const over = (states: readonly CodeKnownState[]) =>
-  states.filter((s) => s.outcome === "fail").length;
 
 /**
  * Spec 015 D6: the registration's complexity line, with the consumer's view
@@ -117,12 +130,12 @@ export function registerCode(
   const { worktreeId } = consumer;
   const read = withCode(source, ({ store, complexity }) =>
     store.transaction((): CodeRegistration => {
-      const states = store.states.list(worktreeId, { measure: MEASURE });
-      seed(store, consumer, states, at);
+      const failing = failingIn(store, worktreeId);
+      seed(store, consumer, failing, at);
       const total = store.files.list(worktreeId).filter((f) => !isTooBig(f)).length;
       const pending = store.files.uncounted(worktreeId).length;
       const counting = pending === 0 ? {} : { counting: { done: total - pending, total } };
-      return { v: 1, threshold: complexity.threshold, over: over(states), ...counting };
+      return { v: 1, threshold: complexity.threshold, over: failing.length, ...counting };
     }),
   );
   if (read !== "missing") return read ?? undefined;
@@ -131,6 +144,29 @@ export function registerCode(
   return threshold === undefined
     ? undefined
     : { v: 1, threshold, over: 0, counting: { done: 0, total: 0 } };
+}
+
+/**
+ * Lessons round 1, P5: what the code store keeps of consumers that left.
+ * The views and told marks of `gone`, which just unregistered, go, and in
+ * `worktrees` the views of every consumer not in `registered` (011 C7's
+ * departed ones); views of ended sessions otherwise stay for good. Nothing
+ * while the policy is off or the store cannot be read.
+ */
+export function dropCode(
+  source: CodeSource | undefined,
+  gone: readonly Consumer[],
+  { worktrees, registered }: { worktrees: readonly WorktreeId[]; registered: readonly Consumer[] },
+): void {
+  withCode(source, ({ store }) =>
+    store.transaction(() => {
+      for (const consumer of gone) {
+        forget(store, seededKey(consumer));
+        forget(store, tooBigToldKey(consumer));
+      }
+      store.views.retain(worktrees, registered);
+    }),
+  );
 }
 
 /** The paths `consumer` was told are too big to count. */
@@ -175,6 +211,26 @@ export function lineOf(
   return fn?.range.startLine ?? null;
 }
 
+/**
+ * The states a delivery compares with `view`: every failing function's,
+ * and those of the files the view names, so a function told failing that
+ * passes now, or has gone, is seen. Any other passes and has no entry.
+ */
+function statesFor(
+  store: CodeStore,
+  worktreeId: WorktreeId,
+  failing: readonly CodeKnownState[],
+  view: readonly CodeViewEntry[],
+): readonly CodeKnownState[] {
+  const known = new Set(failing.map(codeKey));
+  const paths = [...new Set(view.filter((v) => !known.has(codeKey(v))).map((v) => v.check.path))];
+  if (paths.length === 0) return failing;
+  const others = store.states
+    .list(worktreeId, { measure: MEASURE, paths })
+    .filter((s) => s.outcome !== "fail");
+  return [...failing, ...others];
+}
+
 /** What one delivery tells, and whether it writes anything. */
 interface CodeStep {
   readonly news: CodeNews | null;
@@ -191,24 +247,25 @@ function codeStep(
   const { worktreeId } = consumer;
   const seeded = readJson(store, seededKey(consumer));
   const seededAt = typeof seeded === "number" ? seeded : 0;
-  const states = store.states.list(worktreeId, { measure: MEASURE });
+  const failing = failingIn(store, worktreeId);
   const tooBig = newTooBig(store, consumer, since, limit, write);
   const big = tooBig.length === 0 ? {} : { tooBig };
   const recount = readRecount(store, worktreeId);
   if (recount !== null && recount.at > seededAt) {
-    if (write) seed(store, consumer, states, at);
+    if (write) seed(store, consumer, failing, at);
     const news: CodeNews = {
       v: 1,
       entries: [],
       more: 0,
-      recount: { ...recount, over: over(states) },
+      recount: { ...recount, over: failing.length },
     };
     return { news: { ...news, ...big }, writes: true };
   }
   const edits = new Map(store.states.edits(worktreeId, MEASURE).map((e) => [codeKey(e), e]));
+  const view = store.views.list(consumer).filter((v) => v.measure === MEASURE);
   const plan = planCodeDelta({
-    view: store.views.list(consumer).filter((v) => v.measure === MEASURE),
-    states,
+    view,
+    states: statesFor(store, worktreeId, failing, view),
     last: (check, measure) => lastTransition(store, worktreeId, check, measure),
     edit: (check, measure) => edits.get(codeKey({ check, measure })) ?? null,
     seededAt,
