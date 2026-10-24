@@ -1,0 +1,1 @@
+`squeal stop` prints `Squeal daemon stopped for <root>` when it succeeds. Make that line also name the daemon's pid when it is known, as `Squeal daemon stopped for <root> (pid 1234)`, the way the line for a daemon that still serves already does. Update or add a unit test for it. Keep the change small, and finish when the relevant tests pass.

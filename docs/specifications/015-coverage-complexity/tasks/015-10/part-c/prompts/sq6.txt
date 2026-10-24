@@ -1,0 +1,1 @@
+This checkout is on the branch `work`, which is behind the local branch `dogfood`. First bring it up to date with `git merge --ff-only dogfood`. Then, in src/cli/retry.ts, make `--reason` accept any letter case (`LOAD`, `Environment`) by lower-casing the value before it is checked. Add a unit test for it. Finish when the retry tests pass.

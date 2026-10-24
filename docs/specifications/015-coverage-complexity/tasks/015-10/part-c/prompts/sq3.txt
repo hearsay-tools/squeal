@@ -1,0 +1,1 @@
+`squeal retry` prints one line per test file it was given. When it was given more than one file, end its output with one summary line: `Queued N of M test files.`, or with `--cancel`, `Withdrew N of M test files.`, where N counts the files that were queued or withdrawn. Add a unit test for it. Finish when the relevant tests pass.
