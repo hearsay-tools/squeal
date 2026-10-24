@@ -8,6 +8,7 @@ import type { Case, CaseKind } from "./case.js";
 import { CASES } from "./cases/index.js";
 import { type Comparison, compareTrees } from "./compare.js";
 import type { Install } from "./lock.js";
+import { allEnded } from "./sides.js";
 import { extractTree, lastRelease, type Overlay, ROOT } from "./trees.js";
 
 /*
@@ -27,6 +28,8 @@ export const FULL = { timeout: 300_000 };
  * The work directory's removal at the end of a file (row 011-179): a full
  * corpus's comparison leaves some 13,000 files, mostly each pytest case's
  * bytecode, which took more than Vitest's 10 s hook timeout at load 59 to 99.
+ * The hook first waits for a comparison a timed-out test left running, so a
+ * driver that never ends fails it.
  */
 export const REMOVAL = { timeout: 120_000 };
 
@@ -78,21 +81,21 @@ export interface Comparisons {
 /**
  * Registers the work directory's setup and removal; call at a test file's
  * top level. Each comparison's directory goes once it ends, while the next
- * test runs; the file's last hook waits for those removals and removes the
- * rest (row 011-179).
+ * test runs; the file's last hook waits for every comparison and its removal,
+ * a timed-out test's too, then removes the rest (row 011-179, review w31b B1).
  */
 export function comparisons(): Comparisons {
   let work: string | undefined;
   let release = "";
   let runs = 0;
-  const removals: Promise<void>[] = [];
+  const ends: Promise<void>[] = [];
   beforeAll(() => {
     work = mkdtempSync(join(tmpdir(), "squeal-validity-"));
     release = lastRelease();
     extractTree(release, join(work, "release"));
   });
   afterAll(async () => {
-    await Promise.all(removals);
+    await allEnded(ends);
     if (work !== undefined) await rm(work, { recursive: true, force: true });
   }, REMOVAL.timeout);
   const dir = () => {
@@ -104,20 +107,19 @@ export function comparisons(): Comparisons {
     tree: () => join(dir(), "release"),
     compare: async (overlay, cases = CASES, baseline = ROOT, install) => {
       const at = join(dir(), `run-${runs++}`);
-      try {
-        return await compareTrees({
-          baseline,
-          cases,
-          overlay,
-          work: at,
-          ...(install === undefined ? {} : { install }),
-        });
-      } finally {
-        const removal = rm(at, { recursive: true, force: true });
-        // Raised by the file's last hook, which awaits it.
-        removal.catch(() => undefined);
-        removals.push(removal);
-      }
+      const comparison = compareTrees({
+        baseline,
+        cases,
+        overlay,
+        work: at,
+        ...(install === undefined ? {} : { install }),
+      });
+      const remove = () => rm(at, { recursive: true, force: true });
+      // Tracked before the test can stop waiting for it; the file's last hook awaits it and raises a failed removal.
+      const end = comparison.then(remove, remove);
+      end.catch(() => undefined);
+      ends.push(end);
+      return comparison;
     },
   };
 }
