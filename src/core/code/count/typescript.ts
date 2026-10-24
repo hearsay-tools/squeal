@@ -60,9 +60,9 @@ export const TYPESCRIPT_RULES: CountRules = {
   functions: FUNCTIONS,
   classes: CLASSES,
   fieldParents: new Set(["public_field_definition"]),
-  nameOf(node) {
+  nameOf(node, text) {
     const own = node.childForFieldName("name");
-    return own === null ? anonymousName(node) : keyText(own);
+    return own === null ? anonymousName(node, text) : keyText(own, text);
   },
   hashFrom(node) {
     return node.childForFieldName("parameters") ?? node.childForFieldName("parameter") ?? node;
@@ -106,48 +106,47 @@ function isParameter(type: string | null): boolean {
  * property, field, assignment or parameter that receives it, else
  * `<anonymous>`.
  */
-function anonymousName(node: Node): string {
+function anonymousName(node: Node, text: string): string {
   let parent = node.parent;
   while (parent !== null && WRAPPERS.has(parent.type)) parent = parent.parent;
   switch (parent?.type) {
     case "arguments":
-      return callSite(parent.parent);
+      return callSite(parent.parent, text);
     case "variable_declarator":
     case "public_field_definition":
-      return receiver(parent.childForFieldName("name"));
+      return receiver(parent.childForFieldName("name"), text);
     case "pair":
-      return receiver(parent.childForFieldName("key"));
+      return receiver(parent.childForFieldName("key"), text);
     case "assignment_expression":
     // A default: `{ cb = () => {} }`, `[cb = () => {}]`.
     case "assignment_pattern":
     case "object_assignment_pattern":
-      return receiver(parent.childForFieldName("left"));
+      return receiver(parent.childForFieldName("left"), text);
     // A default parameter: `cb = () => {}`.
     case "required_parameter":
     case "optional_parameter":
-      return receiver(parent.childForFieldName("pattern"));
+      return receiver(parent.childForFieldName("pattern"), text);
     default:
       return "<anonymous>";
   }
 }
 
-function callSite(call: Node | null): string {
+function callSite(call: Node | null, text: string): string {
   if (call?.type === "call_expression") {
-    const callee = calleeName(call.childForFieldName("function"));
+    const callee = calleeName(call.childForFieldName("function"), text);
     return callee === null ? "<anonymous>" : `<${callee}>`;
   }
   if (call?.type === "new_expression") {
-    const callee = calleeName(call.childForFieldName("constructor"));
+    const callee = calleeName(call.childForFieldName("constructor"), text);
     return callee === null ? "<anonymous>" : `<new ${callee}>`;
   }
   return "<anonymous>";
 }
 
 /** `f` of `f(…)`, `map` of `xs.map(…)`; `null` for any other callee. */
-function calleeName(callee: Node | null): string | null {
-  if (callee?.type === "identifier") return callee.text;
-  if (callee?.type === "member_expression")
-    return callee.childForFieldName("property")?.text ?? null;
+function calleeName(callee: Node | null, text: string): string | null {
+  if (callee?.type === "identifier") return source(callee, text);
+  if (callee?.type === "member_expression") return property(callee, text);
   return null;
 }
 
@@ -155,15 +154,24 @@ function calleeName(callee: Node | null): string | null {
 const NAMELESS = new Set(["object_pattern", "array_pattern", "subscript_expression"]);
 
 /** The receiving name: an identifier or a key, a member's property. */
-function receiver(target: Node | null): string {
+function receiver(target: Node | null, text: string): string {
   if (target === null || NAMELESS.has(target.type)) return "<anonymous>";
-  if (target.type === "member_expression") {
-    return target.childForFieldName("property")?.text ?? "<anonymous>";
-  }
-  return keyText(target);
+  if (target.type === "member_expression") return property(target, text) ?? "<anonymous>";
+  return keyText(target, text);
+}
+
+function property(member: Node, text: string): string | null {
+  const name = member.childForFieldName("property");
+  return name === null ? null : source(name, text);
 }
 
 /** A key's text, a string key without its quotes. */
-function keyText(key: Node): string {
-  return key.type === "string" ? key.text.slice(1, -1) : key.text;
+function keyText(key: Node, text: string): string {
+  const written = source(key, text);
+  return key.type === "string" ? written.slice(1, -1) : written;
+}
+
+/** A node's text as the file has it, which the parse input can differ from (`parser.ts`). */
+function source(node: Node, text: string): string {
+  return text.slice(node.startIndex, node.endIndex);
 }
