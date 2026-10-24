@@ -10,11 +10,18 @@ import type { EpochMs, RelativePath, RevisionNumber } from "./common.js";
 /** Spec 015 D6: at most this many code changes are told in full in one delivery. */
 export const CODE_LISTED_MAX = 5;
 
+/**
+ * What a told code entry says: a transition (D5), or `edited`, the first
+ * edit in a session to a function over the threshold before and after it
+ * (D6, its last rule).
+ */
+export type CodeDeltaKind = CodeTransitionKind | "edited";
+
 /** One code change told in full (D5's delivered rows). */
 export interface CodeDeltaEntry {
   readonly check: CodeCheckId;
   readonly measure: CodeMeasure;
-  readonly kind: CodeTransitionKind;
+  readonly kind: CodeDeltaKind;
   /** The value now; for `removed`, the last one known, `null` when none was. */
   readonly value: number | null;
   readonly threshold: number | null;
