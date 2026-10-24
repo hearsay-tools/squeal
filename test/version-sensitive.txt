@@ -167,3 +167,6 @@ test/keys/environment
 # The coverage join reads V8's function list, which differs between Node 22 and 24
 # (review 0.1.297 B4).
 test/code/crap/lazy
+# The kit (spec 016 D1): a real `node --test` through the node:test adapter,
+# so the same identity path.
+test/kit/node-test
