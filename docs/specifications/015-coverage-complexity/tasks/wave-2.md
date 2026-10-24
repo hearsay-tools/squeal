@@ -1,6 +1,6 @@
 # Wave 2: coverage and CRAP
 
-Wave 2a dispatches after 0.1.293 (013-07, 015-18) is on main: W1, W2 and R3 run in parallel on disjoint seams. W1 and W2 are bundle changes and land as one candidate after a review. Wave 2b (015-12, CRAP and "no test runs it") is briefed once W1's record shape and R3's answer are in.
+Wave 2a dispatches after 0.1.293 (013-07, 015-18) is on main: W1, W2, W3 and R3 run in parallel on disjoint seams. W1, W2 and W3 are bundle changes and land as one candidate after a review. Wave 2b (015-12, CRAP and "no test runs it") is briefed once W1's record shape and R3's answer are in.
 
 ## W1: 015-11, Squeal's coverage provider and the records
 
@@ -18,6 +18,14 @@ Use /worker. Shape: slice. Outcome: the counter parses `typeof import("x")` and 
 - **Seam.** Before the TSX parse in `src/core/code/count/parser.ts` or `typescript.ts`: replace each `import("x")` that follows `typeof `, `<` or `,` with underscores of the same length. The walk and the body hashes read the file's own text. Raise `COUNTER_VERSION` to 3.
 - **Owns.** `src/core/code/count/**` and `test/code/count/**`. Leave `src/runners/**` and the store to W1.
 - **Done when.** The row's fixtures: the two misparses count like ESLint, and the same text in a string, a comment and a template literal is untouched. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
+
+## W3: 015-31, a held edit reports no crossing that only a later threshold change made
+
+Use /worker. Shape: repair. Outcome: an edit whose count failed and that a threshold recount held tells only its own crossing; a crossing that only the new threshold makes is the recount's summary (D1), never a per-function line or a session regression.
+- Read the row 015-31, `reviews/0.1.293-r2.md` N1 (the reproduction and the repair scope), spec D1, D4 and D6, and `tasks/R2-0.1.293/notes.md` (the `quiet` flag on a failed count).
+- **Seam.** `src/core/code/pass/failed.ts` and the judge in `pass.ts`: keep the policy (threshold) the failed edit was made under with its record, and judge its retry as the edit under that policy, then the policy change as the recount's.
+- **Owns.** `src/core/code/pass/**` and `test/code/pass/**`. Leave `src/core/code/count/**` to W2 and `src/runners/**` and the store schema to W1.
+- **Done when.** Delivery and session-regression tests: CC 3 -> 4 with the threshold moved 20 -> 2 while the edit's count is held tells nothing per function; a genuine CC 3 -> 23 edit under the same sequence still tells FAIL; the R2 tests stay green. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
 
 ## R3: open question 3, code that tests reach only through child processes
 
