@@ -1,0 +1,80 @@
+{
+  "source": {
+    "name": "Biome",
+    "url": "https://biomejs.dev"
+  },
+  "diagnostics": [
+    {
+      "code": {
+        "url": "https://biomejs.dev/linter/rules/use-const",
+        "value": "lint/style/useConst"
+      },
+      "location": {
+        "path": "a.ts",
+        "range": {
+          "end": {
+            "column": 6,
+            "line": 2
+          },
+          "start": {
+            "column": 3,
+            "line": 2
+          }
+        }
+      },
+      "message": "This let declares a variable that is only assigned once.",
+      "severity": "WARNING",
+      "suggestions": [
+        {
+          "range": {
+            "end": {
+              "column": 6,
+              "line": 2
+            },
+            "start": {
+              "column": 3,
+              "line": 2
+            }
+          },
+          "text": "const"
+        }
+      ]
+    },
+    {
+      "code": {
+        "url": "https://biomejs.dev/linter/rules/no-unused-variables",
+        "value": "lint/correctness/noUnusedVariables"
+      },
+      "location": {
+        "path": "a.ts",
+        "range": {
+          "end": {
+            "column": 13,
+            "line": 2
+          },
+          "start": {
+            "column": 7,
+            "line": 2
+          }
+        }
+      },
+      "message": "This variable unused is unused.",
+      "severity": "WARNING",
+      "suggestions": [
+        {
+          "range": {
+            "end": {
+              "column": 13,
+              "line": 2
+            },
+            "start": {
+              "column": 7,
+              "line": 2
+            }
+          },
+          "text": "_unused"
+        }
+      ]
+    }
+  ]
+}

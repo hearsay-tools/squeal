@@ -1,0 +1,51 @@
+{
+  "report": {
+    "end": "completed",
+    "durationMs": null,
+    "completedFiles": [
+      {
+        "project": "p",
+        "path": "example.com/pkg"
+      }
+    ],
+    "results": [
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "TestPanic"
+        },
+        "outcome": "fail",
+        "durationMs": 0,
+        "location": null,
+        "errors": [
+          {
+            "name": "Error",
+            "message": "panic: oops [recovered]",
+            "stack": "panic: oops [recovered]\n\tpanic: oops\ngoroutine 7 [running]:\ntesting.tRunner.func1(0xc000092100)\n\t/go/src/testing/testing.go:874 +0x3a3\npanic(0x1110ea0, 0x116aea0)\n\t/go/src/runtime/panic.go:679 +0x1b2\ncommand-line-arguments.TestPanic(0xc000092100)\n\ta_test.go:6 +0x39\ntesting.tRunner(0xc000092100, 0x114f500)\n\tgo/src/testing/testing.go:909 +0xc9\ncreated by testing.(*T).Run\n\tgo/src/testing/testing.go:960 +0x350\n",
+            "location": {
+              "path": "a_test.go",
+              "line": 6,
+              "column": 0
+            },
+            "diff": null
+          }
+        ]
+      }
+    ],
+    "fileErrors": [],
+    "failure": null
+  },
+  "missing": [
+    "Package: absent in this sample (test2json run without -p); go test -json sets it",
+    "failure location: only as 'file.go:line' inside output text, no column, no structure",
+    "location of a test: go test -json has none; go test -list gives top-level names only, no file or line",
+    "closure (RunnerClosure.paths, packages): no format carries the inputs a file read",
+    "environment (RunnerEnvironment): runner and adapter version, resolved config, environment files",
+    "withheld / observed / reads: no format can say a result is untrustworthy because inputs moved",
+    "focused counts (collected, matched): no format reports how many checks a filter selected",
+    "startupFailure vs fileErrors: no format separates a global setup failure from a file's load failure",
+    "duplicate full names: neither id nor line tells the two 'adds' tests apart in TAP or JUnit"
+  ]
+}
