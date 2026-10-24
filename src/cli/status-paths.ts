@@ -13,11 +13,13 @@ import type { CliIo } from "./main.js";
 import { pauseOnlyIds, readNamedFiles } from "./named-files.js";
 import { type DaemonSync, pollPause, SYNC_POLL_MS, syncDaemon } from "./status-sync.js";
 import { STATUS_WAIT_SETTLE_MS } from "./status-wait.js";
+import { snapshotFocus } from "./status-wait-focus.js";
 import {
   decidedOutcome,
   type NamedPrint,
   type NamedWait,
   type NamedWaitOutcome,
+  ownNamedFiles,
   printNamed,
   selectNamedFiles,
 } from "./status-wait-paths.js";
@@ -31,6 +33,8 @@ export interface NamedSnapshotOptions {
   readonly now: () => EpochMs;
   /** Default `syncDaemon`; tests replace it. */
   readonly sync?: (root: AbsolutePath, pollMs: number) => DaemonSync;
+  /** Row 011-146: `--check` texts, whose focused answers it reads and requests nothing for (C6). */
+  readonly checks?: readonly string[];
 }
 
 /**
@@ -66,7 +70,7 @@ export async function readNamedSnapshot(
       await (state === "unsupported" ? sleep(left) : pollPause(Math.min(pollMs, left), sync));
     }
     const read = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, (context) =>
-      readOnce(context, cwd, paths, sync, options.now()),
+      readOnce(context, cwd, paths, sync, options.now(), options.checks ?? []),
     );
     if ("available" in read) return { outcome: "unavailable", waitedMs: elapsed(), result: read };
     return { ...read, waitedMs: elapsed() };
@@ -82,6 +86,7 @@ function readOnce(
   paths: readonly string[],
   sync: DaemonSync | undefined,
   now: EpochMs,
+  checks: readonly string[],
 ) {
   const id = worktreeIdFor(root);
   const selection = selectNamedFiles(store, id, root, cwd, paths);
@@ -113,9 +118,13 @@ function readOnce(
   const outcome: NamedWaitOutcome =
     liveness.state !== "alive" ? "no-daemon" : (decided ?? (hold !== null ? "on-hold" : "timeout"));
   const result = buildSnapshot(store, root, now);
+  // Row 011-146 (C6 as amended 2026-10-23): the selected checks' focused answers; it requests nothing.
+  const own = ownNamedFiles(root, cwd, paths, selection);
+  const focus = snapshotFocus(store, id, root, selection.files, own, checks);
   return {
     outcome,
     ...(hold === null ? {} : { hold }),
+    ...(focus === undefined ? {} : { focus }),
     selection,
     leftForPause,
     verdict: readVerdict(store, id, held),
@@ -133,6 +142,7 @@ export async function namedSnapshotCommand(
   io: CliIo,
   options: NamedSnapshotOptions,
 ): Promise<number> {
-  const snapshot = await readNamedSnapshot(io.cwd ?? process.cwd(), paths, options);
+  const checks = how.checks ?? [];
+  const snapshot = await readNamedSnapshot(io.cwd ?? process.cwd(), paths, { ...options, checks });
   return printNamed(snapshot, how, io, options.now);
 }
