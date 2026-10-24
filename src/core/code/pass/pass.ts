@@ -12,6 +12,7 @@ import type {
 import type { CodeStore } from "../store/index.js";
 import { countMissing, type Entry } from "./blobs.js";
 import { cursorOf, readCursor, recountReason, writeCursor, writeRecount } from "./cursor.js";
+import { dueRetries, readUncountable, writeUncountable } from "./failed.js";
 import { committedPaths } from "./head.js";
 import { includedSet } from "./included.js";
 import { checkKey, type FileAfter, judge } from "./judge.js";
@@ -37,9 +38,9 @@ export interface PassContext {
 /**
  * One pass of spec 015 D4 over a worktree, `null` when nothing is due. With
  * the cursor's policy and counter, it follows the revisions since the
- * cursor: their changed paths, a retry, and a file a runner now lists. Else
- * it rebuilds every state with no transition (D5) and writes the recount
- * record. Three writes: the files rows, so status can say "counting, N of
+ * cursor: their changed paths, a retry, a failed count due again (row
+ * 015-18), and a file a runner now lists. Else it rebuilds every state
+ * with no transition (D5) and writes the recount record. Three writes: the files rows, so status can say "counting, N of
  * M"; the blobs no worktree counted yet, in slices with a turn of the event
  * loop between them; then states, transitions, edits and the cursor in one
  * transaction, so a hook never reads half a revision. Before the last, a
@@ -52,9 +53,14 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const cursor = readCursor(store.meta, worktreeId);
   const current = cursorOf(latest, ctx.complexity, ctx.counter.version);
   const reason = ctx.switchedOn ? "first" : recountReason(cursor, current);
-  if (reason === null && cursor?.revision === latest && ctx.retry.size === 0) return null;
+  const started = ctx.now();
+  const failed = readUncountable(store.meta, worktreeId);
+  const due = dueRetries(failed, started);
+  if (reason === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0) {
+    return null;
+  }
   const since = reason === null && cursor !== null ? cursor.revision : null;
-  const entries = plan(ctx, since === null ? null : workSet(ctx, since, latest));
+  const entries = plan(ctx, since === null ? null : workSet(ctx, since, latest, due));
   ctx.retry.clear();
   const bodies =
     reason === null ? oldBodies(store, worktreeId, entries, ctx.counter.version) : new Map();
@@ -66,7 +72,9 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     );
     store.files.upsertMany(worktreeId, filesRows(entries, ctx.counter.version, latest));
   });
-  const { counted, skipped, links } = await countMissing(ctx, entries);
+  const { counted, skipped, links } = await countMissing(ctx, entries, failed, started);
+  // A path judged, gone or too big has no failed count to retry (row 015-18).
+  for (const e of entries) if (!skipped.has(e.path)) failed.delete(e.path);
 
   const quiet = reason !== null;
   const after: FileAfter[] = entries
@@ -116,6 +124,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
       edited.map((check) => ({ check, measure: "complexity", revision: latest, at })),
     );
     writeCursor(store.meta, worktreeId, current);
+    writeUncountable(store.meta, worktreeId, failed);
     // The coordinator's contract with 015-07: a first pass over inherited counts writes none.
     if (reason !== null && (reason !== "first" || counted > 0 || ctx.switchedOn)) {
       writeRecount(store.meta, worktreeId, {
@@ -129,13 +138,22 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   });
 }
 
-/** The edit pass's paths: the revisions' changes, the retries, and counted files a runner now lists. */
-function workSet(ctx: PassContext, after: RevisionNumber, upTo: RevisionNumber): RelativePath[] {
+/**
+ * The edit pass's paths: the revisions' changes, the retries, the failed
+ * counts due again (`due`), and counted files a runner now lists.
+ */
+function workSet(
+  ctx: PassContext,
+  after: RevisionNumber,
+  upTo: RevisionNumber,
+  due: readonly RelativePath[],
+): RelativePath[] {
   const tests = ctx.store.files.list(ctx.worktreeId, ctx.source.testFiles());
   return [
     ...new Set([
       ...ctx.source.changedPaths(after, upTo),
       ...ctx.retry,
+      ...due,
       ...tests.map((f) => f.path),
     ]),
   ];

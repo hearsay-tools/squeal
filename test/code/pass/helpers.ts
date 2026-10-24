@@ -1,8 +1,11 @@
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
+  type CodePassOptions,
   type Counter,
+  createCodePass,
   headAfterMove,
+  type PassReport,
   type PassSource,
   type SourceFile,
 } from "../../../src/core/code/pass/index.js";
@@ -49,6 +52,24 @@ export function fakeCounter(version = 1): Counter & { readonly calls: string[] }
           });
         });
       return Promise.resolve({ functions, errors });
+    },
+  };
+}
+
+/**
+ * Row 015-18: `fakeCounter`'s counts after `failures` calls that throw, as
+ * a grammar that did not load or a read error does; `Infinity` never counts.
+ */
+export function flakyCounter(failures: number): Counter & { readonly calls: string[] } {
+  const inner = fakeCounter();
+  const calls: string[] = [];
+  return {
+    version: inner.version,
+    calls,
+    count(text, language) {
+      calls.push(text);
+      if (calls.length <= failures) return Promise.reject(new Error("tree-sitter: out of memory"));
+      return inner.count(text, language);
     },
   };
 }
@@ -172,4 +193,29 @@ export function pass(
     log: () => {},
     ...rest,
   });
+}
+
+/** The daemon's code pass over `tree`, with what it reported, raised and logged. */
+export function daemonPass(
+  tree: FakeWorktree,
+  over: Partial<CodePassOptions> & { policy?: () => Policy },
+) {
+  const reports: PassReport[] = [];
+  const errors: Error[] = [];
+  const logs: string[] = [];
+  const code = createCodePass({
+    worktreeId: tree.id,
+    root: tree.root,
+    commonDir: tree.commonDir,
+    format: "sha1",
+    source: tree.source,
+    policy: () => policyOn(),
+    counter: () => Promise.resolve(fakeCounter()),
+    now: () => 1_000,
+    log: (text) => logs.push(text),
+    onError: (error) => errors.push(error),
+    onPass: (report) => reports.push(report),
+    ...over,
+  });
+  return { code, reports, errors, logs };
 }
