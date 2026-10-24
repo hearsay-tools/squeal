@@ -1158,6 +1158,8 @@ Spec: `specifications/014-ps/spec.md`, shipped 2026-10-22 in 0.1.258, its qualit
 
 Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 2026-10-23 with changes (thresholds configurable, a once-per-session line for a file too big to count, complexity delivered at once). Sections referenced as D1 to D10. The human's idea, 2026-10-23: Squeal calculates coverage and cyclomatic complexity per function, shares them between worktrees, and gives the CRAP score; opt-in, fed to the agent on the fly and available on demand. Research first; the spec follows from the findings, and the human reviews it before any code.
 
+**Version note for 015 (coordinator 04a258b0, 2026-10-24):** 011's wave 30 is `cand/0.1.291` (`f70b42c0c`, in review); it skipped 0.1.290 for 015's wave 1b. If 0.1.291 lands first, 015's candidate renumbers to 0.1.292; if 015's lands first, 011's stays 0.1.291. Each landing gives the 10-minute notice.
+
 **Released 0.1.283** (coordinator 52e58f23, 2026-10-24): waves 0 and 1 of 015 from `04cc8deee`, tag `squeal--v0.1.283`, hub `cd62102`, GitHub release latest. No issue closed: no 015 row has one.
 
 ### Research (briefs in `specifications/015-coverage-complexity/research/`)
