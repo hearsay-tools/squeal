@@ -151,6 +151,15 @@ export class RunQueue {
     return this.#entries.has(id) && this.#promotions.rankOf(id) !== null;
   }
 
+  /**
+   * C15's rank of `ref`, queued or running: the request order of the
+   * earliest live promotion that holds it; `null` when none does, which
+   * ranks after every promoted file (`TierYields`, row 011-184).
+   */
+  rankOf(ref: TestFileRef): number | null {
+    return this.#promotions.rankOf(testFileId(ref));
+  }
+
   /** `isRecent` or `isPromoted`: work of C4 step 4's first group (C15). */
   isFirstGroup(ref: TestFileRef): boolean {
     return this.isRecent(ref) || this.isPromoted(ref);

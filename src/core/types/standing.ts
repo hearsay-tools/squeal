@@ -34,13 +34,14 @@ interface Retryable {
  * it still runs (row 011-107); `cut`, it holds a file a yield already cut
  * at its key; `turn`, it is the backlog's turn after four tiers of the
  * first group; `runner`, its runner runs each tier to its end (node:test,
- * pytest).
+ * pytest); `named`, it has run 30 s and runs a file that the same or an
+ * earlier open wait selected (C4 step 5 as amended 2026-10-24, row 011-184).
  */
 export type TierYield =
   | { readonly kind: "yields" }
   | { readonly kind: "remainder"; readonly remainderMs: number }
   | { readonly kind: "overrun"; readonly yieldsAt: EpochMs }
-  | { readonly kind: "cut" | "turn" | "runner" };
+  | { readonly kind: "cut" | "turn" | "runner" | "named" };
 
 /**
  * Where a test file without a verdict stands, one state a file (the order
