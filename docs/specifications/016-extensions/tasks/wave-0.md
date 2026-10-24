@@ -50,3 +50,15 @@ Check, with proof where you can:
 5. **Flake risk** on CI: the pytest kit's uv-managed Pythons and fixture sync; the version-sensitive entry.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## Re-review of `cand/016-12-r2`
+
+Use /reviewer. Narrow re-review of `reviews/016-12.md` on `cand/016-12-r2`, pinned to the SHA named in the request. The candidate is the reviewed range rebased onto main (0.1.301 and 015's `coverage.enabled` line, a conflict-free merge of `squeal.config.json`) plus one repair commit for B2. Append a section `## Re-review` to `reviews/016-12.md` and commit it on your branch.
+
+Check, with proof:
+1. **B2.** A listed gap reads KNOWN only when every failed assertion holds one of its `Gap.fails` texts. An unrelated failed assertion, an adapter that cannot open and one that cannot close read FAIL. Replay `known-probe.ts` against the repaired driver.
+2. **B1.** It is not repaired in this range. The coordinator moved it to row 016-20 and amended goal 8 (`spec.md` goal 8 and D6, `status.md` 2026-10-25). Check only that the kit's closures still hold every helper they load, and that nothing filters them out.
+3. The kit files pass, with the rebase in place.
+
+No full suite: the range changed `test/kit/**` only since your locked run. Verdict: PASS or FAIL.
+
