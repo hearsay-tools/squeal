@@ -27,6 +27,14 @@ function payload(path: string): V8Script[] {
 const lines = (bits: string, count: number) =>
   Array.from({ length: count }, (_, i) => i + 1).filter((line) => hasLine(bits, line - 1));
 
+/** The first and last line of each declaration in the fixture's `src/math.ts`. */
+const MATH_DECLARATIONS: Readonly<Record<string, readonly [number, number]>> = {
+  add: [1, 3],
+  clamp: [5, 9],
+  arrow: [11, 11],
+  Counter: [13, 19],
+};
+
 /**
  * Review 0.1.295 B2's probe: the fixture's inspector import moved into the
  * project's setup file, which no test file's closure holds. Under coverage
@@ -135,14 +143,19 @@ describe("vitest adapter: Squeal's coverage provider", SLOW, () => {
     // `increment` never ran. A line of closing braces is no code that runs.
     expect(lines(math.covered, 20)).toEqual([1, 2, 5, 6, 11, 13]);
     expect(lines(math.lines, 20)).toEqual([1, 2, 5, 6, 7, 8, 11, 13, 14, 15, 16, 17]);
-    // V8 gives the class's field initializer a function of its own (line 14).
-    expect(math.functions.map(([line, , , , hit]) => [line, hit])).toEqual([
-      [1, 1],
-      [5, 1],
-      [11, 0],
-      [14, 0],
-      [15, 0],
-    ]);
+    // Review 0.1.295 B4: V8's functions of a class no code instantiated differ by engine.
+    // Node 22 gives one over the class body, Node 24 one for the field and one for
+    // `increment`. Each function is told by the declaration that holds its range.
+    const source = readFileSync(join(fx.root, "src/math.ts"), "utf8").split("\n");
+    const owners = math.functions.map(([startLine, startColumn, endLine, endColumn, hit]) => {
+      expect(startColumn).toBeLessThanOrEqual(source[startLine - 1]?.length ?? -1);
+      expect(endColumn).toBeLessThanOrEqual(source[endLine - 1]?.length ?? -1);
+      const owner = Object.entries(MATH_DECLARATIONS).find(
+        ([, [first, last]]) => first <= startLine && endLine <= last,
+      );
+      return `${owner?.[0] ?? `lines ${startLine}-${endLine}`} ${hit}`;
+    });
+    expect([...new Set(owners)]).toEqual(["add 1", "clamp 1", "arrow 0", "Counter 0"]);
   });
 
   it("keys a coverage-on instance by the provider's name and version alone, and coverage off as before", async () => {
