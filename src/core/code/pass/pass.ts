@@ -16,6 +16,7 @@ import {
   dueRetries,
   type FailedCounts,
   readUncountable,
+  seedsQuietly,
   spentFailure,
   writeUncountable,
 } from "./failed.js";
@@ -78,11 +79,20 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     );
     store.files.upsertMany(worktreeId, filesRows(entries, ctx.counter.version, latest));
   });
-  const { counted, skipped, links } = await countMissing(ctx, entries, failed, started);
+  const quiet = reason !== null;
+  const { counted, skipped, links } = await countMissing(ctx, entries, failed, {
+    now: started,
+    quiet,
+  });
+  // B1: a count a first count or recount failed on seeds as that count would have.
+  const seeds = new Set(
+    entries.flatMap((e) =>
+      e.kind === "count" && seedsQuietly(failed, e.path, e.file.hash) ? [e.path] : [],
+    ),
+  );
   // A path judged, gone or too big has no failed count to retry (row 015-18).
   for (const e of entries) if (!skipped.has(e.path)) failed.delete(e.path);
 
-  const quiet = reason !== null;
   const after: FileAfter[] = entries
     .filter((e) => !skipped.has(e.path))
     .map((e) => ({
@@ -91,6 +101,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
         e.kind === "count" && !links.has(e.path)
           ? store.counts.get(e.file.hash, e.language, ctx.counter.version)
           : null,
+      ...(seeds.has(e.path) ? { quiet: true } : {}),
     }));
   const committed =
     since === null
