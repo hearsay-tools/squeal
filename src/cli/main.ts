@@ -41,7 +41,7 @@ Usage:
                                 advances it; --full adds the worktree, daemon,
                                 inheritance, each file without a result and the notes;
                                 --notes is --full with every note in full
-  squeal status <path>... [--full] [--json]
+  squeal status <path>... [--check <text>]... [--full] [--json]
                                 The verdict of the test files the paths select (a test
                                 file, or a file in test files' closures) now, if the
                                 daemon stores its pass over your edits within 750 ms:
@@ -49,15 +49,21 @@ Usage:
                                 that selects nothing is named beside it, exit 3 unless
                                 a selected file fails; --full prints this worktree's
                                 status first; --json: the files and their verdicts in
-                                selection.testFiles
+                                selection.testFiles; --check shows the focused outcome
+                                of the named test files' checks whose name holds the
+                                text, and asks for nothing
   squeal status --wait <ms> [--full] [--json]
                                 Wait up to <ms> until nothing is pending at the current
                                 revision or a check changed, then print status (--full:
                                 in full) and last the line saying why it returned
-  squeal status --wait <ms> <path>... [--full] [--json]
+  squeal status --wait <ms> <path>... [--check <text>]... [--full] [--json]
                                 Wait up to <ms> for the test files the paths select,
                                 then give their verdict as status <path>... does,
-                                --json in selection.testFiles too
+                                --json in selection.testFiles too; --check runs first,
+                                alone, the checks of each test file named by its own
+                                path whose name holds the text, and returns with their
+                                outcome, not the file's verdict: exit 1 when one
+                                failed, else 3 (--json: selection.focused)
   squeal why <check> [--include-logs] [--json]
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints
