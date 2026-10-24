@@ -1,9 +1,8 @@
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/index.js";
-import { type FocusedRun, readFocused } from "../core/scheduler/focused-row.js";
+import { readFocused } from "../core/scheduler/focused-row.js";
 import { slowView } from "../core/scheduler/slow.js";
 import { formatCheck } from "../core/state/index.js";
-import { statusFocusedOf } from "../core/status/focused.js";
 import type {
   AbsolutePath,
   CheckKey,
@@ -15,6 +14,7 @@ import type {
   TestFileRef,
   WorktreeId,
 } from "../core/types/index.js";
+import { answerOf, type FocusTally, holdsText, storedTally } from "./status-wait-focus-answer.js";
 import type { FocusReply } from "./status-wait-promote.js";
 
 /*
@@ -70,11 +70,6 @@ export function focusTexts(texts: readonly string[], files: readonly TestFileRef
   return [...new Set(read)];
 }
 
-/** Whether a check's full name holds one of `texts`, the rule every runner's filter keeps (C14). */
-export function holdsText(fullName: string, texts: readonly string[]): boolean {
-  return texts.some((text) => fullName.includes(text));
-}
-
 /**
  * Why the daemon gives `ref` no focused run, read from the policy as the
  * daemon decides it (row 011-145): a slow file, or a runner that runs whole
@@ -112,10 +107,16 @@ export interface FocusedFile {
   readonly testFile: TestFileRef;
   /** The file's current key; `null` while it has none. */
   readonly key: CheckKey | null;
-  /** Why the daemon gives it no focused run (`wholeFileReasons`). */
+  /**
+   * Why it gets no focused answer, so the wait waits for its own run: the
+   * daemon gives it no focused run (`wholeFileReasons`), or its run's list
+   * proves no pass (`answerOf`'s fallback, review 0.1.286 B2).
+   */
   readonly whole?: string;
   /** Its newest focused run at its current key whose texts hold the wait's, ended or not, as `answerOf` gives it. */
   readonly run?: StatusFocused;
+  /** The count it answers with: of the stored result, else of its ended run (B2). */
+  readonly tally?: FocusTally;
   /** With a result stored at its key: the selected checks of it, and how many checks it has. */
   readonly stored?: {
     readonly revision: RevisionNumber;
@@ -125,15 +126,9 @@ export interface FocusedFile {
   };
 }
 
-/** A focused run that ended with an outcome the wait returns at; a discarded or cancelled one runs again. */
-export function answeredRun(run: StatusFocused): boolean {
-  return run.end !== null && run.end !== "discarded" && run.end !== "cancelled";
-}
-
-/** Whether the wait has the file's focused answer: an ended run or a stored result at its key. */
+/** Whether the wait has the file's focused answer: an ended run's count or a stored result at its key. */
 export function answered(file: FocusedFile): boolean {
-  const ran = file.run !== undefined && answeredRun(file.run);
-  return file.whole === undefined && (ran || file.stored !== undefined);
+  return file.whole === undefined && file.tally !== undefined;
 }
 
 /**
@@ -159,37 +154,23 @@ export function readFocusedFiles(
     const reason = whole.get(id);
     if (reason !== undefined) return { testFile, key, whole: reason };
     const own = runs.get(id);
-    const run =
+    const answer =
       own !== undefined && key !== null && own.key === key ? answerOf(own, texts) : undefined;
     // `usedAt` 0: a read, not a lookup hit.
     const results = key === null ? [] : store.results.byKey(key, 0);
     const stored = results.length === 0 ? undefined : storedOf(results, texts);
+    // A result its own run stored at the key supersedes the focused run (C5).
+    const tally = stored === undefined ? answer?.tally : storedTally(stored.checks);
+    const fallback = stored === undefined ? answer?.fallback : undefined;
     return {
       testFile,
       key,
-      ...(run === undefined ? {} : { run }),
+      ...(fallback === undefined ? {} : { whole: fallback }),
+      ...(answer === undefined ? {} : { run: answer.run }),
       ...(stored === undefined ? {} : { stored }),
+      ...(tally === undefined ? {} : { tally }),
     };
   });
-}
-
-/**
- * Review 0.1.286 B1: `run` as the answer to a wait for `texts`: as recorded
- * when it ran for the same texts; when it ran for more, only its checks
- * that hold one of `texts`, and its file-level failure. `undefined` when it
- * ran without one of `texts`, or ran for more and left selected checks out
- * of its list: one of those may hold a text, so the wait asks for its own.
- */
-function answerOf(run: FocusedRun, texts: readonly string[]): StatusFocused | undefined {
-  if (!texts.every((t) => run.texts.includes(t))) return undefined;
-  const status = statusFocusedOf(run, true);
-  if (run.texts.every((t) => texts.includes(t))) return status;
-  if (run.more > 0) return undefined;
-  const checks = status.checks.filter(
-    (c) => c.check.kind !== "test" || holdsText(c.check.fullName, texts),
-  );
-  const tests = checks.filter((c) => c.check.kind === "test").length;
-  return { ...status, checks, matched: status.matched === null ? null : tests };
 }
 
 function storedOf(
@@ -215,19 +196,9 @@ function storedOf(
   };
 }
 
-/**
- * The selected checks the wait reports for a file: those of the result
- * stored at its key, which its own run wrote and which supersedes a focused
- * run (C5), else those of its ended focused run.
- */
-export function selectedChecks(file: FocusedFile): readonly StatusFocusedCheck[] {
-  if (file.stored !== undefined) return file.stored.checks;
-  return file.run !== undefined && answeredRun(file.run) ? file.run.checks : [];
-}
-
-/** Whether a selected check failed, in a focused run or a stored result. */
+/** Whether a selected check failed, in a focused run or a stored result, by its count (B2). */
 export function anyFailed(files: readonly FocusedFile[]): boolean {
-  return files.some((f) => selectedChecks(f).some((c) => c.outcome === "fail"));
+  return files.some((f) => answered(f) && (f.tally?.failed ?? 0) > 0);
 }
 
 /**
