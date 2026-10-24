@@ -5,7 +5,7 @@ import {
   textsText,
 } from "../core/status/focused.js";
 import { fromBase } from "../core/status/next-step-text.js";
-import { shellWord, timeText } from "../core/text.js";
+import { plural, shellWord, timeText } from "../core/text.js";
 import type {
   CheckKey,
   EpochMs,
@@ -56,11 +56,11 @@ function fileLines(
   if (stored !== undefined) {
     if (stored.checks.length === 0) {
       return [
-        `No check of ${path} holds ${textsText(texts)} in the result its own run stored at revision ${stored.revision} (${checksText(stored.collected)}).`,
+        `No check of ${path} holds ${textsText(texts)} in the result its own run stored at revision ${stored.revision} (${plural(stored.collected, "check")}).`,
       ];
     }
     return [
-      `Focused: ${checksText(stored.checks.length)} of ${path} from the result its own run stored at revision ${stored.revision}, at its current key.`,
+      `Focused: ${plural(stored.checks.length, "check")} of ${path} from the result its own run stored at revision ${stored.revision}, at its current key.`,
       ...focusedCheckLines(stored.checks, 0, "  "),
     ];
   }
@@ -71,7 +71,7 @@ function fileLines(
   }
   if (run.end === "completed" && run.matched === 0) {
     const collected =
-      run.collected === null ? "" : ` (the run collected ${checksText(run.collected)})`;
+      run.collected === null ? "" : ` (the run collected ${plural(run.collected, "check")})`;
     return [
       `No check of ${path} holds ${textsText(texts)} at revision ${run.revision}${collected}.`,
     ];
@@ -81,19 +81,17 @@ function fileLines(
     run.end === "completed"
       ? ""
       : `, ended ${run.end}${run.reason === null ? "" : ` (${run.reason})`}`;
-  const own = run.collected === null ? "" : ` (${checksText(run.collected)})`;
+  const own = run.collected === null ? "" : ` (${plural(run.collected, "check")})`;
   // Review 0.1.286 B2: a run for more texts that left checks out counts only what it kept.
   const count =
-    tally.total === null ? `at least ${checksText(run.checks.length)}` : checksText(tally.total);
+    tally.total === null
+      ? `at least ${plural(run.checks.length, "check")}`
+      : plural(tally.total, "check");
   return [
     `Focused: ${count} of ${path} at revision ${run.revision}, ${took}${ended}; not the file's verdict.`,
     ...focusedCheckLines(run.checks, run.more, "  "),
     `  A first run each, not re-run; the file's own run${own} decides.`,
   ];
-}
-
-function checksText(n: number): string {
-  return `${n} ${n === 1 ? "check" : "checks"}`;
 }
 
 /**

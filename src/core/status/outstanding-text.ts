@@ -1,5 +1,5 @@
 import { waitsText } from "../retry/text.js";
-import { plural } from "../text.js";
+import { plural, testFileText } from "../text.js";
 import type {
   EpochMs,
   OutstandingGroup,
@@ -128,10 +128,7 @@ function wordsOf(kind: OutstandingStanding["kind"], reason: string): string {
 
 /** `a, b, c and 21 more`: the project, when there is one, leads the path. */
 function shownText(files: readonly TestFileRef[]): string {
-  const shown = files
-    .slice(0, OUTSTANDING_FILES_SHOWN)
-    .map(({ project, path }) => (project === "" ? path : `${project}: ${path}`))
-    .join(", ");
+  const shown = files.slice(0, OUTSTANDING_FILES_SHOWN).map(testFileText).join(", ");
   const more = files.length - OUTSTANDING_FILES_SHOWN;
   return more > 0 ? `${shown} and ${more} more` : shown;
 }

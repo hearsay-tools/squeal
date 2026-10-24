@@ -1,7 +1,7 @@
 import { testFileId } from "../keys/index.js";
 import { type FocusedCheck, type FocusedRun, readFocused } from "../scheduler/focused-row.js";
 import { checkIdentity, formatCheck, testFileOf } from "../state/index.js";
-import { timeText } from "../text.js";
+import { plural, testFileText, timeText } from "../text.js";
 import type {
   CheckId,
   CheckKey,
@@ -15,6 +15,7 @@ import type {
   WhyFocused,
   WorktreeId,
 } from "../types/index.js";
+import { atText } from "./test-frame.js";
 
 /*
  * Row 011-146 (011 C5 and C6 as amended 2026-10-23; `tasks/011-135/design.md`
@@ -172,11 +173,6 @@ export function textsText(texts: readonly string[]): string {
   return texts.map((text) => JSON.stringify(text)).join(", ");
 }
 
-/** As status names a file: the project, when there is one, leads the path. */
-export function focusedFileText({ project, path }: TestFileRef): string {
-  return project === "" ? path : `${project}: ${path}`;
-}
-
 /**
  * What a focused run found, after its file and revision: `2 of 2 selected
  * checks FAIL (a, b)`, a selection that matched nothing, how it ended when
@@ -203,9 +199,7 @@ export function focusedOutcomeText(entry: StatusFocused): string {
 /** `no check holds "x" (the run collected 78 checks)`. */
 export function noMatchText(entry: StatusFocused): string {
   const collected =
-    entry.collected === null
-      ? ""
-      : ` (the run collected ${entry.collected} ${entry.collected === 1 ? "check" : "checks"})`;
+    entry.collected === null ? "" : ` (the run collected ${plural(entry.collected, "check")})`;
   return `no check holds ${textsText(entry.texts)}${collected}`;
 }
 
@@ -232,9 +226,7 @@ export function focusedCheckLines(
   const lines = checks.flatMap((c) => [
     `${indent}${c.outcome === "fail" ? "FAIL" : c.outcome}  ${ownName(c)}`,
     ...(c.summary === null || c.summary === "" ? [] : [`${indent}      ${c.summary}`]),
-    ...(c.location === null
-      ? []
-      : [`${indent}      at ${c.location.path}:${c.location.line}:${c.location.column}`]),
+    ...(c.location === null ? [] : [`${indent}      ${atText(c.location, undefined)}`]),
   ]);
   return more === 0 ? lines : [...lines, `${indent}and ${more} more selected checks`];
 }
@@ -259,7 +251,7 @@ export function focusedLines(s: StatusSnapshot, full = false): string[] {
           : "queued";
     const own = phase ?? "not queued";
     const head =
-      `Focused (not counted): ${focusedFileText(entry.testFile)} at revision ${entry.revision}: ` +
+      `Focused (not counted): ${testFileText(entry.testFile)} at revision ${entry.revision}: ` +
       `${focusedOutcomeText(entry)}; its own run is ${own}.`;
     return full ? [head, ...focusedCheckLines(entry.checks, entry.more, "  ")] : [head];
   });
