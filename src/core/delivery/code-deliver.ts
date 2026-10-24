@@ -18,6 +18,7 @@ import {
 import type { Consumer, EpochMs, RevisionNumber, WorktreeId } from "../types/index.js";
 import { codeKey, isStillFail, planCodeDelta, seedEntry } from "./code-delta.js";
 import { type CodeSource, withCode } from "./code-source.js";
+import { withToldOver } from "./code-told.js";
 
 /*
  * Spec 015 D6, store-backed: the registration seeds the consumer's code view
@@ -294,6 +295,14 @@ function codeStep(
   return { news: { v: 1, entries, more, ...big }, writes };
 }
 
+/** What a delivery asks of the code. */
+export interface TellCodeOptions {
+  /** Tell the changes since the view, and write it (a tool boundary). Default `true`. */
+  readonly changes?: boolean;
+  /** Row 015-27: count the functions told over, for a delivery with test entries. Default `false`. */
+  readonly toldOver?: boolean;
+}
+
 /**
  * Spec 015 D5, D6: what `consumer` is told of the code at a delivery, its
  * view written in the same code store transaction. A recount since its
@@ -301,20 +310,29 @@ function codeStep(
  * reads the revision its changes count after (`codeSeenUpTo`), `null` when
  * no registration is recorded; only while the policy is on. A change at or
  * before it is taken in by count. Read-only first, so a delivery
- * with nothing to write takes no lock the daemon's pass waits for. `null`
- * when there is nothing to tell, the policy is off or the store cannot be
- * read.
+ * with nothing to write takes no lock the daemon's pass waits for. With
+ * `toldOver`, the count is read after the view is written, so a FAIL this
+ * delivery tells is in it. `null` when there is nothing to tell, the policy
+ * is off or the store cannot be read; with neither option nothing is opened.
  */
 export function tellCode(
   source: CodeSource | undefined,
   consumer: Consumer,
   at: EpochMs,
   since: () => RevisionNumber | null,
+  { changes = true, toldOver = false }: TellCodeOptions = {},
 ): CodeNews | null {
+  if (!changes && !toldOver) return null;
   const told = withCode(source, ({ store, complexity }) => {
-    const input = { at, since: since(), limit: complexity.maxFileBytes };
-    if (!store.read(() => codeStep(store, consumer, input, false)).writes) return null;
-    return store.transaction(() => codeStep(store, consumer, input, true).news);
+    const over = (news: CodeNews | null) =>
+      toldOver ? withToldOver(store, consumer, news, complexity.threshold) : news;
+    if (changes) {
+      const input = { at, since: since(), limit: complexity.maxFileBytes };
+      if (store.read(() => codeStep(store, consumer, input, false)).writes) {
+        return store.transaction(() => over(codeStep(store, consumer, input, true).news));
+      }
+    }
+    return toldOver ? store.read(() => over(null)) : null;
   });
   return told === "missing" ? null : told;
 }
