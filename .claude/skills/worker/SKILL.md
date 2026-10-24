@@ -19,7 +19,7 @@ Before the first edit, read only what the brief names. Then make the probe edit 
 
 ## 3. Build
 
-Red first: the failing test the done-when names, the smallest change that turns it green, the next. The discriminating check first, scoped to the diff; the full suite once at the clean candidate, after committing. Name the done-when line most likely to be false and write the check that catches it. New work replaces tests, it does not only add them: a new check retires the weaker one it supersedes. Checkpoint as if the turn could end now, because it can: commit the first coherent vertical piece before widening. Files stay under about 300 lines; type changes are additive; `plugins/claude-code/dist` is rebuilt only when your row owns it.
+Red first: the failing test the done-when names, the smallest change that turns it green, the next. The discriminating check first, scoped to the diff: in a repository with Squeal, a file you just edited is its edit tier's, so read the result with `squeal status --wait 60000 <file>` instead of a direct run started seconds after the edit *(011-185)*; the full suite once at the clean candidate, after committing. Name the done-when line most likely to be false and write the check that catches it. New work replaces tests, it does not only add them: a new check retires the weaker one it supersedes. Checkpoint as if the turn could end now, because it can: commit the first coherent vertical piece before widening. Files stay under about 300 lines; type changes are additive; `plugins/claude-code/dist` is rebuilt only when your row owns it.
 
 ## 4. Triage unknowns
 
