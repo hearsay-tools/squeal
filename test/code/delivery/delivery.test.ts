@@ -73,9 +73,8 @@ describe("code delivery (015 D6, goals 3, 4 and 7)", () => {
     expect(text).not.toContain("selectTier");
     // Goal 7: never in Known failures.
     expect(text).toContain("\nKnown failures: 0;");
-    // The failing function is seeded told by count: nothing to deliver after.
+    // The failing function is seeded told by count, the passing one not at all: nothing to deliver after.
     expect(repo.store.views.list(C1).map((v) => [v.check.qualifiedName, v.told])).toEqual([
-      ["planTier", "count"],
       ["selectTier", "count"],
     ]);
     expect(await delivery().onToolBoundary(C1)).toBeNull();
@@ -150,7 +149,7 @@ describe("code delivery (015 D6, goals 3, 4 and 7)", () => {
     expect(text).toContain(
       "RESOLVED complexity: selectTier (src/core/scheduler/tiers.ts) is no longer in the code",
     );
-    expect(repo.store.views.list(C1).map((v) => v.check.qualifiedName)).toEqual(["planTier"]);
+    expect(repo.store.views.list(C1)).toEqual([]);
     expect(await delivery().onToolBoundary(C1)).toBeNull();
   });
 
