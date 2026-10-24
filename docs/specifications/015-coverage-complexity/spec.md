@@ -216,9 +216,9 @@ A record is stored only for a completed test file of a run that did not hang, cr
 **Two more states per function, beside complexity:**
 
 - **`crap`**: `CC² × (1 − cov)³ + CC`, where cov is the share of the function's own statements that ran. A cov of 95% or more gives CC, as in PHPUnit. The state is `fail` above `crap.threshold`.
-- **`uncovered`**: `fail` when no current test runs the function.
+- **`uncovered`**: `fail` when no current test runs the function in the test's own process. Its lines say "no in-process test runs it", which is what it measures: a function that only a child process runs reads `fail`, as the non-goal says (amended 2026-10-24, from 015-30: 50 of 7,582 `src/` functions here).
 
-**Pending and unknown.** Each state is `pending` until every test file that loads the source has a current result with a coverage record. It is `unknown` while any of those files can have none: run before coverage was on, skipped by D8's fidelity rule, or a Squeal-excluded suite such as `test/e2e/**` here.
+**Pending and unknown.** Each state is `pending` until every test file that loads the source has a current result with a coverage record. It is `unknown` while any of those files can have none: run before coverage was on, skipped by D8's fidelity rule, or a Squeal-excluded suite such as `test/e2e/**` here. It is `unknown` too while one of those files skipped tests, so its record cannot show what they run: on a host without uv the pytest runner's tests skip, and 115 functions here would read `fail` (amended 2026-10-24, from 015-30).
 
 Without this rule, the first test file to finish after an edit would make CRAP read too high, and the agent would get a false failure (`agent-feedback.md`, feasibility). Under `baseline.onStart: lookup-only` a state can stay pending until `squeal run --all`. Status says which.
 
@@ -244,7 +244,7 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 
 1. Count `?.`, `??` and defaults? ESLint counts them, and so does D3. Leaving them out drops 31% of the functions at CC 10 or more, but Squeal's number would then differ from every peer's. Owner: the human; wave 1's dogfood brings the noise count. Answered by the human, 2026-10-24: keep counting them.
 2. Is "the first edit to a standing failure" (D6) useful or noise in practice? Owner: wave 1's dogfood. Answered for live sessions (015-10 part C, 2026-10-24, `lessons.md`): keep it, with row 015-19 fixed. Of 11 lines, 4 came from a pull (015-19), 2 were useful, 2 redundant, 3 noise; skipping lines whose count did not move would also cut a useful one.
-3. How much of `src/` do tests reach only through child processes, so that those functions read "no test runs it"? Owner: wave 2's first row measures it here.
+3. How much of `src/` do tests reach only through child processes, so that those functions read "no test runs it"? Owner: wave 2's first row measures it here. Answered by 015-30, 2026-10-24 (`research/child-processes.md`): 50 of 7,582 functions (0.66%), a lower bound, 3 of them at CC 6 or more; collecting child coverage costs +13% to +16% CPU on child-heavy files and fails one test. Children stay out; the state is worded "no in-process test runs it"; `unknown` is never derived from static reach, which would hide 370 of the 377 functions no in-process test runs.
 4. Is an immediate delivery noisy during a refactor made in several edits? A function can go over in one edit and back under two edits later, giving two lines that a test run, slower, would often skip. The view diff (011 C5) already drops a crossing that returns before the next delivery. If the dogfood shows noise, a crossing could wait until it holds across two edits. Owner: wave 1's dogfood. Answered for live sessions (015-10 part C, 2026-10-24): no churn in five multi-edit refactors; each `PASS` came with the last edit, so a two-edit hold would have withheld all five. Keep immediate delivery.
 5. Does coverage stay noise-free on a wider sample, with timing-dependent tests? The research had 0 changes in 75,628 function states over two runs of 30 files. Owner: wave 2's dogfood.
 
