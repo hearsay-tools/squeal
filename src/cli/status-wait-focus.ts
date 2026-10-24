@@ -265,20 +265,21 @@ export function focusOf(
  * Row 011-146 (C6 as amended 2026-10-23): what `status <path>... --check
  * <text>...` without `--wait` reads of the selected checks, the focused
  * runs and the results stored at the files' keys; it sends nothing. With
- * checks and `selected` files but none named by its own path (`own`), the
- * usage error, which `printNamed` gives: it reads inside the store's read,
+ * checks, once the daemon listed the revision (`ready`), and no file named by
+ * its own path (`own`), the usage error, whatever the paths select (review
+ * 0.1.286 B4), which `printNamed` gives: it reads inside the store's read,
  * which turns a throw into an unreadable store.
  */
 export function snapshotFocus(
   store: Store,
   worktreeId: WorktreeId,
   root: AbsolutePath,
-  selected: readonly TestFileRef[],
+  ready: boolean,
   own: readonly TestFileRef[],
   checks: readonly string[],
 ): NamedFocus | undefined {
   if (checks.length === 0) return undefined;
-  if (selected.length > 0 && own.length === 0) {
+  if (ready && own.length === 0) {
     return { texts: checks, files: [], usage: CHECK_NEEDS_TEST_FILE };
   }
   return focusOf(store, worktreeId, own, checks, wholeFileReasons(root, own), undefined, null);

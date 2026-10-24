@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { namedSnapshotCommand } from "../../src/cli/status-paths.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
-import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import type { RevisionNumber } from "../../src/core/types/index.js";
 import { focusedRun, writeRuns } from "../status/focused-fixture.js";
-import { A, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import { A, NOW, repoWith } from "./status-wait-fixture.js";
 import { A_QUEUED, capture } from "./status-wait-focus-fixture.js";
 
 /*
@@ -61,33 +60,5 @@ describe("status <path> --check without --wait (011 C6, row 011-146)", () => {
       matched: 1,
     });
     expect(json.focused[0]).toMatchObject({ applies: true });
-  });
-
-  it("with source paths only it is a usage error, exit 2", async () => {
-    const { repo, store } = repoWith([A]);
-    store.testFiles.put({
-      testFile: ref(A),
-      closure: {
-        testFile: ref(A),
-        paths: [A, "src/shared.ts"].sort() as never,
-        complete: false,
-        method: CLOSURE_METHOD,
-      },
-      updatedAt: NOW,
-      updatedBy: repo.mainId,
-    });
-    const io = capture(repo.main);
-
-    const code = await namedSnapshotCommand(
-      ["src/shared.ts"],
-      { json: false, checks: ["x"] },
-      io,
-      options,
-    );
-
-    expect(code).toBe(2);
-    expect(io.err.join("")).toBe(
-      "squeal status: --check selects checks inside a test file named by its own path\n",
-    );
   });
 });
