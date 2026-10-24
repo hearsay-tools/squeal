@@ -190,8 +190,20 @@ function transition(
   };
 }
 
-/** Whether two end-exclusive ranges share a character. */
+/**
+ * Whether the error range `b` falls in the function range `a`, both
+ * end-exclusive: they share a character. A zero-width error is a missing
+ * token's point, and belongs to the function it is in or whose end it
+ * touches, as at a missing closing brace; a function that starts at that
+ * point is not in it (review 0.1.283 B3).
+ */
 function overlaps(a: CodeRange, b: CodeRange): boolean {
+  if (b.startLine === b.endLine && b.startColumn === b.endColumn) {
+    return (
+      before(a.startLine, a.startColumn, b.startLine, b.startColumn) &&
+      !before(a.endLine, a.endColumn, b.startLine, b.startColumn)
+    );
+  }
   return (
     before(a.startLine, a.startColumn, b.endLine, b.endColumn) &&
     before(b.startLine, b.startColumn, a.endLine, a.endColumn)
