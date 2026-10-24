@@ -794,6 +794,8 @@ Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D12. Step one approve
 
 Spec: `specifications/011-core/spec.md`. Sections referenced as C1 to C14; a 001 D-number resolves through the crosswalk at its end. The rows below kept their 001 numbers at the split (2026-10-17); new rows take `011-NN`, allocated from the board on main by the coordinator who lands them. A row is a bounded change ticket, never an authorization: it is dispatched only when the human has approved it (split proposal, section 7).
 
+**Releasing 0.1.284 from `c16726cf0`** (coordinator 04a258b0, announced 2026-10-24T02:24Z; process 6a): row 011-159, lookup-only by default with a held inherited failure run once (`reviews/0.1.284.md` PASS, CI 40052230751 green). The release starts at 02:35Z, after the 10 minutes. 0.1.281 is unused; a07d6d3c's 0.1.282 candidate rebases onto 0.1.284 and takes 0.1.285 or later.
+
 ### Open rows inherited from 001
 
 | Task | Status | Scope | Done when |
@@ -1193,6 +1195,8 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 | 015-15 research: line-level selection on the full suite | planned (the human, 2026-10-23: after 015's coverage records are in the store) | `research/coverage-collection.md` Q7 (71% fewer runs on a 30-file sample); soundness cases (reflection, data reads, hoisting); against 011's non-goal. | Findings committed; the human decides whether it becomes a spec. |
 
 ## Later
+
+- 015: `test/code/store.test.ts` "switches into WAL while another process holds the write lock" (015 D4) failed main CI once on a docs-only push (run 40052812099, Node 22 3/3, `1cea53659`): the lock-holding child exited 1 with `database is locked` (`expected 1 to be +0` at `await released`), a race between the child and the parent's open on a GitHub runner; it passed on 0.1.283's main run and on cand/0.1.284. Seen by coordinator 04a258b0; 015's coordinator owns the fix (a longer busy timeout in the child, or a ready signal after its lock).
 
 - 015: a once-per-session warning against a very large module (a "god module"), beside D6's line for a file too big to count (the human, 2026-10-23, an idea for later).
 - 011: 3,446 temp key directories under `/tmp/squeal-<uid>/tmp/` belong to no live daemon (149 MiB, from 2026-10-14 on, 104 to 845 a day by mtime). Their contents look like temp files of Squeal's own tests, each test repository with a key no later daemon reuses (inferred; `specifications/014-ps/research/should-not-be-up.md` 2).
