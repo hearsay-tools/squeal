@@ -3,7 +3,12 @@ import { join } from "node:path";
 import { init, parse } from "es-module-lexer";
 import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { LAUNCHER_SOURCE, REPO_ROOT, rootVersion } from "../../../src/harness/build.js";
+import {
+  COVERAGE_RUNTIME,
+  LAUNCHER_SOURCE,
+  REPO_ROOT,
+  rootVersion,
+} from "../../../src/harness/build.js";
 import {
   buildOpencodePlugin,
   OPENCODE_PLUGIN,
@@ -55,6 +60,12 @@ describe("the OpenCode package", () => {
 
   it("has the bundles exactly as `npm run build:plugin` produces them", () => {
     expectSameFiles(OPENCODE_PLUGIN_DIST, built.dir, ".mjs");
+  });
+
+  it("ships the coverage provider Vitest loads by path in dist/coverage/ (015-11)", () => {
+    expect(readFileSync(join(built.dir, "coverage", "provider.mjs"), "utf8")).toBe(
+      readFileSync(join(REPO_ROOT, COVERAGE_RUNTIME, "provider.mjs"), "utf8"),
+    );
   });
 
   it("ships bin/squeal for the agent's shell and the launcher every plugin ships, executable", () => {
