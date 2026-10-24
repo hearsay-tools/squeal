@@ -1,0 +1,65 @@
+# worktree8	time	kind	function	cause	reaction	verdict	note
+a07d6d3c	09:06:42	STILL FAIL	waitForNamed.<withStatusStore>	pull	ignored	noise	git reset --hard origin/main and cherry-pick
+52e58f23	06:26:47	STILL FAIL	namedLine	pull	recorded	noise	rebase; the coordinator wrote it into window.md
+52e58f23	06:26:47	STILL FAIL	waitForNamed.<withStatusStore>	pull	recorded	noise	rebase
+52e58f23	06:26:47	STILL FAIL	recordFocusedTier.<map>	pull	recorded	noise	rebase
+52e58f23	06:26:47	STILL FAIL	report	pull	recorded	noise	rebase
+52e58f23	09:06:52	STILL FAIL	waitForNamed.<withStatusStore>	pull	ignored	noise	rebase
+52e58f23	09:39:58	FAIL	readPnpmLockfile	pull	ignored	noise	rebase; another row's new function
+52e58f23	09:39:58	STILL FAIL	installedDependencies	pull	ignored	noise	rebase
+52e58f23	11:51:00	STILL FAIL	vitestCase	pull	recorded	noise	rebase; told the human as a dogfood case
+52e58f23	13:54:17	summary	-	recount	ignored	unclear	counter version 2
+cfd93e9b	09:31:44	STILL FAIL	createDelivery.deliver.<transaction>	own	ignored	unclear	
+e2116809	14:47:15	STILL FAIL	countTree	own	ignored	unclear	
+709075cc	15:26:39	STILL FAIL	vitestCase	own	unclear	unclear	next edit moved a ternary into coverageOf (22 to 21), no word on it
+3aad76a7	07:36:50	STILL FAIL	countTree	own	ignored	unclear	
+d16e9716	16:17:56	STILL FAIL	TierYields.#decide	own	acted	useful	22 to 18
+d16e9716	16:18:50	PASS	TierYields.#decide	own	read	useful	confirms the fix
+78026511	06:28:00	summary	-	recount	ignored	unclear	first count of a worktree made before the switch-on
+78026511	06:37:57	STILL FAIL	stalePnpmLockfile	own	acted	useful	21 to 2
+78026511	06:38:56	PASS	stalePnpmLockfile	own	read	useful	confirms the fix
+9354f23b	06:24:04	STILL FAIL	waitForNamed.<withStatusStore>	not own	ignored	noise	the session had not written the file; cause not visible
+32fe48c6	05:18:57	STILL FAIL	TierYields.#decide	own	ignored	unclear	a mutation check
+32fe48c6	05:56:48	STILL FAIL	TierYields.#decide	own	weighed	unclear	told again in a new process: "The Squeal FAIL is that mutation window."
+fc86484d	05:14:06	summary	-	recount	ignored	unclear	first count
+3dd9fc58	14:14:52	STILL FAIL	LockFilePool.acquire	own	ignored	unclear	
+3dd9fc58	14:15:28	STILL FAIL	selectTier	own	ignored	unclear	one more body edit for the task
+3dd9fc58	14:20:31	STILL FAIL	openHarness	own	ignored	unclear	
+09eb6544	07:42:29	FAIL	planCodeDelta	own	acted	useful	22 to 11
+09eb6544	07:42:56	PASS	planCodeDelta	own	read	useful	confirms the fix
+09eb6544	07:51:52	STILL FAIL	createDelivery.deliver.<transaction>	own	weighed	useful	"not mine to split"
+e781447d	09:28:18	STILL FAIL	vitestCase	own	ignored	unclear	
+d0a78289	10:31:09	STILL FAIL	NewTaskRoute	own	ignored	unclear	
+d0a78289	12:10:40	summary	-	recount	ignored	unclear	counter version 2
+d0a78289	12:10:40	too big	run.ts	no edit	ignored	noise	rides on the recount; nobody edited run.ts
+d0a78289	13:40:54	too big	run.ts	no edit	ignored	noise	resumed process
+dd7443e0	10:59:17	PASS	PendingAsk	pull	ignored	noise	git switch to origin/main
+dd7443e0	10:59:17	STILL FAIL	NewTaskRoute	pull	ignored	noise	git switch
+dd7443e0	10:59:17	STILL FAIL	ThreadView	pull	ignored	noise	git switch
+dd7443e0	10:59:17	STILL FAIL	reduceThread	pull	weighed	redundant	the task was this refactor: "Squeal confirms the baseline"
+dd7443e0	11:02:19	PASS	reduceThread	own	read	redundant	the task's refactor, 203 to 6
+dd7443e0	11:02:19	RESOLVED	reduceThread.upsertConversation	own	ignored	redundant	move plus edit (27 to 2), D2's accepted limit
+dd7443e0	12:12:06	summary	-	recount	ignored	unclear	counter version 2
+dd7443e0	12:12:06	too big	run.ts	no edit	ignored	noise	rides on the recount
+f475e065	12:11:22	summary	-	recount	ignored	unclear	counter version 2
+f475e065	12:11:22	too big	run.ts	no edit	ignored	noise	rides on the recount
+f475e065	12:11:42	summary	-	recount	ignored	noise	the same summary again, same revision
+f475e065	13:50:54	too big	run.ts	no edit	ignored	noise	resumed process
+f475e065	13:51:23	PASS	SkillsCatalog	pull	ignored	noise	git merge stopped on a conflict
+f475e065	13:51:23	PASS	SessionActivityCard	pull	ignored	noise	conflicted merge
+f475e065	13:51:23	PASS	reduceThread	pull	ignored	noise	conflicted merge
+f475e065	13:51:23	STILL FAIL	ThreadView	pull	ignored	noise	conflicted merge: HEAD had not moved (0.1.292)
+f475e065	13:51:23	RESOLVED	reduceThread.upsertConversation	pull	ignored	noise	conflicted merge
+0829604a	11:03:49	STILL FAIL	SessionActivityCard	own	weighed	useful	back to the baseline 87; filed issue #1608 as cezar's check asks
+0829604a	12:27:37	summary	-	recount	ignored	unclear	counter version 2
+0829604a	12:27:37	too big	run.ts	no edit	ignored	noise	rides on the recount
+e71c2637	11:21:10	STILL FAIL	SkillsCatalog	own	acted	useful	29 to 20; its PASS was lost to hook timeouts
+e71c2637	12:10:12	summary	-	recount	ignored	unclear	counter version 2
+7c4a585f	12:09:22	summary	-	recount	ignored	unclear	counter version 2
+7c4a585f	12:09:22	too big	run.ts	no edit	ignored	noise	rides on the recount
+9a2dc9c8	15:39:28	PASS	NewTaskRoute	pull	ignored	noise	rebase
+ae23d48c	13:07:00	PASS	SkillsCatalog	pull	ignored	noise	git checkout of origin/main
+ae23d48c	13:07:00	STILL FAIL	NewTaskRoute	pull	ignored	noise	checkout
+ae23d48c	13:07:00	STILL FAIL	SessionActivityCard	pull	weighed	redundant	the task was this refactor (issue #1608)
+ae23d48c	13:07:00	STILL FAIL	ThreadView	pull	ignored	noise	checkout
+ae23d48c	13:42:20	summary	-	recount	ignored	unclear	counter version 2
