@@ -42,7 +42,7 @@ const quietHint = (entry: CodeDeltaEntry, command: string) =>
 export function codeEntryLine(entry: CodeDeltaEntry, command: string): string {
   const at = `${functionName(entry.check)} (${whereOf(entry.check, entry.line)})`;
   // Spec 015 D9 (row 015-12): `crap` and `uncovered` have lines of their own.
-  if (isCoverage(entry)) return coverageEntryLine(entry, at);
+  if (isCoverage(entry)) return coverageEntryLine(entry, at, command);
   switch (entry.kind) {
     case "first-seen-fail":
     case "pass-to-fail":
@@ -79,6 +79,14 @@ export function recountLine(
   }
 }
 
+/** Row 015-40: D6's summary of a `crap.threshold` change. */
+export function crapRecountLine(
+  { threshold, over }: NonNullable<CodeNews["crapRecount"]>,
+  command: string,
+): string {
+  return `CRAP threshold is now ${threshold}: ${plural(over, "function")} over; ${command} code lists them.`;
+}
+
 const kib = (bytes: number) => `${Math.round(bytes / 1024)} KiB`;
 
 /** D6: a file an edit changed that is too big to count. */
@@ -90,6 +98,7 @@ export function tooBigLine({ path, size, limit }: CodeTooBig): string {
 export function codeLines(news: CodeNews, command: string): string[] {
   return [
     ...(news.recount === undefined ? [] : [recountLine(news.recount, command)]),
+    ...(news.crapRecount === undefined ? [] : [crapRecountLine(news.crapRecount, command)]),
     ...news.entries.map((e) => codeEntryLine(e, command)),
     ...(news.more === 0
       ? []
@@ -110,29 +119,60 @@ export const codeChanges = (news: CodeNews) =>
 /**
  * A delivery title's words for its code lines of functions: the changes,
  * then the functions told still over (lessons round 1); `null` when it
- * tells no function.
+ * tells no function. Row 015-40: with a `crap` or `uncovered` STILL FAIL
+ * among them, the functions still failing a code check, each once.
  */
 export function codeTitleWords(news: CodeNews): string | null {
   const changes = codeChanges(news);
-  const still = news.entries.filter((e) => isStillFail(e.kind)).length;
+  const still = news.entries.filter((e) => isStillFail(e.kind));
+  const functions = new Set(
+    still.map((e) => JSON.stringify([e.check.path, functionName(e.check)])),
+  );
   const words = [
     ...(changes === 0
       ? []
       : [`${changes} ${changesWord(news)} ${changes === 1 ? "change" : "changes"}`]),
-    ...(still === 0 ? [] : [`${plural(still, "function")} still over the complexity threshold`]),
+    ...(still.length === 0
+      ? []
+      : still.some(isCoverage)
+        ? [`${plural(functions.size, "function")} still failing a code check`]
+        : [`${plural(still.length, "function")} still over the complexity threshold`]),
   ];
   return words.length === 0 ? null : words.join(" and ");
+}
+
+/**
+ * Row 015-40 (wording in status.md, 2026-10-24): the functions told over,
+ * each measure apart and one with none left out: `2 functions over 20, 1
+ * over CRAP 30 and 1 no in-process test reaches,`. With one measure, no
+ * comma ends it.
+ */
+export function toldOverWords({
+  count,
+  threshold,
+  crap,
+  uncovered,
+}: NonNullable<CodeNews["toldOver"]>): string {
+  const parts: [number, string][] = [
+    ...(count === 0 ? [] : [[count, `over ${threshold}`] as [number, string]]),
+    ...(crap === undefined
+      ? []
+      : [[crap.count, `over CRAP ${crap.threshold}`] as [number, string]]),
+    ...(uncovered === undefined
+      ? []
+      : [[uncovered, "no in-process test reaches"] as [number, string]]),
+  ];
+  const words = parts.map(([n, what], i) => `${i === 0 ? plural(n, "function") : n} ${what}`);
+  const last = words.pop() ?? "";
+  return words.length === 0 ? last : `${words.join(", ")} and ${last},`;
 }
 
 /**
  * Row 015-27: test news's last line, while functions the consumer was told
  * of in full are over (`CodeNews.toldOver`).
  */
-export function toldOverLine(
-  { count, threshold }: NonNullable<CodeNews["toldOver"]>,
-  command: string,
-): string {
-  return `Complexity: ${plural(count, "function")} over ${threshold} that this session was told about; ${command} code --told lists them.`;
+export function toldOverLine(over: NonNullable<CodeNews["toldOver"]>, command: string): string {
+  return `Complexity: ${toldOverWords(over)} that this session was told about; ${command} code --told lists them.`;
 }
 
 /** Row 015-27: complexity news's last line, while tests have known failures. */

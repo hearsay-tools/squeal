@@ -78,12 +78,16 @@ function fileLine(f: CodeReportFile, limit: number): string {
   }
 }
 
+/** With `--told`, who the list is of (row 015-27). */
+const toldWho = ({ told }: CodeReport) =>
+  told?.scope === "worktree" ? "a session in this worktree was" : "this session was";
+
 /** Without paths, what the functions listed are: over, changed, or over and told (row 015-27). */
-function whatListed({ threshold, changedSince, told }: CodeReport): string {
+function whatListed(report: CodeReport): string {
+  const { threshold, changedSince, told } = report;
   if (changedSince !== undefined) return "changed";
   if (told === undefined) return `over ${threshold}`;
-  const who = told?.scope === "worktree" ? "a session in this worktree was" : "this session was";
-  return `over ${threshold} that ${who} told about`;
+  return `over ${threshold} that ${toldWho(report)} told about`;
 }
 
 /** The line after the head on whose registration or views the list is of. */
@@ -126,7 +130,12 @@ export function formatCodeReport(report: CodeReport): string {
     return `  ${where}  ${functionName({ ...f, kind: "code" })}  ${cc}, ${state}${coverageWords(f.coverage)}`;
   });
   // Spec 015 D9 (row 015-12): CRAP and the functions no in-process test reaches.
-  const coverage = coverageLines(report.coverage, report.changedSince !== undefined, "squeal");
+  const coverage = coverageLines(
+    report.coverage,
+    report.changedSince !== undefined,
+    "squeal",
+    report.told === undefined ? undefined : toldWho(report),
+  );
   const files =
     report.files.length === 0
       ? []
