@@ -197,6 +197,9 @@ export class VitestAdapter implements RunnerAdapter {
       // container, so nothing stamps the bytes it holds (D4). A CLI option,
       // so it reaches every project.
       fsModuleCache: false,
+      // Row 013-07: a config's own coverage would clean and rewrite the project's
+      // reports and print to the daemon's output. A CLI option wins over the config.
+      coverage: { enabled: false },
       ...(Object.keys(env).length === 0 ? {} : { env }),
       ...(project === undefined ? {} : { project }),
     });
