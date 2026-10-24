@@ -1,0 +1,10 @@
+  2.75 cores  cezar v0.1.295 /home/agent/projects/cezar/.ai/cezar/worktrees/0deb3943-5cf3-4e43-a9ae-7b1200ec5834
+  0.39 cores  cezar v0.1.296 /home/agent/projects/cezar/.ai/cezar/worktrees/9a1cf62d-b30d-4a52-a355-df62c8f2c62c
+  0.24 cores  cezar v0.1.295 /home/agent/projects/cezar/.ai/cezar/worktrees/80468f89-da20-4928-aa64-30a43bdc28e5
+  0.15 cores  cezar v0.1.294 /home/agent/projects/cezar/.ai/cezar/worktrees/996f2ea4-e543-4543-a6db-3e1789a98352
+  0.06 cores  cezar v0.1.294 /home/agent/projects/cezar/.ai/cezar/worktrees/57c88854-31a7-471c-afcf-b231c60266dc
+  0.01 cores  squeal v0.1.295 /home/agent/projects/squeal/.ai/cezar/worktrees/fa53fd07-9729-4f0a-a143-586c8ed323fd
+  0.00 cores  cezar v0.1.295 /home/agent/projects/cezar/.ai/cezar/worktrees/ed728881-8354-4d81-9128-8006d6bac23f
+  0.00 cores  squeal v0.1.295 /home/agent/projects/squeal
+  0.00 cores  squeal v0.1.295 /home/agent/projects/squeal/.ai/cezar/worktrees/2dc2e2e1-82bd-4226-997e-99d2ab574e68
+{"windowSeconds": 20.0, "busyCores": 12.9, "squealCores": 3.6, "squealShareOfBusy": 28, "daemonTrees": 9}
