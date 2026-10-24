@@ -152,3 +152,40 @@ Two parts. Briefed by coordinator 52e58f23 on 2026-10-24, after 0.1.283 was rele
 - the round is committed, with a table per repository;
 - each open question has a recommendation and the counts behind it;
 - each defect is written as a proposed row and never fixed.
+
+### 015-10 Part C: live sessions now
+
+Added on 2026-10-24. The human expected sessions started now, not only the passive working day. Use /worker. Shape: finish, dogfood. **Outcome:** `lessons.md` gains "Round 1, live sessions (015-10)". It shows, from real agent sessions, what complexity tells an agent while it works and what the agent does with it.
+
+**Read:** `spec.md` D5, D6, D7 and Open questions 1, 2 and 4; `tasks/015-10/window.md`.
+
+**Isolation.** Use the throwaway OS user `squeal-e2e` (uid 1002, home `/home/squeal-e2e`). It cannot read `/home/agent`.
+- Node is in `/opt/squeal-e2e/node22` and `/opt/squeal-e2e/node24`. `claude` is in `/home/squeal-e2e/.npm-global/bin`; update it there if it is too old.
+- Start each process as `sudo -n [--preserve-env=NAMES] -u squeal-e2e -H env -i HOME=/home/squeal-e2e PATH=... <cmd>`, with cwd `/`.
+- Pass credentials by name only: never a value in argv, a file or a message.
+- Install Squeal 0.1.284 for that user's Claude Code: the hearsay marketplace, or a `git archive squeal--v0.1.284 plugins/claude-code` copy.
+- Bring each repository in through `git bundle`: cezar at `03c905a00` (complexity on) and squeal at `origin/main`.
+
+**Sessions.** Run eight `claude -p` sessions on `--model sonnet`, four per repository. Each is a real small task, picked from that clone's `squeal code` list:
+1. a change inside a function already over 20 (one `STILL FAIL` expected);
+2. a refactor in several edits that brings a function over 20 under it (`PASS`; churn);
+3. a change that takes a function from under 20 to over it (`FAIL`);
+4. an ordinary task with no complexity aim (noise).
+
+Start each session only when the one-minute load is at or below 24, and record the load.
+
+**Record per session:**
+- every SQUEAL line that names complexity;
+- the agent's next action;
+- whether the line was right (check it against `squeal code`);
+- the time from the edit to the delivery;
+- the counting CPU.
+
+**Rules:**
+- Write only under `/home/squeal-e2e`, `/tmp/dogfood-015-10/` and your own worktree's `lessons.md` and `tasks/015-10/`.
+- Send no signal to a process you did not start.
+- Stop after 2 hours of wall time. At the end, run `squeal stop` in each clone and remove the clones.
+
+**Owns:** `lessons.md`, `tasks/015-10/`.
+
+**Done when:** the round is committed with a table per session. Each open question has the evidence these sessions give. Each defect is written as a proposed row and never fixed.
