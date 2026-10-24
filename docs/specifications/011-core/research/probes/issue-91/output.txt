@@ -1,0 +1,9 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/fbe44dd6-852b-417d-9ebd-eb9c9bed04fb
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  16:15:44
+   Duration  3.47s (tests 55%, transform 38%, import 7%)
+
