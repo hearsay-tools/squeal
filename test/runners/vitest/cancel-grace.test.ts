@@ -1,8 +1,12 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CancelCause } from "../../../src/core/types/index.js";
+import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
+import { loadVitest } from "../../../src/runners/vitest/load.js";
+import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
+import { witnessed } from "../../keys/validity/harness/vitest.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
 /*
@@ -37,18 +41,21 @@ const FS = 'import { existsSync, writeFileSync } from "node:fs";';
 
 /**
  * Its one test passes, its skip is declared; its `afterAll` holds the module
- * open until `release`. It says so 500 ms after the test ended, so the test's
- * result reaches the reporter before the cancel: a worker sends results at
- * most every 100 ms.
+ * open until `release`. The run cancels once the reporter holds the test's
+ * pass (`WHOLE_RAN`). Vitest 5.0.3's worker can hold a result until its next
+ * task update, so the tests' suite ends 150 ms after them, and that end sends
+ * it (`tasks/011-175/notes.md`).
  */
 function wholeFile(markers: string): string {
   return [
     FS,
-    'import { afterAll, it } from "vitest";',
-    'it("passes", () => {});',
-    'it.skip("is declared skipped", () => {});',
+    'import { afterAll, describe, it } from "vitest";',
+    'describe("ran", () => {',
+    '  it("passes", () => {});',
+    '  it.skip("is declared skipped", () => {});',
+    "  afterAll(() => new Promise((done) => setTimeout(done, 150)));",
+    "});",
     "afterAll(async () => {",
-    "  await new Promise((done) => setTimeout(done, 500));",
     `  writeFileSync(${marker(markers, WHOLE)}, "");`,
     `  ${waitFor(release(markers))}`,
     "});",
@@ -107,6 +114,8 @@ function hookFailsFile(markers: string): string {
 
 type Sources = (markers: string) => Record<string, string>;
 const GRACE: Sources = (m) => ({ [WHOLE]: wholeFile(m), [CUT]: cutFile(m) });
+/** The test of `GRACE` whose result the reporter holds before the cancel. */
+const WHOLE_RAN = ["ran > passes"];
 const EXPECTED_FAILURES: Sources = (m) => ({
   [FAILS]: failsFile(m),
   [HOOK_FAILS]: hookFailsFile(m),
@@ -117,13 +126,24 @@ afterEach(() => {
   for (const dir of markerDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-/** A run of the files of `sources`; with `cause`, cancelled once each waits and released 50 ms later. */
-async function runOf(sources: Sources, cause?: CancelCause) {
+/**
+ * A run of the files of `sources`; with `cause`, cancelled once each waits
+ * and the reporter holds the results of the tests `ran` names, and released
+ * 50 ms later. Row 011-176: a delay before the cancel proved nothing, and on
+ * CI the pass came after it.
+ */
+async function runOf(sources: Sources, cause?: CancelCause, ran: readonly string[] = []) {
   const markers = mkdtempSync(join(tmpdir(), "squeal-011-137-"));
   markerDirs.push(markers);
   const files = sources(markers);
   const paths = Object.keys(files);
-  const fx = await openFixture("basic", files);
+  const heard = new Set<string>();
+  const fx = await openFixture("basic", files, async (root) => {
+    const vitest = witnessed(await loadVitest(root), heard);
+    const adapter = new VitestAdapter(new WorktreePaths(realpathSync(root)), vitest);
+    await adapter.open();
+    return adapter;
+  });
   await fx.adapter.invalidate(paths.map((path) => ({ path, kind: "add" as const })));
   if (cause === undefined) writeFileSync(release(markers), "");
   const controller = new AbortController();
@@ -139,6 +159,8 @@ async function runOf(sources: Sources, cause?: CancelCause) {
   if (cause !== undefined) {
     const started = () => paths.every((path) => existsSync(markerOf(markers, path)));
     await expect.poll(started, { timeout: 60_000 }).toBe(true);
+    const reported = () => ran.every((name) => heard.has(name));
+    await expect.poll(reported, { timeout: 60_000 }).toBe(true);
     controller.abort(cause);
     // The cancel is asked before any module can end: each ends in its grace.
     await new Promise((done) => setTimeout(done, 50));
@@ -152,13 +174,13 @@ const outcomes = (report: Awaited<ReturnType<typeof runOf>>["report"]) =>
 
 describe("vitest adapter: a module that ends whole in a cancel's grace (row 011-137)", SLOW, () => {
   it("counts as completed under a step-down, its results kept; a cut module does not", async () => {
-    const { report, ended } = await runOf(GRACE, "step-down");
+    const { report, ended } = await runOf(GRACE, "step-down", WHOLE_RAN);
 
     expect(report.completedFiles).toEqual([ref(WHOLE)]);
     // A declared skip is no test the cancel cut.
     expect(outcomes(report)).toEqual([
-      [WHOLE, "is declared skipped", "skip"],
-      [WHOLE, "passes", "pass"],
+      [WHOLE, "ran > is declared skipped", "skip"],
+      [WHOLE, "ran > passes", "pass"],
     ]);
     expect(report.fileErrors).toEqual([]);
     // It ended after the cancel: the scheduler hears of no end during the run (row 011-54).
@@ -166,7 +188,7 @@ describe("vitest adapter: a module that ends whole in a cancel's grace (row 011-
   });
 
   it("stays dropped under a stop, as before", async () => {
-    const { report } = await runOf(GRACE, "stop");
+    const { report } = await runOf(GRACE, "stop", WHOLE_RAN);
 
     expect(report.completedFiles).toEqual([]);
     expect(report.results).toEqual([]);
