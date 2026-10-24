@@ -35,6 +35,7 @@ import { knownFailureCounts } from "./checks.js";
 import { codeStatusOf } from "./code-status.js";
 import { configProblemsOf, withConfigProblems } from "./config-problems.js";
 import { withDeath } from "./died.js";
+import { readStatusFocused } from "./focused.js";
 import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
@@ -165,6 +166,8 @@ function snapshot(
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
   const at = worktree?.root ?? root;
+  // Row 011-146 (C6 as amended 2026-10-23): focused runs, never counted.
+  const focused = readStatusFocused(store, worktreeId);
   // Row 011-58 (gh-58): who holds the slow slot, while the daemon waits for it.
   const slowSlot = slowSlotOf(store, worktreeId, at, header, daemon.state === "alive", now);
   // Row 011-29: the groups `Outstanding:` prints, from the rows read above.
@@ -213,6 +216,7 @@ function snapshot(
     outstanding,
     pendingTestFiles: pendingTestFilesOf(states, keys, held),
     ...(slowSlot === undefined ? {} : { slowSlot }),
+    ...(focused.length === 0 ? {} : { focused }),
     ...codeStatusOf(
       store,
       worktreeId,
