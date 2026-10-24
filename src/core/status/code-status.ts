@@ -66,7 +66,8 @@ const SINCE: Record<NonNullable<CodeStatus["since"]>, string> = {
 
 /**
  * D6: `Complexity: 62 functions over 20, 2 since this session started; squeal code lists them.`,
- * and `Complexity: counting, 340 of 600 files.` while a count runs with none over yet.
+ * and `Complexity: counting, 340 of 600 files.` while a count runs with none over yet; both
+ * carry `; 1 file could not be counted` while one is (review 0.1.293 S1).
  */
 export function codeStatusLines(s: StatusSnapshot, command: string): string[] {
   const code = s.code;
@@ -74,16 +75,16 @@ export function codeStatusLines(s: StatusSnapshot, command: string): string[] {
   if (code.files === 0 && (code.uncountable ?? 0) === 0)
     return ["Complexity: no file counted yet."];
   const progress = `counting, ${code.files - code.pending} of ${plural(code.files, "file")}`;
-  // D6: while a first count runs no state is stored yet, so "0 functions over" would not be true.
-  if (code.pending > 0 && code.over === 0) return [`Complexity: ${progress}.`];
-  const since = code.since === null ? "" : `, ${code.sinceRegistration} ${SINCE[code.since]}`;
-  const counting = code.pending === 0 ? "" : `; ${progress}`;
-  const unknown =
-    code.unknown === 0 ? "" : `; ${plural(code.unknown, "function")} in parse errors not judged`;
   const uncountable =
     (code.uncountable ?? 0) === 0
       ? ""
       : `; ${plural(code.uncountable ?? 0, "file")} could not be counted`;
+  // D6: while a first count runs no state is stored yet, so "0 functions over" would not be true.
+  if (code.pending > 0 && code.over === 0) return [`Complexity: ${progress}${uncountable}.`];
+  const since = code.since === null ? "" : `, ${code.sinceRegistration} ${SINCE[code.since]}`;
+  const counting = code.pending === 0 ? "" : `; ${progress}`;
+  const unknown =
+    code.unknown === 0 ? "" : `; ${plural(code.unknown, "function")} in parse errors not judged`;
   const over = `${plural(code.over, "function")} over ${code.threshold}`;
   return [
     `Complexity: ${over}${since}${counting}${unknown}${uncountable}; ${command} code lists them.`,
