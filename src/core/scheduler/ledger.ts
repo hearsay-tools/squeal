@@ -167,8 +167,8 @@ export class Ledger {
   #adopted = false;
   /** Spec 004 D2's evidence order (task 004-82): token records by the key cache's hashes. */
   readonly #ranker: SlowRanker;
-  /** The key each file was last read at under the formats read as one, by `testFileId` (task 011-38). */
-  readonly #readAsOne = new Map<string, CheckKey>();
+  /** Each file's key and keys read as one at its last read (`acceptedAt`), by `testFileId` (011-38, 0.1.285 B1). */
+  readonly #readAsOne = new Map<string, string>();
   /** The formats read as one, as `acceptedAt` reads them: the key index's keys, this daemon's reads. */
   readonly #listed: ReadAsOne = {
     keys: (key) => this.context.keys.index.keysReadAsOne(key),
