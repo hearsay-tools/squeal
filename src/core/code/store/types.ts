@@ -88,8 +88,13 @@ export interface CodeTransitionRepo {
   history(worktreeId: WorktreeId, check: CodeCheckId): readonly CodeTransition[];
 }
 
-/** Spec 015 D6: what each consumer was told about each code check, after 011 C5's view. */
+/**
+ * Spec 015 D6: what each consumer was told about each code check, after 011
+ * C5's view. A view holds the functions told failing only: a check with no
+ * entry reads `pass` (lessons round 1, P5).
+ */
 export interface CodeViewRepo {
+  /** The consumer's entries; a `pass` entry an older hook wrote reads as none. */
   list(consumer: Consumer): readonly CodeViewEntry[];
   writeMany(consumer: Consumer, entries: readonly CodeViewEntry[]): void;
   /** The consumer's entries of these checks and measures; others stay. */
@@ -99,6 +104,8 @@ export interface CodeViewRepo {
   ): void;
   /** Every entry of the consumer: it unregistered, or its view is seeded again (D6's summary). */
   clear(consumer: Consumer): void;
+  /** Removes the entries in `worktreeIds` of every consumer not in `consumers`; returns how many went. */
+  retain(worktreeIds: readonly WorktreeId[], consumers: readonly Consumer[]): number;
 }
 
 export interface CodeMetaRepo {
