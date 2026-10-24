@@ -2,7 +2,6 @@ import type {
   AbsolutePath,
   FocusRequest,
   PromoteRequest,
-  RelativePath,
   TestFileRef,
 } from "../core/types/index.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
@@ -72,16 +71,3 @@ export const focusNamed: FocusNamed = async (root, testFiles, texts, withinMs) =
     return "none";
   }
 };
-
-/**
- * The selected test files whose own path was named, as the worktree names
- * it: the ones a wait promotes (spec 011 C15). A source path selects the
- * files whose closure holds it, which are not promoted.
- */
-export function ownPathFiles(
-  selected: readonly TestFileRef[],
-  named: readonly (RelativePath | null)[],
-): TestFileRef[] {
-  const paths = new Set(named);
-  return selected.filter((file) => paths.has(file.path));
-}
