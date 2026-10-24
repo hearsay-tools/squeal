@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it } from "vitest";
+import { writeTooBigEdits } from "../../../src/core/code/pass/too-big.js";
 import { codeStorePath } from "../../../src/core/code/store/index.js";
 import type { CodeSource } from "../../../src/core/delivery/code-source.js";
 import { codeSource } from "../../../src/core/delivery/code-source.js";
@@ -268,7 +269,12 @@ describe("code delivery (015 D6, goals 3, 4 and 7)", () => {
   it("tells a file too big to count once, after an edit changed it (D6)", async () => {
     counted(18);
     await delivery().register(C1);
-    // The pass marks the file too big (015-06's `tooBig`), at a revision after the registration.
+    // The pass marks the file too big (015-06's `tooBig`), and its edit at a revision after the
+    // registration (015-39), read before it writes the row.
+    const file = { path: "src/big.ts", hash: "big", size: 614_400 };
+    writeTooBigEdits(repo.store, WT, new Map([[file.path, 2]]), [
+      { kind: "big", path: file.path, file, language: "typescript" },
+    ]);
     repo.store.files.upsertMany(WT, [
       {
         path: "src/big.ts",
