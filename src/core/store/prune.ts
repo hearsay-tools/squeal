@@ -111,8 +111,7 @@ export function prune(
     resultsRemoved += evictToCap(conn, options.maxSizeMb * 1024 * 1024);
   }
 
-  const runsRemoved =
-    dropLiveWorktreeRuns(conn, paths, cutoff) + dropRemovedWorktreeRuns(conn, paths);
+  const runsRemoved = dropRuns(conn, paths, cutoff);
 
   // Same rule as runs, plus: a checkpoint stays while a kept run is one of its tiers.
   const checkpointsRemoved = conn.transaction(() =>
@@ -145,35 +144,21 @@ export function prune(
   };
 }
 
-/** A live worktree's runs that ended before the cutoff and that nothing names, with their logs. */
-function dropLiveWorktreeRuns(conn: Connection, paths: StorePaths, cutoff: number): number {
+/**
+ * The runs nothing names, with their logs: a removed worktree's at once, a
+ * live worktree's once ended before the cutoff. A removed worktree's run
+ * that a kept result names stays until that result expires (row 011-160).
+ */
+function dropRuns(conn: Connection, paths: StorePaths, cutoff: number): number {
   const dropped = conn.transaction(() =>
     conn.all(
       `DELETE FROM runs
-       WHERE ${UNREFERENCED_RUN} AND worktree_id IN (SELECT id FROM worktrees)
-         AND end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?
+       WHERE ${UNREFERENCED_RUN}
+         AND (worktree_id NOT IN (SELECT id FROM worktrees)
+              OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))
        RETURNING log_dir`,
       keptRuns(conn),
       cutoff,
-    ),
-  );
-  for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
-  return dropped.length;
-}
-
-/**
- * A removed worktree's runs and their logs (row 011-160). A run goes, with
- * its log, once nothing names it: at once when it stored nothing, else when
- * its last result expires at the cutoff. Its own step, so these logs can
- * follow another rule than the result rows that name their runs.
- */
-function dropRemovedWorktreeRuns(conn: Connection, paths: StorePaths): number {
-  const dropped = conn.transaction(() =>
-    conn.all(
-      `DELETE FROM runs
-       WHERE ${UNREFERENCED_RUN} AND worktree_id NOT IN (SELECT id FROM worktrees)
-       RETURNING log_dir`,
-      keptRuns(conn),
     ),
   );
   for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
