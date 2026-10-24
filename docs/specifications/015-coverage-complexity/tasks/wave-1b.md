@@ -39,3 +39,16 @@ Use /worker. Shape: repair. Outcome: `export type * from` parses, and a raw NUL 
   - A fixture with `export type * from "./x.js"` and a string holding a NUL parses.
   - The function after the NUL is counted.
   - The pinned ESLint and radon comparisons still pass.
+
+## W5: 015-21, a failed fix attempt hears once more
+
+Use /worker. Shape: repair. Starts from `int/015b` with W1 to W4 integrated. The human chose this on 2026-10-24 (`status.md`). Outcome: after a `FAIL` told in this session, the next edit that changes the function's body and leaves it over tells one `STILL FAIL`. Later edits that stay over are quiet until its state changes. Reproduction: sq3 in `lessons.md`.
+- **Wording.** Every `STILL FAIL` line, this one and the first edit to a standing failure (015-08), ends with a hint that Squeal stays quiet about the function until it is back at or under the threshold, and that `squeal code <path>` shows its count at any time. For example: `STILL FAIL complexity: retryCommand (src/cli/retry.ts:69) is 22 after the edit, over 20 (ESLint rule); Squeal stays quiet about it until it is at or under 20, and squeal code src/cli/retry.ts shows its count.` Keep it to one line. Put the same rule in the skill's `references/policy.md` (claude-code, codex, pi).
+- **Seam.** `tellCode`'s plan in `src/core/delivery/code-*.ts` and the view's told marks (015-08 and 015-20 notes). A `FAIL` told in full, then an edit after it (`edited_at` after the entry's `toldAt`) with the state still `fail`, tells once and marks the entry so the next edit is quiet.
+- **Owns.** `src/core/delivery/code-*.ts`, `src/core/code/store/{views,types,schema}.ts` if a mark needs a column, `plugins/{claude-code,codex,pi}/skills/squeal/references/policy.md`, `test/code/delivery/**`.
+- **Done when.**
+  - `FAIL` at 23, an edit to 22: one `STILL FAIL ... is 22` with the hint.
+  - An edit to 21: quiet. An edit to 20: `PASS`.
+  - A standing failure's first-edit `STILL FAIL` carries the hint.
+  - Another session is not affected.
+  - Lint, typecheck and `squeal run --all --wait` pass; paste their output.
