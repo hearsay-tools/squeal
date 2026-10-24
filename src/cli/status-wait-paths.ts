@@ -573,6 +573,10 @@ export function printNamed(
     io.stdout(how.json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, now()));
     return 3;
   }
+  if (wait.focus?.usage !== undefined) {
+    io.stderr(`squeal status: ${wait.focus.usage}\n`);
+    return 2;
+  }
   const code = namedCode(wait);
   const command = statusCommand(io.env ?? process.env);
   if (!how.json) {
