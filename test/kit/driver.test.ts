@@ -14,7 +14,9 @@ import { K1 } from "./scenarios/k1-flip.js";
  */
 
 const KIT = import.meta.dirname;
-const GAP = "a spec line that documents the gap";
+const SPEC = "a spec line that documents the gap";
+/** K1's gap in a stale pack: the run after the first edit still passes. */
+const GAP = { spec: SPEC, fails: ["step 2 run"] };
 const scratch = realpathSync(mkdtempSync(join(tmpdir(), "squeal-kit-driver-")));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
@@ -30,7 +32,7 @@ describe("the kit's driver (spec 016 D1)", () => {
     expect(accepted(played.verdict)).toBe(true);
   });
 
-  it("reads a listed gap that fails as KNOWN, which the kit accepts", async () => {
+  it("reads a listed gap that fails only its listed assertions as KNOWN, which the kit accepts", async () => {
     const played = await playIn(K1, fakePack({ stale: true, known: { K1: GAP } }));
     expect(played.verdict).toBe("KNOWN");
     expect(accepted(played.verdict)).toBe(true);
@@ -41,7 +43,36 @@ describe("the kit's driver (spec 016 D1)", () => {
     const played = await playIn(K1, fakePack({ known: { K1: GAP } }));
     expect(played.verdict).toBe("UNEXPECTED PASS");
     expect(accepted(played.verdict)).toBe(false);
-    expect(describePlayed(played)).toContain(`UNEXPECTED PASS K1 × fake (listed gap: ${GAP})`);
+    expect(describePlayed(played)).toContain(`UNEXPECTED PASS K1 × fake (listed gap: ${SPEC})`);
+  });
+
+  it("reads a listed gap that fails another assertion as FAIL (review 016-12 B2)", async () => {
+    const played = await playIn(
+      K1,
+      fakePack({ stale: true, known: { K1: { spec: SPEC, fails: ["step 1 edit"] } } }),
+    );
+    expect(played.verdict).toBe("FAIL");
+    expect(accepted(played.verdict)).toBe(false);
+  });
+
+  it("reads a listed gap whose pack cannot open, or cannot close, as FAIL (review 016-12 B2)", async () => {
+    const unopened = await playIn(K1, {
+      ...fakePack({ known: { K1: GAP } }),
+      open: () => Promise.reject(new Error("unrelated adapter start failure")),
+    });
+    expect(unopened.verdict).toBe("FAIL");
+    expect(unopened.lines.join("\n")).toContain("threw: Error: unrelated adapter start failure");
+    const pack = fakePack({ stale: true, known: { K1: GAP } });
+    const unclosed = await playIn(K1, {
+      ...pack,
+      open: async (root, scratch) => {
+        const adapter = await pack.open(root, scratch);
+        adapter.close = () => Promise.reject(new Error("no close"));
+        return adapter;
+      },
+    });
+    expect(unclosed.verdict).toBe("FAIL");
+    expect(unclosed.lines.join("\n")).toContain("close threw: Error: no close");
   });
 
   it("reads an unlisted gap as FAIL, and a pack that cannot open as FAIL", async () => {
