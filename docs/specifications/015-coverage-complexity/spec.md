@@ -138,7 +138,7 @@ The fingerprint of a code failure is its rule and threshold, never its value. So
 
 ### D6. What the agent sees
 
-**Registration.** One line, only when the feature is on: `Complexity: 62 functions over 20; squeal code lists them.` While the first count runs: `Complexity: counting, 340 of 600 files.` No function is listed. The consumer's view is seeded with every current state, as 011 C5 seeds test states. Each failing function is marked as told by count only.
+**Registration.** One line, only when the feature is on: `Complexity: 62 functions over 20; squeal code lists them.` While the first count runs: `Complexity: counting, 340 of 600 files.` No function is listed. The consumer's view is seeded with every failing state, as 011 C5 seeds test states; a function with no view row reads as passing, and a function that passes leaves the view. Each failing function is marked as told by count only. A change at or before the revision the session counts from is taken into the view by count and never told: that revision is the registration's, or the next one when it is the daemon's start scan and the registration was not scanned, so a change made while no daemon ran is not the session's. SessionEnd drops the session's view rows, and a session sweep drops those of departed consumers (amended 2026-10-24, 015-20).
 
 **A change.** A code transition is delivered with the test transitions of the same delivery, in the same FAIL and PASS block format:
 
