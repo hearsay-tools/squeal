@@ -14,6 +14,7 @@ import type {
   RelativePath,
   StatusUnavailable,
 } from "../core/types/index.js";
+import { coverageLines, coverageWords } from "./code-coverage.js";
 import { type CodeReport, type CodeReportFile, readCodeReport } from "./code-report.js";
 import type { CliIo } from "./main.js";
 import { type DaemonSync, SYNC_POLL_MS, syncDaemon } from "./status-sync.js";
@@ -122,13 +123,15 @@ export function formatCodeReport(report: CodeReport): string {
         : f.outcome === "pass"
           ? "at or under"
           : f.outcome;
-    return `  ${where}  ${functionName({ ...f, kind: "code" })}  ${cc}, ${state}`;
+    return `  ${where}  ${functionName({ ...f, kind: "code" })}  ${cc}, ${state}${coverageWords(f.coverage)}`;
   });
+  // Spec 015 D9 (row 015-12): CRAP and the functions no in-process test reaches.
+  const coverage = coverageLines(report.coverage, report.changedSince !== undefined, "squeal");
   const files =
     report.files.length === 0
       ? []
       : ["Not judged:", ...report.files.map((f) => fileLine(f, report.maxFileBytes))];
-  return `${[head, ...since, ...lines, ...files].join("\n")}\n`;
+  return `${[head, ...since, ...lines, ...coverage, ...files].join("\n")}\n`;
 }
 
 /** What one `squeal code` asks of the stores. */
