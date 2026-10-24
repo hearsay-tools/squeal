@@ -16,6 +16,7 @@ import json, re, sys
 
 WT = re.compile(r"/([^/]+)/\.ai/cezar/(?:worktrees|t)/([0-9a-f]{8})")
 KINDS = ("squeal", "test", "agent", "other")
+ROW = "  {:6} {:>6}  {:5}  {:7} {:8}  {:22}  {}"
 
 
 def short(path):
@@ -70,13 +71,13 @@ def main():
         sat = idle < 0.1 * cpus
         print(f"{line['t']} {line['el']} s: busy {line['busy']} of {cpus} cores (idle {100 * idle / cpus:.0f}%{', saturated' if sat else ''}), "
               f"%nice {line['nice']}, %system {line['system']}; the trees explain {line['accounted']}")
-        print("  kind    cores  nice   project task      role (agent)              what")
+        print(ROW.format("kind", "cores", "nice", "project", "task", "role (agent)", "what"))
         shown = []
         for kind in KINDS:
             rows = sorted((r for r in trees if r["kind"] == kind and r["cores"] >= 0.1), key=lambda r: -r["cores"])[:top]
             for r in rows:
                 who = f"{r['role']} ({r['agent']})" if r["agent"] else (r["role"] or "-")
-                print(f"  {kind:6} {r['cores']:6.2f}  nice {','.join(map(str, r['nice'])) or '-':5}  {r['project'] or '-'} {r['task'] or '-':8}  {who:24}  {r['what']}")
+                print(ROW.format(kind, f"{r['cores']:.2f}", ",".join(map(str, r["nice"])) or "-", r["project"] or "-", r["task"] or "-", who, r["what"]))
             shown += rows
         by_kind = {k: round(sum(r["cores"] for r in trees if r["kind"] == k), 2) for k in KINDS + ("sampler",)}
         print(json.dumps({"t": line["t"], "windowSeconds": line["el"], "busyCores": line["busy"], "idlePct": round(100 * idle / cpus, 1), "saturated": sat,
