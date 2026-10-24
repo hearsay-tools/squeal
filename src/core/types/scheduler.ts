@@ -1,5 +1,5 @@
 import type { CommitSha, EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
-import type { TestFileRef } from "./keys.js";
+import type { CheckKey, TestFileRef } from "./keys.js";
 import type { CancelCause } from "./runner.js";
 import { worktreeMetaKey } from "./store.js";
 import type { CheckpointKind, CheckpointLane, CheckpointRecord } from "./store-records.js";
@@ -263,6 +263,16 @@ export interface SlowWaiting {
 }
 
 /**
+ * A worktree's own closure of each test file and the key made from it, as
+ * its scheduler's key index holds them (spec 001 D3). The main store's
+ * closure is the newest any worktree stored.
+ */
+export interface ClosureIndex {
+  key(testFile: TestFileRef): CheckKey | null;
+  closure(testFile: TestFileRef): { readonly paths: readonly RelativePath[] } | undefined;
+}
+
+/**
  * Turns revisions into keys, lookups and tiered runs for one worktree.
  *
  * Spec 001 D5: "On each new revision the daemon: invalidates changed paths in
@@ -399,6 +409,8 @@ export interface Scheduler {
    * installed lockfile (D2). For `ChangeFeed.setExtraFiles`.
    */
   extraFiles(): readonly RelativePath[];
+  /** Spec 015 D9 (review 0.1.297 B3): this worktree's own closures and keys; `null` before `start`. */
+  keyIndex(): ClosureIndex | null;
   /**
    * Waits for the tiers in flight, starts no other, abandons an open
    * checkpoint. With `cancel`, also during a close already begun, the tiers

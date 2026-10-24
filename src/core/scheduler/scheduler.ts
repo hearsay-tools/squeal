@@ -11,6 +11,7 @@ import { plural } from "../text.js";
 import {
   type CancelCause,
   type CandidateBatch,
+  type ClosureIndex,
   type EpochMs,
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
@@ -744,6 +745,11 @@ class TierScheduler implements Scheduler {
 
   extraFiles(): readonly RelativePath[] {
     return this.#context?.keys.extraFiles() ?? [];
+  }
+
+  /** Spec 015 D9 (review 0.1.297 B3): this worktree's own closures and keys; `null` before it starts. */
+  keyIndex(): ClosureIndex | null {
+    return this.#context?.keys.index ?? null;
   }
 
   close(options: SchedulerCloseOptions = {}): Promise<void> {
