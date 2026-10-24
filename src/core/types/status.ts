@@ -1,4 +1,4 @@
-import type { CheckError, CheckId } from "./check.js";
+import type { CheckError, CheckId, RunOutcome } from "./check.js";
 import type { CodeStatus } from "./code-delivery.js";
 import type {
   AbsolutePath,
@@ -668,6 +668,61 @@ export interface StatusSnapshot extends StatusHeader {
   readonly configProblems?: readonly string[];
   /** Spec 015 D6: the complexity counts; absent while `complexity.enabled` is off. */
   readonly code?: CodeStatus;
+  /**
+   * Row 011-146 (011 C6 as amended 2026-10-23): the worktree's focused runs,
+   * the newest of each test file, oldest first, each with whether it
+   * applies. Never a result: no count, failure or checkpoint above comes
+   * from it. Absent when there is none and from payloads before the field.
+   */
+  readonly focused?: readonly StatusFocused[];
+}
+
+/**
+ * Spec 011 C5 and C6 as amended 2026-10-23 (row 011-146): one focused run,
+ * as its worktree's focused meta row keeps it, for status, `why` and the
+ * focused wait. It is never a result, a known failure, a duration or a
+ * checkpoint.
+ */
+export interface StatusFocused {
+  readonly testFile: TestFileRef;
+  /** The file's key when the run started. */
+  readonly key: CheckKey;
+  /** The revision the run started at. */
+  readonly revision: RevisionNumber;
+  /** The `--check` texts it ran for. */
+  readonly texts: readonly string[];
+  readonly runId: string;
+  readonly logDir: string;
+  readonly startedAt: EpochMs;
+  /** `null` while it runs. */
+  readonly endedAt: EpochMs | null;
+  /** `endedAt - startedAt`; `null` while it runs. */
+  readonly durationMs: number | null;
+  /** How it ended; `null` while it runs. */
+  readonly end: "completed" | "discarded" | "crashed" | "timed-out" | "cancelled" | null;
+  /** Why it was discarded, crashed or timed out. */
+  readonly reason: string | null;
+  /** The checks the runner collected in the file. */
+  readonly collected: number | null;
+  /** How many checks held a text: `0` is a selection that matched nothing. */
+  readonly matched: number | null;
+  /** The selected checks that ran, at most 50. */
+  readonly checks: readonly StatusFocusedCheck[];
+  /** How many selected checks `checks` leaves out. */
+  readonly more: number;
+  /** Its key is its file's current key and no result is stored at that key (C5). */
+  readonly applies: boolean;
+}
+
+/** One selected check of a focused run. */
+export interface StatusFocusedCheck {
+  readonly check: CheckId;
+  /** As `formatCheck` prints it. */
+  readonly name: string;
+  readonly outcome: RunOutcome;
+  readonly durationMs: number;
+  readonly summary: string | null;
+  readonly location: SourceLocation | null;
 }
 
 /** `StatusSnapshot.unknownTestFiles`: the first `files`, path order, of `total`. */
