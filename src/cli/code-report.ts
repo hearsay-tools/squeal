@@ -22,6 +22,12 @@ import type {
   Store,
   WorktreeId,
 } from "../core/types/index.js";
+import {
+  type CodeReportCoverage,
+  type CodeReportCoverageOf,
+  coverageByFunction,
+  coverageReport,
+} from "./code-coverage.js";
 
 /*
  * Spec 015 D6: what `squeal code` reads, as its versioned JSON shape. It
@@ -41,6 +47,8 @@ export interface CodeReportFunction {
   readonly decisions: Readonly<Partial<Record<DecisionKind, number>>>;
   /** The revision its state last changed: when it went over, for a failing one. */
   readonly changedAt: RevisionNumber | null;
+  /** Spec 015 D9 (row 015-12): with paths, while coverage is judged here. */
+  readonly coverage?: CodeReportCoverageOf;
 }
 
 /**
@@ -83,6 +91,8 @@ export interface CodeReport {
   readonly told?: { readonly scope: "session" | "worktree" } | null;
   readonly functions: readonly CodeReportFunction[];
   readonly files: readonly CodeReportFile[];
+  /** Spec 015 D9 (row 015-12): without paths, while coverage is judged here. */
+  readonly coverage?: CodeReportCoverage;
 }
 
 export interface CodeReportOptions {
@@ -305,8 +315,17 @@ export function readCodeReport(
       : files
           .filter((f) => !behind.has(f.path))
           .flatMap((f) => fileFunctions(code, f, new Map(states.map((s) => [key(s.check), s]))));
+  const covered = coverageByFunction(
+    code,
+    worktreeId,
+    options.paths === null ? [] : [...new Set(listed.map((f) => f.path))],
+  );
   const functions = listed
     .filter((f) => (changed === null || changed.has(key(f))) && (told === null || told.has(key(f))))
+    .map((f) => {
+      const coverage = covered.get(`${f.path}\0${f.qualifiedName}\0${f.occurrence}`);
+      return coverage === undefined ? f : { ...f, coverage };
+    })
     .sort(
       (a, b) =>
         (options.paths === null ? (b.changedAt ?? 0) - (a.changedAt ?? 0) : 0) ||
@@ -325,5 +344,19 @@ export function readCodeReport(
     ...(to === undefined ? {} : { told: to === null ? null : { scope: to.scope } }),
     functions,
     files: notJudged(code, files, states, behind, uncountable),
+    ...coveragePart(code, worktreeId, options, keep, since),
   };
+}
+
+/** Spec 015 D9 (row 015-12): the report's coverage part, without paths and `--told`. */
+function coveragePart(
+  code: CodeStore,
+  worktreeId: WorktreeId,
+  options: CodeReportOptions,
+  keep: (path: RelativePath) => boolean,
+  since: ReturnType<typeof codeSince> | undefined,
+): { coverage?: CodeReportCoverage } {
+  if (options.paths !== null || options.told === true) return {};
+  const coverage = coverageReport(code, worktreeId, keep, since);
+  return coverage === undefined ? {} : { coverage };
 }
