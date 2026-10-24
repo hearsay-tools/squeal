@@ -63,6 +63,13 @@ export interface CodeNews {
   /** A recount since the consumer's view was seeded; the view is seeded again by count. */
   readonly recount?: CodeRecount & { readonly over: number };
   readonly tooBig?: readonly CodeTooBig[];
+  /**
+   * Row 015-27: on a delivery with test entries, the functions over
+   * `threshold` now that the consumer was told of in full, as a `FAIL` or a
+   * `STILL FAIL`. Absent when there is none, and from an older Squeal; with
+   * it, `entries` can be empty.
+   */
+  readonly toldOver?: { readonly count: number; readonly threshold: number };
 }
 
 /** Spec 015 D6: the registration's line; `Registration.code`. */
