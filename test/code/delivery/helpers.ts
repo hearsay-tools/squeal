@@ -1,5 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { cursorOf, writeCursor } from "../../../src/core/code/pass/cursor.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { recountKey } from "../../../src/core/delivery/code-deliver.js";
 import { type CodeSource, codeSource } from "../../../src/core/delivery/code-source.js";
@@ -11,6 +12,7 @@ import type {
   FunctionCount,
 } from "../../../src/core/types/code.js";
 import type { CodeRecount } from "../../../src/core/types/code-delivery.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
 import { commonDir, open } from "../helpers.js";
 
 /*
@@ -128,4 +130,12 @@ export function codeTransition(
 /** Records `recount` as the daemon's pass writes it (015-06). */
 export function putRecount(store: CodeStore, worktreeId: string, recount: CodeRecount): void {
   store.meta.set(recountKey(worktreeId), JSON.stringify(recount));
+}
+
+/**
+ * The pass cursor of `worktreeId` at `revision`, as the end of a count
+ * writes it. Before it a registration says counting is under way (015-35).
+ */
+export function putCursor(store: CodeStore, worktreeId: string, revision = 1): void {
+  writeCursor(store.meta, worktreeId, cursorOf(revision, DEFAULT_POLICY.complexity, 1));
 }

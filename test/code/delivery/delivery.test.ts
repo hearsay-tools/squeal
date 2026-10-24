@@ -21,6 +21,7 @@ import {
   codeTransition,
   fn,
   fnCheck,
+  putCursor,
   putFile,
   putRecount,
   TIERS,
@@ -54,6 +55,7 @@ function delivery(source: CodeSource | undefined = repo.source) {
 function counted(select: number, plan = 5) {
   putFile(repo.store, WT, TIERS, [fn("planTier", plan, 40), fn("selectTier", select, 120)]);
   repo.store.states.upsertMany([codeState(WT, PLAN, plan), codeState(WT, SELECT, select)]);
+  putCursor(repo.store, WT);
 }
 
 /** The pass after an edit: `selectTier` is now `to`, with the transition it records. */
