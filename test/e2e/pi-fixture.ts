@@ -16,6 +16,7 @@ import { type Consumer, MAIN_AGENT, type StatusSnapshot } from "../../src/core/t
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { atGate, gateCall, type PiWorld } from "../harness/pi/real-pi.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { type PiRun, type PiRunOptions, piBase, runPi } from "../helpers/pi.js";
 import { copyPlugin } from "./plugins.js";
 import { MATH, SLOW, SOURCE_PATH, type Source, STRINGS } from "./sources.js";
@@ -92,7 +93,9 @@ export class PiE2E {
       cpSync(join(install, file), join(repo, file));
     }
     execFileSync("cp", ["-a", join(install, "node_modules"), join(repo, "node_modules")]);
-    if (options.squeal !== false) writeFileSync(join(repo, "squeal.config.json"), "{}\n");
+    // The scenarios wait for the start to run every file (row 011-159: not the shipped default).
+    if (options.squeal !== false)
+      writeFileSync(join(repo, "squeal.config.json"), runMissingConfig());
     git(repo, ["init", "-q", "-b", "main"]);
     git(repo, ["add", "-A"]);
     git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
