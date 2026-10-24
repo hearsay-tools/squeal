@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type CatchUpSide, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import {
   CUT_WITHIN_MS,
@@ -66,7 +67,11 @@ function reportEnds(
   return { end: (path) => waiting.get(path)?.() };
 }
 
-/** A, B and C of `ms` known each; an edit's tier of A and B in flight, B's run taking a minute. */
+/**
+ * A, B and C of `ms` known each; an edit's tier of A and B in flight, B's run taking a minute.
+ * The start runs every file, so each has the `ms` its run stored: with none, the tier yields
+ * only 30 s after its start, and a no-cancel check proved nothing of the 30 s rule (row 011-174).
+ */
 async function oneRunning(
   known: (path: string) => number,
   delay: (path: string) => number | null,
@@ -80,7 +85,7 @@ async function oneRunning(
   const [, b] = files;
   if (b === undefined) throw new Error("no files");
   const repo = catchUpRepo(files);
-  const side = catchUpSide(repo, repo.main, { files, hostSlots: 8 });
+  const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
   const ends = reportEnds(side, delay, drop);
   await side.scheduler.start();
   await side.scheduler.idle();
