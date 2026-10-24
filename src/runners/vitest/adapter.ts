@@ -25,7 +25,9 @@ import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
 import {
+  type CoverageBatch,
   coveredFiles,
+  dropPayloads,
   InstanceCoverage,
   inspectorFiles,
   inspectorNote,
@@ -564,6 +566,8 @@ export class VitestAdapter implements RunnerAdapter {
             collector,
             options.signal,
           );
+          // Spec 015 D8: taken before a close below empties the instance (review 0.1.295 B3).
+          const batches = coverage === null ? [] : coverage.take(vitest);
           // Task 001-146: bytes the run read that moved since; the files that may have run them.
           const ran = await this.#invalidateStale(vitest, loadedSince);
           const moved = [...new Set([...ran, ...unsure])].sort();
@@ -630,9 +634,10 @@ export class VitestAdapter implements RunnerAdapter {
             (file) => this.paths.toRelative(file) ?? file,
           );
           const report = withoutTouched(kept, reread, counted.sort());
-          if (coverage !== null && uncovered !== null) {
+          if (uncovered !== null) {
             const clean = !execution.hung && broken === null && rejected === undefined;
-            this.#collect(vitest, coverage, report, clean ? uncovered : null, options.runId);
+            if (clean) this.#collect(vitest, batches, report, uncovered, options.runId);
+            else dropPayloads(batches);
           }
           // One persisted note for status, besides the crash's delivered line (D5).
           if (broken !== null && report.failure !== null) this.#note(report.failure);
@@ -669,21 +674,20 @@ export class VitestAdapter implements RunnerAdapter {
   }
 
   /**
-   * Hands the run's payloads of its completed, covered files to the
-   * records' writer, and drops the rest; `uncovered` `null` drops all (a
-   * hung, broken or rejected run).
+   * Hands the payloads of a clean run's completed, covered files to the
+   * records' writer, and drops the rest. A file that completed before a
+   * cancel is among them (D8, corrected 2026-10-24).
    */
   #collect(
     vitest: Vitest,
-    coverage: InstanceCoverage,
+    batches: readonly CoverageBatch[],
     report: RunReport,
-    uncovered: ReadonlySet<string> | null,
+    uncovered: ReadonlySet<string>,
     runId: string,
   ): void {
     const completed = new Set(report.completedFiles.map(fileKey));
     const wanted = (ref: TestFileRef) =>
-      uncovered !== null && completed.has(fileKey(ref)) && !uncovered.has(fileKey(ref));
-    const batches = coverage.take(vitest);
+      completed.has(fileKey(ref)) && !uncovered.has(fileKey(ref));
     const files = coveredFiles(vitest, batches, wanted, this.#sources, this.paths);
     if (files.length > 0) this.#coverage?.collected({ runId, files });
   }
