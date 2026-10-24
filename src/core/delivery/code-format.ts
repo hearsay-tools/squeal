@@ -29,7 +29,7 @@ export const ruleOf = (check: CodeCheckId) =>
 export const whereOf = (check: CodeCheckId, line: number | null) =>
   line === null ? check.path : `${check.path}:${line}`;
 
-/** One told change: the FAIL, PASS or RESOLVED line. */
+/** One told change: the FAIL, PASS, RESOLVED or STILL FAIL line. */
 export function codeEntryLine(entry: CodeDeltaEntry): string {
   const at = `${functionName(entry.check)} (${whereOf(entry.check, entry.line)})`;
   switch (entry.kind) {
@@ -40,6 +40,9 @@ export function codeEntryLine(entry: CodeDeltaEntry): string {
       return `PASS complexity: ${at} is ${entry.value}, at or under ${entry.threshold}`;
     case "removed":
       return `RESOLVED complexity: ${at} is no longer in the code`;
+    case "edited":
+      // D6, its last rule: not a new failure, so the line says it was over before the edit.
+      return `STILL FAIL complexity: ${at} is ${entry.value} after the edit; it was already over ${entry.threshold} before it (${ruleOf(entry.check)})`;
   }
 }
 
