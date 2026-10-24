@@ -95,3 +95,14 @@ The transaction that tells the summary seeds at `max(at, recount.at)` (`codeStep
 ### Note
 
 `code-deliver.ts` is 377 lines, over the styleguide's 300. It was 362 at the start, and wave 2b's 015-12 edits it too, so I did not split it.
+
+## Verification, at `47fee8062`
+
+- `npm run lint`: `Checked 2026 files … No fixes applied.` `npm run typecheck`: clean.
+- `squeal run --all --wait`: checkpoint completed at revision 36, 1045 test files, 4 known failures, all the bundle check (`cli/squeal.mjs differs from the build`) in `test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts` and `pi/package.test.ts`. The brief says not to build bundles; the candidate's build clears them.
+- `test/code/store.test.ts` "switches into WAL while another process holds the write lock" failed once in a local `npx vitest run test/code …` batch at load 21, passed alone, and is current and passing in the checkpoint.
+
+## For the next worker
+
+- The sibling 015-12 edits `code-deliver.ts` and `pass/index.ts`. This wave changed `registerCode`, `dropCode`, `newTooBig` and `codeStep` in `code-deliver.ts`, and the recount condition in `pass.ts`; `index.ts` is untouched.
+- Rig helpers added for real git operations and sessions: `FakeWorktree.branch`, `run`, `reread`; `rig.pass(counter)`, `rig.register` returns the text, `rig.end`, `rig.delivered`; `putCursor` in `test/code/delivery/helpers.ts`.
