@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import type { TestProject } from "vitest/node";
+import { COVERAGE_PROVIDER_VERSION } from "../../core/code/coverage/record.js";
 import { compare, sameList } from "../../core/fs/index.js";
 import type { AbsolutePath, RelativePath, RunnerEnvironment } from "../../core/types/index.js";
 import { environmentPackages } from "./packages.js";
@@ -16,6 +17,11 @@ export interface EnvironmentContext {
    * instance, and Vitest copies the `env` option into a root project's config.
    */
   readonly injected?: Readonly<Record<string, string>>;
+  /**
+   * Squeal's coverage provider, when the instance runs with it (spec 015
+   * D8, row 015-11): its coverage options are keyed as a stable marker.
+   */
+  readonly coverage?: AbsolutePath;
 }
 
 /**
@@ -42,7 +48,7 @@ export function projectEnvironment(
     runnerName: "vitest",
     runnerVersion: context.runnerVersion,
     adapterVersion: context.adapterVersion,
-    resolvedConfig: canonicalConfig(project, paths, context.injected),
+    resolvedConfig: canonicalConfig(project, paths, context.injected, context.coverage),
     files,
     ...(sameList(former, files) ? {} : { formerFiles: former }),
   };
@@ -101,16 +107,22 @@ function environmentFiles(
  * harness re-key every check (task 001-260). What `CI` sets stays keyed:
  * `allowOnly` and `browser.*` change outcomes. `maxWorkers` is dropped too:
  * each tier runs at its grant, under the project's own value (D11 Capacity,
- * task 001-378), and worktrees with different grants share results.
+ * task 001-378), and worktrees with different grants share results. With
+ * Squeal's own coverage provider (`coverage`, spec 015 D8) the coverage
+ * options are its name and version alone: its reports directory is a temp
+ * directory of each instance, and a record is current exactly when its
+ * result is (row 015-11).
  */
 export function canonicalConfig(
   project: TestProject,
   paths: WorktreePaths,
   injected: Readonly<Record<string, string>> = {},
+  coverage?: AbsolutePath,
 ): string {
   const {
     sequence,
     env,
+    coverage: covering,
     disableColors: _colors,
     isAgent: _agent,
     maxWorkers: _workers,
@@ -121,6 +133,10 @@ export function canonicalConfig(
     canonicalize(
       {
         ...config,
+        coverage:
+          coverage !== undefined && covering.customProviderModule === coverage
+            ? { provider: "squeal", version: COVERAGE_PROVIDER_VERSION }
+            : covering,
         ...(env === undefined ? {} : { env: withoutInjected(env, injected) }),
         sequence: stableSequence,
         globalSetup: globalSetupFiles(project),
