@@ -31,10 +31,18 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * From a slot's run returning to the scheduler's next `run` call, or a
- * waiter's grant: the pump's checks, the lock and a 250 ms poll, in this
- * process. Loose for a loaded runner; one slot's file of 1 to 5 s is longer.
+ * waiter's grant: the pump's checks, the lock and the waiter's look, in
+ * this process. Loose for a loaded runner; one slot's file of 1 to 5 s is
+ * longer.
  */
 const REACT_MS = 1_000;
+
+/**
+ * How long after a slot returns its permit the waiter of test 4 looks, and
+ * then how often: longer than the holder's pump takes to refill a slot
+ * (tens of ms at load 75), so a holder that takes the permit back has by then.
+ */
+const LOOK_MS = 250;
 
 /** Each run as a span on the scheduler's clock, from its `run` call to its return. */
 const spansOf = (runs: readonly TimedRun[]): Span[] =>
@@ -169,30 +177,34 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
       cores: null,
     });
     onTestFinished(() => other.close());
-    const waitedFrom = Date.now();
     expect(other.acquire(2)).toBeNull();
-    // It looks more slowly than the holder's pump refills a slot (tens of ms), so a holder
-    // that took back the permit it returned would refill first.
+    const waitedFrom = Date.now();
+    // The slots holding the pool when the waiter came, and the first of them to return its permit.
+    const holding = runs.filter((r) => r.end === null);
+    await expect
+      .poll(() => holding.some((r) => r.end !== null), { timeout: 30_000, interval: 10 })
+      .toBe(true);
+    const released = Math.min(...holding.map((r) => r.end ?? Number.POSITIVE_INFINITY));
     let share: PoolLease | null = null;
     while (share === null && Date.now() - waitedFrom < 30_000) {
+      await sleep(LOOK_MS);
       share = other.acquire(2);
-      if (share === null) await sleep(250);
     }
     const grantedAt = Date.now();
-    // The slots holding the pool when the waiter came, and the first of them to return its permit.
-    const holding = runs.filter(
-      (r) => r.start <= waitedFrom && (r.end ?? waitedFrom) >= waitedFrom,
-    );
-    const released = Math.min(...holding.map((r) => r.end ?? Number.POSITIVE_INFINITY));
-    const refilled = runs.filter((r) => r.start > waitedFrom && r.start <= grantedAt);
+    // Each slot the holder started while the waiter waited, and its slots in flight then.
+    const inFlightAt = (at: number) =>
+      runs.filter((r) => r.start <= at && (r.end ?? Number.POSITIVE_INFINITY) > at).length;
+    const refilled = runs
+      .filter((r) => r.start > waitedFrom && r.start <= grantedAt)
+      .map((r) => ({ path: r.files[0]?.path, held: inFlightAt(r.start) }));
     console.log(
-      `011-21 slots: the waiter got its share after ${grantedAt - waitedFrom} ms, ${grantedAt - released} ms after the first slot of ${holding.length} returned its permit (a slot's file ${SLOT_MS} ms)`,
+      `011-21 slots: the waiter got its share after ${grantedAt - waitedFrom} ms, ${grantedAt - released} ms after the first slot of ${holding.length} returned its permit (a slot's file ${SLOT_MS} ms); the holder refilled to ${refilled.map((r) => r.held).join(" ") || "none"} meanwhile`,
     );
     expect(share?.grant).toBeGreaterThanOrEqual(1);
-    // Granted at the next slot release, not one tier later: the holder refilled no slot first,
-    expect(refilled.flatMap((r) => r.files.map((f) => f.path))).toEqual([]);
-    // and the share came on the waiter's next look after that release.
-    expect(released).toBeLessThanOrEqual(grantedAt);
+    // Granted at the next slot release, not one tier later. When several slots end before the
+    // waiter looks, the holder refills up to its share of 2; above it, it took the waiter's permit.
+    expect(refilled.filter((r) => r.held > 2).map((r) => `${r.path} to ${r.held}`)).toEqual([]);
+    // The share came on the waiter's first look after that release.
     expect(grantedAt - released).toBeLessThanOrEqual(REACT_MS);
 
     other.close();
