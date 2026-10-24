@@ -95,8 +95,8 @@ function splitTopLevel(body) {
 }
 
 // src/core/daemon/policy-node-test.ts
-function compiles(globs2) {
-  for (const glob of globs2) {
+function compiles(globs3) {
+  for (const glob of globs3) {
     try {
       globToRegExp(glob);
     } catch (error) {
@@ -168,6 +168,23 @@ function entryProblem(entry, at, kept, fields, required, check) {
   return null;
 }
 
+// src/core/daemon/policy-code.ts
+var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
+var globs2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var aboveZero = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? null : "a number > 0";
+var CODE_SHAPE = {
+  complexity: {
+    enabled: boolean2,
+    threshold: positiveInteger,
+    include: globs2,
+    exclude: globs2,
+    maxFileBytes: positiveInteger,
+    blocking: boolean2
+  },
+  coverage: { enabled: boolean2 },
+  crap: { threshold: aboveZero }
+};
+
 // src/core/daemon/policy-pytest.ts
 import { isAbsolute as isAbsolute2, posix as posix2 } from "node:path";
 var FIELDS2 = {
@@ -218,36 +235,36 @@ function slowInclude(value) {
 }
 
 // src/core/daemon/policy.ts
-var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
   const isList = strings2(v) === null;
-  if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs4) => strings2(globs4) === null))) {
     return "an array of strings, or an object from test-file glob to an array of strings";
   }
-  const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  return compiles(globs2);
+  const globs3 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs3);
 };
 var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
-var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
+var aboveZero2 = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
 var orNull = (leaf) => (v) => {
   const expected = v === null ? null : leaf(v);
   return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
 };
 var oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
-  interrupt: { onRegression: boolean2 },
+  interrupt: { onRegression: boolean3 },
   stop: {
-    blockOnKnownFailures: boolean2,
-    requireFullSuite: boolean2,
+    blockOnKnownFailures: boolean3,
+    requireFullSuite: boolean3,
     waitMs: atLeastZero,
-    requireSlowSuite: boolean2,
+    requireSlowSuite: boolean3,
     slowWaitMs: atLeastZero
   },
-  testCommand: { denyWhenCurrent: boolean2 },
+  testCommand: { denyWhenCurrent: boolean3 },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
-  observe: { runtimeInputs: boolean2 },
+  observe: { runtimeInputs: boolean3 },
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
@@ -260,7 +277,7 @@ var SHAPE = {
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,
-    maxLoadPerCpu: aboveZero,
+    maxLoadPerCpu: aboveZero2,
     maxDeferMs: atLeastZero,
     maxParallel: positiveInteger,
     rank: oneOf("tokens", "duration"),
@@ -268,9 +285,10 @@ var SHAPE = {
     trigger: oneOf("continuous", "idle"),
     quietMs: atLeastZero
   },
-  delivery: { uncoveredEdits: boolean2 },
-  daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
-  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
+  delivery: { uncoveredEdits: boolean3 },
+  daemon: { idleExitMinutes: aboveZero2, unusedExitMinutes: aboveZero2 },
+  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero2) },
+  ...CODE_SHAPE
 };
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -299,9 +317,9 @@ function excludedProjectsText(entries) {
   return { text: parts.join(" and "), plural: patterns.length > 0 || names.length > 1 };
 }
 var EXCLUDED_GLOBS_NAMED = 3;
-function excludedFilesText(globs2) {
-  const quoted = globs2.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
-  const rest = globs2.length - quoted.length;
+function excludedFilesText(globs3) {
+  const quoted = globs3.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
+  const rest = globs3.length - quoted.length;
   if (rest > 0)
     return `Vitest test files matching ${quoted.join(", ")} and ${plural(rest, "more glob")}`;
   const last = quoted.pop();
@@ -546,8 +564,107 @@ var NEWEST_OF_FILE = `${SELECT_RESULTS}
 // src/core/store/repos/states.ts
 var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
 
-// src/core/waiter-lock/waiter-lock.ts
+// src/core/code/store/open.ts
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+
+// src/core/code/store/schema.ts
+var V12 = `
+CREATE TABLE meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE counts (
+  blob TEXT NOT NULL,
+  language TEXT NOT NULL,
+  counter_version INTEGER NOT NULL,
+  functions TEXT NOT NULL,
+  errors TEXT NOT NULL,
+  counted_at INTEGER NOT NULL,
+  PRIMARY KEY (blob, language, counter_version)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE files (
+  worktree_id TEXT NOT NULL,
+  path TEXT NOT NULL,
+  blob TEXT NOT NULL,
+  language TEXT NOT NULL,
+  counter_version INTEGER NOT NULL,
+  size INTEGER NOT NULL,
+  revision INTEGER NOT NULL,
+  too_big INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (worktree_id, path)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX files_by_count ON files (blob, language, counter_version);
+
+CREATE TABLE checks (
+  id INTEGER PRIMARY KEY,
+  path TEXT NOT NULL,
+  qualified_name TEXT NOT NULL,
+  occurrence INTEGER NOT NULL,
+  UNIQUE (path, qualified_name, occurrence)
+) STRICT;
+
+CREATE TABLE states (
+  worktree_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  measure TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  value REAL,
+  threshold REAL,
+  counted_at INTEGER NOT NULL,
+  blob TEXT NOT NULL,
+  changed_at INTEGER NOT NULL,
+  edited_revision INTEGER,
+  edited_at INTEGER,
+  PRIMARY KEY (worktree_id, check_id, measure)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE transitions (
+  id INTEGER PRIMARY KEY,
+  worktree_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  measure TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  from_outcome TEXT,
+  to_outcome TEXT,
+  from_value REAL,
+  to_value REAL,
+  threshold REAL,
+  revision INTEGER NOT NULL,
+  at INTEGER NOT NULL
+) STRICT;
+CREATE INDEX transitions_by_check ON transitions (worktree_id, check_id, id);
+
+CREATE TABLE views (
+  worktree_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  agent_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  measure TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  threshold REAL,
+  told TEXT NOT NULL,
+  told_at INTEGER NOT NULL,
+  PRIMARY KEY (worktree_id, session_id, agent_id, check_id, measure)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE coverage (
+  result_key TEXT NOT NULL,
+  provider_version INTEGER NOT NULL,
+  record BLOB NOT NULL,
+  recorded_at INTEGER NOT NULL,
+  PRIMARY KEY (result_key, provider_version)
+) STRICT, WITHOUT ROWID;
+`;
+var CODE_MIGRATIONS = [(db) => db.exec(V12)];
+var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
+
+// src/core/code/store/prune.ts
+var DAY_MS2 = 24 * 60 * 60 * 1e3;
+
+// src/core/waiter-lock/waiter-lock.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/delivery/harness-process.ts
 import { readFileSync, readlinkSync } from "node:fs";
@@ -578,7 +695,7 @@ function pidNamespace() {
 }
 
 // src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
@@ -589,7 +706,7 @@ var pauses = channel(TEST_PAUSE_CHANNEL);
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/slow/slot.ts
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/delivery/handoff.ts
@@ -761,8 +878,8 @@ function excluded(coverage) {
   return `; its ${text} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
 }
 function notCovered(coverage) {
-  const globs2 = coverage.vitestExcludedFiles ?? [];
-  const what = globs2.length === 0 ? "typecheck, build" : `typecheck, build, the ${excludedFilesText(globs2)}, which squeal.config.json excludes,`;
+  const globs3 = coverage.vitestExcludedFiles ?? [];
+  const what = globs3.length === 0 ? "typecheck, build" : `typecheck, build, the ${excludedFilesText(globs3)}, which squeal.config.json excludes,`;
   return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
 function named(noun, entries, shown) {
