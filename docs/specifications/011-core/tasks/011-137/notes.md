@@ -111,3 +111,54 @@ After "Results the runner already stored stay, under the stability check.":
 And in C4 step 5, after "the files whose module ended before the cancel keep their results under the stability check below,":
 
 > and under a step-down also those whose module ended in the grace with every test run (C9),
+
+## 4. Repair: review 0.1.287 B1
+
+`reviews/0.1.287.md` (FAIL on 4ca9ece7f), B1: a test that the cancel reached can end `passed`. In Vitest 5.0.3 (`runTest`, `vitest/dist/chunks/run.*.js`), the cancel marks each running test `skip` and aborts its context signal. An `afterEach` that throws on the aborted signal makes the test `fail`, and `it.fails` then turns `fail` into `pass` and drops the error. The module ends `passed`, so `cutShort` read the module as whole and the slice's report completed it. Run without a cancel, the same file fails ("Expect test to fail"). The probe in section 2 had no `it.fails` test, so its line "a test that was running at the cancel never reads `passed`" is wrong.
+
+A second path leaves no abort note. When the body has passed and the cancel reaches the test's `afterEach`, the test's state is no longer `run`, so the cancel does not mark it skipped and sets no note. The `afterEach` throws all the same, and `it.fails` turns that into a pass. So the note is not enough evidence. The final mode is not either: the worker's `test.mode = "skip"` does not reach the main thread, because a task update carries only the result and the meta.
+
+### The rule now
+
+The collector records, for each test, the state that its result had when it reached the reporter before the cancel was asked (`RunCollector.#beforeCancel`). `cutShort` reads only that record. A test that the module was to run (collected `run` or `only`) counts as run when its result arrived before the cancel, passed or failed. A test with no such result counts as cut.
+
+Why this is proof:
+
+- `execute` sets `cancelRequested` in the same tick in which it calls `cancelCurrentRun`.
+- A worker sends a test's result (`test-finished`) only after the test's last hook and the `it.fails` turn, and the reporter hears it on that event (`TestRun.reportEvent`).
+- So a result that the reporter heard before the cancel was asked left its worker before the cancel reached the worker, and the cancel did not change it.
+- A cancel does not cut a hook that runs after the tests, such as `afterAll`. Vitest wraps only the test body in `withCancel`, and it skips only the suites that have not started. A hook that throws still fails the module, so that module is not whole.
+
+The cost: a worker sends results at most every 100 ms (`sendTasksUpdateThrottled`). So a test that ended up to about 100 ms before the cancel reads as cut, and its file runs again in the successor. That costs a run, never a pass. The cause gate (step-down only), the stop, the timeout and the stability check are unchanged, and `run.ts` is unchanged.
+
+### What changed
+
+| Where | What |
+|---|---|
+| `src/runners/vitest/reporter.ts` | `#beforeCancel` (private), set in `testCase` before the focus filter. `cutShort(module, beforeCancel)` reads it in place of `test.result()`. `ModuleEnd.cut` and `endedWhole` keep their shape; their comments state the new rule. No type change. |
+| `test/keys/validity/cases/adapter/vitest.ts` | `WHOLE_IN_GRACE` writes `$STARTED` 500 ms after its test, so the harness cancels after the result arrived. Its rationale states the new rule. |
+| `test/runners/vitest/cancel-grace.test.ts` | The B1 regression, below. The whole file's `afterAll` waits 500 ms before its marker, for the same reason. |
+
+### Tests
+
+| Test | What it checks | Red before |
+|---|---|---|
+| `cancel-grace.test.ts`, "an expected failure the cancel reached is not completed, though it ends passed" | A real adapter runs two `it.fails` files. The first is the review's reproduction: the cancel interrupts the test, and its `afterEach` throws on the abort. The second has no abort note: its body passed, and the cancel reaches its `afterEach`. Run without a cancel, both complete and both report `fail`. Under a step-down, `completedFiles` and `results` are empty, `fileEnded` hears neither file, and the failure names the step-down. So no pass is reported, and the scheduler queues both for the successor (`unfinishedFiles`, `src/core/scheduler/tiers.ts`). | Yes, at Squeal revision 39: `completedFiles` held both files. Green at revision 41 with the fix. |
+| the same file, the whole module and the stop | Assertions unchanged. The whole module still completes with its pass and its declared skip. | n/a |
+| `test/daemon/step-down-keeps.test.ts` | Unchanged. Its harness waits 1 s after the markers before the step-down, so the result of `whole` arrives first. | n/a; green at revision 42 |
+| `test/keys/key-format.test.ts` | The alarm asks no raise. | n/a; green at revision 42 |
+
+The timeout, handover and cancel-cause tests are unchanged. All 55 files under `test/runners/vitest/` and `test/keys/validity/` are green at revision 42.
+
+### Proposed C9 and C4 text
+
+In C9, replace "when it passed and the cancel skipped none of the tests it was to run: those tests ended before the cancel reached their worker." with:
+
+> when it passed and each test it was to run reported its pass before the cancel was asked: only its hooks ran in the grace. A result that arrives later does not count, because a test that the cancel reached can still end passed (repaired 2026-10-24, review 0.1.287 B1: an `it.fails` test whose cleanup throws on the abort).
+
+In C4 step 5, replace "with every test run (C9)" with "with every test reported before the cancel (C9)".
+
+### For whoever continues
+
+- A grace test must let its whole file's results reach the reporter before the cancel. Wait at least about 300 ms after the file's last test before the marker that the harness cancels on. The three grace fixtures wait 500 ms (`cancel-grace.test.ts`, `WHOLE_IN_GRACE`) or 1 s (the daemon test).
+- The record is kept per test id in one run's collector, and one collector serves one `run` call.
