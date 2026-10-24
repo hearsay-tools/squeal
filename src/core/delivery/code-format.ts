@@ -86,8 +86,24 @@ export function codeLines(news: CodeNews, command: string): string[] {
   ];
 }
 
-/** How many function changes a delivery's code part tells, listed or by number. */
-export const codeChanges = (news: CodeNews) => news.entries.length + news.more;
+/** How many function changes a delivery's code part tells, listed or by number; a STILL FAIL is none. */
+export const codeChanges = (news: CodeNews) =>
+  news.entries.filter((e) => e.kind !== "edited").length + news.more;
+
+/**
+ * A delivery title's words for its code lines of functions: the changes,
+ * then the functions told still over (lessons round 1); `null` when it
+ * tells no function.
+ */
+export function codeTitleWords(news: CodeNews): string | null {
+  const changes = codeChanges(news);
+  const still = news.entries.filter((e) => e.kind === "edited").length;
+  const words = [
+    ...(changes === 0 ? [] : [`${changes} complexity ${changes === 1 ? "change" : "changes"}`]),
+    ...(still === 0 ? [] : [`${plural(still, "function")} still over the complexity threshold`]),
+  ];
+  return words.length === 0 ? null : words.join(" and ");
+}
 
 /** D6: the registration's line. */
 export function codeRegistrationLine(code: CodeRegistration, command: string): string {
