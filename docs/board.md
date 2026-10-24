@@ -1146,6 +1146,8 @@ Spec: `specifications/014-ps/spec.md`, shipped 2026-10-22 in 0.1.258, its qualit
 
 Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 2026-10-23 with changes (thresholds configurable, a once-per-session line for a file too big to count, complexity delivered at once). Sections referenced as D1 to D10. The human's idea, 2026-10-23: Squeal calculates coverage and cyclomatic complexity per function, shares them between worktrees, and gives the CRAP score; opt-in, fed to the agent on the fly and available on demand. Research first; the spec follows from the findings, and the human reviews it before any code.
 
+**Releasing 0.1.283 from `04cc8deee`** (coordinator 52e58f23, announced 2026-10-24T01:35Z; process 6a): waves 0 and 1 of 015, reviewed (`reviews/0.1.283-r2.md` PASS). No coordinator reached live for an ack, so the release starts after main CI on `04cc8deee` is green and 10 minutes have passed. Another coordinator's landing rebases onto 0.1.283 and raises the version above it.
+
 ### Research (briefs in `specifications/015-coverage-complexity/research/`)
 
 | Task | Status | Scope | Done when |
