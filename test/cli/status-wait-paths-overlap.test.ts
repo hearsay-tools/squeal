@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectNamedFiles } from "../../src/cli/status-wait-paths.js";
+import { selectNamedFiles } from "../../src/cli/named-selection.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { assembleClosure, createDeclaredInputs } from "../../src/core/keys/closure.js";
 import { withStatusStore } from "../../src/core/status/index.js";
