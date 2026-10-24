@@ -14,7 +14,7 @@ import { runCodexHook } from "../../../src/harness/codex/index.js";
 import { codexRecorded, sessionOf } from "../../harness/codex/helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "../../harness/helpers.js";
 import { ON } from "../helpers.js";
-import { codeState, codeTransition, fn, fnCheck, putFile, TIERS } from "./helpers.js";
+import { codeState, codeTransition, fn, fnCheck, putCursor, putFile, TIERS } from "./helpers.js";
 
 /*
  * Spec 015 Testing, integration: a fixture repository with the policy on,
@@ -36,6 +36,7 @@ function withCode(complexity: object = { enabled: true }): { r: SquealRepo; code
   if (isCodeStoreOpenFailure(code)) throw new Error(JSON.stringify(code));
   putFile(code, r.worktreeId, TIERS, [fn("selectTier", 18, 120)]);
   code.states.upsertMany([codeState(r.worktreeId, SELECT, 18)]);
+  putCursor(code, r.worktreeId);
   return { r, code };
 }
 
