@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { absentSegment, encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
 import { assembleClosure, checkKey, KeyIndex } from "../../src/core/keys/index.js";
 import type { Closure, TestFileRef } from "../../src/core/types/index.js";
 
@@ -195,6 +196,49 @@ describe("KeyIndex", () => {
     index.setClosure(closure, "whole:now");
     expect(index.key(a)).toBe(key);
     expect(index.keysReadAsOne(key)?.keys).toEqual([at("scoped-then")]);
+  });
+
+  // Row 011-158: the shared closure list names a path only another branch has.
+  it("keys a closure that names an absent path as one that does not, and re-keys it when the path appears", () => {
+    const here = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1" });
+    const there = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1" });
+    const [naming, own] = [new KeyIndex(here.hashOf), new KeyIndex(there.hashOf)];
+    for (const index of [naming, own]) index.setEnvironment("unit", "env1");
+    naming.setClosure(closureOf(a, ["src/focus.ts", "src/x.ts"]));
+    own.setClosure(closureOf(a, ["src/x.ts"]));
+    const key = own.key(a);
+    expect(naming.key(a)).toBe(key);
+
+    here.hashes.set("src/focus.ts", "f1");
+    expect(naming.rekey(["src/focus.ts"])).toEqual([
+      { testFile: a, previous: key, key: expect.any(String) },
+    ]);
+    expect(naming.key(a)).not.toBe(key);
+    // Deleted again, it keys as before.
+    here.hashes.delete("src/focus.ts");
+    naming.rekey(["src/focus.ts"]);
+    expect(naming.key(a)).toBe(key);
+  });
+
+  it("reads each key as one with an absent path's segment before 011-158, none equal to the current key", () => {
+    const table = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1", "test/b.test.ts": "b1" });
+    const index = new KeyIndex(table.hashOf);
+    index.setClosure(closureOf(a, ["src/focus.ts", "src/x.ts"]));
+    index.setClosure(closureOf(b, ["src/x.ts"]));
+    // The current hash, as `absentReadAsOne` gives it, then a format read as one.
+    const readAsOne = [{ environment: "env20" }, { environment: "e19" }];
+    index.setInstalled(new Map([["unit", "env20"]]), () => "", new Map([["unit", readAsOne]]));
+    const former = (env: string) =>
+      keyFromSegments(env, a, [
+        absentSegment("src/focus.ts"),
+        encodeSegment("src/x.ts", "x1"),
+        encodeSegment(a.path, "a1"),
+      ]);
+    expect(index.keysReadAsOne(index.key(a) ?? "")?.keys).toEqual([former("env20"), former("e19")]);
+    // With no absent path the current hash keys as the current key.
+    const bAt = (env: string) =>
+      checkKey(env, closureOf(b, ["src/x.ts"]), (p) => table.hashOf(p) ?? null);
+    expect(index.keysReadAsOne(index.key(b) ?? "")?.keys).toEqual([bAt("e19")]);
   });
 
   it("returns untracked closure paths and keys the test file only once they are hashed", () => {

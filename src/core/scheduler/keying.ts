@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { runGit, sameList, splitNul } from "../fs/index.js";
 import { type Hasher, type ObjectFormat, StatCache, seedStatCache } from "../hash/index.js";
 import {
+  absentReadAsOne,
   assembleClosure,
   coreEnvironmentInputs,
   createDeclaredInputs,
@@ -209,8 +210,10 @@ export class WorktreeKeys {
    * Sets the environment hash of every project from runner output (D3). The
    * runner files and each project's installed lockfile are hashed first; the
    * lockfile is looked up from the project's root (review N8). Each project
-   * gets its hashes at the formats read as one too (011 C3, task 011-38), and
-   * under the definition before task 011-85 (`formerReadAsOne`, 011-90).
+   * gets its hashes at the formats read as one too (011 C3, task 011-38),
+   * under the definition before task 011-85 (`formerReadAsOne`, 011-90), and
+   * its current hash once more for the definition before 011-158, which keyed
+   * absent closure paths (`absentReadAsOne`).
    */
   async setEnvironments(environments: readonly RunnerEnvironment[]): Promise<KeyChange[]> {
     const { squealVersion, env } = this.options;
@@ -243,8 +246,10 @@ export class WorktreeKeys {
         allowlist: policy.env.allowlist,
         ...(env === undefined ? {} : { env }),
       });
-      hashes.set(environment.project, environmentHash(core, environment, hashOf));
+      const hash = environmentHash(core, environment, hashOf);
+      hashes.set(environment.project, hash);
       readAsOne.set(environment.project, [
+        ...absentReadAsOne(hash),
         ...formats.map((format) => ({
           environment: environmentHash(core, environment, hashOf, format),
         })),
