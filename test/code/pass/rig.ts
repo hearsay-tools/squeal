@@ -27,8 +27,11 @@ export interface Rig {
   readonly complexity: Policy["complexity"];
   /** Paths to read again, shared by every pass as the daemon's. */
   readonly retry: Set<string>;
-  /** One pass over the revisions stored since the last; `counter` a new one makes a recount. */
-  pass(counter?: Counter): Promise<PassReport | null>;
+  /**
+   * One pass over the revisions stored since the last; `counter` a new one
+   * makes a recount, and so does `policy`, the rig's complexity with these keys.
+   */
+  pass(counter?: Counter, policy?: Partial<Policy["complexity"]>): Promise<PassReport | null>;
   /** Writes these files, stores one revision of them, and runs the pass. */
   edit(files: Record<string, string>): Promise<PassReport | null>;
   /** As `edit`, with the files committed first, so the revision moves `HEAD` as a pull does (015-19). */
@@ -74,9 +77,13 @@ export function rig(over: Partial<Policy["complexity"]> = {}): Rig {
     source,
     complexity,
     retry,
-    pass(counter = fakeCounter()) {
+    pass(counter = fakeCounter(), policy = {}) {
       const at = tick();
-      return pass(tree, store, counter, { policy: policyOn(over), retry, now: () => at });
+      return pass(tree, store, counter, {
+        policy: policyOn({ ...over, ...policy }),
+        retry,
+        now: () => at,
+      });
     },
     edit(files) {
       for (const [path, text] of Object.entries(files)) tree.write(path, text);
