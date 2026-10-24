@@ -5,10 +5,11 @@ Times complexity was switched on, for the dogfood worker (015-10 Part B).
 | Repository | Switched on | By | Commit |
 |---|---|---|---|
 | squeal | 2026-10-24T03:55Z (lands on main with this commit; each worktree from then on) | coordinator 52e58f23 | this commit |
+| cezar | 2026-10-24T06:26Z (local commit on `main` in `/home/agent/projects/cezar`, not pushed; the human, 2026-10-24: "make and commit a change on this host. We will merge it later") | coordinator 52e58f23 | cezar `03c905a00` on `d1ac04b15` |
 
 Notes for the dogfood worker:
 
 - Installed plugins at switch-on: Claude Code cache 0.1.283 and 0.1.284, Codex cache 0.1.284. A daemon started before the refresh reports the key as unknown until it restarts.
 - With the default include and exclude, the first count in the coordinator's worktree gave 110 functions over 20. 29 were throwaway research probes under `docs/specifications/*/research/probes/`, so this repository adds `docs/**` to `complexity.exclude` (a repo-local choice, coordinator 52e58f23); then 81 over. By directory: `src` 60, `evals` 11, `test` 10 (the 29 in `docs` are gone).
 - Seen at switch-on: `squeal code` lists 4 files as `parse-error` with 0 unknown functions. Three are barrel files with `export type * from` (`src/core/code/store/index.ts`, `src/core/code/pass/index.ts`, `src/core/types/index.ts`): the shipped grammar seems not to parse TypeScript 5.0's `export type *`. The fourth is a fixture that is broken on purpose. Judge whether this is a defect (a proposed row) and how often it appears in cezar.
-- cezar: waits for the human's go (asked 2026-10-24).
+- cezar: default include and exclude. Its task worktrees fork from its configured base `origin`, which resolves to `origin/main`, so the local commit reaches only sessions in cezar's main checkout until the human decides otherwise. Count sessions per checkout.
