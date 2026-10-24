@@ -25,6 +25,7 @@ import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
 import { namedSnapshotCommand } from "./status-paths.js";
 import { statusWaitCommand, waitConsumer } from "./status-wait.js";
+import { CHECK_NEEDS_TEST_FILE, takeChecks } from "./status-wait-focus.js";
 import { baseOf } from "./status-wait-paths.js";
 import { stopCommand } from "./stop.js";
 import { updateCommand } from "./update.js";
@@ -253,12 +254,19 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
   const wait = takeWait(args);
   if (typeof wait === "string") return usage("status", wait, io);
   const { waitMs } = wait;
-  const allNotes = wait.rest.includes("--notes");
-  const full = allNotes || wait.rest.includes("--full");
-  const rest = wait.rest.filter((arg) => arg !== "--notes" && arg !== "--full");
+  // Row 011-146 (011 C15 as amended 2026-10-23): `--check <text>`, repeatable.
+  const taken = takeChecks(wait.rest);
+  if (typeof taken === "string") return usage("status", taken, io);
+  const { checks } = taken;
+  const allNotes = taken.rest.includes("--notes");
+  const full = allNotes || taken.rest.includes("--full");
+  const rest = taken.rest.filter((arg) => arg !== "--notes" && arg !== "--full");
   const parsed = parseArgs("status", rest, io);
   if (parsed === null) return 2;
-  const named = { full, allNotes };
+  if (checks.length > 0 && parsed.positional.length === 0) {
+    return usage("status", CHECK_NEEDS_TEST_FILE, io);
+  }
+  const named = { full, allNotes, ...(checks.length === 0 ? {} : { checks }) };
   const now = io.now ?? Date.now;
   if (waitMs !== null) {
     return statusWaitCommand(waitMs, parsed.json, io, false, parsed.positional, named);
