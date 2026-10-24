@@ -74,6 +74,26 @@ const UNREAD = {
   snapshots: new Set(["transitivePeerDependencies", "optional", "id"]),
 };
 
+/** The top-level parts the reader reads. */
+type Part = "importers" | "packages" | "snapshots";
+
+/** What `readPnpmLockfile` has read so far, and where it is. */
+interface Reader {
+  readonly importers: Map<string, Map<string, string>>;
+  readonly integrity: Map<string, string>;
+  readonly snapshots: Map<string, Map<string, string>>;
+  version: boolean;
+  /** The part the current top-level key opened, `null` for a key the reader passes over. */
+  part: Part | null;
+  /** The current importer's or snapshot's map. */
+  entry: Map<string, string> | null;
+  /** The current package's id. */
+  id: string;
+  /** Inside a field the reader reads, and the importer dependency being read. */
+  reading: boolean;
+  dependency: string;
+}
+
 /**
  * Task 011-162 R1 (011 C11): the importers, integrities and snapshot edges
  * of pnpm's installed `lock.yaml`, read line by line in the layout pnpm
@@ -82,78 +102,116 @@ const UNREAD = {
  * importer or snapshot. Lines under a key in `UNREAD` are skipped unread.
  * `null` for a `lockfileVersion` other than 9, a second document, no root
  * importer, or any other line it does not know, so the install keeps the
- * whole fingerprint: a split, never a wrong key.
+ * whole fingerprint: a split, never a wrong key. Each kind of line has its
+ * reader (row 011-190); each answers `false` for a line it does not know.
  */
 export function readPnpmLockfile(text: string): PnpmLockfile | null {
-  const importers = new Map<string, Map<string, string>>();
-  const integrity = new Map<string, string>();
-  const snapshots = new Map<string, Map<string, string>>();
-  let version = false;
-  let section = "";
-  /** The current importer's or snapshot's map, and its id. */
-  let entry: Map<string, string> | null = null;
-  let id = "";
-  /** Inside a field the reader reads, and the importer dependency being read. */
-  let reading = false;
-  let dependency = "";
+  const reader: Reader = {
+    importers: new Map(),
+    integrity: new Map(),
+    snapshots: new Map(),
+    version: false,
+    part: null,
+    entry: null,
+    id: "",
+    reading: false,
+    dependency: "",
+  };
   for (const line of text.split("\n")) {
     const indent = /^ */.exec(line)?.[0].length ?? 0;
     const body = line.slice(indent);
     if (body === "" || body.startsWith("#")) continue;
     if (/^\s/.test(body) || indent % 2 !== 0) return null;
-    if (indent === 0) {
-      const pair = pairOf(body);
-      if (pair === null) return null;
-      const [key, value] = pair;
-      if (key === "lockfileVersion") {
-        if (!/^9\.\d+$/.test(value)) return null;
-        version = true;
-      } else if (!UNREAD.root.has(key) && (!isPart(key) || value !== "")) return null;
-      section = isPart(key) ? key : "";
-      [entry, id, reading] = [null, "", false];
-      continue;
-    }
-    if (section === "packages") {
-      if (indent > 4) continue;
-      const pair = pairOf(body);
-      if (pair === null) return null;
-      if (indent === 2) {
-        if (pair[1] !== "") return null;
-        id = pair[0];
-      } else if (pair[0] === "resolution") {
-        if (!pair[1].startsWith("{")) return null;
-        const found = /^\{(?:.*[ ,])?integrity: ([^\s,}]+)[,}]/.exec(pair[1])?.[1];
-        if (found !== undefined) integrity.set(id, found);
-      } else if (!UNREAD.packages.has(pair[0])) return null;
-      continue;
-    }
-    if (section !== "importers" && section !== "snapshots") continue;
-    const deepest = section === "importers" ? 8 : 6;
-    if (indent > 4 && !reading) continue;
-    if (indent > deepest || body.startsWith("- ")) return null;
-    const pair = pairOf(body);
-    if (pair === null) return null;
-    const [key, value] = pair;
-    if (indent === 2) {
-      if (value !== "" && value !== "{}") return null;
-      id = key;
-      entry = new Map();
-      (section === "importers" ? importers : snapshots).set(key, entry);
-      reading = false;
-    } else if (entry === null) return null;
-    else if (indent === 4) {
-      reading = (section === "importers" ? IMPORTER_FIELDS : SNAPSHOT_FIELDS).has(key);
-      if (reading ? value !== "" : !UNREAD[section].has(key)) return null;
-    } else if (section === "snapshots") {
-      if (!isRef(value) || !setOnce(entry, key, value)) return null;
-    } else if (indent === 6) {
-      if (value !== "") return null;
-      dependency = key;
-      if (!entry.has(key)) entry.set(key, "");
-    } else if (key === "version") {
-      if (!isRef(value) || !setOnce(entry, dependency, value)) return null;
-    } else if (key !== "specifier") return null;
+    const known =
+      indent === 0
+        ? readTopLevel(reader, body)
+        : reader.part === "packages"
+          ? readPackageLine(reader, indent, body)
+          : reader.part === null || readEntryLine(reader, reader.part, indent, body);
+    if (!known) return null;
   }
+  return lockfileOf(reader);
+}
+
+/** A top-level key: `lockfileVersion`, a part the reader reads, or a key in `UNREAD.root`. */
+function readTopLevel(reader: Reader, body: string): boolean {
+  const pair = pairOf(body);
+  if (pair === null) return false;
+  const [key, value] = pair;
+  if (key === "lockfileVersion") {
+    if (!/^9\.\d+$/.test(value)) return false;
+    reader.version = true;
+  } else if (!UNREAD.root.has(key) && (!isPart(key) || value !== "")) return false;
+  reader.part = isPart(key) ? key : null;
+  [reader.entry, reader.id, reader.reading] = [null, "", false];
+  return true;
+}
+
+/** A `packages` line: a package's id, its `resolution`, or a key in `UNREAD.packages`. */
+function readPackageLine(reader: Reader, indent: number, body: string): boolean {
+  if (indent > 4) return true;
+  const pair = pairOf(body);
+  if (pair === null) return false;
+  const [key, value] = pair;
+  if (indent === 2) {
+    if (value !== "") return false;
+    reader.id = key;
+  } else if (key === "resolution") {
+    if (!value.startsWith("{")) return false;
+    const found = /^\{(?:.*[ ,])?integrity: ([^\s,}]+)[,}]/.exec(value)?.[1];
+    if (found !== undefined) reader.integrity.set(reader.id, found);
+  } else if (!UNREAD.packages.has(key)) return false;
+  return true;
+}
+
+/** An `importers` or `snapshots` line: an entry, one of its fields, or a line under a field read. */
+function readEntryLine(
+  reader: Reader,
+  part: "importers" | "snapshots",
+  indent: number,
+  body: string,
+): boolean {
+  if (indent > 4 && !reader.reading) return true;
+  if (indent > (part === "importers" ? 8 : 6) || body.startsWith("- ")) return false;
+  const pair = pairOf(body);
+  if (pair === null) return false;
+  const [key, value] = pair;
+  if (indent === 2) {
+    if (value !== "" && value !== "{}") return false;
+    reader.entry = new Map();
+    reader[part].set(key, reader.entry);
+    reader.reading = false;
+    return true;
+  }
+  const { entry } = reader;
+  if (entry === null) return false;
+  if (indent === 4) {
+    reader.reading = (part === "importers" ? IMPORTER_FIELDS : SNAPSHOT_FIELDS).has(key);
+    return reader.reading ? value === "" : UNREAD[part].has(key);
+  }
+  if (part === "snapshots") return isRef(value) && setOnce(entry, key, value);
+  return readDependencyLine(reader, entry, indent, pair);
+}
+
+/** An importer dependency's name, then its `version` and `specifier`. */
+function readDependencyLine(
+  reader: Reader,
+  entry: Map<string, string>,
+  indent: number,
+  [key, value]: readonly [string, string],
+): boolean {
+  if (indent === 6) {
+    if (value !== "") return false;
+    reader.dependency = key;
+    if (!entry.has(key)) entry.set(key, "");
+    return true;
+  }
+  if (key === "version") return isRef(value) && setOnce(entry, reader.dependency, value);
+  return key === "specifier";
+}
+
+/** The parts read, or `null` for no `lockfileVersion`, no root importer, or a name with no version. */
+function lockfileOf({ version, importers, integrity, snapshots }: Reader): PnpmLockfile | null {
   for (const declared of importers.values()) {
     for (const ref of declared.values()) if (ref === "") return null;
   }
@@ -161,7 +219,7 @@ export function readPnpmLockfile(text: string): PnpmLockfile | null {
 }
 
 /** A top-level part the reader reads. */
-function isPart(key: string): key is "importers" | "packages" | "snapshots" {
+function isPart(key: string): key is Part {
   return key === "importers" || key === "packages" || key === "snapshots";
 }
 
