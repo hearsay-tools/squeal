@@ -1,0 +1,16 @@
+review items by first cited path, then primary class
+cli              39 {"E":38,"A":1}
+core             207 {"E":194,"A":10,"G":1,"B":1,"F":1}
+harness/<one>    14 {"D":14}
+harness/shared   19 {"A":5,"E":12,"D":2}
+none             20 {"F":1,"G":13,"C":3,"E":3}
+other            11 {"E":1,"G":6,"C":1,"A":1,"D":2}
+runners          52 {"B":7,"A":2,"C":43}
+runners/observe  13 {"C":13}
+test,evals       91 {"G":74,"F":11,"E":2,"A":1,"C":3}
+
+review items whose title names a validity error (false, stale or inherited pass; an input in no key)
+cli              1 {"E":1}
+core             10 {"E":10}
+runners          10 {"B":3,"C":7}
+runners/observe  1 {"C":1}

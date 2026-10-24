@@ -1,0 +1,87 @@
+excluded: {"X":54,"DUP":4,"XS":3}
+all defects                n=797  A  24 (3%)  B  11 (1%)  C 103 (13%)  D  35 (4%)  E 455 (57%)  F  43 (5%)  G 126 (16%)
+  review                   n=466  A  20 (4%)  B   8 (2%)  C  63 (14%)  D  18 (4%)  E 250 (54%)  F  13 (3%)  G  94 (20%)
+  issue-row                n= 69  A   1 (1%)  B   0 (0%)  C   7 (10%)  D   5 (7%)  E  49 (71%)  F   5 (7%)  G   2 (3%)
+  defect-row               n=221  A   3 (1%)  B   2 (1%)  C  29 (13%)  D   8 (4%)  E 134 (61%)  F  21 (10%)  G  24 (11%)
+  later                    n= 22  A   0 (0%)  B   1 (5%)  C   4 (18%)  D   3 (14%)  E   5 (23%)  F   4 (18%)  G   5 (23%)
+  issue                    n= 19  A   0 (0%)  B   0 (0%)  C   0 (0%)  D   1 (5%)  E  17 (89%)  F   0 (0%)  G   1 (5%)
+  review blockers          n=320  A  14 (4%)  B   7 (2%)  C  50 (16%)  D  14 (4%)  E 185 (58%)  F   4 (1%)  G  46 (14%)
+  review should-fix        n=146  A   6 (4%)  B   1 (1%)  C  13 (9%)  D   4 (3%)  E  65 (45%)  F   9 (6%)  G  48 (33%)
+deduped: A or B primary 33, with secondaries 61
+  deduped before 10-17: n=439, A or B primary 21, with secondaries 42
+  deduped 10-17 on: n=226, A or B primary 8, with secondaries 12
+  deduped undated: n=57, A or B primary 4, with secondaries 7
+deduped (residuals out)    n=722  A  22 (3%)  B  11 (2%)  C  97 (13%)  D  31 (4%)  E 415 (57%)  F  39 (5%)  G 107 (15%)
+
+per spec
+  001                      n=362  A   6 (2%)  B   6 (2%)  C  60 (17%)  D   4 (1%)  E 224 (62%)  F  21 (6%)  G  41 (11%)
+  002                      n=  1  A   0 (0%)  B   0 (0%)  C   0 (0%)  D   0 (0%)  E   0 (0%)  F   0 (0%)  G   1 (100%)
+  003                      n= 10  A   2 (20%)  B   0 (0%)  C   6 (60%)  D   0 (0%)  E   2 (20%)  F   0 (0%)  G   0 (0%)
+  004                      n= 31  A   2 (6%)  B   0 (0%)  C   1 (3%)  D   1 (3%)  E  23 (74%)  F   0 (0%)  G   4 (13%)
+  005                      n= 25  A   2 (8%)  B   0 (0%)  C   0 (0%)  D   0 (0%)  E  17 (68%)  F   0 (0%)  G   6 (24%)
+  006                      n= 42  A   0 (0%)  B   0 (0%)  C   0 (0%)  D   0 (0%)  E   0 (0%)  F   0 (0%)  G  42 (100%)
+  007                      n= 35  A   5 (14%)  B   0 (0%)  C  23 (66%)  D   0 (0%)  E   3 (9%)  F   1 (3%)  G   3 (9%)
+  008                      n= 22  A   0 (0%)  B   0 (0%)  C   0 (0%)  D  17 (77%)  E   0 (0%)  F   2 (9%)  G   3 (14%)
+  009                      n= 11  A   3 (27%)  B   1 (9%)  C   1 (9%)  D   3 (27%)  E   0 (0%)  F   2 (18%)  G   1 (9%)
+  010                      n=  2  A   0 (0%)  B   0 (0%)  C   0 (0%)  D   0 (0%)  E   0 (0%)  F   0 (0%)  G   2 (100%)
+  011                      n=173  A   2 (1%)  B   3 (2%)  C   9 (5%)  D   5 (3%)  E 128 (74%)  F  12 (7%)  G  14 (8%)
+  012                      n=  6  A   0 (0%)  B   0 (0%)  C   0 (0%)  D   4 (67%)  E   0 (0%)  F   0 (0%)  G   2 (33%)
+  013                      n=  2  A   0 (0%)  B   0 (0%)  C   2 (100%)  D   0 (0%)  E   0 (0%)  F   0 (0%)  G   0 (0%)
+  014                      n= 25  A   1 (4%)  B   0 (0%)  C   0 (0%)  D   0 (0%)  E  17 (68%)  F   2 (8%)  G   5 (20%)
+  015                      n= 29  A   1 (3%)  B   1 (3%)  C   1 (3%)  D   0 (0%)  E  24 (83%)  F   2 (7%)  G   0 (0%)
+  202                      n=  1  A   0 (0%)  B   0 (0%)  C   0 (0%)  D   0 (0%)  E   0 (0%)  F   1 (100%)  G   0 (0%)
+  ?                        n= 19  A   0 (0%)  B   0 (0%)  C   0 (0%)  D   1 (5%)  E  17 (89%)  F   0 (0%)  G   1 (5%)
+  Mai                      n=  1  A   0 (0%)  B   0 (0%)  C   0 (0%)  D   0 (0%)  E   0 (0%)  F   0 (0%)  G   1 (100%)
+
+by date (split 2026-10-17)
+  before 10-17             n=497  A  17 (3%)  B   6 (1%)  C  84 (17%)  D  21 (4%)  E 255 (51%)  F  22 (4%)  G  92 (19%)
+  10-17 on                 n=243  A   4 (2%)  B   4 (2%)  C  12 (5%)  D   9 (4%)  E 177 (73%)  F  18 (7%)  G  19 (8%)
+  undated                  n= 57  A   3 (5%)  B   1 (2%)  C   7 (12%)  D   5 (9%)  E  23 (40%)  F   3 (5%)  G  15 (26%)
+
+review items by date
+  2026-10-01..2026-10-09   n= 70  A   4 (6%)  B   2 (3%)  C  27 (39%)  D   1 (1%)  E  30 (43%)  F   1 (1%)  G   5 (7%)
+  2026-10-09..2026-10-13   n=123  A   6 (5%)  B   0 (0%)  C  13 (11%)  D   1 (1%)  E  63 (51%)  F   3 (2%)  G  37 (30%)
+  2026-10-13..2026-10-17   n=128  A   7 (5%)  B   2 (2%)  C  19 (15%)  D  14 (11%)  E  48 (38%)  F   3 (2%)  G  35 (27%)
+  2026-10-17..2026-10-20   n= 34  A   0 (0%)  B   0 (0%)  C   0 (0%)  D   0 (0%)  E  31 (91%)  F   0 (0%)  G   3 (9%)
+  2026-10-20..2026-10-22   n= 39  A   2 (5%)  B   1 (3%)  C   1 (3%)  D   2 (5%)  E  21 (54%)  F   5 (13%)  G   7 (18%)
+  2026-10-22..2026-10-25   n= 72  A   1 (1%)  B   3 (4%)  C   3 (4%)  D   0 (0%)  E  57 (79%)  F   1 (1%)  G   7 (10%)
+
+secondary A or B on a non-A/B primary: {"E/B":10,"C/B":10,"C/A":5,"D/A":3,"E/A":1}
+A or B as primary or secondary: 64
+
+A and B items
+R5	B	E	001	2026-10-04	wave-1.md	src/runners/vitest/adapter.ts:136	Vitest closure drops not-yet-existing imports, so a create-the-missing-file scenario inherits a result whose inputs differ
+R9	A		001	2026-10-04	wave-1.md	src/runners/vitest/index.ts:22	the Vitest adapter hashes environment files with its own hasher behind a signature the core cannot satisfy: contract and code drift
+R13	B		001	2026-10-04	wave-1.md	src/runners/vitest/run.ts:109	Vitest: an unhandled error with no owning file fails every completed file under content keys; a file-error scenario reaches it
+R36	A	D	001	2026-10-08	wave-11f.md	src/harness/shared/deliver.ts:24	edit tool set is declared per adapter, so a named custom editing tool is read as read-only in one harness
+R57	A		001	2026-10-11	wave-13aa.md	src/harness/shared/primer.ts:40	harness/shared coverage and primer name runners; a node:test-only repository is told Vitest is covered
+R58	A		001	2026-10-11	wave-13aa.md	src/harness/shared/coverage.ts:41	harness/shared coverage maps node:test rows by Vitest's project shape, inventing Vitest projects
+R101	B	C	001	2026-10-15	wave-13bp.md	src/runners/vitest/adapter.ts:428	Vitest: timeout cancellation keeps the poisoned instance; an interrupted-run scenario followed by a re-run reaches it
+R132	A		001	2026-10-09	wave-13i.md	src/core/status/run-log.ts:56	run-log console capture exists for Vitest only (core/status/run-log names runners), so node:test gets no --include-logs output
+R139	A		001	2026-10-10	wave-13m.md	test/keys/key-format.test.ts:24	the key alarm is per component, yet a runner-only adapter bump also forces a global bump
+R167	B	A	001	2026-10-16	wave-16.md	src/core/daemon/daemon.ts:669	stopping a node:test backlog kills its processes but leaves the runner's queue; an interrupted-run scenario reaches it
+R190	A	B	003	2026-10-07	wave-2.md	src/core/daemon/runner.ts:87	the composite runner wiring lets one node:test project's graph error unlist the whole worktree, Vitest included
+R191	A	B	003	2026-10-07	wave-2.md	src/hidden.ts	node:test writes observed paths through the injected store; a daemon in another worktree never learns them
+R205	A	E	004	2026-10-09	wave-2.5.md	src/core/daemon/daemon.ts:184	observed growth reaches the scheduler through a separate daemon timer over runner meta keys, which acknowledges growth the scheduler cannot queue
+R213	A		004	2026-10-09	wave-4.md	src/core/scheduler/slow-tier.ts:273	the scheduler sizes node:test slow tiers by its own per-runner rule, so a wide node:test tier runs at tierSize and its unstarted files skip edit checks
+R231	A	C	005	2026-10-13	wave-2.md	src/harness/shared/test-command-files.ts:29	harness/shared parses Vitest commands for the deny and misses typecheck files
+R240	A	C	005	2026-10-14	wave-4-6.md	src/cli/setup/test-globs.ts:18	setup's test globs name node:test, so excluded node:test files validate a declaration that runs nothing
+R301	A	C	007	2026-10-14	wave-2.5.md	src/runners/pytest/adapter.ts:176	pytest's adapter reuses node:test's project code, whose empty-path guards drop shared startup-input growth
+R306	A	C	007	2026-10-14	wave-2.md	src/harness/shared/test-command-files.ts:77	harness/shared resolves bare pytest commands for the deny, picks a configured subset and hides an uncovered failure
+R317	A		007	2026-10-15	wave-5.5.md	src/core/delivery/attribution.ts:249	core attribution names runners and treats an unknown runner identity as a Node failure
+R318	A		007	2026-10-15	wave-5.75.md	src/core/delivery/attribution.ts:258	core attribution names runners; a stored pytest doctest becomes a Node failure after policy loss
+R319	A		007	2026-10-15	wave-5.875.md	src/core/delivery/attribution.ts:243	same rule, a pytest doctest with a Node suffix becomes a Node failure after policy loss
+R350	B	C	011	2026-10-21	0.1.239.md	src/runners/vitest/run.ts:74	Vitest: a signal already aborted when the run starts omits the cancel note; an interrupted-run scenario reaches it
+R353	A		011	2026-10-21	0.1.243.md	src/core/status/test-frame.ts:24	core status names pytest's frame format (PYTEST_ENTRY), which breaks on a path with a space
+R371	B	C	011	2026-10-22	0.1.268.md	src/runners/pytest/runtime/sitecustomize.py:42	pytest: a script with no uncached imports keeps a false current PASS after an edit; an edit-flip scenario reaches it
+R396	B		011	2026-10-24	0.1.287.md	src/runners/vitest/reporter.ts:229	Vitest: an interrupted expected-failure test reads as passed and is kept; an interrupted-run scenario reaches it
+R441	A		014	2026-10-21	wave-1.md	src/core/ps/processes.ts:163	squeal ps classifies runner processes by pytest argv in core, so a repeated basetemp option turns options into test files
+R461	A		015	2026-10-24	0.1.293.md	src/core/code/count/parser.ts:18	complexity loads tree-sitter through the pytest runner's parser, so a grammar reset leaves that module's rejected promise cached
+R465	B		015	2026-10-24	0.1.295.md	src/runners/vitest/adapter.ts:628	Vitest: a cancelled run can store a coverage record; an interrupted-run scenario reaches it
+D87	A	D	009		009-26		setup names each harness, so adding Pi needed its own setup row
+D88	A	D	009		009-27	src/harness/pi/session.ts:31	the shared start and prompt assumed the hook places the primer, so a host that places it itself needed a shared rule change
+D89	A		009		009-28	src/cli/update.ts:232	the CLI's harness facts (update, install detection) are per harness, so Pi needed its own entry
+D117	A	G	011	2026-10-22	011-48	test/daemon/start-handoff.test.ts:129	the key alarm is per component and lacked node:test and pytest case kinds
+D301	B	C	001	2026-10-16	001-360	src/runners/vitest/	Vitest: a beforeAll that throws inside a describe is stored as PASS; a file-error scenario reaches it
+D335	B	C	001	2026-10-16	001-424		Vitest: a test keeps "Failed to resolve import" after the missing file is added; a missing-file-then-create scenario reaches it
+L12	B	C	009		Later		a test file that failed to load before a git-ignored build existed stays current FAIL after the build appears; a file-error recovery scenario reaches it
