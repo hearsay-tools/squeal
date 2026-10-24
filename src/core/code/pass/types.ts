@@ -1,5 +1,5 @@
 import type { CodeCheckId, CodeLanguage, FileCount } from "../../types/code.js";
-import type { FileHash, RelativePath, RevisionNumber } from "../../types/index.js";
+import type { CommitSha, FileHash, RelativePath, RevisionNumber } from "../../types/index.js";
 
 /**
  * Spec 015 D3: what the pass counts with. The daemon's is 015-05's
@@ -30,6 +30,13 @@ export interface PassSource {
   latestRevision(): RevisionNumber;
   /** Every path the revisions after `after` up to `upTo` changed, each once. */
   changedPaths(after: RevisionNumber, upTo: RevisionNumber): readonly RelativePath[];
+  /**
+   * 015-19: `HEAD` at `upTo` when a revision after `after` up to `upTo`
+   * recorded another `HEAD` than the one before it, as a pull, merge,
+   * rebase or checkout does, or when `HEAD` at `after` is not known; `null`
+   * when none did, or `HEAD` is unborn.
+   */
+  movedHead(after: RevisionNumber, upTo: RevisionNumber): CommitSha;
   /** The file at `path` now; `null` when it is gone. */
   file(path: RelativePath): SourceFile | null;
   /** Every file Squeal sees in the worktree. */
@@ -75,7 +82,8 @@ export interface PassReport {
   readonly moved: number;
   /**
    * D6's last rule (015-08): checks whose identity stayed and whose body
-   * hash changed, stored on their states (`CodeStateRepo.markEdited`).
+   * hash changed, stored on their states (`CodeStateRepo.markEdited`). Not
+   * those of a file a move of `HEAD` brought as committed (015-19).
    */
   readonly edited: readonly CodeCheckId[];
 }
