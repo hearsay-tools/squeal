@@ -12,7 +12,9 @@ let loading: Promise<void> | null = null;
  * initialised once per process, by the pytest graph's loader, which also
  * loads the shipped Python grammar: a second `Parser.init` would replace the
  * runtime under every parser already made. A load that fails is made again
- * at the next call, so a retried count can succeed (row 015-18).
+ * at the next call, so a retried count can succeed (row 015-18): only the
+ * stage that failed, the runtime, the Python grammar or TSX's, as the
+ * pytest loader keeps the stages it made (review 0.1.293 B3).
  */
 export function counterReady(): Promise<void> {
   loading ??= (async () => {
