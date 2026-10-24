@@ -1,0 +1,22 @@
+flip-recover-two-hops × pytest
+  ok   lists tests/test_chain.py, tests/test_broken.py (got tests/test_broken.py, tests/test_chain.py)
+  ok   step 0 run (completed): chain is pass, expected pass
+  ok   step 0 run (completed): broken is file-error, expected file-error
+  ok   step 1 edit app/leaf.py: reaches chain by affected=transitive, closure=true, observed=false
+  FAIL step 2 run (completed): chain is pass, expected fail
+  note step 2 results tests/test_chain.py::test_chain=pass
+  ok   step 2 run (completed): broken is file-error, expected file-error
+  ok   step 3 edit app/leaf.py: reaches chain by affected=transitive, closure=true, observed=false
+  ok   step 4 run (completed): chain is pass, expected pass
+  ok   step 4 run (completed): broken is file-error, expected file-error
+computed-import × pytest
+  ok   lists tests/test_loads.py (got tests/test_loads.py)
+  ok   step 0 loads lacks app/hidden.py: closure=false, observed=false
+  ok   step 1 run (completed): loads is pass, expected pass
+  ok   step 2 loads holds app/hidden.py: closure=true, observed=true
+  ok   step 3 edit app/hidden.py: reaches loads by affected=transitive, closure=true, observed=true
+  FAIL step 4 run (completed): loads is pass, expected fail
+  note step 4 results tests/test_loads.py::test_loads=pass
+FAIL flip-recover-two-hops × pytest
+FAIL computed-import × pytest
+exit 1
