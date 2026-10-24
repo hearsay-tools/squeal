@@ -73,9 +73,15 @@ export class Promotions {
 
   /** The request order of the earliest live promotion of `id`; `null` when none holds it. */
   rankOf(id: string): number | null {
-    if (this.#promotions.length === 0) return null;
-    const now = this.#now();
-    return this.#promotions.find((p) => p.until > now && p.files.has(id))?.seq ?? null;
+    return this.#first(id)?.seq ?? null;
+  }
+
+  /**
+   * The deadline of the earliest live promotion of `id`, when `rankOf` next
+   * changes with no event; `null` when none holds it (row 011-184).
+   */
+  untilOf(id: string): number | null {
+    return this.#first(id)?.until ?? null;
   }
 
   /** Drops the promotions past their deadline or whose files all settled. */
@@ -98,6 +104,13 @@ export class Promotions {
     if (this.#promotions.length === 0) return;
     this.#promotions = [];
     this.#told();
+  }
+
+  /** The earliest live promotion of `id`, in request order. */
+  #first(id: string): Promotion | undefined {
+    if (this.#promotions.length === 0) return undefined;
+    const now = this.#now();
+    return this.#promotions.find((p) => p.until > now && p.files.has(id));
   }
 
   /** `settle` without the telling; whether any promotion was dropped. */

@@ -36,11 +36,32 @@ const isSlow = (path: string) => SLOW.includes(path);
 const A = SLOW[0] ?? "";
 const P = "f/p.test.ts";
 const p = ref(P, "f");
+/**
+ * The earlier wait's deadline in test 9: longer than its two promotions
+ * take under the scheduler's lock on a loaded host, so the later one comes
+ * while it is open, and shorter than `CUT_WITHIN_MS`.
+ */
+const EXPIRES_MS = 5_000;
+
+/**
+ * Reports `path`'s end to the run in flight that holds it, as Vitest's
+ * `onTestModuleEnd` does (`RunOptions.fileEnded`); the fake runner names none.
+ */
+function reportsEnds(side: CatchUpSide): (path: string) => void {
+  const ends = new Map<string, () => void>();
+  const run = side.runner.run.bind(side.runner);
+  side.runner.run = (files, options) => {
+    for (const f of files) ends.set(f.path, () => options.fileEnded?.(f));
+    return run(files, options);
+  };
+  return (path) => ends.get(path)?.();
+}
 
 /**
  * An edit's tier of the four slow files, `ms` each last time, held in
  * flight; P, re-keyed by its project's environment in the same revision,
  * queued behind it, so it is no edit's work that came during the run.
+ * `end` names a file of it as ended.
  */
 async function heldTier(ms: number) {
   const files: CatchUpFile[] = [
@@ -53,9 +74,10 @@ async function heldTier(ms: number) {
   await side.scheduler.idle();
   const base = side.runner.runs.length;
   const gate = holdRuns(side.runner, isSlow);
+  const end = reportsEnds(side);
   await side.edit("watch", "src/s.ts", "f.config.json");
   const tier = await heldRun(side, A, base);
-  return { side, gate, tier, base, waitAt: side.runner.runs.length };
+  return { side, gate, tier, base, waitAt: side.runner.runs.length, end };
 }
 
 /** What the live daemon of `side` published for its tiers in flight. */
@@ -193,5 +215,32 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
       yields: { kind: "named" },
     });
     expect(queued.reason.endsWith(reason)).toBe(true);
+  });
+
+  // Review `reviews/0.1.296.md` B1 and B2: the rule holds at every moment, not only at a promotion.
+  it("8: at 40 s, A of an earlier wait ends: the tier yields for P of a later wait", async () => {
+    const held = await heldTier(200_000);
+    const { side, tier } = held;
+    side.advance(40_000);
+    await side.scheduler.promote([ref(A)], 60_000);
+    await side.scheduler.promote([p], 60_000);
+    await notCut(side, tier);
+
+    // On 5ecb377a8: the end changed no standing, so the tier ran on to its end.
+    held.end(A);
+    await yieldsToP(held);
+  });
+
+  it("9: at 40 s, the earlier wait on A passes its deadline while P's is open: the tier yields", async () => {
+    const held = await heldTier(200_000);
+    const { side } = held;
+    side.advance(40_000);
+    // A's wait ends `EXPIRES_MS` from now on the host's clock; no event comes then.
+    await side.scheduler.promote([ref(A)], EXPIRES_MS);
+    await side.scheduler.promote([p], 60_000);
+    expect(standings(side)).toEqual([{ kind: "named" }]);
+
+    // On 5ecb377a8: `named` had no bound, so the tier ran on to its end.
+    await yieldsToP(held);
   });
 });
