@@ -1,10 +1,12 @@
 import { realpathSync } from "node:fs";
 import type { AbsolutePath, RunnerAdapter, TestFileRef } from "../../core/types/index.js";
 import { VitestAdapter } from "./adapter.js";
+import type { VitestCoverage } from "./coverage.js";
 import { loadVitest, type VitestNode } from "./load.js";
 import { WorktreePaths } from "./paths.js";
 import { VitestWidths } from "./width.js";
 
+export type { VitestCoverage } from "./coverage.js";
 export { VITEST_ADAPTER_VERSION } from "./version.js";
 
 export interface VitestAdapterOptions {
@@ -51,6 +53,11 @@ export interface VitestAdapterOptions {
    * D7, task 004-81). Absent: none.
    */
   readonly exclude?: () => readonly string[];
+  /**
+   * Spec 015 D8 (row 015-11): coverage in each run while `enabled` holds,
+   * read at each start; a change recreates the instance. Absent: never.
+   */
+  readonly coverage?: VitestCoverage;
 }
 
 /**
@@ -70,6 +77,7 @@ export async function createVitestAdapter(options: VitestAdapterOptions): Promis
     options.optimizer,
     options.excludeProjects,
     options.exclude,
+    options.coverage,
   );
   await adapter.open();
   return adapter;
@@ -93,8 +101,20 @@ class SizedVitestAdapter extends VitestAdapter {
     optimizer?: (projects: readonly string[]) => void,
     exclude?: () => readonly string[],
     excludeFiles?: () => readonly string[],
+    coverage?: VitestCoverage,
   ) {
-    super(paths, vitest, note, observe, childEnv, widths, optimizer, exclude, excludeFiles);
+    super(
+      paths,
+      vitest,
+      note,
+      observe,
+      childEnv,
+      widths,
+      optimizer,
+      exclude,
+      excludeFiles,
+      coverage,
+    );
     this.#widths = widths;
   }
 
