@@ -80,6 +80,10 @@ describe("each adapter's comparison (risk 3)", SLOW, () => {
       "a failing test and a file that fails to load store their fingerprints (review of cand/0.1.232, B1)",
       "a focused run stores the selected checks' outcomes as a whole run does (row 011-144)",
     ]);
+    // Row 011-175: the 011-137 case is equal because both trees stored its pass, not because both lost it.
+    const whole = result.cases.find((c) => c.name.includes("(row 011-137)"));
+    const kept = { runs: [{ completed: [":test/whole.test.ts"], results: [{ outcome: "pass" }] }] };
+    expect([whole?.baseline.outputs, whole?.candidate.outputs]).toMatchObject([kept, kept]);
     const failed = failures(result, release());
     expect(failed).toEqual([
       expect.stringMatching(
