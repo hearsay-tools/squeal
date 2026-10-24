@@ -1,6 +1,7 @@
-import { awaitFirstCount, readCursor, recountTooBigEdits } from "../code/pass/cursor.js";
+import { awaitFirstCount, readCursor } from "../code/pass/cursor.js";
 import { uncountableFiles } from "../code/pass/failed.js";
 import { pulledReader } from "../code/pass/pulled.js";
+import { readTooBigEdits } from "../code/pass/too-big.js";
 import type { CodeStore } from "../code/store/types.js";
 import { isRecord } from "../fs/index.js";
 import type {
@@ -214,31 +215,27 @@ function toldTooBig(store: CodeStore, consumer: Consumer): ReadonlySet<string> {
 }
 
 /**
- * Spec 015 D6: the files too big to count that changed in `since`'s
- * revisions, the consumer's own, and that it was not told of; recorded as told.
- * Row 015-36: a first count or a recount writes every files row at its
- * revision (`recount`), which is no edit, but for the too-big files an
- * edit in its revisions changed (review 0.1.297 B5).
+ * Spec 015 D6: the files too big to count whose last edit is in `since`'s
+ * revisions, the consumer's own, and that it was not told of; recorded as
+ * told. Row 015-36: a first count or a recount writes every files row at
+ * its revision, which is no edit, so the edit's own revision is read
+ * (`readTooBigEdits`, row 015-39).
  */
 function newTooBig(
   store: CodeStore,
   consumer: Consumer,
-  { since, recount }: { since: CodeBound | null; recount: CodeRecount | null },
+  since: CodeBound | null,
   limit: number,
   write: boolean,
 ): CodeTooBig[] {
   if (since === null) return [];
+  const edits = readTooBigEdits(store.meta, consumer.worktreeId);
+  const own = [...edits].flatMap(([path, revision]) => (isOwn(since, revision) ? [path] : []));
+  if (own.length === 0) return [];
   const told = toldTooBig(store, consumer);
-  const edits = recount === null ? null : recountTooBigEdits(store.meta, consumer.worktreeId);
   const files = store.files
-    .list(consumer.worktreeId)
-    .filter(
-      (f) =>
-        isTooBig(f) &&
-        isOwn(since, f.revision) &&
-        (f.revision !== recount?.revision || edits?.has(f.path) === true) &&
-        !told.has(f.path),
-    );
+    .list(consumer.worktreeId, own)
+    .filter((f) => isTooBig(f) && !told.has(f.path));
   if (files.length === 0) return [];
   if (write) writeJson(store, tooBigToldKey(consumer), [...told, ...files.map((f) => f.path)]);
   return files.map((f) => ({ path: f.path, size: f.size, limit }));
@@ -298,7 +295,7 @@ function codeStep(
   const seededAt = typeof seeded === "number" ? seeded : 0;
   const failing = failingIn(store, worktreeId);
   const recount = readRecount(store, worktreeId);
-  const tooBig = newTooBig(store, consumer, { since, recount }, limit, write);
+  const tooBig = newTooBig(store, consumer, since, limit, write);
   const big = tooBig.length === 0 ? {} : { tooBig };
   if (recount !== null && recount.at > seededAt) {
     // 015-37: a hook reads its clock before this transaction, so a recount may be newer than

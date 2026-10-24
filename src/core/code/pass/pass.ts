@@ -17,7 +17,6 @@ import {
   readCursor,
   recountReason,
   takeAwaited,
-  tooBigEdits,
   writeCursor,
   writeRecount,
 } from "./cursor.js";
@@ -33,6 +32,7 @@ import { committedPaths } from "./head.js";
 import { includedSet } from "./included.js";
 import { checkKey, type FileAfter, judge } from "./judge.js";
 import { clearPulled, writePulled } from "./pulled.js";
+import { writeTooBigEdits } from "./too-big.js";
 import type { Counter, PassReport, PassSource, RecountReason } from "./types.js";
 
 export interface PassContext {
@@ -81,13 +81,12 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   ctx.retry.clear();
   const bodies =
     reason === null ? oldBodies(store, worktreeId, entries, ctx.counter.version) : new Map();
-  // Review 0.1.297 B5: a recount after the cursor keeps apart the too-big files its revisions edited.
+  // 015-39: each too-big file's last edit, kept apart from the rows a recount writes at its revision.
   const edits =
-    reason === null || reason === "first" || cursor === null
-      ? []
-      : tooBigEdits(store, worktreeId, source.changedPaths(cursor.revision, latest), entries);
+    reason === "first" || cursor === null ? null : source.lastChanges(cursor.revision, latest);
 
   store.transaction(() => {
+    writeTooBigEdits(store, worktreeId, edits, entries);
     store.files.removeMany(
       worktreeId,
       entries.filter((e) => e.kind === "gone").map((e) => e.path),
@@ -181,7 +180,6 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
         at: ctx.now(),
         reason,
         threshold: ctx.complexity.threshold,
-        ...(edits.length === 0 ? {} : { tooBigEdits: edits }),
       });
     }
     return report(latest, reason, entries.length, counted, { ...judged, edited });
