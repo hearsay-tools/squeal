@@ -9,9 +9,19 @@ import {
   runCoverageStep,
 } from "../../../src/core/code/crap/index.js";
 import type { CodeStore } from "../../../src/core/code/store/index.js";
+import { codeSource } from "../../../src/core/delivery/code-source.js";
+import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
 import type { CodeMeasure } from "../../../src/core/types/code.js";
-import type { Policy, RunOutcome, Store, TestFileRef } from "../../../src/core/types/index.js";
+import type {
+  Consumer,
+  Policy,
+  RunOutcome,
+  Store,
+  TestFileRef,
+} from "../../../src/core/types/index.js";
+import { fixedStatus } from "../../delivery/fakes.js";
 import { freshStore, result, WT } from "../../state/helpers.js";
+import { writePolicy } from "../delivery/helpers.js";
 import { commonDir, open } from "../helpers.js";
 import { type FakeWorktree, fakeCounter, pass, policyOn, worktree } from "../pass/helpers.js";
 
@@ -52,7 +62,16 @@ export interface CoverageRig {
   states(measure: CodeMeasure): string[];
   /** `measure kind name` of each transition of the file's functions, oldest first. */
   transitions(path: string, names: readonly string[]): string[];
+  register(consumer: Consumer): Promise<void>;
+  /** The formatted delivery `consumer` gets at its next tool boundary; `[]` when none. */
+  told(consumer: Consumer): Promise<string[]>;
 }
+
+export const consumer = (sessionId: string): Consumer => ({
+  worktreeId: WT,
+  sessionId,
+  agentId: "main",
+});
 
 /** A record's entry for `path` at `blob`: every function line can run, `ran` lines ran. */
 export function sourceOf(
@@ -83,6 +102,10 @@ export function coverageRig(): CoverageRig {
   const tree = worktree(WT, dir);
   const store = open(dir);
   const settled = new Map<string, LoaderCondition>();
+  writePolicy(tree.root, { enabled: true });
+  const source = codeSource(dir, tree.root);
+  const delivery = () =>
+    createDelivery(main, { status: fixedStatus(), now: () => self.clock, code: source });
   const self: CoverageRig = {
     tree,
     store,
@@ -153,6 +176,15 @@ export function coverageRig(): CoverageRig {
           .filter((t) => t.measure !== "complexity")
           .map((t) => `${t.measure} ${t.kind} ${qualifiedName}`),
       );
+    },
+    async register(c) {
+      self.clock += 1_000;
+      await delivery().register(c);
+    },
+    async told(c) {
+      self.clock += 1_000;
+      const delta = await delivery().onToolBoundary(c);
+      return delta === null ? [] : formatDelta(delta).split("\n");
     },
   };
   return self;
