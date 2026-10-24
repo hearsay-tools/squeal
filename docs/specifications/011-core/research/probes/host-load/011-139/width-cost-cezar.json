@@ -1,0 +1,44 @@
+{
+ "edit-sized (1-4 files)": {
+  "runs": 2059,
+  "filesMedian": 2,
+  "recordedWallMedianS": 13.5,
+  "modelW16MedianS": 13.0,
+  "modelW13MedianS": 13.0,
+  "modelW8MedianS": 13.0,
+  "modelW4MedianS": 13.0,
+  "modelW2MedianS": 14.3,
+  "modelW1MedianS": 17.1,
+  "addedAtW2vsW4": {
+   "p50": 0.0,
+   "p90": 27.3,
+   "max": 466.8
+  },
+  "addedAtW1vsW4": {
+   "p50": 0.5,
+   "p90": 94.3,
+   "max": 1400.3
+  }
+ },
+ "backlog (5+ files)": {
+  "runs": 273,
+  "filesMedian": 19,
+  "recordedWallMedianS": 99.6,
+  "modelW16MedianS": 53.0,
+  "modelW13MedianS": 55.7,
+  "modelW8MedianS": 67.2,
+  "modelW4MedianS": 95.0,
+  "modelW2MedianS": 151.2,
+  "modelW1MedianS": 287.6,
+  "addedAtW8vsW16": {
+   "p50": 7.3,
+   "p90": 46.2,
+   "max": 226.3
+  },
+  "addedAtW4vsW16": {
+   "p50": 33.8,
+   "p90": 151.0,
+   "max": 678.8
+  }
+ }
+}
