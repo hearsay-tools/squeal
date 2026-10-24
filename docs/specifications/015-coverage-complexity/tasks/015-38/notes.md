@@ -59,3 +59,14 @@ In "The first edit to a standing failure", replace "a `FAIL` or `PASS` from it i
 - `CodePlanInput.pulled?: (path, revision) => boolean`, optional: additive.
 - `committedPaths`'s `files[].blob` is `FileHash | null`, a widened parameter.
 - New exports in `src/core/code/pass/pulled.ts`: `readPulled`, `writePulled`, `clearPulled`, `pulledReader`. No store schema or `src/core/types` change.
+
+## Review 0.1.297 B5, the same worker (`tasks/wave-1d.md` "W2 addition")
+
+A real edit to a too-big file at a revision that also recounts was hidden: the recount writes every files row at its revision, and `newTooBig` dropped each row at `recount.revision` (015-36).
+
+- **As built.** Before a recount after a cursor (`threshold`, `include` or `counter`) writes the rows, the pass reads the paths its revisions changed (`changedPaths(cursor.revision, latest)`). It keeps apart each too-big file among them whose stored row had another blob or none (`tooBigEdits`, `pass/cursor.ts`). The recount record carries them as the optional `tooBigEdits`. `newTooBig` hides a row at the recount's revision unless the record names it, so a recount-only row tells nothing and the real edit tells once.
+- **Not the lead as written.** The coordinator's first edit was to keep each files row's own edit revision when a recount rewrites it. That alone leaves an edited row and a new row, which a first count or an include change writes, both at the recount's revision. The delivery still could not tell them apart, and the files table has no column for that one bit (`src/core/code/store/**` is not this row's). The review's second option, "read the revision's changed paths and blob difference", needs no schema change, so the pass does that and records the result.
+- **First count.** Nothing is an edit, as 015-36 decided: no cursor, so no `tooBigEdits`.
+- **Test.** `test/code/delivery/too-big.test.ts`: two too-big files, one edited at a revision that recounts and one only rewritten by it. Only the edited one is told, once. A later edit by the same counter tells none, and neither does a recount back to the first counter. It went red with the review's proof (no `src/big.ts is …` line) and is green after the change. The first-count, recount, resume and once-per-session tests in the file pass unchanged.
+- **Limit.** The record holds the latest recount only. If a second recount comes before the session's next delivery, the first recount's edits read as recount rows and are not told. The line comes at the next edit to that file instead.
+- **Type change.** `RecountRecord.tooBigEdits?: readonly RelativePath[]`, optional: additive. `CodeRecount` (`src/core/types/code-delivery.ts`) is unchanged; the delivery reads the field with `recountTooBigEdits`.

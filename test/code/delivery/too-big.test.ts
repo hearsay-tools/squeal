@@ -56,6 +56,22 @@ describe("a file too big to count (015-36)", () => {
     expect(await r.delivered(C1)).toEqual([]);
   });
 
+  it("tells an edit at a revision that recounts, and none for a file only that recount wrote (review 0.1.297 B5)", async () => {
+    r.tree.write("src/huge.ts", big(9)).revise();
+    await r.pass();
+    await r.register(C1);
+    expect(await editAfterRecount("src/big.ts", big(2))).toMatchObject({ mode: "counter" });
+    const lines = await r.delivered(C1);
+    expect(lines.some((l) => l.startsWith("Complexity counted again by a new counter"))).toBe(true);
+    expect(lines.filter((l) => l.includes(" KiB limit;"))).toEqual([LINE]);
+    expect(await r.delivered(C1)).toEqual([]);
+    // Once per session: a later edit tells none, by the same counter or at a recount back to the first.
+    await editAfterRecount("src/big.ts", big(3));
+    expect(await r.delivered(C1)).toEqual([]);
+    expect(await r.edit({ "src/big.ts": big(4) })).toMatchObject({ mode: "counter" });
+    expect(bigLines(await r.delivered(C1))).toEqual([]);
+  });
+
   it("tells a resumed session nothing for a file it was told of, edited again or not", async () => {
     await r.pass();
     await r.register(C1);
