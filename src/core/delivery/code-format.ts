@@ -7,6 +7,7 @@ import type {
   CodeRegistration,
   CodeTooBig,
 } from "../types/code-delivery.js";
+import { coverageEntryLine, isCoverage } from "./code-coverage.js";
 import { isStillFail } from "./code-delta.js";
 
 /*
@@ -40,6 +41,8 @@ const quietHint = (entry: CodeDeltaEntry, command: string) =>
 /** One told change: the FAIL, PASS, RESOLVED or STILL FAIL line. */
 export function codeEntryLine(entry: CodeDeltaEntry, command: string): string {
   const at = `${functionName(entry.check)} (${whereOf(entry.check, entry.line)})`;
+  // Spec 015 D9 (row 015-12): `crap` and `uncovered` have lines of their own.
+  if (isCoverage(entry)) return coverageEntryLine(entry, at);
   switch (entry.kind) {
     case "first-seen-fail":
     case "pass-to-fail":
@@ -91,11 +94,14 @@ export function codeLines(news: CodeNews, command: string): string[] {
     ...(news.more === 0
       ? []
       : [
-          `and ${news.more} more complexity ${news.more === 1 ? "change" : "changes"}; ${command} code --changed lists them.`,
+          `and ${news.more} more ${changesWord(news)} ${news.more === 1 ? "change" : "changes"}; ${command} code --changed lists them.`,
         ]),
     ...(news.tooBig ?? []).map(tooBigLine),
   ];
 }
+
+/** Row 015-12: changes of `crap` or `uncovered` states among them make them code changes. */
+const changesWord = (news: CodeNews) => (news.coverage === true ? "code" : "complexity");
 
 /** How many function changes a delivery's code part tells, listed or by number; a STILL FAIL is none. */
 export const codeChanges = (news: CodeNews) =>
@@ -110,7 +116,9 @@ export function codeTitleWords(news: CodeNews): string | null {
   const changes = codeChanges(news);
   const still = news.entries.filter((e) => isStillFail(e.kind)).length;
   const words = [
-    ...(changes === 0 ? [] : [`${changes} complexity ${changes === 1 ? "change" : "changes"}`]),
+    ...(changes === 0
+      ? []
+      : [`${changes} ${changesWord(news)} ${changes === 1 ? "change" : "changes"}`]),
     ...(still === 0 ? [] : [`${plural(still, "function")} still over the complexity threshold`]),
   ];
   return words.length === 0 ? null : words.join(" and ");
