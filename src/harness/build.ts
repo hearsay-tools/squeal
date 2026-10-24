@@ -37,6 +37,13 @@ export const NODE_TEST_RUNTIME = "src/runners/node-test/runtime";
 export const OBSERVE_RUNTIME = "src/runners/observe";
 
 /**
+ * Spec 015 D8 (row 015-11): Squeal's own Vitest coverage provider, a
+ * dependency-free `.mjs` Vitest loads by path, which the bundled CLI finds
+ * at `<plugin>/dist/coverage/` (`coverageProvider`).
+ */
+export const COVERAGE_RUNTIME = "src/core/code/coverage";
+
+/**
  * Spec 007 D4 and D6: what the bundled CLI finds at `<plugin>/dist/pytest/`:
  * the dependency-free `squeal_pytest.py` reporter, the vendored
  * tree-sitter-python grammar and web-tree-sitter's own runtime `.wasm`.
@@ -194,6 +201,18 @@ export function copyObserveRuntime(
   for (const file of files) copyFileSync(join(from, file), join(outdir, "observe", file));
 }
 
+/** Copies the `.mjs` files of `from`, by default `COVERAGE_RUNTIME`, into `<outdir>/coverage/`. */
+export function copyCoverageRuntime(
+  outdir: string,
+  from: string = join(REPO_ROOT, COVERAGE_RUNTIME),
+): void {
+  const files = existsSync(from) ? readdirSync(from).filter((f) => f.endsWith(".mjs")) : [];
+  if (files.length === 0) return;
+  rmSync(join(outdir, "coverage"), { recursive: true, force: true });
+  mkdirSync(join(outdir, "coverage"), { recursive: true });
+  for (const file of files) copyFileSync(join(from, file), join(outdir, "coverage", file));
+}
+
 /**
  * Copies the `.py` files of `runtime` (never its `__pycache__`) and the two
  * `.wasm` files into `<outdir>/pytest/`, replaced as a whole. Throws when a
@@ -232,7 +251,8 @@ export function copyCodeGrammar(
 
 /**
  * What `dist/` holds, built into `outdir`: the bundles, the node:test and
- * pytest runtimes, the code counter's grammar and the recorder. Returns the
+ * pytest runtimes, the code counter's grammar, the recorder and the coverage
+ * provider. Returns the
  * bundles' metafile, whose inputs a test that builds reports as read
  * (011-141).
  */
@@ -240,6 +260,7 @@ export async function buildDist(plugin: PluginBuild, outdir: string): Promise<Me
   const { metafile } = await build({ ...bundleOptions(plugin, outdir), metafile: true });
   copyNodeTestRuntime(outdir);
   copyObserveRuntime(outdir);
+  copyCoverageRuntime(outdir);
   copyPytestRuntime(outdir);
   copyCodeGrammar(outdir);
   return metafile;

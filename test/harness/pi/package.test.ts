@@ -1,7 +1,7 @@
 import { cpSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { REPO_ROOT, rootVersion } from "../../../src/harness/build.js";
+import { COVERAGE_RUNTIME, REPO_ROOT, rootVersion } from "../../../src/harness/build.js";
 import {
   notePiCommand,
   PI_PLUGIN_DIR,
@@ -56,6 +56,12 @@ describe("the Pi package", () => {
     const source = readFileSync(join(REPO_ROOT, SKILL_SOURCE, "SKILL.md"), "utf8");
     const copy = readFileSync(join(PI_PLUGIN_DIR, PI_SKILL, "SKILL.md"), "utf8");
     expect(copy).toBe(source.replace("# Squeal\n", `# Squeal\n\n${PI_SKILL_NOTE}\n`));
+  });
+
+  it("ships the coverage provider Vitest loads by path in dist/coverage/ (015-11)", () => {
+    expect(readFileSync(join(built.dir, "coverage", "provider.mjs"), "utf8")).toBe(
+      readFileSync(join(REPO_ROOT, COVERAGE_RUNTIME, "provider.mjs"), "utf8"),
+    );
   });
 
   it("bundles an extension that imports only Node built-ins", () => {

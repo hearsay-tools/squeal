@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { build } from "esbuild";
 import {
   bundleOptions,
+  copyCoverageRuntime,
   copyNodeTestRuntime,
   copyObserveRuntime,
   copyPytestRuntime,
@@ -54,6 +55,7 @@ export async function codexPluginAt(dir: string, version: string): Promise<void>
   observeMetafile(result.metafile);
   copyNodeTestRuntime(dist);
   copyObserveRuntime(dist);
+  copyCoverageRuntime(dist);
   copyPytestRuntime(dist);
 }
 
