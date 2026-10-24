@@ -84,6 +84,8 @@ function yieldText(tier: TierYield, what: "tier" | "run"): string {
       return `; the ${what} does not yield: it is the backlog's turn`;
     case "runner":
       return `; the ${what} does not yield: its runner runs each tier to its end`;
+    case "named":
+      return `; the ${what} does not yield: it runs a file this wait or an earlier one selected`;
   }
 }
 

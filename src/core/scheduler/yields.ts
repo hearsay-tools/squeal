@@ -50,9 +50,10 @@ type Decision =
 /**
  * What waits for a tier in its lane (`waitedFor`): work a yield runs sooner,
  * or only promoted files a yield runs nothing sooner for, until a claim
- * ends or a stored result is taken.
+ * ends or a stored result is taken, or only promoted files that a file of
+ * the tier ranks with or before once it has run 30 s (`named`, row 011-184).
  */
-type Waiting = "work" | "recheck" | null;
+type Waiting = "work" | "recheck" | "named" | null;
 
 /**
  * A yield cut a file at `key` when it had `applied` results
@@ -119,7 +120,10 @@ export class TierYields implements CutFiles {
    *   yet is checked again at that bound, and one only such promoted files
    *   wait for every `CLAIM_RECHECK_MS` (row 011-123): a claim ends with no
    *   event when its claimant's heartbeat is lost or the waiter's bound
-   *   passes (C7).
+   *   passes (C7). Once it has run `YIELD_REMAINDER_MS`, a promoted file
+   *   counts only when it ranks before each of its files that has not
+   *   ended (`rankToBeat`, row 011-184); a tier only other promoted files
+   *   wait for then runs on with no bound until an event.
    * A file has ended when the runner named it (`Tier.ended`, row 011-54,
    * review `reviews/0.1.237.md` B2); a runner that names none leaves every
    * file unfinished, so its tier is cancelled by the first rule only when
@@ -196,16 +200,13 @@ export class TierYields implements CutFiles {
     const waiting = waitedFor(context, ledger, tier, revision);
     if (waiting === null) return null;
     if (cancel === null || tier.slot === true)
-      return waiting === "work" ? { kind: "runner" } : null;
+      return waiting === "recheck" ? null : { kind: "runner" };
     if (waiting === "recheck") return RECHECK;
     if (tier.kind === "turn") return { kind: "turn" };
     if (unfinished(tier).some(({ file, key }) => this.#cut.get(file.id)?.key === key))
       return { kind: "cut" };
-    const remainderMs = remainder(context, tier);
-    if (remainderMs > YIELD_REMAINDER_MS) return "yield";
-    if (remainderMs >= 0 || !overruns(tier)) return { kind: "remainder", remainderMs };
-    if (-remainderMs >= YIELD_REMAINDER_MS) return "yield";
-    return { kind: "overrun", yieldsAt: context.now() + remainderMs + YIELD_REMAINDER_MS };
+    if (waiting === "named") return { kind: "named" };
+    return byRemainder(context, tier);
   }
 
   /** Sets the one timer at the earliest bound, none without a bound; unref'd, it never holds the process. */
@@ -282,7 +283,8 @@ function superseded(tier: Tier): boolean {
  * the runner (Vitest's `Gate`; #69: "revision 5 not listed yet");
  * `"recheck"` when only promoted files a yield runs nothing sooner for do:
  * held by other worktrees' claims, or with a result stored to take (rows
- * 011-55, 011-123).
+ * 011-55, 011-123); `"named"` when only promoted files that do not rank
+ * before the tier's files do (`rankToBeat`, row 011-184).
  */
 function waitedFor(
   context: SchedulerContext,
@@ -294,8 +296,14 @@ function waitedFor(
   const { queue } = ledger;
   if (queue.hasRecentAfter(tier.revision.number, inLane)) return "work";
   let later = false;
+  let named = false;
+  const beat = rankToBeat(context, ledger, tier);
   const runsSooner = (ref: TestFileRef) => {
     if (!inLane(ref)) return false;
+    if ((queue.rankOf(ref) ?? Infinity) >= beat) {
+      named = true;
+      return false;
+    }
     const claim = peekClaim(context, ledger, ref);
     later ||= claim !== "free";
     return claim === "free";
@@ -304,7 +312,22 @@ function waitedFor(
   // Row 011-145 (C4 as amended 2026-10-23): a focused entry, as a promoted file; no claim holds it.
   if (focusedWaiting(context, ledger, inLane)) return "work";
   if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "work";
-  return later ? "recheck" : null;
+  return later ? "recheck" : named ? "named" : null;
+}
+
+/**
+ * Spec 011 C4 step 5 and C15 Rank as amended 2026-10-24 (row 011-184,
+ * `tasks/011-180/notes.md` section 6): the rank a promoted file must be
+ * below to make `tier` yield. None before the tier has run
+ * `YIELD_REMAINDER_MS`; then the least rank of its files that have not
+ * ended, a file no open wait selected counting as none. So a wait's file
+ * does not cut a file that the same or an earlier wait selected: that wait
+ * returns only when each file it selects is current (005 D2).
+ */
+function rankToBeat(context: SchedulerContext, ledger: Ledger, tier: Tier): number {
+  if (context.now() - (tier.startedAt ?? context.now()) < YIELD_REMAINDER_MS) return Infinity;
+  const ranks = unfinished(tier).map(({ file }) => ledger.queue.rankOf(file.ref) ?? Infinity);
+  return Math.min(Infinity, ...ranks);
 }
 
 /** `revision` changed an environment input of a project with a test file in `lane`. */
@@ -337,6 +360,19 @@ function recreates(
 function remainder(context: SchedulerContext, tier: Tier): number {
   const longest = Math.max(0, ...unfinished(tier).map(({ file }) => file.durationMs ?? 0));
   return longest - (context.now() - (tier.startedAt ?? context.now()));
+}
+
+/**
+ * Rule B (row 001-381): `tier` yields when its estimated remainder exceeds
+ * `YIELD_REMAINDER_MS`, or, as `overruns` allows, once it has run that long
+ * past its estimate (row 011-107); else what it waits for.
+ */
+function byRemainder(context: SchedulerContext, tier: Tier): Decision {
+  const remainderMs = remainder(context, tier);
+  if (remainderMs > YIELD_REMAINDER_MS) return "yield";
+  if (remainderMs >= 0 || !overruns(tier)) return { kind: "remainder", remainderMs };
+  if (-remainderMs >= YIELD_REMAINDER_MS) return "yield";
+  return { kind: "overrun", yieldsAt: context.now() + remainderMs + YIELD_REMAINDER_MS };
 }
 
 /**
@@ -407,5 +443,7 @@ function isYield(value: unknown): value is TierYield {
   };
   if (kind === "remainder") return typeof remainderMs === "number";
   if (kind === "overrun") return typeof yieldsAt === "number";
-  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner";
+  return (
+    kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named"
+  );
 }
