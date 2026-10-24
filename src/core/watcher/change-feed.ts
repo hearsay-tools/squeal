@@ -67,7 +67,7 @@ export interface ChangeFeed {
    * pass already queued and not yet started is joined instead (task 001-299).
    */
   reconcile(trigger: RevisionTrigger): Promise<void>;
-  /** Replaces the extra files and updates the watch. */
+  /** Replaces the extra files and updates the watch; a reconciliation pass follows when it changed. */
   setExtraFiles(paths: readonly RelativePath[]): Promise<void>;
   close(): Promise<void>;
 }
@@ -170,11 +170,18 @@ class Feed implements ChangeFeed {
     return pending.done;
   }
 
+  /**
+   * The rebuild also meets any ignored directory that appeared since the last one, so the backend
+   * may replace its watcher here too; the pass finds what that dropped (row 011-187).
+   */
   setExtraFiles(paths: readonly RelativePath[]): Promise<void> {
     this.extraFiles = [...paths];
-    return this.enqueue(async () => {
-      await this.rebuildSpec();
-    });
+    return this.enqueue(
+      async () => {
+        if (await this.rebuildSpec()) await this.reconcileNow("watch");
+      },
+      () => "watch",
+    );
   }
 
   async close(): Promise<void> {
