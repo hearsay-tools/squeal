@@ -1,18 +1,16 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   buildRecord,
   COVERAGE_PROVIDER_VERSION,
-  type CoverageRun,
   type CoverageSource,
-  coverageProvider,
   hasLine,
   type V8Script,
 } from "../../../src/core/code/coverage/index.js";
 import { blobHash } from "../../../src/core/hash/index.js";
-import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
+import type { createVitestAdapter } from "../../../src/runners/vitest/index.js";
+import { covering } from "./coverage-helpers.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
 /*
@@ -21,38 +19,6 @@ import { openFixture, ref, SLOW } from "./helpers.js";
  * Squeal's own provider, and none for a file whose closure imports
  * `node:inspector`, which still passes.
  */
-
-const provider = coverageProvider() ?? "";
-const temps: string[] = [];
-afterEach(() => {
-  for (const dir of temps.splice(0)) rmSync(dir, { recursive: true, force: true });
-});
-
-interface Opened {
-  readonly runs: CoverageRun[];
-  readonly notes: string[];
-  readonly tempDir: string;
-}
-
-function covering(on: () => boolean = () => true): Opened & {
-  create: (root: string) => ReturnType<typeof createVitestAdapter>;
-} {
-  const tempDir = mkdtempSync(join(tmpdir(), "sq-own-provider-"));
-  temps.push(tempDir);
-  const runs: CoverageRun[] = [];
-  const notes: string[] = [];
-  return {
-    runs,
-    notes,
-    tempDir,
-    create: (root) =>
-      createVitestAdapter({
-        root,
-        note: (text) => notes.push(text),
-        coverage: { enabled: on, provider, tempDir, collected: (run) => runs.push(run) },
-      }),
-  };
-}
 
 function payload(path: string): V8Script[] {
   return (JSON.parse(readFileSync(path, "utf8")) as { result: V8Script[] }).result;
@@ -186,7 +152,7 @@ describe("vitest adapter: Squeal's coverage provider", SLOW, () => {
       return JSON.parse(environment?.resolvedConfig ?? "null") as { coverage: unknown };
     };
     const plain = await resolved();
-    const off = await resolved(covering(() => false).create);
+    const off = await resolved(covering({ on: () => false }).create);
     const first = await resolved(covering().create);
     const second = await resolved(covering().create);
 
