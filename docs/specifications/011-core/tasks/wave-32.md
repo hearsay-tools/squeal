@@ -1,6 +1,6 @@
 # Wave 32
 
-From main after the tests-only w31 landing, beside the review of `cand/w31b` (011-179). R2 and W13 were added on the human's choices of 2026-10-24. One row on the host-load probes; it lands as docs, like 011-138 and 011-155 did. W12, added after W11 landed, is a survey on store copies; it lands as docs.
+From main after the tests-only w31 landing, beside the review of `cand/w31b` (011-179). R2 and W13 were added on the human's choices of 2026-10-24, W14 and W15 on the human's later choices that day. One row on the host-load probes; it lands as docs, like 011-138 and 011-155 did. W12, added after W11 landed, is a survey on store copies; it lands as docs.
 
 ## W11: 011-177, `waste.mjs` counts a module the cancel cut in its grace as cut, not ended
 
@@ -59,3 +59,33 @@ Seam: `gatedPermits` (`src/core/capacity/cores.ts`) and `#gated` (`src/core/capa
 Owns `src/core/capacity/`, `src/core/scheduler/capacity.ts`, the kind where `tiers.ts` passes it, their tests, `tasks/011-182/`. Not yours: `test/keys/validity/` (011-179, in review), `research/`, the board, spec text (propose wording in your notes), bundles, version. If the key-format alarm asks for a raise, stop and send me a request. No `npm run build`.
 
 Done when the row's done-when holds; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
+
+## W14: 011-179 repair round 3, no comparison a timed-out test starts loses its directory
+
+Use /worker. Shape: repair (test). The human authorized this third and last round on 2026-10-24; a further FAIL drops the candidate.
+
+Outcome: a comparison that a timed-out test starts, before or during the file's teardown, keeps its directory until its drivers end, and teardown leaves nothing.
+
+Read `reviews/w31b-r2.md` (B1, "Inputs for the next wave"), `reviews/w31b.md` B1, `tasks/011-179/notes.md` section 7.
+
+Seam: `comparisons()` in `test/keys/validity/self-test.ts`. First edit: a closing flag set when `afterAll` starts; a `compare()` after it throws a clear error before it reserves `run-N` or starts a driver; `afterAll` waits with `allEnded` until the task list stops growing, then removes the parent, still bounded by `REMOVAL.timeout`.
+
+Extend `self-test.test.ts`: the timed-out test calls `compare()` twice in sequence; each accepted driver keeps its paths until it ends; the parent is gone after teardown. Keep the single-call case and `sides.test.ts`'s rejection-order test.
+
+Owns `self-test.ts`, `self-test.test.ts`, `tasks/011-179/`. Not yours: `sides.ts`, `compare.ts`, the other validity files (spec 015's `cand/0.1.295` edits them), `src/`, the board, spec text. No `npm run build`.
+
+Done when the new cases fail on `79f80c897`'s `comparisons()` and pass on yours (say how you showed it); lint, typecheck and `squeal run --all --wait` pass. Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
+
+## W15: 011-184, a wait's promoted file does not cut a file the same or an earlier wait selected
+
+Use /worker. Shape: slice. The human chose it on 2026-10-24.
+
+Outcome: once a tier has run 30 s, a promoted file makes it yield only when it ranks before every file of the tier that has not ended; edits, runner parts and focused entries yield as today; the wait's line names the reason.
+
+Read board row 011-184; `tasks/011-180/notes.md` section 6 (the rule, the seams, the seven tests); 011 C4 step 5 and C15 Rank as amended 2026-10-24; 005 D2.
+
+Seam: `waitedFor` (`src/core/scheduler/yields.ts:287`), which passes `runsSooner` to `queue.hasPromoted` at `:303`. First edit: a promoted file counts there only when the tier has run under `YIELD_REMAINDER_MS` or its rank is below the least rank of the tier's unfinished files. `Promotions.rankOf` (`promotions.ts:75`) gives the rank; add an additive `rankOf` on the queue, and a `TierYield` kind `named` with its status text.
+
+Owns `src/core/scheduler/yields.ts`, `promotions.ts`, the queue's `rankOf`, the status text for `named`, their tests, `tasks/011-184/`. Not yours: `src/core/capacity/`, `test/keys/validity/`, the board, spec text, bundles, version. If the key-format alarm asks for a raise, stop and send me a request. No `npm run build`.
+
+Done when the row's done-when holds, the seven tests red first on main; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
