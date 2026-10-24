@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.284";
+  if (true) return "0.1.285";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -703,20 +703,47 @@ var init_ignored_reads = __esm({
   }
 });
 
+// src/core/keys/key-format.ts
+var KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE;
+var init_key_format = __esm({
+  "src/core/keys/key-format.ts"() {
+    "use strict";
+    KEY_FORMAT_VERSION = 20;
+    KEY_FORMATS_READ_AS_ONE = {
+      13: "004-81: a slow file's artifact leaves its closure",
+      14: "001-366: the backlog's width and wall budget",
+      15: "011-21: the edit tier beside the backlog",
+      16: "011-21: slots, their records committed together",
+      17: "011-22 and 011-23: catch-up's order, the keys stored since the last read",
+      18: "013-02, 001-365, 011-31 and 011-33: the touch rule and barrier, a step-down's cancel, the handover",
+      19: "011-25 and 001-431: the edit cut, the recorder under a nested Squeal"
+    };
+  }
+});
+
 // src/core/keys/check-key.ts
 import { createHash as createHash2 } from "node:crypto";
 function encodeSegment(path, hash2) {
-  return Buffer.from(`${path}\0${hash2 ?? MISSING}\0`).toString();
+  if (hash2 === null) return "";
+  return Buffer.from(`${path}\0${hash2}\0`).toString();
+}
+function absentSegment(path) {
+  return Buffer.from(`${path}\0${MISSING}\0`).toString();
+}
+function absentReadAsOne(environment, format = KEY_FORMAT_VERSION) {
+  return format <= ABSENT_LAST_FORMAT ? [{ environment }] : [];
 }
 function keyFromSegments(envHash, testFile, segments2, dependencies = "") {
   return createHash2("sha256").update(JSON.stringify([KEY_ENCODING, envHash, testFile.project, testFile.path, dependencies])).update("\0").update(segments2.join("")).digest("hex");
 }
-var KEY_ENCODING, MISSING;
+var KEY_ENCODING, MISSING, ABSENT_LAST_FORMAT;
 var init_check_key = __esm({
   "src/core/keys/check-key.ts"() {
     "use strict";
+    init_key_format();
     KEY_ENCODING = "squeal-check-key/2";
     MISSING = "-";
+    ABSENT_LAST_FORMAT = 20;
   }
 });
 
@@ -1476,24 +1503,6 @@ var init_hidden_lockfile = __esm({
   }
 });
 
-// src/core/keys/key-format.ts
-var KEY_FORMAT_VERSION, KEY_FORMATS_READ_AS_ONE;
-var init_key_format = __esm({
-  "src/core/keys/key-format.ts"() {
-    "use strict";
-    KEY_FORMAT_VERSION = 20;
-    KEY_FORMATS_READ_AS_ONE = {
-      13: "004-81: a slow file's artifact leaves its closure",
-      14: "001-366: the backlog's width and wall budget",
-      15: "011-21: the edit tier beside the backlog",
-      16: "011-21: slots, their records committed together",
-      17: "011-22 and 011-23: catch-up's order, the keys stored since the last read",
-      18: "013-02, 001-365, 011-31 and 011-33: the touch rule and barrier, a step-down's cancel, the handover",
-      19: "011-25 and 001-431: the edit cut, the recorder under a nested Squeal"
-    };
-  }
-});
-
 // src/core/keys/pnpm-lockfile.ts
 function withoutLinkedSpecifiers(text3) {
   const lines = text3.split("\n");
@@ -1896,11 +1905,13 @@ var init_key_index = __esm({
       /**
        * The test file whose current key is `key`, with its keys at the formats
        * read as one (spec 011 C3 as amended 2026-10-20, task 011-38) and under
-       * the definition before task 011-85 (011-90), computed over the segments
-       * the index holds, each entry's installed-dependency segment in place of
-       * the file's own, once per key. `setClosure` and `setInstalled` drop the
-       * memo, so a segment is read with the packages the key was computed over.
-       * `null` when no test file holds `key` now.
+       * the definitions before task 011-85 (011-90) and 011-158, computed over
+       * the segments the index holds, each entry's installed-dependency segment
+       * in place of the file's own, and each absent path as `absentSegment`,
+       * once per key. A key equal to `key` is left out: a closure with no absent
+       * path keys alike under 011-158's definition. `setClosure` and
+       * `setInstalled` drop the memo, so a segment is read with the packages the
+       * key was computed over. `null` when no test file holds `key` now.
        */
       keysReadAsOne(key3) {
         const id2 = this.ids.get(key3);
@@ -1910,9 +1921,7 @@ var init_key_index = __esm({
         const environments2 = this.readAsOne.get(testFile.project) ?? [];
         let memo2 = keyed.readAsOne;
         if (memo2?.key !== key3 || memo2.environments !== environments2) {
-          const keys = environments2.flatMap(
-            (entry4) => this.keyOf(keyed, entry4.environment, entry4.segment) ?? []
-          );
+          const keys = environments2.flatMap((entry4) => this.keyOf(keyed, entry4.environment, entry4.segment, true) ?? []).filter((readKey) => readKey !== key3);
           memo2 = { key: key3, environments: environments2, keys };
           keyed.readAsOne = memo2;
         }
@@ -1934,14 +1943,21 @@ var init_key_index = __esm({
         }
         return changes;
       }
-      /** `null` while any closure path is untracked. `segment` gives the installed-dependency segment in place of the file's own. */
-      keyOf(keyed, envHash, segment) {
+      /**
+       * `null` while any closure path is untracked. `segment` gives the
+       * installed-dependency segment in place of the file's own; `absent`, each
+       * absent path's segment as keys before task 011-158 held it.
+       */
+      keyOf(keyed, envHash, segment, absent2 = false) {
         const segments2 = [];
-        for (const entry4 of keyed.entries) {
+        const { entries: entries3, closure } = keyed;
+        for (let i3 = 0; i3 < entries3.length; i3++) {
+          const entry4 = entries3[i3];
           if (entry4.hash === void 0) return null;
-          segments2.push(entry4.segment);
+          const former = absent2 && entry4.hash === null;
+          segments2.push(former ? absentSegment(closure.paths[i3]) : entry4.segment);
         }
-        const { testFile } = keyed.closure;
+        const { testFile } = closure;
         const dependencies = segment === void 0 ? keyed.dependencies : segment(testFile);
         return keyFromSegments(envHash, testFile, segments2, dependencies);
       }
@@ -19538,8 +19554,10 @@ var init_keying = __esm({
        * Sets the environment hash of every project from runner output (D3). The
        * runner files and each project's installed lockfile are hashed first; the
        * lockfile is looked up from the project's root (review N8). Each project
-       * gets its hashes at the formats read as one too (011 C3, task 011-38), and
-       * under the definition before task 011-85 (`formerReadAsOne`, 011-90).
+       * gets its hashes at the formats read as one too (011 C3, task 011-38),
+       * under the definition before task 011-85 (`formerReadAsOne`, 011-90), and
+       * its current hash once more for the definition before 011-158, which keyed
+       * absent closure paths (`absentReadAsOne`).
        */
       async setEnvironments(environments2) {
         const { squealVersion: squealVersion2, env } = this.options;
@@ -19570,8 +19588,10 @@ var init_keying = __esm({
             allowlist: policy.env.allowlist,
             ...env === void 0 ? {} : { env }
           });
-          hashes.set(environment.project, environmentHash(core, environment, hashOf2));
+          const hash2 = environmentHash(core, environment, hashOf2);
+          hashes.set(environment.project, hash2);
           readAsOne.set(environment.project, [
+            ...absentReadAsOne(hash2),
             ...formats.map((format) => ({
               environment: environmentHash(core, environment, hashOf2, format)
             })),
