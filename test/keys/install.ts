@@ -165,32 +165,44 @@ export function writePnpmInstall(root: string, fixture: PnpmFixture): void {
   utimesSync(join(root, "node_modules/.pnpm/lock.yaml"), LOCKED, LOCKED);
 }
 
-/** `lock.yaml` of `fixture` as pnpm 12 writes it. */
+/**
+ * `lock.yaml` of `fixture` as pnpm 12 writes it. A skipped package is a
+ * platform one (`os: [darwin]`), an importer declares it as optional, and
+ * its snapshot is marked `optional: true`.
+ */
 export function pnpmLockfileText(fixture: PnpmFixture): string {
   const quoted = (text: string) => (text.startsWith("@") ? `'${text}'` : text);
+  const skipped = (id: string) => fixture.snapshots[id]?.skipped === true;
   const lines = ["lockfileVersion: '9.0'", "", "settings:", "  autoInstallPeers: true"];
   lines.push("  excludeLinksFromLockfile: false", "", "importers:", "");
   for (const [path, declared] of Object.entries(fixture.importers)) {
     const names = Object.keys(declared).sort();
-    lines.push(
-      names.length === 0 ? `  ${path}: {}` : `  ${path}:`,
-      ...(names.length ? ["    dependencies:"] : []),
-    );
-    for (const name of names) {
-      const ref = declared[name] ?? "";
-      const specifier = ref.startsWith("link:") ? "workspace:*" : `^${ref.replace(/\(.*$/, "")}`;
-      lines.push(
-        `      ${quoted(name)}:`,
-        `        specifier: ${specifier}`,
-        `        version: ${quoted(ref)}`,
+    lines.push(names.length === 0 ? `  ${path}: {}` : `  ${path}:`);
+    for (const optional of [false, true]) {
+      const field = names.filter(
+        (name) => skipped(snapshotId(name, declared[name] ?? "")) === optional,
       );
+      if (field.length > 0)
+        lines.push(optional ? "    optionalDependencies:" : "    dependencies:");
+      for (const name of field) {
+        const ref = declared[name] ?? "";
+        const specifier = ref.startsWith("link:") ? "workspace:*" : `^${ref.replace(/\(.*$/, "")}`;
+        lines.push(
+          `      ${quoted(name)}:`,
+          `        specifier: ${specifier}`,
+          `        version: ${quoted(ref)}`,
+        );
+      }
     }
     lines.push("");
   }
   const ids = Object.keys(fixture.snapshots).sort();
   lines.push("packages:", "");
   for (const base of [...new Set(ids.map((id) => id.replace(/\(.*$/, "")))].sort()) {
-    lines.push(`  ${quoted(base)}:`, `    resolution: {integrity: sha512-${base}}`, "");
+    lines.push(`  ${quoted(base)}:`, `    resolution: {integrity: sha512-${base}}`);
+    if (ids.some((id) => id.replace(/\(.*$/, "") === base && skipped(id)))
+      lines.push("    os: [darwin]");
+    lines.push("");
   }
   lines.push("snapshots:", "");
   for (const id of ids) {
@@ -198,7 +210,8 @@ export function pnpmLockfileText(fixture: PnpmFixture): string {
     const fields = (["dependencies", "optionalDependencies"] as const).filter(
       (field) => snapshot[field],
     );
-    lines.push(fields.length === 0 ? `  ${quoted(id)}: {}` : `  ${quoted(id)}:`);
+    const empty = fields.length === 0 && !snapshot.skipped;
+    lines.push(empty ? `  ${quoted(id)}: {}` : `  ${quoted(id)}:`);
     for (const field of fields) {
       lines.push(`    ${field}:`);
       for (const [name, ref] of Object.entries(snapshot[field] ?? {}))
