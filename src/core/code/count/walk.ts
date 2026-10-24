@@ -19,8 +19,11 @@ export interface CountRules {
   readonly classes: ReadonlySet<string>;
   /** Parent types whose children's field names the rules read; the walk reads no other. */
   readonly fieldParents: ReadonlySet<string>;
-  /** A function's or a class's name (D2); an anonymous one's from its call site or receiver. */
-  nameOf(node: Node): string;
+  /**
+   * A function's or a class's name (D2); an anonymous one's from its call site or receiver.
+   * `text` is the file's own, which the parse input can differ from at the same offsets.
+   */
+  nameOf(node: Node, text: string): string;
   /** Where a function's hashed text starts: after its name, so a rename keeps the hash (D2). */
   hashFrom(node: Node): Node;
   /** A node whose decision points are no function's: dropped, its nested functions counted. */
@@ -93,7 +96,7 @@ export function countTree(root: Node, text: string, rules: CountRules): TreeCoun
       }
       if (named && rules.functions.has(type)) {
         const node = cursor.currentNode;
-        const name = rules.nameOf(node);
+        const name = rules.nameOf(node, text);
         const open: Open = {
           qualifiedName: [...names, name].join("."),
           range: rangeAt(cursor),
@@ -107,7 +110,7 @@ export function countTree(root: Node, text: string, rules: CountRules): TreeCoun
         exit.frame = exit.scope = true;
       } else {
         if (named && rules.classes.has(type)) {
-          names.push(rules.nameOf(cursor.currentNode));
+          names.push(rules.nameOf(cursor.currentNode, text));
           exit.scope = true;
         }
         if (ownPath) {
