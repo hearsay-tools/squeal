@@ -1,12 +1,6 @@
 import { join, posix } from "node:path";
 import { compare, isRecord } from "../fs/index.js";
 import type { AbsolutePath, PackageImport, RelativePath } from "../types/index.js";
-import {
-  packageFoldersFingerprint,
-  parseHiddenLockfile,
-  staleHiddenLockfile,
-  withoutOwnVersions,
-} from "./hidden-lockfile.js";
 import { PackageScans } from "./package-scans.js";
 
 /**
@@ -68,9 +62,6 @@ export type LockfileReading =
       readonly graph: PackageGraph | null;
     };
 
-/** A lockfile no reader reads: the fingerprint holds it whole, and keys hold the fingerprint. */
-export const WHOLE: LockfileReading = { manager: null, stale: null, text: null, graph: null };
-
 /** Reads the installed lockfile at `dir`, `base` relative to the worktree (`null` outside it). */
 export type LockfileReader = (
   dir: AbsolutePath,
@@ -78,41 +69,6 @@ export type LockfileReader = (
   content: Buffer,
   scans?: PackageScans,
 ) => LockfileReading;
-
-/**
- * npm's hidden lockfile at `dir`. Task 001-104: it stands for the install
- * only while npm itself would trust it (`staleHiddenLockfile`); otherwise
- * the package folders are fingerprinted instead. Task 011-85: a trusted one
- * enters without the root's and the workspaces' own versions
- * (`withoutOwnVersions`).
- */
-export function npmReading(
-  dir: AbsolutePath,
-  base: RelativePath | null,
-  content: Buffer,
-  scans?: PackageScans,
-): LockfileReading {
-  const hidden = parseHiddenLockfile(content);
-  const stale = staleHiddenLockfile(dir, hidden);
-  if (stale !== null) {
-    return { manager: "npm", stale, folders: packageFoldersFingerprint(dir, hidden), graph: null };
-  }
-  if (hidden === null) return WHOLE;
-  const listed = packagesOf(content);
-  const graph =
-    listed === null || base === null ? null : new InstalledGraph(dir, base, listed, scans);
-  return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
-}
-
-/** The `packages` map of a hidden lockfile, or `null` when it has none. */
-function packagesOf(content: Buffer): Record<string, unknown> | null {
-  try {
-    const parsed: unknown = JSON.parse(content.toString("utf8"));
-    return isRecord(parsed) && isRecord(parsed.packages) ? parsed.packages : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * The installed npm dependency graph of one install, from its hidden
