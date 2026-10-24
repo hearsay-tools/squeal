@@ -1,7 +1,6 @@
 import { isCodeStoreOpenFailure, openCodeStore } from "../code/store/index.js";
 import type { CodeStore } from "../code/store/types.js";
 import { readPolicy } from "../daemon/policy.js";
-import { isBusy } from "../store/connection.js";
 import type { AbsolutePath, Policy } from "../types/index.js";
 
 /*
@@ -56,8 +55,12 @@ export function codeSource(
 
 /**
  * Runs `fn` on the open code store and closes it; `missing` and `null` as
- * `CodeSource.open`. A store busy past its timeout is `null` too: the code
- * part waits for the next delivery rather than fail or stall the caller.
+ * `CodeSource.open`. Any failure in the operation is `null` too: a store
+ * busy past its timeout, a page corrupt past a successful open, a damaged
+ * row. Only the code part is lost, so the test channel's status,
+ * registration, delivery and Stop stay as they are without code (011 C8,
+ * C13; review 0.1.283 B1). A write `fn` makes in a transaction is rolled
+ * back with it; no integrity scan runs here.
  */
 export function withCode<T>(
   source: CodeSource | undefined,
@@ -68,9 +71,8 @@ export function withCode<T>(
     access = source?.open() ?? null;
     if (access === null || access === "missing") return access;
     return fn(access);
-  } catch (error) {
-    if (isBusy(error)) return null;
-    throw error;
+  } catch {
+    return null;
   } finally {
     if (access !== null && access !== "missing") access.store.close();
   }
