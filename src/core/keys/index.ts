@@ -1,4 +1,4 @@
-export { checkKey } from "./check-key.js";
+export { absentReadAsOne, checkKey } from "./check-key.js";
 export {
   assembleClosure,
   CLOSURE_METHOD,
