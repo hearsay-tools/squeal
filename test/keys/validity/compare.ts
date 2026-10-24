@@ -7,12 +7,12 @@ import { changedLines, changedSources, mappedLines, unrun } from "./coverage.js"
 import { esbuildOf, type Install, installLock } from "./lock.js";
 import { pythonsFor } from "./python.js";
 import {
+  allEnded,
   coverageAt,
   driverFile,
-  execute,
+  launch,
   prepare,
-  RUNTIME,
-  runtimeDir,
+  runSide,
   type Side,
   type SideName,
   textsOf,
@@ -156,23 +156,30 @@ export async function compareTrees(options: CompareOptions): Promise<Comparison>
     symlinkSync(join(baseline, "node_modules"), join(sides.baseline.dir, "node_modules"), "dir");
   // Row 011-48: the pytest cases' environments, one per Python, shared by both sides.
   const pythons = pythonsFor(cases, work);
-  const run = (side: Side) =>
-    execute(work, side, "run", cases, runtimeDir(side, RUNTIME), "run", pythons);
-  const outputs = { baseline: run(sides.baseline), candidate: run(sides.candidate) };
+  const [baselineRun, candidateRun] = await allEnded([
+    runSide(work, sides.baseline, cases, pythons),
+    runSide(work, sides.candidate, cases, pythons),
+  ]);
+  const outputs = { baseline: baselineRun, candidate: candidateRun };
   // D1 (a): the candidate decides over the store each tree wrote from the same runs.
-  for (const name of ["baseline", "candidate"] as const) {
-    const label = `decide-${name}`;
-    const stored = storedFor(sides[name], cases, label);
-    const decided = execute(work, sides.candidate, "decide", cases, stored, label);
+  // For coverage only: the release decides over its own store too, so a line
+  // its decisions removed is held to the same proof. Its outputs are dropped;
+  // the compared ones stay D1 (a)'s (review of cand/0.1.228, B1).
+  const decide = (side: Side, over: SideName, label: string) =>
+    launch(work, side, "decide", cases, storedFor(sides[over], cases, label), label);
+  const [byBaseline, byCandidate] = await allEnded([
+    decide(sides.candidate, "baseline", "decide-baseline"),
+    decide(sides.candidate, "candidate", "decide-candidate"),
+    decide(sides.baseline, "baseline", "decide-own"),
+  ]);
+  for (const [name, decided] of [
+    ["baseline", byBaseline],
+    ["candidate", byCandidate],
+  ] as const) {
     for (const [c, output] of Object.entries(decided)) {
       if (outputs[name][c]?.error === undefined) outputs[name][c] = output;
     }
   }
-  // For coverage only: the release decides over its own store too, so a line
-  // its decisions removed is held to the same proof. Its outputs are dropped;
-  // the compared ones stay D1 (a)'s (review of cand/0.1.228, B1).
-  const own = storedFor(sides.baseline, cases, "decide-own");
-  execute(work, sides.baseline, "decide", cases, own, "decide-own");
   const verdicts = cases.map((c) =>
     verdictOf(c, outputs.baseline[c.name] ?? {}, outputs.candidate[c.name] ?? {}),
   );
