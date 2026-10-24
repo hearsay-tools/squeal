@@ -36,6 +36,8 @@ export interface Rig {
   register(consumer: Consumer): Promise<string>;
   /** The code lines told to `consumer` at its next tool boundary; `[]` when nothing is. */
   told(consumer: Consumer): Promise<string[]>;
+  /** Every line of the delivery to `consumer` at its next tool boundary; `[]` when nothing is told. */
+  delivered(consumer: Consumer): Promise<string[]>;
 }
 
 export const consumer = (sessionId: string): Consumer => ({
@@ -89,12 +91,12 @@ export function rig(over: Partial<Policy["complexity"]> = {}): Rig {
       return formatRegistration(await delivery().register(c));
     },
     async told(c) {
+      return (await self.delivered(c)).filter((line) => line.includes(" complexity: "));
+    },
+    async delivered(c) {
       tick();
       const delta = await delivery().onToolBoundary(c);
-      if (delta === null) return [];
-      return formatDelta(delta)
-        .split("\n")
-        .filter((line) => line.includes(" complexity: "));
+      return delta === null ? [] : formatDelta(delta).split("\n");
     },
   };
   return self;
