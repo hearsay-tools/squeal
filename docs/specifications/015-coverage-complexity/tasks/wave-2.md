@@ -65,3 +65,12 @@ Use /worker. Shape: repair. Starts from `5e18ed2b0`, beside R4. Outcome: a setup
 - **B4.** `own-provider.test.ts:112` asserts what holds on both engines: called functions hit, the uncalled arrow and class members have no hit, the early return's lines, and every function range maps into `src/math.ts`. Run the file on Node 22.23.3 (`~/.nvm/versions/node/v22.23.3/bin`) and 24.21.0.
 - **Owns.** `src/runners/vitest/**`, `src/core/code/coverage/**`, `test/runners/vitest/**`, `test/code/coverage/**`, `test/fixtures/vitest/own-provider*/**`, `test/keys/validity/**` if the key-format alarm asks for a case. Leave `src/core/code/count/**` alone.
 - **Done when.** Each reproduction is a test, B2's red first; B4's file passes on both engines; `test/keys/key-format.test.ts` passes. Lint, typecheck and `squeal run --all --wait` pass (bundle-drift failures expected); paste the output. Do not build bundles or raise the version.
+
+## 015-32 round 2: re-review of candidate 0.1.295
+
+Use /reviewer. Candidate `cand/0.1.295`, pinned to the SHA named in the spawn; round 1 is `reviews/0.1.295.md` (FAIL on 2bf279d0d, B1 to B4; that SHA is kept as `review/0.1.295-round1`). Write `reviews/0.1.295-r2.md` and commit it on your branch. The candidate is 015-29, 015-31 and 015-11 again, plus repairs R4 (B1) and R5 (B2 to B4) and a new build commit, on main at 0.1.294 and docs since.
+- Check each blocker's reproduction and repair scope against R4 and R5 (`tasks/R4/notes.md`, `tasks/R5/notes.md`). B3 is the coordinator's decision, not a code repair: D8 now keeps the record of a file that completed whole before a cancel (`status.md`, 2026-10-24); judge the rule and R5's test that pins it. R5 also fixed a defect it found: a crashed or rejected run with coverage on threw a `TypeError` after `closeEmptied`; check that fix and its validity case.
+- 015-31 and the rest of 015-11 passed round 1: re-read only where the repairs touch them.
+- Confirm the candidate's CI is green, the Node 22 shards included.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
