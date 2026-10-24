@@ -109,3 +109,13 @@ Use /worker. Shape: repair. Starts from `int/015f-r1` (0.1.295 with waves 1d and
 - **S1.** An expired record deadline while the writer is busy retries at a bounded future time, never at delay zero; keep the writer callback and the 100 ms coalescing.
 - **Owns.** `src/core/code/crap/**`, `src/core/code/pass/index.ts`, `src/core/daemon/daemon.ts` (the B3 seam), `src/core/code/store/**` if B3 needs a read, and `test/code/crap/**`. Leave `pass.ts`, `head.ts` and `src/core/delivery/**` alone.
 - **Done when.** Each proof in the review is a test, red first. Lint, typecheck and `squeal run --all --wait` pass (bundle-drift failures expected); paste the output. Do not build bundles or raise the version.
+
+## 015-13 round 2: re-review of candidate 0.1.297
+
+Use /reviewer. Candidate `cand/0.1.297`, pinned to the SHA named in the spawn; round 1 is `reviews/0.1.297.md` (FAIL on 8a8beff80, B1 to B5, S1; that SHA is kept as `review/0.1.297-round1`). Write `reviews/0.1.297-r2.md` and commit it on your branch. The candidate is waves 1d and 2b again, plus repair R6 (`tasks/R6/notes.md`), the B5 repair and row 015-38 (`tasks/015-38/notes.md`, brief `tasks/wave-1d.md` W2 and its addition), and a new build commit, now on 0.1.296.
+- Check each blocker's proof and repair scope against R6 and the B5 commit, and S1.
+- R6 also made a record change the review did not ask for: two V8 functions at one span stay two entries (`COVERAGE_PROVIDER_VERSION` 2), for a single arrow field read as run on Node 24. Check it, the one-time re-key, and the agreed `Scheduler.keyIndex()` and `test/version-sensitive.txt` line.
+- **015-38 is new scope:** a `PASS` or `RESOLVED` that git brought, for a function held by count only, is not told; a `FAIL` is. Check it against D6 as amended, including its accepted limits and the coordinator's reading for `crap` and `uncovered`.
+- What passed round 1 (the rest of wave 1d and 015-12): re-read only where the repairs touch it. Confirm the candidate's CI is green, the Node 22 shards included.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
