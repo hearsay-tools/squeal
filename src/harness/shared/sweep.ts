@@ -1,3 +1,4 @@
+import { dropCode } from "../../core/delivery/code-deliver.js";
 import { storePaths } from "../../core/store/index.js";
 import type { Consumer, WorktreeId } from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
@@ -45,6 +46,13 @@ export async function unregisterSession(
     }
   };
   for (const consumer of consumers) await attempt(() => delivery.unregister(consumer));
+  // Spec 015, lessons round 1, P5: the code views of these and of every consumer that left.
+  await attempt(() =>
+    dropCode(context.code, consumers, {
+      worktrees: [...worktrees],
+      registered: [...worktrees].flatMap((id) => store.consumers.list(id).map((r) => r.consumer)),
+    }),
+  );
   if (options.removeLocks) {
     const { locksDir } = storePaths(context.commonDir);
     for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));

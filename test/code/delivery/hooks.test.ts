@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/index.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
+import { seededKey } from "../../../src/core/delivery/code-deliver.js";
 import { type HookDeps, runHook } from "../../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../../src/harness/codex/index.js";
 import { codexRecorded, sessionOf } from "../../harness/codex/helpers.js";
@@ -85,6 +86,24 @@ describe("complexity through the Claude Code hook (015 D6, D7)", () => {
     await runHook("session-start", recorded("session-start", repo.r.root), deps);
     const stop = await runHook("stop", recorded("stop", repo.r.root), deps);
     expect(stop.stdout).toBe("");
+  });
+});
+
+describe("code views end with the session (lessons round 1, P5)", () => {
+  it("drops the session's views and told marks at SessionEnd, and those of a consumer that left", async () => {
+    const repo = withCode();
+    overTheThreshold(repo);
+    const { r, code } = repo;
+    await runHook("session-start", recorded("session-start", r.root), deps);
+    const session = r.consumer();
+    const left = { ...session, sessionId: "gone-without-a-session-end" };
+    code.views.writeMany(left, code.views.list(session));
+    expect(code.views.list(session)).toHaveLength(1);
+    expect(code.meta.get(seededKey(session))).not.toBeNull();
+    await runHook("session-end", recorded("session-end", r.root), deps);
+    expect(code.views.list(session)).toEqual([]);
+    expect(code.views.list(left)).toEqual([]);
+    expect(code.meta.get(seededKey(session))).toBeNull();
   });
 });
 
