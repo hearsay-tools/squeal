@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { pruneCodeStoreAfter } from "../code/store/index.js";
 import {
   dropGoneHarnesses,
   dropLeft,
@@ -370,6 +371,9 @@ export function startTimers(context: TimerContext): () => void {
             maxSizeMb: context.policy.store.maxSizeMb,
           }),
       ],
+      // Spec 015 D4 and D8 (row 015-11, agreed with the coordinator): the code store
+      // after the main store, while it exists and the policy is on.
+      ["code prune", () => pruneCodeStoreAfter(store, context.commonDir, context.policy, now())],
     ]);
 
   const timers = [
