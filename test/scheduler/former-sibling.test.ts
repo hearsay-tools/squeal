@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createFsHasher } from "../../src/core/hash/index.js";
-import { encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
+import { absentSegment, encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
 import { coreEnvironmentInputs, environmentHash, testFileId } from "../../src/core/keys/index.js";
 import {
   type CheckKey,
@@ -45,7 +45,8 @@ const LOOKUP_ONLY = { baseline: { onStart: "lookup-only" as const } };
  * The key 0.1.252 gave `testFile` over the hidden lockfile `lockfile`: its
  * project's environment over every project's config files (`formerFiles`),
  * opaque through b's builtin, so the lockfile whole and no
- * installed-dependency segment.
+ * installed-dependency segment. Its closure's absent snapshot path entered
+ * the key then (`absentSegment`, before task 011-158).
  */
 async function formerKey(h: Harness, testFile: TestFileRef, lockfile: string): Promise<CheckKey> {
   const environment = (await h.runner.environment()).find((e) => e.project === testFile.project);
@@ -63,7 +64,10 @@ async function formerKey(h: Harness, testFile: TestFileRef, lockfile: string): P
     allowlist: DEFAULT_POLICY.env.allowlist,
   });
   const envHash = environmentHash(core, { ...environment, files }, (path) => hashes.get(path));
-  const segments = paths.map((path) => encodeSegment(path, hashes.get(path) ?? null));
+  const segments = paths.map((path) => {
+    const hash = hashes.get(path) ?? null;
+    return hash === null ? absentSegment(path) : encodeSegment(path, hash);
+  });
   return keyFromSegments(envHash, testFile, segments);
 }
 

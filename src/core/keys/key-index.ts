@@ -8,7 +8,7 @@ import type {
   RelativePath,
   TestFileRef,
 } from "../types/index.js";
-import { encodeSegment, keyFromSegments } from "./check-key.js";
+import { absentSegment, encodeSegment, keyFromSegments } from "./check-key.js";
 import { ReverseIndex, testFileId } from "./reverse-index.js";
 
 /** A test file whose key changed. */
@@ -58,6 +58,8 @@ interface Keyed {
  * A project's environment hash at a format or definition read as one (011
  * C3): a format's (task 011-38) or the definition's before task 011-85,
  * which also gives the installed-dependency segment a test file read then.
+ * Every one predates task 011-158, so its key holds each absent path's
+ * `absentSegment`.
  */
 export interface ReadAsOne {
   readonly environment: EnvironmentHash;
@@ -208,11 +210,13 @@ export class KeyIndex {
   /**
    * The test file whose current key is `key`, with its keys at the formats
    * read as one (spec 011 C3 as amended 2026-10-20, task 011-38) and under
-   * the definition before task 011-85 (011-90), computed over the segments
-   * the index holds, each entry's installed-dependency segment in place of
-   * the file's own, once per key. `setClosure` and `setInstalled` drop the
-   * memo, so a segment is read with the packages the key was computed over.
-   * `null` when no test file holds `key` now.
+   * the definitions before task 011-85 (011-90) and 011-158, computed over
+   * the segments the index holds, each entry's installed-dependency segment
+   * in place of the file's own, and each absent path as `absentSegment`,
+   * once per key. A key equal to `key` is left out: a closure with no absent
+   * path keys alike under 011-158's definition. `setClosure` and
+   * `setInstalled` drop the memo, so a segment is read with the packages the
+   * key was computed over. `null` when no test file holds `key` now.
    */
   keysReadAsOne(key: CheckKey): KeysReadAsOne | null {
     const id = this.ids.get(key);
@@ -222,9 +226,9 @@ export class KeyIndex {
     const environments = this.readAsOne.get(testFile.project) ?? [];
     let memo = keyed.readAsOne;
     if (memo?.key !== key || memo.environments !== environments) {
-      const keys = environments.flatMap(
-        (entry) => this.keyOf(keyed, entry.environment, entry.segment) ?? [],
-      );
+      const keys = environments
+        .flatMap((entry) => this.keyOf(keyed, entry.environment, entry.segment, true) ?? [])
+        .filter((readKey) => readKey !== key);
       memo = { key, environments, keys };
       keyed.readAsOne = memo;
     }
@@ -248,18 +252,26 @@ export class KeyIndex {
     return changes;
   }
 
-  /** `null` while any closure path is untracked. `segment` gives the installed-dependency segment in place of the file's own. */
+  /**
+   * `null` while any closure path is untracked. `segment` gives the
+   * installed-dependency segment in place of the file's own; `absent`, each
+   * absent path's segment as keys before task 011-158 held it.
+   */
   private keyOf(
     keyed: Keyed,
     envHash: EnvironmentHash,
     segment?: ReadAsOne["segment"],
+    absent = false,
   ): CheckKey | null {
     const segments: string[] = [];
-    for (const entry of keyed.entries) {
+    const { entries, closure } = keyed;
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i] as PathEntry;
       if (entry.hash === undefined) return null;
-      segments.push(entry.segment);
+      const former = absent && entry.hash === null;
+      segments.push(former ? absentSegment(closure.paths[i] as RelativePath) : entry.segment);
     }
-    const { testFile } = keyed.closure;
+    const { testFile } = closure;
     const dependencies = segment === undefined ? keyed.dependencies : segment(testFile);
     return keyFromSegments(envHash, testFile, segments, dependencies);
   }

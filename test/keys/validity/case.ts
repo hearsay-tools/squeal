@@ -71,6 +71,8 @@ export interface AcceptInput {
    * with its own keys read as one (task 011-85 R4).
    */
   readonly installed?: Readonly<Record<string, string>>;
+  /** With `installed`: paths with no file that the file's closure names, as a snapshot path (task 011-158). */
+  readonly absent?: readonly string[];
   /**
    * The receiver is keyed at the key first, and each run is stored as its
    * scheduler stores one (`storeResults`), so a pass that replaces a fail
