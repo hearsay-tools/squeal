@@ -1,8 +1,14 @@
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/index.js";
-import { readFocused } from "../core/scheduler/focused-row.js";
 import { slowView } from "../core/scheduler/slow.js";
 import { formatCheck } from "../core/state/index.js";
+import {
+  type FocusedRead,
+  type FocusTally,
+  focusedCheckOf,
+  focusedTally,
+  readFocusedFiles,
+} from "../core/status/focused.js";
 import type {
   AbsolutePath,
   CheckKey,
@@ -14,7 +20,8 @@ import type {
   TestFileRef,
   WorktreeId,
 } from "../core/types/index.js";
-import { answerOf, type FocusTally, holdsText, storedTally } from "./status-wait-focus-answer.js";
+import { holdsCheckText } from "../runners/focus.js";
+import { answerOf } from "./status-wait-focus-answer.js";
 import type { FocusReply } from "./status-wait-promote.js";
 
 /*
@@ -93,9 +100,6 @@ export function wholeFileReasons(
   return reasons;
 }
 
-/** One selected check of a stored result, in a focused run's shape. */
-export type StoredCheck = StatusFocusedCheck;
-
 /**
  * What the wait knows of one file named by its own path: why it gets no
  * focused run; the focused run at its current key for the wait's texts,
@@ -113,7 +117,7 @@ export interface FocusedFile {
    * proves no pass (`answerOf`'s fallback, review 0.1.286 B2).
    */
   readonly whole?: string;
-  /** Its newest focused run at its current key whose texts hold the wait's, ended or not, as `answerOf` gives it. */
+  /** Its newest focused run while it applies, its texts holding the wait's, ended or not, as `answerOf` gives it. */
   readonly run?: StatusFocused;
   /** The count it answers with: of the stored result, else of its ended run (B2). */
   readonly tally?: FocusTally;
@@ -121,7 +125,7 @@ export interface FocusedFile {
   readonly stored?: {
     readonly revision: RevisionNumber;
     readonly runId: string;
-    readonly checks: readonly StoredCheck[];
+    readonly checks: readonly StatusFocusedCheck[];
     readonly collected: number;
   };
 }
@@ -132,66 +136,45 @@ export function answered(file: FocusedFile): boolean {
 }
 
 /**
- * Each of `files` as the wait reads it, from one read of the store: the
- * focused meta row, the files' keys and the results stored at those keys.
+ * One file named by its own path as the wait reads it (`FocusedFile`), from
+ * its focused read: a result its own run stored at the key supersedes the
+ * focused run (C5).
  */
-export function readFocusedFiles(
-  store: Store,
-  worktreeId: WorktreeId,
-  files: readonly TestFileRef[],
+function focusedFileOf(
+  read: FocusedRead,
   texts: readonly string[],
   whole: ReadonlyMap<string, string>,
-): FocusedFile[] {
-  const keys = new Map(
-    store.testFileKeys.list(worktreeId, files).map((row) => [testFileId(row.testFile), row.key]),
-  );
-  const runs = new Map(
-    readFocused(store, worktreeId).map((run) => [testFileId(run.testFile), run]),
-  );
-  return files.map((testFile) => {
-    const id = testFileId(testFile);
-    const key = keys.get(id) ?? null;
-    const reason = whole.get(id);
-    if (reason !== undefined) return { testFile, key, whole: reason };
-    const own = runs.get(id);
-    const answer =
-      own !== undefined && key !== null && own.key === key ? answerOf(own, texts) : undefined;
-    // `usedAt` 0: a read, not a lookup hit.
-    const results = key === null ? [] : store.results.byKey(key, 0);
-    const stored = results.length === 0 ? undefined : storedOf(results, texts);
-    // A result its own run stored at the key supersedes the focused run (C5).
-    const tally = stored === undefined ? answer?.tally : storedTally(stored.checks);
-    const fallback = stored === undefined ? answer?.fallback : undefined;
-    return {
-      testFile,
-      key,
-      ...(fallback === undefined ? {} : { whole: fallback }),
-      ...(answer === undefined ? {} : { run: answer.run }),
-      ...(stored === undefined ? {} : { stored }),
-      ...(tally === undefined ? {} : { tally }),
-    };
-  });
+): FocusedFile {
+  const { testFile, key, run, results } = read;
+  const reason = whole.get(testFileId(testFile));
+  if (reason !== undefined) return { testFile, key, whole: reason };
+  if (results.length > 0) {
+    const stored = storedOf(results, texts);
+    return { testFile, key, stored, tally: focusedTally({ checks: stored.checks, more: 0 }) };
+  }
+  const answer = run !== undefined && read.applies ? answerOf(run, texts) : undefined;
+  if (answer === undefined) return { testFile, key };
+  return {
+    testFile,
+    key,
+    ...(answer.fallback === undefined ? {} : { whole: answer.fallback }),
+    run: answer.run,
+    ...(answer.tally === undefined ? {} : { tally: answer.tally }),
+  };
 }
 
 function storedOf(
   results: readonly ResultRecord[],
   texts: readonly string[],
-): FocusedFile["stored"] {
+): NonNullable<FocusedFile["stored"]> {
   const selected = results.filter((r) =>
-    r.check.kind === "test" ? holdsText(r.check.fullName, texts) : r.outcome === "fail",
+    r.check.kind === "test" ? holdsCheckText(r.check.fullName, texts) : r.outcome === "fail",
   );
   const [first] = results;
   return {
     revision: (first?.provenance.revision ?? 0) as RevisionNumber,
     runId: first?.provenance.runId ?? "",
-    checks: selected.map((r) => ({
-      check: r.check,
-      name: formatCheck(r.check),
-      outcome: r.outcome,
-      durationMs: r.durationMs,
-      summary: r.summary,
-      location: r.location,
-    })),
+    checks: selected.map(focusedCheckOf),
     collected: results.filter((r) => r.check.kind === "test").length,
   };
 }
@@ -255,7 +238,7 @@ export function checkUsage(
   return checks.length > 0 && ready && own.length === 0 ? { usage: CHECK_NEEDS_TEST_FILE } : null;
 }
 
-/** Row 011-146 (C15): `checkUsage`'s error; `printNamedRead` exits 2 with it. */
+/** Row 011-146 (C15): `checkUsage`'s error; `printNamed` exits 2 with it. */
 export class CheckUsageError extends Error {}
 
 /**
@@ -275,7 +258,9 @@ export function focusOf(
 ): NamedFocus | undefined {
   if (checks.length === 0 || own.length === 0) return undefined;
   const texts = focusTexts(checks, own);
-  const files = readFocusedFiles(store, worktreeId, own, texts, whole);
+  const files = readFocusedFiles(store, worktreeId, own).map((read) =>
+    focusedFileOf(read, texts, whole),
+  );
   const refused =
     reply === "refused" ? { refused: { version: record?.squealVersion ?? null } } : {};
   return { texts, files, ...refused };
