@@ -30,34 +30,36 @@ export interface ParsedPython {
 }
 
 let parser: Parser | null = null;
-let runtime: Promise<void> | null = null;
+/** web-tree-sitter's runtime is initialised in this process. */
+let runtimeReady = false;
 let loading: Promise<void> | null = null;
 
 /**
  * Compiles web-tree-sitter and the tree-sitter-python grammar once (module-
- * graph Q1); await before {@link parsePython} or {@link withPythonTree}. A
- * load that fails is made again at the next call, so the code counter's
- * retry can succeed (spec 015 D4; review 0.1.293 B3). The runtime, once
- * initialised, is not initialised again: a second `Parser.init` would
- * replace it under every parser already made.
+ * graph Q1); await before {@link parsePython} or {@link withPythonTree}.
+ * Calls during a load share it. A load that fails is made again at the
+ * next call, so the code counter's retry can succeed (spec 015 D4; review
+ * 0.1.293 B3). The runtime, once initialised, is not initialised again: a
+ * second `Parser.init` would replace it under every parser already made.
  */
 export function pythonParserReady(): Promise<void> {
-  loading ??= (async () => {
-    const wasm = loadWasm();
-    runtime ??= Parser.init({ wasmBinary: wasm.runtime }).catch((error: unknown) => {
-      runtime = null;
-      throw error;
-    });
-    await runtime;
-    const language = await Language.load(wasm.grammar);
-    const created = new Parser();
-    created.setLanguage(language);
-    parser = created;
-  })().catch((error: unknown) => {
+  if (parser !== null) return Promise.resolve();
+  loading ??= loadPythonParser().finally(() => {
     loading = null;
-    throw error;
   });
   return loading;
+}
+
+async function loadPythonParser(): Promise<void> {
+  const wasm = loadWasm();
+  if (!runtimeReady) {
+    await Parser.init({ wasmBinary: wasm.runtime });
+    runtimeReady = true;
+  }
+  const language = await Language.load(wasm.grammar);
+  const created = new Parser();
+  created.setLanguage(language);
+  parser = created;
 }
 
 /** Runs `fn` over the parse of `source`, freeing the tree after. */
