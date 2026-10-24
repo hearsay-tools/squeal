@@ -187,7 +187,17 @@ var DEFAULT_POLICY = {
   },
   delivery: { uncoveredEdits: true },
   daemon: { idleExitMinutes: 60, unusedExitMinutes: 30 },
-  store: { retentionDays: 7, maxSizeMb: null }
+  store: { retentionDays: 7, maxSizeMb: null },
+  complexity: {
+    enabled: false,
+    threshold: 20,
+    include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
+    exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
+    maxFileBytes: 524288,
+    blocking: false
+  },
+  coverage: { enabled: false },
+  crap: { threshold: 30 }
 };
 
 // src/core/types/runner.ts
@@ -362,9 +372,9 @@ function globToRegExp(glob) {
   const source = glob.startsWith("./") ? glob.slice(2) : glob;
   return new RegExp(`^${compile(source, glob)}$`, "s");
 }
-function createInputMatcher(globs2) {
-  if (globs2.length === 0) return () => false;
-  const patterns = globs2.map(globToRegExp);
+function createInputMatcher(globs3) {
+  if (globs3.length === 0) return () => false;
+  const patterns = globs3.map(globToRegExp);
   return (path) => patterns.some((pattern) => pattern.test(path));
 }
 function compile(glob, original) {
@@ -433,8 +443,8 @@ function splitTopLevel(body) {
 }
 
 // src/core/daemon/policy-node-test.ts
-function compiles(globs2) {
-  for (const glob of globs2) {
+function compiles(globs3) {
+  for (const glob of globs3) {
     try {
       globToRegExp(glob);
     } catch (error) {
@@ -506,6 +516,23 @@ function entryProblem(entry3, at, kept, fields, required, check) {
   return null;
 }
 
+// src/core/daemon/policy-code.ts
+var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
+var globs2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
+var aboveZero = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? null : "a number > 0";
+var CODE_SHAPE = {
+  complexity: {
+    enabled: boolean2,
+    threshold: positiveInteger,
+    include: globs2,
+    exclude: globs2,
+    maxFileBytes: positiveInteger,
+    blocking: boolean2
+  },
+  coverage: { enabled: boolean2 },
+  crap: { threshold: aboveZero }
+};
+
 // src/core/daemon/policy-pytest.ts
 import { isAbsolute as isAbsolute4, posix as posix2 } from "node:path";
 var FIELDS2 = {
@@ -557,36 +584,36 @@ function slowInclude(value) {
 
 // src/core/daemon/policy.ts
 var POLICY_FILE = "squeal.config.json";
-var boolean2 = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
   const isList = strings2(v) === null;
-  if (!isList && !(isRecord(v) && Object.values(v).every((globs3) => strings2(globs3) === null))) {
+  if (!isList && !(isRecord(v) && Object.values(v).every((globs4) => strings2(globs4) === null))) {
     return "an array of strings, or an object from test-file glob to an array of strings";
   }
-  const globs2 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
-  return compiles(globs2);
+  const globs3 = isList ? v : Object.entries(v).flatMap(([test, input]) => [test, ...input]);
+  return compiles(globs3);
 };
 var atLeastZero = (v) => isNumber(v) && v >= 0 ? null : "a number >= 0";
-var aboveZero = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
+var aboveZero2 = (v) => isNumber(v) && v > 0 ? null : "a number > 0";
 var orNull = (leaf) => (v) => {
   const expected = v === null ? null : leaf(v);
   return expected === null || typeof expected === "object" ? expected : `${expected}, or null`;
 };
 var oneOf = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
-  interrupt: { onRegression: boolean2 },
+  interrupt: { onRegression: boolean3 },
   stop: {
-    blockOnKnownFailures: boolean2,
-    requireFullSuite: boolean2,
+    blockOnKnownFailures: boolean3,
+    requireFullSuite: boolean3,
     waitMs: atLeastZero,
-    requireSlowSuite: boolean2,
+    requireSlowSuite: boolean3,
     slowWaitMs: atLeastZero
   },
-  testCommand: { denyWhenCurrent: boolean2 },
+  testCommand: { denyWhenCurrent: boolean3 },
   baseline: { onStart: oneOf("lookup-then-run-missing", "lookup-only") },
   inputs,
-  observe: { runtimeInputs: boolean2 },
+  observe: { runtimeInputs: boolean3 },
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
@@ -599,7 +626,7 @@ var SHAPE = {
   slow: {
     include: slowInclude,
     maxWorkers: positiveInteger,
-    maxLoadPerCpu: aboveZero,
+    maxLoadPerCpu: aboveZero2,
     maxDeferMs: atLeastZero,
     maxParallel: positiveInteger,
     rank: oneOf("tokens", "duration"),
@@ -607,9 +634,10 @@ var SHAPE = {
     trigger: oneOf("continuous", "idle"),
     quietMs: atLeastZero
   },
-  delivery: { uncoveredEdits: boolean2 },
-  daemon: { idleExitMinutes: aboveZero, unusedExitMinutes: aboveZero },
-  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) }
+  delivery: { uncoveredEdits: boolean3 },
+  daemon: { idleExitMinutes: aboveZero2, unusedExitMinutes: aboveZero2 },
+  store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero2) },
+  ...CODE_SHAPE
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join3(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
@@ -628,7 +656,7 @@ function isNumber(value) {
 
 // src/harness/shared/deny.ts
 import { readFileSync as readFileSync8, realpathSync as realpathSync3 } from "node:fs";
-import { join as join15, resolve as resolve6 } from "node:path";
+import { join as join16, resolve as resolve6 } from "node:path";
 
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
@@ -1096,13 +1124,13 @@ function slowFiles(policy, projects) {
   return (testFile) => slowProjects.has(testFile.project) || matches2(testFile.path);
 }
 function slowGlobs(policy, projects) {
-  const globs2 = [...policy.slow.include];
+  const globs3 = [...policy.slow.include];
   for (const project of projects) {
     if (project.slow !== true) continue;
     const cwd = project.cwd ?? ".";
-    for (const glob of project.include) globs2.push(posix3.join(cwd, glob));
+    for (const glob of project.include) globs3.push(posix3.join(cwd, glob));
   }
-  return globs2;
+  return globs3;
 }
 
 // src/core/slow/state.ts
@@ -1174,11 +1202,11 @@ function forgetStopWait(store, consumer) {
 
 // src/core/state/slow.ts
 function slowPolicyView(policy) {
-  const globs2 = slowGlobs(policy, policy.nodeTest);
-  if (globs2.length === 0) return null;
+  const globs3 = slowGlobs(policy, policy.nodeTest);
+  if (globs3.length === 0) return null;
   return {
     isSlow: slowFiles(policy, policy.nodeTest),
-    slowGlobs: globs2,
+    slowGlobs: globs3,
     stopWaitMs: stopSlowWaitMs(policy),
     pausesOnly: policy.slow.trigger === "idle"
   };
@@ -4078,6 +4106,924 @@ function nodeFailing(store, worktreeId, failing) {
   return failing.some((check) => !pytest.has(check.project) && NODE_TEST_FILE.test(check.testPath));
 }
 
+// src/core/types/code-delivery.ts
+var CODE_LISTED_MAX = 5;
+
+// src/core/delivery/code-delta.ts
+function codeKey({ check, measure: measure2 }) {
+  return JSON.stringify([check.path, check.qualifiedName, check.occurrence, measure2]);
+}
+function seedEntry(state, toldAt) {
+  return {
+    check: state.check,
+    measure: state.measure,
+    outcome: state.outcome,
+    threshold: state.threshold,
+    told: "count",
+    toldAt
+  };
+}
+var judged = (state) => state.outcome === "pass" || state.outcome === "fail";
+var RANK = {
+  "pass-to-fail": 0,
+  "first-seen-fail": 0,
+  "fail-to-pass": 1,
+  removed: 2,
+  edited: 3
+};
+function toldKind(told, now, last, after) {
+  if (last === null || last.at <= after) return null;
+  if (now === null) return told?.outcome === "fail" && last.kind === "removed" ? "removed" : null;
+  if (now.outcome === "fail" && told?.outcome !== "fail") {
+    return last.kind === "first-seen-fail" || last.kind === "pass-to-fail" ? last.kind : null;
+  }
+  if (now.outcome === "pass" && told?.outcome === "fail") {
+    return last.kind === "fail-to-pass" ? last.kind : null;
+  }
+  return null;
+}
+function standingEdit(told, now, input) {
+  if (now.outcome !== "fail" || told.told !== "count") return null;
+  const edit = input.edit(now.check, now.measure);
+  return edit !== null && edit.at > Math.max(input.seededAt, told.toldAt) ? edit : null;
+}
+function planCodeDelta(input) {
+  const told = new Map(input.view.map((v) => [codeKey(v), v]));
+  const entries = [];
+  const writes = [];
+  for (const state of input.states) {
+    const key = codeKey(state);
+    const before = told.get(key) ?? null;
+    told.delete(key);
+    if (!judged(state)) continue;
+    if (before?.outcome === state.outcome && before.threshold === state.threshold) {
+      const edit = standingEdit(before, state, input);
+      if (edit === null) continue;
+      writes.push({ ...seedEntry(state, input.toldAt), told: "full" });
+      entries.push({
+        check: state.check,
+        measure: state.measure,
+        kind: "edited",
+        value: state.value,
+        threshold: state.threshold,
+        revision: edit.revision
+      });
+      continue;
+    }
+    const last = input.last(state.check, state.measure);
+    const kind = toldKind(before, state, last, Math.max(input.seededAt, before?.toldAt ?? 0));
+    if (kind === null) {
+      writes.push(seedEntry(state, input.toldAt));
+      continue;
+    }
+    writes.push({ ...seedEntry(state, input.toldAt), told: "full" });
+    entries.push({
+      check: state.check,
+      measure: state.measure,
+      kind,
+      value: state.value,
+      threshold: state.threshold,
+      revision: last?.revision ?? state.changedAt
+    });
+  }
+  const removals = [];
+  for (const view of told.values()) {
+    removals.push({ check: view.check, measure: view.measure });
+    const last = view.outcome === "fail" ? input.last(view.check, view.measure) : null;
+    if (last === null || toldKind(view, null, last, view.toldAt) === null) continue;
+    entries.push({
+      check: view.check,
+      measure: view.measure,
+      kind: "removed",
+      value: last.fromValue,
+      threshold: view.threshold,
+      revision: last.revision
+    });
+  }
+  const sorted = entries.map((entry3, i) => ({ entry: entry3, i })).sort((a, b) => RANK[a.entry.kind] - RANK[b.entry.kind] || a.i - b.i).map(({ entry: entry3 }) => entry3);
+  return { entries: sorted, writes, removals };
+}
+
+// src/core/code/store/open.ts
+import { existsSync as existsSync4, mkdirSync as mkdirSync2 } from "node:fs";
+import { join as join7 } from "node:path";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+
+// src/core/code/store/schema.ts
+var V12 = `
+CREATE TABLE meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE counts (
+  blob TEXT NOT NULL,
+  language TEXT NOT NULL,
+  counter_version INTEGER NOT NULL,
+  functions TEXT NOT NULL,
+  errors TEXT NOT NULL,
+  counted_at INTEGER NOT NULL,
+  PRIMARY KEY (blob, language, counter_version)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE files (
+  worktree_id TEXT NOT NULL,
+  path TEXT NOT NULL,
+  blob TEXT NOT NULL,
+  language TEXT NOT NULL,
+  counter_version INTEGER NOT NULL,
+  size INTEGER NOT NULL,
+  revision INTEGER NOT NULL,
+  too_big INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (worktree_id, path)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX files_by_count ON files (blob, language, counter_version);
+
+CREATE TABLE checks (
+  id INTEGER PRIMARY KEY,
+  path TEXT NOT NULL,
+  qualified_name TEXT NOT NULL,
+  occurrence INTEGER NOT NULL,
+  UNIQUE (path, qualified_name, occurrence)
+) STRICT;
+
+CREATE TABLE states (
+  worktree_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  measure TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  value REAL,
+  threshold REAL,
+  counted_at INTEGER NOT NULL,
+  blob TEXT NOT NULL,
+  changed_at INTEGER NOT NULL,
+  edited_revision INTEGER,
+  edited_at INTEGER,
+  PRIMARY KEY (worktree_id, check_id, measure)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE transitions (
+  id INTEGER PRIMARY KEY,
+  worktree_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  measure TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  from_outcome TEXT,
+  to_outcome TEXT,
+  from_value REAL,
+  to_value REAL,
+  threshold REAL,
+  revision INTEGER NOT NULL,
+  at INTEGER NOT NULL
+) STRICT;
+CREATE INDEX transitions_by_check ON transitions (worktree_id, check_id, id);
+
+CREATE TABLE views (
+  worktree_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  agent_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  measure TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  threshold REAL,
+  told TEXT NOT NULL,
+  told_at INTEGER NOT NULL,
+  PRIMARY KEY (worktree_id, session_id, agent_id, check_id, measure)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE coverage (
+  result_key TEXT NOT NULL,
+  provider_version INTEGER NOT NULL,
+  record BLOB NOT NULL,
+  recorded_at INTEGER NOT NULL,
+  PRIMARY KEY (result_key, provider_version)
+) STRICT, WITHOUT ROWID;
+`;
+var CODE_MIGRATIONS = [(db) => db.exec(V12)];
+var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
+
+// src/core/code/store/counts.ts
+var LANGUAGES = [
+  "typescript",
+  "javascript",
+  "python"
+];
+function createCountRepo(conn) {
+  return {
+    get(blob, language, counterVersion) {
+      const row = conn.get(
+        "SELECT * FROM counts WHERE blob = ? AND language = ? AND counter_version = ?",
+        blob,
+        language,
+        counterVersion
+      );
+      return row === null ? null : toCount(row);
+    },
+    put(count, at) {
+      conn.run(
+        `INSERT INTO counts (blob, language, counter_version, functions, errors, counted_at)
+         VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+        count.blob,
+        count.language,
+        count.counterVersion,
+        JSON.stringify(count.functions),
+        JSON.stringify(count.errors),
+        at
+      );
+    }
+  };
+}
+function createFileRepo(conn) {
+  return {
+    list(worktreeId, paths) {
+      const rows = paths === void 0 ? conn.all("SELECT * FROM files WHERE worktree_id = ? ORDER BY path", worktreeId) : conn.all(
+        `SELECT * FROM files WHERE worktree_id = ? AND path IN (SELECT value FROM json_each(?))
+               ORDER BY path`,
+        worktreeId,
+        JSON.stringify(paths)
+      );
+      return rows.map(toFile);
+    },
+    uncounted(worktreeId) {
+      return conn.all(
+        `SELECT * FROM files f WHERE f.worktree_id = ? AND f.too_big = 0 AND NOT EXISTS (
+             SELECT 1 FROM counts c WHERE c.blob = f.blob AND c.language = f.language
+               AND c.counter_version = f.counter_version)
+           ORDER BY f.path`,
+        worktreeId
+      ).map(toFile);
+    },
+    upsertMany(worktreeId, files2) {
+      conn.transaction(() => {
+        for (const file of files2) {
+          conn.run(
+            `INSERT INTO files (worktree_id, path, blob, language, counter_version, size, revision,
+               too_big) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT (worktree_id, path) DO UPDATE SET blob = excluded.blob,
+               language = excluded.language, counter_version = excluded.counter_version,
+               size = excluded.size, revision = excluded.revision, too_big = excluded.too_big`,
+            worktreeId,
+            file.path,
+            file.blob,
+            file.language,
+            file.counterVersion,
+            file.size,
+            file.revision,
+            file.tooBig === true ? 1 : 0
+          );
+        }
+      });
+    },
+    removeMany(worktreeId, paths) {
+      conn.run(
+        "DELETE FROM files WHERE worktree_id = ? AND path IN (SELECT value FROM json_each(?))",
+        worktreeId,
+        JSON.stringify(paths)
+      );
+    }
+  };
+}
+function toCount(row) {
+  return {
+    blob: str(row, "blob"),
+    language: oneOf2(row, "language", LANGUAGES),
+    counterVersion: num(row, "counter_version"),
+    functions: json(row, "functions"),
+    errors: json(row, "errors")
+  };
+}
+function toFile(row) {
+  return {
+    path: str(row, "path"),
+    blob: str(row, "blob"),
+    language: oneOf2(row, "language", LANGUAGES),
+    counterVersion: num(row, "counter_version"),
+    size: num(row, "size"),
+    revision: num(row, "revision"),
+    ...num(row, "too_big") === 1 ? { tooBig: true } : {}
+  };
+}
+
+// src/core/code/store/prune.ts
+var DAY_MS2 = 24 * 60 * 60 * 1e3;
+var DELETE_BATCH2 = 256;
+var VACUUM_PAGES2 = 512;
+var DEAD_WORKTREE = "worktree_id NOT IN (SELECT value FROM json_each(?))";
+var PER_WORKTREE = [
+  ["files", "worktree_id, path"],
+  ["states", "worktree_id, check_id, measure"],
+  ["views", "worktree_id, session_id, agent_id, check_id, measure"],
+  ["transitions", "id"]
+];
+function pruneCodeStore(conn, options) {
+  const cutoff = options.now - options.retentionDays * DAY_MS2;
+  const live = JSON.stringify(options.worktrees);
+  const worktreesRemoved = conn.all(
+    `SELECT DISTINCT worktree_id FROM (SELECT worktree_id FROM files UNION
+         SELECT worktree_id FROM states UNION SELECT worktree_id FROM views
+         UNION SELECT worktree_id FROM transitions) WHERE ${DEAD_WORKTREE}`,
+    live
+  ).length;
+  for (const [table, key] of PER_WORKTREE) deleteInBatches(conn, table, key, DEAD_WORKTREE, live);
+  const viewsRemoved = deleteInBatches(
+    conn,
+    "views",
+    "worktree_id, session_id, agent_id, check_id, measure",
+    `(worktree_id, session_id, agent_id) NOT IN (
+       SELECT value ->> 'worktreeId', value ->> 'sessionId', value ->> 'agentId'
+       FROM json_each(?))`,
+    JSON.stringify(options.consumers)
+  );
+  const countsRemoved = deleteInBatches(
+    conn,
+    "counts",
+    "blob, language, counter_version",
+    `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
+       AND f.language = counts.language AND f.counter_version = counts.counter_version)
+     AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
+    cutoff
+  );
+  const coverageRemoved = deleteInBatches(
+    conn,
+    "coverage",
+    "result_key, provider_version",
+    "recorded_at < ?",
+    cutoff
+  );
+  const checksRemoved = deleteInBatches(
+    conn,
+    "checks",
+    "id",
+    `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
+       UNION SELECT check_id FROM transitions)`
+  );
+  vacuum2(conn);
+  return { countsRemoved, coverageRemoved, worktreesRemoved, viewsRemoved, checksRemoved };
+}
+function deleteInBatches(conn, table, key, where3, ...params) {
+  let removed = 0;
+  for (; ; ) {
+    const changed = conn.transaction(
+      () => conn.run(
+        `DELETE FROM ${table} WHERE (${key}) IN (
+           SELECT ${key} FROM ${table} WHERE ${where3} LIMIT ${DELETE_BATCH2})`,
+        ...params
+      )
+    );
+    removed += changed;
+    if (changed < DELETE_BATCH2) return removed;
+  }
+}
+function vacuum2(conn) {
+  let free = freePages(conn);
+  while (free > 0) {
+    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES2})`);
+    const left = freePages(conn);
+    if (left >= free) return;
+    free = left;
+  }
+}
+function freePages(conn) {
+  return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
+}
+
+// src/core/code/store/states.ts
+var MEASURES = [
+  "complexity",
+  "crap",
+  "uncovered"
+];
+var OUTCOMES5 = [
+  "pass",
+  "fail",
+  "pending",
+  "unknown"
+];
+var KINDS2 = [
+  "first-seen-fail",
+  "pass-to-fail",
+  "fail-to-pass",
+  "removed"
+];
+var CHECK_WHERE2 = "path = ? AND qualified_name = ? AND occurrence = ?";
+function checkParams2(check) {
+  return [check.path, check.qualifiedName, check.occurrence];
+}
+function findCodeCheckId(conn, check) {
+  const row = conn.get(`SELECT id FROM checks WHERE ${CHECK_WHERE2}`, ...checkParams2(check));
+  return row === null ? null : num(row, "id");
+}
+function ensureCodeCheckId(conn, check) {
+  conn.run(
+    "INSERT INTO checks (path, qualified_name, occurrence) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+    ...checkParams2(check)
+  );
+  const id = findCodeCheckId(conn, check);
+  if (id === null) throw new Error("squeal code store: check row missing after insert");
+  return id;
+}
+var CHECK_COLUMNS2 = "c.path, c.qualified_name, c.occurrence";
+function checkFrom2(row) {
+  return {
+    kind: "code",
+    path: str(row, "path"),
+    qualifiedName: str(row, "qualified_name"),
+    occurrence: num(row, "occurrence")
+  };
+}
+function createStateRepo(conn) {
+  return {
+    list(worktreeId, filter = {}) {
+      return conn.all(
+        `SELECT s.*, ${CHECK_COLUMNS2} FROM states s JOIN checks c ON c.id = s.check_id
+           WHERE s.worktree_id = ?
+             AND (? IS NULL OR c.path IN (SELECT value FROM json_each(?)))
+             AND (? IS NULL OR s.measure = ?) AND (? IS NULL OR s.outcome = ?)
+           ORDER BY c.path, c.qualified_name, c.occurrence, s.measure`,
+        worktreeId,
+        ...Array(2).fill(filter.paths === void 0 ? null : JSON.stringify(filter.paths)),
+        ...Array(2).fill(filter.measure ?? null),
+        ...Array(2).fill(filter.outcome ?? null)
+      ).map((row) => toState(worktreeId, row));
+    },
+    upsertMany(states) {
+      conn.transaction(() => {
+        for (const state of states) {
+          conn.run(
+            `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
+               counted_at, blob, changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT (worktree_id, check_id, measure) DO UPDATE SET
+               outcome = excluded.outcome, value = excluded.value, threshold = excluded.threshold,
+               counted_at = excluded.counted_at, blob = excluded.blob,
+               changed_at = excluded.changed_at`,
+            state.worktreeId,
+            ensureCodeCheckId(conn, state.check),
+            state.measure,
+            state.outcome,
+            state.value,
+            state.threshold,
+            state.countedAt,
+            state.blob,
+            state.changedAt
+          );
+        }
+      });
+    },
+    edits(worktreeId, measure2) {
+      return conn.all(
+        `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS2}
+           FROM states s JOIN checks c ON c.id = s.check_id
+           WHERE s.worktree_id = ? AND s.measure = ? AND s.edited_at IS NOT NULL
+           ORDER BY c.path, c.qualified_name, c.occurrence`,
+        worktreeId,
+        measure2
+      ).map(toEdit);
+    },
+    markEdited(worktreeId, edits) {
+      conn.transaction(() => {
+        for (const edit of edits) {
+          const id = findCodeCheckId(conn, edit.check);
+          if (id === null) continue;
+          conn.run(
+            `UPDATE states SET edited_revision = ?, edited_at = ?
+             WHERE worktree_id = ? AND check_id = ? AND measure = ?`,
+            edit.revision,
+            edit.at,
+            worktreeId,
+            id,
+            edit.measure
+          );
+        }
+      });
+    },
+    removeMany(worktreeId, checks) {
+      conn.transaction(() => {
+        for (const check of checks) {
+          const id = findCodeCheckId(conn, check);
+          if (id === null) continue;
+          conn.run("DELETE FROM states WHERE worktree_id = ? AND check_id = ?", worktreeId, id);
+        }
+      });
+    },
+    move(worktreeId, from, to) {
+      conn.transaction(() => {
+        const fromId = findCodeCheckId(conn, from);
+        if (fromId === null) return;
+        const toId = ensureCodeCheckId(conn, to);
+        for (const table of ["states", "views"]) {
+          conn.run(
+            `UPDATE OR REPLACE ${table} SET check_id = ? WHERE worktree_id = ? AND check_id = ?`,
+            toId,
+            worktreeId,
+            fromId
+          );
+        }
+        conn.run(
+          "DELETE FROM transitions WHERE worktree_id = ? AND check_id = ?",
+          worktreeId,
+          toId
+        );
+        conn.run(
+          "UPDATE transitions SET check_id = ? WHERE worktree_id = ? AND check_id = ?",
+          toId,
+          worktreeId,
+          fromId
+        );
+      });
+    }
+  };
+}
+function createTransitionRepo2(conn) {
+  return {
+    append(transitions) {
+      conn.transaction(() => {
+        for (const t of transitions) {
+          conn.run(
+            `INSERT INTO transitions (worktree_id, check_id, measure, kind, from_outcome,
+               to_outcome, from_value, to_value, threshold, revision, at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            t.worktreeId,
+            ensureCodeCheckId(conn, t.check),
+            t.measure,
+            t.kind,
+            t.from,
+            t.to,
+            t.fromValue,
+            t.toValue,
+            t.threshold,
+            t.revision,
+            t.at
+          );
+        }
+      });
+    },
+    history(worktreeId, check) {
+      const id = findCodeCheckId(conn, check);
+      if (id === null) return [];
+      return conn.all(
+        `SELECT t.*, ${CHECK_COLUMNS2} FROM transitions t JOIN checks c ON c.id = t.check_id
+           WHERE t.worktree_id = ? AND t.check_id = ? ORDER BY t.id`,
+        worktreeId,
+        id
+      ).map(toTransition2);
+    }
+  };
+}
+function toState(worktreeId, row) {
+  return {
+    worktreeId,
+    check: checkFrom2(row),
+    measure: oneOf2(row, "measure", MEASURES),
+    outcome: oneOf2(row, "outcome", OUTCOMES5),
+    value: numOrNull(row, "value"),
+    threshold: numOrNull(row, "threshold"),
+    countedAt: num(row, "counted_at"),
+    blob: str(row, "blob"),
+    changedAt: num(row, "changed_at")
+  };
+}
+function toEdit(row) {
+  return {
+    check: checkFrom2(row),
+    measure: oneOf2(row, "measure", MEASURES),
+    revision: num(row, "edited_revision"),
+    at: num(row, "edited_at")
+  };
+}
+function toTransition2(row) {
+  return {
+    worktreeId: str(row, "worktree_id"),
+    check: checkFrom2(row),
+    measure: oneOf2(row, "measure", MEASURES),
+    kind: oneOf2(row, "kind", KINDS2),
+    from: oneOfOrNull(row, "from_outcome", OUTCOMES5),
+    to: oneOfOrNull(row, "to_outcome", OUTCOMES5),
+    fromValue: numOrNull(row, "from_value"),
+    toValue: numOrNull(row, "to_value"),
+    threshold: numOrNull(row, "threshold"),
+    revision: num(row, "revision"),
+    at: num(row, "at")
+  };
+}
+
+// src/core/code/store/views.ts
+var TOLD = ["count", "full"];
+var WHERE_CONSUMER2 = "worktree_id = ? AND session_id = ? AND agent_id = ?";
+function consumerParams2(c) {
+  return [c.worktreeId, c.sessionId, c.agentId];
+}
+function createViewRepo2(conn) {
+  return {
+    list(consumer) {
+      return conn.all(
+        `SELECT v.*, ${CHECK_COLUMNS2} FROM views v JOIN checks c ON c.id = v.check_id
+           WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
+           ORDER BY c.path, c.qualified_name, c.occurrence, v.measure`,
+        ...consumerParams2(consumer)
+      ).map(toEntry);
+    },
+    writeMany(consumer, entries) {
+      conn.transaction(() => {
+        for (const entry3 of entries) {
+          conn.run(
+            `INSERT INTO views (worktree_id, session_id, agent_id, check_id, measure, outcome,
+               threshold, told, told_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT (worktree_id, session_id, agent_id, check_id, measure) DO UPDATE SET
+               outcome = excluded.outcome, threshold = excluded.threshold,
+               told = excluded.told, told_at = excluded.told_at`,
+            ...consumerParams2(consumer),
+            ensureCodeCheckId(conn, entry3.check),
+            entry3.measure,
+            entry3.outcome,
+            entry3.threshold,
+            entry3.told,
+            entry3.toldAt
+          );
+        }
+      });
+    },
+    removeMany(consumer, entries) {
+      conn.transaction(() => {
+        for (const entry3 of entries) {
+          const id = findCodeCheckId(conn, entry3.check);
+          if (id === null) continue;
+          conn.run(
+            `DELETE FROM views WHERE ${WHERE_CONSUMER2} AND check_id = ? AND measure = ?`,
+            ...consumerParams2(consumer),
+            id,
+            entry3.measure
+          );
+        }
+      });
+    },
+    clear(consumer) {
+      conn.run(`DELETE FROM views WHERE ${WHERE_CONSUMER2}`, ...consumerParams2(consumer));
+    }
+  };
+}
+function toEntry(row) {
+  return {
+    check: checkFrom2(row),
+    measure: oneOf2(row, "measure", MEASURES),
+    outcome: oneOf2(row, "outcome", OUTCOMES5),
+    threshold: numOrNull(row, "threshold"),
+    told: oneOf2(row, "told", TOLD),
+    toldAt: num(row, "told_at")
+  };
+}
+
+// src/core/code/store/store.ts
+function createCodeStore(conn, schemaVersion, path) {
+  return {
+    path,
+    schemaVersion,
+    meta: createMetaRepo2(conn),
+    counts: createCountRepo(conn),
+    files: createFileRepo(conn),
+    states: createStateRepo(conn),
+    transitions: createTransitionRepo2(conn),
+    views: createViewRepo2(conn),
+    transaction: (fn) => conn.transaction(fn),
+    read: (fn) => conn.read(fn),
+    prune: (options) => pruneCodeStore(conn, options),
+    close: () => conn.close()
+  };
+}
+function createMetaRepo2(conn) {
+  return {
+    get(key) {
+      const row = conn.get("SELECT value FROM meta WHERE key = ?", key);
+      return row === null ? null : str(row, "value");
+    },
+    set(key, value) {
+      conn.run(
+        "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        key,
+        value
+      );
+    },
+    delete(key) {
+      conn.run("DELETE FROM meta WHERE key = ?", key);
+    }
+  };
+}
+
+// src/core/code/store/open.ts
+function codeStorePath(commonDir) {
+  return join7(storePaths(commonDir).dir, "code.sqlite");
+}
+function isCodeStoreOpenFailure(value) {
+  return "reason" in value;
+}
+function openCodeStore(commonDir, policy, options = {}) {
+  if (!policy.complexity.enabled) return { reason: "off" };
+  const path = codeStorePath(commonDir);
+  if (!existsSync4(path)) {
+    if (options.create === false) return { reason: "missing" };
+    mkdirSync2(storePaths(commonDir).dir, { recursive: true });
+  }
+  const busyTimeoutMs = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
+  if (!Number.isInteger(busyTimeoutMs) || busyTimeoutMs < 0) {
+    throw new RangeError(`busyTimeoutMs must be >= 0: ${busyTimeoutMs}`);
+  }
+  let db;
+  try {
+    db = new DatabaseSync2(path);
+    db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
+    const found2 = userVersion(db);
+    if (found2 > CODE_SCHEMA_VERSION) {
+      db.close();
+      return { reason: "newer-schema", found: found2, supported: CODE_SCHEMA_VERSION };
+    }
+    if (Number(db.prepare("PRAGMA page_count").get()?.page_count) === 0) {
+      db.exec("PRAGMA auto_vacuum = INCREMENTAL");
+    }
+    switchToWal(db, busyTimeoutMs);
+    db.exec("PRAGMA synchronous = NORMAL");
+    const version = migrate(db, CODE_MIGRATIONS);
+    return createCodeStore(new Connection(db), version, path);
+  } catch (error) {
+    db?.close();
+    if (isCorruption2(error)) return { reason: "corrupt", error: String(error) };
+    throw error;
+  }
+}
+function isCorruption2(error) {
+  const code = error.errcode;
+  return typeof code === "number" && [11, 26].includes(code & 255);
+}
+
+// src/core/delivery/code-source.ts
+function codeSource(commonDir, root, { busyTimeoutMs } = {}) {
+  const policy = () => {
+    const { complexity } = readPolicy(root);
+    return complexity.enabled ? complexity : null;
+  };
+  return {
+    policy,
+    open() {
+      const complexity = policy();
+      if (complexity === null) return null;
+      const store = openCodeStore(
+        commonDir,
+        { complexity },
+        { create: false, ...busyTimeoutMs === void 0 ? {} : { busyTimeoutMs } }
+      );
+      if (!isCodeStoreOpenFailure(store)) return { store, complexity };
+      return store.reason === "missing" ? "missing" : null;
+    }
+  };
+}
+function withCode2(source, fn) {
+  let access = null;
+  try {
+    access = source?.open() ?? null;
+    if (access === null || access === "missing") return access;
+    return fn(access);
+  } catch {
+    return null;
+  } finally {
+    if (access !== null && access !== "missing") access.store.close();
+  }
+}
+
+// src/core/delivery/code-deliver.ts
+var MEASURE = "complexity";
+var consumerKey = (kind, c) => `${kind}:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
+var seededKey = (consumer) => consumerKey("seeded", consumer);
+var tooBigToldKey = (consumer) => consumerKey("tooBigTold", consumer);
+var recountKey = (worktreeId) => `recount:${worktreeId}`;
+function readJson(store, key) {
+  const raw = store.meta.get(key);
+  if (raw === null) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function writeJson(store, key, value) {
+  store.meta.set(key, JSON.stringify(value));
+}
+var REASONS = ["first", "threshold", "include", "counter"];
+function readRecount(store, worktreeId) {
+  const value = readJson(store, recountKey(worktreeId));
+  if (!isRecord(value)) return null;
+  const { revision, at, reason, threshold } = value;
+  if (typeof revision !== "number" || typeof at !== "number" || typeof threshold !== "number") {
+    return null;
+  }
+  const known = REASONS.find((r) => r === reason);
+  return known === void 0 ? null : { revision, at, reason: known, threshold };
+}
+function isTooBig(file) {
+  return file.tooBig === true;
+}
+function lastTransition(store, worktreeId, check, measure2 = MEASURE) {
+  return store.transitions.history(worktreeId, check).findLast((t) => t.measure === measure2) ?? null;
+}
+function seed(store, consumer, states, at) {
+  store.views.clear(consumer);
+  const judged2 = states.filter((s) => s.outcome === "pass" || s.outcome === "fail");
+  store.views.writeMany(
+    consumer,
+    judged2.map((s) => seedEntry(s, at))
+  );
+  writeJson(store, seededKey(consumer), at);
+}
+var over = (states) => states.filter((s) => s.outcome === "fail").length;
+function registerCode(source, consumer, at) {
+  const { worktreeId } = consumer;
+  const read4 = withCode2(
+    source,
+    ({ store, complexity }) => store.transaction(() => {
+      const states = store.states.list(worktreeId, { measure: MEASURE });
+      seed(store, consumer, states, at);
+      const total = store.files.list(worktreeId).filter((f) => !isTooBig(f)).length;
+      const pending = store.files.uncounted(worktreeId).length;
+      const counting = pending === 0 ? {} : { counting: { done: total - pending, total } };
+      return { v: 1, threshold: complexity.threshold, over: over(states), ...counting };
+    })
+  );
+  if (read4 !== "missing") return read4 ?? void 0;
+  const threshold = source?.policy()?.threshold;
+  return threshold === void 0 ? void 0 : { v: 1, threshold, over: 0, counting: { done: 0, total: 0 } };
+}
+function toldTooBig(store, consumer) {
+  const value = readJson(store, tooBigToldKey(consumer));
+  return new Set(Array.isArray(value) ? value.filter((p) => typeof p === "string") : []);
+}
+function newTooBig(store, consumer, since, limit, write2) {
+  if (since === null) return [];
+  const told = toldTooBig(store, consumer);
+  const files2 = store.files.list(consumer.worktreeId).filter((f) => isTooBig(f) && f.revision > since && !told.has(f.path));
+  if (files2.length === 0) return [];
+  if (write2) writeJson(store, tooBigToldKey(consumer), [...told, ...files2.map((f) => f.path)]);
+  return files2.map((f) => ({ path: f.path, size: f.size, limit }));
+}
+function lineOf(store, worktreeId, check) {
+  const [file] = store.files.list(worktreeId, [check.path]);
+  if (file === void 0) return null;
+  const count = store.counts.get(file.blob, file.language, file.counterVersion);
+  const fn = count?.functions.find(
+    (f) => f.qualifiedName === check.qualifiedName && f.occurrence === check.occurrence
+  );
+  return fn?.range.startLine ?? null;
+}
+function codeStep(store, consumer, { at, since, limit }, write2) {
+  const { worktreeId } = consumer;
+  const seeded = readJson(store, seededKey(consumer));
+  const seededAt = typeof seeded === "number" ? seeded : 0;
+  const states = store.states.list(worktreeId, { measure: MEASURE });
+  const tooBig = newTooBig(store, consumer, since, limit, write2);
+  const big = tooBig.length === 0 ? {} : { tooBig };
+  const recount = readRecount(store, worktreeId);
+  if (recount !== null && recount.at > seededAt) {
+    if (write2) seed(store, consumer, states, at);
+    const news = {
+      v: 1,
+      entries: [],
+      more: 0,
+      recount: { ...recount, over: over(states) }
+    };
+    return { news: { ...news, ...big }, writes: true };
+  }
+  const edits = new Map(store.states.edits(worktreeId, MEASURE).map((e) => [codeKey(e), e]));
+  const plan = planCodeDelta({
+    view: store.views.list(consumer).filter((v) => v.measure === MEASURE),
+    states,
+    last: (check, measure2) => lastTransition(store, worktreeId, check, measure2),
+    edit: (check, measure2) => edits.get(codeKey({ check, measure: measure2 })) ?? null,
+    seededAt,
+    toldAt: at
+  });
+  const listed2 = plan.entries.slice(0, CODE_LISTED_MAX);
+  const more = plan.entries.slice(CODE_LISTED_MAX).filter((e) => e.kind !== "edited").length;
+  if (write2) {
+    const full = new Set(listed2.map(codeKey));
+    store.views.removeMany(consumer, plan.removals);
+    store.views.writeMany(
+      consumer,
+      plan.writes.map((w) => full.has(codeKey(w)) ? w : { ...w, told: "count" })
+    );
+  }
+  const writes = plan.removals.length + plan.writes.length + tooBig.length > 0;
+  if (plan.entries.length === 0 && tooBig.length === 0) return { news: null, writes };
+  const entries = listed2.map((e) => ({
+    ...e,
+    line: e.kind === "removed" ? null : lineOf(store, worktreeId, e.check)
+  }));
+  return { news: { v: 1, entries, more, ...big }, writes };
+}
+function tellCode(source, consumer, at, since) {
+  const told = withCode2(source, ({ store, complexity }) => {
+    const input = { at, since: since(), limit: complexity.maxFileBytes };
+    if (!store.read(() => codeStep(store, consumer, input, false)).writes) return null;
+    return store.transaction(() => codeStep(store, consumer, input, true).news);
+  });
+  return told === "missing" ? null : told;
+}
+
 // src/core/delivery/delta.ts
 function beforeFailing(history, state) {
   const last = history.at(-1);
@@ -4098,7 +5044,7 @@ function passBeforeUnknown(history, end) {
   }
   return null;
 }
-var RANK = {
+var RANK2 = {
   "pass-to-fail": 0,
   "first-seen-fail": 0,
   "fail-changed": 1,
@@ -4106,7 +5052,7 @@ var RANK = {
   "fail-to-pass": 4,
   "fail-retired": 5
 };
-var rank = (e) => isBaselineEntry(e) ? 2 : RANK[e.kind];
+var rank = (e) => isBaselineEntry(e) ? 2 : RANK2[e.kind];
 function isBaselineEntry(e) {
   return e.kind !== "fail-retired" && e.baseline === true;
 }
@@ -4303,7 +5249,7 @@ function settled(since, rekeyed, states) {
 }
 
 // src/core/waiter-lock/waiter-lock.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/delivery/harness-process.ts
 import { readFileSync as readFileSync3, readlinkSync } from "node:fs";
@@ -4396,7 +5342,7 @@ function isCommandHold(entry3) {
 
 // src/core/daemon/runner.ts
 import { readdirSync, readFileSync as readFileSync4 } from "node:fs";
-import { join as join7, posix as posix4 } from "node:path";
+import { join as join8, posix as posix4 } from "node:path";
 var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
 function vitestDetected(root) {
   let names;
@@ -4406,7 +5352,7 @@ function vitestDetected(root) {
     return false;
   }
   if (names.some((name) => VITEST_CONFIG.test(name))) return true;
-  return listsVitest(readManifest(join7(root, "package.json")));
+  return listsVitest(readManifest(join8(root, "package.json")));
 }
 function listsVitest(manifest) {
   if (!isRecord(manifest)) return false;
@@ -4451,6 +5397,69 @@ function readMark(store, worktreeId) {
   }
 }
 
+// src/core/delivery/code-since.ts
+function earliest(store, consumers) {
+  const revisions = consumers.flatMap((c) => registration(store, c)?.since ?? []);
+  return revisions.length === 0 ? null : Math.min(...revisions);
+}
+function codeSince(store, worktreeId, shell) {
+  const registered = store.consumers.list(worktreeId).map((r) => r.consumer);
+  const own = registered.filter(
+    (c) => shell?.session != null && c.sessionId === shell.session && (shell.agent === null || c.agentId === shell.agent)
+  );
+  const session = earliest(store, own);
+  if (session !== null) return { since: session, scope: "session" };
+  const oldest = earliest(store, registered);
+  return oldest === null ? null : { since: oldest, scope: "oldest" };
+}
+function wentOverSince(code, worktreeId, since) {
+  return code.states.list(worktreeId, { measure: "complexity", outcome: "fail" }).filter((s) => {
+    const last = lastTransition(code, worktreeId, s.check);
+    return last?.to === "fail" && last.revision > since;
+  });
+}
+
+// src/core/status/code-status.ts
+function codeStatusOf(store, worktreeId, at, shell) {
+  if (!readPolicy(at.root).complexity.enabled) return {};
+  const commonDir = at.commonDir();
+  if (commonDir === null) return {};
+  const source = codeSource(commonDir, at.root);
+  const since = () => codeSince(store, worktreeId, shell);
+  const read4 = withCode2(
+    source,
+    ({ store: code, complexity }) => code.read(() => {
+      const states = code.states.list(worktreeId, { measure: "complexity" });
+      const from = since();
+      return {
+        v: 1,
+        threshold: complexity.threshold,
+        over: states.filter((s) => s.outcome === "fail").length,
+        sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from.since).length,
+        since: from?.scope ?? null,
+        pending: code.files.uncounted(worktreeId).length,
+        files: code.files.list(worktreeId).filter((f) => !isTooBig(f)).length,
+        unknown: states.filter((s) => s.outcome === "unknown").length
+      };
+    })
+  );
+  if (read4 !== "missing") return read4 === null ? {} : { code: read4 };
+  const threshold = source.policy()?.threshold;
+  if (threshold === void 0) return {};
+  return {
+    code: {
+      v: 1,
+      threshold,
+      over: 0,
+      sinceRegistration: 0,
+      since: null,
+      pending: 0,
+      files: 0,
+      unknown: 0
+    }
+  };
+}
+
 // src/core/status/config-problems.ts
 function configProblemsOf(root) {
   const { problems } = loadPolicy(root);
@@ -4458,12 +5467,12 @@ function configProblemsOf(root) {
 }
 
 // src/core/status/died.ts
-import { existsSync as existsSync4 } from "node:fs";
+import { existsSync as existsSync5 } from "node:fs";
 
 // src/core/daemon/lock.ts
-import { mkdirSync as mkdirSync2 } from "node:fs";
+import { mkdirSync as mkdirSync3 } from "node:fs";
 import { dirname as dirname3 } from "node:path";
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
@@ -4484,8 +5493,8 @@ function acquireDaemonLock(path) {
   return lock;
 }
 function lockDatabase(path) {
-  mkdirSync2(dirname3(path), { recursive: true });
-  const db = new DatabaseSync3(path);
+  mkdirSync3(dirname3(path), { recursive: true });
+  const db = new DatabaseSync4(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("PRAGMA locking_mode = EXCLUSIVE");
@@ -4539,7 +5548,7 @@ function shutDown(store, worktreeId, self) {
 }
 function daemonGone(worktree) {
   const path = lockFileFor(worktree.commonDir, worktree.id);
-  if (!existsSync4(path)) return false;
+  if (!existsSync5(path)) return false;
   try {
     const lock = acquireDaemonLock(path);
     lock?.release();
@@ -4561,24 +5570,24 @@ function files(refs) {
 
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync5 } from "node:fs";
-import { join as join8 } from "node:path";
+import { join as join9 } from "node:path";
 var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 var MAX_REF_DEPTH = 5;
 function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read3(join8(gitDir, "HEAD"));
+  let value = read3(join9(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref === void 0) return null;
-    value = read3(join8(gitDir, ref)) ?? read3(join8(commonDir, ref)) ?? packed(commonDir, ref);
+    value = read3(join9(gitDir, ref)) ?? read3(join9(commonDir, ref)) ?? packed(commonDir, ref);
   }
   return null;
 }
 function packed(commonDir, ref) {
-  for (const line of (read3(join8(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read3(join9(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name] = line.split(" ");
     if (name === ref && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -4634,21 +5643,21 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot.ts
-import { existsSync as existsSync5, readdirSync as readdirSync2, rmSync as rmSync3, statSync, writeFileSync } from "node:fs";
-import { isAbsolute as isAbsolute6, join as join10 } from "node:path";
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { existsSync as existsSync6, readdirSync as readdirSync2, rmSync as rmSync3, statSync, writeFileSync } from "node:fs";
+import { isAbsolute as isAbsolute6, join as join11 } from "node:path";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 
 // src/core/daemon/paths.ts
-import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync3 } from "node:fs";
-import { dirname as dirname4, isAbsolute as isAbsolute5, join as join9 } from "node:path";
+import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync4 } from "node:fs";
+import { dirname as dirname4, isAbsolute as isAbsolute5, join as join10 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
 function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
-  mkdirSync3(dirname4(dir), { recursive: true });
+  mkdirSync4(dirname4(dir), { recursive: true });
   try {
-    mkdirSync3(dir, { mode: 448 });
+    mkdirSync4(dir, { mode: 448 });
     chmodSync(dir, 448);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
@@ -4669,7 +5678,7 @@ function checkPrivateDir(dir, uid, role = "socket directory") {
   }
 }
 function userTmpDir(uid = currentUid()) {
-  return join9("/tmp", `squeal-${uid}`);
+  return join10("/tmp", `squeal-${uid}`);
 }
 function xdgRuntimeDir(env) {
   const xdg = env.XDG_RUNTIME_DIR;
@@ -4683,17 +5692,17 @@ function currentUid() {
 var SLOW_LOCK_FILE = "slow.lock";
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
   const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? join10(xdg, "squeal") : userDir;
+  return xdg !== void 0 && xdg !== "" && isAbsolute6(xdg) ? join11(xdg, "squeal") : userDir;
 }
 function heldPermits(request) {
   const { dir } = request;
-  if (!existsSync5(dir)) return [];
+  if (!existsSync6(dir)) return [];
   checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
   const held = [];
   for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
     const file = permitFile(i);
-    const path = join10(dir, file);
-    if (!existsSync5(path)) continue;
+    const path = join11(dir, file);
+    if (!existsSync6(path)) continue;
     let free;
     try {
       free = permitFree(path);
@@ -4708,7 +5717,7 @@ function heldPermits(request) {
 function permitRecord(path) {
   let db;
   try {
-    db = new DatabaseSync4(immutableUrl(path), { readOnly: true });
+    db = new DatabaseSync5(immutableUrl(path), { readOnly: true });
   } catch {
     return { kind: "unreadable" };
   }
@@ -4736,7 +5745,7 @@ function immutableUrl(path) {
   return url;
 }
 function permitFree(path) {
-  const db = new DatabaseSync4(path);
+  const db = new DatabaseSync5(path);
   try {
     db.exec("PRAGMA busy_timeout = 0");
     db.exec("BEGIN EXCLUSIVE");
@@ -4759,8 +5768,8 @@ var views = /* @__PURE__ */ new WeakMap();
 function slowView(policy) {
   let view = views.get(policy);
   if (view === void 0) {
-    const globs2 = slowGlobs(policy, policy.nodeTest);
-    view = { isSlow: slowFiles(policy, policy.nodeTest), globs: globs2, declared: globs2.length > 0 };
+    const globs3 = slowGlobs(policy, policy.nodeTest);
+    view = { isSlow: slowFiles(policy, policy.nodeTest), globs: globs3, declared: globs3.length > 0 };
     views.set(policy, view);
   }
   return view;
@@ -4792,18 +5801,18 @@ function promotedIds(store, worktreeId, daemonStartedAt, now) {
 
 // src/core/daemon/version.ts
 import { readdirSync as readdirSync3, readFileSync as readFileSync6 } from "node:fs";
-import { dirname as dirname5, join as join11 } from "node:path";
+import { dirname as dirname5, join as join12 } from "node:path";
 import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.280";
+  if (true) return "0.1.283";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
   let dir = dirname5(fileURLToPath(module));
   for (; ; ) {
-    const version = readVersion(join11(dir, "package.json"));
+    const version = readVersion(join12(dir, "package.json"));
     if (version !== null) return version;
     const parent = dirname5(dir);
     if (parent === dir) return null;
@@ -5707,7 +6716,7 @@ function createStatusBuilder(store, options = {}) {
     }
   };
 }
-function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
+function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = null) {
   const worktree = store.worktrees.get(worktreeId);
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
@@ -5791,17 +6800,23 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad) {
     ...daemon.state === "alive" ? { runsOpen: runs.length } : {},
     outstanding,
     pendingTestFiles: pendingTestFilesOf(states, keys, held),
-    ...slowSlot === void 0 ? {} : { slowSlot }
+    ...slowSlot === void 0 ? {} : { slowSlot },
+    ...codeStatusOf(
+      store,
+      worktreeId,
+      { root: at, commonDir: () => worktree?.commonDir ?? resolveCommonDir(at) },
+      shell
+    )
   };
 }
 function vitestExcluded(root) {
   const policy = readPolicy(root);
-  const { excludeProjects: names, exclude: globs2 } = policy.vitest;
-  if (names.length + globs2.length === 0) return {};
+  const { excludeProjects: names, exclude: globs3 } = policy.vitest;
+  if (names.length + globs3.length === 0) return {};
   if (policy.nodeTest.length > 0 && !vitestDetected(root)) return {};
   return {
     ...names.length === 0 ? {} : { vitestExcluded: names },
-    ...globs2.length === 0 ? {} : { vitestExcludedFiles: globs2 }
+    ...globs3.length === 0 ? {} : { vitestExcludedFiles: globs3 }
   };
 }
 function openCheckpoint(store, worktreeId, daemon) {
@@ -6353,7 +7368,9 @@ function createDelivery(store, options) {
       if (changed !== null) tellLiveness(store, consumer, toldOf(changed));
       const holds = liveness2 ? holdsChange(store, consumer, at) : null;
       if (holds !== null) tellHolds(store, consumer, holds.now);
-      const news = delta.entries.length > 0 || changed !== null || holds !== null;
+      const tests = delta.entries.length > 0 || changed !== null || holds !== null;
+      const code = liveness2 && (tests || !stop) ? tellCode(options.code, consumer, at, () => registration(store, consumer)?.since ?? null) : null;
+      const news = tests || code !== null;
       const notes = liveness2 || idle && news ? editNotes(store, consumer, states, news) : null;
       const delivered = news || liveness2 && !stop && notes?.sawEdit !== void 0;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
@@ -6393,7 +7410,8 @@ function createDelivery(store, options) {
         ...holds === null ? {} : { holds: holdChanges(holds, header) },
         ...slowChanged ? { slowTierChanged: true } : {},
         ...sawEdit === void 0 ? {} : { sawEdit },
-        ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled }
+        ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled },
+        ...code === null ? {} : { code }
       };
     });
   }
@@ -6455,12 +7473,14 @@ function createDelivery(store, options) {
       else writeTurn(store, consumer, null);
       recordHarness(store, consumer, options.harnessProcess?.() ?? null);
       recordVersion(store, consumer, options.squealVersion ?? null);
+      const code = registerCode(options.code, consumer, at);
       return {
         schemaVersion: PAYLOAD_SCHEMA_VERSION,
         consumer,
         header,
         // 011-18: a resumed session's failures name the closure paths changed since it started.
-        knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision)
+        knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
+        ...code === void 0 ? {} : { code }
       };
     }),
     unregister: async (consumer) => {
@@ -6510,6 +7530,56 @@ function createDelivery(store, options) {
     status: async (worktreeId) => options.status.build(worktreeId)
   };
 }
+
+// src/core/delivery/code-format.ts
+function functionName(check) {
+  return check.occurrence === 0 ? check.qualifiedName : `${check.qualifiedName} (occurrence ${check.occurrence + 1})`;
+}
+var ruleOf = (check) => check.path.endsWith(".py") ? "radon rule" : "ESLint rule";
+var whereOf = (check, line) => line === null ? check.path : `${check.path}:${line}`;
+function codeEntryLine(entry3) {
+  const at = `${functionName(entry3.check)} (${whereOf(entry3.check, entry3.line)})`;
+  switch (entry3.kind) {
+    case "first-seen-fail":
+    case "pass-to-fail":
+      return `FAIL complexity: ${at} is ${entry3.value}, over ${entry3.threshold} (${ruleOf(entry3.check)})`;
+    case "fail-to-pass":
+      return `PASS complexity: ${at} is ${entry3.value}, at or under ${entry3.threshold}`;
+    case "removed":
+      return `RESOLVED complexity: ${at} is no longer in the code`;
+    case "edited":
+      return `STILL FAIL complexity: ${at} is ${entry3.value} after the edit; it was already over ${entry3.threshold} before it (${ruleOf(entry3.check)})`;
+  }
+}
+function recountLine(recount, command) {
+  const lists = `${command} code lists them.`;
+  const over2 = plural(recount.over, "function");
+  switch (recount.reason) {
+    case "threshold":
+      return `Complexity threshold is now ${recount.threshold}: ${over2} over; ${lists}`;
+    case "first":
+      return `Complexity counted: ${over2} over ${recount.threshold}; ${lists}`;
+    case "include":
+      return `Complexity counted again, the included files changed: ${over2} over ${recount.threshold}; ${lists}`;
+    case "counter":
+      return `Complexity counted again by a new counter: ${over2} over ${recount.threshold}; ${lists}`;
+  }
+}
+var kib = (bytes) => `${Math.round(bytes / 1024)} KiB`;
+function tooBigLine({ path, size, limit }) {
+  return `${path} is ${kib(size)}, over the ${kib(limit)} limit; its functions are not counted.`;
+}
+function codeLines(news, command) {
+  return [
+    ...news.recount === void 0 ? [] : [recountLine(news.recount, command)],
+    ...news.entries.map(codeEntryLine),
+    ...news.more === 0 ? [] : [
+      `and ${news.more} more complexity ${news.more === 1 ? "change" : "changes"}; ${command} code --changed lists them.`
+    ],
+    ...(news.tooBig ?? []).map(tooBigLine)
+  ];
+}
+var codeChanges = (news) => news.entries.length + news.more;
 
 // src/core/delivery/provenance.ts
 var upper = (outcome) => outcome.toUpperCase();
@@ -6884,7 +7954,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   const retired = entries.filter((e) => e.kind === "fail-retired");
   const holds = (delta.holds ?? []).map((c) => holdChangeLine(c, header.revision, command));
   const holdTitle = entries.length === 0 && delta.liveness === void 0 ? holds[0] : void 0;
-  const title = entries.length === 0 ? delta.liveness === void 0 ? holdTitle ?? `SQUEAL \xB7 revision ${header.revision}` : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
+  const title = entries.length === 0 ? delta.liveness === void 0 ? holdTitle ?? codeTitle(delta) ?? `SQUEAL \xB7 revision ${header.revision}` : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
   const blocks2 = [
     ...failureBlocks(
       changed.filter((e) => e.to === "fail"),
@@ -6907,7 +7977,10 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
     const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, counted.filter((c) => c.shown === o).map((c) => c.check)]).filter(([, checks]) => checks.length > 0).map(([o, checks]) => `${checks.length} ${upper2(o)}: ${partsText(checks, fileLevelWord(o))}`);
     return `Not shown: ${counted.length} more changed checks (${by.join("; ")}). ${statusPointer(command)}`;
   };
-  const tail = failed2 === void 0 ? null : whyLine(failed2.check, command);
+  const tail = [
+    ...failed2 === void 0 ? [] : [whyLine(failed2.check, command)],
+    ...delta.code === void 0 ? [] : [codeLines(delta.code, command).join("\n")]
+  ].join("\n\n") || null;
   return assemble(
     [
       title,
@@ -6920,6 +7993,11 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
     tail,
     max
   );
+}
+function codeTitle({ code, header }) {
+  if (code === void 0 || codeChanges(code) === 0) return void 0;
+  const changes = codeChanges(code);
+  return `SQUEAL \xB7 ${changes} complexity ${changes === 1 ? "change" : "changes"} at revision ${header.revision}`;
 }
 function sawEditLine(queued) {
   return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and passing ones stay silent.`;
@@ -6982,8 +8060,8 @@ function recordTestCommandDenied(store, consumer, revision) {
 }
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync6, readdirSync as readdirSync4, readFileSync as readFileSync7, statSync as statSync2 } from "node:fs";
-import { basename as basename2, dirname as dirname6, isAbsolute as isAbsolute7, join as join12, relative as relative2, resolve as resolve3 } from "node:path";
+import { existsSync as existsSync7, readdirSync as readdirSync4, readFileSync as readFileSync7, statSync as statSync2 } from "node:fs";
+import { basename as basename2, dirname as dirname6, isAbsolute as isAbsolute7, join as join13, relative as relative2, resolve as resolve3 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
 }
@@ -6991,16 +8069,16 @@ function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
     const declared = resolve3(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join12(declared, "bin", "python"));
-    if (existsSync6(declared)) return found("declared", dirname6(dirname6(declared)), declared);
+    if (isDirectory(declared)) return found("declared", declared, join13(declared, "bin", "python"));
+    if (existsSync7(declared)) return found("declared", dirname6(dirname6(declared)), declared);
     const target = basename2(declared).startsWith("python") ? dirname6(dirname6(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join12(cwd, ".venv");
-  if (existsSync6(join12(venv, "pyvenv.cfg"))) return found("venv", venv, join12(venv, "bin", "python"));
+  const venv = join13(cwd, ".venv");
+  if (existsSync7(join13(venv, "pyvenv.cfg"))) return found("venv", venv, join13(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
   if (pdm !== null) return found("pdm-python", dirname6(dirname6(pdm)), pdm);
-  return none(root, cwd, [venv, join12(cwd, ".pdm-python")], venv);
+  return none(root, cwd, [venv, join13(cwd, ".pdm-python")], venv);
 }
 function found(source, env, python) {
   return { kind: "found", source, env, python };
@@ -7008,12 +8086,12 @@ function found(source, env, python) {
 function pdmPython(root, cwd) {
   let text;
   try {
-    text = readFileSync7(join12(cwd, ".pdm-python"), "utf8").trim();
+    text = readFileSync7(join13(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
-  if (!isAbsolute7(text) || toRelative(root, text) === null || !existsSync6(text)) return null;
+  if (!isAbsolute7(text) || toRelative(root, text) === null || !existsSync7(text)) return null;
   return text;
 }
 var LOCKFILES2 = [
@@ -7030,12 +8108,12 @@ function none(root, cwd, looked, target) {
     if (toRelative(root, dir) === null) break;
   }
   for (const dir of dirs) {
-    const hit = LOCKFILES2.find(([file]) => existsSync6(join12(dir, file)));
+    const hit = LOCKFILES2.find(([file]) => existsSync7(join13(dir, file)));
     if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join12(dir, hit[0]) };
+      return { kind: "none", looked, command: hit[1], from: join13(dir, hit[0]) };
   }
   for (const dir of dirs) {
-    const files2 = requirementsIn(dir).map((file) => join12(dir, file));
+    const files2 = requirementsIn(dir).map((file) => join13(dir, file));
     if (files2.length === 0) continue;
     const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
     const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
@@ -7063,7 +8141,7 @@ function isDirectory(path) {
 }
 
 // src/harness/shared/test-command-pytest.ts
-import { join as join13, resolve as resolve4 } from "node:path";
+import { join as join14, resolve as resolve4 } from "node:path";
 var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
 function pytestCommand(words, here) {
   if (here.length !== 1) return null;
@@ -7085,7 +8163,7 @@ function pytestCommand(words, here) {
 }
 function invocation(words, dir, env) {
   const [first, second, third] = words;
-  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join13(env, "bin", name);
+  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join14(env, "bin", name);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -7192,7 +8270,7 @@ function shellWords(text) {
 }
 
 // src/harness/shared/test-command-files.ts
-import { isAbsolute as isAbsolute8, join as join14, relative as relative3, resolve as resolve5 } from "node:path";
+import { isAbsolute as isAbsolute8, join as join15, relative as relative3, resolve as resolve5 } from "node:path";
 function resolveTestFiles(command, listing, root, nodeTest, omitted) {
   if (command.runner === "node-test") {
     const own = listing.filter((ref) => ref.project === command.project);
@@ -7208,7 +8286,7 @@ function resolveTestFiles(command, listing, root, nodeTest, omitted) {
   if (command.filters.length === 0) return vitest;
   const selected = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref) => matchesFilter(join14(root, ref.path), filter, root));
+    const hits = vitest.filter((ref) => matchesFilter(join15(root, ref.path), filter, root));
     if (hits.length === 0) return null;
     for (const ref of hits) selected.add(ref);
   }
@@ -7218,7 +8296,7 @@ function matchesFilter(file, filter, root) {
   if (isAbsolute8(filter) && file.startsWith(filter)) return true;
   const testFile = relative3(root, file).toLocaleLowerCase();
   const rel = relative3(root, resolve5(root, filter));
-  const relativePath = filter.endsWith("/") ? join14(rel, "/") : rel;
+  const relativePath = filter.endsWith("/") ? join15(rel, "/") : rel;
   return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
 }
 function pytestFiles(command, listing, root) {
@@ -7337,7 +8415,7 @@ function realPath(path) {
 }
 function rootScripts(root) {
   try {
-    const manifest = JSON.parse(readFileSync8(join15(root, "package.json"), "utf8"));
+    const manifest = JSON.parse(readFileSync8(join16(root, "package.json"), "utf8"));
     if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
     return Object.fromEntries(
       Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string")
@@ -7411,14 +8489,18 @@ function openContext(input, location2, options = {}) {
       agentId: input.agent_id ?? MAIN_AGENT
     };
     const now = options.now ?? Date.now;
+    const code = codeSource(location2.commonDir, location2.root, {
+      busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS
+    });
     const delivery = createDelivery(store, {
       status: createStatusBuilder(store, { now }),
       now,
       ...options.pollIntervalMs === void 0 ? {} : { pollIntervalMs: options.pollIntervalMs },
       ...options.harnessProcess === void 0 ? {} : { harnessProcess: options.harnessProcess },
-      ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion }
+      ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion },
+      code
     });
-    return { ...location2, store, delivery, consumer, close: () => store.close() };
+    return { ...location2, store, delivery, consumer, code, close: () => store.close() };
   } catch (error) {
     store.close();
     throw error;
@@ -7519,7 +8601,7 @@ import { fileURLToPath as fileURLToPath2 } from "node:url";
 // src/harness/shared/session-root.ts
 import { createHash as createHash3 } from "node:crypto";
 import {
-  existsSync as existsSync7,
+  existsSync as existsSync8,
   lstatSync as lstatSync3,
   readdirSync as readdirSync5,
   readFileSync as readFileSync9,
@@ -7527,7 +8609,7 @@ import {
   rmSync as rmSync4,
   writeFileSync as writeFileSync2
 } from "node:fs";
-import { join as join16 } from "node:path";
+import { join as join17 } from "node:path";
 var AGENT_SEPARATOR = "\0";
 function rootKey(input) {
   return input.agent_id === void 0 ? input.session_id : `${input.session_id}${AGENT_SEPARATOR}${input.agent_id}`;
@@ -7557,8 +8639,8 @@ function forgetRoot(input, roots) {
   roots?.delete(rootKey(input));
 }
 function sessionRootFiles(env) {
-  const dir = join16(runtimeDir(env), "squeal-sessions");
-  const path = (key) => join16(dir, keyFile(key));
+  const dir = join17(runtimeDir(env), "squeal-sessions");
+  const path = (key) => join17(dir, keyFile(key));
   return {
     get: (key) => {
       try {
@@ -7583,7 +8665,7 @@ function sessionRootFiles(env) {
         if (key.includes(AGENT_SEPARATOR)) return;
         const agents = `${keyFile(key)}-`;
         for (const name of readdirSync5(dir)) {
-          if (name.startsWith(agents)) rmSync4(join16(dir, name), { force: true });
+          if (name.startsWith(agents)) rmSync4(join17(dir, name), { force: true });
         }
       } catch {
       }
@@ -7605,7 +8687,7 @@ function readKept(file) {
   if (!isRecord(kept) || typeof kept.root !== "string" || typeof kept.commonDir !== "string") {
     return null;
   }
-  return existsSync7(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
+  return existsSync8(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
 }
 
 // src/harness/claude-code/input.ts
