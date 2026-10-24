@@ -34,7 +34,8 @@ import { writeTree } from "./shared.js";
  * named. Edits before a run are written and invalidated as a revision's
  * runner part; what `invalidate` and a quiet pass's `recheck` recreate is
  * keys. The run's failure and notes are wording. Admission's settling waits
- * on a clock that never sleeps.
+ * on a clock that never sleeps. A run's own deadline waits for the fixture's
+ * proof (`heldDeadline`).
  */
 
 const PROJECT = "validity";
@@ -44,6 +45,12 @@ const DROPPED = /^(UV_|PYTHON|PYTEST_|VIRTUAL_ENV|CONDA_|SQUEAL_VALIDITY_)/;
 
 /** The tracer's variables (`python/squeal_validity_trace.py`), for every pytest child. */
 const TRACER = ["SQUEAL_VALIDITY_COVERAGE", "SQUEAL_VALIDITY_TRACED"];
+
+/** The file a fixture's test writes once the files before it have reported (row 011-142). */
+const PROOF = "SQUEAL_VALIDITY_PROOF";
+
+/** How long a held deadline waits for the proof before it fires and the case throws. */
+const PROOF_LIMIT_MS = 60_000;
 
 /** The synced environment of `version`, or why there is none, thrown. */
 function environmentOf(version: PytestPython): string {
@@ -70,6 +77,42 @@ function instantClock() {
       now += ms;
     },
   };
+}
+
+/**
+ * `run` with the one timer of `ms` it sets, Squeal's deadline, held until
+ * `proof` exists (row 011-142): the deadline fires at its time or at the
+ * proof, whichever is later, so which files complete before the kill is the
+ * fixture's to say, not the host's load. A run that sets no such timer, or a
+ * proof absent after `PROOF_LIMIT_MS`, which fires it, throws.
+ */
+async function heldDeadline<T>(ms: number, proof: string, run: () => Promise<T>): Promise<T> {
+  const real = globalThis.setTimeout;
+  const since = performance.now();
+  let set = 0;
+  let late = false;
+  let poll: NodeJS.Timeout | undefined;
+  const hold = (fire: (...args: unknown[]) => void, delay?: number, ...args: unknown[]) => {
+    if (delay !== ms) return real(fire, delay, ...args);
+    set += 1;
+    const check = () => {
+      const proven = existsSync(proof);
+      late = !proven && performance.now() - since > PROOF_LIMIT_MS;
+      if (proven || late) fire(...args);
+      else poll = real(check, 20);
+    };
+    return real(check, ms);
+  };
+  globalThis.setTimeout = hold as typeof setTimeout;
+  try {
+    const result = await run();
+    if (set !== 1) throw new Error(`the run set ${set} timers of ${ms} ms, not one deadline`);
+    if (late) throw new Error(`the fixture wrote no proof in ${PROOF_LIMIT_MS} ms`);
+    return result;
+  } finally {
+    globalThis.setTimeout = real;
+    clearTimeout(poll);
+  }
 }
 
 /** What the adapter decides before a row is stored, at one point of the case. */
@@ -148,6 +191,7 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
     ...(entry.exclude === undefined ? {} : { exclude: entry.exclude }),
   };
   const notes: string[] = [];
+  const proof = join(scratch, "proof");
   const adapter = await createPytestAdapter(project, {
     root,
     source: {
@@ -156,7 +200,7 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
     },
     note: (text) => notes.push(text),
     cacheDir: join(scratch, "cache") as AbsolutePath,
-    childEnv: kept(TRACER, () => true),
+    childEnv: { ...kept(TRACER, () => true), [PROOF]: proof },
     clock: instantClock(),
   });
   const ref = (path: string): TestFileRef => ({ project: PROJECT, path });
@@ -174,13 +218,16 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
         steps.push(await decided(adapter, affected));
       }
       const checks = run.checks?.map(({ path, texts }) => ({ testFile: ref(path), texts }));
-      const report = selectedOf(
-        await adapter.run(run.files.map(ref), {
+      const ran = () =>
+        adapter.run(run.files.map(ref), {
           runId: `validity-${at}`,
           logDir: join(scratch, "logs", String(at)),
           timeoutMs: run.timeoutMs ?? 60_000,
           ...(checks === undefined ? {} : { checks }),
-        }),
+        });
+      rmSync(proof, { force: true });
+      const report = selectedOf(
+        await (run.timeoutMs === undefined ? ran() : heldDeadline(run.timeoutMs, proof, ran)),
         checks,
       );
       const before = steps[steps.length - 1] as Decided;
