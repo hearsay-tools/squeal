@@ -228,9 +228,9 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 ## Open questions
 
 1. Count `?.`, `??` and defaults? ESLint counts them, and so does D3. Leaving them out drops 31% of the functions at CC 10 or more, but Squeal's number would then differ from every peer's. Owner: the human; wave 1's dogfood brings the noise count.
-2. Is "the first edit to a standing failure" (D6) useful or noise in practice? Owner: wave 1's dogfood.
+2. Is "the first edit to a standing failure" (D6) useful or noise in practice? Owner: wave 1's dogfood. Answered for live sessions (015-10 part C, 2026-10-24, `lessons.md`): keep it, with row 015-19 fixed. Of 11 lines, 4 came from a pull (015-19), 2 were useful, 2 redundant, 3 noise; skipping lines whose count did not move would also cut a useful one.
 3. How much of `src/` do tests reach only through child processes, so that those functions read "no test runs it"? Owner: wave 2's first row measures it here.
-4. Is an immediate delivery noisy during a refactor made in several edits? A function can go over in one edit and back under two edits later, giving two lines that a test run, slower, would often skip. The view diff (011 C5) already drops a crossing that returns before the next delivery. If the dogfood shows noise, a crossing could wait until it holds across two edits. Owner: wave 1's dogfood.
+4. Is an immediate delivery noisy during a refactor made in several edits? A function can go over in one edit and back under two edits later, giving two lines that a test run, slower, would often skip. The view diff (011 C5) already drops a crossing that returns before the next delivery. If the dogfood shows noise, a crossing could wait until it holds across two edits. Owner: wave 1's dogfood. Answered for live sessions (015-10 part C, 2026-10-24): no churn in five multi-edit refactors; each `PASS` came with the last edit, so a two-edit hold would have withheld all five. Keep immediate delivery.
 5. Does coverage stay noise-free on a wider sample, with timing-dependent tests? The research had 0 changes in 75,628 function states over two runs of 30 files. Owner: wave 2's dogfood.
 
 ## References
