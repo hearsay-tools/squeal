@@ -26,7 +26,7 @@ import type {
   RetiredEntry,
   TransitionEntry,
 } from "../types/index.js";
-import { codeChanges, codeLines, codeRegistrationLine } from "./code-format.js";
+import { codeLines, codeRegistrationLine, codeTitleWords } from "./code-format.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { failureGroups, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
@@ -272,14 +272,7 @@ export function formatDelta(
   // Row 011-73 (C8 as amended 2026-10-21): each start or end of a hold is a line; the first may be the title.
   const holds = (delta.holds ?? []).map((c) => holdChangeLine(c, header.revision, command));
   const holdTitle = entries.length === 0 && delta.liveness === undefined ? holds[0] : undefined;
-  const title =
-    entries.length === 0
-      ? delta.liveness === undefined
-        ? (holdTitle ?? codeTitle(delta) ?? `SQUEAL · revision ${header.revision}`)
-        : livenessTitle(delta.liveness, header.revision)
-      : delta.label === "baseline"
-        ? `SQUEAL · Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}`
-        : `SQUEAL · ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
+  const title = titleOf(delta, holdTitle);
   const blocks = [
     ...failureBlocks(
       changed.filter((e) => e.to === "fail"),
@@ -325,11 +318,28 @@ export function formatDelta(
   );
 }
 
-/** Spec 015 D6: the title of a delivery whose only news is the code's. */
-function codeTitle({ code, header }: Delta): string | undefined {
-  if (code === undefined || codeChanges(code) === 0) return undefined;
-  const changes = codeChanges(code);
-  return `SQUEAL · ${changes} complexity ${changes === 1 ? "change" : "changes"} at revision ${header.revision}`;
+/**
+ * A delta's title. Spec 015 D6: one whose only news is the code's is titled
+ * by its code lines; any other names them after its own words, so no code
+ * line is left out, and a STILL FAIL is not a change (lessons round 1).
+ */
+function titleOf(delta: Delta, holdTitle: string | undefined): string {
+  const { header, entries } = delta;
+  const code = delta.code === undefined ? null : codeTitleWords(delta.code);
+  const own =
+    entries.length === 0
+      ? delta.liveness === undefined
+        ? (holdTitle ?? null)
+        : livenessTitle(delta.liveness, header.revision)
+      : delta.label === "baseline"
+        ? `SQUEAL · Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}`
+        : `SQUEAL · ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
+  if (own === null) {
+    return code === null
+      ? `SQUEAL · revision ${header.revision}`
+      : `SQUEAL · ${code} at revision ${header.revision}`;
+  }
+  return code === null ? own : `${own}; ${code}`;
 }
 
 /** Task 001-224, decided by the human: said once per consumer, after its first edit. */
