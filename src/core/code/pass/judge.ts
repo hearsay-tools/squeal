@@ -13,6 +13,12 @@ import type { EpochMs, FileHash, RelativePath, RevisionNumber } from "../../type
 export interface FileAfter {
   readonly path: RelativePath;
   readonly count: Pick<FileCount, "blob" | "functions" | "errors"> | null;
+  /**
+   * The count a first count or recount failed on, made since at the same
+   * blob: judged as that pass would have, with no move, transition or edit
+   * (review 0.1.293 B1).
+   */
+  readonly quiet?: boolean;
 }
 
 export interface JudgeInput {
@@ -62,12 +68,18 @@ interface Counted {
  * `unknown` records no transition in or out of it (D3: it delivers nothing).
  */
 export function judge(input: JudgeInput): Judged {
+  const seeds = new Set(input.after.flatMap((a) => (a.quiet === true ? [a.path] : [])));
+  const quiet = (check: CodeCheckId) => input.quiet || seeds.has(check.path);
   const before = new Map(input.before.map((s) => [checkKey(s.check), s]));
   const counted = countedChecks(input);
   const now = new Set(counted.map((c) => checkKey(c.check)));
-  const added = counted.filter((c) => !before.has(checkKey(c.check)));
+  const added = counted.filter((c) => !before.has(checkKey(c.check)) && !quiet(c.check));
   const gone = new Map([...before].filter(([key]) => !now.has(key)));
-  const moves = input.quiet ? [] : matchMoves(added, gone, input.bodies);
+  const moves = matchMoves(
+    added,
+    new Map([...gone].filter(([, s]) => !quiet(s.check))),
+    input.bodies,
+  );
   const prior = new Map(before);
   for (const { from, to } of moves) {
     const state = before.get(checkKey(from));
@@ -91,7 +103,7 @@ export function judge(input: JudgeInput): Judged {
       blob: c.blob,
       changedAt: was !== undefined && was.outcome === c.outcome ? was.changedAt : input.revision,
     });
-    if (input.quiet) continue;
+    if (quiet(c.check)) continue;
     const kind = transitionKind(was?.outcome ?? null, c.outcome);
     if (kind !== null) {
       transitions.push(transition(input, c.check, kind, was ?? null, c));
@@ -104,7 +116,7 @@ export function judge(input: JudgeInput): Judged {
   for (const [key, state] of gone) {
     if (moved.has(key)) continue;
     removed.push(state.check);
-    if (!input.quiet && state.outcome === "fail") {
+    if (!quiet(state.check) && state.outcome === "fail") {
       transitions.push(transition(input, state.check, "removed", state, null));
     }
   }

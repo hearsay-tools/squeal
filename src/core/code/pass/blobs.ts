@@ -29,13 +29,20 @@ export interface FileEntry {
 /** A work set path: no longer counted, or a file. */
 export type Entry = { readonly kind: "gone"; readonly path: RelativePath } | FileEntry;
 
+/** The pass's counts: when they are tried, and whether the pass is a first count or recount. */
+export interface Attempt {
+  readonly now: EpochMs;
+  readonly quiet: boolean;
+}
+
 /**
  * D4's blob lookup and slices: each blob of the work set with no count at
  * this counter version is read and counted once, `sliceFiles` at a time, and
  * stored with one transaction per slice. A blob the disk no longer holds is
  * retried at the next pass. One the counter fails on is recorded in
  * `failed` and retried when its retry is due, `COUNT_ATTEMPTS` in all (row
- * 015-18); until then it is not counted again. The paths of either keep
+ * 015-18), with whether `attempt` is a quiet pass's (review 0.1.293 B1);
+ * until then it is not counted again. The paths of either keep
  * their states as they were. A symlink is no file to count (`links`): its
  * target is counted at its own path.
  */
@@ -43,9 +50,10 @@ export async function countMissing(
   ctx: PassContext,
   entries: readonly Entry[],
   failed: FailedCounts,
-  now: EpochMs,
+  attempt: Attempt,
 ): Promise<{ counted: number; skipped: Set<RelativePath>; links: Set<RelativePath> }> {
   const { store, counter } = ctx;
+  const { now } = attempt;
   const byBlob = new Map<string, FileEntry[]>();
   for (const e of entries) {
     if (e.kind !== "count") continue;
@@ -79,7 +87,7 @@ export async function countMissing(
         if (typeof count === "object" && "error" in count) {
           // A path of the group held already spent its attempts at this blob.
           for (const e of group.filter((g) => mayCount(failed, g.path, g.file.hash, now))) {
-            fail(ctx, failed, e, count.error, now);
+            fail(ctx, failed, e, count.error, attempt);
           }
         }
         if (typeof count !== "object" || "error" in count) {
@@ -119,14 +127,14 @@ function fail(
   failed: FailedCounts,
   e: FileEntry,
   error: string,
-  now: EpochMs,
+  attempt: Attempt,
 ): void {
-  const f = failedAgain(failed.get(e.path), e.file.hash, error, now);
+  const f = failedAgain(failed.get(e.path), e.file.hash, error, attempt);
   failed.set(e.path, f);
   const next =
     f.retryAt === null
       ? "not again until it changes"
-      : `trying again in ${Math.round((f.retryAt - now) / 1000)} s`;
+      : `trying again in ${Math.round((f.retryAt - attempt.now) / 1000)} s`;
   ctx.log(
     `complexity: could not count ${e.path} (attempt ${f.attempts} of ${COUNT_ATTEMPTS}): ${error}; ${next}`,
   );

@@ -41,9 +41,10 @@ describe("the daemon retries a failed count (row 015-18)", () => {
     expect(reports.map((r) => `${r.mode} ${r.counted}`)).toEqual(["first 0"]);
     await elapse(code, 1);
     await code.close();
+    // The retry of a first count seeds quietly (review 0.1.293 B1).
     expect(reports.map((r) => `${r.mode} ${r.counted} ${r.transitions}`)).toEqual([
       "first 0 0",
-      "edit 1 1",
+      "edit 1 0",
     ]);
     expect(open(tree.commonDir).states.list(tree.id)).toMatchObject([
       { value: 23, outcome: "fail" },
