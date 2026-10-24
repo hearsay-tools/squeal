@@ -114,8 +114,7 @@ export function judge(input: JudgeInput): Judged {
     });
     if (quiet(c.check)) continue;
     const kind = transitionKind(was?.outcome ?? null, c.outcome);
-    const earlier = [was?.threshold, editedUnder.get(c.check.path)];
-    if (kind !== null && !byPolicy(c, earlier)) {
+    if (kind !== null && !byPolicy(c, was, editedUnder.get(c.check.path))) {
       transitions.push(transition(input, c.check, kind, was ?? null, c));
     }
     const body = input.bodies.get(key);
@@ -159,12 +158,18 @@ function outcomeAt(complexity: number, threshold: number): CodeOutcome {
 }
 
 /**
- * Row 015-31: whether a threshold the check was judged at before, or its
- * failed edit was made under, gives the count another outcome than now.
- * Then a later policy change, not the edit, made the crossing (D1).
+ * Row 015-31: whether the threshold the check's state was judged at, or
+ * its failed edit was made under, gives the count another outcome than
+ * now. Then a later policy change, not the edit, made the crossing (D1).
  */
-function byPolicy(c: Counted, earlier: readonly (number | null | undefined)[]): boolean {
-  return earlier.some((t) => typeof t === "number" && outcomeAt(c.fn.complexity, t) !== c.outcome);
+function byPolicy(
+  c: Counted,
+  was: CodeKnownState | undefined,
+  editedUnder: number | undefined,
+): boolean {
+  return [was?.threshold, editedUnder].some(
+    (t) => typeof t === "number" && outcomeAt(c.fn.complexity, t) !== c.outcome,
+  );
 }
 
 /**
