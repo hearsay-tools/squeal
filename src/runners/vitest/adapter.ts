@@ -19,7 +19,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../core/types/index.js";
-import { checkTextPattern, focusedTexts } from "../focus.js";
+import { focusedTexts } from "../focus.js";
 import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
@@ -31,6 +31,7 @@ import { Gate, type Hold } from "./gate.js";
 import { importClosure, missingCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
 import { mayHaveReadTouched, mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
+import { namePattern } from "./name-pattern.js";
 import { VitestObserver } from "./observe.js";
 import { noteOnce, withoutOptimizer } from "./optimizer.js";
 import { closurePackages, environmentPackages } from "./packages.js";
@@ -480,7 +481,7 @@ export class VitestAdapter implements RunnerAdapter {
           return texts === null
             ? project.createSpecification(path)
             : project.createSpecification(path, {
-                testNamePattern: new RegExp(checkTextPattern(texts)),
+                testNamePattern: namePattern(texts, vitest.version),
               });
         });
         const collector = new RunCollector(
