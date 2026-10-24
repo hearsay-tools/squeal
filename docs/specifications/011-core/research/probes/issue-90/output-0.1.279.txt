@@ -4,11 +4,11 @@ load 2.75 2.41 3.80 2/1569 1647468 nproc 24
 +0.1s $ squeal --version -> exit=0
     0.1.279
 +0.2s hook session-start exit=0
-    | 
+    |
 +4.4s $ squeal run --all --wait 120000 -> exit=0
     Checkpoint 54c8e4d0-1c97-40ac-b612-5e717ee92d47 completed at revision 0: no known failures; 5 test files, 0 already current, 5 run now
     Checkpoint 54c8e4d0-1c97-40ac-b612-5e717ee92d47 started at revision 0: 5 test files to run, 0 already current
-    
+
     Revision: 0
     Known failures: 0; all 5 test files current
     Affected checks: 10 passed (5 tests, 5 test files loaded), 0 running, 0 queued
@@ -23,7 +23,7 @@ load 2.75 2.41 3.80 2/1569 1647468 nproc 24
     Full-suite checkpoint: completed at revision 0
     Slow tier: 3 test files; 3 current at revision 0. Squeal runs them after the fast tests.
     More: `squeal status --full` adds the worktree and daemon and 1 note
-    
+
     Returned on quiet: the edits since revision 0 re-keyed no test file, at revision 0 after 0.3 s. Worktree: known failures 0; all 5 test files current
 +5.0s $ squeal status -> exit=0
     Revision: 0
@@ -42,14 +42,14 @@ load 2.75 2.41 3.80 2/1569 1647468 nproc 24
     | Revision 0: 10 current (5 tests, 5 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. The daemon is stopped by request (`squeal stop`); a hook starts one at the next edit, or run `squeal start`; results are as of revision 0.
     | Slow tier: 3 test files; 3 current at revision 0. Squeal runs them after the fast tests.
     | Known failures: 0; 5 test files current as of revision 0
-    | 
+    |
     | Squeal runs this repository's Vitest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run Vitest to learn whether your edits broke something. Wait only when you need a result before your next step: `squeal status --wait 60000 <path>...` for the verdict on files you just changed; before you finish, `squeal status --wait 60000` or a checkpoint, `squeal run --all --wait`. Slow test files run after the fast tests; this repository does not require them before you finish: say slow tests pass only when the latest `Slow tier:` line states every slow file is current, else say how many are not, or wait for them with `squeal run --slow --wait 60000`. A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call. Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: `squeal retry <file> --reason load|environment`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest (vitest.config.ts), with 3 slow test files at the daemon's last listing. Squeal does not cover typecheck, build or any other test suite: run those yourself.
 +7.5s daemon processes for fixture: 0
 
 === B: squeal stop held; Bash edit of e2e/a.e2e.ts; PostToolBatch
 +7.5s bash: sed -i '$a // probe edit 1' e2e/a.e2e.ts
 +7.5s hook post-tool-batch exit=0
-    | 
+    |
 +8.2s [B +500ms after hook] rev=1 slow={"testFiles":3,"current":0,"pending":0,"notRun":3,"currentAt":null,"activity":null} holds=none
 +9.8s [B +1500ms after hook] rev=1 slow={"testFiles":3,"current":0,"pending":0,"notRun":3,"currentAt":null,"activity":null} holds=none
 +12.9s [B +3000ms after hook] rev=1 slow={"testFiles":3,"current":0,"pending":0,"notRun":3,"currentAt":null,"activity":null} holds=none
@@ -78,7 +78,7 @@ load 2.75 2.41 3.80 2/1569 1647468 nproc 24
 +20.3s [C +1000ms] rev=2 slow={"testFiles":3,"current":0,"pending":3,"notRun":0,"currentAt":null,"activity":null} holds=none
 +22.9s [C +2500ms] rev=2 slow={"testFiles":3,"current":3,"pending":0,"notRun":0,"currentAt":2,"activity":null} holds=none
 +29.0s hook post-tool-batch exit=0
-    | 
+    |
 +29.1s [C settled] rev=2 slow={"testFiles":3,"current":3,"pending":0,"notRun":0,"currentAt":2,"activity":null} holds=none
 
 === D: squeal hold -- sh -c '<edit>; sleep 8' (gh-49 mechanism)
@@ -106,12 +106,12 @@ load 2.75 2.41 3.80 2/1569 1647468 nproc 24
 +49.7s [E held, edit 1 +4s] rev=4 slow={"testFiles":3,"current":0,"pending":3,"notRun":0,"currentAt":null,"activity":null} holds=command
 +49.7s bash: sed -i '$a // probe edit 4' e2e/c.e2e.ts
 +50.2s hook post-tool-batch exit=0
-    | 
+    |
 +54.3s [E held, edit 2 +4s] rev=5 slow={"testFiles":3,"current":0,"pending":3,"notRun":0,"currentAt":null,"activity":null} holds=command
 +54.4s $ squeal start -> exit=0
     Ended the hold for `sleep 60` (pid 1655320); the command still runs
     Squeal daemon alive for /tmp/squeal-issue90-2EDckI/repo
-    
+
     Revision: 5 · 2c7c8b2a + 5, dirty
     Known failures: 0; not current: 3 of 5 test files (3 queued), 3 tests (3 queued)
     Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 6 queued (3 tests, 3 test files loaded); among them 3 slow test files, e2e/a.e2e.ts, e2e/b.e2e.ts and e2e/c.e2e.ts: `squeal run --slow --wait 60000` waits for their results
@@ -128,7 +128,7 @@ load 2.75 2.41 3.80 2/1569 1647468 nproc 24
     | All 3 test files your edits since revision 3 re-keyed are current.
 +60.7s background hold (killed after squeal start) exited 143
 +60.8s hook session-end exit=0
-    | 
+    |
 +61.0s $ squeal stop -> exit=0
     Squeal daemon stopped for /tmp/squeal-issue90-2EDckI/repo
 +61.6s daemon processes for fixture: 0

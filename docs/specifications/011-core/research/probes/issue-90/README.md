@@ -7,3 +7,5 @@ Throwaway evidence for `../../issue-90.md`. It is not product code and not a tes
 Legs: A, stop with no edit (control). B, stop, one Bash edit, PostToolBatch. C, a second edit while the restarted daemon lives. D, `squeal hold -- sh -c '<edit>; sleep 8'`. E, `squeal hold --max 2m -- sleep 60` in the background, edits from separate calls, then `squeal start`.
 
 `output-0.1.279.txt` and `output-0.1.283.txt`: one run each, from `/tmp`, against `~/.claude/plugins/cache/hearsay/squeal/<version>`.
+
+Captured output has trailing whitespace removed.
