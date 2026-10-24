@@ -22,3 +22,4 @@ Read `docs/vision.md` first, with its decision filter. Two of its lines frame th
 - [agent-feedback-brief](agent-feedback-brief.md) (015-03): what peers show developers, what is known about coverage and complexity feedback to coding agents, and which of it is a transition. Findings go to `agent-feedback.md`.
 - [typeof-import-brief](typeof-import-brief.md) (015-25): the `typeof import` misparse in a type argument, an upstream fix or an offset-keeping rewrite, measured against ESLint. Findings go to `typeof-import.md`.
 - [progress-updates-brief](progress-updates-brief.md) (015-26): the human's idea of a subscription to updates on a failing function. Findings go to `progress-updates.md`.
+- R3 in `../tasks/wave-2.md` (open question 3): the functions only a child-process test reaches, for D9's "no test runs it". Findings go to `child-processes.md`.
