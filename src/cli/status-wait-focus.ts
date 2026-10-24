@@ -240,22 +240,22 @@ export class CheckUsageError extends Error {}
 
 /**
  * Row 011-146: what a wait with `checks` reads of the files named by their
- * own paths, from its read of the store; `undefined` without `checks` or
- * such a file. Before the selection is decided (`whole` absent) it reads
- * no file. `reply` is the daemon's answer to `focus`, once it came.
+ * own paths (`own`), from its read of the store; `undefined` without
+ * `checks` or such a file. `whole` names the files the daemon runs whole;
+ * `reply` is the daemon's answer to `focus`, once it came.
  */
 export function focusOf(
   store: Store,
   worktreeId: WorktreeId,
   own: readonly TestFileRef[],
   checks: readonly string[],
-  whole: ReadonlyMap<string, string> | undefined,
+  whole: ReadonlyMap<string, string>,
   reply: FocusReply | undefined,
   record: { readonly squealVersion: string } | null,
 ): NamedFocus | undefined {
   if (checks.length === 0 || own.length === 0) return undefined;
   const texts = focusTexts(checks, own);
-  const files = whole === undefined ? [] : readFocusedFiles(store, worktreeId, own, texts, whole);
+  const files = readFocusedFiles(store, worktreeId, own, texts, whole);
   const refused =
     reply === "refused" ? { refused: { version: record?.squealVersion ?? null } } : {};
   return { texts, files, ...refused };
