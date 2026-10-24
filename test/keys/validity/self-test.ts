@@ -81,13 +81,16 @@ export interface Comparisons {
 /**
  * Registers the work directory's setup and removal; call at a test file's
  * top level. Each comparison's directory goes once it ends, while the next
- * test runs; the file's last hook waits for every comparison and its removal,
- * a timed-out test's too, then removes the rest (row 011-179, review w31b B1).
+ * test runs. The file's last hook closes: a `compare()` after it starts, as a
+ * timed-out test's next one, throws before it reserves a directory or starts
+ * a driver. The hook waits for every comparison it accepted and its removal,
+ * then removes the rest (row 011-179, reviews w31b and w31b-r2, B1).
  */
 export function comparisons(): Comparisons {
   let work: string | undefined;
   let release = "";
   let runs = 0;
+  let closing = false;
   const ends: Promise<void>[] = [];
   beforeAll(() => {
     work = mkdtempSync(join(tmpdir(), "squeal-validity-"));
@@ -95,7 +98,12 @@ export function comparisons(): Comparisons {
     extractTree(release, join(work, "release"));
   });
   afterAll(async () => {
-    await allEnded(ends);
+    closing = true;
+    // Until the list stops growing, so no accepted comparison is left out of the wait.
+    for (let waited = -1; waited < ends.length; ) {
+      waited = ends.length;
+      await allEnded(ends);
+    }
     if (work !== undefined) await rm(work, { recursive: true, force: true });
   }, REMOVAL.timeout);
   const dir = () => {
@@ -106,6 +114,11 @@ export function comparisons(): Comparisons {
     release: () => release,
     tree: () => join(dir(), "release"),
     compare: async (overlay, cases = CASES, baseline = ROOT, install) => {
+      if (closing) {
+        throw new Error(
+          "compare() after the file's last hook began, as a timed-out test's next comparison: it does not run",
+        );
+      }
       const at = join(dir(), `run-${runs++}`);
       const comparison = compareTrees({
         baseline,
