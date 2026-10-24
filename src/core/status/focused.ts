@@ -171,6 +171,15 @@ export function focusedLines(s: StatusSnapshot, full = false): string[] {
 }
 
 /**
+ * The checks this worktree's focused runs recorded, which `why` resolves a
+ * name against: a check first seen in a focused run has no other record
+ * (C5, review 0.1.286 B3). A run in flight has recorded none.
+ */
+export function focusedCheckIds(store: Store, worktreeId: WorktreeId): CheckId[] {
+  return readFocused(store, worktreeId).flatMap((run) => run.checks.map((c) => c.check));
+}
+
+/**
  * 011 C6 as amended 2026-10-23: the newest focused run of `check`'s test
  * file in `worktreeId` when it selected `check`, read against the file's
  * current `key`; `undefined` otherwise, a run in flight included.
