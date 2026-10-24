@@ -13,7 +13,7 @@ describe("core types", () => {
         slowWaitMs: 120_000,
       },
       testCommand: { denyWhenCurrent: false },
-      baseline: { onStart: "lookup-then-run-missing" },
+      baseline: { onStart: "lookup-only" },
       inputs: [],
       observe: { runtimeInputs: true },
       env: { allowlist: [] },

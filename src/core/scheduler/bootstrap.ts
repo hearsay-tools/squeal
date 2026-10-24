@@ -40,11 +40,15 @@ import { runnerPartBound } from "./runner-work-bound.js";
  *    contents import the same files (B1). A miss will run, so it is keyed
  *    again from this worktree's own closure and looked up once more.
  * 4. One checkpoint of kind `baseline` over the misses and the unkeyed
- *    files, run in tiers or, with `baseline.onStart: "lookup-only"`,
- *    abandoned unless empty. An unkeyed file ends it `abandoned` (D5).
- *    Whatever the policy, a miss whose row the last daemon left `queued` or
- *    `running` is queued, in the group its open re-key moves give it, and a
- *    pending re-run too (`handover`, 011 C4 as amended 2026-10-20, 011-33).
+ *    files, run in tiers or, with `baseline.onStart: "lookup-only"` (the
+ *    default, 001 D11 as amended 2026-10-23), abandoned unless empty. An
+ *    unkeyed file ends it `abandoned` (D5). Whatever the policy, a miss
+ *    whose row the last daemon left `queued` or `running` is queued, in the
+ *    group its open re-key moves give it, and a pending re-run too
+ *    (`handover`, 011 C4 as amended 2026-10-20, 011-33), and so is a miss
+ *    whose key holds another worktree's unconfirmed fail, which only a
+ *    local run confirms or clears (C4 step 3 as amended 2026-10-23, row
+ *    011-159).
  *
  * What the last daemon of this worktree knew comes back from the store:
  * known checks and failures from `known_states`, the previous key from
@@ -160,8 +164,9 @@ export async function baseline(
   }
 
   const checkpointId = randomUUID();
+  const heldFails = new Set<string>();
   const lookup = (files: Iterable<TestFileRef>) =>
-    ledger.settle(files, NOTHING_CHANGED, { checkpointId, queueMisses: false });
+    ledger.settle(files, NOTHING_CHANGED, { checkpointId, queueMisses: false, heldFails });
   const first = lookup(refs);
   const recheck = first.filter((file) => fromStore.has(file.id));
   await resolveClosures(
@@ -227,9 +232,9 @@ export async function baseline(
   }
   for (const file of misses) {
     // A predecessor's queued work is handed over whatever the policy (011 C4, task 011-33);
-    // a resumed rest's reach too (011 C9, row 011-91).
+    // a resumed rest's reach too (011 C9, row 011-91), and a held fail (row 011-159).
     const reached = resumesRest && (recent.has(file.id) || catchUp.has(file.id));
-    if (lookupOnly && !handed.pending.has(file.id) && !reached) continue;
+    if (lookupOnly && !handed.pending.has(file.id) && !reached && !heldFails.has(file.id)) continue;
     const first = recent.has(file.id);
     const priority = priorityOf(file, changed, direct);
     ledger.enqueue(file, priority, false, first, !first && catchUp.has(file.id));

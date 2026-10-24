@@ -129,13 +129,13 @@ describe("status: test files without a result, named (001-403)", () => {
       {
         testFile: ref("test/a.test.ts"),
         ran: false,
-        reason: "never run at this key, and nothing queued it",
+        reason: "never run at this key: the baseline is lookup-only, so nothing queued it",
         samples: [],
         cause: "never-run",
       },
     ]);
     expect(w.text()).toContain(
-      "  test/a.test.ts: no result: never run at this key, and nothing queued it\n",
+      "  test/a.test.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it\n",
     );
   });
 

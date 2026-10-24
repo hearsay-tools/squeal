@@ -30,6 +30,12 @@ describe("loadPolicy (spec 001 D11)", () => {
     expect(loadPolicy(rootWith("{}"))).toEqual({ policy: DEFAULT_POLICY, problems: [] });
   });
 
+  it("starts lookup-only with no baseline key (row 011-159)", () => {
+    for (const contents of [null, "{}", '{"baseline": {}}']) {
+      expect(readPolicy(rootWith(contents)).baseline.onStart).toBe("lookup-only");
+    }
+  });
+
   it("applies every given key over the defaults and keeps the rest", () => {
     const { policy, problems } = loadPolicy(
       rootWith(
@@ -37,7 +43,7 @@ describe("loadPolicy (spec 001 D11)", () => {
           interrupt: { onRegression: false },
           stop: { waitMs: 1500 },
           testCommand: { denyWhenCurrent: true },
-          baseline: { onStart: "lookup-only" },
+          baseline: { onStart: "lookup-then-run-missing" },
           inputs: ["fixtures/**/*.json"],
           observe: { runtimeInputs: false },
           env: { allowlist: ["TZ"] },
@@ -59,7 +65,7 @@ describe("loadPolicy (spec 001 D11)", () => {
         slowWaitMs: 120_000,
       },
       testCommand: { denyWhenCurrent: true },
-      baseline: { onStart: "lookup-only" },
+      baseline: { onStart: "lookup-then-run-missing" },
       inputs: ["fixtures/**/*.json"],
       observe: { runtimeInputs: false },
       env: { allowlist: ["TZ"] },

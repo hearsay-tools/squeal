@@ -76,7 +76,7 @@ describe("a stale or unknown selected file names what advances it (011-27)", () 
 
     expect(lines).toEqual([
       "Unknown (1):",
-      `  1 never run at its inputs, nothing queued it: ${U}; \`squeal retry ${U}\` runs it once`,
+      `  1 never run at its inputs, nothing queued it (the baseline is lookup-only): ${U}; \`squeal retry ${U}\` runs it once`,
     ]);
     expect(groups).toBe(`1 never run, nothing queued it: \`squeal retry ${U}\``);
     expect(entries[0]).toMatchObject({
@@ -90,7 +90,7 @@ describe("a stale or unknown selected file names what advances it (011-27)", () 
     const { repo, store, id } = keyed(...paths);
 
     expect(named(store, id, repo.main, paths).lines[1]).toBe(
-      `  4 never run at their inputs, nothing queued them: ${paths.join(", ")}; \`squeal retry <test file>...\` runs each once, \`squeal run --all --wait\` runs all 4 test files not current here`,
+      `  4 never run at their inputs, nothing queued them (the baseline is lookup-only): ${paths.join(", ")}; \`squeal retry <test file>...\` runs each once, \`squeal run --all --wait\` runs all 4 test files not current here`,
     );
   });
 
@@ -227,10 +227,10 @@ describe("a stale or unknown selected file names what advances it (011-27)", () 
     // The stale files and the never-run one, each group's command from tests/.
     expect(wait.selection.base).toBe("tests");
     expect(lines).toContain(
-      `  2 last passed at other inputs, nothing queued them: ${T}, ${U}; \`squeal retry a.test.ts ../src/u.test.ts\` runs each once`,
+      `  2 last passed at other inputs, nothing queued them (the baseline is lookup-only): ${T}, ${U}; \`squeal retry a.test.ts ../src/u.test.ts\` runs each once`,
     );
     expect(lines).toContain(
-      `  1 never run at its inputs, nothing queued it: ${N}; \`squeal retry n.test.ts\` runs it once`,
+      `  1 never run at its inputs, nothing queued it (the baseline is lookup-only): ${N}; \`squeal retry n.test.ts\` runs it once`,
     );
     expect(lines.at(-1)).toContain("`squeal retry a.test.ts ../src/u.test.ts`");
     expect(lines.at(-1)).toContain("`squeal retry n.test.ts`");
