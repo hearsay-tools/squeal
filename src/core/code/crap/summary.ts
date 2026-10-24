@@ -1,6 +1,6 @@
 import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
 import type { CodeMetaRepo } from "../store/types.js";
-import type { UnknownCause } from "./loaders.js";
+import type { PendingReason, UnknownCause } from "./loaders.js";
 
 /*
  * Spec 015 D9: what the coverage step keeps beside the states, in the code
@@ -15,7 +15,7 @@ export type FileSummary =
   | {
       readonly state: "pending";
       readonly blob: string;
-      readonly reason: "run" | "record";
+      readonly reason: PendingReason;
       readonly waiting: number;
     }
   | { readonly state: "unknown"; readonly blob: string; readonly cause: UnknownCause };
@@ -34,6 +34,8 @@ export interface CoverageSummary {
    * none waits.
    */
   readonly quiet?: readonly RelativePath[];
+  /** Listed test files whose closure the daemon did not know at the last step (review 0.1.297 B3). */
+  readonly withoutImports?: number;
 }
 
 /**

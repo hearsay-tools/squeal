@@ -3,7 +3,7 @@ import type { FunctionCount } from "../../types/code.js";
 import type { CheckKey, FileHash, RelativePath, TestFileRef } from "../../types/index.js";
 import type { CoverageRecord, CoverageSource } from "../coverage/types.js";
 import { joinCoverage } from "./join.js";
-import type { Loader, UnknownCause } from "./loaders.js";
+import type { Loader, PendingReason, UnknownCause } from "./loaders.js";
 
 /*
  * Spec 015 D9 for one source: whether its functions can be judged, from the
@@ -14,7 +14,7 @@ import type { Loader, UnknownCause } from "./loaders.js";
 /** What can be said of a source's coverage now. */
 export type FileCondition =
   | { readonly state: "ready"; readonly loaders: readonly ReadyLoader[] }
-  | { readonly state: "pending"; readonly reason: "run" | "record"; readonly waiting: number }
+  | { readonly state: "pending"; readonly reason: PendingReason; readonly waiting: number }
   | { readonly state: "unknown"; readonly cause: UnknownCause };
 
 export interface ReadyLoader {
@@ -24,6 +24,9 @@ export interface ReadyLoader {
 
 /** The order a source's `unknown` names its cause in, when its loaders give several. */
 const CAUSES: readonly UnknownCause[] = ["unkeyed", "skipped", "no-record", "unread"];
+
+/** The order a pending source names why it waits, the furthest from a judgement first. */
+const REASONS: readonly PendingReason[] = ["imports", "run", "record"];
 
 /**
  * Pending until every loader has a current result with a record; unknown
@@ -39,7 +42,7 @@ export function fileCondition(loaders: readonly Loader[], listed: boolean): File
   if (cause !== undefined) return { state: "unknown", cause };
   const waiting = loaders.flatMap((l) => (l.condition.kind === "pending" ? [l.condition] : []));
   if (waiting.length > 0) {
-    const reason = waiting.some((w) => w.reason === "run") ? "run" : "record";
+    const reason = REASONS.find((r) => waiting.some((w) => w.reason === r)) ?? "record";
     return { state: "pending", reason, waiting: waiting.length };
   }
   return {
