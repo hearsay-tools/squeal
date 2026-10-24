@@ -31,7 +31,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * From a slot's run returning to the scheduler's next `run` call, or a
- * waiter's grant: the pump's checks, the lock and a 50 ms poll, in this
+ * waiter's grant: the pump's checks, the lock and a 250 ms poll, in this
  * process. Loose for a loaded runner; one slot's file of 1 to 5 s is longer.
  */
 const REACT_MS = 1_000;
@@ -171,10 +171,12 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
     onTestFinished(() => other.close());
     const waitedFrom = Date.now();
     expect(other.acquire(2)).toBeNull();
+    // It looks more slowly than the holder's pump refills a slot (tens of ms), so a holder
+    // that took back the permit it returned would refill first.
     let share: PoolLease | null = null;
     while (share === null && Date.now() - waitedFrom < 30_000) {
       share = other.acquire(2);
-      if (share === null) await sleep(50);
+      if (share === null) await sleep(250);
     }
     const grantedAt = Date.now();
     // The slots holding the pool when the waiter came, and the first of them to return its permit.
