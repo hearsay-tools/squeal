@@ -66,13 +66,20 @@ describe("vitest adapter: focused runs", SLOW, () => {
     ]);
   });
 
-  it("drops a check the pattern lets through that holds no text", async () => {
+  // Row 011-173 (review 0.1.278 N1): Vitest 5's pattern reads ` > ` alone, so
+  // the body of a check whose full name matches the text only with a space never runs.
+  it("does not run a check whose full name matches a text only with a space", async () => {
     const join = ref("test/join.test.ts");
     const fx = await openFixture("basic", {
       "test/join.test.ts": [
-        'import { describe, expect, it, test } from "vitest";',
-        'describe("a", () => it("b", () => expect(1).toBe(1)));',
-        'test("a b", () => expect(1).toBe(1));',
+        'import { appendFileSync } from "node:fs";',
+        'import { describe, it, test } from "vitest";',
+        'const ran = (name) => appendFileSync(new URL("../ran.txt", import.meta.url), name + "\\n");',
+        'describe("a", () => it("b", () => ran("selected")));',
+        'test("a b", () => {',
+        '  ran("outside");',
+        '  throw new Error("OUTSIDE");',
+        "});",
         "",
       ].join("\n"),
     });
@@ -80,8 +87,10 @@ describe("vitest adapter: focused runs", SLOW, () => {
       [join],
       fx.runOptions({ checks: [{ testFile: join, texts: ["a > b"] }] }),
     );
+    expect(fx.read("ran.txt")).toBe("selected\n");
     expect(checks(report)).toEqual([["a > b", "pass"]]);
     expect(report.focused).toEqual([{ testFile: join, collected: 2, matched: 1 }]);
+    expect(report.fileErrors).toEqual([]);
   });
 
   it("reports matched 0 and no result for a text that selects nothing", async () => {
