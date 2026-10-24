@@ -64,6 +64,12 @@ export interface Loaders {
  */
 export const RECORD_WAIT_MS = RESULT_WAITS_MS.reduce((a: number, b) => a + b, 0);
 
+/**
+ * How long a record past its wait is waited for while the writer has work
+ * in hand: a stored record nudges sooner (review 0.1.297 S1).
+ */
+export const BUSY_RECHECK_MS = 5_000;
+
 export interface LoaderInputs {
   readonly main: Pick<Store, "testFileKeys" | "results">;
   /** This worktree's own closures; `null` while its scheduler has not started. */
@@ -103,7 +109,10 @@ function conditionAt(
   }
   const stored = Math.max(...results.map((r) => r.provenance.recordedAt));
   const until = stored + RECORD_WAIT_MS;
-  if (inputs.writing || until > inputs.now) return { kind: "pending", reason: "record", until };
+  if (until > inputs.now) return { kind: "pending", reason: "record", until };
+  if (inputs.writing) {
+    return { kind: "pending", reason: "record", until: inputs.now + BUSY_RECHECK_MS };
+  }
   return { kind: "unknown", cause: "no-record" };
 }
 
