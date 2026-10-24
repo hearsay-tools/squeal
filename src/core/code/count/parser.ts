@@ -34,12 +34,30 @@ export function counterReady(): Promise<void> {
 export function withCodeTree<T>(language: CodeLanguage, text: string, fn: (root: Node) => T): T {
   if (language === "python") return withPythonTree(text, fn);
   if (tsx === null) throw new Error("code counter: the TSX grammar is not loaded yet");
-  // tree-sitter reads a NUL as the end of the input, but JS allows a raw one in a string, a
-  // template or a comment. A space keeps every offset. Python never holds one (CPython refuses it).
-  const tree = tsx.parse(text.replaceAll("\0", " ")) as Tree;
+  const tree = tsx.parse(tsxInput(text)) as Tree;
   try {
     return fn(tree.rootNode);
   } finally {
     tree.delete();
   }
+}
+
+/** `import("x")` with one plain string: no line break, backslash, `$` or backtick in it. */
+const IMPORT_LITERAL = String.raw`import[ \t]*\([ \t]*(?:'[^'\n\\$\x60]*'|"[^"\n\\$\x60]*")[ \t]*\)`;
+const TYPE_IMPORT = new RegExp(String.raw`(?<=\btypeof\s+|[<,]\s*)${IMPORT_LITERAL}`, "g");
+
+/**
+ * The text tree-sitter-tsx 0.23.2 parses as the file means, each change the
+ * same length, so every range stays (`README.md`, "Gaps of 0.23.2"). Names
+ * and body hashes are read from the file's own text.
+ */
+function tsxInput(text: string): string {
+  // tree-sitter reads a NUL as the end of the input, but JS allows a raw one in a string, a
+  // template or a comment. Python never holds one (CPython refuses it).
+  const input = text.replaceAll("\0", " ");
+  // It reads `f<typeof import("x")>()` and `f<import("x").T>()` as comparisons (row 015-29): an
+  // identifier of underscores in place of the `import(…)` makes them type arguments again.
+  return input.includes("import")
+    ? input.replace(TYPE_IMPORT, (match) => "_".repeat(match.length))
+    : input;
 }
