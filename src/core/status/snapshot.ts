@@ -41,7 +41,7 @@ import { statusIdentity } from "./identity.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 import { openRuns } from "./open-runs.js";
 import { outstandingOf } from "./outstanding.js";
-import { pendingTestFilesOf } from "./phase-files.js";
+import { pendingPhasesOf, pendingTestFilesOf } from "./phase-files.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { once } from "./standing-facts.js";
 import { withStopping } from "./stopping.js";
@@ -166,8 +166,9 @@ function snapshot(
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
   const at = worktree?.root ?? root;
-  // Row 011-146 (C6 as amended 2026-10-23): focused runs, never counted.
-  const focused = readStatusFocused(store, worktreeId);
+  const phases = pendingPhasesOf(states, keys, held);
+  // Row 011-146 (C6 as amended 2026-10-23): focused runs, never counted, each with its file's phase.
+  const focused = readStatusFocused(store, worktreeId, phases);
   // Row 011-58 (gh-58): who holds the slow slot, while the daemon waits for it.
   const slowSlot = slowSlotOf(store, worktreeId, at, header, daemon.state === "alive", now);
   // Row 011-29: the groups `Outstanding:` prints, from the rows read above.
@@ -214,7 +215,7 @@ function snapshot(
     ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),
     ...(daemon.state === "alive" ? { runsOpen: runs.length } : {}),
     outstanding,
-    pendingTestFiles: pendingTestFilesOf(states, keys, held),
+    pendingTestFiles: pendingTestFilesOf(phases),
     ...(slowSlot === undefined ? {} : { slowSlot }),
     ...(focused.length === 0 ? {} : { focused }),
     ...codeStatusOf(
