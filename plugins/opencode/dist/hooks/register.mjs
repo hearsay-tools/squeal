@@ -6194,7 +6194,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.295";
+  if (true) return "0.1.296";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -6574,7 +6574,7 @@ function isYield(value) {
   const { kind, remainderMs, yieldsAt } = value;
   if (kind === "remainder") return typeof remainderMs === "number";
   if (kind === "overrun") return typeof yieldsAt === "number";
-  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner";
+  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
 }
 
 // src/core/status/slot-holders.ts
