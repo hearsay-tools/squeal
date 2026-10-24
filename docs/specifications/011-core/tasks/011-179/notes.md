@@ -91,6 +91,7 @@ CPU load alone does not explain the hook timeouts of 011-142 section 5 (more tha
 
 ## For whoever continues
 
+- A Vitest worker that ends during a comparison leaves its drivers running: now up to 4 drivers and their pytest or Vitest children, before 1. Squeal's sweep stopped such processes in this worktree at revisions 8 and 9 (12:37 and 12:38 UTC), while the code was mid-edit and `compare.ts` still used `Promise.all`. It noted none at revision 13 (d41601e45) or later. Right after a passing run of `pytest.test.ts` and `compare.test.ts` (17 tests), no `squeal-validity-*` process was left. A driver that exits with its parent needs `driver.ts` to watch for it, outside this row.
 - A case whose output depended on an earlier case in the same driver process would now see a different earlier case, at both sides alike. The outputs diff of section 4 shows none today.
 - Further cuts, outside this row: `python.ts` syncs the two Pythons in turn; each pytest case writes about 5 MB of bytecode into its own cache.
 - The scratch probes (`phases.repro.ts` with `record.ts`, `series.sh`, `rm.mjs`, `hooks.ts`, `diff.mjs`) lived in the worker's scratch folder and go with it. Sections 1, 3, 4 and 5 describe them well enough to write them again.
