@@ -4547,6 +4547,31 @@ function toFile(row) {
   };
 }
 
+// src/core/code/store/coverage.ts
+function createCoverageRepo(conn) {
+  return {
+    get(key) {
+      const row = conn.get(
+        "SELECT record FROM coverage WHERE result_key = ? AND provider_version = ?",
+        key.resultKey,
+        key.providerVersion
+      );
+      const record = row?.record;
+      return record instanceof Uint8Array ? record : null;
+    },
+    put(key, record, at) {
+      conn.run(
+        `INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT DO UPDATE SET record = excluded.record, recorded_at = excluded.recorded_at`,
+        key.resultKey,
+        key.providerVersion,
+        record,
+        at
+      );
+    }
+  };
+}
+
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 var DELETE_BATCH2 = 256;
@@ -4586,12 +4611,12 @@ function pruneCodeStore(conn, options) {
      AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff
   );
-  const coverageRemoved = deleteInBatches(
+  const coverageRemoved = options.resultKeys === void 0 ? deleteInBatches(conn, "coverage", "result_key, provider_version", "recorded_at < ?", cutoff) : deleteInBatches(
     conn,
     "coverage",
     "result_key, provider_version",
-    "recorded_at < ?",
-    cutoff
+    "result_key NOT IN (SELECT value FROM json_each(?))",
+    JSON.stringify(options.resultKeys)
   );
   const checksRemoved = deleteInBatches(
     conn,
@@ -4936,6 +4961,7 @@ function createCodeStore(conn, schemaVersion, path) {
     states: createStateRepo(conn),
     transitions: createTransitionRepo2(conn),
     views: createViewRepo2(conn),
+    coverage: createCoverageRepo(conn),
     transaction: (fn) => conn.transaction(fn),
     read: (fn) => conn.read(fn),
     prune: (options) => pruneCodeStore(conn, options),
@@ -6168,7 +6194,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.294";
+  if (true) return "0.1.295";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
