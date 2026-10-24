@@ -13,14 +13,14 @@ import type { CliIo } from "./main.js";
 import { pauseOnlyIds, readNamedFiles } from "./named-files.js";
 import { type DaemonSync, pollPause, SYNC_POLL_MS, syncDaemon } from "./status-sync.js";
 import { STATUS_WAIT_SETTLE_MS } from "./status-wait.js";
-import { snapshotFocus } from "./status-wait-focus.js";
+import { CheckUsageError, checkUsage, snapshotFocus } from "./status-wait-focus.js";
 import {
   decidedOutcome,
   type NamedPrint,
   type NamedWait,
   type NamedWaitOutcome,
   ownNamedFiles,
-  printNamed,
+  printNamedRead,
   selectNamedFiles,
 } from "./status-wait-paths.js";
 import { holdOfWait, readClasses, readVerdict } from "./verdict.js";
@@ -72,6 +72,7 @@ export async function readNamedSnapshot(
     const read = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, (context) =>
       readOnce(context, cwd, paths, sync, options.now(), options.checks ?? []),
     );
+    if ("usage" in read) throw new CheckUsageError(read.usage);
     if ("available" in read) return { outcome: "unavailable", waitedMs: elapsed(), result: read };
     return { ...read, waitedMs: elapsed() };
   } finally {
@@ -103,6 +104,10 @@ function readOnce(
     current.state === "synced" &&
     all.revision >= current.revision &&
     !all.unlisted;
+  const own = ownNamedFiles(root, cwd, paths, selection);
+  // Row 011-146 (C15): a source path selects no focus (review 0.1.286 B4).
+  const usage = checkUsage(checks, ready, own);
+  if (usage !== null) return usage;
   const paused = new Set(
     ready ? pauseOnlyIds(store, id, root, selection.files, liveness, now) : [],
   );
@@ -119,8 +124,7 @@ function readOnce(
     liveness.state !== "alive" ? "no-daemon" : (decided ?? (hold !== null ? "on-hold" : "timeout"));
   const result = buildSnapshot(store, root, now);
   // Row 011-146 (C6 as amended 2026-10-23): the selected checks' focused answers; it requests nothing.
-  const own = ownNamedFiles(root, cwd, paths, selection);
-  const focus = snapshotFocus(store, id, root, ready, own, checks);
+  const focus = snapshotFocus(store, id, root, own, checks);
   return {
     outcome,
     ...(hold === null ? {} : { hold }),
@@ -143,6 +147,6 @@ export async function namedSnapshotCommand(
   options: NamedSnapshotOptions,
 ): Promise<number> {
   const checks = how.checks ?? [];
-  const snapshot = await readNamedSnapshot(io.cwd ?? process.cwd(), paths, { ...options, checks });
-  return printNamed(snapshot, how, io, options.now);
+  const snapshot = readNamedSnapshot(io.cwd ?? process.cwd(), paths, { ...options, checks });
+  return printNamedRead(snapshot, how, io, options.now);
 }
