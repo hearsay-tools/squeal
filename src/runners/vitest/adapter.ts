@@ -24,7 +24,13 @@ import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
-import { coveredFiles, InstanceCoverage, inspectorFiles, type VitestCoverage } from "./coverage.js";
+import {
+  coveredFiles,
+  InstanceCoverage,
+  inspectorFiles,
+  inspectorNote,
+  type VitestCoverage,
+} from "./coverage.js";
 import { closeEmptied } from "./empty-closed.js";
 import { formerPackages, projectEnvironment } from "./environment.js";
 import { exclusion } from "./exclude.js";
@@ -645,7 +651,8 @@ export class VitestAdapter implements RunnerAdapter {
   /**
    * Spec 015 D8: the files of a run whose workers take no coverage, written
    * for the provider: a focused file, whose run is not the whole file's, and
-   * one whose closure imports `node:inspector`, named once in a note.
+   * one whose closure or project setup imports `node:inspector`, named once
+   * in a note.
    */
   async #uncovered(
     vitest: Vitest,
@@ -655,14 +662,8 @@ export class VitestAdapter implements RunnerAdapter {
   ): Promise<Set<string>> {
     const focused = testFiles.filter((ref) => focusedTexts(options.checks, ref) !== null);
     const reading = await inspectorFiles(vitest, testFiles, this.paths);
-    for (const ref of reading) {
-      noteOnce(
-        this.paths.root,
-        `coverage is off for ${ref.path}: its closure imports node:inspector, so its tests can see V8 coverage (spec 015 D8)`,
-        this.#note,
-      );
-    }
-    const skipped = [...focused, ...reading];
+    for (const file of reading) noteOnce(this.paths.root, inspectorNote(file), this.#note);
+    const skipped = [...focused, ...reading.map((file) => file.ref)];
     coverage.skip(skipped.map((ref) => this.paths.toAbsolute(ref.path)));
     return new Set(skipped.map(fileKey));
   }
