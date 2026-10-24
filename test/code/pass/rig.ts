@@ -1,5 +1,6 @@
-import type { PassReport } from "../../../src/core/code/pass/index.js";
+import type { Counter, PassReport } from "../../../src/core/code/pass/index.js";
 import type { CodeStore } from "../../../src/core/code/store/index.js";
+import { dropCode } from "../../../src/core/delivery/code-deliver.js";
 import { type CodeSource, codeSource } from "../../../src/core/delivery/code-source.js";
 import {
   createDelivery,
@@ -26,14 +27,16 @@ export interface Rig {
   readonly complexity: Policy["complexity"];
   /** Paths to read again, shared by every pass as the daemon's. */
   readonly retry: Set<string>;
-  /** One pass over the revisions stored since the last. */
-  pass(): Promise<PassReport | null>;
+  /** One pass over the revisions stored since the last; `counter` a new one makes a recount. */
+  pass(counter?: Counter): Promise<PassReport | null>;
   /** Writes these files, stores one revision of them, and runs the pass. */
   edit(files: Record<string, string>): Promise<PassReport | null>;
   /** As `edit`, with the files committed first, so the revision moves `HEAD` as a pull does (015-19). */
   pull(files: Record<string, string>): Promise<PassReport | null>;
   /** Registers `consumer` and gives its registration's text. */
   register(consumer: Consumer): Promise<string>;
+  /** SessionEnd: unregisters `consumer` and drops its code views, as the hook's sweep does. */
+  end(consumer: Consumer): Promise<void>;
   /** The code lines told to `consumer` at its next tool boundary; `[]` when nothing is. */
   told(consumer: Consumer): Promise<string[]>;
   /** Every line of the delivery to `consumer` at its next tool boundary; `[]` when nothing is told. */
@@ -71,9 +74,9 @@ export function rig(over: Partial<Policy["complexity"]> = {}): Rig {
     source,
     complexity,
     retry,
-    pass() {
+    pass(counter = fakeCounter()) {
       const at = tick();
-      return pass(tree, store, fakeCounter(), { policy: policyOn(over), retry, now: () => at });
+      return pass(tree, store, counter, { policy: policyOn(over), retry, now: () => at });
     },
     edit(files) {
       for (const [path, text] of Object.entries(files)) tree.write(path, text);
@@ -89,6 +92,11 @@ export function rig(over: Partial<Policy["complexity"]> = {}): Rig {
     async register(c) {
       tick();
       return formatRegistration(await delivery().register(c));
+    },
+    async end(c) {
+      tick();
+      await delivery().unregister(c);
+      dropCode(source, [c], { worktrees: [c.worktreeId], registered: [] });
     },
     async told(c) {
       return (await self.delivered(c)).filter((line) => line.includes(" complexity: "));
