@@ -1,0 +1,10 @@
+2024-09-01:2024-09-30 {"error":"scoped packages are not currently supported in bulk lookups"}
+2026-09-01:2026-09-30 {"error":"scoped packages are not currently supported in bulk lookups"}
+@biomejs%2Fbiome	2024-09-01:2024-09-30	3512182
+@biomejs%2Fbiome	2026-09-01:2026-09-30	63962051
+eslint	2024-09-01:2024-09-30	172378283
+eslint	2026-09-01:2026-09-30	656216460
+prettier	2024-09-01:2024-09-30	166323576
+prettier	2026-09-01:2026-09-30	548937385
+oxlint	2024-09-01:2024-09-30	315195
+oxlint	2026-09-01:2026-09-30	90953643
