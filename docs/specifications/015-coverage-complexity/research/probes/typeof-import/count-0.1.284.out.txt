@@ -1,0 +1,11 @@
+# node_modules/.bin/tsx count-0.1.284.mjs <counter> <repo> <exclude>, 2026-10-24, load 19 to 24
+# counter = squeal 0.1.284 (git archive squeal--v0.1.284 src), the one the dogfood (lessons.md "Round 1, live sessions") ran
+cezar 03c905a00, default excludes:
+{"testNamed":{"files":1003,"errFiles":67,"lost":287},"other":{"files":921,"errFiles":["packages/cezar/src/git-worktree.ts:1"],"lost":1}}
+squeal d5018817a, docs/** excluded:
+{"testNamed":{"files":1097,"errFiles":15,"lost":19},"other":{"files":1018,"errFiles":["src/core/code/pass/index.ts:0","src/core/code/store/index.ts:0","src/core/types/index.ts:0"],"lost":0}}
+# counter = this worktree (55afb856a, 0.1.292: export type * and NUL fixed by 015-23)
+cezar 03c905a00:
+{"testNamed":{"files":1003,"errFiles":66,"lost":285},"other":{"files":921,"errFiles":[],"lost":0}}
+squeal d5018817a:
+{"testNamed":{"files":1097,"errFiles":15,"lost":19},"other":{"files":1018,"errFiles":[],"lost":0}}
