@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import type { PoolCapacity } from "../capacity/index.js";
+import type { CoverageWriter } from "../code/coverage/index.js";
 import type { CodePass } from "../code/pass/index.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { endHandoff } from "../delivery/handoff.js";
@@ -192,6 +193,8 @@ class Daemon {
   #loop: DaemonLoop | null = null;
   /** Spec 015 D4: counts the code each revision changed; opens nothing while complexity is off. */
   #code: CodePass | null = null;
+  /** Spec 015 D8 (row 015-11): stores each run's coverage records; opens nothing while coverage is off. */
+  #coverage: CoverageWriter | null = null;
   /**
    * What its tests leave running, stopped after each tier and at exit (D12).
    * Their mark is the registration's token, which `squeal stop` reads to
@@ -476,6 +479,7 @@ class Daemon {
         { awaitsInstall },
         codePass,
         { readObjectFormat },
+        coverage,
       ] = await Promise.all([
         import("../daemon-loop/index.js"),
         import("../state/index.js"),
@@ -488,6 +492,7 @@ class Daemon {
         import("../scheduler/index.js"),
         import("../code/pass/index.js"),
         import("../hash/index.js"),
+        import("../code/coverage/index.js"),
       ]);
       const { storePaths } = await import("../store/index.js");
       const around = this.options.ownsProcess
@@ -499,6 +504,25 @@ class Daemon {
       // Decided here only: a reload reconciles the projects, not the runners (011 C10).
       const configured = this.#policy.nodeTest;
       const configuredPytest = this.#policy.pytest;
+      const format = await readObjectFormat(root);
+      // Spec 015 D8 (row 015-11, agreed with the coordinator): the records of the runs
+      // Vitest makes with coverage on, stored at their results' keys off the run's path.
+      const provider = coverage.coverageProvider();
+      const records = coverage.createCoverageWriter({
+        commonDir,
+        format,
+        policy: () => this.#policy,
+        resultKey: coverage.mainStoreResultKey(store, worktreeId),
+        skip: (path) => path === provider,
+        now: this.#now,
+        log: this.#log,
+      });
+      this.#coverage = records;
+      const covering = {
+        enabled: () => coverage.coverageOn(this.#policy),
+        tempDir: this.opened.scratch.tempDir,
+        collected: (run: Parameters<CoverageWriter["collected"]>[0]) => records.collected(run),
+      };
       // Each Vitest instance's workers carry the mark of its lane (001 D12, task 004-18).
       const vitestInstance = (lane: string, maxWorkers?: number) => () =>
         vitest.createVitestAdapter({
@@ -509,6 +533,7 @@ class Daemon {
           excludeProjects: () => this.#policy.vitest.excludeProjects,
           exclude: () => this.#policy.vitest.exclude,
           childEnv: this.#children.envFor(lane),
+          coverage: covering,
           ...(maxWorkers === undefined ? {} : { maxWorkers }),
         });
       const vitestRunner =
@@ -604,7 +629,7 @@ class Daemon {
         worktreeId,
         root,
         commonDir,
-        format: await readObjectFormat(root),
+        format,
         source: codePass.mainStoreSource(
           store,
           worktreeId,
@@ -891,6 +916,7 @@ class Daemon {
         await this.#cancelling;
       });
       await this.#step("code.close", () => this.#code?.close());
+      await this.#step("coverage.close", () => this.#coverage?.close());
       await this.#step("runner.close", () => this.#runner?.close());
       await this.#step("escaped children", async () => {
         const stop = await this.#children.atExit();
