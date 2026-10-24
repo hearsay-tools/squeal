@@ -158,7 +158,8 @@ export function registerCode(
   const read = withCode(source, ({ store, complexity }) =>
     store.transaction((): CodeRegistration => {
       const failing = failingIn(store, worktreeId);
-      seed(store, consumer, failing, at);
+      // 015-37: a recount newer than the registration's clock is in the count it gives.
+      seed(store, consumer, failing, Math.max(at, readRecount(store, worktreeId)?.at ?? 0));
       const { done, total } = countingOf(store, worktreeId);
       // 015-35: a new worktree's store is the common dir's; until its first count ends, no state is
       // its count, and that count tells the consumer its number.
@@ -289,7 +290,9 @@ function codeStep(
   const tooBig = newTooBig(store, consumer, { since, recount }, limit, write);
   const big = tooBig.length === 0 ? {} : { tooBig };
   if (recount !== null && recount.at > seededAt) {
-    if (write) seed(store, consumer, failing, at);
+    // 015-37: a hook reads its clock before this transaction, so a recount may be newer than
+    // it; seeded at the recount's time at least, the next hook finds the summary told.
+    if (write) seed(store, consumer, failing, Math.max(at, recount.at));
     const news: CodeNews = {
       v: 1,
       entries: [],
