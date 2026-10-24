@@ -65,24 +65,9 @@ export function judgeFiles(
       if (prior.get(`complexity\0${id}`)?.outcome === "unknown") return;
       const cov = coverage[i];
       if (cov === undefined) return;
-      const crap = crapScore(fn.complexity, cov.coverage);
-      const measured = [
-        {
-          measure: "crap" as const,
-          fail: crap > ctx.threshold,
-          value: crap,
-          threshold: ctx.threshold,
-        },
-        {
-          measure: "uncovered" as const,
-          fail: cov.runBy.length === 0,
-          value: null,
-          threshold: null,
-        },
-      ];
-      for (const m of measured) {
+      for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
         const was = prior.get(`${m.measure}\0${id}`);
-        const outcome: CodeOutcome = m.fail ? "fail" : "pass";
+        const { outcome } = m;
         states.push({
           worktreeId,
           check,
@@ -115,15 +100,44 @@ export function judgeFiles(
   return { states, transitions };
 }
 
+/** A function's `crap` and `uncovered` outcomes; both `unknown` when the join cannot tell. */
+function measuresOf(complexity: number, cov: FunctionCoverage, threshold: number) {
+  if (cov.unresolved === true) {
+    return (["crap", "uncovered"] as const).map((measure) => ({
+      measure,
+      outcome: "unknown" as CodeOutcome,
+      value: null,
+      threshold: null,
+    }));
+  }
+  const crap = crapScore(complexity, cov.coverage);
+  return [
+    {
+      measure: "crap" as const,
+      outcome: (crap > threshold ? "fail" : "pass") as CodeOutcome,
+      value: crap as number | null,
+      threshold: threshold as number | null,
+    },
+    {
+      measure: "uncovered" as const,
+      outcome: (cov.runBy.length === 0 ? "fail" : "pass") as CodeOutcome,
+      value: null,
+      threshold: null,
+    },
+  ];
+}
+
 /**
- * D5's transition from the last judged state; none out of `pending` or
- * `unknown`, and none that only a change of `crap.threshold` made (D1).
+ * D5's transition from the last judged state; none out of or into
+ * `pending` or `unknown`, and none that only a change of `crap.threshold`
+ * made (D1).
  */
 function kindOf(
   was: CodeKnownState | undefined,
   outcome: CodeOutcome,
   value: number | null,
 ): CodeTransitionKind | null {
+  if (outcome !== "pass" && outcome !== "fail") return null;
   if (was === undefined) return outcome === "fail" ? "first-seen-fail" : null;
   if (was.outcome === outcome || (was.outcome !== "pass" && was.outcome !== "fail")) return null;
   if (typeof was.threshold === "number" && value !== null) {
