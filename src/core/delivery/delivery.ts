@@ -21,6 +21,7 @@ import {
 } from "../types/index.js";
 import { annotate, withClosureChanges, withDependencies } from "./attribution.js";
 import { registerCode, tellCode } from "./code-deliver.js";
+import { codeSeenUpTo } from "./code-since.js";
 import type { CodeSource } from "./code-source.js";
 import { recordVersion } from "./consumer-version.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
@@ -40,7 +41,7 @@ import {
   withTold,
 } from "./liveness.js";
 import { ownEditUnknown } from "./own-edit.js";
-import { registration, scannedDaemon, tellRegistered } from "./registered.js";
+import { scannedDaemon, tellRegistered } from "./registered.js";
 import { slowTierChanged, tellSlowTier } from "./slow-told.js";
 import {
   currentKeys,
@@ -215,7 +216,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Spec 015 D6, D7: code changes at tool boundaries; a Stop tells them only beside other news.
       const code =
         liveness && (tests || !stop)
-          ? tellCode(options.code, consumer, at, () => registration(store, consumer)?.since ?? null)
+          ? tellCode(options.code, consumer, at, () => codeSeenUpTo(store, consumer))
           : null;
       const news = tests || code !== null;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
