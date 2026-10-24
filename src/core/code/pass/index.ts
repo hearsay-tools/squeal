@@ -1,6 +1,20 @@
 import { rmSync } from "node:fs";
 import type { ObjectFormat } from "../../hash/index.js";
-import type { AbsolutePath, EpochMs, Policy, RelativePath, WorktreeId } from "../../types/index.js";
+import type {
+  AbsolutePath,
+  CheckKey,
+  EpochMs,
+  Policy,
+  RelativePath,
+  WorktreeId,
+} from "../../types/index.js";
+import { coverageOn } from "../coverage/runtime.js";
+import {
+  clearCoverage,
+  type LoaderCondition,
+  type LoaderInputs,
+  runCoverageStep,
+} from "../crap/index.js";
 import {
   type CodeStore,
   codeStorePath,
@@ -40,7 +54,19 @@ export interface CodePassOptions {
   readonly onPass?: (report: PassReport) => void;
   /** Blobs counted per slice; default `SLICE_FILES`. */
   readonly sliceFiles?: number;
+  /**
+   * Spec 015 D9 (row 015-12): what the coverage step reads beside the code
+   * store, the main store's loaders and whether the records' writer has
+   * work in hand. Absent, the pass judges no CRAP.
+   */
+  readonly coverage?: {
+    readonly main: LoaderInputs["main"];
+    readonly writing: () => boolean;
+  };
 }
+
+/** A burst of results or records within this long gives one pass (`CodePass.soon`). */
+export const COVERAGE_COALESCE_MS = 100;
 
 /**
  * Spec 015 D4: the daemon's code pass. It runs in the daemon process,
@@ -50,6 +76,11 @@ export interface CodePassOptions {
 export interface CodePass {
   /** A revision may be stored: run a pass soon. */
   nudge(): void;
+  /**
+   * Results or a coverage record were stored (row 015-12): one pass within
+   * `COVERAGE_COALESCE_MS` for a burst. Nothing while coverage is off.
+   */
+  soon(): void;
   /** Resolves once no pass runs or is due. */
   idle(): Promise<void>;
   /** Waits for the pass in flight, then closes the code store. */
@@ -80,6 +111,11 @@ export function createCodePass(options: CodePassOptions): CodePass {
   let again = false;
   let closed = false;
   let timer: NodeJS.Timeout | null = null;
+  let soonTimer: NodeJS.Timeout | null = null;
+  /** When the coverage step's waiting record turns `unknown`. */
+  let coverageWake: number | null = null;
+  /** Loader conditions that cannot change at their key (D9), for the open store. */
+  const settled = new Map<CheckKey, LoaderCondition>();
   /** The failed counts of the open store have had this daemon's fresh budget. */
   let budgeted = false;
   /** Passes in a row that threw. */
@@ -89,6 +125,8 @@ export function createCodePass(options: CodePassOptions): CodePass {
     store?.close();
     store = null;
     budgeted = false;
+    settled.clear();
+    coverageWake = null;
   };
   const open = (policy: Policy): CodeStore | null => {
     if (store !== null) return store;
@@ -141,6 +179,31 @@ export function createCodePass(options: CodePassOptions): CodePass {
     });
     wasOff = false;
     if (report !== null) options.onPass?.(report);
+    coverageStep(opened, policy, report?.mode === undefined ? false : report.mode !== "edit");
+  };
+  /** Spec 015 D9 after the complexity pass; with coverage off, the states it left go. */
+  const coverageStep = (opened: CodeStore, policy: Policy, reseed: boolean) => {
+    const inputs = options.coverage;
+    coverageWake = null;
+    if (inputs === undefined) return;
+    if (!coverageOn(policy)) {
+      clearCoverage(opened, options.worktreeId);
+      return;
+    }
+    const step = runCoverageStep({
+      store: opened,
+      main: inputs.main,
+      worktreeId: options.worktreeId,
+      revision: options.source.latestRevision(),
+      threshold: policy.crap.threshold,
+      now,
+      writing: inputs.writing(),
+      settled,
+      reseed,
+    });
+    coverageWake = step?.wakeAt ?? null;
+    // Past the step's budget: the rest after a turn of the event loop, so hooks run between.
+    if (step?.more === true) setImmediate(() => self.nudge());
   };
   /**
    * The earliest failed count's retry; after `aborted` passes that threw,
@@ -148,7 +211,11 @@ export function createCodePass(options: CodePassOptions): CodePass {
    */
   const nextWake = (): number | null => {
     if (store === null) return null;
-    const at = nextRetry(readUncountable(store.meta, options.worktreeId));
+    const retry = nextRetry(readUncountable(store.meta, options.worktreeId));
+    const at =
+      retry === null || coverageWake === null
+        ? (retry ?? coverageWake)
+        : Math.min(retry, coverageWake);
     if (at === null || aborted === 0) return at;
     const wait = RETRY_AFTER_MS[Math.min(aborted, RETRY_AFTER_MS.length) - 1] ?? 0;
     return Math.max(at, now() + wait);
@@ -196,9 +263,19 @@ export function createCodePass(options: CodePassOptions): CodePass {
       if (running !== null) again = true;
       else running = loop();
     },
+    soon() {
+      if (closed || soonTimer !== null || !coverageOn(options.policy())) return;
+      soonTimer = setTimeout(() => {
+        soonTimer = null;
+        self.nudge();
+      }, COVERAGE_COALESCE_MS);
+      soonTimer.unref();
+    },
     idle: () => running ?? Promise.resolve(),
     async close() {
       closed = true;
+      if (soonTimer !== null) clearTimeout(soonTimer);
+      soonTimer = null;
       await running;
       retryLater(null);
       shut();
