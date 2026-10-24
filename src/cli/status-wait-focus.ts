@@ -215,29 +215,30 @@ export interface NamedFocus {
 }
 
 /**
- * Review 0.1.286 B6: what a focused wait reads when no selected file is
- * pending. `settled`, the named verdict, when each file the daemon focuses
- * has a result at its key (C15: current before any focused run), or when
- * the daemon refused the request or gave no answer; `focused` once each has
- * its focused answer; else `null`, so the wait sends its request and waits:
- * an unknown or stale file that nothing queues is not current.
+ * Row 011-146 (C15 as amended 2026-10-23): a wait's outcome from the named
+ * wait's (`decidedOutcome`), the focus it read and the daemon's answer to
+ * `focus`; `null` while it waits. Without `--check`, or when the daemon
+ * refused the request, the named outcome. With a selected file pending,
+ * `focused` once each file the daemon focuses has its answer, and there is
+ * one. With none pending (review 0.1.286 B6): `settled`, the named verdict,
+ * when each such file has a result at its key (current before any focused
+ * run) or the daemon gave no answer; `focused` once each has its answer;
+ * else `null`, so the wait sends its request: an unknown or stale file that
+ * nothing queues is not current.
  */
-export function settledFocus(
+export function focusOutcome(
+  named: "settled" | "unmatched" | "slow" | null,
   focus: NamedFocus | undefined,
   reply: FocusReply | undefined,
-): "settled" | "focused" | null {
-  if (focus === undefined || focus.refused !== undefined) return "settled";
-  const focusing = focus.files.filter((f) => f.whole === undefined && f.key !== null);
-  if (focusing.every((f) => f.stored !== undefined)) return "settled";
-  if (focusing.every(answered)) return "focused";
-  return reply === "none" ? "settled" : null;
-}
-
-/** Whether every file the daemon focuses has its answer, and there is one such file. */
-export function focusAnswered(focus: NamedFocus): boolean {
-  if (focus.refused !== undefined) return false;
+): "settled" | "focused" | "unmatched" | "slow" | null {
+  if (focus === undefined || focus.refused !== undefined) return named;
   const focusing = focus.files.filter((f) => f.whole === undefined);
-  return focusing.length > 0 && focusing.every(answered);
+  if (named === null) return focusing.length > 0 && focusing.every(answered) ? "focused" : null;
+  if (named !== "settled") return named;
+  const keyed = focusing.filter((f) => f.key !== null);
+  if (keyed.every((f) => f.stored !== undefined)) return "settled";
+  if (keyed.every(answered)) return "focused";
+  return reply === "none" ? "settled" : null;
 }
 
 /** Row 011-146 (C15): `--check` with no test file named by its own path; the command exits 2. */
