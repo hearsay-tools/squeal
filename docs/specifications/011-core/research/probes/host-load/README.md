@@ -28,11 +28,11 @@ The problem is resolved when all five criteria are met on two measured days in a
 |---|---|---|---|---|
 | C1 | The host is rarely saturated, or Squeal is not why | 10-minute samples with idle under 10%: at most 5% of the day; or, when more, Squeal-run tests (`%nice`) are at most 20% of the busy CPU in those samples | 16.8% of samples saturated; `%nice` 36.4% of busy CPU in them. 19 October, before the load: 0% | step 2, `saturatedShare`, `niceShareOfBusyWhenSaturated` |
 | C2 | Squeal is a minor share of the busy CPU | Mean `squealShareOfBusy` of the counted samples at most 35%; met as "quiet" when fewer than two samples count | 70% (17.5 of 25.3 cores, one sample at load 51.9) | step 4 |
-| C3 | Saves waste few test runs | In each project with at least 1,000 files picked in 24 h, at least 78% of picked files store a result at run end (`all.files.keptShare`) | squeal 60%, cezar 76% (design 011-82 expects about 81% and 78%), counted by the results that still existed: compare `all.files.keptShareNow` with them for a regression | step 3, `waste.mjs` |
+| C3 | Saves waste few test runs | In each project with at least 1,000 files picked in 24 h, at least 78% of picked files store a result at run end, leaving out a file that never started and that a later run picked (`all.files.keptShareStarted`; the human, 2026-10-24) | squeal 60%, cezar 76% (design 011-82 expects about 81% and 78%), counted by the results that still existed: compare `all.files.keptShareNow` with them for a regression | step 3, `waste.mjs` |
 | C4 | Worktrees share results | In each project with at least 3 counted worktrees, `medianSharedShare` at least 50% | squeal about 0% (3 of 5 worktrees shared 0%), cezar about 43% | step 3, `share.mjs` |
 | C5 | No stale daemons; memory has room | No flagged daemon up more than 1 hour; daemons' total resident memory at most 8 GiB; swap under 90% used | 5 older daemons; 10.3 to 13.7 GiB; swap 4.0 of 4.0 GiB | step 5 |
 
-Report these too, without a target: yesterday's mean idle (baseline 40.0%; 75.4% on 19 October), mean `%nice` (22.4%; 9.2%), mean `%system` (19.1%; 7.7%), holders per key, the number of live worktrees per project, files picked per project in 24 h (`all.files.picked`), and per project the prune's share (`all.files.prunedShare`), the live worktrees' `live.files.keptShare`, and `all.files.neverStarted`, `all.files.handedOver` and `all.files.keptShareStarted` (below). They show whether the day was comparable: a day with far more work can miss C1 for reasons outside Squeal.
+Report these too, without a target: yesterday's mean idle (baseline 40.0%; 75.4% on 19 October), mean `%nice` (22.4%; 9.2%), mean `%system` (19.1%; 7.7%), holders per key, the number of live worktrees per project, files picked per project in 24 h (`all.files.picked`), and per project the prune's share (`all.files.prunedShare`), the live worktrees' `live.files.keptShare`, and `all.files.neverStarted`, `all.files.handedOver` and `all.files.keptShare` (the C3 figure until 2026-10-24; below). They show whether the day was comparable: a day with far more work can miss C1 for reasons outside Squeal.
 
 ## How `waste.mjs` counts C3
 
@@ -42,7 +42,7 @@ Row 011-155, from `../../stored-nothing.md` finding 1. It reads the runs that st
 - `prunedWithWorktree`: the run's worktree is removed since, and its `report.json` completed the file and did not withhold it. The prune deletes a removed worktree's results unless a live worktree holds the key (001 D8, `src/core/store/prune.ts`), so the file stored a result at run end and the prune deleted it later.
 - `storedNothing`: every other file: cut by a cancel or a timeout, withheld, replaced at its key by a later run, or in a run with no report (node:test, pytest) that holds no result of it.
 
-`keptShare` is `storedNow` plus `prunedWithWorktree`, of the files picked: the C3 figure. `keptShareNow` is `storedNow` alone: the count before 2026-10-24, which read the 2026-10-23 squeal C3 as 44% while about 74% completed. `all`, `live` and `removed` split the runs by whether their worktree still exists; each gives `files` (C3) and `recordedSeconds` (the units of `stored-nothing.md`: the report's durations; a file the run cut counts the run's wall when its log names it, else 0).
+`keptShare` is `storedNow` plus `prunedWithWorktree`, of the files picked: the C3 figure until 2026-10-24. `keptShareNow` is `storedNow` alone: the count before 2026-10-24, which read the 2026-10-23 squeal C3 as 44% while about 74% completed. `all`, `live` and `removed` split the runs by whether their worktree still exists; each gives `files` (C3) and `recordedSeconds` (the units of `stored-nothing.md`: the report's durations; a file the run cut counts the run's wall when its log names it, else 0).
 
 Two limits, so read `live` beside `all`:
 
@@ -51,11 +51,11 @@ Two limits, so read `live` beside `all`:
 
 ### Files that never started (row 011-138)
 
-C3 is unchanged: its row in the criteria table and `keptShare` stay as they are, because the 011-114 criteria are the human's. Beside `keptShare`, each `files` gives three fields from the logs of the cancelled runs (a report `failure` that starts `run cancelled`), from `../../../tasks/011-138/notes.md`:
+Since 2026-10-24 C3 reads `keptShareStarted` (the human): a file that never started cost no run time, and one that a later run picked lost no result. Beside `keptShare`, each `files` gives three fields from the logs of the cancelled runs (a report `failure` that starts `run cancelled`), from `../../../tasks/011-138/notes.md`:
 
 - `neverStarted`: a file the run picked that its `vitest.log` never names: no module end (`MODULE`), no test line (`PASS`, `FAIL`, `SKIP`) and no console line (`[stdout] <file>: `). The file did not start, so it cost no run time, and it is always in `storedNothing`. A cancelled run with no `vitest.log` (node:test, pytest) counts no file as never started.
 - `handedOver`: of the `neverStarted` files, those that a later run of the same worktree in the copy picked.
-- `keptShareStarted`: `keptShare` with the `handedOver` files out of the files picked. It reads a file that never started and ran later as not lost.
+- `keptShareStarted`: `keptShare` with the `handedOver` files out of the files picked, the C3 figure. It reads a file that never started and ran later as not lost. It is a lower bound: a run cancelled just before the copy has no later run yet.
 
 `recordedSeconds` has none of these fields. `cancelled` gives per cancel cause (the failure's first line), over all runs: the runs, `withoutLog`, the files picked, `neverEnded` (no module end in the log), `neverStarted` and `handedOver`.
 
