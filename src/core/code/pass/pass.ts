@@ -12,6 +12,7 @@ import type {
 import type { CodeStore } from "../store/index.js";
 import { countMissing, type Entry } from "./blobs.js";
 import { cursorOf, readCursor, recountReason, writeCursor, writeRecount } from "./cursor.js";
+import { committedPaths } from "./head.js";
 import { includedSet } from "./included.js";
 import { checkKey, type FileAfter, judge } from "./judge.js";
 import type { Counter, PassReport, PassSource, RecountReason } from "./types.js";
@@ -41,7 +42,9 @@ export interface PassContext {
  * record. Three writes: the files rows, so status can say "counting, N of
  * M"; the blobs no worktree counted yet, in slices with a turn of the event
  * loop between them; then states, transitions, edits and the cursor in one
- * transaction, so a hook never reads half a revision.
+ * transaction, so a hook never reads half a revision. Before the last, a
+ * revision that moved `HEAD` asks git which files are the committed ones
+ * (015-19).
  */
 export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const { store, source, worktreeId } = ctx;
@@ -75,6 +78,15 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
           ? store.counts.get(e.file.hash, e.language, ctx.counter.version)
           : null,
     }));
+  const committed =
+    since === null
+      ? new Set<RelativePath>()
+      : await committedPaths(
+          ctx,
+          since,
+          latest,
+          after.flatMap((a) => (a.count === null ? [] : [{ path: a.path, blob: a.count.blob }])),
+        );
   return store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
     const paths = new Set(after.map((a) => a.path));
@@ -97,9 +109,11 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     store.states.upsertMany(judged.states);
     store.transitions.append(judged.transitions);
     // D6's last rule: the delivery tells a standing failure's first edit in a session once.
+    // A body a move of `HEAD` brought is not the agent's edit (015-19).
+    const edited = judged.edited.filter((check) => !committed.has(check.path));
     store.states.markEdited(
       worktreeId,
-      judged.edited.map((check) => ({ check, measure: "complexity", revision: latest, at })),
+      edited.map((check) => ({ check, measure: "complexity", revision: latest, at })),
     );
     writeCursor(store.meta, worktreeId, current);
     // The coordinator's contract with 015-07: a first pass over inherited counts writes none.
@@ -111,7 +125,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
         threshold: ctx.complexity.threshold,
       });
     }
-    return report(latest, reason, entries.length, counted, judged);
+    return report(latest, reason, entries.length, counted, { ...judged, edited });
   });
 }
 
