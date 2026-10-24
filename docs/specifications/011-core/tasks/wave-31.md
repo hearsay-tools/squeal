@@ -43,3 +43,17 @@ Method: sample now, while the host is busy (load about 80 on 24 CPUs at 11:30Z, 
 Owns `research/host-load/011-139.md` and `research/probes/host-load/011-139/`. Not yours: `src/`, `test/`, the existing probes, the board, spec text.
 
 Done when the file names, per sample, the permits and cores each project's edit tiers held, how often one worktree held every permit, and the proposed cap with what it would cost an edit's wait; commit it.
+
+## W10: 011-179, the validity comparison runs in time and cleans up inside its hook under load
+
+Use /worker. Shape: repair (test). Added 2026-10-24 from W8's report; starts from `cand/w31` (`5c8610e0d`), which holds W8's new comparison.
+
+Outcome: `test/keys/validity/pytest.test.ts:34` takes under half its 300 s timeout at load 50, with the same outputs, and its work directory's removal never times out a passing file.
+
+Read board row 011-179; `tasks/011-142/notes.md` (sections 4 and 5: the 266 s, 631 s and hook-timeout figures, and the serial cause).
+
+Seam: the drivers run in turn at `test/keys/validity/harness/sides.ts:142` (`spawnSync`), each running its cases in turn; the removal is the `afterAll` at `test/keys/validity/self-test.ts:80`. A lead: run the two sides, or the drivers, at once with a bound, and remove the work directory asynchronously after the hook returns, or per comparison as each ends.
+
+Owns `test/keys/validity/harness/sides.ts`, `test/keys/validity/harness/compare.ts` if the comparison lives there, `test/keys/validity/self-test.ts`, their tests, `tasks/011-179/`. Not yours: the pytest case and harness and `pytest.test.ts` (011-142, in review), `src/`, the board, spec text, bundles, version. If the fix needs `src/`, stop and send me a request. No `npm run build`.
+
+Done when the row's done-when holds: the line-34 test's time alone at load about 50 before and after, the alarm's verdicts unchanged on every validity test file, the removal inside its hook at load near 99 or off the hook, nothing left behind; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
