@@ -10,7 +10,7 @@ import { consumer, type Rig, rig } from "./rig.js";
 
 const C1 = consumer("s1");
 const still = (cc: number) =>
-  `STILL FAIL complexity: settle (src/a.ts:1) is ${cc} after the edit; it was already over 20 before it (ESLint rule)`;
+  `STILL FAIL complexity: settle (src/a.ts:1) is ${cc} after the edit; it was already over 20 before it (ESLint rule); Squeal stays quiet about it until it is at or under 20, and squeal code src/a.ts shows its count.`;
 
 let r: Rig;
 
