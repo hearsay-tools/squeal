@@ -20,6 +20,14 @@ export interface FailedCount {
   readonly retryAt: EpochMs | null;
   /** The counter's error, its first line. */
   readonly error: string;
+  /**
+   * The count that failed at this blob was a first count or a policy
+   * recount's: a retry or an adopted count at this blob then seeds the
+   * file's states with no transition, as that count would have (D5, D6;
+   * review 0.1.293 B1). Absent for an edit's count, whose retry reports
+   * its crossings.
+   */
+  readonly quiet?: true;
 }
 
 /** Each path whose last count failed. */
@@ -73,16 +81,34 @@ export function mayCount(
   return f === undefined || f.blob !== blob || (f.retryAt !== null && f.retryAt <= now);
 }
 
-/** The record after one more failed count of a path at `blob`; another blob starts again at one attempt. */
+/**
+ * The record after one more failed count of a path at `blob`, by a pass
+ * that is `quiet` or not; another blob starts again at one attempt, with
+ * this pass's origin. The same blob keeps the origin of its first failure.
+ */
 export function failedAgain(
   previous: FailedCount | undefined,
   blob: FileHash,
   error: string,
-  now: EpochMs,
+  { now, quiet }: { readonly now: EpochMs; readonly quiet: boolean },
 ): FailedCount {
-  const attempts = previous?.blob === blob ? previous.attempts + 1 : 1;
+  const same = previous?.blob === blob;
+  const attempts = same ? previous.attempts + 1 : 1;
   const wait = attempts < COUNT_ATTEMPTS ? RETRY_AFTER_MS[attempts - 1] : undefined;
-  return { blob, attempts, retryAt: wait === undefined ? null : now + wait, error };
+  const origin = same ? previous.quiet === true : quiet;
+  return {
+    blob,
+    attempts,
+    retryAt: wait === undefined ? null : now + wait,
+    error,
+    ...(origin ? { quiet: true } : {}),
+  };
+}
+
+/** Whether a count of `path` at `blob` seeds quietly: its failed count there was a quiet one (B1). */
+export function seedsQuietly(failed: FailedCounts, path: RelativePath, blob: FileHash): boolean {
+  const f = failed.get(path);
+  return f !== undefined && f.blob === blob && f.quiet === true;
 }
 
 /** The earliest retry still to come, for the daemon's timer; `null` when none is. */
