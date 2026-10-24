@@ -62,6 +62,8 @@ export interface FunctionCoverage {
   readonly coverage: number;
   /** The test files that ran it, sorted. */
   readonly runBy: readonly RelativePath[];
+  /** None ran it and a record cannot tell whether it ran, so its states are `unknown` (review 0.1.297 B4). */
+  readonly unresolved?: true;
 }
 
 /**
@@ -92,5 +94,6 @@ export function coverageOf(
     covered: j.covered,
     coverage: j.coverage,
     runBy: [...new Set(j.runBy.map((i) => paths[i] ?? ""))].sort(compare),
+    ...(j.ran === null ? { unresolved: true as const } : {}),
   }));
 }
