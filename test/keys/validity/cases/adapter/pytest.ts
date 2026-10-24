@@ -580,11 +580,14 @@ export const PYTEST_RUNS: readonly Case[] = [
       files: {
         "pyproject.toml": CONFIG,
         "tests/test_first.py": lines("def test_first():", "    pass"),
+        // Its start follows test_first's teardown report, so the harness holds the deadline until then (row 011-142).
         "tests/test_hang.py": lines(
+          "import os",
           "import time",
           "",
           "",
           "def test_hang():",
+          '    open(os.environ["SQUEAL_VALIDITY_PROOF"], "w").close()',
           "    time.sleep(600)",
         ),
       },
