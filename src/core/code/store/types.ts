@@ -7,10 +7,12 @@ import type {
   CodeOutcome,
   CodeTransition,
   CodeViewEntry,
+  CoverageRecordKey,
   FileCount,
 } from "../../types/code.js";
 import type {
   AbsolutePath,
+  CheckKey,
   Consumer,
   EpochMs,
   FileHash,
@@ -108,6 +110,17 @@ export interface CodeViewRepo {
   retain(worktreeIds: readonly WorktreeId[], consumers: readonly Consumer[]): number;
 }
 
+/**
+ * Spec 015 D8: one coverage record per test file result, the encoded bytes
+ * (`encodeRecord`, `src/core/code/coverage/record.ts`), at the result's key
+ * and the provider's version.
+ */
+export interface CodeCoverageRepo {
+  get(key: CoverageRecordKey): Uint8Array | null;
+  /** Stores a record, over one at the same key: a rerun at a key replaces its result too. */
+  put(key: CoverageRecordKey, record: Uint8Array, at: EpochMs): void;
+}
+
 export interface CodeMetaRepo {
   get(key: string): string | null;
   set(key: string, value: string): void;
@@ -116,15 +129,21 @@ export interface CodeMetaRepo {
 
 /**
  * What prune keeps (011 C7): every count a live worktree's current file
- * uses, and other counts and coverage records younger than `retentionDays`.
- * Rows of worktrees not in `worktrees` go, and view entries of consumers not
- * in `consumers`; the caller reads both from the main store after its prune.
+ * uses, and other counts younger than `retentionDays`; a coverage record
+ * while a result is at its key (`resultKeys`). Rows of worktrees not in
+ * `worktrees` go, and view entries of consumers not in `consumers`; the
+ * caller reads these lists from the main store after its prune.
  */
 export interface CodePruneOptions {
   readonly now: EpochMs;
   readonly retentionDays: number;
   readonly worktrees: readonly WorktreeId[];
   readonly consumers: readonly Consumer[];
+  /**
+   * Every key the main store holds a result at (row 015-11). Absent, a
+   * coverage record goes by age, as a count does.
+   */
+  readonly resultKeys?: readonly CheckKey[];
 }
 
 export interface CodePruneReport {
@@ -146,6 +165,7 @@ export interface CodeStore {
   readonly states: CodeStateRepo;
   readonly transitions: CodeTransitionRepo;
   readonly views: CodeViewRepo;
+  readonly coverage: CodeCoverageRepo;
   /** One `BEGIN IMMEDIATE` write transaction; nested calls are savepoints. */
   transaction<T>(fn: () => T): T;
   /** One read transaction: every statement in `fn` sees one committed state, and nothing is written. */

@@ -175,6 +175,15 @@ export class SourceStamps {
     }
   }
 
+  /**
+   * The hash (sha1) of the bytes `environment`'s container read for module
+   * `id`, when it stamped that read (row 015-11: the blob a coverage record
+   * names is of these bytes).
+   */
+  readHash(environment: Environment, id: string): string | undefined {
+    return this.#containers.get(environment.pluginContainer)?.stamps.get(id)?.hash;
+  }
+
   async #stamp(reads: Reads, id: string): Promise<void> {
     const file = sourceOf(id, this.paths);
     const loadedAt = this.now();
