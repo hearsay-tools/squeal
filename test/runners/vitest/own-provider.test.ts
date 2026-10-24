@@ -16,8 +16,8 @@ import { openFixture, ref, SLOW } from "./helpers.js";
 /*
  * Spec 015 D8, goals 9 and 10 (row 015-11): with coverage on, each run the
  * adapter makes leaves one payload per completed test file, through
- * Squeal's own provider, and none for a file whose closure imports
- * `node:inspector`, which still passes.
+ * Squeal's own provider, and none for a file whose closure or project setup
+ * imports `node:inspector`, which still passes.
  */
 
 function payload(path: string): V8Script[] {
@@ -33,6 +33,21 @@ const MATH_DECLARATIONS: Readonly<Record<string, readonly [number, number]>> = {
   clamp: [5, 9],
   arrow: [11, 11],
   Counter: [13, 19],
+};
+
+/** A test file whose closure reaches `node:inspector` only through a source it imports. */
+const THROUGH_A_SOURCE: Readonly<Record<string, string>> = {
+  "src/session.ts": [
+    'import { Session } from "node:inspector";',
+    'export const canInspect = typeof Session === "function";',
+    "",
+  ].join("\n"),
+  "test/through.test.ts": [
+    'import { expect, test } from "vitest";',
+    'import { canInspect } from "../src/session.js";',
+    'test("sees the inspector", () => expect(canInspect).toBe(true));',
+    "",
+  ].join("\n"),
 };
 
 /**
@@ -75,8 +90,13 @@ const SETUP_READS_COVERAGE: Readonly<Record<string, string>> = {
 describe("vitest adapter: Squeal's coverage provider", SLOW, () => {
   it("leaves one payload per test file, none for one that reads V8 coverage, which passes", async () => {
     const opened = covering();
-    const fx = await openFixture("own-provider", {}, opened.create);
-    const files = ["test/math.test.ts", "test/self-coverage.test.ts", "test/text.test.ts"];
+    const fx = await openFixture("own-provider", THROUGH_A_SOURCE, opened.create);
+    const files = [
+      "test/math.test.ts",
+      "test/self-coverage.test.ts",
+      "test/text.test.ts",
+      "test/through.test.ts",
+    ];
     const report = await fx.adapter.run(
       files.map((f) => ref(f)),
       fx.runOptions({ runId: "r1" }),
@@ -88,9 +108,11 @@ describe("vitest adapter: Squeal's coverage provider", SLOW, () => {
       ["test/math.test.ts", "pass"],
       ["test/self-coverage.test.ts", "pass"],
       ["test/text.test.ts", "pass"],
+      ["test/through.test.ts", "pass"],
     ]);
     expect(opened.notes.filter((n) => n.includes("node:inspector"))).toEqual([
       "coverage is off for test/self-coverage.test.ts: its closure imports node:inspector, so its tests can see V8 coverage (spec 015 D8)",
+      "coverage is off for test/through.test.ts: its closure imports node:inspector, so its tests can see V8 coverage (spec 015 D8)",
     ]);
     // In the order the files ended.
     expect(opened.runs.map((r) => [r.runId, r.files.map((f) => f.testFile.path).sort()])).toEqual([
