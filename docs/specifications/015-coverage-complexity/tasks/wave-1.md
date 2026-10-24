@@ -118,3 +118,15 @@ Use /worker. Shape: repair.
   - The existing pass, slice and move tests still pass.
 
 S1 (a transient counter error leaves a file pending) is not in this repair; it is planned row 015-18.
+
+### Re-review 015-09 round 2: candidate 0.1.283 after the repair
+
+Use /reviewer. Narrow re-review against `docs/specifications/015-coverage-complexity/reviews/0.1.283.md`. Candidate `cand/0.1.283` at 4506aa0bb2bcaee54e856163bf7ab1b2a683387f (force-pushed over de9deb5bc). The waves 0 and 1 commits are unchanged and rebased onto main (docs only moved). The repair range is `5d9a5c2cf..4506aa0bb`: 015-16 (B1, B3, B4; worker notes `tasks/015-16/notes.md`), 015-17 (B2, B5; `tasks/015-17/notes.md`), and one rebuilt bundle commit (version 0.1.283). Brief of the repair: `tasks/wave-1.md`, "Repair of review 0.1.283". Write `reviews/0.1.283-r2.md` and commit it on your branch.
+
+Check, with proof:
+1. B1 to B5. Is each fixed as its "Worker-sized fix" paragraph asks? Re-run each reproduction from the round-1 file on the candidate.
+2. The repair breaks nothing it touches. Look at the move's transition handling when the new identity already has transitions (015-17 deletes them first). Look at the zero-width rule next to a healthy adjacent function, and at the `withCode` boundary: a busy store and a missing file must still behave as before.
+3. One change outside the round-1 findings, agreed by the coordinator: `src/core/code/store/prune.ts` keeps a count while a states row points at its blob (`NOT IN`, 1.4 s on 75,000 states). Is it correct?
+4. S1 (a counter that throws once) is planned as row 015-18. Do not re-find it.
+
+Do not re-review the rest of the range unless a fix changes it. Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Candidate CI run: 40048472057. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
