@@ -1,0 +1,1 @@
+`mediaTypeFor` in packages/cezar/src/workflows/run.ts maps `.jpg` to `image/jpeg`, but a `.jpeg` name falls back to `image/png`. Map `.jpeg` to `image/jpeg` too, and add the case to its test in packages/cezar/src/workflows/pasted-attachments.test.ts. Finish when that test passes.

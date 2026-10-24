@@ -1,0 +1,1 @@
+Rename the CLI helper `worktreeRoot` to `resolveWorktreeRoot` everywhere in `src/` and `test/`: the old name is too close to the `root` variables around it. Keep behaviour the same. Run the typecheck and the tests of the files you changed, and finish when they pass.
