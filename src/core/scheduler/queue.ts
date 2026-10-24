@@ -3,7 +3,7 @@ import { testFileId } from "../keys/index.js";
 import type { RelativePath, RevisionNumber, TestFileRef } from "../types/index.js";
 import type { FileState } from "./files.js";
 import { FocusedEntries } from "./focused-entries.js";
-import { Promotions, type PublishedPromotion } from "./promotions.js";
+import { type PromotionRank, Promotions, type PublishedPromotion } from "./promotions.js";
 
 /**
  * Run order of queued test files, most urgent first.
@@ -152,21 +152,14 @@ export class RunQueue {
   }
 
   /**
-   * C15's rank of `ref`, queued or running: the request order of the
-   * earliest live promotion that holds it; `null` when none does, which
-   * ranks after every promoted file (`TierYields`, row 011-184).
+   * C15's rank of `ref`, queued or running, at `now`, a reading of the
+   * promotions' clock: the request order of the earliest promotion live
+   * then that holds it, and that promotion's deadline; `null` when none
+   * does, which ranks after every promoted file (`TierYields`, row 011-184,
+   * review `reviews/0.1.296-r2.md` B2).
    */
-  rankOf(ref: TestFileRef): number | null {
-    return this.#promotions.rankOf(testFileId(ref));
-  }
-
-  /**
-   * When `rankOf(ref)` next changes with no event: the deadline of the
-   * earliest live promotion that holds it; `null` when none does
-   * (`TierYields`, row 011-184).
-   */
-  untilOf(ref: TestFileRef): number | null {
-    return this.#promotions.untilOf(testFileId(ref));
+  rankAt(ref: TestFileRef, now: number): PromotionRank | null {
+    return this.#promotions.rankAt(testFileId(ref), now);
   }
 
   /** `isRecent` or `isPromoted`: work of C4 step 4's first group (C15). */
