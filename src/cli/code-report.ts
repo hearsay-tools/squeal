@@ -1,5 +1,6 @@
 import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { type FailedCount, uncountableFiles } from "../core/code/pass/failed.js";
 import type { CodeStore } from "../core/code/store/types.js";
 import { isTooBig } from "../core/delivery/code-deliver.js";
 import { changedSince, codeSince, type ShellSession, toldTo } from "../core/delivery/code-since.js";
@@ -45,17 +46,20 @@ export interface CodeReportFunction {
 /**
  * A file whose functions are not judged, and why. `pending`: its bytes are
  * no longer the blob its count holds, so the pass has not counted the edit
- * yet (row 015-22).
+ * yet (row 015-22). `could-not-count`: the counter failed on its bytes at
+ * every attempt, so it is `unknown` until they change (row 015-18).
  */
 export interface CodeReportFile {
   readonly path: RelativePath;
-  readonly reason: "too-big" | "parse-error" | "not-counted" | "pending";
+  readonly reason: "too-big" | "parse-error" | "not-counted" | "pending" | "could-not-count";
   /** Bytes; for `pending`, of the file now. */
   readonly size: number;
   /** For `parse-error`: the functions in an error's range, `unknown`. */
   readonly unknown?: number;
   /** For `pending`: the revision its stored count is of; the file changed after it. */
   readonly revision?: RevisionNumber;
+  /** For `could-not-count`: the counter's last error. */
+  readonly error?: string;
 }
 
 /** `squeal code --json`. */
@@ -192,13 +196,15 @@ interface Behind {
  * count is stored for, or the blob their states were judged on: an edit the
  * pass has not counted yet, or has counted and not judged (it writes the
  * files row first and the states last), or a blob the counter failed on
- * (D5's `pending`). A file gone, or no regular file, is not compared; the
- * pass removes it.
+ * with a retry to come (D5's `pending`). A file gone, or no regular file, is
+ * not compared; the pass removes it. One at the blob the counter failed on
+ * at every attempt is not behind: it could not be counted (row 015-18).
  */
 function behindOnDisk(
   root: AbsolutePath,
   files: readonly CodeFile[],
   states: readonly CodeKnownState[],
+  uncountable: ReadonlyMap<RelativePath, FailedCount>,
 ): Map<RelativePath, Behind> {
   const judged = new Map<RelativePath, CodeKnownState[]>();
   for (const s of states) {
@@ -212,7 +218,7 @@ function behindOnDisk(
     if (bytes === null) continue;
     const blob = blobHash(bytes, formatOf(f.blob));
     const own = judged.get(f.path) ?? [];
-    if (blob === f.blob && own.every((s) => s.blob === blob)) continue;
+    if (blob === f.blob && (own.every((s) => s.blob === blob) || uncountable.has(f.path))) continue;
     const revision = Math.min(f.revision, ...own.map((s) => s.countedAt));
     behind.set(f.path, { size: bytes.byteLength, revision });
   }
@@ -220,16 +226,17 @@ function behindOnDisk(
 }
 
 /**
- * The files not judged, in path order: pending, too big, not counted yet,
- * parse errors. A file has parse errors when its stored count does (D3),
- * whether or not a function is in one; the `unknown` functions are the
- * detail (review 0.1.283 B4).
+ * The files not judged, in path order: pending, too big, could not count,
+ * not counted yet, parse errors. A file has parse errors when its stored
+ * count does (D3), whether or not a function is in one; the `unknown`
+ * functions are the detail (review 0.1.283 B4).
  */
 function notJudged(
   code: CodeStore,
   files: readonly CodeFile[],
   states: readonly CodeKnownState[],
   behind: ReadonlyMap<RelativePath, Behind>,
+  uncountable: ReadonlyMap<RelativePath, FailedCount>,
 ): CodeReportFile[] {
   const unknown = new Map<RelativePath, number>();
   for (const s of states) {
@@ -239,6 +246,10 @@ function notJudged(
     const late = behind.get(f.path);
     if (late !== undefined) return [{ path: f.path, reason: "pending", ...late }];
     if (isTooBig(f)) return [{ path: f.path, reason: "too-big", size: f.size }];
+    const spent = uncountable.get(f.path);
+    if (spent !== undefined) {
+      return [{ path: f.path, reason: "could-not-count", size: f.size, error: spent.error }];
+    }
     const count = code.counts.get(f.blob, f.language, f.counterVersion);
     if (count === null) return [{ path: f.path, reason: "not-counted", size: f.size }];
     if (count.errors.length === 0) return [];
@@ -267,10 +278,11 @@ export function readCodeReport(
   const files = code.files.list(worktreeId).filter((f) => keep(f.path));
   const functionsOf = countsOf(code, worktreeId);
   const states = code.states.list(worktreeId, { measure: "complexity" });
+  const uncountable = uncountableFiles(code, worktreeId, files);
   const behind =
     options.paths === null || options.root === undefined
       ? new Map<RelativePath, Behind>()
-      : behindOnDisk(options.root, files, states);
+      : behindOnDisk(options.root, files, states, uncountable);
   const since = options.changed ? codeSince(main, worktreeId, options.shell) : undefined;
   const changed =
     since === undefined
@@ -312,6 +324,6 @@ export function readCodeReport(
       : { changedSince: since === null ? null : { revision: since.since, scope: since.scope } }),
     ...(to === undefined ? {} : { told: to === null ? null : { scope: to.scope } }),
     functions,
-    files: notJudged(code, files, states, behind),
+    files: notJudged(code, files, states, behind, uncountable),
   };
 }
