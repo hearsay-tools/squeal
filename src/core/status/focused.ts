@@ -22,9 +22,7 @@ import { atText } from "./test-frame.js";
  * section 2.3): the focused runs status, `why` and the focused wait read
  * from the meta row the daemon writes (row 011-145). A focused run is never
  * a result: nothing here feeds a count, a known failure, a duration or a
- * checkpoint. An entry applies while its key is its file's current key and
- * no result is stored at that key; else the file's own result or a newer
- * key supersedes it.
+ * checkpoint. `readFocusedFiles` alone says when an entry applies.
  */
 
 /** How many applying entries status names before "and N more" (C6). */
@@ -37,7 +35,8 @@ const NAMES_SHOWN = 3;
  * One test file's focused run as status, `why` and the focused wait read it
  * (C6): its current key, its newest focused run, ended or not, and the
  * results stored at its key. The run applies while its key is the file's
- * current key and no result is stored there.
+ * current key and no result is stored there; else the file's own result or
+ * a newer key supersedes it.
  */
 export interface FocusedRead {
   readonly testFile: TestFileRef;
