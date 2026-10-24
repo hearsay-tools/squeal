@@ -1,0 +1,10 @@
+pair 1 off wall=27.06 cpu=83.75 rawMB=0 load=27.04->31.48 59p/0f
+pair 1 on wall=21.03 cpu=84.74 rawMB=118 load=31.48->29.25 59p/0f
+pair 2 off wall=17.95 cpu=71.40 rawMB=0 load=29.25->27.73 59p/0f
+pair 2 on wall=17.04 cpu=70.57 rawMB=118 load=27.73->24.38 59p/0f
+pair 3 off wall=14.58 cpu=59.38 rawMB=0 load=24.38->20.82 59p/0f
+pair 3 on wall=16.08 cpu=68.40 rawMB=118 load=20.82->20.23 59p/0f
+pair 4 off wall=14.76 cpu=60.89 rawMB=0 load=20.23->18.10 59p/0f
+pair 4 on wall=16.34 cpu=68.51 rawMB=118 load=18.10->16.77 59p/0f
+pair 5 off wall=14.82 cpu=60.69 rawMB=0 load=16.77->14.61 59p/0f
+pair 5 on wall=16.68 cpu=70.50 rawMB=118 load=14.61->15.14 59p/0f

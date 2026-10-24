@@ -1,0 +1,12 @@
+test/integration/capacity-project.test.ts
+test/daemon/bare-note-inputs.test.ts
+test/store/contention.test.ts
+test/harness/opencode/bundle.test.ts
+test/runners/node-test/adapter-attribution.test.ts
+test/scheduler/recursive-listing.test.ts
+test/cli/install-sh-opencode.test.ts
+test/integration/node-test-packages.test.ts
+test/harness/latency.test.ts
+test/scheduler/scratch-inputs.test.ts
+test/daemon/reload-projects-flight.test.ts
+test/evals/atomic-turns.test.ts

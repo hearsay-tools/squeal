@@ -1,0 +1,4 @@
+plain.mjs SIGTERM: 0 coverage files
+plain.mjs SIGKILL: 0 coverage files
+handled.mjs SIGTERM: 1 coverage files
+plain.mjs SIGINT: 0 coverage files

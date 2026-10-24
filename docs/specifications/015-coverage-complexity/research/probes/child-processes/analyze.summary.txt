@@ -1,0 +1,141 @@
+{
+ "functions": 7582,
+ "srcFiles": 649,
+ "inProcessUncovered": 377,
+ "inProcessUncoveredFiles": 120,
+ "filesWithNoFunctionRun": 7,
+ "filesWithNoFunctionRunInAnyProcess": [
+  "src/harness/opencode/entries/plugin.ts",
+  "src/harness/pi/entries/extension.ts"
+ ],
+ "childOnly": 50,
+ "childOnlyNonE2e": 31,
+ "childOnlyE2eOnly": 19,
+ "uncoveredAnywhere": 327,
+ "join": {
+  "childFunctionsRan": 3395,
+  "matchedAnInProcessFunction": 3351,
+  "inProcessCoveredAlsoChild": 3285
+ },
+ "staticClosure": {
+  "srcFilesInAnyBundle": 611,
+  "uncoveredInClosure": 370,
+  "childOnlyInClosure": 50,
+  "childOnlyOutsideClosure": 0
+ },
+ "testsWithChildSrc": 63,
+ "testsWithChildSrcE2e": 16,
+ "staticScanOnThose": {
+  "spawns": 63,
+  "namesSrcEntry": 22,
+  "tsx": 32,
+  "bundle": 58,
+  "anySignal": 61
+ },
+ "staticScanFlaggedAll": {
+  "spawns": 626,
+  "anySignal": 284
+ },
+ "childOnlyByDir": [
+  [
+   "src/core/daemon",
+   35
+  ],
+  [
+   "src/harness",
+   9
+  ],
+  [
+   "src/cli",
+   4
+  ],
+  [
+   "src/core/scheduler",
+   2
+  ]
+ ],
+ "uncoveredByDir": [
+  [
+   "src/core/daemon",
+   156
+  ],
+  [
+   "src/cli",
+   75
+  ],
+  [
+   "src/core/scheduler",
+   52
+  ],
+  [
+   "src/runners",
+   32
+  ],
+  [
+   "src/harness",
+   27
+  ],
+  [
+   "src/core/watcher",
+   18
+  ],
+  [
+   "src/core/daemon-loop",
+   5
+  ],
+  [
+   "src/core/slow",
+   4
+  ],
+  [
+   "src/core/store",
+   3
+  ],
+  [
+   "src/core/ps",
+   2
+  ],
+  [
+   "src/core/capacity",
+   1
+  ],
+  [
+   "src/core/delivery",
+   1
+  ],
+  [
+   "src/core/status",
+   1
+  ]
+ ],
+ "childOnlyTestsPerFunction": [
+  [
+   "10",
+   18
+  ],
+  [
+   "1",
+   13
+  ],
+  [
+   "2",
+   9
+  ],
+  [
+   "3",
+   4
+  ],
+  [
+   "6",
+   4
+  ],
+  [
+   "4",
+   1
+  ],
+  [
+   "9",
+   1
+  ]
+ ]
+}

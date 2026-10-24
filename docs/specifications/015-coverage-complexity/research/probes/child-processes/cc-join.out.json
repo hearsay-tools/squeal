@@ -1,0 +1,41 @@
+{
+ "counterFunctions": 7582,
+ "reportFunctions": 7582,
+ "joined": 7582,
+ "child-only": {
+  "functions": 50,
+  "withCc": 50,
+  "ccHistogram": {
+   "1": 31,
+   "2": 7,
+   "3": 5,
+   "4": 4,
+   "5": 0,
+   "6+": 3
+  },
+  "crapOver30AtCov0": 3,
+  "over": [
+   "src/core/daemon/front-desk.ts:103 receive",
+   "src/harness/codex/main.ts:13 runMain",
+   "src/harness/pi/worker.ts:43 handle"
+  ]
+ },
+ "uncovered-anywhere": {
+  "functions": 327,
+  "withCc": 327,
+  "ccHistogram": {
+   "1": 269,
+   "2": 33,
+   "3": 13,
+   "4": 5,
+   "5": 4,
+   "6+": 3
+  },
+  "crapOver30AtCov0": 3,
+  "over": [
+   "src/cli/warmup.ts:105 warmUp",
+   "src/core/daemon/notes.ts:37 noteInNewerStore",
+   "src/harness/pi/worker.ts:72 (anonymous_5)"
+  ]
+ }
+}
