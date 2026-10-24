@@ -125,8 +125,10 @@ const FOCUSED: Readonly<Record<string, string>> = {
 /**
  * Row 011-137: its test passes; its `afterAll` holds the module open while
  * `$HOLD` exists, which the harness removes once the run is cancelled, so the
- * module ends whole in the cancel's grace. It holds no skip, so a change to
- * how a skip is read leaves the case alone.
+ * module ends whole in the cancel's grace. It writes `$STARTED` 500 ms after
+ * the test ended, so the test's result reaches the reporter before the
+ * cancel (review 0.1.287 B1: a worker sends results at most every 100 ms).
+ * It holds no skip, so a change to how a skip is read leaves the case alone.
  */
 const WHOLE_IN_GRACE: Readonly<Record<string, string>> = {
   ...BASIC,
@@ -136,6 +138,7 @@ const WHOLE_IN_GRACE: Readonly<Record<string, string>> = {
     'import { afterAll, expect, it } from "vitest";',
     'it("passes", () => expect(1).toBe(1));',
     "afterAll(async () => {",
+    "  await delay(500);",
     '  writeFileSync($STARTED, "");',
     "  while (existsSync($HOLD)) await delay(20);",
     "});",
@@ -234,7 +237,7 @@ export const VITEST_RUNS: readonly Case[] = [
   ),
   vitest(
     "a step-down's cancel completes a module that ended whole in its grace (row 011-137)",
-    "011 C9 as proposed in tasks/011-137/notes.md: under a step-down, a module that ended after the cancel, passed, with no test the cancel skipped, stores its results; the last release stores nothing of it, so the candidate stores more",
+    "011 C9 as proposed in tasks/011-137/notes.md: under a step-down, a module that ended after the cancel, passed, with each test it was to run reported before the cancel, stores its results; the last release stores nothing of it, so the candidate stores more",
     {
       files: WHOLE_IN_GRACE,
       runs: [{ files: [ref("test/whole.test.ts")], touched: [], cancel: "step-down" }],
