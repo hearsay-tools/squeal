@@ -116,6 +116,24 @@ describe("a failed count is retried (row 015-18)", () => {
     expect(readUncountable(store.meta, tree.id)).toEqual(new Map());
   });
 
+  it("judges a spent file at the next pass once another worktree counted its blob", async () => {
+    const { tree, store } = await edited();
+    for (const now of [2_000, 7_000, 67_000]) {
+      await pass(tree, store, flakyCounter(Infinity), { now: () => now });
+    }
+    const other = worktree("w2", tree.commonDir);
+    other.write(A, "settle 23 B2\n").revise();
+    await pass(other, store, fakeCounter(), { now: () => 70_000 });
+    const counter = fakeCounter();
+    expect(await pass(tree, store, counter, { now: () => 71_000 })).toMatchObject({
+      counted: 0,
+      transitions: 1,
+    });
+    expect(counter.calls).toEqual([]);
+    expect(store.states.list(tree.id)).toMatchObject([{ value: 23, outcome: "fail" }]);
+    expect(readUncountable(store.meta, tree.id)).toEqual(new Map());
+  });
+
   it("forgets a failed count when its file is removed", async () => {
     const { tree, store } = await edited();
     await pass(tree, store, flakyCounter(Infinity), { now: () => 2_000 });
