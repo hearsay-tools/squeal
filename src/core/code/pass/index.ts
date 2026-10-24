@@ -57,11 +57,13 @@ export interface CodePassOptions {
   readonly sliceFiles?: number;
   /**
    * Spec 015 D9 (row 015-12): what the coverage step reads beside the code
-   * store, the main store's loaders and whether the records' writer has
-   * work in hand. Absent, the pass judges no CRAP.
+   * store, the main store's loaders, this worktree's own closures (review
+   * 0.1.297 B3) and whether the records' writer has work in hand. Absent,
+   * the pass judges no CRAP.
    */
   readonly coverage?: {
     readonly main: LoaderInputs["main"];
+    readonly closures: () => LoaderInputs["closures"];
     readonly writing: () => boolean;
   };
 }
@@ -203,6 +205,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
     const step = runCoverageStep({
       store: opened,
       main: inputs.main,
+      closures: inputs.closures(),
       worktreeId: options.worktreeId,
       revision: options.source.latestRevision(),
       threshold: policy.crap.threshold,

@@ -33,6 +33,7 @@ function counted(policy: () => ReturnType<typeof policyOn>) {
     policy,
     coverage: {
       main,
+      closures: () => null,
       writing: () => {
         steps++;
         return false;
