@@ -712,6 +712,12 @@ export interface StatusFocused {
   readonly more: number;
   /** Its key is its file's current key and no result is stored at that key (C5). */
   readonly applies: boolean;
+  /**
+   * Status only (review 0.1.286 B5): its file's phase as `pendingTestFiles`
+   * counts it, read before that list's cap; `null` when nothing queues the
+   * file. Absent from the wait's and `why`'s entries.
+   */
+  readonly phase?: PendingPhase | null;
 }
 
 /** One selected check of a focused run. */

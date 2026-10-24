@@ -153,4 +153,60 @@ describe("a focused run in flight is named among the running files (011 C6, row 
     expect(s.pendingTestFiles?.queued.files).toEqual([ref(OTHER), ref(PARITY)]);
     expect(s.breakdown.pendingByPhase).toMatchObject({ running: 0, queued: 2 });
   });
+
+  it("past the first 100 queued names too, out of the omitted count (review 0.1.286 B5)", () => {
+    const { repo, store, id } = worktree();
+    const paths = Array.from(
+      { length: 101 },
+      (_, i) => `src/f${String(i).padStart(3, "0")}.test.ts`,
+    );
+    for (const path of paths) seedFile(store, id, path, "queued");
+    const last = "src/f100.test.ts";
+    writeRuns(store, id, [
+      focusedRun(last, { endedAt: null, end: null, matched: null, collected: null, fails: [] }),
+    ]);
+
+    const s = snapshotOf(repo.main);
+    const lines = linesOf(s);
+
+    expect(lines).toContain(`Running: 1 test file: ${last} (focused: "claude U")`);
+    expect(lines).toContain(
+      "Queued: 100 test files: src/f000.test.ts, src/f001.test.ts, src/f002.test.ts, src/f003.test.ts, src/f004.test.ts and 95 more",
+    );
+    expect(lines.find((l) => l.startsWith("Focused (not counted):"))).toMatch(
+      /its own run is queued\.$/,
+    );
+    // The payload stays the queue's: 101 queued, the first 100 named, one omitted.
+    expect(s.testFilesByPhase).toEqual({ running: 0, queued: 101 });
+    expect(s.pendingTestFiles?.queued.files).toHaveLength(100);
+    expect(s.pendingTestFiles?.queued.omitted).toBe(1);
+    expect(s.pendingTestFiles?.running.files).toEqual([]);
+  });
+
+  it("a file nothing queued is named running, and its own run not queued", () => {
+    const { repo, store, id } = worktree();
+    store.testFileKeys.upsertMany([
+      {
+        worktreeId: id,
+        testFile: ref(PARITY),
+        key: keyOf(PARITY),
+        revision: 4 as never,
+        pending: null,
+      },
+    ]);
+    seedFile(store, id, OTHER, "queued");
+    writeRuns(store, id, [
+      focusedRun(PARITY, { endedAt: null, end: null, matched: null, collected: null, fails: [] }),
+    ]);
+
+    const s = snapshotOf(repo.main);
+    const lines = linesOf(s);
+
+    expect(lines).toContain(`Running: 1 test file: ${PARITY} (focused: "claude U")`);
+    expect(lines).toContain(`Queued: 1 test file: ${OTHER}`);
+    expect(lines.find((l) => l.startsWith("Focused (not counted):"))).toMatch(
+      /its own run is not queued\.$/,
+    );
+    expect(s.testFilesByPhase).toEqual({ running: 0, queued: 1 });
+  });
 });
