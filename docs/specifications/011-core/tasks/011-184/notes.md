@@ -27,7 +27,7 @@ No key, store, validity or key-format change.
 ## For whoever continues
 
 - `yields.ts` is about 450 lines, over the styleguide's 300. A split candidate: `yieldsMetaKey`, `publishedYields` and `isYield` (the status side) into their own module; the importers are in `src/core/status/`, outside this row.
-- The fake runner names no file ends during a run, so no test here covers the rank rising when the wait's own file ends mid-tier. `unfinished` already reads `Tier.ended`; a Vitest-backed test (`tier-yields-vitest.test.ts`'s fixture) could add it.
+- The fake runner names no file ends during a run, so no test here covers the rank rising when the wait's own file ends mid-tier. `unfinished` already reads `Tier.ended`; a Vitest-backed test (`tier-yields-vitest.test.ts`'s fixture) could add it. *Test 8 of the repair covers it with the fake runner (`reportsEnds`).*
 - Landing check, from 011-180 section 8: that row's probes over 24 hours; yields with `cutNamed` over 0 and a wall of 30 s or more should be none.
 
 ## Repair round 1 (review `reviews/0.1.296.md` B1 and B2)
