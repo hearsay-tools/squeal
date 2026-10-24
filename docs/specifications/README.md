@@ -30,4 +30,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 013 | Vitest runner adapter (instance, invalidation, closure, runs, gate; from 001 D4) | shipped |
 | 014 | squeal ps (every daemon and test process with CPU and memory, the host totals, what should not be up) | shipped |
 | 015 | The code squeals (complexity, coverage and CRAP per function, shared between worktrees; opt-in) | approved |
-| 016 | Extensions, narrowed: one correctness kit for every runner and the three repeat seams (runner per check, one observed-path write, runner names out of `harness/shared`); public half decided later | draft |
+| 016 | Extensions, narrowed: one correctness kit for every runner and the three repeat seams (runner per check, one observed-path write, runner names out of `harness/shared`); public half decided later | approved |
