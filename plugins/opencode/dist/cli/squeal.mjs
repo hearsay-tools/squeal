@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.297";
+  if (true) return "0.1.298";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -27451,17 +27451,17 @@ var init_change_feed = __esm({
           async () => {
             const specChanged = paths.some((p) => SPEC_INPUTS.has(basename13(p)));
             if (specChanged) this.unlisted.clear();
-            let widened = specChanged ? await this.rebuildSpec() : false;
+            let rewatched = specChanged ? await this.rebuildSpec() : false;
             const hinted = await candidatesFromHints(this.context(), paths);
             const ignoredDirs2 = hinted.ignoredDirs.filter((dir2) => !this.unlisted.holds(dir2));
             if (ignoredDirs2.length > 0 && !specChanged) {
               const before3 = this.spec;
-              widened = await this.rebuildSpec();
+              rewatched = await this.rebuildSpec();
               if (this.spec === before3) await this.unlisted.record(ignoredDirs2);
             }
             const kept3 = this.tempHold.filter(hinted.paths, this.trackedPaths);
             if (kept3.length > 0) await this.emit({ trigger: "watch", paths: kept3 });
-            if (widened || await this.relinked(hinted)) await this.reconcileNow("watch");
+            if (rewatched || await this.relinked(hinted)) await this.reconcileNow("watch");
           },
           () => "watch"
         );
@@ -27490,7 +27490,11 @@ var init_change_feed = __esm({
         }
         return changed2;
       }
-      /** Rebuilds the spec and updates the watch. True when some path is no longer excluded. */
+      /**
+       * Rebuilds the spec and updates the watch. True when the watch changed: a path excluded until
+       * now was never watched, and a watch the backend replaced may drop an event in flight (row
+       * 011-183: chokidar's old watcher closed before its stat of an edit returned).
+       */
       async rebuildSpec(status2) {
         const current3 = this.spec;
         if (!current3 || !this.sub) return false;
@@ -27499,7 +27503,7 @@ var init_change_feed = __esm({
         await this.sub.update(next);
         this.spec = next;
         this.unlisted.clear();
-        return current3.excluded.some((p) => !next.excluded.includes(p));
+        return true;
       }
       context() {
         const spec = this.spec ?? { root: this.root, excluded: [], extraFiles: [] };
