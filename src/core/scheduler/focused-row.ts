@@ -47,6 +47,13 @@ export interface FocusedCheck {
   readonly fingerprint: DiagnosticFingerprint | null;
 }
 
+/** How many selected checks passed, failed and were skipped. */
+export interface FocusedOutcomes {
+  readonly pass: number;
+  readonly fail: number;
+  readonly skip: number;
+}
+
 /** The newest focused run of one test file. */
 export interface FocusedRun {
   readonly testFile: TestFileRef;
@@ -70,10 +77,16 @@ export interface FocusedRun {
   readonly collected: number | null;
   /** How many checks held a text, the ones that ran; `null` while it runs or when it did not end completed. */
   readonly matched: number | null;
-  /** The selected checks, at most `FOCUSED_CHECKS`. */
+  /** The selected checks, the failing ones first, at most `FOCUSED_CHECKS`. */
   readonly checks: readonly FocusedCheck[];
   /** How many selected checks `checks` leaves out. */
   readonly more: number;
+  /**
+   * Review 0.1.286 B2: every selected check's outcome, counted before
+   * `checks` is cut, so a fail it leaves out is still known. Absent while
+   * the run is in flight and from a row written before the field.
+   */
+  readonly outcomes?: FocusedOutcomes;
 }
 
 /** `meta` key of `worktreeId`'s focused runs: a JSON list of `FocusedRun`, oldest first. */

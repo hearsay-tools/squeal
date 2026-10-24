@@ -5,6 +5,7 @@ import {
   FOCUSED_CHECKS,
   type FocusedCheck,
   type FocusedEnd,
+  type FocusedOutcomes,
   type FocusedRun,
   writeFocused,
 } from "./focused-row.js";
@@ -32,7 +33,8 @@ export interface FocusedEnded {
 /**
  * Records a focused tier that ended: one closed `runs` row, so its log is
  * pruned with it as any run's and no reader of open runs counts its files
- * running, and each file's entry in the focused meta row. Nothing else: no
+ * running, and each file's entry in the focused meta row, its failing
+ * checks kept first and every outcome counted (review 0.1.286 B2). Nothing else: no
  * result, known state, transition, duration, closure, observed path, claim
  * or discard count (C4). A file an input of which changed during the run
  * (the stability check), or whose run the runner withheld, ends
@@ -72,7 +74,7 @@ export function recordFocusedTier(
               ? "crashed"
               : report.end;
     const count = report.focused?.find((c) => testFileId(c.testFile) === f.file.id);
-    const checks = end === "completed" ? focusedChecks(context, report, ref) : [];
+    const checks = end === "completed" ? failingFirst(focusedChecks(context, report, ref)) : [];
     return {
       testFile: ref,
       key: f.key,
@@ -88,6 +90,7 @@ export function recordFocusedTier(
       matched: end === "completed" ? (count?.matched ?? null) : null,
       checks: checks.slice(0, FOCUSED_CHECKS),
       more: Math.max(0, checks.length - FOCUSED_CHECKS),
+      outcomes: outcomesOf(checks),
     };
   });
   store.transaction(() => {
@@ -110,6 +113,21 @@ export function recordFocusedTier(
   );
   ledger.queue.focused.ended(tier.runId, (id) => again.has(id), now);
   return [...moved].sort();
+}
+
+/** `checks` with the failing ones first, each group in its order: the cut keeps a fail (B2). */
+function failingFirst(checks: readonly FocusedCheck[]): FocusedCheck[] {
+  return [
+    ...checks.filter((c) => c.outcome === "fail"),
+    ...checks.filter((c) => c.outcome !== "fail"),
+  ];
+}
+
+/** How many of `checks` passed, failed and were skipped, before the list is cut (review 0.1.286 B2). */
+function outcomesOf(checks: readonly FocusedCheck[]): FocusedOutcomes {
+  const count = (outcome: FocusedCheck["outcome"]) =>
+    checks.filter((c) => c.outcome === outcome).length;
+  return { pass: count("pass"), fail: count("fail"), skip: count("skip") };
 }
 
 /** A focused tier never recorded (an error stopped the pump): its entries wait for another run. */

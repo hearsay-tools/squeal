@@ -710,6 +710,12 @@ export interface StatusFocused {
   readonly checks: readonly StatusFocusedCheck[];
   /** How many selected checks `checks` leaves out. */
   readonly more: number;
+  /**
+   * Review 0.1.286 B2: how many selected checks passed, failed and were
+   * skipped, counted before `checks` was cut; absent from a run in flight
+   * and from an entry written before the count.
+   */
+  readonly outcomes?: { readonly pass: number; readonly fail: number; readonly skip: number };
   /** Its key is its file's current key and no result is stored at that key (C5). */
   readonly applies: boolean;
   /**
