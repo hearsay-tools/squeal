@@ -24,6 +24,7 @@ import { codeState, fnCheck } from "./helpers.js";
 
 const RUN = "src/run.ts";
 const OK = "src/ok.ts";
+const LATER = "src/later.ts";
 const BEFORE = "export function run(a) {\n  if (a) return 1;\n  return 0;\n}\n";
 const AFTER = "export function run(a, b) {\n  if (a) return 1;\n  if (b) return 2;\n}\n";
 const SETTLED = "export function ok() {\n  return 0;\n}\n";
@@ -154,6 +155,16 @@ describe("a file the counter failed on at every attempt (row 015-18)", () => {
     expect(lines).toContain(
       "Complexity: 0 functions over 20; 1 file could not be counted; squeal code lists them.",
     );
+  });
+
+  it("keeps the files it could not count in status's line while another file is pending", async () => {
+    const s = await failed(null);
+    writeFileSync(join(s.repo.main, LATER), SETTLED);
+    await stored(s, LATER, `${SETTLED}// later\n`, 3, false);
+    const { code, lines } = statusOf(s);
+    expect(code).toMatchObject({ over: 0, pending: 1, files: 2, uncountable: 1 });
+    // Review 0.1.293 S1.
+    expect(lines).toContain("Complexity: counting, 1 of 2 files; 1 file could not be counted.");
   });
 
   it("leaves the registration's counting", async () => {
