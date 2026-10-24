@@ -3,13 +3,15 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/index.js";
+import { tellCode } from "../../../src/core/delivery/code-deliver.js";
+import { codeSource } from "../../../src/core/delivery/code-source.js";
 import { createDelivery } from "../../../src/core/delivery/index.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { NOW, type Seeded, seed } from "../../status/slow-tier-seed.js";
 import { ON } from "../helpers.js";
 import { codeState, codeTransition, fn, fnCheck, putFile, TIERS } from "./helpers.js";
 
-/* Spec 015 D6: `squeal code [<path>...] [--changed] [--json]`. */
+/* Spec 015 D6: `squeal code [<path>...] [--changed | --told] [--json]`. */
 
 const LEDGER = "src/ledger.ts";
 
@@ -154,6 +156,40 @@ describe("squeal code (015 D6)", () => {
     expect(run(s, ["--changed"], { CLAUDE_CODE_SESSION_ID: "s1" }).out.split("\n")[1]).toBe(
       "Changed since revision 2, when this session registered.",
     );
+  });
+
+  it("lists with --told the functions over that the session was told about, as its delivery counts them (row 015-27)", async () => {
+    const s = await seeded();
+    const source = codeSource(s.repo.commonDir, s.repo.main);
+    const c1 = { worktreeId: s.repo.mainId, sessionId: "s1", agentId: "main" };
+    // `selectTier` went over after s1 registered and is told in full; `planTier` by count.
+    expect(tellCode(source, c1, NOW, () => 2)?.entries.map((e) => e.check.qualifiedName)).toEqual([
+      "selectTier",
+    ]);
+    const counted = tellCode(source, c1, NOW, () => 2, { changes: false, toldOver: true });
+    expect(counted?.toldOver).toEqual({ count: 1, threshold: 20 });
+    const session = { CLAUDE_CODE_SESSION_ID: "s1" };
+    const report = JSON.parse(run(s, ["--told", "--json"], session).out);
+    expect(report.told).toEqual({ scope: "session" });
+    expect(report.functions.map((f: { qualifiedName: string }) => f.qualifiedName)).toEqual([
+      "selectTier",
+    ]);
+    expect(run(s, ["--told"], session).out).toBe(
+      [
+        "Complexity: 1 function over 20 that this session was told about",
+        "  src/core/scheduler/tiers.ts:120  selectTier  CC 23 (if 22), over since revision 3",
+        "Not judged:",
+        "  src/new.ts: not counted yet",
+        "",
+      ].join("\n"),
+    );
+    expect(JSON.parse(run(s, [TIERS, "--told", "--json"], session).out).functions).toHaveLength(1);
+    // A shell whose session is not registered here reads every registered session's views.
+    expect(run(s, ["--told"]).out.split("\n").slice(0, 2)).toEqual([
+      "Complexity: 1 function over 20 that a session in this worktree was told about",
+      "This shell's session is not registered here, so these are told to any session that is.",
+    ]);
+    expect(run(s, ["--told", "--changed"]).code).toBe(2);
   });
 
   it("answers 1 with the reason while complexity is off, and 2 on an unknown option", async () => {
