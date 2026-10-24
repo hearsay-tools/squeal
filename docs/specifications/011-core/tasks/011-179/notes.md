@@ -95,3 +95,13 @@ CPU load alone does not explain the hook timeouts of 011-142 section 5 (more tha
 - A case whose output depended on an earlier case in the same driver process would now see a different earlier case, at both sides alike. The outputs diff of section 4 shows none today.
 - Further cuts, outside this row: `python.ts` syncs the two Pythons in turn; each pytest case writes about 5 MB of bytecode into its own cache.
 - The scratch probes (`phases.repro.ts` with `record.ts`, `series.sh`, `rm.mjs`, `hooks.ts`, `diff.mjs`) lived in the worker's scratch folder and go with it. Sections 1, 3, 4 and 5 describe them well enough to write them again.
+
+## 7. Repair round 1: a timed-out test's comparison (review w31b B1)
+
+A Vitest test that times out stops waiting for its comparison; the comparison runs on. The candidate added a comparison's removal only when the comparison settled, so the file's last hook could find nothing to wait for and remove the work directory under live drivers.
+
+- `compare()` now pushes one task per comparison before it can yield: the comparison, then the removal of its `run-N`, whichever way the comparison settles. The task rejects only when that removal fails. The hook waits for every task with `allEnded`, then removes the work directory. It keeps the `REMOVAL` bound, so a driver that never ends fails the hook and its directory stays.
+- No kill on teardown. A hung driver is a failure to see, not one to clean up.
+- `self-test.test.ts` is the regression. It mocks `trees.js` (the release's setup is a directory) and `compare.js` (one real driver through `prepare` and `launch` that waits 1 s, then writes scratch and its outputs). The test runs the real `comparisons()` under `it.fails` with a 100 ms timeout: Vitest's timeout is the expected failure. An `afterAll` registered before `comparisons()` runs after its hook (`sequence.hooks` is `stack` by default). It waits for the driver, then checks that the driver's directory was there when it ended and that the work directory is gone.
+- Red and green: with the candidate's `self-test.ts`, the file failed with "the hook removed the driver's directory while it ran: expected { present: false } to deeply equal { present: true }"; with the repair it passed (1 expected fail, 1.5 s).
+- No type changed; `Comparisons` and `comparisons()` keep their signatures.
