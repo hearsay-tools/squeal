@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classLines } from "../../src/cli/named-file-lines.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   F,
   filesOf,
@@ -20,12 +21,19 @@ import { CUT_WITHIN_MS, heldRun, holdRuns, pause, ref, SETTLE_MS } from "./tier-
  * the tier in its lane yielded to it all the same. Two worktrees on one
  * store; the other runs F's key, held, while this one runs four slow files.
  * `tier-yields-claim-ends.test.ts` has the claim's end (row 011-123).
+ *
+ * This worktree's start runs every file (`RUN_MISSING`): the tier's
+ * estimate reads the 200 s each run stored, so a promotion cuts it at once,
+ * within `SETTLE_MS`. A start that runs nothing leaves no estimate, and C4
+ * step 5 cuts such a tier 30 s after its start whatever waits (row
+ * 011-107): that cut passed a 30 s poll by a few ms, and the claim's no-cut
+ * check proved nothing (row 011-169).
  */
 describe("a promoted file under another worktree's claim makes no tier yield (spec 011 C15, row 011-55)", {
   timeout: 120_000,
 }, () => {
   it("the tier runs on, the wait names the claim, and an unclaimed promoted file still cuts it", async () => {
-    const { main, other } = await sides(filesOf(200_000, 1));
+    const { main, other } = await sides(filesOf(200_000, 1), { policy: RUN_MISSING });
     // The other worktree re-keys F by its project's environment and runs it, held: its claim.
     const theirs = holdRuns(other.runner, (path) => path === F);
     await other.edit("watch", "f.config.json");
@@ -52,7 +60,7 @@ describe("a promoted file under another worktree's claim makes no tier yield (sp
 
     // A promoted file no other worktree runs still makes the tier yield.
     await main.scheduler.promote([ref(G, "g")], 60_000);
-    await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await expect.poll(() => tier.cancelled, { timeout: SETTLE_MS }).toBe(true);
     await expect.poll(() => main.current(G), { timeout: CUT_WITHIN_MS }).toBe(true);
     expect(ranSince(main, F, base)).toBe(0);
 
@@ -68,7 +76,7 @@ describe("a promoted file under another worktree's claim makes no tier yield (sp
 
   it("an edit's promoted file runs here whatever another worktree claims, so the tier yields to it", async () => {
     // F's 300 s known sorts it after the four of 200 s: they fill the tier, F stays queued.
-    const { main, other } = await sides(filesOf(200_000, 300_000));
+    const { main, other } = await sides(filesOf(200_000, 300_000), { policy: RUN_MISSING });
     const theirs = holdRuns(other.runner, (path) => path === F);
     await other.edit("watch", "src/f.ts");
     await heldRun(other, F, 0);
@@ -81,7 +89,7 @@ describe("a promoted file under another worktree's claim makes no tier yield (sp
     expect(rowOf(main, F)).toMatchObject({ pending: "queued", key: rowOf(other, F)?.key });
 
     await main.scheduler.promote([ref(F, "f")], 60_000);
-    await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await expect.poll(() => tier.cancelled, { timeout: SETTLE_MS }).toBe(true);
     await expect.poll(() => ranSince(main, F, base), { timeout: CUT_WITHIN_MS }).toBe(1);
 
     ours.stop();
