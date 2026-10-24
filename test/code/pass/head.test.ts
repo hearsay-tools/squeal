@@ -3,11 +3,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { committedPaths } from "../../../src/core/code/pass/head.js";
 import type { PassSource } from "../../../src/core/code/pass/index.js";
 import { blobHash } from "../../../src/core/hash/index.js";
-import { git, initRepo, tempDir } from "../../hash/git-repo.js";
+import { git, initRepo, tempDir, writeFile } from "../../hash/git-repo.js";
 
 /*
- * Spec 015 D6 as amended by 015-19: the files whose blob is their blob at
- * the `HEAD` a revision moved to, read with `git cat-file`.
+ * Spec 015 D6 as amended by 015-19 and 015-34: the files whose blob is
+ * their blob at the `HEAD` a revision moved to, or at the commit an
+ * operation under way brings, read with `git cat-file`.
  */
 
 const cleanups: (() => void)[] = [];
@@ -73,7 +74,31 @@ describe("the files a move of HEAD brought (015-19)", () => {
       new Set(),
     );
     expect(c.logged).toEqual([
-      expect.stringContaining("complexity: could not read the files at HEAD 0123456789"),
+      expect.stringContaining("complexity: could not read the files at 0123456789"),
     ]);
+  });
+
+  it("names the files a merge stopped in a linked worktree brings, with HEAD unmoved (015-34)", async () => {
+    const dir = tempDir();
+    cleanups.push(dir.cleanup);
+    const main = join(dir.path, "main");
+    initRepo(main, { "sub/src/a.ts": "a\n", "sub/src/b.ts": "b\n", "notes.md": "base\n" });
+    git(main, ["checkout", "-q", "-b", "topic"]);
+    writeFile(main, "sub/src/a.ts", "a, topic\n");
+    writeFile(main, "notes.md", "topic\n");
+    git(main, ["commit", "-q", "-am", "topic"]);
+    git(main, ["checkout", "-q", "main"]);
+    writeFile(main, "notes.md", "main\n");
+    git(main, ["commit", "-q", "-am", "main"]);
+    const linked = join(dir.path, "linked");
+    git(main, ["worktree", "add", "-q", "-b", "wt", linked, "main"]);
+    expect(() => git(linked, ["merge", "-q", "topic"])).toThrow();
+    const c = ctx(join(linked, "sub"), null);
+    const paths = await committedPaths(c, 1, 2, [
+      { path: "src/a.ts", blob: blob("a, topic\n") },
+      { path: "src/b.ts", blob: blob("b, edited\n") },
+    ]);
+    expect(paths).toEqual(new Set(["src/a.ts"]));
+    expect(c.logged).toEqual([]);
   });
 });
