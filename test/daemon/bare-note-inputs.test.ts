@@ -1,5 +1,6 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { createFixtureRepo, readNotes, SLOW, waitFor, withStore } from "./helpers.js";
 
 /*
@@ -17,10 +18,12 @@ describe("the bare-file note under the daemon's policy inputs (task 001-365)", S
   it("names the file no declaration covers and not the declared one", async () => {
     const repo = createFixtureRepo({
       files: {
-        "squeal.config.json": JSON.stringify({
-          nodeTest: [{ name: "nt", cwd: "nt", include: ["test/*.test.mjs"], argv: [], env: {} }],
-          inputs: { [DECLARED]: ["nt/fixtures/**"] },
-        }),
+        "squeal.config.json": runMissingConfig(
+          JSON.stringify({
+            nodeTest: [{ name: "nt", cwd: "nt", include: ["test/*.test.mjs"], argv: [], env: {} }],
+            inputs: { [DECLARED]: ["nt/fixtures/**"] },
+          }),
+        ),
         "nt/package.json": `${JSON.stringify({ name: "nt", private: true, type: "module" })}\n`,
         "nt/fixtures/data.json": "{}\n",
         [DECLARED]: BARE,

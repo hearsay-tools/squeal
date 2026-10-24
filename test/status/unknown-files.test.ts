@@ -12,6 +12,7 @@ import {
 } from "../../src/core/status/index.js";
 import type { CheckKey, PendingPhase, RevisionNumber } from "../../src/core/types/index.js";
 import { withoutTouched } from "../../src/runners/vitest/moved.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";
 
 /*
@@ -198,6 +199,7 @@ describe("status: test files without a result, named (001-403)", () => {
 describe("status: why a file without a result has none, from what the store keeps (011-12, issue 24)", () => {
   it("names an unkeyed file, a failed setup, another worktree's run and a key never run; 'no reason was kept' only when true", () => {
     const w = seeded();
+    writeFileSync(join(w.root, "squeal.config.json"), runMissingConfig());
     w.row("test/unkeyed.test.ts", null);
     w.store.knownStates.upsertMany([
       state(w.id, { kind: "setup", project: "web", testPath: "vitest.setup.ts" } as never, {

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { addWorktree, createRepo, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 
 /*
@@ -63,7 +64,10 @@ describe(
       const repo = serveRepo();
       const other = addWorktree(repo.main, repo.dir, "other");
       const store = openRepoStore(repo.commonDir);
-      const a = await openHarness(repo.main, store, repo.commonDir, { rerunCap: 0 });
+      const a = await openHarness(repo.main, store, repo.commonDir, {
+        rerunCap: 0,
+        policy: RUN_MISSING,
+      });
       await a.scheduler.start();
       await a.scheduler.idle();
       expect(a.sink.stateOf(serve)).toMatchObject({ outcome: "fail", validity: "current" });

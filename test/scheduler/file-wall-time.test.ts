@@ -4,6 +4,7 @@ import { expect, it } from "vitest";
 import { durationOf } from "../../src/core/scheduler/files.js";
 import { readWhy } from "../../src/core/status/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -33,7 +34,7 @@ it("records a file's whole time on its file-level check (013-03)", SLOW, async (
   git(repo.main, ["add", "-A"]);
   git(repo.main, ["commit", "-qm", "setup-heavy"]);
   const store = openRepoStore(repo.commonDir);
-  const h = await openHarness(repo.main, store, repo.commonDir);
+  const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
   await h.scheduler.start();
   await h.scheduler.idle();
 

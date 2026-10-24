@@ -2,11 +2,13 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import type { CatchUpSide } from "./catch-up-fixture.js";
 import {
   A,
   B,
   batch,
+  FILES,
   gitMay,
   HELPER,
   heldPaths,
@@ -37,7 +39,7 @@ async function expectHeld(side: CatchUpSide, runs: number): Promise<void> {
 
 async function started(): Promise<{ root: string; side: CatchUpSide }> {
   const repo = mergeRepo();
-  const side = holdSide(repo);
+  const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
   await side.scheduler.start();
   await side.scheduler.idle();
   return { root: repo.main, side };

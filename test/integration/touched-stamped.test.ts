@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RunnerAdapter } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import {
   BASE,
@@ -111,6 +112,7 @@ describe.each([true, false])("a touched restore after a stamped probe (observe %
       ...options,
       observe,
       runnerPartBesideRun: true,
+      policy: { ...options.policy, ...RUN_MISSING },
     });
     let heard: Promise<void> | null = null;
     const lanes = withSlowLanes(h, repo.main, slotDir, async (adapter) => {

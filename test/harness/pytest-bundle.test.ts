@@ -8,6 +8,7 @@ import { buildDist } from "../../src/harness/build.js";
 import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { until } from "../e2e/support.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { observeMetafile } from "../helpers/build-inputs.js";
 import { requireSynced, type Synced, syncFixture } from "../helpers/pytest-env.js";
 
@@ -62,7 +63,9 @@ describe("the bundled CLI and pytest (spec 007)", () => {
     writeFileSync(join(root, ".gitignore"), ".venv/\n");
     writeFileSync(
       join(root, "squeal.config.json"),
-      `${JSON.stringify({ pytest: [{ name: "small", include: ["tests/**/test_*.py"] }] })}\n`,
+      runMissingConfig(
+        JSON.stringify({ pytest: [{ name: "small", include: ["tests/**/test_*.py"] }] }),
+      ),
     );
     git(root, ["init", "-q", "-b", "main"]);
     git(root, ["add", "-A"]);

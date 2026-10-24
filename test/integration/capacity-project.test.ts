@@ -9,6 +9,7 @@ import { readMarks } from "../../src/core/capacity/index.js";
 import { slowSlotDir } from "../../src/core/slow/index.js";
 import { childEnv } from "../daemon/helpers.js";
 import { until } from "../e2e/support.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 
 /*
  * Review 001-384, B3, through a daemon run from the sources: a
@@ -52,11 +53,13 @@ function createRepo(): string {
   const root = join(scratch, "root");
   const files: Record<string, string> = {
     "package.json": `${JSON.stringify({ name: "app", private: true, type: "module" })}\n`,
-    "squeal.config.json": `${JSON.stringify({
-      nodeTest: [
-        { name: "p", node: process.execPath, argv: [], env: {}, include: ["test/*.test.mjs"] },
-      ],
-    })}\n`,
+    "squeal.config.json": runMissingConfig(
+      JSON.stringify({
+        nodeTest: [
+          { name: "p", node: process.execPath, argv: [], env: {}, include: ["test/*.test.mjs"] },
+        ],
+      }),
+    ),
   };
   for (const n of [1, 2, 3, 4]) files[`test/h${n}.test.mjs`] = held;
   mkdirSync(join(root, "test"), { recursive: true });

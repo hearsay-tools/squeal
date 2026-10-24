@@ -1,18 +1,28 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { startTimers } from "../../src/core/daemon/lifecycle.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type NodeTestProject, type Store } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./helpers.js";
 import {
   CONTROL_TEST,
   HIDDEN_TEST,
   keyOf,
-  open,
+  open as openWorktree,
   origin,
   outcome,
   PRELOADED,
   twoWorktrees,
 } from "./preload-worktrees.js";
+
+/** Each case compares the worktrees' start baselines (row 011-159). */
+const open = (
+  root: string,
+  store: Store,
+  commonDir: string,
+  hold?: Promise<void>,
+  project?: NodeTestProject,
+) => openWorktree(root, store, commonDir, hold, project, undefined, RUN_MISSING);
 
 /*
  * Review wave 2, S2's remaining bound (task 003-26): worktree B keyed

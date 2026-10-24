@@ -5,6 +5,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { readTurn } from "../../src/core/delivery/turn.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -33,6 +34,7 @@ async function guarded() {
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
     policy: {
+      ...RUN_MISSING,
       slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS], maxDeferMs: 60_000 },
     },
     slow: {

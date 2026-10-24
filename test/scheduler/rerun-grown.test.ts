@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
 import type { CheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -45,7 +46,10 @@ describe("a new failure stored through observed growth is re-run once", SLOW, ()
     writeFileSync(marker, "");
 
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { observe: true });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      observe: true,
+      policy: RUN_MISSING,
+    });
     let runs = 0;
     let reached = () => {};
     const atRerun = new Promise<void>((resolve) => {

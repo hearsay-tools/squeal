@@ -15,6 +15,7 @@ import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { readHeader } from "../../src/core/delivery/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { git } from "../hash/git-repo.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   childEnv,
   daemonSuite,
@@ -42,6 +43,7 @@ function freshWorktree(): FixtureRepo {
   cpSync(join(repoRoot, "test/fixtures/scheduler/basic"), main, { recursive: true });
   renameSync(join(main, "_gitignore"), join(main, ".gitignore"));
   writeFileSync(join(main, "package.json"), MANIFEST);
+  writeFileSync(join(main, "squeal.config.json"), runMissingConfig());
   git(main, ["init", "-q", "-b", "main"]);
   git(main, ["add", "-A"]);
   git(main, ["commit", "-qm", "fixture"]);

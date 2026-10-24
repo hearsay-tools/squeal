@@ -5,11 +5,13 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import type { RevisionNumber } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import type { CatchUpSide } from "../scheduler/catch-up-fixture.js";
 import {
   A,
   B,
   batch,
+  FILES,
   gitMay,
   HELPER,
   heldPaths,
@@ -118,7 +120,7 @@ async function run(argv: string[], cwd: string) {
 
 async function onHold(checkpoint = false) {
   const repo = mergeRepo();
-  const side = holdSide(repo);
+  const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
   await side.scheduler.start();
   await side.scheduler.idle();
   expect(gitMay(repo.main, ["merge", "side"])).toBe(1);

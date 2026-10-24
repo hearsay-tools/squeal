@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
 
@@ -59,7 +60,10 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
   it("without direct importers from the runner, runs the shortest last known duration first", async () => {
     const repo = createRepo("barrel");
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 1,
+      policy: RUN_MISSING,
+    });
     // A runner that cannot tell direct importers apart: every affected file is transitive.
     const affected = h.runner.affected.bind(h.runner);
     h.runner.affected = async (paths) => {
@@ -89,7 +93,10 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
   it("with no direct importer at all, runs the shortest last known duration first", async () => {
     const repo = createRepo("barrel-only");
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 1,
+      policy: RUN_MISSING,
+    });
     const direct: string[][] = [];
     const affected = h.runner.affected.bind(h.runner);
     h.runner.affected = async (paths) => {
@@ -124,7 +131,10 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
   it("runs a test file the revision added before a long direct importer", async () => {
     const repo = createRepo("barrel");
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 1,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     const baseline = h.runner.runs.length;

@@ -2,6 +2,7 @@ import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { KnownState, StatusHeader, TestCheckId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -37,7 +38,10 @@ describe("scheduler: validity never lags a revision (B2)", SLOW, () => {
   it("a content edit during a tier shows pending as soon as its revision is visible", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 1,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
 
@@ -89,7 +93,10 @@ describe("scheduler: installed lockfile (N3, N8)", SLOW, () => {
   it("a lockfile that appears without a watch batch creates a revision, so no full-suite claim stays", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 5 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 5,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     expect(h.header().fullSuite.atCurrentRevision).toBe(true);

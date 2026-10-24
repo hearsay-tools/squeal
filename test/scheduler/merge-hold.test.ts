@@ -2,10 +2,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   A,
   B,
   batch,
+  FILES,
   gitMay,
   HELPER,
   heldPaths,
@@ -58,7 +60,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
 
   it("2: the resolved write holds; `git add` alone runs both importers within 2 s at a fresh daemon's keys, with no revision", async () => {
     const repo = mergeRepo();
-    const side = holdSide(repo);
+    const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
     await side.scheduler.start();
     await side.scheduler.idle();
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
@@ -96,7 +98,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
 
   it("3: `git add` of the conflicted bytes ends the hold; both importers run and fail", async () => {
     const repo = mergeRepo();
-    const side = holdSide(repo);
+    const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
     await side.scheduler.start();
     await side.scheduler.idle();
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
@@ -113,7 +115,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
 
   it("4: `git merge --abort` ends the hold; both importers take their stored passes with no run", async () => {
     const repo = mergeRepo();
-    const side = holdSide(repo);
+    const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
     await side.scheduler.start();
     await side.scheduler.idle();
     const before = rows(side);

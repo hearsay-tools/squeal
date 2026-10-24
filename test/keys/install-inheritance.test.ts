@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   ALL_TEST_FILES,
   addWorktree,
@@ -55,7 +56,10 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
       git(repo.main, ["add", "-A"]);
       git(repo.main, ["commit", "-qm", "packages"]);
       writeInstall(repo.main, FIRST);
-      const a = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
+      const a = await openHarness(repo.main, store, repo.commonDir, {
+        tierSize: 10,
+        policy: RUN_MISSING,
+      });
       await a.scheduler.start();
       await a.scheduler.idle();
       const ran = a.runner.runs.flatMap((r) => r.files.map((f) => f.path)).sort();
@@ -65,7 +69,10 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
       writeInstall(root, SECOND);
       if (rows === "cleared")
         for (const row of store.testFiles.list()) store.testFiles.remove(row.testFile);
-      const b = await openHarness(root, store, repo.commonDir, { tierSize: 10 });
+      const b = await openHarness(root, store, repo.commonDir, {
+        tierSize: 10,
+        policy: RUN_MISSING,
+      });
       await b.scheduler.start();
       await b.scheduler.idle();
 
@@ -94,13 +101,16 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
     git(repo.main, ["add", "-A"]);
     git(repo.main, ["commit", "-qm", "packages"]);
     writeInstall(repo.main, FIRST, "1.4.0");
-    const a = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
+    const a = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 10,
+      policy: RUN_MISSING,
+    });
     await a.scheduler.start();
     await a.scheduler.idle();
 
     const root = addWorktree(repo.main, repo.dir, "second");
     writeInstall(root, FIRST, "1.5.0");
-    const b = await openHarness(root, store, repo.commonDir, { tierSize: 10 });
+    const b = await openHarness(root, store, repo.commonDir, { tierSize: 10, policy: RUN_MISSING });
     await b.scheduler.start();
     await b.scheduler.idle();
 
@@ -116,7 +126,10 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
     for (const [path, content] of Object.entries(TESTS))
       writeFileSync(join(repo.main, path), content);
     writeInstall(repo.main, FIRST);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 10,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     const runs = h.runner.runs.length;

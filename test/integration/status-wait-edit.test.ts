@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { FILES, settled, statusWhen, waitDaemons } from "./wait-daemon.js";
 
 /*
@@ -42,7 +43,7 @@ describe("status --wait ends when the edit's own files are done (defect 32)", ()
     async () => {
       const root = createRepo("slow", {
         ...FILES,
-        "squeal.config.json": `${JSON.stringify(POLICY)}\n`,
+        "squeal.config.json": runMissingConfig(JSON.stringify(POLICY)),
         "test/slow.test.ts": slowTest(0),
       });
       const socket = await startDaemon(root);

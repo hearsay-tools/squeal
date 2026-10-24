@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Policy, RunReport, TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpRepo,
@@ -65,7 +66,7 @@ function rowOf(side: CatchUpSide, path: string) {
 /** Every file ran once; then a side under lookup-only with `edited`'s tier held in flight. */
 async function heldTier(files: readonly CatchUpFile[], edited: string) {
   const repo = catchUpRepo(files);
-  const first = sideOf(repo, files, {});
+  const first = sideOf(repo, files, RUN_MISSING);
   await first.scheduler.start();
   await first.scheduler.idle();
   await first.scheduler.close();

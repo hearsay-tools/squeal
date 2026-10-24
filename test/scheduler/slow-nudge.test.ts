@@ -5,6 +5,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openHarness, openRepoStore, type RecordingRunner, SLOW } from "./helpers.js";
 
@@ -30,7 +31,10 @@ async function waitingForIdle() {
   slotDirs.push(slotDir);
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS] } },
+    policy: {
+      ...RUN_MISSING,
+      slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS] },
+    },
     slow: { slotDir, load: () => [0], cpus: () => 1 },
   });
   const { delivery, consumer } = await h.consumer();
@@ -62,7 +66,10 @@ describe("the slow tier on a nudge (task 001-281)", SLOW, () => {
     slotDirs.push(slotDir);
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 4,
-      policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS] } },
+      policy: {
+        ...RUN_MISSING,
+        slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS] },
+      },
       slow: { slotDir, load: () => [0], cpus: () => 1 },
     });
     const { delivery, consumer } = await h.consumer();

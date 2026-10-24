@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_POLICY, type PolicyInputs } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import {
   createRepo,
@@ -43,7 +44,7 @@ const open = (files: Readonly<Record<string, string>>, observe: boolean, inputs:
     observe,
     tierSize: 4,
     runnerPartBesideRun: true,
-    policy: { inputs },
+    policy: { ...RUN_MISSING, inputs },
   });
 };
 

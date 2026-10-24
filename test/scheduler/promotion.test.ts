@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, side } from "./claims-fixture.js";
 
 /*
@@ -15,7 +16,7 @@ const order = (runs: readonly (readonly { path: string }[])[]) =>
 describe("scheduler: a named wait promotes its test file (spec 011 C15)", () => {
   it("with A running and B, Z queued, Z starts before B, and B still runs", async () => {
     const { main } = claimRepo(3);
-    const a = side(main, { count: 3, tierSize: 1 });
+    const a = side(main, { count: 3, tierSize: 1, policy: RUN_MISSING });
     a.runner.hold();
     await a.scheduler.start();
     await expect.poll(() => a.phase(A)).toBe("running");
@@ -32,7 +33,7 @@ describe("scheduler: a named wait promotes its test file (spec 011 C15)", () => 
 
   it("without a promotion the order is the old one", async () => {
     const { main } = claimRepo(3);
-    const a = side(main, { count: 3, tierSize: 1 });
+    const a = side(main, { count: 3, tierSize: 1, policy: RUN_MISSING });
     a.runner.hold();
     await a.scheduler.start();
     await expect.poll(() => a.phase(A)).toBe("running");
@@ -43,7 +44,7 @@ describe("scheduler: a named wait promotes its test file (spec 011 C15)", () => 
 
   it("a promotion past its deadline orders nothing", async () => {
     const { main } = claimRepo(3);
-    const a = side(main, { count: 3, tierSize: 1 });
+    const a = side(main, { count: 3, tierSize: 1, policy: RUN_MISSING });
     a.runner.hold();
     await a.scheduler.start();
     await expect.poll(() => a.phase(A)).toBe("running");
@@ -55,13 +56,13 @@ describe("scheduler: a named wait promotes its test file (spec 011 C15)", () => 
 
   it("a promoted file whose key another worktree runs waits for its claimant (C7)", async () => {
     const { main, other } = claimRepo(3);
-    const b = side(other, { count: 3, tierSize: 1 });
+    const b = side(other, { count: 3, tierSize: 1, policy: RUN_MISSING });
     b.runner.hold();
     await b.scheduler.start();
     // The other worktree runs A's key: its run is the result this wait needs.
     await expect.poll(() => b.phase(A)).toBe("running");
 
-    const a = side(main, { count: 3, tierSize: 1 });
+    const a = side(main, { count: 3, tierSize: 1, policy: RUN_MISSING });
     a.runner.hold();
     await a.scheduler.start();
     await a.scheduler.promote([ref(A)], 60_000);

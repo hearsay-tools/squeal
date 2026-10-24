@@ -9,6 +9,7 @@ import { readStatus } from "../../src/core/status/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { readRuns, until } from "../e2e/support.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 
 /*
  * Spec 004 D5 and goal 3 for a slow node:test project shaped like cezarion's
@@ -56,7 +57,7 @@ function createRepo(): string {
   const slow = { maxLoadPerCpu: 1000 };
   writeFileSync(
     join(root, "squeal.config.json"),
-    `${JSON.stringify({ nodeTest: [project], slow })}\n`,
+    runMissingConfig(JSON.stringify({ nodeTest: [project], slow })),
   );
   git(root, ["init", "-q", "-b", "main"]);
   git(root, ["add", "-A"]);

@@ -14,6 +14,7 @@ import {
   waitReady,
   withStore,
 } from "../daemon/helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { recorded } from "./helpers.js";
 
 /*
@@ -45,7 +46,7 @@ afterEach(() => {
 
 /** A ready daemon on the fixture with nothing pending, and a registered main session. */
 async function served(): Promise<{ repo: FixtureRepo; daemon: SpawnedProcess; deps: HookDeps }> {
-  const repo = suite.fixture();
+  const repo = suite.fixture({ "squeal.config.json": runMissingConfig() });
   // Hooks find the socket in the environment they share with the daemon (spec 001 D1).
   vi.stubEnv("XDG_RUNTIME_DIR", repo.runtimeDir);
   const daemon = suite.daemon(repo);

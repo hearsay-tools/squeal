@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isPending } from "../../src/core/state/index.js";
 import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -26,7 +27,10 @@ const holdsBarrel = (files: readonly { path: string }[]) => files.some((f) => f.
 async function barrelInFlight(barrier?: Promise<void>) {
   const repo = createRepo("barrel");
   const store = openRepoStore(repo.commonDir);
-  const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
+  const h = await openHarness(repo.main, store, repo.commonDir, {
+    tierSize: 1,
+    policy: RUN_MISSING,
+  });
   await h.scheduler.start();
   await h.scheduler.idle();
 

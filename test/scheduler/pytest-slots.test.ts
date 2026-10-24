@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it, onTestFinished, type TestContext } from "vitest";
 import { createPytestRunners } from "../../src/core/daemon/pytest-runners.js";
 import type { AbsolutePath } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { findPython, pythonEnv } from "../helpers/pytest-env.js";
 import { createRepo, openHarness, openRepoStore } from "./helpers.js";
 import { timedRunner } from "./timed-runner.js";
@@ -81,6 +82,7 @@ async function forcedPass(ctx: TestContext, slots: boolean) {
     backlogTierSize: 200,
     adapters: [timed],
     capacity: { dir: join(scratch, "pool"), hostSlots: 4 },
+    policy: RUN_MISSING,
   });
   await h.scheduler.start();
   await h.scheduler.idle();

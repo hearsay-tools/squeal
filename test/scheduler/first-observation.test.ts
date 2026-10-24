@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import type { TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   addWorktree,
   createRepo,
@@ -184,7 +185,10 @@ describe(
       const repo = createRepo("observed");
       writeFileSync(join(repo.main, "test/new-path.test.ts"), NEW_PATH_TEST);
       const store = openRepoStore(repo.commonDir);
-      const h = await openHarness(repo.main, store, repo.commonDir, OBSERVING);
+      const h = await openHarness(repo.main, store, repo.commonDir, {
+        ...OBSERVING,
+        policy: { ...OBSERVING.policy, ...RUN_MISSING },
+      });
       await h.scheduler.start();
       await h.scheduler.idle();
       for (const pool of POOLS) {

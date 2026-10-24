@@ -17,6 +17,7 @@ import { ensureDaemon } from "../../src/core/daemon/ensure.js";
 import { daemonScratch, prepareScratch, removeScratch } from "../../src/core/daemon/scratch.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { git } from "../hash/git-repo.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   ping,
   SLOW,
@@ -71,7 +72,7 @@ describe.runIf(process.platform === "linux")(
     const built = suiteCli();
 
     it("started from inside the root, it runs the root's tests with a temp dir outside every repository, holds nothing there, and exits when the worktree is removed", async () => {
-      const repo = linkedFixture(cleanups, FILES);
+      const repo = linkedFixture(cleanups, { ...FILES, "squeal.config.json": runMissingConfig() });
       const callerTmp = callerTempDir(cleanups);
       const spawned = spawnCli(built().cli, ["daemon", repo.root], {
         cwd: repo.root,

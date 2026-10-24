@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { AbsolutePath, StatusSnapshot } from "../../src/core/types/index.js";
 import { pytestObservedSessionMetaKey } from "../../src/core/types/index.js";
 import { sitePackagesDir } from "../../src/runners/pytest/environment/site.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   ENTRY_TEST,
   git,
@@ -61,7 +62,7 @@ describe("installed-set changes and start-up plugins reach the daemon (007 B1, B
     async (ctx) => {
       const main = createRepo("installed", {
         ".gitignore": "node_modules/\n.venv/\n",
-        "squeal.config.json": `${JSON.stringify({ pytest: [PROJECT] }, null, 2)}\n`,
+        "squeal.config.json": runMissingConfig(JSON.stringify({ pytest: [PROJECT] })),
         [INSTALLED_TEST]: [
           "import pthmod",
           "import reviewdep",
@@ -112,7 +113,7 @@ describe("installed-set changes and start-up plugins reach the daemon (007 B1, B
     async (ctx) => {
       const main = createRepo("plugin", {
         ".gitignore": "node_modules/\n.venv/\n",
-        "squeal.config.json": `${JSON.stringify({ pytest: [PROJECT] }, null, 2)}\n`,
+        "squeal.config.json": runMissingConfig(JSON.stringify({ pytest: [PROJECT] })),
         [PLUGIN]: [
           "import importlib",
           "import pytest",

@@ -6,6 +6,7 @@ import { afterEach, expect } from "vitest";
 import { askRetry, type HostLoad, type RetryReason } from "../../src/core/retry/index.js";
 import type { CheckId, Store } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, type HarnessOptions } from "./helpers.js";
 
 /*
@@ -57,6 +58,7 @@ export function loadKnob() {
 
 /** No 001-171 re-run: the failure stands after its first run, as one caused outside the code. */
 export const options = (load: ReturnType<typeof loadKnob>): HarnessOptions => ({
+  policy: RUN_MISSING,
   rerunCap: 0,
   hostLoad: load.read,
 });

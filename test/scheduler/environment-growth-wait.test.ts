@@ -18,6 +18,7 @@ import {
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { outcome, PRELOAD_SRC, PRELOADED } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
@@ -119,7 +120,7 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
       store,
       runner,
       sink: new RecordingSink(store, worktreeId),
-      policy: DEFAULT_POLICY,
+      policy: { ...DEFAULT_POLICY, ...RUN_MISSING },
       squealVersion: "0.0.0-test",
       runsDir: storePaths(repo.commonDir).runsDir,
       head: () => readHead(root),

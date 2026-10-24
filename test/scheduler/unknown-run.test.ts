@@ -7,6 +7,7 @@ import { formatCheck } from "../../src/core/state/index.js";
 import { formatWhy, readWhy } from "../../src/core/status/index.js";
 import type { AbsolutePath, CheckId, WhyReport } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   addWorktree,
   createRepo,
@@ -60,7 +61,10 @@ describe("the run behind an UNKNOWN (011-108)", SLOW, () => {
     const other = addWorktree(repo.main, repo.dir, "b");
     const store = openRepoStore(repo.commonDir);
 
-    const a = await openHarness(repo.main, store, repo.commonDir, { rerunCap: 0 });
+    const a = await openHarness(repo.main, store, repo.commonDir, {
+      rerunCap: 0,
+      policy: RUN_MISSING,
+    });
     await a.scheduler.start();
     await a.scheduler.idle();
     expect(a.sink.stateOf(exits)).toMatchObject({ outcome: "pass", validity: "current" });

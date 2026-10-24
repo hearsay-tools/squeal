@@ -7,6 +7,7 @@ import type { HarnessProcess } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { recorded } from "../harness/helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   delay,
@@ -100,7 +101,7 @@ async function exitWithin(spawned: SpawnedProcess, ms: number, repo: FixtureRepo
 
 describe("a daemon exits when its last session is gone (defect 24)", SLOW, () => {
   it("within 3 s of the last SessionEnd when idle, with one note", async () => {
-    const repo = fixture();
+    const repo = fixture({ "squeal.config.json": runMissingConfig() });
     const spawned = daemon(repo);
     await waitReady(repo, spawned);
     const d = deps(repo, self);
@@ -123,7 +124,7 @@ describe("a daemon exits when its last session is gone (defect 24)", SLOW, () =>
   });
 
   it("a SessionStart within the grace keeps it (/clear)", async () => {
-    const repo = fixture();
+    const repo = fixture({ "squeal.config.json": runMissingConfig() });
     const spawned = daemon(repo);
     await waitReady(repo, spawned);
     const d = deps(repo, self);
@@ -154,7 +155,7 @@ describe("a daemon exits when its last session is gone (defect 24)", SLOW, () =>
       "}, 30_000);",
       "",
     ].join("\n");
-    const repo = fixture({ "test/slow.test.ts": slow });
+    const repo = fixture({ "test/slow.test.ts": slow, "squeal.config.json": runMissingConfig() });
     const spawned = daemon(repo);
     // Registered as soon as the socket answers, as SessionStart does, not after the baseline.
     await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
@@ -181,7 +182,7 @@ describe("a daemon exits when its last session is gone (defect 24)", SLOW, () =>
   it.runIf(linux)(
     "drops a session whose harness is SIGKILLed (no SessionEnd) and exits within a heartbeat plus the grace",
     async () => {
-      const repo = fixture();
+      const repo = fixture({ "squeal.config.json": runMissingConfig() });
       const spawned = daemon(repo);
       await waitReady(repo, spawned);
       const killed = harness();
@@ -202,7 +203,7 @@ describe("a daemon exits when its last session is gone (defect 24)", SLOW, () =>
   );
 
   it.runIf(linux)("a PID reused by another process does not count as the session", async () => {
-    const repo = fixture();
+    const repo = fixture({ "squeal.config.json": runMissingConfig() });
     const spawned = daemon(repo);
     await waitReady(repo, spawned);
     const live = harness();

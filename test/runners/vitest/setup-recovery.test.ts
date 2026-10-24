@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { KnownState } from "../../../src/core/types/index.js";
+import { RUN_MISSING } from "../../helpers/baseline.js";
 import {
   createRepo,
   type Harness,
@@ -64,7 +65,7 @@ describe("a setup file two projects share, only the later one in the run (B3)", 
   it("fails the run's project once, and starts again only at `run --all`", async () => {
     const { repo, count } = setupRepo(config, "true");
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     // The review's probe ran five failed starts at revision 0; a second one fails here.
     let allowed = 1;
     h.runner.beforeRun = () => {
@@ -105,7 +106,10 @@ describe("a recovered setup whose test then times out (B4)", SLOW, () => {
   it("passes its setup check once, with no setup failure left", async () => {
     const { repo, count } = setupRepo(config, "calls === 1", { "test/hang.test.ts": hang });
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { timeoutMs: 5_000 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      timeoutMs: 5_000,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     const check = { kind: "setup", project: "", testPath: "setup.ts" } as const;

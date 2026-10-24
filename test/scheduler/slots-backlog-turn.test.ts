@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RECENT_TIERS_PER_BACKLOG_TIER } from "../../src/core/scheduler/queue.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { slotHarness, testPath } from "./slots-fixture.js";
 
 /*
@@ -23,7 +24,12 @@ describe("scheduler: the backlog's turn in a lane of slots (review wave-4 slice 
       name,
       sleepMs: 0,
     }));
-    const { h, runs } = await slotHarness({ files, hostSlots: 2, tierSize: 1 });
+    const { h, runs } = await slotHarness({
+      files,
+      hostSlots: 2,
+      tierSize: 1,
+      policy: RUN_MISSING,
+    });
     let release: () => void = () => {};
     const held = new Promise<void>((resolve) => {
       release = resolve;

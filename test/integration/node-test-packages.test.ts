@@ -10,6 +10,7 @@ import { readStatus } from "../../src/core/status/index.js";
 import type { StatusSnapshot } from "../../src/core/types/index.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { readRuns, until } from "../e2e/support.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { type FixturePackage, writeInstall } from "../keys/install.js";
 
 /*
@@ -67,7 +68,7 @@ const PROJECTS = [
 const FILES: Readonly<Record<string, string>> = {
   ".gitignore": "node_modules/\n",
   "package.json": `${JSON.stringify({ name: "app", private: true, type: "module", imports: { "#ext": "ext" } })}\n`,
-  "squeal.config.json": `${JSON.stringify({ nodeTest: PROJECTS }, null, 2)}\n`,
+  "squeal.config.json": runMissingConfig(JSON.stringify({ nodeTest: PROJECTS })),
   "test/alias.test.mjs": testFile('import { value } from "#ext";', "value"),
   "test/require.test.mjs": testFile(
     "const r = process.getBuiltinModule('module').createRequire(import.meta.url);",

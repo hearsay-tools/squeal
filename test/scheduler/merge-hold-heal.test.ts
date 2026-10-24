@@ -1,11 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import type { CatchUpSide } from "./catch-up-fixture.js";
 import {
   A,
   B,
   batch,
+  FILES,
   gitMay,
   HELPER,
   heldPaths,
@@ -41,7 +43,7 @@ describe("scheduler: the merge hold and another worktree's heal (review 0.1.266 
 }, () => {
   it("a FAIL -> PASS at a held key leaves the held importers queued; an unaffected file heals", async () => {
     const repo = mergeRepo();
-    const main = holdSide(repo);
+    const main = holdSide(repo, repo.main, FILES, RUN_MISSING);
     // The control: main's own run fails the unaffected file before the merge.
     const marked = main.runner.beforeRun;
     main.runner.beforeRun = (files) => {

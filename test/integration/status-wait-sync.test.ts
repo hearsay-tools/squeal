@@ -6,7 +6,11 @@ import type { SyncState } from "../../src/cli/status-sync.js";
 import { STATUS_WAIT_SETTLE_MS, waitForStatus } from "../../src/cli/status-wait.js";
 import { timed } from "../cli/wait-clock.js";
 import { LOADED } from "../daemon/helpers.js";
-import { settled, waitDaemons } from "./wait-daemon.js";
+import { runMissingConfig } from "../helpers/baseline.js";
+import { FILES, settled, waitDaemons } from "./wait-daemon.js";
+
+/** The fixture with the start baseline its `settled` waits for (row 011-159). */
+const RUN_MISSING_FILES = { ...FILES, "squeal.config.json": runMissingConfig() };
 
 /*
  * Lessons, defect 30, under a real daemon run from the sources: on cezar at
@@ -47,7 +51,7 @@ const cannotSync = () => ({
 
 describe("status --wait right after an edit whose revision commits late (defect 30)", () => {
   it("never ends quiet at the revision before the edit", SLOW, async () => {
-    const root = createRepo("synced");
+    const root = createRepo("synced", RUN_MISSING_FILES);
     await startDaemon(root);
     const before = (await settled(root)).revision;
 
@@ -62,7 +66,7 @@ describe("status --wait right after an edit whose revision commits late (defect 
   });
 
   it("returns promptly when nothing was edited", SLOW, async () => {
-    const root = createRepo("idle");
+    const root = createRepo("idle", RUN_MISSING_FILES);
     await startDaemon(root);
     const before = (await settled(root)).revision;
 
@@ -77,7 +81,7 @@ describe("status --wait right after an edit whose revision commits late (defect 
     "without a sync, the held revision reads as quiet at the earlier one (the defect)",
     SLOW,
     async () => {
-      const root = createRepo("unsynced");
+      const root = createRepo("unsynced", RUN_MISSING_FILES);
       await startDaemon(root);
       const before = (await settled(root)).revision;
 

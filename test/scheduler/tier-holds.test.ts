@@ -7,6 +7,7 @@ import { createPermitPool, poolPermitFile, readMarks } from "../../src/core/capa
 import { CAPACITY_RECHECK_MS } from "../../src/core/scheduler/capacity.js";
 import { takePermit } from "../../src/core/slow/index.js";
 import type { RunOptions, TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -48,6 +49,7 @@ describe("a tier holds only the permits it runs (row 011-97)", SLOW, () => {
       tierSize: 3,
       backlogTierSize: 3,
       capacity: { dir, hostSlots: 3 },
+      policy: RUN_MISSING,
     });
     const seen: unknown[] = [];
     h.gate.before = (files, options) => {
@@ -95,6 +97,7 @@ describe("a tier holds only the permits it runs (row 011-97)", SLOW, () => {
       tierSize: 4,
       backlogTierSize: 50,
       capacity: { dir, hostSlots: 3 },
+      policy: RUN_MISSING,
     });
     // The harness's runner reports no widths: these are the Vitest adapter's for such a project
     // (`width.test.ts`), 2 workers at a grant of 1.

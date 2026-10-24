@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it, vi } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import {
   BASE,
@@ -141,6 +142,7 @@ describe("a touch heard during a run (task 001-159)", () => {
         tierSize: 4,
         runnerPartBesideRun: true,
         observe,
+        policy: RUN_MISSING,
       });
       const runs = scheduledRuns(h);
       const puts = holdsPuts(h);
@@ -163,6 +165,7 @@ describe("a touch heard during a run (task 001-159)", () => {
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       ...options,
       runnerPartBesideRun: true,
+      policy: { ...options.policy, ...RUN_MISSING },
     });
     const lanes = withSlowLanes(h, repo.main, slotDir, async () => {});
     const runs = scheduledRuns(h);
@@ -196,6 +199,7 @@ describe("a test file that rewrites a worktree file with its own bytes on every 
         tierSize: 4,
         runnerPartBesideRun: true,
         observe,
+        policy: RUN_MISSING,
       });
       await touchDuringRun(h, "fixtures/data.txt", false);
       expect(h.runsOf("test/holds.test.ts")).toHaveLength(1);

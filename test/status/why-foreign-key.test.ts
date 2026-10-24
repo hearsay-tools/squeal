@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { formatWhy, readWhy, WHY_RESULT_LIMIT } from "../../src/core/status/index.js";
 import type { CheckId, ResultRecord } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { addWorktree, createRepo, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import { result } from "../store/helpers.js";
 import { reportOf } from "./why-seed.js";
@@ -41,7 +42,7 @@ describe("squeal why after another worktree's run replaced the result at its key
     const other = addWorktree(repo.main, repo.dir, "other");
     const store = openRepoStore(repo.commonDir);
 
-    const a = await openHarness(repo.main, store, repo.commonDir);
+    const a = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await a.scheduler.start();
     await a.scheduler.idle();
     const key = a.keyOf(CURSOR) ?? expect.unreachable("A keyed no cursor test");

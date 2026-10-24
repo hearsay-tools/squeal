@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { acquireSlowSlot } from "../../src/core/slow/index.js";
 import { DEFAULT_POLICY, isSlowLane, type RunOptions } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -63,7 +64,10 @@ async function open(): Promise<Held> {
   const slotDir = tempDir("slot");
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES, maxParallel: 4 } },
+    policy: {
+      ...RUN_MISSING,
+      slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES, maxParallel: 4 },
+    },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
     capacity: { dir: join(tempDir("pool"), "squeal-uid"), hostSlots: 8 },

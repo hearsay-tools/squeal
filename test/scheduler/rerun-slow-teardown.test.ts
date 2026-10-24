@@ -7,6 +7,7 @@ import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
 import { formatWhy, readWhy } from "../../src/core/status/index.js";
 import { type CheckId, DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type HarnessOptions, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -34,7 +35,10 @@ function slowOptions(): HarnessOptions {
   cleanup.push(slotDir);
   return {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE], maxParallel: 1 } },
+    policy: {
+      ...RUN_MISSING,
+      slow: { ...DEFAULT_POLICY.slow, include: [SLOW_FILE], maxParallel: 1 },
+    },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
   };
 }

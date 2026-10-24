@@ -8,6 +8,7 @@ import { readDaemonNotes } from "../../src/core/notes.js";
 import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
 import type { CheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type HarnessOptions, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -53,14 +54,17 @@ function flakyRepo(once: boolean) {
 }
 
 /**
- * Starts a worktree on the flaky repository with its first run of the flaky
- * file held until a consumer is registered, so its failure is delivered as
- * news; `holdRerun` holds the second run of that file too.
+ * Starts a worktree on the flaky repository with its start's run of the
+ * flaky file held until a consumer is registered, so its failure is
+ * delivered as news; `holdRerun` holds the second run of that file too.
  */
 async function failFirst(once: boolean, options: HarnessOptions = {}) {
   const repo = flakyRepo(once);
   const store = openRepoStore(repo.commonDir);
-  const h = await openHarness(repo.main, store, repo.commonDir, options);
+  const h = await openHarness(repo.main, store, repo.commonDir, {
+    policy: RUN_MISSING,
+    ...options,
+  });
   const gates: (() => void)[] = [];
   const reached: (() => void)[] = [];
   const atRun = [0, 1].map((i) => new Promise<void>((resolve) => (reached[i] = resolve)));

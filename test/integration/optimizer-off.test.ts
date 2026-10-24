@@ -5,6 +5,7 @@ import { formatRegistration } from "../../src/core/delivery/index.js";
 import { OPTIMIZER_OFF_NOTE, optimizerOffNote } from "../../src/core/state/optimizer-note.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import { SEPARATE } from "./optimizer-repo.js";
 import {
@@ -91,6 +92,7 @@ describe("a separately configured project's optimizer across a restart (review w
 
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         observe,
+        policy: RUN_MISSING,
       });
       await h.scheduler.start();
       await h.scheduler.idle();
@@ -112,6 +114,7 @@ describe("a separately configured project's optimizer across a restart (review w
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         ...options,
         observe,
+        policy: { ...options.policy, ...RUN_MISSING },
       });
       // Review wave-13h S2: opening the harness built the cache on OLD and `builtOn`
       // would keep it, so the slow instance would read OLD whatever it did.
@@ -146,6 +149,7 @@ describe("an ordinary edit of a source the optimizer bundled (review wave-13f S1
       const repo = createRepo({ ...OPTIMIZED, "src/mod.js": NEW });
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         observe,
+        policy: RUN_MISSING,
       });
       await h.scheduler.start();
       await h.scheduler.idle();
