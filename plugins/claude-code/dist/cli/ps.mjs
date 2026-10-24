@@ -835,6 +835,15 @@ function toSlowActivity(value) {
   return void 0;
 }
 
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
+
+// src/core/code/coverage/sourcemap.ts
+var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+var DIGIT = new Int8Array(128).fill(-1);
+for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
+
 // src/core/code/store/open.ts
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
@@ -1212,6 +1221,12 @@ var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
 
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
+
+// src/core/code/coverage/writer.ts
+var RESULT_WAITS_MS = [0, 250, 1e3, 5e3, 3e4];
+
+// src/core/code/crap/loaders.ts
+var RECORD_WAIT_MS = RESULT_WAITS_MS.reduce((a, b) => a + b, 0);
 
 // src/core/delivery/harness-process.ts
 function harnessAlive(harness, namespace, statOf2) {
@@ -1655,10 +1670,6 @@ var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
 
 // src/core/status/stopping.ts
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-
-// src/core/hash/blob.ts
-import { constants } from "node:fs";
-var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/status/snapshot.ts
 var HEARTBEAT_GRACE_INTERVALS = 2;
