@@ -1,7 +1,12 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/index.js";
+import {
+  codeStorePath,
+  isCodeStoreOpenFailure,
+  openCodeStore,
+} from "../../../src/core/code/store/index.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { seededKey } from "../../../src/core/delivery/code-deliver.js";
 import { type HookDeps, runHook } from "../../../src/harness/claude-code/index.js";
@@ -47,6 +52,16 @@ function overTheThreshold({ r, code }: { r: SquealRepo; code: CodeStore }) {
       revision: 2,
     }),
   ]);
+}
+
+/** Every row of the code store's `views` table, read past the repo. */
+function viewRows(r: SquealRepo): number {
+  const db = new DatabaseSync(codeStorePath(r.repo.commonDir), { readOnly: true });
+  try {
+    return Number(db.prepare("SELECT COUNT(*) AS n FROM views").get()?.n);
+  } finally {
+    db.close();
+  }
 }
 
 const contextOf = (stdout: string): string => {
@@ -97,12 +112,14 @@ describe("code views end with the session (lessons round 1, P5)", () => {
     await runHook("session-start", recorded("session-start", r.root), deps);
     const session = r.consumer();
     const left = { ...session, sessionId: "gone-without-a-session-end" };
-    code.views.writeMany(left, code.views.list(session));
-    expect(code.views.list(session)).toHaveLength(1);
+    const [entry] = code.views.list(session);
+    if (entry === undefined) throw new Error("no view entry seeded");
+    // A pass row as an older hook wrote it, which `list` no longer reads.
+    code.views.writeMany(left, [entry, { ...entry, check: fnCheck("planTier"), outcome: "pass" }]);
+    expect(viewRows(r)).toBe(3);
     expect(code.meta.get(seededKey(session))).not.toBeNull();
     await runHook("session-end", recorded("session-end", r.root), deps);
-    expect(code.views.list(session)).toEqual([]);
-    expect(code.views.list(left)).toEqual([]);
+    expect(viewRows(r)).toBe(0);
     expect(code.meta.get(seededKey(session))).toBeNull();
   });
 });
