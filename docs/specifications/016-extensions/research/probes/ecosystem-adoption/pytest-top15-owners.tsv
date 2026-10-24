@@ -1,0 +1,15 @@
+pytest-asyncio	https://github.com/pytest-dev/pytest-asyncio/issues
+pytest-cov	https://github.com/pytest-dev/pytest-cov/issues
+pytest-xdist	https://github.com/pytest-dev/pytest-xdist
+pytest-json-ctrf	https://github.com/infopulse/pytest-common-test-report-json
+pytest-mock	https://github.com/pytest-dev/pytest-mock/
+pytest-timeout	https://github.com/pytest-dev/pytest-timeout
+pytest-rerunfailures	https://github.com/pytest-dev/pytest-rerunfailures
+pytest-split	https://github.com/jerry-git/pytest-split
+pytest-runner	https://github.com/pytest-dev/pytest-runner/
+pytest-metadata	https://github.com/pytest-dev/pytest-metadata
+pytest-django	https://github.com/pytest-dev/pytest-django
+pytest-env	https://github.com/pytest-dev/pytest-env
+pytest-httpx	https://github.com/Colin-b/pytest_httpx/blob/master/CHANGELOG.md
+pytest-randomly	https://github.com/pytest-dev/pytest-randomly/blob/main/CHANGELOG.rst
+pytest-html	https://github.com/pytest-dev/pytest-html
