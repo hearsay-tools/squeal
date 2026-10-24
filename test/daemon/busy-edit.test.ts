@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { readHeader } from "../../src/core/delivery/index.js";
@@ -33,6 +34,12 @@ import {
  * 5 s: they held the event loop 10 s, the edit's batch came only after the
  * lock freed, and the note named no revision. Both bounds count from when
  * the writer's commit returned, not from when its hold was due to end.
+ *
+ * Row 011-192 (`tasks/011-192/notes.md`): a heartbeat is stamped before its
+ * write waits for the lock, so a retry in its slice when the lock frees
+ * writes a stamp from before the free, and the next beat comes a 5 s period
+ * later. The heartbeat's bound times its first write after the hold, as
+ * SQLite ran it, not its stamp.
  */
 
 const suite = daemonSuite();
@@ -77,6 +84,34 @@ function startWriter(database: string, env: NodeJS.ProcessEnv, epoch: number): S
   return { child, exited, stdout: () => out, stderr: () => err };
 }
 
+/** One heartbeat write: its order, the daemon's stamp, and when SQLite ran it (epoch ms). */
+interface Beat {
+  readonly seq: number;
+  readonly stamp: number;
+  readonly written: number;
+}
+
+/**
+ * Every heartbeat write from now on, logged by a trigger in the store
+ * (row 011-192): the order shows which came first, and `written` when it
+ * landed, however late the test reads it and whatever stamp it carries.
+ */
+function heartbeatLog(database: string): { since: (seq: number) => Beat[]; close: () => void } {
+  const db = new DatabaseSync(database);
+  db.exec("PRAGMA busy_timeout = 10000");
+  db.exec("CREATE TABLE busy_edit_beats (seq INTEGER PRIMARY KEY, stamp INTEGER, written INTEGER)");
+  db.exec(`CREATE TRIGGER busy_edit_beat AFTER UPDATE OF daemon_heartbeat_at ON worktrees
+    BEGIN INSERT INTO busy_edit_beats (stamp, written)
+      VALUES (NEW.daemon_heartbeat_at, CAST(ROUND(unixepoch('subsec') * 1000) AS INTEGER)); END`);
+  const since = db.prepare(
+    "SELECT seq, stamp, written FROM busy_edit_beats WHERE seq > ? ORDER BY seq",
+  );
+  return {
+    since: (seq) => since.all(seq) as unknown as Beat[],
+    close: () => db.close(),
+  };
+}
+
 describe("an edit while another connection holds the store's write lock (001-422)", () => {
   it(`is stored within ${WITHIN_MS} ms of a ${HOLD_MS} ms hold ending, and the daemon answers throughout`, async () => {
     const repo = suite.fixture({ "squeal.config.json": runMissingConfig() });
@@ -95,6 +130,8 @@ describe("an edit while another connection holds the store's write lock (001-422
       "the baseline recorded",
     );
     const before = withStore(repo, (store) => store.revisions.latest(repo.worktreeId)?.number ?? 0);
+    const beats = heartbeatLog(storePaths(repo.commonDir).database);
+    suite.cleanup(() => beats.close());
 
     // Past the writer's start-up; a writer late for its slot only holds it shorter.
     const epoch = Date.now() + 2_000;
@@ -102,6 +139,8 @@ describe("an edit while another connection holds the store's write lock (001-422
     const writer = startWriter(storePaths(repo.commonDir).database, repo.env, epoch);
     suite.cleanup(() => writer.child.kill("SIGKILL"));
     await waitFor(() => writer.stdout().includes("holding"), 60_000, "writer");
+    // No write lands while the writer holds the lock: a beat logged after this one lands after the free.
+    const lastBeforeHold = beats.since(0).at(-1)?.seq ?? 0;
 
     // The socket, every 100 ms from the hold's start to past its end.
     const unanswered: number[] = [];
@@ -136,19 +175,18 @@ describe("an edit while another connection holds the store's write lock (001-422
       30_000,
       "the writer's commit",
     );
-    const heartbeatAt = await waitFor(
-      () =>
-        withStore(repo, (store) => {
-          const at = store.worktrees.get(repo.worktreeId)?.daemon?.heartbeatAt ?? 0;
-          return at >= freed ? at : null;
-        }),
+    const heartbeat = await waitFor(
+      () => beats.since(lastBeforeHold)[0] ?? null,
       30_000,
       "a heartbeat after the hold",
     );
     // A miss names its phase: the writer's own lateness, or the daemon's time after the lock freed.
     const timing = `lock due free at ${freeAt}, freed at ${freed}; notes: ${JSON.stringify(readNotes(repo))}`;
     expect(stored.createdAt - freed, `the revision, ${timing}`).toBeLessThanOrEqual(WITHIN_MS);
-    expect(heartbeatAt - freed, `the heartbeat, ${timing}`).toBeLessThanOrEqual(WITHIN_MS);
+    const written = `beats after the hold: ${JSON.stringify(beats.since(lastBeforeHold))}`;
+    expect(heartbeat.written - freed, `the heartbeat, ${timing}; ${written}`).toBeLessThanOrEqual(
+      WITHIN_MS,
+    );
     const busy = await waitFor(
       () => {
         const found = readNotes(repo).filter((note) => note.startsWith("the store was busy"));
