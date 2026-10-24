@@ -90,8 +90,41 @@ So the case stores more than a release before 0.1.287, as designed. Against 0.1.
 - **Effect in Squeal.** A held result makes a whole module read as cut under a step-down (the 011-137 rule, `cutShort`), so its file runs again in the successor. It costs a run, never a wrong pass.
 - **A likely fix.** Clear `pendingCall` when its timer fires, before the check, so the call sets a new timer.
 
+## 5. Row 011-176: the runner's and the daemon's grace tests
+
+Added by the coordinator during this row. CI for cand/0.1.289 (run 40080754326, Node 22 1/3) failed `test/runners/vitest/cancel-grace.test.ts` > "counts as completed under a step-down, its results kept; a cut module does not": `expected [] to deeply equal [ { project: '', …(1) } ]` (1,044 ms). The coordinator then added `test/daemon/step-down-keeps.test.ts`, the third grace fixture.
+
+- **The leg and the cause.** In `cancel-grace` the whole file, `test/whole.test.ts`, completed nothing: its module ended in the grace and read as cut, because its pass reached the reporter after the cancel. The test took 1,044 ms in all, less than its run plus the 1 s grace before a forced cancel, so the module did end in the grace. Its shape is the one that holds a result (a fast test, then an `afterAll` that waits), so this is the held result of section 2. *inferred from the CI time, the rule and the fixture's shape.*
+- **The daemon test.** No CI failure is known. It waited 1 s after its markers, and its `whole` file has the same shape, so a held result there would arrive after the step-down and the test would fail on `whole`.
+
+### Red
+
+- Squeal revision 4, `cancel-grace` with its 500 ms delay removed and no wait: FAIL with CI's message (`expected [] to deeply equal [ { project: '', …(1) } ]`, `cancel-grace.test.ts:157`).
+- The witness without the suite end: 2 of 20 `cancel-grace` runs failed at load 14 to 20, and Squeal's run at revision 29 failed the same way. The whole file's `afterAll` reached Vitest's 10 s hook timeout, so the module failed before the cancel (`fileErrors` held "Hook timed out in 10000ms"; under the stop, `completedFiles` held the file).
+
+### The repair
+
+| Where | What |
+|---|---|
+| `test/runners/vitest/cancel-grace.test.ts` | `runOf` opens its fixture through `openFixture`'s `create` with a `VitestAdapter` over `witnessed(await loadVitest(root), heard)`, and cancels once each file waits and `heard` holds the tests `ran` names. The whole file's tests are in a `describe("ran")` whose `afterAll` waits 150 ms; its 500 ms delay is gone. The step-down and the stop runs name `ran > passes` (`WHOLE_RAN`), and the expected outcomes carry the suite's name. |
+| `test/daemon/step-down-keeps.test.ts` | The fixture's `vitest.config.ts` gains `globalSetup: ["./witness.ts"]`. `witness.ts` pushes a reporter onto the daemon's Vitest instance (`project.vitest.reporters`, after Squeal's) that writes `whole-heard` on the result of `ran > passes` and `finished-heard` on the end of `test/finished.test.ts`. The test waits for both markers in place of its 1 s delay. `whole`'s test is in a `describe("ran")` whose `afterAll` waits 150 ms. |
+
+`cancel-grace` now builds the base `VitestAdapter`, not `createVitestAdapter`'s `SizedVitestAdapter`: the subclass only answers width questions, which store nothing (row 011-40). `globalSetup` runs in Vitest's main process, in the daemon, and Vitest 5.0.3 passes it the `TestProject` (`globalSetupFile.setup?.(this)`); `reporters` is set once, when the instance starts, and read at each event.
+
+### Green
+
+| Test | Where | Load (1 min) | Runs passed |
+|---|---|---|---|
+| `cancel-grace.test.ts` | quiet host | 4.0 to 4.6 | 20 of 20 |
+| `cancel-grace.test.ts` | 4 cores, 2 load loops | 21 to 36 | 20 of 20 |
+| `step-down-keeps.test.ts` | host | 18 to 19 | 5 of 5 (5.9 to 6.6 s each) |
+
+*read from the runs' summaries.*
+
 ## For whoever continues
 
 - A grace fixture must cancel on proof, not on time: give the adapter `witnessed(await loadVitest(root), heard)` and wait for the names before the abort. Put the tests whose results must arrive in a `describe` whose `afterAll` waits more than 100 ms, or the worker can hold the last result until the module ends.
-- `tasks/011-137/notes.md`, "wait at least about 300 ms after the file's last test", is replaced by the two rules above.
-- The scratch scripts live in the worker's scratch directory, which goes with the worktree: `legs.repro.test.ts` (the comparison, repeated; `REPRO_N`, `REPRO_ONLY=1` for the case alone), `release.repro.test.ts`, `summary.cjs`, `load.sh`, and `throttle/probe.mjs`. Section 2 describes them well enough to write them again.
+- `tasks/011-137/notes.md`, "wait at least about 300 ms after the file's last test", is replaced by the two rules above. All three grace fixtures now follow them.
+- For a runner in another process, as the daemon's, the witness is a `globalSetup` that pushes a reporter onto `project.vitest.reporters` (section 5). A Vitest that rebuilds or freezes that list would make the wait time out after 60 s, never pass falsely.
+- `witnessed` lives in the validity harness, and `cancel-grace.test.ts` imports it from there. A shared helper under `test/helpers/` would be a better home; no row owns one.
+- The scratch scripts live in the worker's scratch directory, which goes with the worktree: `legs.repro.test.ts` (the comparison, repeated; `REPRO_N`, `REPRO_ONLY=1` for the case alone), `release.repro.test.ts`, `summary.cjs`, `load.sh`, and `throttle/probe.mjs`. Sections 2 and 5 describe them well enough to write them again.

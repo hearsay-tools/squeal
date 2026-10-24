@@ -8,7 +8,6 @@ import type { EnsureDaemonResult } from "../../src/core/types/index.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
 import {
   daemonSuite,
-  delay,
   type FixtureRepo,
   ping,
   readNotes,
@@ -57,7 +56,22 @@ function files(dir: string): Record<string, string> {
   return {
     // Each file of the tier starts at once: an edit's tier runs at the project's own width.
     "vitest.config.ts": `import { defineConfig } from "vitest/config";
-export default defineConfig({ test: { include: ["test/**/*.test.ts"], testTimeout: 60_000, maxWorkers: 3 } });
+export default defineConfig({ test: { include: ["test/**/*.test.ts"], testTimeout: 60_000, maxWorkers: 3, globalSetup: ["./witness.ts"] } });
+`,
+    // Row 011-176: a reporter after the daemon's own, in the daemon's Vitest instance. Vitest calls
+    // its reporters in turn, so each marker says the daemon's reporter already has that event.
+    "witness.ts": `import { writeFileSync } from "node:fs";
+import type { TestProject } from "vitest/node";
+export default function setup(project: TestProject) {
+  project.vitest.reporters.push({
+    onTestCaseResult: (test) => {
+      if (test.fullName === "ran > passes") writeFileSync(${at("whole-heard")}, "");
+    },
+    onTestModuleEnd: (module) => {
+      if (module.moduleId.endsWith("/${FINISHED}")) writeFileSync(${at("finished-heard")}, "");
+    },
+  });
+}
 `,
     "squeal.config.json": `${JSON.stringify({ baseline: { onStart: "lookup-only" } })}\n`,
     [FINISHED]: `${fs}
@@ -65,9 +79,13 @@ import { it } from "vitest";
 it("ends", () => writeFileSync(${at("finished")}, ""));
 `,
     // Its test passes; under the hold the module ends once `release` exists, after the cancel.
+    // Vitest 5.0.3's worker can hold a result until its next task update: the suite's end sends it.
     [WHOLE]: `${fs}
-import { afterAll, it } from "vitest";
-it("passes", () => {});
+import { afterAll, describe, it } from "vitest";
+describe("ran", () => {
+  it("passes", () => {});
+  afterAll(() => new Promise((done) => setTimeout(done, 150)));
+});
 afterAll(async () => {
   if (!existsSync(${at("hold")})) return;
   writeFileSync(${at("whole")}, "");
@@ -144,7 +162,9 @@ describe.runIf(process.platform === "linux")(
       const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "0.1.0 serving");
       expect(first.squealVersion).toBe("0.1.0");
       expect((await squeal("run", "--all", "--wait").exited).code).toBe(0);
-      for (const name of ["finished", "whole", "cut"]) rmSync(marker(name), { force: true });
+      const heard = ["finished-heard", "whole-heard"];
+      for (const name of ["finished", "whole", "cut", ...heard])
+        rmSync(marker(name), { force: true });
       const earlier = runs(repo).length;
 
       // One edit's tier of the three files: lookup-only queues nothing else.
@@ -155,8 +175,12 @@ describe.runIf(process.platform === "linux")(
         120_000,
         "the tier's three files started, the first ended",
       );
-      // The first file's end reaches the daemon before the cancel.
-      await delay(1_000);
+      // The first file's end and the whole file's pass reach the daemon's reporter before the cancel.
+      await waitFor(
+        () => heard.every((name) => existsSync(marker(name))),
+        60_000,
+        "the daemon's reporter to hear them",
+      );
 
       const ensured: EnsureDaemonResult[] = [];
       sockets.push(repo.socketPath);
