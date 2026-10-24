@@ -38,3 +38,4 @@ Started: 2026-10-23
 Every accepted deviation is a dated line here and an edit to the section of `spec.md` it changes (`docs/process.md`, step 6).
 
 - 2026-10-24, D4 Counts: prune also keeps a count that a kept state was judged on. The state's old body hashes come from that count, so an edit that overtakes a count still tells `STILL FAIL` (review 0.1.283 B5; 015-17, agreed by the coordinator).
+- 2026-10-24, D6 The first edit to a standing failure: a revision that moves `HEAD` marks no edit for a file equal to its blob at the new `HEAD`, so a pull, merge, rebase or checkout tells no `STILL FAIL` (015-19, from 015-10 part C P1). Accepted limit: an edit and a commit in one watcher batch reads as a pull.
