@@ -306,7 +306,8 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     const { side } = held;
     side.advance(40_000);
     await side.scheduler.promote([ref(A)], PROTECTS_MS);
-    // Two reads after P's promotion is stored see A's wait open: the rank to beat and A's rank.
+    // Once P's promotion is stored, the clock passes A's deadline after two more reads: the
+    // decision has ranked A by then and reads its bound after (on 231ecaeb0, `untilOf(A)`).
     const kinds = published(side, () => clock.cross(2, PROTECTS_MS));
     await side.scheduler.promote([p], 60_000);
 
