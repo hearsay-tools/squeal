@@ -1,0 +1,25 @@
+$ cat /proc/loadavg: 6.87 6.71 8.50 11/2275 4016990; nproc: 24; git: 9b48fa424; package.json 0.1.292
+$ npx vitest run --config docs/specifications/011-core/research/probes/issue-92/vitest.config.ts --reporter=verbose --silent=false
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/777777f6-72d9-42df-9a87-7ed1366028e9
+
+stdout | docs/specifications/011-core/research/probes/issue-92/load-retry.probe.test.ts > gh-92 load retry gate > stays queued at the incident's loads, opens below 24, keeps the FAIL until a pass
+[gh-92] waits: waits for the one-minute load average to fall below the CPU count (load average 83.92 on 24 CPUs now)
+
+stdout | docs/specifications/011-core/research/probes/issue-92/load-retry.probe.test.ts > gh-92 load retry gate > stays queued at the incident's loads, opens below 24, keeps the FAIL until a pass
+[gh-92] after 60 passes at load 24..105 on 24 CPUs: runs=1 state=fail/current claim=null end=null
+
+stdout | docs/specifications/011-core/research/probes/issue-92/load-retry.probe.test.ts > gh-92 load retry gate > stays queued at the incident's loads, opens below 24, keeps the FAIL until a pass
+[gh-92] after 1 pass at load 23.99: runs=2 state=pass/current end=passed
+
+ ✓ docs/specifications/011-core/research/probes/issue-92/load-retry.probe.test.ts > gh-92 load retry gate > stays queued at the incident's loads, opens below 24, keeps the FAIL until a pass 1175ms
+stdout | docs/specifications/011-core/research/probes/issue-92/load-retry.probe.test.ts > gh-92 load retry gate > a load retry whose rerun fails again ends failed and the FAIL stays
+[gh-92] load 5.46, cause kept: runs=2 state=fail/current end=failed
+
+ ✓ docs/specifications/011-core/research/probes/issue-92/load-retry.probe.test.ts > gh-92 load retry gate > a load retry whose rerun fails again ends failed and the FAIL stays 765ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:18:34
+   Duration  3.80s (tests 56%, transform 37%, import 7%)
+
