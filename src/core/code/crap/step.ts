@@ -35,6 +35,7 @@ export const STEP_BUDGET_MS = 50;
 export interface CoverageStepInput {
   readonly store: CodeStore;
   readonly main: LoaderInputs["main"];
+  readonly closures: LoaderInputs["closures"];
   readonly worktreeId: WorktreeId;
   readonly revision: RevisionNumber;
   /** `crap.threshold`. */
@@ -153,6 +154,7 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
       provider: COVERAGE_PROVIDER_VERSION,
       files: next,
       ...(waiting.length === 0 ? {} : { quiet: waiting }),
+      ...(loaders.withoutImports === 0 ? {} : { withoutImports: loaders.withoutImports }),
     };
     if (start || JSON.stringify(written) !== JSON.stringify(summary)) {
       writeSummary(store.meta, worktreeId, written);

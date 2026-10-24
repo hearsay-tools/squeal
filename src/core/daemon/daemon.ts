@@ -657,8 +657,13 @@ class Daemon {
           isBusy(error)
             ? this.#log(`complexity: ${error.message}`)
             : this.#note(`complexity: ${error.message}`),
-        // Spec 015 D9 (row 015-12): the loaders and the records' writer the coverage step reads.
-        coverage: { main: store, writing: () => this.#coverage?.busy() ?? false },
+        // Spec 015 D9 (row 015-12): the loaders, this worktree's own closures (review 0.1.297 B3)
+        // and the records' writer the coverage step reads.
+        coverage: {
+          main: store,
+          closures: () => this.#loop?.scheduler.keyIndex() ?? null,
+          writing: () => this.#coverage?.busy() ?? false,
+        },
       });
       this.#code = code;
       const loop = createDaemonLoop({
