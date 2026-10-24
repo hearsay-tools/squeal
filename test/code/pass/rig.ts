@@ -26,6 +26,8 @@ export interface Rig {
   pass(): Promise<PassReport | null>;
   /** Writes these files, stores one revision of them, and runs the pass. */
   edit(files: Record<string, string>): Promise<PassReport | null>;
+  /** As `edit`, with the files committed first, so the revision moves `HEAD` as a pull does (015-19). */
+  pull(files: Record<string, string>): Promise<PassReport | null>;
   register(consumer: Consumer): Promise<void>;
   /** The code lines told to `consumer` at its next tool boundary; `[]` when nothing is. */
   told(consumer: Consumer): Promise<string[]>;
@@ -68,6 +70,12 @@ export function rig(over: Partial<Policy["complexity"]> = {}): Rig {
     },
     edit(files) {
       for (const [path, text] of Object.entries(files)) tree.write(path, text);
+      tree.revise();
+      return self.pass();
+    },
+    pull(files) {
+      for (const [path, text] of Object.entries(files)) tree.write(path, text);
+      tree.commit(...Object.keys(files));
       tree.revise();
       return self.pass();
     },

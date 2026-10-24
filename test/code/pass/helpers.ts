@@ -1,11 +1,17 @@
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { Counter, PassSource, SourceFile } from "../../../src/core/code/pass/index.js";
+import {
+  type Counter,
+  headAfterMove,
+  type PassSource,
+  type SourceFile,
+} from "../../../src/core/code/pass/index.js";
 import { type PassContext, runPass } from "../../../src/core/code/pass/pass.js";
 import type { CodeStore } from "../../../src/core/code/store/index.js";
 import { blobHash } from "../../../src/core/hash/index.js";
 import type { CodeLanguage, FunctionCount } from "../../../src/core/types/code.js";
 import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/index.js";
+import { git } from "../../hash/git-repo.js";
 import { commonDir } from "../helpers.js";
 
 /**
@@ -57,7 +63,8 @@ export function policyOn(over: Partial<Policy["complexity"]> = {}): Policy {
 
 /**
  * One worktree on disk with a fake main store: `write` changes a file and
- * the stat cache, `revise` stores a revision of the paths written since.
+ * the stat cache, `revise` stores a revision of the paths written since,
+ * at the `HEAD` the last `commit` made (`null` before the first).
  */
 export class FakeWorktree {
   readonly root: string;
@@ -65,7 +72,9 @@ export class FakeWorktree {
   readonly ignored: string[] = [];
   readonly #files = new Map<string, SourceFile>();
   readonly #revisions: string[][] = [];
+  readonly #heads: (string | null)[] = [];
   #pending = new Set<string>();
+  #head: string | null = null;
 
   constructor(
     readonly id: string,
@@ -103,9 +112,23 @@ export class FakeWorktree {
     return this;
   }
 
+  /**
+   * Commits `paths`, every file when none is given, in a git repository at
+   * the root made at the first commit. `HEAD` moves as a pull, merge,
+   * rebase or checkout moves it (015-19).
+   */
+  commit(...paths: string[]): string {
+    if (this.#head === null) git(this.root, ["init", "-q", "-b", "main"]);
+    git(this.root, ["add", "-A", "--", ...paths]);
+    git(this.root, ["commit", "-q", "--allow-empty", "-m", "commit"]);
+    this.#head = git(this.root, ["rev-parse", "HEAD"]).trim();
+    return this.#head;
+  }
+
   /** Stores one revision of every path written or removed since the last. */
   revise(): number {
     this.#revisions.push([...this.#pending]);
+    this.#heads.push(this.#head);
     this.#pending = new Set();
     return this.#revisions.length;
   }
@@ -113,6 +136,8 @@ export class FakeWorktree {
   readonly source: PassSource = {
     latestRevision: () => this.#revisions.length,
     changedPaths: (after, upTo) => [...new Set(this.#revisions.slice(after, upTo).flat())],
+    movedHead: (after, upTo) =>
+      headAfterMove(after > 0 ? this.#heads[after - 1] : undefined, this.#heads.slice(after, upTo)),
     file: (path) => this.#files.get(path) ?? null,
     files: () => [...this.#files.values()],
     testFiles: () => this.testFiles,
