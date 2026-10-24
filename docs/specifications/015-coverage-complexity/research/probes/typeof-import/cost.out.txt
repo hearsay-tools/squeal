@@ -1,0 +1,2 @@
+{"files":3942,"pairs":[{"offMs":16853,"onMs":15294,"rewriteMs":46.6,"load1":24.4,"load1After":20.5},{"offMs":14868,"onMs":13956,"rewriteMs":44,"load1":17.2,"load1After":14.6},{"offMs":13863,"onMs":14108,"rewriteMs":44.2,"load1":12.8,"load1After":11.4},{"offMs":13970,"onMs":16867,"rewriteMs":48.8,"load1":10.3,"load1After":12.9},{"offMs":22393,"onMs":21670,"rewriteMs":61,"load1":21.9,"load1After":30}]}
+{"medianOffPerFileMs":3.772,"medianOnPerFileMs":3.88,"medianRewritePerFileMs":0.0118}

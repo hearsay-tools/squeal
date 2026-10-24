@@ -1,0 +1,537 @@
+=== const m = await importOriginal<typeof import("./x.js")>();
+  hasError=false
+  program
+    lexical_declaration
+      kind: const "const"
+      variable_declarator
+        name: identifier "m"
+        = "="
+        value: call_expression
+          function: await_expression
+            await "await"
+            identifier "importOriginal"
+          type_arguments: type_arguments
+            < "<"
+            type_query
+              typeof "typeof"
+              call_expression
+                function: import
+                  import "import"
+                arguments: arguments
+                  ( "("
+                  string "\"./x.js\""
+                  ) ")"
+            > ">"
+          arguments: arguments
+            ( "("
+            ) ")"
+      ; ";"
+=== vi.importActual<typeof import("./x.js")>("./x.js");
+  hasError=false
+  program
+    expression_statement
+      call_expression
+        function: member_expression
+          object: identifier "vi"
+          . "."
+          property: property_identifier "importActual"
+        type_arguments: type_arguments
+          < "<"
+          type_query
+            typeof "typeof"
+            call_expression
+              function: import
+                import "import"
+              arguments: arguments
+                ( "("
+                string "\"./x.js\""
+                ) ")"
+          > ">"
+        arguments: arguments
+          ( "("
+          string "\"./x.js\""
+          ) ")"
+      ; ";"
+=== f<typeof import("./x.js").Y>();
+  hasError=false
+  program
+    expression_statement
+      call_expression
+        function: identifier "f"
+        type_arguments: type_arguments
+          < "<"
+          type_query
+            typeof "typeof"
+            member_expression
+              object: call_expression
+                function: import
+                  import "import"
+                arguments: arguments
+                  ( "("
+                  string "\"./x.js\""
+                  ) ")"
+              . "."
+              property: property_identifier "Y"
+          > ">"
+        arguments: arguments
+          ( "("
+          ) ")"
+      ; ";"
+=== f<Awaited<typeof import("./x.js")>>();
+  hasError=false
+  program
+    expression_statement
+      call_expression
+        function: identifier "f"
+        type_arguments: type_arguments
+          < "<"
+          generic_type
+            name: type_identifier "Awaited"
+            type_arguments: type_arguments
+              < "<"
+              type_query
+                typeof "typeof"
+                call_expression
+                  function: import
+                    import "import"
+                  arguments: arguments
+                    ( "("
+                    string "\"./x.js\""
+                    ) ")"
+              > ">"
+          > ">"
+        arguments: arguments
+          ( "("
+          ) ")"
+      ; ";"
+=== f<typeof import("./x.js"), string>();
+  hasError=false
+  program
+    expression_statement
+      call_expression
+        function: identifier "f"
+        type_arguments: type_arguments
+          < "<"
+          type_query
+            typeof "typeof"
+            call_expression
+              function: import
+                import "import"
+              arguments: arguments
+                ( "("
+                string "\"./x.js\""
+                ) ")"
+          , ","
+          predefined_type
+            string "string"
+          > ">"
+        arguments: arguments
+          ( "("
+          ) ")"
+      ; ";"
+=== new Foo<typeof import("./x.js")>();
+  hasError=false
+  program
+    expression_statement
+      new_expression
+        new "new"
+        constructor: identifier "Foo"
+        type_arguments: type_arguments
+          < "<"
+          type_query
+            typeof "typeof"
+            call_expression
+              function: import
+                import "import"
+              arguments: arguments
+                ( "("
+                string "\"./x.js\""
+                ) ")"
+          > ">"
+        arguments: arguments
+          ( "("
+          ) ")"
+      ; ";"
+=== f<{ a: typeof import("./x.js") }>();
+  hasError=false
+  program
+    expression_statement
+      call_expression
+        function: identifier "f"
+        type_arguments: type_arguments
+          < "<"
+          object_type
+            { "{"
+            property_signature
+              name: property_identifier "a"
+              type: type_annotation
+                : ":"
+                type_query
+                  typeof "typeof"
+                  call_expression
+                    function: import
+                      import "import"
+                    arguments: arguments
+                      ( "("
+                      string "\"./x.js\""
+                      ) ")"
+            } "}"
+          > ">"
+        arguments: arguments
+          ( "("
+          ) ")"
+      ; ";"
+=== f<import("./x.js").T>();
+  hasError=true
+  program
+    expression_statement
+      binary_expression
+        left: identifier "f"
+        operator: < "<"
+        right: member_expression
+          object: call_expression
+            function: import
+              import "import"
+            arguments: arguments
+              ( "("
+              string "\"./x.js\""
+              ) ")"
+          . "."
+          property: property_identifier "T"
+      ERROR
+        > ">"
+        formal_parameters
+          ( "("
+          ) ")"
+      ; ";"
+=== f<typeof X>();
+  hasError=false
+  program
+    expression_statement
+      call_expression
+        function: identifier "f"
+        type_arguments: type_arguments
+          < "<"
+          type_query
+            typeof "typeof"
+            identifier "X"
+          > ">"
+        arguments: arguments
+          ( "("
+          ) ")"
+      ; ";"
+=== f<typeof a.b>();
+  hasError=false
+  program
+    expression_statement
+      call_expression
+        function: identifier "f"
+        type_arguments: type_arguments
+          < "<"
+          type_query
+            typeof "typeof"
+            member_expression
+              object: identifier "a"
+              . "."
+              property: property_identifier "b"
+          > ">"
+        arguments: arguments
+          ( "("
+          ) ")"
+      ; ";"
+=== type T = typeof import("./x.js");
+  hasError=false
+  program
+    type_alias_declaration
+      type "type"
+      name: type_identifier "T"
+      = "="
+      value: type_query
+        typeof "typeof"
+        call_expression
+          function: import
+            import "import"
+          arguments: arguments
+            ( "("
+            string "\"./x.js\""
+            ) ")"
+      ; ";"
+=== let a: typeof import("./x.js");
+  hasError=false
+  program
+    lexical_declaration
+      kind: let "let"
+      variable_declarator
+        name: identifier "a"
+        type: type_annotation
+          : ":"
+          type_query
+            typeof "typeof"
+            call_expression
+              function: import
+                import "import"
+              arguments: arguments
+                ( "("
+                string "\"./x.js\""
+                ) ")"
+      ; ";"
+=== type U = Foo<typeof import("./x.js")>;
+  hasError=false
+  program
+    type_alias_declaration
+      type "type"
+      name: type_identifier "U"
+      = "="
+      value: generic_type
+        name: type_identifier "Foo"
+        type_arguments: type_arguments
+          < "<"
+          type_query
+            typeof "typeof"
+            call_expression
+              function: import
+                import "import"
+              arguments: arguments
+                ( "("
+                string "\"./x.js\""
+                ) ")"
+          > ">"
+      ; ";"
+=== const y = z as typeof import("./x.js");
+  hasError=false
+  program
+    lexical_declaration
+      kind: const "const"
+      variable_declarator
+        name: identifier "y"
+        = "="
+        value: as_expression
+          identifier "z"
+          as "as"
+          type_query
+            typeof "typeof"
+            call_expression
+              function: import
+                import "import"
+              arguments: arguments
+                ( "("
+                string "\"./x.js\""
+                ) ")"
+      ; ";"
+=== const w = z satisfies typeof import("./x.js");
+  hasError=false
+  program
+    lexical_declaration
+      kind: const "const"
+      variable_declarator
+        name: identifier "w"
+        = "="
+        value: satisfies_expression
+          identifier "z"
+          satisfies "satisfies"
+          type_query
+            typeof "typeof"
+            call_expression
+              function: import
+                import "import"
+              arguments: arguments
+                ( "("
+                string "\"./x.js\""
+                ) ")"
+      ; ";"
+=== function g(p: Partial<typeof import("./x.js")>) {}
+  hasError=false
+  program
+    function_declaration
+      function "function"
+      name: identifier "g"
+      parameters: formal_parameters
+        ( "("
+        required_parameter
+          pattern: identifier "p"
+          type: type_annotation
+            : ":"
+            generic_type
+              name: type_identifier "Partial"
+              type_arguments: type_arguments
+                < "<"
+                type_query
+                  typeof "typeof"
+                  call_expression
+                    function: import
+                      import "import"
+                    arguments: arguments
+                      ( "("
+                      string "\"./x.js\""
+                      ) ")"
+                > ">"
+        ) ")"
+      body: statement_block
+        { "{"
+        } "}"
+=== const h = React.createRef<import('./composer').ComposerHandle>()
+  hasError=true
+  program
+    ERROR
+      const "const"
+      identifier "h"
+      = "="
+      binary_expression
+        left: member_expression
+          object: identifier "React"
+          . "."
+          property: property_identifier "createRef"
+        operator: < "<"
+        right: member_expression
+          object: call_expression
+            function: import
+              import "import"
+            arguments: arguments
+              ( "("
+              string "'./composer'"
+              ) ")"
+          . "."
+          property: property_identifier "ComposerHandle"
+      > ">"
+      formal_parameters
+        ( "("
+        ) ")"
+=== const m = await importOriginal<typeof _mport("./x.js")>();
+  hasError=false
+  program
+    lexical_declaration
+      kind: const "const"
+      variable_declarator
+        name: identifier "m"
+        = "="
+        value: call_expression
+          function: await_expression
+            await "await"
+            identifier "importOriginal"
+          type_arguments: type_arguments
+            < "<"
+            type_query
+              typeof "typeof"
+              call_expression
+                function: identifier "_mport"
+                arguments: arguments
+                  ( "("
+                  string "\"./x.js\""
+                  ) ")"
+            > ">"
+          arguments: arguments
+            ( "("
+            ) ")"
+      ; ";"
+=== const m = await importOriginal<typeof ________________>();
+  hasError=false
+  program
+    lexical_declaration
+      kind: const "const"
+      variable_declarator
+        name: identifier "m"
+        = "="
+        value: call_expression
+          function: await_expression
+            await "await"
+            identifier "importOriginal"
+          type_arguments: type_arguments
+            < "<"
+            type_query
+              typeof "typeof"
+              identifier "________________"
+            > ">"
+          arguments: arguments
+            ( "("
+            ) ")"
+      ; ";"
+=== const h = React.createRef<____________________.ComposerHandle>()
+  hasError=false
+  program
+    lexical_declaration
+      kind: const "const"
+      variable_declarator
+        name: identifier "h"
+        = "="
+        value: call_expression
+          function: member_expression
+            object: identifier "React"
+            . "."
+            property: property_identifier "createRef"
+          type_arguments: type_arguments
+            < "<"
+            nested_type_identifier
+              module: identifier "____________________"
+              . "."
+              name: type_identifier "ComposerHandle"
+            > ">"
+          arguments: arguments
+            ( "("
+            ) ")"
+=== f<keyof  import("./x.js")>();
+  hasError=true
+  program
+    expression_statement
+      identifier "f"
+      ERROR
+        < "<"
+        keyof "keyof"
+        ERROR
+          call_expression
+            function: import
+              import "import"
+            arguments: arguments
+              ( "("
+              string "\"./x.js\""
+              ) ")"
+          > ">"
+        formal_parameters
+          ( "("
+          ) ")"
+      ; ";"
+=== f<typeof import ("./x.js")>();
+  hasError=false
+  program
+    expression_statement
+      call_expression
+        function: identifier "f"
+        type_arguments: type_arguments
+          < "<"
+          type_query
+            typeof "typeof"
+            call_expression
+              function: import
+                import "import"
+              arguments: arguments
+                ( "("
+                string "\"./x.js\""
+                ) ")"
+          > ">"
+        arguments: arguments
+          ( "("
+          ) ")"
+      ; ";"
+=== f<keyof typeof import("./x.js")>();
+  hasError=false
+  program
+    expression_statement
+      call_expression
+        function: identifier "f"
+        type_arguments: type_arguments
+          < "<"
+          index_type_query
+            keyof "keyof"
+            type_query
+              typeof "typeof"
+              call_expression
+                function: import
+                  import "import"
+                arguments: arguments
+                  ( "("
+                  string "\"./x.js\""
+                  ) ")"
+          > ">"
+        arguments: arguments
+          ( "("
+          ) ")"
+      ; ";"
