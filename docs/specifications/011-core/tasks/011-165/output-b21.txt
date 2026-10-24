@@ -1,0 +1,127 @@
+load before installs: 27.70 28.98 23.23
++ yaml 2.9.0
+
+Done in 4.5s using pnpm v12.11.2
++ yaml 2.9.0
+
+Done in 9s using pnpm v12.11.2
+pnpm: 12.11.2
+lock.yaml lines apart: 36
+== A against B
+{
+  "rootA": "/tmp/p165/cezar-a",
+  "rootB": "/tmp/p165/cezar-b",
+  "load": {
+    "before": "28.3 29.0 23.4",
+    "afterWalk": "25.2 28.2 23.3",
+    "end": "24.8 28.0 23.3"
+  },
+  "walkMs": [
+    25077,
+    18692
+  ],
+  "testFiles": [
+    919,
+    919
+  ],
+  "graph": [
+    true,
+    true
+  ],
+  "note": [
+    null,
+    null
+  ],
+  "fingerprintEqual": false,
+  "ownSegment": [
+    329,
+    329
+  ],
+  "keptToday": 0,
+  "keptCode": 328,
+  "keptOwnSegment": 328,
+  "reKeyedOwnSegment": [
+    "web:packages/web/src/test/card-2-contrast.test.ts"
+  ],
+  "todayReadableAsOne": [
+    919,
+    919
+  ],
+  "ms": [
+    {
+      "read": 31,
+      "key": 955
+    },
+    {
+      "read": 24,
+      "key": 362
+    }
+  ]
+}
+== A against A
+{
+  "rootA": "/tmp/p165/cezar-a",
+  "rootB": "/tmp/p165/cezar-a",
+  "load": {
+    "before": "24.8 28.0 23.3",
+    "afterWalk": "21.2 26.8 23.1",
+    "end": "21.2 26.8 23.1"
+  },
+  "walkMs": [
+    17389,
+    14170
+  ],
+  "testFiles": [
+    919,
+    919
+  ],
+  "graph": [
+    true,
+    true
+  ],
+  "note": [
+    null,
+    null
+  ],
+  "fingerprintEqual": true,
+  "ownSegment": [
+    329,
+    329
+  ],
+  "keptToday": 919,
+  "keptCode": 919,
+  "keptOwnSegment": 329,
+  "reKeyedOwnSegment": [],
+  "todayReadableAsOne": [
+    919,
+    919
+  ],
+  "ms": [
+    {
+      "read": 28,
+      "key": 367
+    },
+    {
+      "read": 19,
+      "key": 320
+    }
+  ]
+}
+== time-trust on cezar-a
+{
+  "label": "/tmp/p165/cezar-a",
+  "snapshots": 638,
+  "addedLstats": 2050,
+  "stale": null,
+  "medianMs": {
+    "trustCheck": 13.41,
+    "addedLstats": 8.64
+  },
+  "load": {
+    "before": "21.2",
+    "after": "20.2"
+  }
+}
+exit 0
+== skipped links on a third clone at 28be188dc (skipped-walks.mts)
+{"skipped":85,"skippedEdges":81,"edgesWithAnotherCopy":0,"skippedDeclared":0,"declaredWithAnotherCopy":0,"hoistsOfSkipped":0,"stale":null}
