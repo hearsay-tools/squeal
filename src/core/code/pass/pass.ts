@@ -9,6 +9,7 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "../../types/index.js";
+import { removedFailures } from "../crap/removed.js";
 import type { CodeStore } from "../store/index.js";
 import { countMissing, type Entry } from "./blobs.js";
 import {
@@ -143,6 +144,11 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
       after,
     });
     for (const { from, to } of judged.moves) store.states.move(worktreeId, from, to);
+    // D9's measures go with the function, a failing one resolved (row 015-12).
+    if (!quiet) {
+      const told = judged.removed.filter((check) => !seeds.has(check.path));
+      store.transitions.append(removedFailures(store, worktreeId, told, latest, at));
+    }
     store.states.removeMany(worktreeId, judged.removed);
     store.states.upsertMany(judged.states);
     store.transitions.append(judged.transitions);

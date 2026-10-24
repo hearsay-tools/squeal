@@ -141,6 +141,9 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         }
       });
     },
+    removeMeasure(worktreeId, measure) {
+      conn.run("DELETE FROM states WHERE worktree_id = ? AND measure = ?", worktreeId, measure);
+    },
     move(worktreeId, from, to) {
       conn.transaction(() => {
         const fromId = findCodeCheckId(conn, from);
