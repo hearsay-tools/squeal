@@ -3,8 +3,10 @@ import { fileClassOf, testFileKeyOf } from "../state/index.js";
 import { plural } from "../text.js";
 import type {
   KnownState,
+  PendingPhase,
   PendingTestFiles,
   PhaseFiles,
+  StatusFocused,
   StatusSnapshot,
   TestFileKeyRecord,
   TestFileRef,
@@ -27,16 +29,16 @@ export const RUNNING_FILES_SHOWN = 10;
 export const QUEUED_FILES_SHOWN = 5;
 
 /**
- * The pending test files by phase, by the rule `countNotCurrent` counts
- * them with: a file is pending by `fileClassOf`, and running while an open
- * run holds it (`openFiles`, `testFileId`s), its row says so or a check of
- * it runs; else queued.
+ * Each pending test file's phase, by `testFileId`, by the rule
+ * `countNotCurrent` counts them with: a file is pending by `fileClassOf`,
+ * and running while an open run holds it (`openFiles`, `testFileId`s), its
+ * row says so or a check of it runs; else queued. Uncapped, in `keys` order.
  */
-export function pendingTestFilesOf(
+export function pendingPhasesOf(
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
   openFiles: ReadonlySet<string>,
-): PendingTestFiles {
+): Map<string, { readonly testFile: TestFileRef; readonly phase: PendingPhase }> {
   const checks = new Map<string, KnownState[]>();
   for (const state of states) {
     if (state.check.kind === "setup") continue;
@@ -45,8 +47,7 @@ export function pendingTestFilesOf(
     if (own === undefined) checks.set(id, [state]);
     else own.push(state);
   }
-  const running: TestFileRef[] = [];
-  const queued: TestFileRef[] = [];
+  const phases = new Map<string, { testFile: TestFileRef; phase: PendingPhase }>();
   for (const row of keys) {
     const id = testFileId(row.testFile);
     const own = checks.get(id) ?? [];
@@ -55,7 +56,19 @@ export function pendingTestFilesOf(
       openFiles.has(id) ||
       row.pending === "running" ||
       own.some((s) => s.pendingPhase === "running");
-    (runs ? running : queued).push(row.testFile);
+    phases.set(id, { testFile: row.testFile, phase: runs ? "running" : "queued" });
+  }
+  return phases;
+}
+
+/** The pending test files by phase (`pendingPhasesOf`), the first `PHASE_FILES_LISTED` of each. */
+export function pendingTestFilesOf(
+  phases: ReadonlyMap<string, { readonly testFile: TestFileRef; readonly phase: PendingPhase }>,
+): PendingTestFiles {
+  const running: TestFileRef[] = [];
+  const queued: TestFileRef[] = [];
+  for (const { testFile, phase } of phases.values()) {
+    (phase === "running" ? running : queued).push(testFile);
   }
   return { running: listed(running), queued: listed(queued) };
 }
@@ -72,27 +85,39 @@ function listed(files: TestFileRef[]): PhaseFiles {
  * `Running: 5 test files: cezar: a.test.ts, ...` and `Queued: ...`, each
  * only when its phase has a file, the project leading each path; a cut one
  * ends `and N more`. None from a payload before the field. Row 011-146 (C6
- * as amended 2026-10-23): a queued file whose focused run is in flight is
- * named among the running ones with `(focused: <texts>)`; only the text
- * moves it, so `pendingTestFiles` and every count are unchanged.
+ * as amended 2026-10-23): a file whose focused run is in flight is named
+ * among the running ones with `(focused: <texts>)`, out of the queued text
+ * by its phase read before the list's cap (review 0.1.286 B5); only the
+ * text moves it, so `pendingTestFiles` and every count are unchanged.
  */
 export function phaseLines(s: StatusSnapshot): string[] {
   const pending = s.pendingTestFiles;
   if (pending === undefined) return [];
-  const marks = new Map<string, string>();
-  for (const entry of s.focused ?? []) {
-    if (entry.applies && entry.endedAt === null) {
-      marks.set(testFileId(entry.testFile), ` (focused: ${textsText(entry.texts)})`);
-    }
-  }
-  const focused = pending.queued.files.filter((f) => marks.has(testFileId(f)));
+  const flying = (s.focused ?? []).filter((entry) => entry.applies && entry.endedAt === null);
+  const marks = new Map(
+    flying.map((e) => [testFileId(e.testFile), ` (focused: ${textsText(e.texts)})`]),
+  );
+  const listedQueued = new Set(pending.queued.files.map(testFileId));
+  // A payload before `phase` moves only a file it names as queued.
+  const phaseOf = (e: StatusFocused) =>
+    e.phase !== undefined
+      ? e.phase
+      : listedQueued.has(testFileId(e.testFile))
+        ? "queued"
+        : "running";
+  const moved = flying.filter((e) => phaseOf(e) !== "running").map((e) => e.testFile);
+  const movedIds = new Set(moved.map(testFileId));
+  // A queued file past the named ones leaves the omitted count.
+  const pastNamed = flying.filter(
+    (e) => phaseOf(e) === "queued" && !listedQueued.has(testFileId(e.testFile)),
+  ).length;
   const running = {
-    files: [...focused, ...pending.running.files],
+    files: [...moved, ...pending.running.files],
     omitted: pending.running.omitted,
   };
   const queued = {
-    files: pending.queued.files.filter((f) => !marks.has(testFileId(f))),
-    omitted: pending.queued.omitted,
+    files: pending.queued.files.filter((f) => !movedIds.has(testFileId(f))),
+    omitted: Math.max(0, pending.queued.omitted - pastNamed),
   };
   return [
     ...phaseLine("Running", running, RUNNING_FILES_SHOWN, marks),

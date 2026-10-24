@@ -5,6 +5,7 @@ import { timeText } from "../text.js";
 import type {
   CheckId,
   CheckKey,
+  PendingPhase,
   StatusFocused,
   StatusFocusedCheck,
   StatusSnapshot,
@@ -30,8 +31,15 @@ export const FOCUSED_SHOWN = 3;
 /** How many failing check names a status line gives before "and N more". */
 const NAMES_SHOWN = 3;
 
-/** `worktreeId`'s focused runs, oldest first, each with whether it applies. */
-export function readStatusFocused(store: Store, worktreeId: WorktreeId): StatusFocused[] {
+/**
+ * `worktreeId`'s focused runs, oldest first, each with whether it applies
+ * and its file's phase in `phases` (`pendingPhasesOf`, uncapped).
+ */
+export function readStatusFocused(
+  store: Store,
+  worktreeId: WorktreeId,
+  phases: ReadonlyMap<string, { readonly phase: PendingPhase }>,
+): StatusFocused[] {
   const runs = readFocused(store, worktreeId);
   if (runs.length === 0) return [];
   const files = runs.map((run) => run.testFile);
@@ -41,7 +49,9 @@ export function readStatusFocused(store: Store, worktreeId: WorktreeId): StatusF
   return runs.map((run) => {
     const current = keys.get(testFileId(run.testFile)) === run.key;
     // `usedAt` 0: a read, not a lookup hit (status writes nothing, C6).
-    return statusFocusedOf(run, current && store.results.byKey(run.key, 0).length === 0);
+    const applies = current && store.results.byKey(run.key, 0).length === 0;
+    const phase = phases.get(testFileId(run.testFile))?.phase ?? null;
+    return { ...statusFocusedOf(run, applies), phase };
   });
 }
 
@@ -160,7 +170,14 @@ export function focusedLines(s: StatusSnapshot, full = false): string[] {
   const running = new Set((s.pendingTestFiles?.running.files ?? []).map(testFileId));
   const shown = applying.slice(-FOCUSED_SHOWN).reverse();
   const lines = shown.flatMap((entry) => {
-    const own = running.has(testFileId(entry.testFile)) ? "running" : "queued";
+    // Its phase read before the lists' cap; a payload before the field, the named running files.
+    const phase =
+      entry.phase !== undefined
+        ? entry.phase
+        : running.has(testFileId(entry.testFile))
+          ? "running"
+          : "queued";
+    const own = phase ?? "not queued";
     const head =
       `Focused (not counted): ${focusedFileText(entry.testFile)} at revision ${entry.revision}: ` +
       `${focusedOutcomeText(entry)}; its own run is ${own}.`;
