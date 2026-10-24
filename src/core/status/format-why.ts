@@ -19,6 +19,7 @@ import type {
   WhyRunLogGap,
 } from "../types/index.js";
 import { durationsText } from "./durations.js";
+import { whyFocusedLines } from "./focused.js";
 import { formatUnavailable, shortCommit } from "./format-status.js";
 import {
   errorLines,
@@ -99,6 +100,8 @@ function noMatch(why: WhyNoMatch): string {
 function knownState(why: WhyReport, s: KnownState | null, recorded: readonly string[]): string[] {
   return [
     ...stateLines(why, s),
+    // Row 011-146 (C6 as amended 2026-10-23): a focused run, below the known state.
+    ...whyFocusedLines(why.focused),
     ...recorded,
     ...changedLine(why.changedSince),
     ...closureLines(why),

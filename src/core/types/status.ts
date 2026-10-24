@@ -930,6 +930,22 @@ export interface WhyReport {
    * ones (task 001-411). `null` when no pass or fail is stored.
    */
   readonly durations: WhyDurations | null;
+  /**
+   * Row 011-146 (011 C6 as amended 2026-10-23): the newest focused run of
+   * the check's test file that selected the check. Never a stored result.
+   * Absent when none did.
+   */
+  readonly focused?: WhyFocused;
+}
+
+/** `WhyReport.focused`: the focused run and this check's outcome in it (row 011-146). */
+export interface WhyFocused {
+  /** The run as status gives it, with `applies`. */
+  readonly run: StatusFocused;
+  /** This check in the run. */
+  readonly result: StatusFocusedCheck;
+  /** The file's current key is no longer the run's. */
+  readonly keyMoved: boolean;
 }
 
 /**
