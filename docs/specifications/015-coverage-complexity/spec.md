@@ -154,7 +154,7 @@ A delivery holds at most 5 code transitions in full. The rest become one line: `
 - the function is `fail` before and after the revision;
 - the consumer's view holds it as told by count only.
 
-The view entry is then marked told in full. Later edits to the function in that session are quiet until its state changes. A revision that moves `HEAD` (a pull, merge, rebase or checkout) marks no edit for a file whose bytes are its blob at the new `HEAD`; a `FAIL` or `PASS` from it is still delivered (amended 2026-10-24, 015-19).
+The view entry is then marked told in full. Later edits to the function in that session are quiet until its state changes. A revision that moves `HEAD` (a pull, merge, rebase or checkout) marks no edit for a file whose bytes are its blob at the new `HEAD`; a `FAIL` or `PASS` from it is still delivered (amended 2026-10-24, 015-19). After a `FAIL` told in the session, the next edit that changes the function and leaves it over is told once as `STILL FAIL ... is 22 after the edit, over 20`; later edits that stay over are quiet until its state changes. Every `STILL FAIL` line ends with `Squeal stays quiet about it until it is at or under 20, and squeal code <path> shows its count.` (amended 2026-10-24, 015-21, the human's choice).
 
 **A file too big to count.** The first time in a session that an edit changes an included file over `complexity.maxFileBytes`, the session gets one line: `src/big.ts is 600 KiB, over the 512 KiB limit; its functions are not counted.` Later edits to it in that session are quiet. `squeal code` lists every such file.
 
