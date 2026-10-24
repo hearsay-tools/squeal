@@ -493,6 +493,7 @@ export class VitestAdapter implements RunnerAdapter {
         paths: this.paths,
         runnerVersion: this.#node.version,
         adapterVersion: this.#observer.adapterVersion(this.adapterVersion),
+        ...(this.#instanceCoverage === null ? {} : { coverage: this.#instanceCoverage.provider }),
       };
       const envs: RunnerEnvironment[] = [];
       for (const project of vitest.projects) {
