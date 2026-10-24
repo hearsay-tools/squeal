@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Vitest } from "vitest/node";
 import type { CoverageRun, CoveredFile, ExecutedSource } from "../../core/code/coverage/index.js";
 import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
-import { importClosure } from "./graph.js";
+import { type ImportClosure, importClosure } from "./graph.js";
 import type { WorktreePaths } from "./paths.js";
 import { findProject } from "./project.js";
 import { type Environment, type SourceStamps, sourceOf } from "./sources.js";
@@ -78,21 +78,51 @@ export class InstanceCoverage {
   }
 }
 
+/** Why a test file runs with coverage off under D8's Fidelity rule. */
+export interface InspectorFile {
+  readonly ref: TestFileRef;
+  /** `setup`: its project's setup files import the inspector (review 0.1.295 B2). */
+  readonly through: "closure" | "setup";
+}
+
 /**
- * Of `testFiles`, those whose closure imports `node:inspector` or
- * `inspector` (D8 Fidelity), from the transform graph as `closure` walks it.
+ * Of `testFiles`, those that can read V8 coverage (D8 Fidelity): each file
+ * of a project whose setup closure imports `node:inspector` or `inspector`,
+ * since a setup file runs in every test file's worker but lies in no test
+ * file's closure, and each other file whose own closure imports it, from
+ * the transform graph as `closure` walks it.
  */
 export async function inspectorFiles(
   vitest: Vitest,
   testFiles: readonly TestFileRef[],
   paths: WorktreePaths,
-): Promise<TestFileRef[]> {
-  const found: TestFileRef[] = [];
+): Promise<InspectorFile[]> {
+  const setups = new Map<string, Promise<boolean>>();
+  const found: InspectorFile[] = [];
   for (const ref of testFiles) {
-    const graph = await importClosure(findProject(vitest, ref), [paths.toAbsolute(ref.path)]);
-    if (graph.builtins.has(INSPECTOR)) found.push(ref);
+    const project = findProject(vitest, ref);
+    let setup = setups.get(project.name);
+    if (setup === undefined) {
+      setup = importClosure(project, project.config.setupFiles).then(readsInspector);
+      setups.set(project.name, setup);
+    }
+    if (await setup) found.push({ ref, through: "setup" });
+    else if (readsInspector(await importClosure(project, [paths.toAbsolute(ref.path)]))) {
+      found.push({ ref, through: "closure" });
+    }
   }
   return found;
+}
+
+const readsInspector = (closure: ImportClosure) => closure.builtins.has(INSPECTOR);
+
+/** The note that names a file `inspectorFiles` found. */
+export function inspectorNote({ ref, through }: InspectorFile): string {
+  const imports =
+    through === "setup"
+      ? "its project's setup files import node:inspector"
+      : "its closure imports node:inspector";
+  return `coverage is off for ${ref.path}: ${imports}, so its tests can see V8 coverage (spec 015 D8)`;
 }
 
 /**

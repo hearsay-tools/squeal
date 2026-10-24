@@ -61,6 +61,43 @@ function payload(path: string): V8Script[] {
 const lines = (bits: string, count: number) =>
   Array.from({ length: count }, (_, i) => i + 1).filter((line) => hasLine(bits, line - 1));
 
+/**
+ * Review 0.1.295 B2's probe: the fixture's inspector import moved into the
+ * project's setup file, which no test file's closure holds. Under coverage
+ * its test counts 2.
+ */
+const SETUP_READS_COVERAGE: Readonly<Record<string, string>> = {
+  "vitest.config.ts": [
+    'import { defineConfig } from "vitest/config";',
+    'export default defineConfig({ test: { include: ["test/**/*.test.ts"], setupFiles: ["test/setup.ts"] } });',
+    "",
+  ].join("\n"),
+  "test/setup.ts": [
+    'import inspector from "node:inspector/promises";',
+    "globalThis.probeInspector = inspector;",
+    "",
+  ].join("\n"),
+  "test/self-coverage.test.ts": [
+    'import { expect, test } from "vitest";',
+    'import { clamp } from "../src/math.js";',
+    'test("own precise coverage counts only what ran after it started", async () => {',
+    "  clamp(1, 0, 10);",
+    "  const session = new globalThis.probeInspector.Session();",
+    "  session.connect();",
+    '  await session.post("Profiler.enable");',
+    '  await session.post("Profiler.startPreciseCoverage", { callCount: true, detailed: true });',
+    "  clamp(5, 0, 10);",
+    '  const { result } = await session.post("Profiler.takePreciseCoverage");',
+    '  await session.post("Profiler.stopPreciseCoverage");',
+    "  session.disconnect();",
+    '  const script = result.find((s) => s.url.endsWith("/src/math.ts"));',
+    '  const fn = script?.functions.find((f) => f.functionName === "clamp");',
+    "  expect(fn?.ranges[0].count).toBe(1);",
+    "});",
+    "",
+  ].join("\n"),
+};
+
 describe("vitest adapter: Squeal's coverage provider", SLOW, () => {
   it("leaves one payload per test file, none for one that reads V8 coverage, which passes", async () => {
     const opened = covering();
@@ -90,6 +127,30 @@ describe("vitest adapter: Squeal's coverage provider", SLOW, () => {
     for (const file of opened.runs[0]?.files ?? []) {
       expect(file.payload.startsWith(opened.tempDir)).toBe(true);
     }
+  });
+
+  it("takes none in a project whose setup file imports node:inspector, and names each file (review 0.1.295 B2)", async () => {
+    const opened = covering();
+    const fx = await openFixture("own-provider", SETUP_READS_COVERAGE, opened.create);
+    const files = ["test/math.test.ts", "test/self-coverage.test.ts"];
+    const report = await fx.adapter.run(
+      files.map((f) => ref(f)),
+      fx.runOptions(),
+    );
+
+    expect(report.failure).toBeNull();
+    expect(report.results.map((r) => [r.check.testPath, r.outcome])).toEqual([
+      ["test/math.test.ts", "pass"],
+      ["test/math.test.ts", "pass"],
+      ["test/self-coverage.test.ts", "pass"],
+    ]);
+    expect(opened.notes.filter((n) => n.includes("node:inspector"))).toEqual(
+      files.map(
+        (f) =>
+          `coverage is off for ${f}: its project's setup files import node:inspector, so its tests can see V8 coverage (spec 015 D8)`,
+      ),
+    );
+    expect(opened.runs).toEqual([]);
   });
 
   it("maps a payload to each source's lines and functions, at the blob the run read", async () => {
