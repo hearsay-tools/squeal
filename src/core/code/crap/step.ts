@@ -1,26 +1,16 @@
 import { createHash } from "node:crypto";
 import { compare } from "../../fs/index.js";
-import type {
-  CodeCheckId,
-  CodeFile,
-  CodeKnownState,
-  CodeOutcome,
-  CodeTransition,
-  CodeTransitionKind,
-  FileCount,
-} from "../../types/code.js";
+import type { CodeFile, CodeKnownState, FileCount } from "../../types/code.js";
 import type { CheckKey, EpochMs, RevisionNumber, WorktreeId } from "../../types/index.js";
 import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../coverage/record.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import { uncountableFiles } from "../pass/failed.js";
 import type { CodeStore } from "../store/types.js";
-import { coverageOf, type FileCondition, type FunctionCoverage, fileCondition } from "./file.js";
+import { coverageOf, type FileCondition, fileCondition } from "./file.js";
+import { checkOf, evidenceOf, type Judged, judgeFiles, priorKey } from "./judge.js";
 import { type LoaderCondition, type LoaderInputs, readLoaders } from "./loaders.js";
-import { crapScore } from "./score.js";
 import {
   type CoverageSummary,
-  EVIDENCE_FILES,
-  type FileEvidence,
   type FileSummary,
   functionKey,
   readSummary,
@@ -66,19 +56,6 @@ export interface CoverageStepReport {
   /** Files left to judge past the budget. */
   readonly more: boolean;
 }
-
-interface Judged {
-  readonly file: CodeFile;
-  readonly count: FileCount;
-  readonly coverage: readonly FunctionCoverage[];
-}
-
-const checkOf = (path: string, fn: { qualifiedName: string; occurrence: number }): CodeCheckId => ({
-  kind: "code",
-  path,
-  qualifiedName: fn.qualifiedName,
-  occurrence: fn.occurrence,
-});
 
 /** Spec 015 D9: one step over the worktree; `null` while its first count runs. */
 export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | null {
@@ -148,7 +125,17 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
 
   return store.transaction(() => {
     if (start || input.reseed) seed(input, files, countOf, start && summary !== null);
-    const { states, transitions } = judge(input, judged);
+    const paths = judged.map((j) => j.file.path);
+    const prior = new Map(
+      (paths.length === 0 ? [] : store.states.list(worktreeId, { paths })).map((s) => [
+        priorKey(s),
+        s,
+      ]),
+    );
+    const { states, transitions } = judgeFiles(
+      { worktreeId, revision: input.revision, threshold: input.threshold, at: input.now(), prior },
+      judged,
+    );
     store.states.upsertMany(states);
     store.transitions.append(transitions);
     for (const j of judged) writeEvidence(store.meta, worktreeId, j.file.path, evidenceOf(j));
@@ -227,110 +214,4 @@ function seed(
     }
   }
   store.states.upsertMany(states);
-}
-
-/** Each judged function's `crap` and `uncovered` states, and the transitions D5 records. */
-function judge(
-  input: CoverageStepInput,
-  judged: readonly Judged[],
-): { states: CodeKnownState[]; transitions: CodeTransition[] } {
-  const { store, worktreeId, revision } = input;
-  const paths = judged.map((j) => j.file.path);
-  const prior = new Map(
-    (paths.length === 0 ? [] : store.states.list(worktreeId, { paths })).map((s) => [
-      `${s.measure}\0${s.check.path}\0${functionKey(s.check)}`,
-      s,
-    ]),
-  );
-  const at = input.now();
-  const states: CodeKnownState[] = [];
-  const transitions: CodeTransition[] = [];
-  for (const { file, count, coverage } of judged) {
-    count.functions.forEach((fn, i) => {
-      const check = checkOf(file.path, fn);
-      const id = `${file.path}\0${functionKey(fn)}`;
-      // D3: a function in a parse error's range has no CC to build on.
-      if (prior.get(`complexity\0${id}`)?.outcome === "unknown") return;
-      const cov = coverage[i];
-      if (cov === undefined) return;
-      const crap = crapScore(fn.complexity, cov.coverage);
-      const measured = [
-        {
-          measure: "crap" as const,
-          fail: crap > input.threshold,
-          value: crap,
-          threshold: input.threshold,
-        },
-        {
-          measure: "uncovered" as const,
-          fail: cov.runBy.length === 0,
-          value: null,
-          threshold: null,
-        },
-      ];
-      for (const m of measured) {
-        const was = prior.get(`${m.measure}\0${id}`);
-        const outcome: CodeOutcome = m.fail ? "fail" : "pass";
-        states.push({
-          worktreeId,
-          check,
-          measure: m.measure,
-          outcome,
-          value: m.value,
-          threshold: m.threshold,
-          countedAt: revision,
-          blob: file.blob,
-          changedAt: was?.outcome === outcome ? was.changedAt : revision,
-        });
-        const kind = kindOf(was, outcome, m.value);
-        if (kind === null) continue;
-        transitions.push({
-          worktreeId,
-          check,
-          measure: m.measure,
-          kind,
-          from: was?.outcome ?? null,
-          to: outcome,
-          fromValue: was?.value ?? null,
-          toValue: m.value,
-          threshold: m.threshold,
-          revision,
-          at,
-        });
-      }
-    });
-  }
-  return { states, transitions };
-}
-
-/**
- * D5's transition from the last judged state; none out of `pending` or
- * `unknown`, and none that only a change of `crap.threshold` made (D1).
- */
-function kindOf(
-  was: CodeKnownState | undefined,
-  outcome: CodeOutcome,
-  value: number | null,
-): CodeTransitionKind | null {
-  if (was === undefined) return outcome === "fail" ? "first-seen-fail" : null;
-  if (was.outcome === outcome || (was.outcome !== "pass" && was.outcome !== "fail")) return null;
-  if (typeof was.threshold === "number" && value !== null) {
-    if (value > was.threshold !== (outcome === "fail")) return null;
-  }
-  return outcome === "fail" ? "pass-to-fail" : "fail-to-pass";
-}
-
-function evidenceOf({ file, count, coverage }: Judged): FileEvidence {
-  const functions: Record<string, FileEvidence["functions"][string]> = {};
-  count.functions.forEach((fn, i) => {
-    const cov = coverage[i];
-    if (cov === undefined) return;
-    functions[functionKey(fn)] = [
-      cov.lines,
-      cov.covered,
-      cov.runBy.length,
-      ...cov.runBy.slice(0, EVIDENCE_FILES),
-    ];
-  });
-  return { blob: file.blob, functions };
 }
