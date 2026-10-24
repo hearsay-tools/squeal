@@ -12878,10 +12878,14 @@ function copyReadAsOne(store, key3, listed5) {
   const found3 = listed5.keys(key3);
   if (found3 === null || found3.keys.length === 0) return false;
   const id2 = testFileId(found3.testFile);
-  if (listed5.read.get(id2) === key3) return false;
+  const at2 = readAt(key3, found3.keys);
+  if (listed5.read.get(id2) === at2) return false;
   const copied = store.results.copyNewest(key3, found3.keys);
-  listed5.read.set(id2, key3);
+  listed5.read.set(id2, at2);
   return copied;
+}
+function readAt(key3, keys) {
+  return [key3, ...keys].join(" ");
 }
 function currentChecks(previous, results2) {
   const checks = results2.map((r) => r.check);
@@ -14100,7 +14104,7 @@ var init_ledger = __esm({
       #adopted = false;
       /** Spec 004 D2's evidence order (task 004-82): token records by the key cache's hashes. */
       #ranker;
-      /** The key each file was last read at under the formats read as one, by `testFileId` (task 011-38). */
+      /** Each file's key and keys read as one at its last read (`acceptedAt`), by `testFileId` (011-38, 0.1.285 B1). */
       #readAsOne = /* @__PURE__ */ new Map();
       /** The formats read as one, as `acceptedAt` reads them: the key index's keys, this daemon's reads. */
       #listed = {
@@ -21195,7 +21199,7 @@ var init_stored_keys = __esm({
        */
       adopt(context, ledger) {
         const since = this.#readAt - STORED_KEYS_OVERLAP_MS;
-        const readAt = context.now();
+        const readAt2 = context.now();
         const fresh = context.store.results.keysSince(since).filter(({ key: key3, recordedAt }) => this.#seen.get(key3) !== recordedAt);
         const keys = new Set(fresh.map(({ key: key3 }) => key3));
         const { index } = context.keys;
@@ -21211,7 +21215,7 @@ var init_stored_keys = __esm({
             throw error;
           }
         }
-        this.#readAt = readAt;
+        this.#readAt = readAt2;
         for (const [key3, at2] of this.#seen) if (at2 <= since) this.#seen.delete(key3);
         for (const { key: key3, recordedAt } of fresh) this.#seen.set(key3, recordedAt);
       }
@@ -59360,8 +59364,8 @@ async function waitForNamed(cwd, paths, options) {
         watch2 ??= watchDaemon(id2, { downMs: options.downMs });
         const worktree = store.worktrees.get(id2);
         const record = worktree?.daemon ?? null;
-        const readAt = options.now();
-        const daemon = watch2.judge(record, readAt, stoppingOf(store, worktree, readAt));
+        const readAt2 = options.now();
+        const daemon = watch2.judge(record, readAt2, stoppingOf(store, worktree, readAt2));
         const current3 = sync.current();
         const ready = daemon.state === "alive" && (current3.state === "synced" ? all2.revision >= current3.revision && !all2.unlisted : current3.state === "unsupported" && settled);
         if (ready) {
@@ -59375,7 +59379,7 @@ async function waitForNamed(cwd, paths, options) {
         const held2 = selection.files.filter((f) => !paused.has(testFileId(f)));
         const classes = leftForPause.length === 0 ? all2 : readClasses(store, id2, held2);
         const decided = ready ? decidedOutcome(selection, held2, classes) : null;
-        const hold = ready && decided === null ? holdOfWait(store, id2, () => store.testFileKeys.list(id2, held2), readAt) : null;
+        const hold = ready && decided === null ? holdOfWait(store, id2, () => store.testFileKeys.list(id2, held2), readAt2) : null;
         const outcome2 = settled && daemon.state === "down" ? "no-daemon" : decided ?? (hold !== null ? "on-hold" : final ? "timeout" : null);
         if (outcome2 === null) {
           if (ready && !promoted) {
