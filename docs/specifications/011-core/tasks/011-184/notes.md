@@ -22,7 +22,7 @@ No key, store, validity or key-format change.
 
 ## Tests
 
-`test/scheduler/tier-yields-named.test.ts`, notes 011-180 section 6's seven, on `catch-up-fixture.ts` with the clock moved by `advance`. Red on main at 2e3369522: 1, 5, 6 and 7 (each: `expected true to be false` on `tier.cancelled`). Tests 2, 3 and 4 pass on main by design ("as today"); each still fails an implementation that refuses every promoted file past 30 s. Test 3 needs a 35 s estimate: the earlier wait's P must not cut the tier when it comes (remainder 25 s), so the later wait's check is the one that yields.
+`test/scheduler/tier-yields-named.test.ts`, notes 011-180 section 6's seven, on `catch-up-fixture.ts` with the clock moved by `advance`. Red on main at 2e3369522: 1, 5, 6 and 7 (each: `expected true to be false` on `tier.cancelled`). Tests 2, 3 and 4 pass on main by design ("as today"). Tests 3 and 4 are the guards past 30 s: each fails an implementation that refuses every promoted file once the tier has run 30 s. Test 2 promotes at 10 s and is the control under 30 s, so that implementation passes it; the suite as a whole rejects it (review `reviews/0.1.296.md` N1). Test 3 needs a 35 s estimate: the earlier wait's P must not cut the tier when it comes (remainder 25 s), so the later wait's check is the one that yields.
 
 ## For whoever continues
 
