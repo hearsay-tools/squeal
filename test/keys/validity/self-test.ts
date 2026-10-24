@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, expect } from "vitest";
@@ -16,11 +17,18 @@ import { extractTree, lastRelease, type Overlay, ROOT } from "./trees.js";
  * self-test holds whatever the checkout changed since the release.
  */
 
-/** A full comparison bundles twice and runs the corpus in four child processes. */
+/** A full comparison bundles twice, runs the corpus in four drivers at once and decides in three. */
 export const SLOW = { timeout: 120_000 };
 
 /** A comparison that may run the whole corpus, the pytest cases on two Pythons among them (row 011-48). */
 export const FULL = { timeout: 300_000 };
+
+/**
+ * The work directory's removal at the end of a file (row 011-179): a full
+ * corpus's comparison leaves some 13,000 files, mostly each pytest case's
+ * bytecode, which took more than Vitest's 10 s hook timeout at load 59 to 99.
+ */
+export const REMOVAL = { timeout: 120_000 };
 
 /**
  * Whether uv holds every Python the `adapter:pytest` kind runs on. On CI an
@@ -67,19 +75,26 @@ export interface Comparisons {
   ): Promise<Comparison>;
 }
 
-/** Registers the work directory's setup and removal; call at a test file's top level. */
+/**
+ * Registers the work directory's setup and removal; call at a test file's
+ * top level. Each comparison's directory goes once it ends, while the next
+ * test runs; the file's last hook waits for those removals and removes the
+ * rest (row 011-179).
+ */
 export function comparisons(): Comparisons {
   let work: string | undefined;
   let release = "";
   let runs = 0;
+  const removals: Promise<void>[] = [];
   beforeAll(() => {
     work = mkdtempSync(join(tmpdir(), "squeal-validity-"));
     release = lastRelease();
     extractTree(release, join(work, "release"));
   });
-  afterAll(() => {
-    if (work !== undefined) rmSync(work, { recursive: true, force: true });
-  });
+  afterAll(async () => {
+    await Promise.all(removals);
+    if (work !== undefined) await rm(work, { recursive: true, force: true });
+  }, REMOVAL.timeout);
   const dir = () => {
     if (work === undefined) throw new Error("comparisons() runs its setup in beforeAll");
     return work;
@@ -87,13 +102,22 @@ export function comparisons(): Comparisons {
   return {
     release: () => release,
     tree: () => join(dir(), "release"),
-    compare: (overlay, cases = CASES, baseline = ROOT, install) =>
-      compareTrees({
-        baseline,
-        cases,
-        overlay,
-        work: join(dir(), `run-${runs++}`),
-        ...(install === undefined ? {} : { install }),
-      }),
+    compare: async (overlay, cases = CASES, baseline = ROOT, install) => {
+      const at = join(dir(), `run-${runs++}`);
+      try {
+        return await compareTrees({
+          baseline,
+          cases,
+          overlay,
+          work: at,
+          ...(install === undefined ? {} : { install }),
+        });
+      } finally {
+        const removal = rm(at, { recursive: true, force: true });
+        // Raised by the file's last hook, which awaits it.
+        removal.catch(() => undefined);
+        removals.push(removal);
+      }
+    },
   };
 }
