@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.298";
+  if (true) return "0.1.300";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -27407,11 +27407,18 @@ var init_change_feed = __esm({
         );
         return pending.done;
       }
+      /**
+       * The rebuild also meets any ignored directory that appeared since the last one, so the backend
+       * may replace its watcher here too; the pass finds what that dropped (row 011-187).
+       */
       setExtraFiles(paths) {
         this.extraFiles = [...paths];
-        return this.enqueue(async () => {
-          await this.rebuildSpec();
-        });
+        return this.enqueue(
+          async () => {
+            if (await this.rebuildSpec()) await this.reconcileNow("watch");
+          },
+          () => "watch"
+        );
       }
       async close() {
         this.closed = true;
