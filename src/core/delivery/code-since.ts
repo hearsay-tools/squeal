@@ -49,6 +49,18 @@ function earliest(store: Store, consumers: readonly Consumer[]): RevisionNumber 
   return revisions.length === 0 ? null : Math.min(...revisions);
 }
 
+/** The consumers registered in the worktree, and those of them that are the shell's session. */
+function registeredOf(store: Store, worktreeId: WorktreeId, shell: ShellSession | null) {
+  const registered = store.consumers.list(worktreeId).map((r) => r.consumer);
+  const own = registered.filter(
+    (c) =>
+      shell?.session != null &&
+      c.sessionId === shell.session &&
+      (shell.agent === null || c.agentId === shell.agent),
+  );
+  return { registered, own };
+}
+
 /**
  * Where "since this session started" starts in the worktree: the shell's
  * session's registration, else the oldest registered consumer's; `null`
@@ -59,17 +71,31 @@ export function codeSince(
   worktreeId: WorktreeId,
   shell: ShellSession | null,
 ): CodeSince | null {
-  const registered = store.consumers.list(worktreeId).map((r) => r.consumer);
-  const own = registered.filter(
-    (c) =>
-      shell?.session != null &&
-      c.sessionId === shell.session &&
-      (shell.agent === null || c.agentId === shell.agent),
-  );
+  const { registered, own } = registeredOf(store, worktreeId, shell);
   const session = earliest(store, own);
   if (session !== null) return { since: session, scope: "session" };
   const oldest = earliest(store, registered);
   return oldest === null ? null : { since: oldest, scope: "oldest" };
+}
+
+/** Whose code views `squeal code --told` reads (row 015-27). */
+export interface ToldTo {
+  readonly consumers: readonly Consumer[];
+  readonly scope: "session" | "worktree";
+}
+
+/**
+ * The shell's session's registered consumers, else every consumer
+ * registered in the worktree; `null` when none is registered.
+ */
+export function toldTo(
+  store: Store,
+  worktreeId: WorktreeId,
+  shell: ShellSession | null,
+): ToldTo | null {
+  const { registered, own } = registeredOf(store, worktreeId, shell);
+  if (own.length > 0) return { consumers: own, scope: "session" };
+  return registered.length === 0 ? null : { consumers: registered, scope: "worktree" };
 }
 
 /** `consumer`'s registration as a `CodeSince`; `null` when none is recorded. */

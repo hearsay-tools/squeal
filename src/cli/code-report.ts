@@ -2,7 +2,8 @@ import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs
 import { join } from "node:path";
 import type { CodeStore } from "../core/code/store/types.js";
 import { isTooBig } from "../core/delivery/code-deliver.js";
-import { changedSince, codeSince, type ShellSession } from "../core/delivery/code-since.js";
+import { changedSince, codeSince, type ShellSession, toldTo } from "../core/delivery/code-since.js";
+import { toldOver } from "../core/delivery/code-told.js";
 import { blobHash } from "../core/hash/index.js";
 import type {
   CodeCheckId,
@@ -71,6 +72,11 @@ export interface CodeReport {
     readonly revision: RevisionNumber;
     readonly scope: "session" | "oldest";
   } | null;
+  /**
+   * With `--told` (row 015-27): whose views it read, the shell's session's,
+   * else every registered consumer's; `null` when none is registered.
+   */
+  readonly told?: { readonly scope: "session" | "worktree" } | null;
   readonly functions: readonly CodeReportFunction[];
   readonly files: readonly CodeReportFile[];
 }
@@ -78,6 +84,8 @@ export interface CodeReport {
 export interface CodeReportOptions {
   readonly paths: readonly RelativePath[] | null;
   readonly changed: boolean;
+  /** Keep the functions over the threshold the shell's session was told of in full (row 015-27). */
+  readonly told?: boolean;
   readonly shell: ShellSession | null;
   /**
    * The worktree's root: with paths, a file whose bytes there are not its
@@ -245,7 +253,8 @@ function notJudged(
  * first by the revision it went over; with paths, every function in those
  * files or below those directories, but a file `pending` since an edit
  * lists none (`root`). `changed` keeps those whose state changed since the
- * registration `codeSince` names.
+ * registration `codeSince` names; `told`, those over that the consumers
+ * `toldTo` names were told of in full, as test news counts them (row 015-27).
  */
 export function readCodeReport(
   main: Store,
@@ -271,6 +280,13 @@ export function readCodeReport(
             ? []
             : changedSince(code, worktreeId, since.since).map((s) => key(s.check)),
         );
+  const to = options.told === true ? toldTo(main, worktreeId, options.shell) : undefined;
+  const told =
+    to === undefined
+      ? null
+      : new Set(
+          to === null ? [] : toldOver(code, worktreeId, to.consumers).map((s) => key(s.check)),
+        );
   const listed =
     options.paths === null
       ? states
@@ -280,7 +296,7 @@ export function readCodeReport(
           .filter((f) => !behind.has(f.path))
           .flatMap((f) => fileFunctions(code, f, new Map(states.map((s) => [key(s.check), s]))));
   const functions = listed
-    .filter((f) => changed === null || changed.has(key(f)))
+    .filter((f) => (changed === null || changed.has(key(f))) && (told === null || told.has(key(f))))
     .sort(
       (a, b) =>
         (options.paths === null ? (b.changedAt ?? 0) - (a.changedAt ?? 0) : 0) ||
@@ -296,6 +312,7 @@ export function readCodeReport(
     ...(since === undefined
       ? {}
       : { changedSince: since === null ? null : { revision: since.since, scope: since.scope } }),
+    ...(to === undefined ? {} : { told: to === null ? null : { scope: to.scope } }),
     functions,
     files: notJudged(code, files, states, behind),
   };
