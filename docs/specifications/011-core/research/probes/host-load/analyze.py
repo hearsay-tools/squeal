@@ -39,10 +39,24 @@ def incl(st):
     return st["ut"] + st["st"] + st["cut"] + st["cst"]
 
 
+# A process that ends inside the window adds its whole life to its reaper's
+# children's time. Take off what it had used by the window's start, from its
+# nearest ancestor still alive at the end, taken as its reaper (row 011-186).
+before = collections.Counter()
+for p, st0 in s0.items():
+    if p in s1 and s1[p]["start"] == st0["start"]:
+        continue
+    q = st0["ppid"]
+    while q > 1 and q in s0 and not (q in s1 and s1[q]["start"] == s0[q]["start"]):
+        q = s0[q]["ppid"]
+    if q > 1 and q in s1 and s1[q]["comm"] != "systemd":
+        before[q] += incl(st0)
+
+
 def tree(p):
     st1, st0 = s1[p], s0.get(p)
     dlt = incl(st1) - incl(st0) if st0 and st0["start"] == st1["start"] else incl(st1)
-    return dlt + sum(tree(c) for c in children.get(p, []))
+    return dlt - before[p] + sum(tree(c) for c in children.get(p, []))
 
 
 per = collections.Counter()
