@@ -424,13 +424,18 @@ export async function waitForNamed(
         const held = selection.files.filter((f) => !paused.has(testFileId(f)));
         const classes = leftForPause.length === 0 ? all : readClasses(store, id, held);
         const decided = ready ? decidedOutcome(selection, held, classes) : null;
-        const own = ownNamedFiles(root, cwd, paths, selection);
+        // The files named by their own paths, read once the selection is decided: to promote, or to focus.
+        const own =
+          ready && (checks.length > 0 || !promoted)
+            ? ownNamedFiles(root, cwd, paths, selection)
+            : [];
         // Row 011-146 (C15): a source path selects no focus; with no own path, a usage error.
         if (checks.length > 0 && ready && decided !== "unmatched" && own.length === 0) {
           return { usage: CHECK_NEEDS_TEST_FILE };
         }
         if (checks.length > 0 && ready) whole ??= wholeFileReasons(root, own);
-        const focus = focusOf(store, id, own, checks, ready ? whole : undefined, reply, record);
+        const focus =
+          whole === undefined ? undefined : focusOf(store, id, own, checks, whole, reply, record);
         // Row 011-73 (C6 as amended 2026-10-21): a held file queued on hold waits for its end.
         const hold =
           ready && decided === null
