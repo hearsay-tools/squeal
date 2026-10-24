@@ -1,6 +1,6 @@
 import { testFileId } from "../keys/index.js";
 import { type FocusedRun, readFocused } from "../scheduler/focused-row.js";
-import { durationText, formatCheck } from "../state/index.js";
+import { formatCheck } from "../state/index.js";
 import { timeText } from "../text.js";
 import type {
   StatusFocused,
@@ -116,24 +116,34 @@ export function noMatchText(entry: StatusFocused): string {
   return `no check holds ${textsText(entry.texts)}${collected}`;
 }
 
+/** `7.8 s`, a focused run's time: seconds, as a wait names its own. */
+export function focusedSecondsText(ms: number): string {
+  return `${(ms / 1_000).toFixed(1)} s`;
+}
+
 /** `run alone in 7.8 s`, or nothing while it runs. */
 export function focusedTookText(entry: StatusFocused): string {
-  return entry.durationMs === null ? "" : `run alone in ${durationText(entry.durationMs)}`;
+  return entry.durationMs === null ? "" : `run alone in ${focusedSecondsText(entry.durationMs)}`;
 }
 
 /**
- * Each selected check of `entry` on its own lines: its outcome and name,
- * then its first error and location when it has them, after `indent`.
+ * Each of `checks` on its own lines: its outcome and its name within its
+ * file, then its first error and location when it has them, after
+ * `indent`; then how many `more` there are.
  */
-export function focusedCheckLines(entry: StatusFocused, indent: string): string[] {
-  const lines = entry.checks.flatMap((c) => [
+export function focusedCheckLines(
+  checks: readonly StatusFocusedCheck[],
+  more: number,
+  indent: string,
+): string[] {
+  const lines = checks.flatMap((c) => [
     `${indent}${c.outcome === "fail" ? "FAIL" : c.outcome}  ${ownName(c)}`,
     ...(c.summary === null || c.summary === "" ? [] : [`${indent}      ${c.summary}`]),
     ...(c.location === null
       ? []
       : [`${indent}      at ${c.location.path}:${c.location.line}:${c.location.column}`]),
   ]);
-  return entry.more === 0 ? lines : [...lines, `${indent}and ${entry.more} more selected checks`];
+  return more === 0 ? lines : [...lines, `${indent}and ${more} more selected checks`];
 }
 
 /**
@@ -151,7 +161,7 @@ export function focusedLines(s: StatusSnapshot, full = false): string[] {
     const head =
       `Focused (not counted): ${focusedFileText(entry.testFile)} at revision ${entry.revision}: ` +
       `${focusedOutcomeText(entry)}; its own run is ${own}.`;
-    return full ? [head, ...focusedCheckLines(entry, "  ")] : [head];
+    return full ? [head, ...focusedCheckLines(entry.checks, entry.more, "  ")] : [head];
   });
   const more = applying.length - shown.length;
   return more > 0 ? [...lines, `  and ${more} more`] : lines;

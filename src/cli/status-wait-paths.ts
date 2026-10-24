@@ -28,13 +28,35 @@ import { type NamedFile, pauseOnlyIds, readNamedFiles } from "./named-files.js";
 import { statusCommand } from "./status-command.js";
 import { type DaemonSync, pollPause, SYNC_POLL_MS, type SyncState } from "./status-sync.js";
 import {
+  anyFailed,
+  CHECK_NEEDS_TEST_FILE,
+  CheckUsageError,
+  focusAnswered,
+  focusOf,
+  type NamedFocus,
+  wholeFileReasons,
+} from "./status-wait-focus.js";
+import {
+  type FocusedPayload,
+  focusLines,
+  focusPayload,
+  refusedLine,
+} from "./status-wait-focus-lines.js";
+import {
   type NamedTextOptions,
   namedClassLines,
   namedLine,
   namedText,
   selectedLine,
 } from "./status-wait-lines.js";
-import { ownPathFiles, type PromoteNamed, promoteNamed } from "./status-wait-promote.js";
+import {
+  type FocusNamed,
+  type FocusReply,
+  focusNamed,
+  ownPathFiles,
+  type PromoteNamed,
+  promoteNamed,
+} from "./status-wait-promote.js";
 import {
   type FileClasses,
   type FileVerdict,
@@ -215,12 +237,15 @@ function realOrNull(path: string): string | null {
  * `unmatched`, no path selects a file; `slow`, every selected file runs only
  * on a pause (task 004-78), so there is nothing to hold for; `on-hold`, a
  * file it holds for is queued while the worktree is on hold (row 011-73,
- * C6 as amended 2026-10-21). Row 011-63
+ * C6 as amended 2026-10-21); `focused`, every file named by its own path
+ * with `--check` has its focused answer (row 011-146, C15 as amended
+ * 2026-10-23). Row 011-63
  * (gh-59): a path that selects nothing beside one that selects a file is
  * named beside the other outcomes (`selection.unmatched`).
  */
 export type NamedWaitOutcome =
   | "settled"
+  | "focused"
   | "unmatched"
   | "slow"
   | "no-daemon"
@@ -272,6 +297,8 @@ export type NamedWait =
        * `timeout` is a read with no verdict.
        */
       readonly snapshot?: boolean;
+      /** Row 011-146: with `--check`, the focused answers it read. */
+      readonly focus?: NamedFocus;
     }
   | {
       readonly outcome: "unavailable";
@@ -294,6 +321,8 @@ export interface NamedWaitPayload {
   /** The selected slow files it did not hold for, waiting for a pause or `run --slow` (task 004-78). */
   readonly leftForPause: readonly TestFileRef[];
   readonly verdict: FileVerdict;
+  /** Row 011-146: with `--check`, the focused answers (011 C15, additive). */
+  readonly focused?: FocusedPayload;
 }
 
 export interface NamedWaitOptions {
@@ -306,6 +335,10 @@ export interface NamedWaitOptions {
   readonly downMs?: number;
   /** Default `promoteNamed`; tests replace it (spec 011 C15). */
   readonly promote?: PromoteNamed;
+  /** Row 011-146: the `--check` texts; none for a named wait as before. */
+  readonly checks?: readonly string[];
+  /** Default `focusNamed`; tests replace it (row 011-146). */
+  readonly focus?: FocusNamed;
 }
 
 /**
@@ -329,6 +362,13 @@ export interface NamedWaitOptions {
  * for, decided at each ready read for the files not yet left out and kept
  * for the rest of the wait, so a wait over fast and slow files gives the
  * fast verdict at once and one over slow files alone returns `slow`.
+ *
+ * Row 011-146 (C15 as amended 2026-10-23): with `checks`, it sends `focus`
+ * beside the promotion for the files named by their own paths the daemon
+ * focuses, and returns `focused` once each has a focused run ended at its
+ * current key or a result stored there (`focusAnswered`). A file current
+ * before that gives the named wait's verdict. A daemon that does not know
+ * the request leaves it a named wait.
  */
 export async function waitForNamed(
   cwd: AbsolutePath,
@@ -343,6 +383,9 @@ export async function waitForNamed(
   let watch: DaemonWatch | undefined;
   let first = true;
   let promoted = false;
+  let reply: FocusReply | undefined;
+  let whole: ReadonlyMap<string, string> | undefined;
+  const checks = options.checks ?? [];
   const paused = new Set<string>();
   try {
     for (;;) {
@@ -381,25 +424,38 @@ export async function waitForNamed(
         const held = selection.files.filter((f) => !paused.has(testFileId(f)));
         const classes = leftForPause.length === 0 ? all : readClasses(store, id, held);
         const decided = ready ? decidedOutcome(selection, held, classes) : null;
+        const own = ownNamedFiles(root, cwd, paths, selection);
+        // Row 011-146 (C15): a source path selects no focus; with no own path, a usage error.
+        if (checks.length > 0 && ready && decided !== "unmatched" && own.length === 0) {
+          return { usage: CHECK_NEEDS_TEST_FILE };
+        }
+        if (checks.length > 0 && ready) whole ??= wholeFileReasons(root, own);
+        const focus = focusOf(store, id, own, checks, ready ? whole : undefined, reply, record);
         // Row 011-73 (C6 as amended 2026-10-21): a held file queued on hold waits for its end.
         const hold =
           ready && decided === null
             ? holdOfWait(store, id, () => store.testFileKeys.list(id, held), readAt)
             : null;
+        const focused = decided === null && focus !== undefined && focusAnswered(focus);
         const outcome: NamedWaitOutcome | null =
           settled && daemon.state === "down"
             ? "no-daemon"
-            : (decided ?? (hold !== null ? "on-hold" : final ? "timeout" : null));
+            : (decided ??
+              (focused ? "focused" : hold !== null ? "on-hold" : final ? "timeout" : null));
         if (outcome === null) {
           // Spec 011 C15: once, at the first read whose selection is decided, beside it.
           if (ready && !promoted) {
             promoted = true;
-            const own = ownPathFiles(
-              selection.files,
-              paths.map((p) => worktreePath(root, cwd, p)),
-            );
             // On the clock the daemon adds it to, so the promotion lasts at least to `deadline`.
             (options.promote ?? promoteNamed)(root, own, deadline - options.now());
+            const focusing = (focus?.files ?? []).filter((f) => f.whole === undefined);
+            if (focus !== undefined && focusing.length > 0) {
+              const send = options.focus ?? focusNamed;
+              const files = focusing.map((f) => f.testFile);
+              void send(root, files, focus.texts, deadline - options.now()).then((answer) => {
+                reply = answer;
+              });
+            }
           }
           return null;
         }
@@ -421,8 +477,10 @@ export async function waitForNamed(
           ...(daemon.state === "down" ? { down: daemon.reason } : {}),
           ...(lapse === null ? {} : { lapse }),
           ...(hold === null ? {} : { hold }),
+          ...(focus === undefined ? {} : { focus }),
         };
       });
+      if (read !== null && "usage" in read) throw new CheckUsageError(read.usage);
       if (read !== null && "available" in read) {
         if (first || final) return { outcome: "unavailable", waitedMs: elapsed(), result: read };
       } else if (read !== null) {
@@ -438,11 +496,30 @@ export async function waitForNamed(
 }
 
 /**
+ * The selected test files named by their own paths, as the worktree names
+ * them: the ones a wait promotes and focuses (spec 011 C15).
+ */
+export function ownNamedFiles(
+  root: AbsolutePath,
+  cwd: AbsolutePath,
+  paths: readonly string[],
+  selection: NamedSelection,
+): TestFileRef[] {
+  return ownPathFiles(
+    selection.files,
+    paths.map((p) => worktreePath(root, cwd, p)),
+  );
+}
+
+/**
  * Spec 005 D1 for the selected files: their verdict once settled, else 3.
  * Row 011-63 (gh-59): a path that selects nothing leaves no clean verdict,
  * so 3, but a known failure among the files the others select is still 1.
  */
 export function namedCode(wait: Extract<NamedWait, { result: StatusSnapshot }>): 0 | 1 | 3 {
+  // Row 011-146 (C15): a focused answer is not the file's verdict: 1 when a selected check failed, else 3.
+  if (wait.outcome === "focused")
+    return wait.focus !== undefined && anyFailed(wait.focus.files) ? 1 : 3;
   if (wait.outcome !== "settled") return 3;
   const code = verdictCode(wait.verdict);
   return code === 0 && wait.selection.unmatched.length > 0 ? 3 : code;
@@ -463,8 +540,15 @@ export async function namedWaitCommand(
   io: CliIo,
   options: NamedWaitOptions,
 ): Promise<number> {
-  const wait = await waitForNamed(io.cwd ?? process.cwd(), paths, options);
-  return printNamed(wait, how, io, options.now);
+  const checks = how.checks ?? [];
+  try {
+    const wait = await waitForNamed(io.cwd ?? process.cwd(), paths, { ...options, checks });
+    return printNamed(wait, how, io, options.now);
+  } catch (error) {
+    if (!(error instanceof CheckUsageError)) throw error;
+    io.stderr(`squeal status: ${error.message}\n`);
+    return 2;
+  }
 }
 
 /**
@@ -503,12 +587,19 @@ export function printNamed(
     unmatched: wait.selection.unmatched,
     leftForPause: wait.leftForPause ?? [],
     verdict: wait.verdict,
+    ...(wait.focus === undefined ? {} : { focused: focusPayload(wait.focus) }),
   };
   const field = wait.snapshot === true ? "named" : "wait";
   const json = { ...wait.result, [field]: payload, selection: payload };
   io.stdout(`${JSON.stringify(json, null, 2)}\n`);
   const selected = selectedLine(wait);
-  const lines = [...(selected === null ? [] : [selected]), ...namedClassLines(wait, command)];
+  const refused = refusedLine(wait.focus);
+  const lines = [
+    ...(refused === null ? [] : [refused]),
+    ...(selected === null ? [] : [selected]),
+    ...focusLines(wait.focus, wait.selection.base),
+    ...namedClassLines(wait, command),
+  ];
   io.stderr(`${lines.map((line) => `${line}\n`).join("")}${namedLine(wait, command)}\n`);
   return code;
 }

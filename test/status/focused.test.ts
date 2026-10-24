@@ -119,7 +119,7 @@ describe("status shows a focused run while it applies (011 C6, row 011-146)", ()
       paths.map((path) => focusedRun(path)),
     );
 
-    const lines = linesOf(snapshotOf(repo.main)).filter((l) => /^(Focused|  and)/.test(l));
+    const lines = linesOf(snapshotOf(repo.main)).filter((l) => /^(Focused| {2}and)/.test(l));
 
     expect(lines.map((l) => l.split(" at revision")[0])).toEqual([
       "Focused (not counted): src/f4.test.ts",
