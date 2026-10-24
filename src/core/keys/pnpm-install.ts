@@ -83,60 +83,88 @@ function layoutOf(dir: AbsolutePath): Readonly<Record<string, unknown>> | null {
  * Review 0.1.282 B2: and every link a lookup resolves through exists, so
  * Node never walks past a missing one to a package the graph does not
  * name: each name an importer declares, each hoisted name, public and
- * private, and each edge beside a package folder, unless it names a
- * skipped package.
+ * private, and each edge beside a package folder. Review 0.1.282 B2.1: a
+ * link that names a skipped package is absent instead, since the graph
+ * walks past it as Node does; one that is there loads a package `lock.yaml`
+ * does not install, which the graph cannot model. At the root a name
+ * hoisted publicly takes the place of a skipped one the root declares.
  */
 export function stalePnpmLockfile(dir: AbsolutePath, graph: PnpmGraph): string | null {
   const lockTime = lstatSync(join(dir, PNPM_LOCKFILE)).mtimeMs;
-  const unlisted: string[] = [];
-  const newer: string[] = [];
-  const missing: string[] = [];
-  const absent = (path: string) =>
-    lstatSync(join(dir, path), { throwIfNoEntry: false }) === undefined;
+  const stale: Stale = { unlisted: [], newer: [], missing: [], installed: [] };
+  checkVirtualStore(dir, graph, lockTime, stale);
+  checkImporters(dir, graph, lockTime, stale);
+  const parts = [
+    ["not listed in it", stale.unlisted],
+    ["newer than it", stale.newer],
+    ["missing", stale.missing],
+    ["installed though skipped", stale.installed],
+  ] as const;
+  const reasons = parts
+    .filter(([, paths]) => paths.length > 0)
+    .map(([label, paths]) => `${label}: ${example(paths)}`);
+  return reasons.length === 0 ? null : reasons.join("; ");
+}
+
+/** The paths that keep `lock.yaml` from standing for the install, by the note's kinds. */
+interface Stale {
+  readonly unlisted: string[];
+  readonly newer: string[];
+  readonly missing: string[];
+  readonly installed: string[];
+}
+
+/** Each package folder, each edge's link beside it, and each private hoist. */
+function checkVirtualStore(dir: AbsolutePath, graph: PnpmGraph, lockTime: number, stale: Stale) {
   for (const [id, folder] of graph.folders) {
     if (graph.skipped.has(id)) continue;
     const modules = `${VIRTUAL_STORE}/${folder}/node_modules`;
     const path = `${modules}/${id.slice(0, id.indexOf("@", 1))}`;
     const stat = lstatSync(join(dir, path), { throwIfNoEntry: false });
-    if (stat === undefined) missing.push(path);
-    else if (stat.mtimeMs > lockTime) newer.push(path);
+    if (stat === undefined) stale.missing.push(path);
+    else if (stat.mtimeMs > lockTime) stale.newer.push(path);
     for (const [name, ref] of graph.lockfile.snapshots.get(id) ?? []) {
       const edge = `${modules}/${name}`;
-      if (!graph.skipped.has(childOf(name, ref)) && absent(edge)) missing.push(edge);
+      expectLink(graph, stale, edge, childOf(name, ref), exists(dir, edge));
     }
   }
-  for (const [at, hoisted] of [
-    ["node_modules", graph.publicHoisted],
-    [`${VIRTUAL_STORE}/node_modules`, graph.privateHoisted],
-  ] as const) {
-    for (const [alias, id] of hoisted) {
-      if (!graph.skipped.has(id) && absent(`${at}/${alias}`)) missing.push(`${at}/${alias}`);
-    }
+  for (const [alias, id] of graph.privateHoisted) {
+    const path = `${VIRTUAL_STORE}/node_modules/${alias}`;
+    expectLink(graph, stale, path, id, exists(dir, path));
   }
+}
+
+/** Each importer's `node_modules`: the names it holds, and the links its names and hoists need. */
+function checkImporters(dir: AbsolutePath, graph: PnpmGraph, lockTime: number, stale: Stale) {
   for (const [importer, declared] of graph.lockfile.importers) {
     const modules = importer === "." ? "node_modules" : `${importer}/node_modules`;
     const present = new Set(namesIn(join(dir, modules)));
     for (const name of present) {
       const path = `${modules}/${name}`;
       if (!declared.has(name) && !(importer === "." && graph.publicHoisted.has(name))) {
-        unlisted.push(path);
-      } else if (lstatSync(join(dir, path)).mtimeMs > lockTime) newer.push(path);
+        stale.unlisted.push(path);
+      } else if (lstatSync(join(dir, path)).mtimeMs > lockTime) stale.newer.push(path);
     }
-    for (const [name, ref] of declared) {
-      if (!present.has(name) && !graph.skipped.has(childOf(name, ref))) {
-        missing.push(`${modules}/${name}`);
-      }
+    const links = new Map([...declared].map(([name, ref]) => [name, childOf(name, ref)]));
+    for (const [alias, id] of importer === "." ? graph.publicHoisted : []) {
+      const own = links.get(alias);
+      if (own === undefined || graph.skipped.has(own)) links.set(alias, id);
+    }
+    for (const [name, target] of links) {
+      expectLink(graph, stale, `${modules}/${name}`, target, present.has(name));
     }
   }
-  const parts = [
-    ["not listed in it", unlisted],
-    ["newer than it", newer],
-    ["missing", missing],
-  ] as const;
-  const reasons = parts
-    .filter(([, paths]) => paths.length > 0)
-    .map(([label, paths]) => `${label}: ${example(paths)}`);
-  return reasons.length === 0 ? null : reasons.join("; ");
+}
+
+/** The link at `path` a lookup expects, to `target`: there unless `target` is skipped. */
+function expectLink(graph: PnpmGraph, stale: Stale, path: string, target: string, there: boolean) {
+  if (graph.skipped.has(target)) {
+    if (there) stale.installed.push(path);
+  } else if (!there) stale.missing.push(path);
+}
+
+function exists(dir: AbsolutePath, path: string): boolean {
+  return lstatSync(join(dir, path), { throwIfNoEntry: false }) !== undefined;
 }
 
 /**

@@ -25,7 +25,9 @@ const FOLDER_MAX_LENGTH = 120;
  * id>#<integrity>` and the snapshot's resolved edges, sorted; the closure
  * follows each snapshot's `dependencies` and `optionalDependencies`, which
  * hold its resolved peers. A skipped optional package keys by its identity
- * and is neither expanded nor scanned. A folder no snapshot names and a
+ * and is neither expanded nor scanned; pnpm links none, so a lookup that
+ * meets one walks on as Node does and also keys the copy it finds there,
+ * with its closure (review 0.1.282 B2.1). A folder no snapshot names and a
  * snapshot without an integrity are opaque, so the file keys by the whole
  * fingerprint. Markers as for npm (`InstalledGraph`): `absent:`,
  * `workspace:`, and a package with no runtime file as `<name>@types-only`,
@@ -88,11 +90,13 @@ export class PnpmGraph implements PackageGraph {
     const starts = new Set<string>();
     for (const { from, name, manifest } of imports) {
       const local = this.#local(from);
-      const target = local === null ? null : this.#resolve(local, name);
-      if (target === null) found.add(`absent:${local ?? from}>${name}`);
-      else if (isMarker(target)) found.add(target);
-      else if (manifest === true) found.add(this.#identity(target));
-      else starts.add(target);
+      const targets = local === null ? [] : this.#resolve(local, name);
+      if (targets.length === 0) found.add(`absent:${local ?? from}>${name}`);
+      for (const target of targets) {
+        if (isMarker(target)) found.add(target);
+        else if (manifest === true) found.add(this.#identity(target));
+        else starts.add(target);
+      }
     }
     for (const id of starts) {
       for (const identity of this.#closure(id)) found.add(identity);
@@ -123,25 +127,50 @@ export class PnpmGraph implements PackageGraph {
     return from.startsWith(prefix) ? from.slice(prefix.length) : null;
   }
 
-  /** The snapshot id `name` resolves to from `from`, a marker, or `null` when absent. */
-  #resolve(from: string, name: string): string | null {
-    if (!from.startsWith(VIRTUAL_STORE)) return this.#fromImporters(from, name);
+  /**
+   * What `name` resolves to from `from`: the skipped packages Node walks
+   * past, then the snapshot id or marker it finds; empty when absent.
+   */
+  #resolve(from: string, name: string): string[] {
+    if (!from.startsWith(VIRTUAL_STORE)) return this.#walk(this.#fromImporters(from, name));
     const folder = from.slice(VIRTUAL_STORE.length).split("/")[0] ?? "";
     const id = this.#snapshotOf.get(folder);
-    if (id === undefined) return `unknown:${folder}`;
-    if (nameOf(id) === name) return id;
-    const ref = this.lockfile.snapshots.get(id)?.get(name);
-    if (ref !== undefined) return childOf(name, ref);
-    return this.privateHoisted.get(name) ?? this.#fromImporters("", name);
+    if (id === undefined) return [`unknown:${folder}`];
+    return nameOf(id) === name ? [id] : this.#walk(this.#fromFolder(id, name));
   }
 
-  /** Node's walk from a project directory: pnpm creates `node_modules` only in importers. */
-  #fromImporters(from: string, name: string): string | null {
+  /** The candidates of a walk up to the first one pnpm installed: the skipped ones, then it. */
+  #walk(candidates: Iterable<string | undefined>): string[] {
+    const found: string[] = [];
+    for (const candidate of candidates) {
+      if (candidate === undefined) continue;
+      found.push(candidate);
+      if (!this.skipped.has(candidate)) break;
+    }
+    return found;
+  }
+
+  /** Node's walk from snapshot `id`'s folder: its edges, pnpm's private hoisting, then the root. */
+  *#fromFolder(id: string, name: string): Generator<string | undefined> {
+    const ref = this.lockfile.snapshots.get(id)?.get(name);
+    yield ref === undefined ? undefined : childOf(name, ref);
+    yield this.privateHoisted.get(name);
+    yield* this.#fromImporters("", name);
+  }
+
+  /**
+   * Node's walk from a project directory: pnpm creates `node_modules` only
+   * in importers, the root's with the names it hoists publicly.
+   */
+  *#fromImporters(from: string, name: string): Generator<string | undefined> {
     for (let dir = from; ; dir = parent(dir)) {
       const ref = this.lockfile.importers.get(dir === "" ? "." : dir)?.get(name);
-      if (ref?.startsWith("link:")) return workspace(dir, ref);
-      if (ref !== undefined) return childOf(name, ref);
-      if (dir === "") return this.publicHoisted.get(name) ?? null;
+      if (ref?.startsWith("link:")) yield workspace(dir, ref);
+      else if (ref !== undefined) yield childOf(name, ref);
+      if (dir === "") {
+        yield this.publicHoisted.get(name);
+        return;
+      }
     }
   }
 
@@ -199,8 +228,8 @@ export class PnpmGraph implements PackageGraph {
       const identity = this.#identity(id);
       identities.push(identity);
       this.#packageFolders.set(identity, this.#folderOf(id));
-      for (const [name, ref] of this.lockfile.snapshots.get(id) ?? [])
-        stack.push(childOf(name, ref));
+      for (const name of this.lockfile.snapshots.get(id)?.keys() ?? [])
+        stack.push(...this.#walk(this.#fromFolder(id, name)));
     }
     this.#closures.set(start, identities);
     return identities;
