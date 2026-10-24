@@ -73,8 +73,10 @@ export interface CodeStateRepo {
   removeMany(worktreeId: WorktreeId, checks: readonly CodeCheckId[]): void;
   /**
    * Spec 015 D2: a move or rename with the same body. `to` takes over
-   * `from`'s states and every consumer view's entries for it; `from` keeps
-   * none. Nothing is recorded as a transition.
+   * `from`'s states, every consumer view's entries for it and its
+   * transitions, at their own revision and time, in one transaction; `from`
+   * keeps none, and what `to` held before is dropped. Nothing new is recorded
+   * as a transition.
    */
   move(worktreeId: WorktreeId, from: CodeCheckId, to: CodeCheckId): void;
 }
