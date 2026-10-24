@@ -429,8 +429,9 @@ export async function waitForNamed(
           ready && (checks.length > 0 || !promoted)
             ? ownNamedFiles(root, cwd, paths, selection)
             : [];
-        // Row 011-146 (C15): a source path selects no focus; with no own path, a usage error.
-        if (checks.length > 0 && ready && decided !== "unmatched" && own.length === 0) {
+        // Row 011-146 (C15): a source path selects no focus; with no own path, a usage error,
+        // whether or not a test file reads the source (review 0.1.286 B4).
+        if (checks.length > 0 && ready && own.length === 0) {
           return { usage: CHECK_NEEDS_TEST_FILE };
         }
         if (checks.length > 0 && ready) whole ??= wholeFileReasons(root, own);
