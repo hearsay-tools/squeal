@@ -66,6 +66,8 @@ export interface CoverageRig {
   clock: number;
   /** Writes the files, stores a revision and runs the complexity pass. */
   edit(files: Record<string, string>): Promise<void>;
+  /** As `edit`, with the files committed first, so the revision moves `HEAD` as a pull does (015-19). */
+  pull(files: Record<string, string>): Promise<void>;
   /** Runs the complexity pass with `counter` at the same revision, a recount when its version is new; later edits count with it. */
   recount(counter: Counter): Promise<void>;
   /** Sets one test file's key, closure, results and record. */
@@ -137,6 +139,14 @@ export function coverageRig(): CoverageRig {
     clock: 100_000,
     async edit(files) {
       for (const [path, text] of Object.entries(files)) tree.write(path, text);
+      tree.revise();
+      self.clock += 1_000;
+      const at = self.clock;
+      await pass(tree, store, counter, { policy: COVERED, now: () => at });
+    },
+    async pull(files) {
+      for (const [path, text] of Object.entries(files)) tree.write(path, text);
+      tree.commit(...Object.keys(files));
       tree.revise();
       self.clock += 1_000;
       const at = self.clock;
