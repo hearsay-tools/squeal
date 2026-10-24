@@ -75,7 +75,7 @@ export interface PassReport {
   readonly moved: number;
   /**
    * D6's last rule (015-08): checks whose identity stayed and whose body
-   * hash changed. Stored nowhere yet.
+   * hash changed, stored on their states (`CodeStateRepo.markEdited`).
    */
   readonly edited: readonly CodeCheckId[];
 }

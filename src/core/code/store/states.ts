@@ -8,7 +8,7 @@ import type {
   CodeTransition,
   CodeTransitionKind,
 } from "../../types/code.js";
-import type { CodeStateRepo, CodeTransitionRepo } from "./types.js";
+import type { CodeEdit, CodeStateRepo, CodeTransitionRepo } from "./types.js";
 
 export const MEASURES = [
   "complexity",
@@ -103,6 +103,35 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         }
       });
     },
+    edits(worktreeId, measure) {
+      return conn
+        .all(
+          `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS}
+           FROM states s JOIN checks c ON c.id = s.check_id
+           WHERE s.worktree_id = ? AND s.measure = ? AND s.edited_at IS NOT NULL
+           ORDER BY c.path, c.qualified_name, c.occurrence`,
+          worktreeId,
+          measure,
+        )
+        .map(toEdit);
+    },
+    markEdited(worktreeId, edits) {
+      conn.transaction(() => {
+        for (const edit of edits) {
+          const id = findCodeCheckId(conn, edit.check);
+          if (id === null) continue;
+          conn.run(
+            `UPDATE states SET edited_revision = ?, edited_at = ?
+             WHERE worktree_id = ? AND check_id = ? AND measure = ?`,
+            edit.revision,
+            edit.at,
+            worktreeId,
+            id,
+            edit.measure,
+          );
+        }
+      });
+    },
     removeMany(worktreeId, checks) {
       conn.transaction(() => {
         for (const check of checks) {
@@ -181,6 +210,15 @@ function toState(worktreeId: string, row: Row): CodeKnownState {
     countedAt: num(row, "counted_at"),
     blob: str(row, "blob"),
     changedAt: num(row, "changed_at"),
+  };
+}
+
+function toEdit(row: Row): CodeEdit {
+  return {
+    check: checkFrom(row),
+    measure: oneOf(row, "measure", MEASURES),
+    revision: num(row, "edited_revision"),
+    at: num(row, "edited_at"),
   };
 }
 
