@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.292";
+  if (true) return "0.1.293";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4987,6 +4987,71 @@ var init_retry = __esm({
   }
 });
 
+// src/core/code/pass/failed.ts
+function readUncountable(meta, worktreeId) {
+  const text3 = meta.get(uncountableKey(worktreeId));
+  if (text3 === null) return /* @__PURE__ */ new Map();
+  try {
+    const record = JSON.parse(text3);
+    return new Map(Object.entries(record));
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function writeUncountable(meta, worktreeId, failed2) {
+  const key3 = uncountableKey(worktreeId);
+  const text3 = failed2.size === 0 ? null : JSON.stringify(Object.fromEntries(failed2));
+  if (meta.get(key3) === text3) return;
+  if (text3 === null) meta.delete(key3);
+  else meta.set(key3, text3);
+}
+function dueRetries(failed2, now) {
+  return [...failed2].flatMap(([path, f]) => f.retryAt !== null && f.retryAt <= now ? [path] : []);
+}
+function mayCount(failed2, path, blob, now) {
+  const f = failed2.get(path);
+  return f === void 0 || f.blob !== blob || f.retryAt !== null && f.retryAt <= now;
+}
+function failedAgain(previous, blob, error, now) {
+  const attempts = previous?.blob === blob ? previous.attempts + 1 : 1;
+  const wait = attempts < COUNT_ATTEMPTS ? RETRY_AFTER_MS[attempts - 1] : void 0;
+  return { blob, attempts, retryAt: wait === void 0 ? null : now + wait, error };
+}
+function nextRetry(failed2) {
+  const times = [...failed2.values()].flatMap((f) => f.retryAt === null ? [] : [f.retryAt]);
+  return times.length === 0 ? null : Math.min(...times);
+}
+function restartRetries(meta, worktreeId, now) {
+  const failed2 = readUncountable(meta, worktreeId);
+  for (const [path, f] of failed2) failed2.set(path, { ...f, attempts: 0, retryAt: now });
+  writeUncountable(meta, worktreeId, failed2);
+}
+function spentFailure(failed2, file) {
+  const f = failed2.get(file.path);
+  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
+}
+function uncountableFiles(store, worktreeId, files2) {
+  const failed2 = readUncountable(store.meta, worktreeId);
+  const spent = /* @__PURE__ */ new Map();
+  if (failed2.size === 0) return spent;
+  for (const file of files2) {
+    const f = spentFailure(failed2, file);
+    if (f === null) continue;
+    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
+      spent.set(file.path, f);
+  }
+  return spent;
+}
+var COUNT_ATTEMPTS, RETRY_AFTER_MS, uncountableKey;
+var init_failed = __esm({
+  "src/core/code/pass/failed.ts"() {
+    "use strict";
+    COUNT_ATTEMPTS = 3;
+    RETRY_AFTER_MS = [5e3, 6e4];
+    uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
+  }
+});
+
 // src/core/types/code-delivery.ts
 var init_code_delivery = __esm({
   "src/core/types/code-delivery.ts"() {
@@ -7959,6 +8024,13 @@ var init_code_told = __esm({
 function isTooBig(file) {
   return file.tooBig === true;
 }
+function countingOf(store, worktreeId) {
+  const files2 = store.files.list(worktreeId).filter((f) => !isTooBig(f));
+  const spent = uncountableFiles(store, worktreeId, files2);
+  const pending = store.files.uncounted(worktreeId).filter((f) => !spent.has(f.path)).length;
+  const total = files2.length - spent.size;
+  return { done: total - pending, total, uncountable: spent.size };
+}
 function lastTransition(store, worktreeId, check, measure2 = MEASURE) {
   return store.transitions.history(worktreeId, check).findLast((t) => t.measure === measure2) ?? null;
 }
@@ -7966,6 +8038,7 @@ var MEASURE;
 var init_code_deliver = __esm({
   "src/core/delivery/code-deliver.ts"() {
     "use strict";
+    init_failed();
     init_fs();
     init_code_delivery();
     init_code_delta();
@@ -8114,15 +8187,17 @@ function codeStatusOf(store, worktreeId, at2, shell) {
     ({ store: code, complexity }) => code.read(() => {
       const states = code.states.list(worktreeId, { measure: "complexity" });
       const from = since();
+      const { done, total, uncountable } = countingOf(code, worktreeId);
       return {
         v: 1,
         threshold: complexity.threshold,
         over: states.filter((s) => s.outcome === "fail").length,
         sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from).length,
         since: from?.scope ?? null,
-        pending: code.files.uncounted(worktreeId).length,
-        files: code.files.list(worktreeId).filter((f) => !isTooBig(f)).length,
-        unknown: states.filter((s) => s.outcome === "unknown").length
+        pending: total - done,
+        files: total,
+        unknown: states.filter((s) => s.outcome === "unknown").length,
+        ...uncountable === 0 ? {} : { uncountable }
       };
     })
   );
@@ -8145,14 +8220,18 @@ function codeStatusOf(store, worktreeId, at2, shell) {
 function codeStatusLines(s, command) {
   const code = s.code;
   if (code === void 0) return [];
-  if (code.files === 0) return ["Complexity: no file counted yet."];
+  if (code.files === 0 && (code.uncountable ?? 0) === 0)
+    return ["Complexity: no file counted yet."];
   const progress2 = `counting, ${code.files - code.pending} of ${plural(code.files, "file")}`;
   if (code.pending > 0 && code.over === 0) return [`Complexity: ${progress2}.`];
   const since = code.since === null ? "" : `, ${code.sinceRegistration} ${SINCE[code.since]}`;
   const counting = code.pending === 0 ? "" : `; ${progress2}`;
   const unknown = code.unknown === 0 ? "" : `; ${plural(code.unknown, "function")} in parse errors not judged`;
+  const uncountable = (code.uncountable ?? 0) === 0 ? "" : `; ${plural(code.uncountable ?? 0, "file")} could not be counted`;
   const over = `${plural(code.over, "function")} over ${code.threshold}`;
-  return [`Complexity: ${over}${since}${counting}${unknown}; ${command} code lists them.`];
+  return [
+    `Complexity: ${over}${since}${counting}${unknown}${uncountable}; ${command} code lists them.`
+  ];
 }
 var SINCE;
 var init_code_status = __esm({
@@ -8355,17 +8434,17 @@ function focusedCheckOf(c) {
 }
 function focusedTally(run5) {
   if (run5.outcomes !== void 0) {
-    const { pass, fail, skip } = run5.outcomes;
-    return { failed: fail, total: pass + fail + skip, atLeast: false };
+    const { pass, fail: fail2, skip } = run5.outcomes;
+    return { failed: fail2, total: pass + fail2 + skip, atLeast: false };
   }
   const failed2 = run5.checks.filter((c) => c.outcome === "fail").length;
   return { failed: failed2, total: run5.checks.length + run5.more, atLeast: run5.more > 0 };
 }
 function countsOf(outcomes) {
   if (typeof outcomes !== "object" || outcomes === null) return null;
-  const { pass, fail, skip } = outcomes;
+  const { pass, fail: fail2, skip } = outcomes;
   const whole = (n) => Number.isInteger(n) && n >= 0;
-  return whole(pass) && whole(fail) && whole(skip) ? { outcomes: { pass, fail, skip } } : null;
+  return whole(pass) && whole(fail2) && whole(skip) ? { outcomes: { pass, fail: fail2, skip } } : null;
 }
 function ownName(c) {
   return c.check.kind === "test" ? c.check.fullName : c.name;
@@ -29242,6 +29321,9 @@ var init_adapter = __esm({
           // container, so nothing stamps the bytes it holds (D4). A CLI option,
           // so it reaches every project.
           fsModuleCache: false,
+          // Row 013-07: a config's own coverage would clean and rewrite the project's
+          // reports and print to the daemon's output. A CLI option wins over the config.
+          coverage: { enabled: false },
           ...Object.keys(env).length === 0 ? {} : { env },
           ...project === void 0 ? {} : { project }
         });
@@ -56002,7 +56084,7 @@ import { constants as constants5 } from "node:fs";
 import { open as open5 } from "node:fs/promises";
 import { join as join97 } from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
-async function countMissing(ctx, entries3) {
+async function countMissing(ctx, entries3, failed2, now) {
   const { store, counter } = ctx;
   const byBlob = /* @__PURE__ */ new Map();
   for (const e of entries3) {
@@ -56021,20 +56103,30 @@ async function countMissing(ctx, entries3) {
     if (start2 > 0) await nextTurn();
     const slice = missing2.slice(start2, start2 + size);
     const counts = [];
-    for (const [e] of slice) counts.push(e === void 0 ? null : await countOne(ctx, e));
+    for (const group of slice) {
+      const [e] = group;
+      const held2 = group.every((g2) => !mayCount(failed2, g2.path, g2.file.hash, now));
+      counts.push(e === void 0 || held2 ? "held" : await countOne(ctx, e));
+    }
     store.transaction(() => {
       slice.forEach((group, i3) => {
-        const count2 = counts[i3];
+        const count2 = counts[i3] ?? "held";
         if (count2 === "link") for (const e of group) links.add(e.path);
         if (count2 === "link") return;
         if (count2 === "moved") for (const e of group) ctx.retry.add(e.path);
-        if (count2 === void 0 || count2 === null || count2 === "moved") {
+        if (typeof count2 === "object" && "error" in count2) {
+          for (const e of group.filter((g2) => mayCount(failed2, g2.path, g2.file.hash, now))) {
+            fail(ctx, failed2, e, count2.error, now);
+          }
+        }
+        if (typeof count2 !== "object" || "error" in count2) {
           for (const e of group) skipped2.add(e.path);
           return;
         }
         store.counts.put(count2, ctx.now());
         counted3++;
       });
+      writeUncountable(store.meta, ctx.worktreeId, failed2);
     });
   }
   return { counted: counted3, skipped: skipped2, links };
@@ -56050,6 +56142,14 @@ async function readRegular(path) {
     await handle2.close();
   }
 }
+function fail(ctx, failed2, e, error, now) {
+  const f = failedAgain(failed2.get(e.path), e.file.hash, error, now);
+  failed2.set(e.path, f);
+  const next = f.retryAt === null ? "not again until it changes" : `trying again in ${Math.round((f.retryAt - now) / 1e3)} s`;
+  ctx.log(
+    `complexity: could not count ${e.path} (attempt ${f.attempts} of ${COUNT_ATTEMPTS}): ${error}; ${next}`
+  );
+}
 async function countOne(ctx, e) {
   const bytes2 = await readRegular(join97(ctx.root, e.path));
   if (bytes2 === "link") return bytes2;
@@ -56064,8 +56164,8 @@ async function countOne(ctx, e) {
       errors
     };
   } catch (error) {
-    ctx.log(`complexity: could not count ${e.path}: ${String(error)}`);
-    return null;
+    const text3 = error instanceof Error ? error.message : String(error);
+    return { error: text3.split("\n")[0] ?? text3 };
   }
 }
 var SLICE_FILES, decoder, OPEN_FLAGS3;
@@ -56073,6 +56173,7 @@ var init_blobs = __esm({
   "src/core/code/pass/blobs.ts"() {
     "use strict";
     init_hash();
+    init_failed();
     SLICE_FILES = 200;
     decoder = new TextDecoder();
     OPEN_FLAGS3 = constants5.O_RDONLY | constants5.O_NOFOLLOW | constants5.O_NONBLOCK;
@@ -56326,9 +56427,14 @@ async function runPass(ctx) {
   const cursor = readCursor(store.meta, worktreeId);
   const current3 = cursorOf(latest, ctx.complexity, ctx.counter.version);
   const reason2 = ctx.switchedOn ? "first" : recountReason(cursor, current3);
-  if (reason2 === null && cursor?.revision === latest && ctx.retry.size === 0) return null;
+  const started2 = ctx.now();
+  const failed2 = readUncountable(store.meta, worktreeId);
+  const due = retriesDue(ctx, failed2, started2);
+  if (reason2 === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0) {
+    return null;
+  }
   const since = reason2 === null && cursor !== null ? cursor.revision : null;
-  const entries3 = plan(ctx, since === null ? null : workSet(ctx, since, latest));
+  const entries3 = plan(ctx, since === null ? null : workSet(ctx, since, latest, due));
   ctx.retry.clear();
   const bodies = reason2 === null ? oldBodies(store, worktreeId, entries3, ctx.counter.version) : /* @__PURE__ */ new Map();
   store.transaction(() => {
@@ -56338,7 +56444,8 @@ async function runPass(ctx) {
     );
     store.files.upsertMany(worktreeId, filesRows(entries3, ctx.counter.version, latest));
   });
-  const { counted: counted3, skipped: skipped2, links } = await countMissing(ctx, entries3);
+  const { counted: counted3, skipped: skipped2, links } = await countMissing(ctx, entries3, failed2, started2);
+  for (const e of entries3) if (!skipped2.has(e.path)) failed2.delete(e.path);
   const quiet = reason2 !== null;
   const after2 = entries3.filter((e) => !skipped2.has(e.path)).map((e) => ({
     path: e.path,
@@ -56375,6 +56482,7 @@ async function runPass(ctx) {
       edited.map((check) => ({ check, measure: "complexity", revision: latest, at: at2 }))
     );
     writeCursor(store.meta, worktreeId, current3);
+    writeUncountable(store.meta, worktreeId, failed2);
     if (reason2 !== null && (reason2 !== "first" || counted3 > 0 || ctx.switchedOn)) {
       writeRecount(store.meta, worktreeId, {
         revision: latest,
@@ -56386,12 +56494,20 @@ async function runPass(ctx) {
     return report2(latest, reason2, entries3.length, counted3, { ...judged, edited });
   });
 }
-function workSet(ctx, after2, upTo) {
+function retriesDue(ctx, failed2, now) {
+  const spent = [...failed2].flatMap(([path, f]) => f.retryAt === null ? [path] : []);
+  const counted3 = spent.length === 0 ? [] : ctx.store.files.list(ctx.worktreeId, spent).filter(
+    (f) => spentFailure(failed2, f) !== null && ctx.store.counts.get(f.blob, f.language, ctx.counter.version) !== null
+  );
+  return [...dueRetries(failed2, now), ...counted3.map((f) => f.path)];
+}
+function workSet(ctx, after2, upTo, due) {
   const tests = ctx.store.files.list(ctx.worktreeId, ctx.source.testFiles());
   return [
     .../* @__PURE__ */ new Set([
       ...ctx.source.changedPaths(after2, upTo),
       ...ctx.retry,
+      ...due,
       ...tests.map((f) => f.path)
     ])
   ];
@@ -56458,6 +56574,7 @@ var init_pass = __esm({
     init_fs();
     init_blobs();
     init_cursor();
+    init_failed();
     init_head2();
     init_included();
     init_judge();
@@ -56506,11 +56623,15 @@ var init_source2 = __esm({
 // src/core/code/pass/index.ts
 var pass_exports = {};
 __export(pass_exports, {
+  COUNT_ATTEMPTS: () => COUNT_ATTEMPTS,
+  RETRY_AFTER_MS: () => RETRY_AFTER_MS,
   createCodePass: () => createCodePass,
   headAfterMove: () => headAfterMove,
   mainStoreSource: () => mainStoreSource,
   readRecount: () => readRecount,
-  recountKey: () => recountKey
+  readUncountable: () => readUncountable,
+  recountKey: () => recountKey,
+  uncountableKey: () => uncountableKey
 });
 import { rmSync as rmSync12 } from "node:fs";
 function createCodePass(options) {
@@ -56524,9 +56645,12 @@ function createCodePass(options) {
   let running = null;
   let again = false;
   let closed = false;
+  let timer = null;
+  let budgeted = false;
   const shut = () => {
     store?.close();
     store = null;
+    budgeted = false;
   };
   const open6 = (policy) => {
     if (store !== null) return store;
@@ -56556,8 +56680,13 @@ function createCodePass(options) {
     }
     const opened = open6(policy);
     if (opened === null) return;
+    if (!budgeted) restartRetries(opened.meta, options.worktreeId, now());
+    budgeted = true;
     counter ??= options.counter();
-    const loaded = await counter;
+    const loaded = await counter.catch((error) => {
+      counter = null;
+      throw error;
+    });
     const report3 = await runPass({
       worktreeId: options.worktreeId,
       root: options.root,
@@ -56574,6 +56703,20 @@ function createCodePass(options) {
     });
     wasOff = false;
     if (report3 !== null) options.onPass?.(report3);
+    retryLater2(nextRetry(readUncountable(opened.meta, options.worktreeId)));
+  };
+  const retryLater2 = (at2) => {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+    if (at2 === null || closed) return;
+    timer = setTimeout(
+      () => {
+        timer = null;
+        self.nudge();
+      },
+      Math.max(0, at2 - now())
+    );
+    timer.unref();
   };
   const loop = async () => {
     do {
@@ -56589,7 +56732,7 @@ function createCodePass(options) {
     } while (again && !closed);
     running = null;
   };
-  return {
+  const self = {
     nudge() {
       if (closed) return;
       if (running !== null) again = true;
@@ -56599,16 +56742,20 @@ function createCodePass(options) {
     async close() {
       closed = true;
       await running;
+      retryLater2(null);
       shut();
     }
   };
+  return self;
 }
 var init_pass2 = __esm({
   "src/core/code/pass/index.ts"() {
     "use strict";
     init_store4();
+    init_failed();
     init_pass();
     init_cursor();
+    init_failed();
     init_source2();
   }
 });
@@ -56644,7 +56791,10 @@ function counterReady() {
     const created = new Parser3();
     created.setLanguage(language);
     tsx = created;
-  })();
+  })().catch((error) => {
+    loading2 = null;
+    throw error;
+  });
   return loading2;
 }
 function withCodeTree(language, text3, fn) {
@@ -57570,11 +57720,11 @@ function durationsOf(results2) {
   const max = sorted2.at(-1);
   if (max === void 0) return null;
   const rank2 = (p) => sorted2[Math.max(0, Math.ceil(p * sorted2.length) - 1)] ?? max;
-  const fail = timed.filter((r) => r.outcome === "fail").length;
+  const fail2 = timed.filter((r) => r.outcome === "fail").length;
   return {
     results: timed.length,
-    pass: timed.length - fail,
-    fail,
+    pass: timed.length - fail2,
+    fail: fail2,
     skip: results2.length - timed.length,
     minMs: sorted2[0] ?? max,
     medianMs: rank2(0.5),
@@ -58872,6 +59022,7 @@ init_fs();
 init_text();
 
 // src/cli/code-report.ts
+init_failed();
 init_code_deliver();
 init_code_since();
 init_code_told();
@@ -58941,7 +59092,7 @@ function regularBytes(path) {
   }
 }
 var formatOf = (blob) => blob.length === 64 ? "sha256" : "sha1";
-function behindOnDisk(root, files2, states) {
+function behindOnDisk(root, files2, states, uncountable) {
   const judged = /* @__PURE__ */ new Map();
   for (const s of states) {
     const own = judged.get(s.check.path);
@@ -58954,13 +59105,13 @@ function behindOnDisk(root, files2, states) {
     if (bytes2 === null) continue;
     const blob = blobHash(bytes2, formatOf(f.blob));
     const own = judged.get(f.path) ?? [];
-    if (blob === f.blob && own.every((s) => s.blob === blob)) continue;
+    if (blob === f.blob && (own.every((s) => s.blob === blob) || uncountable.has(f.path))) continue;
     const revision = Math.min(f.revision, ...own.map((s) => s.countedAt));
     behind.set(f.path, { size: bytes2.byteLength, revision });
   }
   return behind;
 }
-function notJudged(code, files2, states, behind) {
+function notJudged(code, files2, states, behind, uncountable) {
   const unknown = /* @__PURE__ */ new Map();
   for (const s of states) {
     if (s.outcome === "unknown") unknown.set(s.check.path, (unknown.get(s.check.path) ?? 0) + 1);
@@ -58969,6 +59120,10 @@ function notJudged(code, files2, states, behind) {
     const late = behind.get(f.path);
     if (late !== void 0) return [{ path: f.path, reason: "pending", ...late }];
     if (isTooBig(f)) return [{ path: f.path, reason: "too-big", size: f.size }];
+    const spent = uncountable.get(f.path);
+    if (spent !== void 0) {
+      return [{ path: f.path, reason: "could-not-count", size: f.size, error: spent.error }];
+    }
     const count2 = code.counts.get(f.blob, f.language, f.counterVersion);
     if (count2 === null) return [{ path: f.path, reason: "not-counted", size: f.size }];
     if (count2.errors.length === 0) return [];
@@ -58982,7 +59137,8 @@ function readCodeReport(main2, code, worktreeId, policy, options) {
   const files2 = code.files.list(worktreeId).filter((f) => keep(f.path));
   const functionsOf = countsOf2(code, worktreeId);
   const states = code.states.list(worktreeId, { measure: "complexity" });
-  const behind = options.paths === null || options.root === void 0 ? /* @__PURE__ */ new Map() : behindOnDisk(options.root, files2, states);
+  const uncountable = uncountableFiles(code, worktreeId, files2);
+  const behind = options.paths === null || options.root === void 0 ? /* @__PURE__ */ new Map() : behindOnDisk(options.root, files2, states, uncountable);
   const since = options.changed ? codeSince(main2, worktreeId, options.shell) : void 0;
   const changed2 = since === void 0 ? null : new Set(
     since === null ? [] : changedSince(code, worktreeId, since).map((s) => key2(s.check))
@@ -59004,7 +59160,7 @@ function readCodeReport(main2, code, worktreeId, policy, options) {
     ...since === void 0 ? {} : { changedSince: since === null ? null : { revision: since.since, scope: since.scope } },
     ...to === void 0 ? {} : { told: to === null ? null : { scope: to.scope } },
     functions,
-    files: notJudged(code, files2, states, behind)
+    files: notJudged(code, files2, states, behind, uncountable)
   };
 }
 
@@ -60980,6 +61136,8 @@ function fileLine(f, limit) {
       return `  ${f.path}: not counted yet`;
     case "pending":
       return `  ${f.path}: pending: changed since revision ${f.revision}, not counted yet`;
+    case "could-not-count":
+      return `  ${f.path}: unknown: could not count (${f.error})`;
   }
 }
 function whatListed({ threshold, changedSince: changedSince4, told }) {
@@ -61699,10 +61857,10 @@ var AppServer = class {
   constructor(cwd, env, timeoutMs) {
     this.timeoutMs = timeoutMs;
     this.child = spawn3("codex", ["app-server"], { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
-    let fail = () => {
+    let fail2 = () => {
     };
     this.failed = new Promise((_, reject) => {
-      fail = (error) => {
+      fail2 = (error) => {
         this.failure ??= error;
         reject(this.failure);
       };
@@ -61711,7 +61869,7 @@ var AppServer = class {
     });
     this.exited = new Promise((resolve28) => this.child.on("close", () => resolve28()));
     this.child.on("error", (error) => {
-      fail(
+      fail2(
         new AppServerError(
           error.code === "ENOENT" ? "codex is not on PATH; install the Codex CLI, or trust the hooks with /hooks in the Codex TUI" : `cannot start codex app-server: ${error.message}`
         )
@@ -61719,7 +61877,7 @@ var AppServer = class {
     });
     this.child.on("close", (code, signal2) => {
       const why2 = this.lastStderr === "" ? "" : `: ${this.lastStderr}`;
-      fail(new AppServerError(`codex app-server exited (${signal2 ?? `code ${code}`})${why2}`));
+      fail2(new AppServerError(`codex app-server exited (${signal2 ?? `code ${code}`})${why2}`));
     });
     this.child.stdin.on("error", () => {
     });
@@ -61741,7 +61899,7 @@ var AppServer = class {
         try {
           message3 = JSON.parse(line);
         } catch {
-          fail(
+          fail2(
             new AppServerError(
               `codex app-server wrote a line that is not JSON: ${line.slice(0, 120)}`
             )
