@@ -57,8 +57,8 @@ The audit: a Vitest setup file that wraps `TierYields.prototype.check` and logs 
 | --- | --- | --- | --- |
 | `tier-yields-claim.test.ts` | 2 | yields of tiers with no known duration at 30 s; now 2 yields with known durations, under 30 s | yes |
 | `tier-yields-ended.test.ts` | 2 | the same; now 1 yield, 1 supersession, known | yes |
-| `tier-yields-fairness.test.ts` case 5 | 2 | `catchUpSide` with no policy (line 79). The yield to the g1 edit (line 90) is the overrun's, at 30,003 ms (31,795 ms on CI attempt 2): exposed as `tier-yields-claim` was. Its no-yield check (line 97) is weak: with the cut mark removed, the main version passes and a pinned copy fails at line 97 | no |
-| `tier-ended-files.test.ts` | 4 | `oneRunning` (line 83) says "A, B and C of `ms` known each" but has no policy. Its 4 cuts are supersessions, which do not depend on durations, so the 30 s race does not reach it. Its no-cancel checks are weak: with the 30 s threshold dropped, the main version passes all 5 cases and a pinned copy fails 3 (lines 133, 156, 207) | no |
+| `tier-yields-fairness.test.ts` case 5 | 2 | `catchUpSide` with no policy (line 79). The yield to the g1 edit (line 90) is the overrun's, at 30,003 ms (31,795 ms on CI attempt 2): exposed as `tier-yields-claim` was. Its no-yield check (line 97) is weak: with the cut mark removed, the main version passes and a pinned copy fails at line 97 | row 011-174 |
+| `tier-ended-files.test.ts` | 4 | `oneRunning` (line 83) says "A, B and C of `ms` known each" but has no policy. Its 4 cuts are supersessions, which do not depend on durations, so the 30 s race does not reach it. Its no-cancel checks are weak: with the 30 s threshold dropped, the main version passes all 5 cases and a pinned copy fails 3 (lines 131, 154, 205 of the file on main) | row 011-174 |
 | `editor-scratch.test.ts` | 3 | no policy; the 3 cuts are supersessions; its file is 100 ms known, so the remainder rule keeps it on either start | not needed |
 | `focused.test.ts` | 1 | pins its own `BASELINE`; 1 yield with known durations | not needed |
 
@@ -96,3 +96,30 @@ Tests only; no product change (the coordinator's reply to request 5a6a03b3: "No 
 ## Does the default start's 30 s overrun yield match C4 step 5?
 
 Yes: C4 step 5 counts a file with no known duration as 0 and says a tier also yields when it has run 30 s past its estimate, so a tier with no known durations yields 30 s after its start, as 011-107's notes found under `lookup-only`.
+
+## Row 011-174: the two tests left (2026-10-24)
+
+The coordinator resumed this worker on `cez/32fe48c6` after `5dac4b72e` (board row 011-174, main `8dd84a8d7`). Shape: repair, tests only. No load phase.
+
+| Commit | File | Change |
+| --- | --- | --- |
+| `8bf1c0848` | `test/scheduler/tier-yields-fairness.test.ts` | case 5's `catchUpSide` passes `policy: RUN_MISSING`, so the four files have the 100 s their runs stored; the poll for the yield to the g1 edit waits `SETTLE_MS` |
+| `0d5fdbc3a` | `test/scheduler/tier-ended-files.test.ts` | `oneRunning`'s `catchUpSide` passes `policy: RUN_MISSING`, so A, B and C have their `ms`; its cut polls are supersessions and stay at `CUT_WITHIN_MS` |
+
+Red before, each on the committed file with one product mutation, reverted after the run (`git checkout -- src/core/scheduler/yields.ts`):
+
+1. The cut mark removed (`#decide` never returns `{ kind: "cut" }`): case 5 fails at `expect(again.cancelled).toBe(false)`, line 99. On main it passed (above).
+2. The 30 s threshold dropped (`remainderMs > 0` yields): `tier-ended-files.test.ts` fails 3 of its 5 cases at `expect(tier.cancelled).toBe(false)`, lines 136, 159 and 210 (131, 154 and 205 on main). Line 162, in line 159's case, is not reached once 159 fails; it comes after B's end, when every file of the tier has ended, so no yield has a file to cut there.
+3. Case 5 with the new `SETTLE_MS` poll and no `RUN_MISSING` (a copy outside the suite's include): it fails at the poll, line 92, as the overrun cut comes 30 s after the tier's start.
+
+Durations on this host: case 5 takes 1.8 s (about 30 s before, 31.8 s on CI attempt 2). `tier-ended-files.test.ts` is unchanged: its case "an ended file a later revision re-keys alone…" takes 60.1 s on main and with the pin, as B's run takes a minute.
+
+Squeal's FAILs at revisions 28 and 31 in this worktree are the two mutation windows; each cleared at the next revision.
+
+Corrections to the 011-169 sections above:
+
+- The line numbers 133, 156 and 207 for `tier-ended-files.test.ts` were those of a copy with two lines added at its top; the table now names the lines on main. Board row 011-174 quotes the copy's numbers.
+- The probe, audit and copy files were in `.ai/cezar/t/32fe48c6/probe/`. That directory was emptied when this worker was resumed, so they are gone. The audit hook above and the probe's description are what is left.
+
+With these two files, every test file the 011-169 audit found with no start policy and a weak check or a cut poll exposed to the overrun bound is pinned. No other row is open from that audit.
+
