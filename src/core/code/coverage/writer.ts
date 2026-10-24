@@ -23,6 +23,11 @@ export interface CoverageWriterOptions {
   readonly now?: () => EpochMs;
   readonly log: (text: string) => void;
   readonly waitsMs?: readonly number[];
+  /**
+   * After each record is stored (row 015-12): the code pass judges CRAP
+   * again. A throw is logged, never the writer's.
+   */
+  readonly onStored?: () => void;
 }
 
 /** Spec 015 D8: maps each payload and stores its record at its result's key. */
@@ -31,6 +36,8 @@ export interface CoverageWriter {
   collected(run: CoverageRun): void;
   /** Resolves once nothing is mapped or waits. */
   idle(): Promise<void>;
+  /** A payload is queued or mapped, or a record waits for its result (row 015-12). */
+  busy(): boolean;
   /** Stops waiting, deletes the payloads not mapped yet and closes the code store. */
   close(): Promise<void>;
 }
@@ -88,6 +95,11 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       job.record,
       now(),
     );
+    try {
+      options.onStored?.();
+    } catch (error) {
+      options.log(`coverage: after storing ${job.file.testFile.path}: ${String(error)}`);
+    }
   };
   const later = (job: Job): void => {
     const wait = waits[job.attempt];
@@ -139,6 +151,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       for (const file of run.files) queue.push({ runId: run.runId, file, attempt: 0 });
       start();
     },
+    busy: () => running !== null || waiting > 0 || queue.length > 0,
     idle() {
       if (running === null && waiting === 0) return Promise.resolve();
       settled ??= new Promise<void>((resolve) => {
