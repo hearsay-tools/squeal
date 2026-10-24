@@ -1,6 +1,13 @@
+import type { TestFileRef } from "./types/index.js";
+
 /** `1 check`, `2 checks`: the count and the word, with an `s` unless the count is one. */
 export function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+
+/** A test file as status names it: the project, when there is one, leads the path. */
+export function testFileText({ project, path }: TestFileRef): string {
+  return project === "" ? path : `${project}: ${path}`;
 }
 
 /** `text` cut to at most `max` characters, ending in `...` when cut. */

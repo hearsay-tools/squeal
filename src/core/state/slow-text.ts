@@ -1,4 +1,4 @@
-import { plural } from "../text.js";
+import { plural, testFileText } from "../text.js";
 import type {
   SlowPendingCounts,
   SlowTierActivity,
@@ -119,9 +119,7 @@ export function slowWaitText(command: string, open: number): string {
 export function slowAffectedText(slow: SlowPendingCounts | undefined, command: string): string {
   const n = slow?.testFiles ?? 0;
   if (slow === undefined || n === 0) return "";
-  const shown = (slow.files ?? []).map(({ project, path }) =>
-    project === "" ? path : `${project}: ${path}`,
-  );
+  const shown = (slow.files ?? []).map(testFileText);
   const rest = n - shown.length;
   const named =
     shown.length === 0

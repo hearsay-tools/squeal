@@ -1,6 +1,7 @@
 import { toKnownFailure } from "../../core/state/index.js";
 import { shortCommit } from "../../core/status/format-status.js";
 import { formatCheck } from "../../core/status/index.js";
+import { atText } from "../../core/status/test-frame.js";
 import { plural } from "../../core/text.js";
 import type {
   KnownState,
@@ -47,9 +48,7 @@ export function testCommandReason(answer: TestCommandAnswer): string {
     ...failures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,
       ...(f.summary === "" ? [] : [`        ${f.summary}`]),
-      ...(f.location === null
-        ? []
-        : [`        at ${f.location.path}:${f.location.line}:${f.location.column}`]),
+      ...(f.location === null ? [] : [`        ${atText(f.location, undefined)}`]),
     ]),
     "Squeal does not cover typecheck, build, or test suites it is not configured for. " +
       "Run the command again to run it anyway; it will not be stopped again this session.",
