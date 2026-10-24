@@ -29,6 +29,8 @@ export interface CountRules {
   decision(at: At, cursor: TreeCursor): DecisionKind | null;
   /** Whether the walk enters the node's children. */
   descend(at: At): boolean;
+  /** An `ERROR` node around valid syntax the grammar lacks: no parse error. */
+  grammarGap(error: Node): boolean;
 }
 
 export interface TreeCount {
@@ -76,7 +78,7 @@ export function countTree(root: Node, text: string, rules: CountRules): TreeCoun
         parentType !== null && rules.fieldParents.has(parentType) ? cursor.currentFieldName : null;
       const at: At = { type, named, field, parentType };
       const exit: Exit = { scope: false, frame: false, error: false };
-      if (findErrors && inError === 0 && (type === "ERROR" || cursor.nodeIsMissing)) {
+      if (findErrors && inError === 0 && isError(cursor, rules)) {
         errors.push(rangeAt(cursor));
         exit.error = type === "ERROR";
         if (exit.error) inError++;
@@ -135,6 +137,12 @@ export function countTree(root: Node, text: string, rules: CountRules): TreeCoun
     if (exit.scope) names.pop();
     if (exit.error) inError--;
   }
+}
+
+/** An `ERROR` or a `MISSING` node, unless `rules` read it as a gap of the grammar. */
+function isError(cursor: TreeCursor, rules: CountRules): boolean {
+  if (cursor.nodeIsMissing) return true;
+  return cursor.nodeType === "ERROR" && !rules.grammarGap(cursor.currentNode);
 }
 
 /** D2: each function's 0-based index among the file's functions of the same qualified name. */
