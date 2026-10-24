@@ -49,6 +49,18 @@ describe("store: a test file's results under its newest key (011-154)", () => {
     ]);
   });
 
+  // Review 0.1.279 N1: on a tie of the newest record time, the row stored last names the key.
+  it("takes the key of the row stored last when two rows share the newest record time", () => {
+    const store = open(fakeCommonDir());
+    store.results.putMany([{ ...result(testCheck("a"), "first"), durationMs: 10 }]);
+    store.results.putMany([{ ...result(testCheck("b"), "second"), durationMs: 100 }]);
+    expect(
+      store.results
+        .newestForTestFile(A)
+        .map((r) => [r.check, r.key, r.durationMs, r.provenance.recordedAt]),
+    ).toEqual([[testCheck("b"), "second", 100, 1_000]]);
+  });
+
   it("never advances last-used", () => {
     const store = open(fakeCommonDir());
     store.results.putMany([result(testCheck("one"), "k1", { recordedAt: 3 })]);
