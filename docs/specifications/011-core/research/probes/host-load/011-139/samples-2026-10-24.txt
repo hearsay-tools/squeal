@@ -1,0 +1,444 @@
+11:36:26 load  66.7 busy 23.8 nice  1.0 squeal  3.6 gate  1.3c open held  3 top  2 cezar | cezar: edit 1p 0.4c / backlog 3permits 3p 0.9c
+11:36:34 load  68.2 busy 23.9 nice  1.2 squeal  1.8 gate  1.2c open held  3 top  2 cezar | cezar: edit 1p 0.4c / backlog 3permits 3p 0.8c
+11:36:42 load  69.5 busy 23.9 nice  0.9 squeal  1.4 gate  3.8c open held  3 top  2 cezar | cezar: edit 0p 0.0c / backlog 3permits 3p 0.7c
+11:36:50 load  68.4 busy 23.9 nice  1.2 squeal  2.0 gate  3.7c open held  3 top  2 cezar | cezar: edit 1p 0.8c / backlog 3permits 3p 0.7c
+11:36:59 load  69.7 busy 23.9 nice  1.2 squeal  1.5 gate  2.7c open held  5 top  2 cezar | cezar: edit 0p 0.0c / backlog 5permits 5p 1.2c
+11:37:07 load  70.2 busy 23.8 nice  1.4 squeal  1.9 gate  1.3c open held  5 top  2 cezar | cezar: edit 0p 0.0c / backlog 5permits 5p 1.4c
+11:37:15 load  71.2 busy 23.9 nice  1.8 squeal  2.4 gate  1.6c open held  5 top  2 cezar | cezar: edit 0p 0.0c / backlog 5permits 5p 2.0c
+11:37:23 load  70.4 busy 23.9 nice  2.0 squeal  2.4 gate  1.9c open held  5 top  2 cezar | cezar: edit 0p 0.0c / backlog 5permits 5p 2.0c
+11:37:32 load  69.6 busy 23.9 nice  1.4 squeal  2.0 gate  3.0c open held  5 top  2 cezar | cezar: edit 0p 0.0c / backlog 5permits 5p 1.4c; squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:37:40 load  67.9 busy 23.9 nice  1.7 squeal  2.9 gate  1.8c open held  4 top  2 cezar | cezar: edit 0p 0.0c / backlog 4permits 4p 1.6c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:37:48 load  68.3 busy 23.9 nice  1.6 squeal  2.7 gate  2.1c open held  4 top  2 cezar | cezar: edit 0p 0.0c / backlog 4permits 4p 1.6c; squeal: edit 1p 0.5c / backlog 0permits 0p 0.0c; tmp: edit 1p 0.2c / backlog 0permits 0p 0.0c
+11:37:56 load  68.0 busy 23.9 nice  1.6 squeal  2.3 gate  1.9c open held  4 top  2 cezar | cezar: edit 0p 0.0c / backlog 4permits 4p 1.5c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:38:05 load  66.1 busy 23.9 nice  1.5 squeal  2.1 gate  1.9c open held  4 top  2 cezar | cezar: edit 0p 0.0c / backlog 4permits 4p 1.3c; squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:38:13 load  66.6 busy 23.9 nice  1.5 squeal  1.6 gate  1.7c open held  3 top  1 cezar | cezar: edit 0p 0.0c / backlog 3permits 3p 1.1c; squeal: edit 1p 0.5c / backlog 0permits 0p 0.0c
+11:38:21 load  66.7 busy 23.8 nice  1.2 squeal  1.9 gate  1.1c open held  3 top  1 cezar | cezar: edit 0p 0.0c / backlog 3permits 3p 0.9c
+11:38:29 load  66.1 busy 23.9 nice  1.2 squeal  1.4 gate  0.8c open held  3 top  1 cezar | cezar: edit 0p 0.0c / backlog 3permits 3p 1.0c
+11:38:37 load  65.1 busy 23.8 nice  1.3 squeal  1.7 gate  1.3c open held  3 top  1 cezar | cezar: edit 0p 0.0c / backlog 3permits 3p 1.2c
+11:38:45 load  64.8 busy 23.8 nice  0.9 squeal  1.3 gate  2.0c open held  3 top  1 cezar | cezar: edit 0p 0.0c / backlog 3permits 2p 0.8c
+11:38:54 load  64.0 busy 23.8 nice  0.9 squeal  1.4 gate  1.6c open held  3 top  1 cezar | cezar: edit 0p 0.0c / backlog 3permits 3p 1.1c; tmp: edit 2p 0.2c / backlog 0permits 0p 0.0c
+11:39:02 load  63.3 busy 23.8 nice  0.9 squeal  1.1 gate  1.1c open held  3 top  1 cezar | cezar: edit 0p 0.0c / backlog 3permits 3p 0.9c
+11:39:10 load  61.4 busy 23.7 nice  1.0 squeal  1.3 gate  0.9c open held  3 top  1 cezar | cezar: edit 0p 0.0c / backlog 3permits 3p 1.0c
+11:39:18 load  63.1 busy 23.8 nice  1.4 squeal  1.4 gate  1.2c open held  3 top  1 cezar | cezar: edit 0p 0.0c / backlog 3permits 3p 1.3c
+11:39:26 load  61.9 busy 23.7 nice  1.1 squeal  1.5 gate  0.7c open held  2 top  1 cezar | cezar: edit 0p 0.0c / backlog 2permits 2p 0.8c
+11:39:34 load  60.9 busy 23.7 nice  1.4 squeal  0.9 gate  0.8c open held  2 top  1 cezar | cezar: edit 0p 0.0c / backlog 2permits 2p 0.8c
+11:39:42 load  60.4 busy 23.7 nice  0.7 squeal  1.0 gate  0.8c open held  2 top  1 cezar | cezar: edit 0p 0.0c / backlog 2permits 2p 0.7c
+11:39:51 load  60.7 busy 23.7 nice  0.5 squeal  0.9 gate  0.7c open held  2 top  1 cezar | cezar: edit 0p 0.0c / backlog 2permits 2p 0.7c
+11:39:59 load  59.3 busy 23.7 nice  0.7 squeal  1.5 gate  0.7c open held  2 top  1 cezar | cezar: edit 0p 0.0c / backlog 2permits 2p 0.7c
+11:40:07 load  57.8 busy 23.5 nice  0.5 squeal  1.5 gate  0.8c open held  2 top  1 cezar | cezar: edit 0p 0.0c / backlog 2permits 2p 0.7c
+11:40:15 load  56.7 busy 23.6 nice  0.4 squeal  0.8 gate  0.8c open held  2 top  1 cezar | cezar: edit 0p 0.0c / backlog 2permits 2p 0.6c
+11:40:23 load  58.0 busy 23.6 nice  1.0 squeal  1.9 gate  2.4c open held  2 top  1 cezar | cezar: edit 0p 0.0c / backlog 2permits 1p 0.6c
+11:40:31 load  58.8 busy 23.6 nice  1.0 squeal  2.2 gate  1.4c open held  2 top  1 cezar | cezar: edit 0p 0.0c / backlog 2permits 1p 1.4c
+11:40:39 load  58.9 busy 23.7 nice  1.5 squeal  3.4 gate  3.1c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 0p 1.8c; squeal: edit 2p 0.9c / backlog 0permits 0p 0.0c
+11:40:47 load  61.3 busy 23.4 nice  0.8 squeal  3.3 gate  3.6c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 0p 2.8c; squeal: edit 2p 0.3c / backlog 0permits 0p 0.0c
+11:40:56 load  63.4 busy 23.6 nice  0.4 squeal  2.2 gate  4.9c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 0p 1.5c; squeal: edit 2p 0.6c / backlog 0permits 0p 0.0c
+11:41:04 load  65.5 busy 23.7 nice  0.6 squeal  1.8 gate  3.5c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 3p 1.2c / backlog 0permits 0p 0.0c
+11:41:12 load  66.3 busy 23.6 nice  1.6 squeal  2.1 gate  2.2c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.7c / backlog 0permits 0p 0.0c
+11:41:20 load  66.9 busy 23.8 nice  1.2 squeal  2.4 gate  2.5c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 0p 0.6c; squeal: edit 3p 1.2c / backlog 0permits 0p 0.0c
+11:41:28 load  64.9 busy 23.8 nice  1.1 squeal  1.9 gate  1.1c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 0p 1.4c; squeal: edit 2p 0.1c / backlog 0permits 0p 0.0c
+11:41:36 load  64.0 busy 23.8 nice  0.8 squeal  2.7 gate  2.7c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 0p 1.3c; squeal: edit 2p 1.0c / backlog 0permits 0p 0.0c
+11:41:44 load  68.6 busy 23.8 nice  0.6 squeal  4.3 gate  2.5c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 0p 3.2c; squeal: edit 2p 0.7c / backlog 0permits 0p 0.0c
+11:41:53 load  67.6 busy 23.7 nice  0.7 squeal  0.2 gate  3.9c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 0p 0.4c; squeal: edit 1p -0.6c / backlog 0permits 0p 0.0c
+11:42:01 load  66.2 busy 23.7 nice  0.8 squeal  1.4 gate  1.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.8c; squeal: edit 1p 0.5c / backlog 0permits 0p 0.0c
+11:42:09 load  67.7 busy 23.7 nice  0.7 squeal  0.7 gate  1.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.1c; squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:42:17 load  67.3 busy 23.7 nice  0.8 squeal  1.0 gate  0.6c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.5c / backlog 0permits 0p 0.0c
+11:42:25 load  67.2 busy 23.7 nice  1.6 squeal  0.8 gate  0.7c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:42:33 load  67.2 busy 23.8 nice  1.4 squeal  0.9 gate  0.7c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:42:42 load  71.5 busy 23.8 nice  1.5 squeal  0.8 gate  0.7c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:42:50 load  71.6 busy 23.7 nice  1.6 squeal  1.0 gate  0.8c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.5c / backlog 0permits 0p 0.0c
+11:42:58 load  73.6 busy 23.8 nice  1.6 squeal  0.9 gate  0.8c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:43:06 load  72.5 busy 23.8 nice  1.7 squeal  1.4 gate  0.7c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.5c / backlog 0permits 0p 0.0c; tmp: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:43:14 load  73.9 busy 23.8 nice  1.9 squeal  1.1 gate  0.8c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:43:23 load  73.7 busy 23.7 nice  2.0 squeal  0.9 gate  0.7c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:43:31 load  71.0 busy 23.7 nice  1.9 squeal  0.2 gate  3.3c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 0p -0.4c
+11:43:39 load  70.5 busy 23.6 nice  2.4 squeal  1.8 gate  3.3c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.4c
+11:43:47 load  73.3 busy 23.6 nice  1.7 squeal  1.1 gate  1.5c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.7c
+11:43:55 load  74.5 busy 23.7 nice  1.7 squeal  1.5 gate  1.1c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.9c
+11:44:03 load  73.7 busy 23.5 nice  2.1 squeal  1.6 gate  1.4c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.2c
+11:44:11 load  73.9 busy 23.8 nice  2.4 squeal  2.3 gate  1.9c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.7c
+11:44:20 load  74.3 busy 23.7 nice  2.5 squeal  2.4 gate  1.9c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.4c
+11:44:28 load  75.7 busy 23.8 nice  2.0 squeal  2.0 gate  1.7c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.1c
+11:44:36 load  76.3 busy 23.6 nice  1.9 squeal  2.0 gate  1.4c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.2c
+11:44:44 load  76.0 busy 23.7 nice  2.9 squeal  2.1 gate  1.8c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.6c
+11:44:53 load  75.3 busy 23.6 nice  2.6 squeal  2.1 gate  2.0c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.7c
+11:45:01 load  74.6 busy 23.6 nice  2.5 squeal  2.5 gate  1.8c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.6c
+11:45:09 load  75.2 busy 23.8 nice  2.8 squeal  3.8 gate  1.9c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.8c
+11:45:17 load  74.4 busy 23.7 nice  3.3 squeal  3.5 gate  2.0c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 2.2c
+11:45:25 load  74.5 busy 23.8 nice  3.0 squeal  3.9 gate  2.4c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.8c
+11:45:33 load  76.1 busy 23.9 nice  2.1 squeal  2.5 gate  1.9c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.3c
+11:45:42 load  74.9 busy 24.0 nice  1.4 squeal  1.6 gate  1.4c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.9c
+11:45:50 load  76.8 busy 23.9 nice  1.5 squeal  1.3 gate  1.4c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.9c
+11:45:58 load  77.7 busy 24.0 nice  1.4 squeal  1.4 gate  1.2c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.8c
+11:46:06 load  76.7 busy 24.0 nice  1.3 squeal  1.2 gate  1.2c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.9c
+11:46:14 load  81.6 busy 24.0 nice  1.3 squeal  1.4 gate  1.2c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.9c
+11:46:23 load  81.0 busy 23.9 nice  1.2 squeal  1.3 gate  1.1c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.9c
+11:46:31 load  79.5 busy 24.0 nice  1.5 squeal  1.6 gate  1.3c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.1c
+11:46:39 load  74.9 busy 23.8 nice  2.7 squeal  2.3 gate  1.3c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 3permits 3p 1.7c
+11:46:47 load  71.3 busy 22.4 nice  7.1 squeal  4.2 gate  2.5c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 3permits 3p 3.7c
+11:46:55 load  65.8 busy 22.9 nice  5.7 squeal  4.6 gate  5.1c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.6c / backlog 3permits 3p 3.5c
+11:47:03 load  61.7 busy 23.2 nice  5.9 squeal  4.6 gate  4.4c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 0.5c / backlog 3permits 3p 3.6c
+11:47:11 load  58.2 busy 20.1 nice  6.4 squeal  3.5 gate  3.6c open held  3 top  2 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 0.5c; squeal: edit 1p 0.5c / backlog 2permits 2p 2.3c
+11:47:19 load  52.5 busy 15.0 nice  4.8 squeal  2.9 gate  4.6c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.6c; squeal: edit 1p 0.7c / backlog 1permits 1p 1.4c
+11:47:27 load  49.4 busy 14.1 nice  2.8 squeal  2.8 gate  3.0c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 0.5c / backlog 1permits 1p 1.8c
+11:47:35 load  43.8 busy 14.5 nice  2.6 squeal  2.8 gate  2.6c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 0.6c / backlog 1permits 1p 1.6c
+11:47:43 load  41.3 busy 17.4 nice  2.3 squeal  3.0 gate  2.4c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 0.5c / backlog 1permits 1p 1.5c
+11:47:52 load  39.5 busy 18.0 nice  2.8 squeal  2.2 gate  2.0c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 1permits 1p 1.5c
+11:48:00 load  35.8 busy 13.6 nice  1.4 squeal -2.1 gate  0.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c
+11:48:08 load  34.3 busy 16.3 nice  1.1 squeal  0.9 gate  0.0c open held  0 top  0 - | 
+11:48:16 load  35.6 busy 21.0 nice  1.3 squeal  1.1 gate  1.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.8c
+11:48:24 load  33.4 busy 21.1 nice  1.6 squeal  0.8 gate  0.8c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c
+11:48:32 load  32.7 busy 22.4 nice  1.2 squeal  2.0 gate  1.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c
+11:48:40 load  34.1 busy 23.0 nice  1.3 squeal  1.5 gate  1.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.6c
+11:48:48 load  34.5 busy 22.6 nice  0.8 squeal  1.6 gate  1.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; tmp: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:48:56 load  33.5 busy 23.1 nice  1.3 squeal  1.3 gate  0.7c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; tmp: edit 1p 0.2c / backlog 0permits 0p 0.0c
+11:49:05 load  35.7 busy 23.5 nice  0.7 squeal  0.7 gate  0.5c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c
+11:49:13 load  36.1 busy 23.7 nice  0.7 squeal  1.1 gate  1.0c open held  0 top  0 - | squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:49:21 load  36.7 busy 23.9 nice  0.5 squeal  1.7 gate  1.5c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:49:29 load  40.5 busy 23.9 nice  0.5 squeal  1.5 gate  1.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:49:37 load  39.8 busy 24.0 nice  0.3 squeal  1.1 gate  1.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.2c / backlog 0permits 0p 0.0c
+11:49:46 load  41.5 busy 24.0 nice  0.3 squeal  1.6 gate  0.5c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:49:54 load  43.3 busy 24.0 nice  0.7 squeal  0.9 gate  0.6c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:50:02 load  43.8 busy 24.0 nice  0.7 squeal  0.7 gate  0.6c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:50:10 load  46.2 busy 24.0 nice  0.6 squeal  0.8 gate  0.6c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:50:19 load  48.5 busy 24.0 nice  0.5 squeal  1.1 gate  0.5c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:50:27 load  48.4 busy 24.0 nice  0.6 squeal  1.0 gate  0.5c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 1p 0.3c / backlog 0permits 0p 0.0c
+11:50:35 load  48.6 busy 24.0 nice  0.7 squeal  1.5 gate  0.7c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.5c / backlog 0permits 0p 0.0c
+11:50:43 load  47.7 busy 24.0 nice  0.3 squeal  1.5 gate  1.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.4c / backlog 0permits 0p 0.0c
+11:50:52 load  48.3 busy 24.0 nice  0.4 squeal  1.7 gate  0.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c
+11:51:00 load  49.0 busy 24.0 nice  0.4 squeal  1.6 gate  0.4c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c
+11:51:08 load  47.7 busy 24.0 nice  0.4 squeal  1.1 gate  0.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c
+11:51:17 load  50.2 busy 24.0 nice  0.2 squeal  1.1 gate  0.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c
+11:51:25 load  48.7 busy 24.0 nice  0.4 squeal  1.6 gate  0.2c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c
+11:51:33 load  47.3 busy 23.8 nice  0.6 squeal  2.3 gate  0.2c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c
+11:51:41 load  46.4 busy 23.7 nice  0.4 squeal  0.8 gate  0.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c
+11:51:49 load  45.1 busy 23.8 nice  0.9 squeal  1.5 gate  3.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.0c / backlog 0permits 0p 0.0c
+11:51:57 load  44.0 busy 23.6 nice  1.7 squeal  2.2 gate  2.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 3p 1.9c / backlog 0permits 0p 0.0c
+11:52:05 load  44.9 busy 23.8 nice  1.8 squeal  1.7 gate  1.4c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 2p 1.0c / backlog 0permits 0p 0.0c
+11:52:14 load  43.8 busy 23.6 nice  1.3 squeal  1.8 gate  1.4c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 2p 1.3c / backlog 0permits 0p 0.0c
+11:52:22 load  44.5 busy 23.7 nice  1.1 squeal  0.9 gate  1.6c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 1p 0.1c / backlog 0permits 0p 0.0c
+11:52:30 load  46.0 busy 23.7 nice  1.1 squeal  1.5 gate  4.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 1.0c / backlog 0permits 0p 0.0c
+11:52:38 load  46.0 busy 23.6 nice  1.6 squeal  2.6 gate  2.1c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 2.1c / backlog 0permits 0p 0.0c
+11:52:46 load  46.4 busy 23.8 nice  2.1 squeal  2.8 gate  2.7c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 2.3c / backlog 0permits 0p 0.0c
+11:52:54 load  48.8 busy 23.9 nice  1.9 squeal  2.1 gate  2.2c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.8c / backlog 0permits 0p 0.0c
+11:53:03 load  50.3 busy 23.9 nice  1.3 squeal  2.5 gate  2.1c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.6c / backlog 0permits 0p 0.0c
+11:53:11 load  50.6 busy 23.9 nice  1.6 squeal  2.7 gate  2.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.7c / backlog 0permits 0p 0.0c
+11:53:19 load  51.9 busy 23.8 nice  1.3 squeal -3.5 gate  4.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p -3.9c / backlog 0permits 0p 0.0c
+11:53:27 load  52.1 busy 23.8 nice  1.9 squeal  2.4 gate 16.9c shut held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.4c / backlog 15permits 15p 0.6c
+11:53:35 load  63.4 busy 24.0 nice  3.5 squeal  5.0 gate  4.7c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 0.8c / backlog 15permits 15p 3.8c
+11:53:43 load  66.7 busy 23.9 nice  3.2 squeal  4.2 gate  4.8c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.2c / backlog 15permits 16p 2.5c
+11:53:52 load  66.7 busy 23.9 nice  2.7 squeal  4.2 gate  4.0c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 1.3c / backlog 15permits 15p 2.2c
+11:54:00 load  72.4 busy 23.8 nice  2.4 squeal  3.9 gate  3.6c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.1c / backlog 15permits 15p 2.3c
+11:54:08 load  78.8 busy 23.9 nice  2.1 squeal  4.0 gate  3.6c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.1c / backlog 15permits 16p 1.9c
+11:54:16 load  78.0 busy 23.8 nice  2.1 squeal  3.8 gate  3.4c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 0.9c / backlog 15permits 15p 2.1c
+11:54:24 load  77.6 busy 24.0 nice  2.6 squeal  4.3 gate  3.2c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 0.9c / backlog 15permits 14p 2.6c
+11:54:32 load  77.9 busy 24.0 nice  2.9 squeal  4.8 gate  3.8c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 0.9c / backlog 15permits 15p 3.0c
+11:54:40 load  77.7 busy 24.0 nice  3.0 squeal  4.5 gate  4.0c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.4c / backlog 15permits 15p 2.6c
+11:54:49 load  74.0 busy 23.9 nice  2.2 squeal  3.3 gate 16.7c shut held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 1.6c / backlog 15permits 8p 1.3c
+11:54:57 load  75.2 busy 23.9 nice  3.6 squeal  5.1 gate 16.6c shut held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.1c / backlog 15permits 15p 3.7c
+11:55:05 load  80.3 busy 24.0 nice  3.6 squeal  5.3 gate  4.9c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.0c / backlog 15permits 15p 3.5c
+11:55:13 load  84.6 busy 24.0 nice  2.1 squeal  4.4 gate  4.3c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 0.7c / backlog 15permits 15p 2.7c
+11:55:21 load  90.2 busy 24.0 nice  2.7 squeal  4.7 gate  3.8c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 1.2c / backlog 15permits 15p 2.9c
+11:55:29 load  96.7 busy 24.0 nice  3.2 squeal  4.9 gate  4.3c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 0.9c / backlog 15permits 16p 3.2c
+11:55:38 load 104.0 busy 23.9 nice  3.8 squeal  5.0 gate  4.8c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 0.8c / backlog 15permits 15p 3.6c
+11:55:46 load 103.2 busy 24.0 nice  3.3 squeal  5.0 gate  4.8c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.1c / backlog 15permits 15p 3.4c
+11:55:54 load  98.8 busy 24.0 nice  3.1 squeal  4.5 gate  4.6c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.0c / backlog 15permits 15p 3.2c
+11:56:02 load  99.4 busy 24.0 nice  3.4 squeal  4.7 gate  4.6c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 0.9c / backlog 15permits 16p 3.0c
+11:56:10 load 101.4 busy 24.0 nice  3.5 squeal  4.1 gate  4.0c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 0.1c / backlog 15permits 15p 3.2c
+11:56:19 load 101.2 busy 24.0 nice  3.4 squeal  4.9 gate  3.8c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 3p 1.0c / backlog 15permits 15p 3.1c
+11:56:27 load  98.9 busy 24.0 nice  3.9 squeal  4.3 gate  4.8c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 3p 1.3c / backlog 15permits 15p 2.5c
+11:56:35 load  94.1 busy 24.0 nice  3.2 squeal  4.2 gate  4.4c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 0.8c / backlog 15permits 15p 3.1c
+11:56:43 load  92.7 busy 24.0 nice  3.2 squeal  4.7 gate  4.0c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 3p 0.9c / backlog 15permits 15p 3.2c
+11:56:51 load  91.0 busy 23.9 nice  3.2 squeal  4.8 gate  4.7c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 3p 0.9c / backlog 15permits 15p 3.5c
+11:57:00 load  89.8 busy 24.0 nice  3.0 squeal  4.4 gate  4.3c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 3p 1.1c / backlog 15permits 15p 3.0c
+11:57:08 load  90.0 busy 23.9 nice  3.0 squeal  4.5 gate  4.5c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.2c / backlog 15permits 15p 3.0c
+11:57:16 load  88.6 busy 24.0 nice  3.4 squeal  4.8 gate  4.5c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 0.9c / backlog 15permits 15p 3.5c
+11:57:24 load  89.0 busy 24.0 nice  3.0 squeal  4.5 gate  4.7c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.0c / backlog 15permits 15p 3.0c
+11:57:32 load  87.3 busy 24.0 nice  3.2 squeal  4.1 gate  3.9c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 3p 1.1c / backlog 15permits 15p 2.7c
+11:57:40 load  88.2 busy 23.9 nice  3.0 squeal  4.5 gate  4.3c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.1c / backlog 15permits 15p 3.0c
+11:57:49 load  86.7 busy 23.9 nice  2.9 squeal  5.3 gate  4.4c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 0.9c / backlog 15permits 15p 3.3c
+11:57:57 load  88.6 busy 23.9 nice  3.2 squeal  5.2 gate  4.2c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 3p 0.8c / backlog 15permits 15p 3.5c
+11:58:05 load  88.2 busy 24.0 nice  3.0 squeal  5.0 gate  5.0c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.3c / backlog 15permits 15p 3.0c
+11:58:13 load  87.2 busy 23.9 nice  3.2 squeal  1.0 gate  5.3c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 2p -3.2c / backlog 15permits 16p 3.7c
+11:58:21 load  87.5 busy 23.9 nice  2.9 squeal  4.5 gate  8.0c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 0.8c / backlog 15permits 15p 3.1c
+11:58:30 load  92.0 busy 23.9 nice  2.9 squeal  4.5 gate  4.4c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.3c / backlog 15permits 15p 2.9c
+11:58:38 load  93.5 busy 23.9 nice  2.7 squeal  4.4 gate  4.2c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.1c / backlog 15permits 15p 3.0c
+11:58:46 load  94.7 busy 23.9 nice  2.5 squeal  4.8 gate  4.3c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 4p 1.0c / backlog 15permits 16p 2.9c
+11:58:54 load  94.5 busy 23.9 nice  3.0 squeal  5.6 gate  4.3c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 1.3c / backlog 15permits 15p 3.2c
+11:59:03 load  98.4 busy 23.9 nice  3.1 squeal  5.2 gate  4.9c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 1.5c / backlog 15permits 15p 3.3c
+11:59:11 load  98.5 busy 23.9 nice  3.1 squeal  4.6 gate  4.7c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.2c / backlog 15permits 15p 3.0c
+11:59:19 load  97.2 busy 23.9 nice  2.8 squeal  4.5 gate  4.8c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.3c / backlog 15permits 15p 2.8c
+11:59:28 load  95.3 busy 24.0 nice  2.2 squeal  4.1 gate  4.4c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 1.0c / backlog 15permits 2p 2.7c
+11:59:36 load  88.3 busy 23.9 nice  2.0 squeal  3.3 gate  3.3c open held  3 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.5c / backlog 1permits 1p 0.1c
+11:59:44 load  83.2 busy 23.9 nice  2.1 squeal  2.9 gate  1.8c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 4p 1.8c / backlog 0permits 0p 0.0c
+11:59:52 load  79.6 busy 23.9 nice  2.1 squeal  2.9 gate  1.9c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.6c / backlog 0permits 0p 0.0c
+12:00:01 load  74.9 busy 23.9 nice  2.0 squeal  2.8 gate  6.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 6p 2.4c / backlog 0permits 0p 0.0c
+12:00:09 load  73.7 busy 24.0 nice  1.7 squeal  2.1 gate  5.4c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 5p 1.7c / backlog 0permits 0p 0.0c
+12:00:17 load  73.1 busy 24.0 nice  1.9 squeal  4.4 gate 16.6c shut held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 4p 1.1c / backlog 15permits 14p 2.2c
+12:00:25 load  73.2 busy 24.0 nice  2.8 squeal  4.5 gate  4.3c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 1.4c / backlog 1permits 0p 2.3c
+12:00:34 load  69.7 busy 23.9 nice  2.4 squeal  2.7 gate  1.8c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 2.2c / backlog 0permits 0p 0.0c
+12:00:42 load  66.8 busy 23.9 nice  2.1 squeal  1.1 gate  2.4c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 3p 0.8c / backlog 0permits 0p 0.0c
+12:00:50 load  62.4 busy 23.9 nice  2.0 squeal  2.0 gate  1.1c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 3p 1.6c / backlog 0permits 0p 0.0c
+12:00:58 load  61.7 busy 23.9 nice  2.2 squeal  1.9 gate  1.6c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.4c / backlog 0permits 0p 0.0c
+12:01:06 load  58.9 busy 23.8 nice  1.9 squeal  1.8 gate  1.6c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 3p 1.5c / backlog 0permits 0p 0.0c
+12:01:14 load  59.0 busy 23.9 nice  1.7 squeal  2.4 gate  1.5c open held  0 top  0 - | squeal: edit 3p 1.6c / backlog 0permits 0p 0.0c
+12:01:22 load  58.6 busy 23.8 nice  1.9 squeal  2.0 gate  2.5c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.5c / backlog 0permits 0p 0.0c
+12:01:30 load  56.4 busy 23.8 nice  2.7 squeal  2.7 gate  2.1c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 3p 2.3c / backlog 0permits 0p 0.0c
+12:01:39 load  55.1 busy 23.8 nice  1.9 squeal  2.0 gate  2.2c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.7c / backlog 0permits 0p 0.0c
+12:01:47 load  53.0 busy 23.8 nice  2.1 squeal  2.5 gate  2.9c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 3p 1.9c / backlog 0permits 0p 0.0c
+12:01:55 load  51.8 busy 23.8 nice  2.0 squeal  2.4 gate  2.3c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 3p 1.8c / backlog 0permits 0p 0.0c
+12:02:03 load  50.8 busy 23.9 nice  2.1 squeal  3.0 gate  2.2c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.7c / backlog 0permits 0p 0.0c
+12:02:11 load  49.5 busy 23.9 nice  2.1 squeal  1.9 gate 16.0c shut held 15 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 1.6c / backlog 14permits 0p 0.1c
+12:02:19 load  53.7 busy 23.9 nice  3.1 squeal  4.7 gate 15.4c open held 15 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 0.9c / backlog 14permits 14p 3.5c
+12:02:27 load  55.8 busy 23.9 nice  3.1 squeal  4.9 gate  4.6c open held 15 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 0.8c / backlog 14permits 14p 3.7c
+12:02:36 load  61.0 busy 23.9 nice  2.7 squeal  4.2 gate  4.6c open held 15 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 3p 0.7c / backlog 14permits 14p 3.0c
+12:02:44 load  66.4 busy 23.6 nice  4.9 squeal  7.8 gate  4.1c open held 15 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 2p 0.5c / backlog 14permits 14p 5.8c
+12:02:52 load  65.8 busy 23.4 nice  9.0 squeal 15.3 gate 10.9c open held 15 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 2p 1.8c / backlog 14permits 14p 9.6c
+12:03:00 load  64.9 busy 21.6 nice  8.9 squeal 15.7 gate 12.2c open held 15 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 2p 2.7c / backlog 14permits 14p 8.4c
+12:03:08 load  66.0 busy 22.8 nice  9.0 squeal 16.9 gate 11.3c open held 15 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 2p 2.1c / backlog 14permits 14p 9.8c
+12:03:16 load  60.5 busy 21.4 nice  7.8 squeal 14.0 gate 12.5c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 0.1c / backlog 3permits 3p 9.4c
+12:03:24 load  60.2 busy 18.6 nice  7.7 squeal 11.8 gate 15.9c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 1.3c / backlog 15permits 15p 7.9c
+12:03:32 load  58.8 busy 22.6 nice 10.9 squeal 16.1 gate 14.3c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 1.2c / backlog 15permits 15p 12.8c
+12:03:40 load  58.7 busy 22.8 nice 10.9 squeal 17.8 gate 15.0c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 0.8c / backlog 15permits 15p 14.9c
+12:03:49 load  58.1 busy 23.0 nice 12.3 squeal 17.9 gate 14.9c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 0.9c / backlog 15permits 15p 15.1c
+12:03:57 load  57.4 busy 23.2 nice 10.6 squeal 14.4 gate 16.5c shut held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 1p 1.0c / backlog 15permits 15p 11.4c
+12:04:05 load  53.6 busy 21.2 nice  8.5 squeal  9.7 gate 11.7c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 15permits 15p 11.0c
+12:04:13 load  51.7 busy 21.3 nice  9.5 squeal 15.7 gate 12.9c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 15permits 15p 15.2c
+12:04:21 load  52.2 busy 22.3 nice 10.6 squeal 16.4 gate 16.1c shut held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 15permits 15p 15.4c
+12:04:29 load  53.2 busy 22.4 nice 11.2 squeal 16.0 gate 16.1c shut held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 15permits 15p 14.2c
+12:04:37 load  55.9 busy 22.1 nice 11.2 squeal 15.0 gate 14.6c open held 16 top 15 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 15permits 15p 14.2c
+12:04:45 load  53.7 busy 21.8 nice 11.5 squeal 16.0 gate 15.5c open held 16 top 15 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 14.0c
+12:04:53 load  50.7 busy 19.0 nice  9.7 squeal 15.7 gate 14.4c open held 16 top 15 squeal | squeal: edit 0p 0.0c / backlog 16permits 17p 14.2c
+12:05:01 load  45.5 busy 13.9 nice  6.7 squeal  9.3 gate 12.8c open held  3 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 2permits 2p 8.3c
+12:05:09 load  40.6 busy  7.7 nice  2.6 squeal  2.8 gate  2.0c open held  3 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 2permits 2p 1.3c
+12:05:17 load  38.4 busy  9.4 nice  3.8 squeal  3.3 gate  1.8c open held  3 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 2permits 2p 1.3c
+12:05:25 load  39.6 busy 16.4 nice  8.1 squeal 10.9 gate 14.7c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.8c; squeal: edit 0p 0.0c / backlog 14permits 14p 9.5c
+12:05:33 load  38.0 busy 18.6 nice  8.9 squeal 13.4 gate 14.2c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 1p 0.3c / backlog 14permits 14p 12.4c
+12:05:41 load  36.5 busy 17.3 nice  8.8 squeal 10.9 gate 11.9c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 0p 0.0c / backlog 14permits 14p 10.1c
+12:05:50 load  38.1 busy 21.5 nice 11.3 squeal 15.5 gate 11.3c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 14permits 14p 13.9c
+12:05:58 load  39.3 busy 22.1 nice 10.6 squeal 14.6 gate 13.5c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 11.7c
+12:06:06 load  39.5 busy 21.1 nice  9.2 squeal 12.4 gate 10.7c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 14permits 14p 10.7c
+12:06:14 load  41.8 busy 22.4 nice  9.9 squeal 14.5 gate 14.1c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 13.0c
+12:06:22 load  42.3 busy 21.6 nice  9.3 squeal 12.5 gate 12.3c open held 16 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 0p 0.0c / backlog 15permits 14p 10.3c
+12:06:30 load  43.1 busy 22.7 nice 11.2 squeal 16.0 gate 15.8c open held 16 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 2p 2.0c / backlog 15permits 16p 12.3c
+12:06:38 load  42.8 busy 22.4 nice 12.1 squeal 15.9 gate 15.7c open held 12 top  9 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 1p 2.3c / backlog 11permits 11p 11.9c
+12:06:46 load  40.2 busy 16.9 nice  9.2 squeal 10.1 gate 12.2c open held  4 top  2 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 3permits 2p 7.1c
+12:06:54 load  41.2 busy 17.3 nice  7.4 squeal  9.0 gate  9.4c open held 10 top  7 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.8c; squeal: edit 1p 0.3c / backlog 9permits 9p 7.8c
+12:07:02 load  41.9 busy 15.8 nice  7.8 squeal 10.4 gate 10.9c open held 13 top  7 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.2c / backlog 12permits 12p 9.1c
+12:07:10 load  40.0 busy 14.5 nice  7.3 squeal  8.4 gate  9.8c open held 12 top  7 squeal | squeal: edit 1p 0.0c / backlog 12permits 12p 7.9c
+12:07:18 load  35.7 busy 13.3 nice  5.8 squeal  9.6 gate  8.3c open held 11 top  7 squeal | squeal: edit 0p 0.0c / backlog 11permits 11p 8.9c
+12:07:26 load  33.5 busy 14.2 nice  6.3 squeal 10.5 gate  8.3c open held 11 top  7 squeal | squeal: edit 0p 0.0c / backlog 11permits 11p 9.2c
+12:07:34 load  29.7 busy 13.3 nice  7.2 squeal  8.1 gate  9.0c open held 11 top  7 squeal | squeal: edit 0p 0.0c / backlog 11permits 11p 7.7c
+12:07:42 load  28.5 busy 13.6 nice  6.8 squeal  9.0 gate  8.1c open held 11 top  7 squeal | squeal: edit 0p 0.0c / backlog 11permits 11p 8.7c
+12:07:50 load  26.3 busy 15.6 nice  8.4 squeal 12.2 gate 10.5c open held  9 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 0.0c; squeal: edit 0p 0.0c / backlog 8permits 8p 10.8c
+12:07:59 load  27.0 busy 14.2 nice  6.2 squeal  7.8 gate  9.2c open held  8 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 7permits 7p 6.9c
+12:08:07 load  27.2 busy 20.2 nice  6.1 squeal  8.1 gate 12.8c open held 10 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 1p 1.6c / backlog 9permits 9p 5.9c
+12:08:15 load  26.4 busy 21.4 nice  6.7 squeal  8.6 gate 10.3c open held 10 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 4p 2.1c / backlog 9permits 9p 6.2c
+12:08:23 load  27.7 busy 22.2 nice  6.8 squeal  7.4 gate 11.3c open held 10 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 0p 0.0c / backlog 9permits 9p 5.5c
+12:08:31 load  27.7 busy 21.2 nice  6.0 squeal 10.4 gate  6.6c open held 10 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 9permits 9p 6.7c
+12:08:39 load  28.3 busy 21.6 nice  5.3 squeal  9.2 gate 11.1c open held 10 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 9permits 9p 6.6c
+12:08:47 load  28.8 busy 21.6 nice  6.3 squeal  9.8 gate 14.6c open held 13 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 1.7c / backlog 12permits 12p 7.5c
+12:08:55 load  35.1 busy 23.3 nice  6.9 squeal 11.1 gate 14.9c open held 13 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 12permits 12p 8.7c
+12:09:03 load  42.7 busy 23.5 nice  7.2 squeal 11.3 gate 12.8c open held 13 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 2p 1.2c / backlog 12permits 12p 8.8c
+12:09:11 load  43.8 busy 23.3 nice  7.0 squeal 11.1 gate 12.7c open held 12 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 2p 1.6c / backlog 11permits 11p 8.2c
+12:09:20 load  48.0 busy 23.3 nice  6.1 squeal 10.2 gate 10.2c open held 11 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 2p 1.9c / backlog 10permits 10p 7.0c
+12:09:28 load  49.7 busy 23.3 nice  6.5 squeal 10.4 gate  7.9c open held 11 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 10permits 10p 8.5c
+12:09:36 load  48.1 busy 20.4 nice  7.5 squeal 10.7 gate  8.0c open held  9 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 8permits 8p 10.4c
+12:09:44 load  46.7 busy 17.8 nice  7.8 squeal 11.9 gate 16.8c shut held 15 top  7 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 0.1c; squeal: edit 0p 0.0c / backlog 14permits 13p 10.9c
+12:09:52 load  45.5 busy 19.7 nice  8.8 squeal 15.7 gate 15.4c open held 14 top  7 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 0.8c; squeal: edit 0p 0.0c / backlog 13permits 13p 12.6c
+12:10:00 load  45.0 busy 21.5 nice  9.9 squeal 14.7 gate 15.2c open held 16 top  7 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.6c; squeal: edit 0p 0.0c / backlog 15permits 15p 11.8c
+12:10:08 load  43.9 busy 21.8 nice 10.4 squeal 18.0 gate 14.6c open held 16 top  7 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 15permits 15p 14.9c
+12:10:16 load  41.9 busy 21.6 nice 10.2 squeal 17.4 gate 14.0c open held 15 top  7 squeal | squeal: edit 0p 0.0c / backlog 15permits 16p 15.3c
+12:10:24 load  40.5 busy 20.7 nice  9.4 squeal 17.1 gate 15.4c open held 15 top  7 squeal | squeal: edit 0p 0.0c / backlog 15permits 15p 14.4c
+12:10:32 load  41.6 busy 21.5 nice  9.7 squeal 17.3 gate 16.1c shut held 16 top  7 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 15.0c
+12:10:40 load  43.1 busy 22.4 nice  9.0 squeal 15.3 gate 14.3c open held 16 top  7 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 13.3c
+12:10:48 load  45.8 busy 22.6 nice  9.2 squeal 16.1 gate 17.7c shut held 16 top  7 squeal | squeal: edit 4p 2.0c / backlog 16permits 16p 13.6c
+12:10:57 load  46.8 busy 22.4 nice 10.5 squeal 17.5 gate 13.5c open held 15 top  7 squeal | squeal: edit 0p 0.0c / backlog 15permits 15p 15.3c
+12:11:05 load  52.5 busy 22.7 nice 10.1 squeal 17.9 gate 16.6c shut held 15 top  7 squeal | squeal: edit 0p 0.0c / backlog 15permits 15p 16.6c
+12:11:13 load  53.3 busy 21.5 nice  8.7 squeal 16.7 gate 14.1c open held 15 top  7 squeal | squeal: edit 0p 0.0c / backlog 15permits 15p 15.3c
+12:11:21 load  53.7 busy 22.4 nice  9.7 squeal 17.0 gate 15.1c open held 15 top  7 squeal | squeal: edit 0p 0.0c / backlog 15permits 15p 15.2c
+12:11:29 load  51.3 busy 20.6 nice  8.6 squeal 13.3 gate 15.4c open held 14 top  7 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 12.9c
+12:11:37 load  49.3 busy 21.6 nice  9.8 squeal 14.7 gate 10.8c open held 10 top  7 squeal | squeal: edit 0p 0.0c / backlog 10permits 11p 11.9c
+12:11:45 load  46.7 busy 22.4 nice  7.7 squeal 13.4 gate 18.3c shut held 11 top  7 squeal | squeal: edit 4p 1.8c / backlog 11permits 10p 10.6c
+12:11:53 load  49.6 busy 22.9 nice  7.9 squeal 15.7 gate 11.0c open held 11 top  7 squeal | squeal: edit 0p 0.0c / backlog 11permits 11p 11.6c
+12:12:01 load  51.1 busy 22.6 nice  9.9 squeal 15.8 gate 12.7c open held 11 top  5 squeal | squeal: edit 0p 0.0c / backlog 11permits 11p 14.2c
+12:12:09 load  47.2 busy 18.2 nice  5.8 squeal 12.9 gate 14.2c open held  9 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.3c; squeal: edit 0p 0.0c / backlog 8permits 8p 9.1c
+12:12:17 load  44.8 busy 16.0 nice  4.4 squeal 10.6 gate  8.7c open held  8 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 1.2c; squeal: edit 0p 0.0c / backlog 7permits 7p 6.5c
+12:12:25 load  40.8 busy 17.0 nice  5.1 squeal 10.8 gate  7.7c open held  9 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.2c; squeal: edit 0p 0.0c / backlog 8permits 8p 6.9c
+12:12:33 load  36.2 busy 13.4 nice  5.2 squeal  8.8 gate  8.6c open held  9 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.4c; squeal: edit 0p 0.0c / backlog 8permits 8p 6.8c
+12:12:41 load  34.5 busy 14.2 nice  6.0 squeal  9.3 gate  9.2c open held  9 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.5c; squeal: edit 0p 0.0c / backlog 8permits 8p 7.5c
+12:12:50 load  31.0 busy 14.6 nice  5.5 squeal  9.6 gate 12.3c open held 12 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.4c; squeal: edit 0p 0.0c / backlog 11permits 11p 7.6c
+12:12:58 load  30.4 busy 17.8 nice  7.6 squeal 11.6 gate 11.5c open held 11 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.4c; squeal: edit 0p 0.0c / backlog 10permits 10p 9.8c
+12:13:06 load  27.9 busy 15.4 nice  6.8 squeal  8.7 gate 10.3c open held 11 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.4c; squeal: edit 0p 0.0c / backlog 10permits 10p 7.1c
+12:13:14 load  25.4 busy 14.8 nice  5.9 squeal  9.3 gate  9.3c open held 11 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.4c; squeal: edit 0p 0.0c / backlog 10permits 10p 7.2c
+12:13:22 load  24.9 busy 16.2 nice  6.1 squeal 11.7 gate  8.9c open held 11 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.5c; squeal: edit 0p 0.0c / backlog 10permits 10p 7.6c
+12:13:30 load  23.7 busy 15.3 nice  5.7 squeal  9.1 gate  8.8c open held 11 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.4c; squeal: edit 0p 0.0c / backlog 10permits 10p 6.8c
+12:13:38 load  23.5 busy 19.3 nice  8.7 squeal 12.9 gate 13.7c open held 12 top  4 squeal | cezar: edit 0p 0.0c / backlog 2permits 2p 1.6c; squeal: edit 1p 0.8c / backlog 10permits 10p 10.0c
+12:13:46 load  23.8 busy 17.4 nice  7.8 squeal 12.5 gate 15.8c open held 16 top  5 squeal | cezar: edit 0p 0.0c / backlog 2permits 2p 1.6c; squeal: edit 1p 0.3c / backlog 14permits 14p 9.2c
+12:13:54 load  26.0 busy 21.4 nice 10.3 squeal 16.2 gate 13.2c open held 15 top  5 squeal | cezar: edit 0p 0.0c / backlog 2permits 2p 2.0c; squeal: edit 0p 0.0c / backlog 13permits 13p 11.9c
+12:14:02 load  26.4 busy 18.8 nice  9.9 squeal 11.8 gate 14.5c open held 13 top  5 squeal | cezar: edit 0p 0.0c / backlog 2permits 2p 1.6c; squeal: edit 1p 0.1c / backlog 11permits 11p 9.7c
+12:14:10 load  28.4 busy 18.1 nice  8.7 squeal 12.4 gate 13.3c open held 14 top  6 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 11.3c
+12:14:18 load  30.9 busy 22.5 nice 11.5 squeal 18.7 gate 16.0c shut held 14 top  6 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 17.0c
+12:14:26 load  31.3 busy 21.2 nice 11.1 squeal 17.3 gate 16.9c shut held 14 top  6 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 16.8c
+12:14:34 load  32.9 busy 23.0 nice 12.6 squeal 18.5 gate 16.1c shut held 14 top  6 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 17.6c
+12:14:42 load  35.3 busy 22.9 nice 13.3 squeal 19.0 gate 21.5c shut held 14 top  6 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 18.5c
+12:14:50 load  38.5 busy 23.0 nice 12.4 squeal 18.5 gate 18.1c shut held 14 top  6 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 17.6c
+12:14:59 load  38.4 busy 22.8 nice 13.1 squeal 18.3 gate 17.6c shut held 13 top  6 squeal | squeal: edit 0p 0.0c / backlog 13permits 13p 18.1c
+12:15:07 load  39.0 busy 22.4 nice 13.3 squeal 18.9 gate 18.4c shut held 13 top  6 squeal | squeal: edit 0p 0.0c / backlog 13permits 13p 18.7c
+12:15:15 load  37.8 busy 22.7 nice 12.5 squeal 18.0 gate 18.7c shut held 13 top  6 squeal | squeal: edit 0p 0.0c / backlog 13permits 13p 17.7c
+12:15:23 load  36.2 busy 21.0 nice 11.6 squeal 16.1 gate 16.6c shut held 11 top  6 squeal | squeal: edit 0p 0.0c / backlog 11permits 11p 15.9c
+12:15:31 load  36.3 busy 16.7 nice  9.0 squeal 12.8 gate 16.1c shut held 11 top  6 squeal | squeal: edit 0p 0.0c / backlog 11permits 11p 12.6c
+12:15:39 load  34.5 busy 16.5 nice  8.1 squeal  8.8 gate 11.3c open held  8 top  5 squeal | squeal: edit 0p 0.0c / backlog 8permits 7p 8.5c
+12:15:47 load  33.7 busy 20.1 nice 10.6 squeal 15.1 gate 15.3c open held 14 top  5 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 14.9c
+12:15:55 load  38.0 busy 22.8 nice 12.8 squeal 17.8 gate 14.8c open held 14 top  5 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 17.6c
+12:16:03 load  37.4 busy 21.6 nice 11.1 squeal 15.4 gate 17.3c shut held 13 top  5 squeal | squeal: edit 0p 0.0c / backlog 13permits 13p 14.4c
+12:16:11 load  36.6 busy 21.7 nice 11.1 squeal 16.2 gate 16.2c shut held 13 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 12permits 12p 15.1c
+12:16:19 load  39.9 busy 22.7 nice  9.8 squeal 14.5 gate 13.9c open held 12 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.1c; squeal: edit 0p 0.0c / backlog 11permits 11p 12.5c
+12:16:27 load  40.2 busy 21.6 nice 10.1 squeal 16.3 gate 16.0c shut held 14 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.3c; squeal: edit 0p 0.0c / backlog 13permits 13p 13.4c
+12:16:36 load  40.2 busy 21.5 nice 11.9 squeal 17.6 gate 15.0c open held 14 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.1c; squeal: edit 0p 0.0c / backlog 13permits 13p 16.3c
+12:16:44 load  36.8 busy 20.6 nice 11.3 squeal 15.9 gate 16.7c shut held 11 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.3c; squeal: edit 0p 0.0c / backlog 10permits 10p 14.7c
+12:16:52 load  35.3 busy 16.8 nice  8.0 squeal  8.8 gate 13.9c open held  8 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.4c; squeal: edit 0p 0.0c / backlog 7permits 7p 6.9c
+12:17:00 load  35.0 busy 19.0 nice 10.2 squeal 14.9 gate 12.1c open held 11 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.3c; squeal: edit 0p 0.0c / backlog 10permits 10p 12.6c
+12:17:08 load  34.1 busy 15.9 nice  8.1 squeal 11.5 gate 13.5c open held 11 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.4c; squeal: edit 0p 0.0c / backlog 10permits 10p 9.9c
+12:17:16 load  38.2 busy 22.8 nice 11.5 squeal 17.2 gate 18.8c shut held 12 top  3 squeal | cezar: edit 0p 0.0c / backlog 2permits 2p 1.7c; squeal: edit 2p 0.9c / backlog 10permits 10p 14.5c
+12:17:24 load  36.1 busy 19.8 nice 10.4 squeal 15.2 gate 16.0c shut held 10 top  3 squeal | cezar: edit 0p 0.0c / backlog 2permits 2p 1.7c; squeal: edit 0p 0.0c / backlog 8permits 8p 12.3c
+12:17:32 load  34.9 busy 17.9 nice  8.5 squeal 13.5 gate 12.8c open held 10 top  3 squeal | cezar: edit 0p 0.0c / backlog 2permits 2p 1.8c; squeal: edit 0p 0.0c / backlog 8permits 8p 10.5c
+12:17:40 load  31.5 busy 17.9 nice  9.0 squeal 13.6 gate 11.1c open held  9 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 8permits 8p 11.0c
+12:17:48 load  32.0 busy 18.8 nice  9.8 squeal 13.7 gate 16.1c shut held 14 top  5 cezar | cezar: edit 0p 0.0c / backlog 6permits 6p 4.6c; squeal: edit 0p 0.0c / backlog 8permits 8p 9.1c
+12:17:56 load  30.0 busy 19.6 nice  8.7 squeal 13.7 gate 14.5c open held 16 top  5 squeal | cezar: edit 0p 0.0c / backlog 6permits 6p 4.8c; squeal: edit 0p 0.0c / backlog 10permits 10p 7.6c
+12:18:04 load  30.5 busy 22.3 nice  9.9 squeal 14.1 gate 15.4c open held 16 top  5 squeal | cezar: edit 0p 0.0c / backlog 6permits 6p 5.3c; squeal: edit 0p 0.0c / backlog 10permits 10p 6.5c
+12:18:12 load  31.8 busy 22.9 nice 10.9 squeal 17.0 gate 13.8c open held 16 top  5 squeal | cezar: edit 0p 0.0c / backlog 6permits 7p 5.0c; squeal: edit 0p 0.0c / backlog 10permits 10p 10.2c
+12:18:20 load  31.1 busy 21.4 nice  9.5 squeal 16.0 gate 15.7c open held 13 top  5 squeal | cezar: edit 0p 0.0c / backlog 3permits 3p 3.6c; squeal: edit 0p 0.0c / backlog 10permits 10p 10.4c
+12:18:28 load  33.6 busy 21.1 nice 10.2 squeal 14.8 gate 14.9c open held 12 top  5 squeal | cezar: edit 0p 0.0c / backlog 2permits 2p 1.4c; squeal: edit 0p 0.0c / backlog 10permits 10p 12.6c
+12:18:36 load  33.3 busy 21.3 nice 10.0 squeal 15.8 gate 14.6c open held 12 top  5 squeal | cezar: edit 0p 0.0c / backlog 2permits 2p 2.1c; squeal: edit 0p 0.0c / backlog 10permits 10p 12.6c
+12:18:45 load  30.6 busy 18.2 nice  8.3 squeal 11.3 gate 13.4c open held 10 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 9permits 9p 10.6c
+12:18:53 load  29.2 busy 15.3 nice  5.9 squeal  9.0 gate  8.3c open held 10 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 0p 0.0c / backlog 9permits 9p 8.2c
+12:19:01 load  28.4 busy 12.8 nice  4.5 squeal  7.3 gate  9.6c open held  9 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 0.5c; squeal: edit 0p 0.0c / backlog 8permits 8p 6.1c
+12:19:09 load  26.4 busy 10.7 nice  4.0 squeal  6.4 gate  5.6c open held  6 top  3 squeal | squeal: edit 0p 0.0c / backlog 6permits 6p 5.7c
+12:19:17 load  24.8 busy  7.4 nice  2.3 squeal  4.2 gate  4.5c open held  5 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.8c; squeal: edit 0p 0.0c / backlog 4permits 4p 3.4c
+12:19:25 load  24.1 busy 15.3 nice  7.4 squeal 11.7 gate 13.6c open held 16 top 13 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 11.2c
+12:19:33 load  26.0 busy 18.1 nice  8.8 squeal 13.9 gate 16.0c open held 16 top 13 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 13.3c
+12:19:41 load  28.4 busy 20.0 nice  9.9 squeal 14.2 gate 12.5c open held 16 top 13 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 13.7c
+12:19:49 load  31.8 busy 21.7 nice  9.5 squeal 14.4 gate 12.7c open held 16 top 13 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 13.2c
+12:19:57 load  33.3 busy 21.9 nice 10.4 squeal 17.8 gate 14.1c open held 16 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 15permits 15p 14.8c
+12:20:05 load  38.1 busy 21.5 nice 12.1 squeal 15.9 gate 15.3c open held 16 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 15permits 15p 13.3c
+12:20:13 load  37.1 busy 12.9 nice  6.8 squeal  9.3 gate 17.0c shut held 10 top  7 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 4p 0.2c / backlog 9permits 9p 8.6c
+12:20:21 load  33.8 busy 14.2 nice  6.5 squeal  8.2 gate  8.9c open held  7 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 4p 2.9c / backlog 6permits 6p 4.3c
+12:20:29 load  29.7 busy 11.0 nice  3.9 squeal  7.6 gate  4.9c open held  3 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.6c; squeal: edit 1p 2.4c / backlog 2permits 2p 0.5c
+12:20:37 load  30.6 busy 19.5 nice 11.0 squeal 15.9 gate 17.2c shut held 15 top 12 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.8c; squeal: edit 2p 3.1c / backlog 14permits 14p 11.6c
+12:20:45 load  28.2 busy 12.9 nice  7.0 squeal  9.6 gate 13.9c open held 15 top 12 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 2p 1.4c / backlog 14permits 14p 7.8c
+12:20:53 load  27.6 busy 10.8 nice  5.1 squeal  6.7 gate  7.2c open held 15 top 12 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 1p 0.2c / backlog 14permits 14p 5.8c
+12:21:01 load  27.2 busy 16.6 nice  9.1 squeal 11.7 gate  9.2c open held 13 top 10 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 12permits 12p 11.3c
+12:21:10 load  24.9 busy 16.6 nice  7.5 squeal  9.4 gate  8.5c open held 11 top  8 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.8c; squeal: edit 0p 0.0c / backlog 10permits 10p 7.2c
+12:21:18 load  24.3 busy 12.2 nice  6.0 squeal  7.5 gate  8.6c open held 10 top  7 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 0p 0.0c / backlog 9permits 9p 5.4c
+12:21:26 load  22.3 busy 11.4 nice  6.9 squeal  8.4 gate  6.7c open held  8 top  5 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 0p 0.0c / backlog 7permits 7p 7.6c
+12:21:34 load  19.5 busy  6.5 nice  3.0 squeal  3.0 gate  6.3c open held  4 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 0p 0.0c / backlog 3permits 3p 2.3c
+12:21:42 load  26.6 busy 20.8 nice 12.4 squeal 16.8 gate 13.6c open held 16 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 15permits 15p 15.5c
+12:21:50 load  26.8 busy 18.6 nice 11.8 squeal 15.9 gate 16.7c shut held 15 top 13 squeal | squeal: edit 0p 0.0c / backlog 15permits 15p 15.5c
+12:21:58 load  26.9 busy 19.6 nice 13.6 squeal 18.5 gate 16.3c shut held 14 top 13 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 18.2c
+12:22:06 load  30.7 busy 19.0 nice 13.1 squeal 17.1 gate 17.5c shut held 12 top 11 squeal | squeal: edit 0p 0.0c / backlog 12permits 12p 16.8c
+12:22:14 load  32.9 busy 20.5 nice 11.9 squeal 16.9 gate 21.4c shut held 12 top 11 squeal | squeal: edit 3p 1.5c / backlog 12permits 12p 15.3c
+12:22:22 load  31.2 busy 15.3 nice  9.3 squeal 14.3 gate 16.5c shut held 11 top  9 squeal | squeal: edit 0p 0.0c / backlog 11permits 11p 12.6c
+12:22:30 load  27.9 busy 11.9 nice  6.0 squeal  9.9 gate 12.4c open held 11 top  8 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 10permits 10p 7.6c
+12:22:38 load  28.5 busy 14.9 nice  6.9 squeal 10.4 gate  8.2c open held  7 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 6permits 6p 7.6c
+12:22:46 load  26.0 busy 15.0 nice  8.4 squeal 11.9 gate  9.8c open held  6 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 5permits 5p 10.4c
+12:22:54 load  23.5 busy 11.0 nice  4.8 squeal  9.0 gate 13.7c open held  4 top  2 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 0.2c; squeal: edit 4p 1.2c / backlog 3permits 3p 5.8c
+12:23:02 load  23.8 busy 11.3 nice  3.1 squeal  7.9 gate  7.5c open held  3 top  2 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 3.2c; squeal: edit 0p 0.0c / backlog 2permits 2p 4.2c
+12:23:10 load  22.2 busy 15.4 nice  0.9 squeal  7.3 gate  7.8c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 5.6c; squeal: edit 0p 0.0c / backlog 1permits 1p 1.5c
+12:23:18 load  20.8 busy  9.0 nice  3.3 squeal  6.0 gate 13.4c open held 11 top  9 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 0p 0.0c / backlog 10permits 10p 5.2c
+12:23:26 load  21.5 busy 13.5 nice  5.2 squeal  9.9 gate  9.3c open held 10 top  9 squeal | squeal: edit 0p 0.0c / backlog 10permits 10p 9.1c
+12:23:34 load  20.8 busy 10.5 nice  4.1 squeal  8.3 gate 15.2c open held 16 top 15 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 8.1c
+12:23:42 load  20.0 busy 16.8 nice  7.3 squeal 11.8 gate 11.8c open held 16 top 15 squeal | squeal: edit 0p 0.0c / backlog 16permits 15p 11.3c
+12:23:50 load  22.2 busy 19.7 nice  8.2 squeal 14.0 gate 12.6c open held 16 top 15 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 12.6c
+12:23:59 load  23.0 busy 17.9 nice  8.5 squeal 13.6 gate 12.4c open held 16 top 15 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 13.1c
+12:24:07 load  22.8 busy 19.3 nice  9.9 squeal 14.1 gate 12.5c open held 16 top 15 squeal | squeal: edit 0p 0.0c / backlog 16permits 16p 13.0c
+12:24:15 load  22.3 busy 15.9 nice  8.3 squeal 12.3 gate 13.0c open held 15 top 14 squeal | squeal: edit 0p 0.0c / backlog 15permits 15p 12.2c
+12:24:23 load  20.8 busy  4.5 nice  1.3 squeal  1.9 gate  5.0c open held  2 top  1 squeal | squeal: edit 0p 0.0c / backlog 2permits 2p 1.8c
+12:24:31 load  26.3 busy 15.8 nice  8.8 squeal 12.6 gate 14.1c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.6c; squeal: edit 0p 0.0c / backlog 14permits 14p 11.8c
+12:24:39 load  27.5 busy 20.6 nice 10.7 squeal 14.9 gate 16.1c shut held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 14.2c
+12:24:47 load  26.8 busy 20.4 nice  9.1 squeal 14.1 gate 13.8c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 14permits 14p 12.7c
+12:24:55 load  28.4 busy 20.7 nice  9.1 squeal 14.8 gate 13.4c open held 13 top 12 squeal | squeal: edit 0p 0.0c / backlog 13permits 14p 13.3c
+12:25:03 load  27.5 busy 18.9 nice  7.8 squeal 14.0 gate 14.0c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 14permits 14p 12.5c
+12:25:11 load  27.7 busy 18.4 nice  9.6 squeal 13.0 gate 13.1c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 12.2c
+12:25:19 load  26.6 busy 18.4 nice 10.7 squeal 13.2 gate 13.3c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 12.7c
+12:25:27 load  25.7 busy 14.0 nice  7.8 squeal  9.0 gate  9.9c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 8.6c
+12:25:35 load  22.3 busy  8.3 nice  4.0 squeal  6.2 gate 10.5c open held  6 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.1c; squeal: edit 0p 0.0c / backlog 5permits 5p 5.7c
+12:25:43 load  21.2 busy  6.8 nice  2.7 squeal  1.1 gate  7.8c open held  3 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.6c; squeal: edit 0p 0.0c / backlog 2permits 1p 0.4c
+12:25:51 load  21.6 busy 18.2 nice 11.2 squeal 15.1 gate 14.6c open held 16 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 15permits 15p 14.6c
+12:25:59 load  20.3 busy 17.6 nice 10.4 squeal 13.7 gate 16.2c shut held 16 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 15permits 15p 13.3c
+12:26:07 load  21.3 busy 19.7 nice 11.0 squeal 14.2 gate 13.5c open held 15 top 14 squeal | squeal: edit 0p 0.0c / backlog 15permits 15p 13.9c
+12:26:15 load  23.0 busy 18.1 nice 10.3 squeal 15.6 gate 15.3c open held 16 top 14 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 0p 0.0c / backlog 15permits 15p 14.7c
+12:26:23 load  22.1 busy 17.9 nice  9.4 squeal 13.3 gate 15.1c open held 15 top 13 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 14permits 15p 11.6c
+12:26:31 load  20.8 busy 14.9 nice  6.7 squeal  9.5 gate 12.0c open held 10 top  8 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 9permits 9p 8.1c
+12:26:39 load  21.1 busy 13.1 nice  2.0 squeal  3.7 gate  7.0c open held  7 top  6 squeal | squeal: edit 0p 0.0c / backlog 7permits 7p 2.6c
+12:26:47 load  23.9 busy 17.1 nice  4.5 squeal  6.9 gate  6.2c open held  8 top  4 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 0p 0.0c / backlog 7permits 7p 4.5c; tmp: edit 1p 0.3c / backlog 0permits 0p 0.0c
+12:26:56 load  23.7 busy 17.1 nice  4.9 squeal  8.7 gate 16.2c shut held 15 top 10 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 6.0c
+12:27:04 load  23.4 busy 21.7 nice 10.3 squeal 13.9 gate 14.4c open held 15 top 10 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 12.3c
+12:27:12 load  25.2 busy 21.2 nice  8.2 squeal 13.9 gate 12.5c open held 15 top 10 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 10.4c; tmp: edit 3p 1.2c / backlog 0permits 0p 0.0c
+12:27:20 load  26.3 busy 18.9 nice  7.9 squeal 11.1 gate 10.7c open held 15 top 10 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 14permits 14p 9.2c
+12:27:28 load  26.6 busy 21.1 nice  8.8 squeal 15.1 gate 10.2c open held 14 top 10 squeal | squeal: edit 1p 0.3c / backlog 14permits 14p 11.9c; tmp: edit 1p 0.4c / backlog 0permits 0p 0.0c
+12:27:36 load  35.1 busy 19.5 nice  7.9 squeal 13.2 gate 11.1c open held 14 top 10 squeal | squeal: edit 0p 0.0c / backlog 14permits 14p 10.8c
+12:27:44 load  32.1 busy 15.9 nice  7.2 squeal  9.1 gate 11.6c open held 12 top  8 squeal | squeal: edit 0p 0.0c / backlog 12permits 12p 8.8c
+12:27:52 load  30.7 busy 15.1 nice  6.1 squeal  8.4 gate  8.9c open held 12 top  8 squeal | squeal: edit 0p 0.0c / backlog 12permits 12p 7.8c
+12:28:00 load  28.8 busy 13.1 nice  6.4 squeal  7.1 gate  7.8c open held  9 top  6 squeal | squeal: edit 0p 0.0c / backlog 9permits 9p 6.5c; tmp: edit 1p 0.1c / backlog 0permits 0p 0.0c
+12:28:08 load  28.1 busy  6.2 nice  2.2 squeal  2.9 gate  4.4c open held  5 top  3 squeal | squeal: edit 0p 0.0c / backlog 5permits 5p 2.4c; tmp: edit 1p 0.2c / backlog 0permits 0p 0.0c
+12:28:16 load  24.8 busy  5.7 nice  1.7 squeal  2.5 gate  2.5c open held  3 top  2 squeal | squeal: edit 0p 0.0c / backlog 3permits 3p 2.1c; tmp: edit 1p 0.1c / backlog 0permits 0p 0.0c
+12:28:24 load  24.2 busy 14.0 nice  8.2 squeal 12.3 gate 13.6c open held 14 top 11 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.1c; squeal: edit 0p 0.0c / backlog 13permits 13p 11.1c; tmp: edit 2p 0.5c / backlog 0permits 0p 0.0c
+12:28:32 load  24.4 busy 20.7 nice 11.7 squeal 15.9 gate 18.0c shut held 14 top 11 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.8c; squeal: edit 0p 0.0c / backlog 13permits 13p 14.5c
+12:28:40 load  25.7 busy 21.6 nice 11.6 squeal 13.6 gate 15.4c open held 13 top 11 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 12permits 12p 13.0c
+12:28:48 load  27.7 busy 20.9 nice 12.0 squeal 15.4 gate 14.0c open held 13 top 11 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 12permits 12p 14.5c
+12:28:56 load  28.2 busy 21.6 nice 11.3 squeal 15.3 gate 15.2c open held 13 top 11 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.4c; squeal: edit 0p 0.0c / backlog 12permits 12p 14.4c
+12:29:04 load  30.0 busy 22.3 nice 12.0 squeal 15.9 gate 15.2c open held 12 top 11 squeal | squeal: edit 0p 0.0c / backlog 12permits 12p 15.4c
+12:29:12 load  31.5 busy 22.0 nice 12.9 squeal 18.2 gate 15.6c open held 12 top 11 squeal | squeal: edit 0p 0.0c / backlog 12permits 12p 17.1c; tmp: edit 1p 1.0c / backlog 0permits 0p 0.0c
+12:29:21 load  31.2 busy 17.4 nice  9.0 squeal 11.7 gate 14.2c open held  9 top  8 squeal | squeal: edit 0p 0.0c / backlog 9permits 9p 11.0c
+12:29:29 load  27.9 busy 12.6 nice  5.0 squeal  7.3 gate 13.6c open held  5 top  4 squeal | squeal: edit 0p 0.0c / backlog 5permits 5p 6.2c
+12:29:37 load  26.8 busy 12.2 nice  3.7 squeal  4.4 gate  5.9c open held  3 top  2 squeal | squeal: edit 0p 0.0c / backlog 3permits 3p 4.4c
+12:29:45 load  24.4 busy 15.5 nice  7.3 squeal  9.9 gate  4.4c open held  3 top  2 squeal | squeal: edit 0p 0.0c / backlog 3permits 3p 9.8c
+12:29:53 load  23.1 busy 11.3 nice  4.7 squeal  6.3 gate  9.9c open held  2 top  1 squeal | squeal: edit 0p 0.0c / backlog 2permits 2p 6.1c
+12:30:01 load  20.5 busy  9.2 nice  4.0 squeal  5.0 gate  3.1c open held  4 top  3 squeal | squeal: edit 0p 0.0c / backlog 4permits 4p 4.8c
+12:30:09 load  18.2 busy  7.8 nice  1.8 squeal  2.4 gate  3.8c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.6c; squeal: edit 0p 0.0c / backlog 4permits 4p 1.1c
+12:30:17 load  17.2 busy  7.1 nice  1.1 squeal  1.5 gate  3.5c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 4permits 4p 0.6c
+12:30:25 load  15.5 busy  5.1 nice  1.1 squeal  1.4 gate  1.1c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 4permits 4p 0.5c
+12:30:33 load  14.6 busy  5.0 nice  0.8 squeal  0.8 gate  0.5c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 0p 0.0c / backlog 4permits 4p 0.4c
+12:30:41 load  13.7 busy  5.2 nice  0.8 squeal  0.8 gate  0.6c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 1p 0.2c / backlog 4permits 4p 0.3c
+12:30:49 load  12.0 busy  5.4 nice  0.6 squeal  0.9 gate  0.6c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 1p 0.2c / backlog 4permits 4p 0.3c
+12:30:57 load  12.3 busy  5.6 nice  0.5 squeal  0.7 gate  1.3c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 0p 0.2c; squeal: edit 1p 0.0c / backlog 4permits 4p 0.3c
+12:31:05 load  10.9 busy  5.0 nice  0.8 squeal  1.5 gate  1.2c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.7c; squeal: edit 0p 0.0c / backlog 4permits 4p 0.3c; tmp: edit 1p 0.2c / backlog 0permits 0p 0.0c
+12:31:13 load  10.4 busy  6.8 nice  1.4 squeal  1.8 gate  1.8c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.0c; squeal: edit 0p 0.0c / backlog 4permits 4p 0.8c; tmp: edit 1p 0.1c / backlog 0permits 0p 0.0c
+12:31:21 load  10.3 busy  6.6 nice  0.9 squeal  0.7 gate  1.0c open held  5 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.3c; squeal: edit 0p 0.0c / backlog 4permits 4p 0.3c
+12:31:29 load  12.9 busy 17.4 nice 12.8 squeal  2.1 gate  1.1c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.1c
+12:31:37 load  15.6 busy 23.9 nice 20.9 squeal  1.2 gate  0.6c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.5c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.7c
+12:31:45 load  20.7 busy 23.9 nice 19.3 squeal  1.1 gate  1.3c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.7c
+12:31:53 load  21.9 busy 23.9 nice 21.2 squeal  0.6 gate  0.7c open held  4 top  3 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.2c; squeal: edit 0p 0.0c / backlog 3permits 3p 0.2c
+12:32:01 load  24.6 busy 23.9 nice 20.2 squeal  0.8 gate  0.1c open held  3 top  3 squeal | squeal: edit 0p 0.0c / backlog 3permits 3p 0.1c
+12:32:10 load  28.0 busy 23.9 nice 19.4 squeal  0.3 gate  0.3c open held  2 top  2 squeal | squeal: edit 0p 0.0c / backlog 2permits 2p 0.3c
+12:32:18 load  30.0 busy 23.9 nice 18.5 squeal  0.8 gate  0.3c open held  2 top  2 squeal | squeal: edit 0p 0.0c / backlog 2permits 2p 0.1c
+12:32:26 load  31.6 busy 23.2 nice 18.3 squeal  0.9 gate  0.2c open held  2 top  2 squeal | squeal: edit 0p 0.0c / backlog 2permits 2p 0.8c
+12:32:34 load  31.4 busy 23.4 nice 18.7 squeal  1.2 gate  0.6c open held  2 top  2 squeal | squeal: edit 0p 0.0c / backlog 2permits 2p 0.2c
+12:32:42 load  31.2 busy 23.7 nice 19.0 squeal  0.7 gate  0.3c open held  2 top  2 squeal | squeal: edit 0p 0.0c / backlog 2permits 2p 0.3c
+12:32:50 load  31.1 busy 23.7 nice 18.7 squeal  0.5 gate  0.2c open held  2 top  2 squeal | squeal: edit 0p 0.0c / backlog 2permits 2p 0.2c
+12:32:58 load  30.8 busy 23.9 nice 20.6 squeal  0.6 gate  0.2c open held  2 top  2 squeal | squeal: edit 1p 0.2c / backlog 2permits 2p 0.2c
+12:33:06 load  30.7 busy 23.9 nice 19.5 squeal  1.6 gate  0.2c open held  1 top  1 squeal | squeal: edit 0p 0.0c / backlog 1permits 1p 0.3c
+12:33:14 load  30.1 busy 23.8 nice 20.4 squeal  0.4 gate  0.3c open held  1 top  1 squeal | squeal: edit 0p 0.0c / backlog 1permits 1p 0.1c
+12:33:22 load  29.8 busy 23.6 nice 19.6 squeal  1.3 gate  0.1c open held  1 top  1 squeal | squeal: edit 0p 0.0c / backlog 1permits 1p 0.1c
+12:33:30 load  27.7 busy 12.2 nice  7.6 squeal  1.0 gate  1.1c open held  1 top  1 squeal | cezar: edit 1p 0.9c / backlog 0permits 0p 0.0c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.1c
+12:33:38 load  25.9 busy  7.8 nice  3.5 squeal  2.1 gate  1.1c open held  1 top  1 squeal | cezar: edit 1p 1.3c / backlog 0permits 0p 0.0c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.7c
+12:33:46 load  22.6 busy  6.1 nice  2.8 squeal  1.8 gate  1.7c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.6c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.1c
+12:33:54 load  20.2 busy  9.2 nice  2.7 squeal  1.4 gate  1.2c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.9c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.1c
+12:34:02 load  19.2 busy  8.4 nice  2.1 squeal  1.4 gate  1.0c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 1.2c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.1c
+12:34:10 load  17.3 busy  5.9 nice  1.6 squeal  1.1 gate  1.2c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.8c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.2c
+12:34:18 load  16.4 busy 13.9 nice 10.0 squeal  1.1 gate  0.8c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 1p 0.9c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.1c
+12:34:26 load  20.8 busy 23.8 nice 20.1 squeal  3.2 gate  2.1c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 5p 2.7c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.1c
+12:34:35 load  24.1 busy 23.9 nice 21.5 squeal  1.6 gate  2.1c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 2p 1.6c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.1c
+12:34:43 load  25.7 busy 23.9 nice 20.1 squeal  2.5 gate  3.0c open held  2 top  1 squeal | cezar: edit 0p 0.0c / backlog 1permits 2p 1.1c; squeal: edit 0p 0.0c / backlog 1permits 1p 0.9c
+12:34:51 load  28.0 busy 23.9 nice 19.9 squeal  2.1 gate  2.0c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 2p 1.1c; squeal: edit 1p 1.2c / backlog 0permits 0p 0.0c
+12:34:59 load  31.8 busy 23.9 nice 20.5 squeal  3.8 gate  4.1c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 2p 0.9c; squeal: edit 3p 2.5c / backlog 0permits 0p 0.0c
+12:35:07 load  32.3 busy 23.9 nice 20.6 squeal  2.4 gate  3.4c open held  1 top  1 cezar | cezar: edit 0p 0.0c / backlog 1permits 4p 1.3c; squeal: edit 2p 1.1c / backlog 0permits 0p 0.0c
+12:35:15 load  33.7 busy 23.9 nice 19.3 squeal  3.9 gate  3.2c open held  0 top  0 - | cezar: edit 4p 2.2c / backlog 0permits 0p 0.0c; squeal: edit 2p 1.6c / backlog 0permits 0p 0.0c
+12:35:23 load  34.1 busy 23.9 nice 20.0 squeal  0.6 gate  0.4c open held  0 top  0 - | squeal: edit 1p -0.0c / backlog 0permits 0p 0.0c
+12:35:31 load  34.4 busy 23.9 nice 20.5 squeal  1.2 gate  0.4c open held  0 top  0 - | squeal: edit 1p 0.9c / backlog 0permits 0p 0.0c
+12:35:39 load  35.2 busy 23.9 nice 18.0 squeal  0.7 gate  0.0c open held  0 top  0 - | 
+12:35:47 load  35.0 busy 23.9 nice 19.7 squeal  0.3 gate  0.0c open held  0 top  0 - | 
+12:35:55 load  30.3 busy  6.0 nice  0.2 squeal  0.3 gate  0.0c open held  0 top  0 - | 
+12:36:03 load  28.4 busy  7.7 nice  0.0 squeal  0.3 gate  0.0c open held  0 top  0 - | 
+12:36:11 load  26.7 busy 20.5 nice 15.5 squeal  0.5 gate  0.0c open held  0 top  0 - | 
+{"samples": 443, "busySamples": 333, "slots": 16, "first": "2026-10-24T11:36:26Z", "last": "2026-10-24T12:36:11Z", "load": {"mean": 53.89, "p50": 51.34, "p90": 83.17, "max": 103.97}, "busyCores": {"mean": 22.81, "p50": 23.71, "p90": 23.96, "max": 24.0}, "squealCores": {"mean": 6.86, "p50": 4.06, "p90": 16.08, "max": 19.03}, "permitsUnderEditOnlyMarks": 0, "gateCores": {"mean": 6.84, "p50": 4.07, "p90": 16.02, "max": 21.46}, "gateOpenShare": 0.895, "poolFull": 78, "oneWorktreeAll": 0, "oneWorktreeHalfOrMore": 107, "topPermits": {"mean": 6.21, "p50": 3, "p90": 15, "max": 15}, "heldPermits": {"mean": 8.36, "p50": 10, "p90": 16, "max": 16}, "topHolders": [["squeal /home/agent/projects/squeal/.ai/cezar/worktrees/52e58f23-d8e7-49ce-9ca6-5b9dfee2b5ac", 74], ["squeal /home/agent/projects/squeal/.ai/cezar/worktrees/327ffa01-0d8f-48ee-b064-842a3ea53753", 22], ["squeal /home/agent/projects/squeal/.ai/cezar/worktrees/00aca89d-680f-43ab-933a-3e4fe31c3af8", 11]], "perProject": {"cezar": {"editTests": {"mean": 0.02, "p50": 0, "p90": 0, "max": 4}, "editCores": {"mean": 0.01, "p50": 0.0, "p90": 0.0, "max": 2.25}, "samplesWithEdit": 4, "editWorkersBesideBacklog": {"mean": 0.04, "p50": 0, "p90": 0, "max": 4}, "backlogPermits": {"mean": 1.1, "p50": 1, "p90": 2, "max": 6}, "backlogCores": {"mean": 0.5, "p50": 0.3, "p90": 1.26, "max": 5.32}}, "squeal": {"editTests": {"mean": 1.19, "p50": 0, "p90": 4, "max": 6}, "editCores": {"mean": 0.47, "p50": 0.0, "p90": 1.56, "max": 3.11}, "samplesWithEdit": 156, "editWorkersBesideBacklog": {"mean": 0.03, "p50": 0, "p90": 0, "max": 1}, "backlogPermits": {"mean": 7.26, "p50": 8, "p90": 15, "max": 16}, "backlogCores": {"mean": 5.16, "p50": 2.32, "p90": 14.67, "max": 18.69}}, "tmp": {"editTests": {"mean": 0.03, "p50": 0, "p90": 0, "max": 3}, "editCores": {"mean": 0.01, "p50": 0, "p90": 0, "max": 1.22}, "samplesWithEdit": 8, "editWorkersBesideBacklog": {"mean": 0, "p50": 0, "p90": 0, "max": 0}, "backlogPermits": {"mean": 0, "p50": 0, "p90": 0, "max": 0}, "backlogCores": {"mean": 0.0, "p50": 0, "p90": 0.0, "max": 0}}}}

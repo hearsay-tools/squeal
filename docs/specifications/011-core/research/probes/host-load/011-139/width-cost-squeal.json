@@ -1,0 +1,65 @@
+{
+ "edit-sized (1-4 files)": {
+  "runs": 1553,
+  "filesMedian": 4,
+  "recordedWallMedianS": 2.4,
+  "modelW16MedianS": 2.2,
+  "modelW13MedianS": 2.2,
+  "modelW8MedianS": 2.2,
+  "modelW4MedianS": 2.2,
+  "modelW2MedianS": 2.8,
+  "modelW1MedianS": 4.0,
+  "addedAtW2vsW4": {
+   "p50": 0.4,
+   "p90": 8.6,
+   "max": 114.4
+  },
+  "addedAtW1vsW4": {
+   "p50": 1.4,
+   "p90": 26.6,
+   "max": 343.3
+  }
+ },
+ "backlog (5+ files)": {
+  "runs": 131,
+  "filesMedian": 67,
+  "recordedWallMedianS": 72.7,
+  "modelW16MedianS": 34.4,
+  "modelW13MedianS": 37.3,
+  "modelW8MedianS": 50.5,
+  "modelW4MedianS": 85.1,
+  "modelW2MedianS": 135.7,
+  "modelW1MedianS": 255.5,
+  "addedAtW8vsW16": {
+   "p50": 9.3,
+   "p90": 58.8,
+   "max": 164.9
+  },
+  "addedAtW4vsW16": {
+   "p50": 35.0,
+   "p90": 176.4,
+   "max": 494.7
+  }
+ },
+ "checkpoint": {
+  "runs": 558,
+  "filesMedian": 4.0,
+  "recordedWallMedianS": 28.5,
+  "modelW16MedianS": 24.5,
+  "modelW13MedianS": 25.6,
+  "modelW8MedianS": 26.3,
+  "modelW4MedianS": 29.0,
+  "modelW2MedianS": 41.3,
+  "modelW1MedianS": 60.1,
+  "addedAtW8vsW16": {
+   "p50": 0.0,
+   "p90": 33.4,
+   "max": 138.5
+  },
+  "addedAtW4vsW16": {
+   "p50": 0.0,
+   "p90": 107.9,
+   "max": 415.6
+  }
+ }
+}
