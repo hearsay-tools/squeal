@@ -228,6 +228,25 @@ export interface NamedFocus {
   readonly usage?: string;
 }
 
+/**
+ * Review 0.1.286 B6: what a focused wait reads when no selected file is
+ * pending. `settled`, the named verdict, when each file the daemon focuses
+ * has a result at its key (C15: current before any focused run), or when
+ * the daemon refused the request or gave no answer; `focused` once each has
+ * its focused answer; else `null`, so the wait sends its request and waits:
+ * an unknown or stale file that nothing queues is not current.
+ */
+export function settledFocus(
+  focus: NamedFocus | undefined,
+  reply: FocusReply | undefined,
+): "settled" | "focused" | null {
+  if (focus === undefined || focus.refused !== undefined) return "settled";
+  const focusing = focus.files.filter((f) => f.whole === undefined && f.key !== null);
+  if (focusing.every((f) => f.stored !== undefined)) return "settled";
+  if (focusing.every(answered)) return "focused";
+  return reply === "none" ? "settled" : null;
+}
+
 /** Whether every file the daemon focuses has its answer, and there is one such file. */
 export function focusAnswered(focus: NamedFocus): boolean {
   if (focus.refused !== undefined) return false;
