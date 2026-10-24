@@ -38,7 +38,7 @@ describe("observe recorder (task 001-132)", { timeout: 60_000 }, () => {
       ].join("\n"),
       "sub/.keep": "",
       "child.mjs":
-        'import { readFileSync } from "node:fs";\nconst keys = Object.keys(process.env).filter((k) => !k.startsWith("SQUEAL") && k !== "NODE_OPTIONS");\nprocess.stdout.write([process.env.ONLY, keys.join(","), readFileSync("data.txt", "utf8")].join(":"));\n',
+        'import { readFileSync } from "node:fs";\nconst keys = Object.keys(process.env).filter((k) => !k.startsWith("SQUEAL") && k !== "NODE_OPTIONS" && k !== "NODE_V8_COVERAGE");\nprocess.stdout.write([process.env.ONLY, keys.join(","), readFileSync("data.txt", "utf8")].join(":"));\n',
       "other.mjs": 'import "./lib.mjs";\n',
       "lib.mjs": "export {};\n",
       "data.txt": "d",
@@ -46,6 +46,7 @@ describe("observe recorder (task 001-132)", { timeout: 60_000 }, () => {
       "node_modules/pkg/index.js": "",
     });
     // `spawnSync(cmd, undefined, options)` kept its options (cwd, env); the child saw only ONLY
+    // (Node adds NODE_V8_COVERAGE to every child's env, as c8 sets it: row 015-33)
     expect(JSON.parse(seen.stdout)).toEqual([0, "1:ONLY:d", ""]);
     expect(seen.paths).toEqual(
       expect.arrayContaining(["child.mjs", "data.txt", "lib.mjs", "main.mjs", "other.mjs"]),
