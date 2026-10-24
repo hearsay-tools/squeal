@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readUncountable } from "../../../src/core/code/pass/index.js";
+import { countingOf } from "../../../src/core/delivery/code-deliver.js";
 import { blobHash } from "../../../src/core/hash/index.js";
 import { open } from "../helpers.js";
 import { fakeCounter, flakyCounter, pass, policyOn, worktree } from "./helpers.js";
@@ -60,6 +61,8 @@ describe("a failed count is retried (row 015-18)", () => {
     const at = (now: number) =>
       pass(tree, store, counter, { now: () => now, log: (t) => logs.push(t) });
     expect(await at(2_000)).toMatchObject({ counted: 0 });
+    // The readers' counting: pending while a retry is to come, then out of it (row 015-18).
+    expect(countingOf(store, tree.id)).toEqual({ done: 0, total: 1, uncountable: 0 });
     expect(await at(6_999)).toBeNull();
     expect(await at(7_000)).toMatchObject({ counted: 0 });
     expect(await at(66_999)).toBeNull();
@@ -70,6 +73,7 @@ describe("a failed count is retried (row 015-18)", () => {
       attempts: 3,
       retryAt: null,
     });
+    expect(countingOf(store, tree.id)).toEqual({ done: 0, total: 0, uncountable: 1 });
     expect(store.states.list(tree.id)).toMatchObject([{ value: 3, outcome: "pass" }]);
     expect(logs).toEqual([
       "complexity: could not count src/a.ts (attempt 1 of 3): tree-sitter: out of memory; trying again in 5 s",
@@ -124,6 +128,8 @@ describe("a failed count is retried (row 015-18)", () => {
     const other = worktree("w2", tree.commonDir);
     other.write(A, "settle 23 B2\n").revise();
     await pass(other, store, fakeCounter(), { now: () => 70_000 });
+    // The count is stored: the readers no longer call the file uncountable.
+    expect(countingOf(store, tree.id)).toEqual({ done: 1, total: 1, uncountable: 0 });
     const counter = fakeCounter();
     expect(await pass(tree, store, counter, { now: () => 71_000 })).toMatchObject({
       counted: 0,
