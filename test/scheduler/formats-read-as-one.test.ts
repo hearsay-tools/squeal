@@ -201,12 +201,11 @@ describe("formats read as one (011-38)", SLOW, () => {
     ]);
     const b = side(other, { count: 2, policy: LOOKUP_ONLY });
     stored(b.store, a, F0, failAt, Date.now() - 1_000, { fail: true });
+    b.runner.hold();
     await b.scheduler.start();
-    await b.scheduler.idle();
-    expect(b.runner.runs).toEqual([]);
-    expect(b.passing()).toBe(0);
+    // Held, so lookup-only still runs it once (row 011-159); until then no known failure.
+    await expect.poll(() => b.phase(F0)).toBe("running");
     expect(b.store.knownStates.list(b.worktreeId).filter((s) => s.outcome === "fail")).toEqual([]);
-    expect(b.phase(F0)).toBeNull();
     const why = readWhy(b.root, `${F0} > passes`);
     expect(why).toMatchObject({
       found: true,
@@ -214,13 +213,17 @@ describe("formats read as one (011-38)", SLOW, () => {
       heldFailure: { outcome: "fail", provenance: { worktreeId: a } },
     });
     expect(formatWhy(why)).toContain("being confirmed");
+    b.runner.release();
+    await b.scheduler.idle();
+    expect(ranPaths(b)).toEqual([F0]);
+    expect(b.passing()).toBe(1);
 
     // The other worktree's daemon, a release behind, stores F1 at its own format.
     const later = stored(b.store, a, F1, laterAt, Date.now());
     await b.scheduler.handleBatch({ trigger: "interval", paths: [] });
     await b.scheduler.idle();
-    expect(b.runner.runs).toEqual([]);
-    expect(b.passing()).toBe(1);
+    expect(ranPaths(b)).toEqual([F0]);
+    expect(b.passing()).toBe(2);
     expect(rowsAt(b.store, (await keyAt(other, F1, KEY_FORMAT_VERSION)) as CheckKey)).toEqual([
       { name: "passes", outcome: "pass", provenance: later.provenance },
     ]);

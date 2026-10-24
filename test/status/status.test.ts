@@ -183,7 +183,10 @@ describe("readStatus", () => {
         // Task 011-12 (issue 24): a key with no result says so; an unknown check that kept no reason says that.
         files: (
           [
-            ["src/never.test.ts", "never run at this key, and nothing queued it"],
+            [
+              "src/never.test.ts",
+              "never run at this key: the baseline is lookup-only, so nothing queued it",
+            ],
             ["src/util.test.ts", null],
           ] as const
         ).map(([path, reason]) => ({
@@ -263,7 +266,7 @@ describe("readStatus", () => {
           files: [{ project: "", path: "src/util.test.ts" }],
         },
         {
-          standing: { kind: "never-run", lookupOnly: false, notCurrent: 4 },
+          standing: { kind: "never-run", lookupOnly: true, notCurrent: 4 },
           files: [{ project: "", path: "src/never.test.ts" }],
         },
         {
@@ -309,7 +312,7 @@ describe("readStatus", () => {
       Queued: 1 test file: src/empty.test.ts
       Outstanding:
         1 test file without a result: no reason was kept: src/util.test.ts; \`squeal retry src/util.test.ts\` runs it once
-        1 test file never run at its inputs, nothing queued it: src/never.test.ts; \`squeal retry src/never.test.ts\` runs it once
+        1 test file never run at its inputs, nothing queued it (the baseline is lookup-only): src/never.test.ts; \`squeal retry src/never.test.ts\` runs it once
         1 test file running in the vitest lane: src/math.test.ts
         1 test file queued; no run is open and nothing recorded holds it: src/empty.test.ts; the store records no reason the daemon has not taken it (\`squeal status --json\` lists each file's state)
       More: \`squeal status --full\` adds the worktree and daemon, the 2 current results inherited from 1 worktree, the 2 test files without a result one by one and 3 notes

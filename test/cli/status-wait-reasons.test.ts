@@ -308,10 +308,10 @@ describe("a timed-out named wait lists the selected files by class with verdicts
       "  3 pass: src/c1.test.ts, src/c2.test.ts, src/c3.test.ts",
       "  1 fail: src/c4.test.ts",
       "Stale (2):",
-      "  1 last passed at other inputs, nothing queued it: src/s1.test.ts; `squeal retry src/s1.test.ts` runs it once",
-      "  1 last failed at other inputs, nothing queued it: src/s2.test.ts; `squeal retry src/s2.test.ts` runs it once",
+      "  1 last passed at other inputs, nothing queued it (the baseline is lookup-only): src/s1.test.ts; `squeal retry src/s1.test.ts` runs it once",
+      "  1 last failed at other inputs, nothing queued it (the baseline is lookup-only): src/s2.test.ts; `squeal retry src/s2.test.ts` runs it once",
       "Unknown (2):",
-      "  1 never run at its inputs, nothing queued it: src/u1.test.ts; `squeal retry src/u1.test.ts` runs it once",
+      "  1 never run at its inputs, nothing queued it (the baseline is lookup-only): src/u1.test.ts; `squeal retry src/u1.test.ts` runs it once",
       "  1 no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked: src/u2.test.ts; the next edit or `squeal run --all --wait` calls the runner again",
       expect.stringMatching(
         /^Named test files have no verdict: the deadline passed after \d+\.\d s: 3 test files still pending at revision 4: 3 queued, nothing recorded holds them\. Worktree: /,

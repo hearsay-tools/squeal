@@ -63,6 +63,9 @@ interface Drained {
   readonly setups: readonly SetupOutcome[];
 }
 
+/** A lookup `settle` skips: no hit, and nothing withheld. */
+const UNPROBED = { hits: [], mayWait: true } as const;
+
 /** After this many consecutive discarded tiers at an unmoved key a file is `unknown` instead of re-queued. */
 export const MAX_DISCARDS = 3;
 
@@ -75,8 +78,17 @@ export interface RevisionState {
 export interface SettleOptions {
   /** Checkpoint of lookup hits; defaults to the open checkpoint when it requested the file. */
   readonly checkpointId?: string | null;
-  /** Queue the misses. Default `true`. */
+  /** Queue the misses. Default `true`. `false` still queues a held fail unless `heldFails` is given. */
   readonly queueMisses?: boolean;
+  /**
+   * Collects the `testFileId`s of the misses whose key holds another
+   * worktree's fail this worktree has not confirmed (001 D6, task 001-170),
+   * which only a local run confirms or clears (011 C4 step 3 as amended
+   * 2026-10-23, row 011-159), and drops a miss whose key holds none. Absent,
+   * `queueMisses: false` still queues such a miss; the start collects them
+   * and queues its misses itself.
+   */
+  readonly heldFails?: Set<string>;
   /** `testFileId`s the runner reported as direct importers of `changed` (D5 step 4). */
   readonly direct?: ReadonlySet<string>;
   /**
@@ -300,18 +312,26 @@ export class Ledger {
         if (classify(file) === "current") this.checkpoints.done(ref, null);
         continue;
       }
-      const hits = held || strict ? [] : this.lookup(key);
+      const { hits, mayWait } = held || strict ? UNPROBED : this.probe(key);
       if (hits.length > 0) {
         const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref);
         this.applyResults(file, key, hits, checkpointId);
         continue;
       }
       misses.push(file);
+      // Results are stored at the key and none stands: another worktree's unconfirmed fail.
+      const heldFail = !mayWait;
+      if (heldFail) options.heldFails?.add(file.id);
+      else options.heldFails?.delete(file.id);
       if (file.blocked !== null) {
         // The runner cannot run it; it stays `unknown` until the runner recovers.
         this.queue.remove(ref);
         this.#syncPhase(file);
-      } else if (strict || options.queueMisses !== false) {
+      } else if (
+        strict ||
+        options.queueMisses !== false ||
+        (heldFail && options.heldFails === undefined)
+      ) {
         const reached = recent.has(file.id);
         const catchUp = reached && options.catchUp === true;
         const priority = priorityOf(file, changed, options.direct);
@@ -361,7 +381,9 @@ export class Ledger {
   /**
    * `lookup`, and whether a miss may wait on another worktree's claim of
    * `key` (task 001-205): the accept rule's (`acceptedAt`), the formats read
-   * as one once per file and key in this daemon (task 011-38).
+   * as one once per file and key in this daemon (task 011-38). No hits and
+   * `mayWait` false: results are stored and withheld, another worktree's
+   * unconfirmed fail (row 011-159).
    */
   probe(key: CheckKey): { hits: readonly ResultRecord[]; mayWait: boolean } {
     const { store, worktreeId, now } = this.context;
