@@ -1,0 +1,34 @@
+{
+  "6a866524 2026-10-24T11:20:50": [
+    3,
+    "Squeal had named 1 of the run's 9 files; 100 checks stale"
+  ],
+  "29bd052a 2026-10-24T13:46:51": [
+    3,
+    "the command edits before it runs"
+  ],
+  "062be396 2026-10-24T06:38:07": [
+    3,
+    "Squeal's revision had its runner part pending; the tests the run named were not among those it reported"
+  ],
+  "062be396 2026-10-24T06:38:14": [
+    3,
+    "Squeal's revision had its runner part pending; the tests the run named were not among those it reported"
+  ],
+  "2b7041a6 2026-10-24T13:52:32": [
+    3,
+    "the command edits before it runs; Squeal's revision pending"
+  ],
+  "b2947e11 2026-10-24T00:47:56": [
+    3,
+    "Squeal's revision had its runner part pending; 67 checks pending"
+  ],
+  "9942b809 2026-10-24T13:20:29": [
+    2,
+    "the run checks process leftovers after the run, which Squeal's result does not report"
+  ],
+  "6a866524 2026-10-24T11:20:44": [
+    3,
+    "Squeal had named 2 of the run's files; 771 checks pending, 100 stale"
+  ]
+}
