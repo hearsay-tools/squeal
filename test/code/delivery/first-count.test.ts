@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readRecount } from "../../../src/core/code/pass/index.js";
+import { fakeCounter, pass, worktree } from "../pass/helpers.js";
 import { consumer, rig } from "../pass/rig.js";
 import { fn, putFile } from "./helpers.js";
 
@@ -11,6 +13,9 @@ import { fn, putFile } from "./helpers.js";
 
 const C1 = consumer("s1");
 const C2 = consumer("s2");
+const C3 = consumer("s3");
+const COUNTED = "Complexity counted: 1 function over 20; squeal code lists them.";
+const FILES = { "src/a.ts": "settle 23 B1\n", "src/b.ts": "close 3 B2\n" };
 const complexity = (text: string) => text.split("\n").filter((l) => l.startsWith("Complexity:"));
 
 describe("a registration in a new worktree (015-35)", () => {
@@ -39,5 +44,40 @@ describe("a registration in a new worktree (015-35)", () => {
     expect(complexity(await r.register(C1))).toEqual([
       "Complexity: 0 functions over 20; squeal code lists them.",
     ]);
+  });
+
+  it("tells each session registered before a first count over inherited counts the count once", async () => {
+    const r = rig();
+    // Another worktree of the repository counted these blobs: this first count counts none.
+    const other = worktree("w0", r.dir);
+    for (const [path, text] of Object.entries(FILES)) other.write(path, text);
+    other.revise();
+    await pass(other, r.store, fakeCounter());
+    for (const [path, text] of Object.entries(FILES)) r.tree.write(path, text);
+    r.tree.commit();
+    await r.register(C1);
+    await r.register(C2);
+    expect(await r.pass()).toMatchObject({ mode: "first", counted: 0 });
+    expect(complexity(await r.register(C3))).toEqual([
+      "Complexity: 1 function over 20; squeal code lists them.",
+    ]);
+    expect(await r.delivered(C1)).toContain(COUNTED);
+    expect(await r.delivered(C2)).toContain(COUNTED);
+    expect(await r.delivered(C3)).toEqual([]);
+    expect(await r.delivered(C1)).toEqual([]);
+  });
+
+  it("writes no recount record for a first count over inherited counts that nobody waited for", async () => {
+    const r = rig();
+    const other = worktree("w0", r.dir);
+    for (const [path, text] of Object.entries(FILES)) other.write(path, text);
+    other.revise();
+    await pass(other, r.store, fakeCounter());
+    for (const [path, text] of Object.entries(FILES)) r.tree.write(path, text);
+    r.tree.commit();
+    expect(await r.pass()).toMatchObject({ mode: "first", counted: 0 });
+    expect(readRecount(r.store.meta, r.tree.id)).toBeNull();
+    await r.register(C1);
+    expect(await r.delivered(C1)).toEqual([]);
   });
 });
