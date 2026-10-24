@@ -1,6 +1,12 @@
 import { join, posix } from "node:path";
 import { compare, isRecord } from "../fs/index.js";
 import type { AbsolutePath, PackageImport, RelativePath } from "../types/index.js";
+import {
+  packageFoldersFingerprint,
+  parseHiddenLockfile,
+  staleHiddenLockfile,
+  withoutOwnVersions,
+} from "./hidden-lockfile.js";
 import { PackageScans } from "./package-scans.js";
 
 /**
@@ -39,6 +45,73 @@ export interface PackageGraph {
   identities(imports: readonly PackageImport[], exclude?: ReadonlySet<string>): string[];
   /** Whether a package among `identities`, as `identities()` returned them, is opaque (task 001-109). */
   opaque(identities: readonly string[]): boolean;
+}
+
+/**
+ * An installed lockfile as `installedDependencies` hashes it (row 011-190):
+ * npm's hidden lockfile (`npmReading`) and pnpm's `lock.yaml`
+ * (`pnpmReading`) give why they do not describe the install, with the
+ * fingerprint of its package folders, or the text the fingerprint holds for
+ * them and the package graph. `text` is `null` for a lockfile it holds whole.
+ */
+export type LockfileReading =
+  | {
+      readonly manager: "npm" | "pnpm";
+      readonly stale: string;
+      readonly folders: string;
+      readonly graph: null;
+    }
+  | {
+      readonly manager: "npm" | "pnpm" | null;
+      readonly stale: null;
+      readonly text: string | null;
+      readonly graph: PackageGraph | null;
+    };
+
+/** A lockfile no reader reads: the fingerprint holds it whole, and keys hold the fingerprint. */
+export const WHOLE: LockfileReading = { manager: null, stale: null, text: null, graph: null };
+
+/** Reads the installed lockfile at `dir`, `base` relative to the worktree (`null` outside it). */
+export type LockfileReader = (
+  dir: AbsolutePath,
+  base: RelativePath | null,
+  content: Buffer,
+  scans?: PackageScans,
+) => LockfileReading;
+
+/**
+ * npm's hidden lockfile at `dir`. Task 001-104: it stands for the install
+ * only while npm itself would trust it (`staleHiddenLockfile`); otherwise
+ * the package folders are fingerprinted instead. Task 011-85: a trusted one
+ * enters without the root's and the workspaces' own versions
+ * (`withoutOwnVersions`).
+ */
+export function npmReading(
+  dir: AbsolutePath,
+  base: RelativePath | null,
+  content: Buffer,
+  scans?: PackageScans,
+): LockfileReading {
+  const hidden = parseHiddenLockfile(content);
+  const stale = staleHiddenLockfile(dir, hidden);
+  if (stale !== null) {
+    return { manager: "npm", stale, folders: packageFoldersFingerprint(dir, hidden), graph: null };
+  }
+  if (hidden === null) return WHOLE;
+  const listed = packagesOf(content);
+  const graph =
+    listed === null || base === null ? null : new InstalledGraph(dir, base, listed, scans);
+  return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
+}
+
+/** The `packages` map of a hidden lockfile, or `null` when it has none. */
+function packagesOf(content: Buffer): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(content.toString("utf8"));
+    return isRecord(parsed) && isRecord(parsed.packages) ? parsed.packages : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -199,7 +272,8 @@ function absent(from: string, name: string): string {
   return `absent:${from}>${name}`;
 }
 
-function parent(dir: string): string {
+/** The directory above `dir`, `""` for the install's own. */
+export function parent(dir: string): string {
   const up = posix.dirname(dir);
   return up === "." ? "" : up;
 }

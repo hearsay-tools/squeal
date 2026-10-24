@@ -4,14 +4,17 @@ import { join } from "node:path";
 import { compare, isRecord } from "../fs/index.js";
 import type { AbsolutePath, RelativePath } from "../types/index.js";
 import type { PackageScans } from "./package-scans.js";
+import type { LockfileReading } from "./packages.js";
 import { childOf, PnpmGraph } from "./pnpm-graph.js";
-import { PNPM_LOCKFILE, readPnpmLockfile } from "./pnpm-lockfile.js";
+import {
+  PNPM_LOCKFILE,
+  PNPM_VIRTUAL_STORE,
+  readPnpmLockfile,
+  withoutLinkedSpecifiers,
+} from "./pnpm-lockfile.js";
 
 /** pnpm's record of the install's layout, relative to the directory that holds `node_modules`. */
 const PNPM_MODULES = "node_modules/.modules.yaml";
-
-/** pnpm's virtual store, relative to the same directory. */
-const VIRTUAL_STORE = "node_modules/.pnpm";
 
 /** Bumped when the fallback encoding below changes. */
 const PACKAGE_FOLDERS_ENCODING = "squeal-pnpm-package-folders/1";
@@ -52,6 +55,27 @@ export function readPnpmInstall(
     stale,
     folders: pnpmPackageFoldersFingerprint(dir, lockfile.importers.keys()),
   };
+}
+
+/**
+ * pnpm's `lock.yaml` at `dir`. Task 011-162: it stands for an install in
+ * pnpm's default layout under npm's rule on that layout (`readPnpmInstall`),
+ * and otherwise its package folders are fingerprinted. Task 011-85: it
+ * enters without a linked dependency's range (`withoutLinkedSpecifiers`).
+ */
+export function pnpmReading(
+  dir: AbsolutePath,
+  base: RelativePath | null,
+  content: Buffer,
+  scans?: PackageScans,
+): LockfileReading {
+  const text = content.toString("utf8");
+  const install = base === null ? null : readPnpmInstall(dir, base, text, scans);
+  if (install !== null && install.stale !== null) {
+    return { manager: "pnpm", stale: install.stale, folders: install.folders, graph: null };
+  }
+  const graph = install?.graph ?? null;
+  return { manager: "pnpm", stale: null, text: withoutLinkedSpecifiers(text), graph };
 }
 
 /** `.modules.yaml`, JSON under pnpm 10 and 12, where it records pnpm's default layout. */
@@ -118,7 +142,7 @@ interface Stale {
 function checkVirtualStore(dir: AbsolutePath, graph: PnpmGraph, lockTime: number, stale: Stale) {
   for (const [id, folder] of graph.folders) {
     if (graph.skipped.has(id)) continue;
-    const modules = `${VIRTUAL_STORE}/${folder}/node_modules`;
+    const modules = `${PNPM_VIRTUAL_STORE}/${folder}/node_modules`;
     const path = `${modules}/${id.slice(0, id.indexOf("@", 1))}`;
     const stat = lstatSync(join(dir, path), { throwIfNoEntry: false });
     if (stat === undefined) stale.missing.push(path);
@@ -129,7 +153,7 @@ function checkVirtualStore(dir: AbsolutePath, graph: PnpmGraph, lockTime: number
     }
   }
   for (const [alias, id] of graph.privateHoisted) {
-    const path = `${VIRTUAL_STORE}/node_modules/${alias}`;
+    const path = `${PNPM_VIRTUAL_STORE}/node_modules/${alias}`;
     expectLink(graph, stale, path, id, exists(dir, path));
   }
 }
@@ -177,12 +201,12 @@ function exists(dir: AbsolutePath, path: string): boolean {
  * re-versioning a package changes it.
  */
 function pnpmPackageFoldersFingerprint(dir: AbsolutePath, importers: Iterable<string>): string {
-  const roots = new Set(["node_modules", `${VIRTUAL_STORE}/node_modules`]);
+  const roots = new Set(["node_modules", `${PNPM_VIRTUAL_STORE}/node_modules`]);
   for (const importer of importers)
     roots.add(importer === "." ? "node_modules" : `${importer}/node_modules`);
-  for (const folder of entriesOf(join(dir, VIRTUAL_STORE))) {
+  for (const folder of entriesOf(join(dir, PNPM_VIRTUAL_STORE))) {
     if (folder.isDirectory() && folder.name !== "node_modules") {
-      roots.add(`${VIRTUAL_STORE}/${folder.name}/node_modules`);
+      roots.add(`${PNPM_VIRTUAL_STORE}/${folder.name}/node_modules`);
     }
   }
   const entries: unknown[] = [];
