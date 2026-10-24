@@ -1,0 +1,8 @@
+{
+  "end": "crashed",
+  "durationMs": 0,
+  "completedFiles": [],
+  "results": [],
+  "fileErrors": [],
+  "failure": "incomplete fixture TAP or abnormal child exit"
+}

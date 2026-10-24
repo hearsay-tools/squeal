@@ -1,0 +1,5 @@
+v24.21.0: fixture exit 1 (deliberate); mapped pass/fail/skip; one completed file; truncated and signalled runs trusted no results.
+RunReport literal assignment: TypeScript --ignoreConfig --noEmit --skipLibCheck --module nodenext --target es2022 exited 0, no diagnostics.
+RunnerAdapter coverage: 21 members named; none missing.
+Findings local links: all resolve.
+No product test suite, daemon probe or timing benchmark ran, as the research brief requires.
