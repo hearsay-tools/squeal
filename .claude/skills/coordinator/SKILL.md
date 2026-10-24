@@ -57,7 +57,7 @@ Before each landing, read the CI result of main's last landing (`gh run list --b
 
 ## 8. Review and triage
 
-Every product landing gets one `/reviewer`, pinned to its candidate's SHA, before main (human, 2026-10-15); a docs-only change lands without one. On return, file nothing by hand: the reviewer committed its file. Triage: a blocker is a proven break and becomes a fix wave `N.5` before the next wave; plausible and should-fix items fold into the next wave's briefs; a finding that widens a row becomes a new row, not a repair. Every accepted deviation becomes a dated line in `status.md` and an edit to the spec section it changes. One repair and one re-review settle an ordinary wave; a second failing review on the same slice ends the loop and the reply names what remains and what it cost. Do not buy a third round.
+Every product landing gets one `/reviewer`, pinned to its candidate's SHA, before main (human, 2026-10-15); a docs-only change lands without one. On return, file nothing by hand: the reviewer committed its file. Triage: a blocker is a proven break and becomes a fix wave `N.5` before the next wave; plausible and should-fix items fold into the next wave's briefs; a finding that widens a row becomes a new row, not a repair. Every accepted deviation becomes a dated line in `status.md` and an edit to the spec section it changes. One repair and one re-review settle an ordinary wave; a second failing review on the same slice ends the loop and the reply names what remains, what it cost, and a single owner for the rule when one would replace what the repairs patched (`docs/process.md` step 6). Do not buy a third round.
 
 ## 9. Handoff
 
