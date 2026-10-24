@@ -49,6 +49,17 @@ describe("the files a move of HEAD brought (015-19)", () => {
     expect(c.logged).toEqual([]);
   });
 
+  it("names a file gone at the new HEAD, and not a gone one HEAD still holds (015-38)", async () => {
+    const { root, head } = repo({ "src/a.ts": "a\n" });
+    const c = ctx(root, head);
+    const paths = await committedPaths(c, 1, 2, [
+      { path: "src/a.ts", blob: null },
+      { path: "src/deleted.ts", blob: null },
+    ]);
+    expect(paths).toEqual(new Set(["src/deleted.ts"]));
+    expect(c.logged).toEqual([]);
+  });
+
   it("asks nothing when HEAD stayed", async () => {
     const c = ctx("/nonexistent", null);
     expect(await committedPaths(c, 1, 2, [{ path: "src/a.ts", blob: blob("a\n") }])).toEqual(
