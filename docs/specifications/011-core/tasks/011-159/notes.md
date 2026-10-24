@@ -282,7 +282,7 @@ Worker 51a7d186, 2026-10-24, wave 26 W6 (shape: finish). The committed 0.1.281 b
 
 ### The change
 
-- `test/e2e/harness.ts`: after every config path (`policy`, `squeal init` for node:test, `squeal setup` for pytest, then `amendPolicy`), the fixture writes `squeal.config.json` through `runMissingConfig` from `test/helpers/baseline.ts`. A config that sets `baseline` or is no JSON object stays as written, so `lifecycle`'s bad config is still one note. The new `FixtureOptions.shippedBaseline: true` leaves the key out.
+- `test/e2e/harness.ts`: a test's `policy` is written through `runMissingConfig` from `test/helpers/baseline.ts`. A `policy` that sets `baseline` or is no JSON object stays as written, so `lifecycle`'s bad config is still one note. `squeal init` (node:test) writes every default policy key, the shipped `baseline` included, and `squeal setup` (pytest) writes through it, so on those two paths the fixture sets `RUN_MISSING` over the written config. `amendPolicy` runs after either. The new `FixtureOptions.shippedBaseline: true` leaves `baseline` as written.
 - `opencode-fixture.ts` and `pi-fixture.ts`: the config they write passes through `runMissingConfig` too. Neither has an opt-out: no OpenCode or Pi test means the shipped default.
 - `shipped-plugin.test.ts` builds its own project: its `{}` became `runMissingConfig()`.
 - `evals/ledgerline/squeal.config.json` sets `"baseline": { "onStart": "lookup-then-run-missing" }`. `buildFixture` merges a variant's policy over it with a shallow spread, and no variant sets `baseline`. `test/evals` reads only `slow` and `stop` from it.
@@ -303,3 +303,14 @@ Worker 51a7d186, 2026-10-24, wave 26 W6 (shape: finish). The committed 0.1.281 b
 | `codex-upgrade.test.ts` | untouched | its own repository; it waits for no run, only for the CLI and skill paths the SQUEAL messages name, which a lookup-only start names too. It runs only as `squeal-e2e` with a real Codex model, so it was skipped here |
 | `opencode-timeline.test.ts`, `pi-update.test.ts`, `plugin-copy.test.ts` | untouched | no daemon baseline: stored timelines, a Pi session where Squeal is not set up, the plugin copy's files |
 | `agree.ts`, `install.ts`, `opencode-timeline.ts`, `opencode-watch.ts`, `plugins.ts`, `ps-support.ts`, `restart-evidence.ts`, `slow-shape.ts`, `sources.ts`, `support.ts` | untouched | helpers that write no config |
+
+### The checks
+
+All on the committed 0.1.281 bundles, no rebuild, each under the full-run lock: `env -u PLUGIN_ROOT -u PLUGIN_DATA flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/e2e --maxWorkers=4`.
+
+- First run, before the `squeal init` and `squeal setup` fix: 16 failed, 76 passed, 4 skipped (96). Every failure was `node-test`, `pytest` or `slow-node-test` timing out at 120 s on its baseline: status showed the daemon alive, nothing pending and 8 files unknown, with no run. The configs those commands write name `baseline` already, so `runMissingConfig` kept it.
+- After the fix, those three and `policy`: 4 files, 24 tests passed.
+- After the fix, the full command: `Test Files 18 passed | 2 skipped (20)`, `Tests 92 passed | 4 skipped (96)`, 200.54 s. The skipped tests: `codex-upgrade` (it runs only as `squeal-e2e`), both of `torn-status` (it runs only with `SQUEAL_PROBE_TORN_STATUS` set), and `shipped-plugin`'s codex `bin/` case (Codex ships no `bin/`).
+- `torn-status` with `SQUEAL_PROBE_TORN_STATUS=1`: 2 passed.
+- The new "shipped default" case with the pin instead of `shippedBaseline`: both plugins time out after 60 s (the check that it tells the starts apart).
+- Not run: anything under `evals/bin/`. The eval fixture change is read, not run: `evals/lib/prepare.mjs` `buildFixture` copies `evals/ledgerline` and merges a variant's `policy` over it.
