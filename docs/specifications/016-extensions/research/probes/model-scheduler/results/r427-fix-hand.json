@@ -1,0 +1,14 @@
+{
+ "tried": 1,
+ "firstFind": null,
+ "runs": [
+  {
+   "seed": 1,
+   "kind": "node",
+   "slowMs": 20000,
+   "steps": 6,
+   "ms": 740,
+   "violations": []
+  }
+ ]
+}

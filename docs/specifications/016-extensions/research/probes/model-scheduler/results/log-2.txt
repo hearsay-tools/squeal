@@ -1,0 +1,55 @@
+== r427 pre dae700644 INV=D,E KIND=node SEEDS=1-300
+load before: 26.99 32.14 30.96 21/2701 3878253
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 297.88 s, user 24.90 s, sys 30.39 s, maxrss 321724 KB
+load after: 21.68 28.09 29.75 17/2655 4108861
+== r427 fix bc8ed7742 INV=D,E KIND=node SEEDS=1-300
+load before: 21.68 28.09 29.75 12/2676 4108917
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 278.85 s, user 23.10 s, sys 27.32 s, maxrss 303232 KB
+load after: 18.39 21.95 26.68 11/2149 107586
+== head HEAD INV=A,B,C,D,E,F KIND=mixed SEEDS=1-300 STOP=all
+load before: 18.39 21.95 26.68 15/2150 107604
+seed 8 vitest FAIL F at event 3: wait 1 (test/s1.test.ts) is open and test/s1.test.ts is queued or running, but its promotion is gone
+seed 13 vitest FAIL F at event 10: wait 0 (test/s4.test.ts) is open and test/s4.test.ts is queued or running, but its promotion is gone
+seed 15 vitest FAIL F at event 10: wait 0 (test/s3.test.ts) is open and test/s3.test.ts is queued or running, but its promotion is gone
+seed 22 vitest FAIL F at event 9: wait 0 (test/s3.test.ts) is open and test/s3.test.ts is queued or running, but its promotion is gone
+seed 23 vitest FAIL F at event 7: wait 0 (test/s4.test.ts) is open and test/s4.test.ts is queued or running, but its promotion is gone
+seed 33 vitest FAIL A at event 8: tier of test/s1.test.ts test/s3.test.ts test/s4.test.ts cut at 121 s with no promoted file ranked before it (beat Infinity)
+seed 35 vitest FAIL F at event 7: wait 0 (test/q.test.ts test/s4.test.ts) is open and test/q.test.ts test/s4.test.ts is queued or running, but its promotion is gone
+seed 44 node FAIL F at event 8: wait 0 (test/s4.test.ts test/s3.test.ts) is open and test/s4.test.ts test/s3.test.ts is queued or running, but its promotion is gone
+seed 51 vitest FAIL A at event 7: tier of test/s1.test.ts test/s3.test.ts cut at 60 s with no promoted file ranked before it (beat Infinity)
+seed 58 vitest FAIL F at event 6: wait 0 (test/s3.test.ts) is open and test/s3.test.ts is queued or running, but its promotion is gone
+seed 60 vitest FAIL A at event 3: tier of test/s1.test.ts test/s2.test.ts test/s3.test.ts test/s4.test.ts cut at 60 s with no promoted file ranked before it (beat 0)
+seed 63 vitest FAIL F at event 12: wait 0 (test/s3.test.ts) is open and test/s3.test.ts is queued or running, but its promotion is gone
+seed 66 vitest FAIL F at event 6: wait 1 (test/s1.test.ts) is open and test/s1.test.ts is queued or running, but its promotion is gone
+seed 69 node FAIL F at event 10: wait 0 (test/q.test.ts test/s3.test.ts) is open and test/q.test.ts is queued or running, but its promotion is gone
+seed 79 vitest FAIL F at event 9: wait 1 (test/s2.test.ts) is open and test/s2.test.ts is queued or running, but its promotion is gone
+seed 98 vitest FAIL F at event 12: wait 0 (test/s3.test.ts) is open and test/s3.test.ts is queued or running, but its promotion is gone
+seed 105 vitest FAIL F at event 7: wait 0 (test/q.test.ts test/s3.test.ts) is open and test/s3.test.ts is queued or running, but its promotion is gone
+seed 113 node FAIL F at event 6: wait 0 (f/p.test.ts) is open and f/p.test.ts is queued or running, but its promotion is gone
+seed 121 vitest FAIL F at event 4: wait 0 (test/s2.test.ts) is open and test/s2.test.ts is queued or running, but its promotion is gone
+seed 123 node FAIL F at event 8: wait 0 (test/s4.test.ts) is open and test/s4.test.ts is queued or running, but its promotion is gone
+seed 130 vitest FAIL F at event 11: wait 0 (test/s2.test.ts f/p.test.ts) is open and f/p.test.ts is queued or running, but its promotion is gone
+seed 131 vitest FAIL F at event 2: wait 0 (test/s2.test.ts) is open and test/s2.test.ts is queued or running, but its promotion is gone
+seed 157 vitest FAIL F at event 9: wait 0 (test/s1.test.ts) is open and test/s1.test.ts is queued or running, but its promotion is gone
+seed 165 vitest FAIL F at event 8: wait 0 (test/s4.test.ts test/q.test.ts) is open and test/s4.test.ts is queued or running, but its promotion is gone
+seed 167 node FAIL F at event 7: wait 0 (test/s1.test.ts test/s2.test.ts) is open and test/s1.test.ts test/s2.test.ts is queued or running, but its promotion is gone
+seed 172 vitest FAIL F at event 7: wait 1 (test/s4.test.ts test/q.test.ts) is open and test/q.test.ts is queued or running, but its promotion is gone
+seed 179 vitest FAIL F at event 9: wait 0 (test/s2.test.ts test/s4.test.ts) is open and test/s2.test.ts test/s4.test.ts is queued or running, but its promotion is gone
+seed 188 vitest FAIL F at event 12: wait 1 (test/s2.test.ts) is open and test/s2.test.ts is queued or running, but its promotion is gone
+seed 195 node FAIL F at event 10: wait 1 (test/s3.test.ts test/s2.test.ts) is open and test/s3.test.ts test/s2.test.ts is queued or running, but its promotion is gone
+seed 202 vitest FAIL F at event 3: wait 0 (test/s3.test.ts) is open and test/s3.test.ts is queued or running, but its promotion is gone
+seed 204 vitest FAIL F at event 3: wait 0 (test/s2.test.ts) is open and test/s2.test.ts is queued or running, but its promotion is gone
+seed 215 vitest FAIL F at event 8: wait 2 (test/s1.test.ts) is open and test/s1.test.ts is queued or running, but its promotion is gone
+seed 234 vitest FAIL F at event 6: wait 0 (test/s2.test.ts test/s1.test.ts) is open and test/s2.test.ts test/s1.test.ts is queued or running, but its promotion is gone
+seed 236 vitest FAIL F at event 11: wait 2 (test/s4.test.ts) is open and test/s4.test.ts is queued or running, but its promotion is gone
+seed 277 vitest FAIL F at event 11: wait 0 (test/s4.test.ts) is open and test/s4.test.ts is queued or running, but its promotion is gone
+seed 284 vitest FAIL F at event 10: wait 2 (test/s3.test.ts) is open and test/s3.test.ts is queued or running, but its promotion is gone
+seed 291 node FAIL F at event 9: wait 0 (test/s4.test.ts) is open and test/s4.test.ts is queued or running, but its promotion is gone
+seed 292 vitest FAIL F at event 8: wait 0 (test/q.test.ts test/s4.test.ts) is open and test/q.test.ts test/s4.test.ts is queued or running, but its promotion is gone
+seed 295 node FAIL F at event 11: wait 1 (test/s3.test.ts) is open and test/s3.test.ts is queued or running, but its promotion is gone
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 277.53 s, user 26.45 s, sys 30.77 s, maxrss 351932 KB
+load after: 16.35 18.80 24.17 23/2620 276180
+done

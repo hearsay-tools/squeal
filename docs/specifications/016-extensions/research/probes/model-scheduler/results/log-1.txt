@@ -1,0 +1,46 @@
+== r398 pre 5ecb377a8 INV=A,B,C,D,E KIND=vitest SEEDS=1-300
+load before: 11.21 21.31 27.07 29/2297 2940428
+seed 141 vitest FAIL B at event 6: tier stands named, but test/s3.test.ts ranks before every unended file ()
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 136.10 s, user 14.00 s, sys 14.33 s, maxrss 396632 KB
+load after: 14.69 19.43 25.58 5/2779 3005653
+== r398 fix 69d6328bf INV=A,B,C,D,E KIND=vitest SEEDS=1-141
+load before: 14.69 19.43 25.58 5/2748 3005782
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 144.57 s, user 14.97 s, sys 15.23 s, maxrss 361900 KB
+load after: 25.47 22.31 25.76 27/2720 3090778
+== r397 pre 231ecaeb0 INV=A,B,C,D,E KIND=vitest SEEDS=1-300
+load before: 25.47 22.31 25.76 32/2784 3091389
+seed 173 vitest FAIL C at event 7: test/q.test.ts cut 2 times at one key
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 181.54 s, user 19.24 s, sys 20.49 s, maxrss 362532 KB
+load after: 24.53 23.56 25.65 52/2913 3231814
+== r397 fix b862d2f2d INV=A,B,C,D,E KIND=vitest SEEDS=1-173
+load before: 24.53 23.56 25.65 32/2720 3232778
+seed 97 vitest FAIL A at event 12: tier of f/p.test.ts cut at 60 s with no promoted file ranked before it (beat Infinity)
+seed 173 vitest FAIL C at event 7: test/q.test.ts cut 2 times at one key
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 184.50 s, user 19.29 s, sys 21.27 s, maxrss 342132 KB
+load after: 39.73 29.15 27.33 30/2723 3373490
+== r345 pre d7344427b INV=C,D,E KIND=vitest SEEDS=1-300
+load before: 39.73 29.15 27.33 49/2817 3374092
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 312.20 s, user 28.25 s, sys 31.80 s, maxrss 318392 KB
+load after: 42.87 36.97 31.06 7/2742 3610476
+== r345 fix 3a8d364e4 INV=C,D,E KIND=vitest SEEDS=1-300
+load before: 42.87 36.97 31.06 15/2732 3610725
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 310.71 s, user 28.64 s, sys 32.95 s, maxrss 329396 KB
+load after: 29.78 33.38 31.28 62/2989 3847087
+== r427 pre dae700644 INV=D,E KIND=node SEEDS=1-300
+load before: 29.78 33.38 31.28 35/2879 3847541
+seed 7 node FAIL E at event 12: not current after release: test/s1.test.ts test/s2.test.ts test/s3.test.ts test/s4.test.ts
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 21.36 s, user 4.18 s, sys 3.76 s, maxrss 270984 KB
+load after: 28.06 32.69 31.11 27/2999 3862364
+== r427 fix bc8ed7742 INV=D,E KIND=node SEEDS=1-7
+load before: 28.06 32.69 31.11 16/2916 3862947
+seed 7 node FAIL E at event 12: not current after release: test/s1.test.ts test/s2.test.ts test/s3.test.ts test/s4.test.ts
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+wall 10.15 s, user 2.95 s, sys 1.27 s, maxrss 311620 KB
+load after: 27.29 32.37 31.02 33/3004 3870698
