@@ -29,13 +29,25 @@ export interface Pack {
   readonly project: Readonly<Record<string, string>>;
   /** Opens the adapter over the written fixture; `scratch` is the scenario's own directory. */
   readonly open: (root: AbsolutePath, scratch: AbsolutePath) => Promise<RunnerAdapter>;
-  /** Scenarios the runner is documented not to meet, each with the spec line that says so. */
-  readonly known?: Readonly<Record<string, string>>;
+  /** Scenarios the runner is documented not to meet, by scenario name. */
+  readonly known?: Readonly<Record<string, Gap>>;
+}
+
+/** A scenario a runner is documented not to meet (spec 016 D1). */
+export interface Gap {
+  /** The spec line that documents it. */
+  readonly spec: string;
+  /**
+   * The assertions it fails, each as a text its line holds, such as
+   * `step 2 run`. Any other failed assertion, and any error the driver
+   * caught, reads FAIL.
+   */
+  readonly fails: readonly string[];
 }
 
 /**
  * PASS: the expected outcome. FAIL: anything else. KNOWN: a listed gap
- * failed as documented. UNEXPECTED PASS: a listed gap passed.
+ * failed only its listed assertions. UNEXPECTED PASS: a listed gap passed.
  */
 export type Verdict = "PASS" | "FAIL" | "KNOWN" | "UNEXPECTED PASS";
 
@@ -49,9 +61,17 @@ export interface Played {
   readonly lines: readonly string[];
 }
 
-export function verdictOf(ok: boolean, known: string | undefined): Verdict {
-  if (known === undefined) return ok ? "PASS" : "FAIL";
-  return ok ? "UNEXPECTED PASS" : "KNOWN";
+/** `failed`: the lines of the failed assertions; `errored`: the driver caught an error. */
+export function verdictOf(
+  failed: readonly string[],
+  errored: boolean,
+  gap: Gap | undefined,
+): Verdict {
+  if (errored) return "FAIL";
+  if (gap === undefined) return failed.length === 0 ? "PASS" : "FAIL";
+  if (failed.length === 0) return "UNEXPECTED PASS";
+  const listed = (line: string) => gap.fails.some((text) => line.includes(text));
+  return failed.every(listed) ? "KNOWN" : "FAIL";
 }
 
 /** A kit test passes on PASS and KNOWN alone, so a gap that closed fails until it is unlisted. */
@@ -102,10 +122,15 @@ export async function play(scenario: Scenario, pack: Pack, scratch: string): Pro
   const tests = [...modules].filter(([, m]) => isTest(m)).map(([name]) => name);
 
   const lines: string[] = [];
-  let ok = true;
+  const failed: string[] = [];
+  let errored = false;
   const say = (pass: boolean, text: string) => {
-    if (!pass) ok = false;
+    if (!pass) failed.push(text);
     lines.push(`${pass ? "ok  " : "FAIL"} ${text}`);
+  };
+  const caught = (text: string) => {
+    errored = true;
+    lines.push(`FAIL ${text}`);
   };
   let adapter: RunnerAdapter | null = null;
   try {
@@ -161,14 +186,23 @@ export async function play(scenario: Scenario, pack: Pack, scratch: string): Pro
       }
     }
   } catch (error) {
-    say(false, `threw: ${errorText(error)}`);
+    caught(`threw: ${errorText(error)}`);
   } finally {
     try {
       await adapter?.close();
     } catch (error) {
-      say(false, `close threw: ${errorText(error)}`);
+      caught(`close threw: ${errorText(error)}`);
     }
   }
-  const known = pack.known?.[scenario.name];
-  return { scenario: scenario.name, pack: pack.name, verdict: verdictOf(ok, known), known, lines };
+  return playedOf(scenario, pack, { failed, errored, lines });
+}
+
+function playedOf(
+  scenario: Scenario,
+  pack: Pack,
+  run: { failed: readonly string[]; errored: boolean; lines: readonly string[] },
+): Played {
+  const gap = pack.known?.[scenario.name];
+  const verdict = verdictOf(run.failed, run.errored, gap);
+  return { scenario: scenario.name, pack: pack.name, verdict, known: gap?.spec, lines: run.lines };
 }

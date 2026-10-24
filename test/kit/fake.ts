@@ -9,7 +9,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../src/core/types/index.js";
-import type { Pack } from "./driver.js";
+import type { Gap, Pack } from "./driver.js";
 import { isTest, type Module } from "./scenarios/index.js";
 
 /*
@@ -22,7 +22,7 @@ import { isTest, type Module } from "./scenarios/index.js";
 
 export interface FakeOptions {
   readonly stale?: boolean;
-  readonly known?: Readonly<Record<string, string>>;
+  readonly known?: Readonly<Record<string, Gap>>;
 }
 
 const PROJECT = "fake";
