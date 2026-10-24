@@ -18,6 +18,7 @@ import {
   type CodeTooBig,
 } from "../types/code-delivery.js";
 import type { Consumer, EpochMs, WorktreeId } from "../types/index.js";
+import { coverageMeasures, evidenceOf, failingOf, isCoverage } from "./code-coverage.js";
 import {
   type CodeBound,
   codeKey,
@@ -137,9 +138,15 @@ function seed(
   at: EpochMs,
 ): void {
   store.views.clear(consumer);
+  // Spec 015 D9 (row 015-12): the failing `crap` and `uncovered` states too, while judged.
+  const covered = failingOf(
+    store,
+    consumer.worktreeId,
+    coverageMeasures(store, consumer.worktreeId),
+  );
   store.views.writeMany(
     consumer,
-    failing.map((s) => seedEntry(s, at)),
+    [...failing, ...covered].map((s) => seedEntry(s, at)),
   );
   writeJson(store, seededKey(consumer), at);
 }
@@ -259,13 +266,14 @@ function statesFor(
   worktreeId: WorktreeId,
   failing: readonly CodeKnownState[],
   view: readonly CodeViewEntry[],
+  measures: readonly CodeMeasure[] = [MEASURE],
 ): readonly CodeKnownState[] {
   const known = new Set(failing.map(codeKey));
   const paths = [...new Set(view.filter((v) => !known.has(codeKey(v))).map((v) => v.check.path))];
   if (paths.length === 0) return failing;
   const others = store.states
-    .list(worktreeId, { measure: MEASURE, paths })
-    .filter((s) => s.outcome !== "fail");
+    .list(worktreeId, { paths })
+    .filter((s) => measures.includes(s.measure) && s.outcome !== "fail");
   return [...failing, ...others];
 }
 
@@ -301,11 +309,15 @@ function codeStep(
     };
     return { news: { ...news, ...big }, writes: true };
   }
+  // Spec 015 D9 (row 015-12): `crap` and `uncovered` beside complexity, while the daemon judges them.
+  const covered = coverageMeasures(store, worktreeId);
+  const measures: readonly CodeMeasure[] = [MEASURE, ...covered];
   const edits = new Map(store.states.edits(worktreeId, MEASURE).map((e) => [codeKey(e), e]));
-  const view = store.views.list(consumer).filter((v) => v.measure === MEASURE);
+  const view = store.views.list(consumer).filter((v) => measures.includes(v.measure));
+  const judged = [...failing, ...failingOf(store, worktreeId, covered)];
   const plan = planCodeDelta({
     view,
-    states: statesFor(store, worktreeId, failing, view),
+    states: statesFor(store, worktreeId, judged, view, measures),
     last: (check, measure) => lastTransition(store, worktreeId, check, measure),
     edit: (check, measure) => edits.get(codeKey({ check, measure })) ?? null,
     seededAt,
@@ -330,8 +342,10 @@ function codeStep(
   const entries: CodeDeltaEntry[] = listed.map((e) => ({
     ...e,
     line: e.kind === "removed" ? null : lineOf(store, worktreeId, e.check),
+    ...evidenceOf(store, worktreeId, e),
   }));
-  return { news: { v: 1, entries, more, ...big }, writes };
+  const coverage = plan.entries.some(isCoverage) ? { coverage: true as const } : {};
+  return { news: { v: 1, entries, more, ...big, ...coverage }, writes };
 }
 
 /** What a delivery asks of the code. */
