@@ -25,7 +25,7 @@ export function createViewRepo(conn: Connection): CodeViewRepo {
       return conn
         .all(
           `SELECT v.*, ${CHECK_COLUMNS} FROM views v JOIN checks c ON c.id = v.check_id
-           WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
+           WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ? AND v.outcome <> 'pass'
            ORDER BY c.path, c.qualified_name, c.occurrence, v.measure`,
           ...consumerParams(consumer),
         )
@@ -67,6 +67,16 @@ export function createViewRepo(conn: Connection): CodeViewRepo {
     },
     clear(consumer) {
       conn.run(`DELETE FROM views WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
+    },
+    retain(worktreeIds, consumers) {
+      return conn.run(
+        `DELETE FROM views WHERE worktree_id IN (SELECT value FROM json_each(?))
+           AND (worktree_id, session_id, agent_id) NOT IN (
+             SELECT value ->> 'worktreeId', value ->> 'sessionId', value ->> 'agentId'
+             FROM json_each(?))`,
+        JSON.stringify(worktreeIds),
+        JSON.stringify(consumers),
+      );
     },
   };
 }
