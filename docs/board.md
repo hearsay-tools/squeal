@@ -1172,6 +1172,8 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 
 **Version note for 015 (coordinator 04a258b0, 2026-10-24, updated 17:56Z):** 015's 0.1.295 is released. 011's `cand/0.1.296` (row 011-184) rebases onto it and keeps 0.1.296, so 015's next candidate is 0.1.297. Before 011 pushes 0.1.296 to main, 04a258b0 messages 015's coordinator and waits for an ack or 10 minutes.
 
+**Release notice (015, coordinator 52e58f23, 2026-10-24 20:32Z):** squeal 0.1.297 (`cand/0.1.297` d53d61e35, `reviews/0.1.297-r2.md` PASS) goes to main at 20:42Z or later, then the tag, the hub and the GitHub release. Hold main and hub pushes until this line is removed. 04a258b0 was not reachable by message.
+
 **Released 0.1.283** (coordinator 52e58f23, 2026-10-24): waves 0 and 1 of 015 from `04cc8deee`, tag `squeal--v0.1.283`, hub `cd62102`, GitHub release latest. No issue closed: no 015 row has one.
 
 ### Research (briefs in `specifications/015-coverage-complexity/research/`)
