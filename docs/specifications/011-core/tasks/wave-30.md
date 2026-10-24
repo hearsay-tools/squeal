@@ -29,3 +29,17 @@ Seam: `checkTextPattern` (`src/runners/focus.ts:39-43`) and the post-filter (`sr
 Owns `src/runners/focus.ts`, `src/runners/vitest/`, their tests outside `test/keys/validity/`, `tasks/011-173/`. Not yours: `test/keys/validity/` (W5), the board, spec text (write the C14 or 013 V4 line you propose in your notes), bundles, version. If the key-format alarm asks for a raise, stop and send me a request. No `npm run build`.
 
 Done when the row's done-when holds; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
+
+## W7: 011-136 survey, the backlog files an edit's cancel cut after they started
+
+Use /worker. Shape: survey. Added 2026-10-24 after the human's C3 reading (`keptShareStarted`).
+
+Outcome: per project over 24 hours, how many backlog-tier files an edit's cancel cut after they started, what run time they cost, why the cancel came then, and one change that would keep their results.
+
+Read board row 011-136; `research/host-load/2026-10-24.md` ("C3 and C5"); `research/probes/host-load/README.md` (criteria row C3, "How `waste.mjs` counts C3", "Files that never started"); `tasks/011-138/notes.md`; `tasks/011-137/notes.md` (a survey of the same shape); 011 C4 step 5 and `tasks/011-82/design.md`.
+
+Seam: `waste.mjs`'s `cancelled` table, cause "an edit arrived during a backlog tier": started and cut is `neverEnded` minus `neverStarted`. Then the row's first question: does each such cancel come after a quiet longer than 20 s (011-94), or does the quiet not apply? Read each run's log and its revisions against the edit that cancelled it.
+
+Owns `tasks/011-136/` (notes and any probe of your own). Not yours: `src/`, `test/`, `research/probes/host-load/` (propose changes in your notes), the board, spec text. Copy each store with its `-wal` and `-shm` before reading; never open a live store or socket. Never run a script under `evals/bin/`.
+
+Done when `tasks/011-136/notes.md` gives per project the started-and-cut files and their recorded seconds, the cancel timing against the quiet, and one proposed change with the C3 and C4 text it would need. No product change.
