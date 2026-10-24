@@ -154,6 +154,25 @@ describe("the coverage step", () => {
     ]);
   });
 
+  it("reads a function the join cannot tell as unknown, with no crossing (review 0.1.297 B4)", async () => {
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": A });
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: ranHotAndTiny(rig) });
+    rig.step();
+    // A record of the same bytes with no V8 function: each line ran, and is each function's only one.
+    const [entry] = ranHotAndTiny(rig);
+    if (entry === undefined) throw new Error("no entry");
+    rig.loader("test/a.test.ts", {
+      closure: ["src/a.ts"],
+      key: "key-2",
+      record: [{ ...entry, functions: [] }],
+    });
+    rig.step();
+    expect(rig.states("crap")).toEqual(["cold unknown -", "hot unknown -", "tiny unknown -"]);
+    expect(rig.states("uncovered")).toEqual(["cold unknown -", "hot unknown -", "tiny unknown -"]);
+    expect(rig.transitions("src/a.ts", ["hot", "cold", "tiny"])).toEqual([]);
+  });
+
   it("resolves a failing function an edit removed", async () => {
     const rig = coverageRig();
     await rig.edit({ "src/a.ts": A });
