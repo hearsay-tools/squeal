@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.293";
+  if (true) return "0.1.294";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -11499,8 +11499,9 @@ var init_proc = __esm({
 // src/core/capacity/cores.ts
 import { readdirSync as readdirSync11, readFileSync as readFileSync14 } from "node:fs";
 import { join as join23 } from "node:path";
-function gatedPermits(marks, own, hostSlots, want) {
-  let cores = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own.cores);
+function gatedPermits(marks, own, hostSlots, want, busy = null) {
+  const marked = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own.cores);
+  let cores = Math.max(marked, busy ?? 0);
   let grants = marks.reduce((sum, m) => sum + m.grant, own.grant);
   let taken2 = 0;
   for (; taken2 < want && (cores < hostSlots || grants < hostSlots / 2); taken2++) {
@@ -11515,12 +11516,35 @@ function createTreeCpu(options = {}) {
   if (!source.processTable([pid]).has(pid)) return null;
   return new ProcTreeCpu(pid, join23(options.root ?? "/", "proc"), source, options.now);
 }
-var ProcTreeCpu;
+function createHostCpu(options = {}) {
+  const source = createProcSource(options.root === void 0 ? {} : { root: options.root });
+  if (source.host().cpuTime === null) return null;
+  return new ProcHostCpu(source, options.now);
+}
+var ProcHostCpu, ProcTreeCpu;
 var init_cores = __esm({
   "src/core/capacity/cores.ts"() {
     "use strict";
     init_measure();
     init_proc();
+    init_source();
+    ProcHostCpu = class {
+      #source;
+      #now;
+      #last = null;
+      constructor(source, now = () => performance.now()) {
+        this.#source = source;
+        this.#now = now;
+      }
+      read() {
+        const busy = this.#source.host().cpuTime?.busy;
+        const atMs = this.#now();
+        const last = this.#last;
+        this.#last = busy === void 0 ? null : { atMs, busy };
+        if (last === null || this.#last === null || atMs <= last.atMs) return null;
+        return ticksToMs(this.#last.busy - last.busy, this.#source.clockTicks()) / (atMs - last.atMs);
+      }
+    };
     ProcTreeCpu = class {
       #pid;
       #proc;
@@ -11674,7 +11698,7 @@ function createPermitPool(options) {
 function grantOf(lease) {
   return lease.permits.length;
 }
-var MARK_REFRESH_MS, LockFilePool;
+var MARK_REFRESH_MS, HOST_WINDOW_MIN_MS, LockFilePool;
 var init_pool = __esm({
   "src/core/capacity/pool.ts"() {
     "use strict";
@@ -11684,6 +11708,7 @@ var init_pool = __esm({
     init_marks();
     init_share();
     MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
+    HOST_WINDOW_MIN_MS = 1e3;
     LockFilePool = class {
       #options;
       #hostSlots;
@@ -11694,6 +11719,11 @@ var init_pool = __esm({
       #tree;
       /** The cores the tree used in the last refresh window; `null` until one was measured. */
       #measured = null;
+      #host;
+      /** When the tree and the host were last read. */
+      #readAt = null;
+      /** The cores the host used beyond the tree in the last window, and the window's end (row 011-182). */
+      #beyond = null;
       #since = null;
       /** The want of the last look that got nothing, in the mark while it waits. */
       #pending = 0;
@@ -11710,8 +11740,10 @@ var init_pool = __esm({
         this.#hostSlots = Math.max(1, Math.floor(options.hostSlots ?? defaultHostSlots()));
         this.#now = options.now ?? Date.now;
         this.#tree = options.cores === void 0 ? createTreeCpu() : options.cores;
+        this.#host = this.#tree === null ? null : options.host === void 0 ? createHostCpu() : options.host;
+        this.#read();
       }
-      acquire(want, lane = "fast", least = 1) {
+      acquire(want, lane = "fast", least = 1, kind = "checkpoint") {
         if (this.#closed) return null;
         this.#prepareDir();
         const now = this.#now();
@@ -11733,7 +11765,7 @@ var init_pool = __esm({
           return slow || o.since < rank2;
         };
         const reserve = others.filter(ahead).reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 0) - o.grant), 0);
-        const allowed = Math.min(target, this.#gated(others, inUse, target));
+        const allowed = Math.min(target, this.#gated(others, inUse, target, kind));
         const permits = allowed < fewest2 ? [] : this.#take(allowed, reserve);
         if (permits.length < fewest2) for (const db of permits.splice(0)) db.close();
         const grant = permits.length;
@@ -11767,10 +11799,10 @@ var init_pool = __esm({
         this.#activate();
         return this.#handle(lease);
       }
-      offer(want, lane = "fast") {
+      offer(want, lane = "fast", kind = "checkpoint") {
         if (this.#closed) return 0;
         const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, this.#now());
-        return Math.min(target, this.#gated(others, inUse, target));
+        return Math.min(target, this.#gated(others, inUse, target, kind));
       }
       running(workers) {
         if (this.#closed || this.#tree === null) return () => {
@@ -11886,7 +11918,7 @@ var init_pool = __esm({
         if (this.#timer !== null) return;
         this.#measured = null;
         this.#tree?.reset();
-        this.#tree?.read();
+        this.#read();
         this.#startRefresh();
       }
       /** The last tier ended: no refresh and no mark until the next. */
@@ -11911,11 +11943,35 @@ var init_pool = __esm({
         for (const edit of this.#edits) workers += edit.workers;
         return this.#measured ?? workers;
       }
-      /** How many of `want` permits the CPU gate lets this daemon take now (row 011-98). */
-      #gated(others, inUse, want) {
+      /** How many of `want` permits the CPU gate lets this daemon take now (rows 011-98, 011-182). */
+      #gated(others, inUse, want, kind) {
         const cores = this.#cores();
         if (cores === null) return want;
-        return gatedPermits(others, { cores, grant: inUse }, this.#hostSlots, want);
+        const busy = kind === "backlog" ? this.#busy(cores) : null;
+        return gatedPermits(others, { cores, grant: inUse }, this.#hostSlots, want, busy);
+      }
+      /**
+       * A backlog tier's view of the host (row 011-182): its busy cores beyond
+       * this daemon's tree over the last window, plus `cores`, what the tree's
+       * tiers use now, so a tier of its own that ended since counts no more. A
+       * window older than a mark's freshness is read again, over the time since
+       * the last read, once that is `HOST_WINDOW_MIN_MS`. `null` with none.
+       */
+      #busy(cores) {
+        if (this.#host === null) return null;
+        const now = this.#now();
+        const fresh = () => this.#beyond !== null && now - this.#beyond.at < SLOT_WAITER_FRESH_MS;
+        if (!fresh() && this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
+        return fresh() && this.#beyond !== null ? this.#beyond.cores + cores : null;
+      }
+      /** Reads the tree and the host over one window; the tree's cores, as `TreeCpu.read` gives them. */
+      #read() {
+        const tree = this.#tree?.read() ?? null;
+        const host = this.#host?.read() ?? null;
+        const now = this.#now();
+        this.#readAt = now;
+        if (tree !== null && host !== null) this.#beyond = { cores: Math.max(0, host - tree), at: now };
+        return tree;
       }
       #inUse() {
         let sum = 0;
@@ -11967,7 +12023,7 @@ var init_pool = __esm({
         if (this.#timer !== null) return;
         this.#timer = setInterval(() => {
           if (this.#mark === null) return;
-          this.#measured = this.#tree?.read() ?? this.#measured;
+          this.#measured = this.#read() ?? this.#measured;
           if (this.#forget(this.#now())) {
             this.#republish();
             return;
@@ -12058,6 +12114,11 @@ var init_backlog = __esm({
 });
 
 // src/core/scheduler/capacity.ts
+function poolKind(open6, picked) {
+  if (open6?.explicit !== true) return "backlog";
+  const runsIt = picked === void 0 || picked.some((p) => p.checkpointId !== null);
+  return runsIt ? "checkpoint" : "backlog";
+}
 function widthLease(lease, width) {
   return {
     get grant() {
@@ -12096,7 +12157,7 @@ var init_capacity2 = __esm({
       #failed = null;
       #refused = false;
       constructor(options, worktreeId, note) {
-        const { dir: dir2, refreshMs, hostSlots, project } = options;
+        const { dir: dir2, refreshMs, hostSlots, project, host } = options;
         this.#dir = dir2;
         this.#note = note;
         this.#pool = createPermitPool({
@@ -12104,17 +12165,19 @@ var init_capacity2 = __esm({
           owner: { pid: process.pid, worktreeId },
           ...refreshMs === void 0 ? {} : { refreshMs },
           ...hostSlots === void 0 ? {} : { hostSlots },
-          ...project === void 0 ? {} : { project }
+          ...project === void 0 ? {} : { project },
+          ...host === void 0 ? {} : { host }
         });
       }
       /**
        * The grant for a tier of `want` files that runs no fewer than `least`
        * workers (row 011-97); `null` when the pool failed and the tier runs
-       * ungranted.
+       * ungranted. A `backlog` tier's gate also counts the host's busy cores
+       * (row 011-182).
        */
-      take(want, lane = "fast", least = 1) {
+      take(want, lane = "fast", least = 1, kind = "checkpoint") {
         try {
-          const lease = this.#pool.acquire(want, lane, least);
+          const lease = this.#pool.acquire(want, lane, least, kind);
           this.#failed = null;
           if (lease === null) this.#refused = true;
           return lease ?? WAIT_FOR_CAPACITY;
@@ -12157,9 +12220,9 @@ var init_capacity2 = __esm({
        * its files are picked. `want` when the pool fails, as `take` then runs
        * the tier ungranted.
        */
-      offer(want) {
+      offer(want, kind = "checkpoint") {
         try {
-          return this.#pool.offer(want);
+          return this.#pool.offer(want, "fast", kind);
         } catch {
           return want;
         }
@@ -16341,7 +16404,7 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   const turn = !backlog && turnDue;
   let turnTier = false;
   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
-  const offer = backlog ? context.capacity?.offer(size) ?? defaultHostSlots() : 0;
+  const offer = backlog ? context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots() : 0;
   const wall = backlog ? new BacklogWall(backlogBudget(policy.runner.timeoutMs)) : null;
   let span = null;
   let tookBacklog = false;
@@ -16407,7 +16470,8 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   const granted = backlog || turnTier;
   const width = slot2 !== null ? 1 : granted ? widest(context, picked) : 0;
   const least = slot2 !== null ? 1 : fewest(context, picked);
-  const taken2 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least) : null;
+  const asks = poolKind(ledger.checkpoints.active, picked);
+  const taken2 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks) : null;
   if (taken2 === WAIT_FOR_CAPACITY) {
     ledger.commit();
     return turnTier ? selectTier(context, ledger, busy, cut, false) : null;
