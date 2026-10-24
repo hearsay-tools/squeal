@@ -7,8 +7,7 @@ import { isTest, type Module } from "../scenarios/index.js";
 /**
  * pytest's pack (spec 016 D1) over the declared environment `python`, its
  * runs inheriting `source`: modules in the package `kit`, tests under
- * `tests/`. The package is not `app`, which the environment of the pytest
- * fixtures installs.
+ * `tests/`.
  */
 export function pytestPack(python: string, source: NodeJS.ProcessEnv): Pack {
   return {
