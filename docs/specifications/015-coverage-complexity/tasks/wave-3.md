@@ -29,3 +29,11 @@ Check, with proof where you can:
 3. **015-33** passes with `NODE_V8_COVERAGE` set.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## R7: repair of review 0.1.299 B1, a git body after an own edit (015-40)
+
+Use /worker. Shape: repair. Resumes worker f0ed5308 on its branch `cez/f0ed5308` (at 32cc16d06). Outcome: a coverage `STILL FAIL` comes only for a body the session wrote.
+- Read B1 in `reviews/0.1.299.md`: its four steps are the test.
+- **The fix.** Make the coverage edit mark apply to the body being judged. When a later change git brought (the pulled record of 015-38, `src/core/code/pass/pulled.ts`) replaced the body after an own edit, that older edit does not qualify the judgement. Keep an own edit across unrelated revisions and late records. Lead: where `crap/step.ts` reads the complexity edits for the judged paths, and `judgeFiles` in `crap/judge.ts`.
+- **Owns.** `src/core/code/crap/**`, `src/core/code/pass/**` (reads only, unless a pulled-record accessor is needed) and their tests.
+- **Done when.** B1's sequence beside `test/code/crap/still-fail.test.ts` is red first, then green. It also has an own edit after the pull, which tells `STILL FAIL` again. The delayed-record, pre-registration, too-big and complexity-only tests still pass. Commit it as `fix(R7): … (review 0.1.299 B1)`. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not change git's FAIL or recovery rules or any complexity-only output. Do not build bundles or raise the version.
