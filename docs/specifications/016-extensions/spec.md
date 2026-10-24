@@ -120,7 +120,11 @@ Every runner reports what it observed through `RunReport`: per completed file in
 - where the core's filters are stricter than the injected stores. A git-ignored path is the one to settle first. The core drops it. No ignore filter appears in `src/runners/node-test/adapter-observed.ts`, `src/runners/pytest/adapter-observed.ts` or the two daemon stores (a search on 2026-10-24), though one may run earlier in the recorder. 009 lessons observation 4 is a stale FAIL behind a git-ignored path;
 - how today's meta entries (`nodeTest.observed.*`, `pytest.observed.*`) are read once into the core's form.
 
-Every difference that could change a verdict goes to the human before the slice. This section edits `src/core/scheduler/`, so 011's coordinator is told before the brief is dispatched (`status.md`, 2026-10-24).
+Every difference that could change a verdict goes to the human before the slice. The human decided two on 2026-10-25 (`status.md`):
+- node:test and pytest module loads key whatever `observe.runtimeInputs` says, as today (survey O8);
+- D4 raises `NODE_TEST_ADAPTER_VERSION` and `PYTEST_ADAPTER_VERSION` (C3's rule: what is kept changes), and `test/keys/validity`'s comparison shows the difference for both runners. An older daemon's keys then never equal the new ones, so nothing is merged.
+
+The rule for git-ignored paths (survey O1) waits for a count (row 016-19). This section edits `src/core/scheduler/`, so 011's coordinator is told before the brief is dispatched (`status.md`, 2026-10-24).
 
 ### D5. `src/harness/shared` names no runner
 
@@ -155,7 +159,7 @@ Each runner supplies a description in `src/runners/<runner>/describe.ts`:
 
 1. ~~Should the kit also run through a scratch daemon?~~ Answered 2026-10-25 from `research/core-defects.md` finding 3: not in 016. It ranks after one owner per rule and a model-based scheduler test (`status.md` amendment log).
 2. D3's store step: a column without a version raise, or a `meta` map. Owner: 016's coordinator, decided from the slice's evidence. A `user_version` raise goes to the human.
-3. Each difference D4's survey finds between the core's observed path and the injected stores that could change a verdict. Owner: the human.
+3. The rule for git-ignored observed paths, from row 016-19's count (survey O1). O8 and the older daemon were answered on 2026-10-25 (D4). Owner: the human.
 4. Should the kit replace the overlapping adapter-level tests (about a third of 1,221 lines, `research/runner-kit.md` finding 5), and share fixtures with the validity corpus? Owner: 016's coordinator, after wave 2.
 
 ## References
