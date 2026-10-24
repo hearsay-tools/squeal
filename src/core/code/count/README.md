@@ -12,3 +12,12 @@
 `test/code/count/wasm.test.ts` fails when the file's hash differs from the one above. To update: download the new tarball, copy the file, change the version, URL and hash here together, and raise `COUNTER_VERSION` in `index.ts`, since a new grammar can change a count.
 
 The build copies this file into each plugin's `dist/code/`, where `wasm.ts` finds it from the bundled CLI.
+
+## Gaps of 0.23.2
+
+0.23.2 is the latest release (2024-11-11; checked 2026-10-24). Two inputs it misreads are valid code, so the counter reads them as no parse error (row 015-23):
+
+- **`export type * from` and `export type * as N from`** (TypeScript 5.0). The grammar leaves `type` alone in an `ERROR` and parses the rest. `TYPESCRIPT_RULES.grammarGap` reads that one shape as no error. The upstream fixes, tree-sitter-typescript pull requests 358 and 360, are open. When a release has one, update the file as above and drop the rule.
+- **A raw NUL** in a string, a template or a comment. tree-sitter reads a NUL as the end of the input. `withCodeTree` parses the text with a space in place of each NUL, which keeps every offset. Body hashes are read from the file's own text; a NUL in a quoted key's name reads as a space. Python is parsed as written: CPython refuses a NUL anywhere in a source file.
+
+A type argument that holds `typeof import(…)`, as in `importOriginal<typeof import("./x.js")>()`, still reads as an error: the grammar reads the call as comparisons, so the tree is wrong as well.

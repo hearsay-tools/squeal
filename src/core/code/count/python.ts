@@ -61,6 +61,9 @@ export const PYTHON_RULES: CountRules = {
     // radon's `visit_Assert` does not descend: an `and` inside an `assert` adds nothing.
     return at.type !== "assert_statement";
   },
+  grammarGap() {
+    return false;
+  },
 };
 
 function isStarExcept(clause: Node): boolean {
