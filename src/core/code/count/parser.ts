@@ -28,7 +28,9 @@ export function counterReady(): Promise<void> {
 export function withCodeTree<T>(language: CodeLanguage, text: string, fn: (root: Node) => T): T {
   if (language === "python") return withPythonTree(text, fn);
   if (tsx === null) throw new Error("code counter: the TSX grammar is not loaded yet");
-  const tree = tsx.parse(text) as Tree;
+  // tree-sitter reads a NUL as the end of the input, but JS allows a raw one in a string, a
+  // template or a comment. A space keeps every offset. Python never holds one (CPython refuses it).
+  const tree = tsx.parse(text.replaceAll("\0", " ")) as Tree;
   try {
     return fn(tree.rootNode);
   } finally {
