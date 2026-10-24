@@ -27,7 +27,7 @@ Everything else from the research stays a finding, not a plan (Non-goals).
 5. node:test and pytest observed paths reach the store only through the core's path, and `ObservedStore` with both of its copies is gone. Their adapter suites and `test/scheduler/environment-growth-*.test.ts` pass with no assertion changed, except a difference D4's survey names and the human accepts.
 6. After a daemon restart, and in a second worktree, an edit of a path that a child process imported puts its test file in `direct` (row 007-56).
 7. No source file under `src/harness/shared` names a runner. The deny, the primer and the coverage lines say what they say today.
-8. A kit file re-runs only when its own closure changes: its runner's adapter and what that imports, and the kit. An edit inside one runner's folder re-runs no other runner's kit file.
+8. A kit file re-runs only when its own closure changes: its runner's adapter and what that imports, and the kit. An edit inside one runner's folder re-runs no other runner's kit file. That second rule holds once row 016-20 moves the helpers node:test's folder shares with the other two runners into a folder of their own (review `reviews/016-12.md` B1); until then an edit to them re-runs every kit file that loads them, as their closures require.
 
 ## Non-goals
 
@@ -144,6 +144,7 @@ Each runner supplies a description in `src/runners/<runner>/describe.ts`:
   - K4 to K9 with their variants, and the replay of goal 3 (`test/kit/`).
   - A check knows its runner (D3: `src/core/delivery/`, the store).
   - Runner descriptions (D5: `src/harness/shared/`, `src/runners/*/describe.ts`).
+  - Shared runner helpers out of node:test's folder (goal 8: `src/runners/`).
   - The contract text of D2 lands with the scaffold.
 - **Wave 2: one write path (D4).** It comes after the survey and the human's decisions on its differences. It also comes after K4, K5 and a two-worktree scenario are on main, so the kit guards the riskiest change before it lands.
 - **Every product landing:** a candidate whose version is agreed with 011's and 015's coordinators, one `/reviewer` on its SHA, and the 10-minute notice before main and hub pushes (`docs/process.md` steps 5 and 6).
