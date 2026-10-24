@@ -16,7 +16,15 @@ All scripts are in this folder. Run them with the paths below; each prints JSON 
 1. **Context.** Record the time, `uptime`, the CPU count (`nproc`), `capacity.hostSlots` from `~/.config/squeal/config.json` (default: CPUs − 1), and whether an eval run is active (`pgrep -af 'evals/bin/run-'`). List the Squeal projects and their live daemons with `squeal ps` and `squeal ps --json`.
 2. **Yesterday's CPU.** `sh sar-day.sh <DD>` with yesterday's day of month in local time (the full day, 144 ten-minute samples). Also run it for today, for context only.
 3. **Each project's store.** For each project root that `squeal ps --json` names, `<common>` is `$(git -C <root> rev-parse --path-format=absolute --git-common-dir)` and the store is `<common>/squeal/store.sqlite`. Skip a project with no store. Copy the store with its `-wal` and `-shm`, then its run logs, back to back, because the live daemons prune both: `mkdir -p <scratch>/<project>/runs && cp <common>/squeal/store.sqlite* <scratch>/<project>/ && cp -a <common>/squeal/runs/. <scratch>/<project>/runs/`. Then run `node --disable-warning=ExperimentalWarning waste.mjs <scratch>/<project>/store.sqlite 24 <scratch>/<project>/runs` and `node --disable-warning=ExperimentalWarning share.mjs <scratch>/<project>/store.sqlite`. Delete the copies when the results file is written.
-4. **Live samples.** Take three 20-second samples at least 10 minutes apart: `python3 -I sample.py 20 <scratch>/sN.json`, then `python3 -I analyze.py <scratch>/sN.json`. Keep the scratch files out of the repository. A sample counts when its `busyCores` is at least a quarter of the CPUs (6 on 24). If an eval run is active, take no samples: criterion C2 is then not measured.
+4. **Live samples.** Take three 20-second samples at least 10 minutes apart. Each runs the tree sampler beside `sample.py` in one command, so both read the same 20 seconds:
+
+   ```sh
+   timeout 60 python3 -I sample-trees.py <scratch>/sN-trees.jsonl 5 20 1 & python3 -I sample.py 20 <scratch>/sN.json; wait
+   python3 -I analyze.py <scratch>/sN.json
+   python3 -I analyze-trees.py <scratch>/sN-trees.jsonl
+   ```
+
+   Keep the scratch files out of the repository. A sample counts for C2 when its `busyCores` is at least a quarter of the CPUs (6 on 24). If an eval run is active, run only `sample-trees.py` and `analyze-trees.py`: C2 is then not measured, and C1's cause still names the trees. The next section says what `analyze-trees.py` prints.
 5. **Daemons and memory.** From `squeal ps`: each flagged daemon (older, root-gone, install-gone, not-installed) and how long it has been up; the daemons' total resident memory. From `free -b`: swap used and total. List niced processes adopted by `systemd --user` or init that carry the variable name `SQUEAL_OBSERVE`, with their age (report only; cezar's own leaks are hearsay-tools/cezarion#1448 and #1449).
 6. **Yesterday's result.** Read the newest earlier file in `../../host-load/`.
 
@@ -26,13 +34,41 @@ The problem is resolved when all five criteria are met on two measured days in a
 
 | | Criterion | Target | Baseline 2026-10-21 | Source |
 |---|---|---|---|---|
-| C1 | The host is rarely saturated, or Squeal is not why | 10-minute samples with idle under 10%: at most 5% of the day; or, when more, Squeal-run tests (`%nice`) are at most 20% of the busy CPU in those samples | 16.8% of samples saturated; `%nice` 36.4% of busy CPU in them. 19 October, before the load: 0% | step 2, `saturatedShare`, `niceShareOfBusyWhenSaturated` |
-| C2 | Squeal is a minor share of the busy CPU | Mean `squealShareOfBusy` of the counted samples at most 35%; met as "quiet" when fewer than two samples count | 70% (17.5 of 25.3 cores, one sample at load 51.9) | step 4 |
+| C1 | The host is rarely saturated, or Squeal is not why | 10-minute samples with idle under 10%: at most 5% of the day; or, when more, Squeal-run tests (`%nice`) are at most 20% of the busy CPU in those samples | 16.8% of samples saturated; `%nice` 36.4% of busy CPU in them. 19 October, before the load: 0% | step 2, `saturatedShare`, `niceShareOfBusyWhenSaturated`; the cause: step 4's trees |
+| C2 | Squeal is a minor share of the busy CPU | Mean `squealShareOfBusy` of the counted samples at most 35%; met as "quiet" when fewer than two samples count | 70% (17.5 of 25.3 cores, one sample at load 51.9), read before the fixes of row 011-186 (below) | step 4, `analyze.py` |
 | C3 | Saves waste few test runs | In each project with at least 1,000 files picked in 24 h, at least 78% of picked files store a result at run end, leaving out a file that never started and that a later run picked (`all.files.keptShareStarted`; the human, 2026-10-24) | squeal 60%, cezar 76% (design 011-82 expects about 81% and 78%), counted by the results that still existed: compare `all.files.keptShareNow` with them for a regression | step 3, `waste.mjs` |
 | C4 | Worktrees share results | In each project with at least 3 counted worktrees, `medianSharedShare` at least 50% | squeal about 0% (3 of 5 worktrees shared 0%), cezar about 43% | step 3, `share.mjs` |
 | C5 | No stale daemons; memory has room | No flagged daemon up more than 1 hour; daemons' total resident memory at most 8 GiB; swap under 90% used | 5 older daemons; 10.3 to 13.7 GiB; swap 4.0 of 4.0 GiB | step 5 |
 
 Report these too, without a target: yesterday's mean idle (baseline 40.0%; 75.4% on 19 October), mean `%nice` (22.4%; 9.2%), mean `%system` (19.1%; 7.7%), holders per key, the number of live worktrees per project, files picked per project in 24 h (`all.files.picked`), and per project the prune's share (`all.files.prunedShare`), the live worktrees' `live.files.keptShare`, and `all.files.neverStarted`, `all.files.handedOver` and `all.files.keptShare` (the C3 figure until 2026-10-24; below), and from `cancelled`, per cause, `cut` and `cutSeconds` (row 011-177). They show whether the day was comparable: a day with far more work can miss C1 for reasons outside Squeal.
+
+## Who made the load: `analyze-trees.py`
+
+Row 011-186. `sample-trees.py` is 011-181's sampler (`011-181/sample-trees.py`) with four additions: it ends after LINES lines; each tree carries the nice values of its processes that used CPU; each agent session carries its role; and the measuring session's whole tree counts as `sampler`. Its docstring has the rules. It reads `/proc` only. In step 4 it writes one 20-second line and ends; `timeout 60` only guards it. For each sample `analyze-trees.py` prints the busy cores, the idle share and whether the sample is saturated (idle under 10% of the CPUs, as C1 counts a sar sample). Then it prints the five largest trees of each kind at 0.1 core or more:
+
+- `squeal`: a Squeal daemon's tree, by its root.
+- `test`: a test runner outside Squeal, by its topmost runner process, with its command, its cwd and `via flock` for a locked full run.
+- `agent`: the rest of an agent session's tree.
+- `other`: the rest, by the name of the top process.
+
+Each line gives the cores, the nice values, the project, the task (the worktree's id8), the role and the agent kind. The role is the session's skill, from its argv's `Selected skill: /<name>` (Cezar's Claude sessions). A squeal tree takes the role of the agent session in its worktree; a test tree takes its own session's. `?` is a session whose argv names no skill, as every Codex session: name it by its task. The measuring session's own tree, with its `sample.py`, is `sampler` and is in no other kind. The JSON line after the trees gives `busyCores`, `idlePct`, `saturated`, `squealShareOfBusy`, `coresByKind` and `top`. Its `squealShareOfBusy` agrees with `analyze.py`'s within a few points (28 and 29%, 56 and 56% in the trials of `../../../tasks/011-186/notes.md`); report a larger gap.
+
+C1's cause names these trees: for each sample, the largest trees of each kind, and whether the sample was saturated. The trees are today's samples, and C1 counts yesterday's sar samples. So the trees name who loads the host at the hour of the measurement, not who made yesterday's saturated blocks; say so beside them.
+
+## `analyze.py` before row 011-186
+
+Two fixes of 2026-10-24 change C2's figure. Their commits are `fix(011-186): analyze.py does not count a gone process's life before the window` and `fix(011-186): analyze.py counts the Codex plugin's daemons`.
+
+- Before the first fix, a process that ended inside the window added its whole life to its reaper's tree, not only its seconds in the window, so Squeal read high. In the trial at 19:59:24Z, cezar `0deb3943`'s tree read 8.10 cores; it used 2.75 in the window. `squealShareOfBusy` read 69%, against 25% after the fix.
+- Before the second fix, `analyze.py` matched only `squeal/<version>/dist/cli/squeal.mjs daemon`. It counted no daemon of the Codex plugin (`squeal-hearsay/versions/<version>/dist`) and none from a checkout's `dist`, so Squeal read low. In the trial at 20:03:16Z it read 34% after the first fix and 56% after both (the trees: 56%); the two Codex daemons there used 2.14 cores.
+
+So C2's values before the fixes, and its 70% baseline, read high or low by how many test processes ended in each window and how many Codex sessions ran. Do not compare them with later values. The next daily reports the old script's figure beside the new one once, for each sample, so the series has a bridge:
+
+```sh
+F=$(git log -1 --format=%H --grep="^fix(011-186): analyze.py does not count")
+git show "$F^:docs/specifications/011-core/research/probes/host-load/analyze.py" > <scratch>/analyze-old.py
+python3 -I <scratch>/analyze-old.py <scratch>/sN.json | tail -1
+```
 
 ## How `waste.mjs` counts C3
 
@@ -90,7 +126,7 @@ They agree within 0.1%; the 23 s in cezar are one file its report withheld, whic
 ## Verdict, report and done
 
 - **RESOLVED**: C1 to C5 are all met and measured today, and yesterday's results file also says all five met.
-- **NOT YET**: a criterion is measured and not met. For each one, give the evidence of its cause (the process trees, the worktrees that share little and why, the runs that stored nothing) and a proposed board row: title, owning spec, one-line done-when. Mark a criterion that is worse than its baseline as a regression.
+- **NOT YET**: a criterion is measured and not met. For each one, give the evidence of its cause and a proposed board row: title, owning spec, one-line done-when. The evidence for C1 is step 4's trees (above: "Who made the load"); for C4, the worktrees that share little and why; for C3, the runs that stored nothing. Mark a criterion that is worse than its baseline as a regression.
 - **INCOMPLETE**: a criterion could not be measured (an eval run, an unreadable store, no sar file). The day does not count toward RESOLVED.
 
 Write `../../host-load/<YYYY-MM-DD>.md` (the run's local date): the verdict as its first line, the criteria table with today's value, target, baseline and met or not, the context figures, the causes and proposed rows. Commit it alone on your branch with the message `docs(011): host load <date>: <verdict>`, then `git fetch origin`, `git rebase origin/main` and `git push origin HEAD:main`; after a rejected push, fetch, rebase and push once more. It is a docs commit and needs no review.
