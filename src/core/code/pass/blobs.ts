@@ -29,10 +29,11 @@ export interface FileEntry {
 /** A work set path: no longer counted, or a file. */
 export type Entry = { readonly kind: "gone"; readonly path: RelativePath } | FileEntry;
 
-/** The pass's counts: when they are tried, and whether the pass is a first count or recount. */
+/** The pass's counts: when they are tried, whether the pass is a first count or recount, and its threshold. */
 export interface Attempt {
   readonly now: EpochMs;
   readonly quiet: boolean;
+  readonly threshold: number;
 }
 
 /**

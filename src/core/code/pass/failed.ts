@@ -28,6 +28,14 @@ export interface FailedCount {
    * its crossings.
    */
   readonly quiet?: true;
+  /**
+   * An edit's count: the threshold the first edit whose count failed was
+   * made under, kept while the path's counts fail, as no pass judges the
+   * path until one succeeds. Its retry tells only a crossing that holds at
+   * this threshold too; one that only a later threshold makes is the
+   * recount's (D1, row 015-31). Absent for a quiet count.
+   */
+  readonly threshold?: number;
 }
 
 /** Each path whose last count failed. */
@@ -83,14 +91,20 @@ export function mayCount(
 
 /**
  * The record after one more failed count of a path at `blob`, by a pass
- * that is `quiet` or not; another blob starts again at one attempt, with
- * this pass's origin. The same blob keeps the origin of its first failure.
+ * that is `quiet` or not, at `threshold`; another blob starts again at one
+ * attempt, with this pass's origin. The same blob keeps the origin of its
+ * first failure. An edit's record keeps the threshold of the first edit
+ * that failed (row 015-31).
  */
 export function failedAgain(
   previous: FailedCount | undefined,
   blob: FileHash,
   error: string,
-  { now, quiet }: { readonly now: EpochMs; readonly quiet: boolean },
+  {
+    now,
+    quiet,
+    threshold,
+  }: { readonly now: EpochMs; readonly quiet: boolean; readonly threshold: number },
 ): FailedCount {
   const same = previous?.blob === blob;
   const attempts = same ? previous.attempts + 1 : 1;
@@ -101,7 +115,7 @@ export function failedAgain(
     attempts,
     retryAt: wait === undefined ? null : now + wait,
     error,
-    ...(origin ? { quiet: true } : {}),
+    ...(origin ? { quiet: true } : { threshold: previous?.threshold ?? threshold }),
   };
 }
 

@@ -19,6 +19,12 @@ export interface FileAfter {
    * (review 0.1.293 B1).
    */
   readonly quiet?: boolean;
+  /**
+   * The threshold of the edit whose count failed at this path before this
+   * count, from its record: a crossing it does not make too is a later
+   * policy change's, told by the recount's summary (D1, row 015-31).
+   */
+  readonly editedUnder?: number;
 }
 
 export interface JudgeInput {
@@ -69,6 +75,9 @@ interface Counted {
  */
 export function judge(input: JudgeInput): Judged {
   const seeds = new Set(input.after.flatMap((a) => (a.quiet === true ? [a.path] : [])));
+  const editedUnder = new Map(
+    input.after.flatMap((a) => (a.editedUnder === undefined ? [] : [[a.path, a.editedUnder]])),
+  );
   const quiet = (check: CodeCheckId) => input.quiet || seeds.has(check.path);
   const before = new Map(input.before.map((s) => [checkKey(s.check), s]));
   const counted = countedChecks(input);
@@ -105,7 +114,8 @@ export function judge(input: JudgeInput): Judged {
     });
     if (quiet(c.check)) continue;
     const kind = transitionKind(was?.outcome ?? null, c.outcome);
-    if (kind !== null) {
+    const earlier = [was?.threshold, editedUnder.get(c.check.path)];
+    if (kind !== null && !byPolicy(c, earlier)) {
       transitions.push(transition(input, c.check, kind, was ?? null, c));
     }
     const body = input.bodies.get(key);
@@ -137,13 +147,24 @@ function countedChecks(input: JudgeInput): Counted[] {
       };
       const outcome: CodeOutcome = errors.some((e) => overlaps(fn.range, e))
         ? "unknown"
-        : fn.complexity > input.threshold
-          ? "fail"
-          : "pass";
+        : outcomeAt(fn.complexity, input.threshold);
       out.push({ check, fn, blob, outcome });
     }
   }
   return out;
+}
+
+function outcomeAt(complexity: number, threshold: number): CodeOutcome {
+  return complexity > threshold ? "fail" : "pass";
+}
+
+/**
+ * Row 015-31: whether a threshold the check was judged at before, or its
+ * failed edit was made under, gives the count another outcome than now.
+ * Then a later policy change, not the edit, made the crossing (D1).
+ */
+function byPolicy(c: Counted, earlier: readonly (number | null | undefined)[]): boolean {
+  return earlier.some((t) => typeof t === "number" && outcomeAt(c.fn.complexity, t) !== c.outcome);
 }
 
 /**
