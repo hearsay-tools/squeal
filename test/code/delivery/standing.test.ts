@@ -145,7 +145,14 @@ describe("a failed fix attempt (015-21, lessons round 1 P3)", () => {
     await write("settle 23 B1\npay 23 B3\n");
     expect(await told(C1)).toEqual([payFail(23)]);
     await write("settle 23 B1\npay 22 B4\n");
-    expect(await told(C1)).toEqual([payStill(22)]);
+    clock += 1_000;
+    const still = formatDelta((await delivery().onToolBoundary(C1)) ?? expect.fail("no delta"));
+    // Not a change of state, so the title counts it as a function still over.
+    const [title, ...rest] = still.split("\n");
+    expect(title).toMatch(
+      /^SQUEAL · 1 function still over the complexity threshold at revision \d+$/,
+    );
+    expect(rest.filter((l) => l.includes(" complexity: "))).toEqual([payStill(22)]);
     await write("settle 23 B1\npay 21 B5\n");
     expect(await told(C1)).toEqual([]);
     await write("settle 23 B1\npay 20 B6\n");
