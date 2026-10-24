@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.289";
+  if (true) return "0.1.291";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -18545,9 +18545,10 @@ function focusedTexts(checks, testFile) {
   );
   return own.length === 0 ? null : [...new Set(own.flatMap((entry4) => entry4.texts))];
 }
-function checkTextPattern(texts) {
+function checkTextPattern(texts, rule = "separator-or-space") {
   if (texts.length === 0) return "(?!)";
   const literal2 = (text3) => text3.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (rule === "separator") return texts.map(literal2).join("|");
   return texts.map((text3) => literal2(text3).split(" > ").join("(?: > | )")).join("|");
 }
 var init_focus = __esm({
@@ -27959,6 +27960,18 @@ var init_moved = __esm({
   }
 });
 
+// src/runners/vitest/name-pattern.ts
+function namePattern(texts, version2) {
+  const major = Number.parseInt(version2, 10);
+  return new RegExp(checkTextPattern(texts, major >= 5 ? "separator" : "separator-or-space"));
+}
+var init_name_pattern = __esm({
+  "src/runners/vitest/name-pattern.ts"() {
+    "use strict";
+    init_focus();
+  }
+});
+
 // src/runners/vitest/observe.ts
 import { mkdtempSync as mkdtempSync2, rmSync as rmSync10 } from "node:fs";
 import { tmpdir as tmpdir3 } from "node:os";
@@ -29048,6 +29061,7 @@ var init_adapter = __esm({
     init_graph();
     init_load2();
     init_moved();
+    init_name_pattern();
     init_observe2();
     init_optimizer();
     init_packages2();
@@ -29407,7 +29421,7 @@ var init_adapter = __esm({
               const path = this.paths.toAbsolute(ref2.path);
               const texts = focusedTexts(options.checks, ref2);
               return texts === null ? project.createSpecification(path) : project.createSpecification(path, {
-                testNamePattern: new RegExp(checkTextPattern(texts))
+                testNamePattern: namePattern(texts, vitest.version)
               });
             });
             const collector = new RunCollector(
