@@ -7,6 +7,7 @@ import type {
   CodeRegistration,
   CodeTooBig,
 } from "../types/code-delivery.js";
+import { isStillFail } from "./code-delta.js";
 
 /*
  * Spec 015 D6: how deliveries and registrations word the code. Factual, as
@@ -29,8 +30,15 @@ export const ruleOf = (check: CodeCheckId) =>
 export const whereOf = (check: CodeCheckId, line: number | null) =>
   line === null ? check.path : `${check.path}:${line}`;
 
+/**
+ * 015-21: how a STILL FAIL line ends, so the agent knows it hears of the
+ * function again only once it is back at or under the threshold.
+ */
+const quietHint = (entry: CodeDeltaEntry, command: string) =>
+  `Squeal stays quiet about it until it is at or under ${entry.threshold}, and ${command} code ${entry.check.path} shows its count.`;
+
 /** One told change: the FAIL, PASS, RESOLVED or STILL FAIL line. */
-export function codeEntryLine(entry: CodeDeltaEntry): string {
+export function codeEntryLine(entry: CodeDeltaEntry, command: string): string {
   const at = `${functionName(entry.check)} (${whereOf(entry.check, entry.line)})`;
   switch (entry.kind) {
     case "first-seen-fail":
@@ -42,7 +50,10 @@ export function codeEntryLine(entry: CodeDeltaEntry): string {
       return `RESOLVED complexity: ${at} is no longer in the code`;
     case "edited":
       // D6, its last rule: not a new failure, so the line says it was over before the edit.
-      return `STILL FAIL complexity: ${at} is ${entry.value} after the edit; it was already over ${entry.threshold} before it (${ruleOf(entry.check)})`;
+      return `STILL FAIL complexity: ${at} is ${entry.value} after the edit; it was already over ${entry.threshold} before it (${ruleOf(entry.check)}); ${quietHint(entry, command)}`;
+    case "edited-after-fail":
+      // 015-21: the agent heard the FAIL, so this is its fix attempt, still over.
+      return `STILL FAIL complexity: ${at} is ${entry.value} after the edit, over ${entry.threshold} (${ruleOf(entry.check)}); ${quietHint(entry, command)}`;
   }
 }
 
@@ -76,7 +87,7 @@ export function tooBigLine({ path, size, limit }: CodeTooBig): string {
 export function codeLines(news: CodeNews, command: string): string[] {
   return [
     ...(news.recount === undefined ? [] : [recountLine(news.recount, command)]),
-    ...news.entries.map(codeEntryLine),
+    ...news.entries.map((e) => codeEntryLine(e, command)),
     ...(news.more === 0
       ? []
       : [
@@ -88,7 +99,7 @@ export function codeLines(news: CodeNews, command: string): string[] {
 
 /** How many function changes a delivery's code part tells, listed or by number; a STILL FAIL is none. */
 export const codeChanges = (news: CodeNews) =>
-  news.entries.filter((e) => e.kind !== "edited").length + news.more;
+  news.entries.filter((e) => !isStillFail(e.kind)).length + news.more;
 
 /**
  * A delivery title's words for its code lines of functions: the changes,
@@ -97,7 +108,7 @@ export const codeChanges = (news: CodeNews) =>
  */
 export function codeTitleWords(news: CodeNews): string | null {
   const changes = codeChanges(news);
-  const still = news.entries.filter((e) => e.kind === "edited").length;
+  const still = news.entries.filter((e) => isStillFail(e.kind)).length;
   const words = [
     ...(changes === 0 ? [] : [`${changes} complexity ${changes === 1 ? "change" : "changes"}`]),
     ...(still === 0 ? [] : [`${plural(still, "function")} still over the complexity threshold`]),

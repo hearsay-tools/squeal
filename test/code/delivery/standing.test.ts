@@ -26,8 +26,15 @@ import {
 const consumer = (sessionId: string): Consumer => ({ worktreeId: WT, sessionId, agentId: "main" });
 const C1 = consumer("s1");
 const C2 = consumer("s2");
-const SETTLE =
-  "STILL FAIL complexity: settle (src/a.ts:1) is 25 after the edit; it was already over 20 before it (ESLint rule)";
+/** 015-21: every STILL FAIL line ends so, so the agent knows the next line comes at a flip. */
+const quiet = (path: string) =>
+  `Squeal stays quiet about it until it is at or under 20, and squeal code ${path} shows its count.`;
+const SETTLE = `STILL FAIL complexity: settle (src/a.ts:1) is 25 after the edit; it was already over 20 before it (ESLint rule); ${quiet("src/a.ts")}`;
+/** The STILL FAIL after a FAIL told in this session (015-21, lessons round 1 P3). */
+const payStill = (cc: number) =>
+  `STILL FAIL complexity: pay (src/a.ts:2) is ${cc} after the edit, over 20 (ESLint rule); ${quiet("src/a.ts")}`;
+const payFail = (cc: number) => `FAIL complexity: pay (src/a.ts:2) is ${cc}, over 20 (ESLint rule)`;
+const payPass = (cc: number) => `PASS complexity: pay (src/a.ts:2) is ${cc}, at or under 20`;
 
 let main: Store;
 let tree: FakeWorktree;
@@ -54,8 +61,9 @@ async function write(text: string): Promise<void> {
   await pass(tree, store, fakeCounter(), { now: () => clock });
 }
 
-function delivery() {
-  return createDelivery(main, { status: fixedStatus(), now: () => clock, code: source });
+/** A hook whose clock reads `now`: by default the test's clock. */
+function delivery(now = () => clock) {
+  return createDelivery(main, { status: fixedStatus(), now, code: source });
 }
 
 async function register(c: Consumer): Promise<void> {
@@ -93,7 +101,9 @@ describe("the first edit to a standing failure (015 D6, goal 5)", () => {
     const lines = formatDelta(delta).split("\n");
     expect(lines).toContain(SETTLE);
     expect(lines.filter((l) => l.startsWith("FAIL "))).toEqual([]);
-    expect(store.views.list(C1).find((v) => v.check.qualifiedName === "settle")?.told).toBe("full");
+    expect(store.views.list(C1).find((v) => v.check.qualifiedName === "settle")?.told).toBe(
+      "still",
+    );
   });
 
   it("is quiet at the second edit in the same session", async () => {
@@ -125,19 +135,61 @@ describe("the first edit to a standing failure (015 D6, goal 5)", () => {
     clock += 1_000;
     tree.write("src/b.ts", "settle 25 B9\n").revise();
     await pass(tree, store, fakeCounter(), { now: () => clock });
-    expect(await told(C1)).toEqual([SETTLE.replace("src/a.ts", "src/b.ts")]);
+    expect(await told(C1)).toEqual([SETTLE.replaceAll("src/a.ts", "src/b.ts")]);
   });
+});
 
-  it("tells PASS -> FAIL and FAIL -> PASS as before, and an edit after a told failure is quiet", async () => {
+describe("a failed fix attempt (015-21, lessons round 1 P3)", () => {
+  it("tells the first edit after a FAIL that leaves the function over once, then PASS", async () => {
     await register(C1);
     await write("settle 23 B1\npay 23 B3\n");
-    expect(await told(C1)).toEqual([
-      "FAIL complexity: pay (src/a.ts:2) is 23, over 20 (ESLint rule)",
-    ]);
-    await write("settle 23 B1\npay 24 B4\n");
+    expect(await told(C1)).toEqual([payFail(23)]);
+    await write("settle 23 B1\npay 22 B4\n");
+    expect(await told(C1)).toEqual([payStill(22)]);
+    await write("settle 23 B1\npay 21 B5\n");
     expect(await told(C1)).toEqual([]);
-    await write("settle 23 B1\npay 4 B5\n");
-    expect(await told(C1)).toEqual(["PASS complexity: pay (src/a.ts:2) is 4, at or under 20"]);
+    await write("settle 23 B1\npay 20 B6\n");
+    expect(await told(C1)).toEqual([payPass(20)]);
+  });
+
+  it("tells one again once the function has passed and failed again", async () => {
+    await register(C1);
+    await write("settle 23 B1\npay 23 B3\n");
+    await write("settle 23 B1\npay 22 B4\n");
+    expect(await told(C1)).toEqual([payFail(22)]);
+    await write("settle 23 B1\npay 21 B5\n");
+    expect(await told(C1)).toEqual([payStill(21)]);
+    await write("settle 23 B1\npay 4 B6\n");
+    expect(await told(C1)).toEqual([payPass(4)]);
+    await write("settle 23 B1\npay 24 B7\n");
+    expect(await told(C1)).toEqual([payFail(24)]);
+    await write("settle 23 B1\npay 22 B8\n");
+    expect(await told(C1)).toEqual([payStill(22)]);
+  });
+
+  it("is each session's own", async () => {
+    await register(C1);
+    await register(C2);
+    await write("settle 23 B1\npay 23 B3\n");
+    expect(await told(C1)).toEqual([payFail(23)]);
+    await write("settle 23 B1\npay 22 B4\n");
+    expect(await told(C1)).toEqual([payStill(22)]);
+    // C2 hears the failure as it is now, and the edit before it is not news to C2.
+    expect(await told(C2)).toEqual([payFail(22)]);
+    await write("settle 23 B1\npay 21 B5\n");
+    expect(await told(C2)).toEqual([payStill(21)]);
+    expect(await told(C1)).toEqual([]);
+  });
+
+  it("tells no STILL FAIL for the edit a FAIL told, when the pass counted it after the hook's clock", async () => {
+    await register(C1);
+    await write("settle 23 B1\npay 23 B3\n");
+    // The hook read its clock before the pass committed: its time is before the pass's.
+    const early = (await delivery(() => clock - 500).onToolBoundary(C1)) ?? expect.fail("no delta");
+    expect(formatDelta(early)).toContain(payFail(23));
+    expect(await told(C1)).toEqual([]);
+    await write("settle 23 B1\npay 22 B4\n");
+    expect(await told(C1)).toEqual([payStill(22)]);
   });
 });
 

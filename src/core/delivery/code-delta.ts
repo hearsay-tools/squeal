@@ -20,7 +20,8 @@ import type { EpochMs, RevisionNumber } from "../types/index.js";
  * only when the check's last transition explains it and came after what the
  * view holds; any other (a recount, a first count, a parse error healed) is
  * written silently, told by count. One more is told with no change of
- * state: the first edit to a function the view holds failing by count only.
+ * state: the first edit to a function the view holds failing by count only,
+ * or told failing in full (015-21); after it, edits are quiet.
  */
 
 /** A view row's key: one measure of one check. */
@@ -80,7 +81,12 @@ const RANK: Record<CodeDeltaKind, number> = {
   "fail-to-pass": 1,
   removed: 2,
   edited: 3,
+  "edited-after-fail": 3,
 };
+
+/** A `STILL FAIL`: an edit that left a failing function over, not a change of state. */
+export const isStillFail = (kind: CodeDeltaKind) =>
+  kind === "edited" || kind === "edited-after-fail";
 
 /**
  * The transition kind that takes `told` (the view's outcome, `null` when it
@@ -105,17 +111,18 @@ function toldKind(
 }
 
 /**
- * D6, its last rule: the edit to tell of a function failing before and
- * after it, when the view holds it told by count only and the edit came
- * after what the view holds; `null` otherwise. Told once: the view entry is
- * then written `full`, so later edits are quiet until the state changes.
+ * D6, its last rule, and 015-21: the edit to tell of a function failing
+ * before and after it, when the view holds it told by count or told its
+ * FAIL in full, and the edit came after what the view holds; `null`
+ * otherwise. Told once: the view entry is then written `still`, so later
+ * edits are quiet until the state changes.
  */
-function standingEdit(
+function editToTell(
   told: CodeViewEntry,
   now: CodeKnownState,
   input: CodePlanInput,
 ): CodeEdit | null {
-  if (now.outcome !== "fail" || told.told !== "count") return null;
+  if (now.outcome !== "fail" || told.told === "still") return null;
   const edit = input.edit(now.check, now.measure);
   if (edit === null || edit.revision <= (input.seenUpTo ?? -1)) return null;
   return edit.at > Math.max(input.seededAt, told.toldAt) ? edit : null;
@@ -140,21 +147,32 @@ function stateStep(
 ): StateStep {
   if (state.outcome === "pass" && before === null) return {};
   if (before?.outcome === state.outcome && before.threshold === state.threshold) {
-    const edit = standingEdit(before, state, input);
+    const edit = editToTell(before, state, input);
     if (edit === null) return {};
     return {
-      write: { ...seedEntry(state, input.toldAt), told: "full" },
-      entry: entryOf(state, "edited", edit.revision),
+      write: { ...seedEntry(state, Math.max(input.toldAt, edit.at)), told: "still" },
+      entry: entryOf(
+        state,
+        before.told === "count" ? "edited" : "edited-after-fail",
+        edit.revision,
+      ),
     };
   }
   const last = input.last(state.check, state.measure);
   const after = Math.max(input.seededAt, before?.toldAt ?? 0);
   const kind = toldKind(before, state, last, { after, seenUpTo: input.seenUpTo });
+  // The entry holds every change this delivery read, though the pass may have
+  // written one after the hook read its clock: that edit is told by the FAIL.
+  const asOf = Math.max(
+    input.toldAt,
+    last?.at ?? 0,
+    input.edit(state.check, state.measure)?.at ?? 0,
+  );
   // Told or not, a passing function leaves the view.
   const view: StateStep =
     state.outcome === "pass"
       ? { removal: { check: state.check, measure: state.measure } }
-      : { write: { ...seedEntry(state, input.toldAt), told: kind === null ? "count" : "full" } };
+      : { write: { ...seedEntry(state, asOf), told: kind === null ? "count" : "full" } };
   if (kind === null) return view;
   return { ...view, entry: entryOf(state, kind, last?.revision ?? state.changedAt) };
 }
