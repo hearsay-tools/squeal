@@ -26,8 +26,8 @@ export interface ModuleEnd {
   /** Ended after a timeout cancel was requested: its results are not trusted. */
   readonly afterCancel: boolean;
   /**
-   * A test it was to run did not end in a pass or a fail (`cutShort`): a
-   * cancel skipped it. Absent reads as cut (row 011-137).
+   * A test it was to run did not report a pass or a fail before the cancel
+   * was asked (`cutShort`). Absent reads as cut (row 011-137).
    */
   readonly cut?: boolean;
   /** The module's own duration (`moduleDuration`), `null` when Vitest reports none. */
@@ -59,6 +59,8 @@ export class RunCollector {
   readonly #requested: Map<string, TestFileRef>;
   readonly #texts: Map<string, readonly string[]>;
   readonly #names = new WeakMap<TestModule, Map<string, string>>();
+  /** Each test whose result arrived before the cancel was asked, and its state then (`cutShort`). */
+  readonly #beforeCancel = new Map<string, ReturnType<TestCase["result"]>["state"]>();
 
   /**
    * `ended` hears each requested file whose module ended in a final state
@@ -93,6 +95,7 @@ export class RunCollector {
   testCase(testCase: TestCase): void {
     const ref = this.#ref(testCase.project.name, testCase.module.moduleId);
     if (!ref) return;
+    if (!this.cancelRequested) this.#beforeCancel.set(testCase.id, testCase.result().state);
     // 013 V4 (row 011-135): a check the texts leave out reports `skipped`; it is not reported.
     const texts = this.#texts.get(refKey(ref));
     if (texts !== undefined && !holdsCheckText(testCase.fullName, texts)) return;
@@ -129,7 +132,7 @@ export class RunCollector {
       state: module.state(),
       errors,
       afterCancel: this.cancelRequested,
-      cut: cutShort(module),
+      cut: cutShort(module, this.#beforeCancel),
       durationMs: moduleDuration(module),
     };
     this.modules.set(refKey(ref), end);
@@ -211,22 +214,29 @@ export function endedInTime(module: ModuleEnd): boolean {
 
 /**
  * A module that ended after the cancel, passed, with every test it was to
- * run passed: whole, since a cancel skips each test it reaches, the running
- * one included (row 011-137, `tasks/011-137/notes.md`, the probe).
+ * run reported passed before the cancel was asked: only its hooks ran in the
+ * grace, so it ran whole (row 011-137, `tasks/011-137/notes.md`).
  */
 export function endedWhole(module: ModuleEnd): boolean {
   return module.afterCancel && module.state === "passed" && module.cut === false;
 }
 
 /**
- * Whether a test the module was to run (collected `run` or `only`) ended
- * other than passed or failed. A cancel's skip reads so; so does a test that
- * skips itself (`ctx.skip()`), which costs a run, never a wrong result.
+ * Whether a test the module was to run (collected `run` or `only`) did not
+ * report a pass or a fail before the cancel was asked. Such a result left its
+ * worker before the cancel reached it, so the cancel did not change it. A
+ * final state proves nothing: a cancel skips the test it reaches, and a
+ * hook's error with `it.fails` turns that into a pass (review 0.1.287 B1). A
+ * result that arrives late, or a test that skips itself (`ctx.skip()`), costs
+ * a run, never a wrong result.
  */
-function cutShort(module: TestModule): boolean {
+function cutShort(
+  module: TestModule,
+  beforeCancel: ReadonlyMap<string, ReturnType<TestCase["result"]>["state"]>,
+): boolean {
   for (const test of module.children.allTests()) {
     if (test.options.mode !== "run" && test.options.mode !== "only") continue;
-    const state = test.result().state;
+    const state = beforeCancel.get(test.id);
     if (state !== "passed" && state !== "failed") return true;
   }
   return false;
