@@ -71,7 +71,7 @@ function fileLines(
     const collected =
       run.collected === null ? "" : ` (the run collected ${checksText(run.collected)})`;
     return [
-      `No check of ${path} holds ${textsText(run.texts)} at revision ${run.revision}${collected}.`,
+      `No check of ${path} holds ${textsText(texts)} at revision ${run.revision}${collected}.`,
     ];
   }
   const took = focusedTookText(run);

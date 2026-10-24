@@ -1,6 +1,6 @@
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/index.js";
-import { readFocused } from "../core/scheduler/focused-row.js";
+import { type FocusedRun, readFocused } from "../core/scheduler/focused-row.js";
 import { slowView } from "../core/scheduler/slow.js";
 import { formatCheck } from "../core/state/index.js";
 import { statusFocusedOf } from "../core/status/focused.js";
@@ -103,7 +103,8 @@ export type StoredCheck = StatusFocusedCheck;
 
 /**
  * What the wait knows of one file named by its own path: why it gets no
- * focused run; the focused run at its current key for the wait's texts; or
+ * focused run; the focused run at its current key for the wait's texts,
+ * with only the checks that hold one of them (`answerOf`); or
  * the selected checks of the result stored at that key, which the file's
  * own run wrote first (C15).
  */
@@ -113,7 +114,7 @@ export interface FocusedFile {
   readonly key: CheckKey | null;
   /** Why the daemon gives it no focused run (`wholeFileReasons`). */
   readonly whole?: string;
-  /** Its newest focused run at its current key whose texts hold the wait's, ended or not. */
+  /** Its newest focused run at its current key whose texts hold the wait's, ended or not, as `answerOf` gives it. */
   readonly run?: StatusFocused;
   /** With a result stored at its key: the selected checks of it, and how many checks it has. */
   readonly stored?: {
@@ -159,12 +160,7 @@ export function readFocusedFiles(
     if (reason !== undefined) return { testFile, key, whole: reason };
     const own = runs.get(id);
     const run =
-      own !== undefined &&
-      key !== null &&
-      own.key === key &&
-      texts.every((t) => own.texts.includes(t))
-        ? statusFocusedOf(own, true)
-        : undefined;
+      own !== undefined && key !== null && own.key === key ? answerOf(own, texts) : undefined;
     // `usedAt` 0: a read, not a lookup hit.
     const results = key === null ? [] : store.results.byKey(key, 0);
     const stored = results.length === 0 ? undefined : storedOf(results, texts);
@@ -175,6 +171,25 @@ export function readFocusedFiles(
       ...(stored === undefined ? {} : { stored }),
     };
   });
+}
+
+/**
+ * Review 0.1.286 B1: `run` as the answer to a wait for `texts`: as recorded
+ * when it ran for the same texts; when it ran for more, only its checks
+ * that hold one of `texts`, and its file-level failure. `undefined` when it
+ * ran without one of `texts`, or ran for more and left selected checks out
+ * of its list: one of those may hold a text, so the wait asks for its own.
+ */
+function answerOf(run: FocusedRun, texts: readonly string[]): StatusFocused | undefined {
+  if (!texts.every((t) => run.texts.includes(t))) return undefined;
+  const status = statusFocusedOf(run, true);
+  if (run.texts.every((t) => texts.includes(t))) return status;
+  if (run.more > 0) return undefined;
+  const checks = status.checks.filter(
+    (c) => c.check.kind !== "test" || holdsText(c.check.fullName, texts),
+  );
+  const tests = checks.filter((c) => c.check.kind === "test").length;
+  return { ...status, checks, matched: status.matched === null ? null : tests };
 }
 
 function storedOf(
