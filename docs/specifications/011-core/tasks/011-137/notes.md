@@ -61,7 +61,32 @@ From findings 1 to 3, the step-down already keeps what ended before the cancel a
 
 - **The rule.** Under a step-down's cancel, a module that ends in the grace counts as completed when its state is `passed` and none of its tests that were to run (collected mode `run` or `only`) ended `skipped` or `pending`. A test the cancel cut reads so. The probe below shows this. A failed module, or one with a cut test, stays unfinished and queues for the successor, as before.
 - **No delay.** The grace stays as it is (`GRACE_BEFORE_FORCE_MS`, 1 s, then the forced cancel). The successor starts no later.
-- **What a stop does is unchanged** by default: the rule is gated on the cause `step-down`. Request to the coordinator below.
+- **What a stop does is unchanged.** The coordinator's decision (a), reply to request 792b8cd4: the rule holds for the cause `step-down` only. A stop, which a store schema newer than the daemon also asks, where no write is safe, and every other cancel cause (supersession, backlog, yield, hold) stay as they are. The stability check still applies: a kept module whose inputs changed during its run stores nothing.
+
+### What changed
+
+| Where | What |
+|---|---|
+| `src/runners/vitest/reporter.ts` | `ModuleEnd.cut?: boolean`, additive (the coordinator approved it): a test the module was to run did not end passed or failed (`cutShort`). Absent reads as cut. `endedWhole(module)`: ended after the cancel, `passed`, `cut === false`. |
+| `src/runners/vitest/run.ts` | `RunExecution.keepsWhole?: boolean`, additive: set by `execute` when the signal's reason is `step-down` and the run did not time out, on the graceful, forced and hung ends. `buildReport` completes a module that `endedInTime` or, with `keepsWhole`, `endedWhole`. |
+
+Nothing changed in the scheduler or the daemon. `record.ts` queues again what the report does not complete (`unfinishedFiles`), and `recordTier` stores what it completes under the stability check. So the kept module stores, and nothing queues it for the successor.
+
+### Tests
+
+| Test | What it checks | Red before |
+|---|---|---|
+| `test/runners/vitest/cancel-grace.test.ts`, "counts as completed under a step-down …" | A real adapter runs two files. One has a passing test, a declared skip and an `afterAll` that waits for a release file. The other is running a test. The run is cancelled with `step-down`, and the release is written 50 ms later. The report completes the first file with its pass and its skip, and not the cut one. `fileEnded` hears neither. | Yes: `completedFiles` was `[]`. |
+| same file, "stays dropped under a stop, as before" | The same run cancelled with `stop` completes nothing. | n/a (pins decision (a)) |
+| `test/daemon/step-down-keeps.test.ts` | The done-when, against real daemons. A `buildAt("0.1.0")` daemon under `lookup-only` runs `run --all --wait`. Then an edit makes a tier of three files: `finished` ends, `whole` holds its `afterAll` until the step-down's note appears, and `cut` is running a test. A SessionStart at the sources' version steps it down. At its stop gap the store holds results of the cancelled run for `finished` and `whole`, and the `cut` row is `queued`. The successor's only run holds `cut` alone, and every file is `pass/current`. | Yes, with the gate off: `whole` lost its result (`storedBy` gave `[finished]`). With the gate on: green at revisions 18 and 20, the first inside a sibling's 24-core load window. |
+| `test/keys/validity/cases/adapter/vitest.ts`, "a step-down's cancel completes a module that ended whole in its grace" | The key-format alarm named `endedWhole`'s lines as changed lines that no case runs. The case runs them. The candidate stores the module and the last release does not: reported, no raise. The case holds no skip, since `adapters.test.ts` pins the cases that differ when a skip reads as a pass. | The alarm failed without it. |
+
+### For whoever continues
+
+- The daemon test releases `whole`'s `afterAll` from the step-down note, which `#shutdown` writes after `#cancelTiers` aborted the run. The module must then end within Vitest's 1 s graceful cancel. On a heavily loaded host that can fail as "the step-down's note" or as a forced cancel, never as a false pass.
+- The stop gate is the one line `keeps` in `execute` (`src/runners/vitest/run.ts`). Extending the rule to a stop means one cause more there, and the stop test of `cancel-grace.test.ts` flips.
+- Never-started files (finding 4) are the rest of the step-down's count. Counting them as handed over is row 011-138's (`waste.mjs`).
+- node:test and pytest lanes are untouched: their files in flight are stopped after `CANCEL_GRACE_MS` as before (C9).
 
 ### Probe: what the main thread sees of a cancelled module (Vitest 5.0.3)
 
@@ -81,7 +106,7 @@ Each of those modules ended `passed`. A file with one passing test and a 1.5 s `
 
 After "Results the runner already stored stay, under the stability check.":
 
-> Under a step-down, a Vitest module that ends in the cancel's grace stores its results too, under the same check, when it passed and the cancel skipped none of its tests: those tests ended before the cancel reached their worker (amended 2026-10-24, row 011-137, `tasks/011-137/notes.md`: of 1,315 files that ten step-downs cancelled on 22 and 23 October, 639 ended before the cancel and kept their results, 96 ended in the grace and were all dropped, about 21 of them whole).
+> Under a step-down, a Vitest module that ends in the cancel's grace stores its results too, under the same check, when it passed and the cancel skipped none of the tests it was to run: those tests ended before the cancel reached their worker. A stop does not: it also ends a daemon whose store schema is newer than it understands, where no write is safe (amended 2026-10-24, the coordinator, row 011-137, `tasks/011-137/notes.md`: of 1,315 files that ten step-downs cancelled on 22 and 23 October, 639 ended before the cancel and kept their results, 96 ended in the grace and were all dropped, about 21 of them whole).
 
 And in C4 step 5, after "the files whose module ended before the cancel keep their results under the stability check below,":
 
