@@ -1,4 +1,5 @@
 {
   "inputs": { "test/slow/**": ["src/**"] },
-  "slow": { "include": ["test/slow/**"] }
+  "slow": { "include": ["test/slow/**"] },
+  "baseline": { "onStart": "lookup-then-run-missing" }
 }

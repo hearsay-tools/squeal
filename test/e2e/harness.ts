@@ -17,6 +17,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { PingResponse, StatusSnapshot } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import type { PythonVersion } from "../helpers/pytest-env.js";
 import { fixtureInstall, type Install, type InstallKind, uvSync } from "./install.js";
 import { copyPlugin, type HookName, type Plugin } from "./plugins.js";
@@ -83,6 +84,14 @@ export interface FixtureOptions {
    * `squeal init` wrote it: a node:test fixture marks a project slow this way.
    */
   readonly amendPolicy?: (policy: Record<string, unknown>) => object;
+  /**
+   * Leaves `squeal.config.json` without the `baseline` key the fixture adds
+   * after `policy`, `squeal init` or `squeal setup` and `amendPolicy`, so the
+   * start is the shipped default's, `lookup-only` (row 011-159). Without it a
+   * config with no `baseline` key gets `runMissingConfig`'s: these scenarios
+   * wait for the start to run every file.
+   */
+  readonly shippedBaseline?: boolean;
   /**
    * Builds the fixture, its store included, on tmpfs (`/dev/shm`) when the
    * host has one, else under /tmp as always. For a test that times hooks
@@ -220,6 +229,10 @@ export class E2E {
       const file = join(repo, "squeal.config.json");
       const policy = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
       writeFileSync(file, `${JSON.stringify(options.amendPolicy(policy), null, 2)}\n`);
+    }
+    if (options.shippedBaseline !== true) {
+      const file = join(repo, "squeal.config.json");
+      writeFileSync(file, runMissingConfig(readFileSync(file, "utf8")));
     }
     git(repo, ["add", "-A"]);
     git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);

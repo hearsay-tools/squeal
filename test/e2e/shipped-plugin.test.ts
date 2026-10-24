@@ -17,6 +17,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { StatusResult } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { ROLLDOWN_VERSION, VITE_VERSION } from "./install.js";
 import { copyPlugin, type HookName, PLUGINS } from "./plugins.js";
 
@@ -113,7 +114,8 @@ describe.each(PLUGINS)("the $name plugin as a marketplace install ships it", (ki
     writeFileSync(join(project, "src/math.ts"), MATH("+", 0));
     writeFileSync(join(project, "test/math.test.ts"), MATH_TEST);
     writeFileSync(join(project, "vitest.config.ts"), "export default { test: {} };\n");
-    writeFileSync(join(project, "squeal.config.json"), "{}\n");
+    // The test waits for the start to run both checks (row 011-159: not the shipped default).
+    writeFileSync(join(project, "squeal.config.json"), runMissingConfig());
     writeFileSync(join(project, ".gitignore"), "node_modules/\n");
     execFileSync(
       "npm",
