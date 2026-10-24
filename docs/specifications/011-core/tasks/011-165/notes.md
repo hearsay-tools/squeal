@@ -115,3 +115,69 @@ The trust check runs whenever `installedDependencies` reads the install, not per
 - **The skipped-entry fixture.** `writePnpmInstall` no longer links a skipped package that an importer declares, as pnpm does not.
 - **The types-only constant.** It is per name, so two types-only versions of one name in a closure count once. The types-only scan id is now `<id>#<integrity>`, because a package's own files do not depend on its edges. The opaque scan keeps its id, edges included.
 - **The validity fixtures.** They write the required links as folders with a `package.json`. The rule needs only that the entry exists.
+
+## Third round (review 0.1.282 B2.1)
+
+The re-review of `cand/0.1.282` at `b26f2e1eb` (`reviews/0.1.282.md`, "Re-review") closed B1, B2 and S1 and found one proven blocker, B2.1. The human asked for a third narrow round: a rebase onto main, the 011-158 interaction, and the B2.1 fix.
+
+### Rebase onto main
+
+The nine commits were rebased onto `origin/main` (0.1.286 and the board's third-round row). Row 011-158 had changed the same validity harness. Three conflicts were resolved by keeping both intents:
+- `case.ts`: `AcceptInput` holds 011-158's `absent` and R3's `packages`.
+- `harness/keyed.ts`: `keyedOver(testFile, installed, root, absent, packages)`. The closure names the absent paths, and the test file imports the given packages.
+- `harness/accept.ts`: passes both.
+
+Nothing of 011-158 was reverted. Its tests (`check-key`, `key-index`, `absent-read`, `former-sibling`) pass.
+
+### Today's pnpm key against 011-158 (commit "today's pnpm key read with and without absent segments")
+
+`KeyIndex.keysReadAsOne` keyed every read-as-one entry with each absent path's `absentSegment`, because each one was stored before 011-158. Today's pnpm definition (`formerPnpm`) is different. 0.1.280 to 0.1.284 stored its rows with the segment, and 0.1.285 to 0.1.287 stored them without it. Its entry now carries `ReadAsOne.storedAfter158`, and `keysReadAsOne` reads it both ways. A key read twice is kept once; this happens for a closure with no absent path. Red first: `former-read.test.ts` found F0's row (stored with the segment) but not F2's (stored without it). After the fix it finds both. `key-index.test.ts` pins the two keys and the de-duplication.
+
+### B2.1: Node's walk past a skipped package (commit "a lookup walks past a skipped pnpm package as Node does")
+
+pnpm installs and links no skipped optional package, so Node walks past where its link would be. The graph now follows the same walk:
+- **From a project directory:** each importer at or above it that declares the name, then the root's public hoisting.
+- **From a package folder:** the snapshot's edge beside it, then `.pnpm/node_modules` (the private hoisting), then the root as above.
+
+The walk stops at the first candidate pnpm installed. Each skipped candidate before it keys by its marker, and the copy Node finds keys with its closure. This holds for a direct lookup and for each edge in a closure. When nothing is found, the marker stays alone, as before.
+
+The trust rule (`stalePnpmLockfile`, now split into `checkVirtualStore` and `checkImporters`) checks each link a lookup expects against what it names:
+- a link that names an installed package must be there ("missing" otherwise);
+- a link that names a skipped package must be absent.
+
+At the root, a name hoisted publicly takes the place of a skipped name the root declares.
+
+**Where the walk cannot be modelled:**
+1. A link that is there for a skipped package. Node loads a package that `lock.yaml` does not install, and the graph has no content for it. The install is stale with the one note, with the new kind "installed though skipped: <path>", and no former read.
+2. Node's walk above the worktree root. C11 leaves such entries out ("an entry outside the worktree is left out"). A skipped package with no copy inside the worktree keys by its marker alone, as before.
+
+Red first (`test/keys/pnpm-skipped.test.ts`, 5 of 6 failing before the fix; Node's own `require` confirms in each test which copy it loads):
+- **The reviewer's pair:** the root's `a` at 2.0.0 or 3.0.0, and `packages/app` declares `a` 1.0.0 as an optional `os: [darwin]` package, skipped and not linked. The root bump changes the key.
+- **Through an edge:** a package's skipped optional edge leads Node to the root's copy.
+- **Through a private hoist:** the skipped edge leads Node to the private hoist.
+- **Through a public hoist:** a skipped name the root declares leads Node to the public hoist.
+- **Stale:** a present link for a skipped package, as a workspace entry and as an edge, gives one note.
+
+The sixth test, "a skipped optional with no other copy keys by its marker alone", passed before and after; it guards today's key. Two validity `key` cases hold the reviewer's pair at 2.0.0 and 3.0.0. With the fix their keys hold the root copy, so the two installs key apart; `pnpm-skipped.test.ts` asserts that the keys differ. The pnpm key cases moved to `cases/key/pnpm.ts` (350 lines, mostly lockfile text), because `installed.ts` had grown to 413 lines. `writePnpmInstall` now writes a skipped package as pnpm does: under `optionalDependencies`, with `os: [darwin]`, and as a block snapshot.
+
+### Cezar, third time
+
+`cezar-check.sh` was run on fresh clones under the same isolation (raw output: `output-b21.txt`; the clones were removed). The results:
+- Both installs trusted, with no note.
+- 329 files with their own segment and 328 kept across `21e516ef5`, the same one re-keyed file, and 919 of 919 keys readable as one.
+- The trust check takes 13.4 ms, of which the added checks are 8.6 ms (median of 30 runs, load 21.2).
+
+**No change from 329 and 328.** `skipped-walks.mts` on a third clone gives the reason. cezar's 85 skipped packages appear as 81 skipped edges, and none has another copy that Node walks on to. No importer declares a skipped package, and no hoist names one. So every walk past a skipped link ends at its marker, as before.
+
+### C11 and C3 sentences to change (proposed)
+
+1. **The lookup.** After "a skipped optional package keys by its identity and is not expanded or scanned", add: "pnpm links none, so a lookup that meets one walks on as Node does: from a project directory to each importer above and the root's public hoisting, from a package folder to the private hoisting and the root. It keys the copy found there, with its closure, beside the skipped identity; with none, the identity alone."
+2. **The trust rule**, as proposed in the repair section, item 1. Replace "every link a lookup resolves through exists unless it names a skipped package" with: "every link a lookup resolves through exists if it names an installed package and is absent if it names a skipped one, which Node walks past (one that is there loads a package `lock.yaml` does not install); at the root a name hoisted publicly takes the place of a skipped one the root declares".
+3. **C3, the pnpm definition read as one.** After "copies the newest set found as for a format read as one", add: "Its rows were stored with each absent path's segment up to 0.1.284 and without it from 0.1.285 (task 011-158), so it is read both ways."
+
+### Decisions in the third round
+
+- **Several skipped candidates.** When a walk passes more than one skipped candidate, each one keys by its marker.
+- **A manifest import of a skipped name.** It keys the skipped identity and the identity, with version, of the copy found.
+- **The root.** A declared name that is installed wins over a public hoist of the same name. A declared name that is skipped yields to the hoist.
+- **Edge links of skipped packages.** The trust rule now checks these too (`lstat`), so it can see a present link. On cezar that is 81 more checks, included in the 13.4 ms above.
