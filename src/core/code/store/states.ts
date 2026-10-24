@@ -155,6 +155,19 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
             fromId,
           );
         }
+        // The history explains the moved state: news not yet told and Stop's count (D6, D7).
+        // `to`'s own is an earlier function's, as its stale state above.
+        conn.run(
+          "DELETE FROM transitions WHERE worktree_id = ? AND check_id = ?",
+          worktreeId,
+          toId,
+        );
+        conn.run(
+          "UPDATE transitions SET check_id = ? WHERE worktree_id = ? AND check_id = ?",
+          toId,
+          worktreeId,
+          fromId,
+        );
       });
     },
   };

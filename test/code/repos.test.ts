@@ -98,6 +98,43 @@ describe("code store repositories (015 D4)", () => {
     expect(store.states.list("w2").map((s) => s.check)).toEqual([check("Ledger.settle")]);
   });
 
+  it("moves a check's transitions with it, at their revision and time, and records none (D2)", () => {
+    const store = open(commonDir());
+    const moved = check("settle", "src/ledger/settle.ts");
+    const crossing = (worktreeId: string, revision: number, at: number): CodeTransition => ({
+      worktreeId,
+      check: check("Ledger.settle"),
+      measure: "complexity",
+      kind: "pass-to-fail",
+      from: "pass",
+      to: "fail",
+      fromValue: 18,
+      toValue: 23,
+      threshold: 20,
+      revision,
+      at,
+    });
+    // An earlier function at the new identity, removed: its history is not the moved one's.
+    const stale: CodeTransition = {
+      ...crossing("w1", 3, 30),
+      check: moved,
+      kind: "removed",
+      from: "fail",
+      to: null,
+      toValue: null,
+    };
+    store.states.upsertMany([state("w1", "Ledger.settle"), state("w2", "Ledger.settle")]);
+    store.transitions.append([stale, crossing("w1", 2, 20), crossing("w2", 2, 21)]);
+    store.states.move("w1", check("Ledger.settle"), moved);
+    expect(store.transitions.history("w1", moved)).toEqual([
+      { ...crossing("w1", 2, 20), check: moved },
+    ]);
+    expect(store.transitions.history("w1", check("Ledger.settle"))).toEqual([]);
+    expect(store.transitions.history("w2", check("Ledger.settle"))).toEqual([
+      crossing("w2", 2, 21),
+    ]);
+  });
+
   it("appends transitions and reads one check's history, oldest first", () => {
     const store = open(commonDir());
     const base = {
