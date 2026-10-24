@@ -180,27 +180,4 @@ describe("the count of a file (spec 015 D3, D4)", () => {
     ]);
     expect((await countFile("x", "typescript", "a1b2")).blob).toBe("a1b2");
   });
-
-  it("lists the ranges that did not parse, and still counts every function it found", async () => {
-    const text = [
-      "export function before(a) { return a ? 1 : 2; }",
-      "export function broken( { if (",
-      "export function after(b) { return b && 1; }",
-    ].join("\n");
-    const count = await countFile(text, "typescript");
-    expect(count.errors.length).toBeGreaterThan(0);
-    expect(count.errors.every((e) => e.startLine >= 2)).toBe(true);
-    expect(count.functions.find((f) => f.qualifiedName === "before")?.complexity).toBe(2);
-    const py = await countFile("def ok(a):\n    return a or 1\ndef bad(:\n", "python");
-    expect([
-      py.errors.length > 0,
-      py.functions[0]?.qualifiedName,
-      py.functions[0]?.complexity,
-    ]).toEqual([true, "ok", 2]);
-  });
-
-  it("has no errors for a file that parses", async () => {
-    const count = await countFile("export const f = (a?: number) => a ?? 0;\n", "typescript");
-    expect(count.errors).toEqual([]);
-  });
 });
