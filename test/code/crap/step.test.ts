@@ -176,3 +176,19 @@ describe("the coverage step", () => {
     expect(rig.transitions("src/a.ts", ["cold"])).toEqual([]);
   });
 });
+
+describe("the coverage step's meta and the prune", () => {
+  it("drops the summary and evidence of a worktree no longer live, and keeps a live one's", async () => {
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": A });
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: ranHotAndTiny(rig) });
+    rig.step();
+    rig.store.meta.set("coverage:wt-gone", "{}");
+    rig.store.meta.set("coverage:wt-gone:src/a.ts", "{}");
+    rig.store.prune({ now: rig.clock, retentionDays: 7, worktrees: [WT], consumers: [] });
+    expect(rig.store.meta.get("coverage:wt-gone")).toBeNull();
+    expect(rig.store.meta.get("coverage:wt-gone:src/a.ts")).toBeNull();
+    expect(readSummary(rig.store.meta, WT)).not.toBeNull();
+    expect(rig.store.meta.get(`coverage:${WT}:src/a.ts`)).not.toBeNull();
+  });
+});

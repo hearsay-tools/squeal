@@ -14,6 +14,11 @@ const VACUUM_PAGES = 512;
 /** A worktree that is not live; the one parameter is the JSON list of live ids. */
 const DEAD_WORKTREE = "worktree_id NOT IN (SELECT value FROM json_each(?))";
 
+/** A coverage step's meta key (row 015-12) of a worktree that is not live; the parameter as above. */
+const COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
+    WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
+    ELSE substr(key, 10, instr(substr(key, 10), ':') - 1) END) NOT IN (SELECT value FROM json_each(?))`;
+
 /** Per-worktree tables, each with the columns that name one row. */
 const PER_WORKTREE = [
   ["files", "worktree_id, path"],
@@ -44,6 +49,8 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
     live,
   ).length;
   for (const [table, key] of PER_WORKTREE) deleteInBatches(conn, table, key, DEAD_WORKTREE, live);
+  // Row 015-12: the coverage step's meta, `coverage:<worktreeId>` and `coverage:<worktreeId>:<path>`.
+  deleteInBatches(conn, "meta", "key", COVERAGE_META_OF_DEAD, live);
 
   const viewsRemoved = deleteInBatches(
     conn,
