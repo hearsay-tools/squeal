@@ -67,4 +67,16 @@ Apply `probe/instrument.diff` to `test/daemon/busy-edit.test.ts` at a6a2aa3f6, t
 
 ## Verification
 
-See the final report of worker c53007f3 and the section below, filled in at the end.
+The changed test, `env -u PLUGIN_ROOT -u PLUGIN_DATA npx vitest run test/daemon/busy-edit.test.ts` in this worktree at dfccd343f, 20 times in a row by `probe/loop.sh`, 2026-10-24 23:48Z to 23:56Z (`probe/after/runs.txt`): 20 passed, 0 failed, 19.8 to 27.2 s each. One-minute load before and after each run, made by other workers and none on purpose:
+
+| Run | Load | Run | Load | Run | Load | Run | Load |
+|---|---|---|---|---|---|---|---|
+| 1 | 33.9 → 34.8 | 6 | 24.6 → 24.9 | 11 | 58.5 → 63.1 | 16 | 53.0 → 46.0 |
+| 2 | 34.8 → 29.8 | 7 | 24.9 → 38.4 | 12 | 63.1 → 61.5 | 17 | 46.0 → 45.2 |
+| 3 | 29.8 → 28.2 | 8 | 38.4 → 45.6 | 13 | 61.5 → 53.7 | 18 | 45.2 → 46.1 |
+| 4 | 28.2 → 24.2 | 9 | 45.6 → 55.7 | 14 | 53.7 → 50.0 | 19 | 46.1 → 47.5 |
+| 5 | 24.2 → 24.6 | 10 | 55.7 → 58.5 | 15 | 50.0 → 53.0 | 20 | 47.5 → 43.2 |
+
+The changed test logs nothing when it passes, so how many of these 20 had the retry stamped before the free is not known. The replay of the 20 probe runs above covers the two that failed.
+
+`npm run lint`: `Checked 2065 files in 809ms. No fixes applied.`, exit 0. `npm run typecheck`: exit 0. Squeal's full-suite checkpoint: in the worker's final report.
