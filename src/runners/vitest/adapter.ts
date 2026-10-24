@@ -253,11 +253,7 @@ export class VitestAdapter implements RunnerAdapter {
   /** Spec 015 D8: the coverage of an instance starting with the policy `on`; `null` with it off. */
   #startCoverage(on: boolean): InstanceCoverage | null {
     if (!on || this.#coverage === undefined) return null;
-    const coverage = InstanceCoverage.start(this.#coverage.tempDir);
-    if (coverage === null) {
-      noteOnce(this.paths.root, COVERAGE_MISSING_NOTE, this.#note);
-      return null;
-    }
+    const coverage = InstanceCoverage.start(this.#coverage);
     this.#coverageDirs.push(coverage);
     return coverage;
   }
@@ -729,10 +725,6 @@ export class VitestAdapter implements RunnerAdapter {
 async function testSpecifications(vitest: Vitest): Promise<TestSpecification[]> {
   return supported(await vitest.globTestSpecifications());
 }
-
-/** Spec 015 D8: logged when no provider is found beside the running code. */
-const COVERAGE_MISSING_NOTE =
-  "coverage stays off: Squeal's coverage provider (coverage/provider.mjs) is not beside its code (spec 015 D8)";
 
 function fileKey(ref: TestFileRef): string {
   return `${ref.project}\0${ref.path}`;

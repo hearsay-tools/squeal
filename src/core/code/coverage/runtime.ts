@@ -22,6 +22,10 @@ export function coverageProvider(module: URL = new URL(import.meta.url)): Absolu
   return null;
 }
 
+/** Spec 015 D8: noted when coverage is on and no provider is beside the running code. */
+export const PROVIDER_MISSING_NOTE =
+  "coverage stays off: Squeal's coverage provider (coverage/provider.mjs) is not beside its code (spec 015 D8)";
+
 /** Spec 015 D1: `coverage.enabled` acts only with `complexity.enabled`. */
 export function coverageOn(policy: Pick<Policy, "complexity" | "coverage">): boolean {
   return policy.coverage.enabled && policy.complexity.enabled;
