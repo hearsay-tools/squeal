@@ -26,7 +26,13 @@ import type {
   RetiredEntry,
   TransitionEntry,
 } from "../types/index.js";
-import { codeLines, codeRegistrationLine, codeTitleWords } from "./code-format.js";
+import {
+  codeLines,
+  codeRegistrationLine,
+  codeTitleWords,
+  knownFailuresTailLine,
+  toldOverLine,
+} from "./code-format.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { failureGroups, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
@@ -299,10 +305,12 @@ export function formatDelta(
     return `Not shown: ${counted.length} more changed checks (${by.join("; ")}). ${statusPointer(command)}`;
   };
   // Spec 015 D6: the code lines come after every test block, and are never cut.
+  const code = delta.code === undefined ? [] : codeLines(delta.code, command);
   const tail =
     [
       ...(failed === undefined ? [] : [whyLine(failed.check, command)]),
-      ...(delta.code === undefined ? [] : [codeLines(delta.code, command).join("\n")]),
+      ...(code.length === 0 ? [] : [code.join("\n")]),
+      ...otherSideLines(delta, code.length > 0, command, form),
     ].join("\n\n") || null;
   return assemble(
     [
@@ -316,6 +324,26 @@ export function formatDelta(
     tail,
     max,
   );
+}
+
+/**
+ * Row 015-27 (the human, 2026-10-24): the line a delta ends with about the
+ * kind its news is not of, only while that kind has something standing for
+ * the session. With test entries, the functions it was told about still
+ * over; with code lines and no test entry, the known test failures, except
+ * in Stop's full form, which ends with its own `Known failures` line.
+ */
+function otherSideLines(
+  { entries, code, knownFailures = 0 }: Delta,
+  codeNews: boolean,
+  command: string,
+  form: HeaderForm,
+): string[] {
+  if (entries.length > 0) {
+    return code?.toldOver === undefined ? [] : [toldOverLine(code.toldOver, command)];
+  }
+  if (!codeNews || form === "full" || knownFailures === 0) return [];
+  return [knownFailuresTailLine(knownFailures, command)];
 }
 
 /**
