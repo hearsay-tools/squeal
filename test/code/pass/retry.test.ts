@@ -100,6 +100,19 @@ describe("a failed count is retried (row 015-18)", () => {
     });
   });
 
+  it("gives a copy of a spent blob at another path its own attempts, and the first none more", async () => {
+    const { tree, store } = await edited();
+    const counter = flakyCounter(Infinity);
+    for (const now of [2_000, 7_000, 67_000]) await pass(tree, store, counter, { now: () => now });
+    // One revision with both: one blob, so one count for the two paths.
+    tree.write(A, "settle 23 B2\n").write("src/copy.ts", "settle 23 B2\n").revise();
+    await pass(tree, store, counter, { now: () => 100_000 });
+    expect(counter.calls).toHaveLength(4);
+    const failed = readUncountable(store.meta, tree.id);
+    expect(failed.get(A)).toMatchObject({ attempts: 3, retryAt: null });
+    expect(failed.get("src/copy.ts")).toMatchObject({ attempts: 1, retryAt: 105_000 });
+  });
+
   it("counts the next blob of a spent file with a fresh budget", async () => {
     const { tree, store } = await edited();
     const broken = flakyCounter(Infinity);
