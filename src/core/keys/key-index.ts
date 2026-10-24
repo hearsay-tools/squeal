@@ -58,13 +58,18 @@ interface Keyed {
  * A project's environment hash at a format or definition read as one (011
  * C3): a format's (task 011-38) or the definition's before task 011-85,
  * which also gives the installed-dependency segment a test file read then.
- * Every one predates task 011-158, so its key holds each absent path's
- * `absentSegment`.
+ * Each was stored before task 011-158, so its key holds each absent path's
+ * `absentSegment`; one with `storedAfter158` is read without it too.
  */
 export interface ReadAsOne {
   readonly environment: EnvironmentHash;
   /** The installed-dependency segment `testFile` read then; absent, its own. */
   readonly segment?: (testFile: TestFileRef) => string;
+  /**
+   * Rows under this definition were also stored after task 011-158, whose
+   * keys hold no segment for an absent path (today's pnpm one, 011-167).
+   */
+  readonly storedAfter158?: true;
 }
 
 /** A test file and its keys at the formats and definitions read as one (`KeyIndex.keysReadAsOne`). */
@@ -213,8 +218,9 @@ export class KeyIndex {
    * the definitions before task 011-85 (011-90) and 011-158, computed over
    * the segments the index holds, each entry's installed-dependency segment
    * in place of the file's own, and each absent path as `absentSegment`,
-   * once per key. A key equal to `key` is left out: a closure with no absent
-   * path keys alike under 011-158's definition. `setClosure` and
+   * once per key; an entry `storedAfter158` also without it. A key equal to
+   * `key` or read twice is left out: a closure with no absent path keys
+   * alike under 011-158's definition. `setClosure` and
    * `setInstalled` drop the memo, so a segment is read with the packages the
    * key was computed over. `null` when no test file holds `key` now.
    */
@@ -227,9 +233,13 @@ export class KeyIndex {
     let memo = keyed.readAsOne;
     if (memo?.key !== key || memo.environments !== environments) {
       const keys = environments
-        .flatMap((entry) => this.keyOf(keyed, entry.environment, entry.segment, true) ?? [])
+        .flatMap((entry) =>
+          (entry.storedAfter158 ? [true, false] : [true]).flatMap(
+            (absent) => this.keyOf(keyed, entry.environment, entry.segment, absent) ?? [],
+          ),
+        )
         .filter((readKey) => readKey !== key);
-      memo = { key, environments, keys };
+      memo = { key, environments, keys: [...new Set(keys)] };
       keyed.readAsOne = memo;
     }
     return { testFile, keys: memo.keys };

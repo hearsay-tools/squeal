@@ -34,6 +34,9 @@ const FORMER_LAST_FORMAT = 20;
  * `lock.yaml` stands for the install (`DependencyKeys.formerPnpm`): the
  * current files, the whole fingerprint and no segment, at the current
  * format only, since its rows exist at format 20 alone (from 0.1.253).
+ * They were stored with an absent path's `absentSegment` up to 0.1.284 and
+ * without it from 0.1.285 (task 011-158), so it is read both ways
+ * (`ReadAsOne.storedAfter158`).
  */
 export function formerReadAsOne(
   core: CoreEnvironmentInputs,
@@ -45,7 +48,10 @@ export function formerReadAsOne(
   const pnpm = dependencies?.formerPnpm ?? null;
   const pnpmRead = (pnpm === null ? [] : [KEY_FORMAT_VERSION])
     .filter((format) => format <= FORMER_LAST_FORMAT)
-    .map((format) => readAt(core, environment, pnpm, hashOf, packagesOf, format));
+    .map((format) => ({
+      ...readAt(core, environment, pnpm, hashOf, packagesOf, format),
+      storedAfter158: true as const,
+    }));
   const former = dependencies?.former ?? null;
   if (former === null && environment.formerFiles === undefined) return pnpmRead;
   const runner = { ...environment, files: environment.formerFiles ?? environment.files };

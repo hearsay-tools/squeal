@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
-import { encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
+import { absentSegment, encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
 import {
   coreEnvironmentInputs,
   environmentHash,
@@ -42,12 +42,17 @@ const SLOW = { timeout: 60_000 } as const;
 const wholeOf = (content: Buffer | string) =>
   createHash("sha256").update(`${HIDDEN}\0`).update(content).digest("hex");
 
-/** `path`'s key in the worktree at `root` with the fake runner's environment over `installed`. */
+/**
+ * `path`'s key in the worktree at `root` with the fake runner's environment over `installed`.
+ * `absent` are closure paths with no file, each sorting before `path`, keyed as before task
+ * 011-158 (`absentSegment`); keys since then hold none.
+ */
 async function keyOver(
   root: string,
   path: string,
   installed: string,
   format = KEY_FORMAT_VERSION,
+  absent: readonly string[] = [],
 ): Promise<CheckKey> {
   const [environment] = await new FakeRunner([]).environment();
   if (environment === undefined) throw new Error("the fake runner has an environment");
@@ -58,7 +63,8 @@ async function keyOver(
   });
   const envHash = environmentHash(core, environment, () => null, format);
   const hash = await createFsHasher(root, "sha1").hash(path);
-  return keyFromSegments(envHash, { project: "", path }, [encodeSegment(path, hash)]);
+  const segments = [...absent.map(absentSegment), encodeSegment(path, hash)];
+  return keyFromSegments(envHash, { project: "", path }, segments);
 }
 
 /** A passing result of `path` at `key`, by `worktreeId`, recorded at `at`. */
@@ -141,14 +147,20 @@ describe("the definition before 011-85 read as one (011-90)", SLOW, () => {
 const PNPM_LOCK = "node_modules/.pnpm/lock.yaml";
 const PNPM: PnpmFixture = { importers: { ".": { a: "1.0.0" } }, snapshots: { "a@1.0.0": {} } };
 
-/** The fake runner with packages: a scoped environment, F1 reaching a process, the others `a`. */
-function withPackages(runner: FakeRunner): void {
+/** A test file's snapshot path, absent here, as every Vitest closure names it. */
+const snapshotOf = (path: string) => `${path.replace("test/", "test/__snapshots__/")}.snap`;
+
+/**
+ * The fake runner with packages: a scoped environment, F1 reaching a process, the others `a`.
+ * With `absent`, each closure also names the file's snapshot path, which has no file.
+ */
+function withPackages(runner: FakeRunner, absent = false): void {
   const environment = runner.environment;
   runner.environment = async () =>
     (await environment()).map((env) => ({ ...env, packages: { imports: [], builtins: [] } }));
   runner.closure = async (testFile) => ({
     testFile,
-    paths: [testFile.path],
+    paths: absent ? [snapshotOf(testFile.path), testFile.path] : [testFile.path],
     packages:
       testFile.path === F1
         ? { imports: [], builtins: ["child_process"] }
@@ -184,6 +196,29 @@ describe("today's pnpm definition read as one (011-167)", SLOW, () => {
     expect(provenanceAt(b.store, k0)).toEqual([f0.provenance]);
     expect(provenanceAt(b.store, b.keyOf(F1) as CheckKey)).toEqual([f1.provenance]);
     expect(provenanceAt(b.store, b.keyOf(F2) as CheckKey)).toEqual([]);
+  });
+
+  // Third round of review 0.1.282 (row 011-158): 0.1.280 to 0.1.284 stored today's pnpm key with
+  // an absent path's `absentSegment`, 0.1.285 to 0.1.287 with none; both are read.
+  it("finds a pass stored under today's pnpm key over an absent path under each absent rule", async () => {
+    const { main, others } = claimRepo(3, IGNORED, 1);
+    const [first] = others as [string];
+    writePnpmInstall(first, PNPM);
+    const today = (await installedDependencies(first, first)).fingerprint;
+
+    const b = side(first, { count: 3, policy: LOOKUP_ONLY });
+    withPackages(b.runner, true);
+    const t = Date.now() - 60_000;
+    const a = worktreeIdFor(main);
+    const before158 = await keyOver(first, F0, today, KEY_FORMAT_VERSION, [snapshotOf(F0)]);
+    const f0 = stored(b.store, a, F0, before158, t);
+    const f2 = stored(b.store, a, F2, await keyOver(first, F2, today), t);
+    await b.scheduler.start();
+    await b.scheduler.idle();
+
+    expect(b.runner.runs).toEqual([]);
+    expect(provenanceAt(b.store, b.keyOf(F0) as CheckKey)).toEqual([f0.provenance]);
+    expect(provenanceAt(b.store, b.keyOf(F2) as CheckKey)).toEqual([f2.provenance]);
   });
 
   it("reads no row under today's pnpm key while lock.yaml does not describe the install", async () => {
