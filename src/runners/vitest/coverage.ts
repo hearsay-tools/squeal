@@ -26,7 +26,7 @@ export interface VitestCoverage {
 }
 
 /** One worker batch as Squeal's provider keeps it (`provider.mjs`, `onAfterSuiteRun`). */
-interface Batch {
+export interface CoverageBatch {
   readonly coverage: string;
   readonly testFiles: readonly string[];
   readonly environment: string;
@@ -64,11 +64,14 @@ export class InstanceCoverage {
     writeFileSync(join(this.dir, "skip.json"), JSON.stringify(files));
   }
 
-  /** The batches the provider kept since the last call. */
-  take(vitest: Vitest): Batch[] {
+  /**
+   * The batches the provider kept since the last call. Read before the
+   * instance closes: `closeEmptied` deletes the getter's state.
+   */
+  take(vitest: Vitest): CoverageBatch[] {
     // Vitest's own getter, typed internal in 5.0: the provider `getProvider` returned.
     const { coverageProvider } = vitest as unknown as {
-      coverageProvider?: { takeBatches?: () => Batch[] } | null;
+      coverageProvider?: { takeBatches?: () => CoverageBatch[] } | null;
     };
     return coverageProvider?.takeBatches?.() ?? [];
   }
@@ -133,7 +136,7 @@ export function inspectorNote({ ref, through }: InspectorFile): string {
  */
 export function coveredFiles(
   vitest: Vitest,
-  batches: readonly Batch[],
+  batches: readonly CoverageBatch[],
   wanted: (ref: TestFileRef) => boolean,
   stamps: SourceStamps,
   paths: WorktreePaths,
@@ -158,6 +161,11 @@ export function coveredFiles(
     files.push({ testFile: ref, payload: batch.coverage, sources });
   }
   return files;
+}
+
+/** Deletes each batch's payload: a hung, crashed or rejected run keeps no record (D8). */
+export function dropPayloads(batches: readonly CoverageBatch[]): void {
+  for (const batch of batches) rmSync(batch.coverage, { force: true });
 }
 
 /** Each project file with a transform in `environment`, by module ID: its code, map and stamp. */
