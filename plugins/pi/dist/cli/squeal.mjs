@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.283";
+  if (true) return "0.1.284";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -477,7 +477,7 @@ var init_policy = __esm({
         slowWaitMs: 12e4
       },
       testCommand: { denyWhenCurrent: false },
-      baseline: { onStart: "lookup-then-run-missing" },
+      baseline: { onStart: "lookup-only" },
       inputs: [],
       observe: { runtimeInputs: true },
       env: { allowlist: [] },
@@ -13990,7 +13990,7 @@ function mergeApplied(applied) {
   }
   return merged2;
 }
-var MAX_DISCARDS, Ledger;
+var UNPROBED, MAX_DISCARDS, Ledger;
 var init_ledger = __esm({
   "src/core/scheduler/ledger.ts"() {
     "use strict";
@@ -14015,6 +14015,7 @@ var init_ledger = __esm({
     init_setup();
     init_slow3();
     init_unknown_files();
+    UNPROBED = { hits: [], mayWait: true };
     MAX_DISCARDS = 3;
     Ledger = class {
       constructor(context) {
@@ -14187,17 +14188,20 @@ var init_ledger = __esm({
             if (classify2(file) === "current") this.checkpoints.done(ref2, null);
             continue;
           }
-          const hits = held2 || strict ? [] : this.lookup(key3);
+          const { hits, mayWait } = held2 || strict ? UNPROBED : this.probe(key3);
           if (hits.length > 0) {
             const checkpointId = options.checkpointId ?? this.checkpoints.idFor(ref2);
             this.applyResults(file, key3, hits, checkpointId);
             continue;
           }
           misses.push(file);
+          const heldFail = !mayWait;
+          if (heldFail) options.heldFails?.add(file.id);
+          else options.heldFails?.delete(file.id);
           if (file.blocked !== null) {
             this.queue.remove(ref2);
             this.#syncPhase(file);
-          } else if (strict || options.queueMisses !== false) {
+          } else if (strict || options.queueMisses !== false || heldFail && options.heldFails === void 0) {
             const reached = recent.has(file.id);
             const catchUp = reached && options.catchUp === true;
             const priority = priorityOf(file, changed2, options.direct);
@@ -14244,7 +14248,9 @@ var init_ledger = __esm({
       /**
        * `lookup`, and whether a miss may wait on another worktree's claim of
        * `key` (task 001-205): the accept rule's (`acceptedAt`), the formats read
-       * as one once per file and key in this daemon (task 011-38).
+       * as one once per file and key in this daemon (task 011-38). No hits and
+       * `mayWait` false: results are stored and withheld, another worktree's
+       * unconfirmed fail (row 011-159).
        */
       probe(key3) {
         const { store, worktreeId, now } = this.context;
@@ -18478,7 +18484,8 @@ async function baseline(context, ledger, unseen = [], resumesRest2 = false) {
     }
   }
   const checkpointId = randomUUID7();
-  const lookup = (files2) => ledger.settle(files2, NOTHING_CHANGED, { checkpointId, queueMisses: false });
+  const heldFails = /* @__PURE__ */ new Set();
+  const lookup = (files2) => ledger.settle(files2, NOTHING_CHANGED, { checkpointId, queueMisses: false, heldFails });
   const first = lookup(refs2);
   const recheck = first.filter((file) => fromStore.has(file.id));
   await resolveClosures(
@@ -18531,7 +18538,7 @@ async function baseline(context, ledger, unseen = [], resumesRest2 = false) {
   }
   for (const file of misses) {
     const reached = resumesRest2 && (recent.has(file.id) || catchUp.has(file.id));
-    if (lookupOnly2 && !handed.pending.has(file.id) && !reached) continue;
+    if (lookupOnly2 && !handed.pending.has(file.id) && !reached && !heldFails.has(file.id)) continue;
     const first2 = recent.has(file.id);
     const priority = priorityOf(file, changed2, direct);
     ledger.enqueue(file, priority, false, first2, !first2 && catchUp.has(file.id));
