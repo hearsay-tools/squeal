@@ -1,4 +1,3 @@
-import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { CodeKnownState } from "../../src/core/types/code.js";
 import { check, commonDir, count, file, open } from "./helpers.js";
@@ -132,15 +131,31 @@ describe("code store prune (015 D4, 011 C7)", () => {
     expect(store.views.list(left)).toEqual([]);
   });
 
-  it("drops coverage records past the retention", () => {
+  it("drops a coverage record with the last result at its key, whatever its age (row 015-11)", () => {
     const store = open(commonDir());
-    const db = new DatabaseSync(store.path);
-    const insert = db.prepare(
-      "INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, 1, ?, ?)",
-    );
-    insert.run("old", new Uint8Array([1]), OLD);
-    insert.run("recent", new Uint8Array([1]), RECENT);
-    db.close();
+    const record = new Uint8Array([1]);
+    store.coverage.put({ resultKey: "kept-old", providerVersion: 1 }, record, OLD);
+    store.coverage.put({ resultKey: "gone-recent", providerVersion: 1 }, record, RECENT);
+    store.coverage.put({ resultKey: "kept-old", providerVersion: 2 }, record, RECENT);
+
+    const report = store.prune({
+      now: NOW,
+      retentionDays: 7,
+      worktrees: [],
+      consumers: [],
+      resultKeys: ["kept-old"],
+    });
+
+    expect(report.coverageRemoved).toBe(1);
+    expect(store.coverage.get({ resultKey: "kept-old", providerVersion: 1 })).toEqual(record);
+    expect(store.coverage.get({ resultKey: "kept-old", providerVersion: 2 })).toEqual(record);
+    expect(store.coverage.get({ resultKey: "gone-recent", providerVersion: 1 })).toBeNull();
+  });
+
+  it("without the result keys, drops coverage records past the retention", () => {
+    const store = open(commonDir());
+    store.coverage.put({ resultKey: "old", providerVersion: 1 }, new Uint8Array([1]), OLD);
+    store.coverage.put({ resultKey: "recent", providerVersion: 1 }, new Uint8Array([1]), RECENT);
 
     expect(
       store.prune({ now: NOW, retentionDays: 7, worktrees: [], consumers: [] }).coverageRemoved,
