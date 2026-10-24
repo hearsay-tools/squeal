@@ -31,10 +31,9 @@ import {
   anyFailed,
   CHECK_NEEDS_TEST_FILE,
   CheckUsageError,
-  focusAnswered,
   focusOf,
+  focusOutcome,
   type NamedFocus,
-  settledFocus,
   wholeFileReasons,
 } from "./status-wait-focus.js";
 import {
@@ -367,10 +366,10 @@ export interface NamedWaitOptions {
  * Row 011-146 (C15 as amended 2026-10-23): with `checks`, it sends `focus`
  * beside the promotion for the files named by their own paths the daemon
  * focuses, and returns `focused` once each has a focused run ended at its
- * current key or a result stored there (`focusAnswered`). A file current
- * before that gives the named wait's verdict; an unknown or stale file that
- * nothing queues waits for its focused answer (`settledFocus`, review
- * 0.1.286 B6). A daemon that does not know the request leaves it a named wait.
+ * current key or a result stored there. A file current before that gives
+ * the named wait's verdict; an unknown or stale file that nothing queues
+ * waits for its focused answer (review 0.1.286 B6). `focusOutcome` decides
+ * it. A daemon that does not know the request leaves it a named wait.
  */
 export async function waitForNamed(
   cwd: AbsolutePath,
@@ -439,19 +438,17 @@ export async function waitForNamed(
         if (checks.length > 0 && ready) whole ??= wholeFileReasons(root, own);
         const focus =
           whole === undefined ? undefined : focusOf(store, id, own, checks, whole, reply, record);
-        // Row 011-146 (C15): `settled` is the early verdict of a file current at its key only.
-        const decided = named === "settled" ? settledFocus(focus, reply) : named;
+        // Row 011-146 (C15): with `--check`, the focused answers decide too.
+        const decided = focusOutcome(named, focus, reply);
         // Row 011-73 (C6 as amended 2026-10-21): a held file queued on hold waits for its end.
         const hold =
           ready && decided === null
             ? holdOfWait(store, id, () => store.testFileKeys.list(id, held), readAt)
             : null;
-        const focused = decided === null && focus !== undefined && focusAnswered(focus);
         const outcome: NamedWaitOutcome | null =
           settled && daemon.state === "down"
             ? "no-daemon"
-            : (decided ??
-              (focused ? "focused" : hold !== null ? "on-hold" : final ? "timeout" : null));
+            : (decided ?? (hold !== null ? "on-hold" : final ? "timeout" : null));
         if (outcome === null) {
           // Spec 011 C15: once, at the first read whose selection is decided, beside it.
           if (ready && !promoted) {
