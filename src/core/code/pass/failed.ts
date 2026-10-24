@@ -1,5 +1,6 @@
+import type { CodeFile } from "../../types/code.js";
 import type { EpochMs, FileHash, RelativePath, WorktreeId } from "../../types/index.js";
-import type { CodeMetaRepo } from "../store/index.js";
+import type { CodeMetaRepo, CodeStore } from "../store/index.js";
 
 /** Row 015-18 (review 0.1.283 S1): counts tried at one blob before the pass stops until it changes. */
 export const COUNT_ATTEMPTS = 3;
@@ -104,4 +105,26 @@ export function spentFailure(
 ): FailedCount | null {
   const f = failed.get(file.path);
   return f !== undefined && f.blob === file.blob && f.retryAt === null ? f : null;
+}
+
+/**
+ * The readers' `unknown` files: each of `files` at the blob the counter
+ * failed on at every attempt, with no count of that blob stored since (one
+ * another worktree's pass made). Any other failed count reads pending.
+ */
+export function uncountableFiles(
+  store: Pick<CodeStore, "meta" | "counts">,
+  worktreeId: WorktreeId,
+  files: readonly CodeFile[],
+): Map<RelativePath, FailedCount> {
+  const failed = readUncountable(store.meta, worktreeId);
+  const spent = new Map<RelativePath, FailedCount>();
+  if (failed.size === 0) return spent;
+  for (const file of files) {
+    const f = spentFailure(failed, file);
+    if (f === null) continue;
+    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
+      spent.set(file.path, f);
+  }
+  return spent;
 }
