@@ -1,0 +1,129 @@
+E items 455, residuals 40, deduplicated 415
+
+per area (deduplicated, then with residuals):
+  WR 22 23
+  KC 20 23
+  SV 68 75
+  ST 14 16
+  DV 44 47
+  SW 75 79
+  DB 15 16
+  DL 36 39
+  PR 12 15
+  SL 27 36
+  PC 6 6
+  FN 18 21
+  CL 17 18
+  CC 24 24
+  PS 17 17
+
+per mechanism (deduplicated): [["order",61],["proxy",40],["multi",39],["gap",34],["race",32],["spec",22],["count",21],["text",20],["env",19],["cost",17],["parse",16],["leak",15],["error",15],["path",14],["input",13],["two",11],["time",11],["noise",8],["name",4],["cancel",3]]
+
+area x spec (deduplicated):
+  area 001 003 004 005 007 011 014 015 ?
+  WR    21   0   0   0   0   1   0   0   0
+  KC    12   0   1   0   0   6   0   0   1
+  SV    45   0   0   0   2  19   0   0   2
+  ST     6   0   0   0   0   7   0   0   1
+  DV    30   0   0   0   0  11   0   0   3
+  SW    30   2   1   3   0  34   0   0   5
+  DB    11   0   0   0   0   3   0   0   1
+  DL    21   0   0   0   0  14   0   0   1
+  PR    10   0   1   0   0   1   0   0   0
+  SL    14   0  11   0   0   2   0   0   0
+  PC     3   0   1   0   0   2   0   0   0
+  FN     0   0   0   0   0  16   0   0   2
+  CL     1   0   1  12   0   2   0   0   1
+  CC     0   0   0   0   0   0   0  24   0
+  PS     0   0   0   0   0   0  17   0   0
+
+area x period (deduplicated; undated left out):
+  area 10-01 10-09 10-13 10-17 10-21 undated
+  WR       3    16     2     0     1     0
+  KC       5     6     0     2     5     2
+  SV      10    26     9     9    10     4
+  ST       2     1     2     5     3     1
+  DV       3    12     9     7     6     7
+  SW       0    28    12    16    17     2
+  DB       0     7     4     2     1     1
+  DL       4    10     7     3     8     4
+  PR       0     6     2     4     0     0
+  SL       0    16     6     4     1     0
+  PC       0     1     3     0     2     0
+  FN       0     0     2     2    14     0
+  CL       0     0    13     1     2     1
+  CC       0     0     0     0    23     1
+  PS       0     0     0     0    17     0
+  all     27   129    71    55   110    23
+
+repair rows 108, of which citing a review file 74
+
+groups of three or more (deduplicated n; residuals; blockers incl. residuals; FAIL rounds touched; rounds that group alone failed; escaped rows; repair rows citing those rounds):
+SV.order   n=21 res=0 blockers=8 rounds=6 alone=3 escaped=9 repairRows=1 :: R21 R22 R23 R31 R32 R79 R108 R126 R128 R161 R345 R431 D146 D154 D164 D167 D168 D220 D239 L6 I10
+SW.gap     n=20 res=0 blockers=0 rounds=0 alone=0 escaped=20 repairRows=0 :: D2 D4 D5 D7 D8 D12 D24 D30 D45 D95 D96 D97 D211 D237 D245 D319 I26 I24 I23 I21
+SW.order   n=12 res=0 blockers=6 rounds=6 alone=4 escaped=5 repairRows=1 :: R69 R136 R137 R194 R195 R223 R342 D32 D223 D226 D227 D228
+DL.multi   n=11 res=2 blockers=5 rounds=5 alone=4 escaped=8 repairRows=3 :: R37 R39* R178 R380 R381* D15 D16 D38 D100 D101 D178 D180 D271
+KC.input   n=10 res=2 blockers=5 rounds=5 alone=1 escaped=4 repairRows=0 :: R6 R14 R16 R27 R29 R209* R211 R214* D166 D170 D265 D287
+SV.race    n=10 res=1 blockers=7 rounds=7 alone=2 escaped=4 repairRows=1 :: R41 R68 R121 R141* R363 R378 R427 D182 D233 D267 D299
+SV.count   n=8 res=2 blockers=6 rounds=5 alone=3 escaped=2 repairRows=2 :: R12 R38 R157* R308 R310* R425 R428 R430 D195 D234
+WR.env     n=8 res=0 blockers=1 rounds=1 alone=1 escaped=7 repairRows=0 :: R34 D171 D174 D175 D207 D236 D282 D283
+DB.multi   n=8 res=0 blockers=1 rounds=1 alone=0 escaped=7 repairRows=0 :: R414 D188 D203 D230 D303 D327 D332 I8
+SW.proxy   n=7 res=1 blockers=6 rounds=6 alone=1 escaped=2 repairRows=2 :: R129 R134* R159 R238 R340 R364 D221 D222
+DV.order   n=7 res=1 blockers=4 rounds=4 alone=0 escaped=4 repairRows=2 :: R158* R163 R374 R405 D156 D159 D160 D161
+CL.parse   n=7 res=1 blockers=7 rounds=4 alone=2 escaped=0 repairRows=4 :: R227 R241 R243 R244 R245 R246* R247 R248
+DV.text    n=6 res=1 blockers=1 rounds=1 alone=1 escaped=3 repairRows=0 :: R19 R35 R40* R152 D241 D254 I37
+PR.race    n=6 res=3 blockers=3 rounds=3 alone=2 escaped=1 repairRows=0 :: R53 R56 R86* R113* R168* R170 R171 R416 D318
+SW.multi   n=6 res=0 blockers=3 rounds=3 alone=2 escaped=2 repairRows=0 :: R61 R62 R153 R409 D268 D270
+SL.proxy   n=6 res=4 blockers=6 rounds=5 alone=0 escaped=1 repairRows=0 :: R73 R75* R78* R203 R207 R210* R212 R215 R224* D281
+DL.leak    n=6 res=0 blockers=0 rounds=0 alone=0 escaped=5 repairRows=0 :: R176 D49 D176 D330 L3 L4
+SV.path    n=6 res=2 blockers=7 rounds=6 alone=1 escaped=1 repairRows=0 :: R133* R362* R368 R369 R370 R373 R429 D116
+PS.proxy   n=6 res=0 blockers=2 rounds=1 alone=0 escaped=4 repairRows=0 :: R447 R448 D127 D130 D132 D133
+FN.spec    n=6 res=0 blockers=0 rounds=0 alone=0 escaped=6 repairRows=0 :: D22 D27 D28 D39 I17 I14
+DV.noise   n=6 res=0 blockers=0 rounds=0 alone=0 escaped=6 repairRows=0 :: D158 D165 D240 D316 D323 I13
+DV.multi   n=5 res=1 blockers=3 rounds=3 alone=0 escaped=2 repairRows=2 :: R20 R82* R149 R422 D148 D150
+SL.race    n=5 res=2 blockers=6 rounds=5 alone=1 escaped=0 repairRows=1 :: R71 R72* R76 R142* R196 R208 R222
+DV.proxy   n=5 res=0 blockers=2 rounds=2 alone=0 escaped=2 repairRows=2 :: R81 R109 R148 D25 I32
+SW.text    n=5 res=0 blockers=2 rounds=2 alone=1 escaped=2 repairRows=0 :: R96 R410 R417 D94 D179
+SW.race    n=5 res=0 blockers=1 rounds=1 alone=0 escaped=4 repairRows=0 :: R226 D173 D218 D262 D269
+SV.cost    n=5 res=0 blockers=1 rounds=1 alone=0 escaped=4 repairRows=0 :: R302 D111 D177 D187 D217
+DV.gap     n=5 res=0 blockers=0 rounds=0 alone=0 escaped=5 repairRows=0 :: D119 D172 D242 D243 D244
+ST.order   n=4 res=1 blockers=3 rounds=3 alone=1 escaped=1 repairRows=1 :: R11 R104 R419* R423 D14
+DL.proxy   n=4 res=0 blockers=2 rounds=2 alone=1 escaped=2 repairRows=1 :: R63 R66 D266 D321
+DB.leak    n=4 res=0 blockers=1 rounds=1 alone=1 escaped=1 repairRows=0 :: R67 R135 R150 L18
+SL.order   n=4 res=2 blockers=4 rounds=4 alone=2 escaped=1 repairRows=1 :: R74* R77 R197 R202 R221* D280
+SL.spec    n=4 res=0 blockers=0 rounds=0 alone=0 escaped=3 repairRows=0 :: R100 D56 D275 D279
+SV.time    n=4 res=1 blockers=2 rounds=2 alone=2 escaped=3 repairRows=1 :: R147* R169 D246 D247 D249
+DL.order   n=4 res=0 blockers=2 rounds=2 alone=0 escaped=2 repairRows=0 :: R359 R383 D274 I12
+SW.two     n=4 res=0 blockers=1 rounds=1 alone=0 escaped=2 repairRows=0 :: R365 R375 D26 I9
+FN.path    n=4 res=0 blockers=4 rounds=2 alone=1 escaped=0 repairRows=0 :: R384 R385 R392 R395
+CC.parse   n=4 res=0 blockers=2 rounds=2 alone=0 escaped=2 repairRows=0 :: R454 R463 D141 D142
+CC.proxy   n=4 res=0 blockers=3 rounds=3 alone=0 escaped=1 repairRows=0 :: R455 R459 R471 D137
+SW.cost    n=4 res=1 blockers=1 rounds=1 alone=1 escaped=4 repairRows=0 :: R400* D36 D110 D113 D114
+SV.spec    n=4 res=0 blockers=0 rounds=0 alone=0 escaped=4 repairRows=0 :: D41 D209 D210 I31
+WR.two     n=3 res=0 blockers=0 rounds=0 alone=0 escaped=1 repairRows=0 :: R7 R8 D259
+DL.race    n=3 res=0 blockers=2 rounds=2 alone=0 escaped=1 repairRows=3 :: R18 R90 D295
+SV.env     n=3 res=0 blockers=0 rounds=0 alone=0 escaped=1 repairRows=0 :: R24 R33 D23
+WR.count   n=3 res=1 blockers=1 rounds=1 alone=1 escaped=1 repairRows=0 :: R60 R155 R156* D258
+SW.count   n=3 res=2 blockers=1 rounds=1 alone=0 escaped=0 repairRows=0 :: R70 R230 R235* R411 R421*
+WR.error   n=3 res=0 blockers=1 rounds=1 alone=1 escaped=2 repairRows=0 :: R154 D257 D284
+DV.cost    n=3 res=0 blockers=0 rounds=0 alone=0 escaped=2 repairRows=0 :: R407 D214 D329
+ST.parse   n=3 res=1 blockers=2 rounds=1 alone=0 escaped=1 repairRows=0 :: R412 R413* R415 I28
+PS.text    n=3 res=0 blockers=1 rounds=1 alone=0 escaped=1 repairRows=1 :: R444 R449 D129
+CC.error   n=3 res=0 blockers=2 rounds=2 alone=0 escaped=0 repairRows=0 :: R452 R457 R460
+CC.multi   n=3 res=0 blockers=2 rounds=2 alone=1 escaped=1 repairRows=0 :: R458 R469 D138
+ST.gap     n=3 res=0 blockers=0 rounds=0 alone=0 escaped=3 repairRows=0 :: D17 D35 D302
+KC.cost    n=3 res=0 blockers=0 rounds=0 alone=0 escaped=3 repairRows=0 :: D153 D169 I33
+
+items in groups of three or more: 309 of 415
+
+by FAIL rounds touched:
+  SV.race rounds=7 alone=2 blockers=7 escaped=4 repairRows=1
+  SV.order rounds=6 alone=3 blockers=8 escaped=9 repairRows=1
+  SV.path rounds=6 alone=1 blockers=7 escaped=1 repairRows=0
+  SW.order rounds=6 alone=4 blockers=6 escaped=5 repairRows=1
+  SW.proxy rounds=6 alone=1 blockers=6 escaped=2 repairRows=2
+  SV.count rounds=5 alone=3 blockers=6 escaped=2 repairRows=2
+  SL.proxy rounds=5 alone=0 blockers=6 escaped=1 repairRows=0
+  SL.race rounds=5 alone=1 blockers=6 escaped=0 repairRows=1
+  DL.multi rounds=5 alone=4 blockers=5 escaped=8 repairRows=3
+  KC.input rounds=5 alone=1 blockers=5 escaped=4 repairRows=0

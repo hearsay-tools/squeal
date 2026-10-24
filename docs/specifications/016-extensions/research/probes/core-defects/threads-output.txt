@@ -1,0 +1,22 @@
+status --wait edit window and re-key record: items 26, blockers 9, FAIL rounds 9, escaped rows 14, repair rows citing those rounds 2
+  rounds: 001/wave-13ac.md 001/wave-13ad.md 001/wave-13ak.md 001/wave-13k.md 001/wave-13r.md 001/wave-13s.md 003/wave-4.5.md 003/wave-4.md 005/wave-1.md
+waiting Stop for slow files: items 19, blockers 9, FAIL rounds 7, escaped rows 6, repair rows citing those rounds 3
+  rounds: 001/wave-13am.md 001/wave-13an.md 001/wave-13ap.md 001/wave-13ba.md 004/wave-1.md 004/wave-2.5.md 004/wave-2.md
+daemon step-down and handover: items 19, blockers 10, FAIL rounds 7, escaped rows 9, repair rows citing those rounds 4
+  rounds: 001/wave-12b.md 001/wave-12c.md 001/wave-13bh.md 001/wave-13bj.md 011/0.1.259.md 011/0.1.277-r2.md 011/0.1.277.md
+named demand: promotions, yields, focused runs: items 22, blockers 14, FAIL rounds 6, escaped rows 7, repair rows citing those rounds 0
+  rounds: 011/0.1.237.md 011/0.1.271.md 011/0.1.280.md 011/0.1.286.md 011/0.1.296-r2.md 011/0.1.296.md
+install wait and dependency keys: items 18, blockers 4, FAIL rounds 3, escaped rows 6, repair rows citing those rounds 0
+  rounds: 001/wave-11.md 001/wave-11b.md 001/wave-11c.md
+slow-tier artifacts, preconditions and provenance: items 12, blockers 12, FAIL rounds 7, escaped rows 0, repair rows citing those rounds 0
+  rounds: 004/wave-2.5.md 004/wave-2.md 004/wave-4.5.md 004/wave-4.6.md 004/wave-4.md 004/wave-5.5.md 004/wave-8.1.md
+observed growth, heal and re-run: items 10, blockers 8, FAIL rounds 6, escaped rows 2, repair rows citing those rounds 1
+  rounds: 001/wave-12d.md 001/wave-13ar.md 001/wave-13e.md 001/wave-13i.md 001/wave-13j.md 011/0.1.268.md
+child processes: sweep, priority, leftovers: items 15, blockers 5, FAIL rounds 5, escaped rows 4, repair rows citing those rounds 2
+  rounds: 001/wave-13.md 001/wave-13r.md 001/wave-16.md 001/wave-18.md 011/wave-1.13.md
+setup gate rewording: items 8, blockers 7, FAIL rounds 4, escaped rows 0, repair rows citing those rounds 4
+  rounds: 005/wave-1.md 005/wave-4-6.md 005/wave-7.5.md 005/wave-7.md
+squeal ps (014): items 17, blockers 9, FAIL rounds 4, escaped rows 7, repair rows citing those rounds 1
+  rounds: 014/wave-0.md 014/wave-1.md 014/wave-2.md 014/wave-4.md
+code checks (015): items 24, blockers 14, FAIL rounds 5, escaped rows 7, repair rows citing those rounds 0
+  rounds: 015/0.1.283.md 015/0.1.290.md 015/0.1.293.md 015/0.1.295.md 015/0.1.297.md
