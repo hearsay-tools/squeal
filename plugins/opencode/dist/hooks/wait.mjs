@@ -5621,6 +5621,78 @@ function files(refs) {
   return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
+// src/core/scheduler/focused-row.ts
+function focusedMetaKey(worktreeId) {
+  return worktreeMetaKey("focused", worktreeId);
+}
+function readFocused(store, worktreeId) {
+  const raw = store.meta.get(focusedMetaKey(worktreeId));
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter(isFocusedRun) : [];
+  } catch {
+    return [];
+  }
+}
+function isFocusedRun(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const run = value;
+  const file = run.testFile;
+  return typeof file?.project === "string" && typeof file.path === "string" && typeof run.key === "string" && typeof run.revision === "number" && typeof run.runId === "string" && Array.isArray(run.texts) && Array.isArray(run.checks);
+}
+
+// src/core/status/focused.ts
+function readStatusFocused(store, worktreeId, phases) {
+  const runs = readFocused(store, worktreeId);
+  if (runs.length === 0) return [];
+  const files2 = runs.map((run) => run.testFile);
+  const keys = new Map(
+    store.testFileKeys.list(worktreeId, files2).map((row) => [testFileId(row.testFile), row.key])
+  );
+  return runs.map((run) => {
+    const current2 = keys.get(testFileId(run.testFile)) === run.key;
+    const applies = current2 && store.results.byKey(run.key, 0).length === 0;
+    const phase = phases.get(testFileId(run.testFile))?.phase ?? null;
+    return { ...statusFocusedOf(run, applies), phase };
+  });
+}
+function statusFocusedOf(run, applies) {
+  const checks = run.checks.map((c) => ({
+    check: c.check,
+    name: formatCheck(c.check),
+    outcome: c.outcome,
+    durationMs: c.durationMs,
+    summary: c.summary,
+    location: c.location
+  }));
+  return {
+    testFile: run.testFile,
+    key: run.key,
+    revision: run.revision,
+    texts: run.texts,
+    runId: run.runId,
+    logDir: run.logDir,
+    startedAt: run.startedAt,
+    endedAt: run.endedAt,
+    durationMs: run.endedAt === null ? null : Math.max(0, run.endedAt - run.startedAt),
+    end: run.end,
+    reason: run.reason,
+    collected: run.collected,
+    matched: run.matched,
+    checks,
+    more: run.more,
+    ...countsOf(run.outcomes) ?? {},
+    applies
+  };
+}
+function countsOf(outcomes) {
+  if (typeof outcomes !== "object" || outcomes === null) return null;
+  const { pass, fail, skip } = outcomes;
+  const whole = (n) => Number.isInteger(n) && n >= 0;
+  return whole(pass) && whole(fail) && whole(skip) ? { outcomes: { pass, fail, skip } } : null;
+}
+
 // src/core/status/git-head.ts
 import { readFileSync as readFileSync5 } from "node:fs";
 import { join as join9 } from "node:path";
@@ -5839,7 +5911,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.285";
+  if (true) return "0.1.286";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -6692,7 +6764,7 @@ function retryStandings(pending, worktreeId) {
 
 // src/core/status/phase-files.ts
 var PHASE_FILES_LISTED = 100;
-function pendingTestFilesOf(states, keys, openFiles2) {
+function pendingPhasesOf(states, keys, openFiles2) {
   const checks = /* @__PURE__ */ new Map();
   for (const state of states) {
     if (state.check.kind === "setup") continue;
@@ -6701,14 +6773,21 @@ function pendingTestFilesOf(states, keys, openFiles2) {
     if (own === void 0) checks.set(id, [state]);
     else own.push(state);
   }
-  const running = [];
-  const queued = [];
+  const phases = /* @__PURE__ */ new Map();
   for (const row of keys) {
     const id = testFileId(row.testFile);
     const own = checks.get(id) ?? [];
     if (fileClassOf(row, own) !== "pending") continue;
     const runs = openFiles2.has(id) || row.pending === "running" || own.some((s) => s.pendingPhase === "running");
-    (runs ? running : queued).push(row.testFile);
+    phases.set(id, { testFile: row.testFile, phase: runs ? "running" : "queued" });
+  }
+  return phases;
+}
+function pendingTestFilesOf(phases) {
+  const running = [];
+  const queued = [];
+  for (const { testFile, phase } of phases.values()) {
+    (phase === "running" ? running : queued).push(testFile);
   }
   return { running: listed(running), queued: listed(queued) };
 }
@@ -6779,6 +6858,8 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
   const at = worktree?.root ?? root;
+  const phases = pendingPhasesOf(states, keys, held);
+  const focused = readStatusFocused(store, worktreeId, phases);
   const slowSlot = slowSlotOf(store, worktreeId, at, header, daemon.state === "alive", now);
   const outstanding = outstandingOf(
     store,
@@ -6822,8 +6903,9 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     ...unknownTestFilesOf(store, worktreeId, states, keys, at, now),
     ...daemon.state === "alive" ? { runsOpen: runs.length } : {},
     outstanding,
-    pendingTestFiles: pendingTestFilesOf(states, keys, held),
+    pendingTestFiles: pendingTestFilesOf(phases),
     ...slowSlot === void 0 ? {} : { slowSlot },
+    ...focused.length === 0 ? {} : { focused },
     ...codeStatusOf(
       store,
       worktreeId,
