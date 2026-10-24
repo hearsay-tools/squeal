@@ -85,3 +85,7 @@ Not taken: an incremental second parse (`tree.edit` and `parser.parse(rewritten,
 
 - The probes are in the task's scratch folder, not committed: `compare.mjs` (the per-file count, JSON lines), `diff.mjs`, `sites.ts` (the candidate table), `cost.mjs`, `eslint.cjs`. `compare.mjs` is 015-23's probe, extended with the fields above.
 - `countTree` (`walk.ts`) stays at CC 24. The new functions, by the counter: `parseTsx` 3, its `replace` callback 2, `isImportSyntax` 2, `spans` 4.
+
+## Verification
+
+At `9ca216eb7`: `npm run lint` (2,018 files, no fixes) and `npm run typecheck` pass. `squeal run --all --wait`, checkpoint `8a27da45` at revision 7, exit 1: 4 known failures, all the bundle-drift tests (`coverage/provider.mjs` is 015-11's new bundle file and this tree has no build commit); 8,404 tests passed and 7 skipped in 1,038 test files. No bundle was built and the version was not raised.
