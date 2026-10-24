@@ -98,3 +98,27 @@ Use /worker. Shape: slice. Starts from `int/015b` with W1 to W5 integrated. The 
   - Complexity-only news with 3 known failures ends with the test line; with 0, it does not.
   - Policy off is byte-identical.
   - Lint, typecheck and `squeal run --all --wait` pass; paste their output.
+
+## R1: repair of review 0.1.290 B1, a resumed session takes in its new daemon's catch-up
+
+Use /worker. Shape: repair. Starts from `int/015b-r1` (the 0.1.290 candidate without its bundle commit, plus 015-27). Outcome: a session resumed from a parked registration takes in its new daemon's start scan by count, as a fresh one does, and still keeps its own changes from before the pause.
+- Read `reviews/0.1.290.md` B1 (the reproduction and the repair scope), spec D6 and D7 with their 2026-10-24 amendments, and `tasks/015-20/notes.md`.
+- **Seam.** `seenUpTo` in `src/core/delivery/code-since.ts` looks only at `since + 1`. A lead: `Registration` already carries `gaps` (`src/core/delivery/registered.ts`, `back`); a start-scan revision after the resume can be one more revision the session does not own, rather than a higher single bound. Do not raise the whole bound: that hides the changes from before the pause.
+- **Owns.** `src/core/delivery/code-since.ts`, its readers (`code-deliver.ts`, `src/core/status/code-status.ts`, Stop's check, `src/cli/code-report.ts` for `--changed`), `registered.ts` only if the representation needs it, and a new regression test under `test/code/delivery/`. Leave 015-27's `toldTo` and `code-told.ts` as they are.
+- **Done when.**
+  - The review's park, resume and start reproduction: the offline function is not delivered, not in `--changed`, not in status's count, and not named by blocking Stop. The own change from before the pause still is, and a later own edit still delivers.
+  - The fresh-registration case still passes.
+  - Lint, typecheck and `squeal run --all --wait` pass (4 bundle-drift failures expected); paste the output.
+
+## 015-24 round 2: re-review of candidate 0.1.290
+
+Use /reviewer. Candidate `cand/0.1.290`, pinned to the SHA named in the spawn; the first round's file is `reviews/0.1.290.md` (FAIL on `8d4d6f63e`, B1). Write `reviews/0.1.290-r2.md` and commit it on your branch.
+1. **B1.** Check the repair against B1's reproduction and its repair scope. Check that delivery, status, Stop and `squeal code --changed` agree on the resume boundary and on the fresh one.
+2. **015-27, new since round 1, in full.** Read its brief (W6 above), `status.md` 2026-10-24 and `tasks/015-27/notes.md`. The agreed decisions are: a new `squeal code --told`; `CodeNews.toldOver` and `Delta.knownFailures`; the idle waiter reads the told count, but only with test news; the test count is status's `Known failures`; no test line at Stop. Check:
+   - the count and `--told` agree;
+   - each line shows only when the session has something standing;
+   - policy off is byte-identical and opens no code store;
+   - the waiter's new read.
+3. Rows 015-19 to 015-23 passed round 1 apart from B1: re-read only where the repair touches them.
+
+The candidate CI failures in `test/keys/validity/adapters.test.ts` and `test/runners/vitest/cancel-grace.test.ts` are rows 011-175 and 011-176 (the same cancel-grace race, owned by another coordinator). Name them; do not re-find them. Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
