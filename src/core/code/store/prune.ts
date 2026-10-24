@@ -29,8 +29,9 @@ const PER_WORKTREE = [
  * (the pass's old bodies, while the file's next count is pending), and is
  * dropped once it is also older than the retention, so a later worktree at
  * the same bytes still finds it;
- * coverage records follow the same age rule until wave 2 ties them to their
- * results; `checks` rows nothing references go last.
+ * a coverage record goes with the last result at its key (`resultKeys`, row
+ * 015-11), else by the same age rule; `checks` rows nothing references go
+ * last.
  */
 export function pruneCodeStore(conn: Connection, options: CodePruneOptions): CodePruneReport {
   const cutoff = options.now - options.retentionDays * DAY_MS;
@@ -63,13 +64,16 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
      AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff,
   );
-  const coverageRemoved = deleteInBatches(
-    conn,
-    "coverage",
-    "result_key, provider_version",
-    "recorded_at < ?",
-    cutoff,
-  );
+  const coverageRemoved =
+    options.resultKeys === undefined
+      ? deleteInBatches(conn, "coverage", "result_key, provider_version", "recorded_at < ?", cutoff)
+      : deleteInBatches(
+          conn,
+          "coverage",
+          "result_key, provider_version",
+          "result_key NOT IN (SELECT value FROM json_each(?))",
+          JSON.stringify(options.resultKeys),
+        );
 
   const checksRemoved = deleteInBatches(
     conn,
