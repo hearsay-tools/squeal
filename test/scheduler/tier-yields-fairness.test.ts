@@ -76,7 +76,9 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
       { path: G2, ms: 1, imports: ["src/g2.ts"] },
     ];
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8 });
+    // The start runs every file, so the estimate reads the 100 s each run stored. With none, a tier
+    // yields only 30 s after its start, and the no-yield check proved nothing (row 011-174).
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
     await side.scheduler.start();
     await side.scheduler.idle();
     const base = side.runner.runs.length;
@@ -85,9 +87,9 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
     await side.edit("watch", "src/s.ts");
     const first = await heldRun(side, s1, base);
 
-    // An edit elsewhere: the tier yields, and its files run again after the edit's.
+    // An edit elsewhere: its own check makes the tier yield; its files run again after the edit's.
     await side.edit("watch", "src/g1.ts");
-    await expect.poll(() => first.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await expect.poll(() => first.cancelled, { timeout: SETTLE_MS }).toBe(true);
     const again = await heldRun(side, s1, side.runner.runs.indexOf(first) + 1);
 
     // A second edit and a second named wait: the files a yield cut at these keys run on.
