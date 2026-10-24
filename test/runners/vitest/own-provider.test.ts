@@ -7,6 +7,7 @@ import {
   COVERAGE_PROVIDER_VERSION,
   type CoverageRun,
   type CoverageSource,
+  coverageProvider,
   hasLine,
   type V8Script,
 } from "../../../src/core/code/coverage/index.js";
@@ -21,6 +22,7 @@ import { openFixture, ref, SLOW } from "./helpers.js";
  * `node:inspector`, which still passes.
  */
 
+const provider = coverageProvider() ?? "";
 const temps: string[] = [];
 afterEach(() => {
   for (const dir of temps.splice(0)) rmSync(dir, { recursive: true, force: true });
@@ -47,7 +49,7 @@ function covering(on: () => boolean = () => true): Opened & {
       createVitestAdapter({
         root,
         note: (text) => notes.push(text),
-        coverage: { enabled: on, tempDir, collected: (run) => runs.push(run) },
+        coverage: { enabled: on, provider, tempDir, collected: (run) => runs.push(run) },
       }),
   };
 }

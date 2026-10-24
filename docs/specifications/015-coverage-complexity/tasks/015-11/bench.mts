@@ -7,14 +7,23 @@ import { join } from "node:path";
 
 const [src = "", root = "", mode = "off", list = "", tempDir = ""] = process.argv.slice(2);
 const { createVitestAdapter } = await import(join(src, "src/runners/vitest/index.ts"));
-const { buildRecord, encodeRecord } = await import(join(src, "src/core/code/coverage/index.ts"));
+const { buildRecord, coverageProvider, encodeRecord } = await import(
+  join(src, "src/core/code/coverage/index.ts")
+);
 
 const files = readFileSync(list, "utf8").split("\n").filter(Boolean);
 const runs: { files: { payload: string }[] }[] = [];
 const adapter = await createVitestAdapter({
   root,
   ...(mode === "on"
-    ? { coverage: { enabled: () => true, tempDir, collected: (run: never) => runs.push(run) } }
+    ? {
+        coverage: {
+          enabled: () => true,
+          provider: coverageProvider(),
+          tempDir,
+          collected: (run: never) => runs.push(run),
+        },
+      }
     : {}),
 });
 const started = performance.now();

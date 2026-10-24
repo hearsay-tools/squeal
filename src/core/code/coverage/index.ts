@@ -8,7 +8,13 @@ export {
   encodeRecord,
   hasLine,
 } from "./record.js";
-export { coverageOn, coverageProvider, mainStoreResultKey, PROVIDER_FILE } from "./runtime.js";
+export {
+  coverageOn,
+  coverageProvider,
+  mainStoreResultKey,
+  PROVIDER_FILE,
+  PROVIDER_MISSING_NOTE,
+} from "./runtime.js";
 export type * from "./types.js";
 export {
   type CoverageWriter,

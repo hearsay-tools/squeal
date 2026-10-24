@@ -1,12 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Vitest } from "vitest/node";
-import {
-  type CoverageRun,
-  type CoveredFile,
-  coverageProvider,
-  type ExecutedSource,
-} from "../../core/code/coverage/index.js";
+import type { CoverageRun, CoveredFile, ExecutedSource } from "../../core/code/coverage/index.js";
 import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
 import { importClosure } from "./graph.js";
 import type { WorktreePaths } from "./paths.js";
@@ -22,6 +17,8 @@ import { cachedTransform } from "./stale.js";
 export interface VitestCoverage {
   /** Policy `coverage.enabled` with `complexity.enabled` (D1), read at each start. */
   readonly enabled: () => boolean;
+  /** Squeal's provider, `provider.mjs`, which Vitest loads by path. */
+  readonly provider: AbsolutePath;
   /** Where each instance keeps its workers' payloads: the daemon's temp directory. */
   readonly tempDir: AbsolutePath;
   /** One run's payloads, handed over after its report is built; never awaited by the run. */
@@ -46,10 +43,7 @@ export class InstanceCoverage {
     readonly provider: AbsolutePath,
   ) {}
 
-  /** `null` when Squeal's provider is not found beside the running code. */
-  static start(tempDir: AbsolutePath): InstanceCoverage | null {
-    const provider = coverageProvider();
-    if (provider === null) return null;
+  static start({ tempDir, provider }: VitestCoverage): InstanceCoverage {
     mkdirSync(tempDir, { recursive: true });
     return new InstanceCoverage(mkdtempSync(join(tempDir, "coverage-")), provider);
   }
