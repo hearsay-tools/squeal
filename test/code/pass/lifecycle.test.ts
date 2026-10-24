@@ -1,43 +1,14 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  type CodePassOptions,
-  createCodePass,
-  type PassReport,
-  readRecount,
-} from "../../../src/core/code/pass/index.js";
+import { readRecount } from "../../../src/core/code/pass/index.js";
 import { codeStorePath } from "../../../src/core/code/store/index.js";
 import { storePaths } from "../../../src/core/store/paths.js";
 import type { CodeLanguage } from "../../../src/core/types/code.js";
-import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
 import { waitFor } from "../../watcher/helpers.js";
 import { open } from "../helpers.js";
-import { type FakeWorktree, fakeCounter, policyOn, worktree } from "./helpers.js";
-
-function daemonPass(
-  tree: FakeWorktree,
-  over: Partial<CodePassOptions> & { policy?: () => Policy },
-) {
-  const reports: PassReport[] = [];
-  const errors: Error[] = [];
-  const logs: string[] = [];
-  const code = createCodePass({
-    worktreeId: tree.id,
-    root: tree.root,
-    commonDir: tree.commonDir,
-    format: "sha1",
-    source: tree.source,
-    policy: () => policyOn(),
-    counter: () => Promise.resolve(fakeCounter()),
-    now: () => 1_000,
-    log: (text) => logs.push(text),
-    onError: (error) => errors.push(error),
-    onPass: (report) => reports.push(report),
-    ...over,
-  });
-  return { code, reports, errors, logs };
-}
+import { daemonPass, fakeCounter, policyOn, worktree } from "./helpers.js";
 
 describe("the daemon's code pass (015 D4, goal 1)", () => {
   it("counts nothing and creates no code store while the policy is off", async () => {

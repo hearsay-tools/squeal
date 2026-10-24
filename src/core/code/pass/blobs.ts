@@ -4,7 +4,14 @@ import { join } from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import { blobHash } from "../../hash/index.js";
 import type { CodeLanguage, FileCount } from "../../types/code.js";
-import type { RelativePath } from "../../types/index.js";
+import type { EpochMs, RelativePath } from "../../types/index.js";
+import {
+  COUNT_ATTEMPTS,
+  type FailedCounts,
+  failedAgain,
+  mayCount,
+  writeUncountable,
+} from "./failed.js";
 import type { PassContext } from "./pass.js";
 import type { SourceFile } from "./types.js";
 
@@ -26,14 +33,17 @@ export type Entry = { readonly kind: "gone"; readonly path: RelativePath } | Fil
  * D4's blob lookup and slices: each blob of the work set with no count at
  * this counter version is read and counted once, `sliceFiles` at a time, and
  * stored with one transaction per slice. A blob the disk no longer holds is
- * retried at the next pass; one the counter fails on stays uncounted
- * (`pending`); the paths of either keep their states as they were. A
- * symlink is no file to count (`links`): its target is counted at its own
- * path.
+ * retried at the next pass. One the counter fails on is recorded in
+ * `failed` and retried when its retry is due, `COUNT_ATTEMPTS` in all (row
+ * 015-18); until then it is not counted again. The paths of either keep
+ * their states as they were. A symlink is no file to count (`links`): its
+ * target is counted at its own path.
  */
 export async function countMissing(
   ctx: PassContext,
   entries: readonly Entry[],
+  failed: FailedCounts,
+  now: EpochMs,
 ): Promise<{ counted: number; skipped: Set<RelativePath>; links: Set<RelativePath> }> {
   const { store, counter } = ctx;
   const byBlob = new Map<string, FileEntry[]>();
@@ -53,21 +63,30 @@ export async function countMissing(
     if (start > 0) await nextTurn();
     const slice = missing.slice(start, start + size);
     // One file at a time: each read gives the event loop a turn, so no stretch holds more than one count.
-    const counts: Awaited<ReturnType<typeof countOne>>[] = [];
-    for (const [e] of slice) counts.push(e === undefined ? null : await countOne(ctx, e));
+    // A blob whose failed count is not due again is `held`: not read, not counted.
+    const counts: (Awaited<ReturnType<typeof countOne>> | "held")[] = [];
+    for (const group of slice) {
+      const [e] = group;
+      const held = group.every((g) => !mayCount(failed, g.path, g.file.hash, now));
+      counts.push(e === undefined || held ? "held" : await countOne(ctx, e));
+    }
     store.transaction(() => {
       slice.forEach((group, i) => {
-        const count = counts[i];
+        const count = counts[i] ?? "held";
         if (count === "link") for (const e of group) links.add(e.path);
         if (count === "link") return;
         if (count === "moved") for (const e of group) ctx.retry.add(e.path);
-        if (count === undefined || count === null || count === "moved") {
+        if (typeof count === "object" && "error" in count) {
+          for (const e of group) fail(ctx, failed, e, count.error, now);
+        }
+        if (typeof count !== "object" || "error" in count) {
           for (const e of group) skipped.add(e.path);
           return;
         }
         store.counts.put(count, ctx.now());
         counted++;
       });
+      writeUncountable(store.meta, ctx.worktreeId, failed);
     });
   }
   return { counted, skipped, links };
@@ -91,10 +110,29 @@ async function readRegular(path: string): Promise<Uint8Array | "link" | null> {
   }
 }
 
+/** Records one more failed count of `e` and tells it: each attempt, and when the last is spent. */
+function fail(
+  ctx: PassContext,
+  failed: FailedCounts,
+  e: FileEntry,
+  error: string,
+  now: EpochMs,
+): void {
+  const f = failedAgain(failed.get(e.path), e.file.hash, error, now);
+  failed.set(e.path, f);
+  const next =
+    f.retryAt === null
+      ? "not again until it changes"
+      : `trying again in ${Math.round((f.retryAt - now) / 1000)} s`;
+  ctx.log(
+    `complexity: could not count ${e.path} (attempt ${f.attempts} of ${COUNT_ATTEMPTS}): ${error}; ${next}`,
+  );
+}
+
 async function countOne(
   ctx: PassContext,
   e: FileEntry,
-): Promise<FileCount | "moved" | "link" | null> {
+): Promise<FileCount | "moved" | "link" | { readonly error: string }> {
   const bytes = await readRegular(join(ctx.root, e.path));
   if (bytes === "link") return bytes;
   if (bytes === null || blobHash(bytes, ctx.format) !== e.file.hash) return "moved";
@@ -108,7 +146,7 @@ async function countOne(
       errors,
     };
   } catch (error) {
-    ctx.log(`complexity: could not count ${e.path}: ${String(error)}`);
-    return null;
+    const text = error instanceof Error ? error.message : String(error);
+    return { error: text.split("\n")[0] ?? text };
   }
 }
