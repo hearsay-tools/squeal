@@ -38,7 +38,11 @@ Every type change is additive: one optional field, one new type, optional traili
 3. **Which tier is the checkpoint's.** While the open checkpoint is explicit (a `run --all` among its records, `Checkpoints.active.explicit`), a tier that holds a file it requested is the checkpoint's. So is the offer before the pick. A tier that holds none of its files is the backlog's, and its smaller grant trims the pick as a grant below the offer does today. A baseline checkpoint's tiers are the backlog's.
 4. **The backlog's turn** (after four tiers of the first group) is the backlog's: it runs the backlog's files.
 5. **The slow lane** (`slow-tier.ts`) keeps the marks' CPU. C10 Size and the brief name no change there.
-6. **Test pins** (coordinator decision, reply to request `7e30249e`): the product default reads `/proc/stat`. A test pool reads no live host CPU through the gate. `test/scheduler/helpers.ts:353` gives every scheduler-test pool `host: null` unless the test passes a reader. No other file needed a pin (see "Checks run").
+6. **Test pins** (coordinator decision, reply to request `7e30249e`): the product default reads `/proc/stat`. A test pool reads no live host CPU through the gate. Pins, each in a test-only commit apart from the src change:
+   - `test/scheduler/helpers.ts:353` (`openHarness`): every scheduler-test pool gets `host: null` unless the test passes a reader. Before the pin, `capacity-pool.test.ts:180` got 1 permit, not 2, on this host.
+   - `test/scheduler/catch-up-fixture.ts`: its own `createScheduler` with a real pool. Before the pin, `edit-cut-route.test.ts` case 6 saw 2 node:test slots active, not 4.
+   - `test/scheduler/wall-fixture.ts` and `test/scheduler/fresh-worktree-durations.test.ts`: the same `createScheduler` with a real pool, and both budget backlog tiers at the pool's offer. They passed on this host. They are pinned because their widths depend on the live host in the same way, so CI could fail them.
+   - No `test/daemon/*` file passes pool options, and none failed. The daemon tests that write a user config (`drain`, `step-down-lanes`, `stop-cancel`, 16 slots) run real daemons, which read the live host by the product default. There is no config key that pins it.
 
 ## Known limits
 
