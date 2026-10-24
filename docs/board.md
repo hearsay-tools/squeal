@@ -1271,6 +1271,27 @@ Spec: `specifications/016-extensions/spec.md`, draft for the human's review (202
 | 016-10 one correctness kit for every runner | done (4d5cb5102, researcher 81c4ca46: 3 scenarios written once ran on all 3 runners through `RunnerAdapter`, 8 PASS and 1 documented gap the kit found unprompted (Vitest computed `import()`, 011 C12); packs 52 to 57 lines; the same-stat scenario reproduces row 007-29 by hand; two preconditions the type does not state (a fresh `logDir` per run, the observed store); of 26 blockers in 17 failed runner reviews, 5 caught by a neutral scenario and 6 more with per-runner variants; a full kit about 900 lines, a new runner about 120) | `research/runner-kit-brief.md`: a scenario-by-runner matrix of today's tests, a scenario shape written once and instantiated per runner, a probe of one or two scenarios on at least two runners in a scratch directory, the past review failures a scenario would have caught, the lines a kit adds or replaces. | `research/runner-kit.md` committed, every question tagged. |
 | 016-11 what repeats in core-logic defects | running (researcher b7b69827, Opus high) | The human, 2026-10-24. `research/core-defects-brief.md`: 016-09's 415 class-E defects sorted by core area and repeating mechanism; for each group of three or more, what would have caught it before review and its cost; a seeded 10% re-read for agreement. | `research/core-defects.md` committed, every question tagged. |
 
+### Wave 0: the kit's scaffold and the observed-path survey (parallel; briefs in `specifications/016-extensions/tasks/wave-0.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 016-12 the kit's scaffold | planned | D1, D2: `test/kit/` with a driver that names no runner, packs for Vitest, node:test and pytest, scenarios K1 to K3 from the 016-10 probe, the KNOWN and UNEXPECTED PASS verdicts, the `logDir` doc comment. Tests only. | The three kit files pass with K1 to K3 PASS on every runner; a fake-pack test proves KNOWN and UNEXPECTED PASS; `squeal run --all --wait` green. |
+| 016-13 the observed-path survey | planned | D4: per runner what is observed, where it is kept and who reads it back; each step of the core's path the injected stores lack, with a case where a verdict changes; git-ignored paths today; the read-only interface an adapter needs; migration of the `nodeTest.observed.*` and `pytest.observed.*` meta entries. | `research/observed-paths.md` committed, every question tagged. |
+
+### Wave 1 (after wave 0; not yet briefed)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 016-14 kit scenarios K4 to K9 and the replay | planned | D1: K4 to K9 with each pack's variants; goal 3's replay of 007-29, 003 wave 2 B1 and 011 `0.1.287.md` B1 on a scratch branch. | Each scenario PASS or KNOWN on every runner; the replay fails the kit for all three defects, recorded in `lessons.md`. |
+| 016-15 a check knows its runner (takes 007-45) | planned | D3: the runner stored when a check is first recorded, attribution reads it; the store step weighed between a column without a `user_version` raise and a `meta` map. | Row 007-45's done-when; an older store reads as before. |
+| 016-16 runner descriptions for `harness/shared` | planned | D5: `src/runners/<runner>/describe.ts` and one registry; the deny, primer and coverage read it. | No runner name in `src/harness/shared`; the harness suites pass with no assertion changed. |
+
+### Wave 2 (after 016-13, the human's decisions on its differences, and K4, K5 and a two-worktree scenario on main)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 016-17 one write path for observed paths (takes 007-47, 007-52, 007-56) | planned | D4. Tell 011's coordinator before dispatch: it edits `src/core/scheduler/`. | Goals 5 and 6. |
+
 ## Later
 
 - 015: `test/code/store.test.ts` "switches into WAL while another process holds the write lock" (015 D4) failed main CI once on a docs-only push (run 40052812099, Node 22 3/3, `1cea53659`): the lock-holding child exited 1 with `database is locked` (`expected 1 to be +0` at `await released`), a race between the child and the parent's open on a GitHub runner; it passed on 0.1.283's main run and on cand/0.1.284. Seen by coordinator 04a258b0; 015's coordinator owns the fix (a longer busy timeout in the child, or a ready signal after its lock).

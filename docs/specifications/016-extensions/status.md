@@ -1,6 +1,6 @@
 # 016 extensions: status
 
-Stage: draft (`spec.md` written 2026-10-24 for the human's review; 016-11 running)
+Stage: approved (2026-10-25; waves on `docs/board.md`, briefs under `tasks/`)
 Started: 2026-10-24
 
 ## Decisions so far
@@ -27,6 +27,7 @@ Started: 2026-10-24
   - Kit (016-10): one set of scenarios written once runs on all three runners through `RunnerAdapter` with a 52 to 57 line pack each: 8 PASS and 1 documented gap the kit found unprompted (Vitest does not see a computed `import()`, 011 C12). The same-stat scenario reproduces row 007-29's stale pass by hand; Vitest and node:test had no test for it. Of 26 blockers in 17 failed runner reviews, 5 fall to a neutral scenario and 6 more with per-runner variants. The adapter type does not state two preconditions (a fresh `logDir` per run; the observed store and its merge rule). A full kit is about 900 lines; a new runner writes one pack of about 120. The interrupted-run scenario was not probed (timing; open question 3).
 - 2026-10-24, the human, on 016-09 and 016-10: spec 016 is narrow: the shared correctness kit and the three seams with repeat cost (the runner recorded with each check, row 007-45; one write path for observed paths, rows 007-47, 007-52 and 007-56; runner names out of `src/harness/shared`). 011's coordinator (04a258b0), whose waves last carried 007's rows, released all four to 016 the same day: no 011 row depends on them. It asks to be told first before any 016 edit under `src/core/scheduler/`, `src/core/watcher/`, `src/core/capacity/` or `src/core/keys/`, and to agree each 016 candidate's version with 011 and 015 (015 owns 0.1.299). The full internal half and the public half are not in scope.
 - 2026-10-24, the human: a researcher sorts the 415 core-logic defects by what repeats (016-11).
+- 2026-10-25, the human: `spec.md` approved as drafted (D1 to D6).
 
 ## Open questions
 
@@ -38,3 +39,5 @@ Started: 2026-10-24
 6. Does extensibility drive adoption for a tool like Squeal, and what does a public API cost to keep?
 
 ## Amendment log
+
+- 2026-10-25, the coordinator, before briefing wave 0: goal 8 and its Testing line said an edit outside `src/runners/**` and `test/kit/**` re-runs no kit file. The runners import core modules (keys, hash, fingerprint), so a core edit must re-run them. Goal 8 now reads: a kit file re-runs only when its own closure changes, and an edit in one runner's folder re-runs no other runner's kit file.
