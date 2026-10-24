@@ -130,3 +130,25 @@ Check, with proof:
 4. S1 (a counter that throws once) is planned as row 015-18. Do not re-find it.
 
 Do not re-review the rest of the range unless a fix changes it. Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Candidate CI run: 40048472057. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## 015-10: dogfood of complexity
+
+Two parts. Briefed by coordinator 52e58f23 on 2026-10-24, after 0.1.283 was released.
+
+**Part A, the coordinator's.** Turn on `"complexity": { "enabled": true }` in a repository's `squeal.config.json` only after the host's installed plugins read 0.1.283 or later (`~/.claude/plugins/cache/hearsay/squeal/`, `~/.codex/plugins/cache/hearsay/squeal/`). An older Squeal reports the key as an unknown-key problem in every session. This repository: the coordinator's call (a repo-local config change). cezar: only on the human's go, since it is another repository with its own pull request flow. Record the time each one was switched on in `tasks/015-10/window.md`. The working day runs from that time.
+
+**Part B, the worker's.** Use /worker. Shape: finish, survey. Start it after a working day of ordinary agent sessions. **Outcome:** `lessons.md` gains "Round 1 (015-10)", which answers the spec's open questions 1, 2 and 4 and `status.md` questions 1 and 2 for complexity, with evidence. **Read:** `spec.md` D3, D5, D6, D7, Testing (Proof) and Open questions; `tasks/015-10/window.md`; `tasks/015-06/notes.md` and `tasks/015-07/notes.md` for the store's tables and the delivery wording. **Sources, read only:**
+- each repository's `<git-common-dir>/squeal/code.sqlite`: transitions, states, view entries and the recount meta in the window;
+- the session transcripts in the window (`~/.claude/projects/<repo slug>*/` and `~/.codex/sessions/`): every SQUEAL line that names complexity, and what the agent did next;
+- the counting cost: the pass's own timing if it logs one; else time the released counter (a `git archive squeal--v0.1.283` copy under `/tmp/dogfood-015-10/`) on the files the window changed, with the load.
+
+**Measure:**
+- transitions and deliveries per session, by kind (FAIL, PASS, `STILL FAIL`, too big, summary);
+- each delivery judged as useful, noise or unclear, with its line quoted. Q1: how many FAILs come only from `?.`, `??` and default values (the decision points are stored by kind). Q2: did `STILL FAIL` change what the agent did? Q4: crossings that came back within two edits;
+- identity losses (a move or rename not matched, anonymous names that changed);
+- counting CPU per revision.
+
+**Rules:** open the stores read only, and change no config, plugin or store. Send no signal. Write only under `/tmp/dogfood-015-10/`, `lessons.md` and `tasks/015-10/`. Quote at most the SQUEAL line and one sentence of the agent's text per case. **Owns:** `lessons.md`, `tasks/015-10/`. **Done when:**
+- the round is committed, with a table per repository;
+- each open question has a recommendation and the counts behind it;
+- each defect is written as a proposed row and never fixed.
