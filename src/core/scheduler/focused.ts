@@ -19,18 +19,16 @@ import { laneOf, newTier, type Tier, type TierFile } from "./tiers.js";
  * (`writeFocused`).
  */
 
-/** Whether the runner of `ref` honours `RunOptions.checks` (spec 011 C14, row 011-145). */
-export function focuses(context: SchedulerContext, ref: TestFileRef): boolean {
-  return focusesFile(context.runner, ref);
-}
-
 /**
  * Spec 011 C15: whether `ref` may have a focused entry: a listed fast file
- * whose runner focuses. A slow file and a file whose runner runs whole
- * files only get none.
+ * whose runner focuses, that is, honours `RunOptions.checks` (C14, row
+ * 011-145). A slow file and a file whose runner runs whole files only get
+ * none.
  */
 export function mayFocus(context: SchedulerContext, ledger: Ledger, ref: TestFileRef): boolean {
-  return ledger.file(ref) !== undefined && !ledger.queue.isSlow(ref) && focuses(context, ref);
+  return (
+    ledger.file(ref) !== undefined && !ledger.queue.isSlow(ref) && focusesFile(context.runner, ref)
+  );
 }
 
 /**
