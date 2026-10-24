@@ -1,0 +1,257 @@
+{
+  "retrievedDate": "2026-10-24",
+  "localCommit": "ef41742aae3e5600e61e3d9ac556c6f5ab88a112",
+  "sources": [
+    {
+      "name": "bsp",
+      "url": "https://raw.githubusercontent.com/build-server-protocol/build-server-protocol/master/docs/specification.md",
+      "resolved": "https://raw.githubusercontent.com/build-server-protocol/build-server-protocol/master/docs/specification.md",
+      "bytes": 4716,
+      "sha256": "20b148dbbbdcf5575d3485a0743c26e480b6acfc0ba384b532ab4ee2f96b3064"
+    },
+    {
+      "name": "lsp",
+      "url": "https://raw.githubusercontent.com/microsoft/language-server-protocol/gh-pages/_specifications/lsp/3.17/specification.md",
+      "resolved": "https://raw.githubusercontent.com/microsoft/language-server-protocol/gh-pages/_specifications/lsp/3.17/specification.md",
+      "bytes": 42538,
+      "sha256": "6553187ee72c18eb71d583ed25323843f66d70695097d2e0c1b1f0dad00e4363"
+    },
+    {
+      "name": "mtp",
+      "url": "https://raw.githubusercontent.com/microsoft/testfx/main/docs/microsoft-testing-platform/protocol.md",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "mtp-server",
+      "url": "https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-internals-architecture",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "teamcity",
+      "url": "https://www.jetbrains.com/help/teamcity/service-messages.html",
+      "resolved": "https://www.jetbrains.com/help/teamcity/service-messages.html",
+      "bytes": 99393,
+      "sha256": "1caee733bb3a5808b2c1f49ec54fcd26e5b1c323864c5a7bafe46fb458cbb579"
+    },
+    {
+      "name": "tap",
+      "url": "https://testanything.org/tap-version-14-specification.html",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "name": "junit",
+      "url": "https://raw.githubusercontent.com/junit-team/junit5/main/documentation/modules/ROOT/pages/running-tests/build-support.adoc",
+      "resolved": "https://raw.githubusercontent.com/junit-team/junit5/main/documentation/modules/ROOT/pages/running-tests/build-support.adoc",
+      "bytes": 21009,
+      "sha256": "54cc4acf5aed4222c7e13e300744824d93fb191ee374a2805d1657d9854f65c1"
+    },
+    {
+      "name": "sarif",
+      "url": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html",
+      "resolved": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html",
+      "bytes": 1602584,
+      "sha256": "68640eb672bd00acff89d7153b9e14faf2347f7eb35e54452422324fbb6c00f4"
+    },
+    {
+      "name": "go",
+      "url": "https://go.dev/src/cmd/test2json/main.go",
+      "resolved": "https://go.dev/src/cmd/test2json/main.go",
+      "bytes": 46962,
+      "sha256": "c29a7ea23019775548599bd81e3ee66f2f9386953b90b74b6385b7983df92564"
+    },
+    {
+      "name": "libtest",
+      "url": "https://raw.githubusercontent.com/rust-lang/rust/stable/library/test/src/formatters/json.rs",
+      "resolved": "https://raw.githubusercontent.com/rust-lang/rust/stable/library/test/src/formatters/json.rs",
+      "bytes": 10335,
+      "pinnedUrl": "https://raw.githubusercontent.com/rust-lang/rust/58cf8f9c35b355199727627d07ae34a4e2846d67/library/test/src/formatters/json.rs",
+      "sha256": "d7b1132ac306c3dae76526bd0d5dc8e44d95273d4758684e47a4f6ec849c0f89"
+    },
+    {
+      "name": "nextest",
+      "url": "https://nexte.st/docs/machine-readable/libtest-json/",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "name": "gradle",
+      "url": "https://docs.gradle.org/current/javadoc/org/gradle/tooling/TestLauncher.html",
+      "resolved": "https://docs.gradle.org/current/javadoc/org/gradle/tooling/TestLauncher.html",
+      "bytes": 45720,
+      "sha256": "90e24cba7596912dce32f50ee3a9024af8aded4c735aef6dfeac72f9ea0d15de"
+    },
+    {
+      "name": "bep",
+      "url": "https://bazel.build/remote/bep",
+      "resolved": "https://bazel.build/remote/bep",
+      "bytes": 201154,
+      "sha256": "9053459cc0b462be6b66ff09ec36371d2888a823760acf69226dd2c39b002ec0"
+    },
+    {
+      "name": "bsp-model",
+      "url": "https://raw.githubusercontent.com/build-server-protocol/build-server-protocol/9097c78224910a4a285ba3207e55dd33c9e9da97/spec/src/main/resources/META-INF/smithy/bsp/bsp.smithy",
+      "bytes": 50245,
+      "sha256": "4514e90236ac386b848df351faa21fb4f9c4abdb6f28f05676d8c8e05802c0c8"
+    },
+    {
+      "name": "bsp-discovery",
+      "url": "https://raw.githubusercontent.com/build-server-protocol/build-server-protocol/9097c78224910a4a285ba3207e55dd33c9e9da97/docs/overview/server-discovery.md",
+      "bytes": 10153,
+      "sha256": "1ac5610d3734c8428f6b82025d8034404d19f46853731d28de082708347cf04a"
+    },
+    {
+      "name": "mtp-intro",
+      "url": "https://raw.githubusercontent.com/microsoft/testfx/8ad685a835dce077d64d24f3a4b692fda16447ae/docs/mstest-runner-protocol/001-protocol-intro.md",
+      "bytes": 36468,
+      "sha256": "b62481fbb656d9a5ba28c80d13d29bbeb6d22425a22995624e26f0574b823b4f"
+    },
+    {
+      "name": "mtp-protocol",
+      "url": "https://raw.githubusercontent.com/microsoft/testfx/8ad685a835dce077d64d24f3a4b692fda16447ae/docs/mstest-runner-protocol/002-protocol-vstest.md",
+      "bytes": 1204,
+      "sha256": "a0d9aaaaa60912277a64157d6c242807bb7c9f1fd8bd0a3dd41650c7ff4d5689"
+    },
+    {
+      "name": "mtp-ide",
+      "url": "https://raw.githubusercontent.com/microsoft/testfx/8ad685a835dce077d64d24f3a4b692fda16447ae/docs/mstest-runner-protocol/003-protocol-ide-integration-extensions.md",
+      "bytes": 5920,
+      "sha256": "e8e7824cfe835f42b97ceff195327d13de67e08361b97381101b7f8c1c0aeb29"
+    },
+    {
+      "name": "mtp-pipe",
+      "url": "https://raw.githubusercontent.com/microsoft/testfx/8ad685a835dce077d64d24f3a4b692fda16447ae/docs/mstest-runner-protocol/004-protocol-dotnet-test-pipe.md",
+      "bytes": 48996,
+      "sha256": "a4167e0fb887a6a1249deefa9ff5fa0d1e73d193721df3b162b4fb25591587a8"
+    },
+    {
+      "name": "tap14",
+      "url": "https://raw.githubusercontent.com/TestAnything/testanything.github.io/54d832874658d23c970f900d8b957eae5de8ac6f/tap-version-14-specification.md",
+      "bytes": 35797,
+      "sha256": "bd15059f26d0e68e3f21f111cfc54d893e0d0830b92fd5c5a3ac84d9357366a2"
+    },
+    {
+      "name": "nextest-json",
+      "url": "https://raw.githubusercontent.com/nextest-rs/nextest/96cd53a54c410280a49fea71845d67fd1c93d937/site/src/docs/machine-readable/libtest-json.md",
+      "bytes": 1957,
+      "sha256": "6587d50af79ef4526727790589ae38a88c40b50d7a860002c944081ce249013e"
+    },
+    {
+      "name": "nextest-list",
+      "url": "https://raw.githubusercontent.com/nextest-rs/nextest/96cd53a54c410280a49fea71845d67fd1c93d937/site/src/docs/machine-readable/list.md",
+      "bytes": 5355,
+      "sha256": "3f65c8ad7a3c1957df9eb6eb0d481664ee9bf3ec3024f7b0b95402df564f3af8"
+    },
+    {
+      "name": "lsp-diagnostic",
+      "url": "https://raw.githubusercontent.com/microsoft/language-server-protocol/baf2db31b5fb314a8f358f9a839d3c66e9d98734/_specifications/lsp/3.17/types/diagnostic.md",
+      "bytes": 3771,
+      "sha256": "fb99e0f9140374286971d6204a5739a286016154992d4d6f8796a68f8170114c"
+    },
+    {
+      "name": "lsp-push",
+      "url": "https://raw.githubusercontent.com/microsoft/language-server-protocol/baf2db31b5fb314a8f358f9a839d3c66e9d98734/_specifications/lsp/3.17/language/publishDiagnostics.md",
+      "bytes": 3380,
+      "sha256": "e2f5f5029bc5c0dac9a100ff6d2c34ba0c9f51f64dccbc019e7c63daf4eae0eb"
+    },
+    {
+      "name": "lsp-meta",
+      "url": "https://raw.githubusercontent.com/microsoft/language-server-protocol/baf2db31b5fb314a8f358f9a839d3c66e9d98734/_specifications/lsp/3.17/metaModel/metaModel.json",
+      "bytes": 395147,
+      "sha256": "c207890d9e0f54d8f9e462a924670f563423ec9af90a0a369645ff55384c8d6d"
+    },
+    {
+      "name": "lsp-full",
+      "url": "https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/",
+      "bytes": 918678,
+      "sha256": "93afdf15adbaa7355cd00d0134de05331b8dcc9361ffdd11d3da0924cab20579"
+    },
+    {
+      "name": "junit-xml",
+      "url": "https://raw.githubusercontent.com/jenkinsci/xunit-plugin/master/src/main/resources/org/jenkinsci/plugins/xunit/types/model/xsd/junit-10.xsd",
+      "bytes": 6555,
+      "pinnedUrl": "https://raw.githubusercontent.com/jenkinsci/xunit-plugin/0afa700702a6617f483cfd9407711976dc0bd74a/src/main/resources/org/jenkinsci/plugins/xunit/types/model/xsd/junit-10.xsd",
+      "sha256": "a1a816f58d1bf95ebabf371994df0b9246dee66ea9572fbec4f9296f1b2c0ff6"
+    },
+    {
+      "name": "bep-proto",
+      "url": "https://raw.githubusercontent.com/bazelbuild/bazel/master/src/main/java/com/google/devtools/build/lib/buildeventstream/proto/build_event_stream.proto",
+      "bytes": 67845,
+      "pinnedUrl": "https://raw.githubusercontent.com/bazelbuild/bazel/a5c50fcb65841b505ec72840d83381a704e70afa/src/main/java/com/google/devtools/build/lib/buildeventstream/proto/build_event_stream.proto",
+      "sha256": "7ae3ccd93530d97afcc921e1d464b8296b033d2f0440e3f548fc62f3e9d8b32f"
+    },
+    {
+      "name": "gradle-event",
+      "url": "https://docs.gradle.org/current/javadoc/org/gradle/tooling/events/test/TestOperationDescriptor.html",
+      "bytes": 13256,
+      "sha256": "66d51ef2fe2a1f01f5612adf0daf486a0d663703f8d072c1259ca13fdaf003ac"
+    },
+    {
+      "name": "gradle-doc",
+      "url": "https://docs.gradle.org/current/userguide/tooling_api.html",
+      "bytes": 177689,
+      "sha256": "4c941bc37dccc9d8ebcfe407e168511db8b407e77afe252eb927e92230a32050"
+    },
+    {
+      "name": "go-raw",
+      "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/test2json/main.go",
+      "bytes": 5993,
+      "pinnedUrl": "https://raw.githubusercontent.com/golang/go/0d37007fda071631fbcb520b99c85a8e4c93108a/src/cmd/test2json/main.go",
+      "sha256": "98613882be8e9dcfed687f594b253b2a0474771981099174406ad74bb377b5c7"
+    },
+    {
+      "name": "mtp-tcp",
+      "url": "https://raw.githubusercontent.com/microsoft/testfx/8ad685a835dce077d64d24f3a4b692fda16447ae/src/Platform/Microsoft.Testing.Platform/ServerMode/JsonRpc/TcpMessageHandler.cs",
+      "bytes": 18529,
+      "sha256": "97a42ee83b3dcb2f0bdf5ed8b30b3234b6897e1179d36760ec4d56b159b65a08"
+    },
+    {
+      "name": "mtp-host",
+      "url": "https://raw.githubusercontent.com/microsoft/testfx/8ad685a835dce077d64d24f3a4b692fda16447ae/src/Platform/Microsoft.Testing.Platform/Hosts/ServerTestHost.RequestExecution.cs",
+      "bytes": 17186,
+      "sha256": "c68e52a1197d6332621efd6beee3b30818010a80304faccc8ba681f5f48a7cc0"
+    },
+    {
+      "name": "bsp-scala",
+      "url": "https://raw.githubusercontent.com/build-server-protocol/build-server-protocol/9097c78224910a4a285ba3207e55dd33c9e9da97/spec/src/main/resources/META-INF/smithy/bsp/extensions/scala.smithy",
+      "bytes": 11345,
+      "sha256": "f0d7cc661736cba116c05d6d5622f9ee501490e96799913dab75f57842041f4d"
+    },
+    {
+      "name": "go-flags",
+      "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/alldocs.go",
+      "bytes": 161073,
+      "pinnedUrl": "https://raw.githubusercontent.com/golang/go/0d37007fda071631fbcb520b99c85a8e4c93108a/src/cmd/go/alldocs.go",
+      "sha256": "58b4799afe42d223a6fddcd92f98bf8e565da98a1ef771922e53f9eedc64d470"
+    },
+    {
+      "name": "rust-opts",
+      "url": "https://raw.githubusercontent.com/rust-lang/rust/stable/library/test/src/cli.rs",
+      "bytes": 17206,
+      "pinnedUrl": "https://raw.githubusercontent.com/rust-lang/rust/58cf8f9c35b355199727627d07ae34a4e2846d67/library/test/src/cli.rs",
+      "sha256": "6f28e1ba467660e7cbab641c5d785130e05c53ff4301a97682502844fff2bcec"
+    },
+    {
+      "name": "lsp-overview",
+      "url": "https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/",
+      "bytes": 48765,
+      "sha256": "513adc9e8b919c8f75de2b01f0c04693afd7d608b7c5a532ed40ad7852136705"
+    },
+    {
+      "name": "nextest-filter",
+      "url": "https://raw.githubusercontent.com/nextest-rs/nextest/96cd53a54c410280a49fea71845d67fd1c93d937/site/src/docs/filtersets/index.md",
+      "bytes": 3031,
+      "sha256": "802be7203c4f0c669f7fd96ff5b7db4b7f03884ab8c703bca556186fb53697b4"
+    },
+    {
+      "name": "gradle-finish",
+      "url": "https://docs.gradle.org/current/javadoc/org/gradle/tooling/events/test/TestFinishEvent.html",
+      "bytes": 13890,
+      "sha256": "5d18057d1f2200902a920486ce1d922fe297ec7c4213d23f8188eb9ea263e70f"
+    },
+    {
+      "name": "gradle-failure",
+      "url": "https://docs.gradle.org/current/javadoc/org/gradle/tooling/events/test/TestFailureResult.html",
+      "bytes": 10274,
+      "sha256": "45a988c7cf587a988d25840501f9413b5534215ee491b6f67f112a34c9244427"
+    }
+  ]
+}

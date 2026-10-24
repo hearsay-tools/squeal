@@ -1,0 +1,67 @@
+{
+  "end": "completed",
+  "durationMs": 122.667516,
+  "completedFiles": [
+    {
+      "project": "probe",
+      "path": "fixture.mjs"
+    }
+  ],
+  "results": [
+    {
+      "check": {
+        "kind": "test",
+        "project": "probe",
+        "testPath": "fixture.mjs",
+        "fullName": "passes"
+      },
+      "outcome": "pass",
+      "durationMs": 1.064906,
+      "location": null,
+      "errors": []
+    },
+    {
+      "check": {
+        "kind": "test",
+        "project": "probe",
+        "testPath": "fixture.mjs",
+        "fullName": "fails"
+      },
+      "outcome": "fail",
+      "durationMs": 0.304643,
+      "location": {
+        "path": "fixture.mjs",
+        "line": 5,
+        "column": 1
+      },
+      "errors": [
+        {
+          "name": "Error",
+          "message": "deliberate probe failure",
+          "stack": "TestContext.<anonymous> (fixture.mjs:5:29)\nTest.runInAsyncScope (node:async_hooks:227:14)\nTest.run (node:internal/test_runner/test:1402:25)\nTest.processPendingSubtests (node:internal/test_runner/test:974:18)\nTest.postRun (node:internal/test_runner/test:1542:19)\nTest.run (node:internal/test_runner/test:1467:12)\nasync startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)",
+          "location": {
+            "path": "fixture.mjs",
+            "line": 5,
+            "column": 1
+          },
+          "diff": null,
+          "code": "ERR_TEST_FAILURE"
+        }
+      ]
+    },
+    {
+      "check": {
+        "kind": "test",
+        "project": "probe",
+        "testPath": "fixture.mjs",
+        "fullName": "skips"
+      },
+      "outcome": "skip",
+      "durationMs": 0.152147,
+      "location": null,
+      "errors": []
+    }
+  ],
+  "fileErrors": [],
+  "failure": null
+}
