@@ -100,8 +100,35 @@ CPU load alone does not explain the hook timeouts of 011-142 section 5 (more tha
 
 A Vitest test that times out stops waiting for its comparison; the comparison runs on. The candidate added a comparison's removal only when the comparison settled, so the file's last hook could find nothing to wait for and remove the work directory under live drivers.
 
-- `compare()` now pushes one task per comparison before it can yield: the comparison, then the removal of its `run-N`, whichever way the comparison settles. The task rejects only when that removal fails. The hook waits for every task with `allEnded`, then removes the work directory. It keeps the `REMOVAL` bound, so a driver that never ends fails the hook and its directory stays.
+- `compare()` now pushes one task per comparison before it can yield: the comparison, then the removal of its `run-N`, whichever way the comparison settles. The task rejects only when that removal fails. The hook waits for the tasks with `allEnded`, then removes the work directory. It keeps the `REMOVAL` bound, so a driver that never ends fails the hook and its directory stays. The wait covered only the tasks pushed before the hook began; review w31b-r2 B1 found the path past it, repaired in section 8.
 - No kill on teardown. A hung driver is a failure to see, not one to clean up.
 - `self-test.test.ts` is the regression. It mocks `trees.js` (the release's setup is a directory) and `compare.js` (one real driver through `prepare` and `launch` that waits 1 s, then writes scratch and its outputs). The test runs the real `comparisons()` under `it.fails` with a 100 ms timeout: Vitest's timeout is the expected failure. An `afterAll` registered before `comparisons()` runs after its hook (`sequence.hooks` is `stack` by default). It waits for the driver, then checks that the driver's directory was there when it ended and that the work directory is gone.
 - Red and green: with the candidate's `self-test.ts`, the file failed with "the hook removed the driver's directory while it ran: expected { present: false } to deeply equal { present: true }"; with the repair it passed (1 expected fail, 1.5 s).
 - No type changed; `Comparisons` and `comparisons()` keep their signatures.
+
+## 8. Repair round 2: a timed-out test's next comparison (review w31b-r2 B1)
+
+Worker 8cc099c7, wave 32 W14, from `cand/w31b` at 79f80c897, 2026-10-24. Changed: `self-test.ts`, `self-test.test.ts`.
+
+A test that timed out runs on: when its first comparison ends, it starts its next one. Section 7's hook had already read the task list, so it removed the work directory under the second driver. `lock.test.ts` makes two comparisons in turn in two tests.
+
+The rule now:
+
+- When the file's last hook starts, it closes. A `compare()` after that throws "compare() after the file's last hook began, as a timed-out test's next comparison: it does not run". It throws before it reserves `run-N` or starts a driver, so no driver starts after the hook began.
+- The hook waits with `allEnded` until the task list stops growing, then removes the work directory. With the closed flag the list cannot grow during the wait; the loop is the second guard the brief asked for, and costs one more `allEnded` over settled tasks.
+- The `REMOVAL` bound (120 s) is unchanged: a driver that never ends still fails the hook and keeps its directory. No kill on teardown.
+- A `compare()` from a test file's own `afterAll` would now throw. No validity test calls one from a hook.
+
+`self-test.test.ts` has two suites, each with its own `comparisons()` and an observer hook registered before it, so the observer runs after its last hook. "one comparison" is section 7's case. "two comparisons in sequence" times out in its first comparison, then calls `compare()` again. The driver now holds 2 s (1 s before), so the hook has begun well before the first driver ends, even on a loaded host. Each driver records whether its script, its cases file and its side directory were there when it ended. The observer waits for every driver, removes the fixture, then checks: every driver kept its paths, the work directory was gone after the hook, and the second call was refused with the error above.
+
+Red and green, in a scratch copy of 79f80c897 (`git archive` of `src/`, `test/`, `package.json`, `tsconfig.json`, `node_modules` linked, a config with only this file, `HOME`, `TMPDIR` and the XDG directories in the scratch, nice 10, `env -u PLUGIN_ROOT -u PLUGIN_DATA`), load about 4:
+
+| `self-test.ts` | Result |
+|---|---|
+| 79f80c897's | "one comparison" passed; "two comparisons in sequence" failed: "the hook removed a driver's paths while it ran", the second driver's error `Cannot find module '…/squeal-validity-YTCzdb/run-1/candidate/dist/cli/driver.mjs'`; exit 1 |
+| the repair | both passed, 2 expected fail, 4.4 s, three runs; the scratch `TMPDIR` empty after each; exit 0 |
+| the repair without the closing flag (the loop only) | both drivers kept their paths, but "the hook let a comparison start after it began: expected 'ran' to match /does not run/"; 6.6 s; exit 1 |
+
+*Read from Vitest's output.*
+
+So the loop alone keeps the paths; the flag is what stops a driver from starting during teardown, and the test needs both. `sides.test.ts`'s rejection-order test is unchanged. No type changed; `Comparisons` and `comparisons()` keep their signatures.
