@@ -89,3 +89,20 @@ Seam: `waitedFor` (`src/core/scheduler/yields.ts:287`), which passes `runsSooner
 Owns `src/core/scheduler/yields.ts`, `promotions.ts`, the queue's `rankOf`, the status text for `named`, their tests, `tasks/011-184/`. Not yours: `src/core/capacity/`, `test/keys/validity/`, the board, spec text, bundles, version. If the key-format alarm asks for a raise, stop and send me a request. No `npm run build`.
 
 Done when the row's done-when holds, the seven tests red first on main; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
+
+## W16: 011-184 repair round 3, a `named` tier keeps its recheck when the protecting promotion expires during the decision
+
+Use /worker. Shape: repair. Row 011-184, round 3 of 3, on candidate `cand/0.1.296` (231ecaeb0, this tree). The human chose this round on 2026-10-24; a further FAIL parks the row. Read `docs/specifications/011-core/reviews/0.1.296-r2.md` with `git show origin/main:<path>`: B2 (its reproduction and fix scope) and N2. Also `tasks/011-184/notes.md`, 011 C4 step 5 and C15 as amended.
+
+Outcome: a tier that stands on `named` keeps its recheck when the protecting promotion expires during the yield decision.
+
+- B2: `rankToBeat` (`src/core/scheduler/yields.ts:146`) sees promotion A live, then A expires before `boundOf` (`:341`) reads `untilOf`, which samples the clock again (`promotions.ts:110` `#first`) and returns null; `check` (`:419`) publishes `named` with no timer.
+- N2: test 9 of `tier-yields-named.test.ts` depends on a real 5 s window (`EXPIRES_MS`).
+
+First edit: in `check`, take one live-promotion snapshot at one clock reading and derive both rank eligibility and the bound from it. Keep the protecting deadline used for the decision even when it has passed, so the zero-delay timer path rechecks. An expired protecting promotion never becomes a missing bound.
+
+Tests, red first on 231ecaeb0, through the public scheduler's `SchedulerOptions.now` (the review's injected clock): (1) A expires between the rank and the bound reads: the tier yields for P without a new promotion. (2) The same with a later promotion of a tier file. Test 9: control the clock and expiry, assert `named` while A is live, then advance to expiry and await the recheck; keep the assertion that P runs before the cut files. Keep tests 1 to 8.
+
+Owns `src/core/scheduler/yields.ts`, `promotions.ts`, the queue's `rankOf` and `untilOf`, the recheck in `scheduler.ts`, `test/scheduler/tier-yields-named.test.ts`, `tasks/011-184/`. Not yours: the board, spec text, `status.md`, bundles, version (the coordinator rebuilds), `src/core/capacity/`, `test/keys/validity/`. No `npm run build`. Commit on your branch; the coordinator cherry-picks.
+
+Done when the new tests fail on 231ecaeb0 and pass on yours (say how you showed it); lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
