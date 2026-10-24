@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readStatus } from "../../src/core/status/index.js";
 import type { StatusResult, StatusSnapshot } from "../../src/core/types/index.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   delay,
@@ -48,7 +49,10 @@ it("takes a while", async () => {
 
 describe("squeal daemon: serving while working (spec 001 D9, D10)", SLOW, () => {
   it("answers a ping in under 100 ms while a tier is running", async () => {
-    const repo = fixture({ "test/slow.test.ts": SLOW_TEST });
+    const repo = fixture({
+      "test/slow.test.ts": SLOW_TEST,
+      "squeal.config.json": runMissingConfig(),
+    });
     daemon(repo);
     await waitReady(repo);
     await waitFor(
@@ -124,7 +128,7 @@ describe("squeal daemon: serving while working (spec 001 D9, D10)", SLOW, () => 
   });
 
   it("a broken vitest.config.ts at start gives unknown counts and a persisted note, never an exit", async () => {
-    const repo = fixture();
+    const repo = fixture({ "squeal.config.json": runMissingConfig() });
     const first = daemon(repo);
     await waitReady(repo);
     const good = await settled(repo);

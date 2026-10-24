@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { joinSpan, SHARE_FLOOR_MS, SHARE_RATIO } from "../../src/core/scheduler/sharing.js";
 import type { Store, WorktreeId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -99,7 +100,10 @@ describe(
       const repo = createRepo("basic");
       writeFileSync(join(repo.main, HELD), heldTest(hold, started));
       const store = openRepoStore(repo.commonDir);
-      const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 4 });
+      const h = await openHarness(repo.main, store, repo.commonDir, {
+        tierSize: 4,
+        policy: RUN_MISSING,
+      });
       await h.scheduler.start();
       await h.scheduler.idle();
       expect(outcomeOf(store, h.worktreeId, MATH)).toBe("pass");

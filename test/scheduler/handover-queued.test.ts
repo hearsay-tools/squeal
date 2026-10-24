@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Policy } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpRepo,
@@ -39,7 +40,12 @@ async function heldThenStopped(
   ...edits: (readonly string[])[]
 ): Promise<{ repo: CatchUpRepo; side: CatchUpSide }> {
   const repo = catchUpRepo(files);
-  const first = catchUpSide(repo, repo.main, { files, hostSlots: 4, backlogTierSize: 4 });
+  const first = catchUpSide(repo, repo.main, {
+    files,
+    hostSlots: 4,
+    backlogTierSize: 4,
+    policy: RUN_MISSING,
+  });
   await first.scheduler.start();
   await first.scheduler.idle();
   await first.scheduler.close();
@@ -119,8 +125,8 @@ describe("scheduler: a restart hands the queued work over (C4, task 011-33)", {
 
   it("default baseline, under a key-format change: the handed-over edit runs before the misses", async () => {
     const files = testFiles(24, TWELVE, () => 100);
-    const { repo } = await heldThenStopped(files, {}, [TWELVE[0] ?? ""]);
-    const next = await successor(repo, files, {}, "2");
+    const { repo } = await heldThenStopped(files, RUN_MISSING, [TWELVE[0] ?? ""]);
+    const next = await successor(repo, files, RUN_MISSING, "2");
     const edited = importers(files, [TWELVE[0] ?? ""]);
     const runs = runsOf(next.runner.runs);
     expect(runs.flatMap((r) => r.paths)).toHaveLength(24);

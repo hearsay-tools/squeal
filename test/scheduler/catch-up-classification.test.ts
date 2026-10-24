@@ -5,6 +5,7 @@ import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createFsHasher, StatCache } from "../../src/core/hash/index.js";
 import { reconcile, statCandidates } from "../../src/core/revision/index.js";
 import type { InvalidatedPath } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpOptions,
@@ -26,7 +27,7 @@ import {
 const TWELVE = sources(12);
 
 function options(files: readonly CatchUpFile[], tierSize = 4): CatchUpOptions {
-  return { files, hostSlots: 4, tierSize };
+  return { files, hostSlots: 4, tierSize, policy: RUN_MISSING };
 }
 
 async function started(files: CatchUpFile[], tierSize?: number) {

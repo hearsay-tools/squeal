@@ -10,6 +10,7 @@ import type {
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { createPytestAdapter } from "../../src/runners/pytest/adapter.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { pythonEnv } from "../helpers/pytest-env.js";
 import { pytestRepos } from "../integration/pytest-repo.js";
 import { openHarness, openRepoStore } from "./helpers.js";
@@ -120,7 +121,10 @@ describe("an idle pass over Vitest, node:test and pytest (007-26)", () => {
       });
       count(nodeTest, "node-test", calls);
       count(pytest, "pytest", calls);
-      const h = await openHarness(main, store, commonDir, { adapters: [nodeTest, pytest] });
+      const h = await openHarness(main, store, commonDir, {
+        adapters: [nodeTest, pytest],
+        policy: RUN_MISSING,
+      });
       count(h.runner, "vitest", calls);
       await h.scheduler.start();
       await h.scheduler.idle();

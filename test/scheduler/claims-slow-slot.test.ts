@@ -5,6 +5,7 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { acquireSlowSlot, type SlowSlot } from "../../src/core/slow/index.js";
 import { DEFAULT_POLICY, type Policy, type Store } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, recordedBy, side } from "./claims-fixture.js";
 
 /*
@@ -81,6 +82,7 @@ describe("a partly started slow tier (review wave 13o, B2)", { timeout: 30_000 }
         return slot;
       };
       const policy: Partial<Policy> = {
+        ...RUN_MISSING,
         slow: { ...DEFAULT_POLICY.slow, include: [F0, F1], maxParallel: MAX_PARALLEL },
         inputs: { [F0]: [ARTIFACT], [F1]: [ARTIFACT] },
       };

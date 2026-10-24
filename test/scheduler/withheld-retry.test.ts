@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import type { Store, TestCheckId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, side } from "./claims-fixture.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -54,6 +55,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     const repo = createRepo();
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       tierSize: 1,
+      policy: RUN_MISSING,
     });
     touchDuringRuns(h, 1);
     const put = puts(h.store, MATH);
@@ -86,6 +88,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     const repo = createRepo();
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       tierSize: 1,
+      policy: RUN_MISSING,
     });
     touchDuringRuns(h, Number.POSITIVE_INFINITY);
     await h.scheduler.start();
@@ -123,6 +126,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     const repo = createRepo();
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       tierSize: 1,
+      policy: RUN_MISSING,
     });
     await h.scheduler.start();
     await h.scheduler.idle();
@@ -167,6 +171,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     const repo = createRepo();
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       tierSize: 1,
+      policy: RUN_MISSING,
     });
     // The first run is withheld at K1 and edited, so the run once more is at K2, and withheld too.
     touchDuringRuns(h, 2);
@@ -193,7 +198,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
 
   it("stops a file at its second withhold even beside a file withheld once (review 007-31, B1)", async () => {
     const { main } = claimRepo(3);
-    const a = side(main, { count: 3, tierSize: 2, backlogTierSize: 2 });
+    const a = side(main, { count: 3, tierSize: 2, backlogTierSize: 2, policy: RUN_MISSING });
     a.runner.during = (files) => {
       for (const file of files) {
         const path = join(main, file.path);

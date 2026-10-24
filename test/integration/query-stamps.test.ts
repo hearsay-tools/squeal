@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RunnerAdapter, TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import {
   BASE,
@@ -89,6 +90,7 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
       const repo = createRepo(QUERY);
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         observe,
+        policy: RUN_MISSING,
       });
       const runs = scheduledRuns(h);
       await probe(h);
@@ -104,6 +106,7 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
       const repo = createRepo(PAIR);
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         observe,
+        policy: RUN_MISSING,
       });
       const runs = scheduledRuns(h);
       await probe(h, [PLAIN]);
@@ -126,6 +129,7 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         ...options,
         observe,
+        policy: { ...options.policy, ...RUN_MISSING },
       });
       const lanes = withSlowLanes(h, repo.main, slotDir, (adapter) => plant(h, adapter, [PLAIN]));
       const runs = scheduledRuns(h);

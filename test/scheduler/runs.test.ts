@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { CheckKey, TestCheckId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -16,7 +17,10 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
   it("discards a tier result whose inputs changed during the run and re-queues the file", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 2,
+      policy: RUN_MISSING,
+    });
 
     let keyDuringRun: CheckKey | null = null;
     h.runner.beforeRun = (files) => {
@@ -61,7 +65,10 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
   it("a crashed run stores nothing under a key and marks its files unknown", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 2,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     const baselineRuns = h.runner.runs.length;
@@ -111,7 +118,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
   it("runs a file again when a batch during its crashed run gave it a new key", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
     await h.scheduler.idle();
 
@@ -160,7 +167,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
   it("retires checks that disappeared from a test file", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
     await h.scheduler.idle();
 
@@ -184,7 +191,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
   it("forgets a deleted test file and retires its checks", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
     await h.scheduler.idle();
 
@@ -204,7 +211,10 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
   it("re-keys every test file and runs them again when the installed lockfile changes (S8)", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 5 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 5,
+      policy: RUN_MISSING,
+    });
     h.write("node_modules/.package-lock.json", '{"packages":{}}\n');
     await h.scheduler.start();
     await h.scheduler.idle();
@@ -226,7 +236,10 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
   it("notices an installed lockfile that appears after start at the next reconciliation pass", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 5 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 5,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     const before = h.keyOf("test/plain.test.ts");

@@ -13,6 +13,7 @@ import {
 } from "../../src/core/types/index.js";
 import { type HookResult, runHook } from "../../src/harness/claude-code/index.js";
 import { recorded } from "../harness/helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   diagnose,
@@ -59,7 +60,10 @@ const context = (out: HookResult): string =>
 
 /** A daemon serving `repo`, its baseline holding `test/held.test.ts` in a tier. */
 async function heldDaemon(dir: string): Promise<{ repo: FixtureRepo; spawned: SpawnedProcess }> {
-  const repo = suite.fixture({ "test/held.test.ts": heldTest(dir) });
+  const repo = suite.fixture({
+    "test/held.test.ts": heldTest(dir),
+    "squeal.config.json": runMissingConfig(),
+  });
   const spawned = suite.daemon(repo);
   await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
   await waitFor(() => existsSync(join(dir, "started")), 150_000, "the held file started").catch(

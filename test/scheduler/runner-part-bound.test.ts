@@ -6,6 +6,7 @@ import {
   runnerPartBoundMs,
 } from "../../src/core/scheduler/runner-work-bound.js";
 import { type DaemonNote, notesMetaKey } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -48,6 +49,7 @@ describe("a runner part has a maximum duration (task 001-228)", () => {
       const repo = createRepo();
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         runnerPartMs: BOUND_MS,
+        policy: RUN_MISSING,
       });
       await h.scheduler.start();
       await h.scheduler.idle();

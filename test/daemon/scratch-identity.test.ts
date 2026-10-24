@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { git } from "../hash/git-repo.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   createFixtureRepo,
   type FixtureRepo,
@@ -36,8 +37,8 @@ afterEach(async () => {
 
 const FILES = { "test/tmp.test.ts": TMP_TEST };
 
-function fixture(): FixtureRepo {
-  const repo = createFixtureRepo({ files: FILES });
+function fixture(files: Readonly<Record<string, string>> = FILES): FixtureRepo {
+  const repo = createFixtureRepo({ files });
   cleanups.push(repo.cleanup);
   return repo;
 }
@@ -76,7 +77,7 @@ describe.runIf(process.platform === "linux")(
 
     it("keeps both temp directories when another repository's worktree takes the path, and the newcomer's tests still pass after the old daemon exits", async () => {
       const a = fixture();
-      const b = fixture();
+      const b = fixture({ ...FILES, "squeal.config.json": runMissingConfig() });
       const path = join(a.root, "..", "shared");
       git(a.root, ["worktree", "add", "-q", "--detach", path]);
       const root = realpathSync(path);

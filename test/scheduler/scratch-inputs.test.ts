@@ -19,6 +19,7 @@ import {
   type Store,
 } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -47,9 +48,10 @@ function scratch(prefix: string): string {
   return dir;
 }
 
-/** A slow file declaring a gitignored `dist/`, beside the test's own declarations. */
+/** A slow file declaring a gitignored `dist/`, beside the test's own declarations; the start runs the files. */
 function policy(inputs: Record<string, string[]>, extra: Partial<Policy> = {}): Partial<Policy> {
   return {
+    ...RUN_MISSING,
     slow: { ...DEFAULT_POLICY.slow, include: [STRINGS] },
     inputs: { [STRINGS]: ["dist/**"], ...inputs },
     ...extra,
@@ -194,6 +196,7 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     const store = openRepoStore(r.commonDir);
     const h = await openHarness(r.main, store, r.commonDir, {
       policy: {
+        ...RUN_MISSING,
         slow: { ...DEFAULT_POLICY.slow, include: ["test/s*.test.ts"] },
         inputs: { [STRINGS]: ["dist/**", "test/.tmp/**"] },
       },

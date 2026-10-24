@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { removeCommandHold } from "../../src/core/scheduler/hold-rows.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { heldFiles, hold, liveProcess, notes, settle, tokens } from "./command-hold-fixture.js";
 import { rows } from "./merge-hold-fixture.js";
@@ -22,7 +23,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     const files = heldFiles(4, 3_000);
     const paths = files.map((f) => f.path);
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4 });
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     const command = await liveProcess();
     await side.scheduler.start();
     await expect.poll(() => side.runner.active).toBe(1);
@@ -61,6 +62,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     const side = catchUpSide(repo, repo.main, {
       files,
       hostSlots: 4,
+      policy: RUN_MISSING,
       tierSize: 1,
       cancels: false,
       backlogSlot: () => 1,
@@ -89,7 +91,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
   it("2: with its wrapper gone and its command alive the hold holds; once the command is gone the next check removes it with one note", async () => {
     const files = heldFiles(2, 0);
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4 });
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     await side.scheduler.start();
     await side.scheduler.idle();
     const wrapper = await liveProcess();
@@ -116,7 +118,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     const files = heldFiles(2, 0);
     const paths = files.map((f) => f.path);
     const repo = catchUpRepo(files);
-    const first = catchUpSide(repo, repo.main, { files, hostSlots: 4 });
+    const first = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     await first.scheduler.start();
     await first.scheduler.idle();
     const command = await liveProcess();
@@ -145,7 +147,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     const files = heldFiles(2, 0);
     const paths = files.map((f) => f.path);
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4 });
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     await side.scheduler.start();
     await side.scheduler.idle();
     const command = await liveProcess();
@@ -174,7 +176,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
   it("6: with two entries the hold ends when the second goes", async () => {
     const files = heldFiles(2, 0);
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4 });
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     await side.scheduler.start();
     await side.scheduler.idle();
     const one = hold(side, (await liveProcess()).identity, { command: "npm run lint" });

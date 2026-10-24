@@ -5,6 +5,7 @@ import { publishedYields } from "../../src/core/scheduler/yields.js";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import type { Standing } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpSide,
@@ -31,7 +32,12 @@ async function promotedBehind(ms: number): Promise<CatchUpSide> {
   ];
   const repo = catchUpRepo(files);
   // The run ignores the cancel, so a tier that yields stays in flight while the test reads it.
-  const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, cancels: false });
+  const side = catchUpSide(repo, repo.main, {
+    files,
+    hostSlots: 8,
+    cancels: false,
+    policy: RUN_MISSING,
+  });
   await side.scheduler.start();
   await side.scheduler.idle();
   const base = side.runner.runs.length;

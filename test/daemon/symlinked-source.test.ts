@@ -10,6 +10,7 @@ import { runBundle } from "../harness/bundle-helpers.js";
 import { codexRecorded, sessionOf } from "../harness/codex/helpers.js";
 import { recorded } from "../harness/helpers.js";
 import { git } from "../hash/git-repo.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { observeMetafile } from "../helpers/build-inputs.js";
 import {
   daemonSuite,
@@ -112,7 +113,7 @@ describe(
     const suite = daemonSuite();
 
     it("lists, runs and reports a test added behind the link, and checkpoints it", async () => {
-      const repo = suite.fixture();
+      const repo = suite.fixture({ "squeal.config.json": runMissingConfig() });
       linkSource(repo);
       const spawned = suite.daemon(repo);
       await waitReady(repo, spawned);

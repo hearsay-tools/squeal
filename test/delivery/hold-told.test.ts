@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
 import type { Consumer } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   A,
   B,
   batch,
+  FILES,
   gitMay,
   HELPER,
   heldPaths,
@@ -33,7 +35,7 @@ const ON_HOLD =
 
 async function registered() {
   const repo = mergeRepo();
-  const side = holdSide(repo);
+  const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
   await side.scheduler.start();
   await side.scheduler.idle();
   const delivery = createDelivery(side.store, { status: fixedStatus() });

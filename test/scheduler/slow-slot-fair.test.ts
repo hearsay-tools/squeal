@@ -7,6 +7,7 @@ import { readDaemonNotes } from "../../src/core/notes.js";
 import { markSlotWaiter, SLOT_WAITER_FRESH_MS } from "../../src/core/slow/index.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 
 /*
@@ -52,6 +53,7 @@ function daemon(
   const s = side(main, {
     count,
     policy: {
+      ...RUN_MISSING,
       slow: {
         ...DEFAULT_POLICY.slow,
         include,

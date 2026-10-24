@@ -16,6 +16,7 @@ import {
   type Store,
   type TestFileRef,
 } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName } from "./claims-fixture.js";
 import { RecordingSink } from "./recording-sink.js";
 
@@ -170,8 +171,10 @@ export function wallSide(options: WallOptions): WallSide {
   const byPath = new Map(files.map((f, i) => [f.path, options.durations[i] ?? 1]));
   const runner = new WallRunner(files, (path) => byPath.get(path) ?? 1, options);
   const tierSize = options.tierSize ?? 4;
+  // `backlog()` reads the durations the start baseline stored.
   const policy: Policy = {
     ...DEFAULT_POLICY,
+    ...RUN_MISSING,
     runner: {
       ...DEFAULT_POLICY.runner,
       tierSize,

@@ -15,6 +15,7 @@ import {
   awaitingInstallValue,
   type Store,
 } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { ALL_TEST_FILES, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -151,7 +152,7 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
       JSON.stringify({ name: "fresh", type: "module", devDependencies: { vitest: "*" } }),
     );
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     const calls: string[] = [];
     for (const name of ["environment", "testFiles", "closure", "invalidate", "affected"] as const) {
       const call = h.runner[name] as (...args: unknown[]) => Promise<unknown>;
@@ -218,7 +219,7 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
   it("validates a project that declares no dependencies as before", async () => {
     const repo = createRepo("basic");
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
     await h.scheduler.idle();
     expect(h.runner.runs.flatMap((r) => r.files.map((f) => f.path)).sort()).toEqual(ALL_TEST_FILES);
@@ -274,7 +275,10 @@ describe(
         );
       }
       const store = openRepoStore(repo.commonDir);
-      const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+      const h = await openHarness(repo.main, store, repo.commonDir, {
+        tierSize: 2,
+        policy: RUN_MISSING,
+      });
       await h.scheduler.start();
       await h.scheduler.idle();
       expect(h.header().awaitingInstall).toBe(true);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import {
   BASE,
@@ -86,6 +87,7 @@ describe("a project with its own config file (review wave-13 B2)", () => {
       const repo = createRepo(FILES);
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         observe,
+        policy: RUN_MISSING,
       });
       const runs = scheduledRuns(h);
       await probe(h);
@@ -111,6 +113,7 @@ describe("two projects with config files of their own (review wave-13b B2)", () 
       const repo = createRepo(TWO);
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         observe,
+        policy: RUN_MISSING,
       });
       const runs = scheduledRuns(h);
       await probe(h);
@@ -136,6 +139,7 @@ describe("two projects with config files of their own (review wave-13b B2)", () 
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         ...options,
         observe,
+        policy: { ...options.policy, ...RUN_MISSING },
       });
       const lanes = withSlowLanes(h, repo.main, slotDir, async (adapter) => {
         h.write("src/mod.ts", NEW);

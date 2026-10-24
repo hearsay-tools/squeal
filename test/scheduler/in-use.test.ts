@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { DEFAULT_POLICY, type TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -37,7 +38,7 @@ async function heldBaseline(): Promise<{ h: Harness; release: () => void }> {
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
     backlogTierSize: 1,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
+    policy: { ...RUN_MISSING, slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
     slow: { slotDir: tempDir(), recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
   });

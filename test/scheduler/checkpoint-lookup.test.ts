@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkpointMetaKey } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -32,7 +33,10 @@ describe("scheduler: a checkpoint counts a file current by lookup (row 011-118)"
     const repo = createRepo();
     writeFileSync(join(repo.main, LISTS), LISTS_TEST);
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, OBSERVING);
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      ...OBSERVING,
+      policy: { ...OBSERVING.policy, ...RUN_MISSING },
+    });
     h.write("tree/a.txt", "a\n");
     await h.scheduler.start();
     await h.scheduler.idle();

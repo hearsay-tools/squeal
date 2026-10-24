@@ -12,6 +12,7 @@ import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { readRuns, until } from "../e2e/support.js";
 import { recorded } from "../harness/helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 
 /*
  * Spec 003 goal 8 and Testing, integration: one daemon per worktree, run
@@ -76,7 +77,7 @@ const FILES: Readonly<Record<string, string>> = {
   ".gitignore": "node_modules/\n",
   "package.json": `${JSON.stringify({ name: "mixed", private: true, type: "module" })}\n`,
   "vitest.config.ts": `import { defineConfig } from "vitest/config";\nexport default defineConfig({ test: { include: ["vitest/**/*.test.ts"] } });\n`,
-  "squeal.config.json": `${JSON.stringify({ nodeTest: PROJECTS }, null, 2)}\n`,
+  "squeal.config.json": runMissingConfig(JSON.stringify({ nodeTest: PROJECTS })),
   "src/sum.ts": "export const sum = (a: number, b: number) => a + b;\n",
   "vitest/sum.test.ts": `import { expect, test } from "vitest";\nimport { sum } from "../src/sum.js";\ntest("sums", () => expect(sum(1, 2)).toBe(3));\n`,
   "packages/a/src/one.ts": "export const one = () => 1;\n",

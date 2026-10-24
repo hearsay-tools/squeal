@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { cancelled } from "../../src/runners/vitest/run.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore } from "./helpers.js";
 import { pause, SETTLE_MS } from "./tier-yields-fixture.js";
 
@@ -51,6 +52,7 @@ describe("scheduler: an edit runs ahead of an environment change's backlog (D5, 
       tierSize: 4,
       rerunCap: 0,
       now: () => Date.now() + offset,
+      policy: RUN_MISSING,
     });
     await h.scheduler.start();
     await h.scheduler.idle();

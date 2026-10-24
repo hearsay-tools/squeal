@@ -14,12 +14,14 @@ import { isStoreOpenFailure, openStore, storePaths } from "../../../src/core/sto
 import {
   type AbsolutePath,
   DEFAULT_POLICY,
+  type Policy,
   type PytestProject,
   type RunnerAdapter,
   type Scheduler,
   type Store,
 } from "../../../src/core/types/index.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
+import { RUN_MISSING } from "../../helpers/baseline.js";
 import { findPython, pythonEnv } from "../../helpers/pytest-env.js";
 import { RecordingSink } from "../../scheduler/recording-sink.js";
 import { HARNESS_INCARNATION } from "../../scheduler/store-wait.js";
@@ -83,8 +85,13 @@ interface Daemon {
   states(path: string): [string, string][];
 }
 
-/** One worktree's scheduler, as the daemon assembles it for a pytest project. */
-async function openDaemon(root: string, store: Store, commonDir: string): Promise<Daemon> {
+/** One worktree's scheduler, as the daemon assembles it for a pytest project, `policy` over the defaults. */
+async function openDaemon(
+  root: string,
+  store: Store,
+  commonDir: string,
+  policy: Partial<Policy> = {},
+): Promise<Daemon> {
   const worktreeId = worktreeIdFor(root);
   const { PYTHONDONTWRITEBYTECODE: _, ...source } = pythonEnv();
   const adapter = await createPytestAdapter(PROJECT, {
@@ -115,7 +122,7 @@ async function openDaemon(root: string, store: Store, commonDir: string): Promis
     store,
     runner,
     sink,
-    policy: { ...DEFAULT_POLICY, pytest: [PROJECT] },
+    policy: { ...DEFAULT_POLICY, pytest: [PROJECT], ...policy },
     squealVersion: "0.0.0-test",
     runsDir: storePaths(commonDir).runsDir,
     head: () => readHead(root),
@@ -176,7 +183,7 @@ describe("a module-level skip under the scheduler (spec 007 D6, task 007-23)", (
       if (isStoreOpenFailure(store)) throw new Error(`store: ${JSON.stringify(store)}`);
       cleanups.push(() => store.close());
 
-      const first = await openDaemon(realpathSync(main), store, commonDir);
+      const first = await openDaemon(realpathSync(main), store, commonDir, RUN_MISSING);
       expect(first.ran).toEqual([PARAM]);
       const baseline: [string, string][] = [
         ["test_param[1]", "pass"],

@@ -7,6 +7,7 @@ import { storePaths } from "../../src/core/store/index.js";
 import { DEFAULT_POLICY, type WatcherBackend } from "../../src/core/types/index.js";
 import { createWatcherBackend } from "../../src/core/watcher/index.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { RecordingSink } from "./recording-sink.js";
@@ -25,7 +26,7 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
       store,
       runner,
       sink: new RecordingSink(store, worktreeId),
-      policy: DEFAULT_POLICY,
+      policy: { ...DEFAULT_POLICY, ...RUN_MISSING },
       squealVersion: "0.0.0-test",
       runsDir: storePaths(repo.commonDir).runsDir,
       onError: (error) => errors.push(error),

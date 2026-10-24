@@ -1,6 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 
 // Task 001-117, review wave-11d S3, through the scheduler: a project file a test loads by a
@@ -20,7 +21,10 @@ describe("a relatively required helper (001-117)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     writeFileSync(join(repo.main, TEST), HELPER_TEST);
     writeFileSync(join(repo.main, HELPER), 'exports.value = "one";\n');
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 10,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     const before = h.keyOf(TEST);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   ALL_TEST_FILES,
@@ -14,7 +15,10 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
   it("baseline looks every test file up, then runs the misses in tiers of one checkpoint", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 2,
+      policy: RUN_MISSING,
+    });
 
     await h.scheduler.start();
     await h.scheduler.idle();
@@ -84,7 +88,7 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
   it("run --all without --force completes at once when every key has a result", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
     await h.scheduler.idle();
     const runs = h.runner.runs.length;
@@ -100,7 +104,7 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
   it("a second worktree bootstraps by lookup: zero runs, every result inherited", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const a = await openHarness(repo.main, store, repo.commonDir);
+    const a = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await a.scheduler.start();
     await a.scheduler.idle();
 
@@ -160,7 +164,7 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
   it("a restarted daemon runs nothing and watches the generated file again", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const first = await openHarness(repo.main, store, repo.commonDir);
+    const first = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await first.scheduler.start();
     await first.scheduler.idle();
     await first.scheduler.close();
@@ -183,7 +187,10 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
   it("attributes results to the baseline per file, never to a whole mixed tier (S9)", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 2,
+      policy: RUN_MISSING,
+    });
     let batch: Promise<void> | null = null;
     h.runner.beforeRun = async () => {
       if (batch !== null) return;

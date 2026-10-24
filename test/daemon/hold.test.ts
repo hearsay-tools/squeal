@@ -14,6 +14,7 @@ import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
 import { readCommandHolds } from "../../src/core/scheduler/hold-rows.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { cancelled } from "../../src/runners/vitest/run.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   delay,
@@ -66,7 +67,10 @@ function scratch(): string {
 /** A fixture whose `test/held.test.ts` runs until released, released after the test. */
 function heldFixture(): { repo: FixtureRepo; starts: () => number } {
   const dir = scratch();
-  const repo = suite.fixture({ "test/held.test.ts": heldTest(dir, "a") });
+  const repo = suite.fixture({
+    "test/held.test.ts": heldTest(dir, "a"),
+    "squeal.config.json": runMissingConfig(),
+  });
   suite.cleanup(() => writeFileSync(join(dir, "release-a"), ""));
   const started = join(dir, "started-a");
   return { repo, starts: () => (existsSync(started) ? readFileSync(started, "utf8").length : 0) };

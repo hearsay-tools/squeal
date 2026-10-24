@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FullSuiteCheckpoint } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { ALL_TEST_FILES, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 const ran = (runs: readonly { files: readonly { path: string }[] }[]) =>
@@ -12,7 +13,10 @@ describe(
     it("a run --all during the baseline joins it: neither is abandoned, no file runs twice", async () => {
       const repo = createRepo();
       const store = openRepoStore(repo.commonDir);
-      const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+      const h = await openHarness(repo.main, store, repo.commonDir, {
+        tierSize: 2,
+        policy: RUN_MISSING,
+      });
       const asked: { request?: FullSuiteCheckpoint } = {};
       h.runner.beforeRun = async () => {
         h.runner.beforeRun = null;
@@ -56,7 +60,10 @@ describe(
     it("a forced run --all whose daemon stops mid-way completes in the next daemon, each file once", async () => {
       const repo = createRepo();
       const store = openRepoStore(repo.commonDir);
-      const first = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+      const first = await openHarness(repo.main, store, repo.commonDir, {
+        tierSize: 2,
+        policy: RUN_MISSING,
+      });
       await first.scheduler.start();
       await first.scheduler.idle();
       const baselineRuns = first.runner.runs.length;
@@ -76,7 +83,10 @@ describe(
       expect(store.checkpoints.get(checkpoint.id)?.end).toBeNull();
       expect(owed).toEqual(["a `run --all` checkpoint (3 test files left)"]);
 
-      const second = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+      const second = await openHarness(repo.main, store, repo.commonDir, {
+        tierSize: 2,
+        policy: RUN_MISSING,
+      });
       await second.scheduler.start();
       await second.scheduler.idle();
 
@@ -115,7 +125,10 @@ describe(
       const before = ran(first.runner.runs);
       expect(before).toHaveLength(4);
 
-      const second = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
+      const second = await openHarness(repo.main, store, repo.commonDir, {
+        tierSize: 2,
+        policy: RUN_MISSING,
+      });
       await second.scheduler.start();
       await second.scheduler.idle();
 

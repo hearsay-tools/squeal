@@ -5,6 +5,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { testFileId } from "../../src/core/keys/index.js";
 import { readUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
 import type { TestCheckId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, type RecordedRun } from "./helpers.js";
 
 /*
@@ -97,6 +98,7 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
       tierSize: 4,
       backlogTierSize: 200,
       timeoutMs: TIMEOUT_MS,
+      policy: RUN_MISSING,
     });
     await h.scheduler.start();
     await h.scheduler.idle();
@@ -144,6 +146,7 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
       tierSize: 4,
       backlogTierSize: 200,
       timeoutMs: TIMEOUT_MS,
+      policy: RUN_MISSING,
     });
     await h.scheduler.start();
     await h.scheduler.idle();

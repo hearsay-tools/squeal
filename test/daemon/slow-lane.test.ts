@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { daemonSuite, SLOW, waitFor, waitReady, withStore } from "./helpers.js";
 import { resultOf } from "./scratch-helpers.js";
 
@@ -49,9 +50,9 @@ describe.runIf(process.platform === "linux")(
       const repo = suite.fixture({
         "test/slow.test.ts": slowTest(dir),
         // The load guard (spec 004 D3) would defer the slow file on this host past the waits.
-        "squeal.config.json": `${JSON.stringify({
-          slow: { include: ["test/slow.test.ts"], maxLoadPerCpu: 1000 },
-        })}\n`,
+        "squeal.config.json": runMissingConfig(
+          JSON.stringify({ slow: { include: ["test/slow.test.ts"], maxLoadPerCpu: 1000 } }),
+        ),
       });
       const daemon = suite.daemon(repo);
       await waitReady(repo);

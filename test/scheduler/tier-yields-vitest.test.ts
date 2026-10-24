@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cancelled } from "../../src/runners/vitest/run.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -76,6 +77,7 @@ async function openTwoProjects(hold: string, started: string): Promise<Harness> 
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
     runnerPartBesideRun: true,
+    policy: RUN_MISSING,
   });
   // The held file's results report `HELD_MS`: its last-known duration, as a long file's would be.
   const run = h.runner.run.bind(h.runner);

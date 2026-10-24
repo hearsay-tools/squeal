@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { fullSuiteText, readHeader } from "../../src/core/state/index.js";
 import { DEFAULT_POLICY, type TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   ALL_TEST_FILES,
@@ -36,7 +37,7 @@ async function open(): Promise<Harness> {
   dirs.push(slotDir);
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
+    policy: { ...RUN_MISSING, slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
   });
   await h.scheduler.start();

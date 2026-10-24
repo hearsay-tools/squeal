@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { locateDaemon } from "../../src/core/daemon/ensure.js";
 import { socketPathFor, userTmpDir } from "../../src/core/daemon/paths.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   childEnv,
   daemonSuite,
@@ -186,6 +187,7 @@ describe("squeal daemon: signals (review N8)", SLOW, () => {
       const repo = fixture({
         "test/slow.test.ts":
           'import { it } from "vitest";\nit("is slow", async () => {\n  await new Promise((done) => setTimeout(done, 3_000));\n});\n',
+        "squeal.config.json": runMissingConfig(),
       });
       const spawned = daemon(repo);
       await waitReady(repo, spawned);

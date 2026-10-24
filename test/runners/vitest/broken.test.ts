@@ -8,6 +8,7 @@ import { isRunnerFailure } from "../../../src/runners/vitest/broken.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
 import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
+import { RUN_MISSING } from "../../helpers/baseline.js";
 import {
   ALL_TEST_FILES,
   addWorktree,
@@ -197,7 +198,7 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
     const { value: a, tmp } = await withTempDir(() =>
-      openHarness(repo.main, store, repo.commonDir),
+      openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING }),
     );
     await a.scheduler.start();
     await a.scheduler.idle();

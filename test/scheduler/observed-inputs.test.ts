@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { observedMetaKey } from "../../src/core/keys/index.js";
 import { DEFAULT_POLICY, type Policy, type TestFileRef } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   addWorktree,
   createRepo,
@@ -50,7 +51,10 @@ const validities = (h: Harness, ref: TestFileRef) =>
 
 async function observing(fixture = createRepo("observed"), policy: Partial<Policy> = {}) {
   const store = openRepoStore(fixture.commonDir);
-  const h = await openHarness(fixture.main, store, fixture.commonDir, { observe: true, policy });
+  const h = await openHarness(fixture.main, store, fixture.commonDir, {
+    observe: true,
+    policy: { ...RUN_MISSING, ...policy },
+  });
   await h.scheduler.start();
   await h.scheduler.idle();
   return { h, store, repo: fixture };
@@ -125,7 +129,10 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
     expect(ranProjects(second, RUNTIME, 0)).toEqual([]);
 
     const changed = addWorktree(repo.main, repo.dir, "changed");
-    const third = await openHarness(changed, store, repo.commonDir, { observe: true });
+    const third = await openHarness(changed, store, repo.commonDir, {
+      observe: true,
+      policy: RUN_MISSING,
+    });
     touch(third, "scripts/grandchild.mjs");
     await third.scheduler.start();
     await third.scheduler.idle();
@@ -161,6 +168,7 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
         repo.commonDir,
         {
           observe: true,
+          policy: RUN_MISSING,
         },
       );
       await harness.scheduler.start();

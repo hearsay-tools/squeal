@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpSide,
@@ -37,10 +38,14 @@ interface Observer {
   states(): string[];
 }
 
-/** A side whose first run of `OBSERVES` lists `lib/` and is held; `before` paths exist from the start. */
+/** A side whose start's run of `OBSERVES` lists `lib/` and is held; `before` paths exist from the start. */
 async function observer(expected: readonly string[], before: readonly string[] = []) {
   const repo = catchUpRepo([OBSERVES], ["lib/a.txt"]);
-  const side = catchUpSide(repo, repo.main, { files: [OBSERVES], hostSlots: 8 });
+  const side = catchUpSide(repo, repo.main, {
+    files: [OBSERVES],
+    hostSlots: 8,
+    policy: RUN_MISSING,
+  });
   for (const path of before) writeFileSync(join(side.root, path), "scratch\n");
   const run = side.runner.run.bind(side.runner);
   side.runner.run = async (files, options) => {

@@ -7,6 +7,7 @@ import {
   parseCheckpointProgress,
   type RelativePath,
 } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.js";
 
 /*
@@ -47,7 +48,11 @@ export async function listing(
   for (const [path, text] of Object.entries(extra)) writeFileSync(join(repo.main, path), text);
   const store = openRepoStore(repo.commonDir);
   // One file a tier, so a revision that moves its key alone cancels its tier (C4 step 5).
-  const h = await openHarness(repo.main, store, repo.commonDir, { ...OBSERVING, tierSize: 1 });
+  const h = await openHarness(repo.main, store, repo.commonDir, {
+    ...OBSERVING,
+    policy: { ...RUN_MISSING, ...OBSERVING.policy },
+    tierSize: 1,
+  });
   h.write(A, "a\n");
   await h.scheduler.start();
   await h.scheduler.idle();

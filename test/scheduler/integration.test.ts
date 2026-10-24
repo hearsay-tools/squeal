@@ -2,6 +2,7 @@ import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { FileCheckId, TestCheckId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
 
@@ -24,7 +25,7 @@ describe("scheduler with state and delivery", SLOW, () => {
   it("break, fix, and break-and-recover deliver one PASS -> FAIL, one FAIL -> PASS, then nothing", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
     await h.scheduler.idle();
     const { delivery, consumer } = await h.consumer();
@@ -83,7 +84,7 @@ describe("scheduler with state and delivery", SLOW, () => {
   it("a restarted daemon queues a known failure first", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const first = await openHarness(repo.main, store, repo.commonDir);
+    const first = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await first.scheduler.start();
     await first.scheduler.idle();
     first.write("src/math.ts", BROKEN_ADD);
@@ -94,7 +95,10 @@ describe("scheduler with state and delivery", SLOW, () => {
 
     // Every key moves while no daemon runs; the failure stays.
     appendFileSync(join(first.root, "vitest.config.ts"), "// edited\n");
-    const second = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
+    const second = await openHarness(repo.main, store, repo.commonDir, {
+      tierSize: 1,
+      policy: RUN_MISSING,
+    });
     await second.scheduler.start();
     await second.scheduler.idle();
 

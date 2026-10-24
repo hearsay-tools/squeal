@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { heldSlowLeft, pendingSlow } from "../../src/cli/status-wait-slow.js";
 import { testFileId } from "../../src/core/keys/index.js";
 import { DEFAULT_POLICY, type WorktreeId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
 
@@ -35,7 +36,7 @@ describe("run --slow joins a slow file already running (row 004-83)", SLOW, () =
     writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify({ slow }));
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 4,
-      policy: { slow },
+      policy: { ...RUN_MISSING, slow },
       slow: { slotDir, recheckMs: 25, load: () => [0], cpus: () => 1 },
     });
     let started = false;

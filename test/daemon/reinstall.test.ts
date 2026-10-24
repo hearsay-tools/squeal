@@ -17,6 +17,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { REINSTALL_NOTE } from "../../src/core/scheduler/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { git } from "../hash/git-repo.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   childEnv,
   daemonSuite,
@@ -45,6 +46,7 @@ function installedWorktree(): FixtureRepo {
   cpSync(join(repoRoot, "test/fixtures/scheduler/basic"), main, { recursive: true });
   renameSync(join(main, "_gitignore"), join(main, ".gitignore"));
   writeFileSync(join(main, "package.json"), MANIFEST);
+  writeFileSync(join(main, "squeal.config.json"), runMissingConfig());
   git(main, ["init", "-q", "-b", "main"]);
   git(main, ["add", "-A"]);
   git(main, ["commit", "-qm", "fixture"]);
