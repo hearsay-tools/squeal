@@ -1,6 +1,6 @@
 # 016 extensions: status
 
-Stage: draft (research only; no spec yet)
+Stage: draft (`spec.md` written 2026-10-24 for the human's review; 016-11 running)
 Started: 2026-10-24
 
 ## Decisions so far
