@@ -62,16 +62,19 @@ const SINCE: Record<NonNullable<CodeStatus["since"]>, string> = {
   oldest: "since the oldest registered session started",
 };
 
-/** D6: `Complexity: 62 functions over 20, 2 since this session started; squeal code lists them.` */
+/**
+ * D6: `Complexity: 62 functions over 20, 2 since this session started; squeal code lists them.`,
+ * and `Complexity: counting, 340 of 600 files.` while a count runs with none over yet.
+ */
 export function codeStatusLines(s: StatusSnapshot, command: string): string[] {
   const code = s.code;
   if (code === undefined) return [];
   if (code.files === 0) return ["Complexity: no file counted yet."];
+  const progress = `counting, ${code.files - code.pending} of ${plural(code.files, "file")}`;
+  // D6: while a first count runs no state is stored yet, so "0 functions over" would not be true.
+  if (code.pending > 0 && code.over === 0) return [`Complexity: ${progress}.`];
   const since = code.since === null ? "" : `, ${code.sinceRegistration} ${SINCE[code.since]}`;
-  const counting =
-    code.pending === 0
-      ? ""
-      : `; counting, ${code.files - code.pending} of ${plural(code.files, "file")}`;
+  const counting = code.pending === 0 ? "" : `; ${progress}`;
   const unknown =
     code.unknown === 0 ? "" : `; ${plural(code.unknown, "function")} in parse errors not judged`;
   const over = `${plural(code.over, "function")} over ${code.threshold}`;
