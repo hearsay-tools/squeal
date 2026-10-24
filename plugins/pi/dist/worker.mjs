@@ -4295,10 +4295,12 @@ var RANK = {
   "first-seen-fail": 0,
   "fail-to-pass": 1,
   removed: 2,
-  edited: 3
+  edited: 3,
+  "edited-after-fail": 3
 };
-function toldKind(told, now, last, after) {
-  if (last === null || last.at <= after) return null;
+var isStillFail = (kind) => kind === "edited" || kind === "edited-after-fail";
+function toldKind(told, now, last, { after, seenUpTo: seenUpTo2 }) {
+  if (last === null || last.at <= after || last.revision <= (seenUpTo2 ?? -1)) return null;
   if (now === null) return told?.outcome === "fail" && last.kind === "removed" ? "removed" : null;
   if (now.outcome === "fail" && told?.outcome !== "fail") {
     return last.kind === "first-seen-fail" || last.kind === "pass-to-fail" ? last.kind : null;
@@ -4308,55 +4310,62 @@ function toldKind(told, now, last, after) {
   }
   return null;
 }
-function standingEdit(told, now, input) {
-  if (now.outcome !== "fail" || told.told !== "count") return null;
+function editToTell(told, now, input) {
+  if (now.outcome !== "fail" || told.told === "still") return null;
   const edit = input.edit(now.check, now.measure);
-  return edit !== null && edit.at > Math.max(input.seededAt, told.toldAt) ? edit : null;
+  if (edit === null || edit.revision <= (input.seenUpTo ?? -1)) return null;
+  return edit.at > Math.max(input.seededAt, told.toldAt) ? edit : null;
+}
+function entryOf(state, kind, revision) {
+  const { check, measure: measure2, value, threshold } = state;
+  return { check, measure: measure2, kind, value, threshold, revision };
+}
+function stateStep(state, before, input) {
+  if (state.outcome === "pass" && before === null) return {};
+  if (before?.outcome === state.outcome && before.threshold === state.threshold) {
+    const edit = editToTell(before, state, input);
+    if (edit === null) return {};
+    return {
+      write: { ...seedEntry(state, Math.max(input.toldAt, edit.at)), told: "still" },
+      entry: entryOf(
+        state,
+        before.told === "count" ? "edited" : "edited-after-fail",
+        edit.revision
+      )
+    };
+  }
+  const last = input.last(state.check, state.measure);
+  const after = Math.max(input.seededAt, before?.toldAt ?? 0);
+  const kind = toldKind(before, state, last, { after, seenUpTo: input.seenUpTo });
+  const asOf = Math.max(
+    input.toldAt,
+    last?.at ?? 0,
+    input.edit(state.check, state.measure)?.at ?? 0
+  );
+  const view = state.outcome === "pass" ? { removal: { check: state.check, measure: state.measure } } : { write: { ...seedEntry(state, asOf), told: kind === null ? "count" : "full" } };
+  if (kind === null) return view;
+  return { ...view, entry: entryOf(state, kind, last?.revision ?? state.changedAt) };
 }
 function planCodeDelta(input) {
   const told = new Map(input.view.map((v) => [codeKey(v), v]));
   const entries = [];
   const writes = [];
+  const removals = [];
   for (const state of input.states) {
     const key = codeKey(state);
     const before = told.get(key) ?? null;
     told.delete(key);
     if (!judged(state)) continue;
-    if (before?.outcome === state.outcome && before.threshold === state.threshold) {
-      const edit = standingEdit(before, state, input);
-      if (edit === null) continue;
-      writes.push({ ...seedEntry(state, input.toldAt), told: "full" });
-      entries.push({
-        check: state.check,
-        measure: state.measure,
-        kind: "edited",
-        value: state.value,
-        threshold: state.threshold,
-        revision: edit.revision
-      });
-      continue;
-    }
-    const last = input.last(state.check, state.measure);
-    const kind = toldKind(before, state, last, Math.max(input.seededAt, before?.toldAt ?? 0));
-    if (kind === null) {
-      writes.push(seedEntry(state, input.toldAt));
-      continue;
-    }
-    writes.push({ ...seedEntry(state, input.toldAt), told: "full" });
-    entries.push({
-      check: state.check,
-      measure: state.measure,
-      kind,
-      value: state.value,
-      threshold: state.threshold,
-      revision: last?.revision ?? state.changedAt
-    });
+    const { write: write2, removal, entry: entry3 } = stateStep(state, before, input);
+    if (write2 !== void 0) writes.push(write2);
+    if (removal !== void 0) removals.push(removal);
+    if (entry3 !== void 0) entries.push(entry3);
   }
-  const removals = [];
   for (const view of told.values()) {
     removals.push({ check: view.check, measure: view.measure });
     const last = view.outcome === "fail" ? input.last(view.check, view.measure) : null;
-    if (last === null || toldKind(view, null, last, view.toldAt) === null) continue;
+    const seen = { after: view.toldAt, seenUpTo: input.seenUpTo };
+    if (last === null || toldKind(view, null, last, seen) === null) continue;
     entries.push({
       check: view.check,
       measure: view.measure,
@@ -4873,7 +4882,7 @@ function toTransition2(row) {
 }
 
 // src/core/code/store/views.ts
-var TOLD = ["count", "full"];
+var TOLD = ["count", "full", "still"];
 var WHERE_CONSUMER2 = "worktree_id = ? AND session_id = ? AND agent_id = ?";
 function consumerParams2(c) {
   return [c.worktreeId, c.sessionId, c.agentId];
@@ -4883,7 +4892,7 @@ function createViewRepo2(conn) {
     list(consumer) {
       return conn.all(
         `SELECT v.*, ${CHECK_COLUMNS2} FROM views v JOIN checks c ON c.id = v.check_id
-           WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
+           WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ? AND v.outcome <> 'pass'
            ORDER BY c.path, c.qualified_name, c.occurrence, v.measure`,
         ...consumerParams2(consumer)
       ).map(toEntry);
@@ -4924,6 +4933,16 @@ function createViewRepo2(conn) {
     },
     clear(consumer) {
       conn.run(`DELETE FROM views WHERE ${WHERE_CONSUMER2}`, ...consumerParams2(consumer));
+    },
+    retain(worktreeIds, consumers) {
+      return conn.run(
+        `DELETE FROM views WHERE worktree_id IN (SELECT value FROM json_each(?))
+           AND (worktree_id, session_id, agent_id) NOT IN (
+             SELECT value ->> 'worktreeId', value ->> 'sessionId', value ->> 'agentId'
+             FROM json_each(?))`,
+        JSON.stringify(worktreeIds),
+        JSON.stringify(consumers)
+      );
     }
   };
 }
@@ -5071,6 +5090,9 @@ function readJson(store, key) {
 function writeJson(store, key, value) {
   store.meta.set(key, JSON.stringify(value));
 }
+function forget(store, key) {
+  store.meta.delete(key);
+}
 var REASONS = ["first", "threshold", "include", "counter"];
 function readRecount(store, worktreeId) {
   const value = readJson(store, recountKey(worktreeId));
@@ -5088,32 +5110,43 @@ function isTooBig(file) {
 function lastTransition(store, worktreeId, check, measure2 = MEASURE) {
   return store.transitions.history(worktreeId, check).findLast((t) => t.measure === measure2) ?? null;
 }
-function seed(store, consumer, states, at) {
+var failingIn = (store, worktreeId) => store.states.list(worktreeId, { measure: MEASURE, outcome: "fail" });
+function seed(store, consumer, failing, at) {
   store.views.clear(consumer);
-  const judged2 = states.filter((s) => s.outcome === "pass" || s.outcome === "fail");
   store.views.writeMany(
     consumer,
-    judged2.map((s) => seedEntry(s, at))
+    failing.map((s) => seedEntry(s, at))
   );
   writeJson(store, seededKey(consumer), at);
 }
-var over = (states) => states.filter((s) => s.outcome === "fail").length;
 function registerCode(source, consumer, at) {
   const { worktreeId } = consumer;
   const read4 = withCode2(
     source,
     ({ store, complexity }) => store.transaction(() => {
-      const states = store.states.list(worktreeId, { measure: MEASURE });
-      seed(store, consumer, states, at);
+      const failing = failingIn(store, worktreeId);
+      seed(store, consumer, failing, at);
       const total = store.files.list(worktreeId).filter((f) => !isTooBig(f)).length;
       const pending = store.files.uncounted(worktreeId).length;
       const counting = pending === 0 ? {} : { counting: { done: total - pending, total } };
-      return { v: 1, threshold: complexity.threshold, over: over(states), ...counting };
+      return { v: 1, threshold: complexity.threshold, over: failing.length, ...counting };
     })
   );
   if (read4 !== "missing") return read4 ?? void 0;
   const threshold = source?.policy()?.threshold;
   return threshold === void 0 ? void 0 : { v: 1, threshold, over: 0, counting: { done: 0, total: 0 } };
+}
+function dropCode(source, gone, { worktrees, registered }) {
+  withCode2(
+    source,
+    ({ store }) => store.transaction(() => {
+      for (const consumer of gone) {
+        forget(store, seededKey(consumer));
+        forget(store, tooBigToldKey(consumer));
+      }
+      store.views.retain(worktrees, registered);
+    })
+  );
 }
 function toldTooBig(store, consumer) {
   const value = readJson(store, tooBigToldKey(consumer));
@@ -5136,35 +5169,44 @@ function lineOf(store, worktreeId, check) {
   );
   return fn?.range.startLine ?? null;
 }
+function statesFor(store, worktreeId, failing, view) {
+  const known = new Set(failing.map(codeKey));
+  const paths = [...new Set(view.filter((v) => !known.has(codeKey(v))).map((v) => v.check.path))];
+  if (paths.length === 0) return failing;
+  const others = store.states.list(worktreeId, { measure: MEASURE, paths }).filter((s) => s.outcome !== "fail");
+  return [...failing, ...others];
+}
 function codeStep(store, consumer, { at, since, limit }, write2) {
   const { worktreeId } = consumer;
   const seeded = readJson(store, seededKey(consumer));
   const seededAt = typeof seeded === "number" ? seeded : 0;
-  const states = store.states.list(worktreeId, { measure: MEASURE });
+  const failing = failingIn(store, worktreeId);
   const tooBig = newTooBig(store, consumer, since, limit, write2);
   const big = tooBig.length === 0 ? {} : { tooBig };
   const recount = readRecount(store, worktreeId);
   if (recount !== null && recount.at > seededAt) {
-    if (write2) seed(store, consumer, states, at);
+    if (write2) seed(store, consumer, failing, at);
     const news = {
       v: 1,
       entries: [],
       more: 0,
-      recount: { ...recount, over: over(states) }
+      recount: { ...recount, over: failing.length }
     };
     return { news: { ...news, ...big }, writes: true };
   }
   const edits = new Map(store.states.edits(worktreeId, MEASURE).map((e) => [codeKey(e), e]));
+  const view = store.views.list(consumer).filter((v) => v.measure === MEASURE);
   const plan = planCodeDelta({
-    view: store.views.list(consumer).filter((v) => v.measure === MEASURE),
-    states,
+    view,
+    states: statesFor(store, worktreeId, failing, view),
     last: (check, measure2) => lastTransition(store, worktreeId, check, measure2),
     edit: (check, measure2) => edits.get(codeKey({ check, measure: measure2 })) ?? null,
     seededAt,
+    seenUpTo: since,
     toldAt: at
   });
   const listed3 = plan.entries.slice(0, CODE_LISTED_MAX);
-  const more = plan.entries.slice(CODE_LISTED_MAX).filter((e) => e.kind !== "edited").length;
+  const more = plan.entries.slice(CODE_LISTED_MAX).filter((e) => !isStillFail(e.kind)).length;
   if (write2) {
     const full = new Set(listed3.map(codeKey));
     store.views.removeMany(consumer, plan.removals);
@@ -5188,6 +5230,41 @@ function tellCode(source, consumer, at, since) {
     return store.transaction(() => codeStep(store, consumer, input, true).news);
   });
   return told === "missing" ? null : told;
+}
+
+// src/core/delivery/code-since.ts
+function seenUpTo(store, worktreeId, r) {
+  if (r.scanned !== void 0) return r.since;
+  const next = store.revisions.get(worktreeId, r.since + 1);
+  return next?.trigger === "start" ? next.number : r.since;
+}
+function codeSeenUpTo(store, consumer) {
+  const r = registration(store, consumer);
+  return r === null ? null : seenUpTo(store, consumer.worktreeId, r);
+}
+function earliest(store, consumers) {
+  const revisions = consumers.flatMap((c) => codeSeenUpTo(store, c) ?? []);
+  return revisions.length === 0 ? null : Math.min(...revisions);
+}
+function codeSince(store, worktreeId, shell) {
+  const registered = store.consumers.list(worktreeId).map((r) => r.consumer);
+  const own = registered.filter(
+    (c) => shell?.session != null && c.sessionId === shell.session && (shell.agent === null || c.agentId === shell.agent)
+  );
+  const session = earliest(store, own);
+  if (session !== null) return { since: session, scope: "session" };
+  const oldest = earliest(store, registered);
+  return oldest === null ? null : { since: oldest, scope: "oldest" };
+}
+function consumerSince(store, consumer) {
+  const since = codeSeenUpTo(store, consumer);
+  return since === null ? null : { since, scope: "session" };
+}
+function wentOverSince(code, worktreeId, since) {
+  return code.states.list(worktreeId, { measure: "complexity", outcome: "fail" }).filter((s) => {
+    const last = lastTransition(code, worktreeId, s.check);
+    return last?.to === "fail" && last.revision > since;
+  });
 }
 
 // src/core/delivery/delta.ts
@@ -5659,32 +5736,6 @@ function readMark(store, worktreeId) {
   } catch {
     return null;
   }
-}
-
-// src/core/delivery/code-since.ts
-function earliest(store, consumers) {
-  const revisions = consumers.flatMap((c) => registration(store, c)?.since ?? []);
-  return revisions.length === 0 ? null : Math.min(...revisions);
-}
-function codeSince(store, worktreeId, shell) {
-  const registered = store.consumers.list(worktreeId).map((r) => r.consumer);
-  const own = registered.filter(
-    (c) => shell?.session != null && c.sessionId === shell.session && (shell.agent === null || c.agentId === shell.agent)
-  );
-  const session = earliest(store, own);
-  if (session !== null) return { since: session, scope: "session" };
-  const oldest = earliest(store, registered);
-  return oldest === null ? null : { since: oldest, scope: "oldest" };
-}
-function consumerSince(store, consumer) {
-  const since = registration(store, consumer)?.since;
-  return since === void 0 ? null : { since, scope: "session" };
-}
-function wentOverSince(code, worktreeId, since) {
-  return code.states.list(worktreeId, { measure: "complexity", outcome: "fail" }).filter((s) => {
-    const last = lastTransition(code, worktreeId, s.check);
-    return last?.to === "fail" && last.revision > since;
-  });
 }
 
 // src/core/status/code-status.ts
@@ -6178,7 +6229,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.289";
+  if (true) return "0.1.290";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -7680,13 +7731,13 @@ function drop(store, consumer, at) {
     uncovered: uncoveredTold(store, consumer)
   });
   store.consumers.unregister(consumer);
-  forget(store, consumer);
+  forget2(store, consumer);
   store.meta.set(departedMetaKey(consumer.worktreeId), String(at));
 }
 function departedMetaKey(worktreeId) {
   return worktreeMetaKey("departed", worktreeId);
 }
-function forget(store, consumer) {
+function forget2(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
   tellSlowTier(store, consumer, void 0);
@@ -7791,7 +7842,7 @@ function createDelivery(store, options) {
       const holds = liveness2 ? holdsChange(store, consumer, at) : null;
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const tests = delta.entries.length > 0 || changed !== null || holds !== null;
-      const code = liveness2 && (tests || !stop) ? tellCode(options.code, consumer, at, () => registration(store, consumer)?.since ?? null) : null;
+      const code = liveness2 && (tests || !stop) ? tellCode(options.code, consumer, at, () => codeSeenUpTo(store, consumer)) : null;
       const news = tests || code !== null;
       const notes = liveness2 || idle && news ? editNotes(store, consumer, states, news) : null;
       const delivered = news || liveness2 && !stop && notes?.sawEdit !== void 0;
@@ -7959,7 +8010,8 @@ function functionName(check) {
 }
 var ruleOf = (check) => check.path.endsWith(".py") ? "radon rule" : "ESLint rule";
 var whereOf = (check, line) => line === null ? check.path : `${check.path}:${line}`;
-function codeEntryLine(entry3) {
+var quietHint = (entry3, command) => `Squeal stays quiet about it until it is at or under ${entry3.threshold}, and ${command} code ${entry3.check.path} shows its count.`;
+function codeEntryLine(entry3, command) {
   const at = `${functionName(entry3.check)} (${whereOf(entry3.check, entry3.line)})`;
   switch (entry3.kind) {
     case "first-seen-fail":
@@ -7970,21 +8022,23 @@ function codeEntryLine(entry3) {
     case "removed":
       return `RESOLVED complexity: ${at} is no longer in the code`;
     case "edited":
-      return `STILL FAIL complexity: ${at} is ${entry3.value} after the edit; it was already over ${entry3.threshold} before it (${ruleOf(entry3.check)})`;
+      return `STILL FAIL complexity: ${at} is ${entry3.value} after the edit; it was already over ${entry3.threshold} before it (${ruleOf(entry3.check)}); ${quietHint(entry3, command)}`;
+    case "edited-after-fail":
+      return `STILL FAIL complexity: ${at} is ${entry3.value} after the edit, over ${entry3.threshold} (${ruleOf(entry3.check)}); ${quietHint(entry3, command)}`;
   }
 }
 function recountLine(recount, command) {
   const lists = `${command} code lists them.`;
-  const over2 = plural(recount.over, "function");
+  const over = plural(recount.over, "function");
   switch (recount.reason) {
     case "threshold":
-      return `Complexity threshold is now ${recount.threshold}: ${over2} over; ${lists}`;
+      return `Complexity threshold is now ${recount.threshold}: ${over} over; ${lists}`;
     case "first":
-      return `Complexity counted: ${over2} over ${recount.threshold}; ${lists}`;
+      return `Complexity counted: ${over} over ${recount.threshold}; ${lists}`;
     case "include":
-      return `Complexity counted again, the included files changed: ${over2} over ${recount.threshold}; ${lists}`;
+      return `Complexity counted again, the included files changed: ${over} over ${recount.threshold}; ${lists}`;
     case "counter":
-      return `Complexity counted again by a new counter: ${over2} over ${recount.threshold}; ${lists}`;
+      return `Complexity counted again by a new counter: ${over} over ${recount.threshold}; ${lists}`;
   }
 }
 var kib = (bytes) => `${Math.round(bytes / 1024)} KiB`;
@@ -7994,14 +8048,23 @@ function tooBigLine({ path, size, limit }) {
 function codeLines(news, command) {
   return [
     ...news.recount === void 0 ? [] : [recountLine(news.recount, command)],
-    ...news.entries.map(codeEntryLine),
+    ...news.entries.map((e) => codeEntryLine(e, command)),
     ...news.more === 0 ? [] : [
       `and ${news.more} more complexity ${news.more === 1 ? "change" : "changes"}; ${command} code --changed lists them.`
     ],
     ...(news.tooBig ?? []).map(tooBigLine)
   ];
 }
-var codeChanges = (news) => news.entries.length + news.more;
+var codeChanges = (news) => news.entries.filter((e) => !isStillFail(e.kind)).length + news.more;
+function codeTitleWords(news) {
+  const changes = codeChanges(news);
+  const still = news.entries.filter((e) => isStillFail(e.kind)).length;
+  const words = [
+    ...changes === 0 ? [] : [`${changes} complexity ${changes === 1 ? "change" : "changes"}`],
+    ...still === 0 ? [] : [`${plural(still, "function")} still over the complexity threshold`]
+  ];
+  return words.length === 0 ? null : words.join(" and ");
+}
 function codeRegistrationLine(code, command) {
   if (code.counting !== void 0) {
     const { done, total } = code.counting;
@@ -8387,7 +8450,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   const retired = entries.filter((e) => e.kind === "fail-retired");
   const holds = (delta.holds ?? []).map((c) => holdChangeLine(c, header.revision, command));
   const holdTitle = entries.length === 0 && delta.liveness === void 0 ? holds[0] : void 0;
-  const title = entries.length === 0 ? delta.liveness === void 0 ? holdTitle ?? codeTitle(delta) ?? `SQUEAL \xB7 revision ${header.revision}` : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText2(checksOf(entries))}) at revision ${header.revision}`;
+  const title = titleOf(delta, holdTitle);
   const blocks = [
     ...failureBlocks(
       changed.filter((e) => e.to === "fail"),
@@ -8427,10 +8490,14 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
     max
   );
 }
-function codeTitle({ code, header }) {
-  if (code === void 0 || codeChanges(code) === 0) return void 0;
-  const changes = codeChanges(code);
-  return `SQUEAL \xB7 ${changes} complexity ${changes === 1 ? "change" : "changes"} at revision ${header.revision}`;
+function titleOf(delta, holdTitle) {
+  const { header, entries } = delta;
+  const code = delta.code === void 0 ? null : codeTitleWords(delta.code);
+  const own = entries.length === 0 ? delta.liveness === void 0 ? holdTitle ?? null : livenessTitle(delta.liveness, header.revision) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText2(checksOf(entries))}) at revision ${header.revision}`;
+  if (own === null) {
+    return code === null ? `SQUEAL \xB7 revision ${header.revision}` : `SQUEAL \xB7 ${code} at revision ${header.revision}`;
+  }
+  return code === null ? own : `${own}; ${code}`;
 }
 function sawEditLine(queued) {
   return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and passing ones stay silent.`;
@@ -9586,7 +9653,7 @@ function codeStopReason(context, complexity, command = SQUEAL_COMMAND) {
   if (since === null) return null;
   const { worktreeId } = context.consumer;
   const source = context.code ?? codeSource(context.commonDir, context.root);
-  const over2 = withCode2(
+  const over = withCode2(
     source,
     ({ store }) => store.read(
       () => wentOverSince(store, worktreeId, since.since).map(
@@ -9594,8 +9661,8 @@ function codeStopReason(context, complexity, command = SQUEAL_COMMAND) {
       )
     )
   );
-  if (over2 === null || over2 === "missing" || over2.length === 0) return null;
-  return `Squeal policy complexity.blocking is on and ${plural(over2.length, "function")} went over the complexity threshold ${complexity.threshold} since this session started: ${listPaths(over2)}. \`${command} code --changed\` lists them.`;
+  if (over === null || over === "missing" || over.length === 0) return null;
+  return `Squeal policy complexity.blocking is on and ${plural(over.length, "function")} went over the complexity threshold ${complexity.threshold} since this session started: ${listPaths(over)}. \`${command} code --changed\` lists them.`;
 }
 
 // src/harness/shared/stop.ts
@@ -9962,6 +10029,12 @@ async function unregisterSession(context, sessionId, options) {
     }
   };
   for (const consumer of consumers) await attempt(() => delivery.unregister(consumer));
+  await attempt(
+    () => dropCode(context.code, consumers, {
+      worktrees: [...worktrees],
+      registered: [...worktrees].flatMap((id) => store.consumers.list(id).map((r) => r.consumer))
+    })
+  );
   if (options.removeLocks) {
     const { locksDir } = storePaths(context.commonDir);
     for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));
