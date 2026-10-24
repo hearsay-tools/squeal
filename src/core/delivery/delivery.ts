@@ -2,6 +2,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { withRecorded } from "../retry/index.js";
 import { forgetStopWait } from "../slow/stop-wait.js";
 import { baselineFindings } from "../state/index.js";
+import { splitByValidity } from "../status/checks.js";
 import { type ChangeMarker, changeMarker } from "../store/index.js";
 import {
   type Consumer,
@@ -98,6 +99,10 @@ interface Selection {
 }
 
 const sameMarker = (a: ChangeMarker, b: ChangeMarker) => a.others === b.others && a.own === b.own;
+
+/** Row 015-27: the known failures as status counts them, the `current` ones (011 C6). */
+const currentFailures = (states: readonly KnownState[]) =>
+  splitByValidity(states.filter((s) => s.outcome === "fail")).current.length;
 
 const isEmpty = (plan: DeltaPlan) =>
   plan.entries.length === 0 && plan.writes.length === 0 && plan.removals.length === 0;
@@ -214,10 +219,11 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const tests = delta.entries.length > 0 || changed !== null || holds !== null;
       // Spec 015 D6, D7: code changes at tool boundaries; a Stop tells them only beside other news.
-      const code =
-        liveness && (tests || !stop)
-          ? tellCode(options.code, consumer, at, () => codeSeenUpTo(store, consumer))
-          : null;
+      // Row 015-27: test news, the waiter's too, counts the functions told over.
+      const code = tellCode(options.code, consumer, at, () => codeSeenUpTo(store, consumer), {
+        changes: liveness && (tests || !stop),
+        toldOver: delta.entries.length > 0,
+      });
       const news = tests || code !== null;
       const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
       const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
@@ -267,7 +273,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...(slowChanged ? { slowTierChanged: true as const } : {}),
         ...(sawEdit === undefined ? {} : { sawEdit }),
         ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
-        ...(code === null ? {} : { code }),
+        ...(code === null ? {} : { code, knownFailures: currentFailures(states) }),
       };
     });
   }
