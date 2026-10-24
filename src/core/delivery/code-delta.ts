@@ -8,13 +8,15 @@ import type {
   CodeViewEntry,
 } from "../types/code.js";
 import type { CodeDeltaEntry, CodeDeltaKind } from "../types/code-delivery.js";
-import type { EpochMs } from "../types/index.js";
+import type { EpochMs, RevisionNumber } from "../types/index.js";
 
 /*
  * Spec 015 D5, D6: the consumer's code view against the current states,
  * after 011 C5's view diff. A view holds what the consumer was told: a
- * check's `pass` or `fail` at a threshold, never its value, so a count that
- * changes while the function stays over is no news. A difference is told
+ * check's `fail` at a threshold, never its value, so a count that changes
+ * while the function stays over is no news. A check with no entry reads
+ * `pass`, so a view holds the failing functions only and a passing one
+ * leaves it (lessons round 1, P5). A difference is told
  * only when the check's last transition explains it and came after what the
  * view holds; any other (a recount, a first count, a parse error healed) is
  * written silently, told by count. One more is told with no change of
@@ -36,9 +38,12 @@ export interface CodePlanInput {
   readonly toldAt: EpochMs;
 }
 
+/** A told change before its line is looked up. */
+export type PlanEntry = Omit<CodeDeltaEntry, "line">;
+
 export interface CodePlan {
   /** Every change to tell: failures, recoveries, removed functions, then edits to standing failures. */
-  readonly entries: readonly Omit<CodeDeltaEntry, "line">[];
+  readonly entries: readonly PlanEntry[];
   readonly writes: readonly CodeViewEntry[];
   readonly removals: readonly CodeViewKey[];
 }
@@ -109,47 +114,59 @@ function standingEdit(
   return edit !== null && edit.at > Math.max(input.seededAt, told.toldAt) ? edit : null;
 }
 
+function entryOf(state: CodeKnownState, kind: CodeDeltaKind, revision: RevisionNumber): PlanEntry {
+  const { check, measure, value, threshold } = state;
+  return { check, measure, kind, value, threshold, revision };
+}
+
+/** What one judged state changes: the view entry it writes or removes, and what it tells. */
+interface StateStep {
+  readonly write?: CodeViewEntry;
+  readonly removal?: CodeViewKey;
+  readonly entry?: PlanEntry;
+}
+
+function stateStep(
+  state: CodeKnownState,
+  before: CodeViewEntry | null,
+  input: CodePlanInput,
+): StateStep {
+  if (state.outcome === "pass" && before === null) return {};
+  if (before?.outcome === state.outcome && before.threshold === state.threshold) {
+    const edit = standingEdit(before, state, input);
+    if (edit === null) return {};
+    return {
+      write: { ...seedEntry(state, input.toldAt), told: "full" },
+      entry: entryOf(state, "edited", edit.revision),
+    };
+  }
+  const last = input.last(state.check, state.measure);
+  const kind = toldKind(before, state, last, Math.max(input.seededAt, before?.toldAt ?? 0));
+  // Told or not, a passing function leaves the view.
+  const view: StateStep =
+    state.outcome === "pass"
+      ? { removal: { check: state.check, measure: state.measure } }
+      : { write: { ...seedEntry(state, input.toldAt), told: kind === null ? "count" : "full" } };
+  if (kind === null) return view;
+  return { ...view, entry: entryOf(state, kind, last?.revision ?? state.changedAt) };
+}
+
 /** Spec 015 D5, D6: what to tell the consumer of its code view, and how the view changes. */
 export function planCodeDelta(input: CodePlanInput): CodePlan {
   const told = new Map(input.view.map((v) => [codeKey(v), v]));
-  const entries: Omit<CodeDeltaEntry, "line">[] = [];
+  const entries: PlanEntry[] = [];
   const writes: CodeViewEntry[] = [];
+  const removals: CodeViewKey[] = [];
   for (const state of input.states) {
     const key = codeKey(state);
     const before = told.get(key) ?? null;
     told.delete(key);
     if (!judged(state)) continue;
-    if (before?.outcome === state.outcome && before.threshold === state.threshold) {
-      const edit = standingEdit(before, state, input);
-      if (edit === null) continue;
-      writes.push({ ...seedEntry(state, input.toldAt), told: "full" });
-      entries.push({
-        check: state.check,
-        measure: state.measure,
-        kind: "edited",
-        value: state.value,
-        threshold: state.threshold,
-        revision: edit.revision,
-      });
-      continue;
-    }
-    const last = input.last(state.check, state.measure);
-    const kind = toldKind(before, state, last, Math.max(input.seededAt, before?.toldAt ?? 0));
-    if (kind === null) {
-      writes.push(seedEntry(state, input.toldAt));
-      continue;
-    }
-    writes.push({ ...seedEntry(state, input.toldAt), told: "full" });
-    entries.push({
-      check: state.check,
-      measure: state.measure,
-      kind,
-      value: state.value,
-      threshold: state.threshold,
-      revision: last?.revision ?? state.changedAt,
-    });
+    const { write, removal, entry } = stateStep(state, before, input);
+    if (write !== undefined) writes.push(write);
+    if (removal !== undefined) removals.push(removal);
+    if (entry !== undefined) entries.push(entry);
   }
-  const removals: CodeViewKey[] = [];
   for (const view of told.values()) {
     removals.push({ check: view.check, measure: view.measure });
     const last = view.outcome === "fail" ? input.last(view.check, view.measure) : null;
