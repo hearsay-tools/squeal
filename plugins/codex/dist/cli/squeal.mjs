@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.285";
+  if (true) return "0.1.286";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -7599,6 +7599,189 @@ var init_config_problems = __esm({
   }
 });
 
+// src/core/scheduler/focused-row.ts
+function focusedMetaKey(worktreeId) {
+  return worktreeMetaKey("focused", worktreeId);
+}
+function readFocused(store, worktreeId) {
+  const raw = store.meta.get(focusedMetaKey(worktreeId));
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter(isFocusedRun) : [];
+  } catch {
+    return [];
+  }
+}
+function writeFocused(store, worktreeId, runs) {
+  if (runs.length === 0) return;
+  const ids = new Set(runs.map((run5) => testFileId(run5.testFile)));
+  const kept3 = readFocused(store, worktreeId).filter((run5) => !ids.has(testFileId(run5.testFile)));
+  const all2 = [...kept3, ...runs].slice(-FOCUSED_FILES);
+  store.meta.set(focusedMetaKey(worktreeId), JSON.stringify(all2));
+}
+function isFocusedRun(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const run5 = value;
+  const file = run5.testFile;
+  return typeof file?.project === "string" && typeof file.path === "string" && typeof run5.key === "string" && typeof run5.revision === "number" && typeof run5.runId === "string" && Array.isArray(run5.texts) && Array.isArray(run5.checks);
+}
+var FOCUSED_FILES, FOCUSED_CHECKS;
+var init_focused_row = __esm({
+  "src/core/scheduler/focused-row.ts"() {
+    "use strict";
+    init_keys();
+    init_types();
+    FOCUSED_FILES = 20;
+    FOCUSED_CHECKS = 50;
+  }
+});
+
+// src/core/status/focused.ts
+function readStatusFocused(store, worktreeId, phases) {
+  const runs = readFocused(store, worktreeId);
+  if (runs.length === 0) return [];
+  const files2 = runs.map((run5) => run5.testFile);
+  const keys = new Map(
+    store.testFileKeys.list(worktreeId, files2).map((row2) => [testFileId(row2.testFile), row2.key])
+  );
+  return runs.map((run5) => {
+    const current3 = keys.get(testFileId(run5.testFile)) === run5.key;
+    const applies = current3 && store.results.byKey(run5.key, 0).length === 0;
+    const phase = phases.get(testFileId(run5.testFile))?.phase ?? null;
+    return { ...statusFocusedOf(run5, applies), phase };
+  });
+}
+function statusFocusedOf(run5, applies) {
+  const checks = run5.checks.map((c) => ({
+    check: c.check,
+    name: formatCheck(c.check),
+    outcome: c.outcome,
+    durationMs: c.durationMs,
+    summary: c.summary,
+    location: c.location
+  }));
+  return {
+    testFile: run5.testFile,
+    key: run5.key,
+    revision: run5.revision,
+    texts: run5.texts,
+    runId: run5.runId,
+    logDir: run5.logDir,
+    startedAt: run5.startedAt,
+    endedAt: run5.endedAt,
+    durationMs: run5.endedAt === null ? null : Math.max(0, run5.endedAt - run5.startedAt),
+    end: run5.end,
+    reason: run5.reason,
+    collected: run5.collected,
+    matched: run5.matched,
+    checks,
+    more: run5.more,
+    ...countsOf(run5.outcomes) ?? {},
+    applies
+  };
+}
+function countsOf(outcomes) {
+  if (typeof outcomes !== "object" || outcomes === null) return null;
+  const { pass, fail, skip } = outcomes;
+  const whole = (n) => Number.isInteger(n) && n >= 0;
+  return whole(pass) && whole(fail) && whole(skip) ? { outcomes: { pass, fail, skip } } : null;
+}
+function ownName(c) {
+  return c.check.kind === "test" ? c.check.fullName : c.name;
+}
+function textsText(texts) {
+  return texts.map((text3) => JSON.stringify(text3)).join(", ");
+}
+function focusedFileText({ project, path }) {
+  return project === "" ? path : `${project}: ${path}`;
+}
+function focusedOutcomeText(entry4) {
+  if (entry4.endedAt === null) {
+    return `running since ${timeText(entry4.startedAt)} (focused: ${textsText(entry4.texts)})`;
+  }
+  const failed2 = entry4.checks.filter((c) => c.outcome === "fail");
+  if (entry4.end === "completed" && entry4.matched === 0) return noMatchText(entry4);
+  const total = entry4.checks.length + entry4.more;
+  const fails = entry4.outcomes?.fail ?? failed2.length;
+  const names4 = failed2.slice(0, NAMES_SHOWN).map((c) => ownName(c));
+  const rest = fails > names4.length ? ` and ${fails - names4.length} more` : "";
+  const of = entry4.outcomes === void 0 && entry4.more > 0 ? `the ${entry4.checks.length} kept of ${total}` : `${total}`;
+  const notKept = entry4.outcomes === void 0 && entry4.more > 0 ? `; ${entry4.more} more not kept` : "";
+  const counted3 = `${fails} of ${of} selected ${total === 1 ? "check" : "checks"} FAIL${names4.length === 0 ? "" : ` (${names4.join(", ")}${rest})`}${notKept}`;
+  if (entry4.end === "completed") return counted3;
+  const why2 = entry4.reason === null ? "" : `: ${entry4.reason}`;
+  return `${entry4.end}${why2}${total === 0 ? "" : `; ${counted3}`}`;
+}
+function noMatchText(entry4) {
+  const collected = entry4.collected === null ? "" : ` (the run collected ${entry4.collected} ${entry4.collected === 1 ? "check" : "checks"})`;
+  return `no check holds ${textsText(entry4.texts)}${collected}`;
+}
+function focusedSecondsText(ms2) {
+  return `${(ms2 / 1e3).toFixed(1)} s`;
+}
+function focusedTookText(entry4) {
+  return entry4.durationMs === null ? "" : `run alone in ${focusedSecondsText(entry4.durationMs)}`;
+}
+function focusedCheckLines(checks, more, indent2) {
+  const lines = checks.flatMap((c) => [
+    `${indent2}${c.outcome === "fail" ? "FAIL" : c.outcome}  ${ownName(c)}`,
+    ...c.summary === null || c.summary === "" ? [] : [`${indent2}      ${c.summary}`],
+    ...c.location === null ? [] : [`${indent2}      at ${c.location.path}:${c.location.line}:${c.location.column}`]
+  ]);
+  return more === 0 ? lines : [...lines, `${indent2}and ${more} more selected checks`];
+}
+function focusedLines(s, full = false) {
+  const applying = (s.focused ?? []).filter((entry4) => entry4.applies);
+  if (applying.length === 0) return [];
+  const running = new Set((s.pendingTestFiles?.running.files ?? []).map(testFileId));
+  const shown = applying.slice(-FOCUSED_SHOWN).reverse();
+  const lines = shown.flatMap((entry4) => {
+    const phase = entry4.phase !== void 0 ? entry4.phase : running.has(testFileId(entry4.testFile)) ? "running" : "queued";
+    const own = phase ?? "not queued";
+    const head = `Focused (not counted): ${focusedFileText(entry4.testFile)} at revision ${entry4.revision}: ${focusedOutcomeText(entry4)}; its own run is ${own}.`;
+    return full ? [head, ...focusedCheckLines(entry4.checks, entry4.more, "  ")] : [head];
+  });
+  const more = applying.length - shown.length;
+  return more > 0 ? [...lines, `  and ${more} more`] : lines;
+}
+function focusedCheckIds(store, worktreeId) {
+  return readFocused(store, worktreeId).flatMap((run5) => run5.checks.map((c) => c.check));
+}
+function whyFocusedOf(store, worktreeId, check, key3) {
+  const file = testFileId(testFileOf(check));
+  const run5 = readFocused(store, worktreeId).find((r) => testFileId(r.testFile) === file);
+  if (run5 === void 0) return void 0;
+  const at2 = run5.checks.findIndex((c) => checkIdentity(c.check) === checkIdentity(check));
+  if (at2 === -1) return void 0;
+  const keyMoved = key3 !== run5.key;
+  const status2 = statusFocusedOf(run5, !keyMoved && store.results.byKey(run5.key, 0).length === 0);
+  const result = status2.checks[at2];
+  return result === void 0 ? void 0 : { run: status2, result, keyMoved };
+}
+function whyFocusedLines(focused) {
+  if (focused === void 0) return [];
+  const { run: run5, result, keyMoved } = focused;
+  const took = run5.durationMs === null ? "" : `${focusedSecondsText(run5.durationMs)}, `;
+  const outcome2 = result.outcome.toUpperCase();
+  const since = run5.applies ? "" : keyMoved ? "; its key moved since" : "; the file's own run stored its result at this key since";
+  return [
+    `  Focused run at revision ${run5.revision} (${took}log ${run5.logDir}): ${outcome2}, not a stored result; the file's own run decides${since}`
+  ];
+}
+var FOCUSED_SHOWN, NAMES_SHOWN;
+var init_focused = __esm({
+  "src/core/status/focused.ts"() {
+    "use strict";
+    init_keys();
+    init_focused_row();
+    init_state3();
+    init_text();
+    FOCUSED_SHOWN = 3;
+    NAMES_SHOWN = 3;
+  }
+});
+
 // src/core/delivery/harness-process.ts
 import { readFileSync as readFileSync6, readlinkSync as readlinkSync2 } from "node:fs";
 function readProcStat(pid) {
@@ -9213,44 +9396,6 @@ var init_editor_scratch = __esm({
     VIM_SWAP = /^\..+\.sw[a-p]$/;
     VIM_PROBE = "4913";
     EMACS_LOCK = /^\.#./;
-  }
-});
-
-// src/core/scheduler/focused-row.ts
-function focusedMetaKey(worktreeId) {
-  return worktreeMetaKey("focused", worktreeId);
-}
-function readFocused(store, worktreeId) {
-  const raw = store.meta.get(focusedMetaKey(worktreeId));
-  if (raw === null) return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value.filter(isFocusedRun) : [];
-  } catch {
-    return [];
-  }
-}
-function writeFocused(store, worktreeId, runs) {
-  if (runs.length === 0) return;
-  const ids = new Set(runs.map((run5) => testFileId(run5.testFile)));
-  const kept3 = readFocused(store, worktreeId).filter((run5) => !ids.has(testFileId(run5.testFile)));
-  const all2 = [...kept3, ...runs].slice(-FOCUSED_FILES);
-  store.meta.set(focusedMetaKey(worktreeId), JSON.stringify(all2));
-}
-function isFocusedRun(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const run5 = value;
-  const file = run5.testFile;
-  return typeof file?.project === "string" && typeof file.path === "string" && typeof run5.key === "string" && typeof run5.revision === "number" && typeof run5.runId === "string" && Array.isArray(run5.texts) && Array.isArray(run5.checks);
-}
-var FOCUSED_FILES, FOCUSED_CHECKS;
-var init_focused_row = __esm({
-  "src/core/scheduler/focused-row.ts"() {
-    "use strict";
-    init_keys();
-    init_types();
-    FOCUSED_FILES = 20;
-    FOCUSED_CHECKS = 50;
   }
 });
 
@@ -14854,28 +14999,28 @@ async function checkIgnored(root, paths) {
     else beyond.set(path, link);
   }
   const links = new Set(beyond.values());
-  const answered = new Set(await checkIgnoredBatch(root, [.../* @__PURE__ */ new Set([...asked, ...links])]));
+  const answered2 = new Set(await checkIgnoredBatch(root, [.../* @__PURE__ */ new Set([...asked, ...links])]));
   const ignoredLinks2 = await ignoredAsDirectories(
     root,
-    [...links].filter((link) => !answered.has(link))
+    [...links].filter((link) => !answered2.has(link))
   );
   for (const link of links) {
-    if (answered.has(link)) ignoredLinks2.add(link);
+    if (answered2.has(link)) ignoredLinks2.add(link);
   }
   const ignored = /* @__PURE__ */ new Set();
   for (const path of paths) {
     const link = beyond.get(path);
-    if (link === void 0 ? answered.has(path) : ignoredLinks2.has(link)) ignored.add(path);
+    if (link === void 0 ? answered2.has(path) : ignoredLinks2.has(link)) ignored.add(path);
   }
   return ignored;
 }
 async function ignoredLinks(root, links) {
-  const answered = new Set(await checkIgnoredBatch(root, links));
+  const answered2 = new Set(await checkIgnoredBatch(root, links));
   const ignored = await ignoredAsDirectories(
     root,
-    links.filter((link) => !answered.has(link))
+    links.filter((link) => !answered2.has(link))
   );
-  for (const link of answered) ignored.add(link);
+  for (const link of answered2) ignored.add(link);
   return ignored;
 }
 async function checkIgnoredBatch(root, paths) {
@@ -15882,7 +16027,7 @@ var init_tiers = __esm({
     init_capacity2();
     init_context();
     init_environment_growth();
-    init_focused();
+    init_focused2();
     init_hold();
     init_observed2();
     init_queue();
@@ -16025,7 +16170,7 @@ function startFocusedTier(context, ledger, picked, lane) {
   ledger.queue.tierSelected(false);
   return tier;
 }
-var init_focused = __esm({
+var init_focused2 = __esm({
   "src/core/scheduler/focused.ts"() {
     "use strict";
     init_claims();
@@ -16068,7 +16213,7 @@ var init_slots2 = __esm({
   "src/core/scheduler/slots.ts"() {
     "use strict";
     init_types();
-    init_focused();
+    init_focused2();
     init_sharing();
     init_tiers();
   }
@@ -16319,7 +16464,7 @@ var init_yields = __esm({
     init_types();
     init_backlog();
     init_claims();
-    init_focused();
+    init_focused2();
     init_tiers();
     YIELD_REMAINDER_MS = 3e4;
     RECHECK = { kind: "recheck" };
@@ -17302,7 +17447,7 @@ var init_outstanding = __esm({
 });
 
 // src/core/status/phase-files.ts
-function pendingTestFilesOf(states, keys, openFiles2) {
+function pendingPhasesOf(states, keys, openFiles2) {
   const checks = /* @__PURE__ */ new Map();
   for (const state of states) {
     if (state.check.kind === "setup") continue;
@@ -17311,14 +17456,21 @@ function pendingTestFilesOf(states, keys, openFiles2) {
     if (own === void 0) checks.set(id2, [state]);
     else own.push(state);
   }
-  const running = [];
-  const queued = [];
+  const phases = /* @__PURE__ */ new Map();
   for (const row2 of keys) {
     const id2 = testFileId(row2.testFile);
     const own = checks.get(id2) ?? [];
     if (fileClassOf(row2, own) !== "pending") continue;
     const runs = openFiles2.has(id2) || row2.pending === "running" || own.some((s) => s.pendingPhase === "running");
-    (runs ? running : queued).push(row2.testFile);
+    phases.set(id2, { testFile: row2.testFile, phase: runs ? "running" : "queued" });
+  }
+  return phases;
+}
+function pendingTestFilesOf(phases) {
+  const running = [];
+  const queued = [];
+  for (const { testFile, phase } of phases.values()) {
+    (phase === "running" ? running : queued).push(testFile);
   }
   return { running: listed3(running), queued: listed3(queued) };
 }
@@ -17332,15 +17484,36 @@ function listed3(files2) {
 function phaseLines(s) {
   const pending = s.pendingTestFiles;
   if (pending === void 0) return [];
+  const flying = (s.focused ?? []).filter((entry4) => entry4.applies && entry4.endedAt === null);
+  const marks = new Map(
+    flying.map((e) => [testFileId(e.testFile), ` (focused: ${textsText(e.texts)})`])
+  );
+  const listedQueued = new Set(pending.queued.files.map(testFileId));
+  const phaseOf = (e) => e.phase !== void 0 ? e.phase : listedQueued.has(testFileId(e.testFile)) ? "queued" : "running";
+  const moved2 = flying.filter((e) => phaseOf(e) !== "running").map((e) => e.testFile);
+  const movedIds = new Set(moved2.map(testFileId));
+  const pastNamed = flying.filter(
+    (e) => phaseOf(e) === "queued" && !listedQueued.has(testFileId(e.testFile))
+  ).length;
+  const running = {
+    files: [...moved2, ...pending.running.files],
+    omitted: pending.running.omitted
+  };
+  const queued = {
+    files: pending.queued.files.filter((f) => !movedIds.has(testFileId(f))),
+    omitted: Math.max(0, pending.queued.omitted - pastNamed)
+  };
   return [
-    ...phaseLine("Running", pending.running, RUNNING_FILES_SHOWN),
-    ...phaseLine("Queued", pending.queued, QUEUED_FILES_SHOWN)
+    ...phaseLine("Running", running, RUNNING_FILES_SHOWN, marks),
+    ...phaseLine("Queued", queued, QUEUED_FILES_SHOWN, marks)
   ];
 }
-function phaseLine(label2, phase, shown) {
+function phaseLine(label2, phase, shown, marks) {
   const total = phase.files.length + phase.omitted;
   if (total === 0) return [];
-  const names4 = phase.files.slice(0, shown).map(({ project, path }) => project === "" ? path : `${project}: ${path}`);
+  const names4 = phase.files.slice(0, shown).map(
+    (ref2) => `${ref2.project === "" ? ref2.path : `${ref2.project}: ${ref2.path}`}${marks.get(testFileId(ref2)) ?? ""}`
+  );
   const more = total - names4.length;
   const rest = more > 0 ? ` and ${more} more` : "";
   return [`${label2}: ${plural(total, "test file")}: ${names4.join(", ")}${rest}`];
@@ -17352,6 +17525,7 @@ var init_phase_files = __esm({
     init_keys();
     init_state3();
     init_text();
+    init_focused();
     PHASE_FILES_LISTED = 100;
     RUNNING_FILES_SHOWN = 10;
     QUEUED_FILES_SHOWN = 5;
@@ -17411,6 +17585,8 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
   const at2 = worktree?.root ?? root;
+  const phases = pendingPhasesOf(states, keys, held2);
+  const focused = readStatusFocused(store, worktreeId, phases);
   const slowSlot = slowSlotOf(store, worktreeId, at2, header, daemon.state === "alive", now);
   const outstanding = outstandingOf(
     store,
@@ -17454,8 +17630,9 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
     ...unknownTestFilesOf(store, worktreeId, states, keys, at2, now),
     ...daemon.state === "alive" ? { runsOpen: runs.length } : {},
     outstanding,
-    pendingTestFiles: pendingTestFilesOf(states, keys, held2),
+    pendingTestFiles: pendingTestFilesOf(phases),
     ...slowSlot === void 0 ? {} : { slowSlot },
+    ...focused.length === 0 ? {} : { focused },
     ...codeStatusOf(
       store,
       worktreeId,
@@ -17590,6 +17767,7 @@ var init_snapshot = __esm({
     init_code_status();
     init_config_problems();
     init_died();
+    init_focused();
     init_holds();
     init_identity();
     init_open3();
@@ -18844,7 +19022,7 @@ function recordFocusedTier(context, ledger, tier, report3, ended2) {
     const discard = (ended2.installMoved ? "the install moved during the run" : null) ?? (withheld2.has(f.file.id) ? report3.failure ?? "the runner withheld the run" : null) ?? (changed2.length > 0 ? `${changed2.slice(0, 3).join(", ")} changed during the run` : null);
     const end = discard !== null ? "discarded" : completed.has(f.file.id) ? "completed" : ended2.cancelled ? "cancelled" : report3.end === "completed" ? "crashed" : report3.end;
     const count2 = report3.focused?.find((c) => testFileId(c.testFile) === f.file.id);
-    const checks = end === "completed" ? focusedChecks(context, report3, ref2) : [];
+    const checks = end === "completed" ? failingFirst(focusedChecks(context, report3, ref2)) : [];
     return {
       testFile: ref2,
       key: f.key,
@@ -18859,7 +19037,8 @@ function recordFocusedTier(context, ledger, tier, report3, ended2) {
       collected: count2?.collected ?? null,
       matched: end === "completed" ? count2?.matched ?? null : null,
       checks: checks.slice(0, FOCUSED_CHECKS),
-      more: Math.max(0, checks.length - FOCUSED_CHECKS)
+      more: Math.max(0, checks.length - FOCUSED_CHECKS),
+      outcomes: outcomesOf(checks)
     };
   });
   store.transaction(() => {
@@ -18880,6 +19059,16 @@ function recordFocusedTier(context, ledger, tier, report3, ended2) {
   );
   ledger.queue.focused.ended(tier.runId, (id2) => again.has(id2), now);
   return [...moved2].sort();
+}
+function failingFirst(checks) {
+  return [
+    ...checks.filter((c) => c.outcome === "fail"),
+    ...checks.filter((c) => c.outcome !== "fail")
+  ];
+}
+function outcomesOf(checks) {
+  const count2 = (outcome2) => checks.filter((c) => c.outcome === outcome2).length;
+  return { pass: count2("pass"), fail: count2("fail"), skip: count2("skip") };
 }
 function requeueFocusedTier(context, ledger, tier) {
   endTier(context, ledger, tier);
@@ -21312,7 +21501,7 @@ var init_scheduler2 = __esm({
     init_claims();
     init_command_hold();
     init_context();
-    init_focused();
+    init_focused2();
     init_focused_record();
     init_hold();
     init_install();
@@ -24705,11 +24894,11 @@ async function linkedExclusions(root, links, target, dirs = [target]) {
 async function ignoredUnderLinks(root, links, target, dirs) {
   if (dirs.length === 0 || links.length === 0) return /* @__PURE__ */ new Set();
   const below3 = dirs.map((dir2) => relative8(target, dir2));
-  const answered = await ignoredAsDirectories(
+  const answered2 = await ignoredAsDirectories(
     root,
     links.flatMap((link) => below3.map((rel2) => `${link}/${rel2}`))
   );
-  return new Set(dirs.filter((_, i3) => links.every((link) => answered.has(`${link}/${below3[i3]}`))));
+  return new Set(dirs.filter((_, i3) => links.every((link) => answered2.has(`${link}/${below3[i3]}`))));
 }
 async function subdirectories2(dir2) {
   let entries3;
@@ -56191,6 +56380,7 @@ init_text();
 init_checks();
 init_code_status();
 init_config_problems();
+init_focused();
 init_holds();
 init_identity();
 
@@ -56491,6 +56681,8 @@ function formatStatus(result, now, command = "squeal", options = {}) {
         `        ${recordedText(f.recorded, result.worktreeId, now, { command, path: fromBase(options.base, f.check.testPath) })}`
       ]
     ]),
+    // Row 011-146 (C6 as amended 2026-10-23): focused runs, after the failures, never counted.
+    ...focusedLines(result, full),
     `Affected checks: ${affected(result, command)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     ...owedLine(result),
@@ -56713,6 +56905,7 @@ function ms(value) {
 }
 
 // src/core/status/why.ts
+init_focused();
 init_open3();
 
 // src/core/status/run-log.ts
@@ -56935,22 +57128,24 @@ function readWhy(cwd, query, options = {}) {
     const { store } = context;
     const worktreeId = worktreeIdFor(context.root);
     const kept3 = newestFirst(store.failures.replaced());
+    const focused = focusedCheckIds(store, worktreeId);
     const exact = parseCheck(query);
-    const check = exact !== null && known(store, worktreeId, exact, kept3) ? exact : null;
-    const match2 = check ?? resolve5(store, worktreeId, query.trim(), kept3);
+    const check = exact !== null && known(store, worktreeId, exact, kept3, focused) ? exact : null;
+    const match2 = check ?? resolve5(store, worktreeId, query.trim(), kept3, focused);
     const session2 = options.session ?? { session: null, agent: null };
     return "found" in match2 ? match2 : report(context, match2, includeLogs, session2, kept3);
   });
 }
-function known(store, worktreeId, check, kept3) {
+function known(store, worktreeId, check, kept3, focused) {
   const identity4 = checkIdentity(check);
-  return store.knownStates.get(worktreeId, check) !== null || store.transitions.history(worktreeId, check).length > 0 || store.results.listForCheck(check, 1).length > 0 || kept3.some((e) => checkIdentity(e.check) === identity4);
+  return store.knownStates.get(worktreeId, check) !== null || store.transitions.history(worktreeId, check).length > 0 || store.results.listForCheck(check, 1).length > 0 || kept3.some((e) => checkIdentity(e.check) === identity4) || focused.some((c) => checkIdentity(c) === identity4);
 }
-function resolve5(store, worktreeId, query, kept3) {
+function resolve5(store, worktreeId, query, kept3, focused) {
   const named = firstOfEachCheck(
     [
       ...store.knownStates.list(worktreeId).map((s) => s.check),
       ...held(store, worktreeId),
+      ...focused,
       ...kept3.map((e) => e.check)
     ],
     (c) => c
@@ -57027,6 +57222,7 @@ function report({ store, root, commonDir }, check, includeLogs, session2, kept3)
   const recorded2 = knownState2 === null ? void 0 : withRecorded(store, worktreeId, [knownState2], revision ?? 0)[0]?.recorded;
   const file = testFileId(testFileOf(check));
   const rankedBy = whyRankedBy(store, worktreeId, (ref2) => testFileId(ref2) === file);
+  const focused = whyFocusedOf(store, worktreeId, check, key3);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -57053,6 +57249,7 @@ function report({ store, root, commonDir }, check, includeLogs, session2, kept3)
     ...rerunFirstFailure === void 0 ? {} : { rerunFirstFailure },
     ...changed2 === void 0 ? {} : { changedSince: changed2 },
     ...closure === void 0 ? {} : { changesInClosure: closure },
+    ...focused === void 0 ? {} : { focused },
     ...rankedBy === void 0 ? {} : { rankedBy }
   };
 }
@@ -57239,6 +57436,7 @@ init_retry();
 init_run_log();
 init_state3();
 init_text();
+init_focused();
 
 // src/core/status/format-why-replaced.ts
 init_retry();
@@ -57335,6 +57533,8 @@ function noMatch(why2) {
 function knownState(why2, s, recorded2) {
   return [
     ...stateLines(why2, s),
+    // Row 011-146 (C6 as amended 2026-10-23): a focused run, below the known state.
+    ...whyFocusedLines(why2.focused),
     ...recorded2,
     ...changedLine(why2.changedSince),
     ...closureLines(why2),
@@ -57577,7 +57777,7 @@ init_code_deliver();
 init_code_since();
 var inPaths = (paths) => (path) => paths === null || paths.some((p) => p === "" || path === p || path.startsWith(`${p}/`));
 var key2 = (c) => JSON.stringify([c.path, c.qualifiedName, c.occurrence]);
-function countsOf(code, worktreeId) {
+function countsOf2(code, worktreeId) {
   const read5 = /* @__PURE__ */ new Map();
   return (path) => {
     let functions = read5.get(path);
@@ -57641,7 +57841,7 @@ function notJudged(code, worktreeId, states, keep) {
 }
 function readCodeReport(main2, code, worktreeId, policy, options) {
   const keep = inPaths(options.paths);
-  const functionsOf = countsOf(code, worktreeId);
+  const functionsOf = countsOf2(code, worktreeId);
   const states = code.states.list(worktreeId, { measure: "complexity" });
   const since = options.changed ? codeSince(main2, worktreeId, options.shell) : void 0;
   const changed2 = since === void 0 ? null : new Set(
@@ -58557,7 +58757,7 @@ function syncDaemon(root, pollMs) {
   let current3 = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
-  const answered = (async () => {
+  const answered2 = (async () => {
     for (; ; ) {
       const outcome2 = await syncOnce(root, pollMs, isStopped);
       if (outcome2 !== "again") return outcome2;
@@ -58572,7 +58772,7 @@ function syncDaemon(root, pollMs) {
   );
   return {
     current: () => current3,
-    answered,
+    answered: answered2,
     stop: () => {
       stopped = true;
     }
@@ -58829,6 +59029,193 @@ function fileEntry(f, command, base) {
   };
 }
 
+// src/cli/status-wait-focus-lines.ts
+init_focused();
+init_text();
+
+// src/cli/status-wait-focus-answer.ts
+init_focused();
+function holdsText(fullName, texts) {
+  return texts.some((text3) => fullName.includes(text3));
+}
+function answeredRun(run5) {
+  return run5.end !== null && run5.end !== "discarded" && run5.end !== "cancelled";
+}
+function answerOf(run5, texts) {
+  if (!texts.every((t) => run5.texts.includes(t))) return void 0;
+  const status2 = statusFocusedOf(run5, true);
+  const same2 = run5.texts.every((t) => texts.includes(t));
+  const view = same2 ? status2 : projected(status2, texts);
+  if (!answeredRun(view)) return { run: view };
+  const failed2 = view.checks.filter((c) => c.outcome === "fail").length;
+  if (same2 && view.outcomes !== void 0) {
+    const { pass, fail, skip } = view.outcomes;
+    return { run: view, tally: { failed: fail, total: pass + fail + skip, atLeast: false } };
+  }
+  if (status2.more === 0) {
+    return { run: view, tally: { failed: failed2, total: view.checks.length, atLeast: false } };
+  }
+  if (failed2 > 0) {
+    const total = same2 ? view.checks.length + view.more : null;
+    return { run: view, tally: { failed: failed2, total, atLeast: true } };
+  }
+  if (!same2) return void 0;
+  const kept3 = view.checks.length;
+  return {
+    run: view,
+    fallback: `its focused run kept ${kept3} of ${kept3 + view.more} selected checks, none failing, and counted none of the rest`
+  };
+}
+function projected(status2, texts) {
+  const checks = status2.checks.filter(
+    (c) => c.check.kind !== "test" || holdsText(c.check.fullName, texts)
+  );
+  const tests = checks.filter((c) => c.check.kind === "test").length;
+  const { outcomes: _, ...rest } = status2;
+  const matched = status2.matched === null || status2.more > 0 ? null : tests;
+  return { ...rest, checks, matched, more: 0 };
+}
+function storedTally(checks) {
+  const failed2 = checks.filter((c) => c.outcome === "fail").length;
+  return { failed: failed2, total: checks.length, atLeast: false };
+}
+function sumTallies(tallies) {
+  const failed2 = tallies.reduce((n, t) => n + t.failed, 0);
+  const totals = tallies.map((t) => t.total);
+  const total = totals.every((t) => t !== null) ? totals.reduce((n, t) => n + t, 0) : null;
+  return { failed: failed2, total, atLeast: tallies.some((t) => t.atLeast) };
+}
+
+// src/cli/status-wait-focus-lines.ts
+var OWN_RUN_WAIT_MS = 6e5;
+function refusedLine(focus) {
+  if (focus?.refused === void 0) return null;
+  const version2 = focus.refused.version === null ? "" : ` (Squeal ${focus.refused.version})`;
+  return `Focused: this daemon${version2} runs whole files only; waiting for the file's run`;
+}
+function focusLines(focus, base) {
+  if (focus === void 0 || focus.refused !== void 0) return [];
+  return focus.files.flatMap((file) => fileLines(file, focus.texts, base));
+}
+function fileLines(file, texts, base) {
+  const path = fromBase(base, file.testFile.path);
+  if (file.whole !== void 0)
+    return [`Focused: ${path}: ${file.whole}; waiting for the file's run`];
+  const { stored, run: run5 } = file;
+  if (stored !== void 0) {
+    if (stored.checks.length === 0) {
+      return [
+        `No check of ${path} holds ${textsText(texts)} in the result its own run stored at revision ${stored.revision} (${checksText2(stored.collected)}).`
+      ];
+    }
+    return [
+      `Focused: ${checksText2(stored.checks.length)} of ${path} from the result its own run stored at revision ${stored.revision}, at its current key.`,
+      ...focusedCheckLines(stored.checks, 0, "  ")
+    ];
+  }
+  const { tally: tally2 } = file;
+  if (run5 === void 0 || tally2 === void 0) {
+    const running = run5?.endedAt === null ? `; running since ${timeText(run5.startedAt)}` : "";
+    return [`Focused: ${path}: no focused outcome yet${running}`];
+  }
+  if (run5.end === "completed" && run5.matched === 0) {
+    const collected = run5.collected === null ? "" : ` (the run collected ${checksText2(run5.collected)})`;
+    return [
+      `No check of ${path} holds ${textsText(texts)} at revision ${run5.revision}${collected}.`
+    ];
+  }
+  const took = focusedTookText(run5);
+  const ended2 = run5.end === "completed" ? "" : `, ended ${run5.end}${run5.reason === null ? "" : ` (${run5.reason})`}`;
+  const own = run5.collected === null ? "" : ` (${checksText2(run5.collected)})`;
+  const count2 = tally2.total === null ? `at least ${checksText2(run5.checks.length)}` : checksText2(tally2.total);
+  return [
+    `Focused: ${count2} of ${path} at revision ${run5.revision}, ${took}${ended2}; not the file's verdict.`,
+    ...focusedCheckLines(run5.checks, run5.more, "  "),
+    `  A first run each, not re-run; the file's own run${own} decides.`
+  ];
+}
+function checksText2(n) {
+  return `${n} ${n === 1 ? "check" : "checks"}`;
+}
+function focusedVerdictText(focus, command, base) {
+  const files2 = focus.files.filter((f) => f.whole === void 0);
+  const { failed: failed2, total, atLeast } = sumTallies(
+    files2.flatMap((f) => f.tally === void 0 ? [] : [f.tally])
+  );
+  const them = files2.length === 1 ? "the file" : "the files";
+  const paths = files2.map((f) => shellWord(fromBase(base, f.testFile.path))).join(" ");
+  const wait = `\`${command} status --wait ${OWN_RUN_WAIT_MS} ${paths}\` waits for ${files2.length === 1 ? "it" : "them"}`;
+  return `Focused: ${foundText(files2, focus.texts, failed2, total, atLeast)}; no verdict for ${them} yet: ${wait}`;
+}
+function foundText(files2, texts, failed2, total, atLeast) {
+  const checks = (n) => n === 1 ? "check" : "checks";
+  if (total === null) return `at least ${failed2} selected ${checks(failed2)} failed`;
+  if (total > 0)
+    return `${atLeast ? "at least " : ""}${failed2} of ${total} selected ${checks(total)} failed`;
+  const ends = [
+    ...new Set(
+      files2.flatMap(
+        (f) => f.stored === void 0 && f.run?.end != null && f.run.end !== "completed" ? [f.run.end] : []
+      )
+    )
+  ];
+  return ends.length === 0 ? `no selected check: no check holds ${textsText(texts)}` : `no outcome: the focused run ended ${ends.join(" or ")}`;
+}
+function focusPayload(focus) {
+  return {
+    texts: focus.texts,
+    ...focus.refused === void 0 ? {} : { refused: focus.refused },
+    testFiles: focus.files.map((file) => fileEntry2(file, focus.texts))
+  };
+}
+function fileEntry2(file, texts) {
+  const { stored, run: run5 } = file;
+  const none2 = {
+    ...file.testFile,
+    source: null,
+    ...file.whole === void 0 ? {} : { reason: file.whole },
+    key: file.key,
+    revision: null,
+    texts,
+    runId: null,
+    durationMs: null,
+    end: null,
+    startedAt: null,
+    matched: null,
+    collected: null,
+    checks: [],
+    more: 0,
+    count: file.tally ?? null
+  };
+  if (stored !== void 0) {
+    return {
+      ...none2,
+      source: "stored",
+      revision: stored.revision,
+      runId: stored.runId,
+      matched: stored.checks.length,
+      collected: stored.collected,
+      checks: stored.checks
+    };
+  }
+  if (run5 === void 0) return none2;
+  return {
+    ...none2,
+    source: "focused",
+    key: run5.key,
+    revision: run5.revision,
+    texts: run5.texts,
+    runId: run5.runId,
+    durationMs: run5.durationMs,
+    end: run5.end,
+    startedAt: run5.startedAt,
+    matched: run5.matched,
+    collected: run5.collected,
+    checks: run5.checks,
+    more: run5.more
+  };
+}
+
 // src/cli/verdict.ts
 init_keys();
 init_state3();
@@ -59026,6 +59413,9 @@ function namedLine(wait, command = "squeal") {
     case "unmatched":
       line = `No verdict: ${unmatchedText(selection)}`;
       break;
+    case "focused":
+      line = wait.focus === void 0 ? none2("no result yet") : focusedVerdictText(wait.focus, command, wait.selection.base);
+      break;
     case "no-daemon": {
       const asOf = snapshot3 ? "" : `; results are as of revision ${verdict.revision}`;
       const start2 = wait.down === "handoff" ? "" : `; \`${command} start\` starts one`;
@@ -59093,9 +59483,12 @@ function selectedLine(wait) {
 }
 function namedText(wait, now, command = "squeal", options = {}) {
   const selected = selectedLine(wait);
+  const refused = refusedLine(wait.focus);
   const lines = [
     ...selected === null ? [] : [selected],
     ...namedFailures(wait.selection.files, wait.result.knownFailures),
+    // Row 011-146 (C15): the focused block, before the classes it leaves pending.
+    ...focusLines(wait.focus, wait.selection.base),
     ...namedClassLines(wait, command),
     namedLine(wait, command)
   ];
@@ -59106,7 +59499,8 @@ function namedText(wait, now, command = "squeal", options = {}) {
   })}
 ` : [`Revision: ${statusRevisionText(wait.result)}`, ...holdLines(wait.result.holds, command)].map((line) => `${line}
 `).join("");
-  return `${head}${lines.join("\n")}
+  return `${refused === null ? "" : `${refused}
+`}${head}${lines.join("\n")}
 `;
 }
 function namedClassLines(wait, command = "squeal") {
@@ -59177,6 +59571,134 @@ init_keys();
 // src/cli/named-files.ts
 init_standing();
 
+// src/cli/status-wait-focus.ts
+init_policy2();
+init_keys();
+init_focused_row();
+init_slow3();
+init_state3();
+var CHECK_NEEDS_TEST_FILE = "--check selects checks inside a test file named by its own path";
+function takeChecks(args2) {
+  const checks = [];
+  const rest = [];
+  for (let i3 = 0; i3 < args2.length; i3++) {
+    const arg = args2[i3];
+    if (arg !== "--check" && !arg.startsWith("--check=")) {
+      rest.push(arg);
+      continue;
+    }
+    const text3 = arg === "--check" ? args2[++i3] : arg.slice("--check=".length);
+    if (text3 === void 0 || text3 === "") return "--check takes a part of a check name";
+    checks.push(text3);
+  }
+  return { checks, rest };
+}
+function focusTexts(texts, files2) {
+  const prefixes = files2.map(
+    (ref2) => formatCheck({ kind: "test", project: ref2.project, testPath: ref2.path, fullName: "" })
+  );
+  const read5 = texts.map((text3) => {
+    const prefix = prefixes.find((p) => text3.startsWith(p) && text3.length > p.length);
+    return prefix === void 0 ? text3 : text3.slice(prefix.length);
+  });
+  return [...new Set(read5)];
+}
+function wholeFileReasons(root, files2) {
+  const reasons = /* @__PURE__ */ new Map();
+  if (files2.length === 0) return reasons;
+  const policy = readPolicy(root);
+  const slow = slowView(policy);
+  for (const ref2 of files2) {
+    if (slow.isSlow(ref2))
+      reasons.set(testFileId(ref2), "slow file: focused checks run for fast files only");
+    else if (policy.nodeTest.some((p) => p.name === ref2.project)) {
+      reasons.set(testFileId(ref2), "node:test runs whole files only");
+    }
+  }
+  return reasons;
+}
+function answered(file) {
+  return file.whole === void 0 && file.tally !== void 0;
+}
+function readFocusedFiles(store, worktreeId, files2, texts, whole) {
+  const keys = new Map(
+    store.testFileKeys.list(worktreeId, files2).map((row2) => [testFileId(row2.testFile), row2.key])
+  );
+  const runs = new Map(
+    readFocused(store, worktreeId).map((run5) => [testFileId(run5.testFile), run5])
+  );
+  return files2.map((testFile) => {
+    const id2 = testFileId(testFile);
+    const key3 = keys.get(id2) ?? null;
+    const reason2 = whole.get(id2);
+    if (reason2 !== void 0) return { testFile, key: key3, whole: reason2 };
+    const own = runs.get(id2);
+    const answer2 = own !== void 0 && key3 !== null && own.key === key3 ? answerOf(own, texts) : void 0;
+    const results2 = key3 === null ? [] : store.results.byKey(key3, 0);
+    const stored = results2.length === 0 ? void 0 : storedOf(results2, texts);
+    const tally2 = stored === void 0 ? answer2?.tally : storedTally(stored.checks);
+    const fallback = stored === void 0 ? answer2?.fallback : void 0;
+    return {
+      testFile,
+      key: key3,
+      ...fallback === void 0 ? {} : { whole: fallback },
+      ...answer2 === void 0 ? {} : { run: answer2.run },
+      ...stored === void 0 ? {} : { stored },
+      ...tally2 === void 0 ? {} : { tally: tally2 }
+    };
+  });
+}
+function storedOf(results2, texts) {
+  const selected = results2.filter(
+    (r) => r.check.kind === "test" ? holdsText(r.check.fullName, texts) : r.outcome === "fail"
+  );
+  const [first] = results2;
+  return {
+    revision: first?.provenance.revision ?? 0,
+    runId: first?.provenance.runId ?? "",
+    checks: selected.map((r) => ({
+      check: r.check,
+      name: formatCheck(r.check),
+      outcome: r.outcome,
+      durationMs: r.durationMs,
+      summary: r.summary,
+      location: r.location
+    })),
+    collected: results2.filter((r) => r.check.kind === "test").length
+  };
+}
+function anyFailed(files2) {
+  return files2.some((f) => answered(f) && (f.tally?.failed ?? 0) > 0);
+}
+function settledFocus(focus, reply) {
+  if (focus === void 0 || focus.refused !== void 0) return "settled";
+  const focusing = focus.files.filter((f) => f.whole === void 0 && f.key !== null);
+  if (focusing.every((f) => f.stored !== void 0)) return "settled";
+  if (focusing.every(answered)) return "focused";
+  return reply === "none" ? "settled" : null;
+}
+function focusAnswered(focus) {
+  if (focus.refused !== void 0) return false;
+  const focusing = focus.files.filter((f) => f.whole === void 0);
+  return focusing.length > 0 && focusing.every(answered);
+}
+var CheckUsageError = class extends Error {
+};
+function focusOf(store, worktreeId, own, checks, whole, reply, record) {
+  if (checks.length === 0 || own.length === 0) return void 0;
+  const texts = focusTexts(checks, own);
+  const files2 = readFocusedFiles(store, worktreeId, own, texts, whole);
+  const refused = reply === "refused" ? { refused: { version: record?.squealVersion ?? null } } : {};
+  return { texts, files: files2, ...refused };
+}
+function snapshotFocus(store, worktreeId, root, ready, own, checks) {
+  if (checks.length === 0) return void 0;
+  if (ready && own.length === 0) {
+    return { texts: checks, files: [], usage: CHECK_NEEDS_TEST_FILE };
+  }
+  return focusOf(store, worktreeId, own, checks, wholeFileReasons(root, own), void 0, null);
+}
+
 // src/cli/status-wait-promote.ts
 var promoteNamed = (root, testFiles2, withinMs) => {
   if (testFiles2.length === 0) return;
@@ -59186,6 +59708,24 @@ var promoteNamed = (root, testFiles2, withinMs) => {
     withinMs: Math.max(0, Math.round(withinMs))
   };
   void daemonSocket(root).then((socketPath) => askDaemon(socketPath, request)).catch(() => null);
+};
+var focusNamed = async (root, testFiles2, texts, withinMs) => {
+  if (testFiles2.length === 0 || texts.length === 0) return "none";
+  const request = {
+    type: "focus",
+    testFiles: testFiles2,
+    texts,
+    withinMs: Math.max(0, Math.round(withinMs))
+  };
+  try {
+    const answer2 = await askDaemon(await daemonSocket(root), request);
+    if (answer2 === null) return "none";
+    if (answer2.ok) return "accepted";
+    const unknown = answer2.error.startsWith("unknown request type");
+    return unknown || answer2.error === "this daemon cannot focus" ? "refused" : "none";
+  } catch {
+    return "none";
+  }
 };
 function ownPathFiles(selected, named) {
   const paths = new Set(named);
@@ -59349,6 +59889,9 @@ async function waitForNamed(cwd, paths, options) {
   let watch2;
   let first = true;
   let promoted = false;
+  let reply;
+  let whole;
+  const checks = options.checks ?? [];
   const paused = /* @__PURE__ */ new Set();
   try {
     for (; ; ) {
@@ -59378,17 +59921,29 @@ async function waitForNamed(cwd, paths, options) {
         const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
         const held2 = selection.files.filter((f) => !paused.has(testFileId(f)));
         const classes = leftForPause.length === 0 ? all2 : readClasses(store, id2, held2);
-        const decided = ready ? decidedOutcome(selection, held2, classes) : null;
+        const named = ready ? decidedOutcome(selection, held2, classes) : null;
+        const own = ready && (checks.length > 0 || !promoted) ? ownNamedFiles(root, cwd, paths, selection) : [];
+        if (checks.length > 0 && ready && own.length === 0) {
+          return { usage: CHECK_NEEDS_TEST_FILE };
+        }
+        if (checks.length > 0 && ready) whole ??= wholeFileReasons(root, own);
+        const focus = whole === void 0 ? void 0 : focusOf(store, id2, own, checks, whole, reply, record);
+        const decided = named === "settled" ? settledFocus(focus, reply) : named;
         const hold = ready && decided === null ? holdOfWait(store, id2, () => store.testFileKeys.list(id2, held2), readAt2) : null;
-        const outcome2 = settled && daemon.state === "down" ? "no-daemon" : decided ?? (hold !== null ? "on-hold" : final ? "timeout" : null);
+        const focused = decided === null && focus !== void 0 && focusAnswered(focus);
+        const outcome2 = settled && daemon.state === "down" ? "no-daemon" : decided ?? (focused ? "focused" : hold !== null ? "on-hold" : final ? "timeout" : null);
         if (outcome2 === null) {
           if (ready && !promoted) {
             promoted = true;
-            const own = ownPathFiles(
-              selection.files,
-              paths.map((p) => worktreePath2(root, cwd, p))
-            );
             (options.promote ?? promoteNamed)(root, own, deadline - options.now());
+            const focusing = (focus?.files ?? []).filter((f) => f.whole === void 0);
+            if (focus !== void 0 && focusing.length > 0) {
+              const send = options.focus ?? focusNamed;
+              const files3 = focusing.map((f) => f.testFile);
+              void send(root, files3, focus.texts, deadline - options.now()).then((answer2) => {
+                reply = answer2;
+              });
+            }
           }
           return null;
         }
@@ -59407,9 +59962,11 @@ async function waitForNamed(cwd, paths, options) {
           sync: current3,
           ...daemon.state === "down" ? { down: daemon.reason } : {},
           ...lapse === null ? {} : { lapse },
-          ...hold === null ? {} : { hold }
+          ...hold === null ? {} : { hold },
+          ...focus === void 0 ? {} : { focus }
         };
       });
+      if (read5 !== null && "usage" in read5) throw new CheckUsageError(read5.usage);
       if (read5 !== null && "available" in read5) {
         if (first || final) return { outcome: "unavailable", waitedMs: elapsed(), result: read5 };
       } else if (read5 !== null) {
@@ -59423,14 +59980,30 @@ async function waitForNamed(cwd, paths, options) {
     sync?.stop();
   }
 }
+function ownNamedFiles(root, cwd, paths, selection) {
+  return ownPathFiles(
+    selection.files,
+    paths.map((p) => worktreePath2(root, cwd, p))
+  );
+}
 function namedCode(wait) {
+  if (wait.outcome === "focused")
+    return wait.focus !== void 0 && anyFailed(wait.focus.files) ? 1 : 3;
   if (wait.outcome !== "settled") return 3;
   const code = verdictCode(wait.verdict);
   return code === 0 && wait.selection.unmatched.length > 0 ? 3 : code;
 }
 async function namedWaitCommand(paths, how, io, options) {
-  const wait = await waitForNamed(io.cwd ?? process.cwd(), paths, options);
-  return printNamed(wait, how, io, options.now);
+  const checks = how.checks ?? [];
+  try {
+    const wait = await waitForNamed(io.cwd ?? process.cwd(), paths, { ...options, checks });
+    return printNamed(wait, how, io, options.now);
+  } catch (error) {
+    if (!(error instanceof CheckUsageError)) throw error;
+    io.stderr(`squeal status: ${error.message}
+`);
+    return 2;
+  }
 }
 function printNamed(wait, how, io, now) {
   if (wait.outcome === "unavailable") {
@@ -59438,6 +60011,11 @@ function printNamed(wait, how, io, now) {
     io.stdout(how.json ? `${JSON.stringify(result, null, 2)}
 ` : formatStatus(result, now()));
     return 3;
+  }
+  if (wait.focus?.usage !== void 0) {
+    io.stderr(`squeal status: ${wait.focus.usage}
+`);
+    return 2;
   }
   const code = namedCode(wait);
   const command = statusCommand(io.env ?? process.env);
@@ -59452,14 +60030,21 @@ function printNamed(wait, how, io, now) {
     testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
     unmatched: wait.selection.unmatched,
     leftForPause: wait.leftForPause ?? [],
-    verdict: wait.verdict
+    verdict: wait.verdict,
+    ...wait.focus === void 0 ? {} : { focused: focusPayload(wait.focus) }
   };
   const field = wait.snapshot === true ? "named" : "wait";
   const json3 = { ...wait.result, [field]: payload, selection: payload };
   io.stdout(`${JSON.stringify(json3, null, 2)}
 `);
   const selected = selectedLine(wait);
-  const lines = [...selected === null ? [] : [selected], ...namedClassLines(wait, command)];
+  const refused = refusedLine(wait.focus);
+  const lines = [
+    ...refused === null ? [] : [refused],
+    ...selected === null ? [] : [selected],
+    ...focusLines(wait.focus, wait.selection.base),
+    ...namedClassLines(wait, command)
+  ];
   io.stderr(`${lines.map((line) => `${line}
 `).join("")}${namedLine(wait, command)}
 `);
@@ -60315,12 +60900,12 @@ function terminalAsk() {
   if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) return null;
   return (question) => new Promise((resolve28) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
-    let answered = false;
+    let answered2 = false;
     rl.on("close", () => {
-      if (!answered) resolve28("");
+      if (!answered2) resolve28("");
     });
     rl.question(question, (answer2) => {
-      answered = true;
+      answered2 = true;
       rl.close();
       resolve28(answer2);
     });
@@ -60431,7 +61016,7 @@ var AppServer = class {
     if (this.failure !== null) throw this.failure;
     const id2 = this.nextId++;
     let timer;
-    const answered = new Promise(
+    const answered2 = new Promise(
       (resolve28) => this.pending.set(id2, resolve28)
     );
     const silent = new Promise((_, reject) => {
@@ -60447,7 +61032,7 @@ var AppServer = class {
     this.child.stdin.write(`${JSON.stringify({ id: id2, method, params })}
 `);
     try {
-      const message3 = await Promise.race([answered, silent, this.failed]);
+      const message3 = await Promise.race([answered2, silent, this.failed]);
       if (message3.error !== void 0) {
         const reason2 = isRecord(message3.error) ? message3.error.message : message3.error;
         throw new AppServerError(`codex app-server refused ${method}: ${String(reason2)}`);
@@ -66011,7 +66596,7 @@ var render = (snapshot3, { full }) => {
   }
   if (snapshot3.files.length > 0) {
     lines.push("", "Files no live process uses");
-    for (const file of snapshot3.files) lines.push(...fileLines(file));
+    for (const file of snapshot3.files) lines.push(...fileLines2(file));
   }
   if (snapshot3.unflaggedFiles !== null) {
     const counts = snapshot3.unflaggedFiles.map((f) => `${f.kind} ${thousands(f.count)}`);
@@ -66163,7 +66748,7 @@ function orphanLines(o, at2) {
     `${DETAIL}ends it: ${f.command ?? "none"}`
   ]);
 }
-function fileLines(f) {
+function fileLines2(f) {
   return [`  ! ${f.flag}  ${f.path} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
 }
 function flagLines(flags2) {
@@ -68365,9 +68950,9 @@ function follows(ping2, old, own) {
 async function served(root, deadline, accepts) {
   for (; ; ) {
     const probe = await probeDaemon(root, 100);
-    const answered = probe.state === "alive" && accepts(probe.ping);
-    if (answered && registered(root, probe.ping)) return true;
-    if (Date.now() > deadline) return answered;
+    const answered2 = probe.state === "alive" && accepts(probe.ping);
+    if (answered2 && registered(root, probe.ping)) return true;
+    if (Date.now() > deadline) return answered2;
     await sleep15(50);
   }
 }
@@ -69099,7 +69684,7 @@ async function readNamedSnapshot(cwd, paths, options) {
     const read5 = withStatusStore(
       cwd,
       { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS },
-      (context) => readOnce2(context, cwd, paths, sync, options.now())
+      (context) => readOnce2(context, cwd, paths, sync, options.now(), options.checks ?? [])
     );
     if ("available" in read5) return { outcome: "unavailable", waitedMs: elapsed(), result: read5 };
     return { ...read5, waitedMs: elapsed() };
@@ -69107,7 +69692,7 @@ async function readNamedSnapshot(cwd, paths, options) {
     sync?.stop();
   }
 }
-function readOnce2({ store, root }, cwd, paths, sync, now) {
+function readOnce2({ store, root }, cwd, paths, sync, now, checks) {
   const id2 = worktreeIdFor(root);
   const selection = selectNamedFiles(store, id2, root, cwd, paths);
   const all2 = readClasses(store, id2, selection.files);
@@ -69125,9 +69710,12 @@ function readOnce2({ store, root }, cwd, paths, sync, now) {
   const hold = ready && decided === null ? holdOfWait(store, id2, () => store.testFileKeys.list(id2, held2), now) : null;
   const outcome2 = liveness2.state !== "alive" ? "no-daemon" : decided ?? (hold !== null ? "on-hold" : "timeout");
   const result = buildSnapshot(store, root, now);
+  const own = ownNamedFiles(root, cwd, paths, selection);
+  const focus = snapshotFocus(store, id2, root, ready, own, checks);
   return {
     outcome: outcome2,
     ...hold === null ? {} : { hold },
+    ...focus === void 0 ? {} : { focus },
     selection,
     leftForPause,
     verdict: readVerdict(store, id2, held2),
@@ -69138,7 +69726,8 @@ function readOnce2({ store, root }, cwd, paths, sync, now) {
   };
 }
 async function namedSnapshotCommand(paths, how, io, options) {
-  const snapshot3 = await readNamedSnapshot(io.cwd ?? process.cwd(), paths, options);
+  const checks = how.checks ?? [];
+  const snapshot3 = await readNamedSnapshot(io.cwd ?? process.cwd(), paths, { ...options, checks });
   return printNamed(snapshot3, how, io, options.now);
 }
 
@@ -69413,7 +70002,7 @@ Usage:
                                 advances it; --full adds the worktree, daemon,
                                 inheritance, each file without a result and the notes;
                                 --notes is --full with every note in full
-  squeal status <path>... [--full] [--json]
+  squeal status <path>... [--check <text>]... [--full] [--json]
                                 The verdict of the test files the paths select (a test
                                 file, or a file in test files' closures) now, if the
                                 daemon stores its pass over your edits within 750 ms:
@@ -69421,15 +70010,21 @@ Usage:
                                 that selects nothing is named beside it, exit 3 unless
                                 a selected file fails; --full prints this worktree's
                                 status first; --json: the files and their verdicts in
-                                selection.testFiles
+                                selection.testFiles; --check shows the focused outcome
+                                of the named test files' checks whose name holds the
+                                text, and asks for nothing
   squeal status --wait <ms> [--full] [--json]
                                 Wait up to <ms> until nothing is pending at the current
                                 revision or a check changed, then print status (--full:
                                 in full) and last the line saying why it returned
-  squeal status --wait <ms> <path>... [--full] [--json]
+  squeal status --wait <ms> <path>... [--check <text>]... [--full] [--json]
                                 Wait up to <ms> for the test files the paths select,
                                 then give their verdict as status <path>... does,
-                                --json in selection.testFiles too
+                                --json in selection.testFiles too; --check runs first,
+                                alone, the checks of each test file named by its own
+                                path whose name holds the text, and returns with their
+                                outcome, not the file's verdict: exit 1 when one
+                                failed, else 3 (--json: selection.focused)
   squeal why <check> [--include-logs] [--json]
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints
@@ -69589,12 +70184,18 @@ function status(args2, io) {
   const wait = takeWait(args2);
   if (typeof wait === "string") return usage2("status", wait, io);
   const { waitMs } = wait;
-  const allNotes = wait.rest.includes("--notes");
-  const full = allNotes || wait.rest.includes("--full");
-  const rest = wait.rest.filter((arg) => arg !== "--notes" && arg !== "--full");
+  const taken2 = takeChecks(wait.rest);
+  if (typeof taken2 === "string") return usage2("status", taken2, io);
+  const { checks } = taken2;
+  const allNotes = taken2.rest.includes("--notes");
+  const full = allNotes || taken2.rest.includes("--full");
+  const rest = taken2.rest.filter((arg) => arg !== "--notes" && arg !== "--full");
   const parsed2 = parseArgs2("status", rest, io);
   if (parsed2 === null) return 2;
-  const named = { full, allNotes };
+  if (checks.length > 0 && parsed2.positional.length === 0) {
+    return usage2("status", CHECK_NEEDS_TEST_FILE, io);
+  }
+  const named = { full, allNotes, ...checks.length === 0 ? {} : { checks } };
   const now = io.now ?? Date.now;
   if (waitMs !== null) {
     return statusWaitCommand(waitMs, parsed2.json, io, false, parsed2.positional, named);
