@@ -12,3 +12,12 @@ Use /worker. Shape: repair. Starts from main at 0.1.295. Outcome: a session is t
 - **015-37.** Find why the recount summary was told twice at one revision; the transaction that tells it compares and sets the consumer's seed.
 - **Owns.** `src/core/code/pass/head.ts`, `src/core/status/code-status.ts`, `src/core/delivery/code-*.ts` and their tests. Wave 2b's 015-12 adds new kinds to the same delivery and status files: change only the functions these rows need, and add no new state kind.
 - **Done when.** Each row's done-when on the board is a test, red first. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
+
+## W2: 015-38, transitions from a pull
+
+Use /worker. Shape: slice. Starts from `int/015f-r1` (0.1.295 with waves 1d and 2b, no build commit; lands after 0.1.297). Outcome: a pull no longer tells a session `PASS` or `RESOLVED` for code it never heard about, and still tells a `FAIL`.
+- Read `spec.md` D5 and D6 with their 2026-10-24 amendments (015-19 and 015-34 on what a pull marks), `status.md` (the human's option (a), 2026-10-24), and `lessons.md` "Round 1 (015-10)", B5.
+- **The rule.** A `PASS` or `RESOLVED` for complexity, `crap` or `uncovered` at a revision whose change to that file a pull, merge, rebase, cherry-pick or revert brought (the files 015-19 and 015-34 mark as no edit) is taken into the consumer's view by count and not told, when the session was never told the function's `FAIL`. A `FAIL` from a pull is told as before; a `PASS` for a function the session was told about is told as before.
+- **Lead.** Carry 015-19's and 015-34's pulled paths into the transition or the delivery step (`src/core/code/pass/head.ts`, `src/core/delivery/code-deliver.ts`), and read the view's told marks there.
+- **Owns.** `src/core/code/pass/**`, `src/core/delivery/code-*.ts` and their tests. Leave `src/core/code/crap/**` alone: a repair of 015-12 runs beside you.
+- **Done when.** Delivery tests: a pull over an untold failing function that now passes tells nothing and leaves it out of the view; the same over a told one tells `PASS`; a pull that makes a function fail tells `FAIL`; an own edit is unchanged. Write the D6 amendment text in your notes. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
