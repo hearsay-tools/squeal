@@ -2,13 +2,9 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { selectNamedFiles } from "../../src/cli/named-selection.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
-import {
-  type NamedWaitOptions,
-  namedCode,
-  selectNamedFiles,
-  waitForNamed,
-} from "../../src/cli/status-wait-paths.js";
+import { type NamedWaitOptions, namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import { withStatusStore } from "../../src/core/status/index.js";
