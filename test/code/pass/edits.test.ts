@@ -44,6 +44,16 @@ describe("the code pass's edits (015 D6, its last rule)", () => {
     expect(edits(store, tree)).toEqual(["pay@3", "settle@2"]);
   });
 
+  it("compares the next edit with the judged body after a count that failed (review 0.1.283 B5)", async () => {
+    const { tree, store } = await counted("settle 23 B1\n");
+    tree.write("src/a.ts", "settle 24 B2\n").revise();
+    const failing = { ...fakeCounter(), count: () => Promise.reject(new Error("no grammar")) };
+    expect(await pass(tree, store, failing)).toMatchObject({ counted: 0, edited: [] });
+    tree.write("src/a.ts", "settle 25 B3\n").revise();
+    await pass(tree, store, fakeCounter());
+    expect(edits(store, tree)).toEqual(["settle@3"]);
+  });
+
   it("stores no edit for a move or a rename with the same body (D2)", async () => {
     const { tree, store } = await counted("settle 23 B1\npay 3 B2\n");
     tree.write("src/a.ts", "close 23 B1\n").write("src/b.ts", "pay 3 B2\n").revise();
