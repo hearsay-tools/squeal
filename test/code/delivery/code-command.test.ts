@@ -162,11 +162,12 @@ describe("squeal code (015 D6)", () => {
     const s = await seeded();
     const source = codeSource(s.repo.commonDir, s.repo.main);
     const c1 = { worktreeId: s.repo.mainId, sessionId: "s1", agentId: "main" };
+    const since = () => ({ since: 2, gaps: [] });
     // `selectTier` went over after s1 registered and is told in full; `planTier` by count.
-    expect(tellCode(source, c1, NOW, () => 2)?.entries.map((e) => e.check.qualifiedName)).toEqual([
+    expect(tellCode(source, c1, NOW, since)?.entries.map((e) => e.check.qualifiedName)).toEqual([
       "selectTier",
     ]);
-    const counted = tellCode(source, c1, NOW, () => 2, { changes: false, toldOver: true });
+    const counted = tellCode(source, c1, NOW, since, { changes: false, toldOver: true });
     expect(counted?.toldOver).toEqual({ count: 1, threshold: 20 });
     const session = { CLAUDE_CODE_SESSION_ID: "s1" };
     const report = JSON.parse(run(s, ["--told", "--json"], session).out);

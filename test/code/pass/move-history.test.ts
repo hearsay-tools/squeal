@@ -30,7 +30,7 @@ beforeEach(async () => {
 
 /** The functions gone over since `c` registered, as Stop, status and `squeal code --changed` read them. */
 function wentOver(c: Consumer) {
-  const since = consumerSince(r.main, c)?.since ?? expect.fail("not registered");
+  const since = consumerSince(r.main, c) ?? expect.fail("not registered");
   const context = {
     store: r.main,
     consumer: c,
