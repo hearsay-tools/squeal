@@ -116,6 +116,22 @@ export function codeTitleWords(news: CodeNews): string | null {
   return words.length === 0 ? null : words.join(" and ");
 }
 
+/**
+ * Row 015-27: test news's last line, while functions the consumer was told
+ * of in full are over (`CodeNews.toldOver`).
+ */
+export function toldOverLine(
+  { count, threshold }: NonNullable<CodeNews["toldOver"]>,
+  command: string,
+): string {
+  return `Complexity: ${plural(count, "function")} over ${threshold} that this session was told about; ${command} code --told lists them.`;
+}
+
+/** Row 015-27: complexity news's last line, while tests have known failures. */
+export function knownFailuresTailLine(failures: number, command: string): string {
+  return `Tests: ${plural(failures, "known failure")}; ${command} status lists them.`;
+}
+
 /** D6: the registration's line. */
 export function codeRegistrationLine(code: CodeRegistration, command: string): string {
   if (code.counting !== undefined) {
