@@ -5,8 +5,10 @@ Usage: python3 -I analyze.py OUT.json
 Busy cores come from /proc/stat (all CPU time but idle and iowait). Squeal's cores
 are the CPU of every Squeal daemon's process tree over the window: the daemon, its
 test processes, what they start, and the children they reaped. A tree is a
-daemon's when its root's command line is `.../squeal/<version>/dist/cli/squeal.mjs
-daemon <root>`. Prints one line per daemon tree, then a JSON summary line.
+daemon's when its root's command line is `.../dist/cli/squeal.mjs daemon <root>`,
+from any install (`squeal/<version>/`, the Codex plugin's `versions/<version>/`)
+or a checkout's `plugins/claude-code/dist/`. Prints one line per daemon tree, then
+a JSON summary line.
 """
 import collections, json, re, sys
 
@@ -16,7 +18,7 @@ s1 = {int(k): v for k, v in d["s1"].items()}
 cmds = {int(k): v for k, v in d["cmds"].items()}
 hz, el = d["hz"], d["elapsed"]
 
-DAEMON = re.compile(r"squeal/(\d+\.\d+\.\d+)/dist/cli/squeal\.mjs daemon (\S+)")
+DAEMON = re.compile(r"(?:/(\d+\.\d+\.\d+))?/dist/cli/squeal\.mjs daemon (\S+)")
 
 
 def label(pid):
@@ -27,7 +29,7 @@ def label(pid):
     project = root.split("/.ai/")[0].rstrip("/").split("/")[-1] if "/.ai/" in root else root.rstrip("/").split("/")[-1]
     if root.startswith("/tmp/"):
         project = "tmp (test fixture)"
-    return f"{project} v{m.group(1)} {root}"
+    return f"{project} v{m.group(1) or '?'} {root}"
 
 
 children = collections.defaultdict(list)
