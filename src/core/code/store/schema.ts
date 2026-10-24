@@ -17,6 +17,10 @@ import type { Migration } from "../../store/schema.js";
  *   has no count (D6).
  * - `states`, `transitions`, `views`: per worktree, after 011 C5's
  *   `known_states`, `transitions` and `consumer_views`, one row per measure.
+ *   `counted_at` and `changed_at` are revisions. `edited_revision` and
+ *   `edited_at` (epoch ms, comparable with a view's `told_at`) are the last
+ *   edit of the check's body with its identity kept, `NULL` before one
+ *   (D6's first edit to a standing failure).
  * - `coverage`: wave 2's records by result key and provider version (D8).
  */
 const V1 = `
@@ -66,6 +70,8 @@ CREATE TABLE states (
   counted_at INTEGER NOT NULL,
   blob TEXT NOT NULL,
   changed_at INTEGER NOT NULL,
+  edited_revision INTEGER,
+  edited_at INTEGER,
   PRIMARY KEY (worktree_id, check_id, measure)
 ) STRICT, WITHOUT ROWID;
 

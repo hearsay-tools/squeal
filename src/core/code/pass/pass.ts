@@ -40,7 +40,7 @@ export interface PassContext {
  * it rebuilds every state with no transition (D5) and writes the recount
  * record. Three writes: the files rows, so status can say "counting, N of
  * M"; the blobs no worktree counted yet, in slices with a turn of the event
- * loop between them; then states, transitions and the cursor in one
+ * loop between them; then states, transitions, edits and the cursor in one
  * transaction, so a hook never reads half a revision.
  */
 export async function runPass(ctx: PassContext): Promise<PassReport | null> {
@@ -80,11 +80,12 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     const before = store.states
       .list(worktreeId, { measure: "complexity", ...(quiet ? {} : { paths: [...paths] }) })
       .filter((s) => paths.has(s.check.path));
+    const at = ctx.now();
     const judged = judge({
       worktreeId,
       revision: latest,
       threshold: ctx.complexity.threshold,
-      at: ctx.now(),
+      at,
       quiet,
       before,
       bodies,
@@ -94,6 +95,11 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     store.states.removeMany(worktreeId, judged.removed);
     store.states.upsertMany(judged.states);
     store.transitions.append(judged.transitions);
+    // D6's last rule: the delivery tells a standing failure's first edit in a session once.
+    store.states.markEdited(
+      worktreeId,
+      judged.edited.map((check) => ({ check, measure: "complexity", revision: latest, at })),
+    );
     writeCursor(store.meta, worktreeId, current);
     // The coordinator's contract with 015-07: a first pass over inherited counts writes none.
     if (reason !== null && (reason !== "first" || counted > 0 || ctx.switchedOn)) {

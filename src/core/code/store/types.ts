@@ -15,6 +15,7 @@ import type {
   EpochMs,
   FileHash,
   RelativePath,
+  RevisionNumber,
   WorktreeId,
 } from "../../types/index.js";
 
@@ -44,10 +45,26 @@ export interface CodeStateFilter {
   readonly outcome?: CodeOutcome;
 }
 
+/**
+ * Spec 015 D6, its last rule: the last revision a check's body changed with
+ * its identity kept, and when the pass stored it, for a view's `toldAt`.
+ */
+export interface CodeEdit {
+  readonly check: CodeCheckId;
+  readonly measure: CodeMeasure;
+  readonly revision: RevisionNumber;
+  readonly at: EpochMs;
+}
+
 /** Spec 015 D4, D5: the known state of each code check's measures, per worktree. */
 export interface CodeStateRepo {
   list(worktreeId: WorktreeId, filter?: CodeStateFilter): readonly CodeKnownState[];
+  /** Writes each state; a stored state keeps its last edit. */
   upsertMany(states: readonly CodeKnownState[]): void;
+  /** The last edit of each state of `measure` that has one. */
+  edits(worktreeId: WorktreeId, measure: CodeMeasure): readonly CodeEdit[];
+  /** Records each edit on its check's state; one with no state of that measure is skipped. */
+  markEdited(worktreeId: WorktreeId, edits: readonly CodeEdit[]): void;
   /**
    * Removes every measure's state of each check. View entries stay: a
    * consumer told `fail` is told once that the function is no longer in the
