@@ -17,7 +17,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { PingResponse, StatusSnapshot } from "../../src/core/types/index.js";
 import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
-import { runMissingConfig } from "../helpers/baseline.js";
+import { RUN_MISSING, runMissingConfig } from "../helpers/baseline.js";
 import type { PythonVersion } from "../helpers/pytest-env.js";
 import { fixtureInstall, type Install, type InstallKind, uvSync } from "./install.js";
 import { copyPlugin, type HookName, type Plugin } from "./plugins.js";
@@ -85,11 +85,12 @@ export interface FixtureOptions {
    */
   readonly amendPolicy?: (policy: Record<string, unknown>) => object;
   /**
-   * Leaves `squeal.config.json` without the `baseline` key the fixture adds
-   * after `policy`, `squeal init` or `squeal setup` and `amendPolicy`, so the
-   * start is the shipped default's, `lookup-only` (row 011-159). Without it a
-   * config with no `baseline` key gets `runMissingConfig`'s: these scenarios
-   * wait for the start to run every file.
+   * Leaves `squeal.config.json`'s `baseline` as `policy`, `squeal init` or
+   * `squeal setup` wrote it, so the start is the shipped default's,
+   * `lookup-only` (row 011-159). Without it these scenarios wait for the
+   * start to run every file: a `policy` with no `baseline` key gets
+   * `runMissingConfig`'s, and `RUN_MISSING` replaces the shipped `baseline`
+   * that `squeal init` writes with every default key (`squeal setup` through it).
    */
   readonly shippedBaseline?: boolean;
   /**
@@ -218,22 +219,21 @@ export class E2E {
           env: { PATH: process.env.PATH ?? "", HOME: this.#home, ...this.#env },
         },
       );
-    } else {
-      const policy = options.policy ?? {};
-      writeFileSync(
-        join(repo, "squeal.config.json"),
-        typeof policy === "string" ? policy : `${JSON.stringify(policy, null, 2)}\n`,
-      );
     }
-    if (options.amendPolicy !== undefined) {
-      const file = join(repo, "squeal.config.json");
+    const file = join(repo, "squeal.config.json");
+    const amend = (edit: (policy: Record<string, unknown>) => object) => {
       const policy = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
-      writeFileSync(file, `${JSON.stringify(options.amendPolicy(policy), null, 2)}\n`);
+      writeFileSync(file, `${JSON.stringify(edit(policy), null, 2)}\n`);
+    };
+    const runMissing = options.shippedBaseline !== true;
+    if (!nodeTest && !pytest) {
+      const policy = options.policy ?? {};
+      const text = typeof policy === "string" ? policy : `${JSON.stringify(policy, null, 2)}\n`;
+      writeFileSync(file, runMissing ? runMissingConfig(text) : text);
+    } else if (runMissing) {
+      amend((policy) => ({ ...policy, ...RUN_MISSING }));
     }
-    if (options.shippedBaseline !== true) {
-      const file = join(repo, "squeal.config.json");
-      writeFileSync(file, runMissingConfig(readFileSync(file, "utf8")));
-    }
+    if (options.amendPolicy !== undefined) amend(options.amendPolicy);
     git(repo, ["add", "-A"]);
     git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);
   }
