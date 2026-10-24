@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 
-/** pnpm's installed lockfile, relative to the directory that holds `node_modules`. */
-export const PNPM_LOCKFILE = "node_modules/.pnpm/lock.yaml";
+/** pnpm's virtual store, relative to the directory that holds `node_modules`. */
+export const PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
+
+/** pnpm's installed lockfile, relative to the same directory. */
+export const PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 
 /**
  * Task 011-85, R3 (011 C11): pnpm's installed `lock.yaml` without the

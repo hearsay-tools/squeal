@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
-import { compare, isMissing, isRecord, toRelative } from "../fs/index.js";
+import { compare, isMissing, toRelative } from "../fs/index.js";
 import type {
   AbsolutePath,
   CoreEnvironmentInputs,
@@ -10,18 +10,12 @@ import type {
   RelativePath,
   RunnerEnvironment,
 } from "../types/index.js";
-import {
-  HIDDEN_LOCKFILE,
-  packageFoldersFingerprint,
-  parseHiddenLockfile,
-  staleHiddenLockfile,
-  withoutOwnVersions,
-} from "./hidden-lockfile.js";
+import { HIDDEN_LOCKFILE } from "./hidden-lockfile.js";
 import { KEY_FORMAT_VERSION } from "./key-format.js";
 import type { PackageScans } from "./package-scans.js";
-import { InstalledGraph, type PackageGraph } from "./packages.js";
-import { readPnpmInstall } from "./pnpm-install.js";
-import { PNPM_LOCKFILE, withoutLinkedSpecifiers } from "./pnpm-lockfile.js";
+import { type LockfileReader, npmReading, type PackageGraph, WHOLE } from "./packages.js";
+import { pnpmReading } from "./pnpm-install.js";
+import { PNPM_LOCKFILE } from "./pnpm-lockfile.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
 const ENVIRONMENT_ENCODING = "squeal-environment/1";
@@ -120,15 +114,20 @@ export function coreEnvironmentInputs(options: CoreEnvironmentOptions): CoreEnvi
 
 /**
  * Installed-lockfile metadata, as Vitest's `getLockfileHash` finds it, with
- * the patches directory each package manager applies. First match wins.
+ * the patches directory each package manager applies and, for npm's and
+ * pnpm's, the reader per-package keys take it by. First match wins.
  */
-const LOCKFILES: readonly { readonly path: string; readonly patches: string | null }[] = [
-  { path: HIDDEN_LOCKFILE, patches: "patches" },
+const LOCKFILES: readonly {
+  readonly path: string;
+  readonly patches: string | null;
+  readonly read?: LockfileReader;
+}[] = [
+  { path: HIDDEN_LOCKFILE, patches: "patches", read: npmReading },
   { path: "node_modules/.yarn-state.yml", patches: null },
   { path: ".pnp.cjs", patches: ".yarn/patches" },
   { path: ".pnp.js", patches: ".yarn/patches" },
   { path: "node_modules/.yarn-integrity", patches: "patches" },
-  { path: PNPM_LOCKFILE, patches: null },
+  { path: PNPM_LOCKFILE, patches: null, read: pnpmReading },
   { path: ".rush/temp/shrinkwrap-deps.json", patches: null },
   { path: "bun.lock", patches: "patches" },
   { path: "bun.lockb", patches: "patches" },
@@ -185,11 +184,10 @@ export interface InstalledDependencies {
   /** Why npm's hidden lockfile or pnpm's `lock.yaml` does not describe the install, or `null`. */
   readonly note: string | null;
   /**
-   * The package graph per-package keys read (tasks 001-105, 011-162): from
-   * npm's hidden lockfile while npm would trust it, and from pnpm's
-   * `lock.yaml` in pnpm's default layout while it stands for the install.
-   * `null` for any other lockfile format or layout, a stale or unreadable
-   * lockfile, or no install; keys then hold the whole `fingerprint`.
+   * The package graph per-package keys read (tasks 001-105, 011-162), as
+   * `npmReading` or `pnpmReading` gives it. `null` for any other lockfile
+   * format or layout, a stale or unreadable lockfile, or no install; keys
+   * then hold the whole `fingerprint`.
    */
   readonly graph: PackageGraph | null;
   /** Hash of the patches directory the package manager applies; part of `fingerprint` too. */
@@ -216,16 +214,11 @@ export interface InstalledDependencies {
  * the patches directory's mtime, this hashes the patch contents, because an
  * mtime differs between two worktrees with identical patches.
  *
- * Task 001-104: npm's hidden lockfile stands for the install only while npm
- * itself would trust it (`staleHiddenLockfile`). Otherwise the package
- * folders are fingerprinted instead, so an install that bypassed the file
- * still re-keys, and the note says so. `note` is `null` otherwise. Task
- * 011-85: a trusted hidden lockfile enters without the root's and the
- * workspaces' own versions (`withoutOwnVersions`), and pnpm's without a
- * linked dependency's range (`withoutLinkedSpecifiers`), so a release keeps
- * them. Task 011-162: pnpm's `lock.yaml` stands for an install in pnpm's
- * default layout under npm's rule on that layout (`readPnpmInstall`), and
- * otherwise its package folders are fingerprinted with the note.
+ * npm's hidden lockfile and pnpm's `lock.yaml` enter as their readers give
+ * them (`npmReading`, `pnpmReading`): while one does not describe the
+ * install, its package folders, so an install that bypassed the file still
+ * re-keys, and the note says so; else without what a release rewrites (task
+ * 011-85). `note` is `null` otherwise. Any other lockfile enters whole.
  */
 export async function installedDependencies(
   projectRoot: AbsolutePath,
@@ -234,22 +227,13 @@ export async function installedDependencies(
 ): Promise<InstalledDependencies> {
   const found = await locateLockfile(projectRoot, worktreeRoot);
   if (found === null) return { fingerprint: "none", note: null, graph: null, patches: "none" };
-  const { dir, format, content } = found;
-  const base = resolve(dir) === resolve(worktreeRoot) ? "" : toRelative(worktreeRoot, dir);
-  const npm = format.path === HIDDEN_LOCKFILE;
-  const pnpm = format.path === PNPM_LOCKFILE;
-  const hidden = npm ? parseHiddenLockfile(content) : null;
-  const text = pnpm ? content.toString("utf8") : "";
-  const install = pnpm && base !== null ? readPnpmInstall(dir, base, text, scans) : null;
-  const stale = npm ? staleHiddenLockfile(dir, hidden) : (install?.stale ?? null);
+  const { dir, base, format, content } = found;
+  const reading = format.read?.(dir, base, content, scans) ?? WHOLE;
   const hash = createHash("sha256").update(`${format.path}\0`);
-  if (stale !== null) {
-    const folders = npm ? packageFoldersFingerprint(dir, hidden) : install?.folders;
-    hash.update(`stale\0${folders}`);
-  } else if (hidden !== null) hash.update(`${INSTALLED_ENCODING}\0${withoutOwnVersions(hidden)}`);
-  else if (pnpm) hash.update(`${INSTALLED_ENCODING}\0${withoutLinkedSpecifiers(text)}`);
+  if (reading.stale !== null) hash.update(`stale\0${reading.folders}`);
+  else if (reading.text !== null) hash.update(`${INSTALLED_ENCODING}\0${reading.text}`);
   else hash.update(content);
-  const filtered = stale === null && (hidden !== null || pnpm);
+  const filtered = reading.stale === null && reading.text !== null;
   const former = filtered ? createHash("sha256").update(`${format.path}\0`).update(content) : null;
   const patches = createHash("sha256");
   if (format.patches !== null) {
@@ -264,34 +248,28 @@ export async function installedDependencies(
   }
   const lockfile = toRelative(worktreeRoot, join(dir, format.path)) ?? format.path;
   const note =
-    stale === null
+    reading.stale === null
       ? null
-      : `${lockfile} does not describe the installed packages (${stale}); ` +
-        `dependencies are keyed by their package.json files until ${npm ? "npm" : "pnpm"} rewrites it`;
-  const listed = npm && stale === null ? packagesOf(content) : null;
-  const graph =
-    listed === null || base === null
-      ? (install?.graph ?? null)
-      : new InstalledGraph(dir, base, listed, scans);
+      : `${lockfile} does not describe the installed packages (${reading.stale}); ` +
+        `dependencies are keyed by their package.json files until ${reading.manager} rewrites it`;
   const fingerprint = hash.digest("hex");
   return {
     fingerprint,
     former: former?.digest("hex") ?? null,
-    formerPnpm: install?.graph ? fingerprint : null,
+    formerPnpm: reading.manager === "pnpm" && reading.graph !== null ? fingerprint : null,
     note,
-    graph,
+    graph: reading.graph,
     patches: patches.digest("hex"),
   };
 }
 
-/** The `packages` map of a hidden lockfile, or `null` when it has none. */
-function packagesOf(content: Buffer): Record<string, unknown> | null {
-  try {
-    const parsed: unknown = JSON.parse(content.toString("utf8"));
-    return isRecord(parsed) && isRecord(parsed.packages) ? parsed.packages : null;
-  } catch {
-    return null;
-  }
+/** An installed lockfile `locateLockfile` found: the directory that holds it, its format and bytes. */
+interface Located {
+  readonly dir: AbsolutePath;
+  /** `dir` relative to the worktree, `null` outside it. */
+  readonly base: RelativePath | null;
+  readonly format: (typeof LOCKFILES)[number];
+  readonly content: Buffer;
 }
 
 /**
@@ -302,11 +280,13 @@ function packagesOf(content: Buffer): Record<string, unknown> | null {
 async function locateLockfile(
   projectRoot: AbsolutePath,
   worktreeRoot: AbsolutePath,
-): Promise<{ dir: AbsolutePath; format: (typeof LOCKFILES)[number]; content: Buffer } | null> {
+): Promise<Located | null> {
   for (let dir = projectRoot; ; dir = dirname(dir)) {
     for (const format of LOCKFILES) {
       const content = await readIfFile(join(dir, format.path));
-      if (content !== null) return { dir, format, content };
+      if (content === null) continue;
+      const base = resolve(dir) === resolve(worktreeRoot) ? "" : toRelative(worktreeRoot, dir);
+      return { dir, base, format, content };
     }
     // `null` for the worktree root itself and anything outside it.
     if (dirname(dir) === dir || toRelative(worktreeRoot, dir) === null) return null;
