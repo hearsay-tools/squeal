@@ -1,0 +1,17 @@
+# codex session cwd tail	time	kind	function	cause	reaction	verdict	note
+12ae2958	07:20:29	summary	-	recount	ignored	unclear	first count in a reviewer worktree
+0f54a051	10:29:23	summary	-	recount	ignored	unclear	first count
+4c8f1807	12:26:28	summary	-	recount	ignored	unclear	first count
+9790e2f2	12:39:35	summary	-	recount	ignored	unclear	first count
+3fad9fc5	15:48:05	summary	-	recount	ignored	unclear	first count
+cezar	06:34:26	summary	-	recount	read	unclear	first count at the switch-on; the session inspected that commit
+cezar	06:34:26	too big	run.ts	no edit	ignored	noise	first count
+cezar	08:54:44	STILL FAIL	describeWaitParity.<describe>	not own	ignored	noise	the session edited nothing; the shared main checkout changed
+87018a36	09:14:20	STILL FAIL	PendingAsk	own	repo check	redundant	cezar's own quality check drove the split
+87018a36	09:14:20	STILL FAIL	ThreadView	pull	ignored	noise	git switch at 09:12; its own edit to that file came later
+87018a36	09:14:20	STILL FAIL	reduceThread	pull	ignored	noise	git switch
+87018a36	09:21:50	PASS	PendingAsk	own	read	redundant	28 to 19 by cezar's check
+87018a36	09:52:14	STILL FAIL	NewTaskRoute	pull	ignored	noise	git merge origin/main
+1c9c2ead	12:03:48	summary	-	recount	ignored	unclear	counter version 2
+1c9c2ead	12:03:48	too big	run.ts	no edit	ignored	noise	rides on the recount
+1c9c2ead	12:03:49	summary	-	recount	ignored	noise	the same summary again, 1 s later

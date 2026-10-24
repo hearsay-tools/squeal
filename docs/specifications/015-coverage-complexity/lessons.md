@@ -156,3 +156,215 @@ Two smaller points belong in whichever row touches the wording next, not in rows
 - Part B (the passive working day) still runs on the real sessions. These sessions add the questions above to its tables. P1 and P2 should be counted there as well: how many `STILL FAIL` lines followed a pull, and how many `FAIL` or `PASS` lines came from a catch-up.
 - After a reset or checkout between sessions, start a daemon and wait for `squeal status --wait` before the next session starts. Without that, the next session's registration is stale (P2). Never run two sessions in one clone.
 - The raw streams, the transcripts and copies of both code stores stay under `/home/squeal-e2e/runs/d1510/` (`claude/projects/`, `evidence/`) and `/tmp/dogfood-015-10/w-4ddd4e37/logs/` while the host keeps them. The clones were removed after `squeal stop` in each.
+
+## Round 1 (015-10)
+
+Task 015-10 Part B, 2026-10-24, worker 6ee42e2a. The passive working day: every real agent session in this repository and in cezar while complexity was on, from the switch-on to this task's dispatch. The brief is `tasks/wave-1.md`, "015-10", Part B and its additions. The sources, the methods, every line with its verdict, the table per worktree and the scripts are in `tasks/015-10/part-b.md` and `tasks/015-10/part-b/bin/`. Each SQUEAL line quoted here is copied from a transcript. Function counts come from the code stores and from the released counters.
+
+### Verdict
+
+Keep complexity. When the agent's own edit makes the change, the lines are right and agents use them. Most noise came from changes the agent did not make, and 0.1.292 removed most of it.
+
+- **Lines.** 80 complexity lines reached agents, registration and other-side lines left out: 37 `STILL FAIL`, 11 `PASS`, 2 `FAIL`, 2 `RESOLVED`, 9 too-big lines and 19 summaries. Verdicts: 9 useful, 6 redundant, 28 unclear, 37 noise.
+- **Where the noise came from.** 24 of the 37 noise lines came from a pull, rebase, switch or merge in the session (Part C's P1). 9 were too-big lines for a file no session edited (B3). 2 came from a change the session did not make, and 2 repeated a summary (B4). No line was noise because of what the counter counts.
+- **Acted on.** Five agents changed code because of complexity output: 22 to 11, 21 to 2, 29 to 20, 22 to 18, and 20 to 19. Two more weighed a line and chose; one of them filed the issue that a later task used to take `SessionActivityCard` from 87 to 3. No agent treated a complexity line as a test failure. No agent stopped its task for one.
+- **0.1.292 worked.** `STILL FAIL` after a pull: 17 of 30 lines before 0.1.292, 1 of 7 after. PostToolBatch hooks cancelled at the 2 s timeout in cezar: 216 of 671 tool batches (32%) before 0.1.292, 0 of 180 after. 5 of the 16 stored cezar transitions never reached the agent, all of them before 0.1.292.
+- **Identity and churn.** No function over 20 lost its identity in 115 commits. One crossing came back within two edits, and it came back because the agent acted on it.
+
+Four defects and one product choice remain. Each is a proposed row below.
+
+- **B1. A merge that stops on a conflict reads as the agent's edit.** `HEAD` has not moved, so 015-19 does not apply. The only `STILL FAIL` from a pull after 0.1.292 is this case. The same revision told 3 `PASS` and 1 `RESOLVED` for code the session never touched.
+- **B2. A new worktree's registration says `0 functions over 20`.** 53 of 55 worker worktrees registered their first session with it, in every version from 0.1.284 to 0.1.294. 1 of the 53 was corrected later.
+- **B3. A too-big line comes with no edit.** 9 of 9 came with a first count, a recount or a resumed process, for cezar's `run.ts`, which no session edited.
+- **B4. A recount summary is told twice.** 2 of the 9 sessions that got the new counter's summary got it twice.
+- **B5 (a product choice). `FAIL`, `PASS` and `RESOLVED` from a pull.** 015-19 keeps them on purpose. 8 such lines reached agents, and no agent used one.
+
+The questions:
+
+- **status.md question 1, "Can the code squeal as well?"** Yes, for complexity. On a working day, 9 lines were useful and 5 code changes came from complexity output. No line was read as a test failure. Two things made it noisy: pulls inside sessions and lost hooks. 0.1.292 fixed most of both; B1 to B4 are the rest.
+- **status.md question 2, "Is the gain worth the CPU per run?"** For complexity, yes. The released counter took 1.9 ms of CPU at the median and 6.4 ms at p95 per changed file here (185 files), inside goal 8. In cezar it took 5.6 to 6.9 ms and 25 to 34 ms (66 files). That is over goal 8's numbers, but cezar's changed files are three times as large (median 20 KiB, against 6 KiB here), and goal 8 is set on this repository's files. The coverage half of the question is wave 2's.
+- **Open question 1 (`?.`, `??` and defaults).** Keep counting them, as the human decided on 2026-10-24. 1 of the 2 `FAIL` lines and 6 of the 37 `STILL FAIL` lines exist only because of `?.` and defaults. The one `FAIL` led to a fix. None of the 7 was noise because of these kinds.
+- **Open question 2 (`STILL FAIL`).** Keep it, and fix B1. 17 of the 37 lines came from the agent's own edit. 3 of the 17 led to a fix, 2 informed a choice, and 9 were ignored with no harm. 18 came from a pull, 17 of them before 0.1.292.
+- **Open question 4 (churn).** Keep immediate delivery. 1 crossing came back within two edits, because the agent acted on its `FAIL`. A two-edit hold would have delayed the `FAIL` that caused the fix.
+
+### Sources and windows
+
+| Item | Value |
+| --- | --- |
+| Windows | This repository from 03:55Z. cezar's main checkout from 06:26Z and its worktrees from 07:31Z, counted apart. All end at 16:49Z, this task's dispatch |
+| Transcripts | Claude Code under `~/.claude/projects/-home-agent-projects-squeal*` and `-home-agent-projects-cezar*`; Codex under `~/.codex/sessions/2026/10/24/` |
+| Stores | Each repository's `<git-common-dir>/squeal/code.sqlite`, opened read only |
+| Versions | Claude Code hook paths read `${CLAUDE_PLUGIN_ROOT}`, so a line's version is the newest in the plugin cache at its process's latest start (a SessionStart hook or an `instructions` attachment). Checked: no line's wording disagrees with its version. Codex: the skill path, a lower bound, since the Codex launcher runs the newest installed version. No Codex transition line falls near 0.1.292 |
+| Counters | 0.1.283 (`git archive squeal--v0.1.283`) for the CPU; 0.1.294 for identity and question 1 |
+| Not judged | Registration lines (B2), the 21 other-side lines of 015-27, and the 516 Haiku helper sessions in the two main checkouts, which got the registration line only |
+
+| Group | Claude Code | Codex |
+| --- | --- | --- |
+| This repository, worktrees | 50 worker and coordinator sessions | 18 reviewer sessions |
+| This repository, main checkout | 416 Haiku helpers | 0 |
+| cezar main checkout, 06:26 to 07:31Z | 19 Haiku helpers | 1 (it got the first count) |
+| cezar worktrees, 06:26 to 07:31Z | 2 | 0 |
+| cezar main checkout, from 07:31Z | 81 Haiku helpers | 3 |
+| cezar worktrees, from 07:31Z | 13 | 8 |
+
+The cezar sample is thin, and cezar has a complexity gate of its own: its `check-code-quality` skill fails a function over 20 before a pull request and asks for an "inherited-refactor" issue.
+
+### The table per repository
+
+Sessions are counted in each period they had a tool call in. "Other side" is 015-27's lines: complexity on a test delivery, then tests on a code delivery. These are not judged.
+
+**This repository.**
+
+| Period | Sessions (Claude Code + Codex) | With a line | `FAIL` | `PASS` | `STILL FAIL` | `RESOLVED` | Too big | Summary | Other side | Useful | Redundant | Unclear | Noise |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Before 0.1.292 | 31 + 8 | 12 | 2 | 2 | 16 | 0 | 0 | 4 | 0 | 5 | 0 | 9 | 10 |
+| 0.1.292 and later | 21 + 10 | 8 | 0 | 1 | 6 | 0 | 0 | 4 | 12 + 2 | 2 | 0 | 9 | 0 |
+
+**cezar.**
+
+| Period | Sessions (Claude Code + Codex) | With a line | `FAIL` | `PASS` | `STILL FAIL` | `RESOLVED` | Too big | Summary | Other side | Useful | Redundant | Unclear | Noise |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Main checkout, 06:26 to 07:31Z | 0 + 1 | 1 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 1 | 1 |
+| Worktrees, 06:26 to 07:31Z | 2 + 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| From 07:31Z, before 0.1.292 | 8 + 8 | 9 | 0 | 4 | 14 | 1 | 2 | 3 | 0 | 2 | 6 | 3 | 13 |
+| 0.1.292 and later | 10 + 3 | 7 | 0 | 4 | 1 | 1 | 6 | 7 | 1 + 6 | 0 | 0 | 6 | 13 |
+
+**By version.** No session on 0.1.294 got a complexity line; it reached the cache at 16:14Z.
+
+| Repository | Version | `FAIL` | `PASS` | `STILL FAIL` | `RESOLVED` | Too big | Summary | Useful | Redundant | Unclear | Noise |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| This repository | 0.1.279 (one Codex session; a lower bound) | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 0 |
+| This repository | 0.1.284 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 2 | 0 |
+| This repository | 0.1.286 | 1 | 2 | 9 | 0 | 0 | 1 | 5 | 0 | 3 | 5 |
+| This repository | 0.1.287 | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 1 | 4 |
+| This repository | 0.1.288 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
+| This repository | 0.1.289 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 1 |
+| This repository | 0.1.292 | 0 | 0 | 4 | 0 | 0 | 4 | 0 | 0 | 8 | 0 |
+| This repository | 0.1.293 | 0 | 1 | 2 | 0 | 0 | 0 | 2 | 0 | 1 | 0 |
+| cezar | 0.1.286 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 | 1 | 1 |
+| cezar | 0.1.287 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 0 | 4 |
+| cezar | 0.1.288 | 0 | 2 | 4 | 1 | 0 | 0 | 1 | 3 | 0 | 3 |
+| cezar | 0.1.289 | 0 | 1 | 5 | 0 | 2 | 3 | 1 | 1 | 3 | 6 |
+| cezar | 0.1.292 | 0 | 3 | 1 | 1 | 6 | 7 | 0 | 0 | 6 | 12 |
+| cezar | 0.1.293 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+
+How I judged a line. **Useful**: the agent acted on it or used it to choose, or it confirmed the agent's fix. **Redundant**: true, but the agent already knew it, from its task or from cezar's own check. **Unclear**: true and about the agent's own edit, but the agent did not react. Summaries are unclear unless repeated. **Noise**: it named a change the agent did not make, or repeated a line already told.
+
+### Open question 1: `?.`, `??` and defaults
+
+The store keeps decision points by kind. `??` is stored inside `logical`, so the counts below without `?.` and defaults are upper bounds of what is left, and the shares are lower bounds.
+
+- **`FAIL`.** 1 of 2 lines exists only because of `?.`: `planCodeDelta` is 22 with 3 optional chains, 19 without them. The agent split it, to 11. The other `FAIL`, `readPnpmLockfile` at 58, came from a rebase and stays over either way.
+- **`STILL FAIL`.** 6 of 37 lines exist only because of `?.` and defaults: `recordFocusedTier.<map>` 25 (20 without; a pull), `vitestCase` 21 (19; a pull), `vitestCase` 22 twice (20), `TierYields.#decide` 21 (20) and `LockFilePool.acquire` 22 (19). The 2 from a pull were noise because of the pull. The 4 from own edits were unclear, as most own-edit lines were.
+- **The trees at the window's end**, test files left out: here 17 of 82 functions over 20 (21%) are over only because of `?.` and defaults, and 34 (41%) when `??` is estimated from the text. In cezar, 45 of 261 (17%) and 83 (32%).
+
+### Open question 2: `STILL FAIL`
+
+| Cause of the line | Before 0.1.292 | 0.1.292 and later |
+| --- | --- | --- |
+| A pull, rebase, switch or merge in the session | 17 | 1 (B1) |
+| A change the session did not make | 2 | 0 |
+| The agent's own edit | 11 | 6 |
+
+The 17 lines from the agent's own edit:
+
+- 3 led to a fix: `stalePnpmLockfile` 21 to 2, `SkillsCatalog` 29 to 20, `TierYields.#decide` 22 to 18.
+- 2 informed a choice. 09eb6544 left `createDelivery.deliver.<transaction>` (44) alone as "not mine to split". 0829604a filed cezar issue #1608 for `SessionActivityCard` (87), as cezar's own check asks.
+- 1 was redundant: Codex 87018a36 split `PendingAsk` 28 to 19, but cezar's own quality check had already asked for it.
+- 2 were unclear. 32fe48c6 was told `#decide` during a mutation check, and again in a new process. 709075cc moved a ternary out of `vitestCase` (22 to 21) 6 s after its line and said nothing about it.
+- 9 were ignored. Each was true: the function was over before, and the agent's task was elsewhere.
+
+Under 0.1.292 and later, 6 of the 7 lines came from the agent's own edit, and all 6 carried the quiet hint. One of them led to a fix (`#decide`).
+
+The 2 from a change the session did not make: 9354f23b got `waitForNamed.<withStatusStore>` (44) for a file it had not written, with no cause visible in its transcript. A Codex session in cezar's main checkout got `describeWaitParity.<describe>` (25) when other actors changed the shared checkout, which is D6's stated limit.
+
+### Open question 4: churn
+
+- **Within a session.** 1 crossing came back within two edits. 09eb6544 took `planCodeDelta` from 17 to 22 (`FAIL`), then to 21 (quiet), then to 11 (`PASS`). It came back because the agent acted on the `FAIL`. No other function crossed and came back.
+- **Across commits.** `stalePnpmLockfile` went from 13 to 24 to 2 in two consecutive commits of 78026511, which landed together.
+
+### P1 and P2
+
+| Count | Before 0.1.292 | 0.1.292 and later |
+| --- | --- | --- |
+| `STILL FAIL` lines after a pull (P1) | 17 of 30 | 1 of 7, the conflicted merge (B1) |
+| `FAIL`, `PASS` or `RESOLVED` lines from a pull | 3: 1 `FAIL`, 2 `PASS` | 5: 4 `PASS`, 1 `RESOLVED`; 4 of the 5 from the conflicted merge |
+| `FAIL` or `PASS` lines from a catch-up (P2) | 0 | 0 |
+
+No agent used a line that came from a pull. The 2 pulled `STILL FAIL` lines that were redundant, not noise, named the function the agent's task was about. The coordinator recorded 5 pulled lines as dogfood cases.
+
+### For 015-26: edits while a function stays over
+
+- 7 `STILL FAIL` lines carried the quiet hint, all under 0.1.292 and later.
+- **0 of the 7 functions** got a third or later body edit while still over after the hint.
+- 2 got one more body edit, and in both the agent was working on that function for its task. 709075cc moved a ternary out of `vitestCase` (22 to 21). 3dd9fc58 renamed a variable in `selectTier` (81).
+
+The count does not support a subscription row. Part C's three-round refactors (sq5, cz5r) ran before the hint, on 0.1.284.
+
+### Acted on
+
+| Worker (row) | Version | Function | CC | What Squeal said | The agent's sentence |
+| --- | --- | --- | --- | --- | --- |
+| 09eb6544 (015-20) | 0.1.286 | `planCodeDelta`, `src/core/delivery/code-delta.ts` | 17, 22, 11 | `FAIL complexity: planCodeDelta (src/core/delivery/code-delta.ts:115) is 22, over 20 (ESLint rule)` | "Squeal flags my own edit: `planCodeDelta` is now 22. Splitting the per-state step into its own function." |
+| 78026511 (011-165 to 011-167) | 0.1.286 | `stalePnpmLockfile`, `src/core/keys/pnpm-install.ts` | 21, 2 | `STILL FAIL complexity: stalePnpmLockfile (src/core/keys/pnpm-install.ts:92) is 21 after the edit; it was already over 20 before it (ESLint rule)` | "Squeal also reports `stalePnpmLockfile` at complexity 21, over the limit of 20, so I will split it." |
+| e71c2637 (cezar, skills grouping) | 0.1.289 | `SkillsCatalog`, `packages/web/src/routes/skills.tsx` | 38 at the task's base, 29, 20 | `STILL FAIL complexity: SkillsCatalog (packages/web/src/routes/skills.tsx:90) is 29 after the edit; …` | "All 47 route tests pass, and no function in my files is over the complexity limit now." Its `PASS` was lost to 4 cancelled hooks |
+| d16e9716 (011-184) | 0.1.293 | `TierYields.#decide`, `src/core/scheduler/yields.ts` | 22, 18 | `STILL FAIL complexity: TierYields.#decide (src/core/scheduler/yields.ts:182) is 22 after the edit; …`, with the quiet hint | "`#decide` was already over Squeal's complexity threshold of 20 before my change and is 22 now." |
+| f9416aba (015-31) | 0.1.292 | `judge` | 18, 20, 19 | No line: 20 is at the threshold, so nothing crossed. The agent read it from its own `squeal code` call | "`judge` is now CC 20, exactly at the threshold; it was 18." |
+
+Not counted as caused by Squeal: Codex 87018a36's `PendingAsk` (28 to 19), which cezar's own check drove; ae23d48c's `SessionActivityCard` (87 to 3), the task made from issue #1608; and `reduceThread` (203 to 6) and `NewTaskRoute` (88 to 13), which were the tasks themselves.
+
+### Identity
+
+I walked every window commit with the 0.1.294 counter: 99 here and 16 in cezar.
+
+- Body-hash moves matched: 55 here and 66 in cezar. None of the moved functions was over 20.
+- Removals with no match: 61 here (39 anonymous) and 72 in cezar (53 anonymous). None was over 20, except cezar's `reduceThread.upsertConversation`. It moved and changed (27 to 2) in one edit, which D2 accepts as removed plus new. The agent got `RESOLVED` for it.
+- **Identity losses over the threshold: 0.** Anonymous names that changed over the threshold: 0.
+
+### Cost and lost hooks
+
+- **Counting CPU.** The pass logs no timing of its own, so I timed the released 0.1.283 counter on both sides of every file the window changed, after a warm-up count of each.
+
+| Repository | Files | Median file size | CPU per file, median | CPU per file, p95 | CPU per commit, median | CPU per commit, p95 | Load |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| This repository | 185 | 6.3 KiB | 1.9 ms | 6.4 ms | 7.1 ms | 23.7 ms | 4.4 to 5.2 |
+| cezar | 66 | 19.7 KiB | 5.6 to 6.2 ms | 25 to 34 ms | 53 ms | 150 ms | 4.4 to 5.2 |
+| cezar, again | 66 | 19.7 KiB | 6.9 ms | 28.5 ms | — | — | 10.8 |
+
+- **Lost hooks.** A PostToolBatch hook cancelled at its 2 s timeout loses its delivery (Part C's P5).
+
+| Repository | Before 0.1.292 | 0.1.292 and later |
+| --- | --- | --- |
+| cezar | 216 of 671 tool batches (32%); 207 of 604 (34%) from 07:31Z to 12:04Z | 0 of 180 |
+| This repository | 31 of 3,419 (0.9%) | 0 of 1,708 |
+
+In cezar's worktrees with a session, the store holds 16 transitions from the window. 10 were told, 1 was folded into a recount summary, and 5 never reached the agent, all before 0.1.292: `PendingAsk` in 0829604a and in f475e065, `NewTaskRoute` in f475e065, `SkillsCatalog` in e71c2637 and `SessionActivityCard` in ae23d48c. Here, 5 of 8 transitions were told, and the other 3 (first seen) were folded into a first-count summary.
+
+- **Store size.** The code store here is 341 MB. 55 removed worktrees still hold 651,460 of its 780,283 `states` rows, 66,562 `files` rows and 153,056 view rows. 13 departed consumers from before 0.1.292 hold about 11,700 view rows each. cezar's store is 142 MB, with 146,672 `states` rows for 9 removed worktrees. Released daemons never call `prune.ts`; 015-11 adds its first caller (in review as 0.1.295). No new row.
+
+### Other observations
+
+- **Other-side lines.** 21 reached agents, all under 0.1.292 and later: 13 on complexity and 8 on tests. No agent ran `squeal code --told`. 3dd9fc58 got `Complexity: 2 functions over 20 that this session was told about; …` 7 times in 19 minutes, which is the rule as written.
+- **The registration line** (B2): 90 registration lines in worker worktrees, 53 of them `Complexity: 0 functions over 20; squeal code lists them.` while this repository had 82 such functions and cezar about 265. f9416aba registered with 0 at 14:42Z; its `squeal status` said 82 at 15:02Z. The other 37 registration lines, mostly from later processes in the same worktrees, gave a count above 0.
+- **cezar's own gate** made 1 `STILL FAIL` redundant (`PendingAsk`), and made 1 useful: the agent filed the issue cezar's check asks for (`SessionActivityCard`).
+- **Recounts.** The counter's version moved during the day. The summary `Complexity counted again by a new counter: N functions over 20; squeal code lists them.` reached cezar sessions at 12:03Z to 13:42Z and this repository at 13:54Z. No agent acted on one.
+
+### Proposed rows
+
+The numbers continue after 015-33; the coordinator assigns the final ones. None of these is fixed here.
+
+| Row | Problem, with the evidence | Done when |
+| --- | --- | --- |
+| B1, 015-34 a merge stopped by a conflict is not the agent's edit | f475e065, 13:51Z, 0.1.292: `git merge origin/main` stopped on a conflict. The revision told `PASS` for `SessionActivityCard`, `SkillsCatalog` and `reduceThread`, `RESOLVED` for `reduceThread.upsertConversation`, and `STILL FAIL complexity: ThreadView (packages/web/src/routes/task-thread/task-thread.tsx:178) is 78 after the edit; …`, all for code the session never touched. `HEAD` had not moved, so 015-19's rule did not apply. Proposal: while `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD` or `REBASE_HEAD` exists, a file equal to its blob at that commit marks no edit, as 015-19 does for a moved `HEAD`. D6 amendment | A pass test: a merge that stops on a conflict and brings a failing function's committed body marks no edit, and the consumer gets no `STILL FAIL`. An edit to that function after it still gets one |
+| B2, 015-35 a new worktree registers with 0 functions over 20 | 53 of 90 registration lines in worker worktrees said `Complexity: 0 functions over 20; squeal code lists them.`, in 53 of 55 worktrees' first sessions and every version from 0.1.284 to 0.1.294. This repository had 82 such functions and cezar about 265. 1 of the 53 got a `Complexity counted:` line later. f9416aba registered 0 at 14:42Z, and its `squeal status` said 82 at 15:02Z. Part C saw the same wording while counting. The cause is inferred: the registration reads a worktree that has no counts yet. Proposal: until a worktree's first count ends, its registration says `Complexity: counting has not started.` (or D6's `counting, N of M files`); the first count's end then tells each session registered before it one `Complexity counted: N functions over 20` line | An integration test: a new worktree with complexity on and a session registered before its first count. The session gets no `0 functions` line, and gets one `Complexity counted:` line with the right number after the count |
+| B3, 015-36 a too-big line with no edit | 9 of 9 too-big lines, all `packages/cezar/src/workflows/run.ts is 560 KiB, over the 512 KiB limit; its functions are not counted.`, came with a first count (1), a counter recount (6) or a resumed process (2: d0a78289 at 13:40Z, f475e065 at 13:50Z). No session and no window commit edited `run.ts`. Part C's cz4r got it once, for its own edit, which is right. Proposal: tell a too-big line only for an edit to that file after the session registered; a resumed session keeps what it was told | Delivery tests: a recount and a resumed session tell no too-big line for a file not edited; an edit to that file tells one |
+| B4, 015-37 a recount summary told twice | 2 of the 9 sessions that got `Complexity counted again by a new counter: …` got it twice: f475e065 at 12:11:22Z and 12:11:42Z, both at revision 4, and Codex 1c9c2ead at 12:03:48Z and 12:03:49Z. The cause is not verified. Proposal: the transaction that tells the summary compares and sets the consumer's seed, so a second hook finds it told | A delivery test: two hooks deliver at once after a recount, and exactly one carries the summary |
+| B5, 015-38 transitions from a pull (a product choice) | 8 `FAIL`, `PASS` or `RESOLVED` lines came from a pull, rebase, switch or merge: `FAIL complexity: readPnpmLockfile (src/core/keys/pnpm-lockfile.ts:87) is 58, over 20` after a rebase, and 7 `PASS` or `RESOLVED` for functions the session never touched. No agent used one. 015-19 keeps them on purpose, "as a test result would be". Options: (a) a `PASS` or `RESOLVED` from a pull, for a function the session was not told about, is taken in by count and not told, while a `FAIL` from a pull is still told; (b) all three are taken in by count; (c) leave as is. My default is (a) | With (a): a delivery test where a pull takes a counted failing function under 20 tells nothing, and a pull that brings a new function over 20 tells `FAIL` |
+
+Seen and not made rows: P5's lost deliveries look fixed by 0.1.292 (above); the code store's retention waits for 015-11's prune caller; a shared main checkout reads other actors' changes as the session's, as D6 states; 9354f23b's one line has no visible cause.
+
+### For the next worker
+
+- Count again after B1 to B4 land and after 015-11's prune caller is released. This window has no line from 0.1.294.
+- Read a Claude Code session's version from its process starts, not from its first start: cezar resumes restart the process, and one session crossed four versions. An `environment` attachment is not a start; it comes with every change of directory.
+- The raw data stays under `/tmp/dogfood-015-10/w-6ee42e2a/out/` while the host keeps it. `tasks/015-10/part-b.md` lists the files and holds every line with its verdict.
