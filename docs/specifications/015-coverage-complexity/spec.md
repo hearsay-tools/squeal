@@ -138,7 +138,7 @@ The fingerprint of a code failure is its rule and threshold, never its value. So
 
 ### D6. What the agent sees
 
-**Registration.** One line, only when the feature is on: `Complexity: 62 functions over 20; squeal code lists them.` While the first count runs: `Complexity: counting, 340 of 600 files.` No function is listed. The consumer's view is seeded with every failing state, as 011 C5 seeds test states; a function with no view row reads as passing, and a function that passes leaves the view. Each failing function is marked as told by count only. A change at or before the revision the session counts from is taken into the view by count and never told: that revision is the registration's, or the next one when it is the daemon's start scan and the registration was not scanned, so a change made while no daemon ran is not the session's. SessionEnd drops the session's view rows, and a session sweep drops those of departed consumers (amended 2026-10-24, 015-20).
+**Registration.** One line, only when the feature is on: `Complexity: 62 functions over 20; squeal code lists them.` While the first count runs: `Complexity: counting, 340 of 600 files.` No function is listed. The consumer's view is seeded with every failing state, as 011 C5 seeds test states; a function with no view row reads as passing, and a function that passes leaves the view. Each failing function is marked as told by count only. A change at or before the revision the session counts from is taken into the view by count and never told: that revision is the registration's, or the next one when it is the daemon's start scan and the registration was not scanned, so a change made while no daemon ran is not the session's. The same holds where a parked session resumes: the daemon's start scan after the resume is not the session's, and its own changes from before the pause stay its own (amended 2026-10-24, review 0.1.290 B1, repair R1). SessionEnd drops the session's view rows, and a session sweep drops those of departed consumers (amended 2026-10-24, 015-20).
 
 **A change.** A code transition is delivered with the test transitions of the same delivery, in the same FAIL and PASS block format:
 
@@ -156,6 +156,12 @@ A delivery holds at most 5 code transitions in full. The rest become one line: `
 
 The view entry is then marked told in full. Later edits to the function in that session are quiet until its state changes. A revision that moves `HEAD` (a pull, merge, rebase or checkout) marks no edit for a file whose bytes are its blob at the new `HEAD`; a `FAIL` or `PASS` from it is still delivered (amended 2026-10-24, 015-19). After a `FAIL` told in the session, the next edit that changes the function and leaves it over is told once as `STILL FAIL ... is 22 after the edit, over 20`; later edits that stay over are quiet until its state changes. Every `STILL FAIL` line ends with `Squeal stays quiet about it until it is at or under 20, and squeal code <path> shows its count.` (amended 2026-10-24, 015-21, the human's choice).
 
+**The other side.** A delivery with news of one kind ends with at most one line about the other kind, only while that kind has something standing for the session (amended 2026-10-24, 015-27, the human's choice):
+
+- Test news (any test entry) ends with `Complexity: 2 functions over 20 that this session was told about; squeal code --told lists them.` while a function told to the session in full (`FAIL` or `STILL FAIL`) is still over. A function the view holds by count only is not counted.
+- Complexity news with no test entry ends with `Tests: 3 known failures; squeal status lists them.` while status's `Known failures` is above 0. A failure that waits for its rerun after an edit is not counted.
+- Neither line comes at registration, which gives both, or with the policy off. Stop's full text has no test line, as it already ends with `Known failures: N`. The idle waiter reads the told count only when it has test news.
+
 **A file too big to count.** The first time in a session that an edit changes an included file over `complexity.maxFileBytes`, the session gets one line: `src/big.ts is 600 KiB, over the 512 KiB limit; its functions are not counted.` Later edits to it in that session are quiet. `squeal code` lists every such file.
 
 **A summary.** A policy change, or a counter version that changes states, delivers `Complexity threshold is now 15: 117 functions over; squeal code lists them.` and re-seeds the views by count.
@@ -165,13 +171,14 @@ The view entry is then marked told in full. Later edits to the function in that 
 **Details on demand.** These come from a new command, `squeal code`:
 
 ```text
-squeal code [<path>...] [--changed] [--json]
+squeal code [<path>...] [--changed | --told] [--json]
 ```
 
 - With no path, it lists every function over the threshold, newest first by the revision at which it went over. Each line gives the location, the CC, its decision points by kind and the revision.
 - With paths, it lists every function in those files with its CC, over the threshold or not.
 - Files not counted (too big, parse errors) are listed after the functions, with the reason.
 - `--changed` keeps the functions whose state changed since the consumer registered.
+- `--told` lists the functions over the threshold that the session was told about in full: the same read as the test-news line above, so the two agree. In a shell with no session registered here (Pi, a terminal) it lists those told to any registered session, and says so. `--told` with `--changed` exits 2 (015-27).
 - `--json` gives a versioned shape. The command reads the store and needs no daemon, like `status` (011 C6).
 
 ### D7. Blocking
