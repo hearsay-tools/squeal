@@ -20,12 +20,15 @@ import { checkId } from "./files.js";
 
 /**
  * The formats C3 reads as one, for a miss (task 011-38): the key's file and
- * its keys at each listed format, and the key each file was last read at in
- * this daemon (`testFileId`), so each file is read once per key.
+ * its keys at each listed format, and what each file was last read at in
+ * this daemon (`testFileId`): its key and those keys (`readAt`), so each file
+ * is read once per key and keys read as one. A closure change can move those
+ * keys alone: a path with no file leaving it moves the key before 011-158,
+ * not the current one (review 0.1.285 B1).
  */
 export interface ReadAsOne {
   readonly keys: (key: CheckKey) => KeysReadAsOne | null;
-  readonly read: Map<string, CheckKey>;
+  readonly read: Map<string, string>;
 }
 
 /**
@@ -61,19 +64,27 @@ export function acceptedAt(
 /**
  * Spec 011 C4 step 3 as amended 2026-10-20 (task 011-38): "A key with no
  * result is first read at the formats C3 reads as one, once per file and
- * key in a daemon". The newest set stored at one is copied to `key`
+ * key in a daemon", once per file, key and keys read as one since row
+ * 011-158. The newest set stored at one is copied to `key`
  * (`ResultRepo.copyNewest`, C7) in a statement of its own, so the write
- * lock is held for one copy at a time. True when it copied a set. A busy
- * store's error leaves the read to the next lookup.
+ * lock is held for one copy at a time, and only while no row is stored at
+ * `key`. True when it copied a set. A busy store's error leaves the read to
+ * the next lookup.
  */
 function copyReadAsOne(store: Store, key: CheckKey, listed: ReadAsOne): boolean {
   const found = listed.keys(key);
   if (found === null || found.keys.length === 0) return false;
   const id = testFileId(found.testFile);
-  if (listed.read.get(id) === key) return false;
+  const at = readAt(key, found.keys);
+  if (listed.read.get(id) === at) return false;
   const copied = store.results.copyNewest(key, found.keys);
-  listed.read.set(id, key);
+  listed.read.set(id, at);
   return copied;
+}
+
+/** What a file is read at: its key and its keys read as one, in their order. */
+function readAt(key: CheckKey, keys: readonly CheckKey[]): string {
+  return [key, ...keys].join(" ");
 }
 
 /**
