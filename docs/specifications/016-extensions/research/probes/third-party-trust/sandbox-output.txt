@@ -1,0 +1,9 @@
+kernel 6.8.0-147-generic; apparmor_restrict_unprivileged_userns=1
+== user namespace (what Bazel linux-sandbox and bwrap need)
+unshare: write failed /proc/self/uid_map: Operation not permitted
+userns: refused
+== Landlock read allow list
+landlock ABI: 4
+inside
+cat: $S/secret/out.txt: Permission denied
+scratch removed

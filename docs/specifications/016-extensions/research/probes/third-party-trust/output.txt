@@ -1,0 +1,15 @@
+$S/bin/reader-dyn:    ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter
+$S/bin/reader-static: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, BuildID[sha
+== A. Squeal's Node recorder (src/runners/observe/recorder.cjs), as --require
+read 4 bytes from data-dyn.txt
+read 7 bytes from data-static.txt
+read 4 bytes from data-env.txt
+fake test done
+recorded reads: data-dyn.txt data-node.txt data-static.txt fake.test.cjs
+== B. strace -f (ptrace), same test, no recorder
+data files strace saw opened: data-dyn.txt data-env.txt data-node.txt data-py.txt data-sh.txt data-static.txt
+== C. LD_PRELOAD shim on the two C readers
+[shim] open data-dyn.txt
+read 4 bytes from data-dyn.txt
+read 7 bytes from data-static.txt
+scratch removed: /tmp/tpt-probe.KpssvX
