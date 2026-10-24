@@ -1,6 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { join } from "node:path";
-import type { CheckKey, EpochMs, FocusedFile, TestFileRef } from "../types/index.js";
+import { focusesFile } from "../daemon/composite-runner.js";
+import type { CheckKey, TestFileRef } from "../types/index.js";
 import { peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
@@ -8,9 +7,7 @@ import type { FocusEntry } from "./focused-entries.js";
 import { writeFocused } from "./focused-row.js";
 import type { Ledger } from "./ledger.js";
 import { quietHolds } from "./quiet.js";
-import { tierLoad } from "./retries.js";
-import { snapshotInputs } from "./stability.js";
-import { cancels, laneOf, type Tier, type TierFile } from "./tiers.js";
+import { laneOf, newTier, type Tier, type TierFile } from "./tiers.js";
 
 /*
  * Spec 011 C4 and C15 as amended 2026-10-23 (row 011-135; code row
@@ -24,8 +21,7 @@ import { cancels, laneOf, type Tier, type TierFile } from "./tiers.js";
 
 /** Whether the runner of `ref` honours `RunOptions.checks` (spec 011 C14, row 011-145). */
 export function focuses(context: SchedulerContext, ref: TestFileRef): boolean {
-  const { runner } = context;
-  return runner.focusesFile?.(ref) ?? runner.focuses === true;
+  return focusesFile(context.runner, ref);
 }
 
 /**
@@ -127,15 +123,14 @@ export function selectFocusedTier(
     picked.push({ entry, ...run });
   }
   if (lane === null) return null;
-  return startFocusedTier(context, ledger, picked, lane);
+  return startFocusedTier(context, ledger, picked);
 }
 
 function startFocusedTier(
   context: SchedulerContext,
   ledger: Ledger,
   picked: readonly { entry: FocusEntry; file: FileState; key: CheckKey }[],
-  lane: string,
-): Tier {
+): Tier | null {
   const { keys, store, worktreeId } = context;
   const files: TierFile[] = picked.map(({ file, key }) => ({
     file,
@@ -144,26 +139,26 @@ function startFocusedTier(
     checkpointId: null,
     forced: false,
   }));
-  const runId = randomUUID();
-  const logDir = join(context.runsDir, runId);
-  const startedAt = context.now();
-  const focus: FocusedFile[] = picked.map(({ entry }) => ({
-    testFile: entry.ref,
-    texts: entry.texts,
-  }));
-  const revision = ledger.revision;
-  store.transaction(() =>
+  const first = files[0];
+  if (first === undefined) return null;
+  // The focused row's write takes the store first, as `startTier`'s
+  // transaction does: a busy store gives up before the tier begins its run.
+  const tier = store.transaction(() => {
+    const started = {
+      ...newTier(context, ledger, first, files, "focused"),
+      focus: picked.map(({ entry }) => ({ testFile: entry.ref, texts: entry.texts })),
+    };
     writeFocused(
       store,
       worktreeId,
       picked.map(({ entry, key }) => ({
         testFile: entry.ref,
         key,
-        revision: revision.number,
+        revision: started.revision.number,
         texts: entry.texts,
-        runId,
-        logDir,
-        startedAt: startedAt as EpochMs,
+        runId: started.runId,
+        logDir: started.logDir,
+        startedAt: started.startedAt,
         endedAt: null,
         end: null,
         reason: null,
@@ -172,33 +167,12 @@ function startFocusedTier(
         checks: [],
         more: 0,
       })),
-    ),
-  );
-  const first = files[0]?.file.ref ?? picked[0]?.entry.ref;
-  const tier: Tier = {
-    runId,
-    logDir,
-    lane,
-    run: keys.beginRun(),
-    changes: new Set(),
-    revision,
-    checkpointId: null,
-    files,
-    snapshot: snapshotInputs(
-      keys.cache,
-      files.flatMap((p) => p.inputs),
-    ),
-    kind: "focused",
-    startedAt,
-    ended: new Set(),
-    cancel: first !== undefined && cancels(context, first) ? new AbortController() : null,
-    loadPerCpu: tierLoad(context),
-    focus,
-  };
-  ledger.tierChanges.add(tier.changes);
+    );
+    return started;
+  });
   ledger.queue.focused.started(
     picked.map((p) => p.entry),
-    runId,
+    tier.runId,
   );
   ledger.queue.tierSelected(false);
   return tier;
