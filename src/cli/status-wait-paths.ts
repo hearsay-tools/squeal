@@ -547,23 +547,7 @@ export async function namedWaitCommand(
 ): Promise<number> {
   const checks = how.checks ?? [];
   const wait = waitForNamed(io.cwd ?? process.cwd(), paths, { ...options, checks });
-  return printNamedRead(wait, how, io, options.now);
-}
-
-/** `printNamed` of what `read` gives; its `CheckUsageError` exits 2 (row 011-146, C15). */
-export async function printNamedRead(
-  read: Promise<NamedWait>,
-  how: NamedPrint,
-  io: CliIo,
-  now: () => EpochMs,
-): Promise<number> {
-  try {
-    return printNamed(await read, how, io, now);
-  } catch (error) {
-    if (!(error instanceof CheckUsageError)) throw error;
-    io.stderr(`squeal status: ${error.message}\n`);
-    return 2;
-  }
+  return printNamed(wait, how, io, options.now);
 }
 
 /**
@@ -575,14 +559,23 @@ export async function printNamedRead(
  * (`NamedWaitPayload`) in both forms (row 011-63, gh-65), and the same
  * payload under `wait`, or `named` for a snapshot, as before. Returns D1's
  * code for the selected files only: 0, 1 with known failures among them, 3
- * without a verdict, an unreadable store included.
+ * without a verdict, an unreadable store included; 2 for a `CheckUsageError`
+ * (row 011-146, C15).
  */
-export function printNamed(
-  wait: NamedWait,
+export async function printNamed(
+  read: Promise<NamedWait>,
   how: NamedPrint,
   io: CliIo,
   now: () => EpochMs,
-): number {
+): Promise<number> {
+  let wait: NamedWait;
+  try {
+    wait = await read;
+  } catch (error) {
+    if (!(error instanceof CheckUsageError)) throw error;
+    io.stderr(`squeal status: ${error.message}\n`);
+    return 2;
+  }
   if (wait.outcome === "unavailable") {
     const { result } = wait;
     io.stdout(how.json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, now()));
