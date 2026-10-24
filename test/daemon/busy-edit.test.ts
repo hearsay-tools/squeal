@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { readHeader } from "../../src/core/delivery/index.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   delay,
@@ -78,7 +79,7 @@ function startWriter(database: string, env: NodeJS.ProcessEnv, epoch: number): S
 
 describe("an edit while another connection holds the store's write lock (001-422)", () => {
   it(`is stored within ${WITHIN_MS} ms of a ${HOLD_MS} ms hold ending, and the daemon answers throughout`, async () => {
-    const repo = suite.fixture();
+    const repo = suite.fixture({ "squeal.config.json": runMissingConfig() });
     const created = openStore(repo.commonDir);
     if (isStoreOpenFailure(created)) throw new Error(JSON.stringify(created));
     created.close();

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
 import type { CheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -46,7 +47,7 @@ function flakyRepo() {
 async function failThenExit() {
   const repo = flakyRepo();
   const store = openRepoStore(repo.commonDir);
-  const first = await openHarness(repo.main, store, repo.commonDir);
+  const first = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
   let reached = () => {};
   const atRun = new Promise<void>((resolve) => {
     reached = resolve;
@@ -129,7 +130,7 @@ describe("a re-run is owed work the last session's departure drains (task 001-21
   it("names the re-run while it is queued or running, and nothing once it ran", async () => {
     const repo = flakyRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     const seen: (string | null)[] = [];
     h.runner.beforeRun = (files) => {
       if (files.some((f) => f.path === FLAKY)) seen.push(h.scheduler.owedWork());

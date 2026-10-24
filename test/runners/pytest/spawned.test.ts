@@ -12,6 +12,7 @@ import {
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { readEnvironment } from "../../../src/runners/pytest/environment/index.js";
 import { runPytest } from "../../../src/runners/pytest/run/run.js";
+import { RUN_MISSING } from "../../helpers/baseline.js";
 import { findPython, PYTHONS, pythonEnv } from "../../helpers/pytest-env.js";
 import { pytestRepos } from "../../integration/pytest-repo.js";
 import { openHarness, openRepoStore } from "../../scheduler/helpers.js";
@@ -77,7 +78,10 @@ describe.each(PYTHONS)(
         observed: pytestObservedStore(store, project.name),
         cacheDir: join(root, "..", `pytest-cache-${name}-${version}`) as AbsolutePath,
       });
-      const h = await openHarness(root, store, commonDir, { adapters: [pytest] });
+      const h = await openHarness(root, store, commonDir, {
+        adapters: [pytest],
+        policy: RUN_MISSING,
+      });
       const outcome = (path: string) =>
         store.knownStates
           .list(h.worktreeId)

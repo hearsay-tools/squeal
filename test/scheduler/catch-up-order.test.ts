@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpOptions,
@@ -160,7 +161,12 @@ describe("scheduler: catch-up's place in the order (C4 step 4, task 011-22)", {
 
     async function changed(options: Partial<CatchUpOptions>) {
       const repo = catchUpRepo(files);
-      const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, ...options });
+      const side = catchUpSide(repo, repo.main, {
+        files,
+        hostSlots: 4,
+        policy: RUN_MISSING,
+        ...options,
+      });
       await side.scheduler.start();
       await side.scheduler.idle();
       const before = side.runner.runs.length;

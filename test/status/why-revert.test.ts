@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatWhy, readWhy } from "../../src/core/status/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import { reportOf } from "./why-seed.js";
 
@@ -26,7 +27,7 @@ describe("squeal why after a revert", SLOW, () => {
   it("names the run that stored the restored key's result", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     h.write(PLAIN, plain("K0 OUTPUT"));
     await h.scheduler.start();
     await h.scheduler.idle();

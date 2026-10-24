@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { onTestFinished } from "vitest";
 import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.js";
 
 /*
@@ -85,7 +86,11 @@ export async function warmUpRepo({ started = true, runtimeInputs = true } = {}):
   const h = await openHarness(repo.main, store, repo.commonDir, {
     observe: true,
     nodeTest: [NODE_TEST],
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: [VITEST] }, observe: { runtimeInputs } },
+    policy: {
+      ...RUN_MISSING,
+      slow: { ...DEFAULT_POLICY.slow, include: [VITEST] },
+      observe: { runtimeInputs },
+    },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
   });
   if (started) {

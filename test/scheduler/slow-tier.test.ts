@@ -13,6 +13,7 @@ import {
   type PolicyInputs,
   type TestFileRef,
 } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   addWorktree,
@@ -49,9 +50,16 @@ function slotDir(): string {
   return dir;
 }
 
-/** One slow file at a time, one permit per user: D2's rules before the idle width (task 004-34). */
+/**
+ * One slow file at a time, one permit per user: D2's rules before the idle
+ * width (task 004-34). The start runs every file, so its slow tier is the subject.
+ */
 function slowPolicy(include: readonly string[], inputs: PolicyInputs = []): Partial<Policy> {
-  return { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include, maxParallel: 1 }, inputs };
+  return {
+    ...RUN_MISSING,
+    slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include, maxParallel: 1 },
+    inputs,
+  };
 }
 
 function options(extra: Partial<HarnessOptions> & { inputs?: PolicyInputs } = {}): HarnessOptions {
@@ -201,6 +209,7 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
     const h = await openHarness(repo.main, store, repo.commonDir, {
       ...options({ slow: { slotDir: slotDir(), recheckMs: 50, load: () => [3], cpus: () => 1 } }),
       policy: {
+        ...RUN_MISSING,
         slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: SLOW_FILES, maxDeferMs: 300 },
       },
     });

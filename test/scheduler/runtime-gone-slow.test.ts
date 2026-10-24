@@ -5,6 +5,7 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { poolPermitFile } from "../../src/core/capacity/index.js";
 import { heldPermits, takePermit } from "../../src/core/slow/slot.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { catchUpRepo, catchUpSide, testFiles } from "./catch-up-fixture.js";
 
 /*
@@ -51,6 +52,7 @@ describe("scheduler: a slow tier whose runtime went during the load guard's wait
       hostSlots: 4,
       tierSize: 1,
       policy: {
+        ...RUN_MISSING,
         slow: { ...DEFAULT_POLICY.slow, include: ["test/**"], trigger: "idle", maxParallel: 1 },
       },
       scheduler: {

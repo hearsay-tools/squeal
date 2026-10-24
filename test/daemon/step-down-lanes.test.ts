@@ -17,6 +17,7 @@ import { leftovers, marksOf } from "../../src/core/daemon/leftovers.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { CANCELLED, cancelled } from "../../src/runners/vitest/run.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   diagnose,
@@ -107,9 +108,11 @@ describe.runIf(process.platform === "linux")(
         if (heldAt === "baseline") writeFileSync(join(dir, "hold"), "");
         suite.cleanup(() => rmSync(dir, { recursive: true, force: true }));
         const repo = suite.fixture({
-          "squeal.config.json": `${JSON.stringify({
-            nodeTest: [{ name: "nt", include: ["nt/*.test.mjs"], argv: [], env: {} }],
-          })}\n`,
+          "squeal.config.json": runMissingConfig(
+            JSON.stringify({
+              nodeTest: [{ name: "nt", include: ["nt/*.test.mjs"], argv: [], env: {} }],
+            }),
+          ),
           "test/held.test.ts": heldTest(dir, "vitest", "vitest"),
           "nt/held.test.mjs": heldTest(dir, "node", "node:test"),
         });

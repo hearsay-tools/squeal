@@ -8,6 +8,7 @@ import { heldPermits, takePermit } from "../../src/core/slow/slot.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpRepo,
   type CatchUpSide,
@@ -70,7 +71,7 @@ async function slowSide(
     files,
     hostSlots: 4,
     ...runner,
-    policy: { slow: SLOW },
+    policy: { ...RUN_MISSING, slow: SLOW },
     scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [load] } },
   });
   await side.scheduler.start();

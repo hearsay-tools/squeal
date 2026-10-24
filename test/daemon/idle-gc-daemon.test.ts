@@ -5,6 +5,7 @@ import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js
 import type { GcFunction } from "../../src/core/daemon/idle-gc.js";
 import { readHeader } from "../../src/core/delivery/index.js";
 import { acquireSlowSlot, slowSlotDir } from "../../src/core/slow/index.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor, withStore } from "./helpers.js";
 
 /*
@@ -50,9 +51,11 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
   it("collects 60 s after its last tier with a slow file queued, and again only after a tier", async () => {
     const repo = createFixtureRepo({
       files: {
-        "squeal.config.json": `${JSON.stringify({
-          slow: { include: ["test/slow-*.test.ts"], maxParallel: 1, maxLoadPerCpu: 1000 },
-        })}\n`,
+        "squeal.config.json": runMissingConfig(
+          JSON.stringify({
+            slow: { include: ["test/slow-*.test.ts"], maxParallel: 1, maxLoadPerCpu: 1000 },
+          }),
+        ),
         [SLOW_FILE]: `import { expect, it } from "vitest";\nit("waits", () => expect(1).toBe(1));\n`,
       },
     });

@@ -3,6 +3,7 @@ import { realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import {
   createRepo,
@@ -47,7 +48,10 @@ describe("a touch whose batch arrives after the run ended (review wave-13e B2)",
       const repo = createRepo(VIRTUAL);
       const store = openRepoStore(repo.commonDir);
       const options = { observe, tierSize: 4, runnerPartBesideRun: true, policy: INPUTS };
-      const h = await openHarness(repo.main, store, repo.commonDir, options);
+      const h = await openHarness(repo.main, store, repo.commonDir, {
+        ...options,
+        policy: { ...INPUTS, ...RUN_MISSING },
+      });
       const closure = h.runner.closure;
       let planted = false;
       h.runner.closure = async (testFile) => {

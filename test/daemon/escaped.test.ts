@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   type FixtureRepo,
@@ -124,7 +125,10 @@ describe.runIf(process.platform === "linux")(
       const dir = pidDir();
       const pidFile = join(dir, "pids.json");
       const spawnerFile = join(dir, "spawner");
-      const repo = suite.fixture({ "test/escape.test.ts": escapingTest(pidFile, spawnerFile) });
+      const repo = suite.fixture({
+        "squeal.config.json": runMissingConfig(),
+        "test/escape.test.ts": escapingTest(pidFile, spawnerFile),
+      });
       await start(repo);
       const result = await resultOf(repo, undefined, "test/escape.test.ts");
       expect(result.outcome).toBe("pass");
@@ -165,6 +169,7 @@ describe.runIf(process.platform === "linux")(
     it("stops what the daemon's process group still holds on squeal stop", async () => {
       const pidFile = join(pidDir(), "setup.json");
       const repo = suite.fixture({
+        "squeal.config.json": runMissingConfig(),
         "vitest.config.ts": SETUP_CONFIG,
         "setup.ts": forgetfulSetup(pidFile),
       });

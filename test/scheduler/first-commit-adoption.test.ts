@@ -6,6 +6,7 @@ import {
   rekeyedMovesMetaKey,
 } from "../../src/core/scheduler/rekeyed-moves.js";
 import type { CheckKey, RevisionNumber, WorktreeId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 import { HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
 
@@ -33,7 +34,10 @@ describe("a newer daemon after one that wrote no moves", () => {
     async () => {
       const repo = createRepo();
       const store = openRepoStore(repo.commonDir);
-      const first = await openHarness(repo.main, store, repo.commonDir, { predecessor: null });
+      const first = await openHarness(repo.main, store, repo.commonDir, {
+        predecessor: null,
+        policy: RUN_MISSING,
+      });
       await first.scheduler.start();
       await first.scheduler.idle();
       await first.scheduler.close();

@@ -16,6 +16,7 @@ import {
   type Store,
 } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, FakeRunner, fileName, type Side, side } from "./claims-fixture.js";
 import { RecordingSink } from "./recording-sink.js";
 
@@ -155,7 +156,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     // b runs one file at a time and holds its first, edited here so no claim joins a's run to it:
     // the other five wait queued.
     appendFileSync(join(other, F0), "// b's edit\n");
-    const b = side(other, { count: COUNT, tierSize: 1, backlogTierSize: 1 });
+    const b = side(other, { count: COUNT, tierSize: 1, backlogTierSize: 1, policy: RUN_MISSING });
     b.runner.hold();
     await b.scheduler.start();
     await expect.poll(() => b.phase(F0)).toBe("running");

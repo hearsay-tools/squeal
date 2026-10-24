@@ -8,6 +8,7 @@ import {
 } from "../../src/core/scheduler/promotions.js";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
 import type { EpochMs, TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { claimRepo, fileName, side } from "./claims-fixture.js";
 
@@ -98,7 +99,7 @@ describe("the published promotions in `meta` (task 011-13)", () => {
   it("a scheduler's promotion is published while its file is queued", async () => {
     const [A, , Z] = [fileName(0), fileName(1), fileName(2)];
     const { main } = claimRepo(3);
-    const a = side(main, { count: 3, tierSize: 1 });
+    const a = side(main, { count: 3, tierSize: 1, policy: RUN_MISSING });
     a.runner.hold();
     await a.scheduler.start();
     await expect.poll(() => a.phase(A)).toBe("running");

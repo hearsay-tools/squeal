@@ -10,6 +10,7 @@ import {
 } from "../../src/core/daemon/last-use.js";
 import { readHeader } from "../../src/core/delivery/index.js";
 import type { AbsolutePath } from "../../src/core/types/index.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor, withStore } from "./helpers.js";
 
 /*
@@ -50,7 +51,7 @@ async function settled(repo: FixtureRepo): Promise<DaemonUsed> {
 
 describe("a daemon records its last use with each heartbeat (spec 014 D9)", SLOW, () => {
   it("writes its start, moves both times on a request and the use alone on an edit", async () => {
-    const repo = createFixtureRepo();
+    const repo = createFixtureRepo({ files: { "squeal.config.json": runMissingConfig() } });
     onTestFinished(repo.cleanup);
     const daemon = await startDaemon({
       root: repo.root,

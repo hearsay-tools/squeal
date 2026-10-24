@@ -4,6 +4,7 @@ import { poolPermitFile } from "../../src/core/capacity/index.js";
 import { quietMetaKey } from "../../src/core/scheduler/quiet.js";
 import { takePermit } from "../../src/core/slow/index.js";
 import type { RunReport, TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpOptions,
@@ -37,7 +38,13 @@ async function reading(
   options: Partial<CatchUpOptions> = {},
 ) {
   const repo = catchUpRepo(files, [READ]);
-  const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, tierSize: 4, ...options });
+  const side = catchUpSide(repo, repo.main, {
+    files,
+    hostSlots: 4,
+    tierSize: 4,
+    ...options,
+    policy: { ...RUN_MISSING, ...options.policy },
+  });
   const run = side.runner.run.bind(side.runner);
   const reads = new Set(readers.map((f) => f.path));
   side.runner.run = async (refs, runOptions): Promise<RunReport> => {

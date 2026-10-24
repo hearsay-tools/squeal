@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { RunReport, TestFileRef } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import type { CatchUpFile, CatchUpSide } from "./catch-up-fixture.js";
 import {
   A,
@@ -174,7 +175,7 @@ describe("scheduler: setup outcomes under the merge hold (review 0.1.266 B2)", {
   it("control: the setup failure of a project the hold does not hold stands", async () => {
     const files: CatchUpFile[] = [...FILES, { project: "p", path: P_FILE, ms: 10, imports: [] }];
     const repo = mergeRepo(files);
-    const side = holdSide(repo, repo.main, files);
+    const side = holdSide(repo, repo.main, files, RUN_MISSING);
     await side.scheduler.start();
     await side.scheduler.idle();
     const race = { project: "p", setupFile: "p/global-setup.ts", unmerged: HELPER };

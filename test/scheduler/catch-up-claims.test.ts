@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { catchUpRepo, catchUpSide, sources, testFiles } from "./catch-up-fixture.js";
 
 /*
@@ -15,7 +16,7 @@ describe("scheduler: worktrees on one commit share a catch-up through claims (C4
     timeout: 120_000,
   }, async () => {
     const repo = catchUpRepo(FILES);
-    const main = catchUpSide(repo, repo.main, { files: FILES, hostSlots: 8 });
+    const main = catchUpSide(repo, repo.main, { files: FILES, hostSlots: 8, policy: RUN_MISSING });
     await main.scheduler.start();
     await main.scheduler.idle();
     const other = catchUpSide(repo, repo.other, { files: FILES, hostSlots: 8 });

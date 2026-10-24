@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -76,7 +77,10 @@ describe("scheduler: a recursive listing (review wave 12e B5)", SLOW, () => {
     }
     writeFileSync(join(repo.main, SHALLOW), SHALLOW_TEST);
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, OBSERVING);
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      ...OBSERVING,
+      policy: { ...OBSERVING.policy, ...RUN_MISSING },
+    });
     h.write("tree/sub/a.txt", "a\n");
     await h.scheduler.start();
     await h.scheduler.idle();

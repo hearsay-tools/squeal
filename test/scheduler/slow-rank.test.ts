@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/index.js";
 import { readSlowEvidence, slowTokensMetaKey } from "../../src/core/slow/rank-store.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
 
@@ -51,7 +52,7 @@ async function open(rank: Policy["slow"]["rank"]): Promise<Harness> {
   const store = openRepoStore(repo.commonDir);
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: policy(rank),
+    policy: { ...RUN_MISSING, ...policy(rank) },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
   });
   await h.scheduler.start();

@@ -7,6 +7,7 @@ import { formatDelta } from "../../src/core/delivery/index.js";
 import { readTurn } from "../../src/core/delivery/turn.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY, type SlowTrigger } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -37,7 +38,10 @@ async function inTurn(trigger: SlowTrigger) {
   slotDirs.push(slotDir);
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: [STRINGS], trigger, quietMs: QUIET_MS } },
+    policy: {
+      ...RUN_MISSING,
+      slow: { ...DEFAULT_POLICY.slow, include: [STRINGS], trigger, quietMs: QUIET_MS },
+    },
     slow: { slotDir, load: () => [0], cpus: () => 1 },
   });
   const starts = new Map<string, number[]>();

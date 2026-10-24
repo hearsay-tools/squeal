@@ -16,6 +16,7 @@ import { runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { CANCELLED, cancelled } from "../../src/runners/vitest/run.js";
 import { recorded } from "../harness/helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   delay,
@@ -157,7 +158,10 @@ describe.runIf(process.platform === "linux")(
   () => {
     it("returns within seconds mid-batch, and nothing of Squeal's holds the root afterwards", async () => {
       const dir = scratch("sq-001-367-");
-      const repo = suite.fixture({ "test/hold.test.ts": holdingTest(dir) });
+      const repo = suite.fixture({
+        "test/hold.test.ts": holdingTest(dir),
+        "squeal.config.json": runMissingConfig(),
+      });
       // Detached, as a hook's spawn: the daemon leads its own process group.
       const start = spawnCli(suite.cli, ["start", repo.root], { cwd: "/", env: repo.env });
       expect(await start.exited).toEqual({ code: 0, signal: null });
@@ -184,9 +188,11 @@ describe.runIf(process.platform === "linux")(
       const dir = scratch("sq-001-367-drain-");
       const names = ["a", "b"] as const;
       const files: Record<string, string> = {
-        "squeal.config.json": `${JSON.stringify({
-          slow: { include: ["test/slow-*.test.ts"], maxParallel: 1, maxLoadPerCpu: 1000 },
-        })}\n`,
+        "squeal.config.json": runMissingConfig(
+          JSON.stringify({
+            slow: { include: ["test/slow-*.test.ts"], maxParallel: 1, maxLoadPerCpu: 1000 },
+          }),
+        ),
       };
       for (const name of names) files[`test/slow-${name}.test.ts`] = heldTest(dir, name);
       const repo = suite.fixture(files);

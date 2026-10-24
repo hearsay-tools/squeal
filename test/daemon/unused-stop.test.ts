@@ -8,6 +8,7 @@ import { findHarnessProcess } from "../../src/harness/shared/harness-process.js"
 import { sessionRootFiles } from "../../src/harness/shared/session-root.js";
 import { recorded, SUBAGENT } from "../harness/helpers.js";
 import { git } from "../hash/git-repo.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   diagnose,
@@ -38,7 +39,9 @@ const suite = daemonSuite();
 const { fixture, daemon } = suite;
 
 /** 3 s: the daemon checks every 5 s, so the stop comes within about 8 s of the last use. */
-const UNUSED = { "squeal.config.json": JSON.stringify({ daemon: { unusedExitMinutes: 0.05 } }) };
+const UNUSED = {
+  "squeal.config.json": runMissingConfig(JSON.stringify({ daemon: { unusedExitMinutes: 0.05 } })),
+};
 const UNUSED_NOTE = /daemon stopped: no edit, run, wait or request for 3 s/;
 /** The unused bound under `baseline.onStart: "lookup-only"` (row 011-91). */
 const LOOKUP_ONLY = {
@@ -146,7 +149,7 @@ describe("the unused stop (task 001-415)", SLOW, () => {
   });
 
   it("a worktree subagent's SubagentStop lets its daemon stop while its parent stays registered", async () => {
-    const repo = fixture();
+    const repo = fixture({ "squeal.config.json": runMissingConfig() });
     const linked = join(dirname(repo.root), "agent-a54374d4ee2bc54fb");
     git(repo.root, ["worktree", "add", "-q", "-b", "agent", linked]);
     const agentRoot = realpathSync(linked);

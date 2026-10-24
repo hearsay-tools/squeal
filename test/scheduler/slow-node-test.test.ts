@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
 import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -97,6 +98,7 @@ async function open(projects: Record<string, readonly string[]>, maxParallel: nu
     nodeTestTierSize: true,
     runnerPartBesideRun: true,
     policy: {
+      ...RUN_MISSING,
       nodeTest: Object.keys(projects).map(project),
       slow: {
         ...DEFAULT_POLICY.slow,

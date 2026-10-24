@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { formatWhy, readWhy } from "../../src/core/status/index.js";
 import type { CheckId, ResultRecord } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { addWorktree, createRepo, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import { result } from "../store/helpers.js";
 import { fakeRepo, seedStore } from "./helpers.js";
@@ -50,7 +51,7 @@ describe("squeal why after a same-key replacement", SLOW, () => {
     const other = addWorktree(repo.main, repo.dir, "other");
     const store = openRepoStore(repo.commonDir);
 
-    const a = await openHarness(repo.main, store, repo.commonDir);
+    const a = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await a.scheduler.start();
     await a.scheduler.idle();
     const first = store.results.byKey(a.keyOf(PLAIN), 0).find((r) => r.check.testPath === PLAIN);

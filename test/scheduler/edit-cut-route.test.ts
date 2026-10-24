@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type CatchUpFile, type CatchUpOptions, catchUpSide } from "./catch-up-fixture.js";
 import {
   editAndRun,
@@ -162,7 +163,7 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
   });
 
   it.each<[string, CatchUpOptions["policy"]]>([
-    ["lookup-then-run-missing", undefined],
+    ["lookup-then-run-missing", RUN_MISSING],
     ["lookup-only", { baseline: { onStart: "lookup-only" } }],
   ])(
     "9. classifies a daemon start's unrefined small revision by namesakes and affected (%s)",

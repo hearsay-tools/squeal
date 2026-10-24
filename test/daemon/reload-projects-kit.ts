@@ -18,6 +18,7 @@ import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import type { KnownState, Store, TestFileKeyRecord } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { childEnv, delay, type FixtureRepo, readNotes, withStore } from "./helpers.js";
 
 /*
@@ -120,7 +121,9 @@ export async function reloadRepo(
   const config = (list: readonly Entry[]) =>
     write(
       "squeal.config.json",
-      `${JSON.stringify({ nodeTest: list.map((e) => ({ include: ["*.test.mjs"], ...e })) }, null, 2)}\n`,
+      runMissingConfig(
+        JSON.stringify({ nodeTest: list.map((e) => ({ include: ["*.test.mjs"], ...e })) }),
+      ),
     );
   const test = (path: string, name: string, body: Body = {}) =>
     write(path, program(log, hold, name, body));

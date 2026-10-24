@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { storePaths } from "../../src/core/store/index.js";
 import type { CheckId, Store } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   ALL_TEST_FILES,
   addWorktree,
@@ -137,7 +138,7 @@ describe("a later worktree at equal content (row 011-160)", SLOW, () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
     const aRoot = addWorktree(repo.main, repo.dir, "a");
-    const a = await openHarness(aRoot, store, repo.commonDir);
+    const a = await openHarness(aRoot, store, repo.commonDir, { policy: RUN_MISSING });
     register(store, a, repo.commonDir);
     await a.scheduler.start();
     await a.scheduler.idle();

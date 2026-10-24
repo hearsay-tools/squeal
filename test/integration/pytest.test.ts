@@ -9,6 +9,7 @@ import { runCodexHook } from "../../src/harness/codex/index.js";
 import { until } from "../e2e/support.js";
 import { codexRecorded, sessionOf } from "../harness/codex/helpers.js";
 import { recorded } from "../harness/helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   CORE_TEST,
   git,
@@ -46,7 +47,7 @@ const CHECKS = 9 + 4;
 
 const FILES: Readonly<Record<string, string>> = {
   ".gitignore": "node_modules/\n.venv/\n",
-  "squeal.config.json": `${JSON.stringify({ pytest: [PROJECT] }, null, 2)}\n`,
+  "squeal.config.json": runMissingConfig(JSON.stringify({ pytest: [PROJECT] })),
 };
 
 const { commit, createRepo, addWorktree, uvSync, startDaemon } = pytestRepos("pytest");

@@ -11,6 +11,7 @@ import {
   refinedMetaKey,
   type Store,
 } from "../../src/core/types/index.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { check, state } from "../status/helpers.js";
 import { A, B, C, fail, key, NOW, ref, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
 
@@ -320,6 +321,8 @@ describe("a timed-out named wait lists the selected files by class with verdicts
 
   it("in JSON: every wait.testFiles entry carries its state, a verdict when known and a reason", async () => {
     const { repo, all } = eleven();
+    // The reasons a start that runs its misses names (row 011-159); the text case has the default's.
+    writeFileSync(join(repo.main, "squeal.config.json"), runMissingConfig());
     let stdout = "";
     let stderr = "";
     const io: CliIo = {

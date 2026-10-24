@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { storePaths } from "../../src/core/store/index.js";
 import { git } from "../hash/git-repo.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   type FixtureRepo,
@@ -139,7 +140,10 @@ describe("a second daemon on the shared store (003 lessons defect 5, task 001-14
       }
     });
     writeFileSync(`${marker}.0.release`, "");
-    const repo = suite.fixture({ "test/slow.test.ts": slowTest(marker, 0) });
+    const repo = suite.fixture({
+      "test/slow.test.ts": slowTest(marker, 0),
+      "squeal.config.json": runMissingConfig(),
+    });
     const linked = join(dirname(repo.root), "linked");
     git(repo.root, ["worktree", "add", "-q", "-b", "linked", linked]);
     const second = realpathSync(linked);

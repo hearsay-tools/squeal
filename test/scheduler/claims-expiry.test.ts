@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { CLAIM_GRACE_MS, CLAIM_RECHECK_MS } from "../../src/core/scheduler/claims.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 
 /*
@@ -28,8 +29,8 @@ async function heldInA(a: Side, b: Side): Promise<void> {
 describe("claims: expiry and takeover (task 001-205)", { timeout: 30_000 }, () => {
   it("2. a claimant whose heartbeat stops: the waiter runs its files within two intervals plus 1 s", async () => {
     const { main, other } = claimRepo(6);
-    const a = side(main, { count: 6, backlogTierSize: 6, heartbeatMs: 1_000 });
-    const b = side(other, { count: 6, backlogTierSize: 6 });
+    const a = side(main, { count: 6, backlogTierSize: 6, heartbeatMs: 1_000, policy: RUN_MISSING });
+    const b = side(other, { count: 6, backlogTierSize: 6, policy: RUN_MISSING });
     await heldInA(a, b);
     await delay(1_500);
     expect(b.runner.runs).toEqual([]);
@@ -73,8 +74,8 @@ describe("claims: expiry and takeover (task 001-205)", { timeout: 30_000 }, () =
     ],
   ])("3. a claimant's tier that %s stores nothing: the waiter runs the file", async (how, end) => {
     const { main, other } = claimRepo(1);
-    const a = side(main, { count: 1 });
-    const b = side(other, { count: 1 });
+    const a = side(main, { count: 1, policy: RUN_MISSING });
+    const b = side(other, { count: 1, policy: RUN_MISSING });
     await heldInA(a, b);
     const key = b.keyOf(F0);
     await end(a);
@@ -91,8 +92,13 @@ describe("claims: expiry and takeover (task 001-205)", { timeout: 30_000 }, () =
   it("10. a claim held past the waiter's timeout plus grace, heartbeat fresh: the waiter runs the file", async () => {
     const { main, other } = claimRepo(1);
     let skew = 0;
-    const a = side(main, { count: 1, heartbeatMs: 1_000_000_000 });
-    const b = side(other, { count: 1, timeoutMs: 1_000, now: () => Date.now() + skew });
+    const a = side(main, { count: 1, heartbeatMs: 1_000_000_000, policy: RUN_MISSING });
+    const b = side(other, {
+      count: 1,
+      timeoutMs: 1_000,
+      now: () => Date.now() + skew,
+      policy: RUN_MISSING,
+    });
     await heldInA(a, b);
     await delay(CLAIM_RECHECK_MS * 1.5);
     expect(b.runner.runs).toEqual([]);

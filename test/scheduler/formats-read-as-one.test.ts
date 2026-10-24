@@ -19,6 +19,7 @@ import {
   type ResultRecord,
   type Store,
 } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, FakeRunner, fileName, type Side, side } from "./claims-fixture.js";
 
 /*
@@ -142,7 +143,7 @@ describe("formats read as one (011-38)", SLOW, () => {
 
     const t = Date.now() - 60_000;
     const reads = new Map<CheckKey, number>();
-    const b = side(other, { count: 4, wrap: counting(reads) });
+    const b = side(other, { count: 4, wrap: counting(reads), policy: RUN_MISSING });
     // F0: this worktree's older daemons stored it at two listed formats, the newer set at NEWEST.
     stored(b.store, own, F0, k0.older, t - 2_000, { name: "older name" });
     const newest = stored(b.store, own, F0, k0.newest, t - 1_000);

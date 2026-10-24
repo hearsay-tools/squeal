@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MAX_DISCARDS } from "../../src/core/scheduler/ledger.js";
 import { DEFAULT_POLICY, type Policy, type TestCheckId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { git, waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -103,7 +104,7 @@ async function rig(policy: Partial<Policy> = {}): Promise<Rig> {
 
 describe("a run the runner withheld for a touch no key names (issue 10, task 011-06)", SLOW, () => {
   it("queues the edited file again, so it is current after one more run", async () => {
-    const r = await rig();
+    const r = await rig(RUN_MISSING);
     const before = r.runs();
     await r.edit();
     await r.touchDuring(1);
