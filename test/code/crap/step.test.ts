@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { crapScore, RECORD_WAIT_MS, readSummary } from "../../../src/core/code/crap/index.js";
+import {
+  BUSY_RECHECK_MS,
+  crapScore,
+  RECORD_WAIT_MS,
+  readSummary,
+} from "../../../src/core/code/crap/index.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";
 
@@ -76,7 +81,8 @@ describe("the coverage step", () => {
     expect(young?.wakeAt).toBe(rig.clock + RECORD_WAIT_MS);
 
     rig.clock += RECORD_WAIT_MS + 1;
-    rig.step({ writing: true });
+    // Review 0.1.297 S1: past its wait, a busy writer's record is looked for again later, not at once.
+    expect(rig.step({ writing: true })?.wakeAt).toBe(rig.clock + BUSY_RECHECK_MS);
     expect(fileState(rig, "src/a.ts")).toMatchObject({ state: "pending", reason: "record" });
     rig.step();
     expect(fileState(rig, "src/a.ts")).toEqual({
