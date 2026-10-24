@@ -1,0 +1,16 @@
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/34d3edd6-a3ed-421d-85cd-a6ac7b3ff6b1
+stdout | docs/specifications/002-codex-adapter/research/probes/issue-93/stop-handover.probe.ts > gh-93: Codex Stop with every gate off > control: no change since the last boundary, Stop is silent
+CONTROL stdout: ""
+stdout | docs/specifications/002-codex-adapter/research/probes/issue-93/stop-handover.probe.ts > gh-93: Codex Stop with every gate off > handover begun, old heartbeat still fresh: Stop is silent
+HANDOVER (fresh heartbeat) stdout: ""
+stdout | docs/specifications/002-codex-adapter/research/probes/issue-93/stop-handover.probe.ts > gh-93: Codex Stop with every gate off > handover, old heartbeat stopped: Stop answers decision block with status text
+HANDOVER stdout: {"decision":"block","reason":"SQUEAL · the daemon is handing over at revision 1\nRevision 1 (changed src/math.ts): 2 current (2 tests), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one). The daemon is handing over from 0.1.295 to 0.1.296 since 2026-10-24T21:57:19.062Z; 0.1.296 serves once the old daemon's lock frees; results are as of revision 1.\nKnown failures: 0; 1 test file current as of revision 1"}
+stdout | docs/specifications/002-codex-adapter/research/probes/issue-93/stop-handover.probe.ts > gh-93: Codex Stop with every gate off > handover, old heartbeat stopped: Stop answers decision block with status text
+SECOND STOP (stop_hook_active) stdout: ""
+ ✓ docs/specifications/002-codex-adapter/research/probes/issue-93/stop-handover.probe.ts > gh-93: Codex Stop with every gate off > control: no change since the last boundary, Stop is silent 64ms
+ ✓ docs/specifications/002-codex-adapter/research/probes/issue-93/stop-handover.probe.ts > gh-93: Codex Stop with every gate off > handover begun, old heartbeat still fresh: Stop is silent 26ms
+ ✓ docs/specifications/002-codex-adapter/research/probes/issue-93/stop-handover.probe.ts > gh-93: Codex Stop with every gate off > handover, old heartbeat stopped: Stop answers decision block with status text 34ms
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  23:57:18
+   Duration  2.71s (transform 81%, import 14%, tests 5%)
