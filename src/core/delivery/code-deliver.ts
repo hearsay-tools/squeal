@@ -15,8 +15,15 @@ import {
   type CodeRegistration,
   type CodeTooBig,
 } from "../types/code-delivery.js";
-import type { Consumer, EpochMs, RevisionNumber, WorktreeId } from "../types/index.js";
-import { codeKey, isStillFail, planCodeDelta, seedEntry } from "./code-delta.js";
+import type { Consumer, EpochMs, WorktreeId } from "../types/index.js";
+import {
+  type CodeBound,
+  codeKey,
+  isOwn,
+  isStillFail,
+  planCodeDelta,
+  seedEntry,
+} from "./code-delta.js";
 import { type CodeSource, withCode } from "./code-source.js";
 import { withToldOver } from "./code-told.js";
 
@@ -177,13 +184,13 @@ function toldTooBig(store: CodeStore, consumer: Consumer): ReadonlySet<string> {
 }
 
 /**
- * Spec 015 D6: the files too big to count that changed after `since`, the
- * consumer's registration, and that it was not told of; recorded as told.
+ * Spec 015 D6: the files too big to count that changed in `since`'s
+ * revisions, the consumer's own, and that it was not told of; recorded as told.
  */
 function newTooBig(
   store: CodeStore,
   consumer: Consumer,
-  since: RevisionNumber | null,
+  since: CodeBound | null,
   limit: number,
   write: boolean,
 ): CodeTooBig[] {
@@ -191,7 +198,7 @@ function newTooBig(
   const told = toldTooBig(store, consumer);
   const files = store.files
     .list(consumer.worktreeId)
-    .filter((f) => isTooBig(f) && f.revision > since && !told.has(f.path));
+    .filter((f) => isTooBig(f) && isOwn(since, f.revision) && !told.has(f.path));
   if (files.length === 0) return [];
   if (write) writeJson(store, tooBigToldKey(consumer), [...told, ...files.map((f) => f.path)]);
   return files.map((f) => ({ path: f.path, size: f.size, limit }));
@@ -242,7 +249,7 @@ interface CodeStep {
 function codeStep(
   store: CodeStore,
   consumer: Consumer,
-  { at, since, limit }: { at: EpochMs; since: RevisionNumber | null; limit: number },
+  { at, since, limit }: { at: EpochMs; since: CodeBound | null; limit: number },
   write: boolean,
 ): CodeStep {
   const { worktreeId } = consumer;
@@ -307,9 +314,9 @@ export interface TellCodeOptions {
  * Spec 015 D5, D6: what `consumer` is told of the code at a delivery, its
  * view written in the same code store transaction. A recount since its
  * view was seeded is one summary line and seeds it again by count. `since`
- * reads the revision its changes count after (`codeSeenUpTo`), `null` when
- * no registration is recorded; only while the policy is on. A change at or
- * before it is taken in by count. Read-only first, so a delivery
+ * reads the revisions its changes are its own in (`codeSeenUpTo`), `null`
+ * when no registration is recorded; only while the policy is on. A change
+ * outside them is taken in by count. Read-only first, so a delivery
  * with nothing to write takes no lock the daemon's pass waits for. With
  * `toldOver`, the count is read after the view is written, so a FAIL this
  * delivery tells is in it. `null` when there is nothing to tell, the policy
@@ -319,7 +326,7 @@ export function tellCode(
   source: CodeSource | undefined,
   consumer: Consumer,
   at: EpochMs,
-  since: () => RevisionNumber | null,
+  since: () => CodeBound | null,
   { changes = true, toldOver = false }: TellCodeOptions = {},
 ): CodeNews | null {
   if (!changes && !toldOver) return null;

@@ -27,6 +27,24 @@ import type { EpochMs, RevisionNumber } from "../types/index.js";
 /** A view row's key: one measure of one check. */
 export type CodeViewKey = Pick<CodeViewEntry, "check" | "measure">;
 
+/**
+ * The revisions whose code changes are the consumer's (`codeSeenUpTo`):
+ * those after `since` and in none of the ranges `(after, upTo]` of `gaps`.
+ */
+export interface CodeBound {
+  readonly since: RevisionNumber;
+  readonly gaps: readonly (readonly [after: RevisionNumber, upTo: RevisionNumber])[];
+}
+
+/** Whether a change at `revision` is the consumer's; every one is when no bound is recorded. */
+export function isOwn(bound: CodeBound | null, revision: RevisionNumber): boolean {
+  if (bound === null) return true;
+  return (
+    revision > bound.since &&
+    !bound.gaps.some(([after, upTo]) => revision > after && revision <= upTo)
+  );
+}
+
 export interface CodePlanInput {
   readonly view: readonly CodeViewEntry[];
   readonly states: readonly CodeKnownState[];
@@ -37,11 +55,12 @@ export interface CodePlanInput {
   /** When the view was last seeded whole: a transition before it was told by count. */
   readonly seededAt: EpochMs;
   /**
-   * The revision the consumer's changes count after (`codeSeenUpTo`): a
-   * transition or edit at or before it was in the tree at registration, so
-   * it is taken in by count (lessons round 1, P2). `null`: none recorded.
+   * The revisions the consumer's changes are its own in (`codeSeenUpTo`): a
+   * transition or edit outside them was in the tree at a registration, so
+   * it is taken in by count (lessons round 1, P2; review 0.1.290 B1).
+   * `null`: none recorded.
    */
-  readonly seenUpTo: RevisionNumber | null;
+  readonly seenUpTo: CodeBound | null;
   readonly toldAt: EpochMs;
 }
 
@@ -97,9 +116,9 @@ function toldKind(
   told: CodeViewEntry | null,
   now: CodeKnownState | null,
   last: CodeTransition | null,
-  { after, seenUpTo }: { after: EpochMs; seenUpTo: RevisionNumber | null },
+  { after, seenUpTo }: { after: EpochMs; seenUpTo: CodeBound | null },
 ): CodeTransitionKind | null {
-  if (last === null || last.at <= after || last.revision <= (seenUpTo ?? -1)) return null;
+  if (last === null || last.at <= after || !isOwn(seenUpTo, last.revision)) return null;
   if (now === null) return told?.outcome === "fail" && last.kind === "removed" ? "removed" : null;
   if (now.outcome === "fail" && told?.outcome !== "fail") {
     return last.kind === "first-seen-fail" || last.kind === "pass-to-fail" ? last.kind : null;
@@ -124,7 +143,7 @@ function editToTell(
 ): CodeEdit | null {
   if (now.outcome !== "fail" || told.told === "still") return null;
   const edit = input.edit(now.check, now.measure);
-  if (edit === null || edit.revision <= (input.seenUpTo ?? -1)) return null;
+  if (edit === null || !isOwn(input.seenUpTo, edit.revision)) return null;
   return edit.at > Math.max(input.seededAt, told.toldAt) ? edit : null;
 }
 
