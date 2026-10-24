@@ -8,12 +8,8 @@ import type {
   StatusFocusedCheck,
   TestFileRef,
 } from "../core/types/index.js";
-import {
-  answeredRun,
-  type FocusedFile,
-  type NamedFocus,
-  selectedChecks,
-} from "./status-wait-focus.js";
+import type { FocusedFile, NamedFocus } from "./status-wait-focus.js";
+import { type FocusTally, sumTallies } from "./status-wait-focus-answer.js";
 
 /*
  * Row 011-146 (011 C15 as amended 2026-10-23; `tasks/011-135/design.md`
@@ -63,7 +59,8 @@ function fileLines(
       ...focusedCheckLines(stored.checks, 0, "  "),
     ];
   }
-  if (run === undefined || !answeredRun(run)) {
+  const { tally } = file;
+  if (run === undefined || tally === undefined) {
     const running = run?.endedAt === null ? `; running since ${timeText(run.startedAt)}` : "";
     return [`Focused: ${path}: no focused outcome yet${running}`];
   }
@@ -80,8 +77,11 @@ function fileLines(
       ? ""
       : `, ended ${run.end}${run.reason === null ? "" : ` (${run.reason})`}`;
   const own = run.collected === null ? "" : ` (${checksText(run.collected)})`;
+  // Review 0.1.286 B2: a run for more texts that left checks out counts only what it kept.
+  const count =
+    tally.total === null ? `at least ${checksText(run.checks.length)}` : checksText(tally.total);
   return [
-    `Focused: ${checksText(run.checks.length + run.more)} of ${path} at revision ${run.revision}, ${took}${ended}; not the file's verdict.`,
+    `Focused: ${count} of ${path} at revision ${run.revision}, ${took}${ended}; not the file's verdict.`,
     ...focusedCheckLines(run.checks, run.more, "  "),
     `  A first run each, not re-run; the file's own run${own} decides.`,
   ];
@@ -92,8 +92,11 @@ function checksText(n: number): string {
 }
 
 /**
- * The verdict line of a `focused` wait: how many selected checks failed,
- * that the file has no verdict yet, and the wait for its own run.
+ * The verdict line of a `focused` wait: how many selected checks failed, of
+ * how many, from each file's count (review 0.1.286 B2): `at least` when a
+ * list left checks out uncounted; a selection that matched nothing; or a
+ * run that ended with no outcome. Then that the file has no verdict yet,
+ * and the wait for its own run.
  */
 export function focusedVerdictText(
   focus: NamedFocus,
@@ -101,22 +104,38 @@ export function focusedVerdictText(
   base: string | undefined,
 ): string {
   const files = focus.files.filter((f) => f.whole === undefined);
-  const selected = files.flatMap((f) => [...selectedChecks(f)]);
-  const more = files.reduce(
-    (n, f) =>
-      n + (f.stored === undefined && f.run !== undefined && answeredRun(f.run) ? f.run.more : 0),
-    0,
+  const { failed, total, atLeast } = sumTallies(
+    files.flatMap((f) => (f.tally === undefined ? [] : [f.tally])),
   );
-  const failed = selected.filter((c) => c.outcome === "fail").length;
-  const total = selected.length + more;
   const them = files.length === 1 ? "the file" : "the files";
   const paths = files.map((f) => shellWord(fromBase(base, f.testFile.path))).join(" ");
   const wait = `\`${command} status --wait ${OWN_RUN_WAIT_MS} ${paths}\` waits for ${files.length === 1 ? "it" : "them"}`;
-  const found =
-    total === 0
-      ? `no selected check: no check holds ${textsText(focus.texts)}`
-      : `${failed} of ${total} selected ${total === 1 ? "check" : "checks"} failed`;
-  return `Focused: ${found}; no verdict for ${them} yet: ${wait}`;
+  return `Focused: ${foundText(files, focus.texts, failed, total, atLeast)}; no verdict for ${them} yet: ${wait}`;
+}
+
+function foundText(
+  files: readonly FocusedFile[],
+  texts: readonly string[],
+  failed: number,
+  total: number | null,
+  atLeast: boolean,
+): string {
+  const checks = (n: number) => (n === 1 ? "check" : "checks");
+  if (total === null) return `at least ${failed} selected ${checks(failed)} failed`;
+  if (total > 0)
+    return `${atLeast ? "at least " : ""}${failed} of ${total} selected ${checks(total)} failed`;
+  const ends = [
+    ...new Set(
+      files.flatMap((f) =>
+        f.stored === undefined && f.run?.end != null && f.run.end !== "completed"
+          ? [f.run.end]
+          : [],
+      ),
+    ),
+  ];
+  return ends.length === 0
+    ? `no selected check: no check holds ${textsText(texts)}`
+    : `no outcome: the focused run ended ${ends.join(" or ")}`;
 }
 
 /** One file of `selection.focused.testFiles` in `--json` (C15, additive). */
@@ -137,6 +156,8 @@ export interface FocusedFileEntry extends TestFileRef {
   readonly collected: number | null;
   readonly checks: readonly StatusFocusedCheck[];
   readonly more: number;
+  /** Review 0.1.286 B2: the count the wait answers with; `null` without an answer. */
+  readonly count: FocusTally | null;
 }
 
 /** `selection.focused` in `--json`: the texts sent, each file and the older daemon's refusal. */
@@ -171,6 +192,7 @@ function fileEntry(file: FocusedFile, texts: readonly string[]): FocusedFileEntr
     collected: null,
     checks: [],
     more: 0,
+    count: file.tally ?? null,
   };
   if (stored !== undefined) {
     return {

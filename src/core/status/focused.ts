@@ -81,8 +81,17 @@ export function statusFocusedOf(run: FocusedRun, applies: boolean): StatusFocuse
     matched: run.matched,
     checks,
     more: run.more,
+    ...(countsOf(run.outcomes) ?? {}),
     applies,
   };
+}
+
+/** A row's count of outcomes when it holds one that reads: three whole numbers. */
+function countsOf(outcomes: unknown): { outcomes: NonNullable<StatusFocused["outcomes"]> } | null {
+  if (typeof outcomes !== "object" || outcomes === null) return null;
+  const { pass, fail, skip } = outcomes as Record<string, unknown>;
+  const whole = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0;
+  return whole(pass) && whole(fail) && whole(skip) ? { outcomes: { pass, fail, skip } } : null;
 }
 
 /** A check's name within its file: its full name, or the printed name of a file-level check. */
@@ -112,9 +121,17 @@ export function focusedOutcomeText(entry: StatusFocused): string {
   const failed = entry.checks.filter((c) => c.outcome === "fail");
   if (entry.end === "completed" && entry.matched === 0) return noMatchText(entry);
   const total = entry.checks.length + entry.more;
+  // Review 0.1.286 B2: a count over every selected check, else the kept ones and the rest not kept.
+  const fails = entry.outcomes?.fail ?? failed.length;
   const names = failed.slice(0, NAMES_SHOWN).map((c) => ownName(c));
-  const rest = failed.length > names.length ? ` and ${failed.length - names.length} more` : "";
-  const counted = `${failed.length} of ${total} selected ${total === 1 ? "check" : "checks"} FAIL${names.length === 0 ? "" : ` (${names.join(", ")}${rest})`}`;
+  const rest = fails > names.length ? ` and ${fails - names.length} more` : "";
+  const of =
+    entry.outcomes === undefined && entry.more > 0
+      ? `the ${entry.checks.length} kept of ${total}`
+      : `${total}`;
+  const notKept =
+    entry.outcomes === undefined && entry.more > 0 ? `; ${entry.more} more not kept` : "";
+  const counted = `${fails} of ${of} selected ${total === 1 ? "check" : "checks"} FAIL${names.length === 0 ? "" : ` (${names.join(", ")}${rest})`}${notKept}`;
   if (entry.end === "completed") return counted;
   const why = entry.reason === null ? "" : `: ${entry.reason}`;
   return `${entry.end}${why}${total === 0 ? "" : `; ${counted}`}`;
