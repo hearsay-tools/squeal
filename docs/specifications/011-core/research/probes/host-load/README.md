@@ -32,7 +32,7 @@ The problem is resolved when all five criteria are met on two measured days in a
 | C4 | Worktrees share results | In each project with at least 3 counted worktrees, `medianSharedShare` at least 50% | squeal about 0% (3 of 5 worktrees shared 0%), cezar about 43% | step 3, `share.mjs` |
 | C5 | No stale daemons; memory has room | No flagged daemon up more than 1 hour; daemons' total resident memory at most 8 GiB; swap under 90% used | 5 older daemons; 10.3 to 13.7 GiB; swap 4.0 of 4.0 GiB | step 5 |
 
-Report these too, without a target: yesterday's mean idle (baseline 40.0%; 75.4% on 19 October), mean `%nice` (22.4%; 9.2%), mean `%system` (19.1%; 7.7%), holders per key, the number of live worktrees per project, files picked per project in 24 h (`all.files.picked`), and per project the prune's share (`all.files.prunedShare`) and the live worktrees' `live.files.keptShare`. They show whether the day was comparable: a day with far more work can miss C1 for reasons outside Squeal.
+Report these too, without a target: yesterday's mean idle (baseline 40.0%; 75.4% on 19 October), mean `%nice` (22.4%; 9.2%), mean `%system` (19.1%; 7.7%), holders per key, the number of live worktrees per project, files picked per project in 24 h (`all.files.picked`), and per project the prune's share (`all.files.prunedShare`), the live worktrees' `live.files.keptShare`, and `all.files.neverStarted`, `all.files.handedOver` and `all.files.keptShareStarted` (below). They show whether the day was comparable: a day with far more work can miss C1 for reasons outside Squeal.
 
 ## How `waste.mjs` counts C3
 
@@ -48,6 +48,18 @@ Two limits, so read `live` beside `all`:
 
 - The prune's share counts every completed file of a removed worktree. In live worktrees, `liveCompletedStoredNothing` of the completed files stored nothing (inputs changed during the run, replaced); the prune's share can be too large by about that share of itself (0.6 to 8.5% in the copies of 2026-10-23).
 - A removed worktree's run that kept no result under a live key is deleted with its log before any copy sees it, and every such run that stored nothing is among them. So `removed` leans toward stored work, more so the later the copy. On 2026-10-23 the 72 hours of `stored-nothing.md` lost 580 of squeal's 1,696 runs between 13:25Z and 17:01Z; a third to 44% of the lost seconds had stored nothing, against 18% in the runs that remain (inferred: the two copies subtracted). `live` is exact: the prune keeps a live worktree's results and runs for 7 days. Copy the stores at the start of step 3.
+
+### Files that never started (row 011-138)
+
+C3 is unchanged: its row in the criteria table and `keptShare` stay as they are, because the 011-114 criteria are the human's. Beside `keptShare`, each `files` gives three fields from the logs of the cancelled runs (a report `failure` that starts `run cancelled`), from `../../../tasks/011-138/notes.md`:
+
+- `neverStarted`: a file the run picked that its `vitest.log` never names: no module end (`MODULE`), no test line (`PASS`, `FAIL`, `SKIP`) and no console line (`[stdout] <file>: `). The file did not start, so it cost no run time, and it is always in `storedNothing`. A cancelled run with no `vitest.log` (node:test, pytest) counts no file as never started.
+- `handedOver`: of the `neverStarted` files, those that a later run of the same worktree in the copy picked.
+- `keptShareStarted`: `keptShare` with the `handedOver` files out of the files picked. It reads a file that never started and ran later as not lost.
+
+`recordedSeconds` has none of these fields. `cancelled` gives per cancel cause (the failure's first line), over all runs: the runs, `withoutLog`, the files picked, `neverEnded` (no module end in the log), `neverStarted` and `handedOver`.
+
+`handedOver` is a lower bound for two causes. The prune deletes a removed worktree's later runs that kept no result (the second limit above), so in `removed` some successors are not in the copy. A run cancelled just before the copy can have no later run yet; that is the only cause in `live`. On the ten step-down runs of 22 and 23 October, `cancelled` gives 1,315 files picked, 580 never ended, 569 never started and 328 handed over. Of the other 241, 191 are in two tiers whose worktrees have no later run in the copy, and 50 are in one tier whose worktree's later runs did not pick them.
 
 ## Checking the count against 011-148
 
