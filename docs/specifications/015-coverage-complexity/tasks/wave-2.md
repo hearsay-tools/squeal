@@ -32,3 +32,17 @@ Use /worker. Shape: repair. Outcome: an edit whose count failed and that a thres
 Use /researcher, with the rules in `research/README.md`. Outcome: how many of this repository's `src/` functions no in-process Vitest test runs while a test that spawns a child process does, so that they would read "no test runs it" under D9.
 - Questions: (1) the functions in `src/` that in-process coverage never runs, from one coverage run of the whole suite in a scratch copy under `/tmp` with `@vitest/coverage-v8` added there only; (2) of those, the ones that a child-process test reaches (the CLI, the daemon, hooks; `test/e2e/**` and tests that spawn `squeal`), and how that can be known without coverage of the child; (3) what D9 should do with them: `unknown`, a project setting, or child coverage through `NODE_V8_COVERAGE`, with its cost.
 - Own `research/child-processes.md` and `probes/child-processes/`. One full-suite run in the scratch copy is allowed, under `flock /run/user/$(id -u)/squeal-full-run.lock`, at `--maxWorkers=4`.
+
+## 015-32: review of candidate 0.1.295
+
+Use /reviewer. Candidate `cand/0.1.295`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>` at 0.1.294: rows 015-29, 015-31 and 015-11, plus one build commit (bundles, version 0.1.295, the new `dist/coverage/provider.mjs` in each plugin). Write `docs/specifications/015-coverage-complexity/reviews/0.1.295.md` and commit it on your branch.
+
+Read `spec.md` D3, D4, D8 and D10 with their 2026-10-24 amendments, `status.md` (2026-10-24), W1 to W3 above, and `tasks/015-11/notes.md`, `tasks/015-29/notes.md`, `tasks/015-31/notes.md`.
+
+Check, with proof where you can:
+1. **015-11, policy off.** Keys byte-identical to 0.1.294, `coverage: { enabled: false }`, no `code.sqlite`, no `coverage/` folder, no provider loaded.
+2. **015-11, policy on.** Records match what ran (a source line and a function hit, an early return, a lazy function); the run-ID join; a focused, cancelled or crashed run leaves no record; `node:inspector` and `isolate: false` files take no coverage and still pass; payloads are deleted; a second worktree adopts the record with the result; the prune drops records and old counts and nothing still in use; the mapping stays off the scheduler's path. The key marker: no path or worktree value, two worktrees share keys; judge the one-time re-key and the validity cases the worker added in `test/keys/validity/`.
+3. **015-29.** The rewrite keeps every offset and touches no string, comment or template; names and body hashes read the file's text; the regex is linear.
+4. **015-31.** The held-edit rule against the six tests and the residue the worker named (a move out of a held file across a threshold change).
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Under host load, name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.

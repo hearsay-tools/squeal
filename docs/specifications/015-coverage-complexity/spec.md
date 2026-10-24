@@ -98,6 +98,8 @@ Python follows radon's rules (`complexity-and-crap.md` 1). A nested function is 
 
 The grammar's `.wasm` is copied into each plugin's `dist/` like the Python grammar (`src/harness/build.ts`). `COUNTER_VERSION`, a small integer, moves when a counting rule or a grammar changes, so that stored counts are never reused across a change of meaning.
 
+`tree-sitter-tsx` 0.23.2 reads `import("x")` in a type argument, as in `f<typeof import("x")>()`, as a comparison. The TSX parse input replaces each such `import("…")` with underscores of the same length, so every offset holds. Names and body hashes read the file's own text, never the parse input (amended 2026-10-24, 015-29, `COUNTER_VERSION` 3).
+
 `?.`, `??` and defaults make up 31% of the functions at CC 10 or more here. They are counted, because that is the number ESLint and the peer tools show. Open question 1 records the choice.
 
 A file that does not parse completely has an `unknown` state for each function in its error ranges. It is named in `squeal code`, and it delivers nothing.
@@ -111,6 +113,8 @@ A file that does not parse completely has an `unknown` state for each function i
 **States.** The per-worktree known state of each code check is: state, value, threshold, the revision and blob it was counted at, and the revision it last changed state. Changes of state are recorded as transitions, as 011 C5 records them for tests.
 
 **The pass.** On each revision the daemon counts the included files the revision changed (011 C2), after looking each blob up in the store. It runs in the daemon process, outside the scheduler's lanes, and takes no test permit (011 C10). A count the counter fails on is tried again 5 s and then 60 s later, three times in all, then not until the file's blob changes or a daemon starts; meanwhile the file keeps its last judged states. A grammar load that failed is made again at the next count (amended 2026-10-24, 015-18).
+
+A failed edit's count keeps the threshold it was made under. When a retry succeeds after a threshold change, a function's transition is recorded only when its outcome is the same at the current threshold, at the threshold of its stored state and at the edit's. A crossing that only the threshold change made is not told; the policy change's summary line already told it (amended 2026-10-24, 015-31, from review 0.1.293-r2 N1).
 
 A revision with more than 200 changed files, for example a pull or a checkout, is counted in slices. Between slices the daemon serves requests and starts test tiers. Hooks read only the store; tree-sitter's 30 to 50 ms start happens once per daemon.
 
@@ -191,13 +195,17 @@ With `complexity.blocking: true`, Stop's completion check (011 C8) also counts e
 
 With `coverage.enabled`, the Vitest adapter (013) passes `coverage: { enabled: true, provider: "custom", customProviderModule: <Squeal's own>, reporter: [], reportsDirectory: <the daemon's temp directory> }` to `createVitest`. In all other cases it passes `coverage: { enabled: false }`, so a project's own coverage setting never acts in Squeal's runs (row 013-07, which lands first).
 
-**The provider.** Its worker side starts and takes V8 precise coverage through `node:inspector`, as `@vitest/coverage-v8` does. Its main side keeps each batch's payload and writes no report. Vitest gives one payload per test file while files are isolated (`coverage-collection.md` Q1).
+**The provider.** Its worker side starts and takes V8 precise coverage through `node:inspector`, as `@vitest/coverage-v8` does. Its main side keeps each batch's payload and writes no report. Vitest gives one payload per test file while files are isolated (`coverage-collection.md` Q1). The provider ships in each plugin's `dist/coverage/`. A daemon that cannot find it runs without coverage and notes it once at start.
+
+**Keys** (amended 2026-10-24, 015-11). A coverage-on instance's key holds `{ provider: "squeal", version: COVERAGE_PROVIDER_VERSION }` in place of the coverage block, never a path. Turning coverage on re-keys every Vitest check once, and so does each raise of that version: those results gain a record. With coverage off the keys are byte-identical to before.
 
 **Mapping.** Each payload is mapped through the transform's source map to source lines and functions, outside the scheduler's path (0.37 s of main-thread CPU per test file).
 
-**The record.** It holds, per source the test file loaded: the source's blob id, a bitset of covered lines and a hit bit per function range. That is about 9 KiB per test file. It is stored in the code store (D4) at the test file's result key plus the provider version, so it is adopted with the result (011-23) and pruned with it (C7).
+**The record.** It holds, per source the test file loaded: the source's blob id, a bitset of covered lines and a hit bit per function range. It is stored in the code store (D4) at the test file's result key plus the provider version, so it is adopted with the result (011-23) and pruned with it (C7). The research estimated 9 KiB per test file; Squeal's own test files measure 26.7 KiB, because a record holds every source the file ran (amended 2026-10-24, 015-11).
 
-**Fidelity** (the human, 2026-10-23, skip and name). A test file whose closure imports `node:inspector` or `inspector` is run with coverage off. If the provider cannot skip one file, the file runs in its own tier. Squeal reads that import with the lexer it already uses. Status lists those files, and a source that only they load reads coverage `unknown`. One test of this kind failed under V8 coverage in the research (`coverage-collection.md` Q5). 011 C10's Fidelity rule makes that a defect, never an accepted cost.
+A record is stored only for a completed test file of a run that did not hang, crash or get cancelled, and that ran the whole file, not some of its tests, and only while the result at the file's current key names that run. Otherwise the next run makes it. The daemon prunes the code store after each prune of the main store: counts by D4's rule, records whose result key the main store no longer holds (amended 2026-10-24, 015-11; the counts had no prune caller before).
+
+**Fidelity** (the human, 2026-10-23, skip and name). A test file whose closure imports `node:inspector` or `inspector` is run with coverage off. The adapter lists those files before each run, and a worker that runs one starts no coverage session, so no own tier is needed. Squeal reads that import from the import closure it already keeps. The adapter notes each such file (amended 2026-10-24, 015-11). Status lists those files, and a source that only they load reads coverage `unknown` (wave 2b, D9). One test of this kind failed under V8 coverage in the research (`coverage-collection.md` Q5). 011 C10's Fidelity rule makes that a defect, never an accepted cost.
 
 **`isolate: false` projects** run with coverage off, with one note. In a shared batch, import-time code is credited to the first file that loads it (Q1).
 
@@ -219,7 +227,7 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 ### D10. Cost
 
 - **Wave 1** adds the counter's CPU: a few ms per changed file, and the first count once per repository and policy. It adds the grammar's bytes to each plugin.
-- **Wave 2** adds about 8% CPU to each run Squeal makes while `coverage.enabled` holds, the mapping included, plus about 9 KiB of store per test file result.
+- **Wave 2** adds about 8% CPU to each run Squeal makes while `coverage.enabled` holds, the mapping included, plus about 9 KiB of store per test file result. Measured on the research's 30-file sample (015-11, five pairs at load 18 to 48): median +5.4% CPU, one pair +25.5%; wall time median +0.2%; 26.7 KiB per test file here (amended 2026-10-24).
 - Neither adds a test run. The human (2026-10-23) weighs every feature by the CPU it adds per edit. Wave 2's dogfood reports the CPU per edit with and without coverage, with the load, before 015 ships.
 
 ## Testing
