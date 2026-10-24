@@ -71,10 +71,10 @@ function wentOver(check: typeof STOP, from: number, to: number, revision: number
 describe("a change made while no daemon ran (lessons round 1, P2)", () => {
   it("takes the start scan's revision in by count, and tells the session's own edits", async () => {
     await registered();
-    const since = codeSeenUpTo(main, C1) ?? expect.fail("no registration");
+    const { since } = codeSeenUpTo(main, C1) ?? expect.fail("no registration");
     // The reset, as the new daemon's start scan stores it.
     const reset = revise("start", STOP.path);
-    expect(codeSeenUpTo(main, C1)).toBe(reset);
+    expect(codeSeenUpTo(main, C1)).toEqual({ since: reset, gaps: [] });
     expect(reset).toBe(since + 1);
     wentOver(STOP, 20, 21, reset, 45);
     expect(await delivery().onToolBoundary(C1)).toBeNull();
@@ -114,7 +114,7 @@ describe("a change made while no daemon ran (lessons round 1, P2)", () => {
   it("tells the first revision after the registration when it is not a start scan's", async () => {
     await registered();
     const edit = revise("watch", STOP.path);
-    expect(codeSeenUpTo(main, C1)).toBe(edit - 1);
+    expect(codeSeenUpTo(main, C1)).toEqual({ since: edit - 1, gaps: [] });
     wentOver(STOP, 20, 21, edit, 45);
     const text = formatDelta((await delivery().onToolBoundary(C1)) ?? expect.fail("no delta"));
     expect(text).toContain("FAIL complexity: stopCommand (src/cli/stop.ts:45) is 21, over 20");
@@ -124,7 +124,7 @@ describe("a change made while no daemon ran (lessons round 1, P2)", () => {
     // The revision is stored, but the pass has not reached it.
     const late = revise("watch", STOP.path);
     await registered();
-    expect(codeSeenUpTo(main, C1)).toBe(late);
+    expect(codeSeenUpTo(main, C1)).toEqual({ since: late, gaps: [] });
     wentOver(STOP, 20, 21, late, 45);
     expect(await delivery().onToolBoundary(C1)).toBeNull();
     expect(repo.store.views.list(C1).map((v) => v.check.qualifiedName)).toEqual(["stopCommand"]);
