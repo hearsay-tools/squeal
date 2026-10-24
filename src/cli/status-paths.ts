@@ -120,7 +120,7 @@ function readOnce(
   const result = buildSnapshot(store, root, now);
   // Row 011-146 (C6 as amended 2026-10-23): the selected checks' focused answers; it requests nothing.
   const own = ownNamedFiles(root, cwd, paths, selection);
-  const focus = snapshotFocus(store, id, root, selection.files, own, checks);
+  const focus = snapshotFocus(store, id, root, ready, own, checks);
   return {
     outcome,
     ...(hold === null ? {} : { hold }),

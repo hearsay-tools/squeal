@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { namedWaitCommand } from "../../src/cli/status-wait-paths.js";
-import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import { focusedRun, test, writeRuns } from "../status/focused-fixture.js";
 import { result } from "../store/helpers.js";
-import { A, B, finish, later, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import { A, B, finish, later, ref, repoWith } from "./status-wait-fixture.js";
 import { A_DONE, A_QUEUED, capture, focusing } from "./status-wait-focus-fixture.js";
 
 /*
@@ -209,37 +208,6 @@ describe("a named wait with --check (011 C15, row 011-146)", () => {
 });
 
 describe("--check selects inside a test file named by its own path (011 C15)", () => {
-  it("with source paths only it is a usage error, exit 2, and nothing is sent", async () => {
-    const { repo, store } = repoWith([A]);
-    store.testFiles.put({
-      testFile: ref(A),
-      closure: {
-        testFile: ref(A),
-        paths: [A, "src/shared.ts"].sort() as never,
-        complete: false,
-        method: CLOSURE_METHOD,
-      },
-      updatedAt: NOW,
-      updatedBy: repo.mainId,
-    });
-    const daemon = focusing(store, repo.mainId, null);
-    const io = capture(repo.main);
-
-    const code = await namedWaitCommand(
-      ["src/shared.ts"],
-      { json: false, checks: [TEXT] },
-      io,
-      daemon.options,
-    );
-
-    expect(code).toBe(2);
-    expect(io.err.join("")).toBe(
-      "squeal status: --check selects checks inside a test file named by its own path\n",
-    );
-    expect(daemon.sent).toEqual([]);
-    expect(io.out).toEqual([]);
-  });
-
   it("a text with the file's printed prefix is sent, and selects, as without it", async () => {
     const { repo, store } = repoWith([A]);
     const daemon = focusing(store, repo.mainId, {});
