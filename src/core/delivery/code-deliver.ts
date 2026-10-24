@@ -1,3 +1,4 @@
+import { uncountableFiles } from "../code/pass/failed.js";
 import type { CodeStore } from "../code/store/types.js";
 import { isRecord } from "../fs/index.js";
 import type {
@@ -91,6 +92,23 @@ export function isTooBig(file: CodeFile): boolean {
   return (file as CodeFile & { readonly tooBig?: boolean }).tooBig === true;
 }
 
+/**
+ * D6's `counting: N of M`: the included files counted (`done`) and to count
+ * (`total`), files too big left out. A file the counter failed on at every
+ * attempt is neither: it is `uncountable` (row 015-18), so counting ends
+ * when only such files remain.
+ */
+export function countingOf(
+  store: CodeStore,
+  worktreeId: WorktreeId,
+): { readonly done: number; readonly total: number; readonly uncountable: number } {
+  const files = store.files.list(worktreeId).filter((f) => !isTooBig(f));
+  const spent = uncountableFiles(store, worktreeId, files);
+  const pending = store.files.uncounted(worktreeId).filter((f) => !spent.has(f.path)).length;
+  const total = files.length - spent.size;
+  return { done: total - pending, total, uncountable: spent.size };
+}
+
 /** The check's measure's last transition in the worktree; `null` when none is recorded. */
 export function lastTransition(
   store: CodeStore,
@@ -140,9 +158,8 @@ export function registerCode(
     store.transaction((): CodeRegistration => {
       const failing = failingIn(store, worktreeId);
       seed(store, consumer, failing, at);
-      const total = store.files.list(worktreeId).filter((f) => !isTooBig(f)).length;
-      const pending = store.files.uncounted(worktreeId).length;
-      const counting = pending === 0 ? {} : { counting: { done: total - pending, total } };
+      const { done, total } = countingOf(store, worktreeId);
+      const counting = done === total ? {} : { counting: { done, total } };
       return { v: 1, threshold: complexity.threshold, over: failing.length, ...counting };
     }),
   );
