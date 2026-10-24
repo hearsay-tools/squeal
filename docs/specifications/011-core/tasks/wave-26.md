@@ -73,3 +73,19 @@ Seams: `writeRunLog` in `src/runners/vitest/run.ts` (`report.json`), `src/runner
 Owns those three writers, one shared helper beside them, the tests that read a run log (`test/runners/vitest/run.test.ts`, `test/daemon/{hold,step-down-lanes,stop-cancel}.test.ts` and any other you find), `tasks/011-164/`. Read `docs/specifications/011-core/research/probes/host-load/waste.mjs` and say in your notes whether it still works; do not edit it. Not yours: `src/runners/pytest/adapter.ts` and the daemon wrappers (W3), `src/core/store/prune.ts` (W2), `src/core/scheduler/` (W1, W3, W4), the board, spec text, bundles, version. No `npm run build`.
 
 Done when the row's done-when holds; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output in your summary.
+
+## W6: 011-159 finish, the end-to-end and eval fixtures keep the start baseline they wait for
+
+Use /worker. Shape: finish.
+
+Outcome: on the 0.1.281 bundle (lookup-only by default), every `test/e2e/` test that waits for a passing start baseline gets one, and the eval fixture does too, so CI's `npx vitest run` and the next eval run do not wait out their bounds.
+
+Read board row 011-159; `docs/specifications/011-core/tasks/011-159/notes.md` sections on `test/e2e/` and `evals/` (lines 267 to 270 list the fixtures and tests); 001 D11 as amended 2026-10-23.
+
+Your baseline already holds W1's change and the committed 0.1.281 bundles (`plugins/*/dist`): run the e2e tests against them as they are.
+
+Seams: `test/e2e/harness.ts` (`FixtureOptions.policy`, default `{}`, and the `squeal init` and `squeal setup` paths, then `amendPolicy`, near line 213); `opencode-fixture.ts` line 151 and `baseline()` line 251; `pi-fixture.ts` line 95 and `baseline()` line 201; `slow-shape.ts`; `shipped-plugin.test.ts` line 116; `codex-upgrade.test.ts` line 150; `evals/ledgerline/squeal.config.json`. A lead: in the harness, after every config path, add `"baseline": {"onStart": "lookup-then-run-missing"}` when the written config has no `baseline` key, with a fixture option that leaves it out; do the same in the OpenCode and Pi fixtures. A test that checks the shipped default (look at `policy.test.ts`) opts out and asserts lookup-only: with no `baseline` key the start queues no miss.
+
+Owns `test/e2e/**`, `test/fixtures/e2e/**`, `evals/ledgerline/squeal.config.json`, and an appended section in `tasks/011-159/notes.md`. Not yours: `src/`, `plugins/` (bundles), versions, unit tests outside `test/e2e`, `evals/lib/`, the board, spec text. No `npm run build`. Never run a script under `evals/bin/` or `tasks/*/probe/`.
+
+Done when every file the notes list, plus any other `test/e2e` file that fails for this reason, passes: `env -u PLUGIN_ROOT -u PLUGIN_DATA flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run test/e2e --maxWorkers=4` (paste its summary); lint and typecheck pass; the notes list each e2e file as pinned, default-asserting, or untouched.
