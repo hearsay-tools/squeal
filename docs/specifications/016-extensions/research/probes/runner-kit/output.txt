@@ -1,0 +1,82 @@
+flip-recover-two-hops × vitest
+  ok   lists test/chain.test.ts, test/broken.test.ts (got test/broken.test.ts, test/chain.test.ts)
+  ok   step 0 run (completed): chain is pass, expected pass
+  ok   step 0 run (completed): broken is file-error, expected file-error
+  ok   step 1 edit src/leaf.ts: reaches chain by affected=transitive, closure=true, observed=false
+  ok   step 2 run (completed): chain is fail, expected fail
+  ok   step 2 run (completed): broken is file-error, expected file-error
+  ok   step 3 edit src/leaf.ts: reaches chain by affected=transitive, closure=true, observed=false
+  ok   step 4 run (completed): chain is pass, expected pass
+  ok   step 4 run (completed): broken is file-error, expected file-error
+flip-recover-two-hops × node-test
+  ok   lists test/chain.test.mjs, test/broken.test.mjs (got test/broken.test.mjs, test/chain.test.mjs)
+  ok   step 0 run (completed): chain is pass, expected pass
+  ok   step 0 run (completed): broken is file-error, expected file-error
+  ok   step 1 edit src/leaf.mjs: reaches chain by affected=transitive, closure=true, observed=false
+  ok   step 2 run (completed): chain is fail, expected fail
+  ok   step 2 run (completed): broken is file-error, expected file-error
+  ok   step 3 edit src/leaf.mjs: reaches chain by affected=transitive, closure=true, observed=false
+  ok   step 4 run (completed): chain is pass, expected pass
+  ok   step 4 run (completed): broken is file-error, expected file-error
+flip-recover-two-hops × pytest
+  ok   lists tests/test_chain.py, tests/test_broken.py (got tests/test_broken.py, tests/test_chain.py)
+  ok   step 0 run (completed): chain is pass, expected pass
+  ok   step 0 run (completed): broken is file-error, expected file-error
+  ok   step 1 edit app/leaf.py: reaches chain by affected=transitive, closure=true, observed=false
+  ok   step 2 run (completed): chain is fail, expected fail
+  ok   step 2 run (completed): broken is file-error, expected file-error
+  ok   step 3 edit app/leaf.py: reaches chain by affected=transitive, closure=true, observed=false
+  ok   step 4 run (completed): chain is pass, expected pass
+  ok   step 4 run (completed): broken is file-error, expected file-error
+computed-import × vitest
+  ok   lists test/loads.test.ts (got test/loads.test.ts)
+  ok   step 0 loads lacks src/hidden.ts: closure=false, observed=false
+  ok   step 1 run (completed): loads is pass, expected pass
+  FAIL step 2 loads holds src/hidden.ts: closure=false, observed=false
+  FAIL step 3 edit src/hidden.ts: reaches loads by affected=none, closure=false, observed=false
+  ok   step 4 run (completed): loads is fail, expected fail
+computed-import × node-test
+  ok   lists test/loads.test.mjs (got test/loads.test.mjs)
+  ok   step 0 loads lacks src/hidden.mjs: closure=false, observed=false
+  ok   step 1 run (completed): loads is pass, expected pass
+  ok   step 2 loads holds src/hidden.mjs: closure=true, observed=true
+  ok   step 3 edit src/hidden.mjs: reaches loads by affected=transitive, closure=true, observed=true
+  ok   step 4 run (completed): loads is fail, expected fail
+computed-import × pytest
+  ok   lists tests/test_loads.py (got tests/test_loads.py)
+  ok   step 0 loads lacks app/hidden.py: closure=false, observed=false
+  ok   step 1 run (completed): loads is pass, expected pass
+  ok   step 2 loads holds app/hidden.py: closure=true, observed=true
+  ok   step 3 edit app/hidden.py: reaches loads by affected=transitive, closure=true, observed=true
+  ok   step 4 run (completed): loads is fail, expected fail
+same-stat-edit × vitest
+  ok   lists test/direct.test.ts (got test/direct.test.ts)
+  ok   step 0 run (completed): direct is pass, expected pass
+  ok   step 1 edit src/leaf.ts: reaches direct by affected=direct, closure=true, observed=false
+  ok   step 2 run (completed): direct is fail, expected fail
+  ok   step 3 edit src/leaf.ts: reaches direct by affected=direct, closure=true, observed=false
+  ok   step 4 run (completed): direct is pass, expected pass
+same-stat-edit × node-test
+  ok   lists test/direct.test.mjs (got test/direct.test.mjs)
+  ok   step 0 run (completed): direct is pass, expected pass
+  ok   step 1 edit src/leaf.mjs: reaches direct by affected=direct, closure=true, observed=false
+  ok   step 2 run (completed): direct is fail, expected fail
+  ok   step 3 edit src/leaf.mjs: reaches direct by affected=direct, closure=true, observed=false
+  ok   step 4 run (completed): direct is pass, expected pass
+same-stat-edit × pytest
+  ok   lists tests/test_direct.py (got tests/test_direct.py)
+  ok   step 0 run (completed): direct is pass, expected pass
+  ok   step 1 edit app/leaf.py: reaches direct by affected=direct, closure=true, observed=false
+  ok   step 2 run (completed): direct is fail, expected fail
+  ok   step 3 edit app/leaf.py: reaches direct by affected=direct, closure=true, observed=false
+  ok   step 4 run (completed): direct is pass, expected pass
+PASS flip-recover-two-hops × vitest
+PASS flip-recover-two-hops × node-test
+PASS flip-recover-two-hops × pytest
+KNOWN computed-import × vitest (011 C12, observed runtime inputs: not seen, left to `inputs`: a computed `import()` Vite loads)
+PASS computed-import × node-test
+PASS computed-import × pytest
+PASS same-stat-edit × vitest
+PASS same-stat-edit × node-test
+PASS same-stat-edit × pytest
+exit 0
