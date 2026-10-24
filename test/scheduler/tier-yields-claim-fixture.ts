@@ -30,12 +30,13 @@ export function filesOf(slowMs: number, fMs: number): CatchUpFile[] {
 }
 
 /**
- * Both worktrees started and idle; the other inherited this one's baseline.
- * `options` are this worktree's: its policy's timeout, its clock.
+ * Both worktrees started and idle. `options` are this worktree's: its
+ * policy's timeout, its clock, and a `policy` set over the defaults; under
+ * `RUN_MISSING` its start runs every file and the other inherits the results.
  */
 export async function sides(
   files: CatchUpFile[],
-  options: Pick<CatchUpOptions, "timeoutMs" | "now"> = {},
+  options: Pick<CatchUpOptions, "timeoutMs" | "now" | "policy"> = {},
 ): Promise<{ main: CatchUpSide; other: CatchUpSide }> {
   const repo = catchUpRepo(files);
   const main = catchUpSide(repo, repo.main, { files, hostSlots: 8, ...options });
