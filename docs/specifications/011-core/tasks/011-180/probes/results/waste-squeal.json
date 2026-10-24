@@ -1,0 +1,182 @@
+{
+ "from": "2026-10-23T13:38:00.000Z",
+ "to": "2026-10-24T13:38:00.000Z",
+ "runs": 2417,
+ "runsWithoutReport": 0,
+ "removedWorktrees": 47,
+ "all": {
+  "files": {
+   "picked": 35232,
+   "storedNow": 31400,
+   "prunedWithWorktree": 1756,
+   "storedNothing": 2076,
+   "keptShare": 94.1,
+   "neverStarted": 1570,
+   "handedOver": 1475,
+   "keptShareStarted": 98.2,
+   "keptShareNow": 89.1,
+   "prunedShare": 5,
+   "nothingShare": 5.9
+  },
+  "recordedSeconds": {
+   "picked": 255705,
+   "storedNow": 216642,
+   "prunedWithWorktree": 16732,
+   "storedNothing": 22331,
+   "keptShare": 91.3,
+   "keptShareNow": 84.7,
+   "prunedShare": 6.5,
+   "nothingShare": 8.7
+  }
+ },
+ "live": {
+  "files": {
+   "picked": 6002,
+   "storedNow": 5619,
+   "prunedWithWorktree": 0,
+   "storedNothing": 383,
+   "keptShare": 93.6,
+   "neverStarted": 131,
+   "handedOver": 131,
+   "keptShareStarted": 95.7,
+   "keptShareNow": 93.6,
+   "prunedShare": 0,
+   "nothingShare": 6.4
+  },
+  "recordedSeconds": {
+   "picked": 53909,
+   "storedNow": 44973,
+   "prunedWithWorktree": 0,
+   "storedNothing": 8936,
+   "keptShare": 83.4,
+   "keptShareNow": 83.4,
+   "prunedShare": 0,
+   "nothingShare": 16.6
+  }
+ },
+ "removed": {
+  "files": {
+   "picked": 29230,
+   "storedNow": 25781,
+   "prunedWithWorktree": 1756,
+   "storedNothing": 1693,
+   "keptShare": 94.2,
+   "neverStarted": 1439,
+   "handedOver": 1344,
+   "keptShareStarted": 98.7,
+   "keptShareNow": 88.2,
+   "prunedShare": 6,
+   "nothingShare": 5.8
+  },
+  "recordedSeconds": {
+   "picked": 201796,
+   "storedNow": 171669,
+   "prunedWithWorktree": 16732,
+   "storedNothing": 13395,
+   "keptShare": 93.4,
+   "keptShareNow": 85.1,
+   "prunedShare": 8.3,
+   "nothingShare": 6.6
+  }
+ },
+ "liveCompletedStoredNothing": {
+  "files": 3.5,
+  "recordedSeconds": 10.1
+ },
+ "runWallHours": 20,
+ "runsThatStoredNothing": 13,
+ "wallHoursOfThem": 0.2,
+ "zeroShareOfWall": 0.8,
+ "checkpointRuns": 554,
+ "checkpoint": {
+  "files": {
+   "picked": 15745,
+   "storedNow": 14415,
+   "prunedWithWorktree": 1179,
+   "storedNothing": 151,
+   "keptShare": 99,
+   "neverStarted": 96,
+   "handedOver": 96,
+   "keptShareStarted": 99.6,
+   "keptShareNow": 91.6,
+   "prunedShare": 7.5,
+   "nothingShare": 1
+  },
+  "recordedSeconds": {
+   "picked": 135467,
+   "storedNow": 121220,
+   "prunedWithWorktree": 10314,
+   "storedNothing": 3933,
+   "keptShare": 97.1,
+   "keptShareNow": 89.5,
+   "prunedShare": 7.6,
+   "nothingShare": 2.9
+  }
+ },
+ "cancelled": {
+  "run cancelled: an edit arrived during a backlog tier": {
+   "runs": 22,
+   "withoutLog": 0,
+   "picked": 2974,
+   "neverEnded": 1481,
+   "cut": 117,
+   "cutSeconds": 951,
+   "neverStarted": 1364,
+   "handedOver": 1270
+  },
+  "run cancelled: the revisions during it changed an input of every file that had not ended": {
+   "runs": 40,
+   "withoutLog": 0,
+   "picked": 560,
+   "neverEnded": 136,
+   "cut": 68,
+   "cutSeconds": 700,
+   "neverStarted": 68,
+   "handedOver": 67
+  },
+  "run cancelled: it yielded to an edit's work, a promoted file or a runner part waiting for it": {
+   "runs": 31,
+   "withoutLog": 0,
+   "picked": 316,
+   "neverEnded": 198,
+   "cut": 60,
+   "cutSeconds": 2296,
+   "neverStarted": 138,
+   "handedOver": 138
+  }
+ },
+ "bySize": {
+  "1": {
+   "runs": 161,
+   "files": 161,
+   "kept": 161,
+   "wall": 2585,
+   "zero": 0,
+   "keptShare": 100
+  },
+  "2-9": {
+   "runs": 1978,
+   "files": 7780,
+   "kept": 7625,
+   "wall": 43936,
+   "zero": 11,
+   "keptShare": 98
+  },
+  "100+": {
+   "runs": 123,
+   "files": 22076,
+   "kept": 20239,
+   "wall": 9291,
+   "zero": 1,
+   "keptShare": 91.7
+  },
+  "10-99": {
+   "runs": 155,
+   "files": 5215,
+   "kept": 5131,
+   "wall": 16331,
+   "zero": 1,
+   "keptShare": 98.4
+  }
+ }
+}

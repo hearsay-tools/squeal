@@ -1,0 +1,212 @@
+{
+ "from": "2026-10-23T13:38:00.000Z",
+ "to": "2026-10-24T13:38:00.000Z",
+ "runs": 3204,
+ "runsWithoutReport": 700,
+ "removedWorktrees": 36,
+ "all": {
+  "files": {
+   "picked": 19807,
+   "storedNow": 16705,
+   "prunedWithWorktree": 1456,
+   "storedNothing": 1646,
+   "keptShare": 91.7,
+   "neverStarted": 1138,
+   "handedOver": 1119,
+   "keptShareStarted": 97.2,
+   "keptShareNow": 84.3,
+   "prunedShare": 7.4,
+   "nothingShare": 8.3
+  },
+  "recordedSeconds": {
+   "picked": 339483,
+   "storedNow": 291977,
+   "prunedWithWorktree": 17292,
+   "storedNothing": 30213,
+   "keptShare": 91.1,
+   "keptShareNow": 86,
+   "prunedShare": 5.1,
+   "nothingShare": 8.9
+  }
+ },
+ "live": {
+  "files": {
+   "picked": 4262,
+   "storedNow": 3694,
+   "prunedWithWorktree": 0,
+   "storedNothing": 568,
+   "keptShare": 86.7,
+   "neverStarted": 199,
+   "handedOver": 198,
+   "keptShareStarted": 90.9,
+   "keptShareNow": 86.7,
+   "prunedShare": 0,
+   "nothingShare": 13.3
+  },
+  "recordedSeconds": {
+   "picked": 100640,
+   "storedNow": 80593,
+   "prunedWithWorktree": 0,
+   "storedNothing": 20046,
+   "keptShare": 80.1,
+   "keptShareNow": 80.1,
+   "prunedShare": 0,
+   "nothingShare": 19.9
+  }
+ },
+ "removed": {
+  "files": {
+   "picked": 15545,
+   "storedNow": 13011,
+   "prunedWithWorktree": 1456,
+   "storedNothing": 1078,
+   "keptShare": 93.1,
+   "neverStarted": 939,
+   "handedOver": 921,
+   "keptShareStarted": 98.9,
+   "keptShareNow": 83.7,
+   "prunedShare": 9.4,
+   "nothingShare": 6.9
+  },
+  "recordedSeconds": {
+   "picked": 238843,
+   "storedNow": 211384,
+   "prunedWithWorktree": 17292,
+   "storedNothing": 10166,
+   "keptShare": 95.7,
+   "keptShareNow": 88.5,
+   "prunedShare": 7.2,
+   "nothingShare": 4.3
+  }
+ },
+ "liveCompletedStoredNothing": {
+  "files": 6.4,
+  "recordedSeconds": 10.4
+ },
+ "runWallHours": 40.6,
+ "runsThatStoredNothing": 69,
+ "wallHoursOfThem": 2,
+ "zeroShareOfWall": 4.9,
+ "checkpointRuns": 0,
+ "checkpoint": {
+  "files": {
+   "picked": 0,
+   "storedNow": 0,
+   "prunedWithWorktree": 0,
+   "storedNothing": 0,
+   "keptShare": null,
+   "neverStarted": 0,
+   "handedOver": 0,
+   "keptShareStarted": null,
+   "keptShareNow": null,
+   "prunedShare": null,
+   "nothingShare": null
+  },
+  "recordedSeconds": {
+   "picked": 0,
+   "storedNow": 0,
+   "prunedWithWorktree": 0,
+   "storedNothing": 0,
+   "keptShare": null,
+   "keptShareNow": null,
+   "prunedShare": null,
+   "nothingShare": null
+  }
+ },
+ "cancelled": {
+  "run cancelled: it yielded to an edit's work, a promoted file or a runner part waiting for it": {
+   "runs": 55,
+   "withoutLog": 0,
+   "picked": 610,
+   "neverEnded": 400,
+   "cut": 106,
+   "cutSeconds": 8348,
+   "neverStarted": 294,
+   "handedOver": 294
+  },
+  "run cancelled: an edit arrived during a backlog tier": {
+   "runs": 18,
+   "withoutLog": 0,
+   "picked": 1323,
+   "neverEnded": 702,
+   "cut": 43,
+   "cutSeconds": 1074,
+   "neverStarted": 659,
+   "handedOver": 647
+  },
+  "run cancelled: the daemon stepped down for newer hooks": {
+   "runs": 5,
+   "withoutLog": 0,
+   "picked": 18,
+   "neverEnded": 12,
+   "cut": 12,
+   "cutSeconds": 1002,
+   "neverStarted": 0,
+   "handedOver": 0
+  },
+  "run cancelled: the revisions during it changed an input of every file that had not ended": {
+   "runs": 22,
+   "withoutLog": 0,
+   "picked": 277,
+   "neverEnded": 161,
+   "cut": 33,
+   "cutSeconds": 2649,
+   "neverStarted": 128,
+   "handedOver": 127
+  },
+  "run cancelled: squeal stop": {
+   "runs": 5,
+   "withoutLog": 0,
+   "picked": 117,
+   "neverEnded": 43,
+   "cut": 23,
+   "cutSeconds": 2011,
+   "neverStarted": 20,
+   "handedOver": 14
+  },
+  "run cancelled: squeal hold": {
+   "runs": 10,
+   "withoutLog": 0,
+   "picked": 69,
+   "neverEnded": 64,
+   "cut": 27,
+   "cutSeconds": 1344,
+   "neverStarted": 37,
+   "handedOver": 37
+  }
+ },
+ "bySize": {
+  "1": {
+   "runs": 1774,
+   "files": 1774,
+   "kept": 1733,
+   "wall": 50496,
+   "zero": 41,
+   "keptShare": 97.7
+  },
+  "10-99": {
+   "runs": 133,
+   "files": 3998,
+   "kept": 3589,
+   "wall": 14622,
+   "zero": 2,
+   "keptShare": 89.8
+  },
+  "2-9": {
+   "runs": 1243,
+   "files": 4900,
+   "kept": 4668,
+   "wall": 75562,
+   "zero": 25,
+   "keptShare": 95.3
+  },
+  "100+": {
+   "runs": 54,
+   "files": 9135,
+   "kept": 8171,
+   "wall": 5632,
+   "zero": 1,
+   "keptShare": 89.4
+  }
+ }
+}
