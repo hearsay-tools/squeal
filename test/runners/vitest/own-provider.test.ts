@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   buildRecord,
+  COVERAGE_PROVIDER_VERSION,
   type CoverageRun,
   type CoverageSource,
   hasLine,
@@ -78,7 +79,8 @@ describe("vitest adapter: Squeal's coverage provider", SLOW, () => {
     expect(opened.notes.filter((n) => n.includes("node:inspector"))).toEqual([
       "coverage is off for test/self-coverage.test.ts: its closure imports node:inspector, so its tests can see V8 coverage (spec 015 D8)",
     ]);
-    expect(opened.runs.map((r) => [r.runId, r.files.map((f) => f.testFile.path)])).toEqual([
+    // In the order the files ended.
+    expect(opened.runs.map((r) => [r.runId, r.files.map((f) => f.testFile.path).sort()])).toEqual([
       ["r1", ["test/math.test.ts", "test/text.test.ts"]],
     ]);
     // Nothing is written into the worktree; the payloads are in the daemon's temp directory.
@@ -112,5 +114,22 @@ describe("vitest adapter: Squeal's coverage provider", SLOW, () => {
       [14, 0],
       [15, 0],
     ]);
+  });
+
+  it("keys a coverage-on instance by the provider's name and version alone, and coverage off as before", async () => {
+    const resolved = async (create?: (root: string) => ReturnType<typeof createVitestAdapter>) => {
+      const fx = await openFixture("own-provider", {}, create);
+      const [environment] = await fx.adapter.environment();
+      return JSON.parse(environment?.resolvedConfig ?? "null") as { coverage: unknown };
+    };
+    const plain = await resolved();
+    const off = await resolved(covering(() => false).create);
+    const first = await resolved(covering().create);
+    const second = await resolved(covering().create);
+
+    expect(off).toEqual(plain);
+    expect(first).toEqual(second);
+    expect(first.coverage).toEqual({ provider: "squeal", version: COVERAGE_PROVIDER_VERSION });
+    expect({ ...first, coverage: null }).toEqual({ ...plain, coverage: null });
   });
 });
