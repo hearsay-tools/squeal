@@ -504,24 +504,13 @@ class Daemon {
       // Decided here only: a reload reconciles the projects, not the runners (011 C10).
       const configured = this.#policy.nodeTest;
       const configuredPytest = this.#policy.pytest;
-      const format = await readObjectFormat(root);
-      // Spec 015 D8 (row 015-11, agreed with the coordinator): the records of the runs
-      // Vitest makes with coverage on, stored at their results' keys off the run's path.
-      const provider = coverage.coverageProvider();
-      const records = coverage.createCoverageWriter({
-        commonDir,
-        format,
-        policy: () => this.#policy,
-        resultKey: coverage.mainStoreResultKey(store, worktreeId),
-        skip: (path) => path === provider,
-        now: this.#now,
-        log: this.#log,
-      });
-      this.#coverage = records;
+      // Spec 015 D8 (row 015-11, agreed with the coordinator): the runs Vitest makes with
+      // coverage on hand their payloads to the records' writer, made below once the runners opened.
       const covering = {
         enabled: () => coverage.coverageOn(this.#policy),
         tempDir: this.opened.scratch.tempDir,
-        collected: (run: Parameters<CoverageWriter["collected"]>[0]) => records.collected(run),
+        collected: (run: Parameters<CoverageWriter["collected"]>[0]) =>
+          this.#coverage?.collected(run),
       };
       // Each Vitest instance's workers carry the mark of its lane (001 D12, task 004-18).
       const vitestInstance = (lane: string, maxWorkers?: number) => () =>
@@ -624,6 +613,18 @@ class Daemon {
         vitestBelowRoot,
       ]);
       if (this.#phase === "stopping" || this.#stopRequested) return;
+      const format = await readObjectFormat(root);
+      // Spec 015 D8: the records, stored at their results' keys off the run's path.
+      const provider = coverage.coverageProvider();
+      this.#coverage = coverage.createCoverageWriter({
+        commonDir,
+        format,
+        policy: () => this.#policy,
+        resultKey: coverage.mainStoreResultKey(store, worktreeId),
+        skip: (path) => path === provider,
+        now: this.#now,
+        log: this.#log,
+      });
       // Spec 015 D4: outside the scheduler's lanes, with no test permit, nudged after each batch.
       const code = codePass.createCodePass({
         worktreeId,
