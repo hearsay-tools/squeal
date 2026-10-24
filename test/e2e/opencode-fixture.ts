@@ -21,6 +21,7 @@ import {
   type ScriptedStep,
 } from "../fixtures/opencode/scripted-provider.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { type OpenCodeLive, type OpenCodeRun, runOpenCode } from "../helpers/opencode.js";
 import { piBase } from "../helpers/pi.js";
 import { copyPlugin } from "./plugins.js";
@@ -148,7 +149,8 @@ export class OpenCodeE2E {
     if (this.options.squeal !== false) {
       const { stopWaitMs } = this.options;
       const config = stopWaitMs === undefined ? {} : { stop: { waitMs: stopWaitMs } };
-      writeFileSync(join(repo, "squeal.config.json"), `${JSON.stringify(config)}\n`);
+      // The scenarios wait for the start to run every file (row 011-159: not the shipped default).
+      writeFileSync(join(repo, "squeal.config.json"), runMissingConfig(JSON.stringify(config)));
     }
     git(repo, ["add", "-A"]);
     git(repo, ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture"]);

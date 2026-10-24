@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { formatCheck } from "../../src/core/status/index.js";
@@ -20,6 +20,7 @@ const fixture = e2eSuite();
 const ADDS = "test/math.test.ts > math > adds";
 const MULTIPLIES = "test/math.test.ts > math > multiplies";
 const SLOWLY = "test/slow.test.ts > doubles slowly";
+const TEST_FILES = ["test/math.test.ts", "test/strings.test.ts"];
 
 const names = (s: StatusSnapshot) => s.knownFailures.map((f) => formatCheck(f.check));
 const failingOnly =
@@ -132,6 +133,32 @@ describe.each(PLUGINS)("Stop with stop.blockOnKnownFailures, $name", (plugin) =>
     expect(free.json?.decision).toBeUndefined();
     expect(free.text ?? "").not.toContain("stop.blockOnKnownFailures");
   }, 300_000);
+});
+
+describe.each(PLUGINS)("baseline.onStart, the shipped default, $name", (plugin) => {
+  it("with no baseline key, the start runs no test file (row 011-159)", async (ctx) => {
+    const e = fixture(ctx, plugin, { shippedBaseline: true });
+    expect(readFileSync(join(e.main, "squeal.config.json"), "utf8")).toBe("{}\n");
+    expect(await e.hook("session-start", e.main)).toMatchObject({ code: 0, stderr: "" });
+    await e.daemonReady(e.main);
+    const neverRun = (s: StatusSnapshot) =>
+      (s.outstanding ?? [])
+        .filter((g) => g.standing.kind === "never-run" && g.standing.lookupOnly)
+        .flatMap((g) => g.files.map((f) => f.path))
+        .sort();
+    const s = await until(
+      "every test file never run, the baseline lookup-only",
+      60_000,
+      async () => {
+        const s = await e.status(e.main);
+        return s.daemon.state === "alive" && neverRun(s).length === TEST_FILES.length ? s : null;
+      },
+    );
+    expect(neverRun(s)).toEqual(TEST_FILES);
+    expect(s.counts).toMatchObject({ current: 0, pending: 0 });
+    expect(s.testFilesWithoutChecks.pending).toBe(0);
+    expect(e.runs(e.main)).toEqual([]);
+  }, 120_000);
 });
 
 /** Writes a still-broken slow source with new content and waits until its failure reads pending. */
