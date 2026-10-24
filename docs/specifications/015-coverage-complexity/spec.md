@@ -110,7 +110,7 @@ A file that does not parse completely has an `unknown` state for each function i
 
 **States.** The per-worktree known state of each code check is: state, value, threshold, the revision and blob it was counted at, and the revision it last changed state. Changes of state are recorded as transitions, as 011 C5 records them for tests.
 
-**The pass.** On each revision the daemon counts the included files the revision changed (011 C2), after looking each blob up in the store. It runs in the daemon process, outside the scheduler's lanes, and takes no test permit (011 C10).
+**The pass.** On each revision the daemon counts the included files the revision changed (011 C2), after looking each blob up in the store. It runs in the daemon process, outside the scheduler's lanes, and takes no test permit (011 C10). A count the counter fails on is tried again 5 s and then 60 s later, three times in all, then not until the file's blob changes or a daemon starts; meanwhile the file keeps its last judged states. A grammar load that failed is made again at the next count (amended 2026-10-24, 015-18).
 
 A revision with more than 200 changed files, for example a pull or a checkout, is counted in slices. Between slices the daemon serves requests and starts test tiers. Hooks read only the store; tree-sitter's 30 to 50 ms start happens once per daemon.
 
@@ -166,7 +166,7 @@ The view entry is then marked told in full. Later edits to the function in that 
 
 **A summary.** A policy change, or a counter version that changes states, delivers `Complexity threshold is now 15: 117 functions over; squeal code lists them.` and re-seeds the views by count.
 
-**Status.** `squeal status` shows one line under the test lines: `Complexity: 62 functions over 20, 2 since this session started; squeal code lists them.` `--json` adds `code: { v: 1, threshold, over, sinceRegistration, pending, unknown }`.
+**Status.** `squeal status` shows one line under the test lines: `Complexity: 62 functions over 20, 2 since this session started; squeal code lists them.` `--json` adds `code: { v: 1, threshold, over, sinceRegistration, pending, unknown, files, uncountable? }`. A file whose attempts are spent is in neither `done` nor `total` of `counting: N of M`, so counting ends when only such files remain; `uncountable` counts these files and the line adds `; N files could not be counted`. `squeal code` lists such a file under `Not judged:` as `unknown: could not count (<error>)` and does not wait for it (amended 2026-10-24, 015-18).
 
 **Details on demand.** These come from a new command, `squeal code`:
 

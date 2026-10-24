@@ -25,3 +25,16 @@ Use /researcher. Brief: `research/typeof-import-brief.md`.
 ## R2: 015-26, progress updates on a failing function
 
 Use /researcher. Brief: `research/progress-updates-brief.md`.
+
+## 015-28: review of candidate 0.1.293
+
+Use /reviewer. Candidate `cand/0.1.293`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>` at 0.1.292: rows 013-07 and 015-18, plus one build commit (bundles, version 0.1.293). Write `docs/specifications/015-coverage-complexity/reviews/0.1.293.md` and commit it on your branch.
+
+Read `spec.md` D3, D4, D6 with their 2026-10-24 amendments, `status.md` (2026-10-24), W1 and W2 above, `tasks/013-07/notes.md` and `tasks/015-18/notes.md`, and 013-07's row on the board.
+
+Check, with proof where you can:
+1. **013-07.** A project's own coverage config (enabled, thresholds, a `coverage/` folder) does not reach Squeal's runs on Vitest 4 and 5: the folder, the daemon's output and its exit code are untouched. The test's exit-code check is weak by the worker's own account: judge whether that matters. `VITEST_ADAPTER_VERSION` stays 3 by the coordinator's decision (results survive releases unless a key's meaning changes): check that no stored verdict changes meaning.
+2. **015-18.** The retry: three attempts, 5 s and 60 s apart, no early or extra attempts on edits, rewrites or recounts, a fresh budget after a daemon start, a blob counted by another worktree. The grammar-load reset in `count/parser.ts`. The readers: `squeal code`, `counting: N of M`, status `code.uncountable`. No tight loop when the counter always throws. Policy off still byte-identical with no `code.sqlite`.
+3. **Residue the worker named**, to weigh: a retry of a failed first count records `first-seen fail` rather than a quiet seed; a retry pass that throws sets no new timer; the Python grammar load keeps a failure.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Under host load, name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
