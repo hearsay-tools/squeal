@@ -72,6 +72,8 @@ function fileLine(f: CodeReportFile, limit: number): string {
       return `  ${f.path}: not counted yet`;
     case "pending":
       return `  ${f.path}: pending: changed since revision ${f.revision}, not counted yet`;
+    case "could-not-count":
+      return `  ${f.path}: unknown: could not count (${f.error})`;
   }
 }
 
