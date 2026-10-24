@@ -8,6 +8,7 @@ import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
 import { formatWhy, readWhy } from "../../src/core/status/index.js";
 import { type CheckId, DEFAULT_POLICY, type Store } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   addWorktree,
   createRepo,
@@ -93,7 +94,10 @@ async function inheritFail(options: HarnessOptions) {
   const repo = flakyRepo();
   const other = addWorktree(repo.main, repo.dir, "other");
   const store = openRepoStore(repo.commonDir);
-  const a = await openHarness(repo.main, store, repo.commonDir, options);
+  const a = await openHarness(repo.main, store, repo.commonDir, {
+    ...options,
+    policy: { ...options.policy, ...RUN_MISSING },
+  });
   await a.scheduler.start();
   await a.scheduler.idle();
   expect(a.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { completions, suite } from "./backlog-suite.js";
 import { type Harness, openHarness, openRepoStore } from "./helpers.js";
@@ -40,6 +41,7 @@ async function backlogWith(
     backlogTierSize: 200,
     runnerPartBesideRun: true,
     now: () => Date.now() + offset,
+    policy: RUN_MISSING,
   });
   try {
     await h.scheduler.start();

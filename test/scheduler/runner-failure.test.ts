@@ -7,6 +7,7 @@ import {
   type Store,
   type TestCheckId,
 } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   ALL_TEST_FILES,
   createRepo,
@@ -43,7 +44,10 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
   it("a broken config makes every check unknown, persists a note and claims no full suite", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { allowErrors: true });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      allowErrors: true,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     const { delivery, consumer } = await h.consumer();
@@ -90,7 +94,7 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
   it("a restart whose runner rejects keeps the test files, marks them unknown and abandons the baseline", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const first = await openHarness(repo.main, store, repo.commonDir);
+    const first = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await first.scheduler.start();
     await first.scheduler.idle();
     await first.scheduler.close();
@@ -141,7 +145,10 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
   it("a failed listing retires nothing and is retried with the next revision", async () => {
     const repo = createRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir, { allowErrors: true });
+    const h = await openHarness(repo.main, store, repo.commonDir, {
+      allowErrors: true,
+      policy: RUN_MISSING,
+    });
     await h.scheduler.start();
     await h.scheduler.idle();
     const known = h.sink.states().length;

@@ -1,6 +1,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { settled, statusWhen, waitDaemons } from "./wait-daemon.js";
 
 /*
@@ -41,7 +42,10 @@ describe("a setup file's missing import is added (001-424)", () => {
   ])("$name: the next result passes with no touch", SLOW, async ({ name, setup, writes }) => {
     const root = createRepo(
       name.replace(/\W+/g, "-"),
-      fixtureFiles({ "test/setup.ts": `import "${setup}";\n` }),
+      fixtureFiles({
+        "squeal.config.json": runMissingConfig(),
+        "test/setup.ts": `import "${setup}";\n`,
+      }),
     );
     await startDaemon(root);
     const failing = await settled(root);

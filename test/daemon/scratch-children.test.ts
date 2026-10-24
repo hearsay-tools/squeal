@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { git } from "../hash/git-repo.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   SLOW,
   type SpawnedProcess,
@@ -67,7 +68,10 @@ describe.runIf(process.platform === "linux")(
     const built = suiteCli();
 
     it("holds the root until the daemon exits, and git worktree remove still succeeds", async () => {
-      const repo = linkedFixture(cleanups, { "vitest.config.ts": ESBUILD_CONFIG });
+      const repo = linkedFixture(cleanups, {
+        "vitest.config.ts": ESBUILD_CONFIG,
+        "squeal.config.json": runMissingConfig(),
+      });
       const spawned = spawnCli(built().cli, ["daemon", repo.root], { cwd: "/", env: repo.env });
       processes.push(spawned);
       await waitReady(repo, spawned);

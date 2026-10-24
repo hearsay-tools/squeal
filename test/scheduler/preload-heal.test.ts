@@ -15,6 +15,7 @@ import {
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { addWorktree, createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { RecordingSink } from "./recording-sink.js";
 
@@ -90,7 +91,7 @@ async function open(root: string, store: Store, commonDir: string, hold?: Promis
     store,
     runner,
     sink: new RecordingSink(store, worktreeId),
-    policy: DEFAULT_POLICY,
+    policy: { ...DEFAULT_POLICY, ...RUN_MISSING },
     squealVersion: "0.0.0-test",
     runsDir: storePaths(commonDir).runsDir,
     head: () => readHead(root),

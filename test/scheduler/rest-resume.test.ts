@@ -2,6 +2,7 @@ import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Policy } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpRepo,
@@ -39,7 +40,12 @@ const touch = (repo: CatchUpRepo, ...paths: string[]) => {
 /** A worktree whose every file in `files` ran once, its daemon gone. */
 async function ranOnce(files: readonly CatchUpFile[]): Promise<CatchUpRepo> {
   const repo = catchUpRepo(files);
-  const first = catchUpSide(repo, repo.main, { files, hostSlots: 4, backlogTierSize: 4 });
+  const first = catchUpSide(repo, repo.main, {
+    files,
+    hostSlots: 4,
+    backlogTierSize: 4,
+    policy: RUN_MISSING,
+  });
   await first.scheduler.start();
   await first.scheduler.idle();
   await first.scheduler.close();

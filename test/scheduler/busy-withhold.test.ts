@@ -7,6 +7,7 @@ import { readMergeHold } from "../../src/core/scheduler/hold-rows.js";
 import { prepareObserved } from "../../src/core/scheduler/observed.js";
 import type { TestCheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { busyWaits, busyWrite } from "./busy-fixture.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 import { unmergeIndex } from "./merge-hold-fixture.js";
@@ -52,6 +53,7 @@ async function harness(tierSize: number): Promise<Harness> {
     busyWaits: busyWaits(),
     busySliceMs: 50,
     tierSize,
+    policy: RUN_MISSING,
   });
   await h.scheduler.start();
   await h.scheduler.idle();

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   delay,
@@ -112,7 +113,10 @@ describe("a tier that records while another connection holds the store's write l
     const runs = join(scratch, "slow-runs.log");
     const release = join(scratch, "release");
     const stallLog = join(scratch, "stalls.log");
-    const repo = suite.fixture({ "test/slow.test.ts": slowTest(runs, release) });
+    const repo = suite.fixture({
+      "squeal.config.json": runMissingConfig(),
+      "test/slow.test.ts": slowTest(runs, release),
+    });
     repo.env.NODE_OPTIONS = `--import=${STALL_PRELOAD}`;
     repo.env.SQUEAL_TEST_STALLS = stallLog;
     const created = openStore(repo.commonDir);

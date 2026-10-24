@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { DEFAULT_POLICY, type Policy, type Store } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, recordedBy, type Side, side } from "./claims-fixture.js";
 
 /*
@@ -81,7 +82,7 @@ describe("claims: a key recorded between selection and start (review wave 13o, B
     const { main, other } = claimRepo(COUNT);
     const a = side(main, { count: COUNT });
     const race = racing(() => a, new Set(all));
-    const b = side(other, { count: COUNT, wrap: race.wrap });
+    const b = side(other, { count: COUNT, wrap: race.wrap, policy: RUN_MISSING });
     await b.scheduler.start();
     await b.scheduler.idle();
     expect(race.recorded).toEqual(all);
@@ -97,7 +98,7 @@ describe("claims: a key recorded between selection and start (review wave 13o, B
     const a = side(main, { count: COUNT });
     const finishing = new Set(all.slice(0, 2));
     const race = racing(() => a, finishing);
-    const b = side(other, { count: COUNT, wrap: race.wrap });
+    const b = side(other, { count: COUNT, wrap: race.wrap, policy: RUN_MISSING });
     await b.scheduler.start();
     await b.scheduler.idle();
     expect(race.recorded).toEqual([...finishing]);
@@ -113,6 +114,7 @@ describe("claims: a key recorded between selection and start (review wave 13o, B
     const slotDir = mkdtempSync(join(tmpdir(), "squeal-001-210-slot-"));
     onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
     const policy: Partial<Policy> = {
+      ...RUN_MISSING,
       slow: { ...DEFAULT_POLICY.slow, include: slow, maxParallel: 2 },
       inputs: Object.fromEntries(slow.map((path) => [path, [ARTIFACT]])),
     };

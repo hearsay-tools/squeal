@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import type { NodeTestProject, Store, WorktreeId } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -104,6 +105,7 @@ async function openMixed(runnerPartBesideRun: boolean, files: Record<string, str
     tierSize: 4,
     nodeTest: [NT],
     runnerPartBesideRun,
+    policy: RUN_MISSING,
   });
   await h.scheduler.start();
   await h.scheduler.idle();

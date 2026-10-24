@@ -11,6 +11,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.js";
 
 /*
@@ -135,6 +136,7 @@ async function harness(
     backlogTierSize: 8,
     adapters: [timed],
     capacity: { dir, hostSlots: 4 },
+    policy: RUN_MISSING,
   });
   return { h, runs };
 }

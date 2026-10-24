@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { publishedQuiet } from "../../src/core/scheduler/quiet.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   BACKLOG,
   BACKLOG_SOURCES,
@@ -31,7 +32,7 @@ const noWait = (quiet: QuietSide) =>
 
 describe("what the wait for quiet leaves alone (row 011-94)", { timeout: 120_000 }, () => {
   it("4a: no wait follows a daemon's start, the first backlog tier of a `run --all` or a pull's catch-up", async () => {
-    const quiet = await quietSide();
+    const quiet = await quietSide([], { policy: RUN_MISSING });
     const { side } = quiet;
     // The start's baseline ran every file, the backlog's in its tiers.
     expect(BACKLOG.every((f) => side.current(f.path))).toBe(true);

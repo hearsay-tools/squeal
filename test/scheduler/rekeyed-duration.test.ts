@@ -4,8 +4,9 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { durationOf } from "../../src/core/scheduler/files.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
-import { DEFAULT_POLICY, type TestFileRef } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy, type TestFileRef } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   createRepo,
@@ -34,13 +35,13 @@ afterEach(() => {
   for (const dir of slotDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-/** One slow file at a time, under a slot directory of its own per daemon. */
-function options(): HarnessOptions {
+/** One slow file at a time, under a slot directory of its own per daemon, `baseline` over the defaults. */
+function options(baseline: Partial<Policy> = {}): HarnessOptions {
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-004-54-slot-"));
   slotDirs.push(slotDir);
   return {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES, maxParallel: 1 } },
+    policy: { ...baseline, slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES, maxParallel: 1 } },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
   };
 }
@@ -52,7 +53,7 @@ const slowRuns = (h: Harness) => h.runner.runs.filter((run) => isSlow(run.files)
 async function ranOnce() {
   const repo = createRepo();
   const store = openRepoStore(repo.commonDir);
-  const first = await openHarness(repo.main, store, repo.commonDir, options());
+  const first = await openHarness(repo.main, store, repo.commonDir, options(RUN_MISSING));
   first.write(
     STRINGS,
     [

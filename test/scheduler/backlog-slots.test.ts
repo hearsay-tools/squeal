@@ -1,5 +1,6 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { createPermitPool, type PoolLease } from "../../src/core/capacity/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   listMakespan,
   pendingOf,
@@ -76,7 +77,7 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
       sleepMs: 1_500,
     }));
     const paths = files.map((f) => testPath(f.name));
-    const { h, runs } = await slotHarness({ files, hostSlots: 4 });
+    const { h, runs } = await slotHarness({ files, hostSlots: 4, policy: RUN_MISSING });
     await h.scheduler.start();
     const inFlight = () => runs.filter((r) => r.end === null).flatMap((r) => r.files).length;
     await expect.poll(inFlight, { timeout: 30_000 }).toBeGreaterThanOrEqual(4);
@@ -107,7 +108,7 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
       name: `w${String(i).padStart(2, "0")}`,
       sleepMs: SLOT_MS,
     }));
-    const { h, runs, poolDir } = await slotHarness({ files, hostSlots: 4 });
+    const { h, runs, poolDir } = await slotHarness({ files, hostSlots: 4, policy: RUN_MISSING });
     await h.scheduler.start();
     const inFlight = () => runs.filter((r) => r.end === null).flatMap((r) => r.files).length;
     await expect.poll(inFlight, { timeout: 30_000 }).toBeGreaterThanOrEqual(4);

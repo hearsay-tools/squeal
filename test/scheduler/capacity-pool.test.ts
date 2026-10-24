@@ -13,6 +13,7 @@ import type {
   TestFileRef,
   WorktreeId,
 } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -72,6 +73,7 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
       nodeTest: [NT],
       runnerPartBesideRun: true,
       capacity: { dir, hostSlots: 2 },
+      policy: RUN_MISSING,
     });
     const runs: { files: readonly TestFileRef[]; options: RunOptions }[] = [];
     h.gate.before = (files, options) => {
@@ -143,6 +145,7 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
       tierSize: 4,
       backlogTierSize: 50,
       capacity: { dir, hostSlots: 2 },
+      policy: RUN_MISSING,
     });
     const runs: { at: number; options: RunOptions }[] = [];
     h.gate.before = (_files, options) => {

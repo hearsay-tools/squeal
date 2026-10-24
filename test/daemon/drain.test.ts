@@ -6,6 +6,7 @@ import type { HarnessProcess } from "../../src/core/types/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { recorded } from "../harness/helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   delay,
@@ -88,10 +89,12 @@ async function draining(idleExitMinutes?: number) {
   const repo = suite.fixture({
     "test/slow.test.ts": slowTest(dir),
     // The load guard (spec 004 D3) would defer the slow file on a loaded host past the waits.
-    "squeal.config.json": `${JSON.stringify({
-      slow: { include: ["test/slow.test.ts"], maxLoadPerCpu: 1000 },
-      ...(idleExitMinutes === undefined ? {} : { daemon: { idleExitMinutes } }),
-    })}\n`,
+    "squeal.config.json": runMissingConfig(
+      JSON.stringify({
+        slow: { include: ["test/slow.test.ts"], maxLoadPerCpu: 1000 },
+        ...(idleExitMinutes === undefined ? {} : { daemon: { idleExitMinutes } }),
+      }),
+    ),
   });
   const spawned = suite.daemon(repo);
   // Registered as soon as the socket answers, as SessionStart does, before the idle period.
@@ -132,10 +135,17 @@ async function queuedInTurn(maxParallel: number) {
   const dir = mkdtempSync(join(tmpdir(), "sq-004-37-"));
   suite.cleanup(() => rmSync(dir, { recursive: true, force: true }));
   const files: Record<string, string> = {
-    "squeal.config.json": `${JSON.stringify({
-      runner: { tierSize: 1 },
-      slow: { include: ["test/slow-*.test.ts"], maxParallel, maxLoadPerCpu: 1000, trigger: "idle" },
-    })}\n`,
+    "squeal.config.json": runMissingConfig(
+      JSON.stringify({
+        runner: { tierSize: 1 },
+        slow: {
+          include: ["test/slow-*.test.ts"],
+          maxParallel,
+          maxLoadPerCpu: 1000,
+          trigger: "idle",
+        },
+      }),
+    ),
   };
   for (const name of SLOW_NAMES) files[slowPath(name)] = heldTest(dir, name);
   const repo = suite.fixture(files);

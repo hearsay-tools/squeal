@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import type { Policy, RunReport, TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpOptions,
@@ -106,7 +107,7 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     const repo = catchUpRepo(files);
     const runtime = runtimeDir();
     const told: string[] = [];
-    const side = sideOf(repo, files, runtime, told);
+    const side = sideOf(repo, files, runtime, told, { policy: RUN_MISSING });
     failsToStart(side, runtime);
     await side.scheduler.start();
     await expect.poll(() => told.length).toBe(1);
@@ -130,7 +131,7 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
   it("B2: with its runtime there, the same failure fails the setup and leaves the queue, as before", async () => {
     const files = testFiles(2, [], () => 50);
     const told: string[] = [];
-    const side = sideOf(catchUpRepo(files), files, runtimeDir(), told);
+    const side = sideOf(catchUpRepo(files), files, runtimeDir(), told, { policy: RUN_MISSING });
     failsToStart(side, null);
     await side.scheduler.start();
     await side.scheduler.idle();
@@ -145,14 +146,18 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     const files = testFiles(2, [], () => 50);
     const repo = catchUpRepo(files);
     const runtime = runtimeDir();
-    const failing = sideOf(repo, files, runtime, []);
+    const failing = sideOf(repo, files, runtime, [], { policy: RUN_MISSING });
     failsToStart(failing, null);
     await failing.scheduler.start();
     await failing.scheduler.idle();
     await failing.scheduler.close();
 
     const told: string[] = [];
-    const side = sideOf(repo, files, runtime, told, { tierSize: 2, backlogTierSize: 2 });
+    const side = sideOf(repo, files, runtime, told, {
+      tierSize: 2,
+      backlogTierSize: 2,
+      policy: RUN_MISSING,
+    });
     const run = side.runner.run.bind(side.runner);
     side.runner.run = async (files, options) => {
       const report = await run(files, options);
@@ -174,7 +179,7 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     const repo = catchUpRepo(files);
     const runtime = runtimeDir();
     // The first daemon runs its misses; the second only what the first left queued.
-    for (const policy of [{}, LOOKUP_ONLY]) {
+    for (const policy of [RUN_MISSING, LOOKUP_ONLY]) {
       mkdirSync(runtime, { recursive: true });
       const told: string[] = [];
       const side = sideOf(repo, files, runtime, told, { policy });
@@ -195,7 +200,7 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     const paths = files.map((f) => f.path);
     const repo = catchUpRepo(files);
     const runtime = runtimeDir();
-    const passed = sideOf(repo, files, runtime, []);
+    const passed = sideOf(repo, files, runtime, [], { policy: RUN_MISSING });
     await passed.scheduler.start();
     await passed.scheduler.idle();
     await passed.scheduler.close();
@@ -215,7 +220,11 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     first.touch("src/s01.ts");
     mkdirSync(runtime);
     const told: string[] = [];
-    const second = sideOf(repo, files, runtime, told, { tierSize: 2, backlogTierSize: 2 });
+    const second = sideOf(repo, files, runtime, told, {
+      tierSize: 2,
+      backlogTierSize: 2,
+      policy: RUN_MISSING,
+    });
     const again = failsToStart(second, runtime);
     await second.scheduler.start();
     await expect.poll(() => told.length).toBe(1);

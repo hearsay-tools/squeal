@@ -5,6 +5,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY, type RunOptions, type TestFileRef } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   createRepo,
@@ -43,7 +44,7 @@ async function open(extra: Partial<HarnessOptions> = {}): Promise<Harness> {
   return openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
     backlogTierSize: 1,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
+    policy: { ...RUN_MISSING, slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
     slow: { slotDir: tempDir(), recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
     ...extra,

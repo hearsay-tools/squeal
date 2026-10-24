@@ -22,6 +22,7 @@ import {
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import {
   CONTROL_TEST,
@@ -121,7 +122,7 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
       store,
       runner,
       sink,
-      policy: DEFAULT_POLICY,
+      policy: { ...DEFAULT_POLICY, ...RUN_MISSING },
       squealVersion: "0.0.0-test",
       runsDir: storePaths(repo.commonDir).runsDir,
       head: () => readHead(repo.main),
@@ -181,8 +182,24 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
       }
       return root === rootB ? gateB : undefined;
     };
-    const a = await open(repo.main, store, repo.commonDir, heldA, PRELOADED, note(repo.main));
-    const b = await open(rootB, store, repo.commonDir, undefined, PRELOADED, note(rootB));
+    const a = await open(
+      repo.main,
+      store,
+      repo.commonDir,
+      heldA,
+      PRELOADED,
+      note(repo.main),
+      RUN_MISSING,
+    );
+    const b = await open(
+      rootB,
+      store,
+      repo.commonDir,
+      undefined,
+      PRELOADED,
+      note(rootB),
+      RUN_MISSING,
+    );
 
     // A read its environment and computed a closure; B runs to its own fail meanwhile.
     const aStarted = a.scheduler.start();

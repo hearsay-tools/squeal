@@ -6,6 +6,7 @@ import { checkpointMetaKey, parseCheckpointProgress } from "../../src/core/types
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { recorded } from "../harness/helpers.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   delay,
@@ -67,7 +68,10 @@ describe.runIf(process.platform === "linux")(
       const release = () => writeFileSync(join(dir, "flag"), "");
       // A stop waits for the held tier: release it before the daemons stop, even on failure.
       try {
-        const repo = suite.fixture({ "test/held.test.ts": heldTest(dir) });
+        const repo = suite.fixture({
+          "test/held.test.ts": heldTest(dir),
+          "squeal.config.json": runMissingConfig(),
+        });
         const spawned = suite.daemon(repo);
         await waitFor(() => ping(repo.socketPath, 500), 60_000, "a daemon serving");
         await hook(repo, "session-start", "s1");

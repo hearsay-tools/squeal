@@ -19,6 +19,7 @@ import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { readStatus } from "../../src/core/status/index.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { until } from "../e2e/support.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import { freshOutcomes, NEW, OLD } from "./stamps-repo.js";
 import { OPTIMIZED } from "./touched-repo.js";
 
@@ -60,7 +61,7 @@ function createRepo(observe: boolean): string {
   const main = join(scratch, randomUUID());
   const files = {
     ...OPTIMIZED,
-    "squeal.config.json": `${JSON.stringify({ observe: { runtimeInputs: observe } })}\n`,
+    "squeal.config.json": runMissingConfig(JSON.stringify({ observe: { runtimeInputs: observe } })),
   };
   for (const [path, text] of Object.entries(files)) {
     if (text === "") continue;

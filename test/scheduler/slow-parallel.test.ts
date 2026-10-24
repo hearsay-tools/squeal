@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   addWorktree,
@@ -45,7 +46,10 @@ function options(
 ): HarnessOptions {
   return {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include, maxParallel } },
+    policy: {
+      ...RUN_MISSING,
+      slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include, maxParallel },
+    },
     slow: { slotDir: slotDir(), recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
     ...extra,
@@ -85,7 +89,10 @@ describe("an idle slow tier takes several files (spec 004 D2, slow.maxParallel)"
     const base = options(slow, 4);
     const h = await openHarness(repo.main, store, repo.commonDir, {
       ...base,
-      policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: slow, maxDeferMs: 300 } },
+      policy: {
+        ...RUN_MISSING,
+        slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: slow, maxDeferMs: 300 },
+      },
       slow: { slotDir: slotDir(), recheckMs: 50, load: () => [3], cpus: () => 1 },
     });
     await h.scheduler.start();

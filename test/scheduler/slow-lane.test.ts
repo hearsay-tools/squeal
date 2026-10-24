@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
 /*
@@ -31,7 +32,10 @@ async function open() {
   slotDirs.push(slotDir);
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS] } },
+    policy: {
+      ...RUN_MISSING,
+      slow: { ...DEFAULT_POLICY.slow, trigger: "idle", include: [STRINGS] },
+    },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
   });

@@ -12,6 +12,7 @@ import {
 } from "../../../src/core/status/index.js";
 import type { KnownState } from "../../../src/core/types/index.js";
 import { knownFailuresLine } from "../../../src/harness/shared/text.js";
+import { RUN_MISSING } from "../../helpers/baseline.js";
 import {
   ALL_TEST_FILES,
   createRepo,
@@ -90,7 +91,7 @@ describe("a global setup that throws once", SLOW, () => {
   it("is one known failure with its cause and no file FAIL, and the next revision runs the setup again", async () => {
     const { repo, count } = setupRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     const { delivery, consumer } = await h.consumer();
     await h.scheduler.start();
     await h.scheduler.idle();
@@ -156,7 +157,7 @@ describe("a global setup that throws once", SLOW, () => {
   it("runs the setup again at `run --all` with no edit", async () => {
     const { repo, count } = setupRepo();
     const store = openRepoStore(repo.commonDir);
-    const h = await openHarness(repo.main, store, repo.commonDir);
+    const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
     await h.scheduler.idle();
     expect(failing(h).map((s) => s.check)).toEqual([SETUP_CHECK]);
@@ -171,7 +172,7 @@ describe("a global setup that throws once", SLOW, () => {
   it("keeps its failure across a daemon restart, and the restarted daemon's run clears it", async () => {
     const { repo, count } = setupRepo();
     const store = openRepoStore(repo.commonDir);
-    const first = await openHarness(repo.main, store, repo.commonDir);
+    const first = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await first.scheduler.start();
     await first.scheduler.idle();
     expect(failing(first).map((s) => s.check)).toEqual([SETUP_CHECK]);
@@ -179,7 +180,7 @@ describe("a global setup that throws once", SLOW, () => {
 
     // A daemon that has not run yet reads the failure from the store.
     expect(readVerdict(store, first.worktreeId).failures.setups).toBe(1);
-    const second = await openHarness(repo.main, store, repo.commonDir);
+    const second = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await second.scheduler.start();
     await second.scheduler.idle();
     expect(count()).toBe(2);

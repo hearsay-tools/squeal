@@ -2,6 +2,7 @@ import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Store } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, side } from "./claims-fixture.js";
 
 /*
@@ -21,8 +22,8 @@ const F0 = fileName(0);
 describe("claims: two worktrees on one store (task 001-205)", () => {
   it("1. runs each of 20 shared keys once, and both worktrees end current", async () => {
     const { main, other } = claimRepo(COUNT);
-    const a = side(main, { count: COUNT, backlogTierSize: 10, runMs: 100 });
-    const b = side(other, { count: COUNT, backlogTierSize: 10, runMs: 100 });
+    const a = side(main, { policy: RUN_MISSING, count: COUNT, backlogTierSize: 10, runMs: 100 });
+    const b = side(other, { policy: RUN_MISSING, count: COUNT, backlogTierSize: 10, runMs: 100 });
     await Promise.all([a.scheduler.start(), b.scheduler.start()]);
     await Promise.all([a.scheduler.idle(), b.scheduler.idle()]);
     for (const path of all) expect(a.runner.ran(path) + b.runner.ran(path)).toBe(1);
@@ -35,10 +36,10 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
   it("4. an edit that re-keys a file to a key another worktree runs runs it at once", async () => {
     const { main, other } = claimRepo(4);
     appendFileSync(join(main, F0), "// x\n");
-    const b = side(other, { count: 4 });
+    const b = side(other, { policy: RUN_MISSING, count: 4 });
     await b.scheduler.start();
     await b.scheduler.idle();
-    const a = side(main, { count: 4 });
+    const a = side(main, { policy: RUN_MISSING, count: 4 });
     a.runner.hold();
     await a.scheduler.start();
     await expect.poll(() => a.phase(F0)).toBe("running");
@@ -74,7 +75,7 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
     "6. another worktree's stored fail at a key runs here (001-170), with %s",
     async (_, claimed) => {
       const { main, other } = claimRepo(4);
-      const a = side(main, { count: 4, rerunCap: 0 });
+      const a = side(main, { policy: RUN_MISSING, count: 4, rerunCap: 0 });
       a.runner.failing.add(F0);
       await a.scheduler.start();
       await a.scheduler.idle();
@@ -93,7 +94,7 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
 
   it("8. a file re-keyed during its run is queued at the new key, not running", async () => {
     const { main } = claimRepo(2);
-    const a = side(main, { count: 2, tierSize: 2 });
+    const a = side(main, { policy: RUN_MISSING, count: 2, tierSize: 2 });
     a.runner.hold();
     await a.scheduler.start();
     await expect.poll(() => a.phase(F0)).toBe("running");
@@ -144,7 +145,7 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
           };
         },
       });
-    const b = side(other, { count: COUNT, backlogTierSize: COUNT, wrap });
+    const b = side(other, { policy: RUN_MISSING, count: COUNT, backlogTierSize: COUNT, wrap });
     await b.scheduler.start();
     await expect.poll(() => claimedBy).not.toBeNull();
     await new Promise((resolve) => setTimeout(resolve, 300));

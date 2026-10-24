@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { cancelled } from "../../src/runners/vitest/run.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { suite } from "./backlog-suite.js";
 import { openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -34,6 +35,7 @@ describe("a lane waits for quiet on a real Vitest adapter (row 011-94)", SLOW, (
       backlogTierSize: 200,
       runnerPartBesideRun: true,
       now: () => Date.now() + offset,
+      policy: RUN_MISSING,
     });
     await h.scheduler.start();
     await h.scheduler.idle();

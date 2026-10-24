@@ -9,6 +9,7 @@ import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/
 import { connectionOf } from "../../src/core/store/store.js";
 import { DEFAULT_POLICY, type Policy, type Store } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName } from "./claims-fixture.js";
 import { RecordingSink } from "./recording-sink.js";
 import { WallRunner, wallOf } from "./wall-fixture.js";
@@ -26,8 +27,10 @@ const FILES = 200;
 const DURATION_MS = 10_000;
 const SLOTS = 4;
 
+/** Each start runs its misses: the first baseline tier is the subject. */
 const policy: Policy = {
   ...DEFAULT_POLICY,
+  ...RUN_MISSING,
   runner: { ...DEFAULT_POLICY.runner, tierSize: SLOTS, backlogTierSize: FILES },
 };
 

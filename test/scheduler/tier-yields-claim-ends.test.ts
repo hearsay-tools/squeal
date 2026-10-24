@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLAIM_RECHECK_MS, claimBoundMs } from "../../src/core/scheduler/claims.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import type { CatchUpOptions } from "./catch-up-fixture.js";
 import {
   F,
@@ -34,7 +35,9 @@ const HEARTBEAT_MS = 60_000;
  * 200 s files, held, and a wait promotes it. The tier runs on through
  * three rechecks, and the wait names the claim.
  */
-async function claimedBehindTier(options: Pick<CatchUpOptions, "timeoutMs" | "now"> = {}) {
+async function claimedBehindTier(
+  options: Pick<CatchUpOptions, "timeoutMs" | "now" | "policy"> = {},
+) {
   const { main, other } = await sides(filesOf(200_000, 1), options);
   const theirs = holdRuns(other.runner, (path) => path === F);
   await other.edit("watch", "f.config.json");
@@ -61,7 +64,7 @@ describe("a claim that ends with no result lets the promotion cut its tier (spec
   timeout: 120_000,
 }, () => {
   it("the claimant's heartbeat lost: the tier yields and F runs here", async () => {
-    const { main, other, tier, base, done } = await claimedBehindTier();
+    const { main, other, tier, base, done } = await claimedBehindTier({ policy: RUN_MISSING });
 
     // The claimant's daemon dies with F held: no result, and no edit or promotion here.
     other.stopBeat();

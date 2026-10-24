@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -32,7 +33,7 @@ async function loaded() {
   let reads = 0;
   const h = await openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
+    policy: { ...RUN_MISSING, slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
     slow: {
       slotDir,
       recheckMs: 25,

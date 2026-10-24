@@ -4,6 +4,7 @@ import { readRetries } from "../../src/core/retry/index.js";
 import { formatCheck } from "../../src/core/state/index.js";
 import { formatFailures, formatWhy, readFailures, readWhy } from "../../src/core/status/index.js";
 import type { AbsolutePath, FailuresReport, WhyReport } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { addWorktree, openHarness, openRepoStore, SLOW } from "./helpers.js";
 import { ask, FLAKY, failing, flakyRepo, flips, loadKnob, pass } from "./retry-fixture.js";
 
@@ -24,6 +25,7 @@ describe("a failure a passing retry replaced at its key (011-77)", SLOW, () => {
     load.set(ABOVE);
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, {
+      policy: RUN_MISSING,
       hostLoad: load.read,
       rerunCap: 0,
     });
@@ -96,6 +98,7 @@ describe("a failure a passing retry replaced at its key (011-77)", SLOW, () => {
     const load = loadKnob();
     const store = openRepoStore(repo.commonDir);
     const a = await openHarness(repo.main, store, repo.commonDir, {
+      policy: RUN_MISSING,
       hostLoad: load.read,
       rerunCap: 0,
     });

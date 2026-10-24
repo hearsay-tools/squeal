@@ -2,10 +2,12 @@ import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   A,
   B,
   batch,
+  FILES,
   gitMay,
   HELPER,
   heldPaths,
@@ -29,7 +31,7 @@ import {
 describe("scheduler: what the merge hold records (row 011-72)", { timeout: 60_000 }, () => {
   it("6: a tier the check let past stores nothing for the importers, and a second such withhold leaves no unknown", async () => {
     const repo = mergeRepo();
-    const side = holdSide(repo);
+    const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
     await side.scheduler.start();
     await side.scheduler.idle();
     // The files land, the tier starts, then the index lands: what the check before a tier cannot see.

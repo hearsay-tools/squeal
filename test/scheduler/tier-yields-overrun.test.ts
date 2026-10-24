@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { publishedYields, YIELD_REMAINDER_MS } from "../../src/core/scheduler/yields.js";
 import type { Policy } from "../../src/core/types/index.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpSide,
@@ -58,7 +59,7 @@ async function heldTier(
     files,
     hostSlots: 8,
     now,
-    ...(policy === undefined ? {} : { policy }),
+    policy: { ...RUN_MISSING, ...policy },
   });
   await side.scheduler.start();
   await side.scheduler.idle();

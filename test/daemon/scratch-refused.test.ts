@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   readNotes,
   SLOW,
@@ -35,7 +36,10 @@ describe.runIf(process.platform === "linux")(
     const built = suiteCli();
 
     it("serves with a private temp directory of its own, notes why, and removes it on exit", async () => {
-      const repo = linkedFixture(cleanups, { "test/tmp.test.ts": TMP_TEST });
+      const repo = linkedFixture(cleanups, {
+        "test/tmp.test.ts": TMP_TEST,
+        "squeal.config.json": runMissingConfig(),
+      });
       const uid = 3_000_000_000 + Math.floor(Math.random() * 1_000_000);
       const taken = `/tmp/squeal-${uid}`;
       mkdirSync(taken, { mode: 0o700 });

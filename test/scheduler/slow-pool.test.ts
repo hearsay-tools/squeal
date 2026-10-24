@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { createPermitPool } from "../../src/core/capacity/index.js";
 import { DEFAULT_POLICY, type RunOptions } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 
@@ -34,7 +35,10 @@ async function open(poolDir: string): Promise<Harness> {
   const store = openRepoStore(repo.commonDir);
   return openHarness(repo.main, store, repo.commonDir, {
     tierSize: 4,
-    policy: { slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES, maxParallel: 4 } },
+    policy: {
+      ...RUN_MISSING,
+      slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES, maxParallel: 4 },
+    },
     slow: { slotDir: tempDir("slot"), recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
     capacity: { dir: poolDir, hostSlots: 8 },

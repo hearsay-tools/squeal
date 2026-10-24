@@ -1,4 +1,5 @@
 import { expect } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpOptions,
@@ -64,7 +65,13 @@ export async function started(
   others: readonly string[] = [],
 ) {
   const repo = catchUpRepo(files, others);
-  const side = catchUpSide(repo, repo.main, { files, hostSlots: 23, tierSize: 4, ...options });
+  const side = catchUpSide(repo, repo.main, {
+    files,
+    hostSlots: 23,
+    tierSize: 4,
+    ...options,
+    policy: { ...RUN_MISSING, ...options.policy },
+  });
   await side.scheduler.start();
   await side.scheduler.idle();
   return { repo, side };

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import {
   CUT_WITHIN_MS,
@@ -43,6 +44,7 @@ async function forcedAndCut() {
     hostSlots: 8,
     tierSize: 1,
     backlogTierSize: 1,
+    policy: RUN_MISSING,
   });
   side.runner.failing.add(H);
   await side.scheduler.start();

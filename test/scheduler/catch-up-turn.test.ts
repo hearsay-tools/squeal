@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { poolPermitFile } from "../../src/core/capacity/index.js";
 import { takePermit } from "../../src/core/slow/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpOptions,
@@ -122,6 +123,7 @@ describe("scheduler: the second group's turn runs on the backlog's route (C4 ste
       files,
       hostSlots: 4,
       lane: (f) => (f.project === "x" ? "x" : "v"),
+      policy: RUN_MISSING,
     });
     await side.scheduler.start();
     await side.scheduler.idle();

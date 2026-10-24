@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RevisionTrigger } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpOptions,
   catchUpRepo,
@@ -98,7 +99,7 @@ describe("scheduler: a revision of 10 or more keyed paths is catch-up (C4 step 4
     await side.scheduler.close();
     // A pull while no daemon ran: the next start's `start` revision holds it.
     side.touch(...TWELVE);
-    const next = catchUpSide(repo, repo.main, OPTIONS);
+    const next = catchUpSide(repo, repo.main, { ...OPTIONS, policy: RUN_MISSING });
     next.runner.hold();
     await next.scheduler.start();
     const run = await firstRun(next, 0);

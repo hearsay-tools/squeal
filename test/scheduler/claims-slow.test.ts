@@ -6,6 +6,7 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { CLAIM_RECHECK_MS } from "../../src/core/scheduler/claims.js";
 import { SLOW_RECHECK_MS } from "../../src/core/scheduler/slow-tier.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 
 /*
@@ -40,7 +41,10 @@ function slowSide(
 ): Side {
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-001-205-slot-"));
   onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
-  const policy: Partial<Policy> = { slow: { ...DEFAULT_POLICY.slow, include: [F0] } };
+  const policy: Partial<Policy> = {
+    ...RUN_MISSING,
+    slow: { ...DEFAULT_POLICY.slow, include: [F0] },
+  };
   return side(root, {
     count: 1,
     policy,

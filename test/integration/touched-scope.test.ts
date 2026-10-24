@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import type { NodeTestProject } from "../../src/core/types/index.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
 import { BASE, createRepo, stored } from "./stamps-repo.js";
 
@@ -78,7 +79,8 @@ async function rig(pkg = false): Promise<Rig> {
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
     tierSize: 4,
     runnerPartBesideRun: true,
-    ...(pkg ? { nodeTest: [PKG], policy: { nodeTest: [PKG] } } : {}),
+    ...(pkg ? { nodeTest: [PKG] } : {}),
+    policy: { ...RUN_MISSING, ...(pkg ? { nodeTest: [PKG] } : {}) },
   });
   const heard: string[] = [];
   const invalidate = h.runner.invalidate;

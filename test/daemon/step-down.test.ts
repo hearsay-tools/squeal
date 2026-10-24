@@ -3,6 +3,7 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonResult } from "../../src/core/types/index.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
+import { runMissingConfig } from "../helpers/baseline.js";
 import {
   daemonSuite,
   delay,
@@ -75,7 +76,7 @@ function slowTest(ms = 6_000): { files: Record<string, string>; started: string;
  */
 async function cancelsItsTier(cli: string, version: string, note: RegExp): Promise<void> {
   const slow = slowTest(60_000);
-  const repo = suite.fixture(slow.files);
+  const repo = suite.fixture({ ...slow.files, "squeal.config.json": runMissingConfig() });
   const old = start(cli, repo, [], STOP_GAP);
   const first = await waitFor(() => ping(repo.socketPath, 500), 60_000, "the old daemon serving");
   expect(first.squealVersion).toBe(version);

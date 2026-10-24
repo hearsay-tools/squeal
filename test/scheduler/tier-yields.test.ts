@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import {
   CUT_WITHIN_MS,
@@ -33,7 +34,7 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
       ...SLOW.map((path) => ({ path, ms: 20_000, imports: ["src/waits.ts"] })),
     ];
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8 });
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
     await side.scheduler.start();
     await side.scheduler.idle();
     const base = side.runner.runs.length;
@@ -69,7 +70,7 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
     }));
     const [s1, s2, s3, s4] = SLOW;
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8 });
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
     await side.scheduler.start();
     await side.scheduler.idle();
     const base = side.runner.runs.length;
@@ -97,7 +98,7 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
       { project: "f", path: F, ms: 1, imports: ["src/f.ts"] },
     ];
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8 });
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
     side.runner.failing.add(F);
     await side.scheduler.start();
     await side.scheduler.idle();

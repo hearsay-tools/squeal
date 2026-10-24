@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, side } from "./claims-fixture.js";
 
 /*
@@ -13,12 +14,12 @@ import { claimRepo, fileName, side } from "./claims-fixture.js";
 describe("claims: a backlog split between daemons (task 001-205)", { timeout: 60_000 }, () => {
   it("a backlog tier beside one other daemon with the same keys takes half the queue", async () => {
     const { main, other } = claimRepo(20);
-    const b = side(other, { count: 20, tierSize: 1, backlogTierSize: 1 });
+    const b = side(other, { policy: RUN_MISSING, count: 20, tierSize: 1, backlogTierSize: 1 });
     b.runner.hold();
     await b.scheduler.start();
     await expect.poll(() => b.runner.active).toBe(1);
 
-    const a = side(main, { count: 20, tierSize: 4, backlogTierSize: 20 });
+    const a = side(main, { policy: RUN_MISSING, count: 20, tierSize: 4, backlogTierSize: 20 });
     await a.scheduler.start();
     await expect.poll(() => a.runner.runs.length).toBeGreaterThan(0);
     expect(a.runner.runs[0]).toHaveLength(10);
@@ -27,7 +28,7 @@ describe("claims: a backlog split between daemons (task 001-205)", { timeout: 60
 
   it("alone, a backlog tier takes up to runner.backlogTierSize", async () => {
     const { main } = claimRepo(20);
-    const a = side(main, { count: 20, tierSize: 4, backlogTierSize: 20 });
+    const a = side(main, { policy: RUN_MISSING, count: 20, tierSize: 4, backlogTierSize: 20 });
     await a.scheduler.start();
     await a.scheduler.idle();
     expect(a.runner.runs[0]).toHaveLength(20);
@@ -37,7 +38,7 @@ describe("claims: a backlog split between daemons (task 001-205)", { timeout: 60
     const count = 120;
     const { main, others } = claimRepo(count, {}, 3);
     const sides = [main, ...others].map((root) =>
-      side(root, { count, tierSize: 4, backlogTierSize: 200, runMs: 300 }),
+      side(root, { policy: RUN_MISSING, count, tierSize: 4, backlogTierSize: 200, runMs: 300 }),
     );
     await Promise.all(sides.map((s) => s.scheduler.start()));
     await Promise.all(sides.map((s) => s.scheduler.idle()));
