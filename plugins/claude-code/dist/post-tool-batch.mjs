@@ -4237,94 +4237,6 @@ function nodeFailing(store, worktreeId, failing) {
   return failing.some((check) => !pytest.has(check.project) && NODE_TEST_FILE.test(check.testPath));
 }
 
-// src/core/code/pass/cursor.ts
-var passKey = (worktreeId) => `pass:${worktreeId}`;
-var recountKey = (worktreeId) => `recount:${worktreeId}`;
-function readCursor(meta, worktreeId) {
-  const text = meta.get(passKey(worktreeId));
-  if (text === null) return null;
-  try {
-    const cursor = JSON.parse(text);
-    return typeof cursor.revision === "number" ? cursor : null;
-  } catch {
-    return null;
-  }
-}
-var awaitedKey = (worktreeId) => `awaited:${worktreeId}`;
-function awaitFirstCount(meta, worktreeId) {
-  meta.set(awaitedKey(worktreeId), "1");
-}
-function readRecount(meta, worktreeId) {
-  const text = meta.get(recountKey(worktreeId));
-  return text === null ? null : JSON.parse(text);
-}
-function recountTooBigEdits(meta, worktreeId) {
-  try {
-    const edits = readRecount(meta, worktreeId)?.tooBigEdits;
-    return new Set(Array.isArray(edits) ? edits.filter((p) => typeof p === "string") : []);
-  } catch {
-    return /* @__PURE__ */ new Set();
-  }
-}
-
-// src/core/code/pass/failed.ts
-var uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
-function readUncountable(meta, worktreeId) {
-  const text = meta.get(uncountableKey(worktreeId));
-  if (text === null) return /* @__PURE__ */ new Map();
-  try {
-    const record = JSON.parse(text);
-    return new Map(Object.entries(record));
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function spentFailure(failed2, file) {
-  const f = failed2.get(file.path);
-  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
-}
-function uncountableFiles(store, worktreeId, files2) {
-  const failed2 = readUncountable(store.meta, worktreeId);
-  const spent = /* @__PURE__ */ new Map();
-  if (failed2.size === 0) return spent;
-  for (const file of files2) {
-    const f = spentFailure(failed2, file);
-    if (f === null) continue;
-    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
-      spent.set(file.path, f);
-  }
-  return spent;
-}
-
-// src/core/code/pass/pulled.ts
-var pulledKey = (worktreeId) => `pulled:${worktreeId}`;
-function readPulled(meta, worktreeId) {
-  const text = meta.get(pulledKey(worktreeId));
-  if (text === null) return /* @__PURE__ */ new Map();
-  try {
-    const pairs = JSON.parse(text);
-    if (!Array.isArray(pairs)) return /* @__PURE__ */ new Map();
-    return new Map(
-      pairs.filter(
-        (p) => Array.isArray(p) && typeof p[0] === "string" && typeof p[1] === "number"
-      )
-    );
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function pulledReader(meta, worktreeId) {
-  let pulled = null;
-  return (path, revision) => {
-    pulled ??= readPulled(meta, worktreeId);
-    const at = pulled.get(path);
-    return at !== void 0 && at <= revision;
-  };
-}
-
-// src/core/types/code-delivery.ts
-var CODE_LISTED_MAX = 5;
-
 // src/core/hash/blob.ts
 import { constants } from "node:fs";
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
@@ -5039,8 +4951,64 @@ var RESULT_WAITS_MS = [0, 250, 1e3, 5e3, 3e4];
 // src/core/code/crap/loaders.ts
 var RECORD_WAIT_MS = RESULT_WAITS_MS.reduce((a, b) => a + b, 0);
 
+// src/core/code/pass/failed.ts
+var uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
+function readUncountable(meta, worktreeId) {
+  const text = meta.get(uncountableKey(worktreeId));
+  if (text === null) return /* @__PURE__ */ new Map();
+  try {
+    const record = JSON.parse(text);
+    return new Map(Object.entries(record));
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function spentFailure(failed2, file) {
+  const f = failed2.get(file.path);
+  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
+}
+function uncountableFiles(store, worktreeId, files2) {
+  const failed2 = readUncountable(store.meta, worktreeId);
+  const spent = /* @__PURE__ */ new Map();
+  if (failed2.size === 0) return spent;
+  for (const file of files2) {
+    const f = spentFailure(failed2, file);
+    if (f === null) continue;
+    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
+      spent.set(file.path, f);
+  }
+  return spent;
+}
+
+// src/core/code/pass/pulled.ts
+var pulledKey = (worktreeId) => `pulled:${worktreeId}`;
+function readPulled(meta, worktreeId) {
+  const text = meta.get(pulledKey(worktreeId));
+  if (text === null) return /* @__PURE__ */ new Map();
+  try {
+    const pairs = JSON.parse(text);
+    if (!Array.isArray(pairs)) return /* @__PURE__ */ new Map();
+    return new Map(
+      pairs.filter(
+        (p) => Array.isArray(p) && typeof p[0] === "string" && typeof p[1] === "number"
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function pulledReader(meta, worktreeId) {
+  let pulled = null;
+  return (path, revision) => {
+    pulled ??= readPulled(meta, worktreeId);
+    const at = pulled.get(path);
+    return at !== void 0 && at <= revision;
+  };
+}
+
 // src/core/code/crap/summary.ts
 var summaryKey = (worktreeId) => `coverage:${worktreeId}`;
+var crapRecountKey = (worktreeId) => `crapRecount:${worktreeId}`;
 var evidenceKey = (worktreeId, path) => `coverage:${worktreeId}:${path}`;
 var functionKey = (fn) => `${fn.qualifiedName}\0${fn.occurrence}`;
 function parse(text, valid) {
@@ -5059,6 +5027,12 @@ function readSummary(meta, worktreeId) {
     (v) => isObject(v) && v.v === 1 && typeof v.since === "number" && isObject(v.files)
   );
 }
+function readCrapRecount(meta, worktreeId) {
+  return parse(
+    meta.get(crapRecountKey(worktreeId)),
+    (v) => isObject(v) && typeof v.revision === "number" && typeof v.at === "number" && typeof v.threshold === "number"
+  );
+}
 function readEvidence(meta, worktreeId, path) {
   return parse(
     meta.get(evidenceKey(worktreeId, path)),
@@ -5068,6 +5042,44 @@ function readEvidence(meta, worktreeId, path) {
 
 // src/core/code/crap/step.ts
 var COVERAGE_MEASURES = ["crap", "uncovered"];
+
+// src/core/code/pass/cursor.ts
+var passKey = (worktreeId) => `pass:${worktreeId}`;
+function readCursor(meta, worktreeId) {
+  const text = meta.get(passKey(worktreeId));
+  if (text === null) return null;
+  try {
+    const cursor = JSON.parse(text);
+    return typeof cursor.revision === "number" ? cursor : null;
+  } catch {
+    return null;
+  }
+}
+var awaitedKey = (worktreeId) => `awaited:${worktreeId}`;
+function awaitFirstCount(meta, worktreeId) {
+  meta.set(awaitedKey(worktreeId), "1");
+}
+
+// src/core/code/pass/too-big.ts
+var editsKey = (worktreeId) => `tooBigEdits:${worktreeId}`;
+function readTooBigEdits(meta, worktreeId) {
+  const text = meta.get(editsKey(worktreeId));
+  if (text === null) return /* @__PURE__ */ new Map();
+  try {
+    const pairs = JSON.parse(text);
+    if (!Array.isArray(pairs)) return /* @__PURE__ */ new Map();
+    return new Map(
+      pairs.filter(
+        (p) => Array.isArray(p) && typeof p[0] === "string" && typeof p[1] === "number"
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+
+// src/core/types/code-delivery.ts
+var CODE_LISTED_MAX = 5;
 
 // src/core/delivery/code-coverage.ts
 function coverageMeasures(store, worktreeId) {
@@ -5105,9 +5117,23 @@ function failEvidence(entry3) {
   if (e.testFiles === 0) return ` (CC ${e.complexity}); ${NOT_REACHED}`;
   return `: CC ${e.complexity}, ${share(e)} in ${testFiles(e)}`;
 }
-function coverageEntryLine(entry3, at) {
+function quietHint(entry3, command) {
+  const until = entry3.measure === "uncovered" ? "an in-process test runs it" : `it is at or under ${entry3.threshold}`;
+  const shows = entry3.measure === "uncovered" ? "its coverage" : "its CRAP";
+  return `Squeal stays quiet about it until ${until}, and ${command} code ${entry3.check.path} shows ${shows}.`;
+}
+function stillFailLine(entry3, at, command) {
+  const before = entry3.kind === "edited";
+  const what = entry3.measure === "uncovered" ? `${at}: ${NOT_REACHED} after the edit${before ? "; none reached it before it either" : ""}` : `${at} is ${score(entry3.value)} after the edit${before ? `; it was already over ${entry3.threshold} before it` : `, over ${entry3.threshold}`}`;
+  const label = entry3.measure === "crap" ? "CRAP" : entry3.measure;
+  return `STILL FAIL ${label}: ${what}${failEvidence(entry3)}; ${quietHint(entry3, command)}`;
+}
+function coverageEntryLine(entry3, at, command) {
   const label = entry3.measure === "crap" ? "CRAP" : entry3.measure;
   if (entry3.kind === "removed") return `RESOLVED ${label}: ${at} is no longer in the code`;
+  if (entry3.kind === "edited" || entry3.kind === "edited-after-fail") {
+    return stillFailLine(entry3, at, command);
+  }
   if (entry3.measure === "uncovered") {
     if (entry3.kind !== "fail-to-pass")
       return `FAIL uncovered: ${at}: ${NOT_REACHED}${failEvidence(entry3)}`;
@@ -5267,19 +5293,33 @@ function withCode2(source, fn) {
 }
 
 // src/core/delivery/code-told.ts
-function toldOver(store, worktreeId, consumers) {
+function toldOver(store, worktreeId, consumers, measures = ["complexity"]) {
   const told = new Set(
     consumers.flatMap(
-      (c) => store.views.list(c).filter((v) => v.measure === "complexity" && v.told !== "count").map(codeKey)
+      (c) => store.views.list(c).filter((v) => measures.includes(v.measure) && v.told !== "count").map(codeKey)
     )
   );
   if (told.size === 0) return [];
-  return store.states.list(worktreeId, { measure: "complexity", outcome: "fail" }).filter((s) => told.has(codeKey(s)));
+  return measures.flatMap(
+    (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => told.has(codeKey(s)))
+  );
 }
 function withToldOver(store, consumer, news, threshold) {
-  const count = toldOver(store, consumer.worktreeId, [consumer]).length;
-  if (count === 0) return news;
-  return { ...news ?? { v: 1, entries: [], more: 0 }, toldOver: { count, threshold } };
+  const { worktreeId } = consumer;
+  const measures = ["complexity", ...coverageMeasures(store, worktreeId)];
+  const over = toldOver(store, worktreeId, [consumer], measures);
+  if (over.length === 0) return news;
+  const count = over.filter((s) => s.measure === "complexity").length;
+  const crap = over.filter((s) => s.measure === "crap");
+  const uncovered = over.filter((s) => s.measure === "uncovered").length;
+  const [first] = crap;
+  const told = {
+    count,
+    threshold,
+    ...first?.threshold == null ? {} : { crap: { count: crap.length, threshold: first.threshold } },
+    ...uncovered === 0 ? {} : { uncovered }
+  };
+  return { ...news ?? { v: 1, entries: [], more: 0 }, toldOver: told };
 }
 
 // src/core/delivery/code-deliver.ts
@@ -5287,7 +5327,7 @@ var MEASURE = "complexity";
 var consumerKey = (kind, c) => `${kind}:${c.worktreeId}:${c.sessionId}:${c.agentId}`;
 var seededKey = (consumer) => consumerKey("seeded", consumer);
 var tooBigToldKey = (consumer) => consumerKey("tooBigTold", consumer);
-var recountKey2 = (worktreeId) => `recount:${worktreeId}`;
+var recountKey = (worktreeId) => `recount:${worktreeId}`;
 function readJson(store, key) {
   const raw = store.meta.get(key);
   if (raw === null) return null;
@@ -5301,8 +5341,8 @@ function writeJson(store, key, value) {
   store.meta.set(key, JSON.stringify(value));
 }
 var REASONS = ["first", "threshold", "include", "counter"];
-function readRecount2(store, worktreeId) {
-  const value = readJson(store, recountKey2(worktreeId));
+function readRecount(store, worktreeId) {
+  const value = readJson(store, recountKey(worktreeId));
   if (!isRecord(value)) return null;
   const { revision, at, reason, threshold } = value;
   if (typeof revision !== "number" || typeof at !== "number" || typeof threshold !== "number") {
@@ -5344,7 +5384,11 @@ function registerCode(source, consumer, at) {
     source,
     ({ store, complexity }) => store.transaction(() => {
       const failing = failingIn(store, worktreeId);
-      seed(store, consumer, failing, Math.max(at, readRecount2(store, worktreeId)?.at ?? 0));
+      const recounted = Math.max(
+        readRecount(store, worktreeId)?.at ?? 0,
+        readCrapRecount(store.meta, worktreeId)?.at ?? 0
+      );
+      seed(store, consumer, failing, Math.max(at, recounted));
       const { done, total } = countingOf(store, worktreeId);
       const counted = readCursor(store.meta, worktreeId) !== null;
       if (!counted) awaitFirstCount(store.meta, worktreeId);
@@ -5360,13 +5404,13 @@ function toldTooBig(store, consumer) {
   const value = readJson(store, tooBigToldKey(consumer));
   return new Set(Array.isArray(value) ? value.filter((p) => typeof p === "string") : []);
 }
-function newTooBig(store, consumer, { since, recount }, limit, write2) {
+function newTooBig(store, consumer, since, limit, write2) {
   if (since === null) return [];
+  const edits = readTooBigEdits(store.meta, consumer.worktreeId);
+  const own = [...edits].flatMap(([path, revision]) => isOwn(since, revision) ? [path] : []);
+  if (own.length === 0) return [];
   const told = toldTooBig(store, consumer);
-  const edits = recount === null ? null : recountTooBigEdits(store.meta, consumer.worktreeId);
-  const files2 = store.files.list(consumer.worktreeId).filter(
-    (f) => isTooBig(f) && isOwn(since, f.revision) && (f.revision !== recount?.revision || edits?.has(f.path) === true) && !told.has(f.path)
-  );
+  const files2 = store.files.list(consumer.worktreeId, own).filter((f) => isTooBig(f) && !told.has(f.path));
   if (files2.length === 0) return [];
   if (write2) writeJson(store, tooBigToldKey(consumer), [...told, ...files2.map((f) => f.path)]);
   return files2.map((f) => ({ path: f.path, size: f.size, limit }));
@@ -5392,22 +5436,30 @@ function codeStep(store, consumer, { at, since, limit }, write2) {
   const seeded = readJson(store, seededKey(consumer));
   const seededAt = typeof seeded === "number" ? seeded : 0;
   const failing = failingIn(store, worktreeId);
-  const recount = readRecount2(store, worktreeId);
-  const tooBig = newTooBig(store, consumer, { since, recount }, limit, write2);
+  const recount = readRecount(store, worktreeId);
+  const crap = readCrapRecount(store.meta, worktreeId);
+  const tooBig = newTooBig(store, consumer, since, limit, write2);
   const big = tooBig.length === 0 ? {} : { tooBig };
-  if (recount !== null && recount.at > seededAt) {
-    if (write2) seed(store, consumer, failing, Math.max(at, recount.at));
+  const recounted = recount !== null && recount.at > seededAt;
+  const crapRecounted = crap !== null && crap.at > seededAt;
+  if (recounted || crapRecounted) {
+    if (write2) seed(store, consumer, failing, Math.max(at, recount?.at ?? 0, crap?.at ?? 0));
+    const crapOver = () => failingOf(store, worktreeId, ["crap"]).length;
     const news = {
       v: 1,
       entries: [],
       more: 0,
-      recount: { ...recount, over: failing.length }
+      ...recounted ? { recount: { ...recount, over: failing.length } } : {},
+      // Row 015-40: a `crap.threshold` change, as D6's summary for complexity.
+      ...crapRecounted ? { crapRecount: { ...crap, over: crapOver() } } : {}
     };
     return { news: { ...news, ...big }, writes: true };
   }
   const covered = coverageMeasures(store, worktreeId);
   const measures = [MEASURE, ...covered];
-  const edits = new Map(store.states.edits(worktreeId, MEASURE).map((e) => [codeKey(e), e]));
+  const edits = new Map(
+    measures.flatMap((m) => store.states.edits(worktreeId, m)).map((e) => [codeKey(e), e])
+  );
   const view = store.views.list(consumer).filter((v) => measures.includes(v.measure));
   const judged2 = [...failing, ...failingOf(store, worktreeId, covered)];
   const plan = planCodeDelta({
@@ -5483,11 +5535,13 @@ function codeSince(store, worktreeId, shell) {
   const oldest = earliest(store, registered);
   return oldest === null ? null : { ...oldest, scope: "oldest" };
 }
-function wentOverSince(code, worktreeId, since) {
-  return code.states.list(worktreeId, { measure: "complexity", outcome: "fail" }).filter((s) => {
-    const last = lastTransition(code, worktreeId, s.check);
-    return last?.to === "fail" && isOwn(since, last.revision);
-  });
+function wentOverSince(code, worktreeId, since, measures = ["complexity"]) {
+  return measures.flatMap(
+    (measure2) => code.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => {
+      const last = lastTransition(code, worktreeId, s.check, measure2);
+      return last?.to === "fail" && isOwn(since, last.revision);
+    })
+  );
 }
 
 // src/core/delivery/delta.ts
@@ -6457,7 +6511,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.300";
+  if (true) return "0.1.301";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8217,10 +8271,10 @@ function functionName(check) {
 }
 var ruleOf = (check) => check.path.endsWith(".py") ? "radon rule" : "ESLint rule";
 var whereOf = (check, line) => line === null ? check.path : `${check.path}:${line}`;
-var quietHint = (entry3, command) => `Squeal stays quiet about it until it is at or under ${entry3.threshold}, and ${command} code ${entry3.check.path} shows its count.`;
+var quietHint2 = (entry3, command) => `Squeal stays quiet about it until it is at or under ${entry3.threshold}, and ${command} code ${entry3.check.path} shows its count.`;
 function codeEntryLine(entry3, command) {
   const at = `${functionName(entry3.check)} (${whereOf(entry3.check, entry3.line)})`;
-  if (isCoverage(entry3)) return coverageEntryLine(entry3, at);
+  if (isCoverage(entry3)) return coverageEntryLine(entry3, at, command);
   switch (entry3.kind) {
     case "first-seen-fail":
     case "pass-to-fail":
@@ -8230,9 +8284,9 @@ function codeEntryLine(entry3, command) {
     case "removed":
       return `RESOLVED complexity: ${at} is no longer in the code`;
     case "edited":
-      return `STILL FAIL complexity: ${at} is ${entry3.value} after the edit; it was already over ${entry3.threshold} before it (${ruleOf(entry3.check)}); ${quietHint(entry3, command)}`;
+      return `STILL FAIL complexity: ${at} is ${entry3.value} after the edit; it was already over ${entry3.threshold} before it (${ruleOf(entry3.check)}); ${quietHint2(entry3, command)}`;
     case "edited-after-fail":
-      return `STILL FAIL complexity: ${at} is ${entry3.value} after the edit, over ${entry3.threshold} (${ruleOf(entry3.check)}); ${quietHint(entry3, command)}`;
+      return `STILL FAIL complexity: ${at} is ${entry3.value} after the edit, over ${entry3.threshold} (${ruleOf(entry3.check)}); ${quietHint2(entry3, command)}`;
   }
 }
 function recountLine(recount, command) {
@@ -8249,6 +8303,9 @@ function recountLine(recount, command) {
       return `Complexity counted again by a new counter: ${over} over ${recount.threshold}; ${lists}`;
   }
 }
+function crapRecountLine({ threshold, over }, command) {
+  return `CRAP threshold is now ${threshold}: ${plural(over, "function")} over; ${command} code lists them.`;
+}
 var kib = (bytes) => `${Math.round(bytes / 1024)} KiB`;
 function tooBigLine({ path, size, limit }) {
   return `${path} is ${kib(size)}, over the ${kib(limit)} limit; its functions are not counted.`;
@@ -8256,6 +8313,7 @@ function tooBigLine({ path, size, limit }) {
 function codeLines(news, command) {
   return [
     ...news.recount === void 0 ? [] : [recountLine(news.recount, command)],
+    ...news.crapRecount === void 0 ? [] : [crapRecountLine(news.crapRecount, command)],
     ...news.entries.map((e) => codeEntryLine(e, command)),
     ...news.more === 0 ? [] : [
       `and ${news.more} more ${changesWord(news)} ${news.more === 1 ? "change" : "changes"}; ${command} code --changed lists them.`
@@ -8267,15 +8325,33 @@ var changesWord = (news) => news.coverage === true ? "code" : "complexity";
 var codeChanges = (news) => news.entries.filter((e) => !isStillFail(e.kind)).length + news.more;
 function codeTitleWords(news) {
   const changes = codeChanges(news);
-  const still = news.entries.filter((e) => isStillFail(e.kind)).length;
+  const still = news.entries.filter((e) => isStillFail(e.kind));
+  const functions = new Set(
+    still.map((e) => JSON.stringify([e.check.path, functionName(e.check)]))
+  );
   const words = [
     ...changes === 0 ? [] : [`${changes} ${changesWord(news)} ${changes === 1 ? "change" : "changes"}`],
-    ...still === 0 ? [] : [`${plural(still, "function")} still over the complexity threshold`]
+    ...still.length === 0 ? [] : still.some(isCoverage) ? [`${plural(functions.size, "function")} still failing a code check`] : [`${plural(still.length, "function")} still over the complexity threshold`]
   ];
   return words.length === 0 ? null : words.join(" and ");
 }
-function toldOverLine({ count, threshold }, command) {
-  return `Complexity: ${plural(count, "function")} over ${threshold} that this session was told about; ${command} code --told lists them.`;
+function toldOverWords({
+  count,
+  threshold,
+  crap,
+  uncovered
+}) {
+  const parts = [
+    ...count === 0 ? [] : [[count, `over ${threshold}`]],
+    ...crap === void 0 ? [] : [[crap.count, `over CRAP ${crap.threshold}`]],
+    ...uncovered === void 0 ? [] : [[uncovered, "no in-process test reaches"]]
+  ];
+  const words = parts.map(([n, what], i) => `${i === 0 ? plural(n, "function") : n} ${what}`);
+  const last = words.pop() ?? "";
+  return words.length === 0 ? last : `${words.join(", ")} and ${last},`;
+}
+function toldOverLine(over, command) {
+  return `Complexity: ${toldOverWords(over)} that this session was told about; ${command} code --told lists them.`;
 }
 function knownFailuresTailLine(failures, command) {
   return `Tests: ${plural(failures, "known failure")}; ${command} status lists them.`;
