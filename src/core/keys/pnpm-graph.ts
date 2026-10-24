@@ -2,11 +2,8 @@ import { join, posix } from "node:path";
 import { compare, isRecord } from "../fs/index.js";
 import type { AbsolutePath, PackageImport, RelativePath } from "../types/index.js";
 import { PackageScans } from "./package-scans.js";
-import type { PackageGraph } from "./packages.js";
-import { type PnpmLockfile, pnpmFolderName } from "./pnpm-lockfile.js";
-
-/** pnpm's virtual store, relative to the directory that holds `node_modules`. */
-const VIRTUAL_STORE = "node_modules/.pnpm/";
+import { type PackageGraph, parent } from "./packages.js";
+import { PNPM_VIRTUAL_STORE, type PnpmLockfile, pnpmFolderName } from "./pnpm-lockfile.js";
 
 /** pnpm's default `virtualStoreDirMaxLength`. */
 const FOLDER_MAX_LENGTH = 120;
@@ -132,8 +129,9 @@ export class PnpmGraph implements PackageGraph {
    * past, then the snapshot id or marker it finds; empty when absent.
    */
   #resolve(from: string, name: string): string[] {
-    if (!from.startsWith(VIRTUAL_STORE)) return this.#walk(this.#fromImporters(from, name));
-    const folder = from.slice(VIRTUAL_STORE.length).split("/")[0] ?? "";
+    if (!from.startsWith(`${PNPM_VIRTUAL_STORE}/`))
+      return this.#walk(this.#fromImporters(from, name));
+    const folder = from.slice(PNPM_VIRTUAL_STORE.length + 1).split("/")[0] ?? "";
     const id = this.#snapshotOf.get(folder);
     if (id === undefined) return [`unknown:${folder}`];
     return nameOf(id) === name ? [id] : this.#walk(this.#fromFolder(id, name));
@@ -203,7 +201,7 @@ export class PnpmGraph implements PackageGraph {
 
   /** The package folder of snapshot `id`, relative to the install. */
   #folderOf(id: string): string {
-    return `${VIRTUAL_STORE}${this.folders.get(id)}/node_modules/${nameOf(id)}`;
+    return `${PNPM_VIRTUAL_STORE}/${this.folders.get(id)}/node_modules/${nameOf(id)}`;
   }
 
   /** Identities of `start` and everything it can load, memoized per snapshot. */
@@ -260,9 +258,4 @@ export function childOf(name: string, ref: string): string {
 /** A `link:` version as the workspace it names, relative to the install. */
 function workspace(dir: string, ref: string): string {
   return `workspace:${posix.normalize(posix.join(dir, ref.slice("link:".length)))}`;
-}
-
-function parent(dir: string): string {
-  const up = posix.dirname(dir);
-  return up === "." ? "" : up;
 }
