@@ -1,0 +1,23 @@
+{
+  "/tmp/sq015-r3/": [
+    "squeal",
+    "a18dc268",
+    "researcher",
+    5,
+    "a 015 researcher's coverage measurement in a /tmp copy, started from a script file"
+  ],
+  "/tmp/cezar-red-proof.": [
+    "cezar",
+    "9a2dc9c8",
+    "worker",
+    1,
+    "red/green proof in a disposable tree (cezar AGENTS.md)"
+  ],
+  "243494.89377072": [
+    "squeal",
+    "2b631a82",
+    "reviewer",
+    1,
+    "reviewer's locked full run, still running at the cut (flock \u2026 npx vitest run --maxWorkers=4 in its candidate)"
+  ]
+}
