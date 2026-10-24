@@ -230,8 +230,10 @@ export interface ResultRepo {
   latestForCheck(check: CheckId): ResultRecord | null;
   /**
    * Results of one test file under the key of its newest result, from any
-   * worktree; empty when it has none. Read only, as `listForCheck`. Row
-   * 011-154: a miss with no previous key takes its last duration from them.
+   * worktree; empty when it has none. When rows of the file share the newest
+   * record time, the one stored last (the greater `rowid`) names the key, as
+   * in `listForCheck` and prune. Read only, as `listForCheck`. Row 011-154: a
+   * miss with no previous key takes its last duration from them.
    */
   newestForTestFile(testFile: TestFileRef): readonly ResultRecord[];
   /**
