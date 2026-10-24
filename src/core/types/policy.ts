@@ -37,7 +37,12 @@ export interface Policy {
     readonly denyWhenCurrent: boolean;
   };
   readonly baseline: {
-    /** Spec 001 D5: "the baseline is a lookup [...] followed by a run of the misses, or lookup only, per policy." */
+    /**
+     * Spec 001 D5: "the baseline is a lookup [...] followed by a run of the
+     * misses, or lookup only, per policy." Default `"lookup-only"` (001 D11
+     * as amended 2026-10-23, row 011-159): a held inherited fail still runs
+     * once (011 C4 step 3).
+     */
     readonly onStart: "lookup-then-run-missing" | "lookup-only";
   };
   /**
@@ -284,7 +289,7 @@ export const DEFAULT_POLICY: Policy = {
     slowWaitMs: 120_000,
   },
   testCommand: { denyWhenCurrent: false },
-  baseline: { onStart: "lookup-then-run-missing" },
+  baseline: { onStart: "lookup-only" },
   inputs: [],
   observe: { runtimeInputs: true },
   env: { allowlist: [] },
