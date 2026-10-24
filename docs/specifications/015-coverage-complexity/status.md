@@ -23,6 +23,7 @@ Started: 2026-10-23
 - 2026-10-23, the human, on the functions over the threshold when a session starts (192 here at CC 12): show their number and where to get the details, never the list ("don't flood the agent"). Ideally, the first edit that leaves such a function still over surfaces it; the coordinator judged it feasible (the counter sees which function's own text changed, and the delivery view already remembers per session what it was told), and the spec makes it its own row so it can be dropped if it proves complex.
 - 2026-10-23, the human, at the review of `spec.md`: approved with changes. The thresholds (`complexity.threshold` 20, `crap.threshold` 30) are configurable and the starting numbers are good. A session that edits a file too big to count is told so once (D6), and the size limit is a key of its own (`complexity.maxFileBytes`, D1); a warning against very large modules is an idea for later (board, Later). Complexity is delivered at once, without waiting for any test result, since it does not depend on coverage (D5); the coordinator named the one cost, churn during a refactor made in several edits, as open question 4.
 - 2026-10-23, the coordinator, found while briefing wave 0: code data lives in its own SQLite file, created only when the policy is on (D4, D8). The main store's `user_version` has never been raised, and a raise would make every older daemon of a repository exit (011 C7).
+- 2026-10-24, the coordinator: waves 0 and 1 (015-04 to 015-08) landed on main as 0.1.283 (04cc8deee). Review round 1 failed with five proven blockers, which 015-16 and 015-17 repaired; round 2 passed (`reviews/0.1.283.md`, `reviews/0.1.283-r2.md`). The repair added one rule the spec did not state: the code store's prune keeps a count while a function's kept state was judged on its blob (D4). A count that fails once is not yet retried (round 1 S1, plausible), row 015-18.
 
 ## Open questions
 
@@ -34,3 +35,5 @@ Started: 2026-10-23
 ## Amendment log
 
 Every accepted deviation is a dated line here and an edit to the section of `spec.md` it changes (`docs/process.md`, step 6).
+
+- 2026-10-24, D4 Counts: prune also keeps a count that a kept state was judged on. The state's old body hashes come from that count, so an edit that overtakes a count still tells `STILL FAIL` (review 0.1.283 B5; 015-17, agreed by the coordinator).
