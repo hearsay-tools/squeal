@@ -1,0 +1,12 @@
+{
+ "floor": 30,
+ "refused": 0,
+ "unsure": 0,
+ "cut": 0,
+ "lowS": 0,
+ "highS": 0,
+ "promotedWaitsS": [],
+ "kept": [],
+ "promotedWaitTotalS": 0,
+ "promotedWaitMedianS": null
+}
