@@ -1,0 +1,2 @@
+{"rule":"lint/style/useConst","locatedSame":false,"contentSame":true,"before":"lint/style/useConst: This let declares a variable that is only assigned once. @ a.ts:2:3","after":"lint/style/useConst: This let declares a variable that is only assigned once. @ a.ts:3:3"}
+{"rule":"lint/correctness/noUnusedVariables","locatedSame":false,"contentSame":true,"before":"lint/correctness/noUnusedVariables: This variable unused is unused. @ a.ts:2:7","after":"lint/correctness/noUnusedVariables: This variable unused is unused. @ a.ts:3:7"}

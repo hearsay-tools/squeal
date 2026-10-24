@@ -1,0 +1,42 @@
+{
+  "report": {
+    "end": "completed",
+    "durationMs": null,
+    "completedFiles": [
+      {
+        "project": "p",
+        "path": "example.com/pkg"
+      }
+    ],
+    "results": [],
+    "fileErrors": [
+      {
+        "testFile": {
+          "project": "p",
+          "path": "example.com/pkg"
+        },
+        "errors": [
+          {
+            "name": "Error",
+            "message": "panic: test timed out after 1s",
+            "stack": null,
+            "location": null,
+            "diff": null
+          }
+        ]
+      }
+    ],
+    "failure": null
+  },
+  "missing": [
+    "Package: absent in this sample (test2json run without -p); go test -json sets it",
+    "a started test with no end (Test): the package's fail is the only signal; the reason is in output text",
+    "location of a test: go test -json has none; go test -list gives top-level names only, no file or line",
+    "closure (RunnerClosure.paths, packages): no format carries the inputs a file read",
+    "environment (RunnerEnvironment): runner and adapter version, resolved config, environment files",
+    "withheld / observed / reads: no format can say a result is untrustworthy because inputs moved",
+    "focused counts (collected, matched): no format reports how many checks a filter selected",
+    "startupFailure vs fileErrors: no format separates a global setup failure from a file's load failure",
+    "duplicate full names: neither id nor line tells the two 'adds' tests apart in TAP or JUnit"
+  ]
+}

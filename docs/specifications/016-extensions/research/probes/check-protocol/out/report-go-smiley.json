@@ -1,0 +1,278 @@
+{
+  "report": {
+    "end": "completed",
+    "durationMs": null,
+    "completedFiles": [
+      {
+        "project": "p",
+        "path": "example.com/pkg"
+      }
+    ],
+    "results": [
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹Asm"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹Dirs"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "TestTags"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹Verbose"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "TestTags > testtag"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹ > 0"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹ > 1"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹ > 2"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹ > 3"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹ > 4"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "TestTags > x_testtag_y"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹ > 5"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹ > 6"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "TestTags > x,testtag,y"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹Dirs > testingpkg"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹Dirs > divergent"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹ > 7"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹Dirs > buildtag"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹Dirs > incomplete"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "example.com/pkg",
+          "fullName": "Test☺☹Dirs > cgo"
+        },
+        "outcome": "pass",
+        "durationMs": 0,
+        "location": null,
+        "errors": []
+      }
+    ],
+    "fileErrors": [],
+    "failure": null
+  },
+  "missing": [
+    "Package: absent in this sample (test2json run without -p); go test -json sets it",
+    "location of a test: go test -json has none; go test -list gives top-level names only, no file or line",
+    "closure (RunnerClosure.paths, packages): no format carries the inputs a file read",
+    "environment (RunnerEnvironment): runner and adapter version, resolved config, environment files",
+    "withheld / observed / reads: no format can say a result is untrustworthy because inputs moved",
+    "focused counts (collected, matched): no format reports how many checks a filter selected",
+    "startupFailure vs fileErrors: no format separates a global setup failure from a file's load failure",
+    "duplicate full names: neither id nor line tells the two 'adds' tests apart in TAP or JUnit"
+  ]
+}

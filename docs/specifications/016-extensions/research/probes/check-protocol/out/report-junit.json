@@ -1,0 +1,108 @@
+{
+  "report": {
+    "end": "completed",
+    "durationMs": null,
+    "completedFiles": [
+      {
+        "project": "p",
+        "path": "math-cases.mjs"
+      },
+      {
+        "project": "p",
+        "path": "broken-import.mjs"
+      }
+    ],
+    "results": [
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "math-cases.mjs",
+          "fullName": "math > adds"
+        },
+        "outcome": "pass",
+        "durationMs": 1.034,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "math-cases.mjs",
+          "fullName": "math > subtracts"
+        },
+        "outcome": "fail",
+        "durationMs": 1.335,
+        "location": null,
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "Expected values to be strictly equal:\n\n2 !== 1",
+            "stack": "Error [ERR_TEST_FAILURE]: Expected values to be strictly equal:\n\n2 !== 1\n\n    at async Promise.all (index 0) {\n  code: 'ERR_TEST_FAILURE',\n  failureType: 'testCodeFailure',\n  cause: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  2 !== 1\n  \n      at TestContext.&lt;anonymous> (file://<scratch>/math-cases.mjs:9:12)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Promise.all (index 0)\n      at async Suite.run (node:internal/test_runner/test:1905:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 1,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n}",
+            "location": {
+              "path": "math-cases.mjs",
+              "line": 9,
+              "column": 12
+            },
+            "diff": null
+          }
+        ]
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "math-cases.mjs",
+          "fullName": "math > divides"
+        },
+        "outcome": "skip",
+        "durationMs": 0.23800000000000002,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "math-cases.mjs",
+          "fullName": "math > adds"
+        },
+        "outcome": "pass",
+        "durationMs": 0.235,
+        "location": null,
+        "errors": []
+      }
+    ],
+    "fileErrors": [
+      {
+        "testFile": {
+          "project": "p",
+          "path": "broken-import.mjs"
+        },
+        "errors": [
+          {
+            "name": "Error",
+            "message": "test failed",
+            "stack": null,
+            "location": null,
+            "diff": null
+          }
+        ]
+      }
+    ],
+    "failure": null
+  },
+  "missing": [
+    "file-level error text: the import error is not in the XML at all; only 'test failed'",
+    "location of every test: JUnit has file, no line (Node writes no line attribute)",
+    "full name: classname is only the innermost suite; nested describes are lost",
+    "per-file completion: one XML document per run, written at its end",
+    "closure (RunnerClosure.paths, packages): no format carries the inputs a file read",
+    "environment (RunnerEnvironment): runner and adapter version, resolved config, environment files",
+    "withheld / observed / reads: no format can say a result is untrustworthy because inputs moved",
+    "focused counts (collected, matched): no format reports how many checks a filter selected",
+    "startupFailure vs fileErrors: no format separates a global setup failure from a file's load failure",
+    "duplicate full names: neither id nor line tells the two 'adds' tests apart in TAP or JUnit"
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "report": {
+    "end": "completed",
+    "durationMs": null,
+    "completedFiles": [
+      {
+        "project": "p",
+        "path": "math-cases.mjs"
+      },
+      {
+        "project": "p",
+        "path": "broken-import.mjs"
+      }
+    ],
+    "results": [
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "?",
+          "fullName": "math > adds"
+        },
+        "outcome": "pass",
+        "durationMs": 0.972412,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "math-cases.mjs",
+          "fullName": "math > subtracts"
+        },
+        "outcome": "fail",
+        "durationMs": 1.22074,
+        "location": {
+          "path": "math-cases.mjs",
+          "line": 8,
+          "column": 3
+        },
+        "errors": [
+          {
+            "name": "AssertionError",
+            "message": "Expected values to be strictly equal:\n\n2 !== 1",
+            "stack": "TestContext.<anonymous> (file://<scratch>/math-cases.mjs:9:12)\nTest.runInAsyncScope (node:async_hooks:227:14)\nTest.run (node:internal/test_runner/test:1402:25)\nSuite.processPendingSubtests (node:internal/test_runner/test:974:18)\nTest.postRun (node:internal/test_runner/test:1542:19)\nTest.run (node:internal/test_runner/test:1467:12)\nasync Promise.all (index 0)\nasync Suite.run (node:internal/test_runner/test:1905:7)\nasync startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)",
+            "location": {
+              "path": "math-cases.mjs",
+              "line": 9,
+              "column": 12
+            },
+            "diff": null,
+            "code": "ERR_ASSERTION"
+          }
+        ]
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "?",
+          "fullName": "math > divides"
+        },
+        "outcome": "skip",
+        "durationMs": 0.143149,
+        "location": null,
+        "errors": []
+      },
+      {
+        "check": {
+          "kind": "test",
+          "project": "p",
+          "testPath": "?",
+          "fullName": "math > adds"
+        },
+        "outcome": "pass",
+        "durationMs": 0.124896,
+        "location": null,
+        "errors": []
+      }
+    ],
+    "fileErrors": [
+      {
+        "testFile": {
+          "project": "p",
+          "path": "broken-import.mjs"
+        },
+        "errors": [
+          {
+            "name": "Error",
+            "message": "test failed",
+            "stack": null,
+            "location": {
+              "path": "broken-import.mjs",
+              "line": 1,
+              "column": 1
+            },
+            "diff": null,
+            "code": "ERR_TEST_FAILURE"
+          }
+        ]
+      }
+    ],
+    "failure": null
+  },
+  "missing": [
+    "file-level error text: TAP point says only 'test failed'; the import error is a '#' comment before it, outside any test point",
+    "location of a passing or skipped test: Node's TAP writes it only on failures and suites",
+    "test file of a passing test: TAP has no file field; nesting starts at the describe, not the file",
+    "per-file completion: TAP marks the end of a document, not of each file",
+    "closure (RunnerClosure.paths, packages): no format carries the inputs a file read",
+    "environment (RunnerEnvironment): runner and adapter version, resolved config, environment files",
+    "withheld / observed / reads: no format can say a result is untrustworthy because inputs moved",
+    "focused counts (collected, matched): no format reports how many checks a filter selected",
+    "startupFailure vs fileErrors: no format separates a global setup failure from a file's load failure",
+    "duplicate full names: neither id nor line tells the two 'adds' tests apart in TAP or JUnit"
+  ]
+}
