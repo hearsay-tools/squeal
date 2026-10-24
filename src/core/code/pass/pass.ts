@@ -83,6 +83,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const { counted, skipped, links } = await countMissing(ctx, entries, failed, {
     now: started,
     quiet,
+    threshold: ctx.complexity.threshold,
   });
   // B1: a count a first count or recount failed on seeds as that count would have.
   const seeds = new Set(
@@ -90,19 +91,24 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
       e.kind === "count" && seedsQuietly(failed, e.path, e.file.hash) ? [e.path] : [],
     ),
   );
+  const after: FileAfter[] = entries
+    .filter((e) => !skipped.has(e.path))
+    .map((e) => {
+      // 015-31: an edit whose count failed is judged under its own threshold too.
+      const editedUnder = failed.get(e.path)?.threshold;
+      return {
+        path: e.path,
+        count:
+          e.kind === "count" && !links.has(e.path)
+            ? store.counts.get(e.file.hash, e.language, ctx.counter.version)
+            : null,
+        ...(seeds.has(e.path) ? { quiet: true } : {}),
+        ...(editedUnder === undefined ? {} : { editedUnder }),
+      };
+    });
   // A path judged, gone or too big has no failed count to retry (row 015-18).
   for (const e of entries) if (!skipped.has(e.path)) failed.delete(e.path);
 
-  const after: FileAfter[] = entries
-    .filter((e) => !skipped.has(e.path))
-    .map((e) => ({
-      path: e.path,
-      count:
-        e.kind === "count" && !links.has(e.path)
-          ? store.counts.get(e.file.hash, e.language, ctx.counter.version)
-          : null,
-      ...(seeds.has(e.path) ? { quiet: true } : {}),
-    }));
   const committed =
     since === null
       ? new Set<RelativePath>()
