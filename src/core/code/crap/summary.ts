@@ -36,6 +36,23 @@ export interface CoverageSummary {
   readonly quiet?: readonly RelativePath[];
   /** Listed test files whose closure the daemon did not know at the last step (review 0.1.297 B3). */
   readonly withoutImports?: number;
+  /**
+   * Row 015-40: the `crap.threshold` a step judged every ready file at, so
+   * a change is seen once that is done; absent from an older Squeal.
+   */
+  readonly threshold?: number;
+}
+
+/**
+ * Code meta `crapRecount:<worktreeId>` (row 015-40): the last change of
+ * `crap.threshold`, once the step judged every ready file at it. A delivery
+ * tells it as one summary line and seeds the view again by count, as a
+ * complexity recount (D6).
+ */
+export interface CrapRecount {
+  readonly revision: RevisionNumber;
+  readonly at: number;
+  readonly threshold: number;
 }
 
 /**
@@ -60,6 +77,7 @@ export interface FileEvidence {
 export const EVIDENCE_FILES = 3;
 
 export const summaryKey = (worktreeId: WorktreeId) => `coverage:${worktreeId}`;
+const crapRecountKey = (worktreeId: WorktreeId) => `crapRecount:${worktreeId}`;
 export const evidenceKey = (worktreeId: WorktreeId, path: RelativePath) =>
   `coverage:${worktreeId}:${path}`;
 export const functionKey = (fn: { qualifiedName: string; occurrence: number }) =>
@@ -96,6 +114,27 @@ export function writeSummary(
 
 export function deleteSummary(meta: CodeMetaRepo, worktreeId: WorktreeId): void {
   meta.delete(summaryKey(worktreeId));
+  meta.delete(crapRecountKey(worktreeId));
+}
+
+/** The worktree's last `crap.threshold` change; `null` when none is recorded, or it is unreadable. */
+export function readCrapRecount(meta: CodeMetaRepo, worktreeId: WorktreeId): CrapRecount | null {
+  return parse(
+    meta.get(crapRecountKey(worktreeId)),
+    (v) =>
+      isObject(v) &&
+      typeof v.revision === "number" &&
+      typeof v.at === "number" &&
+      typeof v.threshold === "number",
+  );
+}
+
+export function writeCrapRecount(
+  meta: CodeMetaRepo,
+  worktreeId: WorktreeId,
+  recount: CrapRecount,
+): void {
+  meta.set(crapRecountKey(worktreeId), JSON.stringify(recount));
 }
 
 export function readEvidence(
