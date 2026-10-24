@@ -7,10 +7,19 @@ import {
   isCodeStoreOpenFailure,
   openCodeStore,
 } from "../store/index.js";
+import { nextRetry, readUncountable, restartRetries } from "./failed.js";
 import { runPass } from "./pass.js";
 import type { Counter, PassReport, PassSource } from "./types.js";
 
 export { readRecount, recountKey } from "./cursor.js";
+export {
+  COUNT_ATTEMPTS,
+  type FailedCount,
+  type FailedCounts,
+  RETRY_AFTER_MS,
+  readUncountable,
+  uncountableKey,
+} from "./failed.js";
 export { headAfterMove, mainStoreSource } from "./source.js";
 export type * from "./types.js";
 
@@ -52,7 +61,9 @@ export interface CodePass {
  * `code.sqlite` is created (goal 1), and the next pass with it on is a
  * first count. A corrupt code store is deleted and made again: every count
  * can be made again (notes 12). A newer one is left to the daemon that
- * wrote it.
+ * wrote it. A failed count is tried again when its retry is due, by a
+ * timer that nudges; opening the store gives each one a fresh budget (row
+ * 015-18). A counter that did not load is loaded again at the next pass.
  */
 export function createCodePass(options: CodePassOptions): CodePass {
   const now = options.now ?? Date.now;
@@ -65,6 +76,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
   let running: Promise<void> | null = null;
   let again = false;
   let closed = false;
+  let timer: NodeJS.Timeout | null = null;
 
   const shut = () => {
     store?.close();
@@ -82,6 +94,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
     }
     if (!isCodeStoreOpenFailure(opened)) {
       store = opened;
+      restartRetries(store.meta, options.worktreeId, now());
       return store;
     }
     const text = `complexity: the code store did not open: ${JSON.stringify(opened)}`;
@@ -99,7 +112,10 @@ export function createCodePass(options: CodePassOptions): CodePass {
     const opened = open(policy);
     if (opened === null) return;
     counter ??= options.counter();
-    const loaded = await counter;
+    const loaded = await counter.catch((error: unknown) => {
+      counter = null;
+      throw error;
+    });
     const report = await runPass({
       worktreeId: options.worktreeId,
       root: options.root,
@@ -116,6 +132,21 @@ export function createCodePass(options: CodePassOptions): CodePass {
     });
     wasOff = false;
     if (report !== null) options.onPass?.(report);
+    retryLater(nextRetry(readUncountable(opened.meta, options.worktreeId)));
+  };
+  /** One timer at the earliest failed count's retry; a nudge sooner reschedules it. */
+  const retryLater = (at: number | null) => {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+    if (at === null || closed) return;
+    timer = setTimeout(
+      () => {
+        timer = null;
+        self.nudge();
+      },
+      Math.max(0, at - now()),
+    );
+    timer.unref();
   };
   const loop = async () => {
     do {
@@ -133,7 +164,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
     running = null;
   };
 
-  return {
+  const self: CodePass = {
     nudge() {
       if (closed) return;
       if (running !== null) again = true;
@@ -143,7 +174,9 @@ export function createCodePass(options: CodePassOptions): CodePass {
     async close() {
       closed = true;
       await running;
+      retryLater(null);
       shut();
     },
   };
+  return self;
 }
