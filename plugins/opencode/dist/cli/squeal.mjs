@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.298";
+  if (true) return "0.1.299";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5041,6 +5041,10 @@ function writeSummary(meta, worktreeId, summary) {
 }
 function deleteSummary(meta, worktreeId) {
   meta.delete(summaryKey(worktreeId));
+  meta.delete(crapRecountKey(worktreeId));
+}
+function writeCrapRecount(meta, worktreeId, recount) {
+  meta.set(crapRecountKey(worktreeId), JSON.stringify(recount));
 }
 function readEvidence(meta, worktreeId, path) {
   return parse2(
@@ -5052,12 +5056,13 @@ function writeEvidence(meta, worktreeId, path, evidence) {
   if (evidence === null) meta.delete(evidenceKey(worktreeId, path));
   else meta.set(evidenceKey(worktreeId, path), JSON.stringify(evidence));
 }
-var EVIDENCE_FILES, summaryKey, evidenceKey, functionKey, isObject;
+var EVIDENCE_FILES, summaryKey, crapRecountKey, evidenceKey, functionKey, isObject;
 var init_summary = __esm({
   "src/core/code/crap/summary.ts"() {
     "use strict";
     EVIDENCE_FILES = 3;
     summaryKey = (worktreeId) => `coverage:${worktreeId}`;
+    crapRecountKey = (worktreeId) => `crapRecount:${worktreeId}`;
     evidenceKey = (worktreeId, path) => `coverage:${worktreeId}:${path}`;
     functionKey = (fn) => `${fn.qualifiedName}\0${fn.occurrence}`;
     isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -5093,193 +5098,6 @@ var init_status = __esm({
   "src/core/code/crap/status.ts"() {
     "use strict";
     init_summary();
-  }
-});
-
-// src/core/code/pass/cursor.ts
-function cursorOf(revision, complexity, counterVersion) {
-  const { threshold, include, exclude, maxFileBytes } = complexity;
-  return { revision, threshold, include, exclude, maxFileBytes, counterVersion };
-}
-function readCursor(meta, worktreeId) {
-  const text3 = meta.get(passKey(worktreeId));
-  if (text3 === null) return null;
-  try {
-    const cursor = JSON.parse(text3);
-    return typeof cursor.revision === "number" ? cursor : null;
-  } catch {
-    return null;
-  }
-}
-function writeCursor(meta, worktreeId, cursor) {
-  meta.set(passKey(worktreeId), JSON.stringify(cursor));
-}
-function takeAwaited(meta, worktreeId) {
-  if (meta.get(awaitedKey(worktreeId)) === null) return false;
-  meta.delete(awaitedKey(worktreeId));
-  return true;
-}
-function readRecount(meta, worktreeId) {
-  const text3 = meta.get(recountKey(worktreeId));
-  return text3 === null ? null : JSON.parse(text3);
-}
-function writeRecount(meta, worktreeId, record) {
-  meta.set(recountKey(worktreeId), JSON.stringify(record));
-}
-function tooBigEdits(store, worktreeId, changed2, entries3) {
-  const paths = new Set(changed2);
-  const big = entries3.filter((e) => e.kind === "big" && paths.has(e.path));
-  if (big.length === 0) return [];
-  const asked = big.map((e) => e.path);
-  const stored = new Map(store.files.list(worktreeId, asked).map((f) => [f.path, f.blob]));
-  return big.filter((e) => stored.get(e.path) !== e.file.hash).map((e) => e.path);
-}
-function recountReason(cursor, now) {
-  if (cursor === null || cursor.revision > now.revision) return "first";
-  if (cursor.threshold !== now.threshold) return "threshold";
-  const same2 = (a, b) => a.length === b.length && a.every((glob2, i3) => glob2 === b[i3]);
-  if (!same2(cursor.include, now.include) || !same2(cursor.exclude, now.exclude) || cursor.maxFileBytes !== now.maxFileBytes) {
-    return "include";
-  }
-  return cursor.counterVersion === now.counterVersion ? null : "counter";
-}
-var passKey, recountKey, awaitedKey;
-var init_cursor = __esm({
-  "src/core/code/pass/cursor.ts"() {
-    "use strict";
-    passKey = (worktreeId) => `pass:${worktreeId}`;
-    recountKey = (worktreeId) => `recount:${worktreeId}`;
-    awaitedKey = (worktreeId) => `awaited:${worktreeId}`;
-  }
-});
-
-// src/core/code/pass/failed.ts
-function readUncountable(meta, worktreeId) {
-  const text3 = meta.get(uncountableKey(worktreeId));
-  if (text3 === null) return /* @__PURE__ */ new Map();
-  try {
-    const record = JSON.parse(text3);
-    return new Map(Object.entries(record));
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function writeUncountable(meta, worktreeId, failed2) {
-  const key3 = uncountableKey(worktreeId);
-  const text3 = failed2.size === 0 ? null : JSON.stringify(Object.fromEntries(failed2));
-  if (meta.get(key3) === text3) return;
-  if (text3 === null) meta.delete(key3);
-  else meta.set(key3, text3);
-}
-function dueRetries(failed2, now) {
-  return [...failed2].flatMap(([path, f]) => f.retryAt !== null && f.retryAt <= now ? [path] : []);
-}
-function mayCount(failed2, path, blob, now) {
-  const f = failed2.get(path);
-  return f === void 0 || f.blob !== blob || f.retryAt !== null && f.retryAt <= now;
-}
-function failedAgain(previous, blob, error, {
-  now,
-  quiet,
-  threshold
-}) {
-  const same2 = previous?.blob === blob;
-  const attempts = same2 ? previous.attempts + 1 : 1;
-  const wait = attempts < COUNT_ATTEMPTS ? RETRY_AFTER_MS[attempts - 1] : void 0;
-  const origin = same2 ? previous.quiet === true : quiet;
-  return {
-    blob,
-    attempts,
-    retryAt: wait === void 0 ? null : now + wait,
-    error,
-    ...origin ? { quiet: true } : { threshold: previous?.threshold ?? threshold }
-  };
-}
-function seedsQuietly(failed2, path, blob) {
-  const f = failed2.get(path);
-  return f !== void 0 && f.blob === blob && f.quiet === true;
-}
-function nextRetry(failed2) {
-  const times = [...failed2.values()].flatMap((f) => f.retryAt === null ? [] : [f.retryAt]);
-  return times.length === 0 ? null : Math.min(...times);
-}
-function restartRetries(meta, worktreeId, now) {
-  const failed2 = readUncountable(meta, worktreeId);
-  for (const [path, f] of failed2) failed2.set(path, { ...f, attempts: 0, retryAt: now });
-  writeUncountable(meta, worktreeId, failed2);
-}
-function spentFailure(failed2, file) {
-  const f = failed2.get(file.path);
-  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
-}
-function uncountableFiles(store, worktreeId, files2) {
-  const failed2 = readUncountable(store.meta, worktreeId);
-  const spent = /* @__PURE__ */ new Map();
-  if (failed2.size === 0) return spent;
-  for (const file of files2) {
-    const f = spentFailure(failed2, file);
-    if (f === null) continue;
-    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
-      spent.set(file.path, f);
-  }
-  return spent;
-}
-var COUNT_ATTEMPTS, RETRY_AFTER_MS, uncountableKey;
-var init_failed = __esm({
-  "src/core/code/pass/failed.ts"() {
-    "use strict";
-    COUNT_ATTEMPTS = 3;
-    RETRY_AFTER_MS = [5e3, 6e4];
-    uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
-  }
-});
-
-// src/core/code/pass/pulled.ts
-function readPulled(meta, worktreeId) {
-  const text3 = meta.get(pulledKey(worktreeId));
-  if (text3 === null) return /* @__PURE__ */ new Map();
-  try {
-    const pairs = JSON.parse(text3);
-    if (!Array.isArray(pairs)) return /* @__PURE__ */ new Map();
-    return new Map(
-      pairs.filter(
-        (p) => Array.isArray(p) && typeof p[0] === "string" && typeof p[1] === "number"
-      )
-    );
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function writePulled(meta, worktreeId, revision, paths, brought) {
-  const pulled = readPulled(meta, worktreeId);
-  let changed2 = false;
-  for (const path of paths) {
-    if (brought.has(path)) {
-      changed2 ||= pulled.get(path) !== revision;
-      pulled.set(path, revision);
-    } else {
-      changed2 = pulled.delete(path) || changed2;
-    }
-  }
-  if (!changed2) return;
-  if (pulled.size === 0) meta.delete(pulledKey(worktreeId));
-  else meta.set(pulledKey(worktreeId), JSON.stringify([...pulled]));
-}
-function clearPulled(meta, worktreeId) {
-  if (meta.get(pulledKey(worktreeId)) !== null) meta.delete(pulledKey(worktreeId));
-}
-var pulledKey;
-var init_pulled = __esm({
-  "src/core/code/pass/pulled.ts"() {
-    "use strict";
-    pulledKey = (worktreeId) => `pulled:${worktreeId}`;
-  }
-});
-
-// src/core/types/code-delivery.ts
-var init_code_delivery = __esm({
-  "src/core/types/code-delivery.ts"() {
-    "use strict";
   }
 });
 
@@ -9195,6 +9013,151 @@ var init_loaders = __esm({
   }
 });
 
+// src/core/code/pass/failed.ts
+function readUncountable(meta, worktreeId) {
+  const text3 = meta.get(uncountableKey(worktreeId));
+  if (text3 === null) return /* @__PURE__ */ new Map();
+  try {
+    const record = JSON.parse(text3);
+    return new Map(Object.entries(record));
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function writeUncountable(meta, worktreeId, failed2) {
+  const key3 = uncountableKey(worktreeId);
+  const text3 = failed2.size === 0 ? null : JSON.stringify(Object.fromEntries(failed2));
+  if (meta.get(key3) === text3) return;
+  if (text3 === null) meta.delete(key3);
+  else meta.set(key3, text3);
+}
+function dueRetries(failed2, now) {
+  return [...failed2].flatMap(([path, f]) => f.retryAt !== null && f.retryAt <= now ? [path] : []);
+}
+function mayCount(failed2, path, blob, now) {
+  const f = failed2.get(path);
+  return f === void 0 || f.blob !== blob || f.retryAt !== null && f.retryAt <= now;
+}
+function failedAgain(previous, blob, error, {
+  now,
+  quiet,
+  threshold
+}) {
+  const same2 = previous?.blob === blob;
+  const attempts = same2 ? previous.attempts + 1 : 1;
+  const wait = attempts < COUNT_ATTEMPTS ? RETRY_AFTER_MS[attempts - 1] : void 0;
+  const origin = same2 ? previous.quiet === true : quiet;
+  return {
+    blob,
+    attempts,
+    retryAt: wait === void 0 ? null : now + wait,
+    error,
+    ...origin ? { quiet: true } : { threshold: previous?.threshold ?? threshold }
+  };
+}
+function seedsQuietly(failed2, path, blob) {
+  const f = failed2.get(path);
+  return f !== void 0 && f.blob === blob && f.quiet === true;
+}
+function nextRetry(failed2) {
+  const times = [...failed2.values()].flatMap((f) => f.retryAt === null ? [] : [f.retryAt]);
+  return times.length === 0 ? null : Math.min(...times);
+}
+function restartRetries(meta, worktreeId, now) {
+  const failed2 = readUncountable(meta, worktreeId);
+  for (const [path, f] of failed2) failed2.set(path, { ...f, attempts: 0, retryAt: now });
+  writeUncountable(meta, worktreeId, failed2);
+}
+function spentFailure(failed2, file) {
+  const f = failed2.get(file.path);
+  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
+}
+function uncountableFiles(store, worktreeId, files2) {
+  const failed2 = readUncountable(store.meta, worktreeId);
+  const spent = /* @__PURE__ */ new Map();
+  if (failed2.size === 0) return spent;
+  for (const file of files2) {
+    const f = spentFailure(failed2, file);
+    if (f === null) continue;
+    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
+      spent.set(file.path, f);
+  }
+  return spent;
+}
+var COUNT_ATTEMPTS, RETRY_AFTER_MS, uncountableKey;
+var init_failed = __esm({
+  "src/core/code/pass/failed.ts"() {
+    "use strict";
+    COUNT_ATTEMPTS = 3;
+    RETRY_AFTER_MS = [5e3, 6e4];
+    uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
+  }
+});
+
+// src/core/code/pass/pulled.ts
+function readPulled(meta, worktreeId) {
+  const text3 = meta.get(pulledKey(worktreeId));
+  if (text3 === null) return /* @__PURE__ */ new Map();
+  try {
+    const pairs = JSON.parse(text3);
+    if (!Array.isArray(pairs)) return /* @__PURE__ */ new Map();
+    return new Map(
+      pairs.filter(
+        (p) => Array.isArray(p) && typeof p[0] === "string" && typeof p[1] === "number"
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function writePulled(meta, worktreeId, revision, paths, brought) {
+  const pulled = readPulled(meta, worktreeId);
+  let changed2 = false;
+  for (const path of paths) {
+    if (brought.has(path)) {
+      changed2 ||= pulled.get(path) !== revision;
+      pulled.set(path, revision);
+    } else {
+      changed2 = pulled.delete(path) || changed2;
+    }
+  }
+  if (!changed2) return;
+  if (pulled.size === 0) meta.delete(pulledKey(worktreeId));
+  else meta.set(pulledKey(worktreeId), JSON.stringify([...pulled]));
+}
+function clearPulled(meta, worktreeId) {
+  if (meta.get(pulledKey(worktreeId)) !== null) meta.delete(pulledKey(worktreeId));
+}
+var pulledKey;
+var init_pulled = __esm({
+  "src/core/code/pass/pulled.ts"() {
+    "use strict";
+    pulledKey = (worktreeId) => `pulled:${worktreeId}`;
+  }
+});
+
+// src/core/code/crap/brought.ts
+function broughtByGit(meta, worktreeId, summary, next) {
+  const brought = new Map(Object.entries(summary?.brought ?? {}));
+  for (const [path, revision] of readPulled(meta, worktreeId)) {
+    brought.set(path, Math.max(revision, brought.get(path) ?? 0));
+  }
+  for (const path of brought.keys()) if (next[path] === void 0) brought.delete(path);
+  return brought;
+}
+function keepUnjudged(brought, files2, next) {
+  for (const f of files2) {
+    const now = next[f.path];
+    if (now?.state === "judged" && now.blob === f.blob) brought.delete(f.path);
+  }
+}
+var init_brought = __esm({
+  "src/core/code/crap/brought.ts"() {
+    "use strict";
+    init_pulled();
+  }
+});
+
 // src/core/code/crap/score.ts
 function crapScore(complexity, coverage) {
   if (coverage >= FULL_COVERAGE) return complexity;
@@ -9214,6 +9177,7 @@ function judgeFiles(ctx, judged) {
   const { prior, worktreeId, revision, at: at2 } = ctx;
   const states = [];
   const transitions = [];
+  const edited = [];
   for (const { file, count: count2, coverage, quiet } of judged) {
     count2.functions.forEach((fn, i3) => {
       const check = checkOf(file.path, fn);
@@ -9221,9 +9185,13 @@ function judgeFiles(ctx, judged) {
       if (prior.get(`complexity\0${id2}`)?.outcome === "unknown") return;
       const cov = coverage[i3];
       if (cov === void 0) return;
+      const edit = quiet === true ? void 0 : ctx.edits.get(id2);
       for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
         const was = prior.get(`${m.measure}\0${id2}`);
         const { outcome: outcome2 } = m;
+        if (edit !== void 0 && was !== void 0 && edit.revision > was.countedAt) {
+          edited.push({ check, measure: m.measure, revision: edit.revision, at: at2 });
+        }
         states.push({
           worktreeId,
           check,
@@ -9253,7 +9221,7 @@ function judgeFiles(ctx, judged) {
       }
     });
   }
-  return { states, transitions };
+  return { states, transitions, edited };
 }
 function measuresOf(complexity, cov, threshold) {
   if (cov.unresolved === true) {
@@ -9386,20 +9354,9 @@ function runCoverageStep(input) {
   }
   return store.transaction(() => {
     if (start2 || input.reseed) seed(input, files2, countOf, start2 && summary !== null);
-    const paths = judged.map((j) => j.file.path);
-    const prior = new Map(
-      (paths.length === 0 ? [] : store.states.list(worktreeId, { paths })).map((s) => [
-        priorKey(s),
-        s
-      ])
-    );
-    const { states, transitions } = judgeFiles(
-      { worktreeId, revision: input.revision, threshold: input.threshold, at: input.now(), prior },
-      judged
-    );
-    store.states.upsertMany(states);
-    store.transitions.append(transitions);
-    for (const j of judged) writeEvidence(store.meta, worktreeId, j.file.path, evidenceOf(j));
+    const brought = broughtByGit(store.meta, worktreeId, summary, next);
+    const transitions = writeJudgement(input, judged, brought);
+    keepUnjudged(brought, files2, next);
     for (const path of Object.keys(summary?.files ?? {})) {
       if (next[path] === void 0) writeEvidence(store.meta, worktreeId, path, null);
     }
@@ -9410,13 +9367,48 @@ function runCoverageStep(input) {
       provider: COVERAGE_PROVIDER_VERSION,
       files: next,
       ...waiting2.length === 0 ? {} : { quiet: waiting2 },
-      ...loaders.withoutImports === 0 ? {} : { withoutImports: loaders.withoutImports }
+      ...loaders.withoutImports === 0 ? {} : { withoutImports: loaders.withoutImports },
+      threshold: thresholdAfter(input, start2 ? null : summary, more),
+      ...brought.size === 0 ? {} : { brought: Object.fromEntries(brought) }
     };
     if (start2 || JSON.stringify(written) !== JSON.stringify(summary)) {
       writeSummary(store.meta, worktreeId, written);
     }
-    return { judged: judged.length, transitions: transitions.length, wakeAt: loaders.wakeAt, more };
+    return { judged: judged.length, transitions, wakeAt: loaders.wakeAt, more };
   });
+}
+function writeJudgement(input, judged, brought) {
+  const { store, worktreeId } = input;
+  const paths = judged.map((j) => j.file.path);
+  if (paths.length === 0) return 0;
+  const prior = new Map(store.states.list(worktreeId, { paths }).map((s) => [priorKey(s), s]));
+  const judgedPaths = new Set(paths);
+  const edits = new Map(
+    store.states.edits(worktreeId, "complexity").filter(
+      (e) => judgedPaths.has(e.check.path) && e.revision > (brought.get(e.check.path) ?? -1)
+    ).map((e) => [`${e.check.path}\0${functionKey(e.check)}`, e])
+  );
+  const { revision, threshold } = input;
+  const { states, transitions, edited } = judgeFiles(
+    { worktreeId, revision, threshold, at: input.now(), prior, edits },
+    judged
+  );
+  store.states.upsertMany(states);
+  store.transitions.append(transitions);
+  store.states.markEdited(worktreeId, edited);
+  for (const j of judged) writeEvidence(store.meta, worktreeId, j.file.path, evidenceOf(j));
+  return transitions.length;
+}
+function thresholdAfter(input, summary, more) {
+  const judgedAt = summary?.threshold;
+  if (judgedAt === void 0 || judgedAt === input.threshold) return input.threshold;
+  if (more) return judgedAt;
+  writeCrapRecount(input.store.meta, input.worktreeId, {
+    revision: input.revision,
+    at: input.now(),
+    threshold: input.threshold
+  });
+  return input.threshold;
 }
 function signatureOf(file, threshold, loaders) {
   const keys = loaders.map((l) => l.key).sort(compare);
@@ -9463,6 +9455,7 @@ var init_step = __esm({
     init_fs();
     init_record();
     init_failed();
+    init_brought();
     init_file();
     init_judge();
     init_loaders();
@@ -9523,6 +9516,109 @@ var init_crap = __esm({
     init_score();
     init_step();
     init_summary();
+  }
+});
+
+// src/core/code/pass/cursor.ts
+function cursorOf(revision, complexity, counterVersion) {
+  const { threshold, include, exclude, maxFileBytes } = complexity;
+  return { revision, threshold, include, exclude, maxFileBytes, counterVersion };
+}
+function readCursor(meta, worktreeId) {
+  const text3 = meta.get(passKey(worktreeId));
+  if (text3 === null) return null;
+  try {
+    const cursor = JSON.parse(text3);
+    return typeof cursor.revision === "number" ? cursor : null;
+  } catch {
+    return null;
+  }
+}
+function writeCursor(meta, worktreeId, cursor) {
+  meta.set(passKey(worktreeId), JSON.stringify(cursor));
+}
+function takeAwaited(meta, worktreeId) {
+  if (meta.get(awaitedKey(worktreeId)) === null) return false;
+  meta.delete(awaitedKey(worktreeId));
+  return true;
+}
+function readRecount(meta, worktreeId) {
+  const text3 = meta.get(recountKey(worktreeId));
+  return text3 === null ? null : JSON.parse(text3);
+}
+function writeRecount(meta, worktreeId, record) {
+  meta.set(recountKey(worktreeId), JSON.stringify(record));
+}
+function recountReason(cursor, now) {
+  if (cursor === null || cursor.revision > now.revision) return "first";
+  if (cursor.threshold !== now.threshold) return "threshold";
+  const same2 = (a, b) => a.length === b.length && a.every((glob2, i3) => glob2 === b[i3]);
+  if (!same2(cursor.include, now.include) || !same2(cursor.exclude, now.exclude) || cursor.maxFileBytes !== now.maxFileBytes) {
+    return "include";
+  }
+  return cursor.counterVersion === now.counterVersion ? null : "counter";
+}
+var passKey, recountKey, awaitedKey;
+var init_cursor = __esm({
+  "src/core/code/pass/cursor.ts"() {
+    "use strict";
+    passKey = (worktreeId) => `pass:${worktreeId}`;
+    recountKey = (worktreeId) => `recount:${worktreeId}`;
+    awaitedKey = (worktreeId) => `awaited:${worktreeId}`;
+  }
+});
+
+// src/core/code/pass/too-big.ts
+function readTooBigEdits(meta, worktreeId) {
+  const text3 = meta.get(editsKey(worktreeId));
+  if (text3 === null) return /* @__PURE__ */ new Map();
+  try {
+    const pairs = JSON.parse(text3);
+    if (!Array.isArray(pairs)) return /* @__PURE__ */ new Map();
+    return new Map(
+      pairs.filter(
+        (p) => Array.isArray(p) && typeof p[0] === "string" && typeof p[1] === "number"
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function writeTooBigEdits(store, worktreeId, changed2, entries3) {
+  const { meta } = store;
+  if (changed2 === null) {
+    if (meta.get(editsKey(worktreeId)) !== null) meta.delete(editsKey(worktreeId));
+    return;
+  }
+  const edits = readTooBigEdits(meta, worktreeId);
+  const big = entries3.flatMap((e) => e.kind === "big" && changed2.has(e.path) ? [e.path] : []);
+  const rows = big.length === 0 ? [] : store.files.list(worktreeId, big);
+  const stored = new Map(rows.map((f) => [f.path, f.blob]));
+  let writes = false;
+  for (const e of entries3) {
+    const at2 = changed2.get(e.path);
+    if (e.kind !== "big") writes = edits.delete(e.path) || writes;
+    else if (at2 !== void 0 && stored.get(e.path) !== e.file.hash && edits.get(e.path) !== at2) {
+      edits.set(e.path, at2);
+      writes = true;
+    }
+  }
+  if (!writes) return;
+  if (edits.size === 0) meta.delete(editsKey(worktreeId));
+  else meta.set(editsKey(worktreeId), JSON.stringify([...edits]));
+}
+var editsKey;
+var init_too_big = __esm({
+  "src/core/code/pass/too-big.ts"() {
+    "use strict";
+    editsKey = (worktreeId) => `tooBigEdits:${worktreeId}`;
+  }
+});
+
+// src/core/types/code-delivery.ts
+var init_code_delivery = __esm({
+  "src/core/types/code-delivery.ts"() {
+    "use strict";
   }
 });
 
@@ -9593,18 +9689,21 @@ var init_code_source = __esm({
 });
 
 // src/core/delivery/code-told.ts
-function toldOver(store, worktreeId, consumers) {
+function toldOver(store, worktreeId, consumers, measures = ["complexity"]) {
   const told = new Set(
     consumers.flatMap(
-      (c) => store.views.list(c).filter((v) => v.measure === "complexity" && v.told !== "count").map(codeKey)
+      (c) => store.views.list(c).filter((v) => measures.includes(v.measure) && v.told !== "count").map(codeKey)
     )
   );
   if (told.size === 0) return [];
-  return store.states.list(worktreeId, { measure: "complexity", outcome: "fail" }).filter((s) => told.has(codeKey(s)));
+  return measures.flatMap(
+    (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => told.has(codeKey(s)))
+  );
 }
 var init_code_told = __esm({
   "src/core/delivery/code-told.ts"() {
     "use strict";
+    init_code_coverage();
     init_code_delta();
   }
 });
@@ -9627,9 +9726,11 @@ var MEASURE;
 var init_code_deliver = __esm({
   "src/core/delivery/code-deliver.ts"() {
     "use strict";
+    init_crap();
     init_cursor();
     init_failed();
     init_pulled();
+    init_too_big();
     init_fs();
     init_code_delivery();
     init_code_coverage();
@@ -9746,11 +9847,13 @@ function toldTo(store, worktreeId, shell) {
   if (own.length > 0) return { consumers: own, scope: "session" };
   return registered2.length === 0 ? null : { consumers: registered2, scope: "worktree" };
 }
-function wentOverSince(code, worktreeId, since) {
-  return code.states.list(worktreeId, { measure: "complexity", outcome: "fail" }).filter((s) => {
-    const last = lastTransition(code, worktreeId, s.check);
-    return last?.to === "fail" && isOwn(since, last.revision);
-  });
+function wentOverSince(code, worktreeId, since, measures = ["complexity"]) {
+  return measures.flatMap(
+    (measure2) => code.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => {
+      const last = lastTransition(code, worktreeId, s.check, measure2);
+      return last?.to === "fail" && isOwn(since, last.revision);
+    })
+  );
 }
 function changedSince(code, worktreeId, since) {
   return code.states.list(worktreeId, { measure: "complexity" }).filter((s) => {
@@ -58159,8 +58262,9 @@ async function runPass(ctx) {
   const entries3 = plan(ctx, since === null ? null : workSet(ctx, since, latest, due));
   ctx.retry.clear();
   const bodies = reason2 === null ? oldBodies(store, worktreeId, entries3, ctx.counter.version) : /* @__PURE__ */ new Map();
-  const edits = reason2 === null || reason2 === "first" || cursor === null ? [] : tooBigEdits(store, worktreeId, source2.changedPaths(cursor.revision, latest), entries3);
+  const edits = reason2 === "first" || cursor === null ? null : source2.lastChanges(cursor.revision, latest);
   store.transaction(() => {
+    writeTooBigEdits(store, worktreeId, edits, entries3);
     store.files.removeMany(
       worktreeId,
       entries3.filter((e) => e.kind === "gone").map((e) => e.path)
@@ -58233,8 +58337,7 @@ async function runPass(ctx) {
         revision: latest,
         at: ctx.now(),
         reason: reason2,
-        threshold: ctx.complexity.threshold,
-        ...edits.length === 0 ? {} : { tooBigEdits: edits }
+        threshold: ctx.complexity.threshold
       });
     }
     return report2(latest, reason2, entries3.length, counted3, { ...judged, edited });
@@ -58326,6 +58429,7 @@ var init_pass = __esm({
     init_included();
     init_judge2();
     init_pulled();
+    init_too_big();
   }
 });
 
@@ -58364,6 +58468,9 @@ function mainStoreSource(store, worktreeId, ignored) {
         store.revisions.range(worktreeId, after2, upTo).flatMap((r) => r.changes.map((c) => c.path))
       )
     ],
+    lastChanges: (after2, upTo) => new Map(
+      store.revisions.range(worktreeId, after2, upTo).flatMap((r) => r.changes.map((c) => [c.path, r.number]))
+    ),
     movedHead: (after2, upTo) => headAfterMove(
       headAt(after2),
       store.revisions.range(worktreeId, after2, upTo).map((r) => r.head)
@@ -60506,6 +60613,21 @@ init_code_delta();
 function functionName(check) {
   return check.occurrence === 0 ? check.qualifiedName : `${check.qualifiedName} (occurrence ${check.occurrence + 1})`;
 }
+function toldOverWords({
+  count: count2,
+  threshold,
+  crap,
+  uncovered
+}) {
+  const parts2 = [
+    ...count2 === 0 ? [] : [[count2, `over ${threshold}`]],
+    ...crap === void 0 ? [] : [[crap.count, `over CRAP ${crap.threshold}`]],
+    ...uncovered === void 0 ? [] : [[uncovered, "no in-process test reaches"]]
+  ];
+  const words = parts2.map(([n, what], i3) => `${i3 === 0 ? plural(n, "function") : n} ${what}`);
+  const last = words.pop() ?? "";
+  return words.length === 0 ? last : `${words.join(", ")} and ${last},`;
+}
 
 // src/cli/code.ts
 init_code_source();
@@ -60955,13 +61077,12 @@ function coverageByFunction(code, worktreeId, paths) {
   }
   return out2;
 }
-function coverageReport(code, worktreeId, keep, since) {
+function coverageReport(code, worktreeId, keep, since, told) {
   const summary = readSummary(code.meta, worktreeId);
   if (summary === null) return void 0;
-  const states = COVERAGE_MEASURES.flatMap(
-    (measure2) => code.states.list(worktreeId, { measure: measure2 })
-  ).filter((s) => keep(s.check.path));
+  const states = (told ?? COVERAGE_MEASURES.flatMap((measure2) => code.states.list(worktreeId, { measure: measure2 }))).filter((s) => keep(s.check.path));
   const changed2 = (s) => {
+    if (told !== void 0) return true;
     if (since === void 0) return s.measure === "crap" && s.outcome === "fail";
     if (since === null) return false;
     const last = lastTransition(code, worktreeId, s.check, s.measure);
@@ -60997,9 +61118,19 @@ function coverageWords(c) {
   const ran = c.uncovered === "fail" ? NOT_REACHED : c.testFiles === void 0 || c.lines === void 0 || c.covered === void 0 ? "an in-process test runs it" : `${c.lines === 0 ? 100 : Math.round(c.covered / c.lines * 100)}% of its lines ran in ${plural(c.testFiles, "test file")}`;
   return `; CRAP ${score(c.crap.value)}${c.crap.outcome === "fail" ? ", over" : ""}; ${ran}`;
 }
-function coverageLines(c, changed2, command) {
+function toldHead(c, who) {
+  const crap = c.functions.filter((f) => f.measure === "crap").length;
+  const words = toldOverWords({
+    count: 0,
+    threshold: 0,
+    ...crap === 0 ? {} : { crap: { count: crap, threshold: c.threshold ?? 0 } },
+    ...c.uncovered === 0 ? {} : { uncovered: c.uncovered }
+  });
+  return `Coverage: ${words} that ${who} told about`;
+}
+function coverageLines(c, changed2, command, told) {
   if (c === void 0) return [];
-  const head = changed2 ? `Coverage: ${plural(c.functions.length, "change")} since the registration` : `CRAP: ${plural(c.functions.length, "function")} over ${c.threshold ?? "the threshold"}; ${plural(c.uncovered, "function")} uncovered (${NOT_REACHED}); ${command} code <path> shows them by file`;
+  const head = told !== void 0 ? toldHead(c, told) : changed2 ? `Coverage: ${plural(c.functions.length, "change")} since the registration` : `CRAP: ${plural(c.functions.length, "function")} over ${c.threshold ?? "the threshold"}; ${plural(c.uncovered, "function")} uncovered (${NOT_REACHED}); ${command} code <path> shows them by file`;
   const wait = c.notJudged === 0 ? [] : [`  ${plural(c.notJudged, "file")} not judged yet keep their last states`];
   return [
     head,
@@ -61013,6 +61144,7 @@ function coverageLines(c, changed2, command) {
 }
 
 // src/cli/code-report.ts
+init_crap();
 init_failed();
 init_code_deliver();
 init_code_since();
@@ -61160,12 +61292,14 @@ function readCodeReport(main2, code, worktreeId, policy, options) {
     ...to === void 0 ? {} : { told: to === null ? null : { scope: to.scope } },
     functions,
     files: notJudged(code, files2, states, behind, uncountable),
-    ...coveragePart(code, worktreeId, options, keep, since)
+    ...coveragePart(code, worktreeId, options, keep, { since, to })
   };
 }
-function coveragePart(code, worktreeId, options, keep, since) {
-  if (options.paths !== null || options.told === true) return {};
-  const coverage = coverageReport(code, worktreeId, keep, since);
+function coveragePart(code, worktreeId, options, keep, { since, to }) {
+  if (options.paths !== null) return {};
+  const told = to === void 0 ? void 0 : to === null ? [] : toldOver(code, worktreeId, to.consumers, COVERAGE_MEASURES);
+  if (told?.filter((s) => keep(s.check.path)).length === 0) return {};
+  const coverage = coverageReport(code, worktreeId, keep, since, told);
   return coverage === void 0 ? {} : { coverage };
 }
 
@@ -63145,11 +63279,12 @@ function fileLine(f, limit) {
       return `  ${f.path}: unknown: could not count (${f.error})`;
   }
 }
-function whatListed({ threshold, changedSince: changedSince4, told }) {
+var toldWho = ({ told }) => told?.scope === "worktree" ? "a session in this worktree was" : "this session was";
+function whatListed(report3) {
+  const { threshold, changedSince: changedSince4, told } = report3;
   if (changedSince4 !== void 0) return "changed";
   if (told === void 0) return `over ${threshold}`;
-  const who = told?.scope === "worktree" ? "a session in this worktree was" : "this session was";
-  return `over ${threshold} that ${who} told about`;
+  return `over ${threshold} that ${toldWho(report3)} told about`;
 }
 function scopeLines({ changedSince: changed2, told }) {
   if (changed2 === null) {
@@ -63174,7 +63309,12 @@ function formatCodeReport(report3) {
     const state = f.outcome === "fail" ? `over since revision ${f.changedAt}` : f.outcome === "pass" ? "at or under" : f.outcome;
     return `  ${where3}  ${functionName({ ...f, kind: "code" })}  ${cc}, ${state}${coverageWords(f.coverage)}`;
   });
-  const coverage = coverageLines(report3.coverage, report3.changedSince !== void 0, "squeal");
+  const coverage = coverageLines(
+    report3.coverage,
+    report3.changedSince !== void 0,
+    "squeal",
+    report3.told === void 0 ? void 0 : toldWho(report3)
+  );
   const files2 = report3.files.length === 0 ? [] : ["Not judged:", ...report3.files.map((f) => fileLine(f, report3.maxFileBytes))];
   return `${[head, ...since, ...lines, ...coverage, ...files2].join("\n")}
 `;
