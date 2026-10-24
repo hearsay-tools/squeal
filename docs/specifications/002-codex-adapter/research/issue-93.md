@@ -8,11 +8,11 @@ Host: one-minute load 36.14 on 24 online CPUs (`/proc/loadavg`, `nproc`), above 
 
 | # | Question | Answer | Tag |
 |---|---|---|---|
-| 1 | Does status-only handover news block Codex at Stop when every Stop gate is off? | Yes. Stop answers `decision: "block"` with the handover header as `reason`. Codex then continues the turn. | verified by experiment (synthetic), 0.1.298 |
+| 1 | Does status-only handover news block Codex at Stop when every Stop gate is off? | Yes. Stop answers `decision: "block"` with the handover header as `reason`. Codex continuation is specified by D3 and reported in the issue; it was not run here. | verified by experiment (synthetic), 0.1.298 |
 | 2 | Where does that come from? | Shared Stop counts a daemon liveness change as news; the Codex Stop maps news and block to the same `block`. | read in source code, 0.1.298 |
 | 3 | Is it the design? | Yes. 002 D3 says news at Stop "always costs a continuation", and news includes a delta. It does not single out a liveness-only delta. | read in spec, 002 `spec.md` D3 |
 | 4 | Does the synthetic run match the live incident? | The headline and the status sentence match the issue's text. The live incident itself was not re-run. | inferred |
-| 5 | Can it loop? | No. The next Stop, with `stop_hook_active`, is silent and ends the turn. One extra turn per handover, at most. | verified by experiment (synthetic), 0.1.298 |
+| 5 | Can it loop? | The next Stop with `stop_hook_active` is silent in this fixture. Repeated live handovers were not tested. | verified by experiment (synthetic), 0.1.298 |
 
 ## Findings
 
@@ -28,7 +28,7 @@ Host: one-minute load 36.14 on 24 online CPUs (`/proc/loadavg`, `nproc`), above 
 
   The next Stop, recorded `stop-hook-active` input, is silent.
 
-So the trigger is the told liveness moving from `alive` to `down` with `stopping`. The handoff claim alone does not trigger it. In the live incident the Stop came in the window after the old daemon stopped its heartbeat and before the successor registered.
+So the trigger is the told liveness moving from `alive` to `down` with `stopping`. The handoff claim alone does not trigger it. Inferred: in the live incident the Stop may have come in the window after the old daemon stopped its heartbeat and before the successor registered.
 
 **2. Code path.** Read in source code, 0.1.298.
 
