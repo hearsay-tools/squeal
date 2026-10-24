@@ -1,5 +1,5 @@
 import type { CodeStore } from "../code/store/types.js";
-import type { CodeKnownState } from "../types/code.js";
+import type { CodeKnownState, CodeMeasure } from "../types/code.js";
 import type { Consumer, RevisionNumber, Store, WorktreeId } from "../types/index.js";
 import { lastTransition } from "./code-deliver.js";
 import { type CodeBound, isOwn } from "./code-delta.js";
@@ -110,19 +110,24 @@ export function consumerSince(store: Store, consumer: Consumer): CodeSince | nul
 }
 
 /**
- * Spec 015 D7: the functions failing now that went to `fail` in `since`'s
- * revisions, by their last transition. One already failing at registration,
- * or failing since a first count or a recount (no transition), is not among them.
+ * Spec 015 D7: the states of `measures` failing now that went to `fail` in
+ * `since`'s revisions, by their last transition, a measure after another.
+ * One already failing at registration, or failing since a first count or a
+ * recount (no transition), is not among them. Status counts complexity
+ * only; Stop, the coverage measures too (row 015-40).
  */
 export function wentOverSince(
   code: CodeStore,
   worktreeId: WorktreeId,
   since: CodeBound,
+  measures: readonly CodeMeasure[] = ["complexity"],
 ): CodeKnownState[] {
-  return code.states.list(worktreeId, { measure: "complexity", outcome: "fail" }).filter((s) => {
-    const last = lastTransition(code, worktreeId, s.check);
-    return last?.to === "fail" && isOwn(since, last.revision);
-  });
+  return measures.flatMap((measure) =>
+    code.states.list(worktreeId, { measure, outcome: "fail" }).filter((s) => {
+      const last = lastTransition(code, worktreeId, s.check, measure);
+      return last?.to === "fail" && isOwn(since, last.revision);
+    }),
+  );
 }
 
 /** The functions whose state changed in `since`'s revisions, by their last transition, any outcome now. */

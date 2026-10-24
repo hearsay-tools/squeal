@@ -14,6 +14,7 @@ import {
   type FileSummary,
   functionKey,
   readSummary,
+  writeCrapRecount,
   writeEvidence,
   writeSummary,
 } from "./summary.js";
@@ -130,20 +131,7 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
 
   return store.transaction(() => {
     if (start || input.reseed) seed(input, files, countOf, start && summary !== null);
-    const paths = judged.map((j) => j.file.path);
-    const prior = new Map(
-      (paths.length === 0 ? [] : store.states.list(worktreeId, { paths })).map((s) => [
-        priorKey(s),
-        s,
-      ]),
-    );
-    const { states, transitions } = judgeFiles(
-      { worktreeId, revision: input.revision, threshold: input.threshold, at: input.now(), prior },
-      judged,
-    );
-    store.states.upsertMany(states);
-    store.transitions.append(transitions);
-    for (const j of judged) writeEvidence(store.meta, worktreeId, j.file.path, evidenceOf(j));
+    const transitions = writeJudgement(input, judged);
     for (const path of Object.keys(summary?.files ?? {})) {
       if (next[path] === undefined) writeEvidence(store.meta, worktreeId, path, null);
     }
@@ -155,12 +143,64 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
       files: next,
       ...(waiting.length === 0 ? {} : { quiet: waiting }),
       ...(loaders.withoutImports === 0 ? {} : { withoutImports: loaders.withoutImports }),
+      threshold: thresholdAfter(input, start ? null : summary, more),
     };
     if (start || JSON.stringify(written) !== JSON.stringify(summary)) {
       writeSummary(store.meta, worktreeId, written);
     }
-    return { judged: judged.length, transitions: transitions.length, wakeAt: loaders.wakeAt, more };
+    return { judged: judged.length, transitions, wakeAt: loaders.wakeAt, more };
   });
+}
+
+/**
+ * Judges `judged`, and writes the states, the transitions, D6's edits
+ * (row 015-40) and the evidence; the number of transitions.
+ */
+function writeJudgement(input: CoverageStepInput, judged: readonly Judged[]): number {
+  const { store, worktreeId } = input;
+  const paths = judged.map((j) => j.file.path);
+  if (paths.length === 0) return 0;
+  const prior = new Map(store.states.list(worktreeId, { paths }).map((s) => [priorKey(s), s]));
+  const judgedPaths = new Set(paths);
+  const edits = new Map(
+    store.states
+      .edits(worktreeId, "complexity")
+      .filter((e) => judgedPaths.has(e.check.path))
+      .map((e) => [`${e.check.path}\0${functionKey(e.check)}`, e]),
+  );
+  const { revision, threshold } = input;
+  const { states, transitions, edited } = judgeFiles(
+    { worktreeId, revision, threshold, at: input.now(), prior, edits },
+    judged,
+  );
+  store.states.upsertMany(states);
+  store.transitions.append(transitions);
+  // D6's first edit to a standing failure, for these measures too.
+  store.states.markEdited(worktreeId, edited);
+  for (const j of judged) writeEvidence(store.meta, worktreeId, j.file.path, evidenceOf(j));
+  return transitions.length;
+}
+
+/**
+ * Row 015-40: the `crap.threshold` the summary keeps, every ready file
+ * judged at it. A change from the one `summary` keeps (`null` as coverage
+ * starts) is recorded for the delivery's summary line once no file is left
+ * past the budget (`more`); until then the summary keeps the old one.
+ */
+function thresholdAfter(
+  input: CoverageStepInput,
+  summary: CoverageSummary | null,
+  more: boolean,
+): number {
+  const judgedAt = summary?.threshold;
+  if (judgedAt === undefined || judgedAt === input.threshold) return input.threshold;
+  if (more) return judgedAt;
+  writeCrapRecount(input.store.meta, input.worktreeId, {
+    revision: input.revision,
+    at: input.now(),
+    threshold: input.threshold,
+  });
+  return input.threshold;
 }
 
 /**

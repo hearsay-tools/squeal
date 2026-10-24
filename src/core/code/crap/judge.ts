@@ -7,6 +7,7 @@ import type {
   CodeTransitionKind,
   FileCount,
 } from "../../types/code.js";
+import type { CodeEdit } from "../store/types.js";
 import type { FunctionCoverage } from "./file.js";
 import { crapScore } from "./score.js";
 import { EVIDENCE_FILES, type FileEvidence, functionKey } from "./summary.js";
@@ -25,6 +26,11 @@ export interface JudgeContext {
   readonly at: number;
   /** Every stored state of the judged files, by `priorKey`. */
   readonly prior: ReadonlyMap<string, CodeKnownState>;
+  /**
+   * Row 015-40: the complexity pass's last edit of each judged function's
+   * body, by `path NUL functionKey`; one git brought is not among them (015-19).
+   */
+  readonly edits: ReadonlyMap<string, CodeEdit>;
 }
 
 /** A stored state's key in `JudgeContext.prior`. */
@@ -49,14 +55,20 @@ export const checkOf = (
   occurrence: fn.occurrence,
 });
 
-/** Each judged function's `crap` and `uncovered` states, and the transitions D5 records. */
+/**
+ * Each judged function's `crap` and `uncovered` states, the transitions D5
+ * records, and D6's edits: a measure judged before whose function's body an
+ * edit changed since, at the edit's revision (row 015-40). A recount's
+ * judgement marks none, as the complexity pass's does not.
+ */
 export function judgeFiles(
   ctx: JudgeContext,
   judged: readonly Judged[],
-): { states: CodeKnownState[]; transitions: CodeTransition[] } {
+): { states: CodeKnownState[]; transitions: CodeTransition[]; edited: CodeEdit[] } {
   const { prior, worktreeId, revision, at } = ctx;
   const states: CodeKnownState[] = [];
   const transitions: CodeTransition[] = [];
+  const edited: CodeEdit[] = [];
   for (const { file, count, coverage, quiet } of judged) {
     count.functions.forEach((fn, i) => {
       const check = checkOf(file.path, fn);
@@ -65,9 +77,13 @@ export function judgeFiles(
       if (prior.get(`complexity\0${id}`)?.outcome === "unknown") return;
       const cov = coverage[i];
       if (cov === undefined) return;
+      const edit = quiet === true ? undefined : ctx.edits.get(id);
       for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
         const was = prior.get(`${m.measure}\0${id}`);
         const { outcome } = m;
+        if (edit !== undefined && was !== undefined && edit.revision > was.countedAt) {
+          edited.push({ check, measure: m.measure, revision: edit.revision, at });
+        }
         states.push({
           worktreeId,
           check,
@@ -97,7 +113,7 @@ export function judgeFiles(
       }
     });
   }
-  return { states, transitions };
+  return { states, transitions, edited };
 }
 
 /** A function's `crap` and `uncovered` outcomes; both `unknown` when the join cannot tell. */

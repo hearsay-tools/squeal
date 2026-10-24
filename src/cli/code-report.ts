@@ -1,9 +1,17 @@
 import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { COVERAGE_MEASURES } from "../core/code/crap/index.js";
 import { type FailedCount, uncountableFiles } from "../core/code/pass/failed.js";
 import type { CodeStore } from "../core/code/store/types.js";
 import { isTooBig } from "../core/delivery/code-deliver.js";
-import { changedSince, codeSince, type ShellSession, toldTo } from "../core/delivery/code-since.js";
+import {
+  type CodeSince,
+  changedSince,
+  codeSince,
+  type ShellSession,
+  type ToldTo,
+  toldTo,
+} from "../core/delivery/code-since.js";
 import { toldOver } from "../core/delivery/code-told.js";
 import { blobHash } from "../core/hash/index.js";
 import type {
@@ -344,19 +352,30 @@ export function readCodeReport(
     ...(to === undefined ? {} : { told: to === null ? null : { scope: to.scope } }),
     functions,
     files: notJudged(code, files, states, behind, uncountable),
-    ...coveragePart(code, worktreeId, options, keep, since),
+    ...coveragePart(code, worktreeId, options, keep, { since, to }),
   };
 }
 
-/** Spec 015 D9 (row 015-12): the report's coverage part, without paths and `--told`. */
+/**
+ * Spec 015 D9 (row 015-12): the report's coverage part, without paths.
+ * With `--told`, the `crap` and `uncovered` states told in full that fail,
+ * and none when no such state is (row 015-40).
+ */
 function coveragePart(
   code: CodeStore,
   worktreeId: WorktreeId,
   options: CodeReportOptions,
   keep: (path: RelativePath) => boolean,
-  since: ReturnType<typeof codeSince> | undefined,
+  { since, to }: { since: CodeSince | null | undefined; to: ToldTo | null | undefined },
 ): { coverage?: CodeReportCoverage } {
-  if (options.paths !== null || options.told === true) return {};
-  const coverage = coverageReport(code, worktreeId, keep, since);
+  if (options.paths !== null) return {};
+  const told =
+    to === undefined
+      ? undefined
+      : to === null
+        ? []
+        : toldOver(code, worktreeId, to.consumers, COVERAGE_MEASURES);
+  if (told?.filter((s) => keep(s.check.path)).length === 0) return {};
+  const coverage = coverageReport(code, worktreeId, keep, since, told);
   return coverage === undefined ? {} : { coverage };
 }
