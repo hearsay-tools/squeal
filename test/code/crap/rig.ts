@@ -8,6 +8,7 @@ import {
   type LoaderCondition,
   runCoverageStep,
 } from "../../../src/core/code/crap/index.js";
+import type { Counter } from "../../../src/core/code/pass/index.js";
 import type { CodeStore } from "../../../src/core/code/store/index.js";
 import { codeSource } from "../../../src/core/delivery/code-source.js";
 import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
@@ -55,6 +56,8 @@ export interface CoverageRig {
   clock: number;
   /** Writes the files, stores a revision and runs the complexity pass. */
   edit(files: Record<string, string>): Promise<void>;
+  /** Runs the complexity pass with `counter` at the same revision, a recount when its version is new; later edits count with it. */
+  recount(counter: Counter): Promise<void>;
   /** Sets one test file's key, closure, results and record. */
   loader(path: string, spec: LoaderSpec): void;
   step(over?: Partial<CoverageStepInput>): ReturnType<typeof runCoverageStep>;
@@ -102,6 +105,7 @@ export function coverageRig(): CoverageRig {
   const tree = worktree(WT, dir);
   const store = open(dir);
   const settled = new Map<string, LoaderCondition>();
+  let counter: Counter = fakeCounter();
   writePolicy(tree.root, { enabled: true });
   const source = codeSource(dir, tree.root);
   const delivery = () =>
@@ -116,7 +120,13 @@ export function coverageRig(): CoverageRig {
       tree.revise();
       self.clock += 1_000;
       const at = self.clock;
-      await pass(tree, store, fakeCounter(), { policy: COVERED, now: () => at });
+      await pass(tree, store, counter, { policy: COVERED, now: () => at });
+    },
+    async recount(next) {
+      counter = next;
+      self.clock += 1_000;
+      const at = self.clock;
+      await pass(tree, store, counter, { policy: COVERED, now: () => at });
     },
     loader(path, spec) {
       const testFile: TestFileRef = { project: "", path };
