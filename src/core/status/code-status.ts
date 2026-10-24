@@ -1,9 +1,12 @@
+import { coverageOn } from "../code/coverage/runtime.js";
+import { coverageStatusOf } from "../code/crap/status.js";
+import type { CodeStore } from "../code/store/types.js";
 import { readPolicy } from "../daemon/policy.js";
 import { countingOf } from "../delivery/code-deliver.js";
 import { codeSince, type ShellSession, wentOverSince } from "../delivery/code-since.js";
 import { codeSource, withCode } from "../delivery/code-source.js";
 import { plural } from "../text.js";
-import type { CodeStatus } from "../types/code-delivery.js";
+import type { CodeCoverageStatus, CodeStatus } from "../types/code-delivery.js";
 import type { AbsolutePath, StatusSnapshot, Store, WorktreeId } from "../types/index.js";
 
 /*
@@ -19,11 +22,17 @@ export function codeStatusOf(
   at: { readonly root: AbsolutePath; readonly commonDir: () => AbsolutePath | null },
   shell: ShellSession | null,
 ): { code?: CodeStatus } {
-  if (!readPolicy(at.root).complexity.enabled) return {};
+  const policy = readPolicy(at.root);
+  if (!policy.complexity.enabled) return {};
   const commonDir = at.commonDir();
   if (commonDir === null) return {};
   const source = codeSource(commonDir, at.root);
   const since = () => codeSince(store, worktreeId, shell);
+  // Spec 015 D9 (row 015-12): the coverage part, only while coverage is on.
+  const coverageOf = (code: CodeStore): { coverage?: CodeCoverageStatus } => {
+    const coverage = coverageOn(policy) ? coverageStatusOf(code, worktreeId, policy) : undefined;
+    return coverage === undefined ? {} : { coverage };
+  };
   const read = withCode(source, ({ store: code, complexity }) =>
     code.read((): CodeStatus => {
       const states = code.states.list(worktreeId, { measure: "complexity" });
@@ -39,6 +48,7 @@ export function codeStatusOf(
         files: total,
         unknown: states.filter((s) => s.outcome === "unknown").length,
         ...(uncountable === 0 ? {} : { uncountable }),
+        ...coverageOf(code),
       };
     }),
   );
@@ -89,4 +99,51 @@ export function codeStatusLines(s: StatusSnapshot, command: string): string[] {
   return [
     `Complexity: ${over}${since}${counting}${unknown}${uncountable}; ${command} code lists them.`,
   ];
+}
+
+const waits = (n: number) => (n === 1 ? "waits" : "wait");
+
+const CAUSES: Readonly<Record<keyof CodeCoverageStatus["unknown"], string>> = {
+  "no-record": "a test file with no coverage record",
+  skipped: "a skipped test",
+  unkeyed: "a test file Squeal cannot key",
+  unread: "a record that cannot vouch for their bytes",
+};
+
+/**
+ * Spec 015 D9 (row 015-12): `Coverage: 12 functions over CRAP 30, 300 no
+ * in-process test that Squeal runs reaches; ...`, then which files wait
+ * (for test runs, which `squeal run --all` makes, or for records), which
+ * read unknown and why, and the test files Squeal does not read.
+ */
+export function coverageStatusLines(s: StatusSnapshot, command: string): string[] {
+  const c = s.code?.coverage;
+  if (c === undefined) return [];
+  const parts = [
+    `${plural(c.crap, "function")} over CRAP ${c.threshold}, ${c.uncovered} that no in-process test that Squeal runs reaches`,
+  ];
+  if (c.waitingForRuns > 0) {
+    parts.push(
+      `${plural(c.waitingForRuns, "file")} ${waits(c.waitingForRuns)} for test runs, which ${command} run --all makes`,
+    );
+  }
+  if (c.waitingForRecords > 0) {
+    parts.push(
+      `${plural(c.waitingForRecords, "file")} ${waits(c.waitingForRecords)} for coverage records`,
+    );
+  }
+  const unknown = Object.entries(c.unknown) as [keyof typeof CAUSES, number][];
+  if (unknown.length > 0) {
+    const why = unknown.map(([cause, n]) => `${n} from ${CAUSES[cause]}`).join(", ");
+    parts.push(
+      `${plural(
+        unknown.reduce((n, [, k]) => n + k, 0),
+        "file",
+      )} unknown (${why})`,
+    );
+  }
+  if (c.notRead !== undefined) {
+    parts.push(`test files Squeal does not run are not read (${c.notRead.join(", ")})`);
+  }
+  return [`Coverage: ${parts.join("; ")}; ${command} code lists them.`];
 }

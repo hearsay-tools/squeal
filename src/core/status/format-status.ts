@@ -16,7 +16,7 @@ import {
   notCurrentText,
   splitByValidity,
 } from "./checks.js";
-import { codeStatusLines } from "./code-status.js";
+import { codeStatusLines, coverageStatusLines } from "./code-status.js";
 import { configProblemsLine } from "./config-problems.js";
 import { focusedLines } from "./focused.js";
 import { holdLines } from "./holds.js";
@@ -101,6 +101,8 @@ export function formatStatus(
     }),
     // Spec 015 D6: one line under the test lines.
     ...codeStatusLines(result, command),
+    // Spec 015 D9 (row 015-12): while coverage is on.
+    ...coverageStatusLines(result, command),
     ...configProblemsLine(result, command),
     ...excludedLine(result),
     ...(full
