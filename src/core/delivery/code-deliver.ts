@@ -16,7 +16,7 @@ import {
   type CodeTooBig,
 } from "../types/code-delivery.js";
 import type { Consumer, EpochMs, RevisionNumber, WorktreeId } from "../types/index.js";
-import { codeKey, planCodeDelta, seedEntry } from "./code-delta.js";
+import { codeKey, isStillFail, planCodeDelta, seedEntry } from "./code-delta.js";
 import { type CodeSource, withCode } from "./code-source.js";
 
 /*
@@ -275,7 +275,7 @@ function codeStep(
   const listed = plan.entries.slice(0, CODE_LISTED_MAX);
   // An edit past the limit is not counted, since `squeal code --changed` would not list it:
   // its entry stays told by count, so the function's next edit tells it.
-  const more = plan.entries.slice(CODE_LISTED_MAX).filter((e) => e.kind !== "edited").length;
+  const more = plan.entries.slice(CODE_LISTED_MAX).filter((e) => !isStillFail(e.kind)).length;
   if (write) {
     // The changes past the limit are told as a number only.
     const full = new Set(listed.map(codeKey));
