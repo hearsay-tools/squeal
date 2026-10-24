@@ -30,6 +30,22 @@ export interface CodeDeltaEntry {
   readonly line: number | null;
   /** The revision the change was recorded at. */
   readonly revision: RevisionNumber;
+  /**
+   * Spec 015 D9 (row 015-12): what a `crap` or `uncovered` line names as
+   * evidence. Absent for `complexity`, and while none is stored.
+   */
+  readonly evidence?: CodeCoverageEvidence;
+}
+
+/** Spec 015 D9: the CC, the coverage and the test files that run a function, at its last judgement. */
+export interface CodeCoverageEvidence {
+  readonly complexity: number;
+  /** Its own lines that can run, and of those the ones that ran. */
+  readonly lines: number;
+  readonly covered: number;
+  /** The test files that ran it in their own process, and the first of them by path. */
+  readonly testFiles: number;
+  readonly first: readonly RelativePath[];
 }
 
 /**
@@ -60,6 +76,12 @@ export interface CodeNews {
   readonly entries: readonly CodeDeltaEntry[];
   /** The changes past `entries`: `and N more complexity changes`. */
   readonly more: number;
+  /**
+   * Spec 015 D9 (row 015-12): a change of a `crap` or `uncovered` state is
+   * among the changes, so their number is worded as code changes. Absent
+   * when every change is of complexity.
+   */
+  readonly coverage?: true;
   /** A recount since the consumer's view was seeded; the view is seeded again by count. */
   readonly recount?: CodeRecount & { readonly over: number };
   readonly tooBig?: readonly CodeTooBig[];
