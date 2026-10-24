@@ -350,7 +350,8 @@ export async function openHarness(
         }),
     ...(options.onReinstall === undefined ? {} : { onReinstall: options.onReinstall }),
     ...(options.slow === undefined ? {} : { slow: options.slow }),
-    ...(options.capacity === undefined ? {} : { capacity: options.capacity }),
+    // A pool reads the host's busy cores only when the test gives it some (row 011-182).
+    ...(options.capacity === undefined ? {} : { capacity: { host: null, ...options.capacity } }),
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
     ...(options.hostLoad === undefined ? {} : { hostLoad: options.hostLoad }),
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
