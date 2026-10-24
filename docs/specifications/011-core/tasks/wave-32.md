@@ -106,3 +106,33 @@ Tests, red first on 231ecaeb0, through the public scheduler's `SchedulerOptions.
 Owns `src/core/scheduler/yields.ts`, `promotions.ts`, the queue's `rankOf` and `untilOf`, the recheck in `scheduler.ts`, `test/scheduler/tier-yields-named.test.ts`, `tasks/011-184/`. Not yours: the board, spec text, `status.md`, bundles, version (the coordinator rebuilds), `src/core/capacity/`, `test/keys/validity/`. No `npm run build`. Commit on your branch; the coordinator cherry-picks.
 
 Done when the new tests fail on 231ecaeb0 and pass on yours (say how you showed it); lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
+
+## W17: 011-183, `hold.test.ts` case 2 waits on evidence, not on time
+
+Use /worker. Shape: slice. Row 011-183 in `docs/board.md`.
+
+Outcome: `test/daemon/hold.test.ts` case 2 no longer misses the edit's revision on a loaded runner: either the test waits on evidence, not on time, or the daemon fault behind it is fixed.
+
+Read the row (its evidence: main CI run 40107613445, attempt 1, Node 22 shard 2/3; `gh run view 40107613445 --attempt 1 --log-failed` has the test's `diagnose` output), 011 spec *Hold command* (`spec.md:272`), and commit `d8d74073f` (011-159 pinned the start baseline with `waitReady`).
+
+Seam: case 2 (`hold.test.ts:169`) and `editRecorded` (`:128`). The diagnosis showed the daemon serving and the hold already ended ("its command is gone; validating again"), yet no revision after the edit within 30 s. Lead: read the failed log's diagnosis for the watcher's state, and check whether the edit can fall between the wrapper's kill, the hold's end and the daemon's re-scan, so that no revision ever counts it.
+
+Owns `test/daemon/hold.test.ts`, helpers under `test/daemon/` that only it uses, `tasks/011-183/`. A daemon fault in `src/` is in scope when its fix is small: send one request with the cause and the exact edit, then continue on the test-side default. Not yours: the board, spec text, `status.md`, bundles, version, `src/core/scheduler/`, `src/core/capacity/`. No `npm run build`. Make no load on purpose.
+
+Done when the cause is named with evidence in `tasks/011-183/notes.md`; the fix holds (a daemon fix comes with a test that fails without it); case 2 passes 20 runs in a row on this host (`env -u PLUGIN_ROOT -u PLUGIN_DATA npx vitest run test/daemon/hold.test.ts -t "2:"`, the load average beside each); lint, typecheck and `squeal run --all --wait` pass. Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
+
+## W18: 011-186, the daily measurement names the process trees behind its saturated samples
+
+Use /worker. Shape: slice (probe and runbook; lands as docs). Row 011-186 in `docs/board.md`.
+
+Outcome: the daily host-load measurement names the process trees behind each saturated sample, so its C1 cause says who made the load.
+
+Read the row; `docs/specifications/011-core/research/probes/host-load/README.md` (the runbook the daily automation follows: step 4, criterion C1, the report's form); `research/host-load/011-181.md` "Sampled hours"; `probes/host-load/011-181/sample-trees.py` (its docstring has the rules) and `analyze-samples.py`; the newest daily in `research/host-load/` and its proposed row.
+
+Seam: the runbook's step 4. First edit, offered as a lead: beside each `sample.py` sample, run `timeout 25 python3 -I sample-trees.py <scratch>/sN-trees.jsonl 5 20`, and a short summary that prints the sample's largest trees by kind (squeal, test, agent, other) with cores, project, role and nice. C1's cause names them. Put the scripts the daily uses in `probes/host-load/`; 011-181's folder stays as that row's record.
+
+Owns `research/probes/host-load/README.md`, new files in `research/probes/host-load/`, `tasks/011-186/`. Not yours: `probes/host-load/011-181/`, `probes/host-load/011-139/`, the dailies' result files, `src/`, `test/`, the board.
+
+Probe rules: read `/proc` only; never open a store, a socket or a permit file in place; never run a script under `evals/bin/`; nothing reaches the real HOME. Trying your own new step on this host is allowed.
+
+Done when the runbook's step 4 runs it; one trial on this host names the trees of a sample (paste it); `npm run lint` passes. Commit on your branch; the coordinator lands it as docs.
