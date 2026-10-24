@@ -8,7 +8,7 @@ import type { CodeStore } from "../core/code/store/types.js";
 import { NOT_REACHED } from "../core/delivery/code-coverage.js";
 import { lastTransition } from "../core/delivery/code-deliver.js";
 import { type CodeBound, isOwn } from "../core/delivery/code-delta.js";
-import { functionName } from "../core/delivery/code-format.js";
+import { functionName, toldOverWords } from "../core/delivery/code-format.js";
 import { plural } from "../core/text.js";
 import type { CodeKnownState, CodeMeasure, CodeOutcome } from "../core/types/code.js";
 import type { RelativePath, RevisionNumber, WorktreeId } from "../core/types/index.js";
@@ -17,8 +17,9 @@ import type { RelativePath, RevisionNumber, WorktreeId } from "../core/types/ind
  * Spec 015 D9 (row 015-12): `squeal code`'s coverage part, while the
  * daemon's coverage step judges here. With paths, each function's CRAP,
  * whether an in-process test reaches it, and its evidence; without, the
- * functions over CRAP and the number no in-process test reaches, or with
- * `--changed` those whose state changed.
+ * functions over CRAP and the number no in-process test reaches, with
+ * `--changed` those whose state changed, and with `--told` those failing
+ * that the session was told of in full (row 015-40).
  */
 
 /** One function's coverage states and evidence. */
@@ -93,19 +94,23 @@ export function coverageByFunction(
 /**
  * The coverage part of a report; `undefined` before the coverage step
  * judged here. `since`: with `--changed`, the registration's bound.
+ * `told`: with `--told`, the states told in full that fail (`toldOver`),
+ * which it lists and counts in place of every state.
  */
 export function coverageReport(
   code: CodeStore,
   worktreeId: WorktreeId,
   keep: (path: RelativePath) => boolean,
   since: CodeBound | null | undefined,
+  told?: readonly CodeKnownState[],
 ): CodeReportCoverage | undefined {
   const summary = readSummary(code.meta, worktreeId);
   if (summary === null) return undefined;
-  const states = COVERAGE_MEASURES.flatMap((measure) =>
-    code.states.list(worktreeId, { measure }),
+  const states = (
+    told ?? COVERAGE_MEASURES.flatMap((measure) => code.states.list(worktreeId, { measure }))
   ).filter((s) => keep(s.check.path));
   const changed = (s: CodeKnownState) => {
+    if (told !== undefined) return true;
     if (since === undefined) return s.measure === "crap" && s.outcome === "fail";
     if (since === null) return false;
     const last = lastTransition(code, worktreeId, s.check, s.measure);
@@ -154,16 +159,32 @@ export function coverageWords(c: CodeReportCoverageOf | undefined): string {
   return `; CRAP ${score(c.crap.value)}${c.crap.outcome === "fail" ? ", over" : ""}; ${ran}`;
 }
 
-/** The coverage part's lines, without paths. */
+/** With `--told` (row 015-40): the head, each measure apart as the told line counts them. */
+function toldHead(c: CodeReportCoverage, who: string): string {
+  const crap = c.functions.filter((f) => f.measure === "crap").length;
+  const words = toldOverWords({
+    count: 0,
+    threshold: 0,
+    ...(crap === 0 ? {} : { crap: { count: crap, threshold: c.threshold ?? 0 } }),
+    ...(c.uncovered === 0 ? {} : { uncovered: c.uncovered }),
+  });
+  return `Coverage: ${words} that ${who} told about`;
+}
+
+/** The coverage part's lines, without paths; `told`, with `--told`, who was told. */
 export function coverageLines(
   c: CodeReportCoverage | undefined,
   changed: boolean,
   command: string,
+  told?: string,
 ): string[] {
   if (c === undefined) return [];
-  const head = changed
-    ? `Coverage: ${plural(c.functions.length, "change")} since the registration`
-    : `CRAP: ${plural(c.functions.length, "function")} over ${c.threshold ?? "the threshold"}; ${plural(c.uncovered, "function")} uncovered (${NOT_REACHED}); ${command} code <path> shows them by file`;
+  const head =
+    told !== undefined
+      ? toldHead(c, told)
+      : changed
+        ? `Coverage: ${plural(c.functions.length, "change")} since the registration`
+        : `CRAP: ${plural(c.functions.length, "function")} over ${c.threshold ?? "the threshold"}; ${plural(c.uncovered, "function")} uncovered (${NOT_REACHED}); ${command} code <path> shows them by file`;
   const wait =
     c.notJudged === 0
       ? []

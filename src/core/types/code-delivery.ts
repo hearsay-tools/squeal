@@ -84,14 +84,32 @@ export interface CodeNews {
   readonly coverage?: true;
   /** A recount since the consumer's view was seeded; the view is seeded again by count. */
   readonly recount?: CodeRecount & { readonly over: number };
+  /**
+   * Row 015-40: a `crap.threshold` change since the consumer's view was
+   * seeded, `over` the functions over CRAP `threshold` now; the view is
+   * seeded again by count.
+   */
+  readonly crapRecount?: {
+    readonly revision: RevisionNumber;
+    readonly at: EpochMs;
+    readonly threshold: number;
+    readonly over: number;
+  };
   readonly tooBig?: readonly CodeTooBig[];
   /**
    * Row 015-27: on a delivery with test entries, the functions over
    * `threshold` now that the consumer was told of in full, as a `FAIL` or a
    * `STILL FAIL`. Absent when there is none, and from an older Squeal; with
-   * it, `entries` can be empty.
+   * it, `entries` can be empty. Row 015-40: `crap`, those over CRAP
+   * `threshold`, and `uncovered`, those no in-process test reaches, told
+   * the same way; each absent when none is, and then `count` can be 0.
    */
-  readonly toldOver?: { readonly count: number; readonly threshold: number };
+  readonly toldOver?: {
+    readonly count: number;
+    readonly threshold: number;
+    readonly crap?: { readonly count: number; readonly threshold: number };
+    readonly uncovered?: number;
+  };
 }
 
 /** Spec 015 D6: the registration's line; `Registration.code`. */
