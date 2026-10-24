@@ -252,6 +252,12 @@ export interface Delta {
    * entry. Absent while `complexity.enabled` is off, and from an older Squeal.
    */
   readonly code?: CodeNews;
+  /**
+   * Row 015-27: the known failures at delivery, the `current` ones status
+   * counts (011 C6), for the line a delivery whose news is the code's ends
+   * with. Set beside `code` only.
+   */
+  readonly knownFailures?: number;
 }
 
 /** The test files the consumer's edits after revision `since` re-keyed, none pending any more. */
