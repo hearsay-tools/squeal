@@ -20,3 +20,5 @@ Read `docs/vision.md` first, with its decision filter. Two of its lines frame th
 - [coverage-collection-brief](coverage-collection-brief.md) (015-01): per-test-file coverage from the runs Squeal already makes, its cost, its fidelity, and whether it can be keyed and shared like a result. Findings go to `coverage-collection.md`.
 - [complexity-and-crap-brief](complexity-and-crap-brief.md) (015-02): per-function complexity for TypeScript, JavaScript and Python, its cost, and CRAP from it and a coverage map. Findings go to `complexity-and-crap.md`.
 - [agent-feedback-brief](agent-feedback-brief.md) (015-03): what peers show developers, what is known about coverage and complexity feedback to coding agents, and which of it is a transition. Findings go to `agent-feedback.md`.
+- [typeof-import-brief](typeof-import-brief.md) (015-25): the `typeof import` misparse in a type argument, an upstream fix or an offset-keeping rewrite, measured against ESLint. Findings go to `typeof-import.md`.
+- [progress-updates-brief](progress-updates-brief.md) (015-26): the human's idea of a subscription to updates on a failing function. Findings go to `progress-updates.md`.
