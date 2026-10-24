@@ -1,7 +1,11 @@
 import type { PassReport } from "../../../src/core/code/pass/index.js";
 import type { CodeStore } from "../../../src/core/code/store/index.js";
 import { type CodeSource, codeSource } from "../../../src/core/delivery/code-source.js";
-import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
+import {
+  createDelivery,
+  formatDelta,
+  formatRegistration,
+} from "../../../src/core/delivery/index.js";
 import type { Consumer, Policy, Store } from "../../../src/core/types/index.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { freshStore, setKey, WT } from "../../state/helpers.js";
@@ -28,7 +32,8 @@ export interface Rig {
   edit(files: Record<string, string>): Promise<PassReport | null>;
   /** As `edit`, with the files committed first, so the revision moves `HEAD` as a pull does (015-19). */
   pull(files: Record<string, string>): Promise<PassReport | null>;
-  register(consumer: Consumer): Promise<void>;
+  /** Registers `consumer` and gives its registration's text. */
+  register(consumer: Consumer): Promise<string>;
   /** The code lines told to `consumer` at its next tool boundary; `[]` when nothing is. */
   told(consumer: Consumer): Promise<string[]>;
 }
@@ -81,7 +86,7 @@ export function rig(over: Partial<Policy["complexity"]> = {}): Rig {
     },
     async register(c) {
       tick();
-      await delivery().register(c);
+      return formatRegistration(await delivery().register(c));
     },
     async told(c) {
       tick();

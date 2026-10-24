@@ -26,3 +26,25 @@ Test helpers: `FakeWorktree.branch`, `run` and `reread` (`test/code/pass/helpers
 ### D6 amendment text (the coordinator owns `spec.md`)
 
 Under "The first edit to a standing failure", after the 015-19 sentence: "While a merge, cherry-pick, revert or rebase is under way (`MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD` or `REBASE_HEAD` exists, or `rebase-merge/` or `rebase-apply/`), a file whose bytes are its blob at a commit the operation brings marks no edit: each `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REBASE_HEAD`, the parent of `REVERT_HEAD`, and, during a rebase, `HEAD` (amended 2026-10-24, 015-34)."
+
+## 015-35: a new worktree registers with `0 functions over 20`
+
+### Cause
+
+The registration's line comes from `registerCode` (`src/core/delivery/code-deliver.ts`), not from `code-status.ts`. A new worktree's code store is the common dir's, so it exists (`withCode` is not `"missing"`) before the worktree's first count. With no files rows for the worktree, `countingOf` gives `done` 0 of `total` 0, `done === total` read as "counted", and `failingIn` gave 0: `Complexity: 0 functions over 20`. A second window had the same result: every blob already counted by another worktree, the files rows written, the states not yet.
+
+Status had the first case right (`Complexity: no file counted yet.`, `files === 0`). Its second window (files rows in, every blob counted, states not yet) lasts one transaction; it is left.
+
+### Change
+
+`registerCode` says counting until the worktree's pass cursor (`pass:<worktreeId>`, written in the pass's last transaction) exists: `counting: { done, total }`, so `Complexity: counting has not started.` with no files rows, else `Complexity: counting, N of M files.` It reads the cursor with `readCursor` from `code/pass/cursor.js`, which imports types only, so the hooks load nothing more.
+
+### Tests (red first)
+
+`test/code/delivery/first-count.test.ts` on the pass rig: a registration before the first count says `counting has not started` (red: `0 functions over 20`), one after it says `1 function over 20`; a worktree whose files are counted with no cursor says `counting, 2 of 2 files` (red: `0 functions over 20`); a first count that found no file to count says `0 functions over 20` (green before and after).
+
+Fixtures that stood for a counted worktree with no cursor now write one with the new `putCursor` helper (`test/code/delivery/helpers.ts`): `delivery.test.ts` `counted`, `hooks.test.ts` `withCode`, `uncountable.test.ts` `failed`. `rig.register` gives the registration's text.
+
+### Not done, for the coordinator
+
+The lessons' B2 proposal also had the first count's end tell each session registered before it `Complexity counted: N functions over 20`. The board row does not ask for it, and the 015-06 contract (`tasks/015-06/notes.md` point 3) writes no recount record for a first pass over inherited counts, which is what a new worktree of the same repository does. So such a session hears the count only from `squeal status` or `squeal code`.
