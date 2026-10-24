@@ -42,11 +42,16 @@ const suite = daemonSuite();
 /** Under a loaded host: Vitest's cancel forces its workers after 1 s, the shutdown follows. */
 const STOP_WITHIN_MS = 15_000;
 
-/** A test that starts a child holding the root as cwd and a file in it open, then sleeps. */
+/**
+ * A test that starts a child holding the root as cwd and a file in it open,
+ * then sleeps. It renames the child's pid into `started`: a write creates
+ * the file empty before it writes, and a poll between the two read pid 0
+ * (row 011-188).
+ */
 function holdingTest(dir: string): string {
   const at = (name: string) => JSON.stringify(join(dir, name));
   return `import { spawn } from "node:child_process";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 it("holds the root with a child until the flag", async () => {
@@ -57,7 +62,8 @@ it("holds the root with a child until the flag", async () => {
     { cwd: root, stdio: "ignore" },
   );
   await new Promise((done) => child.once("spawn", done));
-  writeFileSync(${at("started")}, String(child.pid));
+  writeFileSync(${at("started.tmp")}, String(child.pid));
+  renameSync(${at("started.tmp")}, ${at("started")});
   const deadline = Date.now() + 150_000;
   while (!existsSync(${at("flag")}) && Date.now() < deadline) {
     await new Promise((done) => setTimeout(done, 100));
