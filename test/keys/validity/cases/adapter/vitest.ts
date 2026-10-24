@@ -122,6 +122,27 @@ const FOCUSED: Readonly<Record<string, string>> = {
   ].join("\n"),
 };
 
+/**
+ * Row 011-137: its test passes and its skip is declared; its `afterAll` holds
+ * the module open while `$HOLD` exists, which the harness removes once the
+ * run is cancelled, so the module ends whole in the cancel's grace.
+ */
+const WHOLE_IN_GRACE: Readonly<Record<string, string>> = {
+  ...BASIC,
+  "test/whole.test.ts": [
+    'import { existsSync, writeFileSync } from "node:fs";',
+    'import { setTimeout as delay } from "node:timers/promises";',
+    'import { afterAll, expect, it } from "vitest";',
+    'it("passes", () => expect(1).toBe(1));',
+    'it.skip("waits", () => {});',
+    "afterAll(async () => {",
+    '  writeFileSync($STARTED, "");',
+    "  while (existsSync($HOLD)) await delay(20);",
+    "});",
+    "",
+  ].join("\n"),
+};
+
 /** Revision `n` of an excluded test file. */
 const e2eTest = (n: number) =>
   `import { expect, it } from "vitest";\nit("e2e ${n}", () => expect(${n}).toBe(${n}));\n`;
@@ -209,6 +230,14 @@ export const VITEST_RUNS: readonly Case[] = [
     {
       files: BASIC,
       runs: [{ files: [SLOW2].filter((r) => r !== undefined), touched: [], cancel: "yield" }],
+    },
+  ),
+  vitest(
+    "a step-down's cancel completes a module that ended whole in its grace (row 011-137)",
+    "011 C9 as proposed in tasks/011-137/notes.md: under a step-down, a module that ended after the cancel, passed, with no test the cancel skipped, stores its results; the last release stores nothing of it, so the candidate stores more",
+    {
+      files: WHOLE_IN_GRACE,
+      runs: [{ files: [ref("test/whole.test.ts")], touched: [], cancel: "step-down" }],
     },
   ),
   vitest(
