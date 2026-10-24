@@ -17,9 +17,10 @@ import type {
 /**
  * Bumped when a record's meaning changes (its mapping, its fields), so a
  * record of another meaning is never read as this one: it is part of the
- * record's key (spec 015 D8).
+ * record's key (spec 015 D8). 2: functions at one span with different hits
+ * are two entries, no longer one with the hits joined (review 0.1.297 B4).
  */
-export const COVERAGE_PROVIDER_VERSION = 1;
+export const COVERAGE_PROVIDER_VERSION = 2;
 
 /** Blob ids already confirmed, by the sha1 of the bytes Vite read; shared by every record mapped. */
 export type BlobCache = Map<string, FileHash>;
@@ -58,7 +59,9 @@ export function buildRecord(
       blob,
       lines: bitset(mapped.lines),
       covered: bitset(mapped.covered),
-      functions: [...mapped.functions.values()].sort((a, b) => a[0] - b[0] || a[1] - b[1]),
+      functions: [...mapped.functions.values()].sort(
+        (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4],
+      ),
     });
   }
   sources.sort((a, b) => compare(a.path, b.path));

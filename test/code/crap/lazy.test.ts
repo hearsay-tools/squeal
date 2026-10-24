@@ -79,8 +79,13 @@ describe(
       expect(by.unknown).toEqual([]);
     });
 
+    // `One`'s only field: on Node 24 its initializer and arrow map to one span, one run, one not.
     it("reads the field arrows of a class constructed and never called as not run", async () => {
-      const by = await ranBy("lazy", LAZY, "expect(new mod.Fields()).toBeDefined();");
+      const by = await ranBy(
+        "lazy",
+        LAZY,
+        "expect([new mod.Fields(), new mod.One()]).toHaveLength(2);",
+      );
       expect({ ran: by.ran, entries: by.entries }).toMatchObject({ ran: [] });
     });
 
