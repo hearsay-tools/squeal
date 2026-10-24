@@ -1,6 +1,5 @@
-import type { Policy, RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
-import type { CodeMetaRepo, CodeStore } from "../store/index.js";
-import type { Entry, FileEntry } from "./blobs.js";
+import type { Policy, RevisionNumber, WorktreeId } from "../../types/index.js";
+import type { CodeMetaRepo } from "../store/index.js";
 import type { RecountReason, RecountRecord } from "./types.js";
 
 /**
@@ -77,38 +76,6 @@ export function writeRecount(
   record: RecountRecord,
 ): void {
   meta.set(recountKey(worktreeId), JSON.stringify(record));
-}
-
-/**
- * Review 0.1.297 B5: the files of `entries` too big to count whose blob
- * the recount's revisions (`changed`) gave them, read before the recount
- * writes every files row at its revision.
- */
-export function tooBigEdits(
-  store: Pick<CodeStore, "files">,
-  worktreeId: WorktreeId,
-  changed: readonly RelativePath[],
-  entries: readonly Entry[],
-): RelativePath[] {
-  const paths = new Set(changed);
-  const big = entries.filter((e): e is FileEntry => e.kind === "big" && paths.has(e.path));
-  if (big.length === 0) return [];
-  const asked = big.map((e) => e.path);
-  const stored = new Map(store.files.list(worktreeId, asked).map((f) => [f.path, f.blob]));
-  return big.filter((e) => stored.get(e.path) !== e.file.hash).map((e) => e.path);
-}
-
-/** The `tooBigEdits` of the worktree's latest recount; empty when it has none or does not read. */
-export function recountTooBigEdits(
-  meta: CodeMetaRepo,
-  worktreeId: WorktreeId,
-): ReadonlySet<RelativePath> {
-  try {
-    const edits: unknown = readRecount(meta, worktreeId)?.tooBigEdits;
-    return new Set(Array.isArray(edits) ? edits.filter((p) => typeof p === "string") : []);
-  } catch {
-    return new Set();
-  }
 }
 
 /**

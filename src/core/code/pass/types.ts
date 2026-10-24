@@ -30,6 +30,11 @@ export interface PassSource {
   latestRevision(): RevisionNumber;
   /** Every path the revisions after `after` up to `upTo` changed, each once. */
   changedPaths(after: RevisionNumber, upTo: RevisionNumber): readonly RelativePath[];
+  /** As `changedPaths`, each path with the last of those revisions that changed it (015-39). */
+  lastChanges(
+    after: RevisionNumber,
+    upTo: RevisionNumber,
+  ): ReadonlyMap<RelativePath, RevisionNumber>;
   /**
    * 015-19: `HEAD` at `upTo` when a revision after `after` up to `upTo`
    * recorded another `HEAD` than the one before it, as a pull, merge,
@@ -64,12 +69,6 @@ export interface RecountRecord {
   readonly at: number;
   readonly reason: RecountReason;
   readonly threshold: number;
-  /**
-   * Review 0.1.297 B5: the files over `complexity.maxFileBytes` that an
-   * edit in the recount's revisions changed. The recount writes their rows
-   * at its revision as it writes every other, but D6 tells their edit.
-   */
-  readonly tooBigEdits?: readonly RelativePath[];
 }
 
 /** What one pass did, for the daemon's log and 015-08. */
