@@ -41,6 +41,13 @@ export interface CoverageSummary {
    * a change is seen once that is done; absent from an older Squeal.
    */
   readonly threshold?: number;
+  /**
+   * Review 0.1.299 B1: the files git changed that are not judged at their
+   * blob yet, with the last revision it did. Kept though an own edit after
+   * it takes the file out of the pulled record (015-38): an own edit at or
+   * before it does not qualify a STILL FAIL. Absent when none.
+   */
+  readonly brought?: Readonly<Record<RelativePath, RevisionNumber>>;
 }
 
 /**
