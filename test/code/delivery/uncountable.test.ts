@@ -13,7 +13,7 @@ import type { StatusSnapshot } from "../../../src/core/types/index.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { NOW, type Seeded, seed } from "../../status/slow-tier-seed.js";
 import { ON } from "../helpers.js";
-import { codeState, fnCheck } from "./helpers.js";
+import { codeState, fnCheck, putCursor } from "./helpers.js";
 
 /*
  * Row 015-18: a file the counter failed on at every attempt reads
@@ -79,6 +79,7 @@ async function failed(retryAt: number | null): Promise<Seeded> {
   const code = openCode(s);
   const record: FailedCount = { blob, attempts: retryAt === null ? 3 : 1, retryAt, error: ERROR };
   writeUncountable(code.meta, s.repo.mainId, new Map([[RUN, record]]));
+  putCursor(code, s.repo.mainId, 3);
   code.close();
   return s;
 }
