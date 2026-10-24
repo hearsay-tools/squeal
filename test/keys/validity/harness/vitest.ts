@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import type { Reporter } from "vitest/node";
 import type { RunnerAdapter, RunReport, TestFileRef } from "../../../../src/core/types/index.js";
 import { VitestAdapter } from "../../../../src/runners/vitest/adapter.js";
@@ -89,6 +90,20 @@ async function withTmpDir(tmp: string | null, open: () => Promise<void>): Promis
   }
 }
 
+/**
+ * Row 015-11: the adapter's coverage when `input` asks it, through the
+ * provider `prepare` copies beside the driver, where a plugin ships it.
+ */
+function coverageOf(input: VitestInput, scratch: string) {
+  if (input.coverage !== true) return undefined;
+  return {
+    enabled: () => true,
+    provider: fileURLToPath(new URL("../coverage/provider.mjs", import.meta.url)),
+    tempDir: join(scratch, "coverage"),
+    collected: () => {},
+  };
+}
+
 /** Runs `input`'s runs in turn on one adapter over its fixture, under `scratch`. */
 export async function vitestCase(input: VitestInput, scratch: string): Promise<CaseOutput> {
   const markers = join(scratch, "markers");
@@ -115,6 +130,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     undefined,
     undefined,
     () => exclude,
+    coverageOf(input, scratch),
   );
   const reports: RunReport[] = [];
   // Row 013-06: a case that removes its instance's temp directory starts it under one of its own.

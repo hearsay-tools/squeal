@@ -178,6 +178,29 @@ const REJECTING: Readonly<Record<string, string>> = {
     'import { expect, it } from "vitest";\nit("never runs", () => expect(1).toBe(1));\n',
 };
 
+/**
+ * Row 015-11: a held file and the files beside it hold no skip, so a change
+ * to how a skip is read leaves the coverage cases alone; a test file whose
+ * closure imports `node:inspector` runs with coverage off (spec 015 D8).
+ */
+const COVERED: Readonly<Record<string, string>> = {
+  ...BASIC,
+  "test/held.test.ts": HELD_ONLY,
+  "test/inspector.test.ts": [
+    'import { Session } from "node:inspector";',
+    'import { expect, it } from "vitest";',
+    'it("sees the inspector", () => expect(typeof Session).toBe("function"));',
+    "",
+  ].join("\n"),
+};
+
+/** Row 015-11: COVERED with `isolate: false`, whose test files take no coverage (spec 015 D8). */
+const UNISOLATED: Readonly<Record<string, string>> = {
+  ...COVERED,
+  "vitest.config.ts":
+    'export default { test: { include: ["test/**/*.test.ts"], setupFiles: ["test/setup.ts"], testTimeout: 60_000, isolate: false } };\n',
+};
+
 export const VITEST_RUNS: readonly Case[] = [
   vitest(
     "a touched module withholds the files that reach it (013-01 test 2)",
@@ -317,6 +340,37 @@ export const VITEST_RUNS: readonly Case[] = [
           edits: [1, 2, 3].map((n) => ({ path: "e2e/x.test.ts", text: e2eTest(n) })),
         },
       ],
+    },
+  ),
+  vitest(
+    "runs with coverage on store what they store with coverage off (row 015-11)",
+    "015 D8: Squeal's provider takes V8 coverage in the runs Squeal makes anyway and changes no outcome; a focused file, one whose closure imports node:inspector and a cancelled one leave no record, and a release without the provider runs the same files with coverage off",
+    {
+      files: COVERED,
+      environment: true,
+      coverage: true,
+      runs: [
+        {
+          files: [
+            ref("test/held.test.ts"),
+            ref("test/slow2.test.ts"),
+            ref("test/computed.test.ts"),
+            ref("test/inspector.test.ts"),
+          ],
+          touched: [],
+          checks: [{ testFile: ref("test/slow2.test.ts"), texts: ["holds"] }],
+        },
+        { files: [ref("test/held.test.ts")], touched: [], cancel: "yield" },
+      ],
+    },
+  ),
+  vitest(
+    "a run with coverage on and isolate: false stores what it stores with coverage off (row 015-11)",
+    "015 D8: a project whose test files share modules takes no coverage, with a note, and stores its outcomes as with coverage off",
+    {
+      files: UNISOLATED,
+      coverage: true,
+      runs: [{ files: [ref("test/held.test.ts"), ref("test/computed.test.ts")], touched: [] }],
     },
   ),
 ];

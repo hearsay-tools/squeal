@@ -42,6 +42,9 @@ const RUNTIMES: readonly { readonly path: string; readonly dir: string }[] = [
 /** The pytest graph's grammar, which the build copies beside the runtime (`src/harness/build.ts`). */
 const GRAMMAR = "src/runners/pytest/graph/tree-sitter-python.wasm";
 
+/** Squeal's coverage provider, which Vitest loads by path (row 015-11); a plugin ships it in `dist/coverage/`. */
+const COVERAGE_PROVIDER = "src/core/code/coverage/provider.mjs";
+
 /** A side's driver under `dir`, where a shipped CLI sits under its plugin. */
 export const driverFile = (dir: string) => join(dir, "dist", "cli", "driver.mjs");
 
@@ -115,6 +118,10 @@ export function prepare(
   }
   if (existsSync(join(tree, GRAMMAR))) {
     copyFileSync(join(tree, GRAMMAR), join(dir, "dist", "pytest", "tree-sitter-python.wasm"));
+  }
+  if (existsSync(join(tree, COVERAGE_PROVIDER))) {
+    mkdirSync(join(dir, "dist", "coverage"), { recursive: true });
+    copyFileSync(join(tree, COVERAGE_PROVIDER), join(dir, "dist", "coverage", "provider.mjs"));
   }
   return { name, tree, dir, bundle, file, runtime: copies };
 }
