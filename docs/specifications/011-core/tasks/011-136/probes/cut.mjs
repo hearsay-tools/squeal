@@ -29,13 +29,14 @@ const revisionsOf = db.prepare("SELECT number, created_at, changes FROM revision
 const parse = (text) => {
   const named = new Set(), before = new Set(), after = new Set(), tests = new Map();
   let cancelled = false;
-  const of = (l) => tests.get(l) ?? (tests.set(l, { all: new Set(), ran: new Set(), skip: new Set() }), tests.get(l));
+  const of = (l) => tests.get(l) ?? (tests.set(l, { all: new Set(), ran: new Set(), skip: new Set(), ms: new Map() }), tests.get(l));
   for (const line of text.split("\n")) {
     let m;
     if (line.startsWith("squeal: run cancelled")) cancelled = true;
     else if ((m = /^MODULE \S+ (.+)$/.exec(line))) { named.add(m[1]); (cancelled ? after : before).add(m[1]); }
-    else if ((m = /^(PASS|FAIL|SKIP) (.+?) > (.+?)(?: \(\d+ ms\))?$/.exec(line))) {
+    else if ((m = /^(PASS|FAIL|SKIP) (.+?) > (.+?)(?: \((\d+) ms\))?$/.exec(line))) {
       named.add(m[2]); const t = of(m[2]); t.all.add(m[3]);
+      if (m[1] !== "SKIP" && m[4]) t.ms.set(m[3], Number(m[4]) / 1000);
       if (m[1] === "SKIP") t.skip.add(m[3]); else if (!cancelled) t.ran.add(m[3]);
     }
     else if ((m = /^\[\w+\] ("(?:[^"\\]|\\.)*"|.+?): /.exec(line))) named.add(m[1][0] === '"' ? JSON.parse(m[1]) : m[1]);
@@ -73,13 +74,14 @@ for (const run of all) {
   const list = byWorktree.get(run.worktree_id) ?? [];
   const later = list.filter((r) => r.started_at > run.started_at);
   const earlier = list.filter((r) => r.started_at < run.started_at);
-  const c = { completed: 0, stored: 0, keptPruned: 0, endedWithheld: 0, grace: 0, graceWhole: 0, graceWholeUnsure: 0,
+  const c = { completed: 0, stored: 0, keptPruned: 0, endedWithheld: 0, grace: 0, graceWhole: 0, graceWholeUnsure: 0, graceUncut: 0,
     inFlight: 0, neverStarted: 0, handedOver: 0, cutRerun: 0 };
   const cutFiles = [];
-  const secs = { completed: 0, withheld: 0, grace: 0, graceWhole: 0, inFlight: 0, unknown: 0 };
+  const secs = { completed: 0, withheld: 0, grace: 0, graceWhole: 0, graceUncut: 0, inFlight: 0, ranAtLeast: 0, unknown: 0 };
   const durations = new Map((rep.fileDurations ?? []).map((d) => [id(d.testFile), d.durationMs / 1000]));
-  // The cost of a started file the report did not complete: its later module duration, at most the run's wall.
-  const costOf = (k) => { const d = durationLater(run, k); if (d === null) secs.unknown++; return d === null ? 0 : Math.min(d, wall); };
+  // The cost of a started file the report did not complete: its later module duration, at most the run's wall;
+  // the wall when no later run reports one (unknown), as waste.mjs counts a cut file its log names.
+  const costOf = (k) => { const d = durationLater(run, k); if (d === null) secs.unknown++; return d === null ? wall : Math.min(d, wall); };
   for (const k of files) {
     const l = label(k);
     if (stored.has(k)) c.stored++;
@@ -88,6 +90,8 @@ for (const run of all) {
     if (log.before.has(l) && !log.after.has(l)) { c.endedWithheld++; secs.withheld += costOf(k); continue; }
     if (!log.named.has(l)) { c.neverStarted++; if (later.some((r) => picks(r).includes(k))) c.handedOver++; continue; }
     const grace = log.after.has(l), s = costOf(k);
+    // At least the durations of its tests that the log reports passed or failed: they ran in this run.
+    secs.ranAtLeast += [...(log.tests.get(l)?.ms.values() ?? [])].reduce((a, b) => a + b, 0);
     const rerun = later.some((r) => picks(r).includes(k));
     if (rerun) c.cutRerun++;
     let whole = null;
@@ -96,6 +100,9 @@ for (const run of all) {
       const t = log.tests.get(l) ?? { all: new Set(), ran: new Set() }, declared = skipsLater(run, k);
       const toRun = [...t.all].filter((n) => !(declared ?? new Set()).has(n));
       whole = toRun.length > 0 && toRun.every((n) => t.ran.has(n));
+      // Uncut: no test it was to run has a SKIP line, though some reported only after the note.
+      const uncut = toRun.length > 0 && toRun.every((n) => !t.skip.has(n));
+      if (uncut) { c.graceUncut++; secs.graceUncut += s; }
       c.grace++; secs.grace += s;
       if (whole) { c.graceWhole++; secs.graceWhole += s; if (declared === null) c.graceWholeUnsure++; }
     } else { c.inFlight++; secs.inFlight += s; }
@@ -121,7 +128,7 @@ for (const run of all) {
     noted: log.noted, cutFiles,
     quiet: last
       ? { exact: true, lastRevision: last.number, sinceLastRevisionS: (run.started_at - last.created_at) / 1000,
-          revisionsDuring: during.map((r) => ({ n: r.number, atS: (r.created_at - run.started_at) / 1000, paths: JSON.parse(r.changes).map((x) => x.path).slice(0, 6) })) }
+          revisionsDuring: during.map((r) => ({ n: r.number, atS: (r.created_at - run.started_at) / 1000, count: JSON.parse(r.changes).length, paths: JSON.parse(r.changes).map((x) => x.path).slice(0, 6) })) }
       : { exact: false, sinceRevisionAtLeastS: firstAtRev ? (run.started_at - firstAtRev.started_at) / 1000 : null,
           sinceRevisionBelowS: lastBelow ? (run.started_at - lastBelow.started_at) / 1000 : null },
     prev: prev && { run: prev.id.slice(0, 8), revision: prev.revision, picked: picks(prev).length, checkpoint: !!prev.checkpoint_id,
