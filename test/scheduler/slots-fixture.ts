@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { onTestFinished } from "vitest";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
-import type { NodeTestProject } from "../../src/core/types/index.js";
+import type { NodeTestProject, Policy } from "../../src/core/types/index.js";
 import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.js";
 import { type TimedRun, timedRunner } from "./timed-runner.js";
 
@@ -63,6 +63,8 @@ export interface SlotOptions {
    * 55 to 340 ms a call on cezar's).
    */
   readonly applyMs?: number;
+  /** Set over the defaults: `RUN_MISSING` for a start that runs its misses (row 011-159). */
+  readonly policy?: Partial<Policy>;
 }
 
 export const testPath = (name: string) => `nt/test/${name}.test.mjs`;
@@ -108,6 +110,7 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
     ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     adapters: [timed],
     capacity: { dir: poolDir, hostSlots: options.hostSlots },
+    ...(options.policy === undefined ? {} : { policy: options.policy }),
   });
   const applyMs = options.applyMs ?? 0;
   let applyCpuMs = 0;
