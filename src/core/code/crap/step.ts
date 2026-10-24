@@ -94,6 +94,8 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   const began = input.now();
   const next: Record<string, FileSummary> = {};
   const judged: Judged[] = [];
+  // B2 (review 0.1.297): a recount's files stay quiet until each is judged, records waited for too.
+  const quiet = new Set(input.reseed ? files.map((f) => f.path) : (summary?.quiet ?? []));
   let more = false;
   for (const file of files) {
     const before = summary?.files[file.path];
@@ -102,8 +104,9 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
       next[file.path] = summaryOf(file, condition);
       continue;
     }
-    const signature = signatureOf(file.blob, condition.loaders);
-    if (!start && before?.state === "judged" && before.signature === signature) {
+    const signature = signatureOf(file, input.threshold, condition.loaders);
+    const recounted = quiet.has(file.path);
+    if (!start && !recounted && before?.state === "judged" && before.signature === signature) {
       next[file.path] = before;
       continue;
     }
@@ -120,7 +123,8 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
       continue;
     }
     next[file.path] = { state: "judged", blob: file.blob, signature };
-    judged.push({ file, count, coverage });
+    judged.push({ file, count, coverage, ...(recounted ? { quiet: true } : {}) });
+    quiet.delete(file.path);
   }
 
   return store.transaction(() => {
@@ -142,11 +146,13 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
     for (const path of Object.keys(summary?.files ?? {})) {
       if (next[path] === undefined) writeEvidence(store.meta, worktreeId, path, null);
     }
+    const waiting = [...quiet].filter((path) => next[path] !== undefined).sort(compare);
     const written: CoverageSummary = {
       v: 1,
       since: start ? input.revision : (summary?.since ?? input.revision),
       provider: COVERAGE_PROVIDER_VERSION,
       files: next,
+      ...(waiting.length === 0 ? {} : { quiet: waiting }),
     };
     if (start || JSON.stringify(written) !== JSON.stringify(summary)) {
       writeSummary(store.meta, worktreeId, written);
@@ -155,11 +161,19 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   });
 }
 
-/** What a judgement read: the blob and its loaders' keys, hashed, so the summary stays small. */
-function signatureOf(blob: string, loaders: readonly { readonly key: CheckKey }[]): string {
+/**
+ * What a judgement read, hashed so the summary stays small: the blob, the
+ * counter version its CC is from, `crap.threshold` (review 0.1.297 B1 and
+ * B2) and its loaders' keys.
+ */
+function signatureOf(
+  file: Pick<CodeFile, "blob" | "counterVersion">,
+  threshold: number,
+  loaders: readonly { readonly key: CheckKey }[],
+): string {
   const keys = loaders.map((l) => l.key).sort(compare);
   return createHash("sha1")
-    .update([blob, ...keys].join("\n"))
+    .update([file.blob, `counter ${file.counterVersion}`, `crap ${threshold}`, ...keys].join("\n"))
     .digest("hex");
 }
 

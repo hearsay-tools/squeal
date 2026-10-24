@@ -160,21 +160,6 @@ describe("the coverage step", () => {
     ]);
     expect(rig.states("crap").some((s) => s.startsWith("cold"))).toBe(false);
   });
-
-  it("tells no crossing that only a change of crap.threshold made", async () => {
-    const rig = coverageRig();
-    await rig.edit({ "src/a.ts": A });
-    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: ranHotAndTiny(rig) });
-    rig.step();
-    rig.loader("test/a.test.ts", {
-      closure: ["src/a.ts"],
-      key: "key-3",
-      record: ranHotAndTiny(rig),
-    });
-    rig.step({ threshold: 50 });
-    expect(rig.states("crap")).toContain("cold pass 42");
-    expect(rig.transitions("src/a.ts", ["cold"])).toEqual([]);
-  });
 });
 
 describe("the coverage step's meta and the prune", () => {

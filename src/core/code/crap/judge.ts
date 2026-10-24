@@ -35,6 +35,8 @@ export interface Judged {
   readonly file: CodeFile;
   readonly count: FileCount;
   readonly coverage: readonly FunctionCoverage[];
+  /** A recount's judgement: no crossing from a judged state (review 0.1.297 B2). */
+  readonly quiet?: true;
 }
 
 export const checkOf = (
@@ -55,7 +57,7 @@ export function judgeFiles(
   const { prior, worktreeId, revision, at } = ctx;
   const states: CodeKnownState[] = [];
   const transitions: CodeTransition[] = [];
-  for (const { file, count, coverage } of judged) {
+  for (const { file, count, coverage, quiet } of judged) {
     count.functions.forEach((fn, i) => {
       const check = checkOf(file.path, fn);
       const id = `${file.path}\0${functionKey(fn)}`;
@@ -92,7 +94,7 @@ export function judgeFiles(
           blob: file.blob,
           changedAt: was?.outcome === outcome ? was.changedAt : revision,
         });
-        const kind = kindOf(was, outcome, m.value);
+        const kind = quiet === true && was !== undefined ? null : kindOf(was, outcome, m.value);
         if (kind === null) continue;
         transitions.push({
           worktreeId,
