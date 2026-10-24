@@ -207,7 +207,7 @@ describe("squeal retry", () => {
       expect(out.stdout).toBe(
         [
           "Run queued: test/u.test.ts has no result at its inputs (unknown: vitest adapter: dist/lib.js was written during this run). It runs once now at its normal priority, whatever the reason; that is its one run at these inputs, and it spends no retry of this session. squeal status --wait 60000 test/u.test.ts waits for its result and moves it ahead in the queue.",
-          "Run queued: test/n.test.ts has no result at its inputs (unknown: never run at this key, and nothing queued it). It runs once now at its normal priority, whatever the reason; that is its one run at these inputs, and it spends no retry of this session. squeal status --wait 60000 test/n.test.ts waits for its result and moves it ahead in the queue.",
+          "Run queued: test/n.test.ts has no result at its inputs (unknown: never run at this key: the baseline is lookup-only, so nothing queued it). It runs once now at its normal priority, whatever the reason; that is its one run at these inputs, and it spends no retry of this session. squeal status --wait 60000 test/n.test.ts waits for its result and moves it ahead in the queue.",
           "",
         ].join("\n"),
       );

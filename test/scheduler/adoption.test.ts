@@ -119,19 +119,20 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     }
   });
 
-  it("2. a fail the first stored stays held in the second: no known failure, being confirmed, nothing queued", async () => {
+  it("2. a fail the first stored is held in the second and queued once there: no known failure until its local run confirms it", async () => {
     const { a, b } = await twoWorktrees();
     a.runner.failing.add(F0);
     await a.scheduler.requestFullSuite();
     await a.scheduler.idle();
 
+    // Row 011-159: lookup-only queues no miss but this one, which only a local run confirms or clears.
+    b.runner.failing.add(F0);
+    b.runner.hold();
     await pass(b);
-    await b.scheduler.idle();
-    expect(b.runner.runs).toEqual([]);
+    await expect.poll(() => b.phase(F0)).toBe("running");
     expect(b.passing()).toBe(COUNT - 1);
     expect(current(b).map((state) => state.check.testPath)).not.toContain(F0);
     expect(b.store.knownStates.list(b.worktreeId).filter((s) => s.outcome === "fail")).toEqual([]);
-    expect(b.phase(F0)).toBeNull();
     const why = readWhy(b.root, `${F0} > passes`);
     expect(why).toMatchObject({
       found: true,
@@ -140,10 +141,16 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     });
     expect(formatWhy(why)).toContain("being confirmed");
 
-    // Passes later find it held still, and queue nothing.
+    b.runner.release();
+    await b.scheduler.idle();
+    expect(b.runner.runs.flat().map((f) => f.path)).toEqual([F0]);
+    const own = current(b).find((state) => state.check.testPath === F0);
+    expect(own).toMatchObject({ outcome: "fail", origin: { kind: "own" } });
+
+    // Confirmed: passes later run it no more.
     await pass(b);
     await b.scheduler.idle();
-    expect(b.runner.runs).toEqual([]);
+    expect(b.runner.ran(F0)).toBe(1);
     expect(b.phase(F0)).toBeNull();
   });
 
@@ -180,11 +187,14 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
   it("3. a pass with nothing new takes no write lock, nor does a key no file here holds", async () => {
     const { a, b } = await twoWorktrees();
     a.runner.failing.add(F0);
+    b.runner.failing.add(F0);
     await a.scheduler.requestFullSuite();
     await a.scheduler.idle();
     await pass(b);
     await b.scheduler.idle();
     expect(b.passing()).toBe(COUNT - 1);
+    // The held fail ran once and b's own fail confirmed it (row 011-159).
+    expect(b.runner.runs.flat().map((f) => f.path)).toEqual([F0]);
 
     // a stores at a key b has no file at: an edit of its own.
     appendFileSync(join(a.root, fileName(1)), "// a's edit\n");
@@ -196,13 +206,13 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     setBusyTimeout(b.store, 50);
     const release = holdWriteLock(a.root);
     try {
-      // Within the overlap: the keys read before, the held fail's among them, and a's new one.
+      // Within the overlap: the keys read before, the confirmed fail's among them, and a's new one.
       await pass(b);
       await b.scheduler.idle();
     } finally {
       release();
     }
-    expect(b.runner.runs).toEqual([]);
+    expect(b.runner.runs.flat().map((f) => f.path)).toEqual([F0]);
     expect(b.passing()).toBe(COUNT - 1);
   });
 
