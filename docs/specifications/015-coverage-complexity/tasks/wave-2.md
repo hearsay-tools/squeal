@@ -84,3 +84,16 @@ Use /worker. Shape: slice. Starts from main at 0.1.295, beside wave 1d (`wave-1d
 - **Delivery.** D5 to D7 apply. The FAIL line names CC, coverage and the test files that run the function, worded as evidence, never as a target.
 - **Owns.** `src/core/code/crap/**` (new), the state kinds in `src/core/code/store/**` and `src/core/code/pass/**` (not `head.ts`), `src/core/types/code*.ts`, `src/cli/code*.ts`, and new kinds in `src/core/delivery/code-*.ts` and `src/core/status/code-status.ts`, where wave 1d also edits: add, do not rework its functions.
 - **Done when.** Goal 11: no state before every loader is current; CRAP equals the formula on a fixture; `unknown` for each cause; a delivery test for each kind; policy off and coverage off byte-identical to 0.1.295. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
+
+## 015-13: review of candidate 0.1.297 (waves 1d and 2b)
+
+Use /reviewer. Candidate `cand/0.1.297`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>` at 0.1.295: wave 1d (015-34 to 015-37, `tasks/wave-1d.md`), wave 2b (015-12, W4 above) and one build commit (bundles, version 0.1.297; 0.1.296 is the 011 coordinator's). Write `docs/specifications/015-coverage-complexity/reviews/0.1.297.md` and commit it on your branch.
+
+Read `spec.md` D6 and D9 with their 2026-10-24 amendments, `status.md` (2026-10-24), `tasks/wave-1d/notes.md` and `tasks/015-12/notes.md`.
+
+Check, with proof where you can:
+1. **015-12.** Goal 11: no state before every loader has a current record; CRAP equals the formula; each `unknown` cause; the join by end position on real records from Node 22 and 24 (lazy functions absent, not zero); the quiet first judgement, so turning coverage on floods no session; coverage off and complexity alone byte-identical to 0.1.295 with no extra pass; the coalesced nudge and the writer callback (the coordinator's conditions); the per-pass cost; prune of dead worktrees' meta; the delivery lines worded as evidence.
+2. **Wave 1d.** Each operation file of 015-34, in a linked worktree too; 015-35's first recount record reaches only sessions registered before the cursor; 015-36's recount revision rule cannot hide a real edit made at that revision; 015-37's seed rule.
+3. **The two together.** Both edit `code-deliver.ts`, `code-format.ts`, `code-status.ts` and `pass/pass.ts` and merged without a conflict: check the combined behaviour, not each alone.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
