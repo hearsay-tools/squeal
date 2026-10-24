@@ -1,3 +1,4 @@
+import { readCrapRecount } from "../code/crap/index.js";
 import { awaitFirstCount, readCursor } from "../code/pass/cursor.js";
 import { uncountableFiles } from "../code/pass/failed.js";
 import { pulledReader } from "../code/pass/pulled.js";
@@ -167,8 +168,12 @@ export function registerCode(
   const read = withCode(source, ({ store, complexity }) =>
     store.transaction((): CodeRegistration => {
       const failing = failingIn(store, worktreeId);
-      // 015-37: a recount newer than the registration's clock is in the count it gives.
-      seed(store, consumer, failing, Math.max(at, readRecount(store, worktreeId)?.at ?? 0));
+      // 015-37: a recount newer than the registration's clock is in the count it gives (015-40: CRAP's too).
+      const recounted = Math.max(
+        readRecount(store, worktreeId)?.at ?? 0,
+        readCrapRecount(store.meta, worktreeId)?.at ?? 0,
+      );
+      seed(store, consumer, failing, Math.max(at, recounted));
       const { done, total } = countingOf(store, worktreeId);
       // 015-35: a new worktree's store is the common dir's; until its first count ends, no state is
       // its count, and that count tells the consumer its number.
@@ -295,24 +300,33 @@ function codeStep(
   const seededAt = typeof seeded === "number" ? seeded : 0;
   const failing = failingIn(store, worktreeId);
   const recount = readRecount(store, worktreeId);
+  const crap = readCrapRecount(store.meta, worktreeId);
   const tooBig = newTooBig(store, consumer, since, limit, write);
   const big = tooBig.length === 0 ? {} : { tooBig };
-  if (recount !== null && recount.at > seededAt) {
+  const recounted = recount !== null && recount.at > seededAt;
+  const crapRecounted = crap !== null && crap.at > seededAt;
+  if (recounted || crapRecounted) {
     // 015-37: a hook reads its clock before this transaction, so a recount may be newer than
     // it; seeded at the recount's time at least, the next hook finds the summary told.
-    if (write) seed(store, consumer, failing, Math.max(at, recount.at));
+    if (write) seed(store, consumer, failing, Math.max(at, recount?.at ?? 0, crap?.at ?? 0));
+    const crapOver = () => failingOf(store, worktreeId, ["crap"]).length;
     const news: CodeNews = {
       v: 1,
       entries: [],
       more: 0,
-      recount: { ...recount, over: failing.length },
+      ...(recounted ? { recount: { ...recount, over: failing.length } } : {}),
+      // Row 015-40: a `crap.threshold` change, as D6's summary for complexity.
+      ...(crapRecounted ? { crapRecount: { ...crap, over: crapOver() } } : {}),
     };
     return { news: { ...news, ...big }, writes: true };
   }
   // Spec 015 D9 (row 015-12): `crap` and `uncovered` beside complexity, while the daemon judges them.
   const covered = coverageMeasures(store, worktreeId);
   const measures: readonly CodeMeasure[] = [MEASURE, ...covered];
-  const edits = new Map(store.states.edits(worktreeId, MEASURE).map((e) => [codeKey(e), e]));
+  // Row 015-40: the coverage step marks D6's first edit for `crap` and `uncovered` too.
+  const edits = new Map(
+    measures.flatMap((m) => store.states.edits(worktreeId, m)).map((e) => [codeKey(e), e]),
+  );
   const view = store.views.list(consumer).filter((v) => measures.includes(v.measure));
   const judged = [...failing, ...failingOf(store, worktreeId, covered)];
   const plan = planCodeDelta({
