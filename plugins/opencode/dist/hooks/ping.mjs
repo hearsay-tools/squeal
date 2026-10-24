@@ -709,24 +709,6 @@ var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 var SLOT_WAITER_FRESH_MS = 3e4;
 
-// src/core/delivery/handoff.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/status/stopping.ts
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-
-// src/core/scheduler/queue.ts
-var Group = { first: 0, catchUp: 1, second: 2 };
-var GROUP_ORDER = {
-  edits: [Group.first, Group.catchUp, Group.second],
-  turn: [Group.catchUp, Group.second, Group.first]
-};
-
-// src/core/hash/blob.ts
-import { constants } from "node:fs";
-var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
-
 // src/core/daemon/escaped.ts
 var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
 
@@ -739,8 +721,26 @@ var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 // src/core/slow/rank.ts
 var MAX_READ_BYTES = 1024 * 1024;
 
+// src/core/scheduler/queue.ts
+var Group = { first: 0, catchUp: 1, second: 2 };
+var GROUP_ORDER = {
+  edits: [Group.first, Group.catchUp, Group.second],
+  turn: [Group.catchUp, Group.second, Group.first]
+};
+
 // src/core/scheduler/rekeyed-moves.ts
 var MOVES_RETENTION_MS = 60 * 6e4;
+
+// src/core/delivery/handoff.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
