@@ -30,14 +30,26 @@ export function focusedTexts(
 }
 
 /**
- * The name filter a runner is given for `texts` (013 V4, 003 D5): each text
- * escaped, each ` > ` in it matching ` > ` or a space, since Vitest 5 joins a
- * full name with ` > ` and Vitest 4 and node:test with a space, the texts
- * joined by `|`; no text matches nothing. It can select more checks than
- * `holdsCheckText` does, so the adapter keeps only the checks that hold a text.
+ * What a ` > ` in a text matches in the name a runner's filter reads (013 V4,
+ * row 011-173): `separator`, ` > ` alone, for a runner that joins a full name
+ * with ` > ` (Vitest 5); `separator-or-space`, ` > ` or a space, for one that
+ * joins it with a space (Vitest 4, node:test).
  */
-export function checkTextPattern(texts: readonly string[]): string {
+export type SeparatorRule = "separator" | "separator-or-space";
+
+/**
+ * The name filter a runner is given for `texts` (013 V4, 003 D5): each text
+ * escaped, each ` > ` in it matching as `rule` says, the texts joined by `|`;
+ * no text matches nothing. Under `separator-or-space` it can select more
+ * checks than `holdsCheckText` does, so the adapter keeps only the checks that
+ * hold a text.
+ */
+export function checkTextPattern(
+  texts: readonly string[],
+  rule: SeparatorRule = "separator-or-space",
+): string {
   if (texts.length === 0) return "(?!)";
   const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (rule === "separator") return texts.map(literal).join("|");
   return texts.map((text) => literal(text).split(" > ").join("(?: > | )")).join("|");
 }

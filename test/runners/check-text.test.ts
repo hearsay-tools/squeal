@@ -1,25 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { checkTextPattern, focusedTexts, holdsCheckText } from "../../src/runners/focus.js";
+import {
+  checkTextPattern,
+  focusedTexts,
+  holdsCheckText,
+  type SeparatorRule,
+} from "../../src/runners/focus.js";
 
 /*
  * Row 011-135 R1 (spec 011 C14): a text is literal and selects a check when
  * its full name holds it; the runners' filters are built from one pattern.
  */
 describe("focused-run texts", () => {
-  const select = (texts: readonly string[], name: string) =>
-    new RegExp(checkTextPattern(texts)).test(name);
+  const select = (texts: readonly string[], name: string, rule?: SeparatorRule) =>
+    new RegExp(checkTextPattern(texts, rule)).test(name);
 
   it("reads each text literally, regular-expression characters included", () => {
-    expect(select(["a (1) [x] *+?.$^|\\"], "a (1) [x] *+?.$^|\\ b")).toBe(true);
-    expect(select(["a.c"], "abc")).toBe(false);
+    for (const rule of ["separator", "separator-or-space"] as const) {
+      expect(select(["a (1) [x] *+?.$^|\\"], "a (1) [x] *+?.$^|\\ b", rule)).toBe(true);
+      expect(select(["a.c"], "abc", rule)).toBe(false);
+    }
     expect(holdsCheckText("a.c > b", ["a.c"])).toBe(true);
     expect(holdsCheckText("A > b", ["a"])).toBe(false);
   });
 
-  it("matches each ` > ` as ` > ` or a space, the joins of Vitest 5, Vitest 4 and node:test", () => {
+  it("matches each ` > ` as ` > ` or a space by default, the joins of Vitest 4 and node:test", () => {
     expect(select(["parity > new 1"], "parity > new 1")).toBe(true);
     expect(select(["parity > new 1"], "parity new 1")).toBe(true);
     expect(select(["parity > new 1"], "parity>new 1")).toBe(false);
+  });
+
+  // Row 011-173 (review 0.1.278 N1): Vitest 5's filter reads the ` > ` join only.
+  it("matches each ` > ` as ` > ` alone under the separator rule, as `holdsCheckText` does", () => {
+    expect(select(["parity > new 1"], "parity > new 1", "separator")).toBe(true);
+    expect(select(["parity > new 1"], "parity new 1", "separator")).toBe(false);
+    expect(select(["a > b"], "a b", "separator")).toBe(holdsCheckText("a b", ["a > b"]));
   });
 
   it("selects a check holding any text, and nothing for no text", () => {
