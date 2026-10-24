@@ -1,0 +1,72 @@
+{
+ "tried": 1,
+ "firstFind": {
+  "seed": 1,
+  "tried": 1,
+  "invariant": "D",
+  "detail": "test/s1.test.ts runs at its key and its row is not pending",
+  "kind": "node",
+  "slowMs": 20000,
+  "prefix": 6,
+  "shortest": [
+   {
+    "e": "finish",
+    "slot": 0,
+    "crash": false
+   },
+   {
+    "e": "finish",
+    "slot": 0,
+    "crash": false
+   },
+   {
+    "e": "runAll",
+    "force": true
+   },
+   {
+    "e": "step",
+    "ms": 1000
+   },
+   {
+    "e": "edit",
+    "path": "src/s.ts"
+   },
+   {
+    "e": "finish",
+    "slot": 0,
+    "crash": true
+   }
+  ]
+ },
+ "runs": [
+  {
+   "seed": 1,
+   "kind": "node",
+   "slowMs": 20000,
+   "steps": 6,
+   "ms": 642,
+   "violations": [
+    {
+     "inv": "D",
+     "at": 6,
+     "detail": "test/s1.test.ts runs at its key and its row is not pending"
+    },
+    {
+     "inv": "D",
+     "at": 6,
+     "detail": "test/s2.test.ts runs at its key and its row is not pending"
+    },
+    {
+     "inv": "D",
+     "at": 6,
+     "detail": "test/s3.test.ts runs at its key and its row is not pending"
+    },
+    {
+     "inv": "D",
+     "at": 6,
+     "detail": "test/s4.test.ts runs at its key and its row is not pending"
+    }
+   ]
+  }
+ ]
+}

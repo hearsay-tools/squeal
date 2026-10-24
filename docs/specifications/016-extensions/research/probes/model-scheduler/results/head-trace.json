@@ -1,0 +1,66 @@
+{
+ "tried": 1,
+ "firstFind": {
+  "seed": 51,
+  "tried": 1,
+  "invariant": "A",
+  "detail": "tier of test/s1.test.ts test/s3.test.ts cut at 60 s with no promoted file ranked before it (beat Infinity)",
+  "kind": "vitest",
+  "slowMs": 20000,
+  "prefix": 7,
+  "shortest": [
+   {
+    "e": "end",
+    "slot": 0,
+    "file": 1
+   },
+   {
+    "e": "promote",
+    "files": [
+     "test/s2.test.ts"
+    ],
+    "ms": 120000
+   },
+   {
+    "e": "runAll",
+    "force": true
+   },
+   {
+    "e": "runAll",
+    "force": false
+   },
+   {
+    "e": "promote",
+    "files": [
+     "test/s2.test.ts"
+    ],
+    "ms": 120000
+   },
+   {
+    "e": "end",
+    "slot": 0,
+    "file": 5
+   },
+   {
+    "e": "step",
+    "ms": 60000
+   }
+  ]
+ },
+ "runs": [
+  {
+   "seed": 51,
+   "kind": "vitest",
+   "slowMs": 20000,
+   "steps": 7,
+   "ms": 681,
+   "violations": [
+    {
+     "inv": "A",
+     "at": 7,
+     "detail": "tier of test/s1.test.ts test/s3.test.ts cut at 60 s with no promoted file ranked before it (beat Infinity)"
+    }
+   ]
+  }
+ ]
+}
