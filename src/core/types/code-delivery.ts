@@ -149,6 +149,11 @@ export interface CodeCoverageStatus {
   readonly waitingForRuns: number;
   /** Files whose loaders all ran, a record not stored yet. */
   readonly waitingForRecords: number;
+  /**
+   * Files that wait for test files whose imports the daemon does not know
+   * yet, any of which may load them (review 0.1.297 B3); absent when none.
+   */
+  readonly waitingForImports?: { readonly files: number; readonly testFiles: number };
   /** Files by why a loader can have no record. */
   readonly unknown: Readonly<
     Partial<Record<"no-record" | "skipped" | "unkeyed" | "unread", number>>

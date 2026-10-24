@@ -7,6 +7,7 @@ export {
   type LoaderCondition,
   type LoaderInputs,
   type Loaders,
+  type PendingReason,
   RECORD_WAIT_MS,
   readLoaders,
   type UnknownCause,

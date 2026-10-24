@@ -113,8 +113,9 @@ const CAUSES: Readonly<Record<keyof CodeCoverageStatus["unknown"], string>> = {
 /**
  * Spec 015 D9 (row 015-12): `Coverage: 12 functions over CRAP 30, 300 no
  * in-process test that Squeal runs reaches; ...`, then which files wait
- * (for test runs, which `squeal run --all` makes, or for records), which
- * read unknown and why, and the test files Squeal does not read.
+ * (for test files' imports, for test runs, which `squeal run --all` makes,
+ * or for records), which read unknown and why, and the test files Squeal
+ * does not read.
  */
 export function coverageStatusLines(s: StatusSnapshot, command: string): string[] {
   const c = s.code?.coverage;
@@ -122,6 +123,12 @@ export function coverageStatusLines(s: StatusSnapshot, command: string): string[
   const parts = [
     `${plural(c.crap, "function")} over CRAP ${c.threshold}, ${c.uncovered} that no in-process test that Squeal runs reaches`,
   ];
+  if (c.waitingForImports !== undefined) {
+    const { files, testFiles } = c.waitingForImports;
+    parts.push(
+      `${plural(files, "file")} ${waits(files)} for the imports of ${plural(testFiles, "test file")}`,
+    );
+  }
   if (c.waitingForRuns > 0) {
     parts.push(
       `${plural(c.waitingForRuns, "file")} ${waits(c.waitingForRuns)} for test runs, which ${command} run --all makes`,

@@ -14,6 +14,7 @@ import { codeSource } from "../../../src/core/delivery/code-source.js";
 import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
 import type { CodeMeasure } from "../../../src/core/types/code.js";
 import type {
+  ClosureIndex,
   Consumer,
   Policy,
   RunOutcome,
@@ -47,12 +48,21 @@ export interface LoaderSpec {
   readonly record?: readonly CoverageSource[] | null;
   readonly unread?: readonly string[];
   readonly recordedAt?: number;
+  /**
+   * The key this worktree's key index made; default the row's. `null`
+   * leaves the test file out of the index: its closure is not known here.
+   */
+  readonly indexKey?: string | null;
 }
 
 export interface CoverageRig {
   readonly tree: FakeWorktree;
   readonly store: CodeStore;
   readonly main: Store;
+  /** This worktree's key index: each loader's closure and key, as its scheduler holds them. */
+  readonly closures: ClosureIndex & {
+    set(path: string, entry: { key: string | null; paths: readonly string[] } | null): void;
+  };
   clock: number;
   /** Writes the files, stores a revision and runs the complexity pass. */
   edit(files: Record<string, string>): Promise<void>;
@@ -106,6 +116,15 @@ export function coverageRig(): CoverageRig {
   const store = open(dir);
   const settled = new Map<string, LoaderCondition>();
   let counter: Counter = fakeCounter();
+  const index = new Map<string, { key: string | null; paths: readonly string[] }>();
+  const closures: CoverageRig["closures"] = {
+    key: (ref) => index.get(ref.path)?.key ?? null,
+    closure: (ref) => index.get(ref.path),
+    set(path, entry) {
+      if (entry === null) index.delete(path);
+      else index.set(path, entry);
+    },
+  };
   writePolicy(tree.root, { enabled: true });
   const source = codeSource(dir, tree.root);
   const delivery = () =>
@@ -114,6 +133,7 @@ export function coverageRig(): CoverageRig {
     tree,
     store,
     main,
+    closures,
     clock: 100_000,
     async edit(files) {
       for (const [path, text] of Object.entries(files)) tree.write(path, text);
@@ -145,6 +165,13 @@ export function coverageRig(): CoverageRig {
       main.testFileKeys.upsertMany([
         { worktreeId: WT, testFile, key, revision: 1, pending: spec.pending ?? null },
       ]);
+      const indexKey = spec.indexKey === undefined ? key : spec.indexKey;
+      closures.set(
+        path,
+        indexKey === null && key !== null
+          ? null
+          : { key: indexKey, paths: [path, ...spec.closure] },
+      );
       if (key === null) return;
       const check = { kind: "test" as const, project: "", testPath: path, fullName: "t" };
       const results = (spec.outcomes ?? ["pass"]).map((outcome, i) => {
@@ -164,6 +191,7 @@ export function coverageRig(): CoverageRig {
       return runCoverageStep({
         store,
         main,
+        closures,
         worktreeId: WT,
         revision: tree.source.latestRevision(),
         threshold: COVERED.crap.threshold,

@@ -1,6 +1,6 @@
-import { testFileId } from "../../keys/index.js";
 import type {
   CheckKey,
+  ClosureIndex,
   EpochMs,
   RelativePath,
   Store,
@@ -12,10 +12,11 @@ import { RESULT_WAITS_MS } from "../coverage/writer.js";
 import type { CodeCoverageRepo } from "../store/types.js";
 
 /*
- * Spec 015 D9: the test files that load each source, by the closures the
- * main store keeps (011 C3's reverse index, stored per test file), and
- * whether each has a current result with a coverage record. Read from the
- * stores, so it needs no daemon.
+ * Spec 015 D9: the test files that load each source, by this worktree's own
+ * closures (011 C3's key index, which the daemon's scheduler keeps), and
+ * whether each has a current result with a coverage record. The main
+ * store's closure of a test file is the newest any worktree stored, so it
+ * can be another branch's (review 0.1.297 B3).
  */
 
 /** Why a loader can have no record now, so the sources it loads read `unknown` (D9). */
@@ -29,10 +30,17 @@ export type UnknownCause =
   /** Its record names the source among those whose bytes it could not confirm. */
   | "unread";
 
+/**
+ * Why a loader is not ready yet: `imports`, its closure is not known here,
+ * so it may load any source; `run`, no current result at its key;
+ * `record`, a result whose record may still come.
+ */
+export type PendingReason = "imports" | "run" | "record";
+
 /** One loader's condition: ready with a record, waiting for one, or unable to have one. */
 export type LoaderCondition =
   | { readonly kind: "ready"; readonly key: CheckKey }
-  | { readonly kind: "pending"; readonly reason: "run" | "record"; readonly until?: EpochMs }
+  | { readonly kind: "pending"; readonly reason: PendingReason; readonly until?: EpochMs }
   | { readonly kind: "unknown"; readonly cause: UnknownCause };
 
 export interface Loader {
@@ -45,6 +53,8 @@ export interface Loaders {
   /** The worktree has test files listed; before that no source can be judged. */
   readonly listed: boolean;
   readonly of: (path: RelativePath) => readonly Loader[];
+  /** Listed test files whose closure is not known here: each is a loader of every source. */
+  readonly withoutImports: number;
   readonly wakeAt: EpochMs | null;
 }
 
@@ -55,7 +65,9 @@ export interface Loaders {
 export const RECORD_WAIT_MS = RESULT_WAITS_MS.reduce((a: number, b) => a + b, 0);
 
 export interface LoaderInputs {
-  readonly main: Pick<Store, "testFileKeys" | "testFiles" | "results">;
+  readonly main: Pick<Store, "testFileKeys" | "results">;
+  /** This worktree's own closures; `null` while its scheduler has not started. */
+  readonly closures: ClosureIndex | null;
   readonly coverage: Pick<CodeCoverageRepo, "has">;
   readonly worktreeId: WorktreeId;
   readonly now: EpochMs;
@@ -96,22 +108,29 @@ function conditionAt(
 }
 
 /**
- * Spec 015 D9: every listed test file of the worktree with its closure and
- * condition. A test file with no stored closure loads no source Squeal
- * knows of; one whose closure was stored by another worktree is read as
- * this one's, the newest closure being the one keys are made from (001 D8).
+ * Spec 015 D9: every listed test file of the worktree with its own closure
+ * and condition. A test file whose closure is not known here may load any
+ * source, so it is a pending loader of each until its closure comes; one
+ * whose key the main store's row does not hold yet waits for that row.
  */
 export function readLoaders(inputs: LoaderInputs): Loaders {
   const rows = inputs.main.testFileKeys.list(inputs.worktreeId);
-  const closures = new Map(
-    inputs.main.testFiles.list().map((r) => [testFileId(r.testFile), r.closure.paths]),
-  );
   const byPath = new Map<RelativePath, Loader[]>();
+  const everywhere: Loader[] = [];
   let wakeAt: EpochMs | null = null;
   for (const row of rows) {
-    const paths = closures.get(testFileId(row.testFile));
-    if (paths === undefined) continue;
-    const condition = conditionAt(inputs, row.testFile, row.key, row.pending !== null);
+    const paths = inputs.closures?.closure(row.testFile)?.paths;
+    if (paths === undefined) {
+      everywhere.push({
+        testFile: row.testFile,
+        condition: { kind: "pending", reason: "imports" },
+      });
+      continue;
+    }
+    const condition =
+      inputs.closures?.key(row.testFile) === row.key
+        ? conditionAt(inputs, row.testFile, row.key, row.pending !== null)
+        : ({ kind: "pending", reason: "run" } as const);
     if (condition.kind === "pending" && condition.until !== undefined) {
       wakeAt = Math.min(wakeAt ?? condition.until, condition.until);
     }
@@ -123,5 +142,13 @@ export function readLoaders(inputs: LoaderInputs): Loaders {
       else list.push(loader);
     }
   }
-  return { listed: rows.length > 0, of: (path) => byPath.get(path) ?? [], wakeAt };
+  return {
+    listed: rows.length > 0,
+    of: (path) => {
+      const own = byPath.get(path) ?? [];
+      return everywhere.length === 0 ? own : [...own, ...everywhere];
+    },
+    withoutImports: everywhere.length,
+    wakeAt,
+  };
 }
