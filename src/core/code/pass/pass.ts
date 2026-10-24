@@ -11,7 +11,14 @@ import type {
 } from "../../types/index.js";
 import type { CodeStore } from "../store/index.js";
 import { countMissing, type Entry } from "./blobs.js";
-import { cursorOf, readCursor, recountReason, writeCursor, writeRecount } from "./cursor.js";
+import {
+  cursorOf,
+  readCursor,
+  recountReason,
+  takeAwaited,
+  writeCursor,
+  writeRecount,
+} from "./cursor.js";
 import {
   dueRetries,
   type FailedCounts,
@@ -148,8 +155,10 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     );
     writeCursor(store.meta, worktreeId, current);
     writeUncountable(store.meta, worktreeId, failed);
-    // The coordinator's contract with 015-07: a first pass over inherited counts writes none.
-    if (reason !== null && (reason !== "first" || counted > 0 || ctx.switchedOn)) {
+    // The coordinator's contract with 015-07: a first pass over inherited counts writes none,
+    // unless a consumer registered before it and was told counting (015-35).
+    const awaited = reason === "first" && takeAwaited(store.meta, worktreeId);
+    if (reason !== null && (reason !== "first" || counted > 0 || ctx.switchedOn || awaited)) {
       writeRecount(store.meta, worktreeId, {
         revision: latest,
         at: ctx.now(),
