@@ -11,7 +11,8 @@ let loading: Promise<void> | null = null;
  * sitter's start happens once per daemon). web-tree-sitter's runtime is
  * initialised once per process, by the pytest graph's loader, which also
  * loads the shipped Python grammar: a second `Parser.init` would replace the
- * runtime under every parser already made.
+ * runtime under every parser already made. A load that fails is made again
+ * at the next call, so a retried count can succeed (row 015-18).
  */
 export function counterReady(): Promise<void> {
   loading ??= (async () => {
@@ -20,7 +21,10 @@ export function counterReady(): Promise<void> {
     const created = new Parser();
     created.setLanguage(language);
     tsx = created;
-  })();
+  })().catch((error: unknown) => {
+    loading = null;
+    throw error;
+  });
   return loading;
 }
 
