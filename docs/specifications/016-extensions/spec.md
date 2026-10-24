@@ -1,6 +1,6 @@
 # 016 Extensions: one correctness kit and the three repeat seams
 
-Status: draft for the human's review (2026-10-24). Research and decisions: `status.md`, `research/`.
+Status: approved by the human 2026-10-25. Research, decisions and amendments: `status.md`, `research/`.
 
 ## Scope
 
@@ -27,7 +27,7 @@ Everything else from the research stays a finding, not a plan (Non-goals).
 5. node:test and pytest observed paths reach the store only through the core's path, and `ObservedStore` with both of its copies is gone. Their adapter suites and `test/scheduler/environment-growth-*.test.ts` pass with no assertion changed, except a difference D4's survey names and the human accepts.
 6. After a daemon restart, and in a second worktree, an edit of a path that a child process imported puts its test file in `direct` (row 007-56).
 7. No source file under `src/harness/shared` names a runner. The deny, the primer and the coverage lines say what they say today.
-8. A Squeal edit outside `src/runners/**` and `test/kit/**` re-runs no kit file.
+8. A kit file re-runs only when its own closure changes: its runner's adapter and what that imports, and the kit. An edit inside one runner's folder re-runs no other runner's kit file.
 
 ## Non-goals
 
@@ -85,7 +85,7 @@ Later scenarios, each its own row: a deleted test is retired, duplicate names, a
 - K8 cuts the run at a marker, as `test/keys/validity/harness/vitest.ts` holds a run inside a test file.
 - A scenario that cannot be pinned this way is not written until it can be.
 
-**Keys.** The kit's test files key their closure, so Squeal's daemon re-runs a runner's kit file only when that runner's code or the kit changes (goal 8). If a closure misses a pack's runtime, `squeal.config.json` declares it under `inputs`.
+**Keys.** The kit's test files key their closure, so Squeal's daemon re-runs a runner's kit file only when that runner's code, what it imports, or the kit changes (goal 8). If a closure misses a pack's runtime, `squeal.config.json` declares it under `inputs`.
 
 ### D2. Contract preconditions
 
@@ -148,7 +148,7 @@ Each runner supplies a description in `src/runners/<runner>/describe.ts`:
 
 - The kit is its own test: three test files in Squeal's suite, one per runner. Goal 3's replay is a scratch branch, never merged: each past defect is reintroduced, the kit fails, the branch is dropped. The replay output is recorded in `lessons.md`.
 - D3, D4 and D5 are written test first. Their done-when lists the existing suites that must pass with no assertion changed (goals 4 to 7). D4 adds the restart and second-worktree cases of row 007-56.
-- Goal 8: an edit of a file outside `src/runners/**` and `test/kit/**` in a scratch worktree, with `squeal status` showing no kit file pending.
+- Goal 8: in a scratch worktree, an edit inside one runner's folder leaves the other two runners' kit files current in `squeal status`.
 - No local full suite. CI on the candidate and the reviewer's locked run are the full-suite checks (`docs/process.md`, test runs on a shared host).
 
 ## Open questions
