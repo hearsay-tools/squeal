@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
-import { compare, isMissing, toRelative } from "../fs/index.js";
+import { compare, isMissing, isRecord, toRelative } from "../fs/index.js";
 import type {
   AbsolutePath,
   CoreEnvironmentInputs,
@@ -10,10 +10,21 @@ import type {
   RelativePath,
   RunnerEnvironment,
 } from "../types/index.js";
-import { HIDDEN_LOCKFILE } from "./hidden-lockfile.js";
+import {
+  HIDDEN_LOCKFILE,
+  packageFoldersFingerprint,
+  parseHiddenLockfile,
+  staleHiddenLockfile,
+  withoutOwnVersions,
+} from "./hidden-lockfile.js";
 import { KEY_FORMAT_VERSION } from "./key-format.js";
 import type { PackageScans } from "./package-scans.js";
-import { type LockfileReader, npmReading, type PackageGraph, WHOLE } from "./packages.js";
+import {
+  InstalledGraph,
+  type LockfileReader,
+  type LockfileReading,
+  type PackageGraph,
+} from "./packages.js";
 import { pnpmReading } from "./pnpm-install.js";
 import { PNPM_LOCKFILE } from "./pnpm-lockfile.js";
 
@@ -261,6 +272,44 @@ export async function installedDependencies(
     graph: reading.graph,
     patches: patches.digest("hex"),
   };
+}
+
+/**
+ * npm's hidden lockfile at `dir`. Task 001-104: it stands for the install
+ * only while npm itself would trust it (`staleHiddenLockfile`); otherwise
+ * the package folders are fingerprinted instead. Task 011-85: a trusted one
+ * enters without the root's and the workspaces' own versions
+ * (`withoutOwnVersions`).
+ */
+function npmReading(
+  dir: AbsolutePath,
+  base: RelativePath | null,
+  content: Buffer,
+  scans?: PackageScans,
+): LockfileReading {
+  const hidden = parseHiddenLockfile(content);
+  const stale = staleHiddenLockfile(dir, hidden);
+  if (stale !== null) {
+    return { manager: "npm", stale, folders: packageFoldersFingerprint(dir, hidden), graph: null };
+  }
+  if (hidden === null) return WHOLE;
+  const listed = packagesOf(content);
+  const graph =
+    listed === null || base === null ? null : new InstalledGraph(dir, base, listed, scans);
+  return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
+}
+
+/** A lockfile no reader reads: the fingerprint holds it whole, and keys hold the fingerprint. */
+const WHOLE: LockfileReading = { manager: null, stale: null, text: null, graph: null };
+
+/** The `packages` map of a hidden lockfile, or `null` when it has none. */
+function packagesOf(content: Buffer): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(content.toString("utf8"));
+    return isRecord(parsed) && isRecord(parsed.packages) ? parsed.packages : null;
+  } catch {
+    return null;
+  }
 }
 
 /** An installed lockfile `locateLockfile` found: the directory that holds it, its format and bytes. */
