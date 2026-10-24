@@ -275,3 +275,31 @@ The committed bundles still carry the old default, and this row builds none (the
 - Where lookups happen: the start's two in `baseline` (stored closure list, then this worktree's own for the misses), `StoredKeys.adopt` on each reconciliation pass and tier selection, and every revision's `settle` with `queueMisses` true.
 - A heal that leaves a file held writes `held-files:<worktree>`; the start's `takeHeldFiles` drops that list and its lookup finds the file as a held miss, which the miss loop now queues under `lookup-only` too. A running daemon takes it through `Ledger.confirmHeld`, which queues whatever the policy.
 - `stored-keys.ts`'s header says "another worktree's unconfirmed fail stays held (C5), and a file policy left unqueued stays so". Both stay true, but it does not say that the held fail is now queued. The file is not this row's; a later row can add the sentence.
+
+## The end-to-end and eval fixtures on the 0.1.281 bundle
+
+Worker 51a7d186, 2026-10-24, wave 26 W6 (shape: finish). The committed 0.1.281 bundles start lookup-only with no `baseline` key, so each fixture above that waits for the start's run now sets the old start.
+
+### The change
+
+- `test/e2e/harness.ts`: after every config path (`policy`, `squeal init` for node:test, `squeal setup` for pytest, then `amendPolicy`), the fixture writes `squeal.config.json` through `runMissingConfig` from `test/helpers/baseline.ts`. A config that sets `baseline` or is no JSON object stays as written, so `lifecycle`'s bad config is still one note. The new `FixtureOptions.shippedBaseline: true` leaves the key out.
+- `opencode-fixture.ts` and `pi-fixture.ts`: the config they write passes through `runMissingConfig` too. Neither has an opt-out: no OpenCode or Pi test means the shipped default.
+- `shipped-plugin.test.ts` builds its own project: its `{}` became `runMissingConfig()`.
+- `evals/ledgerline/squeal.config.json` sets `"baseline": { "onStart": "lookup-then-run-missing" }`. `buildFixture` merges a variant's policy over it with a shallow spread, and no variant sets `baseline`. `test/evals` reads only `slow` and `stop` from it.
+- `policy.test.ts` gained "baseline.onStart, the shipped default", for both plugins: with `shippedBaseline` the config is `{}`, every test file stands `never-run` with `lookupOnly: true`, nothing is current or pending, and the store has no run. With the pin the same case times out after 60 s (checked: both plugins fail), so it tells the two starts apart.
+
+### Each `test/e2e` file
+
+| File | Class | How |
+|---|---|---|
+| `harness.ts` | pinned | writes the pin; `shippedBaseline` opts out |
+| `opencode-fixture.ts` | pinned | writes the pin |
+| `pi-fixture.ts` | pinned | writes the pin |
+| `shipped-plugin.test.ts` | pinned | writes the pin in its own project |
+| `policy.test.ts` | pinned, one case default-asserting | the harness's pin; "the shipped default" opts out |
+| `lifecycle`, `merge-hold`, `node-test`, `ps`, `pytest`, `slow-node-test`, `slow-vitest`, `stop-gap`, `stopped`, `torn-status`, `transitions`, `worktrees` (`.test.ts`) | pinned | the harness's pin, no edit; `slow-shape.ts` (no edit) builds through the harness |
+| `opencode.test.ts` | pinned | `opencode-fixture.ts`'s pin, no edit |
+| `pi.test.ts` | pinned | `pi-fixture.ts`'s pin, no edit |
+| `codex-upgrade.test.ts` | untouched | its own repository; it waits for no run, only for the CLI and skill paths the SQUEAL messages name, which a lookup-only start names too. It runs only as `squeal-e2e` with a real Codex model, so it was skipped here |
+| `opencode-timeline.test.ts`, `pi-update.test.ts`, `plugin-copy.test.ts` | untouched | no daemon baseline: stored timelines, a Pi session where Squeal is not set up, the plugin copy's files |
+| `agree.ts`, `install.ts`, `opencode-timeline.ts`, `opencode-watch.ts`, `plugins.ts`, `ps-support.ts`, `restart-evidence.ts`, `slow-shape.ts`, `sources.ts`, `support.ts` | untouched | helpers that write no config |
