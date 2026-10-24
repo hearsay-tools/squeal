@@ -1,0 +1,54 @@
+SV.order	machine	test/scheduler/helpers.ts runs the real scheduler and store in process, one hand-written order per test
+SW.gap	none	found only in use; afterwards test/cli/next-step-rows.test.ts walks a table of file states (011-27)
+SW.order	owner	001-258: one re-key record in the store replaced holds, timers and sync-forget; six review rounds' cases passed
+DL.multi	daemon	test/daemon/handover.test.ts starts released 0.1.31 and 0.1.32 daemons beside the current one
+KC.input	corpus	test/keys/validity/ compares keys at two trees over named inputs
+SV.race	machine	test/e2e/torn-status.test.ts holds one interleaving; no test steps every await
+SV.count	machine	none: no invariant check over counts
+WR.env	daemon	test/scheduler/editor-scratch.test.ts and linked-start.test.ts, one repository shape each
+DB.multi	daemon	test/store/concurrency.test.ts and contention.test.ts run child writers on one store
+SW.proxy	owner	none: why infers the producer; the fix stored identity (001-188, 001-190)
+DV.order	machine	none: consumer lifecycle cases are written one by one
+CL.parse	corpus	test/cli/setup/gates-allow-list.test.ts holds hand-written lines, not real instruction files
+DV.text	spec	none
+PR.race	type	test/daemon/escaped-identity.test.ts pins (pid, start) for one path
+SW.multi	daemon	test/cli/status-wait-successor.test.ts drives a successor over a real socket
+SL.proxy	owner	none: provenance was inferred from declarations at read time
+DL.leak	daemon	none before use; found by the host-load reviews
+SV.path	owner	011-47: the barrier's narrowing joined the one validity path
+PS.proxy	none	found on a live host sample (014 lessons.md)
+FN.spec	none	agent friction reports
+DV.noise	none	agent friction reports and dogfood
+DV.multi	machine	none
+SL.race	type	001-116: one read transaction per status read; Stop read in separate statements
+DV.proxy	owner	none
+SW.text	spec	none
+SW.race	type	test/e2e/torn-status.test.ts (001-116)
+SV.cost	none	found in dogfood on cezar
+DV.gap	none	agent friction reports
+ST.order	machine	none
+DL.proxy	daemon	test/daemon/died.test.ts kills a real daemon
+DB.leak	owner	001-254: one list of a worktree's meta rows
+SL.order	owner	001-305: untold replaced the owed list after three rounds
+SL.spec	none	feature rows
+SV.time	machine	test/scheduler/runner-part-bound.test.ts uses fake timers for one bound
+DL.order	daemon	none
+SW.two	owner	011-26 (gh-65): one JSON path for selected-file verdicts
+FN.path	owner	none
+CC.parse	corpus	none: tree-sitter grammar limits (015-25)
+CC.proxy	owner	none
+SW.cost	none	measured after use (011-42)
+SV.spec	none	human decisions
+WR.two	owner	001-253: one timestamp rule for both parcel watches after four rounds
+DL.race	daemon	test/daemon/handover.test.ts
+SV.env	daemon	none
+WR.count	machine	none
+SW.count	machine	none
+WR.error	fault	none
+DV.cost	none	measured on the host
+ST.parse	corpus	none
+PS.text	type	none: null and 0 share a number type in render
+CC.error	fault	test/code/pass/retry-daemon.test.ts uses fake timers for retries
+CC.multi	daemon	none
+ST.gap	none	agent friction reports
+KC.cost	none	agent friction reports

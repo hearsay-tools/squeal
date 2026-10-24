@@ -1,0 +1,8 @@
+none     groups 12 items 69 blockers 4
+machine  groups 9 items 65 blockers 35
+owner    groups 11 items 59 blockers 40
+daemon   groups 10 items 56 blockers 18
+corpus   groups 4 items 24 blockers 16
+type     groups 4 items 19 blockers 11
+spec     groups 2 items 11 blockers 3
+fault    groups 2 items 6 blockers 3

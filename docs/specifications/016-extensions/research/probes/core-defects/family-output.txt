@@ -1,0 +1,7 @@
+F1 blockers 46 rounds 42
+F2 blockers 48 rounds 38
+F3 blockers 54 rounds 40
+F4 blockers 6 rounds 6
+F5 blockers 26 rounds 24
+F6 blockers 5 rounds 5
+order 34/30, proxy 27/25, race 20/18, multi 18/18, path 14/11, count 13/11, parse 12/8, error 9/9, input 7/7, time 7/6, env 6/6, text 6/6, two 4/4, leak 2/2, cost 2/2, name 2/2, cancel 1/1, spec 1/1
