@@ -44,6 +44,21 @@ describe("code store prune (015 D4, 011 C7)", () => {
     expect(store.counts.get("other-version", "typescript", 1)).toBeNull();
   });
 
+  it("keeps a count past the retention while a kept state was judged on it (review 0.1.283 B5)", () => {
+    const store = open(commonDir());
+    store.counts.put(count("judged"), OLD);
+    store.counts.put(count("unjudged"), OLD);
+    // The edit's count is pending: the files row names a blob no state was judged on yet.
+    store.files.upsertMany("w1", [file("src/a.ts", "pending")]);
+    store.states.upsertMany([{ ...failing("w1", "Ledger.settle"), blob: "judged" }]);
+
+    const report = store.prune({ now: NOW, retentionDays: 7, worktrees: ["w1"], consumers: [] });
+
+    expect(report.countsRemoved).toBe(1);
+    expect(store.counts.get("judged", "typescript", 1)).not.toBeNull();
+    expect(store.counts.get("unjudged", "typescript", 1)).toBeNull();
+  });
+
   it("drops a removed worktree's rows, and its counts once they are past the retention", () => {
     const store = open(commonDir());
     store.counts.put(count("gone-old"), OLD);
