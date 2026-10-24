@@ -45,3 +45,23 @@ Use /reviewer. Resumes reviewer 1458394f. Candidate `cand/0.1.299` at 2611bc70e,
 - What passed round 1: re-read only where R7 touches it (`crap/step.ts`, `crap/summary.ts`, new `crap/brought.ts`). Confirm the candidate's CI is green.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## 015-14: dogfood of coverage and CRAP
+
+Two parts, as 015-10. Briefed by coordinator 52e58f23 on 2026-10-24, after 0.1.301 was released.
+
+**Part A, the coordinator's.** Turn on `"coverage": { "enabled": true }` in this repository's `squeal.config.json` once the host's installed plugins read 0.1.297 or later (CRAP and `COVERAGE_PROVIDER_VERSION` 2). Record the time in `tasks/015-14/window.md`. It re-keys every Vitest check once; `baseline.onStart: lookup-only` spreads that over the runs that follow. cezar stays off unless the human says go.
+
+**Part B, the worker's.** Use /worker. Shape: finish, survey. Start it after a working day of ordinary agent sessions. **Outcome:** `lessons.md` gains "Round 2 (015-14)". It gives D10's CPU per edit with and without coverage, with the load, answers open question 5, and records the dogfood residue in the 015-12, R6 and R7 notes, all with evidence. **Read:** `spec.md` D8, D9, D10, Testing (Proof) and Open questions; `status.md`; `tasks/015-14/window.md`; the notes of 015-11, 015-12, R6, 015-40 and R7. **Sources, read only:** `<git-common-dir>/squeal/code.sqlite` (coverage states, transitions, evidence, records, the coverage meta) and the main store; the session transcripts in the window (`~/.claude/projects/<repo slug>*/`, `~/.codex/sessions/`).
+
+**Measure:**
+- **CPU per edit.** A/B pairs, coverage off and on, interleaved, on one fixed edit script taken from the window's real edits. Use a `git archive squeal--v0.1.301` clone under `/tmp/dogfood-015-14/`, with its own store and `HOME` set to a scratch directory. Give the daemon's CPU per edit until its verdict, with the load at each pair.
+- **Unknown states.** `crap` and `uncovered` states that read `unknown`, by cause (skipped, unkeyed, no record, unread, unresolved span). Count how many functions skipped tests hide.
+- **Open question 5.** On 30 to 50 test files, run each twice at the same content and diff each function's hit bit and covered lines.
+- **Deliveries.** Count each kind (`FAIL`, `PASS`, `STILL FAIL`, `RESOLVED`, summary) per session, split by Squeal version. Judge each line as useful, noise or unclear, with the line quoted, and note whether an `uncovered` FAIL led to a test.
+- **Store.** `code.sqlite` size and record bytes at the start and the end of the window.
+
+**Rules:** open the stores read only, and change no config, plugin or store outside `/tmp/dogfood-015-14/`. Send no signal. Write only under `/tmp/dogfood-015-14/`, `lessons.md` and `tasks/015-14/`. Quote at most the SQUEAL line and one sentence of the agent's text per case. **Owns:** `lessons.md`, `tasks/015-14/`. **Done when:**
+- the round is committed, with its tables;
+- D10's line and open question 5 each have a recommendation and the counts behind it;
+- each defect is written as a proposed row and never fixed.
