@@ -88,7 +88,8 @@ export class TierYields implements CutFiles {
    * When each tier in flight that a wait waits for yields at the latest,
    * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked
    * again while its promoted files wait on claims or stored results (row
-   * 011-123), by run id.
+   * 011-123) or when the promotion that ranks its files ends (row 011-184),
+   * by run id.
    */
   readonly #bounds = new Map<string, EpochMs>();
   /** The one timer that checks the tiers again at the earliest of `#bounds`. */
@@ -123,7 +124,9 @@ export class TierYields implements CutFiles {
    *   passes (C7). Once it has run `YIELD_REMAINDER_MS`, a promoted file
    *   counts only when it ranks before each of its files that has not
    *   ended (`rankToBeat`, row 011-184); a tier only other promoted files
-   *   wait for then runs on with no bound until an event.
+   *   wait for then runs on, checked again when a file of it ends
+   *   (`standsNamed`) or the earliest promotion that ranks one passes its
+   *   deadline (review `reviews/0.1.296.md` B1 and B2).
    * A file has ended when the runner named it (`Tier.ended`, row 011-54,
    * review `reviews/0.1.237.md` B2); a runner that names none leaves every
    * file unfinished, so its tier is cancelled by the first rule only when
@@ -157,12 +160,21 @@ export class TierYields implements CutFiles {
             ? null
             : decision;
       changed = this.#set(tier.runId, standing) || changed;
-      const bound = typeof decision === "string" ? null : boundOf(context, tier, decision);
+      const bound = typeof decision === "string" ? null : boundOf(context, ledger, tier, decision);
       if (bound === null) this.#bounds.delete(tier.runId);
       else this.#bounds.set(tier.runId, bound);
     }
     if (changed) this.#publish(context);
     this.#arm(context);
+  }
+
+  /**
+   * `tier` runs on for a promoted file that ranks with or after its files
+   * (`named`): a file of it that ends may raise the rank to beat, so the
+   * tiers are checked again (review `reviews/0.1.296.md` B1).
+   */
+  standsNamed(tier: Tier): boolean {
+    return this.#standing.get(tier.runId)?.kind === "named";
   }
 
   cutPastEstimate(file: FileState): boolean {
@@ -390,16 +402,23 @@ function overruns(tier: Tier): boolean {
  * When a tier that does not yield for `decision` yields at the latest,
  * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked again
  * while only promoted files a yield runs nothing sooner for wait for it (row
- * 011-123); `null` when nothing
+ * 011-123), or for `named` when the earliest promotion that ranks a file of
+ * it that has not ended passes its deadline (`RunQueue.untilOf`, review
+ * `reviews/0.1.296.md` B2); `null` when nothing
  * but an event changes it: a cut, the backlog's turn, a runner that does
  * not cancel, nothing waiting, or no file left to cut.
  */
 function boundOf(
   context: SchedulerContext,
+  ledger: Ledger,
   tier: Tier,
   decision: Exclude<Decision, string>,
 ): EpochMs | null {
   if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
+  if (decision?.kind === "named") {
+    const untils = unfinished(tier).flatMap(({ file }) => ledger.queue.untilOf(file.ref) ?? []);
+    return untils.length === 0 ? null : Math.min(...untils);
+  }
   if (decision?.kind === "overrun") return decision.yieldsAt;
   if (decision?.kind !== "remainder" || !overruns(tier)) return null;
   return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
