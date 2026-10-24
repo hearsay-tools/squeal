@@ -102,20 +102,12 @@ export class BacklogQuiet {
 
   /** Whether `lane` waits for quiet at `now`. */
   waits(lane: string, now: EpochMs): boolean {
-    const until = this.#until.get(lane);
-    if (until === undefined) return false;
-    if (until > now) return true;
-    this.#until.delete(lane);
-    return false;
+    return waiting(this.#until, lane, now);
   }
 
   /** Whether `lane`'s catch-up waits for quiet at `now`. */
   catchUpWaits(lane: string, now: EpochMs): boolean {
-    const until = this.#catchUp.get(lane);
-    if (until === undefined) return false;
-    if (until > now) return true;
-    this.#catchUp.delete(lane);
-    return false;
+    return waiting(this.#catchUp, lane, now);
   }
 
   /** The end of each wait after `now`, by lane. */
@@ -131,6 +123,13 @@ export class BacklogQuiet {
   #told(now: EpochMs): void {
     this.publish(this.ends(now), now, this.catchUpEnds(now));
   }
+}
+
+/** Whether `lane`'s wait in `until` ends after `now`; a wait that ended leaves `until`. */
+function waiting(until: Map<string, EpochMs>, lane: string, now: EpochMs): boolean {
+  const end = until.get(lane);
+  if (end !== undefined && end <= now) until.delete(lane);
+  return end !== undefined && end > now;
 }
 
 function after(until: ReadonlyMap<string, EpochMs>, now: EpochMs): ReadonlyMap<string, EpochMs> {
