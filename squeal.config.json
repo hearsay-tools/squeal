@@ -36,6 +36,13 @@
       "src/runners/node-test/graph/**",
       "src/harness/build.ts"
     ],
-    "test/integration/node-test.test.ts": ["src/**/*.ts", "test/fixtures/node-test/**"]
+    "test/integration/node-test.test.ts": ["src/**/*.ts", "test/fixtures/node-test/**"],
+    "test/kit/vitest.test.ts": ["src/runners/observe/*.cjs"],
+    "test/kit/node-test.test.ts": ["src/runners/node-test/runtime/**"],
+    "test/kit/pytest.test.ts": [
+      "src/runners/pytest/runtime/**",
+      "test/keys/validity/python/pyproject.toml",
+      "test/keys/validity/python/uv.lock"
+    ]
   }
 }

@@ -1,0 +1,78 @@
+import { mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
+import { accepted, describePlayed, type Pack, play } from "./driver.js";
+import { fakePack } from "./fake.js";
+import { SCENARIOS, type Scenario } from "./scenarios/index.js";
+import { K1 } from "./scenarios/k1-flip.js";
+
+/*
+ * Spec 016 D1: the driver's verdicts over a fake pack, and the rule that
+ * the driver and the scenarios name no runner, so that everything a runner
+ * knows stays in its pack.
+ */
+
+const KIT = import.meta.dirname;
+const GAP = "a spec line that documents the gap";
+const scratch = realpathSync(mkdtempSync(join(tmpdir(), "squeal-kit-driver-")));
+afterAll(() => rmSync(scratch, { recursive: true, force: true }));
+
+let plays = 0;
+/** Plays in a directory of its own, so one scenario plays more than once. */
+const playIn = (scenario: Scenario, pack: Pack) =>
+  play(scenario, pack, join(scratch, `${plays++}`));
+
+describe("the kit's driver (spec 016 D1)", () => {
+  it.each(SCENARIOS)("plays $name through a faithful pack as PASS", async (scenario) => {
+    const played = await playIn(scenario, fakePack());
+    expect(played.verdict, describePlayed(played)).toBe("PASS");
+    expect(accepted(played.verdict)).toBe(true);
+  });
+
+  it("reads a listed gap that fails as KNOWN, which the kit accepts", async () => {
+    const played = await playIn(K1, fakePack({ stale: true, known: { K1: GAP } }));
+    expect(played.verdict).toBe("KNOWN");
+    expect(accepted(played.verdict)).toBe(true);
+    expect(played.lines).toContain("FAIL step 2 run (completed): direct is pass, expected fail");
+  });
+
+  it("reads a listed gap that passes as UNEXPECTED PASS, which fails the kit", async () => {
+    const played = await playIn(K1, fakePack({ known: { K1: GAP } }));
+    expect(played.verdict).toBe("UNEXPECTED PASS");
+    expect(accepted(played.verdict)).toBe(false);
+    expect(describePlayed(played)).toContain(`UNEXPECTED PASS K1 × fake (listed gap: ${GAP})`);
+  });
+
+  it("reads an unlisted gap as FAIL, and a pack that cannot open as FAIL", async () => {
+    const stale = await playIn(K1, fakePack({ stale: true }));
+    expect(stale.verdict).toBe("FAIL");
+    expect(accepted(stale.verdict)).toBe(false);
+    const broken: Pack = {
+      ...fakePack(),
+      open: () => Promise.reject(new Error("no runner here")),
+    };
+    const unopened = await playIn(K1, broken);
+    expect(unopened.verdict).toBe("FAIL");
+    expect(unopened.lines.join("\n")).toContain("threw: Error: no runner here");
+  });
+});
+
+describe("what names a runner (spec 016 D1)", () => {
+  const RUNNER = /vitest|node\W*test|pytest|python|\.py\b|\.mjs\b/i;
+  const text = (path: string) => readFileSync(join(KIT, path), "utf8");
+  const scenarios = readdirSync(join(KIT, "scenarios")).map((name) => `scenarios/${name}`);
+
+  it("is never the driver or a scenario", () => {
+    for (const path of ["driver.ts", ...scenarios]) {
+      expect(text(path), path).not.toMatch(RUNNER);
+      expect(text(path), path).not.toMatch(/from\s+["'][^"']*\/runners\//);
+    }
+  });
+
+  it("is each pack, so the rule above can fail", () => {
+    for (const name of readdirSync(join(KIT, "packs"))) {
+      expect(text(`packs/${name}`), name).toMatch(RUNNER);
+    }
+  });
+});
