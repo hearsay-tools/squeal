@@ -153,6 +153,13 @@ Two parts. Briefed by coordinator 52e58f23 on 2026-10-24, after 0.1.283 was rele
 - each open question has a recommendation and the counts behind it;
 - each defect is written as a proposed row and never fixed.
 
+**Part B additions** (the coordinator, 2026-10-24, at dispatch). The window ends at dispatch, about 17:00Z.
+- **Windows.** squeal from 03:55Z. cezar's main checkout from 06:26Z, and its task worktrees from 07:31Z (`ef3bc826f` on its `origin/main`): count cezar before and after 07:31Z separately. Cezar worker sessions count, under `~/.claude/projects/-home-agent-projects-squeal--ai-cezar-worktrees-*` and the cezar equivalents.
+- **Versions.** Releases in the window: 0.1.284 at 02:35Z, 0.1.292 at 11:57Z (015-19 a pull is not an edit, 015-20 views and the codeSeenUpTo bound, 015-21 the quiet hint, 015-27 the other-side lines), 0.1.293 at 14:40Z, 0.1.294 at 15:24Z. Caches refresh hours later, so read each session's version from its hook paths, and split every count by it.
+- **P1 and P2** (`lessons.md`, Part C): how many `STILL FAIL` lines followed a pull, and how many `FAIL` or `PASS` lines came from a catch-up, before and after 0.1.292.
+- **For 015-26** (the human: revisit after Part B): how often an agent edited the body of a function a third time or more while it stayed over the threshold after the quiet hint, and whether the agent was working on that function then.
+- **Acted on.** Every case where an agent changed code because of a complexity line, with the before and after CC. One known case: worker f9416aba (015-31) split `judge` from CC 20 to 19 after Squeal told it.
+
 ### 015-10 Part C: live sessions now
 
 Added on 2026-10-24. The human expected sessions started now, not only the passive working day. Use /worker. Shape: finish, dogfood. **Outcome:** `lessons.md` gains "Round 1, live sessions (015-10)". It shows, from real agent sessions, what complexity tells an agent while it works and what the agent does with it.
