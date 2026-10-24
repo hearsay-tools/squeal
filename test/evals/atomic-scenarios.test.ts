@@ -260,7 +260,7 @@ describe("the atomic scenarios", () => {
 
 describe("the baseline, untouched by the atomic scenarios", () => {
   it("keeps the judge's rubric revision", () => {
-    expect(rubricRevision(declarations())).toBe("34f84239fa65"); // 006-89: other files pending do not undo a delivery's answer for the files it names
+    expect(rubricRevision(declarations())).toBe("0f0deea1da13"); // 006-99: every own Vitest command is a run for `no-rerun-answered`
     expect(Object.keys(declarations().tasks)).not.toContain("a1-break");
   });
 
