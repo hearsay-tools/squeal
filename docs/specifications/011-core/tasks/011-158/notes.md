@@ -43,7 +43,7 @@ uncovered: 0
 
 ## Which stored results the change invalidates
 
-None, through the read as one. Without it, all of them. On a store copy taken 2026-10-24 04:55Z (`~/projects/squeal/.git/squeal/store.sqlite` with `-wal` and `-shm`, read with `node:sqlite` read-only, against `git ls-tree main`):
+None, through the read as one, since the repair of review 0.1.285 B1 (below); before it, a file whose start re-check dropped a branch-only absent path lost its pre-upgrade row. Without the read, all of them. On a store copy taken 2026-10-24 04:55Z (`~/projects/squeal/.git/squeal/store.sqlite` with `-wal` and `-shm`, read with `node:sqlite` read-only, against `git ls-tree main`):
 
 | Count | Value |
 |---|---|
@@ -57,6 +57,16 @@ None, through the read as one. Without it, all of them. On a store copy taken 20
 - **Every key moves at upgrade.** So every file's first lookup after the upgrade misses at its new key, reads the key before 011-158, and copies the newest set (`copyNewest`), once per file, as 011-90 did. Test: `former-sibling.test.ts` with a real Vitest closure, whose snapshot path is absent; it needed `absentSegment` in its helper, since 0.1.252's key held it.
 - **The 121 files** are cause D at this snapshot: a worktree at main's content keyed them apart from a worktree whose list did not name the path. They now key equal.
 - **Not measured here:** a bundle-level key comparison (E3 of the research). This row builds no bundle, and the research's E0 says a tsc build keys apart from the shipped one. The alarm bundles the validity path as the shipped bundles are built, and its accept case is the bundle-level proof of the read. An E3-style run belongs on the candidate after its build.
+
+## Repair: review 0.1.285 B1
+
+Brief: the coordinator's resume of 2026-10-24, from `reviews/0.1.285.md` B1 (the reviewer's draft).
+
+- **The defect.** `copyReadAsOne` (`src/core/scheduler/accept.ts`) read the keys read as one once per file and key. Since this row a closure change can move the key before 011-158 while the current key stays equal: a path with no file leaving the closure moves only the former. At start, the first lookup keys a file from the shared list, which another branch wrote with a path only it has; the re-check keys it from the own closure, which drops that path. The current key is equal, the key before 011-158 is now the key of the pass stored before the upgrade, and the memo skipped the read. Under `lookup-only` the file stayed without a result and nothing ran.
+- **The fix.** The memo holds the key and its keys read as one, joined (`readAt`), so a file is read once per key and keys read as one. An unchanged miss is still read once. The copy is unchanged: `copyNewest` fills an empty key only. `ReadAsOne.read` is `Map<string, string>`; `Ledger.#readAsOne`'s type and comment follow, by the coordinator's agreement (request 106f6c63).
+- **The regression**, `test/scheduler/absent-read.test.ts`: a pass stored an hour before the start (past `STORED_KEYS_OVERLAP_MS`, so `StoredKeys` does not read it again) under F0's key before 011-158, over its own closure, F0 and its absent snapshot. The shared list adds `src/branch-only.ts`. The lookup-only start's second lookup reads the own closure's keys, copies the pass with its provenance and runs nothing. F1, a miss whose lists are equal, is read once. It fails on the old memo (`passing` 0) and on a fix that drops the memo (F1 read twice). With the row stored 60 s before the start, `StoredKeys` reads it again and the old memo passes, so the hour matters.
+- **Unit tests**, `test/scheduler/accept.test.ts`: a miss is read once per key and keys read as one and again when only those move; once rows stand at the key nothing is read or copied; a copied fail of another worktree stays held and nothing is copied over it. The first fails on the old memo.
+- **The contract changes.** Proposed C4 step 3 text, in place of "once per file and key in a daemon": "once per file, key and keys read as one in a daemon: a closure change can move the keys read as one while the key stays, as a path with no file leaving the closure moves only the key before 011-158 (task 011-158, review 0.1.285 B1), and the file is read again at the keys it moved to".
 
 ## Proposed spec text (011 C3), for the coordinator
 
@@ -73,6 +83,7 @@ None, through the read as one. Without it, all of them. On a store copy taken 20
 
 ## Type changes
 
+- Repair B1: `ReadAsOne.read` (`src/core/scheduler/accept.ts`) is `Map<string, string>`, was `Map<string, CheckKey>`; `Ledger.#readAsOne` follows. `CheckKey` is `string`, so no caller's type moved.
 - New in `src/`: `absentSegment(path)` and `absentReadAsOne(environment, format?)` in `check-key.ts`; `absentReadAsOne` exported from `src/core/keys/index.ts`.
 - Changed meaning, not type: `encodeSegment(path, null)` returns `""`.
 - Test-side: `AcceptInput.absent?: readonly string[]`; `keyedOver(testFile, installed, root, absent = [])`.
