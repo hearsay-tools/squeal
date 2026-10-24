@@ -192,7 +192,8 @@ export function wallSide(options: WallOptions): WallSide {
     squealVersion: "0.0.0-test",
     runsDir: storePaths(commonDir).runsDir,
     head: () => readHead(root),
-    capacity: { dir, hostSlots: options.hostSlots },
+    // No live host CPU in the gate (row 011-182).
+    capacity: { dir, hostSlots: options.hostSlots, host: null },
   });
   onTestFinished(async () => {
     runner.release();

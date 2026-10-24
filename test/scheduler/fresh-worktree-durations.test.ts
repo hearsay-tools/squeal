@@ -65,7 +65,8 @@ function daemonAt(root: string, store: Store, commonDir: string) {
     squealVersion: "0.0.0-test",
     runsDir: storePaths(commonDir).runsDir,
     head: () => readHead(root),
-    capacity: { dir, hostSlots: SLOTS },
+    // No live host CPU in the gate (row 011-182).
+    capacity: { dir, hostSlots: SLOTS, host: null },
   });
   onTestFinished(async () => {
     runner.release();
