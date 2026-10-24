@@ -153,7 +153,7 @@ Each runner supplies a description in `src/runners/<runner>/describe.ts`:
 
 ## Open questions
 
-1. Should the kit also run through a scratch daemon, to check transitions, retirement and unknown end to end (`research/runner-kit.md` open question 1)? Owner: 016's coordinator, after 016-11 reports which core-logic groups such a level would catch.
+1. ~~Should the kit also run through a scratch daemon?~~ Answered 2026-10-25 from `research/core-defects.md` finding 3: not in 016. It ranks after one owner per rule and a model-based scheduler test (`status.md` amendment log).
 2. D3's store step: a column without a version raise, or a `meta` map. Owner: 016's coordinator, decided from the slice's evidence. A `user_version` raise goes to the human.
 3. Each difference D4's survey finds between the core's observed path and the injected stores that could change a verdict. Owner: the human.
 4. Should the kit replace the overlapping adapter-level tests (about a third of 1,221 lines, `research/runner-kit.md` finding 5), and share fixtures with the validity corpus? Owner: 016's coordinator, after wave 2.
