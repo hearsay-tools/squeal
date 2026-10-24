@@ -2,7 +2,7 @@ import type { CodeCheckId, CodeTransition } from "../../types/code.js";
 import type { EpochMs, RevisionNumber, WorktreeId } from "../../types/index.js";
 import type { CodeStore } from "../store/types.js";
 import { COVERAGE_MEASURES } from "./step.js";
-import { readSummary, summaryKey, writeEvidence } from "./summary.js";
+import { deleteSummary, readSummary, writeEvidence } from "./summary.js";
 
 /*
  * Spec 015 D5 for D9's measures, beside the complexity pass: a function
@@ -55,7 +55,7 @@ export function clearCoverage(store: CodeStore, worktreeId: WorktreeId): boolean
     for (const measure of COVERAGE_MEASURES) store.states.removeMeasure(worktreeId, measure);
     for (const path of Object.keys(summary.files))
       writeEvidence(store.meta, worktreeId, path, null);
-    store.meta.delete(summaryKey(worktreeId));
+    deleteSummary(store.meta, worktreeId);
   });
   return true;
 }
