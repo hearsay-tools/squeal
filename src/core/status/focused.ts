@@ -1,11 +1,12 @@
 import { testFileId } from "../keys/index.js";
-import { type FocusedRun, readFocused } from "../scheduler/focused-row.js";
+import { type FocusedCheck, type FocusedRun, readFocused } from "../scheduler/focused-row.js";
 import { checkIdentity, formatCheck, testFileOf } from "../state/index.js";
 import { timeText } from "../text.js";
 import type {
   CheckId,
   CheckKey,
   PendingPhase,
+  ResultRecord,
   StatusFocused,
   StatusFocusedCheck,
   StatusSnapshot,
@@ -32,6 +33,47 @@ export const FOCUSED_SHOWN = 3;
 const NAMES_SHOWN = 3;
 
 /**
+ * One test file's focused run as status, `why` and the focused wait read it
+ * (C6): its current key, its newest focused run, ended or not, and the
+ * results stored at its key. The run applies while its key is the file's
+ * current key and no result is stored there.
+ */
+export interface FocusedRead {
+  readonly testFile: TestFileRef;
+  /** The file's current key; `null` while it has none. */
+  readonly key: CheckKey | null;
+  readonly run?: FocusedRun;
+  readonly results: readonly ResultRecord[];
+  readonly applies: boolean;
+}
+
+/**
+ * Each of `files` in `worktreeId` as `FocusedRead` gives it; without
+ * `files`, each file with a focused run, oldest run first.
+ */
+export function readFocusedFiles(
+  store: Store,
+  worktreeId: WorktreeId,
+  files?: readonly TestFileRef[],
+): FocusedRead[] {
+  const runs = readFocused(store, worktreeId);
+  const refs = files ?? runs.map((run) => run.testFile);
+  if (refs.length === 0) return [];
+  const keys = new Map(
+    store.testFileKeys.list(worktreeId, refs).map((row) => [testFileId(row.testFile), row.key]),
+  );
+  const byFile = new Map(runs.map((run) => [testFileId(run.testFile), run]));
+  return refs.map((testFile) => {
+    const key = keys.get(testFileId(testFile)) ?? null;
+    const run = byFile.get(testFileId(testFile));
+    // `usedAt` 0: a read, not a lookup hit (status writes nothing, C6).
+    const results = key === null ? [] : store.results.byKey(key, 0);
+    const applies = run !== undefined && run.key === key && results.length === 0;
+    return { testFile, key, ...(run === undefined ? {} : { run }), results, applies };
+  });
+}
+
+/**
  * `worktreeId`'s focused runs, oldest first, each with whether it applies
  * and its file's phase in `phases` (`pendingPhasesOf`, uncapped).
  */
@@ -40,31 +82,15 @@ export function readStatusFocused(
   worktreeId: WorktreeId,
   phases: ReadonlyMap<string, { readonly phase: PendingPhase }>,
 ): StatusFocused[] {
-  const runs = readFocused(store, worktreeId);
-  if (runs.length === 0) return [];
-  const files = runs.map((run) => run.testFile);
-  const keys = new Map(
-    store.testFileKeys.list(worktreeId, files).map((row) => [testFileId(row.testFile), row.key]),
-  );
-  return runs.map((run) => {
-    const current = keys.get(testFileId(run.testFile)) === run.key;
-    // `usedAt` 0: a read, not a lookup hit (status writes nothing, C6).
-    const applies = current && store.results.byKey(run.key, 0).length === 0;
-    const phase = phases.get(testFileId(run.testFile))?.phase ?? null;
-    return { ...statusFocusedOf(run, applies), phase };
+  return readFocusedFiles(store, worktreeId).flatMap(({ testFile, run, applies }) => {
+    if (run === undefined) return [];
+    const phase = phases.get(testFileId(testFile))?.phase ?? null;
+    return [{ ...statusFocusedOf(run, applies), phase }];
   });
 }
 
 /** `run` as status and `why` give it. */
 export function statusFocusedOf(run: FocusedRun, applies: boolean): StatusFocused {
-  const checks: StatusFocusedCheck[] = run.checks.map((c) => ({
-    check: c.check,
-    name: formatCheck(c.check),
-    outcome: c.outcome,
-    durationMs: c.durationMs,
-    summary: c.summary,
-    location: c.location,
-  }));
   return {
     testFile: run.testFile,
     key: run.key,
@@ -79,11 +105,53 @@ export function statusFocusedOf(run: FocusedRun, applies: boolean): StatusFocuse
     reason: run.reason,
     collected: run.collected,
     matched: run.matched,
-    checks,
+    checks: run.checks.map(focusedCheckOf),
     more: run.more,
     ...(countsOf(run.outcomes) ?? {}),
     applies,
   };
+}
+
+/** One selected check, of a focused run or of a stored result, as status and the focused wait give it. */
+export function focusedCheckOf(
+  c: Pick<FocusedCheck, "check" | "outcome" | "durationMs" | "summary" | "location">,
+): StatusFocusedCheck {
+  return {
+    check: c.check,
+    name: formatCheck(c.check),
+    outcome: c.outcome,
+    durationMs: c.durationMs,
+    summary: c.summary,
+    location: c.location,
+  };
+}
+
+/**
+ * What a file's selected checks add up to (review 0.1.286 B2): `failed` of
+ * `total`; `total` is `null` when a list left checks out and nothing counts
+ * them for a wait's texts; `atLeast` when one it left out may have failed too.
+ */
+export interface FocusTally {
+  readonly failed: number;
+  readonly total: number | null;
+  readonly atLeast: boolean;
+}
+
+/**
+ * The count of a run's selected checks for its own texts: its row's count
+ * of every outcome; without one (a row before the count), the checks it
+ * kept and the `more` it left out, `atLeast` when it left one out. A list
+ * that leaves nothing out, as a stored result's, gives its exact count.
+ */
+export function focusedTally(
+  run: Pick<StatusFocused, "checks" | "more" | "outcomes">,
+): FocusTally & { readonly total: number } {
+  if (run.outcomes !== undefined) {
+    const { pass, fail, skip } = run.outcomes;
+    return { failed: fail, total: pass + fail + skip, atLeast: false };
+  }
+  const failed = run.checks.filter((c) => c.outcome === "fail").length;
+  return { failed, total: run.checks.length + run.more, atLeast: run.more > 0 };
 }
 
 /** A row's count of outcomes when it holds one that reads: three whole numbers. */
@@ -118,19 +186,14 @@ export function focusedOutcomeText(entry: StatusFocused): string {
   if (entry.endedAt === null) {
     return `running since ${timeText(entry.startedAt)} (focused: ${textsText(entry.texts)})`;
   }
-  const failed = entry.checks.filter((c) => c.outcome === "fail");
   if (entry.end === "completed" && entry.matched === 0) return noMatchText(entry);
-  const total = entry.checks.length + entry.more;
   // Review 0.1.286 B2: a count over every selected check, else the kept ones and the rest not kept.
-  const fails = entry.outcomes?.fail ?? failed.length;
+  const { failed: fails, total, atLeast } = focusedTally(entry);
+  const failed = entry.checks.filter((c) => c.outcome === "fail");
   const names = failed.slice(0, NAMES_SHOWN).map((c) => ownName(c));
   const rest = fails > names.length ? ` and ${fails - names.length} more` : "";
-  const of =
-    entry.outcomes === undefined && entry.more > 0
-      ? `the ${entry.checks.length} kept of ${total}`
-      : `${total}`;
-  const notKept =
-    entry.outcomes === undefined && entry.more > 0 ? `; ${entry.more} more not kept` : "";
+  const of = atLeast ? `the ${entry.checks.length} kept of ${total}` : `${total}`;
+  const notKept = atLeast ? `; ${entry.more} more not kept` : "";
   const counted = `${fails} of ${of} selected ${total === 1 ? "check" : "checks"} FAIL${names.length === 0 ? "" : ` (${names.join(", ")}${rest})`}${notKept}`;
   if (entry.end === "completed") return counted;
   const why = entry.reason === null ? "" : `: ${entry.reason}`;
@@ -224,16 +287,14 @@ export function whyFocusedOf(
   check: CheckId,
   key: CheckKey | null,
 ): WhyFocused | undefined {
-  const file = testFileId(testFileOf(check));
-  const run = readFocused(store, worktreeId).find((r) => testFileId(r.testFile) === file);
-  if (run === undefined) return undefined;
+  const [file] = readFocusedFiles(store, worktreeId, [testFileOf(check)]);
+  const run = file?.run;
+  if (file === undefined || run === undefined) return undefined;
   const at = run.checks.findIndex((c) => checkIdentity(c.check) === checkIdentity(check));
   if (at === -1) return undefined;
-  const keyMoved = key !== run.key;
-  // `usedAt` 0: a read, not a lookup hit.
-  const status = statusFocusedOf(run, !keyMoved && store.results.byKey(run.key, 0).length === 0);
+  const status = statusFocusedOf(run, file.applies);
   const result = status.checks[at];
-  return result === undefined ? undefined : { run: status, result, keyMoved };
+  return result === undefined ? undefined : { run: status, result, keyMoved: key !== run.key };
 }
 
 /**

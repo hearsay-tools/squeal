@@ -1,4 +1,9 @@
-import { focusedCheckLines, focusedTookText, textsText } from "../core/status/focused.js";
+import {
+  type FocusTally,
+  focusedCheckLines,
+  focusedTookText,
+  textsText,
+} from "../core/status/focused.js";
 import { fromBase } from "../core/status/next-step-text.js";
 import { shellWord, timeText } from "../core/text.js";
 import type {
@@ -9,7 +14,7 @@ import type {
   TestFileRef,
 } from "../core/types/index.js";
 import type { FocusedFile, NamedFocus } from "./status-wait-focus.js";
-import { type FocusTally, sumTallies } from "./status-wait-focus-answer.js";
+import { sumTallies } from "./status-wait-focus-answer.js";
 
 /*
  * Row 011-146 (011 C15 as amended 2026-10-23; `tasks/011-135/design.md`
