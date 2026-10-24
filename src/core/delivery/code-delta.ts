@@ -1,3 +1,4 @@
+import type { CodeEdit } from "../code/store/types.js";
 import type {
   CodeCheckId,
   CodeKnownState,
@@ -6,7 +7,7 @@ import type {
   CodeTransitionKind,
   CodeViewEntry,
 } from "../types/code.js";
-import type { CodeDeltaEntry } from "../types/code-delivery.js";
+import type { CodeDeltaEntry, CodeDeltaKind } from "../types/code-delivery.js";
 import type { EpochMs } from "../types/index.js";
 
 /*
@@ -16,7 +17,8 @@ import type { EpochMs } from "../types/index.js";
  * changes while the function stays over is no news. A difference is told
  * only when the check's last transition explains it and came after what the
  * view holds; any other (a recount, a first count, a parse error healed) is
- * written silently, told by count.
+ * written silently, told by count. One more is told with no change of
+ * state: the first edit to a function the view holds failing by count only.
  */
 
 /** A view row's key: one measure of one check. */
@@ -27,13 +29,15 @@ export interface CodePlanInput {
   readonly states: readonly CodeKnownState[];
   /** The check's measure's last recorded transition; `null` when it has none. */
   readonly last: (check: CodeCheckId, measure: CodeMeasure) => CodeTransition | null;
+  /** The check's measure's last edit with its identity kept; `null` when none is stored. */
+  readonly edit: (check: CodeCheckId, measure: CodeMeasure) => CodeEdit | null;
   /** When the view was last seeded whole: a transition before it was told by count. */
   readonly seededAt: EpochMs;
   readonly toldAt: EpochMs;
 }
 
 export interface CodePlan {
-  /** Every change to tell, failures first, then recoveries, then removed functions. */
+  /** Every change to tell: failures, recoveries, removed functions, then edits to standing failures. */
   readonly entries: readonly Omit<CodeDeltaEntry, "line">[];
   readonly writes: readonly CodeViewEntry[];
   readonly removals: readonly CodeViewKey[];
@@ -59,11 +63,12 @@ export function seedEntry(state: CodeKnownState, toldAt: EpochMs): CodeViewEntry
 /** Only `pass` and `fail` are told; `pending` and `unknown` leave the view as it is (D3). */
 const judged = (state: CodeKnownState) => state.outcome === "pass" || state.outcome === "fail";
 
-const RANK: Record<CodeTransitionKind, number> = {
+const RANK: Record<CodeDeltaKind, number> = {
   "pass-to-fail": 0,
   "first-seen-fail": 0,
   "fail-to-pass": 1,
   removed: 2,
+  edited: 3,
 };
 
 /**
@@ -88,6 +93,22 @@ function toldKind(
   return null;
 }
 
+/**
+ * D6, its last rule: the edit to tell of a function failing before and
+ * after it, when the view holds it told by count only and the edit came
+ * after what the view holds; `null` otherwise. Told once: the view entry is
+ * then written `full`, so later edits are quiet until the state changes.
+ */
+function standingEdit(
+  told: CodeViewEntry,
+  now: CodeKnownState,
+  input: CodePlanInput,
+): CodeEdit | null {
+  if (now.outcome !== "fail" || told.told !== "count") return null;
+  const edit = input.edit(now.check, now.measure);
+  return edit !== null && edit.at > Math.max(input.seededAt, told.toldAt) ? edit : null;
+}
+
 /** Spec 015 D5, D6: what to tell the consumer of its code view, and how the view changes. */
 export function planCodeDelta(input: CodePlanInput): CodePlan {
   const told = new Map(input.view.map((v) => [codeKey(v), v]));
@@ -98,7 +119,20 @@ export function planCodeDelta(input: CodePlanInput): CodePlan {
     const before = told.get(key) ?? null;
     told.delete(key);
     if (!judged(state)) continue;
-    if (before?.outcome === state.outcome && before.threshold === state.threshold) continue;
+    if (before?.outcome === state.outcome && before.threshold === state.threshold) {
+      const edit = standingEdit(before, state, input);
+      if (edit === null) continue;
+      writes.push({ ...seedEntry(state, input.toldAt), told: "full" });
+      entries.push({
+        check: state.check,
+        measure: state.measure,
+        kind: "edited",
+        value: state.value,
+        threshold: state.threshold,
+        revision: edit.revision,
+      });
+      continue;
+    }
     const last = input.last(state.check, state.measure);
     const kind = toldKind(before, state, last, Math.max(input.seededAt, before?.toldAt ?? 0));
     if (kind === null) {
