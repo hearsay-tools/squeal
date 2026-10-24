@@ -210,7 +210,7 @@ var DEFAULT_POLICY = {
     slowWaitMs: 12e4
   },
   testCommand: { denyWhenCurrent: false },
-  baseline: { onStart: "lookup-then-run-missing" },
+  baseline: { onStart: "lookup-only" },
   inputs: [],
   observe: { runtimeInputs: true },
   env: { allowlist: [] },
@@ -6011,7 +6011,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.283";
+  if (true) return "0.1.284";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

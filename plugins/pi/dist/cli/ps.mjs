@@ -478,7 +478,7 @@ var DEFAULT_POLICY = {
     slowWaitMs: 12e4
   },
   testCommand: { denyWhenCurrent: false },
-  baseline: { onStart: "lookup-then-run-missing" },
+  baseline: { onStart: "lookup-only" },
   inputs: [],
   observe: { runtimeInputs: true },
   env: { allowlist: [] },
