@@ -18,6 +18,7 @@ import type { DaemonLiveness, EpochMs, StatusSnapshot, TestFileRef } from "../co
 import { classLines, namedFailures, reasonGroups, unmatchedText } from "./named-file-lines.js";
 import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
+import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
 import type { NamedWait } from "./status-wait-paths.js";
 import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
 import type { DownReason, HeartbeatLapse } from "./wait-liveness.js";
@@ -231,6 +232,13 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
     case "unmatched":
       line = `No verdict: ${unmatchedText(selection)}`;
       break;
+    case "focused":
+      // Row 011-146 (C15): a focused answer, never the file's verdict.
+      line =
+        wait.focus === undefined
+          ? none("no result yet")
+          : focusedVerdictText(wait.focus, command, wait.selection.base);
+      break;
     case "no-daemon": {
       const asOf = snapshot ? "" : `; results are as of revision ${verdict.revision}`;
       const start = wait.down === "handoff" ? "" : `; \`${command} start\` starts one`;
@@ -334,6 +342,8 @@ export interface NamedTextOptions {
   readonly full?: boolean;
   /** `--notes`: that status with every note in full (task 001-222). */
   readonly allNotes?: boolean;
+  /** Row 011-146: `--check` texts, which the named wait sends as `focus` (011 C15). */
+  readonly checks?: readonly string[];
 }
 
 /**
@@ -349,9 +359,12 @@ export function namedText(
   options: NamedTextOptions = {},
 ): string {
   const selected = selectedLine(wait);
+  const refused = refusedLine(wait.focus);
   const lines = [
     ...(selected === null ? [] : [selected]),
     ...namedFailures(wait.selection.files, wait.result.knownFailures),
+    // Row 011-146 (C15): the focused block, before the classes it leaves pending.
+    ...focusLines(wait.focus, wait.selection.base),
     ...namedClassLines(wait, command),
     namedLine(wait, command),
   ];
@@ -365,7 +378,8 @@ export function namedText(
       : [`Revision: ${statusRevisionText(wait.result)}`, ...holdLines(wait.result.holds, command)]
           .map((line) => `${line}\n`)
           .join("");
-  return `${head}${lines.join("\n")}\n`;
+  // Row 011-146 (C15): an older daemon's fallback is the first line.
+  return `${refused === null ? "" : `${refused}\n`}${head}${lines.join("\n")}\n`;
 }
 
 /**
