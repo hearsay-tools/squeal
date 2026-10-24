@@ -81,3 +81,20 @@ Known and accepted, to weigh, not to re-find:
 - A plugin update in the middle of a session can make an older hook drop its code part (015-21).
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## W6: 015-27, each delivery names what still stands on the other side
+
+Use /worker. Shape: slice. Starts from `int/015b` with W1 to W5 integrated. The human, 2026-10-24: after `PASS 7 checks recovered`, an agent may read "all recovered" as complexity too; the choice was "only when it concerns the session". Outcome: a delivery with news of one kind ends with at most one line about the other kind, only while that kind has something standing for this session.
+- **Test news** (any test entry), while a function this session was told about in full (`FAIL`, `STILL FAIL`) is still over: `Complexity: 2 functions over 20 that this session was told about; squeal code --changed lists them.` The standing functions it was never told about stay out. The count and the command must agree: if `--changed` does not list exactly these, name a command that does, or extend it, and say which in your notes.
+- **Complexity news** (a code part and no test entry), while tests have known failures: `Tests: 3 known failures; squeal status lists them.`
+- **Nothing added:**
+  - when the other side has nothing standing for the session;
+  - at registration, which already gives both;
+  - with the policy off, which stays byte-identical.
+- **Seams.** `formatDelta`'s tail in `src/core/delivery/format.ts`, `src/core/delivery/code-format.ts`, and where the delta gets its code part (`code-deliver.ts`) for the count. The skill's `references/policy.md` (claude-code, codex, pi) names the line.
+- **Owns.** Those files, a new `test/code/delivery/cross-summary.test.ts`, and the line constants other tests compare, in their own commit.
+- **Done when.**
+  - A test recovery with a told complexity failure still over ends with the line; without one, it does not.
+  - Complexity-only news with 3 known failures ends with the test line; with 0, it does not.
+  - Policy off is byte-identical.
+  - Lint, typecheck and `squeal run --all --wait` pass; paste their output.
