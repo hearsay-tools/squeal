@@ -28,6 +28,12 @@ export interface CoverageSummary {
   /** `COVERAGE_PROVIDER_VERSION` the states were judged from; another seeds them again. */
   readonly provider: number;
   readonly files: Readonly<Record<RelativePath, FileSummary>>;
+  /**
+   * The files a complexity recount left whose next judgement is the
+   * recount's, so it records no crossing (review 0.1.297 B2); absent when
+   * none waits.
+   */
+  readonly quiet?: readonly RelativePath[];
 }
 
 /**
