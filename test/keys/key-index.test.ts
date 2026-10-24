@@ -241,6 +241,25 @@ describe("KeyIndex", () => {
     expect(index.keysReadAsOne(index.key(b) ?? "")?.keys).toEqual([bAt("e19")]);
   });
 
+  it("reads an entry stored after 011-158 too both ways, a key read twice once (review 0.1.282, third round)", () => {
+    const table = hashTable({ "src/x.ts": "x1", "test/a.test.ts": "a1", "test/b.test.ts": "b1" });
+    const index = new KeyIndex(table.hashOf);
+    index.setClosure(closureOf(a, ["src/focus.ts", "src/x.ts"]));
+    index.setClosure(closureOf(b, ["src/x.ts"]));
+    // Today's pnpm definition, whose rows were stored before 011-158 and after it.
+    const readAsOne = [{ environment: "pnpm", storedAfter158: true as const }];
+    index.setInstalled(new Map([["unit", "env20"]]), () => "", new Map([["unit", readAsOne]]));
+    const aAt = (absent: boolean) =>
+      keyFromSegments("pnpm", a, [
+        ...(absent ? [absentSegment("src/focus.ts")] : []),
+        encodeSegment("src/x.ts", "x1"),
+        encodeSegment(a.path, "a1"),
+      ]);
+    expect(index.keysReadAsOne(index.key(a) ?? "")?.keys).toEqual([aAt(true), aAt(false)]);
+    const bAt = checkKey("pnpm", closureOf(b, ["src/x.ts"]), (p) => table.hashOf(p) ?? null);
+    expect(index.keysReadAsOne(index.key(b) ?? "")?.keys).toEqual([bAt]);
+  });
+
   it("returns untracked closure paths and keys the test file only once they are hashed", () => {
     const { table, index } = setup();
     const c = ref("test/c.test.ts");
