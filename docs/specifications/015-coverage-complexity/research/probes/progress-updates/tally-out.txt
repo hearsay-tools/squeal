@@ -1,0 +1,45 @@
+== cz1: 0 squeal code calls, 1 complexity lines
+    25.4 LINE STILL FAIL    parseUnifiedDiff
+== cz2: 2 squeal code calls, 1 complexity lines
+     3.7 CALL squeal code    packages/cezar/src/application-update/npm-process.ts; ls packages/cez
+    13.2 CALL squeal code    packages/cezar/src/application-update/npm-process.ts | grep -E 'CC (2
+    17.5 LINE PASS          resolveNpmInvocation
+== cz3: 0 squeal code calls, 0 complexity lines
+== cz4r: 0 squeal code calls, 0 complexity lines
+== cz5r: 3 squeal code calls, 2 complexity lines
+     3.2 CALL squeal code    packages/cezar/src/application-update/discovery.ts
+     9.6 LINE STILL FAIL    discoverInstallation
+    20.7 CALL squeal code    packages/cezar/src/application-update/discovery.ts | grep discoverIns
+    28.3 LINE PASS          discoverInstallation
+    29.8 CALL squeal code    packages/cezar/src/application-update/discovery.ts
+== cz6: 0 squeal code calls, 0 complexity lines
+== sq1: 0 squeal code calls, 2 complexity lines
+    29.5 LINE STILL FAIL    stopCommand
+    38.7 CALL eslint        
+    74.3 LINE PASS          stopCommand
+== sq2: 3 squeal code calls, 2 complexity lines
+     2.9 CALL squeal code    src/cli/run.ts | head -20; grep -n "runCommand" src/cli/run.ts | head
+    12.4 CALL squeal code    src/cli/run.ts | head -4
+    19.4 CALL squeal code    src/cli/run.ts | grep -E "runCommand |usageProblem|reportVerdict|Comp
+    25.8 LINE FAIL          stopCommand
+    25.8 LINE PASS          runCommand
+    27.3 CALL eslint        
+== sq3: 0 squeal code calls, 1 complexity lines
+    27.7 LINE FAIL          retryCommand
+    36.6 CALL eslint        
+== sq4: 0 squeal code calls, 3 complexity lines
+    10.7 LINE STILL FAIL    removeCommand
+    10.7 LINE STILL FAIL    runCommand
+    10.7 LINE STILL FAIL    stopCommand
+== sq5: 3 squeal code calls, 2 complexity lines
+     2.8 CALL squeal code    src/cli/remove.ts
+    10.6 LINE STILL FAIL    removeCommand
+    31.0 CALL squeal code    src/cli/remove.ts | grep "removeCommand  "
+    49.0 LINE PASS          removeCommand
+    50.7 CALL squeal code    src/cli/remove.ts | grep -E "over|CC (2[1-9]|[3-9][0-9])"; npx tsc --
+    50.7 CALL eslint        
+== sq6: 0 squeal code calls, 4 complexity lines
+     5.7 LINE STILL FAIL    namedLine
+     5.7 LINE STILL FAIL    waitForNamed.<withStatusStore>
+     5.7 LINE STILL FAIL    recordFocusedTier.<map>
+     5.7 LINE STILL FAIL    report
