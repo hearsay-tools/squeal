@@ -1,7 +1,9 @@
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readUncountable } from "../../../src/core/code/pass/index.js";
+import { codeStorePath } from "../../../src/core/code/store/index.js";
 import { open } from "../helpers.js";
-import { daemonPass, fakeCounter, flakyCounter, worktree } from "./helpers.js";
+import { daemonPass, fakeCounter, flakyCounter, policyOn, worktree } from "./helpers.js";
 
 /*
  * Row 015-18 (review 0.1.283 S1) in the daemon: a timer nudges the pass
@@ -95,6 +97,74 @@ describe("the daemon retries a failed count (row 015-18)", () => {
     await next.code.close();
     expect(next.reports.map((r) => `${r.mode} ${r.counted}`)).toEqual(["edit 1"]);
     expect(readUncountable(open(tree.commonDir).meta, tree.id)).toEqual(new Map());
+  });
+
+  it("keeps a timer after a retry pass the store's lock aborted, and judges the file once it is free", async () => {
+    const tree = worktree();
+    tree.write(A, "settle 23 B1\n").revise();
+    const counter = flakyCounter(1);
+    const { code, errors, reports } = daemonPass(tree, {
+      counter: () => Promise.resolve(counter),
+      now: Date.now,
+    });
+    code.nudge();
+    await code.idle();
+    // Another connection holds the write lock past the busy timeout: the retry pass throws.
+    const other = new DatabaseSync(codeStorePath(tree.commonDir));
+    other.exec("BEGIN IMMEDIATE");
+    await elapse(code, 5_000);
+    expect(errors.map((e) => e.message)).toEqual([expect.stringMatching(/locked|busy/)]);
+    expect(vi.getTimerCount()).toBe(1);
+    expect(readUncountable(open(tree.commonDir).meta, tree.id).get(A)).toMatchObject({
+      attempts: 1,
+    });
+    other.exec("ROLLBACK");
+    other.close();
+    // A retry overdue at the pass that threw waits 5 s, so a lock that stays makes no tight loop.
+    await elapse(code, 4_999);
+    expect(counter.calls).toHaveLength(1);
+    await elapse(code, 1);
+    await code.close();
+    expect(counter.calls).toHaveLength(2);
+    expect(reports.map((r) => `${r.mode} ${r.counted}`)).toEqual(["first 0", "edit 1"]);
+    expect(open(tree.commonDir).states.list(tree.id)).toMatchObject([
+      { value: 23, outcome: "fail" },
+    ]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("waits 60 s between passes a lock keeps aborting, and moves no attempt", async () => {
+    const tree = worktree();
+    tree.write(A, "settle 23 B1\n").revise();
+    const counter = flakyCounter(1);
+    let reads = 0;
+    const { code } = daemonPass(tree, {
+      counter: () => Promise.resolve(counter),
+      now: Date.now,
+      // Each pass reads the policy once.
+      policy: () => {
+        reads++;
+        return policyOn();
+      },
+    });
+    code.nudge();
+    await code.idle();
+    const other = new DatabaseSync(codeStorePath(tree.commonDir));
+    other.exec("BEGIN IMMEDIATE");
+    const passes = () => reads - 1;
+    await elapse(code, 5_000);
+    await elapse(code, 5_000);
+    expect(passes()).toBe(2);
+    await elapse(code, 59_999);
+    expect(passes()).toBe(2);
+    await elapse(code, 1);
+    expect(passes()).toBe(3);
+    other.exec("ROLLBACK");
+    other.close();
+    await elapse(code, 60_000);
+    await code.close();
+    expect(counter.calls).toHaveLength(2);
+    expect(open(tree.commonDir).states.list(tree.id)).toMatchObject([{ outcome: "fail" }]);
   });
 
   it("clears its timer at close", async () => {
