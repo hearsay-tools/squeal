@@ -23,7 +23,7 @@ No extra run, no project package, no report, nothing written into the worktree. 
 | Key join | `src/core/code/coverage/runtime.ts` `mainStoreResultKey` | The test file's key in `testFileKeys` for this worktree, accepted only when a stored result at that key names this run's ID. |
 | Store | `src/core/code/store/coverage.ts`, `schema` in `store.ts` | Table `coverage(result_key, provider_version, record, recorded_at)`, primary key the first two; `get`, `put` (upsert). |
 | Prune | `src/core/code/store/prune.ts`, `prune-main.ts`, `src/core/daemon/lifecycle.ts` | `pruneCodeStore` drops coverage rows whose result key is not among the main store's keys when `resultKeys` is given; `pruneCodeStoreAfter` runs after the main store's prune, only when the code store exists and the policy is on. |
-| Daemon | `src/core/daemon/daemon.ts` | Creates the writer (`skip` = the provider file), passes `covering` to every Vitest instance, closes the writer after the code store's own close. |
+| Daemon | `src/core/daemon/daemon.ts` | Resolves the provider (`coverageProvider()`) and passes it with the policy to every Vitest instance; with none beside its code, passes no coverage and notes `PROVIDER_MISSING_NOTE` once at start while the policy is on. Makes the writer once the runners opened, where it reads the object format as before (`skip` = the provider file), and closes it after the code store's own close. |
 | Keys | `src/runners/vitest/environment.ts` `canonicalConfig` | With Squeal's provider on, the instance's coverage block is replaced by `{ provider: "squeal", version: COVERAGE_PROVIDER_VERSION }`. |
 | Bundles | `src/harness/build.ts`, `src/harness/opencode/build.ts` | `copyCoverageRuntime` copies `src/core/code/coverage/*.mjs` into `<outdir>/coverage/`, beside the observe recorder. `coverageProvider()` finds it at `../coverage/`, `./coverage/` or `./` from the running code. |
 
@@ -39,6 +39,36 @@ No extra run, no project package, no report, nothing written into the worktree. 
 8. **Functions.** V8 functions that start in the evaluator's wrapper or on code no source line maps to (what the transform added) are left out; two V8 functions at one source start are one entry, hit when either ran. A class field initializer is its own V8 function. A function V8 never compiled (lazy, its module never ran it) has no V8 entry, so it is absent rather than `0`; D9's reader must read absence as "not run" only for lines.
 9. **`.gitignore`** line 3 `coverage/` became `/coverage/` (coordinator agreement): it hid `src/core/code/coverage/` from git and from Biome.
 
+10. **The object format is read where it was.** The daemon reads `git rev-parse --show-object-format` after the runners opened, as before this row. Reading it earlier took the call `test/integration/optimizer-start.test.ts`'s git shim holds until the optimizer bundle exists, and the test failed.
+11. **The provider is the daemon's to find.** `VitestCoverage.provider` carries its path, so the adapter holds no lookup and no missing-provider branch; the validity harness points it at the copy beside its driver.
+
+## Goal 9: the cost on the research's 30-file sample
+
+`bench.mts` runs the 30 files through `createVitestAdapter` in one fresh process, 4 workers, coverage off or on; with it on, it also maps every payload to its record and encodes it, as the writer does, so the CPU holds the mapping. `bench-loop.sh` alternates off and on five times and records the one-minute load before each run and `/usr/bin/time`. Run in a scratch copy of this branch at `/tmp/sq015-11/copy` with `HOME`, `TMPDIR`, `XDG_RUNTIME_DIR` and `XDG_CONFIG_HOME` under `/tmp/sq015-11/home`, 2026-10-24 15:00Z to 15:20Z, 24 CPUs, the host loaded by other coordinators' work, at commit f3b642b4f (before the provider path moved to the daemon; the run path is the same).
+
+| Pair | Load off | Load on | CPU off (s) | CPU on (s) | CPU on/off | Run off (s) | Run on (s) | Mapping (s) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | 48.1 | 30.2 | 171.3 | 181.5 | 1.060 | 44.6 | 44.1 | 1.3 |
+| 1 | 23.2 | 21.3 | 174.5 | 173.6 | 0.995 | 44.1 | 44.1 | 1.3 |
+| 2 | 17.8 | 22.1 | 189.8 | 238.2 | 1.255 | 45.2 | 53.5 | 1.7 |
+| 3 | 39.4 | 36.6 | 195.6 | 205.2 | 1.049 | 47.6 | 46.9 | 1.3 |
+| 4 | 28.5 | 38.1 | 215.6 | 227.2 | 1.054 | 48.8 | 51.3 | 2.0 |
+
+CPU is user + sys of the whole process. Every run completed 30 files with 194 passes and 4 skips. Median CPU ratio 1.054 (+5.4%), four pairs of five at or under +6%; pair 2 is the outlier at +25.5%, its on run 8 s slower in wall time too. The run's wall time (the adapter's `run`, mapping excluded) has median ratio 1.002 (pairs -1.1%, +0.2%, +18.2%, -1.5%, +5.1%). Goal 9 (CPU at most 10% above off, wall time within noise) holds on the median, with one noisy pair at this load. In the daemon the mapping runs after the run, one file per event-loop turn, so it adds CPU but no run time.
+
+Records: 30 per run, 800,239 bytes deflated in all, 26.7 KiB per test file, about three times the research's 9 KiB estimate: Squeal's own test files have wide closures (a record holds every source the file ran).
+
+## The key-format alarm (coordinator agreement, option A)
+
+`test/keys/key-format.test.ts` failed on this row's first head: `VITEST_ADAPTER_VERSION`'s changed lines no case runs, the coverage-on lines of `adapter.ts`, `runners/vitest/coverage.ts` and `core/code/coverage/runtime.ts`. Two `adapter:vitest` cases now run the adapter with coverage on. The last release's class ignores the tenth constructor argument, so its runs are coverage off, and the outputs must agree; no version moves. Edited line ranges, for the 011 coordinator's rebase (all additions, no existing case or line changed):
+
+- `test/keys/validity/case.ts`: `VitestInput.coverage?: true`, 6 lines after `environment?: true`.
+- `test/keys/validity/harness/vitest.ts`: the `node:url` import; `coverageOf(input, scratch)` before `vitestCase`; one argument after `() => exclude` in the constructor call.
+- `test/keys/validity/sides.ts`: `COVERAGE_PROVIDER` before `driverFile`; in `prepare`, 4 lines after the grammar copy that copy `provider.mjs` to `<side>/dist/coverage/` when the tree has it. The driver-run code is untouched.
+- `test/keys/validity/cases/adapter/vitest.ts`: `COVERED` and `UNISOLATED` before `VITEST_RUNS`; two cases at its end. Their files hold no skip and their runs withhold nothing, so the existing mutations in `adapters.test.ts` (a skip read as a pass, a withholding change, a fingerprint change) find them equal.
+
+The first case runs a held file, a focused file, a computed import and a `node:inspector` file, then a cancelled run of the held file, whose payload is dropped. The second runs a project with `isolate: false`.
+
 ## Wave-0 gap
 
 `pruneCodeStore` (wave 0) had no caller: code store counts were never pruned. This row adds the caller in `lifecycle.ts`, after the main store's prune, with the existing age rule for counts and the result-key rule for coverage records (coordinator agreement). Test: `test/code/coverage/prune-main.test.ts`.
@@ -51,7 +81,8 @@ No test writes a `coverage/` folder into the tree. The 013-07 test `own-coverage
 
 - `CodeStore.coverage: CodeCoverageRepo` (new interface, `get`, `put`).
 - `CodePruneOptions.resultKeys?: readonly CheckKey[]`.
-- `VitestAdapterOptions.coverage?: VitestCoverage`; `VitestCoverage` exported from `src/runners/vitest/index.ts`.
+- `VitestAdapterOptions.coverage?: VitestCoverage`; `VitestCoverage` (`enabled`, `provider`, `tempDir`, `collected`) exported from `src/runners/vitest/index.ts`.
+- `VitestInput.coverage?: true` in the validity harness.
 - `EnvironmentContext.coverage?: AbsolutePath`; `canonicalConfig(..., coverage?)`.
 - `SourceStamps.readHash(environment, id)`.
 - New module `src/core/code/coverage/` with `CoverageRecord`, `CoverageSource`, `CoverageRun`, `CoveredFile`, `ExecutedSource`, `V8Script`, `ResultKeyOf`, `COVERAGE_PROVIDER_VERSION`, `RESULT_WAITS_MS`.
@@ -60,5 +91,6 @@ No test writes a `coverage/` folder into the tree. The 013-07 test `own-coverage
 
 - **Copy across key formats.** `copyNewest` (a key format raise) copies results, not coverage records; a record re-made at the next run.
 - **The inspector walk runs per run**, over each test file's closure. Cheap on this repository; a cache by closure revision would remove it.
+- **A missing provider is noted at daemon start only.** A policy reload that turns coverage on in an install without `dist/coverage/` notes nothing until the next start.
 - **Payload size.** A worker's payload holds every script it ran outside `node_modules`, so the files are large (hundreds of KiB) until mapped; they are deleted once mapped or on close.
 - **Proposed D8 amendment text:** "Squeal's provider keys a coverage-on Vitest instance by `{ provider: "squeal", version: COVERAGE_PROVIDER_VERSION }` in place of the coverage block; turning coverage on, and each raise of that version, re-keys Vitest checks once. A record is stored only for a clean, unfocused run's completed test file whose result at its current key names that run. A test file whose closure imports `node:inspector` runs with coverage off, as does each `isolate: false` project, with a note."
