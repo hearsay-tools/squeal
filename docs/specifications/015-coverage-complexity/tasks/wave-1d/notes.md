@@ -45,6 +45,13 @@ Status had the first case right (`Complexity: no file counted yet.`, `files === 
 
 Fixtures that stood for a counted worktree with no cursor now write one with the new `putCursor` helper (`test/code/delivery/helpers.ts`): `delivery.test.ts` `counted`, `hooks.test.ts` `withCode`, `uncountable.test.ts` `failed`. `rig.register` gives the registration's text.
 
-### Not done, for the coordinator
+### The count after it (the coordinator's choice (b), reply to request 9a8dc4c3)
 
-The lessons' B2 proposal also had the first count's end tell each session registered before it `Complexity counted: N functions over 20`. The board row does not ask for it, and the 015-06 contract (`tasks/015-06/notes.md` point 3) writes no recount record for a first pass over inherited counts, which is what a new worktree of the same repository does. So such a session hears the count only from `squeal status` or `squeal code`.
+The lessons' B2 proposal also had the first count's end tell each session registered before it `Complexity counted: N functions over 20`. 015-06's contract (`tasks/015-06/notes.md` point 3) wrote no recount record for a first pass over inherited counts, which is what a new worktree of the same repository does, so such a session never heard the number. The coordinator chose (b): a first pass writes the `first` recount record also when a consumer registered before the cursor existed.
+
+- `registerCode` sets code meta `awaited:<worktreeId>` (`awaitFirstCount`, `pass/cursor.ts`) when it finds no cursor. The pass's last transaction takes it (`takeAwaited`) at a first count and writes the record. The record's only reader, `tellCode`, tells it to each consumer seeded before it, once, and re-seeds; a consumer registered after it has a later seed and gets none.
+- The meta has no prefix listing, so the pass cannot find the consumers' `seeded:` keys; the mark is one key per worktree. Prune keeps meta keys, as it keeps `pass:` and `recount:`.
+- A registration when no code store exists yet writes no mark: that first count counts every blob, so it writes the record already (`counted > 0`).
+- Files outside the brief, by the coordinator's leave: `pass/pass.ts` (the condition, 4 lines) and `pass/cursor.ts` (the two helpers, beside the `pass:` and `recount:` keys). `pass/index.ts` is untouched.
+
+Tests (red first), `first-count.test.ts`: two sessions registered before a first count over another worktree's counts each get `Complexity counted: 1 function over 20; squeal code lists them.` once, and one registered after gets nothing (red: C1 got nothing). A first count over inherited counts that no one registered before writes no record (green before and after; `share.test.ts` keeps the 015-07 contract test).

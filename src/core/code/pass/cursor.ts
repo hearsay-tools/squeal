@@ -46,6 +46,25 @@ export function writeCursor(meta: CodeMetaRepo, worktreeId: WorktreeId, cursor: 
   meta.set(passKey(worktreeId), JSON.stringify(cursor));
 }
 
+/** Code meta key set by a registration before the worktree's cursor exists (015-35). */
+const awaitedKey = (worktreeId: WorktreeId) => `awaited:${worktreeId}`;
+
+/**
+ * Row 015-35: a consumer registered while the worktree's first count had
+ * not ended, so its line said counting; that count writes the recount
+ * record, which tells it the count once.
+ */
+export function awaitFirstCount(meta: CodeMetaRepo, worktreeId: WorktreeId): void {
+  meta.set(awaitedKey(worktreeId), "1");
+}
+
+/** Whether a consumer awaits the first count (`awaitFirstCount`); the mark goes. */
+export function takeAwaited(meta: CodeMetaRepo, worktreeId: WorktreeId): boolean {
+  if (meta.get(awaitedKey(worktreeId)) === null) return false;
+  meta.delete(awaitedKey(worktreeId));
+  return true;
+}
+
 export function readRecount(meta: CodeMetaRepo, worktreeId: WorktreeId): RecountRecord | null {
   const text = meta.get(recountKey(worktreeId));
   return text === null ? null : (JSON.parse(text) as RecountRecord);
