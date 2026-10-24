@@ -8,6 +8,7 @@ Conventions for code, specs and agent work in this repo. Humans own this file an
 - Small modules with one purpose. A file over ~300 lines is a signal to split.
 - Public interfaces between core, runner adapters and harness adapters are typed and documented in `docs/specifications/`. Internals can change freely; interfaces change through a spec update.
 - Errors carry context (check id, revision, path). Never swallow an error silently; either handle it or let it surface.
+- Record a fact where it is known; never infer it later from something that does not prove it (the runner of a check, the producer of a result, the artifact a run tested). A spec that prints a fact names where it is recorded (human, 2026-10-25; spec 016 `research/core-defects.md`: 92 of 415 core-logic defects).
 - Every emitted event and status payload is a versioned, machine-readable shape. Human-readable rendering is a separate layer on top.
 - Tests with Vitest. Test behaviour through public interfaces. TDD for new behaviour: failing test first.
 - No new runtime dependency without a one-line justification in the PR.
