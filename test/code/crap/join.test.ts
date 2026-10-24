@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CoverageSource } from "../../../src/core/code/coverage/index.js";
 import { countFile } from "../../../src/core/code/count/index.js";
+import type { CoverageSource } from "../../../src/core/code/coverage/index.js";
 import { joinCoverage } from "../../../src/core/code/crap/join.js";
 import { crapScore } from "../../../src/core/code/crap/score.js";
 import { SOURCE, TESTED } from "./fixture.js";
