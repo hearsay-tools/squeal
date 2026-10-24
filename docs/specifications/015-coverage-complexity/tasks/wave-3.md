@@ -16,3 +16,16 @@ Use /worker. Shape: slice. Starts from main at 0.1.297. Outcome: a session hears
 - **015-33.** `test/runners/observe/recorder.test.ts` ignores `NODE_V8_COVERAGE`.
 - **Owns.** `src/core/code/crap/**`, `src/core/code/pass/**`, `src/core/delivery/code-*.ts`, `src/harness/shared/stop-code.ts`, `src/cli/code*.ts`, `recorder.test.ts`, and their tests. Leave `src/core/scheduler/**` and `src/harness/shared/stop.ts` alone.
 - **Done when.** Each row's done-when on the board is a test, red first, and each row is its own commit. Write the D6 and D7 amendment text in `tasks/015-40/notes.md`. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
+
+## 015-41: review of candidate 0.1.299 (wave 3)
+
+Use /reviewer. Candidate `cand/0.1.299`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>` at 0.1.298: 015-33, 015-39 and 015-40 (W1 above, one commit each) and one build commit (bundles, version 0.1.299; 0.1.298 is the 011 coordinator's). Write `docs/specifications/015-coverage-complexity/reviews/0.1.299.md` and commit it on your branch.
+
+Read `spec.md` D6, D7 and D9 with their 2026-10-24 amendments (015-39, 015-40), `status.md` (2026-10-24), `tasks/015-39/notes.md`, `tasks/015-40/notes.md` and `reviews/0.1.297-r2.md` N1.
+
+Check, with proof where you can:
+1. **015-40.** `STILL FAIL` for `crap` and `uncovered` once per state, from the complexity pass's edit mark: never for a body git brought, a recount or an edit judged before registration, and still told when records arrive several edits later. `complexity.blocking` and Stop's text; the told line and `squeal code --told` agree; the `crap.threshold` summary comes once, after the re-judgement, with no crossing told. Every complexity-only text and payload is byte-identical to 0.1.298.
+2. **015-39.** N1's two probes; a first count clears `tooBigEdits`; the accepted upgrade limit in `status.md`.
+3. **015-33** passes with `NODE_V8_COVERAGE` set.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
