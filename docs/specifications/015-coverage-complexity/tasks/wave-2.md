@@ -97,3 +97,15 @@ Check, with proof where you can:
 3. **The two together.** Both edit `code-deliver.ts`, `code-format.ts`, `code-status.ts` and `pass/pass.ts` and merged without a conflict: check the combined behaviour, not each alone.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## R6: repair of review 0.1.297 B1 to B4 and S1, the coverage judge (015-12)
+
+Use /worker. Shape: repair. Starts from `int/015f-r1` (0.1.295 with waves 1d and 2b, no build commit). Beside you, worker b822c832 builds 015-38 and repairs B5 in `src/core/code/pass/pass.ts` and `src/core/delivery/code-*.ts`. Outcome: the coverage judge re-judges on every input that changes its meaning, gates on this worktree's own loaders, and credits no function V8 did not run.
+- Read `reviews/0.1.297.md` (B1 to B4 and S1: each has a proof and a one-worker repair), spec D9 with its 2026-10-24 amendments, and `tasks/015-12/notes.md`.
+- **B1.** The judgement's validity holds its policy inputs (`crap.threshold`); a threshold-only change re-judges and stays quiet. Test a raise and a lower with no new result or record.
+- **B2.** The validity holds the counter version; a recount carries a quiet marker until each affected function is judged, records waiting included, and seeds existing functions as well as new names. Test a changed name, a changed CC at one name, a loader ready at the recount and one whose record arrives later.
+- **B3.** Loaders come from this worktree's own closures (a seam from the daemon's reverse index, or a snapshot tied to the worktree and key); a missing or foreign closure is uncertainty, never "no loader". Add a two-worktree regression with A's loader still queued.
+- **B4.** No function hit from a line that ran outside its body; an unresolved join is `unknown` or reads the enclosing zero-hit range. Test unconstructed and constructed-but-uncalled field arrows on Node 22.23.3 (`~/.nvm/versions/node/v22.23.3/bin`) and 24.21.0, keeping the existing cases.
+- **S1.** An expired record deadline while the writer is busy retries at a bounded future time, never at delay zero; keep the writer callback and the 100 ms coalescing.
+- **Owns.** `src/core/code/crap/**`, `src/core/code/pass/index.ts`, `src/core/daemon/daemon.ts` (the B3 seam), `src/core/code/store/**` if B3 needs a read, and `test/code/crap/**`. Leave `pass.ts`, `head.ts` and `src/core/delivery/**` alone.
+- **Done when.** Each proof in the review is a test, red first. Lint, typecheck and `squeal run --all --wait` pass (bundle-drift failures expected); paste the output. Do not build bundles or raise the version.
