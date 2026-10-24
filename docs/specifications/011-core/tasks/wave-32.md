@@ -1,6 +1,6 @@
 # Wave 32
 
-From main after the tests-only w31 landing, beside the review of `cand/w31b` (011-179). One row on the host-load probes; it lands as docs, like 011-138 and 011-155 did. W12, added after W11 landed, is a survey on store copies; it lands as docs.
+From main after the tests-only w31 landing, beside the review of `cand/w31b` (011-179). R2 and W13 were added on the human's choices of 2026-10-24. One row on the host-load probes; it lands as docs, like 011-138 and 011-155 did. W12, added after W11 landed, is a survey on store copies; it lands as docs.
 
 ## W11: 011-177, `waste.mjs` counts a module the cancel cut in its grace as cut, not ended
 
@@ -29,3 +29,33 @@ Seam: the `cancelled` cause `yield` in `research/probes/host-load/waste.mjs`; `t
 Owns `tasks/011-180/` (notes and any probe of your own). Not yours: `src/`, `test/`, `research/`, the other tasks' folders, the board, spec text.
 
 Done when the row's done-when holds. The rule is the human's, so propose, never change. Copy each store with its `-wal` and `-shm`, then its run logs, under `nice -n 10 ionice -c3`; never open a live store or socket; never run a script under `evals/bin/`; no `npm run build`. Record the load beside each copy. Commit.
+
+## R2: 011-181 research, who runs tests outside Squeal on this host and why
+
+Use /researcher. Shape: research. The human started it on 2026-10-24.
+
+Outcome: each direct test run outside Squeal on this host is named with its project, session role and class, so we know how much of the load is friction with Squeal.
+
+Read board row 011-181; `research/host-load/011-139.md` (finding 3) and its probe `research/probes/host-load/011-139/`; `research/host-load/2026-10-24.md` (C1, C2, proposed rows); `research/probes/host-load/README.md`.
+
+Two halves:
+1. **Transcripts, the last 24 h.** Find every test command (Vitest, `npm test`, pytest, node:test) that agent sessions on this host ran: Claude Code under `~/.claude/projects/`, Codex under `~/.codex/sessions/`. Per run: project, session role (coordinator, worker, reviewer, researcher, eval subject, other), time, scope, and its class: (1) required by a repository's process, (2) not covered by Squeal, (3) Squeal had no current answer, (4) Squeal had an answer, friction, (5) load made on purpose. For class 4, quote what Squeal had said.
+2. **Process sampling.** Start a read-only sampler of the process trees outside Squeal (CPU per tree, nice, owner project and session) for 24 h, from `/home/agent/projects/squeal/.ai/cezar/t/04a258b0/samples-011-181/`, with its script copied there and its cwd there, so it holds nothing of your worktree. Use `setsid`, `nice -n 10` and `timeout 24h`. Report what the first hours show, and write in the file how to join the rest.
+
+Owns `research/host-load/011-181.md`, `research/probes/host-load/011-181/`. Not yours: `src/`, `test/`, the other research and probes, the board, spec text.
+
+Rules: the repository is public. Quote at most a test command line, with any `NAME=value` removed; never copy other transcript text, an environment value or a credential. Read transcripts and `/proc` only. Never run an agent CLI, never write under `HOME`, never open a live store or socket, never run a script under `evals/bin/`. Done when the row's done-when holds for the transcript half and the sampled hours so far; commit.
+
+## W13: 011-182, on a busy host a backlog tier takes permits only below half the slots
+
+Use /worker. Shape: slice. The human chose "backlog only" on 2026-10-24.
+
+Outcome: on a host busy with other work, a backlog tier grows only while the grants are below half the slots; a checkpoint tier, an edit's tier, and a host where Squeal is the load are unchanged.
+
+Read board row 011-182; 011 C10 Size as amended 2026-10-24; `research/host-load/011-139.md` findings 3 and 5 and recommendation 2.
+
+Seam: `gatedPermits` (`src/core/capacity/cores.ts`) and `#gated` (`src/core/capacity/pool.ts:398`). The pool does not know a tier's kind today: it reaches the pool through `src/core/scheduler/capacity.ts:57` and `:102` and `tiers.ts:240`. First edit: give `gatedPermits` the host's busy cores, or `null`, and start its CPU sum at the larger of that and the marks' CPU. Read the busy cores beside `TreeCpu` over the same window, `%nice` included. Pass them only for a backlog acquisition or offer.
+
+Owns `src/core/capacity/`, `src/core/scheduler/capacity.ts`, the kind where `tiers.ts` passes it, their tests, `tasks/011-182/`. Not yours: `test/keys/validity/` (011-179, in review), `research/`, the board, spec text (propose wording in your notes), bundles, version. If the key-format alarm asks for a raise, stop and send me a request. No `npm run build`.
+
+Done when the row's done-when holds; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
