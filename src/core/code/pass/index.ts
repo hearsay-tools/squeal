@@ -7,7 +7,7 @@ import {
   isCodeStoreOpenFailure,
   openCodeStore,
 } from "../store/index.js";
-import { nextRetry, readUncountable, restartRetries } from "./failed.js";
+import { nextRetry, RETRY_AFTER_MS, readUncountable, restartRetries } from "./failed.js";
 import { runPass } from "./pass.js";
 import type { Counter, PassReport, PassSource } from "./types.js";
 
@@ -63,7 +63,10 @@ export interface CodePass {
  * can be made again (notes 12). A newer one is left to the daemon that
  * wrote it. A failed count is tried again when its retry is due, by a
  * timer that nudges; opening the store gives each one a fresh budget (row
- * 015-18). A counter that did not load is loaded again at the next pass.
+ * 015-18). A pass that throws, as on a busy store, keeps the timer, and a
+ * retry overdue then waits 5 s, then 60 s at each pass that throws again
+ * (review 0.1.293 B2). A counter that did not load is loaded again at the
+ * next pass.
  */
 export function createCodePass(options: CodePassOptions): CodePass {
   const now = options.now ?? Date.now;
@@ -79,6 +82,8 @@ export function createCodePass(options: CodePassOptions): CodePass {
   let timer: NodeJS.Timeout | null = null;
   /** The failed counts of the open store have had this daemon's fresh budget. */
   let budgeted = false;
+  /** Passes in a row that threw. */
+  let aborted = 0;
 
   const shut = () => {
     store?.close();
@@ -136,9 +141,19 @@ export function createCodePass(options: CodePassOptions): CodePass {
     });
     wasOff = false;
     if (report !== null) options.onPass?.(report);
-    retryLater(nextRetry(readUncountable(opened.meta, options.worktreeId)));
   };
-  /** One timer at the earliest failed count's retry; a nudge sooner reschedules it. */
+  /**
+   * The earliest failed count's retry; after `aborted` passes that threw,
+   * not before a backoff, so a store that stays busy makes no tight loop.
+   */
+  const nextWake = (): number | null => {
+    if (store === null) return null;
+    const at = nextRetry(readUncountable(store.meta, options.worktreeId));
+    if (at === null || aborted === 0) return at;
+    const wait = RETRY_AFTER_MS[Math.min(aborted, RETRY_AFTER_MS.length) - 1] ?? 0;
+    return Math.max(at, now() + wait);
+  };
+  /** One timer at `at`; a nudge sooner reschedules it. */
   const retryLater = (at: number | null) => {
     if (timer !== null) clearTimeout(timer);
     timer = null;
@@ -158,11 +173,18 @@ export function createCodePass(options: CodePassOptions): CodePass {
       try {
         await once();
         lastError = null;
+        aborted = 0;
       } catch (error) {
         // A failure that repeats at every pass, such as a counter that cannot load, is told once.
         const failure = error instanceof Error ? error : new Error(String(error));
         if (failure.message !== lastError) options.onError(failure);
         lastError = failure.message;
+        aborted++;
+      }
+      try {
+        retryLater(nextWake());
+      } catch (error) {
+        options.onError(error instanceof Error ? error : new Error(String(error)));
       }
     } while (again && !closed);
     running = null;
