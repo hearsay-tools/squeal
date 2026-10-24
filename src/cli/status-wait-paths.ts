@@ -53,7 +53,6 @@ import {
   type FocusNamed,
   type FocusReply,
   focusNamed,
-  ownPathFiles,
   type PromoteNamed,
   promoteNamed,
 } from "./status-wait-promote.js";
@@ -502,7 +501,8 @@ export async function waitForNamed(
 
 /**
  * The selected test files named by their own paths, as the worktree names
- * them: the ones a wait promotes and focuses (spec 011 C15).
+ * them: the ones a wait promotes and focuses (spec 011 C15). A source path
+ * selects the files whose closure holds it, which are not promoted.
  */
 export function ownNamedFiles(
   root: AbsolutePath,
@@ -510,10 +510,8 @@ export function ownNamedFiles(
   paths: readonly string[],
   selection: NamedSelection,
 ): TestFileRef[] {
-  return ownPathFiles(
-    selection.files,
-    paths.map((p) => worktreePath(root, cwd, p)),
-  );
+  const named = new Set(paths.map((p) => worktreePath(root, cwd, p)));
+  return selection.files.filter((file) => named.has(file.path));
 }
 
 /**
