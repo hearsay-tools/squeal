@@ -86,6 +86,10 @@ export function writeSummary(
   meta.set(summaryKey(worktreeId), JSON.stringify(summary));
 }
 
+export function deleteSummary(meta: CodeMetaRepo, worktreeId: WorktreeId): void {
+  meta.delete(summaryKey(worktreeId));
+}
+
 export function readEvidence(
   meta: CodeMetaRepo,
   worktreeId: WorktreeId,
