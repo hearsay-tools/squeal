@@ -8,7 +8,11 @@ export interface MappedScript {
   readonly lines: ReadonlySet<number>;
   /** Of those, the lines whose code ran. */
   readonly covered: ReadonlySet<number>;
-  /** By `"line:column"` of its start: `[startLine, startColumn, endLine, endColumn, hit]`. */
+  /**
+   * By its mapped span and hit: `[startLine, startColumn, endLine, endColumn,
+   * hit]`. Two V8 functions at one span with different hits stay two, as a
+   * class's field initializer and its only arrow field do on Node 24.
+   */
   readonly functions: ReadonlyMap<string, [number, number, number, number, 0 | 1]>;
 }
 
@@ -19,7 +23,8 @@ export interface MappedScript {
  * V8 range at it ran. Each V8
  * function inside the module's code maps by its start and end; one that
  * starts in the evaluator's wrapper, or on code no source line maps to
- * (what the transform added), is left out.
+ * (what the transform added), is left out. Functions that map to one span
+ * with one hit are one entry (review 0.1.297 B4).
  */
 export function mapScript(script: V8Script, source: ExecutedSource): MappedScript {
   const code = source.code;
@@ -49,11 +54,15 @@ export function mapScript(script: V8Script, source: ExecutedSource): MappedScrip
     const begin = positions.at(from[0], from[1]);
     const end = positions.at(to[0], to[1]);
     if (begin === null || end === null) continue;
-    const key = `${begin[0] + 1}:${begin[1]}`;
     const hit: 0 | 1 = own.count > 0 ? 1 : 0;
-    const known = functions.get(key);
-    if (known === undefined) functions.set(key, [begin[0] + 1, begin[1], end[0] + 1, end[1], hit]);
-    else if (hit === 1) known[4] = 1;
+    const entry: [number, number, number, number, 0 | 1] = [
+      begin[0] + 1,
+      begin[1],
+      end[0] + 1,
+      end[1],
+      hit,
+    ];
+    functions.set(entry.join(":"), entry);
   }
   return { lines, covered, functions };
 }

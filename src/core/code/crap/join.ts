@@ -138,19 +138,29 @@ interface JoinRecord {
   readonly joined: readonly (V8Entry | null)[];
 }
 
-/** The smallest record function that holds `span`, other than its own. */
+const sameSpan = (a: V8Entry, b: V8Entry) =>
+  a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+
+/**
+ * The smallest record function that holds `span`, other than its own; of
+ * two at that span, the one that ran.
+ */
 function enclosing(span: Span, entries: readonly V8Entry[]): V8Entry | null {
   let inner: V8Entry | null = null;
   for (const e of entries) {
     if (!contains(entrySpan(e), span)) continue;
-    if (inner === null || contains(entrySpan(inner), entrySpan(e))) inner = e;
+    const smaller = inner === null || contains(entrySpan(inner), entrySpan(e));
+    if (smaller && (inner === null || !sameSpan(inner, e) || e[4] === 1)) inner = e;
   }
   return inner;
 }
 
 /**
  * Whether the record's test file ran the function. A V8 function joined
- * tells it. With none (V8 never compiled it, or the join found none): not
+ * tells it, unless another at its span has the other hit: two functions
+ * map there, as a class's field initializer and its only arrow field do,
+ * and either may be this one. With none (V8 never compiled it, or the join
+ * found none): not
  * when the function that holds it never ran; else its own lines strictly
  * inside its body tell it, since only its own code is on them; with no such
  * line, `null`. A line it starts or ends on can run outside it, as a
@@ -158,7 +168,10 @@ function enclosing(span: Span, entries: readonly V8Entry[]): V8Entry | null {
  */
 function ranIn(span: Span, body: readonly number[], record: JoinRecord, i: number): boolean | null {
   const entry = record.joined[i];
-  if (entry !== null && entry !== undefined) return entry[4] === 1;
+  if (entry !== null && entry !== undefined) {
+    if (record.entries.some((e) => sameSpan(e, entry) && e[4] !== entry[4])) return null;
+    return entry[4] === 1;
+  }
   if (enclosing(span, record.entries)?.[4] === 0) return false;
   const executable = body.filter((l) => has(record.lines, l));
   if (executable.length === 0) return null;
