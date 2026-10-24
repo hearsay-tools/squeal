@@ -64,6 +64,12 @@ export interface RecountRecord {
   readonly at: number;
   readonly reason: RecountReason;
   readonly threshold: number;
+  /**
+   * Review 0.1.297 B5: the files over `complexity.maxFileBytes` that an
+   * edit in the recount's revisions changed. The recount writes their rows
+   * at its revision as it writes every other, but D6 tells their edit.
+   */
+  readonly tooBigEdits?: readonly RelativePath[];
 }
 
 /** What one pass did, for the daemon's log and 015-08. */
