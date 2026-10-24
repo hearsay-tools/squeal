@@ -3,6 +3,7 @@
 export { coverageOf, type FileCondition, type FunctionCoverage, fileCondition } from "./file.js";
 export { type JoinedFunction, joinCoverage } from "./join.js";
 export {
+  BUSY_RECHECK_MS,
   type Loader,
   type LoaderCondition,
   type LoaderInputs,
