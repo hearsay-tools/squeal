@@ -12,7 +12,7 @@ import {
 } from "./states.js";
 import type { CodeViewRepo } from "./types.js";
 
-const TOLD = ["count", "full"] as const satisfies readonly CodeTold[];
+const TOLD = ["count", "full", "still"] as const satisfies readonly CodeTold[];
 const WHERE_CONSUMER = "worktree_id = ? AND session_id = ? AND agent_id = ?";
 
 function consumerParams(c: Consumer) {
