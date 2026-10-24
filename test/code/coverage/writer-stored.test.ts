@@ -32,7 +32,9 @@ function payloadFile(test: string): CoveredFile {
   const ranges = [{ startOffset: 0, endOffset: text.length, count: 1 }];
   writeFileSync(
     payload,
-    JSON.stringify({ result: [{ url: `file://${path}`, functions: [{ functionName: "", ranges }] }] }),
+    JSON.stringify({
+      result: [{ url: `file://${path}`, functions: [{ functionName: "", ranges }] }],
+    }),
   );
   const sha1 = createHash("sha1").update(text).digest("hex");
   return {
