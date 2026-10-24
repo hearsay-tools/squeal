@@ -8,7 +8,8 @@ import type { CoverageSource } from "../coverage/types.js";
  * 0-based columns and an inclusive end, mapped back through the transform's
  * source map, which moves an arrow's start to the name before it. So a V8
  * function joins the counter's function that ends where it ends, on the
- * same line or the one after its start.
+ * same line or the one after its start. A function V8 never compiled has
+ * no V8 function: it ran only when its own body says so.
  */
 
 /** What the join reads of a counted function. */
@@ -27,8 +28,11 @@ export interface JoinedFunction {
   readonly lines: number;
   /** Of those, the lines that ran in a test file that ran the function. */
   readonly covered: number;
-  /** A test file ran it in its own process. */
-  readonly ran: boolean;
+  /**
+   * A test file ran it in its own process; `null` when none did and a
+   * record cannot tell whether it ran (review 0.1.297 B4).
+   */
+  readonly ran: boolean | null;
   /** The indices of the sources (test files) that ran it. */
   readonly runBy: readonly number[];
   /** The share of its own lines that ran, 0 to 1; 0 when it never ran. */
@@ -81,18 +85,30 @@ function ownLines(spans: readonly Span[]): number[][] {
   });
 }
 
+const entrySpan = ([startLine, startColumn, endLine, endColumn]: V8Entry): Span => ({
+  startLine,
+  startColumn,
+  endLine,
+  endColumn,
+});
+
 /**
  * The record's function each counted function joins, one to one: same end
  * line, an end column within `END_SLACK`, a start on the same line or the
- * one before; the nearest end first, then the nearest start.
+ * one before; the nearest end first, then the nearest start. An entry that
+ * holds a counted function outside the one it would join is another
+ * function's, as a class's field initializer is (review 0.1.297 B4).
  */
 function matchEntries(spans: readonly Span[], entries: readonly V8Entry[]): (V8Entry | null)[] {
   const pairs: { fn: number; entry: number; score: readonly number[] }[] = [];
   spans.forEach((span, fn) => {
-    entries.forEach(([startLine, startColumn, endLine, endColumn], entry) => {
+    entries.forEach((e, entry) => {
+      const [startLine, startColumn, endLine, endColumn] = e;
       const endOff = Math.abs(endColumn - span.endColumn);
       const lineOff = span.startLine - startLine;
       if (endLine !== span.endLine || endOff > END_SLACK || lineOff < 0 || lineOff > 1) return;
+      const outer = entrySpan(e);
+      if (spans.some((other) => contains(outer, other) && !contains(span, other))) return;
       pairs.push({ fn, entry, score: [endOff, lineOff, Math.abs(startColumn - span.startColumn)] });
     });
   });
@@ -115,12 +131,45 @@ function bits(text: string): Uint8Array {
 const has = (set: Uint8Array, line: number) =>
   ((set[(line - 1) >> 3] ?? 0) & (1 << ((line - 1) & 7))) !== 0;
 
+interface JoinRecord {
+  readonly lines: Uint8Array;
+  readonly covered: Uint8Array;
+  readonly entries: readonly V8Entry[];
+  readonly joined: readonly (V8Entry | null)[];
+}
+
+/** The smallest record function that holds `span`, other than its own. */
+function enclosing(span: Span, entries: readonly V8Entry[]): V8Entry | null {
+  let inner: V8Entry | null = null;
+  for (const e of entries) {
+    if (!contains(entrySpan(e), span)) continue;
+    if (inner === null || contains(entrySpan(inner), entrySpan(e))) inner = e;
+  }
+  return inner;
+}
+
+/**
+ * Whether the record's test file ran the function. A V8 function joined
+ * tells it. With none (V8 never compiled it, or the join found none): not
+ * when the function that holds it never ran; else its own lines strictly
+ * inside its body tell it, since only its own code is on them; with no such
+ * line, `null`. A line it starts or ends on can run outside it, as a
+ * class's line does for its field arrows (review 0.1.297 B4).
+ */
+function ranIn(span: Span, body: readonly number[], record: JoinRecord, i: number): boolean | null {
+  const entry = record.joined[i];
+  if (entry !== null && entry !== undefined) return entry[4] === 1;
+  if (enclosing(span, record.entries)?.[4] === 0) return false;
+  const executable = body.filter((l) => has(record.lines, l));
+  if (executable.length === 0) return null;
+  return executable.some((l) => has(record.covered, l));
+}
+
 /**
  * Spec 015 D9: each function's coverage from `sources`, the entries for
  * this source at its current blob of every loader's record, in the
- * loaders' order. A function a record has a V8 function for ran in that
- * test file when it was called. One with none (V8 never compiled it) ran
- * when one of its own lines inside its body ran, else one of its own lines.
+ * loaders' order (`ranIn` for each record). It ran when one record ran it;
+ * else it is `null` when one record cannot tell.
  */
 export function joinCoverage(
   functions: readonly JoinFunction[],
@@ -128,32 +177,23 @@ export function joinCoverage(
 ): JoinedFunction[] {
   const spans = functions.map(spanOf);
   const own = ownLines(spans);
-  const records = sources.map((s) => ({
+  const records: JoinRecord[] = sources.map((s) => ({
     lines: bits(s.lines),
     covered: bits(s.covered),
+    entries: s.functions,
     joined: matchEntries(spans, s.functions),
   }));
   return spans.map((span, i) => {
     const lines = own[i] ?? [];
     const body = lines.filter((l) => l > span.startLine && l < span.endLine);
-    const runBy: number[] = [];
-    records.forEach((record, r) => {
-      const entry = record.joined[i];
-      const executable = (body.some((l) => has(record.lines, l)) ? body : lines).filter((l) =>
-        has(record.lines, l),
-      );
-      const ran =
-        entry === null || entry === undefined
-          ? executable.some((l) => has(record.covered, l))
-          : entry[4] === 1;
-      if (ran) runBy.push(r);
-    });
+    const said = records.map((record) => ranIn(span, body, record, i));
+    const runBy = said.flatMap((ran, r) => (ran === true ? [r] : []));
     const executable = lines.filter((l) => records.some((r) => has(r.lines, l)));
     const covered = executable.filter((l) =>
       runBy.some((r) => has(records[r]?.covered ?? new Uint8Array(), l)),
     ).length;
-    const ran = runBy.length > 0;
-    const coverage = !ran ? 0 : executable.length === 0 ? 1 : covered / executable.length;
-    return { lines: executable.length, covered: ran ? covered : 0, ran, runBy, coverage };
+    const ran = runBy.length > 0 ? true : said.includes(null) ? null : false;
+    const coverage = ran !== true ? 0 : executable.length === 0 ? 1 : covered / executable.length;
+    return { lines: executable.length, covered: ran === true ? covered : 0, ran, runBy, coverage };
   });
 }

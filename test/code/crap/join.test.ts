@@ -53,6 +53,9 @@ describe("joinCoverage", () => {
     // `add`'s body line 2 ran; `never`'s body line 36 did not.
     expect(by.add).toMatchObject({ ran: true });
     expect(by.never).toMatchObject({ ran: false, coverage: 0 });
+    // Review 0.1.297 B4: `twice` has no line of its own inside its body, and line 5 runs
+    // outside it, so the record cannot tell.
+    expect(by.twice).toMatchObject({ ran: null, coverage: 0, runBy: [] });
   });
 
   it("has nothing ran with no loader", async () => {
