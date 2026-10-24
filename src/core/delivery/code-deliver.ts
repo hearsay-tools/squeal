@@ -178,10 +178,12 @@ export function registerCode(
 
 /**
  * Lessons round 1, P5: what the code store keeps of consumers that left.
- * The views and told marks of `gone`, which just unregistered, go, and in
+ * The views and seed marks of `gone`, which just unregistered, go, and in
  * `worktrees` the views of every consumer not in `registered` (011 C7's
- * departed ones); views of ended sessions otherwise stay for good. Nothing
- * while the policy is off or the store cannot be read.
+ * departed ones); views of ended sessions otherwise stay for good. The
+ * files too big to count each was told of stay, so the session resumed is
+ * not told them again (row 015-36). Nothing while the policy is off or the
+ * store cannot be read.
  */
 export function dropCode(
   source: CodeSource | undefined,
@@ -190,10 +192,7 @@ export function dropCode(
 ): void {
   withCode(source, ({ store }) =>
     store.transaction(() => {
-      for (const consumer of gone) {
-        forget(store, seededKey(consumer));
-        forget(store, tooBigToldKey(consumer));
-      }
+      for (const consumer of gone) forget(store, seededKey(consumer));
       store.views.retain(worktrees, registered);
     }),
   );
@@ -208,11 +207,13 @@ function toldTooBig(store: CodeStore, consumer: Consumer): ReadonlySet<string> {
 /**
  * Spec 015 D6: the files too big to count that changed in `since`'s
  * revisions, the consumer's own, and that it was not told of; recorded as told.
+ * Row 015-36: a first count or a recount writes every files row at its
+ * revision (`recount`), which is no edit.
  */
 function newTooBig(
   store: CodeStore,
   consumer: Consumer,
-  since: CodeBound | null,
+  { since, recount }: { since: CodeBound | null; recount: CodeRecount | null },
   limit: number,
   write: boolean,
 ): CodeTooBig[] {
@@ -220,7 +221,13 @@ function newTooBig(
   const told = toldTooBig(store, consumer);
   const files = store.files
     .list(consumer.worktreeId)
-    .filter((f) => isTooBig(f) && isOwn(since, f.revision) && !told.has(f.path));
+    .filter(
+      (f) =>
+        isTooBig(f) &&
+        isOwn(since, f.revision) &&
+        f.revision !== recount?.revision &&
+        !told.has(f.path),
+    );
   if (files.length === 0) return [];
   if (write) writeJson(store, tooBigToldKey(consumer), [...told, ...files.map((f) => f.path)]);
   return files.map((f) => ({ path: f.path, size: f.size, limit }));
@@ -278,9 +285,9 @@ function codeStep(
   const seeded = readJson(store, seededKey(consumer));
   const seededAt = typeof seeded === "number" ? seeded : 0;
   const failing = failingIn(store, worktreeId);
-  const tooBig = newTooBig(store, consumer, since, limit, write);
-  const big = tooBig.length === 0 ? {} : { tooBig };
   const recount = readRecount(store, worktreeId);
+  const tooBig = newTooBig(store, consumer, { since, recount }, limit, write);
+  const big = tooBig.length === 0 ? {} : { tooBig };
   if (recount !== null && recount.at > seededAt) {
     if (write) seed(store, consumer, failing, at);
     const news: CodeNews = {

@@ -55,3 +55,25 @@ The lessons' B2 proposal also had the first count's end tell each session regist
 - Files outside the brief, by the coordinator's leave: `pass/pass.ts` (the condition, 4 lines) and `pass/cursor.ts` (the two helpers, beside the `pass:` and `recount:` keys). `pass/index.ts` is untouched.
 
 Tests (red first), `first-count.test.ts`: two sessions registered before a first count over another worktree's counts each get `Complexity counted: 1 function over 20; squeal code lists them.` once, and one registered after gets nothing (red: C1 got nothing). A first count over inherited counts that no one registered before writes no record (green before and after; `share.test.ts` keeps the 015-07 contract test).
+
+## 015-36: a too-big line with no edit
+
+### Cause
+
+The brief points at `code-delta.ts`; the line comes from `newTooBig` in `src/core/delivery/code-deliver.ts`. It told a too-big file whose files row's `revision` was the consumer's own. That `revision` is when the pass last wrote the row, not when the bytes changed: a first count and a recount plan every file and write every row at their revision, so cezar's `run.ts` read as changed at each (B3's first count and 6 recounts). SessionEnd forgot the told set (`dropCode`), and a resumed session's bound keeps its revisions from before the pause, so a file it was told of, or one a recount in its time rewrote, was told again (B3's 2 resumes).
+
+### Change
+
+- `newTooBig` leaves out a row at the revision of the worktree's latest recount record. A first count writes that record whenever a session registered before it (015-35 (b)) or it counted a blob, so every first count a session can see has one. An edit pass writes only the rows of its work set, so an edited file's row is at a later revision.
+- `dropCode` keeps the `tooBigTold:<consumer>` mark at SessionEnd. The key names the session and agent, so only the same session resumed reads it. The seed mark and the views still go.
+
+### Tests (red first)
+
+`test/code/delivery/too-big.test.ts` on the pass rig, with `maxFileBytes` 64: a first count that ends after the registration, a recount by a new counter, a resumed session told of the file before its SessionEnd (and an edit after the resume), and a resumed session after a recount while it was away. All 4 were red on the code before; the recount and resume tests then edit the file and get one line, and a later edit none. `delivery.test.ts`'s "tells a file too big to count once, after an edit changed it" stays green. The rig gained `pass(counter)`, `end` (SessionEnd: unregister and `dropCode`) and `delivered`.
+
+### Limits, accepted
+
+- An edit in the same pass as a recount is quiet, as a recount is for functions.
+- A too-big test file is in every edit pass's work set (counted files a runner lists), so its row moves with no edit and it is told once in a session. A test file over 512 KiB is rare.
+- A move of `HEAD` that changes a too-big file is still told as an edit (015-38's choice covers pulls).
+- A `tooBigTold:` key of a session that ended stays in the code store, as `pass:` and `recount:` keys of a gone worktree do: one small key per session that was told a too-big file.
