@@ -96,3 +96,12 @@ export function restartRetries(meta: CodeMetaRepo, worktreeId: WorktreeId, now: 
   for (const [path, f] of failed) failed.set(path, { ...f, attempts: 0, retryAt: now });
   writeUncountable(meta, worktreeId, failed);
 }
+
+/** `file`'s failure when its count at this blob failed `COUNT_ATTEMPTS` times; else `null`. */
+export function spentFailure(
+  failed: FailedCounts,
+  file: { readonly path: RelativePath; readonly blob: FileHash },
+): FailedCount | null {
+  const f = failed.get(file.path);
+  return f !== undefined && f.blob === file.blob && f.retryAt === null ? f : null;
+}
