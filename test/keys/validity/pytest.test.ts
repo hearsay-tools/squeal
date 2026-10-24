@@ -19,6 +19,7 @@ const { compare, release } = comparisons();
 const RUNTIME = "src/runners/pytest/runtime/squeal_pytest.py";
 const RUN = "src/runners/pytest/run/run.ts";
 const VERSION = "src/runners/pytest/version.ts";
+const REPORT = "src/runners/pytest/run/report.ts";
 
 /** The uv Pythons the kind runs on, or the test skipped; on CI an absent one fails it. */
 function requirePythons(ctx: TestContext): void {
@@ -29,6 +30,8 @@ const fired = (result: Awaited<ReturnType<typeof compare>>) =>
   result.alarms.filter((a) => a.fired).map((a) => a.component.name);
 
 const OUTCOMES = only("adapter:pytest").filter((c) => c.name.startsWith("outcomes"));
+
+const DEADLINE = only("adapter:pytest").filter((c) => c.name.startsWith("a batch past"));
 
 describe("the pytest adapter's comparison (row 011-48)", () => {
   it(
@@ -47,7 +50,32 @@ describe("the pytest adapter's comparison (row 011-48)", () => {
       expect(fired(result)).toEqual(["pytest"]);
       expect(result.cases.filter((c) => c.baseline.error ?? c.candidate.error)).toEqual([]);
       expect(result.cases.filter((c) => !c.keysEqual || !c.outputsEqual)).toEqual([]);
+      // Row 011-142: the deadline case is equal because both trees stored test_first before the kill, not because both lost it.
+      const killed = result.cases.find((c) => c.name === DEADLINE[0]?.name);
+      const kept = {
+        runs: [{ completed: ["validity:tests/test_first.py"], results: [{ outcome: "pass" }] }],
+      };
+      expect([killed?.baseline.outputs, killed?.candidate.outputs]).toMatchObject([kept, kept]);
       expect(failures(result, release())).toEqual([]);
+    },
+  );
+
+  it(
+    "names a candidate that completes the file the deadline's kill cut (row 011-142)",
+    SLOW,
+    async (ctx) => {
+      requirePythons(ctx);
+      // A file read as complete once its items set up: test_hang, killed in its call.
+      const result = await compare(
+        edited(REPORT, '?.some((p) => p.when === "teardown")', '?.some((p) => p.when === "setup")'),
+        DEADLINE,
+      );
+      expect(fired(result)).toEqual(["pytest"]);
+      expect(result.cases.map((c) => c.reported)).toEqual([
+        [
+          "run 1, validity:tests/test_hang.py: absent at the last release, completed at the candidate (the candidate stores more)",
+        ],
+      ]);
     },
   );
 
