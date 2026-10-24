@@ -26,7 +26,7 @@ export function loadAllows(load: HostLoad): boolean {
 
 `src/core/scheduler/retries.ts` `takeRetries` claims a due request only when `[...due.values()].every((d) => d.now) || loadAllows(loadOf(context))`. It runs in every reconciliation pass (the comment: "looked at in every reconciliation pass until then, however long that takes"). `src/core/retry/records.ts` has no expiry for a pending request: it ends by a run, by `--cancel`, by a key change (lapse), or by falling out of the newest 1,024 rows (`RETRIES_KEPT`). The load per CPU stored with the failing run (`failed-run-loads`, `recordRunLoad`) is read only for the text of inherited and recorded failures (C5), never by the gate.
 
-**F2. The spec asks for this behaviour** (read in spec, `spec.md` C4, line 176): "`squeal retry <file>... --reason load` queues one run of each file for when the one-minute load average is below the host's CPU count, waiting as long as that takes", and "A request clears nothing: the FAIL stays counted in `Known failures` until a retry's run passes". It also says Squeal never retries such a failure "alone and never on a timer" (decided by the human, 2026-10-14). C6 (line 205): `Known failures: N` counts failures whose validity is `current`; and "a same-key forced re-run or retry of a current failure leaves it current until its run stores a result". The probe shows the state `current` while the request waits. So the issue reports specified behaviour; any change is a spec amendment, not a defect fix.
+**F2. The spec asks for this behaviour** (read in spec, `spec.md` C5, line 176): "`squeal retry <file>... --reason load` queues one run of each file for when the one-minute load average is below the host's CPU count, waiting as long as that takes", and "A request clears nothing: the FAIL stays counted in `Known failures` until a retry's run passes". It also says Squeal never retries such a failure "alone and never on a timer" (decided by the human, 2026-10-14). C6 (line 205): `Known failures: N` counts failures whose validity is `current`; and "a same-key forced re-run or retry of a current failure leaves it current until its run stores a result". The probe shows the state `current` while the request waits. So the issue reports specified behaviour; any change is a spec amendment, not a defect fix.
 
 **F3. The CLI reply matches the issue's text** (read in source code; pinned by `test/cli/retry.test.ts`). `src/cli/retry.ts:236`: "runs once more when the one-minute load average falls below the CPU count, however long that takes (load average N on M CPUs now)". The probe's `waitsText("load", {83.92, 24})` gives the status wording: "waits for the one-minute load average to fall below the CPU count (load average 83.92 on 24 CPUs now)". No status text says the gate cannot open soon, and none names a manual check.
 
@@ -60,13 +60,13 @@ Case 1 sets the failure at 104.73, removes the marker (a run would now pass), as
 
 ## Recommendation for Squeal
 
-The issue is reproduced as specified behaviour (F1, F2): on a host whose one-minute load never falls below the CPU count, a `load` retry never runs and its FAIL stays counted, with no end and no hint. The decision is the human's, as a C4 amendment, because C4 forbids a timer-driven retry. The options the issue names, each with its tradeoff:
+The issue is reproduced as specified behaviour (F1, F2): on a host whose one-minute load never falls below the CPU count, a `load` retry never runs and its FAIL stays counted, with no end and no hint. The decision is the human's, as a C5 amendment, because C5 forbids a timer-driven retry. The options the issue names, each with its tradeoff:
 
 1. A gate relative to the load stored with the failure (`failed-run-loads` already holds it per run). Opens on a host that stays busy but calmer. A host that stays as loaded as at the failure still never opens.
 2. A bounded wait, then a status line that says the retry cannot run soon and names the hand check. Changes text only; the FAIL still stays counted.
-3. Run a load retry alone, with one worker, after a bound. Gives a verdict on any host; a timeout that comes from the load itself can fail again, which then ends the request `failed` (probe case 2 shows that path).
+3. Run a load retry alone, with one worker, after a bound. Can attempt a verdict while the host stays busy; a timeout that comes from the load itself can fail again, which then ends the request `failed` (probe case 2 shows that path).
 
-Option 2 is the smallest change and fits C4's "never on a timer" for runs. Options 1 and 3 change when Squeal runs work and touch C10's capacity rules.
+Option 2 is the smallest change and fits C5's "never on a timer" for runs. Options 1 and 3 change when Squeal runs work and touch C10's capacity rules.
 
 ## Open questions
 
@@ -76,7 +76,7 @@ Option 2 is the smallest change and fits C4's "never on a timer" for runs. Optio
 ## Sources
 
 - Issue: `gh issue view 92 -R hearsay-tools/squeal` (opened 2026-10-24 11:48 UTC, reported on 0.1.291).
-- Spec: `docs/specifications/011-core/spec.md` C4 (line 176, retry; line 186, gh-36 amendment), C5 (line 179, recorded load facts, gh-52), C6 (line 205, `Known failures`), C10 (line 308, slots), C15 (line 402, next-step commands). `status.md` 2026-10-23 entry for 011-67 (`loadAllows` on one CPU's share).
+- Spec: `docs/specifications/011-core/spec.md` C5 (line 176, retry; line 186, gh-36 amendment; line 179, recorded load facts, gh-52), C6 (line 205, `Known failures`), C10 (line 308, slots), C15 (line 402, next-step commands). `status.md` 2026-10-23 entry for 011-67 (`loadAllows` on one CPU's share).
 - Source at `9b48fa424`: `src/core/retry/load.ts`, `src/core/retry/records.ts`, `src/core/retry/text.ts`, `src/core/scheduler/retries.ts`, `src/cli/retry.ts:230-243`.
 - Related: board rows gh-52 / 011-67 (done, 0.1.271), gh-82 (proposed, `retry --wait`).
 - Probe: `docs/specifications/011-core/research/probes/issue-92/` (README, `vitest.config.ts`, `load-retry.probe.test.ts`, `run-output.txt`).
