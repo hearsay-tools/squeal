@@ -77,7 +77,10 @@ export async function countMissing(
         if (count === "link") return;
         if (count === "moved") for (const e of group) ctx.retry.add(e.path);
         if (typeof count === "object" && "error" in count) {
-          for (const e of group) fail(ctx, failed, e, count.error, now);
+          // A path of the group held already spent its attempts at this blob.
+          for (const e of group.filter((g) => mayCount(failed, g.path, g.file.hash, now))) {
+            fail(ctx, failed, e, count.error, now);
+          }
         }
         if (typeof count !== "object" || "error" in count) {
           for (const e of group) skipped.add(e.path);

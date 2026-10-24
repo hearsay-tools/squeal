@@ -77,10 +77,13 @@ export function createCodePass(options: CodePassOptions): CodePass {
   let again = false;
   let closed = false;
   let timer: NodeJS.Timeout | null = null;
+  /** The failed counts of the open store have had this daemon's fresh budget. */
+  let budgeted = false;
 
   const shut = () => {
     store?.close();
     store = null;
+    budgeted = false;
   };
   const open = (policy: Policy): CodeStore | null => {
     if (store !== null) return store;
@@ -94,7 +97,6 @@ export function createCodePass(options: CodePassOptions): CodePass {
     }
     if (!isCodeStoreOpenFailure(opened)) {
       store = opened;
-      restartRetries(store.meta, options.worktreeId, now());
       return store;
     }
     const text = `complexity: the code store did not open: ${JSON.stringify(opened)}`;
@@ -111,6 +113,8 @@ export function createCodePass(options: CodePassOptions): CodePass {
     }
     const opened = open(policy);
     if (opened === null) return;
+    if (!budgeted) restartRetries(opened.meta, options.worktreeId, now());
+    budgeted = true;
     counter ??= options.counter();
     const loaded = await counter.catch((error: unknown) => {
       counter = null;
