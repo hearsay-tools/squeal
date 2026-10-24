@@ -1,0 +1,594 @@
+start_utc	harness	session8	project	task8	tree	role	runner	scope	wall_s	class	reason
+2026-10-23 14:04:01	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	22	1	coordinator's integration check (docs/process.md)
+2026-10-23 14:06:02	codex	01a16914	squeal	91cff3a0	worktree	reviewer	vitest	full	1329	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-23 14:06:56	codex	01a16914	squeal		tmp	reviewer	vitest	focused (4 files)	8	2	outside a Squeal worktree
+2026-10-23 14:08:26	codex	01a16914	squeal		tmp	reviewer	vitest	focused (4 files)	8	2	outside a Squeal worktree
+2026-10-23 14:13:25	codex	01a16914	squeal		tmp	reviewer	vitest	focused (2 files, name filter)	6	2	outside a Squeal worktree
+2026-10-23 14:34:41	claude	572726f0	cezar	6474f253	worktree	worker	npm-test	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-23 14:34:51	claude	572726f0	cezar	6474f253	worktree	worker	npm-test	focused (1 files)	3	3	the command edits before it runs
+2026-10-23 14:58:04	claude	75937fcb	cezar	66977d50	worktree	worker	npm-test:e2e	e2e	0 (background)	3	Squeal's last statement was not current
+2026-10-23 15:09:23	claude	75937fcb	cezar	66977d50	worktree	worker	npm-test:e2e	e2e	265	3	an edit after Squeal's last statement
+2026-10-23 15:17:04	claude	75937fcb	cezar	66977d50	worktree	worker	npm-test:e2e	e2e	43	3	Squeal's last statement was not current
+2026-10-23 15:19:21	claude	75937fcb	cezar	66977d50	worktree	worker	npm-test	e2e	3	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 15:19:29	claude	75937fcb	cezar	66977d50	worktree	worker	npm-test:e2e	e2e	30	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 15:20:05	claude	75937fcb	cezar	66977d50	worktree	worker	npm-test+npm-test:e2e	e2e	37	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 15:41:57	claude	572726f0	cezar	6474f253	worktree	worker	npm-test	focused (1 files)	5	3	an edit after Squeal's last statement
+2026-10-23 15:42:12	claude	572726f0	cezar	6474f253	worktree	worker	npm-test	focused (2 files)	12	3	an edit after Squeal's last statement
+2026-10-23 15:53:54	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	58	1	coordinator's integration check (docs/process.md)
+2026-10-23 15:56:06	codex	01a16979	squeal	a9b5e7b2	worktree	reviewer	vitest	full	1612	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-23 16:08:49	codex	01a1697e	cezar	1a9290a0	worktree	worker	node-test	e2e	56	3	Squeal's last statement came after the run started
+2026-10-23 16:12:08	codex	01a1697f	cezar		tmp	worker	npm-test	focused (3 files, name filter)	3	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:13:14	codex	01a1697f	cezar		tmp	worker	npm-test	focused (3 files, name filter)	2	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:13:59	codex	01a1697f	cezar		tmp	worker	npm-test	focused (3 files, name filter)	3	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:15:46	codex	01a1697e	cezar	a1c101ad	worktree	worker	npm-test:e2e	e2e	135	3	Squeal's last statement came after the run started
+2026-10-23 16:19:06	codex	01a1697e	cezar	a1c101ad	worktree	worker	npm-test:e2e	e2e	53	3	Squeal's last statement came after the run started
+2026-10-23 16:22:05	claude	4a773dd8	cezar	d5a5be68	worktree	worker	npm-test:e2e	e2e	301	3	an edit after Squeal's last statement
+2026-10-23 16:41:04	codex	01a16997	cezar		tmp	worker	npm-test	focused (2 files, name filter)	5	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:43:02	codex	01a16998	cezar	a5a45b74	worktree	worker	npm-test	focused (2 files)	6	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:44:23	codex	01a16997	cezar		tmp	worker	npm-test	focused (4 files, name filter)	6	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:44:39	codex	01a16998	cezar	a5a45b74	worktree	worker	npm-test	focused (1 files)	6	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:44:44	codex	01a16997	cezar		tmp	worker	npm-test	focused (2 files, name filter)	5	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:45:15	codex	01a16997	cezar		tmp	worker	npm-test	focused (2 files, name filter)	6	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:46:16	codex	01a16998	cezar	48024b83	worktree	worker	npm-test	focused (4 files, name filter)	16	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:47:26	codex	01a16998	cezar	48024b83	worktree	worker	npm-test	focused (2 files, name filter)	87	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:49:14	codex	01a16998	cezar	48024b83	worktree	worker	npm-test	focused (2 files, name filter)	83	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 16:52:10	codex	01a16998	cezar	a5a45b74	worktree	worker	npm-test:package	e2e	126	3	Squeal's last statement came after the run started
+2026-10-23 16:53:25	codex	01a16969	cezar	78dc23f0	worktree	worker	npm-test:e2e	e2e	209	3	Squeal's last statement came after the run started
+2026-10-23 16:54:29	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	4	3	an integration tree no daemon validates
+2026-10-23 16:54:47	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	18	3	an integration tree no daemon validates
+2026-10-23 17:00:15	claude	1887ec7d	squeal	c86b031a	worktree	worker	vitest	focused (1 files)	8	3	the command edits before it runs
+2026-10-23 17:00:28	claude	1887ec7d	squeal	c86b031a	worktree	worker	vitest	focused (1 files)	7	3	an edit after Squeal's last statement
+2026-10-23 17:00:48	claude	1887ec7d	squeal	c86b031a	worktree	worker	vitest	focused (1 files)	7	3	an edit after Squeal's last statement
+2026-10-23 17:01:51	codex	01a16998	cezar	48024b83	worktree	worker	npm-test	focused (1 files)	65	3	Squeal's last statement came after the run started
+2026-10-23 17:03:31	codex	01a169b5	cezar	eb3f9982	worktree	worker	npm-test	focused (? files, name filter)	18	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:04:07	claude	1887ec7d	squeal	c86b031a	worktree	worker	vitest	focused (3 files)	25	3	an edit after Squeal's last statement
+2026-10-23 17:04:43	codex	01a169b5	cezar	d70f8f72	worktree	worker	npm-test	focused (1 files, name filter)	17	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:05:14	codex	01a169b5	cezar	d70f8f72	worktree	worker	npm-test	focused (2 files, name filter)	18	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:05:27	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (1 files)	12	3	an edit after Squeal's last statement
+2026-10-23 17:06:00	codex	01a169b5	cezar	d70f8f72	worktree	worker	npm-test	focused (2 files, name filter)	29	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:06:01	claude	1887ec7d	squeal	c86b031a	worktree	worker	vitest	focused (1 files)	16	3	an edit after Squeal's last statement
+2026-10-23 17:06:03	codex	01a169b5	cezar	6ac7ca8f	worktree	worker	npm-test	focused (? files, name filter)	6	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:06:29	codex	01a169b8	cezar	7ac9265c	worktree	worker	npm-test	focused (? files, name filter)	28	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:06:31	codex	01a169b5	cezar	bed067c2	worktree	worker	npm-test	focused (1 files)	4	2	a run that rewrites a baseline, which Squeal does not make
+2026-10-23 17:06:35	codex	01a169b5	cezar	6ac7ca8f	worktree	worker	npm-test	focused (? files, name filter)	19	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:06:49	codex	01a169b5	cezar	d70f8f72	worktree	worker	npm-test	focused (? files, name filter)	13	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:07:13	codex	01a169b5	cezar	6ac7ca8f	worktree	worker	npm-test	focused (1 files, name filter)	20	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:07:19	codex	01a169b8	cezar	7ac9265c	worktree	worker	npm-test	focused (1 files, name filter)	16	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:07:25	codex	01a169b9	cezar	e3337b09	worktree	worker	vitest	focused (1 files, name filter)	17	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:07:52	codex	01a169b8	cezar	7ac9265c	worktree	worker	npm-test	focused (? files, name filter)	3	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:08:13	codex	01a169b8	cezar	7ac9265c	worktree	worker	npm-test	focused (? files, name filter)	26	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:08:25	codex	01a169b8	cezar	7ac9265c	worktree	worker	vitest	focused (1 files)	0	3	an edit after Squeal's last statement
+2026-10-23 17:09:00	codex	01a169b8	cezar	7ac9265c	worktree	worker	npm-test	focused (? files, name filter)	26	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:09:21	codex	01a169b9	cezar	e3337b09	worktree	worker	vitest	focused (? files, name filter)	39	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:09:25	codex	01a169bb	cezar	3c94f411	worktree	worker	npm-test	focused (? files, name filter)	16	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:09:35	codex	01a169bb	cezar	5ae67660	worktree	worker	node-test	focused (2 files)	3	3	the command edits before it runs
+2026-10-23 17:09:49	codex	01a169bb	cezar	5ae67660	worktree	worker	node-test	focused (1 files)	15	3	Squeal's last statement came after the run started
+2026-10-23 17:09:49	codex	01a16998	cezar	a5a45b74	worktree	worker	npm-test	focused (2 files, name filter)	5	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:10:22	codex	01a16998	cezar	a5a45b74	worktree	worker	npm-test	focused (? files, name filter)	17	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:10:23	codex	01a169bb	cezar	5ae67660	worktree	worker	node-test	focused (1 files)	36	3	Squeal's last statement came after the run started
+2026-10-23 17:10:25	codex	01a169b9	cezar	e3337b09	worktree	worker	vitest	focused (? files, name filter)	16	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:11:01	codex	01a169bb	cezar	5ae67660	worktree	worker	node-test	focused (1 files)	39	3	Squeal's last statement was not current
+2026-10-23 17:11:05	codex	01a16998	cezar	a5a45b74	worktree	worker	npm-test	focused (? files, name filter)	19	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:11:08	codex	01a169b5	cezar	d70f8f72	worktree	worker	npm-test	focused (? files, name filter)	19	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:11:41	codex	01a16998	cezar	a5a45b74	worktree	worker	npm-test	focused (? files, name filter)	16	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:11:42	codex	01a169b9	cezar	e3337b09	worktree	worker	vitest	focused (? files, name filter)	17	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:11:57	codex	01a169b5	cezar	d70f8f72	worktree	worker	npm-test	focused (2 files, name filter)	19	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:12:22	codex	01a169b9	cezar	e3337b09	worktree	worker	vitest	focused (? files, name filter)	44	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:13:27	codex	01a169b9	cezar	e3337b09	worktree	worker	vitest	focused (? files, name filter)	18	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:13:58	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (3 files)	17	3	an edit after Squeal's last statement
+2026-10-23 17:14:26	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (1 files)	10	3	an edit after Squeal's last statement
+2026-10-23 17:14:34	codex	01a16998	cezar	48024b83	worktree	worker	npm-test:e2e	e2e	54	3	the session stopped Squeal first
+2026-10-23 17:14:42	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (1 files)	15	3	the command edits before it runs
+2026-10-23 17:15:15	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (2 files)	8	3	an edit after Squeal's last statement
+2026-10-23 17:15:39	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (4 files)	260	3	the command edits before it runs
+2026-10-23 17:15:42	codex	01a16997	cezar	1732cc7e	worktree	worker	vitest	scratch config	49	3	an edit after Squeal's last statement
+2026-10-23 17:16:34	codex	01a16997	cezar	1732cc7e	worktree	worker	vitest	scratch config	47	3	an edit after Squeal's last statement
+2026-10-23 17:16:39	codex	01a169be	cezar	d2b0d830	worktree	worker	npm-test	scratch config	6	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:16:42	codex	01a169c1	cezar	6310e370	worktree	worker	npm-test	focused (1 files, name filter)	4	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:17:16	codex	01a169c1	cezar	6310e370	worktree	worker	npm-test	focused (? files, name filter)	18	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:17:17	codex	01a169c2	cezar	27213164	worktree	worker	npm-test	focused (1 files, name filter)	151	3	Squeal's last statement came after the run started
+2026-10-23 17:17:45	codex	01a169c2	cezar	27213164	worktree	worker	npm-test	focused (1 files, name filter)	4	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:17:58	codex	01a169c2	cezar	27213164	worktree	worker	npm-test	focused (? files, name filter)	3	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:18:24	codex	01a169c2	cezar	27213164	worktree	worker	npm-test	focused (? files, name filter)	94	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:19:20	codex	01a169c3	cezar	53c89719	worktree	worker	vitest	e2e	38	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:19:24	codex	01a169c3	cezar	97c6ff55	worktree	worker	npm-test	focused (? files, name filter)	14	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:19:43	codex	01a169c1	cezar	6310e370	worktree	worker	npm-test	focused (? files, name filter)	16	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:23:05	codex	01a169c3	cezar	97c6ff55	worktree	worker	npm-test	focused (2 files, name filter)	7	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:23:06	codex	01a169c3	cezar	53c89719	worktree	worker	npm-test	e2e	4	3	Squeal's last statement came after the run started
+2026-10-23 17:23:06	codex	01a169c3	cezar	53c89719	worktree	worker	vitest	focused (? files, name filter)	4	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:23:14	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (2 files)	5	3	the command edits before it runs
+2026-10-23 17:23:25	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (6 files)	23	3	an edit after Squeal's last statement
+2026-10-23 17:23:29	codex	01a169c3	cezar	53c89719	worktree	worker	vitest	focused (? files, name filter)	12	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:23:37	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (1 files)	14	3	an edit after Squeal's last statement
+2026-10-23 17:23:39	codex	01a169c2	cezar	27213164	worktree	worker	npm-test	focused (? files, name filter)	92	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:23:40	codex	01a169c3	cezar	97c6ff55	worktree	worker	npm-test	focused (? files, name filter)	8	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:23:50	codex	01a169c5	cezar	1299a346	worktree	worker	vitest	focused (? files, name filter)	7	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:24:01	codex	01a16997	cezar	1732cc7e	worktree	worker	vitest	scratch config	33	3	Squeal's last statement came after the run started
+2026-10-23 17:24:07	codex	01a169c3	cezar	53c89719	worktree	worker	vitest	e2e	10	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:24:43	codex	01a169c3	cezar	97c6ff55	worktree	worker	npm-test	focused (? files, name filter)	10	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:24:52	codex	01a169c9	cezar	3fe06edd	worktree	worker	vitest	e2e	31	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:25:02	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (4 files)	6	3	the command edits before it runs
+2026-10-23 17:25:03	codex	01a169c3	cezar	97c6ff55	worktree	worker	npm-test	focused (2 files, name filter)	10	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:25:31	codex	01a169c2	cezar	27213164	worktree	worker	npm-test	focused (? files, name filter)	207	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:25:36	codex	01a169c5	cezar	c0671d05	worktree	worker	npm-test	focused (? files, name filter)	12	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:25:42	codex	01a169c9	cezar	3fe06edd	worktree	worker	vitest	e2e	25	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:26:16	codex	01a169c5	cezar	c0671d05	worktree	worker	npm-test	focused (? files, name filter)	18	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:26:41	codex	01a169c5	cezar	c0671d05	worktree	worker	npm-test	focused (? files, name filter)	24	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:27:06	codex	01a16998	cezar	48024b83	worktree	worker	npm-test	focused (8 files)	1612	3	the session stopped Squeal first
+2026-10-23 17:27:44	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (3 files)	40	3	the command edits before it runs
+2026-10-23 17:27:51	codex	01a169c9	cezar	3fe06edd	worktree	worker	vitest	e2e	27	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:28:38	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (12 files)	81	3	an edit after Squeal's last statement
+2026-10-23 17:29:03	codex	01a169c5	cezar	c0671d05	worktree	worker	npm-test	focused (? files, name filter)	13	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:29:19	codex	01a16997	cezar	1732cc7e	worktree	worker	vitest	scratch config	51	3	an edit after Squeal's last statement
+2026-10-23 17:29:34	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (2 files)	24	3	the command edits before it runs
+2026-10-23 17:29:38	codex	01a169c2	cezar	27213164	worktree	worker	npm-test	focused (? files, name filter)	105	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:29:39	claude	4a773dd8	cezar	d5a5be68	worktree	worker	npm-test	focused (1 files, name filter)	27	3	Squeal's last statement was not current
+2026-10-23 17:30:00	codex	01a169c3	cezar	53c89719	worktree	worker	vitest	e2e	302	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:30:12	claude	4a773dd8	cezar	d5a5be68	worktree	worker	npm-test	focused (1 files, name filter)	47	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:30:13	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (1 files)	18	3	the command edits before it runs
+2026-10-23 17:30:15	codex	01a169c5	cezar	c0671d05	worktree	worker	npm-test	focused (? files, name filter)	22	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:30:39	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (1 files)	20	3	an edit after Squeal's last statement
+2026-10-23 17:30:54	codex	01a169bb	cezar	3c94f411	worktree	worker	npm-test	focused (? files, name filter)	23	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:31:14	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (1 files)	11	3	an edit after Squeal's last statement
+2026-10-23 17:31:23	claude	4a773dd8	cezar	d5a5be68	worktree	worker	npm-test	focused (1 files, name filter)	21	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:31:33	codex	01a169bb	cezar	3c94f411	worktree	worker	npm-test	focused (1 files, name filter)	19	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:31:48	codex	01a169c2	cezar	27213164	worktree	worker	npm-test	focused (? files, name filter)	190	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:31:51	claude	4a773dd8	cezar	d5a5be68	worktree	worker	npm-test	focused (1 files, name filter)	42	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:32:10	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (5 files)	48	3	an edit after Squeal's last statement
+2026-10-23 17:33:56	claude	749b0a4d	squeal	b833f699	worktree	worker	vitest	focused (1 files)	13	3	an edit after Squeal's last statement
+2026-10-23 17:35:51	codex	01a169c2	cezar	27213164	worktree	worker	npm-test	focused (? files, name filter)	37	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:35:55	codex	01a169c3	cezar	53c89719	worktree	worker	vitest	focused (? files, name filter)	15	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:47:27	codex	01a169bb	cezar	3c94f411	worktree	worker	npm-test	focused (? files, name filter)	25	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:48:31	codex	01a169bb	cezar	3c94f411	worktree	worker	npm-test	focused (? files, name filter)	13	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 17:54:50	codex	01a16998	cezar	48024b83	worktree	worker	npm-test	focused (3 files)	265	3	Squeal's last statement came after the run started
+2026-10-23 18:07:31	codex	01a16998	cezar	48024b83	worktree	worker	npm-test	full	4	3	Squeal's last statement was not current
+2026-10-23 18:14:16	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (8 files)	32	3	an edit after Squeal's last statement
+2026-10-23 18:30:18	claude	1887ec7d	squeal	c86b031a	worktree	worker	vitest	focused (1 files)	21	3	an edit after Squeal's last statement
+2026-10-23 18:37:06	claude	4a773dd8	cezar	d5a5be68	worktree	worker	npm-test	focused (1 files)	8	3	an edit after Squeal's last statement
+2026-10-23 18:37:22	claude	4a773dd8	cezar	d5a5be68	worktree	worker	npm-test	focused (1 files)	23	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 18:47:08	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (1 files)	54	3	the command edits before it runs
+2026-10-23 18:48:23	claude	1cea4f27	squeal	e8df95f1	worktree	worker	vitest	focused (1 files)	21	3	an edit after Squeal's last statement
+2026-10-23 18:51:25	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	24	1	coordinator's integration check (docs/process.md)
+2026-10-23 18:53:14	codex	01a16a1b	squeal	9581facc	worktree	reviewer	vitest	full	1676	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-23 18:55:58	codex	01a16a1b	squeal	9581facc	worktree	reviewer	vitest	focused (3 files, name filter)	10	2	outside a Squeal worktree
+2026-10-23 18:56:40	codex	01a16a1b	squeal	9581facc	worktree	reviewer	vitest	focused (3 files)	13	2	outside a Squeal worktree
+2026-10-23 19:27:26	codex	01a16998	cezar	48024b83	worktree	worker	npm-test	focused (? files, name filter)	7	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 19:46:03	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (2 files)	4	3	an edit after Squeal's last statement
+2026-10-23 19:52:52	claude	98b7544d	squeal	7ad9898e	worktree	researcher	vitest	focused (2 files)	1	3	Squeal's last statement was not current
+2026-10-23 20:00:08	claude	98b7544d	squeal	7ad9898e	worktree	researcher	pytest	full	1	2	pytest or node:test: Squeal covers only Vitest here
+2026-10-23 20:00:46	claude	98b7544d	squeal	7ad9898e	worktree	researcher	pytest	focused (2 files)	2	5	a test run repeated in a loop (timing, flake or mutation)
+2026-10-23 20:01:05	claude	98b7544d	squeal	7ad9898e	worktree	researcher	node-test	focused (3 files)	2	2	pytest or node:test: Squeal covers only Vitest here
+2026-10-23 20:03:33	claude	f17e1473	squeal	996e5eba	worktree	researcher	vitest	focused (1 files)	25	2	outside a Squeal worktree
+2026-10-23 20:04:03	codex	01a16969	cezar	78dc23f0	scratch	worker	npm-test	focused (1 files)	13	2	outside a Squeal worktree
+2026-10-23 20:04:07	codex	01a16969	cezar	78dc23f0	worktree	worker	npm-test:e2e	e2e	80	3	Squeal's last statement came after the run started
+2026-10-23 20:04:28	codex	01a16969	cezar	78dc23f0	scratch	worker	npm-test	focused (1 files)	9	2	outside a Squeal worktree
+2026-10-23 20:06:57	claude	f17e1473	squeal	996e5eba	worktree	researcher	vitest	focused (1 files)	67	2	outside a Squeal worktree
+2026-10-23 20:17:10	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (1 files, name filter)	124	4	Squeal had named the file's result
+2026-10-23 20:19:25	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (2 files)	100	3	an edit after Squeal's last statement
+2026-10-23 20:21:11	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (2 files)	124	3	the command edits before it runs
+2026-10-23 20:23:32	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (1 files, name filter)	6	3	an edit after Squeal's last statement
+2026-10-23 20:23:53	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (1 files)	6	3	an edit after Squeal's last statement
+2026-10-23 20:24:25	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (1 files)	9	3	an edit after Squeal's last statement
+2026-10-23 20:24:53	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (1 files)	10	3	an edit after Squeal's last statement
+2026-10-23 20:26:18	codex	01a16a41	cezar	9cb752d0	worktree	other	vitest	focused (4 files)	4	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 20:38:27	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (1 files)	31	3	the command edits before it runs
+2026-10-23 20:39:57	claude	5ea9c885	squeal	a415f243	worktree	worker	vitest	focused (1 files)	30	3	the command edits before it runs
+2026-10-23 20:44:42	claude	f43cc62a	squeal	bda68569	worktree	worker	vitest	focused (1 files)	4	3	an edit after Squeal's last statement
+2026-10-23 20:44:55	claude	f43cc62a	squeal	bda68569	worktree	worker	vitest	focused (1 files)	5	3	an edit after Squeal's last statement
+2026-10-23 20:45:11	claude	f43cc62a	squeal	bda68569	worktree	worker	vitest	focused (1 files)	5	3	an edit after Squeal's last statement
+2026-10-23 20:45:21	claude	f43cc62a	squeal	bda68569	worktree	worker	vitest	focused (1 files)	9	3	an edit after Squeal's last statement
+2026-10-23 20:51:25	codex	01a1699c	cezar	bf1af356	worktree	worker	vitest	scratch config	1	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 20:51:32	codex	01a1699c	cezar	bf1af356	worktree	worker	vitest	scratch config	2	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 20:51:39	codex	01a1699c	cezar	bf1af356	worktree	worker	vitest	scratch config	1	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 20:51:50	codex	01a1699c	cezar	bf1af356	worktree	worker	vitest	scratch config	1	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 20:51:55	codex	01a1699c	cezar	bf1af356	worktree	worker	vitest	scratch config	1	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 20:53:08	claude	993ef696	cezar	be7346c8	worktree	worker	npm-test:e2e	e2e	43	3	Squeal's last statement was not current
+2026-10-23 20:55:17	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (? files, name filter)	8	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 20:56:49	claude	f43cc62a	squeal	bda68569	worktree	worker	vitest	focused (1 files)	179	3	Squeal's last statement was not current
+2026-10-23 20:59:06	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (2 files, name filter)	8	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 20:59:27	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (? files, name filter)	34	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 21:00:12	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (? files, name filter)	11	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-23 21:04:54	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	4	3	an edit after Squeal's last statement
+2026-10-23 21:05:53	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (1 files, name filter)	33	3	Squeal's last statement was not current
+2026-10-23 21:06:36	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (4 files, name filter)	0	3	the command edits before it runs
+2026-10-23 21:06:50	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (4 files, name filter)	37	3	an edit after Squeal's last statement
+2026-10-23 21:08:16	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	3	3	the command edits before it runs
+2026-10-23 21:08:21	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (1 files, name filter)	600	3	an edit after Squeal's last statement
+2026-10-23 21:09:34	codex	01a16a41	cezar	9cb752d0	worktree	other	vitest	focused (4 files)	0	3	Squeal's last statement was not current
+2026-10-23 21:11:38	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (4 files)	6	3	the command edits before it runs
+2026-10-23 21:12:00	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	23	3	Squeal's last statement was not current
+2026-10-23 21:14:28	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	17	3	an edit after Squeal's last statement
+2026-10-23 21:16:13	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (4 files)	3	3	an edit after Squeal's last statement
+2026-10-23 21:16:25	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	18	3	an edit after Squeal's last statement
+2026-10-23 21:16:48	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	116	3	an edit after Squeal's last statement
+2026-10-23 21:18:42	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (1 files, name filter)	7	3	an edit after Squeal's last statement
+2026-10-23 21:21:01	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	11	3	the command edits before it runs
+2026-10-23 21:21:45	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	10	3	the command edits before it runs
+2026-10-23 21:22:13	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	4	3	the command edits before it runs
+2026-10-23 21:22:27	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-23 21:23:27	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	17	3	an edit after Squeal's last statement
+2026-10-23 21:24:08	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	7	3	the command edits before it runs
+2026-10-23 21:24:31	claude	993ef696	cezar	be7346c8	worktree	worker	vitest	focused (2 files)	32	3	the command edits before it runs
+2026-10-23 21:26:36	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	6	3	an edit after Squeal's last statement
+2026-10-23 21:27:31	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (4 files)	20	3	an edit after Squeal's last statement
+2026-10-23 21:27:58	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (4 files)	151	3	an edit after Squeal's last statement
+2026-10-23 21:32:49	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-23 21:33:08	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	7	3	the command edits before it runs
+2026-10-23 21:33:25	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	12	3	an edit after Squeal's last statement
+2026-10-23 21:33:58	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	166	3	Squeal's last statement was not current
+2026-10-23 21:36:14	codex	01a16aae	cezar	5ffea463	worktree	worker	node-test	e2e	42	3	an edit after Squeal's last statement
+2026-10-23 21:37:28	codex	01a16aae	cezar	5ffea463	worktree	worker	node-test	e2e	39	3	Squeal's last statement was not current
+2026-10-23 21:37:41	codex	01a16a41	cezar	9cb752d0	worktree	other	node-test	focused (2 files)	1	3	an edit after Squeal's last statement
+2026-10-23 21:38:34	codex	01a16a41	cezar	9cb752d0	worktree	other	node-test	focused (2 files)	1	3	an edit after Squeal's last statement
+2026-10-23 21:38:45	claude	fbce0d6a	squeal	dc73d332	worktree	worker	vitest	focused (1 files)	3	3	Squeal's last statement was not current
+2026-10-23 21:39:06	codex	01a16a41	cezar	9cb752d0	worktree	other	node-test	focused (2 files)	3	3	an edit after Squeal's last statement
+2026-10-23 21:39:49	claude	fbce0d6a	squeal	dc73d332	worktree	worker	vitest	focused (4 files)	9	3	an edit after Squeal's last statement
+2026-10-23 21:40:03	claude	fbce0d6a	squeal	dc73d332	worktree	worker	vitest	focused (1 files, name filter)	8	3	an edit after Squeal's last statement
+2026-10-23 22:04:28	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	102	1	coordinator's integration check (docs/process.md)
+2026-10-23 22:07:18	codex	01a16acd	squeal	ed27197a	worktree	reviewer	vitest	full	1731	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-23 22:09:51	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files, name filter)	3	3	an integration tree no daemon validates
+2026-10-23 22:09:59	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files, name filter)	3	3	an integration tree no daemon validates
+2026-10-23 22:12:19	codex	01a16acd	squeal	ed27197a	worktree	reviewer	vitest	focused (1 files)	3	2	outside a Squeal worktree
+2026-10-23 22:12:37	codex	01a16acd	squeal	ed27197a	worktree	reviewer	vitest	focused (1 files)	4	2	outside a Squeal worktree
+2026-10-23 22:13:36	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files)	8	3	an integration tree no daemon validates
+2026-10-23 22:13:40	codex	01a16acd	squeal	ed27197a	worktree	reviewer	vitest	focused (1 files)	4	2	outside a Squeal worktree
+2026-10-23 22:13:48	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files, name filter)	5	3	an integration tree no daemon validates
+2026-10-23 22:14:02	codex	01a16acd	squeal	ed27197a	worktree	reviewer	vitest	focused (1 files)	5	2	outside a Squeal worktree
+2026-10-23 22:15:00	codex	01a16acd	squeal	ed27197a	worktree	reviewer	vitest	focused (1 files)	5	2	outside a Squeal worktree
+2026-10-23 22:16:46	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	6	3	an integration tree no daemon validates
+2026-10-23 22:17:04	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files, name filter)	5	3	an integration tree no daemon validates
+2026-10-23 22:17:19	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files)	8	3	an integration tree no daemon validates
+2026-10-23 22:17:33	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files, name filter)	3	3	an integration tree no daemon validates
+2026-10-23 22:18:12	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	37	3	an integration tree no daemon validates
+2026-10-23 22:25:32	codex	01a1696c	cezar	027222d2	worktree	other	node-test	e2e	55	3	an edit after Squeal's last statement
+2026-10-23 22:28:37	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	171	3	an edit after Squeal's last statement
+2026-10-23 22:34:25	claude	135e4d52	squeal	a07d6d3c	worktree	coordinator	vitest	focused (2 files)	22	1	coordinator's integration check (docs/process.md)
+2026-10-23 22:35:40	claude	90aecdb6	cezar	9df7f09f	worktree	worker	npm-test:e2e	e2e	14	3	an edit after Squeal's last statement
+2026-10-23 22:36:33	codex	01a16ae8	squeal	12ae2958	worktree	reviewer	vitest	full	1792	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-23 22:40:20	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	71	3	an integration tree no daemon validates
+2026-10-23 22:41:38	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files, name filter)	37	3	an integration tree no daemon validates
+2026-10-23 22:42:25	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (3 files)	22	3	an integration tree no daemon validates
+2026-10-23 22:44:37	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (3 files)	68	3	an integration tree no daemon validates
+2026-10-23 22:46:44	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files, name filter)	21	3	an integration tree no daemon validates
+2026-10-23 22:47:09	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files, name filter)	25	3	an integration tree no daemon validates
+2026-10-23 22:47:44	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files, name filter)	22	3	an integration tree no daemon validates
+2026-10-23 22:48:16	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files, name filter)	11	3	an integration tree no daemon validates
+2026-10-23 22:48:35	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	22	3	an integration tree no daemon validates
+2026-10-23 22:50:47	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (4 files)	70	3	an integration tree no daemon validates
+2026-10-23 22:52:03	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (3 files)	601	3	an integration tree no daemon validates
+2026-10-23 22:52:26	claude	c4c6a409	squeal	efe25473	worktree	worker	vitest	focused (4 files)	7	3	Squeal's last statement was not current
+2026-10-23 22:58:17	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files, name filter)	6	3	an edit after Squeal's last statement
+2026-10-23 22:58:57	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (4 files)	8	3	Squeal's last statement was not current
+2026-10-23 22:59:24	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files, name filter)	6	3	the command edits before it runs
+2026-10-23 22:59:40	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	28	3	an edit after Squeal's last statement
+2026-10-23 23:01:00	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	235	3	an edit after Squeal's last statement
+2026-10-23 23:05:38	claude	7647e7b2	squeal	df22339e	worktree	worker	vitest	focused (1 files)	4	3	Squeal's last statement was not current
+2026-10-23 23:06:16	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	2	3	an edit after Squeal's last statement
+2026-10-23 23:06:34	claude	7647e7b2	squeal	df22339e	worktree	worker	vitest	focused (1 files)	4	3	the command edits before it runs
+2026-10-23 23:06:44	claude	7647e7b2	squeal	df22339e	worktree	worker	vitest	focused (1 files)	4	3	an edit after Squeal's last statement
+2026-10-23 23:07:14	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	9	3	the command edits before it runs
+2026-10-23 23:07:15	claude	7647e7b2	squeal	df22339e	worktree	worker	vitest	focused (1 files)	13	3	an edit after Squeal's last statement
+2026-10-23 23:07:38	claude	7647e7b2	squeal	df22339e	worktree	worker	vitest	focused (1 files)	4	3	an edit after Squeal's last statement
+2026-10-23 23:07:42	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	4	3	an edit after Squeal's last statement
+2026-10-23 23:07:51	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (4 files)	15	3	an edit after Squeal's last statement
+2026-10-23 23:08:35	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	47	3	the command edits before it runs
+2026-10-23 23:09:34	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	22	3	an edit after Squeal's last statement
+2026-10-23 23:10:02	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	133	3	an edit after Squeal's last statement
+2026-10-23 23:10:53	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	94	1	coordinator's integration check (docs/process.md)
+2026-10-23 23:11:06	claude	7647e7b2	squeal	df22339e	worktree	worker	vitest	focused (1 files)	6	3	an edit after Squeal's last statement
+2026-10-23 23:14:02	codex	01a16acd	squeal	ed27197a	worktree	reviewer	vitest	full	1680	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-23 23:14:12	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	4	3	an edit after Squeal's last statement
+2026-10-23 23:14:42	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	9	3	an edit after Squeal's last statement
+2026-10-23 23:15:00	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (4 files)	208	3	Squeal's last statement was not current
+2026-10-23 23:15:14	codex	01a16acd	squeal	ed27197a	worktree	reviewer	vitest	focused (1 files)	13	2	outside a Squeal worktree
+2026-10-23 23:22:39	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	171	3	an edit after Squeal's last statement
+2026-10-23 23:26:43	claude	135e4d52	squeal	a07d6d3c	worktree	coordinator	vitest	focused (2 files)	19	1	coordinator's integration check (docs/process.md)
+2026-10-23 23:28:45	codex	01a16ae8	squeal	12ae2958	worktree	reviewer	vitest	full	2160	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-23 23:30:17	codex	01a16ae8	squeal		tmp	reviewer	vitest	focused (2 files, name filter)	2	2	outside a Squeal worktree
+2026-10-23 23:30:34	codex	01a16ae8	squeal		tmp	reviewer	vitest	focused (1 files, name filter)	2	2	outside a Squeal worktree
+2026-10-23 23:30:55	codex	01a16ae8	squeal		tmp	reviewer	vitest	focused (1 files, name filter)	1	2	outside a Squeal worktree
+2026-10-23 23:31:04	codex	01a16ae8	squeal		tmp	reviewer	vitest	full	0	2	outside a Squeal worktree
+2026-10-23 23:31:10	codex	01a16ae8	squeal		tmp	reviewer	vitest	focused (1 files, name filter)	3	2	outside a Squeal worktree
+2026-10-23 23:31:30	codex	01a16ae8	squeal		tmp	reviewer	vitest	focused (3 files)	4	2	outside a Squeal worktree
+2026-10-23 23:47:57	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (6 files)	22	3	an integration tree no daemon validates
+2026-10-23 23:57:39	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (4 files)	28	3	an integration tree no daemon validates
+2026-10-24 00:29:00	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (2 files)	15	1	coordinator's integration check (docs/process.md)
+2026-10-24 00:30:23	codex	01a16b50	squeal	5cbd5f63	worktree	reviewer	vitest	full	1239	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 00:46:23	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (1 files)	1	3	an edit after Squeal's last statement
+2026-10-24 00:46:32	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (1 files)	1	3	an edit after Squeal's last statement
+2026-10-24 00:46:37	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	2	3	an edit after Squeal's last statement
+2026-10-24 00:46:50	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 00:46:57	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	2	3	an edit after Squeal's last statement
+2026-10-24 00:47:04	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	2	3	the command edits before it runs
+2026-10-24 00:47:29	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 00:47:37	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 00:47:44	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (2 files)	3	3	an edit after Squeal's last statement
+2026-10-24 00:47:50	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 00:47:51	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (3 files)	4	3	an edit after Squeal's last statement
+2026-10-24 00:47:56	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (3 files)	3	3	Squeal's revision had its runner part pending; 67 checks pending
+2026-10-24 00:48:05	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 00:48:17	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	3	3	the command edits before it runs
+2026-10-24 00:48:42	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (1 files)	2	3	an edit after Squeal's last statement
+2026-10-24 00:49:09	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (3 files)	4	3	an edit after Squeal's last statement
+2026-10-24 00:49:29	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (2 files)	4	3	an edit after Squeal's last statement
+2026-10-24 00:50:14	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	1	3	an edit after Squeal's last statement
+2026-10-24 00:50:24	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	4	3	an edit after Squeal's last statement
+2026-10-24 00:50:39	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	2	3	the command edits before it runs
+2026-10-24 00:51:07	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (1 files)	1	3	an edit after Squeal's last statement
+2026-10-24 00:51:13	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (1 files)	2	3	the command edits before it runs
+2026-10-24 00:51:30	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 00:51:57	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (3 files)	5	3	an edit after Squeal's last statement
+2026-10-24 00:52:07	claude	6c2549a0	squeal	fd003b1e	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 00:53:43	claude	b2947e11	squeal	15f7d48e	worktree	worker	vitest	focused (1 files)	7	3	the command edits before it runs
+2026-10-24 01:08:35	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (2 files)	15	1	coordinator's integration check (docs/process.md)
+2026-10-24 01:08:56	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (5 files)	7	3	an integration tree no daemon validates
+2026-10-24 01:10:07	codex	01a16b74	squeal	96bafe14	worktree	reviewer	vitest	full	1212	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 01:11:54	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	9	1	coordinator's integration check (docs/process.md)
+2026-10-24 01:15:51	claude	7f448206	squeal	51a7d186	worktree	worker	vitest	e2e	5	2	test/e2e: squeal.config.json excludes it
+2026-10-24 01:16:02	claude	7f448206	squeal	51a7d186	worktree	worker	vitest	e2e	125	2	test/e2e: squeal.config.json excludes it
+2026-10-24 01:18:32	claude	7f448206	squeal	51a7d186	worktree	worker	vitest	e2e	0 (background)	2	test/e2e: squeal.config.json excludes it
+2026-10-24 01:47:17	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (1 files)	12	3	an integration tree no daemon validates
+2026-10-24 01:48:08	claude	7f448206	squeal	51a7d186	worktree	worker	vitest	e2e	197	2	test/e2e: squeal.config.json excludes it
+2026-10-24 01:51:33	claude	7f448206	squeal	51a7d186	worktree	worker	vitest	e2e	0 (background)	2	test/e2e: squeal.config.json excludes it
+2026-10-24 01:55:07	claude	7f448206	squeal	51a7d186	worktree	worker	vitest	e2e	3	2	test/e2e: squeal.config.json excludes it
+2026-10-24 01:55:25	claude	7f448206	squeal	51a7d186	worktree	worker	vitest	e2e	12	2	test/e2e: squeal.config.json excludes it
+2026-10-24 01:58:14	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	full	14	3	an integration tree no daemon validates
+2026-10-24 01:58:43	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	17	1	coordinator's integration check (docs/process.md)
+2026-10-24 02:00:08	codex	01a16ba2	squeal	1323cbb7	worktree	reviewer	vitest	full	1212	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 02:41:27	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (4 files)	65	3	an edit after Squeal's last statement
+2026-10-24 02:43:08	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files, name filter)	6	3	Squeal's last statement was not current
+2026-10-24 02:49:58	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (2 files, name filter)	6	3	the command edits before it runs
+2026-10-24 02:51:04	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (2 files, name filter)	7	3	an edit after Squeal's last statement
+2026-10-24 02:51:18	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files, name filter)	7	3	an edit after Squeal's last statement
+2026-10-24 02:51:35	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (4 files)	3	3	an edit after Squeal's last statement
+2026-10-24 02:51:42	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (3 files)	3	3	an edit after Squeal's last statement
+2026-10-24 02:52:02	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (2 files)	1	3	the command edits before it runs
+2026-10-24 02:52:18	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (2 files)	1	3	an edit after Squeal's last statement
+2026-10-24 02:52:32	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (2 files)	3	3	the command edits before it runs
+2026-10-24 02:53:00	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (2 files)	4	3	an edit after Squeal's last statement
+2026-10-24 02:54:12	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files)	2	3	an edit after Squeal's last statement
+2026-10-24 02:54:32	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (2 files)	3	3	the command edits before it runs
+2026-10-24 02:54:44	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (2 files)	2	3	an edit after Squeal's last statement
+2026-10-24 02:54:54	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files)	2	3	the command edits before it runs
+2026-10-24 03:12:32	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	12	1	coordinator's integration check (docs/process.md)
+2026-10-24 03:13:55	codex	01a16be6	squeal	65b66075	worktree	reviewer	vitest	full	1221	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 03:15:26	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (7 files)	21	1	coordinator's integration check (docs/process.md)
+2026-10-24 03:17:05	codex	01a16be9	squeal	184f8630	worktree	reviewer	vitest	full	2383	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 03:30:44	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 03:30:52	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 03:31:16	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files)	2	3	the command edits before it runs
+2026-10-24 03:31:56	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files)	5	3	the command edits before it runs
+2026-10-24 03:32:28	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (2 files)	2	3	an edit after Squeal's last statement
+2026-10-24 03:32:38	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files)	5	3	the command edits before it runs
+2026-10-24 03:33:15	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files)	2	3	an edit after Squeal's last statement
+2026-10-24 03:33:22	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (1 files)	1	3	an edit after Squeal's last statement
+2026-10-24 03:33:32	claude	59abc5c5	squeal	f5dea904	worktree	worker	vitest	focused (10 files)	9	3	an edit after Squeal's last statement
+2026-10-24 03:44:48	claude	eda58f75	squeal	f5dea904	worktree	coordinator	vitest	focused (2 files)	5	3	a worktree other than the session's own, which its Squeal messages do not cover
+2026-10-24 03:45:08	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (7 files)	22	1	coordinator's integration check (docs/process.md)
+2026-10-24 03:46:41	codex	01a16be6	squeal	65b66075	worktree	reviewer	vitest	full	1912	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 04:12:58	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	9	1	coordinator's integration check (docs/process.md)
+2026-10-24 04:13:11	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	9	1	coordinator's integration check (docs/process.md)
+2026-10-24 04:14:39	codex	01a16be9	squeal	184f8630	worktree	reviewer	vitest	full	1453	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 05:15:06	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (1 files)	63	3	an edit after Squeal's last statement
+2026-10-24 05:16:27	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (1 files)	1	2	a scratch config outside the suite
+2026-10-24 05:16:32	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	scratch config	34	2	a scratch config outside the suite
+2026-10-24 05:17:10	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	scratch config	33	2	a scratch config outside the suite
+2026-10-24 05:18:23	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	scratch config	33	2	a scratch config outside the suite
+2026-10-24 05:20:25	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (1 files)	35	2	a scratch config outside the suite
+2026-10-24 05:43:06	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (2 files)	15	2	a scratch config outside the suite
+2026-10-24 05:43:34	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (2 files)	63	2	a scratch config outside the suite
+2026-10-24 05:44:44	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (1 files)	34	2	a scratch config outside the suite
+2026-10-24 05:47:53	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (3 files)	73	2	a scratch config outside the suite
+2026-10-24 05:49:21	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (4 files, name filter)	34	2	a scratch config outside the suite
+2026-10-24 05:54:44	claude	eda58f75	squeal	32fe48c6	worktree	coordinator	vitest	focused (2 files)	7	3	a worktree other than the session's own, which its Squeal messages do not cover
+2026-10-24 05:56:29	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (1 files, name filter)	0	3	Squeal's last statement was not current
+2026-10-24 05:56:43	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (1 files, name filter)	4	3	the command edits before it runs
+2026-10-24 05:58:31	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (1 files)	14	3	Squeal's last statement was not current
+2026-10-24 05:59:03	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (2 files, name filter)	4	2	a scratch config outside the suite
+2026-10-24 05:59:55	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (2 files)	70	3	Squeal's last statement was not current
+2026-10-24 06:01:12	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (2 files)	70	3	Squeal's last statement was not current
+2026-10-24 06:02:31	claude	eda58f75	squeal	fc86484d	worktree	coordinator	vitest	focused (3 files)	16	3	a worktree other than the session's own, which its Squeal messages do not cover
+2026-10-24 06:02:32	claude	f0d78dfe	squeal	32fe48c6	worktree	worker	vitest	focused (2 files)	70	2	a scratch config outside the suite
+2026-10-24 06:04:59	claude	eda58f75	squeal	32fe48c6	worktree	coordinator	vitest	focused (4 files)	73	3	a worktree other than the session's own, which its Squeal messages do not cover
+2026-10-24 06:07:03	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	17	1	coordinator's integration check (docs/process.md)
+2026-10-24 06:08:17	codex	01a16c85	squeal	e5e44782	worktree	reviewer	vitest	full	1286	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 06:26:02	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	118	3	an edit after Squeal's last statement
+2026-10-24 06:26:56	claude	22adc55a	squeal	9e96f1d1	worktree	worker	vitest	focused (1 files)	4	3	the command edits before it runs
+2026-10-24 06:29:15	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	4	3	the command edits before it runs
+2026-10-24 06:29:25	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files, name filter)	4	3	an edit after Squeal's last statement
+2026-10-24 06:29:28	claude	22adc55a	squeal	9e96f1d1	worktree	worker	vitest	focused (1 files)	4	3	the command edits before it runs
+2026-10-24 06:29:49	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (6 files)	8	3	an edit after Squeal's last statement
+2026-10-24 06:30:24	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files, name filter)	10	3	the command edits before it runs
+2026-10-24 06:30:41	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (6 files)	158	3	an edit after Squeal's last statement
+2026-10-24 06:35:42	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (4 files)	3	3	the command edits before it runs
+2026-10-24 06:36:54	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 06:37:50	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (3 files)	7	3	the command edits before it runs
+2026-10-24 06:38:07	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files, name filter)	3	3	Squeal's revision had its runner part pending; the tests the run named were not among those it reported
+2026-10-24 06:38:14	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (1 files, name filter)	3	3	Squeal's revision had its runner part pending; the tests the run named were not among those it reported
+2026-10-24 06:38:24	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (2 files)	2	3	the command edits before it runs
+2026-10-24 06:38:46	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (4 files)	9	3	the command edits before it runs
+2026-10-24 06:40:08	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (6 files)	162	3	Squeal's last statement was not current
+2026-10-24 06:48:39	claude	062be396	squeal	78026511	worktree	worker	vitest	focused (5 files)	122	3	an edit after Squeal's last statement
+2026-10-24 06:52:34	claude	eda58f75	squeal	9e96f1d1	worktree	coordinator	vitest	focused (5 files)	14	3	a worktree other than the session's own, which its Squeal messages do not cover
+2026-10-24 07:01:14	claude	eda58f75	squeal	9354f23b	worktree	coordinator	vitest	focused (5 files)	13	3	a worktree other than the session's own, which its Squeal messages do not cover
+2026-10-24 07:02:17	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	34	1	coordinator's integration check (docs/process.md)
+2026-10-24 07:03:58	codex	01a16cb8	squeal	19605523	worktree	reviewer	vitest	full	2067	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 07:09:48	claude	eda58f75	squeal	fc86484d	worktree	coordinator	vitest	focused (3 files)	32	3	a worktree other than the session's own, which its Squeal messages do not cover
+2026-10-24 07:10:41	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	36	1	coordinator's integration check (docs/process.md)
+2026-10-24 07:12:32	codex	01a16c85	squeal	e5e44782	worktree	reviewer	vitest	full	3114	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 07:17:22	claude	135e4d52	squeal	a07d6d3c	worktree	coordinator	vitest	focused (2 files)	78	1	coordinator's integration check (docs/process.md)
+2026-10-24 07:21:07	codex	01a16ae8	squeal	12ae2958	worktree	reviewer	vitest	full	3892	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 07:21:52	codex	01a16ae8	squeal		tmp	reviewer	vitest	focused (1 files)	5	2	outside a Squeal worktree
+2026-10-24 07:22:49	codex	01a16ae8	squeal		tmp	reviewer	vitest	focused (2 files, name filter)	10	2	outside a Squeal worktree
+2026-10-24 07:23:15	codex	01a16ae8	squeal		tmp	reviewer	vitest	focused (10 files)	64	2	outside a Squeal worktree
+2026-10-24 07:30:30	codex	01a16cb8	squeal	19605523	worktree	reviewer	vitest	focused (7 files)	546	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 07:39:46	codex	01a16cb8	squeal	19605523	worktree	reviewer	vitest	focused (7 files)	93	1	reviewer's independent rerun in the candidate (the skill bars Squeal's results)
+2026-10-24 07:40:40	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	12	3	an edit after Squeal's last statement
+2026-10-24 07:41:15	codex	01a16cd9	cezar	3d6b7fc2	worktree	worker	npm-test	focused (1 files, name filter)	6	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 07:41:37	codex	01a16cd9	cezar	3d6b7fc2	worktree	worker	npm-test	focused (? files, name filter)	16	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 07:42:11	codex	01a16cd9	cezar	3d6b7fc2	worktree	worker	npm-test	focused (? files, name filter)	14	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 07:43:15	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	8	3	the command edits before it runs
+2026-10-24 07:43:45	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (4 files)	18	3	an edit after Squeal's last statement
+2026-10-24 07:44:51	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (3 files)	5	3	an edit after Squeal's last statement
+2026-10-24 07:45:43	codex	01a16cd9	cezar	3d6b7fc2	worktree	worker	npm-test	focused (? files, name filter)	40	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 07:46:03	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (3 files)	7	3	the command edits before it runs
+2026-10-24 07:46:17	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	6	3	an edit after Squeal's last statement
+2026-10-24 07:46:28	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (4 files)	87	3	an edit after Squeal's last statement
+2026-10-24 07:47:02	codex	01a16cd9	cezar	3d6b7fc2	worktree	worker	npm-test	focused (? files, name filter)	25	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 07:48:02	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	53	3	an edit after Squeal's last statement
+2026-10-24 07:48:05	codex	01a16cd9	cezar	3d6b7fc2	worktree	worker	npm-test	scratch config	26	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 07:49:08	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	47	2	outside a Squeal worktree
+2026-10-24 07:49:19	codex	01a16cd9	cezar	3d6b7fc2	worktree	worker	npm-test	scratch config	24	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 07:50:14	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (2 files)	5	3	the command edits before it runs
+2026-10-24 07:53:05	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 07:53:15	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	4	3	an edit after Squeal's last statement
+2026-10-24 07:54:12	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	7	3	an edit after Squeal's last statement
+2026-10-24 07:54:26	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	8	3	an edit after Squeal's last statement
+2026-10-24 07:54:46	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (7 files)	30	3	an edit after Squeal's last statement
+2026-10-24 07:55:54	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (2 files)	16	3	an edit after Squeal's last statement
+2026-10-24 07:57:51	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (3 files)	9	3	an edit after Squeal's last statement
+2026-10-24 07:59:31	claude	de5228b6	squeal	09eb6544	worktree	worker	vitest	focused (1 files)	8	3	an edit after Squeal's last statement
+2026-10-24 08:14:59	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (1 files)	20	3	an integration tree no daemon validates
+2026-10-24 08:22:18	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	11	1	coordinator's integration check (docs/process.md)
+2026-10-24 08:26:16	claude	9b96747d	squeal	8dd24d16	worktree	worker	vitest	focused (1 files)	2	3	the command edits before it runs
+2026-10-24 08:27:13	claude	9b96747d	squeal	8dd24d16	worktree	worker	vitest	focused (1 files, name filter)	3	3	the command edits before it runs
+2026-10-24 09:06:00	codex	01a16d1e	cezar		checkout	worker	npm-test	focused (1 files, name filter)	4	3	an edit after Squeal's last statement
+2026-10-24 09:07:07	codex	01a16d1e	cezar		checkout	worker	npm-test	focused (3 files)	36	3	an edit after Squeal's last statement
+2026-10-24 09:07:31	claude	135e4d52	squeal	a07d6d3c	worktree	coordinator	vitest	focused (2 files)	24	1	coordinator's integration check (docs/process.md)
+2026-10-24 09:07:48	codex	01a16d1e	cezar		checkout	worker	npm-test:e2e	e2e	143	3	an edit after Squeal's last statement
+2026-10-24 09:10:45	claude	3bcee549	squeal	f566ce98	worktree	worker	vitest	focused (2 files, name filter)	4	3	the command edits before it runs
+2026-10-24 09:11:12	codex	01a16d1e	cezar		checkout	worker	vitest	e2e	134	2	a coverage run, which Squeal does not collect
+2026-10-24 09:11:40	claude	6db10ad1	squeal	e781447d	worktree	worker	vitest	scratch config	9	3	an edit after Squeal's last statement
+2026-10-24 09:11:58	claude	6db10ad1	squeal	e781447d	scratch	worker	vitest	scratch config	0 (background)	2	outside a Squeal worktree
+2026-10-24 09:14:21	codex	01a16d1e	cezar		checkout	worker	vitest	focused (3 files)	77	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:15:41	codex	01a16d26	cezar	87018a36	worktree	worker	npm-test	focused (2 files)	7	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:16:13	codex	01a16d26	cezar	87018a36	worktree	worker	npm-test	focused (1 files)	6	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:16:19	codex	01a16d1e	cezar		checkout	worker	vitest	focused (3 files)	14	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:16:45	codex	01a16d1e	cezar		checkout	worker	vitest	scratch config	45	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:17:46	codex	01a16d26	cezar	87018a36	worktree	worker	vitest	e2e	75	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:18:02	codex	01a16d1e	cezar		checkout	worker	vitest	focused (1 files)	79	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:19:24	codex	01a16d26	cezar	87018a36	worktree	worker	vitest	e2e	66	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:21:04	codex	01a16d26	cezar	87018a36	worktree	worker	vitest	e2e	73	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:22:49	codex	01a16d26	cezar	87018a36	worktree	worker	vitest	e2e	77	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:23:39	codex	01a16d26	cezar	87018a36	worktree	worker	vitest	focused (1 files)	7	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:24:03	codex	01a16d26	cezar	87018a36	worktree	worker	vitest	e2e	74	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:28:48	claude	6db10ad1	squeal	e781447d	worktree	worker	vitest	focused (1 files)	9	3	an edit after Squeal's last statement
+2026-10-24 09:37:15	claude	135e4d52	squeal	a07d6d3c	worktree	coordinator	vitest	focused (2 files)	11	1	coordinator's integration check (docs/process.md)
+2026-10-24 09:38:10	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (7 files)	55	1	coordinator's integration check (docs/process.md)
+2026-10-24 09:40:39	codex	01a16d47	squeal	5cfc5d9c	worktree	reviewer	vitest	full	1354	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 09:45:02	claude	6db10ad1	squeal	e781447d	worktree	worker	vitest	focused (1 files)	8	3	an edit after Squeal's last statement
+2026-10-24 09:52:38	codex	01a16d26	cezar	87018a36	worktree	worker	vitest	e2e	97	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 09:53:29	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (2 files)	7	3	an integration tree no daemon validates
+2026-10-24 09:53:40	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (2 files)	3	3	an integration tree no daemon validates
+2026-10-24 10:09:52	claude	6db10ad1	squeal	e781447d	worktree	worker	vitest	focused (1 files)	0 (background)	5	a test run repeated in a loop (timing, flake or mutation)
+2026-10-24 10:10:45	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (2 files)	26	3	an integration tree no daemon validates
+2026-10-24 10:11:09	claude	00853e20	squeal	6c97cdea	worktree	worker	vitest	focused (1 files)	4	3	an edit after Squeal's last statement
+2026-10-24 10:11:21	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (1 files)	15	3	an integration tree no daemon validates
+2026-10-24 10:14:16	claude	00853e20	squeal	6c97cdea	worktree	worker	vitest	focused (1 files)	3	3	the command edits before it runs
+2026-10-24 10:14:26	claude	00853e20	squeal	6c97cdea	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 10:15:56	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	npm-test:e2e	e2e	30	3	Squeal's last statement was not current
+2026-10-24 10:22:41	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	npm-test:e2e	e2e	213	5	a test run repeated in a loop (timing, flake or mutation)
+2026-10-24 10:23:40	claude	6db10ad1	squeal	e781447d	worktree	worker	vitest	scratch config	8	3	Squeal's last statement was not current
+2026-10-24 10:27:02	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (3 files)	15	3	an integration tree no daemon validates
+2026-10-24 10:27:42	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (6 files)	32	1	coordinator's integration check (docs/process.md)
+2026-10-24 10:29:33	codex	01a16d74	squeal	0f54a051	worktree	reviewer	vitest	full	2015	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 10:31:51	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	npm-test	focused (2 files, name filter)	5	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 10:31:53	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (7 files)	16	1	coordinator's integration check (docs/process.md)
+2026-10-24 10:32:02	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	npm-test	focused (1 files, name filter)	1	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 10:32:09	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	npm-test	focused (1 files, name filter)	5	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 10:33:32	codex	01a16d78	squeal	0b28b0aa	worktree	reviewer	vitest	full	4528	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 10:58:03	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	vitest	scratch config	601	2	a coverage run, which Squeal does not collect
+2026-10-24 11:00:14	claude	c7233b28	cezar	0829604a	worktree	worker	npm-test:e2e	e2e	70	3	Squeal's last statement was not current
+2026-10-24 11:01:40	claude	c7233b28	cezar	0829604a	worktree	worker	npm-test:e2e	e2e	14	3	the command edits before it runs
+2026-10-24 11:02:09	claude	c7233b28	cezar	0829604a	worktree	worker	npm-test:e2e	e2e	0 (background)	3	an edit after Squeal's last statement
+2026-10-24 11:03:30	codex	01a16d74	squeal	0f54a051	worktree	reviewer	vitest	focused (2 files)	288	1	reviewer's independent rerun in the candidate (the skill bars Squeal's results)
+2026-10-24 11:04:23	claude	c0a8e060	cezar	7c4a585f	worktree	worker	node-test	focused (1 files)	11	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 11:05:25	claude	c0a8e060	cezar	7c4a585f	worktree	worker	node-test	focused (1 files)	20	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 11:06:05	claude	c0a8e060	cezar	7c4a585f	worktree	worker	node-test	focused (1 files)	20	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 11:06:39	claude	c0a8e060	cezar	7c4a585f	worktree	worker	node-test	focused (1 files)	22	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 11:07:08	claude	c0a8e060	cezar	7c4a585f	worktree	worker	node-test	focused (1 files)	2	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 11:07:20	claude	c0a8e060	cezar	7c4a585f	worktree	worker	node-test	focused (1 files)	19	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 11:08:18	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	vitest	scratch config	601	2	a coverage run, which Squeal does not collect
+2026-10-24 11:10:11	claude	6a866524	cezar	dd7443e0	worktree	worker	npm-test	focused (7 files)	81	2	a coverage run, which Squeal does not collect
+2026-10-24 11:11:59	claude	c0a8e060	cezar	7c4a585f	worktree	worker	node-test	focused (3 files)	2	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 11:12:20	claude	c0a8e060	cezar	7c4a585f	worktree	worker	node-test	focused (2 files)	6	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 11:12:48	claude	6a866524	cezar	dd7443e0	worktree	worker	npm-test	focused (7 files)	84	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 11:13:08	claude	eafb1b6d	cezar	f475e065	worktree	worker	npm-test	focused (1 files, name filter)	33	3	Squeal's last statement was not current
+2026-10-24 11:15:01	claude	eafb1b6d	cezar	f475e065	worktree	worker	npm-test	focused (1 files)	25	4	Squeal had named the file's result
+2026-10-24 11:15:31	claude	6a866524	cezar	dd7443e0	worktree	worker	npm-test	focused (4 files)	25	3	Squeal's last statement was not current
+2026-10-24 11:15:51	claude	eafb1b6d	cezar	f475e065	worktree	worker	vitest	focused (2 files)	141	2	a coverage run, which Squeal does not collect
+2026-10-24 11:18:43	claude	eafb1b6d	cezar	f475e065	worktree	worker	npm-test	focused (1 files)	83	4	Squeal had named the file's result
+2026-10-24 11:20:44	claude	6a866524	cezar	dd7443e0	worktree	worker	npm-test	focused (9 files)	1	3	Squeal had named 2 of the run's files; 771 checks pending, 100 stale
+2026-10-24 11:20:50	claude	6a866524	cezar	dd7443e0	worktree	worker	npm-test	focused (9 files)	15	3	Squeal had named 1 of the run's 9 files; 100 checks stale
+2026-10-24 11:22:49	codex	01a16d96	cezar		checkout	other	npm-test	focused (7 files, name filter)	52	3	Squeal's last statement was not current
+2026-10-24 11:23:36	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	vitest	focused (? files, name filter)	501	2	a coverage run, which Squeal does not collect
+2026-10-24 11:23:41	claude	c7233b28	cezar	0829604a	worktree	worker	npm-test:e2e	e2e	152	3	an edit after Squeal's last statement
+2026-10-24 11:25:45	claude	f58bf510	cezar	e71c2637	worktree	worker	npm-test:e2e	e2e	0 (background)	3	Squeal's last statement was not current
+2026-10-24 11:26:21	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (7 files)	62	1	coordinator's integration check (docs/process.md)
+2026-10-24 11:26:36	claude	c7233b28	cezar	0829604a	worktree	worker	npm-test:e2e	e2e	85	2	a coverage run, which Squeal does not collect
+2026-10-24 11:30:31	claude	f58bf510	cezar	e71c2637	worktree	worker	npm-test:e2e	e2e	53	3	an edit after Squeal's last statement
+2026-10-24 11:32:18	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	vitest	focused (? files, name filter)	0	2	a coverage run, which Squeal does not collect
+2026-10-24 11:34:35	claude	803a3bcc	squeal	07ee1929	scratch	worker	vitest	scratch config	11	2	outside a Squeal worktree
+2026-10-24 11:35:19	claude	d5c68ea8	squeal	0b0387ed	worktree	worker	vitest	focused (1 files)	52	3	an edit after Squeal's last statement
+2026-10-24 11:36:15	claude	d5c68ea8	squeal	0b0387ed	worktree	worker	vitest	focused (1 files)	52	3	Squeal's last statement was not current
+2026-10-24 11:38:33	claude	d5c68ea8	squeal	0b0387ed	worktree	worker	vitest	focused (1 files, name filter)	27	3	an edit after Squeal's last statement
+2026-10-24 11:39:24	claude	d5c68ea8	squeal	0b0387ed	scratch	worker	vitest	focused (1 files, name filter)	27	2	outside a Squeal worktree
+2026-10-24 11:40:07	claude	d5c68ea8	squeal	0b0387ed	scratch	worker	vitest	focused (1 files, name filter)	16	2	outside a Squeal worktree
+2026-10-24 11:41:09	claude	d5c68ea8	squeal	0b0387ed	worktree	worker	vitest	focused (3 files, name filter)	44	5	a test run repeated in a loop (timing, flake or mutation)
+2026-10-24 11:45:17	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	vitest	scratch config	83	2	a coverage run, which Squeal does not collect
+2026-10-24 11:47:24	claude	d5c68ea8	squeal	0b0387ed	worktree	worker	vitest	focused (3 files, name filter)	94	5	a test run repeated in a loop (timing, flake or mutation)
+2026-10-24 11:49:48	codex	01a16d78	squeal	0b28b0aa	worktree	reviewer	vitest	focused (4 files)	78	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 11:52:43	claude	803a3bcc	squeal	07ee1929	worktree	worker	vitest	focused (2 files, name filter)	17	3	an edit after Squeal's last statement
+2026-10-24 11:53:10	claude	803a3bcc	squeal	07ee1929	worktree	worker	vitest	focused (4 files, name filter)	275	3	an edit after Squeal's last statement
+2026-10-24 11:57:12	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (2 files)	21	1	coordinator's integration check (docs/process.md)
+2026-10-24 11:59:35	claude	803a3bcc	squeal	07ee1929	worktree	worker	vitest	scratch config	16	2	a scratch config outside the suite
+2026-10-24 11:59:56	claude	803a3bcc	squeal	07ee1929	worktree	worker	vitest	scratch config	17	2	a scratch config outside the suite
+2026-10-24 12:07:56	claude	e6362a11	squeal	00aca89d	worktree	worker	vitest	focused (2 files)	3	3	an edit after Squeal's last statement
+2026-10-24 12:08:32	claude	e6362a11	squeal	00aca89d	worktree	worker	vitest	focused (3 files)	3	3	an edit after Squeal's last statement
+2026-10-24 12:08:48	claude	e6362a11	squeal	00aca89d	worktree	worker	vitest	focused (2 files)	5	3	an edit after Squeal's last statement
+2026-10-24 12:10:53	claude	0a556194	cezar	e71c2637	worktree	reviewer	vitest	focused (3 files)	497	3	the command edits before it runs
+2026-10-24 12:19:25	claude	0a556194	cezar	e71c2637	worktree	reviewer	vitest	scratch config	12	3	an edit after Squeal's last statement
+2026-10-24 12:24:29	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (4 files)	54	1	coordinator's integration check (docs/process.md)
+2026-10-24 12:26:34	codex	01a16de0	squeal	4c8f1807	worktree	reviewer	vitest	full	1541	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 12:28:27	codex	01a16de0	squeal	4c8f1807	worktree	reviewer	vitest	focused (? files, name filter)	34	1	reviewer's independent rerun in the candidate (the skill bars Squeal's results)
+2026-10-24 12:29:21	codex	01a16de0	squeal	4c8f1807	worktree	reviewer	vitest	focused (? files, name filter)	31	1	reviewer's independent rerun in the candidate (the skill bars Squeal's results)
+2026-10-24 12:35:16	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	npm-test	focused (1 files, name filter)	24	1	red/green proof in a disposable tree or scratch config (cezar AGENTS.md)
+2026-10-24 12:35:48	claude	e7d7c3f9	cezar	d0a78289	worktree	worker	vitest	scratch config	36	2	a coverage run, which Squeal does not collect
+2026-10-24 12:37:01	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (8 files)	44	1	coordinator's integration check (docs/process.md)
+2026-10-24 12:39:33	claude	9942b809	squeal	0995985a	worktree	worker	vitest	focused (1 files)	9	3	an edit after Squeal's last statement
+2026-10-24 12:39:33	codex	01a16deb	squeal	9790e2f2	worktree	reviewer	vitest	full	2541	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 12:39:49	claude	9942b809	squeal	0995985a	worktree	worker	vitest	focused (2 files)	3	3	an edit after Squeal's last statement
+2026-10-24 13:13:51	claude	9942b809	squeal	0995985a	worktree	worker	vitest	scratch config	86	5	a test run repeated in a loop (timing, flake or mutation)
+2026-10-24 13:16:38	claude	9942b809	squeal	0995985a	worktree	worker	vitest	focused (1 files)	27	3	an edit after Squeal's last statement
+2026-10-24 13:20:29	claude	9942b809	squeal	0995985a	worktree	worker	vitest	focused (2 files)	41	2	the run checks process leftovers after the run, which Squeal's result does not report
+2026-10-24 13:22:41	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (4 files)	38	3	an integration tree no daemon validates
+2026-10-24 13:24:51	codex	01a16e15	squeal	b02cbb4e	worktree	reviewer	vitest	full	1272	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 13:27:11	codex	01a16e15	squeal		tmp	reviewer	vitest	scratch config	2	2	outside a Squeal worktree
+2026-10-24 13:27:44	codex	01a16e15	squeal		tmp	reviewer	vitest	focused (1 files)	0	2	outside a Squeal worktree
+2026-10-24 13:27:47	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	2	3	Squeal's last statement was not current
+2026-10-24 13:28:32	codex	01a16e15	squeal		tmp	reviewer	vitest	focused (1 files)	2	2	outside a Squeal worktree
+2026-10-24 13:28:43	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	6	3	Squeal's last statement was not current
+2026-10-24 13:28:55	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	2	3	the command edits before it runs
+2026-10-24 13:29:03	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	2	3	an edit after Squeal's last statement
+2026-10-24 13:29:21	codex	01a16e15	squeal		tmp	reviewer	vitest	scratch config	2	2	outside a Squeal worktree
+2026-10-24 13:30:54	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	4	3	an edit after Squeal's last statement
+2026-10-24 13:31:20	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	8	3	the command edits before it runs
+2026-10-24 13:31:38	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (2 files)	6	3	Squeal's last statement was not current
+2026-10-24 13:33:09	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (3 files)	1	3	the command edits before it runs
+2026-10-24 13:33:19	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (3 files)	2	3	an edit after Squeal's last statement
+2026-10-24 13:33:33	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	1	3	the command edits before it runs
+2026-10-24 13:33:51	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (3 files)	3	3	the command edits before it runs
+2026-10-24 13:34:32	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	3	3	the command edits before it runs
+2026-10-24 13:34:44	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (3 files)	3	3	the command edits before it runs
+2026-10-24 13:35:46	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	3	3	an edit after Squeal's last statement
+2026-10-24 13:46:51	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (4 files)	5	3	the command edits before it runs
+2026-10-24 13:47:05	claude	29bd052a	squeal	fa075c16	worktree	worker	vitest	focused (1 files)	51	3	an edit after Squeal's last statement
+2026-10-24 13:52:15	claude	2b7041a6	squeal	335e5c31	worktree	worker	vitest	focused (1 files)	2	3	an edit after Squeal's last statement
+2026-10-24 13:52:32	claude	2b7041a6	squeal	335e5c31	worktree	worker	vitest	focused (3 files)	2	3	the command edits before it runs; Squeal's revision pending
+2026-10-24 13:53:18	claude	2b7041a6	squeal	335e5c31	worktree	worker	vitest	focused (2 files)	5	3	an edit after Squeal's last statement
+2026-10-24 13:55:57	claude	eda58f75	squeal	04a258b0	scratch	coordinator	vitest	focused (4 files)	40	3	an integration tree no daemon validates
+2026-10-24 13:56:29	claude	4dd23bad	squeal	52e58f23	scratch	coordinator	vitest	focused (9 files)	94	1	coordinator's integration check (docs/process.md)
+2026-10-24 13:57:47	codex	01a16e15	squeal	b02cbb4e	worktree	reviewer	vitest	full	964	1	reviewer's locked full run (reviewer skill, docs/process.md)
+2026-10-24 13:58:50	codex	01a16e15	squeal		tmp	reviewer	vitest	scratch config	2	2	outside a Squeal worktree
+2026-10-24 13:59:14	codex	01a16e15	squeal		tmp	reviewer	vitest	scratch config	2	2	outside a Squeal worktree
+2026-10-24 13:59:49	codex	01a16e15	squeal		tmp	reviewer	vitest	scratch config	1	2	outside a Squeal worktree
