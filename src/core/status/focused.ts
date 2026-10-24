@@ -1,13 +1,16 @@
 import { testFileId } from "../keys/index.js";
 import { type FocusedRun, readFocused } from "../scheduler/focused-row.js";
-import { formatCheck } from "../state/index.js";
+import { checkIdentity, formatCheck, testFileOf } from "../state/index.js";
 import { timeText } from "../text.js";
 import type {
+  CheckId,
+  CheckKey,
   StatusFocused,
   StatusFocusedCheck,
   StatusSnapshot,
   Store,
   TestFileRef,
+  WhyFocused,
   WorktreeId,
 } from "../types/index.js";
 
@@ -165,4 +168,47 @@ export function focusedLines(s: StatusSnapshot, full = false): string[] {
   });
   const more = applying.length - shown.length;
   return more > 0 ? [...lines, `  and ${more} more`] : lines;
+}
+
+/**
+ * 011 C6 as amended 2026-10-23: the newest focused run of `check`'s test
+ * file in `worktreeId` when it selected `check`, read against the file's
+ * current `key`; `undefined` otherwise, a run in flight included.
+ */
+export function whyFocusedOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  check: CheckId,
+  key: CheckKey | null,
+): WhyFocused | undefined {
+  const file = testFileId(testFileOf(check));
+  const run = readFocused(store, worktreeId).find((r) => testFileId(r.testFile) === file);
+  if (run === undefined) return undefined;
+  const at = run.checks.findIndex((c) => checkIdentity(c.check) === checkIdentity(check));
+  if (at === -1) return undefined;
+  const keyMoved = key !== run.key;
+  // `usedAt` 0: a read, not a lookup hit.
+  const status = statusFocusedOf(run, !keyMoved && store.results.byKey(run.key, 0).length === 0);
+  const result = status.checks[at];
+  return result === undefined ? undefined : { run: status, result, keyMoved };
+}
+
+/**
+ * `why`'s line below the known state: `Focused run at revision 4 (7.8 s,
+ * log <dir>): FAIL, not a stored result; the file's own run decides`, then
+ * why it no longer applies: its key moved, or its own run stored a result.
+ */
+export function whyFocusedLines(focused: WhyFocused | undefined): string[] {
+  if (focused === undefined) return [];
+  const { run, result, keyMoved } = focused;
+  const took = run.durationMs === null ? "" : `${focusedSecondsText(run.durationMs)}, `;
+  const outcome = result.outcome.toUpperCase();
+  const since = run.applies
+    ? ""
+    : keyMoved
+      ? "; its key moved since"
+      : "; the file's own run stored its result at this key since";
+  return [
+    `  Focused run at revision ${run.revision} (${took}log ${run.logDir}): ${outcome}, not a stored result; the file's own run decides${since}`,
+  ];
 }
