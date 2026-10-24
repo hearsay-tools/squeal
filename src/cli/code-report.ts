@@ -276,9 +276,7 @@ export function readCodeReport(
     since === undefined
       ? null
       : new Set(
-          since === null
-            ? []
-            : changedSince(code, worktreeId, since.since).map((s) => key(s.check)),
+          since === null ? [] : changedSince(code, worktreeId, since).map((s) => key(s.check)),
         );
   const to = options.told === true ? toldTo(main, worktreeId, options.shell) : undefined;
   const told =

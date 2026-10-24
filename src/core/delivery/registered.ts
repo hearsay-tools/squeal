@@ -23,7 +23,11 @@ import { readAll, readSlot, slot, writeSlot } from "./slots.js";
  * live and past its start scan at registration (`seesEveryChange`).
  */
 
-/** A revision range `(after, upTo]` that is not the consumer's: it was not registered. */
+/**
+ * A revision range `(after, upTo]` that is not the consumer's: it was not
+ * registered. `upTo` is the revision it came back at, so the range is empty
+ * when nothing changed while it was away (review 0.1.290 B1).
+ */
 type Gap = readonly [after: RevisionNumber, upTo: RevisionNumber];
 
 /** The revision `consumer`'s changes start after, and the ranges left out since. */
@@ -149,14 +153,16 @@ function fresh(since: RevisionNumber, scanned: EpochMs | null): Registration {
 
 /**
  * A parked registration taken up at `revision`: what changed while it was
- * away is left out. It keeps `scanned` only when the same daemon is live
- * and scanned now: another one's start scan may have seeded an edit.
+ * away is left out, and where it came back is kept, the gap empty when
+ * nothing changed (`codeSeenUpTo` reads it). It keeps `scanned` only when
+ * the same daemon is live and scanned now: another one's start scan may
+ * have seeded an edit.
  */
 function back(parked: Parked, revision: RevisionNumber, scanned: EpochMs | null): Registration {
   const away: Gap = [parked.leftAt, revision];
   const r = {
     since: parked.since,
-    gaps: revision > parked.leftAt ? [...parked.gaps, away] : parked.gaps,
+    gaps: revision >= parked.leftAt ? [...parked.gaps, away] : parked.gaps,
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }

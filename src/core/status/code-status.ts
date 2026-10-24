@@ -32,7 +32,7 @@ export function codeStatusOf(
         v: 1,
         threshold: complexity.threshold,
         over: states.filter((s) => s.outcome === "fail").length,
-        sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from.since).length,
+        sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from).length,
         since: from?.scope ?? null,
         pending: code.files.uncounted(worktreeId).length,
         files: code.files.list(worktreeId).filter((f) => !isTooBig(f)).length,
