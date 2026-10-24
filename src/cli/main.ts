@@ -80,13 +80,14 @@ Usage:
                                 --per-check lists each check once, at its newest
                                 failure; --limit lists more than 20, all lists
                                 every one; --since 2h lists only the last two hours
-  squeal code [<path>...] [--changed] [--json]
+  squeal code [<path>...] [--changed | --told] [--json]
                                 With complexity.enabled: every function over the
                                 complexity threshold, newest first, with its location,
                                 complexity, decision points by kind and the revision it
                                 went over; paths list every function in those files or
                                 directories; --changed keeps those whose state changed
-                                since this session registered; files not counted
+                                since this session registered, --told those over that
+                                this session was told about; files not counted
                                 follow, with why
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
