@@ -215,7 +215,12 @@ export type RunEnd = "completed" | "crashed" | "timed-out";
 export interface RunOptions {
   /** Id of the `runs/<run-id>/` directory (D1). */
   readonly runId: string;
-  /** Where the adapter writes full runner output. */
+  /**
+   * Where the adapter writes full runner output: a directory no earlier run
+   * used (spec 016 D2). The daemon gives `runs/<run-id>/`. An adapter may
+   * read back what its run wrote there, so a reused directory can report an
+   * earlier run's results.
+   */
   readonly logDir: AbsolutePath;
   /** From policy `runner.timeoutMs`; `null` means no limit. */
   readonly timeoutMs: number | null;
