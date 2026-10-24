@@ -160,6 +160,15 @@ export class RunQueue {
     return this.#promotions.rankOf(testFileId(ref));
   }
 
+  /**
+   * When `rankOf(ref)` next changes with no event: the deadline of the
+   * earliest live promotion that holds it; `null` when none does
+   * (`TierYields`, row 011-184).
+   */
+  untilOf(ref: TestFileRef): number | null {
+    return this.#promotions.untilOf(testFileId(ref));
+  }
+
   /** `isRecent` or `isPromoted`: work of C4 step 4's first group (C15). */
   isFirstGroup(ref: TestFileRef): boolean {
     return this.isRecent(ref) || this.isPromoted(ref);

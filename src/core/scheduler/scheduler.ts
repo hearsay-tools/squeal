@@ -403,11 +403,13 @@ class TierScheduler implements Scheduler {
 
   /**
    * A file of `tier` ended during its run (row 011-54): once a revision has
-   * changed an input of the tier, every file left may now be re-keyed, so
-   * the tiers in flight are checked again.
+   * changed an input of the tier, every file left may now be re-keyed, and
+   * once it runs on for a promoted file that ranks with or after its files,
+   * the ended file may have ranked first (`named`, review
+   * `reviews/0.1.296.md` B1), so the tiers in flight are checked again.
    */
   #fileEnded(tier: Tier): void {
-    if (tier.changes.size === 0) return;
+    if (tier.changes.size === 0 && !this.#yields.standsNamed(tier)) return;
     this.#recheckTiers();
   }
 
