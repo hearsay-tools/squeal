@@ -100,4 +100,10 @@ export interface CodeStatus {
   readonly files: number;
   /** Functions in a parse error's range. */
   readonly unknown: number;
+  /**
+   * Included files the counter failed on at every attempt, `unknown` until
+   * their bytes change; neither in `pending` nor `files` (row 015-18).
+   * Absent when there are none.
+   */
+  readonly uncountable?: number;
 }
