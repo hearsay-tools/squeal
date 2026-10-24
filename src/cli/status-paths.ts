@@ -20,7 +20,7 @@ import {
   type NamedWait,
   type NamedWaitOutcome,
   ownNamedFiles,
-  printNamedRead,
+  printNamed,
   selectNamedFiles,
 } from "./status-wait-paths.js";
 import { holdOfWait, readClasses, readVerdict } from "./verdict.js";
@@ -148,5 +148,5 @@ export async function namedSnapshotCommand(
 ): Promise<number> {
   const checks = how.checks ?? [];
   const snapshot = readNamedSnapshot(io.cwd ?? process.cwd(), paths, { ...options, checks });
-  return printNamedRead(snapshot, how, io, options.now);
+  return printNamed(snapshot, how, io, options.now);
 }
