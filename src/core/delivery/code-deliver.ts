@@ -1,5 +1,6 @@
 import { awaitFirstCount, readCursor } from "../code/pass/cursor.js";
 import { uncountableFiles } from "../code/pass/failed.js";
+import { pulledReader } from "../code/pass/pulled.js";
 import type { CodeStore } from "../code/store/types.js";
 import { isRecord } from "../fs/index.js";
 import type {
@@ -323,6 +324,7 @@ function codeStep(
     seededAt,
     seenUpTo: since,
     toldAt: at,
+    pulled: pulledReader(store.meta, worktreeId),
   });
   const listed = plan.entries.slice(0, CODE_LISTED_MAX);
   // An edit past the limit is not counted, since `squeal code --changed` would not list it:

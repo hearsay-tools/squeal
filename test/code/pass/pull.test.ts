@@ -5,7 +5,8 @@ import { consumer, type Rig, rig } from "./rig.js";
  * Spec 015 D6 as amended by 015-19 (lessons.md P1, sq6): a revision that
  * moves `HEAD` (a pull, merge, rebase or checkout) marks no first edit for
  * a file whose working-tree blob is its blob at the new `HEAD`. A `FAIL`
- * or `PASS` from that revision is still told.
+ * from that revision is still told; a `PASS` only to a session told the
+ * function's `FAIL` (015-38, `test/code/delivery/pulled.test.ts`).
  */
 
 const C1 = consumer("s1");
@@ -30,11 +31,10 @@ describe("a revision that moves HEAD (015-19)", () => {
     expect(await r.told(C1)).toEqual([still(26)]);
   });
 
-  it("still tells a FAIL and a PASS it brought", async () => {
+  it("still tells a FAIL it brought, and takes in by count a PASS of a function told by count (015-38)", async () => {
     await r.pull({ "src/a.ts": "settle 19 B4\npay 21 B5\n" });
     expect(await r.told(C1)).toEqual([
       "FAIL complexity: pay (src/a.ts:2) is 21, over 20 (ESLint rule)",
-      "PASS complexity: settle (src/a.ts:1) is 19, at or under 20",
     ]);
   });
 
