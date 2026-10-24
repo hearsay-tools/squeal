@@ -129,3 +129,28 @@ describe("status shows a focused run while it applies (011 C6, row 011-146)", ()
     ]);
   });
 });
+
+describe("a focused run in flight is named among the running files (011 C6, row 011-146)", () => {
+  it("moves its file from Queued to Running with its texts; the counts stay", () => {
+    const { repo, store, id } = worktree();
+    seedFile(store, id, PARITY, "queued");
+    seedFile(store, id, OTHER, "queued");
+    writeRuns(store, id, [
+      focusedRun(PARITY, { endedAt: null, end: null, matched: null, collected: null, fails: [] }),
+    ]);
+
+    const s = snapshotOf(repo.main);
+    const lines = linesOf(s);
+
+    expect(lines).toContain(`Running: 1 test file: ${PARITY} (focused: "claude U")`);
+    expect(lines).toContain(`Queued: 1 test file: ${OTHER}`);
+    expect(lines.find((l) => l.startsWith("Focused (not counted):"))).toMatch(
+      /at revision 4: running since \d\d:\d\d:\d\d \(focused: "claude U"\); its own run is queued\.$/,
+    );
+    // Only the text moves it: the payload's phases and counts are the queue's.
+    expect(s.testFilesByPhase).toEqual({ running: 0, queued: 2 });
+    expect(s.pendingTestFiles?.running.files).toEqual([]);
+    expect(s.pendingTestFiles?.queued.files).toEqual([ref(OTHER), ref(PARITY)]);
+    expect(s.breakdown.pendingByPhase).toMatchObject({ running: 0, queued: 2 });
+  });
+});

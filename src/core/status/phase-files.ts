@@ -9,6 +9,7 @@ import type {
   TestFileKeyRecord,
   TestFileRef,
 } from "../types/index.js";
+import { textsText } from "./focused.js";
 
 /*
  * Row 011-58 (gh-61; 011 C6 and C15): which test files run and which wait,
@@ -70,23 +71,49 @@ function listed(files: TestFileRef[]): PhaseFiles {
 /**
  * `Running: 5 test files: cezar: a.test.ts, ...` and `Queued: ...`, each
  * only when its phase has a file, the project leading each path; a cut one
- * ends `and N more`. None from a payload before the field.
+ * ends `and N more`. None from a payload before the field. Row 011-146 (C6
+ * as amended 2026-10-23): a queued file whose focused run is in flight is
+ * named among the running ones with `(focused: <texts>)`; only the text
+ * moves it, so `pendingTestFiles` and every count are unchanged.
  */
 export function phaseLines(s: StatusSnapshot): string[] {
   const pending = s.pendingTestFiles;
   if (pending === undefined) return [];
+  const marks = new Map<string, string>();
+  for (const entry of s.focused ?? []) {
+    if (entry.applies && entry.endedAt === null) {
+      marks.set(testFileId(entry.testFile), ` (focused: ${textsText(entry.texts)})`);
+    }
+  }
+  const focused = pending.queued.files.filter((f) => marks.has(testFileId(f)));
+  const running = {
+    files: [...focused, ...pending.running.files],
+    omitted: pending.running.omitted,
+  };
+  const queued = {
+    files: pending.queued.files.filter((f) => !marks.has(testFileId(f))),
+    omitted: pending.queued.omitted,
+  };
   return [
-    ...phaseLine("Running", pending.running, RUNNING_FILES_SHOWN),
-    ...phaseLine("Queued", pending.queued, QUEUED_FILES_SHOWN),
+    ...phaseLine("Running", running, RUNNING_FILES_SHOWN, marks),
+    ...phaseLine("Queued", queued, QUEUED_FILES_SHOWN, marks),
   ];
 }
 
-function phaseLine(label: string, phase: PhaseFiles, shown: number): string[] {
+function phaseLine(
+  label: string,
+  phase: PhaseFiles,
+  shown: number,
+  marks: ReadonlyMap<string, string>,
+): string[] {
   const total = phase.files.length + phase.omitted;
   if (total === 0) return [];
   const names = phase.files
     .slice(0, shown)
-    .map(({ project, path }) => (project === "" ? path : `${project}: ${path}`));
+    .map(
+      (ref) =>
+        `${ref.project === "" ? ref.path : `${ref.project}: ${ref.path}`}${marks.get(testFileId(ref)) ?? ""}`,
+    );
   const more = total - names.length;
   const rest = more > 0 ? ` and ${more} more` : "";
   return [`${label}: ${plural(total, "test file")}: ${names.join(", ")}${rest}`];
