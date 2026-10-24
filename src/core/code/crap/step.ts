@@ -6,6 +6,7 @@ import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../coverage/record.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import { uncountableFiles } from "../pass/failed.js";
 import type { CodeStore } from "../store/types.js";
+import { broughtByGit, keepUnjudged } from "./brought.js";
 import { coverageOf, type FileCondition, fileCondition } from "./file.js";
 import { checkOf, evidenceOf, type Judged, judgeFiles, priorKey } from "./judge.js";
 import { type LoaderCondition, type LoaderInputs, readLoaders } from "./loaders.js";
@@ -131,7 +132,9 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
 
   return store.transaction(() => {
     if (start || input.reseed) seed(input, files, countOf, start && summary !== null);
-    const transitions = writeJudgement(input, judged);
+    const brought = broughtByGit(store.meta, worktreeId, summary, next);
+    const transitions = writeJudgement(input, judged, brought);
+    keepUnjudged(brought, files, next);
     for (const path of Object.keys(summary?.files ?? {})) {
       if (next[path] === undefined) writeEvidence(store.meta, worktreeId, path, null);
     }
@@ -144,6 +147,7 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
       ...(waiting.length === 0 ? {} : { quiet: waiting }),
       ...(loaders.withoutImports === 0 ? {} : { withoutImports: loaders.withoutImports }),
       threshold: thresholdAfter(input, start ? null : summary, more),
+      ...(brought.size === 0 ? {} : { brought: Object.fromEntries(brought) }),
     };
     if (start || JSON.stringify(written) !== JSON.stringify(summary)) {
       writeSummary(store.meta, worktreeId, written);
@@ -154,9 +158,15 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
 
 /**
  * Judges `judged`, and writes the states, the transitions, D6's edits
- * (row 015-40) and the evidence; the number of transitions.
+ * (row 015-40) and the evidence; the number of transitions. An own edit
+ * that git changed the file after (`brought`) is not the body judged, so it
+ * marks none (review 0.1.299 B1).
  */
-function writeJudgement(input: CoverageStepInput, judged: readonly Judged[]): number {
+function writeJudgement(
+  input: CoverageStepInput,
+  judged: readonly Judged[],
+  brought: ReadonlyMap<string, RevisionNumber>,
+): number {
   const { store, worktreeId } = input;
   const paths = judged.map((j) => j.file.path);
   if (paths.length === 0) return 0;
@@ -165,7 +175,9 @@ function writeJudgement(input: CoverageStepInput, judged: readonly Judged[]): nu
   const edits = new Map(
     store.states
       .edits(worktreeId, "complexity")
-      .filter((e) => judgedPaths.has(e.check.path))
+      .filter(
+        (e) => judgedPaths.has(e.check.path) && e.revision > (brought.get(e.check.path) ?? -1),
+      )
       .map((e) => [`${e.check.path}\0${functionKey(e.check)}`, e]),
   );
   const { revision, threshold } = input;
