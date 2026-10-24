@@ -36,6 +36,12 @@ export function mainStoreSource(
         store.revisions.range(worktreeId, after, upTo).flatMap((r) => r.changes.map((c) => c.path)),
       ),
     ],
+    lastChanges: (after, upTo) =>
+      new Map(
+        store.revisions
+          .range(worktreeId, after, upTo)
+          .flatMap((r) => r.changes.map((c) => [c.path, r.number] as const)),
+      ),
     movedHead: (after, upTo) =>
       headAfterMove(
         headAt(after),
