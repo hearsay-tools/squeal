@@ -1,0 +1,405 @@
+=== keys ===
+{"test":"test/kit/driver.test.ts","packInputs":[]}
+{"edit":"src/runners/node-test/recorders.ts","changed":["test/kit/vitest.test.ts","test/kit/node-test.test.ts"]}
+{"edit":"src/runners/node-test/run/process.ts","changed":["test/kit/node-test.test.ts","test/kit/pytest.test.ts"]}
+{"edit":"test/kit/packs/pytest.ts","changed":["test/kit/pytest.test.ts"]}
+{"edit":"src/runners/node-test/runtime/reporter.mjs","changed":["test/kit/node-test.test.ts"]}
+{"edit":"src/runners/pytest/runtime/squeal_pytest.py","changed":["test/kit/pytest.test.ts"]}
+{"edit":"src/runners/observe/fs.cjs","changed":["test/kit/vitest.test.ts"]}
+
+=== observations ===
+{"end":"completed","completed":[{"project":"","path":"test/kit/driver.test.ts"}],"failed":0,"packReads":["test/kit/packs/node-test.ts","test/kit/packs/pytest.ts","test/kit/packs/vitest.ts"],"listings":["test/kit/packs","test/kit/scenarios"]}
+
+=== kit-baseline ===
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/9fca2771/squeal-review-016-12-yhb_pmv_
+
+
+ Test Files  4 passed (4)
+      Tests  20 passed (20)
+   Start at  00:56:06
+   Duration  17.89s (tests 92%, transform 7%, import 2%)
+
+
+=== node-stale ===
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/9fca2771/squeal-review-016-12-yhb_pmv_
+
+ ❯ test/kit/node-test.test.ts (3 tests | 3 failed) 4443ms
+   ❯ the kit on node:test (spec 016 D1) (3)
+     × K1: a source edit flips a test, then it rec… 1882ms
+     × K2: an edit two imports away re-runs the de… 1266ms
+     × K3: a file fails to load, then recovers 1284ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kit/node-test.test.ts > the kit on node:test (spec 016 D1) > K1: a source edit flips a test, then it rec…
+AssertionError: FAIL K1 × node-test
+ok   lists test/direct.test.mjs (got test/direct.test.mjs)
+ok   step 0 run (completed): direct is pass, expected pass
+ok   step 1 edit src/leaf.mjs: reaches direct by affected=direct, closure=true, observed=false
+FAIL step 2 run (completed): direct is pass, expected fail
+ok   step 3 edit src/leaf.mjs: reaches direct by affected=direct, closure=true, observed=false
+ok   step 4 run (completed): direct is pass, expected pass: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/kit/node-test.test.ts:17:62
+     15|   it.each(SCENARIOS)("$name: $title", { timeout: 120_000 }, async (sce…
+     16|     const played = await play(scenario, nodeTest, scratch);
+     17|     expect(accepted(played.verdict), describePlayed(played)).toBe(true…
+       |                                                              ^
+     18|   });
+     19| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/kit/node-test.test.ts > the kit on node:test (spec 016 D1) > K2: an edit two imports away re-runs the de…
+AssertionError: FAIL K2 × node-test
+ok   lists test/chain.test.mjs (got test/chain.test.mjs)
+ok   step 0 run (completed): chain is pass, expected pass
+ok   step 1 edit src/leaf.mjs: reaches chain by affected=transitive, closure=true, observed=false
+FAIL step 2 run (completed): chain is pass, expected fail: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/kit/node-test.test.ts:17:62
+     15|   it.each(SCENARIOS)("$name: $title", { timeout: 120_000 }, async (sce…
+     16|     const played = await play(scenario, nodeTest, scratch);
+     17|     expect(accepted(played.verdict), describePlayed(played)).toBe(true…
+       |                                                              ^
+     18|   });
+     19| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/kit/node-test.test.ts > the kit on node:test (spec 016 D1) > K3: a file fails to load, then recovers
+AssertionError: FAIL K3 × node-test
+ok   lists test/loads.test.mjs (got test/loads.test.mjs)
+ok   step 0 run (completed): loads is pass, expected pass
+ok   step 1 edit src/leaf.mjs: reaches loads by affected=direct, closure=true, observed=false
+FAIL step 2 run (completed): loads is pass, expected file-error
+ok   step 3 edit src/leaf.mjs: reaches loads by affected=direct, closure=true, observed=false
+ok   step 4 run (completed): loads is pass, expected pass: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/kit/node-test.test.ts:17:62
+     15|   it.each(SCENARIOS)("$name: $title", { timeout: 120_000 }, async (sce…
+     16|     const played = await play(scenario, nodeTest, scratch);
+     17|     expect(accepted(played.verdict), describePlayed(played)).toBe(true…
+       |                                                              ^
+     18|   });
+     19| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  00:54:09
+   Duration  5.99s (tests 83%, transform 13%, import 4%)
+
+
+=== vitest-stale ===
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/9fca2771/squeal-review-016-12-yhb_pmv_
+
+ ❯ test/kit/vitest.test.ts (3 tests | 3 failed) 1383ms
+   ❯ the kit on Vitest (spec 016 D1) (3)
+     × K1: a source edit flips a test, then it rec… 741ms
+     × K2: an edit two imports away re-runs the de… 309ms
+     × K3: a file fails to load, then recovers 326ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kit/vitest.test.ts > the kit on Vitest (spec 016 D1) > K1: a source edit flips a test, then it rec…
+AssertionError: FAIL K1 × vitest
+ok   lists test/direct.test.ts (got test/direct.test.ts)
+ok   step 0 run (completed): direct is pass, expected pass
+ok   step 1 edit src/leaf.ts: reaches direct by affected=direct, closure=true, observed=false
+FAIL step 2 run (completed): direct is pass, expected fail
+ok   step 3 edit src/leaf.ts: reaches direct by affected=direct, closure=true, observed=false
+ok   step 4 run (completed): direct is pass, expected pass: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/kit/vitest.test.ts:17:62
+     15|   it.each(SCENARIOS)("$name: $title", { timeout: 120_000 }, async (sce…
+     16|     const played = await play(scenario, vitest, scratch);
+     17|     expect(accepted(played.verdict), describePlayed(played)).toBe(true…
+       |                                                              ^
+     18|   });
+     19| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/kit/vitest.test.ts > the kit on Vitest (spec 016 D1) > K2: an edit two imports away re-runs the de…
+AssertionError: FAIL K2 × vitest
+ok   lists test/chain.test.ts (got test/chain.test.ts)
+ok   step 0 run (completed): chain is pass, expected pass
+ok   step 1 edit src/leaf.ts: reaches chain by affected=transitive, closure=true, observed=false
+FAIL step 2 run (completed): chain is pass, expected fail: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/kit/vitest.test.ts:17:62
+     15|   it.each(SCENARIOS)("$name: $title", { timeout: 120_000 }, async (sce…
+     16|     const played = await play(scenario, vitest, scratch);
+     17|     expect(accepted(played.verdict), describePlayed(played)).toBe(true…
+       |                                                              ^
+     18|   });
+     19| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/kit/vitest.test.ts > the kit on Vitest (spec 016 D1) > K3: a file fails to load, then recovers
+AssertionError: FAIL K3 × vitest
+ok   lists test/loads.test.ts (got test/loads.test.ts)
+ok   step 0 run (completed): loads is pass, expected pass
+ok   step 1 edit src/leaf.ts: reaches loads by affected=direct, closure=true, observed=false
+FAIL step 2 run (completed): loads is pass, expected file-error
+ok   step 3 edit src/leaf.ts: reaches loads by affected=direct, closure=true, observed=false
+ok   step 4 run (completed): loads is pass, expected pass: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/kit/vitest.test.ts:17:62
+     15|   it.each(SCENARIOS)("$name: $title", { timeout: 120_000 }, async (sce…
+     16|     const played = await play(scenario, vitest, scratch);
+     17|     expect(accepted(played.verdict), describePlayed(played)).toBe(true…
+       |                                                              ^
+     18|   });
+     19| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  00:54:16
+   Duration  3.04s (tests 57%, transform 34%, import 9%)
+
+
+=== pytest-shared-log ===
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/9fca2771/squeal-review-016-12-yhb_pmv_
+
+ ❯ test/kit/pytest.test.ts (6 tests | 6 failed) 21468ms
+   ❯ the kit on pytest under Python 3.10 (spec 016 D1) (3)
+     × K1: a source edit flips a test, then it rec… 4408ms
+     × K2: an edit two imports away re-runs the de… 3338ms
+     × K3: a file fails to load, then recovers 3450ms
+   ❯ the kit on pytest under Python 3.13 (spec 016 D1) (3)
+     × K1: a source edit flips a test, then it rec… 3639ms
+     × K2: an edit two imports away re-runs the de… 2784ms
+     × K3: a file fails to load, then recovers 3004ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kit/pytest.test.ts > the kit on pytest under Python 3.10 (spec 016 D1) > K1: a source edit flips a test, then it rec…
+ FAIL  test/kit/pytest.test.ts > the kit on pytest under Python 3.13 (spec 016 D1) > K1: a source edit flips a test, then it rec…
+AssertionError: FAIL K1 × pytest
+ok   lists tests/test_direct.py (got tests/test_direct.py)
+ok   step 0 run (completed): direct is pass, expected pass
+ok   step 1 edit kit/leaf.py: reaches direct by affected=direct, closure=true, observed=false
+FAIL step 2 run (completed): direct is pass, expected fail
+ok   step 3 edit kit/leaf.py: reaches direct by affected=direct, closure=true, observed=false
+ok   step 4 run (completed): direct is pass, expected pass: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/kit/pytest.test.ts:37:62
+     35|     const { PYTHONDONTWRITEBYTECODE: _, ...source } = env;
+     36|     const played = await play(scenario, pytestPack(python, source), sc…
+     37|     expect(accepted(played.verdict), describePlayed(played)).toBe(true…
+       |                                                              ^
+     38|   });
+     39| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/kit/pytest.test.ts > the kit on pytest under Python 3.10 (spec 016 D1) > K2: an edit two imports away re-runs the de…
+ FAIL  test/kit/pytest.test.ts > the kit on pytest under Python 3.13 (spec 016 D1) > K2: an edit two imports away re-runs the de…
+AssertionError: FAIL K2 × pytest
+ok   lists tests/test_chain.py (got tests/test_chain.py)
+ok   step 0 run (completed): chain is pass, expected pass
+ok   step 1 edit kit/leaf.py: reaches chain by affected=transitive, closure=true, observed=false
+FAIL step 2 run (completed): chain is pass, expected fail: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/kit/pytest.test.ts:37:62
+     35|     const { PYTHONDONTWRITEBYTECODE: _, ...source } = env;
+     36|     const played = await play(scenario, pytestPack(python, source), sc…
+     37|     expect(accepted(played.verdict), describePlayed(played)).toBe(true…
+       |                                                              ^
+     38|   });
+     39| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/kit/pytest.test.ts > the kit on pytest under Python 3.10 (spec 016 D1) > K3: a file fails to load, then recovers
+ FAIL  test/kit/pytest.test.ts > the kit on pytest under Python 3.13 (spec 016 D1) > K3: a file fails to load, then recovers
+AssertionError: FAIL K3 × pytest
+ok   lists tests/test_loads.py (got tests/test_loads.py)
+ok   step 0 run (completed): loads is pass, expected pass
+ok   step 1 edit kit/leaf.py: reaches loads by affected=direct, closure=true, observed=false
+ok   step 2 run (completed): loads is file-error, expected file-error
+ok   step 3 edit kit/leaf.py: reaches loads by affected=direct, closure=true, observed=false
+FAIL step 4 run (completed): loads is file-error, expected pass: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/kit/pytest.test.ts:37:62
+     35|     const { PYTHONDONTWRITEBYTECODE: _, ...source } = env;
+     36|     const played = await play(scenario, pytestPack(python, source), sc…
+     37|     expect(accepted(played.verdict), describePlayed(played)).toBe(true…
+       |                                                              ^
+     38|   });
+     39| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed (6)
+   Start at  00:54:21
+   Duration  22.83s (tests 97%, transform 2%, import 1%)
+
+
+=== named-driver ===
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/9fca2771/squeal-review-016-12-yhb_pmv_
+
+ ❯ test/kit/driver.test.ts (8 tests | 1 failed) 35ms
+   ❯ what names a runner (spec 016 D1) (2)
+     × is never the driver or a scenario 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kit/driver.test.ts > what names a runner (spec 016 D1) > is never the driver or a scenario
+AssertionError: driver.ts: expected '// pytest\nimport { mkdirSync, realpa…' not to match /vitest|node\W*test|pytest|python|\.p…/i
+
+- Expected:
+/vitest|node\W*test|pytest|python|\.py\b|\.mjs\b/i
+
+
+ ❯ test/kit/driver.test.ts:68:36
+     66|   it("is never the driver or a scenario", () => {
+     67|     for (const path of ["driver.ts", ...scenarios]) {
+     68|       expect(text(path), path).not.toMatch(RUNNER);
+       |                                    ^
+     69|       expect(text(path), path).not.toMatch(/from\s+["'][^"']*\/runners…
+     70|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  00:54:45
+   Duration  720ms (transform 52%, tests 24%, import 20%, worker 4%)
+
+
+=== Independent full suite at clean pinned SHA ===
+$ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/9fca2771-f3b7-47c2-98f1-ed2162958516
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/9fca2771-f3b7-47c2-98f1-ed2162958516/test/fixtures/scheduler/.tmp/ca0a3add-2139-497b-a096-86d990ff9db8/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/9fca2771-f3b7-47c2-98f1-ed2162958516/test/fixtures/scheduler/.tmp/2b0207f4-ee4b-4c16-8483-399deb41de37/main/.git/worktrees/staged/gitdir
+error: could not apply a48818d... topic
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+error: could not revert 3f8e6b9... commit
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+Rebasing (1/1)
+error: could not apply a48818d... topic
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply a48818d... topic
+Rebasing (1/2)
+Rebasing (2/2)
+
+
+Stopped at 1588abb (topic)
+squeal tests: killing 1 process(es) an earlier run left: 1411030
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Rebasing (1/1)
+error: could not apply 22fa254... main
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 22fa254... main
+error: could not apply f900135... side
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  1083 passed | 2 skipped (1085)
+      Tests  8624 passed | 2 expected fail | 11 skipped (8637)
+   Start at  01:24:01
+   Duration  1500.93s (tests 96%, import 3%, transform 1%)
+
+    Isolate  1085 workers spawned · ~169ms startup each (spawn + environment, per file)
+             at least ~45.61s faster with isolate: false — reuses workers across files instead of one per file
+
+
+exit 0
