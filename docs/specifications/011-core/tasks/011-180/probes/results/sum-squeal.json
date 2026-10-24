@@ -1,0 +1,188 @@
+{
+ "yields": 31,
+ "cut": 60,
+ "lowS": 686.8,
+ "highS": 2296.4,
+ "byKind": {
+  "edit-sized": {
+   "runs": 9,
+   "cut": 18,
+   "lowS": 291.8,
+   "highS": 589.2
+  },
+  "edit-sized, checkpoint": {
+   "runs": 21,
+   "cut": 34,
+   "lowS": 386.5,
+   "highS": 1672.8
+  },
+  "backlog-sized": {
+   "runs": 1,
+   "cut": 8,
+   "lowS": 8.5,
+   "highS": 34.4
+  }
+ },
+ "byWaitedFor": {
+  "revision": {
+   "runs": 29,
+   "cut": 50,
+   "lowS": 671.6,
+   "highS": 2238.4
+  },
+  "promoted": {
+   "runs": 2,
+   "cut": 10,
+   "lowS": 15.2,
+   "highS": 58
+  }
+ },
+ "byBranch": {
+  "overrun at 30 s": {
+   "runs": 7,
+   "cut": 16,
+   "lowS": 9.7,
+   "highS": 462.3
+  },
+  "overrun": {
+   "runs": 12,
+   "cut": 22,
+   "lowS": 238.5,
+   "highS": 926.7
+  },
+  "neither": {
+   "runs": 4,
+   "cut": 5,
+   "lowS": 73.8,
+   "highS": 252.2
+  },
+  "remainder": {
+   "runs": 8,
+   "cut": 17,
+   "lowS": 364.8,
+   "highS": 655.2
+  }
+ },
+ "byScope": {
+  "removed": {
+   "runs": 30,
+   "cut": 57,
+   "lowS": 586.6,
+   "highS": 2186.5
+  },
+  "live": {
+   "runs": 1,
+   "cut": 3,
+   "lowS": 100.2,
+   "highS": 109.9
+  }
+ },
+ "allStartedYields": 30,
+ "gainBuckets": {
+  ">60": {
+   "runs": 18,
+   "highS": 1501.7,
+   "leftS": 3711.9
+  },
+  "30-60": {
+   "runs": 4,
+   "highS": 396.2,
+   "leftS": 151
+  },
+  "0-10": {
+   "runs": 2,
+   "highS": 121.2,
+   "leftS": 8.9
+  },
+  "10-30": {
+   "runs": 4,
+   "highS": 181.4,
+   "leftS": 88.3
+  },
+  "<=0": {
+   "runs": 2,
+   "highS": 61.5,
+   "leftS": 0
+  }
+ },
+ "gainMedianS": 71.4,
+ "lossy": {
+  "runs": 14,
+  "highS": 1166.3,
+  "savedS": 428.3
+ },
+ "nextTier": {
+  "afterEndMedianS": 0.2,
+  "over5s": 2,
+  "afterEventMedianS": 4.2,
+  "afterEvent": [
+   4.2
+  ]
+ },
+ "keepUpTo": [
+  {
+   "B": 10,
+   "yields": 30,
+   "tiersEnded": 4,
+   "kept": 12,
+   "keptHighS": 386.8,
+   "keptRerunS": 415.4,
+   "extraWaitS": 268.9,
+   "extraWaitPerYieldS": 9
+  },
+  {
+   "B": 30,
+   "yields": 30,
+   "tiersEnded": 8,
+   "kept": 20,
+   "keptHighS": 725.1,
+   "keptRerunS": 940.9,
+   "extraWaitS": 757.2,
+   "extraWaitPerYieldS": 25.2
+  },
+  {
+   "B": 60,
+   "yields": 30,
+   "tiersEnded": 12,
+   "kept": 27,
+   "keptHighS": 1105.5,
+   "keptRerunS": 1582.5,
+   "extraWaitS": 1328.2,
+   "extraWaitPerYieldS": 44.3
+  }
+ ],
+ "keepShortUpTo": [
+  {
+   "B": 10,
+   "kept": 12,
+   "keptHighS": 386.8,
+   "extraWaitS": 28.7
+  },
+  {
+   "B": 30,
+   "kept": 20,
+   "keptHighS": 725.1,
+   "extraWaitS": 155.9
+  }
+ ],
+ "repeated": [
+  {
+   "file": "test/scheduler/rerun-failure.test.ts",
+   "cuts": 2,
+   "highS": 100.4,
+   "runs": [
+    "e7795e47@2ccf922dr6",
+    "41d3e539@2ccf922dr82"
+   ]
+  },
+  {
+   "file": "test/scheduler/slow-rank.test.ts",
+   "cuts": 2,
+   "highS": 81.3,
+   "runs": [
+    "394f2fcd@2ccf922dr73",
+    "9c3cd9b3@2ccf922dr114"
+   ]
+  }
+ ]
+}

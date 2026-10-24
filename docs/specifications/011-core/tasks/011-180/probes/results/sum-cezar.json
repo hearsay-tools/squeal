@@ -1,0 +1,378 @@
+{
+ "yields": 55,
+ "cut": 106,
+ "lowS": 7528.7,
+ "highS": 8348.2,
+ "byKind": {
+  "backlog-sized": {
+   "runs": 9,
+   "cut": 27,
+   "lowS": 797.5,
+   "highS": 880.7
+  },
+  "edit-sized": {
+   "runs": 46,
+   "cut": 79,
+   "lowS": 6731.2,
+   "highS": 7467.5
+  }
+ },
+ "byWaitedFor": {
+  "promoted": {
+   "runs": 36,
+   "cut": 73,
+   "lowS": 5903.2,
+   "highS": 6511.4
+  },
+  "revision": {
+   "runs": 19,
+   "cut": 33,
+   "lowS": 1625.5,
+   "highS": 1836.8
+  }
+ },
+ "byBranch": {
+  "neither": {
+   "runs": 4,
+   "cut": 4,
+   "lowS": 227.7,
+   "highS": 252.5
+  },
+  "remainder": {
+   "runs": 29,
+   "cut": 61,
+   "lowS": 5208.3,
+   "highS": 5542.6
+  },
+  "overrun at 30 s": {
+   "runs": 4,
+   "cut": 4,
+   "lowS": 16.8,
+   "highS": 124.8
+  },
+  "overrun": {
+   "runs": 18,
+   "cut": 37,
+   "lowS": 2075.9,
+   "highS": 2428.3
+  }
+ },
+ "byScope": {
+  "removed": {
+   "runs": 35,
+   "cut": 63,
+   "lowS": 4528.8,
+   "highS": 5002.6
+  },
+  "live": {
+   "runs": 20,
+   "cut": 43,
+   "lowS": 2999.9,
+   "highS": 3345.6
+  }
+ },
+ "allStartedYields": 43,
+ "gainBuckets": {
+  "30-60": {
+   "runs": 8,
+   "highS": 1366.1,
+   "leftS": 330.9
+  },
+  ">60": {
+   "runs": 24,
+   "highS": 5447.6,
+   "leftS": 4423.9
+  },
+  "<=0": {
+   "runs": 6,
+   "highS": 554.8,
+   "leftS": 0
+  },
+  "0-10": {
+   "runs": 3,
+   "highS": 407.3,
+   "leftS": 23.6
+  },
+  "10-30": {
+   "runs": 1,
+   "highS": 125.7,
+   "leftS": 22.6
+  }
+ },
+ "gainMedianS": 73.3,
+ "lossy": {
+  "runs": 32,
+  "highS": 6890.2,
+  "savedS": 2362.4
+ },
+ "nextTier": {
+  "afterEndMedianS": 0.7,
+  "over5s": 10,
+  "afterEventMedianS": 29.6,
+  "afterEvent": [
+   7.2,
+   50.2,
+   44.8,
+   57.2,
+   4.4,
+   14.4
+  ]
+ },
+ "keepUpTo": [
+  {
+   "B": 10,
+   "yields": 42,
+   "tiersEnded": 9,
+   "kept": 24,
+   "keptHighS": 1624.2,
+   "keptRerunS": 1679.8,
+   "extraWaitS": 353.6,
+   "extraWaitPerYieldS": 8.4
+  },
+  {
+   "B": 30,
+   "yields": 42,
+   "tiersEnded": 10,
+   "kept": 27,
+   "keptHighS": 1819.1,
+   "keptRerunS": 1937.7,
+   "extraWaitS": 1006.2,
+   "extraWaitPerYieldS": 24
+  },
+  {
+   "B": 60,
+   "yields": 42,
+   "tiersEnded": 18,
+   "kept": 45,
+   "keptHighS": 3827.3,
+   "keptRerunS": 4717.5,
+   "extraWaitS": 1817.1,
+   "extraWaitPerYieldS": 43.3
+  }
+ ],
+ "keepShortUpTo": [
+  {
+   "B": 10,
+   "kept": 24,
+   "keptHighS": 1624.2,
+   "extraWaitS": 47.1
+  },
+  {
+   "B": 30,
+   "kept": 27,
+   "keptHighS": 1819.1,
+   "extraWaitS": 104.8
+  }
+ ],
+ "repeated": [
+  {
+   "file": "packages/cezar/src/workflows/delegation-integration.test.ts",
+   "cuts": 3,
+   "highS": 144.1,
+   "runs": [
+    "3ead9f2d@a6e709c7r13",
+    "465855ed@8d98b80fr9",
+    "19ffa47b@a6e709c7r40"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/workflows/worker-wait-capacity.test.ts",
+   "cuts": 2,
+   "highS": 80.6,
+   "runs": [
+    "3ead9f2d@a6e709c7r13",
+    "465855ed@8d98b80fr9"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/workflows/run.test.ts",
+   "cuts": 4,
+   "highS": 511.8,
+   "runs": [
+    "79f7a847@a6e709c7r26",
+    "4f874ee9@8d98b80fr32",
+    "064d17a3@bcf1abf6r55",
+    "63ff0ecf@bcf1abf6r58"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/core/skill-resume-parity.test.ts",
+   "cuts": 6,
+   "highS": 365.7,
+   "runs": [
+    "2e7ae991@8d98b80fr11",
+    "9c8c963d@a6e709c7r28",
+    "9077a52a@8d98b80fr19",
+    "c27dc6ca@a6e709c7r31",
+    "ec8e900c@8d98b80fr19",
+    "9074c84b@8d98b80fr32"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/workflows/waits-cursor-parity.test.ts",
+   "cuts": 3,
+   "highS": 501.9,
+   "runs": [
+    "0196b2db@a6e709c7r31",
+    "0f9db7cc@5e76f9b0r3",
+    "7f12c3e8@bcf1abf6r58"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/workflows/waits-claude-parity.test.ts",
+   "cuts": 4,
+   "highS": 723.7,
+   "runs": [
+    "0196b2db@a6e709c7r31",
+    "0f9db7cc@5e76f9b0r3",
+    "ccbb872d@bcf1abf6r19",
+    "064d17a3@bcf1abf6r55"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/workflows/waits-omp-process-parity.test.ts",
+   "cuts": 2,
+   "highS": 42.6,
+   "runs": [
+    "d2054886@d15de12fr3",
+    "108b2064@8d98b80fr38"
+   ]
+  },
+  {
+   "file": "packages/web/src/routes/tasks-overview.test.tsx",
+   "cuts": 2,
+   "highS": 112.3,
+   "runs": [
+    "d08d705d@564fa151r27",
+    "31997ecb@d3b6399fr10"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/workflows/waits-claude-workers-parity.test.ts",
+   "cuts": 6,
+   "highS": 1323.1,
+   "runs": [
+    "06c55d2f@5e76f9b0r3",
+    "9a9f3b34@d15de12fr5",
+    "77d77da1@8d98b80fr32",
+    "a3eb96f0@bcf1abf6r45",
+    "7ee84410@8d98b80fr43",
+    "7f12c3e8@bcf1abf6r58"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/core/harness-pi-parity.test.ts",
+   "cuts": 4,
+   "highS": 230.2,
+   "runs": [
+    "0de48a6a@700e10ddr6",
+    "8df3c6fc@8d98b80fr34",
+    "0da0178f@bcf1abf6r55",
+    "78b13ae2@3a40e85fr17"
+   ]
+  },
+  {
+   "file": "packages/web/src/routes/github/github.test.tsx",
+   "cuts": 3,
+   "highS": 213.3,
+   "runs": [
+    "4be9a483@8d98b80fr28",
+    "372745be@8d98b80fr43",
+    "9178590d@48f74c52r16"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/core/harness-autosave-branch.test.ts",
+   "cuts": 2,
+   "highS": 85,
+   "runs": [
+    "4be9a483@8d98b80fr28",
+    "0da0178f@bcf1abf6r55"
+   ]
+  },
+  {
+   "file": "packages/web/src/routes/new-task.test.tsx",
+   "cuts": 2,
+   "highS": 222.2,
+   "runs": [
+    "7ef80fd1@a6e709c7r35",
+    "7c46709b@87db4ccbr4"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/core/workflow-final-message-parity.test.ts",
+   "cuts": 2,
+   "highS": 170.9,
+   "runs": [
+    "9074c84b@8d98b80fr32",
+    "fa2ca271@bcf1abf6r23"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/core/workflow-autonomous-parity.test.ts",
+   "cuts": 4,
+   "highS": 531.7,
+   "runs": [
+    "9074c84b@8d98b80fr32",
+    "ccbb872d@bcf1abf6r19",
+    "064d17a3@bcf1abf6r55",
+    "63ff0ecf@bcf1abf6r58"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/workflows/monitoring-turn.test.ts",
+   "cuts": 2,
+   "highS": 330.9,
+   "runs": [
+    "dd2b498a@8d98b80fr32",
+    "63ff0ecf@bcf1abf6r58"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/core/native-delivery-control.test.ts",
+   "cuts": 2,
+   "highS": 32.6,
+   "runs": [
+    "fa2ca271@bcf1abf6r23",
+    "55e9db01@8d98b80fr43"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/core/harness-autosave-settlement.test.ts",
+   "cuts": 3,
+   "highS": 156.8,
+   "runs": [
+    "8c5addea@bcf1abf6r26",
+    "4688bfd5@bcf1abf6r28",
+    "adde770c@8d98b80fr33"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/core/harness-omp-parity.test.ts",
+   "cuts": 2,
+   "highS": 95.6,
+   "runs": [
+    "8df3c6fc@8d98b80fr34",
+    "78b13ae2@3a40e85fr17"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/workflows/worker-wait-durability.test.ts",
+   "cuts": 2,
+   "highS": 149.1,
+   "runs": [
+    "19ffa47b@a6e709c7r40",
+    "0da0178f@bcf1abf6r55"
+   ]
+  },
+  {
+   "file": "packages/cezar/src/workflows/waits-opencode-parity.test.ts",
+   "cuts": 2,
+   "highS": 231,
+   "runs": [
+    "4c29626b@bcf1abf6r66",
+    "c46b73ff@b7555ac0r135"
+   ]
+  }
+ ]
+}
