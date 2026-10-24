@@ -17,7 +17,7 @@ import { countTree } from "./walk.js";
  * changes, so that a stored count is never read across a change of meaning
  * (D3).
  */
-export const COUNTER_VERSION = 1;
+export const COUNTER_VERSION = 2;
 
 /**
  * Counts `text` as `language`. `blob` is the key the count is stored under

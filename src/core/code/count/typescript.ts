@@ -84,6 +84,16 @@ export const TYPESCRIPT_RULES: CountRules = {
   descend() {
     return true;
   },
+  grammarGap(error) {
+    // tree-sitter-tsx 0.23.2 lacks TypeScript 5.0's `export type * from` and `export type * as N from`:
+    // it leaves the `type` alone in an `ERROR` and parses the rest of the statement.
+    const next = error.nextSibling?.type;
+    return (
+      error.text === "type" &&
+      error.parent?.type === "export_statement" &&
+      (next === "*" || next === "namespace_export")
+    );
+  },
 };
 
 function isParameter(type: string | null): boolean {
