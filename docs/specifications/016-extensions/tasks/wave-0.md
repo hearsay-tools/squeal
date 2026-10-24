@@ -35,3 +35,18 @@ Questions:
 5. Migration: how the `nodeTest.observed.*` and `pytest.observed.*` meta entries are read once into the core's form, and what an older daemon on the same store does after that.
 
 Own `research/observed-paths.md` and `research/probes/observed-paths/`.
+
+## Review of candidate `cand/016-12`
+
+Use /reviewer. Candidate `cand/016-12`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>`: row 016-12's four test commits (the kit) and one docs commit (011 C14 amended for D2). No bundle changes and no version raise. Write `docs/specifications/016-extensions/reviews/016-12.md` and commit it on your branch.
+
+Read `spec.md` goals 1, 2 and 8, D1 and D2; the 016-12 brief above; `research/runner-kit.md` findings 2 and 3.
+
+Check, with proof where you can:
+1. **The kit fails when it should.** Break one adapter at a time in a scratch copy (for example, pytest reading a reused `logDir`, or node:test `invalidate` dropping an edit) and show the matching kit file fails. A kit that passes against a broken adapter is a blocker.
+2. **Verdicts.** KNOWN passes and UNEXPECTED PASS fails, through the real driver; the "names no runner" test can fail.
+3. **Goal 8.** The `squeal.config.json` inputs: an edit in one runner's folder re-runs that runner's kit file only, and no runtime file a kit file loads is missing (a missing input is a stale pass).
+4. **D2.** The `logDir` comment and the C14 text agree with D2.
+5. **Flake risk** on CI: the pytest kit's uv-managed Pythons and fixture sync; the version-sensitive entry.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
