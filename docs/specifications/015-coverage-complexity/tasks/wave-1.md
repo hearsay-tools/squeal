@@ -64,3 +64,28 @@ Use /worker. Shape: slice. Starts from `int/015` with 015-04 to 015-07 integrate
   - A move with the same body tells nothing.
   - `PASS -> FAIL` and `FAIL -> PASS` are told as before.
   - Lint, typecheck and `squeal run --all --wait` pass; paste their output.
+
+## 015-09: review of candidate 0.1.283
+
+Spawned by coordinator 52e58f23 on 2026-10-24 (reviewer 5cbd5f63, codex gpt-6.1-sol high), pinned to `cand/0.1.283` at de9deb5bc. The brief as given:
+
+### Review 015-09: candidate 0.1.283 (spec 015 waves 0 and 1)
+
+Use /reviewer. Candidate `cand/0.1.283` at de9deb5bcde5861eb8e284c7a45406a69657fa73. Range: `origin/main` (ab48c6833)..de9deb5bc, the 015-04 to 015-08 commits plus one build commit (bundles, version 0.1.283). Write `docs/specifications/015-coverage-complexity/reviews/0.1.283.md` and commit it on your branch.
+
+Read `docs/specifications/015-coverage-complexity/spec.md` (D1 to D7; D8 to D10 are wave 2 and out of scope), `status.md`, the notes under `tasks/015-04/` to `tasks/015-08/`, and `tasks/wave-0.md`, `tasks/wave-1.md`.
+
+Check against the spec's goals 1 to 8, with proof where you can:
+1. **Policy off.** Nothing changes: no `code.sqlite`, the main store's `user_version` stays 1, and deliveries, status and exit codes are byte-identical.
+2. **Hook bounds.** A busy or corrupt code store never stalls or fails a hook, status or Stop (011 C8, C13). A pull of many files keeps hooks within their bound.
+3. **Counting.** The counter matches ESLint classic and radon (the pinned fixtures). Identity, occurrences, names by call site, and moves by body hash.
+4. **States and transitions.** D5's table, with no first-seen-fail at a first count. A code-only change never keeps the agent going at Stop and never denies a tool call (D7).
+5. **Delivery.** The registration count line, the 5-line limit, the summary lines (`first`, `threshold`, `include`, `counter`), the too-big line, `STILL FAIL` once per session (015-08), and the `squeal code` shape and exit codes.
+6. **Bundles.** All four plugins ship `dist/code/tree-sitter-tsx.wasm`. The shared web-tree-sitter runtime is started once (015-05 notes 8). There are no duplicate grammars.
+
+Known and accepted, for you to weigh, not to re-find:
+- The code-only title counts a `STILL FAIL` line as "1 complexity change" (`src/core/delivery/format.ts`).
+- No caller runs `CodeStore.prune` yet (015-06 notes).
+- Pi and OpenCode get the code part only through `openContext`.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Label every finding proven, plausible or unverified; only a proven break blocks. Verdict PASS or FAIL.
