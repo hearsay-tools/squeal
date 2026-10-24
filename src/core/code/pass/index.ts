@@ -11,7 +11,7 @@ import { runPass } from "./pass.js";
 import type { Counter, PassReport, PassSource } from "./types.js";
 
 export { readRecount, recountKey } from "./cursor.js";
-export { mainStoreSource } from "./source.js";
+export { headAfterMove, mainStoreSource } from "./source.js";
 export type * from "./types.js";
 
 export interface CodePassOptions {
