@@ -25,12 +25,13 @@ const waitFor = (release: string) => `{
   }
 }`;
 
-/** Its one test passes; its `afterAll` holds the module open until `release`. */
+/** Its one test passes, its skip is declared; its `afterAll` holds the module open until `release`. */
 function wholeFile(markers: string): string {
   return [
     'import { existsSync, writeFileSync } from "node:fs";',
     'import { afterAll, it } from "vitest";',
     'it("passes", () => {});',
+    'it.skip("is declared skipped", () => {});',
     "afterAll(async () => {",
     `  writeFileSync(${JSON.stringify(join(markers, "whole"))}, "");`,
     `  ${waitFor(join(markers, "release"))}`,
@@ -88,7 +89,10 @@ describe("vitest adapter: a module that ends whole in a cancel's grace (row 011-
     const { report, ended } = await cancelledWhileWaiting("step-down");
 
     expect(report.completedFiles).toEqual([ref(WHOLE)]);
-    expect(report.results.map((r) => [r.check.testPath, r.check.fullName, r.outcome])).toEqual([
+    // A declared skip is no test the cancel cut.
+    const results = report.results.map((r) => [r.check.testPath, r.check.fullName, r.outcome]);
+    expect(results.sort()).toEqual([
+      [WHOLE, "is declared skipped", "skip"],
       [WHOLE, "passes", "pass"],
     ]);
     expect(report.fileErrors).toEqual([]);
