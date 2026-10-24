@@ -27,8 +27,10 @@ export const STORED_KEYS_OVERLAP_MS = 120_000;
  * newest time is not new. This worktree's files at a new key, with no result
  * there and neither running nor crashed there, settle through
  * `Ledger.settle` without queuing a miss: a hit is current with its
- * provenance, another worktree's unconfirmed fail stays held (C5), and a
- * file policy left unqueued stays so. A read that finds nothing new writes
+ * provenance, and a file policy left unqueued stays so. Another worktree's
+ * unconfirmed fail stays held (C5) and its file is queued once, at its
+ * normal priority, for the local run that confirms or clears it (C4 step 3
+ * as amended 2026-10-23, row 011-159). A read that finds nothing new writes
  * nothing (task 001-412).
  *
  * Its files match at the formats C3 reads as one too (C4 step 3 as amended
