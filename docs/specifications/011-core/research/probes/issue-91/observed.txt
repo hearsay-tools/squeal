@@ -1,0 +1,640 @@
+=== A: tier of 4 in flight, nothing promoted
+{
+  "label": "A: tier of 4 in flight, nothing promoted",
+  "lines": [
+    "Pending (6):",
+    "  4 in the vitest tier of 4 test files running since 16:15:46: test/s1.test.ts, test/s2.test.ts, test/s3.test.ts, test/s4.test.ts; no command runs them sooner (a running tier is not interrupted)",
+    "  2 queued behind the vitest tier of 4 test files running since 16:15:46: f: f/f.test.ts, f: f/g.test.ts; no command runs them sooner (a running tier is not interrupted)"
+  ],
+  "entries": [
+    {
+      "project": "",
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "f",
+      "path": "f/f.test.ts",
+      "state": "pending",
+      "reason": "queued behind the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "f",
+      "path": "f/g.test.ts",
+      "state": "pending",
+      "reason": "queued behind the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    }
+  ],
+  "pending": [
+    {
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "f/f.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "f/g.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1792851346011,
+        "files": 4
+      }
+    }
+  ],
+  "yieldsRow": {}
+}
+=== B: right after the promotion of F and G
+{
+  "label": "B: right after the promotion of F and G",
+  "lines": [
+    "Pending (6):",
+    "  4 in the vitest tier of 4 test files running since 16:15:46: test/s1.test.ts, test/s2.test.ts, test/s3.test.ts, test/s4.test.ts; no command runs them sooner (a running tier is not interrupted)",
+    "  2 queued, promoted, behind the vitest tier of 4 test files running since 16:15:46; the tier yields: f: f/f.test.ts, f: f/g.test.ts"
+  ],
+  "entries": [
+    {
+      "project": "",
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "f",
+      "path": "f/f.test.ts",
+      "state": "pending",
+      "reason": "queued, promoted, behind the vitest tier of 4 test files running since 16:15:46; the tier yields"
+    },
+    {
+      "project": "f",
+      "path": "f/g.test.ts",
+      "state": "pending",
+      "reason": "queued, promoted, behind the vitest tier of 4 test files running since 16:15:46; the tier yields"
+    }
+  ],
+  "pending": [
+    {
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "f/f.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1792851346011,
+        "files": 4,
+        "promoted": true,
+        "yields": {
+          "kind": "yields"
+        }
+      }
+    },
+    {
+      "path": "f/g.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1792851346011,
+        "files": 4,
+        "promoted": true,
+        "yields": {
+          "kind": "yields"
+        }
+      }
+    }
+  ],
+  "yieldsRow": {
+    "f00e2fe8-b80e-4d4f-9b3f-d863c333af74": {
+      "kind": "yields"
+    }
+  }
+}
+=== C: after the cut
+{
+  "label": "C: after the cut",
+  "lines": [
+    "Pending (6):",
+    "  4 in the vitest tier of 4 test files running since 16:15:46: test/s1.test.ts, test/s2.test.ts, test/s3.test.ts, test/s4.test.ts; no command runs them sooner (a running tier is not interrupted)",
+    "  2 queued, promoted, behind the vitest tier of 4 test files running since 16:15:46; the tier yields: f: f/f.test.ts, f: f/g.test.ts"
+  ],
+  "entries": [
+    {
+      "project": "",
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "f",
+      "path": "f/f.test.ts",
+      "state": "pending",
+      "reason": "queued, promoted, behind the vitest tier of 4 test files running since 16:15:46; the tier yields"
+    },
+    {
+      "project": "f",
+      "path": "f/g.test.ts",
+      "state": "pending",
+      "reason": "queued, promoted, behind the vitest tier of 4 test files running since 16:15:46; the tier yields"
+    }
+  ],
+  "pending": [
+    {
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346011,
+        "files": 4
+      }
+    },
+    {
+      "path": "f/f.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1792851346011,
+        "files": 4,
+        "promoted": true,
+        "yields": {
+          "kind": "yields"
+        }
+      }
+    },
+    {
+      "path": "f/g.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1792851346011,
+        "files": 4,
+        "promoted": true,
+        "yields": {
+          "kind": "yields"
+        }
+      }
+    }
+  ],
+  "yieldsRow": {
+    "f00e2fe8-b80e-4d4f-9b3f-d863c333af74": {
+      "kind": "yields"
+    }
+  }
+}
+=== runner runs since the edit
+[
+  {
+    "files": [
+      "test/s1.test.ts",
+      "test/s2.test.ts",
+      "test/s3.test.ts",
+      "test/s4.test.ts"
+    ],
+    "startedAt": 1811.363949,
+    "endedAt": 1857.946124,
+    "cancelled": true,
+    "completed": []
+  },
+  {
+    "files": [
+      "f/f.test.ts",
+      "f/g.test.ts"
+    ],
+    "startedAt": 1874.572946,
+    "endedAt": 1875.941654,
+    "cancelled": false,
+    "completed": [
+      "f/f.test.ts",
+      "f/g.test.ts"
+    ]
+  },
+  {
+    "files": [
+      "test/s1.test.ts",
+      "test/s2.test.ts",
+      "test/s3.test.ts",
+      "test/s4.test.ts"
+    ],
+    "startedAt": 1883.579323,
+    "endedAt": null,
+    "cancelled": false,
+    "completed": []
+  }
+]
+=== D: restart of the slow tier in flight
+{
+  "label": "D: restart of the slow tier in flight",
+  "lines": [
+    "Pending (4):",
+    "  4 in the vitest tier of 4 test files running since 16:15:46: test/s1.test.ts, test/s2.test.ts, test/s3.test.ts, test/s4.test.ts; no command runs them sooner (a running tier is not interrupted)",
+    "Current (2):",
+    "  2 pass: f: f/f.test.ts, f: f/g.test.ts"
+  ],
+  "entries": [
+    {
+      "project": "",
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "f",
+      "path": "f/f.test.ts",
+      "state": "current",
+      "verdict": "pass"
+    },
+    {
+      "project": "f",
+      "path": "f/g.test.ts",
+      "state": "current",
+      "verdict": "pass"
+    }
+  ],
+  "pending": [
+    {
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346084,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346084,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346084,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346084,
+        "files": 4
+      }
+    },
+    {
+      "path": "f/f.test.ts",
+      "state": "current"
+    },
+    {
+      "path": "f/g.test.ts",
+      "state": "current"
+    }
+  ],
+  "yieldsRow": {}
+}
+=== E: F and G re-keyed and promoted again behind the restarted tier
+{
+  "label": "E: F and G re-keyed and promoted again behind the restarted tier",
+  "lines": [
+    "Pending (6):",
+    "  4 in the vitest tier of 4 test files running since 16:15:46: test/s1.test.ts, test/s2.test.ts, test/s3.test.ts, test/s4.test.ts; no command runs them sooner (a running tier is not interrupted)",
+    "  2 queued, promoted, behind the vitest tier of 4 test files running since 16:15:46; the tier does not yield: it holds a file a yield already cut at its key: f: f/f.test.ts, f: f/g.test.ts; no command runs them sooner (a running tier that does not yield is waited for)"
+  ],
+  "entries": [
+    {
+      "project": "",
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "",
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "reason": "in the vitest tier of 4 test files running since 16:15:46",
+      "next": "no command runs it sooner (a running tier is not interrupted)"
+    },
+    {
+      "project": "f",
+      "path": "f/f.test.ts",
+      "state": "pending",
+      "reason": "queued, promoted, behind the vitest tier of 4 test files running since 16:15:46; the tier does not yield: it holds a file a yield already cut at its key",
+      "next": "no command runs it sooner (a running tier that does not yield is waited for)"
+    },
+    {
+      "project": "f",
+      "path": "f/g.test.ts",
+      "state": "pending",
+      "reason": "queued, promoted, behind the vitest tier of 4 test files running since 16:15:46; the tier does not yield: it holds a file a yield already cut at its key",
+      "next": "no command runs it sooner (a running tier that does not yield is waited for)"
+    }
+  ],
+  "pending": [
+    {
+      "path": "test/s1.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346084,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s2.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346084,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s3.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346084,
+        "files": 4
+      }
+    },
+    {
+      "path": "test/s4.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1792851346084,
+        "files": 4
+      }
+    },
+    {
+      "path": "f/f.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1792851346084,
+        "files": 4,
+        "promoted": true,
+        "yields": {
+          "kind": "cut"
+        }
+      }
+    },
+    {
+      "path": "f/g.test.ts",
+      "state": "pending",
+      "pending": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1792851346084,
+        "files": 4,
+        "promoted": true,
+        "yields": {
+          "kind": "cut"
+        }
+      }
+    }
+  ],
+  "yieldsRow": {
+    "37377dfe-a041-4ca2-a7a7-7eb042985f37": {
+      "kind": "cut"
+    }
+  }
+}
+=== restarted tier cancelled: false
