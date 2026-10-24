@@ -6,6 +6,7 @@ import { listedDirectory, testFileId } from "../keys/index.js";
 import { readRunLoads } from "../retry/index.js";
 import type {
   CheckKey,
+  EpochMs,
   FocusedFile,
   ProjectName,
   Provenance,
@@ -404,9 +405,8 @@ function fewest(context: SchedulerContext, picked: readonly TierFile[]): number 
  * (D8 as amended, task 001-205: a check before the transaction let two
  * daemons take one key). Then the stability snapshot. `null` when every file
  * settled or stayed queued; what settled is committed. `kind` says which
- * rules of C4 step 5 may cancel it (`TierKind`); a backlog tier gets its
- * cancel, and any other but a slow one when its runner cancels (`cancels`).
- * `lease` is a backlog tier's grant, kept for as many files as start.
+ * rules of C4 step 5 may cancel it (`TierKind`, `newTier`). `lease` is a
+ * backlog tier's grant, kept for as many files as start.
  */
 export function startTier(
   context: SchedulerContext,
@@ -415,7 +415,7 @@ export function startTier(
   kind: TierKind,
   lease?: PoolLease,
 ): Tier | null {
-  const { store, keys } = context;
+  const { store } = context;
   return store.transaction(() => {
     const files = picked.flatMap((p) => startable(ledger, p));
     const first = files[0];
@@ -423,29 +423,10 @@ export function startTier(
       ledger.commit();
       return null;
     }
-    const checkpointId = files.find((p) => p.checkpointId !== null)?.checkpointId ?? null;
-    const runId = randomUUID();
     const slot = kind === "backlog" && backlogSlot(context, first.file.ref) !== null;
-    const cancellable = kind === "backlog" || (kind !== "slow" && cancels(context, first.file.ref));
     const tier: Tier = {
-      runId,
-      logDir: join(context.runsDir, runId),
-      lane: laneOf(context, first.file.ref),
-      run: keys.beginRun(),
-      changes: new Set(),
-      revision: ledger.revision,
-      checkpointId,
-      files,
-      snapshot: snapshotInputs(
-        keys.cache,
-        files.flatMap((p) => p.inputs),
-      ),
-      kind,
-      startedAt: context.now(),
-      ended: new Set(),
-      cancel: cancellable ? new AbortController() : null,
+      ...newTier(context, ledger, first, files, kind),
       ...(lease === undefined ? {} : { lease }),
-      loadPerCpu: tierLoad(context),
       ...(slot ? { slot: true } : {}),
     };
     lease?.shrinkTo(files.length);
@@ -454,19 +435,59 @@ export function startTier(
       ledger.claims.taken(key);
       ledger.setRunning(file, key);
     }
-    ledger.tierChanges.add(tier.changes);
     store.runs.start({
-      id: runId,
+      id: tier.runId,
       worktreeId: context.worktreeId,
       revision: tier.revision.number,
       testFiles: files.map((p) => p.file.ref),
-      checkpointId,
+      checkpointId: tier.checkpointId,
       logDir: tier.logDir,
       startedAt: context.now(),
     });
     ledger.commit();
     return tier;
   });
+}
+
+/**
+ * A new tier of `files`, `first` among them, of `kind`, with its run id, its
+ * log folder and its stability snapshot, its changes in
+ * `Ledger.tierChanges`: the fields every tier has. `first` names the lane
+ * and whether the runner cancels: a backlog tier gets its cancel, and any
+ * other but a slow one when its runner cancels (`cancels`). The caller adds
+ * its own fields (`lease`, `slot`, `focus`).
+ */
+export function newTier(
+  context: SchedulerContext,
+  ledger: Ledger,
+  first: TierFile,
+  files: readonly TierFile[],
+  kind: TierKind,
+): Tier & { readonly startedAt: EpochMs } {
+  const { keys } = context;
+  const runId = randomUUID();
+  const cancellable = kind === "backlog" || (kind !== "slow" && cancels(context, first.file.ref));
+  const tier: Tier & { readonly startedAt: EpochMs } = {
+    runId,
+    logDir: join(context.runsDir, runId),
+    lane: laneOf(context, first.file.ref),
+    run: keys.beginRun(),
+    changes: new Set(),
+    revision: ledger.revision,
+    checkpointId: files.find((p) => p.checkpointId !== null)?.checkpointId ?? null,
+    files,
+    snapshot: snapshotInputs(
+      keys.cache,
+      files.flatMap((p) => p.inputs),
+    ),
+    kind,
+    startedAt: context.now(),
+    ended: new Set(),
+    cancel: cancellable ? new AbortController() : null,
+    loadPerCpu: tierLoad(context),
+  };
+  ledger.tierChanges.add(tier.changes);
+  return tier;
 }
 
 /**
