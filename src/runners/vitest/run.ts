@@ -13,7 +13,7 @@ import type {
   TestFileRef,
 } from "../../core/types/index.js";
 import { runLogJson } from "../run-summary.js";
-import { endedInTime, errorText, type RunCollector } from "./reporter.js";
+import { endedInTime, endedWhole, errorText, type RunCollector } from "./reporter.js";
 import { compareRefs, refKey, toCheckError } from "./results.js";
 
 /** After the first cancel, Vitest waits for running tests; a second cancel kills the workers. */
@@ -52,6 +52,8 @@ export interface RunExecution {
   readonly failure: string | null;
   /** The run did not settle even after a forced cancel. The instance must be dropped. */
   readonly hung: boolean;
+  /** A step-down cancelled it: a module that ended whole in the grace completes (`endedWhole`). */
+  readonly keepsWhole?: boolean;
   /** `runTestSpecifications` rejected with this error; the instance is closed (task 001-382). */
   readonly rejected?: { readonly error: unknown };
 }
@@ -95,6 +97,10 @@ export async function execute(
   const reason = timedOut ? TIMEOUT_REASON : CANCEL_REASON;
   const failure = timedOut ? `run exceeded timeoutMs (${timeoutMs} ms)` : cancelled(signal?.reason);
   if (!timedOut) collector.note(failure);
+  // Row 011-137 (the coordinator's decision (a)): only a step-down keeps what ended whole in the
+  // grace; a stop, which a store schema newer than the daemon also asks, and every other cause do not.
+  const keeps = !timedOut && signal?.reason === ("step-down" satisfies CancelCause);
+  const keepsWhole = keeps ? { keepsWhole: true } : {};
   // A cancelled run that crashed meanwhile stays crashed: nothing in it is trusted (D12).
   // A rejection during either grace keeps its marker, so the instance is closed (review
   // wave-13bp B1).
@@ -106,7 +112,7 @@ export async function execute(
           hung: false,
           ...(execution.rejected === undefined ? {} : { rejected: execution.rejected }),
         }
-      : { ...execution, failure: execution.failure ?? failure };
+      : { ...execution, failure: execution.failure ?? failure, ...keepsWhole };
   cancel(vitest, collector, reason);
   const graceful = await settleWithin(run, GRACE_BEFORE_FORCE_MS);
   if (graceful) return stopped(graceful);
@@ -117,6 +123,7 @@ export async function execute(
     end: timedOut ? "timed-out" : "completed",
     failure: `${failure}; workers did not stop`,
     hung: true,
+    ...keepsWhole,
   };
 }
 
@@ -173,9 +180,10 @@ async function settleWithin<T>(promise: Promise<T>, ms: number): Promise<T | nul
 
 /**
  * Builds the report from the collector only. A file counts as completed when
- * its module ended before any timeout cancel and in a final state; results
- * and errors of other files are dropped, because a cancelled test reports
- * `skipped`. A crashed run completes no file.
+ * its module ended before any cancel and in a final state, or, after a
+ * step-down's cancel, ended whole in its grace (`endedWhole`, row 011-137);
+ * results and errors of other files are dropped, because a cancelled test
+ * reports `skipped`. A crashed run completes no file.
  */
 export function buildReport(
   collector: RunCollector,
@@ -196,7 +204,7 @@ export function buildReport(
     end === "crashed"
       ? []
       : [...collector.modules.values()]
-          .filter(endedInTime)
+          .filter((m) => endedInTime(m) || (execution.keepsWhole === true && endedWhole(m)))
           .map((m) => m.ref)
           .sort(compareRefs);
   const completedKeys = new Set(completed.map(refKey));

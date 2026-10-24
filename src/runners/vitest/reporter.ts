@@ -25,6 +25,11 @@ export interface ModuleEnd {
   readonly errors: readonly SerializedError[];
   /** Ended after a timeout cancel was requested: its results are not trusted. */
   readonly afterCancel: boolean;
+  /**
+   * A test it was to run did not end in a pass or a fail (`cutShort`): a
+   * cancel skipped it. Absent reads as cut (row 011-137).
+   */
+  readonly cut?: boolean;
   /** The module's own duration (`moduleDuration`), `null` when Vitest reports none. */
   readonly durationMs: number | null;
 }
@@ -124,6 +129,7 @@ export class RunCollector {
       state: module.state(),
       errors,
       afterCancel: this.cancelRequested,
+      cut: cutShort(module),
       durationMs: moduleDuration(module),
     };
     this.modules.set(refKey(ref), end);
@@ -201,6 +207,29 @@ export class RunCollector {
  */
 export function endedInTime(module: ModuleEnd): boolean {
   return !module.afterCancel && module.state !== "pending" && module.state !== "queued";
+}
+
+/**
+ * A module that ended after the cancel, passed, with every test it was to
+ * run passed: whole, since a cancel skips each test it reaches, the running
+ * one included (row 011-137, `tasks/011-137/notes.md`, the probe).
+ */
+export function endedWhole(module: ModuleEnd): boolean {
+  return module.afterCancel && module.state === "passed" && module.cut === false;
+}
+
+/**
+ * Whether a test the module was to run (collected `run` or `only`) ended
+ * other than passed or failed. A cancel's skip reads so; so does a test that
+ * skips itself (`ctx.skip()`), which costs a run, never a wrong result.
+ */
+function cutShort(module: TestModule): boolean {
+  for (const test of module.children.allTests()) {
+    if (test.options.mode !== "run" && test.options.mode !== "only") continue;
+    const state = test.result().state;
+    if (state !== "passed" && state !== "failed") return true;
+  }
+  return false;
 }
 
 /**
