@@ -46,6 +46,15 @@ const parse = (text) => {
   }
   return { named, before, after, tests, noted: cancelled };
 };
+// As cut.mjs: the tests a later run of the worktree skipped in a module it ended before any cancel (declared skips).
+const skipsLater = (run, k) => {
+  for (const r of byWorktree.get(run.worktree_id) ?? []) {
+    if (r.started_at <= run.started_at || !picks(r).includes(k)) continue;
+    const log = parse(read(r.log_dir, "vitest.log") ?? "");
+    if (log.before.has(label(k))) return log.tests.get(label(k))?.skip ?? new Set();
+  }
+  return null;
+};
 const durationsOf = (r) => (r.durs ??= new Map((reportOf(r)?.fileDurations ?? []).map((d) => [id(d.testFile), d.durationMs / 1000])));
 // A file's module duration in the nearest later run of the same worktree that reports one (cut.mjs's high bound).
 const durationLater = (run, k) => {
@@ -76,8 +85,8 @@ for (const run of all) {
   const scope = live.has(run.worktree_id) ? "live" : "removed";
   const list = byWorktree.get(run.worktree_id) ?? [];
   const later = list.filter((r) => r.started_at > run.started_at);
-  const c = { completed: 0, endedWithheld: 0, grace: 0, inFlight: 0, neverStarted: 0, handedOver: 0, cutRerun: 0 };
-  const secs = { low: 0, high: 0, unknown: 0 };
+  const c = { completed: 0, endedWithheld: 0, grace: 0, graceWhole: 0, graceUncut: 0, inFlight: 0, neverStarted: 0, handedOver: 0, cutRerun: 0 };
+  const secs = { low: 0, high: 0, whole: 0, uncut: 0, unknown: 0 };
   const cutFiles = [];
   // Rule B at the cancel: the largest estimate among the files whose module had not ended before the note
   // (a file with none counts 0), less the time run; the cancel is taken at the run's end (an upper bound).
@@ -98,7 +107,18 @@ for (const run of all) {
     const rerun = later.some((r) => picks(r).includes(k));
     if (rerun) c.cutRerun++;
     c[grace ? "grace" : "inFlight"]++; secs.low += low; secs.high += high;
-    cutFiles.push({ file: k.split("\0")[1], how: grace ? "grace" : "inFlight", lowS: r1(low), highS: r1(high), estS: r1(est.s),
+    // As cut.mjs: whole, every test it was to run reported before the note (011-137's rule); uncut, no such test
+    // has a SKIP line, though some reported only after the note.
+    let whole = null, uncut = null;
+    if (grace) {
+      const t = log.tests.get(l) ?? { all: new Set(), ran: new Set(), skip: new Set() }, declared = skipsLater(run, k) ?? new Set();
+      const toRun = [...t.all].filter((n) => !declared.has(n));
+      whole = toRun.length > 0 && toRun.every((n) => t.ran.has(n));
+      uncut = toRun.length > 0 && toRun.every((n) => !t.skip.has(n));
+      if (whole) { c.graceWhole++; secs.whole += high; }
+      if (uncut) { c.graceUncut++; secs.uncut += high; }
+    }
+    cutFiles.push({ file: k.split("\0")[1], how: grace ? "grace" : "inFlight", whole, uncut, lowS: r1(low), highS: r1(high), estS: r1(est.s),
       estFrom: est.from, laterS: r1(laterS), leftS: laterS === null ? null : r1(laterS - wall), rerun });
   }
   const remainderS = estS - wall;
@@ -130,7 +150,8 @@ for (const run of all) {
 for (const o of out) console.log(JSON.stringify(o));
 const sum = (f) => +out.reduce((a, o) => a + f(o), 0).toFixed(1);
 console.log(JSON.stringify({ summary: true, runs: out.length, picked: sum((o) => o.picked), completed: sum((o) => o.completed),
-  endedWithheld: sum((o) => o.endedWithheld), grace: sum((o) => o.grace), inFlight: sum((o) => o.inFlight),
+  endedWithheld: sum((o) => o.endedWithheld), grace: sum((o) => o.grace), graceWhole: sum((o) => o.graceWhole),
+  graceUncut: sum((o) => o.graceUncut), inFlight: sum((o) => o.inFlight),
   neverStarted: sum((o) => o.neverStarted), handedOver: sum((o) => o.handedOver), cutRerun: sum((o) => o.cutRerun),
-  secs: { low: sum((o) => o.secs.low), high: sum((o) => o.secs.high), unknown: sum((o) => o.secs.unknown) },
+  secs: Object.fromEntries(Object.keys(out[0]?.secs ?? {}).map((x) => [x, sum((o) => o.secs[x])])),
   branches: Object.fromEntries(["remainder", "overrun", "neither"].map((b) => [b, out.filter((o) => o.rule.branch === b).length])) }));

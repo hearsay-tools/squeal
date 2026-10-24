@@ -1,0 +1,26 @@
+{
+ "floor": 0,
+ "refused": 1,
+ "unsure": 0,
+ "cut": 2,
+ "lowS": 6.7,
+ "highS": 23.6,
+ "promotedWaitsS": [
+  23
+ ],
+ "kept": [
+  {
+   "run": "9c3cd9b3",
+   "worktree": "2ccf922d",
+   "wall": 11.807,
+   "cut": 2,
+   "named": 2,
+   "lowS": 6.7,
+   "highS": 23.6,
+   "promotedWaitsS": 23,
+   "unsure": false
+  }
+ ],
+ "promotedWaitTotalS": 23,
+ "promotedWaitMedianS": 23
+}

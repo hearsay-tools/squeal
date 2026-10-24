@@ -1,0 +1,146 @@
+{
+ "floor": 30,
+ "refused": 10,
+ "unsure": 1,
+ "cut": 23,
+ "lowS": 2452.4,
+ "highS": 2774.7,
+ "promotedWaitsS": [
+  281.6,
+  281.7,
+  396.4,
+  62.9,
+  159.2,
+  220.2,
+  96.2,
+  116.2,
+  19.7,
+  480.5,
+  0
+ ],
+ "kept": [
+  {
+   "run": "9077a52a",
+   "worktree": "8d98b80f",
+   "wall": 31.142,
+   "cut": 1,
+   "named": 1,
+   "lowS": 0,
+   "highS": 31.1,
+   "promotedWaitsS": 281.6,
+   "unsure": false
+  },
+  {
+   "run": "ec8e900c",
+   "worktree": "8d98b80f",
+   "wall": 31.018,
+   "cut": 1,
+   "named": 1,
+   "lowS": 0,
+   "highS": 31,
+   "promotedWaitsS": 281.7,
+   "unsure": true
+  },
+  {
+   "run": "0196b2db",
+   "worktree": "a6e709c7",
+   "wall": 143.797,
+   "cut": 2,
+   "named": 2,
+   "lowS": 269.2,
+   "highS": 287.6,
+   "promotedWaitsS": 396.4,
+   "unsure": false
+  },
+  {
+   "run": "06c55d2f",
+   "worktree": "5e76f9b0",
+   "wall": 351.033,
+   "cut": 1,
+   "named": 1,
+   "lowS": 332.4,
+   "highS": 351,
+   "promotedWaitsS": 62.9,
+   "unsure": false
+  },
+  {
+   "run": "0f9db7cc",
+   "worktree": "5e76f9b0",
+   "wall": 261.551,
+   "cut": 2,
+   "named": 2,
+   "lowS": 500.7,
+   "highS": 523.1,
+   "promotedWaitsS": 159.2,
+   "unsure": false
+  },
+  {
+   "run": "a3eb96f0",
+   "worktree": "bcf1abf6",
+   "wall": 92.228,
+   "cut": 3,
+   "named": 1,
+   "lowS": 257.1,
+   "highS": 254.9,
+   "promotedWaitsS": 220.2,
+   "unsure": false
+  },
+  {
+   "run": "0da0178f",
+   "worktree": "bcf1abf6",
+   "wall": 56.694,
+   "cut": 3,
+   "named": 1,
+   "lowS": 151.9,
+   "highS": 170.1,
+   "promotedWaitsS": 96.2,
+   "unsure": false
+  },
+  {
+   "run": "4c29626b",
+   "worktree": "bcf1abf6",
+   "wall": 65.798,
+   "cut": 3,
+   "named": 1,
+   "lowS": 189.9,
+   "highS": 197.4,
+   "promotedWaitsS": 116.2,
+   "unsure": false
+  },
+  {
+   "run": "3142c25d",
+   "worktree": "d3b6399f",
+   "wall": 59.743,
+   "cut": 2,
+   "named": 1,
+   "lowS": 18.6,
+   "highS": 65.7,
+   "promotedWaitsS": 19.7,
+   "unsure": false
+  },
+  {
+   "run": "c46b73ff",
+   "worktree": "b7555ac0",
+   "wall": 165.219,
+   "cut": 4,
+   "named": 3,
+   "lowS": 541.3,
+   "highS": 660.9,
+   "promotedWaitsS": 480.5,
+   "unsure": false
+  },
+  {
+   "run": "7c46709b",
+   "worktree": "87db4ccb",
+   "wall": 226.536,
+   "cut": 1,
+   "named": 1,
+   "lowS": 191.3,
+   "highS": 201.9,
+   "promotedWaitsS": 0,
+   "unsure": false
+  }
+ ],
+ "promotedWaitTotalS": 2114.6,
+ "promotedWaitMedianS": 159.2
+}
