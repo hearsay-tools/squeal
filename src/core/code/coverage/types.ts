@@ -77,7 +77,8 @@ export interface CoverageSource {
   /**
    * Each function V8 saw, mapped to the source: start line and column, end
    * line and column (1-based lines, 0-based columns), and 1 when it ran.
-   * Sorted by start; a position two V8 functions map to is one entry.
+   * Sorted by start, then end, then hit; V8 functions that map to one span
+   * with one hit are one entry, with different hits two (version 2).
    */
   readonly functions: readonly (readonly [number, number, number, number, 0 | 1])[];
 }
