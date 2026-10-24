@@ -1,0 +1,5 @@
+{
+  "name": "squeal-fixture-vitest-own-provider",
+  "private": true,
+  "type": "module"
+}

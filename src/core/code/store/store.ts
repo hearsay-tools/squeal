@@ -2,6 +2,7 @@ import { str } from "../../store/codec.js";
 import type { Connection } from "../../store/connection.js";
 import type { AbsolutePath } from "../../types/index.js";
 import { createCountRepo, createFileRepo } from "./counts.js";
+import { createCoverageRepo } from "./coverage.js";
 import { pruneCodeStore } from "./prune.js";
 import { createStateRepo, createTransitionRepo } from "./states.js";
 import type { CodeMetaRepo, CodeStore } from "./types.js";
@@ -22,6 +23,7 @@ export function createCodeStore(
     states: createStateRepo(conn),
     transitions: createTransitionRepo(conn),
     views: createViewRepo(conn),
+    coverage: createCoverageRepo(conn),
     transaction: (fn) => conn.transaction(fn),
     read: (fn) => conn.read(fn),
     prune: (options) => pruneCodeStore(conn, options),
