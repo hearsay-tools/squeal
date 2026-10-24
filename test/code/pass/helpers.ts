@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
   type CodePassOptions,
@@ -144,6 +144,53 @@ export class FakeWorktree {
     git(this.root, ["commit", "-q", "--allow-empty", "-m", "commit"]);
     this.#head = git(this.root, ["rev-parse", "HEAD"]).trim();
     return this.#head;
+  }
+
+  /**
+   * Commits `files` on a new branch `name` from `HEAD`, then checks out the
+   * branch it left, so the work tree and the stat cache are as they were.
+   */
+  branch(name: string, files: Record<string, string>): string {
+    git(this.root, ["checkout", "-q", "-b", name]);
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(this.root, path)), { recursive: true });
+      writeFileSync(join(this.root, path), text);
+    }
+    git(this.root, ["add", "--", ...Object.keys(files)]);
+    git(this.root, ["commit", "-q", "-m", name]);
+    const sha = git(this.root, ["rev-parse", "HEAD"]).trim();
+    git(this.root, ["checkout", "-q", "-"]);
+    return sha;
+  }
+
+  /**
+   * Runs git at the root, then reads `paths` again from disk and `HEAD`
+   * from git, as a merge, cherry-pick, revert or rebase leaves them
+   * (015-34). A command a conflict stops exits 1; that is no error here.
+   */
+  run(args: readonly string[], ...paths: string[]): this {
+    try {
+      git(this.root, args);
+    } catch {
+      // The test asserts what the stopped command left.
+    }
+    this.#head = git(this.root, ["rev-parse", "HEAD"]).trim();
+    return this.reread(...paths);
+  }
+
+  /** Reads `paths` again from disk into the stat cache, as the watcher would after git wrote them. */
+  reread(...paths: string[]): this {
+    for (const path of paths) {
+      const full = join(this.root, path);
+      if (!existsSync(full)) {
+        this.remove(path);
+        continue;
+      }
+      const bytes = readFileSync(full);
+      this.#files.set(path, { path, hash: blobHash(bytes, "sha1"), size: bytes.length });
+      this.#pending.add(path);
+    }
+    return this;
   }
 
   /** Stores one revision of every path written or removed since the last. */
