@@ -57,6 +57,32 @@ describe("which revisions moved HEAD, from the main store (015-19)", () => {
   });
 });
 
+describe("the last revision that changed each path, from the main store (015-39)", () => {
+  it("gives each path once, at the last revision after the cursor up to the one asked for", () => {
+    const store = freshStore();
+    for (const paths of [["src/a.ts"], ["src/a.ts", "src/b.ts"], ["src/b.ts"], ["src/a.ts"]]) {
+      store.revisions.append({
+        worktreeId: WT,
+        createdAt: 1,
+        head: null,
+        dirty: true,
+        trigger: "watch",
+        changes: paths.map((path) => ({ path, oldHash: null, newHash: "h" })),
+      });
+    }
+    const s = mainStoreSource(store, WT, () => []);
+    expect([...s.lastChanges(0, 3)]).toEqual([
+      ["src/a.ts", 2],
+      ["src/b.ts", 3],
+    ]);
+    expect([...s.lastChanges(2, 4)]).toEqual([
+      ["src/b.ts", 3],
+      ["src/a.ts", 4],
+    ]);
+    expect(s.lastChanges(4, 4).size).toBe(0);
+  });
+});
+
 describe("headAfterMove", () => {
   it("is the last head when one differs from the head before it", () => {
     expect(headAfterMove("a", [])).toBeNull();
