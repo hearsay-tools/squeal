@@ -505,13 +505,24 @@ class Daemon {
       const configured = this.#policy.nodeTest;
       const configuredPytest = this.#policy.pytest;
       // Spec 015 D8 (row 015-11, agreed with the coordinator): the runs Vitest makes with
-      // coverage on hand their payloads to the records' writer, made below once the runners opened.
-      const covering = {
-        enabled: () => coverage.coverageOn(this.#policy),
-        tempDir: this.opened.scratch.tempDir,
-        collected: (run: Parameters<CoverageWriter["collected"]>[0]) =>
-          this.#coverage?.collected(run),
-      };
+      // coverage on hand their payloads to the records' writer, made below once the runners
+      // opened. With no provider beside the running code, coverage stays off, with one note.
+      const provider = coverage.coverageProvider();
+      if (provider === null && coverage.coverageOn(this.#policy)) {
+        this.#note(coverage.PROVIDER_MISSING_NOTE);
+      }
+      const covering =
+        provider === null
+          ? {}
+          : {
+              coverage: {
+                enabled: () => coverage.coverageOn(this.#policy),
+                provider,
+                tempDir: this.opened.scratch.tempDir,
+                collected: (run: Parameters<CoverageWriter["collected"]>[0]) =>
+                  this.#coverage?.collected(run),
+              },
+            };
       // Each Vitest instance's workers carry the mark of its lane (001 D12, task 004-18).
       const vitestInstance = (lane: string, maxWorkers?: number) => () =>
         vitest.createVitestAdapter({
@@ -522,7 +533,7 @@ class Daemon {
           excludeProjects: () => this.#policy.vitest.excludeProjects,
           exclude: () => this.#policy.vitest.exclude,
           childEnv: this.#children.envFor(lane),
-          coverage: covering,
+          ...covering,
           ...(maxWorkers === undefined ? {} : { maxWorkers }),
         });
       const vitestRunner =
@@ -615,7 +626,6 @@ class Daemon {
       if (this.#phase === "stopping" || this.#stopRequested) return;
       const format = await readObjectFormat(root);
       // Spec 015 D8: the records, stored at their results' keys off the run's path.
-      const provider = coverage.coverageProvider();
       this.#coverage = coverage.createCoverageWriter({
         commonDir,
         format,
