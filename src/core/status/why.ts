@@ -33,7 +33,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { durationsOf } from "./durations.js";
-import { whyFocusedOf } from "./focused.js";
+import { focusedCheckIds, whyFocusedOf } from "./focused.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
 import { newestFirst, replacedOfCheck } from "./replaced-failures.js";
 import { runLogOf } from "./run-log.js";
@@ -80,9 +80,11 @@ export function readWhy(cwd: AbsolutePath, query: string, options: WhyOptions = 
     const worktreeId = worktreeIdFor(context.root);
     // Review 0.1.265 B2: a kept failure outlives its worktree's states and results; it names a check.
     const kept = newestFirst(store.failures.replaced());
+    // Review 0.1.286 B3: a check a focused run recorded has a name, though no other record.
+    const focused = focusedCheckIds(store, worktreeId);
     const exact = parseCheck(query);
-    const check = exact !== null && known(store, worktreeId, exact, kept) ? exact : null;
-    const match = check ?? resolve(store, worktreeId, query.trim(), kept);
+    const check = exact !== null && known(store, worktreeId, exact, kept, focused) ? exact : null;
+    const match = check ?? resolve(store, worktreeId, query.trim(), kept, focused);
     const session = options.session ?? { session: null, agent: null };
     return "found" in match ? match : report(context, match, includeLogs, session, kept);
   });
@@ -93,27 +95,34 @@ function known(
   worktreeId: string,
   check: CheckId,
   kept: readonly ReplacedFailure[],
+  focused: readonly CheckId[],
 ): boolean {
   const identity = checkIdentity(check);
   return (
     store.knownStates.get(worktreeId, check) !== null ||
     store.transitions.history(worktreeId, check).length > 0 ||
     store.results.listForCheck(check, 1).length > 0 ||
-    kept.some((e) => checkIdentity(e.check) === identity)
+    kept.some((e) => checkIdentity(e.check) === identity) ||
+    focused.some((c) => checkIdentity(c) === identity)
   );
 }
 
-/** Candidates are this worktree's checks, then every worktree's kept checks: at most 1,024, each once. */
+/**
+ * Candidates are this worktree's checks, those its focused runs recorded,
+ * then every worktree's kept checks: at most 1,024, each once.
+ */
 function resolve(
   store: Store,
   worktreeId: string,
   query: string,
   kept: readonly ReplacedFailure[],
+  focused: readonly CheckId[],
 ): CheckId | WhyNoMatch {
   const named = firstOfEachCheck(
     [
       ...store.knownStates.list(worktreeId).map((s) => s.check),
       ...held(store, worktreeId),
+      ...focused,
       ...kept.map((e) => e.check),
     ],
     (c) => c,
