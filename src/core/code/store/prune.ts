@@ -25,8 +25,10 @@ const PER_WORKTREE = [
 /**
  * Spec 015 D4, after 011 C7: rows of worktrees that are no longer live go;
  * view entries of consumers no longer registered go; a count stays while a
- * live worktree's current file uses it and is dropped once it is also older
- * than the retention, so a later worktree at the same bytes still finds it;
+ * live worktree's current file uses it, or a kept state was judged on it
+ * (the pass's old bodies, while the file's next count is pending), and is
+ * dropped once it is also older than the retention, so a later worktree at
+ * the same bytes still finds it;
  * coverage records follow the same age rule until wave 2 ties them to their
  * results; `checks` rows nothing references go last.
  */
@@ -57,7 +59,8 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
     "counts",
     "blob, language, counter_version",
     `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
-       AND f.language = counts.language AND f.counter_version = counts.counter_version)`,
+       AND f.language = counts.language AND f.counter_version = counts.counter_version)
+     AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff,
   );
   const coverageRemoved = deleteInBatches(
