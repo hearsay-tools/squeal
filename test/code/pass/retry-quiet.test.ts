@@ -99,6 +99,28 @@ describe("a retry of a quiet count seeds quietly (review 0.1.293 B1)", () => {
     expect(told(store, tree)).toEqual({ entries: [], wentOver: [], writes: ["old fail count"] });
   });
 
+  it("keeps a first count's quiet seed through a policy recount that held it", async () => {
+    const tree = worktree();
+    const store = open(tree.commonDir);
+    tree.write(OLD, "old 23 B1\n").revise();
+    const counter = flakyCounter(1);
+    await pass(tree, store, counter, { now: () => 1_000 });
+    const lower = policyOn({ threshold: 10 });
+    expect(await pass(tree, store, counter, { now: () => 2_000, policy: lower })).toMatchObject({
+      mode: "threshold",
+      counted: 0,
+    });
+    tree.write(NEW, "fresh 2 B2\n").revise();
+    await pass(tree, store, counter, { now: () => 3_000, policy: lower });
+    expect(await pass(tree, store, counter, { now: () => 6_000, policy: lower })).toMatchObject({
+      mode: "edit",
+      counted: 1,
+      transitions: 0,
+    });
+    expect(counter.calls).toHaveLength(3);
+    expect(told(store, tree)).toEqual({ entries: [], wentOver: [], writes: ["old fail count"] });
+  });
+
   it("keeps the quiet seed when another worktree counted the spent blob", async () => {
     const tree = worktree();
     const store = open(tree.commonDir);
