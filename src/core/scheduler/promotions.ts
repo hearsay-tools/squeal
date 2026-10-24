@@ -18,6 +18,16 @@ interface Promotion {
   readonly seq: number;
 }
 
+/**
+ * C15's rank of a file at one reading of the clock: the request order of
+ * the earliest live promotion that holds it, and that promotion's deadline,
+ * when the rank next changes with no event (row 011-184).
+ */
+export interface PromotionRank {
+  readonly rank: number;
+  readonly until: number;
+}
+
 const NOT_RUNNING = (): boolean => false;
 
 /** A live promotion as `meta` holds it for status (task 011-13): its files by `testFileId`. */
@@ -73,15 +83,19 @@ export class Promotions {
 
   /** The request order of the earliest live promotion of `id`; `null` when none holds it. */
   rankOf(id: string): number | null {
-    return this.#first(id)?.seq ?? null;
+    if (this.#promotions.length === 0) return null;
+    return this.rankAt(id, this.#now())?.rank ?? null;
   }
 
   /**
-   * The deadline of the earliest live promotion of `id`, when `rankOf` next
-   * changes with no event; `null` when none holds it (row 011-184).
+   * `id`'s rank at `now`, a reading of this clock; `null` when no promotion
+   * live then holds it. A decision reads every rank at one reading, so a
+   * deadline that passes during it is still the one the decision stood on
+   * (row 011-184, review `reviews/0.1.296-r2.md` B2).
    */
-  untilOf(id: string): number | null {
-    return this.#first(id)?.until ?? null;
+  rankAt(id: string, now: number): PromotionRank | null {
+    const first = this.#promotions.find((p) => p.until > now && p.files.has(id));
+    return first === undefined ? null : { rank: first.seq, until: first.until };
   }
 
   /** Drops the promotions past their deadline or whose files all settled. */
@@ -104,13 +118,6 @@ export class Promotions {
     if (this.#promotions.length === 0) return;
     this.#promotions = [];
     this.#told();
-  }
-
-  /** The earliest live promotion of `id`, in request order. */
-  #first(id: string): Promotion | undefined {
-    if (this.#promotions.length === 0) return undefined;
-    const now = this.#now();
-    return this.#promotions.find((p) => p.until > now && p.files.has(id));
   }
 
   /** `settle` without the telling; whether any promotion was dropped. */

@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { classLines, fileEntry } from "../../src/cli/named-file-lines.js";
 import { daemonLiveness } from "../../src/core/delivery/liveness.js";
-import { publishedYields } from "../../src/core/scheduler/yields.js";
+import { promotionsMetaKey } from "../../src/core/scheduler/promotions.js";
+import { publishedYields, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
@@ -37,11 +38,62 @@ const A = SLOW[0] ?? "";
 const P = "f/p.test.ts";
 const p = ref(P, "f");
 /**
- * The earlier wait's deadline in test 9: longer than its two promotions
- * take under the scheduler's lock on a loaded host, so the later one comes
- * while it is open, and shorter than `CUT_WITHIN_MS`.
+ * The earlier wait's deadline in test 9, on a clock that stands still until
+ * the test moves it, so no host's pause ends the wait: the tier is checked
+ * again this often until then, and once after.
  */
-const EXPIRES_MS = 5_000;
+const EXPIRES_MS = 1_000;
+/**
+ * The earlier wait's deadline in tests 10 and 11: before the later waits'
+ * (60 s and 120 s), so the clock moved past it leaves theirs open, and too
+ * far for a check of the tier to come at it before the test moves the clock.
+ */
+const PROTECTS_MS = 30_000;
+
+/**
+ * The scheduler's clock (`SchedulerOptions.now`): it stands still but for
+ * `advance` and `cross`. Once crossed, it moves `ms` ahead after `reads` more
+ * reads, as the host's clock that passes a deadline in the middle of one
+ * decision (review `reviews/0.1.296-r2.md` B2).
+ */
+function stillClock() {
+  let at = Date.now();
+  let left = Number.POSITIVE_INFINITY;
+  let step = 0;
+  return {
+    now(): number {
+      if (left-- === 0) at += step;
+      return at;
+    },
+    cross(reads: number, ms: number): void {
+      left = reads;
+      step = ms;
+    },
+  };
+}
+
+/**
+ * The kind of each standing the daemon of `side` publishes from now on.
+ * `stored` is called once, as the next promotion is stored, inside the
+ * request that then decides the tiers.
+ */
+function published(side: CatchUpSide, stored: () => void = () => {}): string[] {
+  const { store, worktreeId } = side;
+  const kinds: string[] = [];
+  const set = store.meta.set.bind(store.meta);
+  let told = false;
+  vi.spyOn(store.meta, "set").mockImplementation((key, value) => {
+    set(key, value);
+    if (key === yieldsMetaKey(worktreeId)) {
+      const { tiers } = JSON.parse(value) as { tiers: Record<string, { kind: string }> };
+      kinds.push(...Object.values(tiers).map((t) => t.kind));
+    } else if (key === promotionsMetaKey(worktreeId) && !told) {
+      told = true;
+      stored();
+    }
+  });
+  return kinds;
+}
 
 /**
  * Reports `path`'s end to the run in flight that holds it, as Vitest's
@@ -61,15 +113,17 @@ function reportsEnds(side: CatchUpSide): (path: string) => void {
  * An edit's tier of the four slow files, `ms` each last time, held in
  * flight; P, re-keyed by its project's environment in the same revision,
  * queued behind it, so it is no edit's work that came during the run.
- * `end` names a file of it as ended.
+ * `end` names a file of it as ended. `now`: the scheduler's clock, the
+ * host's when absent.
  */
-async function heldTier(ms: number) {
+async function heldTier(ms: number, now?: () => number) {
   const files: CatchUpFile[] = [
     ...SLOW.map((path) => ({ path, ms, imports: ["src/s.ts"] })),
     { project: "f", path: P, ms: 1, imports: ["src/p.ts"] },
   ];
   const repo = catchUpRepo(files);
-  const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
+  const options = { files, hostSlots: 8, policy: RUN_MISSING };
+  const side = catchUpSide(repo, repo.main, now === undefined ? options : { ...options, now });
   await side.scheduler.start();
   await side.scheduler.idle();
   const base = side.runner.runs.length;
@@ -232,15 +286,48 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
   });
 
   it("9: at 40 s, the earlier wait on A passes its deadline while P's is open: the tier yields", async () => {
-    const held = await heldTier(200_000);
-    const { side } = held;
+    const held = await heldTier(200_000, stillClock().now);
+    const { side, tier } = held;
     side.advance(40_000);
-    // A's wait ends `EXPIRES_MS` from now on the host's clock; no event comes then.
+    // The clock stands still: A's wait stays open until the test moves it past its deadline.
     await side.scheduler.promote([ref(A)], EXPIRES_MS);
     await side.scheduler.promote([p], 60_000);
-    expect(standings(side)).toEqual([{ kind: "named" }]);
+    await notCut(side, tier);
 
-    // On 5ecb377a8: `named` had no bound, so the tier ran on to its end.
+    // No event comes. On 5ecb377a8: `named` had no bound, so the tier ran on to its end.
+    side.advance(EXPIRES_MS);
+    await yieldsToP(held);
+  });
+
+  // Review `reviews/0.1.296-r2.md` B2: the clock passes the earlier wait's deadline during the decision.
+  it("10: A's deadline passes while P's promotion is decided: the tier yields for P with no later event", async () => {
+    const clock = stillClock();
+    const held = await heldTier(200_000, clock.now);
+    const { side } = held;
+    side.advance(40_000);
+    await side.scheduler.promote([ref(A)], PROTECTS_MS);
+    // Two reads after P's promotion is stored see A's wait open: the rank to beat and A's rank.
+    const kinds = published(side, () => clock.cross(2, PROTECTS_MS));
+    await side.scheduler.promote([p], 60_000);
+
+    // On 231ecaeb0: `named` with no bound, so the tier ran on to its end.
+    await yieldsToP(held);
+    expect(kinds.slice(0, 2)).toEqual(["named", "yields"]);
+  });
+
+  it("11: the same when a later wait selects another file of the tier: the tier yields at A's deadline", async () => {
+    const clock = stillClock();
+    const held = await heldTier(200_000, clock.now);
+    const { side } = held;
+    side.advance(40_000);
+    await side.scheduler.promote([ref(A)], PROTECTS_MS);
+    await side.scheduler.promote([p], 60_000);
+    expect(standings(side)).toEqual([{ kind: "named" }]);
+    // The later wait's file of the tier ranks after P, so P beats it once A's wait has ended.
+    published(side, () => clock.cross(2, PROTECTS_MS));
+    await side.scheduler.promote([ref(SLOW[1] ?? "")], 120_000);
+
+    // On 231ecaeb0: the bound was the later wait's deadline, 90 s on, so the tier ran on.
     await yieldsToP(held);
   });
 });
