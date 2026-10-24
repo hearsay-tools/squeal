@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.295";
+  if (true) return "0.1.296";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -10075,8 +10075,17 @@ var init_promotions = __esm({
       /** The request order of the earliest live promotion of `id`; `null` when none holds it. */
       rankOf(id2) {
         if (this.#promotions.length === 0) return null;
-        const now = this.#now();
-        return this.#promotions.find((p) => p.until > now && p.files.has(id2))?.seq ?? null;
+        return this.rankAt(id2, this.#now())?.rank ?? null;
+      }
+      /**
+       * `id`'s rank at `now`, a reading of this clock; `null` when no promotion
+       * live then holds it. A decision reads every rank at one reading, so a
+       * deadline that passes during it is still the one the decision stood on
+       * (row 011-184, review `reviews/0.1.296-r2.md` B2).
+       */
+      rankAt(id2, now) {
+        const first = this.#promotions.find((p) => p.until > now && p.files.has(id2));
+        return first === void 0 ? null : { rank: first.seq, until: first.until };
       }
       /** Drops the promotions past their deadline or whose files all settled. */
       settle(queued) {
@@ -13395,6 +13404,16 @@ var init_queue = __esm({
       isPromoted(ref2) {
         const id2 = testFileId(ref2);
         return this.#entries.has(id2) && this.#promotions.rankOf(id2) !== null;
+      }
+      /**
+       * C15's rank of `ref`, queued or running, at `now`, a reading of the
+       * promotions' clock: the request order of the earliest promotion live
+       * then that holds it, and that promotion's deadline; `null` when none
+       * does, which ranks after every promoted file (`TierYields`, row 011-184,
+       * review `reviews/0.1.296-r2.md` B2).
+       */
+      rankAt(ref2, now) {
+        return this.#promotions.rankAt(testFileId(ref2), now);
       }
       /** `isRecent` or `isPromoted`: work of C4 step 4's first group (C15). */
       isFirstGroup(ref2) {
@@ -17198,13 +17217,18 @@ function superseded(tier) {
   const left = unfinished(tier);
   return left.length > 0 && left.every((f) => f.inputs.some((path) => tier.changes.has(path)));
 }
-function waitedFor(context, ledger, tier, revision) {
+function waitedFor(context, ledger, tier, revision, beat2) {
   const inLane = (ref2) => laneOf(context, ref2) === tier.lane;
   const { queue } = ledger;
   if (queue.hasRecentAfter(tier.revision.number, inLane)) return "work";
   let later = false;
+  let named = false;
   const runsSooner = (ref2) => {
     if (!inLane(ref2)) return false;
+    if ((queue.rankAt(ref2, beat2.at)?.rank ?? Infinity) >= beat2.rank) {
+      named = true;
+      return false;
+    }
     const claim = peekClaim(context, ledger, ref2);
     later ||= claim !== "free";
     return claim === "free";
@@ -17212,7 +17236,17 @@ function waitedFor(context, ledger, tier, revision) {
   if (queue.hasPromoted(runsSooner)) return "work";
   if (focusedWaiting(context, ledger, inLane)) return "work";
   if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "work";
-  return later ? "recheck" : null;
+  return later ? "recheck" : named ? "named" : null;
+}
+function rankToBeat(context, ledger, tier) {
+  const at2 = context.now();
+  let beat2 = { at: at2, rank: Infinity, until: null };
+  if (at2 - (tier.startedAt ?? at2) < YIELD_REMAINDER_MS) return beat2;
+  for (const { file } of unfinished(tier)) {
+    const rank2 = ledger.queue.rankAt(file.ref, at2);
+    if (rank2 !== null && rank2.rank < beat2.rank) beat2 = { at: at2, ...rank2 };
+  }
+  return beat2;
 }
 function recreates(context, ledger, revision, lane) {
   const { keys } = context;
@@ -17231,11 +17265,19 @@ function remainder(context, tier) {
   const longest2 = Math.max(0, ...unfinished(tier).map(({ file }) => file.durationMs ?? 0));
   return longest2 - (context.now() - (tier.startedAt ?? context.now()));
 }
+function byRemainder(context, tier) {
+  const remainderMs = remainder(context, tier);
+  if (remainderMs > YIELD_REMAINDER_MS) return "yield";
+  if (remainderMs >= 0 || !overruns(tier)) return { kind: "remainder", remainderMs };
+  if (-remainderMs >= YIELD_REMAINDER_MS) return "yield";
+  return { kind: "overrun", yieldsAt: context.now() + remainderMs + YIELD_REMAINDER_MS };
+}
 function overruns(tier) {
   return unfinished(tier).length > 0;
 }
-function boundOf(context, tier, decision) {
+function boundOf(context, tier, decision, beat2) {
   if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
+  if (decision?.kind === "named") return beat2.until;
   if (decision?.kind === "overrun") return decision.yieldsAt;
   if (decision?.kind !== "remainder" || !overruns(tier)) return null;
   return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
@@ -17262,7 +17304,7 @@ function isYield(value) {
   const { kind, remainderMs, yieldsAt } = value;
   if (kind === "remainder") return typeof remainderMs === "number";
   if (kind === "overrun") return typeof yieldsAt === "number";
-  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner";
+  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
 }
 var YIELD_REMAINDER_MS, RECHECK, TierYields;
 var init_yields = __esm({
@@ -17300,7 +17342,8 @@ var init_yields = __esm({
        * When each tier in flight that a wait waits for yields at the latest,
        * `YIELD_REMAINDER_MS` past its estimate (row 011-107), or is checked
        * again while its promoted files wait on claims or stored results (row
-       * 011-123), by run id.
+       * 011-123) or when the promotion that ranks its files ends (row 011-184),
+       * by run id.
        */
       #bounds = /* @__PURE__ */ new Map();
       /** The one timer that checks the tiers again at the earliest of `#bounds`. */
@@ -17323,7 +17366,13 @@ var init_yields = __esm({
        *   yet is checked again at that bound, and one only such promoted files
        *   wait for every `CLAIM_RECHECK_MS` (row 011-123): a claim ends with no
        *   event when its claimant's heartbeat is lost or the waiter's bound
-       *   passes (C7).
+       *   passes (C7). Once it has run `YIELD_REMAINDER_MS`, a promoted file
+       *   counts only when it ranks before each of its files that has not
+       *   ended (`rankToBeat`, row 011-184); a tier only other promoted files
+       *   wait for then runs on, checked again when a file of it ends
+       *   (`standsNamed`) or the promotion that gives the rank to beat passes
+       *   its deadline, at once when it passed during the check (reviews
+       *   `reviews/0.1.296.md` B1 and B2, `reviews/0.1.296-r2.md` B2).
        * A file has ended when the runner named it (`Tier.ended`, row 011-54,
        * review `reviews/0.1.237.md` B2); a runner that names none leaves every
        * file unfinished, so its tier is cancelled by the first rule only when
@@ -17335,7 +17384,8 @@ var init_yields = __esm({
         this.#forget(ledger);
         let changed2 = false;
         for (const tier of tiers) {
-          const decision = this.#decide(context, ledger, tier, revision);
+          const beat2 = rankToBeat(context, ledger, tier);
+          const decision = this.#decide(context, ledger, tier, revision, beat2);
           if (typeof decision === "string") {
             if (decision === "yield") {
               const past = remainder(context, tier) < 0;
@@ -17347,12 +17397,20 @@ var init_yields = __esm({
           }
           const standing2 = typeof decision === "string" ? { kind: "yields" } : decision?.kind === "recheck" ? null : decision;
           changed2 = this.#set(tier.runId, standing2) || changed2;
-          const bound = typeof decision === "string" ? null : boundOf(context, tier, decision);
+          const bound = typeof decision === "string" ? null : boundOf(context, tier, decision, beat2);
           if (bound === null) this.#bounds.delete(tier.runId);
           else this.#bounds.set(tier.runId, bound);
         }
         if (changed2) this.#publish(context);
         this.#arm(context);
+      }
+      /**
+       * `tier` runs on for a promoted file that ranks with or after its files
+       * (`named`): a file of it that ends may raise the rank to beat, so the
+       * tiers are checked again (review `reviews/0.1.296.md` B1).
+       */
+      standsNamed(tier) {
+        return this.#standing.get(tier.runId)?.kind === "named";
       }
       cutPastEstimate(file) {
         const cut = this.#cut.get(file.id);
@@ -17368,7 +17426,7 @@ var init_yields = __esm({
         this.#bounds.clear();
         this.#disarm();
       }
-      #decide(context, ledger, tier, revision) {
+      #decide(context, ledger, tier, revision, beat2) {
         const { cancel: cancel2 } = tier;
         if (tier.kind === "slow") return null;
         if (cancel2?.signal.aborted === true) return { kind: "yields" };
@@ -17377,19 +17435,16 @@ var init_yields = __esm({
         if (tier.kind === "backlog" && cancel2 !== null) {
           if (cancelsBacklog(context, ledger, revision, tier)) return "backlog";
         }
-        const waiting2 = waitedFor(context, ledger, tier, revision);
+        const waiting2 = waitedFor(context, ledger, tier, revision, beat2);
         if (waiting2 === null) return null;
         if (cancel2 === null || tier.slot === true)
-          return waiting2 === "work" ? { kind: "runner" } : null;
+          return waiting2 === "recheck" ? null : { kind: "runner" };
         if (waiting2 === "recheck") return RECHECK;
         if (tier.kind === "turn") return { kind: "turn" };
         if (unfinished(tier).some(({ file, key: key3 }) => this.#cut.get(file.id)?.key === key3))
           return { kind: "cut" };
-        const remainderMs = remainder(context, tier);
-        if (remainderMs > YIELD_REMAINDER_MS) return "yield";
-        if (remainderMs >= 0 || !overruns(tier)) return { kind: "remainder", remainderMs };
-        if (-remainderMs >= YIELD_REMAINDER_MS) return "yield";
-        return { kind: "overrun", yieldsAt: context.now() + remainderMs + YIELD_REMAINDER_MS };
+        if (waiting2 === "named") return { kind: "named" };
+        return byRemainder(context, tier);
       }
       /** Sets the one timer at the earliest bound, none without a bound; unref'd, it never holds the process. */
       #arm(context) {
@@ -17924,6 +17979,8 @@ function yieldText(tier, what) {
       return `; the ${what} does not yield: it is the backlog's turn`;
     case "runner":
       return `; the ${what} does not yield: its runner runs each tier to its end`;
+    case "named":
+      return `; the ${what} does not yield: it runs a file this wait or an earlier one selected`;
   }
 }
 function yieldStep(tier) {
@@ -22633,11 +22690,13 @@ var init_scheduler2 = __esm({
       }
       /**
        * A file of `tier` ended during its run (row 011-54): once a revision has
-       * changed an input of the tier, every file left may now be re-keyed, so
-       * the tiers in flight are checked again.
+       * changed an input of the tier, every file left may now be re-keyed, and
+       * once it runs on for a promoted file that ranks with or after its files,
+       * the ended file may have ranked first (`named`, review
+       * `reviews/0.1.296.md` B1), so the tiers in flight are checked again.
        */
       #fileEnded(tier) {
-        if (tier.changes.size === 0) return;
+        if (tier.changes.size === 0 && !this.#yields.standsNamed(tier)) return;
         this.#recheckTiers();
       }
       /**
