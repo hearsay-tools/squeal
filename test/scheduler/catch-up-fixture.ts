@@ -345,7 +345,8 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     squealVersion: "0.0.0-test",
     runsDir: storePaths(commonDir).runsDir,
     head: () => readHead(root),
-    capacity: { dir: repo.poolDir, hostSlots: options.hostSlots },
+    // No live host CPU in the gate (row 011-182).
+    capacity: { dir: repo.poolDir, hostSlots: options.hostSlots, host: null },
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.resumesRest === undefined ? {} : { resumesRest: options.resumesRest }),
     now,
