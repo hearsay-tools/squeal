@@ -13,8 +13,8 @@ import {
   splitByValidity,
 } from "../core/status/index.js";
 import { stoppingState } from "../core/status/stopping.js";
-import { plural } from "../core/text.js";
-import type { DaemonLiveness, EpochMs, StatusSnapshot, TestFileRef } from "../core/types/index.js";
+import { plural, testFileText } from "../core/text.js";
+import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
 import { classLines, namedFailures, reasonGroups, unmatchedText } from "./named-file-lines.js";
 import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
@@ -310,7 +310,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
 function pauseText(wait: EndedNamed, command: string): string {
   const files = wait.leftForPause ?? [];
   const n = files.length;
-  const shown = files.slice(0, NAMED_FILES_SHOWN).map(refText).join(", ");
+  const shown = files.slice(0, NAMED_FILES_SHOWN).map(testFileText).join(", ");
   const more = n > NAMED_FILES_SHOWN ? ` and ${n - NAMED_FILES_SHOWN} more` : "";
   const them = n === 1 ? "it" : "them";
   const what =
@@ -319,11 +319,6 @@ function pauseText(wait: EndedNamed, command: string): string {
   return wait.result.slowTier?.stopWaitMs === undefined
     ? `${what}; this repository does not require ${them} before you finish; ${slowWaitText(command, n)}`
     : `${what}; this repository requires ${them} before you finish: \`${command} run --slow --wait 60000\` runs and waits for ${them}`;
-}
-
-/** As status names a file: the project, when there is one, leads the path. */
-function refText({ project, path }: TestFileRef): string {
-  return project === "" ? path : `${project}: ${path}`;
 }
 
 /** The test files a named wait selected, or `null` when its paths selected none. */

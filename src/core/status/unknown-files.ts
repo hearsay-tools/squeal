@@ -2,7 +2,7 @@ import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/index.js";
 import { readUnknownFiles } from "../scheduler/unknown-files.js";
 import { SUMMARY_MAX_CHARS, testFileKeyOf } from "../state/index.js";
-import { cap, plural } from "../text.js";
+import { cap, plural, testFileText } from "../text.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -158,8 +158,7 @@ export function unknownFilesLines(s: StatusSnapshot): string[] {
  * is cut as a delivery cuts it; `status --json` keeps it whole (task 011-02).
  */
 export function unknownFileText(f: UnknownTestFile): string {
-  const { project, path } = f.testFile;
-  const name = project === "" ? path : `${project}: ${path}`;
+  const name = testFileText(f.testFile);
   const what = f.ran ? "ran, nothing recorded" : "no result";
   const why = f.reason === null ? "no reason was kept" : cap(f.reason, SUMMARY_MAX_CHARS);
   const samples = f.samples.length === 0 ? "" : ` (paths: ${f.samples.join(", ")})`;

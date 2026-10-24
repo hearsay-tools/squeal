@@ -1,6 +1,6 @@
 import { testFileId } from "../keys/index.js";
 import { fileClassOf, testFileKeyOf } from "../state/index.js";
-import { plural } from "../text.js";
+import { plural, testFileText } from "../text.js";
 import type {
   KnownState,
   PendingPhase,
@@ -135,10 +135,7 @@ function phaseLine(
   if (total === 0) return [];
   const names = phase.files
     .slice(0, shown)
-    .map(
-      (ref) =>
-        `${ref.project === "" ? ref.path : `${ref.project}: ${ref.path}`}${marks.get(testFileId(ref)) ?? ""}`,
-    );
+    .map((ref) => `${testFileText(ref)}${marks.get(testFileId(ref)) ?? ""}`);
   const more = total - names.length;
   const rest = more > 0 ? ` and ${more} more` : "";
   return [`${label}: ${plural(total, "test file")}: ${names.join(", ")}${rest}`];

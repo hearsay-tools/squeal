@@ -10,6 +10,8 @@ import {
   stepText,
 } from "../core/status/next-step-text.js";
 import { groupId, widest } from "../core/status/standing-groups.js";
+import { atText } from "../core/status/test-frame.js";
+import { testFileText } from "../core/text.js";
 import type { StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import type { NamedFile, NamedVerdict } from "./named-files.js";
 import type { NamedSelection, UnmatchedPath } from "./status-wait-paths.js";
@@ -91,17 +93,12 @@ function standingOf(f: NamedFile): Standing | undefined {
 
 function groupLine({ files, next, words }: Group, command: string, base?: string): string {
   const paths = files.map((f) => fromBase(base, f.path));
-  const shown = files.slice(0, CLASS_FILES_SHOWN).map(pathText).join(", ");
+  const shown = files.slice(0, CLASS_FILES_SHOWN).map(testFileText).join(", ");
   const more =
     files.length > CLASS_FILES_SHOWN ? ` and ${files.length - CLASS_FILES_SHOWN} more` : "";
   if (next === null) return `${files.length} ${words}: ${shown}${more}`;
   const step = stepText(next.step, paths, command);
   return `${files.length} ${reasonWords(next, paths, command)}: ${shown}${more}${step === "" ? "" : `; ${step}`}`;
-}
-
-/** As status names a file: the project, when there is one, leads the path. */
-function pathText({ project, path }: TestFileRef): string {
-  return project === "" ? path : `${project}: ${path}`;
 }
 
 /** How many reason groups the verdict line names before the rest's count (task 011-13). */
@@ -177,9 +174,7 @@ export function namedFailures(
       `  FAIL  ${formatCheck(f.check)}`,
       ...(f.summary === "" ? [] : [`        ${f.summary}`]),
       `        ${[
-        ...(f.location === null
-          ? []
-          : [`at ${f.location.path}:${f.location.line}:${f.location.column}`]),
+        ...(f.location === null ? [] : [atText(f.location, undefined)]),
         `observed at revision ${f.observedAt}`,
         f.validity,
       ].join(", ")}`,
