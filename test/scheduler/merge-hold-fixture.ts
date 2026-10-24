@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import { readMergeHold } from "../../src/core/scheduler/hold-rows.js";
-import type { CheckKey } from "../../src/core/types/index.js";
+import type { CheckKey, Policy } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import {
   type CatchUpFile,
@@ -60,13 +60,17 @@ export function gitMay(cwd: string, args: readonly string[]): number {
   }
 }
 
-/** A side of `root` whose runs fail a file while a path of its closure holds a marker. */
+/**
+ * A side of `root` whose runs fail a file while a path of its closure holds
+ * a marker. `policy` is set over the defaults.
+ */
 export function holdSide(
   repo: CatchUpRepo,
   root = repo.main,
   files: readonly CatchUpFile[] = FILES,
+  policy: Partial<Policy> = {},
 ): CatchUpSide {
-  const side = catchUpSide(repo, root, { files, hostSlots: 4, tierSize: 4 });
+  const side = catchUpSide(repo, root, { files, hostSlots: 4, tierSize: 4, policy });
   const marked = (path: string) => {
     try {
       return readFileSync(join(root, path), "utf8").includes("<<<<<<<");
