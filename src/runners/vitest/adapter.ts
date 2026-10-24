@@ -24,6 +24,7 @@ import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
 import { closeBroken, instanceTempDirs, runnerFailure } from "./broken.js";
 import { ConfigStamps } from "./config-stamps.js";
+import { coveredFiles, InstanceCoverage, inspectorFiles, type VitestCoverage } from "./coverage.js";
 import { closeEmptied } from "./empty-closed.js";
 import { formerPackages, projectEnvironment } from "./environment.js";
 import { exclusion } from "./exclude.js";
@@ -132,6 +133,14 @@ export class VitestAdapter implements RunnerAdapter {
   #excluded = excludedStamp([], []);
   /** Policy `vitest.exclude` as the current instance started with it (task 004-81). */
   #excludedFile: (path: RelativePath) => boolean = () => false;
+  /** Spec 015 D8: coverage in the runs Squeal makes anyway; absent, never. */
+  readonly #coverage: VitestCoverage | undefined;
+  /** Whether the current instance started with coverage on, as policy had it then. */
+  #coverageOn = false;
+  /** The current instance's coverage; `null` with coverage off. */
+  #instanceCoverage: InstanceCoverage | null = null;
+  /** Every instance's reports directory, removed at `close`: a payload outlives its instance. */
+  readonly #coverageDirs: InstanceCoverage[] = [];
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -146,7 +155,8 @@ export class VitestAdapter implements RunnerAdapter {
    * dependency optimizer on, none included (task 001-181). `exclude` is policy
    * `vitest.excludeProjects`, read at each start (task 001-349);
    * `excludeFiles` is policy `vitest.exclude`, read at each start too (spec
-   * 004 D7, task 004-81).
+   * 004 D7, task 004-81). `coverage` collects coverage in each run while it
+   * is enabled (spec 015 D8, row 015-11).
    */
   constructor(
     readonly paths: WorktreePaths,
@@ -158,7 +168,9 @@ export class VitestAdapter implements RunnerAdapter {
     optimizer: (projects: readonly string[]) => void = () => {},
     exclude: () => readonly string[] = () => [],
     excludeFiles: () => readonly string[] = () => [],
+    coverage?: VitestCoverage,
   ) {
+    this.#coverage = coverage;
     this.#exclude = exclude;
     this.#excludeFiles = excludeFiles;
     this.#node = vitest;
@@ -187,6 +199,8 @@ export class VitestAdapter implements RunnerAdapter {
     const excluded = [...this.#exclude()];
     const excludedFiles = [...this.#excludeFiles()];
     const { project, unknown } = await exclusion(this.#node, this.paths.root, excluded);
+    const coverageOn = this.#coverage?.enabled() ?? false;
+    const coverage = this.#startCoverage(coverageOn);
     const vitest = await this.#node.createVitest("test", {
       root: this.paths.root,
       watch: false,
@@ -199,7 +213,8 @@ export class VitestAdapter implements RunnerAdapter {
       fsModuleCache: false,
       // Row 013-07: a config's own coverage would clean and rewrite the project's
       // reports and print to the daemon's output. A CLI option wins over the config.
-      coverage: { enabled: false },
+      // Row 015-11: with the policy on, Squeal's own provider instead (spec 015 D8).
+      coverage: coverage === null ? { enabled: false } : coverage.options(),
       ...(Object.keys(env).length === 0 ? {} : { env }),
       ...(project === undefined ? {} : { project }),
     });
@@ -222,6 +237,9 @@ export class VitestAdapter implements RunnerAdapter {
       this.#touches.since(heard);
       this.#excluded = excludedStamp(excluded, excludedFiles);
       this.#excludedFile = createInputMatcher(excludedFiles);
+      this.#coverageOn = coverageOn;
+      this.#instanceCoverage = coverage;
+      if (coverage !== null) this.#noteUnisolated(vitest);
       for (const problem of await unknown) {
         noteOnce(this.paths.root, `${POLICY_FILE}: ${problem}`, this.#note);
       }
@@ -230,6 +248,30 @@ export class VitestAdapter implements RunnerAdapter {
       throw error;
     }
     return vitest;
+  }
+
+  /** Spec 015 D8: the coverage of an instance starting with the policy `on`; `null` with it off. */
+  #startCoverage(on: boolean): InstanceCoverage | null {
+    if (!on || this.#coverage === undefined) return null;
+    const coverage = InstanceCoverage.start(this.#coverage.tempDir);
+    if (coverage === null) {
+      noteOnce(this.paths.root, COVERAGE_MISSING_NOTE, this.#note);
+      return null;
+    }
+    this.#coverageDirs.push(coverage);
+    return coverage;
+  }
+
+  /** Spec 015 D8: a project run with `isolate: false` gets no coverage, and one note. */
+  #noteUnisolated(vitest: Vitest): void {
+    const shared = vitest.projects.filter((p) => p.config.isolate === false).map((p) => p.name);
+    if (shared.length === 0) return;
+    const names = shared.map((name) => (name === "" ? "the root project" : `"${name}"`));
+    noteOnce(
+      this.paths.root,
+      `coverage is off in ${names.join(", ")}: its test files share modules (isolate: false), so one file's run cannot be told from another's (spec 015 D8)`,
+      this.#note,
+    );
   }
 
   /** The installed lockfile of each project, as the environment hash finds it (D3). */
@@ -359,7 +401,9 @@ export class VitestAdapter implements RunnerAdapter {
       // Tasks 001-349, 004-81: a revision that moved `vitest.excludeProjects`
       // or `vitest.exclude` reloaded the policy first; the recreate relists.
       const exclusion = excludedStamp(this.#exclude(), this.#excludeFiles()) !== this.#excluded;
-      if (exclusion || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
+      // Row 015-11: so is one that turned coverage on or off (spec 015 D8).
+      const coverage = (this.#coverage?.enabled() ?? false) !== this.#coverageOn;
+      if (exclusion || coverage || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
         const before = vitest.projects.map((p) => p.name);
         // A run in flight uses the instance: the recreate waits for it, and the next run for the recreate.
         const fresh = await hold.exclusive(async () => {
@@ -500,6 +544,9 @@ export class VitestAdapter implements RunnerAdapter {
         }
         // D11 Capacity (task 001-378): the tier's grant, under each project's own width.
         this.#hints.size(vitest, options.workers, testFiles);
+        const coverage = this.#instanceCoverage;
+        const uncovered =
+          coverage === null ? null : await this.#uncovered(vitest, coverage, testFiles, options);
         const exitCode = process.exitCode;
         const unsure = this.#unsure;
         const loadedSince = Date.now();
@@ -580,6 +627,10 @@ export class VitestAdapter implements RunnerAdapter {
             (file) => this.paths.toRelative(file) ?? file,
           );
           const report = withoutTouched(kept, reread, counted.sort());
+          if (coverage !== null && uncovered !== null) {
+            const clean = !execution.hung && broken === null && rejected === undefined;
+            this.#collect(vitest, coverage, report, clean ? uncovered : null, options.runId);
+          }
           // One persisted note for status, besides the crash's delivered line (D5).
           if (broken !== null && report.failure !== null) this.#note(report.failure);
           writeRunLog(options, collector, report);
@@ -594,6 +645,51 @@ export class VitestAdapter implements RunnerAdapter {
     );
   }
 
+  /**
+   * Spec 015 D8: the files of a run whose workers take no coverage, written
+   * for the provider: a focused file, whose run is not the whole file's, and
+   * one whose closure imports `node:inspector`, named once in a note.
+   */
+  async #uncovered(
+    vitest: Vitest,
+    coverage: InstanceCoverage,
+    testFiles: readonly TestFileRef[],
+    options: RunOptions,
+  ): Promise<Set<string>> {
+    const focused = testFiles.filter((ref) => focusedTexts(options.checks, ref) !== null);
+    const reading = await inspectorFiles(vitest, testFiles, this.paths);
+    for (const ref of reading) {
+      noteOnce(
+        this.paths.root,
+        `coverage is off for ${ref.path}: its closure imports node:inspector, so its tests can see V8 coverage (spec 015 D8)`,
+        this.#note,
+      );
+    }
+    const skipped = [...focused, ...reading];
+    coverage.skip(skipped.map((ref) => this.paths.toAbsolute(ref.path)));
+    return new Set(skipped.map(fileKey));
+  }
+
+  /**
+   * Hands the run's payloads of its completed, covered files to the
+   * records' writer, and drops the rest; `uncovered` `null` drops all (a
+   * hung, broken or rejected run).
+   */
+  #collect(
+    vitest: Vitest,
+    coverage: InstanceCoverage,
+    report: RunReport,
+    uncovered: ReadonlySet<string> | null,
+    runId: string,
+  ): void {
+    const completed = new Set(report.completedFiles.map(fileKey));
+    const wanted = (ref: TestFileRef) =>
+      uncovered !== null && completed.has(fileKey(ref)) && !uncovered.has(fileKey(ref));
+    const batches = coverage.take(vitest);
+    const files = coveredFiles(vitest, batches, wanted, this.#sources, this.paths);
+    if (files.length > 0) this.#coverage?.collected({ runId, files });
+  }
+
   close(): Promise<void> {
     return this.#gate.exclusive(async () => {
       if (this.#closed) return;
@@ -603,6 +699,7 @@ export class VitestAdapter implements RunnerAdapter {
       // A slow pass's instance among them (spec 004 D2, `withSlowInstance`).
       if (vitest !== null) await closeEmptied(vitest);
       this.#observer.stop();
+      for (const coverage of this.#coverageDirs.splice(0)) coverage.remove();
     });
   }
 
@@ -630,6 +727,14 @@ export class VitestAdapter implements RunnerAdapter {
 /** Test specifications of every project. Typecheck specs (`tsc`, no module graph) are not supported in v1. */
 async function testSpecifications(vitest: Vitest): Promise<TestSpecification[]> {
   return supported(await vitest.globTestSpecifications());
+}
+
+/** Spec 015 D8: logged when no provider is found beside the running code. */
+const COVERAGE_MISSING_NOTE =
+  "coverage stays off: Squeal's coverage provider (coverage/provider.mjs) is not beside its code (spec 015 D8)";
+
+function fileKey(ref: TestFileRef): string {
+  return `${ref.project}\0${ref.path}`;
 }
 
 function excludedStamp(projects: readonly string[], files: readonly string[]): string {
