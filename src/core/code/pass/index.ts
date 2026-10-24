@@ -115,6 +115,8 @@ export function createCodePass(options: CodePassOptions): CodePass {
   let soonTimer: NodeJS.Timeout | null = null;
   /** When the coverage step's waiting record turns `unknown`. */
   let coverageWake: number | null = null;
+  /** Results, records or a wake came since the last coverage step, or none ran on this store. */
+  let coverageDue = true;
   /** Loader conditions that cannot change at their key (D9), for the open store. */
   const settled = new Map<CheckKey, LoaderCondition>();
   /** The failed counts of the open store have had this daemon's fresh budget. */
@@ -128,6 +130,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
     budgeted = false;
     settled.clear();
     coverageWake = null;
+    coverageDue = true;
   };
   const open = (policy: Policy): CodeStore | null => {
     if (store !== null) return store;
@@ -180,17 +183,23 @@ export function createCodePass(options: CodePassOptions): CodePass {
     });
     wasOff = false;
     if (report !== null) options.onPass?.(report);
-    coverageStep(opened, policy, report?.mode === undefined ? false : report.mode !== "edit");
+    coverageStep(opened, policy, report);
   };
   /** Spec 015 D9 after the complexity pass; with coverage off, the states it left go. */
-  const coverageStep = (opened: CodeStore, policy: Policy, reseed: boolean) => {
+  const coverageStep = (opened: CodeStore, policy: Policy, report: PassReport | null) => {
+    const reseed = report !== null && report.mode !== "edit";
+    const revised = report !== null;
     const inputs = options.coverage;
     coverageWake = null;
     if (inputs === undefined) return;
     if (!coverageOn(policy)) {
       clearCoverage(opened, options.worktreeId);
+      coverageDue = true;
       return;
     }
+    // A pass with no revision, result or record to read since the last step leaves it as it is.
+    if (!reseed && !coverageDue && !revised) return;
+    coverageDue = false;
     const step = runCoverageStep({
       store: opened,
       main: inputs.main,
@@ -204,7 +213,10 @@ export function createCodePass(options: CodePassOptions): CodePass {
     });
     coverageWake = step?.wakeAt ?? null;
     // Past the step's budget: the rest after a turn of the event loop, so hooks run between.
-    if (step?.more === true) setImmediate(() => self.nudge());
+    if (step?.more === true) {
+      coverageDue = true;
+      setImmediate(() => self.nudge());
+    }
   };
   /**
    * The earliest failed count's retry; after `aborted` passes that threw,
@@ -229,6 +241,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
     timer = setTimeout(
       () => {
         timer = null;
+        coverageDue = true;
         self.nudge();
       },
       Math.max(0, at - now()),
@@ -268,6 +281,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
       if (closed || soonTimer !== null || !coverageOn(options.policy())) return;
       soonTimer = setTimeout(() => {
         soonTimer = null;
+        coverageDue = true;
         self.nudge();
       }, COVERAGE_COALESCE_MS);
       soonTimer.unref();

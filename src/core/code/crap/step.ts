@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { compare } from "../../fs/index.js";
 import type {
   CodeCheckId,
@@ -83,15 +84,23 @@ const checkOf = (path: string, fn: { qualifiedName: string; occurrence: number }
 export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | null {
   const { store, worktreeId } = input;
   const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
-  const spent = uncountableFiles(store, worktreeId, files);
-  const counts = new Map<string, FileCount>();
-  for (const file of files) {
-    const count = store.counts.get(file.blob, file.language, file.counterVersion);
-    if (count !== null) counts.set(file.path, count);
-    else if (!spent.has(file.path)) return null;
-  }
   const summary = readSummary(store.meta, worktreeId);
   const start = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
+  // Coverage starts once the first count is done (a file the counter gave up on aside), so a
+  // function it counts later is seeded with the rest, not new. After, an uncounted file waits.
+  if (start) {
+    const spent = uncountableFiles(store, worktreeId, files);
+    if (store.files.uncounted(worktreeId).some((f) => !spent.has(f.path))) return null;
+  }
+  // Each count is read once, when a file is judged or seeded.
+  const counts = new Map<string, FileCount>();
+  const countOf = (file: CodeFile): FileCount | null => {
+    const known = counts.get(file.path);
+    if (known !== undefined) return known;
+    const count = store.counts.get(file.blob, file.language, file.counterVersion);
+    if (count !== null) counts.set(file.path, count);
+    return count;
+  };
   const loaders = readLoaders({ ...input, coverage: store.coverage, now: input.now() });
   const records = new Map<CheckKey, CoverageRecord | null>();
   const record = (key: CheckKey) => {
@@ -110,15 +119,13 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   const judged: Judged[] = [];
   let more = false;
   for (const file of files) {
-    const count = counts.get(file.path);
-    if (count === undefined) continue;
     const before = summary?.files[file.path];
     const condition = fileCondition(loaders.of(file.path), loaders.listed);
     if (condition.state !== "ready") {
       next[file.path] = summaryOf(file, condition);
       continue;
     }
-    const signature = [file.blob, ...condition.loaders.map((l) => l.key).sort(compare)].join("\n");
+    const signature = signatureOf(file.blob, condition.loaders);
     if (!start && before?.state === "judged" && before.signature === signature) {
       next[file.path] = before;
       continue;
@@ -128,6 +135,8 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
       if (before !== undefined) next[file.path] = before;
       continue;
     }
+    const count = countOf(file);
+    if (count === null) continue;
     const coverage = coverageOf(file, count.functions, condition.loaders, record);
     if (coverage === "unread") {
       next[file.path] = { state: "unknown", blob: file.blob, cause: "unread" };
@@ -138,7 +147,7 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   }
 
   return store.transaction(() => {
-    if (start || input.reseed) seed(input, files, counts, start && summary !== null);
+    if (start || input.reseed) seed(input, files, countOf, start && summary !== null);
     const { states, transitions } = judge(input, judged);
     store.states.upsertMany(states);
     store.transitions.append(transitions);
@@ -157,6 +166,14 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
     }
     return { judged: judged.length, transitions: transitions.length, wakeAt: loaders.wakeAt, more };
   });
+}
+
+/** What a judgement read: the blob and its loaders' keys, hashed, so the summary stays small. */
+function signatureOf(blob: string, loaders: readonly { readonly key: CheckKey }[]): string {
+  const keys = loaders.map((l) => l.key).sort(compare);
+  return createHash("sha1")
+    .update([blob, ...keys].join("\n"))
+    .digest("hex");
 }
 
 function summaryOf(file: CodeFile, condition: Exclude<FileCondition, { state: "ready" }>) {
@@ -179,7 +196,7 @@ function summaryOf(file: CodeFile, condition: Exclude<FileCondition, { state: "r
 function seed(
   input: CoverageStepInput,
   files: readonly CodeFile[],
-  counts: ReadonlyMap<string, FileCount>,
+  countOf: (file: CodeFile) => FileCount | null,
   again: boolean,
 ): void {
   const { store, worktreeId, revision } = input;
@@ -192,7 +209,7 @@ function seed(
   );
   const states: CodeKnownState[] = [];
   for (const file of files) {
-    for (const fn of counts.get(file.path)?.functions ?? []) {
+    for (const fn of countOf(file)?.functions ?? []) {
       if (known.has(`${functionKey(fn)}\0${file.path}`)) continue;
       for (const measure of COVERAGE_MEASURES) {
         states.push({
