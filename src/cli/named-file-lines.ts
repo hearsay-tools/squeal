@@ -14,7 +14,7 @@ import { atText } from "../core/status/test-frame.js";
 import { testFileText } from "../core/text.js";
 import type { StatusSnapshot, TestFileRef } from "../core/types/index.js";
 import type { NamedFile, NamedVerdict } from "./named-files.js";
-import type { NamedSelection, UnmatchedPath } from "./status-wait-paths.js";
+import type { NamedSelection, UnmatchedPath } from "./named-selection.js";
 import type { FileClass } from "./verdict.js";
 
 /*

@@ -11,6 +11,7 @@ import {
 import type { AbsolutePath, EpochMs } from "../core/types/index.js";
 import type { CliIo } from "./main.js";
 import { pauseOnlyIds, readNamedFiles } from "./named-files.js";
+import { selectNamedFiles } from "./named-selection.js";
 import { type DaemonSync, pollPause, SYNC_POLL_MS, syncDaemon } from "./status-sync.js";
 import { STATUS_WAIT_SETTLE_MS } from "./status-wait.js";
 import { CheckUsageError, checkUsage, snapshotFocus } from "./status-wait-focus.js";
@@ -21,7 +22,6 @@ import {
   type NamedWaitOutcome,
   ownNamedFiles,
   printNamed,
-  selectNamedFiles,
 } from "./status-wait-paths.js";
 import { holdOfWait, readClasses, readVerdict } from "./verdict.js";
 
