@@ -125,6 +125,28 @@ describe("status's complexity line (015 D6)", () => {
     );
   });
 
+  it("says only how far the first count is, with no number over yet (D6, lessons round 1)", () => {
+    const s = seed({ complexity: { enabled: true } });
+    const code = openCode(s);
+    // The pass writes the files rows first, the counts by slice, and the states last.
+    putFile(code, s.repo.mainId, TIERS, [fn("selectTier", 23, 120)]);
+    code.files.upsertMany(s.repo.mainId, [
+      {
+        path: "src/b.ts",
+        blob: "b9",
+        language: "typescript",
+        counterVersion: 1,
+        size: 9,
+        revision: 1,
+      },
+    ]);
+    code.close();
+    const { snapshot, lines } = statusOf(s, null);
+    expect(snapshot.code).toMatchObject({ over: 0, pending: 1, files: 2 });
+    expect(lines).toContain("Complexity: counting, 1 of 2 files.");
+    expect(lines.join("\n")).not.toContain("0 functions over");
+  });
+
   it("says nothing was counted while no daemon made the code store", () => {
     const s = seed({ complexity: { enabled: true } });
     const { snapshot, lines } = statusOf(s, null);
