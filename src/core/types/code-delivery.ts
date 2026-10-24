@@ -128,4 +128,31 @@ export interface CodeStatus {
    * Absent when there are none.
    */
   readonly uncountable?: number;
+  /** Spec 015 D9 (row 015-12): absent while coverage is off or not judged yet. */
+  readonly coverage?: CodeCoverageStatus;
+}
+
+/**
+ * Spec 015 D9 (row 015-12): `CodeStatus.coverage`. `crap` and `uncovered`
+ * count functions failing; the rest count files, which keep their last
+ * judged states while they wait or are unknown.
+ */
+export interface CodeCoverageStatus {
+  readonly v: 1;
+  /** `crap.threshold`. */
+  readonly threshold: number;
+  readonly crap: number;
+  readonly uncovered: number;
+  /** Counted files the coverage step reads. */
+  readonly files: number;
+  /** Files a test file that loads them has no current result for: `squeal run --all` runs them. */
+  readonly waitingForRuns: number;
+  /** Files whose loaders all ran, a record not stored yet. */
+  readonly waitingForRecords: number;
+  /** Files by why a loader can have no record. */
+  readonly unknown: Readonly<
+    Partial<Record<"no-record" | "skipped" | "unkeyed" | "unread", number>>
+  >;
+  /** `vitest.exclude` globs and `vitest.excludeProjects` names: their test files are not read. */
+  readonly notRead?: readonly string[];
 }
