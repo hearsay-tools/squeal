@@ -77,3 +77,21 @@ The brief points at `code-delta.ts`; the line comes from `newTooBig` in `src/cor
 - A too-big test file is in every edit pass's work set (counted files a runner lists), so its row moves with no edit and it is told once in a session. A test file over 512 KiB is rare.
 - A move of `HEAD` that changes a too-big file is still told as an edit (015-38's choice covers pulls).
 - A `tooBigTold:` key of a session that ended stays in the code store, as `pass:` and `recount:` keys of a gone worktree do: one small key per session that was told a too-big file.
+
+## 015-37: a recount summary told twice
+
+### Cause
+
+The code store's transaction is `BEGIN IMMEDIATE`, so two hooks never both read a seed before either writes it. The double came from the clock. A hook reads `at` (`delivery.ts`, in its main store transaction) before it opens the code store. A recount the daemon commits between the two has `recount.at` later than `at`. `codeStep` told the summary because `recount.at > seededAt`, then seeded the view at `at`, which is still before `recount.at`. So the next hook told it again, and stopped only when a hook's clock passed `recount.at`. That fits B4: f475e065 20 s apart and Codex 1c9c2ead 1 s apart, both at one revision.
+
+### Change
+
+The transaction that tells the summary seeds at `max(at, recount.at)` (`codeStep`, `code-deliver.ts`): the compare and the set are on the same value, so a second hook finds the summary told. `registerCode` seeds the same way: its line already holds a recount committed after its clock, so no summary follows it.
+
+### Tests (red first)
+
+`test/code/delivery/recount-once.test.ts`: two hooks whose clocks (11 s, 12 s) were read before the recount (15 s); exactly one carries the summary, and a later hook gets nothing (red: both carried it). A registration whose clock was read before a recount gets no summary after (red: it got one). A second recount is still told (green before and after).
+
+### Note
+
+`code-deliver.ts` is 377 lines, over the styleguide's 300. It was 362 at the start, and wave 2b's 015-12 edits it too, so I did not split it.
