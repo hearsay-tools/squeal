@@ -29,8 +29,8 @@ import { statusCommand } from "./status-command.js";
 import { type DaemonSync, pollPause, SYNC_POLL_MS, type SyncState } from "./status-sync.js";
 import {
   anyFailed,
-  CHECK_NEEDS_TEST_FILE,
   CheckUsageError,
+  checkUsage,
   focusOf,
   focusOutcome,
   type NamedFocus,
@@ -430,11 +430,9 @@ export async function waitForNamed(
           ready && (checks.length > 0 || !promoted)
             ? ownNamedFiles(root, cwd, paths, selection)
             : [];
-        // Row 011-146 (C15): a source path selects no focus; with no own path, a usage error,
-        // whether or not a test file reads the source (review 0.1.286 B4).
-        if (checks.length > 0 && ready && own.length === 0) {
-          return { usage: CHECK_NEEDS_TEST_FILE };
-        }
+        // Row 011-146 (C15): a source path selects no focus (review 0.1.286 B4).
+        const usage = checkUsage(checks, ready, own);
+        if (usage !== null) return usage;
         if (checks.length > 0 && ready) whole ??= wholeFileReasons(root, own);
         const focus =
           whole === undefined ? undefined : focusOf(store, id, own, checks, whole, reply, record);
@@ -548,9 +546,19 @@ export async function namedWaitCommand(
   options: NamedWaitOptions,
 ): Promise<number> {
   const checks = how.checks ?? [];
+  const wait = waitForNamed(io.cwd ?? process.cwd(), paths, { ...options, checks });
+  return printNamedRead(wait, how, io, options.now);
+}
+
+/** `printNamed` of what `read` gives; its `CheckUsageError` exits 2 (row 011-146, C15). */
+export async function printNamedRead(
+  read: Promise<NamedWait>,
+  how: NamedPrint,
+  io: CliIo,
+  now: () => EpochMs,
+): Promise<number> {
   try {
-    const wait = await waitForNamed(io.cwd ?? process.cwd(), paths, { ...options, checks });
-    return printNamed(wait, how, io, options.now);
+    return printNamed(await read, how, io, now);
   } catch (error) {
     if (!(error instanceof CheckUsageError)) throw error;
     io.stderr(`squeal status: ${error.message}\n`);
@@ -579,10 +587,6 @@ export function printNamed(
     const { result } = wait;
     io.stdout(how.json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, now()));
     return 3;
-  }
-  if (wait.focus?.usage !== undefined) {
-    io.stderr(`squeal status: ${wait.focus.usage}\n`);
-    return 2;
   }
   const code = namedCode(wait);
   const command = statusCommand(io.env ?? process.env);

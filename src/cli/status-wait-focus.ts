@@ -210,8 +210,6 @@ export interface NamedFocus {
   readonly texts: readonly string[];
   readonly files: readonly FocusedFile[];
   readonly refused?: { readonly version: string | null };
-  /** A snapshot's `--check` with no test file named by its own path: the usage error it exits 2 with. */
-  readonly usage?: string;
 }
 
 /**
@@ -241,7 +239,23 @@ export function focusOutcome(
   return reply === "none" ? "settled" : null;
 }
 
-/** Row 011-146 (C15): `--check` with no test file named by its own path; the command exits 2. */
+/**
+ * Row 011-146 (C15): the usage error a named wait or snapshot with `checks`
+ * exits 2 with when no selected test file was named by its own path (`own`),
+ * whatever the paths select (review 0.1.286 B4), once the daemon listed the
+ * revision (`ready`); else `null`. Both forms return it from the store's
+ * read, which turns a throw into an unreadable store, then throw it as a
+ * `CheckUsageError`.
+ */
+export function checkUsage(
+  checks: readonly string[],
+  ready: boolean,
+  own: readonly TestFileRef[],
+): { readonly usage: string } | null {
+  return checks.length > 0 && ready && own.length === 0 ? { usage: CHECK_NEEDS_TEST_FILE } : null;
+}
+
+/** Row 011-146 (C15): `checkUsage`'s error; `printNamedRead` exits 2 with it. */
 export class CheckUsageError extends Error {}
 
 /**
@@ -270,23 +284,15 @@ export function focusOf(
 /**
  * Row 011-146 (C6 as amended 2026-10-23): what `status <path>... --check
  * <text>...` without `--wait` reads of the selected checks, the focused
- * runs and the results stored at the files' keys; it sends nothing. With
- * checks, once the daemon listed the revision (`ready`), and no file named by
- * its own path (`own`), the usage error, whatever the paths select (review
- * 0.1.286 B4), which `printNamed` gives: it reads inside the store's read,
- * which turns a throw into an unreadable store.
+ * runs and the results stored at the files' keys; it sends nothing.
  */
 export function snapshotFocus(
   store: Store,
   worktreeId: WorktreeId,
   root: AbsolutePath,
-  ready: boolean,
   own: readonly TestFileRef[],
   checks: readonly string[],
 ): NamedFocus | undefined {
   if (checks.length === 0) return undefined;
-  if (ready && own.length === 0) {
-    return { texts: checks, files: [], usage: CHECK_NEEDS_TEST_FILE };
-  }
   return focusOf(store, worktreeId, own, checks, wholeFileReasons(root, own), undefined, null);
 }
