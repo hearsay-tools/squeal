@@ -224,6 +224,8 @@ export interface NamedFocus {
   readonly texts: readonly string[];
   readonly files: readonly FocusedFile[];
   readonly refused?: { readonly version: string | null };
+  /** A snapshot's `--check` with no test file named by its own path: the usage error it exits 2 with. */
+  readonly usage?: string;
 }
 
 /** Whether every file the daemon focuses has its answer, and there is one such file. */
@@ -263,8 +265,9 @@ export function focusOf(
  * Row 011-146 (C6 as amended 2026-10-23): what `status <path>... --check
  * <text>...` without `--wait` reads of the selected checks, the focused
  * runs and the results stored at the files' keys; it sends nothing. With
- * checks and `selected` files but none named by its own path (`own`),
- * `CheckUsageError`.
+ * checks and `selected` files but none named by its own path (`own`), the
+ * usage error, which `printNamed` gives: it reads inside the store's read,
+ * which turns a throw into an unreadable store.
  */
 export function snapshotFocus(
   store: Store,
@@ -275,6 +278,8 @@ export function snapshotFocus(
   checks: readonly string[],
 ): NamedFocus | undefined {
   if (checks.length === 0) return undefined;
-  if (selected.length > 0 && own.length === 0) throw new CheckUsageError(CHECK_NEEDS_TEST_FILE);
+  if (selected.length > 0 && own.length === 0) {
+    return { texts: checks, files: [], usage: CHECK_NEEDS_TEST_FILE };
+  }
   return focusOf(store, worktreeId, own, checks, wholeFileReasons(root, own), undefined, null);
 }
