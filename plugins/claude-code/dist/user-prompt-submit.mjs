@@ -4237,6 +4237,35 @@ function nodeFailing(store, worktreeId, failing) {
   return failing.some((check) => !pytest.has(check.project) && NODE_TEST_FILE.test(check.testPath));
 }
 
+// src/core/code/pass/failed.ts
+var uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
+function readUncountable(meta, worktreeId) {
+  const text = meta.get(uncountableKey(worktreeId));
+  if (text === null) return /* @__PURE__ */ new Map();
+  try {
+    const record = JSON.parse(text);
+    return new Map(Object.entries(record));
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function spentFailure(failed2, file) {
+  const f = failed2.get(file.path);
+  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
+}
+function uncountableFiles(store, worktreeId, files2) {
+  const failed2 = readUncountable(store.meta, worktreeId);
+  const spent = /* @__PURE__ */ new Map();
+  if (failed2.size === 0) return spent;
+  for (const file of files2) {
+    const f = spentFailure(failed2, file);
+    if (f === null) continue;
+    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
+      spent.set(file.path, f);
+  }
+  return spent;
+}
+
 // src/core/types/code-delivery.ts
 var CODE_LISTED_MAX = 5;
 
@@ -5089,6 +5118,13 @@ function readRecount(store, worktreeId) {
 function isTooBig(file) {
   return file.tooBig === true;
 }
+function countingOf(store, worktreeId) {
+  const files2 = store.files.list(worktreeId).filter((f) => !isTooBig(f));
+  const spent = uncountableFiles(store, worktreeId, files2);
+  const pending = store.files.uncounted(worktreeId).filter((f) => !spent.has(f.path)).length;
+  const total = files2.length - spent.size;
+  return { done: total - pending, total, uncountable: spent.size };
+}
 function lastTransition(store, worktreeId, check, measure2 = MEASURE) {
   return store.transitions.history(worktreeId, check).findLast((t) => t.measure === measure2) ?? null;
 }
@@ -5108,9 +5144,8 @@ function registerCode(source, consumer, at) {
     ({ store, complexity }) => store.transaction(() => {
       const failing = failingIn(store, worktreeId);
       seed(store, consumer, failing, at);
-      const total = store.files.list(worktreeId).filter((f) => !isTooBig(f)).length;
-      const pending = store.files.uncounted(worktreeId).length;
-      const counting = pending === 0 ? {} : { counting: { done: total - pending, total } };
+      const { done, total } = countingOf(store, worktreeId);
+      const counting = done === total ? {} : { counting: { done, total } };
       return { v: 1, threshold: complexity.threshold, over: failing.length, ...counting };
     })
   );
@@ -5685,15 +5720,17 @@ function codeStatusOf(store, worktreeId, at, shell) {
     ({ store: code, complexity }) => code.read(() => {
       const states = code.states.list(worktreeId, { measure: "complexity" });
       const from = since();
+      const { done, total, uncountable } = countingOf(code, worktreeId);
       return {
         v: 1,
         threshold: complexity.threshold,
         over: states.filter((s) => s.outcome === "fail").length,
         sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from).length,
         since: from?.scope ?? null,
-        pending: code.files.uncounted(worktreeId).length,
-        files: code.files.list(worktreeId).filter((f) => !isTooBig(f)).length,
-        unknown: states.filter((s) => s.outcome === "unknown").length
+        pending: total - done,
+        files: total,
+        unknown: states.filter((s) => s.outcome === "unknown").length,
+        ...uncountable === 0 ? {} : { uncountable }
       };
     })
   );
@@ -6171,7 +6208,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.292";
+  if (true) return "0.1.293";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
