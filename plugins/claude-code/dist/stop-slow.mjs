@@ -653,7 +653,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.287";
+  if (true) return "0.1.288";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -2537,7 +2537,7 @@ function prune(conn, worktrees, paths, options) {
   if (options.maxSizeMb !== null) {
     resultsRemoved += evictToCap(conn, options.maxSizeMb * 1024 * 1024);
   }
-  const runsRemoved = dropLiveWorktreeRuns(conn, paths, cutoff) + dropRemovedWorktreeRuns(conn, paths);
+  const runsRemoved = dropRuns(conn, paths, cutoff);
   const checkpointsRemoved = conn.transaction(
     () => conn.run(
       `DELETE FROM checkpoints
@@ -2565,27 +2565,16 @@ function prune(conn, worktrees, paths, options) {
     bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size")
   };
 }
-function dropLiveWorktreeRuns(conn, paths, cutoff) {
+function dropRuns(conn, paths, cutoff) {
   const dropped = conn.transaction(
     () => conn.all(
       `DELETE FROM runs
-       WHERE ${UNREFERENCED_RUN} AND worktree_id IN (SELECT id FROM worktrees)
-         AND end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?
+       WHERE ${UNREFERENCED_RUN}
+         AND (worktree_id NOT IN (SELECT id FROM worktrees)
+              OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))
        RETURNING log_dir`,
       keptRuns(conn),
       cutoff
-    )
-  );
-  for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
-  return dropped.length;
-}
-function dropRemovedWorktreeRuns(conn, paths) {
-  const dropped = conn.transaction(
-    () => conn.all(
-      `DELETE FROM runs
-       WHERE ${UNREFERENCED_RUN} AND worktree_id NOT IN (SELECT id FROM worktrees)
-       RETURNING log_dir`,
-      keptRuns(conn)
     )
   );
   for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
@@ -5701,29 +5690,30 @@ function isFocusedRun(value) {
 }
 
 // src/core/status/focused.ts
-function readStatusFocused(store, worktreeId, phases) {
+function readFocusedFiles(store, worktreeId, files2) {
   const runs = readFocused(store, worktreeId);
-  if (runs.length === 0) return [];
-  const files2 = runs.map((run) => run.testFile);
+  const refs = files2 ?? runs.map((run) => run.testFile);
+  if (refs.length === 0) return [];
   const keys = new Map(
-    store.testFileKeys.list(worktreeId, files2).map((row) => [testFileId(row.testFile), row.key])
+    store.testFileKeys.list(worktreeId, refs).map((row) => [testFileId(row.testFile), row.key])
   );
-  return runs.map((run) => {
-    const current2 = keys.get(testFileId(run.testFile)) === run.key;
-    const applies = current2 && store.results.byKey(run.key, 0).length === 0;
-    const phase = phases.get(testFileId(run.testFile))?.phase ?? null;
-    return { ...statusFocusedOf(run, applies), phase };
+  const byFile2 = new Map(runs.map((run) => [testFileId(run.testFile), run]));
+  return refs.map((testFile) => {
+    const key = keys.get(testFileId(testFile)) ?? null;
+    const run = byFile2.get(testFileId(testFile));
+    const results = key === null ? [] : store.results.byKey(key, 0);
+    const applies = run !== void 0 && run.key === key && results.length === 0;
+    return { testFile, key, ...run === void 0 ? {} : { run }, results, applies };
+  });
+}
+function readStatusFocused(store, worktreeId, phases) {
+  return readFocusedFiles(store, worktreeId).flatMap(({ testFile, run, applies }) => {
+    if (run === void 0) return [];
+    const phase = phases.get(testFileId(testFile))?.phase ?? null;
+    return [{ ...statusFocusedOf(run, applies), phase }];
   });
 }
 function statusFocusedOf(run, applies) {
-  const checks = run.checks.map((c) => ({
-    check: c.check,
-    name: formatCheck(c.check),
-    outcome: c.outcome,
-    durationMs: c.durationMs,
-    summary: c.summary,
-    location: c.location
-  }));
   return {
     testFile: run.testFile,
     key: run.key,
@@ -5738,10 +5728,20 @@ function statusFocusedOf(run, applies) {
     reason: run.reason,
     collected: run.collected,
     matched: run.matched,
-    checks,
+    checks: run.checks.map(focusedCheckOf),
     more: run.more,
     ...countsOf(run.outcomes) ?? {},
     applies
+  };
+}
+function focusedCheckOf(c) {
+  return {
+    check: c.check,
+    name: formatCheck(c.check),
+    outcome: c.outcome,
+    durationMs: c.durationMs,
+    summary: c.summary,
+    location: c.location
   };
 }
 function countsOf(outcomes) {
@@ -5978,6 +5978,28 @@ function promotedIds(store, worktreeId, daemonStartedAt, now) {
     return /* @__PURE__ */ new Set();
   }
 }
+
+// src/core/daemon/escaped.ts
+var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
+
+// src/core/ps/proc.ts
+var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
+
+// src/core/capacity/pool.ts
+var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
+
+// src/core/slow/rank.ts
+var MAX_READ_BYTES = 1024 * 1024;
+
+// src/core/scheduler/queue.ts
+var Group = { first: 0, catchUp: 1, second: 2 };
+var GROUP_ORDER = {
+  edits: [Group.first, Group.catchUp, Group.second],
+  turn: [Group.catchUp, Group.second, Group.first]
+};
+
+// src/core/scheduler/rekeyed-moves.ts
+var MOVES_RETENTION_MS = 60 * 6e4;
 
 // src/core/delivery/handoff.ts
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
@@ -6224,32 +6246,6 @@ function tellRevision(store, consumer, revision) {
   writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
 }
 
-// src/core/scheduler/queue.ts
-var Group = { first: 0, catchUp: 1, second: 2 };
-var GROUP_ORDER = {
-  edits: [Group.first, Group.catchUp, Group.second],
-  turn: [Group.catchUp, Group.second, Group.first]
-};
-
-// src/core/hash/blob.ts
-import { constants } from "node:fs";
-var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
-
-// src/core/daemon/escaped.ts
-var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
-
-// src/core/ps/proc.ts
-var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
-
-// src/core/capacity/pool.ts
-var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
-
-// src/core/slow/rank.ts
-var MAX_READ_BYTES = 1024 * 1024;
-
-// src/core/scheduler/rekeyed-moves.ts
-var MOVES_RETENTION_MS = 60 * 6e4;
-
 // src/core/scheduler/unknown-files.ts
 function unknownFilesMetaKey(worktreeId) {
   return worktreeMetaKey("unknownFiles", worktreeId);
@@ -6277,6 +6273,10 @@ function knownCause(entry3) {
   const { cause: _cause, ...rest } = entry3;
   return rest;
 }
+
+// src/core/hash/blob.ts
+import { constants } from "node:fs";
+var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 
 // src/core/scheduler/quiet.ts
 function quietMetaKey(worktreeId) {
