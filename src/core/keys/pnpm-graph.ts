@@ -129,9 +129,9 @@ export class PnpmGraph implements PackageGraph {
    * past, then the snapshot id or marker it finds; empty when absent.
    */
   #resolve(from: string, name: string): string[] {
-    if (!from.startsWith(`${PNPM_VIRTUAL_STORE}/`))
-      return this.#walk(this.#fromImporters(from, name));
-    const folder = from.slice(PNPM_VIRTUAL_STORE.length + 1).split("/")[0] ?? "";
+    const store = `${PNPM_VIRTUAL_STORE}/`;
+    if (!from.startsWith(store)) return this.#walk(this.#fromImporters(from, name));
+    const folder = from.slice(store.length).split("/")[0] ?? "";
     const id = this.#snapshotOf.get(folder);
     if (id === undefined) return [`unknown:${folder}`];
     return nameOf(id) === name ? [id] : this.#walk(this.#fromFolder(id, name));
