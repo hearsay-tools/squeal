@@ -11,11 +11,12 @@ import type { EpochMs, RelativePath, RevisionNumber } from "./common.js";
 export const CODE_LISTED_MAX = 5;
 
 /**
- * What a told code entry says: a transition (D5), or `edited`, the first
- * edit in a session to a function over the threshold before and after it
- * (D6, its last rule).
+ * What a told code entry says: a transition (D5); `edited`, the first edit
+ * in a session to a function over the threshold before and after it (D6,
+ * its last rule); or `edited-after-fail`, the first edit after a FAIL told
+ * in this session that leaves the function over (015-21).
  */
-export type CodeDeltaKind = CodeTransitionKind | "edited";
+export type CodeDeltaKind = CodeTransitionKind | "edited" | "edited-after-fail";
 
 /** One code change told in full (D5's delivered rows). */
 export interface CodeDeltaEntry {
