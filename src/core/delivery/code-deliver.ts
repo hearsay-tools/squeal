@@ -205,14 +205,19 @@ function codeStep(
     };
     return { news: { ...news, ...big }, writes: true };
   }
+  const edits = new Map(store.states.edits(worktreeId, MEASURE).map((e) => [codeKey(e), e]));
   const plan = planCodeDelta({
     view: store.views.list(consumer).filter((v) => v.measure === MEASURE),
     states,
     last: (check, measure) => lastTransition(store, worktreeId, check, measure),
+    edit: (check, measure) => edits.get(codeKey({ check, measure })) ?? null,
     seededAt,
     toldAt: at,
   });
   const listed = plan.entries.slice(0, CODE_LISTED_MAX);
+  // An edit past the limit is not counted, since `squeal code --changed` would not list it:
+  // its entry stays told by count, so the function's next edit tells it.
+  const more = plan.entries.slice(CODE_LISTED_MAX).filter((e) => e.kind !== "edited").length;
   if (write) {
     // The changes past the limit are told as a number only.
     const full = new Set(listed.map(codeKey));
@@ -228,7 +233,7 @@ function codeStep(
     ...e,
     line: e.kind === "removed" ? null : lineOf(store, worktreeId, e.check),
   }));
-  return { news: { v: 1, entries, more: plan.entries.length - entries.length, ...big }, writes };
+  return { news: { v: 1, entries, more, ...big }, writes };
 }
 
 /**
