@@ -52,3 +52,32 @@ Use /worker. Shape: repair. Starts from `int/015b` with W1 to W4 integrated. The
   - A standing failure's first-edit `STILL FAIL` carries the hint.
   - Another session is not affected.
   - Lint, typecheck and `squeal run --all --wait` pass; paste their output.
+
+## 015-24: review of candidate 0.1.290
+
+Use /reviewer. Candidate `cand/0.1.290`, pinned to its SHA (named in the spawn). The range is `origin/main..<SHA>`: rows 015-19, 015-20, 015-21, 015-22 and 015-23, plus one build commit (bundles, version 0.1.290). Write `docs/specifications/015-coverage-complexity/reviews/0.1.290.md` and commit it on your branch.
+
+Read `spec.md` D2 to D7 with their 2026-10-24 amendments, `status.md` (2026-10-24), `lessons.md` "Round 1, live sessions (015-10)" (the reproductions sq1 to cz6, P1 to P6), this file, and the notes under `tasks/015-19/` to `tasks/015-23/`.
+
+Check, with proof where you can:
+1. **Each reproduction is fixed.**
+   - P1, sq6: a pull or rebase tells no `STILL FAIL`.
+   - P2, sq2: a change made while no daemon ran is not the session's.
+   - P3, sq3: one more `STILL FAIL` with the quiet hint, then quiet.
+   - P4, sq2 and cz2: `squeal code` marks a count that is behind the file as pending.
+   - P5, cz6: hook cost and view rows.
+   - P6: `export type *` and NUL.
+2. **Nothing else broke.**
+   - Views now hold failing functions only. An older store's all-function rows (`pass` rows) must read right, and SessionEnd and the sweep must drop the rows.
+   - The `codeSeenUpTo` bound must agree across delivery, status, Stop (D7, `complexity.blocking`) and `squeal code --changed`.
+   - The told-at guard against a duplicate `STILL FAIL`.
+   - The accepted limits in 015-19's notes (an edit and a commit in one batch).
+3. **The recount.** `COUNTER_VERSION` 2 recounts once with one `counter` summary line, and no per-function transition at the recount.
+4. **Policy off.** Still byte-identical, with no `code.sqlite`.
+
+Known and accepted, to weigh, not to re-find:
+- The registration line can be one revision behind a catch-up (015-20, coordinator).
+- `typeof import` in a type argument still misparses (row 015-25).
+- A plugin update in the middle of a session can make an older hook drop its code part (015-21).
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
