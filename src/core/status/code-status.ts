@@ -1,5 +1,5 @@
 import { readPolicy } from "../daemon/policy.js";
-import { isTooBig } from "../delivery/code-deliver.js";
+import { countingOf } from "../delivery/code-deliver.js";
 import { codeSince, type ShellSession, wentOverSince } from "../delivery/code-since.js";
 import { codeSource, withCode } from "../delivery/code-source.js";
 import { plural } from "../text.js";
@@ -28,15 +28,17 @@ export function codeStatusOf(
     code.read((): CodeStatus => {
       const states = code.states.list(worktreeId, { measure: "complexity" });
       const from = since();
+      const { done, total, uncountable } = countingOf(code, worktreeId);
       return {
         v: 1,
         threshold: complexity.threshold,
         over: states.filter((s) => s.outcome === "fail").length,
         sinceRegistration: from === null ? 0 : wentOverSince(code, worktreeId, from).length,
         since: from?.scope ?? null,
-        pending: code.files.uncounted(worktreeId).length,
-        files: code.files.list(worktreeId).filter((f) => !isTooBig(f)).length,
+        pending: total - done,
+        files: total,
         unknown: states.filter((s) => s.outcome === "unknown").length,
+        ...(uncountable === 0 ? {} : { uncountable }),
       };
     }),
   );
@@ -69,7 +71,8 @@ const SINCE: Record<NonNullable<CodeStatus["since"]>, string> = {
 export function codeStatusLines(s: StatusSnapshot, command: string): string[] {
   const code = s.code;
   if (code === undefined) return [];
-  if (code.files === 0) return ["Complexity: no file counted yet."];
+  if (code.files === 0 && (code.uncountable ?? 0) === 0)
+    return ["Complexity: no file counted yet."];
   const progress = `counting, ${code.files - code.pending} of ${plural(code.files, "file")}`;
   // D6: while a first count runs no state is stored yet, so "0 functions over" would not be true.
   if (code.pending > 0 && code.over === 0) return [`Complexity: ${progress}.`];
@@ -77,6 +80,12 @@ export function codeStatusLines(s: StatusSnapshot, command: string): string[] {
   const counting = code.pending === 0 ? "" : `; ${progress}`;
   const unknown =
     code.unknown === 0 ? "" : `; ${plural(code.unknown, "function")} in parse errors not judged`;
+  const uncountable =
+    (code.uncountable ?? 0) === 0
+      ? ""
+      : `; ${plural(code.uncountable ?? 0, "file")} could not be counted`;
   const over = `${plural(code.over, "function")} over ${code.threshold}`;
-  return [`Complexity: ${over}${since}${counting}${unknown}; ${command} code lists them.`];
+  return [
+    `Complexity: ${over}${since}${counting}${unknown}${uncountable}; ${command} code lists them.`,
+  ];
 }
