@@ -29,15 +29,17 @@ const SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
  * agent's edit. The paths of `files` whose blob is their blob at a
  * revision git brought them from: the new `HEAD` when a revision after
  * `since` moved it (a pull, merge, rebase or checkout), and each
- * operation under way (`operationRevisions`). Their changed bodies mark no
- * first edit. Empty when there is none, and when git cannot say, so an
- * edit is marked as it was before 015-19.
+ * operation under way (`operationRevisions`). A file gone, its `blob`
+ * `null`, is git's when it is gone at such a revision too (015-38). Their
+ * changed bodies mark no first edit, and a `PASS` or `RESOLVED` they bring
+ * is taken in by count (`pulled.ts`). Empty when there is none, and when
+ * git cannot say, so an edit is marked as it was before 015-19.
  */
 export async function committedPaths(
   ctx: Pick<PassContext, "root" | "source" | "log">,
   since: RevisionNumber,
   upTo: RevisionNumber,
-  files: readonly { readonly path: RelativePath; readonly blob: FileHash }[],
+  files: readonly { readonly path: RelativePath; readonly blob: FileHash | null }[],
 ): Promise<Set<RelativePath>> {
   // One request per line: a path holding a line feed cannot be asked, so it keeps its edit.
   const asked = files.filter((f) => !f.path.includes("\n"));
@@ -59,7 +61,12 @@ export async function committedPaths(
   const lines = out.split("\n");
   return new Set(
     asked
-      .filter((f, i) => revs.some((_, r) => blobOf(lines[r * asked.length + i]) === f.blob))
+      .filter((f, i) =>
+        revs.some((rev, r) => {
+          const line = lines[r * asked.length + i];
+          return f.blob === null ? line === `${rev}:./${f.path} missing` : blobOf(line) === f.blob;
+        }),
+      )
       .map((f) => f.path),
   );
 }

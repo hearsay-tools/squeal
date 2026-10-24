@@ -8,7 +8,7 @@ import type {
   CodeViewEntry,
 } from "../types/code.js";
 import type { CodeDeltaEntry, CodeDeltaKind } from "../types/code-delivery.js";
-import type { EpochMs, RevisionNumber } from "../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "../types/index.js";
 
 /*
  * Spec 015 D5, D6: the consumer's code view against the current states,
@@ -18,8 +18,9 @@ import type { EpochMs, RevisionNumber } from "../types/index.js";
  * `pass`, so a view holds the failing functions only and a passing one
  * leaves it (lessons round 1, P5). A difference is told
  * only when the check's last transition explains it and came after what the
- * view holds; any other (a recount, a first count, a parse error healed) is
- * written silently, told by count. One more is told with no change of
+ * view holds; any other (a recount, a first count, a parse error healed, a
+ * recovery git brought to a function held by count, 015-38) is written
+ * silently, told by count. One more is told with no change of
  * state: the first edit to a function the view holds failing by count only,
  * or told failing in full (015-21); after it, edits are quiet.
  */
@@ -62,6 +63,12 @@ export interface CodePlanInput {
    */
   readonly seenUpTo: CodeBound | null;
   readonly toldAt: EpochMs;
+  /**
+   * Row 015-38: whether git (a pull, merge, rebase, cherry-pick or revert)
+   * brought the last change to the file at `path` up to `revision`.
+   * Absent: none did.
+   */
+  readonly pulled?: (path: RelativePath, revision: RevisionNumber) => boolean;
 }
 
 /** A told change before its line is looked up. */
@@ -110,21 +117,27 @@ export const isStillFail = (kind: CodeDeltaKind) =>
 /**
  * The transition kind that takes `told` (the view's outcome, `null` when it
  * has none) to `now` (`null` when the check is gone), when the last
- * transition explains it; `null` when nothing is to tell.
+ * transition explains it and came after `after`; `null` when nothing is to
+ * tell. A recovery or removal git brought, of a function the view holds by
+ * count only, is taken in by count: the session never heard of it (015-38).
  */
 function toldKind(
   told: CodeViewEntry | null,
   now: CodeKnownState | null,
   last: CodeTransition | null,
-  { after, seenUpTo }: { after: EpochMs; seenUpTo: CodeBound | null },
+  after: EpochMs,
+  input: Pick<CodePlanInput, "seenUpTo" | "pulled">,
 ): CodeTransitionKind | null {
-  if (last === null || last.at <= after || !isOwn(seenUpTo, last.revision)) return null;
-  if (now === null) return told?.outcome === "fail" && last.kind === "removed" ? "removed" : null;
+  if (last === null || last.at <= after || !isOwn(input.seenUpTo, last.revision)) return null;
+  const byGit = () => told?.told === "count" && input.pulled?.(last.check.path, last.revision);
+  if (now === null) {
+    return told?.outcome === "fail" && last.kind === "removed" && !byGit() ? "removed" : null;
+  }
   if (now.outcome === "fail" && told?.outcome !== "fail") {
     return last.kind === "first-seen-fail" || last.kind === "pass-to-fail" ? last.kind : null;
   }
   if (now.outcome === "pass" && told?.outcome === "fail") {
-    return last.kind === "fail-to-pass" ? last.kind : null;
+    return last.kind === "fail-to-pass" && !byGit() ? last.kind : null;
   }
   return null;
 }
@@ -178,8 +191,7 @@ function stateStep(
     };
   }
   const last = input.last(state.check, state.measure);
-  const after = Math.max(input.seededAt, before?.toldAt ?? 0);
-  const kind = toldKind(before, state, last, { after, seenUpTo: input.seenUpTo });
+  const kind = toldKind(before, state, last, Math.max(input.seededAt, before?.toldAt ?? 0), input);
   // The entry holds every change this delivery read, though the pass may have
   // written one after the hook read its clock: that edit is told by the FAIL.
   const asOf = Math.max(
@@ -215,8 +227,7 @@ export function planCodeDelta(input: CodePlanInput): CodePlan {
   for (const view of told.values()) {
     removals.push({ check: view.check, measure: view.measure });
     const last = view.outcome === "fail" ? input.last(view.check, view.measure) : null;
-    const seen = { after: view.toldAt, seenUpTo: input.seenUpTo };
-    if (last === null || toldKind(view, null, last, seen) === null) continue;
+    if (last === null || toldKind(view, null, last, view.toldAt, input) === null) continue;
     entries.push({
       check: view.check,
       measure: view.measure,
