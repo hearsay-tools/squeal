@@ -38,3 +38,18 @@ Check, with proof where you can:
 3. **Residue the worker named**, to weigh: a retry of a failed first count records `first-seen fail` rather than a quiet seed; a retry pass that throws sets no new timer; the Python grammar load keeps a failure.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Under host load, name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## R2: repair of review 0.1.293 B1 to B3 and S1, the retry
+
+Use /worker. Shape: repair. Starts from `int/015c-r1` (013-07 and 015-18 on main, without the 0.1.293 build commit). Outcome: 015-18's retry keeps the delivery model, survives a busy store, and recovers every failed grammar load.
+- Read `reviews/0.1.293.md` (B1, B2, B3, S1: each has a reproduction and a repair), spec D4, D5 and D6 with their 2026-10-24 amendments, and `tasks/015-18/notes.md`.
+- **B1.** A retry of a failed first count or recount, on a blob that has not changed, seeds quietly (no transition, no session regression). A retry of a session edit still reports its crossing. Keep the origin through adoption from another worktree. Lead: record the origin with the failure in `src/core/code/pass/failed.ts`.
+- **B2.** An aborted retry pass re-arms a bounded wake with a positive backoff, outside the success-only path; the attempt budget moves only when a count is attempted.
+- **B3.** A failed `pythonParserReady` load (`src/runners/pytest/graph/parse.ts`) is made again at the next count, without re-initialising a live tree-sitter runtime.
+- **S1.** The counting line keeps `; N files could not be counted` while other files are pending.
+- **Owns.** `src/core/code/pass/**`, `src/core/code/count/parser.ts`, `src/runners/pytest/graph/parse.ts`, `src/core/status/code-status.ts`, and their tests.
+- **Done when.** Each review reproduction is a test that fails before and passes after: B1 through delivery and the session regression query, plus a retry after a policy recount; B2 with a real store lock released after an aborted timer pass, recovering without a nudge or an edit; B3 through real `countFile` calls for a failure before runtime init, a Python grammar failure after it, and a TSX failure. Lint, typecheck and `squeal run --all --wait` pass (4 bundle-drift failures expected); paste the output. Do not build bundles or raise the version.
+
+## 015-28 round 2: re-review of candidate 0.1.293
+
+Use /reviewer. Candidate `cand/0.1.293`, pinned to the SHA named in the spawn; round 1 is `reviews/0.1.293.md` (FAIL on 7211f6c1c, B1 to B3). Write `reviews/0.1.293-r2.md` and commit it on your branch. Check the repair R2 against each blocker's reproduction and repair scope, and S1. 013-07 passed round 1: re-read only where the repair touches it. The base moved by the 011 coordinator's wave 31 (tests only). Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
