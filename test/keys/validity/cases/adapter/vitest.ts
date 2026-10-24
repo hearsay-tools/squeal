@@ -123,9 +123,10 @@ const FOCUSED: Readonly<Record<string, string>> = {
 };
 
 /**
- * Row 011-137: its test passes and its skip is declared; its `afterAll` holds
- * the module open while `$HOLD` exists, which the harness removes once the
- * run is cancelled, so the module ends whole in the cancel's grace.
+ * Row 011-137: its test passes; its `afterAll` holds the module open while
+ * `$HOLD` exists, which the harness removes once the run is cancelled, so the
+ * module ends whole in the cancel's grace. It holds no skip, so a change to
+ * how a skip is read leaves the case alone.
  */
 const WHOLE_IN_GRACE: Readonly<Record<string, string>> = {
   ...BASIC,
@@ -134,7 +135,6 @@ const WHOLE_IN_GRACE: Readonly<Record<string, string>> = {
     'import { setTimeout as delay } from "node:timers/promises";',
     'import { afterAll, expect, it } from "vitest";',
     'it("passes", () => expect(1).toBe(1));',
-    'it.skip("waits", () => {});',
     "afterAll(async () => {",
     '  writeFileSync($STARTED, "");',
     "  while (existsSync($HOLD)) await delay(20);",
