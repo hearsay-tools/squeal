@@ -125,21 +125,27 @@ const FOCUSED: Readonly<Record<string, string>> = {
 /**
  * Row 011-137: its test passes; its `afterAll` holds the module open while
  * `$HOLD` exists, which the harness removes once the run is cancelled, so the
- * module ends whole in the cancel's grace. It writes `$STARTED` 500 ms after
- * the test ended, so the test's result reaches the reporter before the
- * cancel (review 0.1.287 B1: a worker sends results at most every 100 ms).
+ * module ends whole in the cancel's grace. Its `$STARTED` names the test, so
+ * the harness cancels once the test's result reached the adapter's reporter
+ * (row 011-175; review 0.1.287 B1: a result that arrives later reads as cut).
+ * Vitest 5.0.3's worker can hold a result until its next task update, so the
+ * test's suite ends 150 ms after it, and that end sends it
+ * (`tasks/011-175/notes.md`, section 3).
  * It holds no skip, so a change to how a skip is read leaves the case alone.
  */
 const WHOLE_IN_GRACE: Readonly<Record<string, string>> = {
   ...BASIC,
   "test/whole.test.ts": [
-    'import { existsSync, writeFileSync } from "node:fs";',
+    'import { existsSync, renameSync, writeFileSync } from "node:fs";',
     'import { setTimeout as delay } from "node:timers/promises";',
-    'import { afterAll, expect, it } from "vitest";',
-    'it("passes", () => expect(1).toBe(1));',
+    'import { afterAll, describe, expect, it } from "vitest";',
+    'describe("ran", () => {',
+    '  it("passes", () => expect(1).toBe(1));',
+    "  afterAll(() => delay(150));",
+    "});",
     "afterAll(async () => {",
-    "  await delay(500);",
-    '  writeFileSync($STARTED, "");',
+    '  writeFileSync($STARTED + ".part", "ran > passes");',
+    '  renameSync($STARTED + ".part", $STARTED);',
     "  while (existsSync($HOLD)) await delay(20);",
     "});",
     "",
@@ -237,7 +243,7 @@ export const VITEST_RUNS: readonly Case[] = [
   ),
   vitest(
     "a step-down's cancel completes a module that ended whole in its grace (row 011-137)",
-    "011 C9 as proposed in tasks/011-137/notes.md: under a step-down, a module that ended after the cancel, passed, with each test it was to run reported before the cancel, stores its results; the last release stores nothing of it, so the candidate stores more",
+    "011 C9 (amended 2026-10-24, row 011-137): under a step-down, a module that ended after the cancel, passed, with each test it was to run reported before the cancel, stores its results; a release before 0.1.287 stores nothing of it, so against one the candidate stores more",
     {
       files: WHOLE_IN_GRACE,
       runs: [{ files: [ref("test/whole.test.ts")], touched: [], cancel: "step-down" }],
