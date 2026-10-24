@@ -634,6 +634,8 @@ class Daemon {
         skip: (path) => path === provider,
         now: this.#now,
         log: this.#log,
+        // Row 015-12: CRAP is judged again once a record is stored.
+        onStored: () => this.#code?.soon(),
       });
       // Spec 015 D4: outside the scheduler's lanes, with no test permit, nudged after each batch.
       const code = codePass.createCodePass({
@@ -655,6 +657,8 @@ class Daemon {
           isBusy(error)
             ? this.#log(`complexity: ${error.message}`)
             : this.#note(`complexity: ${error.message}`),
+        // Spec 015 D9 (row 015-12): the loaders and the records' writer the coverage step reads.
+        coverage: { main: store, writing: () => this.#coverage?.busy() ?? false },
       });
       this.#code = code;
       const loop = createDaemonLoop({
@@ -662,7 +666,8 @@ class Daemon {
         worktreeId,
         store,
         runner,
-        sink: createStateSink(store, { now: this.#now }),
+        // Row 015-12: stored results nudge the coverage step; nothing while coverage is off.
+        sink: codePass.afterResults(createStateSink(store, { now: this.#now }), () => code.soon()),
         policy: this.#policy,
         reloadPolicy: (changes) =>
           changes.some((change) => change.path === POLICY_FILE) ? this.#reloadPolicy() : null,

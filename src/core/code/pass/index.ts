@@ -25,6 +25,7 @@ import { nextRetry, RETRY_AFTER_MS, readUncountable, restartRetries } from "./fa
 import { runPass } from "./pass.js";
 import type { Counter, PassReport, PassSource } from "./types.js";
 
+export { afterResults } from "../crap/sink.js";
 export { readRecount, recountKey } from "./cursor.js";
 export {
   COUNT_ATTEMPTS,
