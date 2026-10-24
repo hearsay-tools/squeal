@@ -69,7 +69,7 @@ function refills(runs: readonly Span[], width: number): { idleMs: number; passed
 }
 
 describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)", () => {
-  it("1. runs 16 files of 1 to 5 s at W = 4 within 5 % of list scheduling, no slot idle, progress per file", {
+  it("1. runs 16 files of 1 to 5 s at W = 4: no slot idle while files are queued, W slots at once, progress per file", {
     timeout: 180_000,
   }, async () => {
     const files = Array.from({ length: 16 }, (_, i) => ({
