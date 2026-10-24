@@ -2,7 +2,7 @@ import type { CodeStore } from "../code/store/types.js";
 import type { CodeKnownState } from "../types/code.js";
 import type { Consumer, RevisionNumber, Store, WorktreeId } from "../types/index.js";
 import { lastTransition } from "./code-deliver.js";
-import { registration } from "./registered.js";
+import { type Registration, registration } from "./registered.js";
 
 /*
  * Spec 015 D6, D7: "since this session started" for status, Stop's check
@@ -23,9 +23,29 @@ export interface CodeSince {
   readonly scope: "session" | "oldest";
 }
 
+/**
+ * Lessons round 1, P2 (sq2): the revision a registration's code changes
+ * count after. A registration made before the daemon's start scan (no
+ * `scanned`) is followed by the scan's `start` revision, which holds what
+ * changed while no daemon ran: that revision is the registration's, not the
+ * session's, so the view takes it in by count. An edit the scan absorbed
+ * goes with it, as its attribution is unknown (task 001-96).
+ */
+function seenUpTo(store: Store, worktreeId: WorktreeId, r: Registration): RevisionNumber {
+  if (r.scanned !== undefined) return r.since;
+  const next = store.revisions.get(worktreeId, r.since + 1);
+  return next?.trigger === "start" ? next.number : r.since;
+}
+
+/** `consumer`'s code changes count after this revision (`seenUpTo`); `null` when no registration is recorded. */
+export function codeSeenUpTo(store: Store, consumer: Consumer): RevisionNumber | null {
+  const r = registration(store, consumer);
+  return r === null ? null : seenUpTo(store, consumer.worktreeId, r);
+}
+
 /** The earliest registration of `consumers`; `null` when none has one. */
 function earliest(store: Store, consumers: readonly Consumer[]): RevisionNumber | null {
-  const revisions = consumers.flatMap((c) => registration(store, c)?.since ?? []);
+  const revisions = consumers.flatMap((c) => codeSeenUpTo(store, c) ?? []);
   return revisions.length === 0 ? null : Math.min(...revisions);
 }
 
@@ -54,8 +74,8 @@ export function codeSince(
 
 /** `consumer`'s registration as a `CodeSince`; `null` when none is recorded. */
 export function consumerSince(store: Store, consumer: Consumer): CodeSince | null {
-  const since = registration(store, consumer)?.since;
-  return since === undefined ? null : { since, scope: "session" };
+  const since = codeSeenUpTo(store, consumer);
+  return since === null ? null : { since, scope: "session" };
 }
 
 /**

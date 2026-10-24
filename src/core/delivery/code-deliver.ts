@@ -269,6 +269,7 @@ function codeStep(
     last: (check, measure) => lastTransition(store, worktreeId, check, measure),
     edit: (check, measure) => edits.get(codeKey({ check, measure })) ?? null,
     seededAt,
+    seenUpTo: since,
     toldAt: at,
   });
   const listed = plan.entries.slice(0, CODE_LISTED_MAX);
@@ -297,8 +298,9 @@ function codeStep(
  * Spec 015 D5, D6: what `consumer` is told of the code at a delivery, its
  * view written in the same code store transaction. A recount since its
  * view was seeded is one summary line and seeds it again by count. `since`
- * reads its registration revision (`registration`), `null` when none is
- * recorded; only while the policy is on. Read-only first, so a delivery
+ * reads the revision its changes count after (`codeSeenUpTo`), `null` when
+ * no registration is recorded; only while the policy is on. A change at or
+ * before it is taken in by count. Read-only first, so a delivery
  * with nothing to write takes no lock the daemon's pass waits for. `null`
  * when there is nothing to tell, the policy is off or the store cannot be
  * read.
