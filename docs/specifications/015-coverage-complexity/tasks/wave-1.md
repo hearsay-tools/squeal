@@ -89,3 +89,32 @@ Known and accepted, for you to weigh, not to re-find:
 - Pi and OpenCode get the code part only through `openContext`.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Label every finding proven, plausible or unverified; only a proven break blocks. Verdict PASS or FAIL.
+
+## Repair of review 0.1.283 (round 1 FAIL): rows 015-16 and 015-17
+
+Two workers in parallel on disjoint files, both from the candidate `cand/0.1.283` at de9deb5bc. Briefed by coordinator 52e58f23 on 2026-10-24 (R1 worker fd003b1e, R2 worker 15f7d48e, claude opus xhigh). Each got this section plus the review file, with its reproductions, "Worker-sized fix" paragraphs and "Inputs for the repair" section. Test first: each blocker gets a failing regression before its fix. Not theirs: the bundles (`plugins/*/dist`; the bundle-drift tests fail again after a source change, expected), the version, the board, spec text. No `npm run build`.
+
+### R1: 015-16, B1, B3 and B4
+
+Use /worker. Shape: repair.
+- **B1.** Any code-store failure inside a code operation, corruption included, costs only the code part. Test status, registration, delivery and Stop stay as they would be without code. The seam is `withCode` in `src/core/delivery/code-source.ts`; touch its callers (`src/core/status/code-status.ts`, `src/core/delivery/code-deliver.ts`, `src/harness/shared/stop-code.ts`) only if needed. Add no integrity scan in a hook.
+- **B3.** A zero-width parse error, as at a missing closing brace, belongs to the function whose end it touches. That function is `unknown`, with no transition; an adjacent healthy function stays judged. The seam is `overlaps` in `src/core/code/pass/judge.ts`; change only that rule there.
+- **B4.** `squeal code` names every file whose stored count has `errors`, from `FileCount.errors`, with the number of affected functions as detail. The seam is `src/cli/code-report.ts`.
+- **Owns.** Those files, `test/code/delivery/**` and a new `test/code/pass/judge-errors.test.ts`.
+- **Done when.**
+  - B1: a regression with a physically corrupt data page and a healthy main store keeps status available, registration delivered, and delivery and Stop unaffected.
+  - B3: real-parser tests cover a missing brace and other end-of-file tokens, and show that an existing fail is not recovered by such an edit.
+  - B4: text and JSON tests cover a file with no function and an error outside a healthy function.
+
+### R2: 015-17, B2 and B5
+
+Use /worker. Shape: repair.
+- **B2.** A move carries the old check's transitions to the new identity, in the same transaction as its state and view entries, keeping their original revision and time. It records no new transition. The seam is `move` in `src/core/code/store/states.ts`.
+- **B5.** The body provenance of the last judged state survives a skipped or failed count. Old bodies come from the blob the retained state was judged on, never from a pending `files` row. The seams are `oldBodies` and the retry path in `src/core/code/pass/{pass.ts,blobs.ts}`.
+- **Owns.** `src/core/code/store/{states,types,schema}.ts`, `src/core/code/pass/{pass,blobs,types}.ts`, `test/code/pass/**` (except R1's new file) and store tests. Not theirs: `judge.ts` (R1), `code-source.ts` and `code-report.ts` (R1).
+- **Done when.**
+  - B2: a crossing moved before delivery and one moved after it keep `wentOverSince`, the Stop reason with `complexity.blocking`, status's session count and `squeal code --changed`.
+  - B5: two edits that overtake a count give one `STILL FAIL` line, then a quiet second delivery.
+  - The existing pass, slice and move tests still pass.
+
+S1 (a transient counter error leaves a file pending) is not in this repair; it is planned row 015-18.
