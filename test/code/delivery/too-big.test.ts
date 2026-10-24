@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { codeSeenUpTo } from "../../../src/core/delivery/code-since.js";
+import { WT } from "../../state/helpers.js";
 import { fakeCounter } from "../pass/helpers.js";
 import { consumer, type Rig, rig } from "../pass/rig.js";
 
@@ -9,6 +11,7 @@ import { consumer, type Rig, rig } from "../pass/rig.js";
  * edit, and a resumed session keeps what it was told.
  */
 
+const C0 = consumer("s0");
 const C1 = consumer("s1");
 const LIMIT = 64;
 /** A file over `LIMIT` bytes: `n` lines the fake counter would count. */
@@ -23,6 +26,32 @@ beforeEach(() => {
   r.tree.write("src/a.ts", "settle 23 B1\n").write("src/big.ts", big(1)).commit();
   r.tree.revise();
 });
+
+/**
+ * Stores one revision of the paths written since the last, in the main
+ * store too, so a registration counts from it as the daemon's would.
+ */
+function revise(): number {
+  const n = r.tree.revise();
+  while ((r.main.revisions.latest(WT)?.number ?? 0) < n) {
+    r.main.revisions.append({
+      worktreeId: WT,
+      createdAt: n,
+      head: null,
+      dirty: true,
+      trigger: "watch",
+      changes: [],
+    });
+  }
+  return n;
+}
+
+/** The delivery's lines to `c` at its next tool boundary, the recount summary and the too-big lines only. */
+async function summaryAndBig(c: typeof C1): Promise<string[]> {
+  return (await r.delivered(c)).filter(
+    (l) => l.startsWith("Complexity threshold is now ") || l.startsWith("src/big.ts is "),
+  );
+}
 
 /** An edit of `path` counted by the new counter of a recount. */
 function editAfterRecount(path: string, text: string) {
@@ -70,6 +99,37 @@ describe("a file too big to count (015-36)", () => {
     expect(await r.delivered(C1)).toEqual([]);
     expect(await r.edit({ "src/big.ts": big(4) })).toMatchObject({ mode: "counter" });
     expect(bigLines(await r.delivered(C1))).toEqual([]);
+  });
+
+  it("tells an edit before a registration to the sessions before it only, at a recount after both (review 0.1.297-r2 N1)", async () => {
+    revise();
+    await r.pass();
+    await r.register(C0);
+    r.tree.write("src/big.ts", big(2));
+    const edit = revise();
+    await r.register(C1);
+    expect(codeSeenUpTo(r.main, C1)).toEqual({ since: edit, gaps: [] });
+    revise();
+    expect(await r.pass(fakeCounter(), { threshold: 21 })).toMatchObject({ mode: "threshold" });
+    const summary = "Complexity threshold is now 21: 1 function over; squeal code lists them.";
+    expect(await summaryAndBig(C0)).toEqual([summary, LINE]);
+    expect(await summaryAndBig(C1)).toEqual([summary]);
+  });
+
+  it("keeps an edit a recount found through a second recount before the delivery (review 0.1.297-r2 N1)", async () => {
+    revise();
+    await r.pass();
+    await r.register(C0);
+    r.tree.write("src/big.ts", big(2));
+    revise();
+    expect(await r.pass(fakeCounter(), { threshold: 21 })).toMatchObject({ mode: "threshold" });
+    await r.register(C1);
+    revise();
+    expect(await r.pass(fakeCounter(), { threshold: 22 })).toMatchObject({ mode: "threshold" });
+    const summary = "Complexity threshold is now 22: 1 function over; squeal code lists them.";
+    expect(await summaryAndBig(C0)).toEqual([summary, LINE]);
+    expect(await summaryAndBig(C1)).toEqual([summary]);
+    expect(await r.delivered(C0)).toEqual([]);
   });
 
   it("tells a resumed session nothing for a file it was told of, edited again or not", async () => {
