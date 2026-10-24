@@ -4,6 +4,7 @@ import { type BuildOptions, build, type Metafile } from "esbuild";
 import {
   bundleOptions,
   copyCodeGrammar,
+  copyCoverageRuntime,
   copyNodeTestRuntime,
   copyObserveRuntime,
   copyPluginTrees,
@@ -84,6 +85,7 @@ export async function buildOpencodeDist(outdir: string): Promise<Metafile> {
   const plugin = await build({ ...pluginBundleOptions(outdir), metafile: true });
   copyNodeTestRuntime(outdir);
   copyObserveRuntime(outdir);
+  copyCoverageRuntime(outdir);
   copyPytestRuntime(outdir);
   copyCodeGrammar(outdir);
   return {
