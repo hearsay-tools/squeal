@@ -4,7 +4,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { currentUid, preparePrivateDir } from "../daemon/paths.js";
 import { SLOT_WAITER_FRESH_MS, type SlowSlotOwner, takePermit } from "../slow/index.js";
 import type { AbsolutePath } from "../types/index.js";
-import { createTreeCpu, gatedPermits, type TreeCpu } from "./cores.js";
+import { createHostCpu, createTreeCpu, gatedPermits, type HostCpu, type TreeCpu } from "./cores.js";
 import { clearMark, type PoolMark, readMarks, writeMark } from "./marks.js";
 import { fairShares } from "./share.js";
 
@@ -14,6 +14,12 @@ export interface PoolCapacity {
   readonly hostSlots?: number;
   /** This repository's `capacity.projects` entry: `id` its root path, `slots` its daemons' cap together. */
   readonly project?: { readonly id: string; readonly slots: number };
+  /**
+   * The host's busy cores, read beside the tree (row 011-182). Default the
+   * host's under `/proc`; `null`, as where it cannot be read, gates a
+   * backlog tier on the marks' CPU alone.
+   */
+  readonly host?: HostCpu | null;
 }
 
 export interface PermitPoolOptions extends PoolCapacity {
@@ -51,6 +57,15 @@ export interface PoolLease {
 /** Whose tier asks (task 004-61): a fast lane's waiters are served before a slow lane's. */
 export type PoolLane = "fast" | "slow";
 
+/**
+ * What the tier that asks runs, for the CPU gate (011 C10 Size as amended
+ * 2026-10-24, row 011-182): a `backlog` tier's cores start at the host's
+ * busy cores when they are more than the marks'. A `checkpoint` tier, one
+ * that runs an open `squeal run --all`'s files, keeps the marks' alone, as
+ * the slow lane's tiers do.
+ */
+export type PoolTierKind = "backlog" | "checkpoint";
+
 export interface PermitPool {
   /**
    * The grant for a tier of `lane` that wants `want` workers and runs no
@@ -60,7 +75,7 @@ export interface PermitPool {
    * the caller looks again (011 C10, row 011-96). When it throws it holds
    * nothing it took.
    */
-  acquire(want: number, lane?: PoolLane, least?: number): PoolLease | null;
+  acquire(want: number, lane?: PoolLane, least?: number, kind?: PoolTierKind): PoolLease | null;
   /**
    * The grant `acquire(want)` would give now, taking nothing (spec 011 C4
    * step 5, task 001-366): the fair share less what this daemon's tiers
@@ -69,7 +84,7 @@ export interface PermitPool {
    * grant smaller. `0` when no share is left. Throws as `acquire` does when
    * the marks cannot be read.
    */
-  offer(want: number, lane?: PoolLane): number;
+  offer(want: number, lane?: PoolLane, kind?: PoolTierKind): number;
   /**
    * A tier without a lease, an edit's, runs `workers` wide (011 C10 as
    * amended 2026-10-21, row 011-98): while it runs, the daemon's mark states
@@ -84,6 +99,9 @@ export interface PermitPool {
 
 /** Half the mark's freshness, so a live holder's mark never goes stale. */
 export const MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
+
+/** The shortest window a backlog tier's gate reads the host over again (row 011-182). */
+export const HOST_WINDOW_MIN_MS = 1_000;
 
 /** Permit `i` of the pool. The slow slot's files (`slow.lock`, `slow.<i>.lock`) are its own. */
 export function poolPermitFile(i: number): string {
@@ -133,7 +151,10 @@ interface Lease {
  * - Each refresh measures the daemon's tree since the last (`TreeCpu`), and
  *   the mark states those cores; each permit taken needs the marks' cores
  *   below the slots or their grants below half of them (`gatedPermits`, 011
- *   C10 Size as amended 2026-10-21, row 011-98).
+ *   C10 Size as amended 2026-10-21, row 011-98). Beside the tree it reads
+ *   the host's busy cores over the same window; a backlog tier's cores
+ *   start at what the host used beyond the tree, plus the tree's cores now,
+ *   when that is more (row 011-182).
  * - A mark that cannot be written fails the acquisition, which returns what
  *   it took; after a shrink or a release the refresh writes it again
  *   (review 001-384, B2).
@@ -148,6 +169,11 @@ class LockFilePool implements PermitPool {
   readonly #tree: TreeCpu | null;
   /** The cores the tree used in the last refresh window; `null` until one was measured. */
   #measured: number | null = null;
+  readonly #host: HostCpu | null;
+  /** When the tree and the host were last read. */
+  #readAt: number | null = null;
+  /** The cores the host used beyond the tree in the last window, and the window's end (row 011-182). */
+  #beyond: { readonly cores: number; readonly at: number } | null = null;
   #since: number | null = null;
   /** The want of the last look that got nothing, in the mark while it waits. */
   #pending = 0;
@@ -165,9 +191,18 @@ class LockFilePool implements PermitPool {
     this.#hostSlots = Math.max(1, Math.floor(options.hostSlots ?? defaultHostSlots()));
     this.#now = options.now ?? Date.now;
     this.#tree = options.cores === undefined ? createTreeCpu() : options.cores;
+    this.#host =
+      this.#tree === null ? null : options.host === undefined ? createHostCpu() : options.host;
+    // The first window begins: a backlog tier's gate reads the host over it.
+    this.#read();
   }
 
-  acquire(want: number, lane: PoolLane = "fast", least = 1): PoolLease | null {
+  acquire(
+    want: number,
+    lane: PoolLane = "fast",
+    least = 1,
+    kind: PoolTierKind = "checkpoint",
+  ): PoolLease | null {
     if (this.#closed) return null;
     this.#prepareDir();
     const now = this.#now();
@@ -194,7 +229,7 @@ class LockFilePool implements PermitPool {
     const reserve = others
       .filter(ahead)
       .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 0) - o.grant), 0);
-    const allowed = Math.min(target, this.#gated(others, inUse, target));
+    const allowed = Math.min(target, this.#gated(others, inUse, target, kind));
     const permits = allowed < fewest ? [] : this.#take(allowed, reserve);
     // A tier that runs `fewest` workers on fewer permits would run more than it holds.
     if (permits.length < fewest) for (const db of permits.splice(0)) db.close();
@@ -233,10 +268,10 @@ class LockFilePool implements PermitPool {
     return this.#handle(lease);
   }
 
-  offer(want: number, lane: PoolLane = "fast"): number {
+  offer(want: number, lane: PoolLane = "fast", kind: PoolTierKind = "checkpoint"): number {
     if (this.#closed) return 0;
     const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, this.#now());
-    return Math.min(target, this.#gated(others, inUse, target));
+    return Math.min(target, this.#gated(others, inUse, target, kind));
   }
 
   running(workers: number): () => void {
@@ -365,7 +400,7 @@ class LockFilePool implements PermitPool {
     if (this.#timer !== null) return;
     this.#measured = null;
     this.#tree?.reset();
-    this.#tree?.read();
+    this.#read();
     this.#startRefresh();
   }
 
@@ -394,11 +429,38 @@ class LockFilePool implements PermitPool {
     return this.#measured ?? workers;
   }
 
-  /** How many of `want` permits the CPU gate lets this daemon take now (row 011-98). */
-  #gated(others: readonly PoolMark[], inUse: number, want: number): number {
+  /** How many of `want` permits the CPU gate lets this daemon take now (rows 011-98, 011-182). */
+  #gated(others: readonly PoolMark[], inUse: number, want: number, kind: PoolTierKind): number {
     const cores = this.#cores();
     if (cores === null) return want;
-    return gatedPermits(others, { cores, grant: inUse }, this.#hostSlots, want);
+    const busy = kind === "backlog" ? this.#busy(cores) : null;
+    return gatedPermits(others, { cores, grant: inUse }, this.#hostSlots, want, busy);
+  }
+
+  /**
+   * A backlog tier's view of the host (row 011-182): its busy cores beyond
+   * this daemon's tree over the last window, plus `cores`, what the tree's
+   * tiers use now, so a tier of its own that ended since counts no more. A
+   * window older than a mark's freshness is read again, over the time since
+   * the last read, once that is `HOST_WINDOW_MIN_MS`. `null` with none.
+   */
+  #busy(cores: number): number | null {
+    if (this.#host === null) return null;
+    const now = this.#now();
+    const fresh = (): boolean =>
+      this.#beyond !== null && now - this.#beyond.at < SLOT_WAITER_FRESH_MS;
+    if (!fresh() && this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
+    return fresh() && this.#beyond !== null ? this.#beyond.cores + cores : null;
+  }
+
+  /** Reads the tree and the host over one window; the tree's cores, as `TreeCpu.read` gives them. */
+  #read(): number | null {
+    const tree = this.#tree?.read() ?? null;
+    const host = this.#host?.read() ?? null;
+    const now = this.#now();
+    this.#readAt = now;
+    if (tree !== null && host !== null) this.#beyond = { cores: Math.max(0, host - tree), at: now };
+    return tree;
   }
 
   #inUse(): number {
@@ -458,7 +520,7 @@ class LockFilePool implements PermitPool {
     if (this.#timer !== null) return;
     this.#timer = setInterval(() => {
       if (this.#mark === null) return;
-      this.#measured = this.#tree?.read() ?? this.#measured;
+      this.#measured = this.#read() ?? this.#measured;
       // A waiter whose edit runs on 30 s after its last look leaves the mark; its cores stay (B1).
       if (this.#forget(this.#now())) {
         this.#republish();

@@ -15,7 +15,7 @@ import type {
   TestFileRef,
 } from "../types/index.js";
 import { BacklogWall, backlogBudget } from "./backlog.js";
-import { WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
+import { poolKind, WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { rerunGrown } from "./environment-growth.js";
 import type { FileState } from "./files.js";
@@ -237,7 +237,9 @@ export function selectTier(
   let turnTier = false;
   let size = backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
   // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
-  const offer = backlog ? (context.capacity?.offer(size) ?? defaultHostSlots()) : 0;
+  const offer = backlog
+    ? (context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots())
+    : 0;
   const wall = backlog ? new BacklogWall(backlogBudget(policy.runner.timeoutMs)) : null;
   let span: TierSpan | null = null;
   let tookBacklog = false;
@@ -323,7 +325,9 @@ export function selectTier(
   const granted = backlog || turnTier;
   const width = slot !== null ? 1 : granted ? widest(context, picked) : 0;
   const least = slot !== null ? 1 : fewest(context, picked);
-  const taken = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least) : null;
+  const asks = poolKind(ledger.checkpoints.active, picked);
+  const taken =
+    picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks) : null;
   if (taken === WAIT_FOR_CAPACITY) {
     ledger.commit();
     // The turn holds no edit's tier back on the pool: that tier goes, and the turn comes after it.
