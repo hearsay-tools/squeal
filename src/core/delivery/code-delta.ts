@@ -35,6 +35,12 @@ export interface CodePlanInput {
   readonly edit: (check: CodeCheckId, measure: CodeMeasure) => CodeEdit | null;
   /** When the view was last seeded whole: a transition before it was told by count. */
   readonly seededAt: EpochMs;
+  /**
+   * The revision the consumer's changes count after (`codeSeenUpTo`): a
+   * transition or edit at or before it was in the tree at registration, so
+   * it is taken in by count (lessons round 1, P2). `null`: none recorded.
+   */
+  readonly seenUpTo: RevisionNumber | null;
   readonly toldAt: EpochMs;
 }
 
@@ -85,9 +91,9 @@ function toldKind(
   told: CodeViewEntry | null,
   now: CodeKnownState | null,
   last: CodeTransition | null,
-  after: EpochMs,
+  { after, seenUpTo }: { after: EpochMs; seenUpTo: RevisionNumber | null },
 ): CodeTransitionKind | null {
-  if (last === null || last.at <= after) return null;
+  if (last === null || last.at <= after || last.revision <= (seenUpTo ?? -1)) return null;
   if (now === null) return told?.outcome === "fail" && last.kind === "removed" ? "removed" : null;
   if (now.outcome === "fail" && told?.outcome !== "fail") {
     return last.kind === "first-seen-fail" || last.kind === "pass-to-fail" ? last.kind : null;
@@ -111,7 +117,8 @@ function standingEdit(
 ): CodeEdit | null {
   if (now.outcome !== "fail" || told.told !== "count") return null;
   const edit = input.edit(now.check, now.measure);
-  return edit !== null && edit.at > Math.max(input.seededAt, told.toldAt) ? edit : null;
+  if (edit === null || edit.revision <= (input.seenUpTo ?? -1)) return null;
+  return edit.at > Math.max(input.seededAt, told.toldAt) ? edit : null;
 }
 
 function entryOf(state: CodeKnownState, kind: CodeDeltaKind, revision: RevisionNumber): PlanEntry {
@@ -141,7 +148,8 @@ function stateStep(
     };
   }
   const last = input.last(state.check, state.measure);
-  const kind = toldKind(before, state, last, Math.max(input.seededAt, before?.toldAt ?? 0));
+  const after = Math.max(input.seededAt, before?.toldAt ?? 0);
+  const kind = toldKind(before, state, last, { after, seenUpTo: input.seenUpTo });
   // Told or not, a passing function leaves the view.
   const view: StateStep =
     state.outcome === "pass"
@@ -170,7 +178,8 @@ export function planCodeDelta(input: CodePlanInput): CodePlan {
   for (const view of told.values()) {
     removals.push({ check: view.check, measure: view.measure });
     const last = view.outcome === "fail" ? input.last(view.check, view.measure) : null;
-    if (last === null || toldKind(view, null, last, view.toldAt) === null) continue;
+    const seen = { after: view.toldAt, seenUpTo: input.seenUpTo };
+    if (last === null || toldKind(view, null, last, seen) === null) continue;
     entries.push({
       check: view.check,
       measure: view.measure,
