@@ -37,3 +37,11 @@ Use /worker. Shape: repair. Resumes worker f0ed5308 on its branch `cez/f0ed5308`
 - **The fix.** Make the coverage edit mark apply to the body being judged. When a later change git brought (the pulled record of 015-38, `src/core/code/pass/pulled.ts`) replaced the body after an own edit, that older edit does not qualify the judgement. Keep an own edit across unrelated revisions and late records. Lead: where `crap/step.ts` reads the complexity edits for the judged paths, and `judgeFiles` in `crap/judge.ts`.
 - **Owns.** `src/core/code/crap/**`, `src/core/code/pass/**` (reads only, unless a pulled-record accessor is needed) and their tests.
 - **Done when.** B1's sequence beside `test/code/crap/still-fail.test.ts` is red first, then green. It also has an own edit after the pull, which tells `STILL FAIL` again. The delayed-record, pre-registration, too-big and complexity-only tests still pass. Commit it as `fix(R7): … (review 0.1.299 B1)`. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not change git's FAIL or recovery rules or any complexity-only output. Do not build bundles or raise the version.
+
+## 015-41 round 2: re-review of candidate 0.1.299
+
+Use /reviewer. Resumes reviewer 1458394f. Candidate `cand/0.1.299` at 2611bc70e, rebased on main at 0.1.298 with no source change from main; round 1 is `reviews/0.1.299.md` (FAIL on 6671841a5, B1; kept as `review/0.1.299-round1`). Write `reviews/0.1.299-r2.md` and commit it on your branch. The candidate is wave 3 again, plus repair R7 (d94d8dd07, `tasks/R7/notes.md`) and a new build commit.
+- Check B1's proof against R7: your four steps, an own edit after the pull, and R7's accepted limit (provenance per file: a pull that changes another function of the file leaves a pending own edit untold, never a false line).
+- What passed round 1: re-read only where R7 touches it (`crap/step.ts`, `crap/summary.ts`, new `crap/brought.ts`). Confirm the candidate's CI is green.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
