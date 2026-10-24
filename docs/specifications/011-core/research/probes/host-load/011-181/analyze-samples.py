@@ -1,12 +1,15 @@
-"""Throwaway probe for row 011-181. Usage: python3 -I analyze-samples.py SAMPLES.jsonl [CLS.jsonl] [EXCLUDE_TASK8...]
+"""Throwaway probe for row 011-181. Usage: python3 -I analyze-samples.py SAMPLES.jsonl [CLS.jsonl] [TREES.json] [EXCLUDE_TASK8...]
 
 Reads sample-trees.py's output. Prints one JSON summary: the hours covered, the
 host's mean busy and %nice cores, the cores of Squeal's trees, of test trees outside
 Squeal, of the rest of agent trees and of other trees; then one line per test tree
 outside Squeal with its project, task, agent kind, nice, CPU seconds and wall, and,
 when CLS (classify.py's output over the same hours) has a run of the same task that
-was running when the tree's runner process started, that run's role and class. A test tree whose
-cwd is in an EXCLUDE task (this session's own) is left out."""
+was running when the tree's runner process started, that run's role and class. A tree outside
+a worktree takes its agent's task. TREES maps a cwd prefix or a tree id to [project, task, role, class, why]
+for trees read by hand: runs started from a script file, which no transcript command names,
+and runs still running at the cut, which a Codex transcript names only when they end.
+A test tree whose cwd is in an EXCLUDE task (this session's own) is left out."""
 import json, re, sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -26,8 +29,10 @@ def where(cwd):
 
 def main():
     lines = [json.loads(l) for l in open(sys.argv[1])]
-    runs = [json.loads(l) for l in open(sys.argv[2])] if len(sys.argv) > 2 and sys.argv[2].endswith(".jsonl") else []
-    exclude = set(sys.argv[3:] if runs else sys.argv[2:])
+    args = sys.argv[2:]
+    runs = [json.loads(l) for l in open(args.pop(0))] if args and args[0].endswith(".jsonl") else []
+    hand = json.load(open(args.pop(0))) if args and args[0].endswith(".json") else {}
+    exclude = set(args)
     agents = {l["id"]: l for l in lines if l.get("event") == "agent"}
     starts = {l["id"]: l for l in lines if l.get("event") == "test-start"}
     ends = {l["id"]: l for l in lines if l.get("event") == "test-end"}
@@ -57,9 +62,12 @@ def main():
     by_class = defaultdict(float)
     for i, st in sorted(starts.items(), key=lambda x: x[1]["t"]):
         proj, task = where(st.get("cwd"))
+        ag = agents.get(st.get("agent") or "", {})
+        if task is None and ag:
+            proj2, task = where(ag.get("cwd"))
+            proj = proj2 if proj in ("tmp", "other") else proj
         if task in exclude:
             continue
-        ag = agents.get(st.get("agent") or "", {})
         t0 = st["started"]
         match = None
         for r in runs:
@@ -70,15 +78,24 @@ def main():
                 rt = rt.replace(tzinfo=timezone.utc)
             rt = rt.timestamp()
             span = (r.get("wallS") or 0) + 90
-            if rt - 5 <= t0 <= rt + span and (match is None or rt > match[0]):
-                match = (rt, r)
-        match = match and match[1]
+            if rt - 5 <= t0 <= rt + span:
+                # a run whose command names the tree's /tmp copy, or none, matches first
+                cwd = st.get("cwd") or ""
+                tmp = re.search(r"(?:\bcd\s+|--root\s+|--dir\s+)[\"']?(/tmp/[^/\s'\"]+)", r.get("cmd") or "")
+                same = (tmp.group(1) in cwd) if tmp else not cwd.startswith("/tmp")
+                if match is None or (same, rt) > match[:2]:
+                    match = (same, rt, r)
+        match = match and match[2]
         cpu = round(tree_cpu[i], 1)
         e = ends.get(i, {})
         cls = match["class"] if match else None
+        role, why = match and match["role"], match and match["why"]
+        for prefix, (hp, ht, hr, hc, hw) in hand.items():
+            if prefix == i or (prefix.startswith("/") and (st.get("cwd") or "").startswith(prefix)):
+                proj, task, role, cls, why = hp, ht, hr, hc, hw
         by_class[cls] += cpu
         print(json.dumps({"t": st["t"], "project": proj, "task": task, "agent": ag.get("kind"), "kind": st.get("kind"), "nice": st.get("nice"),
-                          "cpuS": cpu, "wallS": e.get("wallS"), "ended": bool(e), "role": match and match["role"], "class": cls, "why": match and match["why"]}))
+                          "cpuS": cpu, "wallS": e.get("wallS"), "ended": bool(e), "role": role, "class": cls, "why": why}))
     print(json.dumps({"cpuSByClass": {str(k): round(v, 1) for k, v in by_class.items()}}))
 
 
