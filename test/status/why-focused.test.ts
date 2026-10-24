@@ -87,6 +87,63 @@ describe("why names a focused run of the check (011 C6, row 011-146)", () => {
   });
 });
 
+describe("why finds a check first seen in a focused run (011 C6, review 0.1.286 B3)", () => {
+  const NEW = "newly added";
+
+  /** PARITY queued at its key with no check of its own yet; a focused run failed `newly added`. */
+  function firstSeen(key = keyOf(PARITY)) {
+    const w = worktree();
+    seedFile(w.store, w.id, PARITY, "queued", [], key);
+    writeRuns(w.store, w.id, [focusedRun(PARITY, { texts: ["newly"], fails: [NEW] })]);
+    return w;
+  }
+
+  it("by its exact name and by a unique part of it, with no known state, history or duration", () => {
+    const { repo } = firstSeen();
+
+    for (const query of [`${PARITY} > ${NEW}`, "newly add"]) {
+      const why = reportOf(readWhy(repo.main, query));
+      expect(why.check).toEqual(test(PARITY, NEW));
+      expect(focusedLine(why)).toBe(
+        "  Focused run at revision 4 (7.8 s, log /tmp/squeal-logs/run-focused): FAIL, not a stored result; the file's own run decides",
+      );
+      expect(why.knownState).toBeNull();
+      expect(why.history).toEqual([]);
+      expect(why.results).toEqual([]);
+      expect(why.durations).toBeNull();
+    }
+  });
+
+  it("after a key move, with the moved line", () => {
+    const { repo } = firstSeen(keyOf(PARITY, 2));
+
+    const why = reportOf(readWhy(repo.main, `${PARITY} > ${NEW}`));
+
+    expect(focusedLine(why)).toMatch(/the file's own run decides; its key moved since$/);
+    expect(why.focused).toMatchObject({ keyMoved: true, run: { applies: false } });
+  });
+
+  it("a part two checks hold stays ambiguous; a run in flight names nothing", () => {
+    const shared = worktree();
+    seedFile(shared.store, shared.id, PARITY, "queued", [`${NEW} twice`]);
+    writeRuns(shared.store, shared.id, [
+      focusedRun(PARITY, { texts: ["newly"], fails: [`${NEW} once`] }),
+    ]);
+    const running = worktree();
+    seedFile(running.store, running.id, PARITY, "queued", []);
+    writeRuns(running.store, running.id, [
+      focusedRun(PARITY, { fails: [], endedAt: null, end: null, matched: null }),
+    ]);
+
+    const ambiguous = readWhy(shared.repo.main, NEW);
+    const none = readWhy(running.repo.main, `${PARITY} > ${NEW}`);
+
+    expect(ambiguous).toMatchObject({ found: false });
+    if (ambiguous.available && !ambiguous.found) expect(ambiguous.candidates).toHaveLength(2);
+    expect(none).toMatchObject({ found: false });
+  });
+});
+
 describe("failures and the hooks show nothing of a focused run (011 C5, row 011-146)", () => {
   it("lists no failure and counts none in the delivered header", () => {
     const { repo, store, id } = worktree();
