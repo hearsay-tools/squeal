@@ -18,6 +18,15 @@ export function createCoverageRepo(conn: Connection): CodeCoverageRepo {
       const record = row?.record;
       return record instanceof Uint8Array ? record : null;
     },
+    has(key) {
+      return (
+        conn.get(
+          "SELECT 1 AS found FROM coverage WHERE result_key = ? AND provider_version = ?",
+          key.resultKey,
+          key.providerVersion,
+        ) !== null
+      );
+    },
     put(key, record, at) {
       conn.run(
         `INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)
