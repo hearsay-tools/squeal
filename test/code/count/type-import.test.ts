@@ -97,3 +97,31 @@ describe("`import(…)` in a type argument (row 015-29)", () => {
     expect(await hashOfH(text)).not.toBe(await hashOfH(blanked));
   });
 });
+
+/*
+ * Review 0.1.295 B1: a match of the rewrite's regex can start inside one
+ * string, comment, template or regular expression and end inside another.
+ * Its underscores then erase the code between them. Only real import syntax
+ * is rewritten: each form below counts `hidden` as ESLint does, at CC 2.
+ */
+describe("`import(…)` text across two tokens (review 0.1.295 B1)", () => {
+  it.each([
+    [
+      "two strings",
+      `const s = "typeof import('"; function hidden(a) { return a ? 1 : 2; }; const t = "')";`,
+    ],
+    ["two comments", "/* typeof import(' */ function hidden(a) { return a ? 1 : 2 } /* ') */"],
+    [
+      "a string in a template's substitution and the template's text",
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the counted file's own template literal.
+      "const s = `${\"typeof import('\" + (function hidden(a) { return a ? 1 : 2; })()}')`;",
+    ],
+    [
+      "two regular expressions",
+      "const r = /typeof import('|x)/; function hidden(a) { return a ? 1 : 2; } const u = /(')/;",
+    ],
+  ])("leaves %s as written", async (_form, text) => {
+    const count = await countFile(text, "typescript");
+    expect({ errors: count.errors, cc: cc(count) }).toEqual({ errors: [], cc: [["hidden", 2]] });
+  });
+});

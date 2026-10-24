@@ -34,7 +34,7 @@ export function counterReady(): Promise<void> {
 export function withCodeTree<T>(language: CodeLanguage, text: string, fn: (root: Node) => T): T {
   if (language === "python") return withPythonTree(text, fn);
   if (tsx === null) throw new Error("code counter: the TSX grammar is not loaded yet");
-  const tree = tsx.parse(tsxInput(text)) as Tree;
+  const tree = parseTsx(tsx, text);
   try {
     return fn(tree.rootNode);
   } finally {
@@ -43,21 +43,51 @@ export function withCodeTree<T>(language: CodeLanguage, text: string, fn: (root:
 }
 
 /** `import("x")` with one plain string: no line break, backslash, `$` or backtick in it. */
-const IMPORT_LITERAL = String.raw`import[ \t]*\([ \t]*(?:'[^'\n\\$\x60]*'|"[^"\n\\$\x60]*")[ \t]*\)`;
+const IMPORT_LITERAL = String.raw`import[ \t]*\([ \t]*('[^'\n\\$\x60]*'|"[^"\n\\$\x60]*")[ \t]*\)`;
 const TYPE_IMPORT = new RegExp(String.raw`(?<=\btypeof\s+|[<,]\s*)${IMPORT_LITERAL}`, "g");
 
 /**
- * The text tree-sitter-tsx 0.23.2 parses as the file means, each change the
- * same length, so every range stays (`README.md`, "Gaps of 0.23.2"). Names
- * and body hashes are read from the file's own text.
+ * The tree of what the file means, from text tree-sitter-tsx 0.23.2 parses
+ * as the file means, each change the same length, so every range stays
+ * (`README.md`, "Gaps of 0.23.2"). Names and body hashes are read from the
+ * file's own text. A second parse is made only for a file with a rewrite.
  */
-function tsxInput(text: string): string {
+function parseTsx(parser: Parser, text: string): Tree {
   // tree-sitter reads a NUL as the end of the input, but JS allows a raw one in a string, a
   // template or a comment. Python never holds one (CPython refuses it).
   const input = text.replaceAll("\0", " ");
+  const tree = parser.parse(input) as Tree;
+  if (!input.includes("import")) return tree;
   // It reads `f<typeof import("x")>()` and `f<import("x").T>()` as comparisons (row 015-29): an
   // identifier of underscores in place of the `import(…)` makes them type arguments again.
-  return input.includes("import")
-    ? input.replace(TYPE_IMPORT, (match) => "_".repeat(match.length))
-    : input;
+  let changed = false;
+  const rewritten = input.replace(TYPE_IMPORT, (match: string, literal: string, at: number) => {
+    if (!isImportSyntax(tree.rootNode, match, literal, at)) return match;
+    changed = true;
+    return "_".repeat(match.length);
+  });
+  if (!changed) return tree;
+  tree.delete();
+  return parser.parse(rewritten) as Tree;
+}
+
+/**
+ * Whether the parse of the unrewritten text reads a match at `at` as an
+ * `import` keyword and one string, the match's own literal. A match can
+ * start inside a string, a comment, a template or a regular expression and
+ * end inside another: its underscores would erase the code between them
+ * (review 0.1.295 B1).
+ */
+function isImportSyntax(root: Node, match: string, literal: string, at: number): boolean {
+  const from = at + match.indexOf(literal);
+  return (
+    spans(root, "import", at, at + "import".length) &&
+    spans(root, "string", from, from + literal.length)
+  );
+}
+
+/** Whether the smallest node over `[start, end)` is a `type` node with exactly that range. */
+function spans(root: Node, type: string, start: number, end: number): boolean {
+  const node = root.descendantForIndex(start, end);
+  return node?.type === type && node.startIndex === start && node.endIndex === end;
 }
