@@ -20,13 +20,15 @@ import { type DaemonSync, SYNC_POLL_MS, syncDaemon } from "./status-sync.js";
 import { STATUS_WAIT_SETTLE_MS, waitConsumer } from "./status-wait.js";
 
 /*
- * Spec 015 D6: `squeal code [<path>...] [--changed] [--json]`, the details
+ * Spec 015 D6: `squeal code [<path>...] [--changed | --told] [--json]`, the details
  * a delivery and status only count. Exit 0 with an answer, 1 when the
  * stores cannot answer (complexity off, no code store yet, status
  * unavailable), 2 on a usage error.
  */
 
-export const CODE_USAGE = "squeal code [<path>...] [--changed] [--json]";
+export const CODE_USAGE = "squeal code [<path>...] [--changed | --told] [--json]";
+
+const OPTIONS = ["--json", "--changed", "--told"];
 
 /** How often `squeal code` reads the code store while it waits for the pass over a pending file. */
 export const CODE_POLL_MS = 50;
@@ -73,22 +75,38 @@ function fileLine(f: CodeReportFile, limit: number): string {
   }
 }
 
+/** Without paths, what the functions listed are: over, changed, or over and told (row 015-27). */
+function whatListed({ threshold, changedSince, told }: CodeReport): string {
+  if (changedSince !== undefined) return "changed";
+  if (told === undefined) return `over ${threshold}`;
+  const who = told?.scope === "worktree" ? "a session in this worktree was" : "this session was";
+  return `over ${threshold} that ${who} told about`;
+}
+
+/** The line after the head on whose registration or views the list is of. */
+function scopeLines({ changedSince: changed, told }: CodeReport): string[] {
+  if (changed === null) {
+    return ["No session is registered in this worktree, so nothing changed since one started."];
+  }
+  if (changed !== undefined) {
+    return [
+      `Changed since revision ${changed.revision}, ${changed.scope === "session" ? "when this session registered" : "the oldest registration in this worktree"}.`,
+    ];
+  }
+  if (told === null) return ["No session is registered in this worktree, so none was told."];
+  return told?.scope === "worktree"
+    ? ["This shell's session is not registered here, so these are told to any session that is."]
+    : [];
+}
+
 /** The human rendering of a report. */
 export function formatCodeReport(report: CodeReport): string {
   const { threshold } = report;
-  const changed = report.changedSince;
   const head =
     report.paths === null
-      ? `Complexity: ${plural(report.functions.length, "function")} ${changed === undefined ? `over ${threshold}` : "changed"}`
+      ? `Complexity: ${plural(report.functions.length, "function")} ${whatListed(report)}`
       : `Complexity: ${plural(report.functions.length, "function")} in ${report.paths.join(", ") || "."}, threshold ${threshold}`;
-  const since =
-    changed === undefined
-      ? []
-      : changed === null
-        ? ["No session is registered in this worktree, so nothing changed since one started."]
-        : [
-            `Changed since revision ${changed.revision}, ${changed.scope === "session" ? "when this session registered" : "the oldest registration in this worktree"}.`,
-          ];
+  const since = scopeLines(report);
   const lines = report.functions.map((f) => {
     const where = f.line === null ? f.path : `${f.path}:${f.line}`;
     const decisions = decisionsText(f.decisions);
@@ -116,6 +134,7 @@ interface Request {
   readonly cwd: AbsolutePath;
   readonly positional: readonly string[];
   readonly changed: boolean;
+  readonly told: boolean;
   readonly shell: ShellSession | null;
   readonly now: () => EpochMs;
 }
@@ -134,6 +153,7 @@ function answer({ store, root, commonDir }: StatusContext, request: Request): An
       readCodeReport(store, code, id, complexity, {
         paths,
         changed: request.changed,
+        told: request.told,
         shell: request.shell,
         root,
       }),
@@ -165,9 +185,14 @@ export function codeCommand(
 ): number | Promise<number> {
   const json = args.includes("--json");
   const changed = args.includes("--changed");
-  const unknown = args.find((a) => a.startsWith("--") && a !== "--json" && a !== "--changed");
+  const told = args.includes("--told");
+  const unknown = args.find((a) => a.startsWith("--") && !OPTIONS.includes(a));
   if (unknown !== undefined) {
     io.stderr(`squeal code: unknown option "${unknown}"\n\nUsage: ${CODE_USAGE}\n`);
+    return 2;
+  }
+  if (changed && told) {
+    io.stderr(`squeal code: --changed and --told do not combine\n\nUsage: ${CODE_USAGE}\n`);
     return 2;
   }
   const positional = args.filter((a) => !a.startsWith("--"));
@@ -177,6 +202,7 @@ export function codeCommand(
     cwd,
     positional,
     changed,
+    told,
     shell: waitConsumer(env),
     now: options.now ?? Date.now,
   };
