@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { stoppedMetaKey } from "../../src/core/delivery/stopped.js";
 import { readCommandHolds } from "../../src/core/scheduler/hold-rows.js";
 import { storePaths } from "../../src/core/store/index.js";
@@ -64,6 +64,9 @@ function scratch(): string {
   return dir;
 }
 
+/** The release of each held test of the current test, written before its daemons stop. */
+const releases: (() => void)[] = [];
+
 /** A fixture whose `test/held.test.ts` runs until released, released after the test. */
 function heldFixture(): { repo: FixtureRepo; starts: () => number } {
   const dir = scratch();
@@ -71,7 +74,7 @@ function heldFixture(): { repo: FixtureRepo; starts: () => number } {
     "test/held.test.ts": heldTest(dir, "a"),
     "squeal.config.json": runMissingConfig(),
   });
-  suite.cleanup(() => writeFileSync(join(dir, "release-a"), ""));
+  releases.push(() => writeFileSync(join(dir, "release-a"), ""));
   const started = join(dir, "started-a");
   return { repo, starts: () => (existsSync(started) ? readFileSync(started, "utf8").length : 0) };
 }
@@ -132,6 +135,12 @@ async function editRecorded(repo: FixtureRepo): Promise<void> {
 }
 
 describe.runIf(process.platform === "linux")("squeal hold (row 011-74)", SLOW, () => {
+  // Before the suite's `afterEach`: a daemon's stop waits for the held test's tier, which
+  // otherwise ran until the stop's SIGKILL 60 s later (row 011-183).
+  afterEach(() => {
+    for (const release of releases.splice(0)) release();
+  });
+
   it("1: cancels the Vitest tier in flight, records an edit and starts nothing, runs the queue at the command's exit; exits 0, 7 and 143", async () => {
     const { repo, starts } = heldFixture();
     suite.daemon(repo);
