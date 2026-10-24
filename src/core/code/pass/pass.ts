@@ -53,7 +53,8 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const since = reason === null && cursor !== null ? cursor.revision : null;
   const entries = plan(ctx, since === null ? null : workSet(ctx, since, latest));
   ctx.retry.clear();
-  const bodies = reason === null ? oldBodies(store, worktreeId, entries) : new Map();
+  const bodies =
+    reason === null ? oldBodies(store, worktreeId, entries, ctx.counter.version) : new Map();
 
   store.transaction(() => {
     store.files.removeMany(
@@ -169,22 +170,28 @@ function filesRows(
   );
 }
 
-/** D2: each stored check's body hash in the work set, from the count its files row names. */
+/**
+ * D2: each stored check's body hash in the work set, from the count of the
+ * blob its state was judged on. Never from the files row's blob: a count the
+ * pass skipped or failed leaves that row at a blob no state was judged on.
+ */
 function oldBodies(
   store: CodeStore,
   worktreeId: WorktreeId,
   entries: readonly Entry[],
+  counterVersion: number,
 ): Map<string, string> {
+  const paths = entries.map((e) => e.path);
+  const languages = new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f.language]));
   const bodies = new Map<string, string>();
-  const rows = store.files.list(
-    worktreeId,
-    entries.map((e) => e.path),
-  );
-  for (const row of rows) {
-    const count = store.counts.get(row.blob, row.language, row.counterVersion);
-    for (const fn of count?.functions ?? []) {
-      bodies.set(checkKey({ path: row.path, ...fn }), fn.bodyHash);
-    }
+  const read = new Set<string>();
+  for (const state of store.states.list(worktreeId, { measure: "complexity", paths })) {
+    const { path } = state.check;
+    const language = languages.get(path);
+    if (language === undefined || read.has(`${path}\0${state.blob}`)) continue;
+    read.add(`${path}\0${state.blob}`);
+    const count = store.counts.get(state.blob, language, counterVersion);
+    for (const fn of count?.functions ?? []) bodies.set(checkKey({ path, ...fn }), fn.bodyHash);
   }
   return bodies;
 }
