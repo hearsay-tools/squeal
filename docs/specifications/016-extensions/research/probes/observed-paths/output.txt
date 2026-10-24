@@ -1,0 +1,10 @@
+note: node-test project "p": 1 test file(s) with an incomplete static closure, keyed by what their runs load: t.test.mjs (import(`./*/x.mjs`) in t.test.mjs has no static glob; import(`./*/y.mjs`) in t.test.mjs has no static glob)
+1. node:test run: [ 'sum=pass' ]
+   static closure before the run: [ 't.test.mjs' ]
+   store writes: [{"write":{"t.test.mjs":["dist/x.mjs","src/y.mjs"]}}]
+   closure() after the run: [ 'dist/x.mjs', 'src/y.mjs', 't.test.mjs' ]
+2. core observedGrowth: {"p\u0000t.test.mjs":{"add":["src/y.mjs"],"growth":["src/y.mjs"],"firstSeen":["src/y.mjs"]}}
+   tracked into the stat cache: [ 'src/y.mjs' ]
+3. linkTargets(real src/y.mjs): []
+   linkTargets(link lnk/y.mjs): [ 'src/y.mjs' ]
+4. ObservedSets.of(p, t.test.mjs) over a nodeTest.observed value: [ 'dist/x.mjs', 'src/y.mjs' ]
