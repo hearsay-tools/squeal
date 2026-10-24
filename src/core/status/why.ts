@@ -33,6 +33,7 @@ import {
   type WorktreeId,
 } from "../types/index.js";
 import { durationsOf } from "./durations.js";
+import { whyFocusedOf } from "./focused.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";
 import { newestFirst, replacedOfCheck } from "./replaced-failures.js";
 import { runLogOf } from "./run-log.js";
@@ -232,6 +233,8 @@ function report(
       : withRecorded(store, worktreeId, [knownState], revision ?? 0)[0]?.recorded;
   const file = testFileId(testFileOf(check));
   const rankedBy = whyRankedBy(store, worktreeId, (ref) => testFileId(ref) === file);
+  // Row 011-146 (C6 as amended 2026-10-23): a focused run that selected the check, never a result.
+  const focused = whyFocusedOf(store, worktreeId, check, key);
   return {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
@@ -260,6 +263,7 @@ function report(
     ...(rerunFirstFailure === undefined ? {} : { rerunFirstFailure }),
     ...(changed === undefined ? {} : { changedSince: changed }),
     ...(closure === undefined ? {} : { changesInClosure: closure }),
+    ...(focused === undefined ? {} : { focused }),
     ...(rankedBy === undefined ? {} : { rankedBy }),
   };
 }
