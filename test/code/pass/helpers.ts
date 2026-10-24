@@ -204,6 +204,12 @@ export class FakeWorktree {
   readonly source: PassSource = {
     latestRevision: () => this.#revisions.length,
     changedPaths: (after, upTo) => [...new Set(this.#revisions.slice(after, upTo).flat())],
+    lastChanges: (after, upTo) =>
+      new Map(
+        this.#revisions
+          .slice(after, upTo)
+          .flatMap((paths, i) => paths.map((p) => [p, after + i + 1])),
+      ),
     movedHead: (after, upTo) =>
       headAfterMove(after > 0 ? this.#heads[after - 1] : undefined, this.#heads.slice(after, upTo)),
     file: (path) => this.#files.get(path) ?? null,
