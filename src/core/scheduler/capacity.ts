@@ -3,6 +3,7 @@ import {
   type PermitPool,
   type PoolLane,
   type PoolLease,
+  type PoolTierKind,
 } from "../capacity/index.js";
 import type { WorktreeId } from "../types/index.js";
 import type { CapacityOptions } from "./options.js";
@@ -31,7 +32,7 @@ export class TierCapacity {
   #refused = false;
 
   constructor(options: CapacityOptions, worktreeId: WorktreeId, note: (message: string) => void) {
-    const { dir, refreshMs, hostSlots, project } = options;
+    const { dir, refreshMs, hostSlots, project, host } = options;
     this.#dir = dir;
     this.#note = note;
     this.#pool = createPermitPool({
@@ -40,21 +41,24 @@ export class TierCapacity {
       ...(refreshMs === undefined ? {} : { refreshMs }),
       ...(hostSlots === undefined ? {} : { hostSlots }),
       ...(project === undefined ? {} : { project }),
+      ...(host === undefined ? {} : { host }),
     });
   }
 
   /**
    * The grant for a tier of `want` files that runs no fewer than `least`
    * workers (row 011-97); `null` when the pool failed and the tier runs
-   * ungranted.
+   * ungranted. A `backlog` tier's gate also counts the host's busy cores
+   * (row 011-182).
    */
   take(
     want: number,
     lane: PoolLane = "fast",
     least = 1,
+    kind: PoolTierKind = "checkpoint",
   ): PoolLease | typeof WAIT_FOR_CAPACITY | null {
     try {
-      const lease = this.#pool.acquire(want, lane, least);
+      const lease = this.#pool.acquire(want, lane, least, kind);
       this.#failed = null;
       if (lease === null) this.#refused = true;
       return lease ?? WAIT_FOR_CAPACITY;
@@ -99,9 +103,9 @@ export class TierCapacity {
    * its files are picked. `want` when the pool fails, as `take` then runs
    * the tier ungranted.
    */
-  offer(want: number): number {
+  offer(want: number, kind: PoolTierKind = "checkpoint"): number {
     try {
-      return this.#pool.offer(want);
+      return this.#pool.offer(want, "fast", kind);
     } catch {
       return want;
     }
@@ -110,6 +114,22 @@ export class TierCapacity {
   close(): void {
     this.#pool.close();
   }
+}
+
+/**
+ * The pool's kind of a granted tier (011 C10 Size as amended 2026-10-24, row
+ * 011-182): while a `squeal run --all` checkpoint is open, a tier that holds
+ * a file it requested is the checkpoint's, and so is the offer before the
+ * pick; any other is the backlog's, whose gate also counts the host's busy
+ * cores.
+ */
+export function poolKind(
+  open: { readonly explicit: boolean } | null,
+  picked?: readonly { readonly checkpointId: string | null }[],
+): PoolTierKind {
+  if (open?.explicit !== true) return "backlog";
+  const runsIt = picked === undefined || picked.some((p) => p.checkpointId !== null);
+  return runsIt ? "checkpoint" : "backlog";
 }
 
 /**
