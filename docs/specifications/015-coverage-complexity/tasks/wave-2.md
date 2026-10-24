@@ -74,3 +74,13 @@ Use /reviewer. Candidate `cand/0.1.295`, pinned to the SHA named in the spawn; r
 - Confirm the candidate's CI is green, the Node 22 shards included.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## W4: 015-12, CRAP and "no in-process test runs it" (wave 2b)
+
+Use /worker. Shape: slice. Starts from main at 0.1.295, beside wave 1d (`wave-1d.md`). Outcome: each counted function gains a `crap` and an `uncovered` state from 015-11's coverage records, judged and delivered like complexity, never before every loader's record is current.
+- Read `spec.md` goal 11, D5 to D7 and D9 with its 2026-10-24 amendments (child processes out, "no in-process test runs it", skipped files make `unknown`), D8 for the record; `tasks/015-11/notes.md` (record shape; a function V8 never compiled is absent, not `0`; inventories differ by Node version); `reviews/0.1.295.md` "Inputs for the repair and next wave"; `research/complexity-and-crap.md` 4 (the join by position) and `research/child-processes.md`.
+- **The join.** A function's coverage is the union of the records of the current results of every test file whose closure holds the source at its current blob (011 C3's reverse index), by position, never by name. Lead: a pure `joinCoverage` in a new `src/core/code/crap/`, tested on a fixture record first.
+- **The states.** `crap` = CC² × (1 − cov)³ + CC, cov of the function's own statements, 95% or more gives CC, `fail` above `crap.threshold` (30). `uncovered` = `fail` when no in-process test runs it. Each is `pending` until every loader has a current record, `unknown` while one cannot (D8's skips, an excluded suite, a file with skipped tests, `unread`).
+- **Delivery.** D5 to D7 apply. The FAIL line names CC, coverage and the test files that run the function, worded as evidence, never as a target.
+- **Owns.** `src/core/code/crap/**` (new), the state kinds in `src/core/code/store/**` and `src/core/code/pass/**` (not `head.ts`), `src/core/types/code*.ts`, `src/cli/code*.ts`, and new kinds in `src/core/delivery/code-*.ts` and `src/core/status/code-status.ts`, where wave 1d also edits: add, do not rework its functions.
+- **Done when.** Goal 11: no state before every loader is current; CRAP equals the formula on a fixture; `unknown` for each cause; a delivery test for each kind; policy off and coverage off byte-identical to 0.1.295. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
