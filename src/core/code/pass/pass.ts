@@ -31,6 +31,7 @@ import {
 import { committedPaths } from "./head.js";
 import { includedSet } from "./included.js";
 import { checkKey, type FileAfter, judge } from "./judge.js";
+import { clearPulled, writePulled } from "./pulled.js";
 import type { Counter, PassReport, PassSource, RecountReason } from "./types.js";
 
 export interface PassContext {
@@ -60,7 +61,7 @@ export interface PassContext {
  * loop between them; then states, transitions, edits and the cursor in one
  * transaction, so a hook never reads half a revision. Before the last, a
  * revision that moved `HEAD` asks git which files are the committed ones
- * (015-19).
+ * (015-19), and the last records them (015-38).
  */
 export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const { store, source, worktreeId } = ctx;
@@ -117,6 +118,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   // A path judged, gone or too big has no failed count to retry (row 015-18).
   for (const e of entries) if (!skipped.has(e.path)) failed.delete(e.path);
 
+  const blobs = new Map(entries.map((e) => [e.path, e.kind === "gone" ? null : e.file.hash]));
   const committed =
     since === null
       ? new Set<RelativePath>()
@@ -124,7 +126,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
           ctx,
           since,
           latest,
-          after.flatMap((a) => (a.count === null ? [] : [{ path: a.path, blob: a.count.blob }])),
+          after.map((a) => ({ path: a.path, blob: blobs.get(a.path) ?? null })),
         );
   return store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
@@ -159,6 +161,9 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
       worktreeId,
       edited.map((check) => ({ check, measure: "complexity", revision: latest, at })),
     );
+    // 015-38: the files git changed last, whose PASS or RESOLVED a session told by count is not told.
+    if (quiet) clearPulled(store.meta, worktreeId);
+    else writePulled(store.meta, worktreeId, latest, paths, committed);
     writeCursor(store.meta, worktreeId, current);
     writeUncountable(store.meta, worktreeId, failed);
     // The coordinator's contract with 015-07: a first pass over inherited counts writes none,
