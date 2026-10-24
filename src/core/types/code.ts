@@ -184,9 +184,10 @@ export interface CodeTransition {
 /**
  * Spec 015 D6: how much a consumer was told of a failing function. `count`:
  * only as part of a number (registration, a policy change's summary);
- * `full`: in its own line.
+ * `full`: in its own line; `still`: in its own line, and then that an edit
+ * left it over (`STILL FAIL`); later edits are quiet until its state changes.
  */
-export type CodeTold = "count" | "full";
+export type CodeTold = "count" | "full" | "still";
 
 /**
  * What a consumer was last told about one measure of one code check (spec
