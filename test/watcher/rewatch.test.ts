@@ -94,4 +94,35 @@ describe("ChangeFeed: a watch update (row 011-183)", () => {
     expect(backend.edited).toBe(true);
     expect(edited()?.stat?.size).toBe(statSync(join(root, "src/a.ts")).size);
   }, 20_000);
+
+  // Row 011-187: the scheduler sets the extra files from inside a batch, before the directory's
+  // own hint is debounced, so this rebuild is the one that excludes it and replaces the watcher.
+  it("of the extra files alone is followed by a reconciliation too", async () => {
+    const backend = new SwapLosesEdit(join(root, "src/a.ts"));
+    feed = createChangeFeed({
+      root,
+      backend,
+      onBatch: log.push,
+      onError: (error) => errors.push(error),
+      trackedPaths: () => ["README.md", "src/a.ts", "src/lib/b.ts"],
+      timings: { reconcileIntervalMs: 60_000 },
+    });
+    await feed.start();
+    const from = log.batches.length;
+
+    // Generated code in a new ignored directory, which a closure names.
+    mkdirSync(join(root, "build/cache"), { recursive: true });
+    writeFileSync(join(root, "build/cache/results.json"), "{}");
+    await feed.setExtraFiles(["build/cache/results.json"]);
+    expect(feed.spec?.excluded).toContain(join(root, "build"));
+
+    const edited = () =>
+      log.batches
+        .slice(from)
+        .flatMap((batch) => batch.paths)
+        .find((candidate) => candidate.path === "src/a.ts");
+    await waitFor(() => edited() !== undefined, 10_000);
+    expect(backend.edited).toBe(true);
+    expect(edited()?.stat?.size).toBe(statSync(join(root, "src/a.ts")).size);
+  }, 20_000);
 });

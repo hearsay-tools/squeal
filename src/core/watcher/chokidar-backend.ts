@@ -70,8 +70,8 @@ export const chokidarBackend: WatcherBackend = {
         filter.set(next);
         const noLongerExcluded = before.excluded.filter((p) => !next.excluded.includes(p));
         const newExtra = next.extraFiles.filter((p) => !before.extraFiles.includes(p));
-        // add with ignoreInitial reports nothing that already exists; the change
-        // feed reconciles after every watch change (row 011-183).
+        // add with ignoreInitial reports nothing that already exists; the change feed
+        // reconciles after every watch change, from a hint or the extra files (rows 011-183, 011-187).
         if (noLongerExcluded.length > 0 || newExtra.length > 0) {
           watcher.add([...noLongerExcluded, ...newExtra]);
         }
