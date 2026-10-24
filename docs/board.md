@@ -1275,8 +1275,8 @@ Spec: `specifications/016-extensions/spec.md`, draft for the human's review (202
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 016-12 the kit's scaffold | planned | D1, D2: `test/kit/` with a driver that names no runner, packs for Vitest, node:test and pytest, scenarios K1 to K3 from the 016-10 probe, the KNOWN and UNEXPECTED PASS verdicts, the `logDir` doc comment. Tests only. | The three kit files pass with K1 to K3 PASS on every runner; a fake-pack test proves KNOWN and UNEXPECTED PASS; `squeal run --all --wait` green. |
-| 016-13 the observed-path survey | planned | D4: per runner what is observed, where it is kept and who reads it back; each step of the core's path the injected stores lack, with a case where a verdict changes; git-ignored paths today; the read-only interface an adapter needs; migration of the `nodeTest.observed.*` and `pytest.observed.*` meta entries. | `research/observed-paths.md` committed, every question tagged. |
+| 016-12 the kit's scaffold | running (worker e254e00d, Opus xhigh) | D1, D2: `test/kit/` with a driver that names no runner, packs for Vitest, node:test and pytest, scenarios K1 to K3 from the 016-10 probe, the KNOWN and UNEXPECTED PASS verdicts, the `logDir` doc comment. Tests only. | The three kit files pass with K1 to K3 PASS on every runner; a fake-pack test proves KNOWN and UNEXPECTED PASS; `squeal run --all --wait` green. |
+| 016-13 the observed-path survey | running (researcher 33ca81bf, Opus high) | D4: per runner what is observed, where it is kept and who reads it back; each step of the core's path the injected stores lack, with a case where a verdict changes; git-ignored paths today; the read-only interface an adapter needs; migration of the `nodeTest.observed.*` and `pytest.observed.*` meta entries. | `research/observed-paths.md` committed, every question tagged. |
 
 ### Wave 1 (after wave 0; not yet briefed)
 
