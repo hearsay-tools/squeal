@@ -1,0 +1,123 @@
+
+## A. core or cli -> runners or harness (14)
+src/cli/opencode/status.ts:5 -> src/harness/opencode/host.js
+src/cli/pytest-seed.ts:4 -> src/runners/pytest/environment/config.js
+src/cli/pytest-seed.ts:5 -> src/runners/pytest/environment/config-values.js
+src/cli/pytest-seed.ts:6 -> src/runners/pytest/environment/discover.js
+src/cli/pytest-seed.ts:7 -> src/runners/pytest/run/command.js
+src/cli/start.ts:17 -> src/harness/shared/version-copies.js
+src/cli/status-command.ts:3 -> src/harness/codex/command.js
+src/cli/status-wait-focus-answer.ts:4 -> src/runners/focus.js
+src/cli/status-wait-focus.ts:23 -> src/runners/focus.js
+src/core/code/count/parser.ts:2 -> src/runners/pytest/graph/parse.js
+src/core/daemon/daemon.ts:486 -> src/runners/vitest/index.js
+src/core/daemon/node-test-runners.ts:6 -> src/runners/node-test/adapter.js
+src/core/daemon/pytest-runners.ts:8 -> src/runners/pytest/adapter.js
+src/core/daemon/pytest-runners.ts:9 -> src/runners/pytest/run/run.js
+
+## B. harness -> runners or cli (1)
+src/harness/shared/deny.ts:21 -> src/runners/pytest/environment/discover.js
+
+## C. runner folder -> another runner folder (9)
+src/runners/node-test/run/reads.ts:13 -> src/runners/observe/index.js
+src/runners/node-test/run/run.ts:13 -> src/runners/observe/index.js
+src/runners/observe/runtime.ts:4 -> src/runners/node-test/recorders.js
+src/runners/observe/runtime.ts:5 -> src/runners/node-test/run/node-options.js
+src/runners/pytest/run/batches.ts:4 -> src/runners/node-test/run/process.js
+src/runners/pytest/run/run.ts:17 -> src/runners/node-test/run/process.js
+src/runners/vitest/adapter.ts:23 -> src/runners/observe/index.js
+src/runners/vitest/observe.ts:6 -> src/runners/node-test/recorders.js
+src/runners/vitest/observe.ts:15 -> src/runners/observe/index.js
+
+## D. code lines naming a runner: {"core":{"files":34,"lines":219},"cli":{"files":18,"lines":214},"harness/shared":{"files":9,"lines":96}}
+41	src/core/daemon/daemon.ts
+36	src/cli/setup/runners.ts
+30	src/core/daemon/pytest-runners.ts
+29	src/cli/setup/plan.ts
+26	src/cli/pytest-seed.ts
+24	src/core/daemon/node-test-runners.ts
+22	src/harness/shared/coverage.ts
+18	src/harness/shared/primer.ts
+17	src/harness/shared/test-command.ts
+16	src/cli/setup/pytest.ts
+16	src/core/daemon/runner.ts
+15	src/cli/setup/block.ts
+15	src/cli/setup/exclude.ts
+14	src/cli/setup/format.ts
+14	src/core/status/run-log.ts
+13	src/harness/shared/test-command-pytest.ts
+12	src/cli/init.ts
+12	src/harness/shared/deny.ts
+11	src/harness/shared/test-command-files.ts
+10	src/cli/setup/candidates.ts
+9	src/core/status/snapshot.ts
+8	src/cli/node-test-seed.ts
+8	src/core/ps/processes.ts
+8	src/core/types/policy.ts
+8	src/core/types/runner.ts
+7	src/cli/setup/gates.ts
+6	src/cli/setup/apply.ts
+6	src/core/daemon/policy-pytest.ts
+5	src/cli/codex/init.ts
+5	src/cli/warmup.ts
+5	src/core/daemon/lifecycle.ts
+5	src/core/daemon/policy-node-test.ts
+5	src/core/daemon/policy.ts
+4	src/cli/retry-unlisted.ts
+4	src/core/status/format-why.ts
+3	src/cli/setup/repo.ts
+3	src/core/slow/classify.ts
+3	src/core/status/format-status.ts
+3	src/core/status/standing.ts
+3	src/core/types/status.ts
+2	src/cli/setup/test-globs.ts
+2	src/core/delivery/attribution.ts
+2	src/core/scheduler/growth.ts
+2	src/core/scheduler/slow-tier.ts
+2	src/core/scheduler/slow.ts
+2	src/core/state/slow.ts
+2	src/core/status/test-frame.ts
+2	src/core/status/why-unknown.ts
+2	src/core/text.ts
+1	src/cli/status-wait-focus.ts
+1	src/core/code/count/parser.ts
+1	src/core/code/coverage/provider.mjs
+1	src/core/daemon/policy-code.ts
+1	src/core/daemon/policy-slow.ts
+1	src/core/delivery/own-edit.ts
+1	src/core/ps/render.ts
+1	src/core/run-log.ts
+1	src/core/state/optimizer-note.ts
+1	src/harness/shared/index.ts
+1	src/harness/shared/stop-slow.ts
+1	src/harness/shared/stop.ts
+
+## D. code lines naming a harness: {"cli":{"files":23,"lines":231},"harness/shared":{"files":1,"lines":7},"core":{"files":4,"lines":12}}
+29	src/cli/codex/trust.ts
+25	src/cli/codex/init.ts
+24	src/cli/init.ts
+22	src/cli/update.ts
+18	src/cli/setup/harnesses.ts
+14	src/cli/opencode/status.ts
+12	src/cli/main.ts
+12	src/cli/setup/plan.ts
+9	src/cli/setup/block.ts
+8	src/cli/status-command.ts
+7	src/cli/codex/hash.ts
+7	src/harness/shared/version-copies.ts
+6	src/cli/codex/status.ts
+6	src/cli/pi/status.ts
+6	src/cli/update-packages.ts
+5	src/cli/codex/launcher.ts
+5	src/cli/remove.ts
+5	src/cli/status-wait.ts
+5	src/core/daemon/version.ts
+4	src/cli/setup/command.ts
+4	src/cli/setup/format.ts
+4	src/core/ps/flags.ts
+3	src/cli/setup/flow.ts
+3	src/cli/setup/questions.ts
+2	src/cli/retry.ts
+2	src/cli/setup/gates.ts
+2	src/core/ps/discover.ts
+1	src/core/slow/stop-wait.ts
