@@ -12,7 +12,13 @@ import type {
 import type { CodeStore } from "../store/index.js";
 import { countMissing, type Entry } from "./blobs.js";
 import { cursorOf, readCursor, recountReason, writeCursor, writeRecount } from "./cursor.js";
-import { dueRetries, readUncountable, writeUncountable } from "./failed.js";
+import {
+  dueRetries,
+  type FailedCounts,
+  readUncountable,
+  spentFailure,
+  writeUncountable,
+} from "./failed.js";
 import { committedPaths } from "./head.js";
 import { includedSet } from "./included.js";
 import { checkKey, type FileAfter, judge } from "./judge.js";
@@ -55,7 +61,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const reason = ctx.switchedOn ? "first" : recountReason(cursor, current);
   const started = ctx.now();
   const failed = readUncountable(store.meta, worktreeId);
-  const due = dueRetries(failed, started);
+  const due = retriesDue(ctx, failed, started);
   if (reason === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0) {
     return null;
   }
@@ -136,6 +142,25 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     }
     return report(latest, reason, entries.length, counted, { ...judged, edited });
   });
+}
+
+/**
+ * Row 015-18: the failed counts due again. A retry whose time came, and a
+ * spent one whose blob a pass has counted since, as another worktree's may.
+ */
+function retriesDue(ctx: PassContext, failed: FailedCounts, now: EpochMs): RelativePath[] {
+  const spent = [...failed].flatMap(([path, f]) => (f.retryAt === null ? [path] : []));
+  const counted =
+    spent.length === 0
+      ? []
+      : ctx.store.files
+          .list(ctx.worktreeId, spent)
+          .filter(
+            (f) =>
+              spentFailure(failed, f) !== null &&
+              ctx.store.counts.get(f.blob, f.language, ctx.counter.version) !== null,
+          );
+  return [...dueRetries(failed, now), ...counted.map((f) => f.path)];
 }
 
 /**
