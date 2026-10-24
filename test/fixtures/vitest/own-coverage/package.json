@@ -1,0 +1,5 @@
+{
+  "name": "squeal-fixture-vitest-own-coverage",
+  "private": true,
+  "type": "module"
+}
