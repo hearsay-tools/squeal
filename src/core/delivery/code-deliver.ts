@@ -1,3 +1,4 @@
+import { readCursor } from "../code/pass/cursor.js";
 import { uncountableFiles } from "../code/pass/failed.js";
 import type { CodeStore } from "../code/store/types.js";
 import { isRecord } from "../fs/index.js";
@@ -159,7 +160,9 @@ export function registerCode(
       const failing = failingIn(store, worktreeId);
       seed(store, consumer, failing, at);
       const { done, total } = countingOf(store, worktreeId);
-      const counting = done === total ? {} : { counting: { done, total } };
+      // 015-35: a new worktree's store is the common dir's; until its first count ends, no state is its count.
+      const ended = done === total && readCursor(store.meta, worktreeId) !== null;
+      const counting = ended ? {} : { counting: { done, total } };
       return { v: 1, threshold: complexity.threshold, over: failing.length, ...counting };
     }),
   );
