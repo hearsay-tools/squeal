@@ -46,7 +46,9 @@ const STOP_WITHIN_MS = 15_000;
  * A test that starts a child holding the root as cwd and a file in it open,
  * then sleeps. It renames the child's pid into `started`: a write creates
  * the file empty before it writes, and a poll between the two read pid 0
- * (row 011-188).
+ * (row 011-188). The child ends by itself past the test's timeout: a daemon
+ * killed mid-tier, as a failed case's teardown kills it after 60 s, stops
+ * nothing its tier left.
  */
 function holdingTest(dir: string): string {
   const at = (name: string) => JSON.stringify(join(dir, name));
@@ -58,7 +60,7 @@ it("holds the root with a child until the flag", async () => {
   const root = join(import.meta.dirname, "..");
   const child = spawn(
     process.execPath,
-    ["-e", "require('node:fs').openSync('package.json', 'r'); setInterval(() => {}, 1000)"],
+    ["-e", "require('node:fs').openSync('package.json', 'r'); setTimeout(() => {}, 200_000)"],
     { cwd: root, stdio: "ignore" },
   );
   await new Promise((done) => child.once("spawn", done));
