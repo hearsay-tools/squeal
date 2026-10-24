@@ -219,19 +219,20 @@ class Feed implements ChangeFeed {
       async () => {
         const specChanged = paths.some((p) => SPEC_INPUTS.has(basename(p)));
         if (specChanged) this.unlisted.clear();
-        let widened = specChanged ? await this.rebuildSpec() : false;
+        let rewatched = specChanged ? await this.rebuildSpec() : false;
         const hinted = await candidatesFromHints(this.context(), paths);
         const ignoredDirs = hinted.ignoredDirs.filter((dir) => !this.unlisted.holds(dir));
         if (ignoredDirs.length > 0 && !specChanged) {
           const before = this.spec;
-          widened = await this.rebuildSpec();
+          rewatched = await this.rebuildSpec();
           if (this.spec === before) await this.unlisted.record(ignoredDirs);
         }
         const kept = this.tempHold.filter(hinted.paths, this.trackedPaths);
         if (kept.length > 0) await this.emit({ trigger: "watch", paths: kept });
-        // Paths that were excluded until now were never watched; git status finds them. So does
-        // the walk of a linked directory, which appeared, went or moved with a link of this batch.
-        if (widened || (await this.relinked(hinted))) await this.reconcileNow("watch");
+        // Paths that were excluded until now were never watched, and a replaced watch may have
+        // dropped an edit; git status and the re-stat find them. So does the walk of a linked
+        // directory, which appeared, went or moved with a link of this batch.
+        if (rewatched || (await this.relinked(hinted))) await this.reconcileNow("watch");
       },
       () => "watch",
     );
@@ -263,7 +264,11 @@ class Feed implements ChangeFeed {
     return changed;
   }
 
-  /** Rebuilds the spec and updates the watch. True when some path is no longer excluded. */
+  /**
+   * Rebuilds the spec and updates the watch. True when the watch changed: a path excluded until
+   * now was never watched, and a watch the backend replaced may drop an event in flight (row
+   * 011-183: chokidar's old watcher closed before its stat of an edit returned).
+   */
   private async rebuildSpec(status?: GitStatus): Promise<boolean> {
     const current = this.spec;
     if (!current || !this.sub) return false;
@@ -272,7 +277,7 @@ class Feed implements ChangeFeed {
     await this.sub.update(next);
     this.spec = next;
     this.unlisted.clear();
-    return current.excluded.some((p) => !next.excluded.includes(p));
+    return true;
   }
 
   private context(): CandidateContext {
