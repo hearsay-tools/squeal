@@ -19,7 +19,7 @@ Before the first edit, read only what the brief names. Then make the probe edit 
 
 ## 3. Build
 
-Red first: the failing test the done-when names, the smallest change that turns it green, the next. The discriminating check first, scoped to the diff: in a repository with Squeal, a file you just edited is its edit tier's, so read the result with `squeal status --wait 60000 <file>` instead of a direct run started seconds after the edit *(011-185)*; the full suite once at the clean candidate, after committing. Name the done-when line most likely to be false and write the check that catches it. New work replaces tests, it does not only add them: a new check retires the weaker one it supersedes. Checkpoint as if the turn could end now, because it can: commit the first coherent vertical piece before widening. Files stay under about 300 lines; type changes are additive; `plugins/claude-code/dist` is rebuilt only when your row owns it.
+Red first: the failing test the done-when names, the smallest change that turns it green, the next. The discriminating check first, scoped to the diff: in a repository with Squeal, a file you just edited is its edit tier's, so read the result with `squeal status --wait 60000 <file>` instead of a direct run started seconds after the edit *(011-185)*; no full-suite checkpoint is required for the worker (human, 2026-10-25; `docs/process.md`). Name the done-when line most likely to be false and write the check that catches it. New work replaces tests, it does not only add them: a new check retires the weaker one it supersedes. Checkpoint as if the turn could end now, because it can: commit the first coherent vertical piece before widening. Files stay under about 300 lines; type changes are additive; `plugins/claude-code/dist` is rebuilt only when your row owns it.
 
 ## 4. Triage unknowns
 
@@ -33,7 +33,7 @@ If the slice would touch more than the seam the brief names, commit what is usef
 
 ## 5. Verify
 
-`npm run lint`, `npm run typecheck`, `npm run build` when your row owns the bundles, and the suite through Squeal's full-suite checkpoint, `squeal run --all --wait`, whose first line is the verdict from 0.1.132 (exit 1 on known failures, 3 without a verdict; an older Squeal exits 0 either way, so read its `Known failures` line); `npx vitest run` only in the cases `CLAUDE.md` names *(Squeal, 005)*. Report the real output of every check you ran; never infer an unrun check as passing. A transient failure is reported as transient, not rerun until green. Done when the pasted output is green and every changed file is inside your ownership.
+`npm run lint`, `npm run typecheck`, `npm run build` when your row owns the bundles, and Squeal's affected-test verdict through `squeal status --wait 60000 <changed-path>...`. Run relevant tests outside Squeal's coverage. If Squeal is unavailable, no daemon validates or its result is doubtful, run the relevant tests directly and state why (`CLAUDE.md`). Do not request `squeal run --all` or run a local full suite for worker completion; CI provides full-suite coverage (human, 2026-10-25; `docs/process.md`). Report the real output of every check you ran, including pending or unknown affected checks; never infer an unrun check as passing. A transient failure is reported as transient, not rerun until green. Done when the required affected checks pass and every changed file is inside your ownership.
 
 ## 6. Commit
 

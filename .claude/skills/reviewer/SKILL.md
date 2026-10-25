@@ -7,7 +7,7 @@ You review the candidate range against its spec and the repository as it exists.
 
 ## 1. Verify
 
-Confirm `git rev-parse HEAD` is the candidate you were given; a mismatch is a finding. `npm ci` from the lockfile, `npm run lint`, `npm run typecheck`, `npm run build` (the tree must stay clean), `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` (the host's full-run turn; `docs/process.md`), never Squeal's checkpoint in its place: yours is the independent run *(Squeal, 005)*. Record the output; it opens the findings file. A check that cannot run is **unverified**: never blocking, never a finding against the wave. Evidence recorded at a different commit or on a dirty tree is unverified too, and saying so is not a finding.
+Confirm `git rev-parse HEAD` is the candidate you were given; a mismatch is a finding. `npm ci` from the lockfile, `npm run lint`, `npm run typecheck`, `npm run build` (the tree must stay clean). Read Squeal's affected-test results and available CI results for this candidate; run targeted checks for concrete failure modes and relevant tests outside Squeal's coverage. Do not request `squeal run --all` or run a local full suite for review: CI provides full-suite coverage, and the exact release commit needs a passing full-suite result before release (human, 2026-10-25; `docs/process.md`). Record the commands, commit and actual output; they open the findings file. Name any CI result still pending or unavailable. A check that cannot run is **unverified**: never blocking, never a finding against the wave. Evidence recorded at a different commit or on a dirty tree is unverified too, and saying so is not a finding.
 
 ## 2. Prosecute
 
