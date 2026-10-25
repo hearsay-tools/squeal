@@ -2785,6 +2785,9 @@ CREATE TABLE coverage (
 `;
 var CODE_MIGRATIONS = [(db) => db.exec(V12)];
 var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
+var CODE_INDEXES = {
+  coverage_stored: "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)"
+};
 
 // src/core/code/store/counts.ts
 var LANGUAGES = [
@@ -2889,7 +2892,18 @@ function toFile(row) {
 }
 
 // src/core/code/store/coverage.ts
+var INDEX = "coverage_stored";
 function createCoverageRepo(conn) {
+  const indexed = conn.get("SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?", INDEX) !== null;
+  const by = indexed ? `coverage INDEXED BY ${INDEX}` : "coverage";
+  const storedAt = (key) => {
+    const row = conn.get(
+      `SELECT recorded_at FROM ${by} WHERE result_key = ? AND provider_version = ?`,
+      key.resultKey,
+      key.providerVersion
+    );
+    return row === null ? null : num(row, "recorded_at");
+  };
   return {
     get(key) {
       const row = conn.get(
@@ -2900,17 +2914,13 @@ function createCoverageRepo(conn) {
       const record = row?.record;
       return record instanceof Uint8Array ? record : null;
     },
-    has(key) {
-      return conn.get(
-        "SELECT 1 AS found FROM coverage WHERE result_key = ? AND provider_version = ?",
-        key.resultKey,
-        key.providerVersion
-      ) !== null;
-    },
+    has: (key) => storedAt(key) !== null,
+    storedAt,
     put(key, record, at) {
       conn.run(
         `INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT DO UPDATE SET record = excluded.record, recorded_at = excluded.recorded_at`,
+         ON CONFLICT DO UPDATE SET record = excluded.record,
+           recorded_at = max(excluded.recorded_at, recorded_at + 1)`,
         key.resultKey,
         key.providerVersion,
         record,
@@ -3051,17 +3061,30 @@ function checkFrom2(row) {
     occurrence: num(row, "occurrence")
   };
 }
+function statesOf(worktreeId, paths) {
+  if (paths === void 0) {
+    return {
+      from: "states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?",
+      params: [worktreeId]
+    };
+  }
+  return {
+    from: `(SELECT DISTINCT value FROM json_each(?)) p
+      CROSS JOIN checks c ON c.path = p.value
+      CROSS JOIN states s ON s.worktree_id = ? AND s.check_id = c.id
+      WHERE true`,
+    params: [JSON.stringify(paths), worktreeId]
+  };
+}
 function createStateRepo(conn) {
   return {
     list(worktreeId, filter = {}) {
+      const { from, params } = statesOf(worktreeId, filter.paths);
       return conn.all(
-        `SELECT s.*, ${CHECK_COLUMNS2} FROM states s JOIN checks c ON c.id = s.check_id
-           WHERE s.worktree_id = ?
-             AND (? IS NULL OR c.path IN (SELECT value FROM json_each(?)))
+        `SELECT s.*, ${CHECK_COLUMNS2} FROM ${from}
              AND (? IS NULL OR s.measure = ?) AND (? IS NULL OR s.outcome = ?)
            ORDER BY c.path, c.qualified_name, c.occurrence, s.measure`,
-        worktreeId,
-        ...Array(2).fill(filter.paths === void 0 ? null : JSON.stringify(filter.paths)),
+        ...params,
         ...Array(2).fill(filter.measure ?? null),
         ...Array(2).fill(filter.outcome ?? null)
       ).map((row) => toState(worktreeId, row));
@@ -3089,13 +3112,13 @@ function createStateRepo(conn) {
         }
       });
     },
-    edits(worktreeId, measure2) {
+    edits(worktreeId, measure2, paths) {
+      const { from, params } = statesOf(worktreeId, paths);
       return conn.all(
-        `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS2}
-           FROM states s JOIN checks c ON c.id = s.check_id
-           WHERE s.worktree_id = ? AND s.measure = ? AND s.edited_at IS NOT NULL
+        `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS2} FROM ${from}
+             AND s.measure = ? AND s.edited_at IS NOT NULL
            ORDER BY c.path, c.qualified_name, c.occurrence`,
-        worktreeId,
+        ...params,
         measure2
       ).map(toEdit);
     },
@@ -3375,10 +3398,24 @@ function openCodeStore(commonDir, policy, options = {}) {
     switchToWal(db, busyTimeoutMs);
     db.exec("PRAGMA synchronous = NORMAL");
     const version = migrate(db, CODE_MIGRATIONS);
+    if (options.create !== false) makeIndexes(db);
     return createCodeStore(new Connection(db), version, path);
   } catch (error) {
     db?.close();
     if (isCorruption2(error)) return { reason: "corrupt", error: String(error) };
+    throw error;
+  }
+}
+function makeIndexes(db) {
+  const found2 = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?");
+  const absent2 = () => Object.entries(CODE_INDEXES).filter(([name]) => found2.get(name) === void 0);
+  if (absent2().length === 0) return;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const [, sql] of absent2()) db.exec(sql);
+    db.exec("COMMIT");
+  } catch (error) {
+    rollback(db);
     throw error;
   }
 }
@@ -5770,6 +5807,43 @@ var RESULT_WAITS_MS = [0, 250, 1e3, 5e3, 3e4];
 // src/core/code/crap/loaders.ts
 var RECORD_WAIT_MS = RESULT_WAITS_MS.reduce((a, b) => a + b, 0);
 
+// src/core/code/crap/summary.ts
+var summaryKey = (worktreeId) => `coverage:${worktreeId}`;
+var crapRecountKey = (worktreeId) => `crapRecount:${worktreeId}`;
+var evidenceKey = (worktreeId, path) => `coverage:${worktreeId}:${path}`;
+var functionKey = (fn) => `${fn.qualifiedName}\0${fn.occurrence}`;
+function parse(text2, valid) {
+  if (text2 === null) return null;
+  try {
+    const value = JSON.parse(text2);
+    return valid(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function readSummary(meta, worktreeId) {
+  return parse(
+    meta.get(summaryKey(worktreeId)),
+    (v) => isObject(v) && v.v === 1 && typeof v.since === "number" && isObject(v.files)
+  );
+}
+function readCrapRecount(meta, worktreeId) {
+  return parse(
+    meta.get(crapRecountKey(worktreeId)),
+    (v) => isObject(v) && typeof v.revision === "number" && typeof v.at === "number" && typeof v.threshold === "number"
+  );
+}
+function readEvidence(meta, worktreeId, path) {
+  return parse(
+    meta.get(evidenceKey(worktreeId, path)),
+    (v) => isObject(v) && typeof v.blob === "string" && isObject(v.functions)
+  );
+}
+
+// src/core/code/crap/seed.ts
+var COVERAGE_MEASURES = ["crap", "uncovered"];
+
 // src/core/code/pass/failed.ts
 var uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
 function readUncountable(meta, worktreeId) {
@@ -5824,43 +5898,6 @@ function pulledReader(meta, worktreeId) {
     return at !== void 0 && at <= revision;
   };
 }
-
-// src/core/code/crap/summary.ts
-var summaryKey = (worktreeId) => `coverage:${worktreeId}`;
-var crapRecountKey = (worktreeId) => `crapRecount:${worktreeId}`;
-var evidenceKey = (worktreeId, path) => `coverage:${worktreeId}:${path}`;
-var functionKey = (fn) => `${fn.qualifiedName}\0${fn.occurrence}`;
-function parse(text2, valid) {
-  if (text2 === null) return null;
-  try {
-    const value = JSON.parse(text2);
-    return valid(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
-function readSummary(meta, worktreeId) {
-  return parse(
-    meta.get(summaryKey(worktreeId)),
-    (v) => isObject(v) && v.v === 1 && typeof v.since === "number" && isObject(v.files)
-  );
-}
-function readCrapRecount(meta, worktreeId) {
-  return parse(
-    meta.get(crapRecountKey(worktreeId)),
-    (v) => isObject(v) && typeof v.revision === "number" && typeof v.at === "number" && typeof v.threshold === "number"
-  );
-}
-function readEvidence(meta, worktreeId, path) {
-  return parse(
-    meta.get(evidenceKey(worktreeId, path)),
-    (v) => isObject(v) && typeof v.blob === "string" && isObject(v.functions)
-  );
-}
-
-// src/core/code/crap/step.ts
-var COVERAGE_MEASURES = ["crap", "uncovered"];
 
 // src/core/code/pass/cursor.ts
 var passKey = (worktreeId) => `pass:${worktreeId}`;
@@ -6150,7 +6187,7 @@ function lastTransition(store, worktreeId, check, measure2 = MEASURE) {
   return store.transitions.history(worktreeId, check).findLast((t) => t.measure === measure2) ?? null;
 }
 var failingIn = (store, worktreeId) => store.states.list(worktreeId, { measure: MEASURE, outcome: "fail" });
-function seed(store, consumer, failing, at) {
+function seed2(store, consumer, failing, at) {
   store.views.clear(consumer);
   const covered = failingOf(
     store,
@@ -6173,7 +6210,7 @@ function registerCode(source, consumer, at) {
         readRecount(store, worktreeId)?.at ?? 0,
         readCrapRecount(store.meta, worktreeId)?.at ?? 0
       );
-      seed(store, consumer, failing, Math.max(at, recounted));
+      seed2(store, consumer, failing, Math.max(at, recounted));
       const { done, total } = countingOf(store, worktreeId);
       const counted = readCursor(store.meta, worktreeId) !== null;
       if (!counted) awaitFirstCount(store.meta, worktreeId);
@@ -6228,7 +6265,7 @@ function codeStep(store, consumer, { at, since, limit }, write2) {
   const recounted = recount !== null && recount.at > seededAt;
   const crapRecounted = crap !== null && crap.at > seededAt;
   if (recounted || crapRecounted) {
-    if (write2) seed(store, consumer, failing, Math.max(at, recount?.at ?? 0, crap?.at ?? 0));
+    if (write2) seed2(store, consumer, failing, Math.max(at, recount?.at ?? 0, crap?.at ?? 0));
     const crapOver = () => failingOf(store, worktreeId, ["crap"]).length;
     const news = {
       v: 1,
@@ -7263,7 +7300,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.308";
+  if (true) return "0.1.309";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
