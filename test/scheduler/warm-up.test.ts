@@ -4,7 +4,17 @@ import { storePaths } from "../../src/core/store/index.js";
 import { readRuns } from "../e2e/support.js";
 import type { Harness } from "./helpers.js";
 import { SLOW } from "./helpers.js";
-import { BUILD, MANY, QUIET, READS, snapshot, VITEST, warmUpRepo } from "./warm-up-repo.js";
+import {
+  BUILD,
+  MANY,
+  QUIET,
+  READS,
+  SCRATCH,
+  SEED,
+  snapshot,
+  VITEST,
+  warmUpRepo,
+} from "./warm-up-repo.js";
 
 async function fullSuite(h: Harness, observeIgnored: boolean) {
   const record = await h.scheduler.requestFullSuite({ force: true, observeIgnored });
@@ -57,6 +67,23 @@ describe("a warm-up reports the ignored paths each file read (task 001-307)", SL
     // A later checkpoint without the flag leaves the warm-up's record as it was.
     await fullSuite(h, false);
     expect(readIgnoredReads(h.store, h.worktreeId)).toEqual(stored);
+  });
+
+  it("names on each file's first run only the reads its record does not key (016 D4)", async () => {
+    const { h } = await warmUpRepo({ fresh: true });
+    await fullSuite(h, true);
+    const stored = readIgnoredReads(h.store, h.worktreeId);
+    for (const pool of ["forks", "threads"]) {
+      // Each Vitest file's record keys its gitignored read of BUILD, so the warm-up names none.
+      expect(stored?.files[`${pool}\0${VITEST}`], pool).toEqual({ paths: [], more: 0 });
+      const closure = h.store.testFiles.get({ project: pool, path: VITEST })?.closure.paths;
+      expect(closure, pool).toContain(BUILD);
+      // Row 005-85, today's behaviour: a read below a directory the file made is its scratch,
+      // which no key holds, and the warm-up names it as a gitignored read.
+      expect(stored?.files[`${pool}\0${SCRATCH}`], pool).toEqual({ paths: [SEED], more: 0 });
+    }
+    // node:test keys what a run loads, not what it reads: still named.
+    expect(stored?.files[`nt\0${READS}`]).toEqual({ paths: [BUILD], more: 0 });
   });
 
   it("names no file whose runner could not observe it (observe.runtimeInputs off)", async () => {
