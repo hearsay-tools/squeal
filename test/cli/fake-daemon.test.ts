@@ -3,7 +3,7 @@ import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
+import { clientGone, closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 
 // Row 011-220: a client that resets the connection before the stand-in answers, as a probe
 // that timed out does, leaves no unhandled error behind.
@@ -37,5 +37,12 @@ describe("the CLI tests' stand-in daemon", () => {
     } finally {
       process.off("uncaughtException", onError);
     }
+  });
+
+  it("throws any other socket error, so it fails the test that met it (review 0.1.322 S1)", () => {
+    const error = (code: string) => Object.assign(new Error(`read ${code}`), { code });
+    expect(() => clientGone(error("ECONNRESET"))).not.toThrow();
+    expect(() => clientGone(error("EPIPE"))).not.toThrow();
+    expect(() => clientGone(error("EIO"))).toThrow("read EIO");
   });
 });
