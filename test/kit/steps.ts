@@ -31,6 +31,10 @@ export interface Stage {
   readonly write: (name: string, module: Written) => void;
   /** The closure this worktree's keys assemble for the test file (`OpenWorktree.keyed`). */
   readonly keyed: (ref: TestFileRef) => Promise<readonly string[]>;
+  /** The files the core keys the project's environment with (`OpenWorktree.environmentFiles`). */
+  readonly environmentFiles: (project: string) => readonly string[];
+  /** Whether the core's stored direct marks make the test file a direct importer of the path (`OpenWorktree.marked`). */
+  readonly marked: (ref: TestFileRef, path: string) => boolean;
   /** Runs by `run` and records what it observed, as the core does (`OpenWorktree.record`). */
   readonly record: (
     files: readonly TestFileRef[],
@@ -196,6 +200,17 @@ async function reach(stage: Stage, seen: Seen, name: string): Promise<[boolean, 
   ];
 }
 
+/** Whether `environment`, or the core's files for its project, lists `path`. */
+function lists(
+  stage: Stage,
+  environment: { project: string; files: readonly string[] },
+  path: string,
+) {
+  return (
+    environment.files.includes(path) || stage.environmentFiles(environment.project).includes(path)
+  );
+}
+
 /**
  * Hands the edit of `edited` to the adapter: a path in the worktree as a
  * revision does, `invalidate` and `affected`; one outside it as a quiet
@@ -216,7 +231,7 @@ async function hand(stage: Stage, edited: string, added: boolean, last: Last): P
     edited,
     affected,
     recreated: moved ? (result?.recreatedProjects ?? []) : [],
-    keyed: environments.filter((e) => e.files.includes(edited)).map((e) => e.project),
+    keyed: environments.filter((e) => lists(stage, e, edited)).map((e) => e.project),
     last,
   };
 }
@@ -238,26 +253,28 @@ async function edit(stage: Stage, at: number, step: Extract<Step, { edit: string
     stage.say(reached, `step ${at} edit ${edited}: reaches ${name} by ${how}`);
   }
   for (const name of step.direct ?? []) {
-    const path = stage.ref(name).path;
-    const by = seen.affected.direct.some((f) => f.path === path)
+    const ref = stage.ref(name);
+    const by = seen.affected.direct.some((f) => f.path === ref.path)
       ? "direct"
-      : seen.affected.transitive.some((f) => f.path === path)
+      : seen.affected.transitive.some((f) => f.path === ref.path)
         ? "transitive"
         : "none";
+    // Spec 016 D4: the core keeps what a process the file started imported as its direct marks.
+    const marked = stage.marked(ref, edited);
     stage.say(
-      by === "direct",
-      `step ${at} direct: ${edited} puts ${name} in direct (affected=${by})`,
+      by === "direct" || marked,
+      `step ${at} direct: ${edited} puts ${name} in direct (affected=${by}, marked=${marked})`,
     );
   }
 }
 
-/** Whether `name`'s closure holds `path`: the adapter's, the keyed one; and whether an environment lists it. */
+/** Whether `name`'s closure holds `path`: the adapter's, the keyed one; and whether an environment lists it, the core's files too. */
 async function closures(stage: Stage, name: string, path: string) {
   const ref = stage.ref(name);
   return {
     held: (await stage.adapter.closure(ref)).paths.includes(path),
     keyed: (await stage.keyed(ref)).includes(path),
-    listed: (await stage.adapter.environment()).some((e) => e.files.includes(path)),
+    listed: (await stage.adapter.environment()).some((e) => lists(stage, e, path)),
   };
 }
 

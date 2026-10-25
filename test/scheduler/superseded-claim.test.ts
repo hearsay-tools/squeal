@@ -60,7 +60,7 @@ const NODE_TEST: Subject = {
 };
 
 /** The daemon's node:test runners of `nt`, written first: the adapter lists its files when created. */
-function nodeTestRunners(root: string, store: Store): RunnerAdapter[] {
+function nodeTestRunners(root: string): RunnerAdapter[] {
   mkdirSync(join(root, "nt/src"), { recursive: true });
   mkdirSync(join(root, "nt/test"), { recursive: true });
   writeFileSync(join(root, NODE_TEST.source), NODE_TEST.A);
@@ -75,7 +75,7 @@ function nodeTestRunners(root: string, store: Store): RunnerAdapter[] {
     ].join("\n"),
   );
   const tempDir = join(root, "..");
-  return createNodeTestRunners([NT], { root, store, tempDir, tierSize: () => 4, note: () => {} });
+  return createNodeTestRunners([NT], { root, tempDir, tierSize: () => 4, note: () => {} });
 }
 
 /** The key the subject's file has now, by its row (`Harness.keyOf` reads Vitest's project only). */
@@ -96,7 +96,7 @@ async function atA(
 ): Promise<{ h: Harness; store: Store; keyB: CheckKey | null }> {
   const { main, commonDir } = createRepo();
   const store = openRepoStore(commonDir);
-  const adapters = subject === NODE_TEST ? nodeTestRunners(main, store) : [];
+  const adapters = subject === NODE_TEST ? nodeTestRunners(main) : [];
   const h = await openHarness(main, store, commonDir, {
     tierSize: 4,
     backlogTierSize: 8,

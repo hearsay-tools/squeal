@@ -643,39 +643,3 @@ export interface RunnerAdapter {
 
   close(): Promise<void>;
 }
-
-/**
- * Spec 003 D3 as amended: the observed-only paths of one node:test project,
- * a map from test path to paths, shared by every worktree of the repository.
- */
-export function nodeTestObservedMetaKey(project: ProjectName): string {
-  return `nodeTest.observed.${project}`;
-}
-
-/**
- * Review wave 2, B1: the paths one node:test project's preloads loaded at
- * run time outside their static closure, a sorted array, shared like
- * {@link nodeTestObservedMetaKey}. They are environment inputs of the project.
- */
-export function nodeTestObservedPreloadsMetaKey(project: ProjectName): string {
-  return `nodeTest.observedPreloads.${project}`;
-}
-
-/**
- * Spec 007 D4: the observed-only paths of one pytest project, a map from test
- * path to paths, shared by every worktree of the repository as
- * {@link nodeTestObservedMetaKey} is (003 D3).
- */
-export function pytestObservedMetaKey(project: ProjectName): string {
-  return `pytest.observed.${project}`;
-}
-
-/**
- * 007 review wave 2, B5: the paths one pytest project's start-up plugins
- * (`pytest11`, `-p`) imported at run time outside their static closure, a
- * sorted array, shared like {@link pytestObservedMetaKey}. They are
- * environment inputs of the project, as {@link nodeTestObservedPreloadsMetaKey}'s are.
- */
-export function pytestObservedSessionMetaKey(project: ProjectName): string {
-  return `pytest.observedSession.${project}`;
-}

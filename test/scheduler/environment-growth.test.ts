@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createDelivery } from "../../src/core/delivery/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
@@ -98,10 +97,7 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
       env: { COUNTER_DIR: counter },
       include: ["test/*.test.mjs"],
     };
-    const adapter = await createNodeTestAdapter(project, {
-      root: repo.main,
-      observed: observedStore(store, project.name),
-    });
+    const adapter = await createNodeTestAdapter(project, { root: repo.main });
     const runs: TestFileRef[][] = [];
     // What a wait at the latest revision is told while each run starts.
     const named: unknown[] = [];
