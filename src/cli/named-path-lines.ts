@@ -13,7 +13,7 @@ import type { SelectionResult } from "./verdict.js";
 export function namedPathLines(selection: NamedSelection): string[] {
   return (selection.paths ?? []).flatMap((p) => {
     if (p.selects === 0 || p.kind === "test-file") return [];
-    const readers = `it selects the ${plural(p.selects, "test file")} that read it`;
+    const readers = `it selects the ${plural(p.selects, "test file")} that ${p.selects === 1 ? "reads" : "read"} it`;
     return p.kind === "not-run"
       ? [`Not run by Squeal: ${p.path} is ${NOT_LISTED}; ${readers}, whose verdict is not its own`]
       : [`Not a listed test file: ${p.path}; ${readers}`];
