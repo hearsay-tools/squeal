@@ -103,6 +103,8 @@ test/scheduler/slow-node-test
 test/scheduler/preload-heal
 test/scheduler/preload-refresh
 test/scheduler/observed-growth
+test/scheduler/observed-direct
+test/scheduler/ignored-observed
 test/scheduler/backlog-wall-latency
 test/scheduler/environment-growth
 test/scheduler/capacity-pool

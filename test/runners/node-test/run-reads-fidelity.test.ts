@@ -86,7 +86,9 @@ describe("a node:test warm-up's recorder a test cannot tell is there (task 001-3
     expect(reads?.[0]?.paths).toEqual(
       expect.arrayContaining(["data/child.txt", "scripts/child.cjs"]),
     );
-    expect(observed).toEqual([{ testFile, paths: ["test/a.test.mjs"], preloadPaths: [] }]);
+    expect(observed).toEqual([
+      { testFile, paths: ["test/a.test.mjs"], preloadPaths: [], direct: [], written: [] },
+    ]);
   });
 
   it("names the recorder in a failure with its signature while it is in NODE_OPTIONS", {

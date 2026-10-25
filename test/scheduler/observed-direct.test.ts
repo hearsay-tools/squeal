@@ -1,5 +1,8 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/index.js";
+import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
@@ -8,8 +11,9 @@ import {
   catchUpSide,
 } from "./catch-up-fixture.js";
 import { editAndRun, pathsOf } from "./edit-cut-fixture.js";
-import { SLOW } from "./helpers.js";
+import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { type Observing, observing } from "./one-write-path-fixture.js";
+import { NT, open as openNodeTest } from "./preload-worktrees.js";
 
 /*
  * Spec 016 D4, goal 6 (row 007-56): an edit of a path a process the test
@@ -155,5 +159,50 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     // R by the fallback, and the K = 1 shortest marked file; the other two are catch-up.
     expect(cut.editPaths).toEqual(pathsOf([R, marked[0] as CatchUpFile]));
     expect(cut.catchUpPaths).toEqual(pathsOf(marked.slice(1)));
+  });
+
+  it("stores a node:test child's import of a closure path as a mark, beside no observed path", async () => {
+    // The test file reaches lib/b.mjs through lib/a.mjs; the child it spawns imports b directly.
+    const repo = createRepo("basic");
+    const files: Record<string, string> = {
+      "nt/package.json": `${JSON.stringify({ name: "nt", private: true, type: "module" })}\n`,
+      "nt/lib/a.mjs": `export { b } from "./b.mjs";\n`,
+      "nt/lib/b.mjs": "export const b = 1;\n",
+      "nt/bin/child.mjs": `import { b } from "../lib/b.mjs";\nprocess.stdout.write(String(b));\n`,
+      "nt/test/t.test.mjs": [
+        `import assert from "node:assert/strict";`,
+        `import { execFileSync } from "node:child_process";`,
+        `import { test } from "node:test";`,
+        `import { b } from "../lib/a.mjs";`,
+        `test("t", () => assert.equal(execFileSync(process.execPath, ["bin/child.mjs"], { encoding: "utf8" }), String(b)));`,
+        "",
+      ].join("\n"),
+    };
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(repo.main, path)), { recursive: true });
+      writeFileSync(join(repo.main, path), text);
+    }
+    git(repo.main, ["add", "-A"]);
+    git(repo.main, ["commit", "-qm", "nt"]);
+    const store = openRepoStore(repo.commonDir);
+    const project = { ...NT, slow: true };
+    const side = await openNodeTest(
+      repo.main,
+      store,
+      repo.commonDir,
+      undefined,
+      project,
+      undefined,
+      RUN_MISSING,
+    );
+    await side.scheduler.start();
+    await side.scheduler.idle();
+    expect(JSON.parse(store.meta.get(observedDirectMetaKey(NT.name)) ?? "{}")).toEqual({
+      "nt/test/t.test.mjs": ["nt/bin/child.mjs", "nt/lib/b.mjs"],
+    });
+    // b is in the static closure: only the child's entry grew the observed set.
+    expect(JSON.parse(store.meta.get(observedMetaKey(NT.name)) ?? "{}")).toEqual({
+      "nt/test/t.test.mjs": ["nt/bin/child.mjs"],
+    });
   });
 });
