@@ -207,8 +207,11 @@ for (const harness of ["codex", "claude"] as const)
     });
 
     it("alone, with test files without checks or unlisted ones beside the proving line, stays a miss", () => {
+      // Before row 011-205 the proving line stood beside them; from it they stand alone.
       const files = `${NEWS_LINE}. Test files without checks: 1 pending`;
       expect(alone(NEWS(3, { counts: files }))).toEqual(MISSED);
+      expect(alone(NEWS(3, { counts: "test files without checks: 1 pending" }))).toEqual(MISSED);
+      expect(alone(NEWS(3, { counts: "test files without checks: 1 unknown" }))).toEqual(MISSED);
       const unlisted = `${NEWS_LINE}. The daemon has not listed this worktree's test files yet; these counts are not complete`;
       expect(alone(NEWS(3, { counts: unlisted }))).toEqual(MISSED);
     });
