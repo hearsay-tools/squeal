@@ -110,6 +110,9 @@ export async function waited(cwd: string, paths: readonly string[], timeoutMs = 
     settleMs: 0,
     now: () => NOW,
     sync: (): DaemonSync => ({ current: synced, stop: () => {} }),
+    // Row 011-207's ask is `status-wait-ask.test.ts`'s: these rows are a file's that the wait
+    // asks nothing of, as after its one run at the key ended, or a source path's selection.
+    ask: async () => [],
   });
   if (wait.outcome === "unavailable") throw new Error("unavailable");
   return { wait, lines: namedText(wait, NOW).trimEnd().split("\n") };
