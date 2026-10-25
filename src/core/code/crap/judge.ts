@@ -66,8 +66,8 @@ export const checkOf = (
  * edit changed since, at the edit's revision (row 015-40). A recount's
  * judgement marks none, as the complexity pass's does not. An early
  * judgement (row 015-57) gives only a `fail` that is `pass` now, and not
- * one that only a change of `crap.threshold` passes: whether the coverage
- * passed it too waits for every record.
+ * one that only a change of `crap.threshold` passes, in a recount too:
+ * whether the coverage passed it as well waits for every record.
  */
 export function judgeFiles(
   ctx: JudgeContext,
@@ -109,9 +109,10 @@ function judgeMeasure(
   const { worktreeId, revision, at } = ctx;
   const was = ctx.prior.get(`${m.measure}\0${fn.id}`);
   const { outcome } = m;
-  const kind = quiet === true && was !== undefined ? null : kindOf(was, outcome, m.value);
-  const passed = was?.outcome === "fail" && outcome === "pass" && (quiet === true || kind !== null);
-  if (early === true && !passed) return;
+  const crossing = kindOf(was, outcome, m.value);
+  // Review 0.1.324 B2: early, the threshold it failed at must pass it too; `quiet` only hides the crossing.
+  if (early === true && crossing !== "fail-to-pass") return;
+  const kind = quiet === true && was !== undefined ? null : crossing;
   if (edit !== undefined && was !== undefined && edit.revision > was.countedAt) {
     out.edited.push({ check, measure: m.measure, revision: edit.revision, at });
   }

@@ -85,8 +85,8 @@ export interface FunctionCoverage {
  * order; `unread` when a record cannot vouch for the bytes it ran of this
  * source, so it cannot show what it ran here. A loader whose record holds
  * no entry for the source ran none of it. `inHand` (row 015-57): such a
- * record is left out instead, since the rest still give at most the
- * coverage every record would.
+ * record is left out instead, and the coverage is `joinCoverage`'s bound,
+ * at most what every record would give (review 0.1.324 B1).
  */
 export function coverageOf(
   file: { readonly path: RelativePath; readonly blob: FileHash },
@@ -111,7 +111,7 @@ export function coverageOf(
     sources.push(source);
     paths.push(loader.testFile.path);
   }
-  return joinCoverage(functions, sources).map((j) => ({
+  return joinCoverage(functions, sources, inHand).map((j) => ({
     lines: j.lines,
     covered: j.covered,
     coverage: j.coverage,
