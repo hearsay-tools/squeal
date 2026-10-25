@@ -33,3 +33,14 @@ Use /worker, resumed (worker 34afe933). Shape: repair. On your branch `cez/34afe
 - **Lead.** `functionsOf` in `crap/seed.ts:103-104` matches the seed's original names and occurrences; follow the moves the complexity pass recognized (same body hash, D2) for files the seed has not reached. Do not seed every current function after each edit: that hides real new fails.
 - **Owns.** As in W1: `src/core/code/crap/**`, `src/core/code/pass/index.ts`, `src/core/code/store/**`, and their tests. Ask before anything else. 015-49's worker edits `pass/too-big.ts` and the failed-count write in `pass/**` by agreement; stay out of those. By agreement (2026-10-25, request `a49357d0`, option a): `PassReport` in `pass/types.ts` gains `moves` and `removed`, and `report()` in `pass/pass.ts` returns them (2 lines), in their own commit before the seed commit.
 - **Done when.** Red first, through `createCodePass`: a same-file rename and a cross-file move before either source is seeded stay quiet; the same after seeding stays quiet; an added function still fails first-seen. Seed budget, immediate result and record invalidation, the 16-file walk batches and the one `Pace` stay. Decision 3 in `tasks/015-47/notes.md` is rewritten. Lint, typecheck and `squeal run --all --wait` pass; paste the output. No bundles, no version.
+
+## 015-50 round 2: re-review of candidate 0.1.311 after R10
+
+Use /reviewer, resumed (reviewer 48c4dcd1). Candidate `cand/0.1.311`, now pinned to the SHA named in the message, rebuilt on a newer `origin/main` (docs only in between). The first round's candidate stays as `cand/0.1.311-r1` (ce2e5944c). `git range-diff de18c4d7a..ce2e5944c origin/main..<SHA>` shows the five reviewed commits unchanged, three R10 commits added (the agreed `PassReport.moves` and `removed`, the seed following them, notes) and the build commit rebuilt. Write `reviews/0.1.311-r2.md` and commit it on your branch.
+
+Check, with proof where you can:
+1. **B1.** Your round-1 reproduction, through `createCodePass`, is now quiet; a cross-file move before seeding and the same after seeding are quiet; a function an edit adds, or removes and adds again under its name, is still a first-seen fail. The seed does not seed every current function after an edit.
+2. **No regressions from R10.** Result and record notices still revoke the map and decoded records at once; a recount still drops the seed; the seed budget, the 16-file walk batches and the one `Pace` stay. `pass/types.ts` and `pass/pass.ts` change only by the agreed additive fields and 2 lines.
+3. Records, result keys, `COVERAGE_PROVIDER_VERSION` and complexity-only texts stay byte-identical to main.
+
+Run the independent full suite under the host lock once more, and paste the result. Only a proven break blocks. Verdict: PASS or FAIL. This is the last round: a second FAIL goes to the human.
