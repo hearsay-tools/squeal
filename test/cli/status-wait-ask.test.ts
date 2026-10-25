@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 import { type AskNamed, askNamedRuns } from "../../src/cli/status-wait-ask.js";
 import { namedWaitCommand } from "../../src/cli/status-wait-paths.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
-import { endRetries, readRetries } from "../../src/core/retry/index.js";
-import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
+import {
+  askNoResultRun,
+  endRetries,
+  RETRIES_META_KEY,
+  readRetries,
+} from "../../src/core/retry/index.js";
+import type { CheckKey, EpochMs, RevisionNumber, Store } from "../../src/core/types/index.js";
 import { daemon, inheritedStale, KEY, pass, row, take } from "./status-wait-ask-fixture.js";
 import { A, B, NOW, ref, repoWith } from "./status-wait-fixture.js";
 import { capture } from "./status-wait-focus-fixture.js";
@@ -12,7 +17,7 @@ import { capture } from "./status-wait-focus-fixture.js";
  * Row 011-207 (gh-82; 011 C15 and 005 D2 as amended 2026-10-25): a named
  * wait asks one run of each test file named by its own path that is stale
  * or unknown with nothing queued, no other worktree's claim of its key and
- * no request kept at its key, as `squeal retry` with no reason does, and
+ * no request ever stored at its key, as `squeal retry` with no reason does, and
  * holds for it as pending. A source path's selection asks nothing.
  */
 
@@ -226,5 +231,43 @@ describe("a named wait asks one run of a named file nothing queues (row 011-207)
     const err = io.err.join("");
     expect(err).toContain(`Run asked: ${A} was stale with nothing queued`);
     expect(err).toContain(`Run not asked: ${B}: the store stayed busy`);
+  });
+
+  it("a request stored at the key that the log no longer keeps: the wait asks nothing (review 0.1.322 B2)", async () => {
+    const { repo, store } = repoWith([]);
+    inheritedStale(store, repo.mainId);
+    const stored = { testFile: ref(A), key: KEY, session: "s0", reason: "environment" as const };
+    askNoResultRun(store, { ...stored, at: NOW as EpochMs, worktreeId: repo.mainId });
+    // 1,024 later requests, or an older writer, dropped it from the log.
+    store.meta.set(RETRIES_META_KEY, "[]");
+    const d = daemon([]);
+    const io = capture(repo.main);
+
+    const code = await namedWaitCommand([A], { json: true }, io, d.options);
+
+    expect(code).toBe(3);
+    expect(d.asks).toEqual([]);
+    expect(readRetries(store)).toEqual([]);
+    expect(JSON.parse(io.out.join("")).selection).toMatchObject({ outcome: "settled" });
+    expect(JSON.parse(io.out.join("")).selection.asked).toBeUndefined();
+  });
+
+  it("a request dropped from the log while the wait holds it reads as pending, never as ended (review 0.1.322 B2)", async () => {
+    const { repo, store } = repoWith([]);
+    inheritedStale(store, repo.mainId);
+    // An older writer keeps the newest 1,024 requests, a pending one or not.
+    const d = daemon([() => store.meta.set(RETRIES_META_KEY, "[]")], 300);
+    const io = capture(repo.main);
+
+    const code = await namedWaitCommand([A], { json: true }, io, d.options);
+
+    expect(code).toBe(3);
+    expect(JSON.parse(io.out.join("")).selection).toMatchObject({
+      outcome: "timeout",
+      asked: [{ project: "", path: A, pending: true }],
+    });
+    expect(io.err.join("")).toContain(
+      "; the run is pending: the daemon has not taken the request yet.\n",
+    );
   });
 });
