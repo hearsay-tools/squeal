@@ -199,6 +199,31 @@ describe("listings", () => {
     expect(listings.hashOf("a")).toBe(a);
   });
 
+  it("hash a directory the watcher sees no file in as its entry names on disk (row 016-23)", () => {
+    const roots = ["a", "b", "c"].map(() => mkdtempSync(join(tmpdir(), "squeal-listings-")));
+    try {
+      // Each root's `ignored/list` holds names no tracked file gives: a git-ignored directory.
+      const [one, two, same] = roots.map((root, i) => {
+        mkdirSync(join(root, "ignored/list/sub"), { recursive: true });
+        writeFileSync(join(root, "ignored/list/a.json"), "1\n");
+        if (i === 1) writeFileSync(join(root, "ignored/list/b.json"), "2\n");
+        return new Listings(() => ["src/x.ts"], root);
+      });
+      const hash = one?.hashOf("ignored/list");
+      expect(hash).not.toBeNull();
+      expect(two?.hashOf("ignored/list")).not.toBe(hash);
+      // The names, not the bytes, nor the worktree: another root with the same names keys alike.
+      writeFileSync(join(roots[2] as string, "ignored/list/a.json"), "changed\n");
+      expect(same?.hashOf("ignored/list")).toBe(hash);
+      // An empty or absent directory has none, as a tracked listing; a tracked one keys as before.
+      expect(one?.hashOf("ignored/list/sub")).toBeNull();
+      expect(one?.hashOf("missing")).toBeNull();
+      expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"]).hashOf("src"));
+    } finally {
+      for (const root of roots) rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("below a directory are its own and each nested directory's that holds a file (review wave 12d B5)", () => {
     const listings = new Listings(() => [
       "tree/a.txt",

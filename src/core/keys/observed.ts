@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { statSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { compare, isRecord } from "../fs/index.js";
 import type {
@@ -211,20 +211,37 @@ function merged(raw: string | null, testFile: TestFileRef, added: readonly Relat
 /**
  * The entry names of every directory, from the files the watcher tracks: a
  * directory's entries are the names of its files and of its subdirectories
- * that hold a tracked file. Built on first use, then kept by `apply`.
+ * that hold a tracked file. Built on first use, then kept by `apply`. A
+ * directory the watcher sees no file in, a git-ignored one say, has the
+ * names on disk below `root` instead, read when its key is computed (row
+ * 016-23): no change the watcher reports moves them.
  */
 export class Listings {
   /** directory -> entry name -> tracked files below it. */
   #entries: Map<RelativePath, Map<string, number>> | null = null;
 
-  constructor(private readonly files: () => Iterable<RelativePath>) {}
+  constructor(
+    private readonly files: () => Iterable<RelativePath>,
+    private readonly root?: AbsolutePath,
+  ) {}
 
   /** The hash of `directory`'s sorted entry names; `null` when it has none. */
   hashOf(directory: RelativePath): FileHash | null {
     const names = this.#index().get(directory);
-    if (names === undefined || names.size === 0) return null;
-    const sorted = [...names.keys()].sort(compare);
-    return createHash("sha1").update(sorted.join("\0")).digest("hex");
+    const sorted =
+      names !== undefined && names.size > 0 ? [...names.keys()] : this.#onDisk(directory);
+    if (sorted.length === 0) return null;
+    return createHash("sha1").update(sorted.sort(compare).join("\0")).digest("hex");
+  }
+
+  /** The names `directory` holds on disk; none without a root, or when it cannot be read. */
+  #onDisk(directory: RelativePath): string[] {
+    if (this.root === undefined) return [];
+    try {
+      return readdirSync(join(this.root, directory));
+    } catch {
+      return [];
+    }
   }
 
   /**
