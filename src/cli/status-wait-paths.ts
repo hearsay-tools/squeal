@@ -41,6 +41,7 @@ import {
   heldAsFiles,
   heldAsVerdict,
   takenSince,
+  waitAsked,
 } from "./status-wait-ask.js";
 import {
   anyFailed,
@@ -372,7 +373,7 @@ export async function waitForNamed(
         const at = Math.min(options.now(), deadline - 1) as EpochMs;
         const standings = readNamedFiles(store, id, root, selection.files, result.daemon, at);
         const files = heldAsFiles(standings, untaken);
-        const ends = askedEnds(store, id, asked ?? [], true);
+        const ends = waitAsked(askedEnds(store, id, asked ?? [], true));
         const lapse = watch.lapse();
         return {
           outcome,
@@ -386,9 +387,7 @@ export async function waitForNamed(
           ...(lapse === null ? {} : { lapse }),
           ...(hold === null ? {} : { hold }),
           ...(focus === undefined ? {} : { focus }),
-          ...(ends.some((e) => e.answer === "queued" || e.answer === "busy")
-            ? { asked: ends }
-            : {}),
+          ...(ends === undefined ? {} : { asked: ends }),
         };
       });
       if (read !== null && "usage" in read) throw new CheckUsageError(read.usage);
