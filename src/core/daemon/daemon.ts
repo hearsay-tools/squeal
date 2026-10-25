@@ -212,7 +212,7 @@ class Daemon {
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
   /** Row 011-226: stops the full check it claimed once ready, and gives its claim back. */
-  #stopFullCheck: () => void = () => {};
+  #stopFullCheck: () => Promise<void> = async () => {};
   #lastActive: EpochMs;
   /** Last edit, tier, wait or request; registered consumers are no use (task 001-415). */
   #lastUsed: EpochMs;

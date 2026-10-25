@@ -1,13 +1,16 @@
 import { spawn } from "node:child_process";
-import { statSync } from "node:fs";
 import { setPriority } from "node:os";
+import { setTimeout as sleep } from "node:timers/promises";
 import {
+  BUSY_SLICE_MS,
+  busyBackoffMs,
+  isBusy,
   isCorruption,
   META_FULL_CHECK,
   markStore,
-  readStoreMark,
   type StoreMark,
   storePaths,
+  withBusySliceSync,
 } from "../store/index.js";
 import type { AbsolutePath, EpochMs, Store } from "../types/index.js";
 import { TEST_NICE } from "./low-priority.js";
@@ -145,49 +148,126 @@ export interface FullCheckContext {
 }
 
 /**
+ * How long a claim given back may wait for a busy store (review 0.1.329, B1):
+ * the start's own bound, `DAEMON_START_BUSY_TIMEOUT_MS`. Past it the claim
+ * stays, logged, and no full check runs on the store that day.
+ */
+export const RELEASE_WITHIN_MS = 120_000;
+
+/**
  * Row 011-226, once the daemon serves: takes the day's claim and, holding
  * it, runs the full check off the main thread. A fault marks the store
  * (`markStore`) and leaves a note; every daemon on the store exits at its
  * next heartbeat (`storeCondemned`), and the next start moves the store
  * aside. A check that could not run gives its claim back, and so does one
  * the returned function stops before it ended, so the next start runs it.
+ *
+ * Review 0.1.329, B1 and S1: the claim and its return are C8's sliced
+ * writes, each try waiting at most `BUSY_SLICE_MS` for a busy store and
+ * tried again after `busyBackoffMs`, so the main thread is never held
+ * longer. The returned function resolves once the claim is given back, or
+ * after `RELEASE_WITHIN_MS`: the shutdown awaits it before the store closes.
  */
-export function startFullCheck(context: FullCheckContext): () => void {
-  const { store, commonDir, now, log } = context;
-  let claim: Claim | null;
-  try {
-    claim = claimFullCheck(store, now());
-  } catch (error) {
-    log(`full integrity check not claimed: ${String(error)}`);
-    return () => {};
+export function startFullCheck(context: FullCheckContext): () => Promise<void> {
+  const owner = new FullCheckOwner(context);
+  return () => owner.stop();
+}
+
+class FullCheckOwner {
+  readonly #context: FullCheckContext;
+  #stopped = false;
+  #claim: Claim | null = null;
+  #check: FullCheck | null = null;
+  /** The check ended with an answer (passed, or a fault marked): its claim stays. */
+  #answered = false;
+  #release: Promise<void> | null = null;
+  readonly #run: Promise<void>;
+
+  constructor(context: FullCheckContext) {
+    this.#context = context;
+    this.#run = this.#start().catch((error: unknown) =>
+      context.log(`full integrity check failed: ${String(error)}`),
+    );
   }
-  if (claim === null) return () => {};
-  const taken = claim;
-  const release = () => {
+
+  async stop(): Promise<void> {
+    this.#stopped = true;
+    this.#check?.stop();
+    await this.#run;
+    await this.#giveBack();
+  }
+
+  async #start(): Promise<void> {
+    const { store, commonDir, now, log } = this.#context;
+    let claim: Claim | null | undefined;
     try {
-      releaseClaim(store, taken);
+      claim = await sliced(
+        () => claimFullCheck(store, now()),
+        () => this.#stopped,
+      );
     } catch (error) {
-      log(`full integrity check claim not given back: ${String(error)}`);
+      log(`full integrity check not claimed: ${String(error)}`);
+      return;
     }
-  };
-  const check = (context.run ?? runFullCheck)(storePaths(commonDir).database);
-  let ended = false;
-  void check.done.then((outcome) => {
-    if (ended) return;
-    ended = true;
-    if ("ok" in outcome) log("full integrity check: ok");
-    else if ("problem" in outcome) failed(context, { at: now(), problem: outcome.problem });
-    else {
-      log(`full integrity check did not run: ${outcome.unrun}`);
-      release();
+    if (claim === undefined || claim === null) return;
+    this.#claim = claim;
+    // Stopped while the claim was taken: the stop gives it back.
+    if (this.#stopped) return;
+    this.#check = (this.#context.run ?? runFullCheck)(storePaths(commonDir).database);
+    const outcome = await this.#check.done;
+    if ("ok" in outcome) {
+      this.#answered = true;
+      log("full integrity check: ok");
+    } else if ("problem" in outcome) {
+      this.#answered = true;
+      failed(this.#context, { at: now(), problem: outcome.problem });
+    } else {
+      log(`full integrity check ${this.#stopped ? "stopped" : `did not run: ${outcome.unrun}`}`);
+      await this.#giveBack();
     }
-  });
-  return () => {
-    if (ended) return;
-    ended = true;
-    check.stop();
-    release();
-  };
+  }
+
+  /** Gives the claim back once, unless the check answered; later calls wait for the same return. */
+  #giveBack(): Promise<void> {
+    const claim = this.#claim;
+    if (claim === null || this.#answered) return Promise.resolve();
+    this.#release ??= (async () => {
+      const { store, log } = this.#context;
+      const deadline = performance.now() + RELEASE_WITHIN_MS;
+      try {
+        const done = await sliced(
+          () => releaseClaim(store, claim),
+          () => performance.now() >= deadline,
+        );
+        if (done === undefined) {
+          log(
+            `full integrity check claim not given back: the store stayed busy for ${RELEASE_WITHIN_MS} ms`,
+          );
+        }
+      } catch (error) {
+        log(`full integrity check claim not given back: ${String(error)}`);
+      }
+    })();
+    return this.#release;
+  }
+}
+
+/**
+ * Spec 011 C8's busy writes, for one write: each try waits at most
+ * `BUSY_SLICE_MS` for a busy store, and the next follows `busyBackoffMs`
+ * later, so the event loop runs between them. `undefined` once `giveUp`
+ * says so before a try; any error but busy is thrown.
+ */
+async function sliced<T>(write: () => T, giveUp: () => boolean): Promise<T | undefined> {
+  for (let attempt = 0; ; attempt++) {
+    if (giveUp()) return undefined;
+    try {
+      return withBusySliceSync(BUSY_SLICE_MS, write);
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+    }
+    await sleep(busyBackoffMs(attempt));
+  }
 }
 
 function failed(context: FullCheckContext, mark: StoreMark): void {
@@ -201,35 +281,4 @@ function failed(context: FullCheckContext, mark: StoreMark): void {
       "this store stops at its next heartbeat, and the next start moves the store aside and " +
       "starts a fresh one, so the stored results are lost",
   );
-}
-
-/** The store file a daemon opened, by device and inode. */
-export interface StoreFile {
-  readonly dev: number;
-  readonly ino: number;
-}
-
-/** The file at the store's path now; `null` when there is none. */
-export function storeFileOf(commonDir: AbsolutePath): StoreFile | null {
-  const stat = statSync(storePaths(commonDir).database, { throwIfNoEntry: false });
-  return stat === undefined ? null : { dev: stat.dev, ino: stat.ino };
-}
-
-/**
- * Why a daemon on this store stops at its heartbeat, or `null`: a failed
- * full check marked it, or a start moved the file it opened (`opened`)
- * aside, which takes the mark with it (row 011-226).
- */
-export function storeCondemned(commonDir: AbsolutePath, opened?: StoreFile | null): string | null {
-  const mark = readStoreMark(commonDir);
-  if (mark !== null) {
-    return (
-      `daemon stopped: the full integrity check of the store found a fault (${mark.problem}); ` +
-      "the next start moves the store aside and starts a fresh one"
-    );
-  }
-  if (opened === undefined || opened === null) return null;
-  const now = storeFileOf(commonDir);
-  if (now !== null && now.dev === opened.dev && now.ino === opened.ino) return null;
-  return "daemon stopped: the store file it opened was moved aside or removed; the next start opens the store at its path";
 }

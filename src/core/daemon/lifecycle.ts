@@ -19,9 +19,9 @@ import type {
   Store,
   WorktreeId,
 } from "../types/index.js";
-import { type StoreFile, storeCondemned } from "./full-check.js";
 import { recordDaemonUsed } from "./last-use.js";
 import { SlicedWrites } from "./sliced-writes.js";
+import { type StoreFile, storeCondemned } from "./store-file.js";
 
 /** How often the daemon does its periodic work. Every field has a default. */
 export interface DaemonTimings {

@@ -13,7 +13,7 @@ import type {
   WorktreeId,
 } from "../types/index.js";
 import { liveDaemonRecorded, recordedDaemon } from "./ensure.js";
-import { type StoreFile, storeFileOf } from "./full-check.js";
+import { type StoreFile, storeFileOf } from "./store-file.js";
 import { acquireDaemonLock, awaitDaemonLock, type DaemonLock, type LockWaitEnd } from "./lock.js";
 import { VACANT_LOCK_WAIT_MS } from "./lock-wait.js";
 import { noteInNewerStore, writeNote } from "./notes.js";
