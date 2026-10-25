@@ -2,6 +2,7 @@ import { isRecord } from "../fs/index.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { readHeader } from "../state/index.js";
 import { withDeath } from "../status/died.js";
+import { withLate } from "../status/feed-late.js";
 import { readHolds } from "../status/holds.js";
 import { openRuns } from "../status/open-runs.js";
 import { HEARTBEAT_GRACE_INTERVALS } from "../status/snapshot.js";
@@ -81,19 +82,24 @@ export function readLiveHeader(
     ...header,
     ...(holds.length === 0 ? {} : { holds }),
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
-    // Row 011-34: so is a daemon stopping.
-    daemon: withStopping(
+    // Row 011-34: so is a daemon stopping. Row 011-200: and a live daemon's late change feed.
+    daemon: withLate(
       store,
       worktree,
-      withDeath(
+      withStopping(
         store,
         worktree,
-        asRested(
+        withDeath(
           store,
           worktree,
-          asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
-          now,
+          asRested(
+            store,
+            worktree,
+            asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+            now,
+          ),
         ),
+        now,
       ),
       now,
     ),

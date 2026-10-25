@@ -18,6 +18,7 @@ import {
 } from "./checks.js";
 import { codeStatusLines, coverageStatusLines } from "./code-status.js";
 import { configProblemsLine } from "./config-problems.js";
+import { lateLines } from "./feed-late.js";
 import { focusedLines } from "./focused.js";
 import { holdLines } from "./holds.js";
 import { statusRevisionText } from "./identity.js";
@@ -66,6 +67,8 @@ export function formatStatus(
     `Revision: ${statusRevisionText(result)}`,
     // Row 011-73 (C6 as amended 2026-10-21): a hold qualifies everything below it.
     ...holdLines(result.holds, command),
+    // Row 011-200 (C6): a late change feed qualifies everything below it, as a hold does.
+    ...lateLines(result.daemon, result.revision),
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
     `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}${notCurrentText(result)}`,
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),

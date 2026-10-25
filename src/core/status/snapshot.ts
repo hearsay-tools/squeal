@@ -35,6 +35,7 @@ import { knownFailureCounts } from "./checks.js";
 import { codeStatusOf } from "./code-status.js";
 import { configProblemsOf, withConfigProblems } from "./config-problems.js";
 import { withDeath } from "./died.js";
+import { withLate } from "./feed-late.js";
 import { readStatusFocused } from "./focused.js";
 import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
@@ -136,18 +137,24 @@ function snapshot(
   if (recovered !== null) notes.push(recovered);
 
   // Task 011-08: a held `squeal stop` is said as such. Row 011-34: so is a daemon stopping.
-  const daemon = withStopping(
+  // Row 011-200: and a live daemon's late change feed.
+  const daemon = withLate(
     store,
     worktree,
-    withDeath(
+    withStopping(
       store,
       worktree,
-      asStopped(
+      withDeath(
         store,
-        worktreeId,
         worktree,
-        liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+        asStopped(
+          store,
+          worktreeId,
+          worktree,
+          liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null),
+        ),
       ),
+      now,
     ),
     now,
   );

@@ -352,6 +352,14 @@ export interface StatusHeader {
  * Spec 001 D10: "Status reports \"no daemon running since <time>\" when the
  * heartbeat is older than its interval."
  */
+/**
+ * Row 011-200 (C6, C8): the last reconciliation pass the live daemon's change feed delivered
+ * started at `since`, more than twice the idle interval ago, and no revision was stored since.
+ */
+export interface FeedLate {
+  readonly since: EpochMs;
+}
+
 export type DaemonLiveness =
   | {
       readonly state: "alive";
@@ -360,6 +368,8 @@ export type DaemonLiveness =
       readonly stopping?: DaemonStopping;
       /** Row 011-140: it registered older than the handoff claim it ended. */
       readonly short?: DaemonShort;
+      /** Row 011-200: its change feed is late (`withLate`); edits since may not be seen yet. */
+      readonly late?: FeedLate;
     }
   | {
       readonly state: "down";
