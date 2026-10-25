@@ -7,14 +7,17 @@ import { RETIRED } from "./accept/retired.js";
 import { SLOW_INHERIT } from "./accept/slow.js";
 import { UNKNOWN_AFTER } from "./accept/unknown.js";
 import { VITEST_ENVIRONMENT } from "./adapter/environment.js";
+import { NODE_TEST_RUNS } from "./adapter/node-test.js";
 import { PYTEST_RUNS } from "./adapter/pytest.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
 import { DECLARED } from "./assemble/declared.js";
+import { ELSEWHERE } from "./assemble/elsewhere.js";
 import { INHERITED } from "./assemble/inherited.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
 import { INSTALLED_KEYS } from "./key/installed.js";
 import { PNPM_KEYS } from "./key/pnpm.js";
 import { OBSERVED_READS } from "./observe/reads.js";
+import { OBSERVED_WRITTEN } from "./observe/written.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
 import { STORE_TIERS } from "./store/tier.js";
 
@@ -29,6 +32,7 @@ export const CASES: readonly Case[] = [
   ...PNPM_KEYS,
   ...GOLDEN_ROWS,
   ...OBSERVED_READS,
+  ...OBSERVED_WRITTEN,
   ...INHERIT,
   ...RETIRED,
   ...SLOW_INHERIT,
@@ -38,8 +42,10 @@ export const CASES: readonly Case[] = [
   ...ABSENT,
   ...DECLARED,
   ...INHERITED,
+  ...ELSEWHERE,
   ...STORE_TIERS,
   ...VITEST_RUNS,
   ...VITEST_ENVIRONMENT,
   ...PYTEST_RUNS,
+  ...NODE_TEST_RUNS,
 ];

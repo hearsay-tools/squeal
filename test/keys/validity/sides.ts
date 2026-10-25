@@ -33,10 +33,17 @@ export const RUNTIME = "src/runners/observe";
 /** The pytest runtime (007 D6, row 011-48): Python that runs inside pytest, covered by `python/squeal_validity_trace.py`. */
 export const PYTEST_RUNTIME = "src/runners/pytest/runtime";
 
+/**
+ * The node:test runtime (003 D5, row 016-17): the reporter and the module
+ * recorder each test file's Node loads, covered as V8 covers the recorder's.
+ */
+export const NODE_TEST_RUNTIME = "src/runners/node-test/runtime";
+
 /** Each runtime a side copies, and the directory of `dist/` that holds it. */
 const RUNTIMES: readonly { readonly path: string; readonly dir: string }[] = [
   { path: RUNTIME, dir: "observe" },
   { path: PYTEST_RUNTIME, dir: "pytest" },
+  { path: NODE_TEST_RUNTIME, dir: "node-test" },
 ];
 
 /** The pytest graph's grammar, which the build copies beside the runtime (`src/harness/build.ts`). */
