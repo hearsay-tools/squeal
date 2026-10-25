@@ -38,6 +38,7 @@ Sent to the coordinator as a request before any product code (2026-10-25), appro
 | Q5 | `direct` for node:test | node:test fills it too, its edges split by process; two lines to the coordinator before that part (coordinator) |
 | Q6 | The older daemon | No read, write or delete of the four old keys; safe because of both raises (coordinator) |
 | Q6 (warm-up) | `test/cli/warmup.test.ts:136` fails since C2: the record holds no path for the Vitest file, whose closure keys its git-ignored read | (a): the fixture's readers become slow and fast node:test files, whose fs reads stay unkeyed, so the suggestion text stays true; the slow-wait case at `:180` is row 005-82, not this row's; the warm-up naming a Vitest file's scratch reads as unkeyed build output is row 005-85 (coordinator) |
+| Q8 (warm-up) | On a slow Vitest file's first run the warm-up subtracts the closure from before the record, so it names a git-ignored read "unkeyed" that the same record keys (D4, O1): `squeal setup` on a fresh repository said so | (a): this row's regression, fixed in `WarmUp.read` (`src/core/scheduler/warm-up.ts`), which leaves out what the record keys through the bound `observedGrowth` uses (`scratchOf`, exported); 011 told (coordinator) |
 | Q7 | Stored direct marks in the edit cut | They count among the K shortest of the other direct importers, never as a bare source's fallback; the 011 C4 sentence is the coordinator's at integration (011's coordinator) |
 
 ## The direct marks in the edit cut (Q7), measured
@@ -59,6 +60,10 @@ pytest (C5): what `recordSpawned` marked, the imports of the processes a test fi
 | Vitest | `dist/x.json`, a git-ignored read | `.tmp/u1/y.txt`, below `.tmp/u1`, which the run created | `test/scheduler/one-write-path.test.ts:41` (the catch-up fixture's runner reports as Vitest's recorder does); the recorder's `mkdtemp`: `test/runners/observe/recorder.test.ts` |
 | node:test | `nt/dist/x.mjs`, a git-ignored module | a module below the test's `mkdtempSync` directory in `nt/.tmp` | `test/scheduler/ignored-observed.test.ts:40` |
 | pytest | `dist/built_x.py`, a git-ignored module | a module below the test's `tempfile.mkdtemp` directory in `.tmp` | `test/scheduler/pytest-observed.test.ts:119`, Python 3.10 and 3.13 |
+
+## The warm-up names only what no key will hold (Q8)
+
+`WarmUp.read` leaves out, per file, the paths and listings the run's `observed` reports that the written-directory bound keeps, for a project `keys.observes`: the record keys them. Test: `test/scheduler/warm-up.test.ts:72`, a fresh repository (lookup-only, so the warm-up is each file's first run): both Vitest files that stat `ignored/build.txt` have no entry for it and their closures hold it; the node:test file that reads it is still named; a Vitest read below a directory the file made is still named (row 005-85, today's behaviour). Two Vitest files read the path, so the one that runs second has no first-seen re-run (001-134) to hide the first entry; without the fix the case fails.
 
 ## pytest's start-up filter (C5)
 
