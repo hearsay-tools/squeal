@@ -19,6 +19,7 @@ import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import { heldByPaths, namedPathLines, pathsText } from "./named-path-lines.js";
 import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
+import { askedLines } from "./status-wait-ask.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
 import { type NamedWait, namedResult } from "./status-wait-paths.js";
 import { failuresText, noVerdictText, type SelectionResult, verdictCode } from "./verdict.js";
@@ -354,6 +355,8 @@ export function namedText(
   const lines = [
     ...(selected === null ? [] : [selected]),
     ...namedPathLines(wait.selection),
+    // Row 011-207 (C15): the runs the wait asked, before the classes that hold for them.
+    ...askedLines(wait.asked, command, wait.selection.base),
     ...namedFailures(wait.selection.files, wait.result.knownFailures),
     // Row 011-146 (C15): the focused block, before the classes it leaves pending.
     ...focusLines(wait.focus, wait.selection.base),
