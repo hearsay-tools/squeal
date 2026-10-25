@@ -110,8 +110,11 @@ function wrapChildren(api) {
    * `require` says, in the child's own options, which Node runs before any
    * `--import`, makes the recorder a `--require`; Node parses the nearest
    * `package.json` then anyway. The recorder already there is taken out first.
+   * A `spawned` process is `started` (spec 016 D4, row 016-22): what it loads
+   * puts the test file in `direct`. A Worker keeps its parent's value, so a
+   * thread of the test file's own process loads as that process does.
    */
-  const injected = (env, inherited = true, require = false) => {
+  const injected = (env, inherited, require, spawned) => {
     const out = inherited ? {} : { ...env };
     if (inherited) for (const key in env) out[key] = env[key];
     // Another Squeal's settings (a test starting its own Squeal): that subtree is its.
@@ -130,7 +133,11 @@ function wrapChildren(api) {
       out.NODE_OPTIONS = rest.trim() === "" ? option : `${option} ${rest}`;
     }
     const file = api.current();
-    out[variable] = JSON.stringify({ ...settings, ...(typeof file === "string" ? { file } : {}) });
+    out[variable] = JSON.stringify({
+      ...settings,
+      ...(typeof file === "string" ? { file } : {}),
+      ...(spawned ? { started: true } : {}),
+    });
     return out;
   };
   const recordArguments = (command, args, cwd) => {
@@ -160,7 +167,7 @@ function wrapChildren(api) {
         }
         const argv = Array.isArray(options.args) ? options.args.slice(1) : [];
         const require = spawnRequires(options.file, argv);
-        options.envPairs = Object.entries(injected(env, true, require)).map(
+        options.envPairs = Object.entries(injected(env, true, require, true)).map(
           ([k, v]) => `${k}=${v}`,
         );
       }
@@ -191,7 +198,7 @@ function wrapChildren(api) {
             name === "execSync" || options?.shell
               ? shellRequires([args[0], ...argv].join(" "))
               : spawnRequires(args[0], argv);
-          next[at] = withOwn(options, "env", injected(env || process.env, true, require));
+          next[at] = withOwn(options, "env", injected(env || process.env, true, require, true));
           call = next;
           if (name !== "execSync") {
             recordArguments(args[0], Array.isArray(args[1]) ? args[1] : [], options?.cwd);
@@ -229,7 +236,7 @@ function wrapChildren(api) {
           }
         } else if (env == null || typeof env === "object") {
           if (options === undefined || isOptions(options)) {
-            const env_ = injected(env ?? process.env, false, require);
+            const env_ = injected(env ?? process.env, false, require, false);
             next = [withOwn(options, "env", env_), ...rest.slice(1)];
           }
         }

@@ -18,16 +18,20 @@
 //
 // Settings, `SQUEAL_OBSERVE`, JSON: `out` the directory written to, `root` the
 // worktree, `skip` absolute prefixes never recorded (Squeal's and Vitest's temp
-// directories), `file` the test file a child or thread works for. A Vitest worker
-// attributes by `__vitest_worker__.filepath` instead, a `SHARE_ENV` thread by
+// directories), `file` the test file a child or thread works for, `started` true
+// in a process the test file started and in its threads and descendants. A Vitest
+// worker attributes by `__vitest_worker__.filepath` instead, a `SHARE_ENV` thread by
 // its environment data. Kept only: paths under `root`, outside `node_modules`
 // and `.git`, outside `skip`, while a test file is known.
 //
 // Batched: each new path waits in memory, and one append per event-loop turn
 // that found any (and one at exit) writes them as a line
-// `{"t":file,"f":[...],"l":[...],"r":[...],"w":[...]}` to
+// `{"t":file,"f":[...],"l":[...],"r":[...],"w":[...],"d":[...]}` to
 // `<out>/<pid>-<thread>.ndjson`: `f` read, stat'ed, loaded or executed, `l`
-// listed, `r` listed with `recursive: true` (each also in `l`), `w` written. Not only at
+// listed, `r` listed with `recursive: true` (each also in `l`), `w` written, `d`
+// loaded in a `started` process: its entry point and the modules Node resolved
+// for it (each also in `f`), what puts the test file in `direct` (spec 016 D4,
+// row 016-22). Its file reads are no import, so they stay `f` alone. Not only at
 // exit: Vitest stops a fork with SIGTERM and a thread with `terminate()`, and
 // neither runs an exit hook. Also at once before a process or thread sends a
 // message it can be stopped at (`process.send`, a thread's
@@ -49,7 +53,7 @@ const { threadFile, wrapChildren } = require("./spawn.cjs");
 
 const VARIABLE = "SQUEAL_OBSERVE";
 const SELF = __filename;
-const KINDS = ["f", "l", "r", "w"];
+const KINDS = ["f", "l", "r", "w", "d"];
 
 function readSettings() {
   try {
@@ -60,6 +64,7 @@ function readSettings() {
       root: value.root,
       skip: Array.isArray(value.skip) ? value.skip.filter((s) => typeof s === "string") : [],
       file: typeof value.file === "string" ? value.file : null,
+      started: value.started === true,
     };
   } catch {
     return null;
@@ -97,7 +102,7 @@ function install(settings) {
     `${process.pid}-${workerThreads.threadId}-${Date.now().toString(36)}.ndjson`,
   );
 
-  /** test file -> { f, l, r, w }: every path seen, and the ones not written out yet. */
+  /** test file -> { f, l, r, w, d }: every path seen, and the ones not written out yet. */
   const seen = new Map();
   const pending = new Map();
   let scheduled = false;
@@ -142,14 +147,14 @@ function install(settings) {
   const add = (file, kind, abs) => {
     let known = seen.get(file);
     if (known === undefined) {
-      known = { f: new Set(), l: new Set(), r: new Set(), w: new Set() };
+      known = { f: new Set(), l: new Set(), r: new Set(), w: new Set(), d: new Set() };
       seen.set(file, known);
     }
     if (known[kind].has(abs)) return false;
     known[kind].add(abs);
     let sets = pending.get(file);
     if (sets === undefined) {
-      sets = { f: [], l: [], r: [], w: [] };
+      sets = { f: [], l: [], r: [], w: [], d: [] };
       pending.set(file, sets);
     }
     sets[kind].push(abs);
@@ -182,6 +187,12 @@ function install(settings) {
     }
   };
 
+  /** A module load or the entry point: in a process the test file started, `d` too. */
+  const load = (p, real = false) => {
+    record("f", p, real);
+    if (settings.started) record("d", p, real);
+  };
+
   const Worker = workerThreads.Worker; // before `wrapChildren` replaces it
   wrapFs({ scoped, record });
   wrapChildren({ current, record, scoped, self: SELF, variable: VARIABLE, settings });
@@ -195,7 +206,7 @@ function install(settings) {
         if (typeof resolved?.url === "string" && resolved.url.startsWith("file:")) {
           try {
             // Node resolves through symlinks already
-            record("f", new URL(resolved.url.replace(/[?#].*$/, "")), true);
+            load(new URL(resolved.url.replace(/[?#].*$/, "")), true);
           } catch {
             // never the test's failure
           }
@@ -209,7 +220,7 @@ function install(settings) {
   // `-p` there is none: `argv[1]` is the first argument, often JSON or another worktree's path (001-261).
   const evaluated = process.execArgv.some((arg) => /^(-[a-z]*[ep]|--eval|--print)(=|$)/.test(arg));
   if (workerThreads.isMainThread && !evaluated && typeof process.argv[1] === "string") {
-    record("f", process.argv[1]);
+    load(process.argv[1]);
   }
 
   process.on("exit", flush);
