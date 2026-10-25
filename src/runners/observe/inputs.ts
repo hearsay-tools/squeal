@@ -19,7 +19,9 @@ import type { RecordedFile } from "./read.js";
  * and a listed directory kept as a listing, a recursive one among
  * `recursive` too. `written` names the directories the run wrote, created
  * (`mkdtemp` too) or removed that hold a kept path or listing, for the core's
- * written-directory bound (spec 016 D4).
+ * written-directory bound (spec 016 D4). `direct` names the kept paths a
+ * process the test file started loaded, which put the file in `direct`
+ * (spec 016 D4, row 016-22).
  * Files of two projects at one path share their observations: the recorder
  * attributes by path.
  */
@@ -57,12 +59,14 @@ export function observedInputs(
     const recursive = relative(entry.recursive, () => true);
     if (read.length > 0 || listed.length > 0) {
       const written = writtenAbove([...read, ...listed], entry.written, paths);
+      const direct = read.filter((path) => entry.direct.has(paths.toAbsolute(path)));
       out.push({
         testFile,
         paths: read,
         directories: listed,
         ...(recursive.length > 0 ? { recursive } : {}),
         ...(written.length > 0 ? { written } : {}),
+        ...(direct.length > 0 ? { direct } : {}),
       });
     }
   }
