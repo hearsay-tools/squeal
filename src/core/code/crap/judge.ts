@@ -43,6 +43,11 @@ export interface Judged {
   readonly coverage: readonly FunctionCoverage[];
   /** A recount's judgement: no crossing from a judged state (review 0.1.297 B2). */
   readonly quiet?: true;
+  /**
+   * Row 015-57: from the records in hand of a file not ready, so it judges
+   * only the passes they prove; every other state stays as last judged.
+   */
+  readonly early?: true;
 }
 
 export const checkOf = (
@@ -59,61 +64,81 @@ export const checkOf = (
  * Each judged function's `crap` and `uncovered` states, the transitions D5
  * records, and D6's edits: a measure judged before whose function's body an
  * edit changed since, at the edit's revision (row 015-40). A recount's
- * judgement marks none, as the complexity pass's does not.
+ * judgement marks none, as the complexity pass's does not. An early
+ * judgement (row 015-57) gives only `pass` states, and none for a failure
+ * that only a change of `crap.threshold` would pass: whether the coverage
+ * passed it too waits for every record.
  */
 export function judgeFiles(
   ctx: JudgeContext,
   judged: readonly Judged[],
 ): { states: CodeKnownState[]; transitions: CodeTransition[]; edited: CodeEdit[] } {
-  const { prior, worktreeId, revision, at } = ctx;
-  const states: CodeKnownState[] = [];
-  const transitions: CodeTransition[] = [];
-  const edited: CodeEdit[] = [];
-  for (const { file, count, coverage, quiet } of judged) {
-    count.functions.forEach((fn, i) => {
-      const check = checkOf(file.path, fn);
-      const id = `${file.path}\0${functionKey(fn)}`;
+  const out: Judgement = { states: [], transitions: [], edited: [] };
+  for (const j of judged) {
+    j.count.functions.forEach((fn, i) => {
+      const id = `${j.file.path}\0${functionKey(fn)}`;
       // D3: a function in a parse error's range has no CC to build on.
-      if (prior.get(`complexity\0${id}`)?.outcome === "unknown") return;
-      const cov = coverage[i];
+      if (ctx.prior.get(`complexity\0${id}`)?.outcome === "unknown") return;
+      const cov = j.coverage[i];
       if (cov === undefined) return;
-      const edit = quiet === true ? undefined : ctx.edits.get(id);
-      for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
-        const was = prior.get(`${m.measure}\0${id}`);
-        const { outcome } = m;
-        if (edit !== undefined && was !== undefined && edit.revision > was.countedAt) {
-          edited.push({ check, measure: m.measure, revision: edit.revision, at });
-        }
-        states.push({
-          worktreeId,
-          check,
-          measure: m.measure,
-          outcome,
-          value: m.value,
-          threshold: m.threshold,
-          countedAt: revision,
-          blob: file.blob,
-          changedAt: was?.outcome === outcome ? was.changedAt : revision,
-        });
-        const kind = quiet === true && was !== undefined ? null : kindOf(was, outcome, m.value);
-        if (kind === null) continue;
-        transitions.push({
-          worktreeId,
-          check,
-          measure: m.measure,
-          kind,
-          from: was?.outcome ?? null,
-          to: outcome,
-          fromValue: was?.value ?? null,
-          toValue: m.value,
-          threshold: m.threshold,
-          revision,
-          at,
-        });
-      }
+      const edit = j.quiet === true ? undefined : ctx.edits.get(id);
+      const at = { check: checkOf(j.file.path, fn), id, edit };
+      for (const m of measuresOf(fn.complexity, cov, ctx.threshold))
+        judgeMeasure(ctx, j, at, m, out);
     });
   }
-  return { states, transitions, edited };
+  return out;
+}
+
+interface Judgement {
+  readonly states: CodeKnownState[];
+  readonly transitions: CodeTransition[];
+  readonly edited: CodeEdit[];
+}
+
+/** One measure of one function: its state, its transition and D6's edit, into `out`. */
+function judgeMeasure(
+  ctx: JudgeContext,
+  { file, quiet, early }: Judged,
+  fn: { readonly check: CodeCheckId; readonly id: string; readonly edit: CodeEdit | undefined },
+  m: ReturnType<typeof measuresOf>[number],
+  out: Judgement,
+): void {
+  const { check, edit } = fn;
+  const { worktreeId, revision, at } = ctx;
+  const was = ctx.prior.get(`${m.measure}\0${fn.id}`);
+  const { outcome } = m;
+  const kind = quiet === true && was !== undefined ? null : kindOf(was, outcome, m.value);
+  const crossed = quiet === true || was?.outcome !== "fail" || kind !== null;
+  if (early === true && (outcome !== "pass" || !crossed)) return;
+  if (edit !== undefined && was !== undefined && edit.revision > was.countedAt) {
+    out.edited.push({ check, measure: m.measure, revision: edit.revision, at });
+  }
+  out.states.push({
+    worktreeId,
+    check,
+    measure: m.measure,
+    outcome,
+    value: m.value,
+    threshold: m.threshold,
+    countedAt: revision,
+    blob: file.blob,
+    changedAt: was?.outcome === outcome ? was.changedAt : revision,
+  });
+  if (kind === null) return;
+  out.transitions.push({
+    worktreeId,
+    check,
+    measure: m.measure,
+    kind,
+    from: was?.outcome ?? null,
+    to: outcome,
+    fromValue: was?.value ?? null,
+    toValue: m.value,
+    threshold: m.threshold,
+    revision,
+    at,
+  });
 }
 
 /** A function's `crap` and `uncovered` outcomes; both `unknown` when the join cannot tell. */
@@ -162,11 +187,19 @@ function kindOf(
   return outcome === "fail" ? "pass-to-fail" : "fail-to-pass";
 }
 
-export function evidenceOf({ file, count, coverage }: Judged): FileEvidence {
-  const functions: Record<string, FileEvidence["functions"][string]> = {};
+/**
+ * The file's evidence from its judgement. `only` (row 015-57): an early
+ * judgement's, for the functions it judged, over `before`'s for the rest.
+ */
+export function evidenceOf(
+  { file, count, coverage }: Judged,
+  only?: ReadonlySet<string>,
+  before?: FileEvidence | null,
+): FileEvidence {
+  const functions: Record<string, FileEvidence["functions"][string]> = { ...before?.functions };
   count.functions.forEach((fn, i) => {
     const cov = coverage[i];
-    if (cov === undefined) return;
+    if (cov === undefined || (only !== undefined && !only.has(functionKey(fn)))) return;
     functions[functionKey(fn)] = [
       cov.lines,
       cov.covered,
