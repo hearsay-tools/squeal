@@ -6,7 +6,10 @@ import {
   type CheckId,
   type CheckKey,
   type CommitSha,
+  type ListingFact,
+  listingMetaKey,
   type MarkedUnknown,
+  parseListing,
   type RelativePath,
   type ResultRecord,
   type RevisionNumber,
@@ -52,6 +55,12 @@ interface Applied {
 }
 
 /** What `commit` takes from the ledger: put back when its transaction gives up on a busy store (row 011-126). */
+/** `Ledger.commit`'s revisions: the refined one, and the one a listing holds (row 015-52). */
+interface CommitOptions {
+  readonly refined?: RevisionNumber;
+  readonly listed?: RevisionNumber;
+}
+
 interface Drained {
   readonly dirty: readonly string[];
   readonly removed: readonly TestFileRef[];
@@ -607,9 +616,11 @@ export class Ledger {
    * transaction. `refined` is the revision whose runner part this commit
    * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
    * spec 001 D2 as amended), so headers stop counting that runner part as
-   * pending in the same transaction that applies it.
+   * pending in the same transaction that applies it. `listed`, the revision
+   * through which a listing that did not fail holds every test file, is
+   * recorded there too (`listingMetaKey`, row 015-52).
    */
-  commit(options: { readonly refined?: RevisionNumber } = {}): void {
+  commit(options: CommitOptions = {}): void {
     const drained = this.#drain();
     try {
       this.#write(drained, options);
@@ -621,7 +632,7 @@ export class Ledger {
   }
 
   /** `commit`'s rows and its one transaction, from what it drained. */
-  #write(drained: Drained, options: { readonly refined?: RevisionNumber }): void {
+  #write(drained: Drained, options: CommitOptions): void {
     const { store, sink, worktreeId } = this.context;
     const revision = this.revision.number;
     const rows: TestFileKeyRecord[] = [];
@@ -646,6 +657,7 @@ export class Ledger {
     const quiet =
       this.#adopted &&
       options.refined === undefined &&
+      options.listed === undefined &&
       [rows, removed, rekeyed, applied, unknown, unknownFiles, retired, setups].every(
         (list) => list.length === 0,
       );
@@ -692,6 +704,11 @@ export class Ledger {
       }
       if (options.refined !== undefined) {
         store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
+      }
+      if (options.listed !== undefined) {
+        const count = parseListing(store.meta.get(listingMetaKey(worktreeId)))?.count ?? 0;
+        const fact: ListingFact = { revision: options.listed, count: count + 1 };
+        store.meta.set(listingMetaKey(worktreeId), JSON.stringify(fact));
       }
     });
     this.#adopted = true;

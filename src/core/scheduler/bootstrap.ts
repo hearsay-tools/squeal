@@ -243,7 +243,8 @@ export async function baseline(
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   resumeOwed(ledger, owed);
   if (failures.size > 0) block(ledger, failures);
-  ledger.commit({ refined: ledger.revision.number });
+  const { number } = ledger.revision;
+  ledger.commit({ refined: number, ...(ledger.listingFailed ? {} : { listed: number }) });
   const persisted = persistedNoteTexts(store, worktreeId);
   const testFiles = testFilePaths(ledger);
   for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFiles), testFiles.length)) {
