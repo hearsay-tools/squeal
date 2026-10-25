@@ -318,6 +318,11 @@ function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+// src/core/keys/observed.ts
+import { createHash } from "node:crypto";
+var ABSENT_LISTING = createHash("sha1").update("\0absent").digest("hex");
+var EMPTY_LISTING = createHash("sha1").update("\0empty").digest("hex");
+
 // src/core/keys/pnpm-lockfile.ts
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;

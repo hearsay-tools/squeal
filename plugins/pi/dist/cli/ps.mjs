@@ -600,6 +600,11 @@ function splitTopLevel(body) {
   return parts;
 }
 
+// src/core/keys/observed.ts
+import { createHash as createHash2 } from "node:crypto";
+var ABSENT_LISTING = createHash2("sha1").update("\0absent").digest("hex");
+var EMPTY_LISTING = createHash2("sha1").update("\0empty").digest("hex");
+
 // src/core/keys/pnpm-lockfile.ts
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;

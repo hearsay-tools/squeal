@@ -674,6 +674,11 @@ function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+// src/core/keys/observed.ts
+import { createHash as createHash2 } from "node:crypto";
+var ABSENT_LISTING = createHash2("sha1").update("\0absent").digest("hex");
+var EMPTY_LISTING = createHash2("sha1").update("\0empty").digest("hex");
+
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
@@ -889,7 +894,7 @@ function text(value) {
 }
 
 // src/core/keys/hidden-lockfile.ts
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 import { lstatSync as lstatSync2, readdirSync as readdirSync2, readFileSync as readFileSync4, readlinkSync } from "node:fs";
 import { isAbsolute as isAbsolute5, join as join6 } from "node:path";
 var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
@@ -919,7 +924,7 @@ function packageFoldersFingerprint(dir, lockfile) {
   const entries = folders.map(
     ({ path, link }) => link ? [path, "link", readlinkSync(join6(dir, path))] : [path, ...nameAndVersion(dir, path)]
   );
-  return createHash2("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries])).digest("hex");
+  return createHash3("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries])).digest("hex");
 }
 function parseHiddenLockfile(content) {
   let parsed;
@@ -997,7 +1002,7 @@ function example(paths) {
 }
 
 // src/core/keys/pnpm-install.ts
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 import { lstatSync as lstatSync3, readdirSync as readdirSync3, readFileSync as readFileSync5, readlinkSync as readlinkSync2 } from "node:fs";
 import { join as join8 } from "node:path";
 
@@ -1005,7 +1010,7 @@ import { join as join8 } from "node:path";
 import { join as join7, posix as posix4 } from "node:path";
 
 // src/core/keys/pnpm-lockfile.ts
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash4 } from "node:crypto";
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 function withoutLinkedSpecifiers(text2) {
@@ -1173,7 +1178,7 @@ function pnpmFolderName(id, max) {
   let name = id.replace(/[\\/:*?"<>|#]/g, "+");
   if (name.includes("(")) name = name.replace(/\)$/, "").replace(/\)\(|\(|\)/g, "_");
   if (name.length > max || name !== name.toLowerCase() && !name.startsWith("file+")) {
-    const digest = createHash3("sha256").update(name).digest("hex");
+    const digest = createHash4("sha256").update(name).digest("hex");
     return `${name.slice(0, max - 33)}_${digest.slice(0, 32)}`;
   }
   return name;
@@ -1504,7 +1509,7 @@ function pnpmPackageFoldersFingerprint(dir, importers) {
     }
   };
   for (const at of [...roots].sort(compare)) walk2(at);
-  return createHash4("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING2, entries])).digest("hex");
+  return createHash5("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING2, entries])).digest("hex");
 }
 function namesIn(modules) {
   const names = [];
@@ -3662,7 +3667,7 @@ function createFailureRepo(conn) {
 }
 
 // src/core/store/repos/results.ts
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 var SELECT_RESULTS = `
   SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
   FROM results r
@@ -3781,7 +3786,7 @@ function createResultRepo(conn) {
 function storeFailureText(conn, summary, errors) {
   if (summary === null && errors.length === 0) return null;
   const text2 = JSON.stringify(errors);
-  const id = createHash5("sha256").update(JSON.stringify([summary, text2])).digest("hex");
+  const id = createHash6("sha256").update(JSON.stringify([summary, text2])).digest("hex");
   conn.run(
     "INSERT INTO failure_texts (id, summary, errors) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
     id,
@@ -7337,7 +7342,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.318";
+  if (true) return "0.1.320";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
