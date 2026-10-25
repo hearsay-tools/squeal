@@ -83,7 +83,8 @@ export interface CodePass {
   nudge(): void;
   /**
    * Results or a coverage record were stored (row 015-12): one pass within
-   * `COVERAGE_COALESCE_MS` for a burst. Nothing while coverage is off.
+   * `COVERAGE_COALESCE_MS` for a burst. Nothing while coverage is off. The
+   * loader map and decoded records it may change are revoked at the call.
    */
   soon(): void;
   /** Resolves once no pass runs or is due. */
@@ -306,11 +307,13 @@ export function createCodePass(options: CodePassOptions): CodePass {
       else running = loop();
     },
     soon() {
+      // Each notification revokes what the steps decoded, at once, also while its timer is
+      // set: a paced step may run before it (review 0.1.305-r2 B1). The timer delays the work.
+      cache.invalidate();
       if (closed || soonTimer !== null || !coverageOn(options.policy())) return;
       soonTimer = setTimeout(() => {
         soonTimer = null;
         coverageDue = true;
-        cache.invalidate();
         self.nudge();
       }, COVERAGE_COALESCE_MS);
       soonTimer.unref();
