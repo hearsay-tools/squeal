@@ -19,7 +19,9 @@ import { scratchStore, writeTree } from "./shared.js";
  * listings join the set as `observedGrowth` adds them for a file with an
  * empty closure in a worktree that ignores nothing. With `temporary`, each
  * directory the script printed stands as `<temporary N>`, so a random name
- * is the same at both trees.
+ * is the same at both trees. What a process the file started loaded
+ * (`direct`, 016 D4, row 016-22) orders an edit's work and keys nothing, so
+ * it is wording.
  */
 export function observe(input: ObserveInput, scratch: string, runtime: string): CaseOutput {
   const root = writeTree(join(scratch, "worktree"), input.files);
@@ -46,8 +48,12 @@ export function observe(input: ObserveInput, scratch: string, runtime: string): 
       const listed = [...o.directories, ...(o.recursive ?? [])].map(listingPath);
       sets.add(o.testFile, [...o.paths, ...listed]);
     }
-    const outputs = { observed, kept: store.meta.get(observedMetaKey(testFile.project)) };
-    return { outputs: input.temporary === true ? named(outputs, child.stdout) : outputs };
+    const keyed = observed.map(({ direct: _, ...rest }) => rest);
+    const outputs = { observed: keyed, kept: store.meta.get(observedMetaKey(testFile.project)) };
+    const wording = { direct: observed.map((o) => o.direct ?? []) };
+    return input.temporary === true
+      ? { outputs: named(outputs, child.stdout), wording: named(wording, child.stdout) }
+      : { outputs, wording };
   } finally {
     store.close();
   }
