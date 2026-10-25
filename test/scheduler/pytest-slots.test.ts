@@ -67,7 +67,6 @@ async function forcedPass(ctx: TestContext, slots: boolean) {
     [{ name: "py", cwd: "py", args: [], env: {}, include: ["tests/**/test_*.py"] }],
     {
       root: repo.main as AbsolutePath,
-      store,
       stateDir: join(scratch, "state") as AbsolutePath,
       tempDir: scratch as AbsolutePath,
       tierSize: () => 4,
