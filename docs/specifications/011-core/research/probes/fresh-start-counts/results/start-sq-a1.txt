@@ -1,0 +1,2 @@
+squeal: the daemon spawned for /tmp/fsc223/clones/a (pid 3887040) is still starting: it has not answered after 30 s; `squeal status` says when it serves
+Squeal daemon stopped for /tmp/fsc223/clones/a

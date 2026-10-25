@@ -1,0 +1,9 @@
+Revision: 0
+Known failures: 0; not current: 10 of 1117 test files (10 unknown)
+Affected checks: 9916 passed (8809 tests, 1107 test files loaded), 0 running, 0 queued, 13 skipped (13 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  10 test files never run at their inputs, nothing queued them (the baseline is lookup-only): test/cli/codex.test.ts, test/daemon/departure.test.ts, test/daemon/drain-checkpoint.test.ts and 7 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 10 test files not current here
+Complexity: counting, 0 of 1304 files.
+Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
+More: `squeal status --full` adds the worktree and daemon, the 9929 current results inherited from 5 worktrees, the 10 test files without a result one by one and 1 note
