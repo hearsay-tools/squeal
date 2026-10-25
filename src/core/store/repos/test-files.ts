@@ -10,7 +10,9 @@ import type {
 import {
   bool,
   CHECK_COLUMNS,
+  CHECK_WHERE,
   checkFrom,
+  checkParams,
   ensureCheckId,
   flag,
   json,
@@ -19,6 +21,8 @@ import {
   num,
   oneOf,
   oneOfOrNull,
+  recordRunner,
+  runnerColumn,
   str,
   strOrNull,
 } from "../codec.js";
@@ -172,6 +176,7 @@ function toTestFileKey(row: Row): TestFileKeyRecord {
 }
 
 export function createCheckRepo(conn: Connection): CheckRepo {
+  const hasRunner = runnerColumn(conn);
   return {
     listByTestFile: (testFile) =>
       conn
@@ -196,6 +201,15 @@ export function createCheckRepo(conn: Connection): CheckRepo {
           );
         }
       }),
+    runnerOf: (check) => {
+      if (!hasRunner()) return null;
+      const row = conn.get(`SELECT runner FROM checks WHERE ${CHECK_WHERE}`, ...checkParams(check));
+      return row === null ? null : strOrNull(row, "runner");
+    },
+    recordRunner: (check, runner) => {
+      if (runner === undefined || !hasRunner()) return;
+      conn.transaction(() => recordRunner(conn, ensureCheckId(conn, check, Date.now()), runner));
+    },
   };
 }
 

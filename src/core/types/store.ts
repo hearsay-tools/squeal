@@ -120,6 +120,18 @@ export interface Liveness {
 export interface CheckRepo {
   listByTestFile(testFile: TestFileRef): readonly CheckRecord[];
   upsertMany(records: readonly CheckRecord[]): void;
+  /**
+   * The runner recorded with `check` (spec 016 D3): the one whose run stored
+   * its newest result, or failed its setup. `null` when none is: an older
+   * daemon wrote it, or the store has no `checks.runner` yet.
+   */
+  runnerOf(check: CheckId): string | null;
+  /**
+   * Records `runner` with `check`, storing a bare check row first if needed.
+   * A setup check has no stored result (001-382), so its runner is recorded
+   * here. `undefined` records nothing.
+   */
+  recordRunner(check: CheckId, runner: string | undefined): void;
 }
 
 /** Which stored failures `squeal failures` reads (task 001-409). */
@@ -269,9 +281,11 @@ export interface ResultRepo {
   /**
    * Spec 001 D5: "A result is stored only under a key whose inputs were
    * stable for the whole run." A stored result's last-used time starts at
-   * `provenance.recordedAt`.
+   * `provenance.recordedAt`. `runner`, the runner whose run produced them,
+   * is recorded with each record's check (`CheckRepo.runnerOf`, spec 016 D3);
+   * absent, each check keeps what it had.
    */
-  putMany(records: readonly ResultRecord[]): void;
+  putMany(records: readonly ResultRecord[], runner?: string): void;
 }
 
 export interface RunRepo {
