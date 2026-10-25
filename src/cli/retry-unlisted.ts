@@ -8,6 +8,7 @@ import { shellWord } from "../core/text.js";
 import {
   type AbsolutePath,
   bootstrappedMetaKey,
+  type Policy,
   type Store,
   type TestFileKeyRecord,
   type WorktreeId,
@@ -75,10 +76,11 @@ function unkeyedPath(
   root: AbsolutePath,
   rel: string,
   keys: readonly TestFileKeyRecord[],
+  policy: Policy = readPolicy(root),
 ): { readonly kind: "missing" | "other" } | { readonly kind: "unlisted"; readonly clause: string } {
   const stat = statSync(join(root, rel), { throwIfNoEntry: false });
   if (stat === undefined) return { kind: "missing" };
-  if (!stat.isFile() || !mayList(root, rel)) return { kind: "other" };
+  if (!stat.isFile() || !mayList(root, rel, policy)) return { kind: "other" };
   const header = readHeader(store, worktreeId, undefined, keys);
   if (header.testFilesListed !== true) {
     return { kind: "unlisted", clause: "the daemon has not listed this worktree's test files yet" };
@@ -101,23 +103,67 @@ function unkeyedPath(
 }
 
 /**
+ * Row 011-206 (gh-83, 011 C15): whether `rel`, a path no listed test file
+ * has, is a test file Squeal does not run: a file with a test file's name
+ * (`testFileName`) that `notKeyed` reads as not keyed, so neither missing
+ * nor in a revision the daemon has not listed yet.
+ */
+export function notRunTestFile(
+  store: Store,
+  worktreeId: WorktreeId,
+  root: AbsolutePath,
+  rel: string,
+  keys: readonly TestFileKeyRecord[],
+  policy: Policy = readPolicy(root),
+): boolean {
+  if (!testFileName(root, rel, policy)) return false;
+  return unkeyedPath(store, worktreeId, root, rel, keys, policy).kind === "other";
+}
+
+/**
  * Whether a runner built here may list `rel`: a node:test or pytest
  * project's `include` minus its `exclude`, from its `cwd`, as the adapters
  * match them; or, with Vitest built (003 D7), any file policy
  * `vitest.exclude` keeps, since only Vitest reads its own patterns.
  */
-function mayList(root: AbsolutePath, rel: string): boolean {
-  const policy = readPolicy(root);
+function mayList(root: AbsolutePath, rel: string, policy: Policy): boolean {
   const others = [...policy.nodeTest, ...policy.pytest];
-  const selects = (project: (typeof others)[number]) => {
-    const from = posix.relative(project.cwd ?? "", rel);
-    // Outside the project only when the first segment is exactly `..`: `..x.test.ts` is inside.
-    if (from === ".." || from.startsWith("../")) return false;
-    return (
-      createInputMatcher(project.include)(from) && !createInputMatcher(project.exclude ?? [])(from)
-    );
-  };
+  const selects = (project: (typeof others)[number]) =>
+    includes(project, rel) && !createInputMatcher(project.exclude ?? [])(projectPath(project, rel));
   if (others.some(selects)) return true;
   const vitest = others.length === 0 || vitestDetected(root);
   return vitest && !createInputMatcher(policy.vitest.exclude)(rel);
+}
+
+/**
+ * Vitest's default `include` (vitest.dev/config/include), its extension
+ * `?(c|m)[jt]s?(x)` in braces, since `createInputMatcher` takes no extglob.
+ */
+const VITEST_INCLUDE = ["**/*.{test,spec}.{,c,m}{j,t}s{,x}"];
+
+/**
+ * Row 011-206: whether `rel` has a test file's name: a node:test or pytest
+ * project's `include` takes it in, its `exclude` aside; or, with Vitest
+ * built, Vitest's default `include` or policy `vitest.exclude` does, since
+ * the CLI cannot read Vitest's own patterns (gh-83's file was kept out by
+ * its `vitest.config.ts`).
+ */
+function testFileName(root: AbsolutePath, rel: string, policy: Policy): boolean {
+  const others = [...policy.nodeTest, ...policy.pytest];
+  if (others.some((project) => includes(project, rel))) return true;
+  if (others.length > 0 && !vitestDetected(root)) return false;
+  return createInputMatcher([...VITEST_INCLUDE, ...policy.vitest.exclude])(rel);
+}
+
+type ProjectPolicy = Policy["nodeTest"][number] | Policy["pytest"][number];
+
+function includes(project: ProjectPolicy, rel: string): boolean {
+  const from = projectPath(project, rel);
+  // Outside the project only when the first segment is exactly `..`: `..x.test.ts` is inside.
+  if (from === ".." || from.startsWith("../")) return false;
+  return createInputMatcher(project.include)(from);
+}
+
+function projectPath(project: ProjectPolicy, rel: string): string {
+  return posix.relative(project.cwd ?? "", rel);
 }
