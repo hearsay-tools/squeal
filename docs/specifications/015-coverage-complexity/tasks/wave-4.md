@@ -19,3 +19,16 @@ Use /worker. Shape: repair. Starts from main after 0.1.302. Outcome: with covera
   - Records stay byte-identical. Ask me before you change one or `COVERAGE_PROVIDER_VERSION`.
   - `tasks/015-42/notes.md` gives the times before and after.
   - Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
+
+## 015-43: review of candidate 0.1.305 (015-42)
+
+Use /reviewer. Candidate `cand/0.1.305`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>` at 0.1.302: 015-42's four commits (W1 above) and one build commit (bundles with the new `cli/coverage-map.mjs`, version 0.1.305; 0.1.303 and 0.1.304 are held by 016 and 011). Write `docs/specifications/015-coverage-complexity/reviews/0.1.305.md` and commit it on your branch.
+
+Read `docs/specifications/011-core/tasks/011-197/findings.md`, `spec.md` D8 to D10 with their 2026-10-25 amendments, `status.md` (2026-10-25) and `tasks/015-42/notes.md`.
+
+Check, with proof where you can:
+1. **The main thread.** The bundled daemon finds `cli/coverage-map.mjs` and maps there. No coverage turn on the main thread runs long: payload maps, the first cold loader read, the sources sent to the worker. Pacing holds for `soon()`, the `more` chain, wakes, revisions and writer jobs.
+2. **Correctness.** Records are byte-identical between the worker, the main-thread path and 0.1.302. The cache drops what results, records, a revision or a wake change, so no judgement reads a stale loader map, condition or signature. A failed worker loses no record. A worker that stops on an empty queue restarts on the next run.
+3. **Coverage off** is unchanged: no worker, no extra pass.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
