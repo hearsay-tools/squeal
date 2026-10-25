@@ -98,6 +98,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     now: started,
     quiet,
     threshold: ctx.complexity.threshold,
+    edits,
   });
   // B1: a count a first count or recount failed on seeds as that count would have.
   const seeds = new Set(
