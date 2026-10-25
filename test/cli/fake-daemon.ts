@@ -25,9 +25,7 @@ export function fakeDaemon(
   const seen: string[] = [];
   return new Promise((resolve) => {
     const server = createServer((socket) => {
-      // A client whose probe timed out resets the connection; that is no fault of the stand-in
-      // (row 011-220: `squeal start` probes every 50 ms with a 100 ms timeout).
-      socket.on("error", () => {});
+      socket.on("error", clientGone);
       socket.once("data", (data) => {
         const request = JSON.parse(data.toString()) as { type: string };
         received.push(request);
@@ -41,6 +39,15 @@ export function fakeDaemon(
     servers.push(server);
     server.listen(path, () => resolve(seen));
   });
+}
+
+/**
+ * A client whose probe timed out resets the connection, or has closed it before the answer is
+ * written; that is no fault of the stand-in (row 011-220: `squeal start` probes every 50 ms with
+ * a 100 ms timeout). Any other socket error is, and is thrown (review 0.1.322 S1).
+ */
+export function clientGone(error: NodeJS.ErrnoException): void {
+  if (error.code !== "ECONNRESET" && error.code !== "EPIPE") throw error;
 }
 
 /** Closes every stand-in; call after each test. */
