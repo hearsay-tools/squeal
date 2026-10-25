@@ -60,6 +60,7 @@ function setup(): {
     hostLoad: () => ({ oneMinute: null, cpus: 1 }),
     runner: {},
     keys: {
+      runnerOf: () => undefined,
       index: { key: () => null, keysReadAsOne: () => null },
       cache: new StatCache(),
       stabilityPaths: () => [],

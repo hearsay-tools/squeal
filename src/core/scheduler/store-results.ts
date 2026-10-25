@@ -33,7 +33,7 @@ export function storeResults(
   return store.transaction(() => {
     // `usedAt` 0 never advances last-used: reading what is replaced is not a lookup hit (D8).
     const prior = store.results.byKey(first.key, 0);
-    store.results.putMany(records, context.keys.runnerOf(first.check.project));
+    store.results.putMany(records);
     // The key may lack a preload path two worktrees differ in (review wave 13i, B2).
     if (unresolvedPreloads(context, first.check.project)) return prior;
     const flips = recordFlips(store, prior, records, now());

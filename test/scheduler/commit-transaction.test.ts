@@ -49,6 +49,7 @@ function ledgerOf(store: Store): Ledger {
     worktreeId: WORKTREE,
     policy: DEFAULT_POLICY,
     now: Date.now,
+    keys: { runnerOf: () => undefined },
   } as unknown as SchedulerContext;
   return new Ledger(context);
 }

@@ -49,7 +49,7 @@ function setup() {
     policy: DEFAULT_POLICY,
     now: () => Date.now(),
     runner: {},
-    keys: { cache: new StatCache(), isEnvironmentInput: () => false },
+    keys: { cache: new StatCache(), isEnvironmentInput: () => false, runnerOf: () => undefined },
   } as unknown as SchedulerContext;
   const ledger = new Ledger(context);
   // A named wait's file, queued and promoted.

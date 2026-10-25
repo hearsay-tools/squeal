@@ -68,6 +68,7 @@ beforeEach(() => {
     rerunCap: RERUN_CAP,
     note: () => {},
     keys: {
+      runnerOf: () => undefined,
       index: { key: (ref: TestFileRef) => keys.get(ref.path) ?? null, keysReadAsOne: () => null },
       removeTestFile: () => {},
     },
