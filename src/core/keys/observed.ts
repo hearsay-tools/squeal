@@ -209,12 +209,22 @@ function merged(raw: string | null, testFile: TestFileRef, added: readonly Relat
 }
 
 /**
+ * The hashes of a listed directory the watcher sees no file in that holds no
+ * names on disk (row 016-26): absent, or empty. No list of names joins to
+ * either text, since no name is empty, so neither keys as a listing of
+ * names, nor as none, as every such listing did before 0.1.316.
+ */
+const ABSENT_LISTING: FileHash = createHash("sha1").update("\0absent").digest("hex");
+const EMPTY_LISTING: FileHash = createHash("sha1").update("\0empty").digest("hex");
+
+/**
  * The entry names of every directory, from the files the watcher tracks: a
  * directory's entries are the names of its files and of its subdirectories
  * that hold a tracked file. Built on first use, then kept by `apply`. A
  * directory the watcher sees no file in, a git-ignored one say, has the
  * names on disk below `root` instead, read when its key is computed (row
- * 016-23): no change the watcher reports moves them.
+ * 016-23): no change the watcher reports moves them. Absent or empty there,
+ * it hashes as a marker of its own (row 016-26).
  */
 export class Listings {
   /** directory -> entry name -> tracked files below it. */
@@ -225,23 +235,23 @@ export class Listings {
     private readonly root?: AbsolutePath,
   ) {}
 
-  /** The hash of `directory`'s sorted entry names; `null` when it has none. */
+  /** The hash of `directory`'s sorted entry names; `null` when it has none and there is no root. */
   hashOf(directory: RelativePath): FileHash | null {
     const names = this.#index().get(directory);
-    const sorted =
-      names !== undefined && names.size > 0 ? [...names.keys()] : this.#onDisk(directory);
-    if (sorted.length === 0) return null;
-    return createHash("sha1").update(sorted.sort(compare).join("\0")).digest("hex");
+    if (names !== undefined && names.size > 0) return namesHash([...names.keys()]);
+    return this.#onDisk(directory);
   }
 
-  /** The names `directory` holds on disk; none without a root, or when it cannot be read. */
-  #onDisk(directory: RelativePath): string[] {
-    if (this.root === undefined) return [];
+  /** The hash of the names `directory` holds on disk, a marker when it holds none; `null` without a root. */
+  #onDisk(directory: RelativePath): FileHash | null {
+    if (this.root === undefined) return null;
+    let names: string[];
     try {
-      return readdirSync(join(this.root, directory));
+      names = readdirSync(join(this.root, directory));
     } catch {
-      return [];
+      return ABSENT_LISTING;
     }
+    return names.length === 0 ? EMPTY_LISTING : namesHash(names);
   }
 
   /**
@@ -299,6 +309,11 @@ export class Listings {
       rest = rest.slice(at + 1);
     }
   }
+}
+
+/** The hash of a listing's entry names, sorted. */
+function namesHash(names: string[]): FileHash {
+  return createHash("sha1").update(names.sort(compare).join("\0")).digest("hex");
 }
 
 function id(testFile: TestFileRef): string {
