@@ -11,3 +11,17 @@ Use /worker. Shape: repair. Starts from main at 0.1.309. Outcome: no coverage tu
 - Keep one daemon-owned `Pace`. Keep every result or record notification able to revoke a partial map or seed at once.
 - **Owns.** `src/core/code/crap/**`, `src/core/code/pass/index.ts`, `src/core/code/store/**`, and their tests. Ask me before you edit anything else, or change a record's bytes, `COVERAGE_PROVIDER_VERSION` or a result key.
 - **Done when.** The row's done-when on the board is a test, red first. The seed is measured on 011-197's stores, with the load. Each part is its own commit. Notes go in `tasks/015-47/notes.md`. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
+
+## 015-50: review of candidate 0.1.311 (wave 6)
+
+Use /reviewer. Candidate `cand/0.1.311`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>`: 015-47 (five commits: the chain-load CI bound, the seed over steps, 32-file units, the walk's writes in budget, notes) and one build commit (bundles, version 0.1.311). Write `docs/specifications/015-coverage-complexity/reviews/0.1.311.md` and commit it on your branch.
+
+Read `spec.md` D9 and D10, `status.md` (2026-10-25), `tasks/015-47/notes.md` (with its decisions 1 to 6), `reviews/0.1.309.md`, and `reviews/0.1.297.md` and `reviews/0.1.297-r2.md` (B1, B2).
+
+Check, with proof where you can:
+1. **The seed.** It goes on over steps within `STEP_BUDGET_MS`, and no file is judged before every file is seeded. A recount's judgement stays quiet (R6), and B1's and B2's start and reseed rules hold. A recount, coverage switched off or a closed store drops a partial seed; a record or result notice revokes the loader map and keeps the seed only where that is safe. An edit during a seed loses no function and misses no new `fail`.
+2. **The walk.** Its writes go 16 files at a time inside the step's transaction. A reader between steps sees either the step before or the whole step, never a half-judged summary.
+3. **The test.** `chain-load.test.ts` asserts 100 ms off CI and 250 ms when `process.env.CI` is set; its log line is unchanged.
+4. One daemon-owned `Pace` stays. Final states match main's after the same inputs. Records, result keys, `COVERAGE_PROVIDER_VERSION` and every complexity-only text are byte-identical to main.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
