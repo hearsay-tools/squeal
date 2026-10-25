@@ -41,6 +41,7 @@ export type PytestEvent =
     }
   | ImportEvent
   | SpawnedEvent
+  | WrittenEvent
   | { readonly type: "session"; readonly exitstatus: number };
 
 export interface CollectedItem {
@@ -96,6 +97,16 @@ export interface SpawnedEvent {
   readonly to: string;
   readonly ctx: string;
   readonly pid: number;
+}
+
+/**
+ * A directory a process of the run created or removed, before the call,
+ * under the test file in progress (`sitecustomize.py`; spec 016 D4).
+ */
+export interface WrittenEvent {
+  readonly type: "written";
+  readonly path: string;
+  readonly ctx: string;
 }
 
 /**
