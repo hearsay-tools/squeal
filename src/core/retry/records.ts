@@ -24,8 +24,8 @@ export const RETRIES_KEPT = 1_024;
 
 /**
  * Why the agent asks: `load`, a timeout under load, waits for the one-minute
- * load average to fall below the CPU count; `environment`, a service now
- * started, runs at once.
+ * load average to fall below the CPU count, at most `LOAD_RETRY_WAIT_MS`
+ * (row 011-213); `environment`, a service now started, runs at once.
  */
 export type RetryReason = "load" | "environment";
 
