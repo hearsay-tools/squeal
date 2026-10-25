@@ -20,10 +20,11 @@ const HEADER = new RegExp(
 
 /**
  * 001-407: a change delivery's news header names only the non-zero pending, stale and unknown
- * counts, or "no check pending, stale or unknown", and no checkpoint.
+ * counts, or "no check pending, stale or unknown", and no checkpoint. Row 011-205: with no such
+ * check, the test files without checks alone, which count no check.
  */
 const NEWS = new RegExp(
-  String.raw`Revision (\d+)${COMMIT}: (no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.`,
+  String.raw`Revision (\d+)${COMMIT}: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))`,
 );
 
 /** `validity`'s count in a news header's counts, 0 when it is not named. */
