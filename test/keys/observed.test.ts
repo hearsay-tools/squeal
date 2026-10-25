@@ -38,9 +38,11 @@ describe("observed sets", () => {
       "t.test.ts": ["data/", "data/x.txt", "data/y.txt"],
     });
 
-    // Its own write makes the next read take the project again, with b's addition.
+    // Its own write does not read the project again: b's addition arrives at the next refresh,
+    // as growth (row 016-31).
+    expect(a.of(ref("t.test.ts"))).toEqual(["data/", "data/x.txt"]);
+    expect(a.refresh(["p"])).toEqual([ref("t.test.ts")]);
     expect(a.of(ref("t.test.ts"))).toEqual(["data/", "data/x.txt", "data/y.txt"]);
-    expect(a.refresh(["p"])).toEqual([]);
     b.add(ref("u.test.ts"), ["z.txt"]);
     expect(a.refresh(["p"])).toEqual([ref("u.test.ts")]);
     // A worktree that starts later reads the project when it first asks.
