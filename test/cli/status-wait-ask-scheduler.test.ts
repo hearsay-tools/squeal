@@ -36,8 +36,8 @@ async function wait(side: CatchUpSide, paths: readonly string[]) {
     now: () => Date.now() as EpochMs,
     sync: () => ({ current: synced, stop: () => {} }),
     promote: (_root, refs, withinMs) => void side.scheduler.promote(refs, withinMs),
-    ask: async (root, asks, asker, withinMs) => {
-      const runs = await askNamedRuns(root, asks, asker, withinMs);
+    ask: async (root, asks, asker, withinMs, now) => {
+      const runs = await askNamedRuns(root, asks, asker, withinMs, now);
       // The `retry` request the daemon's socket takes.
       await side.scheduler.requestRetries();
       return runs;

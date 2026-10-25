@@ -16,7 +16,9 @@ import type {
   AbsolutePath,
   CheckKey,
   EpochMs,
+  KnownState,
   Store,
+  TestFileKeyRecord,
   TestFileRef,
   WorktreeId,
 } from "../core/types/index.js";
@@ -48,11 +50,12 @@ export interface AskFile {
 
 /**
  * What one ask got: `queued`, this wait's request; `joined` or `asked`, a
- * request kept at the key since its read (`askNamedRun`); `busy`, the store
- * stayed busy past the bound, so nothing was stored.
+ * request kept at the key since its read (`askNamedRun`); `changed`, the
+ * file no longer qualifies (review 0.1.322 B1); `busy`, the store stayed
+ * busy past the bound. Only `queued` and `joined` stored or hold a request.
  */
 export interface AskedRun extends AskFile {
-  readonly answer: "queued" | "joined" | "asked" | "busy";
+  readonly answer: "queued" | "joined" | "asked" | "changed" | "busy";
   /** The request it holds for, with `queued` or `joined`. */
   readonly record?: string;
 }
@@ -104,6 +107,7 @@ export type AskNamed = (
   files: readonly AskFile[],
   asker: string,
   withinMs: number,
+  now: () => EpochMs,
 ) => Promise<readonly AskedRun[]>;
 
 /**
@@ -131,14 +135,42 @@ export function askableFiles(
   let records: readonly RetryRecord[] | undefined;
   return rows.flatMap((row): AskFile[] => {
     const ref = row.testFile;
-    const key = row.key as CheckKey;
-    const state = fileClassOf(row, checks.get(testFileId(ref)) ?? []);
-    if (state !== "stale" && state !== "unknown") return [];
-    // C7: another worktree's run of the key stores the result this wait needs.
-    if (claimantOf(store, worktreeId, ref, key, now) !== null) return [];
+    const state = askableState(store, worktreeId, row, checks.get(testFileId(ref)) ?? [], now);
+    if (state === null) return [];
     records ??= readRetries(store);
+    const key = row.key as CheckKey;
     return retriesAt(records, ref, key).length > 0 ? [] : [{ testFile: ref, key, state }];
   });
+}
+
+/**
+ * `row`'s class when a wait may ask its run: keyed, nothing queued, stale or
+ * unknown, and no other worktree's run of its key (C7), which stores the
+ * result this wait needs; else `null`.
+ */
+function askableState(
+  store: Store,
+  worktreeId: WorktreeId,
+  row: TestFileKeyRecord,
+  own: readonly KnownState[],
+  now: EpochMs,
+): AskFile["state"] | null {
+  if (row.key === null || row.pending !== null) return null;
+  const state = fileClassOf(row, own);
+  if (state !== "stale" && state !== "unknown") return null;
+  return claimantOf(store, worktreeId, row.testFile, row.key, now) === null ? state : null;
+}
+
+/**
+ * Whether `file` still qualifies as its read found it, read in the write's
+ * transaction (review 0.1.322 B1): its row at the same key, and
+ * `askableState`'s checks.
+ */
+function stillAskable(store: Store, worktreeId: WorktreeId, file: AskFile, now: EpochMs) {
+  const [row] = store.testFileKeys.list(worktreeId, [file.testFile]);
+  if (row === undefined || row.key !== file.key) return false;
+  const own = store.knownStates.list(worktreeId, [file.testFile]);
+  return askableState(store, worktreeId, row, own, now) !== null;
 }
 
 /**
@@ -147,7 +179,7 @@ export function askableFiles(
  * does, so the run need not wait for its next pass. A worktree without a
  * store asks nothing.
  */
-export const askNamedRuns: AskNamed = async (root, files, asker, withinMs) => {
+export const askNamedRuns: AskNamed = async (root, files, asker, withinMs, now) => {
   const store = openForWrites(root);
   if (store === null) return [];
   const deadline = (Date.now() + Math.max(1, Math.min(BUSY_BOUND_MS, withinMs))) as EpochMs;
@@ -157,13 +189,18 @@ export const askNamedRuns: AskNamed = async (root, files, asker, withinMs) => {
     for (const file of files) {
       // Its run starts at once whatever the reason; the record keeps one for older readers.
       const ask = { ...file, session: asker, reason: "environment" as const, worktreeId };
+      // Each try reads the file again under the write lock.
       const answer = whileBusy(store, deadline, () =>
-        askNamedRun(store, { ...ask, at: Date.now() as EpochMs }),
+        askNamedRun(store, { ...ask, at: Date.now() as EpochMs }, () =>
+          stillAskable(store, worktreeId, file, now()),
+        ),
       );
       runs.push(
         isBusyAnswer(answer)
           ? { ...file, answer: "busy" }
-          : { ...file, answer: answer.kind, record: answer.record.id },
+          : answer.kind === "changed"
+            ? { ...file, answer: "changed" }
+            : { ...file, answer: answer.kind, record: answer.record.id },
       );
     }
   } finally {
