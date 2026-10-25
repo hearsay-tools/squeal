@@ -11,11 +11,23 @@ import type { Loader, PendingReason, UnknownCause } from "./loaders.js";
  * coverage from their records.
  */
 
-/** What can be said of a source's coverage now. */
+/**
+ * What can be said of a source's coverage now. A pending or unknown one
+ * names its ready loaders, whose records in hand can prove a pass (row 015-57).
+ */
 export type FileCondition =
   | { readonly state: "ready"; readonly loaders: readonly ReadyLoader[] }
-  | { readonly state: "pending"; readonly reason: PendingReason; readonly waiting: number }
-  | { readonly state: "unknown"; readonly cause: UnknownCause };
+  | {
+      readonly state: "pending";
+      readonly reason: PendingReason;
+      readonly waiting: number;
+      readonly ready: readonly ReadyLoader[];
+    }
+  | {
+      readonly state: "unknown";
+      readonly cause: UnknownCause;
+      readonly ready: readonly ReadyLoader[];
+    };
 
 export interface ReadyLoader {
   readonly testFile: TestFileRef;
@@ -36,25 +48,23 @@ const REASONS: readonly PendingReason[] = ["imports", "run", "record"];
  * with no loader, once the worktree has test files listed.
  */
 export function fileCondition(loaders: readonly Loader[], listed: boolean): FileCondition {
-  if (!listed) return { state: "pending", reason: "run", waiting: 0 };
+  if (!listed) return { state: "pending", reason: "run", waiting: 0, ready: [] };
+  const ready = loaders.flatMap((l) =>
+    l.condition.kind === "ready"
+      ? [{ testFile: l.testFile, key: l.condition.key, storedAt: l.condition.storedAt }]
+      : [],
+  );
   const causes = new Set(
     loaders.flatMap((l) => (l.condition.kind === "unknown" ? [l.condition.cause] : [])),
   );
   const cause = CAUSES.find((c) => causes.has(c));
-  if (cause !== undefined) return { state: "unknown", cause };
+  if (cause !== undefined) return { state: "unknown", cause, ready };
   const waiting = loaders.flatMap((l) => (l.condition.kind === "pending" ? [l.condition] : []));
   if (waiting.length > 0) {
     const reason = REASONS.find((r) => waiting.some((w) => w.reason === r)) ?? "record";
-    return { state: "pending", reason, waiting: waiting.length };
+    return { state: "pending", reason, waiting: waiting.length, ready };
   }
-  return {
-    state: "ready",
-    loaders: loaders.flatMap((l) =>
-      l.condition.kind === "ready"
-        ? [{ testFile: l.testFile, key: l.condition.key, storedAt: l.condition.storedAt }]
-        : [],
-    ),
-  };
+  return { state: "ready", loaders: ready };
 }
 
 /** One function's coverage, as its states and lines tell it. */
@@ -74,22 +84,30 @@ export interface FunctionCoverage {
  * Each function's coverage from the ready loaders' records, in the count's
  * order; `unread` when a record cannot vouch for the bytes it ran of this
  * source, so it cannot show what it ran here. A loader whose record holds
- * no entry for the source ran none of it.
+ * no entry for the source ran none of it. `inHand` (row 015-57): such a
+ * record is left out instead, since the rest still give at most the
+ * coverage every record would.
  */
 export function coverageOf(
   file: { readonly path: RelativePath; readonly blob: FileHash },
   functions: readonly FunctionCount[],
   loaders: readonly ReadyLoader[],
   record: (key: CheckKey) => CoverageRecord | null,
+  inHand = false,
 ): FunctionCoverage[] | "unread" {
   const sources: CoverageSource[] = [];
   const paths: RelativePath[] = [];
   for (const loader of loaders) {
     const read = record(loader.key);
-    if (read === null || read.unread.includes(file.path)) return "unread";
-    const source = read.sources.find((s) => s.path === file.path);
+    const source =
+      read === null || read.unread.includes(file.path)
+        ? null
+        : read.sources.find((s) => s.path === file.path);
     if (source === undefined) continue;
-    if (source.blob !== file.blob) return "unread";
+    if (source === null || source.blob !== file.blob) {
+      if (inHand) continue;
+      return "unread";
+    }
     sources.push(source);
     paths.push(loader.testFile.path);
   }

@@ -9,7 +9,12 @@ import type { PendingReason, UnknownCause } from "./loaders.js";
  * each file's condition, one per file for its functions' evidence.
  */
 
-/** A file's coverage condition at its blob. A pending or unknown file keeps its last judged states. */
+/**
+ * A file's coverage condition at its blob. A pending or unknown file keeps
+ * its last judged states but the passes the records in hand prove (row
+ * 015-57); `early` is the signature of those records once they are judged,
+ * so a step judges them once. A summary an older Squeal wrote has none.
+ */
 export type FileSummary =
   | { readonly state: "judged"; readonly blob: string; readonly signature: string }
   | {
@@ -17,8 +22,14 @@ export type FileSummary =
       readonly blob: string;
       readonly reason: PendingReason;
       readonly waiting: number;
+      readonly early?: string;
     }
-  | { readonly state: "unknown"; readonly blob: string; readonly cause: UnknownCause };
+  | {
+      readonly state: "unknown";
+      readonly blob: string;
+      readonly cause: UnknownCause;
+      readonly early?: string;
+    };
 
 /** Code meta `coverage:<worktreeId>`. */
 export interface CoverageSummary {
