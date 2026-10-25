@@ -1,4 +1,5 @@
 import { statSync } from "node:fs";
+import { dirname } from "node:path";
 import { compare } from "../../core/fs/index.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { testFileId } from "../../core/keys/index.js";
@@ -16,7 +17,9 @@ import type { RecordedFile } from "./read.js";
  * wrote left out, a directory that was only stat'ed or opened left out (its
  * content is no file to hash) except the worktree's `.git`, keyed by kind,
  * and a listed directory kept as a listing, a recursive one among
- * `recursive` too.
+ * `recursive` too. `written` names the directories the run wrote, created
+ * (`mkdtemp` too) or removed that hold a kept path or listing, for the core's
+ * written-directory bound (spec 016 D4).
  * Files of two projects at one path share their observations: the recorder
  * attributes by path.
  */
@@ -53,15 +56,36 @@ export function observedInputs(
     const listed = relative(entry.listed, () => true);
     const recursive = relative(entry.recursive, () => true);
     if (read.length > 0 || listed.length > 0) {
+      const written = writtenAbove([...read, ...listed], entry.written, paths);
       out.push({
         testFile,
         paths: read,
         directories: listed,
         ...(recursive.length > 0 ? { recursive } : {}),
+        ...(written.length > 0 ? { written } : {}),
       });
     }
   }
   return out;
+}
+
+/** The written paths of `written` that are directories above one of `kept`, worktree-relative and sorted. */
+function writtenAbove(
+  kept: readonly RelativePath[],
+  written: ReadonlySet<AbsolutePath>,
+  paths: WorktreePaths,
+): RelativePath[] {
+  if (written.size === 0) return [];
+  const root = paths.toAbsolute("");
+  const out = new Set<RelativePath>();
+  for (const path of kept) {
+    for (let dir = dirname(paths.toAbsolute(path)); dir.length > root.length; dir = dirname(dir)) {
+      if (!written.has(dir)) continue;
+      const relative = paths.toRelative(dir);
+      if (relative !== null) out.add(relative);
+    }
+  }
+  return [...out].sort(compare);
 }
 
 /**
