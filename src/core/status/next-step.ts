@@ -182,6 +182,12 @@ export function nextStep(s: Standing, context: StepContext = { named: true }): N
       return runningStep(s);
     case "queued":
       return queuedStep(s, context);
+    case "asked":
+      // Row 011-207 (C15): the wait's own request, which the daemon takes at its next pass.
+      return same("run asked by this wait; the daemon has not queued {it} yet", {
+        kind: "none",
+        text: "",
+      });
     case "claim": {
       const until = s.until === null ? "" : `, at most until ${timeText(s.until)}`;
       return same(`waiting for ${s.worktree}'s run of its key${until}`, {

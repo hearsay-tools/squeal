@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  askNamedRun,
   askNoResultRun,
   askRetry,
   cancelRetries,
@@ -71,6 +72,27 @@ describe("askRetry", () => {
     // Its run stored a failure: the session's one retry of it is still to take.
     expect(askRetry(store, ask("s1")).kind).toBe("queued");
     expect(askRetry(store, ask("s1")).kind).toBe("spent");
+  });
+
+  it("a named wait asks one run at a key with no request, pending or ended (row 011-207)", () => {
+    const store = freshStore();
+    expect(askNamedRun(store, ask("s1"))).toMatchObject({
+      kind: "queued",
+      record: { noResult: true, end: null },
+    });
+    // A second wait at the key, while that run is pending or after it ended, asks none.
+    expect(askNamedRun(store, ask("s2"))).toMatchObject({ kind: "joined", record: { end: null } });
+    endRetries(store, FILE, "k1", { outcome: "unknown", at: 2, worktreeId: WT });
+    expect(askNamedRun(store, ask("s2"))).toMatchObject({
+      kind: "asked",
+      record: { end: { outcome: "unknown" } },
+    });
+    // A withdrawn request at the key counts as asked too; another key has none.
+    askRetry(store, ask("s1", "k2"));
+    cancelRetries(store, FILE, "k2", WT, 3);
+    expect(askNamedRun(store, ask("s1", "k2")).kind).toBe("asked");
+    expect(askNamedRun(store, ask("s1", "k3")).kind).toBe("queued");
+    expect(readRetries(store)).toHaveLength(3);
   });
 
   it("a run asked for a file with no result runs at once in status and is no retry fact", () => {
