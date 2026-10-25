@@ -175,7 +175,9 @@ const LIST = "";
  * worktree of the repository shares, merges and never prunes (row 016-29): a
  * map of test path to paths, or, in the list shape, one array. Read from the
  * store at the first ask and at each `refresh`, parsed only when the value
- * changed. `see` adds paths to the view only. `write`, once per transaction,
+ * changed; after that first ask only `refresh` reads it, so every entry that
+ * grew from the store is reported once (row 016-31). `see` adds paths to the
+ * view only. `write`, once per transaction,
  * reads the key inside it and merges what the view saw and the store lacks,
  * so two worktrees' daemons never drop each other's paths. A path stays
  * unwritten until a later `write` finds it stored, so the next record makes
@@ -184,7 +186,7 @@ const LIST = "";
  */
 export class SharedPaths {
   readonly #sets = new Map<string, Set<RelativePath>>();
-  /** The stored value last merged into the view; `undefined` until the first read and after a write. */
+  /** The stored value last merged into the view; `undefined` until the first read. */
   #read: string | null | undefined = undefined;
   /** Per entry: the paths `see` added that no `write` has found stored yet. */
   readonly #unwritten = new Map<string, Set<RelativePath>>();
@@ -239,9 +241,8 @@ export class SharedPaths {
         }
       }
       if (!missing) return;
+      // other worktrees' paths this write merged reach the view, as growth, at the next `refresh`
       this.store.meta.set(key, format(stored, this.shape));
-      // other worktrees' paths this write merged are read at the next ask
-      this.#read = undefined;
     });
   }
 }
