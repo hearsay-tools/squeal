@@ -219,6 +219,8 @@ export interface HarnessOptions {
   readonly reloadPolicy?: SchedulerOptions["reloadPolicy"];
   /** `SchedulerOptions.onReinstall`. */
   readonly onReinstall?: SchedulerOptions["onReinstall"];
+  /** `SchedulerOptions.onRefined` (row 015-52). */
+  readonly onRefined?: SchedulerOptions["onRefined"];
   /** The adapter records runtime inputs while policy `observe.runtimeInputs` holds (task 001-132). */
   readonly observe?: boolean;
   /** `SchedulerOptions.slow` (spec 004): give tests with slow files their own slot directory. */
@@ -349,6 +351,7 @@ export async function openHarness(
           },
         }),
     ...(options.onReinstall === undefined ? {} : { onReinstall: options.onReinstall }),
+    ...(options.onRefined === undefined ? {} : { onRefined: options.onRefined }),
     ...(options.slow === undefined ? {} : { slow: options.slow }),
     // A pool reads the host's busy cores only when the test gives it some (row 011-182).
     ...(options.capacity === undefined ? {} : { capacity: { host: null, ...options.capacity } }),
