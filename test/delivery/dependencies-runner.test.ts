@@ -246,9 +246,9 @@ describe("a Vitest setup failure in a worktree with no Node install", () => {
     diff: null,
   };
 
-  it("is told it, from the runner recorded with the setup check", async () => {
+  it("is told it, from the runner this worktree recorded with the setup check", async () => {
     await delivery.register(C1, { atStart: true });
-    store.checks.recordRunner(setup, "vitest");
+    store.checks.recordSetupRunner(WT, setup, "vitest");
     sink.setupOutcome(WT, revision(), { check: setup, commit: null, error });
     expect(formatDelta((await delivery.onToolBoundary(C1)) as Delta)).toContain(SENTENCE);
     const again = { ...C1, sessionId: "s2" };
