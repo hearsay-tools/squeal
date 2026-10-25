@@ -3517,6 +3517,11 @@ function withCode(source, fn) {
   }
 }
 
+// src/core/keys/observed.ts
+import { createHash as createHash3 } from "node:crypto";
+var ABSENT_LISTING = createHash3("sha1").update("\0absent").digest("hex");
+var EMPTY_LISTING = createHash3("sha1").update("\0empty").digest("hex");
+
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
 
@@ -3732,7 +3737,7 @@ function text(value) {
 }
 
 // src/core/keys/hidden-lockfile.ts
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash4 } from "node:crypto";
 import { lstatSync as lstatSync2, readdirSync as readdirSync2, readFileSync as readFileSync4, readlinkSync } from "node:fs";
 import { isAbsolute as isAbsolute5, join as join10 } from "node:path";
 var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
@@ -3762,7 +3767,7 @@ function packageFoldersFingerprint(dir, lockfile) {
   const entries = folders.map(
     ({ path, link }) => link ? [path, "link", readlinkSync(join10(dir, path))] : [path, ...nameAndVersion(dir, path)]
   );
-  return createHash3("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries])).digest("hex");
+  return createHash4("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING, entries])).digest("hex");
 }
 function parseHiddenLockfile(content) {
   let parsed;
@@ -3840,7 +3845,7 @@ function example(paths) {
 }
 
 // src/core/keys/pnpm-install.ts
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 import { lstatSync as lstatSync3, readdirSync as readdirSync3, readFileSync as readFileSync5, readlinkSync as readlinkSync2 } from "node:fs";
 import { join as join12 } from "node:path";
 
@@ -3848,7 +3853,7 @@ import { join as join12 } from "node:path";
 import { join as join11, posix as posix4 } from "node:path";
 
 // src/core/keys/pnpm-lockfile.ts
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 function withoutLinkedSpecifiers(text2) {
@@ -4016,7 +4021,7 @@ function pnpmFolderName(id, max) {
   let name = id.replace(/[\\/:*?"<>|#]/g, "+");
   if (name.includes("(")) name = name.replace(/\)$/, "").replace(/\)\(|\(|\)/g, "_");
   if (name.length > max || name !== name.toLowerCase() && !name.startsWith("file+")) {
-    const digest = createHash4("sha256").update(name).digest("hex");
+    const digest = createHash5("sha256").update(name).digest("hex");
     return `${name.slice(0, max - 33)}_${digest.slice(0, 32)}`;
   }
   return name;
@@ -4347,7 +4352,7 @@ function pnpmPackageFoldersFingerprint(dir, importers) {
     }
   };
   for (const at of [...roots].sort(compare)) walk2(at);
-  return createHash5("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING2, entries])).digest("hex");
+  return createHash6("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING2, entries])).digest("hex");
 }
 function namesIn(modules) {
   const names = [];
@@ -6722,12 +6727,12 @@ function settled(since, rekeyed, states) {
 }
 
 // src/core/waiter-lock/waiter-lock.ts
-import { createHash as createHash6 } from "node:crypto";
+import { createHash as createHash7 } from "node:crypto";
 import { existsSync as existsSync5, mkdirSync as mkdirSync3, rmSync as rmSync3 } from "node:fs";
 import { join as join13 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
-  const id = createHash6("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
+  const id = createHash7("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
   return join13(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
@@ -6873,7 +6878,7 @@ function readManifest(path) {
 }
 
 // src/core/delivery/stopped.ts
-import { createHash as createHash7 } from "node:crypto";
+import { createHash as createHash8 } from "node:crypto";
 import { join as join15 } from "node:path";
 var TREE_PRINT_TIMEOUT_MS = 1e3;
 function stoppedMetaKey(worktreeId) {
@@ -6925,7 +6930,7 @@ async function treePrint(root, timeoutMs) {
         options
       )
     ]);
-    const hash2 = createHash7("sha1").update(head.trim()).update("\0").update(status);
+    const hash2 = createHash8("sha1").update(head.trim()).update("\0").update(status);
     for (const path of listedPaths(status)) {
       const stat = lstatOrNull(join15(root, path));
       hash2.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
@@ -7515,7 +7520,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.319";
+  if (true) return "0.1.320";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10638,7 +10643,7 @@ import { readFileSync as readFileSync14 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/harness/shared/session-root.ts
-import { createHash as createHash8 } from "node:crypto";
+import { createHash as createHash9 } from "node:crypto";
 import {
   existsSync as existsSync14,
   lstatSync as lstatSync5,
@@ -10717,7 +10722,7 @@ function keyFile(key) {
   return agent.length === 0 ? own : `${own}-${hash(agent.join(AGENT_SEPARATOR))}`;
 }
 function hash(text2) {
-  return createHash8("sha256").update(text2).digest("hex").slice(0, 32);
+  return createHash9("sha256").update(text2).digest("hex").slice(0, 32);
 }
 function readKept(file) {
   const stat = lstatSync5(file, { throwIfNoEntry: false });
