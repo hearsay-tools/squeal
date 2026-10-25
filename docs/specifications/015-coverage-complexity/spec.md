@@ -230,7 +230,7 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 
 - **Wave 1** adds the counter's CPU: a few ms per changed file, and the first count once per repository and policy. It adds the grammar's bytes to each plugin.
 - **Wave 2** adds about 8% CPU to each run Squeal makes while `coverage.enabled` holds, the mapping included, plus about 9 KiB of store per test file result. Measured on the research's 30-file sample (015-11, five pairs at load 18 to 48): median +5.4% CPU, one pair +25.5%; wall time median +0.2%; 26.7 KiB per test file here (amended 2026-10-24).
-- Coverage work takes at most about half of the daemon's main thread while it runs, so the change feed keeps the other half (amended 2026-10-25, 015-42, from 011-197).
+- Each coverage job, a writer job or a judging step, waits its own main-thread time before the next, so the change feed keeps time between them (amended 2026-10-25, 015-42, from 011-197). One shared budget for the writer and the judge together, so their sum stays at about half, is row 015-45 (review 0.1.305 S2).
 - Neither adds a test run. The human (2026-10-23) weighs every feature by the CPU it adds per edit. Wave 2's dogfood reports the CPU per edit with and without coverage, with the load, before 015 ships.
 
 ## Testing
