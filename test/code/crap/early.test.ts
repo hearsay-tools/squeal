@@ -192,17 +192,20 @@ describe("a pass proven early (015-57)", () => {
     expect(rig.states("uncovered")).toContain("cold fail -");
   });
 
-  it("proves a pass while the source is unknown", async () => {
+  it.each([
+    ["skipped", { outcomes: ["pass", "skip"] as const }],
+    ["unread", { unread: ["src/a.ts"] }],
+  ] as const)("proves a pass while the source is unknown: %s", async (cause, spec) => {
     const rig = await judged();
     rig.loader("test/a.test.ts", {
       closure: ["src/a.ts"],
       key: "key-2",
-      outcomes: ["pass", "skip"],
       record: ran(rig, [1, 3]),
+      ...spec,
     });
     await added(rig, [2]);
     rig.step();
-    expect(fileState(rig)).toMatchObject({ state: "unknown", cause: "skipped" });
+    expect(fileState(rig)).toMatchObject({ state: "unknown", cause });
     expect(code(await rig.told(S1))).toContain("PASS CRAP: cold (src/a.ts:2) is 6, at or under 30");
   });
 
