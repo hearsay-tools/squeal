@@ -1,0 +1,34 @@
+describe("review probe: retained failure after project changes runner", { timeout: 60_000 }, () => {
+  it("keeps the old pytest failure's attribution during a new Vitest run", async () => {
+    const files = testFiles(2, [], () => 50).map(file => ({ ...file, path: file.path.replace(".ts", ".js") }));
+    const repo = catchUpRepo(files);
+    const failing = files[1]?.path ?? "";
+    const older = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
+    const oldRead = older.runner.environment;
+    older.runner.environment = async () => (await oldRead()).map((e) => ({ ...e, runnerName: "pytest" }));
+    older.runner.failing.add(failing);
+    await older.scheduler.start();
+    await older.scheduler.idle();
+    await older.scheduler.close();
+    expect(older.store.checks.runnersOf(older.worktreeId).get("")).toBe("pytest");
+
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
+    asVitest(side);
+    side.runner.hold();
+    await side.scheduler.start();
+    await expect.poll(() => side.store.checks.runnersOf(side.worktreeId).get("")).toBe("vitest");
+    expect(side.runner.runs.every((r) => r.endedAt === null)).toBe(true);
+    const states = side.store.knownStates.list(side.worktreeId);
+    console.log("REVIEW_RETAINED", JSON.stringify(states.map(s => ({check:s.check,outcome:s.outcome,validity:s.validity}))));
+    liveDaemon(side.store, side.worktreeId);
+    side.store.fileHashes.upsertMany(side.worktreeId, [
+      { path: "uv.lock", mtimeMs: 1, ctimeMs: 1, size: 1, inode: 1, hash: "h" },
+    ]);
+    const delivery = createDelivery(side.store, { status: fixedStatus() });
+    const consumer = { worktreeId: side.worktreeId, sessionId: "s1", agentId: "main" };
+    const text = formatRegistration(await delivery.register(consumer, { atStart: true }));
+    console.log("REVIEW_RETAINED_TEXT", text);
+    expect(text).toContain(failing);
+    expect(text).not.toContain(SENTENCE);
+  });
+});

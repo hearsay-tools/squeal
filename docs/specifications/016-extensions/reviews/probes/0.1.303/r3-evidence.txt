@@ -1,0 +1,391 @@
+$ /tmp/review-190bb948-r3-node22.log
+(node:1031292) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1031621) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/190bb948-a795-4551-bebf-81901c0e4f93
+
+(node:1031993) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1031995) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1031995) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1031993) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1036811) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1036811) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1040364) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1040364) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1042793) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1042793) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1044665) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1044662) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1044804) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1044809) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1044898) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1045272) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1045272) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1045800) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1045800) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1046032) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1046032) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1046139) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1046139) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1046032) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1046032) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1046902) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1046911) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1046911) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1046902) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1047207) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1047207) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1047487) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1047487) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1047567) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1047567) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1047968) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048000) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048000) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1047968) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1048173) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048269) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048269) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1048173) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1048473) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048485) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048473) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1048485) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1048572) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048635) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048572) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1048635) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1048689) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048757) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048689) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1048757) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1048857) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1048857) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+
+ Test Files  24 passed (24)
+      Tests  119 passed (119)
+   Start at  08:43:10
+   Duration  25.42s (tests 83%, transform 11%, import 6%)
+
+    Isolate  24 workers spawned · ~144ms startup each (spawn + environment, per file)
+             at least ~1.58s faster with isolate: false — reuses workers across files instead of one per file
+
+
+
+$ /tmp/review-190bb948-r3-node24.log
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/190bb948-a795-4551-bebf-81901c0e4f93
+
+
+ Test Files  4 passed (4)
+      Tests  53 passed (53)
+   Start at  08:45:20
+   Duration  53.79s (tests 92%, transform 7%, import 2%)
+
+
+
+$ /tmp/review-190bb948-r3-store.log
+(node:1073282) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1073337) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+old prepared reads and result writes work after ALTER; old result writes remain readable; user_version=1
+both new opens succeed under held writer lock; no column added
+old prune removed 3 checks and 3 results; old restart and integrity check pass
+(node:1073337) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1073337) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+$ /tmp/review-190bb948-r3-columns.log
+(node:1074083) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1074160) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"node":"v22.23.3","errors":"[]","resultColumns":16,"user_version":1}
+(node:1074160) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:1074160) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+$ /tmp/review-190bb948-r3-collision.log
+
+ RUN  v5.0.3 /tmp/review-190bb948-r3-probes/candidate
+
+
+ Test Files  1 passed (1)
+      Tests  8 passed | 25 skipped (33)
+   Start at  08:45:59
+   Duration  3.30s (transform 76%, import 14%, tests 10%)
+
+  Transform  transforming modules took 2.14s · 76% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+
+
+
+$ /tmp/review-190bb948-r3-schema-mutation.log
+
+ RUN  v5.0.3 /tmp/review-190bb948-r3-probes/candidate
+
+ ❯ test/store/table-columns.test.ts (1 test | 1 failed) 34ms
+   ❯ store: each table's columns per user_version (011 C7) (1)
+     × are the listed ones in the store a daemon opens, at the version it writes 33ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/store/table-columns.test.ts > store: each table's columns per user_version (011 C7) > are the listed ones in the store a daemon opens, at the version it writes
+AssertionError: expected { …(15) } to deeply equal { …(15) }
+
+- Expected
++ Received
+
+@@ -89,10 +89,11 @@
+      "commit_sha TEXT",
+      "dirty INTEGER",
+      "run_id TEXT",
+      "recorded_at INTEGER",
+      "last_used_at INTEGER",
++     "review_probe TEXT",
+    ],
+    "revisions": [
+      "worktree_id TEXT",
+      "number INTEGER",
+      "created_at INTEGER",
+
+ ❯ test/store/table-columns.test.ts:199:58
+    197|     const store = open(commonDir);
+    198|     expect(store.schemaVersion).toBe(SCHEMA_VERSION);
+    199|     expect(tableColumns(storePaths(commonDir).database)).toEqual(COLUM…
+       |                                                          ^
+    200|   });
+    201| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  08:45:58
+   Duration  779ms (transform 74%, import 14%, tests 10%, worker 2%)
+
+
+
+$ /tmp/review-190bb948-r3-schema-control.log
+
+ RUN  v5.0.3 /tmp/review-190bb948-r3-probes/candidate
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  08:45:59
+   Duration  901ms (transform 71%, import 18%, tests 9%, worker 2%)
+
+
+
+$ /tmp/review-190bb948-r3-retained-js.log
+
+ RUN  v5.0.3 /tmp/review-190bb948-r3-probes/candidate
+
+stdout | test/scheduler/check-runner.test.ts > review probe: retained failure after project changes runner > keeps the old pytest failure's attribution during a new Vitest run
+REVIEW_RETAINED [{"check":{"kind":"file","project":"","testPath":"test/f000.test.js"},"outcome":"pass","validity":"pending"},{"check":{"kind":"test","project":"","testPath":"test/f000.test.js","fullName":"runs"},"outcome":"pass","validity":"pending"},{"check":{"kind":"file","project":"","testPath":"test/f001.test.js"},"outcome":"pass","validity":"pending"},{"check":{"kind":"test","project":"","testPath":"test/f001.test.js","fullName":"runs"},"outcome":"fail","validity":"pending"}]
+
+stdout | test/scheduler/check-runner.test.ts > review probe: retained failure after project changes runner > keeps the old pytest failure's attribution during a new Vitest run
+REVIEW_RETAINED_TEXT SQUEAL · registered at revision 0
+Revision 0: 0 current, 4 pending (2 tests, 2 test files loaded), 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.
+Known failures: 0; not current: 2 of 2 test files (2 queued), 2 tests (2 queued)
+Earlier failures: 1 pending rerun, 0 stale (not counted until a rerun fails)
+
+FAIL  test/f001.test.js > runs
+      no
+      pending, observed at revision 0
+      Recorded just now in this worktree at revision 0, load 1.56 per CPU when it ran; no retry asked at these inputs; `squeal retry test/f001.test.js --reason load` runs it once more when the one-minute load average is below the CPU count
+
+Full output: squeal why 'test/f001.test.js > runs'
+
+ ❯ test/scheduler/check-runner.test.ts (5 tests | 1 failed | 4 skipped) 304ms
+   ❯ review probe: retained failure after project changes runner (1)
+     × keeps the old pytest failure's attribution during a new Vitest run 302ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/scheduler/check-runner.test.ts > review probe: retained failure after project changes runner > keeps the old pytest failure's attribution during a new Vitest run
+AssertionError: expected 'SQUEAL · registered at revision 0\nRe…' not to contain 'No dependencies are installed in this…'
+
+- Expected
++ Received
+
+- No dependencies are installed in this worktree
++ SQUEAL · registered at revision 0
++ Revision 0: 0 current, 4 pending (2 tests, 2 test files loaded), 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.
++ Known failures: 0; not current: 2 of 2 test files (2 queued), 2 tests (2 queued)
++ Earlier failures: 1 pending rerun, 0 stale (not counted until a rerun fails)
++
++ FAIL  test/f001.test.js > runs
++       no
++       pending, observed at revision 0
++       Recorded just now in this worktree at revision 0, load 1.56 per CPU when it ran; no retry asked at these inputs; `squeal retry test/f001.test.js --reason load` runs it once more when the one-minute load average is below the CPU count
++
++ Full output: squeal why 'test/f001.test.js > runs'
+
+ ❯ test/scheduler/check-runner.test.ts:164:22
+    162|     console.log("REVIEW_RETAINED_TEXT", text);
+    163|     expect(text).toContain(failing);
+    164|     expect(text).not.toContain(SENTENCE);
+       |                      ^
+    165|   });
+    166| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 skipped (5)
+   Start at  08:45:05
+   Duration  3.70s (transform 76%, import 14%, tests 10%)
+
+  Transform  transforming modules took 2.43s · 76% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+
+
+
+$ /tmp/review-190bb948-r3-retained-control.log
+
+ RUN  v5.0.3 /tmp/review-190bb948-r3-probes/candidate
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 4 skipped (5)
+   Start at  08:47:07
+   Duration  1.95s (transform 73%, import 15%, tests 12%)
+
+
+
+$ preserved replay script
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/190bb948/squeal-review-0.1.306-0tth6t17
+
+stdout | test/scheduler/check-runner.test.ts > review probe: retained failure after project changes runner > keeps the old pytest failure's attribution during a new Vitest run
+REVIEW_RETAINED [{"check":{"kind":"file","project":"","testPath":"test/f000.test.js"},"outcome":"pass","validity":"pending"},{"check":{"kind":"test","project":"","testPath":"test/f000.test.js","fullName":"runs"},"outcome":"pass","validity":"pending"},{"check":{"kind":"file","project":"","testPath":"test/f001.test.js"},"outcome":"pass","validity":"pending"},{"check":{"kind":"test","project":"","testPath":"test/f001.test.js","fullName":"runs"},"outcome":"fail","validity":"pending"}]
+
+stdout | test/scheduler/check-runner.test.ts > review probe: retained failure after project changes runner > keeps the old pytest failure's attribution during a new Vitest run
+REVIEW_RETAINED_TEXT SQUEAL · registered at revision 0
+Revision 0: 0 current, 4 pending (2 tests, 2 test files loaded), 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.
+Known failures: 0; not current: 2 of 2 test files (2 queued), 2 tests (2 queued)
+Earlier failures: 1 pending rerun, 0 stale (not counted until a rerun fails)
+
+FAIL  test/f001.test.js > runs
+      no
+      pending, observed at revision 0
+      Recorded just now in this worktree at revision 0, load 0.99 per CPU when it ran; no retry asked at these inputs
+
+Full output: squeal why 'test/f001.test.js > runs'
+
+ ❯ test/scheduler/check-runner.test.ts (5 tests | 1 failed | 4 skipped) 257ms
+   ❯ review probe: retained failure after project changes runner (1)
+     × keeps the old pytest failure's attribution during a new Vitest run 255ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/scheduler/check-runner.test.ts > review probe: retained failure after project changes runner > keeps the old pytest failure's attribution during a new Vitest run
+AssertionError: expected 'SQUEAL · registered at revision 0\nRe…' not to contain 'No dependencies are installed in this…'
+
+- Expected
++ Received
+
+- No dependencies are installed in this worktree
++ SQUEAL · registered at revision 0
++ Revision 0: 0 current, 4 pending (2 tests, 2 test files loaded), 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 0. No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.
++ Known failures: 0; not current: 2 of 2 test files (2 queued), 2 tests (2 queued)
++ Earlier failures: 1 pending rerun, 0 stale (not counted until a rerun fails)
++
++ FAIL  test/f001.test.js > runs
++       no
++       pending, observed at revision 0
++       Recorded just now in this worktree at revision 0, load 0.99 per CPU when it ran; no retry asked at these inputs
++
++ Full output: squeal why 'test/f001.test.js > runs'
+
+ ❯ test/scheduler/check-runner.test.ts:164:22
+    162|     console.log("REVIEW_RETAINED_TEXT", text);
+    163|     expect(text).toContain(failing);
+    164|     expect(text).not.toContain(SENTENCE);
+       |                      ^
+    165|   });
+    166| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 skipped (5)
+   Start at  08:49:35
+   Duration  3.74s (transform 79%, import 13%, tests 8%)
+
+  Transform  transforming modules took 2.66s · 79% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+
+candidate: exit 1, expected 1
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/190bb948/squeal-review-0.1.306-0tth6t17
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 4 skipped (5)
+   Start at  08:49:39
+   Duration  2.84s (transform 77%, import 14%, tests 9%)
+
+same-runner-control: exit 0, expected 0
+All expected exits matched; scratch: /home/agent/projects/squeal/.ai/cezar/t/190bb948/squeal-review-0.1.306-0tth6t17
+
+
+$ squeal status --wait 60000
+squeal: Claude Code has squeal 0.1.302 and Codex has 0.1.304; running 0.1.304. Run squeal update to bring them to one version.
+Revision: 13 · 83afbf1d + 3, dirty
+Known failures: 0; not current: 315 of 1079 test files (314 stale, 1 unknown), 2562 tests (2562 stale)
+Affected checks: 6845 passed (6081 tests, 764 test files loaded), 0 running, 0 queued, 1 skipped (1 test), 2876 stale (2562 tests, 314 test files loaded)
+Full-suite checkpoint: none completed since revision 7 (the counts are for revision 13; `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal run --all` requests one)
+Outstanding:
+  310 test files last passed at other inputs, nothing queued them (the baseline is lookup-only): test/cli/codex-trust.test.ts, test/cli/failures-active.test.ts, test/cli/failures-per-check.test.ts and 307 more; `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal retry <test file>...` runs each once, `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal run --all --wait` runs all 315 test files not current here
+  1 test file never run at its inputs, nothing queued it (the baseline is lookup-only): test/watcher/committed-add.test.ts; `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal retry test/watcher/committed-add.test.ts` runs it once
+  4 test files waiting for /home/agent/projects/squeal/.ai/cezar/worktrees/605ca21e-4902-4101-8186-5f74791fa5db's run of its key, at most until 08:59:42: test/daemon/busy-edit.test.ts, test/daemon/busy-tier.test.ts, test/daemon/vacant-wait.test.ts and 1 more; its result is shared here when that run stores it
+Complexity: 78 functions over 20, 0 since the oldest registered session started; /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal code lists them.
+Not run: Vitest test files matching "test/e2e/**", excluded by squeal.config.json
+More: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --full` adds the worktree and daemon, the 6846 current results inherited from 2 worktrees, the 1 test file without a result one by one and 5 notes
+
+Returned on quiet: the edits since revision 10 re-keyed no test file, at revision 13 after 5.3 s; this wait does not hold for the rest of the worktree. Worktree: known failures 0; not current: 315 of 1079 test files (314 stale, 1 unknown), 2562 tests (2562 stale)
