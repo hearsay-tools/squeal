@@ -25,11 +25,11 @@ export function observedMetaKey(project: ProjectName): string {
 }
 
 /**
- * Spec 016 D4 (row 007-56): of the observed paths, those that put their test
- * file in `direct` when they change (`ObservedInputs.direct`: what a process
- * the test file started imported). The same map and rule as
- * {@link observedMetaKey}, in a key of its own: an older daemon parses that
- * key as test path to paths.
+ * Spec 016 D4 (row 007-56): the paths that put their test file in `direct`
+ * when they change (`ObservedInputs.direct`: what a process the test file
+ * started imported), its closure's paths among them. The same map and rule
+ * as {@link observedMetaKey}, in a key of its own: an older daemon parses
+ * that key as test path to paths.
  */
 export function observedDirectMetaKey(project: ProjectName): string {
   return `observedDirect.${project}`;
@@ -84,14 +84,19 @@ export function gitEntryByKind(root: AbsolutePath, hashOf: HashSource): HashSour
 
 /**
  * This worktree's view of the shared observed sets and their `direct`
- * subsets. Read from the store when created and at each `refresh`; `add`
+ * marks. Read from the store when created and at each `refresh`; `add`
  * merges into the store in one transaction, so two worktrees' daemons never
- * drop each other's paths.
+ * drop each other's paths. `mark` adds marks to the view only; `writeMarks`,
+ * inside a record's transaction, merges into the store what the view holds
+ * and the store lacks, so a write a rolled-back transaction lost is made by
+ * the next record, as `StartupSets.write` does.
  */
 export class ObservedSets {
   readonly #sets = new Map<string, Set<RelativePath>>();
   readonly #direct = new Map<string, Set<RelativePath>>();
   readonly #raw = new Map<ProjectName, { paths: string | null; direct: string | null }>();
+  /** Test files `mark` marked a path of: `writeMarks` compares their views with the store. */
+  readonly #marked = new Map<string, TestFileRef>();
 
   constructor(private readonly store: Store) {}
 
@@ -100,7 +105,7 @@ export class ObservedSets {
     return this.#read(this.#sets, testFile);
   }
 
-  /** The observed paths of `testFile` that put it in `direct` (016 D4), sorted. */
+  /** The paths that put `testFile` in `direct` (016 D4), sorted. */
   directOf(testFile: TestFileRef): readonly RelativePath[] {
     return this.#read(this.#direct, testFile);
   }
@@ -130,31 +135,50 @@ export class ObservedSets {
     return grown;
   }
 
-  /**
-   * Adds `paths` to `testFile`'s set, and `direct`, a subset of them, to its
-   * `direct` subset, here and in the store. Returns the new paths.
-   */
-  add(
-    testFile: TestFileRef,
-    paths: readonly RelativePath[],
-    direct: readonly RelativePath[] = [],
-  ): RelativePath[] {
+  /** Adds `paths` to `testFile`'s set, here and in the store. Returns the new ones. */
+  add(testFile: TestFileRef, paths: readonly RelativePath[]): RelativePath[] {
     const added = merge(this.#sets, testFile, paths);
-    const marked = merge(this.#direct, testFile, direct);
-    if (added.length === 0 && marked.length === 0) return [];
+    if (added.length === 0) return [];
     const key = observedMetaKey(testFile.project);
-    const directKey = observedDirectMetaKey(testFile.project);
     this.store.transaction(() => {
-      if (added.length > 0) {
-        this.store.meta.set(key, merged(this.store.meta.get(key), testFile, added));
-      }
-      if (marked.length > 0) {
-        this.store.meta.set(directKey, merged(this.store.meta.get(directKey), testFile, marked));
-      }
+      this.store.meta.set(key, merged(this.store.meta.get(key), testFile, added));
       // other test files' growth this write merged is read at the next `refresh`
       this.#raw.delete(testFile.project);
     });
     return added;
+  }
+
+  /**
+   * Adds `direct`, paths a process `testFile` started imported, to its marks
+   * in this view, not in the store (row 007-56). Returns the new ones.
+   */
+  mark(testFile: TestFileRef, direct: readonly RelativePath[]): RelativePath[] {
+    if (!this.#raw.has(testFile.project)) this.refresh([testFile.project]);
+    const added = merge(this.#direct, testFile, direct);
+    if (added.length > 0) this.#marked.set(id(testFile), testFile);
+    return added;
+  }
+
+  /** Merges into the store each marked file's marks it lacks, one transaction per project. */
+  writeMarks(): void {
+    const projects = new Set([...this.#marked.values()].map((f) => f.project));
+    for (const project of projects) {
+      const key = observedDirectMetaKey(project);
+      this.store.transaction(() => {
+        const stored = parse(this.store.meta.get(key));
+        let raw: string | null = null;
+        for (const testFile of this.#marked.values()) {
+          if (testFile.project !== project) continue;
+          const held = new Set(stored[testFile.path] ?? []);
+          const missing = this.directOf(testFile).filter((p) => !held.has(p));
+          if (missing.length === 0) continue;
+          raw = merged(raw ?? this.store.meta.get(key), testFile, missing);
+        }
+        if (raw === null) return;
+        this.store.meta.set(key, raw);
+        this.#raw.delete(project);
+      });
+    }
   }
 
   #read(sets: Map<string, Set<RelativePath>>, testFile: TestFileRef): readonly RelativePath[] {
