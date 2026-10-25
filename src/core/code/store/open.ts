@@ -1,12 +1,12 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { Connection } from "../../store/connection.js";
+import { Connection, rollback } from "../../store/connection.js";
 import { DEFAULT_BUSY_TIMEOUT_MS, switchToWal } from "../../store/open.js";
 import { storePaths } from "../../store/paths.js";
 import { migrate, userVersion } from "../../store/schema.js";
 import type { AbsolutePath, Policy } from "../../types/index.js";
-import { CODE_MIGRATIONS, CODE_SCHEMA_VERSION } from "./schema.js";
+import { CODE_INDEXES, CODE_MIGRATIONS, CODE_SCHEMA_VERSION } from "./schema.js";
 import { createCodeStore } from "./store.js";
 import type { CodeStore, CodeStoreOpenFailure } from "./types.js";
 
@@ -37,9 +37,11 @@ export function isCodeStoreOpenFailure(
  * with it off nothing on disk is touched (goal 1). The main store's
  * connection rules apply (011 C7): WAL, `synchronous=NORMAL`, a busy timeout,
  * and migrations up to `CODE_SCHEMA_VERSION` in one `BEGIN IMMEDIATE` that
- * re-reads the version, so concurrent openers migrate once. Opening a
- * current file takes no write lock. A newer `user_version` is refused
- * without touching the file; a corrupt file is reported, never moved.
+ * re-reads the version, so concurrent openers migrate once. An opener that
+ * may create the file makes `CODE_INDEXES` the same way (row 015-44); a
+ * reader leaves them absent. Opening a current file takes no write lock. A
+ * newer `user_version` is refused without touching the file; a corrupt file
+ * is reported, never moved.
  */
 export function openCodeStore(
   commonDir: AbsolutePath,
@@ -72,10 +74,27 @@ export function openCodeStore(
     switchToWal(db, busyTimeoutMs);
     db.exec("PRAGMA synchronous = NORMAL");
     const version = migrate(db, CODE_MIGRATIONS);
+    if (options.create !== false) makeIndexes(db);
     return createCodeStore(new Connection(db), version, path);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { reason: "corrupt", error: String(error) };
+    throw error;
+  }
+}
+
+/** Each of `CODE_INDEXES` the file lacks, looked for again under the write lock. */
+function makeIndexes(db: DatabaseSync): void {
+  const found = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?");
+  const absent = () =>
+    Object.entries(CODE_INDEXES).filter(([name]) => found.get(name) === undefined);
+  if (absent().length === 0) return;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const [, sql] of absent()) db.exec(sql);
+    db.exec("COMMIT");
+  } catch (error) {
+    rollback(db);
     throw error;
   }
 }
