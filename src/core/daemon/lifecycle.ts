@@ -7,19 +7,17 @@ import {
   lastDeparture,
   markRest,
 } from "../delivery/index.js";
-import { observedMetaKey, observedStartupMetaKey } from "../keys/index.js";
+import { observedDirectMetaKey, observedMetaKey, observedStartupMetaKey } from "../keys/index.js";
 import { type BusyWaits, storePaths } from "../store/index.js";
 import { listPaths, plural } from "../text.js";
-import {
-  type AbsolutePath,
-  type DaemonExitReason,
-  type EpochMs,
-  nodeTestObservedMetaKey,
-  nodeTestObservedPreloadsMetaKey,
-  type Policy,
-  type SlowWaiting,
-  type Store,
-  type WorktreeId,
+import type {
+  AbsolutePath,
+  DaemonExitReason,
+  EpochMs,
+  Policy,
+  SlowWaiting,
+  Store,
+  WorktreeId,
 } from "../types/index.js";
 import { recordDaemonUsed } from "./last-use.js";
 import { SlicedWrites } from "./sliced-writes.js";
@@ -119,7 +117,7 @@ export interface TimerContext {
     readonly queued?: number;
   } | null;
   /**
-   * A `nodeTest` project's observed keys changed since the last call that
+   * A node:test or pytest project's observed keys changed since the last call that
    * returned true: queue a runner-only refinement. False while nothing takes
    * it (no scheduler yet, or its baseline still running: 004 review wave 2.5,
    * B3); the timer asks again at its next read.
@@ -345,17 +343,14 @@ export function startTimers(context: TimerContext): () => void {
     ]);
     context.commandHolds?.();
   };
-  // 016 D4: the core's keys of every node:test and pytest project, and node:test's own.
-  const observedKeys = [
-    ...context.policy.nodeTest.flatMap(({ name }) => [
-      nodeTestObservedMetaKey(name),
-      nodeTestObservedPreloadsMetaKey(name),
-    ]),
-    ...[...context.policy.nodeTest, ...context.policy.pytest].flatMap(({ name }) => [
+  // 016 D4: the core's keys of every node:test and pytest project.
+  const observedKeys = [...context.policy.nodeTest, ...context.policy.pytest].flatMap(
+    ({ name }) => [
       observedMetaKey(name),
+      observedDirectMetaKey(name),
       observedStartupMetaKey(name),
-    ]),
-  ];
+    ],
+  );
   const readObserved = () => JSON.stringify(observedKeys.map((key) => store.meta.get(key)));
   const seen = context.observedSeen ?? {};
   if (seen.snapshot === undefined) {

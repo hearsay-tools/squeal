@@ -1,4 +1,4 @@
-export { observedInputs, readsOfEvery } from "./inputs.js";
+export { observedInputs, readsOfEvery, writtenAbove } from "./inputs.js";
 export { type RecordedFile, takeRecorded } from "./read.js";
 export {
   OBSERVE_VARIABLE,
