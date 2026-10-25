@@ -2,6 +2,7 @@ import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import { fullSuiteText, revisionText, runnerPartText, slowTierText } from "../state/index.js";
 import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
+import { lateText } from "../status/feed-late.js";
 import { holdLine } from "../status/holds.js";
 import { shortText, stoppingText } from "../status/stopping.js";
 import type { DaemonLiveness, StatusHeader, ValidityCounts } from "../types/index.js";
@@ -162,10 +163,11 @@ function livenessSentence(
     return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
   }
   // Row 011-140: a daemon that ended its handoff short validates, at its own version.
+  // Row 011-200: a late change feed may not have seen the latest edits.
   if (daemon.state === "alive") {
-    return daemon.short === undefined
-      ? ""
-      : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+    const short =
+      daemon.short === undefined ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+    return daemon.late === undefined ? short : `${short} ${lateText(daemon.late, revision)}`;
   }
   // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
   if (daemon.stopped === true)

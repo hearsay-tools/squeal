@@ -159,7 +159,9 @@ function filesText(header: StatusHeader, files: ValidityCounts, unlisted: boolea
   }
   if (total === 0) return "the daemon listed no test files";
   if (unlisted) return `${plural(total, "test file")} current`;
-  if (header.daemon?.state !== "alive" || header.awaitingInstall === true) {
+  // Row 011-200: nor while the live daemon's change feed is late.
+  const live = header.daemon?.state === "alive" && header.daemon.late === undefined;
+  if (!live || header.awaitingInstall === true) {
     return `${plural(total, "test file")} current as of revision ${header.revision}`;
   }
   return `all ${plural(total, "test file")} current`;
