@@ -17,10 +17,17 @@ import {
 } from "../core/retry/index.js";
 import { SUMMARY_MAX_CHARS } from "../core/state/index.js";
 import { unknownReasons } from "../core/status/index.js";
-import { isStoreOpenFailure, openStore } from "../core/store/index.js";
+import {
+  busyBackoffMs,
+  isBusy,
+  isStoreOpenFailure,
+  openStore,
+  setBusyTimeout,
+} from "../core/store/index.js";
 import { cap } from "../core/text.js";
 import type {
   AbsolutePath,
+  EpochMs,
   KnownState,
   Store,
   TestFileKeyRecord,
@@ -52,9 +59,16 @@ interface Answer {
 
 const refuse = (text: string): Answer => ({ ok: false, text });
 
-/** Hooks for a test: the host's load. */
+/**
+ * How long the whole command keeps asking a busy store to take its requests
+ * before it says another process holds it (row 011-212, gh-86, 011 C13).
+ */
+const BUSY_BOUND_MS = 10_000;
+
+/** Hooks for a test: the host's load, and the busy store's bound. */
 export interface RetryInternal {
   readonly hostLoad?: () => HostLoad;
+  readonly busyBoundMs?: number;
 }
 
 /**
@@ -62,9 +76,10 @@ export interface RetryInternal {
  * --cancel <file>...` (spec 001 D6 as amended, 001-368). Stores each request
  * in the shared store and tells the worktree's daemon, which claims and runs
  * it; with no daemon it waits there for the next daemon at the file's key.
- * Exit code 0 when every file was queued or withdrawn, 1 when any was
- * refused, else 3 when any is in a revision the daemon has not listed yet
- * (row 011-134, gh-76), 2 on a usage error.
+ * Each file's line prints once it is answered. Exit code 0 when every file
+ * was queued or withdrawn, 1 when any was refused or the store stayed busy
+ * past the bound (row 011-212), else 3 when any is in a revision the daemon
+ * has not listed yet (row 011-134, gh-76), 2 on a usage error.
  */
 export async function retryCommand(
   args: readonly string[],
@@ -78,43 +93,49 @@ export async function retryCommand(
   }
   const root = worktreeRoot(undefined, io);
   if (root === null) return 1;
-  const commonDir = resolveCommonDir(root);
-  const store =
-    commonDir === null
-      ? null
-      : openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
-  if (store === null || isStoreOpenFailure(store)) {
+  const store = openFor(root);
+  if (store === null) {
     io.stderr(`squeal retry: no Squeal store for ${root}; start a daemon with squeal start\n`);
     return 1;
   }
   const worktreeId = worktreeIdFor(root);
   const cwd = io.cwd ?? process.cwd();
   const load = (internal.hostLoad ?? hostLoad)();
+  const deadline = Date.now() + (internal.busyBoundMs ?? BUSY_BOUND_MS);
   let refused = 0;
   let unlisted = 0;
-  const lines: string[] = [];
   try {
     const keys = store.testFileKeys.list(worktreeId);
     for (const path of parsed.paths) {
       const rel = inWorktree(root, cwd, path);
       const row = rel === null ? undefined : keys.find((k) => k.testFile.path === rel);
       const shown = rel ?? path;
+      const where = { root, worktreeId, shown, deadline };
       const answer: Answer =
         row === undefined || row.key === null
           ? { ok: false, ...notKeyed(store, { root, worktreeId, rel, shown, given: path }, keys) }
           : parsed.kind === "cancel"
-            ? cancelLine(store, row, worktreeId, shown)
-            : askLine(store, row, { root, worktreeId, shown }, parsed.reason, session(io), load);
+            ? cancelLine(store, row, where)
+            : askLine(store, row, where, parsed.reason, session(io), load);
       if (answer.unlisted === true) unlisted++;
       else if (!answer.ok) refused++;
-      lines.push(answer.text);
+      io.stdout(`${answer.text}\n`);
     }
   } finally {
     store.close();
   }
-  io.stdout(`${lines.join("\n")}\n`);
   if (refused + unlisted < parsed.paths.length) io.stdout(await tellDaemon(root));
   return refused > 0 ? 1 : unlisted > 0 ? 3 : 0;
+}
+
+/** The shared store of `root`'s worktree, open for the command's writes; `null` when it has none. */
+function openFor(root: AbsolutePath): Store | null {
+  const commonDir = resolveCommonDir(root);
+  const store =
+    commonDir === null
+      ? null
+      : openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
+  return store === null || isStoreOpenFailure(store) ? null : store;
 }
 
 function parse(args: readonly string[]): Parsed | string {
@@ -153,21 +174,64 @@ function session(io: CliIo): string {
   return waitConsumer(env).session ?? pi ?? "";
 }
 
-/** The worktree a request is asked in, and the file as the reply shows it. */
+/** The worktree a request is asked in, the file as the reply shows it, and when a busy store's bound ends. */
 interface Where {
   readonly root: AbsolutePath;
   readonly worktreeId: WorktreeId;
   readonly shown: string;
+  readonly deadline: EpochMs;
+}
+
+/** A write the store refused until the bound: how long this file's tries waited. */
+interface Busy {
+  readonly busyMs: number;
+}
+
+/**
+ * `write`'s answer, run again while another process holds the store's write
+ * lock (row 011-212, gh-86): a refused `BEGIN IMMEDIATE` writes nothing and
+ * each try reads its `spent` or `joined` guard again, so a request is stored
+ * once. Each try's busy timeout ends by `deadline`, with `busyBackoffMs`
+ * between tries; at the deadline, how long the tries waited.
+ */
+function whileBusy<T>(store: Store, deadline: EpochMs, write: () => T): T | Busy {
+  const started = Date.now();
+  for (let attempt = 0; ; attempt++) {
+    setBusyTimeout(store, Math.max(1, Math.min(CLI_SOCKET_TIMEOUT_MS, deadline - Date.now())));
+    try {
+      return write();
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+    } finally {
+      setBusyTimeout(store, CLI_SOCKET_TIMEOUT_MS);
+    }
+    const pause = busyBackoffMs(attempt);
+    if (Date.now() + pause >= deadline) return { busyMs: Date.now() - started };
+    Atomics.wait(SLEEP, 0, 0, pause);
+  }
+}
+
+const SLEEP = new Int32Array(new SharedArrayBuffer(4));
+
+const isBusyAnswer = (answer: object): answer is Busy => "busyMs" in answer;
+
+/** A file's line when the store stayed busy past the bound, as 011-01 words a busy read. */
+function busyLine(not: string, shown: string, { busyMs }: Busy): Answer {
+  return refuse(
+    `${not}: ${shown}: store busy, waited ${busyMs} ms: another process holds the store's lock; ` +
+      "run the command again for this file once it is released.",
+  );
 }
 
 function askLine(
   store: Store,
   row: TestFileKeyRecord,
-  { root, worktreeId, shown }: Where,
+  where: Where,
   reason: RetryReason | null,
   asker: string,
   load: HostLoad,
 ): Answer {
+  const { worktreeId, shown, deadline } = where;
   const key = row.key as string;
   const states = store.knownStates.list(worktreeId);
   const own = states.filter(
@@ -197,14 +261,15 @@ function askLine(
     if (own.length > 0 && own.every((s) => s.validity === "current")) {
       return refuse(`Not retried: ${shown} has no known failure in this worktree.`);
     }
-    const answer = askNoResultRun(store, ask);
+    const answer = whileBusy(store, deadline, () => askNoResultRun(store, ask));
+    if (isBusyAnswer(answer)) return busyLine("Not queued", shown, answer);
     if (answer.kind === "joined") {
       return {
         ok: true,
         text: `${shown} has a run asked at its inputs already, pending, so nothing more is queued. ${waitText(shown)}`,
       };
     }
-    const state = noResultText(store, row, own, { root, worktreeId, shown }, states);
+    const state = noResultText(store, row, own, where, states);
     const whatever = reason === null ? "" : ", whatever the reason";
     return {
       ok: true,
@@ -219,14 +284,17 @@ function askLine(
     );
   }
   const others = pendingOf(store, row).filter((r) => r.session !== asker);
-  const answer = askRetry(store, {
-    testFile: row.testFile,
-    key,
-    session: asker,
-    reason,
-    at: Date.now(),
-    worktreeId,
-  });
+  const answer = whileBusy(store, deadline, () =>
+    askRetry(store, {
+      testFile: row.testFile,
+      key,
+      session: asker,
+      reason,
+      at: Date.now(),
+      worktreeId,
+    }),
+  );
+  if (isBusyAnswer(answer)) return busyLine("Not retried", shown, answer);
   if (answer.kind === "spent") return refuse(spentLine(shown, answer.record));
   const when =
     reason === "environment"
@@ -276,10 +344,12 @@ function spentLine(shown: string, record: RetryRecord): string {
 function cancelLine(
   store: Store,
   row: TestFileKeyRecord,
-  worktreeId: WorktreeId,
-  shown: string,
+  { worktreeId, shown, deadline }: Where,
 ): Answer {
-  const withdrawn = cancelRetries(store, row.testFile, row.key as string, worktreeId, Date.now());
+  const withdrawn = whileBusy(store, deadline, () =>
+    cancelRetries(store, row.testFile, row.key as string, worktreeId, Date.now()),
+  );
+  if (isBusyAnswer(withdrawn)) return busyLine("Not withdrawn", shown, withdrawn);
   if (withdrawn.length === 0) return refuse(`No pending retry of ${shown} at its current inputs.`);
   const count = withdrawn.length === 1 ? "1 request" : `${withdrawn.length} requests`;
   return { ok: true, text: `Retry withdrawn: ${shown} (${count}).` };
