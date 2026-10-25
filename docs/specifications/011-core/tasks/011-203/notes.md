@@ -76,3 +76,18 @@ Cost: one `lstat` per path the pass hashes. A path whose stat is unchanged and w
 The review's real path is a case in `test/scheduler/ignored-leftovers.test.ts` (edf6f4ccd): a real store, a pass that reads `src/a.ts` and appends to it after the read, the store closed and reopened, and a new `WorktreeKeys` bootstrapped with no batch. It records the append as a revision and moves the test's key. On 88765973f's sources bootstrap records no revision.
 
 The key-format alarm named `unknownStat` and `touchedUnchanged`'s sentinel line as run by no case. 28ec7baf2 extends the assemble harness with two optional inputs: `appendedAfterRead` (a cached file appended to right after the start pass reads it) and `stability` (files written with a later `mtime`, then `changedSince` over the closures' paths). Its case gives equal keys and equal outputs at 0.1.307 and the candidate: changed `src/app.ts`, touched `src/util.ts`. At 0.1.307 the append is found through the in-memory racy mark; here through the sentinel. No version moved.
+
+## Round 3: a hash only beside two stats that agree (review 0.1.310-r2 N1)
+
+The R1 sentinel was stored whenever the stat after the read was not the candidate's. `touchedUnchanged` skipped such an entry, so a tier's snapshot that held it (`tiers.ts` `newTier`, checked at completion by `unstableInputs`) missed a later write and its restore: N1.
+
+565f22237: `readSettled` in `diffCandidates` reads a file until the stat before a read and the stat after it agree. The candidate's stat is the first "before"; each read's after-stat is the next one. It makes at most 3 reads. The hash is stored with that agreeing stat. Only a file that never settles gets `unknownStat`, and `touchedUnchanged` counts such an entry as touched. A write before the read costs one more read and is stored with its real stat, so the write's own batch has no touch. A write after the read is seen by the second read and reported in the pass that read it. Before this, it was reported at the next pass. Cost: one `lstat` per read, and a second or third read only when a write lands during the pass.
+
+Tests (`test/revision/stat-pairing.test.ts`):
+- N1's sequence: a write between the stat and the read, a snapshot, other bytes, a restore with a later `mtime`, then `changedSince`. It is a touch. It fails on 1d7944a30 with `expected [] to deeply equal [ 'test/held.test.ts' ]`.
+- A write after the read, in memory and after `StatCache.load`, is reported in that pass, with two reads and no touch after.
+- A file whose stat moves after every read is read 3 times. It is then touched and hashed again, in memory and after a reload, and settles after that.
+
+The real-store bootstrap test now appends once. It accepts the append's revision from the pass or from the bootstrap. It still fails on 88765973f and passes on 1d7944a30 and on 565f22237.
+
+The validity case that appended after the read hashed other bytes at the candidate, so its keys differed from 0.1.307. That is a change in what is read, not in what a key means. d90d4efa4 replaces it, by agreement with the coordinator (request ad6da62a). The new case moves `src/util.ts`'s `mtime` after each of its first 3 reads and keeps its bytes. The candidate stores `unknownStat` and 0.1.307 keeps the candidate's stat. Both key the same bytes, and the stability check finds changed `[]` and touched `[src/util.ts]` at both.
