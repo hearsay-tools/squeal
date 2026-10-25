@@ -197,8 +197,11 @@ export function createCodePass(options: CodePassOptions): CodePass {
       log: options.log,
       ...(options.sliceFiles === undefined ? {} : { sliceFiles: options.sliceFiles }),
     });
-    wasOff = false;
-    if (report !== null) options.onPass?.(report);
+    // A recount that waits for a listing (row 015-52) is still the switch-on's first count.
+    if (report !== null) {
+      wasOff = false;
+      options.onPass?.(report);
+    }
     coverageStep(opened, policy, report);
   };
   /** The next coverage step, once the step before had its own time back. */

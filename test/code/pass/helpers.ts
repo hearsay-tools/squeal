@@ -93,6 +93,8 @@ export class FakeWorktree {
   readonly ignored: string[] = [];
   /** The revision the runners listed up to (row 015-52); `null` follows the latest. */
   listed: number | null = null;
+  /** The listings recorded: one more is a listing at the same revision. */
+  listings = 0;
   readonly #files = new Map<string, SourceFile>();
   readonly #revisions: string[][] = [];
   readonly #heads: (string | null)[] = [];
@@ -216,7 +218,10 @@ export class FakeWorktree {
       headAfterMove(after > 0 ? this.#heads[after - 1] : undefined, this.#heads.slice(after, upTo)),
     file: (path) => this.#files.get(path) ?? null,
     files: () => [...this.#files.values()],
-    listedRevision: () => Math.min(this.listed ?? this.#revisions.length, this.#revisions.length),
+    listing: () => ({
+      revision: Math.min(this.listed ?? this.#revisions.length, this.#revisions.length),
+      count: this.listings,
+    }),
     testFiles: () => this.testFiles,
     ignored: () => this.ignored,
   };
