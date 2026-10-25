@@ -215,9 +215,16 @@ describe("listings", () => {
       // The names, not the bytes, nor the worktree: another root with the same names keys alike.
       writeFileSync(join(roots[2] as string, "ignored/list/a.json"), "changed\n");
       expect(same?.hashOf("ignored/list")).toBe(hash);
-      // An empty or absent directory has none, as a tracked listing; a tracked one keys as before.
-      expect(one?.hashOf("ignored/list/sub")).toBeNull();
-      expect(one?.hashOf("missing")).toBeNull();
+      // An empty and an absent directory each key as a marker of their own,
+      // never as none, as 0.1.313 keyed every ignored listing (row 016-26);
+      // without a root there is nothing to read. A tracked one keys as before.
+      const empty = one?.hashOf("ignored/list/sub");
+      const absent = one?.hashOf("missing");
+      expect([empty, absent].every((h) => typeof h === "string" && h !== hash)).toBe(true);
+      expect(empty).not.toBe(absent);
+      expect(two?.hashOf("ignored/list/sub")).toBe(empty);
+      expect(two?.hashOf("elsewhere")).toBe(absent);
+      expect(new Listings(() => ["src/x.ts"]).hashOf("ignored/list")).toBeNull();
       expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"]).hashOf("src"));
 
       // Residuals of 016-23 (tasks/016-23/notes.md). A tracked directory's
