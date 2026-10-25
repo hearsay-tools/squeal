@@ -9,6 +9,7 @@ import type {
 } from "../types/index.js";
 import { type SchedulerContext, tryRunner } from "./context.js";
 import type { FileState } from "./files.js";
+import type { WorktreeKeys } from "./keying.js";
 import type { Ledger } from "./ledger.js";
 import { namesakesOf } from "./namesakes.js";
 import { listPaths } from "./notes.js";
@@ -91,7 +92,9 @@ export async function fetchEditCut(
  * 75 revisions' first new failure later, by 63 s (`research/edit-cut.md`).
  * In toolkit-dev the only check of an edit read it at run time, and as
  * catch-up waited 46.4 s for a permit (task 011-116,
- * `research/edit-latency.md`).
+ * `research/edit-latency.md`). A file only stored direct marks reach
+ * (`observedDirect`, 016 D4) counts among the other direct importers, never
+ * as a source's fallback, so the K shortest cap what they keep.
  */
 export function editWork(
   context: SchedulerContext,
@@ -99,8 +102,10 @@ export function editWork(
   cut: EditCut,
   changed: ReadonlySet<RelativePath>,
   direct: ReadonlySet<string>,
+  observedDirect: ReadonlySet<string> = new Set(),
 ): { kept: Set<string>; reached: Set<string> } {
-  const reached = ledger.recentOf(changed, direct);
+  const importers = new Set([...direct, ...observedDirect]);
+  const reached = ledger.recentOf(changed, importers);
   const kept = new Set<string>();
   for (const file of ledger.files.values()) if (changed.has(file.ref.path)) kept.add(file.id);
   for (const [source, ids] of cut.namesakes) {
@@ -110,12 +115,12 @@ export function editWork(
     for (const id of own.length > 0 ? own : fallback) kept.add(id);
   }
   const beyond = heldBeyondInputs(context, changed);
-  const rest = [...reached].filter((id) => !kept.has(id) && !direct.has(id));
+  const rest = [...reached].filter((id) => !kept.has(id) && !importers.has(id));
   const reads = rest.filter((id) => cut.transitive.has(id) || beyond.has(id));
   const others = [
     ...shortest(
       ledger,
-      [...direct].filter((id) => !kept.has(id)),
+      [...importers].filter((id) => !kept.has(id)),
     ),
     ...shortest(ledger, reads),
   ];
@@ -168,6 +173,27 @@ export function demote(
   }
 }
 
+/**
+ * 016 D4 (011 C4 step 4 as amended for 016-17): the `testFileId`s of the
+ * files whose stored direct marks (what a process each started imported)
+ * hold one of `paths`, the runner's `direct` left out. They are direct
+ * importers for queue order, and `editWork` counts them among the K shortest.
+ * Only the keys are read, so the kit asks it as the scheduler does.
+ */
+export function observedDirectOf(
+  keys: Pick<WorktreeKeys, "index" | "directOf">,
+  paths: Iterable<RelativePath>,
+  direct: ReadonlySet<string>,
+): Set<string> {
+  const changed = new Set(paths);
+  const out = new Set<string>();
+  for (const ref of keys.index.reverse.referencing(changed)) {
+    const id = testFileId(ref);
+    if (!direct.has(id) && keys.directOf(ref).some((path) => changed.has(path))) out.add(id);
+  }
+  return out;
+}
+
 function shortestFirst(a: FileState, b: FileState): number {
   const x = a.durationMs ?? Number.POSITIVE_INFINITY;
   const y = b.durationMs ?? Number.POSITIVE_INFINITY;
@@ -191,9 +217,11 @@ export async function cutAtStart(
   const affected = await tryRunner(context, `affected (${listPaths(list)})`, () =>
     bound.call(() => context.runner.affected(list)),
   );
-  if (affected === null) return { kept: null, reached: ledger.recentOf(paths), direct: new Set() };
-  const direct = new Set(affected.direct.map(testFileId));
+  const runnerDirect = new Set((affected?.direct ?? []).map(testFileId));
+  const observedDirect = observedDirectOf(context.keys, paths, runnerDirect);
+  const direct = new Set([...runnerDirect, ...observedDirect]);
+  if (affected === null) return { kept: null, reached: ledger.recentOf(paths, direct), direct };
   const refs = [...ledger.files.values()].map((file) => file.ref);
   const cut = await fetchEditCut(context, refs, list, affected, bound);
-  return { ...editWork(context, ledger, cut, paths, direct), direct };
+  return { ...editWork(context, ledger, cut, paths, runnerDirect, observedDirect), direct };
 }
