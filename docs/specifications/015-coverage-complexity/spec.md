@@ -199,7 +199,7 @@ With `coverage.enabled`, the Vitest adapter (013) passes `coverage: { enabled: t
 
 **Keys** (amended 2026-10-24, 015-11). A coverage-on instance's key holds `{ provider: "squeal", version: COVERAGE_PROVIDER_VERSION }` in place of the coverage block, never a path. Turning coverage on re-keys every Vitest check once, and so does each raise of that version: those results gain a record. With coverage off the keys are byte-identical to before.
 
-**Mapping.** Each payload is mapped through the transform's source map to source lines and functions, outside the scheduler's path (0.37 s of main-thread CPU per test file).
+**Mapping.** Each payload is mapped through the transform's source map to source lines and functions, outside the scheduler's path (0.37 s of main-thread CPU per test file). Each payload is read, parsed and mapped in a worker thread beside the daemon; the main thread gives it the sources the payload names and stores the record. Without a worker (from the TypeScript sources, or after one failed, told once), the main thread maps it, and each job waits its own main-thread time before the next (amended 2026-10-25, 015-42, from 011-197: a whole payload's `JSON.parse` on the main thread took up to 8 s per turn).
 
 **The record.** It holds, per source the test file loaded: the source's blob id, a bitset of covered lines and a hit bit per function range. It is stored in the code store (D4) at the test file's result key plus the provider version, so it is adopted with the result (011-23) and pruned with it (C7). The research estimated 9 KiB per test file; Squeal's own test files measure 26.7 KiB, because a record holds every source the file ran (amended 2026-10-24, 015-11).
 
@@ -222,7 +222,7 @@ A record is stored only for a test file that completed whole, all its tests sele
 
 Without this rule, the first test file to finish after an edit would make CRAP read too high, and the agent would get a false failure (`agent-feedback.md`, feasibility). Under `baseline.onStart: lookup-only` a state can stay pending until `squeal run --all`. Status says which.
 
-**First judgement.** A function present when coverage starts, or brought by a complexity recount, is seeded `pending`, so its first judgement records no transition; a function an edit added is a first-seen fail. A pending or unknown source keeps its last judged states. A `crap.threshold` change tells no crossing that only the threshold made (amended 2026-10-24, 015-12). A judgement holds the counter version and `crap.threshold`, so a change of either judges again; a recount's judgement stays quiet until each affected function is judged, records that arrive later included (repair R6, review 0.1.297 B1, B2).
+**First judgement.** A function present when coverage starts, or brought by a complexity recount, is seeded `pending`, so its first judgement records no transition; a function an edit added is a first-seen fail. A pending or unknown source keeps its last judged states. A coverage step works for at most `STEP_BUDGET_MS`, its reads of loaders and records included, and does at least one unit of work. Its loader map, conditions and signatures hold until results, records, a revision or a wake change them, and its decoded records until its chain ends. A step that took `d` ms on the main thread starts its successor no sooner than `d` ms later (amended 2026-10-25, 015-42). A `crap.threshold` change tells no crossing that only the threshold made (amended 2026-10-24, 015-12). A judgement holds the counter version and `crap.threshold`, so a change of either judges again; a recount's judgement stays quiet until each affected function is judged, records that arrive later included (repair R6, review 0.1.297 B1, B2).
 
 **Delivery.** D5, D6 and D7 apply unchanged. The FAIL line names the CC, the coverage and the test files that run the function, worded as evidence, never as a target to reach (`agent-feedback.md` 3). Peers saw tests without assertions written only to raise coverage.
 
@@ -230,6 +230,7 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 
 - **Wave 1** adds the counter's CPU: a few ms per changed file, and the first count once per repository and policy. It adds the grammar's bytes to each plugin.
 - **Wave 2** adds about 8% CPU to each run Squeal makes while `coverage.enabled` holds, the mapping included, plus about 9 KiB of store per test file result. Measured on the research's 30-file sample (015-11, five pairs at load 18 to 48): median +5.4% CPU, one pair +25.5%; wall time median +0.2%; 26.7 KiB per test file here (amended 2026-10-24).
+- Coverage work takes at most about half of the daemon's main thread while it runs, so the change feed keeps the other half (amended 2026-10-25, 015-42, from 011-197).
 - Neither adds a test run. The human (2026-10-23) weighs every feature by the CPU it adds per edit. Wave 2's dogfood reports the CPU per edit with and without coverage, with the load, before 015 ships.
 
 ## Testing
