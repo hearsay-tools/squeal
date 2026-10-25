@@ -3,6 +3,8 @@ import {
   askNoResultRun,
   askRetry,
   claimRetries,
+  LOAD_RETRY_WAIT_MS,
+  markGateClosed,
   pendingRetriesOf,
 } from "../../src/core/retry/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
@@ -54,10 +56,30 @@ describe("status lists pending retries (001-368)", () => {
       { testFile: { path: SLOW_A }, reason: "environment", requests: 1 },
     ]);
     expect(text).toContain(
-      "  1 test file with a pending retry (load): src/a.test.ts; waits for the one-minute load average to fall below the CPU count (load average 12.40 on 8 CPUs now)",
+      "  1 test file with a pending retry (load): src/a.test.ts; waits for the one-minute load average to fall below the CPU count, at most 10 min, then runs once anyway (load average 12.40 on 8 CPUs now)",
     );
     expect(text).toContain(
       "  1 test file with a pending retry (environment): test/e2e/a.test.ts; runs at once",
+    );
+  });
+
+  it("says how long the load gate has been closed on a load retry, and that it runs at the bound (011-213)", () => {
+    const s = seeded();
+    s.ask(FAST, "load");
+    s.ask(FAST, "load", "s2");
+    const ref = { project: "", path: FAST };
+    markGateClosed(s.store, [], ref, s.keyOf(FAST), NOW - 252_000);
+    const { snapshot, lines: text } = lines(s);
+    expect(snapshot.pendingRetries?.retries).toMatchObject([{ gateClosedAt: NOW - 252_000 }]);
+    expect(text).toContain(
+      "  1 test file with a pending retry (load): src/a.test.ts; waits for the one-minute load average to fall below the CPU count: at or above it for 4 min 12 s of at most 10 min, then runs once anyway (load average 12.40 on 8 CPUs now)",
+    );
+
+    const past = seeded();
+    past.ask(FAST, "load");
+    markGateClosed(past.store, [], ref, past.keyOf(FAST), NOW - LOAD_RETRY_WAIT_MS);
+    expect(lines(past).lines).toContain(
+      "  1 test file with a pending retry (load): src/a.test.ts; runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 12.40 on 8 CPUs now)",
     );
   });
 

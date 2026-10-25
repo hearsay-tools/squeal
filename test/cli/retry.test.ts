@@ -113,7 +113,7 @@ describe("squeal retry", () => {
     const out = await retry([A, "--reason", "load"], root);
     expect(out.code).toBe(0);
     expect(out.stdout).toBe(
-      "Retry queued (reason: load): test/a.test.ts runs once more when the one-minute load average falls below the CPU count, however long that takes (load average 12.40 on 8 CPUs now). Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.\n",
+      "Retry queued (reason: load): test/a.test.ts runs once more when the one-minute load average falls below the CPU count, or after at most 10 min above it, then with a load note (load average 12.40 on 8 CPUs now). Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.\n",
     );
     expect(seen).toContain("retry");
     expect(readRetries(store)).toMatchObject([

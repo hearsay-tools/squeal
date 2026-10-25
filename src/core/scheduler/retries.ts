@@ -3,9 +3,13 @@ import {
   claimRetries,
   endRetries,
   hostLoad,
+  LOAD_RETRY_WAIT_MS,
   loadAllows,
+  loadRetryNoteText,
+  markGateClosed,
   perCpu,
   type RetryOutcome,
+  type RetryRecord,
   readRetries,
   recordRunLoad,
   releaseRetries,
@@ -21,9 +25,10 @@ import { priorityOf } from "./queue.js";
  * is a request in the shared store. A daemon whose file is at the request's
  * key claims it and queues one forced run: at once for `environment`, once
  * the one-minute load is below the CPU count for `load`, looked at in every
- * reconciliation pass until then, however long that takes; a request for a
- * file with no result at its key at once whatever its reason (011 C5,
- * gh-36). The run's result
+ * reconciliation pass until then, or once `LOAD_RETRY_WAIT_MS` has passed
+ * since a look first met that gate closed, with a load note (011 C5 as
+ * amended, row 011-213); a request for a file with no result at its key at
+ * once whatever its reason (011 C5, gh-36). The run's result
  * replaces the row (D8) and ends every pending request at the key. A file
  * whose key moves gives its claim back; the request lapses for this worktree.
  */
@@ -48,6 +53,12 @@ export function takeRetries(context: SchedulerContext, ledger: Ledger): boolean 
     if (file?.key === request.key) continue;
     releaseRetries(store, request.testFile, worktreeId, file?.key ?? null);
   }
+  const dropped = dropWithdrawn(ledger, pending);
+  return queueDue(context, ledger, pending) || dropped;
+}
+
+/** A queued retry whose request was withdrawn leaves the queue, unless its 001-171 re-run is still to come. */
+function dropWithdrawn(ledger: Ledger, pending: readonly RetryRecord[]): boolean {
   let changed = false;
   for (const file of ledger.files.values()) {
     if (file.retryKey === null || file.runningKey !== null) continue;
@@ -55,7 +66,19 @@ export function takeRetries(context: SchedulerContext, ledger: Ledger): boolean 
     file.retryKey = null;
     if (!file.rerunPending) changed = ledger.dequeue(file) || changed;
   }
-  const due = new Map<string, { file: FileState; key: CheckKey; now: boolean }>();
+  return changed;
+}
+
+interface Due {
+  readonly file: FileState;
+  readonly key: CheckKey;
+  /** It runs at once: an `environment` request, or one for a file with no result. */
+  now: boolean;
+}
+
+/** The files at a pending request's key here, not queued for it yet nor blocked. */
+function dueOf(ledger: Ledger, pending: readonly RetryRecord[]): Map<string, Due> {
+  const due = new Map<string, Due>();
   for (const request of pending) {
     const file = ledger.file(request.testFile);
     if (!file || file.key !== request.key || file.retryKey === request.key) continue;
@@ -64,15 +87,36 @@ export function takeRetries(context: SchedulerContext, ledger: Ledger): boolean 
     entry.now ||= request.reason === "environment" || request.noResult === true;
     due.set(file.id, entry);
   }
-  if (due.size === 0) return changed;
-  const loadLow = [...due.values()].every((d) => d.now) || loadAllows(loadOf(context));
+  return due;
+}
+
+/**
+ * Claims and queues each due file that may run now: at once, under the load
+ * gate, or once the gate has been closed on it for `LOAD_RETRY_WAIT_MS`
+ * (row 011-213), when the daemon notes the load it was queued under.
+ */
+function queueDue(
+  context: SchedulerContext,
+  ledger: Ledger,
+  pending: readonly RetryRecord[],
+): boolean {
+  const { store, worktreeId } = context;
+  const due = dueOf(ledger, pending);
+  if (due.size === 0) return false;
+  const load = [...due.values()].every((d) => d.now) ? null : loadOf(context);
+  const closed = load !== null && !loadAllows(load);
   const at = context.now();
   const live = (id: string) => worktreeLiveness(store.worktrees.get(id), at).state === "alive";
+  let changed = false;
   for (const { file, key, now } of due.values()) {
-    if (!now && !loadLow) continue;
+    const bounded = closed && !now;
+    if (bounded && at - markGateClosed(store, pending, file.ref, key, at) < LOAD_RETRY_WAIT_MS) {
+      continue;
+    }
     if (!claimRetries(store, file.ref, key, worktreeId, at, live)) continue;
     file.retryKey = key;
     ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+    if (bounded) context.note(loadRetryNoteText(file.ref.path, perCpu(load) ?? 0));
     changed = true;
   }
   return changed;
