@@ -149,7 +149,8 @@ function recordCompleted(record: TierRecord, entry: TierFile, decision: Complete
   const { file, key, checkpointId, forced } = entry;
   const { growth } = decision;
   if (growth !== undefined) {
-    record.rekeyed.push(...context.keys.addObserved(file.ref, growth.add).map((c) => c.testFile));
+    const added = context.keys.addObserved(file.ref, growth.add, growth.direct);
+    record.rekeyed.push(...added.map((c) => c.testFile));
     record.grown.push({ ref: file.ref, checkpointId });
   }
   if (decision.kind === "unstable") {
@@ -213,6 +214,8 @@ function storeFile(
  */
 export function endRecord(record: TierRecord, environment: EnvironmentGrowth | undefined): void {
   const { context, ledger, tier } = record;
+  // 016 D4: the start-up paths the run loaded, seen before the environments were read again.
+  context.keys.writeStartup();
   if (environment !== undefined) settleEnvironment(record, environment);
   // The grown files take their new key and, once stored, its results; a re-key reached others.
   for (const { ref, checkpointId } of record.grown) {
