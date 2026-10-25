@@ -28,10 +28,10 @@ const C12: Gap = {
  * K10: a computed `import()` is C12's gap, as in K4. A child process's
  * loads are kept as observed reads (C12), so b and the restart hold them,
  * but `affected()` reads Vite's module graph alone, so they are never
- * direct; no spec line says so.
+ * direct: D4's one remaining gap, held by row 016-22.
  */
 const K10: Gap = {
-  spec: "011 C12: not seen, and left to `inputs`: Vitest's own process (a computed `import()` Vite loads); 016 goal 6, no line documents it: a child process's loads are observed reads, never `direct` (candidate row)",
+  spec: "011 C12: not seen, and left to `inputs`: Vitest's own process (a computed `import()` Vite loads); 016 D4: a Vitest child process's imports are kept as observed reads (011 C12), so they key the test file in a second worktree and after a restart, but they never put it in `direct` (row 016-22)",
   fails: [
     "step 4 holds",
     "step 6 edit",
