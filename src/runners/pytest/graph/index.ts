@@ -64,10 +64,6 @@ export interface PytestGraph {
   invalidate(paths: readonly InvalidatedPath[]): void;
   /** Replaces the listed test files after `testFiles()` was refreshed. */
   setTestFiles(testFiles: readonly RelativePath[]): void;
-  /** Paths a run of `testFile` loaded outside its static closure; a change to one affects it. */
-  recordObserved(testFile: RelativePath, paths: readonly RelativePath[]): void;
-  /** What the processes a run of `testFile` started found to import; a change to one affects it directly (task 007-55). */
-  recordSpawned(testFile: RelativePath, paths: readonly RelativePath[]): void;
   /** Each listed test file whose closure is incomplete, with the reasons. */
   incompleteClosures(): readonly (readonly [RelativePath, readonly string[]])[];
   /** The current search path, and whether it came from the environment or was derived. */
@@ -105,8 +101,6 @@ export async function createPytestGraph(options: PytestGraphOptions): Promise<Py
     affected: (changed) => graph.affected(changed),
     invalidate: (paths) => graph.invalidate(paths),
     setTestFiles: (testFiles) => graph.setTestFiles(testFiles),
-    recordObserved: (testFile, paths) => graph.recordObserved(testFile, paths),
-    recordSpawned: (testFile, paths) => graph.recordSpawned(testFile, paths),
     incompleteClosures: () => graph.incompleteClosures(),
     searchPath: () => graph.searchPath(),
     notes: () => graph.searchPath().notes.map((note) => `pytest: ${note}`),

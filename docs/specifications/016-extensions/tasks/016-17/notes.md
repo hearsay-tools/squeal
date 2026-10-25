@@ -49,6 +49,20 @@ The coordinator's answer to Q5: the core keeps a direct mark for every project p
 
 node:test's split by process (Q5): the recorder writes one file per process; the file whose edges reach the test file's entry is its own process, worker threads included; what each other file loaded from its own non-preload roots is `direct` (`src/runners/node-test/run/observed.ts`).
 
+pytest (C5): what `recordSpawned` marked, the imports of the processes a test file started, is the report's `direct`, no narrowing. Test: `test/scheduler/pytest-observed.test.ts:119`, a test file that reaches `app.through_b` through `app.through_a` and starts a child that imports it: the core stores the mark beside no observed path for it, on Python 3.10 and 3.13.
+
+## The written-directory bound: the two ignored-path cases per runner
+
+| Runner | Kept | Dropped | Test |
+| --- | --- | --- | --- |
+| Vitest | `dist/x.json`, a git-ignored read | `.tmp/u1/y.txt`, below `.tmp/u1`, which the run created | `test/scheduler/one-write-path.test.ts:41` (the catch-up fixture's runner reports as Vitest's recorder does); the recorder's `mkdtemp`: `test/runners/observe/recorder.test.ts` |
+| node:test | `nt/dist/x.mjs`, a git-ignored module | a module below the test's `mkdtempSync` directory in `nt/.tmp` | `test/scheduler/ignored-observed.test.ts:40` |
+| pytest | `dist/built_x.py`, a git-ignored module | a module below the test's `tempfile.mkdtemp` directory in `.tmp` | `test/scheduler/pytest-observed.test.ts:119`, Python 3.10 and 3.13 |
+
+## pytest's start-up filter (C5)
+
+`Observed.recordSession` dropped a session path that every listed test file's closure held, the stored observations of every run and worktree included (B5, 007-36). The adapter now keeps no observation, so it drops a path in every listed file's static closure, as before, or one that every file this run ran whole reached from its own roots: a root conftest's load through a library (`test/runners/pytest/adapter-session.test.ts:143`). This is sound without the stored set: when every file of the run reached the path itself, each of their keys holds it; a file that does not reach it reports it as a start-up path when it runs.
+
 ## Start-up growth from another worktree
 
 node:test's adapter reported another worktree's preload growth as a recreated project (`takeRecreate`). The core now does it: a refinement that reads no environments joins the start-up paths other worktrees stored (`keys.regrowStartup`, `refinement.ts` apply). Test: `test/scheduler/preload-refresh.test.ts`, mutation-checked.
@@ -56,6 +70,8 @@ node:test's adapter reported another worktree's preload growth as a recreated pr
 ## Directory records: cost per call (Q3 (a))
 
 node:test's recorder (`src/runners/node-test/runtime/recorder.cjs`) wraps `mkdir`, `mkdtemp`, `rm`, `rmdir` and `rename`, sync, callback and promise forms. A repeated absolute path costs one `Set` lookup; a new path one `path.resolve` and one `appendFileSync` of one line. Measured 2026-10-25, 200,000 calls of each, three rounds, the host at load 60 on 24 CPUs: `mkdirSync` of an existing directory 5.2 to 5.9 µs without the recorder and 5.2 to 6.0 µs with it; `rmSync` of a missing path 6.3 to 9.5 µs and 6.6 to 7.9 µs. No difference above the noise. Tests: `test/runners/node-test/recorder-written.test.ts`.
+
+pytest's start-up hook (`src/runners/pytest/runtime/sitecustomize.py`, in every Python process of the run, pytest's too) wraps `os.mkdir`, `os.rmdir`, `os.rename` and `os.replace`; `os.makedirs`, `tempfile.mkdtemp`, `pathlib` and `shutil.rmtree` reach them. A path named before costs one `getcwd` and one set lookup; a new one a `realpath` and one `os.write` of one line. Measured 2026-10-25, 200,000 calls of each, three rounds, the host at load 54 on 24 CPUs, an existing directory to `os.mkdir` and a missing one to `os.rmdir`: Python 3.13 3.3 to 5.0 µs a call without the hook and 5.7 to 7.4 µs with it; Python 3.10 2.7 to 4.5 µs and 7.5 to 13.8 µs. About 3 µs (3.13) and 5 µs (3.10) a call, the cost of a Python-level wrapper; a relative path costs the same once the set holds it. Tests: `test/runners/pytest/run/spawned.test.ts`, "records each directory a process creates, removes or renames, in every form, and no file write (016 D4)", on both Pythons.
 
 ## Residuals
 
@@ -73,6 +89,16 @@ node:test's recorder (`src/runners/node-test/runtime/recorder.cjs`) wraps `mkdir
 | `test/runners/node-test/run.test.ts`, `run-preload.test.ts`, `run-reads-fidelity.test.ts` | `ObservedClosure` of three fields | `direct: []` and `written: []` too; in `run-preload` the runner process's graph gives no `direct` | the closure gained the two fields (D4) |
 | `test/daemon/observed-timer.test.ts:112` → `:116` | the timer asks on a change of `nodeTest.observed.*` and `nodeTest.observedPreloads.*` | on a change of `observed.*`, `observedStartup.*` and `observedDirect.*` | the old keys are never read (Q6) |
 | `test/scheduler/preload-refresh.test.ts:27` | another worktree's growth written to `nodeTest.observedPreloads.*` | written to `observedStartup.*` | as above |
+| `test/integration/touched-in-flight.test.ts:45` (`a15da9a9e`) | the harness writes the git-ignored `flags/heard` the fixture's test polls | the test makes `flags/` itself | D4 keeps a git-ignored path whose directories the run made none of, so the poll became an input that changed during the run; the claims about `fixtures/data.txt` and `src/mod.ts` are unchanged |
+| `test/scheduler/warm-up.test.ts:38` → `:42`, `:73` → `:77`; `warm-up-in-flight.test.ts:57` → `:61` (`0ba0275bf`) | the warm-up names `ignored/build.txt` for the Vitest file; its edit re-runs nothing | the Vitest file's entry is empty, the node:test file's holds the path; its edit re-keys the Vitest file only, which waits for the slow lane | D4 (O1): the Vitest file's closure holds the git-ignored read; node:test's fs reads are no closure path |
+| `test/runners/pytest/adapter.test.ts:127` → `:97` | the run's observed-only path is in the injected store, the adapter's `closure()` and `affected().transitive` | the run's `observed` holds it; `closure()` and `affected()` stay the graph's | the core keys it (D4) |
+| `test/runners/pytest/adapter-session.test.ts:115` → `:94`, `:232` → `:196` | a start-up plugin's computed import joins the store's session key and the adapter's environment files | the run's `environmentObserved` holds it; the environment's files stay the adapter's own; `observedLoads` is set | the core keeps the start-up set and joins it to the environment's key (D4) |
+| `test/runners/pytest/adapter-session.test.ts:178` → `:143` | the closures hold the conftest's load through a library | each file's `observed` holds it, and it is no start-up path | as above; the start-up filter reads the run's closures (section above) |
+| `test/runners/pytest/spawned.test.ts:96` → `:92`, `:139` → `:136` | the adapter's `closure()` holds a child's import and `affected()` makes the file direct | the core's `observed.small` and `observedDirect.small` hold it; the graph holds none of it | the core keeps the marks (D4, goal 6) |
+| `test/runners/pytest/focused.test.ts:200` → `:175` | a focused run writes nothing to the store; the whole run's path joins the closure | a focused run reports no `observed`; the whole run's report holds the path | the report is what the core reads (D4) |
+| `test/runners/pytest/run/report.test.ts` | `PytestObservedClosure` of three fields | `written: []` too | the closure gained the field (D4) |
+| `test/integration/pytest.test.ts:153` | the synced worktree runs `test_core.py` and `test_resources.py` | `test_core.py` only | main's pass of `test_resources.py` is stored under the key that holds its observed `app/data/__init__.py`, which the worktree's copy matches (D4) |
+| `test/integration/pytest-environment.test.ts:134` | the plugin's import in `pytest.observedSession.small` | in `observedStartup.small` | the old keys are never read (Q6) |
 
 ## Moved cases (Q4)
 
@@ -89,3 +115,7 @@ Listed as C4 and C5 move them: old `file:line` (at `ca004eaed`), new `file:line`
 | `test/runners/node-test/adapter-preload-require.test.ts:105` (keying part) | the `--require` preload's helper is stored, keyed, affects the file and keys another worktree | as the row above; the report part stays at `:101` |
 | `test/runners/node-test/adapter-preload-quoted.test.ts:80` (keying part) | as above, and a worktree whose helper differs keys its environment apart | as the row above; the report part stays at `:57` |
 | `test/runners/node-test/adapter-loader.test.ts:185` | the helper beside an async loader reaches the preload key | the report's `environmentObserved`, `:178`; keying as above |
+| `test/runners/pytest/adapter.test.ts:178` (store part) | a second adapter, as another worktree's daemon, reads the run's observation from the store | `test/scheduler/observed-direct.test.ts:76` (a second worktree keys with what the first observed); `test/scheduler/pytest-observed.test.ts:119` (the core stores pytest's observed paths, and a restart keys with them and runs nothing); `test/integration/pytest.test.ts:138` (a worktree whose observed-only module differs keys with it and runs) |
+| `test/runners/pytest/adapter-session.test.ts:115` (store, other and third worktree) | another worktree re-keys the project at its next refinement; one started later keys the path before any run | `test/scheduler/preload-refresh.test.ts:18` (another worktree's growth at the next refinement, no runner recreate); `test/scheduler/one-write-path.test.ts:85` (stored, keyed after a restart); `test/integration/pytest-environment.test.ts:110` (real pytest: stored, its edit re-runs, a differing worktree does not inherit) |
+| `test/runners/pytest/graph/invalidate.test.ts:115` (deleted with `recordSpawned`) | a file whose run started a process that imported a changed path is its direct importer | `test/scheduler/observed-direct.test.ts:58` and `:92` (the cut); `test/scheduler/pytest-observed.test.ts:119` (real pytest: the mark stored); `test/runners/pytest/spawned.test.ts:92` |
+| `test/runners/pytest/graph/invalidate.test.ts:129` (deleted with `recordObserved`) | a file whose last run loaded a changed path outside its closure is scheduled | `test/scheduler/one-write-path.test.ts:41` and `:107`; `test/runners/pytest/spawned.test.ts:92` (real pytest: an edit of a child's import re-keys and runs both files) |
