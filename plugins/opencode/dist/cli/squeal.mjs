@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.309";
+  if (true) return "0.1.311";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5895,6 +5895,8 @@ var init_cache = __esm({
       #loaders = null;
       /** The loader map being read, a test file at a time (row 015-45). */
       #build = null;
+      /** The seed at coverage's start or a recount, until a step judges after it (row 015-47). */
+      #seed = null;
       #conditions = /* @__PURE__ */ new Map();
       /** By path: the signature, and the blob, counter version and threshold it was made at. */
       #signatures = /* @__PURE__ */ new Map();
@@ -5911,6 +5913,25 @@ var init_cache = __esm({
         this.#loaders = this.#build.advance(work);
         if (this.#loaders !== null) this.#build = null;
         return this.#loaders;
+      }
+      /**
+       * The seed in progress, or done and not yet judged after; begun by
+       * `begin` when none is, which gives `null` when none can begin yet.
+       */
+      seed(begin2) {
+        this.#seed ??= begin2();
+        return this.#seed;
+      }
+      /**
+       * Drops the seed: a step judged after it, or a recount, coverage off or
+       * a closed store means the next seed begins again.
+       */
+      dropSeed() {
+        this.#seed = null;
+      }
+      /** An edit's moves and removals, for the seed in progress (D2; review 0.1.311 B1). */
+      follow(store, report3) {
+        this.#seed?.follow(store, report3);
       }
       /** A source's condition from the loader map. */
       condition(path, loaders) {
@@ -9569,39 +9590,151 @@ var init_judge = __esm({
 });
 
 // src/core/code/crap/seed.ts
-function seed(input, files2, countOf, again) {
-  const { store, worktreeId, revision } = input;
-  const known2 = new Set(
-    again ? [] : store.states.list(worktreeId, { measure: "crap" }).map((s) => `${functionKey(s.check)}\0${s.check.path}`)
-  );
-  const states = [];
-  for (const file of files2) {
-    for (const fn of countOf(file)?.functions ?? []) {
-      if (known2.has(`${functionKey(fn)}\0${file.path}`)) continue;
-      for (const measure2 of COVERAGE_MEASURES) {
-        states.push({
-          worktreeId,
-          check: checkOf(file.path, fn),
-          measure: measure2,
-          outcome: "pending",
-          value: null,
-          threshold: null,
-          countedAt: revision,
-          blob: file.blob,
-          changedAt: revision
-        });
-      }
-    }
-  }
-  store.states.upsertMany(states);
-}
-var COVERAGE_MEASURES;
+var COVERAGE_MEASURES, SEED_FILES, Seed;
 var init_seed = __esm({
   "src/core/code/crap/seed.ts"() {
     "use strict";
     init_judge();
     init_summary();
     COVERAGE_MEASURES = ["crap", "uncovered"];
+    SEED_FILES = 32;
+    Seed = class {
+      #files;
+      #again;
+      /** Each file's place in `#files`: one at or past `#next` is not seeded yet. */
+      #places;
+      #next = 0;
+      /** By path, the functions its count had as the seed began; `null` once that count was pruned. */
+      #had = /* @__PURE__ */ new Map();
+      /** By path, functions of a file not seeded yet that an edit moved away or removed. */
+      #left = /* @__PURE__ */ new Map();
+      /** By path, functions there as the seed began and not seeded yet, that an edit moved there. */
+      #came = /* @__PURE__ */ new Map();
+      constructor(files2, again) {
+        this.#files = files2;
+        this.#again = again;
+        this.#places = new Map(files2.map((f, place) => [f.path, place]));
+      }
+      /** Seeds the next files while `work` allows; true once every file is seeded. */
+      advance(input, countOf, work) {
+        for (; ; ) {
+          const moved2 = [...this.#came.keys()].filter((path) => this.#waiting(path) === void 0);
+          if (moved2.length === 0 && this.#next >= this.#files.length) return true;
+          if (!work()) return false;
+          if (moved2.length > 0) {
+            const paths = moved2.slice(0, SEED_FILES);
+            this.#seed(
+              input,
+              paths.map((path) => ({ path, began: null })),
+              countOf
+            );
+            continue;
+          }
+          const files2 = this.#files.slice(this.#next, this.#next + SEED_FILES);
+          this.#next += files2.length;
+          this.#seed(
+            input,
+            files2.map((began) => ({ path: began.path, began })),
+            countOf
+          );
+        }
+      }
+      /** An edit's moves and removals (D2), as the complexity pass applied them to its states. */
+      follow(store, report3) {
+        for (const { from, to } of report3.moves) {
+          if (!this.#leave(store, from)) continue;
+          const came = this.#came.get(to.path) ?? /* @__PURE__ */ new Set();
+          this.#came.set(to.path, came.add(functionKey(to)));
+        }
+        for (const check of report3.removed) this.#leave(store, check);
+      }
+      /** `check` leaves its file: true if it was there as the seed began and is not seeded yet. */
+      #leave(store, check) {
+        const key3 = functionKey(check);
+        const came = this.#came.get(check.path);
+        if (came?.delete(key3) === true) {
+          if (came.size === 0) this.#came.delete(check.path);
+          return true;
+        }
+        const then = this.#waiting(check.path);
+        if (then === void 0) return false;
+        const left = this.#left.get(check.path) ?? /* @__PURE__ */ new Set();
+        if (left.has(key3)) return false;
+        this.#left.set(check.path, left.add(key3));
+        const had = this.#hadOf(store, then);
+        return had === null || had.has(key3);
+      }
+      /**
+       * The pending states of the functions this seed holds in `files`, with no
+       * `crap` state; `began` is a file as the seed began, `null` for one seeded
+       * already or that the seed did not have, which holds only what came.
+       */
+      #seed(input, files2, countOf) {
+        const { store, worktreeId, revision } = input;
+        const paths = files2.map((f) => f.path);
+        const now = new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f]));
+        const known2 = new Set(
+          this.#again ? [] : store.states.list(worktreeId, { measure: "crap", paths }).map((s) => `${functionKey(s.check)}\0${s.check.path}`)
+        );
+        const states = [];
+        for (const { path, began } of files2) {
+          const file = now.get(path);
+          const chosen = this.#chosen(store, began, file, countOf);
+          this.#came.delete(path);
+          this.#left.delete(path);
+          this.#had.delete(path);
+          if (file === void 0) continue;
+          for (const fn of chosen) {
+            if (known2.has(`${functionKey(fn)}\0${path}`)) continue;
+            for (const measure2 of COVERAGE_MEASURES) {
+              states.push({
+                worktreeId,
+                check: checkOf(path, fn),
+                measure: measure2,
+                outcome: "pending",
+                value: null,
+                threshold: null,
+                countedAt: revision,
+                blob: file.blob,
+                changedAt: revision
+              });
+            }
+          }
+        }
+        store.states.upsertMany(states);
+      }
+      /**
+       * `file`'s functions to seed: those moved there, and with `then`, those
+       * its count had as the seed began, none an edit added or took away since.
+       */
+      #chosen(store, then, file, countOf) {
+        if (file === void 0 || file.tooBig === true) return [];
+        const functions = countOf(file)?.functions ?? [];
+        const came = this.#came.get(file.path);
+        const left = then === null ? void 0 : this.#left.get(file.path);
+        const same2 = then?.blob === file.blob && then.counterVersion === file.counterVersion;
+        if (same2 && came === void 0 && left === void 0) return functions;
+        const had = then === null ? /* @__PURE__ */ new Set() : this.#hadOf(store, then);
+        return functions.filter((fn) => {
+          const key3 = functionKey(fn);
+          return came?.has(key3) === true || (had === null || had.has(key3)) && left?.has(key3) !== true;
+        });
+      }
+      /** The file at `path` as the seed began, while it is not seeded yet. */
+      #waiting(path) {
+        const place = this.#places.get(path);
+        return place === void 0 || place < this.#next ? void 0 : this.#files[place];
+      }
+      /** The functions `then`'s count had, read once. */
+      #hadOf(store, then) {
+        const known2 = this.#had.get(then.path);
+        if (known2 !== void 0) return known2;
+        const count2 = store.counts.get(then.blob, then.language, then.counterVersion);
+        const had = count2 === null ? null : new Set(count2.functions.map(functionKey));
+        this.#had.set(then.path, had);
+        return had;
+      }
+    };
   }
 });
 
@@ -9769,15 +9902,15 @@ var init_pulled = __esm({
 });
 
 // src/core/code/crap/brought.ts
-function broughtByGit(meta, worktreeId, summary, next) {
+function broughtByGit(meta, worktreeId, summary) {
   const brought = new Map(Object.entries(summary?.brought ?? {}));
   for (const [path, revision] of readPulled(meta, worktreeId)) {
     brought.set(path, Math.max(revision, brought.get(path) ?? 0));
   }
-  for (const path of brought.keys()) if (next[path] === void 0) brought.delete(path);
   return brought;
 }
 function keepUnjudged(brought, files2, next) {
+  for (const path of brought.keys()) if (next[path] === void 0) brought.delete(path);
   for (const f of files2) {
     const now = next[f.path];
     if (now?.state === "judged" && now.blob === f.blob) brought.delete(f.path);
@@ -9790,73 +9923,11 @@ var init_brought = __esm({
   }
 });
 
-// src/core/code/crap/step.ts
-function runCoverageStep(input) {
-  const { store, worktreeId } = input;
-  const work = budget(input.now);
-  const cache2 = input.cache ?? new StepCache();
-  const loaders = cache2.loaders(
-    () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
-    input.cache === void 0 ? () => true : work
-  );
-  if (loaders === null) return READING;
-  const files2 = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
-  const summary = readSummary(store.meta, worktreeId);
-  const start2 = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
-  if (start2) {
-    const spent = uncountableFiles(store, worktreeId, files2);
-    if (store.files.uncounted(worktreeId).some((f) => !spent.has(f.path))) return null;
-  }
-  const counts = /* @__PURE__ */ new Map();
-  const countOf = (file) => {
-    const known2 = counts.get(file.path);
-    if (known2 !== void 0) return known2;
-    const count2 = store.counts.get(file.blob, file.language, file.counterVersion);
-    if (count2 !== null) counts.set(file.path, count2);
-    return count2;
-  };
-  const { next, judged, quiet, more } = walk(
-    { input, cache: cache2, loaders, summary, start: start2, countOf, work },
-    files2
-  );
-  return store.transaction(() => {
-    if (start2 || input.reseed) seed(input, files2, countOf, start2 && summary !== null);
-    const brought = broughtByGit(store.meta, worktreeId, summary, next);
-    const transitions = writeJudgement(input, judged, brought);
-    keepUnjudged(brought, files2, next);
-    for (const path of Object.keys(summary?.files ?? {})) {
-      if (next[path] === void 0) writeEvidence(store.meta, worktreeId, path, null);
-    }
-    const waiting2 = [...quiet].filter((path) => next[path] !== void 0).sort(compare);
-    const written = {
-      v: 1,
-      since: start2 ? input.revision : summary?.since ?? input.revision,
-      provider: COVERAGE_PROVIDER_VERSION,
-      files: next,
-      ...waiting2.length === 0 ? {} : { quiet: waiting2 },
-      ...loaders.withoutImports === 0 ? {} : { withoutImports: loaders.withoutImports },
-      threshold: thresholdAfter(input, start2 ? null : summary, more),
-      ...brought.size === 0 ? {} : { brought: Object.fromEntries(brought) }
-    };
-    if (start2 || JSON.stringify(written) !== JSON.stringify(summary)) {
-      writeSummary(store.meta, worktreeId, written);
-    }
-    return { judged: judged.length, transitions, wakeAt: loaders.wakeAt, more };
-  });
-}
-function budget(now) {
-  const began = now();
-  let worked = false;
-  return () => {
-    if (worked && now() - began > STEP_BUDGET_MS) return false;
-    worked = true;
-    return true;
-  };
-}
+// src/core/code/crap/walk.ts
 function walk(at2, files2) {
   const { input, cache: cache2, loaders, summary, start: start2, work } = at2;
   const next = {};
-  const judged = [];
+  const judged = batched(input, at2.brought);
   const quiet = new Set(input.reseed ? files2.map((f) => f.path) : summary?.quiet ?? []);
   const keys = (ready) => ready.map((l) => l.key);
   const record = (key3) => cache2.record(input.store.coverage, key3);
@@ -9892,10 +9963,30 @@ function walk(at2, files2) {
       continue;
     }
     next[file.path] = { state: "judged", blob: file.blob, signature };
-    judged.push({ file, count: count2, coverage, ...recounted ? { quiet: true } : {} });
+    judged.add({ file, count: count2, coverage, ...recounted ? { quiet: true } : {} });
     quiet.delete(file.path);
   }
-  return { next, judged, quiet, more };
+  return { next, ...judged.end(), quiet, more };
+}
+function batched(input, brought) {
+  const judged = [];
+  let written = 0;
+  let transitions = 0;
+  const write2 = () => {
+    written += judged.length;
+    transitions += writeJudgement(input, judged.splice(0), brought);
+  };
+  return {
+    add(j) {
+      judged.push(j);
+      if (judged.length === WRITE_FILES) write2();
+    },
+    /** The files judged, and the transitions their states made. */
+    end() {
+      write2();
+      return { judged: written, transitions };
+    }
+  };
 }
 function writeJudgement(input, judged, brought) {
   const { store, worktreeId } = input;
@@ -9916,6 +10007,99 @@ function writeJudgement(input, judged, brought) {
   for (const j of judged) writeEvidence(store.meta, worktreeId, j.file.path, evidenceOf(j));
   return transitions.length;
 }
+function summaryOf(file, condition) {
+  return condition.state === "pending" ? {
+    state: "pending",
+    blob: file.blob,
+    reason: condition.reason,
+    waiting: condition.waiting
+  } : { state: "unknown", blob: file.blob, cause: condition.cause };
+}
+var WRITE_FILES;
+var init_walk = __esm({
+  "src/core/code/crap/walk.ts"() {
+    "use strict";
+    init_file();
+    init_judge();
+    init_summary();
+    WRITE_FILES = 16;
+  }
+});
+
+// src/core/code/crap/step.ts
+function runCoverageStep(input) {
+  const { store, worktreeId } = input;
+  const work = budget(input.now);
+  const cache2 = input.cache ?? new StepCache();
+  const slice = input.cache === void 0 ? () => true : work;
+  const summary = readSummary(store.meta, worktreeId);
+  const start2 = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
+  const counts = /* @__PURE__ */ new Map();
+  const countOf = (file) => {
+    const known2 = counts.get(file.path);
+    if (known2 !== void 0) return known2;
+    const count2 = store.counts.get(file.blob, file.language, file.counterVersion);
+    if (count2 !== null) counts.set(file.path, count2);
+    return count2;
+  };
+  if (start2 || input.reseed) {
+    const seed = cache2.seed(() => beginSeed(input, start2, summary));
+    if (seed === null) return null;
+    if (!store.transaction(() => seed.advance(input, countOf, slice))) return SEEDING;
+  }
+  const loaders = cache2.loaders(
+    () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
+    slice
+  );
+  if (loaders === null) return READING;
+  const files2 = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
+  const brought = broughtByGit(store.meta, worktreeId, summary);
+  const report3 = store.transaction(() => {
+    const { next, judged, transitions, quiet, more } = walk(
+      { input, cache: cache2, loaders, summary, start: start2, countOf, work, brought },
+      files2
+    );
+    keepUnjudged(brought, files2, next);
+    for (const path of Object.keys(summary?.files ?? {})) {
+      if (next[path] === void 0) writeEvidence(store.meta, worktreeId, path, null);
+    }
+    const waiting2 = [...quiet].filter((path) => next[path] !== void 0).sort(compare);
+    const written = {
+      v: 1,
+      since: start2 ? input.revision : summary?.since ?? input.revision,
+      provider: COVERAGE_PROVIDER_VERSION,
+      files: next,
+      ...waiting2.length === 0 ? {} : { quiet: waiting2 },
+      ...loaders.withoutImports === 0 ? {} : { withoutImports: loaders.withoutImports },
+      threshold: thresholdAfter(input, start2 ? null : summary, more),
+      ...brought.size === 0 ? {} : { brought: Object.fromEntries(brought) }
+    };
+    if (start2 || JSON.stringify(written) !== JSON.stringify(summary)) {
+      writeSummary(store.meta, worktreeId, written);
+    }
+    return { judged, transitions, wakeAt: loaders.wakeAt, more };
+  });
+  cache2.dropSeed();
+  return report3;
+}
+function beginSeed(input, start2, summary) {
+  const { store, worktreeId } = input;
+  const files2 = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
+  if (start2) {
+    const spent = uncountableFiles(store, worktreeId, files2);
+    if (store.files.uncounted(worktreeId).some((f) => !spent.has(f.path))) return null;
+  }
+  return new Seed(files2, start2 && summary !== null);
+}
+function budget(now) {
+  const began = now();
+  let worked = false;
+  return () => {
+    if (worked && now() - began > STEP_BUDGET_MS) return false;
+    worked = true;
+    return true;
+  };
+}
 function thresholdAfter(input, summary, more) {
   const judgedAt = summary?.threshold;
   if (judgedAt === void 0 || judgedAt === input.threshold) return input.threshold;
@@ -9927,15 +10111,7 @@ function thresholdAfter(input, summary, more) {
   });
   return input.threshold;
 }
-function summaryOf(file, condition) {
-  return condition.state === "pending" ? {
-    state: "pending",
-    blob: file.blob,
-    reason: condition.reason,
-    waiting: condition.waiting
-  } : { state: "unknown", blob: file.blob, cause: condition.cause };
-}
-var STEP_BUDGET_MS, READING;
+var STEP_BUDGET_MS, READING, SEEDING;
 var init_step = __esm({
   "src/core/code/crap/step.ts"() {
     "use strict";
@@ -9944,11 +10120,10 @@ var init_step = __esm({
     init_failed();
     init_brought();
     init_cache();
-    init_file();
-    init_judge();
     init_loaders();
     init_seed();
     init_summary();
+    init_walk();
     STEP_BUDGET_MS = 50;
     READING = {
       judged: 0,
@@ -9956,6 +10131,13 @@ var init_step = __esm({
       wakeAt: null,
       more: true,
       reading: true
+    };
+    SEEDING = {
+      judged: 0,
+      transitions: 0,
+      wakeAt: null,
+      more: true,
+      seeding: true
     };
   }
 });
@@ -59089,6 +59271,8 @@ function report2(revision, reason2, files2, counted3, judged) {
     counted: counted3,
     transitions: judged.transitions.length,
     moved: judged.moves.length,
+    moves: judged.moves,
+    removed: judged.removed,
     edited: judged.edited
   };
 }
@@ -59215,6 +59399,7 @@ function createCodePass(options) {
     settled.clear();
     cache2.invalidate();
     cache2.settle();
+    cache2.dropSeed();
     coverageWake = null;
     coverageDue = true;
   };
@@ -59277,15 +59462,19 @@ function createCodePass(options) {
   };
   const coverageStep = (opened, policy, report3) => {
     const revised = report3 !== null;
-    reseedDue ||= revised && report3.mode !== "edit";
+    const recount = revised && report3.mode !== "edit";
+    reseedDue ||= recount;
     const inputs2 = options.coverage;
     coverageWake = null;
     if (inputs2 === void 0) return;
     if (!coverageOn(policy)) {
+      cache2.dropSeed();
       clearCoverage(opened, options.worktreeId);
       coverageDue = true;
       return;
     }
+    if (recount) cache2.dropSeed();
+    else if (revised) cache2.follow(opened, report3);
     if (revised) cache2.invalidate();
     if (!reseedDue && !coverageDue && !revised) return;
     if (!pace.due()) {
@@ -59308,7 +59497,7 @@ function createCodePass(options) {
         cache: cache2
       })
     );
-    if (step?.reading !== true) reseedDue = false;
+    if (step?.reading !== true && step?.seeding !== true) reseedDue = false;
     coverageWake = step?.wakeAt ?? null;
     if (step?.more === true) paced();
     else cache2.settle();
@@ -59843,7 +60032,7 @@ function bodyHash(text3, from, to) {
   const normalised = text3.slice(from, to).replace(/\s+/g, "");
   return createHash28("sha1").update(normalised).digest("hex").slice(0, 16);
 }
-var init_walk = __esm({
+var init_walk2 = __esm({
   "src/core/code/count/walk.ts"() {
     "use strict";
   }
@@ -59868,7 +60057,7 @@ var init_count = __esm({
     init_parser();
     init_python();
     init_typescript();
-    init_walk();
+    init_walk2();
     init_parser();
     COUNTER_VERSION = 3;
   }
@@ -64846,11 +65035,11 @@ function initCodex(io, options = { trust: false, yes: false }, deps = {}) {
   }
   const configPath = join40(root, "squeal.config.json");
   const writeConfig = !existsSync18(configPath);
-  let seed2 = { projects: [], notes: [], templates: [] };
+  let seed = { projects: [], notes: [], templates: [] };
   try {
     if (writeConfig) {
-      seed2 = seedNodeTest(root);
-      const config = { ...DEFAULT_POLICY, nodeTest: seed2.projects };
+      seed = seedNodeTest(root);
+      const config = { ...DEFAULT_POLICY, nodeTest: seed.projects };
       writeFileSync3(configPath, `${JSON.stringify(config, null, 2)}
 `);
     }
@@ -64863,8 +65052,8 @@ function initCodex(io, options = { trust: false, yes: false }, deps = {}) {
   io.stdout(
     [
       `squeal init: ${writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"}`,
-      ...seed2.notes,
-      ...seed2.templates.length === 0 ? [] : ["nodeTest entries to complete by hand:", JSON.stringify(seed2.templates, null, 2)],
+      ...seed.notes,
+      ...seed.templates.length === 0 ? [] : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)],
       // Row 005-40: setup runs init twice for Codex; a user who has the plugin needs no hint.
       ...codexPlugin(io.env ?? process.env) === null ? [
         "Each user installs the Codex plugin once; Codex writes its own config:",
@@ -68699,19 +68888,19 @@ function pytestRunners(facts, policy, raw, env) {
       notes: []
     }));
   }
-  let seed2;
+  let seed;
   try {
-    seed2 = seedPytest(facts.root, facts.tracked, env);
+    seed = seedPytest(facts.root, facts.tracked, env);
   } catch {
     return [];
   }
-  return seed2.projects.map((p) => ({
+  return seed.projects.map((p) => ({
     name: p.name,
     cwd: p.cwd ?? "",
     include: p.include,
     ...p.exclude === void 0 ? {} : { exclude: p.exclude },
     source: "seed",
-    notes: seed2.notes.filter((n) => n.startsWith(`pytest project "${p.name}"`))
+    notes: seed.notes.filter((n) => n.startsWith(`pytest project "${p.name}"`))
   }));
 }
 function declaresPytest(raw) {
@@ -68824,19 +69013,19 @@ function nodeTestProjects2(facts, policy, raw) {
       leftOut: { notes: [], templates: [] }
     };
   }
-  const seed2 = seeded(facts.root);
-  const refused = seed2.notes.filter((note) => !note.startsWith(SEEDED));
+  const seed = seeded(facts.root);
+  const refused = seed.notes.filter((note) => !note.startsWith(SEEDED));
   if (!declared) {
     return {
-      projects: seed2.projects.map((p) => ({ ...p, source: "seed" })),
-      leftOut: { notes: refused, templates: seed2.templates }
+      projects: seed.projects.map((p) => ({ ...p, source: "seed" })),
+      leftOut: { notes: refused, templates: seed.templates }
     };
   }
   return {
     projects: [],
     leftOut: {
-      notes: [...seed2.projects.map(notDeclared), ...refused],
-      templates: [...seed2.projects, ...seed2.templates]
+      notes: [...seed.projects.map(notDeclared), ...refused],
+      templates: [...seed.projects, ...seed.templates]
     }
   };
 }
@@ -69308,10 +69497,10 @@ function initClaudeCode(io) {
   lines.push(
     writeConfig ? "wrote squeal.config.json with every default policy key" : "kept squeal.config.json"
   );
-  let seed2 = { projects: [], notes: [], templates: [] };
+  let seed = { projects: [], notes: [], templates: [] };
   const suggest = !writeConfig && lacksNodeTest(configPath);
   try {
-    if (writeConfig || suggest) seed2 = seedNodeTest(root);
+    if (writeConfig || suggest) seed = seedNodeTest(root);
   } catch (error) {
     if (writeConfig) {
       io.stderr(
@@ -69322,7 +69511,7 @@ function initClaudeCode(io) {
     }
     lines.push(`could not read package.json scripts to suggest nodeTest: ${reason(error)}`);
   }
-  lines.push(...suggest ? seed2.notes.filter((n) => !n.startsWith(SEEDED2)) : seed2.notes);
+  lines.push(...suggest ? seed.notes.filter((n) => !n.startsWith(SEEDED2)) : seed.notes);
   const next = { ...settings.value };
   const { [PREVIOUS_MARKETPLACE_NAME]: oldMarketplace, ...marketplaceEntries } = marketplaces;
   const { [PREVIOUS_PLUGIN_ID]: oldPlugin, ...pluginEntries } = plugins;
@@ -69365,7 +69554,7 @@ function initClaudeCode(io) {
     return 1;
   }
   try {
-    const config = { ...DEFAULT_POLICY, nodeTest: seed2.projects };
+    const config = { ...DEFAULT_POLICY, nodeTest: seed.projects };
     if (writeConfig) writeFileSync14(configPath, `${JSON.stringify(config, null, 2)}
 `);
   } catch (error) {
@@ -69377,11 +69566,11 @@ function initClaudeCode(io) {
   io.stdout(
     [
       ...lines.map((line) => `squeal init: ${line}`),
-      ...suggest && seed2.projects.length > 0 ? [
+      ...suggest && seed.projects.length > 0 ? [
         "squeal.config.json has no nodeTest; to validate these node:test suites, add:",
-        JSON.stringify({ nodeTest: seed2.projects }, null, 2)
+        JSON.stringify({ nodeTest: seed.projects }, null, 2)
       ] : [],
-      ...seed2.templates.length === 0 ? [] : ["nodeTest entries to complete by hand:", JSON.stringify(seed2.templates, null, 2)],
+      ...seed.templates.length === 0 ? [] : ["nodeTest entries to complete by hand:", JSON.stringify(seed.templates, null, 2)],
       `Each collaborator installs the plugin once: claude plugin install ${PLUGIN_ID} --scope project`,
       ...migrated ? [
         `Each collaborator who installed ${PREVIOUS_PLUGIN_ID} removes it: claude plugin uninstall ${PREVIOUS_PLUGIN_ID} --scope project, then claude plugin marketplace remove ${PREVIOUS_MARKETPLACE_NAME}`
