@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.326";
+  if (true) return "0.1.327";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -985,7 +985,7 @@ var init_observed = __esm({
       key;
       shape;
       #sets = /* @__PURE__ */ new Map();
-      /** The stored value last merged into the view; `undefined` until the first read and after a write. */
+      /** The stored value last merged into the view; `undefined` until the first read. */
       #read = void 0;
       /** Per entry: the paths `see` added that no `write` has found stored yet. */
       #unwritten = /* @__PURE__ */ new Map();
@@ -1031,7 +1031,6 @@ var init_observed = __esm({
           }
           if (!missing2) return;
           this.store.meta.set(key3, format(stored, this.shape));
-          this.#read = void 0;
         });
       }
     };
