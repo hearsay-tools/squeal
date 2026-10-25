@@ -39,3 +39,19 @@ Questions:
 5. For row 016-25 (R3), the cost of keying ignored names in a directory that also holds tracked files: how many test files list such a mixed directory, which directories, and across this repository's worktrees how often the key of each would have moved (the ignored names differ between worktrees or over the day). Leave out C2's atomic-save temp names (`<file>.tmp.<pid>.<random>`).
 
 Done when: `lessons.md` is committed with each answer, its numbers, the load at each reading, and a verdict per goal: holds, blocker, or unproven with the reason.
+
+## Review of the wave 4 candidate (016-24, 016-26)
+
+Use /reviewer. The candidate branch and SHA are named in the spawn. The range is `origin/main..<SHA>`: the commits of 016-24 and 016-26 (worker 6d8a1279), the coordinator's 011 C3 sentence and status lines, the version raise and the bundle commit. Write `docs/specifications/016-extensions/reviews/<version>.md` and commit it alone on your branch.
+
+Read: `spec.md` D4; the 016-24 and 016-26 brief above; `tasks/016-23/notes.md` and the worker's notes; 011 C3 (the listed-directory sentence); `reviews/0.1.316.md`.
+
+Check, with proof where you can:
+1. R1: a name added to or removed from an unwatched listed directory re-keys its reader at the next revision in the same worktree, with no restart. The key it moves to equals the key a restart computes for the same names (validity case (i) against the "another worktree stored" case).
+2. A test that writes into the ignored directory it lists runs at first sight as before, and not at later revisions with no other change. Say what happens when a revision lands during that test's own run (the worker's residual a).
+3. R4: the absent and empty markers cannot equal any key computed at 0.1.316 for a directory with names, and an empty and an absent directory key apart. Only readers of an absent or empty unwatched listed directory re-key.
+4. `KEY_FORMAT_VERSION` stays at 20: compare-refs against `squeal--v0.1.316` differs by design in exactly three cases (absent marker, empty marker, case (i)), with equal outputs and nothing uncovered. A stored key whose meaning changes is a finding that goes to the human as a raise question.
+5. The harness steps are additive: every existing case reads as before, and 011-204's `keyed()` hasher and its changed and touched outputs are unchanged.
+6. Cost: one `readdirSync` per directory hashed from disk at each revision; check the count the worker measured and that no reader-count multiplies it.
+
+Run lint, typecheck, `test/scheduler/ignored-listing.test.ts`, `test/keys/observed.test.ts` and `test/keys/key-format.test.ts` on Node 22 and Node 24, and the locked full suite: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`. Label findings proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
