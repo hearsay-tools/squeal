@@ -309,6 +309,8 @@ function report(
     counted,
     transitions: judged.transitions.length,
     moved: judged.moves.length,
+    moves: judged.moves,
+    removed: judged.removed,
     edited: judged.edited,
   };
 }
