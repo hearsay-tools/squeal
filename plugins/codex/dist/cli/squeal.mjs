@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.314";
+  if (true) return "0.1.316";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -821,7 +821,7 @@ var init_glob = __esm({
 
 // src/core/keys/observed.ts
 import { createHash as createHash3 } from "node:crypto";
-import { statSync } from "node:fs";
+import { readdirSync as readdirSync2, statSync } from "node:fs";
 import { join as join4 } from "node:path";
 function observedMetaKey(project) {
   return `observed.${project}`;
@@ -981,18 +981,29 @@ var init_observed = __esm({
       }
     };
     Listings = class {
-      constructor(files2) {
+      constructor(files2, root) {
         this.files = files2;
+        this.root = root;
       }
       files;
+      root;
       /** directory -> entry name -> tracked files below it. */
       #entries = null;
       /** The hash of `directory`'s sorted entry names; `null` when it has none. */
       hashOf(directory) {
         const names4 = this.#index().get(directory);
-        if (names4 === void 0 || names4.size === 0) return null;
-        const sorted2 = [...names4.keys()].sort(compare);
-        return createHash3("sha1").update(sorted2.join("\0")).digest("hex");
+        const sorted2 = names4 !== void 0 && names4.size > 0 ? [...names4.keys()] : this.#onDisk(directory);
+        if (sorted2.length === 0) return null;
+        return createHash3("sha1").update(sorted2.sort(compare).join("\0")).digest("hex");
+      }
+      /** The names `directory` holds on disk; none without a root, or when it cannot be read. */
+      #onDisk(directory) {
+        if (this.root === void 0) return [];
+        try {
+          return readdirSync2(join4(this.root, directory));
+        } catch {
+          return [];
+        }
       }
       /**
        * The listing paths of `directory` and of every directory below it that
@@ -1153,7 +1164,7 @@ var init_closure = __esm({
 });
 
 // src/core/keys/package-scans.ts
-import { readdirSync as readdirSync2, readFileSync as readFileSync3 } from "node:fs";
+import { readdirSync as readdirSync3, readFileSync as readFileSync3 } from "node:fs";
 import { join as join5 } from "node:path";
 function hasRuntimeFile(dir2) {
   const entries3 = entriesOf(dir2);
@@ -1181,7 +1192,7 @@ function referencesOpaque(dir2) {
 }
 function entriesOf(dir2) {
   try {
-    return readdirSync2(dir2, { withFileTypes: true });
+    return readdirSync3(dir2, { withFileTypes: true });
   } catch {
     return null;
   }
@@ -1435,7 +1446,7 @@ var init_dependencies = __esm({
 
 // src/core/keys/hidden-lockfile.ts
 import { createHash as createHash5 } from "node:crypto";
-import { lstatSync as lstatSync2, readdirSync as readdirSync3, readFileSync as readFileSync4, readlinkSync } from "node:fs";
+import { lstatSync as lstatSync2, readdirSync as readdirSync4, readFileSync as readFileSync4, readlinkSync } from "node:fs";
 import { isAbsolute as isAbsolute3, join as join7 } from "node:path";
 function staleHiddenLockfile(dir2, lockfile) {
   const listed5 = lockfile === null ? null : packagesIn(lockfile);
@@ -1519,7 +1530,7 @@ function packageFolders(dir2, workspaceFolders) {
 }
 function entriesOf2(path) {
   try {
-    return readdirSync3(path, { withFileTypes: true });
+    return readdirSync4(path, { withFileTypes: true });
   } catch (error) {
     if (isMissing(error) || error.code === "ENOTDIR") return [];
     throw error;
@@ -1949,7 +1960,7 @@ var init_pnpm_graph = __esm({
 
 // src/core/keys/pnpm-install.ts
 import { createHash as createHash7 } from "node:crypto";
-import { lstatSync as lstatSync3, readdirSync as readdirSync4, readFileSync as readFileSync5, readlinkSync as readlinkSync2 } from "node:fs";
+import { lstatSync as lstatSync3, readdirSync as readdirSync5, readFileSync as readFileSync5, readlinkSync as readlinkSync2 } from "node:fs";
 import { join as join9 } from "node:path";
 function readPnpmInstall(dir2, base, text3, scans) {
   const modules = layoutOf(dir2);
@@ -2081,7 +2092,7 @@ function namesIn(modules) {
 }
 function entriesOf3(path) {
   try {
-    return readdirSync4(path, { withFileTypes: true });
+    return readdirSync5(path, { withFileTypes: true });
   } catch {
     return [];
   }
@@ -11420,7 +11431,7 @@ __export(runner_exports, {
   vitestBelowRootReason: () => vitestBelowRootReason,
   vitestDetected: () => vitestDetected
 });
-import { readdirSync as readdirSync5, readFileSync as readFileSync10 } from "node:fs";
+import { readdirSync as readdirSync6, readFileSync as readFileSync10 } from "node:fs";
 import { join as join17, posix as posix9 } from "node:path";
 import { stripVTControlCharacters as stripVTControlCharacters3 } from "node:util";
 function createRecoveringRunner(options) {
@@ -11519,7 +11530,7 @@ function messageOf(error) {
 function vitestDetected(root) {
   let names4;
   try {
-    names4 = readdirSync5(root);
+    names4 = readdirSync6(root);
   } catch {
     return false;
   }
@@ -12319,7 +12330,7 @@ var init_paths3 = __esm({
 
 // src/core/slow/slot.ts
 import { createHash as createHash14 } from "node:crypto";
-import { existsSync as existsSync9, readdirSync as readdirSync6, rmSync as rmSync5, statSync as statSync2, writeFileSync } from "node:fs";
+import { existsSync as existsSync9, readdirSync as readdirSync7, rmSync as rmSync5, statSync as statSync2, writeFileSync } from "node:fs";
 import { isAbsolute as isAbsolute7, join as join21 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
@@ -12478,7 +12489,7 @@ function othersWaitingForSlot(dir2, worktreeId, now = Date.now()) {
   const own = waiterPath(dir2, worktreeId);
   let names4;
   try {
-    names4 = readdirSync6(dir2);
+    names4 = readdirSync7(dir2);
   } catch {
     return false;
   }
@@ -12982,7 +12993,7 @@ var init_composite_runner = __esm({
 
 // src/core/capacity/marks.ts
 import { createHash as createHash15 } from "node:crypto";
-import { readdirSync as readdirSync7, readFileSync as readFileSync12, renameSync as renameSync2, rmSync as rmSync6, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { readdirSync as readdirSync8, readFileSync as readFileSync12, renameSync as renameSync2, rmSync as rmSync6, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join22 } from "node:path";
 function markPath(dir2, worktreeId) {
   const name2 = createHash15("sha256").update(worktreeId).digest("hex").slice(0, 16);
@@ -13012,7 +13023,7 @@ function readMarks(dir2, worktreeId, now) {
   const own = markPath(dir2, worktreeId);
   let names4;
   try {
-    names4 = readdirSync7(dir2);
+    names4 = readdirSync8(dir2);
   } catch {
     return [];
   }
@@ -13233,7 +13244,7 @@ var init_measure = __esm({
 });
 
 // src/core/daemon/terminate.ts
-import { readdirSync as readdirSync8, readFileSync as readFileSync13 } from "node:fs";
+import { readdirSync as readdirSync9, readFileSync as readFileSync13 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
 import { setTimeout as sleep2 } from "node:timers/promises";
 async function terminate(found3, table = PROC) {
@@ -13323,7 +13334,7 @@ function exited(entry4) {
   if (life?.start !== entry4.start) return true;
   if (!life.zombie) return false;
   try {
-    return readdirSync8(`/proc/${entry4.pid}/task`).length <= 1;
+    return readdirSync9(`/proc/${entry4.pid}/task`).length <= 1;
   } catch {
     return true;
   }
@@ -13331,7 +13342,7 @@ function exited(entry4) {
 function childrenOf(pid) {
   let tasks;
   try {
-    tasks = readdirSync8(`/proc/${pid}/task`);
+    tasks = readdirSync9(`/proc/${pid}/task`);
   } catch {
     return [];
   }
@@ -13471,7 +13482,7 @@ var init_low_priority = __esm({
 
 // src/core/daemon/escaped.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { readdirSync as readdirSync9, readFileSync as readFileSync14 } from "node:fs";
+import { readdirSync as readdirSync10, readFileSync as readFileSync14 } from "node:fs";
 import { readFile as readFile3 } from "node:fs/promises";
 import { setTimeout as sleep4 } from "node:timers/promises";
 function runsText(runs) {
@@ -13536,7 +13547,7 @@ function afterEachRun(runner, children, note) {
   };
 }
 async function snapshot() {
-  const names4 = readdirSync9("/proc").filter((name2) => /^\d+$/.test(name2));
+  const names4 = readdirSync10("/proc").filter((name2) => /^\d+$/.test(name2));
   const entries3 = [];
   for (let at2 = 0; at2 < names4.length; at2 += CHUNK) {
     if (at2 > 0) await new Promise((done) => setImmediate(done));
@@ -13846,7 +13857,7 @@ var init_escaped = __esm({
 });
 
 // src/core/ps/proc.ts
-import { readdirSync as readdirSync10, readFileSync as readFileSync15, readlinkSync as readlinkSync4, statSync as statSync4 } from "node:fs";
+import { readdirSync as readdirSync11, readFileSync as readFileSync15, readlinkSync as readlinkSync4, statSync as statSync4 } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
 import { join as join23 } from "node:path";
 function createProcSource(options = {}) {
@@ -13944,7 +13955,7 @@ var init_proc = __esm({
         const dir2 = join23(this.#proc, String(pid), "fd");
         let names4;
         try {
-          names4 = readdirSync10(dir2);
+          names4 = readdirSync11(dir2);
         } catch {
           return null;
         }
@@ -14021,7 +14032,7 @@ var init_proc = __esm({
       }
       #pids() {
         try {
-          return readdirSync10(this.#proc).filter(isPid).map(Number);
+          return readdirSync11(this.#proc).filter(isPid).map(Number);
         } catch {
           return [];
         }
@@ -14090,7 +14101,7 @@ var init_proc = __esm({
 });
 
 // src/core/capacity/cores.ts
-import { readdirSync as readdirSync11, readFileSync as readFileSync16 } from "node:fs";
+import { readdirSync as readdirSync12, readFileSync as readFileSync16 } from "node:fs";
 import { join as join24 } from "node:path";
 function gatedPermits(marks, own, hostSlots, want, busy = null) {
   const marked = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own.cores);
@@ -14176,7 +14187,7 @@ var init_cores = __esm({
       #children(pid) {
         let tasks;
         try {
-          tasks = readdirSync11(join24(this.#proc, String(pid), "task"));
+          tasks = readdirSync12(join24(this.#proc, String(pid), "task"));
         } catch {
           return [];
         }
@@ -15364,12 +15375,19 @@ async function observedGrowth(context, report3, run5) {
   }
   await keys.track(tracked);
   for (const { testFile, add: add2, growth } of grown) {
-    const firstSeen = growth.filter(
+    const hashed = growth.filter(
       (path) => listedDirectory(path) === null && path !== GIT_ENTRY && keys.firstHashedDuringRun(path, run5)
     );
+    const firstSeen = [...hashed, ...ignoredListings(add2, ignored)];
     out2.set(testFileId(testFile), { add: add2, growth, firstSeen });
   }
   return out2;
+}
+function ignoredListings(paths, ignored) {
+  return paths.filter((path) => {
+    const directory = listedDirectory(path);
+    return directory !== null && ignored.has(directory);
+  });
 }
 function scratchOf(written, ignored) {
   const dirs = new Set(written);
@@ -22882,6 +22900,7 @@ var init_keying = __esm({
     WorktreeKeys = class {
       constructor(options) {
         this.options = options;
+        this.#listings = new Listings(() => this.#listedFiles(), options.root);
         this.#policy = options.policy;
         this.#isDeclared = createInputMatcher(inputGlobs(options.policy.inputs));
         this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
@@ -22943,8 +22962,8 @@ var init_keying = __esm({
       #startup;
       /** Test files whose observed set another worktree grew, not assembled again yet (016 D4, O9). */
       #grownElsewhere = /* @__PURE__ */ new Map();
-      /** Entry names of listed directories, from the tracked files. */
-      #listings = new Listings(() => this.#listedFiles());
+      /** Entry names of listed directories, from the tracked files, else from disk (row 016-23). */
+      #listings;
       /**
        * Paths `track` first hashed while runs were in flight, each with the
        * number of the last run begun by then: no hash from before a later run
@@ -28979,12 +28998,14 @@ function observedInputs(recorded2, completed, paths) {
     const recursive = relative24(entry4.recursive, () => true);
     if (read5.length > 0 || listed5.length > 0) {
       const written = writtenAbove([...read5, ...listed5], entry4.written, paths);
+      const direct = read5.filter((path) => entry4.direct.has(paths.toAbsolute(path)));
       out2.push({
         testFile,
         paths: read5,
         directories: listed5,
         ...recursive.length > 0 ? { recursive } : {},
-        ...written.length > 0 ? { written } : {}
+        ...written.length > 0 ? { written } : {},
+        ...direct.length > 0 ? { direct } : {}
       });
     }
   }
@@ -29017,13 +29038,13 @@ var init_inputs = __esm({
 });
 
 // src/runners/observe/read.ts
-import { readdirSync as readdirSync15, readFileSync as readFileSync28, rmSync as rmSync11 } from "node:fs";
+import { readdirSync as readdirSync16, readFileSync as readFileSync28, rmSync as rmSync11 } from "node:fs";
 import { join as join59 } from "node:path";
 function takeRecorded(dir2) {
   const recorded2 = /* @__PURE__ */ new Map();
   let names4;
   try {
-    names4 = readdirSync15(dir2).filter((name2) => name2.endsWith(".ndjson"));
+    names4 = readdirSync16(dir2).filter((name2) => name2.endsWith(".ndjson"));
   } catch {
     return recorded2;
   }
@@ -29051,13 +29072,20 @@ function addLine(recorded2, line) {
   if (typeof value.t !== "string") return;
   let entry4 = recorded2.get(value.t);
   if (entry4 === void 0) {
-    entry4 = { paths: /* @__PURE__ */ new Set(), listed: /* @__PURE__ */ new Set(), recursive: /* @__PURE__ */ new Set(), written: /* @__PURE__ */ new Set() };
+    entry4 = {
+      paths: /* @__PURE__ */ new Set(),
+      listed: /* @__PURE__ */ new Set(),
+      recursive: /* @__PURE__ */ new Set(),
+      written: /* @__PURE__ */ new Set(),
+      direct: /* @__PURE__ */ new Set()
+    };
     recorded2.set(value.t, entry4);
   }
   addAll(entry4.paths, value.f);
   addAll(entry4.listed, value.l);
   addAll(entry4.recursive, value.r);
   addAll(entry4.written, value.w);
+  addAll(entry4.direct, value.d);
 }
 function addAll(into, values) {
   if (!Array.isArray(values)) return;
@@ -32851,7 +32879,7 @@ var init_vitest = __esm({
 });
 
 // src/runners/node-test/adapter-files.ts
-import { readdirSync as readdirSync16 } from "node:fs";
+import { readdirSync as readdirSync17 } from "node:fs";
 import { join as join68, relative as relative10, resolve as resolve14, sep as sep9 } from "node:path";
 function projectCwd(root, project) {
   return resolve14(root, project.cwd ?? ".");
@@ -32864,7 +32892,7 @@ function listTestFiles2(root, project) {
   const walk3 = (dir2) => {
     let entries3;
     try {
-      entries3 = readdirSync16(dir2, { withFileTypes: true });
+      entries3 = readdirSync17(dir2, { withFileTypes: true });
     } catch {
       return;
     }
@@ -39139,7 +39167,7 @@ var init_closures = __esm({
 });
 
 // src/runners/node-test/graph/glob.ts
-import { readdirSync as readdirSync17 } from "node:fs";
+import { readdirSync as readdirSync18 } from "node:fs";
 import { dirname as dirname31, extname as extname3, join as join69, resolve as resolve15 } from "node:path";
 function expandGlob(glob2, importer, tsx2) {
   if (!glob2.startsWith("./") && !glob2.startsWith("../")) return null;
@@ -39154,7 +39182,7 @@ function expandGlob(glob2, importer, tsx2) {
   );
   let names4;
   try {
-    names4 = readdirSync17(dir2);
+    names4 = readdirSync18(dir2);
   } catch {
     return [];
   }
@@ -40489,9 +40517,9 @@ var require_CachedInputFileSystem = __commonJS({
         const readdir9 = this._readdirBackend.provide;
         this.readdir = /** @type {FileSystem["readdir"]} */
         readdir9;
-        const readdirSync28 = this._readdirBackend.provideSync;
+        const readdirSync29 = this._readdirBackend.provideSync;
         this.readdirSync = /** @type {SyncFileSystem["readdirSync"]} */
-        readdirSync28;
+        readdirSync29;
         this._readFileBackend = createBackend(
           duration2,
           this.fileSystem.readFile,
@@ -49617,7 +49645,7 @@ var init_report = __esm({
 });
 
 // src/runners/node-test/run/run.ts
-import { mkdirSync as mkdirSync13, readdirSync as readdirSync18, readFileSync as readFileSync33, writeFileSync as writeFileSync7 } from "node:fs";
+import { mkdirSync as mkdirSync13, readdirSync as readdirSync19, readFileSync as readFileSync33, writeFileSync as writeFileSync7 } from "node:fs";
 import { join as join74, relative as relative14, sep as sep15 } from "node:path";
 async function runNodeTest(options) {
   const started2 = performance.now();
@@ -49767,7 +49795,7 @@ function readEvents(logDir, index) {
 }
 function graphs(logDir, index) {
   const prefix = `graph-${index}-`;
-  return readdirSync18(logDir).filter((name2) => name2.startsWith(prefix) && name2.endsWith(".ndjson")).map((name2) => readFileSync33(join74(logDir, name2), "utf8"));
+  return readdirSync19(logDir).filter((name2) => name2.startsWith(prefix) && name2.endsWith(".ndjson")).map((name2) => readFileSync33(join74(logDir, name2), "utf8"));
 }
 function writeRunLog2(logDir, log) {
   const files2 = log.runs.map((r) => ({
@@ -50997,7 +51025,7 @@ var init_dist = __esm({
 });
 
 // src/runners/pytest/environment/site.ts
-import { readdirSync as readdirSync19, readFileSync as readFileSync34 } from "node:fs";
+import { readdirSync as readdirSync20, readFileSync as readFileSync34 } from "node:fs";
 import { isAbsolute as isAbsolute14, join as join76, resolve as resolve17 } from "node:path";
 function parsePyvenvCfg(text3) {
   const pairs = {};
@@ -51028,7 +51056,7 @@ function sitePackagesDir(env) {
 }
 function listOptional(dir2) {
   try {
-    return readdirSync19(dir2).sort(compare);
+    return readdirSync20(dir2).sort(compare);
   } catch (error) {
     if (isMissing(error) || error.code === "ENOTDIR") return [];
     throw error;
@@ -51248,7 +51276,7 @@ var init_config = __esm({
 });
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync28, readdirSync as readdirSync20, readFileSync as readFileSync35, statSync as statSync14 } from "node:fs";
+import { existsSync as existsSync28, readdirSync as readdirSync21, readFileSync as readFileSync35, statSync as statSync14 } from "node:fs";
 import { basename as basename21, dirname as dirname36, isAbsolute as isAbsolute15, join as join78, relative as relative16, resolve as resolve18 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
@@ -51306,7 +51334,7 @@ function none(root, cwd, looked, target) {
 function requirementsIn(dir2) {
   let names4;
   try {
-    names4 = readdirSync20(dir2);
+    names4 = readdirSync21(dir2);
   } catch (error) {
     if (isMissing(error)) return [];
     throw error;
@@ -51876,7 +51904,7 @@ var init_adapter_config = __esm({
 });
 
 // src/runners/pytest/adapter-files.ts
-import { existsSync as existsSync30, readdirSync as readdirSync21 } from "node:fs";
+import { existsSync as existsSync30, readdirSync as readdirSync22 } from "node:fs";
 import { basename as basename22, join as join84, relative as relative17, sep as sep17 } from "node:path";
 function listTestFiles3(root, project, note) {
   const cwd = projectDir(root, project);
@@ -51931,7 +51959,7 @@ function holds2(dir2, env, isTest) {
 }
 function entries(dir2) {
   try {
-    return readdirSync21(dir2, { withFileTypes: true });
+    return readdirSync22(dir2, { withFileTypes: true });
   } catch {
     return [];
   }
@@ -56541,7 +56569,7 @@ import {
   existsSync as existsSync33,
   mkdirSync as mkdirSync14,
   mkdtempSync as mkdtempSync4,
-  readdirSync as readdirSync22,
+  readdirSync as readdirSync23,
   realpathSync as realpathSync16,
   rmSync as rmSync14,
   statSync as statSync17,
@@ -56590,12 +56618,12 @@ function prune5(shared, root, links) {
   const mirror = join86(shared, root);
   if (!existsSync33(mirror)) return;
   const kept3 = new Set(links.map((link) => relative19(root, link).split(sep19)[0]));
-  for (const name2 of readdirSync22(mirror)) {
+  for (const name2 of readdirSync23(mirror)) {
     if (!kept3.has(name2)) rmSync14(join86(mirror, name2), { recursive: true, force: true });
   }
 }
 function sweep(runs) {
-  for (const name2 of readdirSync22(runs)) {
+  for (const name2 of readdirSync23(runs)) {
     const path = join86(runs, name2);
     try {
       if (Date.now() - statSync17(path).mtimeMs > ABANDONED_MS) {
@@ -57744,7 +57772,7 @@ var init_resolver2 = __esm({
 });
 
 // src/runners/pytest/graph/derive-roots.ts
-import { readdirSync as readdirSync23, statSync as statSync19 } from "node:fs";
+import { readdirSync as readdirSync24, statSync as statSync19 } from "node:fs";
 import { join as join94, relative as relative21, resolve as resolve22, sep as sep24 } from "node:path";
 function deriveRoots(root) {
   const entries3 = [];
@@ -57949,7 +57977,7 @@ function isFile3(path) {
 }
 function listDir(dir2) {
   try {
-    return readdirSync23(dir2).sort();
+    return readdirSync24(dir2).sort();
   } catch {
     return [];
   }
@@ -62478,7 +62506,7 @@ import {
   cpSync,
   existsSync as existsSync13,
   mkdirSync as mkdirSync7,
-  readdirSync as readdirSync12,
+  readdirSync as readdirSync13,
   readFileSync as readFileSync20,
   renameSync as renameSync3,
   rmSync as rmSync8
@@ -62576,7 +62604,7 @@ function writeLauncher(root, data2, version2) {
 }
 function copies(data2) {
   try {
-    return readdirSync12(join33(data2, "versions")).filter((v) => VERSION.test(v));
+    return readdirSync13(join33(data2, "versions")).filter((v) => VERSION.test(v));
   } catch {
     return [];
   }
@@ -62589,7 +62617,7 @@ function prune4(data2, version2) {
     null
   );
   const running = processArgs();
-  const gone3 = readdirSync12(versions).filter((name2) => {
+  const gone3 = readdirSync13(versions).filter((name2) => {
     const left = LEFT.exec(name2);
     return left !== null && !alive(Number(left[1]));
   });
@@ -64242,7 +64270,7 @@ import { join as join40 } from "node:path";
 init_policy_node_test();
 init_fs();
 init_glob();
-import { readdirSync as readdirSync13, readFileSync as readFileSync23 } from "node:fs";
+import { readdirSync as readdirSync14, readFileSync as readFileSync23 } from "node:fs";
 import { join as join37 } from "node:path";
 function seedNodeTest(root) {
   const notes = [];
@@ -64416,7 +64444,7 @@ function workspaceDirs(root, manifest) {
   }
   const dirs = [];
   const walk3 = (dir2, depth) => {
-    for (const entry4 of readdirSync13(join37(root, dir2), { withFileTypes: true })) {
+    for (const entry4 of readdirSync14(join37(root, dir2), { withFileTypes: true })) {
       if (!entry4.isDirectory() || entry4.name === "node_modules" || entry4.name.startsWith(".")) {
         continue;
       }
@@ -64446,7 +64474,7 @@ function overlaps(path, prefix) {
 }
 function hasManifest(root, dir2) {
   try {
-    return readdirSync13(join37(root, dir2)).includes("package.json");
+    return readdirSync14(join37(root, dir2)).includes("package.json");
   } catch {
     return false;
   }
@@ -66174,7 +66202,7 @@ import {
   lstatSync as lstatSync5,
   mkdirSync as mkdirSync9,
   mkdtempSync,
-  readdirSync as readdirSync14,
+  readdirSync as readdirSync15,
   readFileSync as readFileSync26,
   renameSync as renameSync5,
   rmSync as rmSync10,
@@ -66260,7 +66288,7 @@ function removeInBackground(dirs) {
 }
 function safeList(dir2) {
   try {
-    return readdirSync14(dir2);
+    return readdirSync15(dir2);
   } catch {
     return [];
   }
@@ -69746,12 +69774,12 @@ init_paths2();
 
 // src/core/ps/reads.ts
 init_slow2();
-import { lstatSync as lstatSync7, readdirSync as readdirSync24 } from "node:fs";
+import { lstatSync as lstatSync7, readdirSync as readdirSync25 } from "node:fs";
 import { join as join109 } from "node:path";
 var NODE_COMMS = /* @__PURE__ */ new Set(["MainThread", "node"]);
 function names3(dir2) {
   try {
-    return readdirSync24(dir2).sort();
+    return readdirSync25(dir2).sort();
   } catch {
     return [];
   }
@@ -71642,7 +71670,7 @@ function placesOf(env, commonDir, options) {
 }
 
 // src/cli/remove.ts
-import { existsSync as existsSync45, lstatSync as lstatSync8, readdirSync as readdirSync25, readFileSync as readFileSync47, rmSync as rmSync18 } from "node:fs";
+import { existsSync as existsSync45, lstatSync as lstatSync8, readdirSync as readdirSync26, readFileSync as readFileSync47, rmSync as rmSync18 } from "node:fs";
 import { basename as basename28, dirname as dirname45, join as join114 } from "node:path";
 import { setTimeout as sleep12 } from "node:timers/promises";
 init_lock();
@@ -71853,7 +71881,7 @@ function entries2(dir2) {
 }
 function safeList2(dir2) {
   try {
-    return readdirSync25(dir2);
+    return readdirSync26(dir2);
   } catch {
     return [];
   }
@@ -72486,7 +72514,7 @@ import { setTimeout as sleep16 } from "node:timers/promises";
 // src/core/daemon/leftovers.ts
 init_escaped();
 init_terminate();
-import { readdirSync as readdirSync26, readFileSync as readFileSync48 } from "node:fs";
+import { readdirSync as readdirSync27, readFileSync as readFileSync48 } from "node:fs";
 function marksOf(pid, token) {
   const group = statOf(pid)?.pgrp === pid ? pid : null;
   if (group === null || process.platform !== "linux")
@@ -72506,7 +72534,7 @@ function marksOf(pid, token) {
   return { pid, token, group, foreign: new Set(foreign.map(identity3)) };
 }
 function processes() {
-  return readdirSync26("/proc").flatMap((name2) => {
+  return readdirSync27("/proc").flatMap((name2) => {
     const entry4 = /^\d+$/.test(name2) ? statOf(Number(name2)) : null;
     return entry4 === null ? [] : [entry4];
   });
@@ -73667,7 +73695,7 @@ import {
   copyFileSync as copyFileSync2,
   existsSync as existsSync46,
   mkdtempSync as mkdtempSync5,
-  readdirSync as readdirSync27,
+  readdirSync as readdirSync28,
   readFileSync as readFileSync50,
   rmSync as rmSync19
 } from "node:fs";
@@ -73899,10 +73927,10 @@ function pluginDirs(env) {
     MARKETPLACE_NAME,
     PLUGIN_NAME
   );
-  if (existsSync46(cache2)) for (const version2 of readdirSync27(cache2)) dirs.push(join117(cache2, version2));
+  if (existsSync46(cache2)) for (const version2 of readdirSync28(cache2)) dirs.push(join117(cache2, version2));
   for (const packages of [packagesHome("pi", env), packagesHome("opencode", env)]) {
     if (existsSync46(packages))
-      for (const version2 of readdirSync27(packages)) dirs.push(join117(packages, version2));
+      for (const version2 of readdirSync28(packages)) dirs.push(join117(packages, version2));
   }
   return dirs;
 }
