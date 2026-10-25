@@ -1,5 +1,13 @@
 import { compare, mapConcurrent } from "../fs/index.js";
-import { type CacheUpdate, type Hasher, isRacy, type StatCache, sameStat } from "../hash/index.js";
+import {
+  type CacheUpdate,
+  type Hasher,
+  isRacy,
+  isUnknownStat,
+  type StatCache,
+  sameStat,
+  unknownStat,
+} from "../hash/index.js";
 import type {
   CandidateBatch,
   CandidatePath,
@@ -82,13 +90,14 @@ export async function statCandidates(
  * a repeated path keeps its last stat.
  *
  * Row 011-204 (task 011-203): a hashed path is stat'ed once more after its
- * read, and the hash is stored with that stat. The candidate's could be from
- * before a write the read saw; stored with those bytes, it would make the
- * write's own batch see a moved stat over unchanged bytes, a touch (task
- * 001-159). A write after the read moves the stored stat's `mtime` to at or
- * after `hashedAt`, so the entry is racy; when the two stats differ it is
- * racy anyway, and the next pass hashes it again. A file gone by that stat
- * is absent.
+ * read. The candidate's stat could be from before a write the read saw;
+ * stored with those bytes, it would make the write's own batch see a moved
+ * stat over unchanged bytes, a touch (task 001-159). When the two stats are
+ * equal, the hash is stored with them. When they differ, a write came
+ * between them, before or after the read, so the hash is stored with
+ * `unknownStat`: every later pass hashes the file again, after a restart too
+ * (review 0.1.310 B1), and the change is reported now. A file gone by that
+ * stat is absent.
  */
 export async function diffCandidates(
   candidates: Iterable<CandidatePath>,
@@ -101,7 +110,8 @@ export async function diffCandidates(
   const observed = await mapConcurrent(paths, async (path) => {
     const stat = statOf.get(path) ?? null;
     const cached = cache.get(path);
-    if (stat && cached && sameStat(cached, stat) && !cache.isRacy(path)) return null;
+    const trusted = cached !== undefined && !isUnknownStat(cached) && !cache.isRacy(path);
+    if (stat && trusted && sameStat(cached, stat)) return null;
     const hashedAt = hasher.now();
     // The file can vanish between the watcher's stat and this read: then it is absent.
     const hash = stat ? await hasher.hash(path) : null;
@@ -119,16 +129,16 @@ export async function diffCandidates(
       if (cache.hashOf(path) !== null) updates.push({ kind: "delete", path });
       continue;
     }
+    const kept = sameStat(stat, after) ? after : unknownStat(after);
     const record: FileHashRecord = {
       path,
-      mtimeMs: after.mtimeMs,
-      ctimeMs: after.ctimeMs,
-      size: after.size,
-      inode: after.inode,
+      mtimeMs: kept.mtimeMs,
+      ctimeMs: kept.ctimeMs,
+      size: kept.size,
+      inode: kept.inode,
       hash,
     };
-    const racy = !sameStat(stat, after) || isRacy(after, hashedAt);
-    updates.push({ kind: "set", record, racy });
+    updates.push({ kind: "set", record, racy: isRacy(kept, hashedAt) });
     if (cached?.hash !== hash) changes.push({ path, oldHash: cached?.hash ?? null, newHash: hash });
   }
   return { changes, updates };
