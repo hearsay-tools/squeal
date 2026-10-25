@@ -40,6 +40,7 @@ describe("a failed count is retried (row 015-18)", () => {
       retryAt: 7_000,
       error: "tree-sitter: out of memory",
       threshold: 20,
+      editedAt: 2,
     });
     // Before the retry is due nothing is, and another file's edit counts only that file.
     expect(await pass(tree, store, counter, { now: () => 6_999 })).toBeNull();
