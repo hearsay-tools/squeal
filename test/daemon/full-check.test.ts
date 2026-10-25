@@ -5,17 +5,14 @@ import { describe, expect, it } from "vitest";
 import {
   claimFullCheck,
   FULL_CHECK_EVERY_MS,
-  type FullCheck,
-  type FullCheckOutcome,
   runFullCheck,
   startFullCheck,
-  storeCondemned,
-  storeFileOf,
 } from "../../src/core/daemon/full-check.js";
 import { TEST_NICE } from "../../src/core/daemon/low-priority.js";
+import { storeCondemned, storeFileOf } from "../../src/core/daemon/store-file.js";
 import { META_FULL_CHECK, readStoreMark, storePaths } from "../../src/core/store/index.js";
-import type { Store } from "../../src/core/types/index.js";
 import { fakeCommonDir, open, seedIndexFault } from "../store/helpers.js";
+import { checkContext, heldCheck, until } from "./full-check-helpers.js";
 
 /*
  * Row 011-226 (spec 011, store failures as amended 2026-10-25): the full
@@ -27,39 +24,6 @@ import { fakeCommonDir, open, seedIndexFault } from "../store/helpers.js";
 const T = 1_800_000_000_000;
 
 const FAULT = { problem: "row 1 missing from index fault_a" };
-
-/** A check that ends only when the test says so. */
-function heldCheck(): FullCheck & { end: (outcome: FullCheckOutcome) => void; stopped: boolean } {
-  let end: (outcome: FullCheckOutcome) => void = () => {};
-  const done = new Promise<FullCheckOutcome>((resolve) => {
-    end = resolve;
-  });
-  const check = {
-    pid: undefined,
-    done,
-    end: (outcome: FullCheckOutcome) => end(outcome),
-    stopped: false,
-    stop: () => {
-      check.stopped = true;
-    },
-  };
-  return check;
-}
-
-function context(store: Store, commonDir: string, run: () => FullCheck, now = () => T) {
-  const notes: string[] = [];
-  return {
-    notes,
-    context: {
-      store,
-      commonDir,
-      now,
-      note: (text: string) => notes.push(text),
-      log: () => {},
-      run,
-    },
-  };
-}
 
 describe("the full check's claim (row 011-226)", () => {
   it("goes to one of two connections on one store, and again after 24 h", () => {
@@ -84,19 +48,22 @@ describe("the full check's claim (row 011-226)", () => {
     const commonDir = fakeCommonDir();
     const store = open(commonDir);
     const first = heldCheck();
-    const stop = startFullCheck(context(store, commonDir, () => first).context);
+    const one = checkContext(store, commonDir, [first], () => T);
+    const stop = startFullCheck(one.context);
+    await until(() => one.runs() === 1);
     expect(store.meta.get(META_FULL_CHECK)).toBe(String(T));
-    stop();
+    await stop();
     expect(first.stopped).toBe(true);
     expect(store.meta.get(META_FULL_CHECK)).toBeNull();
 
     const second = heldCheck();
-    const stopSecond = startFullCheck(context(store, commonDir, () => second).context);
+    const two = checkContext(store, commonDir, [second], () => T);
+    const stopSecond = startFullCheck(two.context);
+    await until(() => two.runs() === 1);
     second.end({ ok: true });
-    await second.done;
-    await sleep(0);
-    stopSecond();
-    expect(second.stopped).toBe(false);
+    await until(() => two.logs.includes("full integrity check: ok"));
+    await stopSecond();
+    expect(second.stopped).toBe(true);
     expect(store.meta.get(META_FULL_CHECK)).toBe(String(T));
   });
 
@@ -104,27 +71,25 @@ describe("the full check's claim (row 011-226)", () => {
     const commonDir = fakeCommonDir();
     const store = open(commonDir);
     const check = heldCheck();
-    startFullCheck(context(store, commonDir, () => check).context);
+    const one = checkContext(store, commonDir, [check], () => T);
+    startFullCheck(one.context);
+    await until(() => one.runs() === 1);
     expect(store.meta.get(META_FULL_CHECK)).toBe(String(T));
     check.end({ unrun: "unable to open database file" });
-    await check.done;
-    await sleep(0);
-    expect(store.meta.get(META_FULL_CHECK)).toBeNull();
+    await until(() => store.meta.get(META_FULL_CHECK) === null);
     expect(readStoreMark(commonDir)).toBeNull();
   });
 
-  it("runs no check while another daemon holds the day's claim", () => {
+  it("runs no check while another daemon holds the day's claim", async () => {
     const commonDir = fakeCommonDir();
     const store = open(commonDir);
     claimFullCheck(store, T - 1_000);
-    let runs = 0;
-    startFullCheck(
-      context(store, commonDir, () => {
-        runs++;
-        return heldCheck();
-      }).context,
-    );
-    expect(runs).toBe(0);
+    const one = checkContext(store, commonDir, [heldCheck()], () => T);
+    const stop = startFullCheck(one.context);
+    await sleep(50);
+    await stop();
+    expect(one.runs()).toBe(0);
+    expect(store.meta.get(META_FULL_CHECK)).toBe(String(T - 1_000));
   });
 });
 
@@ -168,18 +133,13 @@ describe("a failed full check marks the store (row 011-226)", () => {
     const commonDir = fakeCommonDir();
     const store = open(commonDir);
     const check = heldCheck();
-    const { notes, context: ctx } = context(
-      store,
-      commonDir,
-      () => check,
-      () => T + 5,
-    );
+    const { notes, context: ctx, runs } = checkContext(store, commonDir, [check], () => T + 5);
     startFullCheck(ctx);
+    await until(() => runs() === 1);
     expect(storeCondemned(commonDir)).toBeNull();
 
     check.end(FAULT);
-    await check.done;
-    await sleep(0);
+    await until(() => notes.length > 0);
     expect(readStoreMark(commonDir)).toEqual({
       at: T + 5,
       problem: "row 1 missing from index fault_a",
