@@ -77,7 +77,7 @@ export interface AskedPayload {
   readonly outcome?: RetryOutcome;
 }
 
-/** A run as `selection.asked` gives it; only this wait's requests and busy ones are listed. */
+/** A run as `selection.asked` gives it (`waitAsked`'s). */
 export function askedPayload(e: AskedEnd): AskedPayload {
   const { project, path } = e.testFile;
   return {
@@ -86,6 +86,16 @@ export function askedPayload(e: AskedEnd): AskedPayload {
     pending: e.pending,
     ...(e.outcome === undefined ? {} : { outcome: e.outcome }),
   };
+}
+
+/**
+ * The runs a wait reports, none when it stored no request and found the
+ * store busy for none: each but a request that ended at its key since its
+ * read, which this wait did not ask and does not hold for.
+ */
+export function waitAsked(ends: readonly AskedEnd[]): readonly AskedEnd[] | undefined {
+  if (!ends.some((e) => e.answer === "queued" || e.answer === "busy")) return undefined;
+  return ends.filter((e) => e.answer !== "asked");
 }
 
 /** How a named wait stores its asks (`NamedWaitOptions.ask`). */
@@ -139,7 +149,7 @@ export function askableFiles(
  */
 export const askNamedRuns: AskNamed = async (root, files, asker, withinMs) => {
   const store = openForWrites(root);
-  if (store === null) return files.map((f) => ({ ...f, answer: "busy" }));
+  if (store === null) return [];
   const deadline = (Date.now() + Math.max(1, Math.min(BUSY_BOUND_MS, withinMs))) as EpochMs;
   const worktreeId = worktreeIdFor(root);
   const runs: AskedRun[] = [];
