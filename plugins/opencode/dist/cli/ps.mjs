@@ -40,9 +40,9 @@ function findWorktreeRoot(path) {
   if (existsSync(dir)) dir = realpathSync(dir);
   for (; ; ) {
     if (existsSync(join2(dir, ".git"))) return dir;
-    const parent = dirname2(dir);
-    if (parent === dir) return null;
-    dir = parent;
+    const parent2 = dirname2(dir);
+    if (parent2 === dir) return null;
+    dir = parent2;
   }
 }
 function worktreeIdFor(root) {
@@ -588,6 +588,10 @@ function splitTopLevel(body) {
   parts.push(body.slice(start));
   return parts;
 }
+
+// src/core/keys/pnpm-lockfile.ts
+var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
+var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 
 // src/core/text.ts
 var SAFE_WORD = /^[\w@%+=:,./-]+$/;
@@ -1336,13 +1340,13 @@ var measure = (source, first, second, pids3) => {
   const reapedBy = /* @__PURE__ */ new Map();
   const unsure = /* @__PURE__ */ new Set();
   for (const [ppid, ended] of endedUnder) {
-    const parent = first.table.get(ppid);
+    const parent2 = first.table.get(ppid);
     const home = homeOf(ppid);
-    if (parent === void 0 || parent.childTicks === null || home === null) continue;
+    if (parent2 === void 0 || parent2.childTicks === null || home === null) continue;
     const had = ended.reduce((n, p) => n + p.cpuTicks + (p.childTicks ?? 0), 0);
     count2(home, -had);
     const later = second.table.get(ppid);
-    const grew = later === void 0 || later.childTicks === null ? null : later.childTicks - parent.childTicks;
+    const grew = later === void 0 || later.childTicks === null ? null : later.childTicks - parent2.childTicks;
     const waited = lived(ppid) && later?.state !== "Z" && grew !== null && grew >= had;
     for (const p of ended) {
       if (waited) reapedBy.set(p.pid, home);
@@ -2068,13 +2072,13 @@ function orphans(c) {
   for (const row2 of host.values()) {
     if (!NODE_COMMS.has(row2.comm) || row2.uid !== null && row2.uid !== model.places.uid) continue;
     if (!(model.source.cmdline(row2.pid) ?? []).some((a) => WAITER.test(a))) continue;
-    const parent = host.get(row2.ppid);
-    if (parent === void 0) add(row2.pid, "orphan-waiter", `its parent ${row2.ppid} is gone`);
-    else if (row2.ppid === 1 || parent.comm === "systemd")
+    const parent2 = host.get(row2.ppid);
+    if (parent2 === void 0) add(row2.pid, "orphan-waiter", `its parent ${row2.ppid} is gone`);
+    else if (row2.ppid === 1 || parent2.comm === "systemd")
       add(
         row2.pid,
         "orphan-waiter",
-        `its parent is ${parent.comm} ${row2.ppid}: its session is gone`
+        `its parent is ${parent2.comm} ${row2.ppid}: its session is gone`
       );
   }
   for (const { pid, path } of model.pool.foreign)
@@ -2744,10 +2748,10 @@ var attribute = (source, table, owners) => {
   }
   const isHead = (pid) => {
     if (owner.has(pid)) return false;
-    const parent = table.get(pid)?.ppid;
-    if (!source.readsMarks) return parent !== void 0 && owner.has(parent);
+    const parent2 = table.get(pid)?.ppid;
+    if (!source.readsMarks) return parent2 !== void 0 && owner.has(parent2);
     if (!marks.has(pid)) return false;
-    const above = nearest(table, parent, (p) => owner.has(p) || marks.has(p));
+    const above = nearest(table, parent2, (p) => owner.has(p) || marks.has(p));
     return above === null || owner.has(above);
   };
   const pids3 = [...table.keys()].sort((a, b) => a - b);
