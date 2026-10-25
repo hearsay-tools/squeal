@@ -15,12 +15,13 @@ import {
 import { stoppingState } from "../core/status/stopping.js";
 import { plural, testFileText } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
-import { classLines, namedFailures, reasonGroups, unmatchedText } from "./named-file-lines.js";
+import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
+import { namedPathLines, pathsText } from "./named-path-lines.js";
 import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
-import type { NamedWait } from "./status-wait-paths.js";
-import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
+import { type NamedWait, namedResult } from "./status-wait-paths.js";
+import { failuresText, noVerdictText, type SelectionResult, verdictCode } from "./verdict.js";
 import type { DownReason, HeartbeatLapse } from "./wait-liveness.js";
 
 /** A wait that ended with a snapshot. */
@@ -214,6 +215,7 @@ const NAMED_FILES_SHOWN = 10;
  */
 export function namedLine(wait: EndedNamed, command = "squeal"): string {
   const { verdict, selection } = wait;
+  const result = namedResult(wait);
   const snapshot = wait.snapshot === true;
   const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
   const none = (why: string) => `Named test files have no verdict: ${why}`;
@@ -222,15 +224,14 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
     snapshot
       ? `Named test files have no verdict at revision ${verdict.revision}: ${why}`
       : none(why);
-  // Row 011-63 (gh-59): the paths that select nothing, beside the verdict on what the others select.
-  let beside =
-    wait.outcome === "unmatched" || selection.unmatched.length === 0
-      ? ""
-      : `; ${unmatchedText(selection)}`;
+  // Row 011-63 (gh-59): the paths that select nothing, beside the verdict on what the others
+  // select; row 011-206 (gh-83): and those that name a test file Squeal does not run.
+  const paths = pathsText(selection);
+  let beside = wait.outcome === "unmatched" || paths === "" ? "" : `; ${paths}`;
   let line: string;
   switch (wait.outcome) {
     case "unmatched":
-      line = `No verdict: ${unmatchedText(selection)}`;
+      line = `No verdict: ${paths}`;
       break;
     case "focused":
       // Row 011-146 (C15): a focused answer, never the file's verdict.
@@ -256,15 +257,8 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
           : holdVerdictLine(wait.hold, command);
       break;
     case "timeout": {
-      const paused = new Set((wait.leftForPause ?? []).map(testFileId));
-      const holding = wait.files.filter((f) => !paused.has(testFileId(f.testFile)));
-      const groups = reasonGroups(holding, command, wait.selection.base);
-      const why = noVerdictText(verdict);
-      const held = why === null ? "no result yet" : groups === "" ? why : `${why}: ${groups}`;
-      const unsynced = unsyncedText(wait.sync, verdict.revision, snapshot);
-      line = none(
-        snapshot ? (unsynced ?? held) : `the deadline passed ${after}: ${unsynced ?? held}`,
-      );
+      const why = timeoutText(wait, result, command);
+      line = none(snapshot ? why : `the deadline passed ${after}: ${why}`);
       break;
     }
     case "settled": {
@@ -276,10 +270,15 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
         wait.selection.base,
       );
       const counted = `${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result${snapshot ? "" : `, ${after}`}`;
-      if (verdictCode(verdict) === 0 && beside !== "") {
-        // Row 011-63: with no failure among them, a path that selects nothing is why there is no verdict.
+      if (
+        result.result === "none" &&
+        (result.reason === "unmatched" || result.reason === "not-run")
+      ) {
+        // Row 011-63: with no failure among them, a path that selects nothing is why there is no
+        // verdict; row 011-206 (gh-83): or one Squeal does not run, whose readers' verdict is apart.
+        const which = result.reason === "not-run" ? "selected" : "the other paths select";
         line = none(
-          `${unmatchedText(selection)}; the test files the other paths select at revision ${verdict.revision}: ${counted}`,
+          `${paths}; the test files ${which} at revision ${verdict.revision}: ${counted}`,
         );
         beside = "";
       } else {
@@ -357,6 +356,7 @@ export function namedText(
   const refused = refusedLine(wait.focus);
   const lines = [
     ...(selected === null ? [] : [selected]),
+    ...namedPathLines(wait.selection),
     ...namedFailures(wait.selection.files, wait.result.knownFailures),
     // Row 011-146 (C15): the focused block, before the classes it leaves pending.
     ...focusLines(wait.focus, wait.selection.base),
@@ -386,6 +386,26 @@ export function namedClassLines(wait: EndedNamed, command = "squeal"): string[] 
   if (wait.outcome === "unmatched") return [];
   if (wait.outcome === "settled" && verdictCode(wait.verdict) !== 3) return [];
   return classLines(wait.files, command, wait.selection.base);
+}
+
+/**
+ * Row 011-206 (011 C15): the clause of a read with no verdict by the reason
+ * `namedResult` gives it: a lapsed heartbeat, the daemon's pass not stored
+ * (`unsyncedText`), else the files still held by what holds them, or a
+ * focused run with every file current.
+ */
+function timeoutText(wait: EndedNamed, result: SelectionResult, command: string): string {
+  const { verdict } = wait;
+  if (result.result === "none" && result.reason === "lapsed") {
+    return `the daemon's heartbeat had lapsed at the last read; results are as of revision ${verdict.revision}`;
+  }
+  const unsynced = unsyncedText(wait.sync, verdict.revision, wait.snapshot === true);
+  if (unsynced !== null) return unsynced;
+  const paused = new Set((wait.leftForPause ?? []).map(testFileId));
+  const holding = wait.files.filter((f) => !paused.has(testFileId(f.testFile)));
+  const groups = reasonGroups(holding, command, wait.selection.base);
+  const why = noVerdictText(verdict);
+  return why === null ? "no result yet" : groups === "" ? why : `${why}: ${groups}`;
 }
 
 /**
