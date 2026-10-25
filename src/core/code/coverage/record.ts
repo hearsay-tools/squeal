@@ -90,7 +90,7 @@ function bitset(lines: ReadonlySet<number>): string {
 }
 
 /** The file a script's URL names; `null` for one that names none, or a module ID with a query. */
-function scriptPath(url: string): AbsolutePath | null {
+export function scriptPath(url: string): AbsolutePath | null {
   if (!url.startsWith("file://") || url.includes("?")) return null;
   try {
     return fileURLToPath(url);
