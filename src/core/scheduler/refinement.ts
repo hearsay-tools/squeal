@@ -245,8 +245,9 @@ export async function applyRunnerPart(
   };
   const touchKeys = (keyChanges: readonly KeyChange[]) => touch(keyChanges.map((c) => c.testFile));
 
+  // 016 D4 (O9): what other worktrees observed for module-load projects joins their keys.
   if (part.environments !== null) touchKeys(await keys.setEnvironments(part.environments));
-  // 016 D4 (O9): what other worktrees observed for module-load projects joins their closures.
+  else touchKeys(await keys.regrowStartup());
   touchKeys(keys.regrowObserved());
   if (part.listed !== undefined) applyListing(context, ledger, part.listed);
 

@@ -28,11 +28,20 @@
 // and the process dies (`initializeHooks` in `lib/internal/modules/esm/utils.js`, v22.23.3). The
 // test's own threads record as before; what the hooks thread loads, the loader's modules, is not
 // recorded on any Node. `isInternalThread` exists from 22.14, before `registerHooks`.
+//
+// Directory creates and removes (spec 016 D4, the written-directory bound). `mkdir`, `mkdtemp`,
+// `rm`, `rmdir` and both ends of `rename`, sync, callback and promise forms, append one
+// `{"written"}` line per absolute path, so a git-ignored module the run loads below a directory
+// it made is its own scratch. No file write is recorded: a module the run wrote and then loaded
+// keys the file as before.
 "use strict";
-const { appendFileSync } = require("node:fs");
+const fs = require("node:fs");
 const module_ = require("node:module");
-const { isAbsolute } = require("node:path");
+const { isAbsolute, resolve } = require("node:path");
+const { fileURLToPath } = require("node:url");
 const { isInternalThread, isMainThread } = require("node:worker_threads");
+
+const { appendFileSync } = fs;
 
 const prefix = process.env.SQUEAL_NODE_TEST_GRAPH;
 const STARTED = "SQUEAL_NODE_TEST_STARTED";
@@ -58,4 +67,77 @@ if (prefix && typeof module_.registerHooks === "function" && !isInternalThread) 
       return resolved;
     },
   });
+  recordDirectories(file);
+}
+
+/** Wraps `fs` and `fs.promises` so each directory create or remove appends its path to `file`. */
+function recordDirectories(file) {
+  const written = new Set();
+  const record = (p) => {
+    try {
+      // a repeated absolute path costs one lookup
+      if (typeof p === "string" && isAbsolute(p) && written.has(p)) return;
+      const path = typeof p === "string" ? resolve(p) : p instanceof URL ? fileURLToPath(p) : null;
+      if (path === null || written.has(path)) return;
+      written.add(path);
+      appendFileSync(file, `${JSON.stringify({ written: path })}\n`);
+    } catch {
+      // never the test's failure
+    }
+  };
+  const replace = (target, name, make) => {
+    const original = target[name];
+    if (typeof original !== "function") return;
+    const wrapped = make(original);
+    Object.defineProperties(wrapped, Object.getOwnPropertyDescriptors(original));
+    target[name] = wrapped;
+  };
+  /** Records the paths at `at` before the call. */
+  const before = (target, name, at) =>
+    replace(
+      target,
+      name,
+      (original) =>
+        function (...args) {
+          for (const i of at) record(args[i]);
+          return original.apply(this, args);
+        },
+    );
+  /** `mkdtemp` names the directory it made only in its result. */
+  const created = (target, name) =>
+    replace(
+      target,
+      name,
+      (original) =>
+        function (...args) {
+          if (target === fs.promises) {
+            const result = original.apply(this, args);
+            result.then?.(record, () => {});
+            return result;
+          }
+          if (name === "mkdtempSync") {
+            const dir = original.apply(this, args);
+            record(dir);
+            return dir;
+          }
+          const at = args.length - 1;
+          const callback = args[at];
+          if (typeof callback === "function") {
+            args[at] = function (...results) {
+              if (!results[0]) record(results[1]);
+              return callback.apply(this, results);
+            };
+          }
+          return original.apply(this, args);
+        },
+    );
+  for (const target of [fs, fs.promises]) {
+    for (const name of ["mkdir", "mkdirSync", "rm", "rmSync", "rmdir", "rmdirSync"]) {
+      before(target, name, [0]);
+    }
+    for (const name of ["rename", "renameSync"]) before(target, name, [0, 1]);
+    for (const name of ["mkdtemp", "mkdtempSync"]) created(target, name);
+  }
+  // so `import { mkdirSync } from "node:fs"` reaches the wrappers too
+  module_.syncBuiltinESMExports();
 }
