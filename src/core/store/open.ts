@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import type { AbsolutePath, EpochMs, Store, StoreOpenFailure } from "../types/index.js";
 import { Connection, isBusy, rollback } from "./connection.js";
 import { type StorePaths, storePaths } from "./paths.js";
-import { migrate, SCHEMA_VERSION, userVersion } from "./schema.js";
+import { addColumns, migrate, SCHEMA_VERSION, userVersion } from "./schema.js";
 import { connectionOf, createStore } from "./store.js";
 
 export interface OpenStoreOptions {
@@ -42,9 +42,9 @@ export function isStoreOpenFailure(value: Store | StoreOpenFailure): value is St
 
 /**
  * Opens `<commonDir>/squeal/store.sqlite` (spec 001 D1, D8): WAL,
- * `synchronous=NORMAL`, a busy timeout, and migrations up to
- * `SCHEMA_VERSION`. A newer `user_version` is refused without touching the
- * file.
+ * `synchronous=NORMAL`, a busy timeout, migrations up to `SCHEMA_VERSION`,
+ * then the columns added with no version raise (`addColumns`). A newer
+ * `user_version` is refused without touching the file.
  */
 export function openStore(
   commonDir: AbsolutePath,
@@ -86,6 +86,7 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
     switchToWal(db, busyTimeout(options));
     db.exec("PRAGMA synchronous = NORMAL");
     const version = migrate(db);
+    addColumns(db);
     return createStore(new Connection(db), version, paths);
   } catch (error) {
     db?.close();
