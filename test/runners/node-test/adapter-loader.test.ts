@@ -3,13 +3,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  nodeTestObservedPreloadsMetaKey,
-  observedStore,
-} from "../../../src/core/daemon/node-test-runners.js";
 import type { NodeTestProject } from "../../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
-import { fakeCommonDir, open } from "../../store/helpers.js";
 
 /**
  * Review wave 2.6, S1: on Node 22 the recorder, a `--require` preload, also
@@ -167,11 +162,9 @@ describe("the recorder beside an async loader (review wave 2.6, S1)", () => {
       env: c.nodeOptions === undefined ? {} : { NODE_OPTIONS: c.nodeOptions },
       include: [`test/${c.test}.test.mjs`],
     };
-    const store = open(fakeCommonDir());
     const notes: string[] = [];
     const adapter = await createNodeTestAdapter(project, {
       root,
-      observed: observedStore(store, "p"),
       note: (text) => notes.push(text),
     });
     const file = { project: "p", path: `test/${c.test}.test.mjs` };
@@ -182,9 +175,7 @@ describe("the recorder beside an async loader (review wave 2.6, S1)", () => {
     });
     expect(report).toMatchObject({ end: "completed", completedFiles: [file], failure: null });
     expect(report.results.map((r) => r.outcome)).toEqual(["pass"]);
-    expect(JSON.parse(store.meta.get(nodeTestObservedPreloadsMetaKey("p")) ?? "[]")).toContain(
-      "scripts/helper.cjs",
-    );
+    expect(report.environmentObserved?.flatMap((e) => e.paths)).toContain("scripts/helper.cjs");
 
     expect(notes.filter((n) => n.includes("loader thread"))).toEqual([
       `node-test project "p": ${c.note}`,
