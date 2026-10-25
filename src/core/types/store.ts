@@ -1,4 +1,4 @@
-import type { CheckId, SetupCheckId } from "./check.js";
+import type { CheckId } from "./check.js";
 import type { CommitSha, EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
 import type { Consumer, ViewEntry } from "./delivery.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
@@ -134,8 +134,6 @@ export interface CheckRepo {
    * (`createCompositeRunner`).
    */
   recordRunners(worktreeId: WorktreeId, runners: ReadonlyMap<string, string | undefined>): void;
-  /** `recordRunners` for `check`'s project. The next commit moves `Ledger#write` off it. */
-  recordSetupRunner(worktreeId: WorktreeId, check: SetupCheckId, runner: string | undefined): void;
 }
 
 /** Which stored failures `squeal failures` reads (task 001-409). */
@@ -285,10 +283,9 @@ export interface ResultRepo {
   /**
    * Spec 001 D5: "A result is stored only under a key whose inputs were
    * stable for the whole run." A stored result's last-used time starts at
-   * `provenance.recordedAt`. `runner` is ignored: the next commit moves
-   * `storeResults` off it.
+   * `provenance.recordedAt`.
    */
-  putMany(records: readonly ResultRecord[], runner?: string): void;
+  putMany(records: readonly ResultRecord[]): void;
 }
 
 export interface RunRepo {
