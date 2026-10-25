@@ -7,6 +7,7 @@ import {
   type CandidateBatch,
   type CommitSha,
   type DeliveredPass,
+  type EpochMs,
   type RelativePath,
   type RevisionTrigger,
   WATCHER_TIMINGS,
@@ -45,6 +46,13 @@ export interface ChangeFeedOptions {
    * D12: "full reconciliation pass; a note in status."
    */
   readonly onDropped?: (reason: string) => void;
+  /**
+   * Each batch delivered, a watch batch or a pass, with when its task started (row 011-200: the
+   * daemon stores it for status). Called after `onBatch`; must not throw or wait.
+   */
+  readonly onDelivered?: (startedAt: EpochMs) => void;
+  /** The clock of a pass's and a batch's start. Defaults to `Date.now`. */
+  readonly now?: () => EpochMs;
   /** Defaults to the backend for `process.platform`. */
   readonly backend?: WatcherBackend;
   /** A batch that failed on a busy store is a pass to retry, not an error (task 001-422). */
@@ -240,6 +248,7 @@ class Feed implements ChangeFeed {
   private onDebounced(paths: AbsolutePath[]): void {
     void this.enqueue(
       async () => {
+        const startedAt = this.now();
         const specChanged = paths.some((p) => SPEC_INPUTS.has(basename(p)));
         if (specChanged) this.unlisted.clear();
         let rewatched = specChanged ? await this.rebuildSpec() : false;
@@ -251,7 +260,7 @@ class Feed implements ChangeFeed {
           if (this.spec === before) await this.unlisted.record(ignoredDirs);
         }
         const kept = this.tempHold.filter(hinted.paths, this.trackedPaths);
-        if (kept.length > 0) await this.emit({ trigger: "watch", paths: kept });
+        if (kept.length > 0) await this.emit({ trigger: "watch", paths: kept }, startedAt);
         // Paths that were excluded until now were never watched, and a replaced watch may have
         // dropped an edit; git status and the re-stat find them. So does the walk of a linked
         // directory, which appeared, went or moved with a link of this batch.
@@ -268,7 +277,7 @@ class Feed implements ChangeFeed {
    */
   private async reconcileNow(trigger: RevisionTrigger): Promise<void> {
     this.passesStarted += 1;
-    const pass = { number: this.passesStarted, startedAt: Date.now() };
+    const pass = { number: this.passesStarted, startedAt: this.now() };
     const head = readGitHead(this.root);
     const status = await gitStatus(this.root);
     await this.rebuildSpec(status);
@@ -277,9 +286,8 @@ class Feed implements ChangeFeed {
     const { paths, linkedDirs, links } = await candidatesForReconcile(this.context(), listed);
     this.linkTargets = new Map(links);
     await this.linked?.update(linkedDirs);
-    if (!(await this.emit({ trigger, paths: this.tempHold.filter(paths, this.trackedPaths) }))) {
-      return;
-    }
+    const batch = { trigger, paths: this.tempHold.filter(paths, this.trackedPaths) };
+    if (!(await this.emit(batch, pass.startedAt))) return;
     this.passHead = head;
     this.delivered = pass;
   }
@@ -329,12 +337,15 @@ class Feed implements ChangeFeed {
 
   private readonly trackedPaths = (): Iterable<RelativePath> => this.options.trackedPaths?.() ?? [];
 
-  /** False when a close kept the batch from `onBatch`. */
-  private async emit(batch: CandidateBatch): Promise<boolean> {
+  /** False when a close kept the batch from `onBatch`; `startedAt` is when its task started. */
+  private async emit(batch: CandidateBatch, startedAt: EpochMs): Promise<boolean> {
     if (this.closed) return false;
     await this.options.onBatch(batch);
+    this.options.onDelivered?.(startedAt);
     return true;
   }
+
+  private readonly now = (): EpochMs => (this.options.now ?? Date.now)();
 
   /**
    * Runs tasks one at a time. A failed task is reported and does not stop the
