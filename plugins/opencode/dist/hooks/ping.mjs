@@ -362,6 +362,18 @@ function excludedFilesText(globs3) {
 // src/core/retry/kept.ts
 var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
 
+// src/core/retry/gate.ts
+var LOAD_RETRY_WAIT_MS = 6e5;
+
+// src/core/retry/text.ts
+function waitedText(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1e3));
+  if (seconds < 60) return `${seconds} s`;
+  const rest = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
+var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
+
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 var slices = new AsyncLocalStorage();

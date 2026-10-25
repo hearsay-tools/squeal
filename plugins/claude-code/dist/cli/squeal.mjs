@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.327";
+  if (true) return "0.1.328";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4938,51 +4938,6 @@ var init_kept = __esm({
   }
 });
 
-// src/core/retry/load.ts
-import { availableParallelism, loadavg } from "node:os";
-function hostLoad() {
-  return {
-    oneMinute: process.platform === "win32" ? null : loadavg()[0] ?? null,
-    cpus: availableParallelism()
-  };
-}
-function loadAllows(load) {
-  return load.oneMinute === null || load.oneMinute < load.cpus;
-}
-function perCpu(load) {
-  return load.oneMinute === null ? null : load.oneMinute / Math.max(1, load.cpus);
-}
-function readRunLoads(store) {
-  const raw = store.meta.get(RUN_LOADS_META_KEY);
-  if (raw === null) return /* @__PURE__ */ new Map();
-  try {
-    const value = JSON.parse(raw);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
-    return new Map(
-      Object.entries(value).filter((e) => typeof e[1] === "number")
-    );
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function recordRunLoad(store, runId, load) {
-  store.transaction(() => {
-    const loads2 = readRunLoads(store);
-    loads2.delete(runId);
-    loads2.set(runId, load);
-    const newest = [...loads2].slice(-RUN_LOADS_KEPT);
-    store.meta.set(RUN_LOADS_META_KEY, JSON.stringify(Object.fromEntries(newest)));
-  });
-}
-var RUN_LOADS_META_KEY, RUN_LOADS_KEPT;
-var init_load = __esm({
-  "src/core/retry/load.ts"() {
-    "use strict";
-    RUN_LOADS_META_KEY = "failed-run-loads";
-    RUN_LOADS_KEPT = 1024;
-  }
-});
-
 // src/core/retry/records.ts
 import { randomUUID } from "node:crypto";
 function readRetries(store) {
@@ -5129,6 +5084,83 @@ var init_records = __esm({
   }
 });
 
+// src/core/retry/gate.ts
+function gateClosedSince(records) {
+  const times = records.flatMap(
+    (r) => typeof r.gateClosedAt === "number" ? [r.gateClosedAt] : []
+  );
+  return times.length === 0 ? null : Math.min(...times);
+}
+function markGateClosed(store, pending, testFile, key3, at2) {
+  const known2 = retriesAt(pending, testFile, key3);
+  const since = gateClosedSince(known2);
+  if (since !== null && known2.every((r) => r.gateClosedAt !== void 0)) return since;
+  return store.transaction(() => {
+    const records = readRetries(store);
+    const id = testFileId(testFile);
+    const open6 = (r) => r.end === null && r.key === key3 && testFileId(r.testFile) === id;
+    const stamped = records.map(
+      (r) => open6(r) && r.gateClosedAt === void 0 ? { ...r, gateClosedAt: at2 } : r
+    );
+    if (stamped.some((r, i3) => r !== records[i3])) writeRetries(store, stamped);
+    return gateClosedSince(stamped.filter(open6)) ?? at2;
+  });
+}
+var LOAD_RETRY_WAIT_MS;
+var init_gate = __esm({
+  "src/core/retry/gate.ts"() {
+    "use strict";
+    init_keys();
+    init_records();
+    LOAD_RETRY_WAIT_MS = 6e5;
+  }
+});
+
+// src/core/retry/load.ts
+import { availableParallelism, loadavg } from "node:os";
+function hostLoad() {
+  return {
+    oneMinute: process.platform === "win32" ? null : loadavg()[0] ?? null,
+    cpus: availableParallelism()
+  };
+}
+function loadAllows(load) {
+  return load.oneMinute === null || load.oneMinute < load.cpus;
+}
+function perCpu(load) {
+  return load.oneMinute === null ? null : load.oneMinute / Math.max(1, load.cpus);
+}
+function readRunLoads(store) {
+  const raw = store.meta.get(RUN_LOADS_META_KEY);
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter((e) => typeof e[1] === "number")
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function recordRunLoad(store, runId, load) {
+  store.transaction(() => {
+    const loads2 = readRunLoads(store);
+    loads2.delete(runId);
+    loads2.set(runId, load);
+    const newest = [...loads2].slice(-RUN_LOADS_KEPT);
+    store.meta.set(RUN_LOADS_META_KEY, JSON.stringify(Object.fromEntries(newest)));
+  });
+}
+var RUN_LOADS_META_KEY, RUN_LOADS_KEPT;
+var init_load = __esm({
+  "src/core/retry/load.ts"() {
+    "use strict";
+    RUN_LOADS_META_KEY = "failed-run-loads";
+    RUN_LOADS_KEPT = 1024;
+  }
+});
+
 // src/core/retry/pending.ts
 function pendingRetriesOf(store, keys, load = hostLoad, runs = []) {
   const current3 = new Map(keys.map((k) => [testFileId(k.testFile), k.key]));
@@ -5153,6 +5185,7 @@ function pendingRetriesOf(store, keys, load = hostLoad, runs = []) {
 function entry2(records) {
   const first = records[0];
   const testFile = first.testFile;
+  const since = gateClosedSince(records);
   return {
     testFile,
     reason: records.some((r) => r.reason === "environment") ? "environment" : "load",
@@ -5160,13 +5193,16 @@ function entry2(records) {
     ...records.some((r) => r.noResult === true) ? { noResult: true } : {},
     askedAt: first.askedAt,
     claimedBy: records.find((r) => r.claim !== null)?.claim?.worktreeId ?? null,
-    requests: records.length
+    requests: records.length,
+    // Row 011-213: since when the load gate has been closed on it.
+    ...since === null ? {} : { gateClosedAt: since }
   };
 }
 var init_pending = __esm({
   "src/core/retry/pending.ts"() {
     "use strict";
     init_keys();
+    init_gate();
     init_load();
     init_records();
   }
@@ -5223,14 +5259,36 @@ function loadText(load) {
   const cpus3 = `${load.cpus} ${load.cpus === 1 ? "CPU" : "CPUs"}`;
   return load.oneMinute === null ? `load average not known on ${cpus3}` : `load average ${load.oneMinute.toFixed(2)} on ${cpus3}`;
 }
-function waitsText(reason2, load, runningSince = null) {
+function waitedText(ms2) {
+  const seconds3 = Math.max(0, Math.floor(ms2 / 1e3));
+  if (seconds3 < 60) return `${seconds3} s`;
+  const rest = seconds3 % 60;
+  return `${Math.floor(seconds3 / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
+function waitsText(reason2, load, runningSince = null, gate = null) {
   if (runningSince !== null) return `running since ${timeText(runningSince)}`;
   if (reason2 === "environment") return "runs at once";
   if (load.oneMinute === null) return `runs at the daemon's next look (${loadText(load)})`;
   if (loadAllows(load)) {
     return `runs at the daemon's next look: the one-minute load average is below the CPU count (${loadText(load)} now)`;
   }
-  return `waits for the one-minute load average to fall below the CPU count (${loadText(load)} now)`;
+  const waits2 = "waits for the one-minute load average to fall below the CPU count";
+  if (gate === null || gate.since === null) return `${waits2} (${loadText(load)} now)`;
+  const oldest = waitedText(gate.now - gate.since);
+  if (gate.now - gate.since >= LOAD_RETRY_WAIT_MS) {
+    return `runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for ${BOUND_TEXT}, the most a load retry waits (${loadText(load)} now)`;
+  }
+  const newest = waitedText(gate.now - (gate.latest ?? gate.since));
+  if (newest !== oldest) {
+    return `${waits2}: at or above it for ${newest} to ${oldest}, by file, of at most ${BOUND_TEXT}, then each runs once anyway (${loadText(load)} now)`;
+  }
+  return `${waits2}: at or above it for ${oldest} of at most ${BOUND_TEXT}, then runs once anyway (${loadText(load)} now)`;
+}
+function loadRetryWhenText(load) {
+  return loadAllows(load) ? `runs once more now: the one-minute load average is below the CPU count (${loadText(load)})` : `runs once more when the one-minute load average falls below the CPU count, or after at most ${BOUND_TEXT} above it, then with a load note (${loadText(load)} now)`;
+}
+function loadRetryNoteText(path, loadPerCpu2) {
+  return `load retry of ${path} queued under load ${loadPerCpu2.toFixed(2)} per CPU, at or above one per CPU, once it had waited ${BOUND_TEXT} for the one-minute load average to fall below the CPU count (spec 011 C5)`;
 }
 function outcomeText(outcome2) {
   switch (outcome2) {
@@ -5269,12 +5327,14 @@ function loadRetryText(loadPerCpu2, words) {
   if (loadPerCpu2 === null || loadAllows({ oneMinute: loadPerCpu2, cpus: 1 })) return "";
   return `; \`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
-var RECORDED_UNKNOWN_TEXT;
+var BOUND_TEXT, RECORDED_UNKNOWN_TEXT;
 var init_text2 = __esm({
   "src/core/retry/text.ts"() {
     "use strict";
     init_text();
+    init_gate();
     init_load();
+    BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
     RECORDED_UNKNOWN_TEXT = "recorded at an unknown time and load: the result that produced it is no longer identifiable in the store";
   }
 });
@@ -5283,6 +5343,7 @@ var init_text2 = __esm({
 var init_retry = __esm({
   "src/core/retry/index.ts"() {
     "use strict";
+    init_gate();
     init_kept();
     init_load();
     init_pending();
@@ -6834,7 +6895,7 @@ function failingAt(conn, key3) {
 function readReplaced(conn) {
   return readMetaList(conn, REPLACED_META_KEY, isEntry);
 }
-function keepReplaced(conn, failing, records, loadOf2) {
+function keepReplaced(conn, failing, records, loadOf3) {
   if (failing.length === 0) return 0;
   const passes = new Map(
     records.filter((r) => r.outcome === "pass").map((r) => [identity2(r.check), r])
@@ -6852,7 +6913,7 @@ function keepReplaced(conn, failing, records, loadOf2) {
       fingerprint: result.fingerprint,
       summary: result.summary,
       failureId,
-      loadPerCpu: loadOf2(result.provenance.runId),
+      loadPerCpu: loadOf3(result.provenance.runId),
       replacedBy: {
         runId: pass.provenance.runId,
         worktreeId: pass.provenance.worktreeId,
@@ -7317,7 +7378,7 @@ function createFailureRepo(conn) {
     count: (selection) => num(all2(FAILURE_STATEMENTS.count(selection))[0] ?? { n: 0 }, "n"),
     failingChecks: (selection) => all2(FAILURE_STATEMENTS.failingChecks(selection)).map(checkFrom),
     failingAt: (key3) => failingAt(conn, key3),
-    keepReplaced: (failing, records, loadOf2) => keepReplaced(conn, failing, records, loadOf2),
+    keepReplaced: (failing, records, loadOf3) => keepReplaced(conn, failing, records, loadOf3),
     replaced: () => readReplaced(conn),
     text: (id) => {
       const row2 = conn.get("SELECT summary, errors FROM failure_texts WHERE id = ?", id);
@@ -17665,6 +17726,10 @@ function takeRetries(context, ledger) {
     if (file?.key === request.key) continue;
     releaseRetries(store, request.testFile, worktreeId, file?.key ?? null);
   }
+  const dropped = dropWithdrawn(ledger, pending);
+  return queueDue(context, ledger, pending) || dropped;
+}
+function dropWithdrawn(ledger, pending) {
   let changed2 = false;
   for (const file of ledger.files.values()) {
     if (file.retryKey === null || file.runningKey !== null) continue;
@@ -17672,6 +17737,9 @@ function takeRetries(context, ledger) {
     file.retryKey = null;
     if (!file.rerunPending) changed2 = ledger.dequeue(file) || changed2;
   }
+  return changed2;
+}
+function dueOf(ledger, pending) {
   const due = /* @__PURE__ */ new Map();
   for (const request of pending) {
     const file = ledger.file(request.testFile);
@@ -17681,15 +17749,26 @@ function takeRetries(context, ledger) {
     entry4.now ||= request.reason === "environment" || request.noResult === true;
     due.set(file.id, entry4);
   }
-  if (due.size === 0) return changed2;
-  const loadLow = [...due.values()].every((d) => d.now) || loadAllows(loadOf(context));
+  return due;
+}
+function queueDue(context, ledger, pending) {
+  const { store, worktreeId } = context;
+  const due = dueOf(ledger, pending);
+  if (due.size === 0) return false;
+  const load = [...due.values()].every((d) => d.now) ? null : loadOf(context);
+  const closed = load !== null && !loadAllows(load);
   const at2 = context.now();
   const live = (id) => worktreeLiveness(store.worktrees.get(id), at2).state === "alive";
+  let changed2 = false;
   for (const { file, key: key3, now } of due.values()) {
-    if (!now && !loadLow) continue;
+    const bounded2 = closed && !now;
+    if (bounded2 && at2 - markGateClosed(store, pending, file.ref, key3, at2) < LOAD_RETRY_WAIT_MS) {
+      continue;
+    }
     if (!claimRetries(store, file.ref, key3, worktreeId, at2, live)) continue;
     file.retryKey = key3;
     ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+    if (bounded2) context.note(loadRetryNoteText(file.ref.path, perCpu(load) ?? 0));
     changed2 = true;
   }
   return changed2;
@@ -31734,7 +31813,7 @@ var init_exclude = __esm({
 
 // src/runners/vitest/gate.ts
 var Gate;
-var init_gate = __esm({
+var init_gate2 = __esm({
   "src/runners/vitest/gate.ts"() {
     "use strict";
     Gate = class {
@@ -32545,7 +32624,7 @@ var init_adapter = __esm({
     init_empty_closed();
     init_environment2();
     init_exclude();
-    init_gate();
+    init_gate2();
     init_graph();
     init_load2();
     init_moved();
@@ -60814,6 +60893,9 @@ function fill(text3, cmd, command, it) {
 }
 
 // src/core/status/outstanding-text.ts
+init_keys();
+init_gate();
+init_load();
 init_text2();
 init_text();
 init_died();
@@ -60935,7 +61017,7 @@ init_stopping();
 var OUTSTANDING_GROUPS_SHOWN = 6;
 var OUTSTANDING_FILES_SHOWN = 3;
 function outstandingLines(s, now, command, options = {}) {
-  const groups = groupsOf(s);
+  const groups = splitByGate(groupsOf(s), s, now);
   if (groups.length === 0) return [];
   const shown = options.all === true ? groups : groups.slice(0, OUTSTANDING_GROUPS_SHOWN);
   const rest = groups.slice(shown.length);
@@ -60967,7 +61049,7 @@ function groupLine({ standing: standing2, files: files2 }, s, now, command, base
     case "checkpoint":
       return checkpointText(s, now, command);
     case "retry":
-      return retryText2(standing2, files2, s);
+      return retryText2(standing2, files2, s, now);
   }
   const next = nextStep(standing2, { named: false });
   const paths = files2.map((f) => fromBase(base, f.path));
@@ -61017,15 +61099,49 @@ function checkpointText(s, now, command) {
   const done = `${checkpoint.done} of ${plural(checkpoint.total, "test file")} done`;
   return `a checkpoint in progress: ${what}, started ${ageText2(now - checkpoint.startedAt)} ago: ${done}; \`${command} run --all --wait\` waits for it`;
 }
-function retryText2(standing2, files2, s) {
+function retryText2(standing2, files2, s, now) {
   const asked = standing2.noResult ? "no result at its inputs" : standing2.reason;
-  const load = {
-    oneMinute: s.pendingRetries?.loadAverage ?? null,
-    cpus: s.pendingRetries?.cpus ?? 1
-  };
   const reason2 = standing2.noResult ? "environment" : standing2.reason;
   const where3 = standing2.elsewhere ? ", queued by another worktree's daemon" : "";
-  return `${plural(files2.length, "test file")} with a pending retry (${asked}): ${shownText(files2)}; ${waitsText(reason2, load, standing2.runningSince)}${where3}`;
+  const gates = gateTimes(s);
+  const times = files2.flatMap((f) => gates.get(testFileId(f)) ?? []);
+  const gate = times.length === 0 ? { since: null, now } : { since: Math.min(...times), latest: Math.max(...times), now };
+  return `${plural(files2.length, "test file")} with a pending retry (${asked}): ${shownText(files2)}; ${waitsText(reason2, loadOf2(s), standing2.runningSince, gate)}${where3}`;
+}
+function loadOf2(s) {
+  return { oneMinute: s.pendingRetries?.loadAverage ?? null, cpus: s.pendingRetries?.cpus ?? 1 };
+}
+function gateTimes(s) {
+  const times = /* @__PURE__ */ new Map();
+  for (const r of s.pendingRetries?.retries ?? []) {
+    if (r.gateClosedAt !== void 0) times.set(testFileId(r.testFile), r.gateClosedAt);
+  }
+  return times;
+}
+function splitByGate(groups, s, now) {
+  const load = loadOf2(s);
+  const closed = load.oneMinute !== null && !loadAllows(load);
+  const gates = gateTimes(s);
+  return groups.flatMap((group) => {
+    const { standing: standing2, files: files2 } = group;
+    if (!closed || standing2.kind !== "retry" || !gatedBy(standing2)) return [group];
+    const since = (f) => gates.get(testFileId(f));
+    const parts2 = [
+      files2.filter((f) => {
+        const at2 = since(f);
+        return at2 !== void 0 && now - at2 >= LOAD_RETRY_WAIT_MS;
+      }),
+      files2.filter((f) => {
+        const at2 = since(f);
+        return at2 !== void 0 && now - at2 < LOAD_RETRY_WAIT_MS;
+      }),
+      files2.filter((f) => since(f) === void 0)
+    ];
+    return parts2.filter((part) => part.length > 0).map((part) => ({ standing: standing2, files: part }));
+  });
+}
+function gatedBy(standing2) {
+  return standing2.reason === "load" && !standing2.noResult && standing2.runningSince === null;
 }
 
 // src/core/status/format-status.ts
@@ -67170,7 +67286,7 @@ function startTimers(context) {
     } else {
       const waiting2 = context.slowWaiting?.() ?? null;
       if (waiting2 !== null && at2 - waiting2.since >= DRAIN_SLOW_WAIT_MS) {
-        context.shutdown("sessions-gone", waitedText(waiting2.paths));
+        context.shutdown("sessions-gone", waitedText2(waiting2.paths));
       }
     }
   });
@@ -67251,7 +67367,7 @@ function drainable(context) {
 function drainedText(drained) {
   return drained === SLOW_FILES ? "daemon stopped: the slow files pending when its last session ended have run" : `daemon stopped: the work pending when its last session ended is done (${drained})`;
 }
-function waitedText(paths) {
+function waitedText2(paths) {
   return `daemon stopped: no slow file ran for ${DRAIN_SLOW_WAIT_MS / 1e3} s once the fast work pending when its last session ended was done; ${plural(paths.length, "slow file")} left queued for the next daemon in this worktree: ${listPaths(paths)}`;
 }
 function boundText(pending, idleMs) {
@@ -73155,7 +73271,7 @@ function askLine(store, row2, where3, reason2, asker, load) {
   );
   if (isBusyAnswer(answer3)) return busyLine("Not retried", shown, answer3);
   if (answer3.kind === "spent") return refuse(spentLine(shown, answer3.record));
-  const when = reason2 === "environment" ? "runs once more now" : loadAllows(load) ? `runs once more now: the one-minute load average is below the CPU count (${loadText(load)})` : `runs once more when the one-minute load average falls below the CPU count, however long that takes (${loadText(load)} now)`;
+  const when = reason2 === "environment" ? "runs once more now" : loadRetryWhenText(load);
   const joins = others.length > 0 ? " It joins a retry another session asked for." : "";
   return {
     ok: true,

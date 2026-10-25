@@ -858,6 +858,18 @@ function toSlowActivity(value) {
 // src/core/retry/kept.ts
 var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
 
+// src/core/retry/gate.ts
+var LOAD_RETRY_WAIT_MS = 6e5;
+
+// src/core/retry/text.ts
+function waitedText(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1e3));
+  if (seconds < 60) return `${seconds} s`;
+  const rest2 = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest2 === 0 ? "" : ` ${rest2} s`}`;
+}
+var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
+
 // src/core/hash/blob.ts
 import { constants } from "node:fs";
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;

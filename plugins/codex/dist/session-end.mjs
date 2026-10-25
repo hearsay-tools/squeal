@@ -5209,29 +5209,6 @@ import { setTimeout as sleep } from "node:timers/promises";
 // src/core/retry/kept.ts
 var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
 
-// src/core/retry/load.ts
-import { availableParallelism, loadavg } from "node:os";
-function hostLoad() {
-  return {
-    oneMinute: process.platform === "win32" ? null : loadavg()[0] ?? null,
-    cpus: availableParallelism()
-  };
-}
-var RUN_LOADS_META_KEY = "failed-run-loads";
-function readRunLoads(store) {
-  const raw = store.meta.get(RUN_LOADS_META_KEY);
-  if (raw === null) return /* @__PURE__ */ new Map();
-  try {
-    const value = JSON.parse(raw);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
-    return new Map(
-      Object.entries(value).filter((e) => typeof e[1] === "number")
-    );
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-
 // src/core/retry/records.ts
 var RETRIES_META_KEY = "retries";
 var RETRY_REASONS = ["load", "environment"];
@@ -5254,6 +5231,38 @@ function isRecord2(value) {
   const v = value;
   const ref = v.testFile;
   return typeof v.id === "string" && typeof ref === "object" && ref !== null && typeof ref.project === "string" && typeof ref.path === "string" && typeof v.key === "string" && typeof v.session === "string" && RETRY_REASONS.includes(v.reason) && typeof v.askedAt === "number" && typeof v.askedIn === "string" && (v.claim === null || typeof v.claim === "object") && (v.end === null || typeof v.end === "object");
+}
+
+// src/core/retry/gate.ts
+var LOAD_RETRY_WAIT_MS = 6e5;
+function gateClosedSince(records) {
+  const times = records.flatMap(
+    (r) => typeof r.gateClosedAt === "number" ? [r.gateClosedAt] : []
+  );
+  return times.length === 0 ? null : Math.min(...times);
+}
+
+// src/core/retry/load.ts
+import { availableParallelism, loadavg } from "node:os";
+function hostLoad() {
+  return {
+    oneMinute: process.platform === "win32" ? null : loadavg()[0] ?? null,
+    cpus: availableParallelism()
+  };
+}
+var RUN_LOADS_META_KEY = "failed-run-loads";
+function readRunLoads(store) {
+  const raw = store.meta.get(RUN_LOADS_META_KEY);
+  if (raw === null) return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      Object.entries(value).filter((e) => typeof e[1] === "number")
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
 }
 
 // src/core/retry/pending.ts
@@ -5280,6 +5289,7 @@ function pendingRetriesOf(store, keys, load = hostLoad, runs = []) {
 function entry2(records) {
   const first = records[0];
   const testFile = first.testFile;
+  const since = gateClosedSince(records);
   return {
     testFile,
     reason: records.some((r) => r.reason === "environment") ? "environment" : "load",
@@ -5287,7 +5297,9 @@ function entry2(records) {
     ...records.some((r) => r.noResult === true) ? { noResult: true } : {},
     askedAt: first.askedAt,
     claimedBy: records.find((r) => r.claim !== null)?.claim?.worktreeId ?? null,
-    requests: records.length
+    requests: records.length,
+    // Row 011-213: since when the load gate has been closed on it.
+    ...since === null ? {} : { gateClosedAt: since }
   };
 }
 
@@ -5334,6 +5346,15 @@ function withRecorded(store, worktreeId, states, revision) {
     return { ...failure2, recorded };
   });
 }
+
+// src/core/retry/text.ts
+function waitedText(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1e3));
+  if (seconds < 60) return `${seconds} s`;
+  const rest = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
+var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
 // src/core/status/test-frame.ts
 var V8_FRAME = /^\s*at (.+?)\s*$/;
@@ -7182,7 +7203,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.327";
+  if (true) return "0.1.328";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8593,6 +8614,21 @@ function ownEditUnknown(store, consumer, revision) {
   };
 }
 
+// src/core/delivery/stop-news.ts
+function actsAtStop(live) {
+  if (live.stopping !== void 0) return live.stopping.overdue || live.stopping.to === void 0;
+  return live.state === "down" || live.short !== void 0;
+}
+function holdActsAtStop(change2) {
+  return change2.started.some((hold) => hold.cause === "merge");
+}
+function toldAtStop({ stop, transitions }, changes) {
+  if (!stop || transitions) return changes;
+  const { live, held } = changes;
+  const acts = live !== null && actsAtStop(live) || held !== null && holdActsAtStop(held);
+  return acts ? changes : { live: null, held: null };
+}
+
 // src/core/delivery/delivery.ts
 var DEFAULT_POLL_INTERVAL_MS = 250;
 var sameMarker = (a, b) => a.others === b.others && a.own === b.own;
@@ -8657,9 +8693,14 @@ function createDelivery(store, options) {
       const delta = plan(consumer, states, at, selection.only);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
-      const changed = liveness2 ? livenessChange(store, consumer, at) : null;
+      const { live: changed, held: holds } = toldAtStop(
+        { stop, transitions: delta.entries.length > 0 },
+        {
+          live: liveness2 ? livenessChange(store, consumer, at) : null,
+          held: liveness2 ? holdsChange(store, consumer, at) : null
+        }
+      );
       if (changed !== null) tellLiveness(store, consumer, toldOf2(changed));
-      const holds = liveness2 ? holdsChange(store, consumer, at) : null;
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const tests = delta.entries.length > 0 || changed !== null || holds !== null;
       const code = tellCode(options.code, consumer, at, () => codeSeenUpTo(store, consumer), {
