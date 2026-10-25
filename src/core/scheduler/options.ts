@@ -178,4 +178,9 @@ export interface SlowTierOptions {
   /** The load guard's readings (`CapacityWait.load`, `cpus`); default the host's. */
   readonly load?: () => readonly number[];
   readonly cpus?: () => number;
+  /**
+   * How long a slow lane's runner instance stays open while its slow files
+   * wait and none starts (row 011-211). Default `SLOW_RELEASE_MS`, 60000.
+   */
+  readonly releaseMs?: number;
 }
