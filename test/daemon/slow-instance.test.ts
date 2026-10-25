@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
+import { SlowRelease } from "../../src/core/scheduler/slow-release.js";
 import type {
+  EpochMs,
   InvalidatedPath,
   RunnerAdapter,
   RunOptions,
@@ -99,4 +101,66 @@ describe("withSlowInstance (spec 004 D2, task 004-18)", () => {
       "slow2 close",
     ]);
   });
+
+  it.each([
+    ["ends", null],
+    ["fails, noted by the release and not thrown again", new Error("teardown failed")],
+  ])(
+    "a shutdown during the bound's close waits for its teardown, which runs once and %s (review 0.1.322, B4)",
+    async (_, failure) => {
+      const log: string[] = [];
+      let entered = false;
+      let open = () => {};
+      const gate = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      const slow = {
+        ...fake("slow", log),
+        async close() {
+          entered = true;
+          await gate;
+          log.push("slow teardown");
+          if (failure !== null) throw failure;
+        },
+      };
+      const runner = withSlowInstance(fake("fast", log), () => slow);
+      await runner.run([FILE], options("slow:vitest"));
+      const ended = Date.now() as EpochMs;
+      let closed = false;
+      const noted: unknown[] = [];
+      // The scheduler's `#releaseLane`: the runner's release, its error noted.
+      const release = new SlowRelease(
+        {
+          release: (lane) =>
+            runner.releaseLane?.(lane).catch((e: unknown) => void noted.push(e)) ??
+            Promise.resolve(),
+          lanes: () => [],
+          endedAt: () => ended,
+          now: () => Date.now() as EpochMs,
+          closed: () => closed,
+        },
+        10,
+      );
+      release.opened("slow:vitest");
+      release.arm();
+      await expect.poll(() => entered).toBe(true);
+
+      // The daemon's order: the scheduler's close, then the runner's.
+      closed = true;
+      release.close();
+      let done = false;
+      const shutdown = runner.close().then(() => {
+        done = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(done).toBe(false);
+      expect(log).not.toContain("slow teardown");
+
+      open();
+      await shutdown;
+      expect(log.filter((line) => line === "slow teardown")).toHaveLength(1);
+      expect(log.at(-1)).toBe("slow teardown");
+      expect(noted).toEqual(failure === null ? [] : [failure]);
+    },
+  );
 });
