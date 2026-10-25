@@ -86,6 +86,8 @@ export function projectEnvironment(
     resolvedConfig: JSON.stringify(config),
     files: [...preloads],
     ...(packages === undefined ? {} : { packages }),
+    // 016 D4, O8: its runs observe module loads, which key whatever `observe.runtimeInputs` says
+    observedLoads: true,
   };
 }
 

@@ -69,8 +69,12 @@ export function observedInputs(
   return out;
 }
 
-/** The written paths of `written` that are directories above one of `kept`, worktree-relative and sorted. */
-function writtenAbove(
+/**
+ * The paths of `written` that are directories above one of `kept`,
+ * worktree-relative and sorted: what the core's written-directory bound
+ * reads (spec 016 D4).
+ */
+export function writtenAbove(
   kept: readonly RelativePath[],
   written: ReadonlySet<AbsolutePath>,
   paths: WorktreePaths,
