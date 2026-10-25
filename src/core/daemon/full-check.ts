@@ -149,8 +149,8 @@ export interface FullCheckContext {
  * it, runs the full check off the main thread. A fault marks the store
  * (`markStore`) and leaves a note; every daemon on the store exits at its
  * next heartbeat (`storeCondemned`), and the next start moves the store
- * aside. Returns what stops it: a check that has not ended is stopped and
- * its claim given back.
+ * aside. A check that could not run gives its claim back, and so does one
+ * the returned function stops before it ended, so the next start runs it.
  */
 export function startFullCheck(context: FullCheckContext): () => void {
   const { store, commonDir, now, log } = context;
@@ -163,24 +163,30 @@ export function startFullCheck(context: FullCheckContext): () => void {
   }
   if (claim === null) return () => {};
   const taken = claim;
+  const release = () => {
+    try {
+      releaseClaim(store, taken);
+    } catch (error) {
+      log(`full integrity check claim not given back: ${String(error)}`);
+    }
+  };
   const check = (context.run ?? runFullCheck)(storePaths(commonDir).database);
   let ended = false;
   void check.done.then((outcome) => {
     if (ended) return;
     ended = true;
     if ("ok" in outcome) log("full integrity check: ok");
-    else if ("unrun" in outcome) log(`full integrity check did not run: ${outcome.unrun}`);
-    else failed(context, { at: now(), problem: outcome.problem });
+    else if ("problem" in outcome) failed(context, { at: now(), problem: outcome.problem });
+    else {
+      log(`full integrity check did not run: ${outcome.unrun}`);
+      release();
+    }
   });
   return () => {
     if (ended) return;
     ended = true;
     check.stop();
-    try {
-      releaseClaim(store, taken);
-    } catch (error) {
-      log(`full integrity check claim not given back: ${String(error)}`);
-    }
+    release();
   };
 }
 
