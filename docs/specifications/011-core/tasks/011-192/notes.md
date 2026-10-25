@@ -79,4 +79,6 @@ The changed test, `env -u PLUGIN_ROOT -u PLUGIN_DATA npx vitest run test/daemon/
 
 The changed test logs nothing when it passes, so how many of these 20 had the retry stamped before the free is not known. The replay of the 20 probe runs above covers the two that failed.
 
-`npm run lint`: `Checked 2065 files in 809ms. No fixes applied.`, exit 0. `npm run typecheck`: exit 0. Squeal's full-suite checkpoint: in the worker's final report.
+`npm run lint`: `Checked 2065 files in 809ms. No fixes applied.`, exit 0. `npm run typecheck`: exit 0.
+
+`squeal run --all --wait` at aee6bc72f (revision 10), 2026-10-25 about 00:00Z to 00:20Z, exit 1: "Checkpoint 23e6d032 completed at revision 10: 1 known failure: 1 test; 1066 test files". `busy-edit.test.ts` passed in it. The failure is `test/harness/opencode-dispose.test.ts`, "serve: an abort of the new turn, then the old Stop's answer, stores nothing": "the plugin killed the held Stop at +2054, at or after its idle deadline (+2000)", at load 1.56 per CPU. This change cannot reach that file (the OpenCode plugin's idle deadline). It is the load miss that row 008-38 and the 014-04 gates record. A first attempt at revision 9 had no verdict, exit 3: this worker's own notes edit made revision 10 while it ran. A retry with reason `load` is queued; Squeal runs it once the one-minute load falls below the 24 CPUs.
