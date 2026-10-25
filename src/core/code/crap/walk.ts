@@ -36,7 +36,7 @@ export interface Walk {
  * Each file's summary, and the ready files judged and written within the
  * step's budget, `WRITE_FILES` at a time; a file past it keeps its last
  * summary, and `more` is set. A file not ready is judged early, for the
- * passes its records in hand prove (row 015-57).
+ * failures its records in hand prove pass (row 015-57).
  */
 export function walk(at: Walk, files: readonly CodeFile[]) {
   const { input, cache, loaders, summary, start, work } = at;
@@ -86,6 +86,7 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
     next[file.path] = { state: "judged", blob: file.blob, signature };
     judged.add({ file, count, coverage, ...(recounted ? { quiet: true } : {}) });
     quiet.delete(file.path);
+    cache.judged(file.path);
   }
   return { next, ...judged.end(), quiet, more };
 }
@@ -93,10 +94,10 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
 type Unready = Exclude<FileSummary, { state: "judged" }>;
 
 /**
- * Row 015-57 (D9, A pass proven early): a file not ready, judged from its
- * ready loaders' records for the passes they prove, once for each set of
- * them; its summary, or `null` when its records are past the budget. It
- * stays in `quiet` until it is judged with every record.
+ * Row 015-57 (D9, A pass proven early): a file not ready with a failure,
+ * judged from its ready loaders' records for the failures they prove pass,
+ * once for each set of them; its summary, or `null` when its reads are
+ * past the budget. It stays in `quiet` until it is judged with every record.
  */
 function judgeEarly(
   w: { readonly at: Walk; readonly judged: Batched; readonly quiet: ReadonlySet<string> },
@@ -106,20 +107,15 @@ function judgeEarly(
 ): Unready | null {
   if (ready.length === 0) return kept;
   const { input, cache, start, work } = w.at;
+  const failing = cache.failing(file, () => hasFailure(input, file.path), work);
+  if (failing !== true) return failing === null ? null : kept;
   const signature = cache.signature(file, input.threshold, ready, true);
   const before = w.at.summary?.files[file.path];
   const judgedAt = before?.state !== "judged" && before?.blob === file.blob ? before.early : null;
   if (!start && judgedAt === signature) return { ...kept, early: signature };
   const { coverage: records } = input.store;
-  if (
-    !cache.decode(
-      records,
-      ready.map((l) => l.key),
-      work,
-    ) ||
-    !work()
-  )
-    return null;
+  const keys = ready.map((l) => l.key);
+  if (!cache.decode(records, keys, work) || !work()) return null;
   const count = w.at.countOf(file);
   if (count === null) return kept;
   const record = (key: CheckKey) => cache.record(records, key);
@@ -127,10 +123,17 @@ function judgeEarly(
   if (coverage === "unread") return kept;
   const quiet = w.quiet.has(file.path) ? { quiet: true as const } : {};
   w.judged.add({ file, count, coverage, early: true, ...quiet });
+  // It may pass every failure the file had.
+  cache.judged(file.path);
   return { ...kept, early: signature };
 }
 
 type Batched = ReturnType<typeof batched>;
+
+const hasFailure = ({ store, worktreeId }: CoverageStepInput, path: string) =>
+  store.states
+    .list(worktreeId, { paths: [path], outcome: "fail" })
+    .some((s) => s.measure !== "complexity");
 
 /** Judgements written `WRITE_FILES` at a time as they come, and the rest at `end`. */
 function batched(input: CoverageStepInput, brought: ReadonlyMap<string, RevisionNumber>) {
@@ -184,19 +187,19 @@ function writeJudgement(
   store.transitions.append(transitions);
   // D6's first edit to a standing failure, for these measures too.
   store.states.markEdited(worktreeId, edited);
-  // Row 015-57: an early judgement's evidence, for the functions it judged.
-  const proven = new Map<string, Set<string>>();
-  for (const s of states) {
-    proven.set(s.check.path, (proven.get(s.check.path) ?? new Set()).add(functionKey(s.check)));
-  }
   for (const j of judged) {
     const { path } = j.file;
-    const only = proven.get(path);
-    if (j.early !== true) writeEvidence(store.meta, worktreeId, path, evidenceOf(j));
-    else if (only !== undefined) {
-      const before = readEvidence(store.meta, worktreeId, path);
-      writeEvidence(store.meta, worktreeId, path, evidenceOf(j, only, before));
+    if (j.early !== true) {
+      writeEvidence(store.meta, worktreeId, path, evidenceOf(j));
+      continue;
     }
+    // Row 015-57: an early judgement's evidence, for the functions it judged.
+    const only = new Set(
+      states.filter((s) => s.check.path === path).map((s) => functionKey(s.check)),
+    );
+    if (only.size === 0) continue;
+    const before = readEvidence(store.meta, worktreeId, path);
+    writeEvidence(store.meta, worktreeId, path, evidenceOf(j, only, before));
   }
   return transitions.length;
 }
