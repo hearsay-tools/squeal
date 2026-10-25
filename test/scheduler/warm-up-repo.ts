@@ -61,10 +61,37 @@ test("reads nothing ignored", () => {
 `;
 
 /**
+ * A Vitest file that reads a gitignored file below a directory it makes
+ * (row 005-85), and stats `BUILD` as `VITEST` does. Of the two, the one that
+ * runs second finds `BUILD` hashed already, so its first run is no
+ * first-seen run (001-134) and stands in the warm-up's record.
+ */
+export const SCRATCH = "test/scratch.test.ts";
+export const SEED = "ignored/scratch/seed.txt";
+const SCRATCH_TEST = `import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { expect, test } from "vitest";
+
+const root = join(import.meta.dirname, "..");
+
+test("reads below a directory it makes", () => {
+  mkdirSync(join(root, "ignored/scratch"), { recursive: true });
+  expect(readFileSync(join(root, "${SEED}"), "utf8")).toBe("seed\\n");
+  expect(existsSync(join(root, "${BUILD}"))).toBe(true);
+});
+`;
+
+/**
  * The repository and its harness; `started`, its baseline run and idle.
  * `runtimeInputs` is policy `observe.runtimeInputs`: off, Vitest observes nothing.
+ * `fresh`: the default `baseline.onStart`, lookup-only, so a start runs
+ * nothing and a warm-up is each file's first run, and `SCRATCH` too.
  */
-export async function warmUpRepo({ started = true, runtimeInputs = true } = {}): Promise<{
+export async function warmUpRepo({
+  started = true,
+  runtimeInputs = true,
+  fresh = false,
+} = {}): Promise<{
   h: Harness;
   commonDir: string;
 }> {
@@ -80,6 +107,10 @@ export async function warmUpRepo({ started = true, runtimeInputs = true } = {}):
   write(MANY, MANY_TEST);
   write(QUIET, QUIET_TEST);
   for (let i = 0; i < 60; i++) write(`ignored/many/${String(i).padStart(2, "0")}.txt`, `${i}\n`);
+  if (fresh) {
+    write(SCRATCH, SCRATCH_TEST);
+    write(SEED, "seed\n");
+  }
   git(repo.main, ["add", "-A"]);
   git(repo.main, ["commit", "-qm", "node:test files"]);
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-001-307-slot-"));
@@ -89,7 +120,7 @@ export async function warmUpRepo({ started = true, runtimeInputs = true } = {}):
     observe: true,
     nodeTest: [NODE_TEST],
     policy: {
-      ...RUN_MISSING,
+      ...(fresh ? {} : RUN_MISSING),
       slow: { ...DEFAULT_POLICY.slow, include: [VITEST] },
       observe: { runtimeInputs },
     },
