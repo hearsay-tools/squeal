@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, describe, expect, it, type TestContext } from "vitest";
 import { createCompositeRunner } from "../../../src/core/daemon/composite-runner.js";
-import { pytestObservedStore } from "../../../src/core/daemon/pytest-runners.js";
 import { readHead } from "../../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../../src/core/fs/index.js";
 import { createFsHasher } from "../../../src/core/hash/index.js";
@@ -97,7 +96,6 @@ async function openDaemon(
   const adapter = await createPytestAdapter(PROJECT, {
     root: root as AbsolutePath,
     source,
-    observed: pytestObservedStore(store, PROJECT.name),
     note: () => {},
     cacheDir: join(scratch, "cache", worktreeId) as AbsolutePath,
   });

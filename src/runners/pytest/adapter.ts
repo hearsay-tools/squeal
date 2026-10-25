@@ -34,29 +34,9 @@ import { PYTEST_ADAPTER_VERSION } from "./version.js";
 
 export { PYTEST_ADAPTER_VERSION };
 
-/** Observed-only paths per test file of one project, worktree-relative (spec 007 D4, 003 D3). */
-export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;
-
-/**
- * The project's `pytest.observed.<project>` meta key, kept by the daemon so
- * the adapter never opens the store (003 D3 as amended).
- */
-export interface ObservedStore {
-  /** Every worktree's observations so far: read at start and at each refinement, so it must be cheap. */
-  read(): ObservedPaths;
-  /** Merges `additions` into the key, and into the stored closures, in one transaction. */
-  write(additions: ObservedPaths): void;
-  /** What start-up plugins imported beyond their static closure, every worktree's (B5). */
-  readSession(): readonly RelativePath[];
-  /** Merges `additions` into the session key in one transaction. */
-  writeSession(additions: readonly RelativePath[]): void;
-}
-
 export interface PytestAdapterOptions {
   /** The worktree root. */
   readonly root: AbsolutePath;
-  /** Absent: observations live only as long as the adapter. */
-  readonly observed?: ObservedStore;
   /**
    * Problem notes: D2's states, the graph's notes, incomplete closures, the
    * run's notes. D2's state notes and the ready note carry the topic

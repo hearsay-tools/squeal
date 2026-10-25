@@ -2,7 +2,6 @@ import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { type StatusWait, waitForStatus } from "../../src/cli/status-wait.js";
-import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
@@ -78,10 +77,7 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
       },
     });
 
-    const adapter = await createNodeTestAdapter(PRELOADED, {
-      root,
-      observed: observedStore(store, PRELOADED.name),
-    });
+    const adapter = await createNodeTestAdapter(PRELOADED, { root });
     const firstReport = gate();
     const refinement = gate();
     const rerun = gate();
