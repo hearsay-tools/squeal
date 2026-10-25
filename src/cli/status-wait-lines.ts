@@ -16,7 +16,7 @@ import { stoppingState } from "../core/status/stopping.js";
 import { plural, testFileText } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
 import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
-import { namedPathLines, pathsText } from "./named-path-lines.js";
+import { heldByPaths, namedPathLines, pathsText } from "./named-path-lines.js";
 import type { SyncState } from "./status-sync.js";
 import type { StatusWait, StatusWaitEdit, StatusWaitSlow } from "./status-wait.js";
 import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus-lines.js";
@@ -270,10 +270,7 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
         wait.selection.base,
       );
       const counted = `${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, each with a current result${snapshot ? "" : `, ${after}`}`;
-      if (
-        result.result === "none" &&
-        (result.reason === "unmatched" || result.reason === "not-run")
-      ) {
+      if (heldByPaths(result)) {
         // Row 011-63: with no failure among them, a path that selects nothing is why there is no
         // verdict; row 011-206 (gh-83): or one Squeal does not run, whose readers' verdict is apart.
         const which = result.reason === "not-run" ? "selected" : "the other paths select";

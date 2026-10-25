@@ -1,6 +1,7 @@
 import { plural } from "../core/text.js";
 import { unmatchedText } from "./named-file-lines.js";
 import type { NamedSelection } from "./named-selection.js";
+import type { SelectionResult } from "./verdict.js";
 
 /**
  * Row 011-206 (gh-83, 011 C15): after `Selected:`, a line per named path
@@ -41,4 +42,14 @@ export function pathsText(selection: NamedSelection): string {
     ...notRun.map((path) => `Squeal does not run ${path}, which is ${NOT_LISTED}`),
     ...(unmatched.length === 0 ? [] : [unmatchedText(rest)]),
   ].join("; ");
+}
+
+/**
+ * Whether only the named paths leave the selection without a verdict, every
+ * selected file current and passing: the verdict line names them first.
+ */
+export function heldByPaths(
+  result: SelectionResult,
+): result is { readonly result: "none"; readonly reason: "unmatched" | "not-run" } {
+  return result.result === "none" && (result.reason === "unmatched" || result.reason === "not-run");
 }
