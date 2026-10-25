@@ -7548,7 +7548,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.318";
+  if (true) return "0.1.319";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10481,19 +10481,23 @@ function recordedDaemon(root, busyTimeoutMs = 100) {
     return null;
   }
 }
+var UNAVAILABLE = { result: "unavailable", pid: null };
 async function ensureDaemon(root, options = {}) {
+  return (await ensureDaemonProcess(root, options)).result;
+}
+async function ensureDaemonProcess(root, options = {}) {
   if (options.awaitLockMs === void 0) {
     const timeoutMs = options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS;
     const probe = await probeDaemon(root, timeoutMs, options);
-    if (probe.state === "alive") return "alive";
-    if (probe.state === "unresponsive") return "unavailable";
+    if (probe.state === "alive") return { result: "alive", pid: null };
+    if (probe.state === "unresponsive") return UNAVAILABLE;
   }
   const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync10(cli)) return "unavailable";
+  if (cli === null || !existsSync10(cli)) return UNAVAILABLE;
   try {
     const commonDir = resolveCommonDir(root);
-    if (commonDir === null) return "unavailable";
+    if (commonDir === null) return UNAVAILABLE;
     const cwd = storePaths(commonDir).dir;
     mkdirSync5(cwd, { recursive: true });
     const child = spawn2(process.execPath, [cli, "daemon", root, ...lockWait], {
@@ -10504,9 +10508,9 @@ async function ensureDaemon(root, options = {}) {
     child.on("error", () => {
     });
     child.unref();
-    return "spawned";
+    return { result: "spawned", pid: child.pid ?? null };
   } catch {
-    return "unavailable";
+    return UNAVAILABLE;
   }
 }
 function daemonCliEntry(cli, env = process.env) {
