@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.309";
+  if (true) return "0.1.310";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5233,6 +5233,12 @@ var init_git_index = __esm({
 function sameStat(a, b) {
   return a.mtimeMs === b.mtimeMs && a.ctimeMs === b.ctimeMs && a.size === b.size && a.inode === b.inode;
 }
+function unknownStat(stat9) {
+  return { mtimeMs: -1, ctimeMs: -1, size: stat9.size, inode: stat9.inode };
+}
+function isUnknownStat(stat9) {
+  return stat9.ctimeMs < 0;
+}
 function isRacy(stat9, hashedAt) {
   return hashedAt - stat9.mtimeMs < RACY_WINDOW_MS;
 }
@@ -5392,10 +5398,12 @@ __export(hash_exports, {
   createFsHasher: () => createFsHasher,
   hashFile: () => hashFile,
   isRacy: () => isRacy,
+  isUnknownStat: () => isUnknownStat,
   readCleanIndexHashes: () => readCleanIndexHashes,
   readObjectFormat: () => readObjectFormat,
   sameStat: () => sameStat,
-  seedStatCache: () => seedStatCache
+  seedStatCache: () => seedStatCache,
+  unknownStat: () => unknownStat
 });
 var init_hash = __esm({
   "src/core/hash/index.ts"() {
@@ -14778,30 +14786,33 @@ async function diffCandidates(candidates, cache2, hasher) {
   const observed = await mapConcurrent(paths, async (path) => {
     const stat9 = statOf2.get(path) ?? null;
     const cached = cache2.get(path);
-    if (stat9 && cached && sameStat(cached, stat9) && !cache2.isRacy(path)) return null;
+    const trusted2 = cached !== void 0 && !isUnknownStat(cached) && !cache2.isRacy(path);
+    if (stat9 && trusted2 && sameStat(cached, stat9)) return null;
     const hashedAt = hasher.now();
     const hash2 = stat9 ? await hasher.hash(path) : null;
-    return { path, cached, stat: stat9, hash: hash2, hashedAt };
+    const after2 = hash2 === null ? null : await hasher.stat(path);
+    return { path, cached, stat: stat9, hash: hash2, hashedAt, after: after2 };
   });
   const changes = [];
   const updates = [];
   for (const entry4 of observed) {
     if (!entry4) continue;
-    const { path, cached, stat: stat9, hash: hash2, hashedAt } = entry4;
-    if (!stat9 || hash2 === null) {
+    const { path, cached, stat: stat9, hash: hash2, hashedAt, after: after2 } = entry4;
+    if (!stat9 || hash2 === null || after2 === null) {
       if (cached) changes.push({ path, oldHash: cached.hash, newHash: null });
       if (cache2.hashOf(path) !== null) updates.push({ kind: "delete", path });
       continue;
     }
+    const kept3 = sameStat(stat9, after2) ? after2 : unknownStat(after2);
     const record = {
       path,
-      mtimeMs: stat9.mtimeMs,
-      ctimeMs: stat9.ctimeMs,
-      size: stat9.size,
-      inode: stat9.inode,
+      mtimeMs: kept3.mtimeMs,
+      ctimeMs: kept3.ctimeMs,
+      size: kept3.size,
+      inode: kept3.inode,
       hash: hash2
     };
-    updates.push({ kind: "set", record, racy: isRacy(stat9, hashedAt) });
+    updates.push({ kind: "set", record, racy: isRacy(kept3, hashedAt) });
     if (cached?.hash !== hash2) changes.push({ path, oldHash: cached?.hash ?? null, newHash: hash2 });
   }
   return { changes, updates };
@@ -14883,7 +14894,8 @@ function touchedUnchanged(diff, cache2) {
   for (const update of diff.updates) {
     if (update.kind !== "set" || changed2.has(update.record.path)) continue;
     const cached = cache2.get(update.record.path);
-    if (cached !== void 0 && !sameStat(cached, update.record)) touched.push(cached.path);
+    if (cached === void 0 || isUnknownStat(cached)) continue;
+    if (!sameStat(cached, update.record)) touched.push(cached.path);
   }
   return touched;
 }
