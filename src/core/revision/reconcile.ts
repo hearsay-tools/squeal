@@ -82,10 +82,13 @@ export async function statCandidates(
  * a repeated path keeps its last stat.
  *
  * Row 011-204 (task 011-203): a hashed path is stat'ed once more after its
- * read. When that stat is not the candidate's, a write came between them, and
- * the bytes are newer than the stat: the path is left as cached, and the
- * write's own batch hashes it again. Stored, the pair would make that batch
- * see a moved stat over unchanged bytes, a touch (task 001-159).
+ * read, and the hash is stored with that stat. The candidate's could be from
+ * before a write the read saw; stored with those bytes, it would make the
+ * write's own batch see a moved stat over unchanged bytes, a touch (task
+ * 001-159). A write after the read moves the stored stat's `mtime` to at or
+ * after `hashedAt`, so the entry is racy; when the two stats differ it is
+ * racy anyway, and the next pass hashes it again. A file gone by that stat
+ * is absent.
  */
 export async function diffCandidates(
   candidates: Iterable<CandidatePath>,
@@ -111,21 +114,21 @@ export async function diffCandidates(
   for (const entry of observed) {
     if (!entry) continue;
     const { path, cached, stat, hash, hashedAt, after } = entry;
-    if (!stat || hash === null) {
+    if (!stat || hash === null || after === null) {
       if (cached) changes.push({ path, oldHash: cached.hash, newHash: null });
       if (cache.hashOf(path) !== null) updates.push({ kind: "delete", path });
       continue;
     }
-    if (after === null || !sameStat(stat, after)) continue;
     const record: FileHashRecord = {
       path,
-      mtimeMs: stat.mtimeMs,
-      ctimeMs: stat.ctimeMs,
-      size: stat.size,
-      inode: stat.inode,
+      mtimeMs: after.mtimeMs,
+      ctimeMs: after.ctimeMs,
+      size: after.size,
+      inode: after.inode,
       hash,
     };
-    updates.push({ kind: "set", record, racy: isRacy(stat, hashedAt) });
+    const racy = !sameStat(stat, after) || isRacy(after, hashedAt);
+    updates.push({ kind: "set", record, racy });
     if (cached?.hash !== hash) changes.push({ path, oldHash: cached?.hash ?? null, newHash: hash });
   }
   return { changes, updates };
