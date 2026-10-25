@@ -167,7 +167,7 @@ Each runner supplies a description in `src/runners/<runner>/describe.ts`:
 1. ~~Should the kit also run through a scratch daemon?~~ Answered 2026-10-25 from `research/core-defects.md` finding 3: not in 016. It ranks after one owner per rule and a model-based scheduler test (`status.md` amendment log).
 2. ~~D3's store step: a column without a version raise, or a `meta` map.~~ Answered 2026-10-25: the column (D3).
 3. ~~The rule for git-ignored observed paths (survey O1).~~ Answered 2026-10-25 by the human: the written-directory bound (D4). O8 and the older daemon were answered the same day.
-4. Should the kit replace the overlapping adapter-level tests (about a third of 1,221 lines, `research/runner-kit.md` finding 5), and share fixtures with the validity corpus? Owner: 016's coordinator, after wave 2.
+4. ~~Should the kit replace the overlapping adapter-level tests (about a third of 1,221 lines, `research/runner-kit.md` finding 5), and share fixtures with the validity corpus?~~ Answered 2026-10-25 by 016's coordinator: not in 016. The kit stays the contract test and the adapter suites keep each runner's own detail; the `/quality` scan after the spec ships lists each adapter case the kit already proves as a drop candidate, and fixtures are shared only where that scan finds two copies (`status.md`).
 
 ## References
 
