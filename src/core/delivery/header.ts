@@ -4,6 +4,7 @@ import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { lateText } from "../status/feed-late.js";
 import { holdLine } from "../status/holds.js";
+import { holdAcrossEditsText } from "../status/status-detail.js";
 import { shortText, stoppingText } from "../status/stopping.js";
 import type { DaemonLiveness, Delta, StatusHeader, ValidityCounts } from "../types/index.js";
 import { installSentences } from "./provenance.js";
@@ -198,7 +199,7 @@ function livenessSentence(
   }
   // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
   if (daemon.stopped === true)
-    return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
+    return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
   // Task 001-263: the daemon that died without its stop note, and what it was running.
   const died =
     daemon.died === undefined ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
