@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.311";
+  if (true) return "0.1.312";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -9806,18 +9806,21 @@ function mayCount(failed2, path, blob, now) {
 function failedAgain(previous, blob, error, {
   now,
   quiet,
-  threshold
+  threshold,
+  editedAt
 }) {
   const same2 = previous?.blob === blob;
   const attempts = same2 ? previous.attempts + 1 : 1;
   const wait = attempts < COUNT_ATTEMPTS ? RETRY_AFTER_MS[attempts - 1] : void 0;
   const origin = same2 ? previous.quiet === true : quiet;
+  const edit = same2 ? previous.editedAt : editedAt;
   return {
     blob,
     attempts,
     retryAt: wait === void 0 ? null : now + wait,
     error,
-    ...origin ? { quiet: true } : { threshold: previous?.threshold ?? threshold }
+    ...origin ? { quiet: true } : { threshold: previous?.threshold ?? threshold },
+    ...edit === void 0 ? {} : { editedAt: edit }
   };
 }
 function seedsQuietly(failed2, path, blob) {
@@ -10339,9 +10342,34 @@ function toldOver(store, worktreeId, consumers, measures = ["complexity"]) {
     (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => told.has(codeKey(s)))
   );
 }
+function changedNotJudged(store, worktreeId, bounds) {
+  if (bounds.length === 0) return [];
+  const own = (revision) => revision !== void 0 && bounds.some((b) => isOwn(b, revision));
+  const big = readTooBigEdits(store.meta, worktreeId);
+  const failed2 = readUncountable(store.meta, worktreeId);
+  const paths = [
+    ...[...big].flatMap(([path, revision]) => own(revision) ? [path] : []),
+    ...[...failed2].flatMap(([path, f]) => own(f.editedAt) ? [path] : [])
+  ];
+  if (paths.length === 0) return [];
+  const files2 = store.files.list(worktreeId, paths);
+  const spent = uncountableFiles(store, worktreeId, files2);
+  return files2.flatMap((file) => {
+    if (file.tooBig === true) {
+      const revision = big.get(file.path);
+      return own(revision) ? [{ file, revision, failure: null }] : [];
+    }
+    const failure2 = spent.get(file.path);
+    return own(failure2?.editedAt) ? [{ file, revision: failure2.editedAt, failure: failure2 }] : [];
+  }).sort((a, b) => b.revision - a.revision || compare(a.file.path, b.file.path));
+}
 var init_code_told = __esm({
   "src/core/delivery/code-told.ts"() {
     "use strict";
+    init_failed();
+    init_too_big();
+    init_fs();
+    init_code_delivery();
     init_code_coverage();
     init_code_delta();
   }
@@ -58818,7 +58846,8 @@ async function readRegular(path) {
   }
 }
 function fail(ctx, failed2, e, error, attempt) {
-  const f = failedAgain(failed2.get(e.path), e.file.hash, error, attempt);
+  const editedAt = attempt.edits?.get(e.path);
+  const f = failedAgain(failed2.get(e.path), e.file.hash, error, { ...attempt, editedAt });
   failed2.set(e.path, f);
   const next = f.retryAt === null ? "not again until it changes" : `trying again in ${Math.round((f.retryAt - attempt.now) / 1e3)} s`;
   ctx.log(
@@ -59132,7 +59161,8 @@ async function runPass(ctx) {
   const { counted: counted3, skipped: skipped2, links } = await countMissing(ctx, entries3, failed2, {
     now: started2,
     quiet,
-    threshold: ctx.complexity.threshold
+    threshold: ctx.complexity.threshold,
+    edits
   });
   const seeds = new Set(
     entries3.flatMap(
@@ -62181,9 +62211,15 @@ function readCodeReport(main2, code, worktreeId, policy, options) {
     ...since === void 0 ? {} : { changedSince: since === null ? null : { revision: since.since, scope: since.scope } },
     ...to === void 0 ? {} : { told: to === null ? null : { scope: to.scope } },
     functions,
-    files: notJudged(code, files2, states, behind, uncountable),
+    files: to === void 0 ? notJudged(code, files2, states, behind, uncountable) : changedFiles(main2, code, worktreeId, to, keep),
     ...coveragePart(code, worktreeId, options, keep, { since, to })
   };
+}
+function changedFiles(main2, code, worktreeId, to, keep) {
+  const bounds = (to?.consumers ?? []).flatMap((c) => codeSeenUpTo(main2, c) ?? []);
+  return changedNotJudged(code, worktreeId, bounds).filter(({ file }) => keep(file.path)).map(
+    ({ file, failure: failure2 }) => failure2 === null ? { path: file.path, reason: "too-big", size: file.size } : { path: file.path, reason: "could-not-count", size: file.size, error: failure2.error }
+  );
 }
 function coveragePart(code, worktreeId, options, keep, { since, to }) {
   if (options.paths !== null) return {};
@@ -74050,8 +74086,8 @@ Usage:
                                 went over; paths list every function in those files or
                                 directories; --changed keeps those whose state changed
                                 since this session registered, --told those over that
-                                this session was told about; files not counted
-                                follow, with why
+                                this session was told about and the files it changed
+                                that are not judged; files not counted follow, with why
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
   squeal init --harness codex [--print-launcher-config | --trust [--yes]]
