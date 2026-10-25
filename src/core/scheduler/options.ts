@@ -6,6 +6,7 @@ import type { BusyWaits } from "../store/index.js";
 import type {
   AbsolutePath,
   EpochMs,
+  FeedPasses,
   FileChange,
   Policy,
   RelativePath,
@@ -74,6 +75,14 @@ export interface SchedulerOptions {
    * the feed delivers the next batch only after this one.
    */
   readonly onExtraFiles?: (paths: readonly RelativePath[]) => void;
+  /**
+   * Row 011-198: the change feed's passes. `requestFullSuite` notes how many started, awaits a
+   * pass outside the lock, and plans only when one that started after the note was delivered;
+   * otherwise it rejects and records no checkpoint. A lagging feed delays the checkpoint, and a
+   * failed or closed one gives none: neither plans it at a revision older than the worktree.
+   * Absent: no pass first.
+   */
+  readonly passes?: FeedPasses;
   /**
    * Called with the changes of every new revision, inside the transaction
    * that stores it. Returns the policy to apply from this revision on, or

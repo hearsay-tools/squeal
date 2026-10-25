@@ -6,6 +6,7 @@ import {
   type AbsolutePath,
   type CandidateBatch,
   type CommitSha,
+  type DeliveredPass,
   type RelativePath,
   type RevisionTrigger,
   WATCHER_TIMINGS,
@@ -70,6 +71,10 @@ export interface ChangeFeed {
    * pass already queued and not yet started is joined instead (task 001-299).
    */
   reconcile(trigger: RevisionTrigger): Promise<void>;
+  /** How many reconciliation passes started, retries included (row 011-198). */
+  readonly passesStarted: number;
+  /** The last pass whose batch was delivered; `null` before the first (row 011-198). */
+  readonly delivered: DeliveredPass | null;
   /** Replaces the extra files and updates the watch; a reconciliation pass follows when it changed. */
   setExtraFiles(paths: readonly RelativePath[]): Promise<void>;
   close(): Promise<void>;
@@ -96,6 +101,8 @@ const SPEC_INPUTS = new Set([".gitignore", ".git"]);
 
 class Feed implements ChangeFeed {
   spec: WatchSpec | null = null;
+  passesStarted = 0;
+  delivered: DeliveredPass | null = null;
   private root: AbsolutePath;
   private readonly backend: WatcherBackend;
   private readonly timings: WatcherTimings;
@@ -254,8 +261,14 @@ class Feed implements ChangeFeed {
     );
   }
 
-  /** `HEAD` is read before git status, so a commit made between the two is in the next diff. */
+  /**
+   * `HEAD` is read before git status, so a commit made between the two is in the next diff. The
+   * pass counts as delivered only once `onBatch` took its batch (row 011-198): a failure, a close
+   * first or a retry in its place leaves `delivered` as it was.
+   */
   private async reconcileNow(trigger: RevisionTrigger): Promise<void> {
+    this.passesStarted += 1;
+    const pass = { number: this.passesStarted, startedAt: Date.now() };
     const head = readGitHead(this.root);
     const status = await gitStatus(this.root);
     await this.rebuildSpec(status);
@@ -264,8 +277,11 @@ class Feed implements ChangeFeed {
     const { paths, linkedDirs, links } = await candidatesForReconcile(this.context(), listed);
     this.linkTargets = new Map(links);
     await this.linked?.update(linkedDirs);
-    await this.emit({ trigger, paths: this.tempHold.filter(paths, this.trackedPaths) });
+    if (!(await this.emit({ trigger, paths: this.tempHold.filter(paths, this.trackedPaths) }))) {
+      return;
+    }
     this.passHead = head;
+    this.delivered = pass;
   }
 
   /** True when a link of the batch is new, gone or points elsewhere than when last seen. */
@@ -313,9 +329,11 @@ class Feed implements ChangeFeed {
 
   private readonly trackedPaths = (): Iterable<RelativePath> => this.options.trackedPaths?.() ?? [];
 
-  private async emit(batch: CandidateBatch): Promise<void> {
-    if (this.closed) return;
+  /** False when a close kept the batch from `onBatch`. */
+  private async emit(batch: CandidateBatch): Promise<boolean> {
+    if (this.closed) return false;
     await this.options.onBatch(batch);
+    return true;
   }
 
   /**
