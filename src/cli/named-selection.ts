@@ -1,15 +1,18 @@
 import { realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/index.js";
 import type {
   AbsolutePath,
   CheckKey,
+  Policy,
   RelativePath,
   Store,
   TestFileKeyRecord,
   TestFileRef,
   WorktreeId,
 } from "../core/types/index.js";
+import { notRunTestFile } from "./retry-unlisted.js";
 
 /**
  * The test files named paths select (spec 005 D2), in the worktree's listing
@@ -27,6 +30,23 @@ export interface NamedSelection {
    * cand/0.1.231, B1).
    */
   readonly base?: string;
+  /** Row 011-206 (gh-83): each named path, in its order, with how it was read; additive. */
+  readonly paths?: readonly NamedPath[];
+}
+
+/**
+ * Row 011-206 (gh-83, 011 C15): one named path. `test-file`, a listed test
+ * file, which selects itself; `source`, any other path, which selects the
+ * test files that read it; `not-run`, a test file Squeal does not run
+ * (`notRunTestFile`), which selects its readers too, whose verdict is not
+ * its own; `unmatched`, a path that selects nothing.
+ */
+export interface NamedPath {
+  /** As `unmatched` names it: relative to the root, or as given outside it. */
+  readonly path: string;
+  readonly kind: "test-file" | "source" | "not-run" | "unmatched";
+  /** How many test files it selects. */
+  readonly selects: number;
 }
 
 /** A path that selects nothing, as given and as resolved (row 011-27, gh-39). */
@@ -64,6 +84,12 @@ export function selectNamedFiles(
   let closures: ReturnType<typeof validClosures> | undefined;
   const selected = new Map<string, TestFileRef>();
   const unmatched: UnmatchedPath[] = [];
+  const named: NamedPath[] = [];
+  let policy: Policy | undefined;
+  const notRun = (rel: RelativePath) => {
+    policy ??= readPolicy(root);
+    return notRunTestFile(store, worktreeId, root, rel, rows, policy);
+  };
   for (const path of paths) {
     const rel = worktreePath(root, cwd, path);
     const own = rows.filter((row) => row.testFile.path === rel);
@@ -78,6 +104,15 @@ export function selectNamedFiles(
             });
     if (hits.length === 0) unmatched.push(unmatchedOf(root, cwd, path, rel, rows));
     for (const row of hits) selected.set(testFileId(row.testFile), row.testFile);
+    const kind =
+      own.length > 0
+        ? "test-file"
+        : rel !== null && notRun(rel)
+          ? "not-run"
+          : hits.length > 0
+            ? "source"
+            : "unmatched";
+    named.push({ path: rel ?? path, kind, selects: hits.length });
   }
   const resolved = unmatched.map((p) => p.resolved);
   return {
@@ -85,6 +120,7 @@ export function selectNamedFiles(
     unmatched: resolved,
     unmatchedPaths: unmatched,
     base: baseOf(root, cwd),
+    paths: named,
   };
 }
 
