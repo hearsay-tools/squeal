@@ -24,6 +24,23 @@ export function sameStat(a: FileStat, b: FileStat): boolean {
   );
 }
 
+/**
+ * Row 011-204 (review 0.1.310 B1): the stat stored with a hash read while the
+ * file's stat moved, so a write may have followed the read. No file has a
+ * negative ctime (the kernel sets it at each change), so no stat equals it,
+ * and every later reconciliation and stability check hashes the entry again,
+ * after a restart too: the store keeps it, unlike the racy mark. Size and
+ * inode stay the file's.
+ */
+export function unknownStat(stat: FileStat): FileStat {
+  return { mtimeMs: -1, ctimeMs: -1, size: stat.size, inode: stat.inode };
+}
+
+/** True for `unknownStat`'s stat: its entry is hashed again, whatever the file's stat. */
+export function isUnknownStat(stat: FileStat): boolean {
+  return stat.ctimeMs < 0;
+}
+
 /** True when `stat` was taken so close to `hashedAt` that a same-size rewrite could hide behind it. */
 export function isRacy(stat: FileStat, hashedAt: EpochMs): boolean {
   return hashedAt - stat.mtimeMs < RACY_WINDOW_MS;
