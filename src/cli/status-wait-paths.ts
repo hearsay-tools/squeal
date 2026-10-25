@@ -71,6 +71,7 @@ import {
   type PromoteNamed,
   promoteNamed,
 } from "./status-wait-promote.js";
+import { sessionOf } from "./store-writes.js";
 import {
   type FileClasses,
   type FileVerdict,
@@ -477,7 +478,9 @@ export async function namedWaitCommand(
   options: NamedWaitOptions,
 ): Promise<number> {
   const checks = how.checks ?? [];
-  const wait = waitForNamed(io.cwd ?? process.cwd(), paths, { ...options, checks });
+  // Row 011-207: its requests name the session, as `retry`'s do.
+  const asker = options.asker ?? sessionOf(io);
+  const wait = waitForNamed(io.cwd ?? process.cwd(), paths, { ...options, checks, asker });
   return printNamed(wait, how, io, options.now);
 }
 
