@@ -21,3 +21,5 @@ Host load at the switch: 66.27 54.47 51.78 on 24 CPUs.
 Watch: the coordinator reads `squeal status` in a busy worktree during the first coverage pass. If 011-200's "Edits since HH:MM:SS may not be seen yet" appears, coverage goes off at once and coordinator 04a258b0 is told.
 
 Switched off again at 2026-10-25T13:55Z by the coordinator (row 015-52): a test file that a pull brought (`test/code/crap/seed.test.ts`, revision 232 of the coordinator's worktree, with 0.1.311) was counted as source before the runner listed it, and its 61 functions were told as `FAIL uncovered`; other test files added the same day were not counted. On again after 015-52 lands and is released.
+
+On again at 2026-10-25T18:10Z by the coordinator, after 0.1.317 (015-52) and 011's 0.1.318 were released; the host's plugin cache holds 0.1.318. A daemon still running a version before 0.1.317 (one on 0.1.314 at the switch) can still count a test file that a pull brought as source until it restarts. Part B's window starts here and runs after a working day; the watch above still applies.
