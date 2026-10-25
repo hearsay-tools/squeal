@@ -40,6 +40,12 @@ describe("openDaemon: lock before store (spec 001 D10, review S8)", () => {
   it("five concurrent starts run the integrity check once: losers never open the store", async () => {
     const repo = createFixtureRepo();
     repos.push(repo);
+    // An existing store: the winner opens it once. A start that creates it opens it again
+    // to read the file it holds (review 0.1.329, B3).
+    const { openStore } = await import("../../src/core/store/index.js");
+    const seeded = openStore(repo.commonDir);
+    if ("reason" in seeded) throw new Error(JSON.stringify(seeded));
+    seeded.close();
     const results = await Promise.all(
       // No lock wait: no winner here registers, which a waiting loser would wait for.
       Array.from({ length: 5 }, () => openDaemon(repo.root, Date.now, undefined, 0)),
