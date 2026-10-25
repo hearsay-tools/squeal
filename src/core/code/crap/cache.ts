@@ -6,21 +6,24 @@ import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../coverage/record.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import type { CodeCoverageRepo } from "../store/types.js";
 import { type FileCondition, fileCondition } from "./file.js";
-import type { Loaders } from "./loaders.js";
+import type { LoaderBuild, Loaders } from "./loaders.js";
 
 /**
  * Row 015-42 (011-197): what a chain of coverage steps keeps, so a step
  * past its budget does not read and decode it all again. The loader map,
  * with each source's condition and signature from it, holds while keys and
  * results stay: the code pass drops it when results, records, a revision
- * or a wake may change it (`invalidate`). A decoded record holds for the
- * chain while its key keeps its bytes: a later run at a key stores its
- * record over the first (review 0.1.305 B1), so after `invalidate` each is
- * read again, and decoded again only when its bytes moved. They go once a
- * step ends the chain (`settle`), so they hold no memory between chains.
+ * or a wake may change it (`invalidate`), and a map still being read starts
+ * again (row 015-45). A decoded record holds for the chain while its key
+ * keeps its bytes: a later run at a key stores its record over the first
+ * (review 0.1.305 B1), so after `invalidate` each is read again, and
+ * decoded again only when its bytes moved. They go once a step ends the
+ * chain (`settle`), so they hold no memory between chains.
  */
 export class StepCache {
   #loaders: Loaders | null = null;
+  /** The loader map being read, a test file at a time (row 015-45). */
+  #build: LoaderBuild | null = null;
   readonly #conditions = new Map<RelativePath, FileCondition>();
   /** By path: the signature, and the blob, counter version and threshold it was made at. */
   readonly #signatures = new Map<RelativePath, { readonly at: string; readonly value: string }>();
@@ -28,9 +31,15 @@ export class StepCache {
   /** Counts `invalidate`: a record decoded before the last one is read again. */
   #epoch = 0;
 
-  /** The loader map, read once while it holds. */
-  loaders(read: () => Loaders): Loaders {
-    this.#loaders ??= read();
+  /**
+   * The loader map, read once while it holds, as far as `work` allows at
+   * each call (row 015-45); `null` until it is whole.
+   */
+  loaders(start: () => LoaderBuild, work: () => boolean): Loaders | null {
+    if (this.#loaders !== null) return this.#loaders;
+    this.#build ??= start();
+    this.#loaders = this.#build.advance(work);
+    if (this.#loaders !== null) this.#build = null;
     return this.#loaders;
   }
 
@@ -88,6 +97,7 @@ export class StepCache {
 
   invalidate(): void {
     this.#loaders = null;
+    this.#build = null;
     this.#conditions.clear();
     this.#signatures.clear();
     this.#epoch++;
