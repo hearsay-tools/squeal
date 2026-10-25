@@ -6,7 +6,7 @@ import {
   type TestCommand,
 } from "../../../src/harness/shared/test-command.js";
 import { resolveTestFiles } from "../../../src/harness/shared/test-command-files.js";
-import type { PytestHere } from "../../../src/harness/shared/test-command-pytest.js";
+import type { PytestHere } from "../../../src/runners/pytest/describe.js";
 
 /* Spec 007 D8 on 005 D8 step 1: each recognized pytest form, and each fall-through. */
 

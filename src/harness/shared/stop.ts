@@ -24,6 +24,7 @@ import {
   type TestFileRef,
 } from "../../core/types/index.js";
 import { removeWaiterLock } from "../../core/waiter-lock/index.js";
+import { slowProjects } from "../../runners/descriptions.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
@@ -122,7 +123,7 @@ export function stopTurn(
       // Task 001-416: before the wait, so a SubagentStop its timeout kills still ends the registration.
       if (input.agent_id !== undefined) leaving(context, at);
       const starting = startingAfter(await ensureIfStale(context, deps), at);
-      const isSlow = slowFiles(project, project.nodeTest);
+      const isSlow = slowFiles(project, slowProjects(project));
       if (wait > 0) {
         await waitForPending(context, wait, deps.pollIntervalMs ?? STOP_POLL_MS, isSlow);
       }

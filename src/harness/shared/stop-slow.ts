@@ -24,6 +24,7 @@ import type {
   TestFileRef,
   ViewEntry,
 } from "../../core/types/index.js";
+import { slowProjects } from "../../runners/descriptions.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
@@ -113,7 +114,7 @@ export async function stopSlow(
   const project = readPolicy(location.root);
   const bound = stopSlowWaitMs(project);
   if (bound === null) return null;
-  const isSlow = slowFiles(project, project.nodeTest);
+  const isSlow = slowFiles(project, slowProjects(project));
   const poll = deps.pollIntervalMs ?? STOP_SLOW_POLL_MS;
   return withContext(input, location, deps, async (context) => {
     const version = deps.squealVersion ?? squealVersion();

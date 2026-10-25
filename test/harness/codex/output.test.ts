@@ -6,7 +6,7 @@ import {
   capContext,
   deny,
 } from "../../../src/harness/codex/output.js";
-import { VITEST_ONLY } from "../../../src/harness/shared/coverage.js";
+import { DEFAULT_COVERAGE as VITEST_ONLY } from "../../../src/harness/shared/coverage.js";
 import { PRIMER, primer } from "../../../src/harness/shared/primer.js";
 
 const lines = (n: number) =>
