@@ -17,6 +17,7 @@ import { REWRITTEN } from "./assemble/rewritten.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
 import { INSTALLED_KEYS } from "./key/installed.js";
 import { PNPM_KEYS } from "./key/pnpm.js";
+import { IGNORED_LISTING } from "./listing/ignored.js";
 import { OBSERVED_READS } from "./observe/reads.js";
 import { OBSERVED_WRITTEN } from "./observe/written.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
@@ -45,6 +46,7 @@ export const CASES: readonly Case[] = [
   ...INHERITED,
   ...REWRITTEN,
   ...ELSEWHERE,
+  ...IGNORED_LISTING,
   ...STORE_TIERS,
   ...VITEST_RUNS,
   ...VITEST_ENVIRONMENT,
