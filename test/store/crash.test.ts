@@ -37,7 +37,7 @@ describe("store after SIGKILL during writes (spec 001 D8, D12)", () => {
     expect(groups.length).toBeGreaterThanOrEqual(KILLS * 11);
     expect(new Set(groups)).toEqual(new Set([ROWS_PER_TX]));
 
-    const store = openStore(commonDir, { checkIntegrity: true });
+    const store = openStore(commonDir, { checkIntegrity: "quick" });
     if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
     expect(store.meta.get(META_STORE_RECOVERED)).toBeNull();
     store.close();
