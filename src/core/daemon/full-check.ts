@@ -236,10 +236,13 @@ class FullCheckOwner {
       const deadline = performance.now() + RELEASE_WITHIN_MS;
       try {
         const done = await sliced(
-          () => releaseClaim(store, claim),
+          () => {
+            releaseClaim(store, claim);
+            return true;
+          },
           () => performance.now() >= deadline,
         );
-        if (done === undefined) {
+        if (done !== true) {
           log(
             `full integrity check claim not given back: the store stayed busy for ${RELEASE_WITHIN_MS} ms`,
           );

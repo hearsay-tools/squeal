@@ -78,6 +78,7 @@ describe("the full check's claim given back on a busy store (review 0.1.329, B1)
     writer.release();
     await stopping;
     expect(store.meta.get(META_FULL_CHECK)).toBeNull();
+    expect(first.logs.filter((line) => line.includes("not given back"))).toEqual([]);
     const next = checkContext(store, commonDir, [heldCheck()], () => T + 1);
     const stopNext = startFullCheck(next.context);
     await until(() => next.runs() === 1);
@@ -103,6 +104,7 @@ describe("the full check's claim given back on a busy store (review 0.1.329, B1)
     writer.release();
     await until(() => store.meta.get(META_FULL_CHECK) === null);
     await stop();
+    expect(first.logs.filter((line) => line.includes("not given back"))).toEqual([]);
     const next = checkContext(store, commonDir, [heldCheck()], () => T + 1);
     const stopNext = startFullCheck(next.context);
     await until(() => next.runs() === 1);
