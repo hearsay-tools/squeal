@@ -5,7 +5,7 @@ import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { lateText } from "../status/feed-late.js";
 import { holdLine } from "../status/holds.js";
 import { shortText, stoppingText } from "../status/stopping.js";
-import type { DaemonLiveness, StatusHeader, ValidityCounts } from "../types/index.js";
+import type { DaemonLiveness, Delta, StatusHeader, ValidityCounts } from "../types/index.js";
 import { installSentences } from "./provenance.js";
 
 /*
@@ -65,19 +65,32 @@ function daemonText(header: StatusHeader, command: string): string {
   );
 }
 
-function fullLine(header: StatusHeader, command: string): string {
-  const { revision, counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
+/**
+ * The full form's counts: the four validities, the inherited sentence and
+ * the test files without checks. Row 011-205: `owed`, the counts a consumer
+ * registered before the listing is owed, adds why no unknown one is queued.
+ */
+function fullCounts(header: StatusHeader, owed: Delta["countsOwed"]): string {
+  const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
   const inheritedCount = header.inheritedCount ?? 0;
   const inherited =
     inheritedCount === 0
       ? ""
       : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
+  const queuedNone =
+    owed?.lookupOnly === true && files.unknown > 0
+      ? "; the baseline is lookup-only, so it queued none of them"
+      : "";
   const withoutChecks =
     files.pending + files.unknown === 0
       ? ""
-      : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown.`;
+      : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown${queuedNone}.`;
+  return `${countsText(counts, fileLevel)}.${inherited}${withoutChecks}`;
+}
+
+function fullLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {
   return (
-    `Revision ${revisionText(revision, header.commit)}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${incompleteText(header)} ` +
+    `Revision ${revisionText(header.revision, header.commit)}${changedText(header.changedPaths)}: ${fullCounts(header, owed)}${incompleteText(header)} ` +
     `Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText(header, command)}`
   );
 }
@@ -97,21 +110,31 @@ const ACTIONABLE = ["pending", "stale", "unknown"] as const;
 /**
  * Task 001-407: the news form drops the changed paths, the current count,
  * the inherited sentence and the checkpoint sentence, and counts only what
- * is not zero: `Revision 12: 3 pending (2 tests, 1 test file loaded).`
+ * is not zero: `Revision 12: 3 pending (2 tests, 1 test file loaded).` Row
+ * 011-205: with no such check, the test files without checks alone, so
+ * "no check pending, stale or unknown" means that none of them is either.
  */
-function newsLine(header: StatusHeader, command: string): string {
+function newsLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
+  const revision = `Revision ${revisionText(header.revision, header.commit)}: `;
+  // Row 011-205: the first delivery after the listing to a consumer registered before it.
+  if (owed !== undefined) {
+    return `${revision}${fullCounts(header, owed)}${incompleteText(header)}${daemonText(header, command)}`;
+  }
   const actionable = ACTIONABLE.filter((v) => counts[v] > 0).map((v) =>
     countedText(counts[v], v, fileLevel?.[v]),
   );
-  const checks =
-    actionable.length === 0 ? "no check pending, stale or unknown" : actionable.join(", ");
   const without = (["pending", "unknown"] as const)
     .filter((v) => files[v] > 0)
-    .map((v) => `${files[v]} ${v}`);
-  const withoutChecks =
-    without.length === 0 ? "" : ` Test files without checks: ${without.join(", ")}.`;
-  return `Revision ${revisionText(header.revision, header.commit)}: ${checks}.${withoutChecks}${incompleteText(header)}${daemonText(header, command)}`;
+    .map((v) => `${files[v]} ${v}`)
+    .join(", ");
+  const news =
+    actionable.length > 0
+      ? `${actionable.join(", ")}.${without === "" ? "" : ` Test files without checks: ${without}.`}`
+      : without === ""
+        ? "no check pending, stale or unknown."
+        : `test files without checks: ${without}.`;
+  return `${revision}${news}${incompleteText(header)}${daemonText(header, command)}`;
 }
 
 /**
@@ -128,17 +151,21 @@ function countsText(counts: ValidityCounts, fileLevel: ValidityCounts | undefine
 /**
  * The header line, then the slow-tier line when the repository declares slow
  * files (spec 004 D8). The news form carries the slow-tier line only when
- * `slowChanged`: the slow tier's state differs from what the consumer was
- * last shown (task 001-407).
+ * `told.slowTierChanged`: the slow tier's state differs from what the
+ * consumer was last shown (task 001-407); and the full counts once, when
+ * `told.countsOwed` (row 011-205).
  */
 export function headerLines(
   header: StatusHeader,
   command: string,
   form: HeaderForm = "full",
-  slowChanged = false,
+  told: Pick<Delta, "slowTierChanged" | "countsOwed"> = {},
 ): string[] {
-  const line = form === "full" ? fullLine(header, command) : newsLine(header, command);
-  const slow = form === "full" || slowChanged ? slowTierText(header, command) : null;
+  const line =
+    form === "full"
+      ? fullLine(header, command, told.countsOwed)
+      : newsLine(header, command, told.countsOwed);
+  const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
   return slow === null ? [line] : [line, slow];
 }
 

@@ -248,6 +248,13 @@ export interface Delta {
    */
   readonly slowTierChanged?: true;
   /**
+   * Row 011-205: this consumer's registration header said the test files
+   * were not listed, and this is its first delivery since they are, so its
+   * header carries the full counts once. `lookupOnly`: the baseline is
+   * `lookup-only`, so it queued none of the test files without checks.
+   */
+  readonly countsOwed?: { readonly lookupOnly: boolean };
+  /**
    * Spec 015 D6: the code changes told with this delivery, after every test
    * entry. Absent while `complexity.enabled` is off, and from an older Squeal.
    */
