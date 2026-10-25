@@ -125,6 +125,11 @@ export interface CodeCoverageRepo {
   get(key: CoverageRecordKey): Uint8Array | null;
   /** Whether a record is stored at `key`; a read that inflates nothing (row 015-12). */
   has(key: CoverageRecordKey): boolean;
+  /**
+   * When the record at `key` was stored, read without its blob; each record
+   * stored at a key has its own (row 015-44). `null` when none is.
+   */
+  storedAt(key: CoverageRecordKey): EpochMs | null;
   /** Stores a record, over one at the same key: a rerun at a key replaces its result too. */
   put(key: CoverageRecordKey, record: Uint8Array, at: EpochMs): void;
 }
