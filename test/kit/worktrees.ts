@@ -136,8 +136,8 @@ export class OpenWorktree {
    * adds what each completed file observed beyond its closure to the
    * shared set, as `recordCompleted` does with `observedGrowth`. The run's
    * start-up paths join the environments, read again when they lack one,
-   * as `rekeyEnvironments` does; then the marks and start-up paths are
-   * stored, as `endRecord` does.
+   * as `rekeyEnvironments` does; then the observed paths, marks and
+   * start-up paths are stored, as `endRecord` does (row 016-29).
    */
   async record(files: readonly TestFileRef[], run: () => Promise<RunReport>): Promise<RunReport> {
     for (const ref of files) await this.keyed(ref);
