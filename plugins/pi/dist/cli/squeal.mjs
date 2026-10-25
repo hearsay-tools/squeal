@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.313";
+  if (true) return "0.1.314";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5349,6 +5349,12 @@ var init_git_index = __esm({
 function sameStat(a, b) {
   return a.mtimeMs === b.mtimeMs && a.ctimeMs === b.ctimeMs && a.size === b.size && a.inode === b.inode;
 }
+function unknownStat(stat9) {
+  return { mtimeMs: -1, ctimeMs: -1, size: stat9.size, inode: stat9.inode };
+}
+function isUnknownStat(stat9) {
+  return stat9.ctimeMs < 0;
+}
 function isRacy(stat9, hashedAt) {
   return hashedAt - stat9.mtimeMs < RACY_WINDOW_MS;
 }
@@ -5508,10 +5514,12 @@ __export(hash_exports, {
   createFsHasher: () => createFsHasher,
   hashFile: () => hashFile,
   isRacy: () => isRacy,
+  isUnknownStat: () => isUnknownStat,
   readCleanIndexHashes: () => readCleanIndexHashes,
   readObjectFormat: () => readObjectFormat,
   sameStat: () => sameStat,
-  seedStatCache: () => seedStatCache
+  seedStatCache: () => seedStatCache,
+  unknownStat: () => unknownStat
 });
 var init_hash = __esm({
   "src/core/hash/index.ts"() {
@@ -15104,21 +15112,21 @@ async function diffCandidates(candidates, cache2, hasher) {
   const observed = await mapConcurrent(paths, async (path) => {
     const stat9 = statOf2.get(path) ?? null;
     const cached = cache2.get(path);
-    if (stat9 && cached && sameStat(cached, stat9) && !cache2.isRacy(path)) return null;
-    const hashedAt = hasher.now();
-    const hash2 = stat9 ? await hasher.hash(path) : null;
-    return { path, cached, stat: stat9, hash: hash2, hashedAt };
+    const trusted2 = cached !== void 0 && !isUnknownStat(cached) && !cache2.isRacy(path);
+    if (stat9 && trusted2 && sameStat(cached, stat9)) return null;
+    return { path, cached, read: stat9 ? await readSettled(path, stat9, hasher) : null };
   });
   const changes = [];
   const updates = [];
   for (const entry4 of observed) {
     if (!entry4) continue;
-    const { path, cached, stat: stat9, hash: hash2, hashedAt } = entry4;
-    if (!stat9 || hash2 === null) {
+    const { path, cached, read: read5 } = entry4;
+    if (!read5) {
       if (cached) changes.push({ path, oldHash: cached.hash, newHash: null });
       if (cache2.hashOf(path) !== null) updates.push({ kind: "delete", path });
       continue;
     }
+    const { hash: hash2, stat: stat9 } = read5;
     const record = {
       path,
       mtimeMs: stat9.mtimeMs,
@@ -15127,10 +15135,22 @@ async function diffCandidates(candidates, cache2, hasher) {
       inode: stat9.inode,
       hash: hash2
     };
-    updates.push({ kind: "set", record, racy: isRacy(stat9, hashedAt) });
+    updates.push({ kind: "set", record, racy: isRacy(stat9, read5.hashedAt) });
     if (cached?.hash !== hash2) changes.push({ path, oldHash: cached?.hash ?? null, newHash: hash2 });
   }
   return { changes, updates };
+}
+async function readSettled(path, before3, hasher) {
+  let prior = before3;
+  for (let reads = 1; ; reads++) {
+    const hashedAt = hasher.now();
+    const hash2 = await hasher.hash(path);
+    const after2 = hash2 === null ? null : await hasher.stat(path);
+    if (hash2 === null || after2 === null) return null;
+    if (sameStat(prior, after2)) return { hash: hash2, stat: after2, hashedAt };
+    if (reads === SETTLE_READS) return { hash: hash2, stat: unknownStat(after2), hashedAt };
+    prior = after2;
+  }
 }
 async function diffBatch(batch, cache2, hasher) {
   return { trigger: batch.trigger, ...await diffCandidates(batch.paths, cache2, hasher) };
@@ -15169,11 +15189,13 @@ async function reconcile(batch, cache2, hasher, context) {
     })
   );
 }
+var SETTLE_READS;
 var init_reconcile = __esm({
   "src/core/revision/reconcile.ts"() {
     "use strict";
     init_fs();
     init_hash();
+    SETTLE_READS = 3;
   }
 });
 
@@ -15209,7 +15231,8 @@ function touchedUnchanged(diff, cache2) {
   for (const update of diff.updates) {
     if (update.kind !== "set" || changed2.has(update.record.path)) continue;
     const cached = cache2.get(update.record.path);
-    if (cached !== void 0 && !sameStat(cached, update.record)) touched.push(cached.path);
+    if (cached === void 0) continue;
+    if (isUnknownStat(cached) || !sameStat(cached, update.record)) touched.push(cached.path);
   }
   return touched;
 }
