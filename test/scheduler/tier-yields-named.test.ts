@@ -5,6 +5,7 @@ import { promotionsMetaKey } from "../../src/core/scheduler/promotions.js";
 import { publishedYields, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";
+import type { RunReport, TestFileRef } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
@@ -97,16 +98,40 @@ function published(side: CatchUpSide, stored: () => void = () => {}): string[] {
 
 /**
  * Reports `path`'s end to the run in flight that holds it, as Vitest's
- * `onTestModuleEnd` does (`RunOptions.fileEnded`); the fake runner names none.
+ * `onTestModuleEnd` does (`RunOptions.fileEnded`), and lists it among the
+ * run's completed files with a pass, as Vitest's report does, a cut run's
+ * too; the fake runner names none.
  */
 function reportsEnds(side: CatchUpSide): (path: string) => void {
   const ends = new Map<string, () => void>();
   const run = side.runner.run.bind(side.runner);
-  side.runner.run = (files, options) => {
-    for (const f of files) ends.set(f.path, () => options.fileEnded?.(f));
-    return run(files, options);
+  side.runner.run = async (files, options) => {
+    const ended: TestFileRef[] = [];
+    for (const f of files)
+      ends.set(f.path, () => {
+        ended.push(f);
+        options.fileEnded?.(f);
+      });
+    const report = await run(files, options);
+    const more = ended.filter((f) => !report.completedFiles.some((c) => c.path === f.path));
+    return {
+      ...report,
+      completedFiles: [...report.completedFiles, ...more],
+      results: [...report.results, ...more.map(passOf)],
+    };
   };
   return (path) => ends.get(path)?.();
+}
+
+/** A pass of `file`'s one test, as the fake runner reports it. */
+function passOf(file: TestFileRef): RunReport["results"][number] {
+  const check = {
+    kind: "test" as const,
+    project: file.project,
+    testPath: file.path,
+    fullName: "runs",
+  };
+  return { check, outcome: "pass", durationMs: 1, location: null, errors: [] };
 }
 
 /**
@@ -141,14 +166,17 @@ function standings(side: CatchUpSide) {
   return [...publishedYields(store, worktreeId, startedAt).values()];
 }
 
-/** The tier is cut; P runs alone first, then the cut files, and all end current. */
-async function yieldsToP(heldTierOf: Awaited<ReturnType<typeof heldTier>>) {
+/** The tier is cut; P runs alone first, then the cut files in `rerun`'s order, and all end current. */
+async function yieldsToP(
+  heldTierOf: Awaited<ReturnType<typeof heldTier>>,
+  rerun: readonly string[] = SLOW,
+) {
   const { side, gate, tier, waitAt } = heldTierOf;
   await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
   await expect.poll(() => side.current(P), { timeout: CUT_WITHIN_MS }).toBe(true);
   gate.stop();
   await side.scheduler.idle();
-  expect(order(side, waitAt)).toEqual([[P], SLOW]);
+  expect(order(side, waitAt)).toEqual([[P], rerun]);
   expect(tier.completed).toEqual([]);
   expect(SLOW.every((path) => side.current(path))).toBe(true);
 }
@@ -282,7 +310,8 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
 
     // On 5ecb377a8: the end changed no standing, so the tier ran on to its end.
     held.end(A);
-    await yieldsToP(held);
+    // A's result is in the cut run's report: only the files that had not ended run again.
+    await yieldsToP(held, SLOW.slice(1));
   });
 
   it("9: at 40 s, the earlier wait on A passes its deadline while P's is open: the tier yields", async () => {
@@ -328,7 +357,12 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     published(side, () => clock.cross(2, PROTECTS_MS));
     await side.scheduler.promote([ref(SLOW[1] ?? "")], 120_000);
 
-    // On 231ecaeb0: the bound was the later wait's deadline, 90 s on, so the tier ran on.
-    await yieldsToP(held);
+    // On 231ecaeb0: the bound was the later wait's deadline, 90 s on, so the tier ran on. The
+    // later wait is open, so its s2 leads the cut files (C15 Rank); before row 011-193 the cut
+    // dropped its promotion.
+    await yieldsToP(
+      held,
+      [1, 0, 2, 3].map((i) => SLOW[i] ?? ""),
+    );
   });
 });
