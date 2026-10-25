@@ -96,7 +96,6 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
   const tierSize = options.tierSize ?? 4;
   const [nodeTest] = createNodeTestRunners([NT], {
     root: repo.main,
-    store,
     tempDir: join(repo.main, ".."),
     tierSize: () => tierSize,
     note: () => {},

@@ -10,7 +10,6 @@ import type {
   RunnerEnvironment,
 } from "../../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
-import { fakeCommonDir, open } from "../../store/helpers.js";
 
 /**
  * Review wave 2, S1: a node:test project whose graph cannot be built, here
@@ -75,7 +74,6 @@ describe("a node:test project whose graph cannot be built (review wave 2, S1)", 
       [project("demo", "packages/demo"), project("gone", "packages/gone")],
       {
         root,
-        store: open(fakeCommonDir()),
         tempDir: scratch,
         tierSize: () => 4,
         note: (text) => notes.push(text),

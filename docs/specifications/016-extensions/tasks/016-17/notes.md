@@ -99,6 +99,15 @@ What C6 built, all under `test/keys/validity` (validity `notes.md`, decision 17)
 
 `StartupSets.add` had no caller but a test: it is gone, and `test/keys/observed.test.ts` calls `see` and `write`.
 
+After the rebase onto `d81a46ec2` the last release is `squeal--v0.1.309`. Between the two releases only `src/core/code/**` and `src/core/daemon/daemon.ts` changed, no runner or keys code. `test/keys/key-format.test.ts` passes against 0.1.309 too, 12 of 12, with the same three raise cases.
+
+## The last commit: the stores gone, the kit on the core
+
+- `observedStore`, `pytestObservedStore`, `ObservedStore`, `ObservedPaths`, the adapters' `observed` option and the four `nodeTest.observed*` and `pytest.observed*` key functions are deleted. The runner factories lose their `store` option, so `daemon.ts` passes none (two lines).
+- The kit (`test/kit`) keys as the core does, and its adapters get nothing back. `OpenWorktree.record` sees the run's start-up paths, reads the environments again when they lack one (as `rekeyEnvironments`) and stores the marks and start-up paths (`writeSeen`, as `endRecord`). A step's direct check reads the adapter's `direct` or the core's stored marks through `observedDirectOf`, the production owner (review 016-21 S1); an environment check reads the adapter's files with the core's (`environmentFiles`). The fake pack reports a child's loads as `direct`, or keeps them in memory (`marks: "memory"`), which still fails in worktree b and after the restart.
+- K10's `DIRECT` gaps for pytest and node:test slow are gone: both pass. node:test fast keeps `FAST` (004 D5), Vitest keeps its K10 gap (row 016-22). node:test K5 and its two variants pass again, with the start-up paths from the core.
+- Mutation check, 2026-10-25: with `ObservedSets.writeMarks` returning at once, K10 fails on node:test slow, pytest under Python 3.10 and 3.13, and the fake, each at steps 7 and 13 (`affected=none, marked=false`). Restored after.
+
 ## Residuals
 
 - **A rolled-back record's direct marks.** As the start-up paths below: `markDirect` adds to this daemon's view before the record's transaction, so a rolled-back write leaves the view ahead of the store until the next record writes it. An over-mark in this daemon only.
@@ -126,6 +135,10 @@ What C6 built, all under `test/keys/validity` (validity `notes.md`, decision 17)
 | `test/runners/pytest/run/report.test.ts` | `PytestObservedClosure` of three fields | `written: []` too | the closure gained the field (D4) |
 | `test/integration/pytest.test.ts:153` | the synced worktree runs `test_core.py` and `test_resources.py` | `test_core.py` only | main's pass of `test_resources.py` is stored under the key that holds its observed `app/data/__init__.py`, which the worktree's copy matches (D4) |
 | `test/integration/pytest-environment.test.ts:134` | the plugin's import in `pytest.observedSession.small` | in `observedStartup.small` | the old keys are never read (Q6) |
+| `test/scheduler/idle-pass.test.ts:102` → `:105` | no read of the two adapters' injected stores in a quiet pass | no read of the core's `observed.*`, `observedDirect.*` and `observedStartup.*` keys, counted on `store.meta.get` | the stores are gone; the core reads the shared keys (D4) |
+| `test/store/worktree-meta.test.ts:31` → `:28`, `:68` → `:61` | the four `nodeTest.observed*` and `pytest.observed*` key functions among the shared rows | `observedDirectMetaKey` and `observedStartupMetaKey` instead | the old key functions are deleted (Q6) |
+| `test/kit/steps.ts` (`edit`, `hand`, `closures`); `test/kit/driver.test.ts:154` | a step is direct by the adapter's `affected().direct`; an environment by the adapter's files; the fake keeps its marks in a meta key of its own | direct by the adapter or the core's stored marks (`observedDirectOf`); an environment by the adapter's files or the core's; the fake reports its marks; the line reads `(affected=none, marked=false)` | the core keeps the marks and start-up paths (D4, review 016-21 S1) |
+| `test/kit/packs/node-test.ts`, `test/kit/packs/pytest.ts` | K10 KNOWN by `DIRECT` (pytest, node:test slow) | PASS | D4 closes the gap (row 007-56) |
 
 ## Moved cases (Q4)
 
@@ -146,3 +159,7 @@ Listed as C4 and C5 move them: old `file:line` (at `ca004eaed`), new `file:line`
 | `test/runners/pytest/adapter-session.test.ts:115` (store, other and third worktree) | another worktree re-keys the project at its next refinement; one started later keys the path before any run | `test/scheduler/preload-refresh.test.ts:18` (another worktree's growth at the next refinement, no runner recreate); `test/scheduler/one-write-path.test.ts:85` (stored, keyed after a restart); `test/integration/pytest-environment.test.ts:110` (real pytest: stored, its edit re-runs, a differing worktree does not inherit) |
 | `test/runners/pytest/graph/invalidate.test.ts:115` (deleted with `recordSpawned`) | a file whose run started a process that imported a changed path is its direct importer | `test/scheduler/observed-direct.test.ts:58` and `:92` (the cut); `test/scheduler/pytest-observed.test.ts:119` (real pytest: the mark stored); `test/runners/pytest/spawned.test.ts:92` |
 | `test/runners/pytest/graph/invalidate.test.ts:129` (deleted with `recordObserved`) | a file whose last run loaded a changed path outside its closure is scheduled | `test/scheduler/one-write-path.test.ts:41` and `:107`; `test/runners/pytest/spawned.test.ts:92` (real pytest: an edit of a child's import re-keys and runs both files) |
+| `test/runners/node-test/adapter-observed.test.ts:18` (file deleted with `observedStore`) | a missing or malformed key reads as nothing | `test/keys/observed.test.ts:54` (paths), `:132` (start-up paths) |
+| `test/runners/node-test/adapter-observed.test.ts:25` | two daemons' writes merge per test file, sorted, per project | `test/keys/observed.test.ts:27` |
+| `test/runners/node-test/adapter-observed.test.ts:39` | the paths widen the stored closure a starting worktree keys from | `test/scheduler/observed-direct.test.ts:76` (a second worktree keys with what the first observed); `test/keys/observed.test.ts:27` (a worktree that starts later reads the set) |
+| `test/runners/node-test/adapter-observed.test.ts:64` | two daemons' preload paths merge, sorted, and a change is read at once | `test/keys/observed.test.ts:110` (start-up paths, read at the next refresh) |
