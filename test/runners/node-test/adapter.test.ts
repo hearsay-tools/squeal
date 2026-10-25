@@ -14,10 +14,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { NodeTestProject, RunnerAdapter } from "../../../src/core/types/index.js";
-import {
-  createNodeTestAdapter,
-  type ObservedPaths,
-} from "../../../src/runners/node-test/adapter.js";
+import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 
 /**
  * Spec 003 D1 to D5 through the assembled adapter, on a copy of the
@@ -79,29 +76,6 @@ const UNIT = "packages/demo/test/unit";
 const ref = (name: string) => ({ project: "unit", path: `${UNIT}/${name}.test.ts` });
 
 /** An in-memory `nodeTest.observed.<project>` key. */
-function memoryStore(initial: ObservedPaths = {}) {
-  let value: Record<string, string[]> = Object.fromEntries(
-    Object.entries(initial).map(([k, v]) => [k, [...v]]),
-  );
-  const writes: ObservedPaths[] = [];
-  return {
-    writes,
-    value: () => value,
-    store: {
-      read: () => value,
-      readPreloads: () => [],
-      writePreloads: () => {},
-      write(additions: ObservedPaths) {
-        writes.push(additions);
-        value = { ...value };
-        for (const [file, paths] of Object.entries(additions)) {
-          value[file] = [...new Set([...(value[file] ?? []), ...paths])].sort();
-        }
-      },
-    },
-  };
-}
-
 const open = (more: Partial<NodeTestProject> = {}, extra = {}) => {
   const notes: string[] = [];
   const adapter = createNodeTestAdapter(project(more), {
@@ -170,11 +144,10 @@ describe("createNodeTestAdapter", () => {
   });
 
   it(
-    "runs under the project's logDir with TMPDIR, and records what the graph missed",
+    "runs under the project's logDir with TMPDIR, and reports what the graph missed",
     SLOW,
     async () => {
-      const memory = memoryStore();
-      const a = await open({}, { observed: memory.store }).adapter;
+      const a = await open().adapter;
       const hidden = "packages/demo/src/hidden.ts";
       expect((await a.closure(ref("hidden"))).paths).not.toContain(hidden);
       expect(await a.affected([hidden])).toEqual({ direct: [], transitive: [] });
@@ -195,24 +168,14 @@ describe("createNodeTestAdapter", () => {
       ]);
       expect(existsSync(join(logDir, "node-test", "unit", "run.json"))).toBe(true);
 
-      expect(memory.writes).toEqual([{ [ref("hidden").path]: [hidden] }]);
-      expect((await a.closure(ref("hidden"))).paths).toContain(hidden);
-      expect(await a.affected([hidden])).toEqual({ direct: [], transitive: [ref("hidden")] });
-
-      // A second run that sees nothing new writes nothing.
-      await run(a, ["hidden"]);
-      expect(memory.writes).toHaveLength(1);
+      // 016 D4: the run reports the path; the core keeps it and keys the file with it.
+      const seen = (name: string) =>
+        report.observed?.find((o) => o.testFile.path === ref(name).path)?.paths;
+      expect(seen("hidden")).toContain(hidden);
+      expect(seen("math")).not.toContain(hidden);
+      expect((await a.closure(ref("hidden"))).paths).not.toContain(hidden);
     },
   );
-
-  it("reads the stored observations before its first run", SLOW, async () => {
-    const hidden = "packages/demo/src/hidden.ts";
-    const memory = memoryStore({ [ref("hidden").path]: [hidden] });
-    const a = await open({}, { observed: memory.store }).adapter;
-    expect((await a.closure(ref("hidden"))).paths).toContain(hidden);
-    expect((await a.closure(ref("math"))).paths).not.toContain(hidden);
-    expect((await a.affected([hidden])).transitive).toEqual([ref("hidden")]);
-  });
 
   it("refreshes the listing after an add or a delete", SLOW, async () => {
     const a = await open().adapter;
