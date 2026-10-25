@@ -107,6 +107,7 @@ class TierScheduler implements Scheduler {
     pump: () => this.#pump(),
     backgroundError: (subject, error) => this.#backgroundError(subject, error),
     applied: () => this.#cutTiers(null),
+    listed: () => this.#listed(),
   });
   readonly #slow: SlowTier;
   #context: SchedulerContext | null = null;
@@ -449,6 +450,16 @@ class TierScheduler implements Scheduler {
     const unseen = this.#waitChanges;
     this.#waitChanges = [];
     await baseline(context, ledger, unseen, this.options.resumesRest === true);
+    if (!ledger.listingFailed) this.#listed();
+  }
+
+  /** `SchedulerOptions.onListed`, after the commit; its throw is only `onError`'s (row 015-52). */
+  #listed(): void {
+    try {
+      this.options.onListed?.();
+    } catch (error) {
+      this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
+    }
   }
 
   /**
