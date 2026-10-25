@@ -10,6 +10,7 @@ import { K2 } from "./scenarios/k2-two-hops.js";
 import { K3 } from "./scenarios/k3-load-error.js";
 import { K7 } from "./scenarios/k7-same-stat.js";
 import { K8 } from "./scenarios/k8-cut.js";
+import { K10 } from "./scenarios/k10-two-worktrees.js";
 
 /*
  * Spec 016 D1: the driver's verdicts over a fake pack, and the rule that
@@ -18,8 +19,11 @@ import { K8 } from "./scenarios/k8-cut.js";
  */
 
 const KIT = import.meta.dirname;
-/** The scenarios the fake pack renders: values, re-exports, static tests, broken and held modules. */
-const FAKED = [K1, K2, K3, K7, K8];
+/**
+ * The scenarios the fake pack renders: values, re-exports, static tests,
+ * broken and held modules, computed imports and child processes.
+ */
+const FAKED = [K1, K2, K3, K7, K8, K10];
 const SPEC = "a spec line that documents the gap";
 /** K1's gap in a stale pack: the run after the first edit still passes. */
 const GAP = { spec: SPEC, fails: ["step 2 run"] };
@@ -122,7 +126,7 @@ describe("the driver's steps (spec 016 D1)", () => {
     const played = await playIn(scenario, fakePack());
     expect(played.verdict).toBe("FAIL");
     expect(played.lines).toContain(
-      "FAIL step 0 before any run: m/leaf.json is in no static closure of direct (closure=true, environment=false)",
+      "FAIL step 0 before any run: m/leaf.json is in no static closure of direct (closure=true, keyed=true, environment=false)",
     );
   });
 
@@ -143,6 +147,31 @@ describe("the driver's steps (spec 016 D1)", () => {
         "FAIL step 0 cut for stop: the run ended before the abort, so nothing was cut",
         "ok   step 0 run (crashed): cut is unknown, expected unknown",
         "ok   step 2 run (completed): cut is pass, expected pass",
+      ]),
+    );
+  });
+
+  it("reaches worktree b and the restart only through the store: marks kept in memory fail there", async () => {
+    const played = await playIn(K10, fakePack({ marks: "memory" }));
+    expect(played.verdict).toBe("FAIL");
+    expect(played.lines).toEqual(
+      expect.arrayContaining([
+        "ok   step 3 in b: lists t/loads.json, t/spawns.json (got t/loads.json, t/spawns.json)",
+        "ok   step 5 holds: m/dep.json is in a closure of spawns (closure=false, keyed=true)",
+        "FAIL step 7 direct: m/dep.json puts spawns in direct (affected=none)",
+        "ok   step 9 restarted a: lists t/loads.json, t/spawns.json (got t/loads.json, t/spawns.json)",
+        "FAIL step 13 direct: m/dep.json puts spawns in direct (affected=none)",
+      ]),
+    );
+  });
+
+  it("reads what a run observed as held elsewhere only through the core's path: no observations fail there", async () => {
+    const played = await playIn(K10, fakePack({ observes: false }));
+    expect(played.verdict).toBe("FAIL");
+    expect(played.lines).toEqual(
+      expect.arrayContaining([
+        "FAIL step 4 holds: m/hidden.json is in a closure of loads (closure=false, keyed=false)",
+        "FAIL step 10 holds: m/hidden.json is in a closure of loads (closure=false, keyed=false)",
       ]),
     );
   });
@@ -168,9 +197,11 @@ describe("what names a runner (spec 016 D1)", () => {
   const scenarios = readdirSync(join(KIT, "scenarios")).map((name) => `scenarios/${name}`);
 
   it("is never the driver or a scenario", () => {
-    for (const path of ["driver.ts", "steps.ts", "files.ts", ...scenarios]) {
+    for (const path of ["driver.ts", "steps.ts", "files.ts", "worktrees.ts", ...scenarios]) {
       expect(text(path), path).not.toMatch(RUNNER);
       expect(text(path), path).not.toMatch(/from\s+["'][^"']*\/runners\//);
+      // A runner's injected store is its pack's to open (spec 016 D4 removes it).
+      expect(text(path), path).not.toMatch(/from\s+["'][^"']*-runners\.js["']/);
     }
   });
 
