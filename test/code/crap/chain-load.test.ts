@@ -2,11 +2,10 @@ import { randomBytes } from "node:crypto";
 import { loadavg } from "node:os";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { describe, expect, it } from "vitest";
-import { Pace } from "../../../src/core/code/coverage/index.js";
 import { readSummary } from "../../../src/core/code/crap/index.js";
 import { compare } from "../../../src/core/fs/index.js";
 import { WT } from "../../state/helpers.js";
-import { daemonPass } from "../pass/helpers.js";
+import { daemonPass, policyOn } from "../pass/helpers.js";
 import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";
 
 /*
@@ -16,7 +15,8 @@ import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";
  * its budget. This repository's test files load most of its sources, so
  * each record holds most of them. Row 015-45 reads the first loader map,
  * of a size 011-197's stores held, in slices, and row 015-47 their seed at
- * a recount. Timing is asserted only on a machine loaded no more than the
+ * a recount, and row 015-48 the recount's complexity write and coverage's
+ * start. Timing is asserted only on a machine loaded no more than the
  * other timing tests allow, and with a wider bound on CI (row 015-47).
  */
 
@@ -96,27 +96,13 @@ async function longestTurn(
   return longest;
 }
 
-/** A pace that keeps how long each coverage step held the main thread. */
-class TimedPace extends Pace {
-  readonly steps: number[] = [];
-
-  override measure<T>(work: () => T): T {
-    const began = performance.now();
-    try {
-      return super.measure(work);
-    } finally {
-      this.steps.push(performance.now() - began);
-    }
-  }
-}
-
-/** A rig whose sources are counted, and a code pass on it with coverage on. */
-async function counted(paths: readonly string[]) {
+/** A rig whose sources are counted, and a code pass on it, by default with coverage on. */
+async function counted(paths: readonly string[], policy = COVERED) {
   const rig = coverageRig();
   for (const [s, path] of paths.entries()) rig.tree.write(path, `${sourceText(s)}\n`);
   rig.tree.revise();
   const run = daemonPass(rig.tree, {
-    policy: () => COVERED,
+    policy: () => policy,
     now: Date.now,
     coverage: { main: rig.main, closures: () => rig.closures, writing: () => false },
   });
@@ -161,8 +147,10 @@ describe("the coverage chain after a run (row 015-42)", () => {
   }, 180_000);
 
   // Row 015-47: 011-197's stores held 1,263 counted files of 12,433 functions, and a recount's
-  // seed of their coverage states was one turn of 429 to 489 ms. Version 2 renames half of them.
-  it(`recounts ${RECOUNT_SOURCES} sources of ${FUNCTIONS} functions with no long coverage step`, async (ctx) => {
+  // seed of their coverage states was one turn of 429 to 489 ms. Row 015-48: so was the recount's
+  // complexity write, 437 ms at load 42, with the first coverage step in the same turn. Version 2
+  // renames half of them.
+  it(`recounts ${RECOUNT_SOURCES} sources of ${FUNCTIONS} functions with no long turn`, async (ctx) => {
     const paths = Array.from({ length: RECOUNT_SOURCES }, (_, s) => `src/m${s}.ts`);
     const { rig, run } = await counted(paths);
     for (let t = 0; t < RECOUNT_TEST_FILES; t++) {
@@ -172,7 +160,6 @@ describe("the coverage chain after a run (row 015-42)", () => {
     await expect.poll(() => judged(rig), { timeout: 120_000, interval: 100 }).toBe(RECOUNT_SOURCES);
     await run.code.close();
 
-    const pace = new TimedPace();
     const renamed = Array.from(
       { length: FUNCTIONS / 2 },
       (_, f) => [`f${f}`, [`g${f}`, 0]] as const,
@@ -181,7 +168,7 @@ describe("the coverage chain after a run (row 015-42)", () => {
       policy: () => COVERED,
       now: Date.now,
       counter: () => Promise.resolve(counterV2(Object.fromEntries(renamed))),
-      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false, pace },
+      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false },
     });
     // The last file judged: its renamed function's state is judged once the chain is over.
     const last = [...paths].sort(compare).at(-1) ?? "";
@@ -190,13 +177,30 @@ describe("the coverage chain after a run (row 015-42)", () => {
         .list(WT, { measure: "crap", paths: [last] })
         .some((s) => s.check.qualifiedName === "g0" && s.outcome !== "pending");
     const label = `a recount of ${RECOUNT_SOURCES} sources`;
-    const steps = () => Math.round(Math.max(0, ...pace.steps));
-    // The turns the recount's complexity pass holds count in the longest turn; the steps are asserted.
-    await longestTurn(rig, recount, 0, label, ctx, {
-      start: () => recount.code.nudge(),
-      done,
-      note: () => `; ${pace.steps.length} coverage steps, longest ${steps()} ms`,
+    const chain = { start: () => recount.code.nudge(), done, note: () => "" };
+    expect(await longestTurn(rig, recount, 0, label, ctx, chain)).toBeLessThan(turnBudget());
+  }, 300_000);
+
+  // Row 015-48: coverage switched on over 011-197's counted files. Its first-count check read every
+  // file's count in one turn, 479 ms cold.
+  it(`starts coverage on ${RECOUNT_SOURCES} counted sources with no long turn`, async (ctx) => {
+    const paths = Array.from({ length: RECOUNT_SOURCES }, (_, s) => `src/m${s}.ts`);
+    const { rig, run } = await counted(paths, policyOn());
+    await run.code.close();
+    for (let t = 0; t < RECOUNT_TEST_FILES; t++) {
+      rig.loader(`test/t${t}.test.ts`, { closure: paths, record: [] });
+    }
+    const start = daemonPass(rig.tree, {
+      policy: () => COVERED,
+      now: Date.now,
+      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false },
     });
-    expect(steps()).toBeLessThan(turnBudget());
+    const label = `coverage's start on ${RECOUNT_SOURCES} sources`;
+    const chain = {
+      start: () => start.code.nudge(),
+      done: () => judged(rig) === RECOUNT_SOURCES,
+      note: () => "",
+    };
+    expect(await longestTurn(rig, start, 0, label, ctx, chain)).toBeLessThan(turnBudget());
   }, 300_000);
 });
