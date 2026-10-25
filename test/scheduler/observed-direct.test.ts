@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { observedDirectMetaKey } from "../../src/core/keys/index.js";
+import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
@@ -83,6 +83,40 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     const cut = await editAndRun(b, CHILD);
     expect(cut.edits[0]?.files.map((f) => f.path)).toEqual([X.path]);
     expect(cut.catchUpPaths).toEqual([Y.path]);
+  });
+
+  it("marks a child's import its closure reaches only through another module", async () => {
+    // X and Z reach CHILD through src/a.ts; only X's child imports it, so only X is direct.
+    const through = (path: string, ms: number): CatchUpFile => ({
+      path,
+      ms,
+      imports: ["src/a.ts"],
+      through: [CHILD],
+    });
+    const x = through("test/x.test.ts", 500);
+    const z = through("test/z.test.ts", 100);
+    const files = [x, z];
+    const what: Observing = {
+      observed: { [x.path]: { paths: [CHILD], directories: [], direct: [CHILD] } },
+      loads: true,
+    };
+    const repo = catchUpRepo(files, ["src/a.ts", CHILD]);
+    const first = open(repo, repo.main, files, what);
+    await first.scheduler.start();
+    await first.scheduler.idle();
+    // The path is in X's closure, so nothing grew: the mark alone is stored.
+    expect(first.store.meta.get(observedMetaKey(""))).toBeNull();
+    expect(JSON.parse(first.store.meta.get(observedDirectMetaKey("")) ?? "{}")).toEqual({
+      [x.path]: [CHILD],
+    });
+    await first.scheduler.close();
+
+    const restarted = open(repo, repo.main, files, what);
+    await restarted.scheduler.start();
+    await restarted.scheduler.idle();
+    const cut = await editAndRun(restarted, CHILD);
+    expect(cut.edits[0]?.files.map((f) => f.path)).toEqual([x.path]);
+    expect(cut.catchUpPaths).toEqual([z.path]);
   });
 
   it("keeps the K shortest of more than K marked files as edits, the rest catch-up", async () => {
