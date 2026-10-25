@@ -30,6 +30,8 @@ const SRC = join(import.meta.dirname, "../../src");
 /** `meta` key functions of rows shared across worktrees, keyed by project. */
 const SHARED_KEY_FUNCTIONS = [
   "observedMetaKey",
+  "observedDirectMetaKey",
+  "observedStartupMetaKey",
   "nodeTestObservedMetaKey",
   "nodeTestObservedPreloadsMetaKey",
   "pytestObservedMetaKey",
