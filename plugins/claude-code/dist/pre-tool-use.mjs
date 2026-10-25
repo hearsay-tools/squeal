@@ -108,6 +108,7 @@ var WORKTREE_META_ROWS = {
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
   checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
   headMove: { prefix: "head-move.", owner: "types/scheduler" },
+  feedDelivered: { prefix: "feed-delivered:", owner: "status/feed-late" },
   daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
   daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
   daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
@@ -274,6 +275,13 @@ var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var HOOK_TIMEOUT_MS = 2e3;
 var LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
+
+// src/core/types/watcher.ts
+var WATCHER_TIMINGS = {
+  quietMs: 100,
+  maxBatchMs: 500,
+  reconcileIntervalMs: 3e4
+};
 
 // src/core/notes.ts
 function readDaemonNotes(store, worktreeId) {
@@ -6842,6 +6850,27 @@ function files(refs) {
   return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+function feedDeliveredMetaKey(worktreeId) {
+  return worktreeMetaKey("feedDelivered", worktreeId);
+}
+function readFeedDelivered(store, worktreeId) {
+  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
+  const at = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(at) ? at : null;
+}
+function withLate(store, worktree, live, now) {
+  const daemon = worktree?.daemon ?? null;
+  if (live.state !== "alive" || live.stopping !== void 0 || !worktree || !daemon) return live;
+  const since = readFeedDelivered(store, worktree.id);
+  if (since === null || since < daemon.startedAt || now - since <= FEED_LATE_MS) return live;
+  return { ...live, late: { since } };
+}
+function lateText(late, revision) {
+  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
+}
+
 // src/core/scheduler/focused-row.ts
 function focusedMetaKey(worktreeId) {
   return worktreeMetaKey("focused", worktreeId);
@@ -7185,7 +7214,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.305";
+  if (true) return "0.1.307";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -7322,7 +7351,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   const runs = openRuns(store, worktree, worktreeLiveness(worktree, now));
   const open = new Set(runs.flatMap((run) => run.testFiles.map(testFileId)));
   const header = readHeader(store, worktreeId, states, keys, void 0, open);
-  const changes = changedSince(store, worktreeId, header.revision, since);
+  const changes = changedSince2(store, worktreeId, header.revision, since);
   const installed = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
   );
@@ -7331,19 +7360,24 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
     ...header,
     ...holds.length === 0 ? {} : { holds },
     // Task 001-263: a daemon that died without its stop note is named, as status names it.
-    // Row 011-34: so is a daemon stopping.
-    daemon: withStopping(
+    // Row 011-34: so is a daemon stopping. Row 011-200: and a live daemon's late change feed.
+    daemon: withLate(
       store,
       worktree,
-      withDeath(
+      withStopping(
         store,
         worktree,
-        asRested(
+        withDeath(
           store,
           worktree,
-          asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
-          now
-        )
+          asRested(
+            store,
+            worktree,
+            asStopped(store, worktreeId, worktree, worktreeLiveness(worktree, now)),
+            now
+          )
+        ),
+        now
       ),
       now
     ),
@@ -7358,7 +7392,7 @@ function asRested(store, worktree, live, at) {
   const spawnedAt = readRest(store, worktree.id)?.spawnedAt;
   return spawnedAt === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt };
 }
-function changedSince(store, worktreeId, revision, since) {
+function changedSince2(store, worktreeId, revision, since) {
   const after = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
   const changes = /* @__PURE__ */ new Map();
   for (const r of store.revisions.range(worktreeId, after, revision)) {
@@ -8088,18 +8122,23 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = withStopping(
+  const daemon = withLate(
     store,
     worktree,
-    withDeath(
+    withStopping(
       store,
       worktree,
-      asStopped(
+      withDeath(
         store,
-        worktreeId,
         worktree,
-        liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
-      )
+        asStopped(
+          store,
+          worktreeId,
+          worktree,
+          liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+        )
+      ),
+      now
     ),
     now
   );
@@ -9224,7 +9263,8 @@ function livenessSentence(daemon, revision, command) {
     return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
   }
   if (daemon.state === "alive") {
-    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+    const short = daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+    return daemon.late === void 0 ? short : `${short} ${lateText(daemon.late, revision)}`;
   }
   if (daemon.stopped === true)
     return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
