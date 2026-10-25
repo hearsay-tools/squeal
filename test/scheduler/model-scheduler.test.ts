@@ -1,14 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  ALL,
-  backlogPlan,
-  type Ev,
-  type Flight,
-  type Model,
-  type Plan,
-  plan,
-  startModel,
-} from "./model-fixture.js";
+import { ALL, backlogPlan, type Ev, type Flight, Model, type Plan, plan } from "./model-fixture.js";
 
 /*
  * Row 011-195 (016-18, `research/model-scheduler.md` recommendations 1, 3
@@ -79,7 +70,7 @@ class Checks {
   #cut(f: Flight, reason: unknown): void {
     const { m } = this;
     // A cancel before row 011-56 names no cause: with no edit since the tier started, it is a yield.
-    const yields = reason === "yield" || (typeof reason !== "string" && m.edits() === f.edits);
+    const yields = reason === "yield" || (typeof reason !== "string" && m.edits === f.edits);
     if (!yields || !this.#vitest) return;
     const t = m.clock.raw();
     const unended = f.files.filter((x) => !f.ended.has(x.path)).map((x) => x.path);
@@ -92,7 +83,7 @@ class Checks {
     }
     // A: once a tier has run 30 s, a promoted file cuts it only when it ranks before every
     // unended file, judged at the cut and at the event's start (a jump may have come between).
-    if (t - f.startedAt < 31_000 || m.edits() !== f.edits) return;
+    if (t - f.startedAt < 31_000 || m.edits !== f.edits) return;
     if ([t, this.eventAt].some((when) => this.#beats(unended, when).length > 0)) return;
     const s = Math.round((t - f.startedAt) / 1000);
     this.#add("A", `tier of ${unended.join(" ")} cut at ${s} s, no promoted file before it`);
@@ -147,7 +138,7 @@ class Checks {
     const { m } = this;
     const live = m.live().filter((f) => !f.cancelled);
     const f = live[0];
-    if (!this.#vitest || f === undefined || live.length > 1 || m.edits() !== f.edits) return;
+    if (!this.#vitest || f === undefined || live.length > 1 || m.edits !== f.edits) return;
     if (m.standings().filter((k) => k === "named").length !== 1) return;
     const unended = f.files.filter((x) => !f.ended.has(x.path)).map((x) => x.path);
     const better = this.#beats(unended, m.clock.raw());
@@ -180,7 +171,7 @@ interface Played {
 
 /** One sequence, every invariant checked; it stops at the first violation. */
 async function play(p: Plan): Promise<Played> {
-  const m = await startModel(p);
+  const m = await Model.start(p);
   const checks = new Checks(m, p.kind);
   let crossed = true;
   try {
