@@ -18,11 +18,12 @@ import { statusCommand } from "./status-command.js";
 const SPAWN_WAIT_MS = 30_000;
 
 /**
- * Row 011-214 (C9): waits up to `SPAWN_WAIT_MS` for the daemon `start` spawned as
- * `pid` (`null` when the spawn failed) to answer and be recorded, then
- * `null`. Otherwise the exit code, said on stderr: 1 once its process ended
- * without an answer; 3 past the bound while it lives, since it may still be
- * starting, as a loaded host makes it (gh-94), and `squeal status` says when.
+ * Row 011-214 (C9): waits up to `SPAWN_WAIT_MS` for the daemon `start`
+ * spawned as `pid` (`null` when the spawn failed) to answer and be
+ * recorded, then `null`. Otherwise the exit code, said on stderr: 1 once its
+ * process ended without an answer; 3 past the bound while it lives, since it
+ * may still be starting, as a loaded host makes it (gh-94), and `squeal
+ * status` says when.
  */
 export async function spawnedFailed(
   root: AbsolutePath,
