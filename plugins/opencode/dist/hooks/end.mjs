@@ -2393,6 +2393,9 @@ function recordVersion(store, consumer, version) {
 // src/core/delivery/delivery.ts
 import { setTimeout as sleep } from "node:timers/promises";
 
+// src/core/retry/kept.ts
+var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // src/core/retry/load.ts
 import { availableParallelism, loadavg } from "node:os";
 function hostLoad() {
@@ -7156,7 +7159,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.323";
+  if (true) return "0.1.325";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
