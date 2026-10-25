@@ -3,7 +3,7 @@ import type { RelativePath, RevisionNumber } from "../../types/index.js";
 import type { Entry } from "./blobs.js";
 import { type FailedCounts, seedsQuietly } from "./failed.js";
 import { includedSet } from "./included.js";
-import { heldPaths, holdUnlisted, type Listing } from "./listed.js";
+import { holdUnlisted, type Listing, waitingPaths } from "./listed.js";
 import type { PassContext } from "./pass.js";
 
 /*
@@ -12,8 +12,10 @@ import type { PassContext } from "./pass.js";
  */
 
 /**
- * `plan`'s entries without the files that wait for their listing, and the
- * files an earlier pass held that this one reads again (row 015-52).
+ * `plan`'s entries without the files that wait for their listing, and
+ * what waited after the last pass, which this one reads again (row 015-52).
+ * `null` when a recount would hold a file: it waits for that listing, so
+ * its summary counts the file, and `onListed` runs it again.
  */
 export function workEntries(
   ctx: PassContext,
@@ -23,18 +25,17 @@ export function workEntries(
   listing: Listing,
 ) {
   const { store, source, worktreeId } = ctx;
-  const released = new Set(
-    since === null ? [] : heldPaths(store, worktreeId, source, listing.seen, latest),
-  );
-  const work = since === null ? null : workSet(ctx, since, latest, due, listing.tests, released);
-  const planned = plan(ctx, listing.tests, work);
-  return { ...holdUnlisted(store, worktreeId, source, planned, listing, latest), released };
+  const waiting = new Set(waitingPaths(store, worktreeId, source, listing.seen, latest));
+  const paths = since === null ? null : workSet(ctx, since, latest, due, listing.tests, waiting);
+  const planned = plan(ctx, listing.tests, paths, new Set(listing.seen?.deferred));
+  const work = holdUnlisted(store, worktreeId, source, planned, listing, latest);
+  return since === null && work.held > 0 ? null : { ...work, waiting };
 }
 
 /**
  * The edit pass's paths: the revisions' changes, the retries, the failed
- * counts due again (`due`), counted files a runner now lists, and the files
- * an earlier pass held for their listing (row 015-52).
+ * counts due again (`due`), counted files a runner now lists, and what
+ * waited for a listing after the last pass (row 015-52).
  */
 function workSet(
   ctx: PassContext,
@@ -42,7 +43,7 @@ function workSet(
   upTo: RevisionNumber,
   due: readonly RelativePath[],
   tests: readonly RelativePath[],
-  held: ReadonlySet<RelativePath>,
+  waiting: ReadonlySet<RelativePath>,
 ): RelativePath[] {
   const counted = ctx.store.files.list(ctx.worktreeId, tests);
   return [
@@ -51,7 +52,7 @@ function workSet(
       ...ctx.retry,
       ...due,
       ...counted.map((f) => f.path),
-      ...held,
+      ...waiting,
     ]),
   ];
 }
@@ -75,11 +76,15 @@ export function quietPaths(
   );
 }
 
-/** Each path classified by D1; `paths` `null` for every file Squeal sees and every stored row. */
+/**
+ * Each path classified by D1; `paths` `null` for every file Squeal sees,
+ * every stored row and every `deferred` path.
+ */
 function plan(
   ctx: PassContext,
   tests: readonly RelativePath[],
   paths: readonly RelativePath[] | null,
+  deferred: ReadonlySet<RelativePath>,
 ): Entry[] {
   const { store, source, worktreeId, complexity } = ctx;
   const included = includedSet(complexity, tests, source.ignored());
@@ -87,15 +92,21 @@ function plan(
   const listed =
     all === null
       ? (paths ?? [])
-      : [...new Set([...all.keys(), ...store.files.list(worktreeId).map((f) => f.path)])];
+      : [
+          ...new Set([
+            ...all.keys(),
+            ...store.files.list(worktreeId).map((f) => f.path),
+            ...deferred,
+          ]),
+        ];
   const entries = [...listed].sort(compare).map((path): Entry => {
     const language = included(path);
     const file = language === null ? null : all === null ? source.file(path) : all.get(path);
     if (language === null || file === null || file === undefined) return { kind: "gone", path };
     return { kind: file.size > complexity.maxFileBytes ? "big" : "count", path, file, language };
   });
-  // A gone path the store never counted is nothing to remove.
+  // A gone path the store never counted is nothing to remove; a deferred one still has states.
   const gone = entries.filter((e) => e.kind === "gone").map((e) => e.path);
   const stored = new Set(store.files.list(worktreeId, gone).map((f) => f.path));
-  return entries.filter((e) => e.kind !== "gone" || stored.has(e.path));
+  return entries.filter((e) => e.kind !== "gone" || stored.has(e.path) || deferred.has(e.path));
 }
