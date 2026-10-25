@@ -20,6 +20,7 @@ import {
   listedDirectory,
   ObservedSets,
   type ReadAsOne,
+  StartupSets,
   sameInputs,
   testFileId,
   type UnmatchedInputs,
@@ -115,6 +116,10 @@ export class WorktreeKeys {
   #declared: DeclaredInputs = createDeclaredInputs([], []);
   /** What runs observed beyond static closures, shared per project (D3, task 001-132). */
   readonly #observed: ObservedSets;
+  /** What runs loaded at start-up beyond the environments, shared per project (016 D4). */
+  readonly #startup: StartupSets;
+  /** Test files whose observed set another worktree grew, not assembled again yet (016 D4, O9). */
+  readonly #grownElsewhere = new Map<string, TestFileRef>();
   /** Entry names of listed directories, from the tracked files. */
   readonly #listings = new Listings(() => this.#listedFiles());
   /**
@@ -139,6 +144,7 @@ export class WorktreeKeys {
       (text) => persistedNoteTexts(options.store, options.worktreeId).has(text),
     );
     this.#observed = new ObservedSets(options.store);
+    this.#startup = new StartupSets(options.store);
     this.index = new KeyIndex(
       gitEntryByKind(options.root, (path) => {
         const directory = listedDirectory(path);
@@ -215,9 +221,13 @@ export class WorktreeKeys {
    * its current hash once more for the definition before 011-158, which keyed
    * absent closure paths (`absentReadAsOne`).
    */
-  async setEnvironments(environments: readonly RunnerEnvironment[]): Promise<KeyChange[]> {
+  async setEnvironments(read: readonly RunnerEnvironment[]): Promise<KeyChange[]> {
     const { squealVersion, env } = this.options;
     const policy = this.#policy;
+    const environments = this.#withStartup(read);
+    const observedBefore = new Map(
+      [...this.#environments.keys()].map((p) => [p, this.observes(p)]),
+    );
     this.#environments.clear();
     this.#environmentFiles.clear();
     for (const environment of environments) {
@@ -257,7 +267,7 @@ export class WorktreeKeys {
       ]);
     }
     // Task 001-105: each test file's packages are keyed against the new install.
-    return this.index.setInstalled(
+    const installed = this.index.setInstalled(
       hashes,
       (ref) => {
         const runner = this.#runnerClosures.get(testFileId(ref));
@@ -267,6 +277,32 @@ export class WorktreeKeys {
       },
       readAsOne,
     );
+    return [...installed, ...this.#reobserve(observedBefore)];
+  }
+
+  /**
+   * 016 D4: each environment with its project's stored start-up paths among
+   * its files, as `setClosure` adds the observed paths to a closure. Another
+   * worktree's are read here, at each read of the environments.
+   */
+  #withStartup(environments: readonly RunnerEnvironment[]): RunnerEnvironment[] {
+    this.#startup.refresh(environments.map((e) => e.project));
+    return environments.map((environment) => {
+      const startup = this.#startup.of(environment.project);
+      if (startup.length === 0) return environment;
+      return { ...environment, files: [...new Set([...environment.files, ...startup])] };
+    });
+  }
+
+  /** 016 D4, O8: the closures of each project whose gate `observes` moved, assembled again. */
+  #reobserve(before: ReadonlyMap<ProjectName, boolean>): KeyChange[] {
+    const moved = new Set(
+      [...this.#environments.keys()].filter((p) => (before.get(p) ?? false) !== this.observes(p)),
+    );
+    if (moved.size === 0) return [];
+    return [...this.#runnerClosures.values()]
+      .filter((runner) => moved.has(runner.testFile.project))
+      .flatMap((runner) => this.setClosure(runner));
   }
 
   /** A test file's installed-dependency segment of its key (D3, task 001-105). */
@@ -368,7 +404,9 @@ export class WorktreeKeys {
     // Row 011-36: a path the replaced closure named may be named by nothing now.
     this.#rejudge(this.index.closure(runner.testFile)?.paths ?? []);
     this.#runnerClosures.set(testFileId(runner.testFile), runner);
-    const observed = this.#policy.observe.runtimeInputs ? this.#observed.of(runner.testFile) : [];
+    const observed = this.observes(runner.testFile.project)
+      ? this.#observed.of(runner.testFile)
+      : [];
     const update = this.index.setClosure(
       assembleClosure(runner, this.#declared.for(runner.testFile.path), observed),
       this.#dependencySegment(runner),
@@ -383,15 +421,38 @@ export class WorktreeKeys {
    * (D5 as amended, task 001-132). Without the runner's closure the file is
    * not keyed yet, and the set waits for its first `setClosure`.
    */
-  addObserved(testFile: TestFileRef, additions: readonly RelativePath[]): KeyChange[] {
-    this.#observed.add(testFile, additions);
+  addObserved(
+    testFile: TestFileRef,
+    additions: readonly RelativePath[],
+    direct: readonly RelativePath[] = [],
+  ): KeyChange[] {
+    this.#observed.add(testFile, additions, direct);
     const runner = this.#runnerClosures.get(testFileId(testFile));
     return runner === undefined ? [] : this.setClosure(runner);
   }
 
   /** Reads what other worktrees observed for `projects` since the last read. */
   refreshObserved(projects: Iterable<ProjectName>): void {
-    this.#observed.refresh(projects);
+    for (const ref of this.#observed.refresh(projects))
+      this.#grownElsewhere.set(testFileId(ref), ref);
+  }
+
+  /**
+   * 016 D4 (O9, task 003-26): reads what other worktrees observed for the
+   * projects whose observed paths are module loads, and assembles again the
+   * closure of every file whose set grew since, so a key this worktree holds
+   * a result under takes the paths. Each refinement asks, the runner-only
+   * one the daemon's timer queues too.
+   */
+  regrowObserved(): KeyChange[] {
+    const loads = [...this.#environments.values()].filter((e) => e.observedLoads === true);
+    this.refreshObserved(loads.map((e) => e.project));
+    const changes = [...this.#grownElsewhere.values()].flatMap((ref) => {
+      const runner = this.#runnerClosures.get(testFileId(ref));
+      return runner === undefined ? [] : this.setClosure(runner);
+    });
+    this.#grownElsewhere.clear();
+    return changes;
   }
 
   /** The observed set of `testFile`, whether or not policy keys with it. */
@@ -399,14 +460,39 @@ export class WorktreeKeys {
     return this.#observed.of(testFile);
   }
 
+  /** Of `testFile`'s observed set, the paths that put it in `direct` (016 D4, row 007-56). */
+  directOf(testFile: TestFileRef): readonly RelativePath[] {
+    return this.#observed.directOf(testFile);
+  }
+
+  /**
+   * 016 D4: a run's start-up paths (`RunReport.environmentObserved`) join
+   * this worktree's view, so the environments read next hold them; the
+   * record's transaction stores them (`writeStartup`).
+   */
+  seeStartup(project: ProjectName, paths: readonly RelativePath[]): void {
+    this.#startup.see(project, paths);
+  }
+
+  /** Stores the start-up paths `seeStartup` added; inside the record's transaction. */
+  writeStartup(): void {
+    this.#startup.write();
+  }
+
   /** The listing paths a recursive listing of `directory` reads (`Listings.below`, task 001-134). */
   listingsBelow(directory: RelativePath): RelativePath[] {
     return this.#listings.below(directory);
   }
 
-  /** True while policy `observe.runtimeInputs` holds. */
-  get observing(): boolean {
-    return this.#policy.observe.runtimeInputs;
+  /**
+   * True when what `project`'s runs observed keys its files: while policy
+   * `observe.runtimeInputs` holds, and always for a project whose observed
+   * paths are module loads (`RunnerEnvironment.observedLoads`, 016 D4, O8).
+   */
+  observes(project: ProjectName): boolean {
+    return (
+      this.#policy.observe.runtimeInputs || this.#environments.get(project)?.observedLoads === true
+    );
   }
 
   /**
