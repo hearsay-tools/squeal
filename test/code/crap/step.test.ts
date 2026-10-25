@@ -11,7 +11,8 @@ import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";
 /*
  * Spec 015 goal 11 and D9 (row 015-12): each counted function's `crap` and
  * `uncovered` states, pending until every test file that loads its source
- * has a current result with a record, unknown while one cannot have one.
+ * has a current result with a record, unknown while one cannot have one,
+ * but for the passes the records in hand prove (row 015-57).
  */
 
 const A = "hot 12 h1\ncold 6 c1\ntiny 1 t1\n";
@@ -26,15 +27,15 @@ const ranHotAndTiny = (rig: CoverageRig) => [
 const fileState = (rig: CoverageRig, path: string) => readSummary(rig.store.meta, WT)?.files[path];
 
 describe("the coverage step", () => {
-  it("leaves every state pending until each loader has a current record, then judges by the formula", async () => {
+  it("leaves a state pending until each loader has a current record, then judges by the formula; a pass the record in hand proves, at once", async () => {
     const rig = coverageRig();
     await rig.edit({ "src/a.ts": A });
     rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: ranHotAndTiny(rig) });
     rig.loader("test/b.test.ts", { closure: ["src/a.ts"], pending: "queued" });
 
     rig.step();
-    expect(rig.states("crap")).toEqual(["cold pending -", "hot pending -", "tiny pending -"]);
-    expect(rig.states("uncovered")).toEqual(["cold pending -", "hot pending -", "tiny pending -"]);
+    expect(rig.states("crap")).toEqual(["cold pending -", "hot pass 12", "tiny pass 1"]);
+    expect(rig.states("uncovered")).toEqual(["cold pending -", "hot pass -", "tiny pass -"]);
     expect(fileState(rig, "src/a.ts")).toMatchObject({
       state: "pending",
       reason: "run",
@@ -104,7 +105,8 @@ describe("the coverage step", () => {
     rig.loader("test/b.test.ts", { closure: ["src/a.ts"], record: [], ...spec });
     rig.step();
     expect(fileState(rig, "src/a.ts")).toMatchObject({ state: "unknown", cause });
-    expect(rig.states("uncovered")).toEqual(["cold pending -", "hot pending -", "tiny pending -"]);
+    // Row 015-57: `test/a.test.ts`'s record proves `hot` and `tiny` run.
+    expect(rig.states("uncovered")).toEqual(["cold pending -", "hot pass -", "tiny pass -"]);
   });
 
   it("reads unknown for a record of other bytes of the source", async () => {
