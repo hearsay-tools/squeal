@@ -57,6 +57,52 @@ describe("observe recorder (task 001-132)", { timeout: 60_000 }, () => {
     expect(seen.listed).toEqual(["listed"]);
   });
 
+  it("records the directory each mkdtemp form creates, and reports it above what the run read below it", () => {
+    const seen = observe({
+      "main.mjs": [
+        'import { execFileSync } from "node:child_process";',
+        'import { mkdtemp, mkdtempSync, readFileSync } from "node:fs";',
+        'import { mkdtemp as mkdtempPromise } from "node:fs/promises";',
+        'const dirs = [mkdtempSync("tmp/s-")];',
+        'dirs.push(await new Promise((resolve, reject) => mkdtemp("tmp/c-", (e, dir) => (e ? reject(e) : resolve(dir)))));',
+        'dirs.push(await mkdtempPromise("tmp/p-"));',
+        // `cp` writes outside the recorder: the run reads a file it did not write
+        'for (const dir of dirs) execFileSync("cp", ["data.txt", dir + "/in.txt"]);',
+        'process.stdout.write(dirs.map((dir) => readFileSync(dir + "/in.txt", "utf8")).join(""));',
+        'readFileSync("data.txt", "utf8");',
+      ].join("\n"),
+      "tmp/.keep": "",
+      "data.txt": "d",
+    });
+    expect(seen.stdout).toBe("ddd");
+    expect(seen.written).toEqual([
+      expect.stringMatching(/^tmp\/c-\w{6}$/),
+      expect.stringMatching(/^tmp\/p-\w{6}$/),
+      expect.stringMatching(/^tmp\/s-\w{6}$/),
+    ]);
+    const [inputs] = seen.inputs;
+    expect(inputs?.paths).toEqual(
+      expect.arrayContaining(["data.txt", ...seen.written.map((dir) => `${dir}/in.txt`)]),
+    );
+    // only the directories above a kept path: none above data.txt
+    expect(inputs?.written).toEqual(seen.written);
+  });
+
+  it("reports no written directories for a run that wrote none above what it read", () => {
+    const seen = observe({
+      "main.mjs": [
+        'import { mkdirSync, readFileSync, writeFileSync } from "node:fs";',
+        'mkdirSync("made");',
+        'writeFileSync("made/out.txt", "o");',
+        'readFileSync("data/in.txt", "utf8");',
+      ].join("\n"),
+      "data/in.txt": "i",
+    });
+    expect(seen.written).toEqual(["made", "made/out.txt"]);
+    expect(seen.inputs[0]?.paths).toContain("data/in.txt");
+    expect(seen.inputs[0]).not.toHaveProperty("written");
+  });
+
   it("leaves a child with another Squeal's settings to that recorder", () => {
     const seen = observe({
       "main.mjs": [
