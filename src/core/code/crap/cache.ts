@@ -34,6 +34,8 @@ export class StepCache {
   readonly #signatures = new Map<RelativePath, { readonly at: string; readonly value: string }>();
   /** As `#signatures`, of the records in hand of a file not ready (row 015-57). */
   readonly #early = new Map<RelativePath, { readonly at: string; readonly value: string }>();
+  /** By path: whether its `crap` or `uncovered` states held a failure at the blob read (row 015-57). */
+  readonly #failing = new Map<RelativePath, { readonly blob: string; readonly failing: boolean }>();
   readonly #records = new Map<CheckKey, Decoded>();
   /** Counts `invalidate`: a record decoded before the last one is read again. */
   #epoch = 0;
@@ -96,6 +98,26 @@ export class StepCache {
     const value = signatureOf(file, threshold, loaders);
     signatures.set(file.path, { at, value });
     return value;
+  }
+
+  /**
+   * Row 015-57: whether `file` has a `crap` or `uncovered` failure, the
+   * only state the records in hand can turn; read by `read` once for each
+   * blob, since a move or removal changes the file, and as a unit of
+   * `work` (`null` past it). A full judgement drops it (`judged`).
+   */
+  failing(file: Pick<CodeFile, "path" | "blob">, read: () => boolean, work: () => boolean) {
+    const known = this.#failing.get(file.path);
+    if (known?.blob === file.blob) return known.failing;
+    if (!work()) return null;
+    const failing = read();
+    this.#failing.set(file.path, { blob: file.blob, failing });
+    return failing;
+  }
+
+  /** A full judgement of `path` wrote its states (row 015-57). */
+  judged(path: RelativePath): void {
+    this.#failing.delete(path);
   }
 
   /** The record at `key`, decoded once in a chain while its bytes stay; `null` when the store holds none. */
