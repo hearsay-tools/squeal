@@ -11,9 +11,10 @@ import type { PendingReason, UnknownCause } from "./loaders.js";
 
 /**
  * A file's coverage condition at its blob. A pending or unknown file keeps
- * its last judged states but the passes the records in hand prove (row
- * 015-57); `early` is the signature of those records once they are judged,
- * so a step judges them once. A summary an older Squeal wrote has none.
+ * its last judged states but the failures the records in hand prove pass
+ * (row 015-57); `early` is the signature of those records once they are
+ * judged, so a step judges them once. A summary an older Squeal wrote has
+ * none.
  */
 export type FileSummary =
   | { readonly state: "judged"; readonly blob: string; readonly signature: string }
