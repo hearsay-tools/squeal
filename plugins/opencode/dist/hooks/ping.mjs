@@ -2,12 +2,29 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/harness/opencode/bridge.ts
-import { readFileSync as readFileSync2 } from "node:fs";
+import { readFileSync as readFileSync5 } from "node:fs";
 import { fileURLToPath } from "node:url";
+
+// src/core/fs/errors.ts
+function isMissing(error) {
+  const code = error?.code;
+  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
+}
 
 // src/core/fs/json.ts
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// src/core/fs/paths.ts
+import { isAbsolute, join, relative, sep } from "node:path";
+function toRelative(root, abs) {
+  const rel = relative(root, abs);
+  if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null;
+  return sep === "/" ? rel : rel.split(sep).join("/");
+}
+function toAbsolute(root, rel) {
+  return join(root, ...rel.split("/"));
 }
 
 // src/core/types/store-records.ts
@@ -27,7 +44,7 @@ var WATCHER_TIMINGS = {
 var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
 
 // src/core/daemon/policy-node-test.ts
-import { isAbsolute, posix } from "node:path";
+import { isAbsolute as isAbsolute2, posix } from "node:path";
 
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
@@ -120,7 +137,7 @@ var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s ===
 var insideRoot = (v) => {
   if (typeof v !== "string") return "a path inside the worktree, relative to its root";
   const normal = posix.normalize(v.replaceAll("\\", "/"));
-  return isAbsolute(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+  return isAbsolute2(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
 var FIELDS = {
   name: nonEmptyString,
@@ -193,7 +210,7 @@ var CODE_SHAPE = {
 };
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute2, posix as posix2 } from "node:path";
+import { isAbsolute as isAbsolute3, posix as posix2 } from "node:path";
 var FIELDS2 = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -217,7 +234,7 @@ function withDefaults2(entry) {
 }
 var pythonInsideRoot = (entry) => {
   const python = entry.python;
-  if (python === void 0 || isAbsolute2(python)) return null;
+  if (python === void 0 || isAbsolute3(python)) return null;
   const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
@@ -314,10 +331,10 @@ function shellWord(word) {
   return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
 }
 function excludedProjectsText(entries) {
-  const quoted = (list, join) => {
+  const quoted = (list, join6) => {
     const all = list.map((entry) => JSON.stringify(entry));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join6} ${last}`;
   };
   const names = entries.filter((entry) => !entry.includes("*"));
   const patterns = entries.filter((entry) => entry.includes("*"));
@@ -720,6 +737,35 @@ function pidNamespace() {
   }
 }
 
+// src/core/daemon/runner.ts
+import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
+import { join as join2, posix as posix3 } from "node:path";
+var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+function vitestDetected(root) {
+  let names;
+  try {
+    names = readdirSync(root);
+  } catch {
+    return false;
+  }
+  if (names.some((name) => VITEST_CONFIG.test(name))) return true;
+  return listsVitest(readManifest(join2(root, "package.json")));
+}
+function listsVitest(manifest) {
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
+}
+function readManifest(path) {
+  try {
+    return JSON.parse(readFileSync2(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 // src/core/daemon/lock.ts
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
@@ -770,13 +816,339 @@ var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
 
-// src/harness/shared/coverage.ts
-var VITEST_ONLY = {
-  vitest: true,
-  vitestConfig: null,
-  nodeTest: [],
-  slow: null
+// src/runners/node-test/describe.ts
+var UNCONFIGURED = { nodeTest: [] };
+var NODE_TEST = {
+  runner: "node-test",
+  name: "node:test",
+  fallback: false,
+  unconfigured: UNCONFIGURED,
+  projects: (policy) => policy.nodeTest,
+  coverage: ({ projects }) => ({ nodeTest: projects }),
+  built: (coverage) => coverage.nodeTest.length > 0,
+  covered: (coverage) => ({ projects: coverage.nodeTest }),
+  excluded: () => null,
+  context: (policy, _root, _cwd) => ({ nodeTest: policy.nodeTest }),
+  command: (words, context) => context.atRoot === false ? null : nodeTestCommand(words, context.nodeTest),
+  resolves: () => true,
+  files: (command, listing) => command.runner === "node-test" ? nodeTestFiles(command, listing) : null,
+  slowProjects: (policy) => policy.nodeTest
 };
+function nodeTestCommand(words, projects) {
+  const at = words.indexOf("--test");
+  if (at === -1) return null;
+  const argv = words.slice(1, at);
+  const args = words.slice(at + 1);
+  if (args.length === 0) return null;
+  const project = projects.find(
+    (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
+  );
+  if (project === void 0) return null;
+  if (same(project.include, args))
+    return { runner: "node-test", project: project.name, files: null };
+  if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
+  return { runner: "node-test", project: project.name, files: args };
+}
+function same(a, b) {
+  return a.length === b.length && a.every((word, i) => word === b[i]);
+}
+function nodeTestFiles(command, listing) {
+  const own = listing.files.filter((ref) => ref.project === command.project);
+  if (command.files === null) return own.length === 0 ? null : own;
+  const byPath = new Map(own.map((ref) => [ref.path, ref]));
+  const files = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
+  return files.every((ref) => ref !== void 0) ? [...new Set(files)] : null;
+}
+
+// src/runners/pytest/describe.ts
+import { realpathSync } from "node:fs";
+import { join as join4, resolve as resolve2 } from "node:path";
+
+// src/runners/pytest/environment/discover.ts
+import { existsSync, readdirSync as readdirSync2, readFileSync as readFileSync3, statSync } from "node:fs";
+import { basename, dirname, isAbsolute as isAbsolute4, join as join3, relative as relative2, resolve } from "node:path";
+function projectDir(root, project) {
+  return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
+}
+function discoverEnvironment(root, project) {
+  const cwd = projectDir(root, project);
+  if (project.python !== void 0) {
+    const declared = resolve(cwd, project.python);
+    if (isDirectory(declared)) return found("declared", declared, join3(declared, "bin", "python"));
+    if (existsSync(declared)) return found("declared", dirname(dirname(declared)), declared);
+    const target = basename(declared).startsWith("python") ? dirname(dirname(declared)) : declared;
+    return none(root, cwd, [declared], target);
+  }
+  const venv = join3(cwd, ".venv");
+  if (existsSync(join3(venv, "pyvenv.cfg"))) return found("venv", venv, join3(venv, "bin", "python"));
+  const pdm = pdmPython(root, cwd);
+  if (pdm !== null) return found("pdm-python", dirname(dirname(pdm)), pdm);
+  return none(root, cwd, [venv, join3(cwd, ".pdm-python")], venv);
+}
+function found(source, env, python) {
+  return { kind: "found", source, env, python };
+}
+function pdmPython(root, cwd) {
+  let text;
+  try {
+    text = readFileSync3(join3(cwd, ".pdm-python"), "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+  if (!isAbsolute4(text) || toRelative(root, text) === null || !existsSync(text)) return null;
+  return text;
+}
+var LOCKFILES = [
+  ["uv.lock", "uv sync"],
+  ["poetry.lock", "poetry install"],
+  ["pdm.lock", "pdm install"]
+];
+var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
+function none(root, cwd, looked, target) {
+  const venv = relative2(cwd, target) || ".";
+  const dirs = [];
+  for (let dir = cwd; ; dir = dirname(dir)) {
+    dirs.push(dir);
+    if (toRelative(root, dir) === null) break;
+  }
+  for (const dir of dirs) {
+    const hit = LOCKFILES.find(([file]) => existsSync(join3(dir, file)));
+    if (hit !== void 0)
+      return { kind: "none", looked, command: hit[1], from: join3(dir, hit[0]) };
+  }
+  for (const dir of dirs) {
+    const files = requirementsIn(dir).map((file) => join3(dir, file));
+    if (files.length === 0) continue;
+    const install = files.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
+    const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
+    return { kind: "none", looked, command, from: files[0] };
+  }
+  return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
+}
+function requirementsIn(dir) {
+  let names;
+  try {
+    names = readdirSync2(dir);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+  return names.filter((name) => REQUIREMENTS.test(name)).sort();
+}
+function isDirectory(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+
+// src/runners/pytest/describe.ts
+var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
+var PYTEST = {
+  runner: "pytest",
+  name: "pytest",
+  fallback: false,
+  unconfigured: {},
+  projects: (policy) => policy.pytest,
+  coverage: ({ projects }) => ({ pytest: projects }),
+  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
+  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
+  excluded: () => null,
+  context: (policy, root, cwd) => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
+  command: (words, context) => pytestCommand(words, context.pytest ?? []),
+  resolves: () => true,
+  files: (command, listing) => command.runner === "pytest" ? pytestFiles(command, listing) : null,
+  slowProjects: () => []
+};
+function pytestHere(root, cwd, projects) {
+  return projects.flatMap((project) => {
+    const dir = projectDir(root, project);
+    if (realPath(dir) !== cwd) return [];
+    let env = null;
+    try {
+      const found2 = discoverEnvironment(root, project);
+      if (found2.kind === "found") env = found2.env;
+    } catch {
+    }
+    return [{ project, dir, env }];
+  });
+}
+function realPath(path) {
+  try {
+    return realpathSync(resolve2(path));
+  } catch {
+    return null;
+  }
+}
+function pytestCommand(words, here) {
+  if (here.length !== 1) return null;
+  const { project, dir, env } = here[0];
+  if (Object.keys(project.env).length > 0) return null;
+  const start = invocation(words, dir, env);
+  if (start === null) return null;
+  const rest = words.slice(start);
+  const { args } = project;
+  if (!args.every((arg, i) => rest[i] === arg)) return null;
+  const paths = [];
+  for (const word of rest.slice(args.length)) {
+    if (OUTPUT_FLAG.test(word)) continue;
+    const path = word.split("::")[0];
+    if (word.startsWith("-") || path === "") return null;
+    paths.push(resolve2(dir, path));
+  }
+  return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
+}
+function invocation(words, dir, env) {
+  const [first, second, third] = words;
+  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve2(dir, first) === join4(env, "bin", name);
+  if (first === "pytest" || inEnv("pytest")) return 1;
+  if (first === "uv" && second === "run" && third === "pytest") return 3;
+  if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
+  return null;
+}
+function pytestFiles(command, listing) {
+  if (command.paths === null) return null;
+  const own = listing.files.filter((ref) => ref.project === command.project);
+  const named2 = new Set(command.paths.map((path) => listing.pathOf(path)));
+  if (![...named2].every((rel) => own.some((ref) => ref.path === rel))) return null;
+  return own.filter((ref) => named2.has(ref.path));
+}
+
+// src/runners/vitest/describe.ts
+import { existsSync as existsSync2, readFileSync as readFileSync4 } from "node:fs";
+import { isAbsolute as isAbsolute5, join as join5, relative as relative3, resolve as resolve3 } from "node:path";
+var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
+var CONFIG_NAMES = ["vitest.config", "vite.config"];
+var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+var REPORTER = "--reporter";
+var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
+var VITEST = {
+  runner: "vitest",
+  name: "Vitest",
+  fallback: true,
+  unconfigured: UNCONFIGURED2,
+  projects: () => [],
+  coverage({ policy, root, configured }) {
+    const vitest = !configured || vitestDetected(root);
+    return {
+      vitest,
+      vitestConfig: vitest ? configFile(root) : null,
+      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
+      vitestExcludedFiles: vitest ? policy.vitest.exclude : []
+    };
+  },
+  built: (coverage) => coverage.vitest,
+  covered: (coverage) => ({
+    config: coverage.vitestConfig,
+    excludedProjects: coverage.vitestExcluded ?? []
+  }),
+  // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
+  excluded(coverage) {
+    const globs3 = coverage.vitestExcludedFiles ?? [];
+    return globs3.length === 0 ? null : excludedFilesText(globs3);
+  },
+  context: (_policy, root, cwd) => ({
+    scripts: cwd === root ? rootScripts(root) : {}
+  }),
+  command: (words, context, split) => context.atRoot === false ? null : vitestCommand(words) ?? npmCommand(words, context, split),
+  // 004 D7: a file `vitest.exclude` drops is one a bare Vitest command still runs; read live, so
+  // an exclusion added since the last listing counts too (review 004 wave-12 B2).
+  resolves: (live) => live.vitest.exclude.length === 0,
+  files: (command, listing) => command.runner === "vitest" ? vitestFiles(command, listing) : null,
+  slowProjects: () => []
+};
+function vitestCommand(words) {
+  const start = words[0] === "npx" ? 1 : 0;
+  if (words[start] !== "vitest" || words[start + 1] !== "run") return null;
+  const filters = [];
+  const rest = words.slice(start + 2);
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (word === "--silent") {
+      const next = rest[i + 1];
+      if (next !== void 0 && !next.startsWith("-")) {
+        if (!SILENT_VALUES.has(next)) return null;
+        i++;
+      }
+    } else if (word.startsWith("--silent=")) {
+      if (!SILENT_VALUES.has(word.slice("--silent=".length))) return null;
+    } else if (word === REPORTER) {
+      const next = rest[i + 1];
+      if (next === void 0 || next.startsWith("-")) return null;
+      i++;
+    } else if (word.startsWith(`${REPORTER}=`)) {
+      if (word === `${REPORTER}=`) return null;
+    } else if (word.startsWith("-") || word === "" || /:\d+(-\d+)?$/.test(word)) {
+      return null;
+    } else {
+      filters.push(word);
+    }
+  }
+  return { runner: "vitest", filters };
+}
+function npmCommand(words, { scripts }, split) {
+  if (words[0] !== "npm") return null;
+  const name = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
+  if (name === void 0) return null;
+  if (!Object.hasOwn(scripts, name)) return null;
+  if (Object.hasOwn(scripts, `pre${name}`) || Object.hasOwn(scripts, `post${name}`)) return null;
+  const script = split(scripts[name]);
+  return script === null ? null : vitestCommand(script);
+}
+function vitestFiles(command, listing) {
+  const { root, configured } = listing;
+  if (listing.omitted !== 0) return null;
+  const vitest = listing.files.filter((ref) => !configured.has(ref.project));
+  if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
+  if (command.filters.length === 0) return vitest;
+  const selected = /* @__PURE__ */ new Set();
+  for (const filter of command.filters) {
+    const hits = vitest.filter((ref) => matchesFilter(join5(root, ref.path), filter, root));
+    if (hits.length === 0) return null;
+    for (const ref of hits) selected.add(ref);
+  }
+  return vitest.filter((ref) => selected.has(ref));
+}
+function matchesFilter(file, filter, root) {
+  if (isAbsolute5(filter) && file.startsWith(filter)) return true;
+  const testFile = relative3(root, file).toLocaleLowerCase();
+  const rel = relative3(root, resolve3(root, filter));
+  const relativePath = filter.endsWith("/") ? join5(rel, "/") : rel;
+  return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
+}
+function rootScripts(root) {
+  try {
+    const manifest = JSON.parse(readFileSync4(join5(root, "package.json"), "utf8"));
+    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
+    return Object.fromEntries(
+      Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string")
+    );
+  } catch {
+    return {};
+  }
+}
+function configFile(root) {
+  for (const name of CONFIG_NAMES) {
+    for (const extension of CONFIG_EXTENSIONS) {
+      if (existsSync2(join5(root, `${name}${extension}`))) return `${name}${extension}`;
+    }
+  }
+  return null;
+}
+
+// src/runners/descriptions.ts
+var DESCRIPTIONS = [VITEST, NODE_TEST, PYTEST];
+var UNCONFIGURED3 = {
+  ...VITEST.unconfigured,
+  ...NODE_TEST.unconfigured,
+  ...PYTEST.unconfigured
+};
+
+// src/harness/shared/coverage.ts
+var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
 
 // src/harness/shared/harness-process.ts
 var SKIPPED = /* @__PURE__ */ new Set([
@@ -816,8 +1188,8 @@ function findHarnessProcess(lookup = {}) {
 var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
 var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
-function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
-  const names = runnerNames(coverage);
+function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
+  const names = runnersOf(coverage).map((runner) => runner.name);
   const sentences = (covers, naming, wait) => [
     `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
     waitSentence(command, naming, wait),
@@ -829,7 +1201,10 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
     notCovered(coverage)
   ].join(" ");
   let text = "";
-  const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
+  const most = Math.max(
+    0,
+    ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0)
+  );
   for (const naming of ["every", "first", "none"]) {
     for (let node = most; node >= 0; node--) {
       text = sentences(coversSentence(coverage, node), naming, "plain");
@@ -861,50 +1236,44 @@ function retrySentence(command, naming) {
   const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
   return `For a failure from load or a stopped service: ${cli} <file> --reason load|environment\`, never past a real one.`;
 }
-function runnerNames(coverage) {
-  const nodeTest = coverage.nodeTest.length > 0;
-  const pytest = (coverage.pytest?.length ?? 0) > 0;
-  return [
-    ...coverage.vitest || !nodeTest && !pytest ? ["Vitest"] : [],
-    ...nodeTest ? ["node:test"] : [],
-    ...pytest ? ["pytest"] : []
-  ];
+function runnersOf(coverage) {
+  const others = DESCRIPTIONS.some((runner) => !runner.fallback && runner.built(coverage));
+  return DESCRIPTIONS.filter((runner) => runner.built(coverage) || runner.fallback && !others);
+}
+function projectsOf(covered) {
+  return "projects" in covered ? covered.projects : null;
 }
 function listed(words, conjunction) {
   if (words.length <= 2) return words.join(` ${conjunction} `);
   return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
 }
 function coversSentence(coverage, node) {
-  const suites = runnerNames(coverage).includes("Vitest") ? [
-    `${coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`}${excluded(coverage)}`
-  ] : [];
-  if (coverage.nodeTest.length > 0) {
-    const entries = coverage.nodeTest.map(
-      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
-    );
-    const list = named("project", entries, node);
-    suites.push(node === 0 ? `node:test (${list})` : `node:test ${list}`);
-  }
-  if (coverage.pytest !== void 0 && coverage.pytest.length > 0) {
-    const entries = coverage.pytest.map(
-      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
-    );
-    const list = named("project", entries, node);
-    suites.push(node === 0 ? `pytest (${list})` : `pytest ${list}`);
-  }
+  const suites = runnersOf(coverage).map(
+    (runner) => suite(runner.name, runner.covered(coverage), node)
+  );
   const files = coverage.slow?.files;
   const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
   return `Squeal covers ${listed(suites, "and")}${slow}.`;
 }
-function excluded(coverage) {
-  const entries = coverage.vitestExcluded ?? [];
+function suite(runner, covered, shown) {
+  if (!("projects" in covered)) {
+    const config = covered.config === null ? runner : `${runner} (${covered.config})`;
+    return `${config}${excluded(covered.excludedProjects)}`;
+  }
+  const entries = covered.projects.map(
+    ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
+  );
+  const list = named("project", entries, shown);
+  return shown === 0 ? `${runner} (${list})` : `${runner} ${list}`;
+}
+function excluded(entries) {
   if (entries.length === 0) return "";
   const { text, plural: plural2 } = excludedProjectsText(entries);
   return `; its ${text} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
 }
 function notCovered(coverage) {
-  const globs3 = coverage.vitestExcludedFiles ?? [];
-  const what = globs3.length === 0 ? "typecheck, build" : `typecheck, build, the ${excludedFilesText(globs3)}, which squeal.config.json excludes,`;
+  const files = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
+  const what = files.length === 0 ? "typecheck, build" : `typecheck, build, the ${files.join(", the ")}, which squeal.config.json excludes,`;
   return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
 function named(noun, entries, shown) {
@@ -956,7 +1325,7 @@ async function runBridge(stdin, module, kind, handler) {
 async function runEntry(module, kind, handler) {
   let stdin = "";
   try {
-    stdin = readFileSync2(0, "utf8");
+    stdin = readFileSync5(0, "utf8");
   } catch {
   }
   await runBridge(stdin, new URL(module), kind, handler);

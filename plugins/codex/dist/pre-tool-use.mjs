@@ -121,6 +121,7 @@ var WORKTREE_META_ROWS = {
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
+  runners: { prefix: "runners:", owner: "store/repos/test-files" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
@@ -2203,7 +2204,30 @@ function toTestFileKey(row) {
     pending: oneOfOrNull(row, "pending", PENDING2)
   };
 }
+function isProjectRunner(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.project === "string" && typeof v.runner === "string";
+}
 function createCheckRepo(conn) {
+  const runners = (worktreeId) => new Map(
+    readMetaList(conn, worktreeMetaKey("runners", worktreeId), isProjectRunner).map((e) => [
+      e.project,
+      e.runner
+    ])
+  );
+  const recordRunners = (worktreeId, named2) => {
+    const kept2 = runners(worktreeId);
+    let changed = false;
+    for (const [project, runner] of named2) {
+      if (runner === void 0 || kept2.get(project) === runner) continue;
+      kept2.set(project, runner);
+      changed = true;
+    }
+    if (!changed) return;
+    const entries = [...kept2].map(([project, runner]) => ({ project, runner }));
+    writeMetaList(conn, worktreeMetaKey("runners", worktreeId), entries);
+  };
   return {
     listByTestFile: (testFile) => conn.all(
       `SELECT c.*, ${CHECK_COLUMNS} FROM checks c WHERE c.project = ? AND c.test_path = ?
@@ -2222,7 +2246,9 @@ function createCheckRepo(conn) {
           id
         );
       }
-    })
+    }),
+    runnersOf: runners,
+    recordRunners
   };
 }
 function toCheck(row) {
@@ -4321,10 +4347,10 @@ function shellWord(word) {
   return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
 }
 function excludedProjectsText(entries) {
-  const quoted = (list, join25) => {
+  const quoted = (list, join24) => {
     const all = list.map((entry3) => JSON.stringify(entry3));
     const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join25} ${last}`;
+    return all.length === 0 ? last : `${all.join(", ")} ${join24} ${last}`;
   };
   const names = entries.filter((entry3) => !entry3.includes("*"));
   const patterns = entries.filter((entry3) => entry3.includes("*"));
@@ -4752,10 +4778,10 @@ function writeSlot(store, key, consumer, value) {
 import { posix as posix5 } from "node:path";
 function slowFiles(policy, projects) {
   const matches2 = createInputMatcher(policy.slow.include);
-  const slowProjects = new Set(
+  const slowProjects2 = new Set(
     projects.filter((project) => project.slow === true).map((project) => project.name)
   );
-  return (testFile) => slowProjects.has(testFile.project) || matches2(testFile.path);
+  return (testFile) => slowProjects2.has(testFile.project) || matches2(testFile.path);
 }
 function slowGlobs(policy, projects) {
   const globs3 = [...policy.slow.include];
@@ -5721,19 +5747,13 @@ function withFlaky(store, worktreeId, entries) {
   });
 }
 function withDependencies(store, worktreeId, header, failing) {
-  const installed = nodeFailing(store, worktreeId, failing) ? dependenciesInstalled(store, worktreeId) : void 0;
+  if (failing.length === 0) return header;
+  const runners = store.checks.runnersOf(worktreeId);
+  const node = failing.some((check) => NODE_RUNNERS.has(runners.get(check.project) ?? ""));
+  const installed = node ? dependenciesInstalled(store, worktreeId) : void 0;
   return installed === void 0 ? header : { ...header, dependenciesInstalled: installed };
 }
-var NODE_TEST_FILE = /\.[cm]?[jt]sx?$/;
-function nodeFailing(store, worktreeId, failing) {
-  if (failing.length === 0) return false;
-  const root = store.worktrees.get(worktreeId)?.root;
-  if (root === void 0) return false;
-  const { policy, problems } = loadPolicy(root);
-  if (problems.length > 0) return false;
-  const pytest = new Set(policy.pytest.map((p) => p.name));
-  return failing.some((check) => !pytest.has(check.project) && NODE_TEST_FILE.test(check.testPath));
-}
+var NODE_RUNNERS = /* @__PURE__ */ new Set(["vitest", "node-test"]);
 
 // src/core/hash/blob.ts
 import { constants } from "node:fs";
@@ -7243,7 +7263,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.307";
+  if (true) return "0.1.308";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9590,20 +9610,362 @@ function openContext(input, location2, options = {}) {
   }
 }
 
-// src/harness/shared/coverage.ts
-var VITEST_ONLY = {
-  vitest: true,
-  vitestConfig: null,
-  nodeTest: [],
-  slow: null
+// src/runners/node-test/describe.ts
+var UNCONFIGURED = { nodeTest: [] };
+var NODE_TEST = {
+  runner: "node-test",
+  name: "node:test",
+  fallback: false,
+  unconfigured: UNCONFIGURED,
+  projects: (policy) => policy.nodeTest,
+  coverage: ({ projects }) => ({ nodeTest: projects }),
+  built: (coverage) => coverage.nodeTest.length > 0,
+  covered: (coverage) => ({ projects: coverage.nodeTest }),
+  excluded: () => null,
+  context: (policy, _root, _cwd) => ({ nodeTest: policy.nodeTest }),
+  command: (words, context) => context.atRoot === false ? null : nodeTestCommand(words, context.nodeTest),
+  resolves: () => true,
+  files: (command, listing) => command.runner === "node-test" ? nodeTestFiles(command, listing) : null,
+  slowProjects: (policy) => policy.nodeTest
 };
+function nodeTestCommand(words, projects) {
+  const at = words.indexOf("--test");
+  if (at === -1) return null;
+  const argv = words.slice(1, at);
+  const args = words.slice(at + 1);
+  if (args.length === 0) return null;
+  const project = projects.find(
+    (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
+  );
+  if (project === void 0) return null;
+  if (same(project.include, args))
+    return { runner: "node-test", project: project.name, files: null };
+  if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
+  return { runner: "node-test", project: project.name, files: args };
+}
+function same(a, b) {
+  return a.length === b.length && a.every((word, i) => word === b[i]);
+}
+function nodeTestFiles(command, listing) {
+  const own = listing.files.filter((ref) => ref.project === command.project);
+  if (command.files === null) return own.length === 0 ? null : own;
+  const byPath = new Map(own.map((ref) => [ref.path, ref]));
+  const files2 = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
+  return files2.every((ref) => ref !== void 0) ? [...new Set(files2)] : null;
+}
+
+// src/runners/pytest/describe.ts
+import { realpathSync as realpathSync3 } from "node:fs";
+import { join as join19, resolve as resolve4 } from "node:path";
+
+// src/runners/pytest/environment/discover.ts
+import { existsSync as existsSync7, readdirSync as readdirSync7, readFileSync as readFileSync10, statSync as statSync2 } from "node:fs";
+import { basename as basename2, dirname as dirname6, isAbsolute as isAbsolute8, join as join18, relative as relative2, resolve as resolve3 } from "node:path";
+function projectDir(root, project) {
+  return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
+}
+function discoverEnvironment(root, project) {
+  const cwd = projectDir(root, project);
+  if (project.python !== void 0) {
+    const declared = resolve3(cwd, project.python);
+    if (isDirectory(declared)) return found("declared", declared, join18(declared, "bin", "python"));
+    if (existsSync7(declared)) return found("declared", dirname6(dirname6(declared)), declared);
+    const target = basename2(declared).startsWith("python") ? dirname6(dirname6(declared)) : declared;
+    return none(root, cwd, [declared], target);
+  }
+  const venv = join18(cwd, ".venv");
+  if (existsSync7(join18(venv, "pyvenv.cfg"))) return found("venv", venv, join18(venv, "bin", "python"));
+  const pdm = pdmPython(root, cwd);
+  if (pdm !== null) return found("pdm-python", dirname6(dirname6(pdm)), pdm);
+  return none(root, cwd, [venv, join18(cwd, ".pdm-python")], venv);
+}
+function found(source, env, python) {
+  return { kind: "found", source, env, python };
+}
+function pdmPython(root, cwd) {
+  let text2;
+  try {
+    text2 = readFileSync10(join18(cwd, ".pdm-python"), "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+  if (!isAbsolute8(text2) || toRelative(root, text2) === null || !existsSync7(text2)) return null;
+  return text2;
+}
+var LOCKFILES2 = [
+  ["uv.lock", "uv sync"],
+  ["poetry.lock", "poetry install"],
+  ["pdm.lock", "pdm install"]
+];
+var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
+function none(root, cwd, looked, target) {
+  const venv = relative2(cwd, target) || ".";
+  const dirs = [];
+  for (let dir = cwd; ; dir = dirname6(dir)) {
+    dirs.push(dir);
+    if (toRelative(root, dir) === null) break;
+  }
+  for (const dir of dirs) {
+    const hit = LOCKFILES2.find(([file]) => existsSync7(join18(dir, file)));
+    if (hit !== void 0)
+      return { kind: "none", looked, command: hit[1], from: join18(dir, hit[0]) };
+  }
+  for (const dir of dirs) {
+    const files2 = requirementsIn(dir).map((file) => join18(dir, file));
+    if (files2.length === 0) continue;
+    const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
+    const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
+    return { kind: "none", looked, command, from: files2[0] };
+  }
+  return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
+}
+function requirementsIn(dir) {
+  let names;
+  try {
+    names = readdirSync7(dir);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+  return names.filter((name) => REQUIREMENTS.test(name)).sort();
+}
+function isDirectory(path) {
+  try {
+    return statSync2(path).isDirectory();
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+
+// src/runners/pytest/describe.ts
+var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
+var PYTEST = {
+  runner: "pytest",
+  name: "pytest",
+  fallback: false,
+  unconfigured: {},
+  projects: (policy) => policy.pytest,
+  coverage: ({ projects }) => ({ pytest: projects }),
+  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
+  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
+  excluded: () => null,
+  context: (policy, root, cwd) => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
+  command: (words, context) => pytestCommand(words, context.pytest ?? []),
+  resolves: () => true,
+  files: (command, listing) => command.runner === "pytest" ? pytestFiles(command, listing) : null,
+  slowProjects: () => []
+};
+function pytestHere(root, cwd, projects) {
+  return projects.flatMap((project) => {
+    const dir = projectDir(root, project);
+    if (realPath(dir) !== cwd) return [];
+    let env = null;
+    try {
+      const found2 = discoverEnvironment(root, project);
+      if (found2.kind === "found") env = found2.env;
+    } catch {
+    }
+    return [{ project, dir, env }];
+  });
+}
+function realPath(path) {
+  try {
+    return realpathSync3(resolve4(path));
+  } catch {
+    return null;
+  }
+}
+function pytestCommand(words, here) {
+  if (here.length !== 1) return null;
+  const { project, dir, env } = here[0];
+  if (Object.keys(project.env).length > 0) return null;
+  const start = invocation(words, dir, env);
+  if (start === null) return null;
+  const rest = words.slice(start);
+  const { args } = project;
+  if (!args.every((arg, i) => rest[i] === arg)) return null;
+  const paths = [];
+  for (const word of rest.slice(args.length)) {
+    if (OUTPUT_FLAG.test(word)) continue;
+    const path = word.split("::")[0];
+    if (word.startsWith("-") || path === "") return null;
+    paths.push(resolve4(dir, path));
+  }
+  return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
+}
+function invocation(words, dir, env) {
+  const [first, second, third] = words;
+  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join19(env, "bin", name);
+  if (first === "pytest" || inEnv("pytest")) return 1;
+  if (first === "uv" && second === "run" && third === "pytest") return 3;
+  if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
+  return null;
+}
+function pytestFiles(command, listing) {
+  if (command.paths === null) return null;
+  const own = listing.files.filter((ref) => ref.project === command.project);
+  const named2 = new Set(command.paths.map((path) => listing.pathOf(path)));
+  if (![...named2].every((rel) => own.some((ref) => ref.path === rel))) return null;
+  return own.filter((ref) => named2.has(ref.path));
+}
+
+// src/runners/vitest/describe.ts
+import { existsSync as existsSync8, readFileSync as readFileSync11 } from "node:fs";
+import { isAbsolute as isAbsolute9, join as join20, relative as relative3, resolve as resolve5 } from "node:path";
+var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
+var CONFIG_NAMES = ["vitest.config", "vite.config"];
+var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+var REPORTER = "--reporter";
+var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
+var VITEST = {
+  runner: "vitest",
+  name: "Vitest",
+  fallback: true,
+  unconfigured: UNCONFIGURED2,
+  projects: () => [],
+  coverage({ policy, root, configured }) {
+    const vitest = !configured || vitestDetected(root);
+    return {
+      vitest,
+      vitestConfig: vitest ? configFile(root) : null,
+      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
+      vitestExcludedFiles: vitest ? policy.vitest.exclude : []
+    };
+  },
+  built: (coverage) => coverage.vitest,
+  covered: (coverage) => ({
+    config: coverage.vitestConfig,
+    excludedProjects: coverage.vitestExcluded ?? []
+  }),
+  // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
+  excluded(coverage) {
+    const globs3 = coverage.vitestExcludedFiles ?? [];
+    return globs3.length === 0 ? null : excludedFilesText(globs3);
+  },
+  context: (_policy, root, cwd) => ({
+    scripts: cwd === root ? rootScripts(root) : {}
+  }),
+  command: (words, context, split) => context.atRoot === false ? null : vitestCommand(words) ?? npmCommand(words, context, split),
+  // 004 D7: a file `vitest.exclude` drops is one a bare Vitest command still runs; read live, so
+  // an exclusion added since the last listing counts too (review 004 wave-12 B2).
+  resolves: (live) => live.vitest.exclude.length === 0,
+  files: (command, listing) => command.runner === "vitest" ? vitestFiles(command, listing) : null,
+  slowProjects: () => []
+};
+function vitestCommand(words) {
+  const start = words[0] === "npx" ? 1 : 0;
+  if (words[start] !== "vitest" || words[start + 1] !== "run") return null;
+  const filters = [];
+  const rest = words.slice(start + 2);
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (word === "--silent") {
+      const next = rest[i + 1];
+      if (next !== void 0 && !next.startsWith("-")) {
+        if (!SILENT_VALUES.has(next)) return null;
+        i++;
+      }
+    } else if (word.startsWith("--silent=")) {
+      if (!SILENT_VALUES.has(word.slice("--silent=".length))) return null;
+    } else if (word === REPORTER) {
+      const next = rest[i + 1];
+      if (next === void 0 || next.startsWith("-")) return null;
+      i++;
+    } else if (word.startsWith(`${REPORTER}=`)) {
+      if (word === `${REPORTER}=`) return null;
+    } else if (word.startsWith("-") || word === "" || /:\d+(-\d+)?$/.test(word)) {
+      return null;
+    } else {
+      filters.push(word);
+    }
+  }
+  return { runner: "vitest", filters };
+}
+function npmCommand(words, { scripts }, split) {
+  if (words[0] !== "npm") return null;
+  const name = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
+  if (name === void 0) return null;
+  if (!Object.hasOwn(scripts, name)) return null;
+  if (Object.hasOwn(scripts, `pre${name}`) || Object.hasOwn(scripts, `post${name}`)) return null;
+  const script = split(scripts[name]);
+  return script === null ? null : vitestCommand(script);
+}
+function vitestFiles(command, listing) {
+  const { root, configured } = listing;
+  if (listing.omitted !== 0) return null;
+  const vitest = listing.files.filter((ref) => !configured.has(ref.project));
+  if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
+  if (command.filters.length === 0) return vitest;
+  const selected = /* @__PURE__ */ new Set();
+  for (const filter of command.filters) {
+    const hits = vitest.filter((ref) => matchesFilter(join20(root, ref.path), filter, root));
+    if (hits.length === 0) return null;
+    for (const ref of hits) selected.add(ref);
+  }
+  return vitest.filter((ref) => selected.has(ref));
+}
+function matchesFilter(file, filter, root) {
+  if (isAbsolute9(filter) && file.startsWith(filter)) return true;
+  const testFile = relative3(root, file).toLocaleLowerCase();
+  const rel = relative3(root, resolve5(root, filter));
+  const relativePath = filter.endsWith("/") ? join20(rel, "/") : rel;
+  return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
+}
+function rootScripts(root) {
+  try {
+    const manifest = JSON.parse(readFileSync11(join20(root, "package.json"), "utf8"));
+    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
+    return Object.fromEntries(
+      Object.entries(manifest.scripts).filter(([, text2]) => typeof text2 === "string")
+    );
+  } catch {
+    return {};
+  }
+}
+function configFile(root) {
+  for (const name of CONFIG_NAMES) {
+    for (const extension of CONFIG_EXTENSIONS) {
+      if (existsSync8(join20(root, `${name}${extension}`))) return `${name}${extension}`;
+    }
+  }
+  return null;
+}
+
+// src/runners/descriptions.ts
+var DESCRIPTIONS = [VITEST, NODE_TEST, PYTEST];
+var UNCONFIGURED3 = {
+  ...VITEST.unconfigured,
+  ...NODE_TEST.unconfigured,
+  ...PYTEST.unconfigured
+};
+function configuredProjects(policy) {
+  return DESCRIPTIONS.flatMap((description) => description.projects(policy));
+}
+function commandContext(policy, root, cwd) {
+  return {
+    ...VITEST.context(policy, root, cwd),
+    ...NODE_TEST.context(policy, root, cwd),
+    ...PYTEST.context(policy, root, cwd),
+    atRoot: cwd === root
+  };
+}
+function describing(command) {
+  return DESCRIPTIONS.find(
+    (description) => description.runner === command.runner
+  );
+}
+
+// src/harness/shared/coverage.ts
+var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
 
 // src/core/daemon/client.ts
-import { statSync as statSync2 } from "node:fs";
+import { statSync as statSync3 } from "node:fs";
 import { createConnection } from "node:net";
 function endpointAt(socketPath) {
   try {
-    const { dev, ino, ctimeNs, birthtimeNs } = statSync2(socketPath, { bigint: true });
+    const { dev, ino, ctimeNs, birthtimeNs } = statSync3(socketPath, { bigint: true });
     return { dev, ino, ctimeNs, birthtimeNs };
   } catch {
     return null;
@@ -9613,7 +9975,7 @@ function sameEndpoint(a, b) {
   return a !== null && a.dev === b.dev && a.ino === b.ino && a.ctimeNs === b.ctimeNs && a.birthtimeNs === b.birthtimeNs;
 }
 function requestDaemon(socketPath, request, timeoutMs, endpoint) {
-  return new Promise((resolve8, reject) => {
+  return new Promise((resolve9, reject) => {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled2 = false;
@@ -9623,7 +9985,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
       clearTimeout(timer);
       socket.destroy();
       if (error) reject(error);
-      else resolve8(response);
+      else resolve9(response);
     };
     const timer = setTimeout(
       () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
@@ -9664,7 +10026,7 @@ function failure(code, message) {
 
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync7, mkdirSync as mkdirSync5 } from "node:fs";
+import { existsSync as existsSync9, mkdirSync as mkdirSync5 } from "node:fs";
 async function probeDaemon(root, timeoutMs, options = {}) {
   try {
     return (await locateDaemon(root, timeoutMs, options)).probe;
@@ -9721,7 +10083,7 @@ async function ensureDaemon(root, options = {}) {
   }
   const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync7(cli)) return "unavailable";
+  if (cli === null || !existsSync9(cli)) return "unavailable";
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return "unavailable";
@@ -9802,8 +10164,8 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
 var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
 var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
-function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
-  const names = runnerNames(coverage);
+function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
+  const names = runnersOf(coverage).map((runner) => runner.name);
   const sentences = (covers, naming, wait) => [
     `${PRIMER_OPENING}${listed2(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed2(names, "or")} to learn whether your edits broke something.`,
     waitSentence(command, naming, wait),
@@ -9815,7 +10177,10 @@ function primer(command = SQUEAL_COMMAND, coverage = VITEST_ONLY) {
     notCovered(coverage)
   ].join(" ");
   let text2 = "";
-  const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
+  const most = Math.max(
+    0,
+    ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0)
+  );
   for (const naming of ["every", "first", "none"]) {
     for (let node = most; node >= 0; node--) {
       text2 = sentences(coversSentence(coverage, node), naming, "plain");
@@ -9847,50 +10212,44 @@ function retrySentence(command, naming) {
   const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
   return `For a failure from load or a stopped service: ${cli} <file> --reason load|environment\`, never past a real one.`;
 }
-function runnerNames(coverage) {
-  const nodeTest = coverage.nodeTest.length > 0;
-  const pytest = (coverage.pytest?.length ?? 0) > 0;
-  return [
-    ...coverage.vitest || !nodeTest && !pytest ? ["Vitest"] : [],
-    ...nodeTest ? ["node:test"] : [],
-    ...pytest ? ["pytest"] : []
-  ];
+function runnersOf(coverage) {
+  const others = DESCRIPTIONS.some((runner) => !runner.fallback && runner.built(coverage));
+  return DESCRIPTIONS.filter((runner) => runner.built(coverage) || runner.fallback && !others);
+}
+function projectsOf(covered) {
+  return "projects" in covered ? covered.projects : null;
 }
 function listed2(words, conjunction) {
   if (words.length <= 2) return words.join(` ${conjunction} `);
   return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
 }
 function coversSentence(coverage, node) {
-  const suites = runnerNames(coverage).includes("Vitest") ? [
-    `${coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`}${excluded(coverage)}`
-  ] : [];
-  if (coverage.nodeTest.length > 0) {
-    const entries = coverage.nodeTest.map(
-      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
-    );
-    const list = named("project", entries, node);
-    suites.push(node === 0 ? `node:test (${list})` : `node:test ${list}`);
-  }
-  if (coverage.pytest !== void 0 && coverage.pytest.length > 0) {
-    const entries = coverage.pytest.map(
-      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
-    );
-    const list = named("project", entries, node);
-    suites.push(node === 0 ? `pytest (${list})` : `pytest ${list}`);
-  }
+  const suites = runnersOf(coverage).map(
+    (runner) => suite(runner.name, runner.covered(coverage), node)
+  );
   const files2 = coverage.slow?.files;
   const slow = coverage.slow === null ? "" : files2 === null || files2 === void 0 ? ", with slow test files not counted yet" : `, with ${files2} slow test ${files2 === 1 ? "file" : "files"} at the daemon's last listing`;
   return `Squeal covers ${listed2(suites, "and")}${slow}.`;
 }
-function excluded(coverage) {
-  const entries = coverage.vitestExcluded ?? [];
+function suite(runner, covered, shown) {
+  if (!("projects" in covered)) {
+    const config = covered.config === null ? runner : `${runner} (${covered.config})`;
+    return `${config}${excluded(covered.excludedProjects)}`;
+  }
+  const entries = covered.projects.map(
+    ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`
+  );
+  const list = named("project", entries, shown);
+  return shown === 0 ? `${runner} (${list})` : `${runner} ${list}`;
+}
+function excluded(entries) {
   if (entries.length === 0) return "";
   const { text: text2, plural: plural2 } = excludedProjectsText(entries);
   return `; its ${text2} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
 }
 function notCovered(coverage) {
-  const globs3 = coverage.vitestExcludedFiles ?? [];
-  const what = globs3.length === 0 ? "typecheck, build" : `typecheck, build, the ${excludedFilesText(globs3)}, which squeal.config.json excludes,`;
+  const files2 = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
+  const what = files2.length === 0 ? "typecheck, build" : `typecheck, build, the ${files2.join(", the ")}, which squeal.config.json excludes,`;
   return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
 function named(noun, entries, shown) {
@@ -9921,8 +10280,8 @@ ${PRIMER_OPENING}`);
 var PRIMER = primer();
 
 // src/harness/shared/deny.ts
-import { readFileSync as readFileSync11, realpathSync as realpathSync3 } from "node:fs";
-import { join as join21, resolve as resolve6 } from "node:path";
+import { realpathSync as realpathSync4 } from "node:fs";
+import { resolve as resolve7 } from "node:path";
 
 // src/core/delivery/test-command-denied.ts
 function testCommandDeniedMetaKey(worktreeId) {
@@ -9935,188 +10294,21 @@ function recordTestCommandDenied(store, consumer, revision) {
   writeSlot(store, testCommandDeniedMetaKey(consumer.worktreeId), consumer, revision);
 }
 
-// src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync8, readdirSync as readdirSync7, readFileSync as readFileSync10, statSync as statSync3 } from "node:fs";
-import { basename as basename2, dirname as dirname6, isAbsolute as isAbsolute8, join as join18, relative as relative2, resolve as resolve3 } from "node:path";
-function projectDir(root, project) {
-  return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
-}
-function discoverEnvironment(root, project) {
-  const cwd = projectDir(root, project);
-  if (project.python !== void 0) {
-    const declared = resolve3(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join18(declared, "bin", "python"));
-    if (existsSync8(declared)) return found("declared", dirname6(dirname6(declared)), declared);
-    const target = basename2(declared).startsWith("python") ? dirname6(dirname6(declared)) : declared;
-    return none(root, cwd, [declared], target);
-  }
-  const venv = join18(cwd, ".venv");
-  if (existsSync8(join18(venv, "pyvenv.cfg"))) return found("venv", venv, join18(venv, "bin", "python"));
-  const pdm = pdmPython(root, cwd);
-  if (pdm !== null) return found("pdm-python", dirname6(dirname6(pdm)), pdm);
-  return none(root, cwd, [venv, join18(cwd, ".pdm-python")], venv);
-}
-function found(source, env, python) {
-  return { kind: "found", source, env, python };
-}
-function pdmPython(root, cwd) {
-  let text2;
-  try {
-    text2 = readFileSync10(join18(cwd, ".pdm-python"), "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-  if (!isAbsolute8(text2) || toRelative(root, text2) === null || !existsSync8(text2)) return null;
-  return text2;
-}
-var LOCKFILES2 = [
-  ["uv.lock", "uv sync"],
-  ["poetry.lock", "poetry install"],
-  ["pdm.lock", "pdm install"]
-];
-var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
-function none(root, cwd, looked, target) {
-  const venv = relative2(cwd, target) || ".";
-  const dirs = [];
-  for (let dir = cwd; ; dir = dirname6(dir)) {
-    dirs.push(dir);
-    if (toRelative(root, dir) === null) break;
-  }
-  for (const dir of dirs) {
-    const hit = LOCKFILES2.find(([file]) => existsSync8(join18(dir, file)));
-    if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join18(dir, hit[0]) };
-  }
-  for (const dir of dirs) {
-    const files2 = requirementsIn(dir).map((file) => join18(dir, file));
-    if (files2.length === 0) continue;
-    const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
-    const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
-    return { kind: "none", looked, command, from: files2[0] };
-  }
-  return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
-}
-function requirementsIn(dir) {
-  let names;
-  try {
-    names = readdirSync7(dir);
-  } catch (error) {
-    if (isMissing(error)) return [];
-    throw error;
-  }
-  return names.filter((name) => REQUIREMENTS.test(name)).sort();
-}
-function isDirectory(path) {
-  try {
-    return statSync3(path).isDirectory();
-  } catch (error) {
-    if (isMissing(error)) return false;
-    throw error;
-  }
-}
-
-// src/harness/shared/test-command-pytest.ts
-import { join as join19, resolve as resolve4 } from "node:path";
-var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
-function pytestCommand(words, here) {
-  if (here.length !== 1) return null;
-  const { project, dir, env } = here[0];
-  if (Object.keys(project.env).length > 0) return null;
-  const start = invocation(words, dir, env);
-  if (start === null) return null;
-  const rest = words.slice(start);
-  const { args } = project;
-  if (!args.every((arg, i) => rest[i] === arg)) return null;
-  const paths = [];
-  for (const word of rest.slice(args.length)) {
-    if (OUTPUT_FLAG.test(word)) continue;
-    const path = word.split("::")[0];
-    if (word.startsWith("-") || path === "") return null;
-    paths.push(resolve4(dir, path));
-  }
-  return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
-}
-function invocation(words, dir, env) {
-  const [first, second, third] = words;
-  const inEnv = (name) => env !== null && first?.includes("/") === true && resolve4(dir, first) === join19(env, "bin", name);
-  if (first === "pytest" || inEnv("pytest")) return 1;
-  if (first === "uv" && second === "run" && third === "pytest") return 3;
-  if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
-  return null;
-}
-
 // src/harness/shared/test-command.ts
 function recognizeTestCommand(command, context) {
   const words = shellWords(command);
   if (words === null) return null;
-  const atRoot = context.atRoot === false ? null : vitestCommand(words) ?? npmCommand(words, context) ?? nodeTestCommand(words, context);
-  return atRoot ?? pytestCommand(words, context.pytest ?? []);
+  for (const description of DESCRIPTIONS) {
+    const recognized = description.command(words, context, shellWords);
+    if (recognized !== null) return recognized;
+  }
+  return null;
 }
 function bashCommand(input) {
   const toolInput = input.tool_input;
   if (input.tool_name !== "Bash" || typeof toolInput !== "object" || toolInput === null) return {};
   const { command } = toolInput;
   return typeof command === "string" ? { command } : {};
-}
-var REPORTER = "--reporter";
-var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
-function vitestCommand(words) {
-  const start = words[0] === "npx" ? 1 : 0;
-  if (words[start] !== "vitest" || words[start + 1] !== "run") return null;
-  const filters = [];
-  const rest = words.slice(start + 2);
-  for (let i = 0; i < rest.length; i++) {
-    const word = rest[i];
-    if (word === "--silent") {
-      const next = rest[i + 1];
-      if (next !== void 0 && !next.startsWith("-")) {
-        if (!SILENT_VALUES.has(next)) return null;
-        i++;
-      }
-    } else if (word.startsWith("--silent=")) {
-      if (!SILENT_VALUES.has(word.slice("--silent=".length))) return null;
-    } else if (word === REPORTER) {
-      const next = rest[i + 1];
-      if (next === void 0 || next.startsWith("-")) return null;
-      i++;
-    } else if (word.startsWith(`${REPORTER}=`)) {
-      if (word === `${REPORTER}=`) return null;
-    } else if (word.startsWith("-") || word === "" || /:\d+(-\d+)?$/.test(word)) {
-      return null;
-    } else {
-      filters.push(word);
-    }
-  }
-  return { runner: "vitest", filters };
-}
-function npmCommand(words, context) {
-  if (words[0] !== "npm") return null;
-  const name = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
-  if (name === void 0) return null;
-  const { scripts } = context;
-  if (!Object.hasOwn(scripts, name)) return null;
-  if (Object.hasOwn(scripts, `pre${name}`) || Object.hasOwn(scripts, `post${name}`)) return null;
-  const script = shellWords(scripts[name]);
-  return script === null ? null : vitestCommand(script);
-}
-function nodeTestCommand(words, context) {
-  const at = words.indexOf("--test");
-  if (at === -1) return null;
-  const argv = words.slice(1, at);
-  const args = words.slice(at + 1);
-  if (args.length === 0) return null;
-  const project = context.nodeTest.find(
-    (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
-  );
-  if (project === void 0) return null;
-  if (same(project.include, args))
-    return { runner: "node-test", project: project.name, files: null };
-  if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
-  return { runner: "node-test", project: project.name, files: args };
-}
-function same(a, b) {
-  return a.length === b.length && a.every((word, i) => word === b[i]);
 }
 var SPECIAL = /[|&;()<>$`\\#*?[\]{}~!\n\r]/;
 function shellWords(text2) {
@@ -10146,49 +10338,20 @@ function shellWords(text2) {
 }
 
 // src/harness/shared/test-command-files.ts
-import { isAbsolute as isAbsolute9, join as join20, relative as relative3, resolve as resolve5 } from "node:path";
-function resolveTestFiles(command, listing, root, nodeTest, omitted) {
-  if (command.runner === "node-test") {
-    const own = listing.filter((ref) => ref.project === command.project);
-    if (command.files === null) return own.length === 0 ? null : own;
-    const byPath = new Map(own.map((ref) => [ref.path, ref]));
-    const files2 = command.files.map((file) => byPath.get(worktreePath(root, file) ?? ""));
-    return files2.every((ref) => ref !== void 0) ? unique(files2) : null;
-  }
-  if (command.runner === "pytest") return pytestFiles(command, listing, root);
-  if (omitted !== 0) return null;
-  const vitest = listing.filter((ref) => !nodeTest.has(ref.project));
-  if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
-  if (command.filters.length === 0) return vitest;
-  const selected = /* @__PURE__ */ new Set();
-  for (const filter of command.filters) {
-    const hits = vitest.filter((ref) => matchesFilter(join20(root, ref.path), filter, root));
-    if (hits.length === 0) return null;
-    for (const ref of hits) selected.add(ref);
-  }
-  return vitest.filter((ref) => selected.has(ref));
-}
-function matchesFilter(file, filter, root) {
-  if (isAbsolute9(filter) && file.startsWith(filter)) return true;
-  const testFile = relative3(root, file).toLocaleLowerCase();
-  const rel = relative3(root, resolve5(root, filter));
-  const relativePath = filter.endsWith("/") ? join20(rel, "/") : rel;
-  return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
-}
-function pytestFiles(command, listing, root) {
-  if (command.paths === null) return null;
-  const own = listing.filter((ref) => ref.project === command.project);
-  const named2 = new Set(command.paths.map((path) => worktreePath(root, path)));
-  if (![...named2].every((rel) => own.some((ref) => ref.path === rel))) return null;
-  return own.filter((ref) => named2.has(ref.path));
+import { isAbsolute as isAbsolute10, relative as relative4, resolve as resolve6 } from "node:path";
+function resolveTestFiles(command, listing, root, configured, omitted) {
+  return describing(command).files(command, {
+    files: listing,
+    root,
+    configured,
+    omitted,
+    pathOf: (path) => worktreePath(root, path)
+  });
 }
 function worktreePath(root, path) {
-  const rel = relative3(root, resolve5(root, path));
-  if (rel === "" || rel === ".." || rel.startsWith("../") || isAbsolute9(rel)) return null;
+  const rel = relative4(root, resolve6(root, path));
+  if (rel === "" || rel === ".." || rel.startsWith("../") || isAbsolute10(rel)) return null;
   return rel;
-}
-function unique(files2) {
-  return [...new Set(files2)];
 }
 
 // src/harness/shared/test-command-reason.ts
@@ -10260,47 +10423,18 @@ function testCommandOf(location2, policy, call) {
   if (!policy.testCommand.denyWhenCurrent || call.toolName !== "Bash") return null;
   if (call.command === void 0) return null;
   const { root } = location2;
-  const cwd = realPath(call.cwd);
+  const cwd = realPath2(call.cwd);
   if (cwd === null || cwd !== root && !cwd.startsWith(`${root}/`)) return null;
-  return recognizeTestCommand(call.command, {
-    scripts: cwd === root ? rootScripts(root) : {},
-    nodeTest: policy.nodeTest,
-    pytest: pytestHere(root, cwd, policy.pytest),
-    atRoot: cwd === root
-  });
+  return recognizeTestCommand(call.command, commandContext(policy, root, cwd));
 }
-function pytestHere(root, cwd, projects) {
-  return projects.flatMap((project) => {
-    const dir = projectDir(root, project);
-    if (realPath(dir) !== cwd) return [];
-    let env = null;
-    try {
-      const found2 = discoverEnvironment(root, project);
-      if (found2.kind === "found") env = found2.env;
-    } catch {
-    }
-    return [{ project, dir, env }];
-  });
-}
-function realPath(path) {
+function realPath2(path) {
   try {
-    return realpathSync3(resolve6(path));
+    return realpathSync4(resolve7(path));
   } catch {
     return null;
   }
 }
-function rootScripts(root) {
-  try {
-    const manifest = JSON.parse(readFileSync11(join21(root, "package.json"), "utf8"));
-    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
-    return Object.fromEntries(
-      Object.entries(manifest.scripts).filter(([, text2]) => typeof text2 === "string")
-    );
-  } catch {
-    return {};
-  }
-}
-function denyCurrentTestCommand(context, command, nodeTest, now) {
+function denyCurrentTestCommand(context, command, now) {
   const { store, consumer } = context;
   return store.transaction(() => {
     if (store.consumers.get(consumer) === null || testCommandDenied(store, consumer)) return null;
@@ -10309,15 +10443,14 @@ function denyCurrentTestCommand(context, command, nodeTest, now) {
     const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
     if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
     if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
-    const live = command.runner === "vitest" ? readPolicy(context.root) : null;
-    if (live !== null && live.vitest.exclude.length > 0) return null;
-    const pytest = live?.pytest ?? [];
-    const names = new Set([...nodeTest, ...pytest].map((p) => p.name));
+    const live = readPolicy(context.root);
+    if (!describing(command).resolves(live)) return null;
+    const configured = new Set(configuredProjects(live).map((p) => p.name));
     const files2 = resolveTestFiles(
       command,
       keys.map((k) => k.testFile),
       context.root,
-      names,
+      configured,
       readOmittedTestFiles(store, consumer.worktreeId)
     );
     if (files2 === null) return null;
@@ -10354,33 +10487,33 @@ import {
   chmodSync as chmodSync2,
   copyFileSync,
   cpSync,
-  existsSync as existsSync9,
+  existsSync as existsSync10,
   mkdirSync as mkdirSync6,
   readdirSync as readdirSync8,
   readFileSync as readFileSync12,
   renameSync as renameSync2,
   rmSync as rmSync4
 } from "node:fs";
-import { basename as basename3, dirname as dirname7, join as join22, resolve as resolve7 } from "node:path";
+import { basename as basename3, dirname as dirname7, join as join21, resolve as resolve8 } from "node:path";
 var COPIED = ["dist", "skills", ".codex-plugin"];
-var MANIFEST = join22(".codex-plugin", "plugin.json");
-var CLI = join22("dist", "cli", "squeal.mjs");
-var SKILL = join22("skills", "squeal", "SKILL.md");
-var LAUNCHER_SOURCE = join22("bin", "squeal-launcher");
-var LAUNCHER = join22("bin", "squeal");
+var MANIFEST = join21(".codex-plugin", "plugin.json");
+var CLI = join21("dist", "cli", "squeal.mjs");
+var SKILL = join21("skills", "squeal", "SKILL.md");
+var LAUNCHER_SOURCE = join21("bin", "squeal-launcher");
+var LAUNCHER = join21("bin", "squeal");
 var VERSION = /^\d+\.\d+\.\d+$/;
-var CODEX_CACHE = join22("plugins", "cache", "hearsay", "squeal");
-var CODEX_DATA = join22("plugins", "data", "squeal-hearsay");
+var CODEX_CACHE = join21("plugins", "cache", "hearsay", "squeal");
+var CODEX_DATA = join21("plugins", "data", "squeal-hearsay");
 var LEFT = /^\..+\.(\d+)\.(tmp|gone)$/;
 function dataLauncher(data) {
-  return join22(data, LAUNCHER);
+  return join21(data, LAUNCHER);
 }
 function copyOf(data, version) {
-  return join22(data, "versions", version);
+  return join21(data, "versions", version);
 }
 function manifestVersion2(dir) {
   try {
-    const manifest = JSON.parse(readFileSync12(join22(dir, MANIFEST), "utf8"));
+    const manifest = JSON.parse(readFileSync12(join21(dir, MANIFEST), "utf8"));
     return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : null;
   } catch {
     return null;
@@ -10388,8 +10521,8 @@ function manifestVersion2(dir) {
 }
 function kept(data, version, file) {
   const dir = copyOf(data, version);
-  const path = join22(dir, file);
-  return existsSync9(path) && manifestVersion2(dir) === version ? path : null;
+  const path = join21(dir, file);
+  return existsSync10(path) && manifestVersion2(dir) === version ? path : null;
 }
 function keptCli(data, version) {
   return kept(data, version, CLI);
@@ -10400,20 +10533,20 @@ function dataOfCopy(cli) {
 }
 function keepVersion({ root, data, version }) {
   const dir = copyOf(data, version);
-  if (!VERSION.test(version) || !existsSync9(join22(root, CLI))) return null;
+  if (!VERSION.test(version) || !existsSync10(join21(root, CLI))) return null;
   try {
-    const versions = join22(data, "versions");
+    const versions = join21(data, "versions");
     const whole = keptCli(data, version) !== null;
-    if (!whole && existsSync9(dir) && manifestVersion2(dir) !== version) remove(versions, version);
+    if (!whole && existsSync10(dir) && manifestVersion2(dir) !== version) remove(versions, version);
     if (manifestVersion2(root) !== version) return whole ? dir : null;
     let made = false;
     if (!whole) {
       mkdirSync6(versions, { recursive: true });
-      const part = join22(versions, `.${version}.${process.pid}.tmp`);
+      const part = join21(versions, `.${version}.${process.pid}.tmp`);
       rmSync4(part, { recursive: true, force: true });
       for (const name of COPIED) {
-        if (existsSync9(join22(root, name))) {
-          cpSync(join22(root, name), join22(part, name), { recursive: true, dereference: true });
+        if (existsSync10(join21(root, name))) {
+          cpSync(join21(root, name), join21(part, name), { recursive: true, dereference: true });
         }
       }
       try {
@@ -10432,13 +10565,13 @@ function keepVersion({ root, data, version }) {
 }
 function writeLauncher(root, data, version) {
   const target = dataLauncher(data);
-  const source = join22(root, LAUNCHER_SOURCE);
-  if (!existsSync9(source)) return;
-  if (existsSync9(target)) {
+  const source = join21(root, LAUNCHER_SOURCE);
+  if (!existsSync10(source)) return;
+  if (existsSync10(target)) {
     if (copies(data).some((v) => isNewerVersion(v, version))) return;
     if (readFileSync12(target, "utf8") === readFileSync12(source, "utf8")) return;
   }
-  mkdirSync6(join22(data, "bin"), { recursive: true });
+  mkdirSync6(join21(data, "bin"), { recursive: true });
   const part = `${target}.${process.pid}.tmp`;
   copyFileSync(source, part);
   chmodSync2(part, 493);
@@ -10446,13 +10579,13 @@ function writeLauncher(root, data, version) {
 }
 function copies(data) {
   try {
-    return readdirSync8(join22(data, "versions")).filter((v) => VERSION.test(v));
+    return readdirSync8(join21(data, "versions")).filter((v) => VERSION.test(v));
   } catch {
     return [];
   }
 }
 function prune3(data, version) {
-  const versions = join22(data, "versions");
+  const versions = join21(data, "versions");
   const others = copies(data).filter((v) => v !== version);
   const keep = others.reduce(
     (a, b) => a === null || isNewerVersion(b, a) ? b : a,
@@ -10464,16 +10597,16 @@ function prune3(data, version) {
     return left !== null && !alive(Number(left[1]));
   });
   for (const other of others) {
-    if (other !== keep && running !== null && !running.includes(`${join22(versions, other)}/`)) {
+    if (other !== keep && running !== null && !running.includes(`${join21(versions, other)}/`)) {
       gone.push(other);
     }
   }
   for (const name of gone) remove(versions, name);
 }
 function remove(versions, name) {
-  const doomed = join22(versions, `.${name}.${process.pid}.gone`);
+  const doomed = join21(versions, `.${name}.${process.pid}.gone`);
   try {
-    renameSync2(join22(versions, name), doomed);
+    renameSync2(join21(versions, name), doomed);
     rmSync4(doomed, { recursive: true, force: true });
   } catch {
   }
@@ -10492,13 +10625,13 @@ function alive(pid) {
 }
 
 // src/harness/codex/command.ts
-import { existsSync as existsSync10 } from "node:fs";
-import { join as join23 } from "node:path";
+import { existsSync as existsSync11 } from "node:fs";
+import { join as join22 } from "node:path";
 function codexCommand(env, bundleCli) {
   const data = env.PLUGIN_DATA === void 0 || env.PLUGIN_DATA === "" ? dataOfCopy(bundleCli) : env.PLUGIN_DATA;
-  if (data !== null && existsSync10(dataLauncher(data))) return shellWord(dataLauncher(data));
+  if (data !== null && existsSync11(dataLauncher(data))) return shellWord(dataLauncher(data));
   const root = env.PLUGIN_ROOT;
-  const cli = root === void 0 || root === "" ? bundleCli : join23(root, "dist/cli/squeal.mjs");
+  const cli = root === void 0 || root === "" ? bundleCli : join22(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 
@@ -10578,7 +10711,7 @@ var preToolUse = (input, location2, deps) => {
       edit: input.tool_name === "apply_patch",
       toolName: input.tool_name ?? "tool",
       command: deps.command
-    }) ?? (testCommand === null ? null : denyCurrentTestCommand(context, testCommand, policy.nodeTest, (deps.now ?? Date.now)()));
+    }) ?? (testCommand === null ? null : denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)()));
     return reason === null ? null : deny(reason, deps.command);
   });
 };
@@ -10590,7 +10723,7 @@ import { fileURLToPath as fileURLToPath2 } from "node:url";
 // src/harness/shared/session-root.ts
 import { createHash as createHash6 } from "node:crypto";
 import {
-  existsSync as existsSync11,
+  existsSync as existsSync12,
   lstatSync as lstatSync5,
   readdirSync as readdirSync9,
   readFileSync as readFileSync13,
@@ -10598,7 +10731,7 @@ import {
   rmSync as rmSync5,
   writeFileSync as writeFileSync2
 } from "node:fs";
-import { join as join24 } from "node:path";
+import { join as join23 } from "node:path";
 var AGENT_SEPARATOR = "\0";
 function rootKey(input) {
   return input.agent_id === void 0 ? input.session_id : `${input.session_id}${AGENT_SEPARATOR}${input.agent_id}`;
@@ -10628,8 +10761,8 @@ function forgetRoot(input, roots) {
   roots?.delete(rootKey(input));
 }
 function sessionRootFiles(env) {
-  const dir = join24(runtimeDir(env), "squeal-sessions");
-  const path = (key) => join24(dir, keyFile(key));
+  const dir = join23(runtimeDir(env), "squeal-sessions");
+  const path = (key) => join23(dir, keyFile(key));
   return {
     get: (key) => {
       try {
@@ -10654,7 +10787,7 @@ function sessionRootFiles(env) {
         if (key.includes(AGENT_SEPARATOR)) return;
         const agents = `${keyFile(key)}-`;
         for (const name of readdirSync9(dir)) {
-          if (name.startsWith(agents)) rmSync5(join24(dir, name), { force: true });
+          if (name.startsWith(agents)) rmSync5(join23(dir, name), { force: true });
         }
       } catch {
       }
@@ -10676,7 +10809,7 @@ function readKept(file) {
   if (!isRecord(kept2) || typeof kept2.root !== "string" || typeof kept2.commonDir !== "string") {
     return null;
   }
-  return existsSync11(kept2.root) ? { root: kept2.root, commonDir: kept2.commonDir } : null;
+  return existsSync12(kept2.root) ? { root: kept2.root, commonDir: kept2.commonDir } : null;
 }
 
 // src/harness/codex/input.ts

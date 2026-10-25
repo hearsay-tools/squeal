@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.307";
+  if (true) return "0.1.308";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -406,6 +406,7 @@ var init_store = __esm({
       slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
       failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
       failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
+      runners: { prefix: "runners:", owner: "store/repos/test-files" },
       reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
       interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
       heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
@@ -7594,7 +7595,30 @@ function toTestFileKey(row2) {
     pending: oneOfOrNull(row2, "pending", PENDING2)
   };
 }
+function isProjectRunner(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.project === "string" && typeof v.runner === "string";
+}
 function createCheckRepo(conn) {
+  const runners2 = (worktreeId) => new Map(
+    readMetaList(conn, worktreeMetaKey("runners", worktreeId), isProjectRunner).map((e) => [
+      e.project,
+      e.runner
+    ])
+  );
+  const recordRunners = (worktreeId, named) => {
+    const kept3 = runners2(worktreeId);
+    let changed2 = false;
+    for (const [project, runner] of named) {
+      if (runner === void 0 || kept3.get(project) === runner) continue;
+      kept3.set(project, runner);
+      changed2 = true;
+    }
+    if (!changed2) return;
+    const entries3 = [...kept3].map(([project, runner]) => ({ project, runner }));
+    writeMetaList(conn, worktreeMetaKey("runners", worktreeId), entries3);
+  };
   return {
     listByTestFile: (testFile) => conn.all(
       `SELECT c.*, ${CHECK_COLUMNS} FROM checks c WHERE c.project = ? AND c.test_path = ?
@@ -7613,7 +7637,9 @@ function createCheckRepo(conn) {
           id2
         );
       }
-    })
+    }),
+    runnersOf: runners2,
+    recordRunners
   };
 }
 function toCheck(row2) {
@@ -7628,7 +7654,9 @@ var METHODS, PENDING2, LIVE;
 var init_test_files = __esm({
   "src/core/store/repos/test-files.ts"() {
     "use strict";
+    init_types();
     init_codec();
+    init_meta_list();
     METHODS = ["static imports plus declared inputs"];
     PENDING2 = ["queued", "running"];
     LIVE = `w.daemon_socket IS NOT NULL
@@ -11165,7 +11193,6 @@ function withTestFileFrames(store, worktreeId, failures) {
 var init_attribution = __esm({
   "src/core/delivery/attribution.ts"() {
     "use strict";
-    init_policy2();
     init_keys();
     init_retry();
     init_state2();
@@ -17140,6 +17167,14 @@ function mergeApplied(applied) {
   }
   return merged2;
 }
+function runners(keys, rows, applied, setups) {
+  const projects2 = [
+    ...rows.map((row2) => row2.testFile.project),
+    ...applied.flatMap(({ results: results2 }) => results2.map((r) => r.check.project)),
+    ...setups.map(({ check }) => check.project)
+  ];
+  return new Map(projects2.map((project) => [project, keys.runnerOf(project)]));
+}
 var UNPROBED, MAX_DISCARDS, Ledger;
 var init_ledger = __esm({
   "src/core/scheduler/ledger.ts"() {
@@ -17644,6 +17679,7 @@ var init_ledger = __esm({
             });
           }
           if (retired.length > 0) sink.retire(worktreeId, retired);
+          store.checks.recordRunners(worktreeId, runners(this.context.keys, rows, applied, setups));
           for (const outcome2 of setups) sink.setupOutcome(worktreeId, revision, outcome2);
           for (const [checkpointId, testFiles2] of this.#byCheckpoint(rows)) {
             this.#refresh(revision, checkpointId, testFiles2);
@@ -22801,6 +22837,10 @@ var init_keying = __esm({
       /** The files `project`'s environment hash was last read with (D3); none before the first read. */
       environmentFiles(project) {
         return this.#environments.get(project)?.files ?? [];
+      }
+      /** The runner `project`'s environment hash names (spec 016 D3); none before the first read. */
+      runnerOf(project) {
+        return this.#environments.get(project)?.runnerName;
       }
       /** What the stability check compares for a test file: its closure, its project's environment files, its lockfile. */
       stabilityPaths(ref2) {
@@ -28417,7 +28457,7 @@ var init_read = __esm({
   }
 });
 
-// src/runners/node-test/run/node-options.ts
+// src/runners/process/node-options.ts
 function tokenizeNodeOptions(value) {
   const tokens = [];
   let quoted2 = false;
@@ -28476,12 +28516,12 @@ function splitFlag(token) {
   return equals === -1 ? [token, void 0] : [token.slice(0, equals), token.slice(equals + 1)];
 }
 var init_node_options = __esm({
-  "src/runners/node-test/run/node-options.ts"() {
+  "src/runners/process/node-options.ts"() {
     "use strict";
   }
 });
 
-// src/runners/node-test/recorders.ts
+// src/runners/process/recorders.ts
 import { fileURLToPath as fileURLToPath8 } from "node:url";
 function isSquealRecorder(specifier) {
   let path = specifier;
@@ -28514,14 +28554,6 @@ function withoutSquealRecorders(tokens) {
   }
   return kept3;
 }
-function projectEnv(project, inherited) {
-  const { NODE_TEST_CONTEXT: _, [OBSERVE_VARIABLE]: outer, ...base } = inherited;
-  const options = base.NODE_OPTIONS === void 0 ? void 0 : ownNodeOptions(base.NODE_OPTIONS);
-  if (options === void 0) delete base.NODE_OPTIONS;
-  else base.NODE_OPTIONS = options;
-  if (outer !== void 0) base[OBSERVE_VARIABLE] = UNOBSERVED;
-  return { ...base, ...project.env };
-}
 function ownNodeOptions(options) {
   const tokens = tokenizeNodeOptions(options);
   if (tokens === null) return options;
@@ -28532,9 +28564,9 @@ function ownNodeOptions(options) {
 function asWritten(token) {
   return /[ "]/.test(token) ? quoteNodeOption(token) : token;
 }
-var RECORDERS, OBSERVE_VARIABLE, UNOBSERVED, PRELOAD_FLAGS;
+var RECORDERS, UNOBSERVED, PRELOAD_FLAGS;
 var init_recorders = __esm({
-  "src/runners/node-test/recorders.ts"() {
+  "src/runners/process/recorders.ts"() {
     "use strict";
     init_node_options();
     RECORDERS = [
@@ -28543,7 +28575,6 @@ var init_recorders = __esm({
       "/src/runners/observe/recorder.cjs",
       "/src/runners/node-test/runtime/recorder.cjs"
     ];
-    OBSERVE_VARIABLE = "SQUEAL_OBSERVE";
     UNOBSERVED = JSON.stringify({ out: "" });
     PRELOAD_FLAGS = /* @__PURE__ */ new Set(["--require", "-r", "--import"]);
   }
@@ -28567,7 +28598,7 @@ function observeEnv(recorder, settings, inherited) {
   const option = recorderOption(recorder, options);
   return {
     NODE_OPTIONS: options === "" ? option : `${option} ${options}`,
-    [OBSERVE_VARIABLE2]: JSON.stringify(settings)
+    [OBSERVE_VARIABLE]: JSON.stringify(settings)
   };
 }
 function unobservedEnv(inherited) {
@@ -28575,17 +28606,17 @@ function unobservedEnv(inherited) {
   const options = inherited.NODE_OPTIONS;
   const own = options === void 0 ? void 0 : ownNodeOptions(options);
   if (own !== options) env.NODE_OPTIONS = own ?? "";
-  if (inherited[OBSERVE_VARIABLE2] !== void 0) env[OBSERVE_VARIABLE2] = UNOBSERVED;
+  if (inherited[OBSERVE_VARIABLE] !== void 0) env[OBSERVE_VARIABLE] = UNOBSERVED;
   return env;
 }
-var RECORDER_VERSION, OBSERVE_VARIABLE2, CANDIDATES2;
+var RECORDER_VERSION, OBSERVE_VARIABLE, CANDIDATES2;
 var init_runtime2 = __esm({
   "src/runners/observe/runtime.ts"() {
     "use strict";
-    init_recorders();
     init_node_options();
+    init_recorders();
     RECORDER_VERSION = "3";
-    OBSERVE_VARIABLE2 = "SQUEAL_OBSERVE";
+    OBSERVE_VARIABLE = "SQUEAL_OBSERVE";
     CANDIDATES2 = ["../observe/", "./observe/", "./"];
   }
 });
@@ -30847,8 +30878,8 @@ var VitestObserver;
 var init_observe2 = __esm({
   "src/runners/vitest/observe.ts"() {
     "use strict";
-    init_recorders();
     init_observe();
+    init_recorders();
     VitestObserver = class {
       constructor(paths, enabled) {
         this.paths = paths;
@@ -32266,6 +32297,24 @@ var init_adapter_files = __esm({
   }
 });
 
+// src/runners/node-test/recorders.ts
+function projectEnv(project, inherited) {
+  const { NODE_TEST_CONTEXT: _, [OBSERVE_VARIABLE2]: outer, ...base } = inherited;
+  const options = base.NODE_OPTIONS === void 0 ? void 0 : ownNodeOptions(base.NODE_OPTIONS);
+  if (options === void 0) delete base.NODE_OPTIONS;
+  else base.NODE_OPTIONS = options;
+  if (outer !== void 0) base[OBSERVE_VARIABLE2] = UNOBSERVED;
+  return { ...base, ...project.env };
+}
+var OBSERVE_VARIABLE2;
+var init_recorders2 = __esm({
+  "src/runners/node-test/recorders.ts"() {
+    "use strict";
+    init_recorders();
+    OBSERVE_VARIABLE2 = "SQUEAL_OBSERVE";
+  }
+});
+
 // src/runners/node-test/adapter-environment.ts
 import { execFile as execFile2 } from "node:child_process";
 import { relative as relative11, sep as sep10 } from "node:path";
@@ -32320,7 +32369,7 @@ var init_adapter_environment = __esm({
     "use strict";
     init_fs();
     init_adapter_files();
-    init_recorders();
+    init_recorders2();
     PROBE_TIMEOUT_MS = 3e4;
     PROBE = 'process.stdout.write(process.version + "\\n" + process.execPath + "\\n")';
     NODE_UNAVAILABLE = "unavailable";
@@ -48707,6 +48756,50 @@ var init_graph3 = __esm({
   }
 });
 
+// src/runners/process/group.ts
+import { spawn as spawn4 } from "node:child_process";
+import { closeSync as closeSync2, openSync as openSync2 } from "node:fs";
+function startGroup(options) {
+  const out2 = openSync2(options.stdout, "a");
+  const err2 = openSync2(options.stderr, "a");
+  const child = spawn4(options.command, options.args, {
+    cwd: options.cwd,
+    env: options.env,
+    detached: true,
+    stdio: ["ignore", out2, err2]
+  });
+  closeSync2(out2);
+  closeSync2(err2);
+  if (child.pid !== void 0) lowerProcess(child.pid);
+  let done = false;
+  const kill = (signal2) => {
+    if (child.pid === void 0) return;
+    try {
+      process.kill(-child.pid, signal2);
+    } catch {
+    }
+  };
+  const exited2 = new Promise((resolve28) => {
+    child.once("error", (error) => {
+      done = true;
+      resolve28({ code: null, signal: null, error: error.message });
+    });
+    child.once("exit", (code, signal2) => {
+      if (done) return;
+      done = true;
+      kill("SIGKILL");
+      resolve28({ code, signal: signal2, error: null });
+    });
+  });
+  return { exited: exited2, kill: (signal2) => done ? void 0 : kill(signal2) };
+}
+var init_group = __esm({
+  "src/runners/process/group.ts"() {
+    "use strict";
+    init_low_priority();
+  }
+});
+
 // src/runners/node-test/runtime.ts
 import { existsSync as existsSync27 } from "node:fs";
 import { fileURLToPath as fileURLToPath11 } from "node:url";
@@ -48836,50 +48929,6 @@ var init_observed3 = __esm({
   }
 });
 
-// src/runners/node-test/run/process.ts
-import { spawn as spawn4 } from "node:child_process";
-import { closeSync as closeSync2, openSync as openSync2 } from "node:fs";
-function startGroup(options) {
-  const out2 = openSync2(options.stdout, "a");
-  const err2 = openSync2(options.stderr, "a");
-  const child = spawn4(options.command, options.args, {
-    cwd: options.cwd,
-    env: options.env,
-    detached: true,
-    stdio: ["ignore", out2, err2]
-  });
-  closeSync2(out2);
-  closeSync2(err2);
-  if (child.pid !== void 0) lowerProcess(child.pid);
-  let done = false;
-  const kill = (signal2) => {
-    if (child.pid === void 0) return;
-    try {
-      process.kill(-child.pid, signal2);
-    } catch {
-    }
-  };
-  const exited2 = new Promise((resolve28) => {
-    child.once("error", (error) => {
-      done = true;
-      resolve28({ code: null, signal: null, error: error.message });
-    });
-    child.once("exit", (code, signal2) => {
-      if (done) return;
-      done = true;
-      kill("SIGKILL");
-      resolve28({ code, signal: signal2, error: null });
-    });
-  });
-  return { exited: exited2, kill: (signal2) => done ? void 0 : kill(signal2) };
-}
-var init_process = __esm({
-  "src/runners/node-test/run/process.ts"() {
-    "use strict";
-    init_low_priority();
-  }
-});
-
 // src/runners/node-test/run/reads.ts
 import { mkdirSync as mkdirSync12 } from "node:fs";
 import { tmpdir as tmpdir4 } from "node:os";
@@ -48916,7 +48965,7 @@ var init_reads = __esm({
         return {
           ...env,
           NODE_OPTIONS: options === "" ? option : `${option} ${options}`,
-          [OBSERVE_VARIABLE2]: JSON.stringify(settings)
+          [OBSERVE_VARIABLE]: JSON.stringify(settings)
         };
       }
       /** What each of `completed` read, none for one that read none; the recorder's files are read and removed. */
@@ -49238,12 +49287,12 @@ var init_run2 = __esm({
     init_fs();
     init_worktree_paths();
     init_observe();
-    init_recorders();
+    init_group();
+    init_node_options();
+    init_recorders2();
     init_runtime3();
     init_events();
-    init_node_options();
     init_observed3();
-    init_process();
     init_reads();
     init_report();
     KILL_GRACE_MS = 2e3;
@@ -49429,13 +49478,13 @@ var init_adapter_project = __esm({
     init_closure();
     init_glob();
     init_types();
+    init_node_options();
     init_adapter_environment();
     init_adapter_files();
     init_adapter_observed();
     init_enumerate();
     init_graph3();
-    init_recorders();
-    init_node_options();
+    init_recorders2();
     init_run2();
     NAMED_INCOMPLETE = 3;
   }
@@ -56942,7 +56991,7 @@ var init_run3 = __esm({
     init_fs();
     init_worktree_paths();
     init_focus();
-    init_process();
+    init_group();
     init_basetemp();
     init_batches();
     init_bytecode();
@@ -67425,13 +67474,13 @@ import { basename as basename25, dirname as dirname43, join as join100, relative
 var BLOCK_VERSION = 1;
 var BEGIN = /^<!-- squeal:begin v(\d+)\b.*-->\s*$/;
 var END2 = /^<!-- squeal:end -->\s*$/;
-function blockText(runners = { vitest: true, nodeTest: false }) {
-  if (runners.pytest === true) return withPytest(runners);
+function blockText(runners2 = { vitest: true, nodeTest: false }) {
+  if (runners2.pytest === true) return withPytest(runners2);
   const names4 = [
-    ...runners.vitest || !runners.nodeTest ? ["Vitest"] : [],
-    ...runners.nodeTest ? ["node:test"] : []
+    ...runners2.vitest || !runners2.nodeTest ? ["Vitest"] : [],
+    ...runners2.nodeTest ? ["node:test"] : []
   ];
-  const fallback = names4.includes("Vitest") ? `\`npx vitest run\`${runners.nodeTest ? " and the node:test projects" : ""}` : "the node:test projects yourself";
+  const fallback = names4.includes("Vitest") ? `\`npx vitest run\`${runners2.nodeTest ? " and the node:test projects" : ""}` : "the node:test projects yourself";
   return [
     `<!-- squeal:begin v${BLOCK_VERSION} (managed by Squeal setup; edits inside are replaced) -->`,
     "## Tests",
@@ -67441,14 +67490,14 @@ function blockText(runners = { vitest: true, nodeTest: false }) {
     ""
   ].join("\n");
 }
-function withPytest(runners) {
+function withPytest(runners2) {
   const names4 = [
-    ...runners.vitest ? ["Vitest"] : [],
-    ...runners.nodeTest ? ["node:test"] : [],
+    ...runners2.vitest ? ["Vitest"] : [],
+    ...runners2.nodeTest ? ["node:test"] : [],
     "pytest"
   ];
-  const projects2 = `the ${runners.nodeTest ? "node:test and pytest" : "pytest"} projects`;
-  const fallback = runners.vitest ? `\`npx vitest run\` and ${projects2}` : `${projects2} yourself`;
+  const projects2 = `the ${runners2.nodeTest ? "node:test and pytest" : "pytest"} projects`;
+  const fallback = runners2.vitest ? `\`npx vitest run\` and ${projects2}` : `${projects2} yourself`;
   return [
     `<!-- squeal:begin v${BLOCK_VERSION} (managed by Squeal setup; edits inside are replaced) -->`,
     "## Tests",
@@ -67682,10 +67731,10 @@ init_policy2();
 init_fs();
 init_glob();
 import { posix as posix12 } from "node:path";
-function excludeInto(runners, glob2, files2, isVitest) {
+function excludeInto(runners2, glob2, files2, isVitest) {
   const into = [];
-  if (runners.vitest && files2.some(isVitest)) into.push({ runner: "vitest", glob: glob2 });
-  for (const p of runners.nodeTest) {
+  if (runners2.vitest && files2.some(isVitest)) into.push({ runner: "vitest", glob: glob2 });
+  for (const p of runners2.nodeTest) {
     const lists = matcher(p.include.map((g2) => posix12.join(p.cwd, g2)));
     if (!files2.some(lists)) continue;
     const relative24 = p.cwd === "" ? glob2 : glob2.startsWith(`${p.cwd}/`) ? glob2.slice(p.cwd.length + 1) : null;
@@ -68307,8 +68356,8 @@ function names2(facts, from, pkg, s, dir2) {
 // src/cli/setup/candidates.ts
 var SLOW_SCRIPTS = ["test:e2e", "e2e", "test:integration", "test:package"];
 var NODE_TEST2 = "node:test project";
-async function slowCandidates(facts, policy, runners) {
-  const projects2 = runners.nodeTest.map((p) => ({
+async function slowCandidates(facts, policy, runners2) {
+  const projects2 = runners2.nodeTest.map((p) => ({
     name: p.name,
     files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix16.join(p.cwd, g2)))),
     slow: policy.nodeTest.some((q) => q.name === p.name && q.slow === true)
@@ -68361,12 +68410,12 @@ async function slowCandidates(facts, policy, runners) {
       declaredSlow: files2.some(isDeclared),
       declaredInputs: inputsFor(policy, files2),
       buildOutputs: outputs.get(dir2) ?? [],
-      exclude: excludeProposal(dir2, files2, evidenced, universe, runners, isVitest)
+      exclude: excludeProposal(dir2, files2, evidenced, universe, runners2, isVitest)
     });
   }
   return { groups, unresolvedScripts };
 }
-function excludeProposal(dir2, files2, evidenced, universe, runners, isVitest) {
+function excludeProposal(dir2, files2, evidenced, universe, runners2, isVitest) {
   const named = files2.filter((f) => evidenced.has(f));
   if (named.length === 0) return null;
   const glob2 = dir2 === "" ? "**" : `${dir2}/**`;
@@ -68375,7 +68424,7 @@ function excludeProposal(dir2, files2, evidenced, universe, runners, isVitest) {
   return {
     globs: globs3,
     into: globs3.flatMap(
-      (g2) => excludeInto(runners, g2, selected.filter(globMatcher([g2])), isVitest)
+      (g2) => excludeInto(runners2, g2, selected.filter(globMatcher([g2])), isVitest)
     ),
     kept: files2.filter((f) => !named.includes(f))
   };
@@ -68735,7 +68784,7 @@ function overlapFix(a, b, aFiles, bFiles) {
 function under2(dir2, parent2) {
   return parent2 === "" || dir2 === parent2 || dir2.startsWith(`${parent2}/`);
 }
-function warmupOf(facts, runners, projects2) {
+function warmupOf(facts, runners2, projects2) {
   const { testFiles: testFiles2 } = facts;
   if (testFiles2.source === "store") {
     const runs2 = testFiles2.runs ?? testFiles2.paths.length;
@@ -68747,7 +68796,7 @@ function warmupOf(facts, runners, projects2) {
     };
   }
   const listed5 = [
-    ...runners.vitest ? [testFiles2.paths] : [],
+    ...runners2.vitest ? [testFiles2.paths] : [],
     ...projects2.map((p) => projectFiles(facts, p))
   ];
   const runs = listed5.reduce((sum, files2) => sum + files2.length, 0);
@@ -68769,9 +68818,9 @@ async function readPlan(root, options) {
   const nodeTest = nodeTestProjects2(facts, policy, raw);
   const { projects: projects2 } = nodeTest;
   const pytest = pytestRunners(facts, policy, raw, options.env);
-  const runners = readRunners(facts, nodeTest, pytest);
+  const runners2 = readRunners(facts, nodeTest, pytest);
   const exists3 = existsSync41(join106(root, POLICY_FILE));
-  const slow = await slowCandidates(facts, policy, runners);
+  const slow = await slowCandidates(facts, policy, runners2);
   const config = {
     path: POLICY_FILE,
     exists: exists3,
@@ -68779,7 +68828,7 @@ async function readPlan(root, options) {
     elsewhere: exists3 ? null : await configElsewhere(root),
     problems,
     missingKeys: [
-      ...exists3 && runners.nodeTest.some((p) => p.source === "seed") ? ["nodeTest"] : [],
+      ...exists3 && runners2.nodeTest.some((p) => p.source === "seed") ? ["nodeTest"] : [],
       // Row 005-70: an exclude candidate's default is the runner's `exclude`, not `slow`;
       // B1: the files it keeps are still slow candidates.
       ...exists3 && !(isRecord(raw) && "slow" in raw) && slow.groups.some((g2) => g2.defaultSlow && (g2.exclude?.kept.length ?? 1) > 0) ? ["slow"] : [],
@@ -68793,7 +68842,7 @@ async function readPlan(root, options) {
   };
   const instructions = instructionFiles(root, facts.tracked);
   const { gates, mentions } = scanGates(root, facts.tracked, {
-    nodeTest: runners.nodeTest.length > 0
+    nodeTest: runners2.nodeTest.length > 0
   });
   const harnesses = readHarnesses(root, options.env);
   const universe = testFileUniverse(facts, [...projects2, ...pytest]);
@@ -68801,7 +68850,7 @@ async function readPlan(root, options) {
     schemaVersion: SETUP_PLAN_SCHEMA_VERSION,
     root,
     harnesses,
-    runners,
+    runners: runners2,
     config,
     instructions,
     squealMentions: instructions.flatMap((f) => squealLine(root, f.path) ?? []),
@@ -68810,7 +68859,7 @@ async function readPlan(root, options) {
     slow,
     excluded: { vitest: policy.vitest.exclude },
     codexTrust: await codexTrust(root, harnesses, options),
-    warmup: warmupOf(facts, runners, [...projects2, ...pytest]),
+    warmup: warmupOf(facts, runners2, [...projects2, ...pytest]),
     outdated: [...outdated(config, instructions), ...unselected(policy, universe)]
   };
   return { plan: plan2, testFiles: universe };
@@ -69030,12 +69079,12 @@ function applyChoices(root, {
     lines.push(`kept gate line ${id2}`);
   }
   if (choices.block !== null && choices.block !== "none") {
-    const runners = {
+    const runners2 = {
       vitest: plan2.runners.vitest,
       nodeTest: plan2.runners.nodeTest.length > 0,
       pytest: (plan2.runners.pytest?.length ?? 0) > 0
     };
-    const edit = writeBlockFile(root, choices.block, blockText(runners));
+    const edit = writeBlockFile(root, choices.block, blockText(runners2));
     lines.push(
       edit.result === "unchanged" ? `the Squeal block in ${choices.block} is current` : `wrote the Squeal block to ${choices.block}`
     );
@@ -72900,9 +72949,9 @@ function formatPlan(plan2) {
   return `${lines.join("\n")}
 `;
 }
-function gapLines(runners) {
-  const below3 = runners.vitestBelowRoot ?? [];
-  const leftOut = runners.nodeTestLeftOut ?? { notes: [], templates: [] };
+function gapLines(runners2) {
+  const below3 = runners2.vitestBelowRoot ?? [];
+  const leftOut = runners2.nodeTestLeftOut ?? { notes: [], templates: [] };
   return [
     ...below3.length === 0 ? [] : [`  not run: Vitest in ${below3.join(", ")}: ${vitestBelowRootReason(below3)}`],
     ...leftOut.notes.map((note) => `  not run: ${note}`),
@@ -72910,7 +72959,7 @@ function gapLines(runners) {
       "    nodeTest entries to complete by hand:",
       ...JSON.stringify(leftOut.templates, null, 2).split("\n").map((line) => `    ${line}`)
     ],
-    ...(runners.pytestOverlaps ?? []).map(
+    ...(runners2.pytestOverlaps ?? []).map(
       ({ projects: [a, b], testFiles: testFiles2, fix }) => `  run twice: ${testFiles2} test file${testFiles2 === 1 ? "" : "s"} that pytest projects "${a}" and "${b}" both select; to run each once, ${fix}`
     )
   ];
