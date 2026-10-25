@@ -91,6 +91,40 @@ export function refinedMetaKey(worktreeId: WorktreeId): string {
 }
 
 /**
+ * `meta` key of a worktree's listing (row 015-52, agreed with 011): a JSON
+ * `ListingFact`. Written only in the ledger transaction that applies a test
+ * file listing that did not fail, the baseline's or a runner part's, beside
+ * the refined revision. A refined revision alone proves no listing: a failed
+ * `testFiles`, a whole-refinement error and an install wait write none.
+ */
+export function listingMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("listing", worktreeId);
+}
+
+/** What `listingMetaKey` holds. */
+export interface ListingFact {
+  /** Every test file this revision or an earlier one added is listed. */
+  readonly revision: RevisionNumber;
+  /** The commits that recorded a listing: one at the same revision is news too. */
+  readonly count: number;
+}
+
+/** `null` when absent or not a `ListingFact`. */
+export function parseListing(raw: string | null): ListingFact | null {
+  if (raw === null) return null;
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (typeof value !== "object" || value === null) return null;
+    const { revision, count } = value as Record<string, unknown>;
+    return Number.isInteger(revision) && Number.isInteger(count)
+      ? { revision: revision as RevisionNumber, count: count as number }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * `meta` key that is `"true"` while the daemon of a worktree waits for an
  * install: the root `package.json` declares dependencies and the root has no
  * installed lockfile, so nothing is listed or run (spec 001 D5 as amended,
