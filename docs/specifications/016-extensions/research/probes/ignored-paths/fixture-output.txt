@@ -1,0 +1,54 @@
+{
+ "root": "/tmp/ip-016-19/fixture",
+ "recordedKeys": 1,
+ "tests": 1,
+ "runFiles": 1,
+ "keptPaths": 4,
+ "ignoredPaths": 3,
+ "byKind": {
+  "load": 1,
+  "read": 2,
+  "stat": 1,
+  "exec": 0,
+  "l": 1
+ },
+ "byTop": {
+  "dist": 1,
+  "coverage": 1
+ },
+ "perTest": {
+  "a.test.mjs": {
+   "load": [
+    "dist/x.mjs"
+   ],
+   "read": [
+    "coverage/c.json",
+    "dist/x.mjs"
+   ],
+   "stat": [
+    "dist/x.mjs"
+   ],
+   "l": [
+    "dist"
+   ]
+  }
+ },
+ "existsNow": 2,
+ "ignoredFiles": 2,
+ "ignoredListings": 1,
+ "files": [
+  "coverage/c.json",
+  "dist/x.mjs"
+ ],
+ "listings": [
+  "dist"
+ ],
+ "testsWithIgnored": 1,
+ "perTestMax": 2,
+ "perTestMedianAmongThose": 2,
+ "ignored": [
+  "coverage/c.json",
+  "dist",
+  "dist/x.mjs"
+ ]
+}

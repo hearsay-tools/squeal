@@ -1,0 +1,47 @@
+{
+ "run1": 49302,
+ "run2": 49294,
+ "union": 98547,
+ "newInRun2": 49245,
+ "newByTop": {
+  "test": 49245
+ },
+ "sampleNew": [
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/node_modules",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/package.json",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/node_modules",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/package.json",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/src/math.js",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/src/math.ts",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/src/node_modules",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/src/package.json",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/src/title.js",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/src/title.ts",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/src/tsconfig.json",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/test/package.json",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/test/tsconfig.json",
+  "test/fixtures/node-test/.tmp/11f3eef0-8307-416d-9c45-aa6662d6f23a/reference/packages/demo/test/unit/math.test.ts"
+ ],
+ "run1Gone": 49302,
+ "goneByTop": {
+  "test": 49302
+ },
+ "sampleGone": [
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/1c6c4b0d-d67b-4f0b-8258-1a81718570a8/loaders/package.json",
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/1c6c4b0d-d67b-4f0b-8258-1a81718570a8/scripts/package.json",
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/679e5021-1f02-4590-85e2-6ffb72cd7fac/scripts/package.json",
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/72aa8775-af18-405c-8000-ef002a0e7dc4/scripts/package.json",
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/a0009a92-4054-417c-8121-4197ce133702/scripts/package.json",
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/adbd389a-94d6-4c0c-899a-c70372013bb8/loaders/package.json",
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/adbd389a-94d6-4c0c-899a-c70372013bb8/scripts/package.json",
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/b0fc39e5-a46a-42e8-b607-2d0cc64695bd/loaders/package.json",
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/b0fc39e5-a46a-42e8-b607-2d0cc64695bd/scripts/package.json",
+  "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/d5f231e2-9eab-46f1-aead-05a4f5a044d5/scripts/package.json",
+  "test/fixtures/node-test/.tmp/2381bfb5-0ad8-47b1-a087-9401e7e712ba/repo/scripts/package.json",
+  "test/fixtures/node-test/.tmp/2381bfb5-0ad8-47b1-a087-9401e7e712ba/repo/scripts/setup.mts",
+  "test/fixtures/node-test/.tmp/2381bfb5-0ad8-47b1-a087-9401e7e712ba/repo/test/package.json",
+  "test/fixtures/node-test/.tmp/2381bfb5-0ad8-47b1-a087-9401e7e712ba/repo/tsconfig.json",
+  "test/fixtures/node-test/.tmp/3b807e4c-3ba5-4dea-a606-ea3028fac8b7/reference/node_modules"
+ ]
+}

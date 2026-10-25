@@ -1,0 +1,49 @@
+{
+ "run1": 108,
+ "run2": 108,
+ "union": 216,
+ "newInRun2": 108,
+ "newByTop": {
+  ".tmp-vitest-ga-d9wzsU": 81,
+  ".tmp-vitest-ga-floor-QzDk7H": 27
+ },
+ "sampleNew": [
+  ".tmp-vitest-ga-d9wzsU/.env",
+  ".tmp-vitest-ga-d9wzsU/.env.local",
+  ".tmp-vitest-ga-d9wzsU/.env.test",
+  ".tmp-vitest-ga-d9wzsU/.env.test.local",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc.cjs",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc.cts",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc.js",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc.json",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc.mjs",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc.mts",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc.ts",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc.yaml",
+  ".tmp-vitest-ga-d9wzsU/.postcssrc.yml",
+  ".tmp-vitest-ga-d9wzsU/a/.env"
+ ],
+ "run1Gone": 108,
+ "goneByTop": {
+  ".tmp-vitest-ga-floor-7tv2dW": 27,
+  ".tmp-vitest-ga-iSGJjc": 81
+ },
+ "sampleGone": [
+  ".tmp-vitest-ga-floor-7tv2dW/.env",
+  ".tmp-vitest-ga-floor-7tv2dW/.env.local",
+  ".tmp-vitest-ga-floor-7tv2dW/.env.test",
+  ".tmp-vitest-ga-floor-7tv2dW/.env.test.local",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc.cjs",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc.cts",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc.js",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc.json",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc.mjs",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc.mts",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc.ts",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc.yaml",
+  ".tmp-vitest-ga-floor-7tv2dW/.postcssrc.yml",
+  ".tmp-vitest-ga-floor-7tv2dW/deno.json"
+ ]
+}

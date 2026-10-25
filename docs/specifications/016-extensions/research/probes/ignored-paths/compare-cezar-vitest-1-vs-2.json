@@ -1,0 +1,24 @@
+{
+ "run1": 4,
+ "run2": 4,
+ "union": 5,
+ "newInRun2": 1,
+ "newByTop": {
+  ".ai": 1
+ },
+ "sampleNew": [
+  ".ai/qa/unit-env-jKZGTd/node_modules"
+ ],
+ "run1Gone": 4,
+ "goneByTop": {
+  ".agents": 1,
+  ".ai": 2,
+  "packages/cezar/web": 1
+ },
+ "sampleGone": [
+  ".agents/skills",
+  ".ai/qa/node_modules",
+  ".ai/qa/unit-env-hJm5ED/node_modules",
+  "packages/cezar/web/dist/index.html"
+ ]
+}

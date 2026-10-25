@@ -1,0 +1,135 @@
+{
+ "tests": 1061,
+ "testsWithIgnored": 254,
+ "ignoredFiles": 49302,
+ "ignoredListings": 1405,
+ "existsAfterRun": 0,
+ "byKind": {
+  "read": 11472,
+  "stat": 43746,
+  "l": 1405,
+  "exec": 32
+ },
+ "filesByPattern": [
+  [
+   "test/fixtures/scheduler/.tmp",
+   34559
+  ],
+  [
+   "test/fixtures/vitest/.tmp",
+   13989
+  ],
+  [
+   "test/fixtures/node-test/.tmp",
+   754
+  ]
+ ],
+ "listingsByPattern": [
+  [
+   "test/fixtures/scheduler/.tmp",
+   1037
+  ],
+  [
+   "test/fixtures/vitest/.tmp",
+   322
+  ],
+  [
+   "test/fixtures/node-test/.tmp",
+   46
+  ]
+ ],
+ "testDirsByFileReads": [
+  [
+   "test/scheduler",
+   27675
+  ],
+  [
+   "test/runners",
+   13268
+  ],
+  [
+   "test/daemon",
+   8561
+  ],
+  [
+   "test/integration",
+   4008
+  ],
+  [
+   "test/cli",
+   888
+  ],
+  [
+   "test/code",
+   813
+  ],
+  [
+   "test/keys",
+   660
+  ],
+  [
+   "test/status",
+   344
+  ],
+  [
+   "test/harness",
+   306
+  ],
+  [
+   "test/store",
+   133
+  ]
+ ],
+ "bounds": {
+  "loadOnly": {
+   "kept": 0,
+   "sample": []
+  },
+  "existsAfterRun": {
+   "kept": 0,
+   "sample": []
+  },
+  "notUnderWrittenDir": {
+   "kept": 21,
+   "sample": [
+    "test/fixtures/node-test/.tmp/deno.json",
+    "test/fixtures/node-test/.tmp/deno.jsonc",
+    "test/fixtures/node-test/.tmp/lerna.json",
+    "test/fixtures/node-test/.tmp/node_modules",
+    "test/fixtures/node-test/.tmp/package.json"
+   ]
+  },
+  "noRandomSegment": {
+   "kept": 49,
+   "sample": [
+    "test/fixtures/scheduler/.tmp/deno.json",
+    "test/fixtures/scheduler/.tmp/deno.jsonc",
+    "test/fixtures/scheduler/.tmp/lerna.json",
+    "test/fixtures/scheduler/.tmp/node_modules",
+    "test/fixtures/scheduler/.tmp/package.json"
+   ]
+  },
+  "testsAtOrBelowCap10": {
+   "kept": 26,
+   "sample": [
+    "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/1c6c4b0d-d67b-4f0b-8258-1a81718570a8/loaders/package.json",
+    "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/1c6c4b0d-d67b-4f0b-8258-1a81718570a8/scripts/package.json",
+    "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/679e5021-1f02-4590-85e2-6ffb72cd7fac/scripts/package.json",
+    "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/72aa8775-af18-405c-8000-ef002a0e7dc4/scripts/package.json",
+    "test/fixtures/node-test/.tmp/0d16d915-821d-4afb-99b6-8aedd9338f98/a0009a92-4054-417c-8121-4197ce133702/scripts/package.json"
+   ]
+  },
+  "testsAtOrBelowCap100": {
+   "kept": 4546,
+   "sample": [
+    "test/fixtures/node-test/.tmp/6faf1595-6409-4898-9519-2a7c5213c345/create-require/scripts/package.json",
+    "test/fixtures/node-test/.tmp/6faf1595-6409-4898-9519-2a7c5213c345/create-require/test/lib/package.json",
+    "test/fixtures/node-test/.tmp/6faf1595-6409-4898-9519-2a7c5213c345/create-require/test/lib/release.cjs",
+    "test/fixtures/node-test/.tmp/6faf1595-6409-4898-9519-2a7c5213c345/create-require/test/lib/release.cjs.cts",
+    "test/fixtures/node-test/.tmp/6faf1595-6409-4898-9519-2a7c5213c345/create-require/test/lib/release.cjs.js"
+   ]
+  }
+ },
+ "perTestMax": 3661,
+ "perTestMedianAmongThose": 141
+}

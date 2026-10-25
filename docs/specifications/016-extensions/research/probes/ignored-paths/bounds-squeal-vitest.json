@@ -1,0 +1,65 @@
+{
+ "loadOnly": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "existsAfterRun": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "notUnderWrittenDir": {
+  "run1": 21,
+  "run2": 21,
+  "newInRun2": 0
+ },
+ "noRandomSegment": {
+  "run1": 49,
+  "run2": 49,
+  "newInRun2": 0
+ },
+ "testsAtOrBelowCap10": {
+  "run1": 26,
+  "run2": 26,
+  "newInRun2": 26
+ },
+ "testsAtOrBelowCap100": {
+  "run1": 4546,
+  "run2": 4546,
+  "newInRun2": 4533
+ },
+ "none": {
+  "run1": 49302,
+  "run2": 49294,
+  "newInRun2": 49245
+ },
+ "notWrittenNorRandom": {
+  "run1": 21,
+  "run2": 21,
+  "newInRun2": 0
+ },
+ "notWrittenNorRandomPaths": [
+  "test/fixtures/node-test/.tmp/deno.json",
+  "test/fixtures/node-test/.tmp/deno.jsonc",
+  "test/fixtures/node-test/.tmp/lerna.json",
+  "test/fixtures/node-test/.tmp/node_modules",
+  "test/fixtures/node-test/.tmp/package.json",
+  "test/fixtures/node-test/.tmp/pnpm-workspace.yaml",
+  "test/fixtures/node-test/.tmp/tsconfig.json",
+  "test/fixtures/vitest/.tmp/.pnp.cjs",
+  "test/fixtures/vitest/.tmp/.pnp.js",
+  "test/fixtures/vitest/.tmp/.rush/temp/shrinkwrap-deps.json",
+  "test/fixtures/vitest/.tmp/aube-lock.yaml",
+  "test/fixtures/vitest/.tmp/bun.lock",
+  "test/fixtures/vitest/.tmp/bun.lockb",
+  "test/fixtures/vitest/.tmp/deno.json",
+  "test/fixtures/vitest/.tmp/deno.jsonc",
+  "test/fixtures/vitest/.tmp/lerna.json",
+  "test/fixtures/vitest/.tmp/node_modules",
+  "test/fixtures/vitest/.tmp/nub.lock",
+  "test/fixtures/vitest/.tmp/package.json",
+  "test/fixtures/vitest/.tmp/pnpm-workspace.yaml",
+  "test/fixtures/vitest/.tmp/tsconfig.json"
+ ]
+}
