@@ -32,6 +32,8 @@ export class StepCache {
   readonly #conditions = new Map<RelativePath, FileCondition>();
   /** By path: the signature, and the blob, counter version and threshold it was made at. */
   readonly #signatures = new Map<RelativePath, { readonly at: string; readonly value: string }>();
+  /** As `#signatures`, of the records in hand of a file not ready (row 015-57). */
+  readonly #early = new Map<RelativePath, { readonly at: string; readonly value: string }>();
   readonly #records = new Map<CheckKey, Decoded>();
   /** Counts `invalidate`: a record decoded before the last one is read again. */
   #epoch = 0;
@@ -79,18 +81,20 @@ export class StepCache {
   /**
    * `signatureOf`, made again only when the file's blob or counter version
    * or the threshold moves, or after `invalidate`, which a stored record
-   * calls.
+   * calls; `early`, of a file not ready's records in hand (row 015-57).
    */
   signature(
     file: Pick<CodeFile, "path" | "blob" | "counterVersion">,
     threshold: number,
     loaders: readonly SignedLoader[],
+    early = false,
   ): string {
+    const signatures = early ? this.#early : this.#signatures;
     const at = `${file.blob}\0${file.counterVersion}\0${threshold}`;
-    const known = this.#signatures.get(file.path);
+    const known = signatures.get(file.path);
     if (known?.at === at) return known.value;
     const value = signatureOf(file, threshold, loaders);
-    this.#signatures.set(file.path, { at, value });
+    signatures.set(file.path, { at, value });
     return value;
   }
 
@@ -128,6 +132,7 @@ export class StepCache {
     this.#build = null;
     this.#conditions.clear();
     this.#signatures.clear();
+    this.#early.clear();
     this.#epoch++;
   }
 

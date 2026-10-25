@@ -5,7 +5,13 @@ import { coverageOf, type FileCondition, type ReadyLoader } from "./file.js";
 import { evidenceOf, type Judged, judgeFiles, priorKey } from "./judge.js";
 import type { Loaders } from "./loaders.js";
 import type { CoverageStepInput } from "./step.js";
-import { type CoverageSummary, type FileSummary, functionKey, writeEvidence } from "./summary.js";
+import {
+  type CoverageSummary,
+  type FileSummary,
+  functionKey,
+  readEvidence,
+  writeEvidence,
+} from "./summary.js";
 
 /**
  * The judged files a step writes together, within its budget (row 015-47):
@@ -29,7 +35,8 @@ export interface Walk {
 /**
  * Each file's summary, and the ready files judged and written within the
  * step's budget, `WRITE_FILES` at a time; a file past it keeps its last
- * summary, and `more` is set.
+ * summary, and `more` is set. A file not ready is judged early, for the
+ * passes its records in hand prove (row 015-57).
  */
 export function walk(at: Walk, files: readonly CodeFile[]) {
   const { input, cache, loaders, summary, start, work } = at;
@@ -40,6 +47,11 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
   const keys = (ready: readonly ReadyLoader[]) => ready.map((l) => l.key);
   const record = (key: CheckKey) => cache.record(input.store.coverage, key);
   let more = false;
+  const early = (file: CodeFile, ready: readonly ReadyLoader[], kept: Unready) => {
+    const judgedEarly = judgeEarly({ at, judged, quiet }, file, ready, kept);
+    more ||= judgedEarly === null;
+    next[file.path] = judgedEarly ?? kept;
+  };
   for (const file of files) {
     const before = summary?.files[file.path];
     // A file's condition and signature from the map are a unit too (row 015-45).
@@ -50,7 +62,7 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
     }
     const condition = cache.condition(file.path, loaders);
     if (condition.state !== "ready") {
-      next[file.path] = summaryOf(file, condition);
+      early(file, condition.ready, summaryOf(file, condition));
       continue;
     }
     const signature = cache.signature(file, input.threshold, condition.loaders);
@@ -68,7 +80,7 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
     if (count === null) continue;
     const coverage = coverageOf(file, count.functions, condition.loaders, record);
     if (coverage === "unread") {
-      next[file.path] = { state: "unknown", blob: file.blob, cause: "unread" };
+      early(file, condition.loaders, { state: "unknown", blob: file.blob, cause: "unread" });
       continue;
     }
     next[file.path] = { state: "judged", blob: file.blob, signature };
@@ -77,6 +89,48 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
   }
   return { next, ...judged.end(), quiet, more };
 }
+
+type Unready = Exclude<FileSummary, { state: "judged" }>;
+
+/**
+ * Row 015-57 (D9, A pass proven early): a file not ready, judged from its
+ * ready loaders' records for the passes they prove, once for each set of
+ * them; its summary, or `null` when its records are past the budget. It
+ * stays in `quiet` until it is judged with every record.
+ */
+function judgeEarly(
+  w: { readonly at: Walk; readonly judged: Batched; readonly quiet: ReadonlySet<string> },
+  file: CodeFile,
+  ready: readonly ReadyLoader[],
+  kept: Unready,
+): Unready | null {
+  if (ready.length === 0) return kept;
+  const { input, cache, start, work } = w.at;
+  const signature = cache.signature(file, input.threshold, ready, true);
+  const before = w.at.summary?.files[file.path];
+  const judgedAt = before?.state !== "judged" && before?.blob === file.blob ? before.early : null;
+  if (!start && judgedAt === signature) return { ...kept, early: signature };
+  const { coverage: records } = input.store;
+  if (
+    !cache.decode(
+      records,
+      ready.map((l) => l.key),
+      work,
+    ) ||
+    !work()
+  )
+    return null;
+  const count = w.at.countOf(file);
+  if (count === null) return kept;
+  const record = (key: CheckKey) => cache.record(records, key);
+  const coverage = coverageOf(file, count.functions, ready, record, true);
+  if (coverage === "unread") return kept;
+  const quiet = w.quiet.has(file.path) ? { quiet: true as const } : {};
+  w.judged.add({ file, count, coverage, early: true, ...quiet });
+  return { ...kept, early: signature };
+}
+
+type Batched = ReturnType<typeof batched>;
 
 /** Judgements written `WRITE_FILES` at a time as they come, and the rest at `end`. */
 function batched(input: CoverageStepInput, brought: ReadonlyMap<string, RevisionNumber>) {
@@ -130,7 +184,20 @@ function writeJudgement(
   store.transitions.append(transitions);
   // D6's first edit to a standing failure, for these measures too.
   store.states.markEdited(worktreeId, edited);
-  for (const j of judged) writeEvidence(store.meta, worktreeId, j.file.path, evidenceOf(j));
+  // Row 015-57: an early judgement's evidence, for the functions it judged.
+  const proven = new Map<string, Set<string>>();
+  for (const s of states) {
+    proven.set(s.check.path, (proven.get(s.check.path) ?? new Set()).add(functionKey(s.check)));
+  }
+  for (const j of judged) {
+    const { path } = j.file;
+    const only = proven.get(path);
+    if (j.early !== true) writeEvidence(store.meta, worktreeId, path, evidenceOf(j));
+    else if (only !== undefined) {
+      const before = readEvidence(store.meta, worktreeId, path);
+      writeEvidence(store.meta, worktreeId, path, evidenceOf(j, only, before));
+    }
+  }
   return transitions.length;
 }
 
