@@ -25,6 +25,10 @@ describe("a warm-up reports the ignored paths each file read (task 001-307)", SL
     expect(reads?.closure).toEqual(expect.arrayContaining(["nt/lib.mjs", READS]));
     expect(reads?.closure).not.toContain(BUILD);
     expect(reads?.closure).not.toContain("nt/preloaded.cjs");
+    // 016 D4, the written-directory bound: Vitest's read of the ignored path is in its closure.
+    for (const file of [`forks:${VITEST}`, `threads:${VITEST}`]) {
+      expect(baseline.files.find((f) => f.file === file)?.closure, file).toContain(BUILD);
+    }
 
     await fullSuite(h, false);
     expect(readIgnoredReads(h.store, h.worktreeId)).toBeNull();
@@ -35,17 +39,17 @@ describe("a warm-up reports the ignored paths each file read (task 001-307)", SL
     const stored = readIgnoredReads(h.store, h.worktreeId);
     expect(stored?.checkpoint).toBe(record.id);
     expect(stored?.revision).toBe(record.revision);
-    for (const id of [`forks\0${VITEST}`, `threads\0${VITEST}`, `nt\0${READS}`]) {
-      expect(stored?.files[id], id).toEqual({ paths: [BUILD], more: 0 });
-    }
+    expect(stored?.files[`nt\0${READS}`]).toEqual({ paths: [BUILD], more: 0 });
     // Capped at 50, sorted, with the count of the rest.
     const many = stored?.files[`nt\0${MANY}`];
     expect(many?.paths).toHaveLength(50);
     expect(many?.paths[0]).toBe("ignored/many/00.txt");
     expect(many?.paths[49]).toBe("ignored/many/49.txt");
     expect(many?.more).toBe(10);
-    // An observed file that read nothing ignored has an empty entry; no test file, none (with 005).
-    for (const id of [`nt\0${QUIET}`, "forks\0test/plain.test.ts", "threads\0test/plain.test.ts"]) {
+    // An observed file that read nothing ignored beyond its closure has an empty entry; no test
+    // file, none (with 005).
+    const empty = [`forks\0${VITEST}`, `threads\0${VITEST}`, `nt\0${QUIET}`];
+    for (const id of [...empty, "forks\0test/plain.test.ts", "threads\0test/plain.test.ts"]) {
       expect(stored?.files[id], id).toEqual({ paths: [], more: 0 });
     }
     expect(stored?.files["nt\0nt/lib.mjs"]).toBeUndefined();
@@ -70,7 +74,7 @@ describe("a warm-up reports the ignored paths each file read (task 001-307)", SL
     expect(stored?.files[`nt\0${QUIET}`]).toEqual({ paths: [], more: 0 });
   });
 
-  it("re-runs nothing when an ignored path the warm-up reported changes", async () => {
+  it("re-keys only the files whose closure holds an ignored path the warm-up reported for another", async () => {
     const { h, commonDir } = await warmUpRepo();
     await fullSuite(h, true);
     const before = snapshot(h);
@@ -78,8 +82,18 @@ describe("a warm-up reports the ignored paths each file read (task 001-307)", SL
     h.write(BUILD, "built v2\n");
     await h.batch(BUILD);
     await h.scheduler.idle();
+    // 016 D4: the Vitest file's closure holds it, so its key moves and the slow file waits for
+    // the slow lane (004); the node:test file's reads are no closure path.
     expect(readRuns(storePaths(commonDir).database, h.worktreeId)).toHaveLength(runs);
-    expect(snapshot(h)).toEqual(before);
-    expect(h.header().counts.pending).toBe(0);
+    const after = snapshot(h);
+    const keys = (s: typeof before, of: (file: string) => boolean) =>
+      s.files.filter((f) => of(f.file)).map((f) => f.key);
+    const vitest = (file: string) => file.endsWith(`:${VITEST}`);
+    const old = keys(before, vitest);
+    expect(old).toHaveLength(2);
+    expect(keys(after, vitest).filter((key) => old.includes(key))).toEqual([]);
+    const nt = (file: string) => file.startsWith("nt:");
+    expect(keys(after, nt)).toEqual(keys(before, nt));
+    expect(h.header().counts.pending).toBeGreaterThan(0);
   });
 });
