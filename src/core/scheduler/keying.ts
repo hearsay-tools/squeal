@@ -120,8 +120,8 @@ export class WorktreeKeys {
   readonly #startup: StartupSets;
   /** Test files whose observed set another worktree grew, not assembled again yet (016 D4, O9). */
   readonly #grownElsewhere = new Map<string, TestFileRef>();
-  /** Entry names of listed directories, from the tracked files. */
-  readonly #listings = new Listings(() => this.#listedFiles());
+  /** Entry names of listed directories, from the tracked files, else from disk (row 016-23). */
+  readonly #listings: Listings;
   /**
    * Paths `track` first hashed while runs were in flight, each with the
    * number of the last run begun by then: no hash from before a later run
@@ -135,6 +135,7 @@ export class WorktreeKeys {
   #isDeclared: (path: RelativePath) => boolean;
 
   constructor(private readonly options: KeyingOptions) {
+    this.#listings = new Listings(() => this.#listedFiles(), options.root);
     this.#policy = options.policy;
     this.#isDeclared = createInputMatcher(inputGlobs(options.policy.inputs));
     this.cache = StatCache.load(options.store.fileHashes, options.worktreeId);
