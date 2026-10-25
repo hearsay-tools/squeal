@@ -138,11 +138,6 @@ export interface CheckRepo {
    * `undefined` forgets it.
    */
   recordSetupRunner(worktreeId: WorktreeId, check: SetupCheckId, runner: string | undefined): void;
-  /**
-   * Records nothing. `Ledger#write` still calls it until the next commit moves
-   * that line to `recordSetupRunner`, which keeps ledger.ts alone.
-   */
-  recordRunner(check: CheckId, runner: string | undefined): void;
 }
 
 /** Which stored failures `squeal failures` reads (task 001-409). */

@@ -226,7 +226,6 @@ export function createCheckRepo(conn: Connection): CheckRepo {
       setupRunners(worktreeId).find(
         (e) => e.project === check.project && e.testPath === check.testPath,
       )?.runner ?? null,
-    recordRunner: () => undefined,
     recordSetupRunner: (worktreeId, check, runner) =>
       conn.transaction(() => {
         const others = setupRunners(worktreeId).filter(
