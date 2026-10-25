@@ -121,22 +121,20 @@ export interface CheckRepo {
   listByTestFile(testFile: TestFileRef): readonly CheckRecord[];
   upsertMany(records: readonly CheckRecord[]): void;
   /**
-   * The runner recorded with `check`'s result at `key` (spec 016 D3): the one
-   * whose run stored it. `null` when there is no such result, or an older
-   * daemon stored it. Checks are shared by every worktree, so a worktree
-   * reads the result its own state shows (review 0.1.303 B1).
+   * The runner of each project `worktreeId` recorded (`recordRunners`), by
+   * project name. Spec 016 D3: a failure's runner is its project's in the
+   * worktree whose state shows it. Checks are shared by every worktree, so
+   * another worktree's record is never read (review 0.1.303 B1).
    */
-  runnerOf(check: CheckId, key: CheckKey): string | null;
+  runnersOf(worktreeId: WorktreeId): ReadonlyMap<string, string>;
   /**
-   * The runner `worktreeId` recorded with setup check `check`
-   * (`recordSetupRunner`); `null` when none.
+   * Records each project's runner in `runners` as `worktreeId`'s, in one meta
+   * row, so no table changes (011 C7). Writes only a change; an `undefined`
+   * runner records nothing. A project has one runner in a worktree
+   * (`createCompositeRunner`).
    */
-  setupRunnerOf(worktreeId: WorktreeId, check: SetupCheckId): string | null;
-  /**
-   * Records `runner` with `worktreeId`'s setup check `check`, which has no
-   * stored result (001-382). Another worktree's record is never read.
-   * `undefined` forgets it.
-   */
+  recordRunners(worktreeId: WorktreeId, runners: ReadonlyMap<string, string | undefined>): void;
+  /** `recordRunners` for `check`'s project. The next commit moves `Ledger#write` off it. */
   recordSetupRunner(worktreeId: WorktreeId, check: SetupCheckId, runner: string | undefined): void;
 }
 
@@ -287,9 +285,8 @@ export interface ResultRepo {
   /**
    * Spec 001 D5: "A result is stored only under a key whose inputs were
    * stable for the whole run." A stored result's last-used time starts at
-   * `provenance.recordedAt`. `runner`, the runner whose run produced them,
-   * is recorded with each row (`CheckRepo.runnerOf`, spec 016 D3); absent,
-   * the rows record none.
+   * `provenance.recordedAt`. `runner` is ignored: the next commit moves
+   * `storeResults` off it.
    */
   putMany(records: readonly ResultRecord[], runner?: string): void;
 }
@@ -419,7 +416,7 @@ export const WORKTREE_META_ROWS = {
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
-  setupRunners: { prefix: "setup-runners:", owner: "store/repos/test-files" },
+  runners: { prefix: "runners:", owner: "store/repos/test-files" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },

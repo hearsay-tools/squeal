@@ -22,8 +22,8 @@ import { fixedStatus, liveDaemon } from "./fakes.js";
  * Node's installed lockfiles, so it is said beside a failure of a Node runner
  * (Vitest or node:test) only. A pytest check runs only in an admitted
  * environment (007 D2), so beside a pytest failure the sentence is false.
- * Spec 016 D3 (row 007-45): the runner is the one the store recorded with the
- * check's results, never one read from the policy or the file's name.
+ * Spec 016 D3 (row 007-45): the runner is the one this worktree recorded for
+ * the check's project, never one read from the policy or the file's name.
  */
 
 const SENTENCE = "No dependencies are installed in this worktree";
@@ -36,7 +36,7 @@ const DOC: TestFileRef = { project: "py", path: "docs/example.txt" };
 const JS_DOC: TestFileRef = { project: "py", path: "docs/example.js" };
 const UNIT: TestFileRef = { project: "unit", path: "test/a.test.js" };
 const NONE = { checkpointId: null };
-/** The runner each project's results are stored with, as the scheduler records it. */
+/** The runner of each project, as this worktree's scheduler records it. */
 const RUNNERS: Readonly<Record<string, string>> = { "": "vitest", py: "pytest", unit: "node-test" };
 
 let root: string;
@@ -98,14 +98,18 @@ function revision(): number {
   }).number;
 }
 
-/** Stores `results` with their project's runner, or with none as an older daemon did. */
+/** Stores `results` and records their project's runner, or none as an older daemon did. */
 function apply(...results: ResultRecord[]): void {
   applyBy((project) => RUNNERS[project], ...results);
 }
 
 function applyBy(runner: (project: string) => string | undefined, ...results: ResultRecord[]) {
   const at = revision();
-  for (const r of results) store.results.putMany([r], runner(r.check.project));
+  store.checks.recordRunners(
+    WT,
+    new Map(results.map((r) => [r.check.project, runner(r.check.project)])),
+  );
+  store.results.putMany(results);
   sink.applyResults(WT, at, results, NONE);
 }
 
@@ -246,9 +250,9 @@ describe("a Vitest setup failure in a worktree with no Node install", () => {
     diff: null,
   };
 
-  it("is told it, from the runner this worktree recorded with the setup check", async () => {
+  it("is told it, from the runner this worktree recorded for its project", async () => {
     await delivery.register(C1, { atStart: true });
-    store.checks.recordSetupRunner(WT, setup, "vitest");
+    store.checks.recordRunners(WT, new Map([[setup.project, "vitest"]]));
     sink.setupOutcome(WT, revision(), { check: setup, commit: null, error });
     expect(formatDelta((await delivery.onToolBoundary(C1)) as Delta)).toContain(SENTENCE);
     const again = { ...C1, sessionId: "s2" };

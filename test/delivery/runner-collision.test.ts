@@ -21,10 +21,9 @@ import { fixedStatus, liveDaemon } from "./fakes.js";
  * Review 0.1.303 B1 (spec 016 D3): checks are shared by every worktree, and a
  * file-level check has no test name, so a pytest doctest of `docs/example.js`
  * in this worktree and a Vitest test file of the same path in another are one
- * check. The runner is recorded with each result, and this worktree's failure
- * reads the runner of the result it shows, at the key the state sink recorded
- * for it; another worktree's result at another key never changes it. A setup
- * failure has no result: its runner is this worktree's record alone.
+ * check. Each worktree records its own projects' runners, and this
+ * worktree's failure reads its project's there, setup failures included;
+ * another worktree's run and record never change it.
  */
 
 const SENTENCE = "No dependencies are installed in this worktree";
@@ -79,16 +78,23 @@ function revision(): number {
   }).number;
 }
 
+/** `worktreeId`'s record of `check`'s project as `runner`'s, as its ledger writes it. */
+function recordRunner(worktreeId: string, check: CheckId, runner: string): void {
+  store.checks.recordRunners(worktreeId, new Map([[check.project, runner]]));
+}
+
 /** This worktree's run of `check` with `runner`, stored and applied at key `k1`. */
 function ownRun(check: CheckId, outcome: "pass" | "fail", runner: string): void {
   const record = result(check, outcome);
-  store.results.putMany([record], runner);
+  recordRunner(WT, check, runner);
+  store.results.putMany([record]);
   sink.applyResults(WT, revision(), [record], NONE);
 }
 
 /** The other worktree's run of `check` with `runner`, at a key of its own. */
 function otherRun(check: CheckId, outcome: "pass" | "fail", runner: string): void {
-  store.results.putMany([result(check, outcome, { key: "k-other", worktreeId: OTHER })], runner);
+  recordRunner(OTHER, check, runner);
+  store.results.putMany([result(check, outcome, { key: "k-other", worktreeId: OTHER })]);
 }
 
 const CALLERS = [
@@ -134,7 +140,7 @@ describe.each(CALLERS)("a Vitest setup failure, at %s", (_, read) => {
     ["reads no other worktree's record", OTHER, false],
   ] as const)("%s", async (_, recordedBy, told) => {
     await delivery.register(C1, { atStart: true });
-    store.checks.recordSetupRunner(recordedBy, setup, "vitest");
+    recordRunner(recordedBy, setup, "vitest");
     sink.setupOutcome(WT, revision(), { check: setup, commit: null, error });
     const text = await read();
     expect(text).toContain("test/global-setup.ts");

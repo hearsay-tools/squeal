@@ -65,9 +65,10 @@ function closure(paths: readonly string[]): void {
   });
 }
 
-/** Stores `results` as a Vitest run's: the scheduler records the runner with them (spec 016 D3). */
+/** Stores `results` as a Vitest run's: the scheduler records their project's runner (spec 016 D3). */
 function apply(revision: number, ...results: ResultRecord[]): void {
-  store.results.putMany(results, "vitest");
+  store.checks.recordRunners(WT, new Map(results.map((r) => [r.check.project, "vitest"])));
+  store.results.putMany(results);
   sink.applyResults(WT, revision, results, NONE);
 }
 
