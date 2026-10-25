@@ -18,7 +18,13 @@ import type {
 import type { CliIo } from "./main.js";
 import { fileEntry, type NamedFileEntry } from "./named-file-lines.js";
 import { type NamedFile, pauseOnlyIds, readNamedFiles } from "./named-files.js";
-import { type NamedSelection, selectNamedFiles, worktreePath } from "./named-selection.js";
+import { namedPathLines } from "./named-path-lines.js";
+import {
+  type NamedPath,
+  type NamedSelection,
+  selectNamedFiles,
+  worktreePath,
+} from "./named-selection.js";
 import { statusCommand } from "./status-command.js";
 import { type DaemonSync, pollPause, SYNC_POLL_MS, type SyncState } from "./status-sync.js";
 import {
@@ -54,9 +60,12 @@ import {
   type FileClasses,
   type FileVerdict,
   holdOfWait,
+  type NoVerdictReason,
   readClasses,
   readVerdict,
-  verdictCode,
+  resultCode,
+  type SelectionWord,
+  selectionResult,
 } from "./verdict.js";
 import {
   type DaemonWatch,
@@ -123,6 +132,8 @@ export type NamedWait =
       readonly down?: DownReason;
       /** A heartbeat lapse the wait went on through, the daemon alive (task 004-66). */
       readonly lapse?: HeartbeatLapse;
+      /** Row 011-206: the wait's last read found the heartbeat lapsed or a handoff under way. */
+      readonly lapsed?: true;
       /** With `on-hold`: the hold its verdict line names (row 011-73). */
       readonly hold?: StatusHold;
       /**
@@ -150,8 +161,14 @@ export interface NamedWaitPayload {
   readonly outcome: NamedWaitOutcome | "snapshot";
   readonly waitedMs: number;
   readonly code: 0 | 1 | 3;
+  /** Row 011-206 (gh-88, gh-84): `code` as a word, from `namedResult`, as the text says it. */
+  readonly result: SelectionWord;
+  /** Row 011-206: with `none`, the one reason from the closed list (`NoVerdictReason`). */
+  readonly reason?: NoVerdictReason;
   readonly testFiles: readonly NamedFileEntry[];
   readonly unmatched: readonly string[];
+  /** Row 011-206 (gh-83): each named path with how it was read. */
+  readonly paths: readonly NamedPath[];
   /** The selected slow files it did not hold for, waiting for a pause or `run --slow` (task 004-78). */
   readonly leftForPause: readonly TestFileRef[];
   readonly verdict: FileVerdict;
@@ -315,6 +332,7 @@ export async function waitForNamed(
           sync: current,
           ...(daemon.state === "down" ? { down: daemon.reason } : {}),
           ...(lapse === null ? {} : { lapse }),
+          ...(daemon.state === "lapsed" ? { lapsed: true as const } : {}),
           ...(hold === null ? {} : { hold }),
           ...(focus === undefined ? {} : { focus }),
         };
@@ -350,17 +368,30 @@ export function ownNamedFiles(
 }
 
 /**
- * Spec 005 D1 for the selected files: their verdict once settled, else 3.
- * Row 011-63 (gh-59): a path that selects nothing leaves no clean verdict,
- * so 3, but a known failure among the files the others select is still 1.
+ * Row 011-206 (011 C15): the selected files' result word and, without a
+ * verdict, why, from `selectionResult`; the exit code, the JSON and the
+ * verdict line read it. Row 011-63 (gh-59): a path that selects nothing
+ * leaves no clean verdict, but a known failure among the files the others
+ * select is still `fail`. Row 011-146 (C15): a focused answer is not the
+ * file's verdict: `fail` when a selected check failed, else none.
  */
+export function namedResult(wait: Extract<NamedWait, { result: StatusSnapshot }>) {
+  const paths = wait.selection.paths ?? [];
+  return selectionResult({
+    outcome: wait.outcome,
+    verdict: wait.verdict,
+    sync: wait.sync,
+    ...(wait.snapshot === true ? { snapshot: true } : {}),
+    ...(wait.lapsed === true ? { lapsed: true } : {}),
+    focusFailed: wait.focus !== undefined && anyFailed(wait.focus.files),
+    unmatched: wait.selection.unmatched.length,
+    notRun: paths.filter((p) => p.kind === "not-run").length,
+  });
+}
+
+/** Spec 005 D1 for the selected files: `namedResult` as 0, 1 or 3. */
 export function namedCode(wait: Extract<NamedWait, { result: StatusSnapshot }>): 0 | 1 | 3 {
-  // Row 011-146 (C15): a focused answer is not the file's verdict: 1 when a selected check failed, else 3.
-  if (wait.outcome === "focused")
-    return wait.focus !== undefined && anyFailed(wait.focus.files) ? 1 : 3;
-  if (wait.outcome !== "settled") return 3;
-  const code = verdictCode(wait.verdict);
-  return code === 0 && wait.selection.unmatched.length > 0 ? 3 : code;
+  return resultCode(namedResult(wait));
 }
 
 /** How a named wait or snapshot prints (`printNamed`). */
@@ -414,7 +445,8 @@ export async function printNamed(
     io.stdout(how.json ? `${JSON.stringify(result, null, 2)}\n` : formatStatus(result, now()));
     return 3;
   }
-  const code = namedCode(wait);
+  const result = namedResult(wait);
+  const code = resultCode(result);
   const command = statusCommand(io.env ?? process.env);
   if (!how.json) {
     io.stdout(namedText(wait, now(), command, how));
@@ -424,8 +456,11 @@ export async function printNamed(
     outcome: wait.snapshot === true ? "snapshot" : wait.outcome,
     waitedMs: Math.round(wait.waitedMs),
     code,
+    result: result.result,
+    ...(result.result === "none" ? { reason: result.reason } : {}),
     testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
     unmatched: wait.selection.unmatched,
+    paths: wait.selection.paths ?? [],
     leftForPause: wait.leftForPause ?? [],
     verdict: wait.verdict,
     ...(wait.focus === undefined ? {} : { focused: focusPayload(wait.focus) }),
@@ -438,6 +473,7 @@ export async function printNamed(
   const lines = [
     ...(refused === null ? [] : [refused]),
     ...(selected === null ? [] : [selected]),
+    ...namedPathLines(wait.selection),
     ...focusLines(wait.focus, wait.selection.base),
     ...namedClassLines(wait, command),
   ];
