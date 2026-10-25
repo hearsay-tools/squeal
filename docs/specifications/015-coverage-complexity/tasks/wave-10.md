@@ -34,3 +34,11 @@ Check, with proof where you can:
 5. **Cost.** An edit to a widely imported file does not judge every source again at each arriving record.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## R12: repair of review 0.1.324 (015-57, round 1 FAIL)
+
+Use /worker, resumed (worker ad47a8ec). Shape: repair. Starts from your branch `cez/ad47a8ec`. Read `reviews/0.1.324.md`, B1 and B2 with their reproductions.
+- **B1.** Two test files can transform one unchanged source differently, so a later record can add executable lines, not only covered ones. While records are still to come, the early CRAP counts every line of the function's own range from the count as a line to cover, and a line no record in hand shows covered as uncovered. The full judgement keeps its calculation and texts. An early "no test runs it" recovery still needs only one confirmed hit. Add the two-transform regression: completing the loaders never raises the early value and never makes the function fail again.
+- **B2.** Check early eligibility against the stored threshold whether or not the file is quiet; `quiet` decides only whether a transition is written. Add the recount-plus-threshold regression.
+- **Owns.** As W1. No schema, record, provider-version or text change. Keep the per-source early signature and the cost rule.
+- **Done when.** Both regressions red on the candidate and green after, the existing early tests pass, notes updated in `tasks/015-57/notes.md`. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
