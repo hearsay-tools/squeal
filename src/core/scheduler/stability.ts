@@ -55,8 +55,8 @@ export async function changedSince(
  * Paths of `diff` hashed because their stat moved, with the hash they had
  * in `cache` (task 001-159). Read before `diff`'s updates reach `cache`. A
  * racy entry re-hashed on an equal stat was not written since, so it is not
- * among them. Nor is an entry stored with `unknownStat` (row 011-204): its
- * stat cannot show whether the file was written since its hash.
+ * among them. An entry stored with `unknownStat` is (row 011-204, review
+ * 0.1.310-r2 N1): its stat cannot show that the file was not written since.
  */
 export function touchedUnchanged(
   diff: Pick<BatchDiff, "changes" | "updates">,
@@ -67,8 +67,8 @@ export function touchedUnchanged(
   for (const update of diff.updates) {
     if (update.kind !== "set" || changed.has(update.record.path)) continue;
     const cached = cache.get(update.record.path);
-    if (cached === undefined || isUnknownStat(cached)) continue;
-    if (!sameStat(cached, update.record)) touched.push(cached.path);
+    if (cached === undefined) continue;
+    if (isUnknownStat(cached) || !sameStat(cached, update.record)) touched.push(cached.path);
   }
   return touched;
 }

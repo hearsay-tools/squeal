@@ -14,6 +14,7 @@ import type {
   CommitSha,
   EpochMs,
   FileChange,
+  FileHash,
   FileHashRecord,
   FileHashRepo,
   FileStat,
@@ -89,15 +90,10 @@ export async function statCandidates(
  * even when it was never cached. Changes are sorted by path, each path once;
  * a repeated path keeps its last stat.
  *
- * Row 011-204 (task 011-203): a hashed path is stat'ed once more after its
- * read. The candidate's stat could be from before a write the read saw;
- * stored with those bytes, it would make the write's own batch see a moved
- * stat over unchanged bytes, a touch (task 001-159). When the two stats are
- * equal, the hash is stored with them. When they differ, a write came
- * between them, before or after the read, so the hash is stored with
- * `unknownStat`: every later pass hashes the file again, after a restart too
- * (review 0.1.310 B1), and the change is reported now. A file gone by that
- * stat is absent.
+ * Row 011-204 (task 011-203): a hash is stored only beside a stat taken
+ * before its read and one taken after it that agree (`readSettled`), and its
+ * change is reported in this batch. A file gone by a read or its stat is
+ * absent.
  */
 export async function diffCandidates(
   candidates: Iterable<CandidatePath>,
@@ -112,36 +108,70 @@ export async function diffCandidates(
     const cached = cache.get(path);
     const trusted = cached !== undefined && !isUnknownStat(cached) && !cache.isRacy(path);
     if (stat && trusted && sameStat(cached, stat)) return null;
-    const hashedAt = hasher.now();
-    // The file can vanish between the watcher's stat and this read: then it is absent.
-    const hash = stat ? await hasher.hash(path) : null;
-    const after = hash === null ? null : await hasher.stat(path);
-    return { path, cached, stat, hash, hashedAt, after };
+    // The file can vanish between the watcher's stat and a read: then it is absent.
+    return { path, cached, read: stat ? await readSettled(path, stat, hasher) : null };
   });
 
   const changes: FileChange[] = [];
   const updates: CacheUpdate[] = [];
   for (const entry of observed) {
     if (!entry) continue;
-    const { path, cached, stat, hash, hashedAt, after } = entry;
-    if (!stat || hash === null || after === null) {
+    const { path, cached, read } = entry;
+    if (!read) {
       if (cached) changes.push({ path, oldHash: cached.hash, newHash: null });
       if (cache.hashOf(path) !== null) updates.push({ kind: "delete", path });
       continue;
     }
-    const kept = sameStat(stat, after) ? after : unknownStat(after);
+    const { hash, stat } = read;
     const record: FileHashRecord = {
       path,
-      mtimeMs: kept.mtimeMs,
-      ctimeMs: kept.ctimeMs,
-      size: kept.size,
-      inode: kept.inode,
+      mtimeMs: stat.mtimeMs,
+      ctimeMs: stat.ctimeMs,
+      size: stat.size,
+      inode: stat.inode,
       hash,
     };
-    updates.push({ kind: "set", record, racy: isRacy(kept, hashedAt) });
+    updates.push({ kind: "set", record, racy: isRacy(stat, read.hashedAt) });
     if (cached?.hash !== hash) changes.push({ path, oldHash: cached?.hash ?? null, newHash: hash });
   }
   return { changes, updates };
+}
+
+/** The most reads `readSettled` makes of one file. */
+const SETTLE_READS = 3;
+
+/** A file's hash, the stat to store it with, and when its read began. */
+interface SettledRead {
+  readonly hash: FileHash;
+  readonly stat: FileStat;
+  readonly hashedAt: EpochMs;
+}
+
+/**
+ * Row 011-204 (review 0.1.310-r2 N1): reads `path` until the stat before a
+ * read and the stat after it agree, starting from `before`, the candidate's
+ * stat. The hash is stored with that stat: from before a write the read saw,
+ * a stat would make the write's own batch see a touch (task 001-159); from
+ * after a write it did not see, the write would be lost (review 0.1.310 B1).
+ * When they differ, the later stat is the next read's "before". After
+ * `SETTLE_READS` reads that never agree, the hash is stored with
+ * `unknownStat`. `null` when the file is gone.
+ */
+async function readSettled(
+  path: RelativePath,
+  before: FileStat,
+  hasher: Hasher,
+): Promise<SettledRead | null> {
+  let prior = before;
+  for (let reads = 1; ; reads++) {
+    const hashedAt = hasher.now();
+    const hash = await hasher.hash(path);
+    const after = hash === null ? null : await hasher.stat(path);
+    if (hash === null || after === null) return null;
+    if (sameStat(prior, after)) return { hash, stat: after, hashedAt };
+    if (reads === SETTLE_READS) return { hash, stat: unknownStat(after), hashedAt };
+    prior = after;
+  }
 }
 
 /** Step 1 of reconciliation: reads and hashes, stores nothing. See `reconcile`. */
