@@ -87,6 +87,20 @@ export interface CodeStateRepo {
    * as a transition.
    */
   move(worktreeId: WorktreeId, from: CodeCheckId, to: CodeCheckId): void;
+  /**
+   * Row 015-48: a pass's states, staged in parts under `staged`, take the
+   * worktree's place in one transaction. Each `measure` state staged is
+   * written over the worktree's, keeping its last edit as `upsertMany` does,
+   * and every measure's state of each `removed` check goes. The staged rows
+   * stay. Returns the number of states written: fewer than were staged when
+   * a prune took some.
+   */
+  adopt(
+    worktreeId: WorktreeId,
+    staged: WorktreeId,
+    measure: CodeMeasure,
+    removed: readonly CodeCheckId[],
+  ): number;
 }
 
 /** The audit log of code transitions (011 C5). */
