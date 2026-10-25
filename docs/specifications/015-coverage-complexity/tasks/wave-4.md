@@ -49,3 +49,19 @@ Use /reviewer. Resumes reviewer 4a7491eb. Candidate `cand/0.1.305` at the SHA na
 - What passed round 1: re-read only where R8 touches it (`crap/cache.ts`, `coverage/map-worker.ts`, `mapper.ts`, `writer.ts`). Confirm the candidate's CI is green.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## R9: repair of review 0.1.305-r2 B1, invalidation at the notification (015-42)
+
+Use /worker. Shape: repair. Resumes worker c9034b32 on its branch `cez/c9034b32` (at e3440b6fa). The human authorized this third round on 2026-10-25; it is the last one.
+- Read B1 in `reviews/0.1.305-r2.md`. Its probe and its table are the test.
+- **The rule.** The record-stored notification is the one owner of "a decoded record is valid". It revokes the cached records synchronously on each notification, also one that arrives while a `soon` timer is already set. The 100 ms coalescing delays only the work, never the revocation. Every writer goes through that one entry point. Lead: `CodePass.soon()` in `src/core/code/pass/index.ts` (round 2 cites `:308`, `:313`, the paced continuation at `:201`) and `StepCache.invalidate()` in `crap/cache.ts`.
+- **Owns** as W1. Leave 015-44 (a same-key record after a completed judgement) and 015-45 (one shared `Pace`, the cold loader slice) alone.
+- **Done when.** A test through `createCodePass` and `soon()`, where the paced continuation is due before the coalescing timer, in both directions (hit to no-hit, no-hit to hit), red first, then green. A second notification during a pending timer is covered. Record reads and decodes stay inside `STEP_BUDGET_MS`. One commit, `fix(R9): … (review 0.1.305-r2 B1)`. Lint, typecheck and `squeal run --all --wait`; paste. No bundles, no version.
+
+## 015-43 round 3: re-review of candidate 0.1.305 (the last round)
+
+Use /reviewer. Resumes reviewer 4a7491eb. Candidate `cand/0.1.305` at the SHA named in the message. Round 2 is `reviews/0.1.305-r2.md` (FAIL on 044da86f0, B1; kept as `review/0.1.305-round2`). Write `reviews/0.1.305-r3.md` and commit it on your branch. The candidate is round 2's, plus repair R9 (`fix(R9)`, brief `tasks/wave-4.md` R9) and a new build commit.
+- Check B1 with your round-2 probe through the real `createCodePass` and `soon()`, in both directions, and with a second notification while a `soon` timer is pending.
+- Re-read only R9's delta and the bundle build. Confirm the candidate's CI is green.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
