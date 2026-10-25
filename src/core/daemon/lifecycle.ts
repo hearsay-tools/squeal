@@ -7,6 +7,7 @@ import {
   lastDeparture,
   markRest,
 } from "../delivery/index.js";
+import { observedMetaKey, observedStartupMetaKey } from "../keys/index.js";
 import { type BusyWaits, storePaths } from "../store/index.js";
 import { listPaths, plural } from "../text.js";
 import {
@@ -48,7 +49,7 @@ export interface DaemonTimings {
    */
   readonly departureGraceMs: number;
   /**
-   * How often the daemon reads the shared node:test observed keys, so another
+   * How often the daemon reads the shared node:test and pytest observed keys, so another
    * worktree's observation re-keys this one without an edit (task 003-26).
    * Default 5 s.
    */
@@ -213,8 +214,9 @@ export interface TimerContext {
  * nothing of it, and the next hook boundary starts it again. A drain keeps
  * its own bound.
  *
- * Task 003-26: with `nodeTest` projects, the shared observed keys are read
- * every `observedMs`, and a change asks for a runner-only refinement. What it
+ * Task 003-26: with `nodeTest` or `pytest` projects, the shared observed keys
+ * are read every `observedMs` (016 D4: the core's), and a change asks for a
+ * runner-only refinement. What it
  * queues is not activity: the idle and departure exits never wait for it.
  *
  * Row 011-69 (spec 011 C9): each check also asks for the idle last-resort GC.
@@ -343,10 +345,17 @@ export function startTimers(context: TimerContext): () => void {
     ]);
     context.commandHolds?.();
   };
-  const observedKeys = context.policy.nodeTest.flatMap(({ name }) => [
-    nodeTestObservedMetaKey(name),
-    nodeTestObservedPreloadsMetaKey(name),
-  ]);
+  // 016 D4: the core's keys of every node:test and pytest project, and node:test's own.
+  const observedKeys = [
+    ...context.policy.nodeTest.flatMap(({ name }) => [
+      nodeTestObservedMetaKey(name),
+      nodeTestObservedPreloadsMetaKey(name),
+    ]),
+    ...[...context.policy.nodeTest, ...context.policy.pytest].flatMap(({ name }) => [
+      observedMetaKey(name),
+      observedStartupMetaKey(name),
+    ]),
+  ];
   const readObserved = () => JSON.stringify(observedKeys.map((key) => store.meta.get(key)));
   const seen = context.observedSeen ?? {};
   if (seen.snapshot === undefined) {
