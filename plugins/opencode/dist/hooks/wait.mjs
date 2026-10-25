@@ -107,6 +107,7 @@ var WORKTREE_META_ROWS = {
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
+  listing: { prefix: "listing.", owner: "types/scheduler" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
   installCommand: { prefix: "install-command.", owner: "types/scheduler" },
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
@@ -7353,7 +7354,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.314";
+  if (true) return "0.1.317";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
