@@ -61,6 +61,8 @@ describe("a stale or unknown selected file names what advances it (011-27)", () 
     expect(wait.outcome).toBe("settled");
     expect(lines.slice(lines.indexOf(`Selected: ${T}`))).toEqual([
       `Selected: ${T}`,
+      // Row 011-206 (gh-83): the source path is named apart from the files it selects.
+      "Not a listed test file: src/lib.js; it selects the 1 test file that reads it",
       "Stale (1):",
       `  1 last passed at other inputs, nothing queued it (the baseline is lookup-only): ${T}; \`squeal retry ${T}\` runs it once`,
       expect.stringMatching(
