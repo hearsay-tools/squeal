@@ -272,7 +272,7 @@ function format(entries: Record<string, RelativePath[]>, shape: "map" | "list"):
  * either text, since no name is empty, so neither keys as a listing of
  * names, nor as none, as every such listing did before 0.1.316.
  */
-const ABSENT_LISTING: FileHash = createHash("sha1").update("\0absent").digest("hex");
+export const ABSENT_LISTING: FileHash = createHash("sha1").update("\0absent").digest("hex");
 const EMPTY_LISTING: FileHash = createHash("sha1").update("\0empty").digest("hex");
 
 /**
@@ -289,22 +289,22 @@ export class Listings {
   /** directory -> entry name -> tracked files below it. */
   #entries: Map<RelativePath, Map<string, number>> | null = null;
   /** Each directory hashed from disk -> the hash of the names last seen there (row 016-24). */
-  readonly #seen = new Map<RelativePath, FileHash | null>();
+  readonly #seen = new Map<RelativePath, FileHash>();
 
   constructor(
     private readonly files: () => Iterable<RelativePath>,
-    private readonly root?: AbsolutePath,
+    private readonly root: AbsolutePath,
   ) {}
 
-  /** The hash of `directory`'s sorted entry names; `null` when it has none and there is no root. */
-  hashOf(directory: RelativePath): FileHash | null {
+  /** The hash of `directory`'s sorted entry names; a marker when it holds none. */
+  hashOf(directory: RelativePath): FileHash {
     const names = this.#index().get(directory);
     if (names !== undefined && names.size > 0) {
       this.#seen.delete(directory);
       return namesHash([...names.keys()]);
     }
     const hash = this.#onDisk(directory);
-    if (this.root !== undefined) this.#seen.set(directory, hash);
+    this.#seen.set(directory, hash);
     return hash;
   }
 
@@ -321,9 +321,8 @@ export class Listings {
     }
   }
 
-  /** The hash of the names `directory` holds on disk, a marker when it holds none; `null` without a root. */
-  #onDisk(directory: RelativePath): FileHash | null {
-    if (this.root === undefined) return null;
+  /** The hash of the names `directory` holds on disk, a marker when it holds none. */
+  #onDisk(directory: RelativePath): FileHash {
     let names: string[];
     try {
       names = readdirSync(join(this.root, directory));

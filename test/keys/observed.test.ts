@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import {
   ancestorListings,
   assembleClosure,
@@ -15,6 +15,7 @@ import {
   observedStartupMetaKey,
   StartupSets,
 } from "../../src/core/keys/index.js";
+import { ABSENT_LISTING } from "../../src/core/keys/observed.js";
 import type { FileChange } from "../../src/core/types/index.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
@@ -208,13 +209,17 @@ describe("the worktree's .git entry (task 001-262)", () => {
 });
 
 describe("listings", () => {
+  // A root that holds no listed directory: every listing reads one (quality 2026-10-25, slice 1).
+  const bare = mkdtempSync(join(tmpdir(), "squeal-listings-"));
+  afterAll(() => rmSync(bare, { recursive: true, force: true }));
+
   it("hash a directory's entry names, files and subdirectories holding one, and move on add or delete only", () => {
     let files = ["a/one.ts", "a/sub/deep.ts", "b.ts"];
-    const listings = new Listings(() => files);
+    const listings = new Listings(() => files, bare);
     const a = listings.hashOf("a");
     const root = listings.hashOf("");
     expect(a).not.toBeNull();
-    expect(listings.hashOf("missing")).toBeNull();
+    expect(listings.hashOf("missing")).toBe(ABSENT_LISTING);
 
     // An edit moves no listing.
     expect(listings.apply([change("a/one.ts", "1", "2")])).toEqual([]);
@@ -253,21 +258,21 @@ describe("listings", () => {
       expect(same?.hashOf("ignored/list")).toBe(hash);
       // An empty and an absent directory each key as a marker of their own,
       // never as none, as 0.1.313 keyed every ignored listing (row 016-26);
-      // without a root there is nothing to read. A tracked one keys as before.
+      // a root without the directory holds none. A tracked one keys as before.
       const empty = one?.hashOf("ignored/list/sub");
       const absent = one?.hashOf("missing");
       expect([empty, absent].every((h) => typeof h === "string" && h !== hash)).toBe(true);
       expect(empty).not.toBe(absent);
       expect(two?.hashOf("ignored/list/sub")).toBe(empty);
       expect(two?.hashOf("elsewhere")).toBe(absent);
-      expect(new Listings(() => ["src/x.ts"]).hashOf("ignored/list")).toBeNull();
-      expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"]).hashOf("src"));
+      expect(new Listings(() => ["src/x.ts"], bare).hashOf("ignored/list")).toBe(ABSENT_LISTING);
+      expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"], bare).hashOf("src"));
 
       // Residuals of 016-23 (tasks/016-23/notes.md). A tracked directory's
       // ignored names on disk are no entries (R3).
       mkdirSync(join(roots[0] as string, "src"));
       writeFileSync(join(roots[0] as string, "src/y.log"), "1\n");
-      expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"]).hashOf("src"));
+      expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"], bare).hashOf("src"));
       // A recursive listing of an ignored directory keys its own names only (R2).
       expect(one?.below("ignored")).toEqual(["ignored/"]);
     } finally {
@@ -276,17 +281,14 @@ describe("listings", () => {
   });
 
   it("below a directory are its own and each nested directory's that holds a file (review wave 12d B5)", () => {
-    const listings = new Listings(() => [
-      "tree/a.txt",
-      "tree/sub/b.txt",
-      "tree/sub/deep/c.txt",
-      "treetop/x.txt",
-      "y.txt",
-    ]);
+    const listings = new Listings(
+      () => ["tree/a.txt", "tree/sub/b.txt", "tree/sub/deep/c.txt", "treetop/x.txt", "y.txt"],
+      bare,
+    );
     expect(listings.below("tree")).toEqual(["tree/", "tree/sub/", "tree/sub/deep/"]);
     expect(listings.below("tree/sub/deep")).toEqual(["tree/sub/deep/"]);
     expect(listings.below("")).toEqual(["./", "tree/", "tree/sub/", "tree/sub/deep/", "treetop/"]);
-    // A directory with no tracked file below it is still its own listing, hashed as none.
+    // A directory with no tracked file below it is still its own listing, hashed from disk.
     expect(listings.below("missing")).toEqual(["missing/"]);
   });
 
