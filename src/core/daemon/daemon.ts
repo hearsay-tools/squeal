@@ -625,6 +625,8 @@ class Daemon {
       ]);
       if (this.#phase === "stopping" || this.#stopRequested) return;
       const format = await readObjectFormat(root);
+      // Row 015-45: the writer and the coverage step keep to one half of the main thread together.
+      const pace = new coverage.Pace(this.#now);
       // Spec 015 D8: the records, stored at their results' keys off the run's path.
       this.#coverage = coverage.createCoverageWriter({
         commonDir,
@@ -636,6 +638,7 @@ class Daemon {
         log: this.#log,
         // Row 015-12: CRAP is judged again once a record is stored.
         onStored: () => this.#code?.soon(),
+        pace,
       });
       // Spec 015 D4: outside the scheduler's lanes, with no test permit, nudged after each batch.
       const code = codePass.createCodePass({
@@ -663,6 +666,7 @@ class Daemon {
           main: store,
           closures: () => this.#loop?.scheduler.keyIndex() ?? null,
           writing: () => this.#coverage?.busy() ?? false,
+          pace,
         },
       });
       this.#code = code;
