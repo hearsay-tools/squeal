@@ -47,15 +47,19 @@ function holdFirst(h: Harness, path: string) {
 
 const EMPTY = { paths: [], more: 0 };
 
-/** The warm-up `record` completed, with every file's reads in its own record. */
+/**
+ * The warm-up `record` completed, with every file's reads in its own record.
+ * The Vitest file's closure holds the ignored path it read (spec 016 D4, the
+ * written-directory bound), so its entry is empty.
+ */
 function expectObserved(h: Harness, record: CheckpointRecord): void {
   expect(h.store.checkpoints.get(record.id)?.end).toBe("completed");
   const stored = readIgnoredReads(h.store, h.worktreeId);
   expect(stored?.checkpoint).toBe(record.id);
   expect(stored?.files).toMatchObject({
     [`nt\0${READS}`]: { paths: [BUILD], more: 0 },
-    [`forks\0${VITEST}`]: { paths: [BUILD], more: 0 },
-    [`threads\0${VITEST}`]: { paths: [BUILD], more: 0 },
+    [`forks\0${VITEST}`]: EMPTY,
+    [`threads\0${VITEST}`]: EMPTY,
     [`nt\0${QUIET}`]: EMPTY,
     "forks\0test/plain.test.ts": EMPTY,
     "threads\0test/plain.test.ts": EMPTY,
