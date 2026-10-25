@@ -1,0 +1,65 @@
+Sun Oct 25 03:25:23 UTC 2026
+ 04:25:23 up 10 days, 18:13,  6 users,  load average: 10.77, 18.28, 23.59
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/190bb948-a795-4551-bebf-81901c0e4f93
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/190bb948-a795-4551-bebf-81901c0e4f93/test/fixtures/scheduler/.tmp/5af5bc68-3917-4e79-8bc6-ef1ae67b34b3/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/190bb948-a795-4551-bebf-81901c0e4f93/test/fixtures/scheduler/.tmp/7086c135-751a-43d7-baaf-083c55462a5d/main/.git/worktrees/staged/gitdir
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Rebasing (1/1)
+error: could not apply 808d461... main
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 808d461... main
+error: could not apply da7ede6... side
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+error: could not apply 83c29a0... topic
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+error: could not revert 97ff8d5... commit
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+Rebasing (1/1)
+error: could not apply 83c29a0... topic
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 83c29a0... topic
+Rebasing (1/2)
+Rebasing (2/2)
+
+                                                                                
+Stopped at fdc1d2a (topic)
+squeal tests: killing 1 process(es) an earlier run left: 69118
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  1095 passed | 2 skipped (1097)
+      Tests  8728 passed | 2 expected fail | 10 skipped (8740)
+   Start at  04:25:24
+   Duration  1205.82s (tests 97%, import 3%)
+
+    Isolate  1097 workers spawned · ~119ms startup each (spawn + environment, per file)
+             at least ~32.39s faster with isolate: false — reuses workers across files instead of one per file
+
+SUITE_EXIT=0
+Sun Oct 25 03:45:30 UTC 2026
