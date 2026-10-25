@@ -801,6 +801,11 @@ export interface PendingRetry {
   readonly requests: number;
   /** Row 011-27: when the live daemon's open run holding it started. */
   readonly runningSince?: EpochMs;
+  /**
+   * Row 011-213: when a daemon at its key first met the load gate closed on
+   * it, the earliest of its requests; absent while none has.
+   */
+  readonly gateClosedAt?: EpochMs;
 }
 
 /**

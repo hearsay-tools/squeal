@@ -1,5 +1,6 @@
 import { shellWord, timeText } from "../text.js";
 import type { EpochMs, RecordedFacts, RetryFact, WorktreeId } from "../types/index.js";
+import { LOAD_RETRY_WAIT_MS } from "./gate.js";
 import { type HostLoad, loadAllows } from "./load.js";
 import type { RetryOutcome, RetryReason } from "./records.js";
 
@@ -17,15 +18,38 @@ export function loadText(load: HostLoad): string {
     : `load average ${load.oneMinute.toFixed(2)} on ${cpus}`;
 }
 
+/** `12 s`, `4 min 12 s`, `10 min`. */
+function waitedText(ms: number): string {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  if (seconds < 60) return `${seconds} s`;
+  const rest = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest === 0 ? "" : ` ${rest} s`}`;
+}
+
+/** The most a `load` retry waits for the load gate, as the texts name it. */
+const BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
+
+/**
+ * How long a `load` request has met the gate closed (row 011-213): since
+ * when a daemon at its key first did, `null` while none has, and the time now.
+ */
+export interface GateWait {
+  readonly since: EpochMs | null;
+  readonly now: EpochMs;
+}
+
 /**
  * What a pending request of `reason` waits for, with the load now; row
  * 011-27 (gh-41's comment): a `load` one the load lets run says it runs at
- * the daemon's next look, and one whose run is open since when.
+ * the daemon's next look, and one whose run is open since when. Row 011-213:
+ * a `load` one the load holds says how long the gate has been closed of the
+ * most it waits, and once that has passed, that it runs at the next look.
  */
 export function waitsText(
   reason: RetryReason,
   load: HostLoad,
   runningSince: EpochMs | null = null,
+  gate: GateWait | null = null,
 ): string {
   if (runningSince !== null) return `running since ${timeText(runningSince)}`;
   if (reason === "environment") return "runs at once";
@@ -33,7 +57,33 @@ export function waitsText(
   if (loadAllows(load)) {
     return `runs at the daemon's next look: the one-minute load average is below the CPU count (${loadText(load)} now)`;
   }
-  return `waits for the one-minute load average to fall below the CPU count (${loadText(load)} now)`;
+  const waits = "waits for the one-minute load average to fall below the CPU count";
+  if (gate === null || gate.since === null) {
+    return `${waits}, at most ${BOUND_TEXT}, then runs once anyway (${loadText(load)} now)`;
+  }
+  const waited = gate.now - gate.since;
+  if (waited >= LOAD_RETRY_WAIT_MS) {
+    return `runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for ${BOUND_TEXT}, the most a load retry waits (${loadText(load)} now)`;
+  }
+  return `${waits}: at or above it for ${waitedText(waited)} of at most ${BOUND_TEXT}, then runs once anyway (${loadText(load)} now)`;
+}
+
+/**
+ * When a `load` retry asked now runs (row 011-213), as `squeal retry`
+ * answers: once the load is below the CPU count, or at the bound.
+ */
+export function loadRetryWhenText(load: HostLoad): string {
+  return loadAllows(load)
+    ? `runs once more now: the one-minute load average is below the CPU count (${loadText(load)})`
+    : `runs once more when the one-minute load average falls below the CPU count, or after at most ${BOUND_TEXT} above it, then with a load note (${loadText(load)} now)`;
+}
+
+/**
+ * The daemon's note when the bound queued a `load` retry while the gate
+ * stayed closed (row 011-213), as 004 D3's note for a slow file under load.
+ */
+export function loadRetryNoteText(path: string, loadPerCpu: number): string {
+  return `load retry of ${path} queued under load ${loadPerCpu.toFixed(2)} per CPU, at or above one per CPU, once it had waited ${BOUND_TEXT} for the one-minute load average to fall below the CPU count (spec 011 C5)`;
 }
 
 /** How an ended request ended, as a short phrase. */

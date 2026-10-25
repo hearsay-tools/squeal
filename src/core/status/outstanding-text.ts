@@ -1,3 +1,4 @@
+import { testFileId } from "../keys/index.js";
 import { waitsText } from "../retry/text.js";
 import { plural, testFileText } from "../text.js";
 import type {
@@ -92,7 +93,7 @@ function groupLine(
     case "checkpoint":
       return checkpointText(s, now, command);
     case "retry":
-      return retryText(standing, files, s);
+      return retryText(standing, files, s, now);
   }
   const next = nextStep(standing, { named: false });
   const paths = files.map((f) => fromBase(base, f.path));
@@ -175,12 +176,14 @@ function checkpointText(s: StatusSnapshot, now: EpochMs, command: string): strin
  * Spec 001 D6 (001-368): a retry asked and not ended, and what it waits
  * for, with the load now; its FAIL, when it has one, is among the known
  * failures above. Row 011-27: a file with no result runs at once, so its
- * reason, given or not, says nothing.
+ * reason, given or not, says nothing. Row 011-213: a `load` one says how
+ * long the gate has been closed, the earliest of the group's files.
  */
 function retryText(
   standing: Extract<OutstandingStanding, { kind: "retry" }>,
   files: readonly TestFileRef[],
   s: StatusSnapshot,
+  now: EpochMs,
 ): string {
   const asked = standing.noResult ? "no result at its inputs" : standing.reason;
   const load = {
@@ -189,5 +192,15 @@ function retryText(
   };
   const reason = standing.noResult ? "environment" : standing.reason;
   const where = standing.elsewhere ? ", queued by another worktree's daemon" : "";
-  return `${plural(files.length, "test file")} with a pending retry (${asked}): ${shownText(files)}; ${waitsText(reason, load, standing.runningSince)}${where}`;
+  const gate = { since: gateClosedSince(s, files), now };
+  return `${plural(files.length, "test file")} with a pending retry (${asked}): ${shownText(files)}; ${waitsText(reason, load, standing.runningSince, gate)}${where}`;
+}
+
+/** The earliest time a daemon met the load gate closed on one of `files`' retries; `null` when none did. */
+function gateClosedSince(s: StatusSnapshot, files: readonly TestFileRef[]): EpochMs | null {
+  const ids = new Set(files.map(testFileId));
+  const times = (s.pendingRetries?.retries ?? []).flatMap((r) =>
+    r.gateClosedAt !== undefined && ids.has(testFileId(r.testFile)) ? [r.gateClosedAt] : [],
+  );
+  return times.length === 0 ? null : Math.min(...times);
 }

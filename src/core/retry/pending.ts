@@ -7,6 +7,7 @@ import type {
   TestFileKeyRecord,
   TestFileRef,
 } from "../types/index.js";
+import { gateClosedSince } from "./gate.js";
 import { type HostLoad, hostLoad } from "./load.js";
 import { type RetryRecord, readRetries } from "./records.js";
 
@@ -47,6 +48,7 @@ export function pendingRetriesOf(
 function entry(records: readonly RetryRecord[]): PendingRetry {
   const first = records[0] as RetryRecord;
   const testFile: TestFileRef = first.testFile;
+  const since = gateClosedSince(records);
   return {
     testFile,
     reason: records.some((r) => r.reason === "environment") ? "environment" : "load",
@@ -55,5 +57,7 @@ function entry(records: readonly RetryRecord[]): PendingRetry {
     askedAt: first.askedAt,
     claimedBy: records.find((r) => r.claim !== null)?.claim?.worktreeId ?? null,
     requests: records.length,
+    // Row 011-213: since when the load gate has been closed on it.
+    ...(since === null ? {} : { gateClosedAt: since }),
   };
 }
