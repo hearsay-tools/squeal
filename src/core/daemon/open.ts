@@ -13,6 +13,7 @@ import type {
   WorktreeId,
 } from "../types/index.js";
 import { liveDaemonRecorded, recordedDaemon } from "./ensure.js";
+import { type StoreFile, storeFileOf } from "./full-check.js";
 import { acquireDaemonLock, awaitDaemonLock, type DaemonLock, type LockWaitEnd } from "./lock.js";
 import { VACANT_LOCK_WAIT_MS } from "./lock-wait.js";
 import { noteInNewerStore, writeNote } from "./notes.js";
@@ -31,6 +32,8 @@ export interface OpenedDaemon {
   readonly commonDir: AbsolutePath;
   readonly worktreeId: WorktreeId;
   readonly store: Store;
+  /** The file `store` opened, which its heartbeat compares (row 011-226); `null` when unread. */
+  readonly storeFile: StoreFile | null;
   readonly lock: DaemonLock;
   /** Working and temp directory outside the root, the temp directory emptied under the lock. */
   readonly scratch: DaemonScratch;
@@ -173,7 +176,14 @@ export async function openDaemon(
   if (refusal !== null) {
     writeNote(store, worktreeId, { at: now(), revision: null, text: refusal }, () => {});
   }
-  return { root, commonDir, worktreeId, store, lock, scratch, leftovers };
+  const storeFile = (() => {
+    try {
+      return storeFileOf(commonDir);
+    } catch {
+      return null;
+    }
+  })();
+  return { root, commonDir, worktreeId, store, storeFile, lock, scratch, leftovers };
 }
 
 /**
