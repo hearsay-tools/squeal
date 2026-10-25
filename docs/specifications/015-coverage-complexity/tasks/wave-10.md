@@ -42,3 +42,14 @@ Use /worker, resumed (worker ad47a8ec). Shape: repair. Starts from your branch `
 - **B2.** Check early eligibility against the stored threshold whether or not the file is quiet; `quiet` decides only whether a transition is written. Add the recount-plus-threshold regression.
 - **Owns.** As W1. No schema, record, provider-version or text change. Keep the per-source early signature and the cost rule.
 - **Done when.** Both regressions red on the candidate and green after, the existing early tests pass, notes updated in `tasks/015-57/notes.md`. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
+
+## 015-59 round 2: re-review of candidate 0.1.324 after R12
+
+Use /reviewer, resumed (reviewer eed2d522). Candidate `cand/0.1.324-r2`, pinned to the SHA named in the message: the three round-1 commits and R12's three (regressions, fix, notes), cherry-picked onto main at 0.1.323, and the build commit redone (0.1.323 to 0.1.324). 0.1.323 shares no source file with the range. Round 1 stays as `cand/0.1.324` (02fd25325). Write `reviews/0.1.324-r2.md` and commit it on your branch. This is the last round.
+
+Check, narrowly:
+1. **B1.** With records still to come, the early CRAP never falls below the CRAP the whole set gives, transforms that add executable lines included; completing the loaders never raises an early value or makes a function told FAIL -> PASS fail again. The full judgement's calculation and texts are unchanged.
+2. **B2.** A failure that only a threshold change passes keeps its state through a quiet recount until every record is in.
+3. **Kept.** Round 1's "What fits" still holds: records at another blob or unread are never used; only a failing measure is judged early; told once; the summary field additive; the cost rule.
+
+Run one independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Verdict: PASS or FAIL; only a proven break blocks.
