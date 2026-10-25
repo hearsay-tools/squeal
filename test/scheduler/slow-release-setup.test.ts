@@ -9,13 +9,14 @@ import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { hold, liveProcess, settle } from "./command-hold-fixture.js";
 import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { unmergeIndex } from "./merge-hold-fixture.js";
 
 /*
  * Row 011-211 (004 D2, 013 V1; gh-78): the slow lane's Vitest instance
  * closes while its slow files are still queued, at once when a hold begins
  * and once no slow tier started for `slow.releaseMs` (60 s by default) after
  * the last slow run, so a project's `globalSetup` teardown frees what it
- * holds; the next slow tier makes a new instance, which runs the setup again.
+ * holds (either hold of 011 C9, a command's or a merge's); the next slow tier makes a new instance, which runs the setup again.
  * A pass that drains closes it as before. The fixture is `basic` in two
  * Vitest projects, as a browser suite is in cezarion: `e2e` holds the two
  * slow files and a `globalSetup` that writes a mark at setup and teardown,
@@ -112,6 +113,25 @@ function gate(h: Harness, paths: readonly string[]) {
 const slowRuns = (h: Harness) => h.runsOf(A).length + h.runsOf(B).length;
 const PAIR = ["setup", "teardown"];
 
+/**
+ * One slow file ran in the agent's turn; under `slow.trigger: "idle"` the
+ * other waits for the pause, its instance open (the 60 s bound unreached).
+ */
+async function waitingForIdle() {
+  const { h, marks, activity } = await open();
+  const { delivery, consumer } = await h.consumer();
+  const slow = gate(h, [A, B]);
+  await h.scheduler.start();
+  await expect.poll(() => slow.held, { timeout: 60_000 }).toBe(1);
+  await delivery.startTurn(consumer);
+  slow.release();
+  await expect.poll(activity, { timeout: 60_000 }).toEqual({ kind: "waiting", for: "idle" });
+  expect(slowRuns(h)).toBe(1);
+  await settle(500);
+  expect(marks()).toEqual(["setup"]);
+  return { h, marks, pause: () => delivery.endTurn(consumer) };
+}
+
 describe("the slow instance frees its environment when its lane stops (row 011-211)", SLOW, () => {
   it("a pass that drains closes it once, as before", async () => {
     const { h, marks } = await open(1_000);
@@ -122,20 +142,8 @@ describe("the slow instance frees its environment when its lane stops (row 011-2
     expect(marks()).toEqual(PAIR);
   });
 
-  it("a hold closes it at once; after the hold the next slow tier runs the setup again", async () => {
-    const { h, marks, activity } = await open();
-    const { delivery, consumer } = await h.consumer();
-    const slow = gate(h, [A, B]);
-    await h.scheduler.start();
-    await expect.poll(() => slow.held, { timeout: 60_000 }).toBe(1);
-    // The agent's turn: under `slow.trigger: "idle"` the other slow file waits once this one ends.
-    await delivery.startTurn(consumer);
-    slow.release();
-    await expect.poll(activity, { timeout: 60_000 }).toEqual({ kind: "waiting", for: "idle" });
-    expect(slowRuns(h)).toBe(1);
-    await settle(500);
-    expect(marks()).toEqual(["setup"]);
-
+  it("a command hold closes it at once; after the hold the next slow tier runs the setup again", async () => {
+    const { h, marks, pause } = await waitingForIdle();
     const entry = hold(h, (await liveProcess()).identity);
     expect(await h.scheduler.commandHold()).toBe(true);
     // Well within the 60 s bound: the hold closed it.
@@ -143,7 +151,18 @@ describe("the slow instance frees its environment when its lane stops (row 011-2
 
     removeCommandHold(h.store, h.worktreeId, entry.token);
     expect(await h.scheduler.commandHold()).toBe(false);
-    await delivery.endTurn(consumer);
+    await pause();
+    await expect.poll(marks, { timeout: 60_000 }).toEqual([...PAIR, ...PAIR]);
+    expect(slowRuns(h)).toBe(2);
+  });
+
+  it("a merge hold closes it too, once the scheduler reads the index; its end lets the next tier set up again", async () => {
+    const { h, marks, pause } = await waitingForIdle();
+    unmergeIndex(h.root, "src/math.ts");
+    await expect.poll(marks, { timeout: 5_000 }).toEqual(PAIR);
+
+    git(h.root, ["reset", "-q"]);
+    await pause();
     await expect.poll(marks, { timeout: 60_000 }).toEqual([...PAIR, ...PAIR]);
     expect(slowRuns(h)).toBe(2);
   });
