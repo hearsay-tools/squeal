@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Counter } from "../../../src/core/code/pass/index.js";
 import { WT } from "../../state/helpers.js";
-import { fakeCounter } from "../pass/helpers.js";
-import { type CoverageRig, consumer, coverageRig, sourceOf } from "./rig.js";
+import { type CoverageRig, consumer, counterV2, coverageRig, sourceOf } from "./rig.js";
 
 /*
  * Review 0.1.297 B1 and B2 (repair R6): a judgement holds while every input
@@ -20,28 +18,6 @@ const blobOf = (rig: CoverageRig, path: string) => rig.store.files.list(WT, [pat
 const ranHotAndTiny = (rig: CoverageRig) => [
   sourceOf("src/a.ts", blobOf(rig, "src/a.ts"), 3, [1, 3]),
 ];
-
-/** The fake counter at version 2, with each function's name and CC as `as` gives them. */
-function counterV2(as: Record<string, readonly [name: string, cc: number]>): Counter {
-  const inner = fakeCounter();
-  return {
-    version: 2,
-    async count(text, language) {
-      const counted = await inner.count(text, language);
-      return {
-        ...counted,
-        functions: counted.functions.map((fn) => {
-          const [qualifiedName, complexity] = as[fn.qualifiedName] ?? [fn.qualifiedName, 0];
-          return {
-            ...fn,
-            qualifiedName,
-            complexity: complexity || fn.complexity,
-          };
-        }),
-      };
-    },
-  };
-}
 
 const thresholds = (rig: CoverageRig) =>
   rig.store.states
