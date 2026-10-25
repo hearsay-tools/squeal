@@ -19,6 +19,7 @@ import type {
   Store,
   WorktreeId,
 } from "../types/index.js";
+import { type StoreFile, storeCondemned } from "./full-check.js";
 import { recordDaemonUsed } from "./last-use.js";
 import { SlicedWrites } from "./sliced-writes.js";
 
@@ -88,6 +89,11 @@ export interface TimerContext {
   readonly worktreeId: WorktreeId;
   /** The git common dir: its store's `locks/` holds the waiter locks the expiry pass reads. */
   readonly commonDir: AbsolutePath;
+  /**
+   * The store file the daemon opened (`storeFileOf`): a heartbeat that finds
+   * another at the store's path stops it (row 011-226). Absent: not compared.
+   */
+  readonly storeFile?: StoreFile | null;
   readonly store: Store;
   readonly policy: Policy;
   readonly now: () => EpochMs;
@@ -218,6 +224,10 @@ export interface TimerContext {
  * queues is not activity: the idle and departure exits never wait for it.
  *
  * Row 011-69 (spec 011 C9): each check also asks for the idle last-resort GC.
+ *
+ * Row 011-226: a heartbeat that finds the store marked by a failed full
+ * check, or the file the daemon opened moved aside, stops the daemon
+ * (`storeCondemned`), reason `store-unusable`.
  */
 export function startTimers(context: TimerContext): () => void {
   const { store, worktreeId, now, timings } = context;
@@ -336,6 +346,14 @@ export function startTimers(context: TimerContext): () => void {
       }
     });
   const heartbeat = () => {
+    let condemned: string | null = null;
+    attempt("store check", () => {
+      condemned = storeCondemned(context.commonDir, context.storeFile);
+    });
+    if (condemned !== null) {
+      context.shutdown("store-unusable", condemned);
+      return;
+    }
     retries.run("the heartbeat", [
       ["heartbeat", () => beat(context, now())],
       ["harness check", () => dropGoneHarnesses(store, worktreeId, now(), { locksDir })],

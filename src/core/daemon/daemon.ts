@@ -40,6 +40,7 @@ import {
 } from "../types/index.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
+import { startFullCheck } from "./full-check.js";
 import { type GcFunction, IdleGc } from "./idle-gc.js";
 import { recordDaemonUsed } from "./last-use.js";
 import {
@@ -210,6 +211,8 @@ class Daemon {
   #cancelling: Promise<void> = Promise.resolve();
   #starting: Promise<void> = Promise.resolve();
   #stopTimers: () => void = () => {};
+  /** Row 011-226: stops the full check it claimed once ready, and gives its claim back. */
+  #stopFullCheck: () => void = () => {};
   #lastActive: EpochMs;
   /** Last edit, tier, wait or request; registered consumers are no use (task 001-415). */
   #lastUsed: EpochMs;
@@ -723,7 +726,17 @@ class Daemon {
       this.#lastUsed = this.#lastActive;
       // The idle GC's quiet too, unless a tier runs.
       this.#idleGc.ready();
-      if (this.#phase === "starting") this.#setPhase("ready");
+      if (this.#phase === "starting") {
+        this.#setPhase("ready");
+        // Row 011-226: the day's full integrity check, off the main thread, once it serves.
+        this.#stopFullCheck = startFullCheck({
+          store,
+          commonDir,
+          now: this.#now,
+          note: (text) => this.#note(text),
+          log: this.#log,
+        });
+      }
       this.#log(`serving ${root} on ${this.#socketPath}`);
     } catch (error) {
       void this.#shutdown("start-failed", 1, `daemon exited: could not start: ${message(error)}`);
@@ -935,6 +948,7 @@ class Daemon {
       this.#markExit();
       this.#note(text, undefined, this.#incarnation());
       await this.#starting.catch(() => {});
+      await this.#step("full check", () => this.#stopFullCheck());
       const { store, worktreeId, lock } = this.opened;
       await this.#step("loop.close", async () => {
         await this.#loop?.close(this.#stopRequested ? { cancel: true } : {});
