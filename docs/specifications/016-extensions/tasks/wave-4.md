@@ -36,5 +36,6 @@ Questions:
 2. For edits since the update that touched a child-imported path, did the marked file run as edit work, and did any edit's work exceed `runner.tierSize` because of marks?
 3. How many test files list a directory the watcher sees no file in, and how many ran once more after the update because of it?
 4. Is any stored result inherited across worktrees whose listed ignored directory names differ? A yes is a blocker: report it to me at once.
+5. For row 016-25 (R3), the cost of keying ignored names in a directory that also holds tracked files: how many test files list such a mixed directory, which directories, and across this repository's worktrees how often the key of each would have moved (the ignored names differ between worktrees or over the day). Leave out C2's atomic-save temp names (`<file>.tmp.<pid>.<random>`).
 
 Done when: `lessons.md` is committed with each answer, its numbers, the load at each reading, and a verdict per goal: holds, blocker, or unproven with the reason.
