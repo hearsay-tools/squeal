@@ -72,13 +72,6 @@ export class StartupSets {
     }
   }
 
-  /** `see` and `write`: adds `paths` here and in the store. Returns the new ones. */
-  add(project: ProjectName, paths: readonly RelativePath[]): RelativePath[] {
-    const added = this.see(project, paths);
-    this.write();
-    return added;
-  }
-
   #merge(project: ProjectName, paths: readonly RelativePath[]): RelativePath[] {
     const known = this.#sets.get(project) ?? new Set<RelativePath>();
     const added = paths.filter((p) => !known.has(p));

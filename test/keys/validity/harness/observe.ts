@@ -17,7 +17,9 @@ import { scratchStore, writeTree } from "./shared.js";
  * Node that runs `input.script` in a fixture worktree, its observations read
  * and kept in a store's `meta` by the tree's code. The read paths and the
  * listings join the set as `observedGrowth` adds them for a file with an
- * empty closure in a worktree that ignores nothing.
+ * empty closure in a worktree that ignores nothing. With `temporary`, each
+ * directory the script printed stands as `<temporary N>`, so a random name
+ * is the same at both trees.
  */
 export function observe(input: ObserveInput, scratch: string, runtime: string): CaseOutput {
   const root = writeTree(join(scratch, "worktree"), input.files);
@@ -44,8 +46,19 @@ export function observe(input: ObserveInput, scratch: string, runtime: string): 
       const listed = [...o.directories, ...(o.recursive ?? [])].map(listingPath);
       sets.add(o.testFile, [...o.paths, ...listed]);
     }
-    return { outputs: { observed, kept: store.meta.get(observedMetaKey(testFile.project)) } };
+    const outputs = { observed, kept: store.meta.get(observedMetaKey(testFile.project)) };
+    return { outputs: input.temporary === true ? named(outputs, child.stdout) : outputs };
   } finally {
     store.close();
   }
+}
+
+/** `outputs` with each directory `printed` names, one per line, as `<temporary N>`. */
+function named(outputs: unknown, printed: string): unknown {
+  const dirs = printed.split("\n").filter((line) => line !== "");
+  const text = dirs.reduce(
+    (out, dir, i) => out.replaceAll(dir, `<temporary ${i + 1}>`),
+    JSON.stringify(outputs),
+  );
+  return JSON.parse(text);
 }

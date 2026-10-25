@@ -79,10 +79,30 @@ node:test's recorder (`src/runners/node-test/runtime/recorder.cjs`) wraps `mkdir
 
 pytest's start-up hook (`src/runners/pytest/runtime/sitecustomize.py`, in every Python process of the run, pytest's too) wraps `os.mkdir`, `os.rmdir`, `os.rename` and `os.replace`; `os.makedirs`, `tempfile.mkdtemp`, `pathlib` and `shutil.rmtree` reach them. A path named before costs one `getcwd` and one set lookup; a new one a `realpath` and one `os.write` of one line. Measured 2026-10-25, 200,000 calls of each, three rounds, the host at load 54 on 24 CPUs, an existing directory to `os.mkdir` and a missing one to `os.rmdir`: Python 3.13 3.3 to 5.0 µs a call without the hook and 5.7 to 7.4 µs with it; Python 3.10 2.7 to 4.5 µs and 7.5 to 13.8 µs. About 3 µs (3.13) and 5 µs (3.10) a call, the cost of a Python-level wrapper; a relative path costs the same once the set holds it. Tests: `test/runners/pytest/run/spawned.test.ts`, "records each directory a process creates, removes or renames, in every form, and no file write (016 D4)", on both Pythons.
 
+## The validity comparison (C6)
+
+`test/keys/validity` against `squeal--v0.1.308`, 2026-10-25 (`test/keys/key-format.test.ts` passes, 12 of 12; the eight validity self-tests pass):
+
+| Version | Case that shows the raise | Last release | Candidate |
+| --- | --- | --- | --- |
+| `NODE_TEST_ADAPTER_VERSION` 9 to 10 | `adapter:node-test`, "a test sees the directory it made recorded as written" (`cases/adapter/node-test.ts`) | fail | pass |
+| `PYTEST_ADAPTER_VERSION` 3 to 4 | `adapter:pytest`, the same name, on Python 3.10 and 3.13 (`cases/adapter/pytest.ts`) | fail | pass |
+| `RECORDER_VERSION` 3 to 4 | `observe`, "reads below a directory made by mkdir and one made by mkdtemp" (`cases/observe/written.ts`) | no `written` | `written: ["out", <temporary 1>]` |
+
+Each raise case is 007-55's kind of proof: equal keys, and a test whose outcome the runtime's new record decides. The reason each `why` gives is the change of what the core keeps. `KEY_FORMAT_VERSION` and `VITEST_ADAPTER_VERSION` stay: their cases agree and every changed line runs.
+
+What C6 built, all under `test/keys/validity` (validity `notes.md`, decision 17):
+- the `adapter:node-test` kind, which `notes.md` listed as not built: `harness/node-test.ts`, the node:test runtime in each side's `dist/node-test/`, the `ranFiles` direction, the component's kind. It also has an outcomes case;
+- `Kept` in `harness/reported.ts`: the pytest and node:test kinds read the adapter's closures, environments and affected files with what the core keeps from each report. Without it, the three pytest case pairs whose runs observe paths or start-up imports had keys that differ (the adapter alone no longer holds them), and no outputs compared. With it, every pytest and node:test case has equal keys at both trees, and only the raise cases differ;
+- `elsewhere` for the `assemble` kind: a second worktree's keys over the same store store observed paths, direct marks and start-up paths, one entry malformed; this one reads them back as a refinement does. They run the new `ObservedSets`, `StartupSets` and `WorktreeKeys` lines at the candidate, and the release's `refreshObserved`, `observing` and `ObservedSets.refresh` merge at the release. The start-up case's keys differ: a tree before D4 keeps no start-up paths in the core;
+- `temporary` for the `observe` kind, so a `mkdtemp` name reads alike at both trees.
+
+`StartupSets.add` had no caller but a test: it is gone, and `test/keys/observed.test.ts` calls `see` and `write`.
+
 ## Residuals
 
 - **A rolled-back record's direct marks.** As the start-up paths below: `markDirect` adds to this daemon's view before the record's transaction, so a rolled-back write leaves the view ahead of the store until the next record writes it. An over-mark in this daemon only.
-- **A rolled-back record's start-up write.** `rekeyEnvironments` adds a run's start-up paths to the keys' view before the environments are read again (`seeStartup`); the record's transaction stores them (`writeStartup`). When that transaction rolls back, this daemon keys the paths while the store lacks them, until its next record, which writes what the view holds and the store lacks. An over-key in this daemon only (coordinator and 011's coordinator, accepted). Test: `test/scheduler/one-write-path.test.ts`, "keys a start-up path the record's rolled-back transaction did not store, and stores it next".
+- **A rolled-back record's start-up write.** `rekeyEnvironments` adds a run's start-up paths to the keys' view before the environments are read again (`seeStartup`); the record's transaction stores them (`writeSeen`). When that transaction rolls back, this daemon keys the paths while the store lacks them, until its next record, which writes what the view holds and the store lacks. An over-key in this daemon only (coordinator and 011's coordinator, accepted). Test: `test/scheduler/one-write-path.test.ts`, "keys a start-up path the record's rolled-back transaction did not store, and stores it next".
 
 ## Assertion changes
 
