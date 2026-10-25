@@ -56,12 +56,15 @@ Every gap of the column is an absent record, which D3 accepts ("says nothing rat
 
 The coordinator, 2026-10-25, on this slice's requests: the column, no `user_version` raise; `WorktreeKeys.runnerOf` and the one `store-results.ts` line, each in a commit of its own; setup checks recorded too, with one statement in `Ledger#write` (`setup.ts` holds neither the store nor the keys). Nothing else under `src/core/scheduler/`.
 
-- Store: `addColumns` (`schema.ts`) runs at every open after `migrate`. It reads `pragma_table_info` and writes only when the column is missing. A store busy past the busy timeout is left as it is, and `runnerColumn` (`codec.ts`) re-checks until a later opener adds the column.
+- Store: `addColumns` (`columns.ts`) runs at every open after `migrate`. It reads `pragma_table_info` and writes only when the column is missing, in `Connection.transaction`. A store busy past the busy timeout fails the open as a busy migration does (hooks read it as a busy store, `status/open.ts`) and is left as it was. `runnerColumn` (`codec.ts`) guards each write and read on a store without the column.
 - Writes: `results.putMany(records, runner)` records the runner of each newest result, so a check takes the runner of its latest run, not its first. `checks.recordRunner(check, runner)` records a setup check's runner, which has no stored result.
 - Reads: `checks.runnerOf(check)`; `withDependencies` says the sentence beside a check recorded as `vitest` or `node-test`.
 
 ## Gaps a later row may close
 
 - A check whose newest result an older daemon stored has no runner until a new daemon runs it. A lookup writes none, and results survive releases, so after an upgrade most stored checks read as unrecorded for a while. Attribution says nothing for them, as D3 states.
-- `test/keys/validity/harness/store-traced.ts:118` wraps `putMany` with one parameter, so the validity harness records no runner. Nothing there reads one today.
 - The Node runner set is a list of names in `attribution.ts`. A runner that declares whether Node's lockfiles decide what it loads would remove it; that is a runner description, a 016 non-goal.
+
+## The key-format alarm (011 C14)
+
+The validity bundle holds every line this row changed in `results.ts`, `codec.ts`, `columns.ts`, `open.ts` and `WorktreeKeys`: the global entry re-exports them, and the harness opens its stores with each tree's own code. The alarm asks a case to run each changed line; no `KEY_FORMAT_VERSION` raise, since keys do not change. Agreed with the coordinator: the store and accept harnesses' stub contexts name a runner (`vitest`), the store harness's `putMany` wrapper forwards it, and the assemble harness outputs `keys.runnerOf?.("") ?? input.environment?.runnerName`, equal at both trees. `addColumns` lost its own busy and rollback branches, which no case could reach, to `Connection.transaction`.

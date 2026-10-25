@@ -6,8 +6,8 @@ import type {
   SourceLocation,
   TestFileRef,
 } from "../types/index.js";
+import { hasColumn } from "./columns.js";
 import type { Connection, Row } from "./connection.js";
-import { hasColumn } from "./schema.js";
 
 /*
  * Conversions between rows and records. Column readers throw on a type the

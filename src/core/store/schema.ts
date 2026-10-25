@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { isBusy, rollback } from "./connection.js";
+import { rollback } from "./connection.js";
 
 /** One schema step. Step `i` of the list moves `user_version` from `i` to `i + 1`. */
 export type Migration = (db: DatabaseSync) => void;
@@ -209,49 +209,6 @@ export const MIGRATIONS: readonly Migration[] = [(db) => db.exec(V1)];
 
 /** The `user_version` this Squeal writes and understands. */
 export const SCHEMA_VERSION = MIGRATIONS.length;
-
-/*
- * Columns added with no `user_version` raise (spec 016 D3, row 016-15). A
- * daemon that finds a newer `user_version` exits (011 C7), so a raise would
- * stop every older daemon of the repository. Every released statement names
- * its columns, so an older daemon leaves an added column empty and reads past
- * it (`tasks/016-15/notes.md`). Each is nullable: empty is "not recorded".
- *
- * `checks.runner`: the runner whose run stored the check's newest result, as
- * its environment names it (`RunnerEnvironment.runnerName`).
- */
-const ADDED_COLUMNS = [{ table: "checks", column: "runner", type: "TEXT" }] as const;
-
-export function hasColumn(db: DatabaseSync, table: string, column: string): boolean {
-  const row = db.prepare("SELECT 1 FROM pragma_table_info(?) WHERE name = ?").get(table, column);
-  return row !== undefined;
-}
-
-/**
- * Adds each missing column of `ADDED_COLUMNS` in one `BEGIN IMMEDIATE`
- * transaction, re-checked under the write lock so concurrent openers add it
- * once. A store busy past the busy timeout is left as it is: its readers find
- * no column and read no record. On a store with every column it writes nothing.
- */
-export function addColumns(db: DatabaseSync): void {
-  if (ADDED_COLUMNS.every((c) => hasColumn(db, c.table, c.column))) return;
-  try {
-    db.exec("BEGIN IMMEDIATE");
-  } catch (error) {
-    if (isBusy(error)) return;
-    throw error;
-  }
-  try {
-    for (const { table, column, type } of ADDED_COLUMNS) {
-      if (!hasColumn(db, table, column))
-        db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
-    }
-    db.exec("COMMIT");
-  } catch (error) {
-    rollback(db);
-    throw error;
-  }
-}
 
 export function userVersion(db: DatabaseSync): number {
   return Number(db.prepare("PRAGMA user_version").get()?.user_version ?? 0);

@@ -192,13 +192,16 @@ function keyReceiver(store: Store, input: AcceptInput): void {
   store.testFileKeys.upsertMany([row]);
 }
 
-/** What `storeResults` reads of the run's own scheduler: its store, worktree and clock. */
+/**
+ * What `storeResults` reads of the run's own scheduler: its store, worktree and
+ * clock, and from spec 016 D3 the runner it records, which no output reads.
+ */
 function producer(store: Store, worktree: string): SchedulerContext {
   return {
     store,
     worktreeId: worktree as WorktreeId,
     now: () => 2_000,
-    keys: { environmentFiles: () => [] },
+    keys: { environmentFiles: () => [], runnerOf: () => "vitest" },
   } as unknown as SchedulerContext;
 }
 

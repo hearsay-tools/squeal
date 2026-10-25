@@ -2,9 +2,10 @@ import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { AbsolutePath, EpochMs, Store, StoreOpenFailure } from "../types/index.js";
+import { addColumns } from "./columns.js";
 import { Connection, isBusy, rollback } from "./connection.js";
 import { type StorePaths, storePaths } from "./paths.js";
-import { addColumns, migrate, SCHEMA_VERSION, userVersion } from "./schema.js";
+import { migrate, SCHEMA_VERSION, userVersion } from "./schema.js";
 import { connectionOf, createStore } from "./store.js";
 
 export interface OpenStoreOptions {
@@ -86,8 +87,9 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
     switchToWal(db, busyTimeout(options));
     db.exec("PRAGMA synchronous = NORMAL");
     const version = migrate(db);
-    addColumns(db);
-    return createStore(new Connection(db), version, paths);
+    const conn = new Connection(db);
+    addColumns(conn);
+    return createStore(conn, version, paths);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { corrupt: String(error) };
