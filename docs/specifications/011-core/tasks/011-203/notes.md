@@ -56,11 +56,15 @@ An edit whose stat a pass took just before the write runs its file twice: the to
 
 ## Row 011-204: the fix and its cost
 
-`diffCandidates` now stats each path it read once more, after the read. When that stat is not the candidate's, it leaves the path as cached: no change and no cache update in this batch. The write's own batch hashes it again and reports the change. `test/revision/stat-pairing.test.ts` is the probe's pairing as a test: it failed on 0.1.307 (the append's batch gave `touched: ["test/held.test.ts"]`) and passes with the fix. The probe on the fix:
+`diffCandidates` now stats each path it read once more, after the read, and stores the hash with that stat. When it is not the candidate's stat, the entry is also marked racy, so the next pass hashes it again. A file gone by that stat is absent. The bytes are read before the stored stat is taken, so a write after the read moves the stored `mtime` to at or after `hashedAt`: the next batch or pass hashes the racy entry and reports the change, not a touch.
+
+The first fix (bf1a6cb47) left the entry as cached when the two stats differed. `test/scheduler/linked-start.test.ts` ("records a file added while the feed starts") then failed 10 of 10 runs: its backend writes `src/added.ts` again, with the same bytes, at each `watch()` call. That write fell between the pass's stat and its read (stats 147 ms apart, same size and inode), and the watcher heard nothing of it, so the change waited for the next interval pass. 88765973f stores the stat taken after the read instead (the coordinator's decision).
+
+`test/revision/stat-pairing.test.ts` holds two cases. The probe's pairing (a racy entry, a stat before an append, the hash after it, then the append's own batch) fails on 0.1.307 with `touched: ["test/held.test.ts"]` and passes with the fix. A write after the read (stat, read, write, stat), under a clock far past every `mtime`, is a change at the next pass and not a touch; it fails on 0.1.307, on bf1a6cb47, and on a mutant that does not mark a moved stat racy. The probe on the fix:
 
 ```
 {"statBeforeWrite":false,"racyAtWrite":true,"firstPass":{"changes":["test/held.test.ts"],"touched":[]},"writesOwnBatch":{"changes":[],"touched":[]}}
-{"statBeforeWrite":true,"racyAtWrite":true,"firstPass":{"changes":[],"touched":[]},"writesOwnBatch":{"changes":["test/held.test.ts"],"touched":[]}}
+{"statBeforeWrite":true,"racyAtWrite":true,"firstPass":{"changes":["test/held.test.ts"],"touched":[]},"writesOwnBatch":{"changes":[],"touched":[]}}
 ```
 
 Cost: one `lstat` per path the pass hashes. A path whose stat is unchanged and whose entry is not racy is not hashed and gets no extra stat. `probe/stat-cost.ts` on this repository's 7,750 tracked files, 2026-10-25 09:28Z, one-minute load 23 on 24 CPUs: hashing all of them took 575 ms (median of 5), stat-ing all of them 116 ms, and one stat 40 µs (median of 2,000). So an edit's batch that hashes a few files pays well under 1 ms more, and a pass that hashes every tracked file (after a checkout) about 20% more than its reads.
