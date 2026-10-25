@@ -3,6 +3,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { compare } from "../../../core/fs/index.js";
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
 import type { AbsolutePath, RelativePath, TestFileRef } from "../../../core/types/index.js";
+import { writtenAbove } from "../../observe/index.js";
 
 /**
  * The project files one test file's run loaded, from the recorder's edges
@@ -16,6 +17,13 @@ export interface ObservedClosure {
   readonly paths: readonly RelativePath[];
   /** Reachable from the preloads (`--import`, `--require`), which go to the environment hash (D3). */
   readonly preloadPaths: readonly RelativePath[];
+  /**
+   * Of `paths`, those a process the test file started loaded (spec 016 D4,
+   * row 007-56): one hop from the test file, as a static import is.
+   */
+  readonly direct: readonly RelativePath[];
+  /** The directories the run's processes created or removed above a path of `paths` (016 D4). */
+  readonly written: readonly RelativePath[];
 }
 
 interface Edge {
@@ -41,6 +49,12 @@ interface Edge {
  * entry point, or what a worker or a spawned process loads before its entry
  * (004 re-review S2, S3). `null` when the recorder saw nothing of the test file: a Node
  * without `module.registerHooks`, or a process that never loaded it.
+ *
+ * Spec 016 D4: the file whose edges reach the test file's entry is the test
+ * file's own process, its worker threads included; what each other process
+ * loaded from its own non-preload roots, over its own edges, is `direct`: a
+ * process the test started (recorded in a slow project, 004 D5). The
+ * `node --test` parent's loads are its preloads.
  */
 export function observedClosure(
   testFile: TestFileRef,
@@ -49,35 +63,63 @@ export function observedClosure(
   preloads: ReadonlySet<string>,
   paths: WorktreePaths,
 ): ObservedClosure | null {
-  const edges = graphs.flatMap(parseEdges);
+  const processes = graphs.map(parseLines);
+  const edges = processes.flatMap((p) => p.edges);
   const entry = pathToFileURL(real(absolute)).href;
+  const holdsEntry = (p: Lines) => p.edges.some((e) => e.url === entry || e.parent === entry);
+  if (!processes.some(holdsEntry)) return null;
+  const ofPreload = (e: Edge) => e.preload || (e.specifier !== null && preloads.has(e.specifier));
+  const { fileRoots, preloadRoots, children } = rooted(edges, ofPreload, entry);
+  const loaded = projectPaths(reach(fileRoots, children), paths);
+  const direct = new Set<RelativePath>();
+  for (const other of processes.filter((p) => !holdsEntry(p))) {
+    const own = rooted(other.edges, ofPreload, null);
+    for (const path of projectPaths(reach(own.fileRoots, own.children), paths)) direct.add(path);
+  }
+  return {
+    testFile,
+    paths: loaded,
+    preloadPaths: projectPaths(reach(preloadRoots, children), paths),
+    direct: loaded.filter((path) => direct.has(path)),
+    written: writtenAbove(loaded, new Set(processes.flatMap((p) => p.written)), paths),
+  };
+}
+
+/**
+ * The roots of `edges`: an import whose parent is no loaded module, a
+ * preload's when `ofPreload` says so, else the test file's, `entry` first.
+ */
+function rooted(edges: readonly Edge[], ofPreload: (e: Edge) => boolean, entry: string | null) {
   const children = new Map<string, string[]>();
   for (const { parent, url } of edges) {
     if (parent === null) continue;
     children.set(parent, [...(children.get(parent) ?? []), url]);
   }
-  if (!edges.some((e) => e.url === entry || e.parent === entry)) return null;
   const loaded = new Set(edges.map((e) => e.url));
-  const fileRoots = [entry];
+  const fileRoots = entry === null ? [] : [entry];
   const preloadRoots: string[] = [];
-  for (const { parent, url, specifier, preload } of edges) {
-    if (url === entry || (parent !== null && loaded.has(parent))) continue;
-    const ofPreload = preload || (specifier !== null && preloads.has(specifier));
-    (ofPreload ? preloadRoots : fileRoots).push(url);
+  for (const edge of edges) {
+    if (edge.url === entry || (edge.parent !== null && loaded.has(edge.parent))) continue;
+    (ofPreload(edge) ? preloadRoots : fileRoots).push(edge.url);
   }
-  return {
-    testFile,
-    paths: projectPaths(reach(fileRoots, children), paths),
-    preloadPaths: projectPaths(reach(preloadRoots, children), paths),
-  };
+  return { fileRoots, preloadRoots, children };
 }
 
-function parseEdges(text: string): Edge[] {
+/** One process's recorder file: its edges, and the directories it created or removed. */
+interface Lines {
+  readonly edges: readonly Edge[];
+  readonly written: readonly AbsolutePath[];
+}
+
+function parseLines(text: string): Lines {
   const edges: Edge[] = [];
+  const written: AbsolutePath[] = [];
   for (const line of text.split("\n")) {
     if (line.trim() === "") continue;
     try {
-      const { parent, url, specifier, preload } = JSON.parse(line) as Record<string, unknown>;
+      const value = JSON.parse(line) as Record<string, unknown>;
+      if (typeof value.written === "string") written.push(value.written);
+      const { parent, url, specifier, preload } = value;
       if (typeof url !== "string") continue;
       edges.push({
         parent: typeof parent === "string" ? parent : null,
@@ -89,7 +131,7 @@ function parseEdges(text: string): Edge[] {
       // a partial last line of a killed process
     }
   }
-  return edges;
+  return { edges, written };
 }
 
 function reach(roots: readonly string[], children: ReadonlyMap<string, readonly string[]>) {

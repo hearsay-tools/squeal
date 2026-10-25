@@ -2,22 +2,26 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { type ObservedSeen, startTimers } from "../../src/core/daemon/lifecycle.js";
+import {
+  observedDirectMetaKey,
+  observedMetaKey,
+  observedStartupMetaKey,
+} from "../../src/core/keys/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import {
   type DaemonExitReason,
   DEFAULT_POLICY,
   type NodeTestProject,
-  nodeTestObservedMetaKey,
-  nodeTestObservedPreloadsMetaKey,
   type Store,
 } from "../../src/core/types/index.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { delay, waitFor } from "./helpers.js";
 
 /*
- * Task 003-26: the daemon reads the shared node:test observed keys on a
- * timer and asks for a runner-only refinement when another worktree changed
- * one. Spec 001 D10, as the coordinator put it: the timer never keeps the
+ * Task 003-26: the daemon reads the shared observed keys of its node:test
+ * projects (the core's since spec 016 D4: `observed.*`, `observedDirect.*`,
+ * `observedStartup.*`) on a timer and asks for a runner-only refinement
+ * when another worktree changed one. Spec 001 D10, as the coordinator put it: the timer never keeps the
  * process alive or delays an exit, stops with the others, and what it queues
  * is no activity that holds off the idle exit.
  */
@@ -100,7 +104,7 @@ function timed(
 }
 
 const observe = (store: Store, value: object) =>
-  store.meta.set(nodeTestObservedMetaKey(PROJECT.name), JSON.stringify(value));
+  store.meta.set(observedMetaKey(PROJECT.name), JSON.stringify(value));
 
 describe("observed timer (task 003-26)", () => {
   it("asks nothing while no observed key changes", async () => {
@@ -109,22 +113,24 @@ describe("observed timer (task 003-26)", () => {
     expect(t.changed()).toBe(0);
   });
 
-  it("asks once per change of either key, and keeps asking until it is taken", async () => {
+  it("asks once per change of each key, and keeps asking until it is taken", async () => {
     const t = timed();
     await delay(60);
     expect(t.changed()).toBe(0);
     observe(t.store, { "test/a.test.mjs": ["src/hidden.mjs"] });
     await waitFor(() => t.changed() === 1, 2_000, "the observed change");
-    t.store.meta.set(nodeTestObservedPreloadsMetaKey(PROJECT.name), '["scripts/x.mjs"]');
-    await waitFor(() => t.changed() === 2, 2_000, "the preload change");
+    t.store.meta.set(observedStartupMetaKey(PROJECT.name), '["scripts/x.mjs"]');
+    await waitFor(() => t.changed() === 2, 2_000, "the start-up change");
+    t.store.meta.set(observedDirectMetaKey(PROJECT.name), '{"test/a.test.mjs":["src/hidden.mjs"]}');
+    await waitFor(() => t.changed() === 3, 2_000, "the direct change");
     await delay(60);
-    expect(t.changed()).toBe(2);
+    expect(t.changed()).toBe(3);
     // No scheduler yet: the change stays unread until one takes it.
     t.accept = false;
     observe(t.store, { "test/a.test.mjs": ["src/hidden.mjs", "src/more.mjs"] });
     await delay(60);
     t.accept = true;
-    await waitFor(() => t.changed() === 3, 2_000, "the change taken");
+    await waitFor(() => t.changed() === 4, 2_000, "the change taken");
   });
 
   it("is not activity: the idle exit comes on time while changes keep arriving", async () => {

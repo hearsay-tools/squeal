@@ -25,5 +25,10 @@
  * test file's own process marks that phase, never a worker thread or a
  * process the test spawns (row 003-40, 004 re-review S2, S3), so what they
  * load before their entry joins the test file rather than the environment.
+ * "10": the core keeps what runs loaded (spec 016 D4): a git-ignored load
+ * stays unless the run created or removed one of its directories, which the
+ * recorder now records, and module loads key whatever
+ * `observe.runtimeInputs` says, so what is kept changes (the human,
+ * 2026-10-25).
  */
-export const NODE_TEST_ADAPTER_VERSION = "9";
+export const NODE_TEST_ADAPTER_VERSION = "10";

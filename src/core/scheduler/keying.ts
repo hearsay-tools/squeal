@@ -451,6 +451,18 @@ export class WorktreeKeys {
     return changes;
   }
 
+  /**
+   * 016 D4 (007 review wave 2.5, R1): reads the start-up paths other
+   * worktrees stored for the projects whose observed paths are module loads,
+   * and keys the environments last read with them when a set grew, so no
+   * runner needs to recreate its project for them.
+   */
+  async regrowStartup(): Promise<KeyChange[]> {
+    const loads = [...this.#environments.values()].filter((e) => e.observedLoads === true);
+    if (this.#startup.refresh(loads.map((e) => e.project)).length === 0) return [];
+    return this.setEnvironments([...this.#environments.values()]);
+  }
+
   /** The observed set of `testFile`, whether or not policy keys with it. */
   observedOf(testFile: TestFileRef): readonly RelativePath[] {
     return this.#observed.of(testFile);
