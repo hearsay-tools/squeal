@@ -48,7 +48,7 @@ export const COMPONENTS: readonly Component[] = [
     version: { path: "src/runners/node-test/version.ts", constant: "NODE_TEST_ADAPTER_VERSION" },
     entries: "entries/node-test.ts",
     texts: [{ path: "src/runners/node-test/runtime", suffixes: [".cjs", ".mjs"] }],
-    kinds: [],
+    kinds: ["adapter:node-test"],
   },
   {
     name: "pytest",
