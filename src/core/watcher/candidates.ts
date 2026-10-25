@@ -1,8 +1,22 @@
 import type { Dirent, Stats } from "node:fs";
 import { lstat, readdir, realpath } from "node:fs/promises";
 import { dirname } from "node:path";
-import { hasGitEntry, isMissing, mapConcurrent, toAbsolute, toRelative } from "../fs/index.js";
-import type { AbsolutePath, CandidatePath, FileStat, RelativePath } from "../types/index.js";
+import {
+  hasGitEntry,
+  isMissing,
+  mapConcurrent,
+  runGit,
+  splitNul,
+  toAbsolute,
+  toRelative,
+} from "../fs/index.js";
+import type {
+  AbsolutePath,
+  CandidatePath,
+  CommitSha,
+  FileStat,
+  RelativePath,
+} from "../types/index.js";
 import type { Exclusions } from "./exclusions.js";
 import { checkIgnored, ignoredLinks } from "./git.js";
 import { isLinkedDir, SymlinkProbe } from "./links.js";
@@ -112,11 +126,12 @@ export async function candidatesFromHints(
 }
 
 /**
- * Candidates for a reconciliation pass: what git status reports plus every
- * tracked path and extra file, re-stat'ed, plus every file under a symlinked
- * directory among them that git does not ignore, which git never lists. Only
- * `.git` metadata and paths inside nested repositories are dropped; git
- * status already leaves ignored files out, and the caller's tracked paths are
+ * Candidates for a reconciliation pass: what git status reports and the files
+ * committed since the last pass (`committedSince`), plus every tracked path
+ * and extra file, re-stat'ed, plus every file under a symlinked directory
+ * among them that git does not ignore, which git never lists. Only `.git`
+ * metadata and paths inside nested repositories are dropped; git status
+ * already leaves ignored files out, and the caller's tracked paths are
  * trusted.
  *
  * Spec 001 D2: "`git status --porcelain` plus a re-stat of every file in the
@@ -151,6 +166,27 @@ export async function candidatesForReconcile(
     out.set(rel, await statOrNull(ctx.root, rel));
   }
   return { paths: sortCandidates(out), linkedDirs, links };
+}
+
+/**
+ * Row 011-199: the files a commit may have added since the last pass read
+ * `since`, which neither git status nor the stat cache lists when the
+ * commit came before the watcher's event. Nothing while `HEAD` stays, or is
+ * unborn. With no `since` (the first pass, or one that saw no commit), or one
+ * git no longer has (a rewrite, then a prune), every file git tracks.
+ */
+export async function committedSince(
+  root: AbsolutePath,
+  since: CommitSha | undefined,
+  head: CommitSha,
+): Promise<RelativePath[]> {
+  if (head === null || since === head) return [];
+  if (since != null) {
+    const diff = ["diff", "--name-only", "--no-renames", "-z", since, head, "--"];
+    const changed = await runGit(root, diff).catch(() => null);
+    if (changed !== null) return splitNul(changed);
+  }
+  return splitNul(await runGit(root, ["ls-files", "-z", "--cached"]));
 }
 
 /** The symlinked directories among `paths` (`topLinks`), and those observed (`observedLinks`). */

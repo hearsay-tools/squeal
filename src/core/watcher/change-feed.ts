@@ -1,9 +1,11 @@
 import { realpath } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { toAbsolute } from "../fs/index.js";
+import { readGitHead } from "../status/git-head.js";
 import {
   type AbsolutePath,
   type CandidateBatch,
+  type CommitSha,
   type RelativePath,
   type RevisionTrigger,
   WATCHER_TIMINGS,
@@ -19,6 +21,7 @@ import {
   type CandidateContext,
   candidatesForReconcile,
   candidatesFromHints,
+  committedSince,
   type HintCandidates,
 } from "./candidates.js";
 import { Debouncer } from "./debounce.js";
@@ -109,6 +112,12 @@ class Feed implements ChangeFeed {
   private queue: Promise<void> = Promise.resolve();
   /** The reconciliation queued and not yet started, which later requests join. */
   private pending: { trigger: RevisionTrigger; done: Promise<void> } | null = null;
+  /**
+   * `HEAD` read just before the last delivered pass's git status; `undefined` before the first
+   * (row 011-199). The feed keeps its own: the scheduler reads the `HEAD` it records after the
+   * pass's status, so a commit between the two would hide its files from a diff from there.
+   */
+  private passHead: CommitSha | undefined;
   /** Set once the system refused a watch: the note is given once per feed. */
   private atWatchLimit = false;
   /** Made again by `start`, with the resolved root. */
@@ -245,13 +254,18 @@ class Feed implements ChangeFeed {
     );
   }
 
+  /** `HEAD` is read before git status, so a commit made between the two is in the next diff. */
   private async reconcileNow(trigger: RevisionTrigger): Promise<void> {
+    const head = readGitHead(this.root);
     const status = await gitStatus(this.root);
     await this.rebuildSpec(status);
-    const { paths, linkedDirs, links } = await candidatesForReconcile(this.context(), status.paths);
+    const committed = await committedSince(this.root, this.passHead, head);
+    const listed = [...status.paths, ...committed];
+    const { paths, linkedDirs, links } = await candidatesForReconcile(this.context(), listed);
     this.linkTargets = new Map(links);
     await this.linked?.update(linkedDirs);
     await this.emit({ trigger, paths: this.tempHold.filter(paths, this.trackedPaths) });
+    this.passHead = head;
   }
 
   /** True when a link of the batch is new, gone or points elsewhere than when last seen. */
