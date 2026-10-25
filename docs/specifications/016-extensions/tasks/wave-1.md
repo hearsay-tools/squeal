@@ -104,3 +104,21 @@ Check, with proof:
 3. 011's two key-format checks still hold, and the bundles match the build.
 
 Run the full suite under the host lock (the store changed): `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`. Name each failing file and whether it changed in the range. Verdict: PASS or FAIL.
+
+## 016-15 third round (re-review of `cand/0.1.303-r2`, B1)
+
+Use /worker. Shape: repair. The human chose a third round on 2026-10-25. Outcome: attribution reads a runner that each worktree records per project, and no table gains a column.
+
+Read: `reviews/0.1.303.md` (B1 and its Re-review), `reviews/probes/0.1.303/r2-columns.mjs`, `tasks/016-15/notes.md`.
+
+The cause: on Node 22, a statement an older daemon prepared before `ALTER TABLE results ADD COLUMN` returns one field fewer from `all()` after it, so `SELECT r.*, …, f.errors` loses `errors`.
+
+- Drop `results.runner`, `ADDED_COLUMNS` and `columns.ts`; `putMany` loses its runner argument.
+- One per-worktree `meta` row, `runners:<wt>`, maps project to runner, written only when it changes. It replaces `setup-runners:<wt>`. `withDependencies` reads the failing check's project there.
+- Scheduler: the `store-results.ts` line and the `ledger.ts` line only, in one commit. Each commit compiles.
+- A store test fails when any table's columns differ from a committed list at the current `user_version`.
+
+Owns: as before. Done when:
+- the collision tests pass in both directions and through both callers;
+- the two Node 22 failures pass: `PATH=/home/agent/.nvm/versions/node/v22.23.3/bin:$PATH npx vitest run test/daemon/step-down.test.ts test/store/check-runner.test.ts`;
+- `squeal run --all --wait` is green, bundle drift excepted.
