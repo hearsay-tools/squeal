@@ -112,9 +112,11 @@ describe("start-up sets (spec 016 D4)", () => {
     const a = new StartupSets(store);
     const b = new StartupSets(store);
     expect(b.of("p")).toEqual([]);
-    expect(a.add("p", ["setup/b.mjs", "setup/a.mjs"])).toEqual(["setup/b.mjs", "setup/a.mjs"]);
-    expect(a.add("p", ["setup/a.mjs"])).toEqual([]);
-    expect(b.add("p", ["setup/c.mjs"])).toEqual(["setup/c.mjs"]);
+    expect(a.see("p", ["setup/b.mjs", "setup/a.mjs"])).toEqual(["setup/b.mjs", "setup/a.mjs"]);
+    expect(a.see("p", ["setup/a.mjs"])).toEqual([]);
+    a.write();
+    expect(b.see("p", ["setup/c.mjs"])).toEqual(["setup/c.mjs"]);
+    b.write();
     expect(JSON.parse(store.meta.get(observedStartupMetaKey("p")) ?? "[]")).toEqual([
       "setup/a.mjs",
       "setup/b.mjs",
