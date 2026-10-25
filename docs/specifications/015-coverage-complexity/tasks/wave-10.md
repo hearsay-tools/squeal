@@ -17,3 +17,20 @@ Use /worker. Shape: slice. Starts from main once 016's eval run has ended. Outco
 - **Lead.** 015-56 first: record which phase each long turn falls in, in `chain-load.test.ts`'s recount, then run it until a long turn shows. For 015-55, the edit pass's last transaction in `runPass` (`src/core/code/pass/pass.ts`) and its first turn (the plan, `oldBodies`, the files rows). The staged parts and `CodeStateRepo.adopt` from 015-48 are the pattern; an edit pass also writes moves, transitions and edits, so its switch must hold them too.
 - **Owns.** `src/core/code/pass/**`, `test/code/pass/**` and `test/code/crap/chain-load.test.ts`. Leave the rest of `src/core/code/crap/**` alone (W1). Ask me before a new store method, query, table or index; never raise `user_version` or a result key.
 - **Done when.** Both rows' done-when, red first. Notes go in `tasks/015-55/notes.md`, with the turn times and the load of each measurement. Lint, typecheck and `squeal run --all --wait` pass; paste the output. Do not build bundles or raise the version.
+
+**Agreements for W1 (2026-10-25).** Request `5f7111dc`: a source judged early keeps the signature of the records it read in an optional `early` field of its coverage summary, with no summary version raise; no text change. Progress `0ef8ccd0`, accepted: only a function whose last state is a failure is judged early, and only fail -> pass is written.
+
+## 015-59: review of candidate 0.1.324 (wave 10 W1)
+
+Use /reviewer. Candidate `cand/0.1.324`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>`: 015-57 (three commits and its notes) and one build commit (bundles, version 0.1.324). Write `docs/specifications/015-coverage-complexity/reviews/0.1.324.md` and commit it on your branch.
+
+Read `spec.md` D5, D6 and D9 (**Pending and unknown**, **A pass proven early**, **First judgement**), the 2026-10-25 lines in `status.md`, board row 015-57, this file's W1 with its agreements, and `tasks/015-57/notes.md`.
+
+Check, with proof where you can:
+1. **Sound.** An early pass is never wrong: with records still to come, a function told FAIL -> PASS never reads `fail` again at the same blob, and no failure of any kind is told before every record is in. Records at another blob, or that cannot confirm the source's bytes, are never used.
+2. **Told once.** The full judgement does not tell again what the early one told; a source is not judged early again until its records in hand change; a daemon restart judges it early at most once more.
+3. **Narrow.** A passing, pending or unknown state, and a failure that only a threshold change passes, keep their last judgement until every record is in. A shown value never rises after an early judgement.
+4. **Compatible.** The summary field is additive: an older daemon reads the summary and drops the field. Every text with every record in is byte-identical to main.
+5. **Cost.** An edit to a widely imported file does not judge every source again at each arriving record.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
