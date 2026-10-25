@@ -95,7 +95,6 @@ async function harness(
   const store = openRepoStore(repo.commonDir);
   const [nodeTest] = createNodeTestRunners([NT], {
     root: repo.main,
-    store,
     tempDir: join(repo.main, ".."),
     tierSize: () => 4,
     note: () => {},

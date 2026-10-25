@@ -4,7 +4,6 @@ import type {
   AbsolutePath,
   CancelCause,
   RunnerAdapter,
-  Store,
   TestFileRef,
 } from "../../src/core/types/index.js";
 import { FixtureFiles } from "./files.js";
@@ -37,11 +36,6 @@ export {
 export interface Fixture {
   /** The paths of the scenario's `hook` modules: the runner loads each before every test file. */
   readonly hooks: readonly string[];
-  /**
-   * The worktree's connection to the play's one store, for an adapter that
-   * writes what it observed there itself, as a daemon injects one.
-   */
-  readonly store: Store;
 }
 
 /** What a runner gives to join the kit (spec 016 D1). */
@@ -183,8 +177,8 @@ export async function play(scenario: Scenario, pack: Pack, scratch: string): Pro
   /** Opens `tree` over the store, and asserts its adapter lists every test module. */
   const open = async (tree: Tree, at: string): Promise<OpenWorktree> => {
     const root = tree.files.root as AbsolutePath;
-    const opened = await OpenWorktree.open(tree.name, root, common, (store) =>
-      pack.open(root, tree.home, { hooks, store }),
+    const opened = await OpenWorktree.open(tree.name, root, common, () =>
+      pack.open(root, tree.home, { hooks }),
     );
     tree.opened = opened;
     const listed = await opened.adapter.testFiles();
@@ -217,6 +211,8 @@ export async function play(scenario: Scenario, pack: Pack, scratch: string): Pro
         cut: pack.cut ?? "stop",
         write: current.write,
         keyed: (file) => opened.keyed(file),
+        environmentFiles: (project) => opened.environmentFiles(project),
+        marked: (file, path) => opened.marked(file, path),
         record: (files, run) => opened.record(files, run),
         say,
         note: (text) => lines.push(`note ${text}`),

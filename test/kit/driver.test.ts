@@ -151,16 +151,16 @@ describe("the driver's steps (spec 016 D1)", () => {
     );
   });
 
-  it("reaches worktree b and the restart only through the store: marks kept in memory fail there", async () => {
+  it("reaches worktree b and the restart only through the core: marks kept in memory fail there", async () => {
     const played = await playIn(K10, fakePack({ marks: "memory" }));
     expect(played.verdict).toBe("FAIL");
     expect(played.lines).toEqual(
       expect.arrayContaining([
         "ok   step 3 in b: lists t/loads.json, t/spawns.json (got t/loads.json, t/spawns.json)",
         "ok   step 5 holds: m/dep.json is in a closure of spawns (closure=false, keyed=true)",
-        "FAIL step 7 direct: m/dep.json puts spawns in direct (affected=none)",
+        "FAIL step 7 direct: m/dep.json puts spawns in direct (affected=none, marked=false)",
         "ok   step 9 restarted a: lists t/loads.json, t/spawns.json (got t/loads.json, t/spawns.json)",
-        "FAIL step 13 direct: m/dep.json puts spawns in direct (affected=none)",
+        "FAIL step 13 direct: m/dep.json puts spawns in direct (affected=none, marked=false)",
       ]),
     );
   });
@@ -200,7 +200,7 @@ describe("what names a runner (spec 016 D1)", () => {
     for (const path of ["driver.ts", "steps.ts", "files.ts", "worktrees.ts", ...scenarios]) {
       expect(text(path), path).not.toMatch(RUNNER);
       expect(text(path), path).not.toMatch(/from\s+["'][^"']*\/runners\//);
-      // A runner's injected store is its pack's to open (spec 016 D4 removes it).
+      // A runner's daemon module is no kit's to import: the adapter gets nothing back (spec 016 D4).
       expect(text(path), path).not.toMatch(/from\s+["'][^"']*-runners\.js["']/);
     }
   });

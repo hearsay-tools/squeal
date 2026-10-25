@@ -1,12 +1,16 @@
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { observedStore } from "../../src/core/daemon/node-test-runners.js";
-import { pytestObservedStore } from "../../src/core/daemon/pytest-runners.js";
+import {
+  observedDirectMetaKey,
+  observedMetaKey,
+  observedStartupMetaKey,
+} from "../../src/core/keys/index.js";
 import type {
   AbsolutePath,
   NodeTestProject,
   PytestProject,
   RunnerAdapter,
+  Store,
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { createPytestAdapter } from "../../src/runners/pytest/adapter.js";
@@ -19,8 +23,9 @@ import { openHarness, openRepoStore } from "./helpers.js";
  * Task 007-26 (007 review wave 2.5, R2): an idle daemon's quiet pass over a
  * composite of Vitest, node:test and pytest does no runner work but the
  * pytest environment's fingerprint read. Counted over the whole pass, not
- * one call: every adapter method, every observation read of the shared
- * store, and the fingerprint reads.
+ * one call: every adapter method, every read of the shared store's
+ * observed keys, which the core alone reads since 016 D4, and the
+ * fingerprint reads.
  */
 
 const fingerprints = vi.hoisted(() => ({ reads: 0 }));
@@ -84,18 +89,16 @@ function count(adapter: RunnerAdapter, label: string, calls: string[]): void {
   }
 }
 
-/** `store` with each read method counted in `reads`. */
-function counted<T extends object>(store: T, reads: string[], label: string): T {
-  return new Proxy(store, {
-    get(target, key, receiver) {
-      const value = Reflect.get(target, key, receiver);
-      if (typeof value !== "function" || !String(key).startsWith("read")) return value;
-      return (...args: unknown[]) => {
-        reads.push(`${label}.${String(key)}`);
-        return value.apply(target, args);
-      };
-    },
-  });
+/** Counts in `reads`, in place, each read of `store`'s observed keys: paths, direct marks, start-up paths. */
+function countObserved(store: Store, reads: string[]): void {
+  const get = store.meta.get.bind(store.meta);
+  const prefixes = [observedMetaKey, observedDirectMetaKey, observedStartupMetaKey].map((key) =>
+    key(""),
+  );
+  store.meta.get = (key) => {
+    if (prefixes.some((prefix) => key.startsWith(prefix))) reads.push(key);
+    return get(key);
+  };
 }
 
 describe("an idle pass over Vitest, node:test and pytest (007-26)", () => {
@@ -109,14 +112,11 @@ describe("an idle pass over Vitest, node:test and pytest (007-26)", () => {
       const store = openRepoStore(commonDir);
       const reads: string[] = [];
       const calls: string[] = [];
-      const nodeTest = await createNodeTestAdapter(NT, {
-        root: main,
-        observed: counted(observedStore(store, NT.name), reads, "node-test"),
-      });
+      countObserved(store, reads);
+      const nodeTest = await createNodeTestAdapter(NT, { root: main });
       const pytest = await createPytestAdapter(PYTEST, {
         root: main as AbsolutePath,
         source: pythonEnv(),
-        observed: counted(pytestObservedStore(store, PYTEST.name), reads, "pytest"),
         cacheDir: join(main, "..", "pytest-cache") as AbsolutePath,
       });
       count(nodeTest, "node-test", calls);
