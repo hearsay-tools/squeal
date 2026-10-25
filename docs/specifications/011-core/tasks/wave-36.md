@@ -17,3 +17,17 @@ Read both rows; `tasks/011-197/findings.md`; reviews `reviews/0.1.304.md` and `r
 Owns `src/core/watcher/change-feed.ts`, `src/core/types/watcher.ts`, `requestFullSuite` and its option in `scheduler.ts`, `src/core/daemon-loop/index.ts`, `#requestFullSuite` in `daemon.ts`, the store and output code that 011-200 needs (send one request naming the files before you edit them), new tests. Not yours: `src/core/scheduler/{ledger,tiers,queue}.ts`, `src/core/code/` (spec 015), the board, spec text, `status.md`, bundles, version. No `npm run build`.
 
 Land each row as its own commits, 011-198 first, so it can ship alone. Done when both rows' done-when hold; say how long `run --all` waits on a pass in the fixture and on this repository; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
+
+## W2: 011-202, `recordTier`'s record transaction under complexity 20
+
+Use /worker. Shape: slice. Row 011-202 in `docs/board.md`. Added 2026-10-25 on main `f1531664f` (0.1.304), on a seam that W1 does not touch.
+
+Outcome: no function of `recordTier` is over complexity 20, with no behaviour change.
+
+Read the row; `status.md`'s 011-193 and 011-196 lines; spec 011 C15 Lifetime; `test/scheduler/promotion-cut.test.ts`, `first-observation.test.ts`, `queue-promotion.test.ts` (the orders that 011-193 and 011-196 fixed).
+
+Seam: the transaction inside `ledger.queue.settlingOnce` in `recordTier` (`src/core/scheduler/tiers.ts:699`, CC 58). First edit, offered as a lead: move the loop body's branches into one function per outcome of `storeDecision`, over one record state object that holds the lists the loop fills.
+
+Owns `recordTier` in `src/core/scheduler/tiers.ts`, a new `src/core/scheduler/record-tier.ts` if the functions need their own file. Not yours: `selectTier`, `queue.ts`, `ledger.ts` (spec 016's 0.1.306 changes `Ledger#write`), `src/core/watcher/`, `scheduler.ts`, `src/core/daemon-loop/` (W1), `src/core/code/` (spec 015), tests (no test changes), the board, spec text, `status.md`, bundles, version. No `npm run build`.
+
+Done when the row's done-when holds; paste `squeal code src/core/scheduler/tiers.ts` for the `recordTier` lines before and after; lint, typecheck and `squeal run --all --wait` pass (bundle drift excepted). Run every test command with `env -u PLUGIN_ROOT -u PLUGIN_DATA`. Paste the output.
