@@ -145,6 +145,8 @@ export function bundleOptions(plugin: PluginBuild, outdir: string): BuildOptions
       { in: "src/cli/ps-index.ts", out: "cli/ps" },
       // The daemon's socket worker, found beside the CLI by `prepareFrontDesk`.
       { in: "src/core/daemon/front-desk.ts", out: "cli/front-desk" },
+      // The coverage records' mapping worker, found beside the CLI by `mapWorkerScript` (015-42).
+      { in: "src/core/code/coverage/map-worker.ts", out: "cli/coverage-map" },
     ],
     outdir,
     outExtension: { ".js": ".mjs" },
