@@ -7,4 +7,12 @@ export {
   type SeedReport,
   seedStatCache,
 } from "./hasher.js";
-export { type CacheUpdate, isRacy, RACY_WINDOW_MS, StatCache, sameStat } from "./stat-cache.js";
+export {
+  type CacheUpdate,
+  isRacy,
+  isUnknownStat,
+  RACY_WINDOW_MS,
+  StatCache,
+  sameStat,
+  unknownStat,
+} from "./stat-cache.js";
