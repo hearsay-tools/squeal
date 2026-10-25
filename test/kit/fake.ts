@@ -5,9 +5,11 @@ import type {
   AffectedTestFiles,
   CheckRunResult,
   FileLevelError,
+  ObservedInputs,
   RunnerAdapter,
   RunOptions,
   RunReport,
+  Store,
   TestFileRef,
 } from "../../src/core/types/index.js";
 import type { Gap, Pack } from "./driver.js";
@@ -20,7 +22,10 @@ import { isTest, type Module } from "./scenarios/index.js";
  * `stale` keeps the first text each module had, as a cache that misses
  * edits would: a gap every scenario with an edit meets. A held file passes
  * its first check, writes its marker and holds until its run is aborted;
- * it does not complete.
+ * it does not complete. What a computed import or a child process loads is
+ * outside the static closure: a run reports it among `observed`, and keeps
+ * the child's loads as `direct` marks, in the store as a daemon's injected
+ * one would, or in memory.
  */
 
 export interface FakeOptions {
@@ -28,9 +33,17 @@ export interface FakeOptions {
   /** The first run crashes before any test starts (review 0.1.303 B2's probe). */
   readonly crashFirst?: boolean;
   readonly known?: Readonly<Record<string, Gap>>;
+  /** Where a child's loads are kept as `direct` marks; default the store. */
+  readonly marks?: "store" | "memory";
+  /** `false`: a run reports nothing it observed. */
+  readonly observes?: false;
 }
 
 type Held = Extract<Module, { kind: "held" }>;
+type Tested = Extract<Module, { kind: "test" | "computed" | "spawns" }> | Held;
+
+/** The meta key of the fake's `direct` marks: test file to paths. */
+const MARKS = "kit.fake.direct";
 
 /** Resolves when `signal` aborts. */
 function aborted(signal: AbortSignal | undefined): Promise<void> {
@@ -55,11 +68,24 @@ class FakeAdapter implements RunnerAdapter {
   readonly adapterVersion = "1";
   private readonly seen = new Map<string, string>();
   private runs = 0;
+  private remembered: Record<string, string[]> = {};
 
   constructor(
     private readonly root: AbsolutePath,
     private readonly options: FakeOptions,
+    private readonly store: Store,
   ) {}
+
+  private get marks(): Record<string, string[]> {
+    if (this.options.marks === "memory") return this.remembered;
+    return JSON.parse(this.store.meta.get(MARKS) ?? "{}") as Record<string, string[]>;
+  }
+
+  private mark(testFile: string, paths: readonly string[]): void {
+    const marks = { ...this.marks, [testFile]: [...paths] };
+    if (this.options.marks === "memory") this.remembered = marks;
+    else this.store.meta.set(MARKS, JSON.stringify(marks));
+  }
 
   private read(path: string): string {
     const kept = this.seen.get(path);
@@ -69,27 +95,31 @@ class FakeAdapter implements RunnerAdapter {
     return text;
   }
 
-  /** The paths from `path` down its imports, and the value they reach; `null` when one fails to load. */
-  private follow(path: string): { paths: string[]; value: number | null } {
+  /**
+   * The paths from `path` down its imports, and the value they reach;
+   * `null` when one fails to load. `paths` are the static ones; `observed`
+   * those after a computed import or a child process's start.
+   */
+  private follow(path: string): { paths: string[]; observed: string[]; value: number | null } {
     const paths: string[] = [];
-    for (let at = path; ; ) {
-      paths.push(at);
+    const observed: string[] = [];
+    for (let at = path, runtime = false; ; ) {
+      (runtime ? observed : paths).push(at);
       const module = parse(this.read(at));
-      if (module === null || module.kind === "broken") return { paths, value: null };
-      if (module.kind === "value") return { paths, value: module.value };
-      if (module.kind === "held") return { paths, value: null };
-      if (module.kind !== "reexport" && module.kind !== "test") {
+      if (module === null || module.kind === "broken") return { paths, observed, value: null };
+      if (module.kind === "value") return { paths, observed, value: module.value };
+      if (module.kind === "held") return { paths, observed, value: null };
+      if (module.kind === "hook" || module.kind === "dependency" || module.kind === "absent") {
         throw new Error(`the fake pack renders no ${module.kind} module`);
       }
-      at = modulePath(module.from);
+      runtime ||= module.kind === "computed" || module.kind === "spawns";
+      at = modulePath(module.kind === "spawns" ? module.child : module.from);
     }
   }
 
-  private testOf(file: TestFileRef): Extract<Module, { kind: "test" }> | Held {
+  private testOf(file: TestFileRef): Tested {
     const module = parse(this.read(file.path));
-    if (module?.kind !== "test" && module?.kind !== "held") {
-      throw new Error(`${file.path} is no test module`);
-    }
+    if (module === null || !isTest(module)) throw new Error(`${file.path} is no test module`);
     return module;
   }
 
@@ -107,10 +137,12 @@ class FakeAdapter implements RunnerAdapter {
   async affected(changed: readonly string[]): Promise<AffectedTestFiles> {
     const direct: TestFileRef[] = [];
     const transitive: TestFileRef[] = [];
+    const marks = this.marks;
     for (const file of await this.testFiles()) {
       const { paths } = this.follow(file.path);
       const at = paths.findIndex((p) => changed.includes(p));
-      if (at === 0 || at === 1) direct.push(file);
+      const marked = (marks[file.path] ?? []).some((p) => changed.includes(p));
+      if (at === 0 || at === 1 || marked) direct.push(file);
       else if (at > 1) transitive.push(file);
     }
     return { direct, transitive };
@@ -142,6 +174,7 @@ class FakeAdapter implements RunnerAdapter {
     const results: CheckRunResult[] = [];
     const fileErrors: FileLevelError[] = [];
     const completedFiles: TestFileRef[] = [];
+    const observed: ObservedInputs[] = [];
     let failure: string | null = null;
     for (const file of testFiles) {
       const test = this.testOf(file);
@@ -152,7 +185,11 @@ class FakeAdapter implements RunnerAdapter {
         continue;
       }
       completedFiles.push(file);
-      const { value } = this.follow(file.path);
+      const { observed: loaded, value } = this.follow(file.path);
+      if (loaded.length > 0 && this.options.observes !== false) {
+        observed.push({ testFile: file, paths: loaded, directories: [] });
+      }
+      if (test.kind === "spawns") this.mark(file.path, loaded);
       if (value === null) {
         const error = { name: "SyntaxError", message: "a module failed to load" };
         fileErrors.push({
@@ -167,7 +204,7 @@ class FakeAdapter implements RunnerAdapter {
           : { ...passed(file, test.check), outcome: "fail" },
       );
     }
-    return { ...report, end: "completed", completedFiles, results, fileErrors, failure };
+    return { ...report, end: "completed", completedFiles, results, fileErrors, failure, observed };
   }
 
   async close() {}
@@ -190,7 +227,7 @@ export function fakePack(options: FakeOptions = {}): Pack {
     text: (module) => (module.kind === "broken" ? "{\n" : `${JSON.stringify(module)}\n`),
     fullName: (check) => check,
     project: {},
-    open: async (root) => new FakeAdapter(root, options),
+    open: async (root, _scratch, { store }) => new FakeAdapter(root, options, store),
     ...(options.known === undefined ? {} : { known: options.known }),
   };
 }

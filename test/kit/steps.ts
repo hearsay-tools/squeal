@@ -29,6 +29,13 @@ export interface Stage {
   readonly cut: CancelCause;
   /** Writes the module's text at its path. */
   readonly write: (name: string, module: Written) => void;
+  /** The closure this worktree's keys assemble for the test file (`OpenWorktree.keyed`). */
+  readonly keyed: (ref: TestFileRef) => Promise<readonly string[]>;
+  /** Runs by `run` and records what it observed, as the core does (`OpenWorktree.record`). */
+  readonly record: (
+    files: readonly TestFileRef[],
+    run: () => Promise<RunReport>,
+  ) => Promise<RunReport>;
   /** Records one assertion. */
   readonly say: (pass: boolean, text: string) => void;
   readonly note: (text: string) => void;
@@ -86,9 +93,12 @@ async function run(stage: Stage, at: number, step: Extract<Step, { run: true }>)
   const { adapter, tests, ref } = stage;
   // Spec 016 D2: a directory no earlier run used, as the daemon gives.
   const options = { runId: `run-${at}`, logDir: join(stage.dir, "logs", `run-${at}`) };
+  const files = tests.map(ref);
   let report: RunReport;
   if (step.cut === undefined) {
-    report = await adapter.run(tests.map(ref), { ...options, timeoutMs: 120_000 });
+    report = await stage.record(files, () =>
+      adapter.run(files, { ...options, timeoutMs: 120_000 }),
+    );
   } else {
     const held = stage.modules.get(step.cut);
     if (held?.kind !== "held") throw new Error(`${step.cut} is no held module`);
@@ -98,13 +108,15 @@ async function run(stage: Stage, at: number, step: Extract<Step, { run: true }>)
     const stop = new AbortController();
     let ended = false;
     const by = stage.cut;
-    const running = adapter
-      .run(tests.map(ref), {
-        ...options,
-        timeoutMs: 120_000,
-        signal: signal.signal,
-        stop: stop.signal,
-      })
+    const running = stage
+      .record(files, () =>
+        adapter.run(files, {
+          ...options,
+          timeoutMs: 120_000,
+          signal: signal.signal,
+          stop: stop.signal,
+        }),
+      )
       .finally(() => {
         ended = true;
       });
@@ -171,15 +183,16 @@ async function reach(stage: Stage, seen: Seen, name: string): Promise<[boolean, 
       : "none";
   const closure = await stage.adapter.closure(ref);
   const held = closure.paths.includes(edited);
+  const keyed = (await stage.keyed(ref)).includes(edited);
   const named = installs(edited, closure.packages?.imports ?? []);
   const observed = (seen.last?.observed ?? []).some(
     (o) => same(o.testFile) && o.paths.includes(edited),
   );
   const recreated = seen.recreated.includes(ref.project);
-  const keyed = seen.keyed.includes(ref.project);
+  const environment = seen.keyed.includes(ref.project);
   return [
-    by !== "none" || held || named || observed || recreated || keyed,
-    `affected=${by}, closure=${held}, package=${named}, observed=${observed}, recreated=${recreated}, environment=${keyed}`,
+    by !== "none" || held || keyed || named || observed || recreated || environment,
+    `affected=${by}, closure=${held}, keyed=${keyed}, package=${named}, observed=${observed}, recreated=${recreated}, environment=${environment}`,
   ];
 }
 
@@ -224,24 +237,62 @@ async function edit(stage: Stage, at: number, step: Extract<Step, { edit: string
     const [reached, how] = await reach(stage, seen, name);
     stage.say(reached, `step ${at} edit ${edited}: reaches ${name} by ${how}`);
   }
+  for (const name of step.direct ?? []) {
+    const path = stage.ref(name).path;
+    const by = seen.affected.direct.some((f) => f.path === path)
+      ? "direct"
+      : seen.affected.transitive.some((f) => f.path === path)
+        ? "transitive"
+        : "none";
+    stage.say(
+      by === "direct",
+      `step ${at} direct: ${edited} puts ${name} in direct (affected=${by})`,
+    );
+  }
+}
+
+/** Whether `name`'s closure holds `path`: the adapter's, the keyed one; and whether an environment lists it. */
+async function closures(stage: Stage, name: string, path: string) {
+  const ref = stage.ref(name);
+  return {
+    held: (await stage.adapter.closure(ref)).paths.includes(path),
+    keyed: (await stage.keyed(ref)).includes(path),
+    listed: (await stage.adapter.environment()).some((e) => e.files.includes(path)),
+  };
 }
 
 async function lacks(stage: Stage, at: number, step: Extract<Step, { lacks: string }>) {
   const path = stage.pathOf(step.lacks);
-  const listed = (await stage.adapter.environment()).some((e) => e.files.includes(path));
   for (const name of step.of) {
-    const held = (await stage.adapter.closure(stage.ref(name))).paths.includes(path);
+    const { held, keyed, listed } = await closures(stage, name, path);
     stage.say(
-      !held && !listed,
-      `step ${at} before any run: ${path} is in no static closure of ${name} (closure=${held}, environment=${listed})`,
+      !held && !keyed && !listed,
+      `step ${at} before any run: ${path} is in no static closure of ${name} (closure=${held}, keyed=${keyed}, environment=${listed})`,
+    );
+  }
+}
+
+async function holds(stage: Stage, at: number, step: Extract<Step, { holds: string }>) {
+  const path = stage.pathOf(step.holds);
+  for (const name of step.of) {
+    const { held, keyed } = await closures(stage, name, path);
+    stage.say(
+      held || keyed,
+      `step ${at} holds: ${path} is in a closure of ${name} (closure=${held}, keyed=${keyed})`,
     );
   }
 }
 
 /** Plays `step`, the `at`th, after `last`; returns the last run. */
-export async function playStep(stage: Stage, at: number, step: Step, last: Last): Promise<Last> {
+export async function playStep(
+  stage: Stage,
+  at: number,
+  step: Exclude<Step, { worktree: string } | { restart: true }>,
+  last: Last,
+): Promise<Last> {
   if ("run" in step) return run(stage, at, step);
   if ("edit" in step) await edit(stage, at, step, last);
-  else await lacks(stage, at, step);
+  else if ("lacks" in step) await lacks(stage, at, step);
+  else await holds(stage, at, step);
   return last;
 }

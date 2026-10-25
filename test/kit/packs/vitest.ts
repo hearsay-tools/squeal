@@ -1,4 +1,4 @@
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import type { Gap, Pack } from "../driver.js";
@@ -22,6 +22,24 @@ const HOLD = "await new Promise((done) => setTimeout(done, 600_000))";
 const C12: Gap = {
   spec: "011 C12: not seen, and left to `inputs`: Vitest's own process (a computed `import()` Vite loads)",
   fails: ["step 2 edit"],
+};
+
+/**
+ * K10: a computed `import()` is C12's gap, as in K4. A child process's
+ * loads are kept as observed reads (C12), so b and the restart hold them,
+ * but `affected()` reads Vite's module graph alone, so they are never
+ * direct; no spec line says so.
+ */
+const K10: Gap = {
+  spec: "011 C12: not seen, and left to `inputs`: Vitest's own process (a computed `import()` Vite loads); 016 goal 6, no line documents it: a child process's loads are observed reads, never `direct` (candidate row)",
+  fails: [
+    "step 4 holds",
+    "step 6 edit",
+    "step 7 direct",
+    "step 10 holds",
+    "step 12 edit",
+    "step 13 direct",
+  ],
 };
 
 function test(module: Extract<Written, { kind: "test" }>, of: (name: string) => Module): string {
@@ -77,6 +95,20 @@ function text(module: Written, of: (name: string) => Module): string {
       return `exports.value = ${module.value};\n`;
     case "held":
       return held(module, "it");
+    case "child":
+      return `import { value } from "./${module.from}.ts";\nconsole.log(value);\n`;
+    case "spawns":
+      return [
+        `import { execFileSync } from "node:child_process";`,
+        `import { fileURLToPath } from "node:url";`,
+        `import { expect, it } from "vitest";`,
+        `it(${JSON.stringify(module.check)}, () => {`,
+        `  const child = fileURLToPath(new URL("../src/${module.child}.mjs", import.meta.url));`,
+        `  const printed = execFileSync(process.execPath, [child], { encoding: "utf8" });`,
+        `  expect(Number(printed)).toBe(${module.expect});`,
+        `});`,
+        "",
+      ].join("\n");
     case "broken":
       return "export const value = ;\n";
   }
@@ -89,6 +121,7 @@ const base: Pack = {
   name: "vitest",
   path: (name, module) => {
     if (isTest(module)) return `test/${name}.test.ts`;
+    if (module.kind === "child") return `src/${name}.mjs`;
     return module.kind === "dependency" ? `node_modules/${name}/index.js` : `src/${name}.ts`;
   },
   text,
@@ -100,12 +133,14 @@ const base: Pack = {
   open: (root, _scratch, { hooks }) => {
     // `vitest/node` and `vitest` resolve from the fixture root: the repository's own Vitest,
     // linked alone so that a scenario's installed package lands in the fixture's `node_modules`.
+    // A restart opens over the same root, which has the link.
+    const link = join(root, "node_modules", "vitest");
     mkdirSync(join(root, "node_modules"), { recursive: true });
-    symlinkSync(join(REPO, "node_modules", "vitest"), join(root, "node_modules", "vitest"));
+    if (!existsSync(link)) symlinkSync(join(REPO, "node_modules", "vitest"), link);
     if (hooks.length > 0) writeFileSync(join(root, "vitest.config.ts"), config(hooks));
     return createVitestAdapter({ root, observe: () => true });
   },
-  known: { K4: C12, K5: C12 },
+  known: { K4: C12, K5: C12, K10 },
 };
 
 /** A held run cut for `step-down`, whose grace keeps a file that ended whole. */
