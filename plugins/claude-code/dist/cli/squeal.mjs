@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.308";
+  if (true) return "0.1.309";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5841,7 +5841,7 @@ function fileCondition(loaders, listed5) {
   return {
     state: "ready",
     loaders: loaders.flatMap(
-      (l) => l.condition.kind === "ready" ? [{ testFile: l.testFile, key: l.condition.key }] : []
+      (l) => l.condition.kind === "ready" ? [{ testFile: l.testFile, key: l.condition.key, storedAt: l.condition.storedAt }] : []
     )
   };
 }
@@ -5879,8 +5879,10 @@ var init_file = __esm({
 // src/core/code/crap/cache.ts
 import { createHash as createHash11 } from "node:crypto";
 function signatureOf(file, threshold, loaders) {
-  const keys = loaders.map((l) => l.key).sort(compare);
-  return createHash11("sha1").update([file.blob, `counter ${file.counterVersion}`, `crap ${threshold}`, ...keys].join("\n")).digest("hex");
+  const records = loaders.map((l) => `${l.key} ${l.storedAt}`).sort(compare);
+  return createHash11("sha1").update(
+    [file.blob, `counter ${file.counterVersion}`, `crap ${threshold}`, ...records].join("\n")
+  ).digest("hex");
 }
 var StepCache;
 var init_cache = __esm({
@@ -5891,15 +5893,23 @@ var init_cache = __esm({
     init_file();
     StepCache = class {
       #loaders = null;
+      /** The loader map being read, a test file at a time (row 015-45). */
+      #build = null;
       #conditions = /* @__PURE__ */ new Map();
       /** By path: the signature, and the blob, counter version and threshold it was made at. */
       #signatures = /* @__PURE__ */ new Map();
       #records = /* @__PURE__ */ new Map();
       /** Counts `invalidate`: a record decoded before the last one is read again. */
       #epoch = 0;
-      /** The loader map, read once while it holds. */
-      loaders(read5) {
-        this.#loaders ??= read5();
+      /**
+       * The loader map, read once while it holds, as far as `work` allows at
+       * each call (row 015-45); `null` until it is whole.
+       */
+      loaders(start2, work) {
+        if (this.#loaders !== null) return this.#loaders;
+        this.#build ??= start2();
+        this.#loaders = this.#build.advance(work);
+        if (this.#loaders !== null) this.#build = null;
         return this.#loaders;
       }
       /** A source's condition from the loader map. */
@@ -5910,7 +5920,11 @@ var init_cache = __esm({
         this.#conditions.set(path, condition);
         return condition;
       }
-      /** `signatureOf`, made again only when the file's blob or counter version or the threshold moves. */
+      /**
+       * `signatureOf`, made again only when the file's blob or counter version
+       * or the threshold moves, or after `invalidate`, which a stored record
+       * calls.
+       */
       signature(file, threshold, loaders) {
         const at2 = `${file.blob}\0${file.counterVersion}\0${threshold}`;
         const known2 = this.#signatures.get(file.path);
@@ -5944,6 +5958,7 @@ var init_cache = __esm({
       }
       invalidate() {
         this.#loaders = null;
+        this.#build = null;
         this.#conditions.clear();
         this.#signatures.clear();
         this.#epoch++;
@@ -8151,7 +8166,7 @@ var init_open = __esm({
 });
 
 // src/core/code/store/schema.ts
-var V12, CODE_MIGRATIONS, CODE_SCHEMA_VERSION;
+var V12, CODE_MIGRATIONS, CODE_SCHEMA_VERSION, CODE_INDEXES;
 var init_schema2 = __esm({
   "src/core/code/store/schema.ts"() {
     "use strict";
@@ -8246,6 +8261,9 @@ CREATE TABLE coverage (
 `;
     CODE_MIGRATIONS = [(db) => db.exec(V12)];
     CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
+    CODE_INDEXES = {
+      coverage_stored: "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)"
+    };
   }
 });
 
@@ -8360,6 +8378,16 @@ var init_counts = __esm({
 
 // src/core/code/store/coverage.ts
 function createCoverageRepo(conn) {
+  const indexed = conn.get("SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?", INDEX) !== null;
+  const by = indexed ? `coverage INDEXED BY ${INDEX}` : "coverage";
+  const storedAt = (key3) => {
+    const row2 = conn.get(
+      `SELECT recorded_at FROM ${by} WHERE result_key = ? AND provider_version = ?`,
+      key3.resultKey,
+      key3.providerVersion
+    );
+    return row2 === null ? null : num(row2, "recorded_at");
+  };
   return {
     get(key3) {
       const row2 = conn.get(
@@ -8370,17 +8398,13 @@ function createCoverageRepo(conn) {
       const record = row2?.record;
       return record instanceof Uint8Array ? record : null;
     },
-    has(key3) {
-      return conn.get(
-        "SELECT 1 AS found FROM coverage WHERE result_key = ? AND provider_version = ?",
-        key3.resultKey,
-        key3.providerVersion
-      ) !== null;
-    },
+    has: (key3) => storedAt(key3) !== null,
+    storedAt,
     put(key3, record, at2) {
       conn.run(
         `INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT DO UPDATE SET record = excluded.record, recorded_at = excluded.recorded_at`,
+         ON CONFLICT DO UPDATE SET record = excluded.record,
+           recorded_at = max(excluded.recorded_at, recorded_at + 1)`,
         key3.resultKey,
         key3.providerVersion,
         record,
@@ -8389,9 +8413,12 @@ function createCoverageRepo(conn) {
     }
   };
 }
+var INDEX;
 var init_coverage = __esm({
   "src/core/code/store/coverage.ts"() {
     "use strict";
+    init_codec();
+    INDEX = "coverage_stored";
   }
 });
 
@@ -8513,17 +8540,30 @@ function checkFrom2(row2) {
     occurrence: num(row2, "occurrence")
   };
 }
+function statesOf(worktreeId, paths) {
+  if (paths === void 0) {
+    return {
+      from: "states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?",
+      params: [worktreeId]
+    };
+  }
+  return {
+    from: `(SELECT DISTINCT value FROM json_each(?)) p
+      CROSS JOIN checks c ON c.path = p.value
+      CROSS JOIN states s ON s.worktree_id = ? AND s.check_id = c.id
+      WHERE true`,
+    params: [JSON.stringify(paths), worktreeId]
+  };
+}
 function createStateRepo(conn) {
   return {
     list(worktreeId, filter = {}) {
+      const { from, params } = statesOf(worktreeId, filter.paths);
       return conn.all(
-        `SELECT s.*, ${CHECK_COLUMNS2} FROM states s JOIN checks c ON c.id = s.check_id
-           WHERE s.worktree_id = ?
-             AND (? IS NULL OR c.path IN (SELECT value FROM json_each(?)))
+        `SELECT s.*, ${CHECK_COLUMNS2} FROM ${from}
              AND (? IS NULL OR s.measure = ?) AND (? IS NULL OR s.outcome = ?)
            ORDER BY c.path, c.qualified_name, c.occurrence, s.measure`,
-        worktreeId,
-        ...Array(2).fill(filter.paths === void 0 ? null : JSON.stringify(filter.paths)),
+        ...params,
         ...Array(2).fill(filter.measure ?? null),
         ...Array(2).fill(filter.outcome ?? null)
       ).map((row2) => toState(worktreeId, row2));
@@ -8551,13 +8591,13 @@ function createStateRepo(conn) {
         }
       });
     },
-    edits(worktreeId, measure2) {
+    edits(worktreeId, measure2, paths) {
+      const { from, params } = statesOf(worktreeId, paths);
       return conn.all(
-        `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS2}
-           FROM states s JOIN checks c ON c.id = s.check_id
-           WHERE s.worktree_id = ? AND s.measure = ? AND s.edited_at IS NOT NULL
+        `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS2} FROM ${from}
+             AND s.measure = ? AND s.edited_at IS NOT NULL
            ORDER BY c.path, c.qualified_name, c.occurrence`,
-        worktreeId,
+        ...params,
         measure2
       ).map(toEdit);
     },
@@ -8885,10 +8925,24 @@ function openCodeStore(commonDir, policy, options = {}) {
     switchToWal(db, busyTimeoutMs);
     db.exec("PRAGMA synchronous = NORMAL");
     const version2 = migrate(db, CODE_MIGRATIONS);
+    if (options.create !== false) makeIndexes(db);
     return createCodeStore(new Connection(db), version2, path);
   } catch (error) {
     db?.close();
     if (isCorruption2(error)) return { reason: "corrupt", error: String(error) };
+    throw error;
+  }
+}
+function makeIndexes(db) {
+  const found3 = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?");
+  const absent2 = () => Object.entries(CODE_INDEXES).filter(([name2]) => found3.get(name2) === void 0);
+  if (absent2().length === 0) return;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const [, sql] of absent2()) db.exec(sql);
+    db.exec("COMMIT");
+  } catch (error) {
+    rollback(db);
     throw error;
   }
 }
@@ -9091,7 +9145,11 @@ var init_pace = __esm({
       due() {
         return this.#now() >= this.#notBefore;
       }
-      /** Resolves once the next unit may start, never in the same turn of the event loop. */
+      /**
+       * Resolves once the next unit may start by the time it is called, never
+       * in the same turn of the event loop. Another user of the pace may run a
+       * unit meanwhile, so `due` says whether to wait again.
+       */
       wait() {
         const delay5 = Math.max(0, this.#notBefore - this.#now());
         return new Promise((resolve28) => setTimeout(resolve28, delay5));
@@ -9130,7 +9188,7 @@ function createCoverageWriter(options) {
   let waiting2 = 0;
   let settle = null;
   let settled = null;
-  const pace = new Pace(now);
+  const pace = options.pace ?? new Pace(now);
   const script = mapWorkerScript();
   let worker = options.worker === void 0 ? script === null ? null : { script } : options.worker;
   let mapper = null;
@@ -9221,7 +9279,9 @@ function createCoverageWriter(options) {
   };
   const loop = async () => {
     for (let job = queue.shift(); job !== void 0; job = queue.shift()) {
-      await pace.wait();
+      do
+        await pace.wait();
+      while (!closed && !pace.due());
       if (closed) {
         rmSync4(job.file.payload, { force: true });
         break;
@@ -9286,19 +9346,23 @@ var init_writer = __esm({
 function conditionAt(inputs2, testFile, key3, queued) {
   if (key3 === null) return { kind: "unknown", cause: "unkeyed" };
   if (queued) return { kind: "pending", reason: "run" };
-  const settled = inputs2.settled?.get(key3);
-  if (settled !== void 0) return settled;
-  const results2 = inputs2.main.results.byKey(key3, 0).filter((r) => r.check.project === testFile.project && r.check.testPath === testFile.path);
-  if (results2.length === 0) return { kind: "pending", reason: "run" };
-  let condition = null;
-  if (results2.some((r) => r.outcome === "skip")) condition = { kind: "unknown", cause: "skipped" };
-  else if (inputs2.coverage.has({ resultKey: key3, providerVersion: COVERAGE_PROVIDER_VERSION })) {
-    condition = { kind: "ready", key: key3 };
-  }
-  if (condition !== null) {
+  const record = { resultKey: key3, providerVersion: COVERAGE_PROVIDER_VERSION };
+  const keep = (condition) => {
     inputs2.settled?.set(key3, condition);
     return condition;
-  }
+  };
+  const settled = inputs2.settled?.get(key3);
+  if (settled?.kind === "ready") {
+    const storedAt2 = inputs2.coverage.storedAt(record);
+    if (storedAt2 === settled.storedAt) return settled;
+    if (storedAt2 !== null) return keep({ kind: "ready", key: key3, storedAt: storedAt2 });
+    inputs2.settled?.delete(key3);
+  } else if (settled !== void 0) return settled;
+  const results2 = inputs2.main.results.byKey(key3, 0).filter((r) => r.check.project === testFile.project && r.check.testPath === testFile.path);
+  if (results2.length === 0) return { kind: "pending", reason: "run" };
+  if (results2.some((r) => r.outcome === "skip")) return keep({ kind: "unknown", cause: "skipped" });
+  const storedAt = inputs2.coverage.storedAt(record);
+  if (storedAt !== null) return keep({ kind: "ready", key: key3, storedAt });
   const stored = Math.max(...results2.map((r) => r.provenance.recordedAt));
   const until = stored + RECORD_WAIT_MS;
   if (until > inputs2.now) return { kind: "pending", reason: "record", until };
@@ -9307,43 +9371,7 @@ function conditionAt(inputs2, testFile, key3, queued) {
   }
   return { kind: "unknown", cause: "no-record" };
 }
-function readLoaders(inputs2) {
-  const rows = inputs2.main.testFileKeys.list(inputs2.worktreeId);
-  const byPath = /* @__PURE__ */ new Map();
-  const everywhere = [];
-  let wakeAt = null;
-  for (const row2 of rows) {
-    const paths = inputs2.closures?.closure(row2.testFile)?.paths;
-    if (paths === void 0) {
-      everywhere.push({
-        testFile: row2.testFile,
-        condition: { kind: "pending", reason: "imports" }
-      });
-      continue;
-    }
-    const condition = inputs2.closures?.key(row2.testFile) === row2.key ? conditionAt(inputs2, row2.testFile, row2.key, row2.pending !== null) : { kind: "pending", reason: "run" };
-    if (condition.kind === "pending" && condition.until !== void 0) {
-      wakeAt = Math.min(wakeAt ?? condition.until, condition.until);
-    }
-    const loader = { testFile: row2.testFile, condition };
-    for (const path of paths) {
-      if (path === row2.testFile.path) continue;
-      const list2 = byPath.get(path);
-      if (list2 === void 0) byPath.set(path, [loader]);
-      else list2.push(loader);
-    }
-  }
-  return {
-    listed: rows.length > 0,
-    of: (path) => {
-      const own = byPath.get(path) ?? [];
-      return everywhere.length === 0 ? own : [...own, ...everywhere];
-    },
-    withoutImports: everywhere.length,
-    wakeAt
-  };
-}
-var RECORD_WAIT_MS, BUSY_RECHECK_MS;
+var RECORD_WAIT_MS, BUSY_RECHECK_MS, LoaderBuild;
 var init_loaders = __esm({
   "src/core/code/crap/loaders.ts"() {
     "use strict";
@@ -9351,6 +9379,269 @@ var init_loaders = __esm({
     init_writer();
     RECORD_WAIT_MS = RESULT_WAITS_MS.reduce((a, b) => a + b, 0);
     BUSY_RECHECK_MS = 5e3;
+    LoaderBuild = class {
+      #inputs;
+      #rows = null;
+      #next = 0;
+      #byPath = /* @__PURE__ */ new Map();
+      #everywhere = [];
+      #wakeAt = null;
+      constructor(inputs2) {
+        this.#inputs = inputs2;
+      }
+      /** Reads one unit each time `work` allows; the whole map once every test file is read, else `null`. */
+      advance(work) {
+        const { main: main2, worktreeId } = this.#inputs;
+        if (this.#rows === null) {
+          if (!work()) return null;
+          this.#rows = main2.testFileKeys.list(worktreeId);
+        }
+        for (; this.#next < this.#rows.length; this.#next++) {
+          const row2 = this.#rows[this.#next];
+          if (row2 === void 0 || !work()) return null;
+          this.#read(row2);
+        }
+        const byPath = this.#byPath;
+        const everywhere = this.#everywhere;
+        return {
+          listed: this.#rows.length > 0,
+          of: (path) => {
+            const own = byPath.get(path) ?? [];
+            return everywhere.length === 0 ? own : [...own, ...everywhere];
+          },
+          withoutImports: everywhere.length,
+          wakeAt: this.#wakeAt
+        };
+      }
+      #read(row2) {
+        const inputs2 = this.#inputs;
+        const paths = inputs2.closures?.closure(row2.testFile)?.paths;
+        if (paths === void 0) {
+          this.#everywhere.push({
+            testFile: row2.testFile,
+            condition: { kind: "pending", reason: "imports" }
+          });
+          return;
+        }
+        const condition = inputs2.closures?.key(row2.testFile) === row2.key ? conditionAt(inputs2, row2.testFile, row2.key, row2.pending !== null) : { kind: "pending", reason: "run" };
+        if (condition.kind === "pending" && condition.until !== void 0) {
+          this.#wakeAt = Math.min(this.#wakeAt ?? condition.until, condition.until);
+        }
+        const loader = { testFile: row2.testFile, condition };
+        for (const path of paths) {
+          if (path === row2.testFile.path) continue;
+          const list2 = this.#byPath.get(path);
+          if (list2 === void 0) this.#byPath.set(path, [loader]);
+          else list2.push(loader);
+        }
+      }
+    };
+  }
+});
+
+// src/core/code/crap/score.ts
+function crapScore(complexity, coverage) {
+  if (coverage >= FULL_COVERAGE) return complexity;
+  const missed = 1 - Math.max(0, coverage);
+  return complexity ** 2 * missed ** 3 + complexity;
+}
+var FULL_COVERAGE;
+var init_score = __esm({
+  "src/core/code/crap/score.ts"() {
+    "use strict";
+    FULL_COVERAGE = 0.95;
+  }
+});
+
+// src/core/code/crap/judge.ts
+function judgeFiles(ctx, judged) {
+  const { prior, worktreeId, revision, at: at2 } = ctx;
+  const states = [];
+  const transitions = [];
+  const edited = [];
+  for (const { file, count: count2, coverage, quiet } of judged) {
+    count2.functions.forEach((fn, i3) => {
+      const check = checkOf(file.path, fn);
+      const id2 = `${file.path}\0${functionKey(fn)}`;
+      if (prior.get(`complexity\0${id2}`)?.outcome === "unknown") return;
+      const cov = coverage[i3];
+      if (cov === void 0) return;
+      const edit = quiet === true ? void 0 : ctx.edits.get(id2);
+      for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
+        const was = prior.get(`${m.measure}\0${id2}`);
+        const { outcome: outcome2 } = m;
+        if (edit !== void 0 && was !== void 0 && edit.revision > was.countedAt) {
+          edited.push({ check, measure: m.measure, revision: edit.revision, at: at2 });
+        }
+        states.push({
+          worktreeId,
+          check,
+          measure: m.measure,
+          outcome: outcome2,
+          value: m.value,
+          threshold: m.threshold,
+          countedAt: revision,
+          blob: file.blob,
+          changedAt: was?.outcome === outcome2 ? was.changedAt : revision
+        });
+        const kind = quiet === true && was !== void 0 ? null : kindOf(was, outcome2, m.value);
+        if (kind === null) continue;
+        transitions.push({
+          worktreeId,
+          check,
+          measure: m.measure,
+          kind,
+          from: was?.outcome ?? null,
+          to: outcome2,
+          fromValue: was?.value ?? null,
+          toValue: m.value,
+          threshold: m.threshold,
+          revision,
+          at: at2
+        });
+      }
+    });
+  }
+  return { states, transitions, edited };
+}
+function measuresOf(complexity, cov, threshold) {
+  if (cov.unresolved === true) {
+    return ["crap", "uncovered"].map((measure2) => ({
+      measure: measure2,
+      outcome: "unknown",
+      value: null,
+      threshold: null
+    }));
+  }
+  const crap = crapScore(complexity, cov.coverage);
+  return [
+    {
+      measure: "crap",
+      outcome: crap > threshold ? "fail" : "pass",
+      value: crap,
+      threshold
+    },
+    {
+      measure: "uncovered",
+      outcome: cov.runBy.length === 0 ? "fail" : "pass",
+      value: null,
+      threshold: null
+    }
+  ];
+}
+function kindOf(was, outcome2, value) {
+  if (outcome2 !== "pass" && outcome2 !== "fail") return null;
+  if (was === void 0) return outcome2 === "fail" ? "first-seen-fail" : null;
+  if (was.outcome === outcome2 || was.outcome !== "pass" && was.outcome !== "fail") return null;
+  if (typeof was.threshold === "number" && value !== null) {
+    if (value > was.threshold !== (outcome2 === "fail")) return null;
+  }
+  return outcome2 === "fail" ? "pass-to-fail" : "fail-to-pass";
+}
+function evidenceOf({ file, count: count2, coverage }) {
+  const functions = {};
+  count2.functions.forEach((fn, i3) => {
+    const cov = coverage[i3];
+    if (cov === void 0) return;
+    functions[functionKey(fn)] = [
+      cov.lines,
+      cov.covered,
+      cov.runBy.length,
+      ...cov.runBy.slice(0, EVIDENCE_FILES)
+    ];
+  });
+  return { blob: file.blob, functions };
+}
+var priorKey, checkOf;
+var init_judge = __esm({
+  "src/core/code/crap/judge.ts"() {
+    "use strict";
+    init_score();
+    init_summary();
+    priorKey = (s) => `${s.measure}\0${s.check.path}\0${functionKey(s.check)}`;
+    checkOf = (path, fn) => ({
+      kind: "code",
+      path,
+      qualifiedName: fn.qualifiedName,
+      occurrence: fn.occurrence
+    });
+  }
+});
+
+// src/core/code/crap/seed.ts
+function seed(input, files2, countOf, again) {
+  const { store, worktreeId, revision } = input;
+  const known2 = new Set(
+    again ? [] : store.states.list(worktreeId, { measure: "crap" }).map((s) => `${functionKey(s.check)}\0${s.check.path}`)
+  );
+  const states = [];
+  for (const file of files2) {
+    for (const fn of countOf(file)?.functions ?? []) {
+      if (known2.has(`${functionKey(fn)}\0${file.path}`)) continue;
+      for (const measure2 of COVERAGE_MEASURES) {
+        states.push({
+          worktreeId,
+          check: checkOf(file.path, fn),
+          measure: measure2,
+          outcome: "pending",
+          value: null,
+          threshold: null,
+          countedAt: revision,
+          blob: file.blob,
+          changedAt: revision
+        });
+      }
+    }
+  }
+  store.states.upsertMany(states);
+}
+var COVERAGE_MEASURES;
+var init_seed = __esm({
+  "src/core/code/crap/seed.ts"() {
+    "use strict";
+    init_judge();
+    init_summary();
+    COVERAGE_MEASURES = ["crap", "uncovered"];
+  }
+});
+
+// src/core/code/crap/removed.ts
+function removedFailures(store, worktreeId, checks, revision, at2) {
+  if (checks.length === 0) return [];
+  const gone3 = new Set(checks.map((c) => JSON.stringify([c.path, c.qualifiedName, c.occurrence])));
+  const paths = [...new Set(checks.map((c) => c.path))];
+  return store.states.list(worktreeId, { paths, outcome: "fail" }).filter(
+    (s) => s.measure !== "complexity" && gone3.has(JSON.stringify([s.check.path, s.check.qualifiedName, s.check.occurrence]))
+  ).map((s) => ({
+    worktreeId,
+    check: s.check,
+    measure: s.measure,
+    kind: "removed",
+    from: s.outcome,
+    to: null,
+    fromValue: s.value,
+    toValue: null,
+    threshold: s.threshold,
+    revision,
+    at: at2
+  }));
+}
+function clearCoverage(store, worktreeId) {
+  const summary = readSummary(store.meta, worktreeId);
+  if (summary === null) return false;
+  store.transaction(() => {
+    for (const measure2 of COVERAGE_MEASURES) store.states.removeMeasure(worktreeId, measure2);
+    for (const path of Object.keys(summary.files))
+      writeEvidence(store.meta, worktreeId, path, null);
+    deleteSummary(store.meta, worktreeId);
+  });
+  return true;
+}
+var init_removed = __esm({
+  "src/core/code/crap/removed.ts"() {
+    "use strict";
+    init_seed();
+    init_summary();
   }
 });
 
@@ -9499,140 +9790,16 @@ var init_brought = __esm({
   }
 });
 
-// src/core/code/crap/score.ts
-function crapScore(complexity, coverage) {
-  if (coverage >= FULL_COVERAGE) return complexity;
-  const missed = 1 - Math.max(0, coverage);
-  return complexity ** 2 * missed ** 3 + complexity;
-}
-var FULL_COVERAGE;
-var init_score = __esm({
-  "src/core/code/crap/score.ts"() {
-    "use strict";
-    FULL_COVERAGE = 0.95;
-  }
-});
-
-// src/core/code/crap/judge.ts
-function judgeFiles(ctx, judged) {
-  const { prior, worktreeId, revision, at: at2 } = ctx;
-  const states = [];
-  const transitions = [];
-  const edited = [];
-  for (const { file, count: count2, coverage, quiet } of judged) {
-    count2.functions.forEach((fn, i3) => {
-      const check = checkOf(file.path, fn);
-      const id2 = `${file.path}\0${functionKey(fn)}`;
-      if (prior.get(`complexity\0${id2}`)?.outcome === "unknown") return;
-      const cov = coverage[i3];
-      if (cov === void 0) return;
-      const edit = quiet === true ? void 0 : ctx.edits.get(id2);
-      for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
-        const was = prior.get(`${m.measure}\0${id2}`);
-        const { outcome: outcome2 } = m;
-        if (edit !== void 0 && was !== void 0 && edit.revision > was.countedAt) {
-          edited.push({ check, measure: m.measure, revision: edit.revision, at: at2 });
-        }
-        states.push({
-          worktreeId,
-          check,
-          measure: m.measure,
-          outcome: outcome2,
-          value: m.value,
-          threshold: m.threshold,
-          countedAt: revision,
-          blob: file.blob,
-          changedAt: was?.outcome === outcome2 ? was.changedAt : revision
-        });
-        const kind = quiet === true && was !== void 0 ? null : kindOf(was, outcome2, m.value);
-        if (kind === null) continue;
-        transitions.push({
-          worktreeId,
-          check,
-          measure: m.measure,
-          kind,
-          from: was?.outcome ?? null,
-          to: outcome2,
-          fromValue: was?.value ?? null,
-          toValue: m.value,
-          threshold: m.threshold,
-          revision,
-          at: at2
-        });
-      }
-    });
-  }
-  return { states, transitions, edited };
-}
-function measuresOf(complexity, cov, threshold) {
-  if (cov.unresolved === true) {
-    return ["crap", "uncovered"].map((measure2) => ({
-      measure: measure2,
-      outcome: "unknown",
-      value: null,
-      threshold: null
-    }));
-  }
-  const crap = crapScore(complexity, cov.coverage);
-  return [
-    {
-      measure: "crap",
-      outcome: crap > threshold ? "fail" : "pass",
-      value: crap,
-      threshold
-    },
-    {
-      measure: "uncovered",
-      outcome: cov.runBy.length === 0 ? "fail" : "pass",
-      value: null,
-      threshold: null
-    }
-  ];
-}
-function kindOf(was, outcome2, value) {
-  if (outcome2 !== "pass" && outcome2 !== "fail") return null;
-  if (was === void 0) return outcome2 === "fail" ? "first-seen-fail" : null;
-  if (was.outcome === outcome2 || was.outcome !== "pass" && was.outcome !== "fail") return null;
-  if (typeof was.threshold === "number" && value !== null) {
-    if (value > was.threshold !== (outcome2 === "fail")) return null;
-  }
-  return outcome2 === "fail" ? "pass-to-fail" : "fail-to-pass";
-}
-function evidenceOf({ file, count: count2, coverage }) {
-  const functions = {};
-  count2.functions.forEach((fn, i3) => {
-    const cov = coverage[i3];
-    if (cov === void 0) return;
-    functions[functionKey(fn)] = [
-      cov.lines,
-      cov.covered,
-      cov.runBy.length,
-      ...cov.runBy.slice(0, EVIDENCE_FILES)
-    ];
-  });
-  return { blob: file.blob, functions };
-}
-var priorKey, checkOf;
-var init_judge = __esm({
-  "src/core/code/crap/judge.ts"() {
-    "use strict";
-    init_score();
-    init_summary();
-    priorKey = (s) => `${s.measure}\0${s.check.path}\0${functionKey(s.check)}`;
-    checkOf = (path, fn) => ({
-      kind: "code",
-      path,
-      qualifiedName: fn.qualifiedName,
-      occurrence: fn.occurrence
-    });
-  }
-});
-
 // src/core/code/crap/step.ts
 function runCoverageStep(input) {
   const { store, worktreeId } = input;
   const work = budget(input.now);
   const cache2 = input.cache ?? new StepCache();
+  const loaders = cache2.loaders(
+    () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
+    input.cache === void 0 ? () => true : work
+  );
+  if (loaders === null) return READING;
   const files2 = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
   const summary = readSummary(store.meta, worktreeId);
   const start2 = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
@@ -9648,9 +9815,6 @@ function runCoverageStep(input) {
     if (count2 !== null) counts.set(file.path, count2);
     return count2;
   };
-  const loaders = cache2.loaders(
-    () => readLoaders({ ...input, coverage: store.coverage, now: input.now() })
-  );
   const { next, judged, quiet, more } = walk(
     { input, cache: cache2, loaders, summary, start: start2, countOf, work },
     files2
@@ -9699,6 +9863,11 @@ function walk(at2, files2) {
   let more = false;
   for (const file of files2) {
     const before3 = summary?.files[file.path];
+    if (!work()) {
+      more = true;
+      if (before3 !== void 0) next[file.path] = before3;
+      continue;
+    }
     const condition = cache2.condition(file.path, loaders);
     if (condition.state !== "ready") {
       next[file.path] = summaryOf(file, condition);
@@ -9733,11 +9902,8 @@ function writeJudgement(input, judged, brought) {
   const paths = judged.map((j) => j.file.path);
   if (paths.length === 0) return 0;
   const prior = new Map(store.states.list(worktreeId, { paths }).map((s) => [priorKey(s), s]));
-  const judgedPaths = new Set(paths);
   const edits = new Map(
-    store.states.edits(worktreeId, "complexity").filter(
-      (e) => judgedPaths.has(e.check.path) && e.revision > (brought.get(e.check.path) ?? -1)
-    ).map((e) => [`${e.check.path}\0${functionKey(e.check)}`, e])
+    store.states.edits(worktreeId, "complexity", paths).filter((e) => e.revision > (brought.get(e.check.path) ?? -1)).map((e) => [`${e.check.path}\0${functionKey(e.check)}`, e])
   );
   const { revision, threshold } = input;
   const { states, transitions, edited } = judgeFiles(
@@ -9769,33 +9935,7 @@ function summaryOf(file, condition) {
     waiting: condition.waiting
   } : { state: "unknown", blob: file.blob, cause: condition.cause };
 }
-function seed(input, files2, countOf, again) {
-  const { store, worktreeId, revision } = input;
-  const known2 = new Set(
-    again ? [] : store.states.list(worktreeId, { measure: "crap" }).map((s) => `${functionKey(s.check)}\0${s.check.path}`)
-  );
-  const states = [];
-  for (const file of files2) {
-    for (const fn of countOf(file)?.functions ?? []) {
-      if (known2.has(`${functionKey(fn)}\0${file.path}`)) continue;
-      for (const measure2 of COVERAGE_MEASURES) {
-        states.push({
-          worktreeId,
-          check: checkOf(file.path, fn),
-          measure: measure2,
-          outcome: "pending",
-          value: null,
-          threshold: null,
-          countedAt: revision,
-          blob: file.blob,
-          changedAt: revision
-        });
-      }
-    }
-  }
-  store.states.upsertMany(states);
-}
-var COVERAGE_MEASURES, STEP_BUDGET_MS;
+var STEP_BUDGET_MS, READING;
 var init_step = __esm({
   "src/core/code/crap/step.ts"() {
     "use strict";
@@ -9807,49 +9947,16 @@ var init_step = __esm({
     init_file();
     init_judge();
     init_loaders();
+    init_seed();
     init_summary();
-    COVERAGE_MEASURES = ["crap", "uncovered"];
     STEP_BUDGET_MS = 50;
-  }
-});
-
-// src/core/code/crap/removed.ts
-function removedFailures(store, worktreeId, checks, revision, at2) {
-  if (checks.length === 0) return [];
-  const gone3 = new Set(checks.map((c) => JSON.stringify([c.path, c.qualifiedName, c.occurrence])));
-  const paths = [...new Set(checks.map((c) => c.path))];
-  return store.states.list(worktreeId, { paths, outcome: "fail" }).filter(
-    (s) => s.measure !== "complexity" && gone3.has(JSON.stringify([s.check.path, s.check.qualifiedName, s.check.occurrence]))
-  ).map((s) => ({
-    worktreeId,
-    check: s.check,
-    measure: s.measure,
-    kind: "removed",
-    from: s.outcome,
-    to: null,
-    fromValue: s.value,
-    toValue: null,
-    threshold: s.threshold,
-    revision,
-    at: at2
-  }));
-}
-function clearCoverage(store, worktreeId) {
-  const summary = readSummary(store.meta, worktreeId);
-  if (summary === null) return false;
-  store.transaction(() => {
-    for (const measure2 of COVERAGE_MEASURES) store.states.removeMeasure(worktreeId, measure2);
-    for (const path of Object.keys(summary.files))
-      writeEvidence(store.meta, worktreeId, path, null);
-    deleteSummary(store.meta, worktreeId);
-  });
-  return true;
-}
-var init_removed = __esm({
-  "src/core/code/crap/removed.ts"() {
-    "use strict";
-    init_step();
-    init_summary();
+    READING = {
+      judged: 0,
+      transitions: 0,
+      wakeAt: null,
+      more: true,
+      reading: true
+    };
   }
 });
 
@@ -9863,6 +9970,7 @@ var init_crap = __esm({
     init_loaders();
     init_removed();
     init_score();
+    init_seed();
     init_step();
     init_summary();
   }
@@ -59096,7 +59204,7 @@ function createCodePass(options) {
   let coverageDue = true;
   const settled = /* @__PURE__ */ new Map();
   const cache2 = new StepCache();
-  const pace = new Pace(now);
+  const pace = options.coverage?.pace ?? new Pace(now);
   let reseedDue = false;
   let budgeted = false;
   let aborted = 0;
@@ -59200,7 +59308,7 @@ function createCodePass(options) {
         cache: cache2
       })
     );
-    reseedDue = false;
+    if (step?.reading !== true) reseedDue = false;
     coverageWake = step?.wakeAt ?? null;
     if (step?.more === true) paced();
     else cache2.settle();
@@ -59302,6 +59410,7 @@ __export(coverage_exports, {
   COVERAGE_PROVIDER_VERSION: () => COVERAGE_PROVIDER_VERSION,
   PROVIDER_FILE: () => PROVIDER_FILE,
   PROVIDER_MISSING_NOTE: () => PROVIDER_MISSING_NOTE,
+  Pace: () => Pace,
   RESULT_WAITS_MS: () => RESULT_WAITS_MS,
   buildRecord: () => buildRecord,
   coverageOn: () => coverageOn,
@@ -59317,6 +59426,7 @@ var init_coverage3 = __esm({
   "src/core/code/coverage/index.ts"() {
     "use strict";
     init_map();
+    init_pace();
     init_record();
     init_runtime();
     init_writer();
@@ -66811,6 +66921,7 @@ var Daemon = class {
       ]);
       if (this.#phase === "stopping" || this.#stopRequested) return;
       const format = await readObjectFormat2(root);
+      const pace = new coverage.Pace(this.#now);
       this.#coverage = coverage.createCoverageWriter({
         commonDir,
         format,
@@ -66820,7 +66931,8 @@ var Daemon = class {
         now: this.#now,
         log: this.#log,
         // Row 015-12: CRAP is judged again once a record is stored.
-        onStored: () => this.#code?.soon()
+        onStored: () => this.#code?.soon(),
+        pace
       });
       const code = codePass.createCodePass({
         worktreeId,
@@ -66843,7 +66955,8 @@ var Daemon = class {
         coverage: {
           main: store,
           closures: () => this.#loop?.scheduler.keyIndex() ?? null,
-          writing: () => this.#coverage?.busy() ?? false
+          writing: () => this.#coverage?.busy() ?? false,
+          pace
         }
       });
       this.#code = code;
