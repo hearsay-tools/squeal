@@ -86,7 +86,7 @@ function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
   }
   // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
   if (s.daemon.stopped === true) {
-    return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
+    return `Daemon: stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\`. ${holdAcrossEditsText(command)}`;
   }
   const down =
     s.daemon.since === null
@@ -95,6 +95,14 @@ function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
   // Task 001-263: a daemon that died without its stop note is named, with what it was running.
   if (s.daemon.died === undefined) return down;
   return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;
+}
+
+/**
+ * Row 011-211 (gh-90): an edit ends a stop, not a hold, so a stop's line
+ * names the hold for a manual run across edits. A sentence.
+ */
+export function holdAcrossEditsText(command: string): string {
+  return `For a manual run across edits, \`${command} hold -- <command>\` holds validation until the command exits.`;
 }
 
 /** `5 s`, `3 min`, `2 h`. */

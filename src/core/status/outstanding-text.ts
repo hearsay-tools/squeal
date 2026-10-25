@@ -10,7 +10,7 @@ import type {
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { nextStep } from "./next-step.js";
 import { fromBase, reasonWords, stepText } from "./next-step-text.js";
-import { ageText } from "./status-detail.js";
+import { ageText, holdAcrossEditsText } from "./status-detail.js";
 import { stoppingNext, stoppingState } from "./stopping.js";
 
 /*
@@ -153,7 +153,7 @@ function daemonText(
   const start = stepText(next.step, [], command);
   if (s.daemon.state === "alive") return `${reason}; ${start}`;
   if (s.daemon.stopped === true) {
-    return `${reason}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start}`;
+    return `${reason}; stopped by request (\`${command} stop\`): a hook starts one at the next edit, or ${start}. ${holdAcrossEditsText(command)}`;
   }
   if (s.daemon.died === undefined) return `${reason}; ${start}`;
   return `${reason}; it ${deathText(s.daemon.died)}; ${start}. ${DEATH_CAUSE}`;
