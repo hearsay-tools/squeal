@@ -1,5 +1,11 @@
 import type { CodeFile } from "../../types/code.js";
-import type { EpochMs, FileHash, RelativePath, WorktreeId } from "../../types/index.js";
+import type {
+  EpochMs,
+  FileHash,
+  RelativePath,
+  RevisionNumber,
+  WorktreeId,
+} from "../../types/index.js";
 import type { CodeMetaRepo, CodeStore } from "../store/index.js";
 
 /** Row 015-18 (review 0.1.283 S1): counts tried at one blob before the pass stops until it changes. */
@@ -36,6 +42,15 @@ export interface FailedCount {
    * recount's (D1, row 015-31). Absent for a quiet count.
    */
   readonly threshold?: number;
+  /**
+   * Row 015-49: the revision of the edit that brought this blob, the pass's
+   * last change of the path, not its own revision. Kept while the counts
+   * fail at this blob, through a retry, a restart's retries and a recount,
+   * as `tooBigEdits` keeps a too-big file's (015-39), so D6 names the file
+   * to the session whose edit it was. Absent when no edit brought it: a
+   * first count's.
+   */
+  readonly editedAt?: RevisionNumber;
 }
 
 /** Each path whose last count failed. */
@@ -94,7 +109,8 @@ export function mayCount(
  * that is `quiet` or not, at `threshold`; another blob starts again at one
  * attempt, with this pass's origin. The same blob keeps the origin of its
  * first failure. An edit's record keeps the threshold of the first edit
- * that failed (row 015-31).
+ * that failed (row 015-31); the same blob keeps the revision of the edit
+ * that brought it, another takes `editedAt` (row 015-49).
  */
 export function failedAgain(
   previous: FailedCount | undefined,
@@ -104,18 +120,26 @@ export function failedAgain(
     now,
     quiet,
     threshold,
-  }: { readonly now: EpochMs; readonly quiet: boolean; readonly threshold: number },
+    editedAt,
+  }: {
+    readonly now: EpochMs;
+    readonly quiet: boolean;
+    readonly threshold: number;
+    readonly editedAt?: RevisionNumber | undefined;
+  },
 ): FailedCount {
   const same = previous?.blob === blob;
   const attempts = same ? previous.attempts + 1 : 1;
   const wait = attempts < COUNT_ATTEMPTS ? RETRY_AFTER_MS[attempts - 1] : undefined;
   const origin = same ? previous.quiet === true : quiet;
+  const edit = same ? previous.editedAt : editedAt;
   return {
     blob,
     attempts,
     retryAt: wait === undefined ? null : now + wait,
     error,
     ...(origin ? { quiet: true } : { threshold: previous?.threshold ?? threshold }),
+    ...(edit === undefined ? {} : { editedAt: edit }),
   };
 }
 
