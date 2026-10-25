@@ -18,6 +18,7 @@ import {
   KeyIndex,
   Listings,
   listedDirectory,
+  listingPath,
   ObservedSets,
   type ReadAsOne,
   StartupSets,
@@ -515,12 +516,30 @@ export class WorktreeKeys {
 
   /**
    * Re-keys the test files that listed a directory an add or delete among
-   * `changes` changed the entries of (D3 as amended, task 001-132). Ignored
-   * files are no entries: what the watcher does not see cannot key.
+   * `changes` changed the entries of (D3 as amended, task 001-132), or one
+   * the watcher sees no file in whose names on disk changed (row 016-24).
+   * Ignored files are no entries: what the watcher does not see keys by the
+   * names `Listings` reads at each revision.
    */
   rekeyListings(changes: readonly FileChange[]): KeyChange[] {
     const moved = this.#listings.apply(changes.filter((c) => !this.#extra.has(c.path)));
     return moved.length === 0 ? [] : this.index.rekey(moved);
+  }
+
+  /**
+   * A run of `testFile` listed `directories` (`ObservedInputs.directories`)
+   * and ended: the names one the watcher sees no file in holds now are the
+   * run's own (`Listings.ran`, row 016-24), when `testFile` alone lists it
+   * here. Another reader of it still re-keys at the next revision.
+   */
+  listedByRun(testFile: TestFileRef, directories: readonly RelativePath[]): void {
+    const id = testFileId(testFile);
+    this.#listings.ran(
+      directories.filter((directory) => {
+        const readers = this.index.reverse.referencing([listingPath(directory)]);
+        return readers.length > 0 && readers.every((ref) => testFileId(ref) === id);
+      }),
+    );
   }
 
   /** The existing files policy `inputs` selects for the test file at `path` (spec 004 D6). */

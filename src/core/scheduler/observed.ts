@@ -43,7 +43,9 @@ export interface ObservedGrowth {
  * project `keys.observes` (policy `observe.runtimeInputs`, or module loads,
  * 016 D4 O8) gives growth. What a process the file started imported
  * (`ObservedInputs.direct`) marks it direct in the keys' view, a closure path
- * too, unless the bound drops it; the record stores the marks.
+ * too, unless the bound drops it; the record stores the marks. The names a
+ * listed directory the watcher sees no file in holds now are the run's own
+ * when the file alone lists it (`WorktreeKeys.listedByRun`, row 016-24).
  */
 export async function observedGrowth(
   context: Pick<SchedulerContext, "root" | "keys">,
@@ -58,6 +60,8 @@ export async function observedGrowth(
   const candidates = new Set<RelativePath>();
   const seen = [];
   for (const observed of reported) {
+    // Row 016-24: the names a listed ignored directory holds now are this run's own.
+    keys.listedByRun(observed.testFile, observed.directories);
     const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
     const listed = new Set(observed.directories.map(listingPath));
     // A recursive listing returned names from every directory below it (B5, task 001-134).
