@@ -45,6 +45,7 @@ import {
 import { ownEditUnknown } from "./own-edit.js";
 import { scannedDaemon, tellRegistered } from "./registered.js";
 import { slowTierChanged, tellSlowTier } from "./slow-told.js";
+import { toldAtStop } from "./stop-news.js";
 import {
   currentKeys,
   endTurn,
@@ -213,10 +214,16 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const delta = plan(consumer, states, at, selection.only);
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
-      const changed = liveness ? livenessChange(store, consumer, at) : null;
-      if (changed !== null) tellLiveness(store, consumer, toldOf(changed));
       // Row 011-73 (C8 as amended 2026-10-21): a hold's start and end, told as liveness is.
-      const holds = liveness ? holdsChange(store, consumer, at) : null;
+      // Row 011-215: at Stop both wait for the next boundary, unless beside a transition or an action.
+      const { live: changed, held: holds } = toldAtStop(
+        { stop, transitions: delta.entries.length > 0 },
+        {
+          live: liveness ? livenessChange(store, consumer, at) : null,
+          held: liveness ? holdsChange(store, consumer, at) : null,
+        },
+      );
+      if (changed !== null) tellLiveness(store, consumer, toldOf(changed));
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const tests = delta.entries.length > 0 || changed !== null || holds !== null;
       // Spec 015 D6, D7: code changes at tool boundaries; a Stop tells them only beside other news.
