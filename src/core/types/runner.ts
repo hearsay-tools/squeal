@@ -112,6 +112,14 @@ export interface RunnerEnvironment {
   readonly runnerName: string;
   readonly runnerVersion: string;
   readonly adapterVersion: string;
+  /**
+   * Every path the project's runs report in `RunReport.observed` and
+   * `environmentObserved` is a module load, which keys whatever policy
+   * `observe.runtimeInputs` says (spec 016 D4, survey O8: node:test and
+   * pytest). Absent: observed paths key only while the policy holds. It
+   * enters no environment hash.
+   */
+  readonly observedLoads?: true;
   /** Canonical JSON of the resolved config, absolute paths relativized. */
   readonly resolvedConfig: string;
   /**
@@ -363,6 +371,20 @@ export interface ObservedInputs {
    * holds a tracked file (review wave 12d, B5; task 001-134). Absent: none.
    */
   readonly recursive?: readonly RelativePath[];
+  /**
+   * Directories the run wrote, created (`mkdtemp` too) or removed that hold
+   * one of `paths` or `directories`. The core drops a git-ignored path below
+   * one of them, and keeps every other git-ignored path (spec 016 D4, the
+   * written-directory bound). Absent: none, or the runner records no writes.
+   */
+  readonly written?: readonly RelativePath[];
+  /**
+   * Of `paths`, those that put the test file in `direct` when they change, as
+   * a one-hop import does: what a process the test file started imported
+   * (spec 016 D4, row 007-56). The core keeps them beside the paths, so a
+   * restarted daemon and another worktree see them. Absent: none.
+   */
+  readonly direct?: readonly RelativePath[];
 }
 
 /** Everything one `run` call produced. Only test files passed to `run` appear here. */
