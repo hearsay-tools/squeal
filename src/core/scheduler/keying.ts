@@ -421,12 +421,8 @@ export class WorktreeKeys {
    * (D5 as amended, task 001-132). Without the runner's closure the file is
    * not keyed yet, and the set waits for its first `setClosure`.
    */
-  addObserved(
-    testFile: TestFileRef,
-    additions: readonly RelativePath[],
-    direct: readonly RelativePath[] = [],
-  ): KeyChange[] {
-    this.#observed.add(testFile, additions, direct);
+  addObserved(testFile: TestFileRef, additions: readonly RelativePath[]): KeyChange[] {
+    this.#observed.add(testFile, additions);
     const runner = this.#runnerClosures.get(testFileId(testFile));
     return runner === undefined ? [] : this.setClosure(runner);
   }
@@ -460,23 +456,32 @@ export class WorktreeKeys {
     return this.#observed.of(testFile);
   }
 
-  /** Of `testFile`'s observed set, the paths that put it in `direct` (016 D4, row 007-56). */
+  /** The paths that put `testFile` in `direct` (016 D4, row 007-56). */
   directOf(testFile: TestFileRef): readonly RelativePath[] {
     return this.#observed.directOf(testFile);
   }
 
   /**
+   * 016 D4 (row 007-56): paths a process `testFile` started imported join
+   * this worktree's marks; the record's transaction stores them (`writeSeen`).
+   */
+  markDirect(testFile: TestFileRef, paths: readonly RelativePath[]): void {
+    this.#observed.mark(testFile, paths);
+  }
+
+  /**
    * 016 D4: a run's start-up paths (`RunReport.environmentObserved`) join
    * this worktree's view, so the environments read next hold them; the
-   * record's transaction stores them (`writeStartup`).
+   * record's transaction stores them (`writeSeen`).
    */
   seeStartup(project: ProjectName, paths: readonly RelativePath[]): void {
     this.#startup.see(project, paths);
   }
 
-  /** Stores the start-up paths `seeStartup` added; inside the record's transaction. */
-  writeStartup(): void {
+  /** Stores what `seeStartup` and `markDirect` added and the store lacks; inside the record's transaction. */
+  writeSeen(): void {
     this.#startup.write();
+    this.#observed.writeMarks();
   }
 
   /** The listing paths a recursive listing of `directory` reads (`Listings.below`, task 001-134). */
