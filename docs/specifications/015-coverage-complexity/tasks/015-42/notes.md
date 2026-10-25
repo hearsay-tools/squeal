@@ -48,7 +48,7 @@ The red runs of each new test on the baseline used a detached copy of `199b4e89b
 
 | Piece | File | Note |
 | --- | --- | --- |
-| Step cache | `crap/cache.ts` `StepCache` | `loaders`, `condition`, `signature` (by blob, counter version and threshold), `record`, `decode`; `invalidate` (map, conditions, signatures), `settle` (records). `signatureOf` moved here from `step.ts`, unchanged. |
+| Step cache | `crap/cache.ts` `StepCache` | `loaders`, `condition`, `signature` (by blob, counter version and threshold), `record`, `decode`; `invalidate` (map, conditions, signatures; each record is read again before its next use), `settle` (records). `signatureOf` moved here from `step.ts`, unchanged. |
 | Budget, walk | `crap/step.ts` `budget`, `walk` | `runCoverageStep` reads through `input.cache`, or a fresh one when none is given. |
 | Pass | `pass/index.ts` | `cache.invalidate()` in the `soon` and wake timers, after a revision, and at `shut`; `cache.settle()` when a step ends the chain; `paced()` replaces `setImmediate`; `reseedDue`. |
 | Pace | `coverage/pace.ts` `Pace` | `measure`, `due`, `wait` (writer), `after` (pass, unref'd), `cancel`. |
@@ -59,7 +59,7 @@ The red runs of each new test on the baseline used a detached copy of `199b4e89b
 ## Decisions the spec did not settle
 
 1. **One unit past the budget.** A step always does one unit of work, a record decoded or a file judged, so a chain moves even when its reads spent the budget. Without a cache (`rig.step`, a bench), a step whose reads spend the budget decodes the same first record at every call. Only the code pass repeats steps, and it passes its cache.
-2. **Records outlive an invalidation within a chain.** A record at a key is the record of those bytes, so results or a revision drop the loader map but not the decoded records. The records go when a step ends the chain or the store closes. The peak is the same as before, when one step held the records of every loader of the file it judged. RSS in the real-store bench: 503 to 521 MiB after, 1,154 MiB before.
+2. **Records outlive an invalidation within a chain while their bytes stay.** Results or a revision drop the loader map but keep the decoded records. A later run at a key stores its record over the first, so after each invalidation a decoded record is read again and its bytes' sha1 compared; it is decoded again only when they moved (review 0.1.305 B1, which proved the first version, which kept them unread, wrong). The records go when a step ends the chain or the store closes. The peak is the same as before, when one step held the records of every loader of the file it judged. RSS in the real-store bench: 503 to 521 MiB after, 1,154 MiB before.
 3. **What drops the loader map:** `soon()` (results or records stored), a revision (a pass report), a wake (a record wait that ends), and the store closing. The `more` continuation does not.
 4. **Pace counts recent work.** Work measured before the last wait ended adds to the next wait, as the worker path's message handlers and its store do for one job. Work after it starts a new window.
 5. **The worker gets sources on demand,** not a run's whole module graph, and keeps two runs. The record comes back copied, not transferred, because the deflated buffer can share a pool. A record is small next to its payload; its copy time was not measured on its own.
