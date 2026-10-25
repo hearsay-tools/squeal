@@ -30,8 +30,9 @@ import { clearStoppedMark } from "./stopped-mark.js";
  * (`served`, row 011-111). Exit code 0 once a daemon answers, 1 otherwise,
  * and 3 when a daemon it spawned has not answered within 30 s while its
  * process lives: it may still be starting (`spawnedFailed`, row 011-214).
- * A stopping daemon is never said alive: `start` finishes its handoff (`finishHandoff`, row 011-34), within
- * `bounds`, as long as `squeal stop` waits. Row 011-140: a daemon older
+ * A stopping daemon is never said alive: `start` finishes its handoff
+ * (`finishHandoff`, row 011-34), within `bounds`, as long as `squeal stop`
+ * waits. Row 011-140: a daemon older
  * than this CLI that ended its handoff short, which no hook replaces, is
  * asked to step down first (`replaceShort`).
  */
