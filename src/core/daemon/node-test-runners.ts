@@ -153,7 +153,6 @@ function nodeTestRunner(
     create: () =>
       createNodeTestAdapter(project, {
         root: options.root,
-        observed: observedStore(options.store, project.name),
         note: options.note,
         concurrency: options.tierSize,
         tempDir: options.tempDir,

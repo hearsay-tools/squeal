@@ -56,10 +56,6 @@ export class Graph {
   private preloadExtra: AbsolutePath[] = [];
   /** Bare preloads outside the worktree's own modules: loaders Squeal does not model. */
   private outsidePreloads: string[] = [];
-  /** Paths a run loaded outside the static closure, per test file (D3, D5). */
-  private readonly observed = new Map<AbsolutePath, ReadonlySet<AbsolutePath>>();
-  /** Paths the preloads loaded at run time outside their static closure (review wave 2, B1). */
-  private observedPreloads: ReadonlySet<AbsolutePath> = new Set();
 
   constructor(
     private readonly root: AbsolutePath,
@@ -160,9 +156,9 @@ export class Graph {
   /**
    * D4: `direct` is every changed test file and every test file that imports
    * a changed path in one hop (or read it, or probed it as a candidate);
-   * `transitive` the other test files whose closure holds a changed path or
-   * whose last run loaded it; every test file when a preload's closure holds
-   * one or a preload loaded it at run time.
+   * `transitive` the other test files whose closure holds a changed path;
+   * every test file when a preload's closure holds one. What runs loaded
+   * beyond the graph the core keeps and keys (spec 016 D4).
    */
   affected(changed: readonly RelativePath[]): AffectedPaths {
     const index = this.current();
@@ -170,7 +166,7 @@ export class Graph {
     const transitive = new Set<AbsolutePath>();
     for (const path of changed.map((p) => this.abs(p))) {
       if (index.test(path) !== undefined) direct.add(path);
-      if (index.has(index.preload, path) || this.observedPreloads.has(path)) {
+      if (index.has(index.preload, path)) {
         for (const file of this.testFiles) transitive.add(file);
       }
       for (const file of index.holders(path)) {
@@ -180,18 +176,9 @@ export class Graph {
           (node.deps.has(path) || node.reads.has(path) || node.candidates.has(path));
         (oneHop ? direct : transitive).add(file);
       }
-      for (const [file, paths] of this.observed) if (paths.has(path)) transitive.add(file);
     }
     for (const file of direct) transitive.delete(file);
     return { direct: this.sorted(direct), transitive: this.sorted(transitive) };
-  }
-
-  recordObserved(testFile: RelativePath, paths: readonly RelativePath[]): void {
-    this.observed.set(this.abs(testFile), new Set(paths.map((p) => this.abs(p))));
-  }
-
-  recordObservedPreloads(paths: readonly RelativePath[]): void {
-    this.observedPreloads = new Set(paths.map((p) => this.abs(p)));
   }
 
   /** Each test file whose static closure is incomplete, with its reasons, in listing order. */

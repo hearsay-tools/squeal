@@ -1,24 +1,20 @@
-import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  nodeTestObservedPreloadsMetaKey,
-  observedStore,
-} from "../../../src/core/daemon/node-test-runners.js";
-import { environmentHash } from "../../../src/core/keys/environment.js";
-import type { NodeTestProject, RunnerAdapter } from "../../../src/core/types/index.js";
+import type { NodeTestProject } from "../../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
-import { fakeCommonDir, open } from "../../store/helpers.js";
 
 /**
  * Review wave 2.6, B1: Node splits `NODE_OPTIONS` with double quotes, so
  * `"--require" ./scripts/setup.cjs` and `"--require=./scripts/setup.cjs"`
  * are require preloads that run before the command line's recorder unless
  * the recorder is prepended there too. The helper such a preload loads by a
- * computed `require` is observed, keyed and makes the project's file
- * affected, and a worktree with another helper keys its environment apart.
+ * computed `require` is observed and named in the run's
+ * `environmentObserved`; the core keys it, and a worktree with another
+ * helper keys its environment apart (spec 016 D4;
+ * `test/scheduler/one-write-path.test.ts`).
  * Task 003-22: the graph reads `NODE_OPTIONS` too, so the preload itself is
  * in the static closure and only its helper is observed.
  */
@@ -56,28 +52,9 @@ function repo(helper: string): string {
   return realpathSync(dir);
 }
 
-const CORE = {
-  squealVersion: "test",
-  nodeVersion: process.version,
-  platform: process.platform,
-  arch: process.arch,
-  installedDependencies: "none",
-  env: {},
-};
-
-async function envHash(adapter: RunnerAdapter, root: string): Promise<string> {
-  const [environment] = await adapter.environment();
-  if (environment === undefined) throw new Error("no environment");
-  return environmentHash(CORE, environment, (path) =>
-    createHash("sha256")
-      .update(readFileSync(join(root, path)))
-      .digest("hex"),
-  );
-}
-
 describe("a quoted --require in the project's NODE_OPTIONS (review wave 2.6, B1)", () => {
   it.each(['"--require" ./scripts/setup.cjs', '"--require=./scripts/setup.cjs"'])(
-    "%s: observed, keyed, affected, and another helper misses",
+    "%s: observed and reported",
     SLOW,
     async (nodeOptions) => {
       const root = repo("globalThis.helperValue = 1;\n");
@@ -88,11 +65,7 @@ describe("a quoted --require in the project's NODE_OPTIONS (review wave 2.6, B1)
         env: { NODE_OPTIONS: nodeOptions },
         include: ["test/*.test.mjs"],
       };
-      const store = open(fakeCommonDir());
-      const adapter = await createNodeTestAdapter(project, {
-        root,
-        observed: observedStore(store, "p"),
-      });
+      const adapter = await createNodeTestAdapter(project, { root });
       const report = await adapter.run([A], {
         runId: "r",
         logDir: join(logs, randomUUID()),
@@ -103,23 +76,9 @@ describe("a quoted --require in the project's NODE_OPTIONS (review wave 2.6, B1)
         "the preload's helper ran: pass",
       ]);
 
-      expect(JSON.parse(store.meta.get(nodeTestObservedPreloadsMetaKey("p")) ?? "null")).toEqual([
-        HELPER,
-      ]);
-      expect(await adapter.invalidate([{ path: HELPER, kind: "change" }])).toEqual({
-        recreatedProjects: ["p"],
-      });
-      expect((await adapter.environment())[0]?.files).toEqual(["package.json", HELPER, SETUP]);
-      expect(await adapter.affected([HELPER])).toEqual({ direct: [], transitive: [A] });
-
-      // A second worktree over the same store, its helper different: its environment misses.
-      const same = repo("globalThis.helperValue = 1;\n");
-      const other = repo("globalThis.helperValue = 2;\n");
-      const open_ = (at: string) =>
-        createNodeTestAdapter(project, { root: at, observed: observedStore(store, "p") });
-      const base = await envHash(adapter, root);
-      expect(await envHash(await open_(same), same)).toBe(base);
-      expect(await envHash(await open_(other), other)).not.toBe(base);
+      expect(report.environmentObserved).toEqual([{ project: "p", paths: [HELPER] }]);
+      // the preload itself is in the static closure (task 003-22)
+      expect((await adapter.environment())[0]?.files).toEqual(["package.json", SETUP]);
     },
   );
 });

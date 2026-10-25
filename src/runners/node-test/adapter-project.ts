@@ -16,7 +16,6 @@ import { asyncLoaders, tokenizeNodeOptions } from "../process/node-options.js";
 import type { NodeTestAdapterOptions } from "./adapter.js";
 import { type NodeProbe, probeNode, projectEnvironment } from "./adapter-environment.js";
 import { listTestFiles } from "./adapter-files.js";
-import { Observed } from "./adapter-observed.js";
 import { enumerate } from "./enumerate.js";
 import { createNodeTestGraph, MANIFEST } from "./graph/index.js";
 import { projectEnv } from "./recorders.js";
@@ -44,9 +43,11 @@ const NAMED_INCOMPLETE = 3;
 /**
  * The adapter of one project whose graph builds: the static graph,
  * `runNodeTest` and `enumerate` in the call order of review wave 1's
- * inputs, and the paths runs loaded beyond the graph ({@link Observed}).
- * Rejects when the graph cannot be built; `createNodeTestAdapter` turns that
- * into the project's runner failure.
+ * inputs. What runs loaded beyond the graph it reports to the core
+ * (`RunReport.observed`, `environmentObserved`), which keeps it, joins it to
+ * closures and environments and marks `direct` (spec 016 D4); the adapter
+ * keeps none of it. Rejects when the graph cannot be built;
+ * `createNodeTestAdapter` turns that into the project's runner failure.
  */
 export async function openProject(context: ProjectContext): Promise<RunnerAdapter> {
   const { project, root, cwd, options, note } = context;
@@ -61,7 +62,6 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   ]);
   let probe: NodeProbe = firstProbe;
   if (!probe.ok) note(`${probe.error}; every check of the project is unknown until it runs`);
-  const observed = new Observed(graph, options.observed, note);
 
   const noted = new Set<string>();
   const once = (text: string, topic?: string) => {
@@ -95,7 +95,6 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
     name: "node-test",
     adapterVersion: context.adapterVersion,
     async invalidate(paths) {
-      observed.refresh();
       graph.invalidate(paths);
       if (paths.some((p) => p.kind !== "change")) {
         const next = listTestFiles(root, project);
@@ -105,7 +104,6 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
         }
       }
       notes();
-      const recreate = observed.takeRecreate(paths.map((p) => p.path));
       if (!probe.ok) {
         probe = await probeNode(project, cwd);
         if (probe.ok) {
@@ -113,38 +111,26 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
           return { recreatedProjects: [project.name] };
         }
       }
-      return { recreatedProjects: recreate ? [project.name] : [] };
+      return { recreatedProjects: [] };
     },
     async affected(changed) {
-      observed.refresh();
       const { direct, transitive } = graph.affected(changed);
-      const grown = observed.takeGrown(new Set(files)).filter((f) => !direct.includes(f));
-      const rest = [...new Set([...transitive, ...grown])].sort(compare);
-      return { direct: direct.map(ref), transitive: rest.map(ref) };
+      return { direct: direct.map(ref), transitive: transitive.map(ref) };
     },
     async closure(testFile) {
-      observed.refresh();
       const closure = graph.closure(testFile.path);
-      const extra = observed.of(testFile.path);
-      const paths =
-        extra === undefined ? closure.paths : [...new Set([...closure.paths, ...extra])];
-      return {
-        testFile,
-        paths: [...paths].sort(compare),
-        packages: graph.packages(testFile.path),
-      };
+      return { testFile, paths: closure.paths, packages: graph.packages(testFile.path) };
     },
     enumerate: (testFile) => enumerate(toAbsolute(root, testFile.path), testFile),
     testFiles: async () => files.map(ref),
     async environment() {
-      const preloads = [...new Set([...graph.preloads().paths, ...observed.preloads()])];
       const packages = graph.environmentPackages();
       return [
         projectEnvironment(
           root,
           project,
           probe,
-          preloads.sort(compare),
+          graph.preloads().paths,
           context.adapterVersion,
           packages,
         ),
@@ -172,14 +158,46 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
         ...(runOptions.observeIgnored === true ? { observeIgnored: true } : {}),
         ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
       });
-      const report = reads === undefined ? ran : { ...ran, reads };
-      const preloaded = observed.record(seen, new Set(files));
       const named = bareNote(seen, bare, declaresInputs(options.inputs?.() ?? []));
       if (named !== null) note(named);
-      if (preloaded.length === 0) return report;
-      return { ...report, environmentObserved: [{ project: project.name, paths: preloaded }] };
+      const observed = observedOf(seen, files, graph.preloads().paths);
+      return { ...ran, ...(reads === undefined ? {} : { reads }), ...observed };
     },
     close: async () => {},
+  };
+}
+
+/**
+ * Spec 016 D4: what each completed, listed file loaded, per file in
+ * `observed`, and what its preloads loaded beyond `preloadStatic`, their
+ * static closure, for the project in `environmentObserved`: every such path
+ * of the run, keyed or not, so the core stores nothing for a file whose key
+ * lacked one and runs it again under the key that holds it (task 003-43).
+ */
+function observedOf(
+  seen: readonly ObservedClosure[],
+  files: readonly RelativePath[],
+  preloadStatic: readonly RelativePath[],
+): Pick<RunReport, "observed" | "environmentObserved"> {
+  const listed = new Set(files);
+  const own = seen.filter((c) => listed.has(c.testFile.path));
+  const project = own[0]?.testFile.project;
+  const known = new Set(preloadStatic);
+  const preloads = [...new Set(own.flatMap((c) => c.preloadPaths))]
+    .filter((path) => !known.has(path))
+    .sort(compare);
+  const observed = own.map(({ testFile, paths, direct, written }) => ({
+    testFile,
+    paths,
+    directories: [],
+    ...(direct.length > 0 ? { direct } : {}),
+    ...(written.length > 0 ? { written } : {}),
+  }));
+  return {
+    ...(observed.length > 0 ? { observed } : {}),
+    ...(project === undefined || preloads.length === 0
+      ? {}
+      : { environmentObserved: [{ project, paths: preloads }] }),
   };
 }
 

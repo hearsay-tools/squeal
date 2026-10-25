@@ -54,17 +54,6 @@ export interface NodeTestGraph {
   /** Replaces the listed test files after `testFiles()` was refreshed. */
   setTestFiles(testFiles: readonly RelativePath[]): void;
   /**
-   * Paths a run of `testFile` loaded outside its static closure (D3, D5).
-   * They never enter `closure()`; a change to one makes the file affected.
-   */
-  recordObserved(testFile: RelativePath, paths: readonly RelativePath[]): void;
-  /**
-   * Paths the preloads loaded at run time outside their static closure
-   * (review wave 2, B1), replacing the last set. A change to one makes every
-   * test file affected, as a preload's own closure does.
-   */
-  recordObservedPreloads(paths: readonly RelativePath[]): void;
-  /**
    * Each listed test file whose static closure is incomplete, with the
    * reasons (D3: a computed `import()` or `require()`, an unparsable module).
    */
@@ -99,8 +88,6 @@ export async function createNodeTestGraph(options: NodeTestGraphOptions): Promis
     affected: (changed) => graph.affected(changed),
     invalidate: (paths) => graph.invalidate(paths),
     setTestFiles: (testFiles) => graph.setTestFiles(testFiles),
-    recordObserved: (testFile, paths) => graph.recordObserved(testFile, paths),
-    recordObservedPreloads: (paths) => graph.recordObservedPreloads(paths),
     incompleteClosures: () => graph.incompleteClosures(),
     notes: () => [
       ...loaderNotes(),

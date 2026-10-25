@@ -103,6 +103,40 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
     expect(restarted.runner.runsOf(A)).toHaveLength(1);
   });
 
+  // Moved from test/runners/node-test/adapter-shared.test.ts (review wave 2, S2) by 016 D4.
+  it("re-keys a file at the next revision of a daemon that started before another worktree observed its path", async () => {
+    const repo = catchUpRepo(FILES, ["lib/x.mjs", "notes.md"]);
+    const b = catchUpSide(repo, repo.other, { files: FILES, hostSlots: 4, policy: RUN_MISSING });
+    observing(b, { loads: true });
+    await b.scheduler.start();
+    await b.scheduler.idle();
+    expect(b.runner.runsOf(A)).toHaveLength(1);
+
+    // A runs its edited copy, whose run loads lib/x.mjs, and stores the path.
+    const a = open(repo, {
+      observed: { [A]: { paths: ["lib/x.mjs"], directories: [] } },
+      loads: true,
+    });
+    await a.scheduler.start();
+    await a.scheduler.idle();
+    await a.edit("watch", A);
+    await a.scheduler.idle();
+    expect(stored(a, observedMetaKey(""))).toEqual({ [A]: ["lib/x.mjs"] });
+
+    // B's next revision, whatever it changed, re-keys the file with the path, which runs it.
+    await b.edit("watch", "notes.md");
+    await b.scheduler.idle();
+    expect(b.runner.runsOf(A)).toHaveLength(2);
+    // Once: the next revision finds nothing new.
+    await b.edit("watch", "notes.md");
+    await b.scheduler.idle();
+    expect(b.runner.runsOf(A)).toHaveLength(2);
+    // From then on B's edits of the path run the file.
+    await b.edit("watch", "lib/x.mjs");
+    await b.scheduler.idle();
+    expect(b.runner.runsOf(A)).toHaveLength(3);
+  });
+
   it("keys a start-up path the record's rolled-back transaction did not store, and stores it next", async () => {
     const repo = catchUpRepo(FILES, [BOOT]);
     const side = open(repo, { startup: { "": [BOOT] }, loads: true });
