@@ -9,7 +9,6 @@ import type {
   RunnerAdapter,
   RunOptions,
   RunReport,
-  Store,
   TestFileRef,
 } from "../../src/core/types/index.js";
 import type { Gap, Pack } from "./driver.js";
@@ -23,9 +22,9 @@ import { isTest, type Module } from "./scenarios/index.js";
  * edits would: a gap every scenario with an edit meets. A held file passes
  * its first check, writes its marker and holds until its run is aborted;
  * it does not complete. What a computed import or a child process loads is
- * outside the static closure: a run reports it among `observed`, and keeps
- * the child's loads as `direct` marks, in the store as a daemon's injected
- * one would, or in memory.
+ * outside the static closure: a run reports it among `observed`, and the
+ * child's loads as its `direct` marks, which the core keeps (spec 016 D4);
+ * or it keeps those marks in memory, as an adapter did before D4.
  */
 
 export interface FakeOptions {
@@ -33,17 +32,14 @@ export interface FakeOptions {
   /** The first run crashes before any test starts (review 0.1.303 B2's probe). */
   readonly crashFirst?: boolean;
   readonly known?: Readonly<Record<string, Gap>>;
-  /** Where a child's loads are kept as `direct` marks; default the store. */
-  readonly marks?: "store" | "memory";
+  /** Where a child's loads are kept as `direct` marks: the core, from the report (default), or memory. */
+  readonly marks?: "core" | "memory";
   /** `false`: a run reports nothing it observed. */
   readonly observes?: false;
 }
 
 type Held = Extract<Module, { kind: "held" }>;
 type Tested = Extract<Module, { kind: "test" | "computed" | "spawns" }> | Held;
-
-/** The meta key of the fake's `direct` marks: test file to paths. */
-const MARKS = "kit.fake.direct";
 
 /** Resolves when `signal` aborts. */
 function aborted(signal: AbortSignal | undefined): Promise<void> {
@@ -68,24 +64,13 @@ class FakeAdapter implements RunnerAdapter {
   readonly adapterVersion = "1";
   private readonly seen = new Map<string, string>();
   private runs = 0;
-  private remembered: Record<string, string[]> = {};
+  /** `marks: "memory"`: a child's loads by test file, which no restart or other worktree sees. */
+  private readonly remembered = new Map<string, readonly string[]>();
 
   constructor(
     private readonly root: AbsolutePath,
     private readonly options: FakeOptions,
-    private readonly store: Store,
   ) {}
-
-  private get marks(): Record<string, string[]> {
-    if (this.options.marks === "memory") return this.remembered;
-    return JSON.parse(this.store.meta.get(MARKS) ?? "{}") as Record<string, string[]>;
-  }
-
-  private mark(testFile: string, paths: readonly string[]): void {
-    const marks = { ...this.marks, [testFile]: [...paths] };
-    if (this.options.marks === "memory") this.remembered = marks;
-    else this.store.meta.set(MARKS, JSON.stringify(marks));
-  }
 
   private read(path: string): string {
     const kept = this.seen.get(path);
@@ -137,11 +122,10 @@ class FakeAdapter implements RunnerAdapter {
   async affected(changed: readonly string[]): Promise<AffectedTestFiles> {
     const direct: TestFileRef[] = [];
     const transitive: TestFileRef[] = [];
-    const marks = this.marks;
     for (const file of await this.testFiles()) {
       const { paths } = this.follow(file.path);
       const at = paths.findIndex((p) => changed.includes(p));
-      const marked = (marks[file.path] ?? []).some((p) => changed.includes(p));
+      const marked = (this.remembered.get(file.path) ?? []).some((p) => changed.includes(p));
       if (at === 0 || at === 1 || marked) direct.push(file);
       else if (at > 1) transitive.push(file);
     }
@@ -186,10 +170,12 @@ class FakeAdapter implements RunnerAdapter {
       }
       completedFiles.push(file);
       const { observed: loaded, value } = this.follow(file.path);
+      const memory = this.options.marks === "memory";
+      const direct = test.kind === "spawns" && !memory ? { direct: loaded } : {};
       if (loaded.length > 0 && this.options.observes !== false) {
-        observed.push({ testFile: file, paths: loaded, directories: [] });
+        observed.push({ testFile: file, paths: loaded, directories: [], ...direct });
       }
-      if (test.kind === "spawns") this.mark(file.path, loaded);
+      if (test.kind === "spawns" && memory) this.remembered.set(file.path, loaded);
       if (value === null) {
         const error = { name: "SyntaxError", message: "a module failed to load" };
         fileErrors.push({
@@ -227,7 +213,7 @@ export function fakePack(options: FakeOptions = {}): Pack {
     text: (module) => (module.kind === "broken" ? "{\n" : `${JSON.stringify(module)}\n`),
     fullName: (check) => check,
     project: {},
-    open: async (root, _scratch, { store }) => new FakeAdapter(root, options, store),
+    open: async (root) => new FakeAdapter(root, options),
     ...(options.known === undefined ? {} : { known: options.known }),
   };
 }

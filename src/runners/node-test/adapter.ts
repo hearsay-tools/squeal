@@ -5,7 +5,6 @@ import type {
   InvalidatedPath,
   NodeTestProject,
   PolicyInputs,
-  RelativePath,
   RunnerAdapter,
 } from "../../core/types/index.js";
 import { projectEnvironment } from "./adapter-environment.js";
@@ -15,33 +14,9 @@ import { NODE_TEST_ADAPTER_VERSION } from "./version.js";
 
 export { NODE_TEST_ADAPTER_VERSION };
 
-/** Observed-only paths per test file of one project, worktree-relative (spec 003 D3). */
-export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;
-
-/**
- * The project's `nodeTest.observed.<project>` and
- * `nodeTest.observedPreloads.<project>` meta keys, kept by the daemon so the
- * adapter never opens the store (spec 003 D3 as amended).
- */
-export interface ObservedStore {
-  /**
-   * Every worktree's observations so far: read when the adapter starts and
-   * again at each refinement (review wave 2, S2), so it must be cheap.
-   */
-  read(): ObservedPaths;
-  /** Merges `additions` into the key in one transaction. */
-  write(additions: ObservedPaths): void;
-  /** Paths the project's preloads loaded outside their static closure, every worktree's (B1). */
-  readPreloads(): readonly RelativePath[];
-  /** Merges `additions` into the preload key in one transaction. */
-  writePreloads(additions: readonly RelativePath[]): void;
-}
-
 export interface NodeTestAdapterOptions {
   /** The worktree root. */
   readonly root: AbsolutePath;
-  /** Absent: observations live only as long as the adapter. */
-  readonly observed?: ObservedStore;
   /**
    * Problem notes: a missing Node or `cwd`, a graph that cannot be built, an
    * unrecognized loader, incomplete closures, a failed observation write.
