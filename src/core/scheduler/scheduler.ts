@@ -107,6 +107,7 @@ class TierScheduler implements Scheduler {
     pump: () => this.#pump(),
     backgroundError: (subject, error) => this.#backgroundError(subject, error),
     applied: () => this.#cutTiers(null),
+    refined: () => this.#refined(),
   });
   readonly #slow: SlowTier;
   #context: SchedulerContext | null = null;
@@ -449,6 +450,16 @@ class TierScheduler implements Scheduler {
     const unseen = this.#waitChanges;
     this.#waitChanges = [];
     await baseline(context, ledger, unseen, this.options.resumesRest === true);
+    this.#refined();
+  }
+
+  /** `SchedulerOptions.onRefined`, after the commit; its throw is only `onError`'s (row 015-52). */
+  #refined(): void {
+    try {
+      this.options.onRefined?.();
+    } catch (error) {
+      this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
+    }
   }
 
   /**

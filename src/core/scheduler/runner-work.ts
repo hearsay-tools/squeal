@@ -50,6 +50,8 @@ export interface RunnerWorkHost {
   backgroundError(subject: string, error: unknown): void;
   /** A runner part was applied and committed, under the lock: what it queued may cancel a backlog tier. */
   applied(): void;
+  /** The commit recorded a refined revision (`SchedulerOptions.onRefined`, row 015-52). */
+  refined(): void;
 }
 
 /** The runner work of one scheduler, applied by its pump beside the tiers in flight (task 001-140). */
@@ -209,6 +211,7 @@ export class RunnerWork {
         for (const ref of stale) this.#carried.set(testFileId(ref), ref);
         ledger.commit(refined === null ? {} : { refined });
         this.host.applied();
+        if (refined !== null) this.host.refined();
       });
     } catch (error) {
       if (refined === null) {

@@ -707,6 +707,8 @@ class Daemon {
         // user's pool, sized from the user's config as read when the loop starts.
         capacity: { dir: slowSlotDir(this.options.env), ...this.#poolCapacity() },
         afterBatch: () => code.nudge(),
+        // Row 015-52: a file the pass held for its revision's listing is counted once it is listed.
+        onRefined: () => code.nudge(),
       });
       this.#loop = loop;
       await loop.start();

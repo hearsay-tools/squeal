@@ -76,6 +76,13 @@ export interface SchedulerOptions {
    */
   readonly onExtraFiles?: (paths: readonly RelativePath[]) => void;
   /**
+   * Row 015-52: called once after each committed transaction that records a
+   * refined revision, the baseline's and a revision's runner part, so the
+   * code pass counts the files it held for their listing. Never inside the
+   * transaction; a throw goes to `onError` and fails nothing.
+   */
+  readonly onRefined?: () => void;
+  /**
    * Row 011-198: the change feed's passes. `requestFullSuite` notes how many started, awaits a
    * pass outside the lock, and plans only when one that started after the note was delivered;
    * otherwise it rejects and records no checkpoint. A lagging feed delays the checkpoint, and a
