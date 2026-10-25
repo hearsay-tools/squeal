@@ -186,7 +186,7 @@ squeal code [<path>...] [--changed | --told] [--json]
 - With paths, it lists every function in those files with its CC, over the threshold or not.
 - Files not counted (too big, parse errors) are listed after the functions, with the reason.
 - `--changed` keeps the functions whose state changed since the consumer registered.
-- `--told` lists the functions over the threshold that the session was told about in full: the same read as the test-news line above, so the two agree. Its coverage part lists the `crap` and `uncovered` states told in full that still fail; it has none when no such state is (amended 2026-10-24, 015-40). It also lists, under `Not judged:`, the files of **A changed file not judged** with the same reasons (amended 2026-10-25, 015-49). In a shell with no session registered here (Pi, a terminal) it lists those told to any registered session, and says so. `--told` with `--changed` exits 2 (015-27).
+- `--told` lists the functions over the threshold that the session was told about in full: the same read as the test-news line above, so the two agree. Its coverage part lists the `crap` and `uncovered` states told in full that still fail; it has none when no such state is (amended 2026-10-24, 015-40). It also lists, under `Not judged:`, the files of **A changed file not judged** with the same reasons, all of them and no other file (amended 2026-10-25, 015-49). In a shell with no session registered here (Pi, a terminal) it lists those told to any registered session, and says so. `--told` with `--changed` exits 2 (015-27).
 - `--json` gives a versioned shape. The command reads the store and needs no daemon, like `status` (011 C6).
 
 ### D7. Blocking
