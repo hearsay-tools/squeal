@@ -6,18 +6,18 @@ export { type JoinedFunction, joinCoverage } from "./join.js";
 export {
   BUSY_RECHECK_MS,
   type Loader,
+  LoaderBuild,
   type LoaderCondition,
   type LoaderInputs,
   type Loaders,
   type PendingReason,
   RECORD_WAIT_MS,
-  readLoaders,
   type UnknownCause,
 } from "./loaders.js";
 export { clearCoverage, removedFailures } from "./removed.js";
 export { crapScore, FULL_COVERAGE } from "./score.js";
+export { COVERAGE_MEASURES } from "./seed.js";
 export {
-  COVERAGE_MEASURES,
   type CoverageStepInput,
   type CoverageStepReport,
   runCoverageStep,
