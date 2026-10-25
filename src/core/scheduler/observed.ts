@@ -21,6 +21,11 @@ export interface ObservedGrowth {
    * can certify this run's result (review wave 12d, B1; task 001-134).
    */
   readonly firstSeen: readonly RelativePath[];
+  /**
+   * Of `add`, the paths that put the file in `direct` (`ObservedInputs.direct`,
+   * 016 D4), stored beside them. Absent: none.
+   */
+  readonly direct?: readonly RelativePath[];
 }
 
 /**
@@ -29,26 +34,29 @@ export interface ObservedGrowth {
  * file's closure, with what other worktrees stored meanwhile (D3, D5 as
  * amended; research observed-runtime-inputs F3, F4), a recursive listing as
  * the listing of each directory below it, and a path read through a directory
- * link with its target (`linkTargets`). A path git ignores is
- * dropped: the watcher does not track it, so it cannot key (a blind spot,
- * named in status). Every file path is hashed into the stat cache, so the
- * keys `recordTier` computes have no untracked path; a path hashed only now,
- * after its read and after run `run` (`WorktreeKeys.beginRun`) began, is
- * `firstSeen`, except `.git`, which keys by its kind. Empty while policy `observe.runtimeInputs`
- * is off.
+ * link with its target (`linkTargets`). A path git ignores is kept, and
+ * watched as an extra file, unless the run wrote, created or removed one of
+ * its ancestor directories (`ObservedInputs.written`; 016 D4, the
+ * written-directory bound): those are the run's own scratch. Every file path
+ * is hashed into the stat cache, so the keys `recordTier` computes have no
+ * untracked path; a path hashed only now, after its read and after run `run`
+ * (`WorktreeKeys.beginRun`) began, is `firstSeen`, except `.git`, which keys
+ * by its kind. Only a project `keys.observes` (policy `observe.runtimeInputs`,
+ * or module loads, 016 D4 O8) gives growth.
  */
 export async function observedGrowth(
-  context: SchedulerContext,
+  context: Pick<SchedulerContext, "root" | "keys">,
   report: RunReport,
   run: number,
 ): Promise<Map<string, ObservedGrowth>> {
   const out = new Map<string, ObservedGrowth>();
   const { keys } = context;
-  if (!keys.observing || report.observed === undefined || report.observed.length === 0) return out;
-  keys.refreshObserved(report.observed.map((o) => o.testFile.project));
+  const reported = (report.observed ?? []).filter((o) => keys.observes(o.testFile.project));
+  if (reported.length === 0) return out;
+  keys.refreshObserved(reported.map((o) => o.testFile.project));
   const candidates = new Set<RelativePath>();
   const seen = [];
-  for (const observed of report.observed) {
+  for (const observed of reported) {
     const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
     const listed = new Set(observed.directories.map(listingPath));
     // A recursive listing returned names from every directory below it (B5, task 001-134).
@@ -68,17 +76,25 @@ export async function observedGrowth(
     [...candidates].filter((p) => p !== ""),
   );
   const tracked: RelativePath[] = [];
-  const grown: { testFile: TestFileRef; add: RelativePath[]; growth: RelativePath[] }[] = [];
+  const grown: {
+    testFile: TestFileRef;
+    add: RelativePath[];
+    growth: RelativePath[];
+    direct: RelativePath[];
+  }[] = [];
   for (const { observed, closure, fresh } of seen) {
-    const add = fresh.filter((path) => !ignored.has(listedDirectory(path) ?? path));
+    const scratch = scratchOf(observed.written ?? [], ignored);
+    const add = fresh.filter((path) => !scratch(listedDirectory(path) ?? path));
     const known = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
     const growth = [...new Set([...known, ...add])];
     if (growth.length === 0) continue;
     for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
-    grown.push({ testFile: observed.testFile, add, growth });
+    const direct = (observed.direct ?? []).filter((path) => add.includes(path));
+    grown.push({ testFile: observed.testFile, add, growth, direct });
   }
+  // One call, so the extra files the record adds swap the watcher once (011-187).
   await keys.track(tracked);
-  for (const { testFile, add, growth } of grown) {
+  for (const { testFile, add, growth, direct } of grown) {
     // `.git` keys by its kind, read with the key, not by the bytes hashed now (task 001-262).
     const firstSeen = growth.filter(
       (path) =>
@@ -86,9 +102,27 @@ export async function observedGrowth(
         path !== GIT_ENTRY &&
         keys.firstHashedDuringRun(path, run),
     );
-    out.set(testFileId(testFile), { add, growth, firstSeen });
+    out.set(testFileId(testFile), { add, growth, firstSeen, direct });
   }
   return out;
+}
+
+/**
+ * 016 D4, the written-directory bound: whether `path` is a git-ignored path
+ * below a directory in `written`, which the run wrote, created or removed.
+ */
+function scratchOf(
+  written: readonly RelativePath[],
+  ignored: ReadonlySet<RelativePath>,
+): (path: RelativePath) => boolean {
+  const dirs = new Set(written);
+  return (path) => {
+    if (!ignored.has(path) || dirs.size === 0) return false;
+    for (let at = path.lastIndexOf("/"); at > 0; at = path.lastIndexOf("/", at - 1)) {
+      if (dirs.has(path.slice(0, at))) return true;
+    }
+    return false;
+  };
 }
 
 /** A tier's observations, prepared for `recordTier` under the lock. */

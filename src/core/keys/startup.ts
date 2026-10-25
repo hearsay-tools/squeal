@@ -14,13 +14,19 @@ export function observedStartupMetaKey(project: ProjectName): string {
 
 /**
  * This worktree's view of the shared start-up sets. Read from the store at
- * the first ask and at each `refresh`, parsed only when the value changed;
- * `add` merges into the store in one transaction, so two worktrees' daemons
- * never drop each other's paths.
+ * the first ask and at each `refresh`, parsed only when the value changed.
+ * `see` adds a run's paths to the view only, so the environments read again
+ * before the run's record hold them; `write`, inside the record's
+ * transaction, merges into the store what the view holds and the store
+ * lacks, so two worktrees' daemons never drop each other's paths, and a
+ * write a rolled-back transaction lost is made by the next record. Until
+ * then the view is ahead of the store: an over-key in this daemon only.
  */
 export class StartupSets {
   readonly #sets = new Map<ProjectName, Set<RelativePath>>();
   readonly #raw = new Map<ProjectName, string | null>();
+  /** Projects `see` added paths to: `write` compares their views with the store. */
+  readonly #seen = new Set<ProjectName>();
 
   constructor(private readonly store: Store) {}
 
@@ -42,17 +48,34 @@ export class StartupSets {
     return grown;
   }
 
-  /** Adds `paths` to `project`'s set here and in the store. Returns the new ones. */
-  add(project: ProjectName, paths: readonly RelativePath[]): RelativePath[] {
+  /** Adds `paths` to `project`'s view, not to the store. Returns the new ones. */
+  see(project: ProjectName, paths: readonly RelativePath[]): RelativePath[] {
+    if (!this.#raw.has(project)) this.refresh([project]);
     const added = this.#merge(project, paths);
-    if (added.length === 0) return [];
-    const key = observedStartupMetaKey(project);
-    this.store.transaction(() => {
-      const merged = new Set([...parsePaths(this.store.meta.get(key)), ...added]);
-      this.store.meta.set(key, JSON.stringify([...merged].sort(compare)));
-      // another worktree's paths this write merged are read at the next `refresh`
-      this.#raw.delete(project);
-    });
+    if (added.length > 0) this.#seen.add(project);
+    return added;
+  }
+
+  /** Merges into the store each seen project's paths it lacks, one transaction per project. */
+  write(): void {
+    for (const project of this.#seen) {
+      const key = observedStartupMetaKey(project);
+      this.store.transaction(() => {
+        const stored = parsePaths(this.store.meta.get(key));
+        const held = new Set(stored);
+        const missing = [...(this.#sets.get(project) ?? [])].filter((p) => !held.has(p));
+        if (missing.length === 0) return;
+        this.store.meta.set(key, JSON.stringify([...stored, ...missing].sort(compare)));
+        // another worktree's paths this write merged are read at the next `refresh`
+        this.#raw.delete(project);
+      });
+    }
+  }
+
+  /** `see` and `write`: adds `paths` here and in the store. Returns the new ones. */
+  add(project: ProjectName, paths: readonly RelativePath[]): RelativePath[] {
+    const added = this.see(project, paths);
+    this.write();
     return added;
   }
 
