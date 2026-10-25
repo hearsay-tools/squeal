@@ -1,4 +1,5 @@
-import type { CodeFile, CodeKnownState, FileCount } from "../../types/code.js";
+import type { CodeCheckId, CodeFile, CodeKnownState, FileCount } from "../../types/code.js";
+import type { PassReport } from "../pass/types.js";
 import { checkOf } from "./judge.js";
 import type { CoverageStepInput } from "./step.js";
 import { functionKey } from "./summary.js";
@@ -19,16 +20,28 @@ export const SEED_FILES = 32;
  * so a seed goes on over several steps (429 to 489 ms in one turn on
  * 011-197's stores). It holds the files as they were when it began: a file
  * an edit changed since seeds only the functions its count had then, so a
- * function the edit added is still a first-seen fail.
+ * function the edit added is still a first-seen fail. It follows the
+ * complexity pass's moves and removals since (D2; review 0.1.311 B1): a
+ * function there as it began, renamed or moved before its file is seeded,
+ * is seeded where it went, and one removed is not seeded under its name.
  */
 export class Seed {
   readonly #files: readonly CodeFile[];
   readonly #again: boolean;
+  /** Each file's place in `#files`: one at or past `#next` is not seeded yet. */
+  readonly #places: ReadonlyMap<string, number>;
   #next = 0;
+  /** By path, the functions its count had as the seed began; `null` once that count was pruned. */
+  readonly #had = new Map<string, ReadonlySet<string> | null>();
+  /** By path, functions of a file not seeded yet that an edit moved away or removed. */
+  readonly #left = new Map<string, Set<string>>();
+  /** By path, functions there as the seed began and not seeded yet, that an edit moved there. */
+  readonly #came = new Map<string, Set<string>>();
 
   constructor(files: readonly CodeFile[], again: boolean) {
     this.#files = files;
     this.#again = again;
+    this.#places = new Map(files.map((f, place) => [f.path, place]));
   }
 
   /** Seeds the next files while `work` allows; true once every file is seeded. */
@@ -37,69 +50,147 @@ export class Seed {
     countOf: (file: CodeFile) => FileCount | null,
     work: () => boolean,
   ): boolean {
-    while (this.#next < this.#files.length) {
+    for (;;) {
+      // Functions moved into a file seeded already, or one the seed's files did not have, first.
+      const moved = [...this.#came.keys()].filter((path) => this.#waiting(path) === undefined);
+      if (moved.length === 0 && this.#next >= this.#files.length) return true;
       if (!work()) return false;
+      if (moved.length > 0) {
+        const paths = moved.slice(0, SEED_FILES);
+        this.#seed(
+          input,
+          paths.map((path) => ({ path, began: null })),
+          countOf,
+        );
+        continue;
+      }
       const files = this.#files.slice(this.#next, this.#next + SEED_FILES);
       this.#next += files.length;
-      seedFiles(input, files, countOf, this.#again);
+      this.#seed(
+        input,
+        files.map((began) => ({ path: began.path, began })),
+        countOf,
+      );
     }
-    return true;
   }
-}
 
-/** The pending states of the functions of `files`, as the seed began, with no `crap` state. */
-function seedFiles(
-  input: Pick<CoverageStepInput, "store" | "worktreeId" | "revision">,
-  files: readonly CodeFile[],
-  countOf: (file: CodeFile) => FileCount | null,
-  again: boolean,
-): void {
-  const { store, worktreeId, revision } = input;
-  const paths = files.map((f) => f.path);
-  const now = new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f]));
-  const known = new Set(
-    again
-      ? []
-      : store.states
-          .list(worktreeId, { measure: "crap", paths })
-          .map((s) => `${functionKey(s.check)}\0${s.check.path}`),
-  );
-  const states: CodeKnownState[] = [];
-  for (const then of files) {
-    const file = now.get(then.path);
-    // A file gone or too big since the seed began has nothing to seed.
-    if (file === undefined || file.tooBig === true) continue;
-    for (const fn of functionsOf(store, then, file, countOf)) {
-      if (known.has(`${functionKey(fn)}\0${file.path}`)) continue;
-      for (const measure of COVERAGE_MEASURES) {
-        states.push({
-          worktreeId,
-          check: checkOf(file.path, fn),
-          measure,
-          outcome: "pending",
-          value: null,
-          threshold: null,
-          countedAt: revision,
-          blob: file.blob,
-          changedAt: revision,
-        });
+  /** An edit's moves and removals (D2), as the complexity pass applied them to its states. */
+  follow(store: Store, report: Pick<PassReport, "moves" | "removed">): void {
+    for (const { from, to } of report.moves) {
+      if (!this.#leave(store, from)) continue;
+      const came = this.#came.get(to.path) ?? new Set();
+      this.#came.set(to.path, came.add(functionKey(to)));
+    }
+    for (const check of report.removed) this.#leave(store, check);
+  }
+
+  /** `check` leaves its file: true if it was there as the seed began and is not seeded yet. */
+  #leave(store: Store, check: CodeCheckId): boolean {
+    const key = functionKey(check);
+    const came = this.#came.get(check.path);
+    if (came?.delete(key) === true) {
+      if (came.size === 0) this.#came.delete(check.path);
+      return true;
+    }
+    const then = this.#waiting(check.path);
+    if (then === undefined) return false;
+    const left = this.#left.get(check.path) ?? new Set();
+    // A function under a name that left before is one an edit added since.
+    if (left.has(key)) return false;
+    this.#left.set(check.path, left.add(key));
+    const had = this.#hadOf(store, then);
+    return had === null || had.has(key);
+  }
+
+  /**
+   * The pending states of the functions this seed holds in `files`, with no
+   * `crap` state; `began` is a file as the seed began, `null` for one seeded
+   * already or that the seed did not have, which holds only what came.
+   */
+  #seed(
+    input: Pick<CoverageStepInput, "store" | "worktreeId" | "revision">,
+    files: readonly { readonly path: string; readonly began: CodeFile | null }[],
+    countOf: (file: CodeFile) => FileCount | null,
+  ): void {
+    const { store, worktreeId, revision } = input;
+    const paths = files.map((f) => f.path);
+    const now = new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f]));
+    const known = new Set(
+      this.#again
+        ? []
+        : store.states
+            .list(worktreeId, { measure: "crap", paths })
+            .map((s) => `${functionKey(s.check)}\0${s.check.path}`),
+    );
+    const states: CodeKnownState[] = [];
+    for (const { path, began } of files) {
+      const file = now.get(path);
+      const chosen = this.#chosen(store, began, file, countOf);
+      this.#came.delete(path);
+      this.#left.delete(path);
+      this.#had.delete(path);
+      if (file === undefined) continue;
+      for (const fn of chosen) {
+        if (known.has(`${functionKey(fn)}\0${path}`)) continue;
+        for (const measure of COVERAGE_MEASURES) {
+          states.push({
+            worktreeId,
+            check: checkOf(path, fn),
+            measure,
+            outcome: "pending",
+            value: null,
+            threshold: null,
+            countedAt: revision,
+            blob: file.blob,
+            changedAt: revision,
+          });
+        }
       }
     }
+    store.states.upsertMany(states);
   }
-  store.states.upsertMany(states);
+
+  /**
+   * `file`'s functions to seed: those moved there, and with `then`, those
+   * its count had as the seed began, none an edit added or took away since.
+   */
+  #chosen(
+    store: Store,
+    then: CodeFile | null,
+    file: CodeFile | undefined,
+    countOf: (file: CodeFile) => FileCount | null,
+  ): readonly Fn[] {
+    // A file gone or too big since the seed began has nothing to seed.
+    if (file === undefined || file.tooBig === true) return [];
+    const functions = countOf(file)?.functions ?? [];
+    const came = this.#came.get(file.path);
+    const left = then === null ? undefined : this.#left.get(file.path);
+    const same = then?.blob === file.blob && then.counterVersion === file.counterVersion;
+    if (same && came === undefined && left === undefined) return functions;
+    // A count pruned since: quiet rather than a false fail.
+    const had = then === null ? new Set<string>() : this.#hadOf(store, then);
+    return functions.filter((fn) => {
+      const key = functionKey(fn);
+      return came?.has(key) === true || ((had === null || had.has(key)) && left?.has(key) !== true);
+    });
+  }
+
+  /** The file at `path` as the seed began, while it is not seeded yet. */
+  #waiting(path: string): CodeFile | undefined {
+    const place = this.#places.get(path);
+    return place === undefined || place < this.#next ? undefined : this.#files[place];
+  }
+
+  /** The functions `then`'s count had, read once. */
+  #hadOf(store: Store, then: CodeFile): ReadonlySet<string> | null {
+    const known = this.#had.get(then.path);
+    if (known !== undefined) return known;
+    const count = store.counts.get(then.blob, then.language, then.counterVersion);
+    const had = count === null ? null : new Set(count.functions.map(functionKey));
+    this.#had.set(then.path, had);
+    return had;
+  }
 }
 
-/** `file`'s functions that its count at `then` had too: none an edit since added. */
-function functionsOf(
-  store: CoverageStepInput["store"],
-  then: CodeFile,
-  file: CodeFile,
-  countOf: (file: CodeFile) => FileCount | null,
-): readonly FileCount["functions"][number][] {
-  const functions = countOf(file)?.functions ?? [];
-  if (then.blob === file.blob && then.counterVersion === file.counterVersion) return functions;
-  const before = store.counts.get(then.blob, then.language, then.counterVersion);
-  if (before === null) return functions;
-  const had = new Set(before.functions.map(functionKey));
-  return functions.filter((fn) => had.has(functionKey(fn)));
-}
+type Fn = FileCount["functions"][number];
+type Store = CoverageStepInput["store"];
