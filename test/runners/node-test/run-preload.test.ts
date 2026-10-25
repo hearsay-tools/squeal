@@ -96,6 +96,9 @@ describe("the recorder runs before every preload (task 003-28)", () => {
           "scripts/env-helper.cjs",
           "scripts/env.cjs",
         ],
+        // the runner process's graph holds only preloads: no process the test started
+        direct: [],
+        written: [],
       },
     ]);
     // The runner process and the test file's child each wrote a graph.
