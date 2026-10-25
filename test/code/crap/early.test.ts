@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { crapScore, readSummary, writeSummary } from "../../../src/core/code/crap/index.js";
+import {
+  crapScore,
+  readSummary,
+  StepCache,
+  writeSummary,
+} from "../../../src/core/code/crap/index.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, consumer, coverageRig, sourceOf } from "./rig.js";
 
 /*
  * Spec 015 D9, A pass proven early (row 015-57, the human): more records
  * only add covered lines, so while a source is pending or unknown the
- * records in hand can prove a pass, told at once, and never a failure,
- * which still waits for every record.
+ * records in hand can prove a failing function passes, told at once, and
+ * never a failure, which still waits for every record. Every other state
+ * keeps its last judgement.
  */
 
 const S1 = consumer("s1");
@@ -138,9 +144,9 @@ describe("a pass proven early (015-57)", () => {
     rig.loader("test/b.test.ts", { closure: ["src/a.ts"], pending: "queued" });
     rig.step();
     expect(await rig.told(S1)).toEqual([]);
-    // `small` passes CRAP unrun; whether a test runs it waits for every record.
-    expect(rig.states("crap")).toContain(`small pass ${crapScore(3, 0)}`);
-    expect(rig.states("uncovered").some((s) => /^(fresh|small) /.test(s))).toBe(false);
+    // Only a failure is judged early: `small`, at most CRAP 12 unrun, waits too.
+    const added = (s: string) => /^(fresh|small) /.test(s);
+    expect([...rig.states("crap"), ...rig.states("uncovered")].some(added)).toBe(false);
 
     rig.loader("test/b.test.ts", { closure: ["src/a.ts"], record: [] });
     rig.step();
@@ -218,6 +224,56 @@ describe("a pass proven early (015-57)", () => {
     expect(rig.step()).toMatchObject({ judged: 1, transitions: 0, more: false });
     expect(fileState(rig)).toEqual(early);
     expect(rig.step()).toMatchObject({ judged: 0, transitions: 0, more: false });
+  });
+
+  it("judges no file early that has no failure", async () => {
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": "hot 12 h1\ntiny 1 t1\n" });
+    const record = [sourceOf("src/a.ts", blobOf(rig), 2, [1, 2])];
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record });
+    rig.step();
+    rig.loader("test/b.test.ts", { closure: ["src/a.ts"], pending: "queued" });
+    expect(rig.step()).toMatchObject({ judged: 0 });
+    expect(fileState(rig)).toEqual({
+      state: "pending",
+      blob: blobOf(rig),
+      reason: "run",
+      waiting: 1,
+    });
+  });
+
+  it("reads again whether a file fails once a judgement with every record wrote its states", async () => {
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": "hot 12 h1\ntiny 1 t1\n" });
+    const record = (lines: readonly number[]) => [sourceOf("src/a.ts", blobOf(rig), 2, lines)];
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: record([1, 2]) });
+    rig.loader("test/b.test.ts", { closure: ["src/a.ts"], record: [] });
+    const cache = new StepCache();
+    const step = () => {
+      cache.invalidate();
+      return rig.step({ cache });
+    };
+    step();
+    await rig.register(S1);
+    // Pending with no failure: the chain's cache holds that `src/a.ts` has none.
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], key: "key-2", pending: "queued" });
+    await rig.edit({ "test/a.test.ts": "it\n" });
+    step();
+    // Its run no longer calls `hot`: judged with every record, `hot` fails.
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], key: "key-2", record: record([2]) });
+    step();
+    expect(rig.states("uncovered")).toEqual(["hot fail -", "tiny pass -"]);
+    expect(code(await rig.told(S1))).toContain(
+      "FAIL uncovered: hot (src/a.ts:1): no in-process test that Squeal runs reaches it (CC 12)",
+    );
+    // A new test runs `hot` while `test/a.test.ts` runs again: told at once.
+    rig.loader("test/a.test.ts", { closure: ["src/a.ts"], key: "key-3", pending: "queued" });
+    await rig.edit({ "test/new.test.ts": "it\n" });
+    rig.loader("test/new.test.ts", { closure: ["src/a.ts"], record: record([1]) });
+    step();
+    expect(code(await rig.told(S1))).toContain(
+      "PASS uncovered: hot (src/a.ts:1): test/new.test.ts runs it in process",
+    );
   });
 
   it("keeps a failure a crap.threshold change alone would pass, as a judgement with every record does", async () => {
