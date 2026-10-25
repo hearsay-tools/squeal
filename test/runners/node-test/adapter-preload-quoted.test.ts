@@ -16,7 +16,9 @@ import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js
  * helper keys its environment apart (spec 016 D4;
  * `test/scheduler/one-write-path.test.ts`).
  * Task 003-22: the graph reads `NODE_OPTIONS` too, so the preload itself is
- * in the static closure and only its helper is observed.
+ * in the static closure and only its helper is observed. The first form is
+ * kit scenario K5's quoted `NODE_OPTIONS` variant (`test/kit/packs/node-test.ts`),
+ * its parse `node-options.test.ts` (row 016-30).
  */
 
 const FIXTURES = resolve(import.meta.dirname, "../../fixtures/node-test");
@@ -53,7 +55,7 @@ function repo(helper: string): string {
 }
 
 describe("a quoted --require in the project's NODE_OPTIONS (review wave 2.6, B1)", () => {
-  it.each(['"--require" ./scripts/setup.cjs', '"--require=./scripts/setup.cjs"'])(
+  it.each(['"--require=./scripts/setup.cjs"'])(
     "%s: observed and reported",
     SLOW,
     async (nodeOptions) => {
