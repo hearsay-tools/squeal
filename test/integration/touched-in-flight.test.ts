@@ -27,12 +27,13 @@ import {
  * `test/holds.test.ts` appends to `flags/started` (git-ignored) and waits
  * until `flags/heard` is as long; with `self` it first rewrites
  * `fixtures/data.txt` with the bytes it holds, as a fixture writer does on
- * every run.
+ * every run. It makes `flags/` itself, so the flags are its own scratch
+ * and no input (spec 016 D4, the written-directory bound).
  */
 
 const holds = (self: boolean) =>
   [
-    'import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";',
+    'import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";',
     'import { setTimeout as sleep } from "node:timers/promises";',
     'import { expect, it } from "vitest";',
     'import { which } from "../src/mod.ts";',
@@ -41,6 +42,7 @@ const holds = (self: boolean) =>
     'const length = (path: string) => (existsSync(at(path)) ? readFileSync(at(path), "utf8").length : 0);',
     'it("passes on the bytes on disk", async () => {',
     self ? '  writeFileSync(at("fixtures/data.txt"), readFileSync(at("fixtures/data.txt")));' : "",
+    '  mkdirSync(at("flags"), { recursive: true });',
     '  appendFileSync(at("flags/started"), "x");',
     '  const run = length("flags/started");',
     '  for (let i = 0; i < 600 && length("flags/heard") < run; i++) await sleep(50);',
