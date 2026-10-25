@@ -3,20 +3,16 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  nodeTestObservedPreloadsMetaKey,
-  observedStore,
-} from "../../../src/core/daemon/node-test-runners.js";
 import type { NodeTestProject } from "../../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
-import { fakeCommonDir, open } from "../../store/helpers.js";
 
 /**
  * Review wave 2.5, B1: Node runs every `--require` preload before any
  * `--import`, so a recorder installed by `--import` missed what a `--require`
  * preload loads. Squeal's recorder is the first `--require` (task 003-28):
- * a helper a `--require` preload loads by a computed `require` is observed,
- * keyed in the environment and makes the project's files affected. The
+ * a helper a `--require` preload loads by a computed `require` is observed
+ * and named in the run's `environmentObserved`, which the core keys in the
+ * environment (spec 016 D4; `test/scheduler/one-write-path.test.ts`). The
  * review's probe, a nested preload, a package preload under `node_modules`
  * loading a worktree file, and one from the project's `NODE_OPTIONS`.
  */
@@ -45,7 +41,7 @@ interface Case {
   readonly files: Readonly<Record<string, string>>;
   /** `environment().files` before any run: the preloads' static closure. */
   readonly before: readonly string[];
-  /** The observed preload paths the run stores; default the helper alone. */
+  /** The observed preload paths the run reports; default the helper alone. */
   readonly observed?: readonly string[];
 }
 
@@ -102,7 +98,7 @@ function repo(c: Case): string {
 const A = { project: "p", path: "test/a.test.ts" };
 
 describe("a path a --require preload loads at run time (review wave 2.5, B1)", () => {
-  it.each(CASES)("$name: observed, keyed and affected", SLOW, async (c) => {
+  it.each(CASES)("$name: observed and reported", SLOW, async (c) => {
     const root = repo(c);
     const project: NodeTestProject = {
       name: "p",
@@ -111,11 +107,7 @@ describe("a path a --require preload loads at run time (review wave 2.5, B1)", (
       env: c.env ?? {},
       include: ["test/*.test.ts"],
     };
-    const store = open(fakeCommonDir());
-    const adapter = await createNodeTestAdapter(project, {
-      root,
-      observed: observedStore(store, "p"),
-    });
+    const adapter = await createNodeTestAdapter(project, { root });
     expect((await adapter.environment())[0]?.files).toEqual(c.before);
 
     const report = await adapter.run([A], {
@@ -131,21 +123,8 @@ describe("a path a --require preload loads at run time (review wave 2.5, B1)", (
       }),
     ]);
 
-    // The helper is an observed preload path: stored, keyed, and its edit re-runs the file.
-    expect(JSON.parse(store.meta.get(nodeTestObservedPreloadsMetaKey("p")) ?? "null")).toEqual(
-      c.observed ?? [HELPER],
-    );
-    expect(await adapter.invalidate([{ path: HELPER, kind: "change" }])).toEqual({
-      recreatedProjects: ["p"],
-    });
-    expect((await adapter.environment())[0]?.files).toContain(HELPER);
-    expect(await adapter.affected([HELPER])).toEqual({ direct: [], transitive: [A] });
-
-    // Another worktree's adapter keys the project's environment with it from the start.
-    const other = await createNodeTestAdapter(project, {
-      root,
-      observed: observedStore(store, "p"),
-    });
-    expect((await other.environment())[0]?.files).toContain(HELPER);
+    // The helper is an observed preload path: the run names it, for the core to keep and key.
+    expect(report.environmentObserved).toEqual([{ project: "p", paths: c.observed ?? [HELPER] }]);
+    expect(report.observed?.[0]?.paths).not.toContain(HELPER);
   });
 });

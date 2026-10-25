@@ -1,7 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { onTestFinished } from "vitest";
-import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createScheduler } from "../../src/core/scheduler/index.js";
@@ -108,8 +107,8 @@ export interface Worktree {
 }
 
 /**
- * A scheduler over one worktree's node:test adapter, sharing the observed
- * key through `store`. `hold`, while pending, holds every `closure` answer
+ * A scheduler over one worktree's node:test adapter, sharing the core's
+ * observed keys through `store` (spec 016 D4). `hold`, while pending, holds every `closure` answer
  * after the adapter computed it; `holdRun`'s answer, while pending, holds
  * every `run` before the adapter starts it. `policy` is set over the defaults.
  */
@@ -122,10 +121,7 @@ export async function open(
   holdRun?: () => Promise<void> | undefined,
   policy: Partial<Policy> = {},
 ): Promise<Worktree> {
-  const adapter = await createNodeTestAdapter(project, {
-    root,
-    observed: observedStore(store, project.name),
-  });
+  const adapter = await createNodeTestAdapter(project, { root });
   const runs: TestFileRef[][] = [];
   let closures = 0;
   const runner: RunnerAdapter = {

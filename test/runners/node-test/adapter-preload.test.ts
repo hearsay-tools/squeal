@@ -3,20 +3,16 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  nodeTestObservedPreloadsMetaKey,
-  observedStore,
-} from "../../../src/core/daemon/node-test-runners.js";
 import type { NodeTestProject } from "../../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
-import { fakeCommonDir, open } from "../../store/helpers.js";
 
 /**
  * Review wave 2, B1: a file a preload loads through a computed `import()`
- * is in no static closure. After one run it is in the project's environment
- * files, `affected` treats it as a preload path, and every worktree of the
- * store reads it at start. Spec 003 D1 (the preloads' closure is an
- * environment input), D3, D5.
+ * is in no static closure. Each run names it in `environmentObserved`
+ * (task 003-43); since spec 016 D4 the core keeps it as a start-up path,
+ * keys the project's environment with it and reads it in every worktree
+ * (`test/scheduler/one-write-path.test.ts`). Spec 003 D1 (the preloads'
+ * closure is an environment input), D3, D5.
  */
 
 const FIXTURES = resolve(import.meta.dirname, "../../fixtures/node-test");
@@ -60,12 +56,10 @@ const A = { project: "p", path: "test/a.test.ts" };
 const HELPER = "scripts/helper.mjs";
 
 describe("a path a preload loads at run time (review wave 2, B1)", () => {
-  it("enters the environment, every file's affected set and the store", SLOW, async () => {
-    const store = open(fakeCommonDir());
+  it("is named in each run's environmentObserved, and in no closure", SLOW, async () => {
     const notes: string[] = [];
     const adapter = await createNodeTestAdapter(PROJECT, {
       root,
-      observed: observedStore(store, "p"),
       note: (text) => notes.push(text),
     });
     expect((await adapter.environment())[0]?.files).toEqual(["package.json", "scripts/setup.mjs"]);
@@ -84,36 +78,10 @@ describe("a path a preload loads at run time (review wave 2, B1)", () => {
     // results only under an environment that holds it.
     expect(report.environmentObserved).toEqual([{ project: "p", paths: [HELPER] }]);
 
-    // As D3 has it for a test file's observed path, this worktree re-keys at the next edit
-    // of the path: the scheduler reads the environment again for a recreated project.
-    expect(await adapter.invalidate([{ path: "README.md", kind: "change" }])).toEqual({
-      recreatedProjects: [],
-    });
-    expect(await adapter.invalidate([{ path: HELPER, kind: "change" }])).toEqual({
-      recreatedProjects: ["p"],
-    });
-    expect(await adapter.affected([HELPER])).toEqual({ direct: [], transitive: [A] });
-    expect((await adapter.environment())[0]?.files).toEqual([
-      "package.json",
-      HELPER,
-      "scripts/setup.mjs",
-    ]);
-    // Keyed now: a later edit is an ordinary environment change.
-    expect(await adapter.invalidate([{ path: HELPER, kind: "change" }])).toEqual({
-      recreatedProjects: [],
-    });
+    // The core keeps it: the adapter's own environment and closures stay static.
+    expect((await adapter.environment())[0]?.files).toEqual(["package.json", "scripts/setup.mjs"]);
     expect((await adapter.closure(A)).paths).not.toContain(HELPER);
-    expect(JSON.parse(store.meta.get(nodeTestObservedPreloadsMetaKey("p")) ?? "null")).toEqual([
-      HELPER,
-    ]);
-
-    // Another worktree's adapter keys the project's environment with it from the start.
-    const other = await createNodeTestAdapter(PROJECT, {
-      root,
-      observed: observedStore(store, "p"),
-    });
-    expect((await other.environment())[0]?.files).toContain(HELPER);
-    expect((await other.affected([HELPER])).transitive).toEqual([A]);
+    expect(report.observed?.[0]?.paths).not.toContain(HELPER);
     // Each run names the path again, keyed or not: the scheduler compares it with the key it ran under.
     const again = await adapter.run([A], {
       runId: "r2",

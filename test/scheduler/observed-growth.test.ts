@@ -30,11 +30,13 @@ const open = (
  * loads, then inherited A's pass under that key. B's copy of the path
  * differs. With no edit in B, nothing asked B's runner again, so B held a
  * pass for content it never ran. A runner-only refinement, which the daemon
- * queues when the shared observed key changed, re-keys and runs it.
+ * queues when the shared observed key changed, re-keyed and ran it. Since
+ * spec 016 D4 the core stores A's pass under the key that holds the path,
+ * as it does a Vitest file's, so B's key never meets it: B runs its own copy.
  */
 
 describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, () => {
-  it("re-keys and runs a file whose pass B inherited under a key lacking the observed path", async () => {
+  it("never lets B inherit A's pass under a key lacking the observed path", async () => {
     const { repo, rootB, store } = await twoWorktrees();
     let release = () => {};
     const held = new Promise<void>((resolve) => {
@@ -53,16 +55,18 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     release();
     await bStarted;
     await b.scheduler.idle();
-    // The window S2 names: B holds A's pass for content it never ran.
-    expect(b.runs).toEqual([]);
-    expect(outcome(store, rootB)).toBe("pass");
+    // The window S2 named stays shut: B ran its own copy, which fails.
+    expect(b.runs.flat().map((f) => f.path)).toContain(HIDDEN_TEST);
+    expect(outcome(store, rootB)).toBe("fail");
+    expect(origin(store, rootB)).toBe("own");
+    expect(keyOf(store, rootB)).not.toBe(keyOf(store, repo.main));
 
-    // With no edit in B, the runner-only refinement re-keys the file, which misses and runs.
+    // With no edit in B, the runner-only refinement finds nothing more to run.
+    const runs = b.runs.length;
     const revision = store.revisions.latest(worktreeIdFor(rootB))?.number;
     b.scheduler.refreshObserved();
     await b.scheduler.idle();
-    // Its new fail is re-run once (task 001-171) and fails again.
-    expect(b.runs.map((files) => files.map((f) => f.path))).toEqual([[HIDDEN_TEST], [HIDDEN_TEST]]);
+    expect(b.runs).toHaveLength(runs);
     expect(outcome(store, rootB)).toBe("fail");
     // The revision is untouched: a runner-only refinement stores no revision.
     expect(store.revisions.latest(worktreeIdFor(rootB))?.number).toBe(revision);
