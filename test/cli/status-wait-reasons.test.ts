@@ -44,6 +44,9 @@ async function timedOut(root: string, paths: readonly string[]) {
     settleMs: 0,
     now: () => NOW,
     sync: sync(),
+    // Row 011-207's ask is `status-wait-ask.test.ts`'s: here it stores none, so a stale or
+    // unknown file reads as one the wait asks nothing of (a source path's, a claimed key's).
+    ask: async () => [],
   });
   if (wait.outcome === "unavailable") throw new Error("unavailable");
   return { wait, text: namedText(wait, NOW) };
