@@ -57,6 +57,8 @@ export function storeCase(input: StoreInput, scratch: string): CaseOutput {
           return [];
         },
         endRun: () => {},
+        // Spec 016 D3: the runner storeResults records with each check; no output reads it.
+        runnerOf: () => "vitest",
         declaredFor: () => [],
         cache: { hashOf: () => undefined },
         index: {
@@ -115,11 +117,11 @@ export function storeCase(input: StoreInput, scratch: string): CaseOutput {
     }
     const stored = new Map<string, CheckKey>();
     const putMany = store.results.putMany.bind(store.results);
-    store.results.putMany = (records: readonly ResultRecord[]) => {
+    store.results.putMany = (records: readonly ResultRecord[], runner?: string) => {
       if (calls.every((c) => c.method !== "settle")) {
         for (const r of records) stored.set(testFileId(refOf(r.check.testPath)), r.key);
       }
-      return putMany(records);
+      return putMany(records, runner);
     };
     const { report, requeue } = recorded(input);
     const discards = new Map(files.map(({ file }) => [file.id, file.discards]));

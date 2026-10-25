@@ -43,19 +43,22 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
     await keys.bootstrap(() => readHead(root));
     if (input.environment === undefined) keys.index.setEnvironment("", "environment");
     else await keys.setEnvironments([input.environment]);
+    // Spec 016 D3: the runner the keys name is the environment's. A tree before
+    // `runnerOf` gives the environment's name, so both trees agree.
+    const outputs = { runner: keys.runnerOf?.("") ?? input.environment?.runnerName ?? null };
     for (const { path, imports } of input.closures) {
       keys.setClosure({ testFile: { project: "", path }, paths: [...imports] });
     }
     await keys.trackUntracked();
     const paths = input.closures.map(({ path }) => path);
     const first = keysOf(keys, paths);
-    if (input.after === undefined) return { keys: first };
+    if (input.after === undefined) return { keys: first, outputs };
     for (const { path, imports } of input.after.closures) {
       keys.setClosure({ testFile: { project: "", path }, paths: [...imports] });
     }
     for (const path of input.after.removed) keys.removeTestFile({ project: "", path });
     await keys.trackUntracked();
-    return { keys: { first, after: keysOf(keys, paths) } };
+    return { keys: { first, after: keysOf(keys, paths) }, outputs };
   } finally {
     store.close();
   }

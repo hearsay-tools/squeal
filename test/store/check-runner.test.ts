@@ -1,8 +1,9 @@
 import { mkdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
+import { hasColumn } from "../../src/core/store/columns.js";
 import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
-import { hasColumn, MIGRATIONS, SCHEMA_VERSION } from "../../src/core/store/schema.js";
+import { MIGRATIONS, SCHEMA_VERSION } from "../../src/core/store/schema.js";
 import type { CheckId, SetupCheckId } from "../../src/core/types/index.js";
 import { fakeCommonDir, open, result, testCheck } from "./helpers.js";
 
@@ -111,23 +112,20 @@ describe("store: a check's runner (spec 016 D3)", () => {
     expect(store.checks.listByTestFile({ project: "", path: B.testPath })).toEqual([]);
   });
 
-  it("an opener that cannot take the write lock opens without the column and reads none", () => {
+  it("an opener that cannot take the write lock fails as on a busy migration, and adds it later", () => {
     const commonDir = fakeCommonDir();
     const older = olderStore(commonDir);
     olderInsert(older, A);
     older.exec("BEGIN IMMEDIATE");
 
-    const hook = openStore(commonDir, { create: false, busyTimeoutMs: 0 });
-    if (isStoreOpenFailure(hook)) throw new Error(JSON.stringify(hook));
-    expect(hook.checks.runnerOf(A)).toBeNull();
+    expect(() => openStore(commonDir, { create: false, busyTimeoutMs: 0 })).toThrow(/locked/);
     expect(hasColumn(older, "checks", "runner")).toBe(false);
 
     older.exec("COMMIT");
     const daemon = open(commonDir);
+    expect(daemon.checks.runnerOf(A)).toBeNull();
     daemon.results.putMany([result(A, "k1")], "vitest");
-    // The hook's store finds the column a later opener added.
-    expect(hook.checks.runnerOf(A)).toBe("vitest");
-    hook.close();
+    expect(daemon.checks.runnerOf(A)).toBe("vitest");
     older.close();
   });
 });
