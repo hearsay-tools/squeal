@@ -445,6 +445,7 @@ var WORKTREE_META_ROWS = {
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
+  runners: { prefix: "runners:", owner: "store/repos/test-files" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },
