@@ -683,12 +683,7 @@ export class Ledger {
         });
       }
       if (retired.length > 0) sink.retire(worktreeId, retired);
-      for (const { check } of setups)
-        store.checks.recordSetupRunner(
-          worktreeId,
-          check,
-          this.context.keys.runnerOf(check.project),
-        );
+      store.checks.recordRunners(worktreeId, runners(this.context.keys, rows, applied, setups));
       for (const outcome of setups) sink.setupOutcome(worktreeId, revision, outcome);
       // Only rows that changed: no other file's key, phase or validity moved.
       // Each file is attributed to the checkpoint that requested it (review S9).
@@ -878,4 +873,23 @@ function mergeApplied(applied: readonly Applied[]): Applied[] {
     for (const id of ids) seen.add(id);
   }
   return merged;
+}
+
+/**
+ * Spec 016 D3 (row 016-15): the runner of each project a commit names, in its
+ * keyed files, its applied results (runs and lookups alike) and its setup
+ * outcomes, as the worktree's keys name it.
+ */
+function runners(
+  keys: Pick<SchedulerContext["keys"], "runnerOf">,
+  rows: readonly TestFileKeyRecord[],
+  applied: readonly Applied[],
+  setups: readonly SetupOutcome[],
+): Map<string, string | undefined> {
+  const projects = [
+    ...rows.map((row) => row.testFile.project),
+    ...applied.flatMap(({ results }) => results.map((r) => r.check.project)),
+    ...setups.map(({ check }) => check.project),
+  ];
+  return new Map(projects.map((project) => [project, keys.runnerOf(project)]));
 }
