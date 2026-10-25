@@ -347,19 +347,19 @@ export interface StatusHeader {
 }
 
 /**
- * Daemon liveness from the heartbeat.
- *
- * Spec 001 D10: "Status reports \"no daemon running since <time>\" when the
- * heartbeat is older than its interval."
- */
-/**
- * Row 011-200 (C6, C8): the last reconciliation pass the live daemon's change feed delivered
- * started at `since`, more than twice the idle interval ago, and no revision was stored since.
+ * Row 011-200 (C6, C8): the last batch the live daemon's change feed delivered, a watcher batch
+ * or a reconciliation pass, started at `since`, more than twice the idle interval ago.
  */
 export interface FeedLate {
   readonly since: EpochMs;
 }
 
+/**
+ * Daemon liveness from the heartbeat.
+ *
+ * Spec 001 D10: "Status reports \"no daemon running since <time>\" when the
+ * heartbeat is older than its interval."
+ */
 export type DaemonLiveness =
   | {
       readonly state: "alive";
