@@ -111,28 +111,6 @@ describe("pytest graph: affected (D5)", () => {
     );
     expect(graph.affected(["tests/test_resources.py"]).direct).toEqual(["tests/test_resources.py"]);
   });
-
-  it("counts a file whose run started a process that imported a changed path as its direct importer (007-55)", async () => {
-    const { graph } = await small();
-    graph.recordObserved("tests/test_resources.py", ["src/app/lazy.py"]);
-    graph.recordSpawned("tests/test_resources.py", ["src/app/lazy.py", "src/app/version.py"]);
-    // An observed path alone is transitive; the file whose child imported it is direct.
-    expect(graph.affected(["src/app/lazy.py"])).toEqual({
-      direct: ["tests/test_resources.py"],
-      transitive: ["tests/unit/test_core.py"],
-    });
-    const version = graph.affected(["src/app/version.py"]);
-    expect(version.direct).toEqual(["tests/test_resources.py"]);
-    expect(version.transitive).toContain("tests/unit/test_core.py");
-  });
-
-  it("schedules a file whose last run loaded a changed path outside its closure", async () => {
-    const { graph } = await small();
-    graph.recordObserved("tests/test_resources.py", ["src/app/data/values.json"]);
-    expect(graph.affected(["src/app/data/values.json"]).transitive).toEqual([
-      "tests/test_resources.py",
-    ]);
-  });
 });
 
 describe("pytest graph: without an environment (D4 as amended)", () => {

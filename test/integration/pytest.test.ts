@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { pytestObservedMetaKey } from "../../src/core/types/index.js";
+import { observedMetaKey } from "../../src/core/keys/index.js";
 import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
 import { until } from "../e2e/support.js";
@@ -33,7 +33,7 @@ import {
  * `uv sync`, zero runs; an edit runs only the pytest files importing it, and
  * its `PASS -> FAIL` reaches the agent through the Claude Code and Codex
  * hooks. A module the static graph cannot see (a computed `import_module`)
- * is observed by the first run, stored in the project's meta key, re-runs
+ * is observed by the first run, stored in the core's observed set, re-runs
  * its file when edited and keeps a worktree whose copy differs from
  * inheriting a pass. A worktree without `.venv` is unknown with D2's note
  * until `uv sync` runs there.
@@ -60,7 +60,7 @@ const codex = async (name: "session-start" | "post-tool-use", root: string) =>
   (await runCodexHook(name, codexRecorded("exec", name, root, CODEX_SESSION), deps)).stdout;
 
 const observedKey = (main: string) =>
-  (metaValue(main, pytestObservedMetaKey("small")) ?? {}) as Record<string, string[]>;
+  (metaValue(main, observedMetaKey("small")) ?? {}) as Record<string, string[]>;
 
 /** The keys `root` stored results of its own under, per test file and revision. */
 function ownResults(main: string, root: string): Record<string, unknown>[] {
@@ -143,14 +143,14 @@ describe("a repository with a Vitest suite and a pytest project (spec 007)", () 
       const third = await settle(
         wt3,
         "the third baseline",
-        (s) => s.counts.current === CHECKS && ranFiles(main, wt3).length >= 2,
+        (s) => s.counts.current === CHECKS && ranFiles(main, wt3).length >= 1,
       ).catch((error: unknown) => {
         throw new Error(`${String(error)}\n${whyNotCurrent(main, wt3)}`);
       });
-      // test_resources.py too: its baseline in main imported `app.data` through
-      // `importlib.resources`, observed only, and growth a worktree's own run finds keys its
-      // stored result at the next edit (003 D3), so main's result lacks it.
-      expect(new Set(ranFiles(main, wt3))).toEqual(new Set([CORE_TEST, RESOURCES_TEST]));
+      // Not test_resources.py: its baseline in main imported `app.data` through
+      // `importlib.resources`, observed only, and the core stored its pass under the key that
+      // holds that path (spec 016 D4), which wt3's copy matches.
+      expect(new Set(ranFiles(main, wt3))).toEqual(new Set([CORE_TEST]));
       expect(observedKey(main)[RESOURCES_TEST]).toContain("src/app/data/__init__.py");
       expect(third.knownFailures.map((f) => f.check.testPath)).toEqual([CORE_TEST]);
 
