@@ -122,3 +122,5 @@ Owns: as before. Done when:
 - the collision tests pass in both directions and through both callers;
 - the two Node 22 failures pass: `PATH=/home/agent/.nvm/versions/node/v22.23.3/bin:$PATH npx vitest run test/daemon/step-down.test.ts test/store/check-runner.test.ts`;
 - `squeal run --all --wait` is green, bundle drift excepted.
+
+Decided during the round (2026-10-25, the worker's request): `store-results.ts` stays as on main. The runners are recorded in `Ledger#write`, for the projects of rows, applied results and setups, so a worktree that only looks results up records them too (lookup-only is the default). That one statement replaces the setup line and is the only scheduler diff. A collision case covers a worktree that only looks up its failing result.
