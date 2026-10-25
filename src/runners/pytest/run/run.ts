@@ -20,7 +20,13 @@ import { runBasetemp } from "./basetemp.js";
 import { type Batch, ending, names, readOr, realOr, split, writeRunLog } from "./batches.js";
 import { keptDirs, runBytecode } from "./bytecode.js";
 import { inheritedArgs, pytestArgs, refusalNote, refusedFlags } from "./command.js";
-import { parsePytestEvents } from "./events.js";
+import {
+  type ImportEvent,
+  type PytestEvent,
+  parsePytestEvents,
+  type SpawnedEvent,
+  type WrittenEvent,
+} from "./events.js";
 import { observeBatch, type PytestObservedClosure } from "./observed.js";
 import { type PytestFileReport, readBatch } from "./report.js";
 
@@ -202,7 +208,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
       running.delete(group);
       const parsed = parsePytestEvents(readOr(events));
       batch.read = readBatch(parsed, batch.files, rootdir, paths, basetemp.dir(batch.index));
-      batch.edges = parsed.flatMap((e) => (e.type === "import" || e.type === "spawned" ? [e] : []));
+      batch.edges = parsed.filter(isEdge);
     }
   };
   const width = Math.max(1, Math.min(options.concurrency ?? batches.length, batches.length));
@@ -356,4 +362,9 @@ export function pytestRuntimeDir(module: URL = new URL(import.meta.url)): Absolu
   throw new Error(
     `pytest runtime files not found beside ${module.href}: tried ${tried.join(", ")}`,
   );
+}
+
+/** The events `observeBatch` reads: imports, children's imports and written directories. */
+function isEdge(event: PytestEvent): event is ImportEvent | SpawnedEvent | WrittenEvent {
+  return event.type === "import" || event.type === "spawned" || event.type === "written";
 }

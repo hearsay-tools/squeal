@@ -1,9 +1,10 @@
 import { realpathSync, statSync } from "node:fs";
-import { compare, sameList, toAbsolute, toRelative } from "../../core/fs/index.js";
+import { sameList, toAbsolute, toRelative } from "../../core/fs/index.js";
 import type {
   AbsolutePath,
   InvalidatedPath,
   InvalidateResult,
+  ObservedInputs,
   PytestProject,
   RelativePath,
   RunnerAdapter,
@@ -24,15 +25,32 @@ import {
   structural,
 } from "./adapter-environment.js";
 import { listTestFiles } from "./adapter-files.js";
-import { Observed, type ObservedStore } from "./adapter-observed.js";
 import { currentFingerprint, runProject, unavailable } from "./adapter-run.js";
 import { enumerate } from "./enumerate.js";
 import { projectDir, readEnvironment, runEnvironment } from "./environment/index.js";
 import { createPytestGraph, type PytestGraph } from "./graph/index.js";
+import type { PytestObservedClosure } from "./run/observed.js";
 import { PYTEST_ADAPTER_VERSION } from "./version.js";
 
-export type { ObservedPaths, ObservedStore } from "./adapter-observed.js";
 export { PYTEST_ADAPTER_VERSION };
+
+/** Observed-only paths per test file of one project, worktree-relative (spec 007 D4, 003 D3). */
+export type ObservedPaths = Readonly<Record<RelativePath, readonly RelativePath[]>>;
+
+/**
+ * The project's `pytest.observed.<project>` meta key, kept by the daemon so
+ * the adapter never opens the store (003 D3 as amended).
+ */
+export interface ObservedStore {
+  /** Every worktree's observations so far: read at start and at each refinement, so it must be cheap. */
+  read(): ObservedPaths;
+  /** Merges `additions` into the key, and into the stored closures, in one transaction. */
+  write(additions: ObservedPaths): void;
+  /** What start-up plugins imported beyond their static closure, every worktree's (B5). */
+  readSession(): readonly RelativePath[];
+  /** Merges `additions` into the session key in one transaction. */
+  writeSession(additions: readonly RelativePath[]): void;
+}
 
 export interface PytestAdapterOptions {
   /** The worktree root. */
@@ -81,10 +99,9 @@ interface Moved {
   readonly rebuild: boolean;
 }
 
-/** The graph of a project whose `cwd` exists, with what its runs observed beyond it. */
+/** The graph of a project whose `cwd` exists. */
 interface Built {
   readonly graph: PytestGraph;
-  readonly observed: Observed;
 }
 
 /**
@@ -101,7 +118,10 @@ interface Built {
  * config, which also rebuilds the graph with its settings; an edit to the
  * config lists the test files again (task 007-42). A run whose
  * environment moved before or during it stores nothing and the environment
- * is admitted again at the next call (D2's sync state).
+ * is admitted again at the next call (D2's sync state). What runs imported
+ * beyond the graph it reports to the core (`RunReport.observed`,
+ * `environmentObserved`), which keeps it, joins it to closures and the
+ * environment and marks `direct` (spec 016 D4); the adapter keeps none of it.
  */
 export async function createPytestAdapter(
   project: PytestProject,
@@ -163,7 +183,7 @@ export async function createPytestAdapter(
           pythonpath: settings.pythonpath,
           configFile: settings.config?.path ?? null,
         });
-        built = { graph, observed: new Observed(graph, options.observed, outside, note) };
+        built = { graph };
         failure = null;
         notes();
         return true;
@@ -233,11 +253,9 @@ export async function createPytestAdapter(
       if (!(await build())) return { recreatedProjects: was ? [project.name] : [] };
       return { recreatedProjects: [project.name] };
     }
-    built.observed.refresh();
     built.graph.invalidate(moved ? [...paths, ...structural(root, dir)] : paths);
     notes();
-    const grew = built.observed.takeRecreate(paths.map((p) => p.path));
-    return { recreatedProjects: moved || grew ? [project.name] : [] };
+    return { recreatedProjects: moved ? [project.name] : [] };
   };
 
   // Task 007-26: a ready environment that held still costs one fingerprint read, nothing else.
@@ -259,22 +277,16 @@ export async function createPytestAdapter(
     recheck,
     async affected(changed) {
       if (built === null) return { direct: [], transitive: [] };
-      built.observed.refresh();
       const { direct, transitive } = built.graph.affected(changed);
-      const grown = built.observed.takeGrown(new Set(files)).filter((f) => !direct.includes(f));
-      const rest = [...new Set([...transitive, ...grown])].sort(compare);
-      return { direct: direct.map(ref), transitive: rest.map(ref) };
+      return { direct: direct.map(ref), transitive: transitive.map(ref) };
     },
     async closure(testFile) {
       if (built === null) throw new Error(`${label}: ${failure ?? "not started"}`);
-      built.observed.refresh();
       const { paths } = built.graph.closure(testFile.path);
-      const extra = built.observed.of(testFile.path) ?? [];
       // Task 007-28: nothing under the environment, whose hash covers it and whose files uv hardlinks.
-      const inside = [...new Set([...paths, ...extra])].filter((p) => !outside(p));
       return {
         testFile,
-        paths: inside.sort(compare),
+        paths: paths.filter((p) => !outside(p)),
         packages: { imports: [], builtins: [] },
       };
     },
@@ -295,11 +307,8 @@ export async function createPytestAdapter(
           adapterVersion: PYTEST_ADAPTER_VERSION,
           configFile: settings.config?.path ?? null,
           envDir: dir,
-          // B5: what the plugins imported at start-up beyond their static closure too.
-          pluginPaths: [
-            ...pluginPaths(built, environment, settings),
-            ...(built?.observed.sessionPaths() ?? []),
-          ].filter((p) => !outside(p)),
+          // B5: what the plugins imported at start-up beyond it the core adds (016 D4).
+          pluginPaths: pluginPaths(built, environment, settings).filter((p) => !outside(p)),
         }),
       ];
     },
@@ -319,26 +328,63 @@ export async function createPytestAdapter(
       for (const text of outcome.run.notes) once(text);
       // Spec 011 C4 (row 011-145): a file given texts observes nothing, nor does a run of only
       // such files. It ran only some checks, and the file's own run that follows reads every path
-      // they read. A file run whole beside one still records its own, and the session's.
+      // they read. A file run whole beside one still reports its own, and the session's.
       const whole = outcome.run.observed.filter(
         (seen) => focusedTexts(runOptions.checks, seen.testFile) === null,
       );
       if (testFiles.every((f) => focusedTexts(runOptions.checks, f) !== null)) {
         return outcome.report;
       }
-      built.observed.record(whole, new Set(files));
-      const plugins = pluginPaths(built, environment, settings);
-      const session = built.observed.recordSession(outcome.run.session, plugins, files.length);
-      if (session.length === 0) return outcome.report;
+      const listed = new Set(files);
+      const observed = whole
+        .filter((seen) => listed.has(seen.testFile.path))
+        .map((seen) => observedInputs(seen, outside));
+      const plugins = new Set(pluginPaths(built, environment, settings));
+      const graph = built.graph;
+      const reached = whole.map((seen) => new Set(seen.paths));
+      // B5: no start-up path is in every listed file's closure, as a root conftest's
+      // `pytest_plugins` are, or reached by every file the run ran whole from its own roots, as
+      // what a root conftest loads through a library is (007-36; 016 D4: the run's, not stored).
+      const everywhere = (path: RelativePath) => {
+        const { direct, transitive } = graph.affected([path]);
+        if (direct.length + transitive.length >= files.length) return true;
+        return reached.length > 0 && reached.every((paths) => paths.has(path));
+      };
+      const session = outcome.run.session.filter(
+        (p) => !plugins.has(p) && !outside(p) && !everywhere(p),
+      );
       // B5: the core stores nothing for a file whose key lacked one of these, re-keys and reruns it.
       return {
         ...outcome.report,
-        environmentObserved: [{ project: project.name, paths: session }],
+        ...(observed.length > 0 ? { observed } : {}),
+        ...(session.length > 0
+          ? { environmentObserved: [{ project: project.name, paths: session }] }
+          : {}),
       };
     },
     // 007 D6 (row 011-135): `runPytest` takes `RunOptions.checks`.
     focuses: true,
     close: async () => {},
+  };
+}
+
+/**
+ * Spec 016 D4: what one file's run imported, for the core: under the
+ * environment nothing (task 007-28), what the processes it started imported
+ * as `direct` (task 007-55), the directories it created or removed above
+ * them as `written`.
+ */
+function observedInputs(
+  seen: PytestObservedClosure,
+  outside: (path: RelativePath) => boolean,
+): ObservedInputs {
+  const direct = seen.spawned.filter((p) => !outside(p));
+  return {
+    testFile: seen.testFile,
+    paths: seen.paths.filter((p) => !outside(p)),
+    directories: [],
+    ...(direct.length > 0 ? { direct } : {}),
+    ...(seen.written.length > 0 ? { written: seen.written } : {}),
   };
 }
 
