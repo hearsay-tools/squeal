@@ -100,6 +100,7 @@ export function observe(
     listed: rel(recorded?.listed),
     recursive: rel(recorded?.recursive),
     written: rel(recorded?.written),
+    direct: rel(recorded?.direct),
     /** What the runners report for `test.ts`: `observedInputs` of the recorded files. */
     inputs: observedInputs(all, [{ project: "", path: "test.ts" }], new WorktreePaths(root)),
   };
