@@ -2,10 +2,12 @@ import { randomBytes } from "node:crypto";
 import { loadavg } from "node:os";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { describe, expect, it } from "vitest";
+import { Pace } from "../../../src/core/code/coverage/index.js";
 import { readSummary } from "../../../src/core/code/crap/index.js";
+import { compare } from "../../../src/core/fs/index.js";
 import { WT } from "../../state/helpers.js";
 import { daemonPass } from "../pass/helpers.js";
-import { COVERED, coverageRig, sourceOf } from "./rig.js";
+import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";
 
 /*
  * Row 015-42, the 01:09 to 01:27 load of 011-197: after a run, the coverage
@@ -13,9 +15,9 @@ import { COVERED, coverageRig, sourceOf } from "./rig.js";
  * map, the signatures and the records of the file it judged again, outside
  * its budget. This repository's test files load most of its sources, so
  * each record holds most of them. Row 015-45 reads the first loader map,
- * of a size 011-197's stores held, in slices. Timing is asserted only on a
- * machine loaded no more than the other timing tests allow, and with a wider
- * bound on CI (row 015-47).
+ * of a size 011-197's stores held, in slices, and row 015-47 their seed at
+ * a recount. Timing is asserted only on a machine loaded no more than the
+ * other timing tests allow, and with a wider bound on CI (row 015-47).
  */
 
 const MAX_LOAD_FOR_TIMING = 8;
@@ -29,6 +31,9 @@ const CLOSED_FILES = 4_744;
 const INCIDENT_SOURCES = 20;
 /** Their records' mean size: each holds every source its test file ran. */
 const RECORD_BYTES = 25_000;
+/** 011-197's counted files: 12,433 functions, here `FUNCTIONS` each. */
+const RECOUNT_SOURCES = 1_263;
+const RECOUNT_TEST_FILES = 10;
 /** The longest main-thread turn the change feed may wait behind (011-197: about 1.1 s). */
 const TURN_BUDGET_MS = 100;
 /**
@@ -42,10 +47,22 @@ const turnBudget = () => (process.env.CI === undefined ? TURN_BUDGET_MS : CI_TUR
 const sourceText = (s: number) =>
   Array.from({ length: FUNCTIONS }, (_, f) => `f${f} ${1 + (f % 4)} b${s}x${f}`).join("\n");
 
+/** The files the summary holds judged. */
+const judged = (rig: ReturnType<typeof coverageRig>) =>
+  Object.values(readSummary(rig.store.meta, WT)?.files ?? {}).filter((f) => f.state === "judged")
+    .length;
+
+/** A chain other than the one `soon()` starts: how it starts, when it is over, what the log adds. */
+interface Chain {
+  readonly start: () => void;
+  readonly done: () => boolean;
+  readonly note: () => string;
+}
+
 /**
- * Times the chain `soon()` starts until `expected` files are judged: the
- * longest turn the change feed waited behind, asserted only on a machine
- * loaded no more than `MAX_LOAD_FOR_TIMING`.
+ * Times the chain `soon()` starts until `expected` files are judged, or
+ * `chain`: the longest turn the change feed waited behind, asserted only on
+ * a machine loaded no more than `MAX_LOAD_FOR_TIMING`.
  */
 async function longestTurn(
   rig: ReturnType<typeof coverageRig>,
@@ -53,15 +70,15 @@ async function longestTurn(
   expected: number,
   label: string,
   ctx: { skip: (note: string) => void },
+  chain?: Chain,
 ): Promise<number> {
   const delay = monitorEventLoopDelay({ resolution: 10 });
-  const judged = () =>
-    Object.values(readSummary(rig.store.meta, WT)?.files ?? {}).filter((f) => f.state === "judged")
-      .length;
   const began = performance.now();
   delay.enable();
-  run.code.soon();
-  await expect.poll(judged, { timeout: 120_000, interval: 50 }).toBe(expected);
+  if (chain === undefined) run.code.soon();
+  else chain.start();
+  const done = chain?.done ?? (() => judged(rig) === expected);
+  await expect.poll(done, { timeout: 120_000, interval: 50 }).toBe(true);
   const took = Math.round(performance.now() - began);
   delay.disable();
   await run.code.close();
@@ -69,7 +86,7 @@ async function longestTurn(
   const longest = Math.round(delay.max / 1e6);
   const load = loadavg()[0] ?? 0;
   console.log(
-    `coverage chain: ${label} judged in ${took} ms; longest turn ${longest} ms; load average ${load.toFixed(1)}`,
+    `coverage chain: ${label} judged in ${took} ms; longest turn ${longest} ms${chain?.note() ?? ""}; load average ${load.toFixed(1)}`,
   );
   if (load > MAX_LOAD_FOR_TIMING) {
     ctx.skip(
@@ -77,6 +94,20 @@ async function longestTurn(
     );
   }
   return longest;
+}
+
+/** A pace that keeps how long each coverage step held the main thread. */
+class TimedPace extends Pace {
+  readonly steps: number[] = [];
+
+  override measure<T>(work: () => T): T {
+    const began = performance.now();
+    try {
+      return super.measure(work);
+    } finally {
+      this.steps.push(performance.now() - began);
+    }
+  }
 }
 
 /** A rig whose sources are counted, and a code pass on it with coverage on. */
@@ -128,4 +159,44 @@ describe("the coverage chain after a run (row 015-42)", () => {
     const label = `${INCIDENT_SOURCES} sources by ${INCIDENT_TEST_FILES} test files of ${CLOSURE_PATHS} paths`;
     expect(await longestTurn(rig, run, INCIDENT_SOURCES, label, ctx)).toBeLessThan(turnBudget());
   }, 180_000);
+
+  // Row 015-47: 011-197's stores held 1,263 counted files of 12,433 functions, and a recount's
+  // seed of their coverage states was one turn of 429 to 489 ms. Version 2 renames half of them.
+  it(`recounts ${RECOUNT_SOURCES} sources of ${FUNCTIONS} functions with no long coverage step`, async (ctx) => {
+    const paths = Array.from({ length: RECOUNT_SOURCES }, (_, s) => `src/m${s}.ts`);
+    const { rig, run } = await counted(paths);
+    for (let t = 0; t < RECOUNT_TEST_FILES; t++) {
+      rig.loader(`test/t${t}.test.ts`, { closure: paths, record: [] });
+    }
+    run.code.soon();
+    await expect.poll(() => judged(rig), { timeout: 120_000, interval: 100 }).toBe(RECOUNT_SOURCES);
+    await run.code.close();
+
+    const pace = new TimedPace();
+    const renamed = Array.from(
+      { length: FUNCTIONS / 2 },
+      (_, f) => [`f${f}`, [`g${f}`, 0]] as const,
+    );
+    const recount = daemonPass(rig.tree, {
+      policy: () => COVERED,
+      now: Date.now,
+      counter: () => Promise.resolve(counterV2(Object.fromEntries(renamed))),
+      coverage: { main: rig.main, closures: () => rig.closures, writing: () => false, pace },
+    });
+    // The last file judged: its renamed function's state is judged once the chain is over.
+    const last = [...paths].sort(compare).at(-1) ?? "";
+    const done = () =>
+      rig.store.states
+        .list(WT, { measure: "crap", paths: [last] })
+        .some((s) => s.check.qualifiedName === "g0" && s.outcome !== "pending");
+    const label = `a recount of ${RECOUNT_SOURCES} sources`;
+    const steps = () => Math.round(Math.max(0, ...pace.steps));
+    // The turns the recount's complexity pass holds count in the longest turn; the steps are asserted.
+    await longestTurn(rig, recount, 0, label, ctx, {
+      start: () => recount.code.nudge(),
+      done,
+      note: () => `; ${pace.steps.length} coverage steps, longest ${steps()} ms`,
+    });
+    expect(steps()).toBeLessThan(turnBudget());
+  }, 300_000);
 });

@@ -6,19 +6,16 @@ import { uncountableFiles } from "../pass/failed.js";
 import type { CodeStore } from "../store/types.js";
 import { broughtByGit, keepUnjudged } from "./brought.js";
 import { StepCache } from "./cache.js";
-import { coverageOf, type FileCondition, type ReadyLoader } from "./file.js";
-import { evidenceOf, type Judged, judgeFiles, priorKey } from "./judge.js";
-import { LoaderBuild, type LoaderCondition, type LoaderInputs, type Loaders } from "./loaders.js";
+import { LoaderBuild, type LoaderCondition, type LoaderInputs } from "./loaders.js";
 import { Seed } from "./seed.js";
 import {
   type CoverageSummary,
-  type FileSummary,
-  functionKey,
   readSummary,
   writeCrapRecount,
   writeEvidence,
   writeSummary,
 } from "./summary.js";
+import { walk } from "./walk.js";
 
 /*
  * Spec 015 D9: the daemon's coverage step, run by the code pass after the
@@ -125,14 +122,13 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   );
   if (loaders === null) return READING;
   const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
-  const { next, judged, quiet, more } = walk(
-    { input, cache, loaders, summary, start, countOf, work },
-    files,
-  );
+  const brought = broughtByGit(store.meta, worktreeId, summary);
 
   const report = store.transaction(() => {
-    const brought = broughtByGit(store.meta, worktreeId, summary, next);
-    const transitions = writeJudgement(input, judged, brought);
+    const { next, judged, transitions, quiet, more } = walk(
+      { input, cache, loaders, summary, start, countOf, work, brought },
+      files,
+    );
     keepUnjudged(brought, files, next);
     for (const path of Object.keys(summary?.files ?? {})) {
       if (next[path] === undefined) writeEvidence(store.meta, worktreeId, path, null);
@@ -151,7 +147,7 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
     if (start || JSON.stringify(written) !== JSON.stringify(summary)) {
       writeSummary(store.meta, worktreeId, written);
     }
-    return { judged: judged.length, transitions, wakeAt: loaders.wakeAt, more };
+    return { judged, transitions, wakeAt: loaders.wakeAt, more };
   });
   cache.dropSeed();
   return report;
@@ -188,101 +184,6 @@ function budget(now: () => EpochMs): () => boolean {
   };
 }
 
-interface Walk {
-  readonly input: CoverageStepInput;
-  readonly cache: StepCache;
-  readonly loaders: Loaders;
-  readonly summary: CoverageSummary | null;
-  readonly start: boolean;
-  readonly countOf: (file: CodeFile) => FileCount | null;
-  readonly work: () => boolean;
-}
-
-/**
- * Each file's summary, and the ready files judged within the step's
- * budget; a file past it keeps its last summary, and `more` is set.
- */
-function walk(at: Walk, files: readonly CodeFile[]) {
-  const { input, cache, loaders, summary, start, work } = at;
-  const next: Record<string, FileSummary> = {};
-  const judged: Judged[] = [];
-  // B2 (review 0.1.297): a recount's files stay quiet until each is judged, records waited for too.
-  const quiet = new Set(input.reseed ? files.map((f) => f.path) : (summary?.quiet ?? []));
-  const keys = (ready: readonly ReadyLoader[]) => ready.map((l) => l.key);
-  const record = (key: CheckKey) => cache.record(input.store.coverage, key);
-  let more = false;
-  for (const file of files) {
-    const before = summary?.files[file.path];
-    // A file's condition and signature from the map are a unit too (row 015-45).
-    if (!work()) {
-      more = true;
-      if (before !== undefined) next[file.path] = before;
-      continue;
-    }
-    const condition = cache.condition(file.path, loaders);
-    if (condition.state !== "ready") {
-      next[file.path] = summaryOf(file, condition);
-      continue;
-    }
-    const signature = cache.signature(file, input.threshold, condition.loaders);
-    const recounted = quiet.has(file.path);
-    if (!start && !recounted && before?.state === "judged" && before.signature === signature) {
-      next[file.path] = before;
-      continue;
-    }
-    if (!cache.decode(input.store.coverage, keys(condition.loaders), work) || !work()) {
-      more = true;
-      if (before !== undefined) next[file.path] = before;
-      continue;
-    }
-    const count = at.countOf(file);
-    if (count === null) continue;
-    const coverage = coverageOf(file, count.functions, condition.loaders, record);
-    if (coverage === "unread") {
-      next[file.path] = { state: "unknown", blob: file.blob, cause: "unread" };
-      continue;
-    }
-    next[file.path] = { state: "judged", blob: file.blob, signature };
-    judged.push({ file, count, coverage, ...(recounted ? { quiet: true } : {}) });
-    quiet.delete(file.path);
-  }
-  return { next, judged, quiet, more };
-}
-
-/**
- * Judges `judged`, and writes the states, the transitions, D6's edits
- * (row 015-40) and the evidence; the number of transitions. An own edit
- * that git changed the file after (`brought`) is not the body judged, so it
- * marks none (review 0.1.299 B1).
- */
-function writeJudgement(
-  input: CoverageStepInput,
-  judged: readonly Judged[],
-  brought: ReadonlyMap<string, RevisionNumber>,
-): number {
-  const { store, worktreeId } = input;
-  const paths = judged.map((j) => j.file.path);
-  if (paths.length === 0) return 0;
-  const prior = new Map(store.states.list(worktreeId, { paths }).map((s) => [priorKey(s), s]));
-  const edits = new Map(
-    store.states
-      .edits(worktreeId, "complexity", paths)
-      .filter((e) => e.revision > (brought.get(e.check.path) ?? -1))
-      .map((e) => [`${e.check.path}\0${functionKey(e.check)}`, e]),
-  );
-  const { revision, threshold } = input;
-  const { states, transitions, edited } = judgeFiles(
-    { worktreeId, revision, threshold, at: input.now(), prior, edits },
-    judged,
-  );
-  store.states.upsertMany(states);
-  store.transitions.append(transitions);
-  // D6's first edit to a standing failure, for these measures too.
-  store.states.markEdited(worktreeId, edited);
-  for (const j of judged) writeEvidence(store.meta, worktreeId, j.file.path, evidenceOf(j));
-  return transitions.length;
-}
-
 /**
  * Row 015-40: the `crap.threshold` the summary keeps, every ready file
  * judged at it. A change from the one `summary` keeps (`null` as coverage
@@ -303,15 +204,4 @@ function thresholdAfter(
     threshold: input.threshold,
   });
   return input.threshold;
-}
-
-function summaryOf(file: CodeFile, condition: Exclude<FileCondition, { state: "ready" }>) {
-  return condition.state === "pending"
-    ? {
-        state: "pending" as const,
-        blob: file.blob,
-        reason: condition.reason,
-        waiting: condition.waiting,
-      }
-    : { state: "unknown" as const, blob: file.blob, cause: condition.cause };
 }
