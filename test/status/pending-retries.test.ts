@@ -6,11 +6,12 @@ import {
   LOAD_RETRY_WAIT_MS,
   markGateClosed,
   pendingRetriesOf,
+  readRetries,
 } from "../../src/core/retry/index.js";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { timeText } from "../../src/core/text.js";
 import type { EpochMs, StatusSnapshot } from "../../src/core/types/index.js";
-import { FAST, NOW, SLOW_A, seed } from "./slow-tier-seed.js";
+import { FAST, NOW, SLOW_A, SLOW_B, seed } from "./slow-tier-seed.js";
 
 /*
  * Spec 001 D6 as amended (001-368): `squeal status` names each pending retry
@@ -30,8 +31,18 @@ function seeded() {
       at: NOW,
       worktreeId: s.repo.mainId,
     });
-  return { ...s, keyOf, ask };
+  /** A daemon first met the gate closed on `path`'s pending requests at `at`. */
+  const gate = (path: string, at: EpochMs) =>
+    markGateClosed(s.store, [], { project: "", path }, keyOf(path), at);
+  return { ...s, keyOf, ask, gate };
 }
+
+/** The pending retry requests, oldest first. */
+const readRetriesAt = (s: ReturnType<typeof seeded>) => readRetries(s.store);
+
+/** Status's pending retry lines, at load 16 on 8 CPUs unless given: the gate closed. */
+const retryLines = (s: ReturnType<typeof seeded>, oneMinute = 16) =>
+  lines(s, oneMinute).lines.filter((l) => l.includes("pending retry"));
 
 /** Status at `NOW` with the host's load as given, so a `load` request's text does not follow the host's. */
 const lines = (s: ReturnType<typeof seeded>, oneMinute = 12.4, cpus = 8) => {
@@ -56,7 +67,7 @@ describe("status lists pending retries (001-368)", () => {
       { testFile: { path: SLOW_A }, reason: "environment", requests: 1 },
     ]);
     expect(text).toContain(
-      "  1 test file with a pending retry (load): src/a.test.ts; waits for the one-minute load average to fall below the CPU count, at most 10 min, then runs once anyway (load average 12.40 on 8 CPUs now)",
+      "  1 test file with a pending retry (load): src/a.test.ts; waits for the one-minute load average to fall below the CPU count (load average 12.40 on 8 CPUs now)",
     );
     expect(text).toContain(
       "  1 test file with a pending retry (environment): test/e2e/a.test.ts; runs at once",
@@ -81,6 +92,83 @@ describe("status lists pending retries (001-368)", () => {
     expect(lines(past).lines).toContain(
       "  1 test file with a pending retry (load): src/a.test.ts; runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 12.40 on 8 CPUs now)",
     );
+  });
+
+  it("names only the file at the bound as running at the next look, beside one at 1 s (review 0.1.328 B1)", () => {
+    const s = seeded();
+    s.ask(FAST, "load");
+    s.ask(SLOW_A, "load");
+    s.gate(FAST, NOW - LOAD_RETRY_WAIT_MS);
+    s.gate(SLOW_A, NOW - 1_000);
+    const text = retryLines(s);
+    expect(text).toEqual([
+      `  1 test file with a pending retry (load): ${FAST}; runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`,
+      `  1 test file with a pending retry (load): ${SLOW_A}; waits for the one-minute load average to fall below the CPU count: at or above it for 1 s of at most 10 min, then runs once anyway (load average 16.00 on 8 CPUs now)`,
+    ]);
+  });
+
+  it("gives a file with no gate time its own line beside a stamped one, never the stamped one's (B1)", () => {
+    const due = seeded();
+    due.ask(FAST, "load");
+    due.ask(SLOW_A, "load");
+    due.gate(FAST, NOW - LOAD_RETRY_WAIT_MS);
+    expect(retryLines(due)).toEqual([
+      `  1 test file with a pending retry (load): ${FAST}; runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`,
+      `  1 test file with a pending retry (load): ${SLOW_A}; waits for the one-minute load average to fall below the CPU count (load average 16.00 on 8 CPUs now)`,
+    ]);
+
+    const waiting = seeded();
+    waiting.ask(FAST, "load");
+    waiting.ask(SLOW_A, "load");
+    waiting.gate(FAST, NOW - 252_000);
+    expect(retryLines(waiting)).toEqual([
+      `  1 test file with a pending retry (load): ${FAST}; waits for the one-minute load average to fall below the CPU count: at or above it for 4 min 12 s of at most 10 min, then runs once anyway (load average 16.00 on 8 CPUs now)`,
+      `  1 test file with a pending retry (load): ${SLOW_A}; waits for the one-minute load average to fall below the CPU count (load average 16.00 on 8 CPUs now)`,
+    ]);
+  });
+
+  it("gives waiting files of different ages a labelled range, and one age when they read alike (B1)", () => {
+    const s = seeded();
+    for (const path of [FAST, SLOW_A, SLOW_B]) s.ask(path, "load");
+    s.gate(FAST, NOW - 252_000);
+    s.gate(SLOW_A, NOW - 1_000);
+    s.gate(SLOW_B, NOW - 252_400);
+    expect(retryLines(s)).toEqual([
+      `  3 test files with a pending retry (load): ${FAST}, ${SLOW_A}, ${SLOW_B}; waits for the one-minute load average to fall below the CPU count: at or above it for 1 s to 4 min 12 s, by file, of at most 10 min, then each runs once anyway (load average 16.00 on 8 CPUs now)`,
+    ]);
+
+    const alike = seeded();
+    for (const path of [FAST, SLOW_B]) alike.ask(path, "load");
+    alike.gate(FAST, NOW - 252_000);
+    alike.gate(SLOW_B, NOW - 252_400);
+    expect(retryLines(alike)).toEqual([
+      `  2 test files with a pending retry (load): ${FAST}, ${SLOW_B}; waits for the one-minute load average to fall below the CPU count: at or above it for 4 min 12 s of at most 10 min, then runs once anyway (load average 16.00 on 8 CPUs now)`,
+    ]);
+  });
+
+  it("control: two sessions at one key read as that key's earliest gate time", () => {
+    const s = seeded();
+    s.ask(FAST, "load");
+    s.gate(FAST, NOW - LOAD_RETRY_WAIT_MS);
+    s.ask(FAST, "load", "s2");
+    s.gate(FAST, NOW - 1_000);
+    expect(readRetriesAt(s).map((r) => [r.session, r.gateClosedAt])).toEqual([
+      ["s1", NOW - LOAD_RETRY_WAIT_MS],
+      ["s2", NOW - 1_000],
+    ]);
+    expect(retryLines(s)).toEqual([
+      `  1 test file with a pending retry (load): ${FAST}; runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`,
+    ]);
+  });
+
+  it("keeps one line for files whose wait the load lets through, whatever their gate times", () => {
+    const s = seeded();
+    s.ask(FAST, "load");
+    s.ask(SLOW_A, "load");
+    s.gate(FAST, NOW - LOAD_RETRY_WAIT_MS);
+    expect(retryLines(s, 4)).toEqual([
+      `  2 test files with a pending retry (load): ${FAST}, ${SLOW_A}; runs at the daemon's next look: the one-minute load average is below the CPU count (load average 4.00 on 8 CPUs now)`,
+    ]);
   });
 
   it("says when another worktree's daemon queued it", () => {
