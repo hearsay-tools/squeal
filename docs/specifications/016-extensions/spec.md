@@ -126,7 +126,7 @@ Every difference that could change a verdict goes to the human before the slice.
 - node:test and pytest module loads key whatever `observe.runtimeInputs` says, as today (survey O8);
 - D4 raises `NODE_TEST_ADAPTER_VERSION` and `PYTEST_ADAPTER_VERSION` (C3's rule: what is kept changes), and `test/keys/validity`'s comparison shows the difference for both runners. An older daemon's keys then never equal the new ones, so nothing is merged.
 
-The rule for git-ignored paths (survey O1) waits for a count (row 016-19). This section edits `src/core/scheduler/`, so 011's coordinator is told before the brief is dispatched (`status.md`, 2026-10-24).
+The human decided the third on 2026-10-25, from row 016-19's count (`research/ignored-paths.md`): an observed git-ignored path is kept, for every runner, unless the same test file wrote, created or removed one of its ancestor directories (survey O1 (b), the written-directory bound). The recorder records `mkdtemp` as a create. Measured, this keeps 21, 2 and 0 paths on the three projects counted, with no growth on a second run. This section edits `src/core/scheduler/`, so 011's coordinator is told before the brief is dispatched (`status.md`, 2026-10-24).
 
 ### D5. `src/harness/shared` names no runner
 
@@ -162,7 +162,7 @@ Each runner supplies a description in `src/runners/<runner>/describe.ts`:
 
 1. ~~Should the kit also run through a scratch daemon?~~ Answered 2026-10-25 from `research/core-defects.md` finding 3: not in 016. It ranks after one owner per rule and a model-based scheduler test (`status.md` amendment log).
 2. ~~D3's store step: a column without a version raise, or a `meta` map.~~ Answered 2026-10-25: the column (D3).
-3. The rule for git-ignored observed paths, from row 016-19's count (survey O1). O8 and the older daemon were answered on 2026-10-25 (D4). Owner: the human.
+3. ~~The rule for git-ignored observed paths (survey O1).~~ Answered 2026-10-25 by the human: the written-directory bound (D4). O8 and the older daemon were answered the same day.
 4. Should the kit replace the overlapping adapter-level tests (about a third of 1,221 lines, `research/runner-kit.md` finding 5), and share fixtures with the validity corpus? Owner: 016's coordinator, after wave 2.
 
 ## References
