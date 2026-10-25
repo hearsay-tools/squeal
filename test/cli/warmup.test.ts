@@ -1,12 +1,20 @@
 import { execFileSync } from "node:child_process";
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
-import { join } from "node:path";
+import {
+  appendFileSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readVerdict } from "../../src/cli/verdict.js";
 import { progressText } from "../../src/cli/warmup.js";
 import { readIgnoredReads } from "../../src/core/status/index.js";
-import { daemonSuite, SLOW, spawnCli, withStore } from "../daemon/helpers.js";
+import { buildCli, daemonSuite, SLOW, spawnCli, withStore } from "../daemon/helpers.js";
 
 /*
  * `squeal warmup`, spec 005 D3 step 4 (row 005-14a): the daemon started from
@@ -15,8 +23,16 @@ import { daemonSuite, SLOW, spawnCli, withStore } from "../daemon/helpers.js";
  * and every test file current, 3 without a verdict.
  */
 
-// With the observe recorder the real build ships, so a warm-up records ignored reads (005-29).
-const suite = daemonSuite({ observe: true });
+// With the observe recorder the real build ships, so a warm-up records ignored reads (005-29),
+// and the node:test runtime files `tsc` does not emit, where the compiled `runtime.js` looks.
+const suite = daemonSuite({ observe: true }, (options) => {
+  const built = buildCli(options);
+  const runtime = join(dirname(dirname(built.cli)), "runners/node-test/runtime");
+  cpSync(join(import.meta.dirname, "../../src/runners/node-test/runtime"), runtime, {
+    recursive: true,
+  });
+  return built;
+});
 
 /** Long enough for a progress line or two at one poll a second. */
 const HELD = `import { expect, it } from "vitest";
@@ -96,29 +112,40 @@ describe("squeal warmup on a real daemon", SLOW, () => {
   });
 });
 
-/** Reads `build/out.txt`, which `.gitignore` leaves out: no key holds it. */
-const READS_BUILD = `import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { expect, it } from "vitest";
+/**
+ * Reads `build/out.txt`, which `.gitignore` leaves out. node:test keys what
+ * a run loads, never what it reads, so no key holds it (spec 016 D4 keeps a
+ * git-ignored path a Vitest file reads).
+ */
+const READS_BUILD = `import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
 
-it("reads the gitignored build output", () => {
-  expect(readFileSync(join(import.meta.dirname, "../build/out.txt"), "utf8")).toBe("built\\n");
+test("reads the gitignored build output", () => {
+  assert.equal(readFileSync(new URL("../build/out.txt", import.meta.url), "utf8"), "built\\n");
 });
 `;
+const SLOW_READER = "nt/build.test.mjs";
+const FAST_READER = "nt/fast-build.test.mjs";
 
 /**
- * Row 005-29 (spec 005 D3, 001-307): a slow file and a fast one read the
- * gitignored `build/out.txt`. A load bound no host meets holds each slow run
- * 8 s, so a slow file made stale runs under the warm-up's checkpoint, not in
- * a slow pass of the daemon's own before the warm-up asks.
+ * Row 005-29 (spec 005 D3, 001-307): a slow node:test file and a fast one
+ * read the gitignored `build/out.txt`. A load bound no host meets holds each
+ * slow run 8 s, so a slow file made stale runs under the warm-up's
+ * checkpoint, not in a slow pass of the daemon's own before the warm-up
+ * asks. `node` is named: setup's daemon has only `git` on its PATH.
  */
 function readsIgnored() {
+  const config = {
+    nodeTest: [{ name: "nt", node: process.execPath, include: ["nt/*.test.mjs"] }],
+    slow: { include: [SLOW_READER], maxLoadPerCpu: 1e-9, maxDeferMs: 8000 },
+  };
   return suite.fixture({
     ".gitignore": "src/gen/\nnode_modules/\n.squeal-logs/\nbuild/\n",
     "build/out.txt": "built\n",
-    "test/build.test.ts": READS_BUILD,
-    "test/fast-build.test.ts": READS_BUILD,
-    "squeal.config.json": `${JSON.stringify({ slow: { include: ["test/build.test.ts"], maxLoadPerCpu: 1e-9, maxDeferMs: 8000 } })}\n`,
+    [SLOW_READER]: READS_BUILD,
+    [FAST_READER]: READS_BUILD,
+    "squeal.config.json": `${JSON.stringify(config)}\n`,
   });
 }
 
@@ -145,7 +172,7 @@ describe("the warm-up's ignored reads on a real daemon", SLOW, () => {
     expect((await plain.exited).code, `${plain.stdout()}${plain.stderr()}`).toBe(0);
     expect(withStore(repo, (store) => readIgnoredReads(store, repo.worktreeId))).toBeNull();
     // The warm-up's own checkpoint runs the slow file: no checkpoint is open to join.
-    appendFileSync(join(repo.root, "test/build.test.ts"), "// edited\n");
+    appendFileSync(join(repo.root, SLOW_READER), "// edited\n");
     await untilNotCurrent(repo);
     const run = warmup(repo);
     const exited = await run.exited;
@@ -155,15 +182,15 @@ describe("the warm-up's ignored reads on a real daemon", SLOW, () => {
     const stored = withStore(repo, (store) => readIgnoredReads(store, repo.worktreeId));
     expect(out).toContain(`Checkpoint ${stored?.checkpoint} completed at revision `);
     const entry = Object.entries(stored?.files ?? {}).find(([id]) =>
-      id.endsWith("\0test/build.test.ts"),
+      id.endsWith(`\0${SLOW_READER}`),
     );
     expect(entry?.[1]).toEqual({ paths: ["build/out.txt"], more: 0 });
     expect(out).toContain(
-      "Suggestions; squeal warmup applies none:\n  test/build.test.ts read 1 gitignored path, unkeyed: a change to it re-runs nothing, and no input declaration keys a gitignored path; a test of build output Squeal does not produce belongs in its runner's exclude (vitest.exclude, or its project's exclude), for you or CI to run\n    build/out.txt\n",
+      `Suggestions; squeal warmup applies none:\n  ${SLOW_READER} read 1 gitignored path, unkeyed: a change to it re-runs nothing, and no input declaration keys a gitignored path; a test of build output Squeal does not produce belongs in its runner's exclude (vitest.exclude, or its project's exclude), for you or CI to run\n    build/out.txt\n`,
     );
     expect(out).not.toContain("no ignored read recorded");
     // A fast file's reads are no slow suggestion.
-    expect(out).not.toContain("test/fast-build.test.ts");
+    expect(out).not.toContain(FAST_READER);
     expect(readFileSync(join(repo.root, "squeal.config.json"), "utf8")).toBe(config);
   });
 });
@@ -234,7 +261,7 @@ describe("squeal setup --yes on a real daemon", SLOW, () => {
     expect(out).toContain("squeal warmup: every test file is current with no known failure.");
     // Setup declares no input (task 004-81): the warm-up observes the slow file (001-312: it
     // never joins), and its gitignored read is unkeyed, pointed at the runner's exclude.
-    expect(out).toContain("test/build.test.ts read 1 gitignored path, unkeyed");
+    expect(out).toContain(`${SLOW_READER} read 1 gitignored path, unkeyed`);
     expect(out).toContain("belongs in its runner's exclude (vitest.exclude");
     expect(out).not.toContain("no ignored read recorded");
     // No harness on the PATH and no input to declare: setup writes nothing.
