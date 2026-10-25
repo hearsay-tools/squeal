@@ -1,0 +1,149 @@
+$ /tmp/review-190bb948-r2-node22.log
+(node:4175922) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4176074) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/190bb948-a795-4551-bebf-81901c0e4f93
+
+(node:4176277) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4176277) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+ ❯ test/daemon/step-down.test.ts (3 tests | 1 failed) 14152ms
+   ❯ a daemon older than its hooks steps down (defect 26) (3)
+     × a released 0.1.31 daemon, from before the request, is sent stop and exits after its tier; a spawn meanwhile loses the lock 7965ms
+(node:4183802) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4183802) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+ ❯ test/store/check-runner.test.ts (6 tests | 1 failed) 252ms
+   ❯ store: a result's runner (spec 016 D3) (6)
+     × an older daemon holding the store goes on beside the step, and leaves its own results empty 45ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/daemon/step-down.test.ts > a daemon older than its hooks steps down (defect 26) > a released 0.1.31 daemon, from before the request, is sent stop and exits after its tier; a spawn meanwhile loses the lock
+AssertionError: expected undefined to match object { Object (outcome, validity) }
+
+- Expected:
+{
+  "outcome": "pass",
+  "validity": "current",
+}
+
++ Received:
+undefined
+
+ ❯ stepsDownAfterItsTier test/daemon/step-down.test.ts:177:17
+    175|     store.knownStates.list(repo.worktreeId).find((s) => JSON.stringify…
+    176|   );
+    177|   expect(waits).toMatchObject({ outcome: "pass", validity: "current" }…
+       |                 ^
+    178|   expect(
+    179|     readNotes(repo)
+ ❯ test/daemon/step-down.test.ts:200:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/store/check-runner.test.ts > store: a result's runner (spec 016 D3) > an older daemon holding the store goes on beside the step, and leaves its own results empty
+AssertionError: expected [ [ 'k0', undefined ], …(3) ] to deeply equal [ [ 'k0', null ], …(3) ]
+
+- Expected
++ Received
+
+  [
+    [
+      "k0",
+-     null,
++     undefined,
+    ],
+    [
+      "k1",
+-     "vitest",
++     undefined,
+    ],
+    [
+      "k2",
+-     null,
++     undefined,
+    ],
+    [
+      "k3",
+-     null,
++     undefined,
+    ],
+  ]
+
+ ❯ test/store/check-runner.test.ts:94:63
+     92|     olderResult(older, B, "k3");
+     93|
+     94|     expect(listing.all().map((row) => [row.key, row.runner])).toEqual([
+       |                                                               ^
+     95|       ["k0", null],
+     96|       ["k1", "vitest"],
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 7 passed (9)
+   Start at  04:41:38
+   Duration  17.02s (tests 87%, transform 11%, import 2%)
+
+
+
+$ /tmp/review-190bb948-r2-warm-node22.log
+(node:4188084) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4188138) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+/tmp/review-190bb948-r2-probes/old/src/core/store/codec.ts:19
+  if (typeof value !== "string") throw new TypeError(`squeal store: ${column} is not text`);
+                                       ^
+
+TypeError: squeal store: errors is not text
+    at str (/tmp/review-190bb948-r2-probes/old/src/core/store/codec.ts:19:40)
+    at json (/tmp/review-190bb948-r2-probes/old/src/core/store/codec.ts:42:21)
+    at toResult (/tmp/review-190bb948-r2-probes/old/src/core/store/codec.ts:107:40)
+    at Array.map (<anonymous>)
+    at Object.byKey (/tmp/review-190bb948-r2-probes/old/src/core/store/repos/results.ts:75:10)
+    at <anonymous> (/tmp/review-190bb948-r2-probes/candidate/store-warm-probe.ts:43:26)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.23.3
+
+
+$ /tmp/review-190bb948-r2-warm-node24.log
+old prepared reads and result writes work after ALTER; old writes NULL; user_version=1
+first busy open failed without adding column; later opens succeed under held writer lock
+old prune removed 3 checks and 3 results; old restart and integrity check pass
+
+
+$ /tmp/review-190bb948-r2-columns22.log
+(node:21082) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"node":"v22.23.3","before":{"id":1,"outcome":"fail","summary":"failed","errors":"[]"},"after":{"id":1,"outcome":"fail","runner":null,"summary":"failed"}}
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: an older prepared SELECT must still read its errors column
+
+undefined !== '[]'
+
+    at file:///tmp/review-190bb948-r2-columns.mjs:18:10
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: '[]',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.3
