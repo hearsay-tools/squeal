@@ -16,7 +16,7 @@ export {
 } from "./loaders.js";
 export { clearCoverage, removedFailures } from "./removed.js";
 export { crapScore, FULL_COVERAGE } from "./score.js";
-export { COVERAGE_MEASURES } from "./seed.js";
+export { COVERAGE_MEASURES, SEED_FILES } from "./seed.js";
 export {
   type CoverageStepInput,
   type CoverageStepReport,
