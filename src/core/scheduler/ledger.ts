@@ -684,7 +684,11 @@ export class Ledger {
       }
       if (retired.length > 0) sink.retire(worktreeId, retired);
       for (const { check } of setups)
-        store.checks.recordRunner(check, this.context.keys.runnerOf(check.project));
+        store.checks.recordSetupRunner(
+          worktreeId,
+          check,
+          this.context.keys.runnerOf(check.project),
+        );
       for (const outcome of setups) sink.setupOutcome(worktreeId, revision, outcome);
       // Only rows that changed: no other file's key, phase or validity moved.
       // Each file is attributed to the checkpoint that requested it (review S9).
