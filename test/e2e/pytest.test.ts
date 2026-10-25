@@ -59,14 +59,6 @@ const CHECKS = 4 + 8 + 3 + PYTEST_FILES.length + VITEST_FILES.length;
 /** Spec 007 goal 5: `small`'s edge-case file has a computed `import_module` (`test/fixtures/pytest/README.md`). */
 const COMPUTED_NOTE =
   'pytest project "python/small": 1 test file(s) with an incomplete static closure, keyed by what their runs import: python/small/tests/unit/test_core.py (python/small/src/app/core.py:35: computed import)';
-/**
- * The files whose first run imports what their static closure misses:
- * `test_core.py` the computed import, `test_resources.py` the package
- * `importlib.resources` opens. Their checks: six and one, plus a file-level
- * check each.
- */
-const OBSERVED_GROWTH = [RESOURCES_TEST, "python/small/tests/unit/test_core.py"];
-const OBSERVED_GROWTH_CHECKS = 6 + 1 + 2;
 /** D2's note for a project without an environment: the command that creates one and what it buys (007-44). */
 const noEnvironment = (project: string) =>
   `pytest project "${project}": no Python environment (looked at ${project}/.venv, ${project}/.pdm-python), so Squeal runs none of its tests and inherits none of their results. Run \`uv sync\` in ${project} to create one: Squeal then inherits the results other worktrees recorded for the same code and environment, and runs the rest.`;
@@ -271,9 +263,11 @@ describe.each(PLUGINS)("pytest end to end, $name", (plugin: Plugin) => {
       await withEvidence(e, roots, async () => {
         const main = await baseline(e);
 
-        // Goal 2: a second worktree with its own `uv sync` inherits every result but the
-        // files whose first run observed imports the static graph cannot see: their result
-        // in main is keyed without them, so each runs once here (status, wave 2, 007-14).
+        // Goal 2: a second worktree with its own `uv sync` inherits every result, the files
+        // whose first run observed imports the static graph cannot see included
+        // (`test_core.py`'s computed import, the package `test_resources.py` opens). Since
+        // 016 D4 the core stores each result under the key that holds what its run observed,
+        // so none runs here; until 016-17 each ran once (status, wave 2, 007-14).
         const wt2 = e.addWorktree();
         roots.push(wt2);
         e.syncPython(wt2);
@@ -290,9 +284,18 @@ describe.each(PLUGINS)("pytest end to end, $name", (plugin: Plugin) => {
             .runs(wt2)
             .flatMap((r) => r.testFiles)
             .sort(),
-        ).toEqual(OBSERVED_GROWTH);
-        expect(second.inherited.count).toBe(main.counts.current - OBSERVED_GROWTH_CHECKS);
+        ).toEqual([]);
+        expect(second.inherited.count).toBe(main.counts.current);
         expect(second.knownFailures).toEqual([]);
+
+        // The observed import keys its file here too (016 goal 5): an edit of it runs that file.
+        let observed = e.runs(wt2).length;
+        await e.edit(wt2, "resources", RESOURCES(2), failingIn(RESOURCES_TEST));
+        expect(ranSince(e, wt2, observed)).toEqual(new Set([RESOURCES_TEST]));
+        observed = e.runs(wt2).length;
+        await e.edit(wt2, "resources", RESOURCES(), quiet);
+        expect(ranSince(e, wt2, observed)).toEqual(new Set([RESOURCES_TEST]));
+        await e.hook("post-tool-batch", wt2, { session_id: OTHER_SESSION });
 
         // It validates its own edits from there, on its own environment.
         const from = e.runs(wt2).length;
