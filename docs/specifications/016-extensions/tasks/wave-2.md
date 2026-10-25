@@ -61,3 +61,22 @@ Check, with proof where you can:
 5. No sleep and no load dependence in the new steps.
 
 Run the four kit files on Node 22 and Node 24. No locked full suite: the range is test-only and CI runs the suite. Label findings proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## Review of candidate `cand/0.1.313` (016-17)
+
+Use /reviewer. Candidate `cand/0.1.313`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>`: thirteen commits of 016-17 (worker aa7eeb16), the coordinator's 011 C4 step 4 sentence and status lines, the version raise and the bundle commit. Write `docs/specifications/016-extensions/reviews/0.1.313.md` and commit it alone on your branch.
+
+Read: `spec.md` goals 5 and 6, D4 with its decisions of 2026-10-25; the 016-17 brief above; `tasks/016-17/notes.md` (questions, residuals, assertion changes); 011 spec C3, C4 step 4 and C7; `reviews/016-21.md` S1.
+
+Check, with proof where you can:
+1. node:test and pytest observations reach the store only through the core (`src/core/scheduler/observed.ts`, `keying.ts`): no `ObservedStore`, no adapter-owned meta key, no adapter `store` option.
+2. D4's written-directory bound on every runner: `mkdtemp` is a create; node:test and pytest record directory creates and removes; each runner has a kept case and a dropped case.
+3. `direct` marks: a child process's imports put the test file in `direct` after a restart and in a second worktree, closure paths included (Q5); node:test splits its record by process. The edit cut counts marks among the K shortest, never as a bare source's fallback; more than K marked files give K edits and catch-up.
+4. The record transaction: a throw after `seeStartup` leaves no store row, and the next record writes it. Read the two residuals in `notes.md` and say whether each holds as stated. Complexity under 20 in `record-tier.ts`.
+5. The three raises (node:test 10, pytest 4, recorder 4) each show a differing case in `test/keys/validity`; `test/keys/key-format.test.ts` passes.
+6. Each changed assertion in `notes.md` keeps the claim it had, or follows a D4 decision it names. An unlisted weakened assertion is a finding.
+7. The warm-up: a fresh-repo slow Vitest reader of build output gets no "unkeyed" line; a node:test reader still does.
+8. K10 runs on the core's union: removing `writeMarks` fails K10 on node:test slow and pytest.
+9. 011's model-based scheduler test passes. No column is added to an existing table (011 C7).
+
+Run lint, typecheck, the kit files on Node 22 and Node 24, and the locked full suite: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`. Label findings proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
