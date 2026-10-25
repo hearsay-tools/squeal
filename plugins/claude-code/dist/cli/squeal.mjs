@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.319";
+  if (true) return "0.1.320";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -882,6 +882,9 @@ function merged(raw, testFile, added) {
   map[testFile.path] = [.../* @__PURE__ */ new Set([...map[testFile.path] ?? [], ...added])].sort(compare);
   return JSON.stringify(Object.fromEntries(Object.entries(map).sort(([a], [b]) => compare(a, b))));
 }
+function namesHash(names4) {
+  return createHash3("sha1").update(names4.sort(compare).join("\0")).digest("hex");
+}
 function id(testFile) {
   return `${testFile.project}\0${testFile.path}`;
 }
@@ -900,7 +903,7 @@ function parse(raw) {
     )
   );
 }
-var GIT_ENTRY, ObservedSets, Listings;
+var GIT_ENTRY, ObservedSets, ABSENT_LISTING, EMPTY_LISTING, Listings;
 var init_observed = __esm({
   "src/core/keys/observed.ts"() {
     "use strict";
@@ -996,6 +999,8 @@ var init_observed = __esm({
         return set === void 0 ? [] : [...set].sort(compare);
       }
     };
+    ABSENT_LISTING = createHash3("sha1").update("\0absent").digest("hex");
+    EMPTY_LISTING = createHash3("sha1").update("\0empty").digest("hex");
     Listings = class {
       constructor(files2, root) {
         this.files = files2;
@@ -1005,21 +1010,41 @@ var init_observed = __esm({
       root;
       /** directory -> entry name -> tracked files below it. */
       #entries = null;
-      /** The hash of `directory`'s sorted entry names; `null` when it has none. */
+      /** Each directory hashed from disk -> the hash of the names last seen there (row 016-24). */
+      #seen = /* @__PURE__ */ new Map();
+      /** The hash of `directory`'s sorted entry names; `null` when it has none and there is no root. */
       hashOf(directory) {
         const names4 = this.#index().get(directory);
-        const sorted2 = names4 !== void 0 && names4.size > 0 ? [...names4.keys()] : this.#onDisk(directory);
-        if (sorted2.length === 0) return null;
-        return createHash3("sha1").update(sorted2.sort(compare).join("\0")).digest("hex");
-      }
-      /** The names `directory` holds on disk; none without a root, or when it cannot be read. */
-      #onDisk(directory) {
-        if (this.root === void 0) return [];
-        try {
-          return readdirSync2(join4(this.root, directory));
-        } catch {
-          return [];
+        if (names4 !== void 0 && names4.size > 0) {
+          this.#seen.delete(directory);
+          return namesHash([...names4.keys()]);
         }
+        const hash2 = this.#onDisk(directory);
+        if (this.root !== void 0) this.#seen.set(directory, hash2);
+        return hash2;
+      }
+      /**
+       * A run of the only test file that lists `directories` ended (row 016-24):
+       * the names each one hashed from disk holds now are that run's own, a test
+       * that writes into the directory it lists say. `apply` then moves its
+       * listing only when its names differ from these; the keys keep the names
+       * the run began with.
+       */
+      ran(directories) {
+        for (const directory of directories) {
+          if (this.#seen.has(directory)) this.#seen.set(directory, this.#onDisk(directory));
+        }
+      }
+      /** The hash of the names `directory` holds on disk, a marker when it holds none; `null` without a root. */
+      #onDisk(directory) {
+        if (this.root === void 0) return null;
+        let names4;
+        try {
+          names4 = readdirSync2(join4(this.root, directory));
+        } catch {
+          return ABSENT_LISTING;
+        }
+        return names4.length === 0 ? EMPTY_LISTING : namesHash(names4);
       }
       /**
        * The listing paths of `directory` and of every directory below it that
@@ -1037,7 +1062,12 @@ var init_observed = __esm({
         }
         return out2.sort(compare);
       }
-      /** Applies the adds and deletes among `changes`; returns the listing paths they may move. */
+      /**
+       * Applies the adds and deletes among `changes`, and reads each directory
+       * hashed from disk again (row 016-24); returns the listing paths they may
+       * move: those the changes reach, and those whose names differ from the
+       * names last seen.
+       */
       apply(changes) {
         const moved2 = /* @__PURE__ */ new Set();
         for (const change2 of changes) {
@@ -1046,6 +1076,12 @@ var init_observed = __esm({
           if (!added && !deleted) continue;
           for (const listing of ancestorListings(change2.path)) moved2.add(listing);
           if (this.#entries !== null) this.#count(this.#entries, change2.path, added ? 1 : -1);
+        }
+        for (const [directory, seen] of this.#seen) {
+          const hash2 = this.#onDisk(directory);
+          if (hash2 === seen) continue;
+          this.#seen.set(directory, hash2);
+          moved2.add(listingPath(directory));
         }
         return [...moved2];
       }
@@ -15356,6 +15392,7 @@ async function observedGrowth(context, report3, run5) {
   const candidates = /* @__PURE__ */ new Set();
   const seen = [];
   for (const observed of reported) {
+    keys.listedByRun(observed.testFile, observed.directories);
     const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
     const listed5 = new Set(observed.directories.map(listingPath));
     for (const root of observed.recursive ?? []) {
@@ -23322,12 +23359,29 @@ var init_keying = __esm({
       }
       /**
        * Re-keys the test files that listed a directory an add or delete among
-       * `changes` changed the entries of (D3 as amended, task 001-132). Ignored
-       * files are no entries: what the watcher does not see cannot key.
+       * `changes` changed the entries of (D3 as amended, task 001-132), or one
+       * the watcher sees no file in whose names on disk changed (row 016-24).
+       * Ignored files are no entries: what the watcher does not see keys by the
+       * names `Listings` reads at each revision.
        */
       rekeyListings(changes) {
         const moved2 = this.#listings.apply(changes.filter((c) => !this.#extra.has(c.path)));
         return moved2.length === 0 ? [] : this.index.rekey(moved2);
+      }
+      /**
+       * A run of `testFile` listed `directories` (`ObservedInputs.directories`)
+       * and ended: the names one the watcher sees no file in holds now are the
+       * run's own (`Listings.ran`, row 016-24), when `testFile` alone lists it
+       * here. Another reader of it still re-keys at the next revision.
+       */
+      listedByRun(testFile, directories) {
+        const id2 = testFileId(testFile);
+        this.#listings.ran(
+          directories.filter((directory) => {
+            const readers = this.index.reverse.referencing([listingPath(directory)]);
+            return readers.length > 0 && readers.every((ref2) => testFileId(ref2) === id2);
+          })
+        );
       }
       /** The existing files policy `inputs` selects for the test file at `path` (spec 004 D6). */
       declaredFor(path) {
