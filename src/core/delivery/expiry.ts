@@ -13,6 +13,7 @@ import {
 } from "../types/index.js";
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/index.js";
 import { recordVersion } from "./consumer-version.js";
+import { forgetCounts } from "./counts-owed.js";
 import { editsSaid, forgetEdits } from "./edits.js";
 import {
   harnessGone,
@@ -207,6 +208,7 @@ function forget(store: Store, consumer: Consumer): void {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
   tellSlowTier(store, consumer, undefined);
+  forgetCounts(store, consumer);
   tellHolds(store, consumer, null);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
