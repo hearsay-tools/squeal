@@ -183,8 +183,13 @@ export async function baseline(
   // The handover reads the moves as the last daemon left them, before this ledger's first commit.
   const open = openMoves(store, worktreeId);
   // Row 011-227: the listed counts show before the recheck; the recheck commits again.
+  const handedMisses = first.filter(
+    (file) => (previousKeys.get(file.id)?.pending ?? null) !== null,
+  );
   const early =
-    lookupOnly && recheck.length > 0 && commitFirst(ledger, listedAt(ledger.revision.number));
+    lookupOnly &&
+    recheck.length > 0 &&
+    commitFirst(ledger, listedAt(ledger.revision.number), handedMisses);
   await resolveClosures(
     context,
     recheck.map((file) => file.ref),
@@ -271,15 +276,34 @@ export async function baseline(
 /**
  * Row 011-227: commits the first lookup before the recheck; whether it did.
  * A busy store gives up before writing anything and the ledger owes it all
- * again (row 011-126), so the baseline's last commit writes it.
+ * again (row 011-126), so the baseline's last commit writes it. The misses
+ * the last daemon left queued or running, `handed`, are written `queued`
+ * (review 0.1.329 B2): a start that dies in the recheck leaves them owed to
+ * the next one's handover, as its own rows were. Nothing queues them here,
+ * so a recheck hit never runs at its first key; each row is written again
+ * at the last commit, with the phase the handover gives it.
  */
-function commitFirst(ledger: Ledger, options: Parameters<Ledger["commit"]>[0]): boolean {
+function commitFirst(
+  ledger: Ledger,
+  options: Parameters<Ledger["commit"]>[0],
+  handed: readonly FileState[],
+): boolean {
+  const phases = handed.map((file) => file.phase);
+  for (const file of handed) {
+    file.phase = "queued";
+    ledger.touch(file);
+  }
   try {
     ledger.commit(options);
     return true;
   } catch (error) {
     if (isBusy(error)) return false;
     throw error;
+  } finally {
+    for (const [i, file] of handed.entries()) {
+      file.phase = phases[i] ?? null;
+      ledger.touch(file);
+    }
   }
 }
 
