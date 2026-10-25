@@ -78,7 +78,9 @@ export function expectAgrees(text: string | null, status: StatusSnapshot): void 
       ? undefined
       : { head: commit.head.slice(0, 8), sinceHead: commit.sinceHead, dirty: commit.dirty },
   );
-  if (full !== null) {
+  // Row 011-205: owed news carries the full counts but, as news, no checkpoint sentence, which
+  // every full header has (review 0.1.318 N1).
+  if (full !== null && text.includes("Full-suite checkpoint: ")) {
     expect(
       text.includes(`Full-suite checkpoint: completed at revision ${status.revision}.`),
       text,
