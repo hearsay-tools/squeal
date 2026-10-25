@@ -219,6 +219,14 @@ describe("listings", () => {
       expect(one?.hashOf("ignored/list/sub")).toBeNull();
       expect(one?.hashOf("missing")).toBeNull();
       expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"]).hashOf("src"));
+
+      // Residuals of 016-23 (tasks/016-23/notes.md). A tracked directory's
+      // ignored names on disk are no entries (R3).
+      mkdirSync(join(roots[0] as string, "src"));
+      writeFileSync(join(roots[0] as string, "src/y.log"), "1\n");
+      expect(one?.hashOf("src")).toBe(new Listings(() => ["src/x.ts"]).hashOf("src"));
+      // A recursive listing of an ignored directory keys its own names only (R2).
+      expect(one?.below("ignored")).toEqual(["ignored/"]);
     } finally {
       for (const root of roots) rmSync(root, { recursive: true, force: true });
     }
