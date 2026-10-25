@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.316";
+  if (true) return "0.1.317";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -388,6 +388,7 @@ var init_store = __esm({
       leaving: { prefix: "leaving:", owner: "delivery/leaving" },
       notes: { prefix: "notes.", owner: "types/scheduler" },
       refined: { prefix: "refined.", owner: "types/scheduler" },
+      listing: { prefix: "listing.", owner: "types/scheduler" },
       awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
       installCommand: { prefix: "install-command.", owner: "types/scheduler" },
       checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
@@ -532,6 +533,20 @@ function notesMetaKey(worktreeId) {
 }
 function refinedMetaKey(worktreeId) {
   return worktreeMetaKey("refined", worktreeId);
+}
+function listingMetaKey(worktreeId) {
+  return worktreeMetaKey("listing", worktreeId);
+}
+function parseListing(raw) {
+  if (raw === null) return null;
+  try {
+    const value = JSON.parse(raw);
+    if (typeof value !== "object" || value === null) return null;
+    const { revision, count: count2 } = value;
+    return Number.isInteger(revision) && Number.isInteger(count2) ? { revision, count: count2 } : null;
+  } catch {
+    return null;
+  }
 }
 function awaitingInstallMetaKey(worktreeId) {
   return worktreeMetaKey("awaitingInstall", worktreeId);
@@ -18107,7 +18122,9 @@ var init_ledger = __esm({
        * transaction. `refined` is the revision whose runner part this commit
        * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
        * spec 001 D2 as amended), so headers stop counting that runner part as
-       * pending in the same transaction that applies it.
+       * pending in the same transaction that applies it. `listed`, the revision
+       * through which a listing that did not fail holds every test file, is
+       * recorded there too (`listingMetaKey`, row 015-52).
        */
       commit(options = {}) {
         const drained = this.#drain();
@@ -18139,7 +18156,7 @@ var init_ledger = __esm({
           revision,
           at: this.context.now()
         }));
-        const quiet = this.#adopted && options.refined === void 0 && [rows, removed, rekeyed, applied, unknown, unknownFiles, retired, setups].every(
+        const quiet = this.#adopted && options.refined === void 0 && options.listed === void 0 && [rows, removed, rekeyed, applied, unknown, unknownFiles, retired, setups].every(
           (list2) => list2.length === 0
         );
         const writer = { writer: this.context.incarnation ?? null };
@@ -18178,6 +18195,11 @@ var init_ledger = __esm({
           }
           if (options.refined !== void 0) {
             store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
+          }
+          if (options.listed !== void 0) {
+            const count2 = parseListing(store.meta.get(listingMetaKey(worktreeId)))?.count ?? 0;
+            const fact = { revision: options.listed, count: count2 + 1 };
+            store.meta.set(listingMetaKey(worktreeId), JSON.stringify(fact));
           }
         });
         this.#adopted = true;
@@ -22017,7 +22039,8 @@ async function baseline(context, ledger, unseen = [], resumesRest2 = false) {
   for (const file of unkeyed) ledger.checkpoints.failed(file.ref);
   resumeOwed(ledger, owed);
   if (failures.size > 0) block(ledger, failures);
-  ledger.commit({ refined: ledger.revision.number });
+  const { number } = ledger.revision;
+  ledger.commit({ refined: number, ...ledger.listingFailed ? {} : { listed: number } });
   const persisted = persistedNoteTexts(store, worktreeId);
   const testFiles2 = testFilePaths(ledger);
   for (const text3 of unmatchedInputNotes(keys.unmatchedInputs(testFiles2), testFiles2.length)) {
@@ -24167,10 +24190,16 @@ var init_runner_work = __esm({
               refined ?? void 0
             );
             for (const ref2 of stale) this.#carried.set(testFileId(ref2), ref2);
-            ledger.commit(refined === null ? {} : { refined });
+            const listed5 = ledger.listingFailed ? null : refined ?? revision.number;
+            ledger.commit({
+              ...refined === null ? {} : { refined },
+              ...listed5 === null ? {} : { listed: listed5 }
+            });
             this.host.applied();
+            if (listed5 !== null) this.host.listed();
           });
         } catch (error) {
+          ledger.listingFailed = true;
           if (refined === null) {
             this.host.backgroundError("could not apply observed paths", error);
           } else {
@@ -24986,7 +25015,8 @@ var init_scheduler2 = __esm({
         closed: () => this.#closed,
         pump: () => this.#pump(),
         backgroundError: (subject, error) => this.#backgroundError(subject, error),
-        applied: () => this.#cutTiers(null)
+        applied: () => this.#cutTiers(null),
+        listed: () => this.#listed()
       });
       #slow;
       #context = null;
@@ -25235,6 +25265,15 @@ var init_scheduler2 = __esm({
         const unseen = this.#waitChanges;
         this.#waitChanges = [];
         await baseline(context, ledger, unseen, this.options.resumesRest === true);
+        if (!ledger.listingFailed) this.#listed();
+      }
+      /** `SchedulerOptions.onListed`, after the commit; its throw is only `onError`'s (row 015-52). */
+      #listed() {
+        try {
+          this.options.onListed?.();
+        } catch (error) {
+          this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
+        }
       }
       /**
        * The install went while the scheduler runs (`npm ci` removes
@@ -58696,6 +58735,25 @@ var init_slow_instance = __esm({
   }
 });
 
+// src/core/types/code.ts
+var CODE_EXTENSIONS;
+var init_code = __esm({
+  "src/core/types/code.ts"() {
+    "use strict";
+    CODE_EXTENSIONS = {
+      ".ts": "typescript",
+      ".tsx": "typescript",
+      ".mts": "typescript",
+      ".cts": "typescript",
+      ".js": "javascript",
+      ".jsx": "javascript",
+      ".mjs": "javascript",
+      ".cjs": "javascript",
+      ".py": "python"
+    };
+  }
+});
+
 // src/core/code/pass/blobs.ts
 import { constants as constants5 } from "node:fs";
 import { open as open5 } from "node:fs/promises";
@@ -58796,113 +58854,6 @@ var init_blobs = __esm({
     SLICE_FILES = 200;
     decoder = new TextDecoder();
     OPEN_FLAGS3 = constants5.O_RDONLY | constants5.O_NOFOLLOW | constants5.O_NONBLOCK;
-  }
-});
-
-// src/core/code/pass/head.ts
-import { existsSync as existsSync37, readFileSync as readFileSync39 } from "node:fs";
-import { join as join99 } from "node:path";
-async function committedPaths(ctx, since, upTo, files2) {
-  const asked = files2.filter((f) => !f.path.includes("\n"));
-  if (asked.length === 0) return /* @__PURE__ */ new Set();
-  const head = ctx.source.movedHead(since, upTo);
-  const revs = [.../* @__PURE__ */ new Set([...head === null ? [] : [head], ...operationRevisions(ctx.root)])];
-  if (revs.length === 0) return /* @__PURE__ */ new Set();
-  let out2;
-  try {
-    out2 = await runGit(ctx.root, ["cat-file", "--batch-check=%(objectname) %(objecttype)"], {
-      // `./`: relative to the root, which may sit below the repository's top.
-      input: revs.flatMap((rev) => asked.map((f) => `${rev}:./${f.path}
-`)).join(""),
-      timeoutMs: GIT_TIMEOUT_MS
-    });
-  } catch (error) {
-    ctx.log(`complexity: could not read the files at ${revs.join(", ")}: ${String(error)}`);
-    return /* @__PURE__ */ new Set();
-  }
-  const lines = out2.split("\n");
-  return new Set(
-    asked.filter(
-      (f, i3) => revs.some((rev, r) => {
-        const line = lines[r * asked.length + i3];
-        return f.blob === null ? line === `${rev}:./${f.path} missing` : blobOf2(line) === f.blob;
-      })
-    ).map((f) => f.path)
-  );
-}
-function operationRevisions(root) {
-  const top = findWorktreeRoot(root);
-  const gitDir = top === null ? null : gitDirOf(top);
-  if (gitDir === null) return [];
-  const revs = OPERATIONS.flatMap(([file, rev]) => shasIn(join99(gitDir, file)).map(rev));
-  if (REBASE_DIRS.some((dir2) => existsSync37(join99(gitDir, dir2)))) revs.push("HEAD");
-  return revs;
-}
-function shasIn(path) {
-  try {
-    return readFileSync39(path, "utf8").split("\n").filter((line) => SHA2.test(line));
-  } catch {
-    return [];
-  }
-}
-function blobOf2(line) {
-  const [id2, type, rest] = (line ?? "").split(" ");
-  return type === "blob" && rest === void 0 && id2 !== void 0 && /^[0-9a-f]+$/.test(id2) ? id2 : null;
-}
-var GIT_TIMEOUT_MS, OPERATIONS, REBASE_DIRS, SHA2;
-var init_head2 = __esm({
-  "src/core/code/pass/head.ts"() {
-    "use strict";
-    init_fs();
-    GIT_TIMEOUT_MS = 1e4;
-    OPERATIONS = [
-      ["MERGE_HEAD", (sha) => sha],
-      ["CHERRY_PICK_HEAD", (sha) => sha],
-      ["REVERT_HEAD", (sha) => `${sha}^`],
-      ["REBASE_HEAD", (sha) => sha]
-    ];
-    REBASE_DIRS = ["rebase-merge", "rebase-apply"];
-    SHA2 = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-  }
-});
-
-// src/core/types/code.ts
-var CODE_EXTENSIONS;
-var init_code = __esm({
-  "src/core/types/code.ts"() {
-    "use strict";
-    CODE_EXTENSIONS = {
-      ".ts": "typescript",
-      ".tsx": "typescript",
-      ".mts": "typescript",
-      ".cts": "typescript",
-      ".js": "javascript",
-      ".jsx": "javascript",
-      ".mjs": "javascript",
-      ".cjs": "javascript",
-      ".py": "python"
-    };
-  }
-});
-
-// src/core/code/pass/included.ts
-import { extname as extname5 } from "node:path";
-function includedSet(complexity, testFiles2, ignored) {
-  const include = createInputMatcher(complexity.include);
-  const exclude = createInputMatcher(complexity.exclude);
-  const never2 = /* @__PURE__ */ new Set([...testFiles2, ...ignored]);
-  return (path) => {
-    const language = CODE_EXTENSIONS[extname5(path)];
-    if (language === void 0 || never2.has(path)) return null;
-    if (path.startsWith("node_modules/") || path.includes("/node_modules/")) return null;
-    return include(path) && !exclude(path) ? language : null;
-  };
-}
-var init_included = __esm({
-  "src/core/code/pass/included.ts"() {
-    "use strict";
-    init_glob();
-    init_code();
   }
 });
 
@@ -59046,24 +58997,281 @@ var init_judge2 = __esm({
   }
 });
 
+// src/core/code/pass/head.ts
+import { existsSync as existsSync37, readFileSync as readFileSync39 } from "node:fs";
+import { join as join99 } from "node:path";
+async function committedPaths(ctx, since, upTo, files2) {
+  const asked = files2.filter((f) => !f.path.includes("\n"));
+  if (asked.length === 0) return /* @__PURE__ */ new Set();
+  const head = ctx.source.movedHead(since, upTo);
+  const revs = [.../* @__PURE__ */ new Set([...head === null ? [] : [head], ...operationRevisions(ctx.root)])];
+  if (revs.length === 0) return /* @__PURE__ */ new Set();
+  let out2;
+  try {
+    out2 = await runGit(ctx.root, ["cat-file", "--batch-check=%(objectname) %(objecttype)"], {
+      // `./`: relative to the root, which may sit below the repository's top.
+      input: revs.flatMap((rev) => asked.map((f) => `${rev}:./${f.path}
+`)).join(""),
+      timeoutMs: GIT_TIMEOUT_MS
+    });
+  } catch (error) {
+    ctx.log(`complexity: could not read the files at ${revs.join(", ")}: ${String(error)}`);
+    return /* @__PURE__ */ new Set();
+  }
+  const lines = out2.split("\n");
+  return new Set(
+    asked.filter(
+      (f, i3) => revs.some((rev, r) => {
+        const line = lines[r * asked.length + i3];
+        return f.blob === null ? line === `${rev}:./${f.path} missing` : blobOf2(line) === f.blob;
+      })
+    ).map((f) => f.path)
+  );
+}
+function operationRevisions(root) {
+  const top = findWorktreeRoot(root);
+  const gitDir = top === null ? null : gitDirOf(top);
+  if (gitDir === null) return [];
+  const revs = OPERATIONS.flatMap(([file, rev]) => shasIn(join99(gitDir, file)).map(rev));
+  if (REBASE_DIRS.some((dir2) => existsSync37(join99(gitDir, dir2)))) revs.push("HEAD");
+  return revs;
+}
+function shasIn(path) {
+  try {
+    return readFileSync39(path, "utf8").split("\n").filter((line) => SHA2.test(line));
+  } catch {
+    return [];
+  }
+}
+function blobOf2(line) {
+  const [id2, type, rest] = (line ?? "").split(" ");
+  return type === "blob" && rest === void 0 && id2 !== void 0 && /^[0-9a-f]+$/.test(id2) ? id2 : null;
+}
+var GIT_TIMEOUT_MS, OPERATIONS, REBASE_DIRS, SHA2;
+var init_head2 = __esm({
+  "src/core/code/pass/head.ts"() {
+    "use strict";
+    init_fs();
+    GIT_TIMEOUT_MS = 1e4;
+    OPERATIONS = [
+      ["MERGE_HEAD", (sha) => sha],
+      ["CHERRY_PICK_HEAD", (sha) => sha],
+      ["REVERT_HEAD", (sha) => `${sha}^`],
+      ["REBASE_HEAD", (sha) => sha]
+    ];
+    REBASE_DIRS = ["rebase-merge", "rebase-apply"];
+    SHA2 = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+  }
+});
+
+// src/core/code/pass/listed.ts
+function readListing(store, worktreeId, source2, latest) {
+  const fact = source2.listing();
+  return {
+    fact: fact === null ? null : { ...fact, revision: Math.min(fact.revision, latest) },
+    tests: source2.testFiles(),
+    seen: readListed(store.meta, worktreeId)
+  };
+}
+function listingMoved({ fact, seen }) {
+  if (seen === null) return true;
+  const { listed: listed5 } = seen;
+  if (listed5 === null || fact === null) return listed5 !== fact;
+  return listed5.revision !== fact.revision || listed5.count !== fact.count;
+}
+function readListed(meta, worktreeId) {
+  const text3 = meta.get(listedKey(worktreeId));
+  if (text3 === null) return null;
+  try {
+    const value = JSON.parse(text3);
+    if (typeof value !== "object" || value === null) return null;
+    const { listed: listed5, since, deferred } = value;
+    const fact = listed5 === null ? null : parseListing(JSON.stringify(listed5));
+    if (listed5 !== null && fact === null) return null;
+    if (since !== null && typeof since !== "number") return null;
+    if (!Array.isArray(deferred) || !deferred.every((p) => typeof p === "string")) return null;
+    return { listed: fact, since, deferred };
+  } catch {
+    return null;
+  }
+}
+function writeListed(meta, worktreeId, record) {
+  const text3 = JSON.stringify(record);
+  if (meta.get(listedKey(worktreeId)) !== text3) meta.set(listedKey(worktreeId), text3);
+}
+function nextRecord({ fact, seen }, since, held2, deferred) {
+  if (held2 === 0 && deferred.length === 0) return { listed: fact, since: null, deferred: [] };
+  const anchor = Math.min(fact?.revision ?? Number.POSITIVE_INFINITY, since ?? 0);
+  return {
+    listed: fact,
+    since: Math.min(seen?.since ?? anchor, anchor),
+    deferred: [...new Set(deferred)].sort(compare)
+  };
+}
+function waitingPaths(store, worktreeId, source2, seen, upTo) {
+  if (seen === null || seen.since === null) return [];
+  const changed2 = source2.changedPaths(seen.since, upTo);
+  const rows = new Set(store.files.list(worktreeId, changed2).map((f) => f.path));
+  return [.../* @__PURE__ */ new Set([...changed2.filter((path) => !rows.has(path)), ...seen.deferred])];
+}
+function holdUnlisted(store, worktreeId, source2, entries3, { fact }, latest) {
+  if (fact !== null && fact.revision >= latest) return { entries: entries3, held: 0 };
+  const fresh = fact === null ? null : new Set(source2.changedPaths(fact.revision, latest));
+  const candidates = entries3.flatMap(
+    (e) => e.kind !== "gone" && (fresh === null || fresh.has(e.path)) ? [e.path] : []
+  );
+  if (candidates.length === 0) return { entries: entries3, held: 0 };
+  const rows = new Set(store.files.list(worktreeId, candidates).map((f) => f.path));
+  const held2 = new Set(candidates.filter((path) => !rows.has(path)));
+  return { entries: entries3.filter((e) => !held2.has(e.path)), held: held2.size };
+}
+function holdRemovals(judged, waiting2, seeds) {
+  const held2 = waiting2 ? judged.removed.filter((check) => !seeds.has(check.path)) : [];
+  if (held2.length === 0) return { judged, deferred: [] };
+  const keys = new Set(held2.map(checkKey2));
+  return {
+    judged: {
+      ...judged,
+      removed: judged.removed.filter((check) => !keys.has(checkKey2(check))),
+      transitions: judged.transitions.filter(
+        (t) => t.kind !== "removed" || !keys.has(checkKey2(t.check))
+      )
+    },
+    deferred: held2.map((check) => check.path)
+  };
+}
+async function committedWithHeld(ctx, range, files2, late) {
+  const waited = files2.filter((f) => late.has(f.path));
+  const committed = await committedPaths(
+    ctx,
+    range.since,
+    range.upTo,
+    files2.filter((f) => !late.has(f.path))
+  );
+  if (waited.length === 0) return committed;
+  for (const path of await committedPaths(ctx, range.held, range.upTo, waited)) committed.add(path);
+  return committed;
+}
+var listedKey, changesFrom;
+var init_listed = __esm({
+  "src/core/code/pass/listed.ts"() {
+    "use strict";
+    init_fs();
+    init_types();
+    init_head2();
+    init_judge2();
+    listedKey = (worktreeId) => `listed:${worktreeId}`;
+    changesFrom = ({ seen }, cursor) => seen?.since == null ? cursor : Math.min(cursor, seen.since);
+  }
+});
+
+// src/core/code/pass/included.ts
+import { extname as extname5 } from "node:path";
+function includedSet(complexity, testFiles2, ignored) {
+  const include = createInputMatcher(complexity.include);
+  const exclude = createInputMatcher(complexity.exclude);
+  const never2 = /* @__PURE__ */ new Set([...testFiles2, ...ignored]);
+  return (path) => {
+    const language = CODE_EXTENSIONS[extname5(path)];
+    if (language === void 0 || never2.has(path)) return null;
+    if (path.startsWith("node_modules/") || path.includes("/node_modules/")) return null;
+    return include(path) && !exclude(path) ? language : null;
+  };
+}
+var init_included = __esm({
+  "src/core/code/pass/included.ts"() {
+    "use strict";
+    init_glob();
+    init_code();
+  }
+});
+
+// src/core/code/pass/plan.ts
+function workEntries(ctx, since, latest, due, listing) {
+  const { store, source: source2, worktreeId } = ctx;
+  const waiting2 = new Set(waitingPaths(store, worktreeId, source2, listing.seen, latest));
+  const paths = since === null ? null : workSet(ctx, since, latest, due, listing.tests, waiting2);
+  const planned = plan(ctx, listing.tests, paths, new Set(listing.seen?.deferred));
+  const work = holdUnlisted(store, worktreeId, source2, planned, listing, latest);
+  return since === null && work.held > 0 ? null : { ...work, waiting: waiting2 };
+}
+function workSet(ctx, after2, upTo, due, tests, waiting2) {
+  const counted3 = ctx.store.files.list(ctx.worktreeId, tests);
+  return [
+    .../* @__PURE__ */ new Set([
+      ...ctx.source.changedPaths(after2, upTo),
+      ...ctx.retry,
+      ...due,
+      ...counted3.map((f) => f.path),
+      ...waiting2
+    ])
+  ];
+}
+function quietPaths(entries3, failed2, { tests }) {
+  const listed5 = new Set(tests);
+  return new Set(
+    entries3.flatMap((e) => {
+      if (e.kind === "gone") return listed5.has(e.path) ? [e.path] : [];
+      return e.kind === "count" && seedsQuietly(failed2, e.path, e.file.hash) ? [e.path] : [];
+    })
+  );
+}
+function plan(ctx, tests, paths, deferred) {
+  const { store, source: source2, worktreeId, complexity } = ctx;
+  const included = includedSet(complexity, tests, source2.ignored());
+  const all2 = paths === null ? new Map(source2.files().map((f) => [f.path, f])) : null;
+  const listed5 = all2 === null ? paths ?? [] : [
+    .../* @__PURE__ */ new Set([
+      ...all2.keys(),
+      ...store.files.list(worktreeId).map((f) => f.path),
+      ...deferred
+    ])
+  ];
+  const entries3 = [...listed5].sort(compare).map((path) => {
+    const language = included(path);
+    const file = language === null ? null : all2 === null ? source2.file(path) : all2.get(path);
+    if (language === null || file === null || file === void 0) return { kind: "gone", path };
+    return { kind: file.size > complexity.maxFileBytes ? "big" : "count", path, file, language };
+  });
+  const gone3 = entries3.filter((e) => e.kind === "gone").map((e) => e.path);
+  const stored = new Set(store.files.list(worktreeId, gone3).map((f) => f.path));
+  return entries3.filter((e) => e.kind !== "gone" || stored.has(e.path) || deferred.has(e.path));
+}
+var init_plan = __esm({
+  "src/core/code/pass/plan.ts"() {
+    "use strict";
+    init_fs();
+    init_failed();
+    init_included();
+    init_listed();
+  }
+});
+
 // src/core/code/pass/pass.ts
+import { extname as extname6 } from "node:path";
 async function runPass(ctx) {
   const { store, source: source2, worktreeId } = ctx;
   const latest = source2.latestRevision();
+  const listing = readListing(store, worktreeId, source2, latest);
   const cursor = readCursor(store.meta, worktreeId);
   const current3 = cursorOf(latest, ctx.complexity, ctx.counter.version);
   const reason2 = ctx.switchedOn ? "first" : recountReason(cursor, current3);
   const started2 = ctx.now();
   const failed2 = readUncountable(store.meta, worktreeId);
   const due = retriesDue(ctx, failed2, started2);
-  if (reason2 === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0) {
+  const idle2 = reason2 === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0;
+  if (idle2 && !listingMoved(listing)) return null;
+  const since = reason2 === null && cursor !== null ? cursor.revision : null;
+  const work = workEntries(ctx, since, latest, due, listing);
+  if (work === null) return null;
+  const { entries: entries3, held: held2, waiting: waiting2 } = work;
+  if (idle2 && entries3.length === 0) {
+    writeListed(store.meta, worktreeId, nextRecord(listing, since, held2, []));
     return null;
   }
-  const since = reason2 === null && cursor !== null ? cursor.revision : null;
-  const entries3 = plan(ctx, since === null ? null : workSet(ctx, since, latest, due));
   ctx.retry.clear();
   const bodies = reason2 === null ? oldBodies(store, worktreeId, entries3, ctx.counter.version) : /* @__PURE__ */ new Map();
-  const edits = reason2 === "first" || cursor === null ? null : source2.lastChanges(cursor.revision, latest);
+  const edits = reason2 === "first" || cursor === null ? null : source2.lastChanges(changesFrom(listing, cursor.revision), latest);
   store.transaction(() => {
     writeTooBigEdits(store, worktreeId, edits, entries3);
     store.files.removeMany(
@@ -59079,11 +59287,7 @@ async function runPass(ctx) {
     threshold: ctx.complexity.threshold,
     edits
   });
-  const seeds = new Set(
-    entries3.flatMap(
-      (e) => e.kind === "count" && seedsQuietly(failed2, e.path, e.file.hash) ? [e.path] : []
-    )
-  );
+  const seeds = quietPaths(entries3, failed2, listing);
   const after2 = entries3.filter((e) => !skipped2.has(e.path)).map((e) => {
     const editedUnder = failed2.get(e.path)?.threshold;
     return {
@@ -59095,27 +59299,31 @@ async function runPass(ctx) {
   });
   for (const e of entries3) if (!skipped2.has(e.path)) failed2.delete(e.path);
   const blobs = new Map(entries3.map((e) => [e.path, e.kind === "gone" ? null : e.file.hash]));
-  const committed = since === null ? /* @__PURE__ */ new Set() : await committedPaths(
+  const committed = since === null ? /* @__PURE__ */ new Set() : await committedWithHeld(
     ctx,
-    since,
-    latest,
-    after2.map((a) => ({ path: a.path, blob: blobs.get(a.path) ?? null }))
+    { since, held: changesFrom(listing, since), upTo: latest },
+    after2.map((a) => ({ path: a.path, blob: blobs.get(a.path) ?? null })),
+    waiting2
   );
   return store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
     const paths = new Set(after2.map((a) => a.path));
     const before3 = store.states.list(worktreeId, { measure: "complexity", ...quiet ? {} : { paths: [...paths] } }).filter((s) => paths.has(s.check.path));
     const at2 = ctx.now();
-    const judged = judge({
-      worktreeId,
-      revision: latest,
-      threshold: ctx.complexity.threshold,
-      at: at2,
-      quiet,
-      before: before3,
-      bodies,
-      after: after2
-    });
+    const { judged, deferred } = holdRemovals(
+      judge({
+        worktreeId,
+        revision: latest,
+        threshold: ctx.complexity.threshold,
+        at: at2,
+        quiet,
+        before: before3,
+        bodies,
+        after: after2
+      }),
+      held2 > 0,
+      seeds
+    );
     for (const { from, to } of judged.moves) store.states.move(worktreeId, from, to);
     if (!quiet) {
       const told = judged.removed.filter((check) => !seeds.has(check.path));
@@ -59132,6 +59340,7 @@ async function runPass(ctx) {
     if (quiet) clearPulled(store.meta, worktreeId);
     else writePulled(store.meta, worktreeId, latest, paths, committed);
     writeCursor(store.meta, worktreeId, current3);
+    writeListed(store.meta, worktreeId, nextRecord(listing, since, held2, deferred));
     writeUncountable(store.meta, worktreeId, failed2);
     const awaited = reason2 === "first" && takeAwaited(store.meta, worktreeId);
     if (reason2 !== null && (reason2 !== "first" || counted3 > 0 || ctx.switchedOn || awaited)) {
@@ -59151,32 +59360,6 @@ function retriesDue(ctx, failed2, now) {
     (f) => spentFailure(failed2, f) !== null && ctx.store.counts.get(f.blob, f.language, ctx.counter.version) !== null
   );
   return [...dueRetries(failed2, now), ...counted3.map((f) => f.path)];
-}
-function workSet(ctx, after2, upTo, due) {
-  const tests = ctx.store.files.list(ctx.worktreeId, ctx.source.testFiles());
-  return [
-    .../* @__PURE__ */ new Set([
-      ...ctx.source.changedPaths(after2, upTo),
-      ...ctx.retry,
-      ...due,
-      ...tests.map((f) => f.path)
-    ])
-  ];
-}
-function plan(ctx, paths) {
-  const { store, source: source2, worktreeId, complexity } = ctx;
-  const included = includedSet(complexity, source2.testFiles(), source2.ignored());
-  const all2 = paths === null ? new Map(source2.files().map((f) => [f.path, f])) : null;
-  const listed5 = all2 === null ? paths ?? [] : [.../* @__PURE__ */ new Set([...all2.keys(), ...store.files.list(worktreeId).map((f) => f.path)])];
-  const entries3 = [...listed5].sort(compare).map((path) => {
-    const language = included(path);
-    const file = language === null ? null : all2 === null ? source2.file(path) : all2.get(path);
-    if (language === null || file === null || file === void 0) return { kind: "gone", path };
-    return { kind: file.size > complexity.maxFileBytes ? "big" : "count", path, file, language };
-  });
-  const gone3 = entries3.filter((e) => e.kind === "gone").map((e) => e.path);
-  const stored = new Set(store.files.list(worktreeId, gone3).map((f) => f.path));
-  return entries3.filter((e) => e.kind !== "gone" || stored.has(e.path));
 }
 function filesRows(entries3, counterVersion, revision) {
   return entries3.flatMap(
@@ -59200,7 +59383,7 @@ function oldBodies(store, worktreeId, entries3, counterVersion) {
   const read5 = /* @__PURE__ */ new Set();
   for (const state of store.states.list(worktreeId, { measure: "complexity", paths })) {
     const { path } = state.check;
-    const language = languages.get(path);
+    const language = languages.get(path) ?? CODE_EXTENSIONS[extname6(path)];
     if (language === void 0 || read5.has(`${path}\0${state.blob}`)) continue;
     read5.add(`${path}\0${state.blob}`);
     const count2 = store.counts.get(state.blob, language, counterVersion);
@@ -59224,14 +59407,14 @@ function report2(revision, reason2, files2, counted3, judged) {
 var init_pass = __esm({
   "src/core/code/pass/pass.ts"() {
     "use strict";
-    init_fs();
+    init_code();
     init_removed();
     init_blobs();
     init_cursor();
     init_failed();
-    init_head2();
-    init_included();
     init_judge2();
+    init_listed();
+    init_plan();
     init_pulled();
     init_too_big();
   }
@@ -59284,6 +59467,7 @@ function mainStoreSource(store, worktreeId, ignored) {
       return record === null ? null : { path, hash: record.hash, size: record.size };
     },
     files: () => store.fileHashes.list(worktreeId).map((record) => ({ path: record.path, hash: record.hash, size: record.size })),
+    listing: () => parseListing(store.meta.get(listingMetaKey(worktreeId))),
     testFiles: () => store.testFileKeys.list(worktreeId).map((row2) => row2.testFile.path),
     ignored
   };
@@ -59397,8 +59581,10 @@ function createCodePass(options) {
       log: options.log,
       ...options.sliceFiles === void 0 ? {} : { sliceFiles: options.sliceFiles }
     });
-    wasOff = false;
-    if (report3 !== null) options.onPass?.(report3);
+    if (report3 !== null) {
+      wasOff = false;
+      options.onPass?.(report3);
+    }
     coverageStep(opened, policy, report3);
   };
   const paced = () => {
@@ -67132,7 +67318,9 @@ var Daemon = class {
         // Spec 001 D11 Capacity (tasks 001-376, 001-377): backlog and checkpoint tiers share the
         // user's pool, sized from the user's config as read when the loop starts.
         capacity: { dir: slowSlotDir(this.options.env), ...this.#poolCapacity() },
-        afterBatch: () => code.nudge()
+        afterBatch: () => code.nudge(),
+        // Row 015-52: a file the pass held for its revision's listing is counted once it is listed.
+        onListed: () => code.nudge()
       });
       this.#loop = loop;
       await loop.start();
