@@ -53,3 +53,14 @@ Which pass took the stat before the write on the CI runner. A watch batch stats 
 ## Effect outside the test
 
 An edit whose stat a pass took just before the write runs its file twice: the touch withholds it as `unknown`, and it is queued again. The 001-159 note then names a write that was not made during the run. Row 011-204: after the hash, `diffCandidates` stats again, and stores the hash with the candidate's stat only when the two agree.
+
+## Row 011-204: the fix and its cost
+
+`diffCandidates` now stats each path it read once more, after the read. When that stat is not the candidate's, it leaves the path as cached: no change and no cache update in this batch. The write's own batch hashes it again and reports the change. `test/revision/stat-pairing.test.ts` is the probe's pairing as a test: it failed on 0.1.307 (the append's batch gave `touched: ["test/held.test.ts"]`) and passes with the fix. The probe on the fix:
+
+```
+{"statBeforeWrite":false,"racyAtWrite":true,"firstPass":{"changes":["test/held.test.ts"],"touched":[]},"writesOwnBatch":{"changes":[],"touched":[]}}
+{"statBeforeWrite":true,"racyAtWrite":true,"firstPass":{"changes":[],"touched":[]},"writesOwnBatch":{"changes":["test/held.test.ts"],"touched":[]}}
+```
+
+Cost: one `lstat` per path the pass hashes. A path whose stat is unchanged and whose entry is not racy is not hashed and gets no extra stat. `probe/stat-cost.ts` on this repository's 7,750 tracked files, 2026-10-25 09:28Z, one-minute load 23 on 24 CPUs: hashing all of them took 575 ms (median of 5), stat-ing all of them 116 ms, and one stat 40 µs (median of 2,000). So an edit's batch that hashes a few files pays well under 1 ms more, and a pass that hashes every tracked file (after a checkout) about 20% more than its reads.
