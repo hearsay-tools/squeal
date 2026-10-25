@@ -1,0 +1,65 @@
+Sun Oct 25 01:47:22 UTC 2026
+ 02:47:22 up 10 days, 16:35,  6 users,  load average: 7.32, 14.65, 17.57
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/190bb948-a795-4551-bebf-81901c0e4f93
+
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/190bb948-a795-4551-bebf-81901c0e4f93/test/fixtures/scheduler/.tmp/44360dc7-1bec-4070-bf31-8db37de4398c/main/.git/worktrees/staged/gitdir
+repair: gitdir incorrect: /home/agent/projects/squeal/.ai/cezar/worktrees/190bb948-a795-4551-bebf-81901c0e4f93/test/fixtures/scheduler/.tmp/32a00967-c929-4ec7-ad99-776f0427fd63/main/.git/worktrees/staged/gitdir
+error: could not apply 180135b... topic
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+error: could not revert eafe9fb... commit
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+Rebasing (1/1)
+error: could not apply 180135b... topic
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 180135b... topic
+Rebasing (1/2)
+Rebasing (2/2)
+
+
+Stopped at ea1feb2 (topic)
+squeal tests: killing 1 process(es) an earlier run left: 1475120
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+Rebasing (1/1)
+error: could not apply 6a4c24f... main
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 6a4c24f... main
+error: could not apply a993c04... side
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+Testing types with tsc and vue-tsc is an experimental feature.
+Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+
+ Test Files  1094 passed | 2 skipped (1096)
+      Tests  8715 passed | 2 expected fail | 11 skipped (8728)
+   Start at  02:47:23
+   Duration  1459.93s (tests 96%, import 3%)
+
+    Isolate  1096 workers spawned · ~164ms startup each (spawn + environment, per file)
+             at least ~44.87s faster with isolate: false — reuses workers across files instead of one per file
+
+SUITE_EXIT=0
+Sun Oct 25 02:11:43 UTC 2026

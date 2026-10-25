@@ -1,0 +1,26 @@
+describe("review probe: runner record across worktrees", () => {
+  it("keeps a pytest file failure attributed to pytest after a second worktree runs the same file with Vitest", async () => {
+    const file = { kind: "file" as const, project: JS_DOC.project, testPath: JS_DOC.path };
+    applyBy(() => "pytest", result(file, "pass"));
+    await delivery.register(C1, { atStart: true });
+    applyBy(() => "pytest", result(file, "fail"));
+    const other = result(file, "pass", { key: "other-runner-key", worktreeId: "other-worktree" });
+    store.results.putMany([other], "vitest");
+    const delta = (await delivery.onToolBoundary(C1)) as Delta;
+    console.log("RUNNER_PROBE", JSON.stringify({ storedRunner: store.checks.runnerOf(file), header: delta.header.dependenciesInstalled, rendered: formatDelta(delta) }));
+    expect(formatDelta(delta)).not.toContain(SENTENCE);
+  });
+});
+describe("review probe: startup runner record across worktrees", () => {
+  it("keeps a pytest file failure attributed to pytest after a second worktree runs the same file with Vitest", async () => {
+    const file = { kind: "file" as const, project: JS_DOC.project, testPath: JS_DOC.path };
+    applyBy(() => "pytest", result(file, "pass"));
+    await delivery.register(C1, { atStart: true });
+    applyBy(() => "pytest", result(file, "fail"));
+    const other = result(file, "pass", { key: "other-runner-key", worktreeId: "other-worktree" });
+    store.results.putMany([other], "vitest");
+    const rendered = formatRegistration(await delivery.register({ ...C1, sessionId: "other-session" }, { atStart: true }));
+    console.log("STARTUP_RUNNER_PROBE", JSON.stringify({ storedRunner: store.checks.runnerOf(file), rendered }));
+    expect(rendered).not.toContain(SENTENCE);
+  });
+});
