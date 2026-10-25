@@ -6,6 +6,7 @@ Row 016-27, researcher 2d61d0a8, 2026-10-25, 18:32Z to 18:56Z. Brief: `tasks/wav
 
 | Goal or rule | Verdict | Why |
 | --- | --- | --- |
+| Goal 5: node:test and pytest observed paths reach the store only through the core | **Holds** for node:test; **unproven** for pytest | cezar's node:test files ran 531 times under 0.1.314 and 0.1.318 daemons. Only the core's keys gained rows. The legacy `nodeTest.observed.*` rows are still there, but no 0.1.313 or later daemon reads them, and the adapter version raise keeps their results apart. No pytest project ran under 0.1.313 or later (section 6). |
 | Goal 6, Vitest: a child process's imports reach `direct` | **Holds in effect** in squeal; **unproven** in cezar | squeal: 0.1.316 and later daemons store marks, and other worktrees read them. 2b73a010's first edit (17:22:55Z) reached `capacity-project.test.ts` through marks that a run in 95f83469 had stored 35 s earlier, and the file ran 4 s after the edit. In 19 of 32 small edits a marked file ran in the edit window. The store does not record `direct`, so it cannot show that the mark, and not another rule, put each file there. cezar stores marks for 175 files, but only 1 of 19 small edits ran a marked file in the window: its worktree ran no Vitest file for 6.8 minutes during a 472-file backlog. No small edit came after a daemon restart, so the restart clause is unproven. |
 | Goal 6, node:test | **Unproven** | 0 marks in 87 node:test files on this host. Both node:test projects (cezar's) are fast, and 004 D5 records a spawned process only in a slow project. The kit lists this gap as KNOWN (`test/kit/packs/node-test.ts`, `FAST`). |
 | Goal 6, pytest | **Unproven** | No store on this host has a pytest project under a daemon of 0.1.313 or later. The only pytest store, toolkit-dev's, names 0.1.273 as its newest daemon (2026-10-23). |
@@ -28,6 +29,7 @@ The stores were live. Each number belongs to its reading time. The host has 24 C
 | 18:50:52 | 31.0 | Question 5: ignored names in 41 squeal and 37 cezar worktrees |
 | 18:51:54 | 30.4 | Question 4: inherited states |
 | 18:55:34 | 28.8 | Question 1, second reading |
+| 19:05:21 | 47.6 | Section 6: node:test and pytest observed rows |
 
 ## The daemons read
 
@@ -137,6 +139,18 @@ Three current results already cross differing ignored names:
 - `e2e-wait-discipline.test.ts` lists `packages/web/e2e/` and keeps only names that end in `.e2e.ts` (read at cezar's main checkout). A `node_modules` entry cannot change its verdict.
 
 Tag: verified on disk and in the store; the two tests read in source.
+
+## 6. Goal 5: one write path for node:test and pytest
+
+Reading at 19:05Z, load 47.6. Source: `node-test-observed.mjs` and `reach.mjs`. Code read at `533929e94`.
+
+- **The core's keys.** cezar's two node:test projects ran 531 file runs from 16:00Z, under 0.1.314 and 0.1.318 daemons. `observed.test:unit` holds 1 file with 1 path: `resolve-browser-launch.test.ts` and `.ai/scripts/resolve-browser-launch.mjs`. `observed.root:test:unit`, both projects' `observedStartup.*` and their `observedDirect.*` hold nothing. The core stores only paths beyond a file's closure, and the closures that 0.1.319 stored at 18:58Z already hold what these files load.
+- **The legacy rows.** cezar still holds `nodeTest.observed.test:unit` (3 files, 60 paths), `nodeTest.observed.root:test:unit` (5 files, 18 paths) and `nodeTest.observed.test:package` (9 files, 1,490 paths; that project is no longer in `squeal.config.json`). toolkit-dev holds `pytest.observed.pytest` (82 files, 1,441 paths) and `pytest.observedSession.pytest` (4 paths), but its newest daemon is 0.1.273. squeal and mvp-unveiled-july26 hold none.
+- **Who reads them.** Nobody at 0.1.313 or later. 016-17 (`52699c24d`) deleted the four `nodeTest.observed*` and `pytest.observed*` key functions. `lifecycle.ts` polls only `observed.`, `observedDirect.` and `observedStartup.<project>` for each node:test and pytest project. A grep of `src/` finds no other reader. Tag: read in source code.
+- **Is anything lost?** 41 of the 60 legacy `test:unit` paths are in today's closures, and so are all 18 `root:test:unit` paths. The other 19 are `packages/contract/src/*.ts` files that `codex-reasoning-summary.test.ts` and `planner.test.ts` once loaded. A static walk that leaves out type-only imports reaches none of them now, and one that keeps type-only imports reaches all 19. They are stale entries of a map that was never pruned, not loads the core dropped. Tag: inferred from a static walk; no cezar test was run.
+- **The older daemons.** At 18:32Z, `squeal ps` showed 10 cezar daemons, all at 0.1.318, so no live daemon writes the legacy keys. D4's adapter version raise keeps any result that such a daemon stored apart from a new key.
+
+Verdict: goal 5 **holds** for node:test in real use. For pytest it is **unproven**, because no pytest project on this host ran under 0.1.313 or later.
 
 ## Lessons
 
