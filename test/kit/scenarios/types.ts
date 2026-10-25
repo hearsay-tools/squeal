@@ -36,6 +36,21 @@ export type Module =
    * module `from` by a path computed at run time and shares its `value`.
    */
   | { readonly kind: "hook"; readonly from: string }
+  /**
+   * A script the runner's language starts as a child process: it loads
+   * module `from` and prints its `value`.
+   */
+  | { readonly kind: "child"; readonly from: string }
+  /**
+   * A test file with one check that starts module `child` as a child
+   * process: the value it prints equals `expect`.
+   */
+  | {
+      readonly kind: "spawns";
+      readonly check: string;
+      readonly child: string;
+      readonly expect: number;
+    }
   /** An installed package that exports `value`; another value is another version. */
   | { readonly kind: "dependency"; readonly value: number }
   /**
@@ -63,17 +78,19 @@ export type Step =
    * Writes module `edit` as `to`, then hands the edit to the adapter as
    * the core does: `invalidate` and `affected` for a path in the worktree,
    * `recheck` for one outside it. Each test module of `reaches` must be in
-   * `affected`, or hold the edited path in its `closure()` or in the last
-   * run's observations, or name the edited package in its closure's
+   * `affected`, or hold the edited path in its `closure()`, in the closure
+   * the worktree's keys assemble or in the last run's observations, or name the edited package in its closure's
    * packages, or be of a project whose environment lists the path or was
    * recreated with another environment. `sameStat`: the edit keeps the
-   * file's size and its mtime (row 007-29).
+   * file's size and its mtime (row 007-29). Each test module of `direct`
+   * must be in `affected().direct`, which the edit cut reads (row 007-56).
    */
   | {
       readonly edit: string;
       readonly to: Written;
       readonly reaches: readonly string[];
       readonly sameStat?: true;
+      readonly direct?: readonly string[];
     }
   /**
    * Runs every test module; each named one's check must end as given.
@@ -89,9 +106,27 @@ export type Step =
   /**
    * The precondition of a scenario that depends on a path missing from
    * the static closure: no test module of `of` holds module `lacks` in
-   * its `closure()`, and no environment lists it.
+   * its `closure()` or in the closure the worktree's keys assemble, and no
+   * environment lists it.
    */
-  | { readonly lacks: string; readonly of: readonly string[] };
+  | { readonly lacks: string; readonly of: readonly string[] }
+  /**
+   * Each test module of `of` holds module `holds` in its `closure()` or in
+   * the closure the worktree's keys assemble for it: what an earlier run,
+   * in this worktree or another, left in the shared store.
+   */
+  | { readonly holds: string; readonly of: readonly string[] }
+  /**
+   * The steps after it play in worktree `worktree` over the play's one
+   * store. A new one is a checkout of the scenario's modules as first
+   * written, with its own adapter; the first worktree is `a`.
+   */
+  | { readonly worktree: string }
+  /**
+   * The current worktree's adapter, keys and store connection close, and
+   * new ones open over the same files and store, as a daemon restarts.
+   */
+  | { readonly restart: true };
 
 export interface Scenario {
   /** `K1`, `K2`: what a pack's `known` names. */
@@ -102,8 +137,11 @@ export interface Scenario {
 }
 
 /** The test file kinds; `held` checks are named `check` and `holds`. */
-type Test = Extract<Module, { kind: "test" | "computed" | "held" }>;
+type Test = Extract<Module, { kind: "test" | "computed" | "held" | "spawns" }>;
 
 /** True for the modules a pack renders as test files. */
 export const isTest = (module: Module): module is Test =>
-  module.kind === "test" || module.kind === "computed" || module.kind === "held";
+  module.kind === "test" ||
+  module.kind === "computed" ||
+  module.kind === "held" ||
+  module.kind === "spawns";

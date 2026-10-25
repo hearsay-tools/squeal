@@ -1,8 +1,9 @@
 import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { pytestObservedStore } from "../../../src/core/daemon/pytest-runners.js";
 import type { AbsolutePath, PytestProject } from "../../../src/core/types/index.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
-import type { Fixture, Pack } from "../driver.js";
+import type { Fixture, Gap, Pack } from "../driver.js";
 import { isTest, type Module, type Written } from "../scenarios/index.js";
 
 /*
@@ -10,11 +11,20 @@ import { isTest, type Module, type Written } from "../scenarios/index.js";
  * runs inheriting `source`: modules in the package `kit`, tests under
  * `tests/`, a dependency installed in the environment's site-packages with
  * its `.dist-info`, outside the worktree. A startup hook is a `-p` plugin;
- * its variant is a `conftest.py` at the root (007 wave 2 B5).
+ * its variant is a `conftest.py` at the root (007 wave 2 B5). Its runs
+ * write what they observed through the store a daemon injects
+ * (`pytestObservedStore`), the imports of a Python process a test starts
+ * among them (row 007-55).
  */
 
 /** What a startup hook shares with every test. */
 const SHARED = "builtins.kit_value";
+
+/** 016 D4 (row 007-56): a child's import is `direct` in memory only, so `transitive` after a restart and in another worktree. */
+const DIRECT: Gap = {
+  spec: "016 D4: what an adapter needs back, so that its `closure()` and its `affected()` direct marks see earlier observations after a restart and in another worktree (row 007-56), the core passes in read-only",
+  fails: ["step 7 direct", "step 13 direct"],
+};
 
 function test(module: Extract<Written, { kind: "test" }>, of: (name: string) => Module): string {
   const from = of(module.from);
@@ -72,6 +82,26 @@ function text(module: Written, of: (name: string) => Module): string {
         "    time.sleep(600)",
         "",
       ].join("\n");
+    case "child":
+      return `from kit.${module.from} import value\n\nprint(value)\n`;
+    case "spawns":
+      return [
+        "import subprocess",
+        "import sys",
+        "from pathlib import Path",
+        "",
+        "",
+        `def test_${module.check}():`,
+        "    printed = subprocess.run(",
+        `        [sys.executable, "-m", "kit.${module.child}"],`,
+        "        cwd=Path(__file__).parent.parent,",
+        "        capture_output=True,",
+        "        text=True,",
+        "        check=True,",
+        "    ).stdout",
+        `    assert int(printed) == ${module.expect}`,
+        "",
+      ].join("\n");
     case "broken":
       return "value = (\n";
   }
@@ -102,10 +132,15 @@ export function pytestPack(python: string, source: NodeJS.ProcessEnv): Pack {
   };
   const opener =
     (plugins: (hooks: readonly string[]) => readonly string[]) =>
-    (root: AbsolutePath, scratch: AbsolutePath, { hooks }: Fixture) =>
+    (root: AbsolutePath, scratch: AbsolutePath, { hooks, store }: Fixture) =>
       createPytestAdapter(
         { ...project, args: plugins(hooks) },
-        { root, source, cacheDir: join(scratch, "cache") as AbsolutePath },
+        {
+          root,
+          source,
+          cacheDir: join(scratch, "cache") as AbsolutePath,
+          observed: pytestObservedStore(store, project.name),
+        },
       );
   const path = (name: string, module: Module) => {
     if (isTest(module)) return `tests/test_${name}.py`;
@@ -129,6 +164,7 @@ export function pytestPack(python: string, source: NodeJS.ProcessEnv): Pack {
       "kit/__init__.py": "",
     },
     open: opener((hooks) => hooks.flatMap((hook) => ["-p", moduleOf(hook)])),
+    known: { K10: DIRECT },
   };
   return {
     ...base,
