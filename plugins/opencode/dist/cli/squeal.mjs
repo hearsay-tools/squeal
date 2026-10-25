@@ -27127,26 +27127,32 @@ var init_batch_retry = __esm({
         this.#retry = retry2;
         this.#onError = onError;
       }
-      /** `error` of a batch task: reported, or retried with `pass` while `retry` accepts it. */
+      /**
+       * `error` of a batch task: reported, or retried with `pass` while `retry`
+       * accepts it. Resolves `null` once a retry landed, otherwise to the error
+       * the task ended with: reported, or the last a close cut short (row
+       * 011-198 R1).
+       */
       async failed(error, pass) {
         const retry2 = this.#retry;
         if (pass === void 0 || retry2 === void 0 || !retry2.accepts(error)) {
           this.#onError(error);
-          return;
+          return error;
         }
+        let last = error;
         for (let attempt = 0; ; attempt++) {
           await this.#pause(retry2.delayMs(attempt));
-          if (this.#closed) return;
+          if (this.#closed) return last;
           try {
             await pass();
             retry2.ran();
-            return;
+            return null;
           } catch (again) {
-            const failure2 = toError(again);
-            if (retry2.accepts(failure2)) continue;
+            last = toError(again);
+            if (retry2.accepts(last)) continue;
             retry2.ran();
-            this.#onError(failure2);
-            return;
+            this.#onError(last);
+            return last;
           }
         }
       }
@@ -27486,6 +27492,9 @@ import { basename as basename13, join as join58 } from "node:path";
 function createChangeFeed(options) {
   return new Feed(options);
 }
+function closedFirst() {
+  return new Error("the change feed closed before its pass was delivered");
+}
 var SPEC_INPUTS, Feed;
 var init_change_feed = __esm({
   "src/core/watcher/change-feed.ts"() {
@@ -27539,7 +27548,10 @@ var init_change_feed = __esm({
        */
       linkTargets = /* @__PURE__ */ new Map();
       queue = Promise.resolve();
-      /** The reconciliation queued and not yet started, which later requests join. */
+      /**
+       * The reconciliation queued and not yet started, which later requests join;
+       * `done` resolves `null` once its batch was delivered, else to the error.
+       */
       pending = null;
       /**
        * `HEAD` read just before the last delivered pass's git status; `undefined` before the first
@@ -27568,12 +27580,19 @@ var init_change_feed = __esm({
         this.linked = new LinkedWatches(this.root, this.backend, listener);
         await this.reconcile("interval");
       }
-      reconcile(trigger) {
+      async reconcile(trigger) {
+        await this.queuePass(trigger);
+      }
+      async reconcileChecked(trigger) {
+        const error = await this.queuePass(trigger);
+        if (error !== null) throw error;
+      }
+      queuePass(trigger) {
         if (this.pending) {
           if (trigger === "interval") this.pending.trigger = trigger;
           return this.pending.done;
         }
-        const pending = { trigger, done: Promise.resolve() };
+        const pending = { trigger, done: Promise.resolve(null) };
         this.pending = pending;
         pending.done = this.enqueue(
           () => {
@@ -27588,9 +27607,9 @@ var init_change_feed = __esm({
        * The rebuild also meets any ignored directory that appeared since the last one, so the backend
        * may replace its watcher here too; the pass finds what that dropped (row 011-187).
        */
-      setExtraFiles(paths) {
+      async setExtraFiles(paths) {
         this.extraFiles = [...paths];
-        return this.enqueue(
+        await this.enqueue(
           async () => {
             if (await this.rebuildSpec()) await this.reconcileNow("watch");
           },
@@ -27711,15 +27730,18 @@ var init_change_feed = __esm({
       /**
        * Runs tasks one at a time. A failed task is reported and does not stop the
        * queue; one that delivers batches names the trigger it retries as (`retry`).
+       * Resolves `null` once the task or its retry ran to its end with the feed
+       * open, else to the error it ended with (row 011-198 R1).
        */
       enqueue(task, retryAs) {
         const run5 = this.queue.then(async () => {
-          if (this.closed) return;
+          if (this.closed) return closedFirst();
           try {
             await task();
+            return this.closed ? closedFirst() : null;
           } catch (error) {
             const pass = retryAs && (() => this.reconcileNow(retryAs()));
-            await this.retries.failed(toError(error), pass);
+            return await this.retries.failed(toError(error), pass);
           } finally {
             this.armIdle();
           }
@@ -27808,8 +27830,9 @@ function createDaemonLoop(options) {
     onExtraFiles: (paths) => {
       feed?.setExtraFiles(paths).catch((error) => options.onError(toError2(error)));
     },
+    // Row 011-198 R1: a pass that ends undelivered rejects the request, so no checkpoint is planned.
     beforeFullSuite: async () => {
-      await feed?.reconcile("interval");
+      await feed?.reconcileChecked("interval");
     }
   });
   return {
