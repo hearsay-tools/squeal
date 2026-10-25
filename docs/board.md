@@ -1282,6 +1282,8 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 
 Spec: `specifications/016-extensions/spec.md`, draft for the human's review (2026-10-24), sections D1 to D6; narrowed by the human on 2026-10-24 to one correctness kit for every runner and the three repeat seams (rows 007-45, 007-47, 007-52 and 007-56, released to 016 by 011's coordinator 04a258b0 the same day). The public half (protocol, SDK, license) is decided later. Rows follow the spec's approval. The human's idea, 2026-10-24: reorganize Squeal as a core plus extensions, with harness adapters on a clear contract and runners (pytest, node:test, Vitest) and code checks (complexity, CRAP) as plugins, so that other people can extend it for the languages, frameworks, linters and quality metrics Squeal cannot cover alone. Research thoroughly first, then report to the human. Coordinator 605ca21e.
 
+**Releasing:** squeal 0.1.308 (016-14, 016-15, 016-16, 016-20; review `016-extensions/reviews/0.1.303.md`, Re-review 2's one blocker accepted by the human 2026-10-25, bounded check PASS on `78b9073a5`) goes to main at 09:21Z or later, 2026-10-25 (coordinator 605ca21e; 011 and 015 told at 09:11Z).
+
 ### Research (briefs in `specifications/016-extensions/research/`)
 
 | Task | Status | Scope | Done when |
