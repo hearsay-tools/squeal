@@ -152,6 +152,17 @@ export interface AssembleInput {
     /** Its start-up entry left unparsable, as a broken write would leave it. */
     readonly malformed?: true;
   };
+  /**
+   * Row 016-24: once this worktree read `elsewhere` back, `files` are
+   * written, or removed where `null`; then the runs of `ran` end, each the
+   * only file that lists its `directories` (`listedByRun`), and a revision
+   * that reports no change re-keys the listings (`rekeyListings`). A tree
+   * before 016-24 reads no listed names again at a revision.
+   */
+  readonly relisted?: {
+    readonly files: Readonly<Record<string, string | null>>;
+    readonly ran?: readonly { readonly path: string; readonly directories: readonly string[] }[];
+  };
 }
 
 /** One file of a finished tier, and what the ledger holds of it when the tier is recorded. */
