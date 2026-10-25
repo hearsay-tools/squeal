@@ -106,6 +106,17 @@ export interface AssembleInput {
   readonly cached?: readonly string[];
   /** Written over cached files after the seed, so bootstrap's start pass hashes them again (011-204). */
   readonly rewritten?: Readonly<Record<string, string>>;
+  /**
+   * Appended to a cached, rewritten file right after bootstrap's start pass
+   * reads it, before the pass stats it again (011-204, review 0.1.310 B1).
+   */
+  readonly appendedAfterRead?: Readonly<Record<string, string>>;
+  /**
+   * Then written over files with a later mtime, and the closures' paths
+   * compared with the stat cache as keyed, as the stability check does
+   * (`changedSince`): its changed and touched paths are the outputs (011-204).
+   */
+  readonly stability?: Readonly<Record<string, string>>;
   /** Read from the runner (`setEnvironments`) in place of one fixed environment hash (011-36). */
   readonly environment?: RunnerEnvironment;
   /**
