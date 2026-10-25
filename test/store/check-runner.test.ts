@@ -1,7 +1,9 @@
+import { mkdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { CHECK_COLUMNS } from "../../src/core/store/codec.js";
 import { storePaths } from "../../src/core/store/index.js";
+import { MIGRATIONS } from "../../src/core/store/schema.js";
 import { worktreeMetaKey } from "../../src/core/types/index.js";
 import { fakeCommonDir, open, result, testCheck } from "./helpers.js";
 
@@ -21,6 +23,34 @@ function olderDaemon(commonDir: string): DatabaseSync {
   const db = new DatabaseSync(storePaths(commonDir).database);
   db.exec("PRAGMA busy_timeout = 5000");
   return db;
+}
+
+/** The store every released daemon makes: `user_version` 1, its tables as `MIGRATIONS[0]` creates them. */
+function olderStore(commonDir: string): DatabaseSync {
+  mkdirSync(storePaths(commonDir).dir, { recursive: true });
+  const db = olderDaemon(commonDir);
+  db.exec("PRAGMA journal_mode = WAL");
+  for (const step of MIGRATIONS.slice(0, 1)) step(db);
+  db.exec("PRAGMA user_version = 1");
+  return db;
+}
+
+/** A failing result for check `name` at `key`, with its failure text, as a released daemon writes it. */
+function olderFailure(db: DatabaseSync, name: string, key: string): void {
+  db.prepare(
+    `INSERT INTO checks (project, test_path, kind, full_name, templated, first_seen_at)
+     VALUES ('', 'src/a.test.ts', 'test', ?, 0, 1) ON CONFLICT DO NOTHING`,
+  ).run(name);
+  db.prepare(
+    "INSERT OR REPLACE INTO failure_texts (id, summary, errors) VALUES ('f-old', 'failed', '[]')",
+  ).run();
+  db.prepare(
+    `INSERT OR REPLACE INTO results (check_id, key, outcome, duration_ms, location_path,
+       location_line, location_column, fingerprint, failure_id, worktree_id, revision,
+       commit_sha, dirty, run_id, recorded_at, last_used_at)
+     SELECT id, ?, 'fail', 1, NULL, NULL, NULL, 'fp', 'f-old', 'wt-old', 1, NULL, 1, 'run-old', 1, 1
+     FROM checks WHERE full_name = ?`,
+  ).run(key, name);
 }
 
 const dataVersion = (db: DatabaseSync) =>
@@ -86,10 +116,9 @@ describe("store: each worktree's project runners (spec 016 D3)", () => {
 
   it("leaves an older daemon's held result read whole beside a new daemon (re-review B1, Node 22)", () => {
     const commonDir = fakeCommonDir();
-    const first = open(commonDir);
-    first.results.putMany([result(A, "k1", { outcome: "fail" })]);
+    const older = olderStore(commonDir);
+    olderFailure(older, "a", "k1");
     // How every released daemon reads a key's results, prepared and used before the new daemon opens.
-    const older = olderDaemon(commonDir);
     const byKey = older.prepare(`
       SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
       JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
