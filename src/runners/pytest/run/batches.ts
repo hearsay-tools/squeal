@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { AbsolutePath, RunEnd, RunReport, TestFileRef } from "../../../core/types/index.js";
 import type { ProcessExit } from "../../process/group.js";
 import { runLogJson } from "../../run-summary.js";
-import type { ImportEvent, SpawnedEvent } from "./events.js";
+import type { ImportEvent, SpawnedEvent, WrittenEvent } from "./events.js";
 import type { BatchFile, BatchReport } from "./report.js";
 
 /** What `ending` reads of the tier. */
@@ -21,8 +21,11 @@ export interface Batch {
   readonly args: readonly string[];
   exit: ProcessExit | null;
   read: BatchReport | null;
-  /** The plugin's import edges and its children's `spawned` records, read with `read`. */
-  edges: readonly (ImportEvent | SpawnedEvent)[];
+  /**
+   * The plugin's import edges, its children's `spawned` records and the run's
+   * `written` directories (016 D4), read with `read`.
+   */
+  edges: readonly (ImportEvent | SpawnedEvent | WrittenEvent)[];
 }
 
 /** The tier in batches of `size`, in the order given; a file `alone` names gets one of its own. */

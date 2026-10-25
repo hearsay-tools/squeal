@@ -235,8 +235,9 @@ describe("observeBatch (spec 007 D6)", () => {
         testFile: ref("tests/test_a.py"),
         paths: ["src/app/__main__.py", "src/app/cli.py", "tests/conftest.py", "tests/test_a.py"],
         spawned: ["src/app/__main__.py", "src/app/cli.py", "tests/conftest.py"],
+        written: [],
       },
-      { testFile: ref("tests/test_b.py"), paths: ["tests/test_b.py"], spawned: [] },
+      { testFile: ref("tests/test_b.py"), paths: ["tests/test_b.py"], spawned: [], written: [] },
     ]);
     expect(observed.session).toEqual([]);
   });

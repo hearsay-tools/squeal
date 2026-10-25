@@ -6,15 +6,10 @@ import type {
   AbsolutePath,
   FocusedFile,
   PytestProject,
-  RelativePath,
   RunnerAdapter,
   RunReport,
 } from "../../../src/core/types/index.js";
-import {
-  createPytestAdapter,
-  type ObservedPaths,
-  type ObservedStore,
-} from "../../../src/runners/pytest/adapter.js";
+import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { pythonEnv, requireSynced, type Synced, syncFixture } from "../../helpers/pytest-env.js";
 
 /*
@@ -61,26 +56,6 @@ const SKIPPED = `import pytest\n\npytest.skip("no service", allow_module_level=T
 const ref = (name: string) => ({ project: "small", path: `tests/${name}.py` });
 const FILE = ref("test_four");
 const checks = (report: RunReport) => report.results.map((r) => [r.check.fullName, r.outcome]);
-
-/** An observed store in memory, as `pytestObservedStore` keeps it in the daemon's `meta`. */
-function memoryStore(): ObservedStore & { value: ObservedPaths; session: RelativePath[] } {
-  const value: Record<RelativePath, RelativePath[]> = {};
-  const session: RelativePath[] = [];
-  return {
-    value,
-    session,
-    read: () => value,
-    write(additions) {
-      for (const [file, paths] of Object.entries(additions)) {
-        value[file as RelativePath] = [
-          ...new Set([...(value[file as RelativePath] ?? []), ...paths]),
-        ];
-      }
-    },
-    readSession: () => session,
-    writeSession: (additions) => void session.push(...additions),
-  };
-}
 
 let synced: Synced = { ok: false, reason: "the sync did not run" };
 let scratch = "";
@@ -197,15 +172,13 @@ describe("pytest adapter: focused runs", SLOW, () => {
     expect(checks(report)).toEqual([["TestParity::test_old_1", "skip"]]);
   });
 
-  it("records no observed path of a focused run; the file's whole run does (row 011-145)", async (ctx) => {
+  it("reports no observed path of a focused run; the file's whole run does (row 011-145)", async (ctx) => {
     requireSynced(ctx, synced);
-    const store = memoryStore();
     const observing = await createPytestAdapter(PROJECT, {
       root,
       source,
       note: (text) => notes.push(text),
       cacheDir: join(scratch, "cache") as AbsolutePath,
-      observed: store,
     });
     const DYNAMIC_FILE = ref("test_four_dynamic");
     const alpha = "src/app/plugins/alpha.py";
@@ -220,18 +193,19 @@ describe("pytest adapter: focused runs", SLOW, () => {
       checks: [{ testFile: DYNAMIC_FILE, texts: ["dynamic_alpha"] }],
     });
     expect(checks(focused)).toEqual([["test_dynamic_alpha", "pass"]]);
-    expect(store.value).toEqual({});
-    expect(store.session).toEqual([]);
+    expect(focused.observed).toBeUndefined();
     expect(focused.environmentObserved).toBeUndefined();
-    expect((await observing.closure(DYNAMIC_FILE)).paths).not.toContain(alpha);
 
     const whole = await observing.run([DYNAMIC_FILE], options(1));
     expect(checks(whole)).toEqual([
       ["test_dynamic_alpha", "pass"],
       ["test_plain", "pass"],
     ]);
-    expect(store.value[DYNAMIC_FILE.path as RelativePath]).toContain(alpha);
-    expect((await observing.closure(DYNAMIC_FILE)).paths).toContain(alpha);
+    // 016 D4: the run reports it; the core keeps it and keys the file with it.
+    expect(whole.observed?.find((o) => o.testFile.path === DYNAMIC_FILE.path)?.paths).toContain(
+      alpha,
+    );
+    expect((await observing.closure(DYNAMIC_FILE)).paths).not.toContain(alpha);
     await observing.close();
   });
 

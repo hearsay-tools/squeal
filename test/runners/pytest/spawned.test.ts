@@ -2,13 +2,8 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, type TestContext } from "vitest";
-import { pytestObservedStore } from "../../../src/core/daemon/pytest-runners.js";
-import {
-  type AbsolutePath,
-  type PytestProject,
-  pytestObservedMetaKey,
-  type TestFileRef,
-} from "../../../src/core/types/index.js";
+import { observedDirectMetaKey, observedMetaKey } from "../../../src/core/keys/index.js";
+import type { AbsolutePath, PytestProject, TestFileRef } from "../../../src/core/types/index.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { readEnvironment } from "../../../src/runners/pytest/environment/index.js";
 import { runPytest } from "../../../src/runners/pytest/run/run.js";
@@ -21,7 +16,8 @@ import { openHarness, openRepoStore } from "../../scheduler/helpers.js";
  * Task 007-55, live: the small fixture's `outcomes/test_spawn_module.py`
  * runs `python -m app` and `outcomes/test_spawn_script.py` the `app-cli`
  * console script; neither imports `app.cli`. Their child processes record
- * what they import under them, so an edit of `src/app/cli.py` re-keys and
+ * what they import under them, which the core stores as observed paths and
+ * direct marks (spec 016 D4), so an edit of `src/app/cli.py` re-keys and
  * runs both through the scheduler, and a break there fails both.
  * `outcomes/test_spawn_tool.py` runs `python tool.py`, a script that imports
  * nothing, which its child records at start-up (review 0.1.268 B2).
@@ -75,7 +71,6 @@ describe.each(PYTHONS)(
       const pytest = await createPytestAdapter(project, {
         root,
         source: pythonEnv(),
-        observed: pytestObservedStore(store, project.name),
         cacheDir: join(root, "..", `pytest-cache-${name}-${version}`) as AbsolutePath,
       });
       const h = await openHarness(root, store, commonDir, {
@@ -90,30 +85,32 @@ describe.each(PYTHONS)(
         store.testFileKeys
           .list(h.worktreeId)
           .find((r) => r.testFile.project === project.name && r.testFile.path === path)?.key;
-      return { root, store, pytest, h, outcome, key };
+      const meta = (key: string) => JSON.parse(store.meta.get(key) ?? "{}");
+      return { root, pytest, h, outcome, key, meta };
     }
 
     it(
       "an edit of a module only their `python -m` child or console script imports re-keys and runs them, and a break there fails them",
       SLOW,
       async (ctx) => {
-        const { root, store, pytest, h, outcome, key } = await open(ctx, "main", PROJECT);
+        const { root, pytest, h, outcome, key, meta } = await open(ctx, "main", PROJECT);
         await h.scheduler.start();
         await h.scheduler.idle();
         expect([outcome(MODULE_TEST), outcome(SCRIPT_TEST)]).toEqual(["pass", "pass"]);
 
         // Each file holds what its own child found: only `python -m app` runs `__main__.py`.
-        const observed = JSON.parse(store.meta.get(pytestObservedMetaKey(PROJECT.name)) ?? "{}");
+        const observed = meta(observedMetaKey(PROJECT.name));
         expect(observed[MODULE_TEST]).toEqual(
           expect.arrayContaining(["src/app/__main__.py", CLI, "src/app/version.py"]),
         );
         expect(observed[SCRIPT_TEST]).toEqual(expect.arrayContaining([CLI, "src/app/version.py"]));
         expect(observed[SCRIPT_TEST]).not.toContain("src/app/__main__.py");
-        expect((await pytest.closure(ref(SCRIPT_TEST))).paths).toContain(CLI);
-        expect(await pytest.affected([CLI])).toEqual({
-          direct: [ref(MODULE_TEST), ref(SCRIPT_TEST)],
-          transitive: [],
-        });
+        // The core keeps what the children imported as direct marks; the graph holds none of it.
+        const direct = meta(observedDirectMetaKey(PROJECT.name));
+        expect(direct[MODULE_TEST]).toContain(CLI);
+        expect(direct[SCRIPT_TEST]).toContain(CLI);
+        expect((await pytest.closure(ref(SCRIPT_TEST))).paths).not.toContain(CLI);
+        expect(await pytest.affected([CLI])).toEqual({ direct: [], transitive: [] });
 
         const keys = () => [MODULE_TEST, SCRIPT_TEST].map(key);
         const before = keys();
@@ -141,12 +138,12 @@ describe.each(PYTHONS)(
       SLOW,
       async (ctx) => {
         const project = { ...PROJECT, include: [TOOL_TEST] };
-        const { root, pytest, h, outcome, key } = await open(ctx, "tool", project);
+        const { root, h, outcome, key, meta } = await open(ctx, "tool", project);
         await h.scheduler.start();
         await h.scheduler.idle();
         expect(outcome(TOOL_TEST)).toBe("pass");
-        expect((await pytest.closure(ref(TOOL_TEST))).paths).toContain(TOOL);
-        expect(await pytest.affected([TOOL])).toEqual({ direct: [ref(TOOL_TEST)], transitive: [] });
+        expect(meta(observedMetaKey(PROJECT.name))[TOOL_TEST]).toContain(TOOL);
+        expect(meta(observedDirectMetaKey(PROJECT.name))[TOOL_TEST]).toContain(TOOL);
 
         const before = key(TOOL_TEST);
         expect(before).not.toBeUndefined();
