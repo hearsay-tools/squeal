@@ -129,7 +129,7 @@ describe("askRetry", () => {
     expect(retryFactOf(readRetries(store))).toBeUndefined();
   });
 
-  it("keeps the newest requests only", () => {
+  it("past the limit drops the oldest pending request at a key no worktree holds", () => {
     const store = freshStore();
     for (let i = 0; i <= RETRIES_KEPT; i++) askRetry(store, ask(`s${i}`));
     const kept = readRetries(store);
