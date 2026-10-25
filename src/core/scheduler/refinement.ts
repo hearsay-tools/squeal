@@ -10,7 +10,7 @@ import type {
   TestFileRef,
 } from "../types/index.js";
 import { type SchedulerContext, tryRunner } from "./context.js";
-import { demote, type EditCut, editWork, fetchEditCut } from "./edit-cut.js";
+import { demote, type EditCut, editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { listPaths } from "./notes.js";
@@ -40,6 +40,8 @@ export interface RunnerPart {
   readonly listed: readonly TestFileRef[] | null | undefined;
   /** `testFileId`s of the runner's direct importers (D5 step 4). */
   readonly direct: ReadonlySet<string>;
+  /** `testFileId`s stored direct marks make direct importers beside them (016 D4, `observedDirectOf`). */
+  readonly observedDirect?: ReadonlySet<string>;
   /** The revision is catch-up (`ContentRekey.catchUp`, task 011-22). */
   readonly catchUp?: boolean;
   /** `ContentRekey.recent`: the files the content part left recent. */
@@ -175,6 +177,7 @@ export async function fetchRunnerPart(
     if (closure !== null) closures.push(closure);
   }
   // Last, so an abandoned call for the bare sources costs no closure (011-25).
+  const direct = new Set((affected?.direct ?? []).map(testFileId));
   const cut =
     affected === null || content.catchUp === true
       ? undefined
@@ -185,7 +188,8 @@ export async function fetchRunnerPart(
     failures,
     environments,
     listed,
-    direct: new Set((affected?.direct ?? []).map(testFileId)),
+    direct,
+    observedDirect: observedDirectOf(keys, paths, direct),
     ...(content.catchUp === true ? { catchUp: true } : {}),
     ...(content.recent === undefined ? {} : { recent: content.recent }),
     ...(cut === undefined ? {} : { cut }),
@@ -242,6 +246,8 @@ export async function applyRunnerPart(
   const touchKeys = (keyChanges: readonly KeyChange[]) => touch(keyChanges.map((c) => c.testFile));
 
   if (part.environments !== null) touchKeys(await keys.setEnvironments(part.environments));
+  // 016 D4 (O9): what other worktrees observed for module-load projects joins their closures.
+  touchKeys(keys.regrowObserved());
   if (part.listed !== undefined) applyListing(context, ledger, part.listed);
 
   const resolved: TestFileRef[] = [];
@@ -264,7 +270,7 @@ export async function applyRunnerPart(
     for (const ref of part.recent ?? []) ledger.queue.toCatchUp(ref, keyedAt);
   }
   const options = {
-    direct: part.direct,
+    direct: new Set([...part.direct, ...(part.observedDirect ?? [])]),
     ...(keyedAt === undefined ? {} : { keyedAt }),
     ...(catchUp ? { catchUp: true } : {}),
   };
@@ -273,7 +279,8 @@ export async function applyRunnerPart(
   settleFailures(ledger, part.failures, part.retrying, changed, options);
   if (!catchUp && keyedAt !== undefined && part.cut !== undefined) {
     // The rest of a small revision's reach is catch-up (011 C4 step 4 as amended for 011-25).
-    const { kept, reached } = editWork(context, ledger, part.cut, changed, part.direct);
+    const { direct, observedDirect } = part;
+    const { kept, reached } = editWork(context, ledger, part.cut, changed, direct, observedDirect);
     const ids = [...reached, ...(part.recent ?? []).map(testFileId)];
     demote(ledger, ids, kept, keyedAt);
     // Its catch-up waits for quiet (011 C4 step 5 as amended 2026-10-23, row 011-153).

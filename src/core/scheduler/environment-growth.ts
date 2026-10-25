@@ -32,7 +32,11 @@ export async function rekeyEnvironments(
 ): Promise<EnvironmentGrowth | undefined> {
   const { keys } = context;
   const loaded = new Map<ProjectName, readonly RelativePath[]>();
-  for (const { project, paths } of report.environmentObserved ?? []) loaded.set(project, paths);
+  for (const { project, paths } of report.environmentObserved ?? []) {
+    loaded.set(project, paths);
+    // 016 D4: the environments read again below hold them; the record's transaction stores them.
+    keys.seeStartup(project, paths);
+  }
   const files = new Map<string, RelativePath[]>();
   for (const { file, inputs } of tier.files) {
     const keyed = new Set(inputs);
