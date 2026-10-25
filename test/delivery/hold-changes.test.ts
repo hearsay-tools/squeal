@@ -221,15 +221,17 @@ describe("delivery: overlapping holds (review 0.1.269, B2)", { timeout: 60_000 }
     }
   });
 
-  it("a change first seen at Stop is told there, once, and not at the next boundary", async () => {
+  it("row 011-215: a command hold's change first seen at Stop waits for the next boundary, which tells it once", async () => {
     const { consumer, commands, told } = await live();
     const c = await consumer("s1");
     const self = processOf(process.pid);
     commands(entry("ta", "gate A", self));
-    expect(await told(c, true)).toEqual([expect.stringMatching(started("gate A", self.pid))]);
+    expect(await told(c, true)).toBeNull();
+    expect(await told(c)).toEqual([expect.stringMatching(started("gate A", self.pid))]);
     expect(await told(c)).toBeNull();
     commands();
-    expect(await told(c, true)).toEqual([expect.stringMatching(resumed("gate A", self.pid))]);
+    expect(await told(c, true)).toBeNull();
+    expect(await told(c)).toEqual([expect.stringMatching(resumed("gate A", self.pid))]);
     expect(await told(c)).toBeNull();
   });
 });

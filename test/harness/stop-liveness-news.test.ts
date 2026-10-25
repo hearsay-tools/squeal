@@ -6,13 +6,13 @@ import {
   handoffFrom,
 } from "../../src/core/delivery/handoff.js";
 import { appendNote } from "../../src/core/notes.js";
-import { mergeHoldMetaKey } from "../../src/core/scheduler/hold-rows.js";
 import { type DaemonRecord, daemonExitMetaKey, type EpochMs } from "../../src/core/types/index.js";
 import { runHook } from "../../src/harness/claude-code/index.js";
 import { runCodexHook } from "../../src/harness/codex/index.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { codexRecorded } from "./codex/helpers.js";
 import { recorded, type SquealRepo, SUBTRACTS, squealRepo } from "./helpers.js";
+import { holdCommand, holdMerge } from "./hold-fixture.js";
 
 /*
  * Row 011-215 (gh-93; 002 D3 and 011 C8 as amended 2026-10-25): at Stop, a
@@ -182,14 +182,23 @@ describe.each(Object.entries(ADAPTERS))(
       );
     });
 
-    it("leaves a hold's start to the next tool boundary", async () => {
+    it("still speaks for a merge hold's start, which names an action", async () => {
       const { r } = await quietTurn(adapter);
-      const row = { v: 1, since: Date.now(), revision: 1, paths: ["src/math.ts"], count: 1 };
-      r.store.meta.set(mergeHoldMetaKey(r.worktreeId), JSON.stringify(row));
+      holdMerge(r);
+      const stop = said(await adapter.run(r, "stop"));
+      expect(stop).toMatchObject({ block: adapter.news === "block" });
+      expect(stop?.text).toMatch(
+        /^SQUEAL · validation on hold at revision 1: git lists 1 unmerged path/,
+      );
+    });
+
+    it("leaves a command hold's start to the next tool boundary", async () => {
+      const { r } = await quietTurn(adapter);
+      holdCommand(r);
       expect(await adapter.run(r, "stop")).toMatchObject({ stdout: "" });
       const next = said(await adapter.run(r, "boundary"));
       expect(next?.text).toMatch(
-        /^SQUEAL · validation on hold at revision 1: git lists 1 unmerged path/,
+        /^SQUEAL · validation on hold at revision 1: `squeal hold` runs `npm run gate`/,
       );
     });
 

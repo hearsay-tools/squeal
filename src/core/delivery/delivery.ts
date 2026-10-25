@@ -158,7 +158,9 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
    * UserPromptSubmit, left behind. A liveness or idle delivery also says
    * what the consumer's edits did (`editNotes`, tasks 001-223 and 001-224);
    * the 001-224 line delivers on its own at a liveness delivery that is not
-   * a `stop`, and rides on the waiter's news.
+   * a `stop`, and rides on the waiter's news. At a `stop`, a liveness or hold
+   * change is told only beside a transition or when one names an action
+   * (`toldAtStop`, row 011-215); else the next boundary tells it.
    */
   function deliver(
     consumer: Consumer,
