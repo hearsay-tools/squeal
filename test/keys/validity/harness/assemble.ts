@@ -1,3 +1,4 @@
+import { utimesSync } from "node:fs";
 import { join } from "node:path";
 import { loadPolicy } from "../../../../src/core/daemon/policy.js";
 import { readHead } from "../../../../src/core/daemon-loop/head.js";
@@ -29,6 +30,7 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
       await seedStatCache(cache, root, input.cached, { objectFormat: "sha1" });
       store.transaction(() => cache.flush(store.fileHashes, WORKTREE));
     }
+    rewrite(root, input.rewritten ?? {});
     const keys = new WorktreeKeys({
       root,
       worktreeId: WORKTREE,
@@ -62,6 +64,13 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
   } finally {
     store.close();
   }
+}
+
+/** Writes `files` with an `mtime` a minute ahead, so each stat moves even where the bytes do not. */
+function rewrite(root: string, files: Readonly<Record<string, string>>): void {
+  writeTree(root, files);
+  const later = new Date(Date.now() + 60_000);
+  for (const path of Object.keys(files)) utimesSync(join(root, path), later, later);
 }
 
 function keysOf(keys: WorktreeKeys, paths: readonly string[]): Record<string, unknown> {
