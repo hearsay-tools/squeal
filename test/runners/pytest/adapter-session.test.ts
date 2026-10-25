@@ -8,16 +8,15 @@ import type {
   RunOptions,
   TestFileRef,
 } from "../../../src/core/types/index.js";
-import { createPytestAdapter, type ObservedStore } from "../../../src/runners/pytest/adapter.js";
+import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { PYTHONS, requireSynced, type Synced, syncFixture } from "../../helpers/pytest-env.js";
 
 /*
  * Review wave 2, B5, on a uv-synced copy of the small fixture: what a
  * start-up plugin (`pytest11` or `-p`) imports by a computed name is no
- * static closure's, so the run's session observation is stored in the
- * project's shared key, joins the environment's files and is reported as
- * `environmentObserved`; another worktree's adapter keys it from the store
- * before running anything, and growth it finds there re-keys the project.
+ * static closure's, so the run reports it as `environmentObserved`. The
+ * core stores it per project, joins it to the environment's key and reads
+ * what other worktrees stored (spec 016 D4); the adapter keeps none of it.
  */
 
 const small = resolve(import.meta.dirname, "../../fixtures/pytest/small");
@@ -39,21 +38,6 @@ def other_fixture():
     return hidden.VALUE
 `;
 
-/** The daemon's session key, in memory, shared by two adapters as by two worktrees. */
-function memoryStore(): ObservedStore & { session: string[] } {
-  const session: string[] = [];
-  return {
-    session,
-    read: () => ({}),
-    write: () => {},
-    readSession: () => session,
-    writeSession(additions) {
-      for (const path of additions) if (!session.includes(path)) session.push(path);
-      session.sort();
-    },
-  };
-}
-
 describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5)", (version) => {
   let synced: Synced = { ok: false, reason: "the sync did not run" };
   const adapters: RunnerAdapter[] = [];
@@ -71,17 +55,12 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
     logDir: join(root, "..", `logs-${runs++}`),
     timeoutMs: 60_000,
   });
-  const open = async (
-    ctx: Parameters<typeof requireSynced>[0],
-    store: ObservedStore,
-    project: PytestProject,
-  ) => {
+  const open = async (ctx: Parameters<typeof requireSynced>[0], project: PytestProject) => {
     const fixture = requireSynced(ctx, synced);
     const root = realpathSync(fixture.root) as AbsolutePath;
     const adapter = await createPytestAdapter(project, {
       root,
       source: fixture.env,
-      observed: store,
       cacheDir: join(root, "..", "cache") as AbsolutePath,
     });
     adapters.push(adapter);
@@ -113,15 +92,13 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
   };
 
   it(
-    "a pytest11 plugin's dynamic import joins the environment, the shared key and the report",
+    "a pytest11 plugin's dynamic import is reported as a start-up path, for the core to key",
     SLOW,
     async (ctx) => {
       const project = { name: "small", args: [], env: {}, include: [ENTRY_TEST] };
       await withFiles(ctx, { [PLUGIN]: DYNAMIC_PLUGIN, [HIDDEN]: "VALUE = 2\n" }, async () => {
-        const store = memoryStore();
-        const { adapter, root } = await open(ctx, store, project);
-        // Another worktree's daemon, open before the first run.
-        const other = await open(ctx, store, project);
+        const { adapter, root } = await open(ctx, project);
+        expect((await adapter.environment())[0]?.observedLoads).toBe(true);
         expect((await adapter.environment())[0]?.files).toContain(PLUGIN);
         expect((await adapter.environment())[0]?.files).not.toContain(HIDDEN);
 
@@ -130,21 +107,11 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
           ["test_entry_plugin", "pass"],
         ]);
         expect(report.environmentObserved).toEqual([{ project: "small", paths: [HIDDEN] }]);
-        expect(store.session).toEqual([HIDDEN]);
-        expect((await adapter.environment())[0]?.files).toContain(HIDDEN);
-        // Keyed now, so the next run reports it again but its edit is the environment's.
+        // The core joins it to the environment's key; the adapter's files stay its own.
+        expect((await adapter.environment())[0]?.files).not.toContain(HIDDEN);
         expect(await adapter.invalidate([{ path: HIDDEN, kind: "change" }])).toEqual({
           recreatedProjects: [],
         });
-
-        // The other worktree finds the growth at its observed-paths refinement, which changes
-        // no path (007 R1), and re-keys the project; its quiet recheck reads no observation.
-        expect(await other.adapter.recheck?.()).toEqual({ recreatedProjects: [] });
-        expect(await other.adapter.invalidate([])).toEqual({ recreatedProjects: ["small"] });
-        expect((await other.adapter.environment())[0]?.files).toContain(HIDDEN);
-        // A worktree started after it keys the path before any run.
-        const third = await open(ctx, store, project);
-        expect((await third.adapter.environment())[0]?.files).toContain(HIDDEN);
       });
     },
   );
@@ -154,8 +121,7 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
     SLOW,
     async (ctx) => {
       const include = [CORE_TEST, "tests/test_resources.py"];
-      const store = memoryStore();
-      const { adapter, root } = await open(ctx, store, {
+      const { adapter, root } = await open(ctx, {
         name: "small",
         args: [],
         env: {},
@@ -164,7 +130,6 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
       const report = await adapter.run(include.map(ref), runOptions(root));
       expect(report.completedFiles).toEqual(include.map(ref));
       expect(report.environmentObserved).toBeUndefined();
-      expect(store.session).toEqual([]);
       const files = (await adapter.environment())[0]?.files ?? [];
       expect(files.filter((p) => p.startsWith("tests/"))).toEqual([]);
       // D5: the nested conftest and its package affect the files below them only.
@@ -186,8 +151,7 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
         ctx,
         { "src/app/version.py": version, [STARTUP_HIDDEN]: "X = 1\n" },
         async () => {
-          const store = memoryStore();
-          const { adapter, root } = await open(ctx, store, {
+          const { adapter, root } = await open(ctx, {
             name: "small",
             args: [],
             env: {},
@@ -196,9 +160,9 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
           const report = await adapter.run(include.map(ref), runOptions(root));
           expect(report.completedFiles).toEqual(include.map(ref));
           expect(report.environmentObserved).toBeUndefined();
-          expect(store.session).toEqual([]);
           for (const file of include) {
-            expect((await adapter.closure(ref(file))).paths).toContain(STARTUP_HIDDEN);
+            const seen = report.observed?.find((o) => o.testFile.path === file);
+            expect(seen?.paths).toContain(STARTUP_HIDDEN);
           }
         },
       );
@@ -211,7 +175,7 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
     async (ctx) => {
       const include = [CORE_TEST, "tests/test_resources.py"];
       // Python's own filters hide a ResourceWarning; a project's may show it (briefcase's did).
-      const { adapter, root } = await open(ctx, memoryStore(), {
+      const { adapter, root } = await open(ctx, {
         name: "small",
         args: [],
         env: { PYTHONWARNINGS: "error::ResourceWarning" },
@@ -233,16 +197,14 @@ describe.each(PYTHONS)("pytest adapter start-up observations under Python %s (B5
     const project = { name: "small", args: ["-p", "app.startup"], env: {}, include: [CORE_TEST] };
     const startup = `import importlib\nimportlib.import_module("app." + "startup_hidden")\n`;
     await withFiles(ctx, { [STARTUP]: startup, [STARTUP_HIDDEN]: "X = 1\n" }, async () => {
-      const store = memoryStore();
-      const { adapter, root } = await open(ctx, store, project);
+      const { adapter, root } = await open(ctx, project);
       expect((await adapter.environment())[0]?.files).toContain(STARTUP);
       const report = await adapter.run([ref(CORE_TEST)], runOptions(root));
       expect(report.completedFiles).toEqual([ref(CORE_TEST)]);
-      expect(report.environmentObserved?.[0]?.paths).toContain(STARTUP_HIDDEN);
-      expect(store.session).toContain(STARTUP_HIDDEN);
-      expect((await adapter.environment())[0]?.files).toContain(STARTUP_HIDDEN);
+      const startup = report.environmentObserved?.[0]?.paths ?? [];
+      expect(startup).toContain(STARTUP_HIDDEN);
       // Nothing under the environment directory: its fingerprint covers those.
-      expect(store.session.some((p) => p.startsWith(".venv/"))).toBe(false);
+      expect(startup.some((p) => p.startsWith(".venv/"))).toBe(false);
     });
   });
 });

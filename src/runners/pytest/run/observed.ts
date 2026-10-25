@@ -1,8 +1,9 @@
 import { dirname, sep } from "node:path";
 import { compare } from "../../../core/fs/index.js";
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type { RelativePath, TestFileRef } from "../../../core/types/index.js";
-import type { ImportEvent, SpawnedEvent } from "./events.js";
+import type { AbsolutePath, RelativePath, TestFileRef } from "../../../core/types/index.js";
+import { writtenAbove } from "../../observe/index.js";
+import type { ImportEvent, SpawnedEvent, WrittenEvent } from "./events.js";
 import type { BatchFile } from "./report.js";
 
 /** The project files one test file's run imported (spec 007 D6), worktree-relative and sorted. */
@@ -12,6 +13,8 @@ export interface PytestObservedClosure {
   readonly paths: readonly RelativePath[];
   /** What the Python processes the test started found to import (task 007-55), as `paths` holds them. */
   readonly spawned: readonly RelativePath[];
+  /** The directories the run created or removed above a path of `paths` (spec 016 D4). */
+  readonly written: readonly RelativePath[];
 }
 
 export interface BatchObserved {
@@ -34,14 +37,17 @@ export interface BatchObserved {
  * plugin writes an imported module's parent packages as edges too, so
  * `__init__.py` files pytest runs on import are reached. What a process the
  * test started found is an edge from the test file itself (task 007-55).
+ * The directories a process created or removed under the test file in
+ * progress are its `written`, those above a path it reached (016 D4).
  */
 export function observeBatch(
-  edges: readonly (ImportEvent | SpawnedEvent)[],
+  edges: readonly (ImportEvent | SpawnedEvent | WrittenEvent)[],
   files: readonly BatchFile[],
   paths: WorktreePaths,
 ): BatchObserved {
   const children = new Map<string, Set<string>>();
   const spawned = new Map<string, Set<string>>();
+  const written = new Map<string, Set<string>>();
   const session = new Set<string>();
   const conftests = new Set<string>();
   const imports: ImportEvent[] = [];
@@ -51,6 +57,10 @@ export function observeBatch(
     map.set(from, set);
   };
   for (const edge of edges) {
+    if (edge.type === "written") {
+      add(written, edge.ctx, edge.path);
+      continue;
+    }
     if (edge.type === "spawned") {
       add(children, edge.ctx, edge.to);
       add(spawned, edge.ctx, edge.to);
@@ -84,10 +94,13 @@ export function observeBatch(
     const own = [...conftests].filter(
       (c) => dir === dirname(c) || dir.startsWith(`${dirname(c)}${sep}`),
     );
+    const loaded = reach([real, ...own]);
+    const made = written.get(real) ?? new Set<AbsolutePath>();
     return {
       testFile,
-      paths: reach([real, ...own]),
+      paths: loaded,
       spawned: relative(spawned.get(real) ?? []),
+      written: writtenAbove(loaded, made, paths),
     };
   });
   // A module loaded past the wrapper (an entry point's `import_module`, bound
