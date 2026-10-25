@@ -18,8 +18,9 @@ import { type Found, findPython, PYTHONS, pythonEnv } from "../../../helpers/pyt
  * Task 007-55: `sitecustomize.py`, the start-up hook of every Python process
  * a test starts, run by a bare managed interpreter over a temp project. With
  * `SQUEAL_PYTEST_FILE` set, a process records each project file it finds to
- * import, and the script it runs, under that test file; without it, it only
- * runs the `sitecustomize` it shadows.
+ * import, and the script it runs, under that test file, and each directory
+ * it creates, removes or renames (spec 016 D4); without it, it only runs
+ * the `sitecustomize` it shadows.
  */
 
 const runtime = pytestRuntimeDir();
@@ -53,6 +54,8 @@ interface Spawned {
   readonly to: string;
   readonly ctx: string;
   readonly pid: number;
+  /** A `written` record's directory. */
+  readonly path?: string;
 }
 
 describe.each(PYTHONS)("the start-up hook under Python %s (task 007-55)", (version) => {
@@ -99,7 +102,19 @@ describe.each(PYTHONS)("the start-up hook under Python %s (task 007-55)", (versi
           .split("\n")
           .map((line) => JSON.parse(line) as Spawned)
       : [];
-    return { stdout, records, recorded: records.map((r) => r.to.slice(root.length + 1)).sort() };
+    const relative = (path: string | undefined) => (path ?? "").slice(root.length + 1);
+    return {
+      stdout,
+      records,
+      recorded: records
+        .filter((r) => r.type !== "written")
+        .map((r) => relative(r.to))
+        .sort(),
+      written: records
+        .filter((r) => r.type === "written")
+        .map((r) => relative(r.path))
+        .sort(),
+    };
   }
 
   it("records what `python -m pkg` finds under the test file, a module that raises on import too", (ctx) => {
@@ -123,6 +138,50 @@ describe.each(PYTHONS)("the start-up hook under Python %s (task 007-55)", (versi
     expect(recorded).toEqual(["bare.py"]);
     // `python -c` names no file in `sys.argv[0]`.
     expect(python(ctx, ["-c", "pass"], { file: "tests/test_cli.py" }).records).toEqual([]);
+  });
+
+  it("records each directory a process creates, removes or renames, in every form, and no file write (016 D4)", (ctx) => {
+    for (const dir of ["r-rmdir", "r-rmtree/x", "r-rename", "r-replace"]) {
+      mkdirSync(join(root, dir), { recursive: true });
+    }
+    const script = [
+      "import os, pathlib, shutil, tempfile",
+      'os.mkdir("d-mkdir")',
+      'os.makedirs("d-makedirs/inner")',
+      'pathlib.Path("d-pathlib").mkdir()',
+      'made = tempfile.mkdtemp(prefix="t-", dir=".")',
+      'os.rmdir("r-rmdir")',
+      'shutil.rmtree("r-rmtree")',
+      'os.rename("r-rename", "r-renamed")',
+      'os.replace("r-replace", "r-replaced")',
+      'pathlib.Path("file.txt").write_text("x")',
+      "tempfile.mkdtemp()",
+      "print(os.path.basename(made))",
+    ].join("\n");
+    const { stdout, records, written } = python(ctx, ["-c", script], { file: "tests/test_cli.py" });
+    const made = stdout.trim();
+    expect(made).toMatch(/^t-/);
+    // Outside the root, `tempfile.mkdtemp()` in the system's directory is no record.
+    expect(written).toEqual(
+      [
+        "d-makedirs",
+        "d-makedirs/inner",
+        "d-mkdir",
+        "d-pathlib",
+        made,
+        "r-rename",
+        "r-renamed",
+        "r-replace",
+        "r-replaced",
+        "r-rmdir",
+        "r-rmtree",
+        "r-rmtree/x",
+      ].sort(),
+    );
+    const writes = records.filter((r) => r.type === "written");
+    expect(new Set(writes.map((r) => r.ctx))).toEqual(new Set([join(root, "tests/test_cli.py")]));
+    // Without SQUEAL_PYTEST_FILE nothing is recorded.
+    expect(python(ctx, ["-c", 'import os; os.mkdir("w-unset")']).records).toEqual([]);
   });
 
   it("without SQUEAL_PYTEST_FILE writes nothing and imports nothing beyond importlib.machinery", (ctx) => {

@@ -232,6 +232,8 @@ export function projectEnvironment(parts: EnvironmentParts): RunnerEnvironment {
     resolvedConfig: JSON.stringify(config),
     files: [...files].sort(compare),
     packages: { imports: [], builtins: [] },
+    // 016 D4, O8: its runs observe module imports, which key whatever `observe.runtimeInputs` says
+    observedLoads: true,
   };
 }
 

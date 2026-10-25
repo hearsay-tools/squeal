@@ -17,18 +17,14 @@ import type {
   RunOptions,
   TestFileRef,
 } from "../../../src/core/types/index.js";
-import {
-  createPytestAdapter,
-  type ObservedPaths,
-  type ObservedStore,
-} from "../../../src/runners/pytest/adapter.js";
+import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { PYTHONS, requireSynced, type Synced, syncFixture } from "../../helpers/pytest-env.js";
 
 /*
  * Spec 007 D2 to D7 assembled behind `RunnerAdapter`: `createPytestAdapter`
  * over a uv-synced copy of the small fixture. The environment's states key
- * and run as D2 says, the graph keys without one (D4 as amended), a run's
- * observed-only path joins its file's closure and the store (D4, 003 D3),
+ * and run as D2 says, the graph keys without one (D4 as amended), a run
+ * reports its observed-only path, which the core keys (D4, spec 016 D4),
  * and the bytecode and cache land in the cache directory, never the tree.
  */
 
@@ -49,30 +45,6 @@ const CORE_TEST = "tests/unit/test_core.py";
 const OBSERVED_ONLY = "src/app/plugins/alpha.py";
 
 const ref = (path: string): TestFileRef => ({ project: "small", path });
-
-/** The daemon's meta key, in memory. */
-function memoryStore(): ObservedStore & {
-  value: Record<string, string[]>;
-  session: string[];
-} {
-  const value: Record<string, string[]> = {};
-  const session: string[] = [];
-  return {
-    value,
-    session,
-    read: () => value as ObservedPaths,
-    write(additions) {
-      for (const [file, paths] of Object.entries(additions)) {
-        value[file] = [...new Set([...(value[file] ?? []), ...paths])].sort();
-      }
-    },
-    readSession: () => session,
-    writeSession(additions) {
-      for (const path of additions) if (!session.includes(path)) session.push(path);
-      session.sort();
-    },
-  };
-}
 
 /** Every `__pycache__` and `.pytest_cache` under `dir`, `.venv` left out. */
 function artefacts(dir: string, prefix = ""): string[] {
@@ -106,7 +78,6 @@ describe.each(PYTHONS)("createPytestAdapter under Python %s (spec 007)", (versio
   });
   const open = async (
     ctx: Parameters<typeof requireSynced>[0],
-    store?: ObservedStore,
     project: PytestProject = PROJECT,
   ) => {
     const fixture = requireSynced(ctx, synced);
@@ -118,18 +89,16 @@ describe.each(PYTHONS)("createPytestAdapter under Python %s (spec 007)", (versio
       source,
       note: (text) => notes.push(text),
       cacheDir: join(scratch, "cache") as AbsolutePath,
-      ...(store === undefined ? {} : { observed: store }),
     });
     adapters.push(adapter);
     return { adapter, root, notes };
   };
 
   it(
-    "runs the project, records an observed-only path and keys it into the file's closure",
+    "runs the project and reports an observed-only path, outside the file's closure",
     SLOW,
     async (ctx) => {
-      const store = memoryStore();
-      const { adapter, root } = await open(ctx, store);
+      const { adapter, root } = await open(ctx);
       expect((await adapter.testFiles()).map((f) => f.path)).toEqual(TEST_FILES);
       const [environment] = await adapter.environment();
       expect(environment).toMatchObject({ project: "small", runnerName: "pytest" });
@@ -163,21 +132,17 @@ describe.each(PYTHONS)("createPytestAdapter under Python %s (spec 007)", (versio
       expect(report.results.every((r) => r.outcome === "pass")).toBe(true);
       expect(report.results.map((r) => r.check.fullName)).toContain("test_total[xs0-6]");
 
-      // D4: the computed `import_module` loaded what no static closure holds.
-      expect(store.value[CORE_TEST]).toContain(OBSERVED_ONLY);
-      expect(
-        Object.values(store.value)
-          .flat()
-          .some((p) => p.startsWith(".venv/")),
-      ).toBe(false);
-      expect((await adapter.closure(ref(CORE_TEST))).paths).toContain(OBSERVED_ONLY);
-      expect((await adapter.affected([OBSERVED_ONLY])).transitive).toEqual([ref(CORE_TEST)]);
+      // D4: the computed `import_module` loaded what no static closure holds; the
+      // core keys it (spec 016 D4), so the adapter's closure stays the graph's.
+      const core = report.observed?.find((o) => o.testFile.path === CORE_TEST);
+      expect(core?.paths).toContain(OBSERVED_ONLY);
+      expect(report.observed?.flatMap((o) => o.paths).some((p) => p.startsWith(".venv/"))).toBe(
+        false,
+      );
+      expect((await adapter.closure(ref(CORE_TEST))).paths).not.toContain(OBSERVED_ONLY);
+      expect((await adapter.affected([OBSERVED_ONLY])).transitive).toEqual([]);
       expect(artefacts(root)).toEqual([]);
       expect(existsSync(join(scratch, "cache", "pycache"))).toBe(true);
-
-      // A second adapter, as another worktree's daemon, reads the observation from the store.
-      const other = await open(ctx, store);
-      expect((await other.adapter.closure(ref(CORE_TEST))).paths).toContain(OBSERVED_ONLY);
     },
   );
 
@@ -256,7 +221,7 @@ describe.each(PYTHONS)("createPytestAdapter under Python %s (spec 007)", (versio
         include: ["outcomes/test_*.py"],
         exclude: ["outcomes/test_hang.py"],
       };
-      const { adapter } = await open(ctx, undefined, outcomes);
+      const { adapter } = await open(ctx, outcomes);
       const files = [ref("outcomes/test_collection_error.py"), ref("outcomes/test_module_skip.py")];
       const report = await adapter.run(files, runOptions());
       expect(report.completedFiles).toEqual(files);
