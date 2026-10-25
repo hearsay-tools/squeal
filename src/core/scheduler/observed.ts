@@ -106,8 +106,9 @@ export async function observedGrowth(
 /**
  * 016 D4, the written-directory bound: whether `path` is a git-ignored path
  * below a directory in `written`, which the run wrote, created or removed.
+ * The warm-up reads it too, so it names no path the record keys.
  */
-function scratchOf(
+export function scratchOf(
   written: readonly RelativePath[],
   ignored: ReadonlySet<RelativePath>,
 ): (path: RelativePath) => boolean {
