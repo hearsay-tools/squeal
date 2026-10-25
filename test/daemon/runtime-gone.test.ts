@@ -2,6 +2,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { interruptedMetaKey } from "../../src/core/scheduler/interrupted.js";
 import {
   daemonSuite,
   diagnose,
@@ -123,6 +124,24 @@ function failedOrUnknown(repo: FixtureRepo): string[] {
   );
 }
 
+/** The worktree's interrupted runs as `meta` has them (`interrupted.ts`); `null` when none ran. */
+function interrupted(repo: FixtureRepo): string | null {
+  return withStore(repo, (store) => store.meta.get(interruptedMetaKey(repo.worktreeId)));
+}
+
+/** `squeal hold` through copy B, its command running while `flag` exists; once the daemon holds. */
+async function holding({ squeal, flag }: Probe): Promise<SpawnedProcess> {
+  writeFileSync(flag, "");
+  const wait = `setInterval(() => require("node:fs").existsSync(${JSON.stringify(flag)}) || process.exit(0), 50);`;
+  const hold = squeal("hold", "--", process.execPath, "-e", wait);
+  suite.cleanup(() => {
+    if (hold.child.exitCode === null && hold.child.signalCode === null) hold.child.kill("SIGKILL");
+  });
+  await waitFor(() => / is on hold until /.test(hold.stderr()), 60_000, "the hold");
+  expect(hold.stderr()).not.toContain("did not take the hold");
+  return hold;
+}
+
 /** The edit's first tier running under the hold, each of its files started, others queued behind it. */
 async function heldTier({ repo, flag, started }: Probe): Promise<string[]> {
   writeFileSync(flag, "");
@@ -168,10 +187,21 @@ describe.runIf(process.platform === "linux")(
 
     it("a deletion with queued work starts no tier, and the note names `squeal start`", async () => {
       const run = await probe();
-      rmSync(run.runtime, { recursive: true, force: true });
+      // Without the hold a tier starts some 10 ms after the files read queued (row 011-216).
+      const hold = await holding(run);
       writeFileSync(join(run.repo.root, SHARED), "export const held = 2;\n");
+      await waitFor(
+        () => [...pendingOf(run.repo).values()].filter((p) => p === "queued").length === 6,
+        60_000,
+        "the edit's six files queued",
+      );
+      rmSync(run.runtime, { recursive: true, force: true });
+      rmSync(run.flag);
       await exitsAsReinstalled(run);
+      expect((await hold.exited).code, hold.stderr()).toBe(0);
       expect(run.started()).toEqual([]);
+      // A tier that ran while the runtime went leaves its files here; its children never start.
+      expect(interrupted(run.repo)).toBeNull();
       expect([...pendingOf(run.repo).values()]).toEqual(HELD.map(() => "queued"));
       expect(failedOrUnknown(run.repo)).toEqual([]);
     });
