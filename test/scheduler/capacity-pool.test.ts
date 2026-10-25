@@ -110,7 +110,8 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
     runs.length = 0;
     appendFileSync(join(h.root, "vitest.config.ts"), "// environment change\n");
     await h.batch("vitest.config.ts");
-    await expect.poll(() => held).toBe(true);
+    // It waits for the batch's re-key and a permit: under load, past the 1 s default (row 011-218).
+    await expect.poll(() => held, { timeout: 30_000 }).toBe(true);
     const backlog = runs.find((r) => r.files.some((f) => f.path.startsWith("test/")));
     expect(backlog?.options.workers).toBe(1);
 
