@@ -51,14 +51,17 @@ export class Claims {
     this.#waiting = false;
   }
 
-  /** Whether a file at `key` waits: another live worktree runs it, and the waiter's bound holds. */
-  holds(key: CheckKey): boolean {
-    const { store, worktreeId, now } = this.context;
-    if (!store.testFileKeys.claimed(worktreeId, key, this.#live())) {
+  /**
+   * Whether a file at `key` waits at `at`: another live worktree runs it, and
+   * the waiter's bound holds. A tier's yield decision gives its one reading
+   * (row 011-194).
+   */
+  holds(key: CheckKey, at: EpochMs = this.context.now()): boolean {
+    const { store, worktreeId } = this.context;
+    if (!store.testFileKeys.claimed(worktreeId, key, this.#live(at))) {
       this.#seen.delete(key);
       return false;
     }
-    const at = now();
     const since = this.#seen.get(key) ?? at;
     this.#seen.set(key, since);
     if (at - since > this.#boundMs()) return false;
@@ -86,8 +89,8 @@ export class Claims {
     return Math.min(backlogTierSize, Math.max(tierSize, Math.ceil(queued / (sharers + 1))));
   }
 
-  #live(): Liveness {
-    return { now: this.context.now(), graceIntervals: HEARTBEAT_GRACE_INTERVALS };
+  #live(now: EpochMs = this.context.now()): Liveness {
+    return { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS };
   }
 
   #boundMs(): number {
@@ -145,7 +148,7 @@ export function peekClaim(
   // `usedAt` 0: a read, not a lookup hit.
   const hits = context.store.results.byKey(key, 0);
   if (hits.length > 0) return stands(context, hits) ? "stored" : "free";
-  return !queue.isRecent(ref) && claims.holds(key) ? "waits" : "free";
+  return !queue.isRecent(ref) && claims.holds(key, context.now()) ? "waits" : "free";
 }
 
 /**

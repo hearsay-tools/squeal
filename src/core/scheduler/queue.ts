@@ -321,13 +321,14 @@ export class RunQueue {
   }
 
   /**
-   * Whether a promoted fast entry `where` holds is queued (C15; row 011-51).
-   * `where` is asked of promoted entries only, so it may read the store
-   * (row 011-55: another worktree's claim).
+   * Whether a fast entry promoted at `now`, a reading of the promotions'
+   * clock, that `where` holds is queued (C15; row 011-51; row 011-194: the
+   * decision's one reading). `where` is asked of promoted entries only, so
+   * it may read the store (row 011-55: another worktree's claim).
    */
-  hasPromoted(where: (ref: TestFileRef) => boolean): boolean {
+  hasPromoted(where: (ref: TestFileRef) => boolean, now: number): boolean {
     return this.#fast().some(
-      (entry) => this.#promotions.rankOf(testFileId(entry.ref)) !== null && where(entry.ref),
+      (entry) => this.#promotions.rankAt(testFileId(entry.ref), now) !== null && where(entry.ref),
     );
   }
 
