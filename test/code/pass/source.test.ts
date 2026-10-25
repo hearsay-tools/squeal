@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { headAfterMove, mainStoreSource } from "../../../src/core/code/pass/index.js";
-import { type CommitSha, headMoveMetaKey, refinedMetaKey } from "../../../src/core/types/index.js";
+import {
+  type CommitSha,
+  headMoveMetaKey,
+  listingMetaKey,
+  refinedMetaKey,
+} from "../../../src/core/types/index.js";
 import { freshStore, WT } from "../../state/helpers.js";
 
 /**
@@ -99,8 +104,8 @@ describe("headAfterMove", () => {
   });
 });
 
-describe("the revision the runners listed up to, from the main store (row 015-52)", () => {
-  const store = (refined: string | null) => {
+describe("the runners' last listing, from the main store (row 015-52; review 0.1.315 B2)", () => {
+  const store = (listing: string | null) => {
     const main = freshStore();
     for (let i = 1; i <= 3; i++) {
       main.revisions.append({
@@ -112,17 +117,18 @@ describe("the revision the runners listed up to, from the main store (row 015-52
         changes: [{ path: "src/a.ts", oldHash: null, newHash: `h${i}` }],
       });
     }
-    if (refined !== null) main.meta.set(refinedMetaKey(WT), refined);
+    // The refined revision is no listing: a refinement whose listing failed records it too.
+    main.meta.set(refinedMetaKey(WT), "3");
+    if (listing !== null) main.meta.set(listingMetaKey(WT), listing);
     return mainStoreSource(main, WT, () => []);
   };
 
-  it("gives the refined revision, at most the latest", () => {
-    expect(store("2").listedRevision()).toBe(2);
-    expect(store("5").listedRevision()).toBe(3);
+  it("gives the scheduler's record", () => {
+    expect(store('{"revision":2,"count":4}').listing()).toEqual({ revision: 2, count: 4 });
   });
 
-  it("gives the latest when no daemon recorded one, as the header reads it", () => {
-    expect(store(null).listedRevision()).toBe(3);
-    expect(store("x").listedRevision()).toBe(3);
+  it("gives none when no listing is recorded, or the record does not read", () => {
+    expect(store(null).listing()).toBeNull();
+    expect(store("2").listing()).toBeNull();
   });
 });

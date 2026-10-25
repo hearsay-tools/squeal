@@ -1,5 +1,11 @@
 import type { CodeCheckId, CodeLanguage, FileCount } from "../../types/code.js";
-import type { CommitSha, FileHash, RelativePath, RevisionNumber } from "../../types/index.js";
+import type {
+  CommitSha,
+  FileHash,
+  ListingFact,
+  RelativePath,
+  RevisionNumber,
+} from "../../types/index.js";
 
 /**
  * Spec 015 D3: what the pass counts with. The daemon's is 015-05's
@@ -47,12 +53,12 @@ export interface PassSource {
   /** Every file Squeal sees in the worktree. */
   files(): readonly SourceFile[];
   /**
-   * D1 (row 015-52): the newest revision whose test files the runners
-   * listed, the scheduler's refined revision, at most `latestRevision`;
-   * that one when no daemon recorded any. A file a later revision adds may
-   * be a test file `testFiles` does not hold yet. Read before `testFiles`.
+   * D1 (row 015-52): the scheduler's record of the runners' last listing
+   * that did not fail; `null` when none is recorded, so no file is known
+   * not to be a test file. A file a later revision adds may be a test file
+   * `testFiles` does not hold yet. Read before `testFiles`.
    */
-  listedRevision(): RevisionNumber;
+  listing(): ListingFact | null;
   /** D1: test files, any file a runner lists. Never counted. */
   testFiles(): readonly RelativePath[];
   /** D1: files git ignores that Squeal watches anyway (a closure reads them). Never counted. */
