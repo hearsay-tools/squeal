@@ -168,19 +168,26 @@ export function askNoResultRun(store: Store, ask: RetryAsk): NoResultAnswer {
  * What a named wait's request got (row 011-207, 011 C15): `queued`, a new
  * request as `askNoResultRun` stores it; `joined`, one is pending at the key
  * (`record`); `asked`, one at the key ended or was withdrawn, so a wait asks
- * no second run there.
+ * no second run there; `changed`, the file no longer qualifies (review
+ * 0.1.322 B1), so nothing is stored.
  */
-export type NamedRunAnswer = {
-  readonly kind: "queued" | "joined" | "asked";
-  readonly record: RetryRecord;
-};
+export type NamedRunAnswer =
+  | { readonly kind: "queued" | "joined" | "asked"; readonly record: RetryRecord }
+  | { readonly kind: "changed" };
 
 /**
  * Stores a request to run a file with no result at `ask.key` once, as
  * `askNoResultRun` does, only when no request was ever kept at the key,
- * pending or ended; one transaction, so two waits at once ask one run.
+ * pending or ended, and `stillAskable` holds: the wait's own check of the
+ * file, made again here (C15: "the check and the write are one
+ * transaction"), so two waits at once ask one run and a file queued,
+ * claimed, current or re-keyed since the wait's read is not asked.
  */
-export function askNamedRun(store: Store, ask: RetryAsk): NamedRunAnswer {
+export function askNamedRun(
+  store: Store,
+  ask: RetryAsk,
+  stillAskable: () => boolean,
+): NamedRunAnswer {
   return store.transaction(() => {
     const records = readRetries(store);
     const at = retriesAt(records, ask.testFile, ask.key);
@@ -188,6 +195,7 @@ export function askNamedRun(store: Store, ask: RetryAsk): NamedRunAnswer {
     if (pending !== undefined) return { kind: "joined", record: pending };
     const last = at.at(-1);
     if (last !== undefined) return { kind: "asked", record: last };
+    if (!stillAskable()) return { kind: "changed" };
     const record: RetryRecord = { ...newRecord(ask), noResult: true };
     writeRetries(store, [...records, record]);
     return { kind: "queued", record };
