@@ -1,11 +1,26 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createFsHasher, StatCache, seedStatCache } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
+import {
+  blobHash,
+  createFsHasher,
+  type Hasher,
+  StatCache,
+  seedStatCache,
+} from "../../src/core/hash/index.js";
+import { reconcile, statCandidates } from "../../src/core/revision/index.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import {
@@ -65,6 +80,35 @@ async function fullPass() {
 
 const stored = () => store.fileHashes.list(worktreeIdFor(root)).map((row) => row.path);
 
+function openFixtureStore(): Store {
+  const opened = openStore(join(root, ".git"), { busyTimeoutMs: 10_000 });
+  if (isStoreOpenFailure(opened)) throw new Error(`store: ${JSON.stringify(opened)}`);
+  return opened;
+}
+
+function keysOn(opened: Store): WorktreeKeys {
+  return new WorktreeKeys({
+    root,
+    worktreeId: worktreeIdFor(root),
+    store: opened,
+    hasher: createFsHasher(root, "sha1"),
+    objectFormat: "sha1",
+    // Observed reads stay out of closures, so they name a path on their own.
+    policy: { ...DEFAULT_POLICY, observe: { runtimeInputs: false } },
+    squealVersion: "0.0.0-test",
+    env: {},
+    onExtraFiles: (paths) => watched.push([...paths]),
+  });
+}
+
+/** `TEST`'s key once the environment is read and its closure names `src/a.ts`. */
+async function keyOfTest(on: WorktreeKeys) {
+  await on.setEnvironments([ENVIRONMENT]);
+  on.setClosure({ testFile: TEST, paths: [TEST.path, "src/a.ts"] });
+  await on.trackUntracked();
+  return on.index.key(TEST);
+}
+
 beforeEach(async () => {
   root = realpathSync(mkdtempSync(join(tmpdir(), "sq-011-36-")));
   write(".gitignore", "dist/\nnode_modules/\n");
@@ -77,26 +121,13 @@ beforeEach(async () => {
   write(NOTHING, "export declare const build: number;\n");
   write(OBSERVED, "{}\n");
   write(LOCKFILE, '{"lockfileVersion":3,"packages":{}}\n');
-  const opened = openStore(join(root, ".git"), { busyTimeoutMs: 10_000 });
-  if (isStoreOpenFailure(opened)) throw new Error(`store: ${JSON.stringify(opened)}`);
-  store = opened;
+  store = openFixtureStore();
   // As a predecessor left them: every ignored path hashed, the declaration that named some gone.
   const cache = new StatCache();
   await seedStatCache(cache, root, IGNORED, { objectFormat: "sha1" });
   store.transaction(() => cache.flush(store.fileHashes, worktreeIdFor(root)));
   watched = [];
-  keys = new WorktreeKeys({
-    root,
-    worktreeId: worktreeIdFor(root),
-    store,
-    hasher: createFsHasher(root, "sha1"),
-    objectFormat: "sha1",
-    // Observed reads stay out of closures, so they name a path on their own.
-    policy: { ...DEFAULT_POLICY, observe: { runtimeInputs: false } },
-    squealVersion: "0.0.0-test",
-    env: {},
-    onExtraFiles: (paths) => watched.push([...paths]),
-  });
+  keys = keysOn(store);
   expect(await keys.bootstrap(head)).toBeNull();
   expect(keys.extraFiles()).toEqual([...IGNORED].sort());
 });
@@ -172,5 +203,54 @@ describe("a cached ignored path nothing names (row 011-36)", () => {
     await keys.trackUntracked();
     expect(keys.extraFiles()).toEqual([IMPORTED, LOCKFILE]);
     expect(keys.cache.hashOf(IMPORTED)).toBeDefined();
+  });
+});
+
+/*
+ * Review 0.1.310 B1 (row 011-204): a pass reads src/a.ts, and the file is
+ * appended to after the read, before the pass stats it again. No watcher
+ * batch follows; the daemon restarts. Its bootstrap must see the append.
+ */
+describe("a write after a pass's read, then a restart (review 0.1.310 B1)", () => {
+  it("is a revision at the next bootstrap, with no batch, and the test's key moves", async () => {
+    const before = await keyOfTest(keys);
+    expect(before).not.toBeNull();
+    const read = readFileSync(join(root, "src/a.ts"), "utf8");
+
+    // A later mtime makes the pass read the file, whatever its racy mark.
+    const later = new Date(Date.now() + 60_000);
+    utimesSync(join(root, "src/a.ts"), later, later);
+    const fs = createFsHasher(root, "sha1");
+    const appending: Hasher = {
+      ...fs,
+      hash: async (path) => {
+        const hash = await fs.hash(path);
+        appendFileSync(join(root, path), "// post-read write\n");
+        return hash;
+      },
+    };
+    const paths = await statCandidates(["src/a.ts" as RelativePath], fs);
+    await reconcile({ trigger: "watch", paths }, keys.cache, appending, {
+      worktreeId: worktreeIdFor(root),
+      store,
+      head,
+    });
+
+    store.close();
+    store = openFixtureStore();
+    const restarted = keysOn(store);
+    const revision = await restarted.bootstrap(head);
+
+    const disk = readFileSync(join(root, "src/a.ts"));
+    expect(revision?.changes).toEqual([
+      {
+        path: "src/a.ts",
+        oldHash: blobHash(Buffer.from(read), "sha1"),
+        newHash: blobHash(disk, "sha1"),
+      },
+    ]);
+    const after = await keyOfTest(restarted);
+    expect(after).not.toBeNull();
+    expect(after).not.toBe(before);
   });
 });
