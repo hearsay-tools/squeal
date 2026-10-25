@@ -17,13 +17,16 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * runner's folder imports another runner's folder, and no shared file under
  * `src/runners/` imports a runner's folder, which would carry that folder
  * into the closure of every runner that loads the shared file (review
- * `reviews/016-12.md` B1, row 016-20).
+ * `reviews/016-12.md` B1, row 016-20). One file is exempt: the registry
+ * `descriptions.ts` (spec 016 D5) imports each runner's `describe.ts` and
+ * nothing else of a runner's; no adapter imports the registry.
  */
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const RUNNERS = join(ROOT, "src/runners");
 const CODE = /\.[cm]?[jt]s$/;
 const SPECIFIER = /\b(?:from|import|require)\s*\(?\s*["']([^"']+)["']/g;
+const REGISTRY = "descriptions.ts";
 
 /** The folders under `runners` that hold an adapter, by name. */
 function runnerFolders(runners: string): string[] {
@@ -48,7 +51,9 @@ function crossings(runners: string): string[] {
       if (!specifier?.startsWith(".")) continue;
       const target = relative(runners, resolve(runners, dirname(path), specifier));
       const reached = folderOf(target);
-      if (reached !== null && reached !== own) found.push(`${path} imports ${target}`);
+      const described = path === REGISTRY && target === join(reached ?? "", "describe.js");
+      if (reached !== null && reached !== own && !described)
+        found.push(`${path} imports ${target}`);
     }
   }
   return found;
@@ -74,7 +79,9 @@ describe("runner folders (spec 016 goal 8)", () => {
       "a/run/y.ts": 'import type { B } from "../../b/adapter.js";\n',
       "a/runtime/r.cjs": 'require("../../b/runtime/r.cjs");\n',
       "b/adapter.ts": 'export * from "../top.js";\nconst a = () => import("../a/adapter.js");\n',
+      "b/describe.ts": "export const b = 1;\n",
       "b/runtime/r.cjs": "",
+      "descriptions.ts": 'import { b } from "./b/describe.js";\nimport "./a/adapter.js";\n',
       "shared/x.ts": 'import "../b/adapter.js";\nexport const x = 1;\n',
       "top.ts": "export const top = 1;\n",
     };
@@ -94,6 +101,7 @@ describe("runner folders (spec 016 goal 8)", () => {
         `${join("a", "run", "y.ts")} imports ${join("b", "adapter.js")}`,
         `${join("a", "runtime", "r.cjs")} imports ${join("b", "runtime", "r.cjs")}`,
         `${join("b", "adapter.ts")} imports ${join("a", "adapter.js")}`,
+        `descriptions.ts imports ${join("a", "adapter.js")}`,
         `${join("shared", "x.ts")} imports ${join("b", "adapter.js")}`,
       ]);
     });
