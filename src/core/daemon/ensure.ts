@@ -149,9 +149,30 @@ export function liveDaemonRecorded(root: AbsolutePath, now: number = Date.now())
   return daemonLiveness(recordedDaemon(root), now).state === "alive";
 }
 
+/** What `ensureDaemonProcess` did, and the process it spawned (row 011-214). */
+export interface EnsuredDaemon {
+  readonly result: EnsureDaemonResult;
+  /** The spawned daemon's pid; `null` unless `spawned`, or when the spawn failed at once. */
+  readonly pid: number | null;
+}
+
+const UNAVAILABLE: EnsuredDaemon = { result: "unavailable", pid: null };
+
 /**
  * Makes sure a daemon serves the worktree at `root`, without waiting for one
- * to start.
+ * to start: `ensureDaemonProcess`'s result.
+ */
+export async function ensureDaemon(
+  root: AbsolutePath,
+  options: EnsureDaemonOptions = {},
+): Promise<EnsureDaemonResult> {
+  return (await ensureDaemonProcess(root, options)).result;
+}
+
+/**
+ * Makes sure a daemon serves the worktree at `root`, without waiting for one
+ * to start, and names the process it spawned, so `squeal start` can tell a
+ * daemon still starting from one that exited (row 011-214).
  *
  * Spec 001 D10: "A hook that finds no live socket spawns `squeal daemon
  * <root>` detached (`detached: true`, `stdio: 'ignore'`, `unref()`), about 70
@@ -167,23 +188,23 @@ export function liveDaemonRecorded(root: AbsolutePath, now: number = Date.now())
  * harness can remove the worktree under a live daemon (D10, lessons defect
  * 13); the daemon takes its own temp directory once it holds the lock.
  */
-export async function ensureDaemon(
+export async function ensureDaemonProcess(
   root: AbsolutePath,
   options: EnsureDaemonOptions = {},
-): Promise<EnsureDaemonResult> {
+): Promise<EnsuredDaemon> {
   if (options.awaitLockMs === undefined) {
     const timeoutMs = options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS;
     const probe = await probeDaemon(root, timeoutMs, options);
-    if (probe.state === "alive") return "alive";
-    if (probe.state === "unresponsive") return "unavailable";
+    if (probe.state === "alive") return { result: "alive", pid: null };
+    if (probe.state === "unresponsive") return UNAVAILABLE;
   }
   const lockWait =
     options.awaitLockMs === undefined ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync(cli)) return "unavailable";
+  if (cli === null || !existsSync(cli)) return UNAVAILABLE;
   try {
     const commonDir = resolveCommonDir(root);
-    if (commonDir === null) return "unavailable";
+    if (commonDir === null) return UNAVAILABLE;
     const cwd = storePaths(commonDir).dir;
     mkdirSync(cwd, { recursive: true });
     const child = spawn(process.execPath, [cli, "daemon", root, ...lockWait], {
@@ -194,9 +215,9 @@ export async function ensureDaemon(
     // A failed spawn is reported asynchronously; a hook must never crash on it.
     child.on("error", () => {});
     child.unref();
-    return "spawned";
+    return { result: "spawned", pid: child.pid ?? null };
   } catch {
-    return "unavailable";
+    return UNAVAILABLE;
   }
 }
 

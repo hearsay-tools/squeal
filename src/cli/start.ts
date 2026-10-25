@@ -1,6 +1,5 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import { type DaemonEndpoint, pinDaemon, requestDaemon } from "../core/daemon/client.js";
-import { ensureDaemon, probeDaemon, recordedDaemon } from "../core/daemon/ensure.js";
+import { ensureDaemon, ensureDaemonProcess, recordedDaemon } from "../core/daemon/ensure.js";
 import { type DaemonMarks, leftovers, marksOf } from "../core/daemon/leftovers.js";
 import { isNewerVersion, squealVersion } from "../core/daemon/version.js";
 import {
@@ -18,21 +17,20 @@ import { keptCacheCli } from "../harness/shared/version-copies.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import { endCommandHolds } from "./hold.js";
 import type { CliIo } from "./main.js";
+import { served, spawnedFailed } from "./start-ready.js";
 import { statusCommand } from "./status-command.js";
 import { lockFreed, STOP_BOUNDS, type StopBounds } from "./stop.js";
 import { clearStoppedMark } from "./stopped-mark.js";
-
-/** A spawned daemon binds its socket in about 100 ms; a loaded machine gets more. */
-const SPAWN_WAIT_MS = 10_000;
 
 /**
  * `squeal start [root]`: clears the mark `squeal stop` left (task 011-08)
  * and ends every `squeal hold` (row 011-74; a running daemon is asked to
  * resume, a new one reads none), makes sure a daemon serves the worktree,
  * then prints its status: for one it spawned, once the store records it
- * (`served`, row 011-111). Exit code
- * 0 once a daemon answers, 1 otherwise. A stopping daemon is never said
- * alive: `start` finishes its handoff (`finishHandoff`, row 011-34), within
+ * (`served`, row 011-111). Exit code 0 once a daemon answers, 1 otherwise,
+ * and 3 when a daemon it spawned has not answered within 30 s while its
+ * process lives: it may still be starting (`spawnedFailed`, row 011-214).
+ * A stopping daemon is never said alive: `start` finishes its handoff (`finishHandoff`, row 011-34), within
  * `bounds`, as long as `squeal stop` waits. Row 011-140: a daemon older
  * than this CLI that ended its handoff short, which no hook replaces, is
  * asked to step down first (`replaceShort`).
@@ -59,7 +57,7 @@ export async function startCommand(
   const now = io.now ?? Date.now;
   const stopping = (await stoppingDaemon(root, now)) ?? (await replaceShort(root));
   if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
-  const result = await ensureDaemon(root, cli === undefined ? {} : { cli });
+  const { result, pid } = await ensureDaemonProcess(root, cli === undefined ? {} : { cli });
   if (result === "unavailable") {
     io.stderr(`squeal: no daemon could be reached or started for ${root}\n`);
     return 1;
@@ -67,9 +65,9 @@ export async function startCommand(
   if (result === "alive") {
     await askDaemon(await daemonSocket(root), { type: "resume" }).catch(() => null);
   }
-  if (result === "spawned" && !(await served(root, Date.now() + SPAWN_WAIT_MS, () => true))) {
-    io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer\n`);
-    return 1;
+  if (result === "spawned") {
+    const failed = await spawnedFailed(root, pid, io);
+    if (failed !== null) return failed;
   }
   io.stdout(`Squeal daemon ${result} for ${root}\n\n`);
   io.stdout(formatStatus(readStatus(root, { now }), now(), statusCommand(io.env ?? process.env)));
@@ -196,7 +194,7 @@ async function finishHandoff(
   }
   const own = squealVersion();
   const deadline = Date.now() + bounds.socketMs + bounds.lockMs;
-  if (!(await served(root, deadline, (ping) => follows(ping, old, own)))) {
+  if ((await served(root, deadline, (ping) => follows(ping, old, own))) !== "served") {
     return stillHeld(root, stopping, marks, io, bounds);
   }
   const { from } = stopping;
@@ -220,32 +218,6 @@ function follows(ping: PingResponse, old: number | null, own: string): boolean {
   return (
     ping.startedAt !== old && ping.phase !== "stopping" && !isNewerVersion(own, ping.squealVersion)
   );
-}
-
-/**
- * Row 011-111 (C9): waits until a daemon whose ping `accepts` answers and
- * the store records it, then `true`; at `deadline`, whether one answered. A
- * daemon answers on its socket before it registers. Until then status reads
- * no daemon, or in a handoff its claim, so it says the daemon hands over;
- * from its registration on, status reads it serving.
- */
-async function served(
-  root: AbsolutePath,
-  deadline: number,
-  accepts: (ping: PingResponse) => boolean,
-): Promise<boolean> {
-  for (;;) {
-    const probe = await probeDaemon(root, 100);
-    const answered = probe.state === "alive" && accepts(probe.ping);
-    if (answered && registered(root, probe.ping)) return true;
-    if (Date.now() > deadline) return answered;
-    await sleep(50);
-  }
-}
-
-/** Whether the store records the daemon of `ping`: its start time, as `follows` reads it. */
-function registered(root: AbsolutePath, ping: PingResponse): boolean {
-  return recordedDaemon(root, STATUS_BUSY_TIMEOUT_MS)?.startedAt === ping.startedAt;
 }
 
 /**
