@@ -340,7 +340,8 @@ function otherSideLines(
   form: HeaderForm,
 ): string[] {
   if (entries.length > 0) {
-    return code?.toldOver === undefined ? [] : [toldOverLine(code.toldOver, command)];
+    const told = code === undefined ? null : toldOverLine(code, command);
+    return told === null ? [] : [told];
   }
   if (!codeNews || form === "full" || knownFailures === 0) return [];
   return [knownFailuresTailLine(knownFailures, command)];

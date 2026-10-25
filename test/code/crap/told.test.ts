@@ -103,10 +103,10 @@ describe("the told line and squeal code --told with CRAP and uncovered (015-40)"
   });
 
   it("keeps the complexity-only told and recount lines byte-identical", () => {
-    expect(toldOverLine({ count: 2, threshold: 20 }, "squeal")).toBe(
+    expect(toldOverLine({ toldOver: { count: 2, threshold: 20 } }, "squeal")).toBe(
       "Complexity: 2 functions over 20 that this session was told about; squeal code --told lists them.",
     );
-    expect(toldOverLine({ count: 1, threshold: 15 }, "squeal")).toBe(
+    expect(toldOverLine({ toldOver: { count: 1, threshold: 15 } }, "squeal")).toBe(
       "Complexity: 1 function over 15 that this session was told about; squeal code --told lists them.",
     );
     const recount = { revision: 3, at: 1_000, threshold: 15, over: 117 };

@@ -367,7 +367,11 @@ function codeStep(
 export interface TellCodeOptions {
   /** Tell the changes since the view, and write it (a tool boundary). Default `true`. */
   readonly changes?: boolean;
-  /** Row 015-27: count the functions told over, for a delivery with test entries. Default `false`. */
+  /**
+   * Row 015-27: count the functions told over, for a delivery with test
+   * entries, and name the files it changed that are not judged (row
+   * 015-49). Default `false`.
+   */
   readonly toldOver?: boolean;
 }
 
@@ -392,10 +396,11 @@ export function tellCode(
 ): CodeNews | null {
   if (!changes && !toldOver) return null;
   const told = withCode(source, ({ store, complexity }) => {
+    const seen = since();
     const over = (news: CodeNews | null) =>
-      toldOver ? withToldOver(store, consumer, news, complexity.threshold) : news;
+      toldOver ? withToldOver(store, consumer, news, complexity, seen) : news;
     if (changes) {
-      const input = { at, since: since(), limit: complexity.maxFileBytes };
+      const input = { at, since: seen, limit: complexity.maxFileBytes };
       if (store.read(() => codeStep(store, consumer, input, false)).writes) {
         return store.transaction(() => over(codeStep(store, consumer, input, true).news));
       }
