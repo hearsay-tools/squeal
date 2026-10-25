@@ -1,21 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { STEP_BUDGET_MS } from "../../../src/core/code/crap/index.js";
+import { SEED_FILES, STEP_BUDGET_MS } from "../../../src/core/code/crap/index.js";
 import { WT } from "../../state/helpers.js";
 import { daemonPass, policyOn } from "../pass/helpers.js";
 import { COVERED, counterV2, coverageRig, sourceOf } from "./rig.js";
 
 /*
- * Row 015-47: the seed at coverage's start or at a recount reads each
- * file's count and seeds its functions within the step's budget, so it
- * goes on over several steps. No file is judged before every function is
- * seeded, and a recount's judgement stays quiet (review 0.1.297 B1, B2).
+ * Row 015-47: the seed at coverage's start or at a recount reads the counts
+ * of `SEED_FILES` files and seeds their functions as one unit of the step's
+ * budget, so it goes on over several steps. No file is judged before every
+ * function is seeded, and a recount's judgement stays quiet (review 0.1.297
+ * B1, B2).
  */
 
-/** How long one read of a count takes, by the clock, while `slow.on` holds. */
-const ROW_MS = 20;
-const FILES = 9;
-/** The reads a step makes: its first, and each next one while the step is within its budget. */
-const ROWS_PER_STEP = Math.floor(STEP_BUDGET_MS / ROW_MS) + 1;
+/** How long one read of a count takes, by the clock, while `slow.on` holds: a unit is over budget. */
+const ROW_MS = 2;
+const FILES = 3 * SEED_FILES;
 
 const slow = vi.hoisted(() => ({ on: false, reads: [] as number[] }));
 
@@ -91,7 +90,7 @@ async function rigged() {
     start(run.code);
     // A pass that reads files waits for them in real time: the clock moves on after it.
     await run.code.idle();
-    await vi.advanceTimersByTimeAsync(200 * STEP_BUDGET_MS);
+    await vi.advanceTimersByTimeAsync(2_000 * STEP_BUDGET_MS);
     await run.code.idle();
     slow.on = false;
     // Each step's count reads.
@@ -121,7 +120,8 @@ describe("the seed in slices (row 015-47)", () => {
     coverage(true);
     const reads = await chain((code) => code.nudge());
 
-    for (const read of reads) expect(read).toBeLessThanOrEqual(ROWS_PER_STEP);
+    // One unit of the seed a step, or the files a step judges within its budget.
+    for (const read of reads) expect(read).toBeLessThanOrEqual(SEED_FILES);
     // Part of the files seeded at the start of some step: the seed went on over steps.
     expect(seen.some((states) => states.length > 0 && states.length < 2 * FILES)).toBe(true);
     // No state is judged before every function is seeded.
@@ -144,7 +144,8 @@ describe("the seed in slices (row 015-47)", () => {
     await restart({ counter: () => Promise.resolve(v2) });
     const reads = await chain((code) => code.nudge());
 
-    for (const read of reads) expect(read).toBeLessThanOrEqual(ROWS_PER_STEP);
+    // One unit of the seed a step, or the files a step judges within its budget.
+    for (const read of reads) expect(read).toBeLessThanOrEqual(SEED_FILES);
     const chill = (states: readonly string[]) => states.filter((s) => s.startsWith("chill "));
     expect(seen.some((states) => chill(states).length > 0 && chill(states).length < FILES)).toBe(
       true,
