@@ -1,4 +1,4 @@
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { parentPort, workerData } from "node:worker_threads";
 import type { ObjectFormat } from "../../hash/index.js";
 import type { AbsolutePath } from "../../types/index.js";
@@ -11,6 +11,8 @@ import type { ExecutedSource, V8Script } from "./types.js";
  * maps each payload, so the daemon's main thread only answers which
  * sources a payload needs and stores the record. The sources of the
  * newest `KEEP` runs are kept; a source of an older run is asked for again.
+ * The main thread deletes each payload once this worker answered for it, so
+ * a job this worker did not finish is mapped there (review 0.1.305 B2).
  */
 
 const KEEP = 2;
@@ -55,12 +57,7 @@ function runOf(id: number): Run {
 }
 
 function take(job: Extract<ToWorker, { type: "job" }>): void {
-  let scripts: V8Script[];
-  try {
-    scripts = (JSON.parse(readFileSync(job.payload, "utf8")) as { result: V8Script[] }).result;
-  } finally {
-    rmSync(job.payload, { force: true });
-  }
+  const scripts = (JSON.parse(readFileSync(job.payload, "utf8")) as { result: V8Script[] }).result;
   const run = runOf(job.sources);
   const paths = new Set<AbsolutePath>();
   for (const script of scripts) {
