@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.318";
+  if (true) return "0.1.319";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -62481,19 +62481,23 @@ function recordedDaemon(root, busyTimeoutMs = 100) {
 function liveDaemonRecorded(root, now = Date.now()) {
   return daemonLiveness(recordedDaemon(root), now).state === "alive";
 }
+var UNAVAILABLE = { result: "unavailable", pid: null };
 async function ensureDaemon(root, options = {}) {
+  return (await ensureDaemonProcess(root, options)).result;
+}
+async function ensureDaemonProcess(root, options = {}) {
   if (options.awaitLockMs === void 0) {
     const timeoutMs = options.socketTimeoutMs ?? DAEMON_SOCKET_TIMEOUT_MS;
     const probe = await probeDaemon(root, timeoutMs, options);
-    if (probe.state === "alive") return "alive";
-    if (probe.state === "unresponsive") return "unavailable";
+    if (probe.state === "alive") return { result: "alive", pid: null };
+    if (probe.state === "unresponsive") return UNAVAILABLE;
   }
   const lockWait2 = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync12(cli)) return "unavailable";
+  if (cli === null || !existsSync12(cli)) return UNAVAILABLE;
   try {
     const commonDir = resolveCommonDir(root);
-    if (commonDir === null) return "unavailable";
+    if (commonDir === null) return UNAVAILABLE;
     const cwd = storePaths(commonDir).dir;
     mkdirSync6(cwd, { recursive: true });
     const child = spawn2(process.execPath, [cli, "daemon", root, ...lockWait2], {
@@ -62504,9 +62508,9 @@ async function ensureDaemon(root, options = {}) {
     child.on("error", () => {
     });
     child.unref();
-    return "spawned";
+    return { result: "spawned", pid: child.pid ?? null };
   } catch {
-    return "unavailable";
+    return UNAVAILABLE;
   }
 }
 function daemonCliEntry(cli, env = process.env) {
@@ -72272,6 +72276,7 @@ init_store5();
 init_text();
 var USAGE5 = "usage: squeal retry <test file>... [--reason load|environment]\n       squeal retry --cancel <test file>...\n";
 var refuse = (text3) => ({ ok: false, text: text3 });
+var BUSY_BOUND_MS = 1e4;
 async function retryCommand(args2, io, internal = {}) {
   const parsed2 = parse11(args2);
   if (typeof parsed2 === "string") {
@@ -72281,9 +72286,8 @@ ${USAGE5}`);
   }
   const root = worktreeRoot(void 0, io);
   if (root === null) return 1;
-  const commonDir = resolveCommonDir(root);
-  const store = commonDir === null ? null : openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
-  if (store === null || isStoreOpenFailure(store)) {
+  const store = openFor(root);
+  if (store === null) {
     io.stderr(`squeal retry: no Squeal store for ${root}; start a daemon with squeal start
 `);
     return 1;
@@ -72291,27 +72295,32 @@ ${USAGE5}`);
   const worktreeId = worktreeIdFor(root);
   const cwd = io.cwd ?? process.cwd();
   const load = (internal.hostLoad ?? hostLoad)();
+  const deadline = Date.now() + (internal.busyBoundMs ?? BUSY_BOUND_MS);
   let refused = 0;
   let unlisted2 = 0;
-  const lines = [];
   try {
     const keys = store.testFileKeys.list(worktreeId);
     for (const path of parsed2.paths) {
       const rel2 = inWorktree(root, cwd, path);
       const row2 = rel2 === null ? void 0 : keys.find((k) => k.testFile.path === rel2);
       const shown = rel2 ?? path;
-      const answer3 = row2 === void 0 || row2.key === null ? { ok: false, ...notKeyed(store, { root, worktreeId, rel: rel2, shown, given: path }, keys) } : parsed2.kind === "cancel" ? cancelLine(store, row2, worktreeId, shown) : askLine(store, row2, { root, worktreeId, shown }, parsed2.reason, session(io), load);
+      const where3 = { root, worktreeId, shown, deadline };
+      const answer3 = row2 === void 0 || row2.key === null ? { ok: false, ...notKeyed(store, { root, worktreeId, rel: rel2, shown, given: path }, keys) } : parsed2.kind === "cancel" ? cancelLine(store, row2, where3) : askLine(store, row2, where3, parsed2.reason, session(io), load);
       if (answer3.unlisted === true) unlisted2++;
       else if (!answer3.ok) refused++;
-      lines.push(answer3.text);
+      io.stdout(`${answer3.text}
+`);
     }
   } finally {
     store.close();
   }
-  io.stdout(`${lines.join("\n")}
-`);
   if (refused + unlisted2 < parsed2.paths.length) io.stdout(await tellDaemon(root));
   return refused > 0 ? 1 : unlisted2 > 0 ? 3 : 0;
+}
+function openFor(root) {
+  const commonDir = resolveCommonDir(root);
+  const store = commonDir === null ? null : openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
+  return store === null || isStoreOpenFailure(store) ? null : store;
 }
 function parse11(args2) {
   let reason2 = null;
@@ -72344,7 +72353,31 @@ function session(io) {
   const pi = env.PI_SESSION_ID === "" ? void 0 : env.PI_SESSION_ID;
   return waitConsumer(env).session ?? pi ?? "";
 }
-function askLine(store, row2, { root, worktreeId, shown }, reason2, asker, load) {
+function whileBusy(store, deadline, write2) {
+  const started2 = Date.now();
+  for (let attempt = 0; ; attempt++) {
+    setBusyTimeout(store, Math.max(1, Math.min(CLI_SOCKET_TIMEOUT_MS, deadline - Date.now())));
+    try {
+      return write2();
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+    } finally {
+      setBusyTimeout(store, CLI_SOCKET_TIMEOUT_MS);
+    }
+    const pause = busyBackoffMs(attempt);
+    if (Date.now() + pause >= deadline) return { busyMs: Date.now() - started2 };
+    Atomics.wait(SLEEP2, 0, 0, pause);
+  }
+}
+var SLEEP2 = new Int32Array(new SharedArrayBuffer(4));
+var isBusyAnswer = (answer3) => "busyMs" in answer3;
+function busyLine(not, shown, { busyMs }) {
+  return refuse(
+    `${not}: ${shown}: store busy, waited ${busyMs} ms: another process holds the store's lock; run the command again for this file once it is released.`
+  );
+}
+function askLine(store, row2, where3, reason2, asker, load) {
+  const { worktreeId, shown, deadline } = where3;
   const key3 = row2.key;
   const states = store.knownStates.list(worktreeId);
   const own = states.filter(
@@ -72369,14 +72402,15 @@ function askLine(store, row2, { root, worktreeId, shown }, reason2, asker, load)
     if (own.length > 0 && own.every((s) => s.validity === "current")) {
       return refuse(`Not retried: ${shown} has no known failure in this worktree.`);
     }
-    const answer4 = askNoResultRun(store, ask);
+    const answer4 = whileBusy(store, deadline, () => askNoResultRun(store, ask));
+    if (isBusyAnswer(answer4)) return busyLine("Not queued", shown, answer4);
     if (answer4.kind === "joined") {
       return {
         ok: true,
         text: `${shown} has a run asked at its inputs already, pending, so nothing more is queued. ${waitText2(shown)}`
       };
     }
-    const state = noResultText(store, row2, own, { root, worktreeId, shown }, states);
+    const state = noResultText(store, row2, own, where3, states);
     const whatever = reason2 === null ? "" : ", whatever the reason";
     return {
       ok: true,
@@ -72389,14 +72423,19 @@ function askLine(store, row2, { root, worktreeId, shown }, reason2, asker, load)
     );
   }
   const others = pendingOf(store, row2).filter((r) => r.session !== asker);
-  const answer3 = askRetry(store, {
-    testFile: row2.testFile,
-    key: key3,
-    session: asker,
-    reason: reason2,
-    at: Date.now(),
-    worktreeId
-  });
+  const answer3 = whileBusy(
+    store,
+    deadline,
+    () => askRetry(store, {
+      testFile: row2.testFile,
+      key: key3,
+      session: asker,
+      reason: reason2,
+      at: Date.now(),
+      worktreeId
+    })
+  );
+  if (isBusyAnswer(answer3)) return busyLine("Not retried", shown, answer3);
   if (answer3.kind === "spent") return refuse(spentLine(shown, answer3.record));
   const when = reason2 === "environment" ? "runs once more now" : loadAllows(load) ? `runs once more now: the one-minute load average is below the CPU count (${loadText(load)})` : `runs once more when the one-minute load average falls below the CPU count, however long that takes (${loadText(load)} now)`;
   const joins = others.length > 0 ? " It joins a retry another session asked for." : "";
@@ -72420,8 +72459,13 @@ function spentLine(shown, record) {
   const how = record.end === null ? "it is still pending" : `${outcomeText(record.end.outcome)}`;
   return `Not retried: ${shown} was already retried in this session at its current inputs (${record.reason}; ${how}). The failure stands.`;
 }
-function cancelLine(store, row2, worktreeId, shown) {
-  const withdrawn = cancelRetries(store, row2.testFile, row2.key, worktreeId, Date.now());
+function cancelLine(store, row2, { worktreeId, shown, deadline }) {
+  const withdrawn = whileBusy(
+    store,
+    deadline,
+    () => cancelRetries(store, row2.testFile, row2.key, worktreeId, Date.now())
+  );
+  if (isBusyAnswer(withdrawn)) return busyLine("Not withdrawn", shown, withdrawn);
   if (withdrawn.length === 0) return refuse(`No pending retry of ${shown} at its current inputs.`);
   const count2 = withdrawn.length === 1 ? "1 request" : `${withdrawn.length} requests`;
   return { ok: true, text: `Retry withdrawn: ${shown} (${count2}).` };
@@ -72820,9 +72864,6 @@ init_state2();
 init_text();
 init_types();
 
-// src/cli/start.ts
-import { setTimeout as sleep16 } from "node:timers/promises";
-
 // src/core/daemon/leftovers.ts
 init_escaped();
 init_terminate();
@@ -72896,10 +72937,45 @@ init_handoff();
 init_fs();
 init_store5();
 
+// src/cli/start-ready.ts
+import { setTimeout as sleep15 } from "node:timers/promises";
+init_slot_holders();
+var SPAWN_WAIT_MS = 3e4;
+async function spawnedFailed(root, pid, io) {
+  const lives = () => pid !== null && pidRuns(pid);
+  const ready = await served(root, Date.now() + SPAWN_WAIT_MS, () => true, lives);
+  if (ready === "served") return null;
+  if (ready === "ended") {
+    io.stderr(`squeal: spawned a daemon for ${root}, but it exited without answering
+`);
+    return 1;
+  }
+  const command = statusCommand(io.env ?? process.env);
+  io.stderr(
+    `squeal: the daemon spawned for ${root} (pid ${pid}) is still starting: it has not answered after ${SPAWN_WAIT_MS / 1e3} s; \`${command} status\` says when it serves
+`
+  );
+  return 3;
+}
+async function served(root, deadline, accepts, lives = () => true) {
+  for (; ; ) {
+    const ended2 = !lives();
+    const probe = await probeDaemon(root, 100);
+    const answered2 = probe.state === "alive" && accepts(probe.ping);
+    if (answered2 && registered(root, probe.ping)) return "served";
+    if (ended2 && !answered2) return "ended";
+    if (Date.now() > deadline) return answered2 ? "served" : "starting";
+    await sleep15(50);
+  }
+}
+function registered(root, ping2) {
+  return recordedDaemon(root, STATUS_BUSY_TIMEOUT_MS)?.startedAt === ping2.startedAt;
+}
+
 // src/cli/stop.ts
 import { realpathSync as realpathSync22 } from "node:fs";
 import { resolve as resolve26 } from "node:path";
-import { setTimeout as sleep15 } from "node:timers/promises";
+import { setTimeout as sleep16 } from "node:timers/promises";
 init_lock();
 init_test_pause();
 init_fs();
@@ -72973,7 +73049,7 @@ async function stopCommand(args2, io, bounds = STOP_BOUNDS) {
       );
       return 1;
     }
-    await sleep15(50);
+    await sleep16(50);
   }
   pauseAt("stop-mark");
   stoppedMark(root, tree, io);
@@ -73045,7 +73121,7 @@ async function leftoversGone(marks, ms2) {
   for (; ; ) {
     const left = await leftovers(marks);
     if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep15(100);
+    await sleep16(100);
   }
 }
 function seconds2(ms2) {
@@ -73060,7 +73136,7 @@ async function lockFreed(root, daemon, ms2) {
     if (missing(path) || daemon !== null && gone2(root, daemon)) return { state: "free" };
     const probe = probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
-    await sleep15(50);
+    await sleep16(50);
   }
 }
 function gone2(root, daemon) {
@@ -73094,7 +73170,6 @@ function processGone(pid) {
 }
 
 // src/cli/start.ts
-var SPAWN_WAIT_MS = 1e4;
 async function startCommand(args2, io, bounds = STOP_BOUNDS) {
   if (args2.length > 1 || args2[0]?.startsWith("-")) {
     io.stderr("usage: squeal start [root]\n");
@@ -73111,7 +73186,7 @@ async function startCommand(args2, io, bounds = STOP_BOUNDS) {
   const now = io.now ?? Date.now;
   const stopping = await stoppingDaemon(root, now) ?? await replaceShort(root);
   if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
-  const result = await ensureDaemon(root, cli === void 0 ? {} : { cli });
+  const { result, pid } = await ensureDaemonProcess(root, cli === void 0 ? {} : { cli });
   if (result === "unavailable") {
     io.stderr(`squeal: no daemon could be reached or started for ${root}
 `);
@@ -73120,10 +73195,9 @@ async function startCommand(args2, io, bounds = STOP_BOUNDS) {
   if (result === "alive") {
     await askDaemon(await daemonSocket(root), { type: "resume" }).catch(() => null);
   }
-  if (result === "spawned" && !await served(root, Date.now() + SPAWN_WAIT_MS, () => true)) {
-    io.stderr(`squeal: spawned a daemon for ${root}, but it did not answer
-`);
-    return 1;
+  if (result === "spawned") {
+    const failed2 = await spawnedFailed(root, pid, io);
+    if (failed2 !== null) return failed2;
   }
   io.stdout(`Squeal daemon ${result} for ${root}
 
@@ -73189,7 +73263,7 @@ async function finishHandoff(root, cli, stopping, io, bounds) {
   }
   const own = squealVersion();
   const deadline = Date.now() + bounds.socketMs + bounds.lockMs;
-  if (!await served(root, deadline, (ping3) => follows(ping3, old, own))) {
+  if (await served(root, deadline, (ping3) => follows(ping3, old, own)) !== "served") {
     return stillHeld(root, stopping, marks, io, bounds);
   }
   const { from } = stopping;
@@ -73209,18 +73283,6 @@ function stopAt({ socketPath, endpoint }) {
 }
 function follows(ping2, old, own) {
   return ping2.startedAt !== old && ping2.phase !== "stopping" && !isNewerVersion(own, ping2.squealVersion);
-}
-async function served(root, deadline, accepts) {
-  for (; ; ) {
-    const probe = await probeDaemon(root, 100);
-    const answered2 = probe.state === "alive" && accepts(probe.ping);
-    if (answered2 && registered(root, probe.ping)) return true;
-    if (Date.now() > deadline) return answered2;
-    await sleep16(50);
-  }
-}
-function registered(root, ping2) {
-  return recordedDaemon(root, STATUS_BUSY_TIMEOUT_MS)?.startedAt === ping2.startedAt;
 }
 function claims(root, old, now) {
   try {
