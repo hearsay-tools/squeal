@@ -13,33 +13,33 @@ import type { CoverageSummary, FileSummary } from "./summary.js";
  */
 
 /**
- * Each file of `next` git changed, with the last revision it did: the
- * summary's, kept since a step saw it, and the pulled record's (015-38),
- * which an own edit to the file after it empties.
+ * Each file git changed, with the last revision it did: the summary's,
+ * kept since a step saw it, and the pulled record's (015-38), which an own
+ * edit to the file after it empties.
  */
 export function broughtByGit(
   meta: CodeMetaRepo,
   worktreeId: WorktreeId,
   summary: CoverageSummary | null,
-  next: Readonly<Record<string, FileSummary>>,
 ): Map<string, RevisionNumber> {
   const brought = new Map(Object.entries(summary?.brought ?? {}));
   for (const [path, revision] of readPulled(meta, worktreeId)) {
     brought.set(path, Math.max(revision, brought.get(path) ?? 0));
   }
-  for (const path of brought.keys()) if (next[path] === undefined) brought.delete(path);
   return brought;
 }
 
 /**
- * Leaves in `brought` the files not judged at their blob now: for one that
- * is, an older edit is before its judgement, so it marks none anyway.
+ * Leaves in `brought` the files of `next` not judged at their blob now:
+ * for one that is, an older edit is before its judgement, so it marks none
+ * anyway.
  */
 export function keepUnjudged(
   brought: Map<string, RevisionNumber>,
   files: readonly CodeFile[],
   next: Readonly<Record<string, FileSummary>>,
 ): void {
+  for (const path of brought.keys()) if (next[path] === undefined) brought.delete(path);
   for (const f of files) {
     const now = next[f.path];
     if (now?.state === "judged" && now.blob === f.blob) brought.delete(f.path);
