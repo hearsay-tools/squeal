@@ -1231,6 +1231,8 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 
 **Version note for 015 and 016 (coordinator 04a258b0, 2026-10-25 03:20Z):** 011's 0.1.302 is released. 0.1.303 is spec 016's candidate (in repair); 011's `cand/0.1.304` is in review. Whoever lands second raises past the first; 015's next takes the next free number, agreed before its push.
 
+**Release notice 0.1.321** (coordinator 52e58f23, 2026-10-25 19:25Z): 015-48 from `cand/0.1.321-on320` d8bd035a6 (review PASS on 3a877eeed), to main and the hub at 19:35Z or later. Other coordinators hold code and hub pushes until "0.1.321 released".
+
 **Released 0.1.317** (coordinator 52e58f23, 2026-10-25 17:30Z): 015-52 with repair R11 from `0e9e236d8` (reviewed as 5ffa3fc80 on 0.1.314; rebased onto 016's 0.1.316 with no shared file, candidate CI 40212312386 green; main CI 40214708998 green), tag `squeal--v0.1.317`, hub `9ffaf3a`, GitHub release latest. No issue closed: 015-52 has none. 0.1.315 was never released.
 
 **Released 0.1.309** (coordinator 52e58f23, 2026-10-25 09:55Z): 015 wave 5 (015-45, 015-44) from `001efb010` (reviewed as de404583c, the same commits on 0.1.305; CI 40180478470 green on its second attempt), tag `squeal--v0.1.309`, hub `129fdee`, GitHub release latest. No issue closed: no 015 row has one.
