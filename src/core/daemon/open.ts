@@ -10,10 +10,10 @@ import type {
   DaemonExitReason,
   EpochMs,
   Store,
+  StoreOpenFailure,
   WorktreeId,
 } from "../types/index.js";
 import { liveDaemonRecorded, recordedDaemon } from "./ensure.js";
-import { type StoreFile, storeFileOf } from "./store-file.js";
 import { acquireDaemonLock, awaitDaemonLock, type DaemonLock, type LockWaitEnd } from "./lock.js";
 import { VACANT_LOCK_WAIT_MS } from "./lock-wait.js";
 import { noteInNewerStore, writeNote } from "./notes.js";
@@ -24,6 +24,7 @@ import {
   prepareScratch,
   removeScratch,
 } from "./scratch.js";
+import { type StoreFile, storeFileOf } from "./store-file.js";
 import { isNewerVersion, squealVersion } from "./version.js";
 
 /** What a daemon owns once it won its worktree. */
@@ -32,8 +33,8 @@ export interface OpenedDaemon {
   readonly commonDir: AbsolutePath;
   readonly worktreeId: WorktreeId;
   readonly store: Store;
-  /** The file `store` opened, which its heartbeat compares (row 011-226); `null` when unread. */
-  readonly storeFile: StoreFile | null;
+  /** The file `store` opened, which its heartbeat compares (row 011-226; review 0.1.329, B3). */
+  readonly storeFile: StoreFile;
   readonly lock: DaemonLock;
   /** Working and temp directory outside the root, the temp directory emptied under the lock. */
   readonly scratch: DaemonScratch;
@@ -143,13 +144,10 @@ export async function openDaemon(
   }
 
   let store: Store;
+  let storeFile: StoreFile;
   try {
-    const opened = openStore(commonDir, {
-      checkIntegrity: "quick",
-      busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
-      now,
-    });
-    if (isStoreOpenFailure(opened)) {
+    const opened = openStoreFile(commonDir, now);
+    if ("reason" in opened) {
       lock.release();
       if (opened.reason === "newer-schema") {
         const text = `daemon exited: store schema ${opened.found} is newer than this Squeal (supports ${opened.supported})`;
@@ -158,7 +156,7 @@ export async function openDaemon(
       }
       return exit("store-unusable", 1, `store unusable: ${JSON.stringify(opened)}`);
     }
-    store = opened;
+    ({ store, storeFile } = opened);
   } catch (error) {
     lock.release();
     return exit("store-unusable", 1, `store unusable: ${message(error)}`);
@@ -176,14 +174,52 @@ export async function openDaemon(
   if (refusal !== null) {
     writeNote(store, worktreeId, { at: now(), revision: null, text: refusal }, () => {});
   }
-  const storeFile = (() => {
-    try {
-      return storeFileOf(commonDir);
-    } catch {
-      return null;
-    }
-  })();
   return { root, commonDir, worktreeId, store, storeFile, lock, scratch, leftovers };
+}
+
+/** How often a start opens the store before it gives up on a file that changes under each open. */
+const OPEN_ATTEMPTS = 3;
+
+/**
+ * The store, quick-checked (D12), with the file its connection holds
+ * (review 0.1.329, B3). The path is read before and after the open: another
+ * worktree's start can move the store aside and put a fresh one at the path
+ * between them, and a later read would name the fresh file while the
+ * connection holds the moved one, so its heartbeat would never stop it. A
+ * file that differs, or was missing before (this open created it, or moved
+ * it aside itself), is opened again.
+ */
+function openStoreFile(
+  commonDir: AbsolutePath,
+  now: () => EpochMs,
+): { readonly store: Store; readonly storeFile: StoreFile } | StoreOpenFailure {
+  for (let attempt = 1; ; attempt++) {
+    const before = storeFileOf(commonDir);
+    const store = openStore(commonDir, {
+      checkIntegrity: "quick",
+      busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
+      now,
+    });
+    if (isStoreOpenFailure(store)) return store;
+    let after: StoreFile | null;
+    try {
+      after = storeFileOf(commonDir);
+    } catch (error) {
+      store.close();
+      throw error;
+    }
+    if (before !== null && after !== null && sameFile(before, after)) {
+      return { store, storeFile: after };
+    }
+    store.close();
+    if (attempt >= OPEN_ATTEMPTS) {
+      throw new Error(`the store file changed during each of ${OPEN_ATTEMPTS} opens`);
+    }
+  }
+}
+
+function sameFile(a: StoreFile, b: StoreFile): boolean {
+  return a.dev === b.dev && a.ino === b.ino;
 }
 
 /**
