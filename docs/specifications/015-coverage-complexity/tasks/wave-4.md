@@ -32,3 +32,11 @@ Check, with proof where you can:
 3. **Coverage off** is unchanged: no worker, no extra pass.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## R8: repair of review 0.1.305 (015-42), started before the review file
+
+Use /worker. Shape: repair. Resumes worker c9034b32 on its branch `cez/c9034b32` (at dad93c7ff). Started from the reviewer's progress messages while its locked suite waits for the host lock; `reviews/0.1.305.md` adds its proofs, and any further blocker in it joins this repair.
+- **B1, a stale decoded record.** A step decodes a hit record within its budget. A newer no-hit record is then stored at the same result key, and `invalidate` (as `onStored` calls it) keeps the decoded old one. The next step stores `uncovered` pass against a no-hit record, and the unchanged summary signature keeps it after the chain ends. A record at a key is not fixed: a later run at the same key replaces it. Drop or check a decoded record when its key's record is stored again (lead: `crap/cache.ts` `invalidate`/`settle`, keyed by the stored record's identity).
+- **B2, a lost record.** The candidate's `map-worker.js` exits on its `sources` message after the payload was deleted, and the job's record is lost (records `[false, true]` for two jobs). A failed worker must lose no record: each job the worker held is mapped again on the main thread, or retried (`coverage/writer.ts`, `mapper.ts`).
+- **Also, if cheap:** the cold loader read is one turn of 1.0 to 1.2 s (your residue). Slice it across steps.
+- **Owns** as W1. **Done when:** each blocker's sequence is a test, red first; one commit per blocker, named `fix(R8): … (review 0.1.305 Bn)`; lint, typecheck and `squeal run --all --wait`; paste. No bundles, no version.
