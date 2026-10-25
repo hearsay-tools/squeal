@@ -18,5 +18,7 @@ Every script opens a store with `node:sqlite` and `readOnly: true`. The scripts 
 | `inherited.mjs` | 4 | Inherited states of readers of a non-watched listing, against the origin worktree's directory |
 | `mixed-names.sh`, `mixed-summary.mjs` | 5 | Ignored names in mixed directories across all worktrees, and the distinct name sets |
 | `mixed-inherited.mjs` | 5 | Inherited states across worktrees whose mixed-directory ignored names differ |
+| `node-test-observed.mjs` | 6 | node:test and pytest rows in the core's keys and in the legacy `nodeTest.observed*` and `pytest.observed*` keys, against the stored closures |
+| `reach.mjs` | 6 | A crude static walk from a cezar test file, type-only imports left out: whether a legacy path is still loaded |
 
 A first version of `classify.mjs` asked git alone what the watcher sees. It reported 12 fixture `node_modules` directories as unwatched with names. They are tracked symlinks, and Squeal's stat cache holds the files below them as seen files. The committed version reads the stat cache, as `WorktreeKeys.#listedFiles` does.
