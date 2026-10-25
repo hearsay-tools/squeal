@@ -58,28 +58,51 @@ describe("observed sets", () => {
   });
 
   // Spec 016 D4, row 007-56: the direct marks reach a restarted daemon and another worktree.
-  it("keep the direct subset in its own key, merged, and read it in a later worktree", () => {
+  it("keep direct marks in their own key, merged, written by writeMarks, read in a later worktree", () => {
     const store = open(fakeCommonDir());
     const a = new ObservedSets(store);
-    expect(a.add(ref("t.py"), ["lib/a.py", "lib/b.py"], ["lib/b.py"])).toEqual([
-      "lib/a.py",
+    expect(a.add(ref("t.py"), ["lib/a.py", "lib/b.py"])).toEqual(["lib/a.py", "lib/b.py"]);
+    // A mark joins the view only; a closure path, observed by no run, is marked too.
+    expect(a.mark(ref("t.py"), ["lib/b.py", "lib/static.py"])).toEqual([
       "lib/b.py",
+      "lib/static.py",
     ]);
-    // A known path marked later still writes its mark.
-    expect(a.add(ref("t.py"), ["lib/a.py"], ["lib/a.py"])).toEqual([]);
+    expect(a.directOf(ref("t.py"))).toEqual(["lib/b.py", "lib/static.py"]);
+    expect(store.meta.get(observedDirectMetaKey("p"))).toBeNull();
+    a.writeMarks();
+    expect(a.mark(ref("t.py"), ["lib/b.py"])).toEqual([]);
     expect(JSON.parse(store.meta.get(observedDirectMetaKey("p")) ?? "{}")).toEqual({
-      "t.py": ["lib/a.py", "lib/b.py"],
+      "t.py": ["lib/b.py", "lib/static.py"],
     });
     // The paths key keeps the shape an older daemon parses: test path to paths.
     expect(JSON.parse(store.meta.get(observedMetaKey("p")) ?? "{}")).toEqual({
       "t.py": ["lib/a.py", "lib/b.py"],
     });
     const later = new ObservedSets(store);
-    expect(later.directOf(ref("t.py"))).toEqual(["lib/a.py", "lib/b.py"]);
+    expect(later.directOf(ref("t.py"))).toEqual(["lib/b.py", "lib/static.py"]);
     expect(later.of(ref("t.py"))).toEqual(["lib/a.py", "lib/b.py"]);
     expect(later.directOf(ref("u.py"))).toEqual([]);
+    later.mark(ref("u.py"), ["lib/a.py"]);
+    later.writeMarks();
     a.refresh(["p"]);
-    expect(a.directOf(ref("t.py"))).toEqual(["lib/a.py", "lib/b.py"]);
+    expect(a.directOf(ref("u.py"))).toEqual(["lib/a.py"]);
+  });
+
+  it("write a mark a rolled-back transaction lost at the next writeMarks", () => {
+    const store = open(fakeCommonDir());
+    const a = new ObservedSets(store);
+    a.mark(ref("t.py"), ["lib/b.py"]);
+    expect(() =>
+      store.transaction(() => {
+        a.writeMarks();
+        throw new Error("injected: the record's transaction fails");
+      }),
+    ).toThrow("injected");
+    expect(store.meta.get(observedDirectMetaKey("p"))).toBeNull();
+    a.writeMarks();
+    expect(JSON.parse(store.meta.get(observedDirectMetaKey("p")) ?? "{}")).toEqual({
+      "t.py": ["lib/b.py"],
+    });
   });
 });
 
