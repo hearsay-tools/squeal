@@ -4,7 +4,7 @@ import {
   holdsRequire,
   preloadSpecifiers,
   tokenizeNodeOptions,
-} from "../../../src/runners/node-test/run/node-options.js";
+} from "../../../src/runners/process/node-options.js";
 
 /**
  * `NODE_OPTIONS` as Node splits it (`ParseNodeOptionsEnvVar` in

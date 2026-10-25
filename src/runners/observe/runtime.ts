@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { AbsolutePath } from "../../core/types/index.js";
-import { ownNodeOptions, UNOBSERVED } from "../node-test/recorders.js";
-import { holdsRequire, quoteNodeOption } from "../node-test/run/node-options.js";
+import { holdsRequire, quoteNodeOption } from "../process/node-options.js";
+import { ownNodeOptions, UNOBSERVED } from "../process/recorders.js";
 
 /**
  * Bumped when the recorder sees more or other paths, so a pass stored while

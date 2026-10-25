@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { TEST_NICE } from "../../../src/core/daemon/low-priority.js";
-import { startGroup } from "../../../src/runners/node-test/run/process.js";
+import { startGroup } from "../../../src/runners/process/group.js";
 
 /*
  * 001 D11 Capacity, Priority (task 001-378): a node:test or pytest process

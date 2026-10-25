@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
-import { lowerProcess } from "../../../core/daemon/low-priority.js";
+import { lowerProcess } from "../../core/daemon/low-priority.js";
 
 /** How a test file's process ended. Recorded in the run log and trusted for nothing (D5). */
 export interface ProcessExit {

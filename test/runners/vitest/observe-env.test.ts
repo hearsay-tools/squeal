@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { UNOBSERVED } from "../../../src/runners/node-test/recorders.js";
 import { observeRecorder } from "../../../src/runners/observe/index.js";
+import { UNOBSERVED } from "../../../src/runners/process/recorders.js";
 import { VitestObserver } from "../../../src/runners/vitest/observe.js";
 import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 

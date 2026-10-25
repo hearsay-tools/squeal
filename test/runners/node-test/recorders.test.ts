@@ -1,12 +1,12 @@
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { NodeTestProject } from "../../../src/core/types/index.js";
+import { projectEnv } from "../../../src/runners/node-test/recorders.js";
 import {
   isSquealRecorder,
-  projectEnv,
   UNOBSERVED,
   withoutSquealRecorders,
-} from "../../../src/runners/node-test/recorders.js";
+} from "../../../src/runners/process/recorders.js";
 
 /**
  * Task 003-35: under a Squeal daemon a test process inherits 001-132's

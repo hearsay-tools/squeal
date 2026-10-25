@@ -1,7 +1,7 @@
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AbsolutePath, RunEnd, RunReport, TestFileRef } from "../../../core/types/index.js";
-import type { ProcessExit } from "../../node-test/run/process.js";
+import type { ProcessExit } from "../../process/group.js";
 import { runLogJson } from "../../run-summary.js";
 import type { ImportEvent, SpawnedEvent } from "./events.js";
 import type { BatchFile, BatchReport } from "./report.js";
