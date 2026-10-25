@@ -17,6 +17,16 @@ system finds it, before it runs, so one that raises on import is recorded
 too. Each record is one `write` to a file opened for appending, so records
 of processes running at once do not interleave.
 
+Directory creates and removes (spec 016 D4, the written-directory bound):
+in every process of the run, the pytest process too, `os.mkdir`,
+`os.rmdir`, `os.rename` and `os.replace` append a `written` record of the
+project path they name, before the call, under the test file in progress,
+`SQUEAL_PYTEST_FILE` read at the call (the plugin sets it in the pytest
+process). `os.makedirs`, `tempfile.mkdtemp` and `pathlib` make their
+directories through `os.mkdir`; `shutil.rmtree` removes the directory it
+is given through `os.rmdir`, so `shutil` is not imported here. A call that
+names its path relative to a `dir_fd` is not recorded, nor is a file write.
+
 Python imports only the first `sitecustomize` on `sys.path`: the one this
 module shadows, an environment's or a distribution's, runs after it.
 Without `SQUEAL_PYTEST_FILE` that is all this module does.
@@ -86,6 +96,68 @@ def _record():
             recorder.record(sys.argv[0])
 
 
+def _record_directories():
+    events = os.environ.get("SQUEAL_PYTEST_EVENTS")
+    root = os.environ.get("SQUEAL_PYTEST_ROOT")
+    if not events or not root:
+        return
+    inside = os.path.join(os.path.realpath(root), "")
+    prefixes = tuple(
+        {os.path.join(os.path.realpath(p), "") for p in (sys.prefix, sys.base_prefix, sys.exec_prefix)}
+    )
+    named = set()
+    seen = set()
+    fd = [None]
+
+    def record(path):
+        try:
+            test_file = os.environ.get("SQUEAL_PYTEST_FILE")
+            if not test_file:
+                return
+            # A path named before costs one `getcwd` and one set lookup; a new one a `realpath`.
+            asked = (test_file, os.path.join(os.getcwd(), os.fsdecode(os.fspath(path))))
+            if asked in named:
+                return
+            named.add(asked)
+            real = os.path.realpath(asked[1])
+            if (test_file, real) in seen:
+                return
+            seen.add((test_file, real))
+            if real.startswith(inside) and not real.startswith(prefixes):
+                import json
+
+                if fd[0] is None:
+                    fd[0] = os.open(events, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+                line = json.dumps({"type": "written", "path": real, "ctx": test_file})
+                os.write(fd[0], (line + "\n").encode("utf-8"))
+        except Exception:
+            pass
+
+    class Recorded:
+        """Records the paths a call names, then calls `original`.
+
+        An object, not a function: a function is a descriptor, and Python
+        3.10's `pathlib` holds `os.mkdir` as a class attribute, which would
+        then bind as a method; a builtin, as this, does not bind.
+        """
+
+        __slots__ = ("count", "__wrapped__")
+
+        def __init__(self, original, count):
+            self.__wrapped__ = original
+            self.count = count
+
+        def __call__(self, *args, **kwargs):
+            if kwargs.get("dir_fd") is None and kwargs.get("src_dir_fd") is None:
+                named = [kwargs[k] for k in ("path", "src", "dst") if k in kwargs]
+                for path in [*args[: self.count], *named]:
+                    record(path)
+            return self.__wrapped__(*args, **kwargs)
+
+    for name, count in (("mkdir", 1), ("rmdir", 1), ("rename", 2), ("replace", 2)):
+        setattr(os, name, Recorded(getattr(os, name), count))
+
+
 def _chain():
     """Runs the next `sitecustomize` on `sys.path` after this module's directory, as `site` would have."""
     here = os.path.dirname(os.path.abspath(__file__))
@@ -105,4 +177,5 @@ def _chain():
 
 
 _record()
+_record_directories()
 _chain()
