@@ -42,6 +42,7 @@ export {
   listedDirectory,
   listingPath,
   ObservedSets,
+  observedDirectMetaKey,
   observedMetaKey,
 } from "./observed.js";
 export { PackageScans } from "./package-scans.js";
@@ -49,3 +50,4 @@ export { InstalledGraph, OPAQUE_BUILTINS, type PackageGraph } from "./packages.j
 export { PnpmGraph } from "./pnpm-graph.js";
 export { closuresToReresolve } from "./resolution.js";
 export { directoryOf, ReverseIndex, testFileId } from "./reverse-index.js";
+export { observedStartupMetaKey, StartupSets } from "./startup.js";
