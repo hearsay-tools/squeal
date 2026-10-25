@@ -214,7 +214,7 @@ function storeFile(
  */
 export function endRecord(record: TierRecord, environment: EnvironmentGrowth | undefined): void {
   const { context, ledger, tier } = record;
-  // 016 D4: the start-up paths and direct marks the run gave, seen before this transaction.
+  // 016 D4: the observed paths, direct marks and start-up paths the run gave (row 016-29).
   context.keys.writeSeen();
   if (environment !== undefined) settleEnvironment(record, environment);
   // The grown files take their new key and, once stored, its results; a re-key reached others.

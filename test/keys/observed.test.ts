@@ -58,7 +58,7 @@ describe("observed sets", () => {
   });
 
   // Spec 016 D4, row 007-56: the direct marks reach a restarted daemon and another worktree.
-  it("keep direct marks in their own key, merged, written by writeMarks, read in a later worktree", () => {
+  it("keep direct marks in their own key, merged, written by write, read in a later worktree", () => {
     const store = open(fakeCommonDir());
     const a = new ObservedSets(store);
     expect(a.add(ref("t.py"), ["lib/a.py", "lib/b.py"])).toEqual(["lib/a.py", "lib/b.py"]);
@@ -69,7 +69,7 @@ describe("observed sets", () => {
     ]);
     expect(a.directOf(ref("t.py"))).toEqual(["lib/b.py", "lib/static.py"]);
     expect(store.meta.get(observedDirectMetaKey("p"))).toBeNull();
-    a.writeMarks();
+    a.write();
     expect(a.mark(ref("t.py"), ["lib/b.py"])).toEqual([]);
     expect(JSON.parse(store.meta.get(observedDirectMetaKey("p")) ?? "{}")).toEqual({
       "t.py": ["lib/b.py", "lib/static.py"],
@@ -83,26 +83,62 @@ describe("observed sets", () => {
     expect(later.of(ref("t.py"))).toEqual(["lib/a.py", "lib/b.py"]);
     expect(later.directOf(ref("u.py"))).toEqual([]);
     later.mark(ref("u.py"), ["lib/a.py"]);
-    later.writeMarks();
+    later.write();
     a.refresh(["p"]);
     expect(a.directOf(ref("u.py"))).toEqual(["lib/a.py"]);
   });
 
-  it("write a mark a rolled-back transaction lost at the next writeMarks", () => {
+  it("write a mark a rolled-back transaction lost at the next write", () => {
     const store = open(fakeCommonDir());
     const a = new ObservedSets(store);
     a.mark(ref("t.py"), ["lib/b.py"]);
     expect(() =>
       store.transaction(() => {
-        a.writeMarks();
+        a.write();
         throw new Error("injected: the record's transaction fails");
       }),
     ).toThrow("injected");
     expect(store.meta.get(observedDirectMetaKey("p"))).toBeNull();
-    a.writeMarks();
+    a.write();
     expect(JSON.parse(store.meta.get(observedDirectMetaKey("p")) ?? "{}")).toEqual({
       "t.py": ["lib/b.py"],
     });
+  });
+
+  // Row 016-29 (011 C3): a write reads its key inside its transaction, so two daemons' views over
+  // two connections never drop each other's paths, in each of the three keys.
+  it("merge two connections' writes in all three keys, each write reading the key it merges into", () => {
+    const dir = fakeCommonDir();
+    const [one, two] = [open(dir), open(dir)];
+    const [a, b] = [new ObservedSets(one), new ObservedSets(two)];
+    const [aStartup, bStartup] = [new StartupSets(one), new StartupSets(two)];
+    // Both views read the empty keys, so `a` has not read what `b` writes when it writes.
+    for (const sets of [a, b])
+      expect([sets.of(ref("t.py")), sets.directOf(ref("t.py"))]).toEqual([[], []]);
+    for (const sets of [aStartup, bStartup]) expect(sets.of("p")).toEqual([]);
+    b.see(ref("t.py"), ["lib/b.py"]);
+    b.mark(ref("t.py"), ["lib/b.py"]);
+    bStartup.see("p", ["setup/b.mjs"]);
+    b.write();
+    bStartup.write();
+    a.see(ref("t.py"), ["lib/a.py"]);
+    a.mark(ref("t.py"), ["lib/a.py"]);
+    aStartup.see("p", ["setup/a.mjs"]);
+    a.write();
+    aStartup.write();
+
+    const both = '{"t.py":["lib/a.py","lib/b.py"]}';
+    expect(one.meta.get(observedMetaKey("p"))).toBe(both);
+    expect(one.meta.get(observedDirectMetaKey("p"))).toBe(both);
+    expect(one.meta.get(observedStartupMetaKey("p"))).toBe('["setup/a.mjs","setup/b.mjs"]');
+    // `b` reads what `a` merged through its own connection.
+    expect(b.refresh(["p"])).toEqual([ref("t.py")]);
+    expect([b.of(ref("t.py")), b.directOf(ref("t.py"))]).toEqual([
+      ["lib/a.py", "lib/b.py"],
+      ["lib/a.py", "lib/b.py"],
+    ]);
+    expect(bStartup.refresh(["p"])).toEqual(["p"]);
+    expect(bStartup.of("p")).toEqual(["setup/a.mjs", "setup/b.mjs"]);
   });
 });
 
