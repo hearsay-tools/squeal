@@ -8,7 +8,8 @@ import type { Case, PytestInput, PytestPython } from "../../case.js";
  * loads beyond its key (the direction rule's withhold), collection under
  * the config's names, a project with no environment and a refused flag;
  * from task 007-55, the start-up hook of a test's child processes and the
- * file in progress a test sees.
+ * file in progress a test sees; from row 016-17, the directories a test
+ * creates, which the runtime records for the core's written-directory bound.
  */
 
 const lines = (...text: string[]) => `${text.join("\n")}\n`;
@@ -223,6 +224,23 @@ const SEES_FILE: Readonly<Record<string, string>> = {
     "",
     "def test_sees_its_file():",
     '    assert os.environ.get("SQUEAL_PYTEST_FILE") == os.path.realpath(__file__)',
+  ),
+};
+
+/** Row 016-17: a test that reads its own directory create from the record only 016 D4's runtime writes. */
+const SEES_WRITTEN: Readonly<Record<string, string>> = {
+  "pyproject.toml": CONFIG,
+  "tests/test_sees_written.py": lines(
+    "import json",
+    "import os",
+    "",
+    "",
+    "def test_sees_the_directory_it_made_recorded():",
+    '    made = os.path.join(os.path.dirname(os.path.realpath(__file__)), "made")',
+    "    os.mkdir(made)",
+    '    with open(os.environ["SQUEAL_PYTEST_EVENTS"], encoding="utf-8") as events:',
+    "        written = [line for line in events if '\"written\"' in line]",
+    '    assert any(json.loads(line).get("path") == made for line in written), written',
   ),
 };
 
@@ -486,6 +504,11 @@ export const PYTEST_RUNS: readonly Case[] = [
     "a test sees its own file in SQUEAL_PYTEST_FILE while it runs",
     "007 D6 as amended by 007-55, the case that stands for PYTEST_ADAPTER_VERSION 3. Observable: a test's environment holds SQUEAL_PYTEST_FILE, its own file, while it runs, so under one key a test that reads it stores a pass where the last release stored a fail. The reason for the raise: a result stored before 007-55 sits at a key whose closure lacks what the test's child processes import, and a closure gains those paths only after a run here, which this kind reads as keys; without the raise such a result, an E9-style false pass among them, would stay current until its file ran again",
     { files: SEES_FILE, runs: [{ files: ["tests/test_sees_file.py"] }] },
+  ),
+  ...pytest(
+    "a test sees the directory it made recorded as written",
+    "016 D4, the case that stands for PYTEST_ADAPTER_VERSION 4. Observable: the runtime records each directory a process of the run creates or removes, the pytest process too, in the run's events, so under one key a test that reads them stores a pass where the last release stored a fail. The reason for the raise: the core now keeps what runs imported, a git-ignored import unless the run created or removed one of its directories, imports key whatever observe.runtimeInputs says, and what a process a test started imported stays direct after a restart; this kind reads closures as keys, so the change of what is kept shows here through the runtime (the human, 2026-10-25)",
+    { files: SEES_WRITTEN, runs: [{ files: ["tests/test_sees_written.py"] }] },
   ),
   ...pytest(
     "a start-up import beyond the key withholds the files, then joins the environment",
