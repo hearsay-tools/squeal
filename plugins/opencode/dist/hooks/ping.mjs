@@ -294,6 +294,10 @@ function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+// src/core/keys/pnpm-lockfile.ts
+var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
+var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
+
 // src/core/text.ts
 function plural(count, word) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
