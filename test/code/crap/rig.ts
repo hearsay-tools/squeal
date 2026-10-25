@@ -111,6 +111,28 @@ export function sourceOf(
   };
 }
 
+/** The fake counter at version 2, with each function's name and CC as `as` gives them. */
+export function counterV2(as: Record<string, readonly [name: string, cc: number]>): Counter {
+  const inner = fakeCounter();
+  return {
+    version: 2,
+    async count(text, language) {
+      const counted = await inner.count(text, language);
+      return {
+        ...counted,
+        functions: counted.functions.map((fn) => {
+          const [qualifiedName, complexity] = as[fn.qualifiedName] ?? [fn.qualifiedName, 0];
+          return {
+            ...fn,
+            qualifiedName,
+            complexity: complexity || fn.complexity,
+          };
+        }),
+      };
+    },
+  };
+}
+
 export function coverageRig(): CoverageRig {
   const dir = commonDir();
   const main = freshStore();

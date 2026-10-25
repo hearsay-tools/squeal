@@ -7,6 +7,7 @@ import type { CoverageRecord } from "../coverage/types.js";
 import type { CodeCoverageRepo } from "../store/types.js";
 import { type FileCondition, fileCondition } from "./file.js";
 import type { LoaderBuild, Loaders } from "./loaders.js";
+import type { Seed } from "./seed.js";
 
 /**
  * Row 015-42 (011-197): what a chain of coverage steps keeps, so a step
@@ -18,12 +19,15 @@ import type { LoaderBuild, Loaders } from "./loaders.js";
  * keeps its bytes: a later run at a key stores its record over the first
  * (review 0.1.305 B1), so after `invalidate` each is read again, and
  * decoded again only when its bytes moved. They go once a step ends the
- * chain (`settle`), so they hold no memory between chains.
+ * chain (`settle`), so they hold no memory between chains. A seed in
+ * progress (row 015-47) outlives both: it reads no loader or record.
  */
 export class StepCache {
   #loaders: Loaders | null = null;
   /** The loader map being read, a test file at a time (row 015-45). */
   #build: LoaderBuild | null = null;
+  /** The seed at coverage's start or a recount, until a step judges after it (row 015-47). */
+  #seed: Seed | null = null;
   readonly #conditions = new Map<RelativePath, FileCondition>();
   /** By path: the signature, and the blob, counter version and threshold it was made at. */
   readonly #signatures = new Map<RelativePath, { readonly at: string; readonly value: string }>();
@@ -41,6 +45,20 @@ export class StepCache {
     this.#loaders = this.#build.advance(work);
     if (this.#loaders !== null) this.#build = null;
     return this.#loaders;
+  }
+
+  /** The seed in progress, or done and not yet judged after; begun by `begin` when none is. */
+  seed(begin: () => Seed): Seed {
+    this.#seed ??= begin();
+    return this.#seed;
+  }
+
+  /**
+   * Drops the seed: a step judged after it, or a recount, coverage off or
+   * a closed store means the next seed begins again.
+   */
+  dropSeed(): void {
+    this.#seed = null;
   }
 
   /** A source's condition from the loader map. */
