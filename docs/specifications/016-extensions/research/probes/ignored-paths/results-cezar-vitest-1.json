@@ -1,0 +1,80 @@
+{
+ "tests": 838,
+ "testsWithIgnored": 11,
+ "ignoredFiles": 4,
+ "ignoredListings": 0,
+ "existsAfterRun": 0,
+ "byKind": {
+  "stat": 4
+ },
+ "filesByPattern": [
+  [
+   ".agents/skills",
+   1
+  ],
+  [
+   ".ai/qa/node_modules",
+   1
+  ],
+  [
+   ".ai/qa/*/node_modules",
+   1
+  ],
+  [
+   "packages/cezar/web/dist",
+   1
+  ]
+ ],
+ "listingsByPattern": [],
+ "testDirsByFileReads": [
+  [
+   "packages/cezar/src",
+   12
+  ]
+ ],
+ "bounds": {
+  "loadOnly": {
+   "kept": 0,
+   "sample": []
+  },
+  "existsAfterRun": {
+   "kept": 0,
+   "sample": []
+  },
+  "notUnderWrittenDir": {
+   "kept": 2,
+   "sample": [
+    "packages/cezar/web/dist/index.html",
+    ".agents/skills"
+   ]
+  },
+  "noRandomSegment": {
+   "kept": 3,
+   "sample": [
+    "packages/cezar/web/dist/index.html",
+    ".agents/skills",
+    ".ai/qa/node_modules"
+   ]
+  },
+  "testsAtOrBelowCap10": {
+   "kept": 4,
+   "sample": [
+    "packages/cezar/web/dist/index.html",
+    ".agents/skills",
+    ".ai/qa/node_modules",
+    ".ai/qa/unit-env-hJm5ED/node_modules"
+   ]
+  },
+  "testsAtOrBelowCap100": {
+   "kept": 4,
+   "sample": [
+    "packages/cezar/web/dist/index.html",
+    ".agents/skills",
+    ".ai/qa/node_modules",
+    ".ai/qa/unit-env-hJm5ED/node_modules"
+   ]
+  }
+ },
+ "perTestMax": 2,
+ "perTestMedianAmongThose": 1
+}

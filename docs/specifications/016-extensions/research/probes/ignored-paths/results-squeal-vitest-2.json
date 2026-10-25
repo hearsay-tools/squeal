@@ -1,0 +1,135 @@
+{
+ "tests": 254,
+ "testsWithIgnored": 254,
+ "ignoredFiles": 49294,
+ "ignoredListings": 1405,
+ "existsAfterRun": 0,
+ "byKind": {
+  "read": 11457,
+  "stat": 43744,
+  "l": 1405,
+  "exec": 32
+ },
+ "filesByPattern": [
+  [
+   "test/fixtures/scheduler/.tmp",
+   34550
+  ],
+  [
+   "test/fixtures/vitest/.tmp",
+   13990
+  ],
+  [
+   "test/fixtures/node-test/.tmp",
+   754
+  ]
+ ],
+ "listingsByPattern": [
+  [
+   "test/fixtures/scheduler/.tmp",
+   1037
+  ],
+  [
+   "test/fixtures/vitest/.tmp",
+   322
+  ],
+  [
+   "test/fixtures/node-test/.tmp",
+   46
+  ]
+ ],
+ "testDirsByFileReads": [
+  [
+   "test/scheduler",
+   27669
+  ],
+  [
+   "test/runners",
+   13268
+  ],
+  [
+   "test/daemon",
+   8558
+  ],
+  [
+   "test/integration",
+   4000
+  ],
+  [
+   "test/cli",
+   888
+  ],
+  [
+   "test/code",
+   813
+  ],
+  [
+   "test/keys",
+   660
+  ],
+  [
+   "test/status",
+   344
+  ],
+  [
+   "test/harness",
+   306
+  ],
+  [
+   "test/store",
+   133
+  ]
+ ],
+ "bounds": {
+  "loadOnly": {
+   "kept": 0,
+   "sample": []
+  },
+  "existsAfterRun": {
+   "kept": 0,
+   "sample": []
+  },
+  "notUnderWrittenDir": {
+   "kept": 21,
+   "sample": [
+    "test/fixtures/vitest/.tmp/deno.json",
+    "test/fixtures/vitest/.tmp/deno.jsonc",
+    "test/fixtures/vitest/.tmp/lerna.json",
+    "test/fixtures/vitest/.tmp/node_modules",
+    "test/fixtures/vitest/.tmp/package.json"
+   ]
+  },
+  "noRandomSegment": {
+   "kept": 49,
+   "sample": [
+    "test/fixtures/scheduler/.tmp/deno.json",
+    "test/fixtures/scheduler/.tmp/deno.jsonc",
+    "test/fixtures/scheduler/.tmp/lerna.json",
+    "test/fixtures/scheduler/.tmp/node_modules",
+    "test/fixtures/scheduler/.tmp/package.json"
+   ]
+  },
+  "testsAtOrBelowCap10": {
+   "kept": 26,
+   "sample": [
+    "test/fixtures/scheduler/.tmp/8b4d99c1-47c8-4a3e-a080-9529d8328446/main/.git",
+    "test/fixtures/scheduler/.tmp/8b4d99c1-47c8-4a3e-a080-9529d8328446/main/.git/squeal/store.sqlite",
+    "test/fixtures/scheduler/.tmp/8b4d99c1-47c8-4a3e-a080-9529d8328446/main/nt",
+    "test/fixtures/node-test/.tmp/12f3f0dd-c611-4ef6-a848-a062bc42ad97/04e16e65-e94f-4328-8cca-4114cf071528/scripts/package.json",
+    "test/fixtures/node-test/.tmp/12f3f0dd-c611-4ef6-a848-a062bc42ad97/25d24bbd-9dff-4eec-af64-3d691fad72aa/loaders/package.json"
+   ]
+  },
+  "testsAtOrBelowCap100": {
+   "kept": 4546,
+   "sample": [
+    "test/fixtures/scheduler/.tmp/0bf85031-881b-4401-9326-c840ecc94c7a/deno.json",
+    "test/fixtures/scheduler/.tmp/0bf85031-881b-4401-9326-c840ecc94c7a/deno.jsonc",
+    "test/fixtures/scheduler/.tmp/0bf85031-881b-4401-9326-c840ecc94c7a/lerna.json",
+    "test/fixtures/scheduler/.tmp/0bf85031-881b-4401-9326-c840ecc94c7a/main/.env",
+    "test/fixtures/scheduler/.tmp/0bf85031-881b-4401-9326-c840ecc94c7a/main/.env.local"
+   ]
+  }
+ },
+ "perTestMax": 3661,
+ "perTestMedianAmongThose": 141
+}

@@ -1,0 +1,46 @@
+{
+ "loadOnly": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "existsAfterRun": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "notUnderWrittenDir": {
+  "run1": 2,
+  "run2": 2,
+  "newInRun2": 0
+ },
+ "noRandomSegment": {
+  "run1": 3,
+  "run2": 3,
+  "newInRun2": 0
+ },
+ "testsAtOrBelowCap10": {
+  "run1": 4,
+  "run2": 4,
+  "newInRun2": 1
+ },
+ "testsAtOrBelowCap100": {
+  "run1": 4,
+  "run2": 4,
+  "newInRun2": 1
+ },
+ "none": {
+  "run1": 4,
+  "run2": 4,
+  "newInRun2": 1
+ },
+ "notWrittenNorRandom": {
+  "run1": 2,
+  "run2": 2,
+  "newInRun2": 0
+ },
+ "notWrittenNorRandomPaths": [
+  ".agents/skills",
+  "packages/cezar/web/dist/index.html"
+ ]
+}

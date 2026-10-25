@@ -1,0 +1,101 @@
+{
+ "tests": 2,
+ "testsWithIgnored": 2,
+ "ignoredFiles": 108,
+ "ignoredListings": 0,
+ "existsAfterRun": 0,
+ "byKind": {
+  "stat": 108
+ },
+ "filesByPattern": [
+  [
+   "*/.env",
+   2
+  ],
+  [
+   "*/.env.local",
+   2
+  ],
+  [
+   "*/.env.test",
+   2
+  ],
+  [
+   "*/.env.test.local",
+   2
+  ],
+  [
+   "*/.postcssrc",
+   2
+  ],
+  [
+   "*/.postcssrc.cjs",
+   2
+  ],
+  [
+   "*/.postcssrc.cts",
+   2
+  ],
+  [
+   "*/.postcssrc.js",
+   2
+  ],
+  [
+   "*/.postcssrc.json",
+   2
+  ],
+  [
+   "*/.postcssrc.mjs",
+   2
+  ],
+  [
+   "*/.postcssrc.mts",
+   2
+  ],
+  [
+   "*/.postcssrc.ts",
+   2
+  ]
+ ],
+ "listingsByPattern": [],
+ "testDirsByFileReads": [
+  [
+   ".github/scripts",
+   108
+  ]
+ ],
+ "bounds": {
+  "loadOnly": {
+   "kept": 0,
+   "sample": []
+  },
+  "existsAfterRun": {
+   "kept": 0,
+   "sample": []
+  },
+  "notUnderWrittenDir": {
+   "kept": 0,
+   "sample": []
+  },
+  "noRandomSegment": {
+   "kept": 0,
+   "sample": []
+  },
+  "testsAtOrBelowCap10": {
+   "kept": 0,
+   "sample": []
+  },
+  "testsAtOrBelowCap100": {
+   "kept": 108,
+   "sample": [
+    ".tmp-vitest-ga-d9wzsU/.env",
+    ".tmp-vitest-ga-d9wzsU/.env.local",
+    ".tmp-vitest-ga-d9wzsU/.env.test",
+    ".tmp-vitest-ga-d9wzsU/.env.test.local",
+    ".tmp-vitest-ga-d9wzsU/.postcssrc"
+   ]
+  }
+ },
+ "perTestMax": 81,
+ "perTestMedianAmongThose": 81
+}

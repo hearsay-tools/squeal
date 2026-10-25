@@ -1,0 +1,43 @@
+{
+ "loadOnly": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "existsAfterRun": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "notUnderWrittenDir": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "noRandomSegment": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "testsAtOrBelowCap10": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "testsAtOrBelowCap100": {
+  "run1": 108,
+  "run2": 108,
+  "newInRun2": 108
+ },
+ "none": {
+  "run1": 108,
+  "run2": 108,
+  "newInRun2": 108
+ },
+ "notWrittenNorRandom": {
+  "run1": 0,
+  "run2": 0,
+  "newInRun2": 0
+ },
+ "notWrittenNorRandomPaths": []
+}
