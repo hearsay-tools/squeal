@@ -955,9 +955,9 @@ function packageFolders(dir, workspaceFolders) {
     if (!entry3.isSymbolicLink() && !entry3.isDirectory()) return;
     const link = entry3.isSymbolicLink();
     folders.push({ path, link, mtimeMs: lstatSync2(join6(dir, path)).mtimeMs });
-    if (!link) walk(`${path}/node_modules`);
+    if (!link) walk2(`${path}/node_modules`);
   };
-  const walk = (modules) => {
+  const walk2 = (modules) => {
     for (const entry3 of entriesOf2(join6(dir, modules))) {
       if (entry3.name.startsWith(".")) continue;
       const path = `${modules}/${entry3.name}`;
@@ -969,7 +969,7 @@ function packageFolders(dir, workspaceFolders) {
     }
   };
   for (const path of ["", ...workspaceFolders])
-    walk(path === "" ? "node_modules" : `${path}/node_modules`);
+    walk2(path === "" ? "node_modules" : `${path}/node_modules`);
   return folders;
 }
 function entriesOf2(path) {
@@ -1491,17 +1491,17 @@ function pnpmPackageFoldersFingerprint(dir, importers) {
     }
   }
   const entries = [];
-  const walk = (at) => {
+  const walk2 = (at) => {
     for (const name of namesIn(join8(dir, at))) {
       const path = `${at}/${name}`;
       const link = lstatSync3(join8(dir, path)).isSymbolicLink();
       entries.push(
         link ? [path, "link", readlinkSync2(join8(dir, path))] : [path, ...manifestOf(dir, path)]
       );
-      if (!link) walk(`${path}/node_modules`);
+      if (!link) walk2(`${path}/node_modules`);
     }
   };
-  for (const at of [...roots].sort(compare)) walk(at);
+  for (const at of [...roots].sort(compare)) walk2(at);
   return createHash4("sha256").update(JSON.stringify([PACKAGE_FOLDERS_ENCODING2, entries])).digest("hex");
 }
 function namesIn(modules) {
@@ -5957,7 +5957,7 @@ function lastTransition(store, worktreeId, check, measure2 = MEASURE) {
   return store.transitions.history(worktreeId, check).findLast((t) => t.measure === measure2) ?? null;
 }
 var failingIn = (store, worktreeId) => store.states.list(worktreeId, { measure: MEASURE, outcome: "fail" });
-function seed2(store, consumer, failing, at) {
+function seed(store, consumer, failing, at) {
   store.views.clear(consumer);
   const covered = failingOf(
     store,
@@ -5980,7 +5980,7 @@ function registerCode(source, consumer, at) {
         readRecount(store, worktreeId)?.at ?? 0,
         readCrapRecount(store.meta, worktreeId)?.at ?? 0
       );
-      seed2(store, consumer, failing, Math.max(at, recounted));
+      seed(store, consumer, failing, Math.max(at, recounted));
       const { done, total } = countingOf(store, worktreeId);
       const counted = readCursor(store.meta, worktreeId) !== null;
       if (!counted) awaitFirstCount(store.meta, worktreeId);
@@ -6035,7 +6035,7 @@ function codeStep(store, consumer, { at, since, limit }, write2) {
   const recounted = recount !== null && recount.at > seededAt;
   const crapRecounted = crap !== null && crap.at > seededAt;
   if (recounted || crapRecounted) {
-    if (write2) seed2(store, consumer, failing, Math.max(at, recount?.at ?? 0, crap?.at ?? 0));
+    if (write2) seed(store, consumer, failing, Math.max(at, recount?.at ?? 0, crap?.at ?? 0));
     const crapOver = () => failingOf(store, worktreeId, ["crap"]).length;
     const news = {
       v: 1,
@@ -7022,7 +7022,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.309";
+  if (true) return "0.1.311";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
