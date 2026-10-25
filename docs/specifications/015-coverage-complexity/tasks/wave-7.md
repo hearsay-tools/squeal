@@ -23,3 +23,14 @@ Check, with proof where you can:
 4. Every text with no file not judged is byte-identical to main, in every harness.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## 015-51 round 2: re-review of candidate 0.1.312 after its rebase onto 0.1.311
+
+Use /reviewer, resumed (reviewer cab8cbf8). Candidate `cand/0.1.312`, now pinned to the SHA named in the message: the three reviewed commits rebased onto main at 0.1.311 (the same patches; only the hunk offsets and the cherry-pick lines differ) and the build commit redone (0.1.311 to 0.1.312). The round-1 candidate stays as `cand/0.1.312-r1` (bb6f2fc42). Write `reviews/0.1.312-r2.md` and commit it on your branch.
+
+Check, narrowly (process step 6: a re-review covers only the files both releases change):
+1. `src/core/code/pass/pass.ts`, the one source file both change: 0.1.311's `report()` returns `moves` and `removed`; 015-49's `countMissing` call passes `edits`. Neither breaks the other: a failed count's edit revision and the seed's moves both hold.
+2. The tests of both rows pass together on the candidate: `test/code/pass/`, `test/code/crap/`, `test/code/delivery/`.
+3. The build has no drift, and the version raise is in all eight places.
+
+No full suite: CI's run on the candidate is the full-suite check for this round. Verdict: PASS or FAIL; only a proven break blocks.
