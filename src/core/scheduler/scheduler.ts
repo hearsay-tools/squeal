@@ -60,6 +60,7 @@ import { retryRunner } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { busyLanes } from "./slots.js";
 import { slowView } from "./slow.js";
+import { SlowRelease } from "./slow-release.js";
 import { queueSlowSuite, type SlowRun, SlowTier } from "./slow-tier.js";
 import { StoredKeys } from "./stored-keys.js";
 import {
@@ -178,6 +179,8 @@ class TierScheduler implements Scheduler {
   readonly #hold: MergeHold;
   /** Row 011-74: no tier starts while a `squeal hold` holds (011 C9, "Holds"). */
   readonly #commandHold: CommandHold;
+  /** Row 011-211: when a slow lane's runner instance closes with its slow files still queued. */
+  readonly #slowRelease: SlowRelease;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
@@ -228,6 +231,16 @@ class TierScheduler implements Scheduler {
         fastIdle: () => this.#fastIdle(),
       },
       options.slow,
+    );
+    this.#slowRelease = new SlowRelease(
+      {
+        release: (lane) => this.#releaseLane(lane),
+        lanes: () => this.#lanes(),
+        endedAt: () => this.#slow.endedAt,
+        now: () => (options.now ?? Date.now)(),
+        closed: () => this.#closed,
+      },
+      options.slow?.releaseMs,
     );
     this.#records = new TierRecords({
       lock: this.#lock,
@@ -514,6 +527,7 @@ class TierScheduler implements Scheduler {
       // A slow selection waiting for the load guard plans again, and stops on the hold (review 0.1.269, B1).
       this.#slow.preempt();
       await this.#cancelHeld();
+      await this.#slowRelease.idle();
       return true;
     }
     if (was) this.#pump();
@@ -788,6 +802,7 @@ class TierScheduler implements Scheduler {
     this.#commandHold.close();
     this.#yields.close();
     this.#slow.close();
+    this.#slowRelease.close();
     this.#busy?.close();
     this.#notify();
     await this.#pumping;
@@ -882,7 +897,10 @@ class TierScheduler implements Scheduler {
           if (await this.#runtimeMissing()) break;
           // Row 011-72: the check before a tier; a hold that ended first reconciles what it released.
           const hold = await this.#holdCheck();
-          if (hold === "held") break;
+          if (hold === "held") {
+            await this.#slowRelease.idle();
+            break;
+          }
           if (hold === "released") continue;
           // Row 011-126: the selection's lookups and the tier's start wait a slice on a busy store.
           const next = await this.#runSliced(() => {
@@ -909,12 +927,17 @@ class TierScheduler implements Scheduler {
             return "flown" as const;
           });
           this.#busy?.landed();
-          if (next === "held") break;
+          if (next === "held") {
+            await this.#slowRelease.idle();
+            break;
+          }
           if (next !== null) continue;
           if (this.#reinstalled) break;
           if (this.#slowMayStart()) {
             // Spec 004 D2: no edit's fast work pending or running; the slow tier decides the rest.
-            const after = await this.#slow.next((run) => this.#fly(run.tier, install.stamp, run));
+            const after = await this.#slowRelease.selecting(() =>
+              this.#slow.next((run) => this.#fly(run.tier, install.stamp, run)),
+            );
             if (after !== null) continue;
           }
           if (this.#started().ledger.claims.waiting) {
@@ -960,6 +983,7 @@ class TierScheduler implements Scheduler {
     const held = cancellable ? new AbortController() : null;
     const flight: InFlight = { tier, done: Promise.resolve(), ran: false, held };
     this.#inFlight.set(tier.runId, flight);
+    if (slow !== null) this.#slowRelease.opened(tier.lane);
     // Row 011-74: a hold's cancel reaches a Vitest run as a stop's does; its runner reads it as its cancel.
     const stop =
       held === null ? this.#stop.signal : AbortSignal.any([this.#stop.signal, held.signal]);
@@ -981,7 +1005,7 @@ class TierScheduler implements Scheduler {
         slow?.slot.release();
         // The watcher may not have reported these yet; reconciling twice is harmless.
         if (record.moved.length > 0) await this.#reconcilePaths(record.moved);
-        if (slow !== null) await this.#releaseIfDrained(tier.lane);
+        if (slow !== null) await this.#slowEnded(tier.lane);
       } catch (error) {
         this.#stall(error, `${plural(tier.files.length, "file")} of a tier queued again`);
         if (!recorded) await this.#requeue(tier, slow !== null);
@@ -991,6 +1015,8 @@ class TierScheduler implements Scheduler {
         this.#inFlight.delete(tier.runId);
         // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
         if (slow === null) this.#slow.preempt();
+        // Row 011-211: a slow lane left open counts toward its close from the run's end.
+        else this.#slowRelease.arm();
         this.#notify();
       }
     })();
@@ -1012,15 +1038,22 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * The slow pass of `lane` drained: no file of it is queued, so its runner
-   * instance closes (spec 004 D2). While still in flight, so the lane's next
-   * tier waits for the close.
+   * A slow tier of `lane` ended. Its runner instance closes when the pass
+   * drained, no file of it queued (spec 004 D2), or at once on hold (row
+   * 011-211); otherwise `SlowRelease` closes it once it waited its bound.
+   * While still in flight, so the lane's next tier waits for the close.
    */
-  async #releaseIfDrained(lane: string): Promise<void> {
+  async #slowEnded(lane: string): Promise<void> {
     const { context, ledger } = this.#started();
+    const queued = ledger.orderedSlow().some((ref) => laneOf(context, ref) === lane);
+    if (!queued || this.#onHold()) await this.#slowRelease.release(lane);
+  }
+
+  /** The runner's `releaseLane` of `lane`: its instance closes. */
+  async #releaseLane(lane: string): Promise<void> {
+    const { context } = this.#started();
     const release = context.runner.releaseLane?.bind(context.runner);
     if (release === undefined || this.#closed) return;
-    if (ledger.orderedSlow().some((ref) => laneOf(context, ref) === lane)) return;
     await release(lane).catch((error: unknown) =>
       this.#backgroundError(`could not close the runner of lane ${lane}`, error),
     );
