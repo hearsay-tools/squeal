@@ -12,9 +12,11 @@ import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js
  * preload loads. Squeal's recorder is the first `--require` (task 003-28):
  * a helper a `--require` preload loads by a computed `require` is observed
  * and named in the run's `environmentObserved`, which the core keys in the
- * environment (spec 016 D4; `test/scheduler/one-write-path.test.ts`). The
- * review's probe, a nested preload, a package preload under `node_modules`
- * loading a worktree file, and one from the project's `NODE_OPTIONS`.
+ * environment (spec 016 D4; `test/scheduler/one-write-path.test.ts`). A
+ * nested preload, a package preload under `node_modules` loading a worktree
+ * file, and one from the project's `NODE_OPTIONS`. The review's probe, one
+ * preload's computed require, is kit scenario K5's `--require` variant
+ * (`test/kit/packs/node-test.ts`; row 016-30).
  */
 
 const FIXTURES = resolve(import.meta.dirname, "../../fixtures/node-test");
@@ -46,12 +48,6 @@ interface Case {
 }
 
 const CASES: readonly Case[] = [
-  {
-    name: "the review's probe: a --require preload's computed require",
-    argv: ["--require", "./scripts/setup.cjs"],
-    files: { "scripts/setup.cjs": `require("./helper" + ".cjs");\n` },
-    before: ["package.json", "scripts/setup.cjs"],
-  },
   {
     name: "a --require preload requiring one that loads the helper",
     argv: ["--require", "./scripts/setup.cjs"],
