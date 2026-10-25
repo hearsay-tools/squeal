@@ -19,11 +19,23 @@ import type {
 import { FakeStore } from "../hash/fakes.js";
 import { tempDir, writeFile } from "../hash/git-repo.js";
 
-/** Wraps a hasher to count hash reads and refuse stats: reconcile must use the batch's stats. */
+/**
+ * Wraps a hasher to count hash reads. Reconcile decides on the batch's stats:
+ * it may stat a path only once after each read of it (row 011-204).
+ */
 const counting = (inner: Hasher) => {
   const hashed: RelativePath[] = [];
+  const stated: RelativePath[] = [];
+  const count = (paths: readonly RelativePath[], path: RelativePath) =>
+    paths.filter((p) => p === path).length;
   const hasher: Hasher = {
-    stat: () => Promise.reject(new Error("reconcile stat'ed a path the batch described")),
+    stat: (path) => {
+      if (count(stated, path) >= count(hashed, path)) {
+        return Promise.reject(new Error("reconcile stat'ed a path the batch described"));
+      }
+      stated.push(path);
+      return inner.stat(path);
+    },
     hash: (path) => {
       hashed.push(path);
       return inner.hash(path);
@@ -236,7 +248,8 @@ describe("reconcile", () => {
     let content = "racy-1";
     let hashes = 0;
     const scripted: Hasher = {
-      stat: () => Promise.reject(new Error("unexpected stat")),
+      // The stat after each read: the file's, unmoved.
+      stat: async () => stat,
       hash: async () => {
         hashes++;
         return blobHash(Buffer.from(content), "sha1");
