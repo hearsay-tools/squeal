@@ -61,11 +61,15 @@ async function observing(fixture = createRepo("observed"), policy: Partial<Polic
 }
 
 describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
-  it("runs each file once at the start and stores its result under the key with what it read", async () => {
+  it("runs each file at the start, once more for a git-ignored path it read first, and stores its result under the key with what it read", async () => {
     const { h, store } = await observing();
+    // Spec 016 D4: the run that first hashed the git-ignored build output runs again (001-134);
+    // a pool whose first run came after it in another tier runs once.
+    const runs = POOLS.map((pool) => ranProjects(h, RUNTIME, 0).filter((p) => p === pool).length);
+    expect(runs.every((n) => n === 1 || n === 2)).toBe(true);
+    expect(runs.some((n) => n === 2)).toBe(true);
     for (const pool of POOLS) {
       const runtime = at(RUNTIME, pool);
-      expect(ranProjects(h, RUNTIME, 0).filter((p) => p === pool)).toEqual([pool]);
       const closure = store.testFiles.get(runtime)?.closure.paths ?? [];
       expect(closure).toEqual(
         expect.arrayContaining([
@@ -78,9 +82,9 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
           "scripts/worker.mjs",
         ]),
       );
-      // The gitignored build output is a blind spot: never keyed.
-      expect(closure).not.toContain("ignored/build.txt");
-      // Current under the key that holds what it read, with no second run.
+      // Spec 016 D4: the gitignored build output is kept, since the run wrote none of its directories.
+      expect(closure).toContain("ignored/build.txt");
+      // Current under the key that holds what it read.
       const key = keyOf(h, runtime);
       expect(h.store.results.byKey(key).length).toBeGreaterThan(0);
       expect(validities(h, runtime).every((v) => v === "current")).toBe(true);
