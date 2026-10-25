@@ -192,7 +192,44 @@ function wrapFs(api) {
         },
     );
 
+  /**
+   * `mkdtemp` creates the directory it returns, so that path is written, as
+   * `mkdir`'s is: what the test reads below it is its own scratch (016 D4,
+   * the written-directory bound). Sync, callback and promise forms.
+   */
+  const wrapCreate = (target, name) =>
+    replace(
+      target,
+      name,
+      (original) =>
+        function (...args) {
+          if (target === promises) {
+            const result = original.apply(this, args);
+            result.then?.(
+              (dir) => record("w", dir),
+              () => {},
+            );
+            return result;
+          }
+          if (name === "mkdtempSync") {
+            const dir = original.apply(this, args);
+            record("w", dir);
+            return dir;
+          }
+          const at = args.length - 1;
+          const callback = args[at];
+          if (typeof callback === "function") {
+            args[at] = function (...results) {
+              if (!results[0]) record("w", results[1]);
+              return callback.apply(this, results);
+            };
+          }
+          return original.apply(this, args);
+        },
+    );
+
   for (const target of [fs, promises]) {
+    for (const name of ["mkdtemp", "mkdtempSync"]) wrapCreate(target, name);
     for (const name of ["readFile", "readFileSync", "createReadStream"]) wrap(target, name, "f");
     for (const name of ["stat", "statSync", "lstat", "lstatSync", "exists", "existsSync"]) {
       wrap(target, name, "f");
