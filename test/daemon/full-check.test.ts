@@ -6,6 +6,7 @@ import {
   claimFullCheck,
   FULL_CHECK_EVERY_MS,
   type FullCheck,
+  type FullCheckOutcome,
   runFullCheck,
   startFullCheck,
   storeCondemned,
@@ -25,16 +26,18 @@ import { fakeCommonDir, open, seedIndexFault } from "../store/helpers.js";
 
 const T = 1_800_000_000_000;
 
+const FAULT = { problem: "row 1 missing from index fault_a" };
+
 /** A check that ends only when the test says so. */
-function heldCheck(): FullCheck & { end: (ok: boolean) => void; stopped: boolean } {
-  let end: (ok: boolean) => void = () => {};
-  const done = new Promise<{ ok: true } | { problem: string }>((resolve) => {
-    end = (ok) => resolve(ok ? { ok: true } : { problem: "row 1 missing from index fault_a" });
+function heldCheck(): FullCheck & { end: (outcome: FullCheckOutcome) => void; stopped: boolean } {
+  let end: (outcome: FullCheckOutcome) => void = () => {};
+  const done = new Promise<FullCheckOutcome>((resolve) => {
+    end = resolve;
   });
   const check = {
     pid: undefined,
     done,
-    end: (ok: boolean) => end(ok),
+    end: (outcome: FullCheckOutcome) => end(outcome),
     stopped: false,
     stop: () => {
       check.stopped = true;
@@ -89,12 +92,25 @@ describe("the full check's claim (row 011-226)", () => {
 
     const second = heldCheck();
     const stopSecond = startFullCheck(context(store, commonDir, () => second).context);
-    second.end(true);
+    second.end({ ok: true });
     await second.done;
     await sleep(0);
     stopSecond();
     expect(second.stopped).toBe(false);
     expect(store.meta.get(META_FULL_CHECK)).toBe(String(T));
+  });
+
+  it("is given back when the check could not run", async () => {
+    const commonDir = fakeCommonDir();
+    const store = open(commonDir);
+    const check = heldCheck();
+    startFullCheck(context(store, commonDir, () => check).context);
+    expect(store.meta.get(META_FULL_CHECK)).toBe(String(T));
+    check.end({ unrun: "unable to open database file" });
+    await check.done;
+    await sleep(0);
+    expect(store.meta.get(META_FULL_CHECK)).toBeNull();
+    expect(readStoreMark(commonDir)).toBeNull();
   });
 
   it("runs no check while another daemon holds the day's claim", () => {
@@ -161,7 +177,7 @@ describe("a failed full check marks the store (row 011-226)", () => {
     startFullCheck(ctx);
     expect(storeCondemned(commonDir)).toBeNull();
 
-    check.end(false);
+    check.end(FAULT);
     await check.done;
     await sleep(0);
     expect(readStoreMark(commonDir)).toEqual({
