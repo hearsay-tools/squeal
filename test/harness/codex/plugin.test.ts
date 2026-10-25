@@ -70,6 +70,7 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
       expect(existsSync(join(built.dir, `${name}.mjs`)), name).toBe(true);
     expect(existsSync(join(built.dir, "cli/squeal.mjs"))).toBe(true);
     expect(existsSync(join(built.dir, "cli/front-desk.mjs"))).toBe(true);
+    expect(existsSync(join(built.dir, "cli/coverage-map.mjs"))).toBe(true);
   });
 
   it("gives hook bundles nothing at runtime but Node built-ins", async () => {
@@ -111,8 +112,9 @@ describe("Codex plugin build (spec 002 D1, D5)", () => {
     ]);
     for (const file of runtime) execFileSync(process.execPath, ["--check", join(built.dir, file)]);
     const bundles = files.filter((f) => !verbatim(f));
-    // The hooks, the CLI, its socket worker and `ps` alone (spec 014 goal 6).
-    expect(bundles).toHaveLength(CONTRACT.length + 3);
+    // The hooks, the CLI, its socket worker, `ps` alone (spec 014 goal 6) and the coverage
+    // records' mapping worker (015-42).
+    expect(bundles).toHaveLength(CONTRACT.length + 4);
     for (const file of bundles) {
       const path = join(built.dir, file);
       expect(readFileSync(path, "utf8"), file).toMatch(
