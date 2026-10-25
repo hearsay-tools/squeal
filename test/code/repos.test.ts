@@ -78,6 +78,52 @@ describe("code store repositories (015 D4)", () => {
     expect(store.states.list("w2")).toHaveLength(1);
   });
 
+  // Row 015-45: read by path, from each path's checks, not by a scan of the worktree's states.
+  it("lists the states of the paths it is given, each once and in order", () => {
+    const store = open(commonDir());
+    const on = (path: string, name: string, over: Partial<CodeKnownState> = {}) =>
+      state("w1", name, { check: { ...check(name), path }, ...over });
+    const states = [
+      on("src/c.ts", "c"),
+      on("src/a.ts", "a2"),
+      on("src/a.ts", "a1"),
+      on("src/a.ts", "a1", { measure: "crap", outcome: "pass", value: 3 }),
+      on("src/b.ts", "b"),
+      state("w2", "a1", { check: { ...check("a1"), path: "src/a.ts" } }),
+    ];
+    store.states.upsertMany(states);
+    const all = store.states.list("w1");
+    const of = (...paths: string[]) => all.filter((s) => paths.includes(s.check.path));
+    expect(store.states.list("w1", { paths: ["src/b.ts", "src/a.ts", "src/a.ts"] })).toEqual(
+      of("src/a.ts", "src/b.ts"),
+    );
+    expect(store.states.list("w1", { paths: ["src/a.ts"], measure: "crap" })).toEqual(
+      of("src/a.ts").filter((s) => s.measure === "crap"),
+    );
+    expect(store.states.list("w1", { paths: ["src/a.ts", "src/c.ts"], outcome: "fail" })).toEqual(
+      of("src/a.ts", "src/c.ts").filter((s) => s.outcome === "fail"),
+    );
+    expect(store.states.list("w1", { paths: [] })).toEqual([]);
+    expect(store.states.list("w2", { paths: ["src/a.ts"] })).toHaveLength(1);
+    const edit = (name: string, path: string) => ({
+      check: { ...check(name), path },
+      measure: "complexity" as const,
+      revision: 5,
+      at: 1_000,
+    });
+    store.states.markEdited("w1", [
+      edit("a1", "src/a.ts"),
+      edit("b", "src/b.ts"),
+      edit("c", "src/c.ts"),
+    ]);
+    const edits = store.states.edits("w1", "complexity");
+    expect(edits.map((e) => e.check.path)).toEqual(["src/a.ts", "src/b.ts", "src/c.ts"]);
+    expect(store.states.edits("w1", "complexity", ["src/c.ts", "src/a.ts", "src/a.ts"])).toEqual(
+      edits.filter((e) => e.check.path !== "src/b.ts"),
+    );
+    expect(store.states.edits("w1", "crap", ["src/a.ts"])).toEqual([]);
+  });
+
   it("moves a check's states and every view entry to its new identity (D2)", () => {
     const store = open(commonDir());
     const moved = check("settle", "src/ledger/settle.ts");

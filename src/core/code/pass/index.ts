@@ -67,6 +67,8 @@ export interface CodePassOptions {
     readonly main: LoaderInputs["main"];
     readonly closures: () => LoaderInputs["closures"];
     readonly writing: () => boolean;
+    /** The main thread's share, shared with the records' writer (row 015-45); absent, its own. */
+    readonly pace?: Pace;
   };
 }
 
@@ -127,7 +129,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
   /** What a chain of coverage steps keeps while keys and results stay (row 015-42). */
   const cache = new StepCache();
   /** Row 015-42: a coverage step that took `d` ms of the main thread gives the feed `d` ms. */
-  const pace = new Pace(now);
+  const pace = options.coverage?.pace ?? new Pace(now);
   /** A recount waits with its step: the step that runs seeds for it. */
   let reseedDue = false;
   /** The failed counts of the open store have had this daemon's fresh budget. */
@@ -239,7 +241,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
         cache,
       }),
     );
-    reseedDue = false;
+    if (step?.reading !== true) reseedDue = false;
     coverageWake = step?.wakeAt ?? null;
     // Past the step's budget: the rest once the feed and hooks had the step's own time.
     if (step?.more === true) paced();

@@ -1,5 +1,5 @@
 import { num, numOrNull, oneOf, oneOfOrNull, str } from "../../store/codec.js";
-import type { Connection, Row } from "../../store/connection.js";
+import type { Connection, Params, Row } from "../../store/connection.js";
 import type {
   CodeCheckId,
   CodeKnownState,
@@ -8,6 +8,7 @@ import type {
   CodeTransition,
   CodeTransitionKind,
 } from "../../types/code.js";
+import type { RelativePath, WorktreeId } from "../../types/index.js";
 import type { CodeEdit, CodeStateRepo, CodeTransitionRepo } from "./types.js";
 
 export const MEASURES = [
@@ -63,18 +64,42 @@ export function checkFrom(row: Row): CodeCheckId {
   };
 }
 
+/**
+ * Row 015-45: the `FROM` of a read of states, through its first `WHERE`
+ * term, and its parameters. With `paths`, each path's checks are read
+ * first and their states by key, in that order (`CROSS JOIN`), so a few
+ * files' states come without a scan of every state of the worktree: 37,299
+ * rows, 48 to 65 ms cold, on 011-197's store.
+ */
+function statesOf(
+  worktreeId: WorktreeId,
+  paths: readonly RelativePath[] | undefined,
+): { readonly from: string; readonly params: Params } {
+  if (paths === undefined) {
+    return {
+      from: "states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?",
+      params: [worktreeId],
+    };
+  }
+  return {
+    from: `(SELECT DISTINCT value FROM json_each(?)) p
+      CROSS JOIN checks c ON c.path = p.value
+      CROSS JOIN states s ON s.worktree_id = ? AND s.check_id = c.id
+      WHERE true`,
+    params: [JSON.stringify(paths), worktreeId],
+  };
+}
+
 export function createStateRepo(conn: Connection): CodeStateRepo {
   return {
     list(worktreeId, filter = {}) {
+      const { from, params } = statesOf(worktreeId, filter.paths);
       return conn
         .all(
-          `SELECT s.*, ${CHECK_COLUMNS} FROM states s JOIN checks c ON c.id = s.check_id
-           WHERE s.worktree_id = ?
-             AND (? IS NULL OR c.path IN (SELECT value FROM json_each(?)))
+          `SELECT s.*, ${CHECK_COLUMNS} FROM ${from}
              AND (? IS NULL OR s.measure = ?) AND (? IS NULL OR s.outcome = ?)
            ORDER BY c.path, c.qualified_name, c.occurrence, s.measure`,
-          worktreeId,
-          ...Array(2).fill(filter.paths === undefined ? null : JSON.stringify(filter.paths)),
+          ...params,
           ...Array(2).fill(filter.measure ?? null),
           ...Array(2).fill(filter.outcome ?? null),
         )
@@ -103,14 +128,14 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         }
       });
     },
-    edits(worktreeId, measure) {
+    edits(worktreeId, measure, paths) {
+      const { from, params } = statesOf(worktreeId, paths);
       return conn
         .all(
-          `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS}
-           FROM states s JOIN checks c ON c.id = s.check_id
-           WHERE s.worktree_id = ? AND s.measure = ? AND s.edited_at IS NOT NULL
+          `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS} FROM ${from}
+             AND s.measure = ? AND s.edited_at IS NOT NULL
            ORDER BY c.path, c.qualified_name, c.occurrence`,
-          worktreeId,
+          ...params,
           measure,
         )
         .map(toEdit);

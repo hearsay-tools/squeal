@@ -3,7 +3,8 @@
  * its time back. After work that took `d` ms there, the next unit starts no
  * sooner than `d` ms after it ended, so the change feed and hooks get at
  * least half of every window. Work measured before that time has passed
- * adds to the wait.
+ * adds to the wait. The daemon gives the records' writer and the coverage
+ * step one pace, so the half holds for both together (row 015-45).
  */
 export class Pace {
   readonly #now: () => number;
@@ -33,7 +34,11 @@ export class Pace {
     return this.#now() >= this.#notBefore;
   }
 
-  /** Resolves once the next unit may start, never in the same turn of the event loop. */
+  /**
+   * Resolves once the next unit may start by the time it is called, never
+   * in the same turn of the event loop. Another user of the pace may run a
+   * unit meanwhile, so `due` says whether to wait again.
+   */
   wait(): Promise<void> {
     const delay = Math.max(0, this.#notBefore - this.#now());
     return new Promise((resolve) => setTimeout(resolve, delay));
