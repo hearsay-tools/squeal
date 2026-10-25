@@ -11,6 +11,7 @@ import { describeFailure } from "../../../src/core/state/fingerprint.js";
 import type { Case, CaseOutput, KeyInput, RowsInput } from "./case.js";
 import { decideAccept, writeAccept } from "./harness/accept.js";
 import { assemble } from "./harness/assemble.js";
+import { nodeTestCase } from "./harness/node-test.js";
 import { observe } from "./harness/observe.js";
 import { pytestCase } from "./harness/pytest.js";
 import {
@@ -99,6 +100,8 @@ export async function runCase(c: Case, scratch: string, runtime: string): Promis
       return vitestCase(c.input, scratch);
     case "adapter:pytest":
       return pytestCase(c.input, scratch);
+    case "adapter:node-test":
+      return nodeTestCase(c.input, scratch);
   }
 }
 
