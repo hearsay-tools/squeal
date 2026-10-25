@@ -9,9 +9,9 @@ import { daemonPass } from "./helpers.js";
  * while the runner part of its revision was pending; the pass counted it as
  * source, and its 61 functions were told as `FAIL uncovered`. The pass holds
  * a file it never counted that a revision after the listed one brings, until
- * that listing (the scheduler's `onRefined` nudges it, agreed with
- * coordinator 52e58f23); a counted file a runner lists later leaves with
- * nothing told.
+ * that listing (the scheduler's `onListed` nudges it, agreed with
+ * coordinator 52e58f23 and 011); a counted file a runner lists later leaves
+ * with nothing told, also when the listing comes with no new revision.
  */
 
 const SEED = "test/seed.test.ts";
@@ -41,7 +41,7 @@ async function counted(policy = () => COVERED) {
   return { rig, run };
 }
 
-/** One pass, as a batch or the scheduler's `onRefined` nudges it. */
+/** One pass, as a batch or the scheduler's `onListed` nudges it. */
 async function settle(rig: CoverageRig, run: ReturnType<typeof daemonPass>) {
   rig.clock += 1_000;
   run.code.nudge();
@@ -109,26 +109,32 @@ describe("a test file and its runner listing (015 D1, row 015-52)", () => {
     await next.code.close();
   });
 
-  it("holds a test file in a recount, and counts a held source file once listed", async () => {
+  it("waits with a recount for the listing of a file it would hold, then counts the source in it", async () => {
     let policy = COVERED;
     const { rig, run } = await counted(() => policy);
+    const passes = run.reports.length;
     // Revision 2 lowers the threshold and brings a test file and a source; its listing is pending.
     policy = { ...COVERED, complexity: { ...COVERED.complexity, threshold: 15 } };
     rig.tree.listed = 1;
     rig.tree.write(SEED, SEED_TEXT).write("src/b.ts", "b 18 b1\n").revise();
     await settle(rig, run);
-    expect(run.reports.at(-1)?.mode).toBe("threshold");
+    expect(run.reports).toHaveLength(passes);
     expect(rows(rig)).toEqual(["src/a.ts"]);
 
     list(rig, SEED);
     await settle(rig, run);
+    expect(run.reports.at(-1)?.mode).toBe("threshold");
     expect(rows(rig)).toEqual(["src/a.ts", "src/b.ts"]);
     expect(of(rig, SEED)).toEqual({ states: [], transitions: [] });
-    expect(naming(await rig.told(S1), SEED)).toEqual([]);
-    // Judged as an edit pass judges a new file. Its transition is at the recount's revision, which
-    // the delivery takes in by count (D6), so no line tells it: a limit in notes.md.
+    const told = await rig.told(S1);
+    expect(naming(told, SEED)).toEqual([]);
+    // The recount counts it with no transition (D5): its summary, not a line of its own, tells it.
     const states = rig.store.states.list(WT, { paths: ["src/b.ts"], measure: "complexity" });
     expect(states.map((s) => `${s.outcome} ${s.value}`)).toEqual(["fail 18"]);
+    expect(naming(told, "src/b.ts")).toEqual([]);
+    expect(told).toContain(
+      "Complexity threshold is now 15: 1 function over; squeal code lists them.",
+    );
   });
 
   it("removes a test file counted before its listing with nothing told", async () => {
@@ -139,6 +145,18 @@ describe("a test file and its runner listing (015 D1, row 015-52)", () => {
     rig.tree.write("src/a.ts", "a 4 a2\n").revise();
     await settle(rig, run);
     list(rig, SEED);
+    await settle(rig, run);
+    expect(rows(rig)).toEqual(["src/a.ts"]);
+    expect(of(rig, SEED)).toEqual({ states: [], transitions: COUNTED_AS_SOURCE });
+    expect(naming(await rig.told(S1), SEED)).toEqual([]);
+  });
+
+  it("removes with nothing told a counted test file that a listing at the same revision lists (review 0.1.315 N1)", async () => {
+    const { rig, run } = await counted();
+    await countedAsSource(rig, run);
+    // A runner-only refinement lists it: no new revision, one more listing.
+    list(rig, SEED);
+    rig.tree.listings += 1;
     await settle(rig, run);
     expect(rows(rig)).toEqual(["src/a.ts"]);
     expect(of(rig, SEED)).toEqual({ states: [], transitions: COUNTED_AS_SOURCE });
@@ -166,8 +184,9 @@ describe("a test file and its runner listing (015 D1, row 015-52)", () => {
 });
 
 /**
- * Revision 2 brings the test file while its listing reads as done, as after a
- * refinement that threw: it is counted as source, told, and fails `uncovered`.
+ * Revision 2 brings the test file while its listing reads as done, as
+ * 0.1.309's did after a refinement that threw: it is counted as source,
+ * told, and fails `uncovered`.
  */
 async function countedAsSource(rig: CoverageRig, run: ReturnType<typeof daemonPass>) {
   rig.tree.write(SEED, SEED_TEXT).revise();
