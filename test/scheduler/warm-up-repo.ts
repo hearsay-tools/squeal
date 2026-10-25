@@ -13,8 +13,10 @@ import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.
  * the gitignored worktree paths it read, capped at 50 with a count of the
  * rest. A slow Vitest file and a slow node:test file read the gitignored
  * `ignored/build.txt`. Keys, closures and results are those of a run
- * without the flag; a run without it stores nothing; a change of the
- * ignored file re-runs nothing.
+ * without the flag; a run without it stores nothing. The Vitest file's
+ * closure keys the ignored file (spec 016 D4, the written-directory bound),
+ * so the warm-up reports it for the node:test file only, and a change of
+ * it re-runs the Vitest file only.
  */
 export const VITEST = "test/runtime.test.ts";
 export const READS = "nt/reads.test.mjs";
