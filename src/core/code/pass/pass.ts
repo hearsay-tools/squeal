@@ -1,4 +1,3 @@
-import { compare } from "../../fs/index.js";
 import type { ObjectFormat } from "../../hash/index.js";
 import type { CodeFile } from "../../types/code.js";
 import type {
@@ -24,13 +23,18 @@ import {
   dueRetries,
   type FailedCounts,
   readUncountable,
-  seedsQuietly,
   spentFailure,
   writeUncountable,
 } from "./failed.js";
-import { committedPaths } from "./head.js";
-import { includedSet } from "./included.js";
 import { checkKey, type FileAfter, judge } from "./judge.js";
+import {
+  changesFrom,
+  committedWithHeld,
+  listingMoved,
+  readListing,
+  writeListed,
+} from "./listed.js";
+import { quietPaths, workEntries } from "./plan.js";
 import { clearPulled, writePulled } from "./pulled.js";
 import { writeTooBigEdits } from "./too-big.js";
 import type { Counter, PassReport, PassSource, RecountReason } from "./types.js";
@@ -62,28 +66,40 @@ export interface PassContext {
  * loop between them; then states, transitions, edits and the cursor in one
  * transaction, so a hook never reads half a revision. Before the last, a
  * revision that moved `HEAD` asks git which files are the committed ones
- * (015-19), and the last records them (015-38).
+ * (015-19), and the last records them (015-38). D1 (row 015-52): a file
+ * never counted that a revision after the listed one changed waits for its
+ * listing, and a pass runs when the listing moves; a counted file that a
+ * runner now lists leaves quietly.
  */
 export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const { store, source, worktreeId } = ctx;
   const latest = source.latestRevision();
+  const listing = readListing(store, worktreeId, source, latest);
   const cursor = readCursor(store.meta, worktreeId);
   const current = cursorOf(latest, ctx.complexity, ctx.counter.version);
   const reason = ctx.switchedOn ? "first" : recountReason(cursor, current);
   const started = ctx.now();
   const failed = readUncountable(store.meta, worktreeId);
   const due = retriesDue(ctx, failed, started);
-  if (reason === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0) {
+  const idle =
+    reason === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0;
+  if (idle && !listingMoved(listing)) return null;
+  const since = reason === null && cursor !== null ? cursor.revision : null;
+  const { entries, record, released } = workEntries(ctx, since, latest, due, listing);
+  // The listing moved and left nothing to read: no pass, so no coverage step either.
+  if (idle && entries.length === 0) {
+    writeListed(store.meta, worktreeId, record);
     return null;
   }
-  const since = reason === null && cursor !== null ? cursor.revision : null;
-  const entries = plan(ctx, since === null ? null : workSet(ctx, since, latest, due));
   ctx.retry.clear();
   const bodies =
     reason === null ? oldBodies(store, worktreeId, entries, ctx.counter.version) : new Map();
   // 015-39: each too-big file's last edit, kept apart from the rows a recount writes at its revision.
+  // A held file's is older than the cursor (row 015-52).
   const edits =
-    reason === "first" || cursor === null ? null : source.lastChanges(cursor.revision, latest);
+    reason === "first" || cursor === null
+      ? null
+      : source.lastChanges(changesFrom(listing, cursor.revision, released), latest);
 
   store.transaction(() => {
     writeTooBigEdits(store, worktreeId, edits, entries);
@@ -100,12 +116,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     threshold: ctx.complexity.threshold,
     edits,
   });
-  // B1: a count a first count or recount failed on seeds as that count would have.
-  const seeds = new Set(
-    entries.flatMap((e) =>
-      e.kind === "count" && seedsQuietly(failed, e.path, e.file.hash) ? [e.path] : [],
-    ),
-  );
+  const seeds = quietPaths(entries, failed, listing);
   const after: FileAfter[] = entries
     .filter((e) => !skipped.has(e.path))
     .map((e) => {
@@ -128,11 +139,11 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const committed =
     since === null
       ? new Set<RelativePath>()
-      : await committedPaths(
+      : await committedWithHeld(
           ctx,
-          since,
-          latest,
+          { since, held: changesFrom(listing, since, released), upTo: latest },
           after.map((a) => ({ path: a.path, blob: blobs.get(a.path) ?? null })),
+          released,
         );
   return store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
@@ -171,6 +182,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     if (quiet) clearPulled(store.meta, worktreeId);
     else writePulled(store.meta, worktreeId, latest, paths, committed);
     writeCursor(store.meta, worktreeId, current);
+    writeListed(store.meta, worktreeId, record);
     writeUncountable(store.meta, worktreeId, failed);
     // The coordinator's contract with 015-07: a first pass over inherited counts writes none,
     // unless a consumer registered before it and was told counting (015-35).
@@ -204,48 +216,6 @@ function retriesDue(ctx: PassContext, failed: FailedCounts, now: EpochMs): Relat
               ctx.store.counts.get(f.blob, f.language, ctx.counter.version) !== null,
           );
   return [...dueRetries(failed, now), ...counted.map((f) => f.path)];
-}
-
-/**
- * The edit pass's paths: the revisions' changes, the retries, the failed
- * counts due again (`due`), and counted files a runner now lists.
- */
-function workSet(
-  ctx: PassContext,
-  after: RevisionNumber,
-  upTo: RevisionNumber,
-  due: readonly RelativePath[],
-): RelativePath[] {
-  const tests = ctx.store.files.list(ctx.worktreeId, ctx.source.testFiles());
-  return [
-    ...new Set([
-      ...ctx.source.changedPaths(after, upTo),
-      ...ctx.retry,
-      ...due,
-      ...tests.map((f) => f.path),
-    ]),
-  ];
-}
-
-/** Each path classified by D1; `paths` `null` for every file Squeal sees and every stored row. */
-function plan(ctx: PassContext, paths: readonly RelativePath[] | null): Entry[] {
-  const { store, source, worktreeId, complexity } = ctx;
-  const included = includedSet(complexity, source.testFiles(), source.ignored());
-  const all = paths === null ? new Map(source.files().map((f) => [f.path, f])) : null;
-  const listed =
-    all === null
-      ? (paths ?? [])
-      : [...new Set([...all.keys(), ...store.files.list(worktreeId).map((f) => f.path)])];
-  const entries = [...listed].sort(compare).map((path): Entry => {
-    const language = included(path);
-    const file = language === null ? null : all === null ? source.file(path) : all.get(path);
-    if (language === null || file === null || file === undefined) return { kind: "gone", path };
-    return { kind: file.size > complexity.maxFileBytes ? "big" : "count", path, file, language };
-  });
-  // A gone path the store never counted is nothing to remove.
-  const gone = entries.filter((e) => e.kind === "gone").map((e) => e.path);
-  const stored = new Set(store.files.list(worktreeId, gone).map((f) => f.path));
-  return entries.filter((e) => e.kind !== "gone" || stored.has(e.path));
 }
 
 function filesRows(

@@ -46,6 +46,13 @@ export interface PassSource {
   file(path: RelativePath): SourceFile | null;
   /** Every file Squeal sees in the worktree. */
   files(): readonly SourceFile[];
+  /**
+   * D1 (row 015-52): the newest revision whose test files the runners
+   * listed, the scheduler's refined revision, at most `latestRevision`;
+   * that one when no daemon recorded any. A file a later revision adds may
+   * be a test file `testFiles` does not hold yet. Read before `testFiles`.
+   */
+  listedRevision(): RevisionNumber;
   /** D1: test files, any file a runner lists. Never counted. */
   testFiles(): readonly RelativePath[];
   /** D1: files git ignores that Squeal watches anyway (a closure reads them). Never counted. */
