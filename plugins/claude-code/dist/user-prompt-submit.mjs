@@ -18,6 +18,7 @@ var WORKTREE_META_ROWS = {
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
   slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+  countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
@@ -183,8 +184,8 @@ function parseCheckpointProgress(raw) {
     const numbers = [value.revision, value.startedAt, value.done, value.total];
     if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
     if (value.kind !== "run-all" && value.kind !== "baseline") return null;
-    const owed = value.owed;
-    const lists = owed === void 0 ? [] : [owed.ids, owed.remaining, owed.strict];
+    const owed2 = value.owed;
+    const lists = owed2 === void 0 ? [] : [owed2.ids, owed2.remaining, owed2.strict];
     if (!lists.every(Array.isArray)) return null;
     return value;
   } catch {
@@ -6539,6 +6540,26 @@ function wentOverSince(code, worktreeId, since, measures = ["complexity"]) {
   );
 }
 
+// src/core/delivery/counts-owed.ts
+function countsOwedMetaKey(worktreeId) {
+  return worktreeMetaKey("countsOwed", worktreeId);
+}
+function oweCounts(store, consumer, header) {
+  writeSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer, owed(header) ? true : null);
+}
+function forgetCounts(store, consumer) {
+  writeSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer, null);
+}
+function payCounts(store, consumer, header) {
+  const key = countsOwedMetaKey(consumer.worktreeId);
+  if (owed(header) || readSlot(store, key, consumer) !== true) return {};
+  writeSlot(store, key, consumer, null);
+  const root = store.worktrees.get(consumer.worktreeId)?.root;
+  const lookupOnly = root !== void 0 && readPolicy(root).baseline.onStart === "lookup-only";
+  return { countsOwed: { lookupOnly } };
+}
+var owed = (header) => header.testFilesListed === false;
+
 // src/core/delivery/delta.ts
 function beforeFailing(history, state) {
   const last = history.at(-1);
@@ -6723,15 +6744,15 @@ function editNotes(store, consumer, states, delivering) {
     store.testFileKeys.list(consumer.worktreeId).map((k) => [testFileId(k.testFile), k])
   );
   const rekeyed = [];
-  let owed = false;
+  let owed2 = false;
   for (const [id, entry3] of readRekeyed(store, consumer.worktreeId)) {
     const row = rows.get(id);
     if (row === void 0 || row.key === null || entry3.last <= state.since) continue;
     rekeyed.push(row);
-    owed ||= row.pending !== null;
+    owed2 ||= row.pending !== null;
   }
   const sawEdit = state.said || rekeyed.length === 0 ? void 0 : { queued: rekeyed.length };
-  const editsSettled = owed ? void 0 : settled(state.since, rekeyed, states);
+  const editsSettled = owed2 ? void 0 : settled(state.since, rekeyed, states);
   if (sawEdit === void 0 && editsSettled === void 0) return null;
   return {
     ...sawEdit === void 0 ? {} : { sawEdit },
@@ -7527,7 +7548,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.317";
+  if (true) return "0.1.318";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8557,8 +8578,8 @@ function vitestExcluded(root) {
 function openCheckpoint(store, worktreeId, daemon) {
   const progress = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
   if (progress === null) return {};
-  const { owed, ...rest } = progress;
-  if (owed !== void 0) {
+  const { owed: owed2, ...rest } = progress;
+  if (owed2 !== void 0) {
     if (daemon.state === "alive") return {};
     return { checkpoint: { ...rest, owed: true } };
   }
@@ -8903,14 +8924,14 @@ function endTurn(store, consumer, states, undelivered, handoffAt = null) {
   const header = readHeader(store, consumer.worktreeId, states, keys);
   const current2 = currentKeys(keys);
   const testFiles2 = [...files2].sort();
-  const owed = Object.fromEntries(testFiles2.map((f) => [f, current2.get(f) ?? null]));
+  const owed2 = Object.fromEntries(testFiles2.map((f) => [f, current2.get(f) ?? null]));
   const newTestFiles = header.runnerPartPending === true;
   const { revision } = header;
   writeTurn(store, consumer, {
     turn: "idle",
     testFiles: testFiles2,
     newTestFiles,
-    keys: owed,
+    keys: owed2,
     revision,
     ...handoffAt === null ? {} : { handoff: { at: handoffAt } }
   });
@@ -8925,11 +8946,11 @@ function owedScope(store, consumer) {
     return "nothing";
   }
   const files2 = state.testFiles.map(fromTestFileId);
-  const owed = files2.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files2);
+  const owed2 = files2.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files2);
   const untold = state.newTestFiles ? store.knownStates.untold(consumer) : [];
-  const seen = new Set(owed.map((s) => checkIdentity(s.check)));
+  const seen = new Set(owed2.map((s) => checkIdentity(s.check)));
   return {
-    states: [...owed, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],
+    states: [...owed2, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],
     view: files2.length === 0 ? [] : store.views.list(consumer, files2),
     keys: files2.length === 0 ? [] : store.testFileKeys.list(consumer.worktreeId, files2)
   };
@@ -8950,13 +8971,13 @@ function trimmed(state, states, keys) {
   const pending = /* @__PURE__ */ new Set();
   for (const s of states) if (s.validity === "pending") pending.add(testFileKeyOf(s.check));
   for (const k of keys) if (k.pending !== null) pending.add(testFileId(k.testFile));
-  const owed = state.testFiles.filter((f) => pending.has(f) && atKey(state, f, current2));
-  if (owed.length === state.testFiles.length) return null;
+  const owed2 = state.testFiles.filter((f) => pending.has(f) && atKey(state, f, current2));
+  if (owed2.length === state.testFiles.length) return null;
   const { keys: recorded, ...rest } = state;
-  const kept = Object.entries(recorded ?? {}).filter(([f]) => owed.includes(f));
+  const kept = Object.entries(recorded ?? {}).filter(([f]) => owed2.includes(f));
   return {
     ...rest,
-    testFiles: owed,
+    testFiles: owed2,
     ...recorded === void 0 ? {} : { keys: Object.fromEntries(kept) }
   };
 }
@@ -8992,6 +9013,7 @@ function forget(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
   tellSlowTier(store, consumer, void 0);
+  forgetCounts(store, consumer);
   tellHolds(store, consumer, null);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
@@ -9121,6 +9143,7 @@ function createDelivery(store, options) {
       notes?.tell();
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
+      const countsOwed = payCounts(store, consumer, header);
       const sawEdit = notes === null || carriesEditResult(
         notes,
         entries.map((e) => e.check),
@@ -9137,6 +9160,7 @@ function createDelivery(store, options) {
         ...changed === null ? {} : { liveness: changed },
         ...holds === null ? {} : { holds: holdChanges(holds, header) },
         ...slowChanged ? { slowTierChanged: true } : {},
+        ...countsOwed,
         ...sawEdit === void 0 ? {} : { sawEdit },
         ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled },
         ...code === null ? {} : { code, knownFailures: currentFailures(states) }
@@ -9187,6 +9211,7 @@ function createDelivery(store, options) {
       tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);
+      oweCounts(store, consumer, header);
       tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
       if (!registered) {
         const alive = atStart && header.daemon?.state === "alive";
@@ -9566,33 +9591,40 @@ function daemonText(header, command) {
   const awaiting = awaitingInstallText(header);
   return livenessSentence(header.daemon, header.revision, command) + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
-function fullLine(header, command) {
-  const { revision, counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
+function fullCounts(header, owed2) {
+  const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
   const inheritedCount = header.inheritedCount ?? 0;
   const inherited = inheritedCount === 0 ? "" : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
-  const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown.`;
-  return `Revision ${revisionText(revision, header.commit)}${changedText(header.changedPaths)}: ${countsText(counts, fileLevel)}.${inherited}${withoutChecks}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText(header, command)}`;
+  const queuedNone = owed2?.lookupOnly === true && files2.unknown > 0 ? "; the baseline is lookup-only, so it queued none of them" : "";
+  const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown${queuedNone}.`;
+  return `${countsText(counts, fileLevel)}.${inherited}${withoutChecks}`;
+}
+function fullLine(header, command, owed2) {
+  return `Revision ${revisionText(header.revision, header.commit)}${changedText(header.changedPaths)}: ${fullCounts(header, owed2)}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText(header, command)}`;
 }
 function holdsText(header, command) {
   return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
 }
 var ACTIONABLE = ["pending", "stale", "unknown"];
-function newsLine(header, command) {
+function newsLine(header, command, owed2) {
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
+  const revision = `Revision ${revisionText(header.revision, header.commit)}: `;
+  if (owed2 !== void 0) {
+    return `${revision}${fullCounts(header, owed2)}${incompleteText(header)}${daemonText(header, command)}`;
+  }
   const actionable = ACTIONABLE.filter((v) => counts[v] > 0).map(
     (v) => countedText(counts[v], v, fileLevel?.[v])
   );
-  const checks = actionable.length === 0 ? "no check pending, stale or unknown" : actionable.join(", ");
-  const without = ["pending", "unknown"].filter((v) => files2[v] > 0).map((v) => `${files2[v]} ${v}`);
-  const withoutChecks = without.length === 0 ? "" : ` Test files without checks: ${without.join(", ")}.`;
-  return `Revision ${revisionText(header.revision, header.commit)}: ${checks}.${withoutChecks}${incompleteText(header)}${daemonText(header, command)}`;
+  const without = ["pending", "unknown"].filter((v) => files2[v] > 0).map((v) => `${files2[v]} ${v}`).join(", ");
+  const news = actionable.length > 0 ? `${actionable.join(", ")}.${without === "" ? "" : ` Test files without checks: ${without}.`}` : without === "" ? "no check pending, stale or unknown." : `test files without checks: ${without}.`;
+  return `${revision}${news}${incompleteText(header)}${daemonText(header, command)}`;
 }
 function countsText(counts, fileLevel) {
   return ["current", ...ACTIONABLE].map((validity) => countedText(counts[validity], validity, fileLevel?.[validity])).join(", ");
 }
-function headerLines(header, command, form = "full", slowChanged = false) {
-  const line = form === "full" ? fullLine(header, command) : newsLine(header, command);
-  const slow = form === "full" || slowChanged ? slowTierText(header, command) : null;
+function headerLines(header, command, form = "full", told = {}) {
+  const line = form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told.countsOwed);
+  const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
   return slow === null ? [line] : [line, slow];
 }
 function stoppedText(command) {
@@ -9776,7 +9808,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   return assemble(
     [
       title,
-      ...headerLines(header, command, form, delta.slowTierChanged === true),
+      ...headerLines(header, command, form, delta),
       ...holdTitle === void 0 ? holds : holds.slice(1),
       ...editLines(delta)
     ].join("\n"),
