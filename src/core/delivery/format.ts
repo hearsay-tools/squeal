@@ -315,7 +315,7 @@ export function formatDelta(
   return assemble(
     [
       title,
-      ...headerLines(header, command, form, delta.slowTierChanged === true),
+      ...headerLines(header, command, form, delta),
       ...(holdTitle === undefined ? holds : holds.slice(1)),
       ...editLines(delta),
     ].join("\n"),
