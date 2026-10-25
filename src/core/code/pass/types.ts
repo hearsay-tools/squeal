@@ -85,6 +85,10 @@ export interface PassReport {
   readonly transitions: number;
   /** Moves and renames by body hash (D2). */
   readonly moved: number;
+  /** Those moves, each check's old identity and its new one (row 015-47, review 0.1.311 B1). */
+  readonly moves: readonly { readonly from: CodeCheckId; readonly to: CodeCheckId }[];
+  /** The checks it removed, moves aside (row 015-47, review 0.1.311 B1). */
+  readonly removed: readonly CodeCheckId[];
   /**
    * D6's last rule (015-08): checks whose identity stayed and whose body
    * hash changed, stored on their states (`CodeStateRepo.markEdited`). Not
