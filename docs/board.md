@@ -818,6 +818,8 @@ Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D12. Step one approve
 
 Spec: `specifications/011-core/spec.md`. Sections referenced as C1 to C14; a 001 D-number resolves through the crosswalk at its end. The rows below kept their 001 numbers at the split (2026-10-17); new rows take `011-NN`, allocated from the board on main by the coordinator who lands them. A row is a bounded change ticket, never an authorization: it is dispatched only when the human has approved it (split proposal, section 7).
 
+**Release notice (011, 2026-10-25):** 0.1.318 (011-205, 011-206) goes to main and the hub at 17:45Z or later, after the narrow re-review of cand/0.1.318-on317 `2bcadb511` passes. Hold code and hub pushes until "0.1.318 released".
+
 ### Open rows inherited from 001
 
 | Task | Status | Scope | Done when |
