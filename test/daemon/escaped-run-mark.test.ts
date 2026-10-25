@@ -1,7 +1,6 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { afterEachRun, EscapedChildren } from "../../src/core/daemon/escaped.js";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import type { NodeTestProject, RunOptions, TestFileRef } from "../../src/core/types/index.js";
 import { createFixtureRepo, SLOW } from "./helpers.js";
 
@@ -55,13 +54,9 @@ describe.runIf(process.platform === "linux")(
           },
         });
         onTestFinished(repo.cleanup);
-        const store = openStore(repo.commonDir, { busyTimeoutMs: 10_000 });
-        if (isStoreOpenFailure(store)) throw new Error(`store: ${JSON.stringify(store)}`);
-        onTestFinished(() => store.close());
         const children = new EscapedChildren();
         const [nodeTest] = createNodeTestRunners([NT], {
           root: repo.root,
-          store,
           tempDir: repo.runtimeDir,
           childEnv: children.env,
           tierSize: () => 4,

@@ -1,4 +1,3 @@
-import { observedStore } from "../../../src/core/daemon/node-test-runners.js";
 import type { NodeTestProject } from "../../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 import type { Fixture, Gap, Pack } from "../driver.js";
@@ -10,9 +9,9 @@ import { isTest, type Module, type Written } from "../scenarios/index.js";
  * its variants are the forms reviews found the recorder missed: a
  * `--require` preload runs before every `--import` (003 wave 2.5 B1), and
  * Node splits `NODE_OPTIONS` at double quotes (003 wave 2.6 B1). Its runs
- * write what they observed through the store a daemon injects
- * (`observedStore`); a slow project's variant records the processes a test
- * starts, which a fast one does not.
+ * report what they observed, and the core keeps it (spec 016 D4); a slow
+ * project's variant records the processes a test starts, which a fast one
+ * does not.
  */
 
 const STARTED = (holds: string) => `new URL("../${holds}.started", import.meta.url)`;
@@ -26,12 +25,6 @@ const CHILD = ["step 5 holds", "step 7 edit", "step 7 direct", "step 11 holds", 
 const FAST: Gap = {
   spec: "004 D5: for a slow node:test project the recorder is also placed in the child's `NODE_OPTIONS`, so processes the test spawns are observed; for fast projects nothing changes",
   fails: [...CHILD, "step 13 direct"],
-};
-
-/** 016 D4 (row 007-56): an observed path reads `transitive` after a restart and in another worktree. */
-const DIRECT: Gap = {
-  spec: "016 D4: what an adapter needs back, so that its `closure()` and its `affected()` direct marks see earlier observations after a restart and in another worktree (row 007-56), the core passes in read-only",
-  fails: ["step 7 direct", "step 13 direct"],
 };
 
 function test(module: Extract<Written, { kind: "test" }>, of: (name: string) => Module): string {
@@ -122,19 +115,19 @@ const PROJECT: NodeTestProject = {
 
 /**
  * Opens with each hook preloaded as `preload` gives its arguments and env,
- * over the store as `createNodeTestRunners` opens a project, `slow` as
- * `slow: true` marks one.
+ * as `createNodeTestRunners` opens a project, `slow` as `slow: true` marks
+ * one.
  */
 const opener =
   (preload: (hook: string) => Pick<NodeTestProject, "argv" | "env">, slow = false) =>
-  (root: string, _scratch: string, { hooks, store }: Fixture) =>
+  (root: string, _scratch: string, { hooks }: Fixture) =>
     createNodeTestAdapter(
       {
         ...PROJECT,
         ...(hooks[0] === undefined ? {} : preload(`./${hooks[0]}`)),
         ...(slow ? { slow } : {}),
       },
-      { root, observed: observedStore(store, PROJECT.name) },
+      { root },
     );
 
 const imported = (hook: string) => ({ argv: ["--import", hook], env: {} });
@@ -175,7 +168,6 @@ export const nodeTest: Pack = {
         ...base,
         name: "node-test slow",
         open: opener(imported, true),
-        known: { K10: DIRECT },
       },
     },
     {
