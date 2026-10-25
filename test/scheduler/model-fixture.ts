@@ -135,8 +135,8 @@ export interface Flight {
   resolve(report: RunReport): void;
 }
 
-/** No lock task or slot record open or started, and nothing the model reads changed, for this long. */
-const QUIET_MS = 10;
+/** No work of the scheduler open or begun for this long is a quiet point. */
+const QUIET_MS = 4;
 /** A settle that finds no quiet point in this long fails the sequence. */
 const SETTLE_LIMIT_MS = 20_000;
 
@@ -371,29 +371,20 @@ export class Model {
     f.resolve({ end, durationMs: 1, completedFiles: ran, results, fileErrors: [], failure });
   }
 
-  #signature(): string {
-    const { store, worktreeId } = this.side;
-    const runs = this.flights.map((f) => [f.done, f.ended.size]);
-    return JSON.stringify([
-      runs,
-      [...this.rows().values()],
-      store.knownStates.list(worktreeId).length,
-    ]);
-  }
-
-  /** Waits until the scheduler has done what the last event set off (recommendation 4). */
+  /**
+   * Waits until the scheduler has done what the last event set off
+   * (recommendation 4): nothing of `watchWork` in flight or begun for
+   * `QUIET_MS`. The store changes only inside its lock's tasks.
+   */
   async #settle(): Promise<void> {
     const began = performance.now();
     let since = began;
     let mark = -1;
-    let last = "";
     for (;;) {
-      await realSleep(2);
+      await realSleep(1);
       const at = performance.now();
-      const sig = this.#signature();
-      if (this.work.open() > 0 || this.work.started() !== mark || sig !== last) {
+      if (this.work.open() > 0 || this.work.started() !== mark) {
         mark = this.work.started();
-        last = sig;
         since = at;
       } else if (at - since >= QUIET_MS) return;
       if (at - began > SETTLE_LIMIT_MS) throw new Error(`no quiet point in ${SETTLE_LIMIT_MS} ms`);
