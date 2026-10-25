@@ -172,6 +172,10 @@ describe("bundles", () => {
     expect(existsSync(join(PLUGIN_DIST, "cli/front-desk.mjs"))).toBe(true);
   });
 
+  it("ship the coverage records' mapping worker beside the CLI (015-42)", () => {
+    expect(existsSync(join(PLUGIN_DIST, "cli/coverage-map.mjs"))).toBe(true);
+  });
+
   it(
     "load Vitest and @parcel/watcher only from the project, never statically (B2, N11)",
     BUILD,
