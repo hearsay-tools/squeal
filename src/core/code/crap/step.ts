@@ -102,15 +102,8 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   const cache = input.cache ?? new StepCache();
   // Without a cache the seed and the map are done whole, since no later step would go on with them.
   const slice = input.cache === undefined ? () => true : work;
-  const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
   const summary = readSummary(store.meta, worktreeId);
   const start = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
-  // Coverage starts once the first count is done (a file the counter gave up on aside), so a
-  // function it counts later is seeded with the rest, not new. After, an uncounted file waits.
-  if (start) {
-    const spent = uncountableFiles(store, worktreeId, files);
-    if (store.files.uncounted(worktreeId).some((f) => !spent.has(f.path))) return null;
-  }
   // Each count is read once, when a file is judged or seeded.
   const counts = new Map<string, FileCount>();
   const countOf = (file: CodeFile): FileCount | null => {
@@ -122,14 +115,16 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   };
   // Row 015-47: every file is seeded before any is judged.
   if (start || input.reseed) {
-    const seed = cache.seed(() => new Seed(files, start && summary !== null));
-    if (!store.transaction(() => seed.advance(input, files, countOf, slice))) return SEEDING;
+    const seed = cache.seed(() => beginSeed(input, start, summary));
+    if (seed === null) return null;
+    if (!store.transaction(() => seed.advance(input, countOf, slice))) return SEEDING;
   }
   const loaders = cache.loaders(
     () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
     slice,
   );
   if (loaders === null) return READING;
+  const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
   const { next, judged, quiet, more } = walk(
     { input, cache, loaders, summary, start, countOf, work },
     files,
@@ -160,6 +155,23 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   });
   cache.dropSeed();
   return report;
+}
+
+/** The seed a start or a recount begins; `null` while coverage's first count runs. */
+function beginSeed(
+  input: CoverageStepInput,
+  start: boolean,
+  summary: CoverageSummary | null,
+): Seed | null {
+  const { store, worktreeId } = input;
+  const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
+  // Coverage starts once the first count is done (a file the counter gave up on aside), so a
+  // function it counts later is seeded with the rest, not new. After, an uncounted file waits.
+  if (start) {
+    const spent = uncountableFiles(store, worktreeId, files);
+    if (store.files.uncounted(worktreeId).some((f) => !spent.has(f.path))) return null;
+  }
+  return new Seed(files, start && summary !== null);
 }
 
 /**

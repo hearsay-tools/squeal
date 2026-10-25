@@ -47,8 +47,11 @@ export class StepCache {
     return this.#loaders;
   }
 
-  /** The seed in progress, or done and not yet judged after; begun by `begin` when none is. */
-  seed(begin: () => Seed): Seed {
+  /**
+   * The seed in progress, or done and not yet judged after; begun by
+   * `begin` when none is, which gives `null` when none can begin yet.
+   */
+  seed(begin: () => Seed | null): Seed | null {
     this.#seed ??= begin();
     return this.#seed;
   }
