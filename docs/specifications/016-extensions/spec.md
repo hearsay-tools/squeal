@@ -106,7 +106,11 @@ The store step must keep 011 C7's compatibility rule. A daemon that finds a `use
 
 When the record is absent (a check an older daemon wrote), attribution says nothing rather than guess. A raise of `user_version` goes to the human first.
 
-Decided 2026-10-25 (the coordinator, open question 2, from row 016-15's probe in `tasks/016-15/notes.md`): the nullable column `checks.runner`, added at open when missing, with no `user_version` raise. An older daemon on the same store goes on without error and leaves the column empty. The `meta` map was rejected: it records a project, not a check, so a project name reused across runners or worktrees would give a pytest failure Vitest's sentence. The runner comes from the environment the key hashed, recorded where results and setup checks are stored.
+~~Decided 2026-10-25 (the coordinator, open question 2): the nullable column `checks.runner`.~~ Replaced the same day, after reviews `reviews/0.1.303.md` (B1, and its two re-reviews). A runner per check is shared by every worktree, so another worktree's run changed this one's sentence. A column on `results` breaks older daemons on Node 22 (011 C7 as amended 2026-10-25).
+
+Decided 2026-10-25 (the human chose a third round, and then accepted its one residual): each worktree records the runner of each of its projects in one `meta` row, `runners:<wt>`. `Ledger#write` writes it for the projects of the files, results and setup checks it commits, runs and lookups alike, and only when a runner changes. Attribution reads the failing check's project there, for result and setup checks alike. No table gains a column. A worktree whose daemon is older records nothing, so its failures get no sentence.
+
+Accepted residual (the human, 2026-10-25, `reviews/0.1.303.md` Re-review 2): the record is per project, not per failure. When a worktree's config moves a project name to another runner, a failure the old runner left, still shown because no run of its file has ended, reads the new runner until its file runs again. Only the dependency sentence can be wrong; no verdict changes.
 
 ### D4. One write path for observed paths (rows 007-47, 007-52, 007-56)
 
