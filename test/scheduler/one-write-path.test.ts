@@ -166,4 +166,37 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
     await side.scheduler.idle();
     expect(side.runner.runsOf(A).length).toBe(before + 1);
   });
+
+  // Row 016-29: the observed paths take the start-up paths' write rule.
+  it("stores an observed path the record's rolled-back transaction did not store at the next record", async () => {
+    const repo = catchUpRepo(FILES, ["lib/x.mjs"]);
+    const side = open(repo, {
+      observed: { [A]: { paths: ["lib/x.mjs"], directories: [] } },
+      loads: true,
+    });
+    const { meta } = side.store;
+    const set = meta.set.bind(meta);
+    let thrown = 0;
+    meta.set = (key, value) => {
+      if (key === observedMetaKey("") && thrown === 0) {
+        thrown += 1;
+        throw new Error("injected: the record's transaction fails");
+      }
+      set(key, value);
+    };
+    await side.scheduler.start();
+    await side.scheduler.idle();
+    expect(thrown).toBe(1);
+    expect(side.store.meta.get(observedMetaKey(""))).toBeNull();
+
+    // The next record stores what this worktree's view keys, though its run adds nothing new.
+    await side.edit("watch", A);
+    await side.scheduler.idle();
+    expect(stored(side, observedMetaKey(""))).toEqual({ [A]: ["lib/x.mjs"] });
+    expect(side.current(A)).toBe(true);
+    const before = side.runner.runsOf(A).length;
+    await side.edit("watch", "lib/x.mjs");
+    await side.scheduler.idle();
+    expect(side.runner.runsOf(A).length).toBe(before + 1);
+  });
 });
