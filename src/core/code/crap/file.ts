@@ -1,6 +1,6 @@
 import { compare } from "../../fs/index.js";
 import type { FunctionCount } from "../../types/code.js";
-import type { CheckKey, FileHash, RelativePath, TestFileRef } from "../../types/index.js";
+import type { CheckKey, EpochMs, FileHash, RelativePath, TestFileRef } from "../../types/index.js";
 import type { CoverageRecord, CoverageSource } from "../coverage/types.js";
 import { joinCoverage } from "./join.js";
 import type { Loader, PendingReason, UnknownCause } from "./loaders.js";
@@ -20,6 +20,8 @@ export type FileCondition =
 export interface ReadyLoader {
   readonly testFile: TestFileRef;
   readonly key: CheckKey;
+  /** When its record was stored: each record at a key has its own (row 015-44). */
+  readonly storedAt: EpochMs;
 }
 
 /** The order a source's `unknown` names its cause in, when its loaders give several. */
@@ -48,7 +50,9 @@ export function fileCondition(loaders: readonly Loader[], listed: boolean): File
   return {
     state: "ready",
     loaders: loaders.flatMap((l) =>
-      l.condition.kind === "ready" ? [{ testFile: l.testFile, key: l.condition.key }] : [],
+      l.condition.kind === "ready"
+        ? [{ testFile: l.testFile, key: l.condition.key, storedAt: l.condition.storedAt }]
+        : [],
     ),
   };
 }
