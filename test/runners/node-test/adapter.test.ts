@@ -75,7 +75,7 @@ const project = (more: Partial<NodeTestProject> = {}): NodeTestProject => ({
 const UNIT = "packages/demo/test/unit";
 const ref = (name: string) => ({ project: "unit", path: `${UNIT}/${name}.test.ts` });
 
-/** An in-memory `nodeTest.observed.<project>` key. */
+/** An adapter over the fixture, with the notes it gave. */
 const open = (more: Partial<NodeTestProject> = {}, extra = {}) => {
   const notes: string[] = [];
   const adapter = createNodeTestAdapter(project(more), {

@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { type StatusWait, waitForStatus } from "../../src/cli/status-wait.js";
-import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { tellRevision } from "../../src/core/delivery/liveness.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
@@ -86,10 +85,7 @@ describe("status --wait over a growth at the revision of a sibling's result (tas
       env: { SWITCH_FILE: switchFile },
       include: ["test/*.test.mjs"],
     };
-    const adapter = await createNodeTestAdapter(project, {
-      root,
-      observed: observedStore(store, project.name),
-    });
+    const adapter = await createNodeTestAdapter(project, { root });
     let release = () => {};
     const rerun = new Promise<void>((resolve) => {
       release = resolve;
