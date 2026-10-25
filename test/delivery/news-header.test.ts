@@ -143,7 +143,7 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
             const h = {
               ...header,
               counts,
-              fileLevelCounts: undefined,
+              fileLevelCounts: { ...zero, current: 4 },
               testFilesWithoutChecks: { pending, unknown },
             };
             const said = formatDelta(delta(h, extra), "squeal", 10_000, form).includes(
