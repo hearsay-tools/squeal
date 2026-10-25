@@ -92,11 +92,19 @@ describe("Squeal's plugin root (row 004-32)", () => {
       expect(report).toMatchObject({ end: "completed", completedFiles: [testFile] });
       const log = readFileSync(join(logDir, "node-test", "p", "run.json"), "utf8");
       expect(JSON.parse(log).files[0].command).toContain(runtime.recorder);
-      return { environment: await adapter.environment(), closure: await adapter.closure(testFile) };
+      const { observed, environmentObserved } = report;
+      return {
+        environment: await adapter.environment(),
+        closure: await adapter.closure(testFile),
+        observed,
+        environmentObserved,
+      };
     };
     const first = await keyed(plugin("0.1.58-a"));
-    expect(first.closure.paths).toContain("lib/tool-lib.mjs");
-    expect(first.environment[0]?.files).toContain("scripts/marker.mjs");
+    // 016 D4: the core keys what the run reports; the spawned CLI's loads put the file in `direct`.
+    expect(first.observed?.[0]?.paths).toContain("lib/tool-lib.mjs");
+    expect(first.observed?.[0]?.direct).toEqual(["bin/tool.mjs", "lib/tool-lib.mjs"]);
+    expect(first.environmentObserved).toEqual([{ project: "p", paths: ["scripts/marker.mjs"] }]);
     expect(await keyed(plugin("0.1.58-b"))).toEqual(first);
   });
 });
