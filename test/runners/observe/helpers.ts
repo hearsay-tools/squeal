@@ -12,7 +12,13 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "vitest";
-import { observeEnv, observeRecorder, takeRecorded } from "../../../src/runners/observe/index.js";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
+import {
+  observedInputs,
+  observeEnv,
+  observeRecorder,
+  takeRecorded,
+} from "../../../src/runners/observe/index.js";
 
 const recorder = observeRecorder(
   new URL("../../../src/runners/observe/runtime.ts", import.meta.url),
@@ -83,7 +89,8 @@ export function observe(
   const appends = readdirSync(out)
     .map((name) => readFileSync(join(out, name), "utf8").split("\n").filter(Boolean).length)
     .reduce((sum, n) => sum + n, 0);
-  const recorded = takeRecorded(out).get(test);
+  const all = takeRecorded(out);
+  const recorded = all.get(test);
   const rel = (set: Set<string> | undefined) =>
     [...(set ?? [])].map((p) => p.slice(root.length + 1)).sort();
   return {
@@ -93,6 +100,8 @@ export function observe(
     listed: rel(recorded?.listed),
     recursive: rel(recorded?.recursive),
     written: rel(recorded?.written),
+    /** What the runners report for `test.ts`: `observedInputs` of the recorded files. */
+    inputs: observedInputs(all, [{ project: "", path: "test.ts" }], new WorktreePaths(root)),
   };
 }
 
