@@ -32,9 +32,12 @@ const BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 /**
  * How long a `load` request has met the gate closed (row 011-213): since
  * when a daemon at its key first did, `null` while none has, and the time now.
+ * For several files, `since` is the oldest file's time and `latest` the
+ * newest's (review 0.1.328 B1).
  */
 export interface GateWait {
   readonly since: EpochMs | null;
+  readonly latest?: EpochMs;
   readonly now: EpochMs;
 }
 
@@ -58,14 +61,17 @@ export function waitsText(
     return `runs at the daemon's next look: the one-minute load average is below the CPU count (${loadText(load)} now)`;
   }
   const waits = "waits for the one-minute load average to fall below the CPU count";
-  if (gate === null || gate.since === null) {
-    return `${waits}, at most ${BOUND_TEXT}, then runs once anyway (${loadText(load)} now)`;
-  }
-  const waited = gate.now - gate.since;
-  if (waited >= LOAD_RETRY_WAIT_MS) {
+  // No daemon at its key met the gate closed yet, or a released one, which keeps no time (B1).
+  if (gate === null || gate.since === null) return `${waits} (${loadText(load)} now)`;
+  const oldest = waitedText(gate.now - gate.since);
+  if (gate.now - gate.since >= LOAD_RETRY_WAIT_MS) {
     return `runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for ${BOUND_TEXT}, the most a load retry waits (${loadText(load)} now)`;
   }
-  return `${waits}: at or above it for ${waitedText(waited)} of at most ${BOUND_TEXT}, then runs once anyway (${loadText(load)} now)`;
+  const newest = waitedText(gate.now - (gate.latest ?? gate.since));
+  if (newest !== oldest) {
+    return `${waits}: at or above it for ${newest} to ${oldest}, by file, of at most ${BOUND_TEXT}, then each runs once anyway (${loadText(load)} now)`;
+  }
+  return `${waits}: at or above it for ${oldest} of at most ${BOUND_TEXT}, then runs once anyway (${loadText(load)} now)`;
 }
 
 /**
