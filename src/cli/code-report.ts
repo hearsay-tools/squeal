@@ -7,12 +7,13 @@ import { isTooBig } from "../core/delivery/code-deliver.js";
 import {
   type CodeSince,
   changedSince,
+  codeSeenUpTo,
   codeSince,
   type ShellSession,
   type ToldTo,
   toldTo,
 } from "../core/delivery/code-since.js";
-import { toldOver } from "../core/delivery/code-told.js";
+import { changedNotJudged, toldOver } from "../core/delivery/code-told.js";
 import { blobHash } from "../core/hash/index.js";
 import type {
   CodeCheckId,
@@ -98,6 +99,11 @@ export interface CodeReport {
    */
   readonly told?: { readonly scope: "session" | "worktree" } | null;
   readonly functions: readonly CodeReportFunction[];
+  /**
+   * The files not judged, in path order. With `--told`, only those its
+   * consumers changed that are too big or could not be counted, the newest
+   * edit first (row 015-49).
+   */
   readonly files: readonly CodeReportFile[];
   /** Spec 015 D9 (row 015-12): without paths, while coverage is judged here. */
   readonly coverage?: CodeReportCoverage;
@@ -283,7 +289,9 @@ function notJudged(
  * files or below those directories, but a file `pending` since an edit
  * lists none (`root`). `changed` keeps those whose state changed since the
  * registration `codeSince` names; `told`, those over that the consumers
- * `toldTo` names were told of in full, as test news counts them (row 015-27).
+ * `toldTo` names were told of in full, as test news counts them (row 015-27),
+ * and the files they changed that are not judged as its line names them,
+ * no other file (row 015-49).
  */
 export function readCodeReport(
   main: Store,
@@ -351,9 +359,34 @@ export function readCodeReport(
       : { changedSince: since === null ? null : { revision: since.since, scope: since.scope } }),
     ...(to === undefined ? {} : { told: to === null ? null : { scope: to.scope } }),
     functions,
-    files: notJudged(code, files, states, behind, uncountable),
+    files:
+      to === undefined
+        ? notJudged(code, files, states, behind, uncountable)
+        : changedFiles(main, code, worktreeId, to, keep),
     ...coveragePart(code, worktreeId, options, keep, { since, to }),
   };
+}
+
+/**
+ * Row 015-49: `--told`'s files, those the consumers `to` names changed that
+ * are not judged, the newest edit first: the same read as test news's
+ * line, which names the first 3 (`changedNotJudged`).
+ */
+function changedFiles(
+  main: Store,
+  code: CodeStore,
+  worktreeId: WorktreeId,
+  to: ToldTo | null,
+  keep: (path: RelativePath) => boolean,
+): CodeReportFile[] {
+  const bounds = (to?.consumers ?? []).flatMap((c) => codeSeenUpTo(main, c) ?? []);
+  return changedNotJudged(code, worktreeId, bounds)
+    .filter(({ file }) => keep(file.path))
+    .map(({ file, failure }) =>
+      failure === null
+        ? { path: file.path, reason: "too-big", size: file.size }
+        : { path: file.path, reason: "could-not-count", size: file.size, error: failure.error },
+    );
 }
 
 /**

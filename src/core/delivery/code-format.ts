@@ -3,6 +3,7 @@ import type { CodeCheckId } from "../types/code.js";
 import type {
   CodeDeltaEntry,
   CodeNews,
+  CodeNotJudged,
   CodeRecount,
   CodeRegistration,
   CodeTooBig,
@@ -167,12 +168,46 @@ export function toldOverWords({
   return words.length === 0 ? last : `${words.join(", ")} and ${last},`;
 }
 
+/** `a`, `a and b`, `a, b and c`. */
+const andList = (words: readonly string[]) =>
+  words.length < 2 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+
+/** A changed file not judged with its reason: `a.ts (600 KiB, over the 512 KiB limit)`. */
+const notJudgedFile = (file: CodeNotJudged) =>
+  file.reason === "too-big"
+    ? `${file.path} (${kib(file.size)}, over the ${kib(file.limit)} limit)`
+    : `${file.path} (could not count)`;
+
+/**
+ * Row 015-49 (D6, a changed file not judged): `4 files this session
+ * changed are not judged: a.ts (could not count), b.ts (600 KiB, over the
+ * 512 KiB limit), c.ts (could not count) and 1 more`.
+ */
+function notJudgedWords({ files, more }: NonNullable<CodeNews["notJudged"]>): string {
+  const total = files.length + more;
+  const named = files.map(notJudgedFile);
+  const list = more === 0 ? andList(named) : `${named.join(", ")} and ${more} more`;
+  return `${plural(total, "file")} this session changed ${total === 1 ? "is" : "are"} not judged: ${list}`;
+}
+
 /**
  * Row 015-27: test news's last line, while functions the consumer was told
- * of in full are over (`CodeNews.toldOver`).
+ * of in full are over (`CodeNews.toldOver`). Row 015-49: also while files
+ * it changed are not judged (`CodeNews.notJudged`); `null` while neither.
  */
-export function toldOverLine(over: NonNullable<CodeNews["toldOver"]>, command: string): string {
-  return `Complexity: ${toldOverWords(over)} that this session was told about; ${command} code --told lists them.`;
+export function toldOverLine(
+  { toldOver, notJudged }: Pick<CodeNews, "toldOver" | "notJudged">,
+  command: string,
+): string | null {
+  const parts = [
+    ...(toldOver === undefined
+      ? []
+      : [`${toldOverWords(toldOver)} that this session was told about`]),
+    ...(notJudged === undefined ? [] : [notJudgedWords(notJudged)]),
+  ];
+  return parts.length === 0
+    ? null
+    : `Complexity: ${parts.join("; ")}; ${command} code --told lists them.`;
 }
 
 /** Row 015-27: complexity news's last line, while tests have known failures. */
