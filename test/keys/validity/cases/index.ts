@@ -13,6 +13,7 @@ import { VITEST_RUNS } from "./adapter/vitest.js";
 import { DECLARED } from "./assemble/declared.js";
 import { ELSEWHERE } from "./assemble/elsewhere.js";
 import { INHERITED } from "./assemble/inherited.js";
+import { REWRITTEN } from "./assemble/rewritten.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
 import { INSTALLED_KEYS } from "./key/installed.js";
 import { PNPM_KEYS } from "./key/pnpm.js";
@@ -42,6 +43,7 @@ export const CASES: readonly Case[] = [
   ...ABSENT,
   ...DECLARED,
   ...INHERITED,
+  ...REWRITTEN,
   ...ELSEWHERE,
   ...STORE_TIERS,
   ...VITEST_RUNS,
