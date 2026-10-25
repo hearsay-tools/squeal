@@ -1,4 +1,14 @@
 export {
+  ASKED_KEYS_KEPT,
+  ASKED_KEYS_META_KEY,
+  type AskedKey,
+  type Held,
+  isAsked,
+  keptAskedKeys,
+  keptRetries,
+  readAskedKeys,
+} from "./kept.js";
+export {
   type HostLoad,
   hostLoad,
   loadAllows,

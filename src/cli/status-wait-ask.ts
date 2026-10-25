@@ -1,10 +1,12 @@
 import { worktreeIdFor } from "../core/fs/index.js";
 import { testFileId } from "../core/keys/index.js";
 import {
+  type AskedKey,
   askNamedRun,
-  type RetryEnd,
+  isAsked,
   type RetryOutcome,
   type RetryRecord,
+  readAskedKeys,
   readRetries,
   retriesAt,
 } from "../core/retry/index.js";
@@ -36,7 +38,7 @@ import type { FileVerdict } from "./verdict.js";
  * Row 011-207 (gh-82, 011 C15 and 005 D2 as amended 2026-10-25): a named
  * wait asks one run of each test file named by its own path that is stale or
  * unknown at its key with nothing queued, no other worktree's claim of the
- * key and no request ever kept there, as `squeal retry` with no reason
+ * key and no request ever stored there, as `squeal retry` with no reason
  * does, and holds for it as pending. A source path's selection and every
  * file not named stay lookup-only (the human's hold of 2026-10-20).
  */
@@ -140,13 +142,17 @@ export function askableFiles(
     ),
   );
   let records: readonly RetryRecord[] | undefined;
+  let asked: readonly AskedKey[] | undefined;
   return rows.flatMap((row): AskFile[] => {
     const ref = row.testFile;
     const state = askableState(store, worktreeId, row, checks.get(testFileId(ref)) ?? [], now);
     if (state === null) return [];
     records ??= readRetries(store);
+    asked ??= readAskedKeys(store);
     const key = row.key as CheckKey;
-    return retriesAt(records, ref, key).length > 0 ? [] : [{ testFile: ref, key, state }];
+    // Review 0.1.322 B2: a request the row no longer keeps is still one stored at the key.
+    const stored = retriesAt(records, ref, key).length > 0 || isAsked(asked, ref, key);
+    return stored ? [] : [{ testFile: ref, key, state }];
   });
 }
 
@@ -205,9 +211,9 @@ export const askNamedRuns: AskNamed = async (root, files, asker, withinMs, now) 
       runs.push(
         isBusyAnswer(answer)
           ? { ...file, answer: "busy" }
-          : answer.kind === "changed"
-            ? { ...file, answer: "changed" }
-            : { ...file, answer: answer.kind, record: answer.record.id },
+          : answer.kind === "queued" || answer.kind === "joined"
+            ? { ...file, answer: answer.kind, record: answer.record.id }
+            : { ...file, answer: answer.kind },
       );
     }
   } finally {
@@ -222,7 +228,9 @@ export const askNamedRuns: AskNamed = async (root, files, asker, withinMs, now) 
  * at the key it was asked at holds the wait, read `pending` once queued and
  * so held as any queued file, `untaken` before. A poll reads the requests
  * only for a file stale or unknown at that key; the last read (`all`)
- * reads them for each. A request kept no more (`RETRIES_KEPT`) has ended.
+ * reads them for each. A request the row keeps no more is pending, never
+ * ended (review 0.1.322 B2): this release drops no pending request at a
+ * held key, but an older writer drops the oldest whatever it is.
  */
 export function askedEnds(
   store: Store,
@@ -250,11 +258,10 @@ export function askedEnds(
   if (!all && noResult.size === 0) return runs.map((r) => ({ ...r, ...none }));
   const records = new Map(readRetries(store).map((r) => [r.id, r]));
   return runs.map((run): AskedEnd => {
-    const record = run.record === undefined ? undefined : records.get(run.record);
-    if (record === undefined) return { ...run, ...none };
-    const pending = record.end === null;
-    const end = pending ? {} : { outcome: (record.end as RetryEnd).outcome };
-    return { ...run, ...end, pending, untaken: pending && noResult.has(run.record) };
+    if (run.record === undefined) return { ...run, ...none };
+    const end = records.get(run.record)?.end ?? null;
+    if (end !== null) return { ...run, outcome: end.outcome, ...none };
+    return { ...run, pending: true, untaken: noResult.has(run.record) };
   });
 }
 

@@ -3,7 +3,11 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/observed.js";
 import { observedStartupMetaKey } from "../../src/core/keys/startup.js";
-import { RETRIES_META_KEY, RUN_LOADS_META_KEY } from "../../src/core/retry/index.js";
+import {
+  ASKED_KEYS_META_KEY,
+  RETRIES_META_KEY,
+  RUN_LOADS_META_KEY,
+} from "../../src/core/retry/index.js";
 import { slowTokensMetaKey } from "../../src/core/slow/rank-store.js";
 import { FLAKY_META_KEY } from "../../src/core/state/flaky.js";
 import { RERUN_FIRST_META_KEY } from "../../src/core/state/rerun-first.js";
@@ -33,6 +37,7 @@ const SHARED_KEY_FUNCTIONS = [
 ];
 /** `meta` key constants of rows shared across worktrees. */
 const SHARED_KEY_CONSTANTS = [
+  "ASKED_KEYS_META_KEY",
   "FLAKY_META_KEY",
   "META_STORE_RECOVERED",
   "RERUN_FIRST_META_KEY",
@@ -59,6 +64,7 @@ describe("worktree removal and its meta rows (task 001-254, review wave 13u S1)"
     }
     // Shared, and named with the removed worktree's id as a suffix: never matched.
     const shared = [
+      ASKED_KEYS_META_KEY,
       FLAKY_META_KEY,
       META_STORE_RECOVERED,
       RERUN_FIRST_META_KEY,
