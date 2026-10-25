@@ -1,111 +1,10 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import {
-  createPytestAdapter,
-  type ObservedPaths,
-  type ObservedStore,
-  PYTEST_ADAPTER_VERSION,
-} from "../../runners/pytest/adapter.js";
+import { createPytestAdapter, PYTEST_ADAPTER_VERSION } from "../../runners/pytest/adapter.js";
 import { DEFAULT_BATCH_SIZE } from "../../runners/pytest/run/run.js";
-import { compare, isRecord } from "../fs/index.js";
-import {
-  type AbsolutePath,
-  type ProjectName,
-  type PytestProject,
-  pytestObservedMetaKey,
-  pytestObservedSessionMetaKey,
-  type RelativePath,
-  type Store,
-} from "../types/index.js";
+import type { AbsolutePath, ProjectName, PytestProject } from "../types/index.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
-
-export { pytestObservedMetaKey, pytestObservedSessionMetaKey };
-
-/**
- * The adapter's read and write of its project's observed paths (spec 007
- * D4, as 003 D3). A write merges into what the key holds and adds the paths
- * to the test file's stored closure in one transaction, so two worktrees'
- * daemons never drop each other's paths, and a worktree that starts later
- * keys the file from that closure (001 D5 step 3) before its adapter is
- * asked: it must not inherit a result whose observed inputs it never compared.
- * The start-up plugins' paths (B5) merge into their own key the same way.
- */
-export function pytestObservedStore(store: Store, project: ProjectName): ObservedStore {
-  const key = pytestObservedMetaKey(project);
-  const sessionKey = pytestObservedSessionMetaKey(project);
-  return {
-    read: cachedRead(store, key, parseObserved),
-    readSession: cachedRead(store, sessionKey, parsePaths),
-    writeSession(additions) {
-      store.transaction(() => {
-        const merged = new Set([...parsePaths(store.meta.get(sessionKey)), ...additions]);
-        store.meta.set(sessionKey, JSON.stringify([...merged].sort(compare)));
-      });
-    },
-    write(additions) {
-      store.transaction(() => {
-        const merged = new Map(
-          Object.entries(parseObserved(store.meta.get(key))).map(([f, p]) => [f, new Set(p)]),
-        );
-        for (const [testFile, paths] of Object.entries(additions)) {
-          const known = merged.get(testFile) ?? new Set<string>();
-          for (const path of paths) known.add(path);
-          merged.set(testFile, known);
-          const stored = store.testFiles.get({ project, path: testFile });
-          if (stored === null) continue;
-          const union = [...new Set([...stored.closure.paths, ...paths])].sort(compare);
-          if (union.length === stored.closure.paths.length) continue;
-          store.testFiles.put({ ...stored, closure: { ...stored.closure, paths: union } });
-        }
-        const value = Object.fromEntries(
-          [...merged]
-            .sort(([a], [b]) => compare(a, b))
-            .map(([testFile, paths]) => [testFile, [...paths].sort(compare)]),
-        );
-        store.meta.set(key, JSON.stringify(value));
-      });
-    },
-  };
-}
-
-/** One point query per read, parsed only when the value changed: the adapter reads at every refinement. */
-function cachedRead<T>(store: Store, key: string, parse: (raw: string | null) => T): () => T {
-  let last: { raw: string | null; value: T } | null = null;
-  return () => {
-    const raw = store.meta.get(key);
-    if (last === null || last.raw !== raw) last = { raw, value: parse(raw) };
-    return last.value;
-  };
-}
-
-/** A missing or malformed key reads as no paths. */
-function parsePaths(raw: string | null): RelativePath[] {
-  if (raw === null) return [];
-  try {
-    const value: unknown = JSON.parse(raw);
-    return Array.isArray(value) ? value.filter((p) => typeof p === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-/** A missing or malformed key reads as nothing observed. */
-function parseObserved(raw: string | null): ObservedPaths {
-  if (raw === null) return {};
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return {};
-  }
-  if (!isRecord(value)) return {};
-  return Object.fromEntries(
-    Object.entries(value).flatMap(([testFile, paths]) =>
-      Array.isArray(paths) ? [[testFile, paths.filter((p) => typeof p === "string")]] : [],
-    ),
-  );
-}
 
 /**
  * Where one worktree's project keeps pytest's cache and its bytecode
@@ -124,7 +23,6 @@ export function pytestCacheDir(
 
 export interface PytestRunnersOptions {
   readonly root: AbsolutePath;
-  readonly store: Store;
   /** Squeal's state directory, `<common-dir>/squeal/`: pytest's cache and bytecode go under it. */
   readonly stateDir: AbsolutePath;
   /** Spec 001 D10: the daemon's temp directory, the children's `TMPDIR`. */

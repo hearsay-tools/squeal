@@ -3,12 +3,14 @@ import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { testFileId } from "../../src/core/keys/index.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
+import { observedDirectOf } from "../../src/core/scheduler/edit-cut.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { observedGrowth } from "../../src/core/scheduler/observed.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
 import {
   type AbsolutePath,
   DEFAULT_POLICY,
+  type ProjectName,
   type RelativePath,
   type RunnerAdapter,
   type RunReport,
@@ -24,8 +26,9 @@ import {
  * `WorktreeKeys` and its own adapter, as a daemon has; a restart closes the
  * three and opens new ones. What a run observed takes the core's step, as
  * `record-tier.ts` records a completed file, and a file's closure is the
- * one `WorktreeKeys.setClosure` assembles. A pack whose adapter writes the
- * store itself gets the connection when it opens.
+ * one `WorktreeKeys.setClosure` assembles. The adapter gets nothing back
+ * (spec 016 D4): the core keeps the observed paths, the direct marks and
+ * the start-up paths, and the kit asks the core for them.
  */
 
 /** Makes `root` a repository of its own: the keys' bootstrap lists its files with git. */
@@ -61,21 +64,21 @@ export class OpenWorktree {
 
   /**
    * Opens worktree `name` at `root` over the store of directory `common`:
-   * a connection, the adapter `open` makes with it, and keys bootstrapped
-   * from the store, with the adapter's environments and the closure of
-   * each file it lists, as a daemon keys its worktree at start.
+   * a connection, the adapter `open` makes, and keys bootstrapped from the
+   * store, with the adapter's environments and the closure of each file it
+   * lists, as a daemon keys its worktree at start.
    */
   static async open(
     name: string,
     root: AbsolutePath,
     common: AbsolutePath,
-    open: (store: Store) => Promise<RunnerAdapter>,
+    open: () => Promise<RunnerAdapter>,
   ): Promise<OpenWorktree> {
     const store = openStore(common, { busyTimeoutMs: 10_000 });
     if (isStoreOpenFailure(store)) throw new Error(`store: ${JSON.stringify(store)}`);
     let adapter: RunnerAdapter | null = null;
     try {
-      adapter = await open(store);
+      adapter = await open();
       const keys = new WorktreeKeys({
         root,
         worktreeId: name as WorktreeId,
@@ -112,9 +115,29 @@ export class OpenWorktree {
   }
 
   /**
+   * The files the core keys `project`'s environment with: the adapter's,
+   * with the start-up paths the store shares (spec 016 D4).
+   */
+  environmentFiles(project: ProjectName): readonly RelativePath[] {
+    return this.keys.environmentFiles(project);
+  }
+
+  /**
+   * Whether the core's stored direct marks make `ref` a direct importer of
+   * `path` (spec 016 D4, row 007-56): `observedDirectOf`, as the scheduler
+   * asks it at an edit.
+   */
+  marked(ref: TestFileRef, path: RelativePath): boolean {
+    return observedDirectOf(this.keys, [path], new Set()).has(testFileId(ref));
+  }
+
+  /**
    * Runs `files` by `run`, keyed first as the scheduler keys a tier, then
    * adds what each completed file observed beyond its closure to the
-   * shared set, as `recordCompleted` does with `observedGrowth`.
+   * shared set, as `recordCompleted` does with `observedGrowth`. The run's
+   * start-up paths join the environments, read again when they lack one,
+   * as `rekeyEnvironments` does; then the marks and start-up paths are
+   * stored, as `endRecord` does.
    */
   async record(files: readonly TestFileRef[], run: () => Promise<RunReport>): Promise<RunReport> {
     for (const ref of files) await this.keyed(ref);
@@ -130,6 +153,14 @@ export class OpenWorktree {
         const grown = growth.get(testFileId(testFile));
         if (grown !== undefined) this.keys.addObserved(testFile, grown.add);
       }
+      const startup = report.environmentObserved ?? [];
+      for (const { project, paths } of startup) this.keys.seeStartup(project, paths);
+      const stale = startup.some(({ project, paths }) => {
+        const held = new Set(this.keys.environmentFiles(project));
+        return paths.some((path) => !held.has(path));
+      });
+      if (stale) await this.keys.setEnvironments(await this.adapter.environment());
+      this.keys.writeSeen();
       return report;
     } finally {
       this.keys.endRun();
