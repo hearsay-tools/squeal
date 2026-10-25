@@ -9,6 +9,7 @@ import { K1 } from "./scenarios/k1-flip.js";
 import { K2 } from "./scenarios/k2-two-hops.js";
 import { K3 } from "./scenarios/k3-load-error.js";
 import { K7 } from "./scenarios/k7-same-stat.js";
+import { K8 } from "./scenarios/k8-cut.js";
 
 /*
  * Spec 016 D1: the driver's verdicts over a fake pack, and the rule that
@@ -17,8 +18,8 @@ import { K7 } from "./scenarios/k7-same-stat.js";
  */
 
 const KIT = import.meta.dirname;
-/** The scenarios the fake pack renders: values, re-exports, static tests and broken modules. */
-const FAKED = [K1, K2, K3, K7];
+/** The scenarios the fake pack renders: values, re-exports, static tests, broken and held modules. */
+const FAKED = [K1, K2, K3, K7, K8];
 const SPEC = "a spec line that documents the gap";
 /** K1's gap in a stale pack: the run after the first edit still passes. */
 const GAP = { spec: SPEC, fails: ["step 2 run"] };
@@ -122,6 +123,27 @@ describe("the driver's steps (spec 016 D1)", () => {
     expect(played.verdict).toBe("FAIL");
     expect(played.lines).toContain(
       "FAIL step 0 before any run: m/leaf.json is in no static closure of direct (closure=true, environment=false)",
+    );
+  });
+
+  it("asserts a cut that reached the held file's marker and sent the abort", async () => {
+    const played = await playIn(K8, fakePack());
+    expect(played.verdict, describePlayed(played)).toBe("PASS");
+    expect(played.lines).toContain(
+      "ok   step 0 cut for stop: the held file started, then the abort was sent",
+    );
+    expect(played.lines).toContain("ok   step 0 run (completed): cut is unknown, expected unknown");
+  });
+
+  it("reads a cut run that crashed before its marker as FAIL, though its file is unknown (review 0.1.303 B2)", async () => {
+    const played = await playIn(K8, fakePack({ crashFirst: true }));
+    expect(played.verdict).toBe("FAIL");
+    expect(played.lines).toEqual(
+      expect.arrayContaining([
+        "FAIL step 0 cut for stop: the run ended before the abort, so nothing was cut",
+        "ok   step 0 run (crashed): cut is unknown, expected unknown",
+        "ok   step 2 run (completed): cut is pass, expected pass",
+      ]),
     );
   });
 

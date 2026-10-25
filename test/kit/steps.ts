@@ -53,12 +53,34 @@ function outcomeOf(report: RunReport, file: TestFileRef, fullName: string): Outc
 
 const delay = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
-/** Aborts `abort` once `marker` exists, unless `ended` first; a cut that never came reads in the run's outcomes. */
-async function cutAt(marker: string, ended: () => boolean, abort: () => void): Promise<void> {
-  for (const end = Date.now() + 60_000; Date.now() < end && !ended(); await delay(20)) {
-    if (existsSync(marker)) return abort();
+/** How a cut step's wait for the held file's marker ended. */
+type Wait = "cut" | "ended" | "waited";
+
+const MARKER_WAIT_MS = 60_000;
+
+/**
+ * Waits for `marker`, then calls `abort`. `ended`: the run ended before
+ * the abort, so nothing was cut. `waited`: the marker did not appear in
+ * time; `abort` still ends the run, but nothing was cut at the marker.
+ */
+async function cutAt(marker: string, ended: () => boolean, abort: () => void): Promise<Wait> {
+  for (const end = Date.now() + MARKER_WAIT_MS; Date.now() < end; await delay(20)) {
+    // A run that ended cut nothing, though it wrote the marker first.
+    if (ended()) return "ended";
+    if (existsSync(marker)) {
+      abort();
+      return "cut";
+    }
   }
+  abort();
+  return "waited";
 }
+
+const WAITS: Readonly<Record<Wait, string>> = {
+  cut: "the held file started, then the abort was sent",
+  ended: "the run ended before the abort, so nothing was cut",
+  waited: `the held file did not start within ${MARKER_WAIT_MS / 1000} s, so nothing was cut at it`,
+};
 
 async function run(stage: Stage, at: number, step: Extract<Step, { run: true }>): Promise<Last> {
   const { adapter, tests, ref } = stage;
@@ -86,7 +108,7 @@ async function run(stage: Stage, at: number, step: Extract<Step, { run: true }>)
       .finally(() => {
         ended = true;
       });
-    await cutAt(
+    const wait = await cutAt(
       marker,
       () => ended,
       () => {
@@ -95,8 +117,10 @@ async function run(stage: Stage, at: number, step: Extract<Step, { run: true }>)
       },
     );
     report = await running;
-    const cut = signal.signal.aborted ? "aborted" : "not cut: no started file before the run ended";
-    stage.note(`step ${at} cut for ${by}: ${cut}`);
+    // Review 0.1.303 B2: a run that never reached its marker reads `unknown` too, so the cut
+    // itself is asserted: the marker was reached and the requested abort was sent.
+    const sent = signal.signal.aborted && (by !== "stop" || stop.signal.aborted);
+    stage.say(wait === "cut" && sent, `step ${at} cut for ${by}: ${WAITS[wait]}`);
   }
   if (report.failure !== null) stage.note(`step ${at} failure: ${report.failure}`);
   for (const [name, expected] of Object.entries(step.expect)) {
