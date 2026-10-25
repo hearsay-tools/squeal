@@ -167,6 +167,7 @@ const DIRECTIONS: Partial<Record<CaseKind, Direction>> = {
   store: { files: decided },
   "adapter:vitest": { files: ranFiles, whole: runCount },
   "adapter:pytest": { files: ranFiles, whole: runCount },
+  "adapter:node-test": { files: ranFiles, whole: runCount },
 };
 
 function directionOf(read: Direction, baseline: CaseOutput, candidate: CaseOutput) {
