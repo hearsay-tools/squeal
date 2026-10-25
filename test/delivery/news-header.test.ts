@@ -111,6 +111,19 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     );
   });
 
+  // Row 011-205: "no check pending, stale or unknown" never stands beside test files without checks.
+  it("names the test files without checks alone when no check is pending, stale or unknown", () => {
+    const counts = { current: 50, pending: 0, stale: 0, unknown: 0 };
+    const fileLevelCounts = { ...counts, current: 4 };
+    const h = { ...header, counts, fileLevelCounts };
+    expect(headerLine({ ...h, testFilesWithoutChecks: { pending: 1, unknown: 97 } })).toBe(
+      "Revision 184: test files without checks: 1 pending, 97 unknown.",
+    );
+    expect(headerLine({ ...h, testFilesWithoutChecks: { pending: 0, unknown: 97 } })).toBe(
+      "Revision 184: test files without checks: 97 unknown.",
+    );
+  });
+
   it("keeps the test files without checks, only their non-zero classes", () => {
     const h = { ...header, testFilesWithoutChecks: { pending: 4, unknown: 0 } };
     expect(headerLine(h)).toBe(

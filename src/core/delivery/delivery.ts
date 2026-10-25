@@ -25,6 +25,7 @@ import { registerCode, tellCode } from "./code-deliver.js";
 import { codeSeenUpTo } from "./code-since.js";
 import type { CodeSource } from "./code-source.js";
 import { recordVersion } from "./consumer-version.js";
+import { oweCounts, payCounts } from "./counts-owed.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
 import { carriesEditResult, editNotes, startEdits } from "./edits.js";
 import { drop } from "./expiry.js";
@@ -248,6 +249,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Task 001-407: a change delivery shows the slow-tier line when it changed; Stop always does.
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
+      // Row 011-205: once, the counts a consumer that registered before the listing is owed.
+      const countsOwed = payCounts(store, consumer, header);
       const sawEdit =
         notes === null ||
         carriesEditResult(
@@ -271,6 +274,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...(changed === null ? {} : { liveness: changed }),
         ...(holds === null ? {} : { holds: holdChanges(holds, header) }),
         ...(slowChanged ? { slowTierChanged: true as const } : {}),
+        ...countsOwed,
         ...(sawEdit === undefined ? {} : { sawEdit }),
         ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
         ...(code === null ? {} : { code, knownFailures: currentFailures(states) }),
@@ -341,6 +345,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         tellLiveness(store, consumer, starting ? told : daemon);
         tellRevision(store, consumer, header.revision);
         tellSlowTier(store, consumer, header.slowTier);
+        oweCounts(store, consumer, header);
         tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
         if (!registered) {
           // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
