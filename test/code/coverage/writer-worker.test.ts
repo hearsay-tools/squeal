@@ -1,5 +1,6 @@
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   buildRecord,
@@ -117,5 +118,35 @@ describe("the records' writer's worker thread (row 015-42)", () => {
       /^coverage: the mapping worker failed \(.*no mapping here.*\); mapping on the main thread$/,
     );
     expect(records).toEqual(expected);
+  });
+
+  it("loses no record when the worker exits on the sources it asked for (review 0.1.305 B2)", async () => {
+    const set = payloads(3, 10);
+    sets.push(set);
+    // The worker reads the first payload and asks for its sources, then exits on the answer.
+    const exits = join(set.dir, "exits-worker.mjs");
+    writeFileSync(
+      exits,
+      [
+        'import { parentPort } from "node:worker_threads";',
+        'parentPort.on("message", (message) => { if (message.type === "sources") process.exit(3); });',
+        `await import(${JSON.stringify(pathToFileURL(TS_WORKER.script).href)});`,
+        "",
+      ].join("\n"),
+    );
+    const files = [set.file("test/a.test.ts"), set.file("test/b.test.ts")];
+    const expected = files.map((file) =>
+      Buffer.from(encodeRecord(buildRecord(file, set.scripts, "sha1", new Map()))).toString(
+        "base64",
+      ),
+    );
+
+    const { records, logs } = await stored([files], { worker: { ...TS_WORKER, script: exits } });
+
+    expect(records.map((r) => r !== null)).toEqual([true, true]);
+    expect(records).toEqual(expected);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatch(/^coverage: the mapping worker failed \(.*code 3.*\); mapping/);
+    expect(files.map((file) => existsSync(file.payload))).toEqual([false, false]);
   });
 });

@@ -7,7 +7,10 @@ import type { Pace } from "./pace.js";
 import { type BlobCache, buildRecord, encodeRecord } from "./record.js";
 import type { CoveredFile, ExecutedSource, V8Script } from "./types.js";
 
-/** Maps a test file's payload to its encoded record and deletes the payload once read. */
+/**
+ * Maps a test file's payload to its encoded record and deletes the payload
+ * once read; a map that fails before its payload was read leaves it.
+ */
 export interface Mapper {
   map(file: CoveredFile): Promise<Uint8Array>;
   close(): Promise<void>;
@@ -91,9 +94,10 @@ export function threadMapper(options: MapperOptions, blobs: BlobCache): Mapper {
 }
 
 /**
- * In a worker thread: the main thread posts each payload's path and gives
- * the sources it is asked for. `onFailure` once when the worker fails;
- * every map in hand and after rejects.
+ * In a worker thread: the main thread posts each payload's path, gives the
+ * sources it is asked for, and deletes the payload once the worker answered
+ * for it. `onFailure` once when the worker fails; every map in hand and
+ * after rejects, and leaves its payload (review 0.1.305 B2).
  */
 export function workerMapper(
   worker: MapWorker,
@@ -141,6 +145,7 @@ export function workerMapper(
       return;
     }
     jobs.delete(message.id);
+    rmSync(job.file.payload, { force: true });
     if (message.type === "record") job.resolve(message.record);
     else job.reject(new Error(message.message));
   };
