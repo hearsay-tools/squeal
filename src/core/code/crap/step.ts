@@ -9,7 +9,7 @@ import { StepCache } from "./cache.js";
 import { coverageOf, type FileCondition, type ReadyLoader } from "./file.js";
 import { evidenceOf, type Judged, judgeFiles, priorKey } from "./judge.js";
 import { LoaderBuild, type LoaderCondition, type LoaderInputs, type Loaders } from "./loaders.js";
-import { seed } from "./seed.js";
+import { Seed } from "./seed.js";
 import {
   type CoverageSummary,
   type FileSummary,
@@ -32,9 +32,10 @@ import {
 /**
  * A step works for at most this long, its reads of the loaders and records
  * included (row 015-42), then yields to hooks and runs again. It does one
- * unit of work past it, so a chain always moves: the listing of test files
- * or one test file read into the loader map (row 015-45), a file's
- * condition looked up, a record decoded or a file judged.
+ * unit of work past it, so a chain always moves: a file seeded (row
+ * 015-47), the listing of test files or one test file read into the loader
+ * map (row 015-45), a file's condition looked up, a record decoded or a
+ * file judged.
  */
 export const STEP_BUDGET_MS = 50;
 
@@ -69,6 +70,11 @@ export interface CoverageStepReport {
    * seeded nothing, so a recount's reseed waits for the step that judges.
    */
   readonly reading?: true;
+  /**
+   * The seed is not done (row 015-47): the step judged nothing, so a
+   * recount's reseed waits for the step that judges.
+   */
+  readonly seeding?: true;
 }
 
 /** A step that only read part of the loader map (row 015-45). */
@@ -80,17 +86,22 @@ const READING: CoverageStepReport = {
   reading: true,
 };
 
+/** A step that only seeded part of the files (row 015-47). */
+const SEEDING: CoverageStepReport = {
+  judged: 0,
+  transitions: 0,
+  wakeAt: null,
+  more: true,
+  seeding: true,
+};
+
 /** Spec 015 D9: one step over the worktree; `null` while its first count runs. */
 export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | null {
   const { store, worktreeId } = input;
   const work = budget(input.now);
   const cache = input.cache ?? new StepCache();
-  // Without a cache the map is read whole, since no later step would go on with it.
-  const loaders = cache.loaders(
-    () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
-    input.cache === undefined ? () => true : work,
-  );
-  if (loaders === null) return READING;
+  // Without a cache the seed and the map are done whole, since no later step would go on with them.
+  const slice = input.cache === undefined ? () => true : work;
   const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
   const summary = readSummary(store.meta, worktreeId);
   const start = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
@@ -109,13 +120,22 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
     if (count !== null) counts.set(file.path, count);
     return count;
   };
+  // Row 015-47: every file is seeded before any is judged.
+  if (start || input.reseed) {
+    const seed = cache.seed(() => new Seed(files, start && summary !== null));
+    if (!store.transaction(() => seed.advance(input, files, countOf, slice))) return SEEDING;
+  }
+  const loaders = cache.loaders(
+    () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
+    slice,
+  );
+  if (loaders === null) return READING;
   const { next, judged, quiet, more } = walk(
     { input, cache, loaders, summary, start, countOf, work },
     files,
   );
 
-  return store.transaction(() => {
-    if (start || input.reseed) seed(input, files, countOf, start && summary !== null);
+  const report = store.transaction(() => {
     const brought = broughtByGit(store.meta, worktreeId, summary, next);
     const transitions = writeJudgement(input, judged, brought);
     keepUnjudged(brought, files, next);
@@ -138,6 +158,8 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
     }
     return { judged: judged.length, transitions, wakeAt: loaders.wakeAt, more };
   });
+  cache.dropSeed();
+  return report;
 }
 
 /**

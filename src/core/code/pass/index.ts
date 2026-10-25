@@ -144,6 +144,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
     settled.clear();
     cache.invalidate();
     cache.settle();
+    cache.dropSeed();
     coverageWake = null;
     coverageDue = true;
   };
@@ -208,10 +209,13 @@ export function createCodePass(options: CodePassOptions): CodePass {
   /** Spec 015 D9 after the complexity pass; with coverage off, the states it left go. */
   const coverageStep = (opened: CodeStore, policy: Policy, report: PassReport | null) => {
     const revised = report !== null;
-    reseedDue ||= revised && report.mode !== "edit";
+    const recount = revised && report.mode !== "edit";
+    reseedDue ||= recount;
     const inputs = options.coverage;
     coverageWake = null;
     if (inputs === undefined) return;
+    // A seed begun before a recount or with coverage off seeds again (row 015-47).
+    if (recount || !coverageOn(policy)) cache.dropSeed();
     if (!coverageOn(policy)) {
       clearCoverage(opened, options.worktreeId);
       coverageDue = true;
@@ -241,7 +245,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
         cache,
       }),
     );
-    if (step?.reading !== true) reseedDue = false;
+    if (step?.reading !== true && step?.seeding !== true) reseedDue = false;
     coverageWake = step?.wakeAt ?? null;
     // Past the step's budget: the rest once the feed and hooks had the step's own time.
     if (step?.more === true) paced();
