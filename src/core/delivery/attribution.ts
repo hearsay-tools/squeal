@@ -1,4 +1,3 @@
-import { loadPolicy } from "../daemon/policy.js";
 import { isInstalledLockfile, testFileId } from "../keys/index.js";
 import { passedRetry } from "../retry/index.js";
 import { readFailureKeys } from "../slow/state.js";
@@ -277,33 +276,15 @@ export function withDependencies(
   header: StatusHeader,
   failing: readonly CheckId[],
 ): StatusHeader {
-  const installed = nodeFailing(store, worktreeId, failing)
-    ? dependenciesInstalled(store, worktreeId)
-    : undefined;
+  const node = failing.some((check) => NODE_RUNNERS.has(store.checks.runnerOf(check) ?? ""));
+  const installed = node ? dependenciesInstalled(store, worktreeId) : undefined;
   return installed === undefined ? header : { ...header, dependenciesInstalled: installed };
 }
 
-/** A JavaScript or TypeScript file: the only test files a Node runner runs. */
-const NODE_TEST_FILE = /\.[cm]?[jt]sx?$/;
-
 /**
- * Whether a check in `failing` belongs to a Node runner (Vitest or node:test):
- * one whose project is not a pytest project of the worktree's policy and whose
- * test file is a JavaScript or TypeScript file. Project names are unique across
- * runners (`createCompositeRunner`). Review wave-5.5 B1: the defaults a policy
- * falls back to name no pytest project, so ownership is established only from a
- * policy that loaded without problems, or from no policy file at all; with
- * problems, or with no worktree row, it is unknown and the sentence is not
- * said. Review wave-5.75: a pytest failure stored before its project left the
- * policy can come from any file a doctest glob matches, so a Node runner's is
- * known by its file too; the file only ever withholds the sentence.
+ * The runners whose test files load what Node's installed lockfiles list, by
+ * the name their environment gives (`RunnerEnvironment.runnerName`). A
+ * check's runner is the one the store recorded with it (spec 016 D3); a check
+ * with none, which an older daemon stored, is no Node runner's.
  */
-function nodeFailing(store: Store, worktreeId: WorktreeId, failing: readonly CheckId[]): boolean {
-  if (failing.length === 0) return false;
-  const root = store.worktrees.get(worktreeId)?.root;
-  if (root === undefined) return false;
-  const { policy, problems } = loadPolicy(root);
-  if (problems.length > 0) return false;
-  const pytest = new Set(policy.pytest.map((p) => p.name));
-  return failing.some((check) => !pytest.has(check.project) && NODE_TEST_FILE.test(check.testPath));
-}
+const NODE_RUNNERS: ReadonlySet<string> = new Set(["vitest", "node-test"]);

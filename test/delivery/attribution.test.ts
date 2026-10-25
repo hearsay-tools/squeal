@@ -65,8 +65,9 @@ function closure(paths: readonly string[]): void {
   });
 }
 
+/** Stores `results` as a Vitest run's: the scheduler records the runner with them (spec 016 D3). */
 function apply(revision: number, ...results: ResultRecord[]): void {
-  store.results.putMany(results);
+  store.results.putMany(results, "vitest");
   sink.applyResults(WT, revision, results, NONE);
 }
 
