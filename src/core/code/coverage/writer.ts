@@ -104,13 +104,12 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     return mapper;
   };
   const mapOf = async (file: CoveredFile): Promise<Uint8Array> => {
-    const used = worker;
     try {
       return await mapperNow().map(file);
     } catch (error) {
-      // A worker that failed before it read the payload leaves it to this thread.
-      if (used === null || worker === used || closed || !existsSync(file.payload)) throw error;
-      return mapperNow().map(file);
+      // A job the worker did not answer for keeps its payload, for this thread (review 0.1.305 B2).
+      if (closed || !existsSync(file.payload)) throw error;
+      return threadMapper(mapping, blobs).map(file);
     }
   };
   const failed = (thread: MapWorker, error: unknown) => {
