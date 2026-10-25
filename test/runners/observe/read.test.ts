@@ -31,4 +31,16 @@ describe("takeRecorded", () => {
     expect([...(entry?.listed ?? [])]).toEqual(["/w/tree", "/w/flat"]);
     expect([...(entry?.recursive ?? [])]).toEqual(["/w/tree"]);
   });
+
+  it("reads what a process the test file started imported (spec 016 D4, row 016-22)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "squeal-read-"));
+    const lines = [
+      { t: "/w/t.ts", f: ["/w/child.mjs", "/w/data.txt"], d: ["/w/child.mjs", "/w/\u0000x"] },
+      { t: "/w/t.ts", f: ["/w/dep.mjs"], d: ["/w/dep.mjs"] },
+    ];
+    writeFileSync(join(dir, "1.ndjson"), lines.map((l) => `${JSON.stringify(l)}\n`).join(""));
+    const entry = takeRecorded(dir).get("/w/t.ts");
+    expect([...(entry?.paths ?? [])]).toEqual(["/w/child.mjs", "/w/data.txt", "/w/dep.mjs"]);
+    expect([...(entry?.direct ?? [])]).toEqual(["/w/child.mjs", "/w/dep.mjs"]);
+  });
 });

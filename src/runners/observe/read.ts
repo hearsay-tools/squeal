@@ -12,6 +12,8 @@ export interface RecordedFile {
   readonly recursive: Set<AbsolutePath>;
   /** Written, created or removed. */
   readonly written: Set<AbsolutePath>;
+  /** Of `paths`, what a process the test file started loaded: its entry point and its modules (016 D4). */
+  readonly direct: Set<AbsolutePath>;
 }
 
 /**
@@ -43,7 +45,7 @@ export function takeRecorded(dir: AbsolutePath): Map<AbsolutePath, RecordedFile>
 
 function addLine(recorded: Map<AbsolutePath, RecordedFile>, line: string): void {
   if (line.trim() === "") return;
-  let value: { t?: unknown; f?: unknown; l?: unknown; r?: unknown; w?: unknown };
+  let value: { t?: unknown; f?: unknown; l?: unknown; r?: unknown; w?: unknown; d?: unknown };
   try {
     value = JSON.parse(line);
   } catch {
@@ -52,13 +54,20 @@ function addLine(recorded: Map<AbsolutePath, RecordedFile>, line: string): void 
   if (typeof value.t !== "string") return;
   let entry = recorded.get(value.t);
   if (entry === undefined) {
-    entry = { paths: new Set(), listed: new Set(), recursive: new Set(), written: new Set() };
+    entry = {
+      paths: new Set(),
+      listed: new Set(),
+      recursive: new Set(),
+      written: new Set(),
+      direct: new Set(),
+    };
     recorded.set(value.t, entry);
   }
   addAll(entry.paths, value.f);
   addAll(entry.listed, value.l);
   addAll(entry.recursive, value.r);
   addAll(entry.written, value.w);
+  addAll(entry.direct, value.d);
 }
 
 function addAll(into: Set<string>, values: unknown): void {
