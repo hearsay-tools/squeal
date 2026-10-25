@@ -4,6 +4,7 @@ import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
 import { addIgnoredReads, startIgnoredReads } from "./ignored-reads.js";
 import type { Ledger } from "./ledger.js";
+import { scratchOf } from "./observed.js";
 import type { Tier } from "./tiers.js";
 
 /** A tier's ignored reads, for the warm-up record `record`. */
@@ -11,7 +12,8 @@ export interface WarmUpReads {
   readonly record: string;
   /**
    * By `testFileId`, each file the runner observed: the gitignored paths it
-   * read beyond its closure, listings as `dir/`; none when it read none.
+   * read beyond its closure and beyond what the record keys (016 D4),
+   * listings as `dir/`; none when it read none.
    */
   readonly files: ReadonlyMap<string, readonly RelativePath[]>;
 }
@@ -22,7 +24,8 @@ export interface WarmUpReads {
  * runs every file forced (`queueFullSuite`), so only its own tiers count for
  * it, and they run with `RunOptions.observeIgnored` (review wave 13ar, B1).
  * Of what each completed file read (`RunReport.reads`), the gitignored
- * worktree paths its closure lacks go to the worktree's `ignored-reads` row
+ * worktree paths its closure lacks and its record does not key (016 D4,
+ * the written-directory bound) go to the worktree's `ignored-reads` row
  * (`ignored-reads.ts`), which the request replaced: every file the runner
  * observed has an entry, empty when it read none, and a file it could not
  * observe has none. Nothing of it reaches a key, a closure, a result or a
@@ -73,11 +76,13 @@ export class WarmUp {
       // A suggestion only: a git failure costs the tier's list, never its results.
       return null;
     }
+    const keyed = keyedByRecord(context, report, ignored);
     const files = new Map<string, RelativePath[]>();
     for (const { id, paths } of seen) {
+      const kept = keyed.get(id);
       files.set(
         id,
-        paths.filter((path) => ignored.has(listedDirectory(path) ?? path)),
+        paths.filter((path) => ignored.has(listedDirectory(path) ?? path) && !kept?.has(path)),
       );
     }
     return { record: current, files };
@@ -88,4 +93,26 @@ export class WarmUp {
     if (reads === null) return;
     addIgnoredReads(context.store, context.worktreeId, reads.record, reads.files);
   }
+}
+
+/**
+ * By `testFileId`, what the record of `report` keys for each file: the paths
+ * and listings its runner observed, a project `keys.observes`, that the
+ * written-directory bound keeps (016 D4, `observedGrowth`). A git-ignored
+ * path among them is keyed from this run on, so the warm-up names none.
+ */
+function keyedByRecord(
+  context: SchedulerContext,
+  report: RunReport,
+  ignored: ReadonlySet<RelativePath>,
+): Map<string, Set<RelativePath>> {
+  const out = new Map<string, Set<RelativePath>>();
+  for (const observed of report.observed ?? []) {
+    if (!context.keys.observes(observed.testFile.project)) continue;
+    const scratch = scratchOf(observed.written ?? [], ignored);
+    const paths = [...observed.paths, ...observed.directories.map(listingPath)];
+    const kept = paths.filter((path) => !scratch(listedDirectory(path) ?? path));
+    out.set(testFileId(observed.testFile), new Set(kept));
+  }
+  return out;
 }
