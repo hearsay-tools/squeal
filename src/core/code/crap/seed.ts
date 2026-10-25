@@ -1,4 +1,5 @@
 import type { CodeCheckId, CodeFile, CodeKnownState, FileCount } from "../../types/code.js";
+import { readUncountable, spentFailure } from "../pass/failed.js";
 import type { PassReport } from "../pass/types.js";
 import { checkOf } from "./judge.js";
 import type { CoverageStepInput } from "./step.js";
@@ -24,10 +25,19 @@ export const SEED_FILES = 32;
  * complexity pass's moves and removals since (D2; review 0.1.311 B1): a
  * function there as it began, renamed or moved before its file is seeded,
  * is seeded where it went, and one removed is not seeded under its name.
+ *
+ * Row 015-48: it reads those moves' counts within the step's budget too
+ * (review 0.1.311-r2 N1), in their order and before any file is seeded. At
+ * coverage's start it waits at a file its unit finds with no count, one the
+ * counter gave up on aside, so a function the first count counts later is
+ * seeded with the rest, not new: the unit reads those counts anyway, where
+ * a check of every file before the seed was one read of 479 ms cold.
  */
 export class Seed {
   readonly #files: readonly CodeFile[];
   readonly #again: boolean;
+  /** Coverage's start: a file with no count holds the seed until it has one. */
+  readonly #counted: boolean;
   /** Each file's place in `#files`: one at or past `#next` is not seeded yet. */
   readonly #places: ReadonlyMap<string, number>;
   #next = 0;
@@ -37,24 +47,31 @@ export class Seed {
   readonly #left = new Map<string, Set<string>>();
   /** By path, functions there as the seed began and not seeded yet, that an edit moved there. */
   readonly #came = new Map<string, Set<string>>();
+  /** The moves and removals `follow` was given and `advance` has not read yet, in order. */
+  readonly #followed: Followed[] = [];
 
-  constructor(files: readonly CodeFile[], again: boolean) {
+  constructor(files: readonly CodeFile[], again: boolean, counted = false) {
     this.#files = files;
     this.#again = again;
+    this.#counted = counted;
     this.#places = new Map(files.map((f, place) => [f.path, place]));
   }
 
-  /** Seeds the next files while `work` allows; true once every file is seeded. */
+  /**
+   * Seeds the next files while `work` allows: `done` once every file is
+   * seeded, `uncounted` while a start's file waits for its count.
+   */
   advance(
     input: Pick<CoverageStepInput, "store" | "worktreeId" | "revision">,
     countOf: (file: CodeFile) => FileCount | null,
     work: () => boolean,
-  ): boolean {
+  ): "done" | "more" | "uncounted" {
+    if (!this.#caughtUp(input.store, work)) return "more";
     for (;;) {
       // Functions moved into a file seeded already, or one the seed's files did not have, first.
       const moved = [...this.#came.keys()].filter((path) => this.#waiting(path) === undefined);
-      if (moved.length === 0 && this.#next >= this.#files.length) return true;
-      if (!work()) return false;
+      if (moved.length === 0 && this.#next >= this.#files.length) return "done";
+      if (!work()) return "more";
       if (moved.length > 0) {
         const paths = moved.slice(0, SEED_FILES);
         this.#seed(
@@ -65,6 +82,7 @@ export class Seed {
         continue;
       }
       const files = this.#files.slice(this.#next, this.#next + SEED_FILES);
+      if (this.#counted && !this.#allCounted(input, files, countOf)) return "uncounted";
       this.#next += files.length;
       this.#seed(
         input,
@@ -75,13 +93,43 @@ export class Seed {
   }
 
   /** An edit's moves and removals (D2), as the complexity pass applied them to its states. */
-  follow(store: Store, report: Pick<PassReport, "moves" | "removed">): void {
-    for (const { from, to } of report.moves) {
-      if (!this.#leave(store, from)) continue;
+  follow(report: Pick<PassReport, "moves" | "removed">): void {
+    for (const { from, to } of report.moves) this.#followed.push({ from, to });
+    for (const check of report.removed) this.#followed.push({ from: check, to: null });
+  }
+
+  /** Reads what `follow` was given, one move or removal each time `work` allows; true once all is read. */
+  #caughtUp(store: Store, work: () => boolean): boolean {
+    let read = 0;
+    for (const { from, to } of this.#followed) {
+      if (!work()) break;
+      read++;
+      if (!this.#leave(store, from) || to === null) continue;
       const came = this.#came.get(to.path) ?? new Set();
       this.#came.set(to.path, came.add(functionKey(to)));
     }
-    for (const check of report.removed) this.#leave(store, check);
+    this.#followed.splice(0, read);
+    return this.#followed.length === 0;
+  }
+
+  /**
+   * Whether each of `files`, as the seed began, has a count now, or is gone,
+   * too big or one the counter gave up on; a start waits for the others.
+   */
+  #allCounted(
+    input: Pick<CoverageStepInput, "store" | "worktreeId">,
+    files: readonly CodeFile[],
+    countOf: (file: CodeFile) => FileCount | null,
+  ): boolean {
+    const { store, worktreeId } = input;
+    const now = store.files.list(
+      worktreeId,
+      files.map((f) => f.path),
+    );
+    const uncounted = now.filter((f) => f.tooBig !== true && countOf(f) === null);
+    if (uncounted.length === 0) return true;
+    const failed = readUncountable(store.meta, worktreeId);
+    return uncounted.every((f) => spentFailure(failed, f) !== null);
   }
 
   /** `check` leaves its file: true if it was there as the seed began and is not seeded yet. */
@@ -194,3 +242,5 @@ export class Seed {
 
 type Fn = FileCount["functions"][number];
 type Store = CoverageStepInput["store"];
+/** A move `follow` was given, or a removal, whose `to` is `null`. */
+type Followed = { readonly from: CodeCheckId; readonly to: CodeCheckId | null };

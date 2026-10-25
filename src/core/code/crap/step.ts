@@ -2,7 +2,6 @@ import { compare } from "../../fs/index.js";
 import type { CodeFile, FileCount } from "../../types/code.js";
 import type { CheckKey, EpochMs, RevisionNumber, WorktreeId } from "../../types/index.js";
 import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
-import { uncountableFiles } from "../pass/failed.js";
 import type { CodeStore } from "../store/types.js";
 import { broughtByGit, keepUnjudged } from "./brought.js";
 import { StepCache } from "./cache.js";
@@ -113,8 +112,9 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   // Row 015-47: every file is seeded before any is judged.
   if (start || input.reseed) {
     const seed = cache.seed(() => beginSeed(input, start, summary));
-    if (seed === null) return null;
-    if (!store.transaction(() => seed.advance(input, countOf, slice))) return SEEDING;
+    const seeded = store.transaction(() => seed.advance(input, countOf, slice));
+    if (seeded === "uncounted") return null;
+    if (seeded === "more") return SEEDING;
   }
   const loaders = cache.loaders(
     () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
@@ -153,21 +153,18 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
   return report;
 }
 
-/** The seed a start or a recount begins; `null` while coverage's first count runs. */
+/**
+ * The seed a start or a recount begins. Coverage starts once the first
+ * count is done, a file the counter gave up on aside, and the start's seed
+ * waits for it a unit at a time (row 015-48). After, an uncounted file waits.
+ */
 function beginSeed(
   input: CoverageStepInput,
   start: boolean,
   summary: CoverageSummary | null,
-): Seed | null {
-  const { store, worktreeId } = input;
-  const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
-  // Coverage starts once the first count is done (a file the counter gave up on aside), so a
-  // function it counts later is seeded with the rest, not new. After, an uncounted file waits.
-  if (start) {
-    const spent = uncountableFiles(store, worktreeId, files);
-    if (store.files.uncounted(worktreeId).some((f) => !spent.has(f.path))) return null;
-  }
-  return new Seed(files, start && summary !== null);
+): Seed {
+  const files = input.store.files.list(input.worktreeId).filter((f) => f.tooBig !== true);
+  return new Seed(files, start && summary !== null, start);
 }
 
 /**
