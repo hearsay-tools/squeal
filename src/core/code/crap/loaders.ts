@@ -4,6 +4,7 @@ import type {
   EpochMs,
   RelativePath,
   Store,
+  TestFileKeyRecord,
   TestFileRef,
   WorktreeId,
 } from "../../types/index.js";
@@ -121,43 +122,73 @@ function conditionAt(
  * and condition. A test file whose closure is not known here may load any
  * source, so it is a pending loader of each until its closure comes; one
  * whose key the main store's row does not hold yet waits for that row.
+ *
+ * Row 015-45 (review 0.1.305 S1): it is read a test file at a time, so a
+ * step reads it within its budget: the listing is one unit, and each test
+ * file's result lookups and closure walk are one more. The map is given out
+ * only once every listed test file is read, so no step judges from part of
+ * it. Its inputs are those of its start.
  */
-export function readLoaders(inputs: LoaderInputs): Loaders {
-  const rows = inputs.main.testFileKeys.list(inputs.worktreeId);
-  const byPath = new Map<RelativePath, Loader[]>();
-  const everywhere: Loader[] = [];
-  let wakeAt: EpochMs | null = null;
-  for (const row of rows) {
+export class LoaderBuild {
+  readonly #inputs: LoaderInputs;
+  #rows: readonly TestFileKeyRecord[] | null = null;
+  #next = 0;
+  readonly #byPath = new Map<RelativePath, Loader[]>();
+  readonly #everywhere: Loader[] = [];
+  #wakeAt: EpochMs | null = null;
+
+  constructor(inputs: LoaderInputs) {
+    this.#inputs = inputs;
+  }
+
+  /** Reads one unit each time `work` allows; the whole map once every test file is read, else `null`. */
+  advance(work: () => boolean): Loaders | null {
+    const { main, worktreeId } = this.#inputs;
+    if (this.#rows === null) {
+      if (!work()) return null;
+      this.#rows = main.testFileKeys.list(worktreeId);
+    }
+    for (; this.#next < this.#rows.length; this.#next++) {
+      const row = this.#rows[this.#next];
+      if (row === undefined || !work()) return null;
+      this.#read(row);
+    }
+    const byPath = this.#byPath;
+    const everywhere = this.#everywhere;
+    return {
+      listed: this.#rows.length > 0,
+      of: (path) => {
+        const own = byPath.get(path) ?? [];
+        return everywhere.length === 0 ? own : [...own, ...everywhere];
+      },
+      withoutImports: everywhere.length,
+      wakeAt: this.#wakeAt,
+    };
+  }
+
+  #read(row: TestFileKeyRecord): void {
+    const inputs = this.#inputs;
     const paths = inputs.closures?.closure(row.testFile)?.paths;
     if (paths === undefined) {
-      everywhere.push({
+      this.#everywhere.push({
         testFile: row.testFile,
         condition: { kind: "pending", reason: "imports" },
       });
-      continue;
+      return;
     }
     const condition =
       inputs.closures?.key(row.testFile) === row.key
         ? conditionAt(inputs, row.testFile, row.key, row.pending !== null)
         : ({ kind: "pending", reason: "run" } as const);
     if (condition.kind === "pending" && condition.until !== undefined) {
-      wakeAt = Math.min(wakeAt ?? condition.until, condition.until);
+      this.#wakeAt = Math.min(this.#wakeAt ?? condition.until, condition.until);
     }
     const loader = { testFile: row.testFile, condition };
     for (const path of paths) {
       if (path === row.testFile.path) continue;
-      const list = byPath.get(path);
-      if (list === undefined) byPath.set(path, [loader]);
+      const list = this.#byPath.get(path);
+      if (list === undefined) this.#byPath.set(path, [loader]);
       else list.push(loader);
     }
   }
-  return {
-    listed: rows.length > 0,
-    of: (path) => {
-      const own = byPath.get(path) ?? [];
-      return everywhere.length === 0 ? own : [...own, ...everywhere];
-    },
-    withoutImports: everywhere.length,
-    wakeAt,
-  };
 }

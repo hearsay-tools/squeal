@@ -1,6 +1,7 @@
 /** Spec 015 D8: coverage from Squeal's own Vitest runs, one record per test file result. */
 
 export { mapScript } from "./map.js";
+export { Pace } from "./pace.js";
 export {
   buildRecord,
   COVERAGE_PROVIDER_VERSION,
