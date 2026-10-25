@@ -359,6 +359,9 @@ function excludedFilesText(globs3) {
   return `Vitest test files matching ${quoted.length === 0 ? last : `${quoted.join(", ")} or ${last}`}`;
 }
 
+// src/core/retry/kept.ts
+var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 var slices = new AsyncLocalStorage();
