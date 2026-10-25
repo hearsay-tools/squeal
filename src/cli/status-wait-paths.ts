@@ -393,7 +393,8 @@ export async function waitForNamed(
       if (read !== null && "usage" in read) throw new CheckUsageError(read.usage);
       if (read !== null && "ask" in read) {
         const ask = options.ask ?? askNamedRuns;
-        asked = await ask(read.root, read.ask, options.asker ?? "", deadline - options.now());
+        const within = deadline - options.now();
+        asked = await ask(read.root, read.ask, options.asker ?? "", within, options.now);
         continue;
       }
       if (read !== null && "available" in read) {
