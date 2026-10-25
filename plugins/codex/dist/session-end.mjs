@@ -99,6 +99,7 @@ var WORKTREE_META_ROWS = {
   revisionTold: { prefix: "revision-told:", owner: "delivery/liveness" },
   uncoveredTold: { prefix: "uncovered-told:", owner: "delivery/uncovered" },
   slowTierTold: { prefix: "slow-tier-told:", owner: "delivery/slow-told" },
+  countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
@@ -263,8 +264,8 @@ function parseCheckpointProgress(raw) {
     const numbers = [value.revision, value.startedAt, value.done, value.total];
     if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
     if (value.kind !== "run-all" && value.kind !== "baseline") return null;
-    const owed = value.owed;
-    const lists = owed === void 0 ? [] : [owed.ids, owed.remaining, owed.strict];
+    const owed2 = value.owed;
+    const lists = owed2 === void 0 ? [] : [owed2.ids, owed2.remaining, owed2.strict];
     if (!lists.every(Array.isArray)) return null;
     return value;
   } catch {
@@ -6183,6 +6184,26 @@ function wentOverSince(code, worktreeId, since, measures = ["complexity"]) {
   );
 }
 
+// src/core/delivery/counts-owed.ts
+function countsOwedMetaKey(worktreeId) {
+  return worktreeMetaKey("countsOwed", worktreeId);
+}
+function oweCounts(store, consumer, header) {
+  writeSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer, owed(header) ? true : null);
+}
+function forgetCounts(store, consumer) {
+  writeSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer, null);
+}
+function payCounts(store, consumer, header) {
+  const key = countsOwedMetaKey(consumer.worktreeId);
+  if (owed(header) || readSlot(store, key, consumer) !== true) return {};
+  writeSlot(store, key, consumer, null);
+  const root = store.worktrees.get(consumer.worktreeId)?.root;
+  const lookupOnly = root !== void 0 && readPolicy(root).baseline.onStart === "lookup-only";
+  return { countsOwed: { lookupOnly } };
+}
+var owed = (header) => header.testFilesListed === false;
+
 // src/core/delivery/delta.ts
 function beforeFailing(history, state) {
   const last = history.at(-1);
@@ -6367,15 +6388,15 @@ function editNotes(store, consumer, states, delivering) {
     store.testFileKeys.list(consumer.worktreeId).map((k) => [testFileId(k.testFile), k])
   );
   const rekeyed = [];
-  let owed = false;
+  let owed2 = false;
   for (const [id, entry3] of readRekeyed(store, consumer.worktreeId)) {
     const row = rows.get(id);
     if (row === void 0 || row.key === null || entry3.last <= state.since) continue;
     rekeyed.push(row);
-    owed ||= row.pending !== null;
+    owed2 ||= row.pending !== null;
   }
   const sawEdit = state.said || rekeyed.length === 0 ? void 0 : { queued: rekeyed.length };
-  const editsSettled = owed ? void 0 : settled(state.since, rekeyed, states);
+  const editsSettled = owed2 ? void 0 : settled(state.since, rekeyed, states);
   if (sawEdit === void 0 && editsSettled === void 0) return null;
   return {
     ...sawEdit === void 0 ? {} : { sawEdit },
@@ -7125,7 +7146,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.316";
+  if (true) return "0.1.318";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8121,8 +8142,8 @@ function vitestExcluded(root) {
 function openCheckpoint(store, worktreeId, daemon) {
   const progress = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
   if (progress === null) return {};
-  const { owed, ...rest } = progress;
-  if (owed !== void 0) {
+  const { owed: owed2, ...rest } = progress;
+  if (owed2 !== void 0) {
     if (daemon.state === "alive") return {};
     return { checkpoint: { ...rest, owed: true } };
   }
@@ -8413,14 +8434,14 @@ function endTurn(store, consumer, states, undelivered, handoffAt = null) {
   const header = readHeader(store, consumer.worktreeId, states, keys);
   const current2 = currentKeys(keys);
   const testFiles = [...files].sort();
-  const owed = Object.fromEntries(testFiles.map((f) => [f, current2.get(f) ?? null]));
+  const owed2 = Object.fromEntries(testFiles.map((f) => [f, current2.get(f) ?? null]));
   const newTestFiles = header.runnerPartPending === true;
   const { revision } = header;
   writeTurn(store, consumer, {
     turn: "idle",
     testFiles,
     newTestFiles,
-    keys: owed,
+    keys: owed2,
     revision,
     ...handoffAt === null ? {} : { handoff: { at: handoffAt } }
   });
@@ -8435,11 +8456,11 @@ function owedScope(store, consumer) {
     return "nothing";
   }
   const files = state.testFiles.map(fromTestFileId);
-  const owed = files.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files);
+  const owed2 = files.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files);
   const untold = state.newTestFiles ? store.knownStates.untold(consumer) : [];
-  const seen = new Set(owed.map((s) => checkIdentity(s.check)));
+  const seen = new Set(owed2.map((s) => checkIdentity(s.check)));
   return {
-    states: [...owed, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],
+    states: [...owed2, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],
     view: files.length === 0 ? [] : store.views.list(consumer, files),
     keys: files.length === 0 ? [] : store.testFileKeys.list(consumer.worktreeId, files)
   };
@@ -8460,13 +8481,13 @@ function trimmed(state, states, keys) {
   const pending = /* @__PURE__ */ new Set();
   for (const s of states) if (s.validity === "pending") pending.add(testFileKeyOf(s.check));
   for (const k of keys) if (k.pending !== null) pending.add(testFileId(k.testFile));
-  const owed = state.testFiles.filter((f) => pending.has(f) && atKey(state, f, current2));
-  if (owed.length === state.testFiles.length) return null;
+  const owed2 = state.testFiles.filter((f) => pending.has(f) && atKey(state, f, current2));
+  if (owed2.length === state.testFiles.length) return null;
   const { keys: recorded, ...rest } = state;
-  const kept2 = Object.entries(recorded ?? {}).filter(([f]) => owed.includes(f));
+  const kept2 = Object.entries(recorded ?? {}).filter(([f]) => owed2.includes(f));
   return {
     ...rest,
-    testFiles: owed,
+    testFiles: owed2,
     ...recorded === void 0 ? {} : { keys: Object.fromEntries(kept2) }
   };
 }
@@ -8502,6 +8523,7 @@ function forget2(store, consumer) {
   tellLiveness(store, consumer, null);
   tellRevision(store, consumer, null);
   tellSlowTier(store, consumer, void 0);
+  forgetCounts(store, consumer);
   tellHolds(store, consumer, null);
   writeTurn(store, consumer, null);
   recordHarness(store, consumer, null);
@@ -8631,6 +8653,7 @@ function createDelivery(store, options) {
       notes?.tell();
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
+      const countsOwed = payCounts(store, consumer, header);
       const sawEdit = notes === null || carriesEditResult(
         notes,
         entries.map((e) => e.check),
@@ -8647,6 +8670,7 @@ function createDelivery(store, options) {
         ...changed === null ? {} : { liveness: changed },
         ...holds === null ? {} : { holds: holdChanges(holds, header) },
         ...slowChanged ? { slowTierChanged: true } : {},
+        ...countsOwed,
         ...sawEdit === void 0 ? {} : { sawEdit },
         ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled },
         ...code === null ? {} : { code, knownFailures: currentFailures(states) }
@@ -8697,6 +8721,7 @@ function createDelivery(store, options) {
       tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);
+      oweCounts(store, consumer, header);
       tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
       if (!registered) {
         const alive2 = atStart && header.daemon?.state === "alive";
