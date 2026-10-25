@@ -35,7 +35,9 @@ export function withSlowInstance(
     const closed = slow;
     slow = null;
     pending = [];
-    if (closed === null) return Promise.resolve();
+    // A close in progress, a timer's release (row 011-211), still holds a shutdown (review 0.1.322,
+    // B4); its error went to the release that started it.
+    if (closed === null) return closing.catch(() => {});
     closing = closing.catch(() => {}).then(() => closed.close());
     return closing;
   };
