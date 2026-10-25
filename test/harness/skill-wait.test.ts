@@ -100,6 +100,25 @@ describe("the skill's waits (005-68)", () => {
     }
   });
 
+  /*
+   * Row 011-206 (gh-84, gh-83, gh-88): the selection's word and reason to
+   * gate on, never a file's `state`, and a named test file Squeal does not run.
+   */
+  it("says in every copy of `commands.md` to gate on `selection.code` or `selection.result`, with the reasons", () => {
+    for (const dir of COPIES) {
+      const commands = read(dir, "references/commands.md");
+      expect(commands).toContain(
+        "Gate on `selection.code` or `selection.result`, never on a file's `state`: `current` says a result is up to date, not that it passes.",
+      );
+      expect(commands).toContain(
+        "`no-daemon`, `lapsed`, `on-hold`, `paused`, `focused`, `unsynced`, `unlisted`, `pending`, `not-current`, `not-run` or `unmatched`",
+      );
+      expect(commands).toContain(
+        "Squeal does not run it, the test files that read it are not it, and with them passing the selection has no verdict (exit 3)",
+      );
+    }
+  });
+
   /* Task 004-66, at the coordinator's request: `run --slow --wait` without a verdict exits 3. */
   it("gives `run --slow --wait`'s exit 3 in `commands.md`", () => {
     expect(read(claude, "references/commands.md")).toContain(
