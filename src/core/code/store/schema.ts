@@ -22,6 +22,8 @@ import type { Migration } from "../../store/schema.js";
  *   edit of the check's body with its identity kept, `NULL` before one
  *   (D6's first edit to a standing failure).
  * - `coverage`: wave 2's records by result key and provider version (D8).
+ *   `recorded_at` is each record's own: a record stored again at its key
+ *   gets a later one (row 015-44).
  */
 const V1 = `
 CREATE TABLE meta (
@@ -118,3 +120,16 @@ export const CODE_MIGRATIONS: readonly Migration[] = [(db) => db.exec(V1)];
 
 /** The code store's `user_version` this Squeal writes and understands. */
 export const CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
+
+/**
+ * Additive indexes, by name, made at open when absent with no `user_version`
+ * raise, so a daemon that predates one keeps the store and SQLite keeps the
+ * index current on its writes too; a reader works without them (row 015-44,
+ * the coordinator's decision of 2026-10-25). `coverage_stored` gives a
+ * record's `recorded_at` without its blob: a `coverage` row holds the blob,
+ * 25 KiB on 011-197's store, so the table's own key reads take 0.1 ms each.
+ */
+export const CODE_INDEXES: Readonly<Record<string, string>> = {
+  coverage_stored:
+    "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
+};

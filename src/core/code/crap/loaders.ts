@@ -38,9 +38,13 @@ export type UnknownCause =
  */
 export type PendingReason = "imports" | "run" | "record";
 
-/** One loader's condition: ready with a record, waiting for one, or unable to have one. */
+/**
+ * One loader's condition: ready with a record, waiting for one, or unable
+ * to have one. A ready one names the record by when it was stored (row
+ * 015-44).
+ */
 export type LoaderCondition =
-  | { readonly kind: "ready"; readonly key: CheckKey }
+  | { readonly kind: "ready"; readonly key: CheckKey; readonly storedAt: EpochMs }
   | { readonly kind: "pending"; readonly reason: PendingReason; readonly until?: EpochMs }
   | { readonly kind: "unknown"; readonly cause: UnknownCause };
 
@@ -75,7 +79,7 @@ export interface LoaderInputs {
   readonly main: Pick<Store, "testFileKeys" | "results">;
   /** This worktree's own closures; `null` while its scheduler has not started. */
   readonly closures: ClosureIndex | null;
-  readonly coverage: Pick<CodeCoverageRepo, "has">;
+  readonly coverage: Pick<CodeCoverageRepo, "storedAt">;
   readonly worktreeId: WorktreeId;
   readonly now: EpochMs;
   /** The records' writer has payloads to map or results to wait for. */
@@ -93,21 +97,26 @@ function conditionAt(
 ): LoaderCondition {
   if (key === null) return { kind: "unknown", cause: "unkeyed" };
   if (queued) return { kind: "pending", reason: "run" };
+  const record = { resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION };
+  const keep = (condition: LoaderCondition) => {
+    inputs.settled?.set(key, condition);
+    return condition;
+  };
   const settled = inputs.settled?.get(key);
-  if (settled !== undefined) return settled;
+  if (settled?.kind === "ready") {
+    // Row 015-44: a later run at the key may have stored its record over the one it names.
+    const storedAt = inputs.coverage.storedAt(record);
+    if (storedAt === settled.storedAt) return settled;
+    if (storedAt !== null) return keep({ kind: "ready", key, storedAt });
+    inputs.settled?.delete(key);
+  } else if (settled !== undefined) return settled;
   const results = inputs.main.results
     .byKey(key, 0)
     .filter((r) => r.check.project === testFile.project && r.check.testPath === testFile.path);
   if (results.length === 0) return { kind: "pending", reason: "run" };
-  let condition: LoaderCondition | null = null;
-  if (results.some((r) => r.outcome === "skip")) condition = { kind: "unknown", cause: "skipped" };
-  else if (inputs.coverage.has({ resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION })) {
-    condition = { kind: "ready", key };
-  }
-  if (condition !== null) {
-    inputs.settled?.set(key, condition);
-    return condition;
-  }
+  if (results.some((r) => r.outcome === "skip")) return keep({ kind: "unknown", cause: "skipped" });
+  const storedAt = inputs.coverage.storedAt(record);
+  if (storedAt !== null) return keep({ kind: "ready", key, storedAt });
   const stored = Math.max(...results.map((r) => r.provenance.recordedAt));
   const until = stored + RECORD_WAIT_MS;
   if (until > inputs.now) return { kind: "pending", reason: "record", until };

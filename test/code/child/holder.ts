@@ -6,21 +6,31 @@
  *                            open meets the lock at its switch into WAL
  *   holder <path> migrate    a file in WAL, migrated inside the held
  *                            transaction: the open meets it at its migration
+ *   holder <path> index      a migrated file without the coverage records'
+ *                            index, made inside the held transaction: the
+ *                            open meets it as it makes the index (row 015-44)
  *
  * Prints `held` once the lock is taken and exits 0 after it commits.
  */
 import { DatabaseSync } from "node:sqlite";
-import { CODE_MIGRATIONS, CODE_SCHEMA_VERSION } from "../../../src/core/code/store/schema.js";
+import {
+  CODE_INDEXES,
+  CODE_MIGRATIONS,
+  CODE_SCHEMA_VERSION,
+} from "../../../src/core/code/store/schema.js";
 
 const [path, mode] = process.argv.slice(2);
-if (!path || (mode !== "rollback" && mode !== "migrate")) {
-  throw new Error("usage: holder <path> rollback|migrate");
+if (!path || (mode !== "rollback" && mode !== "migrate" && mode !== "index")) {
+  throw new Error("usage: holder <path> rollback|migrate|index");
 }
 const db = new DatabaseSync(path);
 if (mode === "rollback") {
   db.exec("CREATE TABLE holder (x)");
   db.exec("BEGIN IMMEDIATE");
   db.exec("INSERT INTO holder VALUES (1)");
+} else if (mode === "index") {
+  db.exec("BEGIN IMMEDIATE");
+  for (const index of Object.values(CODE_INDEXES)) db.exec(index);
 } else {
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("BEGIN IMMEDIATE");
