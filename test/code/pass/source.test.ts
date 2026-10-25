@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { headAfterMove, mainStoreSource } from "../../../src/core/code/pass/index.js";
-import { type CommitSha, headMoveMetaKey } from "../../../src/core/types/index.js";
+import { type CommitSha, headMoveMetaKey, refinedMetaKey } from "../../../src/core/types/index.js";
 import { freshStore, WT } from "../../state/helpers.js";
 
 /**
@@ -96,5 +96,33 @@ describe("headAfterMove", () => {
     expect(headAfterMove(undefined, ["a", "a"])).toBe("a");
     expect(headAfterMove(undefined, [null])).toBeNull();
     expect(headAfterMove(undefined, [])).toBeNull();
+  });
+});
+
+describe("the revision the runners listed up to, from the main store (row 015-52)", () => {
+  const store = (refined: string | null) => {
+    const main = freshStore();
+    for (let i = 1; i <= 3; i++) {
+      main.revisions.append({
+        worktreeId: WT,
+        createdAt: i,
+        head: "a",
+        dirty: false,
+        trigger: "watch",
+        changes: [{ path: "src/a.ts", oldHash: null, newHash: `h${i}` }],
+      });
+    }
+    if (refined !== null) main.meta.set(refinedMetaKey(WT), refined);
+    return mainStoreSource(main, WT, () => []);
+  };
+
+  it("gives the refined revision, at most the latest", () => {
+    expect(store("2").listedRevision()).toBe(2);
+    expect(store("5").listedRevision()).toBe(3);
+  });
+
+  it("gives the latest when no daemon recorded one, as the header reads it", () => {
+    expect(store(null).listedRevision()).toBe(3);
+    expect(store("x").listedRevision()).toBe(3);
   });
 });

@@ -4,6 +4,7 @@ import {
   parseHeadMove,
   type RelativePath,
   type RevisionNumber,
+  refinedMetaKey,
   type Store,
   type WorktreeId,
 } from "../../types/index.js";
@@ -11,7 +12,8 @@ import type { PassSource } from "./types.js";
 
 /**
  * The pass's reads of a worktree's main store: revisions (011 C2), the stat
- * cache's blob ids and sizes (C3) and the test files the runners list.
+ * cache's blob ids and sizes (C3), the test files the runners list and the
+ * revision they listed up to (`refinedMetaKey`).
  * `ignored` is the scheduler's extra files, which git ignores.
  */
 export function mainStoreSource(
@@ -55,6 +57,11 @@ export function mainStoreSource(
       store.fileHashes
         .list(worktreeId)
         .map((record) => ({ path: record.path, hash: record.hash, size: record.size })),
+    listedRevision: () => {
+      const latest = store.revisions.latest(worktreeId)?.number ?? 0;
+      const refined = Number(store.meta.get(refinedMetaKey(worktreeId)) ?? Number.NaN);
+      return Number.isInteger(refined) ? Math.min(refined, latest) : latest;
+    },
     testFiles: () => store.testFileKeys.list(worktreeId).map((row) => row.testFile.path),
     ignored,
   };
