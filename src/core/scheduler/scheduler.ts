@@ -87,6 +87,11 @@ interface InFlight {
   readonly held: AbortController | null;
 }
 
+/** Row 011-198: `run --all` gives no verdict rather than one at a revision older than the tree. */
+const NO_PASS =
+  "the change feed delivered no reconciliation pass that started after the request " +
+  "(its pass failed, or the daemon closed first), so no checkpoint was planned";
+
 /** Creates the scheduler of one worktree. Call `start` before anything else. */
 export function createScheduler(options: SchedulerOptions): Scheduler {
   return new TierScheduler(options);
@@ -533,7 +538,8 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Queues the checkpoint at once, unless it needs the runner: while a
+   * Queues the checkpoint once a pass that started after the request was
+   * delivered (`passes`, row 011-198), unless it needs the runner: while a
    * runner failure is outstanding the runner is retried first, and while a
    * revision waits for its runner part the checkpoint follows it. A warm-up
    * (`observeIgnored`) runs every runnable file forced, in a checkpoint of
@@ -542,6 +548,12 @@ class TierScheduler implements Scheduler {
    * that lane's test files (task 004-61).
    */
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
+    const passes = this.options.passes;
+    if (passes !== undefined) {
+      const asked = passes.started();
+      await passes.pass();
+      if ((passes.delivered()?.number ?? 0) <= asked) throw new Error(NO_PASS);
+    }
     const warmUp = request.observeIgnored === true;
     const force = request.force === true || warmUp;
     const lane = request.lane;
