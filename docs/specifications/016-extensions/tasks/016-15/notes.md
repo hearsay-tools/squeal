@@ -56,13 +56,23 @@ Every gap of the column is an absent record, which D3 accepts ("says nothing rat
 
 The coordinator, 2026-10-25, on this slice's requests: the column, no `user_version` raise; `WorktreeKeys.runnerOf` and the one `store-results.ts` line, each in a commit of its own; setup checks recorded too, with one statement in `Ledger#write` (`setup.ts` holds neither the store nor the keys). Nothing else under `src/core/scheduler/`.
 
-- Store: `addColumns` (`columns.ts`) runs at every open after `migrate`. It reads `pragma_table_info` and writes only when the column is missing, in `Connection.transaction`. A store busy past the busy timeout fails the open as a busy migration does (hooks read it as a busy store, `status/open.ts`) and is left as it was. `runnerColumn` (`codec.ts`) guards each write and read on a store without the column.
-- Writes: `results.putMany(records, runner)` records the runner of each newest result, so a check takes the runner of its latest run, not its first. `checks.recordRunner(check, runner)` records a setup check's runner, which has no stored result.
-- Reads: `checks.runnerOf(check)`; `withDependencies` says the sentence beside a check recorded as `vitest` or `node-test`.
+- Store: `addColumns` (`columns.ts`) runs at every open after `migrate`. It reads `pragma_table_info` and writes only when the column is missing, in `Connection.transaction`. A store busy past the busy timeout fails the open as a busy migration does (hooks read it as a busy store, `status/open.ts`) and is left as it was.
+- Writes and reads as first landed (`checks.runner`, one value per check) are replaced by the repair below.
+
+## Repair: review 0.1.303 B1
+
+The review proved that one runner per check is wrong. `checks` is shared by every worktree, and a file-level check has no test name. So a pytest doctest of `docs/example.js` in one worktree and a Vitest file of the same path in another are one check, and each `putMany` overwrote the one value. The coordinator's repair brief, 2026-10-25: the runner moves to the result, the setup producer to this worktree's own state, and `checks.runner` goes with no migration, since no release has it.
+
+- Store: `addColumns` adds `results.runner`, with no `user_version` raise. `putMany(records, runner)` writes it with each row, and `copyNewest` copies it. Every row at one key names one runner, whichever worktree stored it, because the key hashes `runnerName`. `codec.ts` is back to its state before this row: no column guard, since every store new code opens has the column (`openStore` fails otherwise).
+- Reads: `checks.runnerOf(check, key)` reads the row at that key. `withDependencies` takes the key from `readFailureKeys`: the key of the result this worktree's failing state holds, which the state sink records and older daemons record too (001-420). No key, no row or a NULL runner reads as none, so no sentence.
+- Setup checks: `checks.recordSetupRunner(worktreeId, check, runner)` keeps a list under the worktree meta row `setup-runners:<wt>`, and `setupRunnerOf` reads only this worktree's list. Not a `known_states` column: `knownStates.upsertMany` writes with `INSERT OR REPLACE`, which would empty it, and the sink is outside this row. `WorktreeRepo.remove` drops the row with the worktree's others. The ledger line passes its worktree.
+- Tests: `test/delivery/runner-collision.test.ts` runs the review's probe in both directions (pytest here and Vitest there, and the reverse) through the tool boundary and a registration, plus a setup record of this worktree and of another. All eight failed before the repair.
+- Dev stores that ran the first 016-15 build keep an unused `checks.runner` column. No statement names it.
 
 ## Gaps a later row may close
 
-- A check whose newest result an older daemon stored has no runner until a new daemon runs it. A lookup writes none, and results survive releases, so after an upgrade most stored checks read as unrecorded for a while. Attribution says nothing for them, as D3 states.
+- A result an older daemon stored has no runner until a new daemon stores that key again, and an older daemon storing a recorded key again empties it. A lookup writes none, and results survive releases, so after an upgrade most stored failures read as unrecorded for a while. Attribution says nothing for them, as D3 states.
+- A setup check's record stays in its worktree's list after its setup passes. It is read only beside that setup check's failure, and the list holds one entry per setup file.
 - The Node runner set is a list of names in `attribution.ts`. A runner that declares whether Node's lockfiles decide what it loads would remove it; that is a runner description, a 016 non-goal.
 
 ## The key-format alarm (011 C14)
