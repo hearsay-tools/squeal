@@ -198,6 +198,34 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         );
       });
     },
+    adopt(worktreeId, staged, measure, removed) {
+      return conn.transaction(() => {
+        // Set-based, so the switch costs a statement per kind of write, not one per state.
+        const written = conn.run(
+          `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
+             counted_at, blob, changed_at)
+           SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at
+           FROM states WHERE worktree_id = ? AND measure = ?
+           ON CONFLICT (worktree_id, check_id, measure) DO UPDATE SET
+             outcome = excluded.outcome, value = excluded.value, threshold = excluded.threshold,
+             counted_at = excluded.counted_at, blob = excluded.blob,
+             changed_at = excluded.changed_at`,
+          worktreeId,
+          staged,
+          measure,
+        );
+        if (removed.length > 0) {
+          conn.run(
+            `DELETE FROM states WHERE worktree_id = ? AND check_id IN (
+               SELECT c.id FROM json_each(?) j JOIN checks c ON c.path = j.value ->> 0
+                 AND c.qualified_name = j.value ->> 1 AND c.occurrence = j.value ->> 2)`,
+            worktreeId,
+            JSON.stringify(removed.map((c) => [c.path, c.qualifiedName, c.occurrence])),
+          );
+        }
+        return written;
+      });
+    },
   };
 }
 
