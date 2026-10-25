@@ -172,4 +172,36 @@ describe("a chain of coverage steps (row 015-42)", () => {
     expect(gets.sort()).toEqual(tests.map((path) => `key-${path}`));
     expect(rig.states("crap")).toEqual(["cold fail 42", "hot pass 12", "one pass 2"]);
   });
+
+  it("judges from the newer record a later run stored at a decoded record's key (review 0.1.305 B1)", async () => {
+    const rig = coverageRig();
+    await rig.edit({ "src/a.ts": "hot 12 h1\ncold 6 c1\n" });
+    const blob = rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "";
+    const ran = (lines: number[]) => ({
+      closure: ["src/a.ts"],
+      record: [sourceOf("src/a.ts", blob, 2, lines)],
+    });
+    rig.loader("test/a.test.ts", ran([1, 2]));
+    // Each record's read takes the budget: a step decodes it, and the next judges.
+    const coverage = rig.store.coverage;
+    const store = {
+      ...rig.store,
+      coverage: {
+        ...coverage,
+        get: (...args: Parameters<typeof coverage.get>) => {
+          rig.clock += STEP_BUDGET_MS + 1;
+          return coverage.get(...args);
+        },
+      },
+    };
+    const cache = new StepCache();
+    expect(rig.step({ store, cache })?.more).toBe(true);
+    // A later run at the key hit nothing; its record replaces the first, and the pass drops
+    // what results and records may move, as `soon` does.
+    rig.loader("test/a.test.ts", ran([]));
+    cache.invalidate();
+    for (let i = 0; i < 5; i++) if (rig.step({ store, cache })?.more !== true) break;
+    expect(rig.states("uncovered")).toEqual(["cold fail -", "hot fail -"]);
+    expect(rig.states("crap")).toEqual(["cold fail 42", "hot fail 156"]);
+  });
 });

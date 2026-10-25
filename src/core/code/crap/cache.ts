@@ -13,17 +13,20 @@ import type { Loaders } from "./loaders.js";
  * past its budget does not read and decode it all again. The loader map,
  * with each source's condition and signature from it, holds while keys and
  * results stay: the code pass drops it when results, records, a revision
- * or a wake may change it (`invalidate`). The decoded records hold for the
- * chain, since a record at a key stays the record of those bytes; they go
- * once a step ends the chain (`settle`), so they hold no memory between
- * chains.
+ * or a wake may change it (`invalidate`). A decoded record holds for the
+ * chain while its key keeps its bytes: a later run at a key stores its
+ * record over the first (review 0.1.305 B1), so after `invalidate` each is
+ * read again, and decoded again only when its bytes moved. They go once a
+ * step ends the chain (`settle`), so they hold no memory between chains.
  */
 export class StepCache {
   #loaders: Loaders | null = null;
   readonly #conditions = new Map<RelativePath, FileCondition>();
   /** By path: the signature, and the blob, counter version and threshold it was made at. */
   readonly #signatures = new Map<RelativePath, { readonly at: string; readonly value: string }>();
-  readonly #records = new Map<CheckKey, CoverageRecord>();
+  readonly #records = new Map<CheckKey, Decoded>();
+  /** Counts `invalidate`: a record decoded before the last one is read again. */
+  #epoch = 0;
 
   /** The loader map, read once while it holds. */
   loaders(read: () => Loaders): Loaders {
@@ -54,14 +57,18 @@ export class StepCache {
     return value;
   }
 
-  /** The record at `key`, decoded once in a chain; `null` when the store holds none. */
+  /** The record at `key`, decoded once in a chain while its bytes stay; `null` when the store holds none. */
   record(coverage: Pick<CodeCoverageRepo, "get">, key: CheckKey): CoverageRecord | null {
     const known = this.#records.get(key);
-    if (known !== undefined) return known;
+    if (known?.epoch === this.#epoch) return known.record;
     const bytes = coverage.get({ resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION });
-    if (bytes === null) return null;
-    const record = decodeRecord(bytes);
-    this.#records.set(key, record);
+    if (bytes === null) {
+      this.#records.delete(key);
+      return null;
+    }
+    const digest = createHash("sha1").update(bytes).digest("hex");
+    const record = known?.digest === digest ? known.record : decodeRecord(bytes);
+    this.#records.set(key, { digest, record, epoch: this.#epoch });
     return record;
   }
 
@@ -72,7 +79,7 @@ export class StepCache {
     work: () => boolean,
   ): boolean {
     for (const key of keys) {
-      if (this.#records.has(key)) continue;
+      if (this.#records.get(key)?.epoch === this.#epoch) continue;
       if (!work()) return false;
       this.record(coverage, key);
     }
@@ -83,11 +90,19 @@ export class StepCache {
     this.#loaders = null;
     this.#conditions.clear();
     this.#signatures.clear();
+    this.#epoch++;
   }
 
   settle(): void {
     this.#records.clear();
   }
+}
+
+/** A decoded record, the hash of the bytes it was decoded from, and the `invalidate` count it was read at. */
+interface Decoded {
+  readonly digest: string;
+  readonly record: CoverageRecord;
+  readonly epoch: number;
 }
 
 /**
