@@ -4,8 +4,9 @@ import type { Case } from "../../case.js";
  * Row 016-23: a listing of a git-ignored directory that another worktree's
  * run stored, read back by this one. The watcher sees no file in the
  * directory, so the candidate keys the listing by the names on disk here,
- * where a release before keyed it as none. An absent directory has no names
- * at either tree, and a tracked directory keys by its tracked names at both.
+ * where a release before keyed it as none. An absent directory keys as a
+ * marker (row 016-26), where a release before keyed it as none too, and a
+ * tracked directory keys by its tracked names at both.
  */
 
 const TEST = "test/a.test.ts";
@@ -46,7 +47,7 @@ export const IGNORED_LISTING: readonly Case[] = [
   {
     kind: "assemble",
     name: "a listing of an ignored directory absent here, read back",
-    why: "016-23, a residual: an absent directory has no names, so it keys as none at both trees, and a result a release before stored with the directory present is still found",
+    why: "016-26: an absent directory keys as a marker, where a release before keyed it as none, as 0.1.313 keyed the directory present; so the keys differ, and a result stored before 0.1.316 with the directory present is not inherited where it is absent",
     input: INPUT,
   },
   {
