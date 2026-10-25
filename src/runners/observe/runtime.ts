@@ -8,9 +8,9 @@ import { ownNodeOptions, UNOBSERVED } from "../process/recorders.js";
  * Bumped when the recorder sees more or other paths, so a pass stored while
  * they went unobserved runs once more. It enters the adapter version of a
  * runner that observes (spec 001 D3; task 001-132; 001-135 made it 2, 001-139
- * 3 for recursive listings).
+ * 3 for recursive listings, 016-17 4 for `mkdtemp` creates and `written`).
  */
-export const RECORDER_VERSION = "3";
+export const RECORDER_VERSION = "4";
 
 /** The env variable carrying the recorder's settings (`recorder.cjs`). */
 export const OBSERVE_VARIABLE = "SQUEAL_OBSERVE";
