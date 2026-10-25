@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { testFileId } from "../keys/index.js";
+import { isBusy } from "../store/index.js";
 import {
   type CheckId,
   type RelativePath,
@@ -20,6 +21,7 @@ import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
 import { priorityOf } from "./queue.js";
+import { openMoves } from "./rekeyed-moves.js";
 import { restoreReruns } from "./rerun.js";
 import { isCatchUp, readEnvironments, resolveClosures } from "./revision.js";
 import { runnerPartBound } from "./runner-work-bound.js";
@@ -38,7 +40,11 @@ import { runnerPartBound } from "./runner-work-bound.js";
  *    runner when no list is stored. Untracked closure paths are hashed first.
  * 3. Lookup. A hit is safe with another worktree's closure list: equal
  *    contents import the same files (B1). A miss will run, so it is keyed
- *    again from this worktree's own closure and looked up once more.
+ *    again from this worktree's own closure and looked up once more. Under
+ *    `lookup-only` the first lookup commits, with the listed counts, before
+ *    that recheck, and the recheck commits again (011 C9 as amended
+ *    2026-10-25, row 011-227): a file the recheck finds current is never
+ *    queued for its first key.
  * 4. One checkpoint of kind `baseline` over the misses and the unkeyed
  *    files, run in tiers or, with `baseline.onStart: "lookup-only"` (the
  *    default, 001 D11 as amended 2026-10-23), abandoned unless empty. An
@@ -169,6 +175,16 @@ export async function baseline(
     ledger.settle(files, NOTHING_CHANGED, { checkpointId, queueMisses: false, heldFails });
   const first = lookup(refs);
   const recheck = first.filter((file) => fromStore.has(file.id));
+  const lookupOnly = policy.baseline.onStart === "lookup-only";
+  const listedAt = (number: RevisionNumber) => ({
+    refined: number,
+    ...(ledger.listingFailed ? {} : { listed: number }),
+  });
+  // The handover reads the moves as the last daemon left them, before this ledger's first commit.
+  const open = openMoves(store, worktreeId);
+  // Row 011-227: the listed counts show before the recheck; the recheck commits again.
+  const early =
+    lookupOnly && recheck.length > 0 && commitFirst(ledger, listedAt(ledger.revision.number));
   await resolveClosures(
     context,
     recheck.map((file) => file.ref),
@@ -203,11 +219,10 @@ export async function baseline(
     ledger.revision.number,
     [...misses, ...unkeyed, ...forced].map((file) => file.ref),
   );
-  const lookupOnly = policy.baseline.onStart === "lookup-only";
   if (lookupOnly) ledger.checkpoints.finish("abandoned");
   // Only a predecessor's queued work runs, unless the start resumes a rest (011-33, 011-91).
   const holds = lookupOnly && !resumesRest;
-  const handed = handover(context, ledger, previousKeys);
+  const handed = handover(context, ledger, previousKeys, open);
   // What no runner saw change is its revision's edit here, catch-up from 10 keyed paths (011-22).
   const changed = new Set([...unseen.flatMap((paths) => [...paths]), ...handed.changed]);
   const recent = new Set(handed.first);
@@ -244,11 +259,27 @@ export async function baseline(
   resumeOwed(ledger, owed);
   if (failures.size > 0) block(ledger, failures);
   const { number } = ledger.revision;
-  ledger.commit({ refined: number, ...(ledger.listingFailed ? {} : { listed: number }) });
+  // One listing per start: the first commit recorded it (row 015-52).
+  ledger.commit(early ? { refined: number } : listedAt(number));
   const persisted = persistedNoteTexts(store, worktreeId);
   const testFiles = testFilePaths(ledger);
   for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFiles), testFiles.length)) {
     if (!persisted.has(text)) context.note(text);
+  }
+}
+
+/**
+ * Row 011-227: commits the first lookup before the recheck; whether it did.
+ * A busy store gives up before writing anything and the ledger owes it all
+ * again (row 011-126), so the baseline's last commit writes it.
+ */
+function commitFirst(ledger: Ledger, options: Parameters<Ledger["commit"]>[0]): boolean {
+  try {
+    ledger.commit(options);
+    return true;
+  } catch (error) {
+    if (isBusy(error)) return false;
+    throw error;
   }
 }
 
