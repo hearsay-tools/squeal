@@ -25,6 +25,17 @@ export function observedMetaKey(project: ProjectName): string {
 }
 
 /**
+ * Spec 016 D4 (row 007-56): of the observed paths, those that put their test
+ * file in `direct` when they change (`ObservedInputs.direct`: what a process
+ * the test file started imported). The same map and rule as
+ * {@link observedMetaKey}, in a key of its own: an older daemon parses that
+ * key as test path to paths.
+ */
+export function observedDirectMetaKey(project: ProjectName): string {
+  return `observedDirect.${project}`;
+}
+
+/**
  * The closure entry of a listed directory: its path with a trailing `/`, the
  * worktree root `./`. It hashes as the directory's entry names
  * (`Listings`), so a file added to it or removed re-keys the test file.
@@ -72,21 +83,26 @@ export function gitEntryByKind(root: AbsolutePath, hashOf: HashSource): HashSour
 }
 
 /**
- * This worktree's view of the shared observed sets. Read from the store when
- * created and at each `refresh`; `add` merges into the store in one
- * transaction, so two worktrees' daemons never drop each other's paths.
+ * This worktree's view of the shared observed sets and their `direct`
+ * subsets. Read from the store when created and at each `refresh`; `add`
+ * merges into the store in one transaction, so two worktrees' daemons never
+ * drop each other's paths.
  */
 export class ObservedSets {
   readonly #sets = new Map<string, Set<RelativePath>>();
-  readonly #raw = new Map<ProjectName, string | null>();
+  readonly #direct = new Map<string, Set<RelativePath>>();
+  readonly #raw = new Map<ProjectName, { paths: string | null; direct: string | null }>();
 
   constructor(private readonly store: Store) {}
 
   /** The observed paths of `testFile`, sorted; listing paths among them. Reads its project once. */
   of(testFile: TestFileRef): readonly RelativePath[] {
-    if (!this.#raw.has(testFile.project)) this.refresh([testFile.project]);
-    const set = this.#sets.get(id(testFile));
-    return set === undefined ? [] : [...set].sort(compare);
+    return this.#read(this.#sets, testFile);
+  }
+
+  /** The observed paths of `testFile` that put it in `direct` (016 D4), sorted. */
+  directOf(testFile: TestFileRef): readonly RelativePath[] {
+    return this.#read(this.#direct, testFile);
   }
 
   /**
@@ -96,42 +112,76 @@ export class ObservedSets {
   refresh(projects: Iterable<ProjectName>): TestFileRef[] {
     const grown: TestFileRef[] = [];
     for (const project of new Set(projects)) {
-      const raw = this.store.meta.get(observedMetaKey(project));
-      if (this.#raw.get(project) === raw) continue;
+      const raw = {
+        paths: this.store.meta.get(observedMetaKey(project)),
+        direct: this.store.meta.get(observedDirectMetaKey(project)),
+      };
+      const last = this.#raw.get(project);
+      if (last?.paths === raw.paths && last.direct === raw.direct) continue;
       this.#raw.set(project, raw);
-      for (const [path, paths] of Object.entries(parse(raw))) {
+      for (const [path, paths] of Object.entries(parse(raw.paths))) {
         const testFile = { project, path };
-        if (this.#merge(testFile, paths).length > 0) grown.push(testFile);
+        if (merge(this.#sets, testFile, paths).length > 0) grown.push(testFile);
+      }
+      for (const [path, paths] of Object.entries(parse(raw.direct))) {
+        merge(this.#direct, { project, path }, paths);
       }
     }
     return grown;
   }
 
-  /** Adds `paths` to `testFile`'s set here and in the store. Returns the new ones. */
-  add(testFile: TestFileRef, paths: readonly RelativePath[]): RelativePath[] {
-    const added = this.#merge(testFile, paths);
-    if (added.length === 0) return [];
+  /**
+   * Adds `paths` to `testFile`'s set, and `direct`, a subset of them, to its
+   * `direct` subset, here and in the store. Returns the new paths.
+   */
+  add(
+    testFile: TestFileRef,
+    paths: readonly RelativePath[],
+    direct: readonly RelativePath[] = [],
+  ): RelativePath[] {
+    const added = merge(this.#sets, testFile, paths);
+    const marked = merge(this.#direct, testFile, direct);
+    if (added.length === 0 && marked.length === 0) return [];
     const key = observedMetaKey(testFile.project);
+    const directKey = observedDirectMetaKey(testFile.project);
     this.store.transaction(() => {
-      const merged = parse(this.store.meta.get(key));
-      const known = new Set([...(merged[testFile.path] ?? []), ...added]);
-      merged[testFile.path] = [...known].sort(compare);
-      const value = Object.fromEntries(Object.entries(merged).sort(([a], [b]) => compare(a, b)));
-      this.store.meta.set(key, JSON.stringify(value));
+      if (added.length > 0) {
+        this.store.meta.set(key, merged(this.store.meta.get(key), testFile, added));
+      }
+      if (marked.length > 0) {
+        this.store.meta.set(directKey, merged(this.store.meta.get(directKey), testFile, marked));
+      }
       // other test files' growth this write merged is read at the next `refresh`
       this.#raw.delete(testFile.project);
     });
     return added;
   }
 
-  #merge(testFile: TestFileRef, paths: readonly RelativePath[]): RelativePath[] {
-    const key = id(testFile);
-    const known = this.#sets.get(key) ?? new Set<RelativePath>();
-    const added = paths.filter((p) => !known.has(p));
-    for (const path of added) known.add(path);
-    this.#sets.set(key, known);
-    return added;
+  #read(sets: Map<string, Set<RelativePath>>, testFile: TestFileRef): readonly RelativePath[] {
+    if (!this.#raw.has(testFile.project)) this.refresh([testFile.project]);
+    const set = sets.get(id(testFile));
+    return set === undefined ? [] : [...set].sort(compare);
   }
+}
+
+function merge(
+  sets: Map<string, Set<RelativePath>>,
+  testFile: TestFileRef,
+  paths: readonly RelativePath[],
+): RelativePath[] {
+  const key = id(testFile);
+  const known = sets.get(key) ?? new Set<RelativePath>();
+  const added = paths.filter((p) => !known.has(p));
+  for (const path of added) known.add(path);
+  sets.set(key, known);
+  return added;
+}
+
+/** The stored map `raw` with `added` merged into `testFile`'s entry, as stored: sorted. */
+function merged(raw: string | null, testFile: TestFileRef, added: readonly RelativePath[]): string {
+  const map = parse(raw);
+  map[testFile.path] = [...new Set([...(map[testFile.path] ?? []), ...added])].sort(compare);
+  return JSON.stringify(Object.fromEntries(Object.entries(map).sort(([a], [b]) => compare(a, b))));
 }
 
 /**
