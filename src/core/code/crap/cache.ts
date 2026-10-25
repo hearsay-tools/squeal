@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { compare } from "../../fs/index.js";
 import type { CodeFile } from "../../types/code.js";
-import type { CheckKey, RelativePath } from "../../types/index.js";
+import type { CheckKey, EpochMs, RelativePath } from "../../types/index.js";
 import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../coverage/record.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import type { CodeCoverageRepo } from "../store/types.js";
@@ -52,11 +52,15 @@ export class StepCache {
     return condition;
   }
 
-  /** `signatureOf`, made again only when the file's blob or counter version or the threshold moves. */
+  /**
+   * `signatureOf`, made again only when the file's blob or counter version
+   * or the threshold moves, or after `invalidate`, which a stored record
+   * calls.
+   */
   signature(
     file: Pick<CodeFile, "path" | "blob" | "counterVersion">,
     threshold: number,
-    loaders: readonly { readonly key: CheckKey }[],
+    loaders: readonly SignedLoader[],
   ): string {
     const at = `${file.blob}\0${file.counterVersion}\0${threshold}`;
     const known = this.#signatures.get(file.path);
@@ -115,18 +119,24 @@ interface Decoded {
   readonly epoch: number;
 }
 
+/** A ready loader as a signature reads it: its key, and when its record was stored. */
+type SignedLoader = { readonly key: CheckKey; readonly storedAt: EpochMs };
+
 /**
  * What a judgement read, hashed so the summary stays small: the blob, the
  * counter version its CC is from, `crap.threshold` (review 0.1.297 B1 and
- * B2) and its loaders' keys.
+ * B2), and its loaders' keys, each with when its record was stored, so a
+ * record stored again at a key judges again (row 015-44).
  */
 export function signatureOf(
   file: Pick<CodeFile, "blob" | "counterVersion">,
   threshold: number,
-  loaders: readonly { readonly key: CheckKey }[],
+  loaders: readonly SignedLoader[],
 ): string {
-  const keys = loaders.map((l) => l.key).sort(compare);
+  const records = loaders.map((l) => `${l.key} ${l.storedAt}`).sort(compare);
   return createHash("sha1")
-    .update([file.blob, `counter ${file.counterVersion}`, `crap ${threshold}`, ...keys].join("\n"))
+    .update(
+      [file.blob, `counter ${file.counterVersion}`, `crap ${threshold}`, ...records].join("\n"),
+    )
     .digest("hex");
 }
