@@ -3,9 +3,15 @@ import {
   MESSAGE_CAP_CHARS,
   SQUEAL_COMMAND,
 } from "../../core/delivery/index.js";
-import { excludedFilesText, excludedProjectsText } from "../../core/text.js";
+import { excludedProjectsText } from "../../core/text.js";
 import type { Registration } from "../../core/types/index.js";
-import { type Coverage, VITEST_ONLY } from "./coverage.js";
+import {
+  type Covered,
+  type CoveredProject,
+  DESCRIPTIONS,
+  type RunnerDescription,
+} from "../../runners/descriptions.js";
+import { type Coverage, DEFAULT_COVERAGE } from "./coverage.js";
 
 /**
  * The longest primer: the coverage list folds its projects into "and N more",
@@ -42,15 +48,16 @@ type WaitForm = "paths" | "plain" | "short";
  * How to work with Squeal, decided by the human (task 001-88). The one
  * prohibition D6's factual wording allows, paired with what to do instead.
  * `command` is how it names the CLI (spec 002 D1 as amended). It names the
- * runners the daemon builds (spec 003 lessons, defect 1: told "Vitest",
- * agents ran node:test themselves; review wave 13aa, B1: a node:test-only
- * repository is never told Vitest is covered).
+ * runners the daemon builds (spec 003 lessons, defect 1: agents told of one
+ * runner ran another's tests themselves; review wave 13aa, B1: a repository
+ * is never told of a runner the daemon does not build there).
  *
- * Task 001-234: it lists what Squeal covers, the Vitest config, each
- * node:test and pytest project with its globs (spec 007 D8), and the slow files as a count, then says
- * typecheck, build and any other test suite are not, so the agent can work
- * out what is left to run (005's pilot: every false "pass" came from an
- * uncovered node:test suite).
+ * Task 001-234: it lists what Squeal covers, each runner's config or its
+ * projects with their globs (spec 007 D8), and the slow files as a count,
+ * then says typecheck, build and any other test suite are not, so the agent
+ * can work out what is left to run (005's pilot: every false "pass" came
+ * from an uncovered suite). What it says of a runner is that runner's
+ * description (spec 016 D5).
  *
  * With slow files declared (spec 004 D8, D9) it says what the policy
  * requires of them before the agent finishes, with the header line that
@@ -62,8 +69,11 @@ type WaitForm = "paths" | "plain" | "short";
  * silent and a message means a check changed (an agent with only the primer
  * took silence for lost messages), and the primer defines a revision once.
  */
-export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VITEST_ONLY): string {
-  const names = runnerNames(coverage);
+export function primer(
+  command: string = SQUEAL_COMMAND,
+  coverage: Coverage = DEFAULT_COVERAGE,
+): string {
+  const names = runnersOf(coverage).map((runner) => runner.name);
   const sentences = (covers: string, naming: Naming, wait: WaitForm) =>
     [
       `${PRIMER_OPENING}${listed(names, "and")} tests in the background after each edit; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working; do not run ${listed(names, "or")} to learn whether your edits broke something.`,
@@ -75,12 +85,15 @@ export function primer(command: string = SQUEAL_COMMAND, coverage: Coverage = VI
       covers,
       notCovered(coverage),
     ].join(" ");
-  // Fold the node:test and pytest projects first, then name the CLI less, until the primer fits;
+  // Fold the runners' projects first, then name the CLI less, until the primer fits;
   // the path wait joins only where it fits without folding more (task 005-68). Before the
   // CLI goes unnamed, the wait sentence drops its example, so a long CLI is still named at
   // the wait (task 004-78: a 217-character Codex CLI went unnamed and agents ran a bare wait).
   let text = "";
-  const most = Math.max(coverage.nodeTest.length, coverage.pytest?.length ?? 0);
+  const most = Math.max(
+    0,
+    ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0),
+  );
   for (const naming of ["every", "first", "none"] as const) {
     for (let node = most; node >= 0; node--) {
       text = sentences(coversSentence(coverage, node), naming, "plain");
@@ -143,15 +156,15 @@ function retrySentence(command: string, naming: Naming): string {
   return `For a failure from load or a stopped service: ${cli} <file> --reason load|environment\`, never past a real one.`;
 }
 
-/** The runners the daemon builds: Vitest when detected or when nothing else is configured (spec 003 D7). */
-function runnerNames(coverage: Coverage): string[] {
-  const nodeTest = coverage.nodeTest.length > 0;
-  const pytest = (coverage.pytest?.length ?? 0) > 0;
-  return [
-    ...(coverage.vitest || (!nodeTest && !pytest) ? ["Vitest"] : []),
-    ...(nodeTest ? ["node:test"] : []),
-    ...(pytest ? ["pytest"] : []),
-  ];
+/** The runners the daemon builds: each one built, and the fallback when no other is (spec 003 D7). */
+function runnersOf(coverage: Coverage): RunnerDescription[] {
+  const others = DESCRIPTIONS.some((runner) => !runner.fallback && runner.built(coverage));
+  return DESCRIPTIONS.filter((runner) => runner.built(coverage) || (runner.fallback && !others));
+}
+
+/** The projects a runner's entry lists, or `null` for an entry named by its config. */
+function projectsOf(covered: Covered): readonly CoveredProject[] | null {
+  return "projects" in covered ? covered.projects : null;
 }
 
 /** `words` as "a and b", or "a, b and c" past two (spec 007 D8: the third runner). */
@@ -160,27 +173,11 @@ function listed(words: readonly string[], conjunction: "and" | "or"): string {
   return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
 }
 
-/** What Squeal covers, naming the first `node` node:test and pytest projects of each runner. */
+/** What Squeal covers, naming the first `node` projects of each runner that lists projects. */
 function coversSentence(coverage: Coverage, node: number): string {
-  const suites = runnerNames(coverage).includes("Vitest")
-    ? [
-        `${coverage.vitestConfig === null ? "Vitest" : `Vitest (${coverage.vitestConfig})`}${excluded(coverage)}`,
-      ]
-    : [];
-  if (coverage.nodeTest.length > 0) {
-    const entries = coverage.nodeTest.map(
-      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`,
-    );
-    const list = named("project", entries, node);
-    suites.push(node === 0 ? `node:test (${list})` : `node:test ${list}`);
-  }
-  if (coverage.pytest !== undefined && coverage.pytest.length > 0) {
-    const entries = coverage.pytest.map(
-      ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`,
-    );
-    const list = named("project", entries, node);
-    suites.push(node === 0 ? `pytest (${list})` : `pytest ${list}`);
-  }
+  const suites = runnersOf(coverage).map((runner) =>
+    suite(runner.name, runner.covered(coverage), node),
+  );
   const files = coverage.slow?.files;
   const slow =
     coverage.slow === null
@@ -191,12 +188,24 @@ function coversSentence(coverage: Coverage, node: number): string {
   return `Squeal covers ${listed(suites, "and")}${slow}.`;
 }
 
+/** A runner's entry: its name with its config, or with its first `shown` projects. */
+function suite(runner: string, covered: Covered, shown: number): string {
+  if (!("projects" in covered)) {
+    const config = covered.config === null ? runner : `${runner} (${covered.config})`;
+    return `${config}${excluded(covered.excludedProjects)}`;
+  }
+  const entries = covered.projects.map(
+    ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`,
+  );
+  const list = named("project", entries, shown);
+  return shown === 0 ? `${runner} (${list})` : `${runner} ${list}`;
+}
+
 /**
- * Task 001-349: the Vitest projects `vitest.excludeProjects` lists, as not
- * run, so the agent runs them itself when its change needs them.
+ * Task 001-349: the projects of a runner that squeal.config.json excludes,
+ * as not run, so the agent runs them itself when its change needs them.
  */
-function excluded(coverage: Coverage): string {
-  const entries = coverage.vitestExcluded ?? [];
+function excluded(entries: readonly string[]): string {
   if (entries.length === 0) return "";
   const { text, plural } = excludedProjectsText(entries);
   return `; its ${text} ${plural ? "are" : "is"} not run, excluded by squeal.config.json`;
@@ -204,14 +213,15 @@ function excluded(coverage: Coverage): string {
 
 /**
  * Task 001-234: what Squeal does not cover, always whole; spec 004 D8 as
- * amended 2026-10-18 (task 004-81): with the `vitest.exclude` globs named.
+ * amended 2026-10-18 (task 004-81): with the test files each runner's
+ * excludes drop named, as its description names them.
  */
 function notCovered(coverage: Coverage): string {
-  const globs = coverage.vitestExcludedFiles ?? [];
+  const files = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
   const what =
-    globs.length === 0
+    files.length === 0
       ? "typecheck, build"
-      : `typecheck, build, the ${excludedFilesText(globs)}, which squeal.config.json excludes,`;
+      : `typecheck, build, the ${files.join(", the ")}, which squeal.config.json excludes,`;
   return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
 
@@ -278,7 +288,7 @@ export function trailingPrimer(text: string): string {
   return tail.length - 2 <= PRIMER_CAP_CHARS && !tail.slice(2).includes("\n") ? tail : "";
 }
 
-/** The primer as the Claude Code plugin says it, with `squeal` on PATH, for a Vitest-only policy. */
+/** The primer as the Claude Code plugin says it, with `squeal` on PATH, for the default coverage. */
 export const PRIMER = primer();
 
 /**
@@ -288,7 +298,7 @@ export const PRIMER = primer();
 export function withPrimer(
   registration: Registration,
   command: string = SQUEAL_COMMAND,
-  coverage: Coverage = VITEST_ONLY,
+  coverage: Coverage = DEFAULT_COVERAGE,
 ): string {
   const tail = primer(command, coverage);
   // Room the registration leaves for the primer within the message cap.

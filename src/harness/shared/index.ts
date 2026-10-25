@@ -14,7 +14,7 @@ export {
   openContext,
   usesSqueal,
 } from "./context.js";
-export { type Coverage, coverageOf, VITEST_ONLY } from "./coverage.js";
+export { type Coverage, coverageOf, DEFAULT_COVERAGE } from "./coverage.js";
 export { deliver, mayEdit } from "./deliver.js";
 export { denyOnRegression } from "./deny.js";
 export { ensure, ensureIfStale, SOCKET_TIMEOUT_MS, SPAWN_SETTLE_MS, settle } from "./ensure.js";

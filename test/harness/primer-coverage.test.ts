@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PolicyFile } from "../../src/core/types/index.js";
 import { CONTEXT_CAP_CHARS, capContext } from "../../src/harness/codex/output.js";
-import { VITEST_ONLY } from "../../src/harness/shared/coverage.js";
+import { DEFAULT_COVERAGE as VITEST_ONLY } from "../../src/harness/shared/coverage.js";
 import { PRIMER, PRIMER_CAP_CHARS, primer, REVISION } from "../../src/harness/shared/primer.js";
 import {
   CODEX,

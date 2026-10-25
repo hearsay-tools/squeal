@@ -1,5 +1,5 @@
-import { readFileSync, realpathSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { formatDelta, readLiveHeader } from "../../core/delivery/index.js";
 import {
@@ -7,22 +7,14 @@ import {
   testCommandDenied,
 } from "../../core/delivery/test-command-denied.js";
 import { resumeTurn } from "../../core/delivery/turn.js";
-import { isRecord } from "../../core/fs/index.js";
 import { testFileId } from "../../core/keys/index.js";
 import { readOmittedTestFiles } from "../../core/scheduler/omitted-test-files.js";
 import { testFileKeyOf } from "../../core/state/index.js";
-import type {
-  AbsolutePath,
-  DeltaKind,
-  EpochMs,
-  KnownState,
-  Policy,
-} from "../../core/types/index.js";
-import { discoverEnvironment, projectDir } from "../../runners/pytest/environment/discover.js";
+import type { DeltaKind, EpochMs, KnownState, Policy } from "../../core/types/index.js";
+import { commandContext, configuredProjects, describing } from "../../runners/descriptions.js";
 import type { HookContext, HookLocation } from "./context.js";
 import { recognizeTestCommand, type TestCommand } from "./test-command.js";
 import { resolveTestFiles } from "./test-command-files.js";
-import type { PytestHere } from "./test-command-pytest.js";
 import { testCommandReason } from "./test-command-reason.js";
 import { denialSentence } from "./text.js";
 
@@ -67,8 +59,8 @@ export async function denyOnRegression(
  * Spec 005 D8 step 1, before the store opens: the test command a `Bash`
  * call's `command` is, run from `cwd`, with `testCommand.denyWhenCurrent` on;
  * `null` for any other call, a working directory outside the worktree, or a
- * command that falls through. Away from the root only a pytest project's
- * command run from its `cwd` is recognized (spec 007 D8).
+ * command that falls through. Which commands a runner recognizes, and from
+ * which directory, is its description's (spec 016 D5).
  */
 export function testCommandOf(
   location: HookLocation,
@@ -80,32 +72,7 @@ export function testCommandOf(
   const { root } = location;
   const cwd = realPath(call.cwd);
   if (cwd === null || (cwd !== root && !cwd.startsWith(`${root}/`))) return null;
-  return recognizeTestCommand(call.command, {
-    scripts: cwd === root ? rootScripts(root) : {},
-    nodeTest: policy.nodeTest,
-    pytest: pytestHere(root, cwd, policy.pytest),
-    atRoot: cwd === root,
-  });
-}
-
-/** The pytest projects whose `cwd` is `cwd`, each with its environment by 007 D2's discovery. */
-function pytestHere(
-  root: AbsolutePath,
-  cwd: string,
-  projects: Policy["pytest"],
-): readonly PytestHere[] {
-  return projects.flatMap((project) => {
-    const dir = projectDir(root, project);
-    if (realPath(dir) !== cwd) return [];
-    let env: AbsolutePath | null = null;
-    try {
-      const found = discoverEnvironment(root, project);
-      if (found.kind === "found") env = found.env;
-    } catch {
-      // An unreadable `.pdm-python` is no environment: only `pytest`, `python` and `uv run` match.
-    }
-    return [{ project, dir, env }];
-  });
+  return recognizeTestCommand(call.command, commandContext(policy, root, cwd));
 }
 
 /** `path`'s real path, as `findWorktreeRoot` resolves the root; `null` when it does not exist. */
@@ -114,19 +81,6 @@ function realPath(path: string): string | null {
     return realpathSync(resolve(path));
   } catch {
     return null;
-  }
-}
-
-/** The root `package.json`'s scripts; none when it is missing or unreadable. */
-function rootScripts(root: string): Readonly<Record<string, string>> {
-  try {
-    const manifest: unknown = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
-    return Object.fromEntries(
-      Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string"),
-    ) as Record<string, string>;
-  } catch {
-    return {};
   }
 }
 
@@ -139,12 +93,14 @@ function rootScripts(root: string): Readonly<Record<string, string>> {
  * no daemon is validating, the worktree is not listed, the runner part of
  * the revision is pending, the command does not resolve completely (the
  * listing left out a file the command runs, task 005-26), or one file is
- * pending, stale, unknown or without checks.
+ * pending, stale, unknown or without checks. `projects` are the projects of
+ * the policy the hook read; with the policy as it reads now, they name the
+ * listing's files that are not the fallback runner's (spec 003 D7).
  */
 export function denyCurrentTestCommand(
   context: HookContext,
   command: TestCommand,
-  nodeTest: Policy["nodeTest"],
+  projects: readonly { readonly name: string }[],
   now: EpochMs,
 ): string | null {
   const { store, consumer } = context;
@@ -155,18 +111,15 @@ export function denyCurrentTestCommand(
     const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
     if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
     if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
-    // Vitest's files are the listing's others: the policy's pytest projects are read only for it.
-    const live = command.runner === "vitest" ? readPolicy(context.root) : null;
-    // 004 D7: a file `vitest.exclude` drops is one a bare Vitest command still runs; read live, so
-    // an exclusion added since the last listing counts too (review 004 wave-12 B2).
-    if (live !== null && live.vitest.exclude.length > 0) return null;
-    const pytest = live?.pytest ?? [];
-    const names = new Set([...nodeTest, ...pytest].map((p) => p.name));
+    // Read live, so a policy change since the last listing counts too (review 004 wave-12 B2).
+    const live = readPolicy(context.root);
+    if (!describing(command).resolves(live)) return null;
+    const configured = new Set([...projects, ...configuredProjects(live)].map((p) => p.name));
     const files = resolveTestFiles(
       command,
       keys.map((k) => k.testFile),
       context.root,
-      names,
+      configured,
       readOmittedTestFiles(store, consumer.worktreeId),
     );
     if (files === null) return null;
