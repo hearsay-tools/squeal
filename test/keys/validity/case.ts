@@ -52,6 +52,12 @@ export interface ObserveInput {
   readonly testFile: string;
   /** Run as `node -e`, in the worktree. */
   readonly script: string;
+  /**
+   * The script prints each directory it made under a random name
+   * (`mkdtemp`), worktree-relative, one per line; each stands as
+   * `<temporary N>` in the outputs (row 016-17).
+   */
+  readonly temporary?: true;
 }
 
 /** Runs several worktrees stored under one key, and the worktree that looks it up. */
@@ -113,6 +119,24 @@ export interface AssembleInput {
   readonly after?: {
     readonly closures: readonly { readonly path: string; readonly imports: readonly string[] }[];
     readonly removed: readonly string[];
+  };
+  /**
+   * 016 D4: once this worktree keyed, a second worktree of the same store
+   * keys the same files and stores what its runs observed through its own
+   * keys: per test file, paths beyond the closure, and those a process the
+   * file started imported (`direct`); the project's start-up paths. This
+   * worktree then reads them back as a refinement does. A tree before D4
+   * keeps neither direct marks nor start-up paths.
+   */
+  readonly elsewhere?: {
+    readonly observed: readonly {
+      readonly path: string;
+      readonly paths: readonly string[];
+      readonly direct?: readonly string[];
+    }[];
+    readonly startup?: readonly string[];
+    /** Its start-up entry left unparsable, as a broken write would leave it. */
+    readonly malformed?: true;
   };
 }
 
@@ -239,6 +263,16 @@ export interface PytestInput {
   readonly affected?: readonly string[];
 }
 
+/** A fixture the node:test adapter runs on the driver's own Node (row 016-17). */
+export interface NodeTestInput {
+  /** The worktree's files. */
+  readonly files: Readonly<Record<string, string>>;
+  /** The project's test-file globs; default `test/*.test.mjs`. */
+  readonly include?: readonly string[];
+  /** In turn on one adapter: the files run. */
+  readonly runs: readonly { readonly files: readonly string[] }[];
+}
+
 export type Case = { readonly name: string; readonly why: string } & (
   | { readonly kind: "key"; readonly input: KeyInput }
   | { readonly kind: "rows"; readonly input: RowsInput }
@@ -248,6 +282,7 @@ export type Case = { readonly name: string; readonly why: string } & (
   | { readonly kind: "store"; readonly input: StoreInput }
   | { readonly kind: "adapter:vitest"; readonly input: VitestInput }
   | { readonly kind: "adapter:pytest"; readonly input: PytestInput }
+  | { readonly kind: "adapter:node-test"; readonly input: NodeTestInput }
 );
 
 export type CaseKind = Case["kind"];

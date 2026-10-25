@@ -4,9 +4,6 @@ import type {
   AbsolutePath,
   InvalidatedPath,
   PytestProject,
-  RelativePath,
-  RunnerAdapter,
-  RunReport,
   TestFileRef,
 } from "../../../../src/core/types/index.js";
 import { createPytestAdapter } from "../../../../src/runners/pytest/adapter.js";
@@ -17,7 +14,7 @@ import {
   type PytestPython,
   type Pythons,
 } from "../case.js";
-import { selectedOf, sortedRefs, storedOf } from "./reported.js";
+import { type Decided, decided, Kept, selectedOf, storedRun } from "./reported.js";
 import { writeTree } from "./shared.js";
 
 /*
@@ -115,51 +112,6 @@ async function heldDeadline<T>(ms: number, proof: string, run: () => Promise<T>)
   }
 }
 
-/** What the adapter decides before a row is stored, at one point of the case. */
-async function decided(adapter: RunnerAdapter, affected: readonly RelativePath[]) {
-  const environments = (await adapter.environment()).map(({ packages: _, ...e }) => e);
-  const files = await adapter.testFiles();
-  const closures: Record<string, readonly string[]> = {};
-  const checks: Record<string, unknown> = {};
-  for (const file of files) {
-    closures[file.path] = (await adapter.closure(file)).paths;
-    checks[file.path] = (await adapter.enumerate(file)).map((c) => ({
-      check: JSON.stringify(c.check),
-      location: c.location,
-    }));
-  }
-  const reached: Record<string, unknown> = {};
-  for (const path of affected) {
-    const { direct, transitive } = await adapter.affected([path]);
-    reached[path] = { direct: sortedRefs(direct), transitive: sortedRefs(transitive) };
-  }
-  return { environments, files: sortedRefs(files), closures, checks, affected: reached };
-}
-
-type Decided = Awaited<ReturnType<typeof decided>>;
-
-/**
- * A run's report as stored: a completed file whose closure and environment
- * files, as keyed before the run, lack a path the run loaded at start-up
- * is withheld (`RunReport.environmentObserved`).
- */
-function storedRun(report: RunReport, before: Decided) {
-  const stored = storedOf(report);
-  const loaded = (report.environmentObserved ?? []).flatMap((e) => e.paths);
-  const environment = before.environments.flatMap((e) => e.files);
-  const lacks = (file: TestFileRef) => {
-    const keyed = new Set([...(before.closures[file.path] ?? []), ...environment]);
-    return loaded.some((path) => !keyed.has(path));
-  };
-  const grown = new Set(sortedRefs(report.completedFiles.filter(lacks)));
-  return {
-    ...stored,
-    completed: stored.completed.filter((file) => !grown.has(file)),
-    withheld: [...new Set([...stored.withheld, ...grown])].sort(),
-    skipped: sortedRefs((report.skippedFiles ?? []).map((s) => s.testFile)),
-  };
-}
-
 /** Writes `edits` under `root`: a text, `null` to delete, absent to write the same bytes again. */
 function write(root: string, edits: NonNullable<PytestInput["runs"][number]["edits"]>) {
   const invalidated: InvalidatedPath[] = [];
@@ -205,17 +157,18 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
   });
   const ref = (path: string): TestFileRef => ({ project: PROJECT, path });
   const affected = input.affected ?? [];
+  const core = new Kept();
   const steps: Decided[] = [];
   const runs: ReturnType<typeof storedRun>[] = [];
   const loaded: unknown[] = [];
   const recreated: unknown[] = [];
   const failures: (string | null)[] = [];
   try {
-    steps.push(await decided(adapter, affected));
+    steps.push(await decided(adapter, affected, core));
     for (const [at, run] of input.runs.entries()) {
       if (run.edits !== undefined) {
         recreated.push(await adapter.invalidate(write(root, run.edits)));
-        steps.push(await decided(adapter, affected));
+        steps.push(await decided(adapter, affected, core));
       }
       const checks = run.checks?.map(({ path, texts }) => ({ testFile: ref(path), texts }));
       const ran = () =>
@@ -232,9 +185,10 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
       );
       const before = steps[steps.length - 1] as Decided;
       runs.push(storedRun(report, before));
+      core.add(report);
       loaded.push(report.environmentObserved ?? []);
       failures.push(report.failure);
-      steps.push(await decided(adapter, affected));
+      steps.push(await decided(adapter, affected, core));
     }
     recreated.push((await adapter.recheck?.()) ?? null);
   } finally {
