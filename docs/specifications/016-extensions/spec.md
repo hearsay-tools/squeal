@@ -106,6 +106,8 @@ The store step must keep 011 C7's compatibility rule. A daemon that finds a `use
 
 When the record is absent (a check an older daemon wrote), attribution says nothing rather than guess. A raise of `user_version` goes to the human first.
 
+Decided 2026-10-25 (the coordinator, open question 2, from row 016-15's probe in `tasks/016-15/notes.md`): the nullable column `checks.runner`, added at open when missing, with no `user_version` raise. An older daemon on the same store goes on without error and leaves the column empty. The `meta` map was rejected: it records a project, not a check, so a project name reused across runners or worktrees would give a pytest failure Vitest's sentence. The runner comes from the environment the key hashed, recorded where results and setup checks are stored.
+
 ### D4. One write path for observed paths (rows 007-47, 007-52, 007-56)
 
 Every runner reports what it observed through `RunReport`: per completed file in `observed`, and per project in `environmentObserved` (the start-up paths: node:test preloads, pytest session hooks). Only the core writes observed paths to the store, through `src/core/scheduler/observed.ts`. node:test and pytest observations then get the same treatment as Vitest's:
@@ -159,7 +161,7 @@ Each runner supplies a description in `src/runners/<runner>/describe.ts`:
 ## Open questions
 
 1. ~~Should the kit also run through a scratch daemon?~~ Answered 2026-10-25 from `research/core-defects.md` finding 3: not in 016. It ranks after one owner per rule and a model-based scheduler test (`status.md` amendment log).
-2. D3's store step: a column without a version raise, or a `meta` map. Owner: 016's coordinator, decided from the slice's evidence. A `user_version` raise goes to the human.
+2. ~~D3's store step: a column without a version raise, or a `meta` map.~~ Answered 2026-10-25: the column (D3).
 3. The rule for git-ignored observed paths, from row 016-19's count (survey O1). O8 and the older daemon were answered on 2026-10-25 (D4). Owner: the human.
 4. Should the kit replace the overlapping adapter-level tests (about a third of 1,221 lines, `research/runner-kit.md` finding 5), and share fixtures with the validity corpus? Owner: 016's coordinator, after wave 2.
 
