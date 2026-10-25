@@ -276,12 +276,12 @@ const SWEEPS: { name: string; base: Plan; ms: number }[] = [
 ];
 
 /**
- * The fixed seeds: the probe's mixed sequences 1 to 32 and 60 (016-18 A),
- * and 8 from a forced backlog. With the sequences above, the file takes
- * about 23 s wall at a load of 31 on 24 CPUs (row 011-195: under 30 s).
+ * The fixed seeds: the probe's mixed sequences 1 to 24 and 60 (016-18 A),
+ * and 6 from a forced backlog. With 32 and 8, the file took 30.6 to 34.5 s
+ * wall at loads of 36 to 45 on 24 CPUs; the row asks for under 30 s.
  */
-const SEEDS = Array.from({ length: 32 }, (_, i) => i + 1).concat([60]);
-const BACKLOG_SEEDS = Array.from({ length: 8 }, (_, i) => i + 1);
+const SEEDS = Array.from({ length: 24 }, (_, i) => i + 1).concat([60]);
+const BACKLOG_SEEDS = Array.from({ length: 6 }, (_, i) => i + 1);
 
 interface Outcome {
   readonly name: string;
