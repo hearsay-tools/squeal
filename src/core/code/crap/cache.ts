@@ -4,7 +4,8 @@ import type { CodeFile } from "../../types/code.js";
 import type { CheckKey, EpochMs, RelativePath } from "../../types/index.js";
 import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../coverage/record.js";
 import type { CoverageRecord } from "../coverage/types.js";
-import type { CodeCoverageRepo } from "../store/types.js";
+import type { PassReport } from "../pass/types.js";
+import type { CodeCoverageRepo, CodeStore } from "../store/types.js";
 import { type FileCondition, fileCondition } from "./file.js";
 import type { LoaderBuild, Loaders } from "./loaders.js";
 import type { Seed } from "./seed.js";
@@ -62,6 +63,11 @@ export class StepCache {
    */
   dropSeed(): void {
     this.#seed = null;
+  }
+
+  /** An edit's moves and removals, for the seed in progress (D2; review 0.1.311 B1). */
+  follow(store: CodeStore, report: Pick<PassReport, "moves" | "removed">): void {
+    this.#seed?.follow(store, report);
   }
 
   /** A source's condition from the loader map. */
