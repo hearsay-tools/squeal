@@ -136,7 +136,8 @@ function interrupted(repo: FixtureRepo): string | null {
  */
 async function holding({ squeal, flag }: Probe): Promise<SpawnedProcess> {
   writeFileSync(flag, "");
-  const wait = `setInterval(() => require("node:fs").existsSync(${JSON.stringify(flag)}) || process.exit(0), 50);`;
+  const exists = `require("node:fs").existsSync(${JSON.stringify(flag)})`;
+  const wait = `setInterval(() => ${exists} || process.exit(0), 50);`;
   const hold = squeal("hold", "--", process.execPath, "-e", wait);
   suite.cleanup(() => {
     rmSync(flag, { force: true });
