@@ -30,6 +30,8 @@ describe("a reconciliation pass after a commit", () => {
   let batches: CandidateBatch[];
   let revisions: (Revision | null)[];
   let errors: Error[];
+  /** The next batch fails, as one the store refused does; the feed reports it and goes on. */
+  let failNext: boolean;
 
   beforeEach(async () => {
     dir = tempDir();
@@ -42,6 +44,7 @@ describe("a reconciliation pass after a commit", () => {
     batches = [];
     revisions = [];
     errors = [];
+    failNext = false;
   });
   afterEach(async () => {
     await feed?.close();
@@ -57,6 +60,10 @@ describe("a reconciliation pass after a commit", () => {
       root,
       backend: held,
       onBatch: async (batch) => {
+        if (failNext) {
+          failNext = false;
+          throw new Error("store busy");
+        }
         batches.push(batch);
         revisions.push(
           await reconcile(batch, cache, hasher, {
@@ -128,6 +135,19 @@ describe("a reconciliation pass after a commit", () => {
     commit(ADDED, "it('x', () => {});\n");
     await feed?.reconcile("interval");
 
+    expect(candidates(batches.at(-1))).toContain(ADDED);
+    expect(added(ADDED)).toHaveLength(1);
+  });
+
+  it("names the file again on the pass after one whose batch failed", async () => {
+    await startFeed();
+    commit(ADDED, "it('x', () => {});\n");
+    failNext = true;
+    await feed?.reconcile("interval");
+    expect(errors.map((e) => e.message)).toEqual(["store busy"]);
+    errors.length = 0;
+
+    await feed?.reconcile("interval");
     expect(candidates(batches.at(-1))).toContain(ADDED);
     expect(added(ADDED)).toHaveLength(1);
   });
