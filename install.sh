@@ -32,7 +32,7 @@
 set -eu
 
 # The release this script belongs to; the Pi package comes from its tag.
-SQUEAL_VERSION=0.1.323
+SQUEAL_VERSION=0.1.324
 # Squeal's Node floor, engines.node in package.json (011-86).
 NODE_FLOOR=22.19
 PLUGIN=squeal@hearsay
