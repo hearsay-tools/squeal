@@ -65,10 +65,6 @@ export class Promotions {
     this.#publish = publish ?? null;
   }
 
-  now(): number {
-    return this.#now();
-  }
-
   /** A wait's promotion of `refs` until `until`; none when no file of it is open. */
   add(refs: readonly TestFileRef[], until: number, queued: (id: string) => boolean): void {
     let changed = this.#settle(queued);
