@@ -93,14 +93,11 @@ function realPath(path: string): string | null {
  * no daemon is validating, the worktree is not listed, the runner part of
  * the revision is pending, the command does not resolve completely (the
  * listing left out a file the command runs, task 005-26), or one file is
- * pending, stale, unknown or without checks. `projects` are the projects of
- * the policy the hook read; with the policy as it reads now, they name the
- * listing's files that are not the fallback runner's (spec 003 D7).
+ * pending, stale, unknown or without checks.
  */
 export function denyCurrentTestCommand(
   context: HookContext,
   command: TestCommand,
-  projects: readonly { readonly name: string }[],
   now: EpochMs,
 ): string | null {
   const { store, consumer } = context;
@@ -111,10 +108,11 @@ export function denyCurrentTestCommand(
     const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
     if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
     if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
-    // Read live, so a policy change since the last listing counts too (review 004 wave-12 B2).
+    // Read live, so a policy change since the last listing counts too (review 004 wave-12 B2). Its
+    // configured projects name the listing's files that are not the fallback runner's (003 D7).
     const live = readPolicy(context.root);
     if (!describing(command).resolves(live)) return null;
-    const configured = new Set([...projects, ...configuredProjects(live)].map((p) => p.name));
+    const configured = new Set(configuredProjects(live).map((p) => p.name));
     const files = resolveTestFiles(
       command,
       keys.map((k) => k.testFile),
