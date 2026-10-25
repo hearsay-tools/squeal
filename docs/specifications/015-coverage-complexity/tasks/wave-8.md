@@ -23,3 +23,12 @@ Check, with proof where you can:
 3. The `listed:<worktreeId>` meta record: no schema, `user_version`, record or result-key change; readers without it behave as before. Every text without a held or listed test file is byte-identical to main.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## R11: repair of 015-52 after review 0.1.315 (B1, B2, N1)
+
+Use /worker, resumed (worker fcd7c198). Shape: repair. First rebase your branch onto `origin/main` (0.1.313; `daemon.ts` there only loses two `store,` lines). Outcome: a rename while a listing is pending stays one move with nothing told (D2), and only a successful listing releases a held path or drops a counted test file (D1).
+- Read `reviews/0.1.315.md` (B1, B2, N1, each with its reproduction and fix boundary).
+- **B1.** A held destination must still match its origin by body hash: no origin is resolved before the listing that settles the move, for a deleted file and for a function removed from a file that stays. A lead, not a rule: the pass works only up to the last successfully listed revision and takes each revision whole. Weigh what a long-broken listing then costs, and write it in your notes.
+- **B2 and N1.** "This revision's test files were listed" is a fact recorded where it is known, in the scheduler, only when `runner.testFiles` succeeded; a refined revision after a failed listing, a whole-refinement error or an install wait releases nothing. A later successful listing releases and drops, also with no new workspace revision. Keep `onRefined`'s post-commit and throw contract, or replace it by one hook with the same contract.
+- **Owns.** As in W1. The scheduler change B2 needs is 011's code: send me the exact files and lines as a request before you edit them; I get 011's agreement.
+- **Done when.** Red first: the review's B1 probes (direct and through delivery, told and not told), its B2 failed-listing-then-recovery probe, and N1's listing without a new revision. Notes updated. Lint, typecheck and `squeal run --all --wait` pass; paste the output. No bundles, no version.
