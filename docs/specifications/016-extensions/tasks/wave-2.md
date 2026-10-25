@@ -46,3 +46,18 @@ Done when:
 - each runner has two ignored-path cases: one kept, one dropped under a written ancestor;
 - `test/keys/validity` shows both raises;
 - `squeal run --all --wait` is green.
+
+## Review of candidate `cand/016-21`
+
+Use /reviewer. Candidate `cand/016-21`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>`: one commit of 016-21 (worker 989d130f, `test/kit/**` only), plus this brief. It changes no bundle and raises no version. Write `docs/specifications/016-extensions/reviews/016-21.md` and commit it on your branch.
+
+Read: `spec.md` goals 5, 6 and 8, D1 and D4; the 016-21 brief above; `reviews/016-12.md`.
+
+Check, with proof where you can:
+1. K10 plays what the brief says on every runner: two worktrees over one scratch store, a restart, a computed import and a child process's import, and no daemon.
+2. Each KNOWN gap names the line that documents it. Each lists only the assertions it fails: an unrelated failure reads FAIL. Read the pytest and node:test slow `direct` gaps (D4), node:test's base form (004 D5), and Vitest's (011 C12 and goal 6).
+3. The store, keys and core step that every play now runs move no K1 to K9 verdict. The driver reaches the core only through `src/core/scheduler/observed.ts` and `keying.ts`. The packs alone import `src/core/daemon/*-runners.ts`.
+4. Goal 8 still holds: run `reviews/probes/016-12/key-probe.ts`.
+5. No sleep and no load dependence in the new steps.
+
+Run the four kit files on Node 22 and Node 24. No locked full suite: the range is test-only and CI runs the suite. Label findings proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
