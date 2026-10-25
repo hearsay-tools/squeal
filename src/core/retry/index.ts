@@ -11,11 +11,13 @@ export {
 export { pendingRetriesOf } from "./pending.js";
 export { passedRetry, retryFactOf, withRecorded } from "./recorded.js";
 export {
+  askNamedRun,
   askNoResultRun,
   askRetry,
   cancelRetries,
   claimRetries,
   endRetries,
+  type NamedRunAnswer,
   type NoResultAnswer,
   RETRIES_KEPT,
   RETRIES_META_KEY,

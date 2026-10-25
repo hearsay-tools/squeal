@@ -106,6 +106,11 @@ export type Standing =
       readonly quietCatchUp?: true;
     }
   | { readonly kind: "claim"; readonly worktree: string; readonly until: EpochMs | null }
+  /**
+   * A named wait asked its one run (row 011-207, 011 C15) and the daemon has
+   * not queued it yet; once queued, it reads `queued` as any promoted file.
+   */
+  | { readonly kind: "asked" }
   /** Queued while the worktree is on hold (C9, row 011-73): the first hold `holds` names. */
   | { readonly kind: "on-hold"; readonly hold: StatusHold }
   | {

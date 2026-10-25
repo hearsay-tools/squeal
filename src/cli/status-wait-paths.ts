@@ -28,6 +28,21 @@ import {
 import { statusCommand } from "./status-command.js";
 import { type DaemonSync, pollPause, SYNC_POLL_MS, type SyncState } from "./status-sync.js";
 import {
+  type AskedEnd,
+  type AskedPayload,
+  type AskedRun,
+  type AskFile,
+  type AskNamed,
+  askableFiles,
+  askedEnds,
+  askedLines,
+  askedPayload,
+  askNamedRuns,
+  heldAsFiles,
+  heldAsVerdict,
+  takenSince,
+} from "./status-wait-ask.js";
+import {
   anyFailed,
   CheckUsageError,
   checkUsage,
@@ -96,6 +111,12 @@ export type NamedWaitOutcome =
   | "on-hold"
   | "timeout";
 
+/** Row 011-207: a read that found files to ask one run of, which the wait asks before its next read. */
+interface AskRead {
+  readonly ask: readonly AskFile[];
+  readonly root: AbsolutePath;
+}
+
 /**
  * The outcome of a read whose selection is decided, `null` while a file it
  * holds for is pending. Row 011-63 (gh-59, the human 2026-10-21): a path that
@@ -145,6 +166,8 @@ export type NamedWait =
       readonly snapshot?: boolean;
       /** Row 011-146: with `--check`, the focused answers it read. */
       readonly focus?: NamedFocus;
+      /** Row 011-207: the runs it asked, as its last read found them; absent when it asked none. */
+      readonly asked?: readonly AskedEnd[];
     }
   | {
       readonly outcome: "unavailable";
@@ -175,6 +198,8 @@ export interface NamedWaitPayload {
   readonly verdict: FileVerdict;
   /** Row 011-146: with `--check`, the focused answers (011 C15, additive). */
   readonly focused?: FocusedPayload;
+  /** Row 011-207: the runs the wait asked (011 C15, additive); absent when it asked none. */
+  readonly asked?: readonly AskedPayload[];
 }
 
 export interface NamedWaitOptions {
@@ -191,6 +216,10 @@ export interface NamedWaitOptions {
   readonly checks?: readonly string[];
   /** Default `focusNamed`; tests replace it (row 011-146). */
   readonly focus?: FocusNamed;
+  /** Default `askNamedRuns`; tests replace it (row 011-207). */
+  readonly ask?: AskNamed;
+  /** The harness session its requests name (row 011-207); `""` when none. */
+  readonly asker?: string;
 }
 
 /**
@@ -238,6 +267,9 @@ export async function waitForNamed(
   let promoted = false;
   let reply: FocusReply | undefined;
   let whole: ReadonlyMap<string, string> | undefined;
+  // Row 011-207 (C15): the runs it asked, decided once; the asked files to promote once queued.
+  let asked: readonly AskedRun[] | undefined;
+  const unpromoted = new Set<string>();
   const checks = options.checks ?? [];
   const paused = new Set<string>();
   try {
@@ -276,7 +308,6 @@ export async function waitForNamed(
         const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
         const held = selection.files.filter((f) => !paused.has(testFileId(f)));
         const classes = leftForPause.length === 0 ? all : readClasses(store, id, held);
-        const named = ready ? decidedOutcome(selection, held, classes) : null;
         // The files named by their own paths, read once the selection is decided: to promote, or to focus.
         const own =
           ready && (checks.length > 0 || !promoted)
@@ -285,6 +316,17 @@ export async function waitForNamed(
         // Row 011-146 (C15): a source path selects no focus (review 0.1.286 B4).
         const usage = checkUsage(checks, ready, own);
         if (usage !== null) return usage;
+        // Row 011-207 (C15): at the first decided read, one run of each named file nothing queues.
+        if (ready && !final && asked === undefined) {
+          const ask = checks.length === 0 ? askableFiles(store, id, own, readAt) : [];
+          const toAsk: AskRead = { ask, root };
+          if (ask.length > 0) return toAsk;
+          asked = [];
+        }
+        const untaken = askedEnds(store, id, asked ?? [], false).filter((e) => e.untaken);
+        // Row 011-207: a run it asked holds the wait as a pending file until the daemon queues it.
+        const byClasses = ready ? decidedOutcome(selection, held, classes) : null;
+        const named = byClasses === "settled" && untaken.length > 0 ? null : byClasses;
         if (checks.length > 0 && ready) whole ??= wholeFileReasons(root, own);
         const focus =
           whole === undefined ? undefined : focusOf(store, id, own, checks, whole, reply, record);
@@ -305,6 +347,7 @@ export async function waitForNamed(
             promoted = true;
             // On the clock the daemon adds it to, so the promotion lasts at least to `deadline`.
             (options.promote ?? promoteNamed)(root, own, deadline - options.now());
+            for (const e of untaken) unpromoted.add(testFileId(e.testFile));
             const focusing = (focus?.files ?? []).filter((f) => f.whole === undefined);
             if (focus !== undefined && focusing.length > 0) {
               const send = options.focus ?? focusNamed;
@@ -313,15 +356,22 @@ export async function waitForNamed(
                 reply = answer;
               });
             }
+          } else {
+            // Row 011-207: a promotion holds only files queued when it comes, so an asked one goes once queued.
+            const taken = takenSince(unpromoted, asked ?? [], untaken);
+            if (taken.length > 0)
+              (options.promote ?? promoteNamed)(root, taken, deadline - options.now());
           }
           return null;
         }
-        const verdict = readVerdict(store, id, held);
+        const verdict = heldAsVerdict(readVerdict(store, id, held), untaken);
         const result = buildSnapshot(store, root, options.now());
         // Row 011-63 (gh-51 3): a read at the deadline names what held each file as of
         // its last millisecond, while the promotion this wait sent still held it.
         const at = Math.min(options.now(), deadline - 1) as EpochMs;
-        const files = readNamedFiles(store, id, root, selection.files, result.daemon, at);
+        const standings = readNamedFiles(store, id, root, selection.files, result.daemon, at);
+        const files = heldAsFiles(standings, untaken);
+        const ends = askedEnds(store, id, asked ?? [], true);
         const lapse = watch.lapse();
         return {
           outcome,
@@ -335,9 +385,17 @@ export async function waitForNamed(
           ...(lapse === null ? {} : { lapse }),
           ...(hold === null ? {} : { hold }),
           ...(focus === undefined ? {} : { focus }),
+          ...(ends.some((e) => e.answer === "queued" || e.answer === "busy")
+            ? { asked: ends }
+            : {}),
         };
       });
       if (read !== null && "usage" in read) throw new CheckUsageError(read.usage);
+      if (read !== null && "ask" in read) {
+        const ask = options.ask ?? askNamedRuns;
+        asked = await ask(read.root, read.ask, options.asker ?? "", deadline - options.now());
+        continue;
+      }
       if (read !== null && "available" in read) {
         if (first || final) return { outcome: "unavailable", waitedMs: elapsed(), result: read };
       } else if (read !== null) {
@@ -473,6 +531,7 @@ export async function printNamed(
     leftForPause: wait.leftForPause ?? [],
     verdict: wait.verdict,
     ...(wait.focus === undefined ? {} : { focused: focusPayload(wait.focus) }),
+    ...(wait.asked === undefined ? {} : { asked: wait.asked.map(askedPayload) }),
   };
   const field = wait.snapshot === true ? "named" : "wait";
   const json = { ...wait.result, [field]: payload, selection: payload };
@@ -483,6 +542,7 @@ export async function printNamed(
     ...(refused === null ? [] : [refused]),
     ...(selected === null ? [] : [selected]),
     ...namedPathLines(wait.selection),
+    ...askedLines(wait.asked, command, wait.selection.base),
     ...focusLines(wait.focus, wait.selection.base),
     ...namedClassLines(wait, command),
   ];

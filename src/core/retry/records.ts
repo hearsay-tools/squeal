@@ -164,6 +164,36 @@ export function askNoResultRun(store: Store, ask: RetryAsk): NoResultAnswer {
   });
 }
 
+/**
+ * What a named wait's request got (row 011-207, 011 C15): `queued`, a new
+ * request as `askNoResultRun` stores it; `joined`, one is pending at the key
+ * (`record`); `asked`, one at the key ended or was withdrawn, so a wait asks
+ * no second run there.
+ */
+export type NamedRunAnswer = {
+  readonly kind: "queued" | "joined" | "asked";
+  readonly record: RetryRecord;
+};
+
+/**
+ * Stores a request to run a file with no result at `ask.key` once, as
+ * `askNoResultRun` does, only when no request was ever kept at the key,
+ * pending or ended; one transaction, so two waits at once ask one run.
+ */
+export function askNamedRun(store: Store, ask: RetryAsk): NamedRunAnswer {
+  return store.transaction(() => {
+    const records = readRetries(store);
+    const at = retriesAt(records, ask.testFile, ask.key);
+    const pending = at.find((r) => r.end === null);
+    if (pending !== undefined) return { kind: "joined", record: pending };
+    const last = at.at(-1);
+    if (last !== undefined) return { kind: "asked", record: last };
+    const record: RetryRecord = { ...newRecord(ask), noResult: true };
+    writeRetries(store, [...records, record]);
+    return { kind: "queued", record };
+  });
+}
+
 function newRecord(ask: RetryAsk): RetryRecord {
   return {
     id: randomUUID(),

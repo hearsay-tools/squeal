@@ -1,5 +1,5 @@
 import { isAbsolute, resolve } from "node:path";
-import { resolveCommonDir, toRelative, worktreeIdFor } from "../core/fs/index.js";
+import { toRelative, worktreeIdFor } from "../core/fs/index.js";
 import {
   askNoResultRun,
   askRetry,
@@ -17,13 +17,6 @@ import {
 } from "../core/retry/index.js";
 import { SUMMARY_MAX_CHARS } from "../core/state/index.js";
 import { unknownReasons } from "../core/status/index.js";
-import {
-  busyBackoffMs,
-  isBusy,
-  isStoreOpenFailure,
-  openStore,
-  setBusyTimeout,
-} from "../core/store/index.js";
 import { cap } from "../core/text.js";
 import type {
   AbsolutePath,
@@ -33,10 +26,18 @@ import type {
   TestFileKeyRecord,
   WorktreeId,
 } from "../core/types/index.js";
-import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket, worktreeRoot } from "./daemon-access.js";
+import { worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { notKeyed } from "./retry-unlisted.js";
-import { waitConsumer } from "./status-wait.js";
+import {
+  BUSY_BOUND_MS,
+  type Busy,
+  isBusyAnswer,
+  openForWrites,
+  sessionOf,
+  tellDaemonRetries,
+  whileBusy,
+} from "./store-writes.js";
 
 const USAGE =
   "usage: squeal retry <test file>... [--reason load|environment]\n       squeal retry --cancel <test file>...\n";
@@ -58,12 +59,6 @@ interface Answer {
 }
 
 const refuse = (text: string): Answer => ({ ok: false, text });
-
-/**
- * How long the whole command keeps asking a busy store to take its requests
- * before it says another process holds it (row 011-212, gh-86, 011 C13).
- */
-const BUSY_BOUND_MS = 10_000;
 
 /** Hooks for a test: the host's load, and the busy store's bound. */
 export interface RetryInternal {
@@ -93,7 +88,7 @@ export async function retryCommand(
   }
   const root = worktreeRoot(undefined, io);
   if (root === null) return 1;
-  const store = openFor(root);
+  const store = openForWrites(root);
   if (store === null) {
     io.stderr(`squeal retry: no Squeal store for ${root}; start a daemon with squeal start\n`);
     return 1;
@@ -116,7 +111,7 @@ export async function retryCommand(
           ? { ok: false, ...notKeyed(store, { root, worktreeId, rel, shown, given: path }, keys) }
           : parsed.kind === "cancel"
             ? cancelLine(store, row, where)
-            : askLine(store, row, where, parsed.reason, session(io), load);
+            : askLine(store, row, where, parsed.reason, sessionOf(io), load);
       if (answer.unlisted === true) unlisted++;
       else if (!answer.ok) refused++;
       io.stdout(`${answer.text}\n`);
@@ -126,16 +121,6 @@ export async function retryCommand(
   }
   if (refused + unlisted < parsed.paths.length) io.stdout(await tellDaemon(root));
   return refused > 0 ? 1 : unlisted > 0 ? 3 : 0;
-}
-
-/** The shared store of `root`'s worktree, open for the command's writes; `null` when it has none. */
-function openFor(root: AbsolutePath): Store | null {
-  const commonDir = resolveCommonDir(root);
-  const store =
-    commonDir === null
-      ? null
-      : openStore(commonDir, { create: false, busyTimeoutMs: CLI_SOCKET_TIMEOUT_MS });
-  return store === null || isStoreOpenFailure(store) ? null : store;
 }
 
 function parse(args: readonly string[]): Parsed | string {
@@ -167,13 +152,6 @@ function inWorktree(root: AbsolutePath, cwd: string, path: string): string | nul
   return toRelative(root, (isAbsolute(path) ? path : resolve(cwd, path)) as AbsolutePath);
 }
 
-/** The harness session the shell runs in; `""` when it names none. */
-function session(io: CliIo): string {
-  const env = io.env ?? process.env;
-  const pi = env.PI_SESSION_ID === "" ? undefined : env.PI_SESSION_ID;
-  return waitConsumer(env).session ?? pi ?? "";
-}
-
 /** The worktree a request is asked in, the file as the reply shows it, and when a busy store's bound ends. */
 interface Where {
   readonly root: AbsolutePath;
@@ -181,39 +159,6 @@ interface Where {
   readonly shown: string;
   readonly deadline: EpochMs;
 }
-
-/** A write the store refused until the bound: how long this file's tries waited. */
-interface Busy {
-  readonly busyMs: number;
-}
-
-/**
- * `write`'s answer, run again while another process holds the store's write
- * lock (row 011-212, gh-86): a refused `BEGIN IMMEDIATE` writes nothing and
- * each try reads its `spent` or `joined` guard again, so a request is stored
- * once. Each try's busy timeout ends by `deadline`, with `busyBackoffMs`
- * between tries; at the deadline, how long the tries waited.
- */
-function whileBusy<T>(store: Store, deadline: EpochMs, write: () => T): T | Busy {
-  const started = Date.now();
-  for (let attempt = 0; ; attempt++) {
-    setBusyTimeout(store, Math.max(1, Math.min(CLI_SOCKET_TIMEOUT_MS, deadline - Date.now())));
-    try {
-      return write();
-    } catch (error) {
-      if (!isBusy(error)) throw error;
-    } finally {
-      setBusyTimeout(store, CLI_SOCKET_TIMEOUT_MS);
-    }
-    const pause = busyBackoffMs(attempt);
-    if (Date.now() + pause >= deadline) return { busyMs: Date.now() - started };
-    Atomics.wait(SLEEP, 0, 0, pause);
-  }
-}
-
-const SLEEP = new Int32Array(new SharedArrayBuffer(4));
-
-const isBusyAnswer = (answer: object): answer is Busy => "busyMs" in answer;
 
 /** A file's line when the store stayed busy past the bound, as 011-01 words a busy read. */
 function busyLine(not: string, shown: string, { busyMs }: Busy): Answer {
@@ -363,7 +308,6 @@ function pendingOf(store: Store, row: TestFileKeyRecord): RetryRecord[] {
 
 /** Tells the worktree's daemon; a line when none listens. */
 async function tellDaemon(root: AbsolutePath): Promise<string> {
-  const response = await askDaemon(await daemonSocket(root), { type: "retry" }).catch(() => null);
-  if (response?.ok === true && response.type === "retry") return "";
+  if (await tellDaemonRetries(root)) return "";
   return "No daemon took the request now; it waits in the store for the next daemon at this file's inputs (squeal start starts one).\n";
 }
