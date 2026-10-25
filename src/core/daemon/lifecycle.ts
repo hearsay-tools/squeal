@@ -345,11 +345,17 @@ export function startTimers(context: TimerContext): () => void {
         }
       }
     });
+  /** Why the daemon stops at this heartbeat (row 011-226); `null` when unread. */
+  const storeCheck = (): string | null => {
+    try {
+      return storeCondemned(context.commonDir, context.storeFile);
+    } catch (error) {
+      context.log(`store check failed: ${String(error)}`);
+      return null;
+    }
+  };
   const heartbeat = () => {
-    let condemned: string | null = null;
-    attempt("store check", () => {
-      condemned = storeCondemned(context.commonDir, context.storeFile);
-    });
+    const condemned = storeCheck();
     if (condemned !== null) {
       context.shutdown("store-unusable", condemned);
       return;
