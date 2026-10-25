@@ -276,7 +276,14 @@ export function withDependencies(
   header: StatusHeader,
   failing: readonly CheckId[],
 ): StatusHeader {
-  const node = failing.some((check) => NODE_RUNNERS.has(store.checks.runnerOf(check) ?? ""));
+  if (failing.length === 0) return header;
+  const keys = readFailureKeys(store, worktreeId);
+  const runnerOf = (check: CheckId): string | null => {
+    if (check.kind === "setup") return store.checks.setupRunnerOf(worktreeId, check);
+    const key = keys.get(checkIdentity(check));
+    return key === undefined ? null : store.checks.runnerOf(check, key);
+  };
+  const node = failing.some((check) => NODE_RUNNERS.has(runnerOf(check) ?? ""));
   const installed = node ? dependenciesInstalled(store, worktreeId) : undefined;
   return installed === undefined ? header : { ...header, dependenciesInstalled: installed };
 }
@@ -284,7 +291,10 @@ export function withDependencies(
 /**
  * The runners whose test files load what Node's installed lockfiles list, by
  * the name their environment gives (`RunnerEnvironment.runnerName`). A
- * check's runner is the one the store recorded with it (spec 016 D3); a check
- * with none, which an older daemon stored, is no Node runner's.
+ * failure's runner is the one recorded with the result this worktree's state
+ * shows, at the key the state sink recorded for it, or with this worktree's
+ * setup check (spec 016 D3, review 0.1.303 B1). Checks are shared by every
+ * worktree, so another worktree's run never decides it. A failure with none,
+ * which an older daemon stored, is no Node runner's.
  */
 const NODE_RUNNERS: ReadonlySet<string> = new Set(["vitest", "node-test"]);

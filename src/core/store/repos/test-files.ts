@@ -1,19 +1,19 @@
-import type {
-  CheckRecord,
-  CheckRepo,
-  RelativePath,
-  TestFileKeyRecord,
-  TestFileKeyRepo,
-  TestFileRecord,
-  TestFileRepo,
+import {
+  type CheckRecord,
+  type CheckRepo,
+  type RelativePath,
+  type TestFileKeyRecord,
+  type TestFileKeyRepo,
+  type TestFileRecord,
+  type TestFileRepo,
+  worktreeMetaKey,
 } from "../../types/index.js";
 import {
   bool,
   CHECK_COLUMNS,
-  CHECK_WHERE,
   checkFrom,
-  checkParams,
   ensureCheckId,
+  findCheckId,
   flag,
   json,
   location,
@@ -21,12 +21,11 @@ import {
   num,
   oneOf,
   oneOfOrNull,
-  recordRunner,
-  runnerColumn,
   str,
   strOrNull,
 } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
+import { readMetaList, writeMetaList } from "./meta-list.js";
 
 const METHODS = ["static imports plus declared inputs"] as const;
 const PENDING = ["queued", "running"] as const;
@@ -175,8 +174,24 @@ function toTestFileKey(row: Row): TestFileKeyRecord {
   };
 }
 
+/** A setup check's runner, as one worktree recorded it (`CheckRepo.recordSetupRunner`). */
+interface SetupRunner {
+  readonly project: string;
+  readonly testPath: string;
+  readonly runner: string;
+}
+
+function isSetupRunner(value: unknown): value is SetupRunner {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.project === "string" && typeof v.testPath === "string" && typeof v.runner === "string"
+  );
+}
+
 export function createCheckRepo(conn: Connection): CheckRepo {
-  const hasRunner = runnerColumn(conn);
+  const setupRunners = (worktreeId: string) =>
+    readMetaList(conn, worktreeMetaKey("setupRunners", worktreeId), isSetupRunner);
   return {
     listByTestFile: (testFile) =>
       conn
@@ -201,15 +216,26 @@ export function createCheckRepo(conn: Connection): CheckRepo {
           );
         }
       }),
-    runnerOf: (check) => {
-      if (!hasRunner()) return null;
-      const row = conn.get(`SELECT runner FROM checks WHERE ${CHECK_WHERE}`, ...checkParams(check));
+    runnerOf: (check, key) => {
+      const id = findCheckId(conn, check);
+      if (id === null) return null;
+      const row = conn.get("SELECT runner FROM results WHERE check_id = ? AND key = ?", id, key);
       return row === null ? null : strOrNull(row, "runner");
     },
-    recordRunner: (check, runner) => {
-      if (runner === undefined || !hasRunner()) return;
-      conn.transaction(() => recordRunner(conn, ensureCheckId(conn, check, Date.now()), runner));
-    },
+    setupRunnerOf: (worktreeId, check) =>
+      setupRunners(worktreeId).find(
+        (e) => e.project === check.project && e.testPath === check.testPath,
+      )?.runner ?? null,
+    recordRunner: () => undefined,
+    recordSetupRunner: (worktreeId, check, runner) =>
+      conn.transaction(() => {
+        const others = setupRunners(worktreeId).filter(
+          (e) => e.project !== check.project || e.testPath !== check.testPath,
+        );
+        const { project, testPath } = check;
+        const next = runner === undefined ? others : [...others, { project, testPath, runner }];
+        writeMetaList(conn, worktreeMetaKey("setupRunners", worktreeId), next);
+      }),
   };
 }
 

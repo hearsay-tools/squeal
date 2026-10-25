@@ -1,4 +1,4 @@
-import type { CheckId } from "./check.js";
+import type { CheckId, SetupCheckId } from "./check.js";
 import type { CommitSha, EpochMs, RelativePath, RevisionNumber, WorktreeId } from "./common.js";
 import type { Consumer, ViewEntry } from "./delivery.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
@@ -121,15 +121,26 @@ export interface CheckRepo {
   listByTestFile(testFile: TestFileRef): readonly CheckRecord[];
   upsertMany(records: readonly CheckRecord[]): void;
   /**
-   * The runner recorded with `check` (spec 016 D3): the one whose run stored
-   * its newest result, or failed its setup. `null` when none is: an older
-   * daemon wrote it, or the store has no `checks.runner` yet.
+   * The runner recorded with `check`'s result at `key` (spec 016 D3): the one
+   * whose run stored it. `null` when there is no such result, or an older
+   * daemon stored it. Checks are shared by every worktree, so a worktree
+   * reads the result its own state shows (review 0.1.303 B1).
    */
-  runnerOf(check: CheckId): string | null;
+  runnerOf(check: CheckId, key: CheckKey): string | null;
   /**
-   * Records `runner` with `check`, storing a bare check row first if needed.
-   * A setup check has no stored result (001-382), so its runner is recorded
-   * here. `undefined` records nothing.
+   * The runner `worktreeId` recorded with setup check `check`
+   * (`recordSetupRunner`); `null` when none.
+   */
+  setupRunnerOf(worktreeId: WorktreeId, check: SetupCheckId): string | null;
+  /**
+   * Records `runner` with `worktreeId`'s setup check `check`, which has no
+   * stored result (001-382). Another worktree's record is never read.
+   * `undefined` forgets it.
+   */
+  recordSetupRunner(worktreeId: WorktreeId, check: SetupCheckId, runner: string | undefined): void;
+  /**
+   * Records nothing. `Ledger#write` still calls it until the next commit moves
+   * that line to `recordSetupRunner`, which keeps ledger.ts alone.
    */
   recordRunner(check: CheckId, runner: string | undefined): void;
 }
@@ -282,8 +293,8 @@ export interface ResultRepo {
    * Spec 001 D5: "A result is stored only under a key whose inputs were
    * stable for the whole run." A stored result's last-used time starts at
    * `provenance.recordedAt`. `runner`, the runner whose run produced them,
-   * is recorded with each record's check (`CheckRepo.runnerOf`, spec 016 D3);
-   * absent, each check keeps what it had.
+   * is recorded with each row (`CheckRepo.runnerOf`, spec 016 D3); absent,
+   * the rows record none.
    */
   putMany(records: readonly ResultRecord[], runner?: string): void;
 }
@@ -413,6 +424,7 @@ export const WORKTREE_META_ROWS = {
   slowEvidence: { prefix: "slow-evidence:", owner: "slow/rank-store" },
   failureKeys: { prefix: "failure-keys:", owner: "slow/state" },
   failureProducers: { prefix: "failure-producers:", owner: "state/producers" },
+  setupRunners: { prefix: "setup-runners:", owner: "store/repos/test-files" },
   reruns: { prefix: "reruns:", owner: "scheduler/rerun-memory" },
   interrupted: { prefix: "interrupted:", owner: "scheduler/interrupted" },
   heldFiles: { prefix: "held-files:", owner: "scheduler/held" },

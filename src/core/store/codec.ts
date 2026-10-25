@@ -6,7 +6,6 @@ import type {
   SourceLocation,
   TestFileRef,
 } from "../types/index.js";
-import { hasColumn } from "./columns.js";
 import type { Connection, Row } from "./connection.js";
 
 /*
@@ -117,7 +116,7 @@ export function toResult(row: Row): ResultRecord {
   };
 }
 
-export const CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
+const CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
 
 /**
  * Columns to select from `checks` joined as `c`, to rebuild a check with
@@ -160,24 +159,6 @@ export function ensureCheckId(conn: Connection, check: CheckId, seenAt: EpochMs)
   const id = findCheckId(conn, check);
   if (id === null) throw new Error(`squeal store: check row missing after insert`);
   return id;
-}
-
-/**
- * Whether `checks.runner` exists (`addColumns`, spec 016 D3). A store an
- * older daemon made lacks it until a newer opener adds it; once added it
- * stays, so `true` is kept.
- */
-export function runnerColumn(conn: Connection): () => boolean {
-  let added = false;
-  return () => {
-    added ||= hasColumn(conn.db, "checks", "runner");
-    return added;
-  };
-}
-
-/** Records `runner` as the runner of check row `id`; no write when it already is. */
-export function recordRunner(conn: Connection, id: number, runner: string): void {
-  conn.run("UPDATE checks SET runner = ? WHERE id = ? AND runner IS NOT ?", runner, id, runner);
 }
 
 export function flag(value: boolean): number {

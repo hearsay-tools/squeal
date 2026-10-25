@@ -8,8 +8,6 @@ import {
   flag,
   locationParams,
   num,
-  recordRunner,
-  runnerColumn,
   str,
   toResult,
 } from "../codec.js";
@@ -45,21 +43,20 @@ const NEWEST_OF_FILE = `${SELECT_RESULTS}
 
 /**
  * `ResultRepo.copyNewest`'s copy (task 011-38): every row of one key under
- * another, with its provenance and record time, only while the other holds
- * no row. One statement, so a set another daemon stores there meanwhile is
- * never mixed with the copy.
+ * another, with its provenance, runner and record time, only while the other
+ * holds no row. One statement, so a set another daemon stores there meanwhile
+ * is never mixed with the copy.
  */
 const COPY_SET = `
   INSERT INTO results (check_id, key, outcome, duration_ms, location_path, location_line,
     location_column, fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id,
-    recorded_at, last_used_at)
+    recorded_at, last_used_at, runner)
   SELECT check_id, ?, outcome, duration_ms, location_path, location_line, location_column,
     fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id, recorded_at,
-    last_used_at
+    last_used_at, runner
   FROM results WHERE key = ? AND NOT EXISTS (SELECT 1 FROM results WHERE key = ?)`;
 
 export function createResultRepo(conn: Connection): ResultRepo {
-  const hasRunner = runnerColumn(conn);
   return {
     byKey: (key, usedAt = Date.now()) => {
       if (usedAt > 0) {
@@ -142,17 +139,14 @@ export function createResultRepo(conn: Connection): ResultRepo {
         .map((row) => ({ key: str(row, "key"), recordedAt: num(row, "recorded_at") })),
     putMany: (records, runner) =>
       conn.transaction(() => {
-        const recorded = runner !== undefined && hasRunner() ? runner : undefined;
         for (const r of records) {
           const p = r.provenance;
-          const id = ensureCheckId(conn, r.check, p.recordedAt);
-          if (recorded !== undefined) recordRunner(conn, id, recorded);
           conn.run(
             `INSERT OR REPLACE INTO results (check_id, key, outcome, duration_ms, location_path,
                location_line, location_column, fingerprint, failure_id, worktree_id, revision,
-               commit_sha, dirty, run_id, recorded_at, last_used_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            id,
+               commit_sha, dirty, run_id, recorded_at, last_used_at, runner)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ensureCheckId(conn, r.check, p.recordedAt),
             r.key,
             r.outcome,
             r.durationMs,
@@ -166,6 +160,7 @@ export function createResultRepo(conn: Connection): ResultRepo {
             p.runId,
             p.recordedAt,
             p.recordedAt,
+            runner ?? null,
           );
         }
       }),
