@@ -209,10 +209,12 @@ describe("a cached ignored path nothing names (row 011-36)", () => {
 /*
  * Review 0.1.310 B1 (row 011-204): a pass reads src/a.ts, and the file is
  * appended to after the read, before the pass stats it again. No watcher
- * batch follows; the daemon restarts. Its bootstrap must see the append.
+ * batch follows; the daemon restarts. By the end of its bootstrap the append
+ * is a revision: the pass's own, when it reads the file again (011-204 round
+ * 3), or the bootstrap's.
  */
 describe("a write after a pass's read, then a restart (review 0.1.310 B1)", () => {
-  it("is a revision at the next bootstrap, with no batch, and the test's key moves", async () => {
+  it("is a revision by the next bootstrap, with no batch, and the test's key moves", async () => {
     const before = await keyOfTest(keys);
     expect(before).not.toBeNull();
     const read = readFileSync(join(root, "src/a.ts"), "utf8");
@@ -221,16 +223,18 @@ describe("a write after a pass's read, then a restart (review 0.1.310 B1)", () =
     const later = new Date(Date.now() + 60_000);
     utimesSync(join(root, "src/a.ts"), later, later);
     const fs = createFsHasher(root, "sha1");
+    let appended = false;
     const appending: Hasher = {
       ...fs,
       hash: async (path) => {
         const hash = await fs.hash(path);
-        appendFileSync(join(root, path), "// post-read write\n");
+        if (!appended) appendFileSync(join(root, path), "// post-read write\n");
+        appended = true;
         return hash;
       },
     };
     const paths = await statCandidates(["src/a.ts" as RelativePath], fs);
-    await reconcile({ trigger: "watch", paths }, keys.cache, appending, {
+    const pass = await reconcile({ trigger: "watch", paths }, keys.cache, appending, {
       worktreeId: worktreeIdFor(root),
       store,
       head,
@@ -242,7 +246,7 @@ describe("a write after a pass's read, then a restart (review 0.1.310 B1)", () =
     const revision = await restarted.bootstrap(head);
 
     const disk = readFileSync(join(root, "src/a.ts"));
-    expect(revision?.changes).toEqual([
+    expect([pass, revision].flatMap((r) => r?.changes ?? [])).toEqual([
       {
         path: "src/a.ts",
         oldHash: blobHash(Buffer.from(read), "sha1"),
