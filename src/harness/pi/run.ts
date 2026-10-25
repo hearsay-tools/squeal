@@ -91,7 +91,7 @@ export async function toolCall(
         })
       : null;
     if (denied !== null || testCommand === null) return denied;
-    return denyCurrentTestCommand(context, testCommand, policy.nodeTest, (deps.now ?? Date.now)());
+    return denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)());
   });
 }
 

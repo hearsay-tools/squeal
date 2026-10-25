@@ -69,7 +69,7 @@ export const before: OcHandler<"before"> = async (request, deps) => {
       })) ??
       (testCommand === null
         ? null
-        : denyCurrentTestCommand(context, testCommand, policy.nodeTest, (deps.now ?? Date.now)())),
+        : denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)())),
   );
   return { reason };
 };

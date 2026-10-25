@@ -32,7 +32,7 @@ export const preToolUse: Handler = async (input, location, deps) => {
       })) ??
       (testCommand === null
         ? null
-        : denyCurrentTestCommand(context, testCommand, policy.nodeTest, (deps.now ?? Date.now)()));
+        : denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)()));
     if (reason === null) return null;
     return {
       output: {
