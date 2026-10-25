@@ -87,8 +87,8 @@ Usage:
                                 went over; paths list every function in those files or
                                 directories; --changed keeps those whose state changed
                                 since this session registered, --told those over that
-                                this session was told about; files not counted
-                                follow, with why
+                                this session was told about and the files it changed
+                                that are not judged; files not counted follow, with why
   squeal init                   Set up this repository: squeal.config.json and the
                                 plugin entries in .claude/settings.json
   squeal init --harness codex [--print-launcher-config | --trust [--yes]]
