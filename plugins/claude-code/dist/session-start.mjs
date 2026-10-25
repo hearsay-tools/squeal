@@ -2848,6 +2848,33 @@ function createStateRepo(conn) {
           fromId
         );
       });
+    },
+    adopt(worktreeId, staged, measure2, removed) {
+      return conn.transaction(() => {
+        const written = conn.run(
+          `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
+             counted_at, blob, changed_at)
+           SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at
+           FROM states WHERE worktree_id = ? AND measure = ?
+           ON CONFLICT (worktree_id, check_id, measure) DO UPDATE SET
+             outcome = excluded.outcome, value = excluded.value, threshold = excluded.threshold,
+             counted_at = excluded.counted_at, blob = excluded.blob,
+             changed_at = excluded.changed_at`,
+          worktreeId,
+          staged,
+          measure2
+        );
+        if (removed.length > 0) {
+          conn.run(
+            `DELETE FROM states WHERE worktree_id = ? AND check_id IN (
+               SELECT c.id FROM json_each(?) j JOIN checks c ON c.path = j.value ->> 0
+                 AND c.qualified_name = j.value ->> 1 AND c.occurrence = j.value ->> 2)`,
+            worktreeId,
+            JSON.stringify(removed.map((c) => [c.path, c.qualifiedName, c.occurrence]))
+          );
+        }
+        return written;
+      });
     }
   };
 }
@@ -5913,6 +5940,35 @@ var RESULT_WAITS_MS = [0, 250, 1e3, 5e3, 3e4];
 // src/core/code/crap/loaders.ts
 var RECORD_WAIT_MS = RESULT_WAITS_MS.reduce((a, b) => a + b, 0);
 
+// src/core/code/pass/failed.ts
+var uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
+function readUncountable(meta, worktreeId) {
+  const text2 = meta.get(uncountableKey(worktreeId));
+  if (text2 === null) return /* @__PURE__ */ new Map();
+  try {
+    const record = JSON.parse(text2);
+    return new Map(Object.entries(record));
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function spentFailure(failed2, file) {
+  const f = failed2.get(file.path);
+  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
+}
+function uncountableFiles(store, worktreeId, files2) {
+  const failed2 = readUncountable(store.meta, worktreeId);
+  const spent = /* @__PURE__ */ new Map();
+  if (failed2.size === 0) return spent;
+  for (const file of files2) {
+    const f = spentFailure(failed2, file);
+    if (f === null) continue;
+    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
+      spent.set(file.path, f);
+  }
+  return spent;
+}
+
 // src/core/code/crap/summary.ts
 var summaryKey = (worktreeId) => `coverage:${worktreeId}`;
 var crapRecountKey = (worktreeId) => `crapRecount:${worktreeId}`;
@@ -5949,35 +6005,6 @@ function readEvidence(meta, worktreeId, path) {
 
 // src/core/code/crap/seed.ts
 var COVERAGE_MEASURES = ["crap", "uncovered"];
-
-// src/core/code/pass/failed.ts
-var uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
-function readUncountable(meta, worktreeId) {
-  const text2 = meta.get(uncountableKey(worktreeId));
-  if (text2 === null) return /* @__PURE__ */ new Map();
-  try {
-    const record = JSON.parse(text2);
-    return new Map(Object.entries(record));
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function spentFailure(failed2, file) {
-  const f = failed2.get(file.path);
-  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
-}
-function uncountableFiles(store, worktreeId, files2) {
-  const failed2 = readUncountable(store.meta, worktreeId);
-  const spent = /* @__PURE__ */ new Map();
-  if (failed2.size === 0) return spent;
-  for (const file of files2) {
-    const f = spentFailure(failed2, file);
-    if (f === null) continue;
-    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
-      spent.set(file.path, f);
-  }
-  return spent;
-}
 
 // src/core/code/pass/pulled.ts
 var pulledKey = (worktreeId) => `pulled:${worktreeId}`;
@@ -7515,7 +7542,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.318";
+  if (true) return "0.1.321";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
