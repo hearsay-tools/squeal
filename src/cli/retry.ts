@@ -6,8 +6,7 @@ import {
   cancelRetries,
   type HostLoad,
   hostLoad,
-  loadAllows,
-  loadText,
+  loadRetryWhenText,
   outcomeText,
   RETRY_REASONS,
   type RetryReason,
@@ -241,12 +240,7 @@ function askLine(
   );
   if (isBusyAnswer(answer)) return busyLine("Not retried", shown, answer);
   if (answer.kind === "spent") return refuse(spentLine(shown, answer.record));
-  const when =
-    reason === "environment"
-      ? "runs once more now"
-      : loadAllows(load)
-        ? `runs once more now: the one-minute load average is below the CPU count (${loadText(load)})`
-        : `runs once more when the one-minute load average falls below the CPU count, however long that takes (${loadText(load)} now)`;
+  const when = reason === "environment" ? "runs once more now" : loadRetryWhenText(load);
   const joins = others.length > 0 ? " It joins a retry another session asked for." : "";
   return {
     ok: true,

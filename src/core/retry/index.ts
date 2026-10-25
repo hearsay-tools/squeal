@@ -1,3 +1,4 @@
+export { gateClosedSince, LOAD_RETRY_WAIT_MS, markGateClosed } from "./gate.js";
 export {
   ASKED_KEYS_KEPT,
   ASKED_KEYS_META_KEY,
@@ -45,7 +46,10 @@ export {
 } from "./records.js";
 export {
   agoText,
+  type GateWait,
   loadPerCpuText,
+  loadRetryNoteText,
+  loadRetryWhenText,
   loadText,
   outcomeText,
   RECORDED_UNKNOWN_TEXT,
