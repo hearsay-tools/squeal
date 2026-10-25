@@ -129,13 +129,18 @@ function interrupted(repo: FixtureRepo): string | null {
   return withStore(repo, (store) => store.meta.get(interruptedMetaKey(repo.worktreeId)));
 }
 
-/** `squeal hold` through copy B, its command running while `flag` exists; once the daemon holds. */
+/**
+ * `squeal hold` through copy B, its command running while `flag` exists; once the daemon holds.
+ * The teardown removes the flag and sends SIGTERM, which the wrapper passes on to its command,
+ * so neither outlives a failed case.
+ */
 async function holding({ squeal, flag }: Probe): Promise<SpawnedProcess> {
   writeFileSync(flag, "");
   const wait = `setInterval(() => require("node:fs").existsSync(${JSON.stringify(flag)}) || process.exit(0), 50);`;
   const hold = squeal("hold", "--", process.execPath, "-e", wait);
   suite.cleanup(() => {
-    if (hold.child.exitCode === null && hold.child.signalCode === null) hold.child.kill("SIGKILL");
+    rmSync(flag, { force: true });
+    if (hold.child.exitCode === null && hold.child.signalCode === null) hold.child.kill("SIGTERM");
   });
   await waitFor(() => / is on hold until /.test(hold.stderr()), 60_000, "the hold");
   expect(hold.stderr()).not.toContain("did not take the hold");
@@ -187,7 +192,10 @@ describe.runIf(process.platform === "linux")(
 
     it("a deletion with queued work starts no tier, and the note names `squeal start`", async () => {
       const run = await probe();
-      // Without the hold a tier starts some 10 ms after the files read queued (row 011-216).
+      // Row 011-216: the write before the deletion, else the daemon can exit before it queues the
+      // write. Without the hold a tier starts about 12 ms after the six files read queued, and one
+      // that starts before the deletion still passes: its children cannot load the recorder, so
+      // `started` stays empty. The hold ends only after the deletion; `interrupted` sees a tier.
       const hold = await holding(run);
       writeFileSync(join(run.repo.root, SHARED), "export const held = 2;\n");
       await waitFor(
@@ -200,7 +208,7 @@ describe.runIf(process.platform === "linux")(
       await exitsAsReinstalled(run);
       expect((await hold.exited).code, hold.stderr()).toBe(0);
       expect(run.started()).toEqual([]);
-      // A tier that ran while the runtime went leaves its files here; its children never start.
+      // A tier that ran while the runtime went leaves its files here.
       expect(interrupted(run.repo)).toBeNull();
       expect([...pendingOf(run.repo).values()]).toEqual(HELD.map(() => "queued"));
       expect(failedOrUnknown(run.repo)).toEqual([]);
