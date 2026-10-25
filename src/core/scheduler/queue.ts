@@ -97,6 +97,8 @@ export class RunQueue {
   /** Named waits' focused checks (spec 011 C15, row 011-145): they go before every entry. */
   readonly focused = new FocusedEntries();
   readonly #queued = (id: string) => this.#entries.has(id);
+  /** Open `settlingOnce` calls: while any is, `add` leaves the promotions as they are. */
+  #settleHeld = 0;
 
   /** Every entry, fast and slow. */
   get size(): number {
@@ -143,6 +145,24 @@ export class RunQueue {
    */
   promote(refs: readonly TestFileRef[], until: number): void {
     this.#promotions.add(refs, until, this.#queued);
+  }
+
+  /**
+   * Runs `fn` as one step of C15 Lifetime: its `add`s settle no promotion,
+   * and the promotions settle once it returns. A record queues a file again
+   * after it took it off the queue or ended its run (a cut, a re-run of a
+   * grown environment, a first-seen path or a first failure); an `add` in
+   * between would find it neither queued nor running and end a wait's
+   * promotion of it (rows 011-193, 011-196).
+   */
+  settlingOnce<T>(fn: () => T): T {
+    this.#settleHeld += 1;
+    try {
+      return fn();
+    } finally {
+      this.#settleHeld -= 1;
+      if (this.#settleHeld === 0) this.#promotions.settle(this.#queued);
+    }
   }
 
   /** Whether `ref`'s entry is queued and promoted now (C15). */
@@ -192,7 +212,7 @@ export class RunQueue {
     catchUp = false,
     by: RevisionNumber | null = null,
   ): void {
-    this.#promotions.settle(this.#queued);
+    if (this.#settleHeld === 0) this.#promotions.settle(this.#queued);
     const id = testFileId(ref);
     const entry = this.#entries.get(id);
     if (entry) {
