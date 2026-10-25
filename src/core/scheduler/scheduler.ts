@@ -543,7 +543,8 @@ class TierScheduler implements Scheduler {
    * 004-61).
    */
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
-    // A lagging feed delays the checkpoint; it never plans at a revision older than the tree.
+    // A lagging feed delays the checkpoint; a failed pass rejects it (R1). Neither plans it at a
+    // revision older than the tree.
     await this.options.beforeFullSuite?.();
     const warmUp = request.observeIgnored === true;
     const force = request.force === true || warmUp;

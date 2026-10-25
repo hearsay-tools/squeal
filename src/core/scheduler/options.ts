@@ -78,7 +78,8 @@ export interface SchedulerOptions {
    * Row 011-198: awaited before `requestFullSuite` plans, outside the lock,
    * so the checkpoint is at the revision of every change made before the
    * request however far the watcher lags, as a sync is (lessons, defect 30).
-   * The daemon loop's is a reconciliation pass. Absent: none.
+   * The daemon loop's is a reconciliation pass. A rejection rejects the
+   * request, and no checkpoint is recorded (R1). Absent: none.
    */
   readonly beforeFullSuite?: () => Promise<void>;
   /**

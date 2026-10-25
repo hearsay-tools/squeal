@@ -24,26 +24,32 @@ export class BatchRetries {
     this.#onError = onError;
   }
 
-  /** `error` of a batch task: reported, or retried with `pass` while `retry` accepts it. */
-  async failed(error: Error, pass?: () => Promise<void>): Promise<void> {
+  /**
+   * `error` of a batch task: reported, or retried with `pass` while `retry`
+   * accepts it. Resolves `null` once a retry landed, otherwise to the error
+   * the task ended with: reported, or the last a close cut short (row
+   * 011-198 R1).
+   */
+  async failed(error: Error, pass?: () => Promise<void>): Promise<Error | null> {
     const retry = this.#retry;
     if (pass === undefined || retry === undefined || !retry.accepts(error)) {
       this.#onError(error);
-      return;
+      return error;
     }
+    let last = error;
     for (let attempt = 0; ; attempt++) {
       await this.#pause(retry.delayMs(attempt));
-      if (this.#closed) return;
+      if (this.#closed) return last;
       try {
         await pass();
         retry.ran();
-        return;
+        return null;
       } catch (again) {
-        const failure = toError(again);
-        if (retry.accepts(failure)) continue;
+        last = toError(again);
+        if (retry.accepts(last)) continue;
         retry.ran();
-        this.#onError(failure);
-        return;
+        this.#onError(last);
+        return last;
       }
     }
   }
