@@ -1329,6 +1329,8 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 
 ## Feature 016: extensions
 
+**Release notice (coordinator 605ca21e, 2026-10-25 16:21Z):** releasing 0.1.316 (016-22, 016-23; `reviews/0.1.316.md` PASS on `4de70b37e`) from `cand/0.1.316` rebased onto main, at 16:32Z or later and after CI 40208652575's shard re-run is green (row 011-216 names its first-attempt failure).
+
 Spec: `specifications/016-extensions/spec.md`, draft for the human's review (2026-10-24), sections D1 to D6; narrowed by the human on 2026-10-24 to one correctness kit for every runner and the three repeat seams (rows 007-45, 007-47, 007-52 and 007-56, released to 016 by 011's coordinator 04a258b0 the same day). The public half (protocol, SDK, license) is decided later. Rows follow the spec's approval. The human's idea, 2026-10-24: reorganize Squeal as a core plus extensions, with harness adapters on a clear contract and runners (pytest, node:test, Vitest) and code checks (complexity, CRAP) as plugins, so that other people can extend it for the languages, frameworks, linters and quality metrics Squeal cannot cover alone. Research thoroughly first, then report to the human. Coordinator 605ca21e.
 
 
