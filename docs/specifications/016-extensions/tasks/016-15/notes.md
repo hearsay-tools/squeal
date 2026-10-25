@@ -56,10 +56,9 @@ Every gap of the column is an absent record, which D3 accepts ("says nothing rat
 
 The coordinator, 2026-10-25, on this slice's requests: the column, no `user_version` raise; `WorktreeKeys.runnerOf` and the one `store-results.ts` line, each in a commit of its own; setup checks recorded too, with one statement in `Ledger#write` (`setup.ts` holds neither the store nor the keys). Nothing else under `src/core/scheduler/`.
 
-- Store: `addColumns` (`columns.ts`) runs at every open after `migrate`. It reads `pragma_table_info` and writes only when the column is missing, in `Connection.transaction`. A store busy past the busy timeout fails the open as a busy migration does (hooks read it as a busy store, `status/open.ts`) and is left as it was.
-- Writes and reads as first landed (`checks.runner`, one value per check) are replaced by the repair below.
+- What first landed (`checks.runner`, one value per check, added at open by `columns.ts`) was replaced twice; the third round below is what stands.
 
-## Repair: review 0.1.303 B1
+## Repair: review 0.1.303 B1 (replaced by the third round)
 
 The review proved that one runner per check is wrong. `checks` is shared by every worktree, and a file-level check has no test name. So a pytest doctest of `docs/example.js` in one worktree and a Vitest file of the same path in another are one check, and each `putMany` overwrote the one value. The coordinator's repair brief, 2026-10-25: the runner moves to the result, the setup producer to this worktree's own state, and `checks.runner` goes with no migration, since no release has it.
 
@@ -69,12 +68,26 @@ The review proved that one runner per check is wrong. `checks` is shared by ever
 - Tests: `test/delivery/runner-collision.test.ts` runs the review's probe in both directions (pytest here and Vitest there, and the reverse) through the tool boundary and a registration, plus a setup record of this worktree and of another. All eight failed before the repair.
 - Dev stores that ran the first 016-15 build keep an unused `checks.runner` column. No statement names it.
 
+## Third round: re-review 0.1.303 B1
+
+The re-review proved that `results.runner` breaks older daemons on Node 22. A statement prepared before `ALTER TABLE results ADD COLUMN` returns one field fewer from `all()` after it. A released daemon's `SELECT r.*, ..., f.summary, f.errors` then loses `errors`, and its `toResult` throws "squeal store: errors is not text". Node 24 keeps the field. The human chose a third round; the coordinator's brief, 2026-10-25: no table gains a column, and each worktree records a runner per project.
+
+- Store: `results.runner`, `ADDED_COLUMNS` and `columns.ts` are gone, with no migration (never released). `results.ts`, `open.ts` and `codec.ts` are back to their state before this row, and so is `putMany`'s signature.
+- Record: the worktree meta row `runners:<wt>` (`WORKTREE_META_ROWS`, owner `store/repos/test-files`) holds a list of `{ project, runner }`. `checks.recordRunners(worktreeId, Map<project, runner | undefined>)` reads it once and writes only a change. An `undefined` runner (environment not read) records nothing. `checks.runnersOf(worktreeId)` reads it. It replaces `setup-runners:<wt>`. `WorktreeRepo.remove` drops it with the worktree's other rows.
+- Write point (asked and agreed, 2026-10-25): `Ledger#write` records the runner of every project its commit names, in the same transaction. That is the projects of its keyed files, its applied results (runs and lookups alike) and its setup outcomes, as `keys.runnerOf` names them; the helper `runners` sits outside the class. This is the only scheduler diff. `store-results.ts` is back to main. `storeResults` sees only this worktree's own runs, so a worktree that only looks results up would never have recorded.
+- Read: `withDependencies` reads `runnersOf(worktreeId)` once and takes the failing check's project, for result and setup checks alike. A project has one runner in a worktree (`createCompositeRunner`), and another worktree's record is never read.
+- A failure from another worktree stands here only after a local run confirms it (001 D6 as amended, `state/inherited.ts`). So a worktree cannot show a failure it only looked up from another worktree. The lookup-only case with a sentence is a daemon that looks up its own failure, which an older daemon stored with no record (`test/scheduler/check-runner.test.ts`). A worktree that inherits another's results records its runner from the lookup's commit, with no run ended.
+- 011 C7 rule, accepted by 011 on 2026-10-25: "No column is added to an existing table under an unchanged user_version. A new field goes in a new table or a meta row, or comes with a user_version raise." `test/store/table-columns.test.ts` pins every table's columns at user_version 1. It fails at 80cbd43e2.
+- Older daemons: `test/store/check-runner.test.ts` makes a store and a failing result with a released daemon's SQL, warms its result query, then lets a new daemon open, write and record. The held query returns every field. At 80cbd43e2 it fails on Node 22 and on Node 24. `test/daemon/step-down.test.ts` (released 0.1.31) passes on Node 22.
+- Test fakes: ten tests build a `Ledger` over a partial `SchedulerContext`. Each now has `keys.runnerOf: () => undefined`, one line, in a test-only commit before the scheduler commit.
+
 ## Gaps a later row may close
 
-- A result an older daemon stored has no runner until a new daemon stores that key again, and an older daemon storing a recorded key again empties it. A lookup writes none, and results survive releases, so after an upgrade most stored failures read as unrecorded for a while. Attribution says nothing for them, as D3 states.
-- A setup check's record stays in its worktree's list after its setup passes. It is read only beside that setup check's failure, and the list holds one entry per setup file.
+- The record is per project, not per result. If a worktree moves a project name from one runner to another (a policy edit), its retained failures from the old runner read the new runner from the next commit on, until they are re-run. Within one worktree, that is the only way a record can be wrong.
+- A project removed from the policy stays in the worktree's list. The list holds one entry per project the worktree ever ran.
+- A worktree whose daemon is older records nothing. Its failures get no sentence until a new daemon commits there, which records every project it commits at its first commit.
 - The Node runner set is a list of names in `attribution.ts`. A runner that declares whether Node's lockfiles decide what it loads would remove it; that is a runner description, a 016 non-goal.
 
 ## The key-format alarm (011 C14)
 
-The validity bundle holds every line this row changed in `results.ts`, `codec.ts`, `columns.ts`, `open.ts` and `WorktreeKeys`: the global entry re-exports them, and the harness opens its stores with each tree's own code. The alarm asks a case to run each changed line; no `KEY_FORMAT_VERSION` raise, since keys do not change. Agreed with the coordinator: the store and accept harnesses' stub contexts name a runner (`vitest`), the store harness's `putMany` wrapper forwards it, and the assemble harness outputs `keys.runnerOf?.("") ?? input.environment?.runnerName`, equal at both trees. `addColumns` lost its own busy and rollback branches, which no case could reach, to `Connection.transaction`.
+The validity bundle re-exports the store and `WorktreeKeys` whole, and the alarm asks a case to run each changed line. No `KEY_FORMAT_VERSION` raise, since keys do not change. After the third round, this row's lines on the path are `WorktreeKeys.runnerOf` and the ledger's record. `results.ts`, `codec.ts`, `open.ts` and `store-results.ts` have no diff. Harness edits (agreed with the coordinator for 011): the store harness's stub context names a runner (`vitest`) for `Ledger#write`. The assemble harness outputs `keys.runnerOf?.("") ?? input.environment?.runnerName`, equal at both trees. The store harness's `putMany` wrapper and the accept harness's producer are back to their state before this row. `key-format.test.ts` and `validity/compare.test.ts` pass.
