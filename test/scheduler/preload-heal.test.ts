@@ -1,7 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { observedStore } from "../../src/core/daemon/node-test-runners.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { createScheduler } from "../../src/core/scheduler/index.js";
@@ -65,10 +64,7 @@ function stateOf(store: Store, root: string) {
 
 /** A scheduler over the worktree's node:test adapter; `hold` holds every `closure` answer. */
 async function open(root: string, store: Store, commonDir: string, hold?: Promise<void>) {
-  const adapter = await createNodeTestAdapter(NT, {
-    root,
-    observed: observedStore(store, NT.name),
-  });
+  const adapter = await createNodeTestAdapter(NT, { root });
   let closures = 0;
   let runs = 0;
   const runner: RunnerAdapter = {
