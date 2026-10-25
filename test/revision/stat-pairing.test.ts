@@ -69,4 +69,34 @@ describe("a write between a pass's stat and its read (row 011-204)", () => {
     ]);
     expect(cache.hashOf(path)).toBe(hashOf(readFileSync(join(root, path), "utf8")));
   });
+
+  it("reports a write after the read as a change at the next pass, not a touch", async () => {
+    // A clock far past every mtime: only the moved stat can mark the entry racy.
+    hasher = { ...createFsHasher(root, "sha1"), now: () => Date.now() + 3_600_000 };
+    const cache = new StatCache();
+    writeFile(root, path, "it();\n");
+    await reconcile(await batch(), cache, hasher, context);
+
+    writeFile(root, path, "it(2);\n// two\n");
+    const writing: Hasher = {
+      ...hasher,
+      hash: async (p) => {
+        const hash = await hasher.hash(p);
+        writeFile(root, path, "it(3);\n// three\n");
+        return hash;
+      },
+    };
+    await reconcile(await batch(), cache, writing, context);
+    expect(cache.isRacy(path), "the entry whose stat moved after the read").toBe(true);
+
+    const next = await diffBatch(await batch(), cache, hasher);
+    expect(touchedUnchanged(next, cache)).toEqual([]);
+    await reconcile(await batch(), cache, hasher, context);
+
+    expect(store.revisions.rows.map((r) => r.changes)).toEqual([
+      [{ path, oldHash: null, newHash: hashOf("it();\n") }],
+      [{ path, oldHash: hashOf("it();\n"), newHash: hashOf("it(2);\n// two\n") }],
+      [{ path, oldHash: hashOf("it(2);\n// two\n"), newHash: hashOf("it(3);\n// three\n") }],
+    ]);
+  });
 });
