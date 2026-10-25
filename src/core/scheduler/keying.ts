@@ -567,6 +567,11 @@ export class WorktreeKeys {
     return this.#environments.get(project)?.files ?? [];
   }
 
+  /** The runner `project`'s environment hash names (spec 016 D3); none before the first read. */
+  runnerOf(project: ProjectName): string | undefined {
+    return this.#environments.get(project)?.runnerName;
+  }
+
   /** What the stability check compares for a test file: its closure, its project's environment files, its lockfile. */
   stabilityPaths(ref: TestFileRef): RelativePath[] {
     const paths = new Set(this.index.closure(ref)?.paths ?? []);
