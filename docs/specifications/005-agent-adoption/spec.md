@@ -64,6 +64,8 @@ Amends 001 D7. `squeal status --wait <ms> <path>...` restricts the wait's file s
 
 Amended 2026-10-25 (the human, triage round 10, 011 row 011-206; gh-88, gh-84, gh-83): both JSON forms carry `selection.result` (`pass`, `fail` or `none`), `selection.reason` with `none`, and `selection.paths`, and the exit code reads the same result (011 C15). A named path Squeal does not run (a test file's name that no runner here lists) gives no verdict of its own, so the wait exits 3 while the files it selects pass and 1 when one fails; it exited 0 before.
 
+Amended 2026-10-25 (the human, triage round 10, 011 row 011-207, gh-82): a wait on a listed test file named by its own path that is stale or unknown with nothing queued asks that file's one run, as `squeal retry <file>` does, and waits for it, so one command gives the verdict; a source path and a file nobody named stay lookup-only (011 C15).
+
 ### D3. Install and setup
 
 Rewritten 2026-10-09 after `research/cli-distribution.md` (005-05), on the human's direction: the terminal comes first and the skill is the second way in. The plugin stays the only full copy of Squeal. Its CLI, hooks and daemon share a version. When 005-05 measured it, a daemon one version apart re-ran every file, because a result's key held the Squeal version (question 2). Since 001-199 (0.1.89) a key holds a key-format version instead. One copy still keeps one daemon version per store, and it is the simpler thing to install and update. Everything the terminal gains is a launcher into the installed plugin.
