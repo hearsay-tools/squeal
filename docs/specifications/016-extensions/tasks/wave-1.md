@@ -78,3 +78,18 @@ Done when:
 - the boundaries test fails if a file under one runner's folder imports another runner's folder;
 - the key probe re-keys only the edited runner's kit file;
 - `squeal run --all --wait` is green.
+
+## Review of candidate `cand/0.1.303`
+
+Use /reviewer. Candidate `cand/0.1.303`, pinned to the SHA named in the spawn. The range is `origin/main..<SHA>`. It holds 016-14, 016-20, 016-16 and 016-15 (one cherry-picked range each), one coordinator commit that exempts the registry in `test/runners/boundaries.test.ts`, and the build commit (bundles, version 0.1.303). It has no key-format change. Write `docs/specifications/016-extensions/reviews/0.1.303.md` and commit it on your branch.
+
+Read `spec.md` goals 1 to 4, 7 and 8, D1, D3 and D5 (with the 2026-10-25 store decision); the four briefs above; `tasks/016-15/notes.md`; `tasks/016-14/replay.md`; `reviews/016-12.md`.
+
+Check, with proof where you can:
+1. **016-15.** Row 007-45's done-when. An older daemon on the same store opens it, writes NULL runners, prunes as before and fails nothing. The column step runs only while the column is missing. A busy opener fails as during a busy migration, and that happens only once per store. 011's two checks: `test/keys/key-format.test.ts` passes with no version moved, and its edited-constant mutations still fail; the release side's output carries `runner` through the fallback, so the field shows no difference while a real key change still does.
+2. **016-16.** No runner name in `src/harness/shared`. The deny, primer and coverage lines say what they said, with no assertion changed. The deny's live-policy read changes no result.
+3. **016-20 and the exemption.** No behaviour change. An edit under one runner's folder re-keys only that runner's kit file (`reviews/probes/016-12/key-probe.ts`). The registry may import each runner's `describe.js` and nothing else of a runner's, and no adapter imports it.
+4. **016-14.** Each scenario is PASS or KNOWN on every runner, with no sleep and no load dependence. Each listed gap names only the assertions it fails. Replay one defect of `replay.md` and show its kit file fails.
+5. The version raise is complete, and the bundles match the build.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
