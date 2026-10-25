@@ -8,7 +8,7 @@ import type {
   TestFileRef,
 } from "../../src/core/types/index.js";
 import type { FixtureFiles } from "./files.js";
-import { isTest, type Module, type Outcome, type Step } from "./scenarios/index.js";
+import { isTest, type Module, type Outcome, type Step, type Written } from "./scenarios/index.js";
 
 /*
  * Spec 016 D1: how the driver plays each step of a scenario through an
@@ -28,7 +28,7 @@ export interface Stage {
   /** The cause a held run is cut for. */
   readonly cut: CancelCause;
   /** Writes the module's text at its path. */
-  readonly write: (name: string, module: Exclude<Module, { kind: "absent" }>) => void;
+  readonly write: (name: string, module: Written) => void;
   /** Records one assertion. */
   readonly say: (pass: boolean, text: string) => void;
   readonly note: (text: string) => void;
@@ -95,7 +95,8 @@ async function run(stage: Stage, at: number, step: Extract<Step, { run: true }>)
       },
     );
     report = await running;
-    stage.note(`step ${at} cut for ${by}: ${signal.signal.aborted ? "aborted" : "never started"}`);
+    const cut = signal.signal.aborted ? "aborted" : "not cut: no started file before the run ended";
+    stage.note(`step ${at} cut for ${by}: ${cut}`);
   }
   if (report.failure !== null) stage.note(`step ${at} failure: ${report.failure}`);
   for (const [name, expected] of Object.entries(step.expect)) {

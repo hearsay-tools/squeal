@@ -13,7 +13,8 @@ import { type Last, playStep, type Stage } from "./steps.js";
 /*
  * Spec 016 D1: the kit's driver. It writes a scenario's fixture with a
  * pack, then drives the pack's adapter through `RunnerAdapter` alone: list,
- * run, edit, `invalidate`, `affected`, `closure`, run again. It starts no
+ * run, edit, `invalidate` or `recheck`, `affected`, `closure`, run again,
+ * and cut a run with its signals. It starts no
  * daemon and touches no store, so it checks outcomes and reach; transitions
  * are the core's. It names no runner: everything a runner knows is its pack.
  */
