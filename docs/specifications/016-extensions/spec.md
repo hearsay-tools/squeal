@@ -1,6 +1,6 @@
 # 016 Extensions: one correctness kit and the three repeat seams
 
-Status: approved by the human 2026-10-25. Research, decisions and amendments: `status.md`, `research/`.
+Status: approved by the human 2026-10-25, shipped 2026-10-25 (squeal 0.1.320; the human: "Ship now"; proof `lessons.md`). Research, decisions and amendments: `status.md`, `research/`.
 
 ## Scope
 
