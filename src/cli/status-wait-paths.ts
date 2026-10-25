@@ -72,6 +72,7 @@ import {
   type DownReason,
   type HeartbeatLapse,
   stoppingOf,
+  type WaitLiveness,
   watchDaemon,
 } from "./wait-liveness.js";
 
@@ -330,9 +331,8 @@ export async function waitForNamed(
           files,
           result,
           sync: current,
-          ...(daemon.state === "down" ? { down: daemon.reason } : {}),
+          ...livenessOf(daemon),
           ...(lapse === null ? {} : { lapse }),
-          ...(daemon.state === "lapsed" ? { lapsed: true as const } : {}),
           ...(hold === null ? {} : { hold }),
           ...(focus === undefined ? {} : { focus }),
         };
@@ -350,6 +350,15 @@ export async function waitForNamed(
   } finally {
     sync?.stop();
   }
+}
+
+/**
+ * Why the wait found no daemon (task 004-66), or, row 011-206, that its
+ * last read found the heartbeat lapsed or a handoff under way.
+ */
+function livenessOf(daemon: WaitLiveness): { readonly down?: DownReason; readonly lapsed?: true } {
+  if (daemon.state === "down") return { down: daemon.reason };
+  return daemon.state === "lapsed" ? { lapsed: true } : {};
 }
 
 /**
