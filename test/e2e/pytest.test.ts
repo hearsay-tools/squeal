@@ -25,10 +25,11 @@ import {
  * locked on pytest 8, so every scenario runs both majors in one daemon.
  * Each scenario for both plugins on Python 3.10 and 3.13: an edit runs only
  * the files whose closure holds it and delivers their `PASS -> FAIL`
- * through the hooks; a synced second worktree inherits every result but
- * those whose first run observed imports the static graph misses, which
- * run once there, and a worktree without `.venv` is unknown with D2's note
- * until its `uv sync`, then inherits with zero runs; the D8 deny stops a
+ * through the hooks; a synced second worktree inherits every result, those
+ * whose first run observed imports the static graph misses included (016
+ * D4), and an edit of such an import there runs its file; a worktree
+ * without `.venv` is unknown with D2's note until its `uv sync`, then
+ * inherits with zero runs; the D8 deny stops a
  * named current file once and lets a bare `pytest` run; and `squeal stop`
  * stops the daemon.
  */
