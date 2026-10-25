@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.302";
+  if (true) return "0.1.304";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -15059,6 +15059,8 @@ var init_queue = __esm({
       /** Named waits' focused checks (spec 011 C15, row 011-145): they go before every entry. */
       focused = new FocusedEntries();
       #queued = (id2) => this.#entries.has(id2);
+      /** Open `settlingOnce` calls: while any is, `add` leaves the promotions as they are. */
+      #settleHeld = 0;
       /** Every entry, fast and slow. */
       get size() {
         return this.#entries.size;
@@ -15095,6 +15097,23 @@ var init_queue = __esm({
       promote(refs2, until) {
         this.#promotions.add(refs2, until, this.#queued);
       }
+      /**
+       * Runs `fn` as one step of C15 Lifetime: its `add`s settle no promotion,
+       * and the promotions settle once it returns. A record queues a file again
+       * after it took it off the queue or ended its run (a cut, a re-run of a
+       * grown environment, a first-seen path or a first failure); an `add` in
+       * between would find it neither queued nor running and end a wait's
+       * promotion of it (rows 011-193, 011-196).
+       */
+      settlingOnce(fn) {
+        this.#settleHeld += 1;
+        try {
+          return fn();
+        } finally {
+          this.#settleHeld -= 1;
+          if (this.#settleHeld === 0) this.#promotions.settle(this.#queued);
+        }
+      }
       /** Whether `ref`'s entry is queued and promoted now (C15). */
       isPromoted(ref2) {
         const id2 = testFileId(ref2);
@@ -15130,7 +15149,7 @@ var init_queue = __esm({
        * amended 2026-10-20, task 011-22).
        */
       add(ref2, priority, forced = false, recent = false, catchUp = false, by = null) {
-        this.#promotions.settle(this.#queued);
+        if (this.#settleHeld === 0) this.#promotions.settle(this.#queued);
         const id2 = testFileId(ref2);
         const entry4 = this.#entries.get(id2);
         if (entry4) {
@@ -18162,134 +18181,137 @@ function recordTier(context, ledger, tier, report3, changedOnDisk, requeue = fal
   const grewEnvironment = [];
   const failedAnew = [];
   const notStarted = [];
-  const ending3 = [];
   const startup = report3.startupFailure;
   const { environment } = observed;
-  store.transaction(() => {
-    store.runs.finish(tier.runId, report3.end, context.now());
-    for (const entry4 of tier.files) {
-      const { file, key: key3, checkpointId, forced, recent, catchUp } = entry4;
-      const decision = storeDecision(entry4, end, ledger.files.get(file.id) === file);
-      if (decision.kind === "superseded") {
-        ledger.endRunningAt(file, key3);
-        continue;
-      }
-      if (decision.kind !== "not-started" || setups === false) ending3.push(file);
-      if (decision.kind === "gone") continue;
-      if (decision.kind === "withheld") {
-        ledger.discard(file, key3, forced, [], report3.failure ?? `run ${report3.end}`, tier.runId);
-        continue;
-      }
-      if (decision.kind === "requeue") {
-        if (file.key !== null && file.blocked === null) {
-          const priority = priorityOf(file, NOTHING_CHANGED);
-          const again = ledger.staysForced(file, key3, forced);
-          ledger.enqueue(file, priority, again, recent === true, catchUp === true);
+  ledger.queue.settlingOnce(
+    () => store.transaction(() => {
+      store.runs.finish(tier.runId, report3.end, context.now());
+      for (const entry4 of tier.files) {
+        const { file, key: key3, checkpointId, forced, recent, catchUp } = entry4;
+        const decision = storeDecision(entry4, end, ledger.files.get(file.id) === file);
+        if (decision.kind === "superseded") {
+          ledger.endRunningAt(file, key3);
+          continue;
         }
-        continue;
+        ledger.setRunning(file, null);
+        if (decision.kind === "gone") continue;
+        if (decision.kind === "withheld") {
+          ledger.discard(file, key3, forced, [], report3.failure ?? `run ${report3.end}`, tier.runId);
+          continue;
+        }
+        if (decision.kind === "requeue") {
+          if (file.key !== null && file.blocked === null) {
+            const priority = priorityOf(file, NOTHING_CHANGED);
+            const again = ledger.staysForced(file, key3, forced);
+            ledger.enqueue(file, priority, again, recent === true, catchUp === true);
+          }
+          continue;
+        }
+        if (decision.kind === "not-started") {
+          if (setups !== false)
+            notStarted.push({ file, forced: ledger.staysForced(file, key3, forced) });
+          else unknown.push({ file, key: key3 });
+        } else if (decision.kind === "unknown") unknown.push({ file, key: key3 });
+        else if (decision.kind === "split") {
+          requeueSplit(ledger, file, key3, decision.cap, forced, recent === true);
+        }
+        if (decision.kind === "not-started" || decision.kind === "unknown" || decision.kind === "split") {
+          continue;
+        }
+        const { growth } = decision;
+        let storeKey = key3;
+        if (growth !== void 0) {
+          rekeyed.push(...context.keys.addObserved(file.ref, growth.add).map((c) => c.testFile));
+          grown.push({ ref: file.ref, checkpointId });
+          storeKey = decision.kind === "store" ? context.keys.index.key(file.ref) : null;
+        }
+        if (decision.kind === "unstable") {
+          ledger.discard(file, key3, forced, decision.paths, void 0, tier.runId);
+          continue;
+        }
+        if (decision.kind === "first-seen") {
+          if (decision.rerun) firstSeen.push({ file, firstSeen: growth?.firstSeen ?? [] });
+          continue;
+        }
+        if (decision.kind === "environment") {
+          grewEnvironment.push(file);
+          continue;
+        }
+        if (decision.kind === "no-key" || storeKey === null) continue;
+        const previous = file.resultKey;
+        const records = recordsForFile({
+          ref: file.ref,
+          key: storeKey,
+          report: report3,
+          previousChecks: previous === null ? [] : store.results.checksForKey(previous),
+          provenance,
+          describe: context.describe
+        });
+        const failing = store.failures.failingAt(storeKey);
+        const inputs2 = [...entry4.inputs, ...growth?.growth ?? []];
+        const prior = storeResults(context, records, healsUnheld(store, inputs2));
+        recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
+        store.failures.keepReplaced(
+          failing,
+          records,
+          (run5) => readRunLoads(store).get(run5) ?? null
+        );
+        if (forced && file.rerunKey === key3) endRerun(context, file);
+        if (forced) endRetry(context, file, key3, records, tier.runId);
+        if (growth !== void 0 || file.key === key3) {
+          if (holdsNewFailure(context, prior, records)) {
+            failedAnew.push({
+              file,
+              key: storeKey,
+              forced,
+              afterTestsPassed: failsAfterTestsPassed(records)
+            });
+          }
+        }
+        if (decision.current) ledger.applyResults(file, key3, records, checkpointId);
       }
-      if (decision.kind === "not-started") {
-        if (setups !== false)
-          notStarted.push({ file, forced: ledger.staysForced(file, key3, forced) });
-        else unknown.push({ file, key: key3 });
-      } else if (decision.kind === "unknown") unknown.push({ file, key: key3 });
-      else if (decision.kind === "split") {
-        requeueSplit(ledger, file, key3, decision.cap, forced, recent === true);
+      if (environment !== void 0) {
+        const unkeyed = [];
+        const edited = [];
+        for (const { testFile } of environment.changes) {
+          (ledger.file(testFile)?.keyedAt === null ? unkeyed : edited).push(testFile);
+        }
+        ledger.settle(unkeyed, NOTHING_CHANGED, { keyedAt: ledger.revision.number });
+        ledger.settle(edited, NOTHING_CHANGED);
+        rerunGrown(ledger, environment, grewEnvironment);
       }
-      if (decision.kind === "not-started" || decision.kind === "unknown" || decision.kind === "split") {
-        continue;
+      for (const { ref: ref2, checkpointId } of grown) {
+        ledger.settle([ref2], NOTHING_CHANGED, { checkpointId });
       }
-      const { growth } = decision;
-      let storeKey = key3;
-      if (growth !== void 0) {
-        rekeyed.push(...context.keys.addObserved(file.ref, growth.add).map((c) => c.testFile));
-        grown.push({ ref: file.ref, checkpointId });
-        storeKey = decision.kind === "store" ? context.keys.index.key(file.ref) : null;
+      ledger.settle(rekeyed, NOTHING_CHANGED);
+      ledger.rerunFirstSeen(firstSeen, tier.runId);
+      rememberReruns(context, queueReruns(context, ledger, failedAnew));
+      storeClosures(
+        context,
+        grown.map((g2) => g2.ref)
+      );
+      if (setups !== false) {
+        const started2 = /* @__PURE__ */ new Set([
+          ...report3.startedProjects ?? [],
+          ...report3.completedFiles.map((f) => f.project)
+        ]);
+        for (const project of startup?.projects ?? []) started2.delete(project);
+        if (setups !== true) for (const project of setups) started2.delete(project);
+        ledger.setups.pass(started2, provenance.commit);
+        if (startup !== void 0) failStartup(ledger, startup, notStarted, provenance.commit);
       }
-      if (decision.kind === "unstable") {
-        ledger.discard(file, key3, forced, decision.paths, void 0, tier.runId);
-        continue;
-      }
-      if (decision.kind === "first-seen") {
-        if (decision.rerun) firstSeen.push({ file, firstSeen: growth?.firstSeen ?? [] });
-        continue;
-      }
-      if (decision.kind === "environment") {
-        grewEnvironment.push(file);
-        continue;
-      }
-      if (decision.kind === "no-key" || storeKey === null) continue;
-      const previous = file.resultKey;
-      const records = recordsForFile({
-        ref: file.ref,
-        key: storeKey,
-        report: report3,
-        previousChecks: previous === null ? [] : store.results.checksForKey(previous),
-        provenance,
-        describe: context.describe
+      const timedOut = report3.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
+      const reason2 = timedOut ?? report3.failure ?? `run ${report3.end}`;
+      for (const { file, key: key3 } of unknown) endRetry(context, file, key3, null, tier.runId);
+      for (const { file } of notStarted)
+        if (file.key !== null) endRetry(context, file, file.key, null, tier.runId);
+      ledger.markUnknown(unknown, reason2, {
+        runId: tier.runId,
+        ...timedOut === null ? {} : { cause: "timeout" }
       });
-      const failing = store.failures.failingAt(storeKey);
-      const inputs2 = [...entry4.inputs, ...growth?.growth ?? []];
-      const prior = storeResults(context, records, healsUnheld(store, inputs2));
-      recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
-      store.failures.keepReplaced(failing, records, (run5) => readRunLoads(store).get(run5) ?? null);
-      if (forced && file.rerunKey === key3) endRerun(context, file);
-      if (forced) endRetry(context, file, key3, records, tier.runId);
-      if (growth !== void 0 || file.key === key3) {
-        if (holdsNewFailure(context, prior, records)) {
-          failedAnew.push({
-            file,
-            key: storeKey,
-            forced,
-            afterTestsPassed: failsAfterTestsPassed(records)
-          });
-        }
-      }
-      if (decision.current) ledger.applyResults(file, key3, records, checkpointId);
-    }
-    for (const file of ending3) ledger.setRunning(file, null);
-    if (environment !== void 0) {
-      const unkeyed = [];
-      const edited = [];
-      for (const { testFile } of environment.changes) {
-        (ledger.file(testFile)?.keyedAt === null ? unkeyed : edited).push(testFile);
-      }
-      ledger.settle(unkeyed, NOTHING_CHANGED, { keyedAt: ledger.revision.number });
-      ledger.settle(edited, NOTHING_CHANGED);
-      rerunGrown(ledger, environment, grewEnvironment);
-    }
-    for (const { ref: ref2, checkpointId } of grown) {
-      ledger.settle([ref2], NOTHING_CHANGED, { checkpointId });
-    }
-    ledger.settle(rekeyed, NOTHING_CHANGED);
-    ledger.rerunFirstSeen(firstSeen, tier.runId);
-    rememberReruns(context, queueReruns(context, ledger, failedAnew));
-    storeClosures(
-      context,
-      grown.map((g2) => g2.ref)
-    );
-    if (setups !== false) {
-      const started2 = /* @__PURE__ */ new Set([
-        ...report3.startedProjects ?? [],
-        ...report3.completedFiles.map((f) => f.project)
-      ]);
-      for (const project of startup?.projects ?? []) started2.delete(project);
-      if (setups !== true) for (const project of setups) started2.delete(project);
-      ledger.setups.pass(started2, provenance.commit);
-      if (startup !== void 0) failStartup(ledger, startup, notStarted, provenance.commit);
-    }
-    for (const { file } of notStarted) ledger.setRunning(file, null);
-    const timedOut = report3.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
-    const reason2 = timedOut ?? report3.failure ?? `run ${report3.end}`;
-    for (const { file, key: key3 } of unknown) endRetry(context, file, key3, null, tier.runId);
-    for (const { file } of notStarted)
-      if (file.key !== null) endRetry(context, file, file.key, null, tier.runId);
-    ledger.markUnknown(unknown, reason2, {
-      runId: tier.runId,
-      ...timedOut === null ? {} : { cause: "timeout" }
-    });
-    if (commit) ledger.commit();
-  });
+      if (commit) ledger.commit();
+    })
+  );
   return [.../* @__PURE__ */ new Set([...changedOnDisk, ...observed.changed])];
 }
 var init_tiers = __esm({
@@ -21589,6 +21611,15 @@ async function candidatesForReconcile(ctx, statusPaths) {
     out2.set(rel2, await statOrNull2(ctx.root, rel2));
   }
   return { paths: sortCandidates(out2), linkedDirs, links };
+}
+async function committedSince(root, since, head) {
+  if (head === null || since === head) return [];
+  if (since != null) {
+    const diff = ["diff", "--name-only", "--no-renames", "-z", since, head, "--"];
+    const changed2 = await runGit(root, diff).catch(() => null);
+    if (changed2 !== null) return splitNul(changed2);
+  }
+  return splitNul(await runGit(root, ["ls-files", "-z", "--cached"]));
 }
 async function linksAmong(root, paths) {
   const links = await topLinks(root, paths);
@@ -27458,6 +27489,7 @@ var init_change_feed = __esm({
   "src/core/watcher/change-feed.ts"() {
     "use strict";
     init_fs();
+    init_git_head();
     init_types();
     init_atomic_save();
     init_backend();
@@ -27507,6 +27539,12 @@ var init_change_feed = __esm({
       queue = Promise.resolve();
       /** The reconciliation queued and not yet started, which later requests join. */
       pending = null;
+      /**
+       * `HEAD` read just before the last delivered pass's git status; `undefined` before the first
+       * (row 011-199). The feed keeps its own: the scheduler reads the `HEAD` it records after the
+       * pass's status, so a commit between the two would hide its files from a diff from there.
+       */
+      passHead;
       /** Set once the system refused a watch: the note is given once per feed. */
       atWatchLimit = false;
       /** Made again by `start`, with the resolved root. */
@@ -27610,13 +27648,18 @@ var init_change_feed = __esm({
           () => "watch"
         );
       }
+      /** `HEAD` is read before git status, so a commit made between the two is in the next diff. */
       async reconcileNow(trigger) {
+        const head = readGitHead(this.root);
         const status2 = await gitStatus(this.root);
         await this.rebuildSpec(status2);
-        const { paths, linkedDirs, links } = await candidatesForReconcile(this.context(), status2.paths);
+        const committed = await committedSince(this.root, this.passHead, head);
+        const listed5 = [...status2.paths, ...committed];
+        const { paths, linkedDirs, links } = await candidatesForReconcile(this.context(), listed5);
         this.linkTargets = new Map(links);
         await this.linked?.update(linkedDirs);
         await this.emit({ trigger, paths: this.tempHold.filter(paths, this.trackedPaths) });
+        this.passHead = head;
       }
       /** True when a link of the batch is new, gone or points elsewhere than when last seen. */
       async relinked(hinted) {
