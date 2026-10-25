@@ -108,6 +108,10 @@ After the rebase onto `d81a46ec2` the last release is `squeal--v0.1.309`. Betwee
 - K10's `DIRECT` gaps for pytest and node:test slow are gone: both pass. node:test fast keeps `FAST` (004 D5), Vitest keeps its K10 gap (row 016-22). node:test K5 and its two variants pass again, with the start-up paths from the core.
 - Mutation check, 2026-10-25: with `ObservedSets.writeMarks` returning at once, K10 fails on node:test slow, pytest under Python 3.10 and 3.13, and the fake, each at steps 7 and 13 (`affected=none, marked=false`). Restored after.
 
+## Review 0.1.313 repairs
+
+- **B1, the edit cut read the marks before the shared refresh.** `fetchRunnerPart` asked `observedDirectOf` before `applyRunnerPart` refreshed the shared marks (`regrowObserved`), so a live worktree missed a mark another worktree stored after it started: its edit ran the shortest transitive file and left the marked one to catch-up. `applyRunnerPart` now reads the marks once, after the refresh and the closures it applies; `RunnerPart.observedDirect` is gone. `cutAtStart` keeps its read: it follows the keys' bootstrap, which reads the store. Test: `test/scheduler/observed-direct.test.ts`, "reads a mark a live second worktree stored after this one started", which failed before the fix (`editPaths` `[z]`).
+
 ## Residuals
 
 - **A rolled-back record's direct marks.** As the start-up paths below: `markDirect` adds to this daemon's view before the record's transaction, so a rolled-back write leaves the view ahead of the store until the next record writes it. An over-mark in this daemon only.
