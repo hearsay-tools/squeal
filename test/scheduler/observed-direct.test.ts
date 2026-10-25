@@ -123,6 +123,43 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     expect(cut.catchUpPaths).toEqual([z.path]);
   });
 
+  it("reads a mark a live second worktree stored after this one started (review 0.1.313 B1)", async () => {
+    // X and Z reach CHILD through src/a.ts only; without X's mark the K = 1 shortest is Z.
+    const through = (path: string, ms: number): CatchUpFile => ({
+      path,
+      ms,
+      imports: ["src/a.ts"],
+      through: [CHILD],
+    });
+    const x = through("test/x.test.ts", 500);
+    const z = through("test/z.test.ts", 100);
+    const files = [x, z];
+    const repo = catchUpRepo(files, ["src/a.ts", CHILD]);
+    // B's runs mark nothing; it starts first and keeps the store's marks as they were.
+    const b = open(repo, repo.other, files, { loads: true });
+    await b.scheduler.start();
+    await b.scheduler.idle();
+    expect(b.store.meta.get(observedDirectMetaKey(""))).toBeNull();
+
+    // A's copy of CHILD differs, so A runs both files, and its run of X marks CHILD.
+    writeFileSync(join(repo.main, CHILD), "// a's child\n");
+    const what: Observing = {
+      observed: { [x.path]: { paths: [CHILD], directories: [], direct: [CHILD] } },
+      loads: true,
+    };
+    const a = open(repo, repo.main, files, what);
+    await a.scheduler.start();
+    await a.scheduler.idle();
+    expect(JSON.parse(b.store.meta.get(observedDirectMetaKey("")) ?? "{}")).toEqual({
+      [x.path]: [CHILD],
+    });
+
+    // B, still live, edits CHILD: A's mark makes X a direct importer, so X is the edit.
+    const cut = await editAndRun(b, CHILD);
+    expect(cut.editPaths).toEqual([x.path]);
+    expect(cut.catchUpPaths).toEqual([z.path]);
+  });
+
   it("keeps the K shortest of more than K marked files as edits, the rest catch-up", async () => {
     const marked = [100, 200, 300, 400].map((ms, i) => reader(`test/m${i}.test.ts`, ms));
     const repo = catchUpRepo(marked, [CHILD]);
