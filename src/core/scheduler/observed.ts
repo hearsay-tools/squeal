@@ -17,8 +17,10 @@ export interface ObservedGrowth {
   readonly growth: readonly RelativePath[];
   /**
    * The file paths of `growth` the stat cache first hashed after the run
-   * began: no evidence from before the run holds them, so no key with them
-   * can certify this run's result (review wave 12d, B1; task 001-134).
+   * began, and the listings of git-ignored directories in `add`, whose names
+   * the record reads from disk (row 016-23): no evidence from before the run
+   * holds them, so no key with them can certify this run's result (review
+   * wave 12d, B1; task 001-134).
    */
   readonly firstSeen: readonly RelativePath[];
 }
@@ -36,10 +38,12 @@ export interface ObservedGrowth {
  * is hashed into the stat cache, so the keys `recordTier` computes have no
  * untracked path; a path hashed only now, after its read and after run `run`
  * (`WorktreeKeys.beginRun`) began, is `firstSeen`, except `.git`, which keys
- * by its kind. Only a project `keys.observes` (policy `observe.runtimeInputs`,
- * or module loads, 016 D4 O8) gives growth. What a process the file started
- * imported (`ObservedInputs.direct`) marks it direct in the keys' view, a
- * closure path too, unless the bound drops it; the record stores the marks.
+ * by its kind, and so is a listing of a git-ignored directory the run adds,
+ * whose names are read from disk as the record keys it (row 016-23). Only a
+ * project `keys.observes` (policy `observe.runtimeInputs`, or module loads,
+ * 016 D4 O8) gives growth. What a process the file started imported
+ * (`ObservedInputs.direct`) marks it direct in the keys' view, a closure path
+ * too, unless the bound drops it; the record stores the marks.
  */
 export async function observedGrowth(
   context: Pick<SchedulerContext, "root" | "keys">,
@@ -92,15 +96,27 @@ export async function observedGrowth(
   await keys.track(tracked);
   for (const { testFile, add, growth } of grown) {
     // `.git` keys by its kind, read with the key, not by the bytes hashed now (task 001-262).
-    const firstSeen = growth.filter(
+    const hashed = growth.filter(
       (path) =>
         listedDirectory(path) === null &&
         path !== GIT_ENTRY &&
         keys.firstHashedDuringRun(path, run),
     );
+    const firstSeen = [...hashed, ...ignoredListings(add, ignored)];
     out.set(testFileId(testFile), { add, growth, firstSeen });
   }
   return out;
+}
+
+/** The listings among `paths` whose directory git ignores (row 016-23). */
+function ignoredListings(
+  paths: readonly RelativePath[],
+  ignored: ReadonlySet<RelativePath>,
+): RelativePath[] {
+  return paths.filter((path) => {
+    const directory = listedDirectory(path);
+    return directory !== null && ignored.has(directory);
+  });
 }
 
 /**
