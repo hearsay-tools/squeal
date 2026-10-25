@@ -22,3 +22,19 @@ Done when:
 - `test/keys/key-format.test.ts` passes with no version raised;
 - `src/core/keys/` holds one merge and one parse of these maps;
 - `squeal run --all --wait` is green.
+
+## Review of the wave 6 candidate (016-29, 016-30)
+
+Use /reviewer. The candidate branch and SHA are named in the spawn. The range is `origin/main..<SHA>`: five commits of worker 00f19154 (016-30's removals, the failing test, the view, slice 1, notes), the coordinator's 011 C3 sentence and status lines, the version raise and the bundle commit. Write `docs/specifications/016-extensions/reviews/<version>.md` and commit it alone on your branch.
+
+Read: the brief above; `tasks/016-29/notes.md`; `quality/2026-10-25.md` (row 016-29, drop candidates 1 and 2); 011 C3 (the observed-paths sentence) and 011 `status.md`'s line of 2026-10-25 for 016-29.
+
+Check, with proof where you can:
+1. The new test in `one-write-path.test.ts` fails on `origin/main` and passes here. After the rollback and after the next record it asserts that no stored result's key reads an observed path the store lacks (011's addition a). A restart between the rollback and the next record rebuilds the view from the store, and the file runs again (011's addition b).
+2. Two daemons in two worktrees writing one meta key keep the union, for all three keys (the two-connection test). `write` reads the stored text inside its transaction, never from a cache.
+3. Stored bytes are unchanged: compare-refs at `squeal--v0.1.320` equal for every case, uncovered 0, `KEY_FORMAT_VERSION` at 20. Say why the run counts 64 cases where 0.1.316's counted 103 (`status.md`, 016-24's line), and whether any case is missing.
+4. The notes' residue: after its own write, a view's next read merges other worktrees' paths without reporting them as grown. Say whether a file can then stay current at a key that lacks those paths.
+5. 016-30: each removed case is proven by kit K5 on node:test and by the named remaining cases, as the scan states.
+6. `SharedPaths.write` runs once per record transaction in product code; a second call in one transaction is not reachable.
+
+Run lint, typecheck, `test/scheduler/one-write-path.test.ts`, `test/keys/observed.test.ts`, `test/keys/key-format.test.ts` and `test/kit/*.test.ts` on Node 22 and Node 24, and the locked full suite: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`. Label findings proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
