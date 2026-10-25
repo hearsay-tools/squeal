@@ -40,3 +40,12 @@ Use /worker. Shape: repair. Resumes worker c9034b32 on its branch `cez/c9034b32`
 - **B2, a lost record.** The candidate's `map-worker.js` exits on its `sources` message after the payload was deleted, and the job's record is lost (records `[false, true]` for two jobs). A failed worker must lose no record: each job the worker held is mapped again on the main thread, or retried (`coverage/writer.ts`, `mapper.ts`).
 - **Also, if cheap:** the cold loader read is one turn of 1.0 to 1.2 s (your residue). Slice it across steps.
 - **Owns** as W1. **Done when:** each blocker's sequence is a test, red first; one commit per blocker, named `fix(R8): … (review 0.1.305 Bn)`; lint, typecheck and `squeal run --all --wait`; paste. No bundles, no version.
+
+## 015-43 round 2: re-review of candidate 0.1.305
+
+Use /reviewer. Resumes reviewer 4a7491eb. Candidate `cand/0.1.305` at the SHA named in the message, on main at 0.1.302 (docs only moved); round 1 is `reviews/0.1.305.md` (FAIL on 1347d8452, B1 and B2; kept as `review/0.1.305-round1`). Write `reviews/0.1.305-r2.md` and commit it on your branch. The candidate is 015-42 again, plus repair R8 (`fix(R8)` commits, brief `tasks/wave-4.md` R8) and a new build commit.
+- Check B1 and B2 against R8 with your own probes: hit to no-hit and no-hit to hit; an injected exit after the read with the real bundled worker.
+- S1 and S2 are row 015-45, not this round. D10's wording now says each job waits its own time.
+- What passed round 1: re-read only where R8 touches it (`crap/cache.ts`, `coverage/map-worker.ts`, `mapper.ts`, `writer.ts`). Confirm the candidate's CI is green.
+
+Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result; name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
