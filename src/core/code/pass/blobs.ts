@@ -41,7 +41,7 @@ export interface Attempt {
 /**
  * D4's blob lookup and slices: each blob of the work set with no count at
  * this counter version is read and counted once, `sliceFiles` at a time, and
- * stored with one transaction per slice. A blob the disk no longer holds is
+ * stored with one transaction per slice. The lookups go a slice a turn too. A blob the disk no longer holds is
  * retried at the next pass. One the counter fails on is recorded in
  * `failed` and retried when its retry is due, `COUNT_ATTEMPTS` in all (row
  * 015-18), with whether `attempt` is a quiet pass's (review 0.1.293 B1);
@@ -63,13 +63,21 @@ export async function countMissing(
     const key = `${e.file.hash}\0${e.language}`;
     byBlob.set(key, [...(byBlob.get(key) ?? []), e]);
   }
-  const missing = [...byBlob.values()].filter(
-    ([e]) => e !== undefined && store.counts.get(e.file.hash, e.language, counter.version) === null,
-  );
+  const size = ctx.sliceFiles ?? SLICE_FILES;
+  const groups = [...byBlob.values()];
+  const missing: FileEntry[][] = [];
+  // Each lookup reads and parses a stored count: a recount's look up a slice at a time too (row 015-48).
+  for (let start = 0; start < groups.length; start += size) {
+    if (start > 0) await nextTurn();
+    for (const group of groups.slice(start, start + size)) {
+      const [e] = group;
+      const stored = e === undefined || store.counts.get(e.file.hash, e.language, counter.version);
+      if (stored === null) missing.push(group);
+    }
+  }
   const skipped = new Set<RelativePath>();
   const links = new Set<RelativePath>();
   let counted = 0;
-  const size = ctx.sliceFiles ?? SLICE_FILES;
   for (let start = 0; start < missing.length; start += size) {
     if (start > 0) await nextTurn();
     const slice = missing.slice(start, start + size);
