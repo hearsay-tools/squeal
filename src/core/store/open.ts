@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { AbsolutePath, EpochMs, Store, StoreOpenFailure } from "../types/index.js";
@@ -15,16 +15,25 @@ export interface OpenStoreOptions {
    */
   readonly create?: boolean;
   /**
-   * Run `PRAGMA integrity_check` and, on failure, move the file aside and
-   * start a fresh store (spec 001 D12). For daemon start; too slow for hooks.
-   * Default `false`: a corrupt file is reported, never moved.
+   * Run `PRAGMA quick_check` or `PRAGMA integrity_check` and, on failure or
+   * on the mark a failed full check left (`markStore`), move the file aside
+   * and start a fresh store (spec 001 D12). A daemon's start runs the quick
+   * one (row 011-226); too slow for hooks. Default none: a corrupt file is
+   * reported, never moved.
    */
-  readonly checkIntegrity?: boolean;
+  readonly checkIntegrity?: IntegrityCheck;
   /** Busy timeout for this connection. Default `DEFAULT_BUSY_TIMEOUT_MS`. */
   readonly busyTimeoutMs?: number;
   /** Clock for the move-aside file name and the recovery note. */
   readonly now?: () => EpochMs;
 }
+
+/**
+ * `quick`: SQLite's `quick_check`, which skips UNIQUE constraints and whether
+ * index content matches table content, 1.6 s on an 850 MB store; `full`:
+ * `integrity_check`, 24 s on it (row 011-223).
+ */
+export type IntegrityCheck = "quick" | "full";
 
 /** Fits inside the 2 s hook budget (spec 001 D9); the daemon may pass more. */
 export const DEFAULT_BUSY_TIMEOUT_MS = 1_000;
@@ -35,6 +44,53 @@ export const DEFAULT_BUSY_TIMEOUT_MS = 1_000;
  * lost."
  */
 export const META_STORE_RECOVERED = "store.recovered";
+
+/**
+ * `meta` key of the full check's claim (row 011-226): when the last full
+ * `integrity_check` of the store started, as epoch ms. A daemon takes it in
+ * a write transaction, so one daemon runs the check in a day.
+ */
+export const META_FULL_CHECK = "store.full-check";
+
+/** What a failed full check left beside the store: when it ended and what it found. */
+export interface StoreMark {
+  readonly at: EpochMs;
+  readonly problem: string;
+}
+
+/**
+ * Row 011-226: marks the store as failing its full check. Every daemon on it
+ * exits at its next heartbeat, and the next checked open moves it aside.
+ */
+export function markStore(commonDir: AbsolutePath, mark: StoreMark): void {
+  writeFileSync(markPath(storePaths(commonDir).database), JSON.stringify(mark));
+}
+
+/** The mark a failed full check left beside the store; `null` with none. */
+export function readStoreMark(commonDir: AbsolutePath): StoreMark | null {
+  return readMark(markPath(storePaths(commonDir).database));
+}
+
+function markPath(database: string): string {
+  return `${database}.check-failed`;
+}
+
+function readMark(path: string): StoreMark | null {
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+  try {
+    const { at, problem } = JSON.parse(text) as Partial<StoreMark>;
+    if (typeof at === "number" && typeof problem === "string") return { at, problem };
+  } catch {
+    // A mark cut short still marks the store.
+  }
+  return { at: 0, problem: "the full integrity check failed" };
+}
 
 export function isStoreOpenFailure(value: Store | StoreOpenFailure): value is StoreOpenFailure {
   return "reason" in value;
@@ -57,11 +113,11 @@ export function openStore(
   }
   const opened = connect(paths, options);
   if (!("corrupt" in opened)) return opened;
-  if (options.checkIntegrity !== true) return { reason: "corrupt", movedTo: null };
+  if (options.checkIntegrity === undefined) return { reason: "corrupt", movedTo: null };
   return recover(paths, options);
 }
 
-type Connected = Store | StoreOpenFailure | { readonly corrupt: string };
+type Connected = Store | StoreOpenFailure | { readonly corrupt: string; readonly mark?: StoreMark };
 
 function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
   let db: DatabaseSync | undefined;
@@ -73,8 +129,14 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
       db.close();
       return { reason: "newer-schema", found, supported: SCHEMA_VERSION };
     }
-    if (options.checkIntegrity === true) {
-      const problem = integrityProblem(db);
+    if (options.checkIntegrity !== undefined) {
+      // Row 011-226: a failed full check's mark moves the store aside as a fault found now does.
+      const mark = readMark(markPath(paths.database));
+      if (mark !== null) {
+        db.close();
+        return { corrupt: mark.problem, mark };
+      }
+      const problem = integrityProblem(db, options.checkIntegrity);
       if (problem !== null) {
         db.close();
         return { corrupt: problem };
@@ -125,14 +187,15 @@ function pragmaNumber(db: DatabaseSync, name: string): number {
   return Number(db.prepare(`PRAGMA ${name}`).get()?.[name]);
 }
 
-function integrityProblem(db: DatabaseSync): string | null {
-  const rows = db.prepare("PRAGMA integrity_check").all();
-  const messages = rows.map((row) => String(row.integrity_check));
+function integrityProblem(db: DatabaseSync, check: IntegrityCheck): string | null {
+  const pragma = check === "quick" ? "quick_check" : "integrity_check";
+  const rows = db.prepare(`PRAGMA ${pragma}`).all();
+  const messages = rows.map((row) => String(row[pragma]));
   return messages.length === 1 && messages[0] === "ok" ? null : messages.join("; ");
 }
 
 /** SQLITE_CORRUPT (11) and SQLITE_NOTADB (26), including extended codes. */
-function isCorruption(error: unknown): boolean {
+export function isCorruption(error: unknown): boolean {
   const code = (error as { errcode?: unknown }).errcode;
   return typeof code === "number" && [11, 26].includes(code & 0xff);
 }
@@ -144,7 +207,8 @@ function isCorruption(error: unknown): boolean {
  *
  * Holds an exclusive lock on `locks/store-recovery.sqlite` and re-checks
  * under it, so two daemons starting together never move a store the other
- * one just created.
+ * one just created. A failed full check's mark moves with the file, and the
+ * note says the full check found the fault (row 011-226).
  */
 function recover(paths: StorePaths, options: OpenStoreOptions): Store | StoreOpenFailure {
   mkdirSync(paths.locksDir, { recursive: true });
@@ -152,16 +216,18 @@ function recover(paths: StorePaths, options: OpenStoreOptions): Store | StoreOpe
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 10_000)}`);
     lock.exec("BEGIN EXCLUSIVE");
-    const again = connect(paths, { ...options, checkIntegrity: true });
+    const again = connect(paths, { ...options, checkIntegrity: options.checkIntegrity ?? "quick" });
     if (!("corrupt" in again)) return again;
 
     const now = options.now ?? Date.now;
     const at = now();
     const movedTo = moveAside(paths.database, at);
-    const fresh = connect(paths, { ...options, checkIntegrity: false });
+    const { checkIntegrity: _, ...unchecked } = options;
+    const fresh = connect(paths, unchecked);
     if ("corrupt" in fresh) return { reason: "corrupt", movedTo };
     if (!isStoreOpenFailure(fresh)) {
-      const note = JSON.stringify({ at, movedTo, reason: again.corrupt });
+      const full = again.mark === undefined ? {} : { check: "full", checkedAt: again.mark.at };
+      const note = JSON.stringify({ at, movedTo, reason: again.corrupt, ...full });
       fresh.transaction(() => fresh.meta.set(META_STORE_RECOVERED, note));
     }
     return fresh;
@@ -178,6 +244,7 @@ function moveAside(database: string, at: EpochMs): string {
   // The WAL belongs to the moved file; the shared-memory index is rebuilt.
   if (existsSync(`${database}-wal`)) renameSync(`${database}-wal`, `${movedTo}-wal`);
   rmSync(`${database}-shm`, { force: true });
+  if (existsSync(markPath(database))) renameSync(markPath(database), markPath(movedTo));
   return movedTo;
 }
 

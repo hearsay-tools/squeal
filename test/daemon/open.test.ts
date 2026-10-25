@@ -15,7 +15,7 @@ vi.mock("../../src/core/store/index.js", async (importOriginal) => {
   return {
     ...actual,
     openStore: ((...args: Parameters<typeof actual.openStore>) => {
-      if (args[1]?.checkIntegrity === true) integrityChecks.count++;
+      if (args[1]?.checkIntegrity !== undefined) integrityChecks.count++;
       return actual.openStore(...args);
     }) as typeof actual.openStore,
   };
@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 describe("openDaemon: lock before store (spec 001 D10, review S8)", () => {
-  it("five concurrent starts run integrity_check once: losers never open the store", async () => {
+  it("five concurrent starts run the integrity check once: losers never open the store", async () => {
     const repo = createFixtureRepo();
     repos.push(repo);
     const results = await Promise.all(
