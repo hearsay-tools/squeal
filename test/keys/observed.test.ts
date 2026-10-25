@@ -10,7 +10,10 @@ import {
   listedDirectory,
   listingPath,
   ObservedSets,
+  observedDirectMetaKey,
   observedMetaKey,
+  observedStartupMetaKey,
+  StartupSets,
 } from "../../src/core/keys/index.js";
 import type { FileChange } from "../../src/core/types/index.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
@@ -52,6 +55,59 @@ describe("observed sets", () => {
     const store = open(fakeCommonDir());
     store.transaction(() => store.meta.set(observedMetaKey("p"), "{not json"));
     expect(new ObservedSets(store).of(ref("t.test.ts"))).toEqual([]);
+  });
+
+  // Spec 016 D4, row 007-56: the direct marks reach a restarted daemon and another worktree.
+  it("keep the direct subset in its own key, merged, and read it in a later worktree", () => {
+    const store = open(fakeCommonDir());
+    const a = new ObservedSets(store);
+    expect(a.add(ref("t.py"), ["lib/a.py", "lib/b.py"], ["lib/b.py"])).toEqual([
+      "lib/a.py",
+      "lib/b.py",
+    ]);
+    // A known path marked later still writes its mark.
+    expect(a.add(ref("t.py"), ["lib/a.py"], ["lib/a.py"])).toEqual([]);
+    expect(JSON.parse(store.meta.get(observedDirectMetaKey("p")) ?? "{}")).toEqual({
+      "t.py": ["lib/a.py", "lib/b.py"],
+    });
+    // The paths key keeps the shape an older daemon parses: test path to paths.
+    expect(JSON.parse(store.meta.get(observedMetaKey("p")) ?? "{}")).toEqual({
+      "t.py": ["lib/a.py", "lib/b.py"],
+    });
+    const later = new ObservedSets(store);
+    expect(later.directOf(ref("t.py"))).toEqual(["lib/a.py", "lib/b.py"]);
+    expect(later.of(ref("t.py"))).toEqual(["lib/a.py", "lib/b.py"]);
+    expect(later.directOf(ref("u.py"))).toEqual([]);
+    a.refresh(["p"]);
+    expect(a.directOf(ref("t.py"))).toEqual(["lib/a.py", "lib/b.py"]);
+  });
+});
+
+describe("start-up sets (spec 016 D4)", () => {
+  it("merge across worktrees, never drop, and report the projects another worktree grew", () => {
+    const store = open(fakeCommonDir());
+    const a = new StartupSets(store);
+    const b = new StartupSets(store);
+    expect(b.of("p")).toEqual([]);
+    expect(a.add("p", ["setup/b.mjs", "setup/a.mjs"])).toEqual(["setup/b.mjs", "setup/a.mjs"]);
+    expect(a.add("p", ["setup/a.mjs"])).toEqual([]);
+    expect(b.add("p", ["setup/c.mjs"])).toEqual(["setup/c.mjs"]);
+    expect(JSON.parse(store.meta.get(observedStartupMetaKey("p")) ?? "[]")).toEqual([
+      "setup/a.mjs",
+      "setup/b.mjs",
+      "setup/c.mjs",
+    ]);
+    expect(a.refresh(["p"])).toEqual(["p"]);
+    expect(a.of("p")).toEqual(["setup/a.mjs", "setup/b.mjs", "setup/c.mjs"]);
+    expect(a.refresh(["p"])).toEqual([]);
+    expect(new StartupSets(store).of("p")).toEqual(["setup/a.mjs", "setup/b.mjs", "setup/c.mjs"]);
+    expect(new StartupSets(store).of("other")).toEqual([]);
+  });
+
+  it("read a malformed key as no paths", () => {
+    const store = open(fakeCommonDir());
+    store.transaction(() => store.meta.set(observedStartupMetaKey("p"), "{"));
+    expect(new StartupSets(store).of("p")).toEqual([]);
   });
 });
 
