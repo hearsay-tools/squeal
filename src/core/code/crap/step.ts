@@ -1,5 +1,5 @@
 import { compare } from "../../fs/index.js";
-import type { CodeFile, CodeKnownState, FileCount } from "../../types/code.js";
+import type { CodeFile, FileCount } from "../../types/code.js";
 import type { CheckKey, EpochMs, RevisionNumber, WorktreeId } from "../../types/index.js";
 import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
 import { uncountableFiles } from "../pass/failed.js";
@@ -7,8 +7,9 @@ import type { CodeStore } from "../store/types.js";
 import { broughtByGit, keepUnjudged } from "./brought.js";
 import { StepCache } from "./cache.js";
 import { coverageOf, type FileCondition, type ReadyLoader } from "./file.js";
-import { checkOf, evidenceOf, type Judged, judgeFiles, priorKey } from "./judge.js";
-import { type LoaderCondition, type LoaderInputs, type Loaders, readLoaders } from "./loaders.js";
+import { evidenceOf, type Judged, judgeFiles, priorKey } from "./judge.js";
+import { LoaderBuild, type LoaderCondition, type LoaderInputs, type Loaders } from "./loaders.js";
+import { seed } from "./seed.js";
 import {
   type CoverageSummary,
   type FileSummary,
@@ -28,13 +29,12 @@ import {
  * quiet; a function an edit added is a first-seen fail.
  */
 
-export const COVERAGE_MEASURES = ["crap", "uncovered"] as const;
-
 /**
  * A step works for at most this long, its reads of the loaders and records
  * included (row 015-42), then yields to hooks and runs again. It does one
- * unit of work, a record decoded or a file judged, past it, so a chain
- * always moves.
+ * unit of work past it, so a chain always moves: the listing of test files
+ * or one test file read into the loader map (row 015-45), a file's
+ * condition looked up, a record decoded or a file judged.
  */
 export const STEP_BUDGET_MS = 50;
 
@@ -64,13 +64,33 @@ export interface CoverageStepReport {
   readonly wakeAt: EpochMs | null;
   /** Files left to judge past the budget. */
   readonly more: boolean;
+  /**
+   * The loader map is still being read (row 015-45): the step judged and
+   * seeded nothing, so a recount's reseed waits for the step that judges.
+   */
+  readonly reading?: true;
 }
+
+/** A step that only read part of the loader map (row 015-45). */
+const READING: CoverageStepReport = {
+  judged: 0,
+  transitions: 0,
+  wakeAt: null,
+  more: true,
+  reading: true,
+};
 
 /** Spec 015 D9: one step over the worktree; `null` while its first count runs. */
 export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | null {
   const { store, worktreeId } = input;
   const work = budget(input.now);
   const cache = input.cache ?? new StepCache();
+  // Without a cache the map is read whole, since no later step would go on with it.
+  const loaders = cache.loaders(
+    () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
+    input.cache === undefined ? () => true : work,
+  );
+  if (loaders === null) return READING;
   const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
   const summary = readSummary(store.meta, worktreeId);
   const start = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
@@ -89,9 +109,6 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
     if (count !== null) counts.set(file.path, count);
     return count;
   };
-  const loaders = cache.loaders(() =>
-    readLoaders({ ...input, coverage: store.coverage, now: input.now() }),
-  );
   const { next, judged, quiet, more } = walk(
     { input, cache, loaders, summary, start, countOf, work },
     files,
@@ -124,9 +141,8 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
 }
 
 /**
- * A step's budget from now: each call allows one more unit of work, a
- * record decoded or a file judged, within `STEP_BUDGET_MS`, and the step's
- * first past it.
+ * A step's budget from now: each call allows one more unit of work within
+ * `STEP_BUDGET_MS`, and the step's first past it.
  */
 function budget(now: () => EpochMs): () => boolean {
   const began = now();
@@ -163,6 +179,12 @@ function walk(at: Walk, files: readonly CodeFile[]) {
   let more = false;
   for (const file of files) {
     const before = summary?.files[file.path];
+    // A file's condition and signature from the map are a unit too (row 015-45).
+    if (!work()) {
+      more = true;
+      if (before !== undefined) next[file.path] = before;
+      continue;
+    }
     const condition = cache.condition(file.path, loaders);
     if (condition.state !== "ready") {
       next[file.path] = summaryOf(file, condition);
@@ -208,13 +230,10 @@ function writeJudgement(
   const paths = judged.map((j) => j.file.path);
   if (paths.length === 0) return 0;
   const prior = new Map(store.states.list(worktreeId, { paths }).map((s) => [priorKey(s), s]));
-  const judgedPaths = new Set(paths);
   const edits = new Map(
     store.states
-      .edits(worktreeId, "complexity")
-      .filter(
-        (e) => judgedPaths.has(e.check.path) && e.revision > (brought.get(e.check.path) ?? -1),
-      )
+      .edits(worktreeId, "complexity", paths)
+      .filter((e) => e.revision > (brought.get(e.check.path) ?? -1))
       .map((e) => [`${e.check.path}\0${functionKey(e.check)}`, e]),
   );
   const { revision, threshold } = input;
@@ -261,46 +280,4 @@ function summaryOf(file: CodeFile, condition: Exclude<FileCondition, { state: "r
         waiting: condition.waiting,
       }
     : { state: "unknown" as const, blob: file.blob, cause: condition.cause };
-}
-
-/**
- * A `pending` state for each function with no coverage state, so its first
- * judgement is quiet: the functions there when coverage started, or that a
- * first count or recount brought. With `again`, every state is pending
- * again: the provider's records changed meaning.
- */
-function seed(
-  input: CoverageStepInput,
-  files: readonly CodeFile[],
-  countOf: (file: CodeFile) => FileCount | null,
-  again: boolean,
-): void {
-  const { store, worktreeId, revision } = input;
-  const known = new Set(
-    again
-      ? []
-      : store.states
-          .list(worktreeId, { measure: "crap" })
-          .map((s) => `${functionKey(s.check)}\0${s.check.path}`),
-  );
-  const states: CodeKnownState[] = [];
-  for (const file of files) {
-    for (const fn of countOf(file)?.functions ?? []) {
-      if (known.has(`${functionKey(fn)}\0${file.path}`)) continue;
-      for (const measure of COVERAGE_MEASURES) {
-        states.push({
-          worktreeId,
-          check: checkOf(file.path, fn),
-          measure,
-          outcome: "pending",
-          value: null,
-          threshold: null,
-          countedAt: revision,
-          blob: file.blob,
-          changedAt: revision,
-        });
-      }
-    }
-  }
-  store.states.upsertMany(states);
 }
