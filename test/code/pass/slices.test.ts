@@ -5,7 +5,7 @@ import type { Counter } from "../../../src/core/code/pass/index.js";
 import { codeStorePath } from "../../../src/core/code/store/index.js";
 import { HOOK_TIMEOUT_MS } from "../../../src/core/types/store-records.js";
 import { open } from "../helpers.js";
-import { fakeCounter, pass, worktree } from "./helpers.js";
+import { fakeCounter, pass, policyOn, worktree } from "./helpers.js";
 
 /** The fake counter with about the real one's CPU per file (2 to 4 ms, `complexity-and-crap.md`). */
 function busyCounter(): Counter {
@@ -64,5 +64,37 @@ describe("a pull of 300 files (015 D4)", () => {
     expect([...seen].filter((n) => n > 300 && n < 600)).toEqual([500]);
     expect(writes).toBeGreaterThan(2);
     expect(longest).toBeLessThan(HOOK_TIMEOUT_MS);
+  });
+
+  // Row 015-48: a recount whose counts are all stored still reads and parses each one to know it.
+  it("looks up stored counts a slice at a time, a turn apart", async () => {
+    const tree = worktree();
+    const store = open(tree.commonDir);
+    for (let i = 0; i < 12; i++) tree.write(`src/m${i}.ts`, `f${i} 3 A${i}\n`);
+    tree.revise();
+    await pass(tree, store, fakeCounter());
+    /** The turns a threshold recount gives with `sliceFiles`. */
+    const turns = async (threshold: number, sliceFiles: number) => {
+      let given = 0;
+      let done = false;
+      const probe = (async () => {
+        while (!done) {
+          await nextTurn();
+          given++;
+        }
+      })();
+      const report = await pass(tree, store, fakeCounter(), {
+        policy: policyOn({ threshold }),
+        sliceFiles,
+      });
+      done = true;
+      await probe;
+      expect(report).toMatchObject({ mode: "threshold", counted: 0 });
+      return given;
+    };
+
+    const whole = await turns(2, 12);
+    // Three slices of 4: two turns more.
+    expect(await turns(3, 4)).toBe(whole + 2);
   });
 });
