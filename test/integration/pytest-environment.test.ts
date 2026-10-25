@@ -1,8 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { observedStartupMetaKey } from "../../src/core/keys/index.js";
 import type { AbsolutePath, StatusSnapshot } from "../../src/core/types/index.js";
-import { pytestObservedSessionMetaKey } from "../../src/core/types/index.js";
 import { sitePackagesDir } from "../../src/runners/pytest/environment/site.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {
@@ -22,8 +22,8 @@ import {
  * `.venv`, with no worktree source, config, `pyvenv.cfg` or pytest marker
  * edit, re-key the project at the next reconciliation pass (`squeal sync`
  * asks one), so the stale passes fail. B5: a `pytest11` plugin that imports
- * a module by a computed name has that module stored in the shared session
- * key and keyed in the environment: its edit re-runs the plugin's test, and
+ * a module by a computed name has that module stored in the core's shared
+ * start-up set (spec 016 D4) and keyed in the environment: its edit re-runs the plugin's test, and
  * a second synced worktree whose copy differs does not inherit the pass.
  */
 
@@ -131,7 +131,7 @@ describe("installed-set changes and start-up plugins reach the daemon (007 B1, B
       await startDaemon(main);
       const baseline = await settle(main, "the baseline", (s) => s.counts.current > 0);
       expect(failing(baseline)).toEqual([]);
-      expect(metaValue(main, pytestObservedSessionMetaKey("small"))).toContain(HIDDEN);
+      expect(metaValue(main, observedStartupMetaKey("small"))).toContain(HIDDEN);
 
       // The edit of the hidden module re-runs the plugin's test, which fails.
       const from = runs(main, main).length;
