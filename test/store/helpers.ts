@@ -1,8 +1,9 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach } from "vitest";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
+import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
 import type {
   CheckId,
   KnownState,
@@ -48,6 +49,32 @@ export function open(commonDir: string): Store {
   if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
   cleanups.push(() => store.close());
   return store;
+}
+
+/**
+ * Row 011-226: the store, created when missing, gains a `fault` table whose
+ * index lists another column than the one it indexes. Every page is sound, so
+ * `quick_check` passes; `integrity_check` lists the rows missing from the
+ * index. Node 24's `defensive` option, which `@types/node` 22 lacks, is off,
+ * so the schema can be written.
+ */
+export function seedIndexFault(commonDir: string): void {
+  const store = openStore(commonDir, { busyTimeoutMs: 10_000 });
+  if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
+  store.close();
+  const options = { open: true, defensive: false };
+  const db = new DatabaseSync(storePaths(commonDir).database, options);
+  try {
+    db.exec("PRAGMA busy_timeout = 10000");
+    db.exec("CREATE TABLE fault(a INTEGER, b INTEGER); CREATE INDEX fault_a ON fault(a)");
+    db.exec("INSERT INTO fault VALUES (1, 30), (2, 20), (3, 10)");
+    db.exec("PRAGMA writable_schema = ON");
+    db.exec(
+      "UPDATE sqlite_schema SET sql = 'CREATE INDEX fault_a ON fault(b)' WHERE name = 'fault_a'",
+    );
+  } finally {
+    db.close();
+  }
 }
 
 export function testCheck(fullName: string, path = "src/a.test.ts"): TestCheckId {

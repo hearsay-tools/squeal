@@ -61,7 +61,8 @@ export const DAEMON_START_BUSY_TIMEOUT_MS = 120_000;
  * too (review 001-347, B2), and one that cannot read it within
  * `decideWithinMs` lets go of the lock and exits as a timed-out wait
  * (review 001-351, B1);
- * the store with `integrity_check` (D12) and the start's busy timeout
+ * the store with `quick_check` (D12; the full check runs after serving, row
+ * 011-226) and the start's busy timeout
  * (`DAEMON_START_BUSY_TIMEOUT_MS`), exiting with a note on a newer
  * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
  * Spec 001 D10 as amended after the wave 3 review: the daemon takes the
@@ -141,7 +142,7 @@ export async function openDaemon(
   let store: Store;
   try {
     const opened = openStore(commonDir, {
-      checkIntegrity: true,
+      checkIntegrity: "quick",
       busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
       now,
     });

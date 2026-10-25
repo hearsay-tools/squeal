@@ -14,13 +14,16 @@ import {
   isBusy,
   isStoreOpenFailure,
   META_STORE_RECOVERED,
+  markStore,
   openStore,
+  readStoreMark,
   SCHEMA_VERSION,
   storePaths,
 } from "../../src/core/store/index.js";
 import { inspectConnection, setBusyTimeout } from "../../src/core/store/open.js";
 import { type Migration, migrate } from "../../src/core/store/schema.js";
-import { fakeCommonDir, open } from "./helpers.js";
+import type { Store } from "../../src/core/types/index.js";
+import { fakeCommonDir, open, seedIndexFault } from "./helpers.js";
 
 /** Every table spec 001 D8 names. */
 const D8_TABLES = [
@@ -148,7 +151,7 @@ describe("openStore", () => {
     expect(open(commonDir).meta.get("kept")).toBe("yes");
   });
 
-  it("opens an existing store, integrity-checked, while another connection holds the write lock", () => {
+  it("opens an existing store, quick-checked, while another connection holds the write lock", () => {
     // Task 001-141: `PRAGMA auto_vacuum = INCREMENTAL` on every open took the
     // write lock, so a hook's or a status read's open waited behind a writer.
     const commonDir = fakeCommonDir();
@@ -156,7 +159,7 @@ describe("openStore", () => {
     const writer = new DatabaseSync(storePaths(commonDir).database);
     writer.exec("BEGIN IMMEDIATE");
     try {
-      const store = openStore(commonDir, { busyTimeoutMs: 0, checkIntegrity: true });
+      const store = openStore(commonDir, { busyTimeoutMs: 0, checkIntegrity: "quick" });
       if (isStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
       expect(store.meta.get("kept")).toBe("yes");
       store.close();
@@ -180,7 +183,7 @@ describe("openStore", () => {
     seedDatabase(database, "CREATE TABLE future(x); PRAGMA user_version = 99;");
 
     expect(openStore(commonDir)).toEqual({ reason: "newer-schema", found: 99, supported: 1 });
-    expect(openStore(commonDir, { create: false, checkIntegrity: true })).toEqual({
+    expect(openStore(commonDir, { create: false, checkIntegrity: "quick" })).toEqual({
       reason: "newer-schema",
       found: 99,
       supported: 1,
@@ -199,13 +202,13 @@ describe("openStore", () => {
     expect(existsSync(database)).toBe(true);
   });
 
-  it("moves a corrupt store aside on an integrity-checked open and starts fresh", () => {
+  it("moves a corrupt store aside on a quick-checked open and starts fresh", () => {
     const commonDir = fakeCommonDir();
     const { dir, database } = storePaths(commonDir);
     mkdirSync(dir);
     writeFileSync(database, Buffer.alloc(8192, 7));
 
-    const store = openStore(commonDir, { checkIntegrity: true, now: () => 1_700_000_000_000 });
+    const store = openStore(commonDir, { checkIntegrity: "quick", now: () => 1_700_000_000_000 });
     if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
     try {
       expect(store.schemaVersion).toBe(1);
@@ -221,7 +224,7 @@ describe("openStore", () => {
     }
   });
 
-  it("detects page-level corruption with integrity_check", () => {
+  it("detects page-level corruption with quick_check (row 011-226)", () => {
     const commonDir = fakeCommonDir();
     const first = open(commonDir);
     first.meta.set("big", "x".repeat(200_000));
@@ -235,7 +238,7 @@ describe("openStore", () => {
     writeSync(fd, Buffer.alloc(4096 * 3, 0xab), 0, 4096 * 3, 4096 * 4);
     closeSync(fd);
 
-    const store = openStore(commonDir, { checkIntegrity: true, now: () => 5 });
+    const store = openStore(commonDir, { checkIntegrity: "quick", now: () => 5 });
     if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
     try {
       expect(store.meta.get("big")).toBeNull();
@@ -243,6 +246,75 @@ describe("openStore", () => {
     } finally {
       store.close();
     }
+  });
+});
+
+describe("the quick check at start and the full check's mark (row 011-226)", () => {
+  /** Opens a store that must open, and closes it after `fn`. */
+  function opened<T>(
+    commonDir: string,
+    options: Parameters<typeof openStore>[1],
+    fn: (store: Store) => T,
+  ): T {
+    const store = openStore(commonDir, options);
+    if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
+    try {
+      return fn(store);
+    } finally {
+      store.close();
+    }
+  }
+
+  it("opens a store with only an index fault on a quick check; the full check moves it aside", () => {
+    const commonDir = fakeCommonDir();
+    const { dir } = storePaths(commonDir);
+    seedIndexFault(commonDir);
+
+    opened(commonDir, { checkIntegrity: "quick", now: () => 7 }, (store) => {
+      expect(store.meta.get(META_STORE_RECOVERED)).toBeNull();
+    });
+    expect(readdirSync(dir).filter((name) => name.includes("corrupt"))).toEqual([]);
+
+    opened(commonDir, { checkIntegrity: "full", now: () => 8 }, (store) => {
+      const note = JSON.parse(store.meta.get(META_STORE_RECOVERED) ?? "null");
+      expect(note).toEqual({
+        at: 8,
+        movedTo: join(dir, "store.sqlite.corrupt-8"),
+        reason: expect.stringContaining("row 1 missing from index fault_a"),
+      });
+    });
+  });
+
+  it("moves a marked store aside on the next checked open, the mark beside it, and names the full check", () => {
+    const commonDir = fakeCommonDir();
+    const { dir } = storePaths(commonDir);
+    opened(commonDir, {}, (store) => store.meta.set("kept", "yes"));
+    markStore(commonDir, { at: 5, problem: "row 1 missing from index fault_a" });
+    expect(readStoreMark(commonDir)).toEqual({
+      at: 5,
+      problem: "row 1 missing from index fault_a",
+    });
+
+    // A hook's open checks nothing and leaves the store where it is.
+    opened(commonDir, { create: false }, (store) => expect(store.meta.get("kept")).toBe("yes"));
+
+    opened(commonDir, { checkIntegrity: "quick", now: () => 9 }, (store) => {
+      expect(store.meta.get("kept")).toBeNull();
+      expect(JSON.parse(store.meta.get(META_STORE_RECOVERED) ?? "null")).toEqual({
+        at: 9,
+        movedTo: join(dir, "store.sqlite.corrupt-9"),
+        reason: "row 1 missing from index fault_a",
+        check: "full",
+        checkedAt: 5,
+      });
+    });
+    expect(readStoreMark(commonDir)).toBeNull();
+    expect(readdirSync(dir)).toContain("store.sqlite.corrupt-9.check-failed");
+
+    // The fresh store is not moved again.
+    opened(commonDir, { checkIntegrity: "quick", now: () => 10 }, (store) => {
+      expect(JSON.parse(store.meta.get(META_STORE_RECOVERED) ?? "null")).toMatchObject({ at: 9 });
+    });
   });
 });
 
