@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.323";
+  if (true) return "0.1.324";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5967,7 +5967,7 @@ function ranIn(span, body2, record, i3) {
   if (executable.length === 0) return null;
   return executable.some((l) => has(record.covered, l));
 }
-function joinCoverage(functions, sources) {
+function joinCoverage(functions, sources, bound = false) {
   const spans2 = functions.map(spanOf);
   const own = ownLines(spans2);
   const records = sources.map((s) => ({
@@ -5986,8 +5986,9 @@ function joinCoverage(functions, sources) {
       (l) => runBy.some((r) => has(records[r]?.covered ?? new Uint8Array(), l))
     ).length;
     const ran = runBy.length > 0 ? true : said.includes(null) ? null : false;
-    const coverage = ran !== true ? 0 : executable.length === 0 ? 1 : covered / executable.length;
-    return { lines: executable.length, covered: ran === true ? covered : 0, ran, runBy, coverage };
+    const counted3 = bound ? lines.length : executable.length;
+    const coverage = ran !== true ? 0 : counted3 === 0 ? 1 : covered / counted3;
+    return { lines: counted3, covered: ran === true ? covered : 0, ran, runBy, coverage };
   });
 }
 var END_SLACK, spanOf, before, contains, entrySpan, has, sameSpan;
@@ -6016,37 +6017,37 @@ var init_join = __esm({
 
 // src/core/code/crap/file.ts
 function fileCondition(loaders, listed5) {
-  if (!listed5) return { state: "pending", reason: "run", waiting: 0 };
+  if (!listed5) return { state: "pending", reason: "run", waiting: 0, ready: [] };
+  const ready = loaders.flatMap(
+    (l) => l.condition.kind === "ready" ? [{ testFile: l.testFile, key: l.condition.key, storedAt: l.condition.storedAt }] : []
+  );
   const causes = new Set(
     loaders.flatMap((l) => l.condition.kind === "unknown" ? [l.condition.cause] : [])
   );
   const cause = CAUSES.find((c) => causes.has(c));
-  if (cause !== void 0) return { state: "unknown", cause };
+  if (cause !== void 0) return { state: "unknown", cause, ready };
   const waiting2 = loaders.flatMap((l) => l.condition.kind === "pending" ? [l.condition] : []);
   if (waiting2.length > 0) {
     const reason2 = REASONS.find((r) => waiting2.some((w2) => w2.reason === r)) ?? "record";
-    return { state: "pending", reason: reason2, waiting: waiting2.length };
+    return { state: "pending", reason: reason2, waiting: waiting2.length, ready };
   }
-  return {
-    state: "ready",
-    loaders: loaders.flatMap(
-      (l) => l.condition.kind === "ready" ? [{ testFile: l.testFile, key: l.condition.key, storedAt: l.condition.storedAt }] : []
-    )
-  };
+  return { state: "ready", loaders: ready };
 }
-function coverageOf(file, functions, loaders, record) {
+function coverageOf(file, functions, loaders, record, inHand = false) {
   const sources = [];
   const paths = [];
   for (const loader of loaders) {
     const read5 = record(loader.key);
-    if (read5 === null || read5.unread.includes(file.path)) return "unread";
-    const source2 = read5.sources.find((s) => s.path === file.path);
+    const source2 = read5 === null || read5.unread.includes(file.path) ? null : read5.sources.find((s) => s.path === file.path);
     if (source2 === void 0) continue;
-    if (source2.blob !== file.blob) return "unread";
+    if (source2 === null || source2.blob !== file.blob) {
+      if (inHand) continue;
+      return "unread";
+    }
     sources.push(source2);
     paths.push(loader.testFile.path);
   }
-  return joinCoverage(functions, sources).map((j) => ({
+  return joinCoverage(functions, sources, inHand).map((j) => ({
     lines: j.lines,
     covered: j.covered,
     coverage: j.coverage,
@@ -6089,6 +6090,10 @@ var init_cache = __esm({
       #conditions = /* @__PURE__ */ new Map();
       /** By path: the signature, and the blob, counter version and threshold it was made at. */
       #signatures = /* @__PURE__ */ new Map();
+      /** As `#signatures`, of the records in hand of a file not ready (row 015-57). */
+      #early = /* @__PURE__ */ new Map();
+      /** By path: whether its `crap` or `uncovered` states held a failure at the blob read (row 015-57). */
+      #failing = /* @__PURE__ */ new Map();
       #records = /* @__PURE__ */ new Map();
       /** Counts `invalidate`: a record decoded before the last one is read again. */
       #epoch = 0;
@@ -6130,15 +6135,34 @@ var init_cache = __esm({
       /**
        * `signatureOf`, made again only when the file's blob or counter version
        * or the threshold moves, or after `invalidate`, which a stored record
-       * calls.
+       * calls; `early`, of a file not ready's records in hand (row 015-57).
        */
-      signature(file, threshold, loaders) {
+      signature(file, threshold, loaders, early = false) {
+        const signatures = early ? this.#early : this.#signatures;
         const at2 = `${file.blob}\0${file.counterVersion}\0${threshold}`;
-        const known2 = this.#signatures.get(file.path);
+        const known2 = signatures.get(file.path);
         if (known2?.at === at2) return known2.value;
         const value = signatureOf(file, threshold, loaders);
-        this.#signatures.set(file.path, { at: at2, value });
+        signatures.set(file.path, { at: at2, value });
         return value;
+      }
+      /**
+       * Row 015-57: whether `file` has a `crap` or `uncovered` failure, the
+       * only state the records in hand can turn; read by `read` once for each
+       * blob, since a move or removal changes the file, and as a unit of
+       * `work` (`null` past it). A full judgement drops it (`judged`).
+       */
+      failing(file, read5, work) {
+        const known2 = this.#failing.get(file.path);
+        if (known2?.blob === file.blob) return known2.failing;
+        if (!work()) return null;
+        const failing = read5();
+        this.#failing.set(file.path, { blob: file.blob, failing });
+        return failing;
+      }
+      /** A full judgement of `path` wrote its states (row 015-57). */
+      judged(path) {
+        this.#failing.delete(path);
       }
       /** The record at `key`, decoded once in a chain while its bytes stay; `null` when the store holds none. */
       record(coverage, key3) {
@@ -6168,6 +6192,7 @@ var init_cache = __esm({
         this.#build = null;
         this.#conditions.clear();
         this.#signatures.clear();
+        this.#early.clear();
         this.#epoch++;
       }
       settle() {
@@ -9773,54 +9798,58 @@ var init_score = __esm({
 
 // src/core/code/crap/judge.ts
 function judgeFiles(ctx, judged) {
-  const { prior, worktreeId, revision, at: at2 } = ctx;
-  const states = [];
-  const transitions = [];
-  const edited = [];
-  for (const { file, count: count2, coverage, quiet } of judged) {
-    count2.functions.forEach((fn, i3) => {
-      const check = checkOf(file.path, fn);
-      const id = `${file.path}\0${functionKey(fn)}`;
-      if (prior.get(`complexity\0${id}`)?.outcome === "unknown") return;
-      const cov = coverage[i3];
+  const out2 = { states: [], transitions: [], edited: [] };
+  for (const j of judged) {
+    j.count.functions.forEach((fn, i3) => {
+      const id = `${j.file.path}\0${functionKey(fn)}`;
+      if (ctx.prior.get(`complexity\0${id}`)?.outcome === "unknown") return;
+      const cov = j.coverage[i3];
       if (cov === void 0) return;
-      const edit = quiet === true ? void 0 : ctx.edits.get(id);
+      const edit = j.quiet === true ? void 0 : ctx.edits.get(id);
+      const named = { check: checkOf(j.file.path, fn), id, edit };
       for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
-        const was = prior.get(`${m.measure}\0${id}`);
-        const { outcome: outcome2 } = m;
-        if (edit !== void 0 && was !== void 0 && edit.revision > was.countedAt) {
-          edited.push({ check, measure: m.measure, revision: edit.revision, at: at2 });
-        }
-        states.push({
-          worktreeId,
-          check,
-          measure: m.measure,
-          outcome: outcome2,
-          value: m.value,
-          threshold: m.threshold,
-          countedAt: revision,
-          blob: file.blob,
-          changedAt: was?.outcome === outcome2 ? was.changedAt : revision
-        });
-        const kind = quiet === true && was !== void 0 ? null : kindOf(was, outcome2, m.value);
-        if (kind === null) continue;
-        transitions.push({
-          worktreeId,
-          check,
-          measure: m.measure,
-          kind,
-          from: was?.outcome ?? null,
-          to: outcome2,
-          fromValue: was?.value ?? null,
-          toValue: m.value,
-          threshold: m.threshold,
-          revision,
-          at: at2
-        });
+        judgeMeasure(ctx, j, named, m, out2);
       }
     });
   }
-  return { states, transitions, edited };
+  return out2;
+}
+function judgeMeasure(ctx, { file, quiet, early }, fn, m, out2) {
+  const { check, edit } = fn;
+  const { worktreeId, revision, at: at2 } = ctx;
+  const was = ctx.prior.get(`${m.measure}\0${fn.id}`);
+  const { outcome: outcome2 } = m;
+  const crossing = kindOf(was, outcome2, m.value);
+  if (early === true && crossing !== "fail-to-pass") return;
+  const kind = quiet === true && was !== void 0 ? null : crossing;
+  if (edit !== void 0 && was !== void 0 && edit.revision > was.countedAt) {
+    out2.edited.push({ check, measure: m.measure, revision: edit.revision, at: at2 });
+  }
+  out2.states.push({
+    worktreeId,
+    check,
+    measure: m.measure,
+    outcome: outcome2,
+    value: m.value,
+    threshold: m.threshold,
+    countedAt: revision,
+    blob: file.blob,
+    changedAt: was?.outcome === outcome2 ? was.changedAt : revision
+  });
+  if (kind === null) return;
+  out2.transitions.push({
+    worktreeId,
+    check,
+    measure: m.measure,
+    kind,
+    from: was?.outcome ?? null,
+    to: outcome2,
+    fromValue: was?.value ?? null,
+    toValue: m.value,
+    threshold: m.threshold,
+    revision,
+    at: at2
+  });
 }
 function measuresOf(complexity, cov, threshold) {
   if (cov.unresolved === true) {
@@ -9856,11 +9885,11 @@ function kindOf(was, outcome2, value) {
   }
   return outcome2 === "fail" ? "pass-to-fail" : "fail-to-pass";
 }
-function evidenceOf({ file, count: count2, coverage }) {
-  const functions = {};
+function evidenceOf({ file, count: count2, coverage }, only2, before3) {
+  const functions = { ...before3?.functions };
   count2.functions.forEach((fn, i3) => {
     const cov = coverage[i3];
-    if (cov === void 0) return;
+    if (cov === void 0 || only2 !== void 0 && !only2.has(functionKey(fn))) return;
     functions[functionKey(fn)] = [
       cov.lines,
       cov.covered,
@@ -10183,6 +10212,11 @@ function walk(at2, files2) {
   const keys = (ready) => ready.map((l) => l.key);
   const record = (key3) => cache2.record(input.store.coverage, key3);
   let more = false;
+  const early = (file, ready, kept3) => {
+    const judgedEarly = judgeEarly({ at: at2, judged, quiet }, file, ready, kept3);
+    more ||= judgedEarly === null;
+    next[file.path] = judgedEarly ?? kept3;
+  };
   for (const file of files2) {
     const before3 = summary?.files[file.path];
     if (!work()) {
@@ -10192,7 +10226,7 @@ function walk(at2, files2) {
     }
     const condition = cache2.condition(file.path, loaders);
     if (condition.state !== "ready") {
-      next[file.path] = summaryOf(file, condition);
+      early(file, condition.ready, summaryOf(file, condition));
       continue;
     }
     const signature = cache2.signature(file, input.threshold, condition.loaders);
@@ -10210,14 +10244,37 @@ function walk(at2, files2) {
     if (count2 === null) continue;
     const coverage = coverageOf(file, count2.functions, condition.loaders, record);
     if (coverage === "unread") {
-      next[file.path] = { state: "unknown", blob: file.blob, cause: "unread" };
+      early(file, condition.loaders, { state: "unknown", blob: file.blob, cause: "unread" });
       continue;
     }
     next[file.path] = { state: "judged", blob: file.blob, signature };
     judged.add({ file, count: count2, coverage, ...recounted ? { quiet: true } : {} });
     quiet.delete(file.path);
+    cache2.judged(file.path);
   }
   return { next, ...judged.end(), quiet, more };
+}
+function judgeEarly(w2, file, ready, kept3) {
+  if (ready.length === 0) return kept3;
+  const { input, cache: cache2, start: start2, work } = w2.at;
+  const failing = cache2.failing(file, () => hasFailure(input, file.path), work);
+  if (failing !== true) return failing === null ? null : kept3;
+  const signature = cache2.signature(file, input.threshold, ready, true);
+  const before3 = w2.at.summary?.files[file.path];
+  const judgedAt = before3?.state !== "judged" && before3?.blob === file.blob ? before3.early : null;
+  if (!start2 && judgedAt === signature) return { ...kept3, early: signature };
+  const { coverage: records } = input.store;
+  const keys = ready.map((l) => l.key);
+  if (!cache2.decode(records, keys, work) || !work()) return null;
+  const count2 = w2.at.countOf(file);
+  if (count2 === null) return kept3;
+  const record = (key3) => cache2.record(records, key3);
+  const coverage = coverageOf(file, count2.functions, ready, record, true);
+  if (coverage === "unread") return kept3;
+  const quiet = w2.quiet.has(file.path) ? { quiet: true } : {};
+  w2.judged.add({ file, count: count2, coverage, early: true, ...quiet });
+  cache2.judged(file.path);
+  return { ...kept3, early: signature };
 }
 function batched(input, brought) {
   const judged = [];
@@ -10255,7 +10312,19 @@ function writeJudgement(input, judged, brought) {
   store.states.upsertMany(states);
   store.transitions.append(transitions);
   store.states.markEdited(worktreeId, edited);
-  for (const j of judged) writeEvidence(store.meta, worktreeId, j.file.path, evidenceOf(j));
+  for (const j of judged) {
+    const { path } = j.file;
+    if (j.early !== true) {
+      writeEvidence(store.meta, worktreeId, path, evidenceOf(j));
+      continue;
+    }
+    const only2 = new Set(
+      states.filter((s) => s.check.path === path).map((s) => functionKey(s.check))
+    );
+    if (only2.size === 0) continue;
+    const before3 = readEvidence(store.meta, worktreeId, path);
+    writeEvidence(store.meta, worktreeId, path, evidenceOf(j, only2, before3));
+  }
   return transitions.length;
 }
 function summaryOf(file, condition) {
@@ -10266,7 +10335,7 @@ function summaryOf(file, condition) {
     waiting: condition.waiting
   } : { state: "unknown", blob: file.blob, cause: condition.cause };
 }
-var WRITE_FILES;
+var WRITE_FILES, hasFailure;
 var init_walk = __esm({
   "src/core/code/crap/walk.ts"() {
     "use strict";
@@ -10274,6 +10343,7 @@ var init_walk = __esm({
     init_judge();
     init_summary();
     WRITE_FILES = 16;
+    hasFailure = ({ store, worktreeId }, path) => store.states.list(worktreeId, { paths: [path], outcome: "fail" }).some((s) => s.measure !== "complexity");
   }
 });
 
