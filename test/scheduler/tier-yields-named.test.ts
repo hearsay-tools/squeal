@@ -354,7 +354,9 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     await side.scheduler.promote([p], 60_000);
     expect(standings(side)).toEqual([{ kind: "named" }]);
     // The later wait's file of the tier ranks after P, so P beats it once A's wait has ended.
-    published(side, () => clock.cross(2, PROTECTS_MS));
+    // Once s2's promotion is stored, the clock passes A's deadline after the decision's one
+    // reading and before `#arm` reads it for the timer (row 011-194), which then fires at once.
+    published(side, () => clock.cross(1, PROTECTS_MS));
     await side.scheduler.promote([ref(SLOW[1] ?? "")], 120_000);
 
     // On 231ecaeb0: the bound was the later wait's deadline, 90 s on, so the tier ran on. The
