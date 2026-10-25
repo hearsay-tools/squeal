@@ -1,7 +1,6 @@
 import type { RelativePath, RevisionNumber, TestFileKeyRecord } from "../types/index.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
-import { openMoves } from "./rekeyed-moves.js";
 import { isCatchUp } from "./revision.js";
 
 /*
@@ -30,21 +29,23 @@ export interface Handover {
 
 /**
  * Reads the handover from `previous`, the worktree's rows as its last
- * daemon left them, and the re-key moves open in the store. Call once the
- * ledger holds the listed files and their closures, before its first
- * commit. A file with no open move recorded is taken as open at its row's
- * revision, as a ledger's first commit takes it in (`recordMoves`). Each
- * revision is classified on its own, a small one's reach winning over a
- * large one's (review wave 5, B3); a file no revision reached, as an
- * environment's re-key, stays in the second group.
+ * daemon left them, and `open`, the re-key moves open in the store
+ * (`openMoves`) as read before the ledger's first commit, which a start
+ * under `lookup-only` makes before its recheck (row 011-227). Call once the
+ * ledger holds the listed files and their closures. A file with no open
+ * move recorded is taken as open at its row's revision, as a ledger's first
+ * commit takes it in (`recordMoves`). Each revision is classified on its
+ * own, a small one's reach winning over a large one's (review wave 5, B3);
+ * a file no revision reached, as an environment's re-key, stays in the
+ * second group.
  */
 export function handover(
   context: SchedulerContext,
   ledger: Ledger,
   previous: ReadonlyMap<string, TestFileKeyRecord>,
+  open: ReadonlyMap<string, readonly [RevisionNumber, RevisionNumber]>,
 ): Handover {
   const { store, worktreeId } = context;
-  const open = openMoves(store, worktreeId);
   const ranges = new Map<string, readonly [RevisionNumber, RevisionNumber]>();
   for (const [id, row] of previous) {
     if (row.pending === null || !ledger.files.has(id)) continue;
