@@ -51,3 +51,17 @@ What it shows:
 | Prune | the row goes with its check | its own rule; an older daemon never prunes it |
 
 Every gap of the column is an absent record, which D3 accepts ("says nothing rather than guess"). The map's gap can say the sentence beside a pytest failure, which is 007-45's defect.
+
+## Decision and what landed
+
+The coordinator, 2026-10-25, on this slice's requests: the column, no `user_version` raise; `WorktreeKeys.runnerOf` and the one `store-results.ts` line, each in a commit of its own; setup checks recorded too, with one statement in `Ledger#write` (`setup.ts` holds neither the store nor the keys). Nothing else under `src/core/scheduler/`.
+
+- Store: `addColumns` (`schema.ts`) runs at every open after `migrate`. It reads `pragma_table_info` and writes only when the column is missing. A store busy past the busy timeout is left as it is, and `runnerColumn` (`codec.ts`) re-checks until a later opener adds the column.
+- Writes: `results.putMany(records, runner)` records the runner of each newest result, so a check takes the runner of its latest run, not its first. `checks.recordRunner(check, runner)` records a setup check's runner, which has no stored result.
+- Reads: `checks.runnerOf(check)`; `withDependencies` says the sentence beside a check recorded as `vitest` or `node-test`.
+
+## Gaps a later row may close
+
+- A check whose newest result an older daemon stored has no runner until a new daemon runs it. A lookup writes none, and results survive releases, so after an upgrade most stored checks read as unrecorded for a while. Attribution says nothing for them, as D3 states.
+- `test/keys/validity/harness/store-traced.ts:118` wraps `putMany` with one parameter, so the validity harness records no runner. Nothing there reads one today.
+- The Node runner set is a list of names in `attribution.ts`. A runner that declares whether Node's lockfiles decide what it loads would remove it; that is a runner description, a 016 non-goal.
