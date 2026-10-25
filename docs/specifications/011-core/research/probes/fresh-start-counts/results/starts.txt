@@ -1,0 +1,46 @@
+== squeal
+{"wt":"95f83469","dir":"52e58f23","at":"10-23T19:47:30","hookToDaemonS":null,"daemonToListedS":13.122,"misses":647,"keys":1117,"end":"abandoned"}
+{"wt":"17593946","dir":"605ca21e","at":"10-24T20:09:48","hookToDaemonS":null,"daemonToListedS":14.458,"misses":4,"keys":1117,"end":"abandoned"}
+{"wt":"b17f3bc2","dir":"bbb51798","at":"10-25T07:07:38","hookToDaemonS":null,"daemonToListedS":8.283,"misses":0,"keys":1072,"end":"completed"}
+{"wt":"c24f3ea4","dir":"05d16d9e","at":"10-25T08:00:19","hookToDaemonS":null,"daemonToListedS":5.576,"misses":21,"keys":1073,"end":"abandoned"}
+{"wt":"3bdb2693","dir":"36242e1f","at":"10-25T09:40:56","hookToDaemonS":null,"daemonToListedS":12.694,"misses":0,"keys":1094,"end":"completed"}
+{"wt":"29eb4e64","dir":"be843530","at":"10-25T10:12:41","hookToDaemonS":null,"daemonToListedS":15.425,"misses":30,"keys":1094,"end":"abandoned"}
+{"wt":"bde78828","dir":"898c8b7d","at":"10-25T10:22:24","hookToDaemonS":null,"daemonToListedS":13.82,"misses":23,"keys":1094,"end":"abandoned"}
+{"wt":"0c26df29","dir":"9d058133","at":"10-25T11:38:31","hookToDaemonS":null,"daemonToListedS":11.362,"misses":6,"keys":1094,"end":"abandoned"}
+{"wt":"8b6ec105","dir":"95fed3bb","at":"10-25T13:40:48","hookToDaemonS":null,"daemonToListedS":25.402,"misses":62,"keys":1095,"end":"abandoned"}
+{"wt":"2fa11272","dir":"987701c8","at":"10-25T16:18:44","hookToDaemonS":null,"daemonToListedS":13.833,"misses":151,"keys":1102,"end":"abandoned"}
+{"wt":"afb7e4a0","dir":"b528f9fc","at":"10-25T18:44:35","hookToDaemonS":null,"daemonToListedS":30.638,"misses":637,"keys":1118,"end":"abandoned"}
+{"wt":"872b8120","dir":"cc9bf3f8","at":"10-25T18:44:37","hookToDaemonS":null,"daemonToListedS":30.45,"misses":637,"keys":1117,"end":"abandoned"}
+{"wt":"a3eb6692","dir":"0d56937b","at":"10-25T19:15:07","hookToDaemonS":null,"daemonToListedS":13.676,"misses":7,"keys":1114,"end":"abandoned"}
+{"wt":"7cb3b15b","dir":"00f19154","at":"10-25T19:35:00","hookToDaemonS":null,"daemonToListedS":10.159,"misses":151,"keys":1117,"end":"abandoned"}
+{"wt":"952ccdb5","dir":"ad47a8ec","at":"10-25T19:45:30","hookToDaemonS":null,"daemonToListedS":9.726,"misses":28,"keys":1118,"end":"abandoned"}
+{"wt":"9b08774b","dir":"5f17dd86","at":"10-25T19:54:15","hookToDaemonS":null,"daemonToListedS":25.642,"misses":750,"keys":1123,"end":"abandoned"}
+{"wt":"086630d9","dir":"7e99ffe3","at":"10-25T20:08:06","hookToDaemonS":null,"daemonToListedS":4.77,"misses":3,"keys":1117,"end":"abandoned"}
+{"wt":"3c0267f5","dir":"f5a1899a","at":"10-25T20:22:08","hookToDaemonS":null,"daemonToListedS":8.912,"misses":277,"keys":1117,"end":"abandoned"}
+{"wt":"1eb612c3","dir":"eed2d522","at":"10-25T20:26:34","hookToDaemonS":null,"daemonToListedS":36.387,"misses":421,"keys":1118,"end":"abandoned"}
+{"wt":"1526f314","dir":"017527fd","at":"10-25T20:34:10","hookToDaemonS":null,"daemonToListedS":13.81,"misses":1,"keys":1117,"end":"abandoned"}
+{"wt":"b453e11e","dir":"26a6ad36","at":"10-25T20:57:40","hookToDaemonS":14.795,"daemonToListedS":11.026,"misses":1,"keys":1117,"end":"abandoned"}
+hookToDaemonS: n=1 min=14.795 median=14.795 p90=14.795 max=14.795
+daemonToListedS: n=21 min=4.77 median=13.676 p90=30.45 max=36.387
+hook (consumer registered) -> daemon constructed, current daemons: b453e11e 13.971, 1526f314 19.594, 17593946 19.916, 95f83469 22.639
+== cezar
+{"wt":"288ff376","dir":"7e909e93","at":"10-25T05:46:35","hookToDaemonS":null,"daemonToListedS":8.001,"misses":21,"keys":1026,"end":"abandoned"}
+{"wt":"4d3b3189","dir":"943c5321","at":"10-25T06:06:58","hookToDaemonS":null,"daemonToListedS":11.69,"misses":21,"keys":1015,"end":"abandoned"}
+{"wt":"ab979002","dir":"0de5329c","at":"10-25T07:00:34","hookToDaemonS":null,"daemonToListedS":18.292,"misses":0,"keys":1018,"end":"completed"}
+{"wt":"ee1ae15d","dir":"d0412a5f","at":"10-25T09:39:14","hookToDaemonS":null,"daemonToListedS":32.285,"misses":97,"keys":1022,"end":"abandoned"}
+{"wt":"fd7d7578","dir":"6ce6ae5a","at":"10-25T10:16:39","hookToDaemonS":null,"daemonToListedS":35.238,"misses":90,"keys":1019,"end":"abandoned"}
+{"wt":"f2efc7b3","dir":"8884dd07","at":"10-25T10:31:28","hookToDaemonS":null,"daemonToListedS":41.272,"misses":149,"keys":1017,"end":"abandoned"}
+{"wt":"b459bbac","dir":"f5006daa","at":"10-25T16:15:35","hookToDaemonS":null,"daemonToListedS":35.303,"misses":1003,"keys":1026,"end":"abandoned"}
+{"wt":"f2913abb","dir":"c32ae733","at":"10-25T18:05:06","hookToDaemonS":null,"daemonToListedS":30.324,"misses":137,"keys":1030,"end":"abandoned"}
+{"wt":"babfded2","dir":"ac4fbe39","at":"10-25T18:19:20","hookToDaemonS":null,"daemonToListedS":22.486,"misses":113,"keys":1031,"end":"abandoned"}
+{"wt":"6ceb28ed","dir":"4793676c","at":"10-25T18:19:24","hookToDaemonS":null,"daemonToListedS":30.716,"misses":113,"keys":1030,"end":"abandoned"}
+{"wt":"530932ef","dir":"1e6f1311","at":"10-25T18:19:57","hookToDaemonS":null,"daemonToListedS":32.385,"misses":113,"keys":1031,"end":"abandoned"}
+{"wt":"978feb80","dir":"a739f56a","at":"10-25T18:55:54","hookToDaemonS":null,"daemonToListedS":35.113,"misses":253,"keys":1032,"end":"abandoned"}
+{"wt":"e99953ba","dir":"fabc7220","at":"10-25T20:26:17","hookToDaemonS":null,"daemonToListedS":50.096,"misses":69,"keys":1029,"end":"abandoned"}
+{"wt":"2afb4b04","dir":"3bc50453","at":"10-25T20:26:17","hookToDaemonS":null,"daemonToListedS":43.659,"misses":69,"keys":1030,"end":"abandoned"}
+{"wt":"06bf72d9","dir":"a86dd042","at":"10-25T20:26:18","hookToDaemonS":null,"daemonToListedS":46.649,"misses":69,"keys":1029,"end":"abandoned"}
+{"wt":"6282add9","dir":"62ebd553","at":"10-25T20:30:59","hookToDaemonS":null,"daemonToListedS":23.269,"misses":69,"keys":1029,"end":"abandoned"}
+{"wt":"a8bb2468","dir":"5faae238","at":"10-25T20:51:05","hookToDaemonS":null,"daemonToListedS":40.309,"misses":93,"keys":1030,"end":"abandoned"}
+hookToDaemonS: n=0 min=null median=null p90=null max=null
+daemonToListedS: n=17 min=8.001 median=32.385 p90=46.649 max=50.096
+hook (consumer registered) -> daemon constructed, current daemons: 6ceb28ed 7.343, babfded2 12.762, 978feb80 14.475, 2afb4b04 16.525, a8bb2468 17.44

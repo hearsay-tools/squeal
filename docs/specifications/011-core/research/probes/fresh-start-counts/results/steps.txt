@@ -1,0 +1,57 @@
+
+sq-a1: load 22.34 at start, 29.58 when listed
+     0.19 s  +  0.19  daemon-process-start
+     0.31 s  +  0.12  module-eval
+     0.33 s  +  0.02  openDaemon-begin
+     0.34 s  +  0.02  lock-held
+     0.34 s  +  0.00  integrity-begin
+    30.28 s  + 29.93  start-returned
+    34.27 s  +  3.99  integrity-end
+    34.38 s  +  0.12  opened
+    34.40 s  +  0.02  registered
+    34.41 s  +  0.01  modules-loaded
+    35.60 s  +  1.19  loop-start
+    35.64 s  +  0.04  scan-bootstrap-begin
+    37.22 s  +  1.57  scan-bootstrap-end
+    37.35 s  +  0.13  baseline-begin
+    38.07 s  +  0.72  environments-read
+    38.09 s  +  0.03  listed
+    38.71 s  +  0.62  closures-from-store-set
+    39.87 s  +  1.16  unresolved-resolved
+    40.28 s  +  0.41  first-lookup
+    46.77 s  +  6.49  recheck-resolved
+    46.80 s  +  0.03  commit-begin
+    47.83 s  +  1.03  committed
+    48.58 s  +  0.75  status-listed
+    51.67 s  +  3.09  loop-started
+    51.68 s  +  0.00  serving
+    56.43 s  +  4.75  stopped
+   642.34 s  +585.91  waited
+
+sq-b1: load 22.92 at start, 26.96 when listed
+     0.17 s  +  0.17  daemon-process-start
+     0.32 s  +  0.15  module-eval
+     0.35 s  +  0.03  openDaemon-begin
+     0.39 s  +  0.04  lock-held
+     0.39 s  +  0.00  integrity-begin
+    30.18 s  + 29.79  start-returned
+    35.13 s  +  4.95  integrity-end
+    35.35 s  +  0.22  opened
+    35.41 s  +  0.07  registered
+    35.43 s  +  0.02  modules-loaded
+    36.76 s  +  1.33  loop-start
+    36.87 s  +  0.11  scan-bootstrap-begin
+    40.13 s  +  3.25  scan-bootstrap-end
+    40.61 s  +  0.48  baseline-begin
+    41.61 s  +  1.00  environments-read
+    41.66 s  +  0.05  listed
+    42.51 s  +  0.85  closures-from-store-set
+    43.86 s  +  1.35  unresolved-resolved
+    44.31 s  +  0.45  first-lookup
+    48.02 s  +  3.72  recheck-resolved
+    48.04 s  +  0.02  commit-begin
+    49.01 s  +  0.97  committed
+    50.12 s  +  1.11  status-listed
+    52.59 s  +  2.48  loop-started
+    52.60 s  +  0.00  serving
+    57.97 s  +  5.37  stopped

@@ -1,0 +1,40 @@
+== squeal
+{"wt":"95f83469","at":"10-23T19:47:30","commit":"78d42b7db","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":6}
+{"wt":"17593946","at":"10-24T20:09:48","commit":"0a31ae986","exactProven":true,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":5}
+{"wt":"b17f3bc2","at":"10-25T07:07:38","commit":"40a2aafbd","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":12}
+{"wt":"c24f3ea4","at":"10-25T08:00:19","commit":"6bffaa554","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":11}
+{"wt":"3bdb2693","at":"10-25T09:40:56","commit":"1c3913d66","exactProven":false,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":3}
+{"wt":"29eb4e64","at":"10-25T10:12:41","commit":"bb11420e0","exactProven":true,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":2}
+{"wt":"bde78828","at":"10-25T10:22:24","commit":"b40b53283","exactProven":false,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":8}
+{"wt":"0c26df29","at":"10-25T11:38:31","commit":"711194e62","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":6}
+{"wt":"8b6ec105","at":"10-25T13:40:48","commit":"8090ca4a7","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":44}
+{"wt":"2fa11272","at":"10-25T16:18:44","commit":"d8d93d4d0","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":30}
+{"wt":"afb7e4a0","at":"10-25T18:44:35","commit":"73fda0a2d","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":12}
+{"wt":"872b8120","at":"10-25T18:44:37","commit":"73fda0a2d","exactProven":false,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":12}
+{"wt":"a3eb6692","at":"10-25T19:15:07","commit":"62e255bfe","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":4}
+{"wt":"7cb3b15b","at":"10-25T19:35:00","commit":"85e43bdc9","exactProven":false,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":0}
+{"wt":"952ccdb5","at":"10-25T19:45:30","commit":"d8de0754a","exactProven":true,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":1}
+{"wt":"9b08774b","at":"10-25T19:54:15","commit":"2d1cca690","exactProven":false,"exactAny":false,"equalProven":false,"equalAny":false,"newestProvenAgoMin":null}
+{"wt":"086630d9","at":"10-25T20:08:06","commit":"703e9bfdf","exactProven":false,"exactAny":false,"equalProven":false,"equalAny":false,"newestProvenAgoMin":null}
+{"wt":"1eb612c3","at":"10-25T20:26:34","commit":"02fd25325","exactProven":false,"exactAny":false,"equalProven":false,"equalAny":false,"newestProvenAgoMin":null}
+{"wt":"1526f314","at":"10-25T20:34:10","commit":"96926f662","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":8}
+{"wt":"b453e11e","at":"10-25T20:57:40","commit":"c696096a9","exactProven":true,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":0}
+starts=20 exactProven=4 exact(any evidence)=8 exactOrEqualProven=17 exactOrEqual(any)=17 relevantPaths=5435
+== cezar
+{"wt":"288ff376","at":"10-25T05:46:35","commit":"38a565a1c","exactProven":false,"exactAny":false,"equalProven":false,"equalAny":false,"newestProvenAgoMin":null}
+{"wt":"4d3b3189","at":"10-25T06:06:58","commit":"4b5153dd1","exactProven":true,"exactAny":true,"equalProven":false,"equalAny":false,"newestProvenAgoMin":8}
+{"wt":"ab979002","at":"10-25T07:00:34","commit":"49449fe10","exactProven":false,"exactAny":false,"equalProven":false,"equalAny":true,"newestProvenAgoMin":null}
+{"wt":"ee1ae15d","at":"10-25T09:39:14","commit":"2a28cfe91","exactProven":false,"exactAny":false,"equalProven":false,"equalAny":false,"newestProvenAgoMin":null}
+{"wt":"fd7d7578","at":"10-25T10:16:39","commit":"51d53ab64","exactProven":false,"exactAny":false,"equalProven":false,"equalAny":false,"newestProvenAgoMin":null}
+{"wt":"f2efc7b3","at":"10-25T10:31:28","commit":"e170661e3","exactProven":false,"exactAny":false,"equalProven":false,"equalAny":false,"newestProvenAgoMin":null}
+{"wt":"b459bbac","at":"10-25T16:15:35","commit":"f5b29efe5","exactProven":false,"exactAny":false,"equalProven":true,"equalAny":true,"newestProvenAgoMin":931}
+{"wt":"f2913abb","at":"10-25T18:05:06","commit":"6823f952e","exactProven":true,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":5}
+{"wt":"6ceb28ed","at":"10-25T18:19:24","commit":"6823f952e","exactProven":true,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":19}
+{"wt":"530932ef","at":"10-25T18:19:57","commit":"6823f952e","exactProven":true,"exactAny":true,"equalProven":true,"equalAny":true,"newestProvenAgoMin":20}
+{"wt":"978feb80","at":"10-25T18:55:54","commit":"078b3b059","exactProven":true,"exactAny":true,"equalProven":false,"equalAny":false,"newestProvenAgoMin":0}
+{"wt":"e99953ba","at":"10-25T20:26:17","commit":"477978962","exactProven":true,"exactAny":true,"equalProven":false,"equalAny":true,"newestProvenAgoMin":3}
+{"wt":"2afb4b04","at":"10-25T20:26:17","commit":"477978962","exactProven":true,"exactAny":true,"equalProven":false,"equalAny":true,"newestProvenAgoMin":3}
+{"wt":"06bf72d9","at":"10-25T20:26:18","commit":"477978962","exactProven":true,"exactAny":true,"equalProven":false,"equalAny":true,"newestProvenAgoMin":3}
+{"wt":"6282add9","at":"10-25T20:30:59","commit":"477978962","exactProven":true,"exactAny":true,"equalProven":false,"equalAny":true,"newestProvenAgoMin":7}
+{"wt":"a8bb2468","at":"10-25T20:51:05","commit":"477978962","exactProven":true,"exactAny":true,"equalProven":false,"equalAny":true,"newestProvenAgoMin":17}
+starts=16 exactProven=10 exact(any evidence)=10 exactOrEqualProven=11 exactOrEqual(any)=12 relevantPaths=4041
