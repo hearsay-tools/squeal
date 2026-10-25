@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.318";
+  if (true) return "0.1.321";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -6065,10 +6065,7 @@ var init_cache = __esm({
         if (this.#loaders !== null) this.#build = null;
         return this.#loaders;
       }
-      /**
-       * The seed in progress, or done and not yet judged after; begun by
-       * `begin` when none is, which gives `null` when none can begin yet.
-       */
+      /** The seed in progress, or done and not yet judged after; begun by `begin` when none is. */
       seed(begin2) {
         this.#seed ??= begin2();
         return this.#seed;
@@ -6081,8 +6078,8 @@ var init_cache = __esm({
         this.#seed = null;
       }
       /** An edit's moves and removals, for the seed in progress (D2; review 0.1.311 B1). */
-      follow(store, report3) {
-        this.#seed?.follow(store, report3);
+      follow(report3) {
+        this.#seed?.follow(report3);
       }
       /** A source's condition from the loader map. */
       condition(path, loaders) {
@@ -8827,6 +8824,33 @@ function createStateRepo(conn) {
           fromId
         );
       });
+    },
+    adopt(worktreeId, staged, measure2, removed) {
+      return conn.transaction(() => {
+        const written = conn.run(
+          `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
+             counted_at, blob, changed_at)
+           SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at
+           FROM states WHERE worktree_id = ? AND measure = ?
+           ON CONFLICT (worktree_id, check_id, measure) DO UPDATE SET
+             outcome = excluded.outcome, value = excluded.value, threshold = excluded.threshold,
+             counted_at = excluded.counted_at, blob = excluded.blob,
+             changed_at = excluded.changed_at`,
+          worktreeId,
+          staged,
+          measure2
+        );
+        if (removed.length > 0) {
+          conn.run(
+            `DELETE FROM states WHERE worktree_id = ? AND check_id IN (
+               SELECT c.id FROM json_each(?) j JOIN checks c ON c.path = j.value ->> 0
+                 AND c.qualified_name = j.value ->> 1 AND c.occurrence = j.value ->> 2)`,
+            worktreeId,
+            JSON.stringify(removed.map((c) => [c.path, c.qualifiedName, c.occurrence]))
+          );
+        }
+        return written;
+      });
     }
   };
 }
@@ -9611,6 +9635,90 @@ var init_loaders = __esm({
   }
 });
 
+// src/core/code/pass/failed.ts
+function readUncountable(meta, worktreeId) {
+  const text3 = meta.get(uncountableKey(worktreeId));
+  if (text3 === null) return /* @__PURE__ */ new Map();
+  try {
+    const record = JSON.parse(text3);
+    return new Map(Object.entries(record));
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function writeUncountable(meta, worktreeId, failed2) {
+  const key3 = uncountableKey(worktreeId);
+  const text3 = failed2.size === 0 ? null : JSON.stringify(Object.fromEntries(failed2));
+  if (meta.get(key3) === text3) return;
+  if (text3 === null) meta.delete(key3);
+  else meta.set(key3, text3);
+}
+function dueRetries(failed2, now) {
+  return [...failed2].flatMap(([path, f]) => f.retryAt !== null && f.retryAt <= now ? [path] : []);
+}
+function mayCount(failed2, path, blob, now) {
+  const f = failed2.get(path);
+  return f === void 0 || f.blob !== blob || f.retryAt !== null && f.retryAt <= now;
+}
+function failedAgain(previous, blob, error, {
+  now,
+  quiet,
+  threshold,
+  editedAt
+}) {
+  const same2 = previous?.blob === blob;
+  const attempts = same2 ? previous.attempts + 1 : 1;
+  const wait = attempts < COUNT_ATTEMPTS ? RETRY_AFTER_MS[attempts - 1] : void 0;
+  const origin = same2 ? previous.quiet === true : quiet;
+  const edit = same2 ? previous.editedAt : editedAt;
+  return {
+    blob,
+    attempts,
+    retryAt: wait === void 0 ? null : now + wait,
+    error,
+    ...origin ? { quiet: true } : { threshold: previous?.threshold ?? threshold },
+    ...edit === void 0 ? {} : { editedAt: edit }
+  };
+}
+function seedsQuietly(failed2, path, blob) {
+  const f = failed2.get(path);
+  return f !== void 0 && f.blob === blob && f.quiet === true;
+}
+function nextRetry(failed2) {
+  const times = [...failed2.values()].flatMap((f) => f.retryAt === null ? [] : [f.retryAt]);
+  return times.length === 0 ? null : Math.min(...times);
+}
+function restartRetries(meta, worktreeId, now) {
+  const failed2 = readUncountable(meta, worktreeId);
+  for (const [path, f] of failed2) failed2.set(path, { ...f, attempts: 0, retryAt: now });
+  writeUncountable(meta, worktreeId, failed2);
+}
+function spentFailure(failed2, file) {
+  const f = failed2.get(file.path);
+  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
+}
+function uncountableFiles(store, worktreeId, files2) {
+  const failed2 = readUncountable(store.meta, worktreeId);
+  const spent = /* @__PURE__ */ new Map();
+  if (failed2.size === 0) return spent;
+  for (const file of files2) {
+    const f = spentFailure(failed2, file);
+    if (f === null) continue;
+    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
+      spent.set(file.path, f);
+  }
+  return spent;
+}
+var COUNT_ATTEMPTS, RETRY_AFTER_MS, uncountableKey;
+var init_failed = __esm({
+  "src/core/code/pass/failed.ts"() {
+    "use strict";
+    COUNT_ATTEMPTS = 3;
+    RETRY_AFTER_MS = [5e3, 6e4];
+    uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
+  }
+});
+
 // src/core/code/crap/score.ts
 function crapScore(complexity, coverage) {
   if (coverage >= FULL_COVERAGE) return complexity;
@@ -9745,6 +9853,7 @@ var COVERAGE_MEASURES, SEED_FILES, Seed;
 var init_seed = __esm({
   "src/core/code/crap/seed.ts"() {
     "use strict";
+    init_failed();
     init_judge();
     init_summary();
     COVERAGE_MEASURES = ["crap", "uncovered"];
@@ -9752,6 +9861,8 @@ var init_seed = __esm({
     Seed = class {
       #files;
       #again;
+      /** Coverage's start: a file with no count holds the seed until it has one. */
+      #counted;
       /** Each file's place in `#files`: one at or past `#next` is not seeded yet. */
       #places;
       #next = 0;
@@ -9761,17 +9872,24 @@ var init_seed = __esm({
       #left = /* @__PURE__ */ new Map();
       /** By path, functions there as the seed began and not seeded yet, that an edit moved there. */
       #came = /* @__PURE__ */ new Map();
-      constructor(files2, again) {
+      /** The moves and removals `follow` was given and `advance` has not read yet, in order. */
+      #followed = [];
+      constructor(files2, again, counted3 = false) {
         this.#files = files2;
         this.#again = again;
+        this.#counted = counted3;
         this.#places = new Map(files2.map((f, place) => [f.path, place]));
       }
-      /** Seeds the next files while `work` allows; true once every file is seeded. */
+      /**
+       * Seeds the next files while `work` allows: `done` once every file is
+       * seeded, `uncounted` while a start's file waits for its count.
+       */
       advance(input, countOf, work) {
+        if (!this.#caughtUp(input.store, work)) return "more";
         for (; ; ) {
           const moved2 = [...this.#came.keys()].filter((path) => this.#waiting(path) === void 0);
-          if (moved2.length === 0 && this.#next >= this.#files.length) return true;
-          if (!work()) return false;
+          if (moved2.length === 0 && this.#next >= this.#files.length) return "done";
+          if (!work()) return "more";
           if (moved2.length > 0) {
             const paths = moved2.slice(0, SEED_FILES);
             this.#seed(
@@ -9782,6 +9900,7 @@ var init_seed = __esm({
             continue;
           }
           const files2 = this.#files.slice(this.#next, this.#next + SEED_FILES);
+          if (this.#counted && !this.#allCounted(input, files2, countOf)) return "uncounted";
           this.#next += files2.length;
           this.#seed(
             input,
@@ -9791,13 +9910,37 @@ var init_seed = __esm({
         }
       }
       /** An edit's moves and removals (D2), as the complexity pass applied them to its states. */
-      follow(store, report3) {
-        for (const { from, to } of report3.moves) {
-          if (!this.#leave(store, from)) continue;
+      follow(report3) {
+        for (const { from, to } of report3.moves) this.#followed.push({ from, to });
+        for (const check of report3.removed) this.#followed.push({ from: check, to: null });
+      }
+      /** Reads what `follow` was given, one move or removal each time `work` allows; true once all is read. */
+      #caughtUp(store, work) {
+        let read5 = 0;
+        for (const { from, to } of this.#followed) {
+          if (!work()) break;
+          read5++;
+          if (!this.#leave(store, from) || to === null) continue;
           const came = this.#came.get(to.path) ?? /* @__PURE__ */ new Set();
           this.#came.set(to.path, came.add(functionKey(to)));
         }
-        for (const check of report3.removed) this.#leave(store, check);
+        this.#followed.splice(0, read5);
+        return this.#followed.length === 0;
+      }
+      /**
+       * Whether each of `files`, as the seed began, has a count now, or is gone,
+       * too big or one the counter gave up on; a start waits for the others.
+       */
+      #allCounted(input, files2, countOf) {
+        const { store, worktreeId } = input;
+        const now = store.files.list(
+          worktreeId,
+          files2.map((f) => f.path)
+        );
+        const uncounted = now.filter((f) => f.tooBig !== true && countOf(f) === null);
+        if (uncounted.length === 0) return true;
+        const failed2 = readUncountable(store.meta, worktreeId);
+        return uncounted.every((f) => spentFailure(failed2, f) !== null);
       }
       /** `check` leaves its file: true if it was there as the seed began and is not seeded yet. */
       #leave(store, check) {
@@ -9926,90 +10069,6 @@ var init_removed = __esm({
     "use strict";
     init_seed();
     init_summary();
-  }
-});
-
-// src/core/code/pass/failed.ts
-function readUncountable(meta, worktreeId) {
-  const text3 = meta.get(uncountableKey(worktreeId));
-  if (text3 === null) return /* @__PURE__ */ new Map();
-  try {
-    const record = JSON.parse(text3);
-    return new Map(Object.entries(record));
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function writeUncountable(meta, worktreeId, failed2) {
-  const key3 = uncountableKey(worktreeId);
-  const text3 = failed2.size === 0 ? null : JSON.stringify(Object.fromEntries(failed2));
-  if (meta.get(key3) === text3) return;
-  if (text3 === null) meta.delete(key3);
-  else meta.set(key3, text3);
-}
-function dueRetries(failed2, now) {
-  return [...failed2].flatMap(([path, f]) => f.retryAt !== null && f.retryAt <= now ? [path] : []);
-}
-function mayCount(failed2, path, blob, now) {
-  const f = failed2.get(path);
-  return f === void 0 || f.blob !== blob || f.retryAt !== null && f.retryAt <= now;
-}
-function failedAgain(previous, blob, error, {
-  now,
-  quiet,
-  threshold,
-  editedAt
-}) {
-  const same2 = previous?.blob === blob;
-  const attempts = same2 ? previous.attempts + 1 : 1;
-  const wait = attempts < COUNT_ATTEMPTS ? RETRY_AFTER_MS[attempts - 1] : void 0;
-  const origin = same2 ? previous.quiet === true : quiet;
-  const edit = same2 ? previous.editedAt : editedAt;
-  return {
-    blob,
-    attempts,
-    retryAt: wait === void 0 ? null : now + wait,
-    error,
-    ...origin ? { quiet: true } : { threshold: previous?.threshold ?? threshold },
-    ...edit === void 0 ? {} : { editedAt: edit }
-  };
-}
-function seedsQuietly(failed2, path, blob) {
-  const f = failed2.get(path);
-  return f !== void 0 && f.blob === blob && f.quiet === true;
-}
-function nextRetry(failed2) {
-  const times = [...failed2.values()].flatMap((f) => f.retryAt === null ? [] : [f.retryAt]);
-  return times.length === 0 ? null : Math.min(...times);
-}
-function restartRetries(meta, worktreeId, now) {
-  const failed2 = readUncountable(meta, worktreeId);
-  for (const [path, f] of failed2) failed2.set(path, { ...f, attempts: 0, retryAt: now });
-  writeUncountable(meta, worktreeId, failed2);
-}
-function spentFailure(failed2, file) {
-  const f = failed2.get(file.path);
-  return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
-}
-function uncountableFiles(store, worktreeId, files2) {
-  const failed2 = readUncountable(store.meta, worktreeId);
-  const spent = /* @__PURE__ */ new Map();
-  if (failed2.size === 0) return spent;
-  for (const file of files2) {
-    const f = spentFailure(failed2, file);
-    if (f === null) continue;
-    if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
-      spent.set(file.path, f);
-  }
-  return spent;
-}
-var COUNT_ATTEMPTS, RETRY_AFTER_MS, uncountableKey;
-var init_failed = __esm({
-  "src/core/code/pass/failed.ts"() {
-    "use strict";
-    COUNT_ATTEMPTS = 3;
-    RETRY_AFTER_MS = [5e3, 6e4];
-    uncountableKey = (worktreeId) => `uncountable:${worktreeId}`;
   }
 });
 
@@ -10198,8 +10257,9 @@ function runCoverageStep(input) {
   };
   if (start2 || input.reseed) {
     const seed = cache2.seed(() => beginSeed(input, start2, summary));
-    if (seed === null) return null;
-    if (!store.transaction(() => seed.advance(input, countOf, slice))) return SEEDING;
+    const seeded2 = store.transaction(() => seed.advance(input, countOf, slice));
+    if (seeded2 === "uncounted") return null;
+    if (seeded2 === "more") return SEEDING;
   }
   const loaders = cache2.loaders(
     () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
@@ -10237,13 +10297,8 @@ function runCoverageStep(input) {
   return report3;
 }
 function beginSeed(input, start2, summary) {
-  const { store, worktreeId } = input;
-  const files2 = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
-  if (start2) {
-    const spent = uncountableFiles(store, worktreeId, files2);
-    if (store.files.uncounted(worktreeId).some((f) => !spent.has(f.path))) return null;
-  }
-  return new Seed(files2, start2 && summary !== null);
+  const files2 = input.store.files.list(input.worktreeId).filter((f) => f.tooBig !== true);
+  return new Seed(files2, start2 && summary !== null, start2);
 }
 function budget(now) {
   const began = now();
@@ -10271,7 +10326,6 @@ var init_step = __esm({
     "use strict";
     init_fs();
     init_record();
-    init_failed();
     init_brought();
     init_cache();
     init_loaders();
@@ -58769,13 +58823,20 @@ async function countMissing(ctx, entries3, failed2, attempt) {
     const key3 = `${e.file.hash}\0${e.language}`;
     byBlob.set(key3, [...byBlob.get(key3) ?? [], e]);
   }
-  const missing2 = [...byBlob.values()].filter(
-    ([e]) => e !== void 0 && store.counts.get(e.file.hash, e.language, counter.version) === null
-  );
+  const size = ctx.sliceFiles ?? SLICE_FILES;
+  const groups = [...byBlob.values()];
+  const missing2 = [];
+  for (let start2 = 0; start2 < groups.length; start2 += size) {
+    if (start2 > 0) await nextTurn();
+    for (const group of groups.slice(start2, start2 + size)) {
+      const [e] = group;
+      const stored = e === void 0 || store.counts.get(e.file.hash, e.language, counter.version);
+      if (stored === null) missing2.push(group);
+    }
+  }
   const skipped2 = /* @__PURE__ */ new Set();
   const links = /* @__PURE__ */ new Set();
   let counted3 = 0;
-  const size = ctx.sliceFiles ?? SLICE_FILES;
   for (let start2 = 0; start2 < missing2.length; start2 += size) {
     if (start2 > 0) await nextTurn();
     const slice = missing2.slice(start2, start2 + size);
@@ -58855,6 +58916,73 @@ var init_blobs = __esm({
     SLICE_FILES = 200;
     decoder = new TextDecoder();
     OPEN_FLAGS3 = constants5.O_RDONLY | constants5.O_NOFOLLOW | constants5.O_NONBLOCK;
+  }
+});
+
+// src/core/code/pass/head.ts
+import { existsSync as existsSync37, readFileSync as readFileSync39 } from "node:fs";
+import { join as join100 } from "node:path";
+async function committedPaths(ctx, since, upTo, files2) {
+  const asked = files2.filter((f) => !f.path.includes("\n"));
+  if (asked.length === 0) return /* @__PURE__ */ new Set();
+  const head = ctx.source.movedHead(since, upTo);
+  const revs = [.../* @__PURE__ */ new Set([...head === null ? [] : [head], ...operationRevisions(ctx.root)])];
+  if (revs.length === 0) return /* @__PURE__ */ new Set();
+  let out2;
+  try {
+    out2 = await runGit(ctx.root, ["cat-file", "--batch-check=%(objectname) %(objecttype)"], {
+      // `./`: relative to the root, which may sit below the repository's top.
+      input: revs.flatMap((rev) => asked.map((f) => `${rev}:./${f.path}
+`)).join(""),
+      timeoutMs: GIT_TIMEOUT_MS
+    });
+  } catch (error) {
+    ctx.log(`complexity: could not read the files at ${revs.join(", ")}: ${String(error)}`);
+    return /* @__PURE__ */ new Set();
+  }
+  const lines = out2.split("\n");
+  return new Set(
+    asked.filter(
+      (f, i3) => revs.some((rev, r) => {
+        const line = lines[r * asked.length + i3];
+        return f.blob === null ? line === `${rev}:./${f.path} missing` : blobOf2(line) === f.blob;
+      })
+    ).map((f) => f.path)
+  );
+}
+function operationRevisions(root) {
+  const top = findWorktreeRoot(root);
+  const gitDir = top === null ? null : gitDirOf(top);
+  if (gitDir === null) return [];
+  const revs = OPERATIONS.flatMap(([file, rev]) => shasIn(join100(gitDir, file)).map(rev));
+  if (REBASE_DIRS.some((dir2) => existsSync37(join100(gitDir, dir2)))) revs.push("HEAD");
+  return revs;
+}
+function shasIn(path) {
+  try {
+    return readFileSync39(path, "utf8").split("\n").filter((line) => SHA2.test(line));
+  } catch {
+    return [];
+  }
+}
+function blobOf2(line) {
+  const [id2, type, rest] = (line ?? "").split(" ");
+  return type === "blob" && rest === void 0 && id2 !== void 0 && /^[0-9a-f]+$/.test(id2) ? id2 : null;
+}
+var GIT_TIMEOUT_MS, OPERATIONS, REBASE_DIRS, SHA2;
+var init_head2 = __esm({
+  "src/core/code/pass/head.ts"() {
+    "use strict";
+    init_fs();
+    GIT_TIMEOUT_MS = 1e4;
+    OPERATIONS = [
+      ["MERGE_HEAD", (sha) => sha],
+      ["CHERRY_PICK_HEAD", (sha) => sha],
+      ["REVERT_HEAD", (sha) => `${sha}^`],
+      ["REBASE_HEAD", (sha) => sha]
+    ];
+    REBASE_DIRS = ["rebase-merge", "rebase-apply"];
+    SHA2 = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
   }
 });
 
@@ -58998,73 +59126,6 @@ var init_judge2 = __esm({
   }
 });
 
-// src/core/code/pass/head.ts
-import { existsSync as existsSync37, readFileSync as readFileSync39 } from "node:fs";
-import { join as join100 } from "node:path";
-async function committedPaths(ctx, since, upTo, files2) {
-  const asked = files2.filter((f) => !f.path.includes("\n"));
-  if (asked.length === 0) return /* @__PURE__ */ new Set();
-  const head = ctx.source.movedHead(since, upTo);
-  const revs = [.../* @__PURE__ */ new Set([...head === null ? [] : [head], ...operationRevisions(ctx.root)])];
-  if (revs.length === 0) return /* @__PURE__ */ new Set();
-  let out2;
-  try {
-    out2 = await runGit(ctx.root, ["cat-file", "--batch-check=%(objectname) %(objecttype)"], {
-      // `./`: relative to the root, which may sit below the repository's top.
-      input: revs.flatMap((rev) => asked.map((f) => `${rev}:./${f.path}
-`)).join(""),
-      timeoutMs: GIT_TIMEOUT_MS
-    });
-  } catch (error) {
-    ctx.log(`complexity: could not read the files at ${revs.join(", ")}: ${String(error)}`);
-    return /* @__PURE__ */ new Set();
-  }
-  const lines = out2.split("\n");
-  return new Set(
-    asked.filter(
-      (f, i3) => revs.some((rev, r) => {
-        const line = lines[r * asked.length + i3];
-        return f.blob === null ? line === `${rev}:./${f.path} missing` : blobOf2(line) === f.blob;
-      })
-    ).map((f) => f.path)
-  );
-}
-function operationRevisions(root) {
-  const top = findWorktreeRoot(root);
-  const gitDir = top === null ? null : gitDirOf(top);
-  if (gitDir === null) return [];
-  const revs = OPERATIONS.flatMap(([file, rev]) => shasIn(join100(gitDir, file)).map(rev));
-  if (REBASE_DIRS.some((dir2) => existsSync37(join100(gitDir, dir2)))) revs.push("HEAD");
-  return revs;
-}
-function shasIn(path) {
-  try {
-    return readFileSync39(path, "utf8").split("\n").filter((line) => SHA2.test(line));
-  } catch {
-    return [];
-  }
-}
-function blobOf2(line) {
-  const [id2, type, rest] = (line ?? "").split(" ");
-  return type === "blob" && rest === void 0 && id2 !== void 0 && /^[0-9a-f]+$/.test(id2) ? id2 : null;
-}
-var GIT_TIMEOUT_MS, OPERATIONS, REBASE_DIRS, SHA2;
-var init_head2 = __esm({
-  "src/core/code/pass/head.ts"() {
-    "use strict";
-    init_fs();
-    GIT_TIMEOUT_MS = 1e4;
-    OPERATIONS = [
-      ["MERGE_HEAD", (sha) => sha],
-      ["CHERRY_PICK_HEAD", (sha) => sha],
-      ["REVERT_HEAD", (sha) => `${sha}^`],
-      ["REBASE_HEAD", (sha) => sha]
-    ];
-    REBASE_DIRS = ["rebase-merge", "rebase-apply"];
-    SHA2 = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-  }
-});
-
 // src/core/code/pass/listed.ts
 function readListing(store, worktreeId, source2, latest) {
   const fact = source2.listing();
@@ -59166,6 +59227,45 @@ var init_listed = __esm({
   }
 });
 
+// src/core/code/pass/end.ts
+function writeEnd(ctx, end) {
+  const { store, worktreeId } = ctx;
+  const { latest, reason: reason2, counted: counted3 } = end;
+  writeCursor(store.meta, worktreeId, end.current);
+  writeListed(store.meta, worktreeId, end.listed);
+  writeUncountable(store.meta, worktreeId, end.failed);
+  const awaited = reason2 === "first" && takeAwaited(store.meta, worktreeId);
+  if (reason2 !== null && (reason2 !== "first" || counted3 > 0 || ctx.switchedOn || awaited)) {
+    writeRecount(store.meta, worktreeId, {
+      revision: latest,
+      at: ctx.now(),
+      reason: reason2,
+      threshold: ctx.complexity.threshold
+    });
+  }
+}
+function report2(revision, reason2, files2, counted3, judged) {
+  return {
+    revision,
+    mode: reason2 ?? "edit",
+    files: files2,
+    counted: counted3,
+    transitions: judged.transitions.length,
+    moved: judged.moves.length,
+    moves: judged.moves,
+    removed: judged.removed,
+    edited: judged.edited
+  };
+}
+var init_end = __esm({
+  "src/core/code/pass/end.ts"() {
+    "use strict";
+    init_cursor();
+    init_failed();
+    init_listed();
+  }
+});
+
 // src/core/code/pass/included.ts
 import { extname as extname5 } from "node:path";
 function includedSet(complexity, testFiles2, ignored) {
@@ -59248,6 +59348,93 @@ var init_plan = __esm({
   }
 });
 
+// src/core/code/pass/stage.ts
+import { setImmediate as nextTurn2 } from "node:timers/promises";
+async function stageQuiet(ctx, entries3, links, revision) {
+  const { store, worktreeId } = ctx;
+  const staged = stagedId(worktreeId);
+  store.states.removeMeasure(staged, "complexity");
+  const states = [];
+  const removed = [];
+  let began = ctx.now();
+  for (let start2 = 0; start2 < entries3.length; start2 += PART_FILES) {
+    if (start2 > 0 && ctx.now() - began > PART_BUDGET_MS) {
+      await nextTurn2();
+      began = ctx.now();
+    }
+    const part = entries3.slice(start2, start2 + PART_FILES);
+    const after2 = part.map((e) => ({
+      path: e.path,
+      count: e.kind === "count" && !links.has(e.path) ? store.counts.get(e.file.hash, e.language, ctx.counter.version) : null
+    }));
+    const judged = judge({
+      worktreeId,
+      revision,
+      threshold: ctx.complexity.threshold,
+      at: ctx.now(),
+      quiet: true,
+      before: store.states.list(worktreeId, {
+        measure: "complexity",
+        paths: part.map((e) => e.path)
+      }),
+      bodies: /* @__PURE__ */ new Map(),
+      after: after2
+    });
+    store.transaction(
+      () => store.states.upsertMany(judged.states.map((s) => ({ ...s, worktreeId: staged })))
+    );
+    states.push(...judged.states);
+    removed.push(...judged.removed);
+  }
+  return { states, removed };
+}
+function adoptStaged(store, worktreeId, staged) {
+  const written = store.states.adopt(
+    worktreeId,
+    stagedId(worktreeId),
+    "complexity",
+    staged.removed
+  );
+  if (written !== staged.states.length) store.states.upsertMany(staged.states);
+}
+async function dropStaged(store, worktreeId) {
+  await nextTurn2();
+  store.states.removeMeasure(stagedId(worktreeId), "complexity");
+}
+async function quietEnd(ctx, end, entries3, {
+  skipped: skipped2,
+  links
+}) {
+  const { store, worktreeId } = ctx;
+  const judged = entries3.filter((e) => !skipped2.has(e.path));
+  for (const e of judged) end.failed.delete(e.path);
+  const staged = await stageQuiet(ctx, judged, links, end.latest);
+  const done = store.transaction(() => {
+    store.files.removeMany(worktreeId, [...links]);
+    adoptStaged(store, worktreeId, staged);
+    clearPulled(store.meta, worktreeId);
+    writeEnd(ctx, end);
+    return report2(end.latest, end.reason, entries3.length, end.counted, {
+      ...{ moves: [], transitions: [], edited: [] },
+      removed: staged.removed
+    });
+  });
+  await dropStaged(store, worktreeId);
+  return done;
+}
+var PART_BUDGET_MS, PART_FILES, stagedId;
+var init_stage = __esm({
+  "src/core/code/pass/stage.ts"() {
+    "use strict";
+    init_end();
+    init_judge2();
+    init_pulled();
+    PART_BUDGET_MS = 25;
+    PART_FILES = 32;
+    stagedId = (worktreeId) => `${worktreeId} recount`;
+  }
+});
+
 // src/core/code/pass/pass.ts
 import { extname as extname6 } from "node:path";
 async function runPass(ctx) {
@@ -59288,6 +59475,11 @@ async function runPass(ctx) {
     threshold: ctx.complexity.threshold,
     edits
   });
+  const end = { latest, reason: reason2, current: current3, counted: counted3, failed: failed2 };
+  if (reason2 !== null) {
+    const listed5 = nextRecord(listing, since, held2, []);
+    return quietEnd(ctx, { ...end, reason: reason2, listed: listed5 }, entries3, { skipped: skipped2, links });
+  }
   const seeds = quietPaths(entries3, failed2, listing);
   const after2 = entries3.filter((e) => !skipped2.has(e.path)).map((e) => {
     const editedUnder = failed2.get(e.path)?.threshold;
@@ -59309,7 +59501,7 @@ async function runPass(ctx) {
   return store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
     const paths = new Set(after2.map((a) => a.path));
-    const before3 = store.states.list(worktreeId, { measure: "complexity", ...quiet ? {} : { paths: [...paths] } }).filter((s) => paths.has(s.check.path));
+    const before3 = store.states.list(worktreeId, { measure: "complexity", paths: [...paths] });
     const at2 = ctx.now();
     const { judged, deferred } = holdRemovals(
       judge({
@@ -59317,7 +59509,7 @@ async function runPass(ctx) {
         revision: latest,
         threshold: ctx.complexity.threshold,
         at: at2,
-        quiet,
+        quiet: false,
         before: before3,
         bodies,
         after: after2
@@ -59326,10 +59518,8 @@ async function runPass(ctx) {
       seeds
     );
     for (const { from, to } of judged.moves) store.states.move(worktreeId, from, to);
-    if (!quiet) {
-      const told = judged.removed.filter((check) => !seeds.has(check.path));
-      store.transitions.append(removedFailures(store, worktreeId, told, latest, at2));
-    }
+    const told = judged.removed.filter((check) => !seeds.has(check.path));
+    store.transitions.append(removedFailures(store, worktreeId, told, latest, at2));
     store.states.removeMany(worktreeId, judged.removed);
     store.states.upsertMany(judged.states);
     store.transitions.append(judged.transitions);
@@ -59338,20 +59528,8 @@ async function runPass(ctx) {
       worktreeId,
       edited.map((check) => ({ check, measure: "complexity", revision: latest, at: at2 }))
     );
-    if (quiet) clearPulled(store.meta, worktreeId);
-    else writePulled(store.meta, worktreeId, latest, paths, committed);
-    writeCursor(store.meta, worktreeId, current3);
-    writeListed(store.meta, worktreeId, nextRecord(listing, since, held2, deferred));
-    writeUncountable(store.meta, worktreeId, failed2);
-    const awaited = reason2 === "first" && takeAwaited(store.meta, worktreeId);
-    if (reason2 !== null && (reason2 !== "first" || counted3 > 0 || ctx.switchedOn || awaited)) {
-      writeRecount(store.meta, worktreeId, {
-        revision: latest,
-        at: ctx.now(),
-        reason: reason2,
-        threshold: ctx.complexity.threshold
-      });
-    }
+    writePulled(store.meta, worktreeId, latest, paths, committed);
+    writeEnd(ctx, { ...end, listed: nextRecord(listing, since, held2, deferred) });
     return report2(latest, reason2, entries3.length, counted3, { ...judged, edited });
   });
 }
@@ -59392,19 +59570,6 @@ function oldBodies(store, worktreeId, entries3, counterVersion) {
   }
   return bodies;
 }
-function report2(revision, reason2, files2, counted3, judged) {
-  return {
-    revision,
-    mode: reason2 ?? "edit",
-    files: files2,
-    counted: counted3,
-    transitions: judged.transitions.length,
-    moved: judged.moves.length,
-    moves: judged.moves,
-    removed: judged.removed,
-    edited: judged.edited
-  };
-}
 var init_pass = __esm({
   "src/core/code/pass/pass.ts"() {
     "use strict";
@@ -59412,11 +59577,13 @@ var init_pass = __esm({
     init_removed();
     init_blobs();
     init_cursor();
+    init_end();
     init_failed();
     init_judge2();
     init_listed();
     init_plan();
     init_pulled();
+    init_stage();
     init_too_big();
   }
 });
@@ -59501,6 +59668,7 @@ __export(pass_exports, {
   uncountableKey: () => uncountableKey
 });
 import { rmSync as rmSync15 } from "node:fs";
+import { setImmediate as nextTurn3 } from "node:timers/promises";
 function createCodePass(options) {
   const now = options.now ?? Date.now;
   const retry2 = /* @__PURE__ */ new Set();
@@ -59585,6 +59753,7 @@ function createCodePass(options) {
     if (report3 !== null) {
       wasOff = false;
       options.onPass?.(report3);
+      await nextTurn3();
     }
     coverageStep(opened, policy, report3);
   };
@@ -59606,7 +59775,7 @@ function createCodePass(options) {
       return;
     }
     if (recount) cache2.dropSeed();
-    else if (revised) cache2.follow(opened, report3);
+    else if (revised) cache2.follow(report3);
     if (revised) cache2.invalidate();
     if (!reseedDue && !coverageDue && !revised) return;
     if (!pace.due()) {
