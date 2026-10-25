@@ -72,6 +72,12 @@ export interface RetryRecord {
    * counted failure's request.
    */
   readonly noResult?: true;
+  /**
+   * A `load` request: when a daemon at its key first found it due with the
+   * load gate closed (011 C5 as amended, row 011-213); it runs once
+   * `LOAD_RETRY_WAIT_MS` later if the gate stays closed. Absent until then.
+   */
+  readonly gateClosedAt?: EpochMs;
 }
 
 /** Every kept request, oldest first; empty when the row is absent or does not parse. */
@@ -86,7 +92,8 @@ export function readRetries(store: Store): RetryRecord[] {
   }
 }
 
-function writeRetries(store: Store, records: readonly RetryRecord[]): void {
+/** Replaces the row with `records`, trimmed as `keptRetries` keeps them; in the caller's transaction. */
+export function writeRetries(store: Store, records: readonly RetryRecord[]): void {
   const kept = keptRetries(records, heldIn(store), RETRIES_KEPT);
   store.meta.set(RETRIES_META_KEY, JSON.stringify(kept));
 }
