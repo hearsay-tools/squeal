@@ -799,6 +799,8 @@ Spec: `specifications/010-ci-cost/spec.md`. Sections D1 to D12. Step one approve
 
 Spec: `specifications/011-core/spec.md`. Sections referenced as C1 to C14; a 001 D-number resolves through the crosswalk at its end. The rows below kept their 001 numbers at the split (2026-10-17); new rows take `011-NN`, allocated from the board on main by the coordinator who lands them. A row is a bounded change ticket, never an authorization: it is dispatched only when the human has approved it (split proposal, section 7).
 
+**Releasing:** squeal 0.1.307 (011-198, 011-200, 011-202; review `reviews/0.1.307.md` PASS on `76dd2eb5b`) goes to main at 08:49Z or later, 2026-10-25 (coordinator 04a258b0; 015 and 016 told at 08:38Z).
+
 ### Open rows inherited from 001
 
 | Task | Status | Scope | Done when |
