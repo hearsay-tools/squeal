@@ -1,0 +1,106 @@
+worktree 95f8346992f91e4f, daemon 0.1.318, newest revision 252
+[Object: null prototype] {
+  blob: '6f9abf96600aaf9ddc111939efff0aa7568fa59d',
+  revision: 251
+}
+
+## States of test/keys/validity/harness/assemble.ts
+  assemble: cc 17, crap 306 (fail), uncovered fail
+  assemble.<transaction>: cc 1, crap 2 (pass), uncovered fail
+  assemble.<map>: cc 1, crap 2 (pass), uncovered fail
+  keysOf: cc 3, crap 12 (pass), uncovered fail
+  rewrite: cc 2, crap 6 (pass), uncovered fail
+  keyed.onExtraFiles: cc 1, crap 2 (pass), uncovered fail
+  keyed.<bootstrap>: cc 1, crap 2 (pass), uncovered fail
+  keyed: cc 4, crap 20 (pass), uncovered fail
+  storeObserved: cc 10, crap 110 (fail), uncovered fail
+  readBack: cc 6, crap 42 (fail), uncovered fail
+  stability: cc 1, crap 2 (pass), uncovered fail
+  stability.<flatMap>: cc 1, crap 2 (pass), uncovered fail
+  storeObserved.<transaction>: cc 1, crap 2 (pass), uncovered fail
+  moving: cc 1, crap 2 (pass), uncovered fail
+  moving.hash: cc 4, crap 20 (pass), uncovered fail
+  relist: cc 6, crap 42 (fail), uncovered fail
+
+## Transitions (crap, uncovered)
+  relist crap first-seen-fail -> fail 42 at revision 251, 1792957917085
+  relist uncovered first-seen-fail -> fail  at revision 251, 1792957917085
+
+## Loaders of test/keys/validity/harness/assemble.ts (main store closures; the daemon reads its own)
+  test/keys/key-format.test.ts key 54292b35dd0d pending null
+    results: 13 pass (worktree 95f8346992f91e4f, revision 251, at 1792957630331)
+    record: stored 1792957631263, 285 sources, unread 0
+    blob 6f9abf96600aaf9ddc111939efff0aa7568fa59d, covered lines [1,2,3,4,5,11,12,13,16,18,19], V8 functions 9, ran 0
+  test/keys/validity/adapters.test.ts key 4e62f19da025 pending null
+    results: 7 pass (worktree 95f8346992f91e4f, revision 251, at 1792957630331)
+    record: stored 1792957630726, 285 sources, unread 0
+    blob 6f9abf96600aaf9ddc111939efff0aa7568fa59d, covered lines [1,2,3,4,5,11,12,13,16,18,19], V8 functions 9, ran 0
+  test/keys/validity/compare.test.ts key 3b25f4b4c62c pending null
+    results: 14 pass (worktree 95f8346992f91e4f, revision 251, at 1792957915449)
+    record: stored 1792957916115, 285 sources, unread 0
+    blob 6f9abf96600aaf9ddc111939efff0aa7568fa59d, covered lines [1,2,3,4,5,11,12,13,16,18,19], V8 functions 9, ran 0
+  test/keys/validity/lock.test.ts key 21945785cde9 pending null
+    results: 5 pass (worktree 175939465763857b, revision 250, at 1792956990911)
+    record: stored 1792956997734, 51 sources, unread 0
+    no entry for the source
+  test/keys/validity/pytest.test.ts key 3c6875677b3c pending null
+    results: 5 pass (worktree 175939465763857b, revision 250, at 1792957516169)
+    record: stored 1792957517443, 285 sources, unread 0
+    blob 6f9abf96600aaf9ddc111939efff0aa7568fa59d, covered lines [1,2,3,4,5,11,12,13,16,18,19], V8 functions 9, ran 0
+  test/keys/validity/reach.test.ts key 4538ec0d7299 pending null
+    results: 7 pass (worktree 175939465763857b, revision 250, at 1792957089166)
+    record: stored 1792957091936, 285 sources, unread 0
+    blob 6f9abf96600aaf9ddc111939efff0aa7568fa59d, covered lines [1,2,3,4,5,11,12,13,16,18,19], V8 functions 9, ran 0
+  test/version-sensitive.test.ts key c9c45b9a94d6 pending null
+    results: 7 pass (worktree 175939465763857b, revision 239, at 1792956154426)
+    record: stored 1792956192720, 1 sources, unread 0
+    no entry for the source
+
+## Every 'uncovered' fail in the worktree, by what the records say of its source
+  total: 2063 functions in 354 files
+  loaded in-process, function never called: 584 functions in 136 files
+  in a closure, never loaded in-process: 1403 functions in 176 files
+  no loader: 76 functions in 42 files
+
+## Of them, in the validity driver's bundle (245 inputs)
+  1 src/core/scheduler/lockfiles.ts (loaded in-process, function never called)
+  1 src/runners/node-test/adapter-environment.ts (loaded in-process, function never called)
+  1 src/runners/node-test/adapter.ts (loaded in-process, function never called)
+  1 src/runners/node-test/graph/glob.ts (loaded in-process, function never called)
+  1 src/runners/node-test/graph/graph.ts (loaded in-process, function never called)
+  2 src/runners/node-test/run/report.ts (loaded in-process, function never called)
+  1 src/runners/node-test/run/run.ts (loaded in-process, function never called)
+  1 src/runners/pytest/adapter-run.ts (loaded in-process, function never called)
+  1 src/runners/pytest/adapter.ts (loaded in-process, function never called)
+  1 src/runners/pytest/environment/hash.ts (loaded in-process, function never called)
+  1 src/runners/pytest/graph/derive-roots.ts (loaded in-process, function never called)
+  1 src/runners/pytest/graph/modules.ts (loaded in-process, function never called)
+  1 src/runners/pytest/graph/parse.ts (loaded in-process, function never called)
+  2 src/runners/pytest/run/run.ts (loaded in-process, function never called)
+  1 test/keys/validity/driver.ts (loaded in-process, function never called)
+  5 test/keys/validity/harness.ts (loaded in-process, function never called)
+  2 test/keys/validity/harness/accept-rule.ts (loaded in-process, function never called)
+  20 test/keys/validity/harness/accept.ts (loaded in-process, function never called)
+  16 test/keys/validity/harness/assemble.ts (loaded in-process, function never called)
+  4 test/keys/validity/harness/keyed.ts (loaded in-process, function never called)
+  4 test/keys/validity/harness/node-test.ts (loaded in-process, function never called)
+  6 test/keys/validity/harness/observe.ts (loaded in-process, function never called)
+  18 test/keys/validity/harness/pytest.ts (loaded in-process, function never called)
+  34 test/keys/validity/harness/reported.ts (loaded in-process, function never called)
+  6 test/keys/validity/harness/shared.ts (loaded in-process, function never called)
+  11 test/keys/validity/harness/store-input.ts (loaded in-process, function never called)
+  6 test/keys/validity/harness/store.ts (loaded in-process, function never called)
+  20 test/keys/validity/harness/vitest.ts (loaded in-process, function never called)
+
+## test/keys/validity files outside the driver's bundle
+  1 test/keys/validity/bundle.ts
+  7 test/keys/validity/compare-refs.ts
+  2 test/keys/validity/compare.ts
+  6 test/keys/validity/harness/accept-rule-ledger.ts
+  6 test/keys/validity/harness/barrier-scheduler.ts
+  28 test/keys/validity/harness/store-traced.ts
+  1 test/keys/validity/lock.ts
+  1 test/keys/validity/python.ts
+  12 test/keys/validity/python/squeal_validity_trace.py
+  3 test/keys/validity/sides.ts
+  1 test/keys/validity/trees.ts

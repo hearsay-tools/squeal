@@ -1,0 +1,19 @@
+assemble cases: 17
+cases run: 17, with an error: 0
+assemble.ts functions in the child (source line:name -> calls):
+  31:assemble -> 17
+  42:(anonymous) -> 3
+  52:(anonymous) -> 25
+  80:keyed -> 26
+  96:onExtraFiles -> 3
+  98:(anonymous) -> 2
+  113:storeObserved -> 9
+  127:(anonymous) -> 1
+  137:readBack -> 9
+  150:relist -> 3
+  166:rewrite -> 18
+  173:moving -> 17
+  177:hash -> 8
+  191:stability -> 1
+  197:(anonymous) -> 2
+  204:keysOf -> 30
