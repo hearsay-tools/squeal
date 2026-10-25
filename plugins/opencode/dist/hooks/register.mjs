@@ -6006,6 +6006,7 @@ function readTooBigEdits(meta, worktreeId) {
 
 // src/core/types/code-delivery.ts
 var CODE_LISTED_MAX = 5;
+var CODE_NOT_JUDGED_MAX = 3;
 
 // src/core/delivery/code-coverage.ts
 function coverageMeasures(store, worktreeId) {
@@ -6185,22 +6186,58 @@ function toldOver(store, worktreeId, consumers, measures = ["complexity"]) {
     (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => told.has(codeKey(s)))
   );
 }
-function withToldOver(store, consumer, news, threshold) {
-  const { worktreeId } = consumer;
-  const measures = ["complexity", ...coverageMeasures(store, worktreeId)];
-  const over = toldOver(store, worktreeId, [consumer], measures);
-  if (over.length === 0) return news;
+function changedNotJudged(store, worktreeId, bounds) {
+  if (bounds.length === 0) return [];
+  const own = (revision) => revision !== void 0 && bounds.some((b) => isOwn(b, revision));
+  const big = readTooBigEdits(store.meta, worktreeId);
+  const failed2 = readUncountable(store.meta, worktreeId);
+  const paths = [
+    ...[...big].flatMap(([path, revision]) => own(revision) ? [path] : []),
+    ...[...failed2].flatMap(([path, f]) => own(f.editedAt) ? [path] : [])
+  ];
+  if (paths.length === 0) return [];
+  const files2 = store.files.list(worktreeId, paths);
+  const spent = uncountableFiles(store, worktreeId, files2);
+  return files2.flatMap((file) => {
+    if (file.tooBig === true) {
+      const revision = big.get(file.path);
+      return own(revision) ? [{ file, revision, failure: null }] : [];
+    }
+    const failure2 = spent.get(file.path);
+    return own(failure2?.editedAt) ? [{ file, revision: failure2.editedAt, failure: failure2 }] : [];
+  }).sort((a, b) => b.revision - a.revision || compare(a.file.path, b.file.path));
+}
+function toldOf(over, threshold) {
   const count = over.filter((s) => s.measure === "complexity").length;
   const crap = over.filter((s) => s.measure === "crap");
   const uncovered = over.filter((s) => s.measure === "uncovered").length;
   const [first] = crap;
-  const told = {
+  return {
     count,
     threshold,
     ...first?.threshold == null ? {} : { crap: { count: crap.length, threshold: first.threshold } },
     ...uncovered === 0 ? {} : { uncovered }
   };
-  return { ...news ?? { v: 1, entries: [], more: 0 }, toldOver: told };
+}
+function notJudgedOf(changed, limit) {
+  return {
+    files: changed.slice(0, CODE_NOT_JUDGED_MAX).map(
+      ({ file, failure: failure2 }) => failure2 === null ? { path: file.path, reason: "too-big", size: file.size, limit } : { path: file.path, reason: "could-not-count" }
+    ),
+    more: Math.max(0, changed.length - CODE_NOT_JUDGED_MAX)
+  };
+}
+function withToldOver(store, consumer, news, { threshold, maxFileBytes }, since) {
+  const { worktreeId } = consumer;
+  const measures = ["complexity", ...coverageMeasures(store, worktreeId)];
+  const over = toldOver(store, worktreeId, [consumer], measures);
+  const changed = changedNotJudged(store, worktreeId, since === null ? [] : [since]);
+  if (over.length === 0 && changed.length === 0) return news;
+  return {
+    ...news ?? { v: 1, entries: [], more: 0 },
+    ...over.length === 0 ? {} : { toldOver: toldOf(over, threshold) },
+    ...changed.length === 0 ? {} : { notJudged: notJudgedOf(changed, maxFileBytes) }
+  };
 }
 
 // src/core/delivery/code-deliver.ts
@@ -6376,9 +6413,10 @@ function codeStep(store, consumer, { at, since, limit }, write2) {
 function tellCode(source, consumer, at, since, { changes = true, toldOver: toldOver2 = false } = {}) {
   if (!changes && !toldOver2) return null;
   const told = withCode2(source, ({ store, complexity }) => {
-    const over = (news) => toldOver2 ? withToldOver(store, consumer, news, complexity.threshold) : news;
+    const seen = since();
+    const over = (news) => toldOver2 ? withToldOver(store, consumer, news, complexity, seen) : news;
     if (changes) {
-      const input = { at, since: since(), limit: complexity.maxFileBytes };
+      const input = { at, since: seen, limit: complexity.maxFileBytes };
       if (store.read(() => codeStep(store, consumer, input, false)).writes) {
         return store.transaction(() => over(codeStep(store, consumer, input, true).news));
       }
@@ -7403,7 +7441,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.309";
+  if (true) return "0.1.312";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -7625,7 +7663,7 @@ function toldLiveness(store, consumer) {
   const since = isRecord(told) ? told.startingSince : void 0;
   return typeof since === "number" ? { startingSince: since } : "alive";
 }
-function toldOf(live) {
+function toldOf2(live) {
   return live.state === "alive" && live.short !== void 0 ? { short: live.short.of } : live.state;
 }
 function tellLiveness(store, consumer, told) {
@@ -8942,7 +8980,7 @@ function createDelivery(store, options) {
       store.views.removeMany(consumer, delta.removals);
       store.views.writeMany(consumer, delta.writes);
       const changed = liveness2 ? livenessChange(store, consumer, at) : null;
-      if (changed !== null) tellLiveness(store, consumer, toldOf(changed));
+      if (changed !== null) tellLiveness(store, consumer, toldOf2(changed));
       const holds = liveness2 ? holdsChange(store, consumer, at) : null;
       if (holds !== null) tellHolds(store, consumer, holds.now);
       const tests = delta.entries.length > 0 || changed !== null || holds !== null;
@@ -9035,7 +9073,7 @@ function createDelivery(store, options) {
         knownFailures.map((f) => f.check)
       );
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      const daemon = header.daemon === void 0 ? null : toldOf(header.daemon);
+      const daemon = header.daemon === void 0 ? null : toldOf2(header.daemon);
       tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);
