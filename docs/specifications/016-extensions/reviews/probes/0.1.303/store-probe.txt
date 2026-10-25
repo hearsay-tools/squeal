@@ -1,0 +1,61 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { DatabaseSync } from "node:sqlite";
+import { openStore as oldOpen, isStoreOpenFailure } from "../old/src/core/store/index.ts";
+import { openStore, storePaths } from "./src/core/store/index.ts";
+
+const root = mkdtempSync(join(tmpdir(), "squeal-review-columns-"));
+const common = join(root, ".git");
+mkdirSync(common);
+writeFileSync(join(common, "HEAD"), "ref: refs/heads/main\n");
+function must(open: typeof openStore) {
+  const store = open(common, { busyTimeoutMs: 0, checkIntegrity: true });
+  assert(!isStoreOpenFailure(store));
+  return store;
+}
+const old = must(oldOpen);
+const check = (path: string) => ({kind: "test" as const, project: "", testPath: path, fullName: "works"});
+const record = (path: string) => ({
+  check: check(path), key: path, outcome: "pass" as const, durationMs: 1,
+  location: null, fingerprint: null, summary: null, errors: [],
+  provenance: { worktreeId: "w", revision: 1, commit: null, dirty: true, runId: "r", recordedAt: 1 },
+});
+old.results.putMany([record("old-before.js")]);
+// Warm the old connection's prepared statements before ALTER TABLE.
+assert.equal(old.checks.listByTestFile({ project: "", path: "old-before.js" }).length, 1);
+const db = new DatabaseSync(storePaths(common).database);
+db.exec("BEGIN IMMEDIATE");
+assert.throws(() => openStore(common, { create: false, busyTimeoutMs: 0 }), /locked/);
+assert.equal(db.prepare("SELECT name FROM pragma_table_info('checks') WHERE name='runner'").get(), undefined);
+db.exec("COMMIT");
+const current = must(openStore);
+assert.equal(db.prepare("PRAGMA user_version").get()?.user_version, 1);
+old.results.putMany([record("old-after.js")]);
+current.results.putMany([record("new.js")], "vitest");
+old.results.putMany([record("new.js")]);
+assert.equal(current.checks.runnerOf(check("old-before.js")), null);
+assert.equal(current.checks.runnerOf(check("old-after.js")), null);
+assert.equal(current.checks.runnerOf(check("new.js")), "vitest");
+assert.equal(old.results.byKey("new.js").length, 1);
+assert.equal(old.checks.listByTestFile({ project: "", path: "new.js" }).length, 1);
+console.log("old prepared reads and result writes work after ALTER; old writes NULL; user_version=1");
+// The second opener must require no write lock on a store with the column.
+db.exec("BEGIN IMMEDIATE");
+const again = must(openStore);
+again.close();
+db.exec("COMMIT");
+console.log("first busy open failed without adding column; later opens succeed under held writer lock");
+const pruned = old.prune({ now: 100 * 86400000, retentionDays: 7, maxSizeMb: null });
+assert.equal(pruned.resultsRemoved, 3);
+assert.equal(pruned.checksRemoved, 3);
+assert.equal(current.checks.runnerOf(check("new.js")), null);
+old.close();
+const restarted = must(oldOpen);
+restarted.results.putMany([record("old-restart.js")]);
+assert.equal(current.checks.runnerOf(check("old-restart.js")), null);
+assert.equal(db.prepare("PRAGMA integrity_check").get()?.integrity_check, "ok");
+console.log("old prune removed 3 checks and 3 results; old restart and integrity check pass");
+restarted.close(); current.close(); db.close();
+rmSync(root, { recursive: true, force: true });

@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { play, describePlayed } from "./test/kit/driver.ts";
+import { nodeTest } from "./test/kit/packs/node-test.ts";
+import { K8 } from "./test/kit/scenarios/k8-cut.ts";
+
+const scratch = mkdtempSync(join(tmpdir(), "squeal-review-cut-"));
+let calls = 0;
+try {
+  const pack = {
+    ...nodeTest,
+    open: async (...args: Parameters<typeof nodeTest.open>) => {
+      const adapter = await nodeTest.open(...args);
+      const run = adapter.run.bind(adapter);
+      adapter.run = async (...runArgs) => {
+        calls++;
+        // A valid crash report before the first test starts. No marker and no cut.
+        if (calls === 1) return {
+          end: "crashed", durationMs: 1, completedFiles: [], results: [], fileErrors: [],
+          failure: "review probe: process failed before any test started",
+        };
+        return run(...runArgs);
+      };
+      return adapter;
+    },
+  };
+  const played = await play(K8, pack, scratch);
+  console.log(describePlayed(played));
+  assert.equal(played.verdict, "FAIL", "K8 must reject a run that never reached its marker or was cut");
+} finally {
+  rmSync(scratch, { recursive: true, force: true });
+}

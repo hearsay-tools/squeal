@@ -1,0 +1,39 @@
+import assert from "node:assert/strict";
+import { primer as before } from "../old/src/harness/shared/primer.ts";
+import { primer as after } from "./src/harness/shared/primer.ts";
+import { recognizeTestCommand as oldRecognize } from "../old/src/harness/shared/test-command.ts";
+import { recognizeTestCommand as newRecognize } from "./src/harness/shared/test-command.ts";
+
+let primers = 0;
+for (const vitest of [false, true])
+  for (const nodeCount of [0, 1, 4])
+    for (const pyCount of [0, 1, 4])
+      for (const slow of [null, { files: null }, { files: 4, requireSlowSuite: true, pausesOnly: true }])
+        for (const command of ["squeal", "/a/".repeat(30) + "squeal"])
+          for (const exclude of [false, true]) {
+            const projects = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `project-${i}`, include: ["test/**/*.test.*"] }));
+            const coverage = {
+              vitest, vitestConfig: "vitest.config.ts", nodeTest: projects(nodeCount),
+              pytest: projects(pyCount), slow,
+              vitestExcluded: exclude ? ["browser", "e2e"] : [],
+              vitestExcludedFiles: exclude ? ["test/e2e/**"] : [],
+            };
+            assert.equal(after(command, coverage), before(command, coverage));
+            primers++;
+          }
+let commands = 0;
+for (const atRoot of [false, true])
+  for (const text of [
+    "vitest run", "npx vitest run src/a", "vitest run --silent true", "vitest run --silent=passed-only --reporter json", "vitest run -t name",
+    "npm test", "npm run unit", "npm test -- extra", "node --test 'test/*.mjs'", "node --test test/a.mjs",
+    "node --test --grep x", "pytest", "python -m pytest", "pytest tests/test_a.py", "uv run pytest -q tests/test_a.py", "pytest -k name", "echo ok && vitest run",
+  ]) {
+    const context = {
+      atRoot, scripts: { test: "vitest run", unit: "npx vitest run --silent" },
+      nodeTest: [{name: "unit", argv: [], env: {}, include: ["test/*.mjs"]}],
+      pytest: [{ project: { name: "py", args: [], env: {}, include: ["tests/test_*.py"] }, dir: "/repo", env: null }],
+    };
+    assert.deepEqual(newRecognize(text, context), oldRecognize(text, context));
+    commands++;
+  }
+console.log(JSON.stringify({ primers, commands, differences: 0 }));
