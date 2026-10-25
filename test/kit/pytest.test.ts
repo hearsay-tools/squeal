@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PYTHONS, requireSynced, type Synced, syncFixture } from "../helpers/pytest-env.js";
-import { accepted, describePlayed, play } from "./driver.js";
+import { accepted, describePlayed, forms, play } from "./driver.js";
 import { pytestPack } from "./packs/pytest.js";
 import { SCENARIOS } from "./scenarios/index.js";
 
@@ -29,11 +29,18 @@ describe.each(PYTHONS)("the kit on pytest under Python %s (spec 016 D1)", (versi
     if (scratch !== "") rmSync(scratch, { recursive: true, force: true });
   });
 
-  it.for(SCENARIOS)("$name: $title", { timeout: 120_000 }, async (scenario, ctx) => {
+  // Titles from the pack's forms; each case plays them through the synced environment's pack.
+  const cases = forms(SCENARIOS, pytestPack("", {})).map(({ scenario, variant }, at) => ({
+    at,
+    title: `${scenario.name}${variant === undefined ? "" : ` (${variant})`}: ${scenario.title}`,
+  }));
+  it.for(cases)("$title", { timeout: 120_000 }, async ({ at }, ctx) => {
     const { python, env } = requireSynced(ctx, synced);
     // The adapter keeps bytecode under its cache directory (row 007-29), as the daemon runs it.
     const { PYTHONDONTWRITEBYTECODE: _, ...source } = env;
-    const played = await play(scenario, pytestPack(python, source), scratch);
+    const form = forms(SCENARIOS, pytestPack(python, source))[at];
+    if (form === undefined) throw new Error(`no form ${at}`);
+    const played = await play(form.scenario, form.pack, scratch);
     expect(accepted(played.verdict), describePlayed(played)).toBe(true);
   });
 });

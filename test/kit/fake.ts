@@ -62,13 +62,16 @@ class FakeAdapter implements RunnerAdapter {
       const module = parse(this.read(at));
       if (module === null || module.kind === "broken") return { paths, value: null };
       if (module.kind === "value") return { paths, value: module.value };
+      if (module.kind !== "reexport" && module.kind !== "test") {
+        throw new Error(`the fake pack renders no ${module.kind} module`);
+      }
       at = modulePath(module.from);
     }
   }
 
   private testOf(file: TestFileRef): Extract<Module, { kind: "test" }> {
     const module = parse(this.read(file.path));
-    if (module === null || !isTest(module)) throw new Error(`${file.path} is no test module`);
+    if (module?.kind !== "test") throw new Error(`${file.path} is no test module`);
     return module;
   }
 
