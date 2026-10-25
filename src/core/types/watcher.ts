@@ -1,4 +1,4 @@
-import type { AbsolutePath, RelativePath } from "./common.js";
+import type { AbsolutePath, EpochMs, RelativePath } from "./common.js";
 import type { RevisionTrigger } from "./revision.js";
 
 /**
@@ -118,4 +118,29 @@ export interface CandidateBatch {
   readonly trigger: RevisionTrigger;
   /** Sorted, unique. Empty only for reconciliation batches, which are always emitted. */
   readonly paths: readonly CandidatePath[];
+}
+
+/**
+ * A reconciliation pass whose batch `onBatch` took, so its revision, if any, is stored (row
+ * 011-198). A pass that failed, that a close kept back or that a retry replaced is not one; a
+ * retry that landed is a pass of its own, with its own start.
+ */
+export interface DeliveredPass {
+  /** The feed numbers the passes it starts from 1: a later start has a higher number. */
+  readonly number: number;
+  /** When it started, before its `HEAD` and git status reads: an edit made since may be unseen. */
+  readonly startedAt: EpochMs;
+}
+
+/**
+ * The change feed's passes as `requestFullSuite` reads them (row 011-198): it notes `started`,
+ * awaits `pass`, and plans only when `delivered` is numbered above its note.
+ */
+export interface FeedPasses {
+  /** How many passes the feed started so far. */
+  started(): number;
+  /** Queues a pass, or joins one not yet started; resolves once it ended, delivered or not. */
+  pass(): Promise<void>;
+  /** The last pass delivered; `null` before the first. */
+  delivered(): DeliveredPass | null;
 }
