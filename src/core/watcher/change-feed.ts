@@ -70,6 +70,12 @@ export interface ChangeFeed {
    * pass already queued and not yet started is joined instead (task 001-299).
    */
   reconcile(trigger: RevisionTrigger): Promise<void>;
+  /**
+   * As `reconcile`, but rejects with the error the pass ended with when its
+   * batch was not delivered: a failure no retry recovered, or a close first.
+   * A joined pass's outcome is the joiner's too (row 011-198 R1).
+   */
+  reconcileChecked(trigger: RevisionTrigger): Promise<void>;
   /** Replaces the extra files and updates the watch; a reconciliation pass follows when it changed. */
   setExtraFiles(paths: readonly RelativePath[]): Promise<void>;
   close(): Promise<void>;
@@ -109,9 +115,12 @@ class Feed implements ChangeFeed {
    * `fs.watch` follows a link, so a write behind one also reports the link.
    */
   private linkTargets = new Map<RelativePath, AbsolutePath>();
-  private queue: Promise<void> = Promise.resolve();
-  /** The reconciliation queued and not yet started, which later requests join. */
-  private pending: { trigger: RevisionTrigger; done: Promise<void> } | null = null;
+  private queue: Promise<unknown> = Promise.resolve();
+  /**
+   * The reconciliation queued and not yet started, which later requests join;
+   * `done` resolves `null` once its batch was delivered, else to the error.
+   */
+  private pending: { trigger: RevisionTrigger; done: Promise<Error | null> } | null = null;
   /**
    * `HEAD` read just before the last delivered pass's git status; `undefined` before the first
    * (row 011-199). The feed keeps its own: the scheduler reads the `HEAD` it records after the
@@ -161,13 +170,22 @@ class Feed implements ChangeFeed {
     await this.reconcile("interval");
   }
 
-  reconcile(trigger: RevisionTrigger): Promise<void> {
+  async reconcile(trigger: RevisionTrigger): Promise<void> {
+    await this.queuePass(trigger);
+  }
+
+  async reconcileChecked(trigger: RevisionTrigger): Promise<void> {
+    const error = await this.queuePass(trigger);
+    if (error !== null) throw error;
+  }
+
+  private queuePass(trigger: RevisionTrigger): Promise<Error | null> {
     if (this.pending) {
       // "interval" also checks the install (scheduler), so a joined pass keeps it.
       if (trigger === "interval") this.pending.trigger = trigger;
       return this.pending.done;
     }
-    const pending = { trigger, done: Promise.resolve() };
+    const pending = { trigger, done: Promise.resolve<Error | null>(null) };
     this.pending = pending;
     pending.done = this.enqueue(
       () => {
@@ -183,9 +201,9 @@ class Feed implements ChangeFeed {
    * The rebuild also meets any ignored directory that appeared since the last one, so the backend
    * may replace its watcher here too; the pass finds what that dropped (row 011-187).
    */
-  setExtraFiles(paths: readonly RelativePath[]): Promise<void> {
+  async setExtraFiles(paths: readonly RelativePath[]): Promise<void> {
     this.extraFiles = [...paths];
-    return this.enqueue(
+    await this.enqueue(
       async () => {
         if (await this.rebuildSpec()) await this.reconcileNow("watch");
       },
@@ -321,15 +339,22 @@ class Feed implements ChangeFeed {
   /**
    * Runs tasks one at a time. A failed task is reported and does not stop the
    * queue; one that delivers batches names the trigger it retries as (`retry`).
+   * Resolves `null` once the task or its retry ran to its end with the feed
+   * open, else to the error it ended with (row 011-198 R1).
    */
-  private enqueue(task: () => Promise<void>, retryAs?: () => RevisionTrigger): Promise<void> {
-    const run = this.queue.then(async () => {
-      if (this.closed) return;
+  private enqueue(
+    task: () => Promise<void>,
+    retryAs?: () => RevisionTrigger,
+  ): Promise<Error | null> {
+    const run = this.queue.then(async (): Promise<Error | null> => {
+      if (this.closed) return closedFirst();
       try {
         await task();
+        // A close during the task may have kept its batch from `onBatch`.
+        return this.closed ? closedFirst() : null;
       } catch (error) {
         const pass = retryAs && (() => this.reconcileNow(retryAs()));
-        await this.retries.failed(toError(error), pass);
+        return await this.retries.failed(toError(error), pass);
       } finally {
         this.armIdle();
       }
@@ -348,4 +373,9 @@ class Feed implements ChangeFeed {
     }, this.timings.reconcileIntervalMs);
     this.idleTimer.unref();
   }
+}
+
+/** A task the feed's close kept from delivering its batch. */
+function closedFirst(): Error {
+  return new Error("the change feed closed before its pass was delivered");
 }

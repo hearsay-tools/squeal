@@ -78,8 +78,9 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
       // Not awaited: called from inside a batch, and the feed runs the update after it.
       feed?.setExtraFiles(paths).catch((error: unknown) => options.onError(toError(error)));
     },
+    // Row 011-198 R1: a pass that ends undelivered rejects the request, so no checkpoint is planned.
     beforeFullSuite: async () => {
-      await feed?.reconcile("interval");
+      await feed?.reconcileChecked("interval");
     },
   });
 
