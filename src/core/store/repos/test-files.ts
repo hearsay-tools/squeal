@@ -13,7 +13,6 @@ import {
   CHECK_COLUMNS,
   checkFrom,
   ensureCheckId,
-  findCheckId,
   flag,
   json,
   location,
@@ -174,24 +173,38 @@ function toTestFileKey(row: Row): TestFileKeyRecord {
   };
 }
 
-/** A setup check's runner, as one worktree recorded it (`CheckRepo.recordSetupRunner`). */
-interface SetupRunner {
+/** One project's runner, as one worktree recorded it (`CheckRepo.recordRunners`). */
+interface ProjectRunner {
   readonly project: string;
-  readonly testPath: string;
   readonly runner: string;
 }
 
-function isSetupRunner(value: unknown): value is SetupRunner {
+function isProjectRunner(value: unknown): value is ProjectRunner {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
-  return (
-    typeof v.project === "string" && typeof v.testPath === "string" && typeof v.runner === "string"
-  );
+  return typeof v.project === "string" && typeof v.runner === "string";
 }
 
 export function createCheckRepo(conn: Connection): CheckRepo {
-  const setupRunners = (worktreeId: string) =>
-    readMetaList(conn, worktreeMetaKey("setupRunners", worktreeId), isSetupRunner);
+  const runners = (worktreeId: string) =>
+    new Map(
+      readMetaList(conn, worktreeMetaKey("runners", worktreeId), isProjectRunner).map((e) => [
+        e.project,
+        e.runner,
+      ]),
+    );
+  const recordRunners: CheckRepo["recordRunners"] = (worktreeId, named) => {
+    const kept = runners(worktreeId);
+    let changed = false;
+    for (const [project, runner] of named) {
+      if (runner === undefined || kept.get(project) === runner) continue;
+      kept.set(project, runner);
+      changed = true;
+    }
+    if (!changed) return;
+    const entries = [...kept].map(([project, runner]) => ({ project, runner }));
+    writeMetaList(conn, worktreeMetaKey("runners", worktreeId), entries);
+  };
   return {
     listByTestFile: (testFile) =>
       conn
@@ -216,25 +229,10 @@ export function createCheckRepo(conn: Connection): CheckRepo {
           );
         }
       }),
-    runnerOf: (check, key) => {
-      const id = findCheckId(conn, check);
-      if (id === null) return null;
-      const row = conn.get("SELECT runner FROM results WHERE check_id = ? AND key = ?", id, key);
-      return row === null ? null : strOrNull(row, "runner");
-    },
-    setupRunnerOf: (worktreeId, check) =>
-      setupRunners(worktreeId).find(
-        (e) => e.project === check.project && e.testPath === check.testPath,
-      )?.runner ?? null,
+    runnersOf: runners,
+    recordRunners,
     recordSetupRunner: (worktreeId, check, runner) =>
-      conn.transaction(() => {
-        const others = setupRunners(worktreeId).filter(
-          (e) => e.project !== check.project || e.testPath !== check.testPath,
-        );
-        const { project, testPath } = check;
-        const next = runner === undefined ? others : [...others, { project, testPath, runner }];
-        writeMetaList(conn, worktreeMetaKey("setupRunners", worktreeId), next);
-      }),
+      recordRunners(worktreeId, new Map([[check.project, runner]])),
   };
 }
 

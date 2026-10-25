@@ -43,17 +43,17 @@ const NEWEST_OF_FILE = `${SELECT_RESULTS}
 
 /**
  * `ResultRepo.copyNewest`'s copy (task 011-38): every row of one key under
- * another, with its provenance, runner and record time, only while the other
- * holds no row. One statement, so a set another daemon stores there meanwhile
- * is never mixed with the copy.
+ * another, with its provenance and record time, only while the other holds
+ * no row. One statement, so a set another daemon stores there meanwhile is
+ * never mixed with the copy.
  */
 const COPY_SET = `
   INSERT INTO results (check_id, key, outcome, duration_ms, location_path, location_line,
     location_column, fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id,
-    recorded_at, last_used_at, runner)
+    recorded_at, last_used_at)
   SELECT check_id, ?, outcome, duration_ms, location_path, location_line, location_column,
     fingerprint, failure_id, worktree_id, revision, commit_sha, dirty, run_id, recorded_at,
-    last_used_at, runner
+    last_used_at
   FROM results WHERE key = ? AND NOT EXISTS (SELECT 1 FROM results WHERE key = ?)`;
 
 export function createResultRepo(conn: Connection): ResultRepo {
@@ -137,15 +137,15 @@ export function createResultRepo(conn: Connection): ResultRepo {
       conn
         .all(KEYS_SINCE, since)
         .map((row) => ({ key: str(row, "key"), recordedAt: num(row, "recorded_at") })),
-    putMany: (records, runner) =>
+    putMany: (records) =>
       conn.transaction(() => {
         for (const r of records) {
           const p = r.provenance;
           conn.run(
             `INSERT OR REPLACE INTO results (check_id, key, outcome, duration_ms, location_path,
                location_line, location_column, fingerprint, failure_id, worktree_id, revision,
-               commit_sha, dirty, run_id, recorded_at, last_used_at, runner)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               commit_sha, dirty, run_id, recorded_at, last_used_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             ensureCheckId(conn, r.check, p.recordedAt),
             r.key,
             r.outcome,
@@ -160,7 +160,6 @@ export function createResultRepo(conn: Connection): ResultRepo {
             p.runId,
             p.recordedAt,
             p.recordedAt,
-            runner ?? null,
           );
         }
       }),
