@@ -27,6 +27,17 @@ const stop = (s: StatusSnapshot) => statusText(s, s.knownFailures);
  */
 const news = (s: StatusSnapshot) =>
   formatDelta({ header: s, entries: [], slowTierChanged: true } as never);
+/**
+ * Row 011-205: the first change delivery after the listing to a consumer registered before it,
+ * the full counts once, with why a lookup-only baseline queued no test file without checks.
+ */
+const owedNews = (s: StatusSnapshot) =>
+  formatDelta({
+    header: s,
+    entries: [],
+    slowTierChanged: true,
+    countsOwed: { lookupOnly: true },
+  } as never);
 /** A Claude Code hook's reply, Squeal's text inside, as a cell keeps it. */
 const hook = (text: string) =>
   JSON.stringify({
@@ -159,6 +170,7 @@ const formatters = [
   // not current.
   ["Stop's status text", stop, "push"],
   ["change delivery's news header (task 001-407)", news, "push"],
+  ["change delivery's news header owed the counts (row 011-205)", owedNews, "push"],
 ] as const;
 const wrappings = [
   ["as text", (t: string) => t],
