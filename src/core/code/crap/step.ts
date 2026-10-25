@@ -1,15 +1,14 @@
-import { createHash } from "node:crypto";
 import { compare } from "../../fs/index.js";
 import type { CodeFile, CodeKnownState, FileCount } from "../../types/code.js";
 import type { CheckKey, EpochMs, RevisionNumber, WorktreeId } from "../../types/index.js";
-import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../coverage/record.js";
-import type { CoverageRecord } from "../coverage/types.js";
+import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
 import { uncountableFiles } from "../pass/failed.js";
 import type { CodeStore } from "../store/types.js";
 import { broughtByGit, keepUnjudged } from "./brought.js";
-import { coverageOf, type FileCondition, fileCondition } from "./file.js";
+import { StepCache } from "./cache.js";
+import { coverageOf, type FileCondition, type ReadyLoader } from "./file.js";
 import { checkOf, evidenceOf, type Judged, judgeFiles, priorKey } from "./judge.js";
-import { type LoaderCondition, type LoaderInputs, readLoaders } from "./loaders.js";
+import { type LoaderCondition, type LoaderInputs, type Loaders, readLoaders } from "./loaders.js";
 import {
   type CoverageSummary,
   type FileSummary,
@@ -31,7 +30,12 @@ import {
 
 export const COVERAGE_MEASURES = ["crap", "uncovered"] as const;
 
-/** A step judges files for at most this long, then yields to hooks and runs again. */
+/**
+ * A step works for at most this long, its reads of the loaders and records
+ * included (row 015-42), then yields to hooks and runs again. It does one
+ * unit of work, a record decoded or a file judged, past it, so a chain
+ * always moves.
+ */
 export const STEP_BUDGET_MS = 50;
 
 export interface CoverageStepInput {
@@ -49,6 +53,8 @@ export interface CoverageStepInput {
   readonly settled: Map<CheckKey, LoaderCondition>;
   /** The complexity pass rebuilt every state: a function with no coverage state is seeded, not new. */
   readonly reseed: boolean;
+  /** What the steps of a chain keep (row 015-42); absent, the step reads everything afresh. */
+  readonly cache?: StepCache;
 }
 
 export interface CoverageStepReport {
@@ -63,6 +69,8 @@ export interface CoverageStepReport {
 /** Spec 015 D9: one step over the worktree; `null` while its first count runs. */
 export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | null {
   const { store, worktreeId } = input;
+  const work = budget(input.now);
+  const cache = input.cache ?? new StepCache();
   const files = store.files.list(worktreeId).filter((f) => f.tooBig !== true);
   const summary = readSummary(store.meta, worktreeId);
   const start = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
@@ -81,54 +89,13 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
     if (count !== null) counts.set(file.path, count);
     return count;
   };
-  const loaders = readLoaders({ ...input, coverage: store.coverage, now: input.now() });
-  const records = new Map<CheckKey, CoverageRecord | null>();
-  const record = (key: CheckKey) => {
-    if (!records.has(key)) {
-      const bytes = store.coverage.get({
-        resultKey: key,
-        providerVersion: COVERAGE_PROVIDER_VERSION,
-      });
-      records.set(key, bytes === null ? null : decodeRecord(bytes));
-    }
-    return records.get(key) ?? null;
-  };
-
-  const began = input.now();
-  const next: Record<string, FileSummary> = {};
-  const judged: Judged[] = [];
-  // B2 (review 0.1.297): a recount's files stay quiet until each is judged, records waited for too.
-  const quiet = new Set(input.reseed ? files.map((f) => f.path) : (summary?.quiet ?? []));
-  let more = false;
-  for (const file of files) {
-    const before = summary?.files[file.path];
-    const condition = fileCondition(loaders.of(file.path), loaders.listed);
-    if (condition.state !== "ready") {
-      next[file.path] = summaryOf(file, condition);
-      continue;
-    }
-    const signature = signatureOf(file, input.threshold, condition.loaders);
-    const recounted = quiet.has(file.path);
-    if (!start && !recounted && before?.state === "judged" && before.signature === signature) {
-      next[file.path] = before;
-      continue;
-    }
-    if (input.now() - began > STEP_BUDGET_MS) {
-      more = true;
-      if (before !== undefined) next[file.path] = before;
-      continue;
-    }
-    const count = countOf(file);
-    if (count === null) continue;
-    const coverage = coverageOf(file, count.functions, condition.loaders, record);
-    if (coverage === "unread") {
-      next[file.path] = { state: "unknown", blob: file.blob, cause: "unread" };
-      continue;
-    }
-    next[file.path] = { state: "judged", blob: file.blob, signature };
-    judged.push({ file, count, coverage, ...(recounted ? { quiet: true } : {}) });
-    quiet.delete(file.path);
-  }
+  const loaders = cache.loaders(() =>
+    readLoaders({ ...input, coverage: store.coverage, now: input.now() }),
+  );
+  const { next, judged, quiet, more } = walk(
+    { input, cache, loaders, summary, start, countOf, work },
+    files,
+  );
 
   return store.transaction(() => {
     if (start || input.reseed) seed(input, files, countOf, start && summary !== null);
@@ -154,6 +121,76 @@ export function runCoverageStep(input: CoverageStepInput): CoverageStepReport | 
     }
     return { judged: judged.length, transitions, wakeAt: loaders.wakeAt, more };
   });
+}
+
+/**
+ * A step's budget from now: each call allows one more unit of work, a
+ * record decoded or a file judged, within `STEP_BUDGET_MS`, and the step's
+ * first past it.
+ */
+function budget(now: () => EpochMs): () => boolean {
+  const began = now();
+  let worked = false;
+  return () => {
+    if (worked && now() - began > STEP_BUDGET_MS) return false;
+    worked = true;
+    return true;
+  };
+}
+
+interface Walk {
+  readonly input: CoverageStepInput;
+  readonly cache: StepCache;
+  readonly loaders: Loaders;
+  readonly summary: CoverageSummary | null;
+  readonly start: boolean;
+  readonly countOf: (file: CodeFile) => FileCount | null;
+  readonly work: () => boolean;
+}
+
+/**
+ * Each file's summary, and the ready files judged within the step's
+ * budget; a file past it keeps its last summary, and `more` is set.
+ */
+function walk(at: Walk, files: readonly CodeFile[]) {
+  const { input, cache, loaders, summary, start, work } = at;
+  const next: Record<string, FileSummary> = {};
+  const judged: Judged[] = [];
+  // B2 (review 0.1.297): a recount's files stay quiet until each is judged, records waited for too.
+  const quiet = new Set(input.reseed ? files.map((f) => f.path) : (summary?.quiet ?? []));
+  const keys = (ready: readonly ReadyLoader[]) => ready.map((l) => l.key);
+  const record = (key: CheckKey) => cache.record(input.store.coverage, key);
+  let more = false;
+  for (const file of files) {
+    const before = summary?.files[file.path];
+    const condition = cache.condition(file.path, loaders);
+    if (condition.state !== "ready") {
+      next[file.path] = summaryOf(file, condition);
+      continue;
+    }
+    const signature = cache.signature(file, input.threshold, condition.loaders);
+    const recounted = quiet.has(file.path);
+    if (!start && !recounted && before?.state === "judged" && before.signature === signature) {
+      next[file.path] = before;
+      continue;
+    }
+    if (!cache.decode(input.store.coverage, keys(condition.loaders), work) || !work()) {
+      more = true;
+      if (before !== undefined) next[file.path] = before;
+      continue;
+    }
+    const count = at.countOf(file);
+    if (count === null) continue;
+    const coverage = coverageOf(file, count.functions, condition.loaders, record);
+    if (coverage === "unread") {
+      next[file.path] = { state: "unknown", blob: file.blob, cause: "unread" };
+      continue;
+    }
+    next[file.path] = { state: "judged", blob: file.blob, signature };
+    judged.push({ file, count, coverage, ...(recounted ? { quiet: true } : {}) });
+    quiet.delete(file.path);
+  }
+  return { next, judged, quiet, more };
 }
 
 /**
@@ -213,22 +250,6 @@ function thresholdAfter(
     threshold: input.threshold,
   });
   return input.threshold;
-}
-
-/**
- * What a judgement read, hashed so the summary stays small: the blob, the
- * counter version its CC is from, `crap.threshold` (review 0.1.297 B1 and
- * B2) and its loaders' keys.
- */
-function signatureOf(
-  file: Pick<CodeFile, "blob" | "counterVersion">,
-  threshold: number,
-  loaders: readonly { readonly key: CheckKey }[],
-): string {
-  const keys = loaders.map((l) => l.key).sort(compare);
-  return createHash("sha1")
-    .update([file.blob, `counter ${file.counterVersion}`, `crap ${threshold}`, ...keys].join("\n"))
-    .digest("hex");
 }
 
 function summaryOf(file: CodeFile, condition: Exclude<FileCondition, { state: "ready" }>) {
