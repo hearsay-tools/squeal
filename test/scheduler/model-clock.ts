@@ -1,6 +1,7 @@
-import { vi } from "vitest";
+import { MergeHold } from "../../src/core/scheduler/hold.js";
+import { InstallStamps } from "../../src/core/scheduler/install-stamp.js";
 import { Mutex } from "../../src/core/scheduler/mutex.js";
-import { SlotRecords } from "../../src/core/scheduler/slot-records.js";
+import { TierRecords } from "../../src/core/scheduler/record.js";
 
 /*
  * Row 011-195: time and quiet for `model-fixture.ts`. The scheduler's clock
@@ -96,42 +97,49 @@ export class ModelClock {
   }
 }
 
+/** Calls of `proto[name]` count as work in flight until their promise settles; the undo. */
+function wrap<O extends object>(proto: O, name: keyof O, track: (work: Promise<unknown>) => void) {
+  const original = proto[name] as (...args: unknown[]) => Promise<unknown>;
+  proto[name] = function (this: unknown, ...args: unknown[]) {
+    const work = original.apply(this, args);
+    track(work);
+    return work;
+  } as O[keyof O];
+  return () => {
+    proto[name] = original as O[keyof O];
+  };
+}
+
 /**
  * The scheduler's own work in flight, seen from outside: its lock's tasks
- * (`Mutex.run`) and its slot records, which wait outside the lock first
- * (`SlotRecords.record`). Replaces the probe's 45 ms of no change (finding
- * 4, flake risk 1): a decision a loaded host slows holds the lock.
+ * (`Mutex.run`), a run's record from its end, outside the lock first
+ * (`TierRecords.record`: the stability check, slots' gathering), and the
+ * pump's checks before it selects a tier (`InstallStamps.check`,
+ * `MergeHold.check`). Replaces the probe's 45 ms of no change (finding 4,
+ * flake risk 1): a decision or a record a loaded host slows is in flight.
  */
 export function watchWork() {
   let open = 0;
   let started = 0;
-  const track = <T>(work: Promise<T>): Promise<T> => {
+  const track = (work: Promise<unknown>) => {
     open += 1;
     started += 1;
     const done = () => {
       open -= 1;
     };
     work.then(done, done);
-    return work;
   };
-  const run = Mutex.prototype.run;
-  const record = SlotRecords.prototype.record;
-  const spies = [
-    vi.spyOn(Mutex.prototype, "run").mockImplementation(function (this: Mutex, task) {
-      return track(run.call(this, task));
-    }),
-    vi.spyOn(SlotRecords.prototype, "record").mockImplementation(function (
-      this: SlotRecords<unknown, unknown>,
-      ended,
-    ) {
-      return track(record.call(this, ended));
-    }),
+  const undo = [
+    wrap(Mutex.prototype, "run", track),
+    wrap(TierRecords.prototype, "record", track),
+    wrap(InstallStamps.prototype, "check", track),
+    wrap(MergeHold.prototype, "check", track),
   ];
   return {
     open: () => open,
     started: () => started,
     restore: () => {
-      for (const spy of spies) spy.mockRestore();
+      for (const u of undo) u();
     },
   };
 }
