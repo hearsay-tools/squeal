@@ -64,7 +64,7 @@ describe("ChangeFeed", () => {
     expect(errors).toEqual([]);
   });
 
-  it("emits a start reconciliation from git status and the tracked paths", async () => {
+  it("emits a start reconciliation from git status, the files git tracks and the tracked paths", async () => {
     write(root, "src/a.ts", "dirty\n");
     write(root, "src/new.ts");
     write(root, "src/debug.log");
@@ -72,7 +72,9 @@ describe("ChangeFeed", () => {
     await startFeed();
     expect(log.batches[0]?.trigger).toBe("interval");
     const paths = log.batches[0]?.paths ?? [];
+    // `.gitignore` is in no tracked path of this test: the first pass lists what git tracks (row 011-199).
     expect(paths.map((p) => p.path)).toEqual([
+      ".gitignore",
       "README.md",
       "src/a.ts",
       "src/lib/b.ts",
