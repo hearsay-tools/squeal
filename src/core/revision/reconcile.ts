@@ -75,11 +75,17 @@ export async function statCandidates(
  * Spec 001 D2: "every reported path is re-stat'ed and, if `mtime`, `size` or
  * inode changed, re-hashed with the git blob hash. Paths whose hash is
  * unchanged are dropped." The re-stat is the candidate's `stat`, taken by the
- * watcher (or `statCandidates`) with the one stat definition of `FileStat`;
- * no path is stat'ed again. ctime is compared too (D3 stat cache). A racy
- * entry is re-hashed even with an equal stat. A path with no file is marked
- * known absent in the cache, even when it was never cached. Changes are
- * sorted by path, each path once; a repeated path keeps its last stat.
+ * watcher (or `statCandidates`) with the one stat definition of `FileStat`.
+ * ctime is compared too (D3 stat cache). A racy entry is re-hashed even with
+ * an equal stat. A path with no file is marked known absent in the cache,
+ * even when it was never cached. Changes are sorted by path, each path once;
+ * a repeated path keeps its last stat.
+ *
+ * Row 011-204 (task 011-203): a hashed path is stat'ed once more after its
+ * read. When that stat is not the candidate's, a write came between them, and
+ * the bytes are newer than the stat: the path is left as cached, and the
+ * write's own batch hashes it again. Stored, the pair would make that batch
+ * see a moved stat over unchanged bytes, a touch (task 001-159).
  */
 export async function diffCandidates(
   candidates: Iterable<CandidatePath>,
@@ -96,19 +102,21 @@ export async function diffCandidates(
     const hashedAt = hasher.now();
     // The file can vanish between the watcher's stat and this read: then it is absent.
     const hash = stat ? await hasher.hash(path) : null;
-    return { path, cached, stat, hash, hashedAt };
+    const after = hash === null ? null : await hasher.stat(path);
+    return { path, cached, stat, hash, hashedAt, after };
   });
 
   const changes: FileChange[] = [];
   const updates: CacheUpdate[] = [];
   for (const entry of observed) {
     if (!entry) continue;
-    const { path, cached, stat, hash, hashedAt } = entry;
+    const { path, cached, stat, hash, hashedAt, after } = entry;
     if (!stat || hash === null) {
       if (cached) changes.push({ path, oldHash: cached.hash, newHash: null });
       if (cache.hashOf(path) !== null) updates.push({ kind: "delete", path });
       continue;
     }
+    if (after === null || !sameStat(stat, after)) continue;
     const record: FileHashRecord = {
       path,
       mtimeMs: stat.mtimeMs,
