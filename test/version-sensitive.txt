@@ -120,8 +120,9 @@ test/integration/touched-scope
 # A daemon started on a node:test project: its results, its slow tier and
 # capacity mark, the version probe of each project's Node at startup, two
 # overlapping runs of its lane through the sweep, the bare-file note under
-# its policy inputs, a step-down's cancel of its tier (row 011-31), and a
-# reload that reconciles its projects (row 011-78).
+# its policy inputs, a step-down's cancel of its tier (row 011-31), a
+# reload that reconciles its projects (row 011-78), and the warm-up's
+# record of its slow file's reads (016-17).
 test/integration/slow-spawn
 test/integration/capacity-project
 test/daemon/composite-runner
@@ -131,6 +132,7 @@ test/daemon/escaped-run-mark
 test/daemon/bare-note-inputs
 test/daemon/step-down-lanes
 test/daemon/reload-projects
+test/cli/warmup.test
 # A real `node --test` through the shipped plugin.
 test/e2e/node-test
 test/e2e/slow-node-test
