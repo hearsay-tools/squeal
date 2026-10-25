@@ -1,4 +1,4 @@
-import { utimesSync } from "node:fs";
+import { rmSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { loadPolicy } from "../../../../src/core/daemon/policy.js";
 import { readHead } from "../../../../src/core/daemon-loop/head.js";
@@ -24,8 +24,9 @@ const OTHER = "validity-b" as WorktreeId;
  * keyed by the tree's `WorktreeKeys` over a store of its own schema, the
  * runner's closures given and one environment hash for the project. With
  * `after`, the keys after it too; with `elsewhere`, after this worktree
- * read back what a second one stored (016 D4); with `stability`, what the
- * stability check then finds as outputs (011-204).
+ * read back what a second one stored (016 D4), and with `relisted` after a
+ * revision too (row 016-24); with `stability`, what the stability check then
+ * finds as outputs (011-204).
  */
 export async function assemble(input: AssembleInput, scratch: string): Promise<CaseOutput> {
   const root = writeTree(join(scratch, "repo"), input.files);
@@ -58,7 +59,10 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
     if (input.elsewhere !== undefined) {
       storeObserved(await keyed(root, store, OTHER, input), store, input.elsewhere);
       await readBack(keys, input);
-      return { keys: { first, elsewhere: keysOf(keys, paths) }, outputs };
+      const elsewhere = keysOf(keys, paths);
+      if (input.relisted === undefined) return { keys: { first, elsewhere }, outputs };
+      relist(keys, root, input.relisted);
+      return { keys: { first, elsewhere, relisted: keysOf(keys, paths) }, outputs };
     }
     if (input.after === undefined) return { keys: first, outputs };
     for (const { path, imports } of input.after.closures) {
@@ -140,6 +144,22 @@ async function readBack(keys: WorktreeKeys, input: AssembleInput): Promise<void>
   await keys.trackUntracked();
   // For coverage only: direct marks decide which file runs first after an edit, no stored row.
   for (const { path } of input.closures) keys.directOf?.({ project: "", path });
+}
+
+/** `relisted`'s writes and removals, the runs that end, then a revision that reports no change. */
+function relist(
+  keys: WorktreeKeys,
+  root: string,
+  relisted: NonNullable<AssembleInput["relisted"]>,
+): void {
+  for (const [path, text] of Object.entries(relisted.files)) {
+    if (text === null) rmSync(join(root, path), { force: true });
+    else writeTree(root, { [path]: text });
+  }
+  for (const { path, directories } of relisted.ran ?? []) {
+    keys.listedByRun?.({ project: "", path }, [...directories]);
+  }
+  keys.rekeyListings([]);
 }
 
 /** Writes `files` with an `mtime` `aheadMs` ahead, so each stat moves even where the bytes do not. */
