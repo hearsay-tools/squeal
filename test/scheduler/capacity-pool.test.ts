@@ -101,30 +101,32 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    onTestFinished(() => release());
     let held = false;
     h.runner.beforeRun = async () => {
       held = true;
       await gate;
     };
-    runs.length = 0;
-    appendFileSync(join(h.root, "vitest.config.ts"), "// environment change\n");
-    await h.batch("vitest.config.ts");
-    // It waits for the batch's re-key and a permit: under load, past the 1 s default (row 011-218).
-    await expect.poll(() => held, { timeout: 30_000 }).toBe(true);
-    const backlog = runs.find((r) => r.files.some((f) => f.path.startsWith("test/")));
-    expect(backlog?.options.workers).toBe(1);
+    // Released before the harness's close, which waits for the held tier (row 011-218).
+    try {
+      runs.length = 0;
+      appendFileSync(join(h.root, "vitest.config.ts"), "// environment change\n");
+      await h.batch("vitest.config.ts");
+      // It waits for the batch's re-key and a permit: on a loaded host, past the 1 s default.
+      await expect.poll(() => held, { timeout: 30_000 }).toBe(true);
+      const backlog = runs.find((r) => r.files.some((f) => f.path.startsWith("test/")));
+      expect(backlog?.options.workers).toBe(1);
 
-    // The edit's tier starts beside it, without a grant.
-    h.write("nt/src/a.mjs", "export const a = 2;\n");
-    await h.batch("nt/src/a.mjs");
-    await expect.poll(() => ntOutcome(store, h.worktreeId), { timeout: 30_000 }).toBe("fail");
-    const edit = runs.find((r) => r.files.some((f) => f.path === NT_TEST));
-    expect(edit).toBeDefined();
-    expect(edit?.options.workers).toBeUndefined();
-    expect(held).toBe(true);
-
-    release();
+      // The edit's tier starts beside it, without a grant.
+      h.write("nt/src/a.mjs", "export const a = 2;\n");
+      await h.batch("nt/src/a.mjs");
+      await expect.poll(() => ntOutcome(store, h.worktreeId), { timeout: 30_000 }).toBe("fail");
+      const edit = runs.find((r) => r.files.some((f) => f.path === NT_TEST));
+      expect(edit).toBeDefined();
+      expect(edit?.options.workers).toBeUndefined();
+      expect(held).toBe(true);
+    } finally {
+      release();
+    }
     await h.scheduler.idle();
   });
 
