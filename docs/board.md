@@ -1324,8 +1324,8 @@ Spec: `specifications/016-extensions/spec.md`, draft for the human's review (202
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 016-21 kit scenario K10: two worktrees share one store | running (worker pending) | D1's later scenario "two worktrees share one store", the guard D4 lands behind (`spec.md` Waves): what one worktree's run observed reaches a second worktree and a restarted adapter, a child process's import in `direct` (row 007-56). Today's differences are KNOWN gaps naming their D4 line. Design request first: two worktrees and a restart over one scratch store, with no daemon. | K10 PASS or KNOWN on every runner; `squeal run --all --wait` green. |
-| 016-17 one write path for observed paths (takes 007-47, 007-52, 007-56) | running (worker pending; 011 told before dispatch) | D4 with the human's three decisions of 2026-10-25 (O8 exempt, both adapter versions raised, O1 the written-directory bound). Commit-plan request first. Lands after 016-21; removes the K10 gaps it closes. | Goals 5 and 6. |
+| 016-21 kit scenario K10: two worktrees share one store | running (worker 989d130f, opus xhigh, 2026-10-25) | D1's later scenario "two worktrees share one store", the guard D4 lands behind (`spec.md` Waves): what one worktree's run observed reaches a second worktree and a restarted adapter, a child process's import in `direct` (row 007-56). Today's differences are KNOWN gaps naming their D4 line. Design request first: two worktrees and a restart over one scratch store, with no daemon. | K10 PASS or KNOWN on every runner; `squeal run --all --wait` green. |
+| 016-17 one write path for observed paths (takes 007-47, 007-52, 007-56) | running (worker aa7eeb16, opus xhigh, 2026-10-25; 011 told before dispatch, no overlap with its wave 37) | D4 with the human's three decisions of 2026-10-25 (O8 exempt, both adapter versions raised, O1 the written-directory bound). Commit-plan request first. Lands after 016-21; removes the K10 gaps it closes. | Goals 5 and 6. |
 
 ## Later
 
