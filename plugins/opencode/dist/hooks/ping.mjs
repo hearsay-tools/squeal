@@ -16,6 +16,13 @@ var HOOK_TIMEOUT_MS = 2e3;
 var LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
+// src/core/types/watcher.ts
+var WATCHER_TIMINGS = {
+  quietMs: 100,
+  maxBatchMs: 500,
+  reconcileIntervalMs: 3e4
+};
+
 // src/core/daemon/config-file.ts
 var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
 
@@ -720,6 +727,9 @@ import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 import { channel } from "node:diagnostics_channel";
 var TEST_PAUSE_CHANNEL = "squeal:test-pause";
 var pauses = channel(TEST_PAUSE_CHANNEL);
+
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
 
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));

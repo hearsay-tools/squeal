@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.305";
+  if (true) return "0.1.307";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -393,6 +393,7 @@ var init_store = __esm({
       checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
       checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
       headMove: { prefix: "head-move.", owner: "types/scheduler" },
+      feedDelivered: { prefix: "feed-delivered:", owner: "status/feed-late" },
       daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
       daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
       daemonExit: { prefix: "daemon-exit:", owner: "types/daemon" },
@@ -4648,7 +4649,8 @@ function filesText2(header, files2, unlisted2) {
   }
   if (total === 0) return "the daemon listed no test files";
   if (unlisted2) return `${plural(total, "test file")} current`;
-  if (header.daemon?.state !== "alive" || header.awaitingInstall === true) {
+  const live = header.daemon?.state === "alive" && header.daemon.late === void 0;
+  if (!live || header.awaitingInstall === true) {
     return `${plural(total, "test file")} current as of revision ${header.revision}`;
   }
   return `all ${plural(total, "test file")} current`;
@@ -10342,6 +10344,171 @@ var init_config_problems = __esm({
   }
 });
 
+// src/core/store/busy.ts
+function busyBackoffMs(attempt) {
+  return BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)] ?? 0;
+}
+function busyNote(waitedMs, waited) {
+  const seconds3 = Number((waitedMs / 1e3).toFixed(1));
+  return `the store was busy for ${seconds3} s (another connection held its write lock); ran once it was free: ${waited.join(", ")}`;
+}
+var BUSY_SLICE_MS, BACKOFF_MS, BusyWaits;
+var init_busy = __esm({
+  "src/core/store/busy.ts"() {
+    "use strict";
+    BUSY_SLICE_MS = 250;
+    BACKOFF_MS = [0, 100, 250];
+    BusyWaits = class {
+      #waiting = /* @__PURE__ */ new Set();
+      /** What waited in this episode, as the note lists it, in order. */
+      #waited = [];
+      /** What each waiter named, so an abandoned one takes its names back. */
+      #named = /* @__PURE__ */ new Map();
+      #since = null;
+      #options;
+      // No parameter properties: the store's sources load under Node's type stripping too.
+      constructor(options) {
+        this.#options = options;
+      }
+      /** `key`'s write gave up on a busy store; `what`, when given, waits for its retry. */
+      waiting(key3, what) {
+        this.#since ??= this.#options.now();
+        this.#waiting.add(key3);
+        if (what === void 0) return;
+        this.#add(what);
+        this.#named.set(key3, [...this.#named.get(key3) ?? [], what]);
+      }
+      /**
+       * `key`'s retry ran, or no longer waits; `what` names what it stored, as
+       * the note lists it. The episode's note follows its last waiter.
+       */
+      ran(key3, what) {
+        if (!this.#waiting.delete(key3)) return;
+        this.#named.delete(key3);
+        if (what !== void 0) this.#add(what);
+        this.#end();
+      }
+      /**
+       * `key` no longer waits and what it named never ran: another error took
+       * its write over (review 001-432, B1). Its names leave the note; an
+       * episode left with nothing that ran gives none.
+       */
+      abandoned(key3) {
+        if (!this.#waiting.delete(key3)) return;
+        const named = new Set(this.#named.get(key3) ?? []);
+        this.#named.delete(key3);
+        const kept3 = [...this.#named.values()].flat();
+        const waited = this.#waited.filter((what) => !named.has(what) || kept3.includes(what));
+        this.#waited.splice(0, this.#waited.length, ...waited);
+        this.#end();
+      }
+      /** The episode's note, once its last waiter is done and something ran. */
+      #end() {
+        if (this.#waiting.size > 0 || this.#since === null) return;
+        const waitedMs = this.#options.now() - this.#since;
+        const waited = this.#waited.splice(0);
+        this.#since = null;
+        if (waited.length > 0) this.#options.note(busyNote(waitedMs, waited));
+      }
+      #add(what) {
+        if (!this.#waited.includes(what)) this.#waited.push(what);
+      }
+    };
+  }
+});
+
+// src/core/store/index.ts
+var store_exports = {};
+__export(store_exports, {
+  BUSY_SLICE_MS: () => BUSY_SLICE_MS,
+  BusyWaits: () => BusyWaits,
+  DEFAULT_BUSY_TIMEOUT_MS: () => DEFAULT_BUSY_TIMEOUT_MS,
+  META_STORE_RECOVERED: () => META_STORE_RECOVERED,
+  SCHEMA_VERSION: () => SCHEMA_VERSION,
+  busyBackoffMs: () => busyBackoffMs,
+  busyNote: () => busyNote,
+  changeMarker: () => changeMarker,
+  isBusy: () => isBusy,
+  isStoreOpenFailure: () => isStoreOpenFailure,
+  lockFileFor: () => lockFileFor,
+  openStore: () => openStore,
+  readTransaction: () => readTransaction,
+  setBusyTimeout: () => setBusyTimeout,
+  storePaths: () => storePaths,
+  withBusySlice: () => withBusySlice,
+  withBusySliceSync: () => withBusySliceSync
+});
+var init_store5 = __esm({
+  "src/core/store/index.ts"() {
+    "use strict";
+    init_busy();
+    init_connection();
+    init_open();
+    init_paths2();
+    init_schema();
+    init_store2();
+  }
+});
+
+// src/core/status/feed-late.ts
+function feedDeliveredMetaKey(worktreeId) {
+  return worktreeMetaKey("feedDelivered", worktreeId);
+}
+function readFeedDelivered(store, worktreeId) {
+  const raw = store.meta.get(feedDeliveredMetaKey(worktreeId));
+  const at2 = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(at2) ? at2 : null;
+}
+function withLate(store, worktree, live, now) {
+  const daemon = worktree?.daemon ?? null;
+  if (live.state !== "alive" || live.stopping !== void 0 || !worktree || !daemon) return live;
+  const since = readFeedDelivered(store, worktree.id);
+  if (since === null || since < daemon.startedAt || now - since <= FEED_LATE_MS) return live;
+  return { ...live, late: { since } };
+}
+function lateLines(daemon, revision) {
+  return daemon.state === "alive" && daemon.late !== void 0 ? [lateText(daemon.late, revision)] : [];
+}
+function lateText(late, revision) {
+  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
+}
+var FEED_LATE_MS, FEED_STORED_STEP_MS, FeedDeliveredRow;
+var init_feed_late = __esm({
+  "src/core/status/feed-late.ts"() {
+    "use strict";
+    init_store5();
+    init_text();
+    init_types();
+    FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+    FEED_STORED_STEP_MS = 15e3;
+    FeedDeliveredRow = class {
+      constructor(store, worktreeId, onError) {
+        this.store = store;
+        this.worktreeId = worktreeId;
+        this.onError = onError;
+      }
+      store;
+      worktreeId;
+      onError;
+      #stored = null;
+      #failed = false;
+      record(startedAt) {
+        if (this.#stored !== null && startedAt - this.#stored < FEED_STORED_STEP_MS) return;
+        try {
+          const key3 = feedDeliveredMetaKey(this.worktreeId);
+          withBusySliceSync(0, () => this.store.meta.set(key3, String(startedAt)));
+          this.#stored = startedAt;
+          this.#failed = false;
+        } catch (error) {
+          if (isBusy(error) || this.#failed) return;
+          this.#failed = true;
+          this.onError(new Error(`could not store the change feed's last delivery: ${String(error)}`));
+        }
+      }
+    };
+  }
+});
+
 // src/core/scheduler/focused-row.ts
 function focusedMetaKey(worktreeId) {
   return worktreeMetaKey("focused", worktreeId);
@@ -11081,112 +11248,6 @@ var init_stopped = __esm({
     "use strict";
     init_fs();
     init_types();
-  }
-});
-
-// src/core/store/busy.ts
-function busyBackoffMs(attempt) {
-  return BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)] ?? 0;
-}
-function busyNote(waitedMs, waited) {
-  const seconds3 = Number((waitedMs / 1e3).toFixed(1));
-  return `the store was busy for ${seconds3} s (another connection held its write lock); ran once it was free: ${waited.join(", ")}`;
-}
-var BUSY_SLICE_MS, BACKOFF_MS, BusyWaits;
-var init_busy = __esm({
-  "src/core/store/busy.ts"() {
-    "use strict";
-    BUSY_SLICE_MS = 250;
-    BACKOFF_MS = [0, 100, 250];
-    BusyWaits = class {
-      #waiting = /* @__PURE__ */ new Set();
-      /** What waited in this episode, as the note lists it, in order. */
-      #waited = [];
-      /** What each waiter named, so an abandoned one takes its names back. */
-      #named = /* @__PURE__ */ new Map();
-      #since = null;
-      #options;
-      // No parameter properties: the store's sources load under Node's type stripping too.
-      constructor(options) {
-        this.#options = options;
-      }
-      /** `key`'s write gave up on a busy store; `what`, when given, waits for its retry. */
-      waiting(key3, what) {
-        this.#since ??= this.#options.now();
-        this.#waiting.add(key3);
-        if (what === void 0) return;
-        this.#add(what);
-        this.#named.set(key3, [...this.#named.get(key3) ?? [], what]);
-      }
-      /**
-       * `key`'s retry ran, or no longer waits; `what` names what it stored, as
-       * the note lists it. The episode's note follows its last waiter.
-       */
-      ran(key3, what) {
-        if (!this.#waiting.delete(key3)) return;
-        this.#named.delete(key3);
-        if (what !== void 0) this.#add(what);
-        this.#end();
-      }
-      /**
-       * `key` no longer waits and what it named never ran: another error took
-       * its write over (review 001-432, B1). Its names leave the note; an
-       * episode left with nothing that ran gives none.
-       */
-      abandoned(key3) {
-        if (!this.#waiting.delete(key3)) return;
-        const named = new Set(this.#named.get(key3) ?? []);
-        this.#named.delete(key3);
-        const kept3 = [...this.#named.values()].flat();
-        const waited = this.#waited.filter((what) => !named.has(what) || kept3.includes(what));
-        this.#waited.splice(0, this.#waited.length, ...waited);
-        this.#end();
-      }
-      /** The episode's note, once its last waiter is done and something ran. */
-      #end() {
-        if (this.#waiting.size > 0 || this.#since === null) return;
-        const waitedMs = this.#options.now() - this.#since;
-        const waited = this.#waited.splice(0);
-        this.#since = null;
-        if (waited.length > 0) this.#options.note(busyNote(waitedMs, waited));
-      }
-      #add(what) {
-        if (!this.#waited.includes(what)) this.#waited.push(what);
-      }
-    };
-  }
-});
-
-// src/core/store/index.ts
-var store_exports = {};
-__export(store_exports, {
-  BUSY_SLICE_MS: () => BUSY_SLICE_MS,
-  BusyWaits: () => BusyWaits,
-  DEFAULT_BUSY_TIMEOUT_MS: () => DEFAULT_BUSY_TIMEOUT_MS,
-  META_STORE_RECOVERED: () => META_STORE_RECOVERED,
-  SCHEMA_VERSION: () => SCHEMA_VERSION,
-  busyBackoffMs: () => busyBackoffMs,
-  busyNote: () => busyNote,
-  changeMarker: () => changeMarker,
-  isBusy: () => isBusy,
-  isStoreOpenFailure: () => isStoreOpenFailure,
-  lockFileFor: () => lockFileFor,
-  openStore: () => openStore,
-  readTransaction: () => readTransaction,
-  setBusyTimeout: () => setBusyTimeout,
-  storePaths: () => storePaths,
-  withBusySlice: () => withBusySlice,
-  withBusySliceSync: () => withBusySliceSync
-});
-var init_store5 = __esm({
-  "src/core/store/index.ts"() {
-    "use strict";
-    init_busy();
-    init_connection();
-    init_open();
-    init_paths2();
-    init_schema();
-    init_store2();
   }
 });
 
@@ -14297,6 +14358,554 @@ var init_capacity2 = __esm({
   }
 });
 
+// src/core/watcher/paths.ts
+function* selfAndAncestors(path) {
+  let current3 = path;
+  while (true) {
+    yield current3;
+    const slash = current3.lastIndexOf("/");
+    if (slash < 0) return;
+    current3 = current3.slice(0, slash);
+  }
+}
+function isGitMetadata(path) {
+  return path === ".git" || path.startsWith(".git/") || path.includes("/.git/") || path.endsWith("/.git");
+}
+var init_paths4 = __esm({
+  "src/core/watcher/paths.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/watcher/links.ts
+import { createHash as createHash16 } from "node:crypto";
+import { copyFile, lstat as lstat3, mkdir, rm, stat as stat2 } from "node:fs/promises";
+import { tmpdir as tmpdir2 } from "node:os";
+import { join as join26 } from "node:path";
+async function isSymlink(abs) {
+  try {
+    return (await lstat3(abs)).isSymbolicLink();
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+async function isLinkedDir(abs) {
+  try {
+    return (await lstat3(abs)).isSymbolicLink() && (await stat2(abs)).isDirectory();
+  } catch (error) {
+    if (isMissing(error) || error.code === "ELOOP") return false;
+    throw error;
+  }
+}
+function ignoredAsDirectories(root, links) {
+  if (links.length === 0) return Promise.resolve(/* @__PURE__ */ new Set());
+  const scratch = join26(tmpdir2(), `squeal-links-${hashOf(root)}`);
+  const previous = scratchQueue.get(scratch) ?? Promise.resolve();
+  const run5 = previous.then(() => askAsDirectories(root, scratch, links));
+  const settled = run5.then(
+    () => {
+    },
+    () => {
+    }
+  );
+  scratchQueue.set(scratch, settled);
+  void settled.then(() => {
+    if (scratchQueue.get(scratch) === settled) scratchQueue.delete(scratch);
+  });
+  return run5;
+}
+async function askAsDirectories(root, scratch, links) {
+  await rm(scratch, { recursive: true, force: true });
+  await mkdir(scratch, { recursive: true, mode: 448 });
+  const dirs = /* @__PURE__ */ new Set([""]);
+  for (const link of links) {
+    for (const dir2 of [...selfAndAncestors(link)].slice(1)) dirs.add(dir2);
+  }
+  for (const dir2 of dirs) {
+    await mkdir(join26(scratch, dir2), { recursive: true });
+    try {
+      await copyFile(join26(root, dir2, ".gitignore"), join26(scratch, dir2, ".gitignore"));
+    } catch (error) {
+      if (!isMissing(error)) throw error;
+    }
+  }
+  const gitDir = await gitDirOf2(root);
+  const out2 = await runGit(
+    scratch,
+    [
+      `--git-dir=${gitDir}`,
+      `--work-tree=${scratch}`,
+      "check-ignore",
+      "--no-index",
+      "-z",
+      "--stdin"
+    ],
+    // Exit 1 means none is ignored.
+    { input: links.map((link) => `${link}/\0`).join(""), okCodes: [0, 1] }
+  );
+  return new Set(splitNul(out2).map((path) => path.replace(/\/$/, "")));
+}
+function gitDirOf2(root) {
+  let dir2 = gitDirs.get(root);
+  if (!dir2) {
+    dir2 = runGit(root, ["rev-parse", "--absolute-git-dir"]).then((out2) => out2.trim());
+    dir2.catch(() => gitDirs.delete(root));
+    gitDirs.set(root, dir2);
+  }
+  return dir2;
+}
+function hashOf(root) {
+  return createHash16("sha256").update(root).digest("hex").slice(0, 16);
+}
+var SymlinkProbe, scratchQueue, gitDirs;
+var init_links = __esm({
+  "src/core/watcher/links.ts"() {
+    "use strict";
+    init_fs();
+    init_paths4();
+    SymlinkProbe = class {
+      constructor(root) {
+        this.root = root;
+      }
+      root;
+      cache = /* @__PURE__ */ new Map();
+      /** The outermost directory above `path`, below the root, that is a symlink; `null` when none is. */
+      async linkAbove(path) {
+        const dirs = [...selfAndAncestors(path)].slice(1);
+        for (const dir2 of dirs.reverse()) {
+          let hit = this.cache.get(dir2);
+          if (!hit) {
+            hit = isSymlink(toAbsolute(this.root, dir2));
+            this.cache.set(dir2, hit);
+          }
+          if (await hit) return dir2;
+        }
+        return null;
+      }
+    };
+    scratchQueue = /* @__PURE__ */ new Map();
+    gitDirs = /* @__PURE__ */ new Map();
+  }
+});
+
+// src/core/watcher/git.ts
+async function checkIgnored(root, paths) {
+  const probe = new SymlinkProbe(root);
+  const beyond = /* @__PURE__ */ new Map();
+  const asked = /* @__PURE__ */ new Set();
+  for (const path of paths) {
+    const link = await probe.linkAbove(path);
+    if (link === null) asked.add(path);
+    else beyond.set(path, link);
+  }
+  const links = new Set(beyond.values());
+  const answered2 = new Set(await checkIgnoredBatch(root, [.../* @__PURE__ */ new Set([...asked, ...links])]));
+  const ignoredLinks2 = await ignoredAsDirectories(
+    root,
+    [...links].filter((link) => !answered2.has(link))
+  );
+  for (const link of links) {
+    if (answered2.has(link)) ignoredLinks2.add(link);
+  }
+  const ignored = /* @__PURE__ */ new Set();
+  for (const path of paths) {
+    const link = beyond.get(path);
+    if (link === void 0 ? answered2.has(path) : ignoredLinks2.has(link)) ignored.add(path);
+  }
+  return ignored;
+}
+async function ignoredLinks(root, links) {
+  const answered2 = new Set(await checkIgnoredBatch(root, links));
+  const ignored = await ignoredAsDirectories(
+    root,
+    links.filter((link) => !answered2.has(link))
+  );
+  for (const link of answered2) ignored.add(link);
+  return ignored;
+}
+async function checkIgnoredBatch(root, paths) {
+  if (paths.length === 0) return [];
+  const input = `${paths.join("\0")}\0`;
+  try {
+    return splitNul(
+      await runGit(root, ["check-ignore", "-z", "--stdin"], { input, okCodes: [0, 1] })
+    );
+  } catch (error) {
+    const [only2] = paths;
+    if (paths.length === 1 && only2 !== void 0) {
+      if (error.message.includes(`'${only2}'`)) return [only2];
+      throw error;
+    }
+    const half = Math.ceil(paths.length / 2);
+    return [
+      ...await checkIgnoredBatch(root, paths.slice(0, half)),
+      ...await checkIgnoredBatch(root, paths.slice(half))
+    ];
+  }
+}
+async function listIgnored(root) {
+  const out2 = await runGit(root, [
+    "ls-files",
+    "-z",
+    "--others",
+    "--ignored",
+    "--exclude-standard",
+    "--directory"
+  ]);
+  return splitNul(out2);
+}
+async function gitStatus(root) {
+  const out2 = await runGit(root, [
+    "--no-optional-locks",
+    "status",
+    "--porcelain=v1",
+    "-z",
+    "--untracked-files=all",
+    "--no-renames",
+    "--ignore-submodules=all"
+  ]);
+  const paths = /* @__PURE__ */ new Set();
+  const nestedRepos = /* @__PURE__ */ new Set();
+  for (const entry4 of splitNul(out2)) {
+    const path = entry4.slice(3);
+    if (path.endsWith("/")) nestedRepos.add(path.slice(0, -1));
+    else paths.add(path);
+  }
+  return { paths: [...paths].sort(), nestedRepos: [...nestedRepos].sort() };
+}
+async function listSubmodules(root) {
+  const out2 = await runGit(
+    root,
+    ["config", "-z", "--file", ".gitmodules", "--get-regexp", "^submodule\\..*\\.path$"],
+    // 1: no match or no such file.
+    { okCodes: [0, 1] }
+  );
+  return splitNul(out2).flatMap((entry4) => {
+    const value = entry4.slice(entry4.indexOf("\n") + 1);
+    return value === "" ? [] : [value];
+  });
+}
+var init_git2 = __esm({
+  "src/core/watcher/git.ts"() {
+    "use strict";
+    init_fs();
+    init_links();
+  }
+});
+
+// src/core/scheduler/link-target.ts
+import { realpath } from "node:fs/promises";
+import { dirname as dirname7, join as join27, relative as relative2, sep as sep4 } from "node:path";
+async function linkTargets(root, paths) {
+  const directories = /* @__PURE__ */ new Map();
+  const resolve28 = (directory) => {
+    let real2 = directories.get(directory);
+    if (real2 === void 0) {
+      real2 = realpath(join27(root, directory)).then(
+        (abs) => abs === root ? "" : abs.startsWith(root + sep4) ? relative2(root, abs) : null,
+        () => null
+      );
+      directories.set(directory, real2);
+    }
+    return real2;
+  };
+  const targets = await Promise.all(
+    [...paths].map(async (path) => {
+      const directory = dirname7(path);
+      if (directory === ".") return null;
+      const real2 = await resolve28(directory);
+      if (real2 === null || real2 === directory) return null;
+      const target = real2 === "" ? path.slice(directory.length + 1) : `${real2}/${path.slice(directory.length + 1)}`;
+      return kept(target) ? target : null;
+    })
+  );
+  return targets.filter((target) => target !== null);
+}
+var kept;
+var init_link_target = __esm({
+  "src/core/scheduler/link-target.ts"() {
+    "use strict";
+    kept = (path) => !path.split("/").some((segment) => segment === "node_modules" || segment === ".git");
+  }
+});
+
+// src/core/revision/reconcile.ts
+async function statCandidates(paths, hasher) {
+  const sorted2 = [...new Set(paths)].sort(compare);
+  const stats = await mapConcurrent(sorted2, (path) => hasher.stat(path));
+  return sorted2.map((path, i3) => ({ path, stat: stats[i3] ?? null }));
+}
+async function diffCandidates(candidates, cache2, hasher) {
+  const statOf2 = /* @__PURE__ */ new Map();
+  for (const candidate of candidates) statOf2.set(candidate.path, candidate.stat);
+  const paths = [...statOf2.keys()].sort(compare);
+  const observed = await mapConcurrent(paths, async (path) => {
+    const stat9 = statOf2.get(path) ?? null;
+    const cached = cache2.get(path);
+    if (stat9 && cached && sameStat(cached, stat9) && !cache2.isRacy(path)) return null;
+    const hashedAt = hasher.now();
+    const hash2 = stat9 ? await hasher.hash(path) : null;
+    return { path, cached, stat: stat9, hash: hash2, hashedAt };
+  });
+  const changes = [];
+  const updates = [];
+  for (const entry4 of observed) {
+    if (!entry4) continue;
+    const { path, cached, stat: stat9, hash: hash2, hashedAt } = entry4;
+    if (!stat9 || hash2 === null) {
+      if (cached) changes.push({ path, oldHash: cached.hash, newHash: null });
+      if (cache2.hashOf(path) !== null) updates.push({ kind: "delete", path });
+      continue;
+    }
+    const record = {
+      path,
+      mtimeMs: stat9.mtimeMs,
+      ctimeMs: stat9.ctimeMs,
+      size: stat9.size,
+      inode: stat9.inode,
+      hash: hash2
+    };
+    updates.push({ kind: "set", record, racy: isRacy(stat9, hashedAt) });
+    if (cached?.hash !== hash2) changes.push({ path, oldHash: cached?.hash ?? null, newHash: hash2 });
+  }
+  return { changes, updates };
+}
+async function diffBatch(batch, cache2, hasher) {
+  return { trigger: batch.trigger, ...await diffCandidates(batch.paths, cache2, hasher) };
+}
+function commitBatch(diff, cache2, context) {
+  let revision = null;
+  if (diff.changes.length > 0) {
+    if (!context.head) {
+      throw new Error(
+        `squeal: ${diff.changes.length} changes in worktree ${context.worktreeId} need HEAD to create a revision`
+      );
+    }
+    revision = context.revisions.append({
+      worktreeId: context.worktreeId,
+      createdAt: context.now?.() ?? Date.now(),
+      head: context.head.head,
+      dirty: context.head.dirty,
+      trigger: diff.trigger,
+      changes: diff.changes
+    });
+  }
+  cache2.flush(context.fileHashes, context.worktreeId, diff.updates);
+  return revision;
+}
+async function reconcile(batch, cache2, hasher, context) {
+  const diff = await diffBatch(batch, cache2, hasher);
+  const head = diff.changes.length > 0 ? await context.head() : null;
+  const { store } = context;
+  return store.transaction(
+    () => commitBatch(diff, cache2, {
+      worktreeId: context.worktreeId,
+      head,
+      revisions: store.revisions,
+      fileHashes: store.fileHashes,
+      now: () => context.now?.() ?? Date.now()
+    })
+  );
+}
+var init_reconcile = __esm({
+  "src/core/revision/reconcile.ts"() {
+    "use strict";
+    init_fs();
+    init_hash();
+  }
+});
+
+// src/core/revision/index.ts
+var init_revision = __esm({
+  "src/core/revision/index.ts"() {
+    "use strict";
+    init_reconcile();
+  }
+});
+
+// src/core/scheduler/stability.ts
+function snapshotInputs(cache2, paths) {
+  const snapshot3 = new StatCache();
+  for (const path of paths) {
+    const record = cache2.get(path);
+    if (record) snapshot3.set(record, { racy: cache2.isRacy(path) });
+    else if (cache2.hashOf(path) === null) snapshot3.delete(path);
+  }
+  return snapshot3;
+}
+async function changedSince2(snapshot3, paths, hasher) {
+  const candidates = await statCandidates(paths, hasher);
+  const diff = await diffCandidates(candidates, snapshot3, hasher);
+  return {
+    changed: new Set(diff.changes.map((change2) => change2.path)),
+    touched: new Set(touchedUnchanged(diff, snapshot3))
+  };
+}
+function touchedUnchanged(diff, cache2) {
+  const changed2 = new Set(diff.changes.map((change2) => change2.path));
+  const touched = [];
+  for (const update of diff.updates) {
+    if (update.kind !== "set" || changed2.has(update.record.path)) continue;
+    const cached = cache2.get(update.record.path);
+    if (cached !== void 0 && !sameStat(cached, update.record)) touched.push(cached.path);
+  }
+  return touched;
+}
+function withheldForTouch(report3, touched, files2) {
+  if (touched.length === 0) return report3;
+  if (files2?.length === 0) return report3;
+  const reason2 = pathsReason(
+    "squeal: the run may have executed bytes no check key names, since ",
+    touched,
+    (one) => `${one ? "was" : "were"} written while this run was in flight and ended as ${one ? "it was" : "they were"}`,
+    "task 001-168"
+  );
+  const gone3 = files2 === void 0 ? null : new Set(files2.map(testFileId));
+  const kept3 = (ref2) => gone3 !== null && !gone3.has(testFileId(ref2));
+  const { fileDurations, observed, reads, withheld: withheld2, ...rest } = report3;
+  const stillWithheld = withheld2?.filter(kept3) ?? [];
+  return {
+    ...rest,
+    completedFiles: report3.completedFiles.filter(kept3),
+    results: report3.results.filter(
+      (r) => kept3({ project: r.check.project, path: r.check.testPath })
+    ),
+    fileErrors: report3.fileErrors.filter((e) => kept3(e.testFile)),
+    failure: report3.failure === null ? reason2 : `${report3.failure}
+${reason2}`,
+    ...fileDurations ? { fileDurations: fileDurations.filter((d) => kept3(d.testFile)) } : {},
+    ...observed ? { observed: observed.filter((o) => kept3(o.testFile)) } : {},
+    ...reads ? { reads: reads.filter((o) => kept3(o.testFile)) } : {},
+    ...stillWithheld.length > 0 ? { withheld: stillWithheld } : {}
+  };
+}
+function barredByTouch(report3, files2, touched, growth) {
+  const isTouched = new Set(touched);
+  const named = (paths2 = []) => paths2.filter((p) => isTouched.has(p));
+  const touchedOf = (ran) => [...named(ran.inputs), ...named(growth?.get(ran.file.id)?.growth)];
+  const barred = files2.filter((ran) => touchedOf(ran).length > 0);
+  const paths = [...new Set(barred.flatMap(touchedOf))].sort();
+  const withheld2 = withheldForTouch(
+    report3,
+    paths,
+    barred.map(({ file }) => file.ref)
+  );
+  return { report: withheld2, barred, paths };
+}
+function withholdNote(touched, files2, retry2) {
+  if (files2.length === 0) return null;
+  const paths = listPaths(touched);
+  const ran = listPaths(files2.map(({ file }) => file.ref.path));
+  return retry2 ? `squeal: ${paths} was written while ${ran} ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)` : `squeal: ${paths} was written during 2 runs in a row of ${ran} and ended as it was; ${ran} stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)`;
+}
+var Withholds;
+var init_stability = __esm({
+  "src/core/scheduler/stability.ts"() {
+    "use strict";
+    init_hash();
+    init_keys();
+    init_revision();
+    init_text();
+    Withholds = class {
+      #keys = /* @__PURE__ */ new Map();
+      /** Records the withhold of `files`, each first or exhausted at its key. */
+      record(files2) {
+        const withheld2 = this.peek(files2);
+        for (const { file, key: key3 } of files2) this.#keys.set(file.id, key3);
+        return withheld2;
+      }
+      /**
+       * What `record` would make of `files`, recording nothing (row 011-128): a
+       * record decides before its write, and counts only once the write lands.
+       */
+      peek(files2) {
+        const again = [];
+        const exhausted = [];
+        for (const ran of files2) {
+          (this.#keys.get(ran.file.id) === ran.key ? exhausted : again).push(ran);
+        }
+        return { again, exhausted };
+      }
+      /** `files` were recorded unwithheld: their withholds are no longer in a row. */
+      clear(files2) {
+        for (const { file } of files2) this.#keys.delete(file.id);
+      }
+    };
+  }
+});
+
+// src/core/scheduler/observed.ts
+async function observedGrowth(context, report3, run5) {
+  const out2 = /* @__PURE__ */ new Map();
+  const { keys } = context;
+  if (!keys.observing || report3.observed === void 0 || report3.observed.length === 0) return out2;
+  keys.refreshObserved(report3.observed.map((o) => o.testFile.project));
+  const candidates = /* @__PURE__ */ new Set();
+  const seen = [];
+  for (const observed of report3.observed) {
+    const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
+    const listed5 = new Set(observed.directories.map(listingPath));
+    for (const root of observed.recursive ?? []) {
+      for (const path of keys.listingsBelow(root)) listed5.add(path);
+    }
+    const read5 = observed.paths.filter((path) => !closure.has(path));
+    const targets = await linkTargets(context.root, read5);
+    const fresh = [.../* @__PURE__ */ new Set([...read5, ...targets, ...listed5])].filter(
+      (path) => !closure.has(path)
+    );
+    for (const path of fresh) candidates.add(listedDirectory(path) ?? path);
+    seen.push({ observed, closure, fresh });
+  }
+  const ignored = await checkIgnored(
+    context.root,
+    [...candidates].filter((p) => p !== "")
+  );
+  const tracked = [];
+  const grown = [];
+  for (const { observed, closure, fresh } of seen) {
+    const add2 = fresh.filter((path) => !ignored.has(listedDirectory(path) ?? path));
+    const known2 = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
+    const growth = [.../* @__PURE__ */ new Set([...known2, ...add2])];
+    if (growth.length === 0) continue;
+    for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
+    grown.push({ testFile: observed.testFile, add: add2, growth });
+  }
+  await keys.track(tracked);
+  for (const { testFile, add: add2, growth } of grown) {
+    const firstSeen = growth.filter(
+      (path) => listedDirectory(path) === null && path !== GIT_ENTRY && keys.firstHashedDuringRun(path, run5)
+    );
+    out2.set(testFileId(testFile), { add: add2, growth, firstSeen });
+  }
+  return out2;
+}
+async function prepareObserved(context, report3, run5) {
+  const growth = await observedGrowth(context, report3, run5);
+  if (growth.size === 0) return NOTHING_OBSERVED;
+  const paths = /* @__PURE__ */ new Set();
+  for (const { growth: grown } of growth.values()) {
+    for (const path of grown) if (listedDirectory(path) === null) paths.add(path);
+  }
+  const snapshot3 = snapshotInputs(context.keys.cache, paths);
+  return { growth, ...await changedSince2(snapshot3, paths, context.hasher) };
+}
+var NOTHING_OBSERVED;
+var init_observed2 = __esm({
+  "src/core/scheduler/observed.ts"() {
+    "use strict";
+    init_keys();
+    init_git2();
+    init_link_target();
+    init_stability();
+    NOTHING_OBSERVED = {
+      growth: /* @__PURE__ */ new Map(),
+      changed: /* @__PURE__ */ new Set(),
+      touched: /* @__PURE__ */ new Set()
+    };
+  }
+});
+
 // src/core/scheduler/context.ts
 async function tryRunner(context, subject, call, onFailure) {
   try {
@@ -14386,14 +14995,14 @@ var init_rank_tokens = __esm({
 });
 
 // src/core/slow/rank.ts
-import { createHash as createHash16 } from "node:crypto";
+import { createHash as createHash17 } from "node:crypto";
 import { readFileSync as readFileSync17, statSync as statSync5 } from "node:fs";
-import { dirname as dirname7, join as join26, normalize as normalize2 } from "node:path";
+import { dirname as dirname8, join as join28, normalize as normalize2 } from "node:path";
 function fsRankSource(root, hashOf2 = () => void 0) {
   return {
     read(path) {
       try {
-        const full = join26(root, path);
+        const full = join28(root, path);
         const stats = statSync5(full);
         if (!stats.isFile() || stats.size > MAX_READ_BYTES) return null;
         return readFileSync17(full, "utf8");
@@ -14403,7 +15012,7 @@ function fsRankSource(root, hashOf2 = () => void 0) {
     },
     exists(path) {
       try {
-        return statSync5(join26(root, path)).isFile();
+        return statSync5(join28(root, path)).isFile();
       } catch {
         return false;
       }
@@ -14509,7 +15118,7 @@ var init_rank = __esm({
         if (hash2 === void 0) {
           text3 = this.source.read(path);
           if (text3 === null) return null;
-          hash2 = createHash16("sha1").update(text3).digest("hex");
+          hash2 = createHash17("sha1").update(text3).digest("hex");
         }
         const memo2 = this.#memo.get(path);
         if (memo2?.hash === hash2) return memo2;
@@ -14532,7 +15141,7 @@ var init_rank = __esm({
       #resolve(from, specifiers) {
         const out2 = [];
         for (const specifier of specifiers) {
-          const base = normalize2(join26(dirname7(from), specifier));
+          const base = normalize2(join28(dirname8(from), specifier));
           if (base.startsWith("..")) continue;
           const candidates = [...EXTENSIONS.map((e) => base + e), ...typescriptOf(base)];
           const found3 = candidates.find((p) => this.source.exists(p));
@@ -15033,7 +15642,7 @@ var init_held = __esm({
 });
 
 // src/core/scheduler/hold.ts
-import { stat as stat2 } from "node:fs/promises";
+import { stat as stat3 } from "node:fs/promises";
 import { resolve as resolve4 } from "node:path";
 function unmergedIndexPaths(output) {
   const paths = /* @__PURE__ */ new Set();
@@ -15217,7 +15826,7 @@ var init_hold = __esm({
           (out2) => resolve4(this.options.root, out2.trim())
         );
         try {
-          const { ino, size, mtimeMs } = await stat2(await this.#index);
+          const { ino, size, mtimeMs } = await stat3(await this.#index);
           return { ino, size, mtimeMs };
         } catch (error) {
           if (!isMissing(error)) this.#index = null;
@@ -16236,6 +16845,7 @@ var init_liveness = __esm({
     init_keys();
     init_state3();
     init_died();
+    init_feed_late();
     init_holds();
     init_open_runs();
     init_snapshot();
@@ -17232,554 +17842,6 @@ var init_environment_growth = __esm({
   }
 });
 
-// src/core/watcher/paths.ts
-function* selfAndAncestors(path) {
-  let current3 = path;
-  while (true) {
-    yield current3;
-    const slash = current3.lastIndexOf("/");
-    if (slash < 0) return;
-    current3 = current3.slice(0, slash);
-  }
-}
-function isGitMetadata(path) {
-  return path === ".git" || path.startsWith(".git/") || path.includes("/.git/") || path.endsWith("/.git");
-}
-var init_paths4 = __esm({
-  "src/core/watcher/paths.ts"() {
-    "use strict";
-  }
-});
-
-// src/core/watcher/links.ts
-import { createHash as createHash17 } from "node:crypto";
-import { copyFile, lstat as lstat3, mkdir, rm, stat as stat3 } from "node:fs/promises";
-import { tmpdir as tmpdir2 } from "node:os";
-import { join as join27 } from "node:path";
-async function isSymlink(abs) {
-  try {
-    return (await lstat3(abs)).isSymbolicLink();
-  } catch (error) {
-    if (isMissing(error)) return false;
-    throw error;
-  }
-}
-async function isLinkedDir(abs) {
-  try {
-    return (await lstat3(abs)).isSymbolicLink() && (await stat3(abs)).isDirectory();
-  } catch (error) {
-    if (isMissing(error) || error.code === "ELOOP") return false;
-    throw error;
-  }
-}
-function ignoredAsDirectories(root, links) {
-  if (links.length === 0) return Promise.resolve(/* @__PURE__ */ new Set());
-  const scratch = join27(tmpdir2(), `squeal-links-${hashOf(root)}`);
-  const previous = scratchQueue.get(scratch) ?? Promise.resolve();
-  const run5 = previous.then(() => askAsDirectories(root, scratch, links));
-  const settled = run5.then(
-    () => {
-    },
-    () => {
-    }
-  );
-  scratchQueue.set(scratch, settled);
-  void settled.then(() => {
-    if (scratchQueue.get(scratch) === settled) scratchQueue.delete(scratch);
-  });
-  return run5;
-}
-async function askAsDirectories(root, scratch, links) {
-  await rm(scratch, { recursive: true, force: true });
-  await mkdir(scratch, { recursive: true, mode: 448 });
-  const dirs = /* @__PURE__ */ new Set([""]);
-  for (const link of links) {
-    for (const dir2 of [...selfAndAncestors(link)].slice(1)) dirs.add(dir2);
-  }
-  for (const dir2 of dirs) {
-    await mkdir(join27(scratch, dir2), { recursive: true });
-    try {
-      await copyFile(join27(root, dir2, ".gitignore"), join27(scratch, dir2, ".gitignore"));
-    } catch (error) {
-      if (!isMissing(error)) throw error;
-    }
-  }
-  const gitDir = await gitDirOf2(root);
-  const out2 = await runGit(
-    scratch,
-    [
-      `--git-dir=${gitDir}`,
-      `--work-tree=${scratch}`,
-      "check-ignore",
-      "--no-index",
-      "-z",
-      "--stdin"
-    ],
-    // Exit 1 means none is ignored.
-    { input: links.map((link) => `${link}/\0`).join(""), okCodes: [0, 1] }
-  );
-  return new Set(splitNul(out2).map((path) => path.replace(/\/$/, "")));
-}
-function gitDirOf2(root) {
-  let dir2 = gitDirs.get(root);
-  if (!dir2) {
-    dir2 = runGit(root, ["rev-parse", "--absolute-git-dir"]).then((out2) => out2.trim());
-    dir2.catch(() => gitDirs.delete(root));
-    gitDirs.set(root, dir2);
-  }
-  return dir2;
-}
-function hashOf(root) {
-  return createHash17("sha256").update(root).digest("hex").slice(0, 16);
-}
-var SymlinkProbe, scratchQueue, gitDirs;
-var init_links = __esm({
-  "src/core/watcher/links.ts"() {
-    "use strict";
-    init_fs();
-    init_paths4();
-    SymlinkProbe = class {
-      constructor(root) {
-        this.root = root;
-      }
-      root;
-      cache = /* @__PURE__ */ new Map();
-      /** The outermost directory above `path`, below the root, that is a symlink; `null` when none is. */
-      async linkAbove(path) {
-        const dirs = [...selfAndAncestors(path)].slice(1);
-        for (const dir2 of dirs.reverse()) {
-          let hit = this.cache.get(dir2);
-          if (!hit) {
-            hit = isSymlink(toAbsolute(this.root, dir2));
-            this.cache.set(dir2, hit);
-          }
-          if (await hit) return dir2;
-        }
-        return null;
-      }
-    };
-    scratchQueue = /* @__PURE__ */ new Map();
-    gitDirs = /* @__PURE__ */ new Map();
-  }
-});
-
-// src/core/watcher/git.ts
-async function checkIgnored(root, paths) {
-  const probe = new SymlinkProbe(root);
-  const beyond = /* @__PURE__ */ new Map();
-  const asked = /* @__PURE__ */ new Set();
-  for (const path of paths) {
-    const link = await probe.linkAbove(path);
-    if (link === null) asked.add(path);
-    else beyond.set(path, link);
-  }
-  const links = new Set(beyond.values());
-  const answered2 = new Set(await checkIgnoredBatch(root, [.../* @__PURE__ */ new Set([...asked, ...links])]));
-  const ignoredLinks2 = await ignoredAsDirectories(
-    root,
-    [...links].filter((link) => !answered2.has(link))
-  );
-  for (const link of links) {
-    if (answered2.has(link)) ignoredLinks2.add(link);
-  }
-  const ignored = /* @__PURE__ */ new Set();
-  for (const path of paths) {
-    const link = beyond.get(path);
-    if (link === void 0 ? answered2.has(path) : ignoredLinks2.has(link)) ignored.add(path);
-  }
-  return ignored;
-}
-async function ignoredLinks(root, links) {
-  const answered2 = new Set(await checkIgnoredBatch(root, links));
-  const ignored = await ignoredAsDirectories(
-    root,
-    links.filter((link) => !answered2.has(link))
-  );
-  for (const link of answered2) ignored.add(link);
-  return ignored;
-}
-async function checkIgnoredBatch(root, paths) {
-  if (paths.length === 0) return [];
-  const input = `${paths.join("\0")}\0`;
-  try {
-    return splitNul(
-      await runGit(root, ["check-ignore", "-z", "--stdin"], { input, okCodes: [0, 1] })
-    );
-  } catch (error) {
-    const [only2] = paths;
-    if (paths.length === 1 && only2 !== void 0) {
-      if (error.message.includes(`'${only2}'`)) return [only2];
-      throw error;
-    }
-    const half = Math.ceil(paths.length / 2);
-    return [
-      ...await checkIgnoredBatch(root, paths.slice(0, half)),
-      ...await checkIgnoredBatch(root, paths.slice(half))
-    ];
-  }
-}
-async function listIgnored(root) {
-  const out2 = await runGit(root, [
-    "ls-files",
-    "-z",
-    "--others",
-    "--ignored",
-    "--exclude-standard",
-    "--directory"
-  ]);
-  return splitNul(out2);
-}
-async function gitStatus(root) {
-  const out2 = await runGit(root, [
-    "--no-optional-locks",
-    "status",
-    "--porcelain=v1",
-    "-z",
-    "--untracked-files=all",
-    "--no-renames",
-    "--ignore-submodules=all"
-  ]);
-  const paths = /* @__PURE__ */ new Set();
-  const nestedRepos = /* @__PURE__ */ new Set();
-  for (const entry4 of splitNul(out2)) {
-    const path = entry4.slice(3);
-    if (path.endsWith("/")) nestedRepos.add(path.slice(0, -1));
-    else paths.add(path);
-  }
-  return { paths: [...paths].sort(), nestedRepos: [...nestedRepos].sort() };
-}
-async function listSubmodules(root) {
-  const out2 = await runGit(
-    root,
-    ["config", "-z", "--file", ".gitmodules", "--get-regexp", "^submodule\\..*\\.path$"],
-    // 1: no match or no such file.
-    { okCodes: [0, 1] }
-  );
-  return splitNul(out2).flatMap((entry4) => {
-    const value = entry4.slice(entry4.indexOf("\n") + 1);
-    return value === "" ? [] : [value];
-  });
-}
-var init_git2 = __esm({
-  "src/core/watcher/git.ts"() {
-    "use strict";
-    init_fs();
-    init_links();
-  }
-});
-
-// src/core/scheduler/link-target.ts
-import { realpath } from "node:fs/promises";
-import { dirname as dirname8, join as join28, relative as relative2, sep as sep4 } from "node:path";
-async function linkTargets(root, paths) {
-  const directories = /* @__PURE__ */ new Map();
-  const resolve28 = (directory) => {
-    let real2 = directories.get(directory);
-    if (real2 === void 0) {
-      real2 = realpath(join28(root, directory)).then(
-        (abs) => abs === root ? "" : abs.startsWith(root + sep4) ? relative2(root, abs) : null,
-        () => null
-      );
-      directories.set(directory, real2);
-    }
-    return real2;
-  };
-  const targets = await Promise.all(
-    [...paths].map(async (path) => {
-      const directory = dirname8(path);
-      if (directory === ".") return null;
-      const real2 = await resolve28(directory);
-      if (real2 === null || real2 === directory) return null;
-      const target = real2 === "" ? path.slice(directory.length + 1) : `${real2}/${path.slice(directory.length + 1)}`;
-      return kept(target) ? target : null;
-    })
-  );
-  return targets.filter((target) => target !== null);
-}
-var kept;
-var init_link_target = __esm({
-  "src/core/scheduler/link-target.ts"() {
-    "use strict";
-    kept = (path) => !path.split("/").some((segment) => segment === "node_modules" || segment === ".git");
-  }
-});
-
-// src/core/revision/reconcile.ts
-async function statCandidates(paths, hasher) {
-  const sorted2 = [...new Set(paths)].sort(compare);
-  const stats = await mapConcurrent(sorted2, (path) => hasher.stat(path));
-  return sorted2.map((path, i3) => ({ path, stat: stats[i3] ?? null }));
-}
-async function diffCandidates(candidates, cache2, hasher) {
-  const statOf2 = /* @__PURE__ */ new Map();
-  for (const candidate of candidates) statOf2.set(candidate.path, candidate.stat);
-  const paths = [...statOf2.keys()].sort(compare);
-  const observed = await mapConcurrent(paths, async (path) => {
-    const stat9 = statOf2.get(path) ?? null;
-    const cached = cache2.get(path);
-    if (stat9 && cached && sameStat(cached, stat9) && !cache2.isRacy(path)) return null;
-    const hashedAt = hasher.now();
-    const hash2 = stat9 ? await hasher.hash(path) : null;
-    return { path, cached, stat: stat9, hash: hash2, hashedAt };
-  });
-  const changes = [];
-  const updates = [];
-  for (const entry4 of observed) {
-    if (!entry4) continue;
-    const { path, cached, stat: stat9, hash: hash2, hashedAt } = entry4;
-    if (!stat9 || hash2 === null) {
-      if (cached) changes.push({ path, oldHash: cached.hash, newHash: null });
-      if (cache2.hashOf(path) !== null) updates.push({ kind: "delete", path });
-      continue;
-    }
-    const record = {
-      path,
-      mtimeMs: stat9.mtimeMs,
-      ctimeMs: stat9.ctimeMs,
-      size: stat9.size,
-      inode: stat9.inode,
-      hash: hash2
-    };
-    updates.push({ kind: "set", record, racy: isRacy(stat9, hashedAt) });
-    if (cached?.hash !== hash2) changes.push({ path, oldHash: cached?.hash ?? null, newHash: hash2 });
-  }
-  return { changes, updates };
-}
-async function diffBatch(batch, cache2, hasher) {
-  return { trigger: batch.trigger, ...await diffCandidates(batch.paths, cache2, hasher) };
-}
-function commitBatch(diff, cache2, context) {
-  let revision = null;
-  if (diff.changes.length > 0) {
-    if (!context.head) {
-      throw new Error(
-        `squeal: ${diff.changes.length} changes in worktree ${context.worktreeId} need HEAD to create a revision`
-      );
-    }
-    revision = context.revisions.append({
-      worktreeId: context.worktreeId,
-      createdAt: context.now?.() ?? Date.now(),
-      head: context.head.head,
-      dirty: context.head.dirty,
-      trigger: diff.trigger,
-      changes: diff.changes
-    });
-  }
-  cache2.flush(context.fileHashes, context.worktreeId, diff.updates);
-  return revision;
-}
-async function reconcile(batch, cache2, hasher, context) {
-  const diff = await diffBatch(batch, cache2, hasher);
-  const head = diff.changes.length > 0 ? await context.head() : null;
-  const { store } = context;
-  return store.transaction(
-    () => commitBatch(diff, cache2, {
-      worktreeId: context.worktreeId,
-      head,
-      revisions: store.revisions,
-      fileHashes: store.fileHashes,
-      now: () => context.now?.() ?? Date.now()
-    })
-  );
-}
-var init_reconcile = __esm({
-  "src/core/revision/reconcile.ts"() {
-    "use strict";
-    init_fs();
-    init_hash();
-  }
-});
-
-// src/core/revision/index.ts
-var init_revision = __esm({
-  "src/core/revision/index.ts"() {
-    "use strict";
-    init_reconcile();
-  }
-});
-
-// src/core/scheduler/stability.ts
-function snapshotInputs(cache2, paths) {
-  const snapshot3 = new StatCache();
-  for (const path of paths) {
-    const record = cache2.get(path);
-    if (record) snapshot3.set(record, { racy: cache2.isRacy(path) });
-    else if (cache2.hashOf(path) === null) snapshot3.delete(path);
-  }
-  return snapshot3;
-}
-async function changedSince2(snapshot3, paths, hasher) {
-  const candidates = await statCandidates(paths, hasher);
-  const diff = await diffCandidates(candidates, snapshot3, hasher);
-  return {
-    changed: new Set(diff.changes.map((change2) => change2.path)),
-    touched: new Set(touchedUnchanged(diff, snapshot3))
-  };
-}
-function touchedUnchanged(diff, cache2) {
-  const changed2 = new Set(diff.changes.map((change2) => change2.path));
-  const touched = [];
-  for (const update of diff.updates) {
-    if (update.kind !== "set" || changed2.has(update.record.path)) continue;
-    const cached = cache2.get(update.record.path);
-    if (cached !== void 0 && !sameStat(cached, update.record)) touched.push(cached.path);
-  }
-  return touched;
-}
-function withheldForTouch(report3, touched, files2) {
-  if (touched.length === 0) return report3;
-  if (files2?.length === 0) return report3;
-  const reason2 = pathsReason(
-    "squeal: the run may have executed bytes no check key names, since ",
-    touched,
-    (one) => `${one ? "was" : "were"} written while this run was in flight and ended as ${one ? "it was" : "they were"}`,
-    "task 001-168"
-  );
-  const gone3 = files2 === void 0 ? null : new Set(files2.map(testFileId));
-  const kept3 = (ref2) => gone3 !== null && !gone3.has(testFileId(ref2));
-  const { fileDurations, observed, reads, withheld: withheld2, ...rest } = report3;
-  const stillWithheld = withheld2?.filter(kept3) ?? [];
-  return {
-    ...rest,
-    completedFiles: report3.completedFiles.filter(kept3),
-    results: report3.results.filter(
-      (r) => kept3({ project: r.check.project, path: r.check.testPath })
-    ),
-    fileErrors: report3.fileErrors.filter((e) => kept3(e.testFile)),
-    failure: report3.failure === null ? reason2 : `${report3.failure}
-${reason2}`,
-    ...fileDurations ? { fileDurations: fileDurations.filter((d) => kept3(d.testFile)) } : {},
-    ...observed ? { observed: observed.filter((o) => kept3(o.testFile)) } : {},
-    ...reads ? { reads: reads.filter((o) => kept3(o.testFile)) } : {},
-    ...stillWithheld.length > 0 ? { withheld: stillWithheld } : {}
-  };
-}
-function barredByTouch(report3, files2, touched, growth) {
-  const isTouched = new Set(touched);
-  const named = (paths2 = []) => paths2.filter((p) => isTouched.has(p));
-  const touchedOf = (ran) => [...named(ran.inputs), ...named(growth?.get(ran.file.id)?.growth)];
-  const barred = files2.filter((ran) => touchedOf(ran).length > 0);
-  const paths = [...new Set(barred.flatMap(touchedOf))].sort();
-  const withheld2 = withheldForTouch(
-    report3,
-    paths,
-    barred.map(({ file }) => file.ref)
-  );
-  return { report: withheld2, barred, paths };
-}
-function withholdNote(touched, files2, retry2) {
-  if (files2.length === 0) return null;
-  const paths = listPaths(touched);
-  const ran = listPaths(files2.map(({ file }) => file.ref.path));
-  return retry2 ? `squeal: ${paths} was written while ${ran} ran and ended as it was; the run is withheld and runs once more (tasks 001-168, 007-30)` : `squeal: ${paths} was written during 2 runs in a row of ${ran} and ended as it was; ${ran} stays unknown until an input changes, so write it outside the worktree or under an ignored path, or declare it (tasks 001-168, 007-30)`;
-}
-var Withholds;
-var init_stability = __esm({
-  "src/core/scheduler/stability.ts"() {
-    "use strict";
-    init_hash();
-    init_keys();
-    init_revision();
-    init_text();
-    Withholds = class {
-      #keys = /* @__PURE__ */ new Map();
-      /** Records the withhold of `files`, each first or exhausted at its key. */
-      record(files2) {
-        const withheld2 = this.peek(files2);
-        for (const { file, key: key3 } of files2) this.#keys.set(file.id, key3);
-        return withheld2;
-      }
-      /**
-       * What `record` would make of `files`, recording nothing (row 011-128): a
-       * record decides before its write, and counts only once the write lands.
-       */
-      peek(files2) {
-        const again = [];
-        const exhausted = [];
-        for (const ran of files2) {
-          (this.#keys.get(ran.file.id) === ran.key ? exhausted : again).push(ran);
-        }
-        return { again, exhausted };
-      }
-      /** `files` were recorded unwithheld: their withholds are no longer in a row. */
-      clear(files2) {
-        for (const { file } of files2) this.#keys.delete(file.id);
-      }
-    };
-  }
-});
-
-// src/core/scheduler/observed.ts
-async function observedGrowth(context, report3, run5) {
-  const out2 = /* @__PURE__ */ new Map();
-  const { keys } = context;
-  if (!keys.observing || report3.observed === void 0 || report3.observed.length === 0) return out2;
-  keys.refreshObserved(report3.observed.map((o) => o.testFile.project));
-  const candidates = /* @__PURE__ */ new Set();
-  const seen = [];
-  for (const observed of report3.observed) {
-    const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
-    const listed5 = new Set(observed.directories.map(listingPath));
-    for (const root of observed.recursive ?? []) {
-      for (const path of keys.listingsBelow(root)) listed5.add(path);
-    }
-    const read5 = observed.paths.filter((path) => !closure.has(path));
-    const targets = await linkTargets(context.root, read5);
-    const fresh = [.../* @__PURE__ */ new Set([...read5, ...targets, ...listed5])].filter(
-      (path) => !closure.has(path)
-    );
-    for (const path of fresh) candidates.add(listedDirectory(path) ?? path);
-    seen.push({ observed, closure, fresh });
-  }
-  const ignored = await checkIgnored(
-    context.root,
-    [...candidates].filter((p) => p !== "")
-  );
-  const tracked = [];
-  const grown = [];
-  for (const { observed, closure, fresh } of seen) {
-    const add2 = fresh.filter((path) => !ignored.has(listedDirectory(path) ?? path));
-    const known2 = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
-    const growth = [.../* @__PURE__ */ new Set([...known2, ...add2])];
-    if (growth.length === 0) continue;
-    for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
-    grown.push({ testFile: observed.testFile, add: add2, growth });
-  }
-  await keys.track(tracked);
-  for (const { testFile, add: add2, growth } of grown) {
-    const firstSeen = growth.filter(
-      (path) => listedDirectory(path) === null && path !== GIT_ENTRY && keys.firstHashedDuringRun(path, run5)
-    );
-    out2.set(testFileId(testFile), { add: add2, growth, firstSeen });
-  }
-  return out2;
-}
-async function prepareObserved(context, report3, run5) {
-  const growth = await observedGrowth(context, report3, run5);
-  if (growth.size === 0) return NOTHING_OBSERVED;
-  const paths = /* @__PURE__ */ new Set();
-  for (const { growth: grown } of growth.values()) {
-    for (const path of grown) if (listedDirectory(path) === null) paths.add(path);
-  }
-  const snapshot3 = snapshotInputs(context.keys.cache, paths);
-  return { growth, ...await changedSince2(snapshot3, paths, context.hasher) };
-}
-var NOTHING_OBSERVED;
-var init_observed2 = __esm({
-  "src/core/scheduler/observed.ts"() {
-    "use strict";
-    init_keys();
-    init_git2();
-    init_link_target();
-    init_stability();
-    NOTHING_OBSERVED = {
-      growth: /* @__PURE__ */ new Map(),
-      changed: /* @__PURE__ */ new Set(),
-      touched: /* @__PURE__ */ new Set()
-    };
-  }
-});
-
 // src/core/scheduler/records.ts
 function fileCheck(ref2) {
   return { kind: "file", project: ref2.project, testPath: ref2.path };
@@ -18039,25 +18101,6 @@ var init_revision2 = __esm({
   }
 });
 
-// src/core/scheduler/sharing.ts
-function joinSpan(span, durationMs2, cut = false) {
-  if (span !== null && span.cut !== cut) return null;
-  const time = durationMs2 ?? 0;
-  const fastest = Math.min(span?.fastest ?? time, time);
-  const slowest = Math.max(span?.slowest ?? time, time);
-  const shares = slowest <= Math.max(SHARE_FLOOR_MS, SHARE_RATIO * fastest);
-  return shares ? { fastest, slowest, cut } : null;
-}
-var SHARE_FLOOR_MS, SHARE_RATIO, NONE_CUT;
-var init_sharing = __esm({
-  "src/core/scheduler/sharing.ts"() {
-    "use strict";
-    SHARE_FLOOR_MS = 1e3;
-    SHARE_RATIO = 4;
-    NONE_CUT = { cutPastEstimate: () => false };
-  }
-});
-
 // src/core/scheduler/store-decision.ts
 function tierEnd(tier, report3, changedOnDisk, requeue, observed) {
   const completed = new Set(report3.completedFiles.map(testFileId));
@@ -18198,6 +18241,204 @@ var init_timeout_split = __esm({
     "use strict";
     init_context();
     init_queue();
+  }
+});
+
+// src/core/scheduler/record-tier.ts
+function tierRecord(context, ledger, tier, report3, end, setups) {
+  const provenance = {
+    worktreeId: context.worktreeId,
+    revision: tier.revision.number,
+    commit: tier.revision.head,
+    dirty: tier.revision.dirty,
+    runId: tier.runId,
+    recordedAt: context.now()
+  };
+  return {
+    context,
+    ledger,
+    tier,
+    report: report3,
+    end,
+    provenance,
+    setups,
+    unknown: [],
+    rekeyed: [],
+    grown: [],
+    firstSeen: [],
+    grewEnvironment: [],
+    failedAnew: [],
+    notStarted: []
+  };
+}
+function recordFile(record, entry4) {
+  const { ledger, report: report3, tier } = record;
+  const { file, key: key3, forced } = entry4;
+  const decision = storeDecision(entry4, record.end, ledger.files.get(file.id) === file);
+  if (decision.kind === "superseded") {
+    ledger.endRunningAt(file, key3);
+    return;
+  }
+  ledger.setRunning(file, null);
+  if (decision.kind === "gone") return;
+  if (decision.kind === "withheld") {
+    ledger.discard(file, key3, forced, [], report3.failure ?? `run ${report3.end}`, tier.runId);
+  } else if (decision.kind === "requeue") requeueFile(ledger, entry4);
+  else if (decision.kind === "not-started" || decision.kind === "unknown" || decision.kind === "split") {
+    recordIncomplete(record, entry4, decision);
+  } else recordCompleted(record, entry4, decision);
+}
+function requeueFile(ledger, entry4) {
+  const { file, key: key3, forced, recent, catchUp } = entry4;
+  if (file.key === null || file.blocked !== null) return;
+  const priority = priorityOf(file, NOTHING_CHANGED);
+  const again = ledger.staysForced(file, key3, forced);
+  ledger.enqueue(file, priority, again, recent === true, catchUp === true);
+}
+function recordIncomplete(record, entry4, decision) {
+  const { file, key: key3, forced } = entry4;
+  if (decision.kind === "split") {
+    requeueSplit(record.ledger, file, key3, decision.cap, forced, entry4.recent === true);
+  } else if (decision.kind === "not-started" && record.setups !== false) {
+    record.notStarted.push({ file, forced: record.ledger.staysForced(file, key3, forced) });
+  } else record.unknown.push({ file, key: key3 });
+}
+function recordCompleted(record, entry4, decision) {
+  const { context, ledger, tier } = record;
+  const { file, key: key3, checkpointId, forced } = entry4;
+  const { growth } = decision;
+  if (growth !== void 0) {
+    record.rekeyed.push(...context.keys.addObserved(file.ref, growth.add).map((c) => c.testFile));
+    record.grown.push({ ref: file.ref, checkpointId });
+  }
+  if (decision.kind === "unstable") {
+    ledger.discard(file, key3, forced, decision.paths, void 0, tier.runId);
+  } else if (decision.kind === "first-seen") {
+    if (decision.rerun) record.firstSeen.push({ file, firstSeen: growth?.firstSeen ?? [] });
+  } else if (decision.kind === "environment") {
+    record.grewEnvironment.push(file);
+  } else if (decision.kind === "store") {
+    const storeKey = growth === void 0 ? key3 : context.keys.index.key(file.ref);
+    if (storeKey !== null) storeFile(record, entry4, decision, storeKey);
+  }
+}
+function storeFile(record, entry4, decision, storeKey) {
+  const { context, ledger, tier, report: report3 } = record;
+  const { store } = context;
+  const { file, key: key3, checkpointId, forced } = entry4;
+  const { growth } = decision;
+  const previous = file.resultKey;
+  const records = recordsForFile({
+    ref: file.ref,
+    key: storeKey,
+    report: report3,
+    previousChecks: previous === null ? [] : store.results.checksForKey(previous),
+    provenance: record.provenance,
+    describe: context.describe
+  });
+  const failing = store.failures.failingAt(storeKey);
+  const inputs2 = [...entry4.inputs, ...growth?.growth ?? []];
+  const prior = storeResults(context, records, healsUnheld(store, inputs2));
+  recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
+  store.failures.keepReplaced(failing, records, (run5) => readRunLoads(store).get(run5) ?? null);
+  if (forced && file.rerunKey === key3) endRerun(context, file);
+  if (forced) endRetry(context, file, key3, records, tier.runId);
+  if ((growth !== void 0 || file.key === key3) && holdsNewFailure(context, prior, records)) {
+    record.failedAnew.push({
+      file,
+      key: storeKey,
+      forced,
+      afterTestsPassed: failsAfterTestsPassed(records)
+    });
+  }
+  if (decision.current) ledger.applyResults(file, key3, records, checkpointId);
+}
+function endRecord(record, environment) {
+  const { context, ledger, tier } = record;
+  if (environment !== void 0) settleEnvironment(record, environment);
+  for (const { ref: ref2, checkpointId } of record.grown) {
+    ledger.settle([ref2], NOTHING_CHANGED, { checkpointId });
+  }
+  ledger.settle(record.rekeyed, NOTHING_CHANGED);
+  ledger.rerunFirstSeen(record.firstSeen, tier.runId);
+  rememberReruns(context, queueReruns(context, ledger, record.failedAnew));
+  storeClosures(
+    context,
+    record.grown.map((g2) => g2.ref)
+  );
+  if (record.setups !== false) recordSetups(record, record.setups);
+  markUnknown(record);
+}
+function settleEnvironment(record, environment) {
+  const { ledger } = record;
+  const unkeyed = [];
+  const edited = [];
+  for (const { testFile } of environment.changes) {
+    (ledger.file(testFile)?.keyedAt === null ? unkeyed : edited).push(testFile);
+  }
+  ledger.settle(unkeyed, NOTHING_CHANGED, { keyedAt: ledger.revision.number });
+  ledger.settle(edited, NOTHING_CHANGED);
+  rerunGrown(ledger, environment, record.grewEnvironment);
+}
+function recordSetups(record, setups) {
+  const { ledger, report: report3, provenance } = record;
+  const startup = report3.startupFailure;
+  const started2 = /* @__PURE__ */ new Set([
+    ...report3.startedProjects ?? [],
+    ...report3.completedFiles.map((f) => f.project)
+  ]);
+  for (const project of startup?.projects ?? []) started2.delete(project);
+  if (setups !== true) for (const project of setups) started2.delete(project);
+  ledger.setups.pass(started2, provenance.commit);
+  if (startup !== void 0) failStartup(ledger, startup, record.notStarted, provenance.commit);
+}
+function markUnknown(record) {
+  const { context, ledger, tier, report: report3 } = record;
+  const timedOut = report3.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
+  const reason2 = timedOut ?? report3.failure ?? `run ${report3.end}`;
+  for (const { file, key: key3 } of record.unknown) endRetry(context, file, key3, null, tier.runId);
+  for (const { file } of record.notStarted)
+    if (file.key !== null) endRetry(context, file, file.key, null, tier.runId);
+  ledger.markUnknown(record.unknown, reason2, {
+    runId: tier.runId,
+    ...timedOut === null ? {} : { cause: "timeout" }
+  });
+}
+var init_record_tier = __esm({
+  "src/core/scheduler/record-tier.ts"() {
+    "use strict";
+    init_retry();
+    init_context();
+    init_environment_growth();
+    init_hold();
+    init_queue();
+    init_records2();
+    init_rerun();
+    init_retries();
+    init_revision2();
+    init_setup();
+    init_store_decision();
+    init_store_results();
+    init_timeout_split();
+  }
+});
+
+// src/core/scheduler/sharing.ts
+function joinSpan(span, durationMs2, cut = false) {
+  if (span !== null && span.cut !== cut) return null;
+  const time = durationMs2 ?? 0;
+  const fastest = Math.min(span?.fastest ?? time, time);
+  const slowest = Math.max(span?.slowest ?? time, time);
+  const shares = slowest <= Math.max(SHARE_FLOOR_MS, SHARE_RATIO * fastest);
+  return shares ? { fastest, slowest, cut } : null;
+}
+var SHARE_FLOOR_MS, SHARE_RATIO, NONE_CUT;
+var init_sharing = __esm({
+  "src/core/scheduler/sharing.ts"() {
+    "use strict";
+    SHARE_FLOOR_MS = 1e3;
+    SHARE_RATIO = 4;
+    NONE_CUT = { cutPastEstimate: () => false };
   }
 });
 
@@ -18459,152 +18700,15 @@ function unstableInputs(context, tier) {
   return changedSince2(tier.snapshot, inputs2, context.hasher);
 }
 function recordTier(context, ledger, tier, report3, changedOnDisk, requeue = false, observed = NOTHING_OBSERVED, commit = true, setups = true) {
-  const { store, worktreeId } = context;
+  const { store } = context;
   endTier(context, ledger, tier);
   const end = tierEnd(tier, report3, changedOnDisk, requeue, observed);
-  const provenance = {
-    worktreeId,
-    revision: tier.revision.number,
-    commit: tier.revision.head,
-    dirty: tier.revision.dirty,
-    runId: tier.runId,
-    recordedAt: context.now()
-  };
-  const unknown = [];
-  const rekeyed = [];
-  const grown = [];
-  const firstSeen = [];
-  const grewEnvironment = [];
-  const failedAnew = [];
-  const notStarted = [];
-  const startup = report3.startupFailure;
-  const { environment } = observed;
+  const record = tierRecord(context, ledger, tier, report3, end, setups);
   ledger.queue.settlingOnce(
     () => store.transaction(() => {
       store.runs.finish(tier.runId, report3.end, context.now());
-      for (const entry4 of tier.files) {
-        const { file, key: key3, checkpointId, forced, recent, catchUp } = entry4;
-        const decision = storeDecision(entry4, end, ledger.files.get(file.id) === file);
-        if (decision.kind === "superseded") {
-          ledger.endRunningAt(file, key3);
-          continue;
-        }
-        ledger.setRunning(file, null);
-        if (decision.kind === "gone") continue;
-        if (decision.kind === "withheld") {
-          ledger.discard(file, key3, forced, [], report3.failure ?? `run ${report3.end}`, tier.runId);
-          continue;
-        }
-        if (decision.kind === "requeue") {
-          if (file.key !== null && file.blocked === null) {
-            const priority = priorityOf(file, NOTHING_CHANGED);
-            const again = ledger.staysForced(file, key3, forced);
-            ledger.enqueue(file, priority, again, recent === true, catchUp === true);
-          }
-          continue;
-        }
-        if (decision.kind === "not-started") {
-          if (setups !== false)
-            notStarted.push({ file, forced: ledger.staysForced(file, key3, forced) });
-          else unknown.push({ file, key: key3 });
-        } else if (decision.kind === "unknown") unknown.push({ file, key: key3 });
-        else if (decision.kind === "split") {
-          requeueSplit(ledger, file, key3, decision.cap, forced, recent === true);
-        }
-        if (decision.kind === "not-started" || decision.kind === "unknown" || decision.kind === "split") {
-          continue;
-        }
-        const { growth } = decision;
-        let storeKey = key3;
-        if (growth !== void 0) {
-          rekeyed.push(...context.keys.addObserved(file.ref, growth.add).map((c) => c.testFile));
-          grown.push({ ref: file.ref, checkpointId });
-          storeKey = decision.kind === "store" ? context.keys.index.key(file.ref) : null;
-        }
-        if (decision.kind === "unstable") {
-          ledger.discard(file, key3, forced, decision.paths, void 0, tier.runId);
-          continue;
-        }
-        if (decision.kind === "first-seen") {
-          if (decision.rerun) firstSeen.push({ file, firstSeen: growth?.firstSeen ?? [] });
-          continue;
-        }
-        if (decision.kind === "environment") {
-          grewEnvironment.push(file);
-          continue;
-        }
-        if (decision.kind === "no-key" || storeKey === null) continue;
-        const previous = file.resultKey;
-        const records = recordsForFile({
-          ref: file.ref,
-          key: storeKey,
-          report: report3,
-          previousChecks: previous === null ? [] : store.results.checksForKey(previous),
-          provenance,
-          describe: context.describe
-        });
-        const failing = store.failures.failingAt(storeKey);
-        const inputs2 = [...entry4.inputs, ...growth?.growth ?? []];
-        const prior = storeResults(context, records, healsUnheld(store, inputs2));
-        recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
-        store.failures.keepReplaced(
-          failing,
-          records,
-          (run5) => readRunLoads(store).get(run5) ?? null
-        );
-        if (forced && file.rerunKey === key3) endRerun(context, file);
-        if (forced) endRetry(context, file, key3, records, tier.runId);
-        if (growth !== void 0 || file.key === key3) {
-          if (holdsNewFailure(context, prior, records)) {
-            failedAnew.push({
-              file,
-              key: storeKey,
-              forced,
-              afterTestsPassed: failsAfterTestsPassed(records)
-            });
-          }
-        }
-        if (decision.current) ledger.applyResults(file, key3, records, checkpointId);
-      }
-      if (environment !== void 0) {
-        const unkeyed = [];
-        const edited = [];
-        for (const { testFile } of environment.changes) {
-          (ledger.file(testFile)?.keyedAt === null ? unkeyed : edited).push(testFile);
-        }
-        ledger.settle(unkeyed, NOTHING_CHANGED, { keyedAt: ledger.revision.number });
-        ledger.settle(edited, NOTHING_CHANGED);
-        rerunGrown(ledger, environment, grewEnvironment);
-      }
-      for (const { ref: ref2, checkpointId } of grown) {
-        ledger.settle([ref2], NOTHING_CHANGED, { checkpointId });
-      }
-      ledger.settle(rekeyed, NOTHING_CHANGED);
-      ledger.rerunFirstSeen(firstSeen, tier.runId);
-      rememberReruns(context, queueReruns(context, ledger, failedAnew));
-      storeClosures(
-        context,
-        grown.map((g2) => g2.ref)
-      );
-      if (setups !== false) {
-        const started2 = /* @__PURE__ */ new Set([
-          ...report3.startedProjects ?? [],
-          ...report3.completedFiles.map((f) => f.project)
-        ]);
-        for (const project of startup?.projects ?? []) started2.delete(project);
-        if (setups !== true) for (const project of setups) started2.delete(project);
-        ledger.setups.pass(started2, provenance.commit);
-        if (startup !== void 0) failStartup(ledger, startup, notStarted, provenance.commit);
-      }
-      const timedOut = report3.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
-      const reason2 = timedOut ?? report3.failure ?? `run ${report3.end}`;
-      for (const { file, key: key3 } of unknown) endRetry(context, file, key3, null, tier.runId);
-      for (const { file } of notStarted)
-        if (file.key !== null) endRetry(context, file, file.key, null, tier.runId);
-      ledger.markUnknown(unknown, reason2, {
-        runId: tier.runId,
-        ...timedOut === null ? {} : { cause: "timeout" }
-      });
+      for (const entry4 of tier.files) recordFile(record, entry4);
+      endRecord(record, observed.environment);
       if (commit) ledger.commit();
     })
   );
@@ -18615,28 +18719,18 @@ var init_tiers = __esm({
     "use strict";
     init_capacity();
     init_keys();
-    init_retry();
     init_backlog();
     init_capacity2();
-    init_context();
-    init_environment_growth();
     init_focused2();
-    init_hold();
     init_observed2();
-    init_queue();
     init_quiet();
-    init_records2();
-    init_rerun();
+    init_record_tier();
     init_retries();
-    init_revision2();
-    init_setup();
     init_sharing();
     init_slots2();
     init_slow3();
     init_stability();
     init_store_decision();
-    init_store_results();
-    init_timeout_split();
     init_store_decision();
   }
 });
@@ -20162,18 +20256,23 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = withStopping(
+  const daemon = withLate(
     store,
     worktree,
-    withDeath(
+    withStopping(
       store,
       worktree,
-      asStopped(
+      withDeath(
         store,
-        worktreeId,
         worktree,
-        liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
-      )
+        asStopped(
+          store,
+          worktreeId,
+          worktree,
+          liveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null)
+        )
+      ),
+      now
     ),
     now
   );
@@ -20372,6 +20471,7 @@ var init_snapshot = __esm({
     init_code_status();
     init_config_problems();
     init_died();
+    init_feed_late();
     init_focused();
     init_holds();
     init_identity();
@@ -24116,7 +24216,7 @@ import { setTimeout as delay4 } from "node:timers/promises";
 function createScheduler(options) {
   return new TierScheduler(options);
 }
-var TierScheduler;
+var NO_PASS, TierScheduler;
 var init_scheduler2 = __esm({
   "src/core/scheduler/scheduler.ts"() {
     "use strict";
@@ -24159,6 +24259,7 @@ var init_scheduler2 = __esm({
     init_tiers();
     init_warm_up();
     init_yields();
+    NO_PASS = "the change feed delivered no reconciliation pass that started after the request (its pass failed, or the daemon closed first), so no checkpoint was planned";
     TierScheduler = class {
       constructor(options) {
         this.options = options;
@@ -24558,7 +24659,8 @@ var init_scheduler2 = __esm({
         }
       }
       /**
-       * Queues the checkpoint at once, unless it needs the runner: while a
+       * Queues the checkpoint once a pass that started after the request was
+       * delivered (`passes`, row 011-198), unless it needs the runner: while a
        * runner failure is outstanding the runner is retried first, and while a
        * revision waits for its runner part the checkpoint follows it. A warm-up
        * (`observeIgnored`) runs every runnable file forced, in a checkpoint of
@@ -24567,6 +24669,12 @@ var init_scheduler2 = __esm({
        * that lane's test files (task 004-61).
        */
       async requestFullSuite(request = {}) {
+        const passes = this.options.passes;
+        if (passes !== void 0) {
+          const asked = passes.started();
+          await passes.pass();
+          if ((passes.delivered()?.number ?? 0) <= asked) throw new Error(NO_PASS);
+        }
         const warmUp2 = request.observeIgnored === true;
         const force = request.force === true || warmUp2;
         const lane = request.lane;
@@ -27819,6 +27927,8 @@ var init_change_feed = __esm({
       }
       options;
       spec = null;
+      passesStarted = 0;
+      delivered = null;
       root;
       backend;
       timings;
@@ -27927,6 +28037,7 @@ var init_change_feed = __esm({
       onDebounced(paths) {
         void this.enqueue(
           async () => {
+            const startedAt = this.now();
             const specChanged = paths.some((p) => SPEC_INPUTS.has(basename13(p)));
             if (specChanged) this.unlisted.clear();
             let rewatched = specChanged ? await this.rebuildSpec() : false;
@@ -27938,14 +28049,20 @@ var init_change_feed = __esm({
               if (this.spec === before3) await this.unlisted.record(ignoredDirs2);
             }
             const kept3 = this.tempHold.filter(hinted.paths, this.trackedPaths);
-            if (kept3.length > 0) await this.emit({ trigger: "watch", paths: kept3 });
+            if (kept3.length > 0) await this.emit({ trigger: "watch", paths: kept3 }, startedAt);
             if (rewatched || await this.relinked(hinted)) await this.reconcileNow("watch");
           },
           () => "watch"
         );
       }
-      /** `HEAD` is read before git status, so a commit made between the two is in the next diff. */
+      /**
+       * `HEAD` is read before git status, so a commit made between the two is in the next diff. The
+       * pass counts as delivered only once `onBatch` took its batch (row 011-198): a failure, a close
+       * first or a retry in its place leaves `delivered` as it was.
+       */
       async reconcileNow(trigger) {
+        this.passesStarted += 1;
+        const pass = { number: this.passesStarted, startedAt: this.now() };
         const head = readGitHead(this.root);
         const status2 = await gitStatus(this.root);
         await this.rebuildSpec(status2);
@@ -27954,8 +28071,10 @@ var init_change_feed = __esm({
         const { paths, linkedDirs, links } = await candidatesForReconcile(this.context(), listed5);
         this.linkTargets = new Map(links);
         await this.linked?.update(linkedDirs);
-        await this.emit({ trigger, paths: this.tempHold.filter(paths, this.trackedPaths) });
+        const batch = { trigger, paths: this.tempHold.filter(paths, this.trackedPaths) };
+        if (!await this.emit(batch, pass.startedAt)) return;
         this.passHead = head;
+        this.delivered = pass;
       }
       /** True when a link of the batch is new, gone or points elsewhere than when last seen. */
       async relinked(hinted) {
@@ -27998,10 +28117,14 @@ var init_change_feed = __esm({
         };
       }
       trackedPaths = () => this.options.trackedPaths?.() ?? [];
-      async emit(batch) {
-        if (this.closed) return;
+      /** False when a close kept the batch from `onBatch`; `startedAt` is when its task started. */
+      async emit(batch, startedAt) {
+        if (this.closed) return false;
         await this.options.onBatch(batch);
+        this.options.onDelivered?.(startedAt);
+        return true;
       }
+      now = () => (this.options.now ?? Date.now)();
       /**
        * Runs tasks one at a time. A failed task is reported and does not stop the
        * queue; one that delivers batches names the trigger it retries as (`retry`).
@@ -28096,11 +28219,19 @@ function createDaemonLoop(options) {
   const { onDropped, backend, timings, afterBatch, ...rest } = options;
   let feed = null;
   let closing = null;
+  const deliveredRow = new FeedDeliveredRow(options.store, options.worktreeId, options.onError);
   const scheduler = createScheduler({
     ...rest,
     head: () => readHead(options.root),
     onExtraFiles: (paths) => {
       feed?.setExtraFiles(paths).catch((error) => options.onError(toError2(error)));
+    },
+    passes: {
+      started: () => feed?.passesStarted ?? 0,
+      pass: async () => {
+        await feed?.reconcile("interval");
+      },
+      delivered: () => feed?.delivered ?? null
     }
   });
   return {
@@ -28120,7 +28251,13 @@ function createDaemonLoop(options) {
         ...backend === void 0 ? {} : { backend },
         ...timings === void 0 ? {} : { timings },
         trackedPaths: () => scheduler.trackedPaths(),
-        extraFiles: scheduler.extraFiles()
+        extraFiles: scheduler.extraFiles(),
+        ...options.now === void 0 ? {} : { now: options.now },
+        onDelivered: (startedAt) => {
+          setImmediate(() => {
+            if (closing === null) deliveredRow.record(startedAt);
+          });
+        }
       });
       await feed.start();
     },
@@ -28164,6 +28301,7 @@ var init_daemon_loop = __esm({
   "src/core/daemon-loop/index.ts"() {
     "use strict";
     init_scheduler3();
+    init_feed_late();
     init_store5();
     init_watcher2();
     init_head();
@@ -59622,6 +59760,7 @@ init_text();
 init_checks();
 init_code_status();
 init_config_problems();
+init_feed_late();
 init_focused();
 init_holds();
 init_identity();
@@ -59907,6 +60046,8 @@ function formatStatus(result, now, command = "squeal", options = {}) {
     `Revision: ${statusRevisionText(result)}`,
     // Row 011-73 (C6 as amended 2026-10-21): a hold qualifies everything below it.
     ...holdLines(result.holds, command),
+    // Row 011-200 (C6): a late change feed qualifies everything below it, as a hold does.
+    ...lateLines(result.daemon, result.revision),
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
     `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}${notCurrentText(result)}`,
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
@@ -61429,6 +61570,7 @@ init_awaiting_install();
 init_state3();
 init_checks();
 init_died();
+init_feed_late();
 init_holds();
 init_stopping();
 
