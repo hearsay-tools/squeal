@@ -25,6 +25,9 @@ export function fakeDaemon(
   const seen: string[] = [];
   return new Promise((resolve) => {
     const server = createServer((socket) => {
+      // A client whose probe timed out resets the connection; that is no fault of the stand-in
+      // (row 011-220: `squeal start` probes every 50 ms with a 100 ms timeout).
+      socket.on("error", () => {});
       socket.once("data", (data) => {
         const request = JSON.parse(data.toString()) as { type: string };
         received.push(request);
