@@ -1,5 +1,6 @@
+import { extname } from "node:path";
 import type { ObjectFormat } from "../../hash/index.js";
-import type { CodeFile } from "../../types/code.js";
+import { CODE_EXTENSIONS, type CodeFile } from "../../types/code.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -30,7 +31,9 @@ import { checkKey, type FileAfter, judge } from "./judge.js";
 import {
   changesFrom,
   committedWithHeld,
+  holdRemovals,
   listingMoved,
+  nextRecord,
   readListing,
   writeListed,
 } from "./listed.js";
@@ -68,8 +71,9 @@ export interface PassContext {
  * revision that moved `HEAD` asks git which files are the committed ones
  * (015-19), and the last records them (015-38). D1 (row 015-52): a file
  * never counted that a revision after the listed one changed waits for its
- * listing, and a pass runs when the listing moves; a counted file that a
- * runner now lists leaves quietly.
+ * listing, the removals of the pass wait with it (D2, review 0.1.315 B1),
+ * a recount waits for it, and a pass runs at each listing; a counted file
+ * that a runner now lists leaves quietly.
  */
 export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const { store, source, worktreeId } = ctx;
@@ -85,10 +89,12 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     reason === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0;
   if (idle && !listingMoved(listing)) return null;
   const since = reason === null && cursor !== null ? cursor.revision : null;
-  const { entries, record, released } = workEntries(ctx, since, latest, due, listing);
+  const work = workEntries(ctx, since, latest, due, listing);
+  if (work === null) return null;
+  const { entries, held, waiting } = work;
   // The listing moved and left nothing to read: no pass, so no coverage step either.
   if (idle && entries.length === 0) {
-    writeListed(store.meta, worktreeId, record);
+    writeListed(store.meta, worktreeId, nextRecord(listing, since, held, []));
     return null;
   }
   ctx.retry.clear();
@@ -99,7 +105,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const edits =
     reason === "first" || cursor === null
       ? null
-      : source.lastChanges(changesFrom(listing, cursor.revision, released), latest);
+      : source.lastChanges(changesFrom(listing, cursor.revision), latest);
 
   store.transaction(() => {
     writeTooBigEdits(store, worktreeId, edits, entries);
@@ -141,9 +147,9 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
       ? new Set<RelativePath>()
       : await committedWithHeld(
           ctx,
-          { since, held: changesFrom(listing, since, released), upTo: latest },
+          { since, held: changesFrom(listing, since), upTo: latest },
           after.map((a) => ({ path: a.path, blob: blobs.get(a.path) ?? null })),
-          released,
+          waiting,
         );
   return store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
@@ -152,16 +158,20 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
       .list(worktreeId, { measure: "complexity", ...(quiet ? {} : { paths: [...paths] }) })
       .filter((s) => paths.has(s.check.path));
     const at = ctx.now();
-    const judged = judge({
-      worktreeId,
-      revision: latest,
-      threshold: ctx.complexity.threshold,
-      at,
-      quiet,
-      before,
-      bodies,
-      after,
-    });
+    const { judged, deferred } = holdRemovals(
+      judge({
+        worktreeId,
+        revision: latest,
+        threshold: ctx.complexity.threshold,
+        at,
+        quiet,
+        before,
+        bodies,
+        after,
+      }),
+      held > 0,
+      seeds,
+    );
     for (const { from, to } of judged.moves) store.states.move(worktreeId, from, to);
     // D9's measures go with the function, a failing one resolved (row 015-12).
     if (!quiet) {
@@ -182,7 +192,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     if (quiet) clearPulled(store.meta, worktreeId);
     else writePulled(store.meta, worktreeId, latest, paths, committed);
     writeCursor(store.meta, worktreeId, current);
-    writeListed(store.meta, worktreeId, record);
+    writeListed(store.meta, worktreeId, nextRecord(listing, since, held, deferred));
     writeUncountable(store.meta, worktreeId, failed);
     // The coordinator's contract with 015-07: a first pass over inherited counts writes none,
     // unless a consumer registered before it and was told counting (015-35).
@@ -244,6 +254,8 @@ function filesRows(
  * D2: each stored check's body hash in the work set, from the count of the
  * blob its state was judged on. Never from the files row's blob: a count the
  * pass skipped or failed leaves that row at a blob no state was judged on.
+ * A path with no row, gone while its removals waited (row 015-52), is read
+ * in the language of its extension.
  */
 function oldBodies(
   store: CodeStore,
@@ -257,7 +269,7 @@ function oldBodies(
   const read = new Set<string>();
   for (const state of store.states.list(worktreeId, { measure: "complexity", paths })) {
     const { path } = state.check;
-    const language = languages.get(path);
+    const language = languages.get(path) ?? CODE_EXTENSIONS[extname(path)];
     if (language === undefined || read.has(`${path}\0${state.blob}`)) continue;
     read.add(`${path}\0${state.blob}`);
     const count = store.counts.get(state.blob, language, counterVersion);
