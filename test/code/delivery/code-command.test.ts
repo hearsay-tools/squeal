@@ -179,8 +179,7 @@ describe("squeal code (015 D6)", () => {
       [
         "Complexity: 1 function over 20 that this session was told about",
         "  src/core/scheduler/tiers.ts:120  selectTier  CC 23 (if 22), over since revision 3",
-        "Not judged:",
-        "  src/new.ts: not counted yet",
+        // Row 015-49: only the files the session changed that are not judged; `src/new.ts` is pending.
         "",
       ].join("\n"),
     );
