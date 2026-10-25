@@ -690,6 +690,7 @@ export function recordTier(
   const grewEnvironment: FileState[] = [];
   const failedAnew: NewFailure[] = [];
   const notStarted: { file: FileState; forced: boolean }[] = [];
+  const ending: FileState[] = [];
   const startup = report.startupFailure;
   const { environment } = observed;
   store.transaction(() => {
@@ -703,7 +704,7 @@ export function recordTier(
         ledger.endRunningAt(file, key);
         continue;
       }
-      ledger.setRunning(file, null);
+      if (decision.kind !== "not-started" || setups === false) ending.push(file);
       if (decision.kind === "gone") continue;
       if (decision.kind === "withheld") {
         ledger.discard(file, key, forced, [], report.failure ?? `run ${report.end}`, tier.runId);
@@ -788,6 +789,11 @@ export function recordTier(
       }
       if (decision.current) ledger.applyResults(file, key, records, checkpointId);
     }
+    // C15 Lifetime (row 011-193): a file's running mark clears once the loop has queued it again
+    // (a cut, a split, a discard), and a file the startup failure kept from starting once
+    // `failStartup` has. An `add` in between would find it neither queued nor running and end
+    // a wait's promotion of it.
+    for (const file of ending) ledger.setRunning(file, null);
     // Task 003-43: the environments read again moved the keys of every file of their projects.
     // A file an edit re-keyed keeps that edit's revision (001-186), so a wait that holds for the
     // edit still holds for it after a later, unrelated revision (task 003-45); `status --wait`
@@ -826,6 +832,7 @@ export function recordTier(
       ledger.setups.pass(started, provenance.commit);
       if (startup !== undefined) failStartup(ledger, startup, notStarted, provenance.commit);
     }
+    for (const { file } of notStarted) ledger.setRunning(file, null);
     const timedOut =
       report.end === "timed-out" ? timedOutReason(context.policy.runner.timeoutMs) : null;
     const reason = timedOut ?? report.failure ?? `run ${report.end}`;
