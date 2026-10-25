@@ -69,6 +69,18 @@ export interface CodeTooBig {
   readonly limit: number;
 }
 
+/** Row 015-49: at most this many changed files not judged are named in one line. */
+export const CODE_NOT_JUDGED_MAX = 3;
+
+/**
+ * Spec 015 D6, a changed file not judged (row 015-49): a file the
+ * consumer's own edit changed that is over `complexity.maxFileBytes`, or
+ * that the counter failed on at every attempt.
+ */
+export type CodeNotJudged =
+  | ({ readonly reason: "too-big" } & CodeTooBig)
+  | { readonly path: RelativePath; readonly reason: "could-not-count" };
+
 /** Spec 015 D6: the code part of a delivery; `Delta.code`, absent when there is none. */
 export interface CodeNews {
   readonly v: 1;
@@ -110,6 +122,13 @@ export interface CodeNews {
     readonly crap?: { readonly count: number; readonly threshold: number };
     readonly uncovered?: number;
   };
+  /**
+   * Row 015-49: on a delivery with test entries, the files the consumer's
+   * own edit changed that are not judged, at most `CODE_NOT_JUDGED_MAX`,
+   * the newest edit first, and the number of the rest. Absent when none
+   * is, and from an older Squeal; with it, `toldOver` can be absent.
+   */
+  readonly notJudged?: { readonly files: readonly CodeNotJudged[]; readonly more: number };
 }
 
 /** Spec 015 D6: the registration's line; `Registration.code`. */
