@@ -8,12 +8,14 @@ import type {
   RelativePath,
   WorktreeId,
 } from "../../types/index.js";
+import { Pace } from "../coverage/pace.js";
 import { coverageOn } from "../coverage/runtime.js";
 import {
   clearCoverage,
   type LoaderCondition,
   type LoaderInputs,
   runCoverageStep,
+  StepCache,
 } from "../crap/index.js";
 import {
   type CodeStore,
@@ -121,6 +123,12 @@ export function createCodePass(options: CodePassOptions): CodePass {
   let coverageDue = true;
   /** Loader conditions that cannot change at their key (D9), for the open store. */
   const settled = new Map<CheckKey, LoaderCondition>();
+  /** What a chain of coverage steps keeps while keys and results stay (row 015-42). */
+  const cache = new StepCache();
+  /** Row 015-42: a coverage step that took `d` ms of the main thread gives the feed `d` ms. */
+  const pace = new Pace(now);
+  /** A recount waits with its step: the step that runs seeds for it. */
+  let reseedDue = false;
   /** The failed counts of the open store have had this daemon's fresh budget. */
   let budgeted = false;
   /** Passes in a row that threw. */
@@ -131,6 +139,8 @@ export function createCodePass(options: CodePassOptions): CodePass {
     store = null;
     budgeted = false;
     settled.clear();
+    cache.invalidate();
+    cache.settle();
     coverageWake = null;
     coverageDue = true;
   };
@@ -187,10 +197,15 @@ export function createCodePass(options: CodePassOptions): CodePass {
     if (report !== null) options.onPass?.(report);
     coverageStep(opened, policy, report);
   };
+  /** The next coverage step, once the step before had its own time back. */
+  const paced = () => {
+    coverageDue = true;
+    if (!closed) pace.after(() => self.nudge());
+  };
   /** Spec 015 D9 after the complexity pass; with coverage off, the states it left go. */
   const coverageStep = (opened: CodeStore, policy: Policy, report: PassReport | null) => {
-    const reseed = report !== null && report.mode !== "edit";
     const revised = report !== null;
+    reseedDue ||= revised && report.mode !== "edit";
     const inputs = options.coverage;
     coverageWake = null;
     if (inputs === undefined) return;
@@ -199,27 +214,35 @@ export function createCodePass(options: CodePassOptions): CodePass {
       coverageDue = true;
       return;
     }
+    // A revision may move keys: the loader map is read again (row 015-42).
+    if (revised) cache.invalidate();
     // A pass with no revision, result or record to read since the last step leaves it as it is.
-    if (!reseed && !coverageDue && !revised) return;
-    coverageDue = false;
-    const step = runCoverageStep({
-      store: opened,
-      main: inputs.main,
-      closures: inputs.closures(),
-      worktreeId: options.worktreeId,
-      revision: options.source.latestRevision(),
-      threshold: policy.crap.threshold,
-      now,
-      writing: inputs.writing(),
-      settled,
-      reseed,
-    });
-    coverageWake = step?.wakeAt ?? null;
-    // Past the step's budget: the rest after a turn of the event loop, so hooks run between.
-    if (step?.more === true) {
-      coverageDue = true;
-      setImmediate(() => self.nudge());
+    if (!reseedDue && !coverageDue && !revised) return;
+    if (!pace.due()) {
+      paced();
+      return;
     }
+    coverageDue = false;
+    const step = pace.measure(() =>
+      runCoverageStep({
+        store: opened,
+        main: inputs.main,
+        closures: inputs.closures(),
+        worktreeId: options.worktreeId,
+        revision: options.source.latestRevision(),
+        threshold: policy.crap.threshold,
+        now,
+        writing: inputs.writing(),
+        settled,
+        reseed: reseedDue,
+        cache,
+      }),
+    );
+    reseedDue = false;
+    coverageWake = step?.wakeAt ?? null;
+    // Past the step's budget: the rest once the feed and hooks had the step's own time.
+    if (step?.more === true) paced();
+    else cache.settle();
   };
   /**
    * The earliest failed count's retry; after `aborted` passes that threw,
@@ -244,7 +267,9 @@ export function createCodePass(options: CodePassOptions): CodePass {
     timer = setTimeout(
       () => {
         timer = null;
+        // A wake is a record wait that ended: the loaders' conditions move with the time.
         coverageDue = true;
+        cache.invalidate();
         self.nudge();
       },
       Math.max(0, at - now()),
@@ -285,6 +310,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
       soonTimer = setTimeout(() => {
         soonTimer = null;
         coverageDue = true;
+        cache.invalidate();
         self.nudge();
       }, COVERAGE_COALESCE_MS);
       soonTimer.unref();
@@ -294,6 +320,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
       closed = true;
       if (soonTimer !== null) clearTimeout(soonTimer);
       soonTimer = null;
+      pace.cancel();
       await running;
       retryLater(null);
       shut();
