@@ -223,12 +223,15 @@ const EMPTY_LISTING: FileHash = createHash("sha1").update("\0empty").digest("hex
  * that hold a tracked file. Built on first use, then kept by `apply`. A
  * directory the watcher sees no file in, a git-ignored one say, has the
  * names on disk below `root` instead, read when its key is computed (row
- * 016-23): no change the watcher reports moves them. Absent or empty there,
- * it hashes as a marker of its own (row 016-26).
+ * 016-23), and again at each revision (`apply`, row 016-24): no change the
+ * watcher reports moves them. Absent or empty there, it hashes as a marker
+ * of its own (row 016-26).
  */
 export class Listings {
   /** directory -> entry name -> tracked files below it. */
   #entries: Map<RelativePath, Map<string, number>> | null = null;
+  /** Each directory hashed from disk -> the hash of the names last seen there (row 016-24). */
+  readonly #seen = new Map<RelativePath, FileHash | null>();
 
   constructor(
     private readonly files: () => Iterable<RelativePath>,
@@ -238,8 +241,26 @@ export class Listings {
   /** The hash of `directory`'s sorted entry names; `null` when it has none and there is no root. */
   hashOf(directory: RelativePath): FileHash | null {
     const names = this.#index().get(directory);
-    if (names !== undefined && names.size > 0) return namesHash([...names.keys()]);
-    return this.#onDisk(directory);
+    if (names !== undefined && names.size > 0) {
+      this.#seen.delete(directory);
+      return namesHash([...names.keys()]);
+    }
+    const hash = this.#onDisk(directory);
+    if (this.root !== undefined) this.#seen.set(directory, hash);
+    return hash;
+  }
+
+  /**
+   * A run of the only test file that lists `directories` ended (row 016-24):
+   * the names each one hashed from disk holds now are that run's own, a test
+   * that writes into the directory it lists say. `apply` then moves its
+   * listing only when its names differ from these; the keys keep the names
+   * the run began with.
+   */
+  ran(directories: readonly RelativePath[]): void {
+    for (const directory of directories) {
+      if (this.#seen.has(directory)) this.#seen.set(directory, this.#onDisk(directory));
+    }
   }
 
   /** The hash of the names `directory` holds on disk, a marker when it holds none; `null` without a root. */
@@ -271,7 +292,12 @@ export class Listings {
     return out.sort(compare);
   }
 
-  /** Applies the adds and deletes among `changes`; returns the listing paths they may move. */
+  /**
+   * Applies the adds and deletes among `changes`, and reads each directory
+   * hashed from disk again (row 016-24); returns the listing paths they may
+   * move: those the changes reach, and those whose names differ from the
+   * names last seen.
+   */
   apply(changes: readonly FileChange[]): RelativePath[] {
     const moved = new Set<RelativePath>();
     for (const change of changes) {
@@ -280,6 +306,12 @@ export class Listings {
       if (!added && !deleted) continue;
       for (const listing of ancestorListings(change.path)) moved.add(listing);
       if (this.#entries !== null) this.#count(this.#entries, change.path, added ? 1 : -1);
+    }
+    for (const [directory, seen] of this.#seen) {
+      const hash = this.#onDisk(directory);
+      if (hash === seen) continue;
+      this.#seen.set(directory, hash);
+      moved.add(listingPath(directory));
     }
     return [...moved];
   }
