@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createDelivery, formatRegistration } from "../../src/core/delivery/index.js";
-import type { RunReport, SetupCheckId, TestFileRef } from "../../src/core/types/index.js";
+import {
+  type RunReport,
+  type SetupCheckId,
+  type TestFileRef,
+  worktreeMetaKey,
+} from "../../src/core/types/index.js";
 import { fixedStatus, liveDaemon } from "../delivery/fakes.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
@@ -69,30 +74,56 @@ describe("scheduler: each worktree's project runners (spec 016 D3)", { timeout: 
     expect(side.store.checks.runnersOf(side.worktreeId)).toEqual(new Map([["", "catch-up"]]));
   });
 
-  it("are recorded in a worktree that only looks a Vitest failure up, whose agent is told the sentence", async () => {
+  it("are recorded in a worktree that only inherits another's results, with no run of its own", async () => {
     const files = testFiles(2, [], () => 50);
     const repo = catchUpRepo(files);
     const main = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     const other = catchUpSide(repo, repo.other, { files, hostSlots: 4 });
-    asVitest(main);
-    asVitest(other);
-    const failing = files[1]?.path ?? "";
-    main.runner.failing.add(failing);
+    main.runner.failing.add(files[1]?.path ?? "");
     await main.scheduler.start();
     await main.scheduler.idle();
-    // Its one run confirming the inherited failure (011 C4 step 3) never ends: the record is the lookup's.
+    // Its one run confirming the inherited failure (001 D6, 011 C4 step 3) never ends.
     other.runner.hold();
     await other.scheduler.start();
 
-    await expect.poll(() => other.store.checks.runnersOf(other.worktreeId).get("")).toBe("vitest");
+    await expect
+      .poll(() => other.store.checks.runnersOf(other.worktreeId).get(""))
+      .toBe("catch-up");
     expect(other.runner.runs.every((run) => run.endedAt === null)).toBe(true);
-    liveDaemon(other.store, other.worktreeId);
-    // Hashed, and no installed Node lockfile among them: Node is not installed there.
-    other.store.fileHashes.upsertMany(other.worktreeId, [
+  });
+
+  /*
+   * Another worktree's failure stands in this one only after a run here
+   * confirms it (001 D6 as amended), so a failure this worktree only looks up
+   * is its own, stored earlier: by an older daemon, which records no runner,
+   * before an upgrade.
+   */
+  it("are recorded by a daemon that only looks its own Vitest failure up, whose agent is told the sentence", async () => {
+    const files = testFiles(2, [], () => 50);
+    const repo = catchUpRepo(files);
+    const failing = files[1]?.path ?? "";
+    const older = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
+    asVitest(older);
+    older.runner.failing.add(failing);
+    await older.scheduler.start();
+    await older.scheduler.idle();
+    await older.scheduler.close();
+    older.store.meta.delete(worktreeMetaKey("runners", older.worktreeId));
+
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
+    asVitest(side);
+    await side.scheduler.start();
+    await side.scheduler.idle();
+    expect(side.runner.runs).toHaveLength(0);
+    expect(side.store.checks.runnersOf(side.worktreeId)).toEqual(new Map([["", "vitest"]]));
+
+    liveDaemon(side.store, side.worktreeId);
+    // Hashed, and no installed Node lockfile among them: Node is not installed.
+    side.store.fileHashes.upsertMany(side.worktreeId, [
       { path: "uv.lock", mtimeMs: 1, ctimeMs: 1, size: 1, inode: 1, hash: "h" },
     ]);
-    const delivery = createDelivery(other.store, { status: fixedStatus() });
-    const consumer = { worktreeId: other.worktreeId, sessionId: "s1", agentId: "main" };
+    const delivery = createDelivery(side.store, { status: fixedStatus() });
+    const consumer = { worktreeId: side.worktreeId, sessionId: "s1", agentId: "main" };
     const text = formatRegistration(await delivery.register(consumer, { atStart: true }));
     expect(text).toContain(failing);
     expect(text).toContain(SENTENCE);

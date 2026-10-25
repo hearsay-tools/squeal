@@ -55,6 +55,7 @@ function ledgerOf(store: Store, keys: Map<string, CheckKey>): Ledger {
     policy: DEFAULT_POLICY,
     now: Date.now,
     keys: {
+      runnerOf: () => undefined,
       index: { key: (ref: TestFileRef) => keys.get(ref.path) ?? null, keysReadAsOne: () => null },
       removeTestFile: () => {},
     },

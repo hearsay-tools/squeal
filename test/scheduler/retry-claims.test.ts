@@ -69,6 +69,7 @@ function daemonA(store: Store, keys: Map<string, CheckKey>, gone = false) {
     now: Date.now,
     hostLoad: () => ({ oneMinute: 0, cpus: 8 }),
     keys: {
+      runnerOf: () => undefined,
       index: { key: (ref: TestFileRef) => keys.get(ref.path) ?? null, keysReadAsOne: () => null },
       removeTestFile: () => {},
     },

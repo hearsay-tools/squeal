@@ -44,6 +44,7 @@ function moved(): { ledger: Ledger; file: FileState } {
     worktreeId: WORKTREE,
     policy: DEFAULT_POLICY,
     now: Date.now,
+    keys: { runnerOf: () => undefined },
   } as unknown as SchedulerContext;
   const ledger = new Ledger(context);
   const file = ledger.addFile(FILE);
