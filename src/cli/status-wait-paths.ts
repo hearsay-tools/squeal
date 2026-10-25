@@ -168,7 +168,10 @@ export type NamedWait =
       readonly snapshot?: boolean;
       /** Row 011-146: with `--check`, the focused answers it read. */
       readonly focus?: NamedFocus;
-      /** Row 011-207: the runs it asked, as its last read found them; absent when it asked none. */
+      /**
+       * Row 011-207: the runs it asked or joined and the asks a busy store
+       * refused, as its last read found them, for its lines; absent with none.
+       */
       readonly asked?: readonly AskedEnd[];
     }
   | {
@@ -200,7 +203,7 @@ export interface NamedWaitPayload {
   readonly verdict: FileVerdict;
   /** Row 011-146: with `--check`, the focused answers (011 C15, additive). */
   readonly focused?: FocusedPayload;
-  /** Row 011-207: the runs the wait asked (011 C15, additive); absent when it asked none. */
+  /** Row 011-207: the runs the wait asked, its stored requests only (011 C15, additive); absent with none. */
   readonly asked?: readonly AskedPayload[];
 }
 
@@ -462,6 +465,11 @@ export function namedCode(wait: Extract<NamedWait, { result: StatusSnapshot }>):
   return resultCode(namedResult(wait));
 }
 
+/** `{ asked }` when the wait stored a request, else nothing (review 0.1.322 B3). */
+function withAsked(asked: readonly AskedPayload[] | undefined) {
+  return asked === undefined ? {} : { asked };
+}
+
 /** How a named wait or snapshot prints (`printNamed`). */
 export interface NamedPrint extends NamedTextOptions {
   readonly json: boolean;
@@ -534,7 +542,7 @@ export async function printNamed(
     leftForPause: wait.leftForPause ?? [],
     verdict: wait.verdict,
     ...(wait.focus === undefined ? {} : { focused: focusPayload(wait.focus) }),
-    ...(wait.asked === undefined ? {} : { asked: wait.asked.map(askedPayload) }),
+    ...withAsked(askedPayload(wait.asked)),
   };
   const field = wait.snapshot === true ? "named" : "wait";
   const json = { ...wait.result, [field]: payload, selection: payload };

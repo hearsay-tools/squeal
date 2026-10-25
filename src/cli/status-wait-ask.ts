@@ -80,25 +80,32 @@ export interface AskedPayload {
   readonly outcome?: RetryOutcome;
 }
 
-/** A run as `selection.asked` gives it (`waitAsked`'s). */
-export function askedPayload(e: AskedEnd): AskedPayload {
-  const { project, path } = e.testFile;
-  return {
-    project,
-    path,
+/**
+ * `selection.asked` and `wait.asked`: one entry per file whose request this
+ * wait stored, absent when it stored none (C15). A busy store's refusal is
+ * no asked run (review 0.1.322 B3); only the `Run not asked:` line names it.
+ */
+export function askedPayload(
+  ends: readonly AskedEnd[] | undefined,
+): readonly AskedPayload[] | undefined {
+  const stored = (ends ?? []).filter((e) => e.answer === "queued");
+  if (stored.length === 0) return undefined;
+  return stored.map((e) => ({
+    project: e.testFile.project,
+    path: e.testFile.path,
     pending: e.pending,
     ...(e.outcome === undefined ? {} : { outcome: e.outcome }),
-  };
+  }));
 }
 
 /**
- * The runs a wait reports, none when it stored no request and found the
- * store busy for none: each but a request that ended at its key since its
- * read, which this wait did not ask and does not hold for.
+ * The runs a wait's lines name (`askedLines`), none when it stored no
+ * request and found the store busy for none: its own requests, the ones it
+ * joined, and the busy refusals.
  */
 export function waitAsked(ends: readonly AskedEnd[]): readonly AskedEnd[] | undefined {
   if (!ends.some((e) => e.answer === "queued" || e.answer === "busy")) return undefined;
-  return ends.filter((e) => e.answer !== "asked");
+  return ends.filter((e) => e.answer === "queued" || e.answer === "joined" || e.answer === "busy");
 }
 
 /** How a named wait stores its asks (`NamedWaitOptions.ask`). */

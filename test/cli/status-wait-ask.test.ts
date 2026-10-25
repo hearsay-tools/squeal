@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { AskNamed } from "../../src/cli/status-wait-ask.js";
+import { type AskNamed, askNamedRuns } from "../../src/cli/status-wait-ask.js";
 import { namedWaitCommand } from "../../src/cli/status-wait-paths.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import { endRetries, readRetries } from "../../src/core/retry/index.js";
-import type { CheckKey, RevisionNumber } from "../../src/core/types/index.js";
+import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
 import { daemon, inheritedStale, KEY, pass, row, take } from "./status-wait-ask-fixture.js";
 import { A, B, NOW, ref, repoWith } from "./status-wait-fixture.js";
 import { capture } from "./status-wait-focus-fixture.js";
@@ -15,6 +15,19 @@ import { capture } from "./status-wait-focus-fixture.js";
  * no request kept at its key, as `squeal retry` with no reason does, and
  * holds for it as pending. A source path's selection asks nothing.
  */
+
+/** B keyed, never run, nothing queued: unknown. */
+function unknownB(store: Store, worktreeId: string) {
+  store.testFileKeys.upsertMany([
+    {
+      worktreeId,
+      testFile: ref(B),
+      key: "key-b-now" as CheckKey,
+      revision: 4 as RevisionNumber,
+      pending: null,
+    },
+  ]);
+}
 
 describe("a named wait asks one run of a named file nothing queues (row 011-207)", () => {
   it("an inherited pass made stale: one wait asks its run, holds for it and exits 0", async () => {
@@ -155,16 +168,7 @@ describe("a named wait asks one run of a named file nothing queues (row 011-207)
   it("several files: one line names each and the runs still pending", async () => {
     const { repo, store } = repoWith([]);
     inheritedStale(store, repo.mainId);
-    // B keyed, never run: unknown.
-    store.testFileKeys.upsertMany([
-      {
-        worktreeId: repo.mainId,
-        testFile: ref(B),
-        key: "key-b-now" as CheckKey,
-        revision: 4 as RevisionNumber,
-        pending: null,
-      },
-    ]);
+    unknownB(store, repo.mainId);
     const d = daemon([], 300);
     const io = capture(repo.main);
 
@@ -191,9 +195,36 @@ describe("a named wait asks one run of a named file nothing queues (row 011-207)
     expect(code).toBe(3);
     const selection = JSON.parse(io.out.join("")).selection;
     expect(selection).toMatchObject({ outcome: "settled", testFiles: [{ state: "stale" }] });
-    expect(selection.asked).toEqual([{ project: "", path: A, pending: false }]);
+    // Review 0.1.322 B3: a refused write is no asked run, in either JSON form.
+    expect(selection.asked).toBeUndefined();
+    expect(JSON.parse(io.out.join("")).wait.asked).toBeUndefined();
     expect(io.err.join("")).toContain(
       `Run not asked: ${A}: the store stayed busy; \`squeal retry ${A}\` asks it.\n`,
     );
+  });
+
+  it("one file asked and one refused by a busy store: asked lists the first, both lines print (review 0.1.322 B3)", async () => {
+    const { repo, store } = repoWith([]);
+    inheritedStale(store, repo.mainId);
+    unknownB(store, repo.mainId);
+    const half: AskNamed = async (root, files, asker, withinMs, now) => [
+      ...(await askNamedRuns(root, files.slice(0, 1), asker, withinMs, now)),
+      ...files.slice(1).map((f) => ({ ...f, answer: "busy" as const })),
+    ];
+    const io = capture(repo.main);
+
+    const code = await namedWaitCommand([A, B], { json: true }, io, {
+      ...daemon([], 300).options,
+      ask: half,
+    });
+
+    expect(code).toBe(3);
+    const json = JSON.parse(io.out.join(""));
+    for (const form of [json.selection, json.wait]) {
+      expect(form.asked).toEqual([{ project: "", path: A, pending: true }]);
+    }
+    const err = io.err.join("");
+    expect(err).toContain(`Run asked: ${A} was stale with nothing queued`);
+    expect(err).toContain(`Run not asked: ${B}: the store stayed busy`);
   });
 });
