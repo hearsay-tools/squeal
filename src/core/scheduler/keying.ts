@@ -419,12 +419,14 @@ export class WorktreeKeys {
 
   /**
    * Adds what a run of `testFile` observed beyond its closure (`additions`,
-   * tracked by the caller) to the shared set, then keys the file with them
-   * (D5 as amended, task 001-132). Without the runner's closure the file is
-   * not keyed yet, and the set waits for its first `setClosure`.
+   * tracked by the caller) to this worktree's view of the shared set, then
+   * keys the file with them (D5 as amended, task 001-132); the record's
+   * transaction stores them (`writeSeen`, row 016-29). Without the runner's
+   * closure the file is not keyed yet, and the set waits for its first
+   * `setClosure`.
    */
   addObserved(testFile: TestFileRef, additions: readonly RelativePath[]): KeyChange[] {
-    this.#observed.add(testFile, additions);
+    this.#observed.see(testFile, additions);
     const runner = this.#runnerClosures.get(testFileId(testFile));
     return runner === undefined ? [] : this.setClosure(runner);
   }
@@ -492,10 +494,13 @@ export class WorktreeKeys {
     this.#startup.see(project, paths);
   }
 
-  /** Stores what `seeStartup` and `markDirect` added and the store lacks; inside the record's transaction. */
+  /**
+   * Stores what `addObserved`, `markDirect` and `seeStartup` added and the
+   * store lacks; inside the record's transaction (row 016-29).
+   */
   writeSeen(): void {
     this.#startup.write();
-    this.#observed.writeMarks();
+    this.#observed.write();
   }
 
   /** The listing paths a recursive listing of `directory` reads (`Listings.below`, task 001-134). */
