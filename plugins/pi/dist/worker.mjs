@@ -2683,6 +2683,9 @@ function otherSessionVersions(store, consumer) {
 // src/core/delivery/delivery.ts
 import { setTimeout as sleep } from "node:timers/promises";
 
+// src/core/retry/kept.ts
+var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // src/core/retry/load.ts
 import { availableParallelism, loadavg } from "node:os";
 function hostLoad() {
@@ -7655,7 +7658,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.323";
+  if (true) return "0.1.325";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9728,6 +9731,11 @@ function awaitingInstallSentence(missing, command) {
   return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
 }
 
+// src/core/status/status-detail.ts
+function holdAcrossEditsText(command) {
+  return `For a manual run across edits, \`${command} hold -- <command>\` holds validation until the command exits.`;
+}
+
 // src/core/delivery/header.ts
 var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 var CHANGED_PATHS_SHOWN = 3;
@@ -9800,7 +9808,7 @@ function livenessSentence(daemon, revision, command) {
     return daemon.late === void 0 ? short : `${short} ${lateText(daemon.late, revision)}`;
   }
   if (daemon.stopped === true)
-    return ` ${stoppedText(command)}; results are as of revision ${revision}.`;
+    return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
   const died = daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
   if (daemon.startingSince !== void 0) {
     return ` A daemon is starting; results are as of revision ${revision}.${died}`;

@@ -855,6 +855,9 @@ function toSlowActivity(value) {
   return void 0;
 }
 
+// src/core/retry/kept.ts
+var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // src/core/hash/blob.ts
 import { constants } from "node:fs";
 var OPEN_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
