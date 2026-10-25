@@ -111,6 +111,7 @@ After the rebase onto `d81a46ec2` the last release is `squeal--v0.1.309`. Betwee
 ## Review 0.1.313 repairs
 
 - **B1, the edit cut read the marks before the shared refresh.** `fetchRunnerPart` asked `observedDirectOf` before `applyRunnerPart` refreshed the shared marks (`regrowObserved`), so a live worktree missed a mark another worktree stored after it started: its edit ran the shortest transitive file and left the marked one to catch-up. `applyRunnerPart` now reads the marks once, after the refresh and the closures it applies; `RunnerPart.observedDirect` is gone. `cutAtStart` keeps its read: it follows the keys' bootstrap, which reads the store. Test: `test/scheduler/observed-direct.test.ts`, "reads a mark a live second worktree stored after this one started", which failed before the fix (`editPaths` `[z]`).
+- **The kit's memory-marks case never read its marks.** In `test/kit/driver.test.ts`, K10 with `marks: "memory"` asked for direct only in worktree b and after the restart, so the fake's remembered-marks callback ran 0 times, and the case would pass if memory mode never marked. It now edits the child's import in a before the switch and asserts a puts the file in direct from its own memory (`affected=direct, marked=false`), then the failures in b and after the restart. Mutation check, 2026-10-25: with the fake's `remembered.set` skipped, step 3 fails (`affected=none`).
 
 ## Residuals
 
