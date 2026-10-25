@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import { blobHash } from "../../hash/index.js";
 import type { CodeLanguage, FileCount } from "../../types/code.js";
-import type { EpochMs, RelativePath } from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "../../types/index.js";
 import {
   COUNT_ATTEMPTS,
   type FailedCounts,
@@ -34,6 +34,8 @@ export interface Attempt {
   readonly now: EpochMs;
   readonly quiet: boolean;
   readonly threshold: number;
+  /** Row 015-49: the revision that last changed each path in the pass's revisions; `null` at a first count. */
+  readonly edits: ReadonlyMap<RelativePath, RevisionNumber> | null;
 }
 
 /**
@@ -130,7 +132,8 @@ function fail(
   error: string,
   attempt: Attempt,
 ): void {
-  const f = failedAgain(failed.get(e.path), e.file.hash, error, attempt);
+  const editedAt = attempt.edits?.get(e.path);
+  const f = failedAgain(failed.get(e.path), e.file.hash, error, { ...attempt, editedAt });
   failed.set(e.path, f);
   const next =
     f.retryAt === null
