@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { actsAtStop } from "../../src/core/delivery/stop-news.js";
-import type { DaemonLiveness, DaemonStopping, EpochMs } from "../../src/core/types/index.js";
+import { actsAtStop, holdActsAtStop } from "../../src/core/delivery/stop-news.js";
+import type {
+  DaemonLiveness,
+  DaemonStopping,
+  EpochMs,
+  StatusHold,
+} from "../../src/core/types/index.js";
 
 /*
  * Row 011-215: which liveness changes are news at Stop on their own. Those
  * that name an action or leave no successor are; a handover within its bound
- * and a daemon validating again wait for the next boundary.
+ * and a daemon validating again wait for the next boundary. Of hold changes,
+ * a merge hold's start is (the coordinator, 2026-10-25).
  */
 
 const AT = 1_800_000_000_000 as EpochMs;
@@ -49,5 +55,22 @@ describe("actsAtStop (row 011-215)", () => {
     ["a handoff that ended short", { state: "alive", lastHeartbeatAt: AT, short }],
   ])("is true for %s", (_, live) => {
     expect(actsAtStop(live)).toBe(true);
+  });
+});
+
+describe("holdActsAtStop (row 011-215)", () => {
+  const merge = { cause: "merge" } as StatusHold;
+  const command = { cause: "command" } as StatusHold;
+
+  it("is true when a merge hold starts, beside any other change", () => {
+    expect(holdActsAtStop({ now: [], ended: [], started: [merge] })).toBe(true);
+    expect(
+      holdActsAtStop({ now: [], ended: [{ cause: "merge" }], started: [command, merge] }),
+    ).toBe(true);
+  });
+
+  it("is false for a command hold's start and for any end", () => {
+    expect(holdActsAtStop({ now: [], ended: [], started: [command] })).toBe(false);
+    expect(holdActsAtStop({ now: [], ended: [{ cause: "merge" }], started: [] })).toBe(false);
   });
 });
