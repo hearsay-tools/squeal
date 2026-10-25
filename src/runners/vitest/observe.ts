@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import type { Vitest } from "vitest/node";
 import type { AbsolutePath, ObservedInputs, TestFileRef } from "../../core/types/index.js";
-import { ownNodeOptions } from "../node-test/recorders.js";
 import {
   observedInputs,
   observeEnv,
@@ -13,6 +12,7 @@ import {
   takeRecorded,
   unobservedEnv,
 } from "../observe/index.js";
+import { ownNodeOptions } from "../process/recorders.js";
 import type { WorktreePaths } from "./paths.js";
 
 /**

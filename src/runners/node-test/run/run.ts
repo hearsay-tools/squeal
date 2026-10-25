@@ -11,17 +11,17 @@ import type {
   TestFileRef,
 } from "../../../core/types/index.js";
 import { withRecorderSignatures } from "../../observe/index.js";
-import { projectEnv } from "../recorders.js";
-import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
-import { parseEvents } from "./events.js";
+import { type ProcessExit, startGroup } from "../../process/group.js";
 import {
   holdsRequire,
   preloadSpecifiers,
   quoteNodeOption,
   tokenizeNodeOptions,
-} from "./node-options.js";
+} from "../../process/node-options.js";
+import { projectEnv } from "../recorders.js";
+import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
+import { parseEvents } from "./events.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";
-import { type ProcessExit, startGroup } from "./process.js";
 import { NodeTestReads } from "./reads.js";
 import { type FileReport, readFileStream } from "./report.js";
 

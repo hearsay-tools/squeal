@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { UNOBSERVED } from "../../../src/runners/node-test/recorders.js";
 import { observeRecorder, unobservedEnv } from "../../../src/runners/observe/index.js";
+import { UNOBSERVED } from "../../../src/runners/process/recorders.js";
 import { observe } from "./helpers.js";
 
 /*

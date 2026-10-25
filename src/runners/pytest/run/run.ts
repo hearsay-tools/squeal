@@ -14,7 +14,7 @@ import type {
   TestFileRef,
 } from "../../../core/types/index.js";
 import { focusedTexts } from "../../focus.js";
-import { startGroup } from "../../node-test/run/process.js";
+import { startGroup } from "../../process/group.js";
 import type { PytestEnvironment } from "../environment/index.js";
 import { runBasetemp } from "./basetemp.js";
 import { type Batch, ending, names, readOr, realOr, split, writeRunLog } from "./batches.js";

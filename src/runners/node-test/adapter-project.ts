@@ -12,6 +12,7 @@ import {
   type RunReport,
   type TestFileRef,
 } from "../../core/types/index.js";
+import { asyncLoaders, tokenizeNodeOptions } from "../process/node-options.js";
 import type { NodeTestAdapterOptions } from "./adapter.js";
 import { type NodeProbe, probeNode, projectEnvironment } from "./adapter-environment.js";
 import { listTestFiles } from "./adapter-files.js";
@@ -19,7 +20,6 @@ import { Observed } from "./adapter-observed.js";
 import { enumerate } from "./enumerate.js";
 import { createNodeTestGraph, MANIFEST } from "./graph/index.js";
 import { projectEnv } from "./recorders.js";
-import { asyncLoaders, tokenizeNodeOptions } from "./run/node-options.js";
 import type { ObservedClosure } from "./run/observed.js";
 import { runNodeTest } from "./run/run.js";
 
