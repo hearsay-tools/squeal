@@ -84,30 +84,24 @@ export function gitEntryByKind(root: AbsolutePath, hashOf: HashSource): HashSour
 
 /**
  * This worktree's view of the shared observed sets and their `direct`
- * marks. Read from the store when created and at each `refresh`; `add`
- * merges into the store in one transaction, so two worktrees' daemons never
- * drop each other's paths. `mark` adds marks to the view only; `writeMarks`,
- * inside a record's transaction, merges into the store what the view holds
- * and the store lacks, so a write a rolled-back transaction lost is made by
- * the next record, as `StartupSets.write` does.
+ * marks, one `SharedPaths` per project and key. `see` and `mark` add to the
+ * view only; `write`, inside the record's transaction, merges into the store
+ * what the view holds and the store lacks.
  */
 export class ObservedSets {
-  readonly #sets = new Map<string, Set<RelativePath>>();
-  readonly #direct = new Map<string, Set<RelativePath>>();
-  readonly #raw = new Map<ProjectName, { paths: string | null; direct: string | null }>();
-  /** Test files `mark` marked a path of: `writeMarks` compares their views with the store. */
-  readonly #marked = new Map<string, TestFileRef>();
+  readonly #paths = new Map<ProjectName, SharedPaths>();
+  readonly #direct = new Map<ProjectName, SharedPaths>();
 
   constructor(private readonly store: Store) {}
 
   /** The observed paths of `testFile`, sorted; listing paths among them. Reads its project once. */
   of(testFile: TestFileRef): readonly RelativePath[] {
-    return this.#read(this.#sets, testFile);
+    return this.#pathsOf(testFile.project).of(testFile.path);
   }
 
   /** The paths that put `testFile` in `direct` (016 D4), sorted. */
   directOf(testFile: TestFileRef): readonly RelativePath[] {
-    return this.#read(this.#direct, testFile);
+    return this.#directOf(testFile.project).of(testFile.path);
   }
 
   /**
@@ -115,36 +109,23 @@ export class ObservedSets {
    * when it changed. Returns the test files whose set grew.
    */
   refresh(projects: Iterable<ProjectName>): TestFileRef[] {
-    const grown: TestFileRef[] = [];
-    for (const project of new Set(projects)) {
-      const raw = {
-        paths: this.store.meta.get(observedMetaKey(project)),
-        direct: this.store.meta.get(observedDirectMetaKey(project)),
-      };
-      const last = this.#raw.get(project);
-      if (last?.paths === raw.paths && last.direct === raw.direct) continue;
-      this.#raw.set(project, raw);
-      for (const [path, paths] of Object.entries(parse(raw.paths))) {
-        const testFile = { project, path };
-        if (merge(this.#sets, testFile, paths).length > 0) grown.push(testFile);
-      }
-      for (const [path, paths] of Object.entries(parse(raw.direct))) {
-        merge(this.#direct, { project, path }, paths);
-      }
-    }
-    return grown;
+    return [...new Set(projects)].flatMap((project) => {
+      this.#directOf(project).refresh();
+      return this.#pathsOf(project)
+        .refresh()
+        .map((path) => ({ project, path }));
+    });
   }
 
-  /** Adds `paths` to `testFile`'s set, here and in the store. Returns the new ones. */
+  /** Adds `paths` to `testFile`'s set in this view, not in the store (row 016-29). Returns the new ones. */
+  see(testFile: TestFileRef, paths: readonly RelativePath[]): RelativePath[] {
+    return this.#pathsOf(testFile.project).see(testFile.path, paths);
+  }
+
+  /** `see`, then `write`: for a caller outside a record. */
   add(testFile: TestFileRef, paths: readonly RelativePath[]): RelativePath[] {
-    const added = merge(this.#sets, testFile, paths);
-    if (added.length === 0) return [];
-    const key = observedMetaKey(testFile.project);
-    this.store.transaction(() => {
-      this.store.meta.set(key, merged(this.store.meta.get(key), testFile, added));
-      // other test files' growth this write merged is read at the next `refresh`
-      this.#raw.delete(testFile.project);
-    });
+    const added = this.see(testFile, paths);
+    this.write();
     return added;
   }
 
@@ -153,59 +134,136 @@ export class ObservedSets {
    * in this view, not in the store (row 007-56). Returns the new ones.
    */
   mark(testFile: TestFileRef, direct: readonly RelativePath[]): RelativePath[] {
-    if (!this.#raw.has(testFile.project)) this.refresh([testFile.project]);
-    const added = merge(this.#direct, testFile, direct);
-    if (added.length > 0) this.#marked.set(id(testFile), testFile);
+    return this.#directOf(testFile.project).see(testFile.path, direct);
+  }
+
+  /** Merges into the store each set and mark the view holds and the store lacks. */
+  write(): void {
+    for (const paths of this.#paths.values()) paths.write();
+    for (const direct of this.#direct.values()) direct.write();
+  }
+
+  #pathsOf(project: ProjectName): SharedPaths {
+    return viewOf(
+      this.#paths,
+      project,
+      () => new SharedPaths(this.store, observedMetaKey(project)),
+    );
+  }
+
+  #directOf(project: ProjectName): SharedPaths {
+    return viewOf(
+      this.#direct,
+      project,
+      () => new SharedPaths(this.store, observedDirectMetaKey(project)),
+    );
+  }
+}
+
+/** The view of `project` in `views`, made by `make` at the first ask. */
+export function viewOf<V>(views: Map<ProjectName, V>, project: ProjectName, make: () => V): V {
+  const view = views.get(project) ?? make();
+  views.set(project, view);
+  return view;
+}
+
+/** The one entry of a key stored as an array of paths (`SharedPaths`, the list shape). */
+const LIST = "";
+
+/**
+ * This worktree's view of the paths kept in one `meta` key that every
+ * worktree of the repository shares, merges and never prunes (row 016-29): a
+ * map of test path to paths, or, in the list shape, one array. Read from the
+ * store at the first ask and at each `refresh`, parsed only when the value
+ * changed. `see` adds paths to the view only. `write`, once per transaction,
+ * reads the key inside it and merges what the view saw and the store lacks,
+ * so two worktrees' daemons never drop each other's paths. A path stays
+ * unwritten until a later `write` finds it stored, so the next record makes
+ * a write a rolled-back transaction lost. Until then the view is ahead of
+ * the store, and no committed result is keyed with the path.
+ */
+export class SharedPaths {
+  readonly #sets = new Map<string, Set<RelativePath>>();
+  /** The stored value last merged into the view; `undefined` until the first read and after a write. */
+  #read: string | null | undefined = undefined;
+  /** Per entry: the paths `see` added that no `write` has found stored yet. */
+  readonly #unwritten = new Map<string, Set<RelativePath>>();
+
+  constructor(
+    private readonly store: Store,
+    readonly key: string,
+    private readonly shape: "map" | "list" = "map",
+  ) {}
+
+  /** The paths of `entry`, sorted; the list shape's entry is `""`. */
+  of(entry: string = LIST): readonly RelativePath[] {
+    if (this.#read === undefined) this.refresh();
+    return [...(this.#sets.get(entry) ?? [])].sort(compare);
+  }
+
+  /** Merges what the store holds into the view, when it changed. Returns the entries that grew. */
+  refresh(): string[] {
+    const { key } = this;
+    const raw = this.store.meta.get(key);
+    if (raw === this.#read) return [];
+    this.#read = raw;
+    const grown: string[] = [];
+    for (const [entry, paths] of Object.entries(parse(raw, this.shape))) {
+      if (merge(this.#sets, entry, paths).length > 0) grown.push(entry);
+    }
+    return grown;
+  }
+
+  /** Adds `paths` to `entry` in the view, not in the store. Returns the new ones. */
+  see(entry: string, paths: readonly RelativePath[]): RelativePath[] {
+    if (this.#read === undefined) this.refresh();
+    const added = merge(this.#sets, entry, paths);
+    if (added.length > 0) merge(this.#unwritten, entry, added);
     return added;
   }
 
-  /** Merges into the store each marked file's marks it lacks, one transaction per project. */
-  writeMarks(): void {
-    const projects = new Set([...this.#marked.values()].map((f) => f.project));
-    for (const project of projects) {
-      const key = observedDirectMetaKey(project);
-      this.store.transaction(() => {
-        const stored = parse(this.store.meta.get(key));
-        let raw: string | null = null;
-        for (const testFile of this.#marked.values()) {
-          if (testFile.project !== project) continue;
-          const held = new Set(stored[testFile.path] ?? []);
-          const missing = this.directOf(testFile).filter((p) => !held.has(p));
-          if (missing.length === 0) continue;
-          raw = merged(raw ?? this.store.meta.get(key), testFile, missing);
+  /** Merges into the store the paths `see` added that it lacks, in one transaction. */
+  write(): void {
+    if (this.#unwritten.size === 0) return;
+    const { key } = this;
+    this.store.transaction(() => {
+      const stored = parse(this.store.meta.get(key), this.shape);
+      let missing = false;
+      for (const [entry, paths] of this.#unwritten) {
+        const held = new Set(stored[entry] ?? []);
+        const lacked = [...paths].filter((p) => !held.has(p));
+        if (lacked.length === 0) this.#unwritten.delete(entry);
+        else {
+          stored[entry] = [...held, ...lacked].sort(compare);
+          missing = true;
         }
-        if (raw === null) return;
-        this.store.meta.set(key, raw);
-        this.#raw.delete(project);
-      });
-    }
-  }
-
-  #read(sets: Map<string, Set<RelativePath>>, testFile: TestFileRef): readonly RelativePath[] {
-    if (!this.#raw.has(testFile.project)) this.refresh([testFile.project]);
-    const set = sets.get(id(testFile));
-    return set === undefined ? [] : [...set].sort(compare);
+      }
+      if (!missing) return;
+      this.store.meta.set(key, format(stored, this.shape));
+      // other worktrees' paths this write merged are read at the next ask
+      this.#read = undefined;
+    });
   }
 }
 
 function merge(
   sets: Map<string, Set<RelativePath>>,
-  testFile: TestFileRef,
+  entry: string,
   paths: readonly RelativePath[],
 ): RelativePath[] {
-  const key = id(testFile);
-  const known = sets.get(key) ?? new Set<RelativePath>();
+  const known = sets.get(entry) ?? new Set<RelativePath>();
   const added = paths.filter((p) => !known.has(p));
   for (const path of added) known.add(path);
-  sets.set(key, known);
+  sets.set(entry, known);
   return added;
 }
 
-/** The stored map `raw` with `added` merged into `testFile`'s entry, as stored: sorted. */
-function merged(raw: string | null, testFile: TestFileRef, added: readonly RelativePath[]): string {
-  const map = parse(raw);
-  map[testFile.path] = [...new Set([...(map[testFile.path] ?? []), ...added])].sort(compare);
-  return JSON.stringify(Object.fromEntries(Object.entries(map).sort(([a], [b]) => compare(a, b))));
+/** The stored text of `entries`, as every daemon writes it: entries and paths sorted. */
+function format(entries: Record<string, RelativePath[]>, shape: "map" | "list"): string {
+  if (shape === "list") return JSON.stringify(entries[LIST] ?? []);
+  return JSON.stringify(
+    Object.fromEntries(Object.entries(entries).sort(([a], [b]) => compare(a, b))),
+  );
 }
 
 /**
@@ -348,12 +406,8 @@ function namesHash(names: string[]): FileHash {
   return createHash("sha1").update(names.sort(compare).join("\0")).digest("hex");
 }
 
-function id(testFile: TestFileRef): string {
-  return `${testFile.project}\0${testFile.path}`;
-}
-
-/** A missing or malformed key reads as nothing observed. */
-function parse(raw: string | null): Record<RelativePath, RelativePath[]> {
+/** A missing or malformed key reads as nothing observed; a list as its one entry. */
+function parse(raw: string | null, shape: "map" | "list"): Record<string, RelativePath[]> {
   if (raw === null) return {};
   let value: unknown;
   try {
@@ -361,10 +415,11 @@ function parse(raw: string | null): Record<RelativePath, RelativePath[]> {
   } catch {
     return {};
   }
-  if (!isRecord(value)) return {};
+  const entries = shape === "list" ? { [LIST]: value } : value;
+  if (!isRecord(entries)) return {};
   return Object.fromEntries(
-    Object.entries(value).flatMap(([testFile, paths]) =>
-      Array.isArray(paths) ? [[testFile, paths.filter((p) => typeof p === "string")]] : [],
+    Object.entries(entries).flatMap(([entry, paths]) =>
+      Array.isArray(paths) ? [[entry, paths.filter((p) => typeof p === "string")]] : [],
     ),
   );
 }
