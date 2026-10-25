@@ -1,4 +1,5 @@
 import { createScheduler, type SchedulerOptions } from "../scheduler/index.js";
+import { FeedDeliveredRow } from "../status/feed-late.js";
 import { type BusyWaits, busyBackoffMs, isBusy } from "../store/index.js";
 import type { Scheduler, SchedulerCloseOptions, WatcherBackend } from "../types/index.js";
 import {
@@ -66,11 +67,14 @@ export interface DaemonLoop {
  * what changed while the baseline ran. A `run --all` plans only after a pass
  * that started after it was delivered (row 011-198): a lagging feed delays
  * it, and a failed or closed one gives it no checkpoint at an older revision.
+ * Each delivered batch's start goes to the store for status (row 011-200),
+ * after the batch and outside the feed's queue.
  */
 export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
   const { onDropped, backend, timings, afterBatch, ...rest } = options;
   let feed: ChangeFeed | null = null;
   let closing: Promise<void> | null = null;
+  const deliveredRow = new FeedDeliveredRow(options.store, options.worktreeId, options.onError);
   const scheduler = createScheduler({
     ...rest,
     head: () => readHead(options.root),
@@ -108,6 +112,12 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
         ...(timings === undefined ? {} : { timings }),
         trackedPaths: () => scheduler.trackedPaths(),
         extraFiles: scheduler.extraFiles(),
+        ...(options.now === undefined ? {} : { now: options.now }),
+        onDelivered: (startedAt) => {
+          setImmediate(() => {
+            if (closing === null) deliveredRow.record(startedAt);
+          });
+        },
       });
       await feed.start();
     },
