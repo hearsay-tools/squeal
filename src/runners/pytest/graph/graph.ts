@@ -58,8 +58,6 @@ export class Graph {
   private chains = new Map<AbsolutePath, readonly AbsolutePath[]>();
   private path: SearchPath;
   private index: ClosureIndex | null = null;
-  private readonly observed = new Map<AbsolutePath, ReadonlySet<AbsolutePath>>();
-  private readonly spawned = new Map<AbsolutePath, ReadonlySet<AbsolutePath>>();
 
   constructor(private readonly settings: GraphSettings) {
     this.prefix = settings.root + sep;
@@ -139,10 +137,10 @@ export class Graph {
    * D5: `direct` is every changed test file, every test file that imports a
    * changed path in one hop (or probed it as a candidate, or names it in
    * `pytest_plugins`), and for a changed `conftest.py` every test file in
-   * its directory and below, and every test file whose run started a
-   * process that imported a changed path (task 007-55); `transitive` the
-   * other test files whose closure holds a changed path or whose last run
-   * loaded it.
+   * its directory and below; `transitive` the other test files whose closure
+   * holds a changed path. What runs imported beyond the graph, and the
+   * `direct` marks of what a process a test started imported (task 007-55),
+   * the core keeps (spec 016 D4).
    */
   affected(changed: readonly RelativePath[]): AffectedPaths {
     const index = this.current();
@@ -161,21 +159,9 @@ export class Graph {
           (node.deps.has(path) || node.candidates.has(path) || node.plugins.has(path));
         (oneHop ? direct : transitive).add(file);
       }
-      for (const [file, paths] of this.observed) if (paths.has(path)) transitive.add(file);
-      for (const [file, paths] of this.spawned) if (paths.has(path)) direct.add(file);
     }
     for (const file of direct) transitive.delete(file);
     return { direct: this.sorted(direct), transitive: this.sorted(transitive) };
-  }
-
-  /** Paths a run of `testFile` loaded outside its static closure (D4, D6): a change to one affects it. */
-  recordObserved(testFile: RelativePath, paths: readonly RelativePath[]): void {
-    this.observed.set(this.abs(testFile), new Set(paths.map((p) => this.abs(p))));
-  }
-
-  /** What the processes a run of `testFile` started found to import: a change to one is one hop from it. */
-  recordSpawned(testFile: RelativePath, paths: readonly RelativePath[]): void {
-    this.spawned.set(this.abs(testFile), new Set(paths.map((p) => this.abs(p))));
   }
 
   /** Each test file whose static closure is incomplete, with its reasons, in listing order. */

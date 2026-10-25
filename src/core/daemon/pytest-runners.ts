@@ -169,7 +169,6 @@ function pytestRunner(project: PytestProject, options: PytestRunnersOptions): Re
     create: () =>
       createPytestAdapter(project, {
         root: options.root,
-        observed: pytestObservedStore(options.store, project.name),
         note: options.note,
         ...(options.latestNote === undefined ? {} : { latestNote: options.latestNote }),
         concurrency: options.tierSize,
