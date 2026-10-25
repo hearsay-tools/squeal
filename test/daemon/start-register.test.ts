@@ -6,7 +6,7 @@ import { clearHandoff, readHandoff } from "../../src/core/delivery/handoff.js";
 import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
 import type { DaemonRecord, EpochMs, WorktreeId } from "../../src/core/types/index.js";
 import { closeFakeDaemons, fakeDaemon } from "../cli/fake-daemon.js";
-import { daemonSuite, delay, type FixtureRepo, SLOW, waitFor } from "./helpers.js";
+import { daemonSuite, type FixtureRepo, SLOW } from "./helpers.js";
 import { spawnLog, startIn } from "./start-helpers.js";
 
 /*
@@ -15,7 +15,7 @@ import { spawnLog, startIn } from "./start-helpers.js";
  * predecessor's claim, so it says the daemon is handing over. CI 39864834794
  * printed that under `Squeal daemon started`, and the evals read no daemon
  * from it. `start` prints its status once the store records the daemon that
- * answered.
+ * answered. A daemon `start` spawns itself is `start-spawned`'s (row 011-214).
  */
 
 const suite = daemonSuite();
@@ -136,35 +136,6 @@ describe.runIf(process.platform === "linux")(
       expect(stdout).toMatch(/^Squeal daemon started for .*, after the 0\.1\.0 daemon handed over/);
       // The claim stands, so the status says what is so: the handoff has not ended.
       expect(stdout).toMatch(/handing over from 0\.1\.0 to /);
-    });
-  },
-);
-
-describe.runIf(process.platform === "linux")(
-  "squeal start when the daemon it spawned answers before it registers (row 011-111)",
-  SLOW,
-  () => {
-    afterEach(() => closeFakeDaemons());
-
-    it("prints its status once that daemon registered, which says it validates", async () => {
-      const repo = suite.fixture();
-      const { next } = records(repo);
-      const store = storeWith(repo, null);
-      const { cli, spawns } = spawnLog(suite);
-      // Once spawned, it answers on its socket; it registers 1.5 s later.
-      const serving = (async () => {
-        await waitFor(() => spawns().length > 0, 30_000, "the spawn");
-        await fakeDaemon(repo.socketPath, { ping: [answer(repo, next, "starting")] });
-        await delay(1_500);
-        store.worktrees.setDaemon(repo.worktreeId as WorktreeId, next);
-      })();
-
-      const bounds = { socketMs: 10_000, lockMs: 5_000, leftoversMs: 0 };
-      const { code, stdout, stderr } = await startIn(repo, bounds, cli);
-      await serving;
-      expect(code, stderr).toBe(0);
-      expect(stdout).toMatch(/^Squeal daemon spawned for /);
-      expect(squealEvidence(stdout, "pull"), stdout).toMatchObject({ daemon: true });
     });
   },
 );
