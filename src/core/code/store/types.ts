@@ -63,8 +63,12 @@ export interface CodeStateRepo {
   list(worktreeId: WorktreeId, filter?: CodeStateFilter): readonly CodeKnownState[];
   /** Writes each state; a stored state keeps its last edit. */
   upsertMany(states: readonly CodeKnownState[]): void;
-  /** The last edit of each state of `measure` that has one. */
-  edits(worktreeId: WorktreeId, measure: CodeMeasure): readonly CodeEdit[];
+  /** The last edit of each state of `measure` that has one; with `paths`, of theirs (row 015-45). */
+  edits(
+    worktreeId: WorktreeId,
+    measure: CodeMeasure,
+    paths?: readonly RelativePath[],
+  ): readonly CodeEdit[];
   /** Records each edit on its check's state; one with no state of that measure is skipped. */
   markEdited(worktreeId: WorktreeId, edits: readonly CodeEdit[]): void;
   /**

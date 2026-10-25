@@ -42,6 +42,8 @@ export interface CoverageWriterOptions {
    * each payload is mapped on the main thread, paced.
    */
   readonly worker?: MapWorker | null;
+  /** The main thread's share, shared with the coverage step (row 015-45); absent, its own. */
+  readonly pace?: Pace;
 }
 
 /** Spec 015 D8: maps each payload and stores its record at its result's key. */
@@ -84,7 +86,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
   let waiting = 0;
   let settle: (() => void) | null = null;
   let settled: Promise<void> | null = null;
-  const pace = new Pace(now);
+  const pace = options.pace ?? new Pace(now);
   const script = mapWorkerScript();
   /** The worker that maps while one runs; `null` with none, or once one failed. */
   let worker: MapWorker | null =
@@ -179,8 +181,9 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
   };
   const loop = async () => {
     for (let job = queue.shift(); job !== undefined; job = queue.shift()) {
-      // One test file at a time, once the one before had its main-thread time back.
-      await pace.wait();
+      // One test file at a time, once the one before, or a coverage step, had its time back.
+      do await pace.wait();
+      while (!closed && !pace.due());
       if (closed) {
         rmSync(job.file.payload, { force: true });
         break;
