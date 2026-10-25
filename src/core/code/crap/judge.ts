@@ -45,7 +45,7 @@ export interface Judged {
   readonly quiet?: true;
   /**
    * Row 015-57: from the records in hand of a file not ready, so it judges
-   * only the passes they prove; every other state stays as last judged.
+   * only the failures they prove pass; every other state stays as last judged.
    */
   readonly early?: true;
 }
@@ -65,8 +65,8 @@ export const checkOf = (
  * records, and D6's edits: a measure judged before whose function's body an
  * edit changed since, at the edit's revision (row 015-40). A recount's
  * judgement marks none, as the complexity pass's does not. An early
- * judgement (row 015-57) gives only `pass` states, and none for a failure
- * that only a change of `crap.threshold` would pass: whether the coverage
+ * judgement (row 015-57) gives only a `fail` that is `pass` now, and not
+ * one that only a change of `crap.threshold` passes: whether the coverage
  * passed it too waits for every record.
  */
 export function judgeFiles(
@@ -82,9 +82,10 @@ export function judgeFiles(
       const cov = j.coverage[i];
       if (cov === undefined) return;
       const edit = j.quiet === true ? undefined : ctx.edits.get(id);
-      const at = { check: checkOf(j.file.path, fn), id, edit };
-      for (const m of measuresOf(fn.complexity, cov, ctx.threshold))
-        judgeMeasure(ctx, j, at, m, out);
+      const named = { check: checkOf(j.file.path, fn), id, edit };
+      for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
+        judgeMeasure(ctx, j, named, m, out);
+      }
     });
   }
   return out;
@@ -109,8 +110,8 @@ function judgeMeasure(
   const was = ctx.prior.get(`${m.measure}\0${fn.id}`);
   const { outcome } = m;
   const kind = quiet === true && was !== undefined ? null : kindOf(was, outcome, m.value);
-  const crossed = quiet === true || was?.outcome !== "fail" || kind !== null;
-  if (early === true && (outcome !== "pass" || !crossed)) return;
+  const passed = was?.outcome === "fail" && outcome === "pass" && (quiet === true || kind !== null);
+  if (early === true && !passed) return;
   if (edit !== undefined && was !== undefined && edit.revision > was.countedAt) {
     out.edited.push({ check, measure: m.measure, revision: edit.revision, at });
   }
