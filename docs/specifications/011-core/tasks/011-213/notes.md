@@ -19,6 +19,16 @@ Worker 384f3924, 2026-10-25. Row 011-213 (gh-92), digest `triage/2026-10-25-dige
 - The time is not reset when the gate opens while the request is not due (its file blocked or running). The wait is "at most 600 s from the first closed look", not 600 s of a closed gate without a break.
 - A stamp also lands on a request another live daemon has claimed. It is harmless: that daemon already queued the run, and the gate is the host's.
 
+## Status lines after review 0.1.328 B1 (wave 42.5 R1)
+
+`outstandingLines` splits a `load` retry group before it applies the group limits (`splitByGate` in `src/core/status/outstanding-text.ts`), only while the gate is closed (load known, at or above the CPU count) and the group waits for it (reason `load`, a result at its inputs, no run open). Each file's time is `PendingRetry.gateClosedAt`, the earliest at its current key, so two sessions at one key still read as one minimum. The parts, in this order, each a line of its own:
+
+1. Files at the bound, which `takeRetries` queues at its next look: `runs at the daemon's next look: the one-minute load average stayed at or above the CPU count for 10 min, the most a load retry waits (load average 16.00 on 8 CPUs now)`.
+2. Files still waiting. One age when every file's age reads the same: `waits for the one-minute load average to fall below the CPU count: at or above it for 4 min 12 s of at most 10 min, then runs once anyway (...)`. Else the newest to the oldest, labelled: `... at or above it for 1 s to 4 min 12 s, by file, of at most 10 min, then each runs once anyway (...)`.
+3. Files with no time, which no daemon has met the gate closed on, or which a released daemon handles: the pre-0.1.328 sentence, `waits for the one-minute load average to fall below the CPU count (load average 16.00 on 8 CPUs now)`. This replaces W1's `..., at most 10 min, then runs once anyway` for such a file: a released daemon keeps no time and has no bound.
+
+Every other group, and a load retry group while the load lets it run, stays one line. The split parts count toward `OUTSTANDING_GROUPS_SHOWN`, as any group does. `squeal status --json` keeps `outstanding` as the scheduler grouped it; each file's time is in `pendingRetries.retries[].gateClosedAt`.
+
 ## Compatibility with released Squeal
 
 - A released reader parses the row: `isRecord` checks only the fields it knows, and keeps the object as it is.
@@ -28,7 +38,7 @@ Worker 384f3924, 2026-10-25. Row 011-213 (gh-92), digest `triage/2026-10-25-dige
 
 - `test/scheduler/load-retry-bound.test.ts`, real Vitest over the retry fixture, at load 2.00 per CPU: held past the bound, it runs, passes and ends `passed`, with the note once; held under the bound (599 s), it waits; the wait counts from the first look, not the request; a failed bounded run ends `failed` and the FAIL stays `current`, with no second run; a gate that opens before the bound runs it with no note.
 - `test/retry/gate.test.ts`: the stamp, the earliest time, no write when every request has one, ended requests left alone, and the field kept by claim, release and end.
-- `test/status/pending-retries.test.ts`: the three status texts, through `formatStatus`.
+- `test/status/pending-retries.test.ts`: the status texts, through `formatStatus`; B1's files at 600 s and 1 s, a stamped file beside an unstamped one, the labelled range, one age when ages read alike, the control of two sessions at one key, and one line while the load lets the retries run.
 - `test/cli/retry.test.ts`: the reply.
 
 ## Left for others

@@ -1,4 +1,6 @@
 import { testFileId } from "../keys/index.js";
+import { LOAD_RETRY_WAIT_MS } from "../retry/gate.js";
+import { type HostLoad, loadAllows } from "../retry/load.js";
 import { waitsText } from "../retry/text.js";
 import { plural, testFileText } from "../text.js";
 import type {
@@ -45,7 +47,7 @@ export function outstandingLines(
   command: string,
   options: OutstandingTextOptions = {},
 ): string[] {
-  const groups = groupsOf(s);
+  const groups = splitByGate(groupsOf(s), s, now);
   if (groups.length === 0) return [];
   const shown = options.all === true ? groups : groups.slice(0, OUTSTANDING_GROUPS_SHOWN);
   const rest = groups.slice(shown.length);
@@ -177,7 +179,9 @@ function checkpointText(s: StatusSnapshot, now: EpochMs, command: string): strin
  * for, with the load now; its FAIL, when it has one, is among the known
  * failures above. Row 011-27: a file with no result runs at once, so its
  * reason, given or not, says nothing. Row 011-213: a `load` one says how
- * long the gate has been closed, the earliest of the group's files.
+ * long the gate has been closed on its files, which `splitByGate` made
+ * alike: at the bound, waiting (one age, or the newest to the oldest), or
+ * with no time yet.
  */
 function retryText(
   standing: Extract<OutstandingStanding, { kind: "retry" }>,
@@ -186,21 +190,65 @@ function retryText(
   now: EpochMs,
 ): string {
   const asked = standing.noResult ? "no result at its inputs" : standing.reason;
-  const load = {
-    oneMinute: s.pendingRetries?.loadAverage ?? null,
-    cpus: s.pendingRetries?.cpus ?? 1,
-  };
   const reason = standing.noResult ? "environment" : standing.reason;
   const where = standing.elsewhere ? ", queued by another worktree's daemon" : "";
-  const gate = { since: gateClosedSince(s, files), now };
-  return `${plural(files.length, "test file")} with a pending retry (${asked}): ${shownText(files)}; ${waitsText(reason, load, standing.runningSince, gate)}${where}`;
+  const gates = gateTimes(s);
+  const times = files.flatMap((f) => gates.get(testFileId(f)) ?? []);
+  const gate =
+    times.length === 0
+      ? { since: null, now }
+      : { since: Math.min(...times), latest: Math.max(...times), now };
+  return `${plural(files.length, "test file")} with a pending retry (${asked}): ${shownText(files)}; ${waitsText(reason, loadOf(s), standing.runningSince, gate)}${where}`;
 }
 
-/** The earliest time a daemon met the load gate closed on one of `files`' retries; `null` when none did. */
-function gateClosedSince(s: StatusSnapshot, files: readonly TestFileRef[]): EpochMs | null {
-  const ids = new Set(files.map(testFileId));
-  const times = (s.pendingRetries?.retries ?? []).flatMap((r) =>
-    r.gateClosedAt !== undefined && ids.has(testFileId(r.testFile)) ? [r.gateClosedAt] : [],
-  );
-  return times.length === 0 ? null : Math.min(...times);
+function loadOf(s: StatusSnapshot): HostLoad {
+  return { oneMinute: s.pendingRetries?.loadAverage ?? null, cpus: s.pendingRetries?.cpus ?? 1 };
+}
+
+/** Each pending retry's file and when a daemon first met the load gate closed on it, its key's earliest. */
+function gateTimes(s: StatusSnapshot): ReadonlyMap<string, EpochMs> {
+  const times = new Map<string, EpochMs>();
+  for (const r of s.pendingRetries?.retries ?? []) {
+    if (r.gateClosedAt !== undefined) times.set(testFileId(r.testFile), r.gateClosedAt);
+  }
+  return times;
+}
+
+/**
+ * Review 0.1.328 B1: a group of `load` retries the closed gate holds is
+ * split by each file's own wait, so no file reads as another's. Its files
+ * at the bound come first, as `takeRetries` queues them at its next look,
+ * then those still waiting, then those no daemon has met the gate closed on
+ * yet. Every other group stays as it is.
+ */
+function splitByGate(
+  groups: readonly OutstandingGroup[],
+  s: StatusSnapshot,
+  now: EpochMs,
+): OutstandingGroup[] {
+  const load = loadOf(s);
+  const closed = load.oneMinute !== null && !loadAllows(load);
+  const gates = gateTimes(s);
+  return groups.flatMap((group) => {
+    const { standing, files } = group;
+    if (!closed || standing.kind !== "retry" || !gatedBy(standing)) return [group];
+    const since = (f: TestFileRef) => gates.get(testFileId(f));
+    const parts = [
+      files.filter((f) => {
+        const at = since(f);
+        return at !== undefined && now - at >= LOAD_RETRY_WAIT_MS;
+      }),
+      files.filter((f) => {
+        const at = since(f);
+        return at !== undefined && now - at < LOAD_RETRY_WAIT_MS;
+      }),
+      files.filter((f) => since(f) === undefined),
+    ];
+    return parts.filter((part) => part.length > 0).map((part) => ({ standing, files: part }));
+  });
+}
+
+/** A `load` retry with a result at its inputs and no run open waits for the load gate. */
+function gatedBy(standing: Extract<OutstandingStanding, { kind: "retry" }>): boolean {
+  return standing.reason === "load" && !standing.noResult && standing.runningSince === null;
 }
