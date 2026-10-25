@@ -27,7 +27,7 @@ Everything else from the research stays a finding, not a plan (Non-goals).
 5. node:test and pytest observed paths reach the store only through the core's path, and `ObservedStore` with both of its copies is gone. Their adapter suites and `test/scheduler/environment-growth-*.test.ts` pass with no assertion changed, except a difference D4's survey names and the human accepts.
 6. After a daemon restart, and in a second worktree, an edit of a path that a child process imported puts its test file in `direct` (row 007-56).
 7. No source file under `src/harness/shared` names a runner. The deny, the primer and the coverage lines say what they say today.
-8. A kit file re-runs only when its own closure changes: its runner's adapter and what that imports, and the kit. An edit inside one runner's folder re-runs no other runner's kit file. That second rule holds once row 016-20 moves the helpers node:test's folder shares with the other two runners into a folder of their own (review `reviews/016-12.md` B1); until then an edit to them re-runs every kit file that loads them, as their closures require.
+8. A kit file re-runs only when its own closure changes: its runner's adapter and what that imports, and the kit. An edit inside one runner's folder re-runs no other runner's kit file. Row 016-20 (0.1.308) moved the helpers node:test's folder shared with the other two runners to `src/runners/{observe,process}/` (review `reviews/016-12.md` B1), and `test/runners/boundaries.test.ts` keeps it so.
 
 ## Non-goals
 
@@ -47,7 +47,7 @@ Everything else from the research stays a finding, not a plan (Non-goals).
 - `driver.ts`, which names no runner;
 - one test file per runner, `test/kit/<runner>.test.ts`, which runs every scenario through that runner's pack.
 
-The kit drives `RunnerAdapter` directly in a scratch directory under the test's temporary root. It starts no daemon and touches no live store (`research/runner-kit.md` finding 2).
+The kit drives `RunnerAdapter` directly in a scratch directory under the test's temporary root. It starts no daemon and touches no live store (`research/runner-kit.md` finding 2). It keys through the core: `WorktreeKeys` over a scratch store (`test/kit/worktrees.ts`).
 
 **A scenario** is three things:
 - abstract modules of kinds such as `value`, `reexport`, `test`, `computed`, `broken`, `hook` and `dependency`;
@@ -78,7 +78,7 @@ A scenario that depends on a path missing from the static closure first asserts 
 - K8: a run is interrupted or cut mid-file, and nothing it wrote counts.
 - K9: a test imports a missing file, then the file is created.
 
-Later scenarios, each its own row: a deleted test is retired, duplicate names, a focused run, an environment file re-keys, and two worktrees share one store.
+Later scenarios, each its own row: a deleted test is retired, duplicate names, a focused run and an environment file re-keys. Two worktrees sharing one store is K10 (row 016-21).
 
 **Determinism.** No scenario sleeps or depends on load:
 - K7 sets the mtime with `utimes`.
@@ -98,9 +98,9 @@ C14 in 011's spec is amended to state the first one, and to correct its node:tes
 
 ### D3. A check knows its runner (row 007-45)
 
-The runner that produced a check is stored when the check is first recorded. Attribution decides ownership from that record, never from the policy or a file extension. `NODE_TEST_FILE`, the `loadPolicy` read in `nodeFailing` and its three-round comment are deleted, as row 007-45 states.
+Each worktree records the runner of each of its projects in `runners:<wt>` (decided below). Attribution decides ownership from that record, never from the policy or a file extension. `NODE_TEST_FILE`, the `loadPolicy` read in `nodeFailing` and its three-round comment are deleted, as row 007-45 states.
 
-The store step must keep 011 C7's compatibility rule. A daemon that finds a `user_version` newer than it understands exits, so raising it would stop every older daemon of a repository. The slice brief weighs these options, with a test for each:
+The store step must keep 011 C7's compatibility rule. A daemon that finds a `user_version` newer than it understands exits, so raising it would stop every older daemon of a repository. The options weighed, with a test for each:
 - a nullable column added without a version raise, which older daemons leave empty;
 - a shared `meta` map from project to runner, written when a project is enumerated and kept while any check of the project is.
 
@@ -120,11 +120,11 @@ Every runner reports what it observed through `RunReport`: per completed file in
 - first-seen paths are marked;
 - paths merge across worktrees under the same lock.
 
-`observedStore`, `pytestObservedStore`, both `ObservedStore` types and both `Observed` trackers are deleted. What an adapter needs back, so that its `closure()` and its `affected()` direct marks see earlier observations after a restart and in another worktree (row 007-56), the core passes in read-only. A survey row first maps the semantics, because the two paths differ today:
+`observedStore`, `pytestObservedStore`, both `ObservedStore` types and both `Observed` trackers are deleted. The survey asked what an adapter needs back, so that its `closure()` and its `affected()` direct marks see earlier observations after a restart and in another worktree (row 007-56); answered: nothing, the core assembles the start-up paths and the `direct` marks itself (`status.md`, 2026-10-25). A survey row first mapped the semantics, because the two paths differ today:
 - per runner: what is observed, where it is kept, who reads it back and when;
 - how it enters `closure`, `affected` and the environment;
-- where the core's filters are stricter than the injected stores. A git-ignored path is the one to settle first. The core drops it. No ignore filter appears in `src/runners/node-test/adapter-observed.ts`, `src/runners/pytest/adapter-observed.ts` or the two daemon stores (a search on 2026-10-24), though one may run earlier in the recorder. 009 lessons observation 4 is a stale FAIL behind a git-ignored path;
-- how today's meta entries (`nodeTest.observed.*`, `pytest.observed.*`) are read once into the core's form.
+- where the core's filters are stricter than the injected stores. A git-ignored path was the one to settle first (answered: the written-directory bound below). No ignore filter appears in `src/runners/node-test/adapter-observed.ts`, `src/runners/pytest/adapter-observed.ts` or the two daemon stores (a search on 2026-10-24), though one may run earlier in the recorder. 009 lessons observation 4 is a stale FAIL behind a git-ignored path;
+- how the meta entries of that time (`nodeTest.observed.*`, `pytest.observed.*`) reach the core's form (answered: they are not read; the adapter version raise below keeps their results apart, and the rows go at the next store `user_version` raise, `quality/2026-10-25.md`).
 
 Every difference that could change a verdict goes to the human before the slice. The human decided two on 2026-10-25 (`status.md`):
 - node:test and pytest module loads key whatever `observe.runtimeInputs` says, as today (survey O8);
@@ -135,7 +135,7 @@ The human decided the third on 2026-10-25, from row 016-19's count (`research/ig
 ### D5. `src/harness/shared` names no runner
 
 Each runner supplies a description in `src/runners/<runner>/describe.ts`:
-- how its test commands look, for the deny of 005 D8 (today `test-command.ts`, `test-command-files.ts`, `test-command-pytest.ts` and `test-command-reason.ts`, 444 lines);
+- how its test commands look, for the deny of 005 D8 (before 016-16, `test-command.ts`, `test-command-files.ts`, `test-command-pytest.ts` and `test-command-reason.ts`, 444 lines);
 - its name in the primer and its coverage line (today `primer.ts`, `coverage.ts`);
 - the environment discovery the deny needs (today `deny.ts:21`).
 
@@ -165,7 +165,7 @@ Each runner supplies a description in `src/runners/<runner>/describe.ts`:
 ## Open questions
 
 1. ~~Should the kit also run through a scratch daemon?~~ Answered 2026-10-25 from `research/core-defects.md` finding 3: not in 016. It ranks after one owner per rule and a model-based scheduler test (`status.md` amendment log).
-2. ~~D3's store step: a column without a version raise, or a `meta` map.~~ Answered 2026-10-25: the column (D3).
+2. ~~D3's store step: a column without a version raise, or a `meta` map.~~ Answered 2026-10-25: a per-worktree `runners:<wt>` meta row (D3); the column was replaced after `reviews/0.1.303.md`.
 3. ~~The rule for git-ignored observed paths (survey O1).~~ Answered 2026-10-25 by the human: the written-directory bound (D4). O8 and the older daemon were answered the same day.
 4. ~~Should the kit replace the overlapping adapter-level tests (about a third of 1,221 lines, `research/runner-kit.md` finding 5), and share fixtures with the validity corpus?~~ Answered 2026-10-25 by 016's coordinator: not in 016. The kit stays the contract test and the adapter suites keep each runner's own detail; the `/quality` scan after the spec ships lists each adapter case the kit already proves as a drop candidate, and fixtures are shared only where that scan finds two copies (`status.md`).
 

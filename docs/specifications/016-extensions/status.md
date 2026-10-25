@@ -1,6 +1,6 @@
 # 016 extensions: status
 
-Stage: approved (2026-10-25; waves on `docs/board.md`, briefs under `tasks/`)
+Stage: shipped (2026-10-25, squeal 0.1.320; the human: "Ship now"; waves on `docs/board.md`, briefs under `tasks/`)
 Started: 2026-10-24
 
 ## Decisions so far
@@ -40,12 +40,12 @@ Started: 2026-10-24
 
 ## Open questions
 
-1. In-process JavaScript modules, an out-of-process protocol, or both, and for which tier?
-2. What is the minimum a check provider must give for transitions, keys and the shared store to stay trustworthy?
-3. Which existing standard (Build Server Protocol, LSP diagnostics, TAP, JUnit XML, SARIF, Microsoft.Testing.Platform, `go test -json`) to adopt, and what Squeal must add to it?
-4. What moves out of the core today, at what cost, and with what risk to the shipped runners and harnesses?
-5. Distribution, discovery and trust of third-party extensions; whether an ecosystem can form while `package.json` says `"private": true` and `"license": "UNLICENSED"`.
-6. Does extensibility drive adoption for a tool like Squeal, and what does a public API cost to keep?
+1. In-process JavaScript modules, an out-of-process protocol, or both, and for which tier? Researched (016-02, `research/plugin-mechanisms.md`); out of scope since the human narrowed 016 on 2026-10-24: the public half is decided later.
+2. What is the minimum a check provider must give for transitions, keys and the shared store to stay trustworthy? Researched (016-03, 016-06 to 016-08, `research/check-protocol*.md`, `research/third-party-trust.md`); out of scope since 2026-10-24, as 1.
+3. Which existing standard (Build Server Protocol, LSP diagnostics, TAP, JUnit XML, SARIF, Microsoft.Testing.Platform, `go test -json`) to adopt, and what Squeal must add to it? Researched (016-03, 016-07, 016-08); out of scope since 2026-10-24, as 1.
+4. What moves out of the core today, at what cost, and with what risk to the shipped runners and harnesses? Answered (016-01, 016-09 to 016-11): the spec as narrowed, one correctness kit and the three repeat seams (D1 to D6).
+5. Distribution, discovery and trust of third-party extensions; whether an ecosystem can form while `package.json` says `"private": true` and `"license": "UNLICENSED"`. Researched (016-05, 016-06); out of scope since 2026-10-24, as 1.
+6. Does extensibility drive adoption for a tool like Squeal, and what does a public API cost to keep? Researched (016-04, 016-05, `research/ecosystem-adoption.md`); out of scope since 2026-10-24, as 1.
 
 ## Amendment log
 
@@ -73,3 +73,4 @@ Started: 2026-10-24
 - 2026-10-25, the coordinator, on 016-27 (`lessons.md`, researcher 2d61d0a8, read-only, load 27 to 58 on 24 CPUs): no blocker in real use. Goal 5 holds for node:test (cezar's 531 node:test file runs under 0.1.314 and 0.1.318 wrote only the core's keys; the legacy `nodeTest.observed*` and `pytest.observed*` rows stay in the stores, unread since 0.1.313). Goal 6 holds in effect for Vitest in this repository (a second worktree's edit ran a file through marks another worktree stored), and marks never took more than `runner.tierSize` slots of an edit. No stored result is inherited across worktrees whose listed ignored names differ (question 4). Unproven in real use, with the kit as their proof: goal 6 for node:test (no slow node:test project on this host; 004 D5 records a spawned process only there), pytest (no pytest project at 0.1.313 or later), and 016-23's ignored names (no listed directory here holds names the watcher does not see). Question 5 counts R3's cost for 016-25: 3 mixed directories in this repository with one reader whose listings are stale (observed maps are merged and never pruned), 2 in cezar with 10 readers; ignored names born 6 to 19 times per directory today; no current result is wrong.
 - 2026-10-25, the human, on the ship question: "Ship now". 016 is shipped at 0.1.320. All eight goals hold in Squeal's own suite; in real use goal 5 holds for node:test and goal 6 for Vitest, and goal 6 for node:test, pytest and 016-23's ignored names are recorded as not yet seen in use on this host (`lessons.md`), with the kit as their proof. Row 016-25 stays open as a follow-up, not a blocker; its decision went back to the human in plainer words. Row 016-28 is the `/quality` scan over 016, with the 6b evals on 0.1.320 beside it.
 - 2026-10-25, the human, on row 016-25 (asked in plain words: should a test re-run when an ignored file appears or disappears in a folder it looks at?): "A: no, leave it". Row 016-25 is dropped. Both gaps of `tasks/016-23/notes.md` stay as accepted residuals: R3, a directory holding tracked and ignored files keys by its tracked names only (011 C3), and R2, a recursive listing of an ignored directory keys only its own names. Measured cost of leaving them (`lessons.md` question 5): no wrong result on this host; keying the ignored names would re-run each reader at every birth of a name such as `.tmp`, `node_modules` or `.e2e-fixtures` (6 to 19 a directory today) and split results between worktrees. 011 C3 is unchanged; 011's coordinator told.
+- 2026-10-25, the coordinator, on `quality/2026-10-25.md` (row 016-28): it found 2 drop candidates (row 016-30), row 016-29 and 11 slices; slices 3 to 11 are done in this file and `spec.md`, slices 1 and 2 go with 016-29. Correction of the 016-24 line's cost ("one `readdirSync` each", review `reviews/0.1.320.md` N1): each revision reads every directory hashed from disk once; a directory whose names changed is read a second time through `KeyIndex.rekey`; and a directory is read once more at each completed run of its only reader. The reader count multiplies none of these.
