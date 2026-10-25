@@ -1,5 +1,6 @@
 /** Spec 015 D9: CRAP and "no in-process test that Squeal runs reaches it", from 015-11's records. */
 
+export { StepCache } from "./cache.js";
 export { coverageOf, type FileCondition, type FunctionCoverage, fileCondition } from "./file.js";
 export { type JoinedFunction, joinCoverage } from "./join.js";
 export {
