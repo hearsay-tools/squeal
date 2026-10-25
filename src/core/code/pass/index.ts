@@ -226,7 +226,7 @@ export function createCodePass(options: CodePassOptions): CodePass {
     // A seed begun before a recount seeds again (row 015-47).
     if (recount) cache.dropSeed();
     // A function there as a seed began stays one where an edit moves it (D2; review 0.1.311 B1).
-    else if (revised) cache.follow(opened, report);
+    else if (revised) cache.follow(report);
     // A revision may move keys: the loader map is read again (row 015-42).
     if (revised) cache.invalidate();
     // A pass with no revision, result or record to read since the last step leaves it as it is.
