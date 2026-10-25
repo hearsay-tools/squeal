@@ -50,6 +50,8 @@ export interface RunnerWorkHost {
   backgroundError(subject: string, error: unknown): void;
   /** A runner part was applied and committed, under the lock: what it queued may cancel a backlog tier. */
   applied(): void;
+  /** The commit recorded a listing (`SchedulerOptions.onListed`, row 015-52). */
+  listed(): void;
 }
 
 /** The runner work of one scheduler, applied by its pump beside the tiers in flight (task 001-140). */
@@ -207,10 +209,18 @@ export class RunnerWork {
           refined ?? undefined,
         );
         for (const ref of stale) this.#carried.set(testFileId(ref), ref);
-        ledger.commit(refined === null ? {} : { refined });
+        // Row 015-52: the listing holds the revision's test files unless the last one failed.
+        const listed = ledger.listingFailed ? null : (refined ?? revision.number);
+        ledger.commit({
+          ...(refined === null ? {} : { refined }),
+          ...(listed === null ? {} : { listed }),
+        });
         this.host.applied();
+        if (listed !== null) this.host.listed();
       });
     } catch (error) {
+      // Row 015-52: what a runner part that threw listed is not known; the next one lists again.
+      ledger.listingFailed = true;
       if (refined === null) {
         this.host.backgroundError("could not apply observed paths", error);
       } else {
