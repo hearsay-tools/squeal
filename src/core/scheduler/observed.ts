@@ -21,11 +21,6 @@ export interface ObservedGrowth {
    * can certify this run's result (review wave 12d, B1; task 001-134).
    */
   readonly firstSeen: readonly RelativePath[];
-  /**
-   * Of `add`, the paths that put the file in `direct` (`ObservedInputs.direct`,
-   * 016 D4), stored beside them. Absent: none.
-   */
-  readonly direct?: readonly RelativePath[];
 }
 
 /**
@@ -42,7 +37,9 @@ export interface ObservedGrowth {
  * untracked path; a path hashed only now, after its read and after run `run`
  * (`WorktreeKeys.beginRun`) began, is `firstSeen`, except `.git`, which keys
  * by its kind. Only a project `keys.observes` (policy `observe.runtimeInputs`,
- * or module loads, 016 D4 O8) gives growth.
+ * or module loads, 016 D4 O8) gives growth. What a process the file started
+ * imported (`ObservedInputs.direct`) marks it direct in the keys' view, a
+ * closure path too, unless the bound drops it; the record stores the marks.
  */
 export async function observedGrowth(
   context: Pick<SchedulerContext, "root" | "keys">,
@@ -76,25 +73,24 @@ export async function observedGrowth(
     [...candidates].filter((p) => p !== ""),
   );
   const tracked: RelativePath[] = [];
-  const grown: {
-    testFile: TestFileRef;
-    add: RelativePath[];
-    growth: RelativePath[];
-    direct: RelativePath[];
-  }[] = [];
+  const grown: { testFile: TestFileRef; add: RelativePath[]; growth: RelativePath[] }[] = [];
   for (const { observed, closure, fresh } of seen) {
     const scratch = scratchOf(observed.written ?? [], ignored);
     const add = fresh.filter((path) => !scratch(listedDirectory(path) ?? path));
+    const kept = new Set([...closure, ...add]);
+    keys.markDirect(
+      observed.testFile,
+      (observed.direct ?? []).filter((path) => kept.has(path)),
+    );
     const known = keys.observedOf(observed.testFile).filter((path) => !closure.has(path));
     const growth = [...new Set([...known, ...add])];
     if (growth.length === 0) continue;
     for (const path of growth) if (listedDirectory(path) === null) tracked.push(path);
-    const direct = (observed.direct ?? []).filter((path) => add.includes(path));
-    grown.push({ testFile: observed.testFile, add, growth, direct });
+    grown.push({ testFile: observed.testFile, add, growth });
   }
   // One call, so the extra files the record adds swap the watcher once (011-187).
   await keys.track(tracked);
-  for (const { testFile, add, growth, direct } of grown) {
+  for (const { testFile, add, growth } of grown) {
     // `.git` keys by its kind, read with the key, not by the bytes hashed now (task 001-262).
     const firstSeen = growth.filter(
       (path) =>
@@ -102,7 +98,7 @@ export async function observedGrowth(
         path !== GIT_ENTRY &&
         keys.firstHashedDuringRun(path, run),
     );
-    out.set(testFileId(testFile), { add, growth, firstSeen, direct });
+    out.set(testFileId(testFile), { add, growth, firstSeen });
   }
   return out;
 }
