@@ -231,8 +231,6 @@ export function createCheckRepo(conn: Connection): CheckRepo {
       }),
     runnersOf: runners,
     recordRunners,
-    recordSetupRunner: (worktreeId, check, runner) =>
-      recordRunners(worktreeId, new Map([[check.project, runner]])),
   };
 }
 
