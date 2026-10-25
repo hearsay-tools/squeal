@@ -1,4 +1,5 @@
 import { rmSync } from "node:fs";
+import { setImmediate as nextTurn } from "node:timers/promises";
 import type { ObjectFormat } from "../../hash/index.js";
 import type {
   AbsolutePath,
@@ -201,6 +202,8 @@ export function createCodePass(options: CodePassOptions): CodePass {
     if (report !== null) {
       wasOff = false;
       options.onPass?.(report);
+      // Row 015-48: the coverage step takes a turn of its own, not the pass's last one.
+      await nextTurn();
     }
     coverageStep(opened, policy, report);
   };
