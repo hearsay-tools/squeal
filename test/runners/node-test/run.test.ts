@@ -294,6 +294,8 @@ describe("runNodeTest", () => {
           `${cwd.replace(/\/pkg$/, "")}/lib/dep.mjs`,
           `${cwd.replace(/\/pkg$/, "")}/preload.mjs`,
         ],
+        direct: [],
+        written: [],
       },
     ]);
   });
@@ -321,6 +323,8 @@ describe("runNodeTest", () => {
             "reference/packages/util/src/index.ts",
           ],
           preloadPaths: ["reference/scripts/lib/marker.mjs", "reference/scripts/preload.mjs"],
+          direct: [],
+          written: [],
         },
       ]);
     },

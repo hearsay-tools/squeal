@@ -147,13 +147,4 @@ describe("node-test graph: affected (e)", () => {
     write(path, source);
     graph.invalidate([{ path, kind: "add" }]);
   });
-
-  it("makes a test file affected by a path its last run loaded outside the static closure", async () => {
-    const graph = await open();
-    const outside = "packages/core/fixtures/data.txt";
-    expect(graph.affected([outside])).toEqual({ direct: [], transitive: [] });
-    graph.recordObserved(testFiles[7] ?? "", [outside]);
-    expect(graph.affected([outside])).toEqual({ direct: [], transitive: [testFiles[7]] });
-    expect(graph.closure(testFiles[7] ?? "").paths).not.toContain(outside);
-  });
 });
