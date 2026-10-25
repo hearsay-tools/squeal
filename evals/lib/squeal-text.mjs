@@ -300,10 +300,11 @@ const HEADER = new RegExp(
  * A change delivery's header from 001-407 on: only the non-zero counts of what needs attention,
  * `Revision 12: 3 pending (2 tests, 1 test file loaded), 1 stale (1 test).`, or `Revision 12: no
  * check pending, stale or unknown.`; the revision may name its commit (`Revision 12 · 0a1b2c3d +
- * 2, dirty: …`).
+ * 2, dirty: …`). From row 011-205, with no such check but test files without checks, those alone:
+ * `Revision 12: test files without checks: 97 unknown.`, which counts no check.
  */
 const NEWS =
-  /^Revision \d+(?: · [^:]*)?: (no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\./m;
+  /^Revision \d+(?: · [^:]*)?: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))/m;
 
 /**
  * The clause after a `Known failures:` count, or after a wait verdict line's `known failures`,
@@ -335,7 +336,8 @@ function countsOf(t) {
   let stale;
   let unknown;
   const header = HEADER.exec(t);
-  const news = NEWS.exec(t)?.[1];
+  const newsMatch = NEWS.exec(t);
+  const news = newsMatch === null ? undefined : (newsMatch[1] ?? "");
   const affected = /^Affected checks: (.*)$/m.exec(t)?.[1];
   const short = MORE.test(t) && !/^Test files without checks: /m.test(t) && NOT_CURRENT.test(t);
   if (header) [pending, stale, unknown] = [header[2], header[3], header[4]].map(Number);
@@ -356,8 +358,9 @@ function countsOf(t) {
   } else if (NONE_NOT_CURRENT.test(t)) [pending, stale, unknown] = [0, 0, 0];
   else return null;
   // Both classes in a full header and a status; a news header names only the non-zero ones. A
-  // header ends the sentence with a period, a status with its line (review 001-423, B2).
-  const files = /Test files without checks: ([^.\n]*)/.exec(t)?.[1];
+  // header ends the sentence with a period, a status with its line (review 001-423, B2). A news
+  // header with no check to count starts with it in lower case (row 011-205).
+  const files = /Test files without checks: ([^.\n]*)/i.exec(t)?.[1];
   if (files !== undefined) {
     pending += count(/(\d+) pending/, files);
     unknown += count(/(\d+) unknown/, files);

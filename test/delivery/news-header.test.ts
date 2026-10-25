@@ -124,6 +124,38 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     );
   });
 
+  it("says no check is pending, stale or unknown only when no test file is without checks", () => {
+    const zero = { current: 50, pending: 0, stale: 0, unknown: 0 };
+    for (const counts of [
+      zero,
+      { ...zero, pending: 1 },
+      { ...zero, stale: 1 },
+      { ...zero, unknown: 1 },
+    ])
+      for (const [pending, unknown] of [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [2, 3],
+      ] as const)
+        for (const extra of [{}, { countsOwed: { lookupOnly: true } }])
+          for (const form of ["news", "full"] as const) {
+            const h = {
+              ...header,
+              counts,
+              fileLevelCounts: undefined,
+              testFilesWithoutChecks: { pending, unknown },
+            };
+            const said = formatDelta(delta(h, extra), "squeal", 10_000, form).includes(
+              "no check pending, stale or unknown",
+            );
+            const none = counts.pending + counts.stale + counts.unknown + pending + unknown === 0;
+            expect(said, JSON.stringify({ counts, pending, unknown, extra, form })).toBe(
+              none && form === "news" && !("countsOwed" in extra),
+            );
+          }
+  });
+
   it("keeps the test files without checks, only their non-zero classes", () => {
     const h = { ...header, testFilesWithoutChecks: { pending: 4, unknown: 0 } };
     expect(headerLine(h)).toBe(
