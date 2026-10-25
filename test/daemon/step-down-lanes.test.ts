@@ -70,7 +70,12 @@ it("holds while held", { timeout: 170_000 }, async () => {
 
 const HELD = ["test/held.test.ts", "nt/held.test.mjs"];
 
-/** The failures of this repository's cancelled Vitest runs, from each run's `report.json` (row 011-56). */
+/**
+ * The cancel of each of this repository's cancelled Vitest runs, from each
+ * run's `report.json` (row 011-56): its failure's first line. A touch the
+ * adapter heard during the run appends its 001-159 note on the lines after
+ * (row 011-203).
+ */
 function vitestCancels(repo: Pick<FixtureRepo, "commonDir">): string[] {
   const runs = storePaths(repo.commonDir).runsDir;
   return readdirSync(runs).flatMap((id) => {
@@ -78,7 +83,8 @@ function vitestCancels(repo: Pick<FixtureRepo, "commonDir">): string[] {
     const { report } = JSON.parse(readFileSync(join(runs, id, "report.json"), "utf8")) as {
       report: { failure: string | null };
     };
-    return report.failure?.startsWith(CANCELLED) === true ? [report.failure] : [];
+    const cancel = report.failure?.split("\n")[0];
+    return cancel?.startsWith(CANCELLED) === true ? [cancel] : [];
   });
 }
 
