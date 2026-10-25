@@ -75,6 +75,13 @@ export interface SchedulerOptions {
    */
   readonly onExtraFiles?: (paths: readonly RelativePath[]) => void;
   /**
+   * Row 011-198: awaited before `requestFullSuite` plans, outside the lock,
+   * so the checkpoint is at the revision of every change made before the
+   * request however far the watcher lags, as a sync is (lessons, defect 30).
+   * The daemon loop's is a reconciliation pass. Absent: none.
+   */
+  readonly beforeFullSuite?: () => Promise<void>;
+  /**
    * Called with the changes of every new revision, inside the transaction
    * that stores it. Returns the policy to apply from this revision on, or
    * `null` to keep the current one; the daemon reloads when the changes
