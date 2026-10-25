@@ -93,3 +93,14 @@ Check, with proof where you can:
 5. The version raise is complete, and the bundles match the build.
 
 Run the independent full suite under the host lock: `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`, and paste the result. Name each failing file and whether it changed in the range. Label every finding as proven, plausible or unverified. Only a proven break blocks. Verdict: PASS or FAIL.
+
+## Re-review of `cand/0.1.303-r2`
+
+Use /reviewer. Narrow re-review of `reviews/0.1.303.md` on `cand/0.1.303-r2`, pinned to the SHA named in the request. The candidate is the reviewed range rebased onto main (docs only moved), one repair commit for B2 (`test/kit/steps.ts`), four for B1 (the 016-15 repair: three code commits, each compiling, and its notes) and a new build commit (bundles, version 0.1.303). Append a section `## Re-review` to `reviews/0.1.303.md` and commit it on your branch.
+
+Check, with proof:
+1. **B1.** Replay your probe in both directions (pytest here with Vitest in another worktree, and the reverse) through the tool boundary and a registration: the other worktree's run never changes this worktree's runner sentence. The runner is stored per result row (`results.runner`, added in `columns.ts` with no `user_version` raise); attribution reads it at the key this worktree's failure state holds. A setup check's runner is kept per worktree (meta row `setup-runners:<wt>`). An older daemon on the same store writes NULL there and fails nothing. The scheduler change is the one `ledger.ts` line.
+2. **B2.** K8 fails when no run was cut: a cut step asserts that its run reached the marker and was aborted. Replay your early-crash probe.
+3. 011's two key-format checks still hold, and the bundles match the build.
+
+Run the full suite under the host lock (the store changed): `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`. Name each failing file and whether it changed in the range. Verdict: PASS or FAIL.
