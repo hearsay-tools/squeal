@@ -104,6 +104,8 @@ export interface AssembleInput {
   readonly closures: readonly { readonly path: string; readonly imports: readonly string[] }[];
   /** Paths among the files the stat cache holds before bootstrap, as a predecessor left them (011-36). */
   readonly cached?: readonly string[];
+  /** Written over cached files after the seed, so bootstrap's start pass hashes them again (011-204). */
+  readonly rewritten?: Readonly<Record<string, string>>;
   /** Read from the runner (`setEnvironments`) in place of one fixed environment hash (011-36). */
   readonly environment?: RunnerEnvironment;
   /**
