@@ -24,7 +24,10 @@ export interface JoinFunction {
 
 /** One function's coverage over every loader's record. */
 export interface JoinedFunction {
-  /** Its own lines that can run: in its range, not inside a function nested in it. */
+  /**
+   * Its own lines that can run: in its range, not inside a function nested
+   * in it; with `bound`, every such line.
+   */
   readonly lines: number;
   /** Of those, the lines that ran in a test file that ran the function. */
   readonly covered: number;
@@ -183,10 +186,16 @@ function ranIn(span: Span, body: readonly number[], record: JoinRecord, i: numbe
  * this source at its current blob of every loader's record, in the
  * loaders' order (`ranIn` for each record). It ran when one record ran it;
  * else it is `null` when one record cannot tell.
+ *
+ * `bound` (row 015-57, review 0.1.324 B1): the records in hand of a source
+ * whose other records are still to come. Another test file's transform of
+ * the same bytes can make more of its lines code, so every own line counts
+ * as a line to cover, and its coverage is at most what every record gives.
  */
 export function joinCoverage(
   functions: readonly JoinFunction[],
   sources: readonly CoverageSource[],
+  bound = false,
 ): JoinedFunction[] {
   const spans = functions.map(spanOf);
   const own = ownLines(spans);
@@ -206,7 +215,8 @@ export function joinCoverage(
       runBy.some((r) => has(records[r]?.covered ?? new Uint8Array(), l)),
     ).length;
     const ran = runBy.length > 0 ? true : said.includes(null) ? null : false;
-    const coverage = ran !== true ? 0 : executable.length === 0 ? 1 : covered / executable.length;
-    return { lines: executable.length, covered: ran === true ? covered : 0, ran, runBy, coverage };
+    const counted = bound ? lines.length : executable.length;
+    const coverage = ran !== true ? 0 : counted === 0 ? 1 : covered / counted;
+    return { lines: counted, covered: ran === true ? covered : 0, ran, runBy, coverage };
   });
 }
