@@ -115,4 +115,51 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
     }
     expect(errors).toEqual([]);
   });
+
+  it("plans `run --all` after a pass, so a watcher that missed an edit cannot certify the revision before it (011-198)", async () => {
+    const repo = createRepo();
+    const store = openRepoStore(repo.commonDir);
+    const root = repo.main;
+    const worktreeId = worktreeIdFor(root);
+    const runner = await createVitestAdapter({ root });
+    // A feed that lags: the watcher never reports, and the idle pass is a minute away.
+    const backend: WatcherBackend = {
+      name: "chokidar",
+      watch: async () => ({ update: async () => {}, close: async () => {} }),
+    };
+    const errors: Error[] = [];
+    const loop = createDaemonLoop({
+      root,
+      worktreeId,
+      store,
+      runner,
+      sink: new RecordingSink(store, worktreeId),
+      policy: { ...DEFAULT_POLICY, ...RUN_MISSING },
+      squealVersion: "0.0.0-test",
+      runsDir: storePaths(repo.commonDir).runsDir,
+      onError: (error) => errors.push(error),
+      backend,
+      timings: { reconcileIntervalMs: 60_000 },
+    });
+    try {
+      await loop.start();
+      await loop.scheduler.idle();
+      const before = loop.scheduler.status().revision;
+      writeFileSync(
+        join(root, "src/math.ts"),
+        "export const add = (a: number, b: number) => a + b + 0;\n",
+      );
+      const record = await loop.scheduler.requestFullSuite();
+      expect(record.revision).toBeGreaterThan(before);
+      expect(record.testFiles.map((file) => file.path)).toContain("test/math.test.ts");
+      expect(store.revisions.latest(worktreeId)?.changes.map((c) => c.path)).toEqual([
+        "src/math.ts",
+      ]);
+      await loop.scheduler.idle();
+    } finally {
+      await loop.close();
+      await runner.close();
+    }
+    expect(errors).toEqual([]);
+  });
 });

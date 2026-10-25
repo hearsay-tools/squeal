@@ -11,7 +11,8 @@ import { readHead } from "./head.js";
 
 export { readHead } from "./head.js";
 
-export interface DaemonLoopOptions extends Omit<SchedulerOptions, "head" | "onExtraFiles"> {
+export interface DaemonLoopOptions
+  extends Omit<SchedulerOptions, "head" | "onExtraFiles" | "beforeFullSuite"> {
   /**
    * Errors of the change feed and of background scheduler work. With
    * `busyWaits`, a pass that failed on a busy store is retried instead
@@ -62,7 +63,9 @@ export interface DaemonLoop {
  * cache's paths and the extra files the baseline found (gitignored closure
  * paths and the installed lockfile, D2); later additions go to
  * `ChangeFeed.setExtraFiles`. The feed's own start reconciliation catches
- * what changed while the baseline ran.
+ * what changed while the baseline ran. A `run --all` plans after a pass, as a
+ * sync does (row 011-198): a lagging feed delays it and never leaves it at an
+ * older revision.
  */
 export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
   const { onDropped, backend, timings, afterBatch, ...rest } = options;
@@ -74,6 +77,9 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
     onExtraFiles: (paths) => {
       // Not awaited: called from inside a batch, and the feed runs the update after it.
       feed?.setExtraFiles(paths).catch((error: unknown) => options.onError(toError(error)));
+    },
+    beforeFullSuite: async () => {
+      await feed?.reconcile("interval");
     },
   });
 

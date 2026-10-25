@@ -533,15 +533,18 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Queues the checkpoint at once, unless it needs the runner: while a
-   * runner failure is outstanding the runner is retried first, and while a
-   * revision waits for its runner part the checkpoint follows it. A warm-up
-   * (`observeIgnored`) runs every runnable file forced, in a checkpoint of
-   * its own: only its own tiers run flagged, and a forced checkpoint counts
-   * only its own tiers' results (review wave 13ar, B1). With a `lane`, only
-   * that lane's test files (task 004-61).
+   * Queues the checkpoint once `beforeFullSuite` resolved (row 011-198),
+   * unless it needs the runner: while a runner failure is outstanding the
+   * runner is retried first, and while a revision waits for its runner part
+   * the checkpoint follows it. A warm-up (`observeIgnored`) runs every
+   * runnable file forced, in a checkpoint of its own: only its own tiers run
+   * flagged, and a forced checkpoint counts only its own tiers' results
+   * (review wave 13ar, B1). With a `lane`, only that lane's test files (task
+   * 004-61).
    */
   async requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
+    // A lagging feed delays the checkpoint; it never plans at a revision older than the tree.
+    await this.options.beforeFullSuite?.();
     const warmUp = request.observeIgnored === true;
     const force = request.force === true || warmUp;
     const lane = request.lane;
