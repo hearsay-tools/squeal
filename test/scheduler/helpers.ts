@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } fr
 import { dirname, join, resolve } from "node:path";
 import { afterEach } from "vitest";
 import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
+import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createDelivery, readHeader } from "../../src/core/delivery/index.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
@@ -30,7 +31,10 @@ import {
   type TestFileRef,
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
+import { VitestAdapter } from "../../src/runners/vitest/adapter.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
+import { loadVitest } from "../../src/runners/vitest/load.js";
+import { WorktreePaths } from "../../src/runners/vitest/paths.js";
 import { git } from "../hash/git-repo.js";
 import { movableClock } from "./quiet-clock.js";
 import { RecordingSink } from "./recording-sink.js";
@@ -167,6 +171,9 @@ function recording(
     },
     close: () => inner.close(),
   };
+  // Row 011-211: a slow instance's close reaches it.
+  const release = inner.releaseLane?.bind(inner);
+  if (release !== undefined) runner.releaseLane = release;
   return runner;
 }
 
@@ -225,6 +232,8 @@ export interface HarnessOptions {
   readonly observe?: boolean;
   /** `SchedulerOptions.slow` (spec 004): give tests with slow files their own slot directory. */
   readonly slow?: SchedulerOptions["slow"];
+  /** A slow lane's runs go to a Vitest instance of their own, as the daemon's do (`withSlowInstance`, row 011-211). */
+  readonly slowInstance?: boolean;
   /** `SchedulerOptions.capacity` (001 D11 Capacity): a pool in a temporary directory. Default none. */
   readonly capacity?: SchedulerOptions["capacity"];
   /** node:test projects beside Vitest, behind the daemon's composite (spec 003 D7). */
@@ -257,6 +266,11 @@ export interface HarnessOptions {
   readonly predecessor?: string | null;
 }
 
+/** A Vitest instance per slow pass, as the daemon's `slowVitest` makes. */
+const slowVitest =
+  (root: string, node: Awaited<ReturnType<typeof loadVitest>>) => (): RunnerAdapter =>
+    new VitestAdapter(new WorktreePaths(root), node);
+
 /** A scheduler over a real Vitest adapter and the shared store, closed after the test. */
 export async function openHarness(
   root: string,
@@ -285,7 +299,11 @@ export async function openHarness(
     optimizer,
     ...(observe ? { observe } : {}),
   });
-  const runner = recording(adapter, options.environmentRoot, options.runnerPartBesideRun);
+  const inner =
+    options.slowInstance === true
+      ? withSlowInstance(adapter, slowVitest(root, await loadVitest(root)))
+      : adapter;
+  const runner = recording(inner, options.environmentRoot, options.runnerPartBesideRun);
   for (const call of options.failing ?? []) runner.failing.add(call);
   const nodeTest = await Promise.all(
     (options.nodeTest ?? []).map((project) =>

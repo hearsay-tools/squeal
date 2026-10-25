@@ -8,7 +8,11 @@ import { focusesFile } from "./composite-runner.js";
  *
  * `fast` serves every call but a slow lane's runs; those go to an instance
  * `createSlow` makes on the first of a pass, which `releaseLane` closes once
- * the scheduler drained the pass. The two share nothing, so a slow run never
+ * the scheduler drained the pass, and also while slow files are still
+ * queued: when a hold begins, or after 60 s in which no slow tier started
+ * (row 011-211, `SlowRelease`). Its close runs each project's `globalSetup`
+ * teardown, and the next slow run makes a new instance, which runs the
+ * setup again. The two share nothing, so a slow run never
  * holds the fast instance's calls, and a fast tier runs beside it. Paths
  * invalidated while the slow instance lives reach it before its next run,
  * not at once, which would wait behind the slow run in flight; a config
