@@ -1469,6 +1469,8 @@ Spec: `specifications/016-extensions/spec.md`, approved 2026-10-25, shipped 2026
 
 ## Feature 017: lint checks
 
+**Release notice (coordinator 605ca21e, 2026-10-26 14:19Z):** releasing 0.1.346 (017-03; review `reviews/0.1.344.md` PASS on `c1ed6c5ad`; rebased onto 0.1.345 as cand/0.1.346 `bf140a5b2`, CI 40335825030 green) from main, at 14:30Z or later, after main CI on the landed commit. **Candidate version claim:** 0.1.348 for 017 wave 1 (cand/0.1.348, in review); 0.1.347 stays coordinator 0bcb0e92's.
+
 Spec `specifications/017-lint-checks/` (approved 2026-10-26, the human: "Approve as drafted"; coordinator 605ca21e). The human, 2026-10-26: "First check: ESLint (Recommended)", after 016-33 and 016-34. Research rules and briefs in `research/README.md`.
 
 ### Research
