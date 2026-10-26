@@ -5,16 +5,21 @@ import { type CoverageRig, consumer, coverageRig, sourceOf } from "./rig.js";
 /*
  * Spec 015 D9 Delivery (row 015-12): `crap` and `uncovered` are told as
  * complexity is (D5, D6), and a FAIL names the CC, the coverage and the
- * test files that ran the function, as evidence.
+ * test files that ran the function, as evidence. Row 015-65: `uncovered` is
+ * told as `untested`, and a function's changes share one block.
  */
 
 const A = "hot 12 h1\ncold 6 c1\nbig 35 b1\n";
 
 const blobOf = (rig: CoverageRig) => rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "";
 
-/** The code lines of a delivery: the title and each line about a function. */
+/** The code lines of a delivery: the title, each line about a function and a block's head. */
 const code = (lines: readonly string[]) =>
-  lines.filter((l) => /^(FAIL|PASS|RESOLVED|STILL FAIL) |code change|complexity change/.test(l));
+  lines.filter((l) =>
+    /^(- )?(FAIL|PASS|RESOLVED|STILL FAIL) |^\w+ \(src\/[^)]*\):$|code change|complexity change/.test(
+      l,
+    ),
+  );
 
 /** A worktree whose `src/a.ts` ran `hot` and `big` in `test/a.test.ts`, judged, and a session registered after. */
 async function judged(): Promise<CoverageRig> {
@@ -48,13 +53,14 @@ describe("CRAP and uncovered deliveries", () => {
     expect(code(await rig.told(consumer("s1")))).toEqual([]);
   });
 
-  it("tells a new function no in-process test reaches, as evidence", async () => {
+  it("tells a new function no test runs in one block, with evidence", async () => {
     const rig = await judged();
     await edited(rig, `${A}fresh 8 f1\n`, [1, 3], "key-2");
     expect(code(await rig.told(consumer("s1")))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
-      "FAIL CRAP: fresh (src/a.ts:4) is 72, over 30 (CC 8); no in-process test that Squeal runs reaches it",
-      "FAIL uncovered: fresh (src/a.ts:4): no in-process test that Squeal runs reaches it (CC 8)",
+      "fresh (src/a.ts:4):",
+      "- FAIL untested: no test runs it in its own process; 1 test file loads this file",
+      "- FAIL CRAP: 72, over 30 (complexity 8)",
     ]);
     // Told once.
     expect(code(await rig.told(consumer("s1")))).toEqual([]);
@@ -65,9 +71,13 @@ describe("CRAP and uncovered deliveries", () => {
     rig.loader("test/b.test.ts", { closure: ["src/a.ts"], record: [] });
     // `hot` goes over: CC 31 while it still runs.
     await edited(rig, "hot 31 h2\ncold 6 c1\nbig 35 b1\n", [1, 3], "key-2");
-    expect(code(await rig.told(consumer("s1")))).toContain(
-      "FAIL CRAP: hot (src/a.ts:1) is 31, over 30: CC 31, 100% of its lines ran in test/a.test.ts",
-    );
+    // Row 015-65: complexity changed too, so its line states the CC and the CRAP line does not.
+    expect(code(await rig.told(consumer("s1")))).toEqual([
+      "SQUEAL · 2 code changes at revision 0",
+      "hot (src/a.ts:1):",
+      "- FAIL complexity: 31, over 20 (ESLint rule)",
+      "- FAIL CRAP: 31, over 30 (100% of its lines ran in test/a.test.ts)",
+    ]);
   });
 
   it("tells a recovery of a function failing at registration once a test runs it", async () => {
@@ -75,8 +85,9 @@ describe("CRAP and uncovered deliveries", () => {
     await edited(rig, A, [1, 2, 3], "key-2");
     expect(code(await rig.told(consumer("s1")))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
-      "PASS CRAP: cold (src/a.ts:2) is 6, at or under 30",
-      "PASS uncovered: cold (src/a.ts:2): test/a.test.ts runs it in process",
+      "cold (src/a.ts:2):",
+      "- PASS untested: test/a.test.ts runs it in its own process",
+      "- PASS CRAP: 6, at or under 30",
     ]);
   });
 
@@ -89,8 +100,9 @@ describe("CRAP and uncovered deliveries", () => {
     rig.step();
     expect(code(await rig.told(consumer("s1")))).toEqual([
       "SQUEAL · 2 code changes at revision 0",
-      "RESOLVED CRAP: fresh (src/a.ts) is no longer in the code",
-      "RESOLVED uncovered: fresh (src/a.ts) is no longer in the code",
+      "fresh (src/a.ts):",
+      "- RESOLVED untested: no longer in the code",
+      "- RESOLVED CRAP: no longer in the code",
     ]);
   });
 
@@ -104,6 +116,6 @@ describe("CRAP and uncovered deliveries", () => {
       "SQUEAL · 1 complexity change at revision 0",
       "FAIL complexity: hot (src/a.ts:1) is 25, over 20 (ESLint rule)",
     ]);
-    expect(lines.join("\n")).not.toMatch(/CRAP|uncovered|code change/);
+    expect(lines.join("\n")).not.toMatch(/CRAP|uncovered|untested|code change/);
   });
 });

@@ -15,7 +15,9 @@ const S1 = consumer("s1");
 
 /** The title and each line about a function. */
 const code = (lines: readonly string[]) =>
-  lines.filter((l) => /^(FAIL|PASS|RESOLVED|STILL FAIL) |^SQUEAL · /.test(l));
+  lines.filter((l) =>
+    /^(- )?(FAIL|PASS|RESOLVED|STILL FAIL) |^\w+ \(src\/[^)]*\):$|^SQUEAL · /.test(l),
+  );
 
 const blobOf = (rig: CoverageRig) => rig.store.files.list(WT, ["src/a.ts"])[0]?.blob ?? "";
 
@@ -77,7 +79,9 @@ describe("an early CRAP value is an upper bound (review 0.1.324 B1)", () => {
     rig.step();
     const early = code(await rig.told(S1));
     // One confirmed hit is enough for "no test runs it".
-    expect(early).toContain("PASS uncovered: f (src/a.ts:1): test/new.test.ts runs it in process");
+    expect(early).toContain(
+      "PASS untested: f (src/a.ts:1): test/new.test.ts runs it in its own process",
+    );
     const [earlyCrap] = rig.states("crap");
     const value = (state: string | undefined) => Number(state?.split(" ")[2]);
 
@@ -91,8 +95,8 @@ describe("an early CRAP value is an upper bound (review 0.1.324 B1)", () => {
     expect(rig.states("crap")).toEqual(["f fail 61.20000000000001"]);
     expect(value(rig.states("crap")[0])).toBeLessThanOrEqual(value(earlyCrap));
     const late = code(await rig.told(S1));
-    expect(late.filter((l) => l.startsWith("FAIL "))).toEqual([]);
-    expect([...early, ...late].filter((l) => l.startsWith("PASS CRAP"))).toEqual([]);
+    expect(late.filter((l) => /^(- )?FAIL /.test(l))).toEqual([]);
+    expect([...early, ...late].filter((l) => /^(- )?PASS CRAP/.test(l))).toEqual([]);
   });
 
   it("still passes early a function whose own lines the records in hand show run", async () => {
@@ -106,7 +110,7 @@ describe("an early CRAP value is an upper bound (review 0.1.324 B1)", () => {
     await rig.edit({ "test/new.test.ts": "it\n" });
     rig.loader("test/new.test.ts", { closure: ["src/a.ts"], record: record([1]) });
     rig.step();
-    expect(code(await rig.told(S1))).toContain("PASS CRAP: cold (src/a.ts:1) is 6, at or under 30");
+    expect(code(await rig.told(S1))).toContain("- PASS CRAP: 6, at or under 30");
   });
 });
 

@@ -32,6 +32,7 @@ import {
 } from "./code-delta.js";
 import { type CodeSource, withCode } from "./code-source.js";
 import { withToldOver } from "./code-told.js";
+import { type LoaderCount, withUntested } from "./code-untested.js";
 
 /*
  * Spec 015 D6, store-backed: the registration seeds the consumer's code view
@@ -396,6 +397,8 @@ export interface TellCodeOptions {
    * 015-49). Default `false`.
    */
   readonly toldOver?: boolean;
+  /** Row 015-65: the test files that load a path, for an `untested` line; none read without it. */
+  readonly loaders?: LoaderCount;
 }
 
 /**
@@ -415,7 +418,7 @@ export function tellCode(
   consumer: Consumer,
   at: EpochMs,
   since: () => CodeBound | null,
-  { changes = true, toldOver = false }: TellCodeOptions = {},
+  { changes = true, toldOver = false, loaders }: TellCodeOptions = {},
 ): CodeNews | null {
   if (!changes && !toldOver) return null;
   const told = withCode(source, ({ store, complexity }) => {
@@ -425,7 +428,9 @@ export function tellCode(
     if (changes) {
       const input = { at, since: seen, limit: complexity.maxFileBytes };
       if (store.read(() => codeStep(store, consumer, input, false)).writes) {
-        return store.transaction(() => over(codeStep(store, consumer, input, true).news));
+        return store.transaction(() =>
+          over(withUntested(store, consumer, codeStep(store, consumer, input, true).news, loaders)),
+        );
       }
     }
     return toldOver ? store.read(() => over(null)) : null;

@@ -16,7 +16,9 @@ const blobOf = (rig: CoverageRig) => rig.store.files.list(WT, ["src/a.ts"])[0]?.
 
 /** The title and each line about a function. */
 const code = (lines: readonly string[]) =>
-  lines.filter((l) => /^(FAIL|PASS|RESOLVED|STILL FAIL) |^SQUEAL · /.test(l));
+  lines.filter((l) =>
+    /^(- )?(FAIL|PASS|RESOLVED|STILL FAIL) |^\w+ \(src\/[^)]*\):$|^SQUEAL · /.test(l),
+  );
 
 /** `test/a.test.ts` runs `ran` lines of `src/a.ts` at its current blob, at `key`. */
 function ran(rig: CoverageRig, lines: readonly number[], key: string) {
@@ -38,10 +40,12 @@ async function judged(): Promise<CoverageRig> {
   return rig;
 }
 
-const STILL_CRAP =
-  "STILL FAIL CRAP: cold (src/a.ts:2) is 42 after the edit; it was already over 30 before it (CC 6); no in-process test that Squeal runs reaches it; Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.";
-const STILL_UNCOVERED =
-  "STILL FAIL uncovered: cold (src/a.ts:2): no in-process test that Squeal runs reaches it after the edit; none reached it before it either (CC 6); Squeal stays quiet about it until an in-process test runs it, and squeal code src/a.ts shows its coverage.";
+/** Row 015-65: `cold`'s two STILL FAIL lines share one block. */
+const STILL_COLD = [
+  "cold (src/a.ts:2):",
+  "- STILL FAIL untested: no test runs it in its own process after the edit, nor did one before it; 1 test file loads this file; Squeal stays quiet about it until a test runs it in its own process, and squeal code src/a.ts shows its coverage.",
+  "- STILL FAIL CRAP: 42 after the edit; it was already over 30 before it (complexity 6); Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
+];
 
 describe("the first edit to a standing CRAP or uncovered failure (015-40)", () => {
   it("tells STILL FAIL once for each measure the edit left failing, then is quiet", async () => {
@@ -50,8 +54,7 @@ describe("the first edit to a standing CRAP or uncovered failure (015-40)", () =
     ran(rig, [1, 3], "key-2");
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 1 function still failing a code check at revision 0",
-      STILL_CRAP,
-      STILL_UNCOVERED,
+      ...STILL_COLD,
     ]);
     expect(await rig.told(S1)).toEqual([]);
     await rig.edit({ "src/a.ts": "hot 12 h1\ncold 6 c3\nbig 35 b1\n" });
@@ -63,15 +66,14 @@ describe("the first edit to a standing CRAP or uncovered failure (015-40)", () =
     const rig = await judged();
     await rig.edit({ "src/a.ts": `${A}fresh 8 f1\n` });
     ran(rig, [1, 3], "key-2");
-    expect(code(await rig.told(S1))).toContain(
-      "FAIL CRAP: fresh (src/a.ts:4) is 72, over 30 (CC 8); no in-process test that Squeal runs reaches it",
-    );
+    expect(code(await rig.told(S1))).toContain("- FAIL CRAP: 72, over 30 (complexity 8)");
     await rig.edit({ "src/a.ts": `${A}fresh 8 f2\n` });
     ran(rig, [1, 3], "key-3");
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 1 function still failing a code check at revision 0",
-      "STILL FAIL CRAP: fresh (src/a.ts:4) is 72 after the edit, over 30 (CC 8); no in-process test that Squeal runs reaches it; Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
-      "STILL FAIL uncovered: fresh (src/a.ts:4): no in-process test that Squeal runs reaches it after the edit (CC 8); Squeal stays quiet about it until an in-process test runs it, and squeal code src/a.ts shows its coverage.",
+      "fresh (src/a.ts:4):",
+      "- STILL FAIL untested: no test runs it in its own process after the edit; 1 test file loads this file; Squeal stays quiet about it until a test runs it in its own process, and squeal code src/a.ts shows its coverage.",
+      "- STILL FAIL CRAP: 72 after the edit, over 30 (complexity 8); Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
     ]);
   });
 
@@ -84,8 +86,7 @@ describe("the first edit to a standing CRAP or uncovered failure (015-40)", () =
     ran(rig, [1, 3], "key-3");
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 1 function still failing a code check at revision 0",
-      STILL_CRAP,
-      STILL_UNCOVERED,
+      ...STILL_COLD,
     ]);
   });
 
@@ -118,8 +119,9 @@ describe("the first edit to a standing CRAP or uncovered failure (015-40)", () =
     ran(rig, [1, 3], "key-2");
     expect(code(await rig.told(S1))).toEqual([
       "SQUEAL · 1 function still failing a code check at revision 0",
-      "STILL FAIL complexity: big (src/a.ts:3) is 35 after the edit; it was already over 20 before it (ESLint rule); Squeal stays quiet about it until it is at or under 20, and squeal code src/a.ts shows its count.",
-      "STILL FAIL CRAP: big (src/a.ts:3) is 35 after the edit; it was already over 30 before it: CC 35, 100% of its lines ran in test/a.test.ts; Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
+      "big (src/a.ts:3):",
+      "- STILL FAIL complexity: 35 after the edit; it was already over 20 before it (ESLint rule); Squeal stays quiet about it until it is at or under 20, and squeal code src/a.ts shows its count.",
+      "- STILL FAIL CRAP: 35 after the edit; it was already over 30 before it (100% of its lines ran in test/a.test.ts); Squeal stays quiet about it until it is at or under 30, and squeal code src/a.ts shows its CRAP.",
     ]);
   });
 });
