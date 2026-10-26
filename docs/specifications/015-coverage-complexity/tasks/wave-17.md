@@ -35,3 +35,15 @@ Check, with proof where you can:
 6. **Words.** The session-start sentence names Vitest and node:test as recording, and pytest as not measured.
 
 Checks (`docs/process.md`): lint, typecheck, targeted `npx vitest run` of files you name. No full suite. Do not run `npm run build` in your tree. `test/cli/codex-trust.test.ts` fails with the host's Codex 0.164.0 (row 011-258), not from this candidate. Name the candidate's CI result or say it is pending. Label findings proven, plausible or unverified. Verdict PASS or FAIL; only a proven break blocks.
+
+## W1 R1: 015-86 repair (review 0.1.358 B1)
+
+Use /worker. Shape: repair, on your own branch `cez/9ca0bc6a` (the coordinator cherry-picks it onto `int/015w17`). Outcome: a node:test record under a loader never pairs old coverage with bytes read after the run; a source's blob is the one the loader read, or the source is `unread`.
+- Read `reviews/0.1.358.md` (B1, its probes and "Input for the repair"). Cause: the recorder deletes `NODE_V8_COVERAGE` before tsx initializes, and tsx keeps `sourcesContent` only while that variable is set, so `own.ts:58` reads the disk at map time.
+- **Lead, pick one and say why in the notes.** (a) Confirm the bytes: the recorder's `registerHooks` (it already holds the graph hooks) records the blob of each own file as the loader read it, beside `own-<pid>`; `ownSource` takes disk bytes only when they hash to that blob, else `unread`. (b) Keep the text: tsx sees the variable until it has transformed, while the test, its children and its threads still never see it; prove with the reviewer's child and worker-thread probes. Without either, a source whose own map has no `sourcesContent` is `unread`.
+- **Owns.** As W1, plus its agreed files.
+- **Done when.** A real tsx adapter test, red first: edit the source after the run and before mapping; the record has the original blob or the source `unread`, never the edited blob, through both the mapping worker and the main thread. Run it on Node 22 and 24 (the host has both; say how). The no-map decision 2 stays as it is. Notes updated; lint, typecheck, `squeal status --wait 60000 <changed-path>...` or the targeted files; paste both. No full suite, no bundles, no version.
+
+## 015-88 R1: re-review of candidate 0.1.358 after repair R1
+
+Use /reviewer. Candidate `cand/0.1.358`, pinned to the SHA in the spawn: the reviewed `9e4da8e41` plus the repair commits and rebuilt bundles. Write `reviews/0.1.358-r2.md` and commit it alone on your branch. Read `reviews/0.1.358.md` and the repair commits. Check: (1) B1: your real tsx edit-before-map probe on Node 22 and 24 now gives the original blob or `unread`; (2) unchanged: process ownership, the switch and keys (validity against 0.1.356), the seven decisions; (3) the repair adds no work per loaded file beyond what its notes measure. Checks as round 1. Verdict PASS or FAIL; only a proven break blocks. This is the last round for this wave.
