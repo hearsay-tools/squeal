@@ -138,10 +138,7 @@ export function waitAgainText(wait: EndedNamed, result: SelectionResult, command
  */
 export function waitAgainCommand(wait: EndedNamed, command: string): string {
   const ms = wait.snapshot === true ? WAIT_AGAIN_MS : (wait.timeoutMs ?? WAIT_AGAIN_MS);
-  const named = wait.selection.paths?.map((p) => p.path) ?? [
-    ...wait.selection.files.map((f) => f.path),
-    ...wait.selection.unmatched,
-  ];
+  const named = wait.selection.paths.map((p) => p.path);
   const paths =
     named.length > PATHS_IN_COMMAND
       ? "<same paths>"

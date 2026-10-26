@@ -76,7 +76,12 @@ const named = (daemon: DaemonLiveness) => {
     outcome: "no-daemon",
     down: "handoff",
     waitedMs: 1_500,
-    selection: { files: refs, unmatched: [] },
+    selection: {
+      files: refs,
+      unmatched: [],
+      unmatchedPaths: [],
+      paths: refs.map(({ path }) => ({ path, kind: "test-file", selects: 1 })),
+    },
     verdict: {
       revision: settled.revision,
       testFiles: 1,

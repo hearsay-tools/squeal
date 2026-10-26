@@ -42,6 +42,7 @@ export function ended(
     selection: {
       files,
       unmatched: [],
+      unmatchedPaths: [],
       paths: paths.map((path) => ({ path, kind: "test-file", selects: 1 })),
       base: "",
     },
