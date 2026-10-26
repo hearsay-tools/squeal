@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { afterEachRun, EscapedChildren } from "../../../src/core/daemon/escaped.js";
+import { HOST, type HostTable } from "../../../src/core/daemon/outlived.js";
 import type { CancelCause, RunReport } from "../../../src/core/types/index.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { isAlive } from "../../daemon/strays.js";
@@ -13,11 +14,12 @@ import { openFixture, ref, SLOW } from "./helpers.js";
  * Row 011-245 (gh-101; 013 `research/issue-101.md`, findings 2 and 3): a
  * test starts a SIGTERM-ignoring holder in a group and env of its own, here
  * through a `sh` leader that exits at once, as the research's probe did, so
- * the holder's parent is the reaper before any cancel. A run cut by its
- * forced cancel names it in `RunReport.outlived`, and the daemon's wrapper
- * names its pid and command in a note after its sweep, which stops it not;
- * a teardown that ends it in the grace leaves none. Squeal signals no
- * holder: each test kills its own.
+ * the holder's parent is the reaper before any cancel. Right before the
+ * forced cancel of a run cut past its grace, the daemon's wrapper reads the
+ * run's processes through the run's hook (`RunOptions.beforeForce`); after
+ * its sweep, which stops none of them, it names the holder's pid and command
+ * in a note. A teardown that ends the holder in the grace leaves no note and
+ * no reading. Squeal signals no holder: each test kills its own.
  */
 
 const FILE = "test/holder.test.ts";
@@ -81,8 +83,29 @@ interface Cut {
   readonly command: string;
   /** What the daemon's wrapper (`afterEachRun`) noted after the run's sweep. */
   readonly notes: readonly string[];
-  /** The run log's line on the reading before the forced cancel, or `undefined`. */
-  readonly reading: string | undefined;
+  /** How long the reading before the forced cancel took, its table's list to its last env; `null` for none. */
+  readonly scanMs: number | null;
+}
+
+/** The host's table, timing the scan from its list to its last env read. */
+function timed(): { table: HostTable; ms: () => number | null } {
+  let from: number | null = null;
+  let to = 0;
+  const table: HostTable = {
+    ...HOST,
+    async list() {
+      from = performance.now();
+      const rows = await HOST.list();
+      to = performance.now();
+      return rows;
+    },
+    async variable(pid, variable) {
+      const value = await HOST.variable(pid, variable);
+      to = performance.now();
+      return value;
+    },
+  };
+  return { table, ms: () => (from === null ? null : Math.round(to - from)) };
 }
 
 /** Runs the fixture's test as `shape`, cancelled with `cause` once its holder is ready. */
@@ -104,7 +127,8 @@ async function cutRun(shape: Shape, observe: boolean, cause: CancelCause): Promi
     createVitestAdapter({ root, observe: () => observe, childEnv: children.envFor("vitest") }),
   );
   const notes: string[] = [];
-  const runner = afterEachRun(fx.adapter, children, ({ text }) => notes.push(text));
+  const timing = timed();
+  const runner = afterEachRun(fx.adapter, children, ({ text }) => notes.push(text), timing.table);
   writeFileSync(holder, HOLDER);
   await fx.adapter.invalidate([{ path: FILE, kind: "add" }]);
   const controller = new AbortController();
@@ -113,10 +137,8 @@ async function cutRun(shape: Shape, observe: boolean, cause: CancelCause): Promi
   await expect.poll(() => existsSync(join(dir, "started")), { timeout: 60_000 }).toBe(true);
   controller.abort(cause);
   const report = await running;
-  const log = readFileSync(join(options.logDir, "vitest.log"), "utf8");
-  const reading = log.split("\n").find((line) => line.includes("before the forced cancel"));
   const pid = Number(readFileSync(ready, "utf8"));
-  return { report, holder: pid, command: commandOf(pid).trim(), notes, reading };
+  return { report, holder: pid, command: commandOf(pid).trim(), notes, scanMs: timing.ms() };
 }
 
 /** One note naming `holder` with its command; the run's id and the reaper's pid vary. */
@@ -144,41 +166,39 @@ describe.runIf(process.platform === "linux")(
   SLOW,
   () => {
     it("is named after a blocked test is cut, its leader long gone, by the recorder's settings", async () => {
-      const { report, holder, command, notes, reading } = await cutRun(
+      const { report, holder, command, notes, scanMs } = await cutRun(
         "block",
         true,
         "supersession",
       );
 
       expect(report.failure).toMatch(/^run cancelled: the revisions/);
-      expect(report.outlived?.map(({ pid }) => pid)).toEqual([holder]);
       expectNamed(notes, holder, command);
       expect(isAlive(holder)).toBe(true);
-      expect(reading).toMatch(/in \d+ ms: 1 found$/);
+      // Measured, not bounded here: the forced cancel waits 500 ms at most (`BEFORE_FORCE_MS`).
+      expect(scanMs).not.toBeNull();
     });
 
     it("is named after a slow teardown is cut by a stop", async () => {
       const { report, holder, command, notes } = await cutRun("slow-teardown", true, "stop");
 
       expect(report.failure).toBe("run cancelled: squeal stop");
-      expect(report.outlived?.map(({ pid }) => pid)).toEqual([holder]);
       expectNamed(notes, holder, command);
       expect(isAlive(holder)).toBe(true);
     });
 
     it("is not named when the teardown ends it in the grace: no forced cancel, no reading", async () => {
-      const { report, holder, notes, reading } = await cutRun("cooperative", true, "supersession");
+      const { report, holder, notes, scanMs } = await cutRun("cooperative", true, "supersession");
 
-      expect(report.outlived).toBeUndefined();
+      expect(report.failure).toMatch(/^run cancelled: the revisions/);
       expect(notes).toEqual([]);
-      expect(reading).toBeUndefined();
+      expect(scanMs).toBeNull();
       expect(isAlive(holder)).toBe(false);
     });
 
     it("is named through the worker walk when nothing observes and the holder is the worker's child", async () => {
-      const { report, holder, command, notes } = await cutRun("direct", false, "supersession");
+      const { holder, command, notes } = await cutRun("direct", false, "supersession");
 
-      expect(report.outlived?.map(({ pid }) => pid)).toEqual([holder]);
       expectNamed(notes, holder, command);
       expect(isAlive(holder)).toBe(true);
     });
