@@ -1458,7 +1458,7 @@ Spec `specifications/017-lint-checks/` (draft; coordinator 605ca21e). The human,
 
 | Row | Status | Input | Done when |
 |---|---|---|---|
-| 017-01 research: running a project's own ESLint as a live check | running (coordinator 605ca21e, 2026-10-26) | `research/eslint-provider-brief.md`: discovery across ESLint 8 to 10, the inputs that decide a file's findings and a sound key, warm runs in a worker thread over 200 edits, 20 repositories surveyed, prior art (`vscode-eslint`, `eslint_d`, `--cache`). | `research/eslint-provider.md` committed with tagged answers to questions 1 to 5. |
+| 017-01 research: running a project's own ESLint as a live check | done (researcher 222a90cb, `research/eslint-provider.md`: a warm worker matches the CLI only with three reload levels; the computed config plus versions missed 6 of 12 input changes) | `research/eslint-provider-brief.md`: discovery across ESLint 8 to 10, the inputs that decide a file's findings and a sound key, warm runs in a worker thread over 200 edits, 20 repositories surveyed, prior art (`vscode-eslint`, `eslint_d`, `--cache`). | `research/eslint-provider.md` committed with tagged answers to questions 1 to 5. |
 | 017-02 survey: where a lint check enters Squeal's core | done (researcher dfbda77f, `research/lint-seams.md`: spec 015's code path, its own store file and table, `lint.enabled` off by default and apart from `complexity`; the test path gave false notices and known failures) | `research/lint-seams-brief.md`: spec 015's code-check path as the template; each reuse, new field and test assumption with file and line; the scheduler attachment; the agent's surfaces; the policy key. | `research/lint-seams.md` committed with tagged answers to questions 1 to 5. |
 ## Later
 
