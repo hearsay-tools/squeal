@@ -4,7 +4,9 @@ Two rows in parallel on disjoint folders, joined by the interface below. Each ro
 
 ```ts
 // src/core/lint/pass/provider.ts (017-05 owns the file; 017-04 matches it structurally)
+// Amended 2026-10-26 on 017-05's design request: refresh() added, lint() takes no refresh, LintOff from refresh and lint.
 export type LintRefresh = "none" | "instance" | "thread"; // spec 017 D4
+export interface LintOff { readonly off: string } // open refused, or the provider turned itself off (D9: 3 restarts in 10 minutes)
 export interface LintDeclaration {
   readonly tool: "eslint";
   readonly toolVersion: string;
@@ -15,17 +17,23 @@ export interface LintFileInputs {
   readonly config: string; // calculateConfigForFile, as JSON
   readonly wholeProgram: boolean; // typed signals, or a known cross-file plugin's rules (D5)
 }
-export interface LintRunReport {
-  readonly results: ReadonlyMap<RelativePath, { readonly findings: readonly LintFinding[] } | { readonly unknown: string }>;
-  readonly closure: readonly RelativePath[]; // project files the config loaded (D4)
+export interface LintEnvironment {
+  readonly closure: readonly RelativePath[]; // project files the config loaded, tsconfig files included (D4)
   readonly packages: readonly string[]; // package roots the config loaded
   readonly program: readonly RelativePath[]; // the tsconfig program's files, [] when none
   readonly env: Readonly<Record<string, string>>; // the keyed variables (D5)
 }
+export interface LintSnapshot extends LintEnvironment {
+  readonly declaration: LintDeclaration; // may change after "thread" (a new ESLint install)
+}
+export interface LintRunReport extends LintEnvironment {
+  readonly results: ReadonlyMap<RelativePath, { readonly findings: readonly LintFinding[] } | { readonly unknown: string }>;
+}
 export interface LintProvider {
-  open(): Promise<LintDeclaration | { readonly off: string }>;
-  inputs(paths: readonly RelativePath[]): Promise<ReadonlyMap<RelativePath, LintFileInputs>>; // only files ESLint lints
-  lint(files: readonly { readonly path: RelativePath; readonly text: string }[], refresh: LintRefresh): Promise<LintRunReport>;
+  open(): Promise<LintDeclaration | LintOff>;
+  refresh(level: LintRefresh): Promise<LintSnapshot | LintOff>; // applies the D4 level, then reports; "none" only reports
+  inputs(paths: readonly RelativePath[]): Promise<ReadonlyMap<RelativePath, LintFileInputs>>; // only files ESLint lints, as of the last refresh
+  lint(files: readonly { readonly path: RelativePath; readonly text: string }[]): Promise<LintRunReport | LintOff>;
   close(): Promise<void>;
 }
 ```

@@ -105,7 +105,7 @@ A file's lint result is keyed by `checkKey` over a lint environment (011 C3; `li
 - ESLint's version and Node's major version;
 - the computed config for the file (`calculateConfigForFile`, as JSON);
 - the hashes of the config's project-file closure (D4);
-- the identities of the installed packages the config loaded (011 C11);
+- the identities of the installed packages the config loaded (011 C11); for now the whole install fingerprint, so any install re-lints every file, too much and never too little (amended 2026-10-26, row 017-05; per-package identities are a later row);
 - the keyed environment variables (`ESLINT_USE_FLAT_CONFIG`, `TSESTREE_SINGLE_RUN`);
 - the provider's own version.
 
