@@ -1533,6 +1533,7 @@ Spec `specifications/017-lint-checks/` (approved 2026-10-26, the human: "Approve
 | Row | Status | Input | Done when |
 |---|---|---|---|
 | 017-06 key a lint check by the identities of the packages its config loaded | planned (deviation accepted on 017-05, 2026-10-26: the key uses the whole install fingerprint, so any install re-lints every file) | Spec 017 D5; 011 C11 `PackageGraph.identities`; 017-04's `packages` report. | An install that changes no package the config loaded re-lints nothing; one that changes such a package re-lints its files; key-format passes or compare-refs equal. |
+| 017-07 observe the worker threads a lint plugin starts | planned (2026-10-26, from wave 1.8 R5: eslint-plugin-prettier 5.5.7 runs Prettier in a synckit worker thread that reads `.prettierrc`; until this row, a lint call in a thread where ESLint code started a worker thread stores nothing and reads `unknown` with the package named; eslint-plugin-format and eslint-mdx use synckit too) | Spec 017 D5 "The bytes ESLint used"; `tasks/017-04/notes.md` R5 design for nested workers; the R5 prettier probe. | eslint-plugin-prettier, eslint-plugin-format and a synckit-style fixture store results again; a two-root case with different `.prettierrc` gets fresh findings; a worker the entry cannot wrap stores nothing; key-format passes or compare-refs equal. |
 
 ## Later
 
