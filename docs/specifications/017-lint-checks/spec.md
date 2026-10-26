@@ -168,6 +168,8 @@ PASS lint: src/a.ts: no findings
 - **Blocking.** A lint failure never denies a tool call and never counts in `Known failures`. With `lint.blocking: true`, Stop's completion check (011 C8) also counts each file that went to `fail` since the consumer registered, as 015 D7 does for complexity. The file must currently fail and its transition into fail must follow the last first/config keying. A config keying can change states without a file transition, so earlier failure history is not Stop evidence (amended 2026-10-26, wave 2).
 - **Evals.** `evals/lib/squeal-text.mjs` reads lint lines as code lines, never as test failures. A test feeds it lines from the real formatter, plain and hook JSON, as `test/evals/code-lines.test.ts` does (memory of 0.1.197's B2).
 
+Wave 2 presentation boundary (2026-10-26): `squeal lint` reads without waiting for a daemon sync. It compares each listed judged file with its bytes on disk after the store read, for both text and JSON, including `--changed`. Changed or missing bytes read pending; unreadable bytes read unknown. The saved findings and revision remain provenance. With no paths it lists failures, so it does not check unlisted passing files on disk. Before the first keying, an unknown path reads waiting rather than not linted. Delivery acknowledges lint news only after its main-store transaction commits.
+
 ### D9. Errors
 
 | Case | State | Told |
@@ -210,5 +212,3 @@ Measured beside the host's load (`binding-cost.md` Q2; `eslint-provider.md` Q3):
 - The human's decision: `status.md`, 2026-10-26.
 - Research: `research/eslint-provider.md` (017-01), `research/lint-seams.md` (017-02); 016 `research/diagnostic-identity.md` (016-33), `research/binding-cost.md` (016-34), `research/check-protocol-judgment.md`, `research/plugin-mechanisms.md`.
 - Specs: 011 C3, C4, C5, C8, C10, C11, C14; 015 D1 to D7; 016 D4; 004 (the slow tier's idle wait).
-
-Wave 2 presentation boundary (2026-10-26): `squeal lint` reads without waiting for a daemon sync. It compares each listed judged file with its bytes on disk after the store read, for both text and JSON, including `--changed`. Changed or missing bytes read pending; unreadable bytes read unknown. The saved findings and revision remain provenance. With no paths it lists failures, so it does not check unlisted passing files on disk. Before the first keying, an unknown path reads waiting rather than not linted. Delivery acknowledges lint news only after its main-store transaction commits.
