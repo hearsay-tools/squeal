@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { relative, sep } from "node:path";
+import { COVERAGE_PROVIDER_VERSION } from "../../core/code/coverage/record.js";
 import { compare, toRelative } from "../../core/fs/index.js";
 import type {
   AbsolutePath,
@@ -57,6 +58,8 @@ export const NODE_UNAVAILABLE = "unavailable";
  * the preloads' closure from the graph; `root` is the project's `cwd`;
  * `packages` the graph's environment packages (task 003-22), absent for a
  * project whose graph did not build, which keys by the whole fingerprint.
+ * With `coverage` the config holds Squeal's coverage marker; without, it is
+ * byte-identical to 0.1.354's (row 015-86).
  */
 export function projectEnvironment(
   root: AbsolutePath,
@@ -65,6 +68,7 @@ export function projectEnvironment(
   preloads: readonly RelativePath[],
   adapterVersion: string,
   packages?: RunnerPackages,
+  coverage = false,
 ): RunnerEnvironment {
   const execPath = probe.ok ? (toRelative(root, probe.execPath) ?? probe.execPath) : null;
   const cwd = slashes(relative(root, projectCwd(root, project)));
@@ -76,6 +80,8 @@ export function projectEnvironment(
     cwd,
     include: project.include,
     exclude: project.exclude ?? [],
+    // Spec 015 D8 (row 015-86): Squeal's provider name and version alone, as Vitest's key holds them.
+    ...(coverage ? { coverage: { provider: "squeal", version: COVERAGE_PROVIDER_VERSION } } : {}),
   };
   return {
     project: project.name,
