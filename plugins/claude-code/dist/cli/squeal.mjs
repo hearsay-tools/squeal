@@ -271,7 +271,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.336";
+  if (true) return "0.1.338";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -57172,7 +57172,7 @@ ${JSON.stringify(symbolNames, null, 2)}`);
   }
 });
 
-// src/runners/pytest/graph/wasm.ts
+// src/runners/python/wasm.ts
 import { existsSync as existsSync32, readFileSync as readFileSync37 } from "node:fs";
 import { createRequire as createRequire3 } from "node:module";
 import { fileURLToPath as fileURLToPath15 } from "node:url";
@@ -57201,14 +57201,14 @@ function installedRuntime(module2) {
 }
 var RUNTIME_WASM, GRAMMAR_WASM;
 var init_wasm = __esm({
-  "src/runners/pytest/graph/wasm.ts"() {
+  "src/runners/python/wasm.ts"() {
     "use strict";
     RUNTIME_WASM = "web-tree-sitter.wasm";
     GRAMMAR_WASM = "tree-sitter-python.wasm";
   }
 });
 
-// src/runners/pytest/graph/parse.ts
+// src/runners/python/parser.ts
 function pythonParserReady() {
   if (parser !== null) return Promise.resolve();
   loading ??= loadPythonParser().finally(() => {
@@ -57236,150 +57236,15 @@ function withPythonTree(source2, fn) {
     tree.delete();
   }
 }
-function parsePython(source2) {
-  return withPythonTree(source2, (root) => {
-    const imports = [];
-    const computed = [];
-    const stack = [root];
-    while (stack.length > 0) {
-      const node = stack.pop();
-      const line = node.startPosition.row + 1;
-      switch (node.type) {
-        case "import_statement":
-          for (const child of node.namedChildren) {
-            const name2 = child?.type === "aliased_import" ? child.childForFieldName("name") : child;
-            if (name2?.type === "dotted_name") {
-              imports.push({ kind: "import", module: name2.text, level: 0, names: [], line });
-            }
-          }
-          continue;
-        case "import_from_statement":
-        case "future_import_statement":
-          imports.push(fromImport(node, line));
-          continue;
-        case "call": {
-          const target = dynamicTarget(node);
-          if (target === void 0) break;
-          if (target === null) computed.push(line);
-          else imports.push({ kind: "dynamic", module: target, level: 0, names: [], line });
-          break;
-        }
-      }
-      const skipped2 = typeCheckingBodies(node);
-      const children = node.namedChildren;
-      for (let i3 = children.length - 1; i3 >= 0; i3--) {
-        const child = children[i3];
-        if (child && !skipped2.has(child.id)) stack.push(child);
-      }
-    }
-    imports.sort((a, b) => a.line - b.line);
-    computed.sort((a, b) => a - b);
-    const plugins = pytestPlugins2(root);
-    return {
-      imports,
-      computed,
-      pytestPlugins: plugins.names,
-      pytestPluginsComputed: plugins.computed,
-      errorLine: root.hasError ? firstError(root) : null
-    };
-  });
-}
-function fromImport(node, line) {
-  if (node.type === "future_import_statement") {
-    return { kind: "from", module: "__future__", level: 0, names: importedNames(node), line };
-  }
-  const target = node.childForFieldName("module_name");
-  let level = 0;
-  let module2 = target?.text ?? "";
-  if (target?.type === "relative_import") {
-    const prefix = target.namedChildren.find((c) => c?.type === "import_prefix");
-    level = (prefix?.text ?? "").replace(/\s/g, "").length;
-    module2 = target.namedChildren.find((c) => c?.type === "dotted_name")?.text ?? "";
-  }
-  return {
-    kind: "from",
-    module: module2.replace(/\s/g, ""),
-    level,
-    names: importedNames(node),
-    line
-  };
-}
-function importedNames(node) {
-  return node.childrenForFieldName("name").map((c) => (c?.type === "aliased_import" ? c.childForFieldName("name") : c)?.text ?? "").filter((name2) => name2 !== "");
-}
-function dynamicTarget(call) {
-  const fn = call.childForFieldName("function");
-  const name2 = fn?.type === "attribute" ? fn.childForFieldName("attribute")?.text : fn?.text;
-  if (name2 !== "import_module" && name2 !== "__import__") return void 0;
-  const first = call.childForFieldName("arguments")?.namedChildren[0];
-  if (first === void 0 || first === null) return void 0;
-  const text3 = stringLiteral(first);
-  return text3 !== null && DOTTED.test(text3) ? text3 : null;
-}
-function stringLiteral(node) {
-  if (node.type === "concatenated_string") {
-    const parts2 = node.namedChildren.map((c) => c === null ? null : stringLiteral(c));
-    return parts2.every((p) => p !== null) ? parts2.join("") : null;
-  }
-  if (node.type !== "string") return null;
-  let text3 = "";
-  for (const child of node.namedChildren) {
-    if (child === null || child.type === "string_start" || child.type === "string_end") continue;
-    if (child.type !== "string_content") return null;
-    text3 += child.text;
-  }
-  return text3;
-}
-function typeCheckingBodies(node) {
-  if (node.type !== "if_statement" && node.type !== "elif_clause") return EMPTY2;
-  const condition = node.childForFieldName("condition")?.text ?? "";
-  const body2 = node.childForFieldName("consequence");
-  return body2 && TYPE_CHECKING.test(condition.replace(/\s/g, "")) ? /* @__PURE__ */ new Set([body2.id]) : EMPTY2;
-}
-function pytestPlugins2(root) {
-  const names4 = [];
-  let computed = null;
-  for (const statement of root.namedChildren) {
-    const assignment = statement?.type === "expression_statement" ? statement.namedChild(0) : null;
-    if (assignment?.type !== "assignment") continue;
-    if (assignment.childForFieldName("left")?.text !== "pytest_plugins") continue;
-    const right = assignment.childForFieldName("right");
-    const items = right?.type === "list" || right?.type === "tuple" ? right.namedChildren : [right];
-    const values = items.map((item) => item ? stringLiteral(item) : null);
-    if (values.every((v) => v !== null && DOTTED.test(v))) {
-      names4.splice(0, names4.length, ...values);
-      computed = null;
-    } else {
-      computed = assignment.startPosition.row + 1;
-    }
-  }
-  return { names: names4, computed };
-}
-function firstError(root) {
-  const stack = [root];
-  while (stack.length > 0) {
-    const node = stack.pop();
-    if (node.isError || node.isMissing) return node.startPosition.row + 1;
-    const children = node.children;
-    for (let i3 = children.length - 1; i3 >= 0; i3--) {
-      const child = children[i3];
-      if (child?.hasError || child?.isMissing) stack.push(child);
-    }
-  }
-  return root.startPosition.row + 1;
-}
-var parser, runtimeReady, loading, TYPE_CHECKING, DOTTED, EMPTY2;
-var init_parse3 = __esm({
-  "src/runners/pytest/graph/parse.ts"() {
+var parser, runtimeReady, loading;
+var init_parser = __esm({
+  "src/runners/python/parser.ts"() {
     "use strict";
     init_web_tree_sitter();
     init_wasm();
     parser = null;
     runtimeReady = false;
     loading = null;
-    TYPE_CHECKING = /^(?:[\w.]+\.)?TYPE_CHECKING$/;
-    DOTTED = /^[\w.]+$/;
-    EMPTY2 = /* @__PURE__ */ new Set();
   }
 });
 
@@ -57520,7 +57385,7 @@ function glob(pattern2) {
 var init_enumerate2 = __esm({
   "src/runners/pytest/enumerate.ts"() {
     "use strict";
-    init_parse3();
+    init_parser();
   }
 });
 
@@ -58415,6 +58280,150 @@ var init_closures2 = __esm({
   }
 });
 
+// src/runners/pytest/graph/parse.ts
+function parsePython(source2) {
+  return withPythonTree(source2, (root) => {
+    const imports = [];
+    const computed = [];
+    const stack = [root];
+    while (stack.length > 0) {
+      const node = stack.pop();
+      const line = node.startPosition.row + 1;
+      switch (node.type) {
+        case "import_statement":
+          for (const child of node.namedChildren) {
+            const name2 = child?.type === "aliased_import" ? child.childForFieldName("name") : child;
+            if (name2?.type === "dotted_name") {
+              imports.push({ kind: "import", module: name2.text, level: 0, names: [], line });
+            }
+          }
+          continue;
+        case "import_from_statement":
+        case "future_import_statement":
+          imports.push(fromImport(node, line));
+          continue;
+        case "call": {
+          const target = dynamicTarget(node);
+          if (target === void 0) break;
+          if (target === null) computed.push(line);
+          else imports.push({ kind: "dynamic", module: target, level: 0, names: [], line });
+          break;
+        }
+      }
+      const skipped2 = typeCheckingBodies(node);
+      const children = node.namedChildren;
+      for (let i3 = children.length - 1; i3 >= 0; i3--) {
+        const child = children[i3];
+        if (child && !skipped2.has(child.id)) stack.push(child);
+      }
+    }
+    imports.sort((a, b) => a.line - b.line);
+    computed.sort((a, b) => a - b);
+    const plugins = pytestPlugins2(root);
+    return {
+      imports,
+      computed,
+      pytestPlugins: plugins.names,
+      pytestPluginsComputed: plugins.computed,
+      errorLine: root.hasError ? firstError(root) : null
+    };
+  });
+}
+function fromImport(node, line) {
+  if (node.type === "future_import_statement") {
+    return { kind: "from", module: "__future__", level: 0, names: importedNames(node), line };
+  }
+  const target = node.childForFieldName("module_name");
+  let level = 0;
+  let module2 = target?.text ?? "";
+  if (target?.type === "relative_import") {
+    const prefix = target.namedChildren.find((c) => c?.type === "import_prefix");
+    level = (prefix?.text ?? "").replace(/\s/g, "").length;
+    module2 = target.namedChildren.find((c) => c?.type === "dotted_name")?.text ?? "";
+  }
+  return {
+    kind: "from",
+    module: module2.replace(/\s/g, ""),
+    level,
+    names: importedNames(node),
+    line
+  };
+}
+function importedNames(node) {
+  return node.childrenForFieldName("name").map((c) => (c?.type === "aliased_import" ? c.childForFieldName("name") : c)?.text ?? "").filter((name2) => name2 !== "");
+}
+function dynamicTarget(call) {
+  const fn = call.childForFieldName("function");
+  const name2 = fn?.type === "attribute" ? fn.childForFieldName("attribute")?.text : fn?.text;
+  if (name2 !== "import_module" && name2 !== "__import__") return void 0;
+  const first = call.childForFieldName("arguments")?.namedChildren[0];
+  if (first === void 0 || first === null) return void 0;
+  const text3 = stringLiteral(first);
+  return text3 !== null && DOTTED.test(text3) ? text3 : null;
+}
+function stringLiteral(node) {
+  if (node.type === "concatenated_string") {
+    const parts2 = node.namedChildren.map((c) => c === null ? null : stringLiteral(c));
+    return parts2.every((p) => p !== null) ? parts2.join("") : null;
+  }
+  if (node.type !== "string") return null;
+  let text3 = "";
+  for (const child of node.namedChildren) {
+    if (child === null || child.type === "string_start" || child.type === "string_end") continue;
+    if (child.type !== "string_content") return null;
+    text3 += child.text;
+  }
+  return text3;
+}
+function typeCheckingBodies(node) {
+  if (node.type !== "if_statement" && node.type !== "elif_clause") return EMPTY2;
+  const condition = node.childForFieldName("condition")?.text ?? "";
+  const body2 = node.childForFieldName("consequence");
+  return body2 && TYPE_CHECKING.test(condition.replace(/\s/g, "")) ? /* @__PURE__ */ new Set([body2.id]) : EMPTY2;
+}
+function pytestPlugins2(root) {
+  const names4 = [];
+  let computed = null;
+  for (const statement of root.namedChildren) {
+    const assignment = statement?.type === "expression_statement" ? statement.namedChild(0) : null;
+    if (assignment?.type !== "assignment") continue;
+    if (assignment.childForFieldName("left")?.text !== "pytest_plugins") continue;
+    const right = assignment.childForFieldName("right");
+    const items = right?.type === "list" || right?.type === "tuple" ? right.namedChildren : [right];
+    const values = items.map((item) => item ? stringLiteral(item) : null);
+    if (values.every((v) => v !== null && DOTTED.test(v))) {
+      names4.splice(0, names4.length, ...values);
+      computed = null;
+    } else {
+      computed = assignment.startPosition.row + 1;
+    }
+  }
+  return { names: names4, computed };
+}
+function firstError(root) {
+  const stack = [root];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (node.isError || node.isMissing) return node.startPosition.row + 1;
+    const children = node.children;
+    for (let i3 = children.length - 1; i3 >= 0; i3--) {
+      const child = children[i3];
+      if (child?.hasError || child?.isMissing) stack.push(child);
+    }
+  }
+  return root.startPosition.row + 1;
+}
+var TYPE_CHECKING, DOTTED, EMPTY2;
+var init_parse3 = __esm({
+  "src/runners/pytest/graph/parse.ts"() {
+    "use strict";
+    init_parser();
+    TYPE_CHECKING = /^(?:[\w.]+\.)?TYPE_CHECKING$/;
+    DOTTED = /^[\w.]+$/;
+    EMPTY2 = /* @__PURE__ */ new Set();
+  }
+});
+
 // src/runners/pytest/graph/modules.ts
 import { readFileSync as readFileSync39 } from "node:fs";
 import { basename as basename23, dirname as dirname39, join as join93 } from "node:path";
@@ -59260,8 +59269,8 @@ async function createPytestGraph(options) {
 var init_graph5 = __esm({
   "src/runners/pytest/graph/index.ts"() {
     "use strict";
+    init_parser();
     init_graph4();
-    init_parse3();
     init_parse3();
   }
 });
@@ -61143,11 +61152,11 @@ function spans(root, type, start2, end) {
   return node?.type === type && node.startIndex === start2 && node.endIndex === end;
 }
 var tsx, loading2, IMPORT_LITERAL, TYPE_IMPORT;
-var init_parser = __esm({
+var init_parser2 = __esm({
   "src/core/code/count/parser.ts"() {
     "use strict";
     init_web_tree_sitter();
-    init_parse3();
+    init_parser();
     init_wasm2();
     tsx = null;
     loading2 = null;
@@ -61505,11 +61514,11 @@ var init_count = __esm({
   "src/core/code/count/index.ts"() {
     "use strict";
     init_blob();
-    init_parser();
+    init_parser2();
     init_python();
     init_typescript();
     init_walk2();
-    init_parser();
+    init_parser2();
     COUNTER_VERSION = 3;
   }
 });
