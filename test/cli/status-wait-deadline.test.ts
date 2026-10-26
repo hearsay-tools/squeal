@@ -2,13 +2,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
+import { namedWaitCommand } from "../../src/cli/named-print.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
-import {
-  type NamedWaitOptions,
-  namedCode,
-  namedWaitCommand,
-  waitForNamed,
-} from "../../src/cli/status-wait-paths.js";
+import { type NamedWaitOptions, namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
 import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
 import { appendRevisions, check, state } from "../status/helpers.js";
 import { A, ADDS, fail, later, NOW, ref, repoWith } from "./status-wait-fixture.js";
