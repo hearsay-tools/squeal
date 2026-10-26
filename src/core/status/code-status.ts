@@ -1,10 +1,13 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { coverageOn } from "../code/coverage/runtime.js";
 import { coverageStatusOf } from "../code/crap/status.js";
 import type { CodeStore } from "../code/store/types.js";
-import { readPolicy } from "../daemon/policy.js";
+import { POLICY_FILE, readPolicy } from "../daemon/policy.js";
 import { countingOf } from "../delivery/code-deliver.js";
 import { codeSince, type ShellSession, wentOverSince } from "../delivery/code-since.js";
 import { codeSource, withCode } from "../delivery/code-source.js";
+import { isRecord } from "../fs/index.js";
 import { plural } from "../text.js";
 import type { CodeCoverageStatus, CodeStatus } from "../types/code-delivery.js";
 import type { AbsolutePath, StatusSnapshot, Store, WorktreeId } from "../types/index.js";
@@ -26,6 +29,8 @@ export function codeStatusOf(
   if (!policy.complexity.enabled) return {};
   const commonDir = at.commonDir();
   if (commonDir === null) return {};
+  const idle = coverageOn(policy) ? [] : setWithoutCoverage(at.root);
+  const without = idle.length === 0 ? {} : { withoutCoverage: idle };
   const source = codeSource(commonDir, at.root);
   const since = () => codeSince(store, worktreeId, shell);
   // Spec 015 D9 (row 015-12): the coverage part, only while coverage is on.
@@ -49,6 +54,7 @@ export function codeStatusOf(
         unknown: states.filter((s) => s.outcome === "unknown").length,
         ...(uncountable === 0 ? {} : { uncountable }),
         ...coverageOf(code),
+        ...without,
       };
     }),
   );
@@ -65,8 +71,29 @@ export function codeStatusOf(
       pending: 0,
       files: 0,
       unknown: 0,
+      ...without,
     },
   };
+}
+
+/**
+ * D1 (row 015-64): the keys of D9's checks that `squeal.config.json` sets
+ * to `true`. Read from the file, since both default to `true`: one left
+ * unset while coverage is off is not named.
+ */
+function setWithoutCoverage(root: string): NonNullable<CodeStatus["withoutCoverage"]> {
+  let config: unknown;
+  try {
+    config = JSON.parse(readFileSync(join(root, POLICY_FILE), "utf8"));
+  } catch {
+    return [];
+  }
+  const on = (section: string, key: string) =>
+    isRecord(config) && isRecord(config[section]) && config[section][key] === true;
+  return [
+    ...(on("crap", "enabled") ? ["crap.enabled" as const] : []),
+    ...(on("coverage", "untested") ? ["coverage.untested" as const] : []),
+  ];
 }
 
 const SINCE: Record<NonNullable<CodeStatus["since"]>, string> = {
@@ -111,17 +138,34 @@ const CAUSES: Readonly<Record<keyof CodeCoverageStatus["unknown"], string>> = {
 };
 
 /**
- * Spec 015 D9 (row 015-12): `Coverage: 12 functions over CRAP 30, 300 no
- * in-process test that Squeal runs reaches; ...`, then which files wait
- * (for test files' imports, for test runs, which `squeal run --all` makes,
- * or for records), which read unknown and why, and the test files Squeal
- * does not read.
+ * Spec 015 D9 (row 015-12): `Coverage: 12 functions over CRAP 30, 300
+ * untested; ...` for the checks that are on (row 015-64), then which files
+ * wait (for test files' imports, for test runs, which `squeal run --all`
+ * makes, or for records), which read unknown and why, and the test files
+ * Squeal does not read. While coverage is off, the checks set that do
+ * nothing (D1).
  */
 export function coverageStatusLines(s: StatusSnapshot, command: string): string[] {
+  const idle = s.code?.withoutCoverage ?? [];
+  if (idle.length > 0) {
+    const keys = idle.join(" and ");
+    return [
+      `Coverage is off (coverage.enabled is false), so ${keys} ${idle.length === 1 ? "does" : "do"} nothing.`,
+    ];
+  }
   const c = s.code?.coverage;
   if (c === undefined) return [];
+  const checks = c.checks ?? ["crap", "uncovered"];
+  if (checks.length === 0) {
+    return ["Coverage: no check is on: crap.enabled and coverage.untested are false."];
+  }
+  const crap = `${plural(c.crap, "function")} over CRAP ${c.threshold}`;
   const parts = [
-    `${plural(c.crap, "function")} over CRAP ${c.threshold}, ${c.uncovered} that no in-process test that Squeal runs reaches`,
+    checks.length === 2
+      ? `${crap}, ${c.uncovered} untested`
+      : checks[0] === "crap"
+        ? crap
+        : `${plural(c.uncovered, "function")} untested`,
   ];
   if (c.waitingForImports !== undefined) {
     const { files, testFiles } = c.waitingForImports;
