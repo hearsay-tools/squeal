@@ -4,6 +4,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { recordedDaemon } from "../core/daemon/ensure.js";
 import { type DaemonMarks, type Leftover, leftovers, marksOf } from "../core/daemon/leftovers.js";
 import { acquireDaemonLock } from "../core/daemon/lock.js";
+import { daemonStart } from "../core/daemon/start-mark.js";
 import { pauseAt } from "../core/daemon/test-pause.js";
 import {
   findWorktreeRoot,
@@ -12,7 +13,7 @@ import {
   worktreeIdFor,
 } from "../core/fs/index.js";
 import { lockFileFor } from "../core/store/index.js";
-import type { AbsolutePath } from "../core/types/index.js";
+import type { AbsolutePath, EpochMs } from "../core/types/index.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { leaveStoppedMark, stopTree } from "./stopped-mark.js";
@@ -183,7 +184,8 @@ export type LockCheck =
  * to hold, which only a lookup that finds the path missing proves: `existsSync`
  * is false under a directory it cannot search too (review 001-347, B1). A
  * probe or lookup that throws proves nothing (review 001-344, B1): the process
- * and the record still may, and at the bound the lock is `unchecked`.
+ * and the record still may, and at the bound the lock is `unchecked`. Row
+ * 011-251: the marks beside the lock are read before it is probed (`marked`).
  */
 export async function lockFreed(
   root: AbsolutePath,
@@ -196,10 +198,24 @@ export async function lockFreed(
   const deadline = Date.now() + ms;
   for (;;) {
     if (missing(path) || (daemon !== null && gone(root, daemon))) return { state: "free" };
-    const probe = probeLock(path);
+    const probe = marked(path, daemon) ?? probeLock(path);
     if (probe.state === "free" || Date.now() > deadline) return probe;
     await sleep(50);
   }
+}
+
+/**
+ * Row 011-251 (F4, gh-1): the lock as the marks beside it say, before any
+ * probe (`daemonStart`): free while another process marks its start, since
+ * it holds the lock; held, not probed, while a hook's spawn is marked, which
+ * a probe could make exit as a loser (C9); `null` with neither.
+ */
+function marked(path: AbsolutePath, daemon: { readonly pid: number } | null): LockCheck | null {
+  const start = daemonStart(path, Date.now() as EpochMs);
+  if (start === null) return null;
+  return start.kind === "spawned" || start.pid === daemon?.pid
+    ? { state: "held" }
+    : { state: "free" };
 }
 
 /** The daemon's process is gone, or a daemon of another start time registered since. */

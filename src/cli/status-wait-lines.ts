@@ -11,7 +11,7 @@ import {
   type StatusFormatOptions,
   splitByValidity,
 } from "../core/status/index.js";
-import { LOCKED_TEXT } from "../core/status/outstanding-text.js";
+import { LOCKED_TEXT, starting } from "../core/status/outstanding-text.js";
 import { stoppingState } from "../core/status/stopping.js";
 import { plural, testFileText } from "../core/text.js";
 import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../core/types/index.js";
@@ -245,8 +245,9 @@ export function namedLine(wait: EndedNamed, command = "squeal"): string {
       break;
     case "no-daemon": {
       const asOf = snapshot ? "" : `; results are as of revision ${verdict.revision}`;
-      const start = wait.down === "handoff" ? "" : `; \`${command} start\` starts one`;
-      line = noneAt(`${noDaemonText(wait.result.daemon, wait.down, command)}${asOf}${start}`);
+      line = noneAt(
+        `${noDaemonText(wait.result.daemon, wait.down, command)}${asOf}${startText(wait, command)}`,
+      );
       break;
     }
     case "slow":
@@ -416,6 +417,16 @@ function noDaemonText(
     return `${since}: its heartbeat stopped and nothing listens on its socket`;
   }
   return down === "stopped" ? `${since}: the daemon stopped` : since;
+}
+
+/**
+ * What starts a daemon, after a no-daemon verdict: `squeal start`; nothing
+ * after a handoff, whose text names it; row 011-251 (F2): with a start
+ * marked, that a daemon starts, which `squeal start` would only wait for.
+ */
+function startText(wait: EndedNamed, command: string): string {
+  if (wait.down === "handoff") return "";
+  return `; ${starting(wait.result.daemon) ? LOCKED_TEXT : `\`${command} start\` starts one`}`;
 }
 
 /**

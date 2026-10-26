@@ -1,3 +1,4 @@
+import { daemonStart } from "../daemon/start-mark.js";
 import {
   HANDOFF_BOUND_MS,
   handoffFrom,
@@ -5,6 +6,7 @@ import {
   readShortHandoff,
 } from "../delivery/handoff.js";
 import { readDaemonNotes } from "../notes.js";
+import { lockFileFor } from "../store/paths.js";
 import {
   type DaemonLiveness,
   type DaemonRecord,
@@ -15,7 +17,7 @@ import {
   type Store,
   type WorktreeRecord,
 } from "../types/index.js";
-import { daemonGone, shutDown } from "./died.js";
+import { lockOf, shutDown } from "./died.js";
 
 /**
  * Row 011-34 (011 C9 as amended 2026-10-20, design 011-30 section 4, R4):
@@ -30,6 +32,8 @@ import { daemonGone, shutDown } from "./died.js";
  * daemon cleared its record, a live claim still says the handoff runs
  * (`claimed`), until the successor registers. Row 011-140: an alive daemon
  * that registered older than the claim it ended has `short` (`withShort`).
+ * Row 011-251: with the record cleared and no claim, a daemon that marks its
+ * start is starting (`started`).
  */
 export function withStopping(
   store: Store,
@@ -39,12 +43,17 @@ export function withStopping(
 ): DaemonLiveness {
   if (worktree === null) return live;
   const record = worktree.daemon;
-  if (record === null) return claimed(store, worktree, live, now);
+  if (record === null) return started(worktree, claimed(store, worktree, live, now), now);
   const self = daemonIncarnation(record);
   if (self === null || !shutDown(store, worktree.id, self)) {
     return withShort(store, worktree, record, live);
   }
-  if (live.state === "down" && daemonGone(worktree)) return live;
+  // Row 011-251 (F4): a start marked in place of the lock, which a probe could take from it.
+  if (live.state === "down") {
+    const lock = lockOf(worktree, now);
+    if (lock.state === "starting") return { ...live, startingSince: lock.since };
+    if (lock.state === "gone") return live;
+  }
   // The exit note's time; past the notes' cap, the last heartbeat, which stopped with the timers.
   const note = readDaemonNotes(store, worktree.id).find((n) => n.exitOf === self);
   const since = (note?.at ?? record.heartbeatAt) as EpochMs;
@@ -82,6 +91,22 @@ function claimed(
   const from = claim.from.slice(0, Math.max(0, claim.from.indexOf("@"))) || claim.from;
   const { to, at: since, boundAt } = claim;
   return { ...live, stopping: { from, since, to, boundAt, overdue: false } };
+}
+
+/**
+ * Row 011-251 (F2, gh-1): `live` with `startingSince` while no record names
+ * the worktree's daemon and one marks its start (`daemonStart`): it holds
+ * the lock and marked its start, or a hook spawned it within
+ * `DAEMON_START_GRACE_MS`. Status and every header then say a daemon is
+ * starting, as a registration that spawned one does. Only a cleared record
+ * is read so: a stale one with its lock held is a busy daemon. A handoff
+ * under way and a stop asked for keep their own words.
+ */
+function started(worktree: WorktreeRecord, live: DaemonLiveness, now: EpochMs): DaemonLiveness {
+  if (live.state !== "down" || live.stopping !== undefined || live.stopped === true) return live;
+  if (live.startingSince !== undefined) return live;
+  const start = daemonStart(lockFileFor(worktree.commonDir, worktree.id), now);
+  return start === null ? live : { ...live, startingSince: start.since };
 }
 
 /** `live` with `short` while it is alive and the short handoff's mark names `record`. */
