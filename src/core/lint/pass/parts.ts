@@ -10,11 +10,10 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "../../types/index.js";
-import type { LintKnownState } from "../../types/lint.js";
 import type { LintStore } from "../store/types.js";
 import type { Keyer } from "./keyer.js";
 import { type LintedPart, lintFiles, type PartFile, unknownPart } from "./lint-part.js";
-import { readQuiet } from "./records.js";
+import { readProgram, readQuiet, writeQuiet } from "./records.js";
 import type { ProviderSession } from "./session.js";
 import type { LintCapacity, LintSource } from "./types.js";
 
@@ -68,11 +67,27 @@ export interface PartsEnd extends LintedPart {
  * program ends it too: the next pass keys again.
  */
 export async function lintParts(ctx: PartsContext, keyer: Keyer): Promise<PartsEnd> {
-  const skipped = new Set<RelativePath>();
   const done = { linted: 0, hits: 0, transitions: 0, off: null as string | null, grew: false };
   const end = (wakeAt: EpochMs | null): PartsEnd => ({ ...done, wakeAt });
+  const quiet = readQuiet(ctx.store.meta, ctx.worktreeId);
+  try {
+    return await partsOf(ctx, keyer, readQueue(ctx, quiet), done, end);
+  } finally {
+    writeQuiet(ctx.store.meta, ctx.worktreeId, quiet);
+  }
+}
+
+/** The parts in turn, until none is left or the pass must end. */
+async function partsOf(
+  ctx: PartsContext,
+  keyer: Keyer,
+  first: Queue,
+  done: { linted: number; hits: number; transitions: number; off: string | null; grew: boolean },
+  end: (wakeAt: EpochMs | null) => PartsEnd,
+): Promise<PartsEnd> {
+  let queue = first;
   for (;;) {
-    const part = nextPart(ctx, skipped);
+    const part = nextPart(ctx, queue);
     if (part === null) return end(null);
     if (part.kind === "stale") {
       const wait = ctx.idleIn();
@@ -81,11 +96,11 @@ export async function lintParts(ctx: PartsContext, keyer: Keyer): Promise<PartsE
     const slot = takeSlot(ctx.capacity(), part.kind);
     if (slot === WAIT_FOR_CAPACITY) return end(ctx.now() + CAPACITY_RECHECK_MS);
     try {
-      const files = await readTexts(ctx, keyer, part.paths, skipped);
+      const files = await readTexts(ctx, keyer, part.paths);
       const did =
         "unknown" in files
           ? unknownPart(ctx, part.paths, files.unknown)
-          : await lintFiles(ctx, keyer, files, part.judged);
+          : await lintFiles(ctx, keyer, files, part.judged, queue.quiet);
       done.linted += did.linted;
       done.hits += did.hits;
       done.transitions += did.transitions;
@@ -95,6 +110,8 @@ export async function lintParts(ctx: PartsContext, keyer: Keyer): Promise<PartsE
       slot();
     }
     if (done.off !== null || done.grew || ctx.interrupted()) return end(null);
+    // A part fed before every changed program file left its misses pending: read them again.
+    queue = part.judged ? queue.without(part.paths) : readQueue(ctx, queue.quiet);
     await nextTurn();
   }
 }
@@ -106,30 +123,82 @@ interface Part {
   readonly judged: boolean;
 }
 
-/** The next part's files: the feed and an edit's files, then the backlog, then stale ones. */
-function nextPart(ctx: PartsContext, skipped: ReadonlySet<RelativePath>): Part | null {
+/**
+ * The files waiting to lint, read once per pass: this worktree's states have
+ * no other writer. A part's files leave it, linted, unknown or skipped; one
+ * skipped waits for the revision that moved its bytes.
+ */
+class Queue {
+  constructor(
+    readonly edit: readonly RelativePath[],
+    readonly backlog: readonly RelativePath[],
+    readonly stale: readonly RelativePath[],
+    /** The quiet set, kept in memory while the pass lints and written when it ends. */
+    readonly quiet: Set<RelativePath>,
+  ) {}
+
+  without(paths: readonly RelativePath[]): Queue {
+    const gone = new Set(paths);
+    const keep = (list: readonly RelativePath[]) => list.filter((p) => !gone.has(p));
+    return new Queue(keep(this.edit), keep(this.backlog), keep(this.stale), this.quiet);
+  }
+}
+
+/**
+ * The pending files, an edit's apart from a first or config keying's, and
+ * the stale ones. The quiet set keeps only files still `pending` or
+ * `unknown`: one a pass that ended early linted leaves it here.
+ */
+function readQueue(ctx: PartsContext, quiet: Set<RelativePath>): Queue {
   const { store, worktreeId } = ctx;
-  const open = (s: LintKnownState) => !skipped.has(s.check.path) && !ctx.feed.has(s.check.path);
-  const pending = store.states.list(worktreeId, { outcome: "pending" }).filter(open);
-  const quiet = readQuiet(store.meta, worktreeId);
+  const pending = store.states.list(worktreeId, { outcome: "pending" }).map((s) => s.check.path);
+  const unknown = store.states.list(worktreeId, { outcome: "unknown" }).map((s) => s.check.path);
+  const waiting = new Set([...pending, ...unknown]);
+  for (const path of quiet) if (!waiting.has(path)) quiet.delete(path);
+  // Stale files are whole-program files (D5): only those states are read.
+  const whole = readProgram(store.meta, worktreeId).files;
+  const stale =
+    whole.length === 0
+      ? []
+      : store.states
+          .list(worktreeId, { paths: whole })
+          .filter((s) => s.stale && s.outcome !== "pending")
+          .map((s) => s.check.path);
+  return new Queue(
+    firstOf(
+      ctx,
+      pending.filter((p) => !quiet.has(p)),
+    ),
+    firstOf(
+      ctx,
+      pending.filter((p) => quiet.has(p)),
+    ),
+    firstOf(ctx, stale),
+    quiet,
+  );
+}
+
+/** The next part's files: the feed and an edit's files, then the backlog, then stale ones. */
+function nextPart(ctx: PartsContext, queue: Queue): Part | null {
   const feed = [...ctx.feed].sort();
-  const edit = pending.filter((s) => !quiet.has(s.check.path));
-  if (feed.length > 0 || edit.length > 0) {
-    const paths = [...feed, ...firstOf(ctx, edit)].slice(0, PART_FILES);
+  if (feed.length > 0 || queue.edit.length > 0) {
+    const edit = queue.edit.filter((p) => !ctx.feed.has(p));
+    const paths = [...feed, ...edit.slice(0, PART_FILES)].slice(0, PART_FILES);
     return { kind: "edit", paths, judged: feed.length <= PART_FILES };
   }
-  const backlog = pending.filter((s) => quiet.has(s.check.path));
-  if (backlog.length > 0) return { kind: "backlog", paths: firstOf(ctx, backlog), judged: true };
-  const stale = store.states.list(worktreeId).filter((s) => s.stale && open(s));
-  if (stale.length > 0) return { kind: "stale", paths: firstOf(ctx, stale), judged: true };
+  if (queue.backlog.length > 0) {
+    return { kind: "backlog", paths: queue.backlog.slice(0, PART_FILES), judged: true };
+  }
+  if (queue.stale.length > 0) {
+    return { kind: "stale", paths: queue.stale.slice(0, PART_FILES), judged: true };
+  }
   return null;
 }
 
-/** At most a part's paths of `states`, those of `ctx.first` first. */
-function firstOf(ctx: PartsContext, states: readonly LintKnownState[]): RelativePath[] {
-  const paths = states.map((s) => s.check.path);
-  const first = paths.filter((p) => ctx.first.has(p));
-  return [...first, ...paths.filter((p) => !ctx.first.has(p))].slice(0, PART_FILES);
+/** `paths` sorted, those of `ctx.first` first. */
+function firstOf(ctx: PartsContext, paths: readonly RelativePath[]): RelativePath[] {
+  const sorted = [...paths].sort();
+  return [...sorted.filter((p) => ctx.first.has(p)), ...sorted.filter((p) => !ctx.first.has(p))];
 }
 
 /**
@@ -159,7 +228,6 @@ async function readTexts(
   ctx: PartsContext,
   keyer: Keyer,
   paths: readonly RelativePath[],
-  skipped: Set<RelativePath>,
 ): Promise<PartFile[] | { readonly unknown: string }> {
   let keys: Awaited<ReturnType<Keyer["keys"]>>;
   try {
@@ -173,7 +241,6 @@ async function readTexts(
     const blob = keyed?.blob ?? (ctx.feed.has(path) ? keyer.blobOf(path) : null);
     const bytes = blob === null ? null : await readFile(join(ctx.root, path)).catch(() => null);
     if (bytes === null || blobHash(bytes, ctx.format) !== blob) {
-      skipped.add(path);
       ctx.feed.delete(path);
       continue;
     }
