@@ -91,6 +91,7 @@ Wave 1.8, row R5 (same day): review `0.1.353` B1-R4 (an `a+` descriptor read esc
 - `integration/descriptor.test.ts`: the reviewer's two-root `a+` case, ESLint 9 and 10: each root stores fresh ESLint's findings or reads unknown naming `data.txt`. Red at `16b8f7c59`: the second root took the first root's "before".
 - `integration/worker-thread.test.ts`: the fixture `worker`'s `eslint-plugin-sync` reads `data.txt` in a worker thread it waits on with `Atomics.wait`, as `synckit` does. ESLint 9 and 10: each of two roots reads unknown with the reason and takes no hit; a config without the plugin still stores. Red at `8c06659b6`: the first root stored the worker's read.
 - `integration/reads.test.ts` on Node 22.19.0 is decision 32's regression test (CI runs 22.19).
+- `provider/starter.test.ts`: the reason's package names from a stack (`starterOf`): Node's frames skipped, two packages innermost first, scoped and pnpm paths, a project file by its path, ESLint only alone, the worker's own code stops it. In-process, so Squeal measures it (the worker's code runs in a process it starts).
 
 `npx vitest run test/lint/ --maxWorkers=3` at `e56e6451a`, each beside the host's real load: Node 22.19.0, 33 files and 159 tests passed in 112 s (load 5.8); Node 22.23.3, 33 and 159 in 117 s (load 19.8); Node 24.21.0, 33 and 159 in 89 s (load 20.8).
 
