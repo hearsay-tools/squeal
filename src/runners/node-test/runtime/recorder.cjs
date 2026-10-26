@@ -35,9 +35,9 @@
 // `node --test` parent) deletes both: it keeps its own coverage, a process the test spawns or a
 // thread it starts writes none, and a test cannot read the variable. Its main thread names its pid
 // in the directory, so Squeal reads that process's file alone. A project's own `NODE_V8_COVERAGE`
-// stays: only Squeal's directory is deleted. `NODE_V8_COVERAGE` goes at the entry, where the preload
-// phase ends: a loader that reads it as it starts keeps the text it read in its maps, as tsx does
-// (review 0.1.358 B1). Where no entry can be seen, it goes now, and such maps are `unread`.
+// stays: only Squeal's directory is deleted. `NODE_V8_COVERAGE` goes as the main script loads, after
+// every preload: a loader that reads it as it starts keeps the text it read in its maps, as tsx does
+// (review 0.1.358 B1). Where the main script cannot be seen, it goes now, and such maps are `unread`.
 //
 // Directory creates and removes (spec 016 D4, the written-directory bound). `mkdir`, `mkdtemp`,
 // `rm`, `rmdir` and both ends of `rename`, sync, callback and promise forms, append one
@@ -70,8 +70,13 @@ const STARTED = "SQUEAL_NODE_TEST_STARTED";
 const graphed = prefix && typeof module_.registerHooks === "function" && !isInternalThread;
 let preload =
   graphed && isMainThread && (process.argv[1] ?? "") !== "" && process.env[STARTED] !== prefix;
-// Where no entry will be seen, the variable goes now.
-if (!preload) hideCoverage();
+// The main script is known by `argv[1]`, not by the preload phase's end (review 0.1.358 R2): a
+// preload's own parentless load ends that phase, as tsx's `import "#cjs-loader"` does on Node 22.19
+// before tsx starts its hooks thread, and a `--require` by absolute path ends it in the `node --test`
+// parent, whose STARTED the test file's process inherits.
+let main =
+  coverage && graphed && isMainThread && process.argv[1] ? mainPaths(process.argv[1]) : null;
+if (main === null) hideCoverage();
 if (graphed) {
   const file = `${prefix}-${process.pid}.ndjson`;
   const seen = new Set();
@@ -82,7 +87,12 @@ if (graphed) {
       if (preload && parent === null && (specifier.startsWith("file:") || isAbsolute(specifier))) {
         preload = false;
         process.env[STARTED] = prefix;
-        hideCoverage();
+      }
+      if (main !== null && parent === null && resolved.url.startsWith("file:")) {
+        if (main.has(fileURLToPath(resolved.url))) {
+          main = null;
+          hideCoverage();
+        }
       }
       const key = `${parent}\n${resolved.url}`;
       if (!seen.has(key)) {
@@ -95,6 +105,17 @@ if (graphed) {
     },
   });
   recordDirectories(file);
+}
+
+/** The paths the main script resolves to: as given, and real, as Node runs it without `--preserve-symlinks-main`. */
+function mainPaths(script) {
+  const paths = new Set([resolve(script)]);
+  try {
+    paths.add(fs.realpathSync(script));
+  } catch {
+    // no such file, as when Node adds the extension: only the path as given matches
+  }
+  return paths;
 }
 
 /** Wraps `fs` and `fs.promises` so each directory create or remove appends its path to `file`. */
